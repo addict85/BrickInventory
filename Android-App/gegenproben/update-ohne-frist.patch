@@ -1,13 +1,12 @@
 Gegenprobe: Die App beachtet gueltigBis nicht (eine abgelaufene Beschreibung gilt als aktuell)
-Modul: core-data
-Test: ch.brickinventoryapp.UpdateFrischeTest
+Modul: core-update
+Test: ch.brickinventoryapp.update.UpdateFrischeTest
 Rot: eine abgelaufene oder fristlose Beschreibung ist nie aktuell
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateFrische.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateFrische.kt
-index ed233cc..29ea1d7 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateFrische.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateFrische.kt
-@@ -34,7 +34,7 @@ fun bewerteFrische(b: UpdateBeschreibung, gesehen: UpdateStand?, laufend: Int, j
+diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt
+--- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt
++++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt
+@@ -46,7 +46,7 @@ internal fun bewerteFrische(b: UpdateBeschreibung, gesehen: UpdateStand?, laufen
      b.versionCode < laufend -> UpdateFrische.ZURUECKGESETZT
      gesehen != null && (b.versionCode < gesehen.hoechsterCode || b.ausgestellt < gesehen.ausgestellt) ->
          UpdateFrische.ZURUECKGESETZT

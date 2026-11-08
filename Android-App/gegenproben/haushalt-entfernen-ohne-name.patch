@@ -1,13 +1,12 @@
 Gegenprobe: „Entfernen“ im Haushalt ohne Kontonamen für TalkBack
 Modul: app
-Test: ch.brickinventoryapp.UnterseitenTest
+Test: ch.brickinventoryapp.app.UnterseitenTest
 Rot: Entfernen nennt
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt
-index cb5137a..3efb636 100644
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt
-@@ -229,7 +229,7 @@ private fun KontoZeile(name: String, aktion: String, onAktion: () -> Unit) {
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenHaushalt.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenHaushalt.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenHaushalt.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenHaushalt.kt
+@@ -252,7 +252,7 @@ private fun KontoZeile(name: String, aktion: String, onAktion: () -> Unit) {
          horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
          Icon(Icons.Default.AccountCircle, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
          Text(name, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)

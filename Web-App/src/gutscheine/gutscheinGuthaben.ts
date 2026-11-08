@@ -1,3 +1,4 @@
+// Guthaben einer LEGO-Geschenkkarte; greift der Bot-Schutz, folgt kein weiterer Aufruf.
 // Ausführlich: docs/begruendungen/src/gutscheine/gutscheinGuthaben.ts.md#abschnitt
 import { meldeUndLiefere } from '../infra/fehler';
 import { hostErlaubt } from '../infra/fremdeAdressen';

@@ -1,0 +1,118 @@
+package ch.brickinventoryapp.konto
+
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import ch.brickinventoryapp.data.repository.KontoRepository
+import ch.brickinventoryapp.konto.ui.DesignWahl
+import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.zustand.ui.ladeEinstellungen
+import ch.brickinventoryapp.konto.ui.viewmodel.KontoViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Before
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import ch.brickinventoryapp.testing.NummernTexte
+import ch.brickinventoryapp.testing.PfadServer
+import ch.brickinventoryapp.testing.SitzungsAttrappe
+import ch.brickinventoryapp.testing.TestDienste
+
+/**
+ * Das Design gilt je Konto: /settings/theme liefert mit Token das wirksame
+ * Design samt Vorgabe, POST /settings/user/theme setzt ein eigenes ("" =
+ * Vorgabe). Die Wahl gilt sofort in der Sitzung, und das Abmelden lässt das
+ * Design stehen, bis die Vorgabe des Servers da ist.
+ *
+ * Gegenproben:
+ *   A  in KontoViewModel.waehleDesign() `sitzung.setzeDesign(…)` entfernt → rot
+ *      „die Wahl gilt sofort in der ganzen App“ (classic statt noppe)
+ *   B  in KontoRepository.setzeEigenesDesign den Schlüssel "design" statt
+ *      "theme" → rot „die Wahl geht an den Server …“
+ *   C  in designWahl() `vorgabe ?: theme` statt `vorgabe?.let` → rot „ein
+ *      älterer Server ohne Vorgabe zeigt keine Auswahl“
+ *   D  in Sitzung.abgemeldet() appTheme nicht übernommen → rot „Abmelden lässt
+ *      das Design stehen …“
+ *   E  in Sitzung.ladeEinstellungen() wieder `appTheme = e.appTheme` → rot „die
+ *      Einstellungen überschreiben das Design des Kontos nicht“ (classic statt noppe)
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+class DesignJeKontoTest {
+
+    private val pfade = PfadServer(
+        "/api/v1/settings/theme" to """{"success":true,"theme":"brick","vorgabe":"classic","eigenes":"brick"}""",
+        "/api/v1/settings/user/theme" to """{"success":true,"theme":"noppe","vorgabe":"classic","eigenes":"noppe"}""",
+    )
+    private val t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
+
+    @Before
+    fun auf() = Dispatchers.setMain(UnconfinedTestDispatcher())
+
+    @After
+    fun zu() {
+        t.aufraeumen()
+        Dispatchers.resetMain()
+        pfade.server.shutdown()
+    }
+
+    private fun vm() = t.merke(KontoViewModel(KontoRepository(t.api, t.cache), NummernTexte, t.meldungen, t.sitzung, SitzungsAttrappe()))
+
+    @Test
+    fun `das Konto zeigt Vorgabe und eigenes Design`() {
+        val vm = vm()
+        vm.ladeDesign()
+        assertTrue("Design", vm.kontoState.value.design != null)
+        assertEquals(DesignWahl("brick", "classic", "brick"), vm.kontoState.value.design)
+        assertEquals(listOf("GET /api/v1/settings/theme"), pfade.anfragen.toList())
+    }
+
+    @Test
+    fun `die Wahl geht an den Server und gilt sofort in der ganzen App`() {
+        val vm = vm()
+        vm.waehleDesign("noppe")
+        assertTrue("gewählt", vm.kontoState.value.design != null)
+        assertEquals(listOf("POST /api/v1/settings/user/theme"), pfade.anfragen.toList())
+        assertEquals("""{"theme":"noppe"}""", pfade.koerper.single())
+        assertEquals(DesignWahl("noppe", "classic", "noppe"), vm.kontoState.value.design)
+        assertEquals("noppe", t.sitzung.state.value.appTheme)
+
+        // Zurück zur Vorgabe: leerer Wert, die Antwort nennt das wirksame Design.
+        pfade.antworten["/api/v1/settings/user/theme"] = """{"success":true,"theme":"classic","vorgabe":"classic","eigenes":null}"""
+        vm.waehleDesign("")
+        assertTrue("Vorgabe", vm.kontoState.value.design?.eigenes == null)
+        assertEquals("""{"theme":""}""", pfade.koerper.last())
+        assertEquals("classic", t.sitzung.state.value.appTheme)
+    }
+
+    @Test
+    fun `ein aelterer Server ohne Vorgabe zeigt keine Auswahl`() {
+        pfade.antworten["/api/v1/settings/theme"] = """{"success":true,"theme":"brick"}"""
+        val vm = vm()
+        vm.ladeDesign()
+        assertTrue("Antwort", pfade.anfragen.isNotEmpty())
+        assertNull(vm.kontoState.value.design)
+    }
+
+    /** /settings nennt in app_theme die Vorgabe des Verwalters (routes/api_v1/settings.ts), nicht das Konto. */
+    @Test
+    fun `die Einstellungen ueberschreiben das Design des Kontos nicht`() {
+        pfade.antworten["/api/v1/settings"] = """{"success":true,"settings":{"currency":"CHF","app_theme":"classic"}}"""
+        t.sitzung.setzeDesign("noppe")
+        runBlocking { t.sitzung.ladeEinstellungen(KontoRepository(t.api, t.cache)) }
+        assertEquals("CHF", t.sitzung.state.value.currency)
+        assertEquals("noppe", t.sitzung.state.value.appTheme)
+    }
+
+    @Test
+    fun `Abmelden laesst das Design stehen, bis die Vorgabe da ist`() {
+        t.sitzung.setzeDesign("noppe")
+        t.sitzung.angemeldet(admin = false)
+        t.sitzung.abgemeldet()
+        assertEquals("noppe", t.sitzung.state.value.appTheme)
+        assertEquals(false, t.sitzung.state.value.isLoggedIn)
+    }
+}

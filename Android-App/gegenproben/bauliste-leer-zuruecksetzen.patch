@@ -1,13 +1,12 @@
 Gegenprobe: Zurücksetzen auch auf der leeren Bauliste
 Modul: app
-Test: ch.brickinventoryapp.UnterseitenTest
+Test: ch.brickinventoryapp.app.UnterseitenTest
 Rot: leere Bauliste
 
-diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt
-index d993591..eeb9f46 100644
---- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt
-+++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt
-@@ -255,7 +255,7 @@ fun PartsListScreen(
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt
+@@ -237,7 +237,7 @@ fun PartsListScreen(
  
                  // Die gesammelten Sets mit ihrem Zurücksetzen: Es leert diese Liste und steht
                  // deshalb bei ihr, nicht frei unter den Knöpfen. Ohne Inhalt fehlt es ganz.

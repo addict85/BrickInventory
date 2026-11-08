@@ -1,13 +1,12 @@
 Gegenprobe: Nach dem Abmelden bleibt der Finanzzustand stehen
 Modul: feature-finanzen
-Test: ch.brickinventoryapp.FinanzViewModelTest
+Test: ch.brickinventoryapp.finanzen.FinanzViewModelTest
 Rot: nach dem Abmelden ist nichts mehr da
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/FinanzViewModel.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/FinanzViewModel.kt
-index a48671d..31839fd 100644
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/FinanzViewModel.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/FinanzViewModel.kt
-@@ -141,7 +141,6 @@ class FinanzViewModel @Inject constructor(
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanzViewModel.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanzViewModel.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanzViewModel.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanzViewModel.kt
+@@ -145,7 +145,6 @@ class FinanzViewModel @Inject constructor(
      }
  
      private fun zuruecksetzen() {

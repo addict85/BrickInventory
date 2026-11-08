@@ -1,10 +1,9 @@
 Gegenprobe: Nach einem Abriss verbindet der CSV-Strom im festen Takt neu statt mit wachsendem Abstand
 Modul: core-zustand
-Test: ch.brickinventoryapp.CsvImportViewModelTest
+Test: ch.brickinventoryapp.zustand.CsvImportViewModelTest
 Rot: ein abgerissener Strom fragt einmal nach
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/CsvImportRepository.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/CsvImportRepository.kt
-index b6a8811..6476002 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/CsvImportRepository.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/CsvImportRepository.kt
 @@ -49,7 +49,7 @@ class CsvImportBeobachter @Inject constructor(

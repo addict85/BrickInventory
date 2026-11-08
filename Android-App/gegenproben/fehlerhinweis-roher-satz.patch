@@ -1,13 +1,12 @@
 Gegenprobe: Der Satz der Datenschicht steht in jeder Fehlerklasse unter der Überschrift
 Modul: app
-Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
 Rot: Fehlerhinweis nennt die Klasse
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ladezustand.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ladezustand.kt
-index 4565ae2..c39b489 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ladezustand.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ladezustand.kt
-@@ -110,7 +110,7 @@ fun FehlerHinweis(fehler: String?, onErneut: () -> Unit, klasse: Fehlerklasse? =
+@@ -109,7 +109,7 @@ fun FehlerHinweis(fehler: String?, onErneut: () -> Unit, klasse: Fehlerklasse? =
          Fehlerklasse.ANMELDUNG -> Triple(Icons.Default.Lock, R.string.fehler_anmeldung_titel, R.string.fehler_anmeldung_text)
          Fehlerklasse.UNBEKANNT, null -> Triple(Icons.Default.ErrorOutline, R.string.common_load_failed, null)
      }

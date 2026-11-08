@@ -1,13 +1,12 @@
 Gegenprobe: Der Eintrag „CSV-Import“ fehlt auf der Seite „Mehr“
 Modul: app
-Test: ch.brickinventoryapp.ErreichbareRoutenTest
+Test: ch.brickinventoryapp.app.ErreichbareRoutenTest
 Rot: zu jedem Ziel ohne Werte führt ein Weg
 
-diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt
-index 06c0edc..1063e85 100644
---- a/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt
-+++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt
-@@ -122,7 +122,6 @@ private fun MehrGruppeInhalt(nummer: Int, trenner: Boolean, updateVerfuegbar: Bo
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt
+@@ -118,7 +118,6 @@ private fun MehrGruppeInhalt(
              MehrGruppe(R.string.nav_group_manage, trenner)
              MehrEintrag(R.string.storage_manage, Icons.Outlined.Inventory2) { onZiel(Screen.Lagerorte) }
              MehrEintrag(R.string.household_title, Icons.Outlined.Group) { onZiel(Screen.Haushalt) }

@@ -1,12 +1,12 @@
 Gegenprobe: Der Abbruch der Prüfanzeige bricht den laufenden Abruf nicht ab
 Modul: app
-Test: ch.brickinventoryapp.ErfassungViewModelTest
+Test: ch.brickinventoryapp.app.ErfassungViewModelTest
 Rot: der Abbruch beendet den Abruf
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/ErfassungViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/ErfassungViewModel.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/ErfassungViewModel.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/ErfassungViewModel.kt
-@@ -288,7 +288,6 @@
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/ErfassungViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/ErfassungViewModel.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/ErfassungViewModel.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/ErfassungViewModel.kt
+@@ -316,7 +316,6 @@ class ErfassungViewModel @Inject constructor(
  
      /** Der Abbrechen-Knopf der Prüfanzeige: Ein laufender Scan wird abgebrochen, die Anzeige geräumt. */
      override fun brichPruefungAb() {

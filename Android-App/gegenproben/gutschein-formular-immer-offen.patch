@@ -1,13 +1,12 @@
 Gegenprobe: Gutschein-Formular immer offen statt auf Wunsch
 Modul: app
-Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
 Rot: Gutschein hinzufuegen oeffnet das Formular
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt
-index 3c822bb..6cbfffa 100644
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt
-@@ -239,7 +239,7 @@ fun GutscheineCard(
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
+@@ -261,7 +261,7 @@ fun GutscheineCard(
          )
      }
  

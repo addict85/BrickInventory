@@ -1,13 +1,12 @@
 Gegenprobe: Hinzufügen ohne Nummer tut still nichts, das Feld wird nicht markiert
 Modul: app
-Test: ch.brickinventoryapp.AblaufTest
+Test: ch.brickinventoryapp.app.AblaufTest
 Rot: ein Set ohne Nummer sagt beim Tippen
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
-index 2e57b18..4895221 100644
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
-@@ -830,7 +830,6 @@ fun AddSetDialog(
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieErfassen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieErfassen.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieErfassen.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieErfassen.kt
+@@ -115,7 +115,6 @@
  
      fun submit() {
          if (nummerFehler(setNumber, geprueft = true) != null) {

@@ -94,9 +94,18 @@ export async function kontingentReichtFuer(ordner: string, laenge: number): Prom
   return await belegterPlatz(ordner) + laenge <= uploadKontingentBytes();
 }
 
+/** Der Pfad kommt aus der Anfrage (multer); was ausserhalb der Ablage läge, fasst der Dienst nicht an. */
+export function unterWurzel(wurzel: string, datei: string): string {
+  const w = path.resolve(wurzel);
+  const d = path.resolve(datei);
+  if (!d.startsWith(w + path.sep)) throw new Error(`Upload ausserhalb von ${w}`);
+  return d;
+}
+
 /** Nach dem Schreiben: nur für den Dienst lesbar, Inhalt passt zum Typ, und das
  * Kontingent hält auch ohne Content-Length (chunked). Sonst ist die Datei wieder weg. */
-export async function pruefeEmpfangeneDatei(datei: string, mime: string): Promise<null | 'datei_inhalt_falsch' | 'upload_kontingent_voll'> {
+export async function pruefeEmpfangeneDatei(wurzel: string, empfangen: string, mime: string): Promise<null | 'datei_inhalt_falsch' | 'upload_kontingent_voll'> {
+  const datei = unterWurzel(wurzel, empfangen);
   await fs.promises.chmod(datei, 0o600);
   const grund = !await inhaltPasstZuTyp(datei, mime) ? 'datei_inhalt_falsch' as const
     : await belegterPlatz(path.dirname(datei)) > uploadKontingentBytes() ? 'upload_kontingent_voll' as const : null;

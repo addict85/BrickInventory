@@ -17,8 +17,7 @@ import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { merkeBlFarbnummer, blFarbnummerAus } from '../katalog/blZuordnung';
 
 /** Mit Ausweichebenen (CSV-Zwischenspeicher, Rebrickable), damit ein Set auch
- * ohne eigene Zeilen eine Teileliste zeigt.
- * Ausführlich: docs/begruendungen/src/teile/abfragen.ts.md#abschnitt */
+ * ohne eigene Zeilen eine Teileliste zeigt. Ausführlich: docs/begruendungen/src/teile/abfragen.ts.md#abschnitt */
 
 import { marktpreiseAusCacheFuerTeile } from '../finanzen/marketPrice';
 
@@ -45,6 +44,7 @@ function teileFilter(query: Record<string, unknown>): repo.TeileFilter {
   };
 }
 
+// Erst der lokale CSV-Katalog (kostenlos), dann die Rebrickable-API (Kontingent).
 // Ausführlich: docs/begruendungen/src/teile/abfragen.ts.md#teileersatzquelle
 async function teileErsatzquelle(set_number: string) {
     // Rebrickable kennt manche Sets nur ohne Versionsanhang.
@@ -58,6 +58,7 @@ async function teileErsatzquelle(set_number: string) {
         return { parts: csvParts, total: csvParts.length, source: 'csv_cache', page_size: csvParts.length };
     }
 
+    // Rückfall über getAllSetParts(), nur mit Rebrickable-Schlüssel.
     // Ausführlich: docs/begruendungen/src/teile/abfragen.ts.md#teileersatzquelle-rbkey
     const rbKey = await getGlobalSetting('rebrickable_api_key');
     if (rbKey) {
@@ -229,7 +230,7 @@ export async function getManualParts(userIdWahl: Sicht | Blickfeld, viewerId: nu
   return withOwners(uids, mitPreis);
 }
 
-// Ausführlich: docs/begruendungen/src/teile/abfragen.ts.md#bestand-max-teile
+// Füllt die Spalte „Habe“ aus dem Bestand. Ausführlich: docs/begruendungen/src/teile/abfragen.ts.md#bestand-max-teile
 export const BESTAND_MAX_TEILE = 5000;
 
 export async function getOwnedQuantities(

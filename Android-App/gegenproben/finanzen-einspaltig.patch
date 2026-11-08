@@ -1,13 +1,12 @@
 Gegenprobe: Finanzen auch auf dem Tablet einspaltig
 Modul: app
-Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
 Rot: Finanzen stehen auf dem Tablet
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/FinanceScreen.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/FinanceScreen.kt
-index 12210d4..2ac45a5 100644
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/FinanceScreen.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/FinanceScreen.kt
-@@ -167,7 +167,7 @@ fun FinanceScreen(
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceScreen.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceScreen.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceScreen.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceScreen.kt
+@@ -205,7 +205,7 @@ fun FinanceScreen(
          // die Zeilen. Einspaltig lagen Betrag und Bezeichnung einer Zeile eine Armlänge auseinander.
          // Die Summe schliesst die Zeilen rechts ab: Links unter dem Überblick stand sie
          // neben einer halb leeren rechten Spalte.

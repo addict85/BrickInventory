@@ -1,98 +1,159 @@
 /**
- * Der Import einer Wanted-Liste lässt sich nicht zweimal anstossen.
+ * Der Import einer Wanted-Liste lässt sich nicht zweimal anstossen: am echten
+ * Bündel in jsdom, mit einer Serverantwort, die der Test zurückhält, bricht
+ * oder stückweise schickt.
  * Ausführlich: docs/begruendungen/test/wanted-import-riegel.test.js.md#kopf
  *
- * ── Gegenproben (am 20.10. GEMESSEN) ────────────────────────────────────────
- *
- * Ausgangslage `# pass 6 / # fail 0`. Jede Änderung einzeln, danach
- * zurückgenommen:
- *
- *   A  `_laeuft` aus der Bedingung in lies() entfernt
- *      → rot: „lies() beginnt ohne die Abfrage auf _laeuft".
- *   B  das try/finally um den Lauf entfernt (Riegel bleibt nach einem Fehler)
- *      → rot: „ohne finally bleibt _laeuft nach einem Fehler stehen".
- *   C  `_laeuft ||` aus der Zeile für den Schreibknopf gestrichen
- *      → rot: „der Schreibknopf wird während des Laufs nicht gesperrt".
- *   D  die Zeile `if (_laeuft) { … return; }` in wantedXmlGewaehlt entfernt
- *      → rot: „während eines Laufs darf keine neue Datei angenommen werden".
+ * Gegenproben (08.11.2026 gemessen, je einzeln, danach zurückgenommen):
+ *   A  `_laeuft` aus der Bedingung in lies() entfernt → rot: „ein zweiter
+ *      Klick startet keinen zweiten Lauf“ (zwei Anfragen)
+ *   B  im finally von lies() `_laeuft = false;` gestrichen → rot: „der Riegel
+ *      geht auch nach einem Fehler wieder auf“ (ein Fehler, der aus dem Lauf
+ *      herausfliegt, liesse sich in jsdom nur als unbehandelte Zurückweisung
+ *      auslösen, die der Test-Runner dem Test anrechnet)
+ *   C  `_laeuft ||` aus der Zeile für den Schreibknopf gestrichen → rot: „ein
+ *      zweiter Klick …“ (Schreiben während des Laufs bedienbar)
+ *   D  die Zeile `if (_laeuft) { … return; }` in wantedXmlGewaehlt entfernt →
+ *      rot: „ein zweiter Klick …“ (neue Datei während des Laufs angenommen)
+ *   E  in liesStrom `rest = zeilen.pop() ?? ''` → `rest = ''` → rot: „der
+ *      Fortschritt kommt stückweise an …“ (Bericht über zwei Stücke zerbricht)
+ *   F  `p.set('strom', '1')` gestrichen → rot: dieselbe Prüfung
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const { funktionsRumpf, ohneKommentare } = require('./helpers/sources');
+const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
 
-const ROOT = path.join(__dirname, '..');
-const SRC = ohneKommentare(
-  fs.readFileSync(path.join(ROOT, 'public', 'js', '18-wanted-xml.js'), 'utf8'));
-const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+const BERICHT = { success: true, vorschau: true, gelesen: 1, posten: [], angelegt: 0, aufgestockt: 0, fehler: 0 };
 
-test('lies() lässt keinen zweiten Lauf zu', () => {
-  const fn = funktionsRumpf(SRC, 'lies');
-  assert.match(fn, /if\s*\(!_datei\s*\|\|\s*_laeuft\)\s*return/,
-    'lies() beginnt ohne die Abfrage auf _laeuft — ein zweiter Klick startet ' +
-    'einen zweiten Import, und der addiert die Mengen auf');
-  assert.match(fn, /_laeuft\s*=\s*true/, 'der Riegel wird nicht gesetzt');
-});
+/** Öffnet die Oberfläche; Anfragen an den XML-Import beantwortet `antwort(nr)` (Promise einer Response). */
+async function mitImport(antwort) {
+  const o = await oeffneOberflaeche();
+  const importe = [];
+  const davor = o.w.fetch;
+  o.w.fetch = (url, opt) => {
+    if (!String(url).includes('/wanted-list/import/xml')) return davor(url, opt);
+    importe.push(String(url));
+    return antwort(importe.length);
+  };
+  const waehle = name => {
+    const feld = o.d.getElementById('wanted-xml-part');
+    Object.defineProperty(feld, 'files', { configurable: true, value: [new o.w.File(['<INVENTORY/>'], name)] });
+    feld.dispatchEvent(new o.w.Event('change', { bubbles: true }));
+  };
+  const knopf = id => o.d.getElementById(id);
+  return { ...o, importe, waehle, knopf };
+}
 
-test('der Riegel geht auch nach einem Fehler wieder auf', () => {
-  const fn = funktionsRumpf(SRC, 'lies');
-  assert.match(fn, /finally\s*\{[\s\S]*_laeuft\s*=\s*false/,
-    'ohne finally bleibt _laeuft nach einem Fehler stehen — der Dialog wäre ' +
-    'tot, bis man ihn schliesst, und das sieht aus wie ein hängender Import');
-});
+const alsJson = d => ({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: async () => d });
 
-test('die Knopfzustände stehen an genau EINER Stelle', () => {
-  const fn = funktionsRumpf(SRC, 'knoepfeStand');
-  assert.match(fn, /_laeuft\s*\|\|\s*!_bericht\?\.vorschau/,
-    'der Schreibknopf wird während des Laufs nicht gesperrt');
-  assert.match(fn, /_laeuft\s*\|\|\s*!_datei/,
-    '„Neu einlesen" wird während des Laufs nicht gesperrt');
-
-  // Jede andere Stelle, die diese beiden Knöpfe schaltet, wäre eine zweite
-  // Wahrheit — und die eine überschriebe die andere. GEMESSEN war genau das
-  // der Zustand davor: zeichneBericht() setzte `disabled` selbst.
-  const fremde = SRC.split('\n')
-    .filter(z => /\.disabled\s*=/.test(z) && !fn.includes(z.trim()));
-  assert.deepEqual(fremde.map(z => z.trim()), [],
-    'Diese Zeilen schalten einen Knopf ausserhalb von knoepfeStand():\n  ' +
-    fremde.join('\n  '));
-});
-
-test('während eines Laufs wird keine neue Datei angenommen', () => {
-  const fn = funktionsRumpf(SRC, 'wantedXmlGewaehlt');
-  assert.match(fn, /if\s*\(_laeuft\)[\s\S]{0,120}return/,
-    'während eines Laufs darf keine neue Datei angenommen werden — sie würde ' +
-    '_datei mitten im laufenden Schreiben austauschen');
-});
-
-test('der Dialog hat beide Knöpfe als Kennung und einen Balken', () => {
-  for (const id of ['wanted-xml-schreiben', 'wanted-xml-neu',
-                    'wanted-xml-balken', 'wanted-xml-fortschritt']) {
-    assert.equal(HTML.split(`id="${id}"`).length - 1, 1,
-      `id="${id}" kommt nicht genau einmal vor — die IDs sind der Vertrag mit dem JS`);
+test('ein zweiter Klick startet keinen zweiten Lauf, eine neue Datei wird abgewiesen', async () => {
+  let freigeben;
+  const { w, d, importe, waehle, knopf } = await mitImport(
+    () =>
+      new Promise(r => {
+        freigeben = () => r(alsJson(BERICHT));
+      }),
+  );
+  try {
+    waehle('liste.xml');
+    assert.ok(await warte(() => importe.length === 1), 'Die Datei startet keinen Lauf');
+    assert.deepEqual(
+      [knopf('wanted-xml-neu').disabled, knopf('wanted-xml-schreiben').disabled],
+      [true, true],
+      'Während des Laufs sind beide Knöpfe gesperrt',
+    );
+    // Gesperrt hin oder her: auch ein ausgelöster Klick und eine neue Datei laufen ins Leere.
+    knopf('wanted-xml-neu').disabled = false;
+    knopf('wanted-xml-neu').click();
+    knopf('wanted-xml-schreiben').disabled = false;
+    knopf('wanted-xml-schreiben').click();
+    waehle('andere.xml');
+    assert.ok(await warte(() => d.querySelector('#toasts .toast')), 'Keine Meldung zur abgewiesenen Datei');
+    assert.equal(importe.length, 1, 'Ein zweiter Import addierte die Mengen auf');
+    // Zurück auf gesperrt, wie es knoepfeStand() hielte: Die Freigabe muss die Vorschau bringen.
+    knopf('wanted-xml-neu').disabled = true;
+    knopf('wanted-xml-schreiben').disabled = true;
+    freigeben();
+    assert.ok(await warte(() => d.getElementById('wanted-xml-sub').textContent !== ''), 'Die Vorschau kommt nicht');
+    assert.deepEqual(
+      [knopf('wanted-xml-neu').disabled, knopf('wanted-xml-schreiben').disabled],
+      [false, false],
+      'Nach der Vorschau sind beide Knöpfe frei',
+    );
+    assert.equal(d.getElementById('wanted-xml-sub').textContent, 'liste.xml', 'Die Datei wurde ausgetauscht');
+    // Neu einlesen bei stehender Vorschau: Auch jetzt ist Schreiben gesperrt, solange es läuft.
+    knopf('wanted-xml-neu').click();
+    assert.ok(await warte(() => importe.length === 2));
+    assert.equal(knopf('wanted-xml-schreiben').disabled, true, 'Schreiben ist während des Neueinlesens bedienbar');
+    freigeben();
+    assert.ok(await warte(() => !knopf('wanted-xml-schreiben').disabled));
+  } finally {
+    w.close();
   }
-  const wrap = HTML.slice(HTML.indexOf('id="wanted-xml-fortschritt"'),
-                          HTML.indexOf('id="wanted-xml-bericht"'));
-  assert.match(wrap, /role="progressbar"/,
-    'Ohne role="progressbar" ist der Balken für Screenreader nur ein Kasten');
-  assert.match(wrap, /aria-valuemin="0"[\s\S]*aria-valuemax="100"/,
-    'role="progressbar" braucht seine Grenzen');
-  assert.match(wrap, /display:none/,
-    'Der Balken muss verborgen starten — sonst steht er leer da, bevor etwas läuft');
 });
 
-test('der Fortschritt wird gelesen und angezeigt', () => {
-  // Der Server schickt ihn nur auf Verlangen (strom=1); wer ihn nicht anfordert,
-  // bekommt auch keinen Balken.
-  assert.match(SRC, /p\.set\('strom',\s*'1'\)/,
-    'Ohne strom=1 antwortet die Adresse in einem Stück — es gäbe nichts zu zeigen');
-  const fn = funktionsRumpf(SRC, 'liesStrom');
-  assert.match(fn, /getReader\(\)/, 'die Antwort wird nicht zeilenweise gelesen');
-  assert.match(fn, /rest\s*=\s*zeilen\.pop\(\)/,
-    'Die angeschnittene letzte Zeile muss liegen bleiben — sonst zerbricht ein ' +
-    'Bericht, der über zwei Pakete kommt, mitten im JSON');
-  assert.match(fn, /o\.fortschritt/, 'die Fortschrittszeilen werden nicht erkannt');
-  assert.match(funktionsRumpf(SRC, 'zeichneFortschritt'), /aria-valuenow/,
-    'Der Wert muss auch für Screenreader mitgeführt werden');
+test('der Riegel geht auch nach einem Fehler wieder auf', async () => {
+  const { w, importe, waehle, knopf } = await mitImport(async nr => {
+    if (nr === 1) throw new Error('Netz weg');
+    return alsJson(BERICHT);
+  });
+  try {
+    waehle('liste.xml');
+    assert.ok(await warte(() => importe.length === 1));
+    assert.ok(await warte(() => !knopf('wanted-xml-neu').disabled), 'Nach dem Fehler bleibt der Dialog gesperrt');
+    knopf('wanted-xml-neu').click();
+    assert.ok(await warte(() => importe.length === 2), 'Neu einlesen startet nach dem Fehler nichts');
+  } finally {
+    w.close();
+  }
+});
+
+test('der Fortschritt kommt stückweise an und füllt den Balken', async () => {
+  const stuecke = [
+    `${JSON.stringify({ fortschritt: { phase: 'rebrickable', fertig: 1, gesamt: 4 } })}\n{"success":true,"vorschau":tr`,
+    `ue,"gelesen":7,"posten":[]}\n`,
+  ];
+  let weiter;
+  const { w, d, importe, waehle } = await mitImport(async () => ({
+    ok: true,
+    status: 200,
+    headers: { get: () => 'application/x-ndjson' },
+    body: {
+      getReader: () => {
+        let i = 0;
+        return {
+          read: async () => {
+            if (i === 1)
+              await new Promise(r => {
+                weiter = r;
+              });
+            return i < stuecke.length ? { value: new TextEncoder().encode(stuecke[i++]), done: false } : { done: true };
+          },
+        };
+      },
+    },
+  }));
+  try {
+    const box = d.getElementById('wanted-xml-fortschritt');
+    const wrap = d.getElementById('wanted-xml-balken-wrap');
+    assert.equal(box.style.display, 'none', 'Der Balken steht vor dem Lauf leer da');
+    assert.deepEqual(
+      [wrap.getAttribute('role'), wrap.getAttribute('aria-valuemin'), wrap.getAttribute('aria-valuemax')],
+      ['progressbar', '0', '100'],
+    );
+    waehle('liste.xml');
+    assert.ok(await warte(() => typeof weiter === 'function'));
+    assert.match(importe[0], /[?&]strom=1\b/, 'Ohne strom=1 antwortet der Server in einem Stück');
+    assert.equal(box.style.display, '');
+    assert.equal(wrap.getAttribute('aria-valuenow'), '25');
+    assert.match(d.getElementById('wanted-xml-fortschritt-text').textContent, /1.*4/);
+    weiter();
+    assert.ok(
+      await warte(() => /7/.test(d.getElementById('wanted-xml-bericht').textContent)),
+      `Der Bericht über zwei Stücke kommt nicht an: ${d.getElementById('wanted-xml-bericht').textContent}`,
+    );
+    assert.equal(box.style.display, 'none', 'Nach dem Lauf verschwindet der Balken');
+  } finally {
+    w.close();
+  }
 });

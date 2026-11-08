@@ -1,13 +1,12 @@
 Gegenprobe: Die Gutschein-PIN wird ohne Gerätesperre aufgedeckt
 Modul: app
-Test: ch.brickinventoryapp.AblaufTest
+Test: ch.brickinventoryapp.app.AblaufTest
 Rot: ohne Bestaetigung der Geraetesperre bleibt der PIN verdeckt
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt
-index 3c822bb..36fa1c1 100644
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt
-@@ -184,9 +184,7 @@ fun GutscheineCard(
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
+@@ -206,9 +206,7 @@ fun GutscheineCard(
                  g = g,
                  pinSichtbar = g.id in zustand.pinSichtbar,
                  // Verdecken braucht keine Bestätigung, aufdecken schon.

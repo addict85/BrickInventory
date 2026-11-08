@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.model.*
-import ch.brickinventoryapp.data.model.CatalogYearVerteilungResponse
+import ch.brickinventoryapp.model.data.model.*
+import ch.brickinventoryapp.model.data.model.CatalogYearVerteilungResponse
 
 /**
  * Der Set-Katalog des Servers.

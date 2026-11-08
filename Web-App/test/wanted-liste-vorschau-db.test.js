@@ -102,8 +102,9 @@ require.cache[rbPfad].exports = Object.assign({}, echtRb, {
   lookupPart: async () => null,
   getMinifigInfo: async () => null,
 });
-const { importiereWantedListe, beschreibePosten, loeseLokalAuf, leseWantedListe } =
-  _req('src/merkliste/wantedListe.js');
+const { importiereWantedListe } = _req('src/merkliste/wantedListe.js');
+const { beschreibePosten, loeseLokalAuf } = _req('src/merkliste/wantedAufloesung.js');
+const { leseWantedListe } = _req('src/merkliste/wantedParser.js');
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
 

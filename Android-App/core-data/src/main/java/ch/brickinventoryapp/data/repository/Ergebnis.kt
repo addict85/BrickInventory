@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.model.data.model.*
 
 /**
  * Ergebnis eines Serveraufrufs — genau zwei Fälle, damit jedes `when` erschöpfend
@@ -17,62 +17,55 @@ sealed class Ergebnis<out T> {
     data class Success<T>(val data: T, val stand: Long? = null, val gepuffert: Boolean = false) : Ergebnis<T>() {
         val veraltet: Boolean get() = stand != null
     }
-    // unauthorized = true bei HTTP 401: Der Token ist ungültig/abgelaufen. Von
-    // "transient" bewusst getrennt — ein 401 ist kein Netzwerkproblem, das ein
-    // Retry beheben könnte, und cached() (unten) darf ihn nicht mit einer alten
-    // Antwort aus dem Plattenspeicher überdecken.
-    data class Error(
-        val message: String,
-        val transient: Boolean = false,
-        val unauthorized: Boolean = false,
-        /**
-         * Was schiefging — als Aufzählung, nicht als Satz: Die Datenschicht hat keinen
-         * Context und kann nicht übersetzen; wie es heisst, entscheidet die Anzeige
-         * (AppTexte.meldung()). `null` heisst: Der Text kommt vom Server und wird
-         * durchgereicht, er kennt seine Fälle genauer.
-         */
-        val art: Fehlerart? = null,
-        /** HTTP-Code, falls es einen gab — für die Meldung bei [Fehlerart.SERVER]. */
-        val httpCode: Int? = null,
-        /**
-         * Der Fehlercode des Servers (`code` im Rumpf, utils/fehlerTexte.ts).
-         * Nach ihm wird verzweigt, nicht nach [message] oder [httpCode]: Der
-         * Satz wechselt mit der Sprache, der Status ist für viele Fälle derselbe.
-         */
-        val code: Fehlercode? = null,
-        /**
-         * Technischer Text der Ursache, nur fürs Log: Bibliothekstexte wie „unexpected end
-         * of stream“ sind englisch, wechseln mit der Version und gehören nicht in eine
-         * Oberfläche.
-         */
-        val technisch: String? = null
-    ) : Ergebnis<Nothing>()
-}
+    /**
+     * Was schiefging, als geschlossene Hierarchie statt freier Felder: Wer nach der Art
+     * verzweigt, schreibt ein erschöpfendes `when`, und ein neuer Fall bricht dort den
+     * Build. Den Satz bildet die Anzeige (AppTexte.meldung()), die Datenschicht hat
+     * keinen Context und kann nicht übersetzen.
+     */
+    sealed class Error : Ergebnis<Nothing>() {
+        /** Der Satz des Servers zum Durchreichen, leer ohne einen; er kennt seine Fälle genauer. */
+        open val message: String get() = ""
 
-/**
- * Fehlerursachen, die die Datenschicht selbst erkennt — bewusst grob, weil jede
- * einen eigenen Satz in der Anzeige braucht. Genaueres schreibt der Server in den
- * Fehlerrumpf.
- */
-enum class Fehlerart {
-    /** Host nicht auflösbar, Verbindung abgelehnt — vorübergehend. */
-    NETZ,
-    /** Zeitüberschreitung — vorübergehend. */
-    ZEIT,
-    /** HTTP 2xx, aber kein Rumpf. */
-    LEERE_ANTWORT,
-    /** HTTP-Fehlercode ohne verwertbaren Fehlerrumpf. */
-    SERVER,
-    /** Kein Server oder kein Token hinterlegt. */
-    NICHT_ANGEMELDET,
-    /** Die Gegenseite hat den Datenstrom geschlossen (SSE). */
-    VERBINDUNG_BEENDET,
-    /** Sitzung abgelaufen (HTTP 401). */
-    SITZUNG_ABGELAUFEN,
-    /** Die Server-Adresse ist http; die App sendet nur über https (util/KlartextAbgelehnt). */
-    KLARTEXT,
-    /** Sonstiges, ohne nähere Einordnung. */
-    UNBEKANNT,
+        /** Der Fehlercode des Servers: Nach ihm wird verzweigt, der Satz wechselt mit der Sprache. */
+        open val code: Fehlercode? get() = null
+
+        /** Text der Ursache, nur fürs Log: Bibliothekstexte sind englisch und kein Satz an Menschen. */
+        open val technisch: String? get() = null
+
+        /** Der Server war nicht erreichbar: Ein zweiter Versuch kann gelingen, der Plattenspeicher einspringen. */
+        val transient: Boolean get() = when (this) {
+            is Netz, Zeitueberschreitung -> true
+            Abgebrochen, is LeereAntwort, is Abgewiesen, is Server, Klartext, is Unbekannt -> false
+        }
+
+        /** Host nicht auflösbar, Verbindung abgelehnt oder unterwegs abgerissen. */
+        data class Netz(override val technisch: String? = null) : Error()
+
+        data object Zeitueberschreitung : Error()
+
+        /** Abriss mitten im Ereignisstrom: Ob der Server schon schrieb, ist offen — darum nicht vorübergehend. */
+        data object Abgebrochen : Error()
+
+        /** HTTP 2xx ohne Rumpf. */
+        data class LeereAntwort(override val technisch: String? = null) : Error()
+
+        /** HTTP 401: Der Token gilt nicht (mehr). Kein Netzproblem, das ein Wiederholen behebt. */
+        data class Abgewiesen(override val message: String = "", override val code: Fehlercode? = null) : Error()
+
+        /** Jeder andere HTTP-Fehlerstatus, mit Satz und Code des Servers, wenn er welche schickte. */
+        data class Server(
+            val status: Int,
+            override val message: String = "",
+            override val code: Fehlercode? = null,
+        ) : Error()
+
+        /** Die Server-Adresse ist http; die App sendet nur über https (util/KlartextAbgelehnt). */
+        data object Klartext : Error()
+
+        /** Jede andere Ausnahme, ohne nähere Einordnung. */
+        data class Unbekannt(override val technisch: String? = null) : Error()
+    }
 }
 
 /**

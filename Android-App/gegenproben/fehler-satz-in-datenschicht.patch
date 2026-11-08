@@ -1,0 +1,18 @@
+Gegenprobe: sicherAufrufen() legt einen festen Satz in Ergebnis.Error.Server statt den des Servers
+Modul: app
+Test: ch.brickinventoryapp.app.ErrorMessageLayerTest
+Rot: die Datenschicht baut keine Meldung
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt
+index 2cdc995..8ce049d 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt
+@@ -127,7 +127,7 @@ suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Ergebnis<T> {
+             val text = rumpf.text ?: ""
+             val code = Fehlercode.aus(rumpf.code)
+             if (response.code() == 401) Ergebnis.Error.Abgewiesen(text, code)
+-            else Ergebnis.Error.Server(response.code(), text, code)
++            else Ergebnis.Error.Server(response.code(), "Serverfehler", code)
+         }
+     } catch (e: kotlinx.coroutines.CancellationException) {
+         // Abgebrochene Coroutines (z.B. Suche-Debounce ersetzt Request) dürfen

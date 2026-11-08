@@ -141,7 +141,7 @@ test('die App hält den eigenen Bestand ebenfalls aus der Werkzeugzeile heraus',
   // im Quelltext die Aussage: „Reset" ist der letzte Knopf der Werkzeug-Row,
   // also steht alles danach ausserhalb davon.
   const { ohneKommentare } = require('./helpers/sources');
-  const src = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'PartsListScreen.kt'), 'utf8'));
+  const src = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'teile', 'ui', 'screens', 'PartsListScreen.kt'), 'utf8'));
 
   const reset  = src.indexOf('R.string.partslist_reset');
   const bestand = src.indexOf('R.string.partslist_fill_owned');

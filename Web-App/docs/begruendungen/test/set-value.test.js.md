@@ -50,18 +50,6 @@ anderen aus — bei gemischten Sets fehlte damit dauerhaft eine Hälfte.
 in dist/ und im Repo nicht mehr vorhanden.
 ```
 
-<a id="stelle-2"></a>
-## `assert.match(bl, /hatPreis/, 'Prüfung auf brauchbaren Preis fehlt');`
-
-```text
-Frueher stand hier `/function hasUsablePrice/` — ein Name. Die Pruefung
-heisst inzwischen hatPreis() und liegt in src/katalog/bricklinkPreise.ts, weil sie
-DIESELBE sein muss wie beim Lesen: Solange der Torwaechter hier weiter war
-als der Leser dort, unterblieb der Rueckfall auf 'stock' fuer genau die
-Artikel, fuer die er gebaut wurde (siehe test/preisregel-db.test.js).
-Geprueft wird deshalb die Herkunft der Regel, nicht ihr Name.
-```
-
 <a id="src-stelle"></a>
 ## `const src = require('./helpers/sources').adminQuelle();`
 
@@ -126,54 +114,6 @@ Verkleinerung anstiess, und der Katalog zeigt rund 25 000 fremde Sets.
 Für einen Bestand von ein paar hundert Bildern, die man täglich
 wiedersieht, lohnt die Verkleinerung. Für 25 000 Sets, an denen man
 vorbeiscrollt, nie.
-```
-
-<a id="server-2"></a>
-## `const server = require('./helpers/sources').serverAll();`
-
-```text
-403 kommt beim CDN auch als Drosselung vor. Es zu merken hiesse, dass
-Bilder „teilweise" fehlen, obwohl sie existieren. Diese Aussage gilt
-unverändert.
-
-Der WEG hat sich geändert (Nachtrag 98): Der Merker lag im Arbeitsspeicher
-EINES Prozesses und verfiel nach 15 Minuten. Der Server läuft im Cluster —
-dasselbe fehlende Bild wurde deshalb einmal je Arbeitsprozess geholt, nach
-jedem Neustart erneut, und nach 15 Minuten wieder. In den alten
-Katalogjahrgängen, wo fast jedes Bild fehlt, war das der Grossteil der
-Last. Jetzt steht es in der Datenbank, für alle Prozesse.
-```
-
-<a id="fc-stelle"></a>
-## `const fc = require('./helpers/sources').finanzQuelle();`
-
-```text
-DER Kern des wiederholt falschen Marktpreises: Die Anzeige leitete den
-Zustand aus den Erfassungen ab (getSetConditionAggregate), die Bewertung
-las stur sets.condition. Weichen die voneinander ab — etwa weil ein Set
-nachträglich auf „Neu" korrigiert wurde — zeigte die Kachel „Neu", der
-Preis stammte aber aus dem Gebraucht-Eintrag.
-
-Seit Migration 0032 gibt es die Spalte nicht mehr. Die gemeinsame Regel
-bleibt trotzdem geprueft: Sie ist jetzt auf EINEN Satz zusammengeschrumpft,
-und gerade deshalb liesse sich an zwei Stellen leicht wieder etwas
-Eigenes schreiben.
-```
-
-<a id="stelle-5"></a>
-## `assert.doesNotMatch(fc, /return set\?\.condition === 'U' \? 'U' : 'N';`
-
-```text
-── Der dritte Zweig ist weg, und das wird hier festgehalten ───────────
-
-Er las den gespeicherten Zustand der Stammzeile. Migration 0032 hat die
-Spalte den Sets genommen, 0035 den Teilen und Minifiguren — fuer manuelle
-Positionen traegt 0035 eine Erfassung nach und prueft danach nach, dass
-keine ohne geblieben ist.
-
-Die Zusicherung lautet jetzt umgekehrt: Dieser Zweig darf NICHT
-wiederkommen. Kaeme er, haette die Bewertung wieder eine zweite Quelle,
-und genau daraus ist der wiederholt falsche Marktpreis entstanden.
 ```
 
 <a id="uses"></a>

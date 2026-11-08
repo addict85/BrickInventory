@@ -1,13 +1,12 @@
 Gegenprobe: Ein Helfer, der Quelltext liest, zählt für die Funktionen nicht mehr
 Modul: app
-Test: ch.brickinventoryapp.QuelltextRatscheTest
+Test: ch.brickinventoryapp.app.QuelltextRatscheTest
 Rot: ein lesender Helfer zaehlt
 
-diff --git a/Android-App/app/src/test/java/ch/brickinventoryapp/QuelltextRatscheTest.kt b/Android-App/app/src/test/java/ch/brickinventoryapp/QuelltextRatscheTest.kt
-index 34e91e3..716b654 100644
---- a/Android-App/app/src/test/java/ch/brickinventoryapp/QuelltextRatscheTest.kt
-+++ b/Android-App/app/src/test/java/ch/brickinventoryapp/QuelltextRatscheTest.kt
-@@ -51,7 +51,7 @@ class QuelltextRatscheTest {
+diff --git a/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRatscheTest.kt b/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRatscheTest.kt
+--- a/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRatscheTest.kt
++++ b/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRatscheTest.kt
+@@ -54,7 +54,7 @@ class QuelltextRatscheTest {
          val c = Quellen.ohneKommentare(roh)
          val helfer = Regex("""(?:val|fun)\s+(\w+)[^\n]*""").findAll(c).filter { m ->
              val stueck = c.substring(m.range.first, minOf(c.length, m.range.first + 400)).substringBefore("\n\n")

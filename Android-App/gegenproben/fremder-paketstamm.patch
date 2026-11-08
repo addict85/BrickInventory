@@ -1,0 +1,13 @@
+Gegenprobe: feature-teile trägt eine Datei im Paketstamm von feature-sammlung
+Modul: app
+Test: ch.brickinventoryapp.app.ModulgrenzenTest
+Rot: jede Kotlin-Datei liegt im Paketstamm ihres Moduls
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/sammlung/Fremd.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/sammlung/Fremd.kt
+new file mode 100644
+--- /dev/null
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/sammlung/Fremd.kt
+@@ -0,0 +1,3 @@
++package ch.brickinventoryapp.sammlung
++
++internal object Fremd

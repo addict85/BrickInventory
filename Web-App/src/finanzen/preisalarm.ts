@@ -96,6 +96,7 @@ export interface AlarmMitName extends Preisalarm {
    * anderes Bild als die Galerie daneben. */
   image_local: string | null;
   image_url: string | null;
+  // Nur mit Set im Blickfeld anklickbar, sonst endete der Klick in einem Fehler.
   // Ausführlich: docs/begruendungen/src/finanzen/preisalarm.ts.md#alarmmitname-2
   besitzt: boolean;
 }

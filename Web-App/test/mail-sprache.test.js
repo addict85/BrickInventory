@@ -8,6 +8,11 @@
  *   b) Den englischen Zweig daraus entfernt               → Schritt 2 rot.
  *   c) Das Argument am Aufruf des E-Mail-Wechsels weg     → Schritt 3 rot.
  *   d) emailTemplate aus der Alarmmail entfernt           → Schritt 4 rot.
+ * Gegenproben (08.11.2026 gemessen, Schritte 3 und 4 jetzt ausgeführt):
+ *   e) in /forgot-password `String(lang ?? 'de')` → `'de'` → Schritt 3 rot
+ *      (die Mail an das englische Konto ist deutsch); ebenso in
+ *      /bestaetigung-erneut
+ *   f) baueAlarmMail ohne emailTemplate (html = text) → Schritt 4 rot
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -25,21 +30,6 @@ function rumpf(quelle, kopf) {
   const rest = quelle.slice(i + kopf.length);
   const m = rest.search(/\n(?:export )?(?:async )?function |\nexport \{/);
   return m >= 0 ? rest.slice(0, m) : rest;
-}
-
-/** Die Argumentliste eines Aufrufs — über Klammern gezählt, nicht per Regex. */
-function argumente(quelle, aufruf) {
-  const i = quelle.indexOf(aufruf);
-  if (i < 0) return null;
-  let tiefe = 0, args = [], akt = '';
-  for (let k = i + aufruf.length - 1; k < quelle.length; k++) {
-    const c = quelle[k];
-    if (c === '(' || c === '[' || c === '{') { tiefe++; if (tiefe === 1) continue; }
-    if (c === ')' || c === ']' || c === '}') { tiefe--; if (tiefe === 0) { args.push(akt); break; } }
-    if (tiefe === 1 && c === ',') { args.push(akt); akt = ''; continue; }
-    if (tiefe >= 1) akt += c;
-  }
-  return args.map(a => a.trim()).filter(a => a !== '');
 }
 
 test('1. jede Mail-Funktion nimmt die Sprache entgegen', () => {
@@ -85,46 +75,69 @@ test('2. und beherrscht beide Sprachen wirklich', () => {
   }
 });
 
-test('3. und jeder Aufrufer gibt sie mit', () => {
-  // Der eigentliche Befund vom 25.09.: Die Funktion KONNTE es, der Aufrufer
-  // gab es nur nicht mit. Deshalb werden hier die Aufrufe gezählt, nicht die
-  // Signaturen.
-  const auth = require('./helpers/sources').anmeldeQuelle();
-  const stellen = [...auth.matchAll(/(sendVerificationMail|sendPasswordResetMail)\s*\(/g)]
-    .map(m => m[1]);
-  assert.ok(stellen.length >= 3,
-    `Nur ${stellen.length} Aufrufe gefunden (gemessen waren es 3, davon einer der Import) — umbenannt?`);
-
-  let geprueft = 0;
-  for (const name of new Set(stellen)) {
-    let rest = auth;
-    for (;;) {
-      const i = rest.indexOf(`${name}(`);
-      if (i < 0) break;
-      const args = argumente(rest, `${name}(`);
-      rest = rest.slice(i + name.length + 1);
-      if (!args || args.length < 2) continue;      // der Import, kein Aufruf
-      geprueft++;
-      // Vier seit beide Mails ohne Namen grüssen: Adresse, Token, Basis, Sprache.
-      assert.ok(args.length >= 4,
-        `${name}() wird mit ${args.length} Argumenten gerufen — die Sprache fehlt:\n  ${args.join(' | ')}`);
-    }
+test('3. und jeder Aufrufer gibt sie mit — die Mail ist in der Sprache des Kontos', { timeout: 60_000 }, async (t) => {
+  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+  process.env.APP_BASE_URL = 'http://localhost';
+  const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
+  const gesendet = mailAttrappe();
+  const _req = require('./helpers/sources').buildAndRequire();
+  const db = await require('./helpers/db').dbOderSkip(t, _req);
+  if (!db) return;
+  const { bis } = require('./helpers/zeit');
+  const NAME = `mailsprache_${process.pid}`;
+  await db.run('DELETE FROM users WHERE username LIKE $1', [`${NAME}%`]);
+  await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE '%mailsprache%' OR key LIKE 'forgot-password|%' OR key LIKE 'bestaetigung-erneut|%'");
+  const konten = {};
+  for (const [sprache, bestaetigt] of [['en', true], ['de', true], ['en', false]]) {
+    const n = `${NAME}_${sprache}_${bestaetigt ? 'ok' : 'neu'}`;
+    // Ein offenes Konto der Registrierung trägt die Adresse erst als email_neu.
+    const id = bestaetigt
+      ? (await db.get(`INSERT INTO users (username, email, password_hash, is_active, email_verified)
+          VALUES ($1, $2, 'x', true, true) RETURNING id`, [n, `${n}@example.org`])).id
+      : (await db.get(`INSERT INTO users (username, email_neu, password_hash, is_active, email_verified, registrierung_offen)
+          VALUES ($1, $2, 'x', true, false, true) RETURNING id`, [n, `${n}@example.org`])).id;
+    await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'language', $2)`, [id, sprache]);
+    konten[n] = `${n}@example.org`;
   }
-  assert.ok(geprueft >= 2, `Nur ${geprueft} echte Aufrufe geprüft — das Muster greift nicht mehr.`);
+  const zurueck = await mailserverEintragen(db);
+  t.after(async () => {
+    await zurueck();
+    await db.run('DELETE FROM users WHERE username LIKE $1', [`${NAME}%`]);
+  });
+  const { base } = require('./helpers/server').testServer(_req, { routen: { '/api/v1/auth': 'routes/auth.js' }, t });
+  const post = (pfad, email) => fetch(`${base}/api/v1/auth${pfad}`, { method: 'POST',
+    headers: { 'content-type': 'application/json', 'accept-language': 'de' }, body: JSON.stringify({ email }) });
+  const mailAn = async (adresse) => {
+    assert.ok(await bis(() => gesendet.some(m => m.to === adresse), 15_000), `keine Mail an ${adresse}`);
+    return gesendet.find(m => m.to === adresse);
+  };
+  // Die Anfrage kommt auf Deutsch; massgeblich ist die Sprache des Empfängers.
+  for (const [n, adresse] of Object.entries(konten).filter(([n]) => n.endsWith('_ok'))) {
+    assert.equal((await post('/forgot-password', adresse)).status, 200);
+    const mail = await mailAn(adresse);
+    assert.match(mail.subject + mail.text, n.includes('_en_') ? /Reset|password/i : /Passwort/, `${n}: ${mail.subject}`);
+    if (n.includes('_en_')) assert.doesNotMatch(mail.subject, /Passwort|zurücksetzen/, mail.subject);
+  }
+  const neu = Object.entries(konten).find(([n]) => n.endsWith('_neu'))[1];
+  assert.equal((await post('/bestaetigung-erneut', neu)).status, 200);
+  const bestaetigung = await mailAn(neu);
+  assert.doesNotMatch(bestaetigung.subject, /bestätig|Bestätig/, bestaetigung.subject);
 });
 
-test('4. die Alarmmail trägt dieselbe Hülle wie die anderen', () => {
-  // Marcos erste Frage. Sie war reiner Text, als einzige.
-  const body = rumpf(MAILER, 'async function baueAlarmMail(');
-  assert.match(body, /emailTemplate\(/, 'Die Alarmmail läuft nicht durch die gemeinsame Vorlage.');
-  assert.match(body, /getMailTheme\(\)/, 'Die Alarmmail nimmt das eingestellte Design nicht auf.');
-  // Der Klartext bleibt trotzdem: Er geht als text/plain mit hinaus.
-  assert.match(body, /text,/, 'Die Alarmmail hat keinen Klartext mehr.');
-
-  // Und die Regel dahinter: Die GESTALTUNG steht im Mailer, nicht in der
-  // Alarmlogik. Dort steht das WANN.
-  const alarm = lies('src/finanzen/preisalarm.ts');
-  assert.ok(!/<table|<p style/.test(alarm),
-    'In src/finanzen/preisalarm.ts steht wieder HTML — die Gestaltung gehört in src/mail/mailer.ts.');
-  assert.match(alarm, /baueAlarmMail\(/, 'preisalarm.ts benutzt die Vorlage nicht.');
+test('4. die Alarmmail trägt dieselbe Hülle wie die anderen', async (t) => {
+  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+  const _req = require('./helpers/sources').buildAndRequire();
+  const db = await require('./helpers/db').dbOderSkip(t, _req);
+  if (!db) return;
+  const { baueAlarmMail, emailTemplate } = _req('src/mail/mailer.js');
+  const mail = await baueAlarmMail({ lang: 'en', username: 'anna', setNumber: '10294-1', setName: 'Titanic',
+    condition: 'N', richtung: 'unter', preis: 600, schwelle: 650, waehrung: 'EUR' });
+  // Klartext für Programme, die nur ihn zeigen, und HTML aus der gemeinsamen Vorlage.
+  assert.match(mail.text, /^Hi anna,/);
+  assert.match(mail.subject, /^Price alert: 10294-1 is below EUR 650\.00/);
+  assert.notEqual(mail.html, mail.text);
+  const huelle = emailTemplate('x', 'y', 'z').slice(0, 60);
+  assert.ok(mail.html.startsWith(huelle), 'Die Alarmmail läuft nicht durch emailTemplate()');
 });
+
+test.after(() => require('./helpers/sources').buildAndRequire()('db/database.js').pool.end().catch(() => {}));

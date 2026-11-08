@@ -204,7 +204,7 @@ export function emailBtn(url: string, text: string, theme: MailTheme = MAIL_THEM
   </p>`;
 }
 
-// Ausführlich: docs/begruendungen/src/mail/vorlage.ts.md#infobox
+// Farben aus dem Theme statt fest blau. Ausführlich: docs/begruendungen/src/mail/vorlage.ts.md#infobox
 export function infoBox(text: string, theme: MailTheme = MAIL_THEMES.classic) {
   return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:20px">
     <tr>

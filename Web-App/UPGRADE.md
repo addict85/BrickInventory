@@ -1968,3 +1968,23 @@ npm-Pakete (`npm audit signatures`).
   Aufträge, etwa der Katalog-Abgleich, übernimmt der nächste Start sofort statt
   nach fünf Minuten. Aufträge, die noch die Version vor diesem Update belegt
   hat, laufen wie bisher erst nach ihrer Frist weiter.
+
+## 45. Stichtag Migration 0050: frühere Startstufen entfernt
+
+Eine neue Installation entsteht aus `db/basis.sql` und den jüngeren
+Migrationen; eine bestehende bekommt nur ihre offenen Migrationen. Den
+Sonderweg für Datenbanken **älter als Migration
+`0050-teilezaehler-nur-bestehende-konten.sql`** (die früheren Startstufen aus
+`db/altbestand/startstufen.sql`) gibt es nicht mehr.
+
+- **Ab 0050 (jede Installation seit Ende Oktober 2026): nichts zu tun.**
+- **Älter als 0050:** Der Start bricht mit „Die Datenbank ist älter als
+  Migration 0050…“ ab, bevor er etwas ändert. Zuerst auf eine Fassung **vor**
+  diesem Abschnitt aktualisieren (etwa `main` bei `a529cb3`), einmal starten,
+  bis „Schema aktuell“ im Log steht, dann auf diese Fassung.
+
+Welcher Stand vorliegt:
+
+```
+docker compose exec postgres psql -U brickinventory -c "SELECT max(name) FROM schema_migrations"
+```

@@ -1,13 +1,12 @@
 Gegenprobe: Überschrift der Maske in schmaler Spalte (grosser Einzug rechts)
 Modul: app
-Test: ch.brickinventoryapp.ZweiterFaktorMaskeTest
+Test: ch.brickinventoryapp.app.ZweiterFaktorMaskeTest
 Rot: bei 200 Prozent
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/MarkenKopf.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/MarkenKopf.kt
-index baf87d8..c7cb926 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/MarkenKopf.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/MarkenKopf.kt
-@@ -78,5 +78,5 @@ fun AnmeldeKarte(modifier: Modifier = Modifier, inhalt: @Composable ColumnScope.
+@@ -95,5 +95,5 @@ fun AnmeldeKarte(modifier: Modifier = Modifier, inhalt: @Composable ColumnScope.
  @Composable
  fun AnmeldeTitel(text: String) {
      Text(text, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium,

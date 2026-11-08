@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data.api
 
-import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.model.data.model.*
 import retrofit2.Response
 import retrofit2.http.*
-import ch.brickinventoryapp.data.model.AppThemeResponse
+import ch.brickinventoryapp.model.data.model.AppThemeResponse
 
 /**
  * Anmeldung und das eigene Konto: Profil, Passwort, zweiter Faktor, angemeldete

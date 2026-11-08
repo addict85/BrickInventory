@@ -1,13 +1,12 @@
 Gegenprobe: eine abgelaufene Beschreibung bietet wieder ein Update an (Stand vor sec12 H2, halb)
-Modul: core-data
-Test: ch.brickinventoryapp.UpdateFrischeTest
+Modul: core-update
+Test: ch.brickinventoryapp.update.UpdateFrischeTest
 Rot: aus einer zurueckgesetzten oder abgelaufenen Beschreibung wird nichts angeboten
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateFrische.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateFrische.kt
-index aee686b..9e4137f 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateFrische.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateFrische.kt
-@@ -31,7 +31,7 @@ fun quelleVeraltet(frische: UpdateFrische?): Boolean = frische != null && frisch
+diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt
+--- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt
++++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt
+@@ -35,7 +35,7 @@ fun quelleVeraltet(frische: UpdateFrische?): Boolean = frische != null && frisch
   * fest; statt des Angebots steht dann der Hinweis aus [quelleVeraltet] da.
   */
  fun anzubietendeFassung(b: UpdateBeschreibung, frische: UpdateFrische, laufend: Int): UpdateBeschreibung? =

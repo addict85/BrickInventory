@@ -1,0 +1,106 @@
+package ch.brickinventoryapp.data
+
+import ch.brickinventoryapp.data.api.BrickApiService
+import ch.brickinventoryapp.data.api.FigurenAbfrageApi
+import ch.brickinventoryapp.data.api.FigurenApi
+import ch.brickinventoryapp.data.api.FinanzenApi
+import ch.brickinventoryapp.data.api.GutscheineApi
+import ch.brickinventoryapp.data.api.HaushaltApi
+import ch.brickinventoryapp.data.api.KatalogApi
+import ch.brickinventoryapp.data.api.KontoApi
+import ch.brickinventoryapp.data.api.SetsApi
+import ch.brickinventoryapp.data.api.TeileAbfrageApi
+import ch.brickinventoryapp.data.api.TeileApi
+import ch.brickinventoryapp.data.api.VerwaltungApi
+import ch.brickinventoryapp.data.repository.FigurenRepositoryImpl
+import ch.brickinventoryapp.data.repository.FinanzenRepositoryImpl
+import ch.brickinventoryapp.data.repository.KatalogRepositoryImpl
+import ch.brickinventoryapp.data.repository.KontoRepositoryImpl
+import ch.brickinventoryapp.data.repository.VerwaltungRepositoryImpl
+import ch.brickinventoryapp.data.repository.GutscheineRepositoryImpl
+import ch.brickinventoryapp.data.repository.HaushaltRepositoryImpl
+import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
+import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
+import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import kotlinx.coroutines.runBlocking
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.mockwebserver.MockWebServer
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import retrofit2.Retrofit
+import ch.brickinventoryapp.data.api.ApiJson
+import java.lang.reflect.Method
+import ch.brickinventoryapp.testing.TestApi
+
+/**
+ * Die Schnittstelle zum Server ist nach Bereichen geteilt: Jedes Repository
+ * sieht nur seinen, jede Adresse steht in genau einem, und Retrofit baut die
+ * Bereiche samt geerbter Adressen.
+ *
+ * Gegenproben:
+ *   A  SetsRepository wieder mit `api: BrickApiService` → rot „jedes Repository
+ *      sieht nur seinen Bereich“
+ *   B  getMe zusätzlich in GutscheineApi deklariert → rot „jede Adresse steht in
+ *      genau einem Bereich“
+ *   C  `: BestandsInhaltApi` an SetsApi entfernt → übersetzt nicht mehr
+ *      (SetsRepository ruft getParts) — die Vererbung trägt
+ *
+ * Seit der Teilung in neun Bereiche :
+ *   D  KatalogRepository mit `api: KontoApi` → übersetzt nicht (unresolved reference
+ *      'getCatalogSets' …) — der Bereich ist im Typ, nicht nur im Namen
+ *   E  getMinifigs zusätzlich in FigurenApi → rot „jede Adresse steht in genau einem
+ *      Bereich“ (Doppelt deklariert: {getMinifigs=2})
+ */
+class ApiBereicheTest {
+
+    private val bereiche = listOf(KontoApi::class, VerwaltungApi::class, KatalogApi::class, SetsApi::class,
+        TeileApi::class, FigurenApi::class, HaushaltApi::class, FinanzenApi::class, GutscheineApi::class,
+        TeileAbfrageApi::class, FigurenAbfrageApi::class)
+
+    @Test
+    fun `jedes Repository sieht nur seinen Bereich`() {
+        val erwartet = mapOf(
+            KontoRepositoryImpl::class to KontoApi::class.java, VerwaltungRepositoryImpl::class to VerwaltungApi::class.java,
+            KatalogRepositoryImpl::class to KatalogApi::class.java, FigurenRepositoryImpl::class to FigurenApi::class.java,
+            SetsRepositoryImpl::class to SetsApi::class.java,
+            TeileRepositoryImpl::class to TeileApi::class.java, HaushaltRepositoryImpl::class to HaushaltApi::class.java,
+            FinanzenRepositoryImpl::class to FinanzenApi::class.java, GutscheineRepositoryImpl::class to GutscheineApi::class.java,
+        )
+        for ((repo, api) in erwartet) {
+            // Mit Vorgabewert (Offlineablage) erzeugt Kotlin einen zweiten Konstruktor;
+            // der Bereich steht in beiden vorn.
+            val typ = repo.java.constructors.map { it.parameterTypes.first() }.distinct().single()
+            assertEquals(repo.simpleName, api, typ)
+        }
+    }
+
+    @Test
+    fun `jede Adresse steht in genau einem Bereich`() {
+        // Ohne die Hilfsmethoden, die Kotlin für Vorgabewerte erzeugt (…$default).
+        fun adressen(m: Array<Method>) = m.filter { '$' !in it.name && !it.isSynthetic }.map { it.name }
+        val namen = bereiche.flatMap { b -> adressen(b.java.declaredMethods) }
+        val doppelt = namen.groupingBy { it }.eachCount().filterValues { it > 1 }
+        assertTrue("Doppelt deklariert: $doppelt", doppelt.isEmpty())
+        assertTrue("Nur ${namen.size} Adressen — Bereiche verloren?", namen.size >= 140)
+        assertEquals("Die Summe deckt alle Bereiche", namen.toSet(),
+            adressen(BrickApiService::class.java.methods).toSet())
+    }
+
+    @Test
+    fun `Retrofit baut einen Bereich samt geerbter Adressen`() {
+        val server = MockWebServer()
+        server.enqueue(TestApi.antwort("""{"success":true,"parts":[],"total":0}"""))
+        server.start()
+        try {
+            val sets = Retrofit.Builder().baseUrl(server.url("/"))
+                .addConverterFactory(ApiJson.asConverterFactory("application/json".toMediaType()))
+                .build().create(SetsApi::class.java)
+            runBlocking { sets.getParts(page = 1, pageSize = 5, setNumber = "75192-1") }
+            val pfad = server.takeRequest().path.orEmpty()
+            assertTrue(pfad, pfad.startsWith("/api/v1/parts") && "set_number=75192-1" in pfad)
+        } finally {
+            server.shutdown()
+        }
+    }
+}

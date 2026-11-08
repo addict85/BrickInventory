@@ -1,13 +1,12 @@
 Gegenprobe: Katalogfehler ohne Fehlerklasse: allgemeiner Text statt des Zustands der Galerie
 Modul: app
-Test: ch.brickinventoryapp.AblaufBefundeTest
+Test: ch.brickinventoryapp.app.AblaufBefundeTest
 Rot: M2 der Katalog zeigt im Fehler denselben Zustand wie die Galerie, ohne Trefferzahl
 
-diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt
-index db4ec14..9ceeed2 100644
---- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt
-+++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt
-@@ -208,7 +208,7 @@ fun CatalogScreen(
+diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogScreen.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogScreen.kt
+--- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogScreen.kt
++++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogScreen.kt
+@@ -210,7 +210,7 @@ fun CatalogScreen(
                  )
                  // Derselbe Fehlerzustand wie Galerie, Teile und Merkliste.
                  fehlertext != null && state.total == 0 -> ZustandsHinweis {

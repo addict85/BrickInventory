@@ -1,13 +1,12 @@
 Gegenprobe: Der Startzustand liest progress wieder als ganze Zahl
 Modul: core-data
-Test: ch.brickinventoryapp.ServerStartTest
+Test: ch.brickinventoryapp.data.ServerStartTest
 Rot: ein Fortschritt mit Anteil wird gelesen
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/data/model/AuthModels.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/data/model/AuthModels.kt
-index 7547940..e0f8a0d 100644
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/data/model/AuthModels.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/data/model/AuthModels.kt
-@@ -105,7 +105,7 @@ data class UserSettings(
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/AuthModels.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/AuthModels.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/AuthModels.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/AuthModels.kt
+@@ -110,7 +110,7 @@ data class UserSettings(
  data class StartupStatus(
      val ready: Boolean = false,
      val step: String? = null,
@@ -16,10 +15,9 @@ index 7547940..e0f8a0d 100644
      val total: Int = 0,
      val sub: String? = null,
  )
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/ui/model/EinzelAnsichten.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/ui/model/EinzelAnsichten.kt
-index 5ca2021..424673b 100644
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/ui/model/EinzelAnsichten.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/ui/model/EinzelAnsichten.kt
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/model/EinzelAnsichten.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/model/EinzelAnsichten.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/model/EinzelAnsichten.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/model/EinzelAnsichten.kt
 @@ -40,7 +40,7 @@ data class StartzustandAnsicht(
  }
  

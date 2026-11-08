@@ -1,10 +1,9 @@
 Gegenprobe: Titel der Detail- und Unterseitenleiste wieder einzeilig
 Modul: app
-Test: ch.brickinventoryapp.BarrierefreiheitBefundeTest
+Test: ch.brickinventoryapp.app.BarrierefreiheitBefundeTest
 Rot: M14 lange Titel brechen bei 200 Prozent um und sind Ueberschriften
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
-index 87bd9ca..f706680 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
 @@ -115,7 +115,7 @@ fun DetailTopAppBar(

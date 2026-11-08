@@ -26,7 +26,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const APP = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main');
 
-const ohneHtmlKommentare = s => s.replace(/<!--[\s\S]*?-->/g, '');
+const ohneHtmlKommentare = require('./helpers/sources').ohneHtmlKommentare;
 const lies = p => fs.readFileSync(p, 'utf8');
 
 /**
@@ -68,7 +68,7 @@ function webMenue() {
 
 /** App: R.string-Schlüssel → Symbol, in der Reihenfolge der Seite „Mehr“. */
 function appMenue() {
-  const kt = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'MehrBildschirm.kt'))
+  const kt = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'app', 'MehrBildschirm.kt'))
     .split('fun MehrBildschirm(')[1];
   assert.ok(kt, 'Die Seite „Mehr“ ist nicht mehr zu finden.');
   return [...kt.matchAll(/MehrEintrag\(R\.string\.(\w+),\s*([\w.]+)[,)]/g)]

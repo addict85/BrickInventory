@@ -1,6 +1,6 @@
 Gegenprobe: Der RevocationBoundService von Google-Sign-in bleibt im zusammengeführten Manifest
 Modul: app
-Test: ch.brickinventoryapp.BibliotheksKomponentenTest
+Test: ch.brickinventoryapp.app.BibliotheksKomponentenTest
 Rot: der Widerrufsdienst von Google-Sign-in
 
 diff --git a/Android-App/app/src/main/AndroidManifest.xml b/Android-App/app/src/main/AndroidManifest.xml

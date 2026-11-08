@@ -9,7 +9,7 @@ Kopf eines Patches (vor dem ersten `diff --git`, git apply überliest ihn):
 
     Gegenprobe: was kaputt gemacht wird
     Modul: core-data
-    Test: ch.brickinventoryapp.BestandMigrationTest
+    Test: ch.brickinventoryapp.data.BestandMigrationTest
     Rot: Teil des Testnamens, der scheitern muss      (optional)
 
 Rot heisst: Der Testbericht der Klasse existiert und nennt einen Fehlschlag

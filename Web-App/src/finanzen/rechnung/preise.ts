@@ -9,7 +9,7 @@ import type { KatalogEintrag } from '../../katalog/bricklinkPreise';
 import { asIds } from '../../haushalt/haushalt';
 import { checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus } from '../../katalog/apiKontingent';
 import { bricklinkRequest } from '../../katalog/quellen';
-import { fehlertext, logAndContinue, meldeUndLiefere } from '../../infra/fehler';
+import { fehlertext, einzeilig, logAndContinue, meldeUndLiefere } from '../../infra/fehler';
 import { fehlerWerfen } from '../../infra/fehlerTexte';
 import { mitVersion, ohneBricklinkPreis } from '../../infra/setNummer';
 import { katalogEintrag, getPriceGuide, hatPreis } from '../../katalog/bricklinkPreise';
@@ -28,8 +28,7 @@ type PreisZeile = { avg_price?: unknown; fetched_at?: string | Date | null } | n
 type Stunden = string | number;
 
 /** DIE Zustandsauflösung für ein Set — eine, weil mehrere eigene Fassungen
- * auseinandergelaufen waren.
- * Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#resolvesetcondition */
+ * auseinandergelaufen waren. Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#resolvesetcondition */
 export async function resolveSetCondition(
   uid: number | number[], setNumber: string, dbh?: Pick<DbSchnittstelle, 'get'>,
 ): Promise<'N' | 'U'> {
@@ -46,8 +45,7 @@ export const DEFAULT_PRICE_CONDITION = 'U';
 
 
 /** Kürzer als das TTL-Fenster, damit ein Rückfall (sold → stock) überhaupt
- * wieder angefragt wird.
- * Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#zero-price-ttl-hours */
+ * wieder angefragt wird. Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#zero-price-ttl-hours */
 const ZERO_PRICE_TTL_HOURS = 6;
 
 /** Die eine Stelle, die „frisch" festlegt. */
@@ -135,7 +133,7 @@ export async function fetchPrice(setNumber: string, condition: string, guideType
       const { min, avg, max, qavg } = await speicherePreis(setNumber, cond, currency, g);
       console.log(`  Price ${setNumber} cond=${cond}: avg=${avg} qty_avg=${qavg}`);
       return { min_price:min, avg_price:avg, max_price:max, qty_avg_price:qavg, from_cache:false };
-    } catch (e) { console.log(`  Price ${setNumber} cond=${cond} error: ${fehlertext(e)}`); return null; }
+    } catch (e) { console.log(einzeilig(`  Price ${setNumber} cond=${cond} error: ${fehlertext(e)}`)); return null; }
   }
 
   const rl1 = await kontingentFrei('bricklink');
@@ -392,7 +390,7 @@ export async function fetchPartPrice(partNumber: string, rbColorId: number, cond
       }
       return { avg_price: avg, qty_avg_price: qavg, from_cache: false };
     } catch (e) {
-      console.log(`  Part price failed ${partNumber}${blPartNumber !== partNumber ? ` (bl ${blPartNumber})` : ''} color ${colorId} (rb color ${rbColorId}) cond=${cond}: ${fehlertext(e)}`);
+      console.log(einzeilig(`  Part price failed ${partNumber}${blPartNumber !== partNumber ? ` (bl ${blPartNumber})` : ''} color ${colorId} (rb color ${rbColorId}) cond=${cond}: ${fehlertext(e)}`));
       return null;
     }
   }
@@ -467,7 +465,7 @@ export async function fetchMinifigPrice(figNumber: string, condition: string, cu
       }
       return { avg_price: avg, qty_avg_price: qavg, from_cache: false };
     } catch (e) {
-      console.log(`  Minifig price failed ${figNumber} cond=${cond}: ${fehlertext(e)}`);
+      console.log(einzeilig(`  Minifig price failed ${figNumber} cond=${cond}: ${fehlertext(e)}`));
       return null;
     }
   }

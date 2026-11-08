@@ -1,13 +1,12 @@
 Gegenprobe: Ein sichtbares Passwort ohne Sichtschutz
 Modul: app
-Test: ch.brickinventoryapp.AnmeldeSchutzTest
+Test: ch.brickinventoryapp.app.AnmeldeSchutzTest
 Rot: ein sichtbares Passwort
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt
-index 4c040d2..1496ece 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt
-@@ -73,7 +73,6 @@ fun PasswortFeld(
+@@ -81,7 +81,6 @@ fun PasswortFeld(
      keyboardActions: KeyboardActions = KeyboardActions.Default,
  ) {
      var sichtbar by rememberSaveable { mutableStateOf(false) }

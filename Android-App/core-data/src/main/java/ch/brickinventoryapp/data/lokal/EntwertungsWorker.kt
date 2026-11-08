@@ -23,12 +23,12 @@ import ch.brickinventoryapp.data.Entwertungsauftrag
 import ch.brickinventoryapp.data.EntwertungsPlaner
 import ch.brickinventoryapp.data.Entwertungsschritt
 import ch.brickinventoryapp.data.entwertungsSchritt
-import ch.brickinventoryapp.di.Anwendungsbereiche
+import ch.brickinventoryapp.data.di.Anwendungsbereiche
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.util.LanguageManager
-import ch.brickinventoryapp.util.NetworkPolicy
-import ch.brickinventoryapp.util.Protokoll
-import ch.brickinventoryapp.util.TokenVerschluesselung
+import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.netz.util.NetworkPolicy
+import ch.brickinventoryapp.data.util.Protokoll
+import ch.brickinventoryapp.data.util.TokenVerschluesselung
 import androidx.hilt.work.HiltWorker
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject

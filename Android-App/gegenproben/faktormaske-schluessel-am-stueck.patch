@@ -1,13 +1,12 @@
 Gegenprobe: Der Schlüssel steht am Stück statt in Vierergruppen
 Modul: app
-Test: ch.brickinventoryapp.ZweiterFaktorMaskeTest
+Test: ch.brickinventoryapp.app.ZweiterFaktorMaskeTest
 Rot: waehrend der Einrichtung
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
-index b1facc4..bc093cf 100644
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
-@@ -142,7 +142,7 @@ fun ZweiterFaktorPflichtMaske(
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
+@@ -153,7 +153,7 @@ fun ZweiterFaktorPflichtMaske(
                              Text(stringResource(R.string.zf_no_app), style = MaterialTheme.typography.bodyMedium,
                                  color = MaterialTheme.colorScheme.error, modifier = Modifier.ansagen())
                          }

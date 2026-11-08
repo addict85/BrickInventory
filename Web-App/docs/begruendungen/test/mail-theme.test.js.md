@@ -18,15 +18,3 @@ sie hier nachgezogen werden; dieser Test hält wenigstens fest, dass es
 
 Ausführen: npm test
 ```
-
-<a id="stelle"></a>
-## `assert.match(funktionsKopf(SRC, name), /theme\s*(?::[^=]+)?=\s*MAIL_TH`
-
-```text
-Die Vorgabe ist der Punkt: Ohne sie müsste jeder Aufrufer das Design
-mitgeben, und ein vergessener Aufruf fiele auf undefined statt auf classic.
-Die Typannotation steht ZWISCHEN Name und Vorgabe
-(`theme: MailTheme = MAIL_THEMES.classic`) — der Kommentar oben hatte
-das bereits als Bruchstelle benannt, dieses Muster liess sie aber noch
-offen. Der Teil dazwischen ist jetzt ausdruecklich erlaubt.
-```

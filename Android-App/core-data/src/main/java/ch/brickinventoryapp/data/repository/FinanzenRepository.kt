@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.model.data.model.*
 
 /**
  * Preise, Bewertung, Verlauf und Gewinn/Verlust.

@@ -1,12 +1,11 @@
 Gegenprobe: Jedes /auth/me meldet die Pflicht, auch ohne Feld
 Modul: core-zustand
-Test: ch.brickinventoryapp.ZweiterFaktorUebernahmeTest
+Test: ch.brickinventoryapp.zustand.ZweiterFaktorUebernahmeTest
 Rot: auth me ohne Pflicht
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Sitzung.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Sitzung.kt
-index a2c8b56..ef9af1e 100644
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Sitzung.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Sitzung.kt
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Sitzung.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Sitzung.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Sitzung.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Sitzung.kt
 @@ -145,7 +145,7 @@ suspend fun Sitzung.kontoUebernehmen(
      if (me !is Ergebnis.Success) return
      val nutzer = me.data.user

@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.di.SseClient
-import ch.brickinventoryapp.data.model.CsvImportStatus
+import ch.brickinventoryapp.data.di.SseClient
+import ch.brickinventoryapp.model.data.model.CsvImportStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow

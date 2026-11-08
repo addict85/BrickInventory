@@ -1,10 +1,9 @@
 Gegenprobe: FilterWahl wieder als FilterChip (Rolle Kästchen statt Optionsfeld)
 Modul: app
-Test: ch.brickinventoryapp.BarrierefreiheitBefundeTest
+Test: ch.brickinventoryapp.app.BarrierefreiheitBefundeTest
 Rot: M6 Filterwahl ist eine Einfachwahl
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt
-index f15ef57..a1c0d47 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt
 @@ -188,7 +188,7 @@ fun FilterAbschnitt(titel: String, chips: @Composable () -> Unit) {

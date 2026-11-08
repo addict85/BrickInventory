@@ -1,6 +1,5 @@
 /** Jeder Abruf nach draussen prüft hier Host und Umleitung: Der Server steht
- * im internen Netz.
- * Ausführlich: docs/begruendungen/src/infra/fremdeAdressen.ts.md#abschnitt */
+ * im internen Netz. Ausführlich: docs/begruendungen/src/infra/fremdeAdressen.ts.md#abschnitt */
 
 /** Hier statt in einer Route, weil mehrere Schichten sie brauchen. */
 export const ERLAUBTE_BILD_HOSTS = [
@@ -9,6 +8,7 @@ export const ERLAUBTE_BILD_HOSTS = [
   'www.bricklink.com', 'img.bricklink.com',
 ];
 
+// Nur diese Hosts dürfen Dateien auf die Platte liefern; Subdomains prüft hostErlaubt().
 // Ausführlich: docs/begruendungen/src/infra/fremdeAdressen.ts.md#erlaubte-download-hosts
 export const ERLAUBTE_DOWNLOAD_HOSTS = [
   ...ERLAUBTE_BILD_HOSTS, 'lego.com', '*.lego.com', 'bdpinstructions.s3.amazonaws.com',

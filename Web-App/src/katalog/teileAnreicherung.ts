@@ -2,7 +2,7 @@
  * Sets Namen und Bilder hat. Bilder werden im Hintergrund geladen; bis dahin
  * gilt die CDN-Adresse. */
 import { cdnImageLimiter, rebrickableBackgroundLimiter as rebrickableLimiter, consumeRebrickableDaily } from './rateLimiter';
-import { meldeFehler, fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../infra/fehler';
+import { meldeFehler, fehlertext, einzeilig, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../infra/fehler';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
 import { merkeBlNummer } from './blZuordnung';
@@ -233,7 +233,7 @@ async function ladeTeilbild(p: repo.Bildwunsch): Promise<void> {
       await cdnImageLimiter.acquire();
       fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
       const ok = await ladeBild(cdnUrl, dest, ERLAUBTE_BILD_HOSTS, BILD_KOPFZEILEN,
-        (text) => console.warn(`[img-dl] ${p.id}: ${text}`))
+        (text) => console.warn(einzeilig(`[img-dl] ${p.id}: ${text}`)))
         .finally(() => cdnImageLimiter.release());
       if (!ok) return;
     }
@@ -418,6 +418,7 @@ async function enrichSetMinifigs(setNumber: string) {
 // Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#abschnitt-2
 let _redlRunning = false;
 
+// Für alle drei Bildarten; sonst verwarf der Nachlauf Set- und Figurenbilder.
 // Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#fspathfromlocal
 function _fsPathFromLocal(imageLocal: string) {
   if (!imageLocal) return null;
@@ -437,6 +438,7 @@ function _fsPathFromLocal(imageLocal: string) {
   return null;
 }
 
+// Mit await, sonst ginge der Endstand bei einem Neustart verloren.
 // Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#redlsetstatus
 async function _redlSetStatus(obj: Record<string, unknown>) {
   await setzeZustand('imgredl_status', JSON.stringify({ ...obj, at: Date.now() }))

@@ -1,13 +1,12 @@
 Gegenprobe: Drucken steht wieder auch für Gutschein-PDFs da (Stand vor sec12 H5)
 Modul: feature-finanzen
-Test: ch.brickinventoryapp.GutscheinPdfAblageTest
+Test: ch.brickinventoryapp.finanzen.GutscheinPdfAblageTest
 Rot: Betrachter, Abmelden und Start raeumen auf
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt
-index 9fbf252..71f80c1 100644
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt
-@@ -171,17 +171,17 @@ fun PdfViewerScreen(
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/PdfViewerScreen.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/PdfViewerScreen.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/PdfViewerScreen.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/PdfViewerScreen.kt
+@@ -166,17 +166,17 @@ fun PdfViewerScreen(
                      // wo Speichern erlaubt ist: Der Druckdialog bietet „Als PDF speichern“.
                      val s = state
                      if (s is PdfLoadState.Ready) {

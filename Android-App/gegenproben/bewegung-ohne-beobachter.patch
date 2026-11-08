@@ -1,10 +1,9 @@
 Gegenprobe: Die Animator-Dauer wird nur einmal gelesen, nicht beobachtet
 Modul: app
-Test: ch.brickinventoryapp.GeruestUndFormularTest
+Test: ch.brickinventoryapp.app.GeruestUndFormularTest
 Rot: reduzierte Bewegung folgt einer Aenderung zur Laufzeit
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt
-index 013fe90..19b4273 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt
 @@ -28,7 +28,6 @@ fun bewegungReduziert(): Boolean {

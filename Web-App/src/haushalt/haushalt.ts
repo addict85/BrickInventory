@@ -1,4 +1,4 @@
-// Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#abschnitt
+// Hier allein: wessen Daten eine Anfrage sieht. Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#abschnitt
 import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import * as db from '../../db/database';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
@@ -137,7 +137,7 @@ export async function pruefeEinladung(uid: number, code: string) {
   return { inviter: { id: mainId, username: (await repo.kontoName(mainId)) || String(mainId) } };
 }
 
-// Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#redeeminvite
+// Atomar entwertet, bei Fehlschlag frei. Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#redeeminvite
 export async function redeemInvite(uid: number, code: string) {
   const subId = parseInt(String(uid));
   if (typeof code !== 'string' || code.length < 8) {
@@ -234,6 +234,7 @@ export async function householdStatus(uid: number) {
   };
 }
 
+// Der Kontofilter wird hier zu IDs, damit Liste und Summen dieselben Konten zählen.
 // Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#abschnitt-2
 export type ScopeMode = 'all' | 'own' | 'subs' | number;
 

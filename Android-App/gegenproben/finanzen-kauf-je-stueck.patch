@@ -1,12 +1,11 @@
 Gegenprobe: Kauf der Zeile wieder je Stück neben dem Wert aller Stück
 Modul: app
-Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
 Rot: Finanzen nennen
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/Finanzzeilen.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/Finanzzeilen.kt
-index 61c8789..0ce8344 100644
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/Finanzzeilen.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/Finanzzeilen.kt
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/Finanzzeilen.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/Finanzzeilen.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/Finanzzeilen.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/Finanzzeilen.kt
 @@ -31,7 +31,7 @@ data class FinanzZeile(
       * „Kauf: 400“ neben „899.90“ bei zwei Stück wie ein Gewinn von 125 %.
       */

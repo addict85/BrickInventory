@@ -1,12 +1,11 @@
 Gegenprobe: Die Teileliste geht ohne Auswahl an die Standard-App
 Modul: app
-Test: ch.brickinventoryapp.FremderEinstiegTest
+Test: ch.brickinventoryapp.app.FremderEinstiegTest
 Rot: die Teileliste geht nur
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/service/TeilelistenProvider.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/service/TeilelistenProvider.kt
-index 3ca1ab6..e08361d 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/service/TeilelistenProvider.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/service/TeilelistenProvider.kt
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/service/TeilelistenProvider.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/service/TeilelistenProvider.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/service/TeilelistenProvider.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/service/TeilelistenProvider.kt
 @@ -38,7 +38,7 @@ fun teilelistenAuswahl(ctx: Context, titel: String): Intent {
          setDataAndType(teilelistenUri(ctx), "application/pdf")
          addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)

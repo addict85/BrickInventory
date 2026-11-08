@@ -1,12 +1,11 @@
 Gegenprobe: Ohne bekannte CA genügt ein Tipp, der Fingerabdruck muss nicht abgetippt werden
 Modul: core-zustand
-Test: ch.brickinventoryapp.DarstellungUndVertrauenTest
+Test: ch.brickinventoryapp.zustand.DarstellungUndVertrauenTest
 Rot: ohne bekannte CA zaehlt nur der abgetippte Fingerabdruck
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/ServerVertrauen.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/ServerVertrauen.kt
-index 53b10a2..bb63747 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/ServerVertrauen.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/ServerVertrauen.kt
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/ServerVertrauen.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/ServerVertrauen.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/ServerVertrauen.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/ServerVertrauen.kt
 @@ -168,7 +168,6 @@ internal class ZertifikatsRueckfrage @Inject constructor() : ZertifikatsFrage {
       */
      override fun bestaetige(pins: PinAblage, eingabe: String?): Boolean {

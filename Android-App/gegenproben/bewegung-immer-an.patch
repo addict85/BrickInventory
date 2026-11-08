@@ -1,10 +1,9 @@
 Gegenprobe: „Animationen entfernen“ wird überhört
 Modul: app
-Test: ch.brickinventoryapp.GeruestUndFormularTest
+Test: ch.brickinventoryapp.app.GeruestUndFormularTest
 Rot: reduzierte Bewegung folgt der Animator-Dauer
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt
-index 013fe90..4978507 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt
 @@ -22,7 +22,7 @@ import androidx.compose.ui.platform.LocalContext

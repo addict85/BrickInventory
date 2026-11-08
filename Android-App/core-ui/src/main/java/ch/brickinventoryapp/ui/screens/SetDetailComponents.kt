@@ -6,8 +6,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.PathEffect
 import ch.brickinventoryapp.ui.components.ansagen
-import ch.brickinventoryapp.ui.model.PreisDiagrammAnsicht
-import ch.brickinventoryapp.ui.model.PreisJeZustandAnsicht
+import ch.brickinventoryapp.model.ui.model.PreisDiagrammAnsicht
+import ch.brickinventoryapp.model.ui.model.PreisJeZustandAnsicht
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.ui.theme.Formen
@@ -37,17 +37,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import ch.brickinventoryapp.ui.PriceChartMath
+import ch.brickinventoryapp.model.ui.*
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.LocalChartColors
-import ch.brickinventoryapp.util.fmtProzent
+import ch.brickinventoryapp.ui.util.fmtProzent
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.Abschnittstitel
 import ch.brickinventoryapp.ui.components.grosseSchrift
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.ui.theme.LocalAkzentflaechen
-import ch.brickinventoryapp.util.fmtAmount
-import ch.brickinventoryapp.util.fmtMoney
-import ch.brickinventoryapp.util.fmtMoneyGanz
+import ch.brickinventoryapp.ui.util.fmtAmount
+import ch.brickinventoryapp.ui.util.fmtMoney
+import ch.brickinventoryapp.ui.util.fmtMoneyGanz
 
 // Geteilte Detail-Composables, Preis-Chart und Kaufpreis-Erfassungszeile: Set-,
 // Merkposten-, Teile- und Finanzansicht zeigen sie gleich, darum in core-ui.

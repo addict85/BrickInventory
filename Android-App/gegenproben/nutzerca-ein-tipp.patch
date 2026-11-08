@@ -1,13 +1,12 @@
 Gegenprobe: Über eine Nutzer-CA genügt im Dialog ein Tipp
 Modul: app
-Test: ch.brickinventoryapp.ZertifikatDialogTest
+Test: ch.brickinventoryapp.app.ZertifikatDialogTest
 Rot: ueber eine Nutzer-CA
 
-diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/ui/components/ZertifikatDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/ui/components/ZertifikatDialog.kt
-index ad10d08..bb23f7b 100644
---- a/Android-App/app/src/main/java/ch/brickinventoryapp/ui/components/ZertifikatDialog.kt
-+++ b/Android-App/app/src/main/java/ch/brickinventoryapp/ui/components/ZertifikatDialog.kt
-@@ -49,7 +49,7 @@ fun ZertifikatDialog(
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
+@@ -50,7 +50,7 @@ fun ZertifikatDialog(
      val host = frage.schluessel.substringBeforeLast(':')
      val (titel, text) = titelUndText(frage.art)
      val geaendert = frage.art == ZertifikatUngeklaert.Art.GEAENDERT

@@ -1,13 +1,12 @@
 Gegenprobe: die Teileliste (Inventar im Klartext) bleibt nach der Frist liegen, die Altersprüfung ist umgedreht
 Modul: core-data
-Test: ch.brickinventoryapp.TeilelistenAblageTest
+Test: ch.brickinventoryapp.data.TeilelistenAblageTest
 Rot: nach der Frist verschwindet die Teileliste
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/PdfCache.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/PdfCache.kt
-index 56500bc..886bd8a 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/PdfCache.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/PdfCache.kt
-@@ -74,7 +74,7 @@ const val TEILELISTE_FRIST_MS: Long = 30L * 60 * 1000
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfCache.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfCache.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfCache.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfCache.kt
+@@ -74,7 +74,7 @@ internal const val TEILELISTE_FRIST_MS: Long = 30L * 60 * 1000
  fun raeumeAlteTeilelisteAuf(intern: File, jetzt: Long, frist: Long = TEILELISTE_FRIST_MS): Boolean {
      File(File(intern, "pdf"), "teileliste.pdf").delete()
      val datei = File(File(intern, "pdf"), TEILELISTE_DATEI)

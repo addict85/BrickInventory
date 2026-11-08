@@ -1,10 +1,9 @@
 Gegenprobe: Formularfehler ohne Live-Region
 Modul: app
-Test: ch.brickinventoryapp.GeruestUndFormularTest
+Test: ch.brickinventoryapp.app.GeruestUndFormularTest
 Rot: Fehler der Anmeldung und der Pflicht-Masken werden angesagt
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt
-index 924e08e..5d62208 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt
 @@ -34,7 +34,7 @@ import ch.brickinventoryapp.ui.theme.Formen

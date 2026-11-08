@@ -1,4 +1,4 @@
-import { fehlertext } from '../../infra/fehler';
+import { fehlertext, einzeilig } from '../../infra/fehler';
 import { konfig } from '../../infra/konfig';
 import path from 'path';
 import fs from 'fs';
@@ -7,8 +7,10 @@ import { holeBild, BILD_KOPFZEILEN } from '../quellen';
 import { SET_IMAGES_DIR } from '../../infra/appPaths';
 import { appVersion } from '../../infra/appVersion';
 
+// Set-Bilder vom CDN holen; hier statt im Router, damit die Aufrufer echt importieren.
 // Ausführlich: docs/begruendungen/src/katalog/bilder/setImages.ts.md#abschnitt
 
+// Wie im Bild-Proxy; mit 5 MB blieben grosse Set-Bilder ohne lokale Datei.
 // Ausführlich: docs/begruendungen/src/katalog/bilder/setImages.ts.md#set-img-max-bytes
 export const SET_IMG_MAX_BYTES = 20 * 1024 * 1024;
 
@@ -48,7 +50,7 @@ export async function downloadSetImage(url: string, setNumber: string, info?: { 
     }, (e: unknown) => {
       if (e instanceof AbrufFehler && e.grund === 'zu-gross')
         console.error(`[set-img] ${setNumber}: Bild grösser als ${Math.round(SET_IMG_MAX_BYTES / 1024 / 1024)} MB — nicht lokal gespeichert: ${url}`);
-      else console.error(`[set-img] ${setNumber}: Abruf fehlgeschlagen (${e instanceof Error ? e.message : e}): ${url}`);
+      else console.error(einzeilig(`[set-img] ${setNumber}: Abruf fehlgeschlagen (${e instanceof Error ? e.message : e}): ${url}`));
       return null;
     });
     if (!buf) return null;   // Grund wurde oben bereits genannt
@@ -57,7 +59,10 @@ export async function downloadSetImage(url: string, setNumber: string, info?: { 
       console.error(`[set-img] ${setNumber}: Antwort zu klein (${buf.length} Bytes) — kein Bild: ${url}`);
       return null;
     }
-    await fs.promises.writeFile(localPath, buf);
+    // Erst fertig, dann sichtbar: Der Bild-Proxy liefert sonst eine halbe Datei aus.
+    const teil = `${localPath}.${process.pid}.teil`;
+    await fs.promises.writeFile(teil, buf);
+    await fs.promises.rename(teil, localPath);
     return relPath;
   } catch (e) {
     // Letzte Auffanglinie, aber mit Spur: Stille hat die Fehlersuche bei Bildern

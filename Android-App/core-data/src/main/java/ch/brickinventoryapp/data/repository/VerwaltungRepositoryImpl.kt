@@ -2,7 +2,7 @@ package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.api.VerwaltungApi
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.model.data.model.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject

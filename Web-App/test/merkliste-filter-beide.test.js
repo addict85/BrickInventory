@@ -61,7 +61,7 @@ test('2. die App hat dieselben vier', () => {
   }
 
   // Und die Bedienung: Kontofilter, Suchfeld, Sortierung, Zustand.
-  const schirm = app('ui/screens/MerklisteScreen.kt');
+  const schirm = app('sammlung/ui/screens/MerklisteScreen.kt');
   assert.match(schirm, /ScopeFilterZeile\(/, 'Der App fehlt der Kontofilter in der Merkliste.');
   assert.match(schirm, /Suchfeld\(/,         'Der App fehlt das Suchfeld in der Merkliste.');
   assert.match(schirm, /setzeMerklisteSortierung\(/, 'Der App fehlt die Sortierung.');
@@ -71,7 +71,7 @@ test('2. die App hat dieselben vier', () => {
 
   // Die fünfte Ansicht im Aufzählungstyp: Ohne sie gäbe es keinen Schlüssel,
   // unter dem die Wahl gespeichert würde.
-  assert.match(app('data/ScopeFilter.kt'), /MERKLISTE\("merkliste"\)/,
+  assert.match(app('model/data/ScopeFilter.kt'), /MERKLISTE\("merkliste"\)/,
     'ScopeFilter.View kennt die Merkliste nicht.');
 });
 
@@ -94,7 +94,7 @@ test('3. beide Oberflächen bieten genau die Sortierungen an, die der Server ken
     'Wert fällt am Server still auf die Vorgabe zurück.');
 
   // ── App: die Liste im DropdownMenu ────────────────────────────────────────
-  const schirm = app('ui/screens/MerklisteScreen.kt');
+  const schirm = app('sammlung/ui/screens/MerklisteScreen.kt');
   const liste = schirm.slice(schirm.indexOf('listOf("added_desc"'));
   const appWerte = sortWerte(liste.slice(0, liste.indexOf(')')));
   assert.deepEqual(appWerte, erlaubt,

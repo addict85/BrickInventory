@@ -191,6 +191,7 @@ export interface ExportGutschein {
   pdf: Buffer | null;
 }
 
+// Vier Arten, damit „stimmte schon“ als Erfolg erscheint und nicht als Warnung.
 // Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#exportbefund
 export interface ExportBefund {
   id: number;

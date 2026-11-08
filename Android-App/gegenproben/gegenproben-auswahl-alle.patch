@@ -1,10 +1,9 @@
 Gegenprobe: Die Auswahl auf einem Push misst wieder alle Patches
 Modul: app
-Test: ch.brickinventoryapp.GegenprobenWerkzeugTest
+Test: ch.brickinventoryapp.app.GegenprobenWerkzeugTest
 Rot: auf einem Push misst es nur die Patches
 
 diff --git a/Android-App/tools/gegenproben.py b/Android-App/tools/gegenproben.py
-index 77876c0..ac90e0f 100644
 --- a/Android-App/tools/gegenproben.py
 +++ b/Android-App/tools/gegenproben.py
 @@ -130,8 +130,7 @@ def betroffen(projekt, wurzel, patches, basis):

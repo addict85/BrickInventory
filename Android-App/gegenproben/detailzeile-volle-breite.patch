@@ -1,10 +1,9 @@
 Gegenprobe: Zeilen der Detailkarten wieder über die ganze Spalte
 Modul: app
-Test: ch.brickinventoryapp.GeruestUndFormularTest
+Test: ch.brickinventoryapp.app.GeruestUndFormularTest
 Rot: Detailkarten stehen auf dem Tablet in Lesebreite
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/DetailZeile.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/DetailZeile.kt
-index ff75eab..d89debc 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/DetailZeile.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/DetailZeile.kt
 @@ -15,7 +15,7 @@ import ch.brickinventoryapp.ui.theme.Lesebreite

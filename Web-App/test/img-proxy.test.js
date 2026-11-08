@@ -1,11 +1,15 @@
 /**
  * Bild-Proxy: Auslieferung, Zwischenspeicherung, Diagnose.
  *
- * Diese Datei ist der Rest von test/image-repair.test.js, nachdem der
- * Reparaturjob wieder ausgebaut wurde. Die hier geprüften Punkte stammen alle
- * aus echten Fehlern und gelten unabhängig davon weiter.
+ * Rest von test/image-repair.test.js nach dem Ausbau des Reparaturjobs.
  *
- * Ausführen: npm test
+ * Gegenproben zu den nach bild-proxy-deckel.test.js (Typprüfung, Platzhalter)
+ * und img-cache-serve.test.js (304) verlegten Fällen stehen dort; für 304 je
+ * eine der beiden `req.fresh`-Zeilen in imgCacheServe.ts entfernt → dort rot
+ * „bekannter Stand → 304 und KEIN Bild“ (08.11.2026). Doppelte Schrägstriche
+ * im Pfad → sicherheit-querschnitt-db I (Normalisierung entfernt → dort rot).
+ * Zähler und Protokoll der Fehlschläge, Inhaltsprüfung der Probe →
+ * bild-proxy-deckel.test.js I und J.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -20,8 +24,8 @@ const ROOT = path.join(__dirname, '..');
 // gelten unverändert — sie verteilen sich jetzt nur auf zwei Dateien:
 // Ausführlich: docs/begruendungen/test/img-proxy.test.js.md#server-only
 const SERVER_ONLY = require('./helpers/sources').startQuelle();
-const PROXY       = require('./helpers/sources').proxyThumbQuelle();
-const SERVER      = SERVER_ONLY + '\n' + PROXY;
+const PROXY = require('./helpers/sources').proxyThumbQuelle();
+const SERVER = SERVER_ONLY + '\n' + PROXY;
 const CODE = SERVER.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
 
 test('gleichzeitige Anfragen schreiben in getrennte Temp-Dateien', () => {
@@ -30,20 +34,29 @@ test('gleichzeitige Anfragen schreiben in getrennte Temp-Dateien', () => {
   // DIESELBE Datei — gemessen 418'603 statt 81'920 Bytes, also fünf Kopien
   // hintereinander. Solche Dateien beginnen mit FFD8 und enden auf FFD9, der
   // Browser kann sie aber nicht dekodieren.
-  assert.match(SERVER, /const tmpFile = `\$\{cacheFile\}\.tmp-\$\{process\.pid\}-\$\{_tmpSeq\+\+\}`/,
-    'Der Temp-Name braucht eine laufende Nummer je Anfrage');
+  assert.match(
+    SERVER,
+    /const tmpFile = `\$\{cacheFile\}\.tmp-\$\{process\.pid\}-\$\{_tmpSeq\+\+\}`/,
+    'Der Temp-Name braucht eine laufende Nummer je Anfrage',
+  );
   assert.match(SERVER, /let _tmpSeq = 0;/, 'Zähler fehlt');
 });
 
 test('nur vollständige Dateien kommen in den Cache', () => {
   // Eine abgeschnittene Datei würde dauerhaft ausgeliefert: Der Browser bekommt
   // 200, kann das Bild aber nicht dekodieren.
-  assert.match(SERVER, /const expected = parseInt\(String\(r\.kopf\['content-length'\]/,
-    'Die erwartete Länge muss gemerkt werden');
+  assert.match(
+    SERVER,
+    /const expected = parseInt\(String\(r\.kopf\['content-length'\]/,
+    'Die erwartete Länge muss gemerkt werden',
+  );
   // Nach dem Entpacken passt die angekündigte Länge nicht mehr — dann entfällt
   // die Prüfung (siehe „komprimierte Antworten werden entpackt").
-  assert.match(SERVER, /if \(!enc && expected > 0 && st\.size !== expected\)/,
-    'Vor dem Umbenennen muss die Grösse geprüft werden');
+  assert.match(
+    SERVER,
+    /if \(!enc && expected > 0 && st\.size !== expected\)/,
+    'Vor dem Umbenennen muss die Grösse geprüft werden',
+  );
 });
 
 test('der Cache-Stream hängt vor dem Client-Stream', () => {
@@ -54,12 +67,16 @@ test('der Cache-Stream hängt vor dem Client-Stream', () => {
   // Aufrufer vom Aufruf bis body.pipe(res).
   const start = CODE.indexOf("const rohTyp = String(r.kopf['content-type']");
   const blk = CODE.slice(start, CODE.indexOf('body.pipe(res);', start) + 20);
-  const iCache = blk.indexOf('inDenCache(body'), iClient = blk.indexOf('body.pipe(res)');
+  const iCache = blk.indexOf('inDenCache(body'),
+    iClient = blk.indexOf('body.pipe(res)');
   assert.ok(iCache > 0 && iClient > iCache, 'inDenCache(body …) muss vor body.pipe(res) stehen');
   const cache = CODE.slice(CODE.indexOf('function inDenCache('), CODE.indexOf('body.pipe(ws)'));
   assert.ok(cache.length > 0 && CODE.indexOf('function inDenCache(') > 0, 'body.pipe(ws) steht nicht in inDenCache()');
-  assert.doesNotMatch(blk.slice(0, iCache) + cache, /await /,
-    'Zwischen Antwortbeginn und Cache-Stream darf kein await liegen');
+  assert.doesNotMatch(
+    blk.slice(0, iCache) + cache,
+    /await /,
+    'Zwischen Antwortbeginn und Cache-Stream darf kein await liegen',
+  );
 });
 
 test('komprimierte Antworten werden entpackt, nicht weitergereicht', () => {
@@ -67,40 +84,53 @@ test('komprimierte Antworten werden entpackt, nicht weitergereicht', () => {
   // ergibt beim Browser eine weisse Fläche — bei Status 200 und passender
   // Länge, also ohne jeden Hinweis im Log. Entpacken macht auch die
   // gespeicherte Datei zu einem echten Bild, unabhängig von allem davor.
-  assert.match(SERVER, /'Accept-Encoding': 'identity'/,
-    'Unkomprimiert anfordern ist die erste Verteidigungslinie');
+  assert.match(SERVER, /'Accept-Encoding': 'identity'/, 'Unkomprimiert anfordern ist die erste Verteidigungslinie');
   const idents = (SERVER.match(/'Accept-Encoding': 'identity'/g) || []).length;
   assert.equal(idents, 2, 'Beide Kopfzeilen-Sätze müssen identity anfordern');
 
   assert.match(SERVER, /enc === 'gzip' \? zlib\.createGunzip\(\)/, 'gzip wird nicht entpackt');
   assert.match(SERVER, /enc === 'br' \? zlib\.createBrotliDecompress\(\)/, 'brotli wird nicht entpackt');
-  assert.match(SERVER, /res\.removeHeader\('Content-Length'\)/,
-    'Nach dem Entpacken stimmt die angekündigte Länge nicht mehr');
+  assert.match(
+    SERVER,
+    /res\.removeHeader\('Content-Length'\)/,
+    'Nach dem Entpacken stimmt die angekündigte Länge nicht mehr',
+  );
 
   // Beide Ziele müssen den ENTPACKTEN Strom bekommen
   assert.match(SERVER, /body\.pipe\(ws\)/, 'Der Cache bekommt nicht den entpackten Strom');
   assert.match(SERVER, /body\.pipe\(res\)/, 'Der Client bekommt nicht den entpackten Strom');
 
   const lengths = (SERVER.match(/res\.setHeader\('Content-Length'/g) || []).length;
-  assert.ok(lengths >= 3,
-    `Nur ${lengths} von drei Wegen setzen Content-Length (Vorschau, Plattencache, CDN-Abruf)`);
+  assert.ok(lengths >= 3, `Nur ${lengths} von drei Wegen setzen Content-Length (Vorschau, Plattencache, CDN-Abruf)`);
 });
 
 test('abgebrochene Client-Anfragen geben die CDN-Verbindung frei', () => {
   // Ohne das blieb der Socket belegt: Der Antwort-Stream lief in ein totes res,
   // die Gegendruck-Steuerung hielt ihn an, und die Warteschlange verhungerte.
-  assert.match(SERVER, /res\.on\('close', \(\) => \{[\s\S]{0,400}?roh\.destroy\(\)/,
-    'Der Abbruch muss die laufende CDN-Anfrage beenden');
+  assert.match(
+    SERVER,
+    /res\.on\('close', \(\) => \{[\s\S]{0,400}?roh\.destroy\(\)/,
+    'Der Abbruch muss die laufende CDN-Anfrage beenden',
+  );
   // `!writableFinished` allein ist zu scharf: Je nachdem, was zwischen Server
   // und Browser sitzt, kann close feuern, bevor Node writableFinished gesetzt
   // hat — dann wurde eine gesunde Übertragung abgeschossen. Der Client bekam
   // 200 und danach nichts, der Cache blieb leer, protokolliert wurde nichts.
-  assert.match(SERVER, /if \(res\.writableFinished \|\| !res\.destroyed\) return;/,
-    'res.destroyed ist der belastbare Hinweis auf einen echten Abbruch');
-  assert.match(SERVER, /Client hat abgebrochen, Verbindung freigegeben/,
-    'Ein Abbruch muss sichtbar sein — stilles Abschiessen war die Ursache');
-  assert.match(SERVER, /r\.verwerfen\(\);\s*r = await holen\(HEADER_SETS\[1\]\)/,
-    'Beim Rückfall ohne Referer muss die erste Antwort freigegeben werden');
+  assert.match(
+    SERVER,
+    /if \(res\.writableFinished \|\| !res\.destroyed\) return;/,
+    'res.destroyed ist der belastbare Hinweis auf einen echten Abbruch',
+  );
+  assert.match(
+    SERVER,
+    /Client hat abgebrochen, Verbindung freigegeben/,
+    'Ein Abbruch muss sichtbar sein — stilles Abschiessen war die Ursache',
+  );
+  assert.match(
+    SERVER,
+    /r\.verwerfen\(\);\s*r = await holen\(HEADER_SETS\[1\]\)/,
+    'Beim Rückfall ohne Referer muss die erste Antwort freigegeben werden',
+  );
 });
 
 test('der Verbindungs-Pool ist weit genug', async () => {
@@ -123,34 +153,17 @@ test('der Verbindungs-Pool ist weit genug', async () => {
   assert.match(SERVER, /pool: true/, 'der Proxy nimmt den Pool nicht');
 });
 
-test('Fehler werden gezählt und protokolliert', () => {
-  // Der Zähler ist seit einer früheren Runde ein eigenes Modul (src/katalog/bilder/imgProxyStats.ts)
-  // statt einer Closure, die über `global.__imgProxyFailures` hinausgereicht
-  // wurde. Geprüft wird, dass es ihn gibt und dass er alle vier Fälle führt —
-  // nicht mehr, wie er geschrieben ist.
-  const stats = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/imgProxyStats.ts'), 'utf8');
-  for (const feld of ['timeout', 'error', 'notFound', 'other', 'lastError']) {
-    assert.match(stats, new RegExp(`${feld}:`), `Zähler-Feld fehlt: ${feld}`);
-  }
-  assert.doesNotMatch(SERVER, /global as any\)\.__imgProxyFailures/,
-    'Der Zähler wird wieder über `global` gereicht statt importiert');
-  for (const m of ['Zeitüberschreitung nach 25 s', 'Verbindungsfehler', 'CDN antwortete']) {
-    assert.ok(SERVER.includes(m), `Log-Meldung fehlt: ${m}`);
-  }
-  assert.match(SERVER, /an den Client gingen \$\{sentToClient\} von \$\{expected\} Bytes/,
-    'Eine zu kurz gelieferte Antwort muss auffallen');
-  assert.match(SERVER, /if \(!enc && expected > 0 && sentToClient !== expected\)/,
-    'Der Abgleich gilt nur für unentpackte Antworten');
-});
-
 test('die Diagnose-Endpunkte sind vorhanden', () => {
   const route = fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8');
   assert.match(route, /router\.get\('\/admin\/img-probe', requireApiAdmin/, 'img-probe fehlt');
   assert.match(route, /router\.get\('\/admin\/price-probe', requireApiAdmin/, 'price-probe fehlt');
   // Die Abrufe selbst stehen im Dienst der Verwaltung (Routen rufen nicht ins Netz).
   const admin = fs.readFileSync(path.join(ROOT, 'src/verwaltung/dienst.ts'), 'utf8');
-  assert.match(admin, /content_encoding: k\['content-encoding'\]/,
-    'Die Probe muss zeigen, ob das CDN komprimiert liefert');
+  assert.match(
+    admin,
+    /content_encoding: k\['content-encoding'\]/,
+    'Die Probe muss zeigen, ob das CDN komprimiert liefert',
+  );
   assert.match(admin, /proxy_failures: failures/, 'Die Zähler gehören in die Antwort');
 });
 
@@ -164,61 +177,36 @@ test('der ausgebaute Reparaturjob ist restlos weg', () => {
   }
 });
 
-test('die Probe zeigt, WAS ausgeliefert wird', () => {
-  // Server meldet 200, CDN meldet 200, nichts im Log — und der Browser zeigt
-  // trotzdem nichts. Der einzige Blickwinkel, der fehlte, ist der tatsächliche
-  // Inhalt der ersten Bytes.
-  const admin = fs.readFileSync(path.join(ROOT, 'src/verwaltung/dienst.ts'), 'utf8');
-  assert.match(admin, /body_check: head/, 'Die Inhaltsprüfung fehlt in der Antwort');
-  assert.match(admin, /first_bytes_hex/, 'Die ersten Bytes gehören als Hex in die Antwort');
-  for (const sig of ['JPEG', 'PNG', 'gzip (komprimiert!)', 'HTML/XML statt Bild']) {
-    assert.ok(admin.includes(sig), `Erkennung für "${sig}" fehlt`);
-  }
-  assert.match(admin, /'Accept-Encoding': 'identity'/,
-    'Die Prüfung muss dieselbe Anforderung stellen wie der Proxy');
-});
-
-test('mehrfache Schrägstriche im Pfad brechen die Route nicht', () => {
-  // `//api/img-proxy?…` trifft die Route NICHT und landet im SPA-Catch-all:
-  // 200 mit text/html, also die leere Anwendungshülle. Für ein <img> ergibt
-  // das eine weisse Fläche bei Status 200 — ohne Log-Eintrag und ohne
-  // Cache-Schreiben. Vier Symptome, die wie ein Proxy-Fehler aussehen. …
-  // Ausführlich: docs/begruendungen/test/img-proxy.test.js.md#normalisierung
-  const normalisierung = SERVER_ONLY.slice(
-    SERVER_ONLY.indexOf("req.url.startsWith('//')"),
-    SERVER_ONLY.indexOf("req.url.startsWith('//')") + 400);
-  assert.match(normalisierung, /req\.url\s*=/,
-    'Pfad-Normalisierung schreibt req.url nicht zurück');
-  assert.match(normalisierung, /replace\(/,
-    'Pfad-Normalisierung fehlt');
-  // Muss vor den Routen stehen, sonst greift sie zu spät
-  // Reihenfolge ist nur innerhalb von server.ts aussagekräftig.
-  const norm = SERVER_ONLY.indexOf("req.url.startsWith('//')");
-  const firstRoute = SERVER_ONLY.indexOf("app.use('/api/");
-  assert.ok(norm > 0 && norm < firstRoute,
-    'Die Normalisierung muss vor den Route-Registrierungen laufen');
-});
-
 test('kaputte Antworten werden nicht für einen Tag im Browser festgenagelt', () => {
   // Beobachtet: "200 OK (from disk cache)" — die Anfrage erreichte den Server
   // gar nicht mehr. Der Browser lieferte eine kaputte Antwort aus der Zeit der
   // behobenen Fehler weiter aus. Kein Log-Eintrag, kein Server-Cache, weisse
   // Fläche. Mit `max-age=86400` ohne Rückfrage dauert das einen ganzen Tag.
-  assert.doesNotMatch(SERVER, /'public, max-age=86400'\s*\)/,
-    'Ein langes max-age ohne must-revalidate nagelt Fehler im Browser fest');
+  assert.doesNotMatch(
+    SERVER,
+    /'public, max-age=86400'\s*\)/,
+    'Ein langes max-age ohne must-revalidate nagelt Fehler im Browser fest',
+  );
 
   // Der gestreamte Pfad kennt den Inhalt noch nicht — dort kurz halten.
-  const stream = SERVER.slice(SERVER.indexOf("const rohTyp = String(r.kopf['content-type']"),
-                              SERVER.indexOf('body.pipe(res);'));
-  assert.match(stream, /max-age=3600, must-revalidate/,
-    'Frisch gestreamte Antworten dürfen nicht lange festgehalten werden');
+  const stream = SERVER.slice(
+    SERVER.indexOf("const rohTyp = String(r.kopf['content-type']"),
+    SERVER.indexOf('body.pipe(res);'),
+  );
+  assert.match(
+    stream,
+    /max-age=3600, must-revalidate/,
+    'Frisch gestreamte Antworten dürfen nicht lange festgehalten werden',
+  );
 
   // Die Cache-Wege liefern geprüften Inhalt und dürfen länger — aber mit ETag,
   // damit der Browser billig rückfragen kann.
-  assert.match(SERVER, /ETag', `"c-\$\{cst\.size\}-\$\{Math\.floor\(cst\.mtimeMs\)\}"`/,
-    'ETag für den Plattencache fehlt');
-  assert.match(SERVER, /ETag', `"t-\$\{tst\.size\}-\$\{Math\.floor\(tst\.mtimeMs\)\}"`/,
-    'ETag für die Vorschau fehlt');
+  assert.match(
+    SERVER,
+    /ETag', `"c-\$\{cst\.size\}-\$\{Math\.floor\(cst\.mtimeMs\)\}"`/,
+    'ETag für den Plattencache fehlt',
+  );
+  assert.match(SERVER, /ETag', `"t-\$\{tst\.size\}-\$\{Math\.floor\(tst\.mtimeMs\)\}"`/, 'ETag für die Vorschau fehlt');
 });
 
 test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
@@ -227,19 +215,31 @@ test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
   // und Stream bei jeder Kachel, beim ersten Anzeigen ein CDN-Roundtrip je
   // Bild. Set-Bilder liegen längst lokal und gehen über express.static. …
   // Ausführlich: docs/begruendungen/test/img-proxy.test.js.md#stelle
-  assert.match(SERVER, /SELECT mc\.fig_number, mc\.image_url FROM minifigs_catalog mc/,
-    'Der Hintergrundlauf muss alle Minifiguren ohne lokales Bild finden');
-  assert.doesNotMatch(SERVER, /FROM minifigs\s+WHERE source='manual' AND image_url IS NOT NULL AND image_local IS NULL/,
-    'Die Beschränkung auf manuelle Figuren muss weg sein');
+  assert.match(
+    SERVER,
+    /SELECT mc\.fig_number, mc\.image_url FROM minifigs_catalog mc/,
+    'Der Hintergrundlauf muss alle Minifiguren ohne lokales Bild finden',
+  );
+  assert.doesNotMatch(
+    SERVER,
+    /FROM minifigs\s+WHERE source='manual' AND image_url IS NOT NULL AND image_local IS NULL/,
+    'Die Beschränkung auf manuelle Figuren muss weg sein',
+  );
   // Aber nur Figuren, die jemand BESITZT: Der Katalog kennt auch Figuren aus
   // Set-Teilelisten, die niemand hat — die braucht kein lokales Bild.
-  assert.match(SERVER, /EXISTS \(SELECT 1 FROM minifigs m WHERE m\.fig_number = mc\.fig_number\)/,
-    'Der Lauf darf nicht Bilder von Figuren holen, die niemand besitzt');
+  assert.match(
+    SERVER,
+    /EXISTS \(SELECT 1 FROM minifigs m WHERE m\.fig_number = mc\.fig_number\)/,
+    'Der Lauf darf nicht Bilder von Figuren holen, die niemand besitzt',
+  );
 
   // Eine Datei je Nummer, geteilt über alle Nutzer — und seit Migration 0034
   // auch nur EINE Zeile, die darauf zeigt.
-  assert.match(SERVER, /setzeFigurBildLokal\(f\.fig_number, local\)/,
-    'Ein Download muss den Katalogeintrag der Figur setzen');
+  assert.match(
+    SERVER,
+    /setzeFigurBildLokal\(f\.fig_number, local\)/,
+    'Ein Download muss den Katalogeintrag der Figur setzen',
+  );
 
   // Fortschritt im bestehenden Job, kein zweiter Eintrag im Monitoring
   assert.match(SERVER, /const tick = async \(\) => \{/, 'Fortschrittszähler fehlt');
@@ -251,86 +251,48 @@ test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
   // Und die offene Menge im Monitoring muss sie mitzählen. Die Abfrage steht
   // im Dienst der Verwaltungsrouten; die Route ruft sie für die Kachel auf.
   const route = fs.readFileSync(path.join(ROOT, 'src/verwaltung/dienst.ts'), 'utf8');
-  assert.match(route, /verwaltung\.bestandsFigurenbilderOffen\(\)/,
-    'Die Job-Übersicht muss die Figurenbilder des Bestands abfragen');
+  assert.match(
+    route,
+    /verwaltung\.bestandsFigurenbilderOffen\(\)/,
+    'Die Job-Übersicht muss die Figurenbilder des Bestands abfragen',
+  );
   const admin = fs.readFileSync(path.join(ROOT, 'src/verwaltung/repository/verwaltung.ts'), 'utf8');
-  assert.match(admin, /COUNT\(\*\)::int AS c FROM minifigs_catalog mc/,
-    'Die Minifiguren des Bestands fehlen in der offenen Menge');
+  assert.match(
+    admin,
+    /COUNT\(\*\)::int AS c FROM minifigs_catalog mc/,
+    'Die Minifiguren des Bestands fehlen in der offenen Menge',
+  );
   // Dieselbe Menge wie der Hintergrundlauf — sonst zeigt das Monitoring eine
   // Zahl, die mit dem Fortschritt nicht zusammenpasst.
-  assert.match(admin, /EXISTS \(SELECT 1 FROM minifigs m WHERE m\.fig_number = mc\.fig_number\)/,
-    'Die offene Menge und der Hintergrundlauf müssen dieselbe Menge meinen');
-});
-
-test('nur Bilder verlassen den Bild-Proxy', () => {
-  // Woher dieser Test kommt
-  // Ausführlich: docs/begruendungen/test/img-proxy.test.js.md#stelle-2
-  assert.match(SERVER, /mime\.startsWith\('image\/'\)/,
-    'Der Typ aus der CDN-Antwort muss geprüft werden');
-  assert.match(SERVER, /mime === 'image\/svg\+xml'/, 'SVG gehört ausgeschlossen');
-  assert.match(SERVER, /res\.status\(415\)/,
-    '415 sagt genau das: Der Inhaltstyp passt nicht zu dieser Route');
-
-  // Den Typ beim Ausliefern, auch aus dem Cache, prüft img-cache-serve.test.js
-  // am laufenden Code (bildTyp).
-});
-
-test('ein bekannter Bildstand wird mit 304 beantwortet', () => {
-  // Woher dieser Test kommt
-  // Ausführlich: docs/begruendungen/test/img-proxy.test.js.md#stelle-3
-  assert.equal((CODE.match(/if \(req\.fresh\)/g) || []).length, 2,
-    'Beide Auslieferpfade (Original und Vorschaubild) brauchen die Prüfung');
-  assert.equal((CODE.match(/res\.status\(304\)\.end\(\)/g) || []).length, 2,
-    'Beide Pfade müssen auch wirklich mit 304 antworten');
-
-  // Sie muss NACH den Kopfzeilen stehen — req.fresh vergleicht gegen den
-  // bereits gesetzten ETag.
-  const idxEtag  = CODE.indexOf("res.setHeader('ETag'");
-  const idxFresh = CODE.indexOf('if (req.fresh)');
-  assert.ok(idxEtag > 0 && idxEtag < idxFresh,
-    'Ohne gesetzten ETag vergleicht req.fresh gegen nichts');
+  assert.match(
+    admin,
+    /EXISTS \(SELECT 1 FROM minifigs m WHERE m\.fig_number = mc\.fig_number\)/,
+    'Die offene Menge und der Hintergrundlauf müssen dieselbe Menge meinen',
+  );
 });
 
 test('der Cache-Aufräumlauf ist ein geplanter Auftrag', () => {
   // Das tägliche Aufräumen stand einmal in registerImgProxy() und lief damit
   // in jedem Web-Worker; heute ist es ein Schritt des geplanten Auftrags
   // 'aufraeumen_taeglich' (jobs/aufraeumen.ts) und läuft nur im Job-Prozess.
-  assert.match(SERVER, /export async function raeumeBildCacheAuf/,
-    'Der Lauf muss von aussen startbar sein, statt beim Registrieren loszulaufen');
-  const reg = abschnitt(SERVER, 'function registerImgProxy', 'export async function raeumeBildCacheAuf',
-                        'Registrierung ohne tagesweites Intervall');
+  assert.match(
+    SERVER,
+    /export async function raeumeBildCacheAuf/,
+    'Der Lauf muss von aussen startbar sein, statt beim Registrieren loszulaufen',
+  );
+  const reg = abschnitt(
+    SERVER,
+    'function registerImgProxy',
+    'export async function raeumeBildCacheAuf',
+    'Registrierung ohne tagesweites Intervall',
+  );
   assert.doesNotMatch(reg, /setInterval/, 'Kein eigenes Intervall im Teil, den der Web-Prozess ausführt');
   const plan = require('./helpers/sources').ohneKommentare(
-    fs.readFileSync(path.join(ROOT, 'jobs/aufraeumen.ts'), 'utf8'));
-  assert.match(plan.slice(plan.indexOf('function aufraeumenTaeglich')), /raeumeBildCacheAuf\]/,
-    'Der Bild-Cache gehört zum täglichen Aufräumen');
-});
-
-/**
- * Ein fehlendes CDN-Bild kommt als PLATZHALTER zurück, nicht als 404.
- * Ausführlich: docs/begruendungen/test/img-proxy.test.js.md#ein-fehlendes-bild-kommt-als-platzhalter
- */
-test('ein fehlendes Bild kommt als Platzhalter, und der Server merkt es sich', () => {
-  const proxy = fs.readFileSync(
-    path.join(__dirname, '..', 'src/katalog/http/bildProxy.ts'), 'utf8');
-
-  assert.match(proxy, /function sendePlatzhalter\(/,
-    'Es gibt keinen Platzhalter-Weg mehr — dann steht die Konsole wieder voller 404');
-  assert.match(proxy, /set-placeholder\.svg/,
-    'Der Platzhalter wird nicht aus public/assets geladen');
-  assert.match(proxy, /res\.status\(200\)\.end\(_platzhalter\)/,
-    'Der Platzhalter wird nicht mit 200 ausgeliefert — der Browser meldet dann weiter einen Fehler');
-
-  // Beide Stellen, an denen ein fehlendes Bild endet: der Merker und die
-  // CDN-Antwort. Fällt eine davon auf 404 zurück, ist der halbe Fund weg.
-  const stellen = [...proxy.matchAll(/istBekanntFehlend\(cacheKey\)\s*\)\s*return\s+(\w+)/g)]
-    .map(m => m[1]);
-  assert.deepEqual(stellen, ['sendePlatzhalter'],
-    'Der Negativ-Cache antwortet nicht mit dem Platzhalter');
-  assert.match(proxy, /r\.status === 404 \? sendePlatzhalter\(res\)/,
-    'Ein 404 vom CDN wird nicht in den Platzhalter übersetzt');
-
-  // Und der Merker bleibt: ohne ihn fragt der Server bei JEDEM Aufruf erneut.
-  assert.match(proxy, /merkeFehlend\(/,
-    'Die Fehlanzeige wird nicht mehr gemerkt — dann geht jede Kachel wieder ans CDN');
+    fs.readFileSync(path.join(ROOT, 'jobs/aufraeumen.ts'), 'utf8'),
+  );
+  assert.match(
+    plan.slice(plan.indexOf('function aufraeumenTaeglich')),
+    /raeumeBildCacheAuf\]/,
+    'Der Bild-Cache gehört zum täglichen Aufräumen',
+  );
 });

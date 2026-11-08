@@ -7,7 +7,7 @@ Regel verletzt — dann den Code korrigieren, nicht den Test.
 
 ## Kamera-Autofokus
 
-**Dateien:** `ui/screens/BarcodeScannerScreen.kt`, `ui/screens/SetupScreen.kt`
+**Dateien:** `sammlung/ui/screens/BarcodeScannerScreen.kt`, `anmeldung/ui/screens/SetupScreen.kt`
 **Test:** `CameraFocusConfigTest`
 
 1. `CONTROL_AF_MODE_CONTINUOUS_PICTURE` muss an **beiden** Use Cases stehen —
@@ -26,7 +26,7 @@ wiederholt die Regel dort, wo sie gebraucht wird.
 
 ## Doppelklick-Sperre im Barcode-Dialog
 
-**Dateien:** `ui/viewmodel/ErfassungViewModel.kt`, `ui/ZustandErfassung.kt`, `ui/dialogs/BarcodeResultDialog.kt`
+**Dateien:** `sammlung/ui/viewmodel/ErfassungViewModel.kt`, `sammlung/ui/ZustandErfassung.kt`, `sammlung/ui/dialogs/BarcodeResultDialog.kt`
 **Test:** `ErfassungViewModelTest` („ein zweiter Klick auf Bestaetigen legt das Set nicht zweimal an“)
 
 Der Zwischendialog nach dem Barcode-Scan reagiert träge; Nutzer tippen deshalb
@@ -46,16 +46,16 @@ zurücksetzen, sonst bleibt der Knopf nach einem Fehler dauerhaft gesperrt.
 
 ## Abgelaufene Sitzung (HTTP 401)
 
-**Dateien:** `data/repository/RepoBasis.kt`, `di/AppModule.kt`,
-`data/SessionExpiredSignal.kt`, `ui/SitzungsDienst.kt`
+**Dateien:** `data/repository/RepoBasis.kt`, `app/di/AppModule.kt`,
+`data/SessionExpiredSignal.kt`, `zustand/ui/SitzungsDienst.kt`
 **Test:** `SessionAndLifecycleTest`
 
 Ein 401 ist kein gewöhnlicher Serverfehler. Drei Regeln:
 
-1. `safeCall()` markiert ihn per `unauthorized = true`. Ohne das ist er von
-   einem Netzwerkfehler nicht unterscheidbar.
+1. `safeCall()` meldet ihn als eigene Art `Ergebnis.Error.Abgewiesen`. Ohne das
+   ist er von einem Netzwerkfehler nicht unterscheidbar.
 
-2. **`cached()` darf bei `unauthorized` NICHT auf den Plattenspeicher
+2. **`cached()` darf bei `Abgewiesen` NICHT auf den Plattenspeicher
    zurückfallen.** Sonst deckt der bis zu sieben Tage alte Cache die
    abgelaufene Sitzung zu: Der Nutzer sieht eine scheinbar normale Galerie,
    obwohl er längst nicht mehr angemeldet ist. Ein Fehlerzustand, der wie
@@ -68,7 +68,7 @@ Ein 401 ist kein gewöhnlicher Serverfehler. Drei Regeln:
 
 ## ImageLoader lebt genau einmal
 
-**Dateien:** `di/AppModule.kt`, `MainActivity.kt`
+**Dateien:** `app/di/AppModule.kt`, `MainActivity.kt`
 **Test:** `SessionAndLifecycleTest`
 
 Der ImageLoader gehört ins DI-Modul, nicht in `MainActivity.onCreate()`. Dort
@@ -78,7 +78,7 @@ sichtbaren Thumbnails werden neu dekodiert.
 
 ## Polling hängt am Lifecycle
 
-**Datei:** `ui/screens/MonitoringScreen.kt`
+**Datei:** `verwaltung/ui/screens/MonitoringScreen.kt`
 **Test:** `SessionAndLifecycleTest`
 
 `LaunchedEffect` endet erst, wenn der Screen verlassen wird — **nicht** beim
@@ -88,7 +88,7 @@ solange die App auf dem Screen liegt. Jede solche Schleife gehört in
 
 ## Kein zweiter Barcode-Pfad
 
-**Dateien:** `ui/viewmodel/ErfassungViewModel.kt`, `ui/ZustandErfassung.kt`
+**Dateien:** `sammlung/ui/viewmodel/ErfassungViewModel.kt`, `sammlung/ui/ZustandErfassung.kt`
 **Test:** `SessionAndLifecycleTest`
 
 Es gab lange eine komplette, nie aufgerufene Zweitimplementierung des Scanners
@@ -101,8 +101,8 @@ Code. Der live genutzte Pfad ist: Scanner-Screen → `vm.resolveBarcode()` →
 
 ## Services sind lokalisiert — über den richtigen Context
 
-**Dateien:** `service/CsvImportService.kt`, `service/PdfExportService.kt`,
-`service/PdfExportManager.kt`, `util/LanguageManager.kt`
+**Dateien:** `dienste/service/CsvImportService.kt`, `data/service/PdfExportService.kt`,
+`data/service/PdfExportManager.kt`, `data/util/LanguageManager.kt`
 **Test:** `ServicePolishTest`
 
 `setApplicationLocales()` lokalisiert nur Activities. Ein Service, der
@@ -118,7 +118,7 @@ das adaptive Launcher-Icon erscheint als graues Quadrat.
 
 ## FileProvider: nur pdf/
 
-**Dateien:** `res/xml/file_paths.xml`, `service/PdfExportManager.kt`
+**Dateien:** `res/xml/file_paths.xml`, `data/service/PdfExportManager.kt`
 **Test:** `ServicePolishTest`
 
 Über die Provider-Authority wird ausschliesslich das exportierte
@@ -130,7 +130,7 @@ niemals wieder ganze Wurzeln (`path="."`), sonst ist auch der API-Cache
 
 ## Ein OkHttp-Interceptor-Stack, keine Nebenclients
 
-**Dateien:** `ui/pdf/AnleitungsLader.kt`, `ui/AppViewModel.kt`
+**Dateien:** `finanzen/ui/pdf/AnleitungsLader.kt`, `zustand/ui/AppViewModel.kt`
 **Test:** `ServicePolishTest`
 
 Jeder eigenständig gebaute `OkHttpClient.Builder()` läuft am DI-Interceptor
@@ -141,7 +141,7 @@ per `newBuilder()` vom injizierten api-Client, nicht mit einem neuen Client.
 
 ## Kamera-Screens räumen ihre Ressourcen auf
 
-**Dateien:** `ui/screens/BarcodeScannerScreen.kt`, `ui/screens/SetupScreen.kt`
+**Dateien:** `sammlung/ui/screens/BarcodeScannerScreen.kt`, `anmeldung/ui/screens/SetupScreen.kt`
 **Test:** `ResourceAndCacheTest`
 
 `remember { }` hat **keinen** Aufräum-Hook. Was darin erzeugt wird und
@@ -155,7 +155,7 @@ des Screens und darf den Autofokus nie berühren.
 
 ## PDF-Ansichts-Cache mit Budget
 
-**Datei:** `ui/pdf/AnleitungsLader.kt`
+**Datei:** `finanzen/ui/pdf/AnleitungsLader.kt`
 **Test:** `ResourceAndCacheTest`
 
 Angesehene Anleitungen bleiben absichtlich liegen (Resume, erneutes Öffnen
@@ -176,7 +176,7 @@ nächsten Speicher-Treffer sofort wieder auf die Platte.
 
 ## Ein CSV-Statuspfad, nicht zwei
 
-**Dateien:** `service/CsvImportService.kt`, `data/CsvImportSseClient.kt`
+**Dateien:** `dienste/service/CsvImportService.kt`, `data/CsvImportSseClient.kt`
 **Test:** `ResourceAndCacheTest`
 
 Der Service pollte früher unabhängig vom ViewModel denselben Endpoint — zwei
@@ -219,7 +219,7 @@ Error-Zweig des äusseren durchgeht.
 
 ## Zustand ist nach Domänen getrennt
 
-**Dateien:** `ui/Zustand*.kt`, `ui/AppViewModel.kt`, `MainActivity.kt`
+**Dateien:** `*/ui/Zustand*.kt`, `zustand/ui/AppViewModel.kt`, `MainActivity.kt`
 **Test:** `ResultAndStateSplitTest`
 
 `AppUiState` hält nur noch, was App-weit gilt: Sitzung, Einstellungen, Sets,
@@ -315,8 +315,8 @@ in keinem Verhältnis zu einer 40 KB grossen Bibliothek.
 
 ## CameraX 1.6.x — Provider absichern, Autofokus unangetastet
 
-**Dateien:** `gradle/libs.versions.toml`, `ui/screens/BarcodeScannerScreen.kt`,
-`ui/screens/SetupScreen.kt`
+**Dateien:** `gradle/libs.versions.toml`, `sammlung/ui/screens/BarcodeScannerScreen.kt`,
+`anmeldung/ui/screens/SetupScreen.kt`
 **Test:** `CameraXUpgradeTest`
 
 CameraX steht auf 1.6.1. Zwei Dinge gehören dazu:
@@ -375,7 +375,7 @@ Rechnung Compose-frei in einer eigenen Datei und nicht im Canvas-Block.
 
 ## Bewertung hängt an der Erfassung, nicht am Set
 
-**Dateien:** `ui/screens/FinanceScreen.kt`, `data/model/FinanzModels.kt`
+**Dateien:** `finanzen/ui/screens/FinanceScreen.kt`, `model/data/model/FinanzModels.kt`
 **Test:** `PriceHistorySerializationTest`
 
 Ein Set hat **keinen** einzelnen Zustand für die Bewertung. Jede Erfassung wird
@@ -389,8 +389,8 @@ auseinandergelaufen sind.
 
 ## Rollpositionen werden ausdrücklich wiederhergestellt
 
-**Dateien:** `ui/ScrollMemory.kt` (Helfer), `nav/CollectionGraph.kt`,
-`nav/ToolsGraph.kt`
+**Dateien:** `ui/ScrollMemory.kt` (Helfer), `app/nav/CollectionGraph.kt`,
+`app/nav/ToolsGraph.kt`
 **Test:** `ListScrollPositionTest`
 
 Jeder Reiter mit einer Liste ruft `ScrollPositionKeeper(...)` in seinem
@@ -422,7 +422,7 @@ die alte Stelle zeigt sonst auf Einträge, die es so nicht mehr gibt.
 
 ## Scroll-Zustände von Listen liegen ausserhalb ihres Navigationsziels
 
-**Dateien:** `AppNavigation.kt`, `nav/CollectionGraph.kt`, `nav/ToolsGraph.kt`
+**Dateien:** `AppNavigation.kt`, `app/nav/CollectionGraph.kt`, `app/nav/ToolsGraph.kt`
 **Test:** `ListScrollPositionTest`
 
 Führt eine Liste in eine Detailansicht, gehört ihr `LazyGridState` /
@@ -463,7 +463,7 @@ melden.
 
 ## Bildschirme sind zustandslos, Routen kennen das ViewModel
 
-**Dateien:** `ui/screens/*`, `ui/dialogs/*`, `ui/viewmodel/*Aktionen.kt`
+**Dateien:** `*/ui/screens/*`, `*/ui/dialogs/*`, `*/ui/viewmodel/*Aktionen.kt`
 **Test:** `ScreenViewModelWiringTest`
 
 Nur ein Composable, dessen Name auf `Route` endet, nimmt ein ViewModel. Die
@@ -499,7 +499,7 @@ Dialoge lesen ihren Zustand selbst vom ViewModel, wie die Reiter-Bildschirme.
 
 ## Grosse Bildschirme werden in Abschnitte geteilt
 
-**Dateien:** `ui/screens/*Sections.kt`
+**Dateien:** `*/ui/screens/*Sections.kt`
 **Test:** `ScreenSectionSplitTest`
 
 Ein Bildschirm-Composable bleibt unter 300 Zeilen. Seine Abschnitte stehen in
@@ -586,7 +586,7 @@ prüft, dass jeder projekteigene Import ein Ziel hat.
 
 ## Endlos-Scroll: Sperre vor dem launch, Schlüssel beim Anhängen sieben
 
-**Datei:** `ui/Galerie.kt` · **Test:** `GalerieTest` („zwei Nachlade-Aufrufe im selben Takt holen Seite 2 nur einmal“)
+**Datei:** `sammlung/ui/Galerie.kt` · **Test:** `GalerieTest` („zwei Nachlade-Aufrufe im selben Takt holen Seite 2 nur einmal“)
 
 Der Auslöser hängt an einem `snapshotFlow`, dessen `LaunchedEffect` bei jeder
 Änderung von `sets.size` neu startet und sofort wieder auswertet — beim
@@ -618,7 +618,7 @@ Teilen und Minifiguren hatten längst welche (`key = "manual-header"`).
 
 ## Ein Abschluss ist ein ÜBERGANG, kein Zustand
 
-**Datei:** `ui/viewmodel/CsvImportViewModel.kt` · **Test:** `CsvStatusReloadTest`
+**Datei:** `zustand/ui/viewmodel/CsvImportViewModel.kt` · **Test:** `CsvStatusReloadTest`
 
 `handleCsvStatus()` lädt die Daten nur nach, wenn vorher tatsächlich ein Import
 LIEF. Der SSE-Strom meldet den Status fortlaufend, auch lange nach dem
@@ -637,7 +637,7 @@ statt an dem Ereignis, das sie auslösen soll.
 
 ## Erfassungen: zwei Preisfelder, ein Erzeuger je Art
 
-**Datei:** `data/model/HaushaltModels.kt` · **Test:** `KaeufeViewModelTest` („ein Set schickt purchase_price, Teile und Figuren unit_price“)
+**Datei:** `model/data/model/HaushaltModels.kt` · **Test:** `KaeufeViewModelTest` („ein Set schickt purchase_price, Teile und Figuren unit_price“)
 
 Der Server liest das Preisfeld unter dem Namen der jeweiligen SPALTE:
 
@@ -654,7 +654,7 @@ Fehler. Es wirkte wie „wird nicht gespeichert".
 
 ## Barcodescanner: genau EIN Touch-Listener
 
-**Datei:** `ui/screens/BarcodeScannerScreen.kt` · **Test:** `CameraFocusConfigTest`
+**Datei:** `sammlung/ui/screens/BarcodeScannerScreen.kt` · **Test:** `CameraFocusConfigTest`
 
 `setOnTouchListener` fügt nicht hinzu, es ERSETZT. Stehen zwei auf derselben
 `previewView`, gewinnt der zuletzt gesetzte — und welcher das ist, hängt davon
@@ -711,8 +711,9 @@ Wahrheit.
 Die Datenschicht (`BrickRepository`, `CsvImportSseClient`) formuliert KEINE
 Sätze für den Nutzer. Sie hat keinen `Context` und kann nicht übersetzen — jeder
 Satz, den sie selbst bildet, ist für die halbe Nutzerschaft in der falschen
-Sprache. Sie meldet stattdessen eine `Fehlerart`; den Satz bildet
-`AppTexte.meldung()`.
+Sprache. Sie meldet stattdessen die Art des Fehlers (geschlossene Hierarchie
+`Ergebnis.Error`: Netz, Zeitueberschreitung, Abgebrochen, LeereAntwort,
+Abgewiesen, Server, Klartext, Unbekannt); den Satz bildet `AppTexte.meldung()`.
 
 Vorrang hat immer die Meldung des SERVERS. Er kennt seine Fälle genauer als
 jede Aufzählung in der App (Kaufdatum-Konflikt, Währung passt nicht, Code schon
@@ -768,6 +769,7 @@ Handlungsmacht.
 | vertraulich | Sets, Teile, Figuren, Merkliste, Bewertungen, Gutschein-Nummer und -Betrag (Room `bestand.db`), Ausgang | SQLCipher |
 | vertraulich | API-Antworten, Widget-Zahlen, Vorschaubilder, Bild-Zwischenspeicher, Bauanleitungen | `AblageChiffre` (AES-GCM, Schlüssel aus dem Keystore umhüllt); Anleitungen angezeigt aus memfd oder namenloser Datei |
 | vertraulich | Teileliste-PDF | Klartext für die Ziel-App, nach 30 Minuten gelöscht |
+| Integrität | Zertifikat-Pins, Schalter „Nutzer-CAs vertrauen“ | `Vertrauenschiffre` (AES-GCM, eigener Ablageschlüssel, überlebt das Abmelden); unlesbar heisst „nicht vertraut“ (`VertrauenVerschluesseltTest`) |
 
 Für alle gilt: `allowBackup="false"`, Cloud-Sicherung und Geräteumzug
 ausgeschlossen (`NetzsicherheitTest`), beim Abmelden geleert, und jede Ablage
@@ -818,10 +820,10 @@ lässt `CacheBereichTest` scheitern, bis es hier eingeordnet ist.
 - **Teileliste 30 Minuten im Klartext (sec12 H4):** Die Ziel-App liest sie über
   den FileProvider und kann keinen Geheimtext lesen; gelöscht nach der Frist,
   beim Start und beim Abmelden.
-- **Pins ohne HMAC (sec12 H6), Token-Schlüssel bei gesperrtem Gerät (sec12 H7),
-  keine RESILIENCE-Prüfungen (sec12 H10):** Begründung in README, „Daten auf dem
-  Gerät“ und „Manipulationsschutz“. Wer in `shared_prefs` schreiben kann, kann
-  auch den Keystore der App benutzen; ein HMAC hielte ihn nicht auf.
+- **Token-Schlüssel bei gesperrtem Gerät (sec12 H7), keine RESILIENCE-Prüfungen
+  (sec12 H10):** Begründung in README, „Daten auf dem Gerät“ und
+  „Manipulationsschutz“. Pins liegen seit sec12 H6 verschlüsselt; wer Code mit
+  der UID der App ausführt, kann den Keystore aber weiterhin benutzen wie die App.
 - **Anleitung in einer namenlosen Datei (sec12 N1):** Über 64 MB wird zur Anzeige
   in eine Datei entschlüsselt, deren Name vor dem ersten Byte gelöscht ist. Der
   Klartext liegt dann in freien Blöcken des (dateibasiert verschlüsselten)
@@ -840,7 +842,7 @@ lässt `CacheBereichTest` scheitern, bis es hier eingeordnet ist.
 ## Token nur an die eigene Herkunft
 
 Ein Token geht nur an die Herkunft (Schema, Host, Port), die ihn ausgab
-(`di/ServerWaechter.kt`, Modul `core-netz`). Was eine Antwort auslöst — Nachfassen mit Token,
+(`netz/di/ServerWaechter.kt`, Modul `core-netz`). Was eine Antwort auslöst — Nachfassen mit Token,
 Tausch und Wiederholung nach `token_rotation_noetig`, Abmelden, Rechteentzug —
 gilt nur der Sitzung, in der die Anfrage hinausging: Der Wächter liest die
 Generation der `TokenSchranke` vor dem Token und vergleicht danach; beim
@@ -858,7 +860,7 @@ Abmelden entwertet den Token am Server. Gelingt das in 3 s nicht (kein Netz,
 5xx), geht ein Auftrag mit dem verschlüsselten Token an WorkManager
 (`data/Entwertung.kt`, `EntwertungsWorker`), der mit Rückzug wiederholt, bis
 der Server bestätigt oder 401 sagt. Ein gesperrter Keystore heisst „später“,
-nie „abgemeldet“ (`util/Tresorbefund.kt`). Geprüft: `EntwertungTest`,
+nie „abgemeldet“ (`data/util/Tresorbefund.kt`). Geprüft: `EntwertungTest`,
 `TresorSperreTest`.
 
 ## Delegierte Zustands-Properties erlauben keinen Smart Cast

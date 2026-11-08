@@ -1,13 +1,12 @@
 Gegenprobe: Erfassen schwebt auch bei 200 % über der Teileliste
 Modul: app
-Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
 Rot: Teile bei 200 Prozent zeigen mehrere Teile ganz
 
-diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
-index 50d1959..f6ece0c 100644
---- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
-+++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
-@@ -311,7 +311,7 @@ fun PartsScreen(
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsScreen.kt
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsScreen.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsScreen.kt
+@@ -326,7 +326,7 @@ fun PartsScreen(
  
          // Eine Regel für alle Reiter (wie Galerie und Merkliste): Kein „+“ im Fehlerzustand,
          // und leer steht der Knopf schon mitten im Bild.

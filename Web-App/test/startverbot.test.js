@@ -26,6 +26,10 @@
  *   I  APP_BASE_URL_FEHLT_OK nicht ausgewertet → rot: dieselbe Prüfung (mit
  *      der Ausnahme verweigert)
  *   J  die Ausnahme für ROLLE=jobs entfernt → rot: dieselbe Prüfung ({"ROLLE":"jobs"})
+ * Gegenproben (08.11.2026 gemessen, je einzeln):
+ *   K  'change-me-to-a-long-random-string' aus PLATZHALTER_GEHEIMNISSE
+ *      gestrichen → rot: „Beispielwert und zu kurzes Sitzungsgeheimnis …“
+ *   L  die Mindestlänge in sitzungsGeheimnis() gestrichen → rot: dieselbe Prüfung
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -80,6 +84,15 @@ test('ohne NODE_ENV kein öffentliches Sitzungsgeheimnis', { timeout: 30_000 }, 
   const { log } = await starte({ ...ohne, NODE_ENV: 'development', SESSION_SECRET: undefined });
   assert.doesNotMatch(log, /SESSION_SECRET/);
   assert.match(log, /Database initialisation failed/);
+});
+
+test('Beispielwert und zu kurzes Sitzungsgeheimnis: Start verweigert', { timeout: 30_000 }, async () => {
+  const env = { DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', APP_BASE_URL: 'https://lego.example.org' };
+  for (const [geheimnis, grund] of [['change-me-to-a-long-random-string', /Beispielwert/], ['nur-31-zeichen-lang-1234567890x', /zu kurz \(nötig sind mindestens 32 Zeichen/]]) {
+    const { code, log } = await starte({ ...env, SESSION_SECRET: geheimnis });
+    assert.equal(code, 1, log.slice(-400));
+    assert.match(log, grund);
+  }
 });
 
 test('ohne APP_BASE_URL im Betrieb: Start verweigert, nur ausdrücklich erlaubt', { timeout: 60_000 }, async () => {

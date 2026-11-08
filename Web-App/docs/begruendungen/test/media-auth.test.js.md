@@ -49,28 +49,6 @@ Zeichenkette steht. Zeilenkommentare und Blockkommentare fallen weg,
 Zeichenketten bleiben unangetastet.
 ```
 
-<a id="core"></a>
-## `const core = require('./helpers/sources').coreQuelle();`
-
-```text
-── Nutzerentscheidung ───────────────────────────────────────────────────
-Alle Bildabrufe laufen über /api/img-proxy. Nicht aus Prinzip: Der Proxy
-setzt die Kopfzeilen gegen Cloudflares Hotlink-Schutz, entpackt
-komprimierte Antworten, hält Platten- und Negativ-Cache. Nichts davon
-wirkt, wenn der Browser die CDN-Adresse selbst aufruft.
-
-Zwei Lecks gab es in imgUrl(): ein "Entpacken" von Proxy-Adressen für
-Hosts ausser rebrickable.com, und ein Durchfallen absoluter Adressen am
-Ende der Funktion. fullUrl() gab rohe CDN-Adressen ebenfalls unverändert
-zurück.
-
-Bewusst OHNE Kommentar-Entferner geprüft: Der einfache Zeilenfilter
-zerschneidet das Regex-Literal /^https?:\/\// (die beiden Schrägstriche
-darin sehen aus wie ein Kommentaranfang) — genau die Zeile, um die es
-hier geht. Stattdessen wird auf Muster geprüft, die in keinem Kommentar
-vorkommen.
-```
-
 <a id="build"></a>
 ## `const build = read('scripts/build-ts.js');`
 

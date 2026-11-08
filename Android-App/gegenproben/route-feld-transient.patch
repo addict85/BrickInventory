@@ -1,13 +1,12 @@
 Gegenprobe: Ein Feld einer Route wird nicht mitgegeben (@Transient), das Ziel liest den Vorgabewert
 Modul: app
-Test: ch.brickinventoryapp.RoutenRundwegTest
+Test: ch.brickinventoryapp.app.RoutenRundwegTest
 Rot: Titel mit Sonderzeichen kommen unverändert an
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Navigation.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Navigation.kt
-index 9924c56..4e98f99 100644
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Navigation.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Navigation.kt
-@@ -53,7 +53,7 @@ sealed interface Screen {
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Navigation.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Navigation.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Navigation.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Navigation.kt
+@@ -54,7 +54,7 @@ sealed interface Screen {
          val art: Postenart,
          val id: String,
          val colorId: Int = KEINE_FARBE,

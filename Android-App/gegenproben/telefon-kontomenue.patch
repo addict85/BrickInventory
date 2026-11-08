@@ -1,13 +1,12 @@
 Gegenprobe: Kontosymbol wieder in der App-Leiste
 Modul: app
-Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
 Rot: Telefon navigiert ohne Schublade
 
-diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-index 0d58160..89b0202 100644
---- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-+++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
  import androidx.compose.foundation.layout.Column
  import androidx.compose.material.icons.Icons
  import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -15,7 +14,7 @@ index 0d58160..89b0202 100644
  import androidx.compose.material3.*
  import androidx.compose.runtime.*
  import androidx.compose.ui.Modifier
-@@ -161,6 +162,11 @@ fun MainScaffold(
+@@ -178,6 +179,11 @@ fun MainScaffold(
                          scrolledContainerColor = akzent.leiste,
                      ),
                      scrollBehavior = einklappen,

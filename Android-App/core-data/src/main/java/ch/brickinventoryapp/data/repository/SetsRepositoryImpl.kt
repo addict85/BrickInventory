@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.util.fangeAusserAbbruch
+import ch.brickinventoryapp.data.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.lokal.Bearbeitung
@@ -8,13 +8,13 @@ import ch.brickinventoryapp.data.lokal.Faecher
 import ch.brickinventoryapp.data.lokal.Lokal
 import kotlinx.coroutines.flow.Flow
 import ch.brickinventoryapp.data.lokal.Offlineablage
-import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.model.data.model.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 import javax.inject.Singleton
-import ch.brickinventoryapp.data.model.CsvImportStatus
-import ch.brickinventoryapp.data.model.SetExistsResponse
+import ch.brickinventoryapp.model.data.model.CsvImportStatus
+import ch.brickinventoryapp.model.data.model.SetExistsResponse
 
 /**
  * Sets: Bestand, Details, Anlegen, Ändern, PDF-Ausgabe — über Retrofit; die gemeinsame Abruflogik steht in RepoBasis.kt.
@@ -217,12 +217,12 @@ class SetsRepositoryImpl @Inject constructor(
                 if (bytes.size > 100) Ergebnis.Success(bytes)
                 // Zu kleine Antwort heisst in der Praxis: Fehlerseite statt PDF.
                 // Die Grösse gehört ins Log, nicht in die Meldung.
-                else Ergebnis.Error("", art = Fehlerart.LEERE_ANTWORT, technisch = "PDF ${bytes.size} bytes")
+                else Ergebnis.Error.LeereAntwort(technisch = "PDF ${bytes.size} bytes")
             } else {
-                Ergebnis.Error("", art = Fehlerart.SERVER, httpCode = response.code())
+                Ergebnis.Error.Server(response.code())
             }
         }.getOrElse { e ->
-            Ergebnis.Error("", art = Fehlerart.UNBEKANNT, technisch = e.message)
+            Ergebnis.Error.Unbekannt(technisch = e.message)
         }
     }
 
@@ -235,12 +235,12 @@ class SetsRepositoryImpl @Inject constructor(
                 val body = response.body()?.string() ?: ""
                 val jobId = org.json.JSONObject(body).optString("jobId", "")
                 if (jobId.isNotBlank()) Ergebnis.Success(jobId)
-                else Ergebnis.Error("", art = Fehlerart.LEERE_ANTWORT)
+                else Ergebnis.Error.LeereAntwort()
             } else {
-                Ergebnis.Error("", art = Fehlerart.SERVER, httpCode = response.code())
+                Ergebnis.Error.Server(response.code())
             }
         }.getOrElse { e ->
-            Ergebnis.Error("", art = Fehlerart.UNBEKANNT, technisch = e.message)
+            Ergebnis.Error.Unbekannt(technisch = e.message)
         }
     }
 
@@ -255,10 +255,10 @@ class SetsRepositoryImpl @Inject constructor(
                 val eta = if (obj.has("etaSeconds") && !obj.isNull("etaSeconds")) obj.optInt("etaSeconds") else null
                 Ergebnis.Success(PdfJobStatus(status, eta))
             } else {
-                Ergebnis.Error("", art = Fehlerart.SERVER, httpCode = response.code())
+                Ergebnis.Error.Server(response.code())
             }
         }.getOrElse { e ->
-            Ergebnis.Error("", art = Fehlerart.UNBEKANNT, technisch = e.message)
+            Ergebnis.Error.Unbekannt(technisch = e.message)
         }
     }
     /**

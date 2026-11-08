@@ -1,13 +1,12 @@
 Gegenprobe: Ausgangsleiste auch neben dem Offline-Hinweis
 Modul: app
-Test: ch.brickinventoryapp.GeruestUndFormularTest
+Test: ch.brickinventoryapp.app.GeruestUndFormularTest
 Rot: Offline-Hinweis nennt die wartenden Aenderungen
 
-diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-index b22d2a1..5165208 100644
---- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-+++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-@@ -216,7 +216,7 @@ fun MainScaffold(
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+@@ -210,7 +210,7 @@ fun MainScaffold(
                              })
                      }
                      // Steht ein Offline-Hinweis, nennt er die wartenden Änderungen selbst.

@@ -1,13 +1,12 @@
 Gegenprobe: Jede Reiterbeschriftung in eigener Grösse, alle Ziele beschriftet
 Modul: app
-Test: ch.brickinventoryapp.FeinschliffRegelnTest
+Test: ch.brickinventoryapp.app.FeinschliffRegelnTest
 Rot: Reiterleiste bricht bei 200 Prozent kein Wort um
 
-diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-index b2ab7a3..d758db6 100644
---- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-+++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-@@ -311,10 +311,10 @@ private fun ReiterLeiste(
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+@@ -321,10 +321,10 @@ private fun ReiterLeiste(
              }
              Row(Modifier.fillMaxWidth().heightIn(min = LEISTE_HOEHE).selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
                  ziele.forEachIndexed { i, (screen, icon, name) ->

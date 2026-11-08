@@ -1,0 +1,18 @@
+Gegenprobe: die Übernahme prüft die Marke nicht und übernimmt später hingelegten Klartext
+Modul: core-data
+Test: ch.brickinventoryapp.data.VertrauenVerschluesseltTest
+Rot: spaeter hingelegter Klartext gilt nicht
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+index a2bb27d..82108ac 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+@@ -269,7 +269,7 @@ class GeraeteAblage @Inject constructor(
+     private fun uebernimmKlartextVertrauen() {
+         if (vertrauenGeprueft) return
+         val alt = designSpiegel.all.filterKeys { it == NUTZER_CA || it.startsWith(PIN_PRAEFIX) }
+-        val neu: Map<String, String> = if (designSpiegel.getBoolean(VERTRAUEN_UEBERNOMMEN, false)) emptyMap()
++        val neu: Map<String, String> = if (false) emptyMap()
+             else verschluesselterAltbestand(alt) ?: return
+         designSpiegel.edit {
+             neu.forEach { (k, v) -> putString(k, v) }

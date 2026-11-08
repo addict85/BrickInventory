@@ -1,12 +1,11 @@
 Gegenprobe: Die Update-Hosts werden mit endsWith ohne Punkt geprüft
 Modul: core-data
-Test: ch.brickinventoryapp.UpdateUmleitungTest
+Test: ch.brickinventoryapp.data.UpdateUmleitungTest
 Rot: nur GitHub und sein CDN
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateUmleitungen.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateUmleitungen.kt
-index df5e602..2a76564 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateUmleitungen.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateUmleitungen.kt
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateUmleitungen.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateUmleitungen.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateUmleitungen.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateUmleitungen.kt
 @@ -7,7 +7,7 @@ import java.io.IOException
  
  /** Wohin der Update-Client darf: GitHub und sein Ablage-CDN, nur über https auf 443. */

@@ -1,17 +1,16 @@
 Gegenprobe: Eine Karte holt sich ihr ViewModel selbst
 Modul: app
-Test: ch.brickinventoryapp.ScreenViewModelWiringTest
+Test: ch.brickinventoryapp.app.ScreenViewModelWiringTest
 Rot: kein Bildschirm holt sich ein ViewModel selbst
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt
-index 6d45ee1..2061b8b 100644
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt
-@@ -41,6 +41,7 @@ internal fun PreisalarmeCard(
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
+@@ -61,6 +61,7 @@ internal fun PreisalarmeCard(
      serverUrl: String,
      onSetClick: (String) -> Unit,
  ) {
-+    androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel<ch.brickinventoryapp.ui.viewmodel.GeraeteEinstellungenViewModel>()
++    androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel<ch.brickinventoryapp.zustand.ui.viewmodel.GeraeteEinstellungenViewModel>()
      // Die Rueckfrage haelt die ZEILE fest, nicht nur ein Ja/Nein: Der Text
      // nennt das Set, und beim Bestaetigen braucht es beide Teile des
      // Schluessels (Set und Zustand).

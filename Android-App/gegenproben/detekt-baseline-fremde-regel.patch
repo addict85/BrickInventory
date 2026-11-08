@@ -1,10 +1,9 @@
 Gegenprobe: Die Baseline verschweigt eine andere Regel als Länge und Verzweigung
 Modul: app
-Test: ch.brickinventoryapp.QuelltextRatscheTest
+Test: ch.brickinventoryapp.app.QuelltextRatscheTest
 Rot: die detekt-Baseline haelt nur Laenge und Verzweigung
 
 diff --git a/Android-App/config/detekt/baseline.xml b/Android-App/config/detekt/baseline.xml
-index 71147cd..89be801 100644
 --- a/Android-App/config/detekt/baseline.xml
 +++ b/Android-App/config/detekt/baseline.xml
 @@ -2,6 +2,7 @@

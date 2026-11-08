@@ -12,6 +12,9 @@
  *   C  styles.css wieder im <head> → rot: „vor dem ersten Stylesheet“
  *   D  (08.11.2026) die zwei Regeln für [data-theme=brick] aus dem Startstil
  *      gestrichen → rot: „Stein (Blau): Kopf blau, Grund blaugrau“
+ *   E  in renderIndexHtml() das Setzen von data-abgemeldet gestrichen → rot:
+ *      „ohne Sitzung: keine App-Kacheln im Gerüst“; die Regel
+ *      [data-abgemeldet] im Startstil gestrichen → ebenso rot
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -21,10 +24,14 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
-const { startStilHash, renderIndexHtml } = _req('src/konto/indexHtml.js');
+const { startStilHash, renderIndexHtml, ohneKommentare } = _req('src/konto/indexHtml.js');
 const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
 // renderIndexHtml() fragt das Design aus der Datenbank; offen hielte der Pool den Lauf an.
-test.after(() => _req('db/database.js').pool.end().catch(() => {}));
+test.after(() =>
+  _req('db/database.js')
+    .pool.end()
+    .catch(() => {}),
+);
 
 test('der Hash passt zum ausgelieferten Block', async () => {
   const html = await renderIndexHtml();
@@ -35,7 +42,7 @@ test('der Hash passt zum ausgelieferten Block', async () => {
 });
 
 test('vor dem ersten Stylesheet und vor jedem blockierenden Skript', () => {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+  const html = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8'));
   const geruest = html.indexOf('id="startgeruest"');
   assert.ok(geruest > 0);
   const erstesStylesheet = html.search(/<link rel="stylesheet"/);
@@ -49,7 +56,9 @@ test('angemeldet: Gerüst weg, App da', async () => {
   try {
     await warte(() => !d.getElementById('startgeruest'));
     assert.equal(d.getElementById('startgeruest'), null, 'angemeldet: Gerüst weg');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('abgemeldet: Gerüst weg, Anmeldung da', async () => {
@@ -57,12 +66,15 @@ test('abgemeldet: Gerüst weg, Anmeldung da', async () => {
   try {
     await warte(() => d.getElementById('login-screen').style.display === 'flex');
     assert.equal(d.getElementById('startgeruest'), null);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Stein (Blau): Kopf blau, Grund blaugrau', () => {
   const { JSDOM } = require('jsdom');
-  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8')
+  const html = fs
+    .readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8')
     .replace('<html lang="de">', '<html lang="de" data-theme="brick">');
   // JSDOM führt Skripte standardmässig nicht aus und lädt keine fremden: Das Gerüst steht allein da.
   const w = new JSDOM(html).window;
@@ -71,5 +83,27 @@ test('Stein (Blau): Kopf blau, Grund blaugrau', () => {
     assert.equal(kopf.backgroundColor, 'rgb(61, 90, 128)', 'die Kopfkachel ist blau wie im Stein-Design');
     const grund = w.getComputedStyle(w.document.querySelector('#startgeruest'));
     assert.equal(grund.getPropertyValue('--sg-bg').trim(), '#c9d5e2', 'der Grund ist blaugrau, nicht weiss');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
+});
+
+test('ohne Sitzung: keine App-Kacheln im Gerüst, mit Sitzung schon', async () => {
+  const { JSDOM } = require('jsdom');
+  const sichtbar = html => {
+    const w = new JSDOM(html).window;
+    try {
+      return ['.sg-kopf', '.sg-leiste', '.sg-inhalt'].map(
+        s => w.getComputedStyle(w.document.querySelector(`#startgeruest ${s}`)).display !== 'none',
+      );
+    } finally {
+      w.close();
+    }
+  };
+  assert.deepEqual(
+    sichtbar(await renderIndexHtml()),
+    [false, false, false],
+    'ohne Sitzung: keine App-Kacheln im Gerüst',
+  );
+  assert.deepEqual(sichtbar(await renderIndexHtml(1)), [true, true, true], 'mit Sitzung: Kopf, Leiste und Kacheln');
 });

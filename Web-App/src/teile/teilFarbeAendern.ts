@@ -7,7 +7,7 @@ import { colorId } from '../infra/validate';
 import * as repo from './repository/teilFarbe';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 
-// Ausführlich: docs/begruendungen/src/teile/teilFarbeAendern.ts.md#farbwechsel
+// Falsche Farben ohne Neuerfassen ändern. Ausführlich: docs/begruendungen/src/teile/teilFarbeAendern.ts.md#farbwechsel
 export type FarbWechsel = {
   /** Die Zeile zog um (false) oder wurde mit einer bestehenden vereint (true). */
   zusammengelegt: boolean;

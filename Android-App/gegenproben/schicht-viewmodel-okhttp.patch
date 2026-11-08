@@ -1,13 +1,12 @@
 Gegenprobe: Ein Feature-Modul holt sich OkHttp, ein ViewModel importiert es
 Modul: app
-Test: ch.brickinventoryapp.SchichtregelnTest
+Test: ch.brickinventoryapp.app.SchichtregelnTest
 Rot: Praesentation holt nichts selbst am Netz
 
 diff --git a/Android-App/feature-konto/build.gradle.kts b/Android-App/feature-konto/build.gradle.kts
-index a3e1fb4..783b978 100644
 --- a/Android-App/feature-konto/build.gradle.kts
 +++ b/Android-App/feature-konto/build.gradle.kts
-@@ -15,6 +15,7 @@ dependencies {
+@@ -16,6 +16,7 @@ dependencies {
      implementation(project(":core-ui"))
      implementation(project(":core-zustand"))
      implementation(project(":core-ressourcen"))
@@ -15,14 +14,13 @@ index a3e1fb4..783b978 100644
  
      testImplementation(project(":core-testing"))
  }
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
-index ec15a0b..6469b36 100644
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt
 @@ -1,6 +1,7 @@
- package ch.brickinventoryapp.ui.viewmodel
+ package ch.brickinventoryapp.konto.ui.viewmodel
  
- import ch.brickinventoryapp.util.fangeAusserAbbruch
+ import ch.brickinventoryapp.data.util.fangeAusserAbbruch
 +import okhttp3.OkHttpClient
  import androidx.lifecycle.ViewModel
  import androidx.lifecycle.viewModelScope

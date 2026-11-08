@@ -1,9 +1,9 @@
 Gegenprobe: ein Merge-Rest (.orig) liegt im Baum
 Modul: app
-Test: ch.brickinventoryapp.ModulgrenzenTest
+Test: ch.brickinventoryapp.app.ModulgrenzenTest
 Rot: Merge-Rest
 
-diff --git a/Android-App/core-ui/Rest.kt.orig b/Android-App/core-ui/Rest.kt.orig
+diff --git a/B/Android-App/core-ui/Rest.kt.orig b/Android-App/core-ui/Rest.kt.orig
 new file mode 100644
 --- /dev/null
 +++ b/Android-App/core-ui/Rest.kt.orig

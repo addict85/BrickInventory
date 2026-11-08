@@ -1,12 +1,11 @@
 Gegenprobe: Das Modell liest das Feld unter falschem Namen
 Modul: core-zustand
-Test: ch.brickinventoryapp.ZweiterFaktorUebernahmeTest
+Test: ch.brickinventoryapp.zustand.ZweiterFaktorUebernahmeTest
 Rot: Anmeldung und auth me lesen
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/data/model/AuthModels.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/data/model/AuthModels.kt
-index 42df660..c5be088 100644
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/data/model/AuthModels.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/data/model/AuthModels.kt
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/AuthModels.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/AuthModels.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/AuthModels.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/AuthModels.kt
 @@ -82,7 +82,7 @@ data class User(
       * Anmeldung und /auth/me: Verwalterrechte ohne zweiten Faktor. Bis er eingerichtet
       * ist, beantwortet der Server nur /auth/me und die Einrichtung (ZweiterFaktorPflicht).

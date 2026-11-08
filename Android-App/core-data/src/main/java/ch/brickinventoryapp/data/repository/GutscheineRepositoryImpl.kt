@@ -4,8 +4,8 @@ import ch.brickinventoryapp.data.api.GutscheineApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.lokal.Faecher
 import ch.brickinventoryapp.data.lokal.Offlineablage
-import ch.brickinventoryapp.data.model.*
-import ch.brickinventoryapp.data.api.Fehlerrumpf
+import ch.brickinventoryapp.model.data.model.*
+import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import okhttp3.RequestBody.Companion.toRequestBody

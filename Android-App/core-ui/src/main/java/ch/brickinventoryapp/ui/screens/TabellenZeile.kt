@@ -41,7 +41,7 @@ import ch.brickinventoryapp.ui.components.ProduktBild
 import ch.brickinventoryapp.ui.components.SegmentWahl
 import ch.brickinventoryapp.ui.components.bewegungReduziert
 import ch.brickinventoryapp.ui.components.mitSchrift
-import ch.brickinventoryapp.util.fmtInt
+import ch.brickinventoryapp.ui.util.fmtInt
 
 /**
  * Eine Zeile der Tabellenansicht — für Teile und Figuren, wie die beiden gleich

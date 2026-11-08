@@ -1,35 +1,34 @@
 Gegenprobe: Prozent wieder neben dem Betrag in einer Row, ohne Zeilensperre
 Modul: app
-Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
 Rot: Kachel bei 200 Prozent
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
-index d46c92b..ccb2927 100644
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
-@@ -533,7 +533,7 @@ fun SetCard(
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt
+@@ -115,7 +115,7 @@
      val guvAnsage = if (pct != null && betrag != null) stringResource(
          if (pct >= 0) R.string.gallery_pnl_gewinn else R.string.gallery_pnl_verlust, fmtProzent(pct)) else null
      val mengeAnsage = if (set.quantity > 1) pluralStringResource(R.plurals.gallery_stat_units, set.quantity, fmtInt(set.quantity)) else null
 -    val guv: (@Composable () -> Unit)? = if (pct != null && betrag != null) ({
 +    val guv: (@Composable () -> Unit)? = if (pct != null && false) ({
-             // G&V als Marke: In der Preiszeile brach sie neben „je Stück“ um, und die Kachel
-             // wurde höher als ihre Nachbarin. Pfeil und Ansage „Gewinn …“: Eine nackte Zahl
-             // sagte nur, wer die Finanzen kennt.
-@@ -668,7 +668,7 @@ fun SetCard(
-                 maxLines = 1, overflow = TextOverflow.Ellipsis)
-             // FlowRow und je eine Zeile: Reicht die Breite nicht, rückt „je Stück“ unter
-             // den Betrag, statt Zeichen für Zeichen umzubrechen.
--            if (betrag != null) FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-+            if (betrag != null) Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                 if (zeile) Text(quelle, style = MaterialTheme.typography.bodySmall,
-                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false,
-                     modifier = Modifier.align(Alignment.CenterVertically))
-@@ -676,6 +676,7 @@ fun SetCard(
-                     fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary,
-                     maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
-                     modifier = Modifier.align(Alignment.CenterVertically))
-+                preis?.pnlPct?.let { Text(fmtProzent(it), style = MaterialTheme.typography.labelSmall) }
-                 // Der Betrag gilt je Stück; die Finanzen zeigen dasselbe Set mit dem Wert
-                 // aller Stück, und ohne Hinweis passten die Zahlen nicht zusammen.
-                 if (set.quantity > 1) Text(stringResource(R.string.gallery_price_each),
+         GuvPlakette(pct)
+     }) else null
+     val menge: (@Composable () -> Unit)? = if (set.quantity > 1) ({
+@@ -317,7 +317,7 @@
+         maxLines = 1, overflow = TextOverflow.Ellipsis)
+     // FlowRow und je eine Zeile: Reicht die Breite nicht, rückt „je Stück“ unter
+     // den Betrag, statt Zeichen für Zeichen umzubrechen.
+-    if (betrag != null) FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
++    if (betrag != null) Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+         if (zeile) Text(quelle, style = MaterialTheme.typography.bodySmall,
+             color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false,
+             modifier = Modifier.align(Alignment.CenterVertically))
+@@ -325,6 +325,7 @@
+             fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary,
+             maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
+             modifier = Modifier.align(Alignment.CenterVertically))
++        preis?.pnlPct?.let { Text(fmtProzent(it), style = MaterialTheme.typography.labelSmall) }
+         // Der Betrag gilt je Stück; die Finanzen zeigen dasselbe Set mit dem Wert
+         // aller Stück, und ohne Hinweis passten die Zahlen nicht zusammen.
+         if (set.quantity > 1) Text(stringResource(R.string.gallery_price_each),

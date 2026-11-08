@@ -1,12 +1,11 @@
 Gegenprobe: Startpasswort-Maske ohne Lesebreite
 Modul: app
-Test: ch.brickinventoryapp.GeruestUndFormularTest
+Test: ch.brickinventoryapp.app.GeruestUndFormularTest
 Rot: Startpasswort-Maske steht auf dem Tablet in Lesebreite
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/StartpasswortMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/StartpasswortMaske.kt
-index b0b3f8c..b670146 100644
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/StartpasswortMaske.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/StartpasswortMaske.kt
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/StartpasswortMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/StartpasswortMaske.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/StartpasswortMaske.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/StartpasswortMaske.kt
 @@ -68,7 +68,7 @@ fun StartpasswortMaske(
          // Ein untergeschobener Tipp setzte hier das Passwort des Kontos.
          Ueberdeckungsschutz()

@@ -1,10 +1,9 @@
 Gegenprobe: der gemeinsame Tipper (tippZumFokus) lässt die Kamera nach Sekunden zurückfallen
 Modul: app
-Test: ch.brickinventoryapp.CameraFocusConfigTest
+Test: ch.brickinventoryapp.app.CameraFocusConfigTest
 Rot: der Tap-to-Focus haelt den Fokus
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/KameraAufbau.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/KameraAufbau.kt
-index 99009c2..ba64e77 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/KameraAufbau.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/KameraAufbau.kt
 @@ -138,7 +138,6 @@ fun tippZumFokus(previewView: PreviewView, steuerung: () -> CameraControl?) {

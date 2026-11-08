@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.api
 
-import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.model.data.model.*
 import retrofit2.Response
 import retrofit2.http.*
 

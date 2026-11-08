@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
+import ch.brickinventoryapp.model.data.ScopeFilter
 
 /**
  * Wo die Wahl des Konto- und Lagerortfilters liegt: im DataStore des Geräts. Getrennt

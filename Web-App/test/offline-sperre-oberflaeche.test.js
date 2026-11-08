@@ -11,6 +11,8 @@
  *   D  (02.11.) alte Einzelliste statt schreibt() (nur bp/bd und fünf
  *      Namensmuster, #rb-hinweis ausgenommen) → rot: „alle schreibenden
  *      Bedienelemente“ (Importieren, Schlüssel eintragen, Datei-Wahl, Bearbeiten)
+ *   E  (08.11.) alte Regel zurück (bp/bd immer, sonst Namens-Regex) → rot:
+ *      „alle schreibenden Bedienelemente“ (Schlüssel eintragen gesperrt)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -37,7 +39,7 @@ test('offline: schreibende Knöpfe gesperrt', async (t) => {
       assert.equal(import_.getAttribute('aria-disabled'), 'true', 'Importieren');
       import_.click();
       assert.equal(import_.parentElement.open, false, 'Importieren öffnet trotzdem');
-      assert.equal(d.querySelector('#rb-hinweis .btn.bp').disabled, true, 'Schlüssel eintragen');
+      assert.equal(d.querySelector('#rb-hinweis .btn.bp').disabled, false, 'Schlüssel eintragen führt nur zu den Einstellungen');
       assert.equal(d.querySelector('#rb-hinweis .hinweis-zu').disabled, false, 'Hinweis schliessen');
       const dateien = [...d.querySelectorAll('input[type=file]')];
       assert.ok(dateien.length >= 3 && dateien.every(f => f.disabled), 'Datei-Wahl');

@@ -1,11 +1,11 @@
 /** Die Regel „schon im Blickfeld? dann nicht aufstocken" steht im Server, damit
- * Webapp und App dieselbe Eingabe gleich behandeln.
- * Ausführlich: docs/begruendungen/src/sets/setAdd.ts.md#abschnitt */
+ * Webapp und App dieselbe Eingabe gleich behandeln. Ausführlich: docs/begruendungen/src/sets/setAdd.ts.md#abschnitt */
 import { meldeUndLiefere } from '../infra/fehler';
 import { scopeIds } from '../haushalt/haushalt';
 import { normalisiereSetNummer } from '../infra/setNummer';
 import * as repo from './repository/sets';
 
+// Dieselbe Regel wie beim Schreiben, sonst prüfte die Suche eine andere Nummer.
 // Ausführlich: docs/begruendungen/src/sets/setAdd.ts.md#normalizesetnumber
 export function normalizeSetNumber(input: string): string {
   return normalisiereSetNummer(input);
@@ -18,8 +18,7 @@ export interface VorhandenesSet {
   is_self: boolean;
 }
 
-/** Im BLICKFELD, nicht nur im eigenen Konto.
- * Ausführlich: docs/begruendungen/src/sets/setAdd.ts.md#findsetinscope */
+/** Im BLICKFELD, nicht nur im eigenen Konto. Ausführlich: docs/begruendungen/src/sets/setAdd.ts.md#findsetinscope */
 export async function findSetInScope(
   viewerId: number, setNumber: string
 ): Promise<VorhandenesSet | null> {

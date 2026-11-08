@@ -1,10 +1,9 @@
 Gegenprobe: Der Schrittschutz nimmt jede Signatur als Freigabe, ohne sie zu prüfen (wie vor sec8 N3 ohne Bindung)
 Modul: core-ui
-Test: ch.brickinventoryapp.SchrittfreigabeTest
+Test: ch.brickinventoryapp.ui.SchrittfreigabeTest
 Rot: anderer Schluessel
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittfreigabe.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittfreigabe.kt
-index b4b8033..75efaa9 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittfreigabe.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittfreigabe.kt
 @@ -16,6 +16,7 @@ class Schrittfreigabe(

@@ -18,7 +18,12 @@ const { quellwurzeln } = require('./helpers/android');
 /** Alle Kotlin-Dateien der Oberfläche, aus allen Modulen. `theme` ist die Skala, kein Bildschirm. */
 function quellen(verzeichnis = null, raus = []) {
   if (verzeichnis === null) {
-    for (const w of quellwurzeln()) if (fs.existsSync(path.join(w, 'ui'))) quellen(path.join(w, 'ui'), raus);
+    // ui/ liegt je Modul unter dessen Paketstamm (core-ui: direkt unter der Wurzel).
+    for (const w of quellwurzeln()) {
+      for (const d of [w, ...fs.readdirSync(w).map((n) => path.join(w, n))]) {
+        if (fs.existsSync(path.join(d, 'ui'))) quellen(path.join(d, 'ui'), raus);
+      }
+    }
     return raus;
   }
   for (const e of fs.readdirSync(verzeichnis, { withFileTypes: true })) {

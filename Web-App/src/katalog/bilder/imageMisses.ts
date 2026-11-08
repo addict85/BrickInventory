@@ -57,7 +57,7 @@ export function grundFuer(key: string): string {
   return _gruende.get(key) || '';
 }
 
-// Ausführlich: docs/begruendungen/src/katalog/bilder/imageMisses.ts.md#vergissfehlend
+// Der Weg zurück aus der Sperre. Ausführlich: docs/begruendungen/src/katalog/bilder/imageMisses.ts.md#vergissfehlend
 export async function vergissFehlend(keys?: string[]): Promise<number> {
   const r = keys?.length
     ? await repo.vergissFehlschlaege(keys)

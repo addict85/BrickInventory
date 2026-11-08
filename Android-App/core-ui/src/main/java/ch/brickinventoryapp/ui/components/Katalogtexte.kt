@@ -5,8 +5,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.intl.LocaleList
-import ch.brickinventoryapp.ui.FarbeDeutsch
-import ch.brickinventoryapp.ui.KategorieDeutsch
+import ch.brickinventoryapp.model.ui.FarbeDeutsch
+import ch.brickinventoryapp.model.ui.KategorieDeutsch
 
 /** Ist die Oberfläche deutsch? Die Katalogdaten von Rebrickable sind es nie. */
 @Composable

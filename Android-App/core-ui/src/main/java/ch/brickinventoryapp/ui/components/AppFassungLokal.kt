@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.ui.components
 
 import androidx.compose.runtime.staticCompositionLocalOf
-import ch.brickinventoryapp.util.AppFassung
+import ch.brickinventoryapp.model.util.AppFassung
 
 /**
  * Die laufende Fassung für die Oberfläche; MainActivity setzt sie. Ohne Anbieter

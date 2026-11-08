@@ -7,7 +7,8 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import ch.brickinventoryapp.ui.theme.helligkeitGilt
+import ch.brickinventoryapp.data.util.Vertrauenschiffre
+import ch.brickinventoryapp.model.ui.theme.helligkeitGilt
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -26,6 +27,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 class GeraeteAblage @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val dataStore: DataStore<Preferences>,
+    private val vertrauenschiffre: Vertrauenschiffre,
 ) : GeraeteEinstellungen, Darstellungsablage, Netzvertrauen, Alarmablage, Entwertungsprotokoll, Sprachablage {
     companion object {
         /**
@@ -46,10 +48,17 @@ class GeraeteAblage @Inject constructor(
         const val HELLIGKEIT = "helligkeit"
         const val APP_THEME_SPIEGEL = "app_theme"
         const val SPRACHE_SPIEGEL = "sprache"
+        /** Klartext älterer Fassungen; gelesen nur noch zur einmaligen Übernahme. */
         const val NUTZER_CA = "nutzer_ca"
+        const val NUTZER_CA_GEHEIM = "nutzer_ca_geheim"
         /** Gesetzt, sobald die Vorgabe „Nutzer-CAs aus“ einmal angewandt wurde. */
         const val NUTZER_CA_AUS_ANGEWANDT = "nutzer_ca_aus_angewandt"
+        /** Klartext älterer Fassungen, wie [NUTZER_CA]; zugleich die Bindung des Geheimtexts. */
         const val PIN_PRAEFIX = "pin:"
+        const val PIN_GEHEIM_PRAEFIX = "pin_geheim:"
+        /** Gesetzt nach der Übernahme: Klartext, der danach auftaucht, wird nur noch gelöscht. */
+        const val VERTRAUEN_UEBERNOMMEN = "vertrauen_uebernommen"
+        private const val AN = "an"
         const val SYSTEMFARBEN = "systemfarben"
         const val VORSCHAU_VERBERGEN = "vorschau_verbergen"
         const val ENTWERTUNG_GESCHEITERT = "entwertung_gescheitert"
@@ -122,6 +131,7 @@ class GeraeteAblage @Inject constructor(
     /** Einmalig vor dem ersten Verbindungsaufbau (TokenAblage wartet darauf). */
     fun bereiteVor() {
         uebernimmAltenCaStand()
+        uebernimmKlartextVertrauen()
         designSpiegel.edit { KlartextReste.SPIEGEL.forEach { remove(it) } }
     }
 
@@ -221,9 +231,18 @@ class GeraeteAblage @Inject constructor(
      * (util/ServerVertrauen.kt)? Je Gerät und synchron: Gefragt wird bei jedem
      * Verbindungsaufbau.
      */
-    override fun nutzerCaErlaubt(): Boolean = designSpiegel.getBoolean(NUTZER_CA, false)
+    override fun nutzerCaErlaubt(): Boolean {
+        uebernimmKlartextVertrauen()
+        val geheim = designSpiegel.getString(NUTZER_CA_GEHEIM, null) ?: return false
+        return vertrauenschiffre.entschluessle(geheim, NUTZER_CA) == AN
+    }
+
+    // Lässt sich „an“ nicht verschlüsseln, bleibt der Schalter aus: lieber erneut
+    // fragen als eine Erlaubnis ablegen, die niemand prüfen kann.
     override fun setzeNutzerCa(an: Boolean) {
-        designSpiegel.edit { putBoolean(NUTZER_CA, an) }
+        uebernimmKlartextVertrauen()
+        val geheim = if (an) vertrauenschiffre.verschluessle(AN, NUTZER_CA) else null
+        designSpiegel.edit { if (geheim != null) putString(NUTZER_CA_GEHEIM, geheim) else remove(NUTZER_CA_GEHEIM) }
         nutzerCaHoerer.forEach { it() }
     }
 
@@ -235,21 +254,70 @@ class GeraeteAblage @Inject constructor(
      */
     fun uebernimmAltenCaStand() {
         if (designSpiegel.getBoolean(NUTZER_CA_AUS_ANGEWANDT, false)) return
-        designSpiegel.edit { putBoolean(NUTZER_CA, false); putBoolean(NUTZER_CA_AUS_ANGEWANDT, true) }
+        designSpiegel.edit { remove(NUTZER_CA); remove(NUTZER_CA_GEHEIM); putBoolean(NUTZER_CA_AUS_ANGEWANDT, true) }
     }
 
-    // Pins je Host und Port (util/ServerVertrauen.kt). apply genügt: Der Speicher
-    // gilt sofort für den nächsten Handshake, nur die Platte folgt nach.
-    // Der vorgehaltene Pin (Anmeldeablage.halteVor) geht vor und lebt nur im Speicher.
+    @Volatile private var vertrauenGeprueft = false
+
+    /**
+     * Klartext-Pins und -Schalter älterer Fassungen einmal verschlüsselt übernehmen und
+     * löschen. Danach zeigt die Marke: Klartext, der später auftaucht, hat nicht die App
+     * geschrieben und wird verworfen, nicht übernommen. Scheitert das Verschlüsseln, bleibt
+     * der Klartext liegen und gilt nicht — der nächste Lesezugriff versucht es erneut.
+     */
+    @Synchronized
+    private fun uebernimmKlartextVertrauen() {
+        if (vertrauenGeprueft) return
+        val alt = designSpiegel.all.filterKeys { it == NUTZER_CA || it.startsWith(PIN_PRAEFIX) }
+        val neu: Map<String, String> = if (designSpiegel.getBoolean(VERTRAUEN_UEBERNOMMEN, false)) emptyMap()
+            else verschluesselterAltbestand(alt) ?: return
+        designSpiegel.edit {
+            neu.forEach { (k, v) -> putString(k, v) }
+            alt.keys.forEach { remove(it) }
+            putBoolean(VERTRAUEN_UEBERNOMMEN, true)
+        }
+        vertrauenGeprueft = true
+    }
+
+    /** Die neuen Einträge zum Klartext; null, sobald einer sich nicht verschlüsseln lässt. */
+    private fun verschluesselterAltbestand(alt: Map<String, *>): Map<String, String>? {
+        val neu = mutableMapOf<String, String>()
+        for ((k, v) in alt) {
+            when {
+                k == NUTZER_CA && v == true -> neu[NUTZER_CA_GEHEIM] = vertrauenschiffre.verschluessle(AN, NUTZER_CA) ?: return null
+                k.startsWith(PIN_PRAEFIX) && v is String ->
+                    neu[PIN_GEHEIM_PRAEFIX + k.removePrefix(PIN_PRAEFIX)] = vertrauenschiffre.verschluessle(v, k) ?: return null
+            }
+        }
+        return neu
+    }
+
+    // Pins je Host und Port (util/ServerVertrauen.kt); der vorgehaltene (halteVor) geht vor.
+    // Ein unlesbarer Geheimtext ist kein Pin: Die Verbindung gilt als Erstkontakt, der
+    // Nutzer bestätigt neu. Ein nicht verschlüsselbarer Pin gilt nur bis zum Prozessende
+    // ([ungesichert]), nie im Klartext auf der Platte.
     override fun pin(schluessel: String): String? = vorgehalten[schluessel] ?: gemerkterPin(schluessel)
-    fun gemerkterPin(schluessel: String): String? = designSpiegel.getString(PIN_PRAEFIX + schluessel, null)
+    fun gemerkterPin(schluessel: String): String? {
+        uebernimmKlartextVertrauen()
+        ungesichert[schluessel]?.let { return it }
+        val geheim = designSpiegel.getString(PIN_GEHEIM_PRAEFIX + schluessel, null) ?: return null
+        return vertrauenschiffre.entschluessle(geheim, PIN_PRAEFIX + schluessel)
+    }
     override fun merkePin(schluessel: String, fingerabdruck: String) {
-        designSpiegel.edit { putString(PIN_PRAEFIX + schluessel, fingerabdruck) }
+        uebernimmKlartextVertrauen()
+        val geheim = vertrauenschiffre.verschluessle(fingerabdruck, PIN_PRAEFIX + schluessel)
+        if (geheim != null) {
+            designSpiegel.edit { putString(PIN_GEHEIM_PRAEFIX + schluessel, geheim) }
+            ungesichert.remove(schluessel)
+        } else {
+            ungesichert[schluessel] = fingerabdruck
+        }
         vorgehalten.remove(schluessel)
     }
     fun halteVor(schluessel: String, fingerabdruck: String) { vorgehalten[schluessel] = fingerabdruck }
     fun vergissVorgehaltenen(schluessel: String) { vorgehalten.remove(schluessel) }
     private val vorgehalten = ConcurrentHashMap<String, String>()
+    private val ungesichert = ConcurrentHashMap<String, String>()
 
     /**
      * Geldwerte im Startbildschirm-Widget zeigen? Je Gerät, Vorgabe aus: Das Widget

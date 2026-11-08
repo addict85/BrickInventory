@@ -17,6 +17,8 @@
  *      „die API nennt fremde lokale Bilder nicht“
  *   F  beiHaushaltsaenderung() in bildBlickfeld.ts nicht aufgerufen (60 s
  *      Treffer-Frist bleibt) → rot: „nach dem Lösen der Verknüpfung …“ (200 statt 404)
+ *   G  (08.11.2026) liefereBild ohne die 401-Zeile bzw. mit `public` statt
+ *      `private` → rot: „ohne Anmeldung kein Bild …“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -93,6 +95,19 @@ test('Bilder und Anleitungen im Blickfeld', { concurrency: 1, timeout: 180_000 }
     return { status: r.status, text: await r.text() };
   };
   const bild = (sn, zusatz = '') => `/images/sets/${sn}${zusatz}.jpg`;
+
+  await t.test('ohne Anmeldung kein Bild und keine Anleitung, und Bilder nur privat zwischengespeichert', async () => {
+    for (const weg of [bild(SN.unter), `/images/parts/${TEIL}`, `/data/instructions/${SN.unter}_1.pdf`]) {
+      const r = await fetch(`http://127.0.0.1:${port}${weg}`, { redirect: 'manual' });
+      const text = await r.text();
+      assert.ok([401, 403].includes(r.status), `${weg} ohne Anmeldung: ${r.status}`);
+      assert.doesNotMatch(text, /^Inhalt /, `${weg} lieferte die Datei ohne Anmeldung aus`);
+    }
+    const r = await fetch(`http://127.0.0.1:${port}${bild(SN.unter)}`, { headers: { Authorization: `Bearer ${token.unter}` } });
+    await r.text();
+    assert.match(String(r.headers.get('cache-control')), /^private\b/,
+      'Bilder hinter Anmeldung dürfen nicht public zwischengespeichert werden');
+  });
 
   await t.test('das eigene Set-Bild samt Vorschau', async () => {
     assert.equal((await hole('unter', bild(SN.unter))).status, 200);

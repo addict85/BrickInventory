@@ -31,8 +31,7 @@ import zweiterFaktorRouter = require('./auth/zweiterFaktor');
 import registrierungRouter = require('./auth/registrierung');
 
 // Ein Wächter für Sitzung UND Token: Die App hat keine Sitzung und war mit
-// einem reinen Sitzungswächter von Routen ausgesperrt.
-// Ausführlich: docs/begruendungen/routes/auth.ts.md#requirelogin
+// einem reinen Sitzungswächter von Routen ausgesperrt. Ausführlich: docs/begruendungen/routes/auth.ts.md#requirelogin
 const requireLogin = requireLoginOrToken;
 const requireAdmin = requireApiAdmin;
 // Feste Obergrenze ab Anmeldung; der Tausch erbt sie (legeNachfolgerAn), die App meldet dann ab.
@@ -254,8 +253,7 @@ router.put('/profile', requireLogin, async (req: OffeneAnfrage<'PUT /api/v1/auth
     const token   = crypto.randomBytes(32).toString('hex');
     await K.merkeEmailNeu(user.id, email, hashToken(token), new Date(Date.now() + 24*60*60*1000));
     await K.aendereProfil(user.id, felder);
-    // In der Sprache des Kontos, nicht in der Vorgabe.
-    // Ausführlich: docs/begruendungen/routes/auth.ts.md#put-profile-emailsent
+    // Sprache des Kontos, nicht die Vorgabe. Ausführlich: docs/begruendungen/routes/auth.ts.md#put-profile-emailsent
     let emailSent = false;
     const lang = String(await getSetting(user.id, 'language', 'de').catch(meldeUndLiefere('anmeldung:sprache', 'de')));
     const basis = mailBasisUrl();
@@ -313,21 +311,18 @@ router.post('/change-password', requireLogin, async (req: OffeneAnfrage<'POST /a
 });
 
 // Der QR-Code trägt nur eine einmalige Nonce (SHA-256 in qr_login_tokens),
-// kein Geheimnis des Kontos.
-// Ausführlich: docs/begruendungen/routes/auth.ts.md#qr-ttl-ms
+// kein Geheimnis des Kontos. Ausführlich: docs/begruendungen/routes/auth.ts.md#qr-ttl-ms
 const QR_TTL_MS = 5 * 60 * 1000;
 
 // POST, weil die Route eine Nonce anlegt, die fünf Minuten ein Konto öffnet;
-// ein GET liesse sich von fremden Seiten auslösen.
-// Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token
+// ein GET liesse sich von fremden Seiten auslösen. Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token
 router.post('/qr-token', requireLogin, async (req: OffeneAnfrage<'POST /api/v1/auth/qr-token'>, res: Antwort<'POST /api/v1/auth/qr-token'>) => {
   // Wie /token-create: Ein QR-Code eröffnet einen neuen, langlebigen Geräte-
   // zugang; nur aus der Sitzung, mit Passwort und zweitem Faktor.
   if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
   if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.password)) return;
   // Ohne Adresse verweigern statt raten: Eine falsche Adresse im QR-Code fiele
-  // erst später in einem anderen Netz auf.
-  // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token-basis
+  // erst später in einem anderen Netz auf. Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token-basis
   const basis = basisUrl();
   if (!basis) {
     // Der Betreiber sähe die Absage sonst in keinem Protokoll.

@@ -1,13 +1,12 @@
 Gegenprobe: der Lagerort eines Teils geht bei jedem Tastendruck hinaus (ohne Ruhezeit)
 Modul: feature-teile
-Test: ch.brickinventoryapp.TeileViewModelTest
+Test: ch.brickinventoryapp.teile.TeileViewModelTest
 Rot: der Lagerort wird entprellt gespeichert und im offenen Dialog gezeigt
 
-diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/viewmodel/TeileViewModel.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/viewmodel/TeileViewModel.kt
-index 464a37d..0cbe8e8 100644
---- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/viewmodel/TeileViewModel.kt
-+++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/viewmodel/TeileViewModel.kt
-@@ -287,7 +287,6 @@ class TeileViewModel @Inject constructor(
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
+@@ -291,7 +291,6 @@ class TeileViewModel @Inject constructor(
      override fun setzeTeilLagerort(nummer: String, farbe: Int, ort: String) {
          lagerJob?.cancel()
          lagerJob = viewModelScope.launch {

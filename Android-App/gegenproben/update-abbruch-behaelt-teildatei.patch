@@ -1,12 +1,11 @@
 Gegenprobe: ein abgebrochener APK-Download löscht seine Teildatei nicht
-Modul: core-data
-Test: ch.brickinventoryapp.UpdateLaderTest
+Modul: core-update
+Test: ch.brickinventoryapp.update.UpdateLaderTest
 Rot: ein abgebrochener Download hinterlässt keine Teildatei
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/UpdateRepository.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/UpdateRepository.kt
-index 6d47dbc..d6b936f 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/UpdateRepository.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/UpdateRepository.kt
+diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt
+--- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt
++++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt
 @@ -85,7 +85,6 @@ class UpdateLader @Inject constructor(
                  }
              }

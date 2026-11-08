@@ -1,13 +1,12 @@
 Gegenprobe: Der Schutz vor Überlagerung bleibt nach dem Bildschirm an
 Modul: app
-Test: ch.brickinventoryapp.FremderEinstiegTest
+Test: ch.brickinventoryapp.app.FremderEinstiegTest
 Rot: ein geschuetzter Bildschirm schuetzt die Activity nur
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ueberdeckungsschutz.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ueberdeckungsschutz.kt
-index 25cd631..42be452 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ueberdeckungsschutz.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ueberdeckungsschutz.kt
-@@ -33,7 +33,6 @@ fun Ueberdeckungsschutz() {
+@@ -29,7 +29,6 @@ fun Ueberdeckungsschutz() {
          onDispose {
              val rest = anzahl() - 1
              ziel.setTag(R.id.ueberdeckung_anzahl, rest)

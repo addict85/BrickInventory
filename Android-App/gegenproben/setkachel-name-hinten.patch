@@ -1,13 +1,12 @@
 Gegenprobe: Name der Katalogkachel wieder unter der Setnummer
 Modul: app
-Test: ch.brickinventoryapp.BarrierefreiheitBefundeTest
+Test: ch.brickinventoryapp.app.BarrierefreiheitBefundeTest
 Rot: M13 Set- und Katalogkachel lesen zuerst den Namen
 
-diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt
-index db4ec14..eb479af 100644
---- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt
-+++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt
-@@ -519,11 +519,11 @@ fun CatalogSetCard(
+diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogScreen.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogScreen.kt
+--- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogScreen.kt
++++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogScreen.kt
+@@ -521,11 +521,11 @@ fun CatalogSetCard(
                  Box {
                      Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein),
                          verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {

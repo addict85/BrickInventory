@@ -1,13 +1,12 @@
 Gegenprobe: Der Wächter übersieht 403 zweiter_faktor_pflicht
 Modul: core-zustand
-Test: ch.brickinventoryapp.ServerWaechterTest
+Test: ch.brickinventoryapp.zustand.ServerWaechterTest
 Rot: ein 403 zweiter_faktor_pflicht verlangt
 
-diff --git a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/di/ServerWaechter.kt b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/di/ServerWaechter.kt
-index f5b261a..2b385f5 100644
---- a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/di/ServerWaechter.kt
-+++ b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/di/ServerWaechter.kt
-@@ -170,7 +170,6 @@ class ServerWaechter(
+diff --git a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/di/ServerWaechter.kt b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/di/ServerWaechter.kt
+--- a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/di/ServerWaechter.kt
++++ b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/di/ServerWaechter.kt
+@@ -169,7 +169,6 @@ class ServerWaechter(
              if (antwort.code == 401 && code !in BESTAETIGUNG_NOETIG) sitzungAbgelaufen()
              if (antwort.code == 403 && code == Fehlercode.NUR_ADMINS) rechteEntzogen()
              if (antwort.code == 403 && code == Fehlercode.PASSWORT_WECHSEL_NOETIG) passwortWechselNoetig()

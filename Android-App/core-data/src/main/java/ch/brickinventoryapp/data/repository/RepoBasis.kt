@@ -1,14 +1,14 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.util.fangeAusserAbbruch
-import ch.brickinventoryapp.data.api.Fehlerrumpf
+import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.lokal.Bearbeitung
 import ch.brickinventoryapp.data.lokal.Fach
 import ch.brickinventoryapp.data.lokal.Offlineablage
-import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.model.data.model.*
 import retrofit2.Response
-import ch.brickinventoryapp.util.KlartextAbgelehnt
+import ch.brickinventoryapp.netz.util.KlartextAbgelehnt
 
 /**
  * Was die Repositories gemeinsam brauchen: den Abruf mit Plattenspeicher als
@@ -118,50 +118,41 @@ suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Ergebnis<T> {
         val response = call()
         if (response.isSuccessful) {
             response.body()?.let { Ergebnis.Success(it) }
-                ?: Ergebnis.Error("", art = Fehlerart.LEERE_ANTWORT)
+                ?: Ergebnis.Error.LeereAntwort()
         } else {
             // Satz und Code des Servers: der Satz zum Anzeigen, der Code zum Verzweigen.
+            // Fehlt der Satz, formuliert die Anzeige ihn nach der Art.
             val rumpf = fangeAusserAbbruch { Fehlerrumpf.lies(response.errorBody()?.string()) }
                 .getOrElse { Fehlerrumpf(null, null) }
-            // Servermeldung gewinnt, wenn es eine gibt: Sie ist genauer als
-            // jede Einordnung hier. Nur wenn keine da ist, wird die Ursache
-            // als Aufzählung gemeldet und die Anzeige formuliert den Satz.
-            Ergebnis.Error(
-                message = rumpf.text ?: "",
-                unauthorized = response.code() == 401,
-                art = when {
-                    rumpf.text != null -> null
-                    response.code() == 401 -> Fehlerart.SITZUNG_ABGELAUFEN
-                    else -> Fehlerart.SERVER
-                },
-                code = Fehlercode.aus(rumpf.code),
-                httpCode = response.code()
-            )
+            val text = rumpf.text ?: ""
+            val code = Fehlercode.aus(rumpf.code)
+            if (response.code() == 401) Ergebnis.Error.Abgewiesen(text, code)
+            else Ergebnis.Error.Server(response.code(), text, code)
         }
     } catch (e: kotlinx.coroutines.CancellationException) {
         // Abgebrochene Coroutines (z.B. Suche-Debounce ersetzt Request) dürfen
         // nicht als "Netzwerkfehler" im State landen — Cancellation weiterreichen.
         throw e
     } catch (_: java.net.UnknownHostException) {
-        // Vorübergehende Netzwerkfehler explizit als transient markieren, statt
-        // sie später an der Fehlermeldung zu erraten (retryOnNetwork nutzt das Flag).
-        Ergebnis.Error("", transient = true, art = Fehlerart.NETZ)
+        // Netz ist vorübergehend schon nach seiner Art; retryOnNetwork muss es nicht
+        // an der Fehlermeldung erraten.
+        Ergebnis.Error.Netz()
     } catch (_: java.net.ConnectException) {
-        Ergebnis.Error("", transient = true, art = Fehlerart.NETZ)
+        Ergebnis.Error.Netz()
     } catch (_: java.net.SocketTimeoutException) {
-        Ergebnis.Error("", transient = true, art = Fehlerart.ZEIT)
+        Ergebnis.Error.Zeitueberschreitung
     } catch (_: KlartextAbgelehnt) {
         // Nicht vorübergehend: Ein zweiter Versuch ginge genauso an http.
-        Ergebnis.Error("", art = Fehlerart.KLARTEXT)
+        Ergebnis.Error.Klartext
     } catch (e: java.io.IOException) {
         // Jede übrige IOException ist ein Transportproblem und wiederholbar, gleich
         // welchen Untertyp OkHttp wählt. Fehler beim Auswerten der Antwort sind
-        // keine IOException und laufen unten als UNBEKANNT durch.
-        Ergebnis.Error("", transient = true, art = Fehlerart.NETZ, technisch = e.message)
+        // keine IOException und laufen unten als Unbekannt durch.
+        Ergebnis.Error.Netz(technisch = e.message)
     } catch (e: Exception) {
         // e.message ist hier durchweg englischer Bibliothekstext ("Socket
         // closed", "unexpected end of stream"). Als Meldung an den Nutzer
         // war das nie sinnvoll; sie steht jetzt im Log-Feld statt im Satz.
-        Ergebnis.Error("", art = Fehlerart.UNBEKANNT, technisch = e.message)
+        Ergebnis.Error.Unbekannt(technisch = e.message)
     }
 }

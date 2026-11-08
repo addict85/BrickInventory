@@ -2,10 +2,10 @@ package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
-import ch.brickinventoryapp.ui.model.kontoOptionen
-import ch.brickinventoryapp.ui.model.KontoAnsicht
-import ch.brickinventoryapp.ui.model.LagerortAnsicht
-import ch.brickinventoryapp.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.model.ui.model.kontoOptionen
+import ch.brickinventoryapp.model.ui.model.KontoAnsicht
+import ch.brickinventoryapp.model.ui.model.LagerortAnsicht
+import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -20,7 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.data.ScopeFilter
+import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.mitSchrift
 

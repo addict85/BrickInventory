@@ -1,0 +1,578 @@
+package ch.brickinventoryapp.katalog.ui.screens
+
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import ch.brickinventoryapp.ui.components.HinweisText
+import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
+import ch.brickinventoryapp.ui.components.FehlerHinweis
+import ch.brickinventoryapp.ui.components.ZustandsHinweis
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.Role
+import ch.brickinventoryapp.ui.components.fokusRahmen
+import ch.brickinventoryapp.katalog.ui.viewmodel.KatalogAktionen
+import ch.brickinventoryapp.model.ui.model.JahrAnzahlAnsicht
+import ch.brickinventoryapp.model.ui.model.KatalogSetAnsicht
+import ch.brickinventoryapp.ui.components.SkelettRaster
+import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.ui.theme.AppKarte
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import ch.brickinventoryapp.ressourcen.R
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ch.brickinventoryapp.katalog.ui.viewmodel.CatalogViewModel
+import ch.brickinventoryapp.katalog.ui.*
+import ch.brickinventoryapp.model.ui.*
+import ch.brickinventoryapp.ui.*
+import ch.brickinventoryapp.zustand.ui.*
+import ch.brickinventoryapp.katalog.ui.CatalogYearMath
+import ch.brickinventoryapp.ui.theme.BrickStudCap
+import ch.brickinventoryapp.ui.theme.NoppenReihe
+import ch.brickinventoryapp.ui.theme.SteinKantenVerlauf
+import ch.brickinventoryapp.ui.theme.NoppenMass
+import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
+import ch.brickinventoryapp.ui.theme.LocalIsNoppeTheme
+import ch.brickinventoryapp.ui.theme.LocalIstGlanz
+
+import ch.brickinventoryapp.ui.theme.steinTon
+import ch.brickinventoryapp.ui.theme.LocalIsFarbfaecherTheme
+import ch.brickinventoryapp.ui.theme.faecherTon
+import ch.brickinventoryapp.ui.util.rememberTileImageWithFallback
+import coil3.ImageLoader
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
+import ch.brickinventoryapp.data.repository.CATALOG_PAGE_SIZE
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.vorgelesenAls
+import ch.brickinventoryapp.ui.util.fmtInt
+import ch.brickinventoryapp.ui.components.LesbareSpalten
+import ch.brickinventoryapp.ui.components.ProduktBild
+import ch.brickinventoryapp.ui.components.bewegungReduziert
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.theme.LocalSteinDekor
+import ch.brickinventoryapp.ui.theme.lichtStreifen
+
+/**
+ * Katalog-Screen: gesamter Rebrickable-Set-Katalog, serverseitig paginiert.
+ * Aufbau analog GalleryScreen (Suche oben, Filter-Chips, Grid) — Filter
+ * laufen aber serverseitig, das Grid lädt beim Scrollen seitenweise nach.
+ */
+@Composable
+fun CatalogRoute(
+    katalog: CatalogViewModel,
+    serverUrl: String,
+    imageLoader: ImageLoader,
+    onSetClick: (String) -> Unit,
+) {
+    val state by katalog.state.collectAsStateWithLifecycle()
+    CatalogScreen(state, serverUrl, katalog, imageLoader, onSetClick)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CatalogScreen(
+    state: CatalogUiState,
+    serverUrl: String,
+    katalog: KatalogAktionen,
+    imageLoader: ImageLoader,
+    /** Klick auf ein Set — nur der Graph kennt den NavController. */
+    onSetClick: (String) -> Unit,
+) {
+    val onQueryChange: (String) -> Unit = { q -> katalog.setCatalogQuery(q) }
+    val onThemeChange: (Int?) -> Unit = { t -> katalog.setCatalogTheme(t) }
+    val onYearChange: (Int?) -> Unit = { y -> katalog.setCatalogYear(y) }
+    val onSortChange: (String) -> Unit = { srt -> katalog.setCatalogSort(srt) }
+    /** Das sichtbare Fenster melden; das ViewModel lädt, sobald die Liste ruht. */
+    val onSichtbar: (Int, Int) -> Unit = { von, bis -> katalog.catalogSichtbar(von, bis) }
+    /** Die Leiste rechts rollt die Liste an eine Stelle — ohne zu filtern. */
+    val onScrollTo: (Int) -> Unit = { nummer -> katalog.scrollCatalogTo(nummer) }
+    /** Meldet, dass der Sprung ausgeführt wurde. */
+    val onScrollConsumed: () -> Unit = { katalog.catalogScrollConsumed() }
+    /** Meldet die Rollposition, damit sie den Wechsel zur Detailseite überlebt. */
+    val onScrollPos: (Int, Int) -> Unit = { index, offset -> katalog.setCatalogScrollPos(index, offset) }
+    val onRefresh: () -> Unit = { katalog.loadCatalogMeta(); katalog.loadCatalogSets() }
+
+    // Als State-Objekte statt per `by`: CatalogFilterRow() setzt sie und braucht
+    // dasselbe Objekt, keine Kopie.
+    val showThemeSheet = remember { mutableStateOf(false) }
+    val showYearSheet  = remember { mutableStateOf(false) }
+
+    val gridState = rememberLazyGridState()
+
+    // Die Liste führt alle `total` Plätze; geladen wird die Seite eines sichtbar gewordenen
+    // Platzes, mit einer Seite Vorlauf — so kann die Leiste rechts überallhin springen.
+    // Ausführlich: docs/begruendungen/feature-katalog/katalog/ui/screens/CatalogScreen.kt.md#launchedeffect
+    LaunchedEffect(gridState, state.total, state.loadedPages.size) {
+        snapshotFlow {
+            val sichtbar = gridState.layoutInfo.visibleItemsInfo
+            val ersteSeite = ((sichtbar.firstOrNull()?.index ?: 0) / CATALOG_PAGE_SIZE) + 1
+            val letzteSeite = ((sichtbar.lastOrNull()?.index ?: 0) / CATALOG_PAGE_SIZE) + 1
+            ersteSeite to letzteSeite
+        }.collect { (von, bis) -> onSichtbar(von, bis) }
+    }
+
+    // Kein eigener Sprung-Abruf daneben: Beide Wege — Rollen und Leiste — enden im
+    // Sichtfenster-Lader oben, und dessen Ruhe deckt beide ab. Zwei Fassungen
+    // derselben Regel liefen auseinander.
+
+    // Die Liste verlässt beim Wechsel die Komposition und ihre Länge trifft erst später ein,
+    // deshalb hilft Compose' Wiederherstellung nicht.
+    // Ausführlich: docs/begruendungen/feature-katalog/katalog/ui/screens/CatalogScreen.kt.md#wiederhergestellt-by-remember
+    var wiederhergestellt by remember { mutableStateOf(false) }
+    LaunchedEffect(state.total) {
+        if (wiederhergestellt || state.total == 0) return@LaunchedEffect
+        if (state.scrollIndex > 0) {
+            gridState.scrollToItem(
+                state.scrollIndex.coerceIn(0, (state.total - 1).coerceAtLeast(0)),
+                state.scrollOffset
+            )
+        }
+        wiederhergestellt = true
+    }
+    LaunchedEffect(gridState, wiederhergestellt) {
+        if (!wiederhergestellt) return@LaunchedEffect
+        snapshotFlow { gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset }
+            .collect { (index, offset) -> onScrollPos(index, offset) }
+    }
+
+    // Der Griff der Leiste hängt an der Stelle in der Liste wie ein Scrollbalken, wie
+    // in der Webapp: gridState.firstVisibleItemIndex ist die Stelle, das Jahr dazu
+    // liefert die Verteilung (CatalogYearMath).
+
+    // Sprungziel des Scrubbers ausführen.
+    LaunchedEffect(state.scrollTo) {
+        state.scrollTo?.let { ziel ->
+            gridState.scrollToItem(ziel.coerceIn(0, (state.total - 1).coerceAtLeast(0)))
+            onScrollConsumed()
+        }
+    }
+
+    val selectedThemeName = state.themes.firstOrNull { it.id == state.themeId }?.name
+        ?.substringAfterLast(" › ")
+
+    // Rechts Platz nur, wenn die Jahres-Leiste dort steht; sonst gleiche Ränder links und rechts.
+    val mitJahresleiste = state.sort.startsWith("year_") && state.jahrVerteilung.isNotEmpty()
+    val rasterRand = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, bottom = Abstaende.mittel,
+        end = if (mitJahresleiste) 30.dp else Abstaende.mittel)
+    val gefiltert = state.query.isNotBlank() || state.themeId != null || state.year != null
+    val fehlertext = state.error
+    Column(Modifier.fillMaxSize()) {
+        CatalogSearchField(state, onQueryChange, onSortChange)
+        CatalogFilterRow(state, selectedThemeName, showThemeSheet, showYearSheet)
+        // Trefferzahl — nicht im Fehlerfall: „0 Sets im Katalog“ stand dort neben dem Fehler.
+        if (fehlertext == null || state.total > 0) Text(
+            // pluralStringResource statt stringResource: „1 Set im Katalog",
+            // nicht „1 Sets".
+            pluralStringResource(R.plurals.catalog_result_count, state.total, state.total),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = Abstaende.gross, vertical = Abstaende.haar)
+        )
+
+        androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+            isRefreshing = state.isLoading && state.total > 0,
+            onRefresh = onRefresh,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            when {
+                // Dieselben Masse wie das Raster darunter, damit beim Eintreffen nichts springt.
+                state.isLoading && state.total == 0 -> SkelettRaster(
+                    LesbareSpalten(160.dp), kachelHoehe = 200.dp, innenabstand = rasterRand,
+                )
+                // Derselbe Fehlerzustand wie Galerie, Teile und Merkliste.
+                fehlertext != null && state.total == 0 -> ZustandsHinweis {
+                    FehlerHinweis(fehlertext, onRefresh, state.fehlerKlasse)
+                }
+                // Mit Suche oder Filter: sagen, woran es liegt, und den Weg zurück anbieten.
+                state.total == 0 && gefiltert -> ZustandsHinweis {
+                    KeinTrefferHinweis(stringResource(R.string.catalog_no_results))
+                    Button(onClick = {
+                        if (state.query.isNotBlank()) onQueryChange("")
+                        if (state.themeId != null) onThemeChange(null)
+                        if (state.year != null) onYearChange(null)
+                    }) { Text(stringResource(R.string.filter_reset_all)) }
+                }
+                state.total == 0 -> ZustandsHinweis {
+                    HinweisText(Icons.AutoMirrored.Filled.MenuBook, stringResource(R.string.catalog_leer_titel),
+                        stringResource(R.string.catalog_leer_text))
+                    Button(onClick = onRefresh) { Text(stringResource(R.string.common_retry)) }
+                }
+                else -> Box(Modifier.fillMaxSize()) {
+                    LazyVerticalGrid(
+                        state = gridState,
+                        columns = LesbareSpalten(160.dp),
+                        contentPadding = rasterRand,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // Ein Platz je Set im ganzen Ergebnis — auch für das,
+                        // was noch nicht geladen ist. Der Schlüssel ist die
+                        // Position, nicht die Setnummer: Ein Platzhalter hat
+                        // noch keine.
+                        items(count = state.total, key = { it }) { index ->
+                            val seite = index / CATALOG_PAGE_SIZE + 1
+                            val set = state.loadedPages[seite]?.getOrNull(index % CATALOG_PAGE_SIZE)
+                            if (set != null) CatalogSetCard(set, imageLoader, serverUrl, onSetClick, index)
+                            else CatalogPlaceholderCard()
+                        }
+                    }
+                    // Die Jahres-Leiste ist Schnell-Scroll, kein Filter: Ziehen rollt die Liste,
+                    // das Etikett zeigt das Jahr der Stelle. Nur bei Sortierung nach Jahr, wie in
+                    // der Webapp — sonst liegen die Jahre verstreut. firstVisibleItemIndex in
+                    // derivedStateOf gelesen, damit der Bildschirm nur bei einer Änderung des
+                    // abgeleiteten Werts neu auswertet (Lint FrequentlyChangingValue).
+                    val sichtbareNummer by remember(gridState) {
+                        derivedStateOf { gridState.firstVisibleItemIndex }
+                    }
+                    if (mitJahresleiste && state.total > 0) {
+                        YearScrubber(
+                            listenNummer = sichtbareNummer,
+                            total = state.total,
+                            verteilung = state.jahrVerteilung,
+                            // Erste Wahl wie in der Webapp: das Jahr der
+                            // Kachel, die an dieser Stelle steht. Genau diese
+                            // Rechnung stand vorher weiter oben im Bildschirm
+                            // und hiess `sichtbaresJahr`.
+                            jahrGeladen = { nummer ->
+                                state.loadedPages[nummer / CATALOG_PAGE_SIZE + 1]
+                                    ?.getOrNull(nummer % CATALOG_PAGE_SIZE)?.year
+                            },
+                            // Nur ROLLEN, nicht laden: Was an der neuen Stelle
+                            // gebraucht wird, holt der Sichtfenster-Lader —
+                            // entprellt, siehe oben. Ein Abruf an dieser Stelle
+                            // liefe bei JEDEM Beruehrungspunkt.
+                            onScrollTo = onScrollTo,
+                            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight()
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // ── Thema-Auswahl (BottomSheet: durchsuchbare Liste) ─────────────────────
+    CatalogThemeSheet(state, showThemeSheet, onThemeChange)
+    CatalogYearSheet(state, showYearSheet, onYearChange)
+}
+
+/**
+ * Die Jahres-Leiste am rechten Rand, wie in der Webapp. Position ist die Stelle in
+ * der Liste, nicht ein linear verteiltes Jahr: Der Katalog stammt überwiegend aus
+ * den letzten Jahrzehnten, und das Etikett soll das Jahr zeigen, das an dieser
+ * Stelle wirklich liegt (CatalogYearMath.jahrAnPosition). Als Row, damit das
+ * Etikett über die Kacheln ragen kann, ohne Berührungen abzufangen.
+ */
+@Composable
+private fun YearScrubber(
+    /** Stelle in der Liste, an der die Anzeige gerade steht (0 .. total-1). */
+    listenNummer: Int,
+    total: Int,
+    verteilung: List<JahrAnzahlAnsicht>,
+    /** Jahr der Kachel an einer laufenden Nummer — null, wenn nicht geladen. */
+    jahrGeladen: (Int) -> Int?,
+    /** Ziehen: zu dieser Stelle rollen. Laeuft waehrend der Bewegung, nicht erst am Ende. */
+    onScrollTo: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var dragging by remember { mutableStateOf(false) }
+    var ziehAnteil by remember { mutableStateOf(0f) }
+    var heightPx by rememberSaveable { mutableStateOf(1) }
+    val thumbHeightPx = with(LocalDensity.current) { 36.dp.roundToPx() }
+
+    // Beim Ziehen zeigt der Griff, WOHIN es geht; sonst, WO die Liste steht.
+    // Der zweite Fall fehlte in der vorigen Fassung ganz — der Griff stand
+    // dauerhaft dort, wo zuletzt gezogen worden war.
+    val anteil = if (dragging) ziehAnteil else CatalogYearMath.anteilAusNummer(listenNummer, total)
+    val thumbOffsetY = CatalogYearMath.daumenOffset(anteil, heightPx, thumbHeightPx)
+    val etikett = CatalogYearMath.jahrFuer(anteil, total, verteilung, jahrGeladen)
+
+    /** Beruehrung -> Anteil -> rollen. Wie js/15-scrollbar.js -> rollen(). */
+    fun rollen(y: Float) {
+        ziehAnteil = CatalogYearMath.anteilAus(y, heightPx, thumbHeightPx)
+        onScrollTo(CatalogYearMath.nummerAus(ziehAnteil, total))
+    }
+
+    Row(modifier) {
+        // Etikett-Spur — nur sichtbar beim Ziehen, faengt keine Beruehrungen.
+        Box(Modifier.fillMaxHeight()) {
+            if (dragging && etikett != null) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    shape = Formen.marke,
+                    shadowElevation = 3.dp,
+                    modifier = Modifier
+                        .offset { IntOffset(0, thumbOffsetY) }
+                        .padding(end = 6.dp)
+                ) {
+                    Text(
+                        "$etikett",
+                        fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                    )
+                }
+            }
+        }
+
+        // Gesten-Leiste (28dp) mit Schiene + Griff
+        Box(
+            Modifier
+                .width(28.dp)
+                .fillMaxHeight()
+                .onSizeChanged { heightPx = it.height }
+                .pointerInput(total) {
+                    detectVerticalDragGestures(
+                        onDragStart = { offset -> dragging = true; rollen(offset.y) },
+                        onVerticalDrag = { change, _ -> change.consume(); rollen(change.position.y) },
+                        onDragEnd = { dragging = false },
+                        onDragCancel = { dragging = false }
+                    )
+                }
+                .pointerInput(total) {
+                    // Neben den Griff getippt: dorthin springen — wie bei einem
+                    // gewoehnlichen Scrollbalken.
+                    detectTapGestures { offset -> rollen(offset.y) }
+                }
+        ) {
+            // Schiene
+            Surface(
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
+                shape = Formen.strich,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 11.dp, top = 6.dp, bottom = 6.dp)
+                    .width(3.dp)
+                    .fillMaxHeight()
+            ) {}
+
+            // Griff — immer sichtbar, folgt der Liste
+            Surface(
+                color = if (dragging) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
+                shape = RoundedCornerShape(topStart = 10.dp, bottomStart = 10.dp),
+                shadowElevation = if (dragging) 3.dp else 1.dp,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset { IntOffset(0, thumbOffsetY) }
+            ) {
+                Box(Modifier.width(18.dp).height(36.dp), Alignment.Center) {
+                    if (LocalIsBrickTheme.current) {
+                        // Stein-Design: Griff als Noppe (heller Stud-Punkt)
+                        Surface(
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.55f),
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            modifier = Modifier.size(8.dp)
+                        ) {}
+                    } else {
+                        Icon(
+                            Icons.Default.UnfoldMore, null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Eine Zeile der Themen- und Jahreswahl; öffentlich, damit der Barrierefreiheitstest sie zeigen kann. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ThemeRow(label: String, selected: Boolean, onClick: () -> Unit) {
+    // Ein Optionsfeld: TalkBack nennt Rolle und Wahl, das Häkchen allein sah nur, wer sieht.
+    Surface(
+        selected = selected,
+        onClick = onClick,
+        shape = Formen.kachel,
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                else androidx.compose.ui.graphics.Color.Transparent,
+        modifier = Modifier.fillMaxWidth().fokusRahmen(Formen.kachel).semantics { role = Role.RadioButton }
+    ) {
+        Row(
+            Modifier.padding(horizontal = Abstaende.mittel, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(label, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            if (selected) Icon(Icons.Default.Check, null, Modifier.size(mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.primary)
+        }
+    }
+}
+
+@Composable
+/**
+ * `internal`, weil der Aufrufer in einer anderen Datei steht und `private` in
+ * Kotlin dateiweit gilt.
+ */
+internal fun sortLabel(sort: String): String = when (sort) {
+    "year_asc"   -> stringResource(R.string.catalog_sort_year_asc)
+    "name_asc"   -> stringResource(R.string.catalog_sort_name)
+    "num_asc"    -> stringResource(R.string.catalog_sort_number)
+    "parts_desc" -> stringResource(R.string.catalog_sort_parts_desc)
+    "parts_asc"  -> stringResource(R.string.catalog_sort_parts_asc)
+    else         -> stringResource(R.string.catalog_sort_year_desc)
+}
+
+@Composable
+fun CatalogSetCard(
+    set: KatalogSetAnsicht,
+    imageLoader: ImageLoader,
+    serverUrl: String,
+    onClick: (String) -> Unit,
+    /** Position in der Kachelwand — nur fuer die Deckelfarbe des Designs "noppe". */
+    position: Int = 0
+) {
+    val ctx = LocalContext.current
+    val isBrick = LocalIsBrickTheme.current
+    val istNoppe = LocalIsNoppeTheme.current
+    val istGlanz = LocalIstGlanz.current
+    // Der Thementon des Designs "farbfaecher" — dieselbe Rechnung wie
+    // --faecher-ton in js/09-catalog.js. Ohne Thema-Nummer gibt es keinen
+    // Streifen, statt eines falschen.
+    val ton = if (LocalIsFarbfaecherTheme.current) faecherTon(set.themeId) else null
+    val besitz = set.ownedQuantity.coerceAtLeast(1)
+    val besitzAnsage = if (set.owned) pluralStringResource(R.plurals.cd_in_sammlung, besitz, besitz) else null
+    // Die Noppen stehen über der Karte: Eine Material-Card klippt auf ihre Form.
+    // Deshalb rückt die Karte um die Noppenhöhe nach unten, und die Reihe wird daneben
+    // gezeichnet und darübergelegt — wie `top:-6px` im CSS.
+    Box {
+        AppKarte(
+            modifier = Modifier.then(if (isBrick) Modifier.padding(top = NoppenMass.Stein.hoehe) else Modifier),
+            onClick = { onClick(set.setNumber) },
+            onClickLabel = stringResource(R.string.cd_details_oeffnen),
+        ) {
+            Column {
+                // Die Steinkante und der Steindeckel wie in der Galerie (SetCard).
+                if (isBrick) BoxWithConstraints {
+                    BrickStudCap(mass = NoppenMass.Stein, verlauf = SteinKantenVerlauf,
+                        height = if (maxWidth < 240.dp) 12.dp else null)
+                }
+                if (istNoppe) BrickStudCap(color = steinTon(position), glanz = istGlanz)
+                if (ton != null) {
+                    Box(Modifier.fillMaxWidth().height(5.dp).background(ton))
+                }
+                // 4:3 wie die Kacheln der Galerie: Eine feste Höhe liess das Bild auf dem
+                // Tablet schmal in der Kachel stehen.
+                Box(Modifier.fillMaxWidth().aspectRatio(KATALOG_BILD_VERHAELTNIS)) {
+                    // Über den Server auflösen statt roher CDN-Adresse; scheitert die Vorschau,
+                    // Rückfall auf die volle Auflösung vor dem Platzhalter.
+                    val (thumbUrl, onThumbError) = rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)
+                    ProduktBild(
+                        model = thumbUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!bewegungReduziert()).build() },
+                        imageLoader = imageLoader,
+                        // Ohne Beschreibung: Der Name steht darunter, TalkBack las ihn sonst zweimal.
+                        contentDescription = null,
+                        onState = { if (it is coil3.compose.AsyncImagePainter.State.Error) onThumbError() },
+                        modifier = Modifier.fillMaxSize()
+                            .then(if (isBrick) Modifier else Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))),
+                        contentScale = ContentScale.Fit,
+                        ersatzGroesse = 44.dp,
+                        bildgrund = true,
+                        innenAbstand = Abstaende.klein,
+                    )
+                    // Die Spiegelung auf der Glasscheibe, nur über dem Bild (LichtStreifen in BrickDecor.kt).
+                    if (istGlanz) Box(Modifier.matchParentSize().background(lichtStreifen()))
+                    // Eine Pille innerhalb des Bilds wie die Mengenplakette der Galerie; vorgelesen am Ende.
+                    if (set.owned) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = Formen.etikett,
+                            modifier = Modifier.align(Alignment.TopEnd).padding(KATALOG_PLAKETTE_RAND).clearAndSetSemantics {}
+                        ) {
+                            Text(
+                                if (set.ownedQuantity > 1) "✓ ×${set.ownedQuantity}" else "✓",
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar),
+                            )
+                        }
+                    }
+                }
+                // Der Name zuerst, wie er vorgelesen wird; Nummer, Jahr und Teile darunter.
+                Box {
+                    Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein),
+                        verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+                        Text(set.name ?: "—", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
+                            maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 16.sp)
+                        Text(set.setNumber, Modifier.vorgelesenAls(stringResource(R.string.cd_set_nummer, set.setNumber)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            val jahr = set.year
+                            if (jahr != null) Text("$jahr", Modifier.vorgelesenAls(stringResource(R.string.cd_jahr, "$jahr")),
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if ((set.numParts ?: 0) > 0) {
+                                // Dasselbe Teile-Symbol wie im Reiter „Teile" und in der Webapp.
+                                Icon(
+                                    ImageVector.vectorResource(R.drawable.ic_parts_bricks),
+                                    contentDescription = null,
+                                    tint = Color.Unspecified,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                val teile = set.numParts ?: 0
+                                Text(fmtInt(teile), Modifier.vorgelesenAls(
+                                    pluralStringResource(R.plurals.gallery_stat_parts, teile, fmtInt(teile))),
+                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                    if (besitzAnsage != null) Box(Modifier.semantics { contentDescription = besitzAnsage })
+                }
+            }
+        }
+        if (isBrick) NoppenReihe(
+            mass = NoppenMass.Stein,
+            modifier = Modifier.align(Alignment.TopStart),
+            farbe = LocalSteinDekor.current.noppen,
+        )
+    }
+}
+
+/** Seitenverhältnis der Kachelbilder, wie in der Galerie. */
+private const val KATALOG_BILD_VERHAELTNIS = 4f / 3f
+
+/** Abstand der Besitzplakette vom Bildrand, wie in der Galerie. */
+private val KATALOG_PLAKETTE_RAND = Abstaende.klein + Abstaende.winzig
+
+/**
+ * Platzhalter für einen Platz, dessen Seite noch nicht geladen ist — gleich hoch
+ * wie eine echte Kachel, sonst springt die Liste beim Eintreffen, und ein Sprung
+ * an eine Jahresgrenze landete daneben.
+ */
+@Composable
+private fun CatalogPlaceholderCard() {
+    Card(
+        shape = Formen.leiste,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+        modifier = Modifier.fillMaxWidth().height(200.dp)
+    ) {}
+}

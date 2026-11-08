@@ -3,7 +3,7 @@ package ch.brickinventoryapp.data.lokal.room
 import android.content.Context
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
-import ch.brickinventoryapp.util.Ablageschluessel
+import ch.brickinventoryapp.data.util.Ablageschluessel
 import net.zetetic.database.sqlcipher.SQLiteDatabase
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 import java.io.File

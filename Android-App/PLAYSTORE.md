@@ -4,7 +4,7 @@
 >
 > `.github/workflows/android-playstore.yml` gibt es nicht mehr. Die App wird als
 > **APK über die GitHub-Releases** ausgeliefert und aktualisiert sich daraus
-> selbst (`util/AppUpdate.kt`); der Play-Weg war gebaut, aber nie benutzt.
+> selbst (`update/util/AppUpdate.kt`); der Play-Weg war gebaut, aber nie benutzt.
 >
 > Diese Anleitung bleibt als Bauplan stehen, falls der Weg je wieder gewollt
 > ist — **Teil 2 beschreibt aber einen Ablauf, der derzeit nicht existiert.**

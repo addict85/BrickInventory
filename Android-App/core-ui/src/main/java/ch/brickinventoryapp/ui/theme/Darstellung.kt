@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.theme
 
+import ch.brickinventoryapp.model.ui.theme.Helligkeit
+
 /**
  * Was gezeichnet wird: das Design des Servers, bei Bedarf in seiner dunklen
  * Fassung — oder mit [systemfarben] die Farben des Hintergrundbilds (Material You).

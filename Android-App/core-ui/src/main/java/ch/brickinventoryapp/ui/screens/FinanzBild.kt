@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import ch.brickinventoryapp.model.ui.*
 import ch.brickinventoryapp.ui.*
 import coil3.ImageLoader
 import ch.brickinventoryapp.ui.components.ProduktBild

@@ -1,17 +1,17 @@
 package ch.brickinventoryapp.data.cache
 
-import ch.brickinventoryapp.util.fangeAusserAbbruch
+import ch.brickinventoryapp.data.util.fangeAusserAbbruch
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
-import ch.brickinventoryapp.di.BrickDispatchers
-import ch.brickinventoryapp.di.Dispatcher
+import ch.brickinventoryapp.data.di.BrickDispatchers
+import ch.brickinventoryapp.data.di.Dispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
-import ch.brickinventoryapp.util.AblageChiffre
-import ch.brickinventoryapp.util.Ablageschluessel
+import ch.brickinventoryapp.data.util.AblageChiffre
+import ch.brickinventoryapp.data.util.Ablageschluessel
 import kotlinx.serialization.json.Json
 import java.io.File
 import javax.inject.Inject

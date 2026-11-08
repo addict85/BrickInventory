@@ -1,87 +1,111 @@
 /**
- * Der BrickLink-Export der Teileliste — was er weglässt und was er sagt.
+ * Der BrickLink-Export der Teileliste — was er weglässt und was er sagt. Am
+ * echten Bündel in jsdom: Bauliste erstellen, „BrickLink XML“ klicken, die
+ * ausgelieferte Datei und die Meldungen lesen.
  * Ausführlich: docs/begruendungen/test/teileliste-bl-export.test.js.md#kopf
  *
- * ── Gegenproben (am 20.10. GEMESSEN) ────────────────────────────────────────
- *
- * Ausgangslage `# pass 4 / # fail 0`, jede Änderung danach zurückgenommen:
- *
- *   E  die Farbkette wieder auf `?? p.color_id ?? 0` gesetzt
- *      → rot: „keine Rebrickable-Farbnummer wandert als BrickLink-Farbe
- *        hinaus". Das ist der Befund im Wortlaut.
- *   F  statt `exportierbar` wieder `expanded` ins XML gegeben
- *      → rot: „Posten ohne bekannte BrickLink-Farbe gehen nicht mit".
- *   G  die Erfolgsmeldung wieder als deutscher Text eingetippt
- *      → rot: „die Meldungen sind übersetzt, nicht eingetippt".
+ * Gegenproben (08.11.2026 gemessen, je einzeln, danach zurückgenommen):
+ *   E  die Farbkette in plRenderTable wieder auf `?? p.color_id ?? ''` →
+ *      rot: beide Fälle (COLOR 999 in der Datei, keine Meldung)
+ *   F  statt `exportierbar` wieder `expanded` ins XML gegeben → rot: dieselbe
+ *      Prüfung (Posten ohne COLOR in der Datei)
+ *   G  die Erfolgsmeldung wieder als deutscher Text eingetippt → rot: „die
+ *      Meldungen sind übersetzt“ (englische Oberfläche)
+ *   H  der Export baut das XML wieder mit `<?xml …?>` davor → rot: „keine
+ *      Rebrickable-Farbnummer …“ (Datei beginnt nicht mit <INVENTORY>)
+ *   I  die Meldung pl.bl_no_color entfernt → rot: beide Fälle
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const path   = require('node:path');
-const { ohneKommentare } = require('./helpers/sources');
+const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
-const ROOT = path.join(__dirname, '..');
-const quelle = () => ohneKommentare(
-  fs.readFileSync(path.join(ROOT, 'public', 'js', '08-init.js'), 'utf8'));
+const ROT = {
+  part_number: '3001',
+  part_name: 'Brick 2 x 4',
+  color_id: 4,
+  color_name: 'Red',
+  color_hex: 'C91A09',
+  quantity: 6,
+};
+// Rebrickable-Farbe 999 kennt die Zuordnung nicht: Eine geratene Farbe bestellte das falsche Teil.
+const UNBEKANNT = {
+  part_number: '3002',
+  part_name: 'Brick 2 x 3',
+  color_id: 999,
+  color_name: 'Mystery',
+  color_hex: null,
+  quantity: 2,
+};
 
-test('die Teileliste baut das XML nicht mehr selbst', () => {
-  const js = quelle();
-  // Untergrenze gegen die stille Null: Findet der Leser die Datei nicht mehr,
-  // wären alle Prüfungen darunter leer und trotzdem grün.
-  assert.ok(js.length > 5000, `Nur ${js.length} Zeichen gelesen — Pfad veraltet?`);
+async function exportiere(sprache) {
+  const o = await oeffneOberflaeche(
+    {
+      '/v1/sets/10294-1/parts-list': { success: true, parts: [ROT, UNBEKANNT] },
+      '/v1/sets/10294-1/minifigs-list': { success: true, figs: [] },
+      '/v1/sets/info/10294-1': { success: true, name: 'Titanic', im_katalog: true },
+      '/v1/parts/bl-color-map': { success: true, map: { 4: 5 } },
+    },
+    { sprache },
+  );
+  const dateien = [];
+  o.w.URL.createObjectURL = blob => {
+    dateien.push(blob);
+    return `blob:test/${dateien.length}`;
+  };
+  o.w.URL.revokeObjectURL = () => {};
+  o.w.open = () => ({});
+  try {
+    return await bedienen(o, dateien);
+  } catch (e) {
+    o.w.close();
+    throw e;
+  }
+}
 
-  assert.ok(!/<\?xml/.test(js),
-    'In js/08-init.js steht wieder eine XML-Deklaration. BrickLinks Hilfe sagt ' +
-    'zum Wanted-List-Format wörtlich „can not have an XML declaration" — die ' +
-    'Datei wird beim Upload abgewiesen, und hier sieht man nichts davon.');
-  assert.match(js, /baueWantedXmlStuecke\(/,
-    'Der Export baut das XML wieder von Hand. Dann gilt für ihn nichts von ' +
-    'dem, was test/bricklink-wanted-xml.test.js am Bauteil prüft — weder die ' +
-    'fehlende Deklaration noch die Grössengrenze.');
+async function bedienen(o, dateien) {
+  await reiter(o.w, 'partslist');
+  o.d.getElementById('pl-setnr').value = '10294';
+  o.d.querySelector('[data-click="plAddSet"]').click();
+  await warte(() => o.d.querySelector('#pl-sets .pl-chip-name')?.textContent.trim(), 3000);
+  o.d.getElementById('btn-pl-gen').click();
+  assert.ok(await warte(() => o.d.querySelector('.pl-have-input'), 3000), 'Liste erstellt');
+  o.d.getElementById('btn-pl-bl').click();
+  assert.ok(
+    await warte(() => dateien.length === 1 && o.d.querySelectorAll('#toasts .toast').length >= 2, 3000),
+    'Kein Export',
+  );
+  const xml = await dateien[0].text();
+  const meldungen = [...o.d.querySelectorAll('#toasts .toast')].map(t => ({ art: t.className, text: t.textContent }));
+  return { ...o, xml, meldungen };
+}
+
+test('keine Rebrickable-Farbnummer wandert als BrickLink-Farbe hinaus — Posten ohne werden genannt', async () => {
+  const { w, xml, meldungen } = await exportiere('de');
+  try {
+    // Ohne XML-Deklaration: BrickLink lehnt eine Datei mit ihr ab (bricklink-wanted-xml.test.js prüft das Bauteil).
+    assert.ok(xml.startsWith('<INVENTORY>'), xml.slice(0, 60));
+    assert.match(xml, /<ITEMID>3001<\/ITEMID>\s*<COLOR>5<\/COLOR>/, 'Die BrickLink-Farbe aus der Zuordnung');
+    assert.doesNotMatch(xml, /3002|<COLOR>999<\/COLOR>|<COLOR>4<\/COLOR>/, xml);
+    assert.equal((xml.match(/<ITEM>/g) || []).length, 1);
+    const fehler = meldungen.find(m => /error/.test(m.art));
+    assert.match(
+      fehler?.text ?? '',
+      /1 Posten ohne bekannte BrickLink-Farbe.*3002 \(Mystery\)/,
+      JSON.stringify(meldungen),
+    );
+  } finally {
+    w.close();
+  }
 });
 
-test('keine Rebrickable-Farbnummer wandert als BrickLink-Farbe hinaus', () => {
-  const js = quelle();
-  // Der Befund im Wortlaut, wie er dastand:
-  //     p.bl_color_id ?? _rbToBlColor[p.color_id] ?? p.color_id ?? 0
-  // Die letzten beiden Stufen sind das Problem: Rebrickable-Nummer, dann 0.
-  const rueckfall = /_rbToBlColor\[[^\]]+\]\s*\?\?\s*p\.color_id/;
-  assert.ok(!rueckfall.test(js),
-    'Die Farbkette fällt wieder auf p.color_id zurück — also auf die ' +
-    'REBRICKABLE-Farbnummer. Bei BrickLink bedeutet dieselbe Zahl eine andere ' +
-    'Farbe: Das ergibt eine gültige Datei, die das falsche Teil bestellt, und ' +
-    'es fällt erst auf, wenn das Paket da ist.');
-
-  // Und die Gegenrichtung: Es muss überhaupt noch eine Kette geben. Ohne das
-  // wäre die Prüfung oben auch grün, wenn jemand die Farbe ganz entfernte.
-  assert.match(js, /_rbToBlColor\[/,
-    'Die Zuordnung Rebrickable→BrickLink wird gar nicht mehr befragt — dann ' +
-    'hat kein Posten je eine Farbe.');
-});
-
-test('Posten ohne bekannte BrickLink-Farbe gehen nicht mit — und werden genannt', () => {
-  const js = quelle();
-  // Dieselbe Regel wie beim Import (src/merkliste/wantedListe.ts): Was sich nicht
-  // abbilden lässt, bleibt draussen und wird GESAGT. Stillschweigend
-  // auszulassen wäre fast so schlecht wie zu raten — die Teile fehlen dann in
-  // der Bestellung, und es fällt beim Zählen auf.
-  assert.match(js, /const ohneFarbe\s*=/,
-    'Die Posten ohne BrickLink-Farbe werden nicht mehr getrennt gesammelt.');
-  assert.match(js, /baueWantedXmlStuecke\(\s*\n?\s*exportierbar/,
-    'Ins XML geht nicht mehr nur das Exportierbare — dann ist entweder eine ' +
-    'Farbe geraten oder ein Posten ohne COLOR dabei.');
-  assert.match(js, /pl\.bl_no_color/,
-    'Es gibt keine Meldung mehr über die ausgelassenen Posten. Eine ' +
-    'Bestellung, in der still etwas fehlt, ist schlimmer als eine, die sagt ' +
-    'was fehlt.');
-});
-
-test('die Meldungen sind übersetzt, nicht eingetippt', () => {
-  const js = quelle();
-  // Hier stand `toast(\`✅ ${missing.length} fehlende Teiletypen exportiert\`)`
-  // — deutscher Text fest im Code, auch bei englischer Oberfläche.
-  assert.ok(!/fehlende Teiletypen/.test(js),
-    'Die Erfolgsmeldung steht wieder als deutscher Text im Code.');
-  for (const schluessel of ['pl.bl_exported', 'pl.bl_split', 'pl.bl_no_color'])
-    assert.ok(js.includes(schluessel), `Der Sprachschlüssel ${schluessel} fehlt`);
+test('die Meldungen sind übersetzt, nicht eingetippt', async () => {
+  const { w, meldungen } = await exportiere('en');
+  try {
+    const texte = meldungen.map(m => m.text).join(' | ');
+    assert.match(texte, /1 missing part types? exported/);
+    assert.match(texte, /1 items? without a known BrickLink color/);
+    assert.doesNotMatch(texte, /fehlende|Posten/);
+  } finally {
+    w.close();
+  }
 });

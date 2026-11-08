@@ -1,6 +1,11 @@
 /**
  * Beide Oberflächen rechnen keine Geldbeträge nach.
  * Ausführlich: docs/begruendungen/test/clients-render-only.test.js.md#kopf
+ *
+ * Gegenproben (08.11.2026 gemessen): in 04-finance.js den Gesamtwert wieder
+ * selbst addieren (`const grandTotal = setsQtyAvg + extra`) → rot: „die
+ * Webapp zeigt den Gesamtwert des Servers“. Dass der Server ihn liefert,
+ * prüft geschenk-guv-db.test.js („der Gesamtwert kommt fertig …“, C).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -9,6 +14,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const { ohneKommentare } = require('./helpers/sources');
+const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
 /** Feldnamen, deren Summe eine Geschäftsregel wäre. */
 const GELDFELDER =
@@ -42,24 +48,15 @@ test('die Webapp summiert keine Geldbeträge selbst', () => {
     'Zwei Rechenwege bedeuten zwei Ergebnisse, sobald sich die Regel ändert.');
 });
 
-test('der Server liefert den Gesamtwert', () => {
-  // Ohne dieses Feld bliebe den Clients nichts anderes übrig, als selbst zu
-  // addieren — die Prüfung oben wäre dann nicht erfüllbar.
-  const fc = require('./helpers/sources').finanzQuelle();
-  assert.match(fc, /grand_total: totalCurrent\.toFixed\(2\)/,
-    'src/finanzen/financeCalc.ts liefert keinen Gesamtwert mehr — dann rechnen ihn ' +
-    'beide Clients wieder selbst, jeder auf seine Art.');
-
-  const fin = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public', 'js', '04-finance.js'), 'utf8'));
-  assert.match(fin, /grand_total/, 'Die Webapp liest den Gesamtwert nicht');
-  assert.doesNotMatch(fin, /const grandTotal = setsQtyAvg \+ extra;/,
-    'Die Webapp addiert den Gesamtwert wieder selbst');
-});
-
-test('beide Clients lesen dieselben Felder für dieselben Zahlen', () => {
-  // Die Kernaussage von Marcos Frage: gleiche Quelle, nicht nur gleiche Zahl.
-  const fin = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public', 'js', '04-finance.js'), 'utf8'));
-  for (const feld of ['total_value', 'grand_total']) {
-    assert.ok(fin.includes(feld), `Die Webapp liest ${feld} nicht`);
-  }
+test('die Webapp zeigt den Gesamtwert des Servers', async () => {
+  // Ohne Marktpreis bei den Posten trägt die Kopfzahl den Gesamtwert; der Server sagt 777,
+  // die eigene Summe der Tabellen wäre 0.
+  const { w, d } = await oeffneOberflaeche({
+    '/v1/finance/pnl': { success: true, currency: 'EUR', sets: [], totals: { purchase: '0', current: '777.00', grand_total: '777.00' } },
+  });
+  try {
+    await reiter(w, 'finance');
+    assert.ok(await warte(() => /777/.test(d.getElementById('portfolio-current')?.textContent || '')),
+      `Kopfzahl: ${d.getElementById('portfolio-current')?.textContent}`);
+  } finally { w.close(); }
 });

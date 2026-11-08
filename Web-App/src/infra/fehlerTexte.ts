@@ -1,10 +1,9 @@
 /** Die Fehlermeldungen an EINER Stelle, in beiden Sprachen: Die Route kennt
- * die Sprache des Anfragenden, der Dienst nicht.
- * Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#sprache */
+ * die Sprache des Anfragenden, der Dienst nicht. Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#sprache */
 
 export type Sprache = 'de' | 'en';
 
-// Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#fehler
+// Jeder Text einmal, in beiden Sprachen. Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#fehler
 export const FEHLER = {
   // ── Anmeldung und Konto ──────────────────────────────────────────────────
   nicht_angemeldet:            { de: 'Nicht angemeldet', en: 'Not signed in' },
@@ -396,7 +395,7 @@ export const FEHLER = {
 
 export type FehlerCode = keyof typeof FEHLER;
 
-// Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#antwortsprache
+// Aus Accept-Language; ohne Treffer Deutsch. Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#antwortsprache
 export function antwortSprache(req: { headers?: Record<string, unknown> } | undefined): Sprache {
   const roh = String(req?.headers?.['accept-language'] || '').toLowerCase();
   return roh.startsWith('en') || roh.includes(',en') ? 'en' : 'de';
@@ -429,7 +428,7 @@ export function alsDoppelt(code: FehlerCode, status = 409): (e: unknown) => neve
   };
 }
 
-// Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#fehlerwerfen
+// Helfer werfen den Code, die Route übersetzt. Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#fehlerwerfen
 export function fehlerWerfen(code: FehlerCode, status: number, vars?: Record<string, string | number>): never {
   throw dateiFehler(code, status, vars);
 }

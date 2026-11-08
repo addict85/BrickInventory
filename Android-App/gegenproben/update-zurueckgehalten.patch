@@ -1,13 +1,12 @@
 Gegenprobe: Die App vergleicht die Beschreibung nicht mit dem schon gesehenen Stand (Stand vor sec10 N1)
-Modul: core-data
-Test: ch.brickinventoryapp.UpdateFrischeTest
+Modul: core-update
+Test: ch.brickinventoryapp.update.UpdateFrischeTest
 Rot: eine aeltere echt signierte Beschreibung meldet ein Zurueckhalten
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateFrische.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateFrische.kt
-index fb2898a..4d4a8ff 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateFrische.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateFrische.kt
-@@ -40,8 +40,6 @@ fun anzubietendeFassung(b: UpdateBeschreibung, frische: UpdateFrische, laufend:
+diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt
+--- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt
++++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt
+@@ -44,8 +44,6 @@ fun anzubietendeFassung(b: UpdateBeschreibung, frische: UpdateFrische, laufend:
   */
  internal fun bewerteFrische(b: UpdateBeschreibung, gesehen: UpdateStand?, laufend: Int, jetztSek: Long): UpdateFrische = when {
      b.versionCode < laufend -> UpdateFrische.ZURUECKGESETZT

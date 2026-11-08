@@ -1,0 +1,65 @@
+package ch.brickinventoryapp.zustand.di
+
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import ch.brickinventoryapp.zustand.ui.Abmelden
+import ch.brickinventoryapp.zustand.ui.FilterAblage
+import ch.brickinventoryapp.zustand.ui.SammlungVorwaermen
+import ch.brickinventoryapp.zustand.ui.ScopeFilterAblage
+import ch.brickinventoryapp.zustand.ui.viewmodel.AppDateiLeser
+import ch.brickinventoryapp.zustand.ui.viewmodel.AppTexte
+import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
+import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
+import ch.brickinventoryapp.zustand.ui.Abmeldevorgang
+import ch.brickinventoryapp.zustand.ui.Vorwaermung
+import ch.brickinventoryapp.zustand.ui.AusgangsBeobachter
+import ch.brickinventoryapp.zustand.ui.Ausgangsmelder
+import ch.brickinventoryapp.zustand.ui.BestandsVerteiler
+import ch.brickinventoryapp.zustand.ui.Bestandssignal
+import ch.brickinventoryapp.zustand.ui.Blickfeld
+import ch.brickinventoryapp.zustand.ui.BlickfeldDienst
+import ch.brickinventoryapp.ui.ScrollMemory
+import ch.brickinventoryapp.ui.ScrollSpeicher
+import ch.brickinventoryapp.zustand.ui.Sitzung
+import ch.brickinventoryapp.zustand.ui.SitzungsDienst
+import ch.brickinventoryapp.zustand.ui.SitzungsRepository
+import ch.brickinventoryapp.zustand.ui.SitzungsZustand
+import ch.brickinventoryapp.zustand.ui.viewmodel.AppMeldungen
+import ch.brickinventoryapp.zustand.ui.viewmodel.BereichsFilter
+import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
+import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
+
+/** Texte, Dateizugriff und Filterablage der geteilten Präsentationsschicht. */
+@Module
+@InstallIn(SingletonComponent::class)
+object ZustandModule {
+
+    // Die herausgelösten ViewModels sehen Texte und Dateien nur über diese
+    // Schnittstellen — so laufen sie im JVM-Test ohne Context.
+    @Provides
+    fun provideTexte(t: AppTexte): Texte = t
+
+    @Provides
+    fun provideDateiLeser(l: AppDateiLeser): DateiLeser = l
+
+    @Provides
+    fun provideAbmeldevorgang(a: Abmelden): Abmeldevorgang = a
+
+    @Provides
+    fun provideVorwaermung(v: SammlungVorwaermen): Vorwaermung = v
+
+    @Provides
+    fun provideFilterAblage(a: ScopeFilterAblage): FilterAblage = a
+
+    // Die ViewModels sehen nur Schnittstellen (M4); die Umsetzungen sind Singletons.
+    @Provides fun provideSitzung(s: SitzungsZustand): Sitzung = s
+    @Provides fun provideSitzungsRepository(d: SitzungsDienst): SitzungsRepository = d
+    @Provides fun provideBlickfeld(b: BlickfeldDienst): Blickfeld = b
+    @Provides fun provideBestandssignal(b: BestandsVerteiler): Bestandssignal = b
+    @Provides fun provideAusgangsmelder(a: AusgangsBeobachter): Ausgangsmelder = a
+    @Provides fun provideScrollMemory(s: ScrollSpeicher): ScrollMemory = s
+    @Provides fun provideMeldungen(m: AppMeldungen): Meldungen = m
+    @Provides fun provideFilterwahl(f: BereichsFilter): Filterwahl = f
+}

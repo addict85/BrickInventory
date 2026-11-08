@@ -1,13 +1,12 @@
 Gegenprobe: Abmelden nur im ersten Schritt der Maske
 Modul: app
-Test: ch.brickinventoryapp.ZweiterFaktorMaskeTest
+Test: ch.brickinventoryapp.app.ZweiterFaktorMaskeTest
 Rot: Abmelden bleibt
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
-index b1facc4..bdb0780 100644
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
-@@ -187,7 +187,7 @@ fun ZweiterFaktorPflichtMaske(
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
+@@ -203,7 +203,7 @@ fun ZweiterFaktorPflichtMaske(
              if (zustand.laedt) LinearProgressIndicator(Modifier.fillMaxWidth())
              zustand.fehler?.let { FehlerZeile(it) }
              // Mittig in voller Breite wie „Zurück zur Anmeldung“: Eingerückt stand es neben nichts.

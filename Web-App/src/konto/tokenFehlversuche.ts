@@ -1,28 +1,39 @@
 /** Unbekannte Bearer-Token kosten Datenbankabfragen, bevor apiDrossel ein Konto
- * kennt; gezählt wird im Prozess. Ersetzte Token einer Familie zählen nicht mit,
- * damit die Wiederverwendungserkennung nicht an dieser Sperre hängt. */
-import { drosselAdresse } from './loginLimiter';
+ * kennt. Gezählt wird in rate_limit_attempts, damit mehrere Web-Prozesse dieselbe
+ * Grenze teilen; geschrieben wird nur beim Fehlversuch, die Sperre selbst merkt sich
+ * jeder Prozess, damit ein gültiger Token keine zusätzliche Abfrage kostet.
+ * Ersetzte Token einer Familie zählen nicht mit (Wiederverwendungserkennung). */
+import { drosselAdresse, zaehleAnfrage } from './loginLimiter';
+import { loescheZaehlerMitPraefix } from './repository/anmeldezaehler';
+import { meldeFehler } from '../infra/fehler';
 
 export const FEHLVERSUCH_FENSTER_MS = 60_000;
 export const FEHLVERSUCH_MAX = 60;
+const BUCKET = 'token-fehlversuch';
 
-const zaehler = new Map<string, { count: number; seit: number }>();
+/** Adresse → Ende der Sperre, nur als Abkürzung: Die Zählung steht in der Datenbank. */
+const gesperrtBis = new Map<string, number>();
 
-export function zaehleFehlversuch(ip: string | null | undefined, jetzt = Date.now()): void {
+export async function zaehleFehlversuch(ip: string | null | undefined, jetzt = Date.now()): Promise<void> {
   if (!ip) return;
-  const schluessel = drosselAdresse(ip);
-  const e = zaehler.get(schluessel);
-  if (!e || jetzt - e.seit > FEHLVERSUCH_FENSTER_MS) zaehler.set(schluessel, { count: 1, seit: jetzt });
-  else e.count++;
-  if (zaehler.size > 5000) for (const [k, v] of zaehler) if (jetzt - v.seit > FEHLVERSUCH_FENSTER_MS) zaehler.delete(k);
+  const st = await zaehleAnfrage(BUCKET, ip, FEHLVERSUCH_FENSTER_MS);
+  if (st.count <= FEHLVERSUCH_MAX) return;
+  gesperrtBis.set(drosselAdresse(ip), jetzt + Math.min(st.waitMin * 60_000, FEHLVERSUCH_FENSTER_MS));
+  if (gesperrtBis.size > 5000) for (const [k, bis] of gesperrtBis) if (bis <= jetzt) gesperrtBis.delete(k);
 }
 
 export function zuVieleFehlversuche(ip: string | null | undefined, jetzt = Date.now()): boolean {
   if (!ip) return false;
-  const e = zaehler.get(drosselAdresse(ip));
-  return !!e && jetzt - e.seit <= FEHLVERSUCH_FENSTER_MS && e.count > FEHLVERSUCH_MAX;
+  const bis = gesperrtBis.get(drosselAdresse(ip));
+  return bis !== undefined && jetzt < bis;
 }
 
-export function vergissFehlversuche(): void {
-  zaehler.clear();
+/** Nur die Abkürzung dieses Prozesses; ein anderer Prozess hat seine eigene. */
+export function vergissSperrenImProzess(): void {
+  gesperrtBis.clear();
+}
+
+export async function vergissFehlversuche(): Promise<void> {
+  gesperrtBis.clear();
+  await loescheZaehlerMitPraefix(`${BUCKET}|`).catch((e: unknown) => meldeFehler('token-fehlversuch:vergessen', e));
 }

@@ -3,8 +3,7 @@ package ch.brickinventoryapp.data.lokal
 import ch.brickinventoryapp.data.api.FigurenApi
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.api.TeileApi
-import ch.brickinventoryapp.data.model.UpdateQuantityRequest
-import ch.brickinventoryapp.data.repository.Fehlerart
+import ch.brickinventoryapp.model.data.model.UpdateQuantityRequest
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.sicherAufrufen
 import kotlinx.coroutines.sync.Mutex
@@ -38,14 +37,16 @@ fun einordnen(r: Ergebnis<*>): Sendeergebnis = when (r) {
 
 /** Beim Löschen ist „gibt es nicht (mehr)“ das Ziel: Ein 404 ist angekommen, nicht abgelehnt. */
 fun einordnenLoeschen(r: Ergebnis<*>): Sendeergebnis =
-    if (r is Ergebnis.Error && r.httpCode == 404) Sendeergebnis.Angenommen else einordnen(r)
+    if (r is Ergebnis.Error.Server && r.status == 404) Sendeergebnis.Angenommen else einordnen(r)
 
-private fun einordnenFehler(r: Ergebnis.Error): Sendeergebnis {
-    if (r.art == Fehlerart.LEERE_ANTWORT) return Sendeergebnis.Angenommen
-    if (r.transient) return Sendeergebnis.Spaeter
-    val code = r.httpCode ?: return Sendeergebnis.Spaeter
-    return if (code in 400..499 && code !in setOf(401, 408, 429)) Sendeergebnis.Abgelehnt(r.message, code)
-    else Sendeergebnis.Spaeter
+// Ohne HTTP-Status hat der Server nicht geurteilt (Netz, Abriss, Ausnahme): später noch einmal.
+private fun einordnenFehler(r: Ergebnis.Error): Sendeergebnis = when (r) {
+    is Ergebnis.Error.LeereAntwort -> Sendeergebnis.Angenommen
+    is Ergebnis.Error.Server ->
+        if (r.status in 400..499 && r.status !in setOf(401, 408, 429)) Sendeergebnis.Abgelehnt(r.message, r.status)
+        else Sendeergebnis.Spaeter
+    is Ergebnis.Error.Abgewiesen, is Ergebnis.Error.Netz, Ergebnis.Error.Zeitueberschreitung,
+    Ergebnis.Error.Abgebrochen, Ergebnis.Error.Klartext, is Ergebnis.Error.Unbekannt -> Sendeergebnis.Spaeter
 }
 
 enum class Abgleichsergebnis { FERTIG, SPAETER, NICHT_ANGEMELDET }

@@ -203,6 +203,8 @@ dependencies {
     implementation(project(":core-model"))
     implementation(project(":core-ressourcen"))
     implementation(project(":core-data"))
+    implementation(project(":core-update"))
+    implementation(project(":core-dienste"))
     implementation(project(":core-ui"))
     implementation(project(":core-zustand"))
     implementation(project(":feature-anmeldung"))

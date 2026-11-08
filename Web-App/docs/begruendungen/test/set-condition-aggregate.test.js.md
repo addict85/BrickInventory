@@ -38,82 +38,6 @@ ausserdem eine Ausformulierung unter anderem Namen, die er vorher
 durchgelassen haette.
 ```
 
-<a id="raw-stelle"></a>
-## `const raw = require('./helpers/sources').setKernQuelle();`
-
-```text
-addSet() nimmt den Zustand als sechsten Parameter. Beide Webapp-Routen
-haben ihn nicht weitergereicht: /api/sets las ihn gar nicht aus dem Body,
-/api/sets/add-stream las ihn und benutzte ihn nie. Ein als „Gebraucht"
-erfasstes Set landete dadurch als „Neu" in der Datenbank — die
-Android-API übergab ihn korrekt, die Webapp nicht.
-Seit Nachtrag 74 liegt der Anlege-Weg der Clients in der v1-Fabrik, während
-add-stream und der CSV-Import weiter in routes/sets.ts stehen. Die Regel
-(„jeder addSet-Aufruf reicht den Zustand durch") gilt für ALLE Aufrufer —
-deshalb werden beide Dateien zusammen betrachtet.
-```
-
-<a id="addsetintern"></a>
-## `const fnStart = src.indexOf('async function addSetIntern(');`
-
-```text
-Der Zustand muss VOR JEDER Preisermittlung feststehen.
-
-Diese Prüfung suchte bis zuletzt die Zeichenfolge
-`const effectiveCondition = condition ||` — also die FORMULIERUNG einer
-bestimmten Fassung. Sie brach, als die Staffelung nach src/einstellungen/settings.ts
-wanderte und `addSet()` den Zustand einmal oben für beide Zweige bestimmt.
-Die Regel war dabei nicht verletzt, im Gegenteil: Sie wird jetzt früher
-erfüllt als vorher.
-
-Geprüft wird deshalb die Reihenfolge selbst: Wo auch immer der Zustand
-bestimmt wird, es muss vor dem ERSTEN Preisabruf geschehen.
-GEMESSEN WIRD IN addSet(), nicht über den ganzen Quelltext.
-
-setKernQuelle() verkettet vier Dateien, und setService.ts enthält weitere
-Preisabrufe in anderen Funktionen — der erste steht in
-priceForNewAcquisition() und hat mit dieser Regel nichts zu tun. Ein
-indexOf über alles vergleicht Positionen quer durch fremde Funktionen und
-misst damit nichts. (Genau so ist der erste Entwurf dieser Fassung
-fehlgeschlagen.)
-
-GELESEN WIRD addSetIntern(): Seit dem 24.09. traegt addSet() nur die
-Huelle, die den Lagerort setzt (Marcos Befund vom selben Tag), und reicht
-durch. Der Rumpf mit Zustand und Preisabruf steht in addSetIntern. Das ist
-dieselbe Bewegung, die diese Regel schon einmal erwischt hat, als die
-Staffelung nach src/einstellungen/settings.ts wanderte — und wieder gilt: Die Regel
-ist nicht verletzt, nur ihr Ausschnitt war veraltet.
-```
-
-<a id="raw-stelle-2"></a>
-## `const raw = fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.`
-
-```text
-Der eigentliche Grund, warum das Durchreichen des Zustands zunächst
-wirkungslos blieb: getCurrentMarketPrice() rief getSetValue() OHNE ihn auf.
-Diese Funktion entscheidet anhand der Erfassungen — beim Anlegen eines
-neuen Sets gibt es aber noch keine, und sets.condition ist ebenfalls noch
-nicht geschrieben (die Spalte gab es damals noch; seit Migration 0032
-nicht mehr). Sie fiel damit auf 'N' zurück und lieferte den
-Neupreis, obwohl „Gebraucht" angefragt war. Der berechnete effectiveCond
-wurde nur im unerreichbaren Rückfall darunter benutzt.
-Fundort seit Nachtrag 125: src/finanzen/marketPrice.ts. Die Funktion hatte sieben
-Aufrufer, von denen keiner sie importieren konnte, solange sie im Router
-lag. Die AUSSAGE dieser Prüfung ist unverändert.
-```
-
-<a id="applymanualcondition"></a>
-## `const anfang = src.indexOf('async function applyManualCondition');`
-
-```text
-Dieselbe Regel wie getSetConditionAggregate: eine gebrauchte Erfassung
-genügt. Ohne den dritten Parameter — siehe die Begruendung oben.
-Der Ausschnitt endet jetzt an der Funktion selbst, nicht an der nächsten:
-applyManualCondition steht seit Nachtrag 133 in src/bestand/gemeinsam.ts,
-getManualParts in src/teile/abfragen.ts — die Reihenfolge im
-zusammengefügten Quelltext ist damit eine andere.
-```
-
 <a id="src-stelle"></a>
 ## `const src = fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.`
 
@@ -209,40 +133,6 @@ Neupreis als Kaufpreis, weil die anschliessende Preisabfrage für 'U' noch
 nichts im Cache fand und auf den gerade gecachten Neupreis auswich.
 Gemeldeter Fall: CSV-Zeile "10214-1,1,,U,01.08.2026" (kein Preis, Zustand
 U) bekam CHF 216.24 (den Neupreis) statt CHF 135.11 (Gebraucht).
-```
-
-<a id="src-stelle-3"></a>
-## `const src = require('./helpers/sources').finanzQuelle();`
-
-```text
-Die SELECT-Abfrage in computePnl (finance/pnl → Galerie-Kachel und
-Detail-Dialog) selektierte kein acq_count/used_count. effectiveCondition()
-liest genau diese Felder; ohne sie war set.acq_count immer undefined,
-parseInt(undefined) ergab NaN, und die Funktion fiel IMMER auf die
-damalige Zustands-Spalte der sets-Zeile zurück — unabhängig davon, was die
-Erfassungen tatsächlich sagten. Bei einem veralteten Spaltenwert oder
-gemischten Erfassungen (1× Neu, 1× Gebraucht) zeigte der P&L-Pfad einen
-anderen Marktpreis als computeSetsValuation() (Finanzen-Reiter), die das
-schon korrekt machte.
-
-Seit Migration 0032 gibt es die Spalte nicht mehr. Fehlten die Zähler
-jetzt, wäre jedes Set unbemerkt „neu" — derselbe falsche Marktpreis, nur
-ohne zweite Wahrheit als Erklärung. Die Prüfung bleibt deshalb stehen.
-```
-
-<a id="stelle-3"></a>
-## `assert.match(require('./helpers/sources').funktionsRumpf(src, 'compute`
-
-```text
-Fenster grosszügiger: Der Blickfeld-Kommentar (Haushalt) steht am
-Funktionsanfang und hat die geprüften Zeilen nach hinten geschoben. Ein
-knapp bemessener Ausschnitt macht die Prüfung von jeder eingefügten Zeile
-abhängig und meldet dann einen Fehler, den es nicht gibt.
-4600 statt 3200 Zeichen: Die Begruendungen an der Abfrage sind mit
-Migration 0032 laenger geworden und haben `acq_count` aus dem Fenster
-geschoben. Genau die Falle, die der Kommentar darueber beschreibt — ein
-knapp bemessener Ausschnitt meldet einen Fehler, den es nicht gibt.
-Die Abfrage steht im Repository (setsMitErfassungen); computePnl ruft sie.
 ```
 
 <a id="src-stelle-4"></a>

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.model.data.model.*
 import ch.brickinventoryapp.ressourcen.R
 
 /** Die Designs mit ihrem Namen — dieselbe Liste wie ERLAUBTE_DESIGNS und DESIGNS auf dem Server. */

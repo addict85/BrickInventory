@@ -4,6 +4,7 @@
 import * as db from '../../db/database';
 import { holeGuthaben, BotSchutz, LAND_STANDARD, verdecke, type Abruf, type Guthaben } from './gutscheinGuthaben';
 import { Fachfehler } from '../infra/fehlerTexte';
+import { einzeilig } from '../infra/fehler';
 import * as repo from './repository/guthabenSchranke';
 
 export const ABSTAND_SEK = 30;
@@ -65,6 +66,7 @@ export async function vergesseSchranke(): Promise<void> {
   await repo.oeffneSchranke();
 }
 
+// Der einzige Weg zur Abfrage, damit niemand die Schranke umgeht.
 // Ausführlich: docs/begruendungen/src/gutscheine/gutscheinGuthabenSchranke.ts.md#frageguthabenab
 export async function frageGuthabenAb(
   uid: number, nummer: string, pin: string, opt: { locale?: string; abruf?: Abruf } = {},
@@ -83,12 +85,12 @@ export async function frageGuthabenAb(
   } catch (e) {
     if (e instanceof BotSchutz) {
       const wartenSek = await sperreWegenBotschutz();
-      console.warn(`[guthaben] Bot-Schutz — ${BOTSCHUTZ_PAUSE_MIN} Minuten Pause: ${e.message}`);
+      console.warn(einzeilig(`[guthaben] Bot-Schutz — ${BOTSCHUTZ_PAUSE_MIN} Minuten Pause: ${e.message}`));
       return { art: 'gesperrt', grund: 'botschutz', wartenSek };
     }
     // Ein Fehler der Gegenseite ist kein Serverfehler: Wer gefragt hat, soll den Grund lesen.
     const grund = verdecke(String((e as Error)?.message || e), nummer, pin);
-    console.warn(`[guthaben] Abfrage gescheitert: ${grund}`);
+    console.warn(einzeilig(`[guthaben] Abfrage gescheitert: ${grund}`));
     throw new Fachfehler('guthaben_fehlgeschlagen', 502, { grund });
   }
 }

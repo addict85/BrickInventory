@@ -1,13 +1,12 @@
 Gegenprobe: Kopierzeilen der Gutscheine ohne Mindesthöhe
 Modul: app
-Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
 Rot: Gutschein-Knoepfe
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt
-index fdd124a..a20568d 100644
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt
-@@ -452,7 +452,7 @@ private fun KopierZeile(
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
+@@ -514,7 +514,7 @@ private fun KopierZeile(
      inhalt: @Composable RowScope.() -> Unit,
  ) {
      Row(

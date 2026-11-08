@@ -1,13 +1,12 @@
 Gegenprobe: Eine exportierte Komponente ausserhalb der Positivliste geht durch
 Modul: app
-Test: ch.brickinventoryapp.ManifestPruefenTest
+Test: ch.brickinventoryapp.app.ManifestPruefenTest
 Rot: eine fremde exportierte Komponente
 
 diff --git a/Android-App/tools/manifest-pruefen.py b/Android-App/tools/manifest-pruefen.py
-index 547ee2f..424319f 100644
 --- a/Android-App/tools/manifest-pruefen.py
 +++ b/Android-App/tools/manifest-pruefen.py
-@@ -81,7 +81,7 @@ def pruefe(xmltree, erlaubt):
+@@ -94,7 +94,7 @@ def pruefe(xmltree, erlaubt, rechte=frozenset()):
                  continue
              name, recht = a.get('name', '?'), a.get('permission')
              if name not in erlaubt:

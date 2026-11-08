@@ -1,12 +1,11 @@
 Gegenprobe: Notfallcodes der Pflichtmaske wieder ohne vorgelesenAls (als Wort gelesen)
 Modul: app
-Test: ch.brickinventoryapp.BarrierefreiheitBefundeTest
+Test: ch.brickinventoryapp.app.BarrierefreiheitBefundeTest
 Rot: N5 Notfallcodes werden Zeichen fuer Zeichen vorgelesen
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
-index dee58e9..181d111 100644
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
 @@ -118,7 +118,7 @@ fun ZweiterFaktorPflichtMaske(
                          AnmeldeTitel(stringResource(R.string.zf_pflicht_codes_titel))
                          Text(stringResource(R.string.zf_codes_hint), style = MaterialTheme.typography.bodyMedium)

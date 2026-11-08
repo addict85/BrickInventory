@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.ui.model.PreisDiagrammAnsicht
-import ch.brickinventoryapp.util.appNumberLocale
-import ch.brickinventoryapp.util.fmtDatum
+import ch.brickinventoryapp.model.ui.model.PreisDiagrammAnsicht
+import ch.brickinventoryapp.ui.util.appNumberLocale
+import ch.brickinventoryapp.model.util.fmtDatum
 
 /**
  * Rechnen für das Preisdiagramm, ohne Compose und damit prüfbar. Die vom Server

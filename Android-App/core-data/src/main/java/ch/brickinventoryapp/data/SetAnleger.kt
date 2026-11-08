@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.model.AddSetResponse
+import ch.brickinventoryapp.model.data.model.AddSetResponse
 import kotlinx.coroutines.flow.Flow
 
 /**

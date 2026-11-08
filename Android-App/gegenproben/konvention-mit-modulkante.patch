@@ -1,13 +1,12 @@
 Gegenprobe: die Bereichs-Konvention trägt selbst eine Modulkante (core-ui) ein
 Modul: app
-Test: ch.brickinventoryapp.ModulgrenzenTest
+Test: ch.brickinventoryapp.app.ModulgrenzenTest
 Rot: Konventionen tragen keine Modulkanten ein
 
 diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Konventionen.kt b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Konventionen.kt
-index 7b48cf1..96db975 100644
 --- a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Konventionen.kt
 +++ b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Konventionen.kt
-@@ -88,5 +88,6 @@ class AndroidFeatureKonvention : Plugin<Project> {
+@@ -137,5 +137,6 @@ class AndroidFeatureKonvention : Plugin<Project> {
          target.pluginManager.apply(AndroidHiltKonvention::class.java)
          target.pluginManager.apply(AndroidUnittestKonvention::class.java)
          target.bibliothek("implementation", "androidx.core.ktx")

@@ -1,13 +1,12 @@
 Gegenprobe: Der CSV-Balken entscheidet erst nach dem Überschreiben, „vorher“ ist dann schon der neue Zustand
 Modul: core-zustand
-Test: ch.brickinventoryapp.CsvImportViewModelTest
+Test: ch.brickinventoryapp.zustand.CsvImportViewModelTest
 Rot: ein laufender Import startet den Dienst einmal
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/CsvImportViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/CsvImportViewModel.kt
-index 4bdd5d9..4225b9c 100644
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/CsvImportViewModel.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/CsvImportViewModel.kt
-@@ -107,7 +107,7 @@ class CsvImportViewModel @Inject constructor(
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/CsvImportViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/CsvImportViewModel.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/CsvImportViewModel.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/CsvImportViewModel.kt
+@@ -74,7 +74,7 @@ class CsvImportViewModel @Inject constructor(
  
      private suspend fun handleCsvStatus(s: CsvImportStandAnsicht) {
          // Vor dem Überschreiben entscheiden — danach wäre „vorher“ schon der neue Zustand.

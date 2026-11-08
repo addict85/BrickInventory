@@ -1,10 +1,9 @@
 Gegenprobe: Sichtschutz ohne Schutz vor Überlagerung (Stand vor sec8 H8)
 Modul: app
-Test: ch.brickinventoryapp.GeraeteSchutzTest
+Test: ch.brickinventoryapp.app.GeraeteSchutzTest
 Rot: heikle Seiten sind vor Ueberlagerung
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt
-index 43bf367..93e665a 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt
 @@ -19,7 +19,6 @@ import ch.brickinventoryapp.ressourcen.R

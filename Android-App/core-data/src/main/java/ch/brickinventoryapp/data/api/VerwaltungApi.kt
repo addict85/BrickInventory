@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data.api
 
-import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.model.data.model.*
 import retrofit2.Response
 import retrofit2.http.*
-import ch.brickinventoryapp.data.model.StartupStatus
+import ch.brickinventoryapp.model.data.model.StartupStatus
 
 /**
  * Betrieb des Servers und Datenpflege: CSV-Import, Protokoll, Startzustand,

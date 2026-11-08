@@ -1,13 +1,12 @@
 Gegenprobe: Der Filter für teilweise verdeckte Fenster wird nicht angelegt
 Modul: app
-Test: ch.brickinventoryapp.GeraeteSchutzTest
+Test: ch.brickinventoryapp.app.GeraeteSchutzTest
 Rot: ein teilweise verdecktes Fenster
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ueberdeckungsschutz.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ueberdeckungsschutz.kt
-index 25cd631..1091707 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ueberdeckungsschutz.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ueberdeckungsschutz.kt
-@@ -29,7 +29,6 @@ fun Ueberdeckungsschutz() {
+@@ -25,7 +25,6 @@ fun Ueberdeckungsschutz() {
          fun anzahl() = ziel.getTag(R.id.ueberdeckung_anzahl) as? Int ?: 0
          ziel.setTag(R.id.ueberdeckung_anzahl, anzahl() + 1)
          ziel.filterTouchesWhenObscured = true

@@ -1,13 +1,12 @@
 Gegenprobe: Die Gutscheinnummer wird ohne Gerätesperre kopiert
 Modul: app
-Test: ch.brickinventoryapp.AblaufTest
+Test: ch.brickinventoryapp.app.AblaufTest
 Rot: ohne Geraetesperre wird auch die Nummer nicht kopiert
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt
-index 3c822bb..c033f3d 100644
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt
-@@ -190,7 +190,7 @@ fun GutscheineCard(
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
+@@ -212,7 +212,7 @@ fun GutscheineCard(
                  onBearbeiten = { geschuetzt { onBearbeiten(g.id) } },
                  onLoeschen = { geschuetzt { onLoeschen(g.id) } },
                  onPdfOeffnen = { geschuetzt { onPdfOeffnen(g.id) } },

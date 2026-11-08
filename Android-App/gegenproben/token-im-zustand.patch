@@ -1,12 +1,11 @@
 Gegenprobe: Der Token steht wieder als Feld im gemeinsamen UI-Zustand
 Modul: core-zustand
-Test: ch.brickinventoryapp.KeinTokenImZustandTest
+Test: ch.brickinventoryapp.zustand.KeinTokenImZustandTest
 Rot: kein Feld von AppUiState traegt einen Token
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/ZustandSitzung.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/ZustandSitzung.kt
-index 40ae966..c98b084 100644
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/ZustandSitzung.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/ZustandSitzung.kt
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/ZustandSitzung.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/ZustandSitzung.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/ZustandSitzung.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/ZustandSitzung.kt
 @@ -24,6 +24,7 @@ data class AppUiState(
      val isAdmin: Boolean = false,
      // Kein Token hier: Ihn liest allein der Interceptor (TokenAblage); im

@@ -16,7 +16,7 @@ type ExpressAntwort = {
   send(body: string | Buffer): unknown;
 };
 
-// Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#entschaerfe
+// Ein Feld mit = führte Excel beim Öffnen aus. Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#entschaerfe
 export function entschaerfe(s: string): string {
   if (!FORMEL_START.test(s)) return s;
   if (/^\s*-?\d+([.,]\d+)?\s*$/.test(s)) return s;   // reine Zahl, auch negativ
@@ -136,6 +136,7 @@ export function uebersprungenHinweis(zeilen: number[], sprache: Sprache = 'de'):
   return fehlerText('csv_uebersprungen', sprache, { anzahl: zeilen.length, zeilen: zeilenListe(zeilen) });
 }
 
+// Die gemeinsamen Spalten einmal gelesen, damit jede Behebung alle Importe trifft.
 // Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#csvgemeinsamefelder
 export function csvGemeinsameFelder(row: any): {
   menge: number;

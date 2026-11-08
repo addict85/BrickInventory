@@ -3,13 +3,25 @@
  * haben (fehlende Übersetzungen fallen sonst erst im UI als roher Key auf),
  * und Platzhalter ({name}) müssen in beiden Sprachen übereinstimmen.
  *
- * Läuft ohne Browser: i18n.js wird in einem Sandbox-Kontext ausgeführt.
+ * Läuft ohne Browser: i18n.js wird in einem Sandbox-Kontext ausgeführt; die
+ * Anzeige der Farbnamen am echten Bündel in jsdom.
+ *
+ * Gegenproben (08.11.2026 gemessen, je einzeln):
+ *   A  in renderColorDropdown `${c.name}` statt colorName(c.name) → rot:
+ *      „Farbnamen: deutsch angezeigt, englisch gespeichert“
+ *   B  die Gruppenüberschrift der Teile wieder `${g.color}` → rot: dieselbe Prüfung
+ *   C  colorName() ohne `if (LANG !== 'de') return en;` → rot: dieselbe
+ *      Prüfung (englische Oberfläche)
+ *   D  openManDetail mit `imgUrl(rawImgSrc, true)` (Vorschau) statt
+ *      imgUrl(fullUrl(…), false) → rot: „der Kaufpreis-Detail-Dialog …“.
+ *      `fullUrl(rawImgSrc)` allein bleibt grün: fullUrl() leitet eine
+ *      CDN-Adresse inzwischen selbst über den Proxy (bilder-proxy-oberflaeche D).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const vm = require('node:vm');
+const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
 // Die Wörterbücher liegen seit der Aufteilung in public/locales/{de,en}.js —
 // index.html lädt nur die aktive Sprache, den Rest holt loadLang() nach.
@@ -94,74 +106,6 @@ test('Katalog-Schlüssel vorhanden', () => {
   }
 });
 
-test('Farbnamen werden im Deutschen übersetzt, die Daten bleiben englisch', () => {
-  // Rebrickable liefert Farbnamen ausschliesslich englisch; sie stehen so in
-  // der Datenbank und werden für BrickLink-Abfragen gebraucht. Übersetzt wird
-  // deshalb nur die Anzeige.
-  const i18n = fs.readFileSync(path.join(__dirname, '..', 'public', 'i18n.js'), 'utf8');
-  assert.match(i18n, /function colorName\(en\)/, 'Übersetzer fehlt');
-  assert.match(i18n, /if \(LANG !== 'de'\) return en;/,
-    'In anderen Sprachen muss der Name unverändert bleiben');
-
-  // Wortschatz statt Liste aller ~200 Farben: neue Farben ergeben automatisch
-  // etwas Lesbares, unbekannte Wörter bleiben englisch.
-  assert.match(i18n, /const COLOR_WORDS_DE = \{/, 'Wortschatz fehlt');
-  assert.match(i18n, /const COLOR_PREFIX_DE = new Set/,
-    'Ohne Zusammenschreibung entstünde „Dunkel Bläulich Grau"');
-
-  // Dass der Filterwert englisch bleibt und nur die Beschriftung übersetzt
-  // wird, prüft test/leerzustand-teile-figuren.test.js am Auswahlfeld selbst.
-  const parts = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '03-parts.js'), 'utf8');
-  // Angezeigt wird übersetzt
-  assert.ok(parts.includes('colorName(c.color_name)'), 'Filter-Beschriftung nicht übersetzt');
-  assert.ok(parts.includes('colorName(p.color_name)'), 'Teile-Anzeige nicht übersetzt');
-  assert.ok(parts.includes('colorName(g.color)'), 'Gruppenüberschrift nicht übersetzt');
-
-  // KEINE angezeigte Farbe darf mehr roh durchgereicht werden. Genau das war
-  // beim ersten Anlauf übersehen worden: Die Filterliste stand auf Deutsch,
-  // die Gruppenüberschrift darüber weiter auf Englisch — und dieselben Stellen
-  // gab es in Finanzen und Minifiguren.
-  for (const f of ['03-parts.js', '04-finance.js', '06-minifigs.js']) {
-    const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', f), 'utf8');
-    const roh = [...src.matchAll(/esc\((\w+)\.color_name\)/g)]
-      .filter(m => !src.slice(Math.max(0, m.index - 12), m.index).includes('colorName'));
-    assert.deepEqual(roh.map(m => m[0]), [],
-      `${f}: Farbname wird ohne colorName() angezeigt`);
-  }
-});
-
-test('die Farbauswahl im Formular „Teil erfassen" zeigt deutsche Namen', () => {
-  // data-name muss englisch bleiben — es wird beim Speichern als
-  // parts.color_name übernommen und für BrickLink-Abgleiche gebraucht.
-  // Übersetzt wird nur der sichtbare Options-Text.
-  const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '03-parts.js'), 'utf8');
-  const fn = src.slice(src.indexOf('function renderColorDropdown'),
-                       src.indexOf('function renderColorDropdown') + 900);
-  assert.match(fn, />\$\{(?:esc\()?colorName\(c\.name\)\)?\}<\/option>/,
-    'Der sichtbare Options-Text muss übersetzt werden');
-  assert.match(fn, /data-name="\$\{(?:esc\()?\(c\.name\|\|''\)\.replace/,
-    'data-name muss den englischen Namen behalten — er geht ans Backend');
-});
-
-test('der manuelle Kaufpreis-Detail-Dialog lädt Teile/Minifiguren-Bilder über den Proxy', () => {
-  // Gemeldet: Detailbilder von Teilen/Minifiguren kamen weiterhin direkt vom
-  // CDN. Der vorige Fix deckte nur den Kachel-Zoom ab (03-parts.js,
-  // 06-minifigs.js) — dieser eigenständige Dialog (man-detail-img, geöffnet
-  // beim Anklicken eines manuell erfassten Teils/einer Minifigur zum …
-  // Ausführlich: docs/begruendungen/test/i18n.test.js.md#src-stelle-2
-  const src = require('./helpers/sources').adminQuelle();
-  // Fenster grosszügig: Zwischen der Bild-Variablen und der Zuweisung stehen
-  // inzwischen der Cache-Nachladepfad und Kommentare. Ein knapp bemessener
-  // Ausschnitt macht die Prüfung von jeder Zeile abhängig, die jemand
-  // dazwischen einfügt — und meldet dann einen Fehler, den es nicht gibt.
-  const idx = src.indexOf("G('man-detail-img')");
-  const fn = src.slice(idx, idx + 3000);
-  assert.match(fn, /const imgSrc = rawImgSrc \? imgUrl\(fullUrl\(rawImgSrc\), false\) : '';/,
-    'Das Bild muss über imgUrl(fullUrl(...), false) laufen, nicht über fullUrl(...) allein');
-  assert.doesNotMatch(fn, /const imgSrc = fullUrl\(item\.image_url \|\| item\.image_local \|\| ''\);/,
-    'Die alte, unproxierte Zuweisung darf nicht mehr vorkommen');
-});
-
 test('der Papierkorb im Brick-Design ist von Anfang an weiss hinterlegt, nicht erst beim direkten Überfahren', () => {
   // Gemeldet per Screenshot: Beim Überfahren der Kachel erschien der
   // Papierkorb nur schwach (rgba(255,255,255,.22)) — erst beim direkten
@@ -175,4 +119,45 @@ test('der Papierkorb im Brick-Design ist von Anfang an weiss hinterlegt, nicht e
     'Der schwache Ruhezustand darf nicht mehr vorkommen');
   assert.match(fn, /\[data-theme="brick"\] \.sc \.delbtn\{\s*background:#fff;/,
     'Der Ruhezustand muss bereits voll weiss hinterlegt sein');
+});
+
+const GRAU = 'Dark Bluish Gray';
+const FARBEN = {
+  '/v1/parts': { success: true, total: 1, page: 1, page_size: 100, parts: [
+    { part_number: '3001', part_name: 'Brick 2 x 4', color_id: 72, color_name: GRAU, color_hex: '6C6E68', total_quantity: 2 }] },
+  '/v1/parts/colors': { success: true, colors: [{ color_name: GRAU, color_hex: '6C6E68', unique_parts: 1, total_quantity: 2 }] },
+  '/v1/parts/brick-colors': { success: true, colors: [{ id: 72, name: GRAU, hex: '6C6E68' }] },
+};
+
+test('Farbnamen: deutsch angezeigt, englisch gespeichert und gefiltert', async () => {
+  for (const [sprache, sichtbar] of [['de', 'Dunkelbläulichgrau'], ['en', GRAU]]) {
+    const { w, d } = await oeffneOberflaeche(FARBEN, { sprache });
+    try {
+      await reiter(w, 'parts');
+      assert.ok(await warte(() => d.querySelector('#ap-color-select option[data-name]') && d.querySelector('#parts-main .group-title')));
+      const option = d.querySelector('#ap-color-select option[data-name]');
+      // data-name geht beim Speichern ans Backend und an BrickLink: englisch.
+      assert.deepEqual([option.textContent.trim(), option.dataset.name], [sichtbar, GRAU], sprache);
+      assert.equal(d.querySelector('#parts-main .group-title').textContent.trim(), sichtbar, `${sprache}: Gruppenüberschrift`);
+      assert.match(d.querySelector('#parts-main .part-color').textContent, new RegExp(sichtbar), `${sprache}: Kachel`);
+      const filter = [...d.querySelectorAll('#parts-color option')].find(o => o.value === GRAU);
+      assert.ok(filter, 'Der Filterwert bleibt englisch');
+      assert.match(filter.textContent, new RegExp(`^${sichtbar} `), `${sprache}: Filterbeschriftung`);
+    } finally { w.close(); }
+  }
+});
+
+test('der Kaufpreis-Detail-Dialog lädt das Teilebild in voller Grösse über den Proxy', async () => {
+  const CDN = 'https://cdn.rebrickable.com/media/parts/elements/300121.jpg';
+  const { w, d } = await oeffneOberflaeche({ ...FARBEN,
+    '/v1/parts/manual': { success: true, parts: [{ part_number: '3002', part_name: 'Brick 2 x 3', color_id: 72,
+      color_name: GRAU, color_hex: '6C6E68', quantity: 1, image_url: CDN }] } });
+  try {
+    await reiter(w, 'parts');
+    assert.ok(await warte(() => d.querySelector('#manual-parts-list [data-click="openManDetail"]')));
+    d.querySelector('#manual-parts-list [data-click="openManDetail"]').click();
+    assert.ok(await warte(() => d.getElementById('man-detail-img').getAttribute('src')));
+    assert.equal(d.getElementById('man-detail-img').getAttribute('src'), `/api/v1/img-proxy?url=${encodeURIComponent(CDN)}`);
+    assert.match(d.getElementById('man-detail-sub').textContent, /Dunkelbläulichgrau/);
+  } finally { w.close(); }
 });

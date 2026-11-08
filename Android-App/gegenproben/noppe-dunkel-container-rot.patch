@@ -1,13 +1,12 @@
 Gegenprobe: Noppe im Dunkeln wieder mit dem roten primaryContainer der Tokens (#2a1415)
 Modul: core-ui
-Test: ch.brickinventoryapp.RotNurFuerWarnungTest
+Test: ch.brickinventoryapp.ui.RotNurFuerWarnungTest
 Rot: Wert- und Zustandsflaechen sind nie rot
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
-index 82a1a1c..2a68ed2 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
-@@ -333,9 +333,7 @@ internal fun farbschema(theme: String, dunkel: Boolean = false): ColorScheme =
+@@ -334,9 +334,7 @@ internal fun farbschema(theme: String, dunkel: Boolean = false): ColorScheme =
          // Wie hell: Das Noppe-Rot ist im Dunkeln kaum von der Fehlerfarbe zu unterscheiden.
          // Hauptfarbe wird das Blau der Diagrammlinie, die Container nehmen die blauen Stufen
          // von classic, und der Akzent bleibt das Bernstein der Basis.

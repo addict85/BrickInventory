@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.di.SseClient
-import ch.brickinventoryapp.data.model.AddSetResponse
-import ch.brickinventoryapp.di.BrickDispatchers
-import ch.brickinventoryapp.di.Dispatcher
+import ch.brickinventoryapp.data.di.SseClient
+import ch.brickinventoryapp.model.data.model.AddSetResponse
+import ch.brickinventoryapp.data.di.BrickDispatchers
+import ch.brickinventoryapp.data.di.Dispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow

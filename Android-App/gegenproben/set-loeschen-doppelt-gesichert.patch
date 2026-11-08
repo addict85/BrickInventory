@@ -1,13 +1,12 @@
 Gegenprobe: Papierkorb im Set-Detail fragt auch mit Rückgängig nach
 Modul: app
-Test: ch.brickinventoryapp.AblaufTest
+Test: ch.brickinventoryapp.app.AblaufTest
 Rot: ein Set loescht mit Rueckgaengig sofort
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailScreen.kt
-index 51c2899..3db7de0 100644
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailScreen.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailScreen.kt
-@@ -145,7 +145,7 @@ fun SetDetailScreen(
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailScreen.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailScreen.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailScreen.kt
+@@ -149,7 +149,7 @@ fun SetDetailScreen(
                      MitTooltip(stringResource(R.string.cd_set_delete, set?.name ?: setNumber)) {
                          IconButton(onClick = {
                              haptik.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)

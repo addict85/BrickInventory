@@ -14,7 +14,7 @@ import androidx.compose.ui.text.withStyle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
-import ch.brickinventoryapp.util.fmtInt
+import ch.brickinventoryapp.ui.util.fmtInt
 
 /**
  * Eine Kennzahl als Text: Zahl fett, Bezeichnung daneben. Keine eigene Fläche — die

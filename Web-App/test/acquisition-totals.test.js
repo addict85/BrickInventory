@@ -2,6 +2,9 @@
  * Die Summenzeile der Erfassungen rechnet der SERVER — einmal.
  * Ausführlich: docs/begruendungen/test/acquisition-totals.test.js.md#kopf
  *
+ * Gegenprobe (08.11.2026 gemessen): acqSummary() liest totals.quantity nicht
+ * (`const menge = 0`) bzw. summenText() rechnet nicht mit totals.amount → rot:
+ * „keine Oberfläche rechnet die Summe noch einmal“.
  * Gegenprobe (durchgeführt): `amount` in acquisitionTotals() auf 0 statt null
  * bei fehlenden Preisen → der Randfall-Teilschritt wird rot. Und ein
  * eingefügtes `acqs.reduce(...)` in 07-admin.js → der Regel-Teilschritt.
@@ -15,7 +18,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { ohneKommentare } = require('./helpers/sources');
+const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
@@ -111,22 +114,27 @@ test('alle drei Erfassungs-Routen liefern die Summe mit', { concurrency: 1 }, as
   }
 });
 
-test('keine Oberfläche rechnet die Summe noch einmal', () => {
-  // Fundort seit einer früheren Runde: Das Kaufpreis-Modal liegt in
-  // js/13-acquisition-modals.js. Der Helfer nimmt beide Dateien, damit die
-  // Prüfung ihre Aussage behält, egal wo die Zeile künftig steht.
-  const js = ohneKommentare(require('./helpers/sources').adminQuelle());
-  // Genau die vier Muster, die vorher dort standen.
-  for (const muster of [
-    /reduce\(\([^)]*\)\s*=>\s*[a-z]\s*\+\s*\(?[a-z]\.(purchase_price|unit_price)/,
-    /reduce\(\([^)]*\)\s*=>\s*[a-z]\s*\+\s*[a-z]\.quantity/,
-  ]) {
-    assert.doesNotMatch(js, muster,
-      'Die Summenzeile wird im Frontend wieder selbst gerechnet — sie kommt als ' +
-      '`totals` vom Server (src/bestand/acquisitions.ts)');
-  }
-  assert.match(js, /function acqSummary\(totals\)/,
-    'Es soll EINEN Zeichner für die Summenzeile geben, nicht zwei Fassungen');
-  assert.match(js, /totals\?\.amount/,
-    'Der Zeichner muss den Serverwert lesen');
+test('keine Oberfläche rechnet die Summe noch einmal', async () => {
+  // Der Server schickt die Summenzeile als `totals`; hier bewusst NICHT die Summe der Zeilen
+  // (10 + 20 bei Menge 2): Was die Oberfläche zeigt, muss vom Server stammen.
+  const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 2 };
+  const zeile = (id, preis) => ({ id, quantity: 1, purchase_price: preis, condition: 'N', currency: 'EUR',
+    created_at: '2026-10-01T10:00:00Z', user_id: 1 });
+  const { d } = await oeffneOberflaeche({
+    '/v1/sets': { success: true, total: 1, themes: [], sets: [SET] },
+    '/v1/sets/10294-1': { success: true, set: SET },
+    '/v1/sets/10294-1/acquisitions': { success: true, acquisitions: [zeile(1, 10), zeile(2, 20)],
+      totals: { quantity: 5, amount: 99, currency: 'EUR' } },
+  }).then(async (o) => {
+    assert.ok(await warte(() => o.d.querySelector('#gallery [data-click="openModal"]')));
+    o.d.querySelector('#gallery [data-click="openModal"]').click();
+    assert.ok(await warte(() => o.d.querySelector('[data-click="openAcqModal"]')), 'Kein Knopf zu den Kaufpreisen');
+    o.d.querySelector('[data-click="openAcqModal"]').click();
+    assert.ok(await warte(() => o.d.getElementById('acq-total-price')), 'Keine Summenzeile');
+    return o;
+  });
+  try {
+    assert.equal(d.getElementById('acq-total-qty').textContent.trim(), '5');
+    assert.match(d.getElementById('acq-total-price').textContent, /99[.,]00/);
+  } finally { d.defaultView.close(); }
 });

@@ -1,18 +1,17 @@
 Gegenprobe: INVARIANTEN.md nennt eine Quelldatei, die es nicht gibt
 Modul: app
-Test: ch.brickinventoryapp.InvariantenVerweiseTest
+Test: ch.brickinventoryapp.app.InvariantenVerweiseTest
 Rot: jede in INVARIANTEN genannte Quelldatei und Testklasse gibt es
 
 diff --git a/Android-App/INVARIANTEN.md b/Android-App/INVARIANTEN.md
-index a212d89..81b4f13 100644
 --- a/Android-App/INVARIANTEN.md
 +++ b/Android-App/INVARIANTEN.md
 @@ -586,7 +586,7 @@ prüft, dass jeder projekteigene Import ein Ziel hat.
  
  ## Endlos-Scroll: Sperre vor dem launch, Schlüssel beim Anhängen sieben
  
--**Datei:** `ui/Galerie.kt` · **Test:** `GalerieTest` („zwei Nachlade-Aufrufe im selben Takt holen Seite 2 nur einmal“)
-+**Datei:** `ui/GalleryFeature.kt` · **Test:** `GalerieTest` („zwei Nachlade-Aufrufe im selben Takt holen Seite 2 nur einmal“)
+-**Datei:** `sammlung/ui/Galerie.kt` · **Test:** `GalerieTest` („zwei Nachlade-Aufrufe im selben Takt holen Seite 2 nur einmal“)
++**Datei:** `sammlung/ui/GalleryFeature.kt` · **Test:** `GalerieTest` („zwei Nachlade-Aufrufe im selben Takt holen Seite 2 nur einmal“)
  
  Der Auslöser hängt an einem `snapshotFlow`, dessen `LaunchedEffect` bei jeder
  Änderung von `sets.size` neu startet und sofort wieder auswertet — beim

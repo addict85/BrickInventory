@@ -181,8 +181,8 @@ function reineQuelltextTests() {
 }
 
 test('reine Quelltext-Tests werden weniger, nie mehr', () => {
-  // Gemessen 84 am 06.11.2026; wie die Zahl gesunken ist, steht im git log.
-  const SCHRANKE = 84;
+  // Gemessen 72 am 08.11.2026; wie die Zahl gesunken ist, steht im git log.
+  const SCHRANKE = 72;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
   const ist = reineQuelltextTests();
@@ -201,7 +201,8 @@ test('reine Quelltext-Tests werden weniger, nie mehr', () => {
  * zählt, wenn er Quelltext liest (direkt oder über eine Quelltext-Variable der
  * Datei) und nichts ausführt. Zählweise wie im Prüfbericht arch17-web-b.
  */
-const FALL_FUEHRT_AUS = /buildAndRequire|testServer|spawn\(|spawnSync\(|execFileSync\(|fetch\(|jsdom|JSDOM|new Function|vm\.|import\(|require\(.*dist|\.request\(|agent\.|[oO]berflaeche\(|browser|seite\.|page\.|await |starte|lade\w*\(/;
+// `_req(…)` ist der require-Helfer aus buildAndRequire(): ein Aufruf lädt das gebaute Modul aus dist/.
+const FALL_FUEHRT_AUS = /buildAndRequire|\b_req\w*\(|testServer|spawn\(|spawnSync\(|execFileSync\(|fetch\(|jsdom|JSDOM|new Function|vm\.|import\(|require\(.*dist|\.request\(|agent\.|[oO]berflaeche\(|browser|seite\.|page\.|await |starte|lade\w*\(/;
 const FALL_LIEST = /readFileSync|Quelle\(|serverOnly|serverAll|i18nAll|localeSource|ohneKommentare/;
 function quelltextFaelle() {
   let n = 0, alle = 0;
@@ -221,9 +222,10 @@ function quelltextFaelle() {
 }
 
 test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
-  // Gemessen 610 am 06.11.2026 (Prüfbericht: 632; die Ratschen selbst zählen mit).
+  // Gemessen 495 am 08.11.2026 (Prüfbericht: 632; die Ratschen selbst zählen mit).
+  // Gegenprobe (08.11.2026): `\b_req\w*\(` aus FALL_FUEHRT_AUS entfernt → rot (574).
   // Gegenprobe (05.11.2026): parts-paging.test.js auf den Stand vor den jsdom-Tests → rot.
-  const SCHRANKE = 610;
+  const SCHRANKE = 495;
   const { n, alle } = quelltextFaelle();
   assert.ok(alle > 2000, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
   assert.ok(n <= SCHRANKE, `${n} Testfälle lesen nur Quelltext, erlaubt sind ${SCHRANKE}. ` +
@@ -260,7 +262,7 @@ test('feste Wartezeiten in Tests werden weniger, nie mehr', () => {
  */
 function emojiInDerOberflaeche() {
   const web = path.join(WEB, 'public');
-  const ohne = s => s.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
+  const ohne = s => require('./helpers/sources').ohneHtmlKommentare(s).replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/(^|[^:'"`])\/\/[^\n]*/g, '$1');
   const dateien = [path.join(web, 'index.html'), path.join(web, 'locales', 'de.js'),
     ...fs.readdirSync(path.join(web, 'js')).filter(n => /^\d\d-.*\.js$/.test(n)).map(n => path.join(web, 'js', n))];
@@ -293,7 +295,7 @@ test('Inline-Stile in index.html werden weniger, nie mehr', () => {
   // 51 am 30.10. (Kennzahlen der Minifiguren ohne eigenes Raster). 47 am 03.11.
   // 38 am 04.11. (Bauliste und Zwischenspeicher als Klassen); 36 am selben Tag (Bauliste-Chips und Status), 35 am 06.11.
   const SCHRANKE = 35;
-  const html = fs.readFileSync(path.join(WEB, 'public', 'index.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+  const html = require('./helpers/sources').ohneHtmlKommentare(fs.readFileSync(path.join(WEB, 'public', 'index.html'), 'utf8'));
   const stile = [...html.matchAll(/<[a-zA-Z][^>]*?\sdata-stil="([^"]*)"/g)].map(m => m[1].trim().replace(/;$/, ''));
   assert.ok(stile.length > 50, 'Keine Inline-Stile gefunden — greift die Suche noch?');
   const ist = stile.filter(s => s !== 'display:none').length;
@@ -362,7 +364,7 @@ test('der Kommentaranteil im Server sinkt, nie steigt', () => {
   // API-Vertrag (src/vertrag/). Schranke 13,2.
   const SCHRANKE = 13.2;
   let zeilen = 0, kommentar = 0;
-  for (const f of quellen().filter(f => /[\\/](routes|src|jobs)[\\/]|[\\/]server\.ts$/.test(f))) {
+  for (const f of quellen().filter(f => /[\\/](routes|src|jobs)[\\/]/.test(f) || /[\\/]server\.ts$/.test(f))) {
     for (const z of fs.readFileSync(f, 'utf8').split('\n')) {
       const t = z.trim();
       if (!t) continue;
@@ -535,7 +537,7 @@ test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie meh
   // Gemessen am 05.11.2026: 11 über 80, keine über 150.
   // Gegenprobe (05.11.2026): computePnl wieder in einem Stück → rot (über 150).
   const SCHRANKE_80 = 11, SCHRANKE_150 = 0;
-  const alle = funktionsLaengen(quellen().filter(f => /[\\/](src|routes|jobs|db|clients|startup)[\\/]|[\\/]server\.ts$/.test(f)));
+  const alle = funktionsLaengen(quellen().filter(f => /[\\/](src|routes|jobs|db|clients|startup)[\\/]/.test(f) || /[\\/]server\.ts$/.test(f)));
   assert.ok(alle.length > 1000, `nur ${alle.length} Funktionen gefunden — greift die Suche noch?`);
   const ueber = (n) => alle.filter(x => x.zeilen > n);
   assert.ok(ueber(150).length <= SCHRANKE_150, `über 150 Zeilen:\n${ueber(150).map(x => x.ort).join('\n')}`);
@@ -551,9 +553,10 @@ test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () =
   for (const [ordner, schranke] of Object.entries(SCHRANKE)) {
     let zeilen = 0, kommentar = 0;
     (function lauf(d) {
-      for (const n of fs.readdirSync(d)) {
+      for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+        const n = e.name;
         const p = path.join(d, n);
-        if (fs.statSync(p).isDirectory()) { if (n !== 'node_modules') lauf(p); continue; }
+        if (e.isDirectory()) { if (n !== 'node_modules') lauf(p); continue; }
         if (!/\.(ts|js|sh)$/.test(n) || (n.endsWith('.js') && fs.existsSync(p.slice(0, -3) + '.ts'))) continue;
         for (const z of fs.readFileSync(p, 'utf8').split('\n')) {
           const t = z.trim();
@@ -574,9 +577,9 @@ test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () =
 test('Geschichte in Testkommentaren wird weniger, nie mehr', () => {
   // Ein Testkopf nennt, was geprüft wird, und seine Gegenproben (CLAUDE.md);
   // woher ein Test kam, steht im Commit. Gezählt werden Kommentarzeilen mit
-  // den typischen Erzählmarken. Gemessen 64 am 05.11.2026 (vorher 424).
+  // den typischen Erzählmarken. Gemessen 58 am 08.11.2026 (vorher 424).
   // Gegenprobe (05.11.2026): den alten Kopf von scope-reset.test.js zurück → rot.
-  const SCHRANKE = 64;
+  const SCHRANKE = 58;
 
   const MARKE = /(Nachtr(ag|äge) [0-9]|Hier stand|Vorher stand|NACHGEMESSEN|kam(en)? am [0-9]|Marcos (Frage|Wunsch|Bericht|Rückfrage|Konsole))/;
   const dateien = [
@@ -597,9 +600,9 @@ test('Geschichte in Testkommentaren wird weniger, nie mehr', () => {
 test('der Kommentaranteil der Tests sinkt, nie steigt', () => {
   // Eigene Schranke: Testköpfe zählen ihre Gegenproben auf (CLAUDE.md), der
   // Anteil liegt deshalb höher als im Server. Geschichte gehört auch hier in
-  // den Commit. Gemessen 23,2 % in test/*.js und test/helpers/ (05.11.2026, vorher 33,3).
+  // den Commit. Gemessen 22,2 % in test/*.js und test/helpers/ (08.11.2026, vorher 33,3).
   // Gegenprobe: 300 Kommentarzeilen an eine Testdatei gehängt → rot.
-  const SCHRANKE = 23.2;
+  const SCHRANKE = 22.2;
   const dateien = [
     ...fs.readdirSync(__dirname).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, n)),
     ...fs.readdirSync(path.join(__dirname, 'helpers')).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, 'helpers', n)),
@@ -656,9 +659,9 @@ test('Anker ohne Verweis werden weniger, nie mehr', () => {
   const wurzel = path.join(WEB, 'docs', 'begruendungen');
   let alle = 0, ohne = 0;
   (function lauf(d) {
-    for (const n of fs.readdirSync(d)) {
-      const p = path.join(d, n);
-      if (fs.statSync(p).isDirectory()) { lauf(p); continue; }
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) { lauf(p); continue; }
       const rel = path.relative(wurzel, p).split(path.sep).join('/');
       for (const m of fs.readFileSync(p, 'utf8').matchAll(/<a id="([\w-]+)"><\/a>/g)) {
         alle++;
@@ -754,9 +757,9 @@ function langeBloecke(/** @type {string} */ text) {
 test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie mehr', () => {
   // Im Code steht das Warum in wenigen Zeilen; die Geschichte liegt in
   // docs/begruendungen/ oder im Commit (CLAUDE.md); Gegenprobenlisten zählen nicht.
-  // Gemessen am 06.11.2026: Tests 74 Blöcke (mit Listen 459), scripts 0, index.html 216 Zeilen.
+  // Gemessen am 08.11.2026: Tests 72 Blöcke, scripts 0, index.html 216 Zeilen.
   // Gegenprobe (06.11.2026): sechs Zeilen Prosa vor die Gegenprobe im Kopf von hsts.test.js → rot (Tests 75).
-  const SCHRANKE = { tests: 74, scripts: 0, indexHtml: 216 };
+  const SCHRANKE = { tests: 72, scripts: 0, indexHtml: 216 };
   const js = (/** @type {string} */ d) => fs.readdirSync(d).filter(f => f.endsWith('.js')).map(f => path.join(d, f));
   const zaehle = (/** @type {string[]} */ l) => l.reduce((n, f) => n + langeBloecke(fs.readFileSync(f, 'utf8')), 0);
   let html = 0;
@@ -777,9 +780,9 @@ test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie meh
 
 test('Testdateien ohne Gegenprobe werden weniger, nie mehr', () => {
   // Jeder Test nennt im Kopf seine Gegenprobe (CLAUDE.md); die älteren ohne
-  // werden beim Anfassen nachgetragen. Gemessen 108 am 06.11.2026.
+  // werden beim Anfassen nachgetragen. Gemessen 94 am 08.11.2026.
   // Gegenprobe (05.11.2026): in lint-ratsche.test.js „Gegenproben“ umbenannt → rot (112).
-  const SCHRANKE = 108;
+  const SCHRANKE = 94;
   const ohne = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js'))
     .filter(n => !fs.readFileSync(path.join(__dirname, n), 'utf8').includes('Gegenprobe'));
   assert.ok(ohne.length <= SCHRANKE, `${ohne.length} Testdateien ohne Gegenprobe, erlaubt sind ${SCHRANKE}`);

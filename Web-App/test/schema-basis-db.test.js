@@ -10,8 +10,10 @@
  *      Basis, Vorgaben und einen Administrator“
  *   D  (29.10.) in initSchema() wieder die Sperre „älter als 0050“ → rot:
  *      „eine Datenbank mit 0045, aber ohne 0050 startet …“ (der Stand von
- *      main bis 1ad80a5). Ältere Datenbanken prüft
- *      test/altbestand-aufruesten-db.test.js.
+ *      main bis 1ad80a5).
+ *   E  (08.11.) in initSchemaOnce() den Aufruf pruefeMindeststand() entfernt
+ *      → rot: „eine Datenbank älter als 0050 hält den Start an …“ (der Start
+ *      lief durch und spielte die offenen Migrationen ein)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL, deren Benutzer Datenbanken
  * anlegen darf.
@@ -86,4 +88,16 @@ test('Erststart über db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
     assert.ok(await db.get(`SELECT 1 FROM schema_migrations WHERE name LIKE '0050-%'`), '0050 nicht nachgeholt');
   });
 
+  // Ein Stand vor 0050 müsste die entfernten Startstufen nachholen; der Start
+  // sagt das, statt die jüngeren Migrationen auf ein fremdes Schema zu setzen.
+  await t.test('eine Datenbank älter als 0050 hält den Start an und bleibt unberührt', async () => {
+    await db.run(`DELETE FROM schema_migrations WHERE name >= '0050'`);
+    const vorher = (await db.get('SELECT COUNT(*)::int AS n FROM schema_migrations')).n;
+    assert.ok(vorher > 0, 'die Probe braucht Migrationen vor 0050');
+    await assert.rejects(db.initSchemaOnce(), /älter als Migration 0050.*UPGRADE\.md/s);
+    assert.equal((await db.get('SELECT COUNT(*)::int AS n FROM schema_migrations')).n, vorher,
+      'auf dem zu alten Stand lief eine Migration');
+    await db.run('DROP TABLE schema_migrations');
+    await assert.rejects(db.initSchemaOnce(), /älter als Migration 0050/, 'ohne Migrationstabelle gilt die Datenbank als zu alt');
+  });
 });

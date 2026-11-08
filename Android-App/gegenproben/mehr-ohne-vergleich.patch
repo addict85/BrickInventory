@@ -1,13 +1,12 @@
 Gegenprobe: Vergleich steht nicht unter „Mehr“ (kein gewählter Reiter, kein Zurück)
 Modul: app
-Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
 Rot: Vergleich und Bauliste markieren Mehr
 
-diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-index 0d58160..fc87903 100644
---- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-+++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-@@ -305,7 +305,7 @@ private val SAMMLUNG: Set<KClass<out Screen>> = SAMMLUNGS_ZIELE.map { it::class
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+@@ -392,7 +392,7 @@ private val SAMMLUNG: Set<KClass<out Screen>> = SAMMLUNGS_ZIELE.map { it::class
  
  /** Seiten mit unterer Leiste, die man über „Mehr“ erreicht — dort bleibt „Mehr“ gewählt. */
  private val MEHR: Set<KClass<out Screen>> = setOf(Screen.Mehr::class, Screen.PartsList::class,

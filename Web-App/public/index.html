@@ -24,6 +24,7 @@
 [data-theme=brick] .sg-kopf{background:#3d5a80;color:#fff}
 [data-theme=brick][data-dunkel] .sg-kopf{background:#273849}
 [data-theme=brick] .sg-kopf{border:0;border-radius:16px;margin:14px 16px 0}
+[data-abgemeldet] #startgeruest>*{display:none}
 .sg-leiste{display:flex;gap:28px;height:46px;align-items:center;padding:0 1.5rem;background:var(--sg-sur);border-bottom:1px solid var(--sg-bdr)}
 .sg-leiste i,.sg-titel,.sg-karten i,.sg-kacheln i{display:block;background:var(--sg-ph);border-radius:8px}
 .sg-leiste i{width:84px;height:12px}
@@ -313,7 +314,7 @@
     <div class="prog-footer" id="prog-footer" role="status" data-i18n="common.please_wait">Bitte warten…</div>
     <div id="csv-log" class="csv-log" data-stil="display:none"></div>
     <div class="knopf-reihe-mitte">
-      <button class="btn bd btn-sm" id="btn-cancel-import" data-stil="display:none" data-i18n="csv.cancel" data-ico="schliessen">Abbrechen</button>
+      <button class="btn bd btn-sm" id="btn-cancel-import" data-schreibend data-stil="display:none" data-i18n="csv.cancel" data-ico="schliessen">Abbrechen</button>
       <button class="btn bp btn-sm" id="btn-close-import" data-stil="display:none" data-click="closeImportProgress" data-i18n="csv.close" data-ico="ok">Schliessen</button>
     </div>
   </div>
@@ -844,7 +845,7 @@
               </select>
             </div>
             <div class="text-klein abstand-o-minus4" data-i18n="settings.app_theme_hint">Vorgabe für alle Konten (Web &amp; App). Jedes Konto kann unter „Konto“ ein eigenes Design wählen.</div>
-            <button class="btn bp btn-speichern" id="btn-save-theme" data-i18n="settings.save" data-ico="speichern">Speichern</button>
+            <button class="btn bp btn-speichern" id="btn-save-theme" data-schreibend data-i18n="settings.save" data-ico="speichern">Speichern</button>
           </div>
         </div>
         <div class="ssec" id="einst-bl">
@@ -856,7 +857,7 @@
             <div class="fg"><label for="bl-ts" data-i18n="settings.bl.ts">Zugangsgeheimnis (Token Secret)</label><div class="geheim-feld"><input type="password" id="bl-ts" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="bl-ts" aria-pressed="false" aria-controls="bl-ts" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
             <div class="fg"><label for="lim-bl"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span class="text-klein" data-i18n="settings.default_n" data-i18n-vars='{"n":"4000"}'>(Standard: 4000)</span></label><input class="max-160" inputmode="numeric" type="number" id="lim-bl" min="1" max="100000" value="4000" /></div>
             <div class="zeile mittig luecke-8 umbruch">
-              <button class="btn bp btn-speichern" id="btn-sav-bl" data-i18n="settings.save" data-ico="speichern">Speichern</button>
+              <button class="btn bp btn-speichern" id="btn-sav-bl" data-schreibend data-i18n="settings.save" data-ico="speichern">Speichern</button>
               <button class="btn bs" type="button" data-click="einstellungenQuellePruefen" data-arg="bricklink" data-i18n="settings.zugang_pruefen" data-ico="ok">Gespeicherten Zugang prüfen</button>
             </div>
             <div class="quelle-stand" id="pruef-bricklink" role="status"></div>
@@ -869,7 +870,7 @@
             <div class="fg"><label for="rb-key">Rebrickable API Key</label><div class="geheim-feld"><input type="password" id="rb-key" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="rb-key" aria-pressed="false" aria-controls="rb-key" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
             <div class="fg"><label for="lim-rb"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span class="text-klein" data-i18n="settings.default_n" data-i18n-vars='{"n":"25000"}'>(Standard: 25000)</span></label><input class="max-160" inputmode="numeric" type="number" id="lim-rb" min="1" max="100000" value="25000" /></div>
             <div class="zeile mittig luecke-8 umbruch">
-              <button class="btn bp btn-speichern" id="btn-sav-rb" data-i18n="settings.save" data-ico="speichern">Speichern</button>
+              <button class="btn bp btn-speichern" id="btn-sav-rb" data-schreibend data-i18n="settings.save" data-ico="speichern">Speichern</button>
               <button class="btn bs" type="button" data-click="einstellungenQuellePruefen" data-arg="rebrickable" data-i18n="settings.zugang_pruefen" data-ico="ok">Gespeicherten Zugang prüfen</button>
             </div>
             <div class="quelle-stand" id="pruef-rebrickable" role="status"></div>
@@ -882,7 +883,7 @@
             <div class="fg"><label for="bs-key">Brickset API Key</label><div class="geheim-feld"><input type="password" id="bs-key" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="bs-key" aria-pressed="false" aria-controls="bs-key" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
             <div class="fg"><label for="lim-bs"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span class="text-klein" data-i18n="settings.default_n" data-i18n-vars='{"n":"100"}'>(Standard: 100)</span></label><input class="max-160" inputmode="numeric" type="number" id="lim-bs" min="1" max="100000" value="100" /></div>
             <div class="zeile mittig luecke-8 umbruch">
-              <button class="btn bp btn-speichern" id="btn-sav-bs" data-i18n="settings.save" data-ico="speichern">Speichern</button>
+              <button class="btn bp btn-speichern" id="btn-sav-bs" data-schreibend data-i18n="settings.save" data-ico="speichern">Speichern</button>
               <button class="btn bs" type="button" data-click="einstellungenQuellePruefen" data-arg="brickset" data-i18n="settings.zugang_pruefen" data-ico="ok">Gespeicherten Zugang prüfen</button>
             </div>
             <div class="quelle-stand" id="pruef-brickset" role="status"></div>
@@ -921,7 +922,7 @@
                      (und zeigte hier versehentlich auf ein fremdes Feld). -->
                 <label data-stil="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:9px"><input class="w-auto" type="checkbox" id="nu-a" /> <span data-i18n="users.role.admin">Verwalter</span></label>
               </div>
-              <button type="button" class="btn bp" id="btn-cu" data-i18n="settings.users_create" data-ico="plus">Erstellen</button>
+              <button type="button" class="btn bp" id="btn-cu" data-schreibend data-i18n="settings.users_create" data-ico="plus">Erstellen</button>
             </div>
             </form>
           </div>
@@ -941,10 +942,10 @@
             <p class="hinweis-warnung" id="smtp-tls-altlast" role="status" data-stil="display:none" data-i18n="settings.smtp.tls_altlast">Die Ausnahme „Zertifikat nicht prüfen“ gibt es nicht mehr. Für ein selbst signiertes Zertifikat bitte hier das Zertifikat (PEM) oder seinen SHA-256-Fingerabdruck eintragen, sonst schlägt der Versand fehl.</p>
             <div class="fg"><label for="smtp-tls-fp" data-i18n="settings.smtp.tls_fp">SHA-256-Fingerabdruck des Serverzertifikats (optional)</label><input type="text" id="smtp-tls-fp" autocomplete="off" spellcheck="false" placeholder="AB:CD:…" /></div>
             <div class="fg"><label for="smtp-tls-ca" data-i18n="settings.smtp.tls_ca">Eigenes Zertifikat oder eigene CA als PEM (für selbst signierte Zertifikate)</label><textarea id="smtp-tls-ca" rows="3" spellcheck="false" placeholder="-----BEGIN CERTIFICATE-----"></textarea></div>
-            <button class="btn bp btn-speichern" id="btn-sav-smtp" data-i18n="settings.save" data-ico="speichern">Speichern</button>
+            <button class="btn bp btn-speichern" id="btn-sav-smtp" data-schreibend data-i18n="settings.save" data-ico="speichern">Speichern</button>
             <div class="zeile luecke-8 unten umbruch abstand-o-05">
               <div class="fg max-240 ohne-rand"><label for="smtp-test-email" data-i18n="settings.smtp.test_to">Test-E-Mail senden an</label><input type="email" id="smtp-test-email" placeholder="deine@email.com" /></div>
-              <button class="btn bs abstand-u-1px" id="btn-test-smtp" data-i18n="smtp.test_btn" data-ico="link">Verbindung testen</button>
+              <button class="btn bs abstand-u-1px" id="btn-test-smtp" data-schreibend data-i18n="smtp.test_btn" data-ico="link">Verbindung testen</button>
             </div>
             <div id="smtp-test-result" role="status" data-stil="display:none;font-size:var(--fs-2);margin-top:.5rem;padding:.5rem .75rem;border-radius:6px"></div>
           </div>
@@ -1041,7 +1042,7 @@
               <div class="text-klein abstand-o-3" id="prof-email-hint"></div>
             </div>
           </div>
-          <div class="konto-fuss"><button type="button" class="btn bp btn-speichern" id="btn-sav-prof" data-i18n="settings.save" data-ico="speichern">Speichern</button></div>
+          <div class="konto-fuss"><button type="button" class="btn bp btn-speichern" id="btn-sav-prof" data-schreibend data-i18n="settings.save" data-ico="speichern">Speichern</button></div>
         </form>
       </section>
 
@@ -1054,7 +1055,7 @@
             <div class="fg"><label for="pw-r" data-i18n="settings.password.repeat">Passwort wiederholen</label><input type="password" id="pw-r" autocomplete="new-password" /></div>
           </div>
           <label class="zeile mittig luecke-8 zeiger"><input class="w-auto" type="checkbox" id="pw-pk" checked /> <span data-i18n="settings.password.revoke_passkeys">Auch alle Passkeys entfernen (empfohlen: ein Passkey, den jemand Fremdes angelegt hat, bliebe sonst gültig; abwählen, wenn du nur dein Passwort erneuerst)</span></label>
-          <div class="konto-fuss"><button type="button" class="btn bp" id="btn-sav-pw" data-i18n="settings.password.change" data-ico="schloss">Passwort ändern</button></div>
+          <div class="konto-fuss"><button type="button" class="btn bp" id="btn-sav-pw" data-schreibend data-i18n="settings.password.change" data-ico="schloss">Passwort ändern</button></div>
         </form>
       </section>
 
@@ -1077,9 +1078,9 @@
       <div class="sgroup-label text-gefahr" data-i18n="settings.danger_zone" data-ico="warnung">Gefahrenzone</div>
       <div class="ssec gefahrenzone">
         <p class="text-mittel abstand-u-075" data-i18n="settings.danger.hint">Gelöschtes liegt 30 Tage im Papierkorb (Menü → Daten und Papierkorb) und wird danach endgültig entfernt.</p>
-        <button class="btn bd" id="btn-dall" data-i18n="settings.delete_all_btn" data-ico="loeschen">Alle meine Daten löschen</button>
+        <button class="btn bd" id="btn-dall" data-schreibend data-i18n="settings.delete_all_btn" data-ico="loeschen">Alle meine Daten löschen</button>
         <p class="text-mittel abstand-o-125 abstand-u-075" data-i18n="settings.delete_account.hint">Das Konto selbst löschen: endgültig, ohne Papierkorb, mit Passwort und zweitem Faktor.</p>
-        <button class="btn bd" id="btn-konto-loeschen" data-i18n="settings.delete_account.btn" data-ico="loeschen">Konto endgültig löschen</button>
+        <button class="btn bd" id="btn-konto-loeschen" data-schreibend data-i18n="settings.delete_account.btn" data-ico="loeschen">Konto endgültig löschen</button>
       </div>
     </div>
 
@@ -1418,7 +1419,7 @@
             <label for="qr-password" data-i18n="qr.password_label">Dein Passwort</label>
             <input type="password" id="qr-password" autocomplete="current-password">
           </div>
-          <div><button type="button" class="btn bp" id="btn-gen-qr" data-i18n="settings.qr.generate" data-ico="aktualisieren">QR-Code generieren</button></div>
+          <div><button type="button" class="btn bp" id="btn-gen-qr" data-schreibend data-i18n="settings.qr.generate" data-ico="aktualisieren">QR-Code generieren</button></div>
           </form>
           <div id="qr-code" data-stil="background:#fff;padding:12px;border-radius:8px;border:1px solid var(--bdr);display:inline-block"></div>
           <div class="text-klein" id="qr-hint"></div>
@@ -1457,8 +1458,8 @@
       </div>
       <!-- Hidden stubs so existing JS references don't break -->
       <div data-stil="display:none">
-        <button id="btn-job-trigger"></button>
-        <button id="btn-clr"></button>
+        <button id="btn-job-trigger" data-schreibend></button>
+        <button id="btn-clr" data-schreibend></button>
         <button id="btn-prices"></button>
         <button id="btn-history-fill"></button>
         <button id="btn-bl-debug"></button>
@@ -1503,12 +1504,12 @@
               <option value="N" data-i18n="monitor.condition_new">Neuware</option>
               <option value="U" data-i18n="monitor.condition_used">Gebraucht</option>
             </select></div>
-          <button class="btn bp btn-speichern" type="button" id="btn-save-cache-ttl" data-i18n="settings.save" data-ico="speichern">Speichern</button>
+          <button class="btn bp btn-speichern" type="button" id="btn-save-cache-ttl" data-schreibend data-i18n="settings.save" data-ico="speichern">Speichern</button>
         </div>
         <div class="mon-aktionen gefahrenzone" role="group" aria-labelledby="mon-gefahr-titel">
           <h3 class="mon-gefahr-titel" id="mon-gefahr-titel" data-i18n="monitor.gefahrenzone">Zwischenspeicher leeren</h3>
-          <button class="btn bd" type="button" id="btn-clr-prices" data-i18n="settings.clear_price_cache" data-ico="loeschen">Gespeicherte Preise löschen</button>
-          <button class="btn bd" type="button" id="btn-clr-all-cache" data-i18n="monitor.clear_all" data-ico="loeschen">Zwischenspeicher ganz leeren (Preise, Teile, Katalog)</button>
+          <button class="btn bd" type="button" id="btn-clr-prices" data-schreibend data-i18n="settings.clear_price_cache" data-ico="loeschen">Gespeicherte Preise löschen</button>
+          <button class="btn bd" type="button" id="btn-clr-all-cache" data-schreibend data-i18n="monitor.clear_all" data-ico="loeschen">Zwischenspeicher ganz leeren (Preise, Teile, Katalog)</button>
         </div>
       </section>
 
@@ -1542,7 +1543,7 @@
     </div>
     <div class="knopf-reihe-mitte knopf-reihe-weit">
       <button type="button" class="btn bs min-100" id="cd-cancel" data-dialog-zu data-erstfokus data-i18n="common.cancel">Abbrechen</button>
-      <button type="button" class="btn bd min-100" id="cd-confirm" data-i18n="confirm.delete_btn">Löschen</button>
+      <button type="button" class="btn bd min-100" id="cd-confirm" data-schreibend data-i18n="confirm.delete_btn">Löschen</button>
     </div>
     </form>
   </div>
@@ -1568,7 +1569,7 @@
             <div class="fg"><label for="ap-condition" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt hoehe-38" id="ap-condition"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
             <div class="fg"><label for="ap-date" data-i18n="erfassen.gekauft_am">Gekauft am</label><input class="hoehe-38" type="date" id="ap-date" data-heute /></div>
             <div class="fg max-150" id="ap-owner-box" data-stil="display:none"><label for="ap-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt hoehe-38" id="ap-owner"></select></div><div class="fg max-220" id="ap-storage-box"><span class="feld-titel" id="ap-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="ap-storage-slot"></span></div>
-            <div class="fg unten-buendig"><button class="btn bp voll-breit hoehe-38" id="btn-add-part" data-i18n="gallery.add.submit">Hinzufügen</button></div>
+            <div class="fg unten-buendig"><button class="btn bp voll-breit hoehe-38" id="btn-add-part" data-schreibend data-i18n="gallery.add.submit">Hinzufügen</button></div>
           </div>
           <div class="schrift-2 abstand-o-05 status-zeile" id="ap-inline-result" role="status"></div>
         </div>
@@ -1591,7 +1592,7 @@
           <div class="fg"><label for="af-date" data-i18n="erfassen.gekauft_am">Gekauft am</label><input class="hoehe-38" type="date" id="af-date" data-heute /></div>
             <div class="fg max-150" id="af-owner-box" data-stil="display:none"><label for="af-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt hoehe-38" id="af-owner"></select></div><div class="fg max-220" id="af-storage-box"><span class="feld-titel" id="af-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="af-storage-slot"></span></div>
           <div class="fg unten-buendig">
-            <button class="btn bp voll-breit hoehe-38" id="btn-add-fig" data-i18n="gallery.add.submit">Hinzufügen</button></div>
+            <button class="btn bp voll-breit hoehe-38" id="btn-add-fig" data-schreibend data-i18n="gallery.add.submit">Hinzufügen</button></div>
         </div>
         <div class="text-klein abstand-o-05" data-i18n="figs.add.hint" data-ico="idee">Rebrickable- und BrickLink-Nummern unterscheiden sich meist. Ohne BrickLink-Nr. wird der Marktpreis aus den Teilen geschätzt.</div>
         <div class="schrift-2 abstand-o-05 status-zeile" id="af-inline-result" role="status"></div>
@@ -1615,7 +1616,7 @@
       <div class="fg" id="add-owner-box" data-stil="display:none"><label for="add-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt" id="add-owner"></select></div>
       <div class="fg" id="add-storage-box"><span class="feld-titel" id="add-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="add-storage-slot"></span></div>
       <div class="hinweis-warnung erfassen-unbekannt" id="add-unbekannt" role="status" hidden></div>
-      <div class="erfassen-fuss"><button class="btn bp" id="btn-add"><span id="btn-add-text" data-i18n="gallery.add.submit">Hinzufügen</span></button></div>
+      <div class="erfassen-fuss"><button class="btn bp" id="btn-add" data-schreibend><span id="btn-add-text" data-i18n="gallery.add.submit">Hinzufügen</span></button></div>
     </div>
     <div class="abstand-o-8 schrift-2" id="add-status" role="status"></div>
   </div>
@@ -1637,7 +1638,7 @@
         <summary class="btn bs" data-i18n="common.more_actions" data-ico="menue">Weitere Aktionen</summary>
         <div class="mehr-liste">
       <button class="btn bs" type="button" data-click="teileNeuImportieren"><svg class="ico" aria-hidden="true"><use href="#i-aktualisieren"/></svg><span data-i18n="detail.reimport_parts">Teile neu importieren</span></button>
-      <button class="btn bd" id="btn-md" aria-label="Set löschen" data-i18n="detail.delete" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg><span data-i18n="common.delete">Löschen</span></button>
+      <button class="btn bd" id="btn-md" data-schreibend aria-label="Set löschen" data-i18n="detail.delete" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg><span data-i18n="common.delete">Löschen</span></button>
         </div>
       </details>
     </div>
@@ -1728,7 +1729,7 @@
       </div>
       <div data-stil="display:flex;gap:8px;align-items:stretch;width:100%">
         <button class="btn bs knopf-fuellend" id="cat-m-wish" data-click="katalogAufMerkliste" data-i18n="wanted.add.submit" data-ico="plus">Auf die Merkliste</button>
-        <button class="btn bp knopf-fuellend" id="cat-m-add" data-i18n="catalog.add_to_gallery" data-ico="plus">Zur Sammlung hinzufügen</button>
+        <button class="btn bp knopf-fuellend" id="cat-m-add" data-schreibend data-i18n="catalog.add_to_gallery" data-ico="plus">Zur Sammlung hinzufügen</button>
       </div>
     </div>
   </div>
@@ -1784,7 +1785,7 @@
     <!-- Kein „Zurueck" hier (Marcos Vorgabe). Es war der zweite Weg aus …
          Ausführlich: docs/begruendungen/public/index.html.md#man-detail-del -->
     <div class="mfooter verteilt">
-      <button class="btn bd" id="man-detail-del" aria-label="Eintrag löschen" data-i18n="common.delete_item" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg><span data-i18n="common.delete">Löschen</span></button>
+      <button class="btn bd" id="man-detail-del" data-schreibend aria-label="Eintrag löschen" data-i18n="common.delete_item" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg><span data-i18n="common.delete">Löschen</span></button>
     </div>
   </div>
 </div>
@@ -1971,7 +1972,7 @@
       <input type="hidden" id="rpw-uid" />
       <div class="dialog-fuss dialog-fuss-eng">
         <button type="button" class="btn bs" data-click="closePwModal" data-i18n="users.pw_modal.cancel">Abbrechen</button>
-        <button type="button" class="btn bp" id="btn-rpw" data-i18n="settings.save">Speichern</button>
+        <button type="button" class="btn bp" id="btn-rpw" data-schreibend data-i18n="settings.save">Speichern</button>
       </div>
     </form>
   </div>

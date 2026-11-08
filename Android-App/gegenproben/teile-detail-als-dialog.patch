@@ -1,13 +1,12 @@
 Gegenprobe: Teile-Detail auch auf dem Tablet als Dialog statt neben der Liste
 Modul: app
-Test: ch.brickinventoryapp.FeinschliffRegelnTest
+Test: ch.brickinventoryapp.app.FeinschliffRegelnTest
 Rot: Tablet zeigt Teil
 
-diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/nav/CollectionGraph.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/nav/CollectionGraph.kt
-index 7742226..979506b 100644
---- a/Android-App/app/src/main/java/ch/brickinventoryapp/nav/CollectionGraph.kt
-+++ b/Android-App/app/src/main/java/ch/brickinventoryapp/nav/CollectionGraph.kt
-@@ -315,7 +315,7 @@ internal fun TeileListeUndDetailRoute(
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/CollectionGraph.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/CollectionGraph.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/CollectionGraph.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/CollectionGraph.kt
+@@ -354,7 +354,7 @@ internal fun TeileListeUndDetailRoute(
      liste: @Composable (oeffneManuell: (String, String, Int, String) -> Unit) -> Unit,
  ) {
      BoxWithConstraints(Modifier.fillMaxSize()) {

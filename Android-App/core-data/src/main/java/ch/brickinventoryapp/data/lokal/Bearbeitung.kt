@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.data.lokal
 
-import ch.brickinventoryapp.data.model.AddMinifigRequest
-import ch.brickinventoryapp.data.model.AddPartRequest
-import ch.brickinventoryapp.data.model.AddSetRequest
-import ch.brickinventoryapp.data.model.MerkpostenRequest
-import ch.brickinventoryapp.data.model.UpdateManualItemRequest
+import ch.brickinventoryapp.model.data.model.AddMinifigRequest
+import ch.brickinventoryapp.model.data.model.AddPartRequest
+import ch.brickinventoryapp.model.data.model.AddSetRequest
+import ch.brickinventoryapp.model.data.model.MerkpostenRequest
+import ch.brickinventoryapp.model.data.model.UpdateManualItemRequest
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

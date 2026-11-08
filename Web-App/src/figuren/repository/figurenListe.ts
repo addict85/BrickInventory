@@ -5,6 +5,7 @@ import type { Zeile } from '../../../db/database';
 import { figurSichtJoin, FIGUR } from '../../../db/katalogSicht';
 import { LIKE_ESCAPE as E, enthaeltMuster } from '../../../db/likeSuche';
 
+// Eine Suche für beide Figurenlisten; gesucht wird die Nummer auf der Kachel.
 // Ausführlich: docs/begruendungen/src/figuren/repository/figurenListe.ts.md#figurensuche
 function figurenSuche(nummer: string, name: string, pi: number) {
   return `(${nummer} ILIKE $${pi}${E} OR ${name} ILIKE $${pi}${E})`;

@@ -4,43 +4,6 @@ Die ausführlichen Kommentare aus `test/household.test.js`, wörtlich. Im Code s
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 
-<a id="releases"></a>
-## `const releases = (h.match(/await release\(\);/g) || []).length;`
-
-```text
-Jede Absage, die NACH dem geglückten Entwerten kommt, braucht eine
-Freigabe — sonst ist der Code für den zweiten, richtigen Versuch
-verbraucht. Gezählt wird deshalb ab der Zeile, an der feststeht, dass
-entwertet wurde: Die Absage `einladungscode_abgelaufen` steht DAVOR und
-braucht keine (dort wurde nichts entwertet).
-
-GEMESSEN vier: mit sich selbst, bereits verknüpft, Kreis, Währung. Es
-waren fünf, bis Nachtrag 173 drei Eine-Stufe-Absagen durch eine ersetzt
-hat.
-```
-
-<a id="h-stelle"></a>
-## `const h = require('./helpers/sources').ohneKommentare((read('src/haush`
-
-```text
-── Warum das eine eigene Regel ist (Nachtrag 173) ───────────────────────
-
-resolveHousehold() merkt sich seine Antwort fünf Minuten (HAUSHALT_TTL_MS)
-und liefert genau die Menge, die auch der Schreibbereich ist. Es ist
-deshalb sehr naheliegend, canWriteFor() und writableIds() darauf
-aufzusetzen — eine Abfrage gespart, ein Weg weniger.
-
-Das wäre falsch: Nach einem unlink() dürfte das frühere Elternkonto noch
-bis zu fünf Minuten in fremden Daten schreiben. Ein veraltetes BLICKFELD
-zeigt zu viel und fällt auf; ein veraltetes SCHREIBRECHT ändert Daten, die
-dem Betreffenden nicht mehr gehören, und fällt niemandem auf.
-
-Lesen darf veralten, Schreiben nicht.
-ohneKommentare() zuerst: Die BEGRÜNDUNG dieser Regel steht als Kommentar
-in genau den beiden Funktionen und nennt dabei resolveHousehold() — ein
-Test, der den rohen Text liest, schlägt an seiner eigenen Erklärung an.
-```
-
 <a id="p-stelle"></a>
 ## `const p = require('./helpers/sources').portfolioQuelle();`
 
@@ -81,18 +44,6 @@ wurden aus routes/sets.ts entfernt und leben nur noch in der v1-Fabrik,
 die jetzt Webapp UND App bedient. Vorher standen beide Aufrufe in einer
 Datei; die Regel („beide Wege nutzen denselben Helfer") ist unverändert,
 nur ihr Ort hat sich geändert.
-```
-
-<a id="for-stelle"></a>
-## `for (const f of ['routes/api_v1/sets.ts', 'routes/api_v1/parts.ts', 'r`
-
-```text
-Alle drei Anlege-Pfade benutzen sie — Sets, manuelle Teile, Minifiguren.
-Für Minifiguren liegt der Schreibpfad seit Nachtrag 72 in der gemeinsamen
-Fabrik — deshalb steht dort routes/api_v1/minifigs.ts statt der entfernten
-Session-Route. Geprüft wird dieselbe Regel am neuen Ort.
-Seit dem 05.11.2026 über schreibziel(): Es wirft 403 statt null zurückzugeben
-(Verhalten: test/blickfeld-dienste-db.test.js).
 ```
 
 <a id="for-stelle-2"></a>
@@ -140,31 +91,4 @@ test/kontowechsel-ueber-die-route-db.test.js (alle drei Arten, beide
 Abweisungen), die Mengenerhaltung in
 test/erfassung-verschieben-rest-bleibt-db.test.js. Diese Regel hier bleibt
 als Ergänzung — sie fängt, was ein Lauf nicht sieht.
-```
-
-<a id="h-stelle-2"></a>
-## `const h = (read('src/haushalt/haushalt.ts') + read('src/haushalt/repos`
-
-```text
-── Woher dieser Test kommt ─────────────────────────────────────────────
-Die Webapp schickte als from_user_id den BETRACHTER mit (_acqOwnerId ist
-die Dialog-Ebene, der Zeilen-Eigentümer stand nur im Select der Anzeige).
-Zog das Hauptkonto die Zeile eines Unterkontos zu sich, suchte der Server
-sie unter dem falschen Konto und antwortete 404 „Kaufpreis nicht
-gefunden" — die Android-App machte es richtig (acq.ownerUserId), die
-Webapp nicht. Die Erfassungs-ID ist eindeutig; wem sie gehört, weiss die
-Datenbank besser als jeder Dialog.
-```
-
-<a id="stelle"></a>
-## `assert.ok(read('src/sammlung/erfassungen.ts').includes('acquisitionMov`
-
-```text
-Der Eigentümer-Zweig leitet den Absender aus der ZEILE ab.
-
-Bis Nachtrag 70 gab es ihn VIERMAL (drei Session-Routen plus v1-Fabrik) —
-und genau diese Vervierfachung war das Problem: Jede Kopie konnte
-auseinanderlaufen, und mehrfach ist sie es auch. Seit dem Zusammenlegen
-bedient die Fabrik beide Clients, also gibt es nur noch eine Stelle. Der
-Test prüft dieselbe Regel, nur nicht mehr an vier Orten.
 ```

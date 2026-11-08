@@ -3,9 +3,9 @@ package ch.brickinventoryapp.ui.screens
 import ch.brickinventoryapp.ui.components.WahlChip
 import androidx.compose.ui.semantics.heading
 import androidx.compose.foundation.selection.selectableGroup
-import ch.brickinventoryapp.ui.model.kontoOptionen
-import ch.brickinventoryapp.ui.model.LagerortAnsicht
-import ch.brickinventoryapp.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.model.ui.model.kontoOptionen
+import ch.brickinventoryapp.model.ui.model.LagerortAnsicht
+import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,7 +42,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.data.ScopeFilter
+import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.ScanKnopf

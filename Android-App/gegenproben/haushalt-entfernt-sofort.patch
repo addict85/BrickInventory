@@ -1,13 +1,12 @@
 Gegenprobe: Unterkonto entfernen ohne Rückfrage
 Modul: app
-Test: ch.brickinventoryapp.UnterseitenTest
+Test: ch.brickinventoryapp.app.UnterseitenTest
 Rot: Haushalt gliedert
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt
-index d9d8476..8ec6c99 100644
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt
-@@ -93,9 +93,7 @@ internal fun HouseholdCard(
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenHaushalt.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenHaushalt.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenHaushalt.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenHaushalt.kt
+@@ -103,9 +103,7 @@ internal fun HouseholdCard(
              if (!nurUnterkonten) Text(stringResource(R.string.household_state_main),
                  style = MaterialTheme.typography.labelLarge)
              st.subAccounts.forEach { m ->

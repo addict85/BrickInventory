@@ -1,12 +1,11 @@
 Gegenprobe: Kopfkarte nimmt Einstand und Marktwert wieder aus allen Positionen statt aus der Basis
 Modul: app
-Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
 Rot: Finanzkopf
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/Finanzzeilen.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/Finanzzeilen.kt
-index adc5224..375fc75 100644
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/Finanzzeilen.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/Finanzzeilen.kt
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/Finanzzeilen.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/Finanzzeilen.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/Finanzzeilen.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/Finanzzeilen.kt
 @@ -151,8 +151,8 @@ fun finanzKopf(valuation: BewertungAnsicht, parts: TeileBewertungAnsicht?, figs:
      return FinanzKopf(
          basisBekannt = true,

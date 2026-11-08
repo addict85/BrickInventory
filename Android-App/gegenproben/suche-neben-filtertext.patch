@@ -1,10 +1,9 @@
 Gegenprobe: Filterknopf wieder mit Text neben dem Suchfeld (wie vorher auf dem Tablet)
 Modul: app
-Test: ch.brickinventoryapp.FeinschliffRegelnTest
+Test: ch.brickinventoryapp.app.FeinschliffRegelnTest
 Rot: Such-Platzhalter
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt
-index 55af067..57f2b19 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt
 @@ -122,12 +122,13 @@ private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, modifier: Modifier = Mo

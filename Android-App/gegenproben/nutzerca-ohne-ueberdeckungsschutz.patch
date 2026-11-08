@@ -1,13 +1,16 @@
 Gegenprobe: Die Rückfrage für Nutzer-CAs ohne Schutz vor Überlagerung
 Modul: app
-Test: ch.brickinventoryapp.FremderEinstiegTest
+Test: ch.brickinventoryapp.app.FremderEinstiegTest
 Rot: die Rueckfrage ist vor Ueberlagerung geschuetzt
 
-diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/ui/components/NutzerCaDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/ui/components/NutzerCaDialog.kt
---- a/Android-App/app/src/main/java/ch/brickinventoryapp/ui/components/NutzerCaDialog.kt
-+++ b/Android-App/app/src/main/java/ch/brickinventoryapp/ui/components/NutzerCaDialog.kt
-@@ -26,4 +26,3 @@
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/NutzerCaDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/NutzerCaDialog.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/NutzerCaDialog.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/NutzerCaDialog.kt
+@@ -25,7 +25,6 @@ fun NutzerCaDialog(onJa: () -> Unit, onAbbrechen: () -> Unit) {
+         onDismissRequest = onAbbrechen,
+         title = { Text(stringResource(R.string.nutzer_ca_frage_titel), modifier = Modifier.semantics { heading() }) },
          text = {
 -            Ueberdeckungsschutz()
              Text(stringResource(R.string.nutzer_ca_frage_text), modifier = Modifier.verticalScroll(rememberScrollState()))
          },
+         confirmButton = {
