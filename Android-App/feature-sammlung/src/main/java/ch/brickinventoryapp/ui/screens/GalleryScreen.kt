@@ -769,6 +769,12 @@ private fun FocusRequester.fokusWennOffen() {
 }
 
 @Composable
+private fun FokusNachPause(ziel: FocusRequester) = LaunchedEffect(Unit) {
+    kotlinx.coroutines.delay(120)
+    ziel.fokusWennOffen()
+}
+
+@Composable
 fun AddSetDialog(
     onDismiss: () -> Unit,
     onAdd: (String, Int, Double?, String?, Int?, String?) -> Unit,
@@ -798,10 +804,7 @@ fun AddSetDialog(
     // weil das Feld beim ersten Durchlauf noch nicht angeordnet ist und requestFocus()
     // sonst ins Leere liefe.
     val setFeldFokus = remember { FocusRequester() }
-    if (sofortFokus) LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(120)
-        setFeldFokus.fokusWennOffen()
-    }
+    if (sofortFokus) FokusNachPause(setFeldFokus)
     var purchasePrice by rememberSaveable { mutableStateOf("") }
     var condition by rememberSaveable { mutableStateOf(defaultCondition) }
     // Vorbelegt mit dem eigenen Konto: Wer nichts wählt, erfasst für sich —
