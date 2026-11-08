@@ -7,7 +7,7 @@ import { kontenStand, datenbankErreichbar } from './repository/einrichtung';
 import { konfig } from '../infra/konfig';
 import { meldeUndLiefere } from '../infra/fehler';
 import { tlsStand } from '../infra/tlsWurzel';
-import { getGlobalSetting } from '../einstellungen/settings';
+import { getGlobalSetting, beiGlobalerAenderung } from '../einstellungen/settings';
 
 export type SchrittId = 'datenbank' | 'basis_url' | 'https' | 'ca' | 'konto' | 'quelle';
 export interface Schrittzustand {
@@ -26,28 +26,40 @@ export interface EinrichtungStandAntwort {
   https: boolean;
 }
 
+/** Die Seite ist öffentlich und kostet je Aufruf rund zehn Abfragen (Entschlüsselung,
+ * Kontenzählung): Es rechnet der erste Aufruf je Fenster, auch bei gleichzeitigen. */
+const ZWISCHENSPEICHER_MS = 5000;
+const _gemerkt = new Map<boolean, { bis: number; antwort: Promise<EinrichtungStandAntwort> }>();
+
+/** Für Tests und nach jeder Änderung eines globalen Werts. */
+export function einrichtungStandVergessen(): void {
+  _gemerkt.clear();
+}
+beiGlobalerAenderung(einrichtungStandVergessen);
+
 /** Ein Fehler beim Prüfen ist selbst eine Auskunft: Die Zeile steht dann auf
  * „fehlt", und das Protokoll nennt den Grund.
  * Ohne Verwalter (`verwalter: false`) fehlen Basis-URL und Startpasswort: Wer die
- * Seite nur erreicht, soll nicht erfahren, dass ein Konto noch das Startpasswort trägt. */
-export async function einrichtungStand({ verwalter = false } = {}): Promise<EinrichtungStandAntwort> {
+ * Seite nur erreicht, soll nicht erfahren, dass ein Konto noch das Startpasswort trägt.
+ * Beide Antworten werden getrennt gemerkt, sonst sähe die öffentliche Seite die des Verwalters. */
+export function einrichtungStand({ verwalter = false } = {}): Promise<EinrichtungStandAntwort> {
+  const jetzt = Date.now();
+  const alt = _gemerkt.get(verwalter);
+  if (alt && alt.bis > jetzt) return alt.antwort;
+  const antwort = berechne(verwalter);
+  _gemerkt.set(verwalter, { bis: jetzt + ZWISCHENSPEICHER_MS, antwort });
+  // Ein Fehler soll nicht fünf Sekunden lang wiederholt ausgeliefert werden.
+  antwort.catch(() => {
+    if (_gemerkt.get(verwalter)?.antwort === antwort) _gemerkt.delete(verwalter);
+  });
+  return antwort;
+}
+
+async function berechne(verwalter: boolean): Promise<EinrichtungStandAntwort> {
   const ca = await tlsStand();
   const k = konfig();
-  // "Konfiguriert" blendet den Prüfknopf auf der Anmeldeseite aus. BrickLink zählt
-  // wie in /settings/einrichtung erst mit allen vier Werten: Ein halber Eintrag
-  // ist keine Einrichtung, und dann soll der Weg zur Prüfung offen bleiben.
-  const da = async (key: string) => !!(await getGlobalSetting(key).catch(meldeUndLiefere('einrichtung:quelle', null)));
-  const rebrickable = await da('rebrickable_api_key');
-  const bricklink = (
-    await Promise.all(
-      ['bricklink_consumer_key', 'bricklink_consumer_secret', 'bricklink_token', 'bricklink_token_secret'].map(da),
-    )
-  ).every(Boolean);
-  const antwort: EinrichtungStandAntwort = {
-    success: true,
-    erledigt: false,
-    konfiguriert: rebrickable || bricklink,
-    schritte: [],
+  const grund = {
+    success: true as const,
     ca: {
       vorhanden: !!ca,
       ...(ca ? { fp_hex: ca.fp_hex, gueltig_bis: ca.gueltig_bis } : {}),
@@ -60,7 +72,20 @@ export async function einrichtungStand({ verwalter = false } = {}): Promise<Einr
   const erledigt = !!(await getGlobalSetting('einrichtung_erledigt').catch(
     meldeUndLiefere('einrichtung:erledigt', null),
   ));
-  if (erledigt) return { ...antwort, erledigt: true };
+  // Danach steht nichts mehr zur Wahl: Die Schlüssel müssen nicht entschlüsselt werden,
+  // und der Prüfknopf der Ersteinrichtung bleibt weg.
+  if (erledigt) return { ...grund, erledigt: true, konfiguriert: true, schritte: [] };
+
+  // "Konfiguriert" blendet den Prüfknopf auf der Anmeldeseite aus. BrickLink zählt
+  // wie in /settings/einrichtung erst mit allen vier Werten: Ein halber Eintrag
+  // ist keine Einrichtung, und dann soll der Weg zur Prüfung offen bleiben.
+  const da = async (key: string) => !!(await getGlobalSetting(key).catch(meldeUndLiefere('einrichtung:quelle', null)));
+  const rebrickable = await da('rebrickable_api_key');
+  const bricklink = (
+    await Promise.all(
+      ['bricklink_consumer_key', 'bricklink_consumer_secret', 'bricklink_token', 'bricklink_token_secret'].map(da),
+    )
+  ).every(Boolean);
 
   const schritte: Schrittzustand[] = [];
   const datenbank = await datenbankErreichbar()
@@ -76,5 +101,5 @@ export async function einrichtungStand({ verwalter = false } = {}): Promise<Einr
   schritte.push({ id: 'konto', ok: konten.vorhanden && (!verwalter || !konten.startpasswort), pflicht: true });
   schritte.push({ id: 'quelle', ok: rebrickable, pflicht: true });
 
-  return { ...antwort, schritte };
+  return { ...grund, erledigt: false, konfiguriert: rebrickable || bricklink, schritte };
 }
