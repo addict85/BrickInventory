@@ -265,7 +265,7 @@ class StringResourceParityTest {
      */
     /**
      * Ein Bereich, ein Name — wie im Web (monitor.title): „Hintergrundarbeiten“
-     * bzw. „Background work“ in Titel, Navigation und Menü, kein „Monitoring“.
+     * bzw. „Background jobs“ (wie nav.monitoring im Web) in Titel, Navigation und Menü, kein „Monitoring“.
      * Gegenprobe: nav_monitoring auf Englisch wieder „Monitoring“ → rot.
      */
     @Test
@@ -274,7 +274,7 @@ class StringResourceParityTest {
         val de = texte("values-de/strings.xml")
         for (k in listOf("monitoring_title", "nav_monitoring", "main_menu_monitoring")) {
             assert(de[k] == "Hintergrundarbeiten") { "$k (de) = ${de[k]}" }
-            assert(en[k] == "Background work") { "$k (en) = ${en[k]}" }
+            assert(en[k] == "Background jobs") { "$k (en) = ${en[k]}" }
         }
         val alt = (en + de.mapKeys { "de:" + it.key }).filterValues { it.contains("Monitoring") }
         assert(alt.isEmpty()) { "Noch „Monitoring“ in: ${alt.keys}" }

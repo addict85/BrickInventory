@@ -22,7 +22,7 @@
     <string name="common_cancel">Cancel</string>
     <string name="settings_default_condition">Default condition</string>
     <string name="settings_default_condition_effective">Currently in effect: %1$s.</string>
-    <string name="settings_default_condition_hint">Used as default when adding items. Empty = global default from Background work.</string>
+    <string name="settings_default_condition_hint">Used as default when adding items. Empty = global default from Background jobs.</string>
     <string name="settings_default_condition_global">— Global default —</string>
     <string name="condition_new">New</string>
     <string name="condition_used">Used</string>
@@ -347,7 +347,7 @@
     <string name="parts_add_button">Add</string>
 
     <!-- ══════════════ Monitoring screen ══════════════ -->
-    <string name="monitoring_title">Background work</string>
+    <string name="monitoring_title">Background jobs</string>
     <string name="monitoring_refresh">Refresh</string>
     <string name="monitoring_retry_error">Error on retry</string>
     <string name="monitoring_delete_error">Error deleting</string>
@@ -415,7 +415,7 @@
     <string name="nav_group_prices">Prices and vouchers</string>
     <string name="nav_group_manage">Manage inventory</string>
     <string name="nav_group_server">Server</string>
-    <string name="nav_monitoring">Background work</string>
+    <string name="nav_monitoring">Background jobs</string>
     <string name="main_barcode_add_partslist">Add to the build list?</string>
     <string name="main_barcode_add_set">Add set?</string>
     <!-- Shown when the set number was guessed, not matched: the EAN could not be
@@ -426,7 +426,7 @@
     <string name="main_barcode_year">Year</string>
     <string name="main_barcode_pieces">Pieces</string>
     <string name="main_barcode_figs">Minifigures</string>
-    <string name="main_menu_monitoring">Background work</string>
+    <string name="main_menu_monitoring">Background jobs</string>
     <string name="main_menu_logout">Sign out</string>
     <string name="logout_confirm_title">Sign out?</string>
     <string name="logout_confirm_text">You will be signed out on this device. To continue, sign in again with your password.</string>
@@ -776,7 +776,7 @@
     <string name="csv_upload_sets">Import sets …</string>
     <string name="csv_upload_parts">Import parts …</string>
     <string name="csv_upload_figs">Import minifigures …</string>
-    <string name="csv_upload_wanted">Import watchlist …</string>
+    <string name="csv_upload_wanted">Import wishlist …</string>
     <string name="csv_upload_alerts">Import price alerts …</string>
     <string name="vouchers_import_done">%1$s, %2$s</string>
     <string name="csv_upload_hint">The same files as in the web app, with a header row, at most %1$d MB.</string>
@@ -859,21 +859,21 @@
 
 
     <!-- Merkliste (Nachtrag 179) -->
-    <string name="nav_wanted">Wanted</string>
+    <string name="nav_wanted">Wishlist</string>
     <string name="wanted_add_title">Add a set to the list</string>
-    <string name="wanted_add_submit">Add to wanted list</string>
+    <string name="wanted_add_submit">Add to wishlist</string>
     <string name="wanted_search">Search…</string>
     <string name="wanted_no_results">No saved set found</string>
-    <string name="wanted_empty">Your wanted list is empty</string>
+    <string name="wanted_empty">Your wishlist is empty</string>
     <string name="wanted_owned">Already owned</string>
     <string name="wanted_alert_below">Alert below %1$s</string>
     <string name="wanted_alert_above">Alert above %1$s</string>
-    <string name="wanted_added">Added to the wanted list</string>
-    <string name="wanted_already">Already on the wanted list</string>
-    <string name="wanted_deleted">“%1$s” removed from the wanted list</string>
+    <string name="wanted_added">Added to the wishlist</string>
+    <string name="wanted_already">Already on the wishlist</string>
+    <string name="wanted_deleted">“%1$s” removed from the wishlist</string>
     <string name="wanted_take">Add to collection</string>
     <string name="wanted_taken">Moved into the collection</string>
-    <string name="wanted_taken_existing">Was already in the collection — taken off the wanted list</string>
+    <string name="wanted_taken_existing">Was already in the collection — taken off the wishlist</string>
     <string name="wanted_need_number">Please enter a set number</string>
     <string name="wanted_threshold">Threshold (optional)</string>
     <string name="detail_compare">Compare prices</string>
@@ -992,8 +992,8 @@
     <string name="zert_titel_erstkontakt">Trust this server?</string>
     <string name="zert_titel_unbekannt">Unknown certificate</string>
     <string name="zert_titel_geaendert">The server\'s certificate has changed</string>
-    <string name="zert_text_erstkontakt">This is the first encrypted connection to %1$s. The fingerprint is an ID that belongs to this server. Compare it character by character with the one the web app shows under Settings → Server certificate. Only after your yes does the app remember it, and from then on it accepts only certificates that match it.</string>
-    <string name="zert_text_unbekannt">The app cannot check who %1$s is: the server issued its certificate itself, or your own authority did. That is normal for a server at home, but it could also be someone in between.\n\nWhat to do:\n1. Open the web app on a computer.\n2. Go to Settings → Server certificate.\n3. Copy the last 24 characters of the fingerprint into the field below.\n\nThe fingerprint is an ID that belongs to this server. If it matches, it is your server. This screen only shows its beginning.</string>
+    <string name="zert_text_erstkontakt">This is the first encrypted connection to %1$s. The easiest way to set it up is the QR code from the web app (Settings). If no QR code is possible: the fingerprint is an ID that belongs to this server. Compare it character by character with the one the web app shows under Settings → Server certificate. Only after your yes does the app remember it, and from then on it accepts only certificates that match it.</string>
+    <string name="zert_text_unbekannt">The app cannot check who %1$s is: the server issued its certificate itself, or your own authority did. That is normal for a server at home, but it could also be someone in between.\n\nThe easiest way is to scan the QR code from the web app (Settings). If no QR code is possible, do this:\n1. Open the web app on a computer.\n2. Go to Settings → Server certificate.\n3. Copy the last 24 characters of the fingerprint into the field below.\n\nThe fingerprint is an ID that belongs to this server. If it matches, it is your server. This screen only shows its beginning.</string>
     <string name="zert_text_geaendert">%1$s shows a different certificate than the one you confirmed. That happens when the server gets a new key – or when someone is listening in between. Nothing has been sent. Only accept it if you changed the server yourself: the new fingerprint is shown only by the web app (Settings → Server certificate); copy its last 24 characters from there.</string>
     <string name="zert_fingerabdruck">Fingerprint (SHA-256 of the public key)</string>
     <string name="zert_bisher">Previously confirmed</string>
@@ -1208,8 +1208,8 @@
     <string name="parts_leer_text">Parts come with your sets, or you add single parts yourself.</string>
     <string name="minifigs_leer_text">Minifigures come with your sets, or you add them yourself.</string>
     <string name="search_clear_all">Clear search and filters</string>
-    <string name="catalog_auf_merkliste">On the wanted list</string>
-    <string name="catalog_merkposten_oeffnen">Open wanted item</string>
+    <string name="catalog_auf_merkliste">On the wishlist</string>
+    <string name="catalog_merkposten_oeffnen">Open wishlist item</string>
     <string name="barcode_schon_besessen">Already in your collection (×%1$d)</string>
     <string name="alerts_anlegen_titel">Create price alert</string>
     <string name="alerts_anlegen">Create alert</string>
