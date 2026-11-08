@@ -33,11 +33,14 @@ rootProject.name = "BrickInventoryManager"
 include(":app")
 
 // Abhängigkeiten nur in diese Richtung: app → feature-* → core-*; kein Bereich
-// kennt einen anderen. ModulgrenzenTest prüft das an den Build-Dateien.
+// kennt einen anderen. Unter den Kernmodulen: core-update und core-dienste →
+// core-data → core-netz → core-model. ModulgrenzenTest prüft das an den Build-Dateien.
 include(":core-model")
 include(":core-ressourcen")
 include(":core-netz")
 include(":core-data")
+include(":core-update")
+include(":core-dienste")
 include(":core-ui")
 include(":core-zustand")
 include(":core-testing")

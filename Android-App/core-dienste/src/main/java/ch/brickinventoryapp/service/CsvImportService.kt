@@ -111,7 +111,7 @@ class CsvImportService : Service() {
 
     /**
      * Status-Beobachtung: SSE zuerst, Polling nur als Rückfallebene.
-     * Ausführlich: docs/begruendungen/core-data/service/CsvImportService.kt.md#startwatching
+     * Ausführlich: docs/begruendungen/core-dienste/service/CsvImportService.kt.md#startwatching
      */
     private fun startWatching() {
         pollJob = serviceScope.launch {
@@ -178,7 +178,7 @@ class CsvImportService : Service() {
         if (!running) {
             // Anlaufschutz: Der Server meldet "idle", bis der Import-Job tatsächlich angelegt
             // ist.
-            // Ausführlich: docs/begruendungen/core-data/service/CsvImportService.kt.md#if
+            // Ausführlich: docs/begruendungen/core-dienste/service/CsvImportService.kt.md#if
             if (!sawRunning && System.currentTimeMillis() - startedAtMs < GRACE_MS) return true
             return false
         }

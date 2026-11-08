@@ -23,7 +23,7 @@ import java.security.MessageDigest
  * Die App aktualisiert sich selbst aus dem GitHub-Release: beim Start still
  * prüfen, nie von allein laden. Es geht, weil der versionCode monoton steigt
  * (VERSION_CODE_BASE + Anzahl Commits, app/build.gradle.kts).
- * Ausführlich: docs/begruendungen/core-data/util/AppUpdate.kt.md#z20
+ * Ausführlich: docs/begruendungen/core-update/util/AppUpdate.kt.md#z20
  */
 
 /** Alle Release-Anhänge des Repositorys; darunter je Fassung ein unveränderliches Etikett. */
@@ -55,9 +55,6 @@ internal const val UPDATE_MAX_BYTES: Long = 300L * 1024 * 1024
  * und eine manipulierte Antwort soll die App nicht umbringen können.
  */
 internal const val UPDATE_JSON_MAX_BYTES: Long = 64L * 1024
-
-/** Wohin das geladene APK kommt; installiert wird per PackageInstaller-Sitzung, ohne FileProvider. */
-internal const val UPDATE_ORDNER = "update"
 
 /**
  * Was in version.json steht. `apkUrl` wird trotzdem geprüft

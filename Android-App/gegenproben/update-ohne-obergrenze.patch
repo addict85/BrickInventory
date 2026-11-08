@@ -3,10 +3,10 @@ Modul: feature-konto
 Test: ch.brickinventoryapp.UpdateViewModelTest
 Rot: mehr als angekuendigt wird nicht geschrieben
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/UpdateRepository.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/UpdateRepository.kt
+diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/data/UpdateRepository.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/data/UpdateRepository.kt
 index 6d47dbc..e56c93d 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/UpdateRepository.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/UpdateRepository.kt
+--- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/data/UpdateRepository.kt
++++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/data/UpdateRepository.kt
 @@ -73,7 +73,7 @@ class UpdateLader @Inject constructor(
                              if (n < 0) break
                              geladen += n

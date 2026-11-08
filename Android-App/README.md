@@ -327,7 +327,9 @@ des Moduls, wo `ModulgrenzenTest` sie liest. Ein SDK-Sprung ist eine Zeile in
 | `core-model` | Server- und UI-Modelle, reine Regeln — reines Kotlin, ohne Android |
 | `core-ressourcen` | Texte (de/en), Schriften, Bilder; `ch.brickinventoryapp.ressourcen.R` |
 | `core-netz` | Wächter-Interceptor (`ServerWaechter`), Netzrichtlinie, Adress- und Bild-Host-Prüfung; kennt weder Room noch Hilt |
-| `core-data` | Retrofit, OkHttp, Repositories, Room samt Schema (`core-data/schemas`), Ausgang, Worker, Dienste |
+| `core-data` | Retrofit, OkHttp, Repositories, Room samt Schema (`core-data/schemas`), DataStore, verschlüsselte Ablagen, Ausgang, Abmelde-Arbeiter, PDF-Export |
+| `core-update` | Selbstaktualisierung: signierte Beschreibung, Frische, APK-Download, Signaturvergleich, Installation; hängt an `core-data` |
+| `core-dienste` | CSV-Import als Vordergrund-Dienst, stündlicher Preisalarm (WorkManager); hängt an `core-data` |
 | `core-ui` | Theme und gemeinsame Composables (Karten, Zeilen, Filter, Kamera-Bausteine) |
 | `core-zustand` | Sitzung, Blickfeld, Bestandssignal, Texte, Basis der Bereichs-ViewModels, AppViewModel |
 | `core-testing` | Testhilfen (Testserver, Testdienste, `Quellen`), nur als `testImplementation` |

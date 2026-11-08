@@ -41,6 +41,9 @@ import java.io.File
  *      erst die CI misst es, lokal gibt es kein Gradle
  *   M  gegenproben/merge-rest-im-baum.patch: eine Datei `Rest.kt.orig` im Baum →
  *      rot „kein Merge-Rest liegt im Baum“ (jeder Modulordner ist eingebunden …)
+ *   N  gegenproben/dienste-haengt-an-update.patch: core-dienste bindet core-update ein →
+ *      rot „Schichtung der Kernmodule: core-dienste hängt an [core-update]“ (core-data →
+ *      core-update fängt schon Gradle als Zyklus)
  */
 class ModulgrenzenTest {
 
@@ -92,8 +95,11 @@ class ModulgrenzenTest {
             "core-ressourcen" to emptySet(),
             "core-netz" to setOf("core-model"),
             "core-data" to setOf("core-model", "core-ressourcen", "core-netz"),
+            // Aus core-data abgespalten: Sie hängen an core-data, nie umgekehrt und nie aneinander.
+            "core-update" to setOf("core-ressourcen", "core-data"),
+            "core-dienste" to setOf("core-ressourcen", "core-data"),
             "core-ui" to setOf("core-model", "core-ressourcen"),
-            "core-zustand" to setOf("core-model", "core-ressourcen", "core-data", "core-ui"),
+            "core-zustand" to setOf("core-model", "core-ressourcen", "core-data", "core-dienste", "core-ui"),
             "core-testing" to setOf("core-zustand", "core-data", "core-ui"),
         )
         val kerne = module().filterKeys { it.startsWith("core-") }

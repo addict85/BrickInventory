@@ -20,10 +20,6 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
-import ch.brickinventoryapp.alarm.WorkManagerAlarmPlaner
-import ch.brickinventoryapp.alarm.PreisalarmDurchgang
-import ch.brickinventoryapp.alarm.PreisalarmRepository
-import ch.brickinventoryapp.data.AlarmPlaner
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.CsvImportStrom
 import ch.brickinventoryapp.data.CsvImportBeobachter
@@ -35,11 +31,8 @@ import ch.brickinventoryapp.data.GeraeteEinstellungen
 import ch.brickinventoryapp.data.GeraeteAblage
 import ch.brickinventoryapp.data.KontoAblage
 import ch.brickinventoryapp.data.TokenAblage
-import ch.brickinventoryapp.data.UpdateAblage
-import ch.brickinventoryapp.data.UpdateLader
 import ch.brickinventoryapp.data.AnleitungsDownload
 import ch.brickinventoryapp.data.AnleitungsRepository
-import ch.brickinventoryapp.data.UpdateRepository
 import ch.brickinventoryapp.data.Tokenspiegel
 import ch.brickinventoryapp.data.Tokenuebernahme
 import ch.brickinventoryapp.data.Netzvertrauen
@@ -51,12 +44,7 @@ import ch.brickinventoryapp.data.Vertrauensablage
 import ch.brickinventoryapp.data.Zugangsdaten
 import ch.brickinventoryapp.data.Anmeldestand
 import ch.brickinventoryapp.data.Sitzungsende
-import ch.brickinventoryapp.util.AndroidUpdateGeraet
-import ch.brickinventoryapp.util.UpdateGeraet
-import ch.brickinventoryapp.util.UpdateStandAblage
 import ch.brickinventoryapp.data.lokal.WorkManagerEntwertung
-import ch.brickinventoryapp.service.AndroidCsvImportDienst
-import ch.brickinventoryapp.service.CsvImportDienst
 import ch.brickinventoryapp.data.EntwertungsPlaner
 import ch.brickinventoryapp.data.cache.VorschauSpeicher
 import ch.brickinventoryapp.data.cache.Vorschauablage
@@ -95,16 +83,10 @@ internal abstract class LokalModule {
     @Binds abstract fun sitzungsende(p: TokenAblage): Sitzungsende
     @Binds abstract fun tokenspiegel(p: TokenAblage): Tokenspiegel
     @Binds abstract fun tokenuebernahme(p: TokenAblage): Tokenuebernahme
-    @Binds abstract fun updateStand(p: UpdateAblage): UpdateStandAblage
-    @Binds abstract fun updateGeraet(g: AndroidUpdateGeraet): UpdateGeraet
-    @Binds abstract fun update(l: UpdateLader): UpdateRepository
     @Binds abstract fun anleitungen(d: AnleitungsDownload): AnleitungsRepository
     @Binds abstract fun csvStrom(c: CsvImportSseClient): CsvImportStrom
     @Binds abstract fun csvImport(b: CsvImportBeobachter): CsvImportRepository
     @Binds abstract fun bereinigung(b: GeraeteBereinigung): SitzungsBereinigung
-    @Binds abstract fun csvDienst(d: AndroidCsvImportDienst): CsvImportDienst
-    @Binds abstract fun alarm(p: WorkManagerAlarmPlaner): AlarmPlaner
-    @Binds abstract fun preisalarme(d: PreisalarmDurchgang): PreisalarmRepository
     @Binds abstract fun vorschauablage(v: VorschauSpeicher): Vorschauablage
     @Binds abstract fun meldungen(m: MeldungsWarteschlange): MeldungsKanal
     @Binds abstract fun passwortPflicht(p: PasswortPflichtZustand): PasswortPflicht

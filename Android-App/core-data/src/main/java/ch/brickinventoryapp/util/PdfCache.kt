@@ -78,6 +78,12 @@ fun raeumeAlteTeilelisteAuf(intern: File, jetzt: Long, frist: Long = TEILELISTE_
 }
 
 /**
+ * Wohin das geladene APK kommt; installiert wird per PackageInstaller-Sitzung, ohne FileProvider.
+ * Hier und öffentlich, weil core-update dorthin lädt und das Abmelden (unten) ihn räumt.
+ */
+const val UPDATE_ORDNER = "update"
+
+/**
  * Beim Abmelden: Teileliste (Inventar) und geteilte PDFs in beiden Wurzeln, dazu ein
  * geladenes Update. Der Cache allein genügte nicht — filesDir überlebt das Abmelden,
  * und der nächste Nutzer auf dem Gerät öffnete sonst das Inventar des vorigen.

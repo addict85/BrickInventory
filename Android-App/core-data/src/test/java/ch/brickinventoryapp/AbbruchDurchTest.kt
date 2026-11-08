@@ -1,13 +1,8 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.model.CsvImportStatus
-import ch.brickinventoryapp.service.folgeStrom
 import ch.brickinventoryapp.util.fangeAusserAbbruch
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.serializer
@@ -15,7 +10,6 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -23,14 +17,13 @@ import org.junit.rules.TemporaryFolder
 import java.io.IOException
 
 /**
- * Antwort-Cache und CSV-Strom schlucken Fehler, das Abbrechen aber nicht: Ein
- * abgebrochener Aufrufer liefe sonst weiter, als wäre nichts geschehen. Der Cache
- * fängt über fangeAusserAbbruch; kotlinx-serialization verpackt Ausnahmen aus einem
- * Serializer, deshalb wird die Hilfe selbst geprüft und am Cache nur das Schlucken.
+ * Der Antwort-Cache schluckt Fehler, das Abbrechen aber nicht: Ein abgebrochener
+ * Aufrufer liefe sonst weiter, als wäre nichts geschehen. Der Cache fängt über
+ * fangeAusserAbbruch; kotlinx-serialization verpackt Ausnahmen aus einem Serializer,
+ * deshalb wird die Hilfe selbst geprüft und am Cache nur das Schlucken.
  *
  * Gegenproben:
  *   fang-schluckt-abbruch   fangeAusserAbbruch ohne Abbruch-Zweig → rot „fangeAusserAbbruch reicht …“
- *   strom-schluckt-abbruch  folgeStrom mit `catch (_: Exception)`  → rot „folgeStrom reicht …“
  *   cache-schluckt-abbruch  put mit `catch (_: Throwable)` → rot in QuelltextRatscheTest
  */
 class AbbruchDurchTest {
@@ -67,15 +60,5 @@ class AbbruchDurchTest {
         assertEquals("Falcon", c.getMitStand("konto", "sets", String.serializer())?.first)
         assertEquals(null, c.getMitStand("konto", "sets", Kaputt))
         assertEquals(null, c.getMitStand("konto", "sets", Int.serializer()))
-    }
-
-    @Test
-    fun `folgeStrom reicht das Abbrechen weiter, ein Netzfehler heisst Rueckfallebene`() = runTest {
-        assertTrue("folgeStrom hat das Abbrechen verschluckt",
-            brichtAb { folgeStrom(flow { throw CancellationException("weg") }) { true } })
-        assertFalse(folgeStrom(flow { throw IOException("weg") }) { true })
-        assertFalse(folgeStrom(flowOf(CsvImportSseClient.Event.Failed("zu"))) { true })
-        val fertig = CsvImportStatus(status = "done")
-        assertTrue(folgeStrom(flowOf(CsvImportSseClient.Event.Status(fertig))) { false })
     }
 }

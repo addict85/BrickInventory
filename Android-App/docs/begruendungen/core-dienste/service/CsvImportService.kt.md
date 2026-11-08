@@ -1,6 +1,6 @@
-# Begründungen zu `core-data/service/CsvImportService.kt`
+# Begründungen zu `core-dienste/service/CsvImportService.kt`
 
-Die ausführlichen Kommentare aus `core-data/src/main/java/ch/brickinventoryapp/service/CsvImportService.kt`, wörtlich. Im Code steht je
+Die ausführlichen Kommentare aus `core-dienste/src/main/java/ch/brickinventoryapp/service/CsvImportService.kt`, wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 

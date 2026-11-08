@@ -1,12 +1,12 @@
-Gegenprobe: eine nur modulintern gebrauchte Funktion von core-data ist wieder öffentlich
+Gegenprobe: eine nur modulintern gebrauchte Funktion von core-update ist wieder öffentlich
 Modul: app
 Test: ch.brickinventoryapp.QuelltextRatscheTest
 Rot: die oeffentliche Flaeche der Datenmodule waechst nicht
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdatePruefung.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdatePruefung.kt
+diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/util/UpdatePruefung.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/util/UpdatePruefung.kt
 index 8d94092..e5b4f71 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdatePruefung.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdatePruefung.kt
+--- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/util/UpdatePruefung.kt
++++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/util/UpdatePruefung.kt
 @@ -7,7 +7,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
   * Ein Textvergleich liesse `…/apk-neuste.angreifer.tld/x.apk`, `…/../x.apk` oder
   * Varianten mit Benutzerangabe, Port oder Fragment durch.
