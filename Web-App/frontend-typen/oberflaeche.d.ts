@@ -36,6 +36,11 @@ type Feld = HTMLInputElement
   & Pick<HTMLSelectElement, 'options' | 'selectedIndex' | 'selectedOptions'>
   & Pick<HTMLAnchorElement, 'href' | 'download'>;
 
+// Einträge der manuellen Teile- und Figurenlisten: von 03-parts.js, 06-minifigs.js und 13-acquisition-modals.js
+// geteilt. Als globale Typen, damit keine Datei der anderen wegen importiert (kein Typkreis).
+type ManuellesTeil = import('./vertrag').ManualPartsResponse['parts'][number];
+type ManuelleFigur = import('./vertrag').ManualFigsResponse['figs'][number];
+
 // Der Teil von PDF.js, den der Betrachter (12-pdfviewer.js) benutzt. PDF.js
 // kommt als eigenes ES-Modul aus public/vendor (pdfjs-boot.js).
 interface PdfAnsicht { width: number; height: number }
