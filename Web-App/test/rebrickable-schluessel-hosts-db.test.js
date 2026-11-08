@@ -75,7 +75,7 @@ test('der Rebrickable-Schlüssel bleibt bei rebrickable.com', { concurrency: 1 }
     await holeSetTeile('10294-1');
     assert.ok(abrufe.length >= 1, 'die Attrappe sah keinen Abruf — die Gegenprobe bewiese nichts');
     assert.deepEqual(
-      abrufe.filter(a => !a.url.includes('rebrickable.com')).map(a => a.url),
+      abrufe.filter(a => new URL(a.url).hostname !== 'rebrickable.com').map(a => a.url),
       [],
       'ein Abruf ging an einen anderen Host',
     );
