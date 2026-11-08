@@ -5,33 +5,19 @@
  * Gegenprobe (durchgeführt): in 02-gallery.js `const echt = qty` gesetzt →
  * der Webapp-Teilschritt wird rot. Am 30.10.2026 gemessen: in
  * routes/api_v1/sets.ts `...(r || {})` aus der PUT-Antwort entfernt → rot:
- * „die Route liefert die Menge“ (undefined statt 3).
+ * „die Route liefert die Menge“ (undefined statt 3). Am 08.11.2026
+ * gemessen: in autosaveSet `const echt = qty` → rot: „die Webapp übernimmt
+ * die Menge aus der Antwort“ (Feld bleibt auf 1).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const ROOT = path.join(__dirname, '..');
-const { ohneKommentare } = require('./helpers/sources');
+const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
-
-test('die Webapp übernimmt die Menge aus der Antwort', () => {
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/07-set-detail.js'), 'utf8'));
-  const fn = src.slice(src.indexOf('export function autosaveSet'),
-                       src.indexOf('G(\'btn-md\').onclick'));
-  assert.match(fn, /d\.quantity/,
-    'autosaveSet liest die Menge der Antwort nicht — nach einem gedeckelten ' +
-    'Verringern bliebe die eigene Annahme im Feld stehen');
-  assert.match(fn, /G\('m-qty'\)\.value = /,
-    'Das Eingabefeld wird nicht korrigiert');
-  assert.doesNotMatch(fn, /curSet\.quantity = qty;/,
-    'Der gemerkte Stand darf nicht die GESENDETE Zahl sein, sondern die bestätigte');
-});
 
 test('die Route liefert die Menge überhaupt mit', { concurrency: 1 }, async (t) => {
   // Ohne das Feld fielen beide Clients still auf ihre eigene Annahme zurück —
@@ -50,4 +36,24 @@ test('die Route liefert die Menge überhaupt mit', { concurrency: 1 }, async (t)
     method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quantity }) })).json();
   assert.equal((await setze(3)).quantity, 3, 'die Route liefert die Menge');
   assert.equal((await setze(1)).quantity, 1, 'auch nach dem Verringern');
+});
+
+test('die Webapp übernimmt die Menge aus der Antwort', async () => {
+  // Der Server deckelt das Verringern (Erfassungen anderer Konten im Haushalt): Er schreibt 2, nicht 1.
+  const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 3 };
+  const { w, d, aufrufe } = await oeffneOberflaeche({
+    '/v1/sets': { success: true, total: 1, themes: [], sets: [SET] },
+    '/v1/sets/10294-1': (_url, o) => (o?.method === 'PUT' ? { success: true, quantity: 2 } : { success: true, set: SET }),
+    '/v1/sets/10294-1/acquisitions': { success: true, acquisitions: [] },
+  });
+  try {
+    assert.ok(await warte(() => d.querySelector('#gallery [data-click="openModal"]')));
+    d.querySelector('#gallery [data-click="openModal"]').click();
+    assert.ok(await warte(() => d.getElementById('m-qty')?.value === '3'), 'Das Detail zeigt die Menge nicht');
+    d.getElementById('m-qty').value = '1';
+    d.getElementById('m-qty').dispatchEvent(new w.Event('change', { bubbles: true }));
+    assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT')), 'Die Menge wird nicht gespeichert');
+    assert.ok(await warte(() => d.getElementById('m-qty').value === '2'),
+      `Das Feld behält die eigene Annahme: ${d.getElementById('m-qty').value}`);
+  } finally { w.close(); }
 });

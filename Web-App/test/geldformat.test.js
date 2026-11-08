@@ -1,6 +1,9 @@
 /**
  * Wer Geld formatiert, sagt auch WELCHES.
  * Ausführlich: docs/begruendungen/test/geldformat.test.js.md#kopf
+ *
+ * Gegenprobe (08.11.2026 gemessen): in fmtN `cur||CURRENCY||'EUR'` →
+ * `cur||'EUR'` → rot: „der Rückfall von fmtN ist die eingestellte Währung“.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -9,6 +12,9 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const JS = path.join(ROOT, 'public', 'js');
+const { baueTestbuendel } = require('./helpers/buendel');
+process.env.TEST_BUENDEL = baueTestbuendel('geldformat', "import { fmtN } from './01-format.js';\nwindow.__fmtN = fmtN;\n");
+const { oeffneOberflaeche, ANMELDUNG, warte } = require('./helpers/oberflaeche');
 
 /**
  * Hat dieser Aufruf ein ZWEITES Argument?
@@ -59,18 +65,16 @@ test('jeder fmtN-Aufruf nennt die Währung', () => {
 });
 
 /**
- * Und der Rückfall nennt nicht mehr eine feste Währung.
- *
  * Zweite Verteidigungslinie: Sollte doch einmal ein Aufruf ohne Währung
  * entstehen, zeigt er die EINGESTELLTE — nicht Euro für jemanden, der in
- * Franken rechnet.
+ * Franken rechnet. Am Bündel in jsdom, mit Franken in den Einstellungen.
  */
-test('der Rückfall von fmtN ist die eingestellte Währung', () => {
-  const core = fs.readFileSync(path.join(JS, '01-format.js'), 'utf8');
-  const i = core.indexOf('export function fmtN(');
-  assert.ok(i > 0, 'fmtN nicht gefunden');
-  const rumpf = core.slice(i, core.indexOf('\n}', i));
-  assert.match(rumpf, /cur\s*\|\|\s*CURRENCY/,
-    'fmtN fällt nicht auf CURRENCY zurück — ein vergessenes Argument zeigt ' +
-    'dann wieder eine fest verdrahtete Währung.');
+test('der Rückfall von fmtN ist die eingestellte Währung', async () => {
+  const { w } = await oeffneOberflaeche({
+    '/v1/settings/raw': { success: true, settings: { ...ANMELDUNG['/v1/settings/raw'].settings, currency: 'CHF' } },
+  });
+  try {
+    assert.ok(await warte(() => /CHF/.test(w.__fmtN(12.5))), `ohne Währung: ${w.__fmtN(12.5)}`);
+    assert.match(w.__fmtN(12.5, 'USD'), /\$|USD/, 'Die genannte Währung gewinnt');
+  } finally { w.close(); }
 });

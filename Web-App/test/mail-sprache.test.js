@@ -32,21 +32,6 @@ function rumpf(quelle, kopf) {
   return m >= 0 ? rest.slice(0, m) : rest;
 }
 
-/** Die Argumentliste eines Aufrufs — über Klammern gezählt, nicht per Regex. */
-function argumente(quelle, aufruf) {
-  const i = quelle.indexOf(aufruf);
-  if (i < 0) return null;
-  let tiefe = 0, args = [], akt = '';
-  for (let k = i + aufruf.length - 1; k < quelle.length; k++) {
-    const c = quelle[k];
-    if (c === '(' || c === '[' || c === '{') { tiefe++; if (tiefe === 1) continue; }
-    if (c === ')' || c === ']' || c === '}') { tiefe--; if (tiefe === 0) { args.push(akt); break; } }
-    if (tiefe === 1 && c === ',') { args.push(akt); akt = ''; continue; }
-    if (tiefe >= 1) akt += c;
-  }
-  return args.map(a => a.trim()).filter(a => a !== '');
-}
-
 test('1. jede Mail-Funktion nimmt die Sprache entgegen', () => {
   // Gefunden wird über den NAMEN, nicht über eine Liste: Eine vierte Mail
   // soll von dieser Regel erfasst werden, ohne dass jemand sie hier einträgt.

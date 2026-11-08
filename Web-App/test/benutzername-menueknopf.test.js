@@ -39,6 +39,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { JSDOM } = require('jsdom');
+const { oeffneOberflaeche, ANMELDUNG, sicht, warte } = require('./helpers/oberflaeche');
 
 const ROOT = path.join(__dirname, '..');
 /** Die Striche sind seit dem 27.10. ein Symbol der Symbolfamilie statt „☰“. */
@@ -132,6 +133,10 @@ test('der Knopf sagt einem Bildschirmleser, dass er ein Menü ist', () => {
  * Gegenproben (durchgeführt): `ME.isAdmin` in der Bedingung durch `true`
  * ersetzt → „ohne Verwalterrecht steht nur der Name" rot. Den Zusatz ganz
  * entfernt → „mit Verwalterrecht steht (Admin) dahinter" rot.
+ * Gegenproben (08.11.2026 gemessen, am Bündel): zeigeBenutzernamen() ohne
+ * `ME.isAdmin &&` bzw. mit fest „Admin“ statt tRaw('users.admin_badge') →
+ * rot (englisch stünde „Verwalter“); die Profilseite wieder mit eigenem `G('ubadge').textContent =
+ * username` statt zeigeBenutzernamen() → rot (nach dem Speichern).
  */
 test('der Namenszug trägt den Verwalter-Hinweis, die Kachel ist weg', () => {
   const { document } = kopfleiste().window;
@@ -147,31 +152,29 @@ test('der Namenszug trägt den Verwalter-Hinweis, die Kachel ist weg', () => {
     'Nach dem Menüknopf steht noch etwas in der Reihe — dann ist er nicht ganz rechts.');
 });
 
-test('mit Verwalterrecht steht (Admin) dahinter, ohne nur der Name', () => {
-  // Geprüft wird die QUELLE und nicht ein nachgebauter Ablauf: zeigeBenutzernamen()
-  // hängt an ME und am Sprachtext, beides gibt es hier nicht. Was zählt, ist,
-  // dass die Regel beide Fälle unterscheidet — und dass sie nur EINMAL dasteht.
-  const core = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-konto.js'), 'utf8');
-  const fn = core.slice(core.indexOf('export function zeigeBenutzernamen'));
-  const rumpf = fn.slice(0, fn.indexOf('\n}'));
-  assert.ok(rumpf.includes('ME.isAdmin'),
-    'zeigeBenutzernamen() unterscheidet nicht nach Verwalterrecht — dann trägt ' +
-    'entweder jeder den Hinweis oder niemand.');
-  assert.match(rumpf, /\$\{ME\.username\} \(\$\{tRaw\('users\.admin_badge'\)\}\)/,
-    'Der Zusatz steht nicht als „Name (Admin)" da.');
-  assert.match(rumpf, /:\s*ME\.username/,
-    'Ohne Verwalterrecht steht nicht nur der Name da.');
-  assert.ok(rumpf.includes("tRaw('users.admin_badge')"),
-    'Der Zusatz ist ein Literal statt eines Sprachtextes — eine englische ' +
-    'Oberfläche zeigte dann deutsches „Admin".');
-
-  // EINE Stelle, die schreibt. 05-settings.js rief früher von Hand
-  // `uel.textContent = username` auf — und hatte dabei schon einmal den
-  // falschen Elementnamen, jahrelang unbemerkt.
-  const settings = fs.readFileSync(path.join(ROOT, 'public', 'js', '05-settings.js'), 'utf8');
-  assert.ok(settings.includes('zeigeBenutzernamen()'),
-    'Die Profilseite setzt den Namen wieder selbst — dann schneidet sie den ' +
-    'Verwalter-Hinweis beim Speichern ab.');
-  assert.doesNotMatch(settings, /uel\.textContent\s*=/,
-    'In 05-settings.js steht wieder eine eigene Fassung der Regel.');
+test('mit Verwalterrecht steht (Admin) dahinter, ohne nur der Name', async () => {
+  // Am Bündel in jsdom: anmelden als Verwalter und als Nutzer, auf Englisch, und nach dem Speichern des Profils.
+  const ich = (u) => ({ '/v1/auth/me': { ...ANMELDUNG['/v1/auth/me'], user: { ...ANMELDUNG['/v1/auth/me'].user, ...u } } });
+  const name = async (antworten, opt) => {
+    const o = await oeffneOberflaeche(antworten, opt);
+    await warte(() => o.d.getElementById('ubadge').textContent.trim());
+    return o;
+  };
+  for (const [u, opt, soll] of [[{}, {}, 'anna (Verwalter)'], [{ is_admin: false }, {}, 'anna'], [{}, { sprache: 'en' }, 'anna (Admin)']]) {
+    const { w, d } = await name(ich(u), opt);
+    try { assert.equal(d.getElementById('ubadge').textContent.trim(), soll, JSON.stringify([u, opt])); } finally { w.close(); }
+  }
+  // Die Profilseite setzt den Namen über dieselbe Regel — der Hinweis bleibt nach dem Speichern.
+  const { w, d } = await name({ '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } } });
+  try {
+    await sicht(w, 'profil');
+    await warte(() => d.getElementById('prof-user').value === 'anna');
+    d.getElementById('prof-user').value = 'anna2';
+    d.getElementById('btn-sav-prof').click();
+    await warte(() => d.getElementById('confirm-modal').style.display === 'flex');
+    d.getElementById('cd-pw').value = 'Mein-Passwort-1';
+    d.getElementById('cd-confirm').click();
+    assert.ok(await warte(() => d.getElementById('ubadge').textContent.trim() === 'anna2 (Verwalter)'),
+      `nach dem Speichern: ${d.getElementById('ubadge').textContent}`);
+  } finally { w.close(); }
 });
