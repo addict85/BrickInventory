@@ -5,7 +5,8 @@
  * Gegenproben (08.11.2026 gemessen, jeweils zurückgenommen):
  *   cacheUsable ohne die kurze Frist für 0-Einträge → rot „ein gecachter
  *   Null-Preis …“; effectiveCondition bei Erfassungen immer 'N' → rot
- *   „Bewertung und Anzeige …“. Gestrichen, weil set-zustand-aggregat-db.test.js
+ *   „Bewertung und Anzeige …“; buildChart() mit firstRealIndex immer 0 oder
+ *   ohne Auffüllen mit 0 → rot „die Verlaufs-Endpunkte …“. Gestrichen, weil set-zustand-aggregat-db.test.js
  *   es ausführt: „der P&L-Pfad wählt je Set …“ (priceFor() immer Neupreis →
  *   dort rot) und „es gibt einen Diagnose-Endpunkt …“ (ohne price_cache → rot).
  */
@@ -532,10 +533,34 @@ test('die Verlaufs-Endpunkte liefern fertige Diagrammdaten', () => {
   // priceChartSVG(), Android hätte dieselbe Rechnung ein zweites Mal
   // gebraucht. Genau dieses Muster ist in diesem Projekt schon mehrfach
   // auseinandergelaufen (Zustandsauflösung, Bild-Allowlist, Verlaufsroute).
-  const cd = fs.readFileSync(path.join(ROOT, 'src/finanzen/chartData.ts'), 'utf8');
-  assert.match(cd, /export function buildChart/, 'Der gemeinsame Bauer fehlt');
-  assert.match(cd, /byDay\.has\(day\) \? byDay\.get\(day\)! : 0/, 'Leere Positionen müssen mit 0 aufgefüllt werden');
-  assert.match(cd, /firstRealIndex/, 'Ohne diesen Index kann ein Renderer die aufgefüllten Nullen nicht überspringen');
+  const { buildChart } = _req('src/finanzen/chartData.js');
+  const d = buildChart([
+    {
+      name: 'N',
+      rows: [
+        { recorded_at: '2026-01-02', avg_price: '10' },
+        { recorded_at: '2026-01-03', avg_price: 11 },
+      ],
+    },
+    { name: 'U', rows: [{ recorded_at: '2026-01-03', avg_price: null, qty_avg_price: '7' }] },
+  ]);
+  assert.deepEqual(d.x, ['2026-01-02', '2026-01-03'], 'Die Achse trägt die Messtage beider Reihen');
+  assert.deepEqual(
+    d.values[1].values.map((/** @type {any} */ p) => p.y),
+    [0, 7],
+    'Leere Positionen werden mit 0 aufgefüllt',
+  );
+  assert.equal(
+    d.values[1].firstRealIndex,
+    1,
+    'Ohne diesen Index kann ein Renderer die aufgefüllten Nullen nicht überspringen',
+  );
+  assert.equal(d.values[0].firstRealIndex, 0);
+  assert.equal(
+    buildChart([{ name: 'leer', rows: [] }]).values[0].firstRealIndex,
+    0,
+    'Eine leere Reihe zeigt hinter ihr Ende',
+  );
 
   // Alle drei Verlaufs-Endpunkte müssen ihn benutzen.
   const ph = fs.readFileSync(path.join(ROOT, 'src/finanzen/priceHistory.ts'), 'utf8');
