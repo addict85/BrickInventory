@@ -19,6 +19,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowNetworkCapabilities
 import java.io.File
 
 /**
@@ -46,12 +47,10 @@ class VorschauGeraetTest {
 
     private fun lage(transport: Int, vararg faehig: Int): Netzlage.Art {
         val cm = ctx.getSystemService(ConnectivityManager::class.java)
-        val nc = NetworkCapabilities.Builder()
-            .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
-            .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING)
-            .addTransportType(transport)
-            .apply { faehig.forEach { addCapability(it) } }
-            .build()
+        // Leer angelegt: weder NOT_METERED noch NOT_ROAMING, nur was der Fall setzt.
+        val nc = ShadowNetworkCapabilities.newInstance()
+        shadowOf(nc).addTransportType(transport)
+        faehig.forEach { shadowOf(nc).addCapability(it) }
         shadowOf(cm).setNetworkCapabilities(cm.activeNetwork, nc)
         return Netzlage(ctx).aktuell()
     }
