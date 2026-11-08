@@ -5,11 +5,13 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import type { ClientBase } from 'pg';
 import { meldeUndWeiter, fehlertext, logAndContinue } from '../src/infra/fehler';
+import type { DbSchnittstelle } from './typen';
 
 /** Alle noch nicht angewandten Migrationen; `client` ist eine eigene Verbindung, nicht der Pool.
  * Ausführlich: docs/begruendungen/db/migrate.ts.md#runmigrations */
-async function runMigrations(client: any, { sichern = false, bis }: { sichern?: boolean; bis?: string } = {}): Promise<string[]> {
+async function runMigrations(client: ClientBase, { sichern = false, bis }: { sichern?: boolean; bis?: string } = {}): Promise<string[]> {
   await client.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       name       TEXT PRIMARY KEY,
@@ -68,7 +70,7 @@ function pruefsumme(sql: string): string {
 /** Eine angewandte Migration darf sich nicht ändern, sonst gäbe es zwei
  * Schemas unter einem Namen. Fehlt die Summe (ältere Zeile), wird sie
  * einmal nachgetragen. */
-async function pruefeAngewandte(client: import('pg').ClientBase, dir: string, rows: Angewandt[]): Promise<void> {
+async function pruefeAngewandte(client: ClientBase, dir: string, rows: Angewandt[]): Promise<void> {
   const geaendert: string[] = [];
   for (const r of rows) {
     const datei = path.join(dir, r.name);
@@ -88,8 +90,8 @@ const SICHERUNGEN_BEHALTEN = 3;
 export const SICHERUNG_FRIST_TAGE = 30;
 const SICHERUNG_SCHEMA = '^vor_migration_[0-9]{17}$';
 
-type Abfrager = Pick<import('./database').DbSchnittstelle, 'all' | 'run'>;
-const ueberClient = (c: import('pg').ClientBase): Abfrager => ({
+type Abfrager = Pick<DbSchnittstelle, 'all' | 'run'>;
+const ueberClient = (c: ClientBase): Abfrager => ({
   all: async <T>(q: string, p?: unknown[]) => (await c.query(q, p)).rows as T[],
   run: async (q: string, p?: unknown[]) => ({ changes: (await c.query(q, p)).rowCount ?? 0 }),
 });
@@ -133,7 +135,7 @@ export async function entferneKontoAusSicherungen(c: Abfrager, uid: number): Pro
  * Fremdschlüssel auf users) in ein eigenes Schema kopieren: Der Container hat
  * kein pg_dump, und eine umformende Migration ist ohne Kopie nicht
  * umkehrbar. Drei Sicherungen bleiben; Wiederherstellen steht im README. */
-async function sichereNutzerdaten(client: import('pg').ClientBase, offen: string[]): Promise<string> {
+async function sichereNutzerdaten(client: ClientBase, offen: string[]): Promise<string> {
   const schema = `vor_migration_${new Date().toISOString().replace(/\D/g, '').slice(0, 17)}`;
   const { rows } = await client.query<{ name: string }>(`
     SELECT DISTINCT c.table_name AS name
@@ -174,7 +176,7 @@ async function sichereNutzerdaten(client: import('pg').ClientBase, offen: string
 /** Die alten Startstufen legen an, was Migrationen bis `bis` schon gelöscht
  * hatten; deren DROP … IF EXISTS laufen darum noch einmal. Nur bis `bis`:
  * Spätere ersetzen manche Tabelle durch eine gleichnamige View. */
-async function abgeloestesEntfernen(client: import('pg').ClientBase, bis: string): Promise<number> {
+async function abgeloestesEntfernen(client: ClientBase, bis: string): Promise<number> {
   const dir = path.join(__dirname, 'migrations');
   const { rows } = await client.query<{ name: string }>(
     'SELECT name FROM schema_migrations WHERE name <= $1 ORDER BY name', [bis]);

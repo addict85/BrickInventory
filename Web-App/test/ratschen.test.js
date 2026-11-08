@@ -122,7 +122,7 @@ test('Datenbankzeilen sind ohne Typargument unknown', () => {
   // Ohne Angabe war eine Zeile `any`, und die Typprüfung endete an der
   // Datenbank — dort, wo numeric und bigint als Zeichenkette ankommen.
   // Gegenprobe (05.11.2026): `get<T = any>` in DbSchnittstelle → rot.
-  const quelle = fs.readFileSync(path.join(WEB, 'db', 'database.ts'), 'utf8');
+  const quelle = ['database.ts', 'typen.ts'].map(n => fs.readFileSync(path.join(WEB, 'db', n), 'utf8')).join('\n');
   assert.equal((quelle.match(/\b(?:all|get)\s*(?::\s*)?<T = unknown>/g) || []).length, 6,
     'all/get in Schnittstelle, Pool und Transaktion');
   assert.doesNotMatch(quelle, /<T = any>|lastID/);
