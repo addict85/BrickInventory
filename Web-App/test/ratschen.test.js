@@ -181,8 +181,8 @@ function reineQuelltextTests() {
 }
 
 test('reine Quelltext-Tests werden weniger, nie mehr', () => {
-  // Gemessen 84 am 06.11.2026; wie die Zahl gesunken ist, steht im git log.
-  const SCHRANKE = 84;
+  // Gemessen 81 am 08.11.2026; wie die Zahl gesunken ist, steht im git log.
+  const SCHRANKE = 81;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
   const ist = reineQuelltextTests();
@@ -222,9 +222,10 @@ function quelltextFaelle() {
 }
 
 test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
-  // Gemessen 610 am 06.11.2026 (Prüfbericht: 632; die Ratschen selbst zählen mit).
+  // Gemessen 563 am 08.11.2026 (Prüfbericht: 632; die Ratschen selbst zählen mit).
+  // Gegenprobe (08.11.2026): `\b_req\w*\(` aus FALL_FUEHRT_AUS entfernt → rot (574).
   // Gegenprobe (05.11.2026): parts-paging.test.js auf den Stand vor den jsdom-Tests → rot.
-  const SCHRANKE = 610;
+  const SCHRANKE = 563;
   const { n, alle } = quelltextFaelle();
   assert.ok(alle > 2000, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
   assert.ok(n <= SCHRANKE, `${n} Testfälle lesen nur Quelltext, erlaubt sind ${SCHRANKE}. ` +
