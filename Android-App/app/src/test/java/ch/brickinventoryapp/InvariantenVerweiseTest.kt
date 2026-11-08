@@ -10,7 +10,7 @@ import java.io.File
  * wird nur, dass es sie gibt, nicht, ob der Test die Regel noch ganz trägt.
  *
  * Gegenprobe (gegenproben/invarianten-verweis-ins-leere.patch): ein Verweis auf
- * `ui/BarcodeFeature.kt` in INVARIANTEN.md → rot „jede in INVARIANTEN.md genannte …“.
+ * `ui/BarcodeFeature.kt` in INVARIANTEN.md → rot „jede in INVARIANTEN genannte …“.
  */
 class InvariantenVerweiseTest {
 
