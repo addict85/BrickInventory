@@ -1,6 +1,5 @@
 /** Je Erfassung mit dem Preis ihres Zustands, weil gemischte Bestände sonst
- * einen falschen Durchschnitt bekämen.
- * Ausführlich: docs/begruendungen/src/finanzen/setValue.ts.md#abschnitt */
+ * einen falschen Durchschnitt bekämen. Ausführlich: docs/begruendungen/src/finanzen/setValue.ts.md#abschnitt */
 import { inZehntel4, aufRappen, alsText } from '../infra/geld';
 import * as repo from './repository/setWert';
 

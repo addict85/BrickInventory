@@ -160,7 +160,7 @@ export async function pruefeToken(token: string | null | undefined,
   const row: TokenBenutzer | undefined = await repo.gueltigerToken(hashed);
   if (!row) {
     _tokenCache.delete(token);
-    if (!await meldeWiederverwendung(hashed)) zaehleFehlversuch(o.ip);
+    if (!await meldeWiederverwendung(hashed)) await zaehleFehlversuch(o.ip);
     return { nutzer: null };
   }
   // Verwalterrecht nur mit Scope `voll`, an dieser einen Stelle entschieden,
@@ -395,13 +395,11 @@ async function fehlversuch(ereignis: Anmeldeereignis, ip: string, name: string, 
 export function escapeLike(s: unknown): string { return String(s ?? '').replace(/([%_\\])/g, '\\$1'); }
 
 /** 0, weil null schon „nichts gewählt, Gleitfrist" heisst und beide mit der
- * Nonce in einem Feld reisen.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#unbegrenzt */
+ * Nonce in einem Feld reisen. Ausführlich: docs/begruendungen/src/konto/auth.ts.md#unbegrenzt */
 export const UNBEGRENZT = 0;
 
 /** „unbegrenzt" ist nicht die Vorgabe: Es nimmt die einzige selbsttätige
- * Reissleine für ein verlorenes Gerät weg.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#token-laufzeiten */
+ * Reissleine für ein verlorenes Gerät weg. Ausführlich: docs/begruendungen/src/konto/auth.ts.md#token-laufzeiten */
 const TOKEN_LAUFZEITEN: Record<string, number> = {
   '1m':  30,
   '2m':  60,
@@ -524,13 +522,11 @@ export async function revokeAllTokens(userId: number): Promise<void> {
 }
 
 /** Gerätezugänge haben kein festes Ende; diese Frist begrenzt, wie lange ein
- * vergessenes Gerät gilt.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#token-idle-days */
+ * vergessenes Gerät gilt. Ausführlich: docs/begruendungen/src/konto/auth.ts.md#token-idle-days */
 export const TOKEN_IDLE_DAYS = konfig().tokenLeerlaufTage;
 
 /** Altzeilen ohne Ablaufdatum bekommen vorher ihre Gleitfrist, damit sie nach
- * derselben Regel fallen wie neue.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#purgeexpiredtokens */
+ * derselben Regel fallen wie neue. Ausführlich: docs/begruendungen/src/konto/auth.ts.md#purgeexpiredtokens */
 export async function purgeExpiredTokens() {
   const warn = (was: string) => (e: Error) => { console.warn(`[tokens] ${was}:`, e?.message || e); return 0; };
   const m = await repo.ziehAltzeilenNach(TOKEN_IDLE_DAYS).catch(warn('Altzeilen nachziehen'));

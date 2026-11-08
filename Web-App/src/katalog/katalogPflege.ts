@@ -6,6 +6,7 @@ import * as stamm from './repository/katalogStamm';
 
 type Schreiber = stamm.Schreiber;
 
+// Die Beschreibung gilt für alle Konten und steht nur im Katalog (Migration 0034).
 // Ausführlich: docs/begruendungen/src/katalog/katalogPflege.ts.md#merketeil
 
 /** `null` heisst: aus einer geprüften Quelle, sonst das Konto, das es eingetippt

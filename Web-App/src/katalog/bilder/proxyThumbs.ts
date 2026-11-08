@@ -7,6 +7,7 @@ import * as db from '../../../db/database';
 import { LOCKS } from '../../infra/lockNamespaces';
 import * as sperre from '../repository/sitzungsSperre';
 
+// Warteschlange, Sperre und Verkleinern gehören zusammen.
 // Ausführlich: docs/begruendungen/src/katalog/bilder/proxyThumbs.ts.md#proxy-thumb-size
 
 export const PROXY_THUMB_SIZE = 200;

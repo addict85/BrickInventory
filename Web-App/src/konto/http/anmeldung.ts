@@ -25,8 +25,7 @@ export async function zweiterFaktorPflicht(req: Request): Promise<boolean> {
 }
 
 /** req.ip statt X-Forwarded-For: Express wertet den Kopf nur aus, wenn er von
- * einem vertrauten Proxy kommt.
- * Ausführlich: docs/begruendungen/src/konto/http/anmeldung.ts.md#ipof */
+ * einem vertrauten Proxy kommt. Ausführlich: docs/begruendungen/src/konto/http/anmeldung.ts.md#ipof */
 export function adresse(req: Request): string {
   return req.ip || req.socket?.remoteAddress || '?';
 }
@@ -37,8 +36,7 @@ export function anmelden(req: Request, username: unknown, password: unknown, cod
 }
 
 /** Neue Session-ID gegen Session-Fixation; sofort speichern, damit die nächste
- * Anfrage die neue ID schon kennt.
- * Ausführlich: docs/begruendungen/src/konto/http/anmeldung.ts.md#establishsession */
+ * Anfrage die neue ID schon kennt. Ausführlich: docs/begruendungen/src/konto/http/anmeldung.ts.md#establishsession */
 export async function establishSession(req: Request, data: { userId: number; username: string; isAdmin: boolean;
                                                        mussPasswortAendern?: boolean; passwortBestaetigtAm?: number }): Promise<void> {
   // Ohne Antwort 0: Im Zweifel meldet der Vergleich der nächsten Anfrage ab.

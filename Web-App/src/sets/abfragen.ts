@@ -10,7 +10,7 @@ import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } 
 import { anleitungenZuSet, anleitungenZusammenlegen } from '../katalog/instructions';
 import { legeInPapierkorb } from '../bestand/papierkorb';
 
-// Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#set-sorts
+// Leseabfragen; Zustand aus den Erfassungen. Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#set-sorts
 
 
 import type { BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
@@ -23,8 +23,7 @@ export async function getSets(userIdWahl: Sicht | Blickfeld, query: Abfrage<'GET
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   // Ausdrückliche Spalten statt SELECT *: Die Antwort trägt nur, was die
-  // Clients lesen.
-  // Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#getsets-set-cols
+  // Clients lesen. Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#getsets-set-cols
   const { search, theme, sort, page = 1, page_size = null } = query;
   const size = page_size ? clampPageSize(page_size, 60) : null;
   const { sets, countRow, themeRows } = await repo.setListe(uids, {
@@ -79,6 +78,7 @@ export async function getSets(userIdWahl: Sicht | Blickfeld, query: Abfrage<'GET
   };
 }
 
+// Eine gebrauchte Erfassung macht das Set gebraucht; die Regel steht nur hier.
 // Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#getsetconditionaggregate
 export async function getSetConditionAggregate(userId: Blickfeld, setNumber: string) {
   const uids = asIds(userId);
@@ -110,8 +110,7 @@ export async function getSet(userIdWahl: Sicht | Blickfeld, setNumber: string) {
   const uids = asIds(userId);
   const [set, shared, uploaded] = await Promise.all([
     // Die eigene Zeile gewinnt für Zustand und Kaufpreis; die MENGE ist die Summe
-    // über das Blickfeld.
-    // Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#getset
+    // über das Blickfeld. Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#getset
     repo.setDetailZeile(uids, setNumber, uids[0]),
     anleitungenZuSet(setNumber),
     repo.eigeneAnleitungenDesSets(uids, setNumber),
@@ -137,7 +136,7 @@ export async function getSet(userIdWahl: Sicht | Blickfeld, setNumber: string) {
     instructions: anleitungenZusammenlegen(shared, uploaded) };
 }
 
-// Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#deletesetrows
+// Für Löschen und Wegfall; sonst verwaisen Teile. Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#deletesetrows
 export async function deleteSetRows(tx: DbSchnittstelle, uids: number[], setNumber: string) {
   await repo.entferneSetZeilen(tx, uids, setNumber);
 }

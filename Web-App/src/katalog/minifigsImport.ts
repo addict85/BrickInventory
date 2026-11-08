@@ -5,6 +5,7 @@ import { mitVersion } from '../infra/setNummer';
 import { merkeFiguren, merkeSetFiguren } from './katalogPflege';
 import * as inhalt from './repository/setInhalt';
 
+// Mit und ohne Versionsanhang fragen, nicht zweimal dieselbe Schreibweise.
 // Ausführlich: docs/begruendungen/src/katalog/minifigsImport.ts.md#figurenauskatalog
 export async function figurenAusKatalog(setNumber: string) {
   return inhalt.figurenDesSetkatalogs(mitVersion(setNumber)).catch((e: unknown) => { logAndContinue('minifiguren:katalog lesen')(e); return []; });

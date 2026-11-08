@@ -1,6 +1,5 @@
 /** Eine Form für alle Verlaufs-Endpunkte, damit beide Oberflächen einen
- * Diagrammbauer brauchen.
- * Ausführlich: docs/begruendungen/src/finanzen/chartData.ts.md#chartpoint */
+ * Diagrammbauer brauchen. Ausführlich: docs/begruendungen/src/finanzen/chartData.ts.md#chartpoint */
 
 export interface ChartPoint { x: string; y: number }
 

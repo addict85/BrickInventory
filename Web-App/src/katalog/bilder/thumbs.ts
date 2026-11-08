@@ -1,4 +1,4 @@
-// Ausführlich: docs/begruendungen/src/katalog/bilder/thumbs.ts.md#abschnitt
+// sharp rechnet ausserhalb des Event-Loops. Ausführlich: docs/begruendungen/src/katalog/bilder/thumbs.ts.md#abschnitt
 
 import { meldeFehler, fehlertext } from '../../infra/fehler';
 import path from 'path';

@@ -8,6 +8,7 @@ import { meldeFehler, fehlertext, logAndContinue, meldeUndLiefere } from '../inf
 import { getMinifigParts } from '../katalog/rebrickableKatalog';
 import { KEINE_FARBE } from '../infra/validate';
 
+// Ein Blatt ohne Rückbezug, damit die Aufrufer echt importieren statt spät mit require().
 // Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#getcurrentmarketprice
 export async function getCurrentMarketPrice(setNumber: string, userId: number, condition: string | null = null) {
   try {
@@ -93,6 +94,7 @@ export async function marktpreiseAusCacheFuerFiguren(
   return treffer;
 }
 
+// Der Teile-Cache ist nach BrickLink-Nummer und -Farbe verschlüsselt; beides wird vorher übersetzt.
 // Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#marktpreiseauscachefuerteile
 export async function marktpreiseAusCacheFuerTeile(
   teile: Array<{ part_number?: string | null; bl_part_number?: string | null;

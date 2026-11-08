@@ -20,8 +20,7 @@ export async function kaufpreisAusEingabe(
 }
 
 /** Ohne Marktpreis steht in der Stammzeile 0, in der Erfassung NULL — für
- * Teile und Figuren gleich.
- * Ausführlich: docs/begruendungen/src/finanzen/preisRegel.ts.md#manuellerkaufpreis */
+ * Teile und Figuren gleich. Ausführlich: docs/begruendungen/src/finanzen/preisRegel.ts.md#manuellerkaufpreis */
 export async function manuellerKaufpreis(
   nutzerId: number,
   eingabe: { unitPrice?: unknown; condition?: string | null },

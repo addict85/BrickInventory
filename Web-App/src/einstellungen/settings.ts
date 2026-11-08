@@ -133,8 +133,7 @@ export async function deleteUserSetting(userId: number, key: string) {
 // Einstellungen LESEN — eine Fassung für beide Oberflächen, damit die Apps
 // gleich funktionieren.
 
-/** Werden nie im Klartext ausgeliefert.
- * Ausführlich: docs/begruendungen/src/einstellungen/settings.ts.md#secret-keys */
+/** Werden nie im Klartext ausgeliefert. Ausführlich: docs/begruendungen/src/einstellungen/settings.ts.md#secret-keys */
 export const SECRET_KEYS = new Set([
   'bricklink_consumer_key', 'bricklink_consumer_secret',
   'bricklink_token', 'bricklink_token_secret',

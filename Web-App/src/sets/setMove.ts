@@ -1,6 +1,5 @@
 /** Verschoben wird über die Erfassungen: Die Menge beider Konten folgt daraus
- * beim Lesen, hier wird keine Menge geschrieben.
- * Ausführlich: docs/begruendungen/src/sets/setMove.ts.md#abschnitt */
+ * beim Lesen, hier wird keine Menge geschrieben. Ausführlich: docs/begruendungen/src/sets/setMove.ts.md#abschnitt */
 import type { DbSchnittstelle } from '../../db/database';
 import { withInventoryLock } from '../../db/txLock';
 import { recordAcquisitionForDay } from '../bestand/acquisitions';

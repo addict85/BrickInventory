@@ -91,6 +91,7 @@ export async function loescheMerkposten(userId: number, setNumber: string, condi
   return r.changes ?? 0;
 }
 
+// UPDATE statt löschen und neu anlegen: Aufnahmedatum und Preisalarm bleiben.
 // Ausführlich: docs/begruendungen/src/merkliste/merkliste.ts.md#verschiebemerkposten
 export async function verschiebeMerkposten(
   vonId: number, setNumber: string, condition: unknown, zuId: number,
@@ -177,8 +178,7 @@ export async function merkpostenVon(
                  alarm_richtung: string | null; alarm_schwelle: string | number | null;
                  alarm_ausgeloest: unknown; marktpreis: string | number | null };
   // Das Bild hier bestellen: Der Proxy legt nur für Vorschauen eine Notiz an,
-  // das Detail fragt aber das volle Bild.
-  // Ausführlich: docs/begruendungen/src/merkliste/merkliste.ts.md#merkpostenvon-2
+  // das Detail fragt aber das volle Bild. Ausführlich: docs/begruendungen/src/merkliste/merkliste.ts.md#merkpostenvon-2
 
   return ((rows ?? []) as Zeile[]).map(({ alarm_richtung, alarm_schwelle, alarm_ausgeloest, ...r }) => {
     // Synchron und gecacht — kein Dateisystemzugriff je Zeile. Dieselbe Namensregel

@@ -1,3 +1,4 @@
+// Eigenes Modul, damit Proxy und Vorschau zählen, ohne über global zu greifen.
 // Ausführlich: docs/begruendungen/src/katalog/bilder/imgProxyStats.ts.md#imgproxyfailures
 export const imgProxyFailures = {
   timeout: 0,

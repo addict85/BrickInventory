@@ -6,7 +6,7 @@ import { meldeUndLiefere } from '../infra/fehler';
 import { marktpreiseAusCacheFuerFiguren } from '../finanzen/marketPrice';
 import * as repo from './repository/figurenListe';
 
-// Ausführlich: docs/begruendungen/src/figuren/abfragen.ts.md#abschnitt
+// Leseabfragen für Minifiguren. Ausführlich: docs/begruendungen/src/figuren/abfragen.ts.md#abschnitt
 
 /** Ohne page_size unverändertes Verhalten — die Android-App ruft so auf. */
 type FigurenWunsch = { search?: string | undefined; source?: string | undefined; set_number?: string | undefined;
@@ -43,6 +43,7 @@ export async function getMinifigs(userIdWahl: Sicht | number | number[], { searc
   };
 }
 
+// Eine Zählung für Webapp und App; die App zählte vorher selbst und anders.
 // Ausführlich: docs/begruendungen/src/figuren/abfragen.ts.md#getminifigstats
 export async function getMinifigStats(userIdWahl: Sicht | number | number[]) {
   const userId = await blickfeldAus(userIdWahl);

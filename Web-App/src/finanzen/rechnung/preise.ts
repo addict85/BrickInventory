@@ -28,8 +28,7 @@ type PreisZeile = { avg_price?: unknown; fetched_at?: string | Date | null } | n
 type Stunden = string | number;
 
 /** DIE Zustandsauflösung für ein Set — eine, weil mehrere eigene Fassungen
- * auseinandergelaufen waren.
- * Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#resolvesetcondition */
+ * auseinandergelaufen waren. Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#resolvesetcondition */
 export async function resolveSetCondition(
   uid: number | number[], setNumber: string, dbh?: Pick<DbSchnittstelle, 'get'>,
 ): Promise<'N' | 'U'> {
@@ -46,8 +45,7 @@ export const DEFAULT_PRICE_CONDITION = 'U';
 
 
 /** Kürzer als das TTL-Fenster, damit ein Rückfall (sold → stock) überhaupt
- * wieder angefragt wird.
- * Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#zero-price-ttl-hours */
+ * wieder angefragt wird. Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#zero-price-ttl-hours */
 const ZERO_PRICE_TTL_HOURS = 6;
 
 /** Die eine Stelle, die „frisch" festlegt. */

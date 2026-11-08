@@ -95,8 +95,7 @@ async function runPriceRefresh(k?: AuftragsKontext) {
   await k?.fortschritt({ erledigt: 0, gesamt: 0, text: 'Starte…' });
   try {
     // Auch Merkposten: /price-history liest den Cache nur, und ohne diesen Lauf
-    // bliebe ihr Preisverlauf leer.
-    // Ausführlich: docs/begruendungen/jobs/priceJob.ts.md#runpricerefresh-eigene
+    // bliebe ihr Preisverlauf leer. Ausführlich: docs/begruendungen/jobs/priceJob.ts.md#runpricerefresh-eigene
     const eigene = await bestandsPlaetze();
     const gewuenschte = await merklistenPlaetze().catch(meldeUndLiefere('preis-job:gewuenschte', []));
     const allSets = [...eigene, ...(gewuenschte || [])]
@@ -161,8 +160,7 @@ async function runPriceRefresh(k?: AuftragsKontext) {
     } catch(e) { log(`Daily snapshot error: ${fehlertext(e)}`); }
 
     // Preisalarme hier und nicht je Abruf: Dort liefe die Prüfung tausendfach und
-    // meldete dasselbe mehrmals.
-    // Ausführlich: docs/begruendungen/jobs/priceJob.ts.md#runpricerefresh-2
+    // meldete dasselbe mehrmals. Ausführlich: docs/begruendungen/jobs/priceJob.ts.md#runpricerefresh-2
     try {
       const wartende = await setsMitAlarm().catch(meldeUndLiefere('preis-job:wartende', []));
       let gemeldet = 0;
@@ -177,8 +175,7 @@ async function runPriceRefresh(k?: AuftragsKontext) {
 }
 
 /** Gemischte Sets brauchen beide Preise, reine nur einen — eine Fassung für
- * den Nachtlauf und das Erfassen.
- * Ausführlich: docs/begruendungen/jobs/priceJob.ts.md#zustaendejeset
+ * den Nachtlauf und das Erfassen. Ausführlich: docs/begruendungen/jobs/priceJob.ts.md#zustaendejeset
  * @param hintCondition Zustand einer Erfassung, die es noch nicht GIBT
  * @returns Map mit einem Eintrag je übergebenem Set, nie leer je Eintrag */
 async function zustaendeJeSet(userId: number, setNumbers: string[],
@@ -212,8 +209,7 @@ async function zustaendeJeSet(userId: number, setNumbers: string[],
 }
 
 /** Beim Erfassen gibt es die Erfassung noch nicht; ohne den Hinweis fiele die
- * Regel auf 'N' zurück.
- * Ausführlich: docs/begruendungen/jobs/priceJob.ts.md#conditionsneededfor
+ * Regel auf 'N' zurück. Ausführlich: docs/begruendungen/jobs/priceJob.ts.md#conditionsneededfor
  * @returns z. B. ['N'], ['U'] oder ['N','U'] */
 async function conditionsNeededFor(setNumber: string, userId: number,
                                    hintCondition: string | null = null): Promise<string[]> {

@@ -21,6 +21,7 @@ import { fehlerWerfen } from '../infra/fehlerTexte';
 
 export const getPartColorList = farbliste;
 
+// Eine Rechnung für Anlegen, Bearbeiten und CSV-Import; ohne Angabe bleibt Preis/Stk leer.
 // Ausführlich: docs/begruendungen/src/teile/manuelleTeile.ts.md#resolvemanualpartpurchase
 export async function resolveManualPartPurchase(uid: number, { partNumber, colorId, unitPrice = null, condition = null }:
   { partNumber: string; colorId: number; unitPrice?: unknown; condition?: string | null }) {
@@ -40,8 +41,7 @@ export async function resolveManualPartPurchase(uid: number, { partNumber, color
 }
 
 /** Eine Umsetzung für Webapp und App, damit Kaufpreis und Lagerort überall
- * gleich behandelt werden.
- * Ausführlich: docs/begruendungen/src/teile/manuelleTeile.ts.md#addmanualpart */
+ * gleich behandelt werden. Ausführlich: docs/begruendungen/src/teile/manuelleTeile.ts.md#addmanualpart */
 export async function addManualPart(uid: number, rawBody: Record<string, unknown>) {
     // Ohne mitgegebenen Ort gilt der Vorgabeort des Kontos (src/bestand/lagerort.ts).
   const ort = await ortFuerNeuerfassung(uid, rawBody?.storage);
@@ -170,8 +170,7 @@ export async function updateManualPart(uid: number, partNumber: string, colorId:
       (zustand) => getCurrentPartMarketPrice(partNumber, colorId, uid, zustand),
     );
     // In die NEUESTE Erfassung: Dort heisst NULL „kein Preis bekannt", die 0 der
-    // Anzeige bildet die Leseabfrage.
-    // Ausführlich: docs/begruendungen/src/teile/manuelleTeile.ts.md#updatemanualpart-3
+    // Anzeige bildet die Leseabfrage. Ausführlich: docs/begruendungen/src/teile/manuelleTeile.ts.md#updatemanualpart-3
     await repo.setzeTeilpreisNeueste(uid, partNumber, colorId, unitPrice);
   }
   if (body.condition !== undefined && body.condition !== null) {

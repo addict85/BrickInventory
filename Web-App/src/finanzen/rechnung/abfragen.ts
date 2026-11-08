@@ -1,4 +1,4 @@
-// Ausführlich: docs/begruendungen/src/finanzen/rechnung/abfragen.ts.md#abschnitt
+// Was Bewertung und Gewinn beide lesen. Ausführlich: docs/begruendungen/src/finanzen/rechnung/abfragen.ts.md#abschnitt
 
 export { kaufpreisIn, kaufpreisSpalten } from '../../../db/geldSql';
 

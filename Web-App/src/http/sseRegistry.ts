@@ -1,4 +1,4 @@
-// Ausführlich: docs/begruendungen/src/http/sseRegistry.ts.md#offen
+// Damit das Herunterfahren Ströme beendet. Ausführlich: docs/begruendungen/src/http/sseRegistry.ts.md#offen
 
 /** Was hier von einer offenen Antwort gebraucht wird. */
 interface Strom { writableEnded?: boolean; write(s: string): unknown; end(): unknown; on?(e: 'close', f: () => void): unknown }

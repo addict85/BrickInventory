@@ -1,5 +1,6 @@
 /** Alles hier gilt für alle Konten. */
-import { downloadFile, lookupPart, sleep } from './quellen';
+import { setTimeout as warte } from 'node:timers/promises';
+import { downloadFile, lookupPart } from './quellen';
 import { generateThumb } from './bilder/thumbs';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
@@ -94,7 +95,7 @@ async function teilfarbenbilderNachtragen() {
         done++;
       }
     } catch (e) { meldeFehler('kaufpreis-nachtrag:teilebild', e); }
-    await sleep(1500);
+    await warte(1500);
   }
   console.log(`  [purchase-price-backfill] Teile-Bilder aktualisiert: ${done}/${rows.length}`);
 }

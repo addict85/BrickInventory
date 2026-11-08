@@ -15,6 +15,7 @@ export async function bilderFuerNachlauf() {
     // Der gemeinsame Katalog führt nur geprüfte Adressen: Die Datei gilt für alle Konten.
     // Ausführlich: docs/begruendungen/src/katalog/bildlage.ts.md#electprimaryworker-manualparts
     repo.manuelleTeileOhneBild().catch(meldeUndLiefere('bild-nachlauf:manualParts', [])),
+    // Alle Figuren, nicht nur manuelle: Sonst lief jede Kachel über den Proxy.
     // Ausführlich: docs/begruendungen/src/katalog/bildlage.ts.md#electprimaryworker-figstofetch
     repo.figurenOhneBild().catch(meldeUndLiefere('bild-nachlauf:figsToFetch', [])),
   ]);

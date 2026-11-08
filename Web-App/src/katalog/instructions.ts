@@ -2,7 +2,8 @@ import path from 'path';
 import fs from 'fs';
 import PDFDocument from 'pdfkit';
 import { INSTRUCTIONS_DIR } from '../infra/appPaths';
-import { downloadFile, scrapeInstructions, sleep, httpsGetRobust, brickset } from './quellen';
+import { setTimeout as warte } from 'node:timers/promises';
+import { downloadFile, scrapeInstructions, httpsGetRobust, brickset } from './quellen';
 import { meldeFehler, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { pfadSegment } from '../infra/fremdeAdressen';
@@ -11,8 +12,7 @@ import * as repo from './repository/anleitungen';
 const PDF_ANFANG = Buffer.from('%PDF-');
 
 /** Mehrere Quellen, weil keine allein alle Sets führt; aus Bildseiten notfalls
- * ein PDF.
- * Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#abschnitt */
+ * ein PDF. Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#abschnitt */
 
 /** Damit der Takt der Warteschlange nur nach echten Abrufen wartet.
  * Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#letzterabrufwarextern */
@@ -51,7 +51,7 @@ export async function loescheAnleitungen(setNumber: string) {
   return repo.loescheAnleitungenDesSets(mitVersion(setNumber));
 }
 
-// Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#brickinstructionsfund
+// Ein Fund für Anlegen und Suchen. Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#brickinstructionsfund
 async function brickinstructionsFund(n: string) {
   const baseNum = pfadSegment(ohneVersion(n));
   const folder  = String(Math.floor(parseInt(baseNum) / 1000) * 1000).padStart(5, '0');
@@ -129,11 +129,11 @@ export async function downloadSetInstructions(setNumber: string,
       if (ok) {
         console.log(`[instr] BDP fallback downloaded: ${bdpUrl}`);
         await repo.merkeAnleitung(n, bdpUrl, `Anleitung ${n} (BDP)`, relPath).catch(logAndContinue('anleitung:ok'));
-        if (!eigenerTakt) await sleep(5000);
+        if (!eigenerTakt) await warte(5000);
         return 1;
       }
     } catch(e) { console.log(`[instr] BDP failed: ${fehlertext(e)}`); }
-    if (!eigenerTakt) await sleep(5000); // throttle regardless of result
+    if (!eigenerTakt) await warte(5000); // throttle regardless of result
   }
 
   const biAlreadyTried = await repo.hatBrickinstructions(n);
@@ -171,7 +171,7 @@ export async function downloadSetInstructions(setNumber: string,
     const relPath = `/data/instructions/${safeName}`;
     const ok = await downloadFile(instr.url, dest, undefined, PDF_ANFANG);
     try { await repo.merkeAnleitung(n, instr.url, instr.description||`Anleitung ${n}`, ok?relPath:null); saved++; } catch (e) { meldeFehler('anleitungen:datei-eintragen', e); }
-    if (i < instrList.length - 1) await sleep(200);
+    if (i < instrList.length - 1) await warte(200);
   }
   
   return saved;
@@ -183,11 +183,11 @@ async function collectAndBuildPDF(baseUrl: string, hdrs: Record<string, string>,
   try {
     const imageBuffers = [firstPageBuf];
     for (let p = 2; p <= 99; p++) {
-      await sleep(500);
+      await warte(500);
       try { const r = await httpsGetRobust(`${baseUrl}/${String(p).padStart(3,'0')}.jpg`, hdrs, 8000); if (r.status!==200||!r.buffer||r.buffer.length<500) break; imageBuffers.push(r.buffer); } catch (_) { break; }
     }
     console.log(`  Building PDF for ${setNumber}: ${imageBuffers.length} pages`);
-    await sleep(100);
+    await warte(100);
     const ok = await buildImagePDF_fromBuffers(imageBuffers, pdfDest);
     if (ok) {
       await repo.setzeAnleitungsdatei(relPath, setNumber);

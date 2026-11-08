@@ -209,8 +209,7 @@ function sitzung(app: express.Express): void {
     tableName: 'user_sessions',
     createTableIfMissing: false,
     pruneSessionInterval: 60 * 15,
-    // Nach ein paar Stunden Leerlauf endet eine Webapp-Sitzung.
-    // Ausführlich: docs/begruendungen/server.ts.md#sitzungsspeicher
+    // Nach Stunden Leerlauf endet eine Webapp-Sitzung. Ausführlich: docs/begruendungen/server.ts.md#sitzungsspeicher
     ttl: SITZUNG_LEERLAUF_SEK,
     errorLog: (err) => {
       if (!err.message?.includes('timeout') && !err.message?.includes('terminated')) {
@@ -262,8 +261,7 @@ function apiRouten(app: express.Express): void {
 
   // EIN Eingang: anmeldungAmEingang verlangt Sitzung oder Token für alles unter
   // /api/v1 ausser den ausdrücklich öffentlichen Pfaden. Der Schutz je Route
-  // bleibt als zweite Linie.
-  // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-7
+  // bleibt als zweite Linie. Ausführlich: docs/begruendungen/server.ts.md#abschnitt-7
   app.use('/api/v1',          anmeldungAmEingang);
   // Danach das Budget je Konto, VOR dem Rumpf: Eine abgewiesene Anfrage soll
   // ihren Rumpf nicht mehr lesen (src/http/apiDrossel.ts).
@@ -281,8 +279,7 @@ function rueckfaelle(app: express.Express): void {
   app.use((req, res, next) => /^\/api(\/|$)/i.test(req.path) ? unbekannterApiPfad(req, res) : next());
 
   // '{*splat}' statt '/*splat': Express 5 verlangt einen Namen, und die
-  // naheliegende Form träfe die Startseite `/` nicht.
-  // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-8
+  // naheliegende Form träfe die Startseite `/` nicht. Ausführlich: docs/begruendungen/server.ts.md#abschnitt-8
   app.get('/{*splat}', async (req, res) => {
     res.set('Cache-Control', 'no-cache');
     await sendeStartseite(res, req.session?.userId);

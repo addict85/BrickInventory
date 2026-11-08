@@ -59,6 +59,7 @@ router.put('/parts/:partNumber/:colorId', requireToken, async (req: Anfrage<'PUT
   res.json({ success: true, ...r });
 });
 
+// Eigene Adresse: Die Farbe ist schon Teil der Adresse von PUT /parts/:nr/:farbe.
 // Ausführlich: docs/begruendungen/routes/api_v1/parts.ts.md#put-parts-partnumber-colorid-color
 router.put('/parts/:partNumber/:colorId/color', requireToken, async (req: Anfrage<'PUT /api/v1/parts/:partNumber/:colorId/color'>, res: Antwort<'PUT /api/v1/parts/:partNumber/:colorId/color'>) => {
   const besitzer = await schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
@@ -122,6 +123,7 @@ router.get('/parts/stats', requireToken, async (req: Anfrage<'GET /api/v1/parts/
 });
 
 
+// Dieselbe Umsetzung wie für die Webapp; steht unten, damit feste Pfade vorher greifen.
 // Ausführlich: docs/begruendungen/routes/api_v1/parts.ts.md#get-parts-partnumber-colorid-price-history
 router.get('/parts/:partNumber/:colorId/price-history', requireToken, async (req: Anfrage<'GET /api/v1/parts/:partNumber/:colorId/price-history'>, res: Antwort<'GET /api/v1/parts/:partNumber/:colorId/price-history'>) => {
   const uid = req.apiUser.user_id;
@@ -131,6 +133,7 @@ router.get('/parts/:partNumber/:colorId/price-history', requireToken, async (req
   res.json({ success: true, ...data });
 });
 
+// Im Blickfeld, damit die Liste zur Teileliste passt, aus der man kommt.
 // Ausführlich: docs/begruendungen/routes/api_v1/parts.ts.md#get-parts-partnumber-colorid-sets
 router.get('/parts/:partNumber/:colorId/sets', requireToken, async (req: Anfrage<'GET /api/v1/parts/:partNumber/:colorId/sets'>, res: Antwort<'GET /api/v1/parts/:partNumber/:colorId/sets'>) => {
   const uids = sichtVon(req);

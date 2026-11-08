@@ -11,7 +11,7 @@ import type { DbSchnittstelle } from './typen';
 
 /** Alle noch nicht angewandten Migrationen; `client` ist eine eigene Verbindung, nicht der Pool.
  * Ausführlich: docs/begruendungen/db/migrate.ts.md#runmigrations */
-async function runMigrations(client: ClientBase, { sichern = false, bis }: { sichern?: boolean; bis?: string } = {}): Promise<string[]> {
+async function runMigrations(client: ClientBase, { sichern = false }: { sichern?: boolean } = {}): Promise<string[]> {
   await client.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       name       TEXT PRIMARY KEY,
@@ -31,7 +31,7 @@ async function runMigrations(client: ClientBase, { sichern = false, bis }: { sic
   const done = new Set(rows.map(r => r.name));
   await pruefeAngewandte(client, dir, rows);
 
-  const offen = files.filter(f => !done.has(f) && (bis === undefined || f <= bis));
+  const offen = files.filter(f => !done.has(f));
   if (offen.length && sichern) await sichereNutzerdaten(client, offen);
 
   const applied: string[] = [];
@@ -173,22 +173,4 @@ async function sichereNutzerdaten(client: ClientBase, offen: string[]): Promise<
   return schema;
 }
 
-/** Die alten Startstufen legen an, was Migrationen bis `bis` schon gelöscht
- * hatten; deren DROP … IF EXISTS laufen darum noch einmal. Nur bis `bis`:
- * Spätere ersetzen manche Tabelle durch eine gleichnamige View. */
-async function abgeloestesEntfernen(client: ClientBase, bis: string): Promise<number> {
-  const dir = path.join(__dirname, 'migrations');
-  const { rows } = await client.query<{ name: string }>(
-    'SELECT name FROM schema_migrations WHERE name <= $1 ORDER BY name', [bis]);
-  let n = 0;
-  for (const { name } of rows) {
-    const datei = path.join(dir, name);
-    if (!fs.existsSync(datei)) continue;
-    const zeilen = fs.readFileSync(datei, 'utf8').split('\n')
-      .filter(z => /^\s*(ALTER TABLE\b.*\bDROP COLUMN IF EXISTS\b|DROP TABLE IF EXISTS\b)[^;]*;\s*$/i.test(z));
-    for (const z of zeilen) { await client.query(z); n++; }
-  }
-  return n;
-}
-
-export { runMigrations, sichereNutzerdaten, abgeloestesEntfernen };
+export { runMigrations, sichereNutzerdaten };

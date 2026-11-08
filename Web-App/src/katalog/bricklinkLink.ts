@@ -1,3 +1,4 @@
+// Gear und Bücher führt BrickLink anders als Rebrickable; der Link muss das wissen.
 // Ausführlich: docs/begruendungen/src/katalog/bricklinkLink.ts.md#abschnitt
 import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { bricklinkRequest } from './quellen';
@@ -19,6 +20,7 @@ export interface BlLink {
   resolved: boolean;
 }
 
+// Die Schreibweise kommt aus src/infra/setNummer.ts, nicht aus einer dritten Fassung.
 // Ausführlich: docs/begruendungen/src/katalog/bricklinkLink.ts.md#withvariant
 export function withVariant(setNumber: string): string {
   return mitVersion(String(setNumber || '').trim());
@@ -38,6 +40,7 @@ export function buildUrl(type: BlType, number: string): string | null {
          `#T=${p}&O={%22iconly%22:0}`;
 }
 
+// Ohne eindeutige Zuordnung (etwa Sammelfiguren) eine Suche statt eines falschen Links.
 // Ausführlich: docs/begruendungen/src/katalog/bricklinkLink.ts.md#searchurl
 export function searchUrl(number: string): string {
   return `https://www.bricklink.com/v2/search.page?q=${encodeURIComponent(bareNumber(number))}`;
