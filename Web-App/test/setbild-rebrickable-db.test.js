@@ -26,7 +26,10 @@ const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { rebrickableSetBild } = _req('src/katalog/bilder/setImages.js');
 const { setNummerAusBildAdresse } = _req('src/katalog/http/bildProxy.js');
-const MIGRATION = fs.readFileSync(path.join(__dirname, '..', 'db/migrations/0101-setbilder-von-rebrickable.sql'), 'utf8');
+const MIGRATION = fs.readFileSync(
+  path.join(__dirname, '..', 'db/migrations/0101-setbilder-von-rebrickable.sql'),
+  'utf8',
+);
 const SCHEMA = `probe0101_${process.pid}`;
 
 test('der Proxy legt die Rückfall-Adresse lokal ab', () => {
@@ -36,17 +39,21 @@ test('der Proxy legt die Rückfall-Adresse lokal ab', () => {
 });
 
 test('auch die Adresse mit Bild-Nummer wird lokal abgelegt, fremde nicht', () => {
-  assert.equal(setNummerAusBildAdresse('https://cdn.rebrickable.com/media/sets/75192-1/119389.jpg'), '75192-1',
-    'auch die Adresse mit Bild-Nummer wird lokal abgelegt');
+  assert.equal(
+    setNummerAusBildAdresse('https://cdn.rebrickable.com/media/sets/75192-1/119389.jpg'),
+    '75192-1',
+    'auch die Adresse mit Bild-Nummer wird lokal abgelegt',
+  );
   for (const fremd of [
     'https://cdn.rebrickable.com/media/parts/elements/300121.jpg',
     'https://cdn.rebrickable.com/media/sets/75192-1/119389.jpg?x=1',
     'https://img.bricklink.com/ItemImage/SN/0/75192-1.png',
-  ]) assert.equal(setNummerAusBildAdresse(fremd), null, fremd);
+  ])
+    assert.equal(setNummerAusBildAdresse(fremd), null, fremd);
 });
 
-test('Migration 0101: Set-Bilder von Rebrickable', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
+test('Migration 0101: Set-Bilder von Rebrickable', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
   const c = await db.pool.connect();
   t.after(async () => {
     await c.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`).catch(() => {});
@@ -66,12 +73,24 @@ test('Migration 0101: Set-Bilder von Rebrickable', { concurrency: 1 }, async (t)
   await c.query(MIGRATION);
 
   const zeilen = (await c.query('SELECT set_number, image_url, image_local FROM set_catalog ORDER BY 1')).rows;
-  assert.deepEqual(zeilen.slice(0, 2).map(z => z.image_url), [
-    'https://cdn.rebrickable.com/media/sets/1-1.jpg',
-    'https://cdn.rebrickable.com/media/sets/2-1.jpg',
-  ], 'BrickLink und Brickset zeigen danach auf Rebrickable');
-  assert.equal(zeilen[2].image_url, 'https://cdn.rebrickable.com/media/sets/3-1/1234.jpg', 'Rebrickable bleibt, wie es ist');
-  assert.deepEqual(zeilen[3], { set_number: '4-1', image_url: 'https://cdn.rebrickable.com/media/sets/4-1.jpg',
-    image_local: '/images/sets/4-1.jpg' }, 'ein lokales Bild bleibt liegen');
+  assert.deepEqual(
+    zeilen.slice(0, 2).map(z => z.image_url),
+    ['https://cdn.rebrickable.com/media/sets/1-1.jpg', 'https://cdn.rebrickable.com/media/sets/2-1.jpg'],
+    'BrickLink und Brickset zeigen danach auf Rebrickable',
+  );
+  assert.equal(
+    zeilen[2].image_url,
+    'https://cdn.rebrickable.com/media/sets/3-1/1234.jpg',
+    'Rebrickable bleibt, wie es ist',
+  );
+  assert.deepEqual(
+    zeilen[3],
+    {
+      set_number: '4-1',
+      image_url: 'https://cdn.rebrickable.com/media/sets/4-1.jpg',
+      image_local: '/images/sets/4-1.jpg',
+    },
+    'ein lokales Bild bleibt liegen',
+  );
   assert.equal(zeilen[4].image_url, null, 'ohne Adresse bleibt ohne Adresse');
 });

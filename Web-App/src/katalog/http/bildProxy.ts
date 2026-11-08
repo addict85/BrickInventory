@@ -2,7 +2,7 @@
  * CSP keine fremden Quellen braucht und jedes Bild nur einmal geholt wird.
  * Den Abruf macht clients/bildCdn.ts; hier stehen Cache, Drossel und Antwort. */
 import path from 'path';
-import { APP_ROOT, PUBLIC_DIR } from '../../infra/appPaths';
+import { APP_ROOT, PUBLIC_DIR, SET_IMAGES_DIR } from '../../infra/appPaths';
 import fs from 'fs';
 import { resolveUserId } from '../../konto/http/anmeldung';
 import { vorDem, ohneFehlendeDatei, fehlertext, logAndContinue } from '../../infra/fehler';
@@ -110,6 +110,16 @@ async function vomCdn(url: string, cacheKey: string, res: Response): Promise<Abr
   return r;
 }
 
+/** Was der Proxy vollständig hat, wird das Set-Bild: Ein zweiter Abruf beim CDN
+ * scheiterte, wo der erste ging. Die Vorschau erzeugt der Auftrag bildbedarf. */
+async function alsSetBildAblegen(cacheFile: string, setNummer: string): Promise<void> {
+  const ziel = path.join(SET_IMAGES_DIR, `${setNummer.replace(/[^a-z0-9-]/gi, '_')}.jpg`);
+  const teil = `${ziel}.${process.pid}-${_tmpSeq++}.teil`;
+  await fs.promises.mkdir(SET_IMAGES_DIR, { recursive: true });
+  await fs.promises.copyFile(cacheFile, teil);
+  await fs.promises.rename(teil, ziel);
+}
+
 /** Der entpackte Strom geht nebenher in den Cache — erst in .tmp, dann atomar. */
 function inDenCache(
   body: Readable,
@@ -125,6 +135,7 @@ function inDenCache(
     wantThumb: boolean;
     darfErzeugen: boolean;
     notiere: () => void;
+    setNummer: string | null;
   },
 ): void {
   const { url, cacheDir, cacheFile, thumbFile, contentType, enc, expected, wantThumb, darfErzeugen, notiere } = o;
@@ -171,6 +182,7 @@ function inDenCache(
       await fs.promises.writeFile(cacheFile + '.ct', contentType);
       await fs.promises.rename(tmpFile, cacheFile);
       merkeCacheZuwachs(st.size);
+      if (o.setNummer) await alsSetBildAblegen(cacheFile, o.setNummer).catch(logAndContinue('img-proxy:setbild'));
       // Gleich miterzeugen, sonst später für eine ganze Kachelwand auf einmal.
       if (wantThumb) {
         if (darfErzeugen) queueThumb(cacheFile, thumbFile);
@@ -213,6 +225,18 @@ function entpackt(roh: Readable, enc: string, res: Response, url: string, expect
   return body;
 }
 
+/** @returns true, wenn Bild oder Vorschau unter images/sets noch fehlen */
+async function setBildVersorgen(url: string, setNummer: string, cacheFile: string): Promise<boolean> {
+  if (await setBildVollstaendig(setNummer)) {
+    // Liegen beide schon da, fehlt oft nur der Eintrag: Danach fragt die Oberfläche nicht mehr hier.
+    await setBildLokalEintragen(setNummer).catch(logAndContinue('img-proxy:setBildLokal'));
+    return false;
+  }
+  await alsSetBildAblegen(cacheFile, setNummer).catch(ohneFehlendeDatei('img-proxy:setbild'));
+  nacharbeit().bildVormerken(url, setNummer);
+  return true;
+}
+
 export async function bildDurchreichen(req: Request, res: Response) {
   // Ohne Login-Pflicht ein offener Proxy (Bandbreite, IP-Verschleierung).
   const proxyUserId = await resolveUserId(req);
@@ -244,11 +268,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
   // Ein Set-Bild gehört samt Vorschau nach images/sets; der Bild-Job holt es,
   // sobald es einmal über den Proxy gefragt war.
   const setNummer = setAusUrl();
-  if (setNummer) {
-    if (!(await setBildVollstaendig(setNummer))) nacharbeit().bildVormerken(String(url), setNummer);
-    // Liegen beide schon da, fehlt oft nur der Eintrag: Danach fragt die Oberfläche nicht mehr hier.
-    else await setBildLokalEintragen(setNummer).catch(logAndContinue('img-proxy:setBildLokal'));
-  }
+  const setFehlt = setNummer ? await setBildVersorgen(url, setNummer, cacheFile) : false;
 
   if (
     await liefereAusCache({
@@ -315,6 +335,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
     wantThumb,
     darfErzeugen,
     notiere,
+    setNummer: setFehlt ? setNummer : null,
   });
 
   // Abbruch beim Scrollen: Die CDN-Verbindung muss sofort zurück in den Pool.
