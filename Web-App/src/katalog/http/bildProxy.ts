@@ -333,6 +333,6 @@ export async function bildDurchreichen(req: Request, res: Response) {
 export function setNummerAusBildAdresse(adresse: string): string | null {
   const u = urlOderNull(adresse);
   if (!u || u.protocol !== 'https:' || u.hostname !== 'cdn.rebrickable.com' || u.search || u.hash) return null;
-  const m = /^\/media\/sets\/([A-Za-z0-9-]{1,40})\.(?:jpg|jpeg|png|webp)$/i.exec(u.pathname);
+  const m = /^\/media\/sets\/([A-Za-z0-9-]{1,40})(?:\/\d{1,12})?\.(?:jpg|jpeg|png|webp)$/i.exec(u.pathname);
   return m?.[1] ?? null;
 }

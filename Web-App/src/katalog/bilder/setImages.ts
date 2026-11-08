@@ -6,6 +6,7 @@ import { AbrufFehler } from '../../infra/abruf';
 import { holeBild, BILD_KOPFZEILEN } from '../quellen';
 import { SET_IMAGES_DIR } from '../../infra/appPaths';
 import { appVersion } from '../../infra/appVersion';
+import { mitVersion } from '../../infra/setNummer';
 
 // Set-Bilder vom CDN holen; hier statt im Router, damit die Aufrufer echt importieren.
 // Ausführlich: docs/begruendungen/src/katalog/bilder/setImages.ts.md#abschnitt
@@ -20,6 +21,11 @@ export function bildUserAgent(): string {
   const eigener = konfig().bildUserAgent;
   if (eigener) return eigener;
   return `BrickInventoryManager/${appVersion()} (self-hosted; +https://github.com/brickinventory)`;
+}
+
+/** Nur Rebrickable-Bilder legt der Proxy samt Vorschau unter images/sets ab. */
+export function rebrickableSetBild(setNumber: string): string {
+  return `https://cdn.rebrickable.com/media/sets/${encodeURIComponent(mitVersion(setNumber))}.jpg`;
 }
 
 /** Liegen Bild und Vorschau schon in images/sets, braucht der Bild-Job nichts mehr. */

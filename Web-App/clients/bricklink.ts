@@ -3,7 +3,6 @@ import crypto from 'crypto';
 import { holeHttps, auszug } from '../src/infra/abruf';
 import { zugang } from './zugang';
 import type { SchluesselName } from './zugang';
-import { mitVersion } from '../src/infra/setNummer';
 
 const BASE = 'https://api.bricklink.com/api/store/v1';
 
@@ -107,14 +106,9 @@ async function bricklinkRequest(method: string, path: string,
   return data?.data ?? data;
 }
 
-function getItemImageUrl(setNumber: string) {
-  const n = mitVersion(setNumber);
-  return `https://img.bricklink.com/ItemImage/SN/0/${encodeURIComponent(n)}.png`;
-}
-
 /** Ein kleiner signierter Abruf — für den Testknopf der Einrichtung. */
 async function pruefeBricklinkZugang(): Promise<void> {
   await bricklinkRequest('GET', '/colors/1');
 }
 
-export { pruefeBricklinkZugang, bricklinkRequest, getItemImageUrl, BricklinkNichtErreichbar };
+export { pruefeBricklinkZugang, bricklinkRequest, BricklinkNichtErreichbar };
