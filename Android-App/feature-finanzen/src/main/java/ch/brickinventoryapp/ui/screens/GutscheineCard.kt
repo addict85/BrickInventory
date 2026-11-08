@@ -44,6 +44,7 @@ import ch.brickinventoryapp.ui.components.FehlerHinweis
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.PasswortRueckfrage
+import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.ui.gutscheinSumme
 import ch.brickinventoryapp.ui.model.KlartextAnsicht
@@ -328,6 +329,12 @@ private fun GutscheinFormularBlatt(
                 value = zustand.betrag,
                 onValueChange = { onFeld(null, null, NumericInput.price(it), null) },
                 label = { Text(stringResource(R.string.vouchers_amount)) },
+                // Dieselbe Prüfung wie bei den Preisfeldern der Galerie; ob der Betrag Pflicht
+                // ist und wie hoch er sein darf, entscheidet allein der Server.
+                isError = NumericInput.preisUngueltig(zustand.betrag),
+                supportingText = {
+                    if (NumericInput.preisUngueltig(zustand.betrag)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.ansagen())
+                },
                 singleLine = true,
                 // price/preisTastatur und nicht ganzzahl: Ein Gutschein kann
                 // auf Rappen lauten. `price` laesst GENAU EIN Trennzeichen zu
