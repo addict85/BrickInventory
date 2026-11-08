@@ -46,12 +46,12 @@ class ManuelleKachelTest {
     fun `beide Kacheln zeigen den Kaufpreis`() {
         // Die Notiz stand hier als zweite Zusicherung; sie ist mit Migration
         // 0022 ausgebaut — Masken und Spalten.
-        val teile = code(read("teile/ui/screens/PartsScreen.kt"))
+        val teile = code(read("teile/ui/screens/TeileKarte.kt"))
         assert(teile.contains("preis = part.avgPurchasePrice ?: part.unitPrice ?: part.purchasePrice")) {
             "Die Teile-Kachel zeigt den Kaufpreis nicht in der Reihenfolge der Webapp"
         }
 
-        val figuren = code(read("teile/ui/screens/MinifigsScreen.kt"))
+        val figuren = code(read("teile/ui/screens/FigurenKarte.kt"))
         assert(figuren.contains("preis = fig.avgPurchasePrice ?: fig.unitPrice ?: fig.purchasePrice")) {
             "Die Figuren-Kachel zeigt den Kaufpreis nicht in der Reihenfolge der Webapp"
         }

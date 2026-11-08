@@ -3,10 +3,10 @@ Modul: app
 Test: ch.brickinventoryapp.app.GeruestUndFormularTest
 Rot: Verwalterrechte stehen eingeklappt unter Erweitert
 
-diff --git a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/screens/LoginScreen.kt b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/screens/LoginScreen.kt
---- a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/screens/LoginScreen.kt
-+++ b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/screens/LoginScreen.kt
-@@ -315,7 +315,7 @@ private fun AnmeldeFelder(
+diff --git a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/screens/LoginAnmelden.kt b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/screens/LoginAnmelden.kt
+--- a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/screens/LoginAnmelden.kt
++++ b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/screens/LoginAnmelden.kt
+@@ -103,7 +103,7 @@
      // es bei 200 % den Anmeldeknopf aus dem ersten Bild.
      val schutz = LocalSchrittschutz.current
      val vollGrund = stringResource(R.string.schritt_voller_zugriff)

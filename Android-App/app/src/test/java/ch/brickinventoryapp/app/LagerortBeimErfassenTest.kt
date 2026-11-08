@@ -47,7 +47,7 @@ class LagerortBeimErfassenTest {
         val wege = listOf(
             Triple("sammlung/ui/screens/GalerieErfassen.kt", "fun AddSetDialog(", "Set hinzufuegen (Galerie)"),
             Triple("katalog/ui/screens/CatalogDetailScreen.kt", "fun CatalogAddDialog(", "Katalog → Galerie"),
-            Triple("sammlung/ui/screens/MerklisteScreen.kt", "fun UebernahmeDialog(", "Merkliste → Galerie"),
+            Triple("sammlung/ui/screens/MerklisteDialoge.kt", "fun UebernahmeDialog(", "Merkliste → Galerie"),
             Triple("ui/screens/ManualItemComposables.kt", "fun ErfassungsFelder(", "manuelle Teile und Figuren"),
             Triple("sammlung/ui/dialogs/BarcodeResultDialog.kt", "fun BarcodeResultDialog(", "Barcode"),
         )
@@ -91,9 +91,9 @@ class LagerortBeimErfassenTest {
         val halter = listOf(
             Triple("sammlung/ui/screens/GalerieErfassen.kt", "fun AddSetDialog(", "Set hinzufuegen (Galerie)"),
             Triple("katalog/ui/screens/CatalogDetailScreen.kt", "fun CatalogAddDialog(", "Katalog → Galerie"),
-            Triple("sammlung/ui/screens/MerklisteScreen.kt", "fun UebernahmeDialog(", "Merkliste → Galerie"),
+            Triple("sammlung/ui/screens/MerklisteDialoge.kt", "fun UebernahmeDialog(", "Merkliste → Galerie"),
             Triple("teile/ui/screens/PartsDialogs.kt", "fun AddPartDialog(", "manuelles Teil"),
-            Triple("teile/ui/screens/MinifigsScreen.kt", "fun AddMinifigDialog(", "manuelle Minifigur"),
+            Triple("teile/ui/screens/FigurenErfassen.kt", "fun AddMinifigDialog(", "manuelle Minifigur"),
             Triple("sammlung/ui/dialogs/BarcodeResultDialog.kt", "fun BarcodeResultDialog(", "Barcode"),
         )
         check(halter.size >= 6) { "Nur ${halter.size} Halter — Liste unvollstaendig?" }

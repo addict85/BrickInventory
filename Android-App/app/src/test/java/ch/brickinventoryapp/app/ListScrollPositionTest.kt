@@ -244,7 +244,7 @@ class ListScrollPositionTest {
         // Seit die Leiste dieselbe ist wie in der Webapp, haengt sie nicht mehr
         // am JAHR, sondern an der STELLE in der Liste. Die Aussage bleibt: ohne
         // Ziehen zeigt der Griff, wo man IST.
-        val katalog = code(read("katalog/ui/screens/CatalogScreen.kt"))
+        val katalog = code(Quellen.bildschirm("katalog/ui/screens/CatalogScreen.kt"))
         assert(katalog.contains("if (dragging) ziehAnteil else CatalogYearMath.anteilAusNummer(listenNummer, total)")) {
             "Der Griff zeigt weiterhin nur die gezogene Stelle — ohne Ziehen bliebe " +
                 "er dort stehen, wo zuletzt gezogen wurde"

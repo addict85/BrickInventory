@@ -45,12 +45,12 @@ class NoDirectCdnAccessTest {
         val screensWithOwnResolution = listOf(
             "sammlung/ui/screens/GalerieKarte.kt",
             "sammlung/ui/screens/SetDetailScreen.kt",
-            "teile/ui/screens/PartsScreen.kt",
+            "teile/ui/screens/TeileKarte.kt",
             // FinanceScreen.kt wurde aufgeteilt — die Kacheln mit den Bildern
             // stehen in FinanceSections.kt.
             "finanzen/ui/screens/FinanceSections.kt",
-            "teile/ui/screens/MinifigsScreen.kt",
-            "katalog/ui/screens/CatalogScreen.kt",
+            "teile/ui/screens/FigurenKarte.kt",
+            "katalog/ui/screens/KatalogKarte.kt",
             "katalog/ui/screens/CatalogDetailScreen.kt",
         )
         for (rel in screensWithOwnResolution) {
@@ -82,9 +82,9 @@ class NoDirectCdnAccessTest {
         // teile/ui/Teileliste.kt löst part.imageUrl bereits auf (das prüft
         // TeilelisteTest am Ergebnis); ein zweites resolveThumbUrl() hier
         // wickelte die Proxy-Adresse doppelt ein.
-        val screen = code(read("teile/ui/screens/PartsListScreen.kt"))
+        val screen = code(Quellen.bildschirm("teile/ui/screens/PartsListScreen.kt"))
         assert(!screen.contains("resolveThumbUrl(") && !screen.contains("resolveFullUrl(")) {
-            "PartsListScreen.kt darf part.imageUrl NICHT durch resolveThumbUrl() schicken — " +
+            "Die Teileliste darf part.imageUrl NICHT durch resolveThumbUrl() schicken — " +
             "es ist bereits aufgelöst, sonst entsteht ein doppelt gewickelter Proxy-Aufruf"
         }
     }

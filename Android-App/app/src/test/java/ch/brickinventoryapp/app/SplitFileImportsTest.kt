@@ -48,6 +48,21 @@ class SplitFileImportsTest {
         "konto/ui/screens/EinstellungenZweiterFaktor.kt" to "konto/ui/screens/EinstellungenKonto.kt",
         "konto/ui/screens/EinstellungenGeraete.kt" to "konto/ui/screens/EinstellungenKonto.kt",
         "sammlung/ui/screens/SetDetailAnleitungen.kt" to "sammlung/ui/screens/SetDetailSections.kt",
+        "teile/ui/screens/TeileFilterBlatt.kt" to "teile/ui/screens/PartsScreen.kt",
+        "teile/ui/screens/TeileKarte.kt" to "teile/ui/screens/PartsScreen.kt",
+        "teile/ui/screens/FigurenKarte.kt" to "teile/ui/screens/MinifigsScreen.kt",
+        "teile/ui/screens/FigurenErfassen.kt" to "teile/ui/screens/MinifigsScreen.kt",
+        "teile/ui/screens/BaulisteZeilen.kt" to "teile/ui/screens/PartsListScreen.kt",
+        "katalog/ui/screens/KatalogScrubber.kt" to "katalog/ui/screens/CatalogScreen.kt",
+        "katalog/ui/screens/KatalogKarte.kt" to "katalog/ui/screens/CatalogScreen.kt",
+        "sammlung/ui/screens/MerklisteDialoge.kt" to "sammlung/ui/screens/MerklisteScreen.kt",
+        "sammlung/ui/screens/MerklisteZeile.kt" to "sammlung/ui/screens/MerklisteScreen.kt",
+        "finanzen/ui/screens/GutscheinFormular.kt" to "finanzen/ui/screens/GutscheineCard.kt",
+        "finanzen/ui/screens/GutscheinKarte.kt" to "finanzen/ui/screens/GutscheineCard.kt",
+        "finanzen/ui/screens/PdfSeiten.kt" to "finanzen/ui/screens/PdfViewerScreen.kt",
+        "anmeldung/ui/screens/LoginAnmelden.kt" to "anmeldung/ui/screens/LoginScreen.kt",
+        "anmeldung/ui/screens/LoginRegistrieren.kt" to "anmeldung/ui/screens/LoginScreen.kt",
+        "anmeldung/ui/screens/SetupQr.kt" to "anmeldung/ui/screens/SetupScreen.kt",
     )
 
     // Ein Feature darf ein anderes nicht einführen (ModulgrenzenTest); stammt die Datei aus

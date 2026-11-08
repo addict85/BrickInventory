@@ -73,6 +73,29 @@ object Quellen {
     fun galerie(): String = listOf("GalleryScreen.kt", "GalerieFilter.kt", "GalerieKarte.kt", "GalerieErfassen.kt")
         .joinToString("\n") { lies("sammlung/ui/screens/$it") }
 
+    /** Bildschirme, die wie die Galerie auf Geschwisterdateien verteilt sind, mit ihren Teilen. */
+    private val verteilt = mapOf(
+        "teile/ui/screens/PartsScreen.kt" to listOf("TeileFilterBlatt.kt", "TeileKarte.kt"),
+        "teile/ui/screens/MinifigsScreen.kt" to listOf("FigurenKarte.kt", "FigurenErfassen.kt"),
+        "teile/ui/screens/PartsListScreen.kt" to listOf("BaulisteZeilen.kt"),
+        "katalog/ui/screens/CatalogScreen.kt" to listOf("KatalogScrubber.kt", "KatalogKarte.kt"),
+        "sammlung/ui/screens/MerklisteScreen.kt" to listOf("MerklisteDialoge.kt", "MerklisteZeile.kt"),
+        "finanzen/ui/screens/GutscheineCard.kt" to listOf("GutscheinFormular.kt", "GutscheinKarte.kt"),
+        "finanzen/ui/screens/PdfViewerScreen.kt" to listOf("PdfSeiten.kt"),
+        "anmeldung/ui/screens/LoginScreen.kt" to listOf("LoginAnmelden.kt", "LoginRegistrieren.kt"),
+        "anmeldung/ui/screens/SetupScreen.kt" to listOf("SetupQr.kt"),
+    )
+
+    /** Die Pfade eines Bildschirms samt seinen Teilen; für einen unverteilten nur er selbst. */
+    fun bildschirmDateien(rel: String): List<String> =
+        listOf(rel) + verteilt[rel].orEmpty().map { rel.substringBeforeLast('/') + "/" + it }
+
+    /**
+     * Ein Bildschirm samt seinen Teilen als ein Text: Eine Regel des ganzen Bildschirms
+     * gilt für alle Teile, gleich in welcher Datei ein Abschnitt gerade steht.
+     */
+    fun bildschirm(rel: String): String = bildschirmDateien(rel).joinToString("\n") { lies(it) }
+
     /** Die Abschnitte der Überwachungsseite unterhalb der Job-Liste, ebenso verteilt. */
     fun monitoringAbschnitte(): String =
         listOf("MonitoringSections.kt", "MonitoringCache.kt", "MonitoringKontingente.kt", "MonitoringProtokoll.kt")
@@ -319,7 +342,7 @@ object Quellen {
      * Ausführlich: docs/begruendungen/core-testing/testing/Quellen.kt.md#kameraquelle
      */
     fun kameraQuelle(rel: String): String = buildString {
-        append(lies(rel))
+        append(bildschirm(rel))
         if (rel.endsWith("BarcodeScannerScreen.kt")) {
             append("\n"); append(lies("sammlung/ui/screens/BarcodeAnalyzer.kt"))
         }

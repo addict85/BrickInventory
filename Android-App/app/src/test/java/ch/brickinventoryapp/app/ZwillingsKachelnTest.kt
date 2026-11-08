@@ -9,7 +9,7 @@ import ch.brickinventoryapp.testing.Quellen
  *
  * ── Woher dieser Test kommt (Nachtrag 133) ──────────────────────────────────
  *
- * `ManualPartTile` (PartsScreen.kt) und `ManualFigTile` (MinifigsScreen.kt) sind
+ * `ManualPartTile` (TeileKarte.kt) und `ManualFigTile` (FigurenKarte.kt) sind
  * Zwillinge: gleiche Groesse, gleicher Aufbau, gleiche Knoepfe. Beim Vergleich
  * der beiden Dateien — angestossen von der Doppelungsmessung, nicht vom Lesen —
  * fehlten der Figuren-Kachel ZWEI Plaketten, die die Teile-Kachel zeigt:
@@ -62,10 +62,10 @@ class ZwillingsKachelnTest {
         // Und jede der beiden reicht ihre EIGENEN Felder hinein. Ohne das
         // koennte eine Kachel die Plakette zwar zeichnen, aber immer mit den
         // Werten der anderen Seite — oder mit gar keinen.
-        assert(code(read("teile/ui/screens/PartsScreen.kt")).contains("zustaende = part.conditions")) {
+        assert(code(read("teile/ui/screens/TeileKarte.kt")).contains("zustaende = part.conditions")) {
             "ManualPartTile reicht die Zustaende nicht mehr weiter"
         }
-        assert(code(read("teile/ui/screens/MinifigsScreen.kt")).contains("zustaende = fig.conditions")) {
+        assert(code(read("teile/ui/screens/FigurenKarte.kt")).contains("zustaende = fig.conditions")) {
             "ManualFigTile reicht die Zustaende nicht weiter — genau die Luecke, " +
                 "die es hier schon einmal gab"
         }
@@ -112,10 +112,10 @@ class ZwillingsKachelnTest {
             "ManuelleKachel zeigt den Besitzer nicht mehr — im Haushalt ist dann an " +
                 "keiner manuellen Kachel zu sehen, wem der Eintrag gehoert"
         }
-        assert(code(read("teile/ui/screens/PartsScreen.kt")).contains("besitzer = part.owners")) {
+        assert(code(read("teile/ui/screens/TeileKarte.kt")).contains("besitzer = part.owners")) {
             "ManualPartTile reicht den Besitzer nicht mehr weiter"
         }
-        assert(code(read("teile/ui/screens/MinifigsScreen.kt")).contains("besitzer = fig.owners")) {
+        assert(code(read("teile/ui/screens/FigurenKarte.kt")).contains("besitzer = fig.owners")) {
             "ManualFigTile reicht den Besitzer nicht weiter"
         }
     }

@@ -135,7 +135,7 @@ test('beide Oberflaechen pruefen vor dem Absenden', () => {
     [path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'konto', 'ui', 'screens', 'EinstellungenKonto.kt'), 2, 'Passwort aendern'],
     // Hinweis und Fehlermarkierung teilen sich seit dem PasswortFeld einen Wert.
     [path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'konto', 'ui', 'screens', 'StartpasswortMaske.kt'), 1, 'Startpasswort'],
-    [path.join(__dirname, '..', '..', 'Android-App', 'feature-anmeldung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'anmeldung', 'ui', 'screens', 'LoginScreen.kt'),    1, 'Registrieren'],
+    [path.join(__dirname, '..', '..', 'Android-App', 'feature-anmeldung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'anmeldung', 'ui', 'screens', 'LoginRegistrieren.kt'), 1, 'Registrieren'],
   ]) {
     const kurz = path.basename(voll);
     assert.ok(fs.existsSync(voll), `${kurz} steht nicht mehr dort — Pfad im Test veraltet`);

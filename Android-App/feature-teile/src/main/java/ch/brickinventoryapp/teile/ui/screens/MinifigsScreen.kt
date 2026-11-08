@@ -4,20 +4,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
 import ch.brickinventoryapp.ui.components.HinweisText
-import ch.brickinventoryapp.ui.components.fokusRahmen
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileAktionen
-import ch.brickinventoryapp.ui.erfassungUngueltig
-import ch.brickinventoryapp.ui.erfassungsWerte
-import ch.brickinventoryapp.model.ui.model.FigurAnsicht
 import ch.brickinventoryapp.model.ui.model.FigurenKennzahlenAnsicht
-import ch.brickinventoryapp.model.ui.model.ManuelleFigurAnsicht
-import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
-import ch.brickinventoryapp.ui.theme.Formen
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.border
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.icons.Icons
@@ -27,12 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.ui.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import coil3.ImageLoader
@@ -49,32 +32,20 @@ import ch.brickinventoryapp.ui.components.Bewegt
 import ch.brickinventoryapp.ui.components.SkelettRaster
 import ch.brickinventoryapp.ui.components.FehlerHinweis
 import ch.brickinventoryapp.ui.components.ZustandsHinweis
-import ch.brickinventoryapp.ui.components.stueckzahl
-import ch.brickinventoryapp.ui.components.vorgelesenAls
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.ui.components.ErfassenFab
 import ch.brickinventoryapp.ui.components.FabPlatz
 import ch.brickinventoryapp.ui.components.LesbareSpalten
 import ch.brickinventoryapp.ui.components.LocalOffenesDetail
 import ch.brickinventoryapp.ui.components.OfflineHinweis
-import ch.brickinventoryapp.ui.components.ProduktBild
 import ch.brickinventoryapp.ui.components.detailSchluessel
 import ch.brickinventoryapp.ui.components.grosseSchrift
-import ch.brickinventoryapp.ui.components.katalogName
-import ch.brickinventoryapp.model.util.DatumJahr
-import ch.brickinventoryapp.ui.util.fmtTag
 import ch.brickinventoryapp.ui.screens.AnsichtAbschnitt
-import ch.brickinventoryapp.ui.screens.ConditionBadges
-import ch.brickinventoryapp.ui.screens.ErfassungsFelder
 import ch.brickinventoryapp.ui.screens.FilterBlattRahmen
 import ch.brickinventoryapp.ui.screens.GalleryStatChip
 import ch.brickinventoryapp.ui.screens.KennzahlenReihe
 import ch.brickinventoryapp.ui.screens.KontoFilterAbschnitt
-import ch.brickinventoryapp.ui.screens.ManuelleKachel
-import ch.brickinventoryapp.ui.screens.OwnerBadges
-import ch.brickinventoryapp.ui.screens.OwnerPicker
 import ch.brickinventoryapp.ui.screens.SucheMitFilter
-import ch.brickinventoryapp.ui.screens.TabellenZeile
 
 /** Der Figuren-Reiter am Navigationsziel: reicht Zustand und Aktionen an [MinifigsScreen]. */
 @Composable
@@ -285,230 +256,4 @@ private fun FigurenKennzahlen(minifigStats: FigurenKennzahlenAnsicht) {
         GalleryStatChip(minifigStats.totalQuantity, R.plurals.minifigs_stat_total)
         GalleryStatChip(minifigStats.manual, R.plurals.minifigs_stat_manual)
     }
-}
-
-@Composable
-fun ManualFigTile(fig: ManuelleFigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
-                  waehrung: String, onEdit: () -> Unit) {
-    // Vorschaubild mit Rückfall auf volle Auflösung — siehe
-    // util/BildRueckfall.kt, rememberTileImageWithFallback().
-    val (bild, onBildFehler) =
-        rememberTileImageWithFallback(serverUrl, fig.imageLocal, fig.imageUrl, fullViaProxy = true)
-    // Alles Weitere steht in ManuelleKachel (ManualItemComposables.kt), die auch die
-    // Teile benutzen — damit Zustands- und Besitzer-Plaketten nicht nur in einem
-    // Zwilling nachgezogen werden.
-    ManuelleKachel(
-        bildUrl = bild,
-        onBildFehler = onBildFehler,
-        imageLoader = imageLoader,
-        name = fig.figName ?: fig.figNumber,
-        menge = fig.quantity,
-        zustaende = fig.conditions,
-        zustand = fig.condition,
-        besitzer = fig.owners,
-        preis = fig.avgPurchasePrice ?: fig.unitPrice ?: fig.purchasePrice,
-        waehrung = waehrung,
-        onEdit = onEdit,
-    )
-}
-
-@Composable
-fun AddMinifigDialog(
-    onDismiss: () -> Unit,
-    onAdd: (String, String?, Int, Double?, String?, Int?, String?) -> Unit,
-    defaultCondition: String = "N",
-    /** Konten des Haushalts — ohne Unterkonten bleibt die Auswahl verborgen. */
-    householdMembers: List<MitgliedAnsicht> = emptyList(),
-    /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
-    lagerorte: List<String> = emptyList(),
-    /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
-    lagerortVorgabe: String = "",
-) {
-    var figNumber  by rememberSaveable { mutableStateOf("") }
-    var blFigNumber by rememberSaveable { mutableStateOf("") }
-    var quantity   by rememberSaveable { mutableStateOf("1") }
-    var unitPrice  by rememberSaveable { mutableStateOf("") }
-    var condition  by rememberSaveable { mutableStateOf(defaultCondition) }
-    // Schluessel ist die Vorgabe — dieselbe Begruendung wie im Galerie-Dialog:
-    // Sie kommt ueber das Netz und kann nach dem Oeffnen eintreffen.
-    var lagerort   by rememberSaveable(lagerortVorgabe) { mutableStateOf(lagerortVorgabe) }
-    // Vorbelegt mit dem eigenen Konto: Wer nichts wählt, erfasst für sich —
-    // dasselbe Verhalten wie vor der Haushaltssicht.
-    var owner by remember(householdMembers) {
-        mutableStateOf(householdMembers.firstOrNull { it.isSelf }?.id)
-    }
-
-    fun submit() {
-        if (figNumber.isNotBlank() && !erfassungUngueltig(quantity, unitPrice)) {
-            // Siehe erfassungsWerte() — dieselbe Umrechnung wie im Teile-Dialog.
-            val w = erfassungsWerte(quantity, unitPrice, condition, owner, householdMembers)
-            onAdd(
-                figNumber,
-                blFigNumber.trim().ifBlank { null },
-                w.anzahl, w.preis, w.zustand, w.besitzer,
-                lagerort.trim().takeIf { it.isNotEmpty() }
-            )
-        }
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary) },
-        title = { Text(stringResource(R.string.minifigs_add_title), fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OwnerPicker(householdMembers, owner, { owner = it })
-                OutlinedTextField(
-                    value = figNumber, onValueChange = { figNumber = it },
-                    label = { Text(stringResource(R.string.minifigs_fig_number)) }, placeholder = { Text(stringResource(R.string.minifigs_fig_number_placeholder)) },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    shape = Formen.feld
-                )
-                OutlinedTextField(
-                    value = blFigNumber, onValueChange = { blFigNumber = it },
-                    label = { Text(stringResource(R.string.minifigs_bl_number)) }, placeholder = { Text(stringResource(R.string.minifigs_bl_number_placeholder)) },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    shape = Formen.feld
-                )
-                Text(
-                    stringResource(R.string.minifigs_bl_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                ErfassungsFelder(
-                    anzahl = quantity, onAnzahl = { quantity = it },
-                    preis = unitPrice, onPreis = { unitPrice = it },
-                    zustand = condition, onZustand = { condition = it },
-                    lagerort = lagerort, onLagerort = { lagerort = it },
-                    lagerorte = lagerorte,
-                )
-            }
-        },
-        confirmButton = { TextButton(onClick = { submit(); onDismiss() }) { Text(stringResource(R.string.minifigs_add_button)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } }
-    )
-}
-
-@Composable
-fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
-                onClick: (() -> Unit)? = null, ausgewaehlt: Boolean = false) {
-    val qty = fig.totalQuantity ?: fig.quantity
-
-    Card(
-        // Antippen oeffnet den Detail-Dialog — wie bei den Teilen daneben.
-        modifier = Modifier.fillMaxWidth().heightIn(min = 196.dp)
-            .semantics { selected = ausgewaehlt }
-            .then(if (ausgewaehlt) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, Formen.leiste) else Modifier)
-            .let { if (onClick != null) it.fokusRahmen(Formen.leiste).clickable(role = Role.Button, onClick = onClick) else it },
-        shape = Formen.leiste,
-        elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Column {
-            Box(Modifier.fillMaxWidth().height(110.dp)) {
-                // Vorschaubild mit Rückfall auf volle Auflösung — siehe
-                // util/BildRueckfall.kt, rememberTileImageWithFallback().
-                val (figImg, onFigImgError) = rememberTileImageWithFallback(serverUrl, fig.imageLocal, fig.imageUrl, fullViaProxy = true)
-                ProduktBild(
-                    model = figImg,
-                    imageLoader = imageLoader,
-                    // Ohne Beschreibung: Der Name steht darunter, TalkBack las ihn sonst zweimal.
-                    contentDescription = null,
-                    onState = { st ->
-                        if (st is coil3.compose.AsyncImagePainter.State.Error) onFigImgError()
-                    },
-                    modifier = Modifier.fillMaxSize()
-                        .clip(Formen.kachelBildEcken),
-                    contentScale = ContentScale.Fit,
-                    // Bildgrund über die ganze Kachelbreite wie bei Sets und Teilen: Das hohe
-                    // Figurenbild stand sonst schmal in der Mitte mit weissen Rändern.
-                    bildgrund = true,
-                    innenAbstand = Abstaende.winzig,
-                )
-                if (qty > 1) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = Formen.marke,
-                        modifier = Modifier.align(Alignment.TopEnd).padding(Abstaende.winzig)
-                    ) {
-                        // Die Menge-Plakette: „×N“ auf einer manuell erfassten Kachel, „N×“ auf
-                        // einer Kachel aus einem Set — die Regel der Webapp (`man-tile` mit
-                        // `qbadge` ×N, `part-card` mit `part-qty` N×).
-                        Text(mengeAusSet(qty), Modifier.padding(horizontal = 5.dp, vertical = Abstaende.haar)
-                            .vorgelesenAls(stueckzahl(qty)),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                    }
-                }
-                // Zustand nur bei manuell erfassten Minifiguren (aus Sets übernommene haben keinen
-                // eigenen). Die Besitzer-Plakette dagegen immer: „Wem gehört das?“ stellt sich bei
-                // einer Figur aus dem Set eines Kindes genauso, und diese Liste lädt nur
-                // `source=set`. Ohne Haushalt ist `owners` leer und OwnerBadges kehrt sofort
-                // zurück. Column statt Box: zwei Plaketten übereinander, nicht am selben Punkt.
-                Column(Modifier.align(Alignment.BottomStart).padding(Abstaende.winzig),
-                    verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
-                    if (fig.source == "manual") ConditionBadges(fig.conditions, fig.condition)
-                    OwnerBadges(fig.owners)
-                }
-                if (fig.source == "manual") {
-                    Surface(
-                        color = MaterialTheme.colorScheme.tertiaryContainer,
-                        shape = Formen.marke,
-                        modifier = Modifier.align(Alignment.TopStart).padding(Abstaende.winzig)
-                    ) {
-                        Text(stringResource(R.string.minifigs_manual_badge), Modifier.padding(horizontal = 5.dp, vertical = Abstaende.haar),
-                            color = MaterialTheme.colorScheme.onTertiaryContainer,
-                            style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-            Column(Modifier.padding(Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Text(fig.figNumber, Modifier.vorgelesenAls(stringResource(R.string.cd_figur_nummer, fig.figNumber)),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
-                // Die Nummer steht schon darüber; ohne Namen dieselbe Nummer noch einmal sah wie ein Name aus.
-                val figName = fig.figName
-                if (figName != null) {
-                    Text(katalogName(figName),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = if (grosseSchrift()) 3 else 2, overflow = TextOverflow.Ellipsis)
-                } else {
-                    Text(stringResource(R.string.name_unknown), style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                // Gemeinsamer Helfer (util/DatumFormat.kt): Er kommt auch mit Zeitstempeln ohne
-                // Millisekunden zurecht.
-                val dateLabel = remember(fig.setAddedAt) {
-                    fmtTag(fig.setAddedAt, DatumJahr.KURZ)
-                }
-                if (dateLabel != null)
-                    Text(dateLabel, style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    }
-}
-
-/**
- * Eine Figur als Tabellenzeile: Bild, Nummer, Name, Menge, Erfassungsdatum — was
- * die Tabelle der Webapp zeigt (renderFigs in 06-minifigs.js). Keine Spalten
- * „Quelle“ und Papierkorb: Diese Liste lädt nur `source=set`, beide wären
- * konstant.
- */
-@Composable
-fun MinifigTableRow(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
-                    onClick: (() -> Unit)? = null) {
-    val (bildUrl, onFehler) = rememberTileImageWithFallback(
-        serverUrl, fig.imageLocal, fig.imageUrl, fullViaProxy = true)
-    TabellenZeile(
-        bildUrl = bildUrl,
-        nummer = fig.figNumber,
-        name = fig.figName,
-        menge = fig.totalQuantity ?: fig.quantity,
-        imageLoader = imageLoader,
-        zweiteZeile = fmtTag(fig.setAddedAt),
-        onBildFehler = onFehler,
-        onClick = onClick,
-    )
 }

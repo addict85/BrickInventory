@@ -78,8 +78,8 @@ class MengePlaketteTest {
             "ManuelleKachel schreibt die Menge wieder selbst"
         }
         for ((datei, wer) in listOf(
-            "teile/ui/screens/PartsScreen.kt" to "ManualPartTile",
-            "teile/ui/screens/MinifigsScreen.kt" to "ManualFigTile",
+            "teile/ui/screens/TeileKarte.kt" to "ManualPartTile",
+            "teile/ui/screens/FigurenKarte.kt" to "ManualFigTile",
         )) {
             val src = code(read(datei))
             assert(src.contains("ManuelleKachel(")) {
