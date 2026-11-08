@@ -15,13 +15,16 @@ export async function zustandDerErfassung(art: ErfassungsArt, id: number): Promi
 export type ErfassungImFeld = { id: number; user_id: number; condition: string | null; preis: number | null;
   price_estimated: boolean; currency: string; tag: string };
 
-/** Nur im Schreib-Blickfeld; beim Set zusätzlich an der Setnummer der Anfrage. */
+/** Nur im Schreib-Blickfeld und nur unter dem Schlüssel aus dem Pfad: Sonst änderte
+ * `/parts/A/1/acquisitions/{Erfassung von B}` die Zeile von B, während Sperre und
+ * Mengenprüfung auf A liefen. */
 export function erfassungImSchreibfeld(tx: DbSchnittstelle, art: ErfassungsArt, id: number, wids: number[], schluessel: (string | number)[]) {
   const s = SHAPES[art];
+  const spalten = s.keys.map((k, i) => ` AND ${k}=$${i + 3}`).join('');
   return tx.get<ErfassungImFeld>(
     `SELECT id, user_id, condition, ${s.price} AS preis, price_estimated, currency, (${erfassungsTagSql()})::text AS tag
-       FROM ${s.table} WHERE id=$1 AND user_id = ANY($2)${art === 'set' ? ' AND set_number=$3' : ''}`,
-    art === 'set' ? [id, wids, ...schluessel] : [id, wids]);
+       FROM ${s.table} WHERE id=$1 AND user_id = ANY($2)${spalten}`,
+    [id, wids, ...schluessel.slice(0, s.keys.length)]);
 }
 
 export async function setzeErfassungsMenge(tx: DbSchnittstelle, art: ErfassungsArt, id: number, menge: number): Promise<void> {

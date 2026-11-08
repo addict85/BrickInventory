@@ -18,6 +18,11 @@ export function hatPreis(row: PreisDatensatz): boolean {
 
 export type { KatalogEintrag };
 
+/** Vor jedem Abruf, den ein Nutzer mit freier Nummer auslösen kann. */
+export function setImKatalog(setNumber: string): Promise<boolean> {
+  return repo.setImKatalog(mitVersion(setNumber));
+}
+
 /** Unter der Schreibweise, unter der er abgelegt wird. */
 export function katalogEintrag(setNumber: string): Promise<KatalogEintrag | null> {
   return repo.katalogEintragZu(mitVersion(setNumber));

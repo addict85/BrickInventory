@@ -18,11 +18,15 @@ import { resolveIfExists } from '../katalog/bilder/images';
 import { toCsv, csvZeilenAusAnfrage, parseCsvDate } from '../infra/csvExport';
 import * as repo from './repository/merkliste';
 import { fetchPrice } from '../finanzen/financeCalc';
+import { setImKatalog } from '../katalog/bricklinkPreise';
+import { moeglicheSetNummer, mitVersion } from '../infra/setNummer';
 
 /** Jeder Zustand für sich: Kennt BrickLink einen nicht, kommt der andere
  * trotzdem, und ein fehlender Preis ist ein Strich, kein Fehler. */
 export async function preiseBeiderZustaende(uid: number, setNumber: string) {
   const currency  = String(await getSetting(uid, 'currency', 'EUR'));
+  // Eine frei erfundene Nummer kostete bis zu vier BrickLink-Abrufe aus dem für alle gemeinsamen Tageskontingent.
+  if (!moeglicheSetNummer(mitVersion(setNumber)) || !await setImKatalog(setNumber)) return { currency, current: {} };
   const guideType = String(await getSetting(uid, 'price_guide_type', 'sold'));
   const ttlHours  = String(await getSetting(uid, 'price_cache_ttl', '24'));
   const current: Record<string, { condition: string; avg_price: unknown; min_price: unknown; max_price: unknown }> = {};

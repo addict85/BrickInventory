@@ -75,7 +75,7 @@ export async function moveManualAcquisition(
   tx: DbSchnittstelle, kind: 'part' | 'fig', keyValues: (string | number)[], acquisitionId: number,
   fromId: number, toId: number
 ): Promise<{ quantity: number; merged: boolean; source_emptied: boolean }> {
-  const acq = await repo.manuelleErfassung(tx, kind, acquisitionId, fromId);
+  const acq = await repo.manuelleErfassung(tx, kind, acquisitionId, fromId, keyValues);
   if (!acq) fehlerWerfen('kaufpreis_nicht_gefunden', 404);
 
   const src = await repo.manuelleZeile(tx, kind, fromId, keyValues);

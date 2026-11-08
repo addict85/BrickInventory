@@ -415,11 +415,15 @@ test('Dienste importieren keine Express-Typen', () => {
   // src/infra/ (Anfragekonto, Proxy-Vertrauen), src/vertrag/ (Prüf-Middleware)
   // und die HTTP-Seiten der Bereiche. Gegenprobe (31.10.2026): `import type {
   // Request } from 'express'` in src/sets/setService.ts → rot; dasselbe in
-  // src/konto/loginLimiter.ts → rot.
+  // src/konto/loginLimiter.ts → rot. (08.11.2026): dasselbe in src/infra/geld.ts → rot.
+  const nutztExpress = d => /from\s+['"]express['"]|import\(\s*['"]express['"]\s*\)/.test(quelltext(d));
   const treffer = tsUnter('src')
     .filter(d => !['infra', 'http', 'vertrag'].includes(bereichVon(d)) && !istHttp(d))
-    .filter(d => /from\s+['"]express['"]|import\(\s*['"]express['"]\s*\)/.test(quelltext(d)));
+    .filter(nutztExpress);
   assert.deepEqual(treffer, []);
+  // Eine neue Datei in infra, die Express kennt, ist eine bewusste Entscheidung: hier eintragen.
+  const EXPRESS_IN_INFRA = ['anfrageKonto', 'proxyVertrauen'].map(n => `src/infra/${n}.ts`);
+  assert.deepEqual(tsUnter('src/infra').filter(nutztExpress).sort(), EXPRESS_IN_INFRA.sort());
   assert.ok(tsUnter('src').some(istHttp), 'keine HTTP-Seite unter src/<bereich>/http/ gefunden');
 });
 

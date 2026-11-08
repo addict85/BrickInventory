@@ -8,6 +8,17 @@ export async function katalogEintragZu(nummer: string): Promise<KatalogEintrag |
     [nummer])) ?? null;
 }
 
+/** Ein Set, das einer unserer Kataloge wirklich kennt. Eine „kein Preis"-Markierung
+ * zählt nicht: Sie entsteht erst durch den Abruf, den diese Prüfung verhindern soll. */
+export async function setImKatalog(nummer: string): Promise<boolean> {
+  const r = await db.get<{ x: number }>(
+    `SELECT 1 AS x WHERE EXISTS (SELECT 1 FROM set_catalog WHERE set_number = $1)
+                      OR EXISTS (SELECT 1 FROM rb_sets WHERE set_num = $1)
+                      OR EXISTS (SELECT 1 FROM catalog_cache WHERE set_number = $1
+                                  AND NOT (is_gear IS TRUE AND bl_type = 'NONE'))`, [nummer]);
+  return !!r;
+}
+
 export type BricklinkArt = 'GEAR' | 'BOOK' | 'NONE';
 
 /** NONE heisst „kein Preis", mit Zeitstempel. */

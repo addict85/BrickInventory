@@ -6,6 +6,7 @@
  *   B  Abweisung erhöht den Zähler mit        → rot: „abgewiesene Anfragen zählen nicht mit“
  *   C  Schlüssel im Zähler ist die feste 0    → rot: „ein Konto verbraucht nicht das Budget des anderen“
  *   D  apiDrossel nicht in der Kette          → rot: „ohne Budget antwortet die Route 200“
+ *   E  KOSTEN.preis = 1                       → rot: „Routen mit BrickLink- oder Fremdabruf …“
  *
  * Ohne Datenbank: Der Zähler liegt im Prozess, die Route wird mit einer
  * Sitzung im Request nachgebildet.
@@ -75,6 +76,29 @@ test('Katalogabrufe kosten mehr als Lesen', () => {
   assert.equal(einordnung('GET', '/sets').kosten, KOSTEN.normal);
   assert.equal(einordnung('POST', '/minifigs/import/csv').auftrag, true);
   assert.equal(einordnung('GET', '/settings/export/data').auftrag, true);
+});
+
+test('Routen mit BrickLink- oder Fremdabruf kosten mehr als Lesen', () => {
+  for (const [m, p] of [
+    ['GET', '/wanted/10294-1/preise'],
+    ['GET', '/sets/10294-1/price'],
+  ])
+    assert.equal(einordnung(m, p).kosten, KOSTEN.preis, `${m} ${p}`);
+  for (const [m, p] of [
+    ['POST', '/sets'],
+    ['GET', '/sets/barcode/123'],
+    ['POST', '/sets/10294-1/parts'],
+    ['POST', '/parts'],
+    ['POST', '/minifigs'],
+    ['POST', '/vouchers/3/guthaben'],
+  ])
+    assert.equal(einordnung(m, p).kosten, KOSTEN.abruf, `${m} ${p}`);
+  assert.ok(KOSTEN.preis > KOSTEN.abruf);
+  // Die Preisroute darf das gemeinsame Kontingent nicht mit dem ganzen Budget leeren.
+  drosselLeeren();
+  let n = 0;
+  while (pruefeBudget(31, 'GET', '/wanted/1-1/preise', 9_000_000).erlaubt) n++;
+  assert.ok(n * 4 <= 150, `${n} Anfragen je Fenster = bis zu ${n * 4} BrickLink-Aufrufe`);
 });
 
 test('die Route antwortet 429 mit Retry-After und Fehlercode', async t => {

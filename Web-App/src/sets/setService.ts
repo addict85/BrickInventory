@@ -34,7 +34,7 @@ export function sanitizeSetNumber(input: unknown) {
  * Ausführlich: docs/begruendungen/src/sets/setService.ts.md#pricefornewacquisition */
 async function priceForNewAcquisition(userId: number, setNumber: string, dbh: DbSchnittstelle = db) {
   // Über das Blickfeld: Mit einer nackten ID fände der Hauptaccount das Set des Unterkontos nicht.
-  const blickfeld = await scopeIds(userId).catch(() => [userId]);
+  const blickfeld = await scopeIds(userId).catch(meldeUndLiefere('sets:kaufpreis-blickfeld', [userId]));
   const cond = await resolveSetCondition(blickfeld, setNumber, dbh);
   // Die Währung DES KONTOS: Der Preis wird in ihr gesucht und gespeichert.
   const currency = String(await getSetting(userId, 'currency', 'EUR'));

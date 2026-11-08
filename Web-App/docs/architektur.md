@@ -29,6 +29,24 @@ src/vertrag/            der API-Vertrag (zod-Schemas, Prüfung, OpenAPI), von al
 src/infra/              fachfreie Helfer
 ```
 
+`src/infra` ist die unterste Stufe: Es importiert keinen anderen Bereich (das
+prüft die Rangfolge unten). „Fachfrei" ist es nicht durchgehend, und das ist
+Absicht, solange es nur von unten gebraucht wird:
+
+- Reine Helfer ohne Bezug zu HTTP: Fehler (`fehler`, `fehlerTexte`),
+  Konfiguration (`konfig`), Geheimnisse, Protokoll, Abruf nach draussen
+  (`abruf`, `fremdeAdressen`), CSV, Validierung.
+- Kleine Fachregeln, die mehrere Bereiche teilen und deshalb nicht in einem
+  von ihnen liegen können: Setnummern (`setNummer`), Geld (`geld`),
+  Passwortregel (`passwortRegel`).
+- Die HTTP-Hülle, die jede Schicht braucht: Fehlerantwort (`sendeFehler` in
+  `fehlerTexte`, `httpAntwort`), Vertrag (`vertrag/`), Datei-Ein- und -Ausgang,
+  Budget und Schranken je Konto, Sitzungskeks, Proxy-Vertrauen. Express
+  importieren nur Dateien daraus; welche, hält der Test in
+  `test/schichten.test.js` fest. Dienste kennen Express nicht, mit einer
+  Ausnahme: `anfrageKonto` trägt die laufende Anfrage über
+  `AsyncLocalStorage` zu Zählern, die keinen Request sehen.
+
 - SQL steht nur in `src/<bereich>/repository*` und `db/`.
 - Routen importieren nichts aus `db/`, `jobs/` oder `clients/`; sie fangen
   keine Fehler, der Fehlerweg des Routers antwortet.
