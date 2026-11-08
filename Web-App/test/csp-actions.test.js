@@ -2,6 +2,19 @@
  * Inline-Handler entfernen, damit `script-src 'unsafe-inline'` aus der CSP
  * verschwinden kann (Punkt 2 der Optimierungsliste).
  * Ausführlich: docs/begruendungen/test/csp-actions.test.js.md#kopf
+ *
+ * Gegenproben der am 08.11.2026 gestrichenen Quelltext-Fälle, wo sie laufen
+ * (je einzeln gemessen):
+ *   CSP ohne unsafe-inline, img-src ohne https:, worker-src, kein fremder Host
+ *   in der CSP → sicherheit-querschnitt-db „jede Antwort trägt …“ (Direktive
+ *   je einzeln verdorben → rot); kein Inline-<script> und kein Fremdhost in
+ *   der ausgelieferten Seite → dort „die ausgelieferte Seite …“ (rot mit
+ *   eingefügtem Inline-Skript bzw. Fremd-Stylesheet).
+ *   Handler aus index.html und Vorlagen angemeldet, Dispatcher eingebunden,
+ *   Argumente/data-val/this, Capture der Bildfehler, Wiederholversuch, Modus
+ *   „keep“, Protokollfenster ohne Inline-Skript → aktionen-dispatcher-
+ *   oberflaeche (Gegenproben A–H dort); der Platzhalter-Modus →
+ *   bilder-platzhalter.test.js.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -13,7 +26,6 @@ const HTML = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
 const ACT  = fs.readFileSync(path.join(PUB, 'js', '11-actions.js'), 'utf8');
 const JS_FILES = fs.readdirSync(path.join(PUB, 'js')).filter(f => /^\d\d-.*\.js$/.test(f));
 
-const HANDLER_RE = /\bon(click|change|input|blur|keydown|error|load|mouseenter|mouseleave|submit)\s*=\s*"/g;
 
 test('nirgends mehr Inline-Handler — weder in index.html noch in den Templates', () => {
   // Wichtig: (?<!data-) schliesst data-onerror aus, und das Muster verlangt ="
@@ -31,15 +43,6 @@ test('nirgends mehr Inline-Handler — weder in index.html noch in den Templates
     `Noch ${found.length} Inline-Handler — mit denen wäre die geschlossene CSP ein Ausfall`);
 });
 
-test("die CSP erlaubt kein 'unsafe-inline' für script-src mehr", () => {
-  const server = fs.readFileSync(path.join(__dirname, '..', 'server.ts'), 'utf8');
-  const line = server.split('\n').find(l => l.includes('script-src') && !l.trim().startsWith('//'));
-  assert.ok(line, 'script-src-Direktive nicht gefunden');
-  assert.doesNotMatch(line, /unsafe-inline/,
-    'Ohne das Schliessen der CSP hat die ganze Umstellung keinen Sicherheitsgewinn');
-  assert.doesNotMatch(line, /unsafe-eval/, "'unsafe-eval' wäre dasselbe Problem in Grün");
-});
-
 test('kein style-Attribut und kein <style> im Markup — ausser dem Startgerüst, das die CSP per Hash erlaubt', () => {
   // Gegenprobe: ein data-stil in index.html wieder als style= → rot.
   const strip = t => t.replace(/<!--[\s\S]*?-->/g, '').replace(/<style id="startstil">[\s\S]*?<\/style>/, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
@@ -53,19 +56,6 @@ test('kein style-Attribut und kein <style> im Markup — ausser dem Startgerüst
       if (!/^\$\{(esc\()?o\.(stil|zeilenStil|wertStil)\)?\}$/.test(m[1])) found.push(`${name}: data-stil="${m[1]}"`);
   }
   assert.deepEqual(found, []);
-});
-
-test('img-src erlaubt keine fremden Hosts mehr', () => {  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // img-src trug ein pauschales `https:` mit der Begründung, Set-Bilder kämen
-  // direkt von den CDNs. Seit hardened-69 stimmt das nicht mehr: imgUrl()
-  // schickt jede absolute Adresse durch /api/img-proxy, und alle Bilder
-  // verlangen Anmeldung. Die Erlaubnis blieb nur stehen — und ein …
-  // Ausführlich: docs/begruendungen/test/csp-actions.test.js.md#server
-  const server = fs.readFileSync(path.join(__dirname, '..', 'server.ts'), 'utf8');
-  const line = server.split('\n').find(l => l.includes('"img-src') && !l.trim().startsWith('//'));
-  assert.ok(line, 'img-src-Direktive nicht gefunden');
-  assert.doesNotMatch(line, /https:/,
-    'Bilder laufen ausschliesslich über den eigenen Server (/api/img-proxy, /images/*)');
 });
 
 test('der Dispatcher kommt ohne eval aus', () => {
@@ -82,152 +72,10 @@ test('der Dispatcher kommt ohne eval aus', () => {
     'Ein Tippfehler im Handlernamen muss auffallen, nicht stumm nichts tun');
 });
 
-test('jeder in index.html referenzierte Handler existiert', () => {
-  const names = new Set();
-  for (const m of HTML.matchAll(/data-(?:click|change|input|blur|keydown)="([^"]+)"/g)) names.add(m[1]);
-  assert.ok(names.size > 0, 'keine data-Handler gefunden — wurde überhaupt konvertiert?');
-
-  const all = JS_FILES.map(f => fs.readFileSync(path.join(PUB, 'js', f), 'utf8')).join('\n');
-  const missing = [...names].filter(n =>
-    !new RegExp(`function\\s+${n}\\s*\\(|(?:const|let|var)\\s+${n}\\s*=|window\\.${n}\\s*=`).test(all));
-  assert.deepEqual(missing, [],
-    `Diese Handler werden referenziert, sind aber nirgends definiert: ${missing.join(', ')}`);
-});
-
-test('Bildfehler laufen über den Capture-Handler', () => {
-  // error und load steigen nicht auf — ohne capture:true bliebe der Fallback aus.
-  assert.match(ACT, /addEventListener\('error',[\s\S]*?\}, true\)/,
-    'error braucht die Capture-Phase');
-  assert.match(ACT, /el\.dataset\.fallbackDone/,
-    'Ohne Merker kann der Fallback in eine Schleife laufen, wenn auch das Ersatzbild fehlt');
-});
-
 test('Hover-Effekte liegen im Stylesheet', () => {
   const css = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
   assert.match(css, /\.hover-row:hover/,
     'Die früheren onmouseenter/onmouseleave-Attribute brauchen eine CSS-Entsprechung');
-});
-
-test('der Dispatcher ist eingebunden', () => {
-  // 11-actions.js hat kein eigenes <script>-Tag mehr — es steckt im gebündelten
-  // js/app.bundle.js. Ohne den Dispatcher wäre die App unbedienbar (alle
-  // Interaktionen laufen seit der CSP-Umstellung über data-click/data-change),
-  // deshalb wird geprüft, dass er Teil des Bündels IST und dass das Bündel …
-  // Ausführlich: docs/begruendungen/test/csp-actions.test.js.md#entry
-  const entry = fs.readFileSync(path.join(PUB, 'js', 'main.js'), 'utf8');
-  assert.match(entry, /'\.\/11-actions\.js'/,
-    '11-actions.js wird von js/main.js nicht importiert — der Dispatcher würde fehlen');
-  assert.match(HTML, /app\.bundle\.js/, 'Das Frontend-Bündel fehlt in index.html');
-});
-
-test('jeder in Vorlagen referenzierte Handler ist bei der Registry angemeldet', () => {
-  // Was sich geändert hat
-  // Ausführlich: docs/begruendungen/test/csp-actions.test.js.md#strip
-  const strip = src => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
-
-  const names = new Set();
-  for (const f of JS_FILES) {
-    const src = strip(fs.readFileSync(path.join(PUB, 'js', f), 'utf8'));
-    for (const m of src.matchAll(/data-(?:click|change|input|blur|keydown)="([A-Za-z_$][\w$]*)"/g))
-      names.add(m[1]);
-  }
-
-  // Angemeldete Namen aus allen registerActions({…})-Aufrufen einsammeln.
-  const registered = new Set();
-  for (const f of fs.readdirSync(path.join(PUB, 'js'))) {
-    if (!f.endsWith('.js') || f === 'app.bundle.js') continue;
-    const src = strip(fs.readFileSync(path.join(PUB, 'js', f), 'utf8'));
-    for (const m of src.matchAll(/registerActions\(\{([\s\S]*?)\}\);/g))
-      for (const part of m[1].split(',')) {
-        const key = part.trim().split(':')[0].trim();
-        if (key) registered.add(key);
-      }
-  }
-
-  // logviewer.js läuft in einem eigenen Popup-Fenster und löst seine vier
-  // Handler über eine eigene Tabelle auf (test/logviewer-oberflaeche.test.js).
-  const logviewer = strip(fs.readFileSync(path.join(PUB, 'js', 'logviewer.js'), 'utf8'));
-
-  const missing = [...names].filter(n =>
-    !registered.has(n) &&
-    !new RegExp(`function\\s+${n}\\s*\\(|window\\.${n}\\s*=`).test(logviewer));
-  assert.deepEqual(missing, [],
-    `Nicht angemeldet — diese Knöpfe täten beim Klick nichts: ${missing.join(', ')}`);
-});
-
-test('der Dispatcher reicht mehrere Argumente und den Feldwert durch', () => {
-  assert.match(ACT, /data-arg3/, 'Mehrere Argumente müssen unterstützt sein');
-  assert.match(ACT, /el\.dataset\.val === '1'/,
-    'Handler, die früher this.value gelesen haben, brauchen data-val');
-  assert.match(ACT, /fn\.apply\(el, args\)/, 'this muss das auslösende Element bleiben');
-});
-
-test('Bildfehler kennen die Modi aus den Templates', () => {
-  // Zwei Modi gibt es noch: den Platzhalter (bildTag in 01-bilder.js) und
-  // „keep" für den Zoom. Was er im Bild bewirkt, prüft test/bilder-platzhalter.test.js.
-  const js = path.join(__dirname, '..', 'public', 'js');
-  const quellen = HTML + fs.readdirSync(js).filter(f => /^\d\d-.*\.js$/.test(f))
-    .map(f => fs.readFileSync(path.join(js, f), 'utf8')).join('\n');
-  const modi = new Set([...quellen.matchAll(/data-onerror="([a-z]+)"/g)].map(m => m[1]));
-  assert.ok(modi.size >= 2, 'Keine Modi gefunden — greift die Suche noch?');
-  assert.deepEqual([...modi].sort(), ['keep', 'platzhalter']);
-  assert.match(ACT, /dataset\.onerror === 'keep'/, 'data-onerror="keep" wird nicht behandelt');
-  assert.match(ACT, /bildPlatzhalter\(el\)/, 'Der Platzhalter wird nicht gesetzt');
-});
-
-test('index.html enthält kein Inline-<script> mehr', () => {
-  // Eigene Fehlerklasse: Die Handler-Umstellung hat nur on*="…"-Attribute
-  // erfasst. Ein <script>-Block ohne src wird von der geschlossenen CSP
-  // ebenso blockiert — hier stand die PDF.js-Initialisierung.
-  const blocks = [...HTML.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/g)]
-    .map(m => m[1].trim()).filter(Boolean);
-  assert.deepEqual(blocks.map(b => b.slice(0, 60)), [],
-    'Inline-<script> wird von script-src ohne unsafe-inline blockiert');
-});
-
-test('der PDF.js-Worker ist von der CSP gedeckt', () => {
-  const server = fs.readFileSync(path.join(__dirname, '..', 'server.ts'), 'utf8');
-  assert.match(server, /"worker-src 'self' blob:"/,
-    'Ohne worker-src fällt der Worker auf default-src zurück und würde blockiert');
-});
-
-test('das Log-Fenster lädt sein Skript als Datei, nicht inline', () => {
-  // Ein per window.open + document.write gefülltes Fenster erbt die CSP des
-  // Öffners. Seit script-src ohne 'unsafe-inline' wurde das frühere
-  // Inline-<script> blockiert — Level-Umschalter, Neu laden und Auto
-  // reagierten auf nichts, nur die Dauer liess sich noch ändern (ein <select>
-  // zeigt seinen Wert ohne JavaScript).
-  const core = require('./helpers/sources').coreQuelle();
-  const win = core.slice(core.indexOf('function openLogViewer'),
-                         core.indexOf('function openLogViewer') + 9000);
-  assert.doesNotMatch(win, /'<script>'/, 'Inline-<script> wird von der CSP blockiert');
-  assert.match(win, /logviewer\.js/, 'Externes Skript fehlt');
-  for (const attr of ['data-base', 'data-i18n']) {
-    assert.ok(win.includes(attr), `${attr} fehlt — das Skript kommt sonst nicht an seine Daten`);
-  }
-  // Die Sitzung meldet das Fenster an; ein Token aus localStorage legt die Webapp nicht mehr ab.
-  assert.doesNotMatch(win, /localStorage|data-auth/, 'Altlast authToken aus localStorage');
-  assert.match(win, /escHtmlAttr\(/, 'Attributwerte müssen abgesichert werden');
-  assert.ok(fs.existsSync(path.join(PUB, 'js', 'logviewer.js')), 'logviewer.js fehlt');
-});
-
-test('ein einzelner Bildfehler blendet die Kachel nicht dauerhaft aus', () => {
-  // Gemessen: ETIMEDOUT beim CDN-Abruf. Der Rückfall entfernte danach das src
-  // oder blendete das Bild aus, und fallbackDone verhinderte jeden weiteren
-  // Versuch — obwohl das Bild in Ordnung war.
-  assert.match(ACT, /if \(!el\.dataset\.retried && el\.src\)/, 'Kein erneuter Versuch');
-  // Die Absicht statt des Wortlauts
-  // Ausführlich: docs/begruendungen/test/csp-actions.test.js.md#versuch
-  const versuch = ACT.match(/setTimeout\(\(\) => \{([^}]*)\}, 1000\)/);
-  assert.ok(versuch, 'Der zweite Versuch nach einer Sekunde fehlt');
-  assert.match(versuch[1], /el\.removeAttribute\('src'\)/,
-    "Der zweite Versuch muss das Attribut abraeumen — `el.src = ''` zeigt auf die Seite");
-  assert.match(versuch[1], /el\.src = src/,
-    'Der zweite Versuch muss dieselbe Adresse erneut anfordern');
-  // Und erst danach greift der bisherige Rückfall
-  const iRetry = ACT.indexOf('el.dataset.retried');
-  const iDone  = ACT.indexOf('el.dataset.fallbackDone = ');
-  assert.ok(iRetry > 0 && iRetry < iDone, 'Der Wiederholversuch muss vor dem Aufgeben stehen');
 });
 
 test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
@@ -332,28 +180,6 @@ test('der Löschknopf hat je Design eine eigene Fassung', () => {
     assert.doesNotMatch(src, /#ef4444/, `${name}: --r500 benutzen statt Literal`);
     assert.doesNotMatch(src, /rgba\(239,\s*68,\s*68/, `${name}: --r500 benutzen statt Literal`);
   }
-});
-
-test('die Oberfläche lädt von keinem fremden Host mehr', () => {
-  // Woher dieser Test kommt
-  // Ausführlich: docs/begruendungen/test/csp-actions.test.js.md#html
-  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-  // Nur LADENDE Elemente. <a href="https://rebrickable.com/api/"> ist ein
-  // Verweis, den der Benutzer anklickt — er holt nichts nach und gehört in
-  // die Einstellungen, wo erklärt wird, woher der API-Schlüssel kommt.
-  const extern = [...html.matchAll(/<(?:link|script|img|iframe|source)\b[^>]*?(?:href|src)="(https?:\/\/[^"]+)"/g)]
-    .map(m => m[1]);
-  assert.deepEqual(extern, [],
-    `index.html lädt von fremden Hosts: ${extern.join(', ')}`);
-
-  // Und die CSP macht es verbindlich: kein Fremdhost in einer der Direktiven.
-  const server = fs.readFileSync(path.join(__dirname, '..', 'server.ts'), 'utf8');
-  const csp = server.slice(server.indexOf("'Content-Security-Policy'"),
-                           server.indexOf("frame-ancestors"))
-    .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
-  const hosts = [...csp.matchAll(/https:\/\/[^\s"']+/g)].map(m => m[0]);
-  assert.deepEqual(hosts, [],
-    `Die CSP erlaubt noch fremde Hosts: ${hosts.join(', ')}`);
 });
 
 test('die Schriftdateien liegen wirklich im Baum', () => {

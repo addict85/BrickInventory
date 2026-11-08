@@ -6,6 +6,8 @@
  * Anmeldung und `private` an Bild und Anleitung → bild-blickfeld-db.test.js
  * (liefereBild ohne 401 bzw. mit `public` → dort rot); PDF-Download ohne
  * requireToken → verdrahtung-laeuft-db.test.js rot.
+ * „die Webapp ruft nie direkt ein CDN auf“ → bilder-proxy-oberflaeche.test.js
+ * (imgUrl() bzw. fullUrl() geben eine CDN-Adresse roh zurück → dort rot, H bzw. D).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -98,35 +100,6 @@ test('der Platzhalter liegt ausserhalb von /images/', () => {
   }
   if (read('public/index.html').includes('/images/set-placeholder')) refs.push('index.html');
   assert.deepEqual(refs, [], `Alte Platzhalter-Adresse in: ${refs.join(', ')}`);
-});
-
-test('die Webapp ruft nie direkt ein CDN auf', () => {
-  // Nutzerentscheidung
-  // Ausführlich: docs/begruendungen/test/media-auth.test.js.md#core
-  const core = require('./helpers/sources').coreQuelle();
-
-  assert.doesNotMatch(
-    core,
-    /^\s*const inner = decodeURIComponent/m,
-    'Das Entpacken von Proxy-Adressen ist wieder da — damit lädt der Browser direkt vom CDN',
-  );
-
-  const imgUrl = core.slice(core.indexOf('export function imgUrl'), core.indexOf('export function fullUrl'));
-  assert.ok(imgUrl.length > 0, 'imgUrl() nicht gefunden');
-  assert.match(imgUrl, /if \(\/\^https\?/, 'Absolute Adressen müssen unabhängig vom Host über den Proxy laufen');
-
-  const fullUrl = core.slice(
-    core.indexOf('export function fullUrl'),
-    core.indexOf('export function imgUrl') > core.indexOf('export function fullUrl')
-      ? core.indexOf('export function imgUrl')
-      : core.indexOf('export function fullUrl') + 900,
-  );
-  // Geprueft wird die KONSTANTE, nicht die Adresse: Der Proxy ist mit der
-  // API-Zusammenlegung nach /api/v1/img-proxy gezogen, und ein
-  // Test, der die Zeichenkette abschreibt, prueft nach dem naechsten Umzug auf
-  // eine Adresse, die es nicht mehr gibt. Wo sie steht, haelt
-  // test/img-proxy-v1.test.js fest.
-  assert.match(fullUrl, /IMG_PROXY \+ '\?url='/, 'fullUrl() muss absolute Adressen ebenfalls über den Proxy leiten');
 });
 
 test('die SQL-Migrationen landen im Build', () => {

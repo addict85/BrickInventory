@@ -19,6 +19,12 @@
  *      unbekannter API-Pfad antwortet in der Form jeder Fehlerantwort"
  *   F  handleRouteError() ohne `code` bei 5xx → rot: „ein Serverfehler in
  *      Produktion nennt keine Interna" (E und F gemessen 05.11.2026)
+ *   G  in server.ts img-src wieder mit `https:` → rot: „jede Antwort trägt
+ *      die Sicherheitskopfzeilen"; ebenso worker-src gestrichen und
+ *      script-src mit 'unsafe-inline' (je einzeln, 08.11.2026)
+ *   H  in index.html ein `<script>var x=1;</script>` bzw. ein
+ *      `<link rel="stylesheet" href="https://fonts.example/x.css">` → rot:
+ *      „die ausgelieferte Seite lädt nichts von fremden Hosts …“ (08.11.2026)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -90,7 +96,20 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async (t
       assert.deepEqual([k('cross-origin-opener-policy'), k('cross-origin-resource-policy'), k('referrer-policy'),
         k('x-content-type-options'), k('x-frame-options')], ['same-origin', 'same-origin', 'same-origin', 'nosniff', 'SAMEORIGIN'], pfad);
       assert.match(k('permissions-policy'), /camera=\(\).*geolocation=\(\)/, pfad);
+      // Bilder nur vom eigenen Server (Bild-Proxy), der PDF.js-Worker gedeckt, kein fremder Host.
+      const csp = Object.fromEntries(k('content-security-policy').split(/;\s*/).map(d => [d.split(' ')[0], d.split(' ').slice(1).join(' ')]));
+      assert.deepEqual([csp['script-src'], csp['img-src'], csp['worker-src']], ["'self'", "'self' data: blob:", "'self' blob:"], pfad);
+      assert.doesNotMatch(k('content-security-policy'), /https?:/, pfad);
     }
+  });
+
+  await t.test('die ausgelieferte Seite lädt nichts von fremden Hosts und kein Inline-Skript', async () => {
+    const seite = await (await fetch(`${basis}/`)).text();
+    assert.match(seite, /<script[^>]+src="[^"]*app\.bundle\.js/, 'nicht die App-Seite');
+    const extern = [...seite.matchAll(/<(?:link|script|img|iframe|source)\b[^>]*?\s(?:href|src)="((?:https?:)?\/\/[^"]+)"/g)].map(m => m[1]);
+    assert.deepEqual(extern, []);
+    const inline = [...seite.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1].trim()).filter(Boolean);
+    assert.deepEqual(inline.map(b => b.slice(0, 60)), [], 'script-src ohne unsafe-inline blockiert es');
   });
 
   await t.test('ein unbekannter API-Pfad antwortet in der Form jeder Fehlerantwort', async () => {
