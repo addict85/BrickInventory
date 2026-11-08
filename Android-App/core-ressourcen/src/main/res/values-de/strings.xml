@@ -35,7 +35,7 @@
     <string name="login_passkey_keiner">Auf diesem Gerät ist kein Passkey für diesen Server gespeichert.</string>
     <string name="login_passkey_fehler">Der Passkey konnte nicht abgefragt werden.</string>
     <string name="login_passkey_rpid_fehlt">Der Server hat nicht gesagt, für welche Domain der Passkey gilt. Aus Sicherheitsgründen wurde abgebrochen; melde dich mit Passwort an.</string>
-    <string name="login_passkey_rpid_fremd">Der Server verlangt einen Passkey für eine andere Domain als %1$s. Aus Sicherheitsgründen wurde abgebrochen: Prüfe die Server-Adresse oder melde dich mit Passwort an.</string>
+    <string name="login_passkey_rpid_fremd">Der Server verlangt einen Passkey für eine andere Domain als %1$s. Aus Sicherheitsgründen wurde abgebrochen: Prüfe die Serveradresse oder melde dich mit Passwort an.</string>
     <string name="settings_nutzer_ca">Nutzer-Zertifizierungsstellen vertrauen (Risiko)</string>
     <string name="settings_nutzer_ca_hint">Nur für die Verbindung zu deinem Server, nie für Updates. Risiko: Eine vom Nutzer installierte Zertifizierungsstelle – etwa von der Firma oder von Schadsoftware – kann Zertifikate für jeden Server ausstellen und so den Verkehr mitlesen. Nur einschalten, wenn du die Stelle selbst für deinen Server installiert hast.</string>
     <string name="nutzer_ca_frage_titel">Nutzer-Zertifizierungsstellen vertrauen?</string>
@@ -99,8 +99,8 @@
     <string name="setup_subtitle">Server-Einrichtung</string>
     <string name="setup_scan_qr">QR-Code scannen</string>
     <string name="setup_or_manual">  oder manuell  </string>
-    <string name="setup_server_url">Server-URL</string>
-    <string name="setup_url_label">URL der BrickInventory Manager Web-App</string>
+    <string name="setup_server_url">Serveradresse</string>
+    <string name="setup_url_label">Serveradresse der BrickInventory Manager Web-App</string>
     <string name="setup_url_placeholder">https://brick.fritz.box</string>
     <string name="setup_url_supporting">z. B. brick.fritz.box oder brick.example.com – https:// darf fehlen</string>
     <string name="api_app_zu_alt">Diese App ist zu alt für den Server. Bitte die App aktualisieren (Einstellungen → Aktualisierung).</string>
@@ -168,7 +168,7 @@
         <item quantity="one">(%1$d Set)</item>
         <item quantity="other">(%1$d Sets)</item>
     </plurals>
-    <string name="partslist_loading_set">Lade %1$s (%2$d/%3$d)…</string>
+    <string name="partslist_loading_set">%1$s wird geladen (%2$d/%3$d)…</string>
     <string name="partslist_error_for_set">Fehler bei %1$s</string>
     <string name="partslist_summary">%1$s · %2$s</string>
     <plurals name="partslist_summary_types">
@@ -437,7 +437,7 @@
     <string name="common_unit_price">Kaufpreis/Stk (optional)</string>
     <string name="common_unit_price_placeholder">Leer = aktueller Marktpreis</string>
     <string name="common_cancel">Abbrechen</string>
-    <string name="common_loading">Laden…</string>
+    <string name="common_loading">Lädt…</string>
     <string name="detail_price_loading">Preis wird geladen…</string>
     <string name="vm_saved">Gespeichert</string>
     <string name="vm_part_deleted">Teil gelöscht</string>
@@ -485,7 +485,7 @@
     <string name="pdfexp_loading_images">Bilder werden geladen…</string>
     <string name="pdfexp_creating_eta">PDF wird erstellt… noch ~%1$ds</string>
     <string name="pdfexp_almost_done">PDF wird gleich fertig…</string>
-    <string name="pdfexp_downloading">Lade PDF herunter…</string>
+    <string name="pdfexp_downloading">PDF wird heruntergeladen…</string>
     <string name="pdfexp_finalizing">PDF wird finalisiert…</string>
     <string name="condition_new">Neu</string>
     <string name="condition_used">Gebraucht</string>
@@ -523,7 +523,6 @@
     <string name="monitoring_catalog_images">Katalogbilder einreihen</string>
     <string name="monitoring_redownload_missing">Fehlende Bilder neu laden</string>
     <string name="monitoring_import_missing_instr">Fehlende Anleitungen importieren</string>
-    <string name="monitoring_loading">Lädt…</string>
     <string name="monitoring_reimport_error">Fehler beim Reimport</string>
     <plurals name="monitoring_reimport_enqueued">
         <item quantity="one">%1$d Set eingereiht</item>
@@ -640,7 +639,7 @@
     <string name="err_not_signed_in">Nicht angemeldet</string>
     <string name="err_connection_closed">Der Server hat die Verbindung beendet</string>
     <string name="err_session_expired">Sitzung abgelaufen — bitte neu anmelden</string>
-    <string name="err_klartext">Die Server-Adresse ist unverschlüsselt (http). Die App verbindet sich nur über https – bitte unter „Server wechseln“ die https-Adresse eintragen oder den QR-Code neu scannen.</string>
+    <string name="err_klartext">Die Serveradresse ist unverschlüsselt (http). Die App verbindet sich nur über https – bitte unter „Server wechseln“ die https-Adresse eintragen oder den QR-Code neu scannen.</string>
     <string name="err_unknown">Etwas ist schiefgelaufen</string>
     <string name="err_upload_laeuft">Für dieses Konto läuft schon ein Upload dieser Art. Bitte warten, bis er fertig ist.</string>
     <string name="err_zu_viele_verbindungen">Zu viele offene Verbindungen für dieses Konto. Bitte andere Fenster oder Geräte schliessen und es gleich noch einmal versuchen.</string>
@@ -821,7 +820,7 @@
     <string name="update_available">Version %1$s ist verfügbar</string>
     <string name="update_installed">Installiert: %1$s</string>
     <string name="update_download">Herunterladen</string>
-    <string name="update_downloading">Wird geladen … %1$d%%</string>
+    <string name="update_downloading">Wird geladen… %1$d%%</string>
     <string name="update_install">Installieren</string>
     <string name="update_permission_needed">Android braucht dafür einmalig deine Erlaubnis, Apps aus dieser Quelle zu installieren. Ohne deine Bestätigung wird nichts installiert.</string>
     <string name="update_permission_grant">Erlaubnis erteilen</string>
@@ -971,8 +970,8 @@
     <string name="zert_titel_erstkontakt">Diesem Server vertrauen?</string>
     <string name="zert_titel_unbekannt">Unbekanntes Zertifikat</string>
     <string name="zert_titel_geaendert">Das Zertifikat des Servers hat sich geändert</string>
-    <string name="zert_text_erstkontakt">Das ist die erste verschlüsselte Verbindung zu %1$s. Vergleiche den Fingerabdruck Zeichen für Zeichen mit dem, den die Web-App unter Einstellungen → Server-Zertifikat zeigt. Erst nach deinem Ja merkt sich die App ihn und nimmt danach nur noch Zertifikate an, die dazu passen.</string>
-    <string name="zert_text_unbekannt">Das Zertifikat von %1$s stammt von keiner bekannten Stelle – es ist selbst ausgestellt oder kommt von einer eigenen Zertifizierungsstelle. Für einen Server zu Hause ist das üblich, es kann aber auch jemand dazwischen sein. Darum genügt hier kein Tipp: Schreibe die letzten 24 Zeichen des Fingerabdrucks aus der Web-App ab (Einstellungen → Server-Zertifikat); hier steht nur sein Anfang.</string>
+    <string name="zert_text_erstkontakt">Das ist die erste verschlüsselte Verbindung zu %1$s. Der Fingerabdruck ist eine Kennung, die zu diesem Server gehört. Vergleiche ihn Zeichen für Zeichen mit dem, den die Web-App unter Einstellungen → Server-Zertifikat zeigt. Erst nach deinem Ja merkt sich die App ihn und nimmt danach nur noch Zertifikate an, die dazu passen.</string>
+    <string name="zert_text_unbekannt">Die App kann nicht prüfen, wer hinter %1$s steht: Der Server hat sein Zertifikat selbst ausgestellt, oder deine eigene Stelle hat es getan. Bei einem Server zu Hause ist das üblich, es könnte aber auch jemand dazwischen sein.\n\nSo gehst du vor:\n1. Öffne die Web-App am Computer.\n2. Gehe zu Einstellungen → Server-Zertifikat.\n3. Schreibe die letzten 24 Zeichen des Fingerabdrucks unten ins Feld.\n\nDer Fingerabdruck ist eine Kennung, die zu diesem Server gehört. Stimmt sie überein, ist es dein Server. Hier steht nur sein Anfang.</string>
     <string name="zert_text_geaendert">%1$s zeigt ein anderes Zertifikat als das bestätigte. Das geschieht, wenn der Server einen neuen Schlüssel bekommt – oder wenn jemand dazwischen mithört. Es wurde nichts gesendet. Nur annehmen, wenn du den Server selbst umgestellt hast: Den neuen Fingerabdruck zeigt nur die Web-App (Einstellungen → Server-Zertifikat); schreibe seine letzten 24 Zeichen von dort ab.</string>
     <string name="zert_fingerabdruck">Fingerabdruck (SHA-256 des öffentlichen Schlüssels)</string>
     <string name="zert_bisher">Bisher bestätigt</string>
@@ -984,12 +983,12 @@
     <string name="zert_unbekannt_eingabe">Die letzten 24 Zeichen des Fingerabdrucks, abgeschrieben aus der Web-App (Einstellungen → Server-Zertifikat) oder aus den Zertifikatdetails des Browsers (SHA-256 des öffentlichen Schlüssels)</string>
     <string name="zert_eingabe_falsch">Das passt nicht zum Fingerabdruck dieses Servers.</string>
     <string name="zert_beginnt_mit">Fingerabdruck beginnt mit (nur zur Orientierung)</string>
-    <string name="zert_text_nutzer_ca">Das Zertifikat von %1$s gilt nur über eine Zertifizierungsstelle, die auf diesem Gerät installiert ist. Das kann deine eigene sein – oder eine, die jemand mit Zugriff auf das Gerät eingeschleust hat. Darum genügt hier kein Tipp: Schreibe die letzten 24 Zeichen des Fingerabdrucks aus der Web-App ab (Einstellungen → Server-Zertifikat); hier steht nur sein Anfang.</string>
+    <string name="zert_text_nutzer_ca">Das Zertifikat von %1$s stammt von einer Stelle, die auf diesem Gerät installiert wurde. Das kann deine eigene sein – oder eine, die jemand mit Zugriff auf das Gerät eingeschleust hat.\n\nSo gehst du vor:\n1. Öffne die Web-App am Computer.\n2. Gehe zu Einstellungen → Server-Zertifikat.\n3. Schreibe die letzten 24 Zeichen des Fingerabdrucks unten ins Feld.\n\nHier steht nur der Anfang des Fingerabdrucks.</string>
     <string name="zert_titel_nutzer_ca">Zertifikat einer installierten Zertifizierungsstelle</string>
     <string name="setup_qr_pin_geaendert">Dieser Code nennt ein anderes Zertifikat als das für diesen Server bestätigte. Nur fortfahren, wenn du den Server selbst umgestellt hast – dann zeigt die Web-App unter Einstellungen → Server-Zertifikat den neuen Fingerabdruck; schreibe seine letzten 24 Zeichen unten ab.</string>
     <string name="setup_qr_pin_uebernehmen">Neues Zertifikat annehmen und anmelden</string>
     <string name="setup_qr_pin_wechsel_abgelehnt">Der QR-Code nennt ein anderes Zertifikat als das bestätigte. Es wurde nichts geändert.</string>
-    <string name="setup_qr_pin_abtippen">Der Code nennt auch das Zertifikat deiner eigenen Zertifizierungsstelle. Die App vertraut danach für diese Adresse nur noch diesem Schlüssel – ein fremder Code könnte aber genauso seinen nennen. Schreibe darum die letzten 24 Zeichen des Fingerabdrucks aus deiner Web-App ab (Einstellungen → Server-Zertifikat); hier steht nur sein Anfang.</string>
+    <string name="setup_qr_pin_abtippen">Der Code nennt auch das Zertifikat deiner eigenen Zertifizierungsstelle. Die App vertraut danach für diese Adresse nur noch diesem Schlüssel – ein fremder Code könnte aber genauso seinen nennen. Darum zur Sicherheit: Öffne die Web-App am Computer, gehe zu Einstellungen → Server-Zertifikat und schreibe die letzten 24 Zeichen des Fingerabdrucks unten ins Feld. Hier steht nur sein Anfang.</string>
     <string name="setup_qr_pin_abtippen_abgelehnt">Ohne die letzten 24 Zeichen des Fingerabdrucks aus der Web-App wird das Zertifikat aus dem QR-Code nicht übernommen. Es wurde nichts gesendet.</string>
     <string name="common_load_failed">Konnte nicht geladen werden</string>
     <string name="common_retry">Erneut versuchen</string>
