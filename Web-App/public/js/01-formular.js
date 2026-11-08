@@ -67,7 +67,9 @@ export function feldFehler(id, text) {
     el.id = id + '-fehler';
     el.className = 'feld-fehler';
     el.setAttribute('role', 'alert');
-    feld.insertAdjacentElement('afterend', el);
+    // Steht das Feld in einer Flex-Zeile (Preis mit Währung), gehört die Meldung hinter die Zeile,
+    // sonst drückt sie das Feld auf wenige Pixel zusammen.
+    (feld.closest('.preis-mit-waehrung') ?? feld).insertAdjacentElement('afterend', el);
     feld.addEventListener('input', () => feldFehler(id, ''));
   }
   el.textContent = text || '';

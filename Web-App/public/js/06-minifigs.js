@@ -21,7 +21,6 @@ import { confirmDelete } from './01-rueckfrage.js';
 // ── MINIFIGUREN ──────────────────────────────────────────────────────────────
 /**
  * @typedef {import('../../frontend-typen/vertrag').GET_api_v1_minifigs['figs'][number]} Figur
- * @typedef {import('../../frontend-typen/vertrag').ManualFigsResponse['figs'][number]} ManuelleFigur
  */
 /** @type {Figur[]} */
 let allFigsCache = [];
@@ -457,7 +456,7 @@ export function manuellQuery(view, sucheId) {
  * Die manuell erfassten Posten als Tabelle: Der Ansichtsumschalter steht über beiden Listen und muss für
  * beide gelten. Eine Funktion für Teile und Figuren, damit die zwei Tabellen nicht auseinanderlaufen.
  * Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#manuelletabelle
- * @param {(import('./03-parts.js').ManuellesTeil | ManuelleFigur)[]} posten  Die Einträge aus dem jeweiligen Cache.
+ * @param {(ManuellesTeil | ManuelleFigur)[]} posten  Die Einträge aus dem jeweiligen Cache.
  * @param {'part'|'fig'} art
  */
 export function manuelleTabelle(posten, art) {
@@ -473,7 +472,7 @@ export function manuelleTabelle(posten, art) {
     t('detail.storage'),
     '',
   ];
-  const zeile = (/** @type {import('./03-parts.js').ManuellesTeil | ManuelleFigur} */ p) => {
+  const zeile = (/** @type {ManuellesTeil | ManuelleFigur} */ p) => {
     const nummer = istTeil ? p.part_number : p.fig_number;
     const blNummer = (istTeil ? p.bl_part_number : p.bl_fig_number) || nummer;
     const name = istTeil ? p.part_name : p.fig_name;

@@ -188,7 +188,9 @@
   /* Zustand, Richtung und Preis passen am kleinen Telefon nicht in eine Zeile:
      Die Auswahl teilt sich die erste, der Preis mit Beschriftung die zweite. */
   .alarm-zeile .dv > select.alarm-feld { flex: 1 1 8rem; }
-  .alarm-zeile .alarm-preis { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; }
+  /* Die Währung bleibt in der Zeile des Preisfelds, statt zentriert darunter zu stehen. */
+  .alarm-zeile .alarm-preis { flex: 1 1 calc(100% - 4.5rem); display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; }
+  .alarm-zeile .alarm-waehrung { flex: none; margin-left: 0; }
   .alarm-zeile .alarm-preis > input { flex: 1 1 auto; }
 
   /* Kennzahl-Kacheln: Zahl in einer Zeile */
