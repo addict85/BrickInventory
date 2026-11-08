@@ -6,6 +6,9 @@
  *
  * Gegenprobe (08.11.2026): in 00-theme-boot.js apply() ohne ALLOWED-Prüfung →
  * rot „ein unbekannter Theme-Wert setzt nichts zurück“.
+ * Gegenprobe (08.11.2026): in acqSave `applySetAggregate(d.set)` gestrichen
+ * bzw. applySetAggregate ohne renderGallery() → rot „die Kachel übernimmt den
+ * Zustand aus der Antwort des Servers“.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -14,6 +17,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const { pruefeParameter } = require('./helpers/sources');
+const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
 
 test('die Aggregat-Regel steht nur noch an einer Stelle', () => {
   const h = require('./helpers/sources').handlerQuelle();
@@ -61,20 +65,6 @@ test('ein unbekannter Theme-Wert setzt nichts zurück', () => {
     assert.equal(w.localStorage.getItem('bim_theme'), 'brick', `${wert} hat den Cache überschrieben`);
   }
   w.close();
-});
-
-test('die Webapp rechnet die Regel nicht mehr selbst nach', () => {
-  const admin = require('./helpers/sources').adminQuelle();
-  assert.doesNotMatch(
-    admin,
-    /latestCond/,
-    'Die Bedingung der zuletzt erfassten Position ist nicht die Regel des Servers',
-  );
-  assert.match(admin, /applySetAggregate\(d\.set\)/, 'Die PUT-Antwort muss in die Galerie-Liste übernommen werden');
-
-  const gallery = fs.readFileSync(path.join(ROOT, 'public', 'js', '02-gallery.js'), 'utf8');
-  assert.match(gallery, /function applySetAggregate/, 'Der Helfer gehört dorthin, wo allSets lebt');
-  assert.match(gallery, /renderGallery\(\)/, 'Ohne Neuzeichnen bleibt die Kachel trotz aktualisierter Daten stehen');
 });
 
 test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
@@ -670,4 +660,51 @@ test('beide Login-Wege prüfen gleich', () => {
     .filter(f => /\/\^\[A-Za-z0-9_\.-\]\{3,32\}\$\/\.test\(\s*username\s*\)/.test(fs.readFileSync(f, 'utf8')))
     .map(f => path.relative(ROOT, f));
   assert.deepEqual(kopien, [], `eigene Kopie des Benutzernamen-Musters statt USERNAME_RE: ${kopien.join(', ')}`);
+});
+
+test('die Kachel übernimmt den Zustand aus der Antwort des Servers', async () => {
+  // Die Webapp rechnet die Regel nicht nach: Sie nimmt das Aggregat der PUT-Antwort. Die Liste der Galerie
+  // antwortet danach absichtlich nicht mehr — die Kachel darf nur aus der Antwort auf die Änderung kommen.
+  const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 1, conditions: ['N'], condition: 'N' };
+  let listen = 0;
+  const { w, d } = await oeffneOberflaeche({
+    '/v1/sets': () => (++listen === 1 ? { success: true, total: 1, themes: [], sets: [SET] } : new Promise(() => {})),
+    '/v1/sets/10294-1': { success: true, set: SET },
+    '/v1/sets/10294-1/acquisitions': {
+      success: true,
+      acquisitions: [
+        {
+          id: 7,
+          quantity: 1,
+          purchase_price: 100,
+          condition: 'N',
+          currency: 'EUR',
+          created_at: '2026-10-01T10:00:00Z',
+          user_id: 1,
+        },
+      ],
+      totals: { quantity: 1, amount: 100, currency: 'EUR' },
+    },
+    '/v1/sets/10294-1/acquisitions/7': {
+      success: true,
+      set: { set_number: '10294-1', conditions: ['U'], condition: 'U' },
+    },
+  });
+  const plaketten = () => d.querySelector('#gallery .sc .splaketten')?.textContent ?? '';
+  try {
+    assert.ok(await warte(() => /Neu/.test(plaketten())), `vorher: ${plaketten()}`);
+    d.querySelector('#gallery [data-click="openModal"]').click();
+    assert.ok(await warte(() => d.querySelector('[data-click="openAcqModal"]')));
+    d.querySelector('[data-click="openAcqModal"]').click();
+    assert.ok(
+      await warte(() => d.querySelector('select[data-change="acqSave"][data-arg3="cond"]')),
+      'Keine Zustandswahl',
+    );
+    const wahl = d.querySelector('select[data-change="acqSave"][data-arg3="cond"]');
+    wahl.value = 'U';
+    wahl.dispatchEvent(new w.Event('change', { bubbles: true }));
+    assert.ok(await warte(() => /Gebraucht/.test(plaketten()) && !/Neu/.test(plaketten())), `nachher: ${plaketten()}`);
+  } finally {
+    w.close();
+  }
 });
