@@ -34,7 +34,7 @@ declare global {
       /** Von requireLoginOrToken gesetzt, wenn per Bearer-/Query-Token authentifiziert. */
       tokenUserId?: number;
       /** Warum ein vorgelegter Token nicht galt, wenn es mehr zu sagen gibt als „ungültig“. */
-      tokenAbsage?: 'token_rotation_noetig';
+      tokenAbsage?: 'token_rotation_noetig' | 'zu_viele_anfragen';
       /** Rumpf und Abfrage nach der Prüfung gegen den Vertrag (src/vertrag/pruefen.ts);
        * ihren Typ setzt Anfrage<K> aus dem Vertrag. */
       eingabe: unknown;

@@ -20,6 +20,7 @@ import * as kontenRepo from './repository/konten';
 import type { TokenScope } from './repository/zugaenge';
 import { erhoeheSitzungsVersion } from './sitzungsVersion';
 import { hinweisNebenher } from './kontoHinweis';
+import { zaehleFehlversuch, zuVieleFehlversuche } from './tokenFehlversuche';
 
 export type { TokenScope };
 
@@ -130,7 +131,7 @@ export function ipBereich(ip: string | null | undefined): string | null {
   return `${teile.slice(0, 3).map(g => g.toLowerCase().replace(/^0+(?=.)/, '')).join(':')}::/48`;
 }
 
-export interface TokenPruefung { nutzer: TokenBenutzer | null; grund?: 'token_rotation_noetig' }
+export interface TokenPruefung { nutzer: TokenBenutzer | null; grund?: 'token_rotation_noetig' | 'zu_viele_anfragen' }
 
 /** `zweck: 'rotation'` lässt einen unbegrenzten Token auch nach der
  * Pflichtfrist durch — nur für den Tausch selbst. */
@@ -153,9 +154,15 @@ export async function pruefeToken(token: string | null | undefined,
     return ergebnis(hit.user);
   }
 
+  // Erst nach dem Cache: Wer einen gültigen Token im Cache hat, wird nie gebremst.
+  if (zuVieleFehlversuche(o.ip)) return { nutzer: null, grund: 'zu_viele_anfragen' };
   const hashed = hashToken(token);
   const row: TokenBenutzer | undefined = await repo.gueltigerToken(hashed);
-  if (!row) { _tokenCache.delete(token); await meldeWiederverwendung(hashed); return { nutzer: null }; }
+  if (!row) {
+    _tokenCache.delete(token);
+    if (!await meldeWiederverwendung(hashed)) zaehleFehlversuch(o.ip);
+    return { nutzer: null };
+  }
   // Verwalterrecht nur mit Scope `voll`, an dieser einen Stelle entschieden,
   // damit alle Wächter es gleich sehen.
   row.is_admin = row.konto_is_admin && row.scope === 'voll' ? 1 : 0;
@@ -173,12 +180,13 @@ export async function pruefeToken(token: string | null | undefined,
 }
 
 /** Ein ersetzter Token kam nach der Schonfrist wieder: Familie sperren, Inhaber benachrichtigen. */
-async function meldeWiederverwendung(hash: string): Promise<void> {
+async function meldeWiederverwendung(hash: string): Promise<boolean> {
   const z = await repo.sperreFamilie(hash, WIEDERVERWENDUNG_SCHONFRIST_S);
-  if (!z) return;
+  if (!z) return false;
   leereTokenCache();
   console.warn(`[tokens] ersetzter Token erneut benutzt — Familie von Konto ${z.user_id} gesperrt`);
   hinweisNebenher(z.user_id, 'token_wiederverwendet', z.label ?? undefined);
+  return true;
 }
 
 export async function validateToken(token: string | null | undefined,

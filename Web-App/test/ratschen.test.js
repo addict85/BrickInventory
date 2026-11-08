@@ -84,8 +84,8 @@ test('stille Faenge werden weniger, nie mehr', () => {
 });
 
 test('any wird weniger, nie mehr', () => {
-  // Gemessen 26 am 05.11.2026; wie die Zahl sinkt, steht im git log.
-  const SCHRANKE = 26;
+  // Gemessen 23 am 08.11.2026; wie die Zahl sinkt, steht im git log.
+  const SCHRANKE = 23;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +
@@ -98,9 +98,9 @@ test('any wird weniger, nie mehr', () => {
 
 test('any in allen Formen wird weniger, nie mehr', () => {
   // Auch Promise<any>, any[] und Record<string, any>: Die enge Zählung oben sah
-  // nur `as any` und `: any`. Gemessen 39 am 05.11.2026.
+  // nur `as any` und `: any`. Gemessen 36 am 08.11.2026.
   // Gegenprobe (05.11.2026): getSetting wieder `fallback?: any` ohne Überladungen → rot.
-  const SCHRANKE = 39;
+  const SCHRANKE = 36;
   const ist = zaehle([/\bany\b/g]);
   assert.ok(ist <= SCHRANKE, `${ist}-mal any, erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ any (alle Formen): ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
@@ -122,7 +122,7 @@ test('Datenbankzeilen sind ohne Typargument unknown', () => {
   // Ohne Angabe war eine Zeile `any`, und die Typprüfung endete an der
   // Datenbank — dort, wo numeric und bigint als Zeichenkette ankommen.
   // Gegenprobe (05.11.2026): `get<T = any>` in DbSchnittstelle → rot.
-  const quelle = fs.readFileSync(path.join(WEB, 'db', 'database.ts'), 'utf8');
+  const quelle = ['database.ts', 'typen.ts'].map(n => fs.readFileSync(path.join(WEB, 'db', n), 'utf8')).join('\n');
   assert.equal((quelle.match(/\b(?:all|get)\s*(?::\s*)?<T = unknown>/g) || []).length, 6,
     'all/get in Schnittstelle, Pool und Transaktion');
   assert.doesNotMatch(quelle, /<T = any>|lastID/);

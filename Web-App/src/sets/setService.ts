@@ -20,6 +20,7 @@ import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
 import { bestandsMenge } from '../infra/validate';
 import { resolveSetCondition } from '../finanzen/financeCalc';
 import * as repo from './repository/sets';
+import type { Eingabe } from '../vertrag';
 
 /** Sets anlegen, ändern und ausgeben — eine Umsetzung für Web und App, damit
  * beide dieselben Regeln für Menge, Kaufpreis und Blickfeld erfüllen. */
@@ -219,12 +220,12 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
 /** Die LETZTE Erfassung, weil der Detail-Dialog genau sie bearbeitet.
  * @param feld  fester Spaltenname, KEINE Eingabe von aussen */
 async function schreibeInLetzteErfassung(
-  feld: 'purchase_price' | 'condition', wert: any, ownerId: number, sn: string,
+  feld: 'purchase_price' | 'condition', wert: number | string | null, ownerId: number, sn: string,
 ) {
   await repo.schreibeInNeuesteSetErfassung(wert, ownerId, sn, feld);
 }
 
-export async function updateSet(uid: number, sn: string, body: any) {
+export async function updateSet(uid: number, sn: string, body: Eingabe<'PUT /api/v1/sets/:setNumber'>) {
   // SCHREIB-Blickfeld statt eigener ID, sonst fände ein Set des Unterkontos keine Zeile.
   const _wids = await writableIds(uid);
   // Die EIGENE Zeile gewinnt, sonst entschiede die Tabellenreihenfolge.
@@ -275,8 +276,7 @@ export async function updateSet(uid: number, sn: string, body: any) {
   // Mit einer Mengenänderung schickt die App alten Preis und Zustand als Echo;
   // angewandt überschrieben sie den Marktpreis der neuen Erfassung.
   if (body.purchase_price !== undefined && !hasQuantity) {
-    const raw = body.purchase_price;
-    let pp = (raw === null || raw === '') ? null : parseFloat(raw);
+    let pp: number | null = body.purchase_price;
     if (pp === null || isNaN(pp)) {
       // Zustand der LETZTEN Erfassung, sonst käme der Preis für „Neu".
       const lastCond = await repo.zustandNeuesteSetErfassung(ownerId, sn).catch(meldeUndLiefere('set-service:lastCond', null));

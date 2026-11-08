@@ -142,9 +142,9 @@ router.post('/logout', async (req: OffeneAnfrage<'POST /api/v1/auth/logout'>, re
 router.get('/me', async (req: OffeneAnfrage<'GET /api/v1/auth/me'>, res: Antwort<'GET /api/v1/auth/me'>) => {
   const auth = String(req.headers.authorization || '');
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-  const ungueltig = (code: 'token_ungueltig' | 'token_rotation_noetig') =>
-    res.status(401).json({ success: false, loggedIn: false, user: null,
-      code, error: fehlerText(code, antwortSprache(req)) });
+  const ungueltig = (code: 'token_ungueltig' | 'token_rotation_noetig' | 'zu_viele_anfragen') =>
+    res.status(code === 'zu_viele_anfragen' ? 429 : 401).json({ success: false, loggedIn: false, user: null,
+      code, error: fehlerText(code, antwortSprache(req), code === 'zu_viele_anfragen' ? { minuten: 1 } : undefined) });
   const antworte = async () => {
     if (req.session?.userId) {
       const user = await K.kontoKurz(req.session.userId);

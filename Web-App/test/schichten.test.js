@@ -238,12 +238,13 @@ test('keine Importzyklen in den inneren Schichten', () => {
   // Gegenproben: marketPrice.ts wieder über financeCalc → rot (28.10.2026);
   // (05.11.2026) `import type { SetStamm } from '../dienst'` in
   // src/sets/repository/setDetail.ts → rot (setDetail → dienst → setDetail).
+  // (08.11.2026) `import('./database')` als Typ in db/migrate.ts → rot (migrate ↔ database).
   const dateien = new Set(innereDateien());
   const kanten = new Map();
   for (const d of dateien) {
     const src = quelltext(d);
-    const ziele = [...src.matchAll(/^\s*(import|export)\s[^;]*?from\s+['"](\.[^'"]+)['"]|require\(\s*['"](\.[^'"]+)['"]/gm)]
-      .map(m => path.posix.normalize(path.posix.join(path.posix.dirname(d), m[2] || m[3])).replace(/\.js$/, ''))
+    const ziele = [...src.matchAll(/^\s*(import|export)\s[^;]*?from\s+['"](\.[^'"]+)['"]|require\(\s*['"](\.[^'"]+)['"]|import\(\s*['"](\.[^'"]+)['"]\s*\)/gm)]
+      .map(m => path.posix.normalize(path.posix.join(path.posix.dirname(d), m[2] || m[3] || m[4])).replace(/\.js$/, ''))
       .flatMap(z => [z + '.ts', z + '/index.ts']).filter(z => dateien.has(z));
     kanten.set(d, ziele);
   }

@@ -14,10 +14,11 @@ import { legeInPapierkorb } from '../bestand/papierkorb';
 
 
 import type { BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
+import type { Abfrage } from '../vertrag';
 
 /** Filtern und Sortieren auf dem Server, damit sie mit seitenweisem Laden
  * zusammengehen. Ohne page_size alles — so ruft die Android-App. */
-export async function getSets(userIdWahl: Sicht | Blickfeld, query: any = {}) {
+export async function getSets(userIdWahl: Sicht | Blickfeld, query: Abfrage<'GET /api/v1/sets'> = {}) {
   const userId = await blickfeldAus(userIdWahl);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
@@ -28,8 +29,8 @@ export async function getSets(userIdWahl: Sicht | Blickfeld, query: any = {}) {
   const size = page_size ? clampPageSize(page_size, 60) : null;
   const { sets, countRow, themeRows } = await repo.setListe(uids, {
     search, theme, sort, storage: query.storage,
-    seite: size ? { groesse: size, versatz: (Math.max(1, parseInt(page) || 1) - 1) * size } : null,
-    themen: !!page_size && parseInt(page) <= 1,
+    seite: size ? { groesse: size, versatz: (Math.max(1, parseInt(String(page)) || 1) - 1) * size } : null,
+    themen: !!page_size && parseInt(String(page)) <= 1,
   });
 
   // Anleitungen nur für die Sets DIESER Seite; ohne Sets entfallen beide Abfragen.

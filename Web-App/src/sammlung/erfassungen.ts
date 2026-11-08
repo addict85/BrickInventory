@@ -64,9 +64,9 @@ function mengeDesBestands(tx: DbSchnittstelle, art: ErfassungsArt, ownerId: numb
 }
 
 /** Schreib-Blickfeld: Ein Unterkonto darf nicht rückwärts schreiben. */
-async function zeileImSchreibfeld(tx: DbSchnittstelle, art: ErfassungsArt, uid: number, id: number, keys: Schluessel): Promise<Zeile> {
+async function zeileImSchreibfeld(tx: DbSchnittstelle, art: ErfassungsArt, wids: number[], id: number, keys: Schluessel): Promise<Zeile> {
   const a = ARTEN[art];
-  const z = await repo.erfassungImSchreibfeld(tx, art, id, await writableIds(uid), keys);
+  const z = await repo.erfassungImSchreibfeld(tx, art, id, wids, keys);
   if (!z) fehlerWerfen(a.notFound, 404);
   return z;
 }
@@ -113,7 +113,8 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
 
   const besitzer = await besitzerDerZeile(art, id, uid);
   await withInventoryLock(besitzer, bestandsSchluessel(art, keys), async (tx) => {
-    const acq = await zeileImSchreibfeld(tx, art, uid, id, keys);
+    const wids = await writableIds(uid);
+    const acq = await zeileImSchreibfeld(tx, art, wids, id, keys);
     // Ab hier zählt der Besitzer der Zeile, nicht der Betrachter.
     const ownerId = Number(acq.user_id);
     let neuesDatum: string | null = null;
@@ -131,16 +132,16 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
       if (clash) fehlerWerfen('datum_belegt', 409);
     }
     if (quantity !== undefined && quantity !== null) {
-      await repo.setzeErfassungsMenge(tx, art, id, bestandsMenge(quantity, 1));
+      await repo.setzeErfassungsMenge(tx, art, id, bestandsMenge(quantity, 1), wids);
       const q = await mengeDesBestands(tx, art, ownerId, keys);
       if ((q ?? 0) <= 0) await a.cleanupWhenEmpty(tx, ownerId, keys);
     }
     if (rawPrice !== undefined)
-      await repo.setzeErfassungsPreis(tx, art, id, priceVal, zielGeschaetzt);
+      await repo.setzeErfassungsPreis(tx, art, id, priceVal, zielGeschaetzt, wids);
     if (hatZustand)
-      await repo.setzeErfassungsZustand(tx, art, id, zielZustand);
+      await repo.setzeErfassungsZustand(tx, art, id, zielZustand, wids);
     if (neuesDatum)
-      await repo.setzeErfassungsDatum(tx, art, id, neuesDatum);
+      await repo.setzeErfassungsDatum(tx, art, id, neuesDatum, wids);
   });
   return antwort(art, uid, keys, { success: true });
 }
@@ -150,7 +151,7 @@ export async function erfassungLoeschen(art: ErfassungsArt, uid: number, id: num
   const a = ARTEN[art];
   const besitzer = await besitzerDerZeile(art, id, uid);
   const menge = await withInventoryLock(besitzer, bestandsSchluessel(art, keys), async (tx) => {
-    const acq = await zeileImSchreibfeld(tx, art, uid, id, keys);
+    const acq = await zeileImSchreibfeld(tx, art, await writableIds(uid), id, keys);
     const ownerId = Number(acq.user_id);
     await repo.loescheErfassung(tx, art, id, ownerId);
     const q = await mengeDesBestands(tx, art, ownerId, keys);
