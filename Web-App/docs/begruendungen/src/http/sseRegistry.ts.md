@@ -1,6 +1,6 @@
-# Begründungen zu `src/infra/sseRegistry.ts`
+# Begründungen zu `src/http/sseRegistry.ts`
 
-Die ausführlichen Kommentare aus `src/infra/sseRegistry.ts`, wörtlich. Im Code steht je
+Die ausführlichen Kommentare aus `src/http/sseRegistry.ts`, wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 

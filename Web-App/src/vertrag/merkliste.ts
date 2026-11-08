@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { eingabe } from '../validate';
+import { eingabe } from '../infra/validate';
 import { type Route, zeit, ganz, OHNE_RUMPF, KENNUNG, TEXT, ZUSTAND, abfrage, Q, SEITE, SEITEN_ANGABE } from './grund';
 import { CsvImportErgebnis, GenericResponse } from './gemeinsam';
 

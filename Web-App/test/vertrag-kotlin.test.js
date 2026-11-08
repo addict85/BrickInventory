@@ -1,5 +1,5 @@
 /**
- * Die Kotlin-Modelle der App gegen den Vertrag des Servers (src/infra/vertrag/,
+ * Die Kotlin-Modelle der App gegen den Vertrag des Servers (src/vertrag/,
  * als JSON-Schema wie in docs/openapi.json): Jede Route, die die App aufruft,
  * hat einen Vertrag, und ihr Antworttyp liest jede Antwort, die der Vertrag
  * erlaubt — Feldnamen (@SerialName), Typ, Nullbarkeit, Pflicht oder optional. …
@@ -32,7 +32,7 @@ const { kotlinModelle, kotlinFehlercodes, apiRouten, schreibRouten, vergleiche, 
 const { quellwurzeln, ANDROID } = require('./helpers/android');
 
 const API = path.join(ANDROID, 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'api');
-const dok = _req('src/infra/vertrag/openapi.js').openapi();
+const dok = _req('src/vertrag/openapi.js').openapi();
 const modelle = kotlinModelle(quellwurzeln());
 const routen = [
   ...apiRouten(API).map((r) => ({ methode: 'GET', pfad: r.pfad, typ: r.typ, anfrage: r.anfrage })),

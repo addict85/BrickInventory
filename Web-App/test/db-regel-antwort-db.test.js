@@ -4,7 +4,7 @@
  * Fremdschlüssel), antwortet der Fehlerweg mit 400/409 und Code, nicht mit 500.
  *
  * Gegenproben (05.11.2026 gemessen):
- *   A  DB_REGELN in src/infra/httpAntwort.ts ohne '23514' → rot: „CHECK-Verletzung …“
+ *   A  DB_REGELN in src/http/httpAntwort.ts ohne '23514' → rot: „CHECK-Verletzung …“
  *      (500 interner_fehler)
  *   B  alsUploadFehler() ohne den Block für DB_REGELN → alle vier Fälle rot
  */
@@ -22,7 +22,7 @@ test('Regelverletzungen der Datenbank werden zu 4xx mit Code', async t => {
   const db = await dbOderSkip(t, _req, { migrieren: false });
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
-  const { fehlerAntwort } = _req('src/infra/httpAntwort.js');
+  const { fehlerAntwort } = _req('src/http/httpAntwort.js');
   const app = express();
   // Echte Fehler aus PostgreSQL, nicht nachgebaute Objekte.
   app.get('/:regel', async req => {

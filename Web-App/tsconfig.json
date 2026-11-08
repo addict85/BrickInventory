@@ -34,7 +34,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     // Ein Handler mit AuthedRequest passt nur hinter einen Wächter, der es
-    // zusichert (Waechter/VertragsRouter in src/infra/vertrag/pruefen.ts).
+    // zusichert (Waechter/VertragsRouter in src/vertrag/pruefen.ts).
     "strictFunctionTypes": true
   },
   "include": [

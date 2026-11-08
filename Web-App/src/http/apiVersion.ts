@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { sendeFehler } from './fehlerTexte';
+import { sendeFehler } from '../infra/fehlerTexte';
 
 /** Jede Antwort trägt beide als Kopfzeile, damit die App sagen kann, wer
  * aktualisieren muss. Erhöhen nur bei einer Änderung, die das Gegenstück bricht. */

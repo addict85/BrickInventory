@@ -1,4 +1,4 @@
-# Begründungen zu `src/infra/httpAntwort.ts`
+# Begründungen zu `src/http/httpAntwort.ts`
 
 Die ausführlichen Kommentare aus `src/infra/httpError.ts` (geteilt in `fehler.ts` und `httpAntwort.ts`), wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die

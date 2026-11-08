@@ -1,13 +1,13 @@
 /** Sichtbar ist, was der Aufrufer schreiben darf: das eigene Konto und, als
  * Hauptkonto, die Unterkonten. */
-import { fehlerAntwort } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { listePapierkorb, stelleWiederHer, loescheEndgueltig, leerePapierkorb } from '../../src/bestand/papierkorb';
 import { requireToken } from './middleware';
 import { bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { loescheAllesEigene } from '../../src/sammlung/loeschen';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
-import type { Anfrage, Antwort } from '../../src/infra/vertrag';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
+import type { Anfrage, Antwort } from '../../src/vertrag';
 
 const router = vertragsRouter();
 

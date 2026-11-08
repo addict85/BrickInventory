@@ -6,7 +6,7 @@ import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import { zuGrosseId } from '../../src/infra/validate';
 import { validateToken } from '../../src/konto/auth';
 import { resolveUserId, nutzerId, zweiterFaktorPflicht } from '../../src/konto/http/anmeldung';
-import { belegeKontoPlatz, type Schranke } from '../../src/infra/kontoSchranke';
+import { belegeKontoPlatz, type Schranke } from '../../src/http/kontoSchranke';
 import { mussPasswortAendern } from '../../src/konto/konten';
 import type { Sicht } from '../../src/haushalt/haushalt';
 
@@ -14,7 +14,7 @@ import type { Sicht } from '../../src/haushalt/haushalt';
 export const sichtVon = (req: AuthedRequest & { abfrage: { accounts?: string | undefined } }): Sicht =>
   ({ nutzer: req.apiUser.user_id, konten: req.abfrage.accounts });
 import { sendeFehler } from '../../src/infra/fehlerTexte';
-import { waechter } from '../../src/infra/vertrag/pruefen';
+import { waechter } from '../../src/vertrag/pruefen';
 
 export function bearerToken(req: { headers: { authorization?: string | undefined } }): string | null {
   const auth = req.headers.authorization || '';

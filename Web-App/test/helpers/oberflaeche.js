@@ -55,8 +55,8 @@ let _vertrag;
 const vertrag = () => {
   if (!_vertrag) {
     require('./sources').baueDist();
-    _vertrag = { ...require(path.join(ROOT, 'dist', 'src', 'infra', 'vertrag', 'index.js')),
-                 Fehler: require(path.join(ROOT, 'dist', 'src', 'infra', 'vertrag', 'grund.js')).Fehler };
+    _vertrag = { ...require(path.join(ROOT, 'dist', 'src', 'vertrag', 'index.js')),
+                 Fehler: require(path.join(ROOT, 'dist', 'src', 'vertrag', 'grund.js')).Fehler };
   }
   return _vertrag;
 };

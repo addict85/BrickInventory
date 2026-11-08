@@ -8,12 +8,12 @@ import { pruefeBestaetigung, pruefeCodeBestaetigung } from '../passwortBestaetig
 import type { BestaetigungsAbsage, Faktor } from '../passwortBestaetigung';
 import { createHash } from 'crypto';
 import { konfig } from '../../infra/konfig';
-import { routeZu } from '../../infra/vertrag';
+import { routeZu } from '../../vertrag';
 import { sendeFehler, fehlerText, antwortSprache } from '../../infra/fehlerTexte';
 import { meldeUndLiefere } from '../../infra/fehler';
 import { sitzungsVersionAusDb } from '../sitzungsVersion';
 import { istAktiv } from '../zweiterFaktor';
-import { nutzerId, angemeldeteNutzerId } from '../../infra/nutzerId';
+import { nutzerId, angemeldeteNutzerId } from '../../http/nutzerId';
 
 /** Verwalterrechte ohne TOTP: Das Passwort allein soll sie nicht tragen, bis zur
  * Einrichtung geht nur diese (anmeldungAmEingang). Ein Passkey zählt nicht, denn
@@ -112,7 +112,7 @@ export function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
 
 export const requireLoginOrToken = loginOrTokenGuard();
 
-/** Die Rechnung steht in src/infra/nutzerId: Auch die Drossel dort braucht sie,
+/** Die Rechnung steht in src/http/nutzerId: Auch die Drossel dort braucht sie,
  * und Infra darf keine HTTP-Seite importieren. Hier bleibt der Name für die Routen.
  * Ausführlich: docs/begruendungen/src/konto/http/anmeldung.ts.md#nutzerid */
 export { nutzerId, angemeldeteNutzerId };

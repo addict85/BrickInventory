@@ -3,9 +3,9 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
-import { FORMULAR_GRENZEN } from '../../src/infra/dateiEmpfang';
+import { FORMULAR_GRENZEN } from '../../src/http/dateiEmpfang';
 import { ohneFehlendeDatei } from '../../src/infra/fehler';
-import { fehlerAntwort } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { sendeFehler, fehlerText, antwortSprache, dateiFehler, type FehlerCode, alsDoppelt } from '../../src/infra/fehlerTexte';
 import { getGlobalSetting, getSetting } from '../../src/einstellungen/settings';
 import { landErlaubt, landFuerWaehrung } from '../../src/gutscheine/gutscheinGuthaben';
@@ -23,9 +23,9 @@ import type { ExportGutschein } from '../../src/gutscheine/gutscheinPdfSchreiben
 import { gutscheineDesKontos, gutschein, gutscheinAnlegen, gutscheinErsetzen, gutscheinAendern,
          gutscheinPdfMerken, gutscheinLoeschen, guthabenMerken } from '../../src/gutscheine/dienst';
 import type { GutscheinZeile } from '../../src/gutscheine/dienst';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
 import { seiteAus } from '../../src/infra/seite';
-import type { Anfrage, Antwort } from '../../src/infra/vertrag';
+import type { Anfrage, Antwort } from '../../src/vertrag';
 
 const router = vertragsRouter();
 

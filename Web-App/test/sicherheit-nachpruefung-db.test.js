@@ -122,7 +122,7 @@ test('Nachprüfung am echten Server', { concurrency: 1, timeout: 180_000 }, asyn
 });
 
 test('PostgreSQL 22003 (Wert ausserhalb des Spaltentyps) wird 400, nicht 500', () => {
-  const skript = `const { handleRouteError } = require(${JSON.stringify(path.join(ROOT, 'dist/src/infra/httpAntwort.js'))});
+  const skript = `const { handleRouteError } = require(${JSON.stringify(path.join(ROOT, 'dist/src/http/httpAntwort.js'))});
     console.warn = () => {};
     const res = { headersSent: false, status(s) { this.s = s; return this; }, json(b) { process.stdout.write(JSON.stringify([this.s, b.code])); } };
     handleRouteError(res, Object.assign(new Error('value "99999999999" is out of range for type integer'), { code: '22003' }), undefined, { method: 'GET', originalUrl: '/x' });`;

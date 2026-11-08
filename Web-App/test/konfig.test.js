@@ -14,7 +14,7 @@
  * Seit dem 30.10. liest NUR src/infra/konfig.ts die Umgebung; ein ungültiger Wert
  * beendet den Start mit einer Meldung je Variable. Gegenproben (D–F in einem
  * Lauf gemessen):
- *   D  in src/infra/dateiEmpfang.ts wieder `Number(process.env.UPLOAD_KONTINGENT_MB)`
+ *   D  in src/http/dateiEmpfang.ts wieder `Number(process.env.UPLOAD_KONTINGENT_MB)`
  *      → rot: „niemand ausser der Konfiguration liest process.env“
  *   E  in ganzzahl() die Grenzprüfung `n < min || n > max` entfernt → rot:
  *      „ungültige Werte: alle auf einmal, mit Namen“ (PORT=0 ging durch)

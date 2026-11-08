@@ -3,7 +3,7 @@
 import { protokolliere } from '../../src/verwaltung/dienst';
 import * as K from '../../src/konto/konten';
 import { meldeHaushaltsaenderung } from '../../src/haushalt/haushalt';
-import { fehlerAntwort } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { revokeAllSessions, USERNAME_RE, leereTokenCache } from '../../src/konto/auth';
 import { nutzerId, angemeldeteNutzerId, bestaetigeMitFaktor, nutzerName } from '../../src/konto/http/anmeldung';
 import { hinweisNebenher, verwalterHinweisNebenher } from '../../src/konto/kontoHinweis';
@@ -12,8 +12,8 @@ import { requireApiAdmin } from '../api_v1/middleware';
 import { sendeFehler, alsDoppelt } from '../../src/infra/fehlerTexte';
 import * as zf from '../../src/konto/zweiterFaktor';
 import { loescheKontoDateien } from '../../src/gutscheine/gutscheinDateien';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
-import type { Antwort, OffeneAnfrage } from '../../src/infra/vertrag';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
+import type { Antwort, OffeneAnfrage } from '../../src/vertrag';
 
 const router = vertragsRouter();
 const requireAdmin = requireApiAdmin;

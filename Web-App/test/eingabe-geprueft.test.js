@@ -23,8 +23,8 @@ const assert = require('node:assert/strict');
 const express = require('express');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { vertragsRouter } = _req('src/infra/vertrag/pruefen.js');
-const { VERTRAG } = _req('src/infra/vertrag/index.js');
+const { vertragsRouter } = _req('src/vertrag/pruefen.js');
+const { VERTRAG } = _req('src/vertrag/index.js');
 
 test('geprüfte Eingabe und Abfrage', { concurrency: 1 }, async (t) => {
   let aufrufe = 0;
@@ -91,7 +91,7 @@ test('jede Eingabe und Abfrage ist geschlossen', () => {
 });
 
 test('die Abfrage steht in der OpenAPI-Beschreibung', () => {
-  const dok = _req('src/infra/vertrag/openapi.js').openapi();
+  const dok = _req('src/vertrag/openapi.js').openapi();
   const abfrage = dok.paths['/api/v1/sets'].get.parameters.filter((p) => p.in === 'query');
   assert.deepEqual(abfrage.map((p) => p.name).sort(), ['accounts', 'page', 'page_size', 'search', 'sort', 'storage', 'theme']);
   assert.equal(abfrage.find((p) => p.name === 'page').schema.type, 'string');

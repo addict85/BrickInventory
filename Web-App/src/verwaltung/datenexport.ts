@@ -19,7 +19,7 @@ import { DAILY_JOBS } from '../auftraege/zeitplan';
 import { zeitplanNeuPlanen, protokolliere } from './dienst';
 import { jsonOderNull } from '../infra/validate';
 import { fehlerWerfen } from '../infra/fehlerTexte';
-import { KonfigExport } from '../infra/vertrag/einstellungen';
+import { KonfigExport } from '../vertrag/einstellungen';
 
 /** Mailserver, Registrierung und API-Schlüssel nimmt nur das Formular, mit Passwort. */
 export const istHeikel = (k: string) =>

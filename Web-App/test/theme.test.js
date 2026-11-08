@@ -103,8 +103,8 @@ test('fuenf Listen nennen dieselben Designs', () => {
 
   const boot = liste(fs.readFileSync(path.join(PUB, 'js', '00-theme-boot.js'), 'utf8'),
     /var ALLOWED = \[([^\]]*)\]/, 'js/00-theme-boot.js');
-  const server = liste(fs.readFileSync(path.join(__dirname, '..', 'src/infra/vertrag/globaleRegeln.ts'), 'utf8'),
-    /const DESIGNS: readonly string\[\] = \[([^\]]*)\]/, 'src/infra/vertrag/globaleRegeln.ts');
+  const server = liste(fs.readFileSync(path.join(__dirname, '..', 'src/vertrag/globaleRegeln.ts'), 'utf8'),
+    /const DESIGNS: readonly string\[\] = \[([^\]]*)\]/, 'src/vertrag/globaleRegeln.ts');
   const app = liste(fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'GeraeteAblage.kt'), 'utf8'),
     /ERLAUBTE_DESIGNS = setOf\(([^)]*)\)/, 'GeraeteAblage.kt');
 

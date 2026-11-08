@@ -13,10 +13,10 @@ import compression from 'compression';
 import connectPgSimple from 'connect-pg-simple';
 import * as db from './db/database';
 import { fehlertext, logAndContinue } from './src/infra/fehler';
-import { fehlerAntwort, unbekannterApiPfad } from './src/infra/httpAntwort';
+import { fehlerAntwort, unbekannterApiPfad } from './src/http/httpAntwort';
 import { startVerbote, startWarnungen } from './src/infra/konfig';
 import { hinweisOhneBasisUrl } from './src/infra/basisUrl';
-import { sitzungsKeksName, sitzungsKeksOptionen } from './src/infra/sitzungsKeks';
+import { sitzungsKeksName, sitzungsKeksOptionen } from './src/http/sitzungsKeks';
 import { bereiteDatenbankVor } from './startup/datenbank';
 import { starteJobs, stoppeJobs } from './startup/jobsProzess';
 import { verdrahte } from './jobs/verdrahtung';
@@ -25,11 +25,11 @@ import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './src/konto/sitzungs
 import { sitzungsVersionPruefen } from './src/konto/http/sitzungsPruefung';
 import { merkeAnfrage } from './src/infra/anfrageKonto';
 import { proxyVertrauen, proxyHinweis } from './src/infra/proxyVertrauen';
-import { nurEigeneHerkunft, nurEigenerHost } from './src/infra/herkunft';
-import { API_VERSION, API_MIN_APP, appFassungPruefen } from './src/infra/apiVersion';
+import { nurEigeneHerkunft, nurEigenerHost } from './src/http/herkunft';
+import { API_VERSION, API_MIN_APP, appFassungPruefen } from './src/http/apiVersion';
 import { PUBLIC_DIR } from './src/infra/appPaths';
 import { HTTP_FRISTEN } from './src/infra/httpFristen';
-import { closeAllSse } from './src/infra/sseRegistry';
+import { closeAllSse } from './src/http/sseRegistry';
 import { sendeStartseite, startStilHash } from './src/konto/indexHtml';
 import { meldeSmtpAltlast } from './src/mail/mailer';
 import { meldeUngueltigeAdressen, meldeAusstehendeAdressen } from './src/konto/konten';
@@ -37,9 +37,9 @@ import { horcheAufTokenWiderruf } from './src/konto/auth';
 import * as pgNotify from './db/pgNotify';
 import { registerImgProxy } from './routes/imgProxy';
 import { anmeldungAmEingang, rumpfLesen } from './routes/api_v1/middleware';
-import { apiDrossel } from './src/infra/apiDrossel';
+import { apiDrossel } from './src/http/apiDrossel';
 import { idempotenz } from './src/idempotenz/http/middleware';
-import { vertragPruefen } from './src/infra/vertrag/pruefen';
+import { vertragPruefen } from './src/vertrag/pruefen';
 import datenDateien = require('./routes/datenDateien');
 import apiV1Router = require('./routes/api_v1/index');
 import authRouter = require('./routes/auth');
@@ -263,7 +263,7 @@ function apiRouten(app: express.Express): void {
   // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-7
   app.use('/api/v1',          anmeldungAmEingang);
   // Danach das Budget je Konto, VOR dem Rumpf: Eine abgewiesene Anfrage soll
-  // ihren Rumpf nicht mehr lesen (src/infra/apiDrossel.ts).
+  // ihren Rumpf nicht mehr lesen (src/http/apiDrossel.ts).
   app.use('/api/v1',          apiDrossel);
   // Rümpfe erst nach der Anmeldung lesen: Unangemeldet gibt es nur 16 KB (rumpfLesen).
   app.use('/api/v1',          rumpfLesen);

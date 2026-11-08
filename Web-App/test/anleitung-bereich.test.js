@@ -12,7 +12,7 @@ const os     = require('node:os');
 const path   = require('node:path');
 const express = require('express');
 
-const { liefereDatei } = require('./helpers/sources').buildAndRequire()('src/infra/dateiAusliefern.js');
+const { liefereDatei } = require('./helpers/sources').buildAndRequire()('src/http/dateiAusliefern.js');
 
 const DATEI = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'anleitung-')), 'BI-3004.pdf');
 fs.writeFileSync(DATEI, Buffer.alloc(5000, 7));

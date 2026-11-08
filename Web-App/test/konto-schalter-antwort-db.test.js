@@ -2,7 +2,7 @@
  * Die Kontoschalter gehen als true/false hinaus, wie sie seit Migration 0085
  * in der Datenbank stehen: is_admin in der Kontenliste der Verwaltung,
  * email_verified im eigenen Profil (API-Fassung 2). Geprüft an den Routen,
- * damit auch der Vertrag (src/infra/vertrag/) mitläuft.
+ * damit auch der Vertrag (src/vertrag/) mitläuft.
  *
  * Gegenproben (31.10.2026, gemessen):
  *   a) in kontenListe() wieder `is_admin: k.is_admin ? 1 : 0` → rot: „die

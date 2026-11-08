@@ -3,12 +3,12 @@
  * antwortet und niemand mehr. Die Kosten sind gewichtet, damit ein Katalog-
  * Abruf nicht so viel zählt wie ein Leseaufruf; Aufträge haben zusätzlich
  * einen eigenen, kleinen Topf.
- * Gezählt wird im Prozess: Der Web-Prozess ist genau einer (src/infra/kontoSchranke.ts
+ * Gezählt wird im Prozess: Der Web-Prozess ist genau einer (src/http/kontoSchranke.ts
  * sagt dasselbe für gleichzeitige Uploads). Bei mehreren Replicas gälte das
  * Budget je Replica — dann wäre es zu erhöhen, nicht zu vertrauen. */
 import type { Request, Response, NextFunction } from 'express';
 import { nutzerId } from './nutzerId';
-import { sendeFehler } from './fehlerTexte';
+import { sendeFehler } from '../infra/fehlerTexte';
 
 export const FENSTER_MS = 5 * 60 * 1000;
 /** Einheiten je Konto und Fenster; ein Leseaufruf zählt 1. */

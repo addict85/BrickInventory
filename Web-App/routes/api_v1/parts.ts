@@ -1,8 +1,8 @@
-import { fehlerAntwort } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
 import { schreibziel } from '../../src/haushalt/haushalt';
 import { getBlColorMap, getManualParts, getOwnedQuantities, getParts, getPartsColors, getPartsStats, getPartsCategories } from '../../src/teile/abfragen';
-import { csvEmpfang } from '../../src/infra/dateiEmpfang';
+import { csvEmpfang } from '../../src/http/dateiEmpfang';
 import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
 import { addManualPart, getPartColorList, updateManualPart } from '../../src/teile/manuelleTeile';
@@ -13,9 +13,9 @@ import { verwendendeSets } from '../../src/bestand/gemeinsam';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../../src/bestand/lagerort';
 import { loescheTeil } from '../../src/sammlung/loeschen';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
 import { seiteAus } from '../../src/infra/seite';
-import type { Anfrage, Antwort } from '../../src/infra/vertrag';
+import type { Anfrage, Antwort } from '../../src/vertrag';
 const router = vertragsRouter();
 
 router.get('/parts', requireToken, async (req: Anfrage<'GET /api/v1/parts'>, res: Antwort<'GET /api/v1/parts'>) => {

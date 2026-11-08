@@ -27,7 +27,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const { VERTRAG } = _req('src/infra/vertrag/index.js');
+const { VERTRAG } = _req('src/vertrag/index.js');
 
 test('verschachtelte Werte an schreibenden Routen', { concurrency: 1 }, async (t) => {
   try { await db.get('SELECT 1'); }

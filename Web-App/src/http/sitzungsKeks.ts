@@ -1,5 +1,5 @@
 import type { CookieOptions } from 'express';
-import { cookieSicher, konfig, type Konfig } from './konfig';
+import { cookieSicher, konfig, type Konfig } from '../infra/konfig';
 
 const NAME_TLS = '__Host-bim.sid';
 const NAME_OHNE_TLS = 'bim.sid';

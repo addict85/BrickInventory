@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { type Route, zeit, bestaetigt, OHNE_RUMPF, TEXT, abfrage, Q, SEITE, SEITEN_ANGABE } from './grund';
 import { GenericResponse } from './gemeinsam';
-import { eingabe } from '../validate';
+import { eingabe } from '../infra/validate';
 
 export const GelesenerGutschein = z.looseObject({
   number: z.string().nullable().optional(),

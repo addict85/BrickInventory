@@ -93,7 +93,7 @@ function baueDist() {
 }
 
 function buildAndRequire() {
-  // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/infra/vertrag/pruefen.ts).
+  // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/vertrag/pruefen.ts).
   process.env.VERTRAG_PRUEFEN ??= '1';
   // Ohne NODE_ENV gelten die Regeln des Betriebs (Superuser-Verbot, APP_BASE_URL);
   // die Test-DB läuft als Superuser, und gestartete Server erben diese Umgebung.

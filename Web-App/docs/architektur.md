@@ -24,6 +24,8 @@ routes/                 HTTP: Eingabe prüfen (Vertrag), Dienst rufen, antworten
 jobs/                   Hintergrundarbeit, ruft Dienste
 src/<bereich>/          Dienste (Fachlogik) und repository (SQL)
 db/, clients/           Datenbank und Aussenwelt (nur HTTP)
+src/http/               HTTP-Helfer für Routen und HTTP-Seiten (Fehlerantwort, Upload, Drossel)
+src/vertrag/            der API-Vertrag (zod-Schemas, Prüfung, OpenAPI), von allen Bereichen geteilt
 src/infra/              fachfreie Helfer
 ```
 
@@ -43,25 +45,27 @@ kennen einander nicht. Von unten nach oben:
 | Stufe | Bereiche |
 |---|---|
 | 1 | `src/infra` |
-| 2 | `db`, `clients` |
-| 3 | `src/einstellungen` |
-| 4 | `src/mail` |
-| 5 | `src/auftraege` |
-| 6 | `src/haushalt` |
-| 7 | `src/konto` |
-| 8 | `src/idempotenz`, `src/katalog` |
-| 9 | `src/finanzen` |
-| 10 | `src/bestand` |
-| 11 | `src/sets` |
-| 12 | `src/teile`, `src/figuren`, `src/merkliste`, `src/gutscheine` |
-| 13 | `src/sammlung`, `src/verwaltung` |
-| 14 | `jobs`, `routes` |
-| 15 | `startup` |
-| 16 | `server.ts` |
+| 2 | `src/http` |
+| 3 | `src/vertrag` |
+| 4 | `db`, `clients` |
+| 5 | `src/einstellungen` |
+| 6 | `src/mail` |
+| 7 | `src/auftraege` |
+| 8 | `src/haushalt` |
+| 9 | `src/konto` |
+| 10 | `src/idempotenz`, `src/katalog` |
+| 11 | `src/finanzen` |
+| 12 | `src/bestand` |
+| 13 | `src/sets` |
+| 14 | `src/teile`, `src/figuren`, `src/merkliste`, `src/gutscheine` |
+| 15 | `src/sammlung`, `src/verwaltung` |
+| 16 | `jobs`, `routes` |
+| 17 | `startup` |
+| 18 | `server.ts` |
 
 ## API-Vertrag
 
-`src/infra/vertrag/` beschreibt jede Route mit zod: Antwort und, für jede
+`src/vertrag/` beschreibt jede Route mit zod: Antwort und, für jede
 schreibende Route, die Eingabe. Daraus entstehen die Routentypen (tsc),
 `docs/openapi.json` (`npm run vertrag:openapi`) und der Abgleich mit dem
 Android-Client (`test/vertrag-kotlin.test.js`).

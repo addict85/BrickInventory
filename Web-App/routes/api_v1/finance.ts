@@ -1,12 +1,12 @@
-import { fehlerAntwort } from '../../src/infra/httpAntwort';
+import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { FEHLER, antwortSprache, fehlerText, type FehlerCode } from '../../src/infra/fehlerTexte';
 import { requireToken, sichtVon } from './middleware';
 import { getPortfolioHistory } from '../../src/finanzen/portfolioHistory';
 import { computeMinifigsValuation, computePartsValuation, computePnl, computeSetsValuation } from '../../src/finanzen/financeCalc';
 import { einzelwert } from '../../src/infra/validate';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
 import { seiteAus } from '../../src/infra/seite';
-import type { Anfrage, Antwort } from '../../src/infra/vertrag';
+import type { Anfrage, Antwort } from '../../src/vertrag';
 const router = vertragsRouter();
 
 /** Preisfehler kommen mit Code aus der Bewertung; der Text folgt der Sprache der Anfrage, nicht dem Server. */

@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { Route } from './grund';
 import { Fehler, Fehlercode, PFAD } from './grund';
 import { BEREICHE } from './index';
-import { API_VERSION } from '../apiVersion';
+import { API_VERSION } from '../http/apiVersion';
 
 const MIME: Record<NonNullable<Route['art']>, string> = {
   pdf: 'application/pdf', datei: 'application/octet-stream', strom: 'text/event-stream',
@@ -79,7 +79,7 @@ export function openapi(): Record<string, unknown> {
   return {
     openapi: '3.1.0',
     info: { title: 'BrickInventory API', version: String(API_VERSION),
-      description: 'Erzeugt aus src/infra/vertrag/ (npm run vertrag:openapi). Nicht von Hand ändern.' },
+      description: 'Erzeugt aus src/vertrag/ (npm run vertrag:openapi). Nicht von Hand ändern.' },
     paths: sortiert(paths),
     components: { schemas: sortiert(schemas) },
   };

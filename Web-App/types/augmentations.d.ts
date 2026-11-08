@@ -35,7 +35,7 @@ declare global {
       tokenUserId?: number;
       /** Warum ein vorgelegter Token nicht galt, wenn es mehr zu sagen gibt als „ungültig“. */
       tokenAbsage?: 'token_rotation_noetig';
-      /** Rumpf und Abfrage nach der Prüfung gegen den Vertrag (src/infra/vertrag/pruefen.ts);
+      /** Rumpf und Abfrage nach der Prüfung gegen den Vertrag (src/vertrag/pruefen.ts);
        * ihren Typ setzt Anfrage<K> aus dem Vertrag. */
       eingabe: unknown;
       abfrage: unknown;
@@ -48,7 +48,7 @@ export {};
 /**
  * Request NACH requireToken/requireApiAdmin: `apiUser` ist dort gesetzt. Der
  * VertragsRouter gibt diesen Typ nur an Schritte hinter einem Wächter weiter,
- * der ihn zusichert (src/infra/vertrag/pruefen.ts); ohne Wächter ist ein
+ * der ihn zusichert (src/vertrag/pruefen.ts); ohne Wächter ist ein
  * Handler mit AuthedRequest ein Übersetzungsfehler.
  */
 declare global {

@@ -350,7 +350,7 @@ test('kein Modul wird in einer Datei zweimal importiert', () => {
 
 test('der Kommentaranteil im Server sinkt, nie steigt', () => {
   // Gemessen 13,8 % in server.ts, routes/, src/ und jobs/; 13,2 % mit dem
-  // API-Vertrag (src/infra/vertrag/). Schranke 13,2.
+  // API-Vertrag (src/vertrag/). Schranke 13,2.
   const SCHRANKE = 13.2;
   let zeilen = 0, kommentar = 0;
   for (const f of quellen().filter(f => /[\\/](routes|src|jobs)[\\/]|[\\/]server\.ts$/.test(f))) {

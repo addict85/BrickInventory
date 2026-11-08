@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { eingabe } from '../validate';
+import { eingabe } from '../infra/validate';
 import { type Route, zeit, Erfolg, ganz, bestaetigt, OHNE_RUMPF, TEXT } from './grund';
 import { GenericResponse } from './gemeinsam';
 

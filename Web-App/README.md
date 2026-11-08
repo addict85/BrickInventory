@@ -430,7 +430,7 @@ und schreibt `coverage/lcov.info`, `coverage-summary.json` und
 Bereiche mit `scripts/abdeckung-schranken.json`; die CI macht beides.
 
 Die API gibt es nur unter `/api/v1/`. Ihr Vertrag (zod-Schemata in
-`src/infra/vertrag/`) wird im Testlauf an jeder Antwort geprüft; der Abgleich
+`src/vertrag/`) wird im Testlauf an jeder Antwort geprüft; der Abgleich
 mit der Android-App liest deren Retrofit-Schnittstelle (`app-endpunkte`).
 
 Regeln für neue Tests stehen in `CLAUDE.md` im Wurzelordner: Ein Test prüft

@@ -1,7 +1,7 @@
 import path from 'path';
 import type { Response } from 'express';
 
-// Ausführlich: docs/begruendungen/src/infra/dateiAusliefern.ts.md#dateifehler
+// Ausführlich: docs/begruendungen/src/http/dateiAusliefern.ts.md#dateifehler
 
 type DateiFehler = Error & { status?: number; statusCode?: number; code?: string };
 

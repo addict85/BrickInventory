@@ -3,7 +3,7 @@
 import express from 'express';
 import path from 'path';
 import { fehlertext, meldeUndLiefere, oeffentlicherFehler } from '../../src/infra/fehler';
-import { fehlerAntwort, pfadParam } from '../../src/infra/httpAntwort';
+import { fehlerAntwort, pfadParam } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
 import { getSetting } from '../../src/einstellungen/settings';
 import { findSetInScope, normalizeSetNumber } from '../../src/sets/setAdd';
@@ -13,7 +13,7 @@ import { normalisiereLagerort, setzeLagerort, lagerorte,
          orteFuer, legeOrtAn, benenneOrtUm, loescheOrt, lagerSchreibkonto,
          vorgabeVon, setzeVorgabe } from '../../src/bestand/lagerort';
 import { alarmeFuer, alleAlarme, ausgeloesteSeit, loescheAlarm, setzeAlarm } from '../../src/finanzen/preisalarm';
-import { csvEmpfang, uploadKontingentBytes, privaterOrdner, privaterEmpfang, kontingentReichtFuer, pruefeEmpfangeneDatei } from '../../src/infra/dateiEmpfang';
+import { csvEmpfang, uploadKontingentBytes, privaterOrdner, privaterEmpfang, kontingentReichtFuer, pruefeEmpfangeneDatei } from '../../src/http/dateiEmpfang';
 import { sendCsv, uebersprungenHinweis } from '../../src/infra/csvExport';
 import { addSet, updateSet } from '../../src/sets/setService';
 import { loescheSetFuer, getSet, getSets } from '../../src/sets/abfragen';
@@ -26,14 +26,14 @@ import { setInfo, setZumBarcode, teilelisteDesSets, figurenlisteDesSets, setPrei
 import { anleitungenZuSet, anleitungenZusammenlegen, loescheAnleitungen, anleitungNeuLadenErlaubt, anzahlAnleitungen } from '../../src/katalog/instructions';
 import { anleitungEinreihen } from '../../src/auftraege/anleitungsAuftrag';
 import { importPartsForSet } from '../../src/katalog/partsImport';
-import { registerSse } from '../../src/infra/sseRegistry';
+import { registerSse } from '../../src/http/sseRegistry';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/http/anmeldung';
 import { csvImportBus, buildJobStatus, jobGet, beiImportStand } from '../../src/auftraege/importAuftrag';
 import { DATA_DIR } from '../../src/infra/appPaths';
 import { setBildSichtbar } from '../../src/katalog/bilder/bildBlickfeld';
 import { zaehleAnfrage } from '../../src/konto/loginLimiter';
-import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
-import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/infra/vertrag';
+import { vertragsRouter } from '../../src/vertrag/pruefen';
+import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/vertrag';
 import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
 const router = vertragsRouter();

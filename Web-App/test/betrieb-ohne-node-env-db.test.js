@@ -83,7 +83,7 @@ test('ein 5xx nennt ohne NODE_ENV keine Interna', () => {
   const alt = process.env.NODE_ENV;
   delete process.env.NODE_ENV;
   try {
-    const { handleRouteError } = _req('src/infra/httpAntwort.js');
+    const { handleRouteError } = _req('src/http/httpAntwort.js');
     let antwort;
     const res = {
       headersSent: false,
