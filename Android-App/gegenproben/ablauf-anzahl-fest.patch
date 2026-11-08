@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.AblaufTest
 Rot: ein Set erfassen nimmt Nummer und Anzahl
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
-index 1d44fe6..719f078 100644
+index 0f57408..b156b34 100644
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
-@@ -700,7 +700,7 @@ fun AddSetDialog(
-             nummerFehlt = true
+@@ -811,7 +811,7 @@ fun AddSetDialog(
              if (sofortFokus) try { setFeldFokus.requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
-         } else {
+         } else if (!erfassungUngueltig(quantity, purchasePrice)) {
+             // Bei unlesbarer Menge oder unlesbarem Preis bleibt der Dialog offen; die Felder zeigen den Fehler.
 -            onAdd(setNumber, quantity.toIntOrNull() ?: 1,
 +            onAdd(setNumber, 1,
-                   purchasePrice.replace(',', '.').toDoubleOrNull(), condition,
+                   NumericInput.leseBetrag(purchasePrice), condition,
                    // Ohne Haushalt gar nichts mitschicken — der Server bleibt
                    // dann beim eigenen Konto.
