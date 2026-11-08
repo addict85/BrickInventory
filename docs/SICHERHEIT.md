@@ -304,6 +304,15 @@ den Commits, nicht hier.
 - Geheimnisse und Gutschein-PDFs mit dem Datenschlüssel: `src/infra/geheimnis.ts`
   — `geheimnisse-verschluesselt-db`, `konto-dateien-db`.
 - Mail-Links ohne Token in den Protokollen: `src/mail/mailer.ts`.
+- Aufbewahrung von Adressen in `rate_limit_attempts` (Anmeldebremsen,
+  `src/konto/loginLimiter.ts`): Die Zeilen `login|<Adresse>|<Konto>`
+  und `login-adresse|<Adresse>` stehen mit der IP (IPv6 als /64)
+  im Klartext und werden nach einem Tag aufgeräumt. `login-bekannt|…` (Vorrang
+  bekannter Anmeldungen, 30 Tage) und `login-erfolg|…` (1 Tag) tragen statt der
+  IP deren HMAC mit eigenem Teilschlüssel des Datenschlüssels, Konten stehen
+  als `konto:<id>` oder als HMAC des Namens — `anmeldung-bekannt-adresse-db`.
+  Bei der Umstellung verlor jede bekannte Adresse einmal den Vorrang, bis zur
+  nächsten erfolgreichen Anmeldung.
 
 ### Lieferkette (5)
 - Actions per Commit-SHA, Images per Digest — `workflow-ort`, `compose-haertung`.
