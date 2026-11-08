@@ -22,9 +22,9 @@ const KT_API    = require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join
 // in Preisalarmeingabe.kt, gehalten vom SetDetailViewModel.
 const KT_FEAT   = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'Preisalarmeingabe.kt'));
 const KT_SECT   = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailSections.kt'));
-const KT_ABHOL  = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'Alarmabholung.kt'));
-const KT_WORKER = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'PreisalarmWorker.kt'))
-                + lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'PreisalarmDurchgang.kt'));
+const KT_ABHOL  = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-dienste', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'Alarmabholung.kt'));
+const KT_WORKER = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-dienste', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'PreisalarmWorker.kt'))
+                + lies(path.join(__dirname, '..', '..', 'Android-App', 'core-dienste', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'PreisalarmDurchgang.kt'));
 const KT_START  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'BrickInventoryApp.kt'));
 const KT_ALARMEINGABE = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'Alarmeingabe.kt'));
 const KT_VM     = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'SetDetailViewModel.kt'));
@@ -38,7 +38,7 @@ const KT_EINST  = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-
                 + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenAlarme.kt'))
                 + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenLagerorte.kt'));
 const KT_GERAET = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-zustand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'GeraeteEinstellungenViewModel.kt'));
-const KT_PLANER = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'WorkManagerAlarmPlaner.kt'));
+const KT_PLANER = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-dienste', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'WorkManagerAlarmPlaner.kt'));
 const XML_EN    = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values', 'strings.xml'));
 const XML_DE    = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values-de', 'strings.xml'));
 

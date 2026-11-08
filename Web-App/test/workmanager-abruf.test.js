@@ -92,7 +92,7 @@ test('Der erste WorkManager-Zugriff liegt in einem runCatching', () => {
 
   // Die zweite Haelfte, seit dem 25.09.
   // Ausführlich: docs/begruendungen/test/workmanager-abruf.test.js.md#worker
-  const worker = fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main',
+  const worker = fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-dienste', 'src', 'main',
     'java', 'ch', 'brickinventoryapp', 'alarm', 'PreisalarmWorker.kt'), 'utf8');
   assert.match(worker, /fun einplanen\([^)]*\)\s*:\s*Throwable\?/,
     'einplanen() gibt keinen Fehler mehr zurueck — dann wirft es wieder, und die '

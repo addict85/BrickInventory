@@ -17,6 +17,8 @@ dependencies {
     implementation(project(":core-ressourcen"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.work)
+    // WorkManager allein zöge Lifecycle 2.5.1 ein; die Prüfsummen kennen nur die Reihe der übrigen Module.
+    implementation(libs.androidx.lifecycle.runtime.ktx)
     // @HiltWorker: Der Preisalarm-Arbeiter bekommt seine Abholung im Konstruktor.
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
