@@ -87,7 +87,7 @@
     <string name="scanner_hint_detected">Erkannt: %1$s</string>
     <string name="scanner_hint_confirming">Barcode erkannt, bestätige…</string>
     <string name="scanner_hint_aim">Kamera auf Barcode richten</string>
-    <string name="scanner_hint_error">Scan-Fehler — bitte nochmals versuchen</string>
+    <string name="scanner_hint_error">Scan fehlgeschlagen — Code ruhig halten und nochmals versuchen</string>
     <string name="scanner_torch_off">Licht aus</string>
     <string name="scanner_torch_on">Licht ein</string>
     <string name="scanner_camera_needed">Kamerazugriff benötigt</string>
@@ -181,7 +181,7 @@
     </plurals>
     <string name="partslist_add_set">Set zur Bauliste hinzufügen</string>
     <string name="partslist_generate">Bauliste erstellen</string>
-    <string name="partslist_pdf_error_title">PDF Fehler</string>
+    <string name="partslist_pdf_error_title">PDF konnte nicht erstellt werden</string>
     <string name="common_ok">OK</string>
     <string name="common_pdf">PDF</string>
     <string name="common_hours_short">h</string>
@@ -270,7 +270,7 @@
     <string name="finance_loading">Preise werden geladen…</string>
     <string name="finance_no_data">Keine Preisdaten</string>
     <string name="finance_load_prices">Preise laden</string>
-    <string name="finance_price_error">Preisfehler</string>
+    <string name="finance_price_error">Preis nicht verfügbar</string>
     <string name="finance_no_sets">Keine Sets</string>
     <string name="finance_load_prompt">→ Preise laden</string>
     <string name="finance_total_pnl">%1$s gegenüber der Kaufsumme</string>
@@ -457,7 +457,7 @@
     <string name="pruef_hinweis">Das Hinzufügen läuft danach im Hintergrund — kurz warten vor dem nächsten Scan.</string>
     <string name="vm_set_added">„%1$s“ hinzugefügt</string>
     <string name="vm_set_added_no_catalog">Set %1$s gespeichert — Name und Bild kommen nach, sobald der Katalog erreichbar ist.</string>
-    <string name="vm_error">Fehler: %1$s</string>
+    <string name="vm_error">Das hat nicht geklappt: %1$s</string>
     <string name="vm_anmeldung_zu_alt">Die Anmeldung ist älter als 180 Tage. Bitte melde dich neu an.</string>
     <string name="vm_session_expired">Sitzung abgelaufen — bitte erneut anmelden</string>
     <string name="vm_abmelden_nachgeholt">Abgemeldet. Der Server war nicht erreichbar; die App entwertet die Anmeldung dort, sobald er wieder erreichbar ist. Zur Sicherheit in der Web-App unter „Angemeldete Geräte“ nachsehen.</string>
@@ -483,7 +483,7 @@
     <!-- PDF-Export-Statustexte (PdfExportManager) -->
     <string name="pdfexp_no_data">Keine Exportdaten vorhanden</string>
     <string name="pdfexp_starting">Starte Export…</string>
-    <string name="pdfexp_unknown_error">Unbekannter Fehler</string>
+    <string name="pdfexp_unknown_error">Unbekannter Fehler. Bitte nochmals versuchen.</string>
     <string name="pdfexp_oeffnen_mit">Teileliste öffnen mit</string>
     <string name="pdfexp_loading_images">Bilder werden geladen…</string>
     <string name="pdfexp_creating_eta">PDF wird erstellt… noch ~%1$ds</string>
@@ -526,7 +526,7 @@
     <string name="monitoring_catalog_images">Katalogbilder einreihen</string>
     <string name="monitoring_redownload_missing">Fehlende Bilder neu laden</string>
     <string name="monitoring_import_missing_instr">Fehlende Anleitungen importieren</string>
-    <string name="monitoring_reimport_error">Fehler beim Reimport</string>
+    <string name="monitoring_reimport_error">Reimport nicht möglich. Prüfe die Verbindung und versuche es erneut.</string>
     <plurals name="monitoring_reimport_enqueued">
         <item quantity="one">%1$d Set eingereiht</item>
         <item quantity="other">%1$d Sets eingereiht</item>
@@ -658,7 +658,7 @@
     <string name="pdfview_load_failed">Fehler beim Laden: %1$s</string>
     <string name="pdfview_fremder_host">Dieses PDF liegt nicht auf deinem Server. Öffne es auf der Set-Seite mit einer anderen App.</string>
     <string name="pdfview_page">Seite %1$d</string>
-    <string name="pdfview_unknown_error">Unbekannter Fehler</string>
+    <string name="pdfview_unknown_error">Unbekannter Fehler. Bitte nochmals versuchen.</string>
     <string name="pdfview_download_failed">Download fehlgeschlagen</string>
     <string name="pdfview_print_failed">Drucken fehlgeschlagen: %1$s</string>
     <string name="pdfview_saved">Gespeichert: %1$s</string>
