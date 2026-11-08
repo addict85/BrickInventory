@@ -1,0 +1,17 @@
+Gegenprobe: die Übernahme löscht den Klartext älterer Fassungen nicht
+Modul: core-data
+Test: ch.brickinventoryapp.data.VertrauenVerschluesseltTest
+Rot: Klartext wird einmal uebernommen
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+index a2bb27d..98a04e5 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+@@ -273,7 +273,6 @@ class GeraeteAblage @Inject constructor(
+             else verschluesselterAltbestand(alt) ?: return
+         designSpiegel.edit {
+             neu.forEach { (k, v) -> putString(k, v) }
+-            alt.keys.forEach { remove(it) }
+             putBoolean(VERTRAUEN_UEBERNOMMEN, true)
+         }
+         vertrauenGeprueft = true

@@ -1,0 +1,23 @@
+Gegenprobe: Vertrauenschiffre bindet den Namen des Eintrags nicht als AAD
+Modul: core-data
+Test: ch.brickinventoryapp.data.VertrauenVerschluesseltTest
+Rot: ein Geheimtext unter fremdem Namen gilt nicht
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Vertrauenschiffre.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Vertrauenschiffre.kt
+index 1ec3faf..10eb61e 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Vertrauenschiffre.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Vertrauenschiffre.kt
+@@ -12,11 +12,11 @@ class Vertrauenschiffre(schluessel: () -> ByteArray) {
+     private val chiffre = AblageChiffre(schluessel)
+ 
+     fun verschluessle(wert: String, bindung: String): String? = runCatching {
+-        Base64.getEncoder().encodeToString(chiffre.verschluessle(wert.toByteArray(Charsets.UTF_8), ZWECK + bindung))
++        Base64.getEncoder().encodeToString(chiffre.verschluessle(wert.toByteArray(Charsets.UTF_8), ZWECK))
+     }.getOrNull()
+ 
+     fun entschluessle(gespeichert: String, bindung: String): String? = runCatching {
+-        chiffre.entschluessle(Base64.getDecoder().decode(gespeichert), ZWECK + bindung)?.toString(Charsets.UTF_8)
++        chiffre.entschluessle(Base64.getDecoder().decode(gespeichert), ZWECK)?.toString(Charsets.UTF_8)
+     }.getOrNull()
+ 
+     private companion object {

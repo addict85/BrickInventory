@@ -1,0 +1,18 @@
+Gegenprobe: merkePin() legt den Fingerabdruck zusätzlich im Klartext ab
+Modul: core-data
+Test: ch.brickinventoryapp.data.VertrauenVerschluesseltTest
+Rot: Pin und Schalter liegen nicht im Klartext
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+index a2bb27d..adedec9 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+@@ -307,7 +307,7 @@ class GeraeteAblage @Inject constructor(
+         uebernimmKlartextVertrauen()
+         val geheim = vertrauenschiffre.verschluessle(fingerabdruck, PIN_PRAEFIX + schluessel)
+         if (geheim != null) {
+-            designSpiegel.edit { putString(PIN_GEHEIM_PRAEFIX + schluessel, geheim) }
++            designSpiegel.edit { putString(PIN_GEHEIM_PRAEFIX + schluessel, geheim); putString(PIN_PRAEFIX + schluessel, fingerabdruck) }
+             ungesichert.remove(schluessel)
+         } else {
+             ungesichert[schluessel] = fingerabdruck
