@@ -23,6 +23,8 @@
  *      Neuladen“ (Eintrag bleibt hidden)
  *   F  csvPollLoop wieder mit api() statt apiDaten() → rot: „Ergebnisliste
  *      mit Zeilen“ (api() überschreibt `status` mit 200, der Abschluss kommt nie)
+ *   G  csv.import_meldung aus de.js entfernt → rot: „Ergebnisliste mit Zeilen“
+ *      (die Meldung zeigt den rohen Schlüssel; 08.11.2026)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -121,6 +123,7 @@ test('Ergebnisliste mit Zeilen, Farben und gelesenen Zeilen', async () => {
       'er|Zeile 7: keine Set-Nummer',
     ]);
     assert.match(d.getElementById('prog-footer').textContent, /8 Zeilen gelesen · 1 ok, 1 Warnung, 3 Fehler/);
+    assert.equal(d.querySelector('#toasts .toast .toast-text')?.textContent, 'Import: 1 ok, 1 Warnung, 3 Fehler');
     assert.equal(d.getElementById('prog-bar-wrap').getAttribute('aria-valuenow'), '100');
   } finally {
     w.close();

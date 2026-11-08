@@ -41,7 +41,7 @@ export function passwortRegelText(p){
 }
 
 /**
- * Sieht die Eingabe aus wie eine Set-Nummer? Ziffern, davor höchstens ein Buchstaben-Präfix echter Nummern
+ * Sieht die Eingabe aus wie eine Setnummer? Ziffern, davor höchstens ein Buchstaben-Präfix echter Nummern
  * (llca30, comcon001), dahinter ein Versionsanhang (-1). Der Server prüft selbst; hier geht es darum, dass
  * „abc“ gar nicht erst als Set „abc-1“ angelegt wird.
  * @param {string} eingabe
@@ -94,7 +94,7 @@ export function antwortFehler(d, felder, ersatz) {
 }
 
 /**
- * Prüft das Set-Nummer-Feld vor dem Absenden; meldet am Feld und sagt, ob es weitergeht.
+ * Prüft das Setnummer-Feld vor dem Absenden; meldet am Feld und sagt, ob es weitergeht.
  * @param {string} id
  * @param {string} wert
  */

@@ -25,7 +25,7 @@ test('Bauliste in Kontosprache', async () => {
     await warte(() => d.documentElement.lang === 'en');
     await takt(50);
     const leer = text(d.querySelector('#pl-sets .leer'));
-    assert.doesNotMatch(leer, /Noch keine|Set-Nummer/, `deutsch: ${leer}`);
+    assert.doesNotMatch(leer, /Noch keine|Setnummer/, `deutsch: ${leer}`);
     assert.match(leer, /set/i);
   } finally { w.close(); }
 });

@@ -7,6 +7,10 @@
  *   A  nav.partslist (de) wieder „Teileliste“ → rot: „de: Bauliste …“
  *   B  partsCard wieder `${…}×` → rot: „Teilekachel zeigt ×N“
  *   C  common.condition_new (de) wieder „Neu“ → rot: „de: Bauliste …“
+ *   D  gallery.add.number (de) wieder „Set-Nummer *“ → rot: „de: Setnummer ohne
+ *      Bindestrich“ (08.11.2026)
+ *   E  im Lagerort-Feld data-i18n-attr="placeholder" entfernt → rot: „en: Platzhalter
+ *      des Lagerort-Felds“ (es bliebe „Neuer Lagerort“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -31,5 +35,24 @@ test('Teilekachel zeigt ×N', async () => {
     await reiter(w, 'parts');
     await warte(() => !!d.querySelector('.part-card .part-qty'));
     assert.equal(d.querySelector('.part-card .part-qty').textContent.trim(), '×12');
+  } finally { w.close(); }
+});
+
+test('de: Setnummer ohne Bindestrich, wie in der Android-App', async () => {
+  const { w, d } = await oeffneOberflaeche({});
+  try {
+    const texte = [d.body.textContent, ...[...d.querySelectorAll('[placeholder], [aria-label]')]
+      .map(e => `${e.getAttribute('placeholder') ?? ''} ${e.getAttribute('aria-label') ?? ''}`)].join('\n');
+    assert.match(texte, /Setnummer/, 'die Oberfläche nennt die Setnummer gar nicht');
+    assert.doesNotMatch(texte, /Set-Nummer/);
+    assert.equal(d.querySelector('label[for="add-num"]').textContent.trim(), 'Setnummer *');
+  } finally { w.close(); }
+});
+
+test('en: Platzhalter des Lagerort-Felds', async () => {
+  const { w, d } = await oeffneOberflaeche({}, { sprache: 'en' });
+  try {
+    await warte(() => d.documentElement.lang === 'en');
+    assert.equal(d.getElementById('storage-new').getAttribute('placeholder'), 'New storage location');
   } finally { w.close(); }
 });
