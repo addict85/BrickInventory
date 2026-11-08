@@ -311,6 +311,8 @@ window.I18N_EN = {
   'common.delete_text': 'This action cannot be undone.',
   'gallery.add.number_invalid': '“{num}” is not a set number. Expected e.g. 10294 or 10294-1.',
   'common.actions': 'Actions',
+  'common.qty_invalid': 'The quantity must be a whole number from 1 to {max}.',
+  'common.date_future': 'The date is in the future. Please choose a date up to today.',
   'common.amount_invalid': '“{wert}” is not an amount. Expected e.g. 149.95 or 1,299.00.',
   'common.enter_set_number': 'Please enter a set number',
   'register.req_fields': 'Username, e-mail and password are required.',

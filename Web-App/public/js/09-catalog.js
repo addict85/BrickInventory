@@ -5,7 +5,7 @@ import { locale, t, tRaw} from '../i18n.js';
 import { fehlerMeldung, api } from './01-api.js';
 import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl, setzeDialogbild, PLATZHALTER_SET } from './01-bilder.js';
 import { leerZustand, meldeTreffer, ico, G, zuruecksetzenKnopf, alle, eins, setzeHtml, fuegeHtmlEin } from './01-dom.js';
-import { betragAusFeld } from './01-formular.js';
+import { betragAusFeld, mengeAusFeld } from './01-formular.js';
 import { toast } from './01-meldungen.js';
 import { setScrollLabel } from './15-scrollbar.js';
 import { loadGallery, loadStats } from './02-gallery.js';
@@ -429,9 +429,10 @@ function closeCatModal(){ G('cat-modal').classList.remove('open'); _catCurSet = 
 async function addCatalogSetToGallery(){
   if (!_catCurSet) return;
   const num = _catCurSet.set_number;
-  const qty = parseInt(G('cat-m-qty').value) || 1;
   const preis = betragAusFeld('cat-m-price');
-  if (!preis.ok) return;
+  const menge = mengeAusFeld('cat-m-qty');
+  if (!preis.ok || !menge.ok) return;
+  const qty = menge.wert;
   const purchase_price = preis.wert;
   const condition = G('cat-m-cond').value || 'N';
   // Konto mitschicken (Marcos Fund): Der Katalog-Dialog war der VIERTE Erfassungsweg — Galerie-Formular,

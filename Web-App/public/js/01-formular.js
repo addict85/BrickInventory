@@ -1,7 +1,8 @@
-import { tRaw } from '../i18n.js';
+import { tRaw, locale } from '../i18n.js';
 import { G } from './01-dom.js';
 import { toast } from './01-meldungen.js';
 import { leseBetrag } from './01-format.js';
+import { heuteIso } from './01-bausteine.js';
 
 // Formulare: Meldungen am Feld, Passwortregeln, Beträge aus Eingaben. Eine Fassung für alle Dialoge, damit
 // Vorleser und Markierung überall gleich reagieren.
@@ -103,6 +104,42 @@ export function setnummerFeldGueltig(id, wert) {
   if (!v) { feldFehler(id, tRaw('common.enter_set_number')); return false; }
   if (!istSetnummer(v)) { feldFehler(id, tRaw('gallery.add.number_invalid', { num: v })); return false; }
   feldFehler(id, '');
+  return true;
+}
+
+/** Obergrenze der Stückzahl je Erfassung; dieselbe wie `eingabe.stueckzahl()` im Server (src/infra/validate.ts). */
+export const STUECKZAHL_MAX = 10_000;
+
+/**
+ * Liest ein Anzahlfeld: Nur eine ganze Zahl von 1 bis STUECKZAHL_MAX geht hinaus. Alles andere (leer, 0, 1,5,
+ * negativ, zu gross) meldet das Feld, statt stillschweigend zu 1 zu werden oder erst als Toast zurückzukommen.
+ * @param {string} id
+ * @returns {{ ok: boolean, wert: number }}
+ */
+export function mengeAusFeld(id) {
+  const roh = (G(id)?.value ?? '').trim();
+  const wert = /^\d+$/.test(roh) ? Number(roh) : NaN;
+  if (!(wert >= 1 && wert <= STUECKZAHL_MAX)) {
+    feldFehler(id, tRaw('common.qty_invalid', { max: STUECKZAHL_MAX.toLocaleString(locale()) }));
+    return { ok: false, wert: 1 };
+  }
+  if (G(id + '-fehler')) feldFehler(id, '');
+  return { ok: true, wert };
+}
+
+/**
+ * Prüft ein Kaufdatum: Leer ist erlaubt, ein Tag nach heute nicht. Das Feld bekommt dasselbe als `max`,
+ * damit die Auswahl des Browsers gar keine Zukunft anbietet; getippt geht sie trotzdem.
+ * @param {string} id
+ * @returns {boolean}
+ */
+export function kaufdatumGueltig(id) {
+  const feld = /** @type {HTMLInputElement | null} */ (G(id));
+  if (!feld) return true;
+  const heute = heuteIso();
+  feld.max = heute;
+  if (feld.value && feld.value > heute) { feldFehler(id, tRaw('common.date_future')); return false; }
+  if (G(id + '-fehler')) feldFehler(id, '');
   return true;
 }
 

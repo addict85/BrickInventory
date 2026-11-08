@@ -9,7 +9,7 @@ import { api } from './01-api.js';
 import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl } from './01-bilder.js';
 import { leerZustand, meldeTreffer, G, TRASH_ICON_SVG, zuruecksetzenKnopf, aktiverReiter, ico, setzeHtml } from './01-dom.js';
 import { fmtDatum, fmtN } from './01-format.js';
-import { betragAusFeld } from './01-formular.js';
+import { betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './01-formular.js';
 import { toast } from './01-meldungen.js';
 import { addLagerParam, addScopeParam, scopeQuery } from './14-scope.js';
 import { loadFinance } from './04-finance.js';
@@ -364,13 +364,15 @@ G('btn-add-fig')?.addEventListener('click', async () => {
   const res = G('af-inline-result');
   if(!num){ res.style.color='var(--r500)'; res.textContent=tRaw('figs.number_required'); return; }
   const preis = betragAusFeld('af-price-inline');
-  if (!preis.ok) return;
+  const datumOk = kaufdatumGueltig('af-date');
+  const menge = mengeAusFeld('af-qty-inline');
+  if (!preis.ok || !menge.ok || !datumOk) return;
   const btn = G('btn-add-fig'); btn.disabled=true; btn.textContent='…';
   res.style.color='var(--mut)'; res.textContent=tRaw('adding.progress');
   const d = await api('POST','/v1/minifigs',{
     fig_number: num,
     bl_fig_number: G('af-blnum-inline')?.value.trim()||null,
-    quantity:   parseInt(G('af-qty-inline')?.value)||1,
+    quantity:   menge.wert,
     unit_price: preis.wert,
     condition: G('af-condition')?.value || 'N',
     acquired_at: G('af-date')?.value || null,

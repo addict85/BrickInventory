@@ -218,7 +218,7 @@ const erfassenDialog = (/** @type {unknown} */ art) => G(`add-${typeof art === '
 export function oeffneErfassen(art){
   const dialog = erfassenDialog(art);
   // Das Kaufdatum steht auf heute und die Währung auf der des Kontos, solange niemand etwas anderes wählt.
-  dialog?.querySelectorAll('input[data-heute]').forEach(f => { if (f instanceof HTMLInputElement && !f.value) f.value = heuteIso(); });
+  dialog?.querySelectorAll('input[data-heute]').forEach(f => { if (f instanceof HTMLInputElement) { f.max = heuteIso(); if (!f.value) f.value = heuteIso(); } });
   const w = /** @type {HTMLSelectElement | null} */ (dialog?.querySelector('#add-currency') ?? null);
   if (w && !/** @type {HTMLInputElement | null} */ (dialog?.querySelector('#add-price'))?.value) w.value = CURRENCY;
   dialog?.classList.add('open');

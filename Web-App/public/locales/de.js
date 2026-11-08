@@ -312,6 +312,8 @@ window.I18N_DE = {
   'common.delete_text': 'Diese Aktion kann nicht rückgängig gemacht werden.',
   'gallery.add.number_invalid': '„{num}“ ist keine Set-Nummer. Erwartet wird z. B. 10294 oder 10294-1.',
   'common.actions': 'Aktionen',
+  'common.qty_invalid': 'Die Anzahl muss eine ganze Zahl von 1 bis {max} sein.',
+  'common.date_future': 'Das Datum liegt in der Zukunft. Bitte ein Datum bis heute wählen.',
   'common.amount_invalid': '„{wert}“ ist kein Betrag. Erwartet wird z. B. 149,95 oder 1.299,00.',
   'common.enter_set_number': 'Bitte Set-Nummer eingeben',
   'register.req_fields': 'Benutzername, E-Mail und Passwort erforderlich.',
