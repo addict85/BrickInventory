@@ -55,7 +55,7 @@ test('die Themenliste kommt vom Server und nur auf Seite 1', () => {
     'Aus der geladenen Seite abgeleitet wäre das Auswahlfeld unvollständig');
   assert.match(H_SRC, /WHERE s\.user_id = ANY\(\$1\) AND c\.theme IS NOT NULL/,
     'Die Themenliste muss auf das Blickfeld eingeschränkt sein');
-  assert.match(H_SRC, /parseInt\(page\) <= 1/, 'Folgeseiten brauchen die Liste nicht');
+  assert.match(H_SRC, /parseInt\(String\(page\)\) <= 1/, 'Folgeseiten brauchen die Liste nicht');
 });
 
 // ── Minifiguren und manuelle Listen ────────────────────────────────────────

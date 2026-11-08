@@ -27,8 +27,7 @@ export function erfassungImSchreibfeld(tx: DbSchnittstelle, art: ErfassungsArt, 
     [id, wids, ...schluessel.slice(0, s.keys.length)]);
 }
 
-/** Alle schreibenden Funktionen hier nehmen die Konten des Schreib-Blickfelds mit:
- * Die Prüfung des Aufrufers ist die erste Linie, die Bedingung in der Anweisung die zweite. */
+/** Schreibend nur in den übergebenen Konten: zweite Linie hinter der Prüfung des Aufrufers. */
 export async function setzeErfassungsMenge(tx: DbSchnittstelle, art: ErfassungsArt, id: number, menge: number, konten: number[]): Promise<void> {
   await tx.run(`UPDATE ${SHAPES[art].table} SET quantity=$1 WHERE id=$2 AND user_id = ANY($3)`, [menge, id, konten]);
 }

@@ -84,8 +84,8 @@ test('stille Faenge werden weniger, nie mehr', () => {
 });
 
 test('any wird weniger, nie mehr', () => {
-  // Gemessen 26 am 05.11.2026; wie die Zahl sinkt, steht im git log.
-  const SCHRANKE = 26;
+  // Gemessen 23 am 08.11.2026; wie die Zahl sinkt, steht im git log.
+  const SCHRANKE = 23;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +
@@ -98,9 +98,9 @@ test('any wird weniger, nie mehr', () => {
 
 test('any in allen Formen wird weniger, nie mehr', () => {
   // Auch Promise<any>, any[] und Record<string, any>: Die enge Zählung oben sah
-  // nur `as any` und `: any`. Gemessen 39 am 05.11.2026.
+  // nur `as any` und `: any`. Gemessen 36 am 08.11.2026.
   // Gegenprobe (05.11.2026): getSetting wieder `fallback?: any` ohne Überladungen → rot.
-  const SCHRANKE = 39;
+  const SCHRANKE = 36;
   const ist = zaehle([/\bany\b/g]);
   assert.ok(ist <= SCHRANKE, `${ist}-mal any, erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ any (alle Formen): ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
