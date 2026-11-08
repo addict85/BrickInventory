@@ -17,10 +17,16 @@
  *      Bearbeiten-Pfad lehnt ab, was die Tagesregel verbietet“ (500 statt 409)
  *   F  loescheTeil() ohne loescheTeilErfassungen → rot „das Löschen eines
  *      manuellen Eintrags räumt die Kaufpreise mit ab“
+ *   G  bewerteManuell() mit `acquisitions: []` statt `rows` → rot „die
+ *      Bewertung liefert je Kaufpreis eine Zeile …“
+ *   H  pmRows() zeichnet immer nur eine Zeile (`return pmRow(it, label, null,
+ *      lage, text)`) → rot „die Finanzen zeigen je Kaufpreis eine Zeile …“
+ *   I  in src/sammlung/loeschen.ts `.catch(() => {})` an loescheTeilErfassungen → rot in
+ *      ratschen.test.js „stille Faenge …“ (deckt den gestrichenen Fall „kein
+ *      stiller Fehler mehr auf Bestandstabellen“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { pruefeParameter } = require('./helpers/sources');
 
 const read = f => require('./helpers/sources').dienstQuelle(f);
 const strip = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
@@ -233,6 +239,86 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
     assert.equal(r.status, 200, await r.text());
     assert.deepEqual(await teilZeilen('ma-weg'), [], 'Verwaiste Erfassungen zählen in den Finanzsummen weiter');
   });
+
+  await t.test('die Bewertung liefert je Kaufpreis eine Zeile, Altbestand ohne', async () => {
+    const { computePartsValuation, computeMinifigsValuation } = _req('src/finanzen/financeCalc.js');
+    await db.run(
+      `INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, 'ma-preis', 5, 'manual'),
+                  ($1, 'ma-alt', 5, 'manual')`,
+      [uid],
+    );
+    await db.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1, 'ma-fig-preis', 'manual')`, [uid]);
+    for (const [tag, preis] of [
+      [3, 2],
+      [1, 4],
+    ]) {
+      await db.run(
+        `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, created_at)
+                    VALUES ($1, 'ma-preis', 5, 1, $2, NOW() - make_interval(days => $3))`,
+        [uid, preis, tag],
+      );
+      await db.run(
+        `INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, created_at)
+                    VALUES ($1, 'ma-fig-preis', 1, $2, NOW() - make_interval(days => $3))`,
+        [uid, preis, tag],
+      );
+    }
+    const teile = (await computePartsValuation(uid, [uid])).parts;
+    const figuren = (await computeMinifigsValuation(uid, [uid])).figs;
+    const preise = e => (e?.acquisitions ?? []).map(a => a.purchase_price).sort();
+    assert.deepEqual(preise(teile.find(p => p.part_number === 'ma-preis')), [2, 4], 'Teil: eine Zeile je Kaufpreis');
+    assert.deepEqual(
+      preise(figuren.find(f => f.fig_number === 'ma-fig-preis')),
+      [2, 4],
+      'Figur: eine Zeile je Kaufpreis',
+    );
+    assert.deepEqual(teile.find(p => p.part_number === 'ma-alt')?.acquisitions, [], 'Altbestand ohne Erfassung');
+  });
+});
+
+test('die Finanzen zeigen je Kaufpreis eine Zeile, den Altbestand in einer', async t => {
+  const { oeffneOberflaeche, reiter } = require('./helpers/oberflaeche');
+  const erfassung = (id, preis) => ({
+    id,
+    condition: 'N',
+    quantity: 1,
+    purchase_price: preis,
+    avg_price: 3,
+    total_avg: '3.00',
+    wert_gesamt: 3,
+    pnl_pct: null,
+    pnl_prozent: null,
+  });
+  const teil = (nr, acquisitions) => ({
+    part_number: nr,
+    part_name: `Teil ${nr}`,
+    color_id: 5,
+    color_name: 'Red',
+    quantity: acquisitions.length || 1,
+    condition: 'N',
+    conditions: ['N'],
+    acquisitions,
+    avg_price: 3,
+    purchase_price: 3,
+    wert_gesamt: 3 * (acquisitions.length || 1),
+    total_value: '3.0000',
+    display_value: '3.00',
+  });
+  const { w, d, warte } = await oeffneOberflaeche({
+    '/v1/finance/parts-valuation': {
+      success: true,
+      currency: 'EUR',
+      total_value: '9.00',
+      wert_gesamt: 9,
+      parts: [teil('ma-zwei', [erfassung(1, 2), erfassung(2, 4)]), teil('ma-alt', [])],
+    },
+  });
+  t.after(() => w.close());
+  await reiter(w, 'finance');
+  assert.ok(await warte(() => d.querySelector('[data-fin-art] tbody tr')), 'Kein Abschnitt der manuellen Teile');
+  const zeilen = [...d.querySelectorAll('[data-fin-art] tbody tr')].map(z => z.textContent);
+  assert.equal(zeilen.filter(z => z.includes('Teil ma-zwei')).length, 2, zeilen.join('\n'));
+  assert.equal(zeilen.filter(z => z.includes('Teil ma-alt')).length, 1, zeilen.join('\n'));
 });
 
 test('kein Anlege-Pfad schreibt direkt in eine Erfassungstabelle', () => {
@@ -283,27 +369,6 @@ test('der Altbestand wird einmalig auf eine Zeile je Tag zusammengefasst', () =>
   // Gruppiert wird je Eintrag UND Tag; Käufe an verschiedenen Tagen bleiben
   // getrennt, sie sind der Grund für die Erfassungshistorie.
   assert.match(mig, /GROUP BY user_id, set_number, created_at::date/);
-});
-
-test('Teile und Minifiguren stehen in den Finanzen je Kaufpreis in einer Zeile', () => {
-  const fc = require('./helpers/sources').finanzQuelle();
-  // Drei: Sets, manuelle Teile, manuelle Minifiguren — alle drei Tabellen im
-  // Finanzen-Reiter zeigen dieselbe Form.
-  // Teile und Figuren teilen sich bewerteManuell(); zusammen mit bewerteSet() drei Wege.
-  const acqLines = [...fc.matchAll(/acquisitions: rows,/g)];
-  assert.equal(
-    acqLines.length + (fc.match(/= bewerteManuell\(|\.\.\.bewerteManuell\(/g) || []).length - 1,
-    3,
-    'Alle drei Bewertungen müssen die Einzelzeilen mitliefern',
-  );
-
-  const fin = read('public/js/04-finance.js');
-  pruefeParameter(fin, 'pmRows', ['it', 'label'], 'ein Eintrag ergibt eine Zeile je Erfassung');
-  assert.match(
-    fin,
-    /const acqs = it\.acquisitions \|\| \[\];/,
-    'Ohne Erfassungen (Altbestand) bleibt es bei der einen Zeile',
-  );
 });
 
 test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', () => {
@@ -376,54 +441,5 @@ test('eine Mengenänderung läuft unter der Bestandssperre', () => {
     fn,
     /repo\.setMenge\(dbh, 'blickfeld', leseFeld/,
     'Die Ausgangsmenge muss über das Blickfeld summiert werden',
-  );
-});
-
-test('kein stiller Fehler mehr auf Bestandstabellen', () => {
-  // Woher dieser Test kommt
-  // Ausführlich: docs/begruendungen/test/manual-acq-refresh.test.js.md#tabellen
-  const TABELLEN = [
-    'sets',
-    'parts',
-    'minifigs',
-    'set_acquisitions',
-    'part_acquisitions',
-    'minifig_acquisitions',
-    'instructions',
-  ];
-  const schreibt = new RegExp(`\\b(UPDATE|INSERT INTO|DELETE FROM)\\s+(${TABELLEN.join('|')})\\b`);
-  const dateien = [
-    'routes/api_v1/sets.ts',
-    'src/sets/dienst.ts',
-    'src/sammlung/erfassungen.ts',
-    'src/teile/manuelleTeile.ts',
-    'src/figuren/manuelleFiguren.ts',
-    'routes/api_v1/sets.ts',
-    'routes/api_v1/parts.ts',
-    'routes/api_v1/minifigs.ts',
-    'routes/api_v1/acquisitions.ts',
-    'src/sets/setMove.ts',
-    'src/bestand/acquisitions.ts',
-    // Seit einer früheren Runde nach Domänen aufgeteilt.
-    'src/sets/abfragen.ts',
-    'src/teile/abfragen.ts',
-    'src/figuren/abfragen.ts',
-  ];
-  const fundstellen = [];
-  for (const datei of dateien) {
-    const zeilen = strip(read(datei)).split('\n');
-    zeilen.forEach((zeile, i) => {
-      if (!/\.catch\(\(\)\s*=>\s*\{\}\)/.test(zeile)) return;
-      // Das Statement steht oft ein paar Zeilen über dem Catch (mehrzeilige
-      // Aufrufe) — deshalb der Blick nach oben.
-      const umfeld = zeilen.slice(Math.max(0, i - 4), i + 1).join('\n');
-      if (schreibt.test(umfeld)) fundstellen.push(`${datei}:${i + 1}`);
-    });
-  }
-  assert.deepEqual(
-    fundstellen,
-    [],
-    `Stiller Fehler auf einer Bestandstabelle: ${fundstellen.join(', ')} — ` +
-      'entweder durchreichen oder logAndContinue() aus src/infra/fehler.ts',
   );
 });

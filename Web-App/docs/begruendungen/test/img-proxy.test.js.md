@@ -19,21 +19,6 @@ gelten unverändert — sie verteilen sich jetzt nur auf zwei Dateien:
   SERVER      — beides zusammen, für Prüfungen der Art "kommt X irgendwo vor"
 ```
 
-<a id="normalisierung"></a>
-## `const normalisierung = SERVER_ONLY.slice(`
-
-```text
-`//api/img-proxy?…` trifft die Route NICHT und landet im SPA-Catch-all:
-200 mit text/html, also die leere Anwendungshülle. Für ein <img> ergibt
-das eine weisse Fläche bei Status 200 — ohne Log-Eintrag und ohne
-Cache-Schreiben. Vier Symptome, die wie ein Proxy-Fehler aussehen.
-Auf VERHALTEN geprüft, nicht auf die Schreibweise einer bestimmten Zeile:
-Diese Prüfung hing am Wortlaut der ersten von zwei gleichwertigen
-Middlewares. Als die überflüssige entfiel, wurde sie rot, obwohl die
-Normalisierung unverändert stattfindet — genau die Sorte Test, die
-Aufräumen teuer macht.
-```
-
 <a id="stelle"></a>
 ## `assert.match(SERVER, /SELECT mc\.fig_number, mc\.image_url FROM minifi`
 

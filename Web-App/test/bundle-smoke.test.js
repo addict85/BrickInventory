@@ -1,6 +1,10 @@
 /**
  * Rauchtest für das Frontend-Bündel.
  * Ausführlich: docs/begruendungen/test/bundle-smoke.test.js.md#kopf
+ *
+ * „jeder Handler aus dem Markup ist angemeldet“ läuft seit dem 08.11.2026 am
+ * laufenden Bündel in aktionen-dispatcher-oberflaeche.test.js (Gegenprobe:
+ * `closePwModal,` aus registerActions() gestrichen → dort rot).
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -12,52 +16,8 @@ const { BUENDEL: BUNDLE, stelleBuendelSicher } = require('./helpers/buendel');
 stelleBuendelSicher();
 const HTML   = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
-/** Handler des Log-Betrachters: eigenes Popup, klassisches Skript, nicht im Bündel. */
-const LOGVIEWER = new Set(['loadLogs', 'renderLogs', 'toggleAuto', 'toggleLevel']);
-
-/** Alle im Markup und in den Vorlagen verwendeten Handlernamen. */
-function handlerNames() {
-  const names = new Set();
-  const sources = [HTML];
-  for (const f of fs.readdirSync(path.join(ROOT, 'public', 'js'))) {
-    // 00-registry.js enthält Beispielnamen im Kommentar, kein Markup.
-    if (/^\d\d-/.test(f) && f !== '00-registry.js') sources.push(fs.readFileSync(path.join(ROOT, 'public', 'js', f), 'utf8'));
-  }
-  for (const src of sources) {
-    for (const m of src.matchAll(/data-(?:click|change|input|blur|keydown|mouseenter|mouseleave)="([A-Za-z_$][\w$]*)"/g)) {
-      names.add(m[1]);
-    }
-  }
-  // 'fn' stammt aus einem Kommentar-Beispiel in 01-api.js, nicht aus Markup.
-  names.delete('fn');
-  return [...names].filter(n => !LOGVIEWER.has(n)).sort();
-}
-
 test('das Bündel ist gebaut', () => {
   assert.ok(fs.existsSync(BUNDLE), 'public/js/app.bundle.js fehlt trotz stelleBuendelSicher()');
-});
-
-test('jeder Handler aus dem Markup ist bei der Registry angemeldet', () => {
-  const src = fs.readFileSync(BUNDLE, 'utf8');
-  // Die Registrierungen stehen als registerActions({ … }) im Bündel. Nach dem
-  // Minifizieren heisst die Funktion anders, die Objektschlüssel bleiben aber
-  // als Kurzschreibweise erhalten — deshalb wird gegen den Quelltext der
-  // Module geprüft, nicht gegen das minifizierte Ergebnis.
-  const registered = new Set();
-  for (const f of fs.readdirSync(path.join(ROOT, 'public', 'js'))) {
-    if (!f.endsWith('.js') || f === 'app.bundle.js') continue;
-    const s = fs.readFileSync(path.join(ROOT, 'public', 'js', f), 'utf8');
-    for (const m of s.matchAll(/registerActions\(\{([\s\S]*?)\}\);/g)) {
-      for (const part of m[1].split(',')) {
-        const key = part.trim().split(':')[0].trim();
-        if (key) registered.add(key);
-      }
-    }
-  }
-  const missing = handlerNames().filter(n => !registered.has(n));
-  assert.deepEqual(missing, [],
-    `Nicht angemeldet — diese Knöpfe täten beim Klick nichts: ${missing.join(', ')}`);
-  assert.ok(src.length > 1000, 'Bündel ist verdächtig klein');
 });
 
 test('index.html lädt das Bündel und die Sprachdatei in der richtigen Reihenfolge', () => {

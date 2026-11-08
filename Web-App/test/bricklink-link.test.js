@@ -1,13 +1,17 @@
 /**
  * BrickLink-Link-Auflösung für Katalog-Sets (src/katalog/bricklinkLink.ts).
  * Ausführlich: docs/begruendungen/test/bricklink-link.test.js.md#kopf
+ *
+ * Gegenproben (08.11.2026 gemessen, am Bündel in jsdom):
+ *   A  in openCatModal wieder `blBtn.style.display = bl ? '' : 'none'` → rot:
+ *      „der Kauf-Knopf nimmt die Adresse des Servers …“ (Fall ohne Auflösung)
+ *   B  `blBtn.href` wieder aus der Setnummer gebaut
+ *      (`…catalogitem.page?S=${s.set_number}`) → rot: dieselbe Prüfung
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
-const { execFileSync } = require('node:child_process');
+const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
-const ROOT = path.join(__dirname, '..');
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
 const { withVariant, bareNumber, buildUrl, searchUrl } = _req('src/katalog/bricklinkLink.js');
@@ -72,22 +76,29 @@ test('Set-Links behalten den Suffix, Gear-Links nicht', () => {
   assert.match(buildUrl('GEAR', bareNumber('5005358-1')), /\?G=5005358(?!-)/);
 });
 
-test('der Kauf-Button wird nie ausgeblendet', () => {
-  const fs = require('node:fs');
-  const js = fs.readFileSync(path.join(ROOT, 'public', 'js', '09-catalog.js'), 'utf8');
-  const block = js.slice(js.indexOf("G('cat-m-bricklink')") - 600, js.indexOf("G('cat-m-bricklink')") + 800);
-  assert.doesNotMatch(block, /display\s*=\s*'none'/,
-    'Bei Sammelminifiguren war der Button dadurch weg, obwohl der Artikel auf ' +
-    'BrickLink existiert — nur unter einer nicht herleitbaren Nummer');
-  assert.match(block, /search_bricklink/,
-    'Ohne eindeutigen Treffer muss der Button auf die Suche umschalten');
-});
-
-test('der Client baut die Katalog-URL nicht mehr selbst', () => {
-  const fs = require('node:fs');
-  const js = fs.readFileSync(path.join(ROOT, 'public', 'js', '09-catalog.js'), 'utf8');
-  assert.doesNotMatch(js, /catalogitem\.page/,
-    'Die Typ-Entscheidung (Set/Gear/Book) steht nur in catalog_cache auf dem ' +
-    'Server — der Client darf die URL nicht selbst zusammenbauen');
-  assert.match(js, /s\.bricklink/, 'Der Client muss das aufgelöste Feld verwenden');
+test('der Kauf-Knopf nimmt die Adresse des Servers und wird nie ausgeblendet', async () => {
+  const SUCHE = 'https://www.bricklink.com/v2/search.page?q=col001';
+  const GEAR = 'https://www.bricklink.com/v2/catalog/catalogitem.page?G=5005358';
+  const set = (nr, bricklink) => ({ set_number: nr, name: `Artikel ${nr}`, year: 2020, num_parts: 1, bricklink });
+  const { w, d } = await oeffneOberflaeche({
+    '/v1/catalog/sets': { success: true, total: 3, sets: [set('col001-1'), set('5005358-1'), set('99999-1')] },
+    '/v1/catalog/sets/col001-1': { success: true, set: set('col001-1', { url: SUCHE, exact: false, type: 'MINIFIG', number: 'col001' }) },
+    '/v1/catalog/sets/5005358-1': { success: true, set: set('5005358-1', { url: GEAR, exact: true, type: 'GEAR', number: '5005358' }) },
+    '/v1/catalog/sets/99999-1': { success: true, set: set('99999-1', null) },
+  });
+  try {
+    await reiter(w, 'catalog');
+    const knopf = () => d.getElementById('cat-m-bricklink');
+    for (const [nr, href, text] of [
+      ['col001-1', SUCHE, 'Auf BrickLink suchen'],
+      ['5005358-1', GEAR, 'Auf BrickLink kaufen'],
+      // Ohne Auflösung die Suche nach der Nummer — nicht ein ausgeblendeter Knopf.
+      ['99999-1', 'https://www.bricklink.com/v2/search.page?q=99999-1', 'Auf BrickLink kaufen'],
+    ]) {
+      assert.ok(await warte(() => d.querySelector(`[data-click="openCatModal"][data-arg="${nr}"]`)), `Kachel ${nr}`);
+      d.querySelector(`[data-click="openCatModal"][data-arg="${nr}"]`).click();
+      assert.ok(await warte(() => d.getElementById('cat-m-sub').textContent === nr), `Dialog ${nr}`);
+      assert.deepEqual([knopf().style.display, knopf().getAttribute('href'), knopf().textContent.trim()], ['', href, text], nr);
+    }
+  } finally { w.close(); }
 });

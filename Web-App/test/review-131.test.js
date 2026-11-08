@@ -1,6 +1,14 @@
 /**
  * Prüfungen aus dem Review-Durchgang hardened-131.
  * Ausführlich: docs/begruendungen/test/review-131.test.js.md#kopf
+ *
+ * Gegenproben (08.11.2026 gemessen, je einzeln):
+ *   A  in der Strom-Route der erste send() vor die Anmeldung der Hörer
+ *      gezogen → rot: „der CSV-Fortschrittsstrom überlebt Gegendruck …“
+ *      (ReferenceError in cleanup); csvImportBus.off() in cleanup gestrichen → rot
+ * Gestrichen, weil anderswo ausgeführt: Sitzungsschlüssel in Produktion →
+ * startverbot.test.js K/L, compose.yaml ohne SESSION_SECRET → compose-
+ * geheimnisse A; Pfad-Normalisierung → sicherheit-querschnitt-db I.
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,7 +35,6 @@ async function dbReachable() {
 
 test('Teile-Rückfallebene für fremde Sets', async (t) => {
   if (!(await dbReachable())) {
-    await db.pool.end().catch(() => {});
     if (process.env.REQUIRE_DB === '1') {
       throw new Error('REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.');
     }
@@ -71,9 +78,8 @@ test('Teile-Rückfallebene für fremde Sets', async (t) => {
     assert.equal(r.total, 0);
     assert.equal(r.source, 'db');
   });
-
-  await db.pool.end().catch(() => {});
 });
+test.after(() => db.pool.end().catch(() => {}));
 
 // ── Regeln ──────────────────────────────────────────────────────────────────
 
@@ -111,26 +117,6 @@ test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
     if (!geschuetzt) offen.push(`${stellen[i][1].toUpperCase()} ${stellen[i][2]}`);
   }
   assert.deepEqual(offen, [], `weder Anmeldung noch Drossel: ${offen.join(', ')}`);
-});
-
-test('der Sitzungsschlüssel darf in Produktion kein Beispielwert sein', () => {
-  const src = quelle('server.ts');
-  const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
-  // compose.yaml trägt keinen Wert mehr, sie reicht ihn als Docker-Secret
-  // herein; der frühere Beispielwert steht in alten Kopien und bleibt gesperrt.
-  assert.match(compose, /SESSION_SECRET_FILE:\s*\/run\/secrets\/session_secret/, 'compose.yaml reicht SESSION_SECRET als Datei herein');
-  assert.doesNotMatch(compose, /^\s*SESSION_SECRET:/m, 'SESSION_SECRET steht als Umgebungsvariable in compose.yaml');
-  assert.ok(src.includes("'change-me-to-a-long-random-string'"),
-    'server.ts weist den früheren Beispielwert aus compose.yaml nicht zurück');
-  assert.match(src, /SESSION_SECRET[\s\S]{0,1200}?length\s*<\s*\d+/,
-    'keine Mindestlänge für SESSION_SECRET');
-});
-
-test('Pfade werden an genau EINER Stelle normalisiert', () => {
-  const src = quelle('server.ts');
-  const treffer = [...src.matchAll(/req\.url\.startsWith\('\/\/'\)/g)];
-  assert.equal(treffer.length, 1,
-    `${treffer.length} Middlewares ziehen doppelte Schrägstriche zusammen — eine reicht`);
 });
 
 test('die Barcode-Suche zählt ihre Rebrickable-Aufrufe', () => {
@@ -212,26 +198,36 @@ test('alle drei CSV-Importwege entschärfen zurück', () => {
     'Teile und Figuren: ein hier erzeugter Export käme mit Hochkomma zurück');
 });
 
-test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', () => {
-  // Gemeldet als 500er im Serverprotokoll, direkt nach dem Gegendruck-Hinweis:
-  //   ReferenceError: Cannot access 'onProgress' before initialization
-  // send() ruft bei vollem Puffer sofort cleanup() auf. Stand der erste
-  // send()-Aufruf VOR den Anmeldungen, griff cleanup() auf ein const zu, das …
-  // Ausführlich: docs/begruendungen/test/review-131.test.js.md#src-stelle-2
-  const src = require('./helpers/sources').setKernQuelle();
-  const strom = src.slice(src.indexOf("res.setHeader('Content-Type', 'text/event-stream')"),
-                          src.indexOf('function cleanup()'));
-
-  // Genau zwei Leerzeichen Einrückung = oberste Ebene des Handlers. Tiefer
-  // eingerückte send()-Aufrufe stehen INNERHALB der Rückrufe (onNotify, die
-  // Zeitgeber) und laufen erst später.
-  const ersterVersand = strom.search(/^  send\(/m);
-  assert.ok(ersterVersand > 0, 'kein Statusversand auf oberster Ebene gefunden');
-
-  for (const name of ['const onProgress', 'const onNotify', 'const fallbackTimer', 'const heartbeat']) {
-    const pos = strom.indexOf(name);
-    assert.ok(pos > 0, `${name} nicht gefunden`);
-    assert.ok(pos < ersterVersand,
-      `${name} entsteht erst NACH dem ersten send() — Gegendruck beim ersten Schreiben endet dann im ReferenceError`);
+test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', async (t) => {
+  if (!(await dbReachable())) {
+    if (process.env.REQUIRE_DB === '1') throw new Error('REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.');
+    return t.skip('Test-DB nicht erreichbar');
   }
+  const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [`strom_${process.pid}`])).id;
+  t.after(() => db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {}));
+  // Ein voller Puffer schon beim ersten Schreiben: send() ruft dann sofort cleanup() auf.
+  const express = require('express');
+  const app = express();
+  let geschrieben = 0;
+  app.use((req, res, next) => {
+    req.session = { userId: uid };
+    const schreibe = res.write.bind(res);
+    res.write = (...a) => { schreibe(...a); return ++geschrieben > 1; };
+    next();
+  });
+  app.use('/api/v1', _req('routes/api_v1/index.js'));
+  const fehler = [];
+  app.use((e, _req2, res, _next) => { fehler.push(e); res.end(); });
+  const srv = app.listen(0);
+  t.after(() => new Promise(r => srv.close(r)));
+  // Der Strom hört auf NOTIFY anderer Worker; die Verbindung dafür hielte den Prozess offen.
+  t.after(() => _req('db/pgNotify.js').close());
+  const { csvImportBus } = _req('src/auftraege/importAuftrag.js');
+  const r = await fetch(`http://localhost:${srv.address().port}/api/v1/sets/import/csv/stream`, { signal: AbortSignal.timeout(10_000) });
+  const text = await r.text();
+  assert.equal(r.status, 200);
+  assert.match(text, /^data: \{/, 'Der erste Stand kommt nicht an');
+  assert.deepEqual(fehler.map(e => e.message), [], 'cleanup() greift auf noch nicht angelegte Hörer zu');
+  // Aufgeräumt: kein Hörer bleibt am Bus hängen.
+  assert.equal(csvImportBus.listenerCount(`progress:${uid}`), 0);
 });

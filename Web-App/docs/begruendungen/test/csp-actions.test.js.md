@@ -23,66 +23,6 @@ Wert in einem data-Attribut nie als Code gelesen wird.
 Ausführen: npm test
 ```
 
-<a id="server"></a>
-## `const server = fs.readFileSync(path.join(__dirname, '..', 'server.ts')`
-
-```text
-img-src trug ein pauschales `https:` mit der Begründung, Set-Bilder kämen
-direkt von den CDNs. Seit hardened-69 stimmt das nicht mehr: imgUrl()
-schickt jede absolute Adresse durch /api/img-proxy, und alle Bilder
-verlangen Anmeldung. Die Erlaubnis blieb nur stehen — und ein
-eingeschleustes <img src="https://fremd/?daten"> ist eine Anfrage nach
-draussen, auch ohne ausführbares Skript. Genau den Kanal schliesst
-connect-src 'self' auf der anderen Seite.
-```
-
-<a id="entry"></a>
-## `const entry = fs.readFileSync(path.join(PUB, 'js', 'main.js'), 'utf8')`
-
-```text
-11-actions.js hat kein eigenes <script>-Tag mehr — es steckt im gebündelten
-js/app.bundle.js. Ohne den Dispatcher wäre die App unbedienbar (alle
-Interaktionen laufen seit der CSP-Umstellung über data-click/data-change),
-deshalb wird geprüft, dass er Teil des Bündels IST und dass das Bündel
-geladen wird.
-Seit der Umstellung auf ES-Module gibt es keine Dateiliste mehr, sondern
-einen Modulgraphen: js/main.js importiert den Dispatcher, esbuild zieht
-ihn darüber ins Bündel.
-```
-
-<a id="strip"></a>
-## `const strip = src => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|`
-
-```text
-── Was sich geändert hat ────────────────────────────────────────────────
-Vorher prüfte dieser Test, ob der Handlername IRGENDWO als Funktion
-definiert ist. Das war die richtige Frage, solange der Dispatcher über
-window[name] auflöste — definiert hiess dann automatisch erreichbar.
-
-Mit ES-Modulen stimmt das nicht mehr: Eine Funktion kann sauber definiert
-und trotzdem unerreichbar sein, wenn ihr Modul sie nicht bei der Registry
-anmeldet (js/00-registry.js). Geprüft wird deshalb jetzt die Anmeldung.
-
-Kommentare werden vor dem Sammeln entfernt: Der Erklärtext in
-00-registry.js nennt selbst ein data-click-Beispiel und würde sonst als
-fehlender Handler gemeldet.
-```
-
-<a id="versuch"></a>
-## `const versuch = ACT.match(/setTimeout\(\(\) => \{([^}]*)\}, 1000\)/);`
-
-```text
-── Die Absicht statt des Wortlauts ──────────────────────────────────────
-
-Hier stand der Aufruf ausgeschrieben, `el.src = ''` eingeschlossen. Genau
-dieses leere src war aber selbst ein Fehler: Der Browser loest es gegen
-die SEITENadresse auf und laedt die Startseite als Bild (siehe
-leeres-bildquell.test.js). Beim Berichtigen schlug diese Zusicherung an —
-obwohl die Absicht unveraendert war und der Fehler damit gerade
-verschwand. Geprueft wird deshalb die Absicht: Adresse merken, Attribut
-abraeumen, nach einer Sekunde dieselbe Adresse erneut setzen.
-```
-
 <a id="ausnahme"></a>
 ## `const AUSNAHME = new Set(['delInstr']);`
 
@@ -161,19 +101,6 @@ Fehlern stammen:
      unsichtbar — Barrierefreiheit, nicht Optik.
   3. Farben kommen aus Tokens, nicht als Literal. Sonst zieht die nächste
      Designänderung an diesem Knopf vorbei.
-```
-
-<a id="html"></a>
-## `const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'ind`
-
-```text
-── Woher dieser Test kommt ─────────────────────────────────────────────
-index.html lud Plus Jakarta Sans und JetBrains Mono von Google — die
-letzte Fremdquelle, nachdem qrcodejs genau deswegen nach public/vendor/
-gezogen ist. Drei Gründe, das zu beenden: eine LAN-/Offline-Installation
-bekam die Schriften gar nicht, jeder Seitenaufruf meldete IP und
-User-Agent an einen Dritten, und die CSP musste zwei fremde Hosts offen
-halten. Die Dateien liegen jetzt unter public/vendor/fonts/.
 ```
 
 <a id="html-2"></a>

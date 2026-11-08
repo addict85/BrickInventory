@@ -54,37 +54,6 @@ Ein eigener XML-Maskierer daneben waere eine zweite Fassung derselben Regel.
    `import { esc } from './00-escapen.js'` gilt unveraendert.
 ```
 
-<a id="stelle"></a>
-## `assert.ok(src.includes('<INVENTORY>'),`
-
-```text
-── Kein Ausschnitt zwischen <INVENTORY> und </INVENTORY> mehr ──────────
-
-Hier stand genau das, und es passte zum alten Aufbau: EIN Template, das
-den Rahmen und die Felder in einem Zug zusammensetzte. Seit dem Umzug
-baut item() die Felder und baueWantedXml() den Rahmen — zwischen den
-beiden INVENTORY-Marken steht also nichts mehr, und der Ausschnitt war
-LEER. Die Prüfung meldete „<ITEMTYPE> steht nicht mehr im Aufbau", und
-das war richtig gemeldet: Sie hatte nichts mehr zu lesen.
-
-Gelesen wird deshalb die ganze Datei. Sie enthält nur dieses eine
-Format; ein Ausschnitt gewinnt hier nichts und kann ins Leere zeigen.
-```
-
-<a id="fn-stelle"></a>
-## `const fn = fs.readFileSync(path.join(WURZEL, 'public', 'js', '00-escap`
-
-```text
-Der Grund, warum die Webapp KEINEN eigenen XML-Maskierer bekommt. Faellt
-eine der fuenf Ersetzungen aus esc() heraus, ist diese Entscheidung falsch
-— und das soll hier auffallen und nicht in einer kaputten Wunschliste.
-
-Gelesen wird js/00-escapen.js (siehe Umzug 2 im Kopf). Die Datei enthaelt
-NUR esc(), deshalb braucht es hier keinen Ausschnitt mehr — und damit
-auch keinen Anker auf die naechste Funktion, der beim naechsten Umbau
-ins Leere zeigt.
-```
-
 <a id="core"></a>
 ## `const core = ohneKommentare(require('./helpers/sources').coreQuelle())`
 

@@ -19,6 +19,9 @@
  *        seine Posten keine Umlaute tragen. Genau dafür gibt es Fall 8.
  *   D  die Stückelung ganz entfernt (immer ein Stück)
  *      → `pass 11 / fail 2`. Rot sind die Fälle 7 und 8.
+ * Gegenproben (08.11.2026 gemessen):
+ *   E  `<ITEMTYPE>${p.type}</ITEMTYPE>` ohne esc() → rot: Fall 5
+ *   F  in esc() die Ersetzung für ' gestrichen → rot: Fall 5b
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -87,6 +90,13 @@ test('5. Sonderzeichen werden maskiert, und & zuerst', async () => {
   // Die Reihenfolge: Wird & nicht zuerst ersetzt, wird aus `<` erst `&lt;`
   // und daraus `&amp;lt;` — BrickLink zeigte dann wörtlich „&lt;".
   assert.ok(!/&amp;lt;|&amp;quot;/.test(xml), `Doppelt maskiert:\n${xml}`);
+  // Auch die Art: Jedes Textfeld geht durch esc(), nicht nur die Nummer.
+  assert.match(baueWantedXml([{ type: 'P<&', part: '1', color: 5, qty: 1 }]), /<ITEMTYPE>P&lt;&amp;<\/ITEMTYPE>/);
+});
+
+test('5b. esc() kennt alle fünf XML-Entitäten — die Wunschliste hat keinen eigenen Maskierer', async () => {
+  const { esc } = await import(`file://${path.join(ROOT, 'public', 'js', '00-escapen.js')}`);
+  assert.equal(esc(`&<>"'`), '&amp;&lt;&gt;&quot;&#39;');
 });
 
 test('6. die Menge ist mindestens 1', async () => {

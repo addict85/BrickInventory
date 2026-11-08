@@ -34,15 +34,3 @@ zusammengezogen ist: Die Drossel (checkLoginAllowed) sitzt jetzt IN dieser
 Funktion, POST /login ruft sie über anmelden() auf. Ohne den Eintrag würde
 ausgerechnet das Zusammenlegen als ungeschützter Endpunkt gemeldet.
 ```
-
-<a id="src-stelle-2"></a>
-## `const src = require('./helpers/sources').setKernQuelle();`
-
-```text
-Gemeldet als 500er im Serverprotokoll, direkt nach dem Gegendruck-Hinweis:
-  ReferenceError: Cannot access 'onProgress' before initialization
-send() ruft bei vollem Puffer sofort cleanup() auf. Stand der erste
-send()-Aufruf VOR den Anmeldungen, griff cleanup() auf ein const zu, das
-es noch nicht gab. Geprüft wird deshalb die Reihenfolge: Der erste
-Statusversand muss NACH allen Dingen stehen, die cleanup() anfasst.
-```

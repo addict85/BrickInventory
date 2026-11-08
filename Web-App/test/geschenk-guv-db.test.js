@@ -13,6 +13,9 @@
  *   B  in conditionRows() (src/finanzen/priceHistory.ts) wieder
  *      `purchase_price: base > 0 ? base : null` → rot: „Teil und Figur“
  *      (by_condition.N.purchase_price null statt 0)
+ * Gegenprobe (08.11.2026 gemessen):
+ *   C  in computePnl grand_total nur aus den Sets (`summeAus(setResults…)`) →
+ *      rot: „der Gesamtwert kommt fertig …“ ('240.00')
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -69,6 +72,11 @@ test('Kaufpreis 0 ist ein Geschenk: Betrag ja, Prozent nein', { concurrency: 1 }
     assert.equal(z.baseline_pnl_pct, null);
     assert.equal(z.pnl_betrag, 240, 'der Betrag ist der Marktwert: 2 × 120');
     assert.equal(z.pnl_abs, '240.00');
+  });
+
+  await t.test('der Gesamtwert kommt fertig: Sets, Teile und Figuren', () => {
+    // 2 × 120 (Set) + 10 × 0,40 (Teil) + 1 × 6 (Figur); die Clients addieren nicht selbst.
+    assert.equal(pnl.totals.grand_total, '250.00');
   });
 
   await t.test('Kachel', () => {

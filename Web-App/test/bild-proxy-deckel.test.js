@@ -24,6 +24,11 @@
  *      entfernt → ebenda rot (zweiter Abruf beim CDN)
  *   H  auch 403 wird gemerkt (`r.status === 404 || r.status === 403`) → rot:
  *      „nur 404 wird gemerkt, kein 403“
+ *   I  in vomCdn `imgProxyFailures.notFound++` bzw. `.error++` gestrichen → rot:
+ *      „Fehler werden gezählt und protokolliert“; ebenso die Meldung
+ *      „CDN antwortete …“ auf console.info statt console.error bei 403
+ *   J  in bildProbe() `looks_like` ohne den JPEG-Zweig bzw. die Probe ohne
+ *      'Accept-Encoding': 'identity' → rot: „die Probe zeigt, WAS …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -51,18 +56,27 @@ const { raeumeBildCacheAuf } = _req('src/katalog/bilder/imgCacheServe.js');
 const cacheDir = path.join(wurzel, 'data', 'img_proxy_cache');
 
 const geholt = [];
+const kopfzeilen = [];
 let cdnTyp = 'image/png';
 let cdnStatus = 200;
+let cdnRumpf = Buffer.alloc(300, 7);
+let cdnKopf = {};
+let cdnNetzfehler = false;
 const echt = https.get;
-https.get = (url, _o, cb) => {
+https.get = (url, o, cb) => {
   geholt.push(String(url));
+  kopfzeilen.push(o?.headers ?? {});
   const req = Object.assign(new EventEmitter(), { setTimeout: () => req, destroy: () => {} });
-  const bild = Buffer.alloc(300, 7);
+  const bild = cdnRumpf;
+  if (cdnNetzfehler) {
+    setImmediate(() => req.emit('error', Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' })));
+    return req;
+  }
   setImmediate(() =>
     cb(
       Object.assign(Readable.from([bild]), {
         statusCode: cdnStatus,
-        headers: { 'content-type': cdnTyp, 'content-length': String(bild.length) },
+        headers: { 'content-type': cdnTyp, 'content-length': String(bild.length), ...cdnKopf },
       }),
     ),
   );
@@ -251,4 +265,72 @@ test('der Deckel löscht das am längsten unbenutzte Bild', async () => {
       .join(''),
     'bbbccc',
   );
+});
+
+test('Fehler werden gezählt und protokolliert', async () => {
+  const { imgProxyFailures: f } = _req('src/katalog/bilder/imgProxyStats.js');
+  const vorher = { ...f };
+  const fehler = [];
+  const echtError = console.error;
+  console.error = (...a) => fehler.push(a.join(' '));
+  try {
+    for (const [status, netz, adresse] of [
+      [404, false, 'https://cdn.rebrickable.com/media/sets/zaehl-404.jpg'],
+      [403, false, 'https://cdn.rebrickable.com/media/sets/zaehl-403.jpg'],
+      [200, true, 'https://cdn.rebrickable.com/media/sets/zaehl-netz.jpg'],
+    ]) {
+      // Je Abruf ein eigenes Konto: Die Drossel (drei je Minute) soll hier nicht greifen.
+      konto = 400000 + status * 1000 + (process.pid % 1000);
+      cdnStatus = status;
+      cdnNetzfehler = netz;
+      const r = await fetch(basis + encodeURIComponent(adresse));
+      await r.arrayBuffer();
+      if (netz) assert.equal(r.status, 502);
+    }
+  } finally {
+    console.error = echtError;
+    cdnStatus = 200;
+    cdnNetzfehler = false;
+  }
+  assert.deepEqual([f.notFound - vorher.notFound, f.other - vorher.other, f.error - vorher.error], [1, 1, 1]);
+  assert.match(f.lastError, /ECONNRESET/);
+  assert.ok(
+    fehler.some(z => z.includes('CDN antwortete 403') && z.includes('zaehl-403')),
+    fehler.join('\n'),
+  );
+  assert.ok(
+    fehler.some(z => z.includes('Verbindungsfehler') && z.includes('ECONNRESET')),
+    fehler.join('\n'),
+  );
+});
+
+test('die Probe zeigt, WAS ausgeliefert wird', async () => {
+  const { bildProbe } = _req('src/verwaltung/dienst.js');
+  const adresse = 'https://cdn.rebrickable.com/media/sets/probe-1.jpg';
+  try {
+    cdnRumpf = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
+    kopfzeilen.length = 0;
+    const jpeg = await bildProbe(adresse);
+    assert.equal(jpeg.body_check.looks_like, 'JPEG');
+    assert.match(jpeg.body_check.first_bytes_hex, /^ff d8 ff e0/);
+    assert.deepEqual(
+      jpeg.probes.map(p => [p.variant, p.status]),
+      [
+        ['mit Referer', 200],
+        ['ohne Referer', 200],
+        ['nackt', 200],
+      ],
+    );
+    // Dieselbe Anforderung wie der Proxy: unkomprimiert.
+    assert.equal(kopfzeilen.at(-1)['Accept-Encoding'], 'identity');
+    assert.equal(typeof jpeg.proxy_failures.notFound, 'number');
+    // Ein CDN, das trotzdem komprimiert, fällt in der Antwort auf.
+    cdnRumpf = Buffer.from([0x1f, 0x8b, 8, 0, 0, 0, 0, 0]);
+    cdnKopf = { 'content-encoding': 'gzip' };
+    const gz = await bildProbe(adresse);
+    assert.deepEqual([gz.body_check.looks_like, gz.probes[0].content_encoding], ['gzip (komprimiert!)', 'gzip']);
+  } finally {
+    cdnRumpf = Buffer.alloc(300, 7);
+    cdnKopf = {};
+  }
 });
