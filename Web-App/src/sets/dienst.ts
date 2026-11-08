@@ -9,6 +9,7 @@ import { APP_ROOT } from '../infra/appPaths';
 import { stelleAuftragEin } from '../auftraege/dienst';
 import { resolveImageLocal, proxyImageUrl } from '../katalog/bilder/images';
 import { getSetting } from '../einstellungen/settings';
+import { setBildSichtbar } from '../katalog/bilder/bildBlickfeld';
 import { normalizeSetNumber } from './setAdd';
 import { istErsatzteil } from '../infra/validate';
 import { istVermutung } from '../katalog/barcodeQuelle';
@@ -33,6 +34,25 @@ export type { KatalogTeil, ListenTeil, SetStamm } from './zeilen';
 /** Ohne Eintrag null. */
 export async function setInfo(setNumber: string): Promise<SetStamm | null> {
   return (await repo.setStamm(mitVersion(setNumber))) ?? null;
+}
+
+/** Was das fragende Konto über eine Nummer erfahren darf: Ein fremder Platzhalter
+ * antwortet wie eine nie erfasste Nummer, ein fremdes Bild wird nicht genannt. */
+export async function setInfoFuerKonto(uid: number, setNumber: string) {
+  const n = mitVersion(setNumber);
+  const stamm = await setInfo(n);
+  const imBlickfeld = !!(stamm?.image_local || stamm?.platzhalter) && await setBildSichtbar(uid, n);
+  if (!stamm || (stamm.platzhalter && !imBlickfeld)) return { success: true as const, set_number: n, name: n, im_katalog: false as const };
+  const { platzhalter: _platzhalter, ...row } = stamm;
+  return { success: true as const, set_number: n, ...row, image_local: imBlickfeld ? row.image_local : null,
+    name: row.name || n, im_katalog: true as const };
+}
+
+/** Ein fremdes Set-Bild liefert die Bildroute nicht aus (bildBlickfeld.ts); der Treffer nennt es auch nicht. */
+export async function setZumBarcodeFuerKonto(uid: number, rohBarcode: string): Promise<BarcodeTreffer | null> {
+  const treffer = await setZumBarcode(rohBarcode);
+  if (treffer?.image_local && !await setBildSichtbar(uid, treffer.set_number)) treffer.image_local = null;
+  return treffer;
 }
 
 export interface BarcodeTreffer {
