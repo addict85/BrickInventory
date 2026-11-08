@@ -12,7 +12,7 @@
     <string name="settings_default_condition_global">— Globale Vorgabe —</string>
     <string name="monitoring_default_condition">Standard-Zustand</string>
     <string name="settings_price_basis">Preisgrundlage für BrickLink-Bewertungen</string>
-    <string name="settings_condition_new">Neu</string>
+    <string name="settings_condition_new">Neuware</string>
     <string name="settings_condition_used">Gebraucht</string>
     <string name="settings_save">Speichern</string>
     <string name="settings_logout">Abmelden</string>
@@ -490,7 +490,7 @@
     <string name="pdfexp_almost_done">PDF wird gleich fertig…</string>
     <string name="pdfexp_downloading">PDF wird heruntergeladen…</string>
     <string name="pdfexp_finalizing">PDF wird finalisiert…</string>
-    <string name="condition_new">Neu</string>
+    <string name="condition_new">Neuware</string>
     <string name="condition_used">Gebraucht</string>
     <string name="acq_delete_title">Erfassung löschen</string>
     <string name="acq_delete_text">Diese Kaufpreis-Erfassung wirklich löschen? Die Gesamtanzahl wird angepasst.</string>
@@ -973,8 +973,8 @@
     <string name="zert_titel_erstkontakt">Diesem Server vertrauen?</string>
     <string name="zert_titel_unbekannt">Unbekanntes Zertifikat</string>
     <string name="zert_titel_geaendert">Das Zertifikat des Servers hat sich geändert</string>
-    <string name="zert_text_erstkontakt">Das ist die erste verschlüsselte Verbindung zu %1$s. Der Fingerabdruck ist eine Kennung, die zu diesem Server gehört. Vergleiche ihn Zeichen für Zeichen mit dem, den die Web-App unter Einstellungen → Server-Zertifikat zeigt. Erst nach deinem Ja merkt sich die App ihn und nimmt danach nur noch Zertifikate an, die dazu passen.</string>
-    <string name="zert_text_unbekannt">Die App kann nicht prüfen, wer hinter %1$s steht: Der Server hat sein Zertifikat selbst ausgestellt, oder deine eigene Stelle hat es getan. Bei einem Server zu Hause ist das üblich, es könnte aber auch jemand dazwischen sein.\n\nSo gehst du vor:\n1. Öffne die Web-App am Computer.\n2. Gehe zu Einstellungen → Server-Zertifikat.\n3. Schreibe die letzten 24 Zeichen des Fingerabdrucks unten ins Feld.\n\nDer Fingerabdruck ist eine Kennung, die zu diesem Server gehört. Stimmt sie überein, ist es dein Server. Hier steht nur sein Anfang.</string>
+    <string name="zert_text_erstkontakt">Das ist die erste verschlüsselte Verbindung zu %1$s. Am einfachsten richtest du sie mit dem QR-Code aus der Web-App ein (Einstellungen). Wenn kein QR-Code möglich ist: Der Fingerabdruck ist eine Kennung, die zu diesem Server gehört. Vergleiche ihn Zeichen für Zeichen mit dem, den die Web-App unter Einstellungen → Server-Zertifikat zeigt. Erst nach deinem Ja merkt sich die App ihn und nimmt danach nur noch Zertifikate an, die dazu passen.</string>
+    <string name="zert_text_unbekannt">Die App kann nicht prüfen, wer hinter %1$s steht: Der Server hat sein Zertifikat selbst ausgestellt, oder deine eigene Stelle hat es getan. Bei einem Server zu Hause ist das üblich, es könnte aber auch jemand dazwischen sein.\n\nAm einfachsten scannst du den QR-Code aus der Web-App (Einstellungen). Wenn kein QR-Code möglich ist, gehst du so vor:\n1. Öffne die Web-App am Computer.\n2. Gehe zu Einstellungen → Server-Zertifikat.\n3. Schreibe die letzten 24 Zeichen des Fingerabdrucks unten ins Feld.\n\nDer Fingerabdruck ist eine Kennung, die zu diesem Server gehört. Stimmt sie überein, ist es dein Server. Hier steht nur sein Anfang.</string>
     <string name="zert_text_geaendert">%1$s zeigt ein anderes Zertifikat als das bestätigte. Das geschieht, wenn der Server einen neuen Schlüssel bekommt – oder wenn jemand dazwischen mithört. Es wurde nichts gesendet. Nur annehmen, wenn du den Server selbst umgestellt hast: Den neuen Fingerabdruck zeigt nur die Web-App (Einstellungen → Server-Zertifikat); schreibe seine letzten 24 Zeichen von dort ab.</string>
     <string name="zert_fingerabdruck">Fingerabdruck (SHA-256 des öffentlichen Schlüssels)</string>
     <string name="zert_bisher">Bisher bestätigt</string>

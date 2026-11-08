@@ -205,7 +205,8 @@ async function scrapeInstructions(setNumber: string) {
  */
 export const DOWNLOAD_MAX_BYTES = 300 * 1024 * 1024;
 
-async function downloadFile(url: string, destPath: string, maxBytes = DOWNLOAD_MAX_BYTES) {
+/** `anfang`: Was die Datei einleiten muss (Anleitungen: `%PDF-`), sonst landet sie nicht im gemeinsamen Cache. */
+async function downloadFile(url: string, destPath: string, maxBytes = DOWNLOAD_MAX_BYTES, anfang?: Buffer) {
   if (fs.existsSync(destPath)) return true;
   fs.mkdirSync(path.dirname(destPath), { recursive: true });
   // Was hier landet, liefert der Server an jedes Konto aus: deshalb die
@@ -228,7 +229,21 @@ async function downloadFile(url: string, destPath: string, maxBytes = DOWNLOAD_M
     return false;
   }
   if ((await fs.promises.stat(destPath)).size < 100) { await fs.promises.rm(destPath, { force: true }); return false; }
+  if (anfang && !(await beginntMit(destPath, anfang))) {
+    console.warn(`[download] Anfang der Datei passt nicht, verworfen: ${url}`);
+    await fs.promises.rm(destPath, { force: true });
+    return false;
+  }
   return true;
+}
+
+async function beginntMit(datei: string, anfang: Buffer): Promise<boolean> {
+  const f = await fs.promises.open(datei, 'r');
+  try {
+    const kopf = Buffer.alloc(anfang.length);
+    const { bytesRead } = await f.read(kopf, 0, anfang.length, 0);
+    return bytesRead === anfang.length && kopf.equals(anfang);
+  } finally { await f.close(); }
 }
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }

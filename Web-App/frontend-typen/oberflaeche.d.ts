@@ -41,7 +41,7 @@ type Feld = HTMLInputElement
 interface PdfAnsicht { width: number; height: number }
 interface PdfSeite {
   getViewport(o: { scale: number }): PdfAnsicht;
-  render(o: { canvasContext: CanvasRenderingContext2D | null; viewport: PdfAnsicht }): { promise: Promise<void>; cancel(): void };
+  render(o: { canvasContext: CanvasRenderingContext2D | null; viewport: PdfAnsicht; background?: string }): { promise: Promise<void>; cancel(): void };
   cleanup(): void;
 }
 interface PdfDokument { numPages: number; getPage(n: number): Promise<PdfSeite>; destroy(): void }

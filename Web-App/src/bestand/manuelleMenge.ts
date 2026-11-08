@@ -49,8 +49,8 @@ export async function passeManuelleMengeAn(art: ManuelleArt, uid: number, schlue
     for (const a of erfassungen) {
       if (rest <= 0) break;
       const weg = Math.min(a.quantity, rest);
-      if (weg >= a.quantity) await repo.entferneErfassung(tx, art, a.id);
-      else await repo.kuerzeErfassung(tx, art, a.id, weg);
+      if (weg >= a.quantity) await repo.entferneErfassung(tx, art, a.id, [uid]);
+      else await repo.kuerzeErfassung(tx, art, a.id, weg, [uid]);
       rest -= weg;
     }
     return soll;

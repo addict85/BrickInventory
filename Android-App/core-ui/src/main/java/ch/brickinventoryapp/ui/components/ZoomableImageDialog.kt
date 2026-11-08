@@ -30,7 +30,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -72,7 +71,7 @@ fun ZoomableImageDialog(
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Color.White)
+                .background(MaterialTheme.colorScheme.surface)
                 .pointerInput(Unit) {
                     detectTransformGestures { _, pan, zoom, _ ->
                         val newScale = (zoomScale * zoom).coerceIn(ZOOM_MIN, ZOOM_MAX)
@@ -89,6 +88,8 @@ fun ZoomableImageDialog(
                 imageLoader = imageLoader,
                 contentDescription = contentDescription,
                 ersatzGroesse = 96.dp,
+                // Der Dialog folgt dem Design; nur das Bild steht auf (im Dunkeln gedämpftem) Weiss.
+                bildgrund = true,
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1f)
@@ -110,13 +111,13 @@ fun ZoomableImageDialog(
 @Composable
 private fun BildZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifier) {
     Row(
-        modifier.background(Color.Black.copy(alpha = 0.08f), shape = Formen.chip).padding(horizontal = Abstaende.winzig),
+        modifier.background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), shape = Formen.chip).padding(horizontal = Abstaende.winzig),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         MitTooltip(stringResource(R.string.pdfview_zoom_out)) {
             val an = zoom > ZOOM_MIN + 0.01f
             IconButton(onClick = { setzeZoom(zoom / ZOOM_SCHRITT) }, enabled = an) {
-                Icon(Icons.Default.ZoomOut, stringResource(R.string.pdfview_zoom_out), tint = Color.Black.copy(alpha = if (an) 1f else 0.38f))
+                Icon(Icons.Default.ZoomOut, stringResource(R.string.pdfview_zoom_out), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (an) 1f else 0.38f))
             }
         }
         Box(
@@ -124,12 +125,12 @@ private fun BildZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Mo
                 .defaultMinSize(minWidth = 56.dp, minHeight = 48.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text("${(zoom * 100).roundToInt()} %", color = Color.Black, style = MaterialTheme.typography.labelMedium)
+            Text("${(zoom * 100).roundToInt()} %", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelMedium)
         }
         MitTooltip(stringResource(R.string.pdfview_zoom_in)) {
             val an = zoom < ZOOM_MAX - 0.01f
             IconButton(onClick = { setzeZoom(zoom * ZOOM_SCHRITT) }, enabled = an) {
-                Icon(Icons.Default.ZoomIn, stringResource(R.string.pdfview_zoom_in), tint = Color.Black.copy(alpha = if (an) 1f else 0.38f))
+                Icon(Icons.Default.ZoomIn, stringResource(R.string.pdfview_zoom_in), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (an) 1f else 0.38f))
             }
         }
     }
@@ -148,9 +149,9 @@ private fun BoxScope.SchliessenKnopf(onDismiss: () -> Unit) {
             onClick = onDismiss,
             modifier = Modifier
                 .padding(20.dp)
-                .background(Color.Black.copy(alpha = 0.08f), shape = CircleShape)
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), shape = CircleShape)
         ) {
-            Icon(Icons.Default.Close, stringResource(R.string.detail_close), tint = Color.Black)
+            Icon(Icons.Default.Close, stringResource(R.string.detail_close), tint = MaterialTheme.colorScheme.onSurface)
         }
     }
 }

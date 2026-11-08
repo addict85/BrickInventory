@@ -27,21 +27,24 @@ export function erfassungImSchreibfeld(tx: DbSchnittstelle, art: ErfassungsArt, 
     [id, wids, ...schluessel.slice(0, s.keys.length)]);
 }
 
-export async function setzeErfassungsMenge(tx: DbSchnittstelle, art: ErfassungsArt, id: number, menge: number): Promise<void> {
-  await tx.run(`UPDATE ${SHAPES[art].table} SET quantity=$1 WHERE id=$2`, [menge, id]);
+/** Schreibend nur in den übergebenen Konten: zweite Linie hinter der Prüfung des Aufrufers. */
+export async function setzeErfassungsMenge(tx: DbSchnittstelle, art: ErfassungsArt, id: number, menge: number, konten: number[]): Promise<void> {
+  await tx.run(`UPDATE ${SHAPES[art].table} SET quantity=$1 WHERE id=$2 AND user_id = ANY($3)`, [menge, id, konten]);
 }
 
-export async function setzeErfassungsPreis(tx: DbSchnittstelle, art: ErfassungsArt, id: number, preis: number | null, geschaetzt: boolean): Promise<void> {
-  await tx.run(`UPDATE ${SHAPES[art].table} SET ${SHAPES[art].price}=$1, price_estimated=$2 WHERE id=$3`, [preis, geschaetzt, id]);
+export async function setzeErfassungsPreis(tx: DbSchnittstelle, art: ErfassungsArt, id: number, preis: number | null, geschaetzt: boolean, konten: number[]): Promise<void> {
+  await tx.run(`UPDATE ${SHAPES[art].table} SET ${SHAPES[art].price}=$1, price_estimated=$2 WHERE id=$3 AND user_id = ANY($4)`,
+    [preis, geschaetzt, id, konten]);
 }
 
-export async function setzeErfassungsZustand(tx: DbSchnittstelle, art: ErfassungsArt, id: number, zustand: string): Promise<void> {
-  await tx.run(`UPDATE ${SHAPES[art].table} SET condition=$1 WHERE id=$2`, [zustand, id]);
+export async function setzeErfassungsZustand(tx: DbSchnittstelle, art: ErfassungsArt, id: number, zustand: string, konten: number[]): Promise<void> {
+  await tx.run(`UPDATE ${SHAPES[art].table} SET condition=$1 WHERE id=$2 AND user_id = ANY($3)`, [zustand, id, konten]);
 }
 
 /** Mittag statt Mitternacht: Der Tag bleibt derselbe, in welcher Zeitzone man auch liest. */
-export async function setzeErfassungsDatum(tx: DbSchnittstelle, art: ErfassungsArt, id: number, datum: string): Promise<void> {
-  await tx.run(`UPDATE ${SHAPES[art].table} SET created_at=$1::date + interval '12 hours', tag=$1::date WHERE id=$2`, [datum, id]);
+export async function setzeErfassungsDatum(tx: DbSchnittstelle, art: ErfassungsArt, id: number, datum: string, konten: number[]): Promise<void> {
+  await tx.run(`UPDATE ${SHAPES[art].table} SET created_at=$1::date + interval '12 hours', tag=$1::date
+                 WHERE id=$2 AND user_id = ANY($3)`, [datum, id, konten]);
 }
 
 export async function loescheErfassung(tx: DbSchnittstelle, art: ErfassungsArt, id: number, besitzer: number): Promise<void> {

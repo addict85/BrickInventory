@@ -88,6 +88,7 @@ async function werkbank(umbau) {
   // waehrend eines laufenden Renders gezoomt wird.
   const offeneRender = [];
   const optionen = [];
+  const hintergruende = [];
   let anhalten = false;
   w.pdfjsLib = {
     getDocument(o) {
@@ -96,7 +97,8 @@ async function werkbank(umbau) {
         numPages: SEITEN,
         getPage() { return Promise.resolve({
           getViewport({ scale }) { return { width: SEITE_W * scale, height: SEITE_H * scale }; },
-          render({ viewport }) {
+          render({ viewport, background }) {
+            hintergruende.push(background);
             if (!anhalten) return { promise: Promise.resolve(), cancel() {} };
             let frei; const p = new Promise(r => { frei = r; });
             offeneRender.push({ frei, breite: Math.round(viewport.width) });
@@ -119,7 +121,7 @@ async function werkbank(umbau) {
   await warte(40);
 
   return {
-    w, behaelter, aktionen, warte, beobachtet, offeneRender, optionen,
+    w, behaelter, aktionen, warte, beobachtet, offeneRender, optionen, hintergruende,
     set anhalten(v) { anhalten = v; },
     set sichtbar(v) { sichtbareSeiten = new Set(v); },
     faktor: () => parseFloat(w.document.getElementById('pdf-viewer-zoom').textContent) / 100,
@@ -306,4 +308,14 @@ test('Zoom im PDF-Betrachter', async (t) => {
       'Ein Raddreh hat mehr als einen Schritt bewirkt — dann sammelt jedes ' +
       'geoeffnete PDF einen weiteren Zuhoerer an.');
   });
+});
+
+// Gegenprobe (08.11.2026 gemessen): in 12-pdfviewer.js den Platzhalter wieder `background:#fff` gegeben
+// → rot „Platzhalter ist gedämpft“; `background: '#fff'` aus render() gestrichen → rot „Seite bleibt weiss“.
+test('Platzhalter ist gedämpft, die gerenderte Seite bleibt weiss', async () => {
+  const b = await werkbank();
+  const grund = b.platzhalter()[0].style.background;
+  assert.ok(grund && !/^(#fff|#ffffff|white|rgb\(255, ?255, ?255\))$/i.test(grund), `Platzhalter ist gedämpft (${grund})`);
+  assert.ok(b.hintergruende.length > 0, 'es wurde gerendert');
+  assert.ok(b.hintergruende.every(h => h === '#fff'), 'Seite bleibt weiss');
 });

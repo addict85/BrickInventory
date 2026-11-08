@@ -8,6 +8,8 @@ import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { pfadSegment } from '../infra/fremdeAdressen';
 import * as repo from './repository/anleitungen';
 
+const PDF_ANFANG = Buffer.from('%PDF-');
+
 /** Mehrere Quellen, weil keine allein alle Sets führt; aus Bildseiten notfalls
  * ein PDF.
  * Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#abschnitt */
@@ -123,7 +125,7 @@ export async function downloadSetInstructions(setNumber: string,
       fs.mkdirSync(instrDir, { recursive: true });
       const pdfDest  = path.join(instrDir, pdfName);
       const relPath  = `/data/instructions/${pdfName}`;
-      const ok = await downloadFile(bdpUrl, pdfDest);
+      const ok = await downloadFile(bdpUrl, pdfDest, undefined, PDF_ANFANG);
       if (ok) {
         console.log(`[instr] BDP fallback downloaded: ${bdpUrl}`);
         await repo.merkeAnleitung(n, bdpUrl, `Anleitung ${n} (BDP)`, relPath).catch(logAndContinue('anleitung:ok'));
@@ -167,7 +169,7 @@ export async function downloadSetInstructions(setNumber: string,
     const safeName = `${safeBase}_${i + 1}.pdf`;
     const dest = path.join(instrDir, safeName);
     const relPath = `/data/instructions/${safeName}`;
-    const ok = await downloadFile(instr.url, dest);
+    const ok = await downloadFile(instr.url, dest, undefined, PDF_ANFANG);
     try { await repo.merkeAnleitung(n, instr.url, instr.description||`Anleitung ${n}`, ok?relPath:null); saved++; } catch (e) { meldeUndWeiter('anleitungen:datei-eintragen', e); }
     if (i < instrList.length - 1) await sleep(200);
   }

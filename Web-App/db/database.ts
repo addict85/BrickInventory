@@ -5,6 +5,7 @@ import { Pool, types as pgTypes, Client } from 'pg';
 import type { PoolClient } from 'pg';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { runMigrations, sichereNutzerdaten, abgeloestesEntfernen } from './migrate';
+import type { DbSchnittstelle } from './typen';
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
@@ -113,14 +114,7 @@ async function datenbankAntwortet(): Promise<boolean> {
 /** Eine Zeile mit den Spalten, die der Aufrufer liest; weitere reisen als `unknown` mit. */
 export type Zeile<T extends object = object> = T & Record<string, unknown>;
 
-export interface DbSchnittstelle {
-  /** T beschreibt die Zeile. Ohne Angabe ist sie `unknown`: Wer Felder liest,
-   * muss sagen, welche — numeric und bigint kommen als Zeichenkette. */
-  all<T = unknown>(sql: string, params?: unknown[]): Promise<T[]>;
-  get<T = unknown>(sql: string, params?: unknown[]): Promise<T | undefined>;
-  run(sql: string, params?: unknown[]): Promise<{ changes: number }>;
-  exec(sql: string): Promise<void>;
-}
+export type { DbSchnittstelle };
 
 /** Die laufende Transaktion dieses Aufrufpfads: all/get/run/exec gehen dann
  * über ihre Verbindung, auch aus Repositories ohne tx-Parameter. Sonst läse

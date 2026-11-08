@@ -10,6 +10,8 @@
  *      gerechnet (statische Kopie) → rot: „der Hash passt zum ausgelieferten Block“
  *   B  startgeruestWeg() in showApp() entfernt → rot: „angemeldet: Gerüst weg“
  *   C  styles.css wieder im <head> → rot: „vor dem ersten Stylesheet“
+ *   D  (08.11.2026) die zwei Regeln für [data-theme=brick] aus dem Startstil
+ *      gestrichen → rot: „Stein (Blau): Kopf blau, Grund blaugrau“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -55,5 +57,19 @@ test('abgemeldet: Gerüst weg, Anmeldung da', async () => {
   try {
     await warte(() => d.getElementById('login-screen').style.display === 'flex');
     assert.equal(d.getElementById('startgeruest'), null);
+  } finally { w.close(); }
+});
+
+test('Stein (Blau): Kopf blau, Grund blaugrau', () => {
+  const { JSDOM } = require('jsdom');
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8')
+    .replace('<html lang="de">', '<html lang="de" data-theme="brick">');
+  // JSDOM führt Skripte standardmässig nicht aus und lädt keine fremden: Das Gerüst steht allein da.
+  const w = new JSDOM(html).window;
+  try {
+    const kopf = w.getComputedStyle(w.document.querySelector('#startgeruest .sg-kopf'));
+    assert.equal(kopf.backgroundColor, 'rgb(61, 90, 128)', 'die Kopfkachel ist blau wie im Stein-Design');
+    const grund = w.getComputedStyle(w.document.querySelector('#startgeruest'));
+    assert.equal(grund.getPropertyValue('--sg-bg').trim(), '#c9d5e2', 'der Grund ist blaugrau, nicht weiss');
   } finally { w.close(); }
 });
