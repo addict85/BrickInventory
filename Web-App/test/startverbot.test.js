@@ -88,7 +88,7 @@ test('ohne NODE_ENV kein öffentliches Sitzungsgeheimnis', { timeout: 30_000 }, 
 
 test('Beispielwert und zu kurzes Sitzungsgeheimnis: Start verweigert', { timeout: 30_000 }, async () => {
   const env = { DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', APP_BASE_URL: 'https://lego.example.org' };
-  for (const [geheimnis, grund] of [['change-me-to-a-long-random-string', /Beispielwert/], ['nur-31-zeichen-lang-1234567890x', /zu kurz \(31 Zeichen/]]) {
+  for (const [geheimnis, grund] of [['change-me-to-a-long-random-string', /Beispielwert/], ['nur-31-zeichen-lang-1234567890x', /zu kurz \(nötig sind mindestens 32 Zeichen/]]) {
     const { code, log } = await starte({ ...env, SESSION_SECRET: geheimnis });
     assert.equal(code, 1, log.slice(-400));
     assert.match(log, grund);

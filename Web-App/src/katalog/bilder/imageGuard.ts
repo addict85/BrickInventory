@@ -1,6 +1,6 @@
 /** Jimp dekodiert ohne Grenze; ein kleines Bild mit riesigen Abmessungen wäre
  * eine Dekompressionsbombe. Ausführlich: docs/begruendungen/src/katalog/bilder/imageGuard.ts.md#abschnitt */
-import { logAndContinue } from '../../infra/fehler';
+import { einzeilig, logAndContinue } from '../../infra/fehler';
 import fs from 'fs';
 
 /** Obergrenze in Pixeln (Breite × Höhe). 40 MP ≈ 160 MB Bitmap. */
@@ -52,7 +52,7 @@ export async function isDecodable(filePath: string) {
     // Eine leere oder abgeschnittene Datei ist kein Bild: Sonst liesse der Rückfall
     // „unbekanntes Format" sie durch.
     if (bytesRead < 10) {
-      console.warn(`[image-guard] ${bytesRead} Byte gelesen — keine Bilddatei: ${filePath}`);
+      console.warn(einzeilig(`[image-guard] ${bytesRead} Byte gelesen — keine Bilddatei: ${filePath}`));
       return false;
     }
     const dim = readDimensions(buf.subarray(0, bytesRead));
@@ -62,7 +62,7 @@ export async function isDecodable(filePath: string) {
     if (!dim.width || !dim.height) return true;
     const pixels = dim.width * dim.height;
     if (pixels > MAX_PIXELS) {
-      console.error(`[image-guard] abgelehnt: ${dim.width}×${dim.height} = ${Math.round(pixels / 1e6)} MP > ${MAX_PIXELS / 1e6} MP — ${filePath}`);
+      console.error(einzeilig(`[image-guard] abgelehnt: ${dim.width}×${dim.height} = ${Math.round(pixels / 1e6)} MP > ${MAX_PIXELS / 1e6} MP — ${filePath}`));
       return false;
     }
     return true;

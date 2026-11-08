@@ -4,7 +4,7 @@ import PDFDocument from 'pdfkit';
 import { INSTRUCTIONS_DIR } from '../infra/appPaths';
 import { setTimeout as warte } from 'node:timers/promises';
 import { downloadFile, scrapeInstructions, httpsGetRobust, brickset } from './quellen';
-import { meldeFehler, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
+import { meldeFehler, fehlertext, einzeilig, logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { pfadSegment } from '../infra/fremdeAdressen';
 import * as repo from './repository/anleitungen';
@@ -85,7 +85,7 @@ export async function scrapeInstructionsFromFallback(setNumber: string) {
       console.log(`[brickinstructions] Fallback triggered for ${n}`);
       return 1;
     }
-  } catch (e) { console.log(`[brickinstructions] Fallback failed for ${n}: ${fehlertext(e)}`); }
+  } catch (e) { console.log(einzeilig(`[brickinstructions] Fallback failed for ${n}: ${fehlertext(e)}`)); }
   return 0;
 }
 
@@ -146,7 +146,7 @@ export async function downloadSetInstructions(setNumber: string,
           brickinstructions_base:baseUrl, brickinstructions_hdrs:hdrs, brickinstructions_first:fund.erstesBild });
         
       }
-    } catch (e) { console.log(`  BrickInstructions probe failed: ${fehlertext(e)}`); }
+    } catch (e) { console.log(einzeilig(`  BrickInstructions probe failed: ${fehlertext(e)}`)); }
   }
 
   if (!instrList.length) {  return 0; }

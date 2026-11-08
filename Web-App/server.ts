@@ -77,7 +77,7 @@ function sitzungsGeheimnis(): string {
   const grund = !gesetzt ? 'SESSION_SECRET ist nicht gesetzt — Start verweigert. Bitte in compose.yaml/ENV setzen'
       + (konfig().produktion ? '.' : ', oder für die Entwicklung NODE_ENV=development.')
     : PLATZHALTER_GEHEIMNISSE.includes(gesetzt) ? 'SESSION_SECRET steht noch auf dem Beispielwert aus compose.yaml — Start verweigert. Bitte einen eigenen Zufallswert eintragen, z. B. `openssl rand -base64 48`.'
-    : gesetzt.length < 32 ? `SESSION_SECRET ist zu kurz (${gesetzt.length} Zeichen, nötig sind mindestens 32) — Start verweigert.`
+    : gesetzt.length < 32 ? 'SESSION_SECRET ist zu kurz (nötig sind mindestens 32 Zeichen) — Start verweigert.'
     : null;
   if (grund) { console.error(`❌ [session] ${grund}`); process.exit(1); }
   return konfig().sessionSecret!;

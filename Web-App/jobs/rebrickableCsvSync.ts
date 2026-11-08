@@ -3,7 +3,7 @@
 import { meldeStartZustand } from '../src/auftraege/startZustand';
 import { fetchMissingBlIds } from '../src/katalog/partsImport';
 import { getRbKey, httpsGetRobust, ladeKatalogCsv } from '../src/katalog/quellen';
-import { fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../src/infra/fehler';
+import { einzeilig, fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../src/infra/fehler';
 import { merkeBlFarbnummer, blFarbnummerAus } from '../src/katalog/blZuordnung';
 import { liesZustand, setzeZustand, loescheZustand } from '../src/auftraege/laufzustand';
 import fs from 'fs';
@@ -17,7 +17,7 @@ const SYNC_KEY = 'rb_csv_last_sync';
 const PART_CAT_KEY = 'rb_part_categories_last_sync';
 const CATALOG_EXTRAS_KEY = 'rb_catalog_extras_last_sync';
 
-function log(msg: string) { console.log(`[rb-csv-sync] ${msg}`); }
+function log(msg: string) { console.log(einzeilig(`[rb-csv-sync] ${msg}`)); }
 
 // __dirname ist hier RICHTIG: Der Worker liegt neben dieser Datei, ob aus den
 // Quellen oder aus dist/; ein Pfad über die Wurzel träfe dort nichts.

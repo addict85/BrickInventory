@@ -26,7 +26,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const APP = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main');
 
-const ohneHtmlKommentare = s => s.replace(/<!--[\s\S]*?-->/g, '');
+const ohneHtmlKommentare = require('./helpers/sources').ohneHtmlKommentare;
 const lies = p => fs.readFileSync(p, 'utf8');
 
 /**

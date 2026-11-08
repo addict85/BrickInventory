@@ -20,6 +20,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { ROOT, ohneKommentare } = require('./helpers/sources');
+const ohneHtmlKommentare = require('./helpers/sources').ohneHtmlKommentare;
+const regexWoertlich = require('./helpers/sources').regexWoertlich;
 const { androidDatei } = require('./helpers/android');
 
 const app = (rel) => ohneKommentare(fs.readFileSync(androidDatei(rel), 'utf8'));
@@ -110,10 +112,10 @@ test('4. und die Webapp löst ihn ein', () => {
 // MainActivity ist für den Launcher exportiert; jede App kann sie mit beliebigen
 // Extras starten. Ein Ziel nimmt darum nur der nicht exportierte Einstieg an.
 
-const MANIFEST = () => fs.readFileSync(
-  path.join(ROOT, '../Android-App/app/src/main/AndroidManifest.xml'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+const MANIFEST = () => ohneHtmlKommentare(fs.readFileSync(
+  path.join(ROOT, '../Android-App/app/src/main/AndroidManifest.xml'), 'utf8'));
 const element = (xml, art, name) => {
-  const m = xml.match(new RegExp(`<${art}\\b[^>]*android:name="${name.replace(/\./g, '\\.')}"[^>]*>`));
+  const m = xml.match(new RegExp(`<${art}\\b[^>]*android:name="${regexWoertlich(name)}"[^>]*>`));
   assert.ok(m, `<${art} ${name}> fehlt im Manifest`);
   return m[0];
 };

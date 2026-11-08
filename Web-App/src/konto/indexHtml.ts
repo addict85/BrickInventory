@@ -48,10 +48,16 @@ export function invalidateTheme() {
 
 async function readIndex(): Promise<string> {
   if (_html !== null && konfig().produktion) return _html;
-  const st = await fs.promises.stat(INDEX_PATH);
-  if (_html === null || st.mtimeMs !== _mtime) {
-    _html = ohneKommentare(await fs.promises.readFile(INDEX_PATH, 'utf8'));
-    _mtime = st.mtimeMs;
+  // Ein Griff für Stand und Inhalt: Beides gehört so sicher zur selben Datei.
+  const datei = await fs.promises.open(INDEX_PATH, 'r');
+  try {
+    const st = await datei.stat();
+    if (_html === null || st.mtimeMs !== _mtime) {
+      _html = ohneKommentare(await datei.readFile('utf8'));
+      _mtime = st.mtimeMs;
+    }
+  } finally {
+    await datei.close();
   }
   return _html;
 }

@@ -366,7 +366,7 @@ async function vorDemUpload(req: express.Request, res: express.Response, next: e
 
 router.post('/sets/:setNumber/instructions/upload', requireToken, kontoSchranke('upload'), vorDemUpload, uploadInstr.single('file'), async (req: OffeneAnfrage<'POST /api/v1/sets/:setNumber/instructions/upload'>, res: Antwort<'POST /api/v1/sets/:setNumber/instructions/upload'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-  const grund = await pruefeEmpfangeneDatei(req.file.path, req.file.mimetype);
+  const grund = await pruefeEmpfangeneDatei(fassade.ANLEITUNGS_WURZEL, req.file.path, req.file.mimetype);
   if (grund === 'upload_kontingent_voll')
     return sendeFehler(req, res, 413, grund, { mb: uploadKontingentMb() });
   if (grund) return sendeFehler(req, res, 400, grund);

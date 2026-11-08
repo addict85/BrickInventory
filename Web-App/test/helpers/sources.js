@@ -146,6 +146,21 @@ function ohneKommentare(src) {
 
 module.exports.ohneKommentare = ohneKommentare;
 
+/** HTML-Kommentare bis zum Fixpunkt: Ein Rest wie „<!<!---->--“ ergäbe sonst einen neuen. */
+function ohneHtmlKommentare(src) {
+  let s = String(src);
+  for (let vorher; vorher !== s; ) {
+    vorher = s;
+    s = s.replace(/<!--[\s\S]*?-->/g, '');
+  }
+  return s;
+}
+module.exports.ohneHtmlKommentare = ohneHtmlKommentare;
+
+/** Für `new RegExp`: jedes Sonderzeichen wörtlich. */
+const regexWoertlich = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+module.exports.regexWoertlich = regexWoertlich;
+
 /** Der Vorschau-Weg des Bild-Proxys (src/katalog/bilder/proxyThumbs.ts). */
 function proxyThumbQuelle() {
   const path = require('path'), fs = require('fs');

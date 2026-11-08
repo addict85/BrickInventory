@@ -1,6 +1,6 @@
 import { kontingentFrei, speicherePreis, cacheUsable, preisAusCache, parallelLimit, bestandsPlaetze, merklistenPlaetze,
   erfassteZustaende, gewuenschteZustaende, schreibeTagesstand, setsMitAlarm } from '../src/finanzen/financeCalc';
-import { meldeFehler, fehlertext, meldeUndLiefere, logAndContinue } from '../src/infra/fehler';
+import { meldeFehler, fehlertext, einzeilig, meldeUndLiefere, logAndContinue } from '../src/infra/fehler';
 import { liesZustand, setzeZustand } from '../src/auftraege/laufzustand';
 import { AuftragVerschieben, type AuftragsKontext } from './auftragsWorker';
 import { getGlobalSetting, getSetting } from '../src/einstellungen/settings';
@@ -37,7 +37,7 @@ async function acquireRunLock(): Promise<(() => Promise<void>) | null> {
 
 function log(msg: string) {
   const line = `[${new Date().toISOString().replace('T',' ').substring(0,19)}] ${msg}`;
-  console.log('  PriceJob:', msg);
+  console.log(einzeilig(`  PriceJob: ${msg}`));
   _log.unshift(line);
   if (_log.length > 50) _log.length = 50;
 }
