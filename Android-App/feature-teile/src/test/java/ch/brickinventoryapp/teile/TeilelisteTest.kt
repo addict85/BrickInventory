@@ -13,6 +13,8 @@ import org.junit.Before
 import org.junit.Test
 import java.net.URLEncoder
 import ch.brickinventoryapp.testing.PfadServer
+import ch.brickinventoryapp.testing.SetsRepository
+import ch.brickinventoryapp.testing.TeileRepository
 import ch.brickinventoryapp.testing.TestDienste
 
 /**

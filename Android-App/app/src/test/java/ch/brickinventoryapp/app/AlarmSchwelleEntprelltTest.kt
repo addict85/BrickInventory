@@ -4,6 +4,10 @@ import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
+import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.SetsRepository
+import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.testing.VerwaltungRepository
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenViewModel

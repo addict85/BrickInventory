@@ -47,6 +47,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.testing.VerwaltungRepository
 import ch.brickinventoryapp.zustand.ui.AnmeldeFormular
 import ch.brickinventoryapp.zustand.ui.CsvImportUiState
 import ch.brickinventoryapp.konto.ui.KontoUiState

@@ -3,6 +3,7 @@ package ch.brickinventoryapp.finanzen
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.FinanzenRepository
+import ch.brickinventoryapp.testing.FinanzenRepository
 import ch.brickinventoryapp.zustand.ui.Aenderung
 import ch.brickinventoryapp.finanzen.ui.viewmodel.FinanzViewModel
 import kotlinx.coroutines.Dispatchers

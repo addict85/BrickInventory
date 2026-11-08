@@ -8,6 +8,9 @@ import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
+import ch.brickinventoryapp.testing.FinanzenRepository
+import ch.brickinventoryapp.testing.KatalogRepository
+import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.zustand.ui.Aenderung
 import ch.brickinventoryapp.sammlung.ui.viewmodel.MerklisteViewModel
 import kotlinx.coroutines.Dispatchers

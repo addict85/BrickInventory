@@ -7,6 +7,9 @@ import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.model.ui.model.AuftragStatus
+import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.ResponseCache
+import ch.brickinventoryapp.testing.VerwaltungRepository
 import ch.brickinventoryapp.verwaltung.ui.screens.auftragsArtText
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte

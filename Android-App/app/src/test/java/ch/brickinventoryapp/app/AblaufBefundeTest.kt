@@ -36,6 +36,8 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.testing.HaushaltRepository
+import ch.brickinventoryapp.testing.KontoRepository
 import ch.brickinventoryapp.zustand.ui.AppUiState
 import ch.brickinventoryapp.sammlung.ui.BarcodeUiState
 import ch.brickinventoryapp.zustand.ui.BlickfeldUiState

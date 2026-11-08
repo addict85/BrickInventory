@@ -7,6 +7,12 @@ import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.FigurenRepository
+import ch.brickinventoryapp.testing.FigurenRepository
+import ch.brickinventoryapp.testing.FinanzenRepository
+import ch.brickinventoryapp.testing.HaushaltRepository
+import ch.brickinventoryapp.testing.KatalogRepository
+import ch.brickinventoryapp.testing.SetsRepository
+import ch.brickinventoryapp.testing.TeileRepository
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.finanzen.ui.viewmodel.FinanzViewModel

@@ -33,6 +33,10 @@ import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.api.BrickApiService
 import java.net.ConnectException
 import java.net.SocketTimeoutException
+import ch.brickinventoryapp.testing.FigurenRepository
+import ch.brickinventoryapp.testing.ResponseCache
+import ch.brickinventoryapp.testing.SetsRepository
+import ch.brickinventoryapp.testing.TeileRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**

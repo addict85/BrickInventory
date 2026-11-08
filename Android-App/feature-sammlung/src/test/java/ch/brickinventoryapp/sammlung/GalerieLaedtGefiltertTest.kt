@@ -13,8 +13,10 @@ import kotlinx.coroutines.test.setMain
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import ch.brickinventoryapp.testing.FinanzenRepository
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.testing.TestDienste
 
 /**

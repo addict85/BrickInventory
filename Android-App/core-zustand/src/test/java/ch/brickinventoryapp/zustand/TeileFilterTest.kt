@@ -9,6 +9,9 @@ import org.junit.Test
 import java.io.File
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.ResponseCache
+import ch.brickinventoryapp.testing.SetsRepository
+import ch.brickinventoryapp.testing.TeileRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /** Ein Repository gegen einen Testserver; [block] bekommt beides. */

@@ -40,6 +40,12 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.SetAnleger
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
+import ch.brickinventoryapp.testing.FigurenRepository
+import ch.brickinventoryapp.testing.FinanzenRepository
+import ch.brickinventoryapp.testing.HaushaltRepository
+import ch.brickinventoryapp.testing.KatalogRepository
+import ch.brickinventoryapp.testing.SetsRepository
+import ch.brickinventoryapp.testing.VerwaltungRepository
 import ch.brickinventoryapp.zustand.ui.AnmeldeFormular
 import ch.brickinventoryapp.zustand.ui.CsvImportUiState
 import ch.brickinventoryapp.zustand.ui.Screen

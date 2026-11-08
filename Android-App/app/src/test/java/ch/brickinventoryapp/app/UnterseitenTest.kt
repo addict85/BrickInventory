@@ -33,6 +33,8 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.test.onRoot
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.testing.HaushaltRepository
+import ch.brickinventoryapp.testing.VerwaltungRepository
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.After
 import org.junit.Assert.assertEquals

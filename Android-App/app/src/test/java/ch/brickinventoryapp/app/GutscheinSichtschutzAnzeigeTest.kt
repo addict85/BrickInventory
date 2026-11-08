@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.testing.GutscheineRepository
+import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
 import android.view.WindowManager
 import androidx.activity.ComponentActivity

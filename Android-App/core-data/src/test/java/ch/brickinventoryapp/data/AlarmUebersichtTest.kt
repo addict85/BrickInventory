@@ -12,6 +12,8 @@ import retrofit2.http.DELETE
 import retrofit2.http.PUT
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.ResponseCache
+import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**

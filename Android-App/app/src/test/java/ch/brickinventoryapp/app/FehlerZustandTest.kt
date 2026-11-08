@@ -1,6 +1,14 @@
 package ch.brickinventoryapp.app
 
 import androidx.lifecycle.SavedStateHandle
+import ch.brickinventoryapp.testing.FigurenRepository
+import ch.brickinventoryapp.testing.FinanzenRepository
+import ch.brickinventoryapp.testing.GutscheineRepository
+import ch.brickinventoryapp.testing.HaushaltRepository
+import ch.brickinventoryapp.testing.KatalogRepository
+import ch.brickinventoryapp.testing.ResponseCache
+import ch.brickinventoryapp.testing.SetsRepository
+import ch.brickinventoryapp.testing.TeileRepository
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.data.cache.ResponseCache

@@ -6,6 +6,8 @@ import ch.brickinventoryapp.data.SetAnlegenSchritt
 import ch.brickinventoryapp.model.data.model.AddSetResponse
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
+import ch.brickinventoryapp.testing.KatalogRepository
+import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.zustand.ui.Aenderung
 import ch.brickinventoryapp.sammlung.ui.Pruefphase
 import ch.brickinventoryapp.sammlung.ui.viewmodel.ErfassungViewModel

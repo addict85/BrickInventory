@@ -17,8 +17,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import javax.inject.Singleton
+import ch.brickinventoryapp.testing.FigurenRepository
+import ch.brickinventoryapp.testing.FinanzenRepository
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.SetsRepository
+import ch.brickinventoryapp.testing.TeileRepository
 import ch.brickinventoryapp.testing.TestDienste
 
 /**

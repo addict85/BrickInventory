@@ -12,8 +12,10 @@ import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.model.data.ScopeFilter
 import androidx.lifecycle.SavedStateHandle
 import org.junit.Test
+import ch.brickinventoryapp.testing.FigurenRepository
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.TeileRepository
 import ch.brickinventoryapp.testing.TestDienste
 
 /**

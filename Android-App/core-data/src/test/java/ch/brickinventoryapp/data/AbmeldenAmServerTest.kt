@@ -22,6 +22,8 @@ import retrofit2.Retrofit
 import java.io.File
 import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.ResponseCache
 
 /**
  * Abmelden entwertet den Token am Server (POST /auth/logout mit dem Token), und

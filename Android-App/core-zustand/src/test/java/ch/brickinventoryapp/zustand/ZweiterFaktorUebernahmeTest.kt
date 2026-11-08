@@ -4,6 +4,7 @@ import ch.brickinventoryapp.data.ZweiterFaktorPflicht
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.model.data.model.LoginResponse
 import ch.brickinventoryapp.data.repository.KontoRepository
+import ch.brickinventoryapp.testing.KontoRepository
 import ch.brickinventoryapp.zustand.ui.kontoUebernehmen
 import kotlinx.coroutines.runBlocking
 import org.junit.After

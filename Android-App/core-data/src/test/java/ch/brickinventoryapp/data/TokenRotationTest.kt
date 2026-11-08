@@ -31,6 +31,8 @@ import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.netz.di.PLATZHALTER_BASIS
 import java.io.IOException
 import okhttp3.mockwebserver.SocketPolicy
+import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.testing.TestApi
 
 /**

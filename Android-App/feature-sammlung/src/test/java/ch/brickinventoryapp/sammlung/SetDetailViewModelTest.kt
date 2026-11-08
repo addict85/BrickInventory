@@ -5,6 +5,9 @@ import ch.brickinventoryapp.model.data.model.SetAggregate
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
+import ch.brickinventoryapp.testing.FinanzenRepository
+import ch.brickinventoryapp.testing.HaushaltRepository
+import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.zustand.ui.Aenderung
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef

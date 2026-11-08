@@ -5,6 +5,8 @@ import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.data.model.SetAggregate
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
+import ch.brickinventoryapp.testing.FinanzenRepository
+import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.zustand.ui.Aenderung
 import ch.brickinventoryapp.sammlung.ui.viewmodel.GalerieViewModel
 import kotlinx.coroutines.CoroutineScope

@@ -4,6 +4,10 @@ import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.FigurenRepository
+import ch.brickinventoryapp.testing.FigurenRepository
+import ch.brickinventoryapp.testing.FinanzenRepository
+import ch.brickinventoryapp.testing.HaushaltRepository
+import ch.brickinventoryapp.testing.TeileRepository
 import ch.brickinventoryapp.zustand.ui.Aenderung
 import ch.brickinventoryapp.zustand.ui.viewmodel.KaeufeViewModel
 import kotlinx.coroutines.Dispatchers

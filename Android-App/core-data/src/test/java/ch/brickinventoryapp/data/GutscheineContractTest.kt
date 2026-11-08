@@ -11,8 +11,10 @@ import org.junit.Test
 import ch.brickinventoryapp.data.repository.Ergebnis
 import java.io.File
 import org.json.JSONObject
+import ch.brickinventoryapp.testing.GutscheineRepository
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.testing.TestApi
 
 /**

@@ -18,6 +18,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
+import ch.brickinventoryapp.testing.GutscheineRepository
+import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.testing.TestApi
 
 /**

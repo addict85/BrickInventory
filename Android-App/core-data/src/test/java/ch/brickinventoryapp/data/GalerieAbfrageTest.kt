@@ -19,6 +19,8 @@ import retrofit2.Retrofit
 import java.io.File
 import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.testing.ResponseCache
+import ch.brickinventoryapp.testing.SetsRepository
 
 /**
  * Was die Galerie beim Server BESTELLT — und was davon auf der Platte landet.

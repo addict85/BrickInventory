@@ -5,6 +5,9 @@ import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
+import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.ResponseCache
+import ch.brickinventoryapp.testing.VerwaltungRepository
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringViewModel
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.test.runTest

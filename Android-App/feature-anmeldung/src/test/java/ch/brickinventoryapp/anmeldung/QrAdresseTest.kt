@@ -19,6 +19,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import ch.brickinventoryapp.data.repository.HaushaltRepository
+import ch.brickinventoryapp.testing.HaushaltRepository
+import ch.brickinventoryapp.testing.KontoRepository
 import ch.brickinventoryapp.zustand.ui.Blickfeld
 import java.util.Collections
 import ch.brickinventoryapp.testing.PfadServer

@@ -9,6 +9,8 @@ import ch.brickinventoryapp.model.data.model.Part
 import ch.brickinventoryapp.model.data.model.PartValuationItem
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.FigurenRepository
+import ch.brickinventoryapp.testing.FigurenRepository
+import ch.brickinventoryapp.testing.TeileRepository
 import ch.brickinventoryapp.zustand.ui.ManualItemDetailUiState
 import ch.brickinventoryapp.zustand.ui.Postenart
 import ch.brickinventoryapp.zustand.ui.Screen

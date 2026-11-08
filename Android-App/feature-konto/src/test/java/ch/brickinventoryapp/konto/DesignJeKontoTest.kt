@@ -3,6 +3,7 @@ package ch.brickinventoryapp.konto
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.konto.ui.DesignWahl
+import ch.brickinventoryapp.testing.KontoRepository
 import ch.brickinventoryapp.zustand.ui.ladeEinstellungen
 import ch.brickinventoryapp.konto.ui.viewmodel.KontoViewModel
 import kotlinx.coroutines.Dispatchers

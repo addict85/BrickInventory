@@ -4,6 +4,9 @@ import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
+import ch.brickinventoryapp.testing.HaushaltRepository
+import ch.brickinventoryapp.testing.ResponseCache
+import ch.brickinventoryapp.testing.TeileRepository
 import ch.brickinventoryapp.zustand.ui.Blickfeld
 import ch.brickinventoryapp.zustand.ui.FilterAblage
 import kotlinx.coroutines.test.runTest

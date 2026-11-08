@@ -19,6 +19,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
+import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.zustand.ui.Sitzung
 import ch.brickinventoryapp.testing.NummernTexte
 import ch.brickinventoryapp.testing.ReihenServer

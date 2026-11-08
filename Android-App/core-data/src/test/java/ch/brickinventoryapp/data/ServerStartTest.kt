@@ -8,6 +8,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
 import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.testing.VerwaltungRepository
 import ch.brickinventoryapp.testing.mitRepo
 
 /**

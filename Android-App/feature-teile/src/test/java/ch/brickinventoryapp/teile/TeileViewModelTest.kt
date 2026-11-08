@@ -5,6 +5,8 @@ import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.FigurenRepository
+import ch.brickinventoryapp.testing.FigurenRepository
+import ch.brickinventoryapp.testing.TeileRepository
 import ch.brickinventoryapp.zustand.ui.Aenderung
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileViewModel
 import kotlinx.coroutines.Dispatchers
