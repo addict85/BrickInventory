@@ -48,7 +48,7 @@ function graph() {
     // trotzdem aneinander, also zählen sie als Kanten.
     for (const [datei, ziele] of g) {
       if (!datei.startsWith('js/')) continue;
-      const quelle = fs.readFileSync(path.join(ROOT, 'public', datei), 'utf8');
+      const quelle = fs.readFileSync(`${path.join(ROOT, 'public')}/${datei}`, 'utf8');
       for (const [, ziel] of quelle.matchAll(/\bimport\(\s*['"](\.{1,2}\/[^'"]+\.js)['"]\s*\)/g)) {
         const k = kurz(path.join('public', path.dirname(datei), ziel));
         if (g.has(k) && !ziele.includes(k)) ziele.push(k);
