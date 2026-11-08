@@ -6,7 +6,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.util.fmtInt
+import ch.brickinventoryapp.ui.util.fmtInt
 
 /** „12 Stück“ für eine Mengenplakette „×12“: TalkBack las das Zeichen als „mal“. */
 @Composable

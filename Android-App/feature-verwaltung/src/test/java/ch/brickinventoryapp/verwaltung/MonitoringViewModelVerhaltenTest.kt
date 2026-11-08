@@ -1,0 +1,293 @@
+package ch.brickinventoryapp.verwaltung
+
+import ch.brickinventoryapp.data.MeldungsKanal
+import ch.brickinventoryapp.data.api.BrickApiService
+import ch.brickinventoryapp.data.cache.ResponseCache
+import ch.brickinventoryapp.data.repository.KontoRepository
+import ch.brickinventoryapp.data.repository.VerwaltungRepository
+import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringViewModel
+import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import kotlinx.coroutines.test.runTest
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
+import org.junit.After
+import org.junit.Before
+import org.junit.Test
+import retrofit2.Retrofit
+import java.io.File
+import java.util.concurrent.TimeUnit
+import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.testing.NummernTexte
+
+/**
+ * Das Monitoring-ViewModel, AUSGEFÜHRT statt gelesen.
+ *
+ * ── Warum dieser Test die Ausnahme ist, und warum das ein Problem war ──────
+ * Von 63 Testdateien der App führte genau EINE echtes Verhalten aus
+ * (BrickRepositoryErrorMappingTest); die übrigen 62 vergleichen Zeichenketten
+ * gegen den Quelltext. Das hat einen guten Grund — ohne Android-SDK ging lange
+ * nichts anderes — und zwei schlechte Folgen:
+ *
+ *   1. Ein Anker veraltet stillschweigend. In dieser Reihe sind vier Tests an
+ *      einer Umbenennung oder einer Typannotation zerbrochen, einer davon
+ *      OHNE zu melden, dass er nichts mehr fand.
+ *
+ * Möglich wurde dieser Test durch die Aufteilung: MonitoringViewModel nimmt
+ * genau ein BrickRepository entgegen und ist eine gewöhnliche Klasse — keine
+ * Compose-Laufzeit, kein Android. Vorher standen dieselben Abläufe in Lambdas
+ * innerhalb eines `items {}`-Blocks und liefen ohne Gerät gar nicht erst an.
+ *
+ * ── Was hier geprüft wird ─────────────────────────────────────────────────
+ * Die zwei Zusagen, die beim Umbau als „konnte niemand nachfahren" benannt
+ * wurden — beide Male ein vorweggenommener Zustand mit Rücknahme bei
+ * Fehlschlag. Genau die Sorte Ablauf, die man beim Lesen für richtig hält.
+ *
+ * MockWebServer liefert der Reihe nach, unabhängig vom Pfad; die Tests legen
+ * deshalb genau so viele Antworten hin, wie das ViewModel Abrufe macht.
+ *
+ * Gegenprobe: in ladeJobs() `zugriffEntzogen` nicht
+ * gesetzt → rot „ein 403 nur_admins beendet die Abfrage …“.
+ */
+class MonitoringViewModelVerhaltenTest {
+
+    private lateinit var server: MockWebServer
+    private lateinit var cacheDir: File
+    private lateinit var vm: MonitoringViewModel
+
+    private fun antwort(rumpf: String, code: Int = 200) =
+        MockResponse().setResponseCode(code)
+            .setHeader("Content-Type", "application/json").setBody(rumpf)
+
+    @Before
+    fun auf() {
+        server = MockWebServer()
+        server.start()
+        cacheDir = File(System.getProperty("java.io.tmpdir"), "bim-mon-${System.nanoTime()}")
+        cacheDir.mkdirs()
+
+        val client = OkHttpClient.Builder()
+            .readTimeout(2, TimeUnit.SECONDS).connectTimeout(2, TimeUnit.SECONDS).build()
+        // Dieselbe Json-Konfiguration wie in di/AppModule — sonst prüfte der
+        // Test eine Nachsicht, die es in der App nicht gibt.
+        val json = ApiJson
+        val api = Retrofit.Builder()
+            .baseUrl(server.url("/"))
+            .client(client)
+            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+            .build()
+            .create(BrickApiService::class.java)
+        val cache = ResponseCache { cacheDir }
+        // ── BENANNT und nicht nach Stellung ──────────────────────────────
+        //
+        // Hier standen die sechs Teile positionsweise. Als BrickRepository ein
+        // siebtes bekam (GutscheineRepository, eingefuegt VOR `cache`), rutschte
+        // alles dahinter um eins — und der Uebersetzer meldete „actual type is
+        // 'ResponseCache', but 'GutscheineRepository' was expected". Gefunden
+        // hat das die Action, nicht diese Datei.
+        //
+        // Mit Namen ist die Reihenfolge gleichgueltig: Das naechste Teil kommt
+        // dazu, ohne dass hier etwas bricht — und faellt eines WEG, bricht es
+        // sofort und an der richtigen Stelle.
+        vm = MonitoringViewModel(VerwaltungRepository(api, cache), KontoRepository(api, cache), NummernTexte, MeldungsKanal())
+    }
+
+    @After
+    fun zu() {
+        server.shutdown()
+        cacheDir.deleteRecursively()
+    }
+
+    @Test
+    fun `ein 403 nur_admins beendet die Abfrage, ein anderer Fehler nicht`() = runTest {
+        server.enqueue(antwort("""{"success":false,"error":"Serverfehler"}""", 500))
+        vm.ladeJobs()
+        assert(!vm.state.value.zugriffEntzogen) { "Ein 500 ist kein Rechteentzug" }
+        server.enqueue(antwort("""{"success":false,"code":"nur_admins","error":"Nur für Admins"}""", 403))
+        vm.ladeJobs()
+        assert(vm.state.value.zugriffEntzogen) { "Nach nur_admins soll die Schleife enden" }
+        server.enqueue(antwort("""{"success":true,"jobs":{}}"""))
+        vm.ladeJobs()
+        assert(vm.state.value.zugriffEntzogen) { "Der Entzug bleibt, bis die Seite verlassen wird" }
+    }
+
+    // ── Die Warteschlange ────────────────────────────────────────────────────
+
+    @Test
+    fun `geloeschter Eintrag verschwindet sofort und bleibt weg, wenn der Server zustimmt`() = runTest {
+        server.enqueue(antwort("""{"success":true,"count":2,"entries":[
+            {"set_number":"75192","attempts":1},{"set_number":"10294","attempts":3}]}"""))
+        vm.ladeWarteschlange()
+        assert(vm.state.value.queue.size == 2) { "Vorbedingung: zwei Einträge erwartet" }
+
+        // Nur EINE Antwort: Bei Erfolg wird bewusst NICHT neu geladen — der
+        // vorweggenommene Zustand ist dann schon der richtige, und ein zweiter
+        // Abruf je Löschung wäre pure Last.
+        server.enqueue(antwort("""{"success":true}"""))
+        val ok = vm.entferneEintrag("75192")
+
+        assert(ok) { "Der Server hat zugestimmt, das Ergebnis müsste true sein" }
+        assert(server.requestCount == 2) {
+            "Erwartet: Laden + Löschen. Es waren ${server.requestCount} Abrufe — " +
+                "wird bei Erfolg unnötig neu geladen?"
+        }
+        assert(vm.state.value.queue.map { it.setNumber } == listOf("10294")) {
+            "Nach dem Löschen steht: ${vm.state.value.queue.map { it.setNumber }}"
+        }
+    }
+
+    @Test
+    fun `scheitert das Loeschen, wird die Liste WIEDERHERGESTELLT`() = runTest {
+        server.enqueue(antwort("""{"success":true,"count":2,"entries":[
+            {"set_number":"75192","attempts":1},{"set_number":"10294","attempts":3}]}"""))
+        vm.ladeWarteschlange()
+
+        // Der Löschversuch scheitert. Danach fragt das ViewModel neu — und
+        // bekommt beide Einträge zurück, denn gelöscht wurde nichts.
+        server.enqueue(antwort("""{"error":"kaputt"}""", 500))
+        server.enqueue(antwort("""{"success":true,"count":2,"entries":[
+            {"set_number":"75192","attempts":1},{"set_number":"10294","attempts":3}]}"""))
+        val ok = vm.entferneEintrag("75192")
+
+        assert(!ok) { "Ein 500 darf nicht als Erfolg zurückkommen" }
+        // DAS ist die Zusage: Der vorweggenommene Zustand wurde zurückgenommen.
+        assert(vm.state.value.queue.map { it.setNumber } == listOf("75192", "10294")) {
+            "Der Eintrag bleibt verschwunden, obwohl der Server abgelehnt hat: " +
+                "${vm.state.value.queue.map { it.setNumber }}"
+        }
+    }
+
+    @Test
+    fun `nach dem Fehlschlag wird NEU GELADEN, nicht die alte Kopie zurueckgeschrieben`() = runTest {
+        server.enqueue(antwort("""{"success":true,"count":1,"entries":[{"set_number":"75192","attempts":1}]}"""))
+        vm.ladeWarteschlange()
+
+        // Fehlschlag — und inzwischen ist am Server ein ANDERER Eintrag
+        // dazugekommen. Eine zurückgeschriebene Kopie zeigte ihn nicht.
+        server.enqueue(antwort("""{"error":"kaputt"}""", 500))
+        server.enqueue(antwort("""{"success":true,"count":2,"entries":[
+            {"set_number":"75192","attempts":1},{"set_number":"42100","attempts":1}]}"""))
+        vm.entferneEintrag("75192")
+
+        assert(vm.state.value.queue.map { it.setNumber } == listOf("75192", "42100")) {
+            "Der zwischenzeitlich hinzugekommene Eintrag fehlt — es wurde eine " +
+                "alte Kopie zurückgeschrieben statt neu geladen: " +
+                "${vm.state.value.queue.map { it.setNumber }}"
+        }
+    }
+
+    // ── Das vorgegebene Design ───────────────────────────────────────────────
+    //
+    // Gegenproben (30.10.2026 gemessen):
+    //   A  ladeDesignVorgabe() nimmt r.data.theme statt vorgabe → rot „die
+    //      Auswahl zeigt die Vorgabe, nicht das eigene Design“
+    //   B  setzeDesign() übernimmt den Wert nicht → rot „ein gesetztes Design
+    //      ist sofort die Vorgabe …“
+
+    @Test
+    fun `die Auswahl zeigt die Vorgabe, nicht das eigene Design`() = runTest {
+        server.enqueue(antwort("""{"success":true,"theme":"werkbank","vorgabe":"noppe","eigenes":"werkbank"}"""))
+        vm.ladeDesignVorgabe()
+        assert(vm.state.value.vorgabeDesign == "noppe") { "Steht: ${vm.state.value.vorgabeDesign}" }
+        assert(server.takeRequest().path == "/api/v1/settings/theme")
+    }
+
+    @Test
+    fun `ein gesetztes Design ist sofort die Vorgabe, ein abgelehntes nicht`() = runTest {
+        server.enqueue(antwort("""{"success":true,"theme":"noppe","vorgabe":"noppe"}"""))
+        vm.ladeDesignVorgabe()
+        server.enqueue(antwort("""{"success":true}"""))
+        assert(vm.setzeDesign("brick"))
+        assert(vm.state.value.vorgabeDesign == "brick") { "Steht: ${vm.state.value.vorgabeDesign}" }
+        server.enqueue(antwort("""{"error":"kaputt"}""", 500))
+        assert(!vm.setzeDesign("hochglanz"))
+        assert(vm.state.value.vorgabeDesign == "brick") { "Steht: ${vm.state.value.vorgabeDesign}" }
+    }
+
+    // ── Der Vorgabe-Zustand ──────────────────────────────────────────────────
+
+    @Test
+    fun `der Vorgabe-Zustand springt sofort um und bleibt, wenn der Server zustimmt`() = runTest {
+        server.enqueue(antwort("""{"success":true}"""))
+        val ok = vm.setzeVorgabeZustand("U")
+        assert(ok)
+        assert(vm.state.value.vorgabeZustand == "U") { "Steht: ${vm.state.value.vorgabeZustand}" }
+    }
+
+    @Test
+    fun `scheitert das Setzen, faellt der Vorgabe-Zustand ZURUECK`() = runTest {
+        val vorher = vm.state.value.vorgabeZustand
+        server.enqueue(antwort("""{"error":"kaputt"}""", 500))
+        val ok = vm.setzeVorgabeZustand("U")
+
+        assert(!ok) { "Ein 500 darf nicht als Erfolg zurückkommen" }
+        assert(vm.state.value.vorgabeZustand == vorher) {
+            "Die Oberfläche behauptet dauerhaft '${vm.state.value.vorgabeZustand}', " +
+                "obwohl nie etwas gespeichert wurde"
+        }
+    }
+
+    // ── Laden ────────────────────────────────────────────────────────────────
+
+    @Test
+    fun `ein Fehler beim Job-Abruf loescht die bereits gezeigten Jobs NICHT`() = runTest {
+        server.enqueue(antwort("""{"success":true,"jobs":{"priceJob":{"status":"idle","label":"Preise"}}}"""))
+        vm.ladeJobs()
+        assert(vm.state.value.jobs.keys == setOf("priceJob")) { "Vorbedingung: ein Job erwartet" }
+
+        server.enqueue(antwort("""{"error":"kaputt"}""", 500))
+        vm.ladeJobs()
+
+        assert(vm.state.value.jobs.keys == setOf("priceJob")) {
+            "Ein einzelner fehlgeschlagener Abruf hat die Anzeige geleert — die " +
+                "Seite fragt alle fünf Sekunden, das flackerte bei jedem Aussetzer"
+        }
+        assert(!vm.state.value.aktualisiert) {
+            "Der Ladekringel bleibt nach einem Fehler stehen"
+        }
+    }
+
+    @Test
+    fun `ladeCacheUndGrenzen fuellt alle vier Felder aus vier Abrufen`() = runTest {
+        server.enqueue(antwort("""{"success":true,"prices":7,"price_stale":1,"subsets":2,"catalog":3}"""))
+        server.enqueue(antwort("""{"success":true,"limits":{"rebrickable":100,"bricklink":200,"brickset":300}}"""))
+        server.enqueue(antwort("""{"success":true,"ttl":"48"}"""))
+        server.enqueue(antwort("""{"success":true,"condition":"U"}"""))
+
+        vm.ladeCacheUndGrenzen()
+
+        val s = vm.state.value
+        assert(s.cacheStats?.prices == 7) { "Cache-Zahlen fehlen: ${s.cacheStats}" }
+        assert(s.apiLimits?.brickset == 300) { "Grenzwerte fehlen: ${s.apiLimits}" }
+        assert(s.cacheTtl == "48") { "Cache-Dauer steht auf ${s.cacheTtl}" }
+        assert(s.vorgabeZustand == "U") { "Vorgabe-Zustand steht auf ${s.vorgabeZustand}" }
+        assert(server.requestCount == 4) {
+            "Erwartet waren vier Abrufe, es waren ${server.requestCount}"
+        }
+    }
+
+    // ── Das Server-Protokoll (aus MainViewModel hierher gezogen) ────────────
+    //
+    // Gegenprobe: in ladeProtokoll() den Fehlerzweig ohne `protokollLaden =
+    // false` → „ein Fehler beim Protokoll beendet das Laden" rot.
+
+    @Test
+    fun `das Protokoll kommt mit dem gewaehlten Zeitraum`() = runTest {
+        server.enqueue(antwort("""{"success":true,"logs":[{"id":1,"level":"warn","message":"Probe","logged_at":"2026-10-27T10:00:00Z"}]}"""))
+        vm.ladeProtokoll(30)
+        val v = vm.verwaltungState.value
+        assert(v.protokoll.size == 1 && v.protokoll[0].message == "Probe") { "Protokoll: ${v.protokoll}" }
+        assert(v.protokollMinuten == 30 && !v.protokollLaden)
+        assert(server.takeRequest().path?.contains("30") == true) { "Der Zeitraum ging nicht mit" }
+    }
+
+    @Test
+    fun `ein Fehler beim Protokoll beendet das Laden`() = runTest {
+        server.enqueue(antwort("""{"error":"kaputt"}""", 500))
+        vm.ladeProtokoll()
+        val v = vm.verwaltungState.value
+        assert(!v.protokollLaden) { "Der Kreisel bleibt nach einem Fehler stehen" }
+        assert(v.fehler != null) { "Der Fehler wird nicht gezeigt" }
+    }
+}

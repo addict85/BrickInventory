@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.model.TokenRotation
+import ch.brickinventoryapp.model.data.model.TokenRotation
 import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -15,7 +15,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import ch.brickinventoryapp.di.Rotationsanlass
+import ch.brickinventoryapp.netz.di.Rotationsanlass
 
 /**
  * Wie ein Tausch ausging. VERWORFEN: Während des Tauschs wurde abgemeldet, neu

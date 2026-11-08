@@ -1,0 +1,207 @@
+package ch.brickinventoryapp.app
+
+import org.junit.Test
+import java.io.File
+import ch.brickinventoryapp.testing.Quellen
+
+/**
+ * Die Fokus-Einstellungen des Barcodescanners.
+ *
+ * ── Marcos Befund (Nachtrag 112) ────────────────────────────────────────────
+ * „Die Kamera im Barcodescanner stellt WIEDER nicht scharf."
+ *
+ * Das „wieder" traf zu: Der Dateikopf von BarcodeScannerScreen.kt verweist seit
+ * jeher auf einen `CameraFocusConfigTest` — den es nicht gab. Er ist irgendwann
+ * verschwunden, und damit war die Regel unbewacht. Diese Datei stellt ihn her.
+ *
+ * ── Der Fehler ──────────────────────────────────────────────────────────────
+ * Auf derselben `previewView` standen ZWEI `setOnTouchListener`. Das fügt nicht
+ * hinzu, es ERSETZT: Der zweite lief später (im Kamera-Rückruf) und überschrieb
+ * den ersten stillschweigend.
+ *
+ * Wirksam war damit die Fassung mit `setAutoCancelDuration(3, SECONDS)` — und
+ * genau davor warnt der Kommentar im Code: „Bewusst mit disableAutoCancel():
+ * Ohne das fällt die Kamera nach wenigen Sekunden auf ihre eigene Wahl zurück."
+ * Man tippt, es wird scharf, und Sekunden später ist es wieder weg.
+ */
+class CameraFocusConfigTest {
+
+    private fun scanner(): String =
+        File(Quellen.wurzel, "sammlung/ui/screens/BarcodeScannerScreen.kt").readText()
+
+    private fun code(src: String) = src.lines()
+        .joinToString("\n") { val t = it.trim(); if (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) "" else it }
+
+    private fun aufbau(): String = code(Quellen.lies("ui/screens/KameraAufbau.kt"))
+
+    @Test
+    fun `genau EIN Tap-to-Focus-Listener`() {
+        // Seit der Tipper in KameraAufbau.kt steht (tippZumFokus), setzt ihn jeder
+        // Scanner genau einmal und keiner einen eigenen daneben.
+        val anzahl = Regex("""\.setOnTouchListener""").findAll(aufbau()).count() +
+            Regex("""\.setOnTouchListener""").findAll(code(scanner())).count()
+        assert(Regex("""\btippZumFokus\(""").findAll(code(scanner())).count() == 1) {
+            "Der Barcodescanner setzt den Tipper nicht genau einmal"
+        }
+        assert(anzahl == 1) {
+            "$anzahl Touch-Listener auf previewView. setOnTouchListener ERSETZT — " +
+                "der zuletzt gesetzte gewinnt, und welcher das ist, hängt davon ab, " +
+                "wann der Kamera-Rückruf eintrifft. Genau daran ist der Autofokus " +
+                "in Nachtrag 112 gescheitert."
+        }
+    }
+
+    /**
+     * Jede Datei, die Tap-to-Focus anbietet — nicht nur der Scanner.
+     *
+     * Bis hierher sah dieser Test allein in BarcodeScannerScreen.kt nach. Der
+     * SetupScreen bietet dasselbe an und stand die ganze Zeit auf
+     * `setAutoCancelDuration(3, SECONDS)` — also genau der Fassung, die der
+     * Test zwei Zeilen weiter als Ursache von Nachtrag 112 verbietet. Behoben
+     * wurde damals nur die Kopie, die der Test ansah.
+     *
+     * Die Liste wird deshalb nicht aufgezählt, sondern GEFUNDEN: Wer eine
+     * dritte Kamera-Ansicht baut, ist sofort mitgeprüft, ohne diese Datei
+     * anzufassen. Eine aufgezählte Liste wäre die dritte Fassung derselben
+     * Regel gewesen.
+     *
+     * ── Gegenprobe (Lauf 33635964430) ───────────────────────────────────────
+     * Die erweiterte Prüfung wurde ABSICHTLICH allein veröffentlicht, vor der
+     * Behebung. Der Lauf meldete `354 tests completed, 1 failed`, und zwar
+     * genau diesen Test. Der Fehler war also echt und nicht nachgestellt —
+     * ein künstlich eingebauter Bruch hätte nur gezeigt, dass die Prüfung
+     * greift, nicht dass sie etwas gefunden hat.
+     *
+     * Gefunden hat den Befund übrigens nicht dieser Test, sondern ein
+     * Vergleich gleicher Codeblöcke über den ganzen Baum. Eine Regel, die an
+     * zwei Stellen steht, sieht an jeder einzelnen Stelle richtig aus.
+     */
+    private fun mitTapToFocus(): List<File> {
+        // Die Bildschirme liegen je Modul unter <stamm>/ui/screens; unter() sammelt alle.
+        val treffer = Quellen.unter("ui/screens")
+            .filter { code(it.readText()).let { c -> c.contains("tippZumFokus(") || c.contains("startFocusAndMetering(") } }
+        assert(treffer.size >= 2) {
+            "Nur ${treffer.size} Datei(en) mit Tap-to-Focus gefunden. Erwartet " +
+                "werden mindestens der Barcodescanner und der SetupScreen — " +
+                "findet die Suche weniger, prüft dieser Test nichts und wäre " +
+                "trotzdem grün."
+        }
+        return treffer
+    }
+
+    @Test
+    fun `der Tap-to-Focus haelt den Fokus`() {
+        for (datei in mitTapToFocus()) {
+            // Der Tipper selbst steht in KameraAufbau.kt; geprüft wird er dort für jeden Nutzer.
+            val c = code(datei.readText()) + "\n" + aufbau()
+            assert(c.contains("disableAutoCancel()")) {
+                "${datei.name}: Ohne disableAutoCancel() fällt die Kamera nach " +
+                    "wenigen Sekunden auf ihre eigene Wahl zurück — der Nutzer " +
+                    "stellt gezielt scharf, und es ist gleich wieder weg."
+            }
+            assert(!c.contains("setAutoCancelDuration")) {
+                "${datei.name}: setAutoCancelDuration ist da. Das ist das Gegenteil " +
+                    "von disableAutoCancel() und war die Ursache in Nachtrag 112."
+            }
+        }
+    }
+
+    /**
+     * Der ganze Kamera-Aufbau steht an EINER Stelle.
+     *
+     * ── Warum die Regel schaerfer wurde ─────────────────────────────────────
+     * Ganz zuerst zaehlte dieser Test das Vorkommen der Zeichenfolge
+     * `CONTROL_AF_MODE_CONTINUOUS_PICTURE` in den einzelnen Bildschirmdateien:
+     *
+     * Dann hiess sie „wer eine Vorschau baut, muss den AF-Modus setzen" —
+     * die Fassung fuer eine Welt mit zwei Kopien. Seit auch die BINDUNG
+     * zusammengelegt ist (19 von 23 Zeilen waren zeichengleich), baut niemand
+     * ausser KameraAufbau.kt noch eine Vorschau, eine Bildanalyse oder eine
+     * Bindung. Damit laesst sich das Staerkere pruefen: Es gibt nur einen Ort.
+     *
+     * Der Umbau hat diese Pruefung selbst rot gemeldet — sie fand nur noch
+     * EINE Datei mit `Preview.Builder()` und verlangte mindestens zwei. Das
+     * war kein Verstoss, sondern der Beweis, dass die Zusammenlegung gegriffen
+     * hat; die Regel ist der neuen Struktur nachgezogen.
+     */
+    @Test
+    fun `der Kamera-Aufbau steht nur in KameraAufbau`() {
+        val dateien = Quellen.unter("ui/screens")
+        assert(dateien.size >= 5) {
+            "Nur ${dateien.size} Bildschirmdateien gefunden — der Pfad stimmt nicht, und ein " +
+                "leeres Ergebnis würde diesen Test stillschweigend bestehen lassen."
+        }
+
+        for ((marke, was) in listOf(
+            "CONTROL_AF_MODE_CONTINUOUS_PICTURE" to "Der AF-Modus",
+            "Preview.Builder()"                  to "Die Vorschau",
+            "ImageAnalysis.Builder()"            to "Die Bildanalyse",
+            "bindToLifecycle("                   to "Die Bindung",
+        )) {
+            val wo = dateien.filter { code(it.readText()).contains(marke) }.map { it.name }
+            assert(wo == listOf("KameraAufbau.kt")) {
+                "$was ($marke) steht in ${wo.joinToString()} statt nur in KameraAufbau.kt. " +
+                    "Jede weitere Stelle ist eine zweite Fassung derselben Regel — und genau " +
+                    "daran ist der Tap-to-Focus im SetupScreen hängengeblieben."
+            }
+        }
+    }
+
+    @Test
+    fun `KameraAufbau setzt den AF-Modus an BEIDEN Use Cases`() {
+        // CameraX führt die Konfigurationen aller gebundenen Use Cases zu EINEM
+        // Repeating-Request zusammen. Steht der Modus nur an einem, entscheidet
+        // je nach Gerät der andere mit — und das Bild bleibt unscharf, obwohl
+        // der Code richtig aussieht.
+        val src = code(Quellen.lies("ui/screens/KameraAufbau.kt"))
+        val n = Regex("CONTROL_AF_MODE_CONTINUOUS_PICTURE").findAll(src).count()
+        assert(n >= 2) {
+            "Der AF-Modus steht in KameraAufbau.kt nur ${n}x — er muss an Vorschau UND " +
+                "Bildanalyse hängen. NICHT diesen Test anpassen, sondern die Stelle ergänzen."
+        }
+    }
+
+    @Test
+    fun `beide Scanner holen ihre Kamera dort`() {
+        // Sonst nützt die Regel oben nichts: Wer sich die Kamera selbst bindet,
+        // umgeht autofokusDauerhaft() — und sieht dabei richtig aus.
+        val nutzer = Quellen.unter("ui/screens")
+            .filter { it.name != "KameraAufbau.kt" }
+            .filter { code(it.readText()).contains("kameraBinden(") }
+            .map { it.name }
+        assert(nutzer.size >= 2) {
+            "Nur ${nutzer.size} Bildschirm(e) rufen kameraBinden() (${nutzer.joinToString()}). " +
+                "Erwartet werden Barcodescanner und SetupScreen."
+        }
+    }
+
+    @Test
+    fun `der Tipper steht nur in KameraAufbau`() {
+        // Wie Vorschau und Bindung: Eine Kopie im Bildschirm verfehlte die nächste Behebung.
+        val eigene = mitTapToFocus().filter { it.name != "KameraAufbau.kt" && code(it.readText()).contains("startFocusAndMetering(") }
+        assert(eigene.isEmpty()) { "Eigener Tap-to-Focus statt tippZumFokus(): ${eigene.joinToString { it.name }}" }
+        assert(aufbau().contains("startFocusAndMetering(")) { "KameraAufbau.kt fokussiert beim Tippen nicht mehr" }
+    }
+
+    @Test
+    fun `kein periodisches Nachfokussieren`() {
+        // Ein im Takt laufendes startFocusAndMetering unterbricht den
+        // kontinuierlichen Autofokus immer wieder. Fokussiert wird NUR beim
+        // Antippen.
+        val pump = Regex(
+            """(while\s*\(|delay\s*\(|Timer\(|fixedRate|LaunchedEffect)[\s\S]{0,400}?(startFocusAndMetering|tippZumFokus)""")
+        val dateien = mitTapToFocus()
+        assert(dateien.size >= 2) {
+            "Nur ${dateien.size} Datei(en) mit startFocusAndMetering gefunden — " +
+                "erwartet werden mindestens Barcodescanner und SetupScreen. " +
+                "Ein leeres Ergebnis wuerde diesen Test stillschweigend bestehen lassen."
+        }
+        for (datei in dateien) {
+            assert(!pump.containsMatchIn(code(datei.readText()))) {
+                "${datei.name}: startFocusAndMetering laeuft in einer Schleife, hinter " +
+                    "einem Timer oder in einem Effekt (Fokus-Pump) — das zwingt die " +
+                    "Kamera dauernd in einen neuen Suchlauf."
+            }
+        }
+    }
+}

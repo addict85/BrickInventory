@@ -1,14 +1,14 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.di.ServerWaechter
-import ch.brickinventoryapp.di.Zugangslage
-import ch.brickinventoryapp.util.KlartextAbgelehnt
-import ch.brickinventoryapp.util.NetworkPolicy
-import ch.brickinventoryapp.util.Tresorbefund
-import ch.brickinventoryapp.util.ZertifikatUngeklaert
-import ch.brickinventoryapp.util.eigeneAdresse
-import ch.brickinventoryapp.util.pinSchluessel
+import ch.brickinventoryapp.netz.di.ServerWaechter
+import ch.brickinventoryapp.netz.di.Zugangslage
+import ch.brickinventoryapp.netz.util.KlartextAbgelehnt
+import ch.brickinventoryapp.netz.util.NetworkPolicy
+import ch.brickinventoryapp.data.util.Tresorbefund
+import ch.brickinventoryapp.data.util.ZertifikatUngeklaert
+import ch.brickinventoryapp.netz.util.eigeneAdresse
+import ch.brickinventoryapp.data.util.pinSchluessel
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request

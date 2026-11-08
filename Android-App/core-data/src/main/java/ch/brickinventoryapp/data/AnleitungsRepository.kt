@@ -2,16 +2,16 @@ package ch.brickinventoryapp.data
 
 import android.content.Context
 import android.net.wifi.WifiManager
-import ch.brickinventoryapp.di.ApiClient
-import ch.brickinventoryapp.di.BrickDispatchers
-import ch.brickinventoryapp.di.Dispatcher
-import ch.brickinventoryapp.util.ANLEITUNG_ENDUNG
-import ch.brickinventoryapp.util.ANLEITUNG_PRAEFIX
-import ch.brickinventoryapp.util.AnleitungsAblage
-import ch.brickinventoryapp.util.PdfSchritt
-import ch.brickinventoryapp.util.fangeAusserAbbruch
-import ch.brickinventoryapp.util.ladePdfInDenSpeicher
-import ch.brickinventoryapp.util.pdfSchritt
+import ch.brickinventoryapp.data.di.ApiClient
+import ch.brickinventoryapp.data.di.BrickDispatchers
+import ch.brickinventoryapp.data.di.Dispatcher
+import ch.brickinventoryapp.data.util.ANLEITUNG_ENDUNG
+import ch.brickinventoryapp.data.util.ANLEITUNG_PRAEFIX
+import ch.brickinventoryapp.data.util.AnleitungsAblage
+import ch.brickinventoryapp.data.util.PdfSchritt
+import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.data.util.ladePdfInDenSpeicher
+import ch.brickinventoryapp.data.util.pdfSchritt
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.currentCoroutineContext

@@ -3,7 +3,7 @@ package ch.brickinventoryapp.data.lokal
 import ch.brickinventoryapp.data.api.FigurenApi
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.api.TeileApi
-import ch.brickinventoryapp.data.model.UpdateQuantityRequest
+import ch.brickinventoryapp.model.data.model.UpdateQuantityRequest
 import ch.brickinventoryapp.data.repository.Fehlerart
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.sicherAufrufen

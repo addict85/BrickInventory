@@ -1,0 +1,139 @@
+package ch.brickinventoryapp.teile.ui.screens
+
+import ch.brickinventoryapp.ui.theme.farbeAusHex
+import ch.brickinventoryapp.ui.erfassungUngueltig
+import ch.brickinventoryapp.ui.erfassungsWerte
+import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.ui.theme.Formen
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import ch.brickinventoryapp.ressourcen.R
+import androidx.compose.ui.res.stringResource
+import ch.brickinventoryapp.model.ui.model.FarbeAnsicht
+import ch.brickinventoryapp.model.ui.model.OHNE_FARBE
+import ch.brickinventoryapp.model.ui.ohneKeineFarbe
+import androidx.compose.material3.ExperimentalMaterial3Api
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.screens.ErfassungsFelder
+import ch.brickinventoryapp.ui.screens.OwnerPicker
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddPartDialog(
+    colors: List<FarbeAnsicht> = emptyList(),
+    onDismiss: () -> Unit,
+    onAdd: (String, Int, String?, String?, Int, Double?, String?, Int?, String?) -> Unit,
+    defaultCondition: String = "N",
+    /** Konten des Haushalts — ohne Unterkonten bleibt die Auswahl verborgen. */
+    householdMembers: List<MitgliedAnsicht> = emptyList(),
+    /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
+    lagerorte: List<String> = emptyList(),
+    /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
+    lagerortVorgabe: String = "",
+) {
+    var partNumber by rememberSaveable { mutableStateOf("") }
+    var quantity   by rememberSaveable { mutableStateOf("1") }
+    var unitPrice  by rememberSaveable { mutableStateOf("") }
+    var selectedColor by remember { mutableStateOf<FarbeAnsicht?>(null) }
+    var colorMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    var condition  by rememberSaveable { mutableStateOf(defaultCondition) }
+    // Schluessel ist die Vorgabe — dieselbe Begruendung wie im Galerie-Dialog:
+    // Sie kommt ueber das Netz und kann nach dem Oeffnen eintreffen.
+    var lagerort   by rememberSaveable(lagerortVorgabe) { mutableStateOf(lagerortVorgabe) }
+    // Vorbelegt mit dem eigenen Konto: Wer nichts wählt, erfasst für sich —
+    // dasselbe Verhalten wie vor der Haushaltssicht.
+    var owner by remember(householdMembers) {
+        mutableStateOf(householdMembers.firstOrNull { it.isSelf }?.id)
+    }
+
+    fun submit() {
+        if (partNumber.isNotBlank() && !erfassungUngueltig(quantity, unitPrice)) {
+            // Die Umrechnung steht in erfassungsWerte() — dieselbe wie im
+            // Figuren-Dialog. Was ein leeres Feld bedeutet, ist eine
+            // Entscheidung und keine Formalie; sie gehoert an eine Stelle.
+            val w = erfassungsWerte(quantity, unitPrice, condition, owner, householdMembers)
+            onAdd(
+                partNumber, selectedColor?.id ?: OHNE_FARBE, selectedColor?.name, selectedColor?.hex,
+                w.anzahl, w.preis, w.zustand, w.besitzer,
+                lagerort.trim().takeIf { it.isNotEmpty() }
+            )
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary) },
+        title = { Text(stringResource(R.string.parts_add_title), fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OwnerPicker(householdMembers, owner, { owner = it })
+                OutlinedTextField(
+                    value = partNumber, onValueChange = { partNumber = it },
+                    label = { Text(stringResource(R.string.parts_part_number)) }, placeholder = { Text(stringResource(R.string.parts_part_number_placeholder)) },
+                    modifier = Modifier.fillMaxWidth(), singleLine = true,
+                    shape = Formen.feld
+                )
+                ExposedDropdownMenuBox(
+                    expanded = colorMenuExpanded,
+                    onExpandedChange = { colorMenuExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = selectedColor?.name ?: stringResource(R.string.parts_no_color),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(stringResource(R.string.parts_color_label)) },
+                        leadingIcon = {
+                            val swatch = farbeAusHex(selectedColor?.hex)
+                            if (swatch != null) {
+                                Box(Modifier.padding(start = Abstaende.mittel).size(14.dp)
+                                    .clip(androidx.compose.foundation.shape.CircleShape).background(swatch))
+                            }
+                        },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = colorMenuExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true),
+                        singleLine = true,
+                        shape = Formen.feld
+                    )
+                    ExposedDropdownMenu(expanded = colorMenuExpanded, onDismissRequest = { colorMenuExpanded = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.parts_no_color)) },
+                            onClick = { selectedColor = null; colorMenuExpanded = false }
+                        )
+                        ohneKeineFarbe(colors).forEach { c ->
+                            DropdownMenuItem(
+                                text = { Text(c.name) },
+                                leadingIcon = {
+                                    val swatch = farbeAusHex(c.hex)
+                                    if (swatch != null) {
+                                        Box(Modifier.size(14.dp).clip(androidx.compose.foundation.shape.CircleShape).background(swatch))
+                                    }
+                                },
+                                onClick = { selectedColor = c; colorMenuExpanded = false }
+                            )
+                        }
+                    }
+                }
+                ErfassungsFelder(
+                    anzahl = quantity, onAnzahl = { quantity = it },
+                    preis = unitPrice, onPreis = { unitPrice = it },
+                    zustand = condition, onZustand = { condition = it },
+                    lagerort = lagerort, onLagerort = { lagerort = it },
+                    lagerorte = lagerorte,
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = { submit(); onDismiss() }) { Text(stringResource(R.string.parts_add_button)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } }
+    )
+}

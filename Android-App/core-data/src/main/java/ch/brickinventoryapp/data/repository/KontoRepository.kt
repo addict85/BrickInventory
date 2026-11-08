@@ -2,7 +2,7 @@ package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.Entwertungsergebnis
 import ch.brickinventoryapp.data.GetauschterToken
-import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.model.data.model.*
 import kotlinx.serialization.json.JsonObject
 
 /**

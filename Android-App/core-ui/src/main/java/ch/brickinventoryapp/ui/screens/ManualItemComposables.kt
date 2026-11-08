@@ -3,8 +3,8 @@ package ch.brickinventoryapp.ui.screens
 import androidx.compose.ui.graphics.luminance
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
-import ch.brickinventoryapp.ui.model.KaufAnsicht
-import ch.brickinventoryapp.ui.model.KontoAnsicht
+import ch.brickinventoryapp.model.ui.model.KaufAnsicht
+import ch.brickinventoryapp.model.ui.model.KontoAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -27,11 +27,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.util.fmtMoney
+import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.theme.BrickSage
 import ch.brickinventoryapp.ui.theme.BrickSageText
-import ch.brickinventoryapp.util.NumericInput
+import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.stueckzahl
 import ch.brickinventoryapp.ui.components.vorgelesenAls

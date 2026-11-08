@@ -1,14 +1,14 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.util.fangeAusserAbbruch
-import ch.brickinventoryapp.data.api.Fehlerrumpf
+import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.lokal.Bearbeitung
 import ch.brickinventoryapp.data.lokal.Fach
 import ch.brickinventoryapp.data.lokal.Offlineablage
-import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.model.data.model.*
 import retrofit2.Response
-import ch.brickinventoryapp.util.KlartextAbgelehnt
+import ch.brickinventoryapp.netz.util.KlartextAbgelehnt
 
 /**
  * Was die Repositories gemeinsam brauchen: den Abruf mit Plattenspeicher als

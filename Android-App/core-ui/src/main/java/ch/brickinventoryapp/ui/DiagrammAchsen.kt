@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.ui.model.DiagrammAchse
-import ch.brickinventoryapp.ui.model.DiagrammPunkt
+import ch.brickinventoryapp.model.ui.model.DiagrammAchse
+import ch.brickinventoryapp.model.ui.model.DiagrammPunkt
 import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Currency
 import java.util.Locale
-import ch.brickinventoryapp.util.DatumJahr
-import ch.brickinventoryapp.util.fmtDatum
-import ch.brickinventoryapp.util.mitWaehrungsAbstand
+import ch.brickinventoryapp.model.util.DatumJahr
+import ch.brickinventoryapp.model.util.fmtDatum
+import ch.brickinventoryapp.ui.util.mitWaehrungsAbstand
 
 /*
  * Achsenbeschriftung der Wertentwicklung in der Sprache der App. Der Server

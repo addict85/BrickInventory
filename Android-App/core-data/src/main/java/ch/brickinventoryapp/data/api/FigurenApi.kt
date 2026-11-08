@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.data.api
 
-import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.model.data.model.*
 import retrofit2.Response
 import retrofit2.http.*
-import ch.brickinventoryapp.data.model.ManualFigsResponse
-import ch.brickinventoryapp.data.model.MinifigStatsResponse
+import ch.brickinventoryapp.model.data.model.ManualFigsResponse
+import ch.brickinventoryapp.model.data.model.MinifigStatsResponse
 
 /**
  * Die Figurenliste abfragen — für den Figuren-Reiter und den Inhalt eines Sets.

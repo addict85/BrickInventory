@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.data.lokal
 
-import ch.brickinventoryapp.data.model.FigValuationItem
-import ch.brickinventoryapp.data.model.Merkposten
-import ch.brickinventoryapp.data.model.PartValuationItem
-import ch.brickinventoryapp.data.model.SetItem
-import ch.brickinventoryapp.data.model.UpdateManualItemRequest
+import ch.brickinventoryapp.model.data.model.FigValuationItem
+import ch.brickinventoryapp.model.data.model.Merkposten
+import ch.brickinventoryapp.model.data.model.PartValuationItem
+import ch.brickinventoryapp.model.data.model.SetItem
+import ch.brickinventoryapp.model.data.model.UpdateManualItemRequest
 
 /**
  * Wie eine Bearbeitung die lokale Liste ändert, bevor der Server sie gesehen

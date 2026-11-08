@@ -1,0 +1,181 @@
+package ch.brickinventoryapp.ui
+
+import ch.brickinventoryapp.model.ui.model.PreisDiagrammAnsicht
+import ch.brickinventoryapp.model.ui.model.PreisPunktAnsicht
+import ch.brickinventoryapp.model.ui.model.PreisReiheAnsicht
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import java.util.Locale
+import ch.brickinventoryapp.testing.Quellen
+
+/**
+ * Diagramm-Mathematik für den Preisverlauf (ui/PriceChartMath.kt).
+ *
+ * Die beiden Fehler, die hier abgesichert werden, sind am Gerät kaum als
+ * Fehler zu erkennen — sie sehen wie echte Preisbewegungen aus:
+ *
+ *   1. Die vom Server vorne aufgefüllten NULLEN als Punkt gezeichnet ergeben
+ *      eine Linie, die bei null beginnt und senkrecht hochspringt. Das sieht
+ *      aus wie ein Kurssturz, den es nie gab.
+ *
+ * Dazu die Beschreibung für TalkBack. Gegenproben:
+ *   A  in zusammenfassung() Anfang und Ende nach Index statt nach Tag → rot „die
+ *      Beschreibung nennt je Linie Zeitraum, Anfang, Ende, Tief und Hoch“
+ *   B  `.semantics { contentDescription = beschreibung }` am Canvas entfernt →
+ *      rot „das Preisdiagramm trägt eine Beschreibung“
+ */
+class PriceChartMathTest {
+
+    private fun series(name: String, first: Int, vararg pts: Pair<String, Double>) =
+        PreisReiheAnsicht(
+            name = name,
+            values = pts.map { PreisPunktAnsicht(it.first, it.second) },
+            firstRealIndex = first
+        )
+
+    @Test
+    fun `aufgefuellte Nullen vor firstRealIndex werden nicht gezeichnet`() {
+        // Gebraucht setzt erst am dritten Messpunkt ein.
+        val chart = PreisDiagrammAnsicht(
+            values = listOf(
+                series("N", 0, "2026-01-01" to 100.0, "2026-02-01" to 110.0, "2026-03-01" to 120.0),
+                series("U", 2, "2026-01-01" to 0.0, "2026-02-01" to 0.0, "2026-03-01" to 80.0),
+            ),
+            x = listOf("2026-01-01", "2026-02-01", "2026-03-01")
+        )
+        val lines = PriceChartMath.buildLines(chart)
+        assertEquals(2, lines.size)
+        val used = lines.first { it.condition == "U" }
+        assertEquals("nur der echte Wert bleibt übrig", 1, used.points.size)
+        assertEquals(80.0, used.points[0].value, 0.0001)
+    }
+
+    @Test
+    fun `eine 0 nach firstRealIndex zaehlt ebenfalls als kein Wert`() {
+        // Der Server füllt nur vorne auf — eine 0 mittendrin wäre ein Preis von
+        // null Franken, den es nicht gibt. Sicherheitshalber trotzdem raus.
+        val chart = PreisDiagrammAnsicht(
+            values = listOf(series("N", 0, "2026-01-01" to 100.0, "2026-02-01" to 0.0)),
+            x = listOf("2026-01-01", "2026-02-01")
+        )
+        assertEquals(1, PriceChartMath.buildLines(chart).first().points.size)
+    }
+
+    @Test
+    fun `eine Reihe ganz ohne echte Werte faellt weg`() {
+        val chart = PreisDiagrammAnsicht(
+            values = listOf(
+                series("N", 0, "2026-01-01" to 100.0),
+                series("U", 1, "2026-01-01" to 0.0),
+            ),
+            x = listOf("2026-01-01")
+        )
+        val lines = PriceChartMath.buildLines(chart)
+        assertEquals("keine Legendenzeile ohne Linie", 1, lines.size)
+        assertEquals("N", lines[0].condition)
+    }
+
+    @Test
+    fun `die x-Position kommt vom Datum, nicht vom Index`() {
+        // Zwei Reihen unterschiedlicher Länge: Der gemeinsame letzte Tag muss
+        // bei beiden an derselben Stelle landen, der spätere Beginn der
+        // zweiten Reihe weiter rechts.
+        val chart = PreisDiagrammAnsicht(
+            values = listOf(
+                series("N", 0, "2026-01-01" to 100.0, "2026-07-01" to 110.0),
+                series("U", 1, "2026-01-01" to 0.0, "2026-07-01" to 80.0),
+            ),
+            x = listOf("2026-01-01", "2026-07-01")
+        )
+        val lines = PriceChartMath.buildLines(chart)
+        val b = PriceChartMath.bounds(lines)!!
+        val newLine  = lines.first { it.condition == "N" }
+        val usedLine = lines.first { it.condition == "U" }
+
+        assertEquals(0f, b.xFraction(newLine.points.first().day), 0.0001f)
+        assertEquals(1f, b.xFraction(newLine.points.last().day), 0.0001f)
+        assertEquals("gemeinsamer letzter Tag → gleiche Position",
+            b.xFraction(newLine.points.last().day),
+            b.xFraction(usedLine.points.first().day), 0.0001f)
+        assertTrue("die kürzere Reihe darf nicht gestreckt werden",
+            b.xFraction(usedLine.points.first().day) > 0.5f)
+    }
+
+    @Test
+    fun `beide Reihen teilen sich eine Skala`() {
+        // Der interessante Vergleich ist der ABSTAND zwischen Neu und
+        // Gebraucht; getrennte Skalen machen genau den unsichtbar.
+        val chart = PreisDiagrammAnsicht(
+            values = listOf(
+                series("N", 0, "2026-01-01" to 200.0),
+                series("U", 0, "2026-01-01" to 100.0),
+            ),
+            x = listOf("2026-01-01")
+        )
+        val b = PriceChartMath.bounds(PriceChartMath.buildLines(chart))!!
+        assertTrue(b.minValue < 100.0)
+        assertTrue(b.maxValue > 200.0)
+        // Gebraucht liegt tiefer als Neu (y wird von oben gemessen).
+        assertTrue(b.yFraction(100.0) > b.yFraction(200.0))
+    }
+
+    @Test
+    fun `alle Werte gleich ergibt trotzdem eine brauchbare Spanne`() {
+        // Sonst wäre die Spanne 0 und die Division im Zeichencode undefiniert.
+        val chart = PreisDiagrammAnsicht(
+            values = listOf(series("N", 0, "2026-01-01" to 50.0, "2026-02-01" to 50.0)),
+            x = listOf("2026-01-01", "2026-02-01")
+        )
+        val b = PriceChartMath.bounds(PriceChartMath.buildLines(chart))!!
+        assertTrue(b.maxValue > b.minValue)
+        assertTrue("keine negative Achse", b.minValue >= 0.0)
+    }
+
+    @Test
+    fun `leere Daten ergeben nichts zu zeichnen`() {
+        assertTrue(PriceChartMath.buildLines(PreisDiagrammAnsicht()).isEmpty())
+        assertNull(PriceChartMath.bounds(emptyList()))
+        assertNull(PriceChartMath.axisRange(PreisDiagrammAnsicht()))
+    }
+
+    @Test
+    fun `Datumsformat und Achsenraender`() {
+        val de = Locale.forLanguageTag("de-CH")
+        assertEquals("31.01.2026", PriceChartMath.formatDay("2026-01-31", de))
+        assertEquals("31.01.2026", PriceChartMath.formatDay("2026-01-31T10:00:00Z", de))
+        assertEquals("31 Jan 2026", PriceChartMath.formatDay("2026-01-31", Locale.forLanguageTag("en-GB")))
+        assertEquals("kaputt", PriceChartMath.formatDay("kaputt", de))
+        val range = PriceChartMath.axisRange(
+            PreisDiagrammAnsicht(x = listOf("2026-01-01", "2026-02-01", "2026-03-01")))
+        assertEquals("2026-01-01" to "2026-03-01", range)
+    }
+
+    @Test
+    fun `die Beschreibung nennt je Linie Zeitraum, Anfang, Ende, Tief und Hoch`() {
+        // Ungeordnet geliefert: Anfang und Ende richten sich nach dem Tag.
+        val chart = PreisDiagrammAnsicht(
+            values = listOf(
+                series("N", 0, "2026-03-01" to 120.0, "2026-01-01" to 100.0, "2026-02-01" to 90.0),
+                series("U", 1, "2026-01-01" to 0.0, "2026-02-01" to 70.0, "2026-03-01" to 80.0),
+            ),
+            x = listOf("2026-01-01", "2026-02-01", "2026-03-01")
+        )
+        val z = PriceChartMath.zusammenfassung(PriceChartMath.buildLines(chart), Locale.forLanguageTag("de-CH")).associateBy { it.zustand }
+        val neu = z.getValue("N")
+        assertEquals(listOf("01.01.2026", "01.03.2026"), listOf(neu.von, neu.bis))
+        assertEquals(listOf(100.0, 120.0, 90.0, 120.0), listOf(neu.anfang, neu.ende, neu.tief, neu.hoch))
+        val gebraucht = z.getValue("U")
+        assertEquals("Die aufgefüllte Null zählt nicht", "01.02.2026", gebraucht.von)
+        assertEquals(70.0, gebraucht.tief, 0.0)
+    }
+
+    @Test
+    fun `das Preisdiagramm traegt eine Beschreibung`() {
+        val f = Quellen.funktion(Quellen.lies("ui/screens/SetDetailComponents.kt"), "fun PriceChart(")
+        assertTrue("PriceChart rechnet keine Beschreibung", f.contains("PriceChartMath.zusammenfassung(lines)"))
+        assertTrue("Der Canvas des Preisdiagramms hat keine Semantik",
+            Regex("""Canvas\(modifier = Modifier[^{]*\.semantics \{ contentDescription = beschreibung \}""").containsMatchIn(f))
+    }
+}

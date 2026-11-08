@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.lokal.Lokal
-import ch.brickinventoryapp.data.model.*
-import ch.brickinventoryapp.data.model.CsvImportStatus
-import ch.brickinventoryapp.data.model.SetExistsResponse
+import ch.brickinventoryapp.model.data.model.*
+import ch.brickinventoryapp.model.data.model.CsvImportStatus
+import ch.brickinventoryapp.model.data.model.SetExistsResponse
 import kotlinx.coroutines.flow.Flow
 
 /**

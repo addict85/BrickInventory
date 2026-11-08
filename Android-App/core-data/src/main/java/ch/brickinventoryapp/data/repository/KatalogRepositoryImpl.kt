@@ -2,10 +2,10 @@ package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.api.KatalogApi
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.model.data.model.*
 import javax.inject.Inject
 import javax.inject.Singleton
-import ch.brickinventoryapp.data.model.CatalogYearVerteilungResponse
+import ch.brickinventoryapp.model.data.model.CatalogYearVerteilungResponse
 
 /**
  * Der Set-Katalog des Servers — über Retrofit; die gemeinsame Abruflogik steht in RepoBasis.kt.

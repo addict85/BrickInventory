@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.data.api
 
-import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.model.data.model.*
 import retrofit2.Response
 import retrofit2.http.*
-import ch.brickinventoryapp.data.model.CsvImportStatus
-import ch.brickinventoryapp.data.model.SetExistsResponse
-import ch.brickinventoryapp.data.model.SetInfoResponse
+import ch.brickinventoryapp.model.data.model.CsvImportStatus
+import ch.brickinventoryapp.model.data.model.SetExistsResponse
+import ch.brickinventoryapp.model.data.model.SetInfoResponse
 
 /**
  * Sets, Anleitungen, Preisalarme, Lagerort je Set, Merkliste, PDF-Export und

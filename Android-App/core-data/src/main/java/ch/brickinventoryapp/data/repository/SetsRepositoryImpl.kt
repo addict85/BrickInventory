@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.util.fangeAusserAbbruch
+import ch.brickinventoryapp.data.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.lokal.Bearbeitung
@@ -8,13 +8,13 @@ import ch.brickinventoryapp.data.lokal.Faecher
 import ch.brickinventoryapp.data.lokal.Lokal
 import kotlinx.coroutines.flow.Flow
 import ch.brickinventoryapp.data.lokal.Offlineablage
-import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.model.data.model.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 import javax.inject.Singleton
-import ch.brickinventoryapp.data.model.CsvImportStatus
-import ch.brickinventoryapp.data.model.SetExistsResponse
+import ch.brickinventoryapp.model.data.model.CsvImportStatus
+import ch.brickinventoryapp.model.data.model.SetExistsResponse
 
 /**
  * Sets: Bestand, Details, Anlegen, Ändern, PDF-Ausgabe — über Retrofit; die gemeinsame Abruflogik steht in RepoBasis.kt.

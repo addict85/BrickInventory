@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data.api
 
-import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.model.data.model.*
 import retrofit2.Response
 import retrofit2.http.*
-import ch.brickinventoryapp.data.model.ManualPartsResponse
+import ch.brickinventoryapp.model.data.model.ManualPartsResponse
 
 /**
  * Die Teileliste abfragen — für den Teile-Reiter und den Inhalt eines Sets;

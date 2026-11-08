@@ -81,7 +81,7 @@
     -->
     <application
         tools:targetApi="33"
-        android:name=".BrickInventoryApp"
+        android:name=".app.BrickInventoryApp"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -111,12 +111,12 @@
             android:value="barcode" />
 
         <service
-            android:name=".service.CsvImportService"
+            android:name=".dienste.service.CsvImportService"
             android:foregroundServiceType="dataSync"
             android:exported="false" />
 
         <service
-            android:name=".service.PdfExportService"
+            android:name=".data.service.PdfExportService"
             android:foregroundServiceType="dataSync"
             android:exported="false" />
 
@@ -223,7 +223,7 @@
           das System die Tastatur auch unter Android 10 als Inset (imePadding).
         -->
         <activity
-            android:name=".MainActivity"
+            android:name=".app.MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
@@ -240,7 +240,7 @@
           der Übersicht; er reicht an MainActivity weiter und schliesst sich.
         -->
         <activity
-            android:name=".MeldungsEinstieg"
+            android:name=".app.MeldungsEinstieg"
             android:exported="false"
             android:taskAffinity=""
             android:excludeFromRecents="true"
@@ -253,7 +253,7 @@
           Aktualisierung noch onEnabled/onDisabled auslösen.
         -->
         <receiver
-            android:name=".widget.SammlungsWidgetEmpfaenger"
+            android:name=".app.widget.SammlungsWidgetEmpfaenger"
             android:exported="true"
             android:permission="android.permission.BIND_APPWIDGET"
             android:label="@string/widget_titel">
@@ -267,7 +267,7 @@
 
         <!-- PDFs von Dritten rendert pdfium ohne Rechte, Dateien und Konto (ui/pdf/PdfRenderDienst). -->
         <service
-            android:name="ch.brickinventoryapp.ui.pdf.PdfRenderDienst"
+            android:name="ch.brickinventoryapp.finanzen.ui.pdf.PdfRenderDienst"
             android:isolatedProcess="true"
             android:process=":pdf"
             android:exported="false" />
@@ -275,13 +275,13 @@
         <!-- Antwort der Installer-Sitzung des Selbst-Updates (util/AppUpdate.kt):
              nur über unsere PendingIntent erreichbar, darum nicht exportiert. -->
         <receiver
-            android:name="ch.brickinventoryapp.util.InstallationsEmpfaenger"
+            android:name="ch.brickinventoryapp.update.util.InstallationsEmpfaenger"
             android:exported="false" />
 
         <!-- Die Teileliste liegt verschlüsselt; der Provider gibt sie nur aus dem Speicher
              weiter, und nur an die App, der die Auswahl das Leserecht gibt. -->
         <provider
-            android:name="ch.brickinventoryapp.service.TeilelistenProvider"
+            android:name="ch.brickinventoryapp.data.service.TeilelistenProvider"
             android:authorities="${applicationId}.teileliste"
             android:exported="false"
             android:grantUriPermissions="true" />

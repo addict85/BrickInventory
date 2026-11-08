@@ -2,7 +2,7 @@ package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.api.FinanzenApi
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.model.data.model.*
 import javax.inject.Inject
 import javax.inject.Singleton
 

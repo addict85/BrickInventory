@@ -1,22 +1,22 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.util.fangeAusserAbbruch
+import ch.brickinventoryapp.data.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.api.KontoApi
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.model.*
+import ch.brickinventoryapp.model.data.model.*
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.JsonObject
-import ch.brickinventoryapp.di.BrickDispatchers
-import ch.brickinventoryapp.di.Dispatcher
+import ch.brickinventoryapp.data.di.BrickDispatchers
+import ch.brickinventoryapp.data.di.Dispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import javax.inject.Inject
 import javax.inject.Singleton
 import ch.brickinventoryapp.data.Entwertungsergebnis
 import ch.brickinventoryapp.data.GetauschterToken
 import ch.brickinventoryapp.data.einordnenEntwertung
-import ch.brickinventoryapp.data.model.QrLoginRequest
-import ch.brickinventoryapp.util.NetworkPolicy
-import ch.brickinventoryapp.util.Protokoll
+import ch.brickinventoryapp.model.data.model.QrLoginRequest
+import ch.brickinventoryapp.netz.util.NetworkPolicy
+import ch.brickinventoryapp.data.util.Protokoll
 
 /**
  * Anmeldung und das eigene Konto: Profil, Passwort, zweiter Faktor, Geräte, Design und Einstellungen — über Retrofit; die gemeinsame Abruflogik steht in RepoBasis.kt.

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.cache
 
-import ch.brickinventoryapp.di.BildClient
+import ch.brickinventoryapp.data.di.BildClient
 import ch.brickinventoryapp.data.Netzlage
 import ch.brickinventoryapp.data.GeraeteEinstellungen
 import ch.brickinventoryapp.data.VorwaermNetz

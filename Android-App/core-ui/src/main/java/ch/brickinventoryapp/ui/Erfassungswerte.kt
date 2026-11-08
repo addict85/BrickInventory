@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.ui.model.MitgliedAnsicht
-import ch.brickinventoryapp.util.NumericInput
+import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.ui.util.NumericInput
 
 /**
  * Die vier Eingaben, wie der Server sie braucht — eine Umrechnung für beide

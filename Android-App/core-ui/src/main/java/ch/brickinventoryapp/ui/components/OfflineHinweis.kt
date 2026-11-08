@@ -29,8 +29,8 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
-import ch.brickinventoryapp.util.fmtStand
-import ch.brickinventoryapp.util.appNumberLocale
+import ch.brickinventoryapp.model.util.fmtStand
+import ch.brickinventoryapp.ui.util.appNumberLocale
 
 /** Wie viele Änderungen im Ausgang warten — das Gerüst setzt es, der Offline-Hinweis nennt es mit. */
 val LocalOffeneAenderungen = compositionLocalOf { 0 }
