@@ -63,7 +63,8 @@ test('abgemeldet: Gerüst weg, Anmeldung da', async () => {
 test('Stein (Blau): Kopf blau, Grund blaugrau', () => {
   const { JSDOM } = require('jsdom');
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8')
-    .replace(/<script[\s\S]*?<\/script>/g, '').replace('<html lang="de">', '<html lang="de" data-theme="brick">');
+    .replace('<html lang="de">', '<html lang="de" data-theme="brick">');
+  // JSDOM führt Skripte standardmässig nicht aus und lädt keine fremden: Das Gerüst steht allein da.
   const w = new JSDOM(html).window;
   try {
     const kopf = w.getComputedStyle(w.document.querySelector('#startgeruest .sg-kopf'));

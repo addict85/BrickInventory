@@ -243,8 +243,11 @@ test('keine Importzyklen in den inneren Schichten', () => {
   const kanten = new Map();
   for (const d of dateien) {
     const src = quelltext(d);
-    const ziele = [...src.matchAll(/^\s*(import|export)\s[^;]*?from\s+['"](\.[^'"]+)['"]|require\(\s*['"](\.[^'"]+)['"]|import\(\s*['"](\.[^'"]+)['"]\s*\)/gm)]
-      .map(m => path.posix.normalize(path.posix.join(path.posix.dirname(d), m[2] || m[3] || m[4])).replace(/\.js$/, ''))
+    // Zwei getrennte Suchen: `import … from` nur am Zeilenanfang, `require(…)`/`import(…)` überall.
+    const kopf = [...src.matchAll(/^\s*(?:import|export)\s[^;]*?from\s+['"](\.[^'"]+)['"]/gm)].map(m => m[1]);
+    const aufruf = [...src.matchAll(/(?:require|import)\(\s*['"](\.[^'"]+)['"]\s*\)?/g)].map(m => m[1]);
+    const ziele = [...kopf, ...aufruf]
+      .map(r => path.posix.normalize(path.posix.join(path.posix.dirname(d), r)).replace(/\.js$/, ''))
       .flatMap(z => [z + '.ts', z + '/index.ts']).filter(z => dateien.has(z));
     kanten.set(d, ziele);
   }
