@@ -2,6 +2,7 @@ import { resolveImageLocal } from '../katalog/bilder/images';
 import { asIds, withOwners, blickfeldAus, type Sicht } from '../haushalt/haushalt';
 import { clampPageSize, applyManualCondition, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand/gemeinsam';
 import { mitVersion } from '../infra/setNummer';
+import { meldeUndLiefere } from '../infra/fehler';
 import { marktpreiseAusCacheFuerFiguren } from '../finanzen/marketPrice';
 import * as repo from './repository/figurenListe';
 
@@ -72,7 +73,7 @@ export async function getManualMinifigs(userIdWahl: Sicht | number | number[], v
   // Ein Live-Abruf je Eintrag liesse die Liste auf BrickLink warten.
   // Ausführlich: docs/begruendungen/src/figuren/abfragen.ts.md#getmanualminifigs-preise
   const preise = await marktpreiseAusCacheFuerFiguren(mitZustand, viewerId)
-    .catch(() => new Map<string, number>());
+    .catch(meldeUndLiefere('figuren:marktpreise', new Map<string, number>()));
   const mitPreis = mitZustand.map(f =>
     ({ ...f, avg_price: preise.get(String(f.fig_number)) ?? null }));
 

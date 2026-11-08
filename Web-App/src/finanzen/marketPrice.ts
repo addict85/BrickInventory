@@ -13,7 +13,7 @@ export async function getCurrentMarketPrice(setNumber: string, userId: number, c
   try {
     const currency = String(await getSetting(userId, 'currency', 'EUR'));
     // Parameter → Nutzer → global → 'N'.
-    const effectiveCond = condition || await userDefaultCondition(userId).catch(()=>DEFAULT_PRICE_CONDITION);
+    const effectiveCond = condition || await userDefaultCondition(userId).catch(meldeUndLiefere('marktpreis:vorgabezustand', DEFAULT_PRICE_CONDITION));
     // condition als Hinweis: Beim Anlegen gibt es noch keine Erfassung, aus der
     // der Preislauf den Zustand ablesen könnte.
     await nacharbeit().preisFuerSetHolen(setNumber, userId, condition).catch(logAndContinue('marktpreis:preisFuerSetHolen'));
@@ -243,7 +243,7 @@ export async function figMarktpreisMitHerkunft(figNumber: string, userId: number
         const row = await repo.figurErfassungsZustand(userId, figNumber);
         if (row && parseInt(row.cnt) > 0) effCond = Number(row.any_used) > 0 ? 'U' : 'N';
       } catch (e) { meldeUndWeiter('minifiguren:zustand-ermitteln', e); }
-      if (!effCond) effCond = await userDefaultCondition(userId).catch(meldeUndLiefere('marktpreis:standardzustand', DEFAULT_PRICE_CONDITION));
+      if (!effCond) effCond = await userDefaultCondition(userId).catch(meldeUndLiefere('marktpreis:vorgabezustand', DEFAULT_PRICE_CONDITION));
     }
     // BrickLink zuerst, auch ohne eigene bl_fig_number: Meist stimmt die eigene
     // Nummer mit der BrickLink-Nummer überein.
