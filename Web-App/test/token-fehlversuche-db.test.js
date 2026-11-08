@@ -35,7 +35,7 @@ const NAME = `fehlversuch_${process.pid}`;
 test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
   if (!(await dbOderSkip(t, _req))) return;
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  const server = testServer(_req, { t, routen: {} });
+  const server = testServer(_req, { t, sitzung: {}, routen: {} });
   server.app.use('/api/v1', anmeldungAmEingang);
   server.app.get('/api/v1/probe', (_req2, res) => res.json({ ok: true }));
   t.after(async () => {
