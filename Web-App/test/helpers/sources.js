@@ -78,9 +78,11 @@ function distIsFresh() {
   return distAt >= srcAt;
 }
 
-/** dist/ auf den Stand der Quellen bringen, ohne etwas daraus zu laden. */
+/** dist/ und Bündel auf den Stand der Quellen bringen, ohne etwas daraus zu laden.
+ *  Das Bündel gehört dazu, weil jeder Server mit Oberfläche es ausliefert. */
 function baueDist() {
   if (_built) return;
+  require('./buendel').stelleBuendelSicher();
   if (!distIsFresh()) {
     const { execFileSync } = require('node:child_process');
     execFileSync(process.execPath,

@@ -75,8 +75,8 @@ der Code verweist mit `Ausführlich: docs/begruendungen/…#anker`.
 
 `public/` ist eine Seite (`index.html`) mit einem Bündel. `npm run build:frontend`
 (esbuild, `scripts/build-frontend.js`) macht aus `public/js/main.js` und allem,
-was es importiert, `public/js/app.bundle.js` (IIFE, minifiziert, eingecheckt;
-die CI prüft, dass es zu den Quellen passt). Ausserhalb des Bündels laufen nur
+was es importiert, `public/js/app.bundle.js` (IIFE, minifiziert; ein Erzeugnis,
+nicht in git — `npm run build`, Dockerfile, CI und `npm test` bauen es). Ausserhalb des Bündels laufen nur
 `public/js/00-theme-boot.js` (Design vor dem ersten Bild), die Wörterbücher
 `public/locales/de.js` und `public/locales/en.js`, `public/js/pdfjs-boot.js`
 und `public/js/logviewer.js`.

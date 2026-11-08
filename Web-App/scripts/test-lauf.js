@@ -121,11 +121,8 @@ async function main() {
   const start = Date.now();
   if (process.env.TEST_LAUF_GEBAUT !== '1') { // ein Lauf im Lauf baut nicht: parallele Dateien lesen dist/ und Bündel
     execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'build-ts.js'), '--outdir', path.join(ROOT, 'dist')], { stdio: 'ignore' });
-    // Die Browser-Tests laden das Bündel; gebaut wird es hier, damit sie die Quellen prüfen, nicht einen alten Stand.
-    const buendel = path.join(ROOT, 'public', 'js', 'app.bundle.js');
-    const vorher = fs.existsSync(buendel) ? fs.readFileSync(buendel, 'utf8') : '';
-    require('./build-frontend').baueBuendel(buendel);
-    if (fs.readFileSync(buendel, 'utf8') !== vorher) console.log('[test-lauf] app.bundle.js war veraltet und ist neu gebaut — mitcommitten.');
+    // Das Bündel liegt nicht in git: einmal und immer neu bauen, die parallelen Dateien lesen es nur.
+    require('./build-frontend').baueBuendel(path.join(ROOT, 'public', 'js', 'app.bundle.js'));
   }
   /** @type {Record<string, string>} */
   const messung = { TEST_LAUF_GEBAUT: '1' };
