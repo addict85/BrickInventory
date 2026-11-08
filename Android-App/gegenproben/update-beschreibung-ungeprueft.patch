@@ -4,7 +4,7 @@ Test: ch.brickinventoryapp.UpdateSignaturTest
 Rot: fremder Schluessel
 
 diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/util/UpdateSignatur.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/util/UpdateSignatur.kt
-index f0aa601..24d125b 100644
+index 2ab609f..0fb5888 100644
 --- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/util/UpdateSignatur.kt
 +++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/util/UpdateSignatur.kt
 @@ -42,7 +42,6 @@ fun gepruefteBeschreibung(roh: String, zertifikate: List<ByteArray>, schluessel:

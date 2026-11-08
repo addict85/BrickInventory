@@ -4,10 +4,10 @@ Test: ch.brickinventoryapp.UpdateFrischeTest
 Rot: eine abgelaufene oder fristlose Beschreibung ist nie aktuell
 
 diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/util/UpdateFrische.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/util/UpdateFrische.kt
-index ed233cc..29ea1d7 100644
+index 149b285..06099e8 100644
 --- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/util/UpdateFrische.kt
 +++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/util/UpdateFrische.kt
-@@ -34,7 +34,7 @@ fun bewerteFrische(b: UpdateBeschreibung, gesehen: UpdateStand?, laufend: Int, j
+@@ -46,7 +46,7 @@ internal fun bewerteFrische(b: UpdateBeschreibung, gesehen: UpdateStand?, laufen
      b.versionCode < laufend -> UpdateFrische.ZURUECKGESETZT
      gesehen != null && (b.versionCode < gesehen.hoechsterCode || b.ausgestellt < gesehen.ausgestellt) ->
          UpdateFrische.ZURUECKGESETZT

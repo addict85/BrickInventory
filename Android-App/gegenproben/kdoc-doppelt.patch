@@ -4,7 +4,7 @@ Test: ch.brickinventoryapp.QuelltextRatscheTest
 Rot: eine Kurzfassung endet mit einem ganzen Satz
 
 diff --git a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/alarm/Alarmabholung.kt b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/alarm/Alarmabholung.kt
-index 14bc778..24f6c8f 100644
+index 24496a2..2ed80a6 100644
 --- a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/alarm/Alarmabholung.kt
 +++ b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/alarm/Alarmabholung.kt
 @@ -10,6 +10,7 @@ import ch.brickinventoryapp.data.repository.Ergebnis as Abrufergebnis
