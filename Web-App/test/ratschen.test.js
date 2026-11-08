@@ -201,7 +201,8 @@ test('reine Quelltext-Tests werden weniger, nie mehr', () => {
  * zählt, wenn er Quelltext liest (direkt oder über eine Quelltext-Variable der
  * Datei) und nichts ausführt. Zählweise wie im Prüfbericht arch17-web-b.
  */
-const FALL_FUEHRT_AUS = /buildAndRequire|testServer|spawn\(|spawnSync\(|execFileSync\(|fetch\(|jsdom|JSDOM|new Function|vm\.|import\(|require\(.*dist|\.request\(|agent\.|[oO]berflaeche\(|browser|seite\.|page\.|await |starte|lade\w*\(/;
+// `_req(…)` ist der require-Helfer aus buildAndRequire(): ein Aufruf lädt das gebaute Modul aus dist/.
+const FALL_FUEHRT_AUS = /buildAndRequire|\b_req\w*\(|testServer|spawn\(|spawnSync\(|execFileSync\(|fetch\(|jsdom|JSDOM|new Function|vm\.|import\(|require\(.*dist|\.request\(|agent\.|[oO]berflaeche\(|browser|seite\.|page\.|await |starte|lade\w*\(/;
 const FALL_LIEST = /readFileSync|Quelle\(|serverOnly|serverAll|i18nAll|localeSource|ohneKommentare/;
 function quelltextFaelle() {
   let n = 0, alle = 0;
