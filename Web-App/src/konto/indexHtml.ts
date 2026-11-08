@@ -4,7 +4,7 @@ import { konfig } from '../infra/konfig';
 import { meldeUndLiefere, meldeFehler } from '../infra/fehler';
 import fs from 'fs';
 import { createHash } from 'crypto';
-import {  PUBLIC_DIR } from '../infra/appPaths';
+import { PUBLIC_DIR } from '../infra/appPaths';
 import path from 'path';
 import { DESIGNS, designFuer, nutzerEinstellungen, getGlobalSetting } from '../einstellungen/settings';
 import { stempleAssetsGecacht } from '../infra/assetStempel';
@@ -16,10 +16,20 @@ let _stil: { mtime: number; hash: string } | null = null;
 
 /** CSP-Quelle für den einen Inline-Block <style id="startstil"> (Startgerüst), sonst ''. */
 export function startStilHash(): string {
-  const mtime = konfig().produktion && _stil ? _stil.mtime : fs.statSync(INDEX_PATH, { throwIfNoEntry: false })?.mtimeMs ?? 0;
+  const mtime =
+    konfig().produktion && _stil ? _stil.mtime : (fs.statSync(INDEX_PATH, { throwIfNoEntry: false })?.mtimeMs ?? 0);
   if (_stil && _stil.mtime === mtime) return _stil.hash;
-  const m = /<style id="startstil">([\s\S]*?)<\/style>/.exec(fs.existsSync(INDEX_PATH) ? fs.readFileSync(INDEX_PATH, 'utf8') : '');
-  _stil = { mtime, hash: m ? `'sha256-${createHash('sha256').update(m[1] ?? '').digest('base64')}'` : '' };
+  const m = /<style id="startstil">([\s\S]*?)<\/style>/.exec(
+    fs.existsSync(INDEX_PATH) ? fs.readFileSync(INDEX_PATH, 'utf8') : '',
+  );
+  _stil = {
+    mtime,
+    hash: m
+      ? `'sha256-${createHash('sha256')
+          .update(m[1] ?? '')
+          .digest('base64')}'`
+      : '',
+  };
   return _stil.hash;
 }
 
@@ -32,7 +42,9 @@ let _themeAt = 0;
 // einfacher als LISTEN/NOTIFY für eine Einstellung, die sich selten ändert.
 const THEME_TTL_MS = 30_000;
 
-export function invalidateTheme() { _theme = null; }
+export function invalidateTheme() {
+  _theme = null;
+}
 
 async function readIndex(): Promise<string> {
   if (_html !== null && konfig().produktion) return _html;
@@ -55,7 +67,10 @@ export function versionEinsetzen(html: string, version: string): string {
 export function ohneKommentare(html: string): string {
   // Wiederholt: Ein Rest wie „<!<!---->--“ ergäbe nach einem Durchgang einen neuen Kommentar.
   let vorher: string;
-  do { vorher = html; html = html.replace(/[ \t]*<!--[\s\S]*?-->[ \t]*\n?/g, ''); } while (html !== vorher);
+  do {
+    vorher = html;
+    html = html.replace(/[ \t]*<!--[\s\S]*?-->[ \t]*\n?/g, '');
+  } while (html !== vorher);
   return html;
 }
 
@@ -79,7 +94,10 @@ const LANGS = ['de', 'en'];
 async function currentLang(userId?: number): Promise<string> {
   if (!userId) return 'de';
   // Nur die eigene Einstellung: Ohne sie gilt Deutsch, nicht eine globale Vorgabe.
-  const sprache = String((await nutzerEinstellungen(userId).catch(meldeUndLiefere<Record<string, string>>('index-html:row', {}))).language ?? 'de');
+  const sprache = String(
+    (await nutzerEinstellungen(userId).catch(meldeUndLiefere<Record<string, string>>('index-html:row', {}))).language ??
+      'de',
+  );
   return LANGS.includes(sprache) ? sprache : 'de';
 }
 
@@ -91,6 +109,10 @@ export async function renderIndexHtml(userId?: number): Promise<string> {
     let out = /<html[^>]*\sdata-theme=/i.test(html)
       ? html.replace(/(<html[^>]*\sdata-theme=")[^"]*(")/i, `$1${theme}$2`)
       : html.replace(/<html\b/i, `<html data-theme="${theme}"`);
+
+    // Ohne Sitzung folgt die Anmeldung: Das Gerüst zeigt dann nur den Grund, keine App-Kacheln,
+    // die einen Augenblick lang wie eine geladene Sammlung aussähen.
+    if (userId == null) out = out.replace(/<html\b/i, '<html data-abgemeldet');
 
     // data-i18n-locale markiert das Tag, damit kein Skript-Pfad geraten werden muss.
     const lang = await currentLang(userId);
@@ -110,8 +132,17 @@ export async function renderIndexHtml(userId?: number): Promise<string> {
 
 /** Renderer statt sendFile, sonst gingen die Assets ohne Stempel hinaus. Fällt
  * das Rendern aus, geht die Datei unverändert; js/00-theme-boot.js übernimmt. */
-export async function sendeStartseite(res: { type(t: string): { send(b: string): unknown }; sendFile(f: string, o: { root: string }): void },
-                                      userId?: number): Promise<void> {
-  await renderIndexHtml(userId).then(html => { res.type('html').send(html); },
-    (e: unknown) => { meldeFehler('startseite:rendern', e); res.sendFile('index.html', { root: PUBLIC_DIR }); });
+export async function sendeStartseite(
+  res: { type(t: string): { send(b: string): unknown }; sendFile(f: string, o: { root: string }): void },
+  userId?: number,
+): Promise<void> {
+  await renderIndexHtml(userId).then(
+    html => {
+      res.type('html').send(html);
+    },
+    (e: unknown) => {
+      meldeFehler('startseite:rendern', e);
+      res.sendFile('index.html', { root: PUBLIC_DIR });
+    },
+  );
 }
