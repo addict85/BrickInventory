@@ -1,12 +1,18 @@
 /**
  * Auth-Paritätstest (ohne DB).
  * Ausführlich: docs/begruendungen/test/auth-parity.test.js.md#kopf
+ *
+ * Gegenproben der am 08.11.2026 gestrichenen Fälle, die jetzt ausgeführt werden:
+ * QR-Login ohne Passwort-Material und einmalig → anmeldung-regeln-db A/B;
+ * angezeigte QR-Gültigkeit → dort B und qr-klartext-hinweis C; Profil prüft
+ * den Benutzernamen → anmeldung-regeln-db C; Login ohne gespeicherten Token →
+ * dort D, ein stilles `.catch(() => {})` beim Entwerten der Zugänge verbietet
+ * ratschen.test.js („stille Faenge …“).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { execFileSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
@@ -14,29 +20,6 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { assertLoginAllowed, USERNAME_RE, BCRYPT_ROUNDS, escapeLike } =
   _req('src/konto/auth.js');
 const { ohneKommentare, abschnitt } = require('./helpers/sources');
-
-test('aktives, bestätigtes Konto darf sich anmelden', () => {
-  assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 1, email: 'a@b.c' }), null);
-  assert.equal(assertLoginAllowed({ is_active: true, email_verified: true, email: 'a@b.c' }), null);
-  // Konto ganz ohne E-Mail (Alt-Installation, admin/admin) bleibt erlaubt
-  assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 0, email: null }), null);
-});
-
-test('deaktiviertes Konto wird abgelehnt — egal ob 0 oder false', () => {
-  for (const v of [0, false]) {
-    const r = assertLoginAllowed({ is_active: v, email_verified: 1, email: 'a@b.c' });
-    assert.equal(r?.status, 403, `is_active=${v} muss 403 ergeben`);
-  }
-});
-
-test('eine offene Registrierung wird abgelehnt, Admins ausgenommen', () => {
-  const r = assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 0, registrierung_offen: true });
-  assert.equal(r?.status, 403);
-  assert.equal(r?.unverified, true);
-  assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 1, registrierung_offen: true }), null);
-  assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 0, registrierung_offen: false }), null,
-    'ein vom Verwalter angelegtes Konto ohne Adresse');
-});
 
 /**
  * Jeden Anmelde-Handler SUCHEN statt zwei aufzuzählen.
@@ -61,6 +44,29 @@ function anmeldeHandler() {
   }
   return treffer;
 }
+
+test('aktives, bestätigtes Konto darf sich anmelden', () => {
+  assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 1, email: 'a@b.c' }), null);
+  assert.equal(assertLoginAllowed({ is_active: true, email_verified: true, email: 'a@b.c' }), null);
+  // Konto ganz ohne E-Mail (Alt-Installation, admin/admin) bleibt erlaubt
+  assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 0, email: null }), null);
+});
+
+test('deaktiviertes Konto wird abgelehnt — egal ob 0 oder false', () => {
+  for (const v of [0, false]) {
+    const r = assertLoginAllowed({ is_active: v, email_verified: 1, email: 'a@b.c' });
+    assert.equal(r?.status, 403, `is_active=${v} muss 403 ergeben`);
+  }
+});
+
+test('eine offene Registrierung wird abgelehnt, Admins ausgenommen', () => {
+  const r = assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 0, registrierung_offen: true });
+  assert.equal(r?.status, 403);
+  assert.equal(r?.unverified, true);
+  assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 1, registrierung_offen: true }), null);
+  assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 0, registrierung_offen: false }), null,
+    'ein vom Verwalter angelegtes Konto ohne Adresse');
+});
 
 test('jede Anmeldung mit Passwort läuft über dieselbe Prüfung', () => {
   const gefunden = anmeldeHandler();
@@ -115,20 +121,13 @@ test('der Brute-Force-Zähler wird nur an einer Stelle bedient', () => {
     assert.match(zentral, new RegExp(`\\b${name}\\(ip`), `src/konto/auth.ts ruft ${name} nicht auf`);
 });
 
-test('Benutzernamen-Regel gilt für Login, Register UND Profil-Update', () => {
+test('die Benutzernamen-Regel', () => {
   assert.ok(USERNAME_RE.test('marco_1'));
   assert.ok(!USERNAME_RE.test('ma'));
   assert.ok(!USERNAME_RE.test('a b'));
   assert.ok(!USERNAME_RE.test('a@b.c'), 'E-Mail-Adresse darf kein Benutzername sein');
 
-  const auth = require('./helpers/sources').anmeldeQuelle();
-  const profile = auth.slice(auth.indexOf("router.put('/profile'"), auth.indexOf("router.get('/users'"));
-  assert.match(profile, /USERNAME_RE\.test/, 'PUT /profile validiert den Benutzernamen nicht');
-  // Die Abfrage steht seit dem 28.10.2026 in src/konto/repository/konten.ts.
-  const konten = fs.readFileSync(path.join(ROOT, 'src/konto/repository/konten.ts'), 'utf8');
-  assert.match(profile, /K\.nameVergeben\(username/, 'PUT /profile prüft den Namen nicht auf Eindeutigkeit');
-  assert.match(konten.slice(konten.indexOf('function nameVergeben')), /LOWER\(username\) = LOWER\(\$1\)/,
-    'PUT /profile muss case-insensitiv auf Eindeutigkeit prüfen — der Login vergleicht mit LOWER()');
+  // Dass PUT /profile sie anwendet (auch gross/klein), prüft anmeldung-regeln-db.test.js.
 });
 
 test('bcrypt-Kostenfaktor ist überall derselbe', () => {
@@ -143,56 +142,6 @@ test('escapeLike entschärft Platzhalter beim Token-Löschen', () => {
   assert.equal(escapeLike('%'), '\\%');
   assert.equal(escapeLike('a_b'), 'a\\_b');
   assert.equal(escapeLike('abc123'), 'abc123');
-});
-
-test('QR-Login transportiert kein Passwort-Material mehr', () => {
-  const auth = require('./helpers/sources').anmeldeQuelle();
-  // Nur den QR-Abschnitt betrachten: dahinter kommen /register und
-  // /reset-password, die legitim mit password_hash arbeiten.
-  // Die Route ist jetzt POST (sie legt eine Nonce an).
-  const from = auth.indexOf("router.post('/qr-token'");
-  const to   = auth.indexOf("router.get('/registration-status'");
-  assert.ok(from > 0 && to > from, 'QR-Abschnitt nicht gefunden');
-  const qr = auth.slice(from, to);
-  assert.doesNotMatch(qr, /password_hash/,
-    'Der QR-Code darf den bcrypt-Hash nicht enthalten — er ist offline knackbar');
-  const konten = fs.readFileSync(path.join(ROOT, 'src/konto/repository/konten.ts'), 'utf8');
-  assert.match(qr, /K\.legeQrTokenAn\(/, 'QR-Login muss über eine serverseitige Nonce laufen');
-  assert.match(qr, /K\.loeseQrTokenEin\(/, 'Die Nonce muss eingelöst werden');
-  const einloesen = konten.slice(konten.indexOf('function loeseQrTokenEin'));
-  assert.match(einloesen, /qr_login_tokens/, 'QR-Login muss über eine serverseitige Nonce laufen');
-  assert.match(einloesen, /used_at IS NULL/, 'Die Nonce muss einmalig einlösbar sein');
-  assert.doesNotMatch(qr, /createHmac/, 'HMAC mit dem SESSION_SECRET wird nicht mehr gebraucht');
-});
-
-test('die angezeigte QR-Gültigkeit stimmt mit dem Server überein', () => {
-  // Der Text nannte 30 Minuten, und der Countdown zählte von 1800 Sekunden
-  // herunter — der Token läuft seit der Sicherheitshärtung aber nach 5 Minuten
-  // ab. Der Zähler lief also 25 Minuten weiter, obwohl der Code längst
-  // ungültig war.
-  const auth = require('./helpers/sources').anmeldeQuelle();
-  const m = /const QR_TTL_MS = (\d+) \* 60 \* 1000;/.exec(auth);
-  assert.ok(m, 'QR_TTL_MS nicht gefunden');
-  const minutes = parseInt(m[1]);
-
-  // Der Client darf die Dauer nicht fest verdrahten
-  const settings = require('./helpers/sources').ansichtQuelle('05');
-  assert.match(settings, /let secs = Number\(d\.expires_in\)/,
-    'Die Dauer muss vom Server kommen');
-  assert.doesNotMatch(settings, /let secs = 1800/, 'Fest verdrahtete 30 Minuten');
-  assert.match(auth, /expires_in: QR_TTL_MS \/ 1000/, 'Der Server muss die Dauer mitliefern');
-
-  // Und der Hinweistext muss dieselbe Zahl nennen — in beiden Sprachen und im
-  // Markup, das vor dem Laden der Übersetzungen sichtbar ist.
-  const i18n = require('./helpers/sources').i18nAll();
-  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-  for (const [name, src] of [['i18n.js', i18n], ['index.html', html]]) {
-    for (const hit of src.match(/[^']*settings\.qr\.hint[^\n]*/g) || []) {
-      assert.doesNotMatch(hit, /30 (Minuten|minutes)/, `${name}: nennt noch 30 Minuten`);
-    }
-  }
-  assert.ok(i18n.includes(`${minutes} Minuten gültig`), `DE-Text nennt nicht ${minutes} Minuten`);
-  assert.ok(i18n.includes(`valid for ${minutes} minutes`), `EN-Text nennt nicht ${minutes} Minuten`);
 });
 
 test('Admins können das Passwort anderer Nutzer setzen', () => {
@@ -220,41 +169,6 @@ test('Admins können das Passwort anderer Nutzer setzen', () => {
   // Hashen und das Beenden aller Zugänge übernimmt der Kontodienst (Test darüber).
   assert.match(fn, /if \(!await K\.setzeFremdesPasswort\(targetId, password\)\) return sendeFehler\(req, res, 404/,
     'Ein unbekannter Nutzer muss 404 ergeben, nicht stillen Erfolg');
-});
-
-test('Sicherheitsschritte am Konto scheitern nicht mehr stillschweigend', () => {
-  // Woher dieser Test kommt
-  // Ausführlich: docs/begruendungen/test/auth-parity.test.js.md#auth
-  const auth  = require('./helpers/sources').anmeldeQuelle();
-  const utils = require('./helpers/sources').dienstQuelle('src/konto/auth.ts');
-
-  // Das Feld heisst `token`; ausgestellt wird es in angemeldetAntworten(),
-  // dem gemeinsamen Weg von Passwort- und Passkey-Anmeldung.
-  // Ausführlich: docs/begruendungen/test/auth-parity.test.js.md#authohne
-  const authOhne = ohneKommentare(auth);
-  const login = authOhne.slice(authOhne.indexOf('async function angemeldetAntworten'), authOhne.indexOf('mustChangePassword'));
-  assert.doesNotMatch(login, /\.catch\(\(\)\s*=>\s*\{\}\)/,
-    'Ein Token, den die Datenbank nicht kennt, darf nicht ausgeliefert werden');
-  assert.match(login, /token \? \{ token \} : \{\}/,
-    'Ohne gespeicherten Token gehört das Feld nicht in die Antwort');
-  // Und fuer die App ist ein Login ohne Token gar kein Erfolg: Sie hat keinen
-  // zweiten Ausweg; seit eine Token-Anmeldung keine Sitzung mehr anlegt, gilt
-  // das für jeden Token, nicht nur den dauerhaften.
-  assert.match(login, /fehlertext\(e\)\);\s*return null;\s*\}\);\s*if \(!token\) return sendeFehler\(req, res, 500, 'token_nicht_ausgestellt'\)/,
-    'Scheitert der Token, muss die App einen Fehler bekommen statt eines halben Erfolgs');
-
-  // Die Löschungen selbst stehen inzwischen nur noch in src/konto/auth.ts
-  // (revokeAllTokens / revokeAllSessions) — routes/auth.ts ruft sie auf.
-  for (const [quelle, name, stelle] of [
-    [utils, 'src/konto/auth.ts', "DELETE FROM api_tokens WHERE user_id = $1"],
-    [utils, 'src/konto/auth.ts', "DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1"],
-  ]) {
-    const i = quelle.indexOf(stelle);
-    assert.ok(i > 0, `${name}: ${stelle} nicht gefunden`);
-    const aufruf = quelle.slice(i, quelle.indexOf(';', i) + 1);
-    assert.doesNotMatch(aufruf, /\.catch\(\(\)\s*=>\s*\{\}\)/,
-      `${name}: alte Zugänge dürfen einen Passwortwechsel nicht überleben`);
-  }
 });
 
 test('ein Passwortwechsel beendet auch die offenen Sitzungen', () => {

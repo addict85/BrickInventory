@@ -74,38 +74,6 @@ obwohl die Regel unverändert galt — ein Test, der die Formulierung
 festhält statt die Aussage, verbietet jede Vereinheitlichung.
 ```
 
-<a id="auth"></a>
-## `const auth  = require('./helpers/sources').anmeldeQuelle();`
-
-```text
-── Woher dieser Test kommt ─────────────────────────────────────────────
-Drei Stellen im Anmeldeweg trugen .catch(() => {}):
-
-  • Der Web-Token beim Login. Scheiterte das INSERT, galt die Anmeldung
-    trotzdem als erfolgreich, und der Client legte einen Token in den
-    sessionStorage, den die Datenbank nie gesehen hatte — der SSE-Kanal
-    (?token=…, EventSource kann keine Header setzen) lief dann in ein 401.
-    Jetzt wird der Token bei einem Fehler WEGGELASSEN; ohne ihn fällt der
-    Client auf die Cookie-Session zurück, die ohnehin funktioniert.
-  • Das Verwerfen von Sessions und Tokens nach einem Passwortwechsel.
-    Verschluckt hiess: neues Passwort gesetzt, alte Zugänge gelten weiter.
-  • revokeAllTokens() — dieselbe Regel an der zentralen Stelle.
-```
-
-<a id="authohne"></a>
-## `const authOhne = ohneKommentare(auth);`
-
-```text
-Das Feld heisst `token`; ausgestellt wird es in angemeldetAntworten(),
-dem gemeinsamen Weg von Passwort- und Passkey-Anmeldung.
-
-Kommentare raus, BEVOR gesucht wird: Der Erklaertext IN der Route nennt
-`.catch(() => {})` als das, was dort frueher stand — die Prüfung schlug
-darauf an, sobald der Ausschnitt frueher begann. Dieselbe Falle wie
-mehrfach zuvor in dieser Suite; sie ist der haeufigste Fehler beim
-Schreiben quelltextlesender Tests.
-```
-
 <a id="auth-2"></a>
 ## `const auth  = require('./helpers/sources').anmeldeQuelle();`
 
