@@ -229,7 +229,7 @@ class AlarmUebersichtTest {
             "Der Rollzustand wird nicht gemerkt — er ueberlebt zwar, aber niemand " +
                 "springt zurueck."
         }
-        val nav = quelle("AppNavigation.kt")
+        val nav = quelle("app/AppNavigation.kt")
         assert(nav.contains("einstellungen = androidx.compose.foundation.rememberScrollState()")) {
             "Der Zustand entsteht nicht oberhalb des NavHost — dort, wo er ueberlebt."
         }

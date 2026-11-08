@@ -156,7 +156,7 @@ class ResultAndStateSplitTest {
 
     @Test
     fun `MainActivity sammelt nur das Design, nicht den ganzen Zustand`() {
-        val src = code(read("MainActivity.kt"))
+        val src = code(read("app/MainActivity.kt"))
         assert(src.contains("darstellung.appTheme")) {
             "MainActivity sammelt wieder den kompletten AppUiState für ein einziges " +
                 "Feld — damit invalidiert jede Zustandsänderung die Wurzel der " +

@@ -56,7 +56,7 @@ class NumberFormatTest {
     @Test
     fun `keine Ansicht setzt Betrag und Waehrung selbst zusammen`() {
         val schirme = listOf(
-            "AppNavigation.kt",
+            "app/AppNavigation.kt",
             "teile/ui/screens/PartsScreen.kt",
             "finanzen/ui/screens/FinanceScreen.kt",
             "sammlung/ui/screens/SetDetailScreen.kt",

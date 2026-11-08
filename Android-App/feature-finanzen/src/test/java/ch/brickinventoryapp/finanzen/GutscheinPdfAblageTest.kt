@@ -131,7 +131,7 @@ class GutscheinPdfAblageTest {
         assertTrue("Abmelden lässt Anleitungen liegen", abmelden.contains("raeumeAnleitungenAuf(ctx.cacheDir)"))
         assertTrue("Abmelden lässt Teileliste und Update in filesDir liegen",
             abmelden.contains("raeumeKontoDateienAuf(ctx.filesDir, ctx.getExternalFilesDir(null))"))
-        val start = Quellen.lies("BrickInventoryApp.kt")
+        val start = Quellen.lies("app/BrickInventoryApp.kt")
         assertTrue("Der Start räumt Reste nicht weg", start.contains("raeumeVertraulichePdfsAuf(cacheDir)"))
         assertTrue("Der Start lässt Klartext-Anleitungen liegen", start.contains("raeumeKlartextAnleitungenAuf(cacheDir)"))
     }

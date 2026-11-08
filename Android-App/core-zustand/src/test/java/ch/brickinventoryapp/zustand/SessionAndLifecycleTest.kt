@@ -72,7 +72,7 @@ class SessionAndLifecycleTest {
         assert(di.contains("fun provideImageLoader")) {
             "Kein ImageLoader-Provider in AppModule"
         }
-        val act = code(read("MainActivity.kt"))
+        val act = code(read("app/MainActivity.kt"))
         assert(!act.contains("ImageLoader.Builder(")) {
             "MainActivity baut wieder einen eigenen ImageLoader. Bei jeder " +
                 "Bildschirmdrehung entsteht dann eine zweite Instanz auf demselben " +

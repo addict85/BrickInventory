@@ -147,7 +147,7 @@ class ListScrollPositionTest {
 
     @Test
     fun `die Zustaende liegen oberhalb des NavHost und werden durchgereicht`() {
-        val nav = code(read("AppNavigation.kt"))
+        val nav = code(read("app/AppNavigation.kt"))
         for (name in listOf("galerie", "teile", "minifiguren")) {
             assert(nav.contains("$name = androidx.compose.foundation.lazy.grid.rememberLazyGridState()")) {
                 "$name wird nicht oberhalb des NavHost angelegt — dort ist die einzige " +

@@ -30,7 +30,7 @@ class PartsListScannerTest {
     // sammlung/ui/dialogs/BarcodeResultDialog.kt; AppNavigation.kt ruft ihn nur noch auf.
     private val src: String by lazy {
         val w = ""
-        File(Quellen.wurzel, w + "AppNavigation.kt").readText() + "\n" +
+        File(Quellen.wurzel, w + "app/AppNavigation.kt").readText() + "\n" +
             File(Quellen.wurzel, w + "sammlung/ui/dialogs/BarcodeResultDialog.kt").readText()
     }
 

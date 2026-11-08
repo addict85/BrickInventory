@@ -101,7 +101,7 @@ class WirksamesDesignTest {
 
     @Test
     fun `MainActivity zeichnet das wirksame Design`() {
-        val src = Quellen.ohneKommentare(Quellen.lies("MainActivity.kt"))
+        val src = Quellen.ohneKommentare(Quellen.lies("app/MainActivity.kt"))
         assertTrue("MainActivity nutzt darstellung() nicht — die Wahl bliebe ohne Wirkung",
             Regex("""darstellung\(theme,\s*helligkeit,\s*isSystemInDarkTheme\(\),\s*systemfarben,\s*android\.os\.Build\.VERSION\.SDK_INT\)""").containsMatchIn(src))
         assertTrue("MainActivity reicht die dunkle Fassung nicht ans Theme",
@@ -126,7 +126,7 @@ class WirksamesDesignTest {
         assertTrue("Die Activity startet nicht im SplashScreen-Theme",
             manifest.contains("@style/Theme.BrickInventoryManager.Start"))
 
-        val src = Quellen.ohneKommentare(Quellen.lies("MainActivity.kt"))
+        val src = Quellen.ohneKommentare(Quellen.lies("app/MainActivity.kt"))
         val splash = src.indexOf("installSplashScreen()")
         val oncreate = src.indexOf("super.onCreate(")
         assertTrue("installSplashScreen() fehlt oder steht nach super.onCreate()",

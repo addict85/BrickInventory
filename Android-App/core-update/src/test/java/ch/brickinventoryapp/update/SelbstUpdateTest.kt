@@ -129,7 +129,7 @@ class SelbstUpdateTest {
     @Test
     fun `die Pruefung beim Start ist still`() {
         // Marcos Vorgabe: beim Start pruefen, nie von allein laden.
-        val nav = quelle("AppNavigation.kt")
+        val nav = quelle("app/AppNavigation.kt")
         // Der Start fragt über pruefeBeimStart(), das nur bei gesetztem Schalter still prüft.
         val vm = Quellen.funktion(Quellen.ohneKommentare(Quellen.lies("konto/ui/viewmodel/UpdateViewModel.kt")), "fun pruefeBeimStart(")
         assert(nav.contains("selbstUpdate.pruefeBeimStart()") && vm.contains("pruefeAufUpdate(still = true)")) {
@@ -312,7 +312,7 @@ class SelbstUpdateTest {
 
     @Test
     fun `der Dialog haengt ueber der ganzen App, nicht an einem Bildschirm`() {
-        val nav = Quellen.ohneKommentare(Quellen.lies("AppNavigation.kt"))
+        val nav = Quellen.ohneKommentare(Quellen.lies("app/AppNavigation.kt"))
         assert(nav.contains("UpdateRoute(selbstUpdate)")) {
             "Der Update-Hinweis wird nirgends gezeigt. In einem einzelnen Bildschirm " +
                 "aufgerufen bekaeme ihn nur, wer ohnehin dort sitzt — genau der Fehler, " +
@@ -340,7 +340,7 @@ class SelbstUpdateTest {
                 "zum Laden ohne Zutun — und genau das war nie erlaubt."
         }
         // Und der Start stoesst weiterhin nur die PRUEFUNG an.
-        val nav = Quellen.ohneKommentare(Quellen.lies("AppNavigation.kt"))
+        val nav = Quellen.ohneKommentare(Quellen.lies("app/AppNavigation.kt"))
         assert(nav.contains("selbstUpdate.pruefeBeimStart()")) {
             "Die stille Pruefung beim Start ist weg"
         }

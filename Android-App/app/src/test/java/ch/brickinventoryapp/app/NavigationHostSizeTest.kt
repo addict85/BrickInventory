@@ -34,7 +34,7 @@ class NavigationHostSizeTest {
 
     @Test
     fun `der Navigationsaufbau enthaelt keine Dialoge`() {
-        val nav = code(read("AppNavigation.kt"))
+        val nav = code(read("app/AppNavigation.kt"))
 
         // AlertDialog/Dialog gehören in eine eigene Datei unter ui/dialogs/.
         // Der AUFRUF bleibt hier — an genau einer Stelle steht damit, WANN ein
@@ -59,7 +59,7 @@ class NavigationHostSizeTest {
         // überhaupt so lange unsichtbar gemacht hat. Die Schwelle ist grosszügig
         // gesetzt — sie soll den nächsten grossen Block auffangen, nicht jede
         // hinzugefügte Route.
-        val zeilen = read("AppNavigation.kt").lines().size
+        val zeilen = read("app/AppNavigation.kt").lines().size
         assert(zeilen < 260) {
             "AppNavigation.kt hat $zeilen Zeilen. Beim letzten Mal war ein " +
                 "Erfassungsformular hineingewandert — gehört hier etwas hinein, " +
