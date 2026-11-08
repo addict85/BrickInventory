@@ -26,7 +26,7 @@ import java.io.File
  *   voll-qualifiziert          `ch.brickinventoryapp.util.fangeAusserAbbruch` ausgeschrieben → rot
  *                              „kein voll qualifizierter Projektname …“ und „voll qualifizierte Namen …“
  *   warten-in-echtzeit         TeileViewModelTest schläft wieder 200 ms → rot „Echtzeit-Warten …“
- *   core-data-oeffentlich      liegtUnter ohne internal → rot „die oeffentliche Flaeche …“
+ *   core-data-oeffentlich      liegtUnter ohne internal → rot „die oeffentliche Flaeche der Datenmodule …“
  */
 class QuelltextRatscheTest {
 
@@ -417,17 +417,24 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `die oeffentliche Flaeche von core-data waechst nicht`() {
-        // Was nur core-data selbst braucht, ist internal: Jede öffentliche Deklaration ist
-        // Schnittstelle für alle Bereiche. Gezählt wird auf oberster Ebene.
+    fun `die oeffentliche Flaeche der Datenmodule waechst nicht`() {
+        // Was nur das eigene Modul braucht, ist internal: Jede öffentliche Deklaration ist
+        // Schnittstelle für alle Bereiche. Gezählt wird auf oberster Ebene, über core-data und
+        // alles, was aus ihm abgespalten wird; sonst sänke die Zahl beim Verschieben zum Schein.
         val GRENZE = 233
         val dekl = Regex("""^(?:@[\w.:]+(?:\([^)\n]*\))?\s+)*((?:(?:public|internal|private|protected|data|sealed|abstract|open|enum|inline|value|annotation|const|suspend|operator|infix|tailrec|lateinit|fun interface)\s+)*)(?:fun\s+interface|class|interface|object|typealias|fun|val|var)\s""", RegexOption.MULTILINE)
-        val dateien = File(Quellen.projekt, "core-data/src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
-        assert(dateien.size > 100) { "Nur ${dateien.size} Dateien in core-data — greift die Suche noch?" }
+        val andere = setOf("core-model", "core-ressourcen", "core-ui", "core-zustand", "core-testing")
+        val module = Quellen.module.filter { it.name.startsWith("core-") && it.name !in andere }
+        assert("core-data" in module.map { it.name }) { "core-data nicht unter ${module.map { it.name }} — greift die Suche noch?" }
+        val dateien = module.flatMap { m ->
+            File(m, "src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        }
+        assert(dateien.size > 100) { "Nur ${dateien.size} Dateien in ${module.map { it.name }} — greift die Suche noch?" }
         val oeffentlich = dateien.sumOf { f ->
             dekl.findAll(f.readText()).count { "private" !in it.groupValues[1] && "internal" !in it.groupValues[1] }
         }
-        ratsche("öffentliche Deklarationen in core-data", GRENZE, oeffentlich, "Was nur das Modul braucht, wird internal.")
+        ratsche("öffentliche Deklarationen in ${module.joinToString { it.name }}", GRENZE, oeffentlich,
+            "Was nur das Modul braucht, wird internal.")
     }
 
     @Test
