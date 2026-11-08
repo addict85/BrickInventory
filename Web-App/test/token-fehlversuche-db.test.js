@@ -14,6 +14,10 @@
  *      nicht 401“
  *   D  die Cache-Prüfung hinter die Drossel gestellt → rot: „ein gültiger
  *      Token im Cache wird auch gebremster Adresse bedient“
+ *   E  (08.11.) in zaehleFehlversuch() wieder im Prozess gezählt (eine Map,
+ *      die vergissSperrenImProzess() mit leert) statt über zaehleAnfrage() →
+ *      rot: „ein zweiter Web-Prozess zählt die Fehlversuche des ersten mit“
+ *      (401 statt 429)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -62,14 +66,14 @@ test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
   const zufall = i => `unbekannt-${process.pid}-${i}-${Math.random()}`;
 
   await t.test('bis zum Limit prüft jeder unbekannte Token die Datenbank', async () => {
-    bremse.vergissFehlversuche();
+    await bremse.vergissFehlversuche();
     abfragen = 0;
     for (let i = 0; i < bremse.FEHLVERSUCH_MAX; i++) assert.equal((await ruf(zufall(i))).status, 401);
     assert.equal(abfragen, bremse.FEHLVERSUCH_MAX);
   });
 
   await t.test('ein gültiger Token im Cache wird auch gebremster Adresse bedient', async () => {
-    bremse.vergissFehlversuche();
+    await bremse.vergissFehlversuche();
     const token = await auth.createToken(uid, 'Cache');
     assert.equal((await ruf(token)).status, 200, 'Vorbedingung: der Token gilt und steht im Cache');
     for (let i = 0; i < bremse.FEHLVERSUCH_MAX + 1; i++) await ruf(zufall(i));
@@ -94,7 +98,7 @@ test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
   });
 
   await t.test('ein wiederverwendeter Token zählt nicht als Fehlversuch', async () => {
-    bremse.vergissFehlversuche();
+    await bremse.vergissFehlversuche();
     const alt = await auth.createToken(uid, 'Alt', true);
     const neu = await auth.rotiereToken(alt, null);
     assert.ok(neu && neu !== 'laeuft', 'Vorbedingung: der Tausch hat geklappt');
@@ -112,5 +116,17 @@ test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
       0,
       'die Familie ist gesperrt',
     );
+  });
+
+  // Ein zweiter Prozess hat eigenen Speicher, aber dieselbe Datenbank.
+  await t.test('ein zweiter Web-Prozess zählt die Fehlversuche des ersten mit', async () => {
+    await bremse.vergissFehlversuche();
+    for (let i = 0; i < bremse.FEHLVERSUCH_MAX; i++) assert.equal((await ruf(zufall(`a${i}`))).status, 401);
+    bremse.vergissSperrenImProzess();
+    abfragen = 0;
+    assert.equal((await ruf(zufall('b1'))).status, 401, 'der erste Versuch im zweiten Prozess prüft noch');
+    assert.equal((await ruf(zufall('b2'))).status, 429, 'danach gilt die gemeinsame Grenze');
+    assert.equal(abfragen, 1);
+    await bremse.vergissFehlversuche();
   });
 });

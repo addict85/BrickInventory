@@ -160,7 +160,7 @@ export async function pruefeToken(token: string | null | undefined,
   const row: TokenBenutzer | undefined = await repo.gueltigerToken(hashed);
   if (!row) {
     _tokenCache.delete(token);
-    if (!await meldeWiederverwendung(hashed)) zaehleFehlversuch(o.ip);
+    if (!await meldeWiederverwendung(hashed)) await zaehleFehlversuch(o.ip);
     return { nutzer: null };
   }
   // Verwalterrecht nur mit Scope `voll`, an dieser einen Stelle entschieden,

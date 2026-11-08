@@ -60,6 +60,10 @@ export async function loescheZaehler(key: string): Promise<void> {
   await db.run('DELETE FROM rate_limit_attempts WHERE key = $1', [key]);
 }
 
+export async function loescheZaehlerMitPraefix(praefix: string): Promise<void> {
+  await db.run('DELETE FROM rate_limit_attempts WHERE left(key, length($1)) = $1', [praefix]);
+}
+
 export function kontoZumNamen(name: string) {
   return db.get<{ kennung: string; id: number | null }>(`
     SELECT lower($1::text) AS kennung,
