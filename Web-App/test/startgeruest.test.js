@@ -24,7 +24,7 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
-const { startStilHash, renderIndexHtml } = _req('src/konto/indexHtml.js');
+const { startStilHash, renderIndexHtml, ohneKommentare } = _req('src/konto/indexHtml.js');
 const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
 // renderIndexHtml() fragt das Design aus der Datenbank; offen hielte der Pool den Lauf an.
 test.after(() =>
@@ -42,9 +42,7 @@ test('der Hash passt zum ausgelieferten Block', async () => {
 });
 
 test('vor dem ersten Stylesheet und vor jedem blockierenden Skript', () => {
-  const html = fs
-    .readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8')
-    .replace(/<!--[\s\S]*?-->/g, '');
+  const html = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8'));
   const geruest = html.indexOf('id="startgeruest"');
   assert.ok(geruest > 0);
   const erstesStylesheet = html.search(/<link rel="stylesheet"/);
