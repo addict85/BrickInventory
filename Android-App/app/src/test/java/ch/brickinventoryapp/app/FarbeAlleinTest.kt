@@ -73,7 +73,7 @@ class FarbeAlleinTest {
     /** Die Dateien, deren Farb-Aussage nachweislich einen zweiten Traeger hat. */
     private val geprueft = setOf(
         "MonitoringScreen.kt",
-        "MonitoringSections.kt",
+        "MonitoringKontingente.kt",
         "SetupScreen.kt",
         "BarcodeScannerScreen.kt",
         "PortfolioChart.kt",
@@ -122,7 +122,7 @@ class FarbeAlleinTest {
      */
     @Test
     fun `die Kontingent-Zeile warnt nicht nur mit Farbe`() {
-        val s = Quellen.ohneKommentare(Quellen.lies("verwaltung/ui/screens/MonitoringSections.kt"))
+        val s = Quellen.ohneKommentare(Quellen.lies("verwaltung/ui/screens/MonitoringKontingente.kt"))
         val i = s.indexOf("private fun RateLimitRow(")
         assert(i > 0) { "RateLimitRow fehlt — Muster veraltet?" }
         val rumpf = s.substring(i, minOf(i + 2400, s.length))

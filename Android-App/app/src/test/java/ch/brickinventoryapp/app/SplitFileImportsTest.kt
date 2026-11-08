@@ -42,6 +42,9 @@ class SplitFileImportsTest {
         "sammlung/ui/screens/GalerieFilter.kt" to "sammlung/ui/screens/GalleryScreen.kt",
         "sammlung/ui/screens/GalerieKarte.kt" to "sammlung/ui/screens/GalleryScreen.kt",
         "sammlung/ui/screens/GalerieErfassen.kt" to "sammlung/ui/screens/GalleryScreen.kt",
+        "verwaltung/ui/screens/MonitoringCache.kt" to "verwaltung/ui/screens/MonitoringSections.kt",
+        "verwaltung/ui/screens/MonitoringKontingente.kt" to "verwaltung/ui/screens/MonitoringSections.kt",
+        "verwaltung/ui/screens/MonitoringProtokoll.kt" to "verwaltung/ui/screens/MonitoringSections.kt",
     )
 
     private fun wildcards(src: String) =

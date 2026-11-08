@@ -48,7 +48,7 @@ class AngekommenAberUngezeigtTest {
      */
     @Test
     fun `das Protokoll zeigt die Uhrzeit jeder Zeile`() {
-        val src = Quellen.ohneKommentare(Quellen.lies("verwaltung/ui/screens/MonitoringSections.kt"))
+        val src = Quellen.ohneKommentare(Quellen.lies("verwaltung/ui/screens/MonitoringProtokoll.kt"))
         assert(src.contains("fmtUhrzeit(zeile.loggedAt)")) {
             "Die Protokollzeile zeigt die Uhrzeit nicht mehr — das Feld logged_at kommt " +
                 "seit jeher mit, und die Weboberflaeche zeigt es"
@@ -64,7 +64,7 @@ class AngekommenAberUngezeigtTest {
      */
     @Test
     fun `das Protokoll laesst sich filtern und durchsuchen`() {
-        val src = Quellen.ohneKommentare(Quellen.lies("verwaltung/ui/screens/MonitoringSections.kt"))
+        val src = Quellen.ohneKommentare(Quellen.lies("verwaltung/ui/screens/MonitoringProtokoll.kt"))
         assert(src.contains("versteckteStufen")) { "Der Stufenfilter des Protokolls fehlt" }
         assert(src.contains("R.string.admin_log_search")) { "Das Suchfeld des Protokolls fehlt" }
     }

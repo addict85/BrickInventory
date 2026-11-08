@@ -430,7 +430,7 @@ class VorschauAblageTest {
     @Test
     fun `der Hinweis zum gemessenen WLAN steht bei den Netzen`() {
         // Lesen und Schreiben der Netze prüft GeraeteEinstellungenViewModelTest.
-        val ui = quelle("verwaltung/ui/screens/MonitoringSections.kt") + quelle("verwaltung/ui/screens/MonitoringScreen.kt")
+        val ui = quelle("verwaltung/ui/screens/MonitoringCache.kt") + quelle("verwaltung/ui/screens/MonitoringScreen.kt")
         // Der Hinweis zum gemessenen WLAN steht dabei. Ohne ihn sieht die Lage
         // „ich bin doch im WLAN, es waermt aber nicht vor" wie ein Fehler aus.
         assert(ui.contains("R.string.monitoring_vorwaermen_hinweis")) {
