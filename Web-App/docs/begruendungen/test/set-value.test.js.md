@@ -144,38 +144,6 @@ Katalogjahrgängen, wo fast jedes Bild fehlt, war das der Grossteil der
 Last. Jetzt steht es in der Datenbank, für alle Prozesse.
 ```
 
-<a id="fc-stelle"></a>
-## `const fc = require('./helpers/sources').finanzQuelle();`
-
-```text
-DER Kern des wiederholt falschen Marktpreises: Die Anzeige leitete den
-Zustand aus den Erfassungen ab (getSetConditionAggregate), die Bewertung
-las stur sets.condition. Weichen die voneinander ab — etwa weil ein Set
-nachträglich auf „Neu" korrigiert wurde — zeigte die Kachel „Neu", der
-Preis stammte aber aus dem Gebraucht-Eintrag.
-
-Seit Migration 0032 gibt es die Spalte nicht mehr. Die gemeinsame Regel
-bleibt trotzdem geprueft: Sie ist jetzt auf EINEN Satz zusammengeschrumpft,
-und gerade deshalb liesse sich an zwei Stellen leicht wieder etwas
-Eigenes schreiben.
-```
-
-<a id="stelle-5"></a>
-## `assert.doesNotMatch(fc, /return set\?\.condition === 'U' \? 'U' : 'N';`
-
-```text
-── Der dritte Zweig ist weg, und das wird hier festgehalten ───────────
-
-Er las den gespeicherten Zustand der Stammzeile. Migration 0032 hat die
-Spalte den Sets genommen, 0035 den Teilen und Minifiguren — fuer manuelle
-Positionen traegt 0035 eine Erfassung nach und prueft danach nach, dass
-keine ohne geblieben ist.
-
-Die Zusicherung lautet jetzt umgekehrt: Dieser Zweig darf NICHT
-wiederkommen. Kaeme er, haette die Bewertung wieder eine zweite Quelle,
-und genau daraus ist der wiederholt falsche Marktpreis entstanden.
-```
-
 <a id="uses"></a>
 ## `const uses = (ph.match(/buildChart\(/g) || []).length;`
 

@@ -14,7 +14,8 @@
  *      ausdrücklich angefragter Zustand …“ und „der Marktpreis als Kaufpreis …“
  *   E  conditionFromAcquisitions liefert bei Erfassungen immer 'N' → rot
  *      „getSet …“ und „manuelle Teile und Minifiguren …“
- *   F  probeErfassungen sortiert nach `added_at` → rot „die Preis-Probe …“
+ *   F  probeErfassungen sortiert nach `added_at` → rot „die Preis-Probe …“;
+ *      ohne `price_cache: cacheRows` in der Antwort ebenso
  *   G  priceFor() in setValue.ts nimmt immer den Neupreis → rot „computePnl
  *      bewertet nach dem Zustand der Erfassungen“ (effectiveCondition allein
  *      auf 'N' gestellt bleibt grün: Mit Erfassungen gilt deren Zustand)
@@ -204,6 +205,11 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     const r = await anfrage('GET', `/admin/price-probe?set=${SN}`);
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.condition_logic?.chosen_for_price, 'U', 'Die Probe zeigt nicht die Regel der Bewertung');
+    assert.deepEqual(
+      r.body.price_cache.map((/** @type {any} */ z) => z.condition).sort(),
+      ['N', 'U'],
+      'Die Cache-Zeilen des Sets gehören in die Antwort',
+    );
   });
 
   await t.test('der im Formular gewählte Zustand kommt beim Anlegen an', async () => {

@@ -1,6 +1,13 @@
 /**
  * Marktwert eines Sets je Zustand (src/finanzen/setValue.ts).
  * Ausführlich: docs/begruendungen/test/set-value.test.js.md#kopf
+ *
+ * Gegenproben (08.11.2026 gemessen, jeweils zurückgenommen):
+ *   cacheUsable ohne die kurze Frist für 0-Einträge → rot „ein gecachter
+ *   Null-Preis …“; effectiveCondition bei Erfassungen immer 'N' → rot
+ *   „Bewertung und Anzeige …“. Gestrichen, weil set-zustand-aggregat-db.test.js
+ *   es ausführt: „der P&L-Pfad wählt je Set …“ (priceFor() immer Neupreis →
+ *   dort rot) und „es gibt einen Diagnose-Endpunkt …“ (ohne price_cache → rot).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -29,25 +36,33 @@ test('nur Neu erfasst → Neupreis, kein Ausweichen auf Gebraucht', () => {
 });
 
 test('je ein Exemplar neu und gebraucht', () => {
-  const v = valueSet(SN, [
-    { quantity: 1, condition: 'N' },
-    { quantity: 1, condition: 'U' },
-  ], prices(148.72, 92.68));
+  const v = valueSet(
+    SN,
+    [
+      { quantity: 1, condition: 'N' },
+      { quantity: 1, condition: 'U' },
+    ],
+    prices(148.72, 92.68),
+  );
   // Stückpreis = Mittel der beiden, Summe = beide zusammen
   assert.equal(v.unit_price, Math.round(((148.72 + 92.68) / 2) * 100) / 100);
-  assert.equal(v.total, 241.40);
+  assert.equal(v.total, 241.4);
   assert.equal(v.quantity, 2);
 });
 
 test('Anzeige × Menge ergibt immer die Summe', () => {
   // Verallgemeinerung auf ungleiche Stückzahlen: ein reiner Mittelwert über
   // die vorkommenden Zustände wäre hier inkonsistent zur Summe.
-  const v = valueSet(SN, [
-    { quantity: 2, condition: 'N' },
-    { quantity: 1, condition: 'U' },
-  ], prices(100, 40));
-  assert.equal(v.total, 240);                       // 2×100 + 1×40
-  assert.equal(v.unit_price, 80);                   // 240 / 3
+  const v = valueSet(
+    SN,
+    [
+      { quantity: 2, condition: 'N' },
+      { quantity: 1, condition: 'U' },
+    ],
+    prices(100, 40),
+  );
+  assert.equal(v.total, 240); // 2×100 + 1×40
+  assert.equal(v.unit_price, 80); // 240 / 3
   assert.equal(v.unit_price * v.quantity, v.total);
 });
 
@@ -73,10 +88,14 @@ test('ohne Erfassungen zaehlen die mitgegebenen Rueckfallwerte', () => {
 });
 
 test('by_condition weist die Zusammensetzung aus', () => {
-  const v = valueSet(SN, [
-    { quantity: 2, condition: 'N' },
-    { quantity: 1, condition: 'U' },
-  ], prices(100, 40));
+  const v = valueSet(
+    SN,
+    [
+      { quantity: 2, condition: 'N' },
+      { quantity: 1, condition: 'U' },
+    ],
+    prices(100, 40),
+  );
   const n = v.by_condition.find(b => b.condition === 'N');
   const u = v.by_condition.find(b => b.condition === 'U');
   assert.deepEqual([n.quantity, n.unit_price], [2, 100]);
@@ -92,8 +111,7 @@ test('qty_avg_price wird für Set-Preise nirgends mehr gelesen', () => {
   const bis = roh.indexOf('export async function rebrickableListe');
   assert.ok(von > 0 && bis > von, 'setPreis() nicht gefunden');
   const sets = roh.slice(0, von) + roh.slice(bis);
-  assert.equal((sets.match(/qty_avg_price/g) || []).length, 0,
-    'Set-Kern: Set-Preise müssen über avg_price laufen');
+  assert.equal((sets.match(/qty_avg_price/g) || []).length, 0, 'Set-Kern: Set-Preise müssen über avg_price laufen');
 
   // Der Abschnitt zu routes/finance.ts ist entfallen: Die Datei gibt es nicht
   // mehr. Ihr Router trug NULL Routen und war trotzdem unter /api/finance
@@ -105,8 +123,11 @@ test('qty_avg_price wird für Set-Preise nirgends mehr gelesen', () => {
 test('die Sortierung "hat einen Preis vor passendem Zustand" ist überall weg', () => {
   for (const f of ['src/sets/dienst.ts', 'routes/api_v1/sets.ts']) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
-    assert.doesNotMatch(src, /ORDER BY \(qty_avg_price[^)]*\) DESC, \(condition/,
-      `${f}: Diese Sortierung liefert für ein neues Set den Gebraucht-Preis`);
+    assert.doesNotMatch(
+      src,
+      /ORDER BY \(qty_avg_price[^)]*\) DESC, \(condition/,
+      `${f}: Diese Sortierung liefert für ein neues Set den Gebraucht-Preis`,
+    );
   }
 });
 
@@ -117,15 +138,23 @@ test('getPriceGuide holt ohne Angabe den Neupreis', () => {
   pruefeParameter(src, 'getPriceGuide', ['setNumber', 'condition']);
   // Der Punkt ist die VORGABE, nicht der Rest des Kopfes: Mit 'U' landete der
   // Gebraucht-Preis unter dem Neu-Schlüssel im Cache.
-  assert.match(funktionsKopf(src, 'getPriceGuide'), /condition[^,)]*=\s*'N'/,
-    "Vorgabe 'U' hätte den Gebraucht-Preis in den Cache geschrieben");
+  assert.match(
+    funktionsKopf(src, 'getPriceGuide'),
+    /condition[^,)]*=\s*'N'/,
+    "Vorgabe 'U' hätte den Gebraucht-Preis in den Cache geschrieben",
+  );
 });
 
 test("guide_type ist überall 'sold', nicht 'stock'", () => {
   // 'sold' = tatsächlich erzielte Preise der letzten sechs Monate.
   // 'stock' wären eingestellte Angebote, also auch das, was niemand zahlt.
-  for (const f of ['clients/bricklink.ts', 'src/katalog/bricklinkPreise.ts', 'routes/api_v1/sets.ts',
-                   'src/finanzen/financeCalc.ts', 'jobs/priceJob.ts']) {
+  for (const f of [
+    'clients/bricklink.ts',
+    'src/katalog/bricklinkPreise.ts',
+    'routes/api_v1/sets.ts',
+    'src/finanzen/financeCalc.ts',
+    'jobs/priceJob.ts',
+  ]) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
     const code = src.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
     // 'stock' ist als RÜCKFALL erlaubt (kein Verkauf in sechs Monaten), aber
@@ -133,8 +162,11 @@ test("guide_type ist überall 'sold', nicht 'stock'", () => {
     // expliziten Argument an getPriceGuideRaw.
     for (const m of code.matchAll(/guide_type:\s*'stock'/g)) {
       const before = code.slice(Math.max(0, m.index - 40), m.index);
-      assert.match(before, /\.\.\.qp,\s*$/,
-        `${f}: guide_type 'stock' als Erstabfrage — erlaubt ist es nur als Rückfall`);
+      assert.match(
+        before,
+        /\.\.\.qp,\s*$/,
+        `${f}: guide_type 'stock' als Erstabfrage — erlaubt ist es nur als Rückfall`,
+      );
     }
     assert.doesNotMatch(code, /'price_guide_type',\s*'stock'/, `${f}: Vorgabe der Einstellung ist noch 'stock'`);
     assert.doesNotMatch(code, /guideType = 'stock'/, `${f}: Parametervorgabe ist noch 'stock'`);
@@ -149,19 +181,20 @@ test('Fallback zwischen den Zuständen bleibt — aber in der richtigen Reihenfo
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
     for (const m of src.matchAll(/SELECT[\s\S]{0,240}?FROM price_cache[\s\S]{0,260}?`/g)) {
       const q = m[0];
-      if (!/condition IN \('N','U'\)/.test(q)) continue;   // strikte Abfragen ohne Fallback
+      if (!/condition IN \('N','U'\)/.test(q)) continue; // strikte Abfragen ohne Fallback
       // Nur Abfragen prüfen, die EINE Zeile auswählen. Seit der Detail-Dialog
       // Neu- und Gebrauchtpreis nebeneinander zeigt, gibt es Abfragen, die
       // bewusst BEIDE Zeilen liefern (routes/finance.ts, `current`). Dort ist
       // die Rückfall-Sortierung sinnlos — es wird ja nichts verworfen — und
       // ihre Abwesenheit ist kein Fehler.
       if (!/LIMIT 1|DISTINCT ON/.test(q)) continue;
-      assert.match(q, /avg_price > 0/,
-        `${f}: Ohne diesen Filter gilt ein leerer Eintrag als gültiger Preis`);
-      assert.match(q, /ORDER BY \(condition = \$\d\) DESC/,
-        `${f}: Der angefragte Zustand muss zuerst sortiert werden`);
-      assert.doesNotMatch(q, /ORDER BY \(avg_price[^)]*\) DESC, \(condition/,
-        `${f}: alte Sortierung — sie liefert für ein neues Set den Gebraucht-Preis`);
+      assert.match(q, /avg_price > 0/, `${f}: Ohne diesen Filter gilt ein leerer Eintrag als gültiger Preis`);
+      assert.match(q, /ORDER BY \(condition = \$\d\) DESC/, `${f}: Der angefragte Zustand muss zuerst sortiert werden`);
+      assert.doesNotMatch(
+        q,
+        /ORDER BY \(avg_price[^)]*\) DESC, \(condition/,
+        `${f}: alte Sortierung — sie liefert für ein neues Set den Gebraucht-Preis`,
+      );
     }
   }
 });
@@ -172,49 +205,59 @@ test('der Preisjob holt alle Zustände, die ein Set tatsächlich führt', () => 
   // immer nur einen Zustand und wich nur bei komplett fehlendem Preis auf den
   // anderen aus — bei gemischten Sets fehlte damit dauerhaft eine Hälfte. …
   // Ausführlich: docs/begruendungen/test/set-value.test.js.md#job-stelle
-  const job = fs.readFileSync(path.join(ROOT, 'jobs/priceJob.ts'), 'utf8')
-    + fs.readFileSync(path.join(ROOT, 'src/finanzen/repository/preisLauf.ts'), 'utf8');
+  const job =
+    fs.readFileSync(path.join(ROOT, 'jobs/priceJob.ts'), 'utf8') +
+    fs.readFileSync(path.join(ROOT, 'src/finanzen/repository/preisLauf.ts'), 'utf8');
 
   // EINE Stelle, und sie arbeitet gebündelt: Der Einzelfall (Sofort-Abruf) ist
   // eine Liste mit einem Eintrag. Vorher stand die Regel zweimal da — einmal
   // hier und einmal ausgeschrieben in der Schleife —, und nur eine der beiden
   // Fassungen kannte die Merkliste.
-  assert.match(job, /async function zustaendeJeSet/,
-    'Es braucht eine Stelle, die die vorkommenden Zustände eines Sets ermittelt');
-  assert.match(job, /FROM set_acquisitions WHERE user_id=\$1 AND set_number = ANY\(\$2\)/,
-    'Die Zustände müssen aus den Erfassungen kommen, nicht aus einer Vorgabe');
+  assert.match(
+    job,
+    /async function zustaendeJeSet/,
+    'Es braucht eine Stelle, die die vorkommenden Zustände eines Sets ermittelt',
+  );
+  assert.match(
+    job,
+    /FROM set_acquisitions WHERE user_id=\$1 AND set_number = ANY\(\$2\)/,
+    'Die Zustände müssen aus den Erfassungen kommen, nicht aus einer Vorgabe',
+  );
 
   // Sofort-Abruf: Schleife über die ermittelten Zustände
   const immediate = job.slice(job.indexOf('async function refreshPriceForSet'));
-  assert.match(immediate, /for \(const c of conditions\)/,
-    'refreshPriceForSet muss jeden benötigten Zustand holen');
+  assert.match(immediate, /for \(const c of conditions\)/, 'refreshPriceForSet muss jeden benötigten Zustand holen');
 
   // Hintergrundlauf: ebenfalls je Set über die Zustände
-  const bg = job.slice(job.indexOf('async function runPriceRefresh'),
-                       job.indexOf('async function refreshPriceForSet'));
-  assert.match(bg, /for \(const c of conditions\)/,
-    'Auch der Hintergrundlauf muss beide Zustände abdecken');
-  assert.match(job, /GROUP BY set_number, COALESCE\(condition,'N'\)/,
-    'Die Zustände aller Sets gehören in EINE Abfrage — sonst ein Roundtrip je Set');
+  const bg = job.slice(job.indexOf('async function runPriceRefresh'), job.indexOf('async function refreshPriceForSet'));
+  assert.match(bg, /for \(const c of conditions\)/, 'Auch der Hintergrundlauf muss beide Zustände abdecken');
+  assert.match(
+    job,
+    /GROUP BY set_number, COALESCE\(condition,'N'\)/,
+    'Die Zustände aller Sets gehören in EINE Abfrage — sonst ein Roundtrip je Set',
+  );
 
   // Reine Sets dürfen nicht doppelt abgefragt werden (BrickLink-Tageskontingent)
-  assert.match(bg, /const conditions = zustaende\.get\(sn\)/,
-    'Nur die tatsächlich vorkommenden Zustände abrufen, nicht pauschal beide');
+  assert.match(
+    bg,
+    /const conditions = zustaende\.get\(sn\)/,
+    'Nur die tatsächlich vorkommenden Zustände abrufen, nicht pauschal beide',
+  );
   // Ohne Kommentare: Die Doku der Staffelung nennt ['N','U'] als Beispiel für
   // einen Rückgabewert. Das ist eine Erklärung, keine Abfrage — die Regel gilt
   // dem Code.
   const bgCode = bg.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
-  assert.doesNotMatch(bgCode, /\['N'\s*,\s*'U'\]/,
-    'Der Lauf darf nie pauschal beide Zustände holen');
+  assert.doesNotMatch(bgCode, /\['N'\s*,\s*'U'\]/, 'Der Lauf darf nie pauschal beide Zustände holen');
 
   // Und der Beschluss steht VOR der Schleife: Eine Abfrage je Set wäre ein
   // Roundtrip je Set — genau dafür ist die gebündelte Fassung da.
-  const aufgaben = bg.slice(bg.indexOf('const tasks = valid.map'),
-                            bg.indexOf('await parallelLimit(tasks'));
+  const aufgaben = bg.slice(bg.indexOf('const tasks = valid.map'), bg.indexOf('await parallelLimit(tasks'));
   assert.ok(aufgaben.length > 200, 'Der Aufgabenblock wurde nicht gefunden');
-  assert.doesNotMatch(aufgaben, /db\.(all|get)\(/,
-    'In der Schleife über die Sets darf keine Abfrage stehen — die Zustände ' +
-    'sind vorher gebündelt bestimmt');
+  assert.doesNotMatch(
+    aufgaben,
+    /db\.(all|get)\(/,
+    'In der Schleife über die Sets darf keine Abfrage stehen — die Zustände ' + 'sind vorher gebündelt bestimmt',
+  );
 });
 
 test("ohne Verkauf in sechs Monaten wird auf 'stock' ausgewichen", () => {
@@ -227,47 +270,49 @@ test("ohne Verkauf in sechs Monaten wird auf 'stock' ausgewichen", () => {
   // als der Leser dort, unterblieb der Rueckfall auf 'stock' fuer genau die …
   // Ausführlich: docs/begruendungen/test/set-value.test.js.md#stelle-2
   assert.match(bl, /hatPreis/, 'Prüfung auf brauchbaren Preis fehlt');
-  assert.match(bl, /export function hatPreis\(/,
-    'Der Rückfall muss an derselben Regel hängen, die auch beim Lesen gilt (preise.ts liest sie von hier)');
-  assert.match(bl, /getPriceGuideRaw\(setNumber, condition, 'stock', currencyCode\)/,
-    "Rückfall auf 'stock' fehlt");
+  assert.match(
+    bl,
+    /export function hatPreis\(/,
+    'Der Rückfall muss an derselben Regel hängen, die auch beim Lesen gilt (preise.ts liest sie von hier)',
+  );
+  assert.match(bl, /getPriceGuideRaw\(setNumber, condition, 'stock', currencyCode\)/, "Rückfall auf 'stock' fehlt");
   assert.match(bl, /guide_used/, 'Es muss nachvollziehbar bleiben, woher der Wert kommt');
   // Reihenfolge: sold gewinnt, wenn es einen Preis hat
-  assert.match(bl, /if \(hatPreis\(first\) \|\| guideType !== 'sold'\)/,
-    "'sold' muss Vorrang behalten, wenn dort ein Preis steht");
+  assert.match(
+    bl,
+    /if \(hatPreis\(first\) \|\| guideType !== 'sold'\)/,
+    "'sold' muss Vorrang behalten, wenn dort ein Preis steht",
+  );
 
   const fc = require('./helpers/sources').finanzQuelle();
   const fallbacks = [...fc.matchAll(/guide_type: 'stock'/g)];
-  assert.equal(fallbacks.length, 2,
-    'Teile- und Minifiguren-Pfad gehen nicht über getPriceGuide und brauchen den Rückfall selbst');
+  assert.equal(
+    fallbacks.length,
+    2,
+    'Teile- und Minifiguren-Pfad gehen nicht über getPriceGuide und brauchen den Rückfall selbst',
+  );
 });
 
 test('ein gecachter Null-Preis blockiert den Rückfall nicht dauerhaft', () => {
-  // Genau hier lief der sold→stock-Rückfall ins Leere: Ein 0-Eintrag galt für
-  // das volle TTL-Fenster als endgültige Antwort, es wurde nie neu geholt —
-  // und die Logik wich stattdessen auf den ANDEREN Zustand aus. Ein neues Set
-  // zeigte damit den Gebraucht-Preis.
-  const fc = require('./helpers/sources').finanzQuelle();
-  assert.match(fc, /const ZERO_PRICE_TTL_HOURS/,
-    '0-Einträge brauchen ein kürzeres Fenster als Einträge mit Preis');
-  assert.match(fc, /function cacheUsable/, 'Prüffunktion fehlt');
-  assert.match(fc, /cached && !hatPreis\(cached\) && cacheUsable\(cached, ttl\)/,
-    'Ein alter 0-Eintrag muss durchfallen und einen Neuabruf auslösen');
-  assert.match(fc, /fetched_at/,
-    'Ohne fetched_at in PRICE_CACHE_COLS lässt sich das Alter nicht bewerten');
-  // Der Zustands-Fallback darf erst NACH dem Preis-Check greifen.
-  //
-  // Vorher stand die Reihenfolge hier als indexOf() auf zwei ausgeschriebenen
-  // parseFloat-Ausdrücken. Beide gibt es nicht mehr — die Regel liegt in
-  // src/finanzen/preisRegel.ts. Die Aussage bleibt und wird jetzt an der Regel selbst
-  // gemessen: Der Treffer mit Preis kommt vor dem Zweig ohne.
-  const idxOk   = fc.indexOf('if (cached && hatPreis(cached))');
-  const idxZero = fc.indexOf('cached && !hatPreis(cached)');
-  assert.ok(idxOk > 0 && idxZero > 0 && idxOk < idxZero,
-    'Ein vorhandener Preis muss vor jeder Ausweichlogik zurückgegeben werden');
-  // Und dass der Rückfall wirklich greift, prüft test/preisregel-db.test.js
-  // gegen die Datenbank — ein frischer 0-Eintrag antwortet aus dem Cache, ein
-  // alter löst einen Neuabruf aus. Am Quelltext allein ist das nicht zu sehen.
+  // Ein 0-Eintrag galt für das volle TTL-Fenster als endgültige Antwort; die
+  // Logik wich dann auf den ANDEREN Zustand aus. Ein Eintrag mit Preis gilt
+  // das ganze Fenster, einer ohne nur kurz.
+  const { cacheUsable } = _req('src/finanzen/rechnung/preise.js');
+  const vor = (/** @type {number} */ h) => new Date(Date.now() - h * 3600000).toISOString();
+  assert.equal(cacheUsable({ avg_price: '0', fetched_at: vor(1) }, 24), true, 'ein frischer 0-Eintrag antwortet');
+  assert.equal(
+    cacheUsable({ avg_price: '0', fetched_at: vor(7) }, 24),
+    false,
+    'ein alter 0-Eintrag muss durchfallen und einen Neuabruf auslösen',
+  );
+  assert.equal(cacheUsable({ avg_price: '0' }, 24), false, 'ohne fetched_at ist das Alter unbekannt');
+  assert.equal(cacheUsable({ avg_price: '0', fetched_at: vor(3) }, 2), false, 'die kürzere Frist gewinnt');
+  assert.equal(cacheUsable({ avg_price: '12.5', fetched_at: vor(20) }, 24), true, 'ein Preis gilt das volle Fenster');
+  assert.equal(
+    cacheUsable({ avg_price: '0', qty_avg_price: '9', fetched_at: vor(7) }, 24),
+    false,
+    'qty_avg_price allein ist kein Preis',
+  );
 });
 
 test('KEINE Abfrage stellt mehr "hat einen Preis" vor "passender Zustand"', () => {
@@ -275,34 +320,23 @@ test('KEINE Abfrage stellt mehr "hat einen Preis" vor "passender Zustand"', () =
   // Sie steckte an fünf Stellen; vier waren beim ersten Anlauf behoben, die
   // fünfte (der P&L-Pfad in financeCalc.ts) speist aber genau die Anzeige in
   // Galerie und Detail-Dialog — dort blieb der Gebraucht-Preis stehen.
-  const files = ['src/sets/dienst.ts', 'routes/api_v1/sets.ts',
-                 'src/finanzen/financeCalc.ts', 'src/finanzen/portfolioHistory.ts'];
+  const files = [
+    'src/sets/dienst.ts',
+    'routes/api_v1/sets.ts',
+    'src/finanzen/financeCalc.ts',
+    'src/finanzen/portfolioHistory.ts',
+  ];
   for (const f of files) {
-    const src = fs.readFileSync(path.join(ROOT, f), 'utf8')
-      .replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
-    assert.doesNotMatch(src, /ORDER BY[^`]*\(qty_avg_price\s*>\s*0\)\s*DESC\s*,\s*\(condition/,
-      `${f}: alte Sortierung — sie liefert für ein neues Set den Gebraucht-Preis`);
+    const src = fs
+      .readFileSync(path.join(ROOT, f), 'utf8')
+      .replace(/\/\/[^\n]*/g, '')
+      .replace(/\/\*[\s\S]*?\*\//g, '');
+    assert.doesNotMatch(
+      src,
+      /ORDER BY[^`]*\(qty_avg_price\s*>\s*0\)\s*DESC\s*,\s*\(condition/,
+      `${f}: alte Sortierung — sie liefert für ein neues Set den Gebraucht-Preis`,
+    );
   }
-});
-
-test('der P&L-Pfad wählt je Set nach dessen eigenem Zustand', () => {
-  // Seit der Bewertung je Erfassung (hardened-90) wählt der P&L-Pfad nicht
-  // mehr EINEN Zustand fürs ganze Set, sondern lässt valueSet() jede Erfassung
-  // mit dem Preis ihres Zustands bewerten. Der geschützte Fehler bleibt
-  // derselbe: Der Marktpreis darf nicht aus dem falschen Zustand stammen.
-  const fc = require('./helpers/sources').finanzQuelle();
-  assert.match(fc, /valueSet\(set\.set_number, acqs, preise, zustand, /,
-    'Der P&L-Pfad muss dieselbe Bewertungsregel benutzen wie die Anzeige');
-  assert.match(fc, /effectiveCondition\(set\)/,
-    'Ohne Erfassungen zählt weiterhin die gemeinsame Zustandsregel');
-  // Und die Abfrage muss avg_price überhaupt mitlesen
-  assert.match(fc, /SELECT set_number, condition, avg_price, qty_avg_price FROM price_cache/,
-    'Ohne avg_price im SELECT greift die Auswertung ins Leere');
-
-  // Das Ausweichen auf den anderen Zustand lebt jetzt an EINER Stelle.
-  const sv = fs.readFileSync(path.join(ROOT, 'src/finanzen/setValue.ts'), 'utf8');
-  assert.match(sv, /const want\s*=\s*prices\.get\(`\$\{setNumber\}\|\$\{cond\}`\);\s*\n\s*if \(want\) return want;/,
-    'Der andere Zustand darf nur einspringen, wenn der eigene keinen Preis hat');
 });
 
 test('die Finanz-Ansicht zeigt avg_price als Marktpreis', () => {
@@ -310,56 +344,71 @@ test('die Finanz-Ansicht zeigt avg_price als Marktpreis', () => {
   // nicht: Dort zeigte die als „Marktpreis" beschriftete Spalte qty_avg_price,
   // und die Total-Spalte rechnete damit.
   const fin = fs.readFileSync(path.join(ROOT, 'public', 'js', '04-finance.js'), 'utf8');
-  assert.match(fin, /const total\s*=\s*acq \? acq\.wert_gesamt : s\.wert_gesamt;/,
-    'Die Total-Spalte muss über avg_price laufen, nicht über qty_avg');
-  assert.match(fin, /parseFloat\(d\.totals\.avg\|\|'?0'?\)/,
-    'Die Summen sind als „Ø Marktpreis" beschriftet und müssen totals.avg nehmen');
-  assert.match(fin, /(?:parseFloat|Number)\(it\.avg_price \?\? it\.qty_avg_price \?\? 0\)/,
-    'Teile- und Minifiguren-Zeilen: avg_price zuerst');
-  assert.doesNotMatch(fin, /parseFloat\(d\.totals\.qty_avg/,
-    'Keine Summe darf mehr auf qty_avg basieren');
+  assert.match(
+    fin,
+    /const total\s*=\s*acq \? acq\.wert_gesamt : s\.wert_gesamt;/,
+    'Die Total-Spalte muss über avg_price laufen, nicht über qty_avg',
+  );
+  assert.match(
+    fin,
+    /parseFloat\(d\.totals\.avg\|\|'?0'?\)/,
+    'Die Summen sind als „Ø Marktpreis" beschriftet und müssen totals.avg nehmen',
+  );
+  assert.match(
+    fin,
+    /(?:parseFloat|Number)\(it\.avg_price \?\? it\.qty_avg_price \?\? 0\)/,
+    'Teile- und Minifiguren-Zeilen: avg_price zuerst',
+  );
+  assert.doesNotMatch(fin, /parseFloat\(d\.totals\.qty_avg/, 'Keine Summe darf mehr auf qty_avg basieren');
 
   // Die zweite Marktpreis-Spalte ist inzwischen ganz entfallen — die Zielform
   // prüft der Test „Finanzen: Kaufpreis statt zweiter Marktpreis-Spalte".
   // finance.qty_avg wurde mit der Spalte entfernt — kein toter Schlüssel.
   const i18n = require('./helpers/sources').i18nAll();
-  assert.doesNotMatch(i18n, /'finance\.qty_avg':/,
-    'Der Schlüssel gehört mit der Spalte entfernt');
+  assert.doesNotMatch(i18n, /'finance\.qty_avg':/, 'Der Schlüssel gehört mit der Spalte entfernt');
 });
 
 test('Finanzen: Kaufpreis statt zweiter Marktpreis-Spalte', () => {
   const fin = fs.readFileSync(path.join(ROOT, 'public', 'js', '04-finance.js'), 'utf8');
   // Die Sets-Tabelle hatte zwei Preisspalten für dasselbe Konzept.
-  assert.doesNotMatch(fin, /t\('finance\.qty_avg'\)/,
-    'Die mengengewichtete Spalte ist entfallen');
+  assert.doesNotMatch(fin, /t\('finance\.qty_avg'\)/, 'Die mengengewichtete Spalte ist entfallen');
   // Einstand (Menge × Kaufpreis) vor Marktpreis, für alle drei Tabellen gleich.
   // Der Kopf darf ein Sortierknopf sein (sortKnopf), die Reihenfolge bleibt.
-  assert.match(fin, /<th[^>]*>(?:<abbr[^>]*>)?\$\{(?:t(?:Raw)?\('finance\.col\.purchase'\)|sortKnopf\('kauf', \w+, tRaw\('finance\.col\.purchase'\)\))\}(?:<\/abbr>)?<\/th>`(?:\s*\+ `|\}\$\{html`)<th[^>]*>\$\{t(?:Raw)?\('detail\.market_price'\)\}/,
-    'Sets-Tabelle: Kaufpreis vor Marktpreis, wie bei Teilen und Minifiguren');
+  assert.match(
+    fin,
+    /<th[^>]*>(?:<abbr[^>]*>)?\$\{(?:t(?:Raw)?\('finance\.col\.purchase'\)|sortKnopf\('kauf', \w+, tRaw\('finance\.col\.purchase'\)\))\}(?:<\/abbr>)?<\/th>`(?:\s*\+ `|\}\$\{html`)<th[^>]*>\$\{t(?:Raw)?\('detail\.market_price'\)\}/,
+    'Sets-Tabelle: Kaufpreis vor Marktpreis, wie bei Teilen und Minifiguren',
+  );
   // fmtGeld statt fmtN: Ein Kaufpreis von 0 (Geschenk) steht als „0,00 €“ da.
-  assert.match(fin, /if \(n <= 1\) return fmtGeld\(p, cur\);/,
-    'Die Kaufpreis-Spalte muss den Wert auch anzeigen');
+  assert.match(fin, /if \(n <= 1\) return fmtGeld\(p, cur\);/, 'Die Kaufpreis-Spalte muss den Wert auch anzeigen');
 
   // Die Gewichtung des Kaufpreises ist aus dem SQL in weightedPurchase()
   // gewandert — sie wird jetzt über dieselben Zeilen gerechnet, die auch in
   // der Tabelle stehen. Damit kann Zeilensumme und Kopfzahl nicht mehr
   // auseinanderlaufen.
   const sv = fs.readFileSync(path.join(ROOT, 'src/finanzen/setValue.ts'), 'utf8');
-  assert.match(sv, /withCost\.reduce\(\(s, r\) => s \+ \(r\.purchase_price as number\) \* r\.quantity, 0\) \/ qty/,
-    'Der Kaufpreis muss mengengewichtet gemittelt werden: 2x100 + 1x160 ergibt 120, nicht 130');
-  assert.match(sv, /r\.purchase_price != null/,
-    'Erfassungen ohne Kaufpreis dürfen den Nenner nicht aufblähen');
+  assert.match(
+    sv,
+    /withCost\.reduce\(\(s, r\) => s \+ \(r\.purchase_price as number\) \* r\.quantity, 0\) \/ qty/,
+    'Der Kaufpreis muss mengengewichtet gemittelt werden: 2x100 + 1x160 ergibt 120, nicht 130',
+  );
+  assert.match(sv, /r\.purchase_price != null/, 'Erfassungen ohne Kaufpreis dürfen den Nenner nicht aufblähen');
 
   // Hier stand eine Regel auf den Rueckfall `set.purchase_price != null ?
   // parseFloat(set.purchase_price) : null` in der Bewertung. Mit Migration 0032
   // gibt es die Spalte nicht mehr; die Bewertung nimmt ausschliesslich den
   // gewichteten Kaufpreis aus den Erfassungen. Das ist die Nachfolgeregel.
   const fc = require('./helpers/sources').finanzQuelle();
-  assert.match(fc, /const purchase = weightedPurchase\(rows\);/,
-    'Die Bewertung muss den Kaufpreis aus den Erfassungen nehmen, ohne Rueckfall');
-  assert.doesNotMatch(fc.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''),
+  assert.match(
+    fc,
+    /const purchase = weightedPurchase\(rows\);/,
+    'Die Bewertung muss den Kaufpreis aus den Erfassungen nehmen, ohne Rueckfall',
+  );
+  assert.doesNotMatch(
+    fc.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''),
     /parseFloat\(set\.purchase_price\)/,
-    'Kein Pfad darf auf eine Kaufpreis-Spalte der sets-Zeile zurueckfallen');
+    'Kein Pfad darf auf eine Kaufpreis-Spalte der sets-Zeile zurueckfallen',
+  );
 });
 
 test('eine späte Antwort schreibt nicht in einen fremden Dialog', () => {
@@ -369,8 +418,11 @@ test('eine späte Antwort schreibt nicht in einen fremden Dialog', () => {
   const i = src.indexOf("api('GET', `/v1/minifigs?source=set`)");
   assert.ok(i > 0, 'Die Nachfrage nach den Minifiguren fehlt');
   const fn = src.slice(i, i + 500);
-  assert.match(fn, /!curSet \|\| curSet\.set_number !== sn/,
-    'Die späte Antwort prüft nicht, ob noch dasselbe Set offen ist');
+  assert.match(
+    fn,
+    /!curSet \|\| curSet\.set_number !== sn/,
+    'Die späte Antwort prüft nicht, ob noch dasselbe Set offen ist',
+  );
 });
 
 test('die Vorschau-Erzeugung ist gedeckelt', () => {
@@ -379,37 +431,56 @@ test('die Vorschau-Erzeugung ist gedeckelt', () => {
   const server = require('./helpers/sources').serverAll();
   const parallel = server.match(/const THUMB_MAX_PARALLEL = (\d+)/);
   assert.ok(parallel, 'THUMB_MAX_PARALLEL nicht gefunden');
-  assert.ok(parseInt(parallel[1]) <= 1,
+  assert.ok(
+    parseInt(parallel[1]) <= 1,
     `THUMB_MAX_PARALLEL = ${parallel[1]} — im Cluster vervielfacht sich das je ` +
-    'Arbeitsprozess. Einer je Prozess genügt: Die Vorschau ist eine ' +
-    'Beschleunigung für später, nichts, worauf jemand wartet.');
-  assert.match(server, /_thumbQueue\.length >= THUMB_MAX_QUEUE/,
+      'Arbeitsprozess. Einer je Prozess genügt: Die Vorschau ist eine ' +
+      'Beschleunigung für später, nichts, worauf jemand wartet.',
+  );
+  assert.match(
+    server,
+    /_thumbQueue\.length >= THUMB_MAX_QUEUE/,
     'Die Warteschlange hat keine Obergrenze — wer schnell durchscrollt, staut ' +
-    'den halben Katalog auf, und der Server rechnet ihn stur ab');
+      'den halben Katalog auf, und der Server rechnet ihn stur ab',
+  );
 
   // Und die Grenze muss für den GANZEN Server gelten
   // Ausführlich: docs/begruendungen/test/set-value.test.js.md#stelle-3
-  assert.match(server, /pg_try_advisory_lock\(\$1\)/,
+  assert.match(
+    server,
+    /pg_try_advisory_lock\(\$1\)/,
     'Die Vorschau-Erzeugung hat keine prozessübergreifende Sperre — dann rechnet ' +
-    'jeder Arbeitsprozess für sich, und die Grenze oben ist wirkungslos');
+      'jeder Arbeitsprozess für sich, und die Grenze oben ist wirkungslos',
+  );
   // try, nicht warten: Wer den Zuschlag nicht bekommt, lässt es. Ein wartender
   // Lauf hielte eine Datenbankverbindung fest und staute die Arbeit doch wieder.
-  assert.doesNotMatch(server, /pg_advisory_lock\(\$1\)/,
-    'Ein WARTENDER Lock staut die Arbeit nur an anderer Stelle auf');
-  assert.match(server, /pg_advisory_unlock\(\$1\)/,
-    'Ohne Freigabe blockiert der erste Lauf alle folgenden bis zum Neustart');
+  assert.doesNotMatch(
+    server,
+    /pg_advisory_lock\(\$1\)/,
+    'Ein WARTENDER Lock staut die Arbeit nur an anderer Stelle auf',
+  );
+  assert.match(
+    server,
+    /pg_advisory_unlock\(\$1\)/,
+    'Ohne Freigabe blockiert der erste Lauf alle folgenden bis zum Neustart',
+  );
 
   // Und der Katalog erzeugt gar keine Vorschauen
   // Ausführlich: docs/begruendungen/test/set-value.test.js.md#stelle-4
-  assert.match(server, /const darfErzeugen = req\.query\.gen !== '0'/,
-    'Der Proxy kennt kein „Vorschau nutzen, aber keine erzeugen"');
+  assert.match(
+    server,
+    /const darfErzeugen = req\.query\.gen !== '0'/,
+    'Der Proxy kennt kein „Vorschau nutzen, aber keine erzeugen"',
+  );
   const kat = fs.readFileSync(path.join(ROOT, 'public', 'js', '09-catalog.js'), 'utf8');
-  assert.match(kat, /imgUrl\(thumbUrl\(src\), 'nur'\)/,
-    'Die Katalog-Kachel lässt weiter Verkleinerungen erzeugen');
+  assert.match(kat, /imgUrl\(thumbUrl\(src\), 'nur'\)/, 'Die Katalog-Kachel lässt weiter Verkleinerungen erzeugen');
   // Die Galerie NICHT — dort lohnt es sich.
   const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', '02-gallery.js'), 'utf8');
-  assert.match(gal, /imgUrl\(thumbUrl\(src\)\|\|src, true\)/,
-    'Der eigene Bestand sollte weiterhin Vorschauen bekommen');
+  assert.match(
+    gal,
+    /imgUrl\(thumbUrl\(src\)\|\|src, true\)/,
+    'Der eigene Bestand sollte weiterhin Vorschauen bekommen',
+  );
 });
 
 test('nur 404 wird negativ gemerkt, kein 403', () => {
@@ -420,50 +491,39 @@ test('nur 404 wird negativ gemerkt, kein 403', () => {
   const server = require('./helpers/sources').serverAll();
   const merkStelle = server.indexOf('merkeFehlend(cacheKey)');
   assert.ok(merkStelle > 0, 'Die Fehlanzeige wird nicht mehr festgehalten');
-  assert.doesNotMatch(server.slice(server.indexOf('if (r.statusCode ==='), merkStelle),
-    /403/, 'Ein 403 darf nicht gemerkt werden');
+  assert.doesNotMatch(
+    server.slice(server.indexOf('if (r.statusCode ==='), merkStelle),
+    /403/,
+    'Ein 403 darf nicht gemerkt werden',
+  );
   // Und gelesen wird aus derselben Quelle — ein zweiter Merker daneben wäre
   // wieder ein Gedächtnis je Prozess.
-  assert.match(server, /istBekanntFehlend\(cacheKey\)/,
-    'Der Proxy fragt den gemeinsamen Merker nicht ab');
+  assert.match(server, /istBekanntFehlend\(cacheKey\)/, 'Der Proxy fragt den gemeinsamen Merker nicht ab');
 });
 
 test('Bewertung und Anzeige benutzen dieselbe Zustandsregel', () => {
-  // DER Kern des wiederholt falschen Marktpreises: Die Anzeige leitete den
-  // Zustand aus den Erfassungen ab (getSetConditionAggregate), die Bewertung
-  // las stur sets.condition. Weichen die voneinander ab — etwa weil ein Set
-  // nachträglich auf „Neu" korrigiert wurde — zeigte die Kachel „Neu", der …
-  // Ausführlich: docs/begruendungen/test/set-value.test.js.md#fc-stelle
-  const fc = require('./helpers/sources').finanzQuelle();
-  assert.match(fc, /function effectiveCondition/, 'Gemeinsame Regel fehlt');
-
-  // Die Regel muss der Anzeige entsprechen: eine Gebraucht-Erfassung genügt,
-  // Erfassungen ohne gebrauchte bedeuten neu.
-  assert.match(fc, /if \(acqCount > 0\) return usedCount > 0 \? 'U' : 'N';/,
-    'Eine gebrauchte Erfassung macht das Set gebraucht, sonst ist es neu');
-
-  // Der dritte Zweig ist weg, und das wird hier festgehalten
-  // Ausführlich: docs/begruendungen/test/set-value.test.js.md#stelle-5
-  assert.doesNotMatch(fc, /return set\?\.condition === 'U' \? 'U' : 'N';/,
-    'Der Rueckfall auf den gespeicherten Zustand ist zurueck — es gibt die ' +
-    'Spalte nicht mehr, der Zweig kann also nur noch falsch liegen');
-  assert.match(fc, /function effectiveCondition[\s\S]{0,400}?return 'N';/,
-    'Ohne Erfassungen muss die Regel „Neu" liefern — dieselbe Vorgabe wie ' +
-    'conditionFromAcquisitions() in src/bestand/gemeinsam.ts');
-
-  // Und die Abfrage muss die Zähler überhaupt liefern
-  assert.match(fc, /COUNT\(\*\) FILTER \(WHERE condition = 'U'\)\s+AS used_count/,
-    'Ohne used_count kann die Regel nicht greifen');
-});
-
-test('es gibt einen Diagnose-Endpunkt für Preise', () => {
-  const admin = fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8');
-  assert.match(admin, /router\.get\('\/admin\/price-probe', requireApiAdmin/, 'Endpunkt fehlt');
-  assert.match(admin, /preisProbe\(uid, setNumber, req\.abfrage\.live/, 'Ein Live-Abruf gegen BrickLink muss möglich sein');
-  // Die Antwort baut der Dienst der Verwaltung.
-  const dienst = fs.readFileSync(path.join(ROOT, 'src/verwaltung/dienst.ts'), 'utf8');
-  assert.match(dienst, /chosen_for_price/, 'Der gewählte Zustand gehört in die Antwort');
-  assert.match(dienst, /price_cache: cacheRows/, 'Die Cache-Zeilen gehören dazu');
+  // Die Anzeige leitete den Zustand aus den Erfassungen ab, die Bewertung las
+  // einen gespeicherten Wert — die Kachel zeigte „Neu", bewertet wurde gebraucht.
+  const { effectiveCondition } = _req('src/finanzen/rechnung/zustand.js');
+  const { conditionFromAcquisitions } = _req('src/bestand/gemeinsam.js');
+  for (const [acq, used] of [
+    [0, 0],
+    [1, 0],
+    [3, 0],
+    [1, 1],
+    [3, 1],
+    [2, 2],
+    ['2', '1'],
+    [null, null],
+  ]) {
+    assert.equal(
+      effectiveCondition({ acq_count: acq, used_count: used }),
+      conditionFromAcquisitions(acq, used),
+      `acq_count=${acq}, used_count=${used}: Bewertung und Anzeige weichen ab`,
+    );
+  }
+  assert.equal(effectiveCondition({ acq_count: 2, used_count: 1 }), 'U', 'eine gebrauchte Erfassung genügt');
+  assert.equal(effectiveCondition(null), 'N', 'ohne Erfassungen gilt „Neu“');
 });
 
 test('die Verlaufs-Endpunkte liefern fertige Diagrammdaten', () => {
@@ -474,10 +534,8 @@ test('die Verlaufs-Endpunkte liefern fertige Diagrammdaten', () => {
   // auseinandergelaufen (Zustandsauflösung, Bild-Allowlist, Verlaufsroute).
   const cd = fs.readFileSync(path.join(ROOT, 'src/finanzen/chartData.ts'), 'utf8');
   assert.match(cd, /export function buildChart/, 'Der gemeinsame Bauer fehlt');
-  assert.match(cd, /byDay\.has\(day\) \? byDay\.get\(day\)! : 0/,
-    'Leere Positionen müssen mit 0 aufgefüllt werden');
-  assert.match(cd, /firstRealIndex/,
-    'Ohne diesen Index kann ein Renderer die aufgefüllten Nullen nicht überspringen');
+  assert.match(cd, /byDay\.has\(day\) \? byDay\.get\(day\)! : 0/, 'Leere Positionen müssen mit 0 aufgefüllt werden');
+  assert.match(cd, /firstRealIndex/, 'Ohne diesen Index kann ein Renderer die aufgefüllten Nullen nicht überspringen');
 
   // Alle drei Verlaufs-Endpunkte müssen ihn benutzen.
   const ph = fs.readFileSync(path.join(ROOT, 'src/finanzen/priceHistory.ts'), 'utf8');
@@ -492,15 +550,17 @@ test('die Verlaufs-Endpunkte liefern fertige Diagrammdaten', () => {
   // ohne eine einzige Route). Die Regel gilt weiter, nur fuer die Datei, in der
   // die Verlaufs-Routen HEUTE stehen: Ein Adapter baut keine Diagrammdaten.
   const v1fin = fs.readFileSync(path.join(ROOT, 'routes/api_v1/finance.ts'), 'utf8');
-  assert.doesNotMatch(v1fin, /buildChart\(/,
-    'Die Routendatei ist ein Adapter — die Diagrammdaten baut der gemeinsame Helfer');
+  assert.doesNotMatch(
+    v1fin,
+    /buildChart\(/,
+    'Die Routendatei ist ein Adapter — die Diagrammdaten baut der gemeinsame Helfer',
+  );
 
   // Der Renderer darf die aufgefüllten Nullen nicht zeichnen — sonst beginnt
   // die Linie bei null und springt senkrecht hoch: ein Kurssturz, den es nie
   // gab.
   const admin = require('./helpers/sources').adminQuelle();
-  assert.match(admin, /slice\(sd\.firstRealIndex \?\? 0\)/,
-    'priceChartSVG muss führende Nullen überspringen');
+  assert.match(admin, /slice\(sd\.firstRealIndex \?\? 0\)/, 'priceChartSVG muss führende Nullen überspringen');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -509,7 +569,10 @@ test('die Verlaufs-Endpunkte liefern fertige Diagrammdaten', () => {
 const { valueAcquisitionRows, weightedPurchase, pnlPct } = _req('src/finanzen/setValue.js');
 
 const acq = (id, cond, qty, price, day) => ({
-  id, condition: cond, quantity: qty, purchase_price: price,
+  id,
+  condition: cond,
+  quantity: qty,
+  purchase_price: price,
   created_at: day ? `${day}T12:00:00Z` : null,
 });
 
@@ -517,19 +580,17 @@ test('je Erfassung eine Zeile, jede mit dem Preis IHRES Zustands', () => {
   // Der gemeldete Fall: ein Exemplar neu gekauft, eines gebraucht. Vorher galt
   // das ganze Set als gebraucht, sobald EINE Erfassung gebraucht war — auch
   // das neue Exemplar wurde dann mit dem Gebrauchtpreis bewertet.
-  const rows = valueAcquisitionRows(SN, [acq(1, 'N', 1, 100), acq(2, 'U', 1, 60)],
-    prices(148.72, 92.68));
+  const rows = valueAcquisitionRows(SN, [acq(1, 'N', 1, 100), acq(2, 'U', 1, 60)], prices(148.72, 92.68));
 
   assert.equal(rows.length, 2, 'Zwei Kaufpreise → zwei Zeilen');
   assert.equal(rows[0].avg_price, 148.72, 'Die Neu-Zeile bekommt den Neupreis');
-  assert.equal(rows[1].avg_price, 92.68,  'Die Gebraucht-Zeile bekommt den Gebrauchtpreis');
+  assert.equal(rows[1].avg_price, 92.68, 'Die Gebraucht-Zeile bekommt den Gebrauchtpreis');
   assert.equal(rows[0].total_avg, '148.72');
   assert.equal(rows[1].total_avg, '92.68');
 });
 
 test('die Prozentangabe rechnet gegen den Kaufpreis DIESER Zeile', () => {
-  const rows = valueAcquisitionRows(SN, [acq(1, 'N', 1, 100), acq(2, 'U', 1, 60)],
-    prices(150, 90));
+  const rows = valueAcquisitionRows(SN, [acq(1, 'N', 1, 100), acq(2, 'U', 1, 60)], prices(150, 90));
   assert.equal(rows[0].pnl_pct, '50.0', '150 gegen 100');
   assert.equal(rows[1].pnl_pct, '50.0', '90 gegen 60');
 });
@@ -540,8 +601,7 @@ test('Menge zählt: die Zeilensumme ist Preis × Menge', () => {
 });
 
 test('ohne erfassten Kaufpreis keine Prozentangabe — und bei 0 auch nicht', () => {
-  const rows = valueAcquisitionRows(SN, [acq(1, 'N', 1, null), acq(2, 'N', 1, 0)],
-    prices(50, 20));
+  const rows = valueAcquisitionRows(SN, [acq(1, 'N', 1, null), acq(2, 'N', 1, 0)], prices(50, 20));
   assert.equal(rows[0].purchase_price, null, 'nicht erfasst bleibt null, nicht 0');
   assert.equal(rows[0].pnl_pct, null, 'gegen nichts gerechnet ergibt keine Zahl');
   assert.equal(rows[1].purchase_price, 0, 'ein Geschenk ist erfasst: 0, nicht null');
@@ -558,8 +618,11 @@ test('fehlt der Preis eines Zustands, springt der andere ein', () => {
 test('der Kaufpreis wird nur über die Zeilen gemittelt, die einen haben', () => {
   // 2×100 und 1×160 ergibt 120, nicht 130 — und eine Erfassung ohne
   // erfassten Preis darf den Nenner nicht aufblähen.
-  const rows = valueAcquisitionRows(SN,
-    [acq(1, 'N', 2, 100), acq(2, 'N', 1, 160), acq(3, 'N', 5, null)], prices(50, 20));
+  const rows = valueAcquisitionRows(
+    SN,
+    [acq(1, 'N', 2, 100), acq(2, 'N', 1, 160), acq(3, 'N', 5, null)],
+    prices(50, 20),
+  );
   assert.equal(weightedPurchase(rows), 120);
   assert.equal(weightedPurchase([]), null, 'keine Zeile mit Preis → kein Kaufpreis');
 });
@@ -573,8 +636,11 @@ test('Zeilensummen und Set-Stückpreis passen zusammen', () => {
   const v = valueSet(SN, acqs, p);
   const sumRows = rows.reduce((s, r) => s + parseFloat(r.total_avg), 0);
   assert.equal(sumRows, v.total, 'Σ Zeilen = Gesamtwert des Sets');
-  assert.equal(Math.round(v.unit_price * v.quantity * 100) / 100, v.total,
-    'Stückpreis × Menge = Gesamtwert (so rechnen Webapp und Android)');
+  assert.equal(
+    Math.round(v.unit_price * v.quantity * 100) / 100,
+    v.total,
+    'Stückpreis × Menge = Gesamtwert (so rechnen Webapp und Android)',
+  );
 });
 
 test('Kaufpreis 0 ergibt keine Prozentzahl, keinen Sprung ins Unendliche', () => {
