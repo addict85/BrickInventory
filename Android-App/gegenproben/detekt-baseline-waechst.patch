@@ -1,10 +1,9 @@
 Gegenprobe: Die Baseline hat einen Eintrag mehr, als die Obergrenze erlaubt
 Modul: app
-Test: ch.brickinventoryapp.QuelltextRatscheTest
+Test: ch.brickinventoryapp.app.QuelltextRatscheTest
 Rot: die detekt-Baseline haelt nur Laenge und Verzweigung
 
 diff --git a/Android-App/tools/detekt-obergrenze.txt b/Android-App/tools/detekt-obergrenze.txt
-index b80a449..3b3040e 100644
 --- a/Android-App/tools/detekt-obergrenze.txt
 +++ b/Android-App/tools/detekt-obergrenze.txt
 @@ -1,4 +1,4 @@

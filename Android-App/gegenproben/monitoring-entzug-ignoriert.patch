@@ -1,12 +1,12 @@
 Gegenprobe: Ein 403 nur_admins setzt zugriffEntzogen nicht
 Modul: feature-verwaltung
-Test: ch.brickinventoryapp.MonitoringViewModelVerhaltenTest
+Test: ch.brickinventoryapp.verwaltung.MonitoringViewModelVerhaltenTest
 Rot: ein 403 nur_admins beendet die Abfrage
 
-diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt
---- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt
-+++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt
-@@ -185,7 +185,7 @@
+diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt
+--- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt
++++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt
+@@ -186,7 +186,7 @@ class MonitoringViewModel @Inject constructor(
              if (r is Ergebnis.Success)
                  it.copy(jobs = r.data.jobs.mapValues { j -> j.value.alsAnsicht() },
                      jobSchedules = r.data.schedules.mapValues { z -> z.value.alsAnsicht() }, aktualisiert = false)

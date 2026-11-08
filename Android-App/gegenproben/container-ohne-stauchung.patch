@@ -1,10 +1,9 @@
 Gegenprobe: Containerstufen wieder ungestaucht bis zur höchsten Stufe (05.11.2026, thema.py lokal)
 Modul: core-ui
-Test: ch.brickinventoryapp.TextKontrastTest
+Test: ch.brickinventoryapp.ui.TextKontrastTest
 Rot: jede Schriftrolle erreicht 4,5 zu 1 auf ihrer Flaeche
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
-index 8831478..5fbd4f5 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
 @@ -440,7 +440,7 @@ internal fun ergaenzeRollen(s: ColorScheme, dunkel: Boolean): ColorScheme {

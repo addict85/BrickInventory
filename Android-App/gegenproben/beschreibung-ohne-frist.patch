@@ -1,13 +1,12 @@
 Gegenprobe: apk-pruefen prüft ausgestellt und gueltigBis der signierten Beschreibung nicht
 Modul: app
-Test: ch.brickinventoryapp.ReleasePruefenTest
+Test: ch.brickinventoryapp.app.ReleasePruefenTest
 Rot: eine Beschreibung ohne gueltige Frist wird nicht veroeffentlicht
 
 diff --git a/Android-App/tools/release-pruefen.py b/Android-App/tools/release-pruefen.py
-index 885466e..187e1a6 100644
 --- a/Android-App/tools/release-pruefen.py
 +++ b/Android-App/tools/release-pruefen.py
-@@ -129,7 +129,6 @@ def beschreibung(daten_pfad, apk_pfad, meta_pfad, commit, ablage):
+@@ -138,7 +138,6 @@ def beschreibung(daten_pfad, apk_pfad, meta_pfad, commit, ablage):
          'apkUrl': f"{ablage.rstrip('/')}/BrickInventory-{element.get('versionCode')}.apk",
      }
      falsch = [f'{k}: {daten.get(k)!r} statt {v!r}' for k, v in soll.items() if daten.get(k) != v]

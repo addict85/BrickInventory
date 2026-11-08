@@ -1,17 +1,16 @@
 Gegenprobe: Ein Bereich importiert eine Retrofit-Schnittstelle
 Modul: app
-Test: ch.brickinventoryapp.SchichtregelnTest
+Test: ch.brickinventoryapp.app.SchichtregelnTest
 Rot: ein Bereich kennt die Retrofit-Schnittstellen nicht
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MerklisteViewModel.kt
-index c6e5061..4cd1aa6 100644
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MerklisteViewModel.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MerklisteViewModel.kt
-@@ -2,6 +2,7 @@ package ch.brickinventoryapp.ui.viewmodel
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
+@@ -2,6 +2,7 @@ package ch.brickinventoryapp.sammlung.ui.viewmodel
  
- import ch.brickinventoryapp.ui.abgeleitet
+ import ch.brickinventoryapp.zustand.ui.abgeleitet
  import androidx.lifecycle.SavedStateHandle
 +import ch.brickinventoryapp.data.api.SetsApi
- import ch.brickinventoryapp.ui.model.alsAnsicht
+ import ch.brickinventoryapp.model.ui.model.alsAnsicht
  import androidx.lifecycle.viewModelScope
  import ch.brickinventoryapp.ressourcen.R

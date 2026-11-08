@@ -1,12 +1,11 @@
 Gegenprobe: Abmelden lässt die verschlüsselten Anleitungen liegen (sec12 N1)
 Modul: core-data
-Test: ch.brickinventoryapp.AnleitungsAblageTest
+Test: ch.brickinventoryapp.data.AnleitungsAblageTest
 Rot: Abmelden raeumt alle Anleitungen weg
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/AnleitungsAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/AnleitungsAblage.kt
-index db3267a..469376d 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/AnleitungsAblage.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/AnleitungsAblage.kt
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/AnleitungsAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/AnleitungsAblage.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/AnleitungsAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/AnleitungsAblage.kt
 @@ -62,7 +62,6 @@ class AnleitungsAblage(chiffre: AblageChiffre) {
  /** Beim Abmelden und damit beim Serverwechsel: Die Anleitungen gehören zur Sammlung des Kontos. */
  fun raeumeAnleitungenAuf(cacheDir: File) {

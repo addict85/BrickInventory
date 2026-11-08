@@ -1,13 +1,12 @@
 Gegenprobe: Schwelle der Preisalarm-Übersicht wieder als Rohzahl „750.0“
 Modul: app
-Test: ch.brickinventoryapp.GeruestUndFormularTest
+Test: ch.brickinventoryapp.app.GeruestUndFormularTest
 Rot: Preisalarme zeigen die Schwelle als Betrag
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt
-index 99ed8f5..0abb2f0 100644
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt
-@@ -70,7 +70,7 @@ internal fun PreisalarmeCard(
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
+@@ -86,7 +86,7 @@ internal fun PreisalarmeCard(
              // einen Alarms den Wert des anderen, wenn ein Set beide hat.
              // Als Betrag wie überall („750.00“), nicht als Rohzahl „750.0“.
              var wert by rememberSaveable(a.setNumber + a.condition) {

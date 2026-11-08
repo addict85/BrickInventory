@@ -1,10 +1,9 @@
 Gegenprobe: Ohne Displaysperre lässt der Schrittschutz still durch (Stand vor sec10 H3)
 Modul: app
-Test: ch.brickinventoryapp.OhneSperreTest
+Test: ch.brickinventoryapp.app.OhneSperreTest
 Rot: ohne Displaysperre warnt der Schrittschutz
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittschutz.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittschutz.kt
-index 5d059de..b1ec863 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittschutz.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittschutz.kt
 @@ -70,7 +70,7 @@ class GeraeteSchrittschutz(

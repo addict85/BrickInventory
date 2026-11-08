@@ -1,13 +1,12 @@
 Gegenprobe: AblageChiffre bindet Zweck und Dateiname nicht als AAD (Stand vor sec10 H7)
 Modul: core-data
-Test: ch.brickinventoryapp.AblageVerschluesselungTest
+Test: ch.brickinventoryapp.data.AblageVerschluesselungTest
 Rot: eine Datei unter fremdem Namen gilt nicht
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/Ablageschluessel.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/Ablageschluessel.kt
-index bd7bd13..97bb2ea 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/Ablageschluessel.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/Ablageschluessel.kt
-@@ -68,7 +68,6 @@ class AblageChiffre(private val schluessel: () -> ByteArray) {
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Ablageschluessel.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Ablageschluessel.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Ablageschluessel.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Ablageschluessel.kt
+@@ -93,7 +93,6 @@ class AblageChiffre(private val schluessel: () -> ByteArray) {
          val iv = ByteArray(IV_LAENGE).also(SecureRandom()::nextBytes)
          val c = Cipher.getInstance(VERFAHREN)
          c.init(Cipher.ENCRYPT_MODE, SecretKeySpec(schluessel(), "AES"), GCMParameterSpec(TAG_BITS, iv))
@@ -15,7 +14,7 @@ index bd7bd13..97bb2ea 100644
          return KENNUNG + iv + c.doFinal(klartext)
      }
  
-@@ -87,7 +86,6 @@ class AblageChiffre(private val schluessel: () -> ByteArray) {
+@@ -112,7 +111,6 @@ class AblageChiffre(private val schluessel: () -> ByteArray) {
              val c = Cipher.getInstance(VERFAHREN)
              c.init(Cipher.DECRYPT_MODE, SecretKeySpec(schluessel(), "AES"),
                  GCMParameterSpec(TAG_BITS, daten, kennung.size, IV_LAENGE))

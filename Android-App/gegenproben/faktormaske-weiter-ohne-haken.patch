@@ -1,13 +1,12 @@
 Gegenprobe: „Weiter“ nach den Notfallcodes auch ohne Haken frei
 Modul: app
-Test: ch.brickinventoryapp.ZweiterFaktorMaskeTest
+Test: ch.brickinventoryapp.app.ZweiterFaktorMaskeTest
 Rot: nach der Bestaetigung
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
-index 05f60fe..240ccab 100644
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
-@@ -128,7 +128,7 @@ fun ZweiterFaktorPflichtMaske(
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
+@@ -132,7 +132,7 @@ fun ZweiterFaktorPflichtMaske(
                              border = nebenKnopfRand(),
                          ) { Text(stringResource(R.string.zf_share)) }
                          CodesGesichert(gesichert) { gesichert = it }

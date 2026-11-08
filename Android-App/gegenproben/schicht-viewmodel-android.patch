@@ -1,16 +1,15 @@
 Gegenprobe: Ein ViewModel importiert android.net.Uri
 Modul: app
-Test: ch.brickinventoryapp.SchichtregelnTest
+Test: ch.brickinventoryapp.app.SchichtregelnTest
 Rot: ein ViewModel kennt weder Android noch Netz noch Bildschirmcode
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/GutscheinViewModel.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/GutscheinViewModel.kt
-index 7517316..007f982 100644
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/GutscheinViewModel.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/GutscheinViewModel.kt
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/GutscheinViewModel.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/GutscheinViewModel.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/GutscheinViewModel.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/GutscheinViewModel.kt
 @@ -1,6 +1,7 @@
- package ch.brickinventoryapp.ui.viewmodel
+ package ch.brickinventoryapp.finanzen.ui.viewmodel
  
- import ch.brickinventoryapp.data.model.Fehlercode
+ import ch.brickinventoryapp.model.data.model.Fehlercode
 +import android.net.Uri
  import androidx.lifecycle.ViewModel
  import androidx.lifecycle.viewModelScope

@@ -42,7 +42,7 @@ test('die Tabelle beginnt auf einer eigenen Zeile', () => {
 });
 
 test('die App zeigt dieselben drei Spalten', () => {
-  const datei = path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'dialogs', 'SetItemDetailDialog.kt');
+  const datei = path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'teile', 'ui', 'dialogs', 'SetItemDetailDialog.kt');
   assert.ok(fs.existsSync(datei), `${datei} nicht gefunden`);
   const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
 

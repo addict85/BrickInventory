@@ -1,13 +1,12 @@
 Gegenprobe: Der Serverwechsel entscheidet wieder über den Speicher statt über die Platte
 Modul: core-data
-Test: ch.brickinventoryapp.TokenBindungGesperrtTest
+Test: ch.brickinventoryapp.data.TokenBindungGesperrtTest
 Rot: ein gesperrter Keystore beim Serverwechsel
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
-index f79cce3..711aeea 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
-@@ -195,7 +195,7 @@ class TokenAblage @Inject constructor(
+@@ -198,7 +198,7 @@ class TokenAblage @Inject constructor(
              val platte = dataStore.data.first()
              val alteAdresse = serverUrlJetzt()
              val herkunft = platte[TOKEN_HERKUNFT] ?: _tokenHerkunftState.value ?: alteAdresse

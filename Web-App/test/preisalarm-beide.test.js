@@ -20,25 +20,25 @@ const web  = rel => lies(path.join(WEB, rel));
 const KT_API    = require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'api'));
 // Seit dem Schnitt des MainViewModels (28.10.2026): das entprellte Speichern
 // in Preisalarmeingabe.kt, gehalten vom SetDetailViewModel.
-const KT_FEAT   = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'Preisalarmeingabe.kt'));
-const KT_SECT   = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailSections.kt'));
-const KT_ABHOL  = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-dienste', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'Alarmabholung.kt'));
-const KT_WORKER = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-dienste', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'PreisalarmWorker.kt'))
-                + lies(path.join(__dirname, '..', '..', 'Android-App', 'core-dienste', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'PreisalarmDurchgang.kt'));
-const KT_START  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'BrickInventoryApp.kt'));
-const KT_ALARMEINGABE = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'Alarmeingabe.kt'));
-const KT_VM     = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'SetDetailViewModel.kt'));
+const KT_FEAT   = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'ui', 'Preisalarmeingabe.kt'));
+const KT_SECT   = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'ui', 'screens', 'SetDetailSections.kt'));
+const KT_ABHOL  = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-dienste', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'dienste', 'alarm', 'Alarmabholung.kt'));
+const KT_WORKER = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-dienste', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'dienste', 'alarm', 'PreisalarmWorker.kt'))
+                + lies(path.join(__dirname, '..', '..', 'Android-App', 'core-dienste', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'dienste', 'alarm', 'PreisalarmDurchgang.kt'));
+const KT_START  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'app', 'BrickInventoryApp.kt'));
+const KT_ALARMEINGABE = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'alarm', 'Alarmeingabe.kt'));
+const KT_VM     = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'ui', 'viewmodel', 'SetDetailViewModel.kt'));
 // Die Einstellungen der App liegen in mehreren Dateien: Der Bildschirm
 // selbst traegt nur die Liste, jede Rubrik hat ihre eigene Seite
 // (EinstellungenUnterseiten.kt) mit der Karte in Einstellungen*.kt. Gelesen
 // werden deshalb alle, die es betrifft — die …
 // Ausführlich: docs/begruendungen/test/preisalarm-beide.test.js.md#kt-einst
-const KT_EINST  = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SettingsScreen.kt'))
-                + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenUnterseiten.kt'))
-                + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenAlarme.kt'))
-                + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenLagerorte.kt'));
-const KT_GERAET = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-zustand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'GeraeteEinstellungenViewModel.kt'));
-const KT_PLANER = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-dienste', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'WorkManagerAlarmPlaner.kt'));
+const KT_EINST  = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'konto', 'ui', 'screens', 'SettingsScreen.kt'))
+                + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'konto', 'ui', 'screens', 'EinstellungenUnterseiten.kt'))
+                + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'konto', 'ui', 'screens', 'EinstellungenAlarme.kt'))
+                + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'konto', 'ui', 'screens', 'EinstellungenLagerorte.kt'));
+const KT_GERAET = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-zustand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'zustand', 'ui', 'viewmodel', 'GeraeteEinstellungenViewModel.kt'));
+const KT_PLANER = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-dienste', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'dienste', 'alarm', 'WorkManagerAlarmPlaner.kt'));
 const XML_EN    = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values', 'strings.xml'));
 const XML_DE    = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values-de', 'strings.xml'));
 
@@ -225,7 +225,7 @@ test('beide fragen auch beim Nach-vorn-Kommen, nicht nur im Hintergrund', () => 
     'Die Webapp fragt beim Anmelden nicht nach');
 
   // App: beim Nach-vorn-Kommen der Activity.
-  const act = ohne(lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'MainActivity.kt')));
+  const act = ohne(lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'app', 'MainActivity.kt')));
   assert.match(act, /override fun onStart\(\)/,
     'Die App fragt nur noch im Hintergrund nach — wer sie öffnet, wartet bis zu einer Stunde.');
   const i = act.indexOf('override fun onStart()');

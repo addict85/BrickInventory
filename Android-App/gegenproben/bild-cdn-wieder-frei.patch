@@ -1,12 +1,11 @@
 Gegenprobe: Der Bild-Client lässt wieder direkte Anfragen an Bild-CDNs durch
 Modul: core-netz
-Test: ch.brickinventoryapp.BildHostWaechterTest
+Test: ch.brickinventoryapp.netz.BildHostWaechterTest
 Rot: auch ein Bild-CDN wird nicht direkt angefragt
 
-diff --git a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/util/BildHosts.kt b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/util/BildHosts.kt
-index 62c380b..ed84594 100644
---- a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/util/BildHosts.kt
-+++ b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/util/BildHosts.kt
+diff --git a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/BildHosts.kt b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/BildHosts.kt
+--- a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/BildHosts.kt
++++ b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/BildHosts.kt
 @@ -44,7 +44,7 @@ class BildHostWaechter(
          return gesperrt(anfrage)
      }

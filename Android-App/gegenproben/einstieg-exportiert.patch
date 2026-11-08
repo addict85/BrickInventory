@@ -1,15 +1,17 @@
 Gegenprobe: Der Einstieg der Meldungen ist exportiert
 Modul: app
-Test: ch.brickinventoryapp.FremderEinstiegTest
+Test: ch.brickinventoryapp.app.FremderEinstiegTest
 Rot: der Einstieg der Meldungen ist nicht exportiert
 
 diff --git a/Android-App/app/src/main/AndroidManifest.xml b/Android-App/app/src/main/AndroidManifest.xml
 --- a/Android-App/app/src/main/AndroidManifest.xml
 +++ b/Android-App/app/src/main/AndroidManifest.xml
-@@ -207,5 +207,5 @@
+@@ -241,7 +241,7 @@
+         -->
          <activity
-             android:name=".MeldungsEinstieg"
+             android:name=".app.MeldungsEinstieg"
 -            android:exported="false"
 +            android:exported="true"
              android:taskAffinity=""
              android:excludeFromRecents="true"
+             android:noHistory="true"

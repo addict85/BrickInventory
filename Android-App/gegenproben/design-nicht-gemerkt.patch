@@ -1,12 +1,11 @@
 Gegenprobe: Das wirksame Design wird nicht mehr für den Kaltstart gemerkt
 Modul: core-zustand
-Test: ch.brickinventoryapp.SitzungsDienstTest
+Test: ch.brickinventoryapp.zustand.SitzungsDienstTest
 Rot: das Design des Servers gilt und wird gemerkt
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/SitzungsDienst.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/SitzungsDienst.kt
-index 79f1f8e..acc6284 100644
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/SitzungsDienst.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/SitzungsDienst.kt
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/SitzungsDienst.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/SitzungsDienst.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/SitzungsDienst.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/SitzungsDienst.kt
 @@ -93,7 +93,7 @@ class SitzungsDienst @Inject constructor(
          // Jede Änderung des Designs landet im Spiegel des Geräts, ob vom Server oder
          // aus der Wahl im Konto; nach dem Abmelden ist es die Vorgabe.

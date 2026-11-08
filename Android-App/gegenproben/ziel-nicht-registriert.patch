@@ -1,13 +1,12 @@
 Gegenprobe: Ein Ziel (Konto) fehlt im Graphen der App
 Modul: app
-Test: ch.brickinventoryapp.ErreichbareRoutenTest
+Test: ch.brickinventoryapp.app.ErreichbareRoutenTest
 Rot: jedes Ziel steht im Graphen der App
 
-diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/nav/ToolsGraph.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/nav/ToolsGraph.kt
-index 6fce398..fd0a5bc 100644
---- a/Android-App/app/src/main/java/ch/brickinventoryapp/nav/ToolsGraph.kt
-+++ b/Android-App/app/src/main/java/ch/brickinventoryapp/nav/ToolsGraph.kt
-@@ -249,7 +249,4 @@ private fun NavGraphBuilder.einstellungsZiele(u: ZielUmgebung) {
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/ToolsGraph.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/ToolsGraph.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/ToolsGraph.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/ToolsGraph.kt
+@@ -265,7 +265,4 @@ private fun NavGraphBuilder.einstellungsZiele(u: ZielUmgebung) {
          CsvImportRoute(hiltViewModel<EinstellungenViewModel>(), snackbarHostState) { navController.popBackStack() }
      }
  

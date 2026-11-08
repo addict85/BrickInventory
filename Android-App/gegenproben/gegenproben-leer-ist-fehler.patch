@@ -1,10 +1,9 @@
 Gegenprobe: Keine betroffene Gegenprobe zählt wieder als Fehler
 Modul: app
-Test: ch.brickinventoryapp.GegenprobenWerkzeugTest
+Test: ch.brickinventoryapp.app.GegenprobenWerkzeugTest
 Rot: ohne betroffenen Patch ist der Lauf gruen
 
 diff --git a/Android-App/tools/gegenproben.py b/Android-App/tools/gegenproben.py
-index 77876c0..5040785 100644
 --- a/Android-App/tools/gegenproben.py
 +++ b/Android-App/tools/gegenproben.py
 @@ -149,7 +149,7 @@ def main():

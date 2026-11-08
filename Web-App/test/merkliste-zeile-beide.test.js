@@ -41,7 +41,7 @@ test('1. die Merklisten-ZEILE trägt keinen Übernahme-Knopf mehr', () => {
   assert.ok(!/merkpostenUebernehmen/.test(zeileWeb),
     'Die Webapp-Zeile ruft weiterhin die Übernahme auf.');
 
-  const zeileApp = rumpf(app('ui/screens/MerklisteScreen.kt'), 'private fun MerkpostenZeile(');
+  const zeileApp = rumpf(app('sammlung/ui/screens/MerklisteScreen.kt'), 'private fun MerkpostenZeile(');
   assert.ok(!/wanted_take/.test(zeileApp),
     'Die App-Zeile trägt weiterhin den Knopf „In die Galerie".');
 });
@@ -51,7 +51,7 @@ test('2. dafür steht der Marktpreis darin', () => {
   assert.match(zeileWeb, /marktpreis/,
     'Die Webapp-Zeile zeigt den Marktpreis nicht.');
 
-  const zeileApp = rumpf(app('ui/screens/MerklisteScreen.kt'), 'private fun MerkpostenZeile(');
+  const zeileApp = rumpf(app('sammlung/ui/screens/MerklisteScreen.kt'), 'private fun MerkpostenZeile(');
   assert.match(zeileApp, /marktpreis/,
     'Die App-Zeile zeigt den Marktpreis nicht.');
 });
@@ -64,7 +64,7 @@ test('3. der Lagerort steht im Detail der MANUELLEN Einträge', () => {
   assert.match(webDetail, /lagerortBlock\('man-storage'/,
     'Der manuelle Detaildialog der Webapp hat keine Lagerortzeile.');
 
-  const appDetail = app('ui/screens/ManualItemDetailScreen.kt');
+  const appDetail = app('teile/ui/screens/ManualItemDetailScreen.kt');
   assert.match(appDetail, /LagerortFeld\(/,
     'Der manuelle Detaildialog der App hat keine Lagerortzeile.');
   assert.match(appDetail, /setzeManuellenLagerort\(/,
@@ -106,7 +106,7 @@ test('5. Löschen: Papierkorb in der Webapp, nur im Detail in der App', () => {
   assert.ok(!/Icons\.Default\.Delete/.test(kachelApp),
     'Die Kachel der App trägt einen Papierkorb — „nur in der webapp".');
 
-  const zeileApp = rumpf(app('ui/screens/MerklisteScreen.kt'), 'private fun MerkpostenZeile(');
+  const zeileApp = rumpf(app('sammlung/ui/screens/MerklisteScreen.kt'), 'private fun MerkpostenZeile(');
   assert.ok(!/common_delete/.test(zeileApp),
     'Die Merklisten-Zeile der App trägt den Löschen-Knopf — „nur in der webapp".');
 
@@ -118,9 +118,9 @@ test('5. Löschen: Papierkorb in der Webapp, nur im Detail in der App', () => {
     assert.match(html, new RegExp(`id="${id}"`),
       `Der Webapp fehlt der Papierkorb im Detail (${id}).`);
   }
-  assert.match(app('ui/screens/ManualItemDetailScreen.kt'), /Icons\.Default\.Delete/,
+  assert.match(app('teile/ui/screens/ManualItemDetailScreen.kt'), /Icons\.Default\.Delete/,
     'Der App fehlt der Papierkorb im Detail der manuellen Einträge.');
-  assert.match(app('ui/screens/MerkpostenDetailScreen.kt'), /Icons\.Default\.Delete/,
+  assert.match(app('sammlung/ui/screens/MerkpostenDetailScreen.kt'), /Icons\.Default\.Delete/,
     'Der App fehlt der Papierkorb im Merkposten-Detail.');
 });
 

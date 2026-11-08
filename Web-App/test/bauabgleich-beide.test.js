@@ -17,8 +17,8 @@ const web  = rel => lies(path.join(WEB, rel));
 // Jeder Pfad in den Android-Baum AUSGESCHRIEBEN
 // Ausführlich: docs/begruendungen/test/bauabgleich-beide.test.js.md#kt-api
 const KT_API   = ohneKommentare(require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'api')));
-const KT_FEAT  = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'Teileliste.kt'));
-const KT_SCREEN= lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'PartsListScreen.kt'));
+const KT_FEAT  = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'teile', 'ui', 'Teileliste.kt'));
+const KT_SCREEN= lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'teile', 'ui', 'screens', 'PartsListScreen.kt'));
 const XML_EN   = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values', 'strings.xml'));
 const XML_DE   = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values-de', 'strings.xml'));
 
@@ -89,7 +89,7 @@ test('beide fragen ihr Blickfeld an DIESER Stelle', () => {
   assert.match(KT_FEAT, /if \(mitUnterkonten\) null else "own"/,
     'Die App schickt ohne Haken kein „own"');
   assert.doesNotMatch(KT_FEAT,
-    /scopeFor\((ch\.brickinventoryapp\.data\.)?ScopeFilter\.View\.PARTS\)/,
+    /scopeFor\((ch\.brickinventoryapp\.model\.data\.)?ScopeFilter\.View\.PARTS\)/,
     'Die App hängt wieder am Kontofilter des Teile-Reiters');
 
   // Unverändert und weiterhin die Voraussetzung für beides: Der Endpunkt muss

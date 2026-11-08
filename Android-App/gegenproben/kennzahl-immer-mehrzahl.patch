@@ -1,13 +1,12 @@
 Gegenprobe: Kennzahl fragt den Plural immer mit 2 („1 Exemplare“)
 Modul: app
-Test: ch.brickinventoryapp.KennzahlenPluralTest
+Test: ch.brickinventoryapp.app.KennzahlenPluralTest
 Rot: bei 1 steht auf Deutsch die Einzahl
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt
-index b98893b..f9cad19 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt
-@@ -24,7 +24,7 @@ import ch.brickinventoryapp.util.fmtInt
+@@ -24,7 +24,7 @@ import ch.brickinventoryapp.ui.util.fmtInt
  @Composable
  fun GalleryStatChip(anzahl: Int, plural: Int, detail: String? = null) {
      val zahl = fmtInt(anzahl)

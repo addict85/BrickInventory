@@ -1,13 +1,12 @@
 Gegenprobe: Der Empfänger der Installer-Sitzung öffnet den Bestätigungsdialog nicht
 Modul: core-update
-Test: ch.brickinventoryapp.InstallationsSitzungTest
+Test: ch.brickinventoryapp.update.InstallationsSitzungTest
 Rot: verlangt das System eine Bestaetigung
 
-diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/util/AppUpdate.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/util/AppUpdate.kt
-index adc7858..dcb87b9 100644
---- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/util/AppUpdate.kt
-+++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/util/AppUpdate.kt
-@@ -246,13 +246,7 @@ class InstallationsEmpfaenger : BroadcastReceiver() {
+diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/AppUpdate.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/AppUpdate.kt
+--- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/AppUpdate.kt
++++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/AppUpdate.kt
+@@ -248,13 +248,7 @@ class InstallationsEmpfaenger : BroadcastReceiver() {
      override fun onReceive(ctx: Context, intent: Intent) {
          when (val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
              PackageInstaller.STATUS_PENDING_USER_ACTION -> {

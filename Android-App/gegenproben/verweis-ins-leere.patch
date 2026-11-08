@@ -1,18 +1,17 @@
 Gegenprobe: ein Verweis auf docs/begruendungen trifft keinen Anker
 Modul: app
-Test: ch.brickinventoryapp.QuelltextRatscheTest
+Test: ch.brickinventoryapp.app.QuelltextRatscheTest
 Rot: jeder Verweis auf docs-begruendungen trifft Datei und Anker
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Vorwaermen.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Vorwaermen.kt
-index b4b5eca..c8a91f3 100644
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Vorwaermen.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Vorwaermen.kt
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
 @@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
  
  /**
   * Die Adressen aller Kacheln der eigenen Sammlung, zum Vorwärmen.
-- * Ausführlich: docs/begruendungen/core-zustand/ui/Vorwaermen.kt.md#bildadressendersammlung
-+ * Ausführlich: docs/begruendungen/core-zustand/ui/Vorwaermen.kt.md#bildadressen
+- * Ausführlich: docs/begruendungen/core-zustand/zustand/ui/Vorwaermen.kt.md#bildadressendersammlung
++ * Ausführlich: docs/begruendungen/core-zustand/zustand/ui/Vorwaermen.kt.md#bildadressen
   */
  internal suspend fun bildAdressenDerSammlung(
      sets: SetsRepository, teile: TeileRepository, figuren: FigurenRepository, blickfeld: Blickfeld, basis: String,

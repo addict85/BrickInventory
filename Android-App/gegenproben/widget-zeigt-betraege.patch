@@ -1,13 +1,12 @@
 Gegenprobe: Das Widget zeigt Geldwerte ohne Erlaubnis des Nutzers (Stand vor sec8 H5)
 Modul: app
-Test: ch.brickinventoryapp.WidgetZahlenTest
+Test: ch.brickinventoryapp.app.WidgetZahlenTest
 Rot: verdeckt
 
-diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/widget/WidgetZahlen.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/widget/WidgetZahlen.kt
-index e213e55..773b506 100644
---- a/Android-App/app/src/main/java/ch/brickinventoryapp/widget/WidgetZahlen.kt
-+++ b/Android-App/app/src/main/java/ch/brickinventoryapp/widget/WidgetZahlen.kt
-@@ -59,7 +59,7 @@ const val WIDGET_VERDECKT = "••••"
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetZahlen.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetZahlen.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetZahlen.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetZahlen.kt
+@@ -68,7 +68,7 @@ const val WIDGET_VERDECKT = "••••"
   * liegt auf dem Startbildschirm, lesbar für jeden, der das Telefon sieht.
   */
  fun widgetWerte(z: WidgetZahlen, zeigen: Boolean): Triple<String, String, String> =

@@ -1,13 +1,12 @@
 Gegenprobe: Zustandsfilter der Merkliste wieder als Radio-Chips statt Segmenten
 Modul: app
-Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
 Rot: Merkliste waehlt den Zustand mit Segmenten
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt
-index 0ee18d5..ba8c332 100644
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt
-@@ -200,7 +200,7 @@ fun MerklisteScreen(
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt
+@@ -236,7 +236,7 @@ fun MerklisteScreen(
  
              // Der Zustand ist eine Einfachwahl mit drei Antworten — „beide“ ist die
              // Vorgabe, weil ein Filter sie immer hat (Zustandszeile kennt nur zwei).

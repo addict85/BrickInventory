@@ -1,12 +1,11 @@
 Gegenprobe: der Setnummer-Filter lässt wieder nur Ziffern und den Bindestrich durch
 Modul: core-ui
-Test: ch.brickinventoryapp.NumericInputTest
+Test: ch.brickinventoryapp.ui.NumericInputTest
 Rot: Buchstaben und Ziffern
 
-diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/util/NumericInput.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/util/NumericInput.kt
-index c0dcbc7..0fc1d11 100644
---- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/util/NumericInput.kt
-+++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/util/NumericInput.kt
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/NumericInput.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/NumericInput.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/NumericInput.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/NumericInput.kt
 @@ -19,7 +19,7 @@ object NumericInput {
       * ein reiner Ziffernfilter machte sie hier unerfassbar.
       */

@@ -1,13 +1,12 @@
 Gegenprobe: Postenart.aus() liest die Kennung nicht, jede Route meint ein Set
 Modul: app
-Test: ch.brickinventoryapp.RoutenRundwegTest
+Test: ch.brickinventoryapp.app.RoutenRundwegTest
 Rot: jede Postenart kommt als dieselbe an
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Navigation.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Navigation.kt
-index 9924c56..1ceea75 100644
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Navigation.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Navigation.kt
-@@ -69,7 +69,7 @@ enum class Postenart(val kennung: String) {
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Navigation.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Navigation.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Navigation.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Navigation.kt
+@@ -72,7 +72,7 @@ enum class Postenart(val kennung: String) {
  
      companion object {
          /** Wirft bei einem unbekannten Text: Die Kennungen stammen aus dem eigenen Code. */

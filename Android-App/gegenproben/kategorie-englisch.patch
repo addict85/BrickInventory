@@ -1,12 +1,11 @@
 Gegenprobe: Teilekategorien unübersetzt
 Modul: core-model
-Test: ch.brickinventoryapp.KategorieDeutschTest
+Test: ch.brickinventoryapp.model.KategorieDeutschTest
 Rot: bekannte Kategorien lesen sich deutsch
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/ui/KategorieDeutsch.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/ui/KategorieDeutsch.kt
-index 518a717..ef5a59b 100644
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/ui/KategorieDeutsch.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/ui/KategorieDeutsch.kt
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/KategorieDeutsch.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/KategorieDeutsch.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/KategorieDeutsch.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/KategorieDeutsch.kt
 @@ -38,7 +38,7 @@ object KategorieDeutsch {
          val trenner = Regex("""\s*(,|-)\s*|\s+""").findAll(en.trim()).map { it.value.trim() }.toList()
          val sb = StringBuilder()

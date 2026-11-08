@@ -1,13 +1,12 @@
 Gegenprobe: Nach dem Passwortwechsel wird nicht abgemeldet
 Modul: feature-konto
-Test: ch.brickinventoryapp.KontoViewModelTest
+Test: ch.brickinventoryapp.konto.KontoViewModelTest
 Rot: nach dem Passwortwechsel wird abgemeldet
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/KontoViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/KontoViewModel.kt
-index 429b794..592b1ed 100644
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/KontoViewModel.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/KontoViewModel.kt
-@@ -134,7 +134,6 @@ class KontoViewModel @Inject constructor(
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt
+@@ -135,7 +135,6 @@ class KontoViewModel @Inject constructor(
              when (val r = konto.changePassword(aktuell, neu, code?.trim()?.ifBlank { null })) {
                  is Ergebnis.Success ->
                      if (r.data.success) {

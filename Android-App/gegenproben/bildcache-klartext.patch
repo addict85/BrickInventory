@@ -1,13 +1,12 @@
 Gegenprobe: der Bild-Zwischenspeicher schreibt wieder im Klartext (VerschluesseltesDateisystem reicht durch, Stand vor sec11 N1)
 Modul: core-data
-Test: ch.brickinventoryapp.BildZwischenspeicherTest
+Test: ch.brickinventoryapp.data.BildZwischenspeicherTest
 Rot: der Zwischenspeicher liegt verschluesselt
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/VerschluesseltesDateisystem.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/VerschluesseltesDateisystem.kt
-index 21e6354..2c418ba 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/VerschluesseltesDateisystem.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/VerschluesseltesDateisystem.kt
-@@ -25,14 +25,11 @@ class VerschluesseltesDateisystem(
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/VerschluesseltesDateisystem.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/VerschluesseltesDateisystem.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/VerschluesseltesDateisystem.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/VerschluesseltesDateisystem.kt
+@@ -26,14 +26,11 @@ internal class VerschluesseltesDateisystem(
      private val zweck: String,
  ) : ForwardingFileSystem(delegate) {
  

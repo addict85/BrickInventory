@@ -1,13 +1,12 @@
 Gegenprobe: Passwort ändern im Konto auch ohne passende Wiederholung frei
 Modul: app
-Test: ch.brickinventoryapp.UnterseitenTest
+Test: ch.brickinventoryapp.app.UnterseitenTest
 Rot: Konto wechselt
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenKonto.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenKonto.kt
-index d6c8a32..cd904f5 100644
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenKonto.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenKonto.kt
-@@ -151,7 +151,7 @@ internal fun KontoCard(
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt
+@@ -187,7 +187,7 @@ internal fun KontoCard(
              FilledTonalButton(
                  onClick = { onPasswort(pwAktuell, pwNeu, code) },
                  enabled = !kontoZustand.speichert && pwAktuell.isNotBlank() && pwNeu.isNotEmpty() &&

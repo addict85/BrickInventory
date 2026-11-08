@@ -1,13 +1,12 @@
 Gegenprobe: Die Gutscheinseite setzt keinen Sichtschutz
 Modul: app
-Test: ch.brickinventoryapp.GutscheinSichtschutzAnzeigeTest
+Test: ch.brickinventoryapp.app.GutscheinSichtschutzAnzeigeTest
 Rot: die Gutscheinseite ist geschuetzt
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineUnterseite.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineUnterseite.kt
-index 9028115..60eb40f 100644
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineUnterseite.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineUnterseite.kt
-@@ -25,7 +25,6 @@ fun GutscheineRoute(
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineUnterseite.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineUnterseite.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineUnterseite.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineUnterseite.kt
+@@ -30,7 +30,6 @@ fun GutscheineRoute(
      onZurueck: () -> Unit,
  ) {
      val gutscheinZustand by gvm.state.collectAsStateWithLifecycle()

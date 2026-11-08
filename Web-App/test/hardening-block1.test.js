@@ -131,11 +131,11 @@ test('kein Token reitet mehr in der Adresszeile', () => {
     // Android-Baum statisch auf und kann ein variables Segment nicht sehen.
     // Der erste Entwurf dieser Stelle hatte genau das — und wurde von jener
     // Pruefung prompt als „nicht aufloesbar" gemeldet.
-    ...[path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailSections.kt'),
-        path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailScreen.kt'),
-        path.join(__dirname, '..', '..', 'Android-App', 'feature-finanzen', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'PdfViewerScreen.kt'),
+    ...[path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'ui', 'screens', 'SetDetailSections.kt'),
+        path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'ui', 'screens', 'SetDetailScreen.kt'),
+        path.join(__dirname, '..', '..', 'Android-App', 'feature-finanzen', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'finanzen', 'ui', 'screens', 'PdfViewerScreen.kt'),
         // Geladen wird seit dem Umbau auf ein ViewModel hier, nicht mehr im Bildschirm.
-        path.join(__dirname, '..', '..', 'Android-App', 'feature-finanzen', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'pdf', 'AnleitungsLader.kt')]
+        path.join(__dirname, '..', '..', 'Android-App', 'feature-finanzen', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'finanzen', 'ui', 'pdf', 'AnleitungsLader.kt')]
       .map(voll => {
         assert.ok(fs.existsSync(voll),
           `${path.basename(voll)} steht nicht mehr dort — Pfad im Test veraltet`);

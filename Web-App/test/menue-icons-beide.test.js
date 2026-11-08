@@ -68,7 +68,7 @@ function webMenue() {
 
 /** App: R.string-Schlüssel → Symbol, in der Reihenfolge der Seite „Mehr“. */
 function appMenue() {
-  const kt = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'MehrBildschirm.kt'))
+  const kt = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'app', 'MehrBildschirm.kt'))
     .split('fun MehrBildschirm(')[1];
   assert.ok(kt, 'Die Seite „Mehr“ ist nicht mehr zu finden.');
   return [...kt.matchAll(/MehrEintrag\(R\.string\.(\w+),\s*([\w.]+)[,)]/g)]

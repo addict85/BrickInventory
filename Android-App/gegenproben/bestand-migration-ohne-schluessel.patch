@@ -1,13 +1,12 @@
 Gegenprobe: MIGRATION_1_2 vergibt keine Schlüssel (UPDATE-Schleife fehlt)
 Modul: core-data
-Test: ch.brickinventoryapp.BestandMigrationTest
+Test: ch.brickinventoryapp.data.BestandMigrationTest
 Rot: jede frühere Fassung
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/room/BestandDatenbank.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/room/BestandDatenbank.kt
-index af80dbd..32792b0 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/room/BestandDatenbank.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/room/BestandDatenbank.kt
-@@ -143,6 +143,5 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
+@@ -143,6 +143,5 @@ internal val MIGRATION_1_2 = object : Migration(1, 2) {
          db.execSQL("ALTER TABLE `ausgang` ADD COLUMN `schluessel` TEXT NOT NULL DEFAULT ''")
          val ids = mutableListOf<Long>()
          db.query("SELECT id FROM `ausgang`").use { c -> while (c.moveToNext()) ids += c.getLong(0) }

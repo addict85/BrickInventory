@@ -1,13 +1,12 @@
 Gegenprobe: Erfassen-Dialog wieder „Set-Nummer“ neben „Setnummer“
 Modul: app
-Test: ch.brickinventoryapp.StringResourceParityTest
+Test: ch.brickinventoryapp.app.StringResourceParityTest
 Rot: ein Begriff je Sache in beiden Sprachen
 
 diff --git a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
-index f5be3b9..5ca86a3 100644
 --- a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
 +++ b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
-@@ -137,7 +137,7 @@
+@@ -135,7 +135,7 @@
      </plurals>
      <string name="gallery_add_set">Set hinzufügen</string>
      <string name="gallery_add_set_title">Set hinzufügen</string>

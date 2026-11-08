@@ -1,13 +1,12 @@
 Gegenprobe: AddSetDialog übergibt die Anzahl fest als 1
 Modul: app
-Test: ch.brickinventoryapp.AblaufTest
+Test: ch.brickinventoryapp.app.AblaufTest
 Rot: ein Set erfassen nimmt Nummer und Anzahl
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
-index f08891b..d7023e2 100644
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
-@@ -820,7 +820,7 @@ fun AddSetDialog(
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
+@@ -851,7 +851,7 @@ fun AddSetDialog(
              if (sofortFokus) setFeldFokus.fokusWennOffen()
          } else if (!erfassungUngueltig(quantity, purchasePrice)) {
              // Bei unlesbarer Menge oder unlesbarem Preis bleibt der Dialog offen; die Felder zeigen den Fehler.

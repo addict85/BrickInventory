@@ -1,13 +1,12 @@
 Gegenprobe: Die Passwort-Rückfrage zeigt das Codefeld nie
 Modul: app
-Test: ch.brickinventoryapp.AblaufTest
+Test: ch.brickinventoryapp.app.AblaufTest
 Rot: die Rueckfrage zeigt das Codefeld erst auf Verlangen
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
-index 1849f24..663ed50 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
-@@ -155,7 +155,6 @@ fun PasswortRueckfrage(
+@@ -222,7 +222,6 @@ fun PasswortRueckfrage(
          Text(text, style = MaterialTheme.typography.bodyMedium)
          PasswortFeld(passwort, { passwort = it }, stringResource(R.string.konto_password_current),
              Modifier.fillMaxWidth())

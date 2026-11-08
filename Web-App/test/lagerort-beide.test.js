@@ -15,17 +15,17 @@ const web  = rel => lies(path.join(WEB, rel));
 // löst diese Brücken statisch auf und kann eine Variable nicht sehen.
 const KT_API    = require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'api'));
 // Die Regeln des Filters (ScopeFilter) und seine Ablage im Gerät (ScopeFilterSpeicher).
-const KT_SCOPE  = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-model', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'ScopeFilter.kt'))
+const KT_SCOPE  = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-model', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'model', 'data', 'ScopeFilter.kt'))
                 + lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'ScopeFilterSpeicher.kt'));
 // Seit dem Schnitt des MainViewModels (28.10.2026) liegt der Lagerortfilter
 // in der Grundlage der Bereichs-ViewModels, die Verwaltung im
 // EinstellungenViewModel und das Laden der eigenen Orte im Blickfeld.
-const KT_HAUS   = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-zustand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'Bereichshelfer.kt'))
-               + lies(path.join(__dirname, '..', '..', 'Android-App', 'core-zustand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'Blickfeld.kt'))
-                + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'EinstellungenViewModel.kt'))
-                + lies(path.join(__dirname, '..', '..', 'Android-App', 'core-zustand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'Blickfeld.kt'));
-const KT_DIALOG = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'dialogs', 'SetItemDetailDialog.kt'));
-const KT_SETDET = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailSections.kt'));
+const KT_HAUS   = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-zustand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'zustand', 'ui', 'viewmodel', 'Bereichshelfer.kt'))
+               + lies(path.join(__dirname, '..', '..', 'Android-App', 'core-zustand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'zustand', 'ui', 'Blickfeld.kt'))
+                + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'konto', 'ui', 'viewmodel', 'EinstellungenViewModel.kt'))
+                + lies(path.join(__dirname, '..', '..', 'Android-App', 'core-zustand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'zustand', 'ui', 'Blickfeld.kt'));
+const KT_DIALOG = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'teile', 'ui', 'dialogs', 'SetItemDetailDialog.kt'));
+const KT_SETDET = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'ui', 'screens', 'SetDetailSections.kt'));
 const KT_CHIPS  = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ui', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'HouseholdComposables.kt'));
 const KT_FELD   = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ui', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'LagerortFeld.kt'));
 // Die Einstellungen der App liegen in mehreren Dateien: Der Bildschirm
@@ -33,10 +33,10 @@ const KT_FELD   = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ui'
 // (EinstellungenUnterseiten.kt) mit der Karte in Einstellungen*.kt. Gelesen
 // werden deshalb alle, die es betrifft — die …
 // Ausführlich: docs/begruendungen/test/lagerort-beide.test.js.md#kt-einst
-const KT_EINST  = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SettingsScreen.kt'))
-                + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenUnterseiten.kt'))
-                + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenAlarme.kt'))
-                + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenLagerorte.kt'));
+const KT_EINST  = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'konto', 'ui', 'screens', 'SettingsScreen.kt'))
+                + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'konto', 'ui', 'screens', 'EinstellungenUnterseiten.kt'))
+                + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'konto', 'ui', 'screens', 'EinstellungenAlarme.kt'))
+                + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'konto', 'ui', 'screens', 'EinstellungenLagerorte.kt'));
 const XML_EN    = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values', 'strings.xml'));
 const XML_DE    = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values-de', 'strings.xml'));
 
@@ -253,7 +253,7 @@ test('auch das TEIL kennt seine Besitzer — es war die letzte Lücke', () => {
 
   assert.match(require('./helpers/sources').ansichtQuelle('13'), /ladeOrtAuswahl\(item\?\.owner_ids\)/,
     'Die Webapp fragt beim Teil nicht nach der Liste des Besitzers');
-  assert.match(lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'dialogs', 'SetItemDetailDialog.kt')),
+  assert.match(lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'teile', 'ui', 'dialogs', 'SetItemDetailDialog.kt')),
     /aktionen\.loadLagerortVorrat\(zustand\.kopf\?\.ownerIds \?: emptyList\(\)\)/,
     'Die App fragt beim Teil nicht nach der Liste des Besitzers');
 });
@@ -309,7 +309,7 @@ test('beide speichern den Lagerort beim Tippen, nicht beim Fokuswechsel', () => 
   assert.match(ohneK(KT_HAUS) + ohneK(KT_SETDET), /onWert = \{/,
     'Das Feld gibt den getippten Wert nicht weiter');
   // Und die Ruhezeit liegt im ViewModel, damit sie den Bildschirm überlebt.
-  const gal = ohneK(lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'SetDetailViewModel.kt')));
+  const gal = ohneK(lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'ui', 'viewmodel', 'SetDetailViewModel.kt')));
   assert.match(gal, /lagerJob\?\.cancel\(\)\s*\n\s*lagerJob = viewModelScope\.launch/,
     'Die Ruhezeit des Lagerorts läuft nicht im viewModelScope');
 });

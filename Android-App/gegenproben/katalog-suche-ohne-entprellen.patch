@@ -1,13 +1,12 @@
 Gegenprobe: Die Katalogsuche lädt bei jedem Tastendruck
 Modul: feature-katalog
-Test: ch.brickinventoryapp.CatalogViewModelTest
+Test: ch.brickinventoryapp.katalog.CatalogViewModelTest
 Rot: die Suche wartet, bis das Tippen ruht
 
-diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/viewmodel/CatalogViewModel.kt
-index 42ef43c..2acc4fa 100644
---- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/viewmodel/CatalogViewModel.kt
-+++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/viewmodel/CatalogViewModel.kt
-@@ -202,7 +202,6 @@ class CatalogViewModel @Inject constructor(
+diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
+--- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
++++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
+@@ -205,7 +205,6 @@ class CatalogViewModel @Inject constructor(
          _catalogState.update { it.copy(query = q) }
          catalogSearchJob?.cancel()
          catalogSearchJob = viewModelScope.launch {

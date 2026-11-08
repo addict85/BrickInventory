@@ -1,13 +1,12 @@
 Gegenprobe: Eine Alarmschwelle von null geht an den Server
 Modul: app
-Test: ch.brickinventoryapp.EinstellungenViewModelTest
+Test: ch.brickinventoryapp.app.EinstellungenViewModelTest
 Rot: eine Schwelle von null geht nicht hinaus
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/EinstellungenViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/EinstellungenViewModel.kt
-index 5fb3825..347d6bc 100644
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/EinstellungenViewModel.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/EinstellungenViewModel.kt
-@@ -154,7 +154,6 @@ class EinstellungenViewModel @Inject constructor(
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt
+@@ -160,7 +160,6 @@ class EinstellungenViewModel @Inject constructor(
  
      override fun aendereAlarmSchwelle(setNumber: String, condition: String, richtung: String, schwelle: Double) {
          wartendeSchwellen.remove(setNumber to condition)?.cancel()

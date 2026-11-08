@@ -84,7 +84,7 @@ test('beide Oberflaechen zeigen den Hinweis, aus je EINER Stelle', () => {
     'Der Hinweis fehlt bei einer der beiden Erfassungen (Teile / Figuren)');
 
   const app = ohneKommentare(fs.readFileSync(
-    path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'TeileViewModel.kt'), 'utf8'));
+    path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'teile', 'ui', 'viewmodel', 'TeileViewModel.kt'), 'utf8'));
   assert.strictEqual((app.match(/fun erfassungsMeldung\(/g) || []).length, 1,
     'Der Hinweis der App ist nicht an genau einer Stelle gebaut');
   // `zeigeMeldung(erfassungsMeldung(` misst die AUFRUFE; ein blosses

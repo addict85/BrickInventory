@@ -1,12 +1,11 @@
 Gegenprobe: Ein geänderter Kauf meldet nur Sets statt der Zusammenfassung des Sets
 Modul: core-zustand
-Test: ch.brickinventoryapp.KaeufeViewModelTest
+Test: ch.brickinventoryapp.zustand.KaeufeViewModelTest
 Rot: meldet seine Zusammenfassung
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/KaeufeViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/KaeufeViewModel.kt
-index 63eae34..c47ab99 100644
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/KaeufeViewModel.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/KaeufeViewModel.kt
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt
 @@ -140,7 +140,7 @@ class KaeufeViewModel @Inject constructor(
       */
      private fun setGeaendert(agg: SetAggregate?) {

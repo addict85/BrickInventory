@@ -1,10 +1,9 @@
 Gegenprobe: Der Zurück-Knopf (ZurueckKnopf, auch in jeder Unterseite) ohne MitTooltip
 Modul: app
-Test: ch.brickinventoryapp.IconButtonLabelTest
+Test: ch.brickinventoryapp.app.IconButtonLabelTest
 Rot: jeder Symbolknopf zeigt seinen Namen als Tooltip
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
-index 87bd9ca..e5f97e2 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
 @@ -83,10 +83,8 @@ fun detailSchluessel(art: String, nummer: String, farbe: Int? = null) = "$art|$n

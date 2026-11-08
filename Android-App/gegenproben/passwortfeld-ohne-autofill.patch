@@ -1,13 +1,12 @@
 Gegenprobe: Passwortfeld ohne Autofill-Art
 Modul: app
-Test: ch.brickinventoryapp.GeruestUndFormularTest
+Test: ch.brickinventoryapp.app.GeruestUndFormularTest
 Rot: Startpasswort-Maske fuellt Passwoerter automatisch
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt
-index 4c040d2..d1f7b75 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt
-@@ -95,6 +95,6 @@ fun PasswortFeld(
+@@ -105,6 +105,6 @@ fun PasswortFeld(
          shape = Formen.feld,
          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = imeAction),
          keyboardActions = keyboardActions,

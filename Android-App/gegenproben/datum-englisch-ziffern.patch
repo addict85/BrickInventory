@@ -1,12 +1,11 @@
 Gegenprobe: Englisches Datum wieder als Ziffern „01/08/2026“
 Modul: core-model
-Test: ch.brickinventoryapp.DatumFormatTest
+Test: ch.brickinventoryapp.model.DatumFormatTest
 Rot: je Sprache eine Form wie im Web
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/util/DatumFormat.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/util/DatumFormat.kt
-index 24c52ab..a458b9b 100644
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/util/DatumFormat.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/util/DatumFormat.kt
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DatumFormat.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DatumFormat.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DatumFormat.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DatumFormat.kt
 @@ -20,7 +20,7 @@ fun fmtDatum(iso: String?, locale: java.util.Locale, jahr: DatumJahr = DatumJahr
      if (!(j + m + t).all { it.isDigit() }) return null
      val jj = when (jahr) { DatumJahr.VOLL -> j; DatumJahr.KURZ -> j.takeLast(2); DatumJahr.OHNE -> "" }

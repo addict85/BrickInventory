@@ -1,13 +1,12 @@
 Gegenprobe: Die Kontogrenze des Servers bricht den Guthaben-Durchgang nicht ab
 Modul: feature-finanzen
-Test: ch.brickinventoryapp.GutscheinViewModelTest
+Test: ch.brickinventoryapp.finanzen.GutscheinViewModelTest
 Rot: Kontogrenze bricht den Durchgang ab
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/GutscheinViewModel.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/GutscheinViewModel.kt
-index 018c758..6693dfb 100644
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/GutscheinViewModel.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/GutscheinViewModel.kt
-@@ -367,7 +367,7 @@ class GutscheinViewModel @Inject constructor(
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/GutscheinViewModel.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/GutscheinViewModel.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/GutscheinViewModel.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/GutscheinViewModel.kt
+@@ -370,7 +370,7 @@ class GutscheinViewModel @Inject constructor(
                                      meldungen.zeige(d.error ?: texte.text(R.string.err_generic))
                                      // Bot-Schutz gilt für alle, die Kontogrenze für dieses Konto:
                                      // Weitere Karten liefen in dieselbe Absage.

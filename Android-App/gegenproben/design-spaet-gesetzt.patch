@@ -1,13 +1,12 @@
 Gegenprobe: Das gemerkte Design kommt nicht mehr vor dem ersten Bild in die Sitzung
 Modul: core-zustand
-Test: ch.brickinventoryapp.DarstellungUndVertrauenTest
+Test: ch.brickinventoryapp.zustand.DarstellungUndVertrauenTest
 Rot: der Zustand wird mit dem gemerkten Design geboren
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/DarstellungViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/DarstellungViewModel.kt
-index 3bf41a2..886ac5d 100644
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/DarstellungViewModel.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/DarstellungViewModel.kt
-@@ -34,7 +34,6 @@ class DarstellungViewModel @Inject constructor(
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/DarstellungViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/DarstellungViewModel.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/DarstellungViewModel.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/DarstellungViewModel.kt
+@@ -30,7 +30,6 @@ class DarstellungViewModel @Inject constructor(
      // Der Zustand wird mit dem gemerkten Design geboren; ein späterer Wert käme
      // nach der ersten Komposition, und das falsche Design blitzte auf.
      init {

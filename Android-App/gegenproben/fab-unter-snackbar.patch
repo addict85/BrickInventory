@@ -1,10 +1,9 @@
 Gegenprobe: Der Erfassen-Knopf weicht der Snackbar nicht aus
 Modul: app
-Test: ch.brickinventoryapp.GeruestUndFormularTest
+Test: ch.brickinventoryapp.app.GeruestUndFormularTest
 Rot: Erfassen-Knopf steigt ueber die Snackbar
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Erfassen.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Erfassen.kt
-index d2200f7..d877058 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Erfassen.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Erfassen.kt
 @@ -48,7 +48,7 @@ fun ErfassenFab(beschreibung: String, onClick: () -> Unit, modifier: Modifier =

@@ -1,10 +1,9 @@
 Gegenprobe: Sichtschutz setzt FLAG_SECURE nur auf das Fenster der Activity, nicht auf das Dialogfenster
 Modul: app
-Test: ch.brickinventoryapp.DialogSichtschutzTest
+Test: ch.brickinventoryapp.app.DialogSichtschutzTest
 Rot: ein aufgedecktes Passwort im Dialog
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt
-index 43bf367..7c358eb 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt
 @@ -25,7 +25,7 @@ fun Sichtschutz(ueberdeckung: Boolean = true) {

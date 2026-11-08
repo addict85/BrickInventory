@@ -1,10 +1,9 @@
 Gegenprobe: sseStrom verschluckt eine unlesbare Nutzlast wieder still
 Modul: core-data
-Test: ch.brickinventoryapp.SseStromTest
+Test: ch.brickinventoryapp.data.SseStromTest
 Rot: ein unlesbares Ereignis beendet den Strom sichtbar
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SseStrom.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SseStrom.kt
-index 1bf6242..534b321 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SseStrom.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SseStrom.kt
 @@ -42,9 +42,7 @@ internal fun <T> sseStrom(

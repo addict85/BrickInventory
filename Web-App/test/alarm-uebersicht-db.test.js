@@ -193,7 +193,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
     const felder = Object.keys(a[0]);
     assert.ok(felder.length >= 10, `Nur ${felder.length} Felder — Abfrage kaputt?`);
 
-    const kt = fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-model', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'model', 'SetModels.kt'), 'utf8');
+    const kt = fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-model', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'model', 'data', 'model', 'SetModels.kt'), 'utf8');
     const klasse = kt.slice(kt.indexOf('data class Preisalarm('));
     const rumpf = klasse.slice(0, klasse.indexOf('\n)'));
     assert.ok(rumpf.includes('setNumber'), 'data class Preisalarm nicht gefunden — Muster veraltet?');

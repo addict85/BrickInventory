@@ -1,13 +1,12 @@
 Gegenprobe: TokenTausch.faellig() tauscht mit runBlocking im Aufrufer statt im übergebenen Anwendungsbereich
 Modul: core-data
-Test: ch.brickinventoryapp.TokenTauschTest
+Test: ch.brickinventoryapp.data.TokenTauschTest
 Rot: faellig tauscht im Anwendungsbereich und kehrt sofort zurueck
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt
-index e987b42..c1b60a9 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt
-@@ -85,7 +85,7 @@ class TokenTausch(
+@@ -114,7 +114,7 @@ class TokenTausch(
      /** Für die Kopfzeile: nicht warten, die Anfrage selbst ist gelungen. */
      override fun faellig(alterToken: String) {
          if (sperre.isLocked) return

@@ -1,12 +1,11 @@
 Gegenprobe: fangeAusserAbbruch verschluckt das Abbrechen wie runCatching
 Modul: core-data
-Test: ch.brickinventoryapp.AbbruchTest
+Test: ch.brickinventoryapp.data.AbbruchTest
 Rot: ein abgebrochener Auftrag laeuft nicht weiter
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/Abbruch.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/Abbruch.kt
-index 6a0a594..edfd88b 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/Abbruch.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/Abbruch.kt
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Abbruch.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Abbruch.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Abbruch.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Abbruch.kt
 @@ -11,8 +11,6 @@ import kotlin.coroutines.cancellation.CancellationException
  inline fun <T> fangeAusserAbbruch(block: () -> T): kotlin.Result<T> =
      try {

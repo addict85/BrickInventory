@@ -1,10 +1,9 @@
 Gegenprobe: Ein DataStore-Artefakt ist nicht mehr festgenagelt
 Modul: app
-Test: ch.brickinventoryapp.SixteenKbAlignmentTest
+Test: ch.brickinventoryapp.app.SixteenKbAlignmentTest
 Rot: DataStore wird auf EINE Fassung festgenagelt
 
 diff --git a/Android-App/app/build.gradle.kts b/Android-App/app/build.gradle.kts
-index aac0721..f852313 100644
 --- a/Android-App/app/build.gradle.kts
 +++ b/Android-App/app/build.gradle.kts
 @@ -151,7 +151,7 @@ val datastore = libs.versions.datastore.get()

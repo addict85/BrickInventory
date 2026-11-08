@@ -164,8 +164,8 @@ Token-Verwaltung erfolgt über das Web-Interface unter Einstellungen → Mobile 
 ## Datenschutz: mit wem die App spricht
 
 - **Dein Server** — alles, was zum Konto gehört. Auch Bilder kommen nur über seinen
-  Proxy; der Bild-Client lässt keine Anfrage an ein CDN durch (`util/BildHosts.kt`).
-- **GitHub** — nur die Update-Prüfung (`util/AppUpdate.kt`): beim Start, solange
+  Proxy; der Bild-Client lässt keine Anfrage an ein CDN durch (`netz/util/BildHosts.kt`).
+- **GitHub** — nur die Update-Prüfung (`update/util/AppUpdate.kt`): beim Start, solange
   der Geräteschalter „Beim Start nach Updates suchen“ an ist (Vorgabe an), sonst auf
   Knopfdruck. Umleitungen folgt der Update-Client nur zu GitHub-Hosts.
 - **Google Play-Dienste** — Barcode-Scan (ML Kit, nachgeladen) und Passkeys
@@ -178,7 +178,7 @@ Dieselbe Liste zeigt die App unter Einstellungen → Datenschutz.
 ## Sicherheit im Netz
 
 **Nur https.** Die Release-App sendet nichts unverschlüsselt. Zwei Linien:
-der Wächter (`di/ServerWaechter.kt`) bricht jede http-Anfrage vor dem Netz ab,
+der Wächter (`netz/di/ServerWaechter.kt`) bricht jede http-Anfrage vor dem Netz ab,
 und die Network-Security-Config (`app/src/main/res/xml/`) verbietet Klartext
 für alle Hosts. Nur der Debug-Build darf http zu `localhost`, `127.0.0.1` und
 `10.0.2.2` (Emulator), festgelegt in `app/src/debug/res/xml/` und
@@ -186,7 +186,7 @@ für alle Hosts. Nur der Debug-Build darf http zu `localhost`, `127.0.0.1` und
 führt beim Start in die Einrichtung mit einer Anleitung (QR neu scannen oder
 https-Adresse eintragen).
 
-**Wem die App beim eigenen Server vertraut** (`util/ServerVertrauen.kt`):
+**Wem die App beim eigenen Server vertraut** (`data/util/ServerVertrauen.kt`):
 
 | Weg | Was passiert |
 | --- | --- |
@@ -206,7 +206,7 @@ regelmässige Erneuerung des Serverzertifikats durch Caddy. Andere Hosts
 Nutzerinstallierte CAs zählen nur, wenn der Nutzer das in den Einstellungen
 ausdrücklich einschaltet.
 
-**Logcat.** Die App schreibt nur über `util/Protokoll.kt`, und das nur im
+**Logcat.** Die App schreibt nur über `data/util/Protokoll.kt`, und das nur im
 Debug-Build; dort zeigt der Netzmitschnitt Anfrage- und Statuszeile, nie Rümpfe,
 und schwärzt `Authorization`, `Cookie` und `Set-Cookie`. R8 entfernt im Release
 zusätzlich alle `android.util.Log`-Aufrufe (`proguard-rules.pro`).
@@ -215,7 +215,7 @@ zusätzlich alle `android.util.Log`-Aufrufe (`proguard-rules.pro`).
 ## Daten auf dem Gerät
 
 Was zum Konto gehört, liegt verschlüsselt mit einem Schlüssel aus dem Keystore
-(`util/Ablageschluessel.kt`, AES-GCM, je Zweck abgeleitet und an Dateiname und
+(`data/util/Ablageschluessel.kt`, AES-GCM, je Zweck abgeleitet und an Dateiname und
 Zweck gebunden):
 
 | Ablage | Wie |
@@ -248,7 +248,7 @@ prüft das ausgeführt.
 
 **Token-Schlüssel ohne `setUnlockedDeviceRequired`:** Preisalarm, Widget und
 Ausgang senden im Hintergrund, auch bei gesperrtem Gerät (Begründung in
-`util/TokenTresor.kt`). Abgefedert durch die Rotation mit Wiederverwendungs-
+`data/util/TokenTresor.kt`). Abgefedert durch die Rotation mit Wiederverwendungs-
 erkennung am Server und die harte Höchstdauer von 180 Tagen.
 
 **Pins ohne eigenen Integritätsschutz (sec12 H6):** Pins und der Schalter für
@@ -322,29 +322,36 @@ des Moduls, wo `ModulgrenzenTest` sie liest. Ein SDK-Sprung ist eine Zeile in
 `build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Sdk.kt`.
 `core-model` bleibt reines Kotlin (`brickinventory.jvm.library`).
 
-| Modul | Inhalt |
-| --- | --- |
-| `core-model` | Server- und UI-Modelle, reine Regeln — reines Kotlin, ohne Android |
-| `core-ressourcen` | Texte (de/en), Schriften, Bilder; `ch.brickinventoryapp.ressourcen.R` |
-| `core-netz` | Wächter-Interceptor (`ServerWaechter`), Netzrichtlinie, Adress- und Bild-Host-Prüfung; kennt weder Room noch Hilt |
-| `core-data` | Retrofit, OkHttp, Repositories, Room samt Schema (`core-data/schemas`), DataStore, verschlüsselte Ablagen, Ausgang, Abmelde-Arbeiter, PDF-Export |
-| `core-update` | Selbstaktualisierung: signierte Beschreibung, Frische, APK-Download, Signaturvergleich, Installation; hängt an `core-data` |
-| `core-dienste` | CSV-Import als Vordergrund-Dienst, stündlicher Preisalarm (WorkManager); hängt an `core-data` |
-| `core-ui` | Theme und gemeinsame Composables (Karten, Zeilen, Filter, Kamera-Bausteine) |
-| `core-zustand` | Sitzung, Blickfeld, Bestandssignal, Texte, Basis der Bereichs-ViewModels, AppViewModel |
-| `core-testing` | Testhilfen (Testserver, Testdienste, `Quellen`), nur als `testImplementation` |
-| `feature-anmeldung` | Anmelden, Server einrichten, QR |
-| `feature-katalog` | Katalog und Katalog-Detail |
-| `feature-sammlung` | Galerie, Set-Detail, Merkliste, Käufe, Vergleich, Scanner |
-| `feature-teile` | Teile, Minifiguren, eigene Einträge, Teilelisten |
-| `feature-finanzen` | Finanzen, Gutscheine, PDF-Betrachter |
-| `feature-konto` | Einstellungen |
-| `feature-verwaltung` | Monitoring für Verwalter |
-| `app` | Navigation, Hilt-Einstieg, Activity, Widget |
+| Modul | Paketstamm | Inhalt |
+| --- | --- | --- |
+| `core-model` | `ch.brickinventoryapp.model` | Server- und UI-Modelle, reine Regeln — reines Kotlin, ohne Android |
+| `core-ressourcen` | — (nur Ressourcen) | Texte (de/en), Schriften, Bilder; `ch.brickinventoryapp.ressourcen.R` |
+| `core-netz` | `ch.brickinventoryapp.netz` | Wächter-Interceptor (`ServerWaechter`), Netzrichtlinie, Adress- und Bild-Host-Prüfung; kennt weder Room noch Hilt |
+| `core-data` | `ch.brickinventoryapp.data` | Retrofit, OkHttp, Repositories, Room samt Schema (`core-data/schemas`), DataStore, verschlüsselte Ablagen, Ausgang, Abmelde-Arbeiter, PDF-Export |
+| `core-update` | `ch.brickinventoryapp.update` | Selbstaktualisierung: signierte Beschreibung, Frische, APK-Download, Signaturvergleich, Installation; hängt an `core-data` |
+| `core-dienste` | `ch.brickinventoryapp.dienste` | CSV-Import als Vordergrund-Dienst, stündlicher Preisalarm (WorkManager); hängt an `core-data` |
+| `core-ui` | `ch.brickinventoryapp.ui` | Theme und gemeinsame Composables (Karten, Zeilen, Filter, Kamera-Bausteine) |
+| `core-zustand` | `ch.brickinventoryapp.zustand` | Sitzung, Blickfeld, Bestandssignal, Texte, Basis der Bereichs-ViewModels, AppViewModel |
+| `core-testing` | `ch.brickinventoryapp.testing` | Testhilfen (Testserver, Testdienste, `Quellen`), nur als `testImplementation` |
+| `feature-anmeldung` | `ch.brickinventoryapp.anmeldung` | Anmelden, Server einrichten, QR |
+| `feature-katalog` | `ch.brickinventoryapp.katalog` | Katalog und Katalog-Detail |
+| `feature-sammlung` | `ch.brickinventoryapp.sammlung` | Galerie, Set-Detail, Merkliste, Käufe, Vergleich, Scanner |
+| `feature-teile` | `ch.brickinventoryapp.teile` | Teile, Minifiguren, eigene Einträge, Teilelisten |
+| `feature-finanzen` | `ch.brickinventoryapp.finanzen` | Finanzen, Gutscheine, PDF-Betrachter |
+| `feature-konto` | `ch.brickinventoryapp.konto` | Einstellungen |
+| `feature-verwaltung` | `ch.brickinventoryapp.verwaltung` | Monitoring für Verwalter |
+| `app` | `ch.brickinventoryapp.app` | Navigation, Hilt-Einstieg, Activity, Widget |
 
-Die Pakete sind über die Module hinweg dieselben geblieben
-(`ch.brickinventoryapp.ui.screens` gibt es in mehreren Modulen); was ein Modul
-dem anderen zeigt, ist öffentlich, der Rest `internal`.
+Jedes Modul hat seinen eigenen Paketstamm: Paket = Stamm + bisheriger
+Unterpfad (`ui.screens` in `feature-sammlung` heisst
+`ch.brickinventoryapp.sammlung.ui.screens`); `core-ui` und `core-data` beginnen
+schon mit ihrem Stamm (`ch.brickinventoryapp.ui.*`, `ch.brickinventoryapp.data.*`).
+Die Tests eines Moduls liegen direkt im Stamm. Aus einem Import ist so das Modul
+ablesbar, und kein Paket verteilt sich auf zwei Module; `ModulgrenzenTest` prüft
+es an jeder Kotlin-Datei. Die R-Klassen folgen dem `namespace` des Moduls
+(`ch.brickinventoryapp.core.ui.R`, `ch.brickinventoryapp.ressourcen.R`), die der
+App bleibt `ch.brickinventoryapp.R`. Was ein Modul dem anderen zeigt, ist
+öffentlich, der Rest `internal`.
 
 ## Tests
 

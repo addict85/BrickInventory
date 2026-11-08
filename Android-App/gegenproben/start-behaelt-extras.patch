@@ -1,12 +1,11 @@
 Gegenprobe: NurLauncherStart entfernt beim Start nichts mehr
 Modul: app
-Test: ch.brickinventoryapp.FremderEinstiegTest
+Test: ch.brickinventoryapp.app.FremderEinstiegTest
 Rot: ein fremder Start erreicht die Activity ohne Extras
 
-diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/NurLauncherStart.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/NurLauncherStart.kt
-index 4ebea63..7d57fa1 100644
---- a/Android-App/app/src/main/java/ch/brickinventoryapp/NurLauncherStart.kt
-+++ b/Android-App/app/src/main/java/ch/brickinventoryapp/NurLauncherStart.kt
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/NurLauncherStart.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/NurLauncherStart.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/NurLauncherStart.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/NurLauncherStart.kt
 @@ -13,7 +13,6 @@ import androidx.fragment.app.FragmentActivity
   */
  abstract class NurLauncherStart : FragmentActivity() {

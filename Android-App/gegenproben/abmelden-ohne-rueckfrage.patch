@@ -1,12 +1,11 @@
 Gegenprobe: Abmelden unter Mehr meldet sofort ab
 Modul: app
-Test: ch.brickinventoryapp.UnterseitenTest
+Test: ch.brickinventoryapp.app.UnterseitenTest
 Rot: Abmelden fragt
 
-diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt
-index 25f463e..e79cc18 100644
---- a/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt
-+++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt
 @@ -77,7 +77,7 @@ fun MehrBildschirm(
      // Abmelden steht unter „Konto und App“, wohin es gehört, als letzter Eintrag dort.
      @Composable

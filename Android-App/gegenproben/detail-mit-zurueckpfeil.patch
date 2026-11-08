@@ -1,10 +1,9 @@
 Gegenprobe: Detail neben der Liste mit Zurück-Pfeil statt Schliessen
 Modul: app
-Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
 Rot: Tablet zeigt Merkliste und Detail nebeneinander
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
-index 32a3e98..bdb8fd3 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
 @@ -82,10 +82,10 @@ fun detailSchluessel(art: String, nummer: String, farbe: Int? = null) = "$art|$n

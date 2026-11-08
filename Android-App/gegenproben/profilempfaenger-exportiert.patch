@@ -1,6 +1,6 @@
 Gegenprobe: Der ProfileInstallReceiver bleibt im zusammengeführten Manifest
 Modul: app
-Test: ch.brickinventoryapp.BibliotheksKomponentenTest
+Test: ch.brickinventoryapp.app.BibliotheksKomponentenTest
 Rot: der Profileinstaller
 
 diff --git a/Android-App/app/src/main/AndroidManifest.xml b/Android-App/app/src/main/AndroidManifest.xml

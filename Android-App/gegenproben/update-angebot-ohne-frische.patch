@@ -1,13 +1,12 @@
 Gegenprobe: das UpdateViewModel bietet wieder jede neuere Fassung an, auch aus einer zurückgesetzten Beschreibung (Stand vor sec12 H2)
 Modul: feature-konto
-Test: ch.brickinventoryapp.UpdateViewModelTest
+Test: ch.brickinventoryapp.konto.UpdateViewModelTest
 Rot: eine zurueckgesetzte Beschreibung bietet nichts an
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
-index 0f539b8..dea1869 100644
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
-@@ -104,7 +104,7 @@ class UpdateViewModel @Inject constructor(
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt
+@@ -114,7 +114,7 @@ class UpdateViewModel @Inject constructor(
                  val frische = pruefeFrische(updateStand, beschreibung, repo.laufendeFassung.code, System.currentTimeMillis() / 1000)
                  _state.update {
                      it.copy(laedtPruefung = false, geprueft = true,

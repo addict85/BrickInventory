@@ -1,13 +1,12 @@
 Gegenprobe: Beschriftung der Reiter wieder ohne Zeilengrenze, alle Ziele beschriftet
 Modul: app
-Test: ch.brickinventoryapp.FeinschliffRegelnTest
+Test: ch.brickinventoryapp.app.FeinschliffRegelnTest
 Rot: Reiterleiste bricht bei 200 Prozent kein Wort um
 
-diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-index b2ab7a3..11cfef4 100644
---- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-+++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-@@ -281,7 +281,6 @@ private fun ReiterZiel(
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+@@ -291,7 +291,6 @@ private fun ReiterZiel(
              // Fett und in Hauptfarbe: Das gewählte Ziel unterscheidet sich auch in der Form.
              fontWeight = if (gewaehlt) FontWeight.Bold else FontWeight.Medium,
              color = if (gewaehlt) farben.gewaehlt else farben.ungewaehlt,
@@ -15,7 +14,7 @@ index b2ab7a3..11cfef4 100644
          )
      }
  }
-@@ -311,7 +310,7 @@ private fun ReiterLeiste(
+@@ -321,7 +320,7 @@ private fun ReiterLeiste(
              }
              Row(Modifier.fillMaxWidth().heightIn(min = LEISTE_HOEHE).selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
                  ziele.forEachIndexed { i, (screen, icon, name) ->

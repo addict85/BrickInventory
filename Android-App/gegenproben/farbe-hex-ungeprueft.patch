@@ -1,10 +1,9 @@
 Gegenprobe: Ein Hex-Wert mit fremden Zeichen wird nicht abgewiesen, sondern wirft
 Modul: core-ui
-Test: ch.brickinventoryapp.FarbeAusHexTest
+Test: ch.brickinventoryapp.ui.FarbeAusHexTest
 Rot: ein unlesbarer Wert ergibt keine Farbe
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/FarbeAusHex.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/FarbeAusHex.kt
-index cc1348c..829cb80 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/FarbeAusHex.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/FarbeAusHex.kt
 @@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.Color

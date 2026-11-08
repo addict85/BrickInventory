@@ -111,9 +111,9 @@ test('die Oberfläche bietet Einladen und Einlösen jedem Konto an', () => {
   assert.match(js, /inviteEl\.style\.display = ''/);
   assert.match(js, /redeemEl\.style\.display = ''/);
   const kt =
-    read('../Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/SettingsScreen.kt') +
-    read('../Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenUnterseiten.kt') +
-    read('../Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt');
+    read('../Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/SettingsScreen.kt') +
+    read('../Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenUnterseiten.kt') +
+    read('../Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenHaushalt.kt');
   assert.doesNotMatch(
     kt,
     /!st\.isSub\b/,

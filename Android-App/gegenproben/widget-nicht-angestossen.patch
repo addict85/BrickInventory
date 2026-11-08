@@ -1,13 +1,12 @@
 Gegenprobe: Die Wahl der Widget-Werte stösst das Widget nicht mehr an
 Modul: core-zustand
-Test: ch.brickinventoryapp.DarstellungUndVertrauenTest
+Test: ch.brickinventoryapp.zustand.DarstellungUndVertrauenTest
 Rot: eine Wahl wird gemerkt und gilt sofort
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/DarstellungViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/DarstellungViewModel.kt
-index 3bf41a2..ff20007 100644
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/DarstellungViewModel.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/DarstellungViewModel.kt
-@@ -71,7 +71,6 @@ class DarstellungViewModel @Inject constructor(
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/DarstellungViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/DarstellungViewModel.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/DarstellungViewModel.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/DarstellungViewModel.kt
+@@ -64,7 +64,6 @@ class DarstellungViewModel @Inject constructor(
      override fun setWidgetWerte(an: Boolean) {
          prefs.setzeWidgetWerteZeigen(an)
          _widgetWerte.value = an

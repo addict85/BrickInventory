@@ -1,12 +1,11 @@
 Gegenprobe: Der Alarmschalter speichert nur und plant nicht ein
 Modul: core-zustand
-Test: ch.brickinventoryapp.GeraeteEinstellungenViewModelTest
+Test: ch.brickinventoryapp.zustand.GeraeteEinstellungenViewModelTest
 Rot: der Schalter speichert und plant ein
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/GeraeteEinstellungenViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/GeraeteEinstellungenViewModel.kt
-index 216ac25..ee88800 100644
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/GeraeteEinstellungenViewModel.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/GeraeteEinstellungenViewModel.kt
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/GeraeteEinstellungenViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/GeraeteEinstellungenViewModel.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/GeraeteEinstellungenViewModel.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/GeraeteEinstellungenViewModel.kt
 @@ -48,7 +48,7 @@ class GeraeteEinstellungenViewModel @Inject constructor(
      fun alarmMeldungen(an: Boolean) {
          viewModelScope.launch {

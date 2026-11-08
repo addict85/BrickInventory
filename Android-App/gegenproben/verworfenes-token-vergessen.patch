@@ -1,13 +1,12 @@
 Gegenprobe: Ein beim Serverwechsel verworfenes Token wird nicht nachgeholt abgemeldet
 Modul: core-data
-Test: ch.brickinventoryapp.TokenBindungGesperrtTest
+Test: ch.brickinventoryapp.data.TokenBindungGesperrtTest
 Rot: ein gesperrter Keystore beim Serverwechsel
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
-index f79cce3..140045c 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
-@@ -200,7 +200,6 @@ class TokenAblage @Inject constructor(
+@@ -203,7 +203,6 @@ class TokenAblage @Inject constructor(
                  (!NetworkPolicy.gleicheHerkunft(herkunft, normalized) ||
                      !NetworkPolicy.gleicherServer(alteAdresse, normalized))
              if (anderer) {

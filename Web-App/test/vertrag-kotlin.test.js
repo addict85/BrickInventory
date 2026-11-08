@@ -123,7 +123,7 @@ test('der Vergleich schlägt an, wo die App nicht lesen kann', () => {
 });
 
 test('jeder Fehlercode der App steht im Vertrag', () => {
-  const datei = path.join(ANDROID, 'core-model', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'model', 'Fehlercode.kt');
+  const datei = path.join(ANDROID, 'core-model', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'model', 'data', 'model', 'Fehlercode.kt');
   const kennungen = kotlinFehlercodes(datei);
   assert.ok(kennungen.length >= 10, `nur ${kennungen.length} Fehlercodes in Fehlercode.kt gelesen`);
   const imVertrag = new Set(dok.components.schemas.Fehlercode?.enum ?? []);

@@ -86,11 +86,11 @@ test('der Teile-/Figuren-Dialog hat keinen zweiten Weg hinaus', () => {
  */
 test('jeder Detail-Bildschirm der App traegt den Papierkorb in der Kopfleiste', () => {
   const app = path.join(__dirname, '..', '..', 'Android-App', 'app', 'src', 'main',
-                        'java', 'ch', 'brickinventoryapp', 'ui');
+                        'java', 'ch', 'brickinventoryapp', 'app', 'ui');
   const SCHIRME = [
-    ['Set-Detail',        path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailScreen.kt')],
-    ['Teile/Figuren',     path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'ManualItemDetailScreen.kt')],
-    ['Merkposten-Detail', path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'MerkpostenDetailScreen.kt')],
+    ['Set-Detail',        path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'ui', 'screens', 'SetDetailScreen.kt')],
+    ['Teile/Figuren',     path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'teile', 'ui', 'screens', 'ManualItemDetailScreen.kt')],
+    ['Merkposten-Detail', path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'ui', 'screens', 'MerkpostenDetailScreen.kt')],
   ];
   for (const [name, datei] of SCHIRME) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));

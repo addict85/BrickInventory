@@ -1,12 +1,12 @@
 Gegenprobe: PfadServer.imTakt liest Antworten nicht mehr gegen das DTO
 Modul: core-data
-Test: ch.brickinventoryapp.PfadServerImTaktTest
+Test: ch.brickinventoryapp.data.PfadServerImTaktTest
 Rot: eine unvollständige Antwort scheitert
 
-diff --git a/Android-App/core-testing/src/main/java/ch/brickinventoryapp/TestApi.kt b/Android-App/core-testing/src/main/java/ch/brickinventoryapp/TestApi.kt
---- a/Android-App/core-testing/src/main/java/ch/brickinventoryapp/TestApi.kt
-+++ b/Android-App/core-testing/src/main/java/ch/brickinventoryapp/TestApi.kt
-@@ -148,7 +148,6 @@
+diff --git a/Android-App/core-testing/src/main/java/ch/brickinventoryapp/testing/TestApi.kt b/Android-App/core-testing/src/main/java/ch/brickinventoryapp/testing/TestApi.kt
+--- a/Android-App/core-testing/src/main/java/ch/brickinventoryapp/testing/TestApi.kt
++++ b/Android-App/core-testing/src/main/java/ch/brickinventoryapp/testing/TestApi.kt
+@@ -149,7 +149,6 @@ class PfadServer(vararg regeln: Pair<String, String>) {
              check(verzoegert.isEmpty()) { "Im Takt gibt es keine verzögerte Antwort ($pfad); dafür ausbleibend" }
              val rumpf = anfrage.body?.let { b -> Buffer().also { b.writeTo(it) }.readUtf8() }.orEmpty()
              val (code, text) = beantworte(anfrage.method, pfad, rumpf)

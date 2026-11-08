@@ -1,10 +1,9 @@
 Gegenprobe: Anzeige des gewählten Reiters wieder im blassen secondaryContainer (05.11.2026, thema.py lokal)
 Modul: core-ui
-Test: ch.brickinventoryapp.TextKontrastTest
+Test: ch.brickinventoryapp.ui.TextKontrastTest
 Rot: die Anzeige des gewaehlten Reiters hebt sich von Leiste und Seitenleiste ab
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
-index 8831478..68b15a6 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
 @@ -415,7 +415,7 @@ data class ReiterFarben(

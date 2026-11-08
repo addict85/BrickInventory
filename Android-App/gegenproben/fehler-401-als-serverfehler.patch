@@ -1,10 +1,9 @@
 Gegenprobe: Ein 401 ohne Fehlerrumpf gilt als Serverfehler statt als abgelaufene Sitzung
 Modul: core-zustand
-Test: ch.brickinventoryapp.BrickRepositoryErrorMappingTest
+Test: ch.brickinventoryapp.zustand.BrickRepositoryErrorMappingTest
 Rot: 401 wird als abgelaufene Sitzung gemeldet
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt
-index a2a81a8..5a717b3 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt
 @@ -131,7 +131,6 @@ suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Ergebnis<T> {

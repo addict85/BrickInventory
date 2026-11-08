@@ -1,13 +1,12 @@
 Gegenprobe: Die beantragte E-Mail steht nicht unter dem Feld
 Modul: app
-Test: ch.brickinventoryapp.UnterseitenTest
+Test: ch.brickinventoryapp.app.UnterseitenTest
 Rot: Konto nennt die beantragte E-Mail
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenKonto.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenKonto.kt
-index 2eb8599..dc10e3f 100644
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenKonto.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenKonto.kt
-@@ -102,7 +102,6 @@ internal fun KontoCard(
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt
+@@ -127,7 +127,6 @@ internal fun KontoCard(
                  // Eine neue Adresse wartet auf ihren Link, das Feld zeigt bis dahin die
                  // geltende. Ohne den Hinweis sähe die Änderung nach dem Speichern verloren aus.
                  supportingText = when {

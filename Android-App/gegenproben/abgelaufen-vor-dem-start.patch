@@ -1,12 +1,11 @@
 Gegenprobe: Ein 401 vor dem ersten Sammler geht verloren (Ereignis statt Zustand)
 Modul: core-zustand
-Test: ch.brickinventoryapp.SitzungsDienstTest
+Test: ch.brickinventoryapp.zustand.SitzungsDienstTest
 Rot: ein 401 vor dem Start geht nicht verloren
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/SitzungsDienst.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/SitzungsDienst.kt
-index 79f1f8e..857391a 100644
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/SitzungsDienst.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/SitzungsDienst.kt
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/SitzungsDienst.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/SitzungsDienst.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/SitzungsDienst.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/SitzungsDienst.kt
 @@ -104,7 +104,7 @@ class SitzungsDienst @Inject constructor(
          // Fehlversuch beim Anmelden meldet nicht ab. Die Ablage statt der Sitzung:
          // Beim Kaltstart kann der 401 vor dem ersten Abgleich der Sitzung kommen.

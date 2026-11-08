@@ -66,8 +66,8 @@ test('Server, Webapp und App nennen dieselbe Zahl', () => {
   assert.equal(Number(webZahl[1]), PASSWORT_MIN_ZEICHEN,
     'Webapp und Server verlangen verschiedene Laengen');
 
-  const kotlinDatei = path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'util', 'Passwort.kt');
-  assert.ok(fs.existsSync(kotlinDatei), 'util/Passwort.kt fehlt — Pfad im Test veraltet?');
+  const kotlinDatei = path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'util', 'Passwort.kt');
+  assert.ok(fs.existsSync(kotlinDatei), 'data/util/Passwort.kt fehlt — Pfad im Test veraltet?');
   // `const val`, nicht bloss der Name: Der erste Entwurf dieser Datei schrieb
   // `const PASSWORT_MIN_ZEICHEN = 8` — ohne `val`, und das ist kein gueltiges
   // Kotlin. Dieser Regex traf die Zeichenkette trotzdem, der Test blieb gruen,
@@ -132,10 +132,10 @@ test('beide Oberflaechen pruefen vor dem Absenden', () => {
   for (const [voll, anzahl, name] of [
     // Seit dem 16.10. steht die Kontokarte auf ihrer eigenen Seite: Der
     // Einstellungsbildschirm traegt nur noch die Liste dorthin.
-    [path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenKonto.kt'), 2, 'Passwort aendern'],
+    [path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'konto', 'ui', 'screens', 'EinstellungenKonto.kt'), 2, 'Passwort aendern'],
     // Hinweis und Fehlermarkierung teilen sich seit dem PasswortFeld einen Wert.
-    [path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'StartpasswortMaske.kt'), 1, 'Startpasswort'],
-    [path.join(__dirname, '..', '..', 'Android-App', 'feature-anmeldung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'LoginScreen.kt'),    1, 'Registrieren'],
+    [path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'konto', 'ui', 'screens', 'StartpasswortMaske.kt'), 1, 'Startpasswort'],
+    [path.join(__dirname, '..', '..', 'Android-App', 'feature-anmeldung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'anmeldung', 'ui', 'screens', 'LoginScreen.kt'),    1, 'Registrieren'],
   ]) {
     const kurz = path.basename(voll);
     assert.ok(fs.existsSync(voll), `${kurz} steht nicht mehr dort — Pfad im Test veraltet`);

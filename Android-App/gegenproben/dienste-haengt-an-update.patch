@@ -1,10 +1,9 @@
 Gegenprobe: core-dienste bindet core-update ein; die abgespaltenen Module kennen einander nicht
 Modul: app
-Test: ch.brickinventoryapp.ModulgrenzenTest
+Test: ch.brickinventoryapp.app.ModulgrenzenTest
 Rot: Schichtung der Kernmodule
 
 diff --git a/Android-App/core-dienste/build.gradle.kts b/Android-App/core-dienste/build.gradle.kts
-index 528570b..5c0328a 100644
 --- a/Android-App/core-dienste/build.gradle.kts
 +++ b/Android-App/core-dienste/build.gradle.kts
 @@ -13,6 +13,7 @@ android {

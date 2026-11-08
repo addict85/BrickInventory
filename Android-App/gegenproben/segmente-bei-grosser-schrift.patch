@@ -1,13 +1,12 @@
 Gegenprobe: Einfachwahl auch bei 200 Prozent als Segmente
 Modul: app
-Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
 Rot: Einfachwahl bricht
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt
-index 450dcd0..5fdf5bb 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt
-@@ -66,7 +66,7 @@ fun <T> SegmentWahl(
+@@ -64,7 +64,7 @@ fun <T> SegmentWahl(
      onWahl: (T) -> Unit,
      modifier: Modifier = Modifier,
  ) {

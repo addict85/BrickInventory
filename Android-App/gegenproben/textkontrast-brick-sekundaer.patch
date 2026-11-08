@@ -1,13 +1,12 @@
 Gegenprobe: Sekundärtext im Design brick wieder #6B7785 (3,91:1 auf background)
 Modul: core-ui
-Test: ch.brickinventoryapp.TextKontrastTest
+Test: ch.brickinventoryapp.ui.TextKontrastTest
 Rot: jede Schriftrolle erreicht
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
-index 6584291..b4715b2 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
-@@ -105,7 +105,7 @@ private val BrickBlueColors = lightColorScheme(
+@@ -107,7 +107,7 @@ private val BrickBlueColors = lightColorScheme(
      surface             = Color.White,
      surfaceVariant      = Color(0xFFEEF1F5),
      onSurface           = Color(0xFF26323F),

@@ -49,7 +49,7 @@ test('2. dieselbe Adresse wie im Workflow und in der App', () => {
     `"${etikett}/${apkName}" ab. Ein Klick endete auf der 404-Seite von GitHub.`);
 
   // ── Aus der App: dieselbe Ablage, aus der sie sich selbst aktualisiert ────
-  const kt = fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-update', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'util', 'AppUpdate.kt'), 'utf8');
+  const kt = fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-update', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'update', 'util', 'AppUpdate.kt'), 'utf8');
   // Die Basis darf auf die Wurzel verweisen; Kotlin setzt $NAME beim Übersetzen ein.
   const wurzel = kt.match(/UPDATE_RELEASE_WURZEL\s*=\s*\n?\s*"([^"]+)"/)?.[1];
   const basis = kt.match(/UPDATE_RELEASE_BASIS\s*=\s*\n?\s*"([^"]+)"/)?.[1]

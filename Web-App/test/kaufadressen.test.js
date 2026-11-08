@@ -70,7 +70,7 @@ test('die Adresse des Preisvergleichs steht genau an EINER Stelle je Seite', () 
     }
   }
   assert.deepEqual(treffer.sort(), [
-    path.join('Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'ComparisonScreen.kt'),
+    path.join('Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'ui', 'screens', 'ComparisonScreen.kt'),
     path.join('Web-App', 'test', 'kaufadressen.test.js'),
     path.join('Web-App', 'src/katalog/preisvergleich.ts'),
   ].sort(),

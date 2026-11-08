@@ -10,7 +10,7 @@ const path   = require('node:path');
 
 const WURZEL   = path.join(__dirname, '..', '..', 'Android-App', 'app', 'src', 'main');
 const MANIFEST = path.join(WURZEL, 'AndroidManifest.xml');
-const APP      = path.join(WURZEL, 'java', 'ch', 'brickinventoryapp', 'BrickInventoryApp.kt');
+const APP      = path.join(WURZEL, 'java', 'ch', 'brickinventoryapp', 'app', 'BrickInventoryApp.kt');
 
 test('WorkManager: Manifest-Ausbau und Configuration.Provider gehoeren zusammen', () => {
   const manifest = fs.readFileSync(MANIFEST, 'utf8');
@@ -93,7 +93,7 @@ test('Der erste WorkManager-Zugriff liegt in einem runCatching', () => {
   // Die zweite Haelfte, seit dem 25.09.
   // Ausführlich: docs/begruendungen/test/workmanager-abruf.test.js.md#worker
   const worker = fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-dienste', 'src', 'main',
-    'java', 'ch', 'brickinventoryapp', 'alarm', 'PreisalarmWorker.kt'), 'utf8');
+    'java', 'ch', 'brickinventoryapp', 'dienste', 'alarm', 'PreisalarmWorker.kt'), 'utf8');
   assert.match(worker, /fun einplanen\([^)]*\)\s*:\s*Throwable\?/,
     'einplanen() gibt keinen Fehler mehr zurueck — dann wirft es wieder, und die '
     + 'Aufrufstelle am Schalter hat kein Netz.');

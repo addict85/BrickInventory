@@ -1,10 +1,9 @@
 Gegenprobe: Markenkopf auch bei 200 % gross und zweizeilig
 Modul: app
-Test: ch.brickinventoryapp.GeruestUndFormularTest
+Test: ch.brickinventoryapp.app.GeruestUndFormularTest
 Rot: Markenkopf bei 200 Prozent
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/MarkenKopf.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/MarkenKopf.kt
-index 2bbbc4d..4703934 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/MarkenKopf.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/MarkenKopf.kt
 @@ -41,7 +41,7 @@ import ch.brickinventoryapp.ui.theme.Formen

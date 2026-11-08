@@ -1,13 +1,12 @@
 Gegenprobe: ThemeRow ohne Optionsfeld-Rolle
 Modul: app
-Test: ch.brickinventoryapp.BarrierefreiheitBefundeTest
+Test: ch.brickinventoryapp.app.BarrierefreiheitBefundeTest
 Rot: M12 Themen- und Jahreswahl melden Rolle und Wahl
 
-diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt
-index db4ec14..311ea48 100644
---- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt
-+++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt
-@@ -414,7 +414,7 @@ fun ThemeRow(label: String, selected: Boolean, onClick: () -> Unit) {
+diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogScreen.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogScreen.kt
+--- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogScreen.kt
++++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogScreen.kt
+@@ -416,7 +416,7 @@ fun ThemeRow(label: String, selected: Boolean, onClick: () -> Unit) {
          shape = Formen.kachel,
          color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
                  else androidx.compose.ui.graphics.Color.Transparent,

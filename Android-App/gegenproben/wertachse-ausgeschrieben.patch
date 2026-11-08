@@ -1,13 +1,12 @@
 Gegenprobe: Wertachse auch bei grosser Schrift ausgeschrieben
 Modul: core-ui
-Test: ch.brickinventoryapp.AchsenRundTest
+Test: ch.brickinventoryapp.ui.AchsenRundTest
 Rot: grosse Schrift beschriftet die Wertachse kurz
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/DiagrammAchsen.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/DiagrammAchsen.kt
-index 880042a..acf8f33 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/DiagrammAchsen.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/DiagrammAchsen.kt
-@@ -44,7 +44,6 @@ fun lokaleAchse(punkte: List<DiagrammPunkt>, tage: List<String>, locale: Locale)
+@@ -47,7 +47,6 @@ fun lokaleAchse(punkte: List<DiagrammPunkt>, tage: List<String>, locale: Locale)
   * bei 200 % ein Drittel der Diagrammbreite; der Betrag steht in der Kopfkarte darüber.
   */
  fun lokaleWerte(achse: List<DiagrammAchse>, waehrung: String, locale: Locale, kompakt: Boolean = false): List<DiagrammAchse> {

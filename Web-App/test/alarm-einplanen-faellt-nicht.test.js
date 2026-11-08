@@ -19,7 +19,7 @@ const { androidDatei } = require('./helpers/android');
 const app = (rel) => ohneKommentare(fs.readFileSync(androidDatei(rel), 'utf8'));
 
 test('1. einplanen() kann nicht werfen und meldet zurück', () => {
-  const worker = app('alarm/PreisalarmWorker.kt');
+  const worker = app('dienste/alarm/PreisalarmWorker.kt');
   const i = worker.indexOf('fun einplanen(');
   assert.ok(i >= 0, 'einplanen() nicht gefunden — umbenannt?');
   const kopf = worker.slice(i, worker.indexOf('\n', worker.indexOf('runCatching', i)) + 1);
@@ -38,12 +38,12 @@ test('2. der Schalter ruft es NICHT auf dem Hauptthread', () => {
   // Ruckeln — und es war die Stelle, an der die App starb.
   // Der Schalter selbst plant nicht ein; er meldet den Wunsch an das ViewModel,
   // und das plant über den AlarmPlaner ein.
-  assert.doesNotMatch(app('ui/screens/EinstellungenAlarme.kt'), /einplanen\(/,
+  assert.doesNotMatch(app('konto/ui/screens/EinstellungenAlarme.kt'), /einplanen\(/,
     'Der Bildschirm plant wieder selbst ein — dann läuft es auf dem Hauptthread.');
-  const vm = app('ui/viewmodel/GeraeteEinstellungenViewModel.kt');
+  const vm = app('zustand/ui/viewmodel/GeraeteEinstellungenViewModel.kt');
   assert.match(vm, /planer\.einplanen\(/, 'Das ViewModel plant nicht mehr ein — umgebaut?');
 
-  const s = app('alarm/WorkManagerAlarmPlaner.kt');
+  const s = app('dienste/alarm/WorkManagerAlarmPlaner.kt');
   const i = s.indexOf('PreisalarmWorker.einplanen(');
   assert.ok(i >= 0, 'Der AlarmPlaner plant nicht mehr ein — umgebaut?');
   // Der umgebende Ausschnitt muss den Wechsel auf den IO-Dispatcher zeigen …
@@ -52,7 +52,7 @@ test('2. der Schalter ruft es NICHT auf dem Hauptthread', () => {
   assert.match(s, /@param:Dispatcher\(BrickDispatchers\.IO\)\s+private val io: CoroutineDispatcher/,
     'Der Dispatcher des Planers ist nicht der IO-Dispatcher.');
   // … und der IO-Dispatcher ist wirklich Dispatchers.IO.
-  assert.match(app('di/KoroutinenModule.kt'),
+  assert.match(app('data/di/KoroutinenModule.kt'),
     /@Dispatcher\(BrickDispatchers\.IO\)\s*fun \w+\(\)\s*:\s*CoroutineDispatcher\s*=\s*Dispatchers\.IO/,
     'Der IO-Dispatcher zeigt nicht auf Dispatchers.IO.');
 });
@@ -61,7 +61,7 @@ test('3. und wirft den Fehler nicht weg', () => {
   // Ein Schalter auf „an", von dem nie eine Meldung kommt, ist die zweite
   // Hälfte desselben Fehlers: Die App stürzt nicht mehr ab, der Alarm läuft
   // aber trotzdem nicht — und niemand erfährt es.
-  const s = app('ui/viewmodel/GeraeteEinstellungenViewModel.kt');
+  const s = app('zustand/ui/viewmodel/GeraeteEinstellungenViewModel.kt');
   const i = s.indexOf('planer.einplanen(');
   const danach = s.slice(i, i + 400);
   assert.match(danach, /meldungen\.zeige\(/,
@@ -82,7 +82,7 @@ test('3. und wirft den Fehler nicht weg', () => {
 test('4. der Start plant ebenfalls über denselben Weg ein', () => {
   // Er darf nicht wieder eine eigene Fassung bekommen: Zwei Wege zu derselben
   // Einplanung waren der Ausgangspunkt dieses Fehlers.
-  const s = app('BrickInventoryApp.kt');
+  const s = app('app/BrickInventoryApp.kt');
   assert.match(s, /PreisalarmWorker\s*\n?\s*\.einplanen\(/,
     'Der App-Start plant nicht mehr ein — dann überlebt der Alarm kein Zurücksetzen der App-Daten.');
 });

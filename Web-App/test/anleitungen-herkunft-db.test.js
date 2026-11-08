@@ -104,7 +104,7 @@ test('Anleitungen: beide Oberflaechen haengen den Papierkorb an is_manual', () =
 
   // ── Android-App ───────────────────────────────────────────────────────────
   const kt = path.join(ROOT, '..', 'Android-App/app/src/main/java/ch/brickinventoryapp');
-  const abschnitte = fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailSections.kt'), 'utf8');
+  const abschnitte = fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'ui', 'screens', 'SetDetailSections.kt'), 'utf8');
   const ohne = ohneKommentare(abschnitte);
 
   assert.ok(/if \(id != null && instr\.isManual\)/.test(ohne),
@@ -116,7 +116,7 @@ test('Anleitungen: beide Oberflaechen haengen den Papierkorb an is_manual', () =
   assert.ok(bisLoeschen > 0 && bisLoeschen < 400,
     'onAnleitungLoeschen soll unmittelbar in dieser Bedingung stehen');
 
-  const modell = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-model', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'model', 'SetModels.kt'), 'utf8'));
+  const modell = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-model', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'model', 'data', 'model', 'SetModels.kt'), 'utf8'));
   assert.ok(/@SerialName\("is_manual"\) val isManual: Boolean = false/.test(modell),
     'Instruction soll is_manual lesen und im Zweifel false annehmen (kein Papierkorb)');
 });
