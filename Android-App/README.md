@@ -194,6 +194,9 @@ https-Adresse eintragen).
 | Adresse von Hand | Beim ersten Kontakt bricht der Handshake ab, bevor etwas gesendet wird. Ein Dialog zeigt den Fingerabdruck in derselben Schreibweise wie die Webapp unter Einstellungen → Server-Zertifikat (`AB:CD:…`): bei einer Kette, die das System kennt (öffentliche CA), den der Wurzel aus dem System-Speicher, sonst den des obersten Zertifikats der Kette. Gespeichert wird er erst nach ausdrücklicher Bestätigung (Trust on first use, abgesichert durch den Vergleich). |
 | Zertifikat später anders | Passt keine Kette mehr zum gespeicherten Fingerabdruck, geht nichts hinaus. Der Dialog zeigt den bisherigen und den neuen Fingerabdruck; übernommen wird nur, wenn man mindestens die letzten 24 Zeichen des neuen aus einer zweiten Quelle abschreibt (Webapp oder Zertifikatdetails des Browsers) — oder per neuem QR-Code. |
 
+Die Dialoge zum Fingerabdruck erklären in einfachen Worten, was er ist und in
+drei Schritten, wo er in der Webapp steht (Texte `zert_text_*`, `setup_qr_pin_abtippen`).
+
 Unter einer gepinnten eigenen CA gilt nur ein Blatt, das einen Server
 ausweisen darf (EKU `serverAuth` oder gar keine EKU-Angabe).
 

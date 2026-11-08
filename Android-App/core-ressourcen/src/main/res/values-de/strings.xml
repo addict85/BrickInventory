@@ -112,7 +112,7 @@
     <!-- ══════════════ Gallery screen ══════════════ -->
     <string name="gallery_search_placeholder">Suchen…</string>
     <string name="gallery_no_sets">Keine Sets vorhanden</string>
-    <string name="gallery_empty_hint">Erfasse dein erstes Set über die Setnummer oder scanne den Barcode auf der Schachtel.</string>
+    <string name="gallery_empty_hint">Erfasse dein erstes Set über die Setnummer oder scanne den Barcode auf der Schachtel. Kommen keine Angaben dazu, fehlt dem Server vielleicht noch der kostenlose Rebrickable-Schlüssel: Trage ihn in der Web-App ein.</string>
     <string name="gallery_add_first">Erstes Set erfassen</string>
     <string name="gallery_no_results">Keine Treffer für „%1$s“</string>
     <string name="gallery_quantity_badge">×%1$d</string>
