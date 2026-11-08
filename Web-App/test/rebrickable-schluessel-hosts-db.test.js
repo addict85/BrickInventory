@@ -31,9 +31,9 @@ test.after(async () => {
 /** @type {Array<{ url: string, kopf: Record<string, string> }>} */
 const abrufe = [];
 let antwortFuer = (/** @type {string} */ _url) => ({ status: 404, body: '' });
-// @ts-ignore — Attrappe mit genau dem, was src/infra/abruf.ts benutzt.
+// @ts-expect-error — Attrappe mit genau dem, was src/infra/abruf.ts benutzt.
 https.get = (url, opt, cb) => {
-  abrufe.push({ url: String(url), kopf: { .../** @type {Record<string, string>} */ (opt && opt.headers) } });
+  abrufe.push({ url: String(url), kopf: { .../** @type {Record<string, string>} */ (opt?.headers) } });
   const { status, body } = antwortFuer(String(url));
   const req = new EventEmitter();
   setImmediate(() => {

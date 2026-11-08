@@ -79,10 +79,19 @@ test('Katalogabrufe kosten mehr als Lesen', () => {
 });
 
 test('Routen mit BrickLink- oder Fremdabruf kosten mehr als Lesen', () => {
-  for (const [m, p] of [['GET', '/wanted/10294-1/preise'], ['GET', '/sets/10294-1/price']])
+  for (const [m, p] of [
+    ['GET', '/wanted/10294-1/preise'],
+    ['GET', '/sets/10294-1/price'],
+  ])
     assert.equal(einordnung(m, p).kosten, KOSTEN.preis, `${m} ${p}`);
-  for (const [m, p] of [['POST', '/sets'], ['GET', '/sets/barcode/123'], ['POST', '/sets/10294-1/parts'],
-    ['POST', '/parts'], ['POST', '/minifigs'], ['POST', '/vouchers/3/guthaben']])
+  for (const [m, p] of [
+    ['POST', '/sets'],
+    ['GET', '/sets/barcode/123'],
+    ['POST', '/sets/10294-1/parts'],
+    ['POST', '/parts'],
+    ['POST', '/minifigs'],
+    ['POST', '/vouchers/3/guthaben'],
+  ])
     assert.equal(einordnung(m, p).kosten, KOSTEN.abruf, `${m} ${p}`);
   assert.ok(KOSTEN.preis > KOSTEN.abruf);
   // Die Preisroute darf das gemeinsame Kontingent nicht mit dem ganzen Budget leeren.

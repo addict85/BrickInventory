@@ -27,7 +27,7 @@ const db = _req('db/database.js');
 
 /** @type {string[]} */
 const aufrufe = [];
-// @ts-ignore — Attrappe mit genau dem, was clients/bricklink.ts benutzt.
+// @ts-expect-error — Attrappe mit genau dem, was clients/bricklink.ts benutzt.
 https.get = (url, _opts, cb) => {
   aufrufe.push(new URL(url).pathname);
   const req = new EventEmitter();
