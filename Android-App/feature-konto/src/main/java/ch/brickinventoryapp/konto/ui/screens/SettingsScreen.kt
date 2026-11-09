@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.konto.ui.screens
 
 import ch.brickinventoryapp.ui.components.SchalterZeile
+import ch.brickinventoryapp.ui.components.AppSperreWahl
+import ch.brickinventoryapp.ui.components.LocalAppSperre
 import ch.brickinventoryapp.zustand.ui.viewmodel.VertrauenViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.DarstellungViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.DarstellungAktionen
@@ -210,6 +212,9 @@ fun SettingsScreen(
                 }
                 Switch(checked = vorschauVerbergen, onCheckedChange = null)
             }
+
+            // Je Gerät, Vorgabe aus: Wer das Telefon teilt, sperrt die App nach einer Weile im Hintergrund.
+            LocalAppSperre.current?.let { AppSperreWahl(it) }
 
             // Je Gerät, Vorgabe aus: Das Widget liegt ohne Entsperren auf dem Startbildschirm.
             val widgetWerte = zustand.widgetWerte

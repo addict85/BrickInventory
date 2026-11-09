@@ -1,0 +1,17 @@
+Gegenprobe: Lehnt der Server die Challenge ab (kein Geräteschlüssel), prüft die App nur noch im Gerät
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.SchrittfreigabeTest
+Rot: ohne Schluessel am Server
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittablauf.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittablauf.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittablauf.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittablauf.kt
+@@ -24,7 +24,7 @@ class Schrittablauf(private val bindung: Schrittbindung, private val freigabe: S
+         val c = bindung.challenge(aktion)
+         val nachricht = when (c) {
+             is Schrittantwort.Challenge -> c.nachricht.toByteArray(Charsets.UTF_8)
+-            is Schrittantwort.Abgelehnt -> return Ausgang.Abgelehnt(c.meldung)
++            is Schrittantwort.Abgelehnt -> freigabe.nonce()
+             Schrittantwort.Frei -> return Ausgang.Abgelehnt(null)
+             // Ohne Bindung am Server bleibt die Prüfung im Gerät: eine frische Nonce.
+             Schrittantwort.NichtGebunden -> freigabe.nonce()

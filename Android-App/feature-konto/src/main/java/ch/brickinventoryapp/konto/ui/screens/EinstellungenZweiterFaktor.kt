@@ -37,6 +37,8 @@ import ch.brickinventoryapp.zustand.ui.*
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.konto.ui.ZweiterFaktorUiState
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz
+import ch.brickinventoryapp.model.schritt.Schrittaktion
+import ch.brickinventoryapp.ui.components.fuer
 import ch.brickinventoryapp.ui.components.Sichtschutz
 import ch.brickinventoryapp.data.util.GeheimeZwischenablage
 import ch.brickinventoryapp.netz.util.otpauthAdresse
@@ -93,7 +95,7 @@ internal fun ZweiterFaktorCard(
     }
     // Neue Codes und ein neuer Schlüssel erscheinen gleich danach im Klartext: erst
     // nach der Gerätesperre (Schrittschutz), zusätzlich zu Passwort bzw. Code.
-    val schutz = LocalSchrittschutz.current
+    val schutz = LocalSchrittschutz.current.fuer(Schrittaktion.ZWEITER_FAKTOR)
     val codesGrund = stringResource(R.string.schritt_codes)
     // Felder leeren, sobald ein Schritt gelungen ist — sonst stuende das
     // Passwort beim naechsten Schritt noch da.

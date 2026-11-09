@@ -36,6 +36,12 @@ internal object GeraeteSchluessel {
 
     fun oeffentlich(): PublicKey = speicher().getCertificate(ALIAS).publicKey
 
+    /** X.509 für den Server. Über [signatur], damit ein ungültig gewordener Schlüssel vorher ersetzt ist. */
+    fun oeffentlichFuerServer(): ByteArray {
+        signatur()
+        return oeffentlich().encoded
+    }
+
     private fun erzeuge(): PrivateKey {
         val gen = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, KEYSTORE)
         gen.initialize(

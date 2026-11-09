@@ -23,6 +23,7 @@ import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.finanzen.ui.GutscheinSchritt
 import ch.brickinventoryapp.ui.components.FehlerHinweis
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz
+import ch.brickinventoryapp.model.schritt.Schrittaktion
 import ch.brickinventoryapp.ui.components.PasswortRueckfrage
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.finanzen.ui.gutscheinSumme
@@ -76,7 +77,7 @@ fun GutscheineCard(
     // danach fragt das ViewModel nach Passwort und Code.
     val schutz = LocalSchrittschutz.current
     val grund = stringResource(R.string.schritt_gutschein)
-    val geschuetzt: (() -> Unit) -> Unit = { schritt -> schutz.bestaetige(grund, schritt) }
+    val geschuetzt: (() -> Unit) -> Unit = { schritt -> schutz.bestaetige(grund, Schrittaktion.GUTSCHEIN, schritt) }
     // Das Formular steht in einem Blatt, nicht dauerhaft unter der Liste: Auf dem
     // Telefon lag es sonst bei jedem Besuch im Weg. Offen zum Anlegen ([neu]) oder
     // solange ein Gutschein bearbeitet wird; nach erfolgreichem Speichern (Felder

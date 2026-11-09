@@ -9,6 +9,7 @@ import * as bestand from './bestand';
 import * as einstellungen from './einstellungen';
 import * as figuren from './figuren';
 import * as finanzen from './finanzen';
+import * as geraet from './geraet';
 import * as gutscheine from './gutscheine';
 import * as haushalt from './haushalt';
 import * as katalog from './katalog';
@@ -18,11 +19,11 @@ import * as sets from './sets';
 import * as teile from './teile';
 import * as verwaltung from './verwaltung';
 
-export const BEREICHE = { bestand, einstellungen, figuren, finanzen, gutscheine, haushalt, katalog, konto,
+export const BEREICHE = { bestand, einstellungen, figuren, finanzen, geraet, gutscheine, haushalt, katalog, konto,
   merkliste, sets, teile, verwaltung };
 
 export const VERTRAG = {
-  ...bestand.routen, ...einstellungen.routen, ...figuren.routen, ...finanzen.routen, ...gutscheine.routen,
+  ...bestand.routen, ...einstellungen.routen, ...figuren.routen, ...finanzen.routen, ...geraet.routen, ...gutscheine.routen,
   ...haushalt.routen, ...katalog.routen, ...konto.routen, ...merkliste.routen, ...sets.routen,
   ...teile.routen, ...verwaltung.routen,
 };

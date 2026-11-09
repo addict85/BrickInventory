@@ -14,6 +14,7 @@ import catalogRouter from './catalog';
 import wantedRouter from './wanted';
 import vouchersRouter from './vouchers';
 import papierkorbRouter from './papierkorb';
+import geraetRouter from './geraet';
 import einrichtungRouter from './einrichtung';
 import { vertragsRouter } from '../../src/vertrag/pruefen';
 
@@ -32,6 +33,7 @@ router.use(catalogRouter);      // /catalog/* — Rebrickable-Katalog (Browsen/S
 router.use(wantedRouter);     // /wanted — Merkliste (eigene Tabelle, siehe 0021)
 router.use(vouchersRouter);     // /vouchers — Gutscheine (eigene Tabelle, siehe 0026)
 router.use(papierkorbRouter);   // /papierkorb — gelöschte Elemente (siehe 0041)
+router.use(geraetRouter);       // /geraet — Geräteschlüssel und Schrittfreigabe der App (siehe 0103)
 router.use(miscRouter);         // /stats + Endpoint-Übersicht unter /
 
 export = router;

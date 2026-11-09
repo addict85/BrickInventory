@@ -26,7 +26,14 @@ import androidx.core.content.getSystemService
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.lifecycleScope
+import ch.brickinventoryapp.model.schritt.Schrittaktion
+import ch.brickinventoryapp.model.schritt.Schrittbindung
 import ch.brickinventoryapp.ressourcen.R
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import java.security.Signature
+import kotlin.coroutines.resume
 
 /**
  * Vor einem heiklen Schritt (Gutschein-PIN, Wiederherstellungscodes, Verwaltung)
@@ -35,6 +42,15 @@ import ch.brickinventoryapp.ressourcen.R
  */
 fun interface Schrittschutz {
     fun bestaetige(grund: String, weiter: () -> Unit)
+
+    /** Für einen Schritt, den der Server prüft: Die Bestätigung gilt dort nur für [aktion]. */
+    fun bestaetige(grund: String, aktion: Schrittaktion, weiter: () -> Unit) = bestaetige(grund, weiter)
+}
+
+/** Derselbe Schutz, immer für [aktion]: So bleiben Aufrufe mit zwei Argumenten an den Server gebunden. */
+fun Schrittschutz.fuer(aktion: Schrittaktion): Schrittschutz {
+    val basis = this
+    return Schrittschutz { grund, weiter -> basis.bestaetige(grund, aktion, weiter) }
 }
 
 /**
@@ -46,25 +62,40 @@ val LocalSchrittschutz = staticCompositionLocalOf { Schrittschutz { _, _ -> } }
 /**
  * Fingerabdruck (starke Biometrie), sonst PIN, Muster oder Passwort des Geräts. Ohne
  * Sperre gibt es nichts zu prüfen; dann warnt [ohneSperre], statt still durchzulassen.
- * Bestätigt ist erst, was der Keystore freigibt ([Schrittfreigabe]).
+ * Bestätigt ist erst, was der Keystore freigibt und, für eine [Schrittaktion] mit
+ * Kennung, der Server mit der Signatur über seine Challenge annimmt ([Schrittablauf]).
  */
 // [untertitel] und [keinSchluessel] kommen von aussen: Unter Android 13 trägt die
 // Activity die System- statt der App-Sprache, den lokalisierten Context kennt core-ui nicht.
 class GeraeteSchrittschutz(
     private val activity: FragmentActivity,
     private val keinSchluessel: () -> Unit = {},
+    private val bindung: Schrittbindung = Schrittbindung.OHNE,
+    /** Der Server lehnte ab; null: keine Antwort. */
+    private val abgelehnt: (meldung: String?) -> Unit = {},
     private val untertitel: () -> String,
 ) : Schrittschutz {
-    private val frist = Bestaetigungsfrist(uhr = SystemClock::elapsedRealtime)
-    private val freigabe = Schrittfreigabe(GeraeteSchluessel::oeffentlich)
+    // Je Aktion: Die Freigabe am Server gilt auch nur für eine.
+    private val fristen = mutableMapOf<Schrittaktion, Bestaetigungsfrist>()
+    private val ablauf = Schrittablauf(bindung, Schrittfreigabe(GeraeteSchluessel::oeffentlich))
 
     /** Die Rückfrage ohne Displaysperre; MainActivity zeigt sie mit [OhneSperreWarnung]. */
     val ohneSperre = OhneSperre()
 
     /** Beim Verlassen der App (MainActivity.onStop): Danach wird wieder gefragt. */
-    fun vergiss() = frist.vergiss()
+    fun vergiss() = fristen.values.forEach(Bestaetigungsfrist::vergiss)
 
-    override fun bestaetige(grund: String, weiter: () -> Unit) {
+    /** Nach der Anmeldung: Nur dann nimmt der Server den öffentlichen Schlüssel an. */
+    fun bindeAnServer() {
+        if (activity.getSystemService<KeyguardManager>()?.isDeviceSecure != true) return
+        val oeffentlich = runCatching { GeraeteSchluessel.oeffentlichFuerServer() }.getOrNull() ?: return
+        activity.lifecycleScope.launch { bindung.hinterlege(oeffentlich) }
+    }
+
+    override fun bestaetige(grund: String, weiter: () -> Unit) = bestaetige(grund, Schrittaktion.LOKAL, weiter)
+
+    override fun bestaetige(grund: String, aktion: Schrittaktion, weiter: () -> Unit) {
+        val frist = fristen.getOrPut(aktion) { Bestaetigungsfrist(uhr = SystemClock::elapsedRealtime) }
         if (frist.gilt()) {
             weiter()
             return
@@ -76,9 +107,24 @@ class GeraeteSchrittschutz(
         // Ohne gebundenen Schlüssel kein Weiter: Ein Rückfall auf die blosse Rückfrage
         // wäre genau der Weg, den ein eingehakter Rückruf öffnet.
         val signatur = runCatching { GeraeteSchluessel.signatur() }.getOrNull() ?: return keinSchluessel()
+        activity.lifecycleScope.launch {
+            when (val a = ablauf.bestaetige(aktion) { entsperre(grund, signatur) }) {
+                Schrittablauf.Ausgang.Weiter -> { frist.bestaetigt(); weiter() }
+                Schrittablauf.Ausgang.Abgebrochen -> Unit
+                is Schrittablauf.Ausgang.Abgelehnt -> abgelehnt(a.meldung)
+            }
+        }
+    }
+
+    /** Die vom Keystore freigegebene Signatur; null bei Abbruch oder Fehler der Sperre. */
+    private suspend fun entsperre(grund: String, signatur: Signature): Signature? = suspendCancellableCoroutine { weiter ->
         val rueckruf = object : BiometricPrompt.AuthenticationCallback() {
-            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) =
-                nachFreigabe(freigabe, result.cryptoObject?.signature, frist, weiter)
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                if (weiter.isActive) weiter.resume(result.cryptoObject?.signature)
+            }
+            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                if (weiter.isActive) weiter.resume(null)
+            }
         }
         val info = BiometricPrompt.PromptInfo.Builder()
             .setTitle(grund)
@@ -143,10 +189,11 @@ fun OhneSperreWarnung(ohneSperre: OhneSperre) {
  * Verlässt die App den Vordergrund, ist der Bereich wieder gesperrt.
  */
 @Composable
-fun Schrittsperre(grund: String, inhalt: @Composable () -> Unit) {
+fun Schrittsperre(grund: String, aktion: Schrittaktion = Schrittaktion.LOKAL, inhalt: @Composable () -> Unit) {
     // Eine Seite hinter der Gerätesperre ist heikel: kein untergeschobener Tipp.
     Ueberdeckungsschutz()
-    val schutz = LocalSchrittschutz.current
+    val basis = LocalSchrittschutz.current
+    val schutz = remember(basis, aktion) { basis.fuer(aktion) }
     var entsperrt by remember { mutableStateOf(false) }
     val frage = { schutz.bestaetige(grund) { entsperrt = true } }
     LaunchedEffect(schutz) { if (!entsperrt) frage() }
