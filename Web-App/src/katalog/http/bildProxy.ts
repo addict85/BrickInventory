@@ -45,7 +45,9 @@ function sendePlatzhalter(res: Response) {
     try {
       _platzhalter = fs.readFileSync(path.join(PUBLIC_DIR, 'assets', 'set-placeholder.svg'));
     } catch (e) {
-      console.error(`[img-proxy] Platzhalter nicht lesbar: ${fehlertext(e)}`);
+      console.error(
+        `[img-proxy] Platzhalter nicht lesbar: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''),
+      );
       _platzhalter = Buffer.alloc(0);
     }
   }
@@ -89,7 +91,11 @@ async function vomCdn(
     if (zeit) imgProxyFailures.timeout++;
     else imgProxyFailures.error++;
     imgProxyFailures.lastError = fehlertext(e);
-    console.error(`[img-proxy] ${zeit ? 'Zeitüberschreitung nach 25 s' : 'Verbindungsfehler'}: ${fehlertext(e)}`);
+    console.error(
+      `[img-proxy] ${zeit ? 'Zeitüberschreitung nach 25 s' : 'Verbindungsfehler'}: ${fehlertext(e)}`
+        .replace(/\r?\n/g, ' ⏎ ')
+        .replace(/\n|\r/g, ''),
+    );
     if (await ersatz()) return null;
     if (!res.headersSent) res.status(zeit ? 504 : 502).end();
     return null;
@@ -110,8 +116,8 @@ async function vomCdn(
     imgProxyFailures.lastError = `HTTP ${r.status} — ${url}`;
     // 404 ist eine Auskunft, kein Fehler: als `error` verstopfte es das Protokoll.
     const meldung = `[img-proxy] CDN antwortete ${r.status} (auch ohne Referer): ${url}`;
-    if (r.status === 404) console.info(meldung);
-    else console.error(meldung);
+    if (r.status === 404) console.info(meldung.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+    else console.error(meldung.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
     if (await ersatz()) return null;
     void (r.status === 404 ? sendePlatzhalter(res) : res.status(r.status || 502).end());
     return null;
@@ -161,7 +167,9 @@ function inDenCache(
     fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('bild-proxy:unlink'));
     imgProxyFailures.other++;
     imgProxyFailures.lastError = `${grund}: ${url}`;
-    console.error(`[img-proxy] ${grund} — weder gecacht noch verkleinert: ${url}`);
+    console.error(
+      `[img-proxy] ${grund} — weder gecacht noch verkleinert: ${url}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''),
+    );
   };
   // Der entpackte Strom zählt: Auch Komprimiertes darf nicht beliebig wachsen.
   body.on('data', (chunk: Buffer) => {
@@ -184,7 +192,11 @@ function inDenCache(
       // Nur vollständig: Eine abgeschnittene ginge dauerhaft mit 200 hinaus.
       const st = await fs.promises.stat(tmpFile);
       if (!enc && expected > 0 && st.size !== expected) {
-        console.error(`[img-proxy] unvollständig (${st.size}/${expected} Bytes), nicht gecacht: ${url}`);
+        console.error(
+          `[img-proxy] unvollständig (${st.size}/${expected} Bytes), nicht gecacht: ${url}`
+            .replace(/\r?\n/g, ' ⏎ ')
+            .replace(/\n|\r/g, ''),
+        );
         await fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('bild-proxy:unlink'));
         return;
       }
@@ -218,7 +230,7 @@ function entpackt(roh: Readable, enc: string, res: Response, url: string, expect
     body = roh.pipe(dec);
     // Die angekündigte Länge gilt für den komprimierten Körper.
     res.removeHeader('Content-Length');
-    console.log(`[img-proxy] entpacke ${enc}: ${url}`);
+    console.log(`[img-proxy] entpacke ${enc}: ${url}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
   }
   let sentToClient = 0;
   body.on('data', (c: Buffer) => {
@@ -228,7 +240,11 @@ function entpackt(roh: Readable, enc: string, res: Response, url: string, expect
     if (!enc && expected > 0 && sentToClient !== expected) {
       imgProxyFailures.other++;
       imgProxyFailures.lastError = `Länge weicht ab: ${sentToClient}/${expected} — ${url}`;
-      console.error(`[img-proxy] an den Client gingen ${sentToClient} von ${expected} Bytes: ${url}`);
+      console.error(
+        `[img-proxy] an den Client gingen ${sentToClient} von ${expected} Bytes: ${url}`
+          .replace(/\r?\n/g, ' ⏎ ')
+          .replace(/\n|\r/g, ''),
+      );
     }
   });
   return body;
@@ -341,7 +357,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
     r.verwerfen();
     imgProxyFailures.other++;
     imgProxyFailures.lastError = `Kein Bild (${mime}) — ${url}`;
-    console.warn(`[img-proxy] Antwort ist kein Bild (${mime}): ${url}`);
+    console.warn(`[img-proxy] Antwort ist kein Bild (${mime}): ${url}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
     return res.status(415).end();
   }
 
@@ -375,7 +391,11 @@ export async function bildDurchreichen(req: Request, res: Response) {
   // Abbruch beim Scrollen: Die CDN-Verbindung muss sofort zurück in den Pool.
   res.on('close', () => {
     if (res.writableFinished || !res.destroyed) return;
-    console.log(`[img-proxy] Client hat abgebrochen, Verbindung freigegeben: ${url}`);
+    console.log(
+      `[img-proxy] Client hat abgebrochen, Verbindung freigegeben: ${url}`
+        .replace(/\r?\n/g, ' ⏎ ')
+        .replace(/\n|\r/g, ''),
+    );
     roh.destroy();
   });
 
