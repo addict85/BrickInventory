@@ -23,6 +23,7 @@ import ch.brickinventoryapp.sammlung.ui.screens.*
 import ch.brickinventoryapp.teile.ui.screens.*
 import ch.brickinventoryapp.ui.screens.*
 import ch.brickinventoryapp.verwaltung.ui.screens.*
+import android.os.Build
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraphBuilder
 import ch.brickinventoryapp.app.*
@@ -59,7 +60,7 @@ private fun NavGraphBuilder.einrichtungsZiel(u: ZielUmgebung) {
             onQrScanned = { qr, pinEingabe ->
                 // Der Gerätename steht im Browser bei der Frage „Gerät koppeln?“.
                 anmeldungVm.loginWithQrToken(qr.url, qr.token, fingerabdruck = qr.fingerabdruck,
-                    pinWechselEingabe = pinEingabe, geraet = android.os.Build.MODEL.orEmpty().ifBlank { "Android App" })
+                    pinWechselEingabe = pinEingabe, geraet = Build.MODEL.orEmpty().ifBlank { "Android App" })
                 navController.navigate(Screen.Login) {
                     popUpTo<Screen.Setup> { inclusive = true }
                 }

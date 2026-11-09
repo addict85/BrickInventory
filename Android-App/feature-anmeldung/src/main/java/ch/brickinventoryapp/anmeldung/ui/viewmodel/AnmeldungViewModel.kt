@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.model.data.model.QrAbholung
+import ch.brickinventoryapp.model.data.model.QrMeldung
 import javax.inject.Inject
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.zustand.ui.AppUiState
@@ -43,14 +44,14 @@ import ch.brickinventoryapp.zustand.ui.Blickfeld
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
 import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
 
+/** So oft fragt die App nach dem QR-Scan, ob der Browser die Kopplung bestätigt hat. */
+internal const val QR_ABFRAGE_MS = 2_000L
+
 /**
  * Server einrichten, anmelden (Passwort, zweiter Faktor, Passkey, QR), Konto anlegen,
  * Passwort vergessen. An die Activity gebunden, weil der QR-Weg die Einrichtung
  * verlässt, während die Anmeldung noch läuft.
  */
-/** So oft fragt die App nach dem QR-Scan, ob der Browser die Kopplung bestätigt hat. */
-internal const val QR_ABFRAGE_MS = 2_000L
-
 @HiltViewModel
 class AnmeldungViewModel @Inject constructor(
     private val sitzung: Sitzung,
@@ -210,20 +211,7 @@ class AnmeldungViewModel @Inject constructor(
             try {
                 richteEin(neu)
                 when (val r = konto.qrLogin(token, geraet)) {
-                    is Ergebnis.Success -> {
-                        val abholung = r.data.abholung
-                        val code = r.data.code
-                        if (r.data.success && abholung != null && code != null) {
-                            _anmeldeState.update { it.copy(qrBestaetigung = code) }
-                            val fertig = warteAufBestaetigung(abholung, r.data.expiresIn)
-                            val neuesToken = fertig?.token
-                            if (neuesToken != null) {
-                                if (schluessel != null && fingerabdruck != null) ablage.merkePin(schluessel, fingerabdruck)
-                                angemeldet(neuesToken, fertig?.user?.username ?: "", false)
-                                _anmeldeState.update { it.copy(loginLaeuft = false, qrBestaetigung = null) }
-                            }
-                        } else qrGescheitert(r.data.error ?: meldungen.text(R.string.err_qr_login_failed))
-                    }
+                    is Ergebnis.Success -> koppleQr(r.data, schluessel, fingerabdruck)
                     is Ergebnis.Error -> qrGescheitert(meldungen.meldung(r))
                 }
             } finally {
@@ -231,6 +219,25 @@ class AnmeldungViewModel @Inject constructor(
                 if (schluessel != null) ablage.vergissVorgehaltenen(schluessel)
             }
         }
+    }
+
+    /**
+     * Der Pin wird erst gemerkt, wenn der Browser die Kopplung bestätigt hat: Ein
+     * abgelehnter oder verfallener Code darf keinen Schlüssel zurücklassen.
+     */
+    private suspend fun koppleQr(antwort: QrMeldung, schluessel: String?, fingerabdruck: String?) {
+        val abholung = antwort.abholung
+        val code = antwort.code
+        if (!antwort.success || abholung == null || code == null) {
+            qrGescheitert(antwort.error ?: meldungen.text(R.string.err_qr_login_failed))
+            return
+        }
+        _anmeldeState.update { it.copy(qrBestaetigung = code) }
+        val fertig = warteAufBestaetigung(abholung, antwort.expiresIn) ?: return
+        val neuesToken = fertig.token ?: return
+        if (schluessel != null && fingerabdruck != null) ablage.merkePin(schluessel, fingerabdruck)
+        angemeldet(neuesToken, fertig.user?.username ?: "", false)
+        _anmeldeState.update { it.copy(loginLaeuft = false, qrBestaetigung = null) }
     }
 
     /**
