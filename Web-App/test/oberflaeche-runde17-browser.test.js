@@ -243,8 +243,12 @@ test('UI-Prüfung 17 im Browser', { concurrency: 1, timeout: 300_000 }, async t 
     return;
   }
   // Der PDF-Betrachter lädt eine Anleitung hoch; sie bliebe sonst für das nächste Konto mit derselben Nummer liegen.
-  t.after(() => require('node:fs').rmSync(require('node:path').join(__dirname, '..', 'data', 'uploads', String(a.uid)),
-    { recursive: true, force: true }));
+  t.after(() =>
+    require('node:fs').rmSync(require('node:path').join(__dirname, '..', 'data', 'uploads', String(a.uid)), {
+      recursive: true,
+      force: true,
+    }),
+  );
   await a.ruhig();
   await a.b.auswerten(
     `document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`,
