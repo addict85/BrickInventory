@@ -514,6 +514,7 @@ export type EinrichtungStand = {
   ca: {
     vorhanden: boolean;
     fp_hex?: string;
+    zert_sha256?: string;
     gueltig_bis?: string;
     download: string;
     [feld: string]: unknown;
@@ -1690,6 +1691,7 @@ export type QrToken = {
   url: string;
   token_days?: number | null;
   fp?: string;
+  zert_sha256?: string;
   [feld: string]: unknown;
 };
 export type RateLimit = {
@@ -1856,6 +1858,7 @@ export type TlsStand = {
   https: boolean;
   fp: string | null;
   fp_hex?: string;
+  zert_sha256?: string;
   subject?: string;
   gueltig_bis?: string;
   download?: string;

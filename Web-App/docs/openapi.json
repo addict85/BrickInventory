@@ -16414,6 +16414,9 @@
               "fp_hex": {
                 "type": "string"
               },
+              "zert_sha256": {
+                "type": "string"
+              },
               "gueltig_bis": {
                 "type": "string"
               },
@@ -22416,6 +22419,9 @@
           },
           "fp": {
             "type": "string"
+          },
+          "zert_sha256": {
+            "type": "string"
           }
         },
         "required": [
@@ -23157,6 +23163,9 @@
             ]
           },
           "fp_hex": {
+            "type": "string"
+          },
+          "zert_sha256": {
             "type": "string"
           },
           "subject": {

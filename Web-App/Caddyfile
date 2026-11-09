@@ -76,7 +76,12 @@ http:// {
 	# Nur das Wurzelzertifikat gibt es im Klartext: Ein Gerät braucht es, bevor
 	# es HTTPS vertraut. Echt ist es nur, wenn der Fingerabdruck auf dem Gerät
 	# dem im Protokoll von Caddy gleicht (UPGRADE.md, Abschnitt 33).
-	handle /ca.crt {
+	# Nur GET und HEAD auf genau diese Datei; alles andere geht auf HTTPS.
+	@wurzel {
+		method GET HEAD
+		path /ca.crt
+	}
+	handle @wurzel {
 		reverse_proxy app:3000
 	}
 	handle {

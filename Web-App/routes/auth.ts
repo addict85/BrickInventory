@@ -315,9 +315,9 @@ router.post('/qr-token', requireLogin, async (req: OffeneAnfrage<'POST /api/v1/a
   const { token, kopplung } = await QR.erzeuge(angemeldeteNutzerId(req), tage);
   hinweisNebenher(angemeldeteNutzerId(req), 'qr_zugang_neu');
   // `fp` nur mit TLS: Die App pinnt damit die Wurzel der internen CA.
-  const fp = ueberTls(basis) ? (await tlsStand())?.fp ?? null : null;
+  const ca = ueberTls(basis) ? await tlsStand() : null;
   res.json({ success: true, token, kopplung, expires_in: QR.QR_TTL_MS / 1000,
-    token_days: tage, url: basis, ...(fp ? { fp } : {}) });
+    token_days: tage, url: basis, ...(ca ? { fp: ca.fp, zert_sha256: ca.zert_sha256 } : {}) });
 });
 
 /** Das Konto muss bei der Meldung und bei der Abholung noch anmelden dürfen. */

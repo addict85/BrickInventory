@@ -159,7 +159,8 @@ test('Caddy: Aussteller aus dem Startskript, eigene Anfragekennung, /ca.crt im K
     'der Aussteller hat eine Vorgabe',
   );
   assert.match(datei, /reverse_proxy app:3000 \{[^}]*header_up X-Request-Id \{http\.request\.uuid\}/);
-  assert.match(datei, /http:\/\/ \{[\s\S]*handle \/ca\.crt[\s\S]*redir /, 'Port 80 leitet nicht um');
+  assert.match(datei, /http:\/\/ \{[\s\S]*@wurzel \{\s*method GET HEAD\s*path \/ca\.crt\s*\}\s*handle @wurzel[\s\S]*redir /,
+    'Port 80 liefert nur GET/HEAD /ca.crt und leitet sonst um');
   assert.match(datei, /default_sni \{\$BRICK_HOST\}/);
 });
 

@@ -153,7 +153,7 @@ export const TokenErstellt = z.looseObject({
 });
 export const QrToken = z.looseObject({
   success: z.literal(true), token: z.string(), kopplung: ganz, expires_in: ganz, url: z.string(),
-  token_days: ganz.nullable().optional(), fp: z.string().optional(),
+  token_days: ganz.nullable().optional(), fp: z.string().optional(), zert_sha256: z.string().optional(),
 });
 export const Passkey = z.looseObject({
   id: ganz, name: z.string().nullable(), transports: z.string().nullable().optional(),

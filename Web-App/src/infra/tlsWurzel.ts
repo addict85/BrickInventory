@@ -7,6 +7,8 @@ export interface TlsStand {
   fp: string;
   /** Zum Vorlesen. */
   fp_hex: string;
+  /** SHA-256 des ganzen Zertifikats: Diesen Wert zeigen Geräte beim Installieren. */
+  zert_sha256: string;
   subject: string;
   gueltig_bis: string;
   pem: string;
@@ -21,6 +23,7 @@ export function tlsStandAus(pem: string): TlsStand {
   return {
     fp: roh.toString('base64'),
     fp_hex: (roh.toString('hex').toUpperCase().match(/../g) ?? []).join(':'),
+    zert_sha256: zert.fingerprint256,
     subject: zert.subject,
     gueltig_bis: new Date(zert.validTo).toISOString(),
     pem: zert.toString(),
@@ -53,6 +56,7 @@ export async function tlsAuskunft() {
       ? {
           fp: stand.fp,
           fp_hex: stand.fp_hex,
+          zert_sha256: stand.zert_sha256,
           subject: stand.subject,
           gueltig_bis: stand.gueltig_bis,
           download: '/ca.crt',

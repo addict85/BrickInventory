@@ -313,6 +313,11 @@ async function generateQrCode() {
     // Gleitfrist. Drei Fälle — 0 heisst unbegrenzt, null nichts gewählt; ein einfacher Wahrheitstest würfe
     // beide zusammen.
     // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#klartext
+    const caFp = G('qr-ca-fp');
+    if (caFp) {
+      caFp.hidden = !d.zert_sha256;
+      caFp.textContent = d.zert_sha256 ? tRaw('qr.ca_fp', { fp: d.zert_sha256 }) : '';
+    }
     const klartext = G('qr-tls-hint');
     if (klartext) {
       klartext.hidden = !/^http:\/\//i.test(serverUrl || '');
@@ -379,6 +384,8 @@ export async function ladeTls() {
   }
   setzeHtml(ziel, html`<p class="hinweis-absatz">${tRaw('tls.hint')}</p>
     <div class="text-klein">${tRaw('tls.subject')}: ${d.subject}<br>${tRaw('tls.valid_until')}: ${tokenDatum(d.gueltig_bis)}</div>
+    <div class="text-klein abstand-o-075">${tRaw('tls.zert_sha256')}</div>
+    <code id="tls-zert-sha256" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${d.zert_sha256 || ''}</code>
     <div class="text-klein abstand-o-075">${tRaw('tls.fp_sha256')}</div>
     <code id="tls-fp-hex" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${d.fp_hex}</code>
     <div class="text-klein abstand-o-075">${tRaw('tls.fp_base64')}</div>
