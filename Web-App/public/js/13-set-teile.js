@@ -1,4 +1,4 @@
-import { vergissManItem } from './13-acquisition-modals.js';
+import { vergissManItem } from './13-manuell-detail.js';
 import { detailZeile, ladeAnzeige, zeilenKnopf } from './01-bausteine.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
 import { escHex, escJs, esc, html, ungeprueft } from './00-escapen.js';
