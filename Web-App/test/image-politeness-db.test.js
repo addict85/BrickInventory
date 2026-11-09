@@ -5,7 +5,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const { abschnitt } = require('./helpers/sources');
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const fs = require('node:fs');
 const Module = require('node:module');
@@ -148,35 +147,13 @@ test('auch reine Vorschau-Arbeit wird gebremst', { concurrency: 1 }, async (t) =
   }
 });
 
-test('der User-Agent nennt Ross und Reiter', () => {
-  // Hier stand eine vorgetäuschte Chrome-Kennung. Das ist die schlechteste
-  // aller Möglichkeiten: Sie sagt nicht, wer wir sind, und ein „Browser", der
-  // tausende Bilder ohne die üblichen Begleitanfragen holt, fällt einer
-  // Heuristik gerade dadurch auf.
-  const src = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/setImages.ts'), 'utf8');
-  const i = src.indexOf('function bildUserAgent()');
-  assert.ok(i > 0, 'Keine eigene Funktion für den User-Agent');
-  const fn = src.slice(i, src.indexOf('\n}', i));
-  assert.match(fn, /BrickInventoryManager\//, 'Die Kennung nennt das Produkt nicht');
-
-  // Und die Version muss die ECHTE sein
-  // Ausführlich: docs/begruendungen/test/image-politeness-db.test.js.md#dist
+// Gegenprobe (09.11.2026): bildUserAgent() wieder auf `BrickInventoryManager/…` → rot
+// „der Bild-Auftrag holt mit der Browser-Kennung des Proxys“.
+test('der Bild-Auftrag holt mit der Browser-Kennung des Proxys', () => {
   const dist = path.join(ROOT, 'dist', 'src/katalog/bilder/setImages.js');
   assert.ok(fs.existsSync(dist), 'dist/src/katalog/bilder/setImages.js fehlt — erst bauen');
+  const { BILD_KOPFZEILEN } = require(path.join(ROOT, 'dist', 'clients/bildCdn.js'));
   const ua = require(dist).bildUserAgent();
-  const echteVersion = JSON.parse(fs.readFileSync(path.join(ROOT, 'dist', 'version.json'), 'utf8')).version;
-  assert.ok(ua.includes(echteVersion),
-    `User-Agent „${ua}" enthält die gebaute Version ${echteVersion} nicht`);
-  // Umschaltbar, weil sich von hier aus nicht ausprobieren lässt, wie der echte
-  // Bildserver auf die neue Kennung reagiert.
-  assert.match(fn, /konfig\(\)\.bildUserAgent/,
-    'Ohne Umgebungsvariable liesse sich eine Fehlentscheidung nur durch einen ' +
-    'neuen Build zurücknehmen');
-  // Und die alte Tarnung darf nicht zurückkommen.
-  // abschnitt(): einzige Zusicherung ist ein doesNotMatch — auf leerem
-  // Ausschnitt gruen. Siehe die Begruendung an abschnitt().
-  const dl = abschnitt(src, 'async function downloadSetImage', undefined,
-                       'Bildabruf ohne vorgetaeuschte Browserkennung');
-  assert.doesNotMatch(dl.slice(0, 2000), /Mozilla\/5\.0 \(Windows NT/,
-    'Die vorgetäuschte Chrome-Kennung ist zurück');
+  assert.equal(ua, BILD_KOPFZEILEN['User-Agent'], 'der Bild-Auftrag holt mit der Browser-Kennung des Proxys');
+  assert.match(ua, /^Mozilla\/5\.0 /);
 });

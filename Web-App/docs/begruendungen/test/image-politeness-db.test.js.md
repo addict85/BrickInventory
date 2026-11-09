@@ -49,21 +49,3 @@ ist genau das der Normalfall, denn tausende Bilder lagen schon.
 Eine Verkleinerung ist die TEUERSTE Einzelarbeit im Server. Dass die Pause
 ausgerechnet den teuren Teil nicht betraf, war der Fehler.
 ```
-
-<a id="dist"></a>
-## `const dist = path.join(ROOT, 'dist', 'src/katalog/bilder/setImages.js'`
-
-```text
-── Und die Version muss die ECHTE sein (Nachtrag 114) ────────────────────
-
-Marcos Frage „Was wird neu als user_agent gesendet?" deckte auf, dass dort
-„3.0" stand statt der Installationsversion. Grund war
-`require('../package.json')`: Die Auflösung geht vom Ordner des MODULS aus,
-nicht vom Projekt. Übersetzt liegt das Modul unter `dist/routes/`, sucht
-also `dist/package.json` — die es nicht gibt. Der Fehler landete im
-`catch`, übrig blieb ein Vorgabewert, der seit Jahren nicht stimmt.
-
-Geprüft wird deshalb am ÜBERSETZTEN Stand, nicht an der Quelle: Genau
-zwischen beiden lag der Fehler.
-Die Version kommt seit dem Versionsumbau aus dist/version.json (scripts/version.js).
-```
