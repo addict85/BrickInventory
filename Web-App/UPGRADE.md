@@ -1988,3 +1988,43 @@ Welcher Stand vorliegt:
 ```
 docker compose exec postgres psql -U brickinventory -c "SELECT max(name) FROM schema_migrations"
 ```
+
+## 46. Runde 18 – QR-Kopplung mit Bestätigung, Fingerabdruck der Wurzel, Startpasswort
+
+- **QR-Anmeldung der App:** Der Scan allein gibt keinen Zugang mehr. Die App
+  zeigt nach dem Scan einen sechsstelligen Code; im Browser, in dem der
+  QR-Code erzeugt wurde, erscheint „Gerät … möchte sich koppeln“. Erst wenn
+  dort der Code eingetippt ist, bekommt die App ihren Zugang (drei falsche
+  Codes lehnen ab). **Die App muss mit diesem Update aktualisiert werden**;
+  eine ältere Fassung meldet nach dem Scan „QR-Anmeldung fehlgeschlagen“, die
+  Anmeldung mit Passwort geht weiter. Migration 0102 verwirft offene QR-Codes.
+- **Wurzelzertifikat über HTTP:** `/ca.crt` bleibt über `http://` erreichbar,
+  weil ein Gerät die Datei braucht, bevor es HTTPS vertraut (Android, iOS und
+  Windows installieren eine heruntergeladene Datei). Port 80 liefert nur noch
+  `GET`/`HEAD` auf genau diese Datei, alles andere leitet auf die feste
+  HTTPS-Adresse um; über HTTP heisst sie
+  `brickinventory-ca-fingerabdruck-pruefen.crt`. Vor dem Installieren den
+  **SHA-256 des Zertifikats**, den das Gerät zeigt, mit dem Wert vergleichen,
+  den die angemeldete Oberfläche (Einstellungen → Server-Zertifikat, auch
+  neben dem QR-Code) oder `docker compose logs caddy | grep Fingerabdruck`
+  nennt. Bisher zeigte die Oberfläche nur den SHA-256 des öffentlichen
+  Schlüssels (den Pin der App); den zeigt kein Gerät.
+- **Startpasswort des ersten Verwalters:** steht nicht mehr im Container-Log,
+  sondern in `data/admin-startpasswort.txt` (nur für den Dienst lesbar):
+  `docker compose exec app cat /app/data/admin-startpasswort.txt`. Die Datei
+  verschwindet mit dem ersten Passwortwechsel. Ist `./data` nicht schreibbar,
+  bricht der allererste Start ab, statt ein Konto ohne bekanntes Passwort
+  anzulegen.
+- **Widerruf eines Geräts** wirkt in allen Web-Prozessen sofort. Fällt die
+  Benachrichtigung zwischen den Prozessen aus (Datenbankverbindung weg), prüft
+  jeder Prozess jeden Token wieder an der Datenbank, bis sie zurück ist.
+- **CSP-Berichte:** Der Browser meldet Verstösse an `/csp-bericht`; sie stehen
+  als `[csp] …` im Protokoll von `app` (gedrosselt).
+
+### Ausserhalb des Codes (offen)
+
+- **GitHub-Environment-Schutzregeln** für die Veröffentlichung des Images
+  (Pflicht-Prüfer, nur geschützte Zweige) lassen sich nicht aus dem Baum
+  setzen: In den Repository-Einstellungen unter *Environments* einrichten.
+- **Externer Penetrationstest:** steht aus; die interne Prüfung ersetzt ihn
+  nicht.
