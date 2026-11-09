@@ -10,31 +10,35 @@ import java.security.PublicKey
 import java.security.Signature
 import java.security.spec.ECGenParameterSpec
 
-/**
- * Der Keystore-Schlüssel hinter dem Schrittschutz: EC P-256, signiert nur je
- * Benutzung nach starker Biometrie oder Gerätesperre (Dauer 0). Ein neu
- * eingerichteter Fingerabdruck macht ihn ungültig; dann entsteht ein neuer —
- * das Einrichten verlangte schon die Gerätesperre.
- */
-internal object GeraeteSchluessel {
-    private const val KEYSTORE = "AndroidKeyStore"
-    private const val ALIAS = "schrittschutz"
+/** Der Schlüssel hinter dem Schrittschutz; der Server kennt seinen öffentlichen Teil. */
+internal object GeraeteSchluessel : KeystoreSchluessel("schrittschutz")
 
+/** Der Schlüssel hinter der App-Sperre; ein eigener, damit Verwerfen den des Servers nicht trifft. */
+internal object AppSperreSchluessel : KeystoreSchluessel("app_sperre")
+
+/**
+ * Ein Keystore-Schlüssel EC P-256, der nur je Benutzung nach starker Biometrie oder
+ * Gerätesperre signiert (Dauer 0). Ein neu eingerichteter Fingerabdruck macht ihn
+ * ungültig; dann entsteht ein neuer — das Einrichten verlangte schon die Gerätesperre.
+ */
+internal open class KeystoreSchluessel(private val alias: String) : Entsperrschluessel {
     private fun speicher() = KeyStore.getInstance(KEYSTORE).apply { load(null) }
 
     /** Eine zum Signieren vorbereitete Signatur; signieren kann sie erst nach der Freigabe. */
-    fun signatur(): Signature {
+    override fun signatur(): Signature {
         val ks = speicher()
-        val schluessel = ks.getKey(ALIAS, null) as? PrivateKey ?: erzeuge()
+        val schluessel = ks.getKey(alias, null) as? PrivateKey ?: erzeuge()
         return try {
             Signature.getInstance(Schrittfreigabe.SIGNATURVERFAHREN).apply { initSign(schluessel) }
         } catch (_: KeyPermanentlyInvalidatedException) {
-            ks.deleteEntry(ALIAS)
+            ks.deleteEntry(alias)
             Signature.getInstance(Schrittfreigabe.SIGNATURVERFAHREN).apply { initSign(erzeuge()) }
         }
     }
 
-    fun oeffentlich(): PublicKey = speicher().getCertificate(ALIAS).publicKey
+    override fun oeffentlich(): PublicKey = speicher().getCertificate(alias).publicKey
+
+    override fun verwerfe() = speicher().deleteEntry(alias)
 
     /** X.509 für den Server. Über [signatur], damit ein ungültig gewordener Schlüssel vorher ersetzt ist. */
     fun oeffentlichFuerServer(): ByteArray {
@@ -45,7 +49,7 @@ internal object GeraeteSchluessel {
     private fun erzeuge(): PrivateKey {
         val gen = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, KEYSTORE)
         gen.initialize(
-            KeyGenParameterSpec.Builder(ALIAS, KeyProperties.PURPOSE_SIGN)
+            KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_SIGN)
                 .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
                 .setDigests(KeyProperties.DIGEST_SHA256)
                 .setUserAuthenticationRequired(true)
@@ -53,5 +57,9 @@ internal object GeraeteSchluessel {
                 .build()
         )
         return gen.generateKeyPair().private
+    }
+
+    private companion object {
+        const val KEYSTORE = "AndroidKeyStore"
     }
 }

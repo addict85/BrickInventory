@@ -33,18 +33,23 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 val LocalAppSperre = staticCompositionLocalOf<AppSperre?> { null }
 
 /**
- * Fingerabdruck oder Gerätesperre, ohne Schlüssel: Die Sperre schützt vor dem, der das
- * Telefon in der Hand hat. Was der Server prüft, bindet der Schrittschutz eigens.
- * Ohne Displaysperre gibt es nichts zu fragen; dann geht es weiter.
+ * Fingerabdruck oder Gerätesperre, gebunden an einen eigenen Keystore-Schlüssel: Erst
+ * dessen Signatur hebt die Sperre auf (AppEntsperrung), nicht der Rückruf allein.
+ * Ohne Displaysperre gibt es keinen solchen Schlüssel und nichts zu fragen; dann geht es weiter.
  */
 fun entsperreMitGeraetesperre(activity: FragmentActivity, titel: String, untertitel: String, weiter: () -> Unit) {
     if (activity.getSystemService<KeyguardManager>()?.isDeviceSecure != true) return weiter()
-    val rueckruf = object : BiometricPrompt.AuthenticationCallback() {
-        override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) = weiter()
-    }
+    // Seit minSdk 30 kann der Schlüssel beides freigeben (KeystoreSchluessel).
     val info = BiometricPrompt.PromptInfo.Builder().setTitle(titel).setSubtitle(untertitel)
         .setAllowedAuthenticators(BIOMETRIC_STRONG or DEVICE_CREDENTIAL).build()
-    BiometricPrompt(activity, ContextCompat.getMainExecutor(activity), rueckruf).authenticate(info)
+    AppEntsperrung(AppSperreSchluessel) { signatur, antwort ->
+        val rueckruf = object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) =
+                antwort(result.cryptoObject?.signature)
+        }
+        BiometricPrompt(activity, ContextCompat.getMainExecutor(activity), rueckruf)
+            .authenticate(info, BiometricPrompt.CryptoObject(signatur))
+    }.entsperre(weiter)
 }
 
 /** Deckt die App ab, bis entsperrt ist; fragt beim Erscheinen von selbst. */
