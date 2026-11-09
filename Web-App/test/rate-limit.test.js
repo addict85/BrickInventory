@@ -43,7 +43,7 @@ test('das Tageskontingent zählt für die Installation, nicht je Worker', () => 
   // Alle Aufrufstellen gehen über den gemeinsamen Weg.
   for (const datei of ['clients/rebrickable.ts', 'src/katalog/partsImport.ts', 'src/sets/dienst.ts',
                        'src/katalog/teileAnreicherung.ts',
-                       'jobs/rebrickableCsvSync.ts']) {
+                       'src/katalog/csvAbgleich.ts']) {
     const src = fs.readFileSync(path.join(ROOT, datei), 'utf8');
     assert.doesNotMatch(src, /rebrickableDailyLimiter/,
       `${datei}: zählt noch am gemeinsamen Zähler vorbei`);
@@ -167,7 +167,7 @@ test('die Aufrufstellen warten auf das Ergebnis', () => {
 test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () => {
   // Woher dieser Test kommt
   // Ausführlich: docs/begruendungen/test/rate-limit.test.js.md#job-stelle
-  const job = (fs.readFileSync(path.join(ROOT, 'jobs/priceJob.ts'), 'utf8') + fs.readFileSync(path.join(ROOT, 'db/txLock.ts'), 'utf8'))
+  const job = (fs.readFileSync(path.join(ROOT, 'src/finanzen/preisLauf.ts'), 'utf8') + fs.readFileSync(path.join(ROOT, 'db/txLock.ts'), 'utf8'))
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
 
   assert.match(job, /pg_try_advisory_lock/,

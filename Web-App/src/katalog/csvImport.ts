@@ -57,7 +57,7 @@ async function streamInsert(tmpFile: string, chunkSize: number, mapRow: (spalten
 }
 
 interface Tausch {
-  tabelle: string; filename: string; tmp: string; cols: string[]; onConflict?: string;
+  tabelle: string; filename: string; tmp: string; cols: string[]; konflikt?: repo.Konflikt;
   chunkSize?: number; mapRow: (c: string[]) => unknown[];
 }
 
@@ -71,7 +71,7 @@ async function importiereMitTausch(pool: Pool, melde: (m: Meldung) => void, t: T
     try {
       await repo.legeSchattenAn(client, t.tabelle, schatten);
       const total = await streamInsert(t.tmp, t.chunkSize ?? 100, t.mapRow,
-        chunk => repo.fuegeBlockEin(client, schatten, t.cols, chunk, t.onConflict ?? ''), t.filename, melde);
+        chunk => repo.fuegeBlockEin(client, schatten, t.cols, chunk, t.konflikt), t.filename, melde);
       // Eine leere Datei ist ein Fehler, kein leerer Katalog.
       if (total === 0) throw new Error(`${t.filename}: 0 Zeilen gelesen — Tausch abgebrochen, bisheriger Bestand bleibt erhalten`);
       await repo.tausche(client, t.tabelle, schatten, t.cols);
@@ -94,43 +94,43 @@ export function katalogImporte(pool: Pool, melde: (m: Meldung) => void) {
       // bl_color_id kommt aus der API, nicht aus dem CSV — mitgeschrieben wäre sie
       // nach jedem Tausch leer.
       cols: ['id', 'name', 'rgb', 'is_trans'],
-      onConflict: 'ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,rgb=EXCLUDED.rgb,is_trans=EXCLUDED.is_trans',
+      konflikt: ['id'],
       mapRow: c => [parseInt(sp(c, 0)) || 0, sp(c, 1), sp(c, 2), istJa(sp(c, 3))],
     }),
     part_categories: tausch({
       tabelle: 'rb_part_categories', filename: 'part_categories.csv.gz', tmp: path.join(DATA_DIR, 'part_categories.csv.tmp'),
       cols: ['id', 'name'],
-      onConflict: 'ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name',
+      konflikt: ['id'],
       mapRow: c => [parseInt(sp(c, 0)) || 0, sp(c, 1)],
     }),
     parts: tausch({
       tabelle: 'rb_parts', filename: 'parts.csv.gz', tmp: path.join(DATA_DIR, 'parts.csv.tmp'),
       cols: ['part_num', 'name', 'part_cat_id', 'part_img_url'],
-      onConflict: 'ON CONFLICT (part_num) DO UPDATE SET name=EXCLUDED.name,part_cat_id=EXCLUDED.part_cat_id,part_img_url=EXCLUDED.part_img_url',
+      konflikt: ['part_num'],
       mapRow: c => [sp(c, 0), sp(c, 1), parseInt(sp(c, 2)) || 0, sp(c, 4)],
     }),
     sets: tausch({
       tabelle: 'rb_sets', filename: 'sets.csv.gz', tmp: path.join(DATA_DIR, 'sets.csv.tmp'),
       cols: ['set_num', 'name', 'year', 'theme_id', 'num_parts', 'set_img_url'],
-      onConflict: 'ON CONFLICT (set_num) DO UPDATE SET name=EXCLUDED.name,year=EXCLUDED.year,theme_id=EXCLUDED.theme_id,num_parts=EXCLUDED.num_parts,set_img_url=EXCLUDED.set_img_url',
+      konflikt: ['set_num'],
       mapRow: c => [sp(c, 0), sp(c, 1), parseInt(sp(c, 2)) || 0, parseInt(sp(c, 3)) || 0, parseInt(sp(c, 4)) || 0, sp(c, 5)],
     }),
     inventories: tausch({
       tabelle: 'rb_inventories', filename: 'inventories.csv.gz', tmp: path.join(DATA_DIR, 'inventories.csv.tmp'),
       cols: ['id', 'set_num', 'version'],
-      onConflict: 'ON CONFLICT (id) DO UPDATE SET set_num=EXCLUDED.set_num,version=EXCLUDED.version',
+      konflikt: ['id'],
       mapRow: c => [parseInt(sp(c, 0)) || 0, sp(c, 2), parseInt(sp(c, 1)) || 1],
     }),
     themes: tausch({
       tabelle: 'rb_themes', filename: 'themes.csv.gz', tmp: path.join(DATA_DIR, 'themes.csv.tmp'),
       cols: ['id', 'name', 'parent_id'],
-      onConflict: 'ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,parent_id=EXCLUDED.parent_id',
+      konflikt: ['id'],
       mapRow: c => [parseInt(sp(c, 0)) || 0, sp(c, 1), sp(c, 2) ? (parseInt(sp(c, 2)) || null) : null],
     }),
     inventory_minifigs: tausch({
       tabelle: 'rb_inventory_minifigs', filename: 'inventory_minifigs.csv.gz', tmp: path.join(DATA_DIR, 'inventory_minifigs.csv.tmp'),
       cols: ['inventory_id', 'fig_num', 'quantity'],
-      onConflict: 'ON CONFLICT DO NOTHING',
+      konflikt: 'ignorieren',
       mapRow: c => [parseInt(sp(c, 0)) || 0, sp(c, 1), parseInt(sp(c, 2)) || 1],
     }),
     inventory_parts: tausch({

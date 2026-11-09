@@ -61,7 +61,7 @@ test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async (t) => 
                   FROM generate_series(1,10) g`, [P]);
 
   try {
-    const n = (await _req('jobs/imageQueue.js')._arbeiteStapel()).gesamt;
+    const n = (await _req('src/katalog/bilder/bildbedarfLauf.js')._arbeiteStapel()).gesamt;
     const abstaende = zeiten.slice(1).map((z, i) => z - zeiten[i]);
 
     await t.test('nacheinander, nie gleichzeitig', () => {
@@ -88,7 +88,7 @@ test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async (t) => 
     await t.test('höchstens 30 Anfragen je Minute', () => {
       // Die Rate ergibt sich aus Stapelgrösse und Takt; beide kommen aus dem
       // Modul, damit der Test keine Zahl wiederholt, die sich ändern darf.
-      const { STAPEL: stapel, TAKT_MS: takt } = _req('jobs/imageQueue.js');
+      const { STAPEL: stapel, TAKT_MS: takt } = _req('src/katalog/bilder/bildbedarfLauf.js');
       assert.ok(stapel > 0 && takt > 0, 'STAPEL oder TAKT_MS nicht auffindbar');
       const jeMinute = stapel * (60_000 / takt);
       assert.ok(jeMinute <= 30,
@@ -130,7 +130,7 @@ test('auch reine Vorschau-Arbeit wird gebremst', { concurrency: 1 }, async (t) =
                   FROM generate_series(1,10) g`, [P]);
   thumbZeiten.length = 0;
   try {
-    const n = (await _req('jobs/imageQueue.js')._arbeiteStapel()).gesamt;
+    const n = (await _req('src/katalog/bilder/bildbedarfLauf.js')._arbeiteStapel()).gesamt;
     assert.equal(n, 10, `${n} Vorschauen statt 10 — Vorbedingung stimmt nicht`);
     const abst = thumbZeiten.slice(1).map((z, i) => z - thumbZeiten[i]);
     assert.ok(abst.length >= 5, `nur ${abst.length} Abstände`);

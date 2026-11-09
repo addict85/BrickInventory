@@ -4,7 +4,6 @@
 import { blickfeldAus } from '../haushalt/haushalt';
 import type { Sicht } from '../haushalt/haushalt';
 import { nacharbeit } from '../auftraege/nacharbeit';
-import { LIKE_ESCAPE, enthaeltMuster } from '../../db/likeSuche';
 import { addSet, sanitizeSetNumber } from '../sets/setService';
 import { findSetInScope } from '../sets/setAdd';
 import { loescheAlarm } from '../finanzen/preisalarm';
@@ -117,18 +116,6 @@ export async function verschiebeMerkposten(
   return { verschoben, zusammengefuehrt: false };
 }
 
-/** Dieselben Namen wie SET_SORTS: Beide Oberflächen beschriften sie gleich.
- * Ausführlich: docs/begruendungen/src/merkliste/merkliste.ts.md#merk-sorts */
-const MERK_SORTS = {
-  added_desc: 'w.created_at DESC',
-  added_asc:  'w.created_at ASC',
-  name_asc:   'COALESCE(rb.name, sc.name) ASC NULLS LAST',
-  num_asc:    'w.set_number ASC',
-  year_desc:  'COALESCE(rb.year, sc.year) DESC NULLS LAST',
-  price_desc: 'pc.avg_price DESC NULLS LAST',
-  price_asc:  'pc.avg_price ASC NULLS LAST',
-};
-
 export interface MerkFilter {
   /** Nummer ODER Name, Teilzeichenkette, Gross-/Kleinschreibung egal. */
   suche?: unknown;
@@ -145,32 +132,15 @@ export async function merkpostenVon(
 ): Promise<Merkposten[]> {
   const userIds = await blickfeldAus(userIdsWahl);
   if (!userIds?.length) return [];
-  const params: unknown[] = [userIds];
-  let wo = '';
-  if (nurSet) { params.push(sanitizeSetNumber(nurSet)); wo += ` AND w.set_number = $${params.length}`; }
-
-  // Nummer UND Name, wie in der Galerie; der Name kommt aus dem JOIN auf rb_sets.
-  const suche = String(filter?.suche ?? '').trim();
-  if (suche) {
-    params.push(enthaeltMuster(suche));
-    wo += ` AND (w.set_number ILIKE $${params.length}${LIKE_ESCAPE}`
-        + ` OR COALESCE(rb.name, sc.name) ILIKE $${params.length}${LIKE_ESCAPE})`;
-  }
-
   // Unbekannt heisst „beide", nicht „keine": Eine geleerte Liste sähe aus wie
   // eine leere Merkliste.
   const zustand = String(filter?.zustand ?? '').toUpperCase();
-  if (zustand === 'N' || zustand === 'U') {
-    params.push(zustand);
-    wo += ` AND w.condition = $${params.length}`;
-  }
-
-  // ausTabelle(): Der direkte Zugriff fände auch geerbte Eigenschaften wie „constructor".
-  const ordnung = V.ausTabelle(MERK_SORTS, filter?.sortierung, MERK_SORTS.added_desc);
-
-  params.push(waehrung);
-  const pWaehrung = `$${params.length}`;
-  const rows = await repo.merklisteImBlickfeld(params, pWaehrung, wo, ordnung);
+  const rows = await repo.merklisteImBlickfeld(userIds, {
+    nurSet: nurSet ? sanitizeSetNumber(nurSet) : null,
+    suche: String(filter?.suche ?? '').trim() || null,
+    zustand: zustand === 'N' || zustand === 'U' ? zustand : null,
+    sortierung: filter?.sortierung,
+  }, waehrung);
 
   type Zeile = Omit<Merkposten, 'year' | 'num_parts' | 'owned' | 'alarm' | 'preisvergleich_url'
                             | 'image_local' | 'marktpreis' | 'waehrung'> &
@@ -246,7 +216,7 @@ export async function buildMerklisteCsv(uid: number): Promise<string> {
   return toCsv(['set_number', 'condition', 'created_at'], rows);
 }
 
-/** Das Gegenstück zu buildMerklisteCsv(); läuft als Auftrag (jobs/importAuftraege.ts). */
+/** Das Gegenstück zu buildMerklisteCsv(); läuft als Auftrag (src/sammlung/importAuftraege.ts). */
 export async function importiereMerklisteCsv(owner: number, text: string) {
   const { records, bereinigt, uebersprungen } =
     csvZeilenAusAnfrage(text);

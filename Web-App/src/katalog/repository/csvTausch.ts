@@ -32,10 +32,20 @@ export async function legeSchattenAn(c: PoolClient, tabelle: string, schatten: s
 }
 
 /** Ein abgewiesener Block bricht den Import ab. */
-export async function fuegeBlockEin(c: PoolClient, schatten: string, spalten: string[], block: unknown[][], beiKonflikt: string): Promise<void> {
+/** Schlüsselspalten: Eine doppelte Zeile im CSV überschreibt die frühere; 'ignorieren' behält sie. */
+export type Konflikt = string[] | 'ignorieren';
+
+function beiKonflikt(spalten: string[], k: Konflikt | undefined): string {
+  if (!k) return '';
+  if (k === 'ignorieren') return 'ON CONFLICT DO NOTHING';
+  const rest = spalten.filter(s => !k.includes(s)).map(s => `${s}=EXCLUDED.${s}`);
+  return `ON CONFLICT (${k.join(',')}) DO UPDATE SET ${rest.join(',')}`;
+}
+
+export async function fuegeBlockEin(c: PoolClient, schatten: string, spalten: string[], block: unknown[][], konflikt?: Konflikt): Promise<void> {
   const n = spalten.length;
   const platz = block.map((_, j) => '(' + spalten.map((_, k) => `$${j * n + k + 1}`).join(',') + ')').join(',');
-  await c.query(`INSERT INTO ${schatten} (${spalten.join(',')}) VALUES ${platz} ${beiKonflikt}`, block.flat());
+  await c.query(`INSERT INTO ${schatten} (${spalten.join(',')}) VALUES ${platz} ${beiKonflikt(spalten, konflikt)}`, block.flat());
 }
 
 export async function tausche(c: PoolClient, tabelle: string, schatten: string, spalten: string[]): Promise<void> {

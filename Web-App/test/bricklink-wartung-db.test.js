@@ -48,7 +48,7 @@ test('BrickLink in Wartung', { concurrency: 1 }, async t => {
   const { verdrahteKlienten, zugang } = _req('clients/zugang.js');
   const { bricklinkRequest, BricklinkNichtErreichbar } = _req('clients/bricklink.js');
   const { setGlobalSetting } = _req('src/einstellungen/settings.js');
-  const { runPriceRefresh } = _req('jobs/priceJob.js');
+  const { runPriceRefresh } = _req('src/finanzen/preisLauf.js');
 
   const vorher = zugang();
   verdrahteKlienten({

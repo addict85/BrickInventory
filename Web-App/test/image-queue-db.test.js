@@ -45,7 +45,7 @@ test('die Anfrage notiert, der Job legt ab', { concurrency: 1 }, async (t) => {
   // und Nachstellung in helpers/bildwarteschlange.js.
   await leereWarteschlange(db);
 
-  const IQ = _req('jobs/imageQueue.js');
+  const IQ = _req('src/katalog/bilder/bildbedarfLauf.js');
   await IQ.initImageQueue();
   const PRAEFIX = `TQ${process.pid}`;
   const weg = async () =>
@@ -149,7 +149,7 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
     await db.run(`DELETE FROM laufzustand WHERE schluessel='imgqueue_last_run'`);
     await db.run(`DELETE FROM laufzustand WHERE schluessel='imgredl_status'`);
     await _req('src/auftraege/jobMonitor.js').imgDlReset().catch(() => {});
-    _req('jobs/imageQueue.js').letzterLauf.zeit = null;
+    _req('src/katalog/bilder/bildbedarfLauf.js').letzterLauf.zeit = null;
     const ohneLauf = await kachel();
     assert.equal(ohneLauf.status, 'idle',
       'Ohne Durchgang darf die Kachel keinen Betrieb melden');
@@ -158,7 +158,7 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
 
     // Und nach einem Durchgang meldet sie Betrieb. Gemeint ist der TAKT —
     // dort wird der Stand für die anderen Arbeitsprozesse abgelegt.
-    await _req('jobs/imageQueue.js')._taktDurchgang();
+    await _req('src/katalog/bilder/bildbedarfLauf.js')._taktDurchgang();
     const nachLauf = await kachel();
     assert.equal(nachLauf.status, 'running',
       'Nach einem Durchgang muss die Kachel Betrieb melden');
@@ -169,7 +169,7 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
     // Ein STEHENGEBLIEBENES „läuft" ist kein Betrieb
     // Ausführlich: docs/begruendungen/test/image-queue-db.test.js.md#stelle-3
     await db.run(`DELETE FROM laufzustand WHERE schluessel='imgqueue_last_run'`);
-    _req('jobs/imageQueue.js').letzterLauf.zeit = null;
+    _req('src/katalog/bilder/bildbedarfLauf.js').letzterLauf.zeit = null;
     await _req('src/auftraege/jobMonitor.js').imgDlReset().catch(() => {});
     assert.notEqual((await kachel()).status, 'running',
       'Vorbedingung verletzt: Ohne Nachlauf darf hier kein Betrieb stehen');
@@ -202,7 +202,7 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
 test('der Job meldet auch reine Übersprünge', () => {
   // Marcos Befund
   // Ausführlich: docs/begruendungen/test/image-queue-db.test.js.md#stelle-4
-  const { meldung } = _req('jobs/imageQueue.js');
+  const { meldung } = _req('src/katalog/bilder/bildbedarfLauf.js');
   const nurUebersprungen = {
     geholt: 0, vorschau: 0, uebersprungen: 10, gesamt: 10,
     nichtGeladen: 0, keineVorschau: 0, bekanntFehlend: 0, ohneNummer: 0,
@@ -217,7 +217,7 @@ test('der Job meldet auch reine Übersprünge', () => {
 
   // Und der Takt darf sie nicht verschweigen: Die Bedingung vor der Ausgabe
   // darf an keiner Zahl hängen, die bei reinen Übersprüngen null ist.
-  const q = fs.readFileSync(path.join(ROOT, 'jobs/imageQueue.ts'), 'utf8');
+  const q = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/bildbedarfLauf.ts'), 'utf8');
   const i = q.indexOf('async function bildbedarfAbarbeiten');
   assert.ok(i > 0, 'Kein Takt');
   const fn = q.slice(i, q.indexOf('\n}\n', i)).replace(/\/\/[^\n]*/g, '');
@@ -239,7 +239,7 @@ test('die Bild-Tabellen kommen aus einer MIGRATION, nicht aus initSchema', () =>
 
   // Und NICHT mehr anderswo — zwei Stellen, die dasselbe anlegen, laufen
   // irgendwann auseinander.
-  for (const datei of ['db/database.ts', 'src/katalog/bilder/imageMisses.ts', 'jobs/imageQueue.ts']) {
+  for (const datei of ['db/database.ts', 'src/katalog/bilder/imageMisses.ts', 'src/katalog/bilder/bildbedarfLauf.ts']) {
     const src = fs.readFileSync(path.join(ROOT, datei), 'utf8')
       .split('\n').filter(l => !l.trim().startsWith('//') && !l.trim().startsWith('--')).join('\n');
     assert.doesNotMatch(src, /CREATE TABLE IF NOT EXISTS image_(wanted|misses)/,

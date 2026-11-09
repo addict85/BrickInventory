@@ -28,7 +28,7 @@ const _echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = _echtesRequire.apply(this, arguments);
   // Kein Bildabruf und kein Nachzug: Der Test prüft den Katalog, nicht das Netz.
-  if (typeof name === 'string' && /jobs[/\\]nachErfassung(\.js)?$/.test(name))
+  if (typeof name === 'string' && /sets[/\\]nachErfassung(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) => (k === 'zieheNach' || k === 'zieheNachNeuanlage') ? () => {} : t[k] });
   if (typeof name === 'string' && /[/\\]images(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) => k === 'downloadSetImage' ? async () => null : t[k] });

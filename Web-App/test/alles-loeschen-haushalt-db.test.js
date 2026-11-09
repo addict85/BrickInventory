@@ -103,7 +103,7 @@ test('accounts kann das Loesch-Blickfeld nur einschraenken, nie erweitern', () =
   assert.ok(i > 0, 'Löschroute nicht gefunden');
   assert.match(src.slice(i, i + 900), /loescheSetFuer\(sichtVon\(req\)/, 'Die Route löscht nicht über den Dienst');
   const dienst = require('./helpers/sources').funktionsRumpf(
-    fs.readFileSync(path.join(ROOT, 'src/sets/abfragen.ts'), 'utf8'), 'loescheSetFuer');
+    fs.readFileSync(path.join(ROOT, 'src/sets/loeschen.ts'), 'utf8'), 'loescheSetFuer');
   assert.match(dienst, /schreibbar\.includes\(/,
     'Die gewählte Menge muss gegen writableIds() geschnitten werden');
 });

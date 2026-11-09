@@ -34,17 +34,3 @@ Build-Umstellung nicht mehr neben den .ts. Vorher iterierte diese Schleife
 stillschweigend nichts mehr prüfen. Deshalb: fehlt der Build, ist der Test
 ROT statt grün-durch-Abwesenheit.
 ```
-
-<a id="src-stelle"></a>
-## `const src = fs.readFileSync(path.join(JOBS, 'priceJob.ts'), 'utf8');`
-
-```text
-Ursprung: getGlobalSetting stand ZWEIMAL in dieser Datei, die zweite
-Definition überschrieb die erste stillschweigend. Inzwischen steht gar
-keine mehr dort — beide Helfer kommen aus src/einstellungen/settings.ts.
-
-Die Prüfung bleibt, weil der Rückfall derselbe wäre: Wer sich hier wieder
-eine eigene Fassung schreibt, hat eine zweite Wahrheit über dieselbe
-Tabelle, und die beiden können auseinanderlaufen (die alte Kopie nahm den
-Ersatzwert schon beim LEEREN Eintrag, die zentrale erst bei NULL).
-```

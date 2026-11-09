@@ -70,32 +70,44 @@ const BASIS = path.join(__dirname, '..', 'db/basis.sql');
 /** Startdaten, die eine neue Installation braucht; alles andere bleibt leer. */
 const BASIS_DATEN = ['auftrag_exklusiv', 'global_settings', 'gutschein_guthaben_schranke', 'schema_migrations'];
 
+/** Hauptversion des pg_dump im Pfad; das Abbild unterscheidet sich zwischen Versionen. */
+function pgDumpVersion() {
+  const { execFileSync } = require('node:child_process');
+  return Number((execFileSync('pg_dump', ['--version'], { encoding: 'utf8' }).match(/\) (\d+)\./) || [])[1]) || null;
+}
+
 /**
- * db/basis.sql aus einer fertig migrierten Datenbank schreiben: Schema und
- * Startdaten als ausführbares SQL. Braucht pg_dump im Pfad.
+ * Der Text von db/basis.sql aus einer Datenbank: Schema und Startdaten als
+ * ausführbares SQL, ohne die Zwischenüberschriften von pg_dump. Braucht pg_dump im Pfad.
  * @param {string} url
  */
-function schreibeBasis(url) {
-  const { execFileSync } = require('child_process');
+function basisText(url) {
+  const { execFileSync } = require('node:child_process');
   /** @param {string[]} args */
   const dump = (args) => execFileSync('pg_dump', [...args, '--no-owner', '--no-privileges', '--no-comments', url],
     { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   const roh = dump(['--schema-only']) + '\n' +
     dump(['--data-only', '--column-inserts', ...BASIS_DATEN.flatMap(t => ['-t', `public.${t}`])]);
-  // Weg damit: psql-Befehle (\restrict), die Leerung des Suchpfads (die
-  // Funktionen der Trigger suchen ihre Tabellen ohne Schemaangabe) und die
-  // Versionszeilen, die bei jedem pg_dump anders aussehen.
+  // Weg damit: psql-Befehle (\restrict), die Leerung des Suchpfads (die Funktionen der Trigger
+  // suchen ihre Tabellen ohne Schemaangabe), Versionszeilen und die Überschrift je Objekt.
   const sauber = roh.split('\n').filter(z =>
     !/^\\(un)?restrict\b/.test(z) &&
     !/^SELECT pg_catalog\.set_config\('search_path'/.test(z) &&
-    !/^-- Dumped (from|by)/.test(z)).join('\n').replace(/\n{3,}/g, '\n\n');
-  fs.writeFileSync(BASIS, [
+    !/^--( Dumped (from|by).*| (Data for )?Name: .*| PostgreSQL database dump( complete)?)?$/.test(z))
+    .join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return [
     '-- Schema einer NEUEN Installation: Abbild aller Migrationen, die es bei',
     '-- seiner Erzeugung gab. db/database.ts spielt es in eine leere Datenbank,',
     '-- danach laufen nur die jüngeren Migrationen. Nicht von Hand ändern —',
     '-- neu erzeugen mit `npm run build && npm run schema:stand`.',
+    `-- Erzeugt mit pg_dump ${pgDumpVersion()}.`,
     '',
-  ].join('\n') + sauber);
+  ].join('\n') + sauber + '\n';
+}
+
+/** db/basis.sql aus einer fertig migrierten Datenbank schreiben. @param {string} url */
+function schreibeBasis(url) {
+  fs.writeFileSync(BASIS, basisText(url));
   console.log(`geschrieben: ${path.relative(process.cwd(), BASIS)}`);
 }
 
@@ -128,4 +140,4 @@ async function main() {
 
 if (require.main === module) main().catch(e => { console.error(e.message); process.exit(1); });
 
-module.exports = { schemaText, schreibeBasis, DATEI, BASIS };
+module.exports = { schemaText, schreibeBasis, basisText, pgDumpVersion, DATEI, BASIS };

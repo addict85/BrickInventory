@@ -35,7 +35,7 @@ const Module = require('node:module');
 const _echtesRequire = Module.prototype.require;
 Module.prototype.require = function (/** @type {string} */ name, /** @type {any[]} */ ...rest) {
   const m = _echtesRequire.call(this, name, ...rest);
-  if (typeof name === 'string' && /jobs[/\\]nachErfassung(\.js)?$/.test(name))
+  if (typeof name === 'string' && /sets[/\\]nachErfassung(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) => (k === 'zieheNach' || k === 'zieheNachNeuanlage' ? () => {} : t[k]) });
   if (typeof name === 'string' && /[/\\]setService(\.js)?$/.test(name))
     return new Proxy(m, {
@@ -106,7 +106,7 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     });
     return { status: r.status, body: await r.json() };
   };
-  const { getSets, getSet } = _req('src/sets/abfragen.js');
+  const { getSets, getSet } = _req('src/sets/lesen.js');
 
   await t.test('ein ausdrücklich angefragter Zustand schlägt die Erfassungs-Bewertung', async () => {
     const { getCurrentMarketPrice } = _req('src/finanzen/marketPrice.js');

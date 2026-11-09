@@ -13,7 +13,7 @@ const assert = require('node:assert/strict');
 const path   = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { pdfBildPfad } = _req('jobs/pdfZeichnen.js');
+const { pdfBildPfad } = _req('src/katalog/pdf/pdfZeichnen.js');
 const { IMAGES_DIR, DATA_DIR } = _req('src/infra/appPaths.js');
 
 test('ein Teilebild aus dem Bildordner wird gelesen', () => {

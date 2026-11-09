@@ -64,7 +64,7 @@ test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concur
     assert.equal(imp.unit_price, null,
       `Der Import hat ${imp.unit_price} als Preis/Stk eingetragen, obwohl in der ` +
       'Datei keiner stand. Das Feld bedeutet „was der Mensch bezahlt hat" — ' +
-      'jobs/purchasePriceBackfill.ts liest es genau so.');
+      'src/bestand/kaufpreisNachtrag.ts liest es genau so.');
 
     // Und die Regel dahinter: BEIDE Wege hinterlassen dasselbe.
     assert.deepEqual(
