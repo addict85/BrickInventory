@@ -73,7 +73,7 @@ function openLogViewer() {
     '<script src="/js/logviewer.js?v=' + (window.__APP_VERSION || Date.now()) + '"><\/script>' +
     '</body></html>';
 
-  win.document.write(alsHtml(markup));
+  win.document.write(alsHtml(ungeprueft(markup)));
   win.document.close();
 }
 

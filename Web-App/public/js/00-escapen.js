@@ -86,11 +86,19 @@ export function escHtmlAttr(v) {
 }
 
 // Trusted Types (CSP `require-trusted-types-for 'script'`): Der Browser nimmt Markup nur als TrustedHTML.
-// Das prägt allein die Richtlinie `app` über alsHtml(), die nur setzeHtml()/fuegeHtmlEin() und das
-// Protokollfenster benutzen; jede andere Zuweisung an innerHTML landet bei `default` und scheitert.
+// Die Richtlinie `app` prägt es nur für den einen Text, den alsHtml() gerade aus SicheresHtml gebaut hat;
+// jeder andere Aufruf, auch mit ihrem Objekt, wird abgewiesen. Alles übrige landet bei `default` und scheitert.
 const tt = /** @type {{ trustedTypes?: { createPolicy(n: string, r: object): { createHTML(s: string): unknown } } }} */ (
   /** @type {unknown} */ (globalThis)).trustedTypes;
-const richtlinie = tt?.createPolicy('app', { createHTML: (/** @type {string} */ s) => s });
+/** @type {string | null} */
+let _freigabe = null;
+const richtlinie = tt?.createPolicy('app', {
+  createHTML: (/** @type {string} */ s) => {
+    if (_freigabe === null || s !== _freigabe) throw new TypeError('Trusted Types: Markup nur aus html``');
+    _freigabe = null;
+    return s;
+  },
+});
 /** Skripte nur aus der eigenen Herkunft: Sprachdateien und der Worker von pdf.js (auch als blob:). @param {string} u */
 function eigenesSkript(u) {
   const url = new URL(u, globalThis.location?.href);
@@ -103,17 +111,24 @@ tt?.createPolicy('default', {
   createScript: () => { throw new TypeError('Trusted Types: kein Skript aus Text'); },
 });
 
-/** Ein fertiges, schon maskiertes Markup für den Browser (TrustedHTML, ohne Trusted Types der Text).
- * Nur für die Stellen, die test/ratschen.test.js als Markup-Senken zulässt. @param {string} s @returns {string} */
-export function alsHtml(s) { return richtlinie ? /** @type {string} */ (richtlinie.createHTML(s)) : s; }
+/** Markup für den Browser (TrustedHTML, ohne Trusted Types der Text): nur aus html`` oder ungeprueft(); eine
+ * Zeichenkette wird maskiert, kommt also als Text an. @param {Markup | string} inhalt @returns {string} */
+export function alsHtml(inhalt) {
+  const text = einsetzen(inhalt);
+  if (!richtlinie) return text;
+  _freigabe = text;
+  try { return /** @type {string} */ (richtlinie.createHTML(text)); } finally { _freigabe = null; }
+}
 
 /** Fertiges Markup: aus html`` oder ungeprueft(). Nur so nimmt setzeHtml() (01-dom.js) Text als Markup an. */
 export class SicheresHtml {
-  /** Macht die Klasse für tsc nominal: ein Objekt mit `text` ist noch kein SicheresHtml. */
+  /** Die Marke lässt sich nicht nachbauen: Object.create(SicheresHtml.prototype) besteht instanceof, nicht sie. */
   #marke = true;
   /** @param {string} text */
   constructor(text) { this.text = text; void this.#marke; }
   toString() { return this.text; }
+  /** @param {unknown} wert @returns {wert is SicheresHtml} */
+  static echt(wert) { return typeof wert === 'object' && wert !== null && #marke in wert; }
 }
 
 /** Was setzeHtml() annimmt: fertiges Markup, Listen davon oder nichts — keine Zeichenkette mit Daten.
@@ -121,7 +136,7 @@ export class SicheresHtml {
 
 /** Der Text eines Werts für Markup: SicheresHtml unverändert, alles andere maskiert. @param {unknown} wert @returns {string} */
 export function einsetzen(wert) {
-  if (wert instanceof SicheresHtml) return wert.text;
+  if (SicheresHtml.echt(wert)) return wert.text;
   if (Array.isArray(wert)) return wert.map(einsetzen).join('');
   if (wert === null || wert === undefined || wert === false) return '';
   return esc(wert);

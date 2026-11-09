@@ -15,7 +15,7 @@ import { loadMinifigs } from './06-minifigs.js';
 import { meldeAbschnitt } from './24-router.js';
 import { verstaendlicherGrund } from './01-bausteine.js';
 import { CURRENCY, ME, _settingsCache, set_CURRENCY, set_settingsCache } from './00-zustand.js';
-import { html, sichereUrl, ungeprueft } from './00-escapen.js';
+import { html, sichereUrl } from './00-escapen.js';
 import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor, mitPasswortBestaetigen, speichereEinstellungen } from './01-rueckfrage.js';
 import { loadFinance } from './04-finance.js';
 import { LAND_ZUR_WAEHRUNG } from './17-gutscheine.js';
@@ -360,11 +360,11 @@ export async function loadTokens() {
       <th>${tRaw('tokens.col.last_used')}</th><th>${tRaw('tokens.col.scope')}</th><th>${tRaw('tokens.col.ip')}</th>
       <th>${tRaw('tokens.col.expires')}</th><th>${tRaw('users.col.actions')}</th></tr></thead><tbody>${d.tokens.map(tk => html`<tr>
       <td><strong>${tk.label || '—'}</strong>${tk.aktuell ? html` <span class="rb ra">${tRaw('tokens.current')}</span>` : ''}</td>
-      <td>${ungeprueft(tokenDatum(tk.created_at))}</td>
-      <td>${ungeprueft(tokenDatum(tk.last_used))}</td>
+      <td>${tokenDatum(tk.created_at)}</td>
+      <td>${tokenDatum(tk.last_used)}</td>
       <td>${tk.scope === 'voll' ? tRaw('tokens.scope.voll') : tRaw('tokens.scope.app')}</td>
       <td>${tk.ip_bereich || '—'}</td>
-      <td>${tk.never_expires ? tRaw('tokens.never') : ungeprueft(tokenDatum(tk.expires_at))}${tk.hard_expires_at ? html` <span class="rb ra" title="${tokenDatum(tk.hard_expires_at)}">${tRaw('tokens.fixed')}</span>` : ''}</td>
+      <td>${tk.never_expires ? tRaw('tokens.never') : tokenDatum(tk.expires_at)}${tk.hard_expires_at ? html` <span class="rb ra" title="${tokenDatum(tk.hard_expires_at)}">${tRaw('tokens.fixed')}</span>` : ''}</td>
       <td>${tk.aktuell ? '' : html`<button class="btn bd btn-sm" data-click="revokeToken"${echt()} data-arg="${tk.token_id}" data-arg2="${tk.label || ''}" aria-label="${tRaw('common.delete')}">${ico('loeschen')}</button>`}</td>
     </tr>`)}</tbody></table></div>`);
 }

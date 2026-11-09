@@ -44,6 +44,7 @@ import datenDateien = require('./routes/datenDateien');
 import apiV1Router = require('./routes/api_v1/index');
 import authRouter = require('./routes/auth');
 import zertifikatRouter = require('./routes/zertifikat');
+import cspBerichtRouter = require('./src/http/cspBericht');
 import wellKnownRouter = require('./routes/wellKnown');
 import gesundheitRouter = require('./routes/gesundheit');
 import seitenRouter = require('./routes/seiten');
@@ -139,6 +140,8 @@ function grundschutz(app: express.Express): void {
   });
 
   app.use(nurEigenerHost);
+  // Vor der Herkunftsprüfung: Browser schicken CSP-Berichte ohne verlässliche Herkunft.
+  app.use(cspBerichtRouter);
   app.use(nurEigeneHerkunft);
   // no-store als Vorgabe: Antworten tragen Konten, Gutscheine und Tokens. Was bewusst
   // gecacht wird (img-proxy, Design), setzt seinen Kopf selbst und überschreibt ihn.
@@ -197,7 +200,10 @@ function sicherheitsKoepfe(req: Request, res: Response, next: NextFunction): voi
     // Markup nur über setzeHtml() (Richtlinie app); `default` lässt nur eigene Skript-Adressen durch.
     "require-trusted-types-for 'script'",
     "trusted-types app default",
+    'report-uri /csp-bericht',
+    'report-to csp',
   ].join('; '));
+  res.setHeader('Reporting-Endpoints', 'csp="/csp-bericht"');
   next();
 }
 
