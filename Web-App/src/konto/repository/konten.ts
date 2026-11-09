@@ -224,23 +224,6 @@ export async function loescheOffeneRegistrierungen(tage: number): Promise<number
   });
 }
 
-export async function raeumeQrTokensAuf(): Promise<void> {
-  await db.run(`DELETE FROM qr_login_tokens WHERE expires_at < NOW() - INTERVAL '1 hour'`);
-}
-
-export async function legeQrTokenAn(hash: string, uid: number | null, bis: Date, tage: number | null): Promise<void> {
-  await db.run('INSERT INTO qr_login_tokens (token, user_id, expires_at, token_days) VALUES ($1,$2,$3,$4)',
-    [hash, uid, bis, tage]);
-}
-
-/** Atomar entwerten: Nur die erste Anfrage bekommt die Zeile. */
-export function loeseQrTokenEin(hash: string): Promise<{ user_id: number; token_days: number | null } | undefined> {
-  return db.get(
-    `UPDATE qr_login_tokens SET used_at = NOW()
-     WHERE token = $1 AND used_at IS NULL AND expires_at > NOW()
-     RETURNING user_id, token_days`, [hash]);
-}
-
 export function kontoMitEmail(email: string): Promise<Omit<KontoKurz, 'must_change_password'> & { email: string } | undefined> {
   return db.get('SELECT id, username, is_admin, email FROM users WHERE LOWER(email) = LOWER($1)', [email]);
 }

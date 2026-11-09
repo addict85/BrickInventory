@@ -1427,6 +1427,17 @@
                Ausführlich: docs/begruendungen/public/index.html.md#qr-access-hint -->
           <div class="text-klein" id="qr-access-hint"></div>
           <div class="text-klein hinweis-warnung" id="qr-tls-hint" role="note" hidden></div>
+          <div class="abstand-o-075" id="qr-kopplung" role="status" aria-live="polite" hidden>
+            <p id="qr-kopplung-text"></p>
+            <div class="fg" id="qr-kopplung-feld">
+              <label for="qr-kopplung-code" data-i18n="qr.kopplung_code">Code aus der App</label>
+              <input type="text" id="qr-kopplung-code" inputmode="numeric" autocomplete="off" maxlength="7">
+            </div>
+            <div class="zeile luecke-10 umbruch" id="qr-kopplung-knoepfe">
+              <button type="button" class="btn bp" data-click="qrKopplungBestaetigen" data-i18n="qr.kopplung_bestaetigen">Gerät koppeln</button>
+              <button type="button" class="btn bd" data-click="qrKopplungAblehnen" data-i18n="qr.kopplung_ablehnen">Ablehnen</button>
+            </div>
+          </div>
         </div>
       </div>
 

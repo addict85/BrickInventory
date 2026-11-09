@@ -57,8 +57,9 @@ private fun NavGraphBuilder.einrichtungsZiel(u: ZielUmgebung) {
             // Erst nach der Bestätigung im Einrichtungsbildschirm; die Anmeldung
             // springt nach Erfolg in die Galerie.
             onQrScanned = { qr, pinEingabe ->
+                // Der Gerätename steht im Browser bei der Frage „Gerät koppeln?“.
                 anmeldungVm.loginWithQrToken(qr.url, qr.token, fingerabdruck = qr.fingerabdruck,
-                    pinWechselEingabe = pinEingabe)
+                    pinWechselEingabe = pinEingabe, geraet = android.os.Build.MODEL.orEmpty().ifBlank { "Android App" })
                 navController.navigate(Screen.Login) {
                     popUpTo<Screen.Setup> { inclusive = true }
                 }
@@ -95,6 +96,7 @@ private fun NavGraphBuilder.anmeldeZiel(u: ZielUmgebung) {
             serverUrl = state.serverUrl,
             isLoading = anmeldung.loginLaeuft,
             error = anmeldung.loginError,
+            qrBestaetigung = anmeldung.qrBestaetigung,
             codeNoetig = anmeldung.codeNoetig,
             formular = anmeldung.formular,
             registrierungOffen = anmeldung.registrierungOffen,

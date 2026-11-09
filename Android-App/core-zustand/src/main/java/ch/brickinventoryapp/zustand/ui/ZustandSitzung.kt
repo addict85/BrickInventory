@@ -140,4 +140,6 @@ data class AnmeldeUiState(
      * korrigiert — flüchtige Meldungen gehen in den Meldungskanal.
      */
     val loginError: String? = null,
+    /** Der Code, den man nach einem QR-Scan im Browser eintippt; null ohne laufende Kopplung. */
+    val qrBestaetigung: String? = null,
 )

@@ -33,6 +33,8 @@ const db = _req('db/database.js');
 const auth = _req('src/konto/auth.js');
 const bremse = _req('src/konto/tokenFehlversuche.js');
 const { anmeldungAmEingang } = _req('routes/api_v1/middleware.js');
+const pgNotify = _req('db/pgNotify.js');
+const { bis } = require('./helpers/zeit');
 
 const NAME = `fehlversuch_${process.pid}`;
 
@@ -42,7 +44,11 @@ test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
   const server = testServer(_req, { t, sitzung: {}, routen: {} });
   server.app.use('/api/v1', anmeldungAmEingang);
   server.app.get('/api/v1/probe', (_req2, res) => res.json({ ok: true }));
+  // Den Cache gibt es nur mit stehender Horch-Verbindung für Widerrufe (fail closed).
+  auth.horcheAufTokenWiderruf();
+  assert.ok(await bis(() => pgNotify.hoertZu('token_widerrufen')), 'die Horch-Verbindung kam nicht zustande');
   t.after(async () => {
+    await pgNotify.close();
     await db.run('DELETE FROM api_tokens WHERE user_id = $1', [uid]).catch(() => {});
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});

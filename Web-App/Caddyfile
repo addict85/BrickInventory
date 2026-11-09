@@ -36,7 +36,7 @@
 (anmeldung) {
 	@anmeldung {
 		method POST
-		path /api/v1/auth/login /api/v1/auth/register /api/v1/auth/forgot-password /api/v1/auth/reset-password /api/v1/auth/bestaetigung-erneut /api/v1/auth/qr-login /api/v1/auth/token-rotieren /api/v1/auth/passkey/anmelden /api/v1/auth/passkey/anmelden/optionen
+		path /api/v1/auth/login /api/v1/auth/register /api/v1/auth/forgot-password /api/v1/auth/reset-password /api/v1/auth/bestaetigung-erneut /api/v1/auth/qr-login /api/v1/auth/qr-login/abholen /api/v1/auth/token-rotieren /api/v1/auth/passkey/anmelden /api/v1/auth/passkey/anmelden/optionen
 	}
 	handle @anmeldung {
 		request_body {

@@ -648,6 +648,7 @@
     <string name="setup_build">Build %1$s</string>
     <string name="err_generic">The server rejected the request without giving a reason</string>
     <string name="err_login_failed">Sign-in failed</string>
+    <string name="login_qr_bestaetigen_hinweis">Enter this code in the browser where you created the QR code. Only then does this device get access.</string>
     <string name="err_qr_login_failed">QR sign-in failed</string>
     <string name="err_network">No connection to the server</string>
     <string name="err_timeout">The server did not respond in time</string>

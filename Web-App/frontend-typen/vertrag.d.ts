@@ -554,7 +554,7 @@ export type Fehler = {
   code: string;
   [feld: string]: unknown;
 };
-export type Fehlercode = "nicht_angemeldet" | "auth_fehler" | "nur_admins" | "tausch_laeuft" | "token_ungueltig" | "token_id_fehlt" | "token_rotation_noetig" | "passkey_ungueltig" | "passkey_ohne_domain" | "unbegrenzt_nur_https" | "token_nicht_ausgestellt" | "konto_deaktiviert" | "email_nicht_bestaetigt" | "zu_viele_anfragen" | "zu_viele_fehlversuche" | "anmeldedaten_ungueltig" | "name_oder_email_eingeben" | "registrierung_deaktiviert" | "registrierung_braucht_mail" | "konto_nicht_wartend" | "registrierung_felder" | "benutzername_passwort" | "benutzername_vergeben" | "benutzername_oder_email_vergeben" | "email_vergeben" | "benutzername_ungueltig" | "email_ungueltig" | "name_ungueltig" | "geraetename_ungueltig" | "email_erforderlich" | "passwort_zu_kurz" | "passwort_zu_lang" | "passwort_zu_haeufig" | "aktuelles_passwort_erforderlich" | "passwort_ueber_change_password" | "fremde_herkunft" | "fremder_host" | "bestaetigungslink_ungueltig" | "app_zu_alt" | "nur_mit_sitzung" | "import_unterbrochen" | "import_zeile_unterbrochen" | "aktuelles_passwort_falsch" | "passwort_wechsel_noetig" | "letzter_verwalter" | "verwalter_muss_bleiben" | "zweiter_faktor_pflicht" | "alle_felder_erforderlich" | "passwort_reset_nicht_eingerichtet" | "token_passwort_erforderlich" | "eigenes_konto_passwort" | "eigene_adminrolle" | "benutzer_nicht_gefunden" | "eigenes_konto_deaktivieren" | "bestaetigung_nicht_eingerichtet" | "bestaetigung_gesendet" | "eigener_zweiter_faktor" | "benutzer_nicht_gefunden_oder_eigenes" | "kein_schreibrecht" | "kein_zugriff_konto" | "einladungscode_ungueltig" | "einladungen_zu_viele" | "einladungscode_abgelaufen" | "konto_mit_sich_selbst" | "konto_bereits_verknuepft" | "verknuepfung_erzeugt_kreis" | "konto_id_ungueltig" | "waehrung_ungleich" | "lagerort_zu_lang" | "lagerort_leer" | "lagerort_doppelt" | "lagerort_unbekannt" | "lagerort_in_benutzung" | "alarm_richtung_ungueltig" | "alarm_schwelle_ungueltig" | "alarm_zustand_ungueltig" | "quelle_ziel_identisch" | "kaufpreise_angeben" | "set_nicht_gefunden" | "setnummer_ungueltig" | "set_nicht_im_katalog" | "katalog_nicht_geladen" | "set_number_erforderlich" | "parameter_set_fehlt" | "barcode_kein_set" | "teil_nicht_manuell" | "farbe_erforderlich" | "minifig_nicht_manuell" | "keine_teile" | "zustand_n_oder_u" | "erfassung_felder" | "kein_bricklink_preis" | "kein_bricklink_zugang" | "bricklink_tageslimit" | "bricklink_zugang_fehlt" | "keine_datei" | "datei_zu_gross" | "datei_typ_falsch" | "upload_ungueltig" | "datei_inhalt_falsch" | "upload_kontingent_voll" | "datei_nicht_verfuegbar" | "json_ungueltig" | "anfrage_json_ungueltig" | "anfrage_zu_gross" | "anfrage_unlesbar" | "anfrage_ungueltig" | "anfrage_zu_langsam" | "interner_fehler" | "csv_parse_fehler" | "csv_keine_datenzeilen" | "csv_keine_brauchbare_zeile" | "csv_uebersprungen" | "csv_menge_ungueltig" | "csv_keine_setnummer" | "import_zeitueberschreitung" | "import_kontingent" | "feld_erforderlich" | "feld_nummer_ungueltig" | "bild_url_zu_lang" | "bild_url_ungueltig" | "bild_url_nicht_https" | "feld_negativ" | "feld_zu_hoch" | "feld_kein_wahrheitswert" | "kein_import_laeuft" | "pdf_nicht_fertig" | "pdf_nicht_verfuegbar" | "pdf_auftrag_laeuft" | "job_id_ungueltig" | "job_nicht_gefunden" | "unbekannter_job" | "auftrag_nicht_aenderbar" | "nummer_ungueltig" | "pin_ungueltig" | "betrag_ungueltig" | "waehrung_ungueltig" | "waehrung_geteiltes_unterkonto" | "waehrung_nur_hauptkonto" | "gutschein_existiert" | "nur_pdf" | "pdf_zu_viele_seiten" | "upload_laeuft" | "quelle_unbekannt" | "quelle_test_fehlgeschlagen" | "quelle_ohne_schluessel" | "quelle_nicht_erreichbar" | "quelle_abgelehnt" | "zweiter_faktor_noetig" | "zweiter_faktor_falsch" | "zweiter_faktor_schon_aktiv" | "zweiter_faktor_nicht_aktiv" | "papierkorb_schon_vorhanden" | "keine_gutscheine" | "pdf_freigabe_noetig" | "pdf_unlesbar" | "kein_gutschein_im_pdf" | "guthaben_pin_fehlt" | "guthaben_abstand" | "guthaben_botschutz" | "guthaben_fehlgeschlagen" | "guthaben_land_ungueltig" | "korrekturen_ungueltig" | "keine_wanted_liste" | "id_ungueltig" | "eingabe_ungueltig" | "feld_unbekannt" | "nicht_gefunden" | "kaufpreis_nicht_gefunden" | "datum_ungueltig" | "erfassung_nicht_gefunden" | "datum_belegt" | "server_ausgelastet" | "datenbank_nicht_erreichbar" | "import_abgebrochen" | "import_fehlgeschlagen" | "import_laeuft_noch" | "idempotenz_schluessel_ungueltig" | "idempotenz_schluessel_anders" | "idempotenz_laeuft" | "idempotenz_nicht_wiederholbar" | "zu_viele_verbindungen" | "zeitlimit" | "wert_ungueltig" | "schon_vorhanden" | "bezug_fehlt" | "uhrzeit_ungueltig" | "design_ungueltig" | "tageslimit_bereich" | "unbekannte_aufgabe" | "smtp_nicht_konfiguriert" | "smtp_zertifikat" | "smtp_fehler" | "keine_ziel_email" | "url_ungueltig" | "url_fehlt_https" | "host_nicht_erlaubt" | "qr_ohne_basis_url";
+export type Fehlercode = "nicht_angemeldet" | "auth_fehler" | "nur_admins" | "tausch_laeuft" | "token_ungueltig" | "token_id_fehlt" | "token_rotation_noetig" | "passkey_ungueltig" | "passkey_ohne_domain" | "unbegrenzt_nur_https" | "token_nicht_ausgestellt" | "konto_deaktiviert" | "email_nicht_bestaetigt" | "zu_viele_anfragen" | "zu_viele_fehlversuche" | "anmeldedaten_ungueltig" | "name_oder_email_eingeben" | "registrierung_deaktiviert" | "registrierung_braucht_mail" | "konto_nicht_wartend" | "registrierung_felder" | "benutzername_passwort" | "benutzername_vergeben" | "benutzername_oder_email_vergeben" | "email_vergeben" | "benutzername_ungueltig" | "email_ungueltig" | "name_ungueltig" | "geraetename_ungueltig" | "email_erforderlich" | "passwort_zu_kurz" | "passwort_zu_lang" | "passwort_zu_haeufig" | "aktuelles_passwort_erforderlich" | "passwort_ueber_change_password" | "fremde_herkunft" | "fremder_host" | "bestaetigungslink_ungueltig" | "app_zu_alt" | "nur_mit_sitzung" | "import_unterbrochen" | "import_zeile_unterbrochen" | "aktuelles_passwort_falsch" | "passwort_wechsel_noetig" | "letzter_verwalter" | "verwalter_muss_bleiben" | "zweiter_faktor_pflicht" | "alle_felder_erforderlich" | "passwort_reset_nicht_eingerichtet" | "token_passwort_erforderlich" | "eigenes_konto_passwort" | "eigene_adminrolle" | "benutzer_nicht_gefunden" | "eigenes_konto_deaktivieren" | "bestaetigung_nicht_eingerichtet" | "bestaetigung_gesendet" | "eigener_zweiter_faktor" | "benutzer_nicht_gefunden_oder_eigenes" | "kein_schreibrecht" | "kein_zugriff_konto" | "einladungscode_ungueltig" | "einladungen_zu_viele" | "einladungscode_abgelaufen" | "konto_mit_sich_selbst" | "konto_bereits_verknuepft" | "verknuepfung_erzeugt_kreis" | "konto_id_ungueltig" | "waehrung_ungleich" | "lagerort_zu_lang" | "lagerort_leer" | "lagerort_doppelt" | "lagerort_unbekannt" | "lagerort_in_benutzung" | "alarm_richtung_ungueltig" | "alarm_schwelle_ungueltig" | "alarm_zustand_ungueltig" | "quelle_ziel_identisch" | "kaufpreise_angeben" | "set_nicht_gefunden" | "setnummer_ungueltig" | "set_nicht_im_katalog" | "katalog_nicht_geladen" | "set_number_erforderlich" | "parameter_set_fehlt" | "barcode_kein_set" | "teil_nicht_manuell" | "farbe_erforderlich" | "minifig_nicht_manuell" | "keine_teile" | "zustand_n_oder_u" | "erfassung_felder" | "kein_bricklink_preis" | "kein_bricklink_zugang" | "bricklink_tageslimit" | "bricklink_zugang_fehlt" | "keine_datei" | "datei_zu_gross" | "datei_typ_falsch" | "upload_ungueltig" | "datei_inhalt_falsch" | "upload_kontingent_voll" | "datei_nicht_verfuegbar" | "json_ungueltig" | "anfrage_json_ungueltig" | "anfrage_zu_gross" | "anfrage_unlesbar" | "anfrage_ungueltig" | "anfrage_zu_langsam" | "interner_fehler" | "csv_parse_fehler" | "csv_keine_datenzeilen" | "csv_keine_brauchbare_zeile" | "csv_uebersprungen" | "csv_menge_ungueltig" | "csv_keine_setnummer" | "import_zeitueberschreitung" | "import_kontingent" | "feld_erforderlich" | "feld_nummer_ungueltig" | "bild_url_zu_lang" | "bild_url_ungueltig" | "bild_url_nicht_https" | "feld_negativ" | "feld_zu_hoch" | "feld_kein_wahrheitswert" | "kein_import_laeuft" | "pdf_nicht_fertig" | "pdf_nicht_verfuegbar" | "pdf_auftrag_laeuft" | "job_id_ungueltig" | "job_nicht_gefunden" | "unbekannter_job" | "auftrag_nicht_aenderbar" | "nummer_ungueltig" | "pin_ungueltig" | "betrag_ungueltig" | "waehrung_ungueltig" | "waehrung_geteiltes_unterkonto" | "waehrung_nur_hauptkonto" | "gutschein_existiert" | "nur_pdf" | "pdf_zu_viele_seiten" | "upload_laeuft" | "quelle_unbekannt" | "quelle_test_fehlgeschlagen" | "quelle_ohne_schluessel" | "quelle_nicht_erreichbar" | "quelle_abgelehnt" | "zweiter_faktor_noetig" | "zweiter_faktor_falsch" | "zweiter_faktor_schon_aktiv" | "zweiter_faktor_nicht_aktiv" | "papierkorb_schon_vorhanden" | "keine_gutscheine" | "pdf_freigabe_noetig" | "pdf_unlesbar" | "kein_gutschein_im_pdf" | "guthaben_pin_fehlt" | "guthaben_abstand" | "guthaben_botschutz" | "guthaben_fehlgeschlagen" | "guthaben_land_ungueltig" | "korrekturen_ungueltig" | "keine_wanted_liste" | "id_ungueltig" | "eingabe_ungueltig" | "feld_unbekannt" | "nicht_gefunden" | "kaufpreis_nicht_gefunden" | "datum_ungueltig" | "erfassung_nicht_gefunden" | "datum_belegt" | "server_ausgelastet" | "datenbank_nicht_erreichbar" | "import_abgebrochen" | "import_fehlgeschlagen" | "import_laeuft_noch" | "idempotenz_schluessel_ungueltig" | "idempotenz_schluessel_anders" | "idempotenz_laeuft" | "idempotenz_nicht_wiederholbar" | "zu_viele_verbindungen" | "zeitlimit" | "wert_ungueltig" | "schon_vorhanden" | "bezug_fehlt" | "uhrzeit_ungueltig" | "design_ungueltig" | "tageslimit_bereich" | "unbekannte_aufgabe" | "smtp_nicht_konfiguriert" | "smtp_zertifikat" | "smtp_fehler" | "keine_ziel_email" | "url_ungueltig" | "url_fehlt_https" | "host_nicht_erlaubt" | "qr_ohne_basis_url" | "qr_abgelehnt" | "qr_code_falsch" | "qr_nicht_wartend";
 export type FigsValuationResponse = {
   success: boolean;
   total: number;
@@ -1653,7 +1653,7 @@ export type PUT_api_v1_sets_setNumber_acquisitions_acqId = {
   quantity?: number | null;
   [feld: string]: unknown;
 };
-export type QrLoginResponse = {
+export type QrAbholung = {
   success: boolean;
   token?: string | null;
   user?: AnmeldeNutzer | null;
@@ -1661,14 +1661,31 @@ export type QrLoginResponse = {
   zweiter_faktor?: boolean;
   never_expires?: boolean;
   token_info?: TokenAngaben | null;
-  username: string;
-  isAdmin: false;
-  userId: number;
+  wartet: boolean;
+  username?: string;
+  isAdmin?: false;
+  userId?: number;
+  [feld: string]: unknown;
+};
+export type QrKopplungStand = {
+  success: true;
+  stand: "offen" | "wartet" | "bestaetigt" | "abgeholt" | "abgelehnt" | "abgelaufen";
+  geraet: string | null;
+  ip_bereich: string | null;
+  [feld: string]: unknown;
+};
+export type QrMeldung = {
+  success: true;
+  wartet: true;
+  abholung: string;
+  code: string;
+  expires_in: number;
   [feld: string]: unknown;
 };
 export type QrToken = {
   success: true;
   token: string;
+  kopplung: number;
   expires_in: number;
   url: string;
   token_days?: number | null;
@@ -2120,7 +2137,11 @@ export type Route =
   | { m: 'DELETE'; p: `/v1/auth/passkeys/${string}`; a: Geloescht }
   | { m: 'GET'; p: '/v1/auth/profile'; a: ProfilResponse }
   | { m: 'PUT'; p: '/v1/auth/profile'; a: ProfilGespeichert }
-  | { m: 'POST'; p: '/v1/auth/qr-login'; a: QrLoginResponse }
+  | { m: 'GET'; p: `/v1/auth/qr-kopplung/${string}`; a: QrKopplungStand }
+  | { m: 'POST'; p: `/v1/auth/qr-kopplung/${string}/ablehnen`; a: DELETE_api_v1_papierkorb_id }
+  | { m: 'POST'; p: `/v1/auth/qr-kopplung/${string}/bestaetigen`; a: DELETE_api_v1_papierkorb_id }
+  | { m: 'POST'; p: '/v1/auth/qr-login'; a: QrMeldung }
+  | { m: 'POST'; p: '/v1/auth/qr-login/abholen'; a: QrAbholung }
   | { m: 'POST'; p: '/v1/auth/qr-token'; a: QrToken }
   | { m: 'POST'; p: '/v1/auth/register'; a: RegisterResponse }
   | { m: 'GET'; p: '/v1/auth/registration-status'; a: RegistrationStatusResponse }

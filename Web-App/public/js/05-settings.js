@@ -193,7 +193,76 @@ export async function loadApiLimits() {
   G('lim-bs').value = String(d.limits.brickset);
 }
 
-// QR-Code über QRCode.js aus public/vendor/qrcode (npm qrcodejs, scripts/qrcode-kopieren.js)
+// Nach dem Scan meldet sich die App mit einem Gerätenamen und zeigt einen Code; erst wenn er hier eingetippt
+// ist, bekommt sie ihren Zugang. Ein abfotografierter QR-Code allein öffnet so kein Konto.
+/** @type {{ id: number, timer: ReturnType<typeof setInterval> } | null} */
+let _kopplung = null;
+
+function kopplungBeenden() {
+  if (_kopplung) clearInterval(_kopplung.timer);
+  _kopplung = null;
+}
+
+/** @param {string} text @param {boolean} mitFeld */
+function zeigeKopplung(text, mitFeld) {
+  const kasten = G('qr-kopplung');
+  if (!kasten) return;
+  kasten.hidden = false;
+  G('qr-kopplung-text').textContent = text;
+  G('qr-kopplung-feld').hidden = G('qr-kopplung-knoepfe').hidden = !mitFeld;
+}
+
+async function kopplungPruefen() {
+  const k = _kopplung;
+  if (!k) return;
+  const d = await api('GET', `/v1/auth/qr-kopplung/${k.id}`);
+  if (!d.success || _kopplung !== k) return;
+  const geraet = d.geraet || '—';
+  if (d.stand === 'wartet') {
+    // Der Code ist verbraucht; stehen bliebe nur ein Bild, das nichts mehr öffnet.
+    G('qr-code').replaceChildren();
+    if (G('qr-kopplung').hidden || G('qr-kopplung-feld').hidden)
+      zeigeKopplung(tRaw('qr.kopplung_frage', { geraet, netz: d.ip_bereich || '—' }), true);
+  } else if (d.stand === 'bestaetigt') zeigeKopplung(tRaw('qr.kopplung_bestaetigt', { geraet }), false);
+  else if (d.stand === 'abgeholt') {
+    kopplungBeenden();
+    G('qr-code').replaceChildren();
+    zeigeKopplung(tRaw('qr.kopplung_fertig', { geraet }), false);
+    loadTokens();
+  } else if (d.stand === 'abgelehnt' || d.stand === 'abgelaufen') {
+    kopplungBeenden();
+    G('qr-code').replaceChildren();
+    zeigeKopplung(tRaw('qr.kopplung_abgelehnt'), false);
+  }
+}
+
+async function qrKopplungBestaetigen() {
+  const k = _kopplung;
+  const feld = G('qr-kopplung-code');
+  if (!k || !feld) return;
+  const d = await api('POST', `/v1/auth/qr-kopplung/${k.id}/bestaetigen`, { code: feld.value.trim() });
+  feld.value = '';
+  if (!d.success) toast(d.error || t('settings.error'), 'error');
+  kopplungPruefen();
+}
+
+async function qrKopplungAblehnen() {
+  const k = _kopplung;
+  if (!k) return;
+  await api('POST', `/v1/auth/qr-kopplung/${k.id}/ablehnen`, {});
+  kopplungPruefen();
+}
+
+// QR-Code über QRCode.js aus public/vendor/qrcode (npm qrcodejs, scripts/qrcode-kopieren.js); ohne die
+// Bibliothek steht der Inhalt als Text da.
+/** @param {HTMLElement} container @param {string} qrData */
+function zeichneQr(container, qrData) {
+  container.replaceChildren();
+  if (typeof QRCode === 'undefined') { container.textContent = qrData; return; }
+  new QRCode(container, { text: qrData, width: 220, height: 220, colorDark: '#1e293b', colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M });
+}
+
 async function generateQrCode() {
   const btn = G('btn-gen-qr');
   const hint = G('qr-hint');
@@ -208,6 +277,8 @@ async function generateQrCode() {
     const pw = G('qr-password');
     const password = pw?.value || '';
     if (pw) pw.value = '';
+    kopplungBeenden();
+    if (G('qr-kopplung')) G('qr-kopplung').hidden = true;
     const d = await mitZweitemFaktor(z => api('POST', '/v1/auth/qr-token', { gueltigkeit, password, ...z }));
     if (d === null) { frei(); return; }
     if (!d.success) {
@@ -227,24 +298,8 @@ async function generateQrCode() {
     // Mit `fp` (Fingerabdruck der CA-Wurzel) pinnt die App das Zertifikat; der Server schickt ihn nur zu
     // einer https-Adresse.
     const qrData = JSON.stringify({ url: serverUrl, token: d.token, ...(d.fp ? { fp: d.fp } : {}) });
-    // Clear and render QR code
-    container.replaceChildren();
-    if (typeof QRCode !== 'undefined') {
-      new QRCode(container, {
-        text: qrData,
-        width: 220, height: 220,
-        colorDark: '#1e293b', colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.M
-      });
-    } else {
-      // Fallback: show as text
-      container.textContent = qrData;
-    }
-    // Countdown timer
-    //
-    // Dauer vom Server nehmen, nicht fest verdrahten: /qr-token liefert expires_in mit. Hier stand 1800 (30
-    // Minuten), während der Token seit der Sicherheitshärtung nach 5 Minuten abläuft — der Zähler lief also
-    // 25 Minuten weiter, obwohl der Code längst ungültig war.
+    zeichneQr(container, qrData);
+    // Die Dauer nennt der Server (expires_in): Ein fester Wert lief am Ende des Codes vorbei.
     let secs = Number(d.expires_in) || 300;
     const fmt = (/** @type {number} */ v) => `${Math.floor(v/60)}:${(v%60).toString().padStart(2,'0')}`;
     const timer = setInterval(() => {
@@ -252,6 +307,7 @@ async function generateQrCode() {
       hint.textContent = tRaw('qr.valid_for',{t:fmt(secs)});
       if (secs <= 0) { clearInterval(timer); hint.textContent = tRaw('qr.expired'); container.replaceChildren(); }
     }, 1000);
+    _kopplung = { id: d.kopplung, timer: setInterval(kopplungPruefen, 2000) };
     hint.textContent = tRaw('qr.valid_for',{t:fmt(secs)});
     // Die Laufzeit aus der Serverantwort, nicht aus der Auswahl: Kennt er den Wert nicht, gilt die
     // Gleitfrist. Drei Fälle — 0 heisst unbegrenzt, null nichts gewählt; ein einfacher Wahrheitstest würfe
@@ -702,6 +758,8 @@ async function einstellungenQuellePruefen(quelle) {
 stelleZielBereit({ einstAbschnitt });
 
 registerActions({
+  qrKopplungBestaetigen,
+  qrKopplungAblehnen,
   einstellungenQuellePruefen,
   speichereWaehrung,
   speichereZustand,

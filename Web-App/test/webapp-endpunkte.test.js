@@ -148,6 +148,15 @@ const NUR_WEB = new Map([
    'Erzeugt den Nonce für die QR-Anmeldung — das ist die Seite, die den Code ' +
    'ZEIGT. Die App ist die andere Seite und liest ihn (/auth/qr-login). Ein ' +
    'Telefon, das sich selbst einen Code zum Abscannen anzeigt, hat niemand.'],
+  ['/api/v1/auth/qr-kopplung/:X',
+   'Bestätigt oder lehnt die QR-Kopplung in der Sitzung ab, die den Code ' +
+   'erzeugt hat; die App ist das Gerät, das gekoppelt wird, und zeigt nur den Code.'],
+  ['/api/v1/auth/qr-kopplung/:X/bestaetigen',
+   'Bestätigt oder lehnt die QR-Kopplung in der Sitzung ab, die den Code ' +
+   'erzeugt hat; die App ist das Gerät, das gekoppelt wird, und zeigt nur den Code.'],
+  ['/api/v1/auth/qr-kopplung/:X/ablehnen',
+   'Bestätigt oder lehnt die QR-Kopplung in der Sitzung ab, die den Code ' +
+   'erzeugt hat; die App ist das Gerät, das gekoppelt wird, und zeigt nur den Code.'],
   ['/api/v1/auth/reset-password',
    'Setzt das Passwort mit dem Token aus der E-Mail. Der Link darin zeigt auf ' +
    'die WEBSEITE (src/mail/mailer.ts: `${baseUrl}/reset-password?token=`), also ' +
