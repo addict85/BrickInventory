@@ -1,0 +1,17 @@
+Gegenprobe: Der Ausgang schliesst bei gesperrtem Gerät ohne Token den Lauf als erledigt ab
+Modul: core-data
+Test: ch.brickinventoryapp.data.AusgangSperreTest
+Rot: ohne Token bei gesperrtem Geraet
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Abgleich.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Abgleich.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Abgleich.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Abgleich.kt
+@@ -59,7 +59,7 @@
+     fun nochmal(geraetGesperrt: Boolean): Boolean = when (this) {
+         SPAETER -> true
+         FERTIG -> false
+-        NICHT_ANGEMELDET -> geraetGesperrt
++        NICHT_ANGEMELDET -> false
+     }
+ }
+ 

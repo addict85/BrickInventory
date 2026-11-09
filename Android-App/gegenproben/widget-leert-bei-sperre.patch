@@ -1,0 +1,17 @@
+Gegenprobe: Das Widget leert sich bei gesperrtem Gerät, als wäre abgemeldet
+Modul: app
+Test: ch.brickinventoryapp.app.WidgetZahlenTest
+Rot: ohne Token leert der Arbeiter nur abgemeldet
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetZahlen.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetZahlen.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetZahlen.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetZahlen.kt
+@@ -68,7 +68,7 @@
+  * gelesen (sein Schlüssel arbeitet nur entsperrt); geleert stünde nach dem Entsperren
+  * bis zum nächsten Lauf ein leeres Widget da.
+  */
+-fun ohneToken(geraetGesperrt: Boolean): OhneToken = if (geraetGesperrt) OhneToken.SPAETER else OhneToken.LEEREN
++fun ohneToken(geraetGesperrt: Boolean): OhneToken = OhneToken.LEEREN
+ 
+ /** Statt eines Betrags, solange der Nutzer Geldwerte im Widget nicht erlaubt hat. */
+ const val WIDGET_VERDECKT = "••••"

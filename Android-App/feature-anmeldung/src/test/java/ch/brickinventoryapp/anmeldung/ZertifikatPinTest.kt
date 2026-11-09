@@ -94,6 +94,14 @@ import javax.net.ssl.SSLEngine
  *   T  in pruefe() wieder `if (pin != null && passtZumPin(chain, pin)) return` (auch
  *      für eine System-Wurzel) → rot „ein Pin auf eine System-Wurzel gilt nur mit der
  *      System-Pruefung …“; gegenproben/wurzelpin-ohne-ct.patch
+ * Gegenproben zum Pin aus dem gescannten Code (lokal gemessen):
+ *   U  in pruefe() wieder `if (oeffentlicherPin && oeffentlich) return` (ohne
+ *      `!ausCode`) → rot „ein Code mit System-Wurzel muss genau diese Wurzel …“;
+ *      gegenproben/code-wurzel-ungeprueft.patch
+ *   V  in bestaetige() die Zeile für CODE_ABWEICHUNG entfernt → rot „ein Code mit
+ *      System-Wurzel …“ (abgetippt bestätigt); gegenproben/code-abweichung-bestaetigbar.patch
+ *   W  bei abweichendem Pin immer GEAENDERT → rot „ein Code mit eigener CA …“;
+ *      gegenproben/code-abweichung-als-rueckfrage.patch
  */
 class ZertifikatPinTest {
 
@@ -102,7 +110,11 @@ class ZertifikatPinTest {
     private val pins = object : PinAblage {
         val map = mutableMapOf<String, String>()
         override fun pin(schluessel: String) = map[schluessel]
-        override fun merkePin(schluessel: String, fingerabdruck: String) { map[schluessel] = fingerabdruck }
+        override fun merkePin(schluessel: String, fingerabdruck: String) { map[schluessel] = fingerabdruck; ausCode.remove(schluessel) }
+        /** Wie GeraeteAblage.halteVor: gilt, ist aber noch nicht bestätigt. */
+        val ausCode = mutableSetOf<String>()
+        fun halteVor(schluessel: String, fingerabdruck: String) { map[schluessel] = fingerabdruck; ausCode += schluessel }
+        override fun ausCode(schluessel: String) = schluessel in ausCode
     }
 
     @After
@@ -407,6 +419,47 @@ class ZertifikatPinTest {
         frage.verwerfen()
         assertTrue("Mit bestandener System-Prüfung gilt der Pin", hole(basis, fremd = basis))
         assertNull(frage.offen.value)
+    }
+
+    /**
+     * Der Code nennt eine System-Wurzel, der Server zeigt eine Kette unter einer anderen,
+     * ebenfalls öffentlichen. Gemerkt gälte das (Wurzelwechsel); aus dem Code nicht.
+     */
+    @Test
+    fun `ein Code mit System-Wurzel muss genau diese Wurzel treffen, eine Abweichung bricht ab`() {
+        starte(OEFF_BLATT_A_KEY, listOf(OEFF_BLATT_A, OEFF_ZW_A))
+        val beide = system(OEFF_WURZEL, OEFF2_WURZEL)
+        pins.halteVor(eigener(), spkiFingerabdruck(zert(OEFF2_WURZEL)))
+        assertFalse("Eine andere öffentliche Wurzel als im Code", hole(beide))
+        assertEquals(0, server.requestCount)
+        val f = frage.offen.value!!
+        assertEquals(ZertifikatUngeklaert.Art.CODE_ABWEICHUNG, f.art)
+        assertEquals(spkiFingerabdruck(zert(OEFF2_WURZEL)), f.erwartet)
+        assertEquals(spkiFingerabdruck(zert(OEFF_WURZEL)), f.fingerabdruck)
+        assertFalse("Ein Tipp bestätigt keine Abweichung vom Code", frage.bestaetige(pins))
+        assertFalse("Auch abgetippt nicht", frage.bestaetige(pins, abgeschrieben()))
+        assertEquals("Der Code-Pin bleibt, nichts Neues gemerkt", spkiFingerabdruck(zert(OEFF2_WURZEL)), pins.pin(eigener()))
+
+        frage.verwerfen()
+        pins.halteVor(eigener(), spkiFingerabdruck(zert(OEFF_WURZEL)))
+        assertTrue("Die Wurzel aus dem Code trägt die Kette", hole(beide))
+        assertNull(frage.offen.value)
+    }
+
+    /** Der Code nennt die eigene CA, der Server zeigt eine öffentlich gültige Kette. */
+    @Test
+    fun `ein Code mit eigener CA bricht bei einer fremden oeffentlichen Kette ab statt nachzufragen`() {
+        starte()
+        pins.halteVor(eigener(), spkiFingerabdruck(zert(FREMD)))
+        assertFalse(hole(system(ROOT)))
+        assertEquals(0, server.requestCount)
+        assertEquals(ZertifikatUngeklaert.Art.CODE_ABWEICHUNG, frage.offen.value?.art)
+        assertFalse(frage.bestaetige(pins, abgeschrieben()))
+
+        frage.verwerfen()
+        pins.merkePin(eigener(), spkiFingerabdruck(zert(FREMD)))
+        assertFalse(hole(system(ROOT)))
+        assertEquals("Ein gemerkter Pin fragt weiter nach", ZertifikatUngeklaert.Art.GEAENDERT, frage.offen.value?.art)
     }
 
     /** Die Fassung ohne Socket kennt den Host nicht; ein Pin des eigenen Servers gilt trotzdem. */

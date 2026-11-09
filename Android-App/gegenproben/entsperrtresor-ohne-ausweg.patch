@@ -1,0 +1,18 @@
+Gegenprobe: Kann der Entsperr-Schlüssel nicht verschlüsseln, geht der getauschte Token verloren
+Modul: core-data
+Test: ch.brickinventoryapp.data.TresorSperreTest
+Rot: kann der Entsperr-Schluessel nicht verschluesseln
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Tresorbefund.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Tresorbefund.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Tresorbefund.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Tresorbefund.kt
+@@ -38,8 +38,7 @@
+     private val immer: TokenVerschluesselung,
+ ) : TokenVerschluesselung {
+     override fun verschluessle(klartext: String): String =
+-        fangeAusserAbbruch { ENTSPERRT_PRAEFIX + nurEntsperrt.verschluessle(klartext) }
+-            .getOrElse { immer.verschluessle(klartext) }
++        ENTSPERRT_PRAEFIX + nurEntsperrt.verschluessle(klartext)
+ 
+     override fun entschluessle(gespeichert: String): String? = (oeffne(gespeichert) as? Tresorbefund.Lesbar)?.klartext
+ 

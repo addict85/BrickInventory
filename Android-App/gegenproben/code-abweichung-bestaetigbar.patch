@@ -1,0 +1,16 @@
+Gegenprobe: Eine Abweichung vom Code lässt sich wie ein geänderter Schlüssel abgetippt bestätigen
+Modul: feature-anmeldung
+Test: ch.brickinventoryapp.anmeldung.ZertifikatPinTest
+Rot: ein Code mit System-Wurzel muss genau diese Wurzel treffen
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/ServerVertrauen.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/ServerVertrauen.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/ServerVertrauen.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/ServerVertrauen.kt
+@@ -179,7 +179,6 @@
+      */
+     override fun bestaetige(pins: PinAblage, eingabe: String?): Boolean {
+         val f = _offen.value ?: return false
+-        if (f.art == ZertifikatUngeklaert.Art.CODE_ABWEICHUNG) return false
+         if (f.art != ZertifikatUngeklaert.Art.ERSTKONTAKT && !bestaetigtFingerabdruck(eingabe, f.fingerabdruck)) return false
+         pins.merkePin(f.schluessel, f.fingerabdruck)
+         _offen.value = null

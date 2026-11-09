@@ -137,7 +137,7 @@ class GeraeteAblage @Inject constructor(
 
     private val nutzerCaHoerer = CopyOnWriteArrayList<() -> Unit>()
 
-    /** Nach dem Umschalten der Nutzer-CAs: neuer TLS-Kontext, offene Verbindungen weg (di/ServerClient). */
+    /** Nach dem Umschalten der Nutzer-CAs und vor einem Pin aus dem Code: neuer TLS-Kontext, offene Verbindungen weg (di/ServerClient). */
     override fun beimNutzerCaWechsel(hoerer: () -> Unit) { nutzerCaHoerer += hoerer }
 
     suspend fun saveCurrency(cur: String) {
@@ -314,7 +314,13 @@ class GeraeteAblage @Inject constructor(
         }
         vorgehalten.remove(schluessel)
     }
-    fun halteVor(schluessel: String, fingerabdruck: String) { vorgehalten[schluessel] = fingerabdruck }
+    // Neuer TLS-Kontext, leerer Verbindungsvorrat: Eine wiederverwendete oder
+    // wiederaufgenommene Verbindung prüfte den Pin aus dem Code nie.
+    fun halteVor(schluessel: String, fingerabdruck: String) {
+        vorgehalten[schluessel] = fingerabdruck
+        nutzerCaHoerer.forEach { it() }
+    }
+    override fun ausCode(schluessel: String): Boolean = vorgehalten.containsKey(schluessel)
     fun vergissVorgehaltenen(schluessel: String) { vorgehalten.remove(schluessel) }
     private val vorgehalten = ConcurrentHashMap<String, String>()
     private val ungesichert = ConcurrentHashMap<String, String>()

@@ -1,0 +1,18 @@
+Gegenprobe: Der Zertifikatsdialog bietet bei einer Abweichung vom Code Abtippen und Vertrauen an
+Modul: app
+Test: ch.brickinventoryapp.app.ZertifikatDialogTest
+Rot: weicht der Server vom Code ab
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
+@@ -45,8 +45,7 @@
+     onNutzerCa: () -> Unit,
+     onAbbrechen: () -> Unit,
+ ) {
+-    if (frage.art == ZertifikatUngeklaert.Art.CODE_ABWEICHUNG) CodeAbweichungDialog(frage, onAbbrechen)
+-    else ZertifikatFrageDialog(frage, nutzerCaAn, onVertrauen, onNutzerCa, onAbbrechen)
++    ZertifikatFrageDialog(frage, nutzerCaAn, onVertrauen, onNutzerCa, onAbbrechen)
+ }
+ 
+ /** Alles ausser CODE_ABWEICHUNG: Vertrauen nach Vergleich oder Abtippen. */

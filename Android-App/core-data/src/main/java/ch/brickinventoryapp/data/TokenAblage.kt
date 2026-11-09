@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.data
 
 import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -8,7 +9,9 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import ch.brickinventoryapp.data.cache.CacheBesitzer
 import ch.brickinventoryapp.data.di.ApplicationScope
 import ch.brickinventoryapp.netz.util.NetworkPolicy
+import ch.brickinventoryapp.data.util.Geraetesperre
 import ch.brickinventoryapp.data.util.TokenVerschluesselung
+import ch.brickinventoryapp.data.util.Tresorbefund
 import ch.brickinventoryapp.data.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.util.liesToken
 import ch.brickinventoryapp.data.util.pinSchluessel
@@ -45,6 +48,8 @@ class TokenAblage @Inject constructor(
     @param:ApplicationScope private val prefsScope: CoroutineScope,
     /** Für ein Token, das ein Serverwechsel verwirft, ohne dass es lesbar war (saveServerUrl). */
     private val entwertung: Provider<EntwertungsPlaner> = Provider { EntwertungsPlaner {} },
+    /** Bei gesperrtem Gerät wartet das Lesen des Tokens auf das Entsperren (liesToken). */
+    private val sperre: Geraetesperre = Geraetesperre { false },
 ) : Tokenspiegel, Tokenuebernahme, CacheBesitzer, Entwertungsquelle, Zugangsdaten, Anmeldestand, Sitzungsende {
     companion object {
         val SERVER_URL   = stringPreferencesKey("server_url")
@@ -83,7 +88,7 @@ class TokenAblage @Inject constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     val authToken: Flow<String> = dataStore.data.map { prefs -> prefs[AUTH_TOKEN_ENC] to prefs[AUTH_TOKEN] }
         .distinctUntilChanged()
-        .transformLatest { (geheim, alt) -> liesToken(tresor, geheim, alt, melde = { emit(it) }) }
+        .transformLatest { (geheim, alt) -> liesToken(tresor, geheim, alt, melde = { emit(it) }, sperre = sperre) }
     val username:  Flow<String> = dataStore.data.map { it[USERNAME]   ?: "" }
 
     // ── In-Memory-Cache für den OkHttp-Interceptor ────────────────────────────
@@ -161,7 +166,7 @@ class TokenAblage @Inject constructor(
         // die nicht über die save-Funktionen kamen (Übernahme eines alten Tokens).
         spiegle<String, String>(::adresseAus, _serverUrlState) { r, melde -> melde(r) }
         spiegle<Pair<String?, String?>, String>({ it[AUTH_TOKEN_ENC] to it[AUTH_TOKEN] }, _authTokenState) { (geheim, alt), melde ->
-            liesToken(tresor, geheim, alt, melde)
+            liesToken(tresor, geheim, alt, melde, sperre = sperre)
         }
         spiegle<String?, String?>({ it[TOKEN_HERKUNFT] }, _tokenHerkunftState) { r, melde -> melde(r) }
         prefsScope.launch {
@@ -320,8 +325,21 @@ class TokenAblage @Inject constructor(
                 // Leerer Alteintrag: nichts zu verschlüsseln, aber weg damit.
                 prefs.remove(AUTH_TOKEN)
             }
+            umschluesseln(prefs)
         }
         return uebernommen
+    }
+
+    /**
+     * Ein Geheimtext unter dem schwächeren Schlüssel (älterer Stand, Tausch bei gesperrtem
+     * Gerät) kommt unter den, der nur entsperrt arbeitet. Im selben edit wie das Lesen:
+     * Ein Tausch dazwischen würde sonst vom alten Token überschrieben.
+     */
+    private fun umschluesseln(prefs: MutablePreferences) {
+        val geheim = prefs[AUTH_TOKEN_ENC]?.takeIf(tresor::veraltet) ?: return
+        val klar = (tresor.oeffne(geheim) as? Tresorbefund.Lesbar)?.klartext ?: return
+        val neu = fangeAusserAbbruch { tresor.verschluessle(klar) }.getOrNull() ?: return
+        if (!tresor.veraltet(neu)) prefs[AUTH_TOKEN_ENC] = neu
     }
     suspend fun saveUsername(name: String) {
         dataStore.edit { it[USERNAME] = name }

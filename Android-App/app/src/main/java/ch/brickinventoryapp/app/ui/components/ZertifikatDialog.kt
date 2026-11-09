@@ -45,6 +45,19 @@ fun ZertifikatDialog(
     onNutzerCa: () -> Unit,
     onAbbrechen: () -> Unit,
 ) {
+    if (frage.art == ZertifikatUngeklaert.Art.CODE_ABWEICHUNG) CodeAbweichungDialog(frage, onAbbrechen)
+    else ZertifikatFrageDialog(frage, nutzerCaAn, onVertrauen, onNutzerCa, onAbbrechen)
+}
+
+/** Alles ausser CODE_ABWEICHUNG: Vertrauen nach Vergleich oder Abtippen. */
+@Composable
+private fun ZertifikatFrageDialog(
+    frage: ZertifikatUngeklaert,
+    nutzerCaAn: Boolean,
+    onVertrauen: (eingabe: String?) -> Boolean,
+    onNutzerCa: () -> Unit,
+    onAbbrechen: () -> Unit,
+) {
     var eingabe by rememberSaveable(frage.fingerabdruck) { mutableStateOf("") }
     var falsch by remember(frage.fingerabdruck) { mutableStateOf(false) }
     val host = frage.schluessel.substringBeforeLast(':')
@@ -70,7 +83,8 @@ fun ZertifikatDialog(
                     style = MaterialTheme.typography.labelMedium)
                 Text(if (abschreiben) fingerabdruckAnfang(frage.fingerabdruck) else fingerabdruckLesbar(frage.fingerabdruck),
                     fontFamily = FontFamily.Monospace,
-                    style = MaterialTheme.typography.bodySmall,
+                    // Ohne Abtippen ist der Vergleich die ganze Prüfung: gross genug zum Lesen.
+                    style = if (abschreiben) MaterialTheme.typography.bodySmall else MaterialTheme.typography.titleMedium,
                     color = if (geaendert) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
                 if (abschreiben) {
                     OutlinedTextField(
@@ -105,10 +119,36 @@ fun ZertifikatDialog(
     )
 }
 
+/**
+ * Server und gescannter Code nennen verschiedene Schlüssel: nichts zu bestätigen, nur
+ * zu erklären. Beide Werte stehen ganz da, abgetippt wird hier nichts.
+ */
+@Composable
+private fun CodeAbweichungDialog(frage: ZertifikatUngeklaert, onSchliessen: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onSchliessen,
+        title = { Text(stringResource(R.string.zert_titel_code_abweichung), modifier = Modifier.semantics { heading() }) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                Text(stringResource(R.string.zert_text_code_abweichung, frage.schluessel.substringBeforeLast(':')))
+                frage.erwartet?.let {
+                    Text(stringResource(R.string.zert_laut_code), style = MaterialTheme.typography.labelMedium)
+                    Text(fingerabdruckLesbar(it), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
+                }
+                Text(stringResource(R.string.zert_vom_server), style = MaterialTheme.typography.labelMedium)
+                Text(fingerabdruckLesbar(frage.fingerabdruck), fontFamily = FontFamily.Monospace,
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
+        },
+        confirmButton = { TextButton(onClick = onSchliessen) { Text(stringResource(R.string.common_ok)) } },
+    )
+}
+
 /** Überschrift und Erklärung je Art der Frage. */
 private fun titelUndText(art: ZertifikatUngeklaert.Art): Pair<Int, Int> = when (art) {
     ZertifikatUngeklaert.Art.ERSTKONTAKT -> R.string.zert_titel_erstkontakt to R.string.zert_text_erstkontakt
     ZertifikatUngeklaert.Art.UNBEKANNTE_CA -> R.string.zert_titel_unbekannt to R.string.zert_text_unbekannt
     ZertifikatUngeklaert.Art.NUTZER_CA -> R.string.zert_titel_nutzer_ca to R.string.zert_text_nutzer_ca
     ZertifikatUngeklaert.Art.GEAENDERT -> R.string.zert_titel_geaendert to R.string.zert_text_geaendert
+    ZertifikatUngeklaert.Art.CODE_ABWEICHUNG -> R.string.zert_titel_code_abweichung to R.string.zert_text_code_abweichung
 }

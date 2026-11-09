@@ -1,0 +1,17 @@
+Gegenprobe: Der Abmeldeauftrag gibt auch bei gesperrtem Gerät nach den Höchstversuchen auf
+Modul: core-data
+Test: ch.brickinventoryapp.data.EntwertungTest
+Rot: bei gesperrtem Geraet gibt der Auftrag nicht auf
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Entwertung.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Entwertung.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Entwertung.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Entwertung.kt
+@@ -153,7 +153,7 @@
+     when (befund) {
+         Tresorbefund.Weg -> Entwertungsschritt.AUFGEGEBEN
+         Tresorbefund.Gesperrt ->
+-            if (!geraetGesperrt && versuch + 1 >= ENTWERTUNG_HOECHSTVERSUCHE) Entwertungsschritt.AUFGEGEBEN
++            if (versuch + 1 >= ENTWERTUNG_HOECHSTVERSUCHE) Entwertungsschritt.AUFGEGEBEN
+             else Entwertungsschritt.NOCHMAL
+         is Tresorbefund.Lesbar -> when (entwerte(befund.klartext)) {
+             Entwertungsergebnis.ENTWERTET -> Entwertungsschritt.FERTIG

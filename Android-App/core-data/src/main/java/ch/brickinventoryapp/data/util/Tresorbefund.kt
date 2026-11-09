@@ -17,7 +17,46 @@ interface TokenVerschluesselung {
 
     /** Den Schlüssel selbst löschen: Was er umhüllt hat, ist danach nirgends mehr lesbar. */
     fun vergiss() = Unit
+
+    /** Liegt [gespeichert] unter einem schwächeren Schlüssel, als ihn [verschluessle] jetzt nähme? */
+    fun veraltet(gespeichert: String): Boolean = false
 }
+
+/** Ist das Gerät gerade gesperrt? Im Gerät der KeyguardManager, im Test ein Wert. */
+fun interface Geraetesperre {
+    fun gesperrt(): Boolean
+}
+
+/**
+ * Das Token unter einem Schlüssel, der nur bei entsperrtem Gerät arbeitet ([nurEntsperrt]):
+ * Wer ein gesperrtes Gerät ausliest, bekommt den Geheimtext, aber keinen Klartext. Kann
+ * er nicht verschlüsseln (Tausch bei gesperrtem Gerät, Keystore ohne diese Bedingung),
+ * nimmt [immer] den Wert, bis ihn der nächste Start umschlüsselt (TokenAblage).
+ */
+internal class EntsperrTresor(
+    private val nurEntsperrt: TokenVerschluesselung,
+    private val immer: TokenVerschluesselung,
+) : TokenVerschluesselung {
+    override fun verschluessle(klartext: String): String =
+        fangeAusserAbbruch { ENTSPERRT_PRAEFIX + nurEntsperrt.verschluessle(klartext) }
+            .getOrElse { immer.verschluessle(klartext) }
+
+    override fun entschluessle(gespeichert: String): String? = (oeffne(gespeichert) as? Tresorbefund.Lesbar)?.klartext
+
+    override fun oeffne(gespeichert: String): Tresorbefund =
+        if (gespeichert.startsWith(ENTSPERRT_PRAEFIX)) nurEntsperrt.oeffne(gespeichert.removePrefix(ENTSPERRT_PRAEFIX))
+        else immer.oeffne(gespeichert)
+
+    override fun veraltet(gespeichert: String): Boolean = !gespeichert.startsWith(ENTSPERRT_PRAEFIX)
+
+    override fun vergiss() {
+        nurEntsperrt.vergiss()
+        immer.vergiss()
+    }
+}
+
+/** Base64 kennt keinen Doppelpunkt: Geheimtexte ohne dieses Präfix stammen vom Schlüssel ohne Bedingung. */
+internal const val ENTSPERRT_PRAEFIX = "e1:"
 
 /** Was beim Öffnen des Tokens herauskam. */
 sealed interface Tresorbefund {
@@ -73,21 +112,26 @@ internal suspend fun liesToken(
     alt: String?,
     melde: suspend (String) -> Unit,
     warte: suspend (Long) -> Unit = { kotlinx.coroutines.delay(it) },
+    sperre: Geraetesperre = Geraetesperre { false },
 ) {
     if (geheim == null) return melde(alt ?: "")
     var versuch = 0
+    var leerGemeldet = false
     while (true) {
         when (val b = tresor.oeffne(geheim)) {
             is Tresorbefund.Lesbar -> return melde(b.klartext)
             Tresorbefund.Weg -> return melde(alt ?: "")
             Tresorbefund.Gesperrt -> {
-                if (versuch == TRESOR_ANLAUF_MS.size) {
+                if (versuch >= TRESOR_ANLAUF_MS.size && !leerGemeldet) {
                     Protokoll.warnung("Tresor", "Keystore gesperrt; Token bleibt, neuer Versuch im Hintergrund")
                     melde(alt ?: "")
+                    leerGemeldet = true
                 }
                 if (versuch >= TRESOR_ANLAUF_MS.size + TRESOR_NACHLAUF_VERSUCHE) return
                 warte(TRESOR_ANLAUF_MS.getOrElse(versuch) { TRESOR_NACHLAUF_MS })
-                versuch++
+                // Bei gesperrtem Gerät gibt der Schlüssel erst nach dem Entsperren frei:
+                // Diese Zeit zählt nicht, sonst wäre nach einer Nacht die Sitzung weg.
+                if (versuch < TRESOR_ANLAUF_MS.size || !sperre.gesperrt()) versuch++
             }
         }
     }

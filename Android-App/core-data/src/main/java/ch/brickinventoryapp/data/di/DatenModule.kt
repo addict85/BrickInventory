@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.core.DataStore
 import ch.brickinventoryapp.data.KontoAblage
 import ch.brickinventoryapp.data.TokenAblage
+import ch.brickinventoryapp.data.util.EntsperrTresor
+import ch.brickinventoryapp.data.util.Geraetesperre
 import ch.brickinventoryapp.data.util.KeystoreTokenTresor
 import ch.brickinventoryapp.data.util.TokenVerschluesselung
 import dagger.Module
@@ -22,7 +24,9 @@ import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.util.Ablageschluessel
 import ch.brickinventoryapp.data.util.Vertrauenschiffre
+import android.app.KeyguardManager
 import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import ch.brickinventoryapp.data.Entwertungsquelle
 import ch.brickinventoryapp.data.cache.CacheBesitzer
@@ -41,7 +45,16 @@ internal object DatenModule {
      */
     @Provides
     @Singleton
-    fun provideTokenVerschluesselung(): TokenVerschluesselung = KeystoreTokenTresor()
+    fun provideTokenVerschluesselung(): TokenVerschluesselung =
+        EntsperrTresor(KeystoreTokenTresor(KeystoreTokenTresor.ALIAS_ENTSPERRT, nurEntsperrt = true), KeystoreTokenTresor())
+
+    /** Gesperrt heisst hier: Der Schlüssel des Tokens gibt gerade nichts frei (EntsperrTresor). */
+    @Provides
+    @Singleton
+    fun provideGeraetesperre(@ApplicationContext context: Context): Geraetesperre {
+        val waechter = context.getSystemService(KeyguardManager::class.java)
+        return Geraetesperre { waechter?.isDeviceLocked == true }
+    }
 
     /** Der Schlüssel der lokalen Ablagen; umhüllt unter eigenem Alias, abgelegt ohne Sicherung. */
     @Provides
