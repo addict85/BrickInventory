@@ -25,8 +25,8 @@ async function acquireRunLock(): Promise<(() => Promise<void>) | null> {
   let freigabe: (() => Promise<void>) | null;
   try { freigabe = await belegeSitzungsSperre(PRICE_JOB_LOCK); }
   catch (e) {
-    // Ohne Verbindung keine Sperre — dann lieber laufen als gar nicht
-    // aktualisieren; im eigenen Prozess schützt die Exklusivität der Art.
+    // Ohne Verbindung keine Sperre — dann lieber laufen als gar nicht aktualisieren; im eigenen Prozess
+    // schützt die Exklusivität der Art.
     log(`Sperre nicht verfügbar (${fehlertext(e)}) — Lauf ohne prozessübergreifenden Schutz`);
     return async () => {};
   }
@@ -48,8 +48,7 @@ async function fetchAndCachePrice(setNumber: string, condition: string, guideTyp
   if (ohneBricklinkPreis(await katalogEintrag(setNumber))) return 'skipped_gear';
 
   const ttl = Math.max(1, parseInt(String(forceTtlHours ?? '')));
-  // Dieselbe Frisch-Regel wie im Anfrageweg: Auch eine Null-Zeile wird nach
-  // sechs Stunden erneut versucht.
+  // Dieselbe Frisch-Regel wie im Anfrageweg: Auch eine Null-Zeile wird nach sechs Stunden erneut versucht.
   const vorhanden = await preisAusCache(setNumber, condition, currency, ttl);
   if (cacheUsable(vorhanden, ttl)) return 'skipped';
 
@@ -64,8 +63,8 @@ async function fetchAndCachePrice(setNumber: string, condition: string, guideTyp
     log(`Error ${setNumber} (${condition}): ${fehlertext(e).substring(0,60)}`); return 'error';
   }
 
-  // Auch eine Antwort mit lauter Nullen wird geschrieben: Sie hält den nächsten
-  // Lauf zurück, sonst kostete dasselbe Set jedes Mal zwei Abrufe.
+  // Auch eine Antwort mit lauter Nullen wird geschrieben: Sie hält den nächsten Lauf zurück, sonst kostete
+  // dasselbe Set jedes Mal zwei Abrufe.
   const p = await speicherePreis(setNumber, condition, currency, g);
 
   if (p.avg === 0 && p.qavg === 0) {
@@ -94,8 +93,8 @@ async function runPriceRefresh(k?: AuftragsKontext) {
   const fortschritt = { current:0, total:0, set:null as string | null };
   await k?.fortschritt({ erledigt: 0, gesamt: 0, text: 'Starte…' });
   try {
-    // Auch Merkposten: /price-history liest den Cache nur, und ohne diesen Lauf
-    // bliebe ihr Preisverlauf leer. Ausführlich: docs/begruendungen/src/finanzen/preisLauf.ts.md#runpricerefresh-eigene
+    // Auch Merkposten: /price-history liest den Cache nur, und ohne diesen Lauf bliebe ihr Preisverlauf leer.
+    // Ausführlich: docs/begruendungen/src/finanzen/preisLauf.ts.md#runpricerefresh-eigene
     const eigene = await bestandsPlaetze();
     const gewuenschte = await merklistenPlaetze().catch(meldeUndLiefere('preis-job:gewuenschte', []));
     const allSets = [...eigene, ...(gewuenschte || [])]
@@ -116,8 +115,8 @@ async function runPriceRefresh(k?: AuftragsKontext) {
       const ttlHours  = (await getGlobalSetting('price_cache_ttl', '24')) || '24';
       const valid = setNumbers.filter(sn => /^[a-zA-Z0-9]+-\d+$/.test(sn));
 
-      // Drei Abfragen je Nutzer statt je Set; jeder überflüssige Abruf ginge auf
-      // das BrickLink-Tageskontingent.
+      // Drei Abfragen je Nutzer statt je Set; jeder überflüssige Abruf ginge auf das
+      // BrickLink-Tageskontingent.
       const zustaende = await zustaendeJeSet(Number(userId), valid);
 
       const tasks = valid.map(sn => async () => {
@@ -159,8 +158,8 @@ async function runPriceRefresh(k?: AuftragsKontext) {
       log(`Daily snapshot: ${await schreibeTagesstand()} price history entries inserted`);
     } catch(e) { log(`Daily snapshot error: ${fehlertext(e)}`); }
 
-    // Preisalarme hier und nicht je Abruf: Dort liefe die Prüfung tausendfach und
-    // meldete dasselbe mehrmals. Ausführlich: docs/begruendungen/src/finanzen/preisLauf.ts.md#runpricerefresh-2
+    // Preisalarme hier und nicht je Abruf: Dort liefe die Prüfung tausendfach und meldete dasselbe mehrmals.
+    // Ausführlich: docs/begruendungen/src/finanzen/preisLauf.ts.md#runpricerefresh-2
     try {
       const wartende = await setsMitAlarm().catch(meldeUndLiefere('preis-job:wartende', []));
       let gemeldet = 0;
@@ -198,8 +197,8 @@ async function zustaendeJeSet(userId: number, setNumbers: string[],
   const gewuenscht = await sammle(gewuenschteZustaende(userId, setNumbers));
 
   for (const sn of setNumbers) {
-    // Ohne Erfassung ist der Hinweis die einzige Quelle: Die Erfassung des
-    // neuen Sets ist noch nicht geschrieben (conditionsNeededFor).
+    // Ohne Erfassung ist der Hinweis die einzige Quelle: Die Erfassung des neuen Sets ist noch nicht
+    // geschrieben (conditionsNeededFor).
     const eigene = new Set<string>(erfasst.get(sn) ?? []);
     if (hintCondition === 'U' || hintCondition === 'N') eigene.add(hintCondition);
     for (const c of gewuenscht.get(sn) ?? []) eigene.add(c);

@@ -145,8 +145,7 @@ async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise
 
 type FadenAuftrag = { art: 'pdf-zeichnen'; sets: PdfSet[]; parts: PdfTeil[]; ziel: string };
 
-/** Aus den TypeScript-Quellen (tsx) gibt es keine .js-Datei für den Faden;
- * dann wird hier gezeichnet. */
+/** Aus den TypeScript-Quellen (tsx) gibt es keine .js-Datei für den Faden; dann wird hier gezeichnet. */
 function zeichnePdfImFaden(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise<void> {
   if (__filename.endsWith('.ts')) return buildPdf(sets, parts, ziel);
   return new Promise((resolve, reject) => {

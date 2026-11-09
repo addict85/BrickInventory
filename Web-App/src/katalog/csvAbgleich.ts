@@ -188,8 +188,7 @@ async function run(lauf: CsvLauf = {}) {
   await ladeBlFarben().catch(logAndContinue('rb-csv:bl-farben'));
 }
 
-/** Beim Start nur, wenn heute noch nicht geladen; der tägliche und der von
- * Hand angestossene Lauf laden immer. */
+/** Beim Start nur, wenn heute noch nicht geladen; der tägliche und der von Hand angestossene Lauf laden immer. */
 async function csvAbgleich(n: Nutzlast<'csv_sync'>, lauf: CsvLauf): Promise<void> {
   if (!n.beimStart) await loescheZustand(SYNC_KEY);
   await run(lauf);

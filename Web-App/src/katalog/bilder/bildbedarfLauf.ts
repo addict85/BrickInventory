@@ -42,8 +42,7 @@ function pause(): number {
  * Abstand hält; prozesslokal, weil er DIESEN Prozess drosselt. */
 let _letzteArbeit = 0;
 
-/** Vor dem ALLERERSTEN Schritt wird nicht gewartet — der Ablauf soll nicht
- * künstlich später beginnen. */
+/** Vor dem ALLERERSTEN Schritt wird nicht gewartet — der Ablauf soll nicht künstlich später beginnen. */
 async function pauseVorArbeit(): Promise<void> {
   const soll = pause();
   if (_letzteArbeit) {
@@ -108,11 +107,10 @@ function merkeLauf(erg: StapelErgebnis): void {
   letzterLauf.ergebnis = erg;
 }
 
-/** Einmal je Takt, nicht je Stapel: Die Kachel liest Minuten, und eine
- * SD-Karte schont das. */
+/** Einmal je Takt, nicht je Stapel: Die Kachel liest Minuten, und eine SD-Karte schont das. */
 async function speichereLauf(erg: StapelErgebnis): Promise<void> {
-  // await: Der nächste Takt liest den Stand über einen ANDEREN Prozess; ohne
-  // await meldete die Kachel „noch nicht gelaufen".
+  // await: Der nächste Takt liest den Stand über einen ANDEREN Prozess; ohne await meldete die Kachel „noch
+  // nicht gelaufen".
   await setzeZustand(LAUF_SCHLUESSEL, JSON.stringify({ zeit: Date.now(), ergebnis: erg }))
     .catch(logAndContinue('bild-job:setzeZustand'));
 }
@@ -136,17 +134,17 @@ async function nurVorschau(setNummer: string, vorschau: string, st: StapelStand)
 /** @returns true, wenn das CDN drosselt und der Stapel abbricht */
 async function nachFehlschlag(setNummer: string, info: { status?: number }, st: StapelStand): Promise<boolean> {
   const status = info.status;
-  // Eine Drosselung ist KEINE Fehlanzeige: Die Bilder gibt es, und stures
-  // Weiterfragen verlängert die Sperre. Ausführlich: docs/begruendungen/src/katalog/bilder/bildbedarfLauf.ts.md#arbeitestapel-2
+  // Eine Drosselung ist KEINE Fehlanzeige: Die Bilder gibt es, und stures Weiterfragen verlängert die Sperre.
+  // Ausführlich: docs/begruendungen/src/katalog/bilder/bildbedarfLauf.ts.md#arbeitestapel-2
   if (status === 403 || status === 429) {
     const bis = new Date(Date.now() + DROSSEL_PAUSE_MS);
     await pausiereArt('bildbedarf', bis, `CDN drosselt (HTTP ${status})`);
     console.error(`[image-queue] CDN drosselt (HTTP ${status}) — Pause bis ${bis.toLocaleTimeString()}`);
     return true;
   }
-  // NUR ein 404/410 heisst „das Bild gibt es nicht"; Zeitüberschreitungen und
-  // Netzaussetzer dürfen ein Bild nicht dauerhaft sperren.
-  // Ausführlich: docs/begruendungen/src/katalog/bilder/bildbedarfLauf.ts.md#arbeitestapel-hartfehlend
+  // NUR ein 404/410 heisst „das Bild gibt es nicht"; Zeitüberschreitungen und Netzaussetzer dürfen ein Bild
+  // nicht dauerhaft sperren. Ausführlich:
+  // docs/begruendungen/src/katalog/bilder/bildbedarfLauf.ts.md#arbeitestapel-hartfehlend
   const hartFehlend = info.status === 404 || info.status === 410;
   if (hartFehlend) merkeFehlend('set:' + setNummer, `HTTP ${status} vom CDN`);
   else st.etwasZuTun = true;
@@ -170,8 +168,8 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
     const r = rows[idx]!;
     if (!r.set_number) { erg.ohneNummer++; continue; }   // ohne Setnummer kein Ablageort
 
-    // Die Dateiprüfung steht hier und nicht beim Einreihen: 25 000 Dateizugriffe
-    // in einer Anfrage blockierten schwache Hardware.
+    // Die Dateiprüfung steht hier und nicht beim Einreihen: 25 000 Dateizugriffe in einer Anfrage blockierten
+    // schwache Hardware.
     const datei  = path.join(SET_IMAGES_DIR, `${r.set_number}.jpg`);
     const vorschau = path.join(SET_IMAGES_DIR, `${r.set_number}_thumb.jpg`);
     if (fs.existsSync(datei)) {   // kein zweiter Download
@@ -180,8 +178,7 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
       continue;
     }
 
-    // Bekannt fehlende Bilder nicht erst holen, wie der Knopf
-    // „Katalogbilder holen" auch.
+    // Bekannt fehlende Bilder nicht erst holen, wie der Knopf „Katalogbilder holen" auch.
     if (istBekanntFehlend('set:' + r.set_number)) {
       erg.bekanntFehlend++;
       // Den Namen nennen: Ohne Setnummer führt kein Weg zu image-diag.
@@ -190,8 +187,8 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
       continue;
     }
 
-    // Die Pause steht ZWISCHEN zwei Anfragen ans CDN — nicht vor der ersten
-    // und nicht für Sets, deren Datei schon da ist.
+    // Die Pause steht ZWISCHEN zwei Anfragen ans CDN — nicht vor der ersten und nicht für Sets, deren Datei
+    // schon da ist.
     await pauseVorArbeit();
     st.arbeit++;
 
@@ -199,8 +196,8 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
     const lokal = await downloadSetImage(r.url, r.set_number, info).catch(meldeUndLiefere('bild-job:downloadSetImage', null));
     if (!lokal) {
       if (await nachFehlschlag(r.set_number, info, st)) {
-        // ALLE unbearbeiteten Notizen zurücklegen: Der Stapel kam per
-        // DELETE … RETURNING, der Rest wäre sonst still verloren.
+        // ALLE unbearbeiteten Notizen zurücklegen: Der Stapel kam per DELETE … RETURNING, der Rest wäre sonst
+        // still verloren.
         const rest = rows.slice(idx);
         await notiereBildbedarf(rest.map(x => x.url), rest.map(x => x.set_number))
           .catch(logAndContinue('bild-job:map'));
@@ -209,8 +206,8 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
       }
       continue;
     }
-    // Die Vorschau entsteht NICHT in downloadSetImage(); ohne diesen Aufruf bliebe
-    // es bei der grossen Originaldatei.
+    // Die Vorschau entsteht NICHT in downloadSetImage(); ohne diesen Aufruf bliebe es bei der grossen
+    // Originaldatei.
     await vorschauErzeugen(lokal, vorschau);
     // Erst der Eintrag lässt die Oberfläche die Datei statt des Proxys laden.
     await setBildLokalEintragen(r.set_number).catch(logAndContinue('bild-job:setBildLokal'));
@@ -220,13 +217,13 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
   erg.gesamt = rows.length - erg.zurueckgelegt;
   erg.arbeit = st.arbeit;
   const { gruende, etwasZuTun } = st;
-  // Bei wenigen Fällen beim Namen: Mit der Setnummer beantwortet
-  // GET /api/v1/admin/image-diag/:setNumber die Frage in einer Antwort.
+  // Bei wenigen Fällen beim Namen: Mit der Setnummer beantwortet GET /api/v1/admin/image-diag/:setNumber die
+  // Frage in einer Antwort.
   if (gruende.length && gruende.length <= 5) {
     (etwasZuTun ? console.error : console.warn)(`[image-queue] ${gruende.join(' · ')}`);
   }
-  // Hier festhalten: Wer den Stapel ausführt, hat gearbeitet, gleich von wo
-  // gerufen. In die Datenbank schreibt erst der Takt.
+  // Hier festhalten: Wer den Stapel ausführt, hat gearbeitet, gleich von wo gerufen. In die Datenbank
+  // schreibt erst der Takt.
   merkeLauf(erg);
   return erg;
 }

@@ -1,4 +1,4 @@
-import path from 'path';
+import path from 'node:path';
 import { erzeugeWorker, type Bearbeitertabelle, type WorkerOptionen } from './auftragsWorker';
 import { zieheNach, ladeSetBilder } from '../src/sets/nachErfassung';
 import { erzeugePdf, pdfAufgegeben } from '../src/katalog/pdf/pdfErzeugung';

@@ -10,7 +10,7 @@ import type { z } from 'zod';
 import { setzeErgebnis, setzeFachfehler } from '../auftraege/importAlsAuftrag';
 import type { ImportNutzlast as ImportNutzlastSchema } from '../auftraege/nutzlasten';
 import { importiereWantedXml } from './wantedXmlImport';
-import { type AuftragsZeile, type AuftragsKontext } from '../auftraege/auftraege';
+import type { AuftragsZeile, AuftragsKontext } from '../auftraege/auftraege';
 
 export type ImportNutzlast = z.output<typeof ImportNutzlastSchema>;
 
@@ -25,8 +25,7 @@ async function ergebnisVon(n: ImportNutzlast, k: AuftragsKontext): Promise<Recor
   }
 }
 
-/** Ein Fachfehler ist ein Ergebnis (die Anfrage meldet ihn mit Code), kein
- * Fehlschlag des Auftrags. */
+/** Ein Fachfehler ist ein Ergebnis (die Anfrage meldet ihn mit Code), kein Fehlschlag des Auftrags. */
 async function fuehreImportAus(n: ImportNutzlast, k: AuftragsKontext, a: AuftragsZeile): Promise<void> {
   try { await setzeErgebnis(a.id, await ergebnisVon(n, k)); }
   catch (e) {

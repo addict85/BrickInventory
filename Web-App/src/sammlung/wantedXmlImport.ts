@@ -8,7 +8,7 @@ import { addManualFig } from '../figuren/manuelleFiguren';
 import { addSet } from '../sets/setService';
 import { logAndContinue } from '../infra/fehler';
 import type { Nutzlast } from '../auftraege/nutzlasten';
-import { type AuftragsKontext } from '../auftraege/auftraege';
+import type { AuftragsKontext } from '../auftraege/auftraege';
 
 export type WantedXmlEingabe = Extract<Nutzlast<'csv_import'>, { quelle: 'wanted_xml' }>['eingabe'];
 

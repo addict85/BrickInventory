@@ -1,5 +1,4 @@
-/** Je Schritt ein Auftrag 'nachlauf', damit ein Fehler wiederholt wird und in
- * der Verwaltung zu sehen ist. */
+/** Je Schritt ein Auftrag 'nachlauf', damit ein Fehler wiederholt wird und in der Verwaltung zu sehen ist. */
 import { anleitungenNachtragen, setBilderNachladen, vorschaubilderNachtragen } from '../katalog/bildlage';
 import { verschluesseleAltbestand } from '../konto/geheimnisAltbestand';
 import { verschluesseleGutscheinAltbestand } from '../gutscheine/gutscheinDateien';

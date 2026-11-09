@@ -18,7 +18,6 @@ import {
 import { importPartsForSet } from '../katalog/partsImport';
 import { zaehleAnfrage } from '../konto/loginLimiter';
 import { DATA_DIR } from '../infra/appPaths';
-import { meldeUndLiefere } from '../infra/fehler';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 import type { Sprache } from '../infra/fehlerTexte';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../infra/setNummer';
@@ -99,5 +98,5 @@ export async function csvImportStand(uid: number, req: Kopf) {
 
 /** Im offenen Strom gibt es keinen Statuscode mehr: Ein Lesefehler wird zu „kein Import“. */
 export async function csvImportStandFuerStrom(uid: number, req: Kopf, sprache: Sprache) {
-  return buildJobStatus(await jobGet(uid).catch(meldeUndLiefere('sets:jobGet', null)), req, sprache);
+  return buildJobStatus(await jobGet(uid), req, sprache);
 }

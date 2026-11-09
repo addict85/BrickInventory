@@ -14,14 +14,17 @@ export async function deleteSetRows(tx: DbSchnittstelle, uids: number[], setNumb
 export async function loescheSetFuer(s: Sicht, setNumber: string) {
   const schreibbar = await writableIds(s.nutzer);
   const gewaehlt = s.konten === undefined ? schreibbar : await blickfeldAus(s);
-  return deleteSet(gewaehlt.filter(id => schreibbar.includes(id)), setNumber);
+  return deleteSet(
+    gewaehlt.filter(id => schreibbar.includes(id)),
+    setNumber,
+  );
 }
 
 export async function deleteSet(userId: Blickfeld, setNumber: string) {
   const uids = asIds(userId);
   // Atomar: Ein abgebrochenes DELETE liesse sonst Teile und Figuren ohne Set in
   // Teileliste und Finanzsummen zurück.
-  return db.transaction(async (tx) => {
+  return db.transaction(async tx => {
     const besitzer = await repo.besitzerDesSets(tx, uids, setNumber);
     if (!besitzer.length) return false;
     // Ein Eintrag je Konto: Wiederhergestellt wird in das Konto, dem es gehörte.
@@ -34,4 +37,3 @@ export async function deleteSet(userId: Blickfeld, setNumber: string) {
     return papierkorb;
   });
 }
-

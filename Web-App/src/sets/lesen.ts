@@ -1,5 +1,5 @@
 import { resolveOne } from '../katalog/bricklinkLink';
-import { meldeFehler, meldeUndLiefere } from '../infra/fehler';
+import { meldeFehler } from '../infra/fehler';
 import { fuerSet } from '../katalog/preisvergleich';
 import * as repo from './repository/sets';
 import { resolveImageLocal } from '../katalog/bilder/images';
@@ -12,6 +12,7 @@ import { anleitungenZuSet, anleitungenZusammenlegen } from '../katalog/instructi
 
 import type { BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
 import type { Abfrage } from '../vertrag';
+import { versuche } from '../infra/ergebnis';
 
 /** Filtern und Sortieren auf dem Server, damit sie mit seitenweisem Laden
  * zusammengehen. Ohne page_size alles — so ruft die Android-App. */
@@ -98,8 +99,8 @@ export async function getSetConditionAggregate(userId: Blickfeld, setNumber: str
  * Ausführlich: docs/begruendungen/src/sets/lesen.ts.md#withsetaggregate */
 export async function withSetAggregate<T extends object>(userId: Blickfeld, setNumber: string, payload: T) {
   const uids = asIds(userId);
-  const agg = await getSetConditionAggregate(uids, setNumber).catch(meldeUndLiefere('sets-handler:getSetConditionAggregate', null));
-  return agg ? { ...payload, set: { set_number: setNumber, ...agg } } : payload;
+  const agg = await versuche('sets-handler:getSetConditionAggregate', getSetConditionAggregate(uids, setNumber));
+  return agg.ok ? { ...payload, set: { set_number: setNumber, ...agg.wert } } : payload;
 }
 
 export async function getSet(userIdWahl: Sicht | Blickfeld, setNumber: string) {

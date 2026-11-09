@@ -107,8 +107,7 @@ async function nachFehler(a: AuftragsZeile, b: Bearbeiter | undefined, nutzlast:
   }
 }
 
-/** Mehrere Worker teilen sich die Arbeit über SKIP LOCKED; das NOTIFY beim
- * Einstellen weckt früher als der Takt. */
+/** Mehrere Worker teilen sich die Arbeit über SKIP LOCKED; das NOTIFY beim Einstellen weckt früher als der Takt. */
 function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
   const arten = Object.keys(bearbeiter);
   const exklusiv = arten.filter(a => bearbeiter[a as AuftragsArt]?.exklusiv);

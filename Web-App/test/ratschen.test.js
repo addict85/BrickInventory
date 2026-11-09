@@ -83,6 +83,20 @@ test('stille Faenge werden weniger, nie mehr', () => {
   }
 });
 
+test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', () => {
+  // Ein Ersatzwert nach einem Fehler sieht für den Aufrufer aus wie „leer“; src/infra/ergebnis.ts
+  // gibt den Fehlschlag weiter. Gemessen 349 Aufrufe am 09.11.2026, 318 nach dem Umbau von src/sets.
+  // Gegenprobe (09.11.2026): in src/sets/setAdd.ts wieder `.catch(meldeUndLiefere(…))` → rot (319).
+  const SCHRANKE = 318;
+  const muster = /\b(?:logAndContinue|meldeUndLiefere)\(/g;
+  const ist = zaehle([muster]);
+  assert.ok(ist <= SCHRANKE, `${ist}-mal logAndContinue/meldeUndLiefere, erlaubt sind ${SCHRANKE}`);
+  const sets = quellen().filter(f => /[\\/]src[\\/]sets[\\/]/.test(f));
+  assert.ok(sets.length > 10, 'src/sets nicht gefunden');
+  assert.deepEqual(sets.filter(f => new RegExp(muster.source).test(require('./helpers/sources').ohneKommentare(fs.readFileSync(f, 'utf8')))).map(f => path.relative(WEB, f)), []);
+  if (ist < SCHRANKE) console.log(`  ℹ logAndContinue/meldeUndLiefere: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
 test('any wird weniger, nie mehr', () => {
   // Gemessen 23 am 08.11.2026; wie die Zahl sinkt, steht im git log.
   const SCHRANKE = 23;
