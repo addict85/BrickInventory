@@ -128,7 +128,7 @@ export class SicheresHtml {
   constructor(text) { this.text = text; void this.#marke; }
   toString() { return this.text; }
   /** @param {unknown} wert @returns {wert is SicheresHtml} */
-  static echt(wert) { return typeof wert === 'object' && wert !== null && #marke in wert; }
+  static markiert(wert) { return typeof wert === 'object' && wert !== null && #marke in wert; }
 }
 
 /** Was setzeHtml() annimmt: fertiges Markup, Listen davon oder nichts — keine Zeichenkette mit Daten.
@@ -136,7 +136,7 @@ export class SicheresHtml {
 
 /** Der Text eines Werts für Markup: SicheresHtml unverändert, alles andere maskiert. @param {unknown} wert @returns {string} */
 export function einsetzen(wert) {
-  if (SicheresHtml.echt(wert)) return wert.text;
+  if (SicheresHtml.markiert(wert)) return wert.text;
   if (Array.isArray(wert)) return wert.map(einsetzen).join('');
   if (wert === null || wert === undefined || wert === false) return '';
   return esc(wert);

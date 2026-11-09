@@ -59,7 +59,7 @@ export const SCHREIBENDE_AKTIONEN = new Set([
   'merkpostenHinzufuegen', 'merkpostenInhaberGewaehlt', 'merkpostenLoeschen', 'merkpostenLoeschenStop',
   'merkpostenUebernehmen', 'mQtyDec', 'mQtyInc', 'oeffneErfassen', 'openRpw', 'papierkorbEndgueltig',
   'papierkorbLeeren', 'papierkorbWiederherstellen', 'passkeyAnmelden', 'passkeyHinzufuegen', 'passkeyLoeschen',
-  'passkeyZweiterFaktor', 'plFuelleBestand', 'queueCatalogImages', 'redeemHouseholdInvite', 'redownloadInstr',
+  'passkeyZweiterFaktor', 'plFuelleBestand', 'qrKopplungAblehnen', 'qrKopplungBestaetigen', 'queueCatalogImages', 'redeemHouseholdInvite', 'redownloadInstr',
   'redownloadMissingImages', 'reimportMissingInstructions', 'reimportParts', 'retryBricksetQueueEntry',
   'revokeOtherTokens', 'revokeToken', 'saveJobMinutes', 'saveJobTime', 'saveManualFigBl', 'saveRegEnabled',
   'schalteLagerortVorgabe', 'setLangFromEl', 'setzeEigenesDesign', 'speichereAlarm', 'speichereSetLagerort',

@@ -6,11 +6,11 @@
  * zu sehen und nicht zu bestätigen.
  *
  * Gegenproben (09.11.2026 gemessen, je einzeln):
- *   A  in holeAb() (src/konto/qrKopplung.ts) auch `wartet` wie `bestaetigt`
+ *   A  in holeQrTokenAb() (src/konto/qrKopplung.ts) auch `wartet` wie `bestaetigt`
  *      behandelt → rot: „ohne Bestätigung kein Token“
  *   B  codePasst() gibt immer true → rot: „ein falscher Code zählt …“
- *   C  desKontos() ohne `AND user_id = $2` → rot: „die Kopplung eines anderen Kontos …“
- *   D  in melde() `used_at IS NULL` gestrichen → rot: „ein Code meldet nur ein Gerät“
+ *   C  qrKopplungDesKontos() ohne `AND user_id = $2` → rot: „die Kopplung eines anderen Kontos …“
+ *   D  in melde() (Repository) `used_at IS NULL` gestrichen → rot: „ein Code meldet nur ein Gerät“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */

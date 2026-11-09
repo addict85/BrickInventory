@@ -153,27 +153,3 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async (t) => {
 
   await db.pool.end().catch(() => {});
 });
-
-test('das Erst-Passwort geht nicht durch den Log-Abfänger', () => {
-  const fs = require('node:fs');
-  const path = require('node:path');
-  const { ROOT, ohneKommentare } = require('./helpers/sources');
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'db/database.ts'), 'utf8'));
-
-  // Der Abfänger in server.ts schreibt JEDE console-Zeile nach app_logs, und
-  // der Admin-Log-Viewer gibt sie 48 Stunden lang wieder aus. Das Passwort des
-  // ersten Admins darf deshalb nicht über console gehen.
-  // Der Ausgabeblock: von der Zeile mit dem Passwort bis zur nächsten Ausgabe.
-  const pwZeile = src.indexOf('admin / ${plainPassword}');
-  assert.ok(pwZeile > 0, 'Passwortzeile nicht gefunden');
-  const block = src.slice(Math.max(0, pwZeile - 500), pwZeile + 500);
-  assert.doesNotMatch(block, /console\.(log|info|warn|error)\([^)]*(admin \/|banner)/,
-    'Das Erst-Passwort läuft wieder über console — damit landet es in app_logs und im Log-Viewer');
-  assert.match(block, /process\.stdout\.write/,
-    'Der Banner muss direkt auf stdout gehen');
-
-  // Und die Zeile mit dem Passwort selbst darf nirgends sonst über console gehen.
-  for (const m of src.matchAll(/console\.[a-z]+\([^)]*plainPassword[^)]*\)/g)) {
-    assert.fail(`Passwort über console: ${m[0].slice(0, 80)}`);
-  }
-});

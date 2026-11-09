@@ -59,7 +59,7 @@ function verstoesse(daten: unknown): Verstoss[] {
 }
 
 /** Ohne Anfrageteil: Eine Adresse kann einen Rücksetz- oder Bestätigungslink tragen. */
-function kurz(v: unknown): string {
+function ohneAnfrageteil(v: unknown): string {
   const s = String(v ?? '')
     .replace(/[?#].*$/s, '')
     .replace(/[\p{Cc}\u2028\u2029]/gu, ' ');
@@ -77,8 +77,8 @@ router.post('/csp-bericht', express.raw({ type: () => true, limit: '8kb' }), (re
   }
   for (const v of verstoesse(daten))
     console.warn(
-      `[csp] ${kurz(v.regel)} blockierte ${kurz(v.blockiert) || '?'} auf ${kurz(v.seite) || '?'}` +
-        (v.probe ? ` (${kurz(v.probe)})` : ''),
+      `[csp] ${ohneAnfrageteil(v.regel)} blockierte ${ohneAnfrageteil(v.blockiert) || '?'} auf ${ohneAnfrageteil(v.seite) || '?'}` +
+        (v.probe ? ` (${ohneAnfrageteil(v.probe)})` : ''),
     );
 });
 
