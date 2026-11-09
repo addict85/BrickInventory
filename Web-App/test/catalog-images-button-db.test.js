@@ -144,7 +144,7 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async (t) => {
     });
 
     await t.test('der Job holt nur, was fehlt', async () => {
-      const IQ = _req('jobs/imageQueue.js');
+      const IQ = _req('src/katalog/bilder/bildbedarfLauf.js');
       let n = 0;
       // `.gesamt` = bearbeitete Notizen (geladen, Vorschau erzeugt oder
       // übersprungen). Seit einer früheren Runde liefert der Durchgang eine

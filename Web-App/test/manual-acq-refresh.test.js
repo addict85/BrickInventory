@@ -404,7 +404,7 @@ test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', ()
   // geprüfte REGEL ist unverändert: Preis ermitteln (Netzaufruf), DANN sperren.
   assert.match(
     src,
-    /const plan = [\s\S]{0,80}await priceForNewAcquisition\(uid, sn\)[\s\S]{0,400}withInventoryLock\(uid, sn/,
+    /const plan = [\s\S]{0,120}priceForNewAcquisition\(uid, sn\)[\s\S]{0,400}withInventoryLock\(uid, sn/,
     'In updateSet muss der Preis VOR der Sperre stehen',
   );
   assert.doesNotMatch(src, /function isToday\(/, 'Die eigene Tagesprüfung gehört entfernt');

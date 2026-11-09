@@ -28,7 +28,8 @@ test('Dienste lösen die Sicht auf', { concurrency: 1 }, async (t) => {
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const H = _req('src/haushalt/haushalt.js');
-  const { getSets, loescheSetFuer } = _req('src/sets/abfragen.js');
+  const { getSets } = _req('src/sets/lesen.js');
+  const { loescheSetFuer } = _req('src/sets/loeschen.js');
   const [HAUPT, SUB] = [`haupt_${process.pid}`, `sub_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[HAUPT, SUB]]);
   const haupt = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [HAUPT])).id;

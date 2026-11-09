@@ -99,3 +99,9 @@ export function beiAuftragsStand(f: (schluessel?: string) => void): () => void {
   listen(repo.AUFTRAG_STAND_KANAL, f);
   return () => unlisten(repo.AUFTRAG_STAND_KANAL, f);
 }
+
+/** Weckt, sobald irgendwo ein Auftrag eingestellt wird; gibt das Abmelden zurück. */
+export function beiNeuemAuftrag(f: () => void): () => void {
+  listen(repo.AUFTRAG_KANAL, f);
+  return () => unlisten(repo.AUFTRAG_KANAL, f);
+}

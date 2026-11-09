@@ -71,7 +71,7 @@ Module.prototype.require = function (name) {
 const _req = require('./helpers/sources').buildAndRequire();
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const db = _req('db/database.js');
-const IQ = _req('jobs/imageQueue.js');
+const IQ = _req('src/katalog/bilder/bildbedarfLauf.js');
 const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 
 /** Stapelgrösse und Deckel aus dem Modul — der Test wiederholt keine Zahl. */
@@ -337,7 +337,7 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
   // Ausführlich: docs/begruendungen/test/image-queue-pace-db.test.js.md#execfilesync
   execFileSync(process.execPath, ['-e', `
     const db = require(${JSON.stringify(path.join(ROOT, 'dist', 'db', 'database.js'))});
-    const IQ = require(${JSON.stringify(path.join(ROOT, 'dist', 'jobs/imageQueue.js'))});
+    const IQ = require(${JSON.stringify(path.join(ROOT, 'dist', 'src/katalog/bilder/bildbedarfLauf.js'))});
     (async () => {
       await db.initSchemaOnce();
       await IQ._taktDurchgang();
@@ -356,7 +356,7 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
 
   // Und jetzt bis zur KACHEL
   // Ausführlich: docs/begruendungen/test/image-queue-pace-db.test.js.md#iqhier
-  const IQhier = _req('jobs/imageQueue.js');
+  const IQhier = _req('src/katalog/bilder/bildbedarfLauf.js');
   IQhier.letzterLauf.zeit = null;
   IQhier.letzterLauf.ergebnis = null;
 

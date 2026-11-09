@@ -380,7 +380,7 @@ export async function oeffneMerkpostenDetail(arg) {
   }).catch(() => {});
 
   // Der VERLAUF — die Zeilen darüber stehen da schon. Er kommt aus price_history, das der stündliche
-  // Preislauf füllt; für einen Merkposten seit dieser Änderung ebenfalls (jobs/priceJob.ts). Ein frischer
+  // Preislauf füllt; für einen Merkposten seit dieser Änderung ebenfalls (src/finanzen/preisLauf.ts). Ein frischer
   // Merkposten hat deshalb erst einen Punkt, und eine Linie braucht zwei — das ist kein Fehler, sondern der
   // Anfang.
   api('GET', `/v1/sets/${encodeURIComponent(set_number)}/price-history`).then(ph => {

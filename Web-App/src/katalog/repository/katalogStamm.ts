@@ -13,35 +13,36 @@ export async function geladeneFarben(): Promise<{ id: number; name: string; hex:
       WHERE id >= 0 AND name IS NOT NULL ORDER BY id`);
 }
 
-export function schreibeTeilKatalog(dbh: Schreiber, partNumber: string, name: string | null, kategorie: string | null, nameSql: string, kategorieSql: string) {
+// Im gemeinsamen Katalog bleibt der erste geprüfte Wert; COALESCE hält ihn gegen spätere Quellen.
+export function schreibeTeilKatalog(dbh: Schreiber, partNumber: string, name: string | null, kategorie: string | null) {
   return dbh.run(`
     INSERT INTO part_catalog (part_number, part_name, category_name)
     VALUES ($1, $2, $3)
     ON CONFLICT (part_number) DO UPDATE SET
-      ${nameSql},
-      ${kategorieSql},
+      part_name = COALESCE(part_catalog.part_name, EXCLUDED.part_name),
+      category_name = COALESCE(part_catalog.category_name, EXCLUDED.category_name),
       updated_at = NOW()`, [partNumber, name, kategorie]);
 }
 
-export function schreibeTeilFarbe(dbh: Schreiber, partNumber: string, farbe: number, name: string | null, code: string | null, bild: string | null, lokal: string | null, nameSql: string, codeSql: string, bildSql: string) {
+export function schreibeTeilFarbe(dbh: Schreiber, partNumber: string, farbe: number, name: string | null, code: string | null, bild: string | null, lokal: string | null) {
   return dbh.run(`
     INSERT INTO part_color_catalog (part_number, color_id, color_name, color_hex, image_url, image_local)
     VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''))
     ON CONFLICT (part_number, color_id) DO UPDATE SET
-      ${nameSql},
-      ${codeSql},
-      ${bildSql},
+      color_name = COALESCE(part_color_catalog.color_name, EXCLUDED.color_name),
+      color_hex = COALESCE(part_color_catalog.color_hex, EXCLUDED.color_hex),
+      image_url = COALESCE(part_color_catalog.image_url, EXCLUDED.image_url),
       image_local = COALESCE(part_color_catalog.image_local, EXCLUDED.image_local),
       updated_at  = NOW()`, [partNumber, farbe, name, code, bild, lokal]);
 }
 
-export function schreibeFigurKatalog(dbh: Schreiber, figNumber: string, name: string | null, bild: string | null, lokal: string | null, nameSql: string, bildSql: string) {
+export function schreibeFigurKatalog(dbh: Schreiber, figNumber: string, name: string | null, bild: string | null, lokal: string | null) {
   return dbh.run(`
     INSERT INTO minifigs_catalog (fig_number, fig_name, image_url, image_local)
     VALUES ($1, $2, $3, NULLIF($4, ''))
     ON CONFLICT (fig_number) DO UPDATE SET
-      ${nameSql},
-      ${bildSql},
+      fig_name = COALESCE(minifigs_catalog.fig_name, EXCLUDED.fig_name),
+      image_url = COALESCE(minifigs_catalog.image_url, EXCLUDED.image_url),
       image_local = COALESCE(minifigs_catalog.image_local, EXCLUDED.image_local),
       updated_at  = NOW()`, [figNumber, name, bild, lokal]);
 }
@@ -86,24 +87,24 @@ export function schreibeSetTeil(dbh: Schreiber, setNumber: string, partNumber: s
       SET quantity = EXCLUDED.quantity, updated_at = NOW()`, [setNumber, partNumber, colorId, quantity, isSpare]);
 }
 
-export function schreibeTeileKatalog(dbh: Schreiber, nummern: string[], namen: (string | null)[], kategorien: (string | null)[], nameSql: string, kategorieSql: string) {
+export function schreibeTeileKatalog(dbh: Schreiber, nummern: string[], namen: (string | null)[], kategorien: (string | null)[]) {
   return dbh.run(`
     INSERT INTO part_catalog (part_number, part_name, category_name)
     SELECT * FROM unnest($1::text[], $2::text[], $3::text[])
     ON CONFLICT (part_number) DO UPDATE SET
-      ${nameSql},
-      ${kategorieSql},
+      part_name = COALESCE(part_catalog.part_name, EXCLUDED.part_name),
+      category_name = COALESCE(part_catalog.category_name, EXCLUDED.category_name),
       updated_at = NOW()`, [nummern, namen, kategorien]);
 }
 
-export function schreibeTeilFarben(dbh: Schreiber, nummern: string[], farben: number[], namen: (string | null)[], codes: (string | null)[], bilder: (string | null)[], lokale: (string | null)[], nameSql: string, codeSql: string, bildSql: string) {
+export function schreibeTeilFarben(dbh: Schreiber, nummern: string[], farben: number[], namen: (string | null)[], codes: (string | null)[], bilder: (string | null)[], lokale: (string | null)[]) {
   return dbh.run(`
     INSERT INTO part_color_catalog (part_number, color_id, color_name, color_hex, image_url, image_local)
     SELECT p, f, n, c, u, NULLIF(l, '') FROM unnest($1::text[], $2::int[], $3::text[], $4::text[], $5::text[], $6::text[]) AS x(p, f, n, c, u, l)
     ON CONFLICT (part_number, color_id) DO UPDATE SET
-      ${nameSql},
-      ${codeSql},
-      ${bildSql},
+      color_name = COALESCE(part_color_catalog.color_name, EXCLUDED.color_name),
+      color_hex = COALESCE(part_color_catalog.color_hex, EXCLUDED.color_hex),
+      image_url = COALESCE(part_color_catalog.image_url, EXCLUDED.image_url),
       image_local = COALESCE(part_color_catalog.image_local, EXCLUDED.image_local),
       updated_at  = NOW()`, [nummern, farben, namen, codes, bilder, lokale]);
 }
@@ -116,13 +117,13 @@ export function schreibeSetTeile(dbh: Schreiber, setNumber: string, nummern: str
       SET quantity = EXCLUDED.quantity, is_spare = EXCLUDED.is_spare, updated_at = NOW()`, [setNumber, nummern, farben, mengen, ersatz]);
 }
 
-export function schreibeFigurenKatalog(dbh: Schreiber, nummern: string[], namen: (string | null)[], bilder: (string | null)[], nameSql: string, bildSql: string) {
+export function schreibeFigurenKatalog(dbh: Schreiber, nummern: string[], namen: (string | null)[], bilder: (string | null)[]) {
   return dbh.run(`
     INSERT INTO minifigs_catalog (fig_number, fig_name, image_url)
     SELECT * FROM unnest($1::text[], $2::text[], $3::text[])
     ON CONFLICT (fig_number) DO UPDATE SET
-      ${nameSql},
-      ${bildSql},
+      fig_name = COALESCE(minifigs_catalog.fig_name, EXCLUDED.fig_name),
+      image_url = COALESCE(minifigs_catalog.image_url, EXCLUDED.image_url),
       updated_at  = NOW()`, [nummern, namen, bilder]);
 }
 

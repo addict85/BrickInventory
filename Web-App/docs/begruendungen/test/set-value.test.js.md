@@ -38,18 +38,6 @@ dort geprueft, wo die Abfragen heute stehen — utils/ und routes/api_v1/,
 siehe die Pruefung „KEINE Abfrage stellt mehr …" weiter unten.
 ```
 
-<a id="job-stelle"></a>
-## `const job = fs.readFileSync(path.join(ROOT, 'jobs/priceJob.ts'), 'utf8`
-
-```text
-Seit der zustandsabhängigen Bewertung braucht ein Set mit einem neuen UND
-einem gebrauchten Exemplar beide Preise im Cache. Vorher holte der Job
-immer nur einen Zustand und wich nur bei komplett fehlendem Preis auf den
-anderen aus — bei gemischten Sets fehlte damit dauerhaft eine Hälfte.
-.ts statt .js: jobs/ ist TypeScript, das .js ist nur noch ein Build-Ergebnis
-in dist/ und im Repo nicht mehr vorhanden.
-```
-
 <a id="src-stelle"></a>
 ## `const src = require('./helpers/sources').adminQuelle();`
 

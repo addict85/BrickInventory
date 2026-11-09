@@ -7,7 +7,6 @@ import type { BlArt } from '../../db/blZuordnungSql';
  * der Typ verhindert, dass dort je etwas anderes landet. */
 export type { BlArt };
 /** In db/, damit Repositories sie einsetzen können. */
-export { blJoin, blNummerSql } from '../../db/blZuordnungSql';
 
 /** Nur für geprüfte Quellen (Rebrickable, BrickLink); gleiche Nummer heisst
  * „keine abweichende". Was ein Konto einträgt, geht an merkeEigeneBlNummer. */

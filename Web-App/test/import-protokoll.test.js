@@ -29,7 +29,7 @@ const lies = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 const { ohneKommentare } = require('./helpers/sources');
 
 const FORTSCHRITT = 'public/js/01-fortschritt.js';
-const GALERIE     = 'public/js/02-gallery.js';
+const GALERIE     = 'public/js/02-set-csv-import.js';
 
 test('nur EINE Fassung baut die Zeile fürs Import-Protokoll', () => {
   const quellen = fs.readdirSync(path.join(ROOT, 'public', 'js'))

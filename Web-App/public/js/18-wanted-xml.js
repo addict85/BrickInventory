@@ -11,7 +11,8 @@ import { ico, G, XML_ICON_SVG, setzeHtml } from './01-dom.js';
 import { toast } from './01-meldungen.js';
 import { loadManualFigsTable } from './06-minifigs.js';
 import { loadGallery } from './02-gallery.js';
-import { loadBrickColors, loadManualParts } from './03-parts.js';
+import { loadManualParts } from './03-parts.js';
+import { loadBrickColors } from './03-teil-erfassen.js';
 
 /**
  * Der Bericht des Servers (WantedXmlErgebnis). Die Felder je Posten, die die Tabelle zeigt, nennt der Vertrag

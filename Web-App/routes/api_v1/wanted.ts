@@ -96,7 +96,7 @@ router.post('/wanted/import/csv', requireToken, kontoSchranke('upload'), csvEmpf
 
 /** Die Vorschau ist die VORGABE: Ohne `schreiben=1` wird nichts angelegt, weil
  * die dritte Sicherheitsstufe der Abbildung nur eine Vermutung ist. Gerechnet
- * wird im Auftrag (jobs/wantedXmlImport.ts); mit `strom=1` gehen dessen
+ * wird im Auftrag (src/sammlung/wantedXmlImport.ts); mit `strom=1` gehen dessen
  * Zwischenstände als NDJSON-Zeilen hinaus, ohne als eine JSON-Antwort (App).
  * Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#post-wanted-list-import-xml */
 router.post('/wanted-list/import/xml', requireToken, kontoSchranke('upload'), xmlEmpfang.single('file'),

@@ -25,7 +25,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
-const { zustaendeJeSet, conditionsNeededFor } = _req('jobs/priceJob.js');
+const { zustaendeJeSet, conditionsNeededFor } = _req('src/finanzen/preisLauf.js');
 
 /** Sortiert vergleichen: die Reihenfolge in der Menge ist keine Aussage. */
 const sortiert = (a) => [...a].sort();

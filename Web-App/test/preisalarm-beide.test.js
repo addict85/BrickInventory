@@ -174,7 +174,7 @@ test('die Prüfung hängt am Ende des Preislaufs, nicht an jedem Preisabruf', ()
   // In fetchAndCachePrice() liefe sie pro Lauf tausendfach — auch bei
   // Cache-Treffern, bei denen sich nichts geändert hat — und meldete dieselbe
   // Schwelle mehrfach je Durchgang.
-  const job = require('./helpers/sources').ohneKommentare(web('jobs/priceJob.ts'));
+  const job = require('./helpers/sources').ohneKommentare(web('src/finanzen/preisLauf.ts'));
   assert.match(job, /pruefeSet/, 'Der Preislauf prüft keine Alarme');
   // Bis zur SCHLIESSENDEN Klammer der Funktion, nicht bis zur nächsten
   // Deklaration: Zwischen fetchAndCachePrice() und refreshPriceForSet() liegt

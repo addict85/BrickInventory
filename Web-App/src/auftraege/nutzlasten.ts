@@ -64,7 +64,7 @@ export const PreisPosten = z.discriminatedUnion('art', [
 ]);
 const PreiseNachladen = z.object({ user_id: KONTO, waehrung: z.string().min(3).max(3), posten: z.array(PreisPosten).max(2000) });
 
-/** Die Schritte des Nachlaufs nach dem Start; jobs/startNachlaeufe.ts hält genau diese. */
+/** Die Schritte des Nachlaufs nach dem Start; src/verwaltung/startNachlaeufe.ts hält genau diese. */
 export const NACHLAUF_SCHRITTE = ['geheimnisse', 'vorschauen', 'katalog', 'anleitungen', 'set_bilder', 'kaufpreise'] as const;
 
 export const NUTZLASTEN = {

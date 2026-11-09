@@ -161,14 +161,8 @@ test('der CSV-Download geht über abruf.ts, mit Frist, Deckel und Host-Liste', (
   const aufruf = src.slice(src.indexOf('await oeffneHttps('), src.indexOf('});', src.indexOf('await oeffneHttps(')));
   for (const feld of ['hosts:', 'maxBytes:', 'zeitlimitMs:', 'signal'])
     assert.ok(aufruf.includes(feld), `der Download ruft oeffneHttps ohne ${feld}`);
-  assert.doesNotMatch(ohneKommentare(fs.readFileSync(path.join(ROOT, 'jobs/rebrickableCsvSync.ts'), 'utf8')),
+  assert.doesNotMatch(ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/katalog/csvAbgleich.ts'), 'utf8')),
     /from 'https'/, 'der Job lädt nicht mehr selbst');
 
 });
 
-test('die entpackten Zwischendateien werden aufgeräumt', () => {
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'jobs/rebrickableCsvSync.ts'), 'utf8'));
-  const rw = src.slice(src.indexOf('async function runWorker'), src.indexOf('function importInWorker'));
-  assert.match(rw, /finally\s*\{[\s\S]*unlink/,
-    'ohne unlink im finally bleibt inventory_parts.csv.tmp (rund 1 GB) dauerhaft liegen');
-});

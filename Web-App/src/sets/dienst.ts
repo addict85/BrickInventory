@@ -1,8 +1,7 @@
-/** SQL, Rebrickable und Aufträge stehen nur hier und darunter, damit die Routen
- * nur Anfrage und Antwort kennen. */
+/** SQL, Rebrickable und Aufträge stehen nur hier und darunter, damit die Routen nur Anfrage und Antwort kennen. */
 import { blickfeldAus } from '../haushalt/haushalt';
 import type { Sicht } from '../haushalt/haushalt';
-import { logAndContinue, meldeUndLiefere, meldeFehler, vorDem, fehlertext, ohneFehlendeDatei, oeffentlicherFehler } from '../infra/fehler';
+import { vorDem, fehlertext, ohneFehlendeDatei, oeffentlicherFehler } from '../infra/fehler';
 import fs from 'fs';
 import path from 'path';
 import { APP_ROOT } from '../infra/appPaths';
@@ -28,6 +27,7 @@ import { merkeFigur, merkeSetFiguren } from '../katalog/katalogPflege';
 import { randomUUID } from 'crypto';
 import * as repo from './repository/setDetail';
 import type { KatalogTeil, ListenTeil, SetStamm } from './zeilen';
+import { versuche, wertOder } from '../infra/ergebnis';
 export type { KatalogTeil, ListenTeil, SetStamm } from './zeilen';
 
 
@@ -66,7 +66,8 @@ export interface BarcodeTreffer {
 async function barcodeErgebnis(setNumber: string, name: string | null, source: string): Promise<BarcodeTreffer> {
   const rbData = await rebrickableJson(`/lego/sets/${encodeURIComponent(setNumber)}/`);
   const mfData = rbData ? await rebrickableJson(`/lego/sets/${encodeURIComponent(setNumber)}/minifigs/?page_size=1`) : null;
-  const local = await repo.setKatalog(setNumber).catch(meldeUndLiefere('sets:barcode-katalog', undefined));
+  // Ohne Fang: Eine gestörte Datenbank ist kein „nicht im Katalog“.
+  const local = await repo.setKatalog(setNumber);
 
   const minifigs = mfData?.count ?? local?.minifigs ?? null;
   const image_url = rbData?.set_img_url || local?.image_url || null;
@@ -80,11 +81,12 @@ async function barcodeErgebnis(setNumber: string, name: string | null, source: s
       minifigs, image_local, image_url, source };
   }
   if (rbData?.set_num) {
-    await repo.merkeKatalogCache(setNumber, rbData.name, rbData.year, rbData.theme_name, rbData.num_parts, rbData.set_img_url).catch(logAndContinue('sets:catalog_cache schreiben'));
+    // Der Cache spart nur den nächsten Abruf; der Treffer gilt auch ohne ihn.
+    await versuche('sets:catalog_cache schreiben', repo.merkeKatalogCache(setNumber, rbData.name, rbData.year, rbData.theme_name, rbData.num_parts, rbData.set_img_url));
     return { success: true, unsicher, set_number: setNumber, name: rbData.name || name, year: rbData.year,
       pieces: rbData.num_parts, theme: rbData.theme_name, minifigs, image_url, source };
   }
-  const cat = await repo.katalogCacheEintrag(setNumber).catch(meldeUndLiefere('sets:barcode-cache', undefined));
+  const cat = await repo.katalogCacheEintrag(setNumber);
   if (cat) {
     return { success: true, unsicher, set_number: setNumber, name: cat.name || name, year: cat.year,
       pieces: cat.pieces, theme: cat.theme, minifigs, image_url: cat.image_url || image_url, source };
@@ -93,8 +95,7 @@ async function barcodeErgebnis(setNumber: string, name: string | null, source: s
 }
 
 async function imKatalog(...nummern: string[]): Promise<{ set_number: string; name: string | null } | undefined> {
-  return repo.ersterKatalogTreffer(nummern)
-    .catch(meldeUndLiefere('sets:barcode-bekannt', undefined));
+  return repo.ersterKatalogTreffer(nummern);
 }
 
 /** Reihenfolge: eigener Katalog, EAN über Rebrickable, Brickset und UPCitemdb,
@@ -121,8 +122,8 @@ export async function setZumBarcode(rohBarcode: string): Promise<BarcodeTreffer 
       return { ...r, year: r.year || bsEan.year, theme: r.theme || bsEan.theme, pieces: r.pieces || bsEan.pieces };
     }
 
-    // Der Titel ist Händlertext: Erst die Kandidaten, die der Katalog kennt;
-    // sonst bleibt der erste als markierte Vermutung stehen.
+    // Der Titel ist Händlertext: Erst die Kandidaten, die der Katalog kennt; sonst bleibt der erste als
+    // markierte Vermutung stehen.
     const titel = await produktTitel(ean13);
     if (titel) {
       const kandidaten = setnummerKandidaten(titel);
@@ -148,9 +149,10 @@ function katalogDesSets(setNumber: string): Promise<KatalogTeil[]> {
   return repo.katalogTeileDesSets(mitVersion(setNumber));
 }
 
-/** Ungeblättert; die Seitenangaben stehen da, weil die App sie mit der
- * Teileliste des Bestands teilt. */
+/** Ungeblättert; die Seitenangaben stehen da, weil die App sie mit der Teileliste des Bestands teilt. */
 const eineSeite = (n: number) => ({ total: n, page: 1, page_size: n });
+
+export const QUELLE_GESTOERT = 'quelle_gestoert';
 
 export async function teilelisteDesSets(setNum: string, anreichern: (sn: string) => Promise<unknown>) {
   const n = mitVersion(setNum), bare = ohneVersion(n);
@@ -162,9 +164,11 @@ export async function teilelisteDesSets(setNum: string, anreichern: (sn: string)
   }
   if (!teile.length) {
     source = 'api';
-    const rb = await getAllSetParts(n).catch(meldeUndLiefere('sets:getAllSetParts', null))
-            || await getAllSetParts(bare).catch(meldeUndLiefere('sets:getAllSetParts', null));
-    teile = (rb || []).map((r: RbSetTeil) => ({
+    // Ist Rebrickable gestört, sagt die Antwort das; eine leere Liste hiesse „das Set hat keine Teile“.
+    const mit = await versuche('sets:getAllSetParts', getAllSetParts(n));
+    const rb = mit.ok && mit.wert ? mit : await versuche('sets:getAllSetParts', getAllSetParts(bare));
+    if (!rb.ok) return { parts: [], source: QUELLE_GESTOERT, error: rb.fehler.grund, ...eineSeite(0) };
+    teile = (rb.wert || []).map((r: RbSetTeil) => ({
       part_number: r.part.part_num, bl_part_number: r.part.external_ids?.BrickLink?.[0] || r.part.part_num,
       part_name: r.part.name || r.part.part_num, color_id: r.color.id, color_name: r.color.name || '',
       color_hex: r.color.rgb || null, rb_image_url: r.part.part_img_url || null,
@@ -176,12 +180,12 @@ export async function teilelisteDesSets(setNum: string, anreichern: (sn: string)
   const merke = (zeilen: KatalogTeil[]) => { for (const r of zeilen) katalog.set(`${r.part_number}|${r.color_id}`, r); };
   merke(await katalogDesSets(setNum));
   if (teile.some(p => !katalog.has(`${p.part_number}|${p.color_id}`))) {
-    await anreichern(setNum).catch(logAndContinue('sets:enrichSetParts'));
+    await versuche('sets:enrichSetParts', anreichern(setNum));
     merke(await katalogDesSets(setNum));
   }
 
-  // Schlüssel ist die Rebrickable-Nummer samt Farbe: Formvarianten teilen sich
-  // oft eine BrickLink-Nummer und dürfen nicht verschmelzen.
+  // Schlüssel ist die Rebrickable-Nummer samt Farbe: Formvarianten teilen sich oft eine BrickLink-Nummer und
+  // dürfen nicht verschmelzen.
   const zeilen = new Map<string, {
     part_number: string; bl_part_number: string; part_name: string; color_id: number; bl_color_id: number | null;
     color_name: string; color_hex: string | null; image_url: string | null; total_quantity: number; is_spare: boolean;
@@ -200,8 +204,8 @@ export async function teilelisteDesSets(setNum: string, anreichern: (sn: string)
       color_hex: cat?.color_hex || p.color_hex || null, image_url: bild, total_quantity: menge,
       is_spare: istErsatzteil(p.is_spare) });
   }
-  await stelleAuftragEin('bilder', { set_number: setNum }, { schluessel: `bilder:${n}`, maxVersuche: 3 })
-    .catch(logAndContinue(`sets:bilder einstellen ${setNum}`));
+  await versuche(`sets:bilder einstellen ${setNum}`,
+    stelleAuftragEin('bilder', { set_number: setNum }, { schluessel: `bilder:${n}`, maxVersuche: 3 }));
   return { parts: [...zeilen.values()], source, ...eineSeite(zeilen.size) };
 }
 
@@ -224,18 +228,20 @@ export async function figurenlisteDesSets(setNum: string) {
     figs = await repo.inventarFigurenDesSets(invId);
   }
   if (!figs.length) {
-    figs = (await getSetMinifigs(n).catch(meldeUndLiefere('sets:getSetMinifigs', null))
-         || await getSetMinifigs(bare).catch(meldeUndLiefere('sets:getSetMinifigs', null))) || [];
+    const mit = await versuche('sets:getSetMinifigs', getSetMinifigs(n));
+    const rb = mit.ok && mit.wert ? mit : await versuche('sets:getSetMinifigs', getSetMinifigs(bare));
+    if (!rb.ok) return { figs: [], source: QUELLE_GESTOERT, error: rb.fehler.grund };
+    figs = rb.wert || [];
   }
   if (!figs.length) return { figs: [], source: 'not_found' };
-  setImmediate(() => { figurenMerken(n, figs).catch(logAndContinue('sets:figurenkatalog schreiben')); });
+  setImmediate(() => { void versuche('sets:figurenkatalog schreiben', figurenMerken(n, figs)); });
   return { figs: figs.map(ausgabe), source: 'csv_cache' };
 }
 
 async function figurenMerken(n: string, figs: Array<{ fig_number: string; fig_name: string | null; quantity: number; image_url: string | null }>) {
   for (const f of figs) {
     let bild = f.image_url || null;
-    if (!bild) bild = (await getMinifigInfo(f.fig_number).catch(meldeUndLiefere('sets:minifigur-info', null)))?.image_url || null;
+    if (!bild) bild = wertOder(await versuche('sets:minifigur-info', getMinifigInfo(f.fig_number)), null)?.image_url || null;
     await merkeFigur(f.fig_number, f.fig_name, bild);
     await merkeSetFiguren(n, [{ figNumber: f.fig_number, quantity: f.quantity }]);
   }
@@ -246,20 +252,19 @@ export async function setPreis(uid: number, blickfeldWahl: Sicht | number[], sn:
   const blickfeld = await blickfeldAus(blickfeldWahl);
   const set = await repo.setImFeld(sn, blickfeld);
   if (!set) return null;
-  // Die Währung aus der Einstellung: Die App schickte ihren lokalen Startwert mit, bevor sie die Einstellung kannte.
+  // Die Währung aus der Einstellung: Die App schickte ihren lokalen Startwert mit, bevor sie die Einstellung
+  // kannte.
   const currency  = await getSetting(uid, 'currency', 'EUR');
   const guideType = await getSetting(uid, 'price_guide_type', 'sold');
   const ttlHours  = await getSetting(uid, 'price_cache_ttl', '24');
-  try {
-    const cond = await resolveSetCondition(blickfeld, sn);
-    const pd = await fetchPrice(sn, cond, guideType, currency, ttlHours);
-    return { set_number: sn, currency, min_price: pd.min_price, avg_price: pd.avg_price,
-      max_price: pd.max_price, qty_avg_price: pd.qty_avg_price, from_cache: pd.from_cache,
-      no_price: !!(pd as { no_price?: boolean }).no_price };
-  } catch (e) {
-    meldeFehler('sets:preis', e);
-    return { set_number: sn, currency, min_price: null, avg_price: null, max_price: null, qty_avg_price: null, no_price: true };
-  }
+  const preis = await versuche('sets:preis', async () =>
+    fetchPrice(sn, await resolveSetCondition(blickfeld, sn), guideType, currency, ttlHours));
+  if (!preis.ok) return { set_number: sn, currency, min_price: null, avg_price: null, max_price: null, qty_avg_price: null,
+    no_price: true, error: preis.fehler.grund };
+  const pd = preis.wert;
+  return { set_number: sn, currency, min_price: pd.min_price, avg_price: pd.avg_price,
+    max_price: pd.max_price, qty_avg_price: pd.qty_avg_price, from_cache: pd.from_cache,
+    no_price: !!(pd as { no_price?: boolean }).no_price };
 }
 
 export async function rebrickableListe(uid: number) {
@@ -283,8 +288,8 @@ export async function anleitungLoeschen(uid: number, id: string): Promise<boolea
   if (!instr) return false;
   await repo.loescheAnleitung(id, uid);
   if (!instr.local_path?.startsWith('/data/uploads/')) return true;
-  const rest = await repo.anleitungsdateiBenutzt(instr.local_path)
-    .catch(meldeUndLiefere('sets:anleitung-noch-benutzt', { ok: 1 }));
+  // Weiss die Datenbank nicht, ob noch jemand die Datei braucht, bleibt sie liegen.
+  const rest = wertOder(await versuche('sets:anleitung-noch-benutzt', repo.anleitungsdateiBenutzt(instr.local_path)), { ok: 1 });
   // Der Eintrag ist schon weg; eine liegen gebliebene Datei kostet nur Platz.
   if (!rest) await fs.promises.unlink(path.join(APP_ROOT, instr.local_path.slice(1)))
     .catch(ohneFehlendeDatei('anleitung:datei-loeschen'));
@@ -355,7 +360,7 @@ export async function setCsvImportStarten(userId: number, text: string, nurPruef
   try {
     await stelleAuftragEin('csv_import', { user_id: userId, lauf, rows }, { userId, maxVersuche: 3 });
   } catch (e) {
-    await jobUpdate(userId, { status: 'error', error: oeffentlicherFehler(e, 'csv-import:einstellen').error }, lauf).catch(logAndContinue('csv-import:fehler vermerken'));
+    await versuche('csv-import:fehler vermerken', jobUpdate(userId, { status: 'error', error: oeffentlicherFehler(e, 'csv-import:einstellen').error }, lauf));
     throw e;
   }
   await emitJobStatus(userId);
@@ -363,7 +368,8 @@ export async function setCsvImportStarten(userId: number, text: string, nurPruef
 }
 
 export async function setCsvImportAbbrechen(userId: number) {
-  await jobUpdate(userId, { status: 'cancelled' }).catch(logAndContinue('csv-import:abbruch vermerken'));
+  // Ohne Fang: Schlägt das Vermerken fehl, liefe der Import weiter, während die Antwort „abgebrochen“ sagte.
+  await jobUpdate(userId, { status: 'cancelled' });
   await emitJobStatus(userId);
 }
 

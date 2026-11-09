@@ -1,24 +1,21 @@
 // Der Reiter Teile: Teile aus Sets (seitenweise) und die manuell erfassten Teile samt Erfassen, Farbwahl und
 // CSV-Import — beide Listen teilen Filter und Leerzustand.
 import { abonniere } from './00-ereignisse.js';
-import { ladeAnzeige, skelettKacheln, listeLadefehler, teileAufschluesselung, condBadges, ownerBadges, schliesseErfassen, csvHochladen, zeilenKnopf } from './01-bausteine.js';
+import { ladeAnzeige, skelettKacheln, listeLadefehler, teileAufschluesselung, condBadges, ownerBadges, zeilenKnopf } from './01-bausteine.js';
 import { registerActions, echt } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { escHex, esc, hexZiffern, html, ungeprueft } from './00-escapen.js';
+import { escHex, esc, html, ungeprueft } from './00-escapen.js';
 import { api } from './01-api.js';
 import { bildTag, fullUrl, imgUrl, observeLazyImages, platzhalterInhalt, thumbUrl } from './01-bilder.js';
 import { G, leerZustand, meldeTreffer, zuruecksetzenKnopf, TRASH_ICON_SVG, aktiverReiter, setzeHtml, fuegeHtmlEin } from './01-dom.js';
 import { fmtBig, fmtN } from './01-format.js';
-import { betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './01-formular.js';
 import { toast } from './01-meldungen.js';
 import { addScopeParam, addLagerParam, scopeQuery } from './14-scope.js';
 import { allSets, CURRENCY } from './00-zustand.js';
 import { confirmDelete } from './01-rueckfrage.js';
-import { csvImportStatus, manuellQuery, manuelleTabelle, preisHerkunftHinweis, tabellenAnsicht } from './06-minifigs.js';
+import { manuellQuery, manuelleTabelle, tabellenAnsicht } from './06-minifigs.js';
 import { geloeschtMitRueckgaengig } from './20-papierkorb.js';
-import { leereLagerortFeld, selectedOwner, selectedStorage } from './02-konten-orte.js';
 import { loadFinance } from './04-finance.js';
-/** @typedef {import('../../frontend-typen/vertrag').BrickColor} Steinfarbe */
 /** @typedef {import('../../frontend-typen/vertrag').GET_api_v1_sets_setNumber_parts_list['parts'][number]} TeilZeile */
 
 // ── PARTS ─────────────────────────────────────────────
@@ -43,7 +40,6 @@ export async function loadParts(){
 }
 /** Platzhalter einer Kennzahl, solange sie lädt — „—“ hiesse „kein Wert“. */
 const WERT_SKELETT = '<span class="skelett-zeile skelett-wert" aria-hidden="true"></span>';
-
 
 async function loadPartsStats(){
   const felder = ['ps-total', 'ps-unique', 'ps-colors'];
@@ -470,7 +466,6 @@ function teileAnsichtGeaendert() {
 }
 G('parts-view').addEventListener('change', teileAnsichtGeaendert);
 
-
 // ── MANUAL PARTS ─────────────────────────────────────────────────────────────
 /** @type {ManuellesTeil[]} */
 let manualPartsCache = [];
@@ -564,94 +559,6 @@ export async function deleteManualPart(partNumber, colorId, owner) {
   else { toast(d.error || t('settings.error'), 'error'); return false; }
 }
 
-// Inline add-part form (zuoberst im Teile-Tab)
-/** @type {Steinfarbe[]} */
-let _brickColors = [];
-
-export async function loadBrickColors(){
-  if(_brickColors.length) return _brickColors;
-  const d = await api('GET','/v1/parts/brick-colors');
-  if(d.success){ _brickColors=d.colors; renderColorDropdown(); }
-  return _brickColors;
-}
-
-function updateColorDot(){
-  const sel = G('ap-color-select');
-  const dot = G('ap-color-dot');
-  if(!sel||!dot) return;
-  const hex = sel.options[sel.selectedIndex]?.dataset.hex;
-  dot.style.background = hex ? '#'+hex : 'var(--s200)';
-}
-
-function renderColorDropdown(){
-  const sel = G('ap-color-select'); if(!sel) return;
-  // data-name bleibt der englische Rebrickable-Name — er wird beim Speichern als parts.color_name übernommen
-  // und für BrickLink-Abgleiche gebraucht. Übersetzt wird nur der sichtbare Text, mit derselben Funktion wie
-  // die Farbanzeige und der Filter im Teile-Reiter.
-  setzeHtml(sel, html`${html`<option value="">${tRaw('parts.no_color_dash')}</option>`}${_brickColors.map(c=>html`<option value="${c.id}" data-name="${(c.name||'').replace(/"/g,'&quot;')}" data-hex="${hexZiffern(c.hex)}">${colorName(c.name)}</option>`)}`);
-}
-
-G('btn-add-part')?.addEventListener('click', async () => {
-  const num = G('ap-num-inline')?.value.trim();
-  const res = G('ap-inline-result');
-  res.style.color = 'var(--r500)';
-  if(!num){ res.textContent=tRaw('parts.number_required'); return; }
-  const colorSel = G('ap-color-select');
-  // „Keine Farbe“ ist null, nicht 0: 0 ist bei Rebrickable Schwarz. Mit 0 für beides suchte der Server für
-  // schwarze Teile kein Farbbild und zeigte das allgemeine, meist weisse.
-  // Ausführlich: docs/begruendungen/public/js/03-parts.js.md#rawcolor
-  const rawColor = colorSel?.value ?? '';
-  const colorId  = String(rawColor).trim() === '' ? null : (parseInt(rawColor) || 0);
-  const colorOpt  = colorSel?.options[colorSel.selectedIndex];
-  const colorName = colorOpt?.dataset.name || null;
-  const colorHex  = colorOpt?.dataset.hex  || null;
-  const preis = betragAusFeld('ap-price-inline');
-  const datumOk = kaufdatumGueltig('ap-date');
-  const menge = mengeAusFeld('ap-qty-inline');
-  if (!preis.ok || !menge.ok || !datumOk) return;
-  const btn = G('btn-add-part'); btn.disabled=true; btn.textContent='…';
-  res.style.color='var(--mut)'; res.textContent=tRaw('adding.progress');
-  const d = await api('POST','/v1/parts',{
-    part_number: num, color_id: colorId, color_name: colorName, color_hex: colorHex,
-    quantity: menge.wert,
-    unit_price: preis.wert,
-    condition: G('ap-condition')?.value || 'N',
-    acquired_at: G('ap-date')?.value || null,
-    owner_user_id: selectedOwner('ap-owner'),
-    storage: selectedStorage('ap-storage'),
-  });
-  btn.disabled=false; btn.textContent=tRaw('gallery.add.submit');
-  if(d.success){
-    const hinweisT = preisHerkunftHinweis(d.price_from_condition);
-    res.style.color='var(--g700)';
-    res.textContent=`${d.part_number} ${d.action==='added'?t('common.added'):t('common.updated')}`
-      + (hinweisT ? ` — ${hinweisT}` : '');
-    schliesseErfassen('part'); toast(res.textContent.replace(/^\u2705\s*/, ''), 'success');
-    G('ap-num-inline').value=''; G('ap-qty-inline').value='1'; G('ap-price-inline').value=''; G('ap-date').value='';
-    leereLagerortFeld('ap-storage');
-    if(colorSel) colorSel.selectedIndex=0;
-    loadManualParts();
-    // Siehe die Figuren-Erfassung darueber: ein Satz braucht laenger als ein Haekchen.
-    setTimeout(()=>{ res.textContent=''; }, hinweisT ? 9000 : 3000);
-  } else { res.style.color='var(--r500)'; res.textContent=d.error||tRaw('settings.error'); }
-});
-
-// CSV import
-async function importPartsCsv() {
-  const d = await csvHochladen({ feld: 'part-csv-file', pfad: '/v1/parts/import/csv',
-    zeige: (l) => csvImportStatus('part-csv-status', l ? 'running' : 'hide', tRaw('import.running')) });
-  if (d) loadManualParts();
-}
-
-G('btn-csv-template').onclick = (e) => {
-  e.preventDefault();
-  const csv = 'part_number,quantity,color_id,color_name,unit_price,condition,acquired_at\n3001,5,4,Red,,N,2024-01-15\n3003,2,0,White,0.15,U,\n';
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = 'parts-template.csv';
-  a.click();
-};
-
 abonniere('bestandGeaendert', () => { loadParts(); loadManualParts(); });
 
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
@@ -659,6 +566,4 @@ registerActions({
   loadParts,
   setCatFilter,
   setColorFilter,
-  importPartsCsv,
-  updateColorDot,
 });

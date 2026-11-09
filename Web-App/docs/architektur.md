@@ -21,7 +21,7 @@ arbeiten. Prozesse sprechen über PostgreSQL miteinander (Tabellen,
 ```
 server.ts, startup/     hängt alles ein
 routes/                 HTTP: Eingabe prüfen (Vertrag), Dienst rufen, antworten
-jobs/                   Hintergrundarbeit, ruft Dienste
+jobs/                   Auftrags-Worker, Bearbeitertabelle, Verdrahtung (keine Fachlogik)
 src/<bereich>/          Dienste (Fachlogik) und repository (SQL)
 db/, clients/           Datenbank und Aussenwelt (nur HTTP)
 src/http/               HTTP-Helfer für Routen und HTTP-Seiten (Fehlerantwort, Upload, Drossel)
@@ -47,7 +47,13 @@ Absicht, solange es nur von unten gebraucht wird:
   Ausnahme: `anfrageKonto` trägt die laufende Anfrage über
   `AsyncLocalStorage` zu Zählern, die keinen Request sehen.
 
-- SQL steht nur in `src/<bereich>/repository*` und `db/`.
+- SQL steht nur in `src/<bereich>/repository*` und `db/`, auch als Klausel
+  (Sortierung, Bedingung, Upsert). Dienste nehmen aus `db/database` nur die
+  Arbeitseinheit (`transaction`) und den Betrieb (Pool, eigene Verbindung).
+- `jobs/` führt Aufträge aus: Pacht, Wiederholung und Abbruch im Worker, je Art
+  ein Aufruf in der Bearbeitertabelle. Was ein Auftrag tut, steht in
+  `src/<bereich>/` (Preislauf in `finanzen`, Bildbedarf in `katalog` …); die
+  Fehlerarten des Laufs (`AuftragVerschieben` …) kommen aus `src/auftraege`.
 - Routen importieren nichts aus `db/`, `jobs/` oder `clients/`. Sie umhüllen
   nichts mit `try/catch`; der Fehlerweg des Routers antwortet. Ein `.catch(…)`
   gibt es nur dort, wo die Antwort einen Ersatzwert braucht (etwa der Token
@@ -86,6 +92,19 @@ kennen einander nicht. Von unten nach oben:
 | 16 | `jobs`, `routes` |
 | 17 | `startup` |
 | 18 | `server.ts` |
+
+## Schema
+
+Die Wahrheit sind die Migrationen in `db/migrations/`. Daraus erzeugt
+`npm run schema:stand` zwei Dateien, beide geprüft:
+
+| Datei | Wozu | Prüfung |
+|---|---|---|
+| `db/basis.sql` | Erststart: eine leere Datenbank bekommt dieses Abbild der ersten N Migrationen, danach laufen nur die jüngeren | `test/schema-basis-db.test.js`: lückenlose Folge vorhandener Migrationen; mit gleichem pg_dump erzeugt das Abbild sich selbst |
+| `db/schema-stand.sql` | Lesefassung des Schemas nach allen Migrationen, für Reviews | `test/schema-frisch-db.test.js`: gleich dem Schema einer frisch gestarteten Datenbank |
+
+Von Hand geändert wird keine der beiden; eine Schemaänderung ist immer eine
+neue Migration.
 
 ## API-Vertrag
 

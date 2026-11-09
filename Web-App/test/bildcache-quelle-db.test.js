@@ -71,7 +71,7 @@ test('Bildquellen kommen aus dem Katalog, nicht vom Client', { concurrency: 1 },
   await db.run(`INSERT INTO teil_farbe_eigen (user_id, part_number, color_id, image_url) VALUES ($1, $2, 5, $3)`,
     [konto, `${T}b`, GETIPPT]);
 
-  const { bilderAusKatalog, erzeugePdf } = _req('jobs/pdfErzeugung.js');
+  const { bilderAusKatalog, erzeugePdf } = _req('src/katalog/pdf/pdfErzeugung.js');
   const vomClient = () => [
     { part_number: `${T}a`, color_id: 5, quantity: 1, image_url: BOESE, image_local: '/images/parts/fremd.jpg' },
     { part_number: `${T}b`, color_id: 5, quantity: 1, image_url: BOESE },

@@ -156,6 +156,31 @@ test('db/, clients/ und jobs/ kennen keine HTTP-Antwort', () => {
   assert.deepEqual(treffer, []);
 });
 
+/** Codezeilen ohne Leerzeilen und Kommentare. */
+const codeZeilen = (rel) => quelltext(rel).split('\n').filter(z => z.trim()).length;
+
+test('jobs/ führt Aufträge aus, die Arbeit eines Auftrags steht in src/', () => {
+  // jobs/ hält den Worker (Pacht, Wiederholung, Abbruch), die Bearbeitertabelle, die Verdrahtung
+  // und den Einstieg des Importprozesses; was ein Auftrag fachlich tut, liegt in src/<bereich>/.
+  // Gemessen am 09.11.2026: vorher 20 Dateien, 1597 Codezeilen, 4 mit Import aus db/; jetzt 4, 287, 0.
+  // Gegenproben (09.11.2026): `import * as db from '../db/database'` in jobs/verdrahtung.ts → rot
+  // (db/); fetchAndCachePrice und zustaendeJeSet zurück nach jobs/auftraegeStarten.ts → rot (113
+  // Zeilen); `import { STAPEL } from '../src/katalog/bilder/bildbedarf'` in jobs/auftragsWorker.ts → rot.
+  const KERN = 'jobs/auftragsWorker.ts';
+  const dateien = tsUnter('jobs');
+  assert.ok(dateien.includes(KERN) && dateien.includes('jobs/auftraegeStarten.ts'), 'Worker oder Bearbeitertabelle fehlt');
+  assert.deepEqual(dateien.flatMap(d => importe(d).filter(z => /(?:^|\/)db\//.test(z)).map(z => `${d} -> ${z}`)), [],
+    'jobs/ erreicht die Datenbank nur über src/auftraege und die Fachdienste');
+  const fremd = aufgeloesteImporte(KERN).filter(z => z.startsWith('src/') && !['auftraege', 'infra'].includes(bereichVon(z)));
+  assert.deepEqual(fremd, [], 'Der Worker kennt keine Fachbereiche, nur Aufträge');
+  const zuLang = dateien.filter(d => d !== KERN && codeZeilen(d) > 80).map(d => `${d} (${codeZeilen(d)})`);
+  assert.deepEqual(zuLang, [], 'Ein Bearbeiter ruft einen Dienst; seine Arbeit gehört nach src/<bereich>/');
+  const SCHRANKE = 287;
+  const summe = dateien.reduce((n, d) => n + codeZeilen(d), 0);
+  assert.ok(summe <= SCHRANKE, `${summe} Codezeilen in jobs/, erlaubt sind ${SCHRANKE}`);
+  if (summe < SCHRANKE) console.log(`  ℹ Codezeilen in jobs/: ${summe} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
 test('db/ importiert nichts aus jobs/', () => {
   // Die Datenbankschicht ist die unterste; die Bilddienste startet
   // startup/datenbank.ts. Gegenprobe (28.10.2026): der Import von
@@ -349,18 +374,47 @@ const SQL_TEXT = /[`'"]\s*(?:SELECT|INSERT\s+INTO|UPDATE\s+\w+\s+(?:\w+\s+)?SET|
 const SQL_AUFRUF = /\b(?:db|tx|client|pool)\.(?:run|get|all|query|exec)\s*(?:<[^>]*>)?\(/;
 /** Auch ein Fragment mitten in einer Zeichenkette, etwa `EXISTS (SELECT 1 FROM …)`. */
 const SQL_FRAGMENT = /\bSELECT\b[^;`'"]*\bFROM\b/;
-const hatSql = (rel) => { const s = quelltext(rel); return SQL_TEXT.test(s) || SQL_AUFRUF.test(s) || SQL_FRAGMENT.test(s); };
+/** Ein Stück einer Anweisung in einer Zeichenkette: Sortierung, Bedingung, Upsert, Join. */
+const SQL_KLAUSEL = /[`'"][^`'"\n]*\b(?:ILIKE|COALESCE\(|ON CONFLICT|EXCLUDED\.|NULLS (?:LAST|FIRST)|ORDER BY|GROUP BY|(?:LEFT |INNER )?JOIN \w+ \w+ ON|RETURNING|WHERE \w)/;
+const hatSql = (rel) => { const s = quelltext(rel); return SQL_TEXT.test(s) || SQL_AUFRUF.test(s) || SQL_FRAGMENT.test(s) || SQL_KLAUSEL.test(s); };
 
 test('SQL steht nur in Repositories und in db/', () => {
   // Ein Verbot, keine Ratsche mehr: Die Liste der Ausnahmen ist seit dem
   // 31.10.2026 leer. Gegenproben (31.10.2026): `await db.get('SELECT 1')` in
-  // src/haushalt/haushalt.ts → rot; `'SELECT 1'` in jobs/aufraeumen.ts → rot;
+  // src/haushalt/haushalt.ts → rot; `'SELECT 1'` in src/verwaltung/aufraeumen.ts → rot;
   // (05.11.2026) das EXISTS-Fragment zurück nach src/finanzen/preisalarm.ts → rot.
   const dateien = tsUnter('src', 'jobs', 'clients', 'routes', 'startup').concat('server.ts');
   assert.ok(dateien.length > 150, `nur ${dateien.length} Dateien gefunden`);
   assert.deepEqual(dateien.filter(d => !istRepository(d) && hatSql(d)), [],
     'SQL gehört in das Repository des Bereichs (src/<bereich>/repository…).');
   assert.ok(tsUnter('src').filter(istRepository).every(hatSql), 'ein Repository ohne SQL ist keines');
+  // Die Klauselsuche muss in den Repositories greifen, sonst sähe sie auch draussen nichts.
+  assert.ok(tsUnter('src').filter(istRepository).filter(d => SQL_KLAUSEL.test(quelltext(d))).length > 30);
+});
+
+/** Was ein Dienst aus db/database nehmen darf: die Arbeitseinheit und den Betrieb, keine Abfrage. */
+const DB_AUSSERHALB = new Set(['transaction', 'pool', 'eigeneVerbindung', 'datenbankAntwortet', 'getPoolStats',
+  'alsSuperuserVerbunden', 'initSchemaOnce', 'DbSchnittstelle']);
+
+test('ausserhalb von repository/ und db/ fragt niemand die Datenbank ab', () => {
+  // Die SQL-Suche oben liest Text; ein Aufruf unter anderem Namen (`datenbank.all(SQL)` mit dem
+  // Text aus einem Repository) ginge an ihr vorbei. Gegenproben (09.11.2026):
+  // `import * as datenbank from '../../db/database'` und `datenbank.all(repo.SQL)` in
+  // src/sets/loeschen.ts → rot „src/sets/loeschen.ts: all“, die Prüfung oben blieb grün;
+  // die Merklisten-Sortierung (COALESCE … NULLS LAST) zurück in src/merkliste/merkliste.ts → rot oben.
+  const treffer = [];
+  let gesehen = 0;
+  for (const d of tsUnter('src', 'jobs', 'clients', 'routes', 'startup').concat('server.ts').filter(d => !istRepository(d))) {
+    const s = quelltext(d);
+    for (const m of s.matchAll(/import\s+(type\s+)?(?:\*\s+as\s+(\w+)|\{([^}]*)\})\s+from\s+'[./]+\/db\/database'/g)) {
+      gesehen++;
+      const namen = m[2] ? [...s.matchAll(new RegExp(`\\b${m[2]}\\.(\\w+)`, 'g'))].map(x => x[1])
+        : m[3].split(',').map(n => n.trim().replace(/^type\s+/, '').split(/\s+as\s+/)[0]).filter(Boolean);
+      for (const n of namen) if (!DB_AUSSERHALB.has(n)) treffer.push(`${d}: ${n}`);
+    }
+  }
+  assert.ok(gesehen > 20, `nur ${gesehen} Importe von db/database gefunden — greift die Suche noch?`);
+  assert.deepEqual(treffer, []);
 });
 
 test('Routen, Aufträge und Clients importieren keine Repositories', () => {

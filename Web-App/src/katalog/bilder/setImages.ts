@@ -48,7 +48,7 @@ export async function downloadSetImage(url: string, setNumber: string, info?: { 
     }).then(r => {
       if (r.status === 200) return r.koerper;
       // „404" und „403 Bot-Erkennung" verlangen verschiedene Massnahmen; ohne
-      // echten Code gilt es in jobs/imageQueue.ts als vorübergehend.
+      // echten Code gilt es in src/katalog/bilder/bildbedarfLauf.ts als vorübergehend.
       const nichtVorhanden = r.status === 404 || r.status === 410;
       (nichtVorhanden ? console.warn : console.error)(`[set-img] ${setNumber}: HTTP ${r.status} vom Bildserver: ${url}`);
       if (info && r.status) info.status = r.status;

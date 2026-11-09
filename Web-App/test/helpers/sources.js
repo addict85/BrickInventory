@@ -175,8 +175,8 @@ module.exports.proxyThumbQuelle = proxyThumbQuelle;
 function adminQuelle() {
   const path = require('path'), fs = require('fs');
   const ROOT = path.join(__dirname, '..', '..');
-  return ['07-admin.js', '07-set-detail.js', '02-detailfelder.js', '01-diagramme.js', '01-rueckfrage.js',
-          '13-acquisition-modals.js', '13-kaufpreis-anzeige.js']
+  return ['07-admin.js', '07-set-detail.js', '02-detailfelder.js', '01-diagramme.js', '01-fadenkreuz.js', '01-rueckfrage.js',
+          '13-acquisition-modals.js', '13-manuell-detail.js', '13-erfassung-zustand.js', '13-kaufpreis-anzeige.js']
     .map(f => fs.readFileSync(path.join(ROOT, 'public', 'js', f), 'utf8'))
     .join('\n');
 }
@@ -197,7 +197,7 @@ function setKernQuelle() {
 module.exports.setKernQuelle = setKernQuelle;
 
 /** Die Leseabfragen je Fachbereich als EIN Quelltext. */
-const HANDLER_MODULE = ['src/bestand/gemeinsam', 'src/haushalt/haushalt', 'src/teile/abfragen', 'src/sets/abfragen',
+const HANDLER_MODULE = ['src/bestand/gemeinsam', 'src/haushalt/haushalt', 'src/teile/abfragen', 'src/sets/lesen', 'src/sets/loeschen',
   'src/figuren/abfragen', 'src/bestand/kennzahlen'];
 function handlerQuelle() {
   const path = require('path'), fs = require('fs');
@@ -219,7 +219,7 @@ function startQuelle() {
   const path = require('path'), fs = require('fs');
   const ROOT = path.join(__dirname, '..', '..');
   const dir = path.join(ROOT, 'startup');
-  const teile = ['server.ts', 'jobs/bildNachlauf.ts', 'jobs/startNachlaeufe.ts', 'jobs/aufraeumen.ts',
+  const teile = ['server.ts', 'src/katalog/bildNachlauf.ts', 'src/verwaltung/startNachlaeufe.ts', 'src/verwaltung/aufraeumen.ts',
     'src/katalog/bildlage.ts']
     .map(f => dienstQuelle(f));
   if (fs.existsSync(dir)) {
