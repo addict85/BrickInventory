@@ -301,8 +301,8 @@ Geheimnis nur, wenn man sie dort auswählt.
 ## Module
 
 Abhängigkeiten nur in diese Richtung: `app → feature-* → core-*`; kein Bereich
-kennt einen anderen, nur das geteilte `feature-gemeinsam` (`ModulgrenzenTest` prüft
-es an den Build-Dateien).
+kennt einen anderen, ohne Ausnahme; was mehrere Bereiche zeigen, liegt im Kernmodul
+`core-ui-bestand` (`ModulgrenzenTest` prüft es an den Build-Dateien).
 
 Den gemeinsamen Android-Block setzen Konventions-Plugins aus `build-logic/`
 (ein eigener Gradle-Bau, eingebunden in `settings.gradle.kts`, Plugin-IDs im
@@ -334,6 +334,7 @@ des Moduls, wo `ModulgrenzenTest` sie liest. Ein SDK-Sprung ist eine Zeile in
 | `core-update` | `ch.brickinventoryapp.update` | Selbstaktualisierung: signierte Beschreibung, Frische, APK-Download, Signaturvergleich, Installation; hängt an `core-data` |
 | `core-dienste` | `ch.brickinventoryapp.dienste` | CSV-Import als Vordergrund-Dienst, stündlicher Preisalarm (WorkManager); hängt an `core-data` |
 | `core-ui` | `ch.brickinventoryapp.ui` | Design-System: Theme und Bausteine ohne Fachwissen (Karten, Zeilen, Suchfeld, Dialoge, Kamera-Bausteine); kennt keine Ansichten und keine Servermodelle |
+| `core-ui-bestand` | `ch.brickinventoryapp.gemeinsam` | Fachliche Bausteine mehrerer Bereiche: Filterblatt, Haushalt- und Lagerortwahl, eigene Einträge, Preisdiagramm, Wertkacheln; hängt nur an `core-model`, `core-ressourcen`, `core-ui` (Paketstamm aus der Zeit als `feature-gemeinsam`) |
 | `core-zustand` | `ch.brickinventoryapp.zustand` | Sitzung, Blickfeld, Bestandssignal, Texte, Basis der Bereichs-ViewModels, AppViewModel; ohne `core-ui` |
 | `core-testing` | `ch.brickinventoryapp.testing` | Testhilfen (Testserver, Testdienste, `Quellen`), nur als `testImplementation` |
 | `feature-anmeldung` | `ch.brickinventoryapp.anmeldung` | Anmelden, Server einrichten, QR |
@@ -343,7 +344,6 @@ des Moduls, wo `ModulgrenzenTest` sie liest. Ein SDK-Sprung ist eine Zeile in
 | `feature-finanzen` | `ch.brickinventoryapp.finanzen` | Finanzen, Gutscheine, PDF-Betrachter |
 | `feature-konto` | `ch.brickinventoryapp.konto` | Einstellungen |
 | `feature-verwaltung` | `ch.brickinventoryapp.verwaltung` | Monitoring für Verwalter |
-| `feature-gemeinsam` | `ch.brickinventoryapp.gemeinsam` | Fachliche Bausteine mehrerer Bereiche: Filterblatt, Haushalt- und Lagerortwahl, eigene Einträge, Preisdiagramm, Wertkacheln; hängt nur an `core-model`, `core-ressourcen`, `core-ui` |
 | `app` | `ch.brickinventoryapp.app` | Navigation, Hilt-Einstieg, Activity, Widget |
 
 Jedes Modul hat seinen eigenen Paketstamm: Paket = Stamm + bisheriger

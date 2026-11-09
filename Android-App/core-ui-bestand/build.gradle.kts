@@ -1,7 +1,7 @@
 // Fachliche Bausteine, die mehrere Bereiche teilen: Filterblatt, Haushalt- und
-// Lagerortwahl, eigene Einträge, Preisdiagramm und Wertkacheln. Nur Darstellung:
-// kennt Modelle, Texte und core-ui, aber weder Daten- noch Zustandsschicht
-// (ModulgrenzenTest), damit kein Bereich über diesen Weg an einen anderen kommt.
+// Lagerortwahl, eigene Einträge, Preisdiagramm und Wertkacheln. Ein Kernmodul, kein
+// Bereich: nur Darstellung, kennt Modelle, Texte und core-ui, aber weder Daten- noch
+// Zustandsschicht (ModulgrenzenTest), damit kein Bereich hierüber an einen anderen kommt.
 plugins {
     alias(libs.plugins.brickinventory.android.library)
     alias(libs.plugins.brickinventory.android.unittests)
@@ -9,7 +9,7 @@ plugins {
 }
 
 android {
-    namespace = "ch.brickinventoryapp.feature.gemeinsam"
+    namespace = "ch.brickinventoryapp.core.uibestand"
 }
 
 dependencies {

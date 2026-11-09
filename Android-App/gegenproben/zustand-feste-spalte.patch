@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.FeinschliffRegelnTest
 Rot: Zustandszeile
 
-diff --git a/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/TabellenZeile.kt b/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/TabellenZeile.kt
---- a/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/TabellenZeile.kt
-+++ b/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/TabellenZeile.kt
+diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/TabellenZeile.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/TabellenZeile.kt
+--- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/TabellenZeile.kt
++++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/TabellenZeile.kt
 @@ -231,7 +231,7 @@ fun Zustandszeile(
  ) {
      // Ab 130 % Schrift steht die Beschriftung über der Wahl: In der festen Spalte

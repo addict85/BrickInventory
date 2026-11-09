@@ -26,8 +26,8 @@ const KT_HAUS   = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-zus
                 + lies(path.join(__dirname, '..', '..', 'Android-App', 'core-zustand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'zustand', 'ui', 'Blickfeld.kt'));
 const KT_DIALOG = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'teile', 'ui', 'dialogs', 'SetItemDetailDialog.kt'));
 const KT_SETDET = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'ui', 'screens', 'SetDetailSections.kt'));
-const KT_CHIPS  = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-gemeinsam', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'gemeinsam', 'ui', 'HouseholdComposables.kt'));
-const KT_FELD   = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-gemeinsam', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'gemeinsam', 'ui', 'LagerortFeld.kt'));
+const KT_CHIPS  = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ui-bestand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'gemeinsam', 'ui', 'HouseholdComposables.kt'));
+const KT_FELD   = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ui-bestand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'gemeinsam', 'ui', 'LagerortFeld.kt'));
 // Die Einstellungen der App liegen in mehreren Dateien: Der Bildschirm
 // selbst traegt nur die Liste, jede Rubrik hat ihre eigene Seite
 // (EinstellungenUnterseiten.kt) mit der Karte in Einstellungen*.kt. Gelesen

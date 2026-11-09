@@ -1,4 +1,4 @@
-# Begründungen zu `feature-gemeinsam/gemeinsam/ui/HouseholdComposables.kt`
+# Begründungen zu `core-ui-bestand/gemeinsam/ui/HouseholdComposables.kt`
 
 Die ausführlichen Kommentare aus `core-ui/src/main/java/ch/brickinventoryapp/ui/screens/HouseholdComposables.kt`, wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die

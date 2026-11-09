@@ -1,4 +1,4 @@
-# Begründungen zu `feature-gemeinsam/gemeinsam/ui/LagerortFeld.kt`
+# Begründungen zu `core-ui-bestand/gemeinsam/ui/LagerortFeld.kt`
 
 Die ausführlichen Kommentare aus `core-ui/src/main/java/ch/brickinventoryapp/ui/screens/LagerortFeld.kt`, wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die

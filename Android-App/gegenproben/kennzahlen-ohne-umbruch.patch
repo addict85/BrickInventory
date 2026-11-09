@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.GeruestUndFormularTest
 Rot: Kennzahlen der Sammlung brechen bei 200 Prozent um
 
-diff --git a/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt b/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt
---- a/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt
-+++ b/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt
+diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt
+--- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt
++++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt
 @@ -54,10 +54,9 @@ fun GalleryStatChip(anzahl: Int, plural: Int, detail: String? = null) {
  @Composable
  fun KennzahlenReihe(modifier: Modifier = Modifier, inhalt: @Composable () -> Unit) {

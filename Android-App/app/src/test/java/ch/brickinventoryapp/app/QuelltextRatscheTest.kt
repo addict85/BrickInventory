@@ -438,7 +438,7 @@ class QuelltextRatscheTest {
         // Darin UPDATE_ORDNER: öffentlich, weil core-data und core-update ihn teilen.
         val GRENZE = 236
         val dekl = Regex("""^(?:@[\w.:]+(?:\([^)\n]*\))?\s+)*((?:(?:public|internal|private|protected|data|sealed|abstract|open|enum|inline|value|annotation|const|suspend|operator|infix|tailrec|lateinit|fun interface)\s+)*)(?:fun\s+interface|class|interface|object|typealias|fun|val|var)\s""", RegexOption.MULTILINE)
-        val andere = setOf("core-model", "core-ressourcen", "core-ui", "core-zustand", "core-testing")
+        val andere = setOf("core-model", "core-ressourcen", "core-ui", "core-ui-bestand", "core-zustand", "core-testing")
         val module = Quellen.module.filter { it.name.startsWith("core-") && it.name !in andere }
         assert("core-data" in module.map { it.name }) { "core-data nicht unter ${module.map { it.name }} — greift die Suche noch?" }
         val dateien = module.flatMap { m ->

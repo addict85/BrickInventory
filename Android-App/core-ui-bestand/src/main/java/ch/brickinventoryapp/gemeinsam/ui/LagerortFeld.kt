@@ -24,7 +24,7 @@ import ch.brickinventoryapp.ui.theme.Formen
  * Das Lagerort-Feld: auswählen oder neu eintippen, in einem Bedienelement — ein
  * ExposedDropdownMenuBox klappt auf wie ein Auswahlfeld und nimmt trotzdem
  * Getipptes an, das Gegenstück zur `datalist` der Webapp.
- * Ausführlich: docs/begruendungen/feature-gemeinsam/gemeinsam/ui/LagerortFeld.kt.md#lagerortfeld
+ * Ausführlich: docs/begruendungen/core-ui-bestand/gemeinsam/ui/LagerortFeld.kt.md#lagerortfeld
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
