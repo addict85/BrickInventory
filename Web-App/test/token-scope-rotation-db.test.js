@@ -135,6 +135,8 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
 
     const voll = await anmelden({ never_expires: true, scope: 'voll' });
     assert.equal(voll.body.token_info.scope, 'voll');
+    // Verwalterrechte eines App-Tokens erst nach der Gerätesperre (schrittschutz-db.test.js).
+    await require('./helpers/geraet').geraetFreigeben(ruf, voll.body.token, 'verwaltung');
     assert.equal((await ruf('/admin/cache-ttl', { token: voll.body.token })).status, 200);
     assert.equal((await ruf('/admin/cache-ttl', { cookie: sitzung })).status, 200, 'Die Sitzung behält die Rechte');
   });

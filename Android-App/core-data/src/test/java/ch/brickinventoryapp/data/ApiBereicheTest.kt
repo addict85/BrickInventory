@@ -4,6 +4,7 @@ import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.api.FigurenAbfrageApi
 import ch.brickinventoryapp.data.api.FigurenApi
 import ch.brickinventoryapp.data.api.FinanzenApi
+import ch.brickinventoryapp.data.api.GeraetApi
 import ch.brickinventoryapp.data.api.GutscheineApi
 import ch.brickinventoryapp.data.api.HaushaltApi
 import ch.brickinventoryapp.data.api.KatalogApi
@@ -18,6 +19,7 @@ import ch.brickinventoryapp.data.repository.KatalogRepositoryImpl
 import ch.brickinventoryapp.data.repository.KontoRepositoryImpl
 import ch.brickinventoryapp.data.repository.VerwaltungRepositoryImpl
 import ch.brickinventoryapp.data.repository.GutscheineRepositoryImpl
+import ch.brickinventoryapp.data.repository.SchrittbindungImpl
 import ch.brickinventoryapp.data.repository.HaushaltRepositoryImpl
 import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
 import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
@@ -66,6 +68,7 @@ class ApiBereicheTest {
             SetsRepositoryImpl::class to SetsApi::class.java,
             TeileRepositoryImpl::class to TeileApi::class.java, HaushaltRepositoryImpl::class to HaushaltApi::class.java,
             FinanzenRepositoryImpl::class to FinanzenApi::class.java, GutscheineRepositoryImpl::class to GutscheineApi::class.java,
+            SchrittbindungImpl::class to GeraetApi::class.java,
         )
         for ((repo, api) in erwartet) {
             // Mit Vorgabewert (Offlineablage) erzeugt Kotlin einen zweiten Konstruktor;

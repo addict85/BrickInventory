@@ -51,6 +51,8 @@ import ch.brickinventoryapp.ui.components.AnmeldeKarte
 import ch.brickinventoryapp.ui.components.AnmeldeTitel
 import ch.brickinventoryapp.ui.components.FehlerZeile
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz
+import ch.brickinventoryapp.model.schritt.Schrittaktion
+import ch.brickinventoryapp.ui.components.fuer
 import ch.brickinventoryapp.ui.components.PasswortFeld
 import ch.brickinventoryapp.ui.components.MarkenKopf
 import ch.brickinventoryapp.ui.components.Sichtschutz
@@ -88,7 +90,7 @@ fun ZweiterFaktorPflichtMaske(
     val auswahlTitel = stringResource(R.string.zf_open_app)
     val etikett = stringResource(R.string.app_name)
     val teilenTitel = stringResource(R.string.zf_share_title)
-    val schutz = LocalSchrittschutz.current
+    val schutz = LocalSchrittschutz.current.fuer(Schrittaktion.ZWEITER_FAKTOR)
     val codesGrund = stringResource(R.string.schritt_codes)
     val geheimnis = zustand.geheimnis
     // Nach jedem gelungenen Schritt leeren, sonst stünde das Passwort beim nächsten noch da.

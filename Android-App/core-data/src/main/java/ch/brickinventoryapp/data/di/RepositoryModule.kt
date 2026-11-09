@@ -14,12 +14,14 @@ import ch.brickinventoryapp.data.repository.KontoDatenLoescher
 import ch.brickinventoryapp.data.repository.KontoDatenLoeschung
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.KontoRepositoryImpl
+import ch.brickinventoryapp.data.repository.SchrittbindungImpl
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepositoryImpl
+import ch.brickinventoryapp.model.schritt.Schrittbindung
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -39,4 +41,5 @@ internal abstract class RepositoryModule {
     @Binds abstract fun katalog(r: KatalogRepositoryImpl): KatalogRepository
     @Binds abstract fun gutscheine(r: GutscheineRepositoryImpl): GutscheineRepository
     @Binds abstract fun kontoDaten(l: KontoDatenLoeschung): KontoDatenLoescher
+    @Binds abstract fun schrittbindung(s: SchrittbindungImpl): Schrittbindung
 }

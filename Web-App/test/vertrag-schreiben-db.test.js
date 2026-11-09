@@ -57,6 +57,9 @@ const AUSGELASSEN = new Map([
   ['POST /api/v1/vouchers/{id}/klartext',           'verlangt Passwort und zweiten Faktor; Antwort geprüft in gutscheine-db'],
   ['POST /api/v1/vouchers/{id}/pdf-freigabe',       'verlangt Passwort und zweiten Faktor; Ticket geprüft in gutscheine-db'],
   ['POST /api/v1/vouchers/export/pdf-freigabe',     'verlangt Passwort und zweiten Faktor; Ticket geprüft in gutscheine-db'],
+  ['POST /api/v1/geraet/schluessel',                'nur mit App-Token, dieser Lauf hat eine Sitzung; geprüft in schrittschutz-db'],
+  ['POST /api/v1/geraet/schritt/challenge',         'nur mit App-Token und Schlüssel; geprüft in schrittschutz-db'],
+  ['POST /api/v1/geraet/schritt/freigabe',          'braucht eine Signatur des Geräteschlüssels; geprüft in schrittschutz-db'],
 ]);
 
 /** Ein PDF mit den übergebenen Zeilen. */

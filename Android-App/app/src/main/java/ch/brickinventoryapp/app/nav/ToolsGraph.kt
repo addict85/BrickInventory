@@ -35,6 +35,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.toRoute
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
 import ch.brickinventoryapp.ui.components.Schrittsperre
+import ch.brickinventoryapp.model.schritt.Schrittaktion
 import ch.brickinventoryapp.finanzen.ui.screens.GutscheinPdfSchutz
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import ch.brickinventoryapp.finanzen.ui.viewmodel.gutscheinPdfAdresse
@@ -200,7 +201,7 @@ private fun NavGraphBuilder.verwaltungsZiele(u: ZielUmgebung) {
         ReiterGeruest(stringResource(R.string.nav_monitoring), u) {
             // Verwalteraktionen nur nach der Gerätesperre; kein Tipp durch eine Überlagerung.
             Ueberdeckungsschutz()
-            Schrittsperre(stringResource(R.string.schritt_verwaltung)) {
+            Schrittsperre(stringResource(R.string.schritt_verwaltung), Schrittaktion.VERWALTUNG) {
                 MonitoringRoute(appTheme = stand.appTheme, onEinstellungenNeu = { vm.loadSettings() })
             }
         }
