@@ -92,8 +92,10 @@ test('ohne BRICK_IMAGE startet compose nicht, mit Digest zieht jeder Dienst ihn'
   assert.notEqual(ohne.status, 0);
   assert.match(ohne.stderr, /BRICK_IMAGE fehlt in \.env - einmal sh scripts\/image-pruefen\.sh ausfuehren/);
   const mit = JSON.parse(aufruf({ BRICK_IMAGE: `addict85/brickinventory@${D1}` }).stdout);
-  // Caddy baut compose.yaml selbst (Dockerfile.caddy); gezogen wird nur das signierte Image.
-  const ziehen = Object.entries(mit.services).filter(([, d]) => /brickinventory/.test(d.image) && !/postgres/.test(d.image) && !d.build?.dockerfile?.endsWith('.caddy'));
+  // Caddy baut compose.yaml selbst (Dockerfile.caddy, caddy-rechte nimmt es mit pull_policy never);
+  // gezogen wird nur das signierte Image.
+  const ziehen = Object.entries(mit.services).filter(([, d]) => /brickinventory/.test(d.image) && !/postgres/.test(d.image)
+    && !d.build?.dockerfile?.endsWith('.caddy') && d.pull_policy !== 'never');
   assert.deepEqual(ziehen.map(([n, d]) => `${n} ${d.image}`).sort(),
     ['app', 'jobs', 'schluessel'].map(n => `${n} addict85/brickinventory@${D1}`));
 });

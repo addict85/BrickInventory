@@ -24,7 +24,6 @@ import ch.brickinventoryapp.konto.ui.GeraeteUiState
 import ch.brickinventoryapp.model.ui.model.GeraetAnsicht
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.PasswortRueckfrage
-import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import ch.brickinventoryapp.ui.util.fmtTag
 import ch.brickinventoryapp.ui.components.SettingsCard
 
