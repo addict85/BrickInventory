@@ -46,10 +46,13 @@ class TokenAblage @Inject constructor(
     private val geraet: GeraeteAblage,
     /** Die Spiegel laufen, solange die App lebt; kein eigener Bereich ohne Besitzer. */
     @param:ApplicationScope private val prefsScope: CoroutineScope,
+    /**
+     * Bei gesperrtem Gerät wartet das Lesen des Tokens auf das Entsperren (liesToken).
+     * Steht vor [entwertung]: Ein nachgestelltes Lambda meint den Planer, nicht die Sperre.
+     */
+    private val sperre: Geraetesperre = Geraetesperre { false },
     /** Für ein Token, das ein Serverwechsel verwirft, ohne dass es lesbar war (saveServerUrl). */
     private val entwertung: Provider<EntwertungsPlaner> = Provider { EntwertungsPlaner {} },
-    /** Bei gesperrtem Gerät wartet das Lesen des Tokens auf das Entsperren (liesToken). */
-    private val sperre: Geraetesperre = Geraetesperre { false },
 ) : Tokenspiegel, Tokenuebernahme, CacheBesitzer, Entwertungsquelle, Zugangsdaten, Anmeldestand, Sitzungsende {
     companion object {
         val SERVER_URL   = stringPreferencesKey("server_url")
