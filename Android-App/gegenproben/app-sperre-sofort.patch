@@ -1,0 +1,17 @@
+Gegenprobe: Jede Rückkehr aus dem Hintergrund sperrt die App, auch vor Ablauf der Frist
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.AppSperreTest
+Rot: vor Ablauf der Frist fragt die App nicht
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt
+@@ -44,7 +44,7 @@ class AppSperre(private val uhr: () -> Long, private val ablage: Ablage) {
+         val frist = _minuten.value * MINUTE_MS
+         val jetzt = uhr()
+         // Nach einem Neustart des Geräts beginnt die Uhr bei null: Ob die Frist ablief, ist offen.
+-        if (frist > 0 && (jetzt < seit || jetzt - seit >= frist)) setze(true)
++        if (frist > 0 && (jetzt < seit || jetzt - seit >= 0)) setze(true)
+     }
+ 
+     fun entsperrt() = setze(false)

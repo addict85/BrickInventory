@@ -8,6 +8,7 @@ import { validateToken } from '../../src/konto/auth';
 import { resolveUserId, sendeTokenAbsage, nutzerId, zweiterFaktorPflicht } from '../../src/konto/http/anmeldung';
 import { belegeKontoPlatz, type Schranke } from '../../src/http/kontoSchranke';
 import { mussPasswortAendern } from '../../src/konto/konten';
+import { verlangeFreigabe } from '../../src/konto/http/schrittschutz';
 import type { Sicht } from '../../src/haushalt/haushalt';
 
 /** Wer fragt und welche Konten er gewählt hat; den Bereich löst der Dienst auf. */
@@ -34,12 +35,15 @@ const OEFFENTLICH: ReadonlyArray<readonly [string, RegExp]> = [
   ['POST', /^\/auth\/passkey\/anmelden(\/optionen)?$/],
 ];
 
-/** Start- oder vom Verwalter vergebenes Passwort: Bis es ersetzt ist, geht nur der Wechsel. */
-const VOR_DEM_WECHSEL = /^\/auth\/(change-password|logout)$/;
+/** Start- oder vom Verwalter vergebenes Passwort: Bis es ersetzt ist, geht nur der Wechsel.
+ * Den Geräteschlüssel nimmt der Server nur gleich nach der Anmeldung an, also auch hier. */
+const VOR_DEM_WECHSEL = /^\/(auth\/(change-password|logout)|geraet\/schluessel)$/;
 /** Ein Verwalter ohne zweiten Faktor kommt nur bis zu dessen Einrichtung. */
 const ZUR_EINRICHTUNG: ReadonlyArray<readonly [string, RegExp]> = [
   ['GET', /^\/auth\/(me|zweiter-faktor)$/],
   ['POST', /^\/auth\/(change-password|zweiter-faktor\/(einrichten|bestaetigen))$/],
+  // Die Einrichtung in der App verlangt den Schrittschutz (src/konto/http/schrittschutz.ts).
+  ['POST', /^\/geraet\/(schluessel|schritt\/(challenge|freigabe))$/],
 ];
 
 /** Sitzungen von vor dem Feld fragen einmal die Datenbank und merken es sich. */
@@ -94,7 +98,8 @@ export const requireToken = waechter<AuthedRequest>((req, res, next) => {
 export const requireApiAdmin = waechter<AuthedRequest>((req, res, next) => {
   requireToken(req, res, () => {
     if (!req.apiUser?.is_admin) return sendeFehler(req, res, 403, 'nur_admins');
-    next();
+    // Hier statt in einer Pfadliste: So kommt keine Verwalter-Route an der Gerätesperre vorbei.
+    verlangeFreigabe(req, res, next, 'verwaltung');
   });
 });
 

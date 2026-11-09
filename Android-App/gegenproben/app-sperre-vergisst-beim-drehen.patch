@@ -1,0 +1,17 @@
+Gegenprobe: Die Sperre lebt nur in der Activity; Drehen oder Prozessende entsperren
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.AppSperreTest
+Rot: eine neue Activity entsperrt nicht
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt
+@@ -24,7 +24,7 @@ class AppSperre(private val uhr: () -> Long, private val ablage: Ablage) {
+     private val _minuten = MutableStateFlow(ablage.minuten())
+     val minuten: StateFlow<Int> = _minuten.asStateFlow()
+ 
+-    private val _gesperrt = MutableStateFlow(ablage.gesperrt())
++    private val _gesperrt = MutableStateFlow(false)
+     val gesperrt: StateFlow<Boolean> = _gesperrt.asStateFlow()
+ 
+     fun setzeMinuten(minuten: Int) {
