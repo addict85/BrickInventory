@@ -16,6 +16,7 @@ dependencies {
     // Texte und Symbol der Meldungen: Die R-Klassen sind nicht transitiv.
     implementation(project(":core-ressourcen"))
     implementation(libs.androidx.core.ktx)
+    implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.work)
     // WorkManager allein zöge Lifecycle 2.5.1 ein; die Prüfsummen kennen nur die Reihe der übrigen Module.
     implementation(libs.androidx.lifecycle.runtime.ktx)

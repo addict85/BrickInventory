@@ -78,25 +78,25 @@ class BlickfeldDienst @Inject constructor(
     override val lager: StateFlow<LagerUiState> = _lager.asStateFlow()
 
     /** Der Wert für `accounts=`, oder null für „alle Konten“. */
-    override fun kontoFuer(view: ScopeFilter.View): String? = ScopeFilter.asQuery(_konten.value.scopeModes[view.key])
+    override fun kontoFuer(view: ScopeFilter.View): String? = ScopeFilter.asQuery(_konten.value.scopeModes[view])
 
     /** Der Wert für `storage=`, oder null für „alle Orte“. */
-    override fun lagerFuer(view: ScopeFilter.View): String? = ScopeFilter.lagerAsQuery(_lager.value.modi[view.key])
+    override fun lagerFuer(view: ScopeFilter.View): String? = ScopeFilter.lagerAsQuery(_lager.value.modi[view])
 
     override suspend fun setzeKonto(view: ScopeFilter.View, wert: String) {
         ablage.setzeKonto(view, wert)
-        _konten.update { it.copy(scopeModes = it.scopeModes + (view.key to wert)) }
+        _konten.update { it.copy(scopeModes = it.scopeModes + (view to wert)) }
     }
 
     override suspend fun setzeLager(view: ScopeFilter.View, wert: String) {
         ablage.setzeLager(view, wert)
-        _lager.update { it.copy(modi = it.modi + (view.key to wert)) }
+        _lager.update { it.copy(modi = it.modi + (view to wert)) }
     }
 
     /** Die gemerkten Filter aus der Ablage — einmal nach der Anmeldung. */
     override suspend fun ladeFilter() {
-        val konten = ScopeFilter.View.entries.associate { it.key to ablage.konto(it) }
-        val lager = ScopeFilter.View.entries.associate { it.key to ablage.lager(it) }
+        val konten = ScopeFilter.View.entries.associateWith { ablage.konto(it) }
+        val lager = ScopeFilter.View.entries.associateWith { ablage.lager(it) }
         _konten.update { it.copy(scopeModes = konten) }
         _lager.update { it.copy(modi = lager) }
     }

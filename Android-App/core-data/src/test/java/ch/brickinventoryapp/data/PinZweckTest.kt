@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.util.passtZumPin
-import ch.brickinventoryapp.data.util.spkiFingerabdruck
+import ch.brickinventoryapp.sicherheit.passtZumPin
+import ch.brickinventoryapp.sicherheit.spkiFingerabdruck
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test

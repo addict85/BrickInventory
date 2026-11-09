@@ -5,6 +5,7 @@ import ch.brickinventoryapp.data.api.FinanzenApi
 import ch.brickinventoryapp.data.api.GutscheineApi
 import ch.brickinventoryapp.data.api.HaushaltApi
 import ch.brickinventoryapp.data.api.KatalogApi
+import ch.brickinventoryapp.data.api.GeraetApi
 import ch.brickinventoryapp.data.api.KontoApi
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.api.TeileApi
@@ -33,4 +34,5 @@ internal object ApiModule {
     @Provides @Singleton fun provideHaushaltApi(r: Retrofit): HaushaltApi = r.create(HaushaltApi::class.java)
     @Provides @Singleton fun provideFinanzenApi(r: Retrofit): FinanzenApi = r.create(FinanzenApi::class.java)
     @Provides @Singleton fun provideGutscheineApi(r: Retrofit): GutscheineApi = r.create(GutscheineApi::class.java)
+    @Provides @Singleton fun provideGeraetApi(r: Retrofit): GeraetApi = r.create(GeraetApi::class.java)
 }

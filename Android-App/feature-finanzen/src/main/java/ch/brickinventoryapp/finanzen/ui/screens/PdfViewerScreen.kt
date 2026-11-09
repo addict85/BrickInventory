@@ -3,7 +3,7 @@ package ch.brickinventoryapp.finanzen.ui.screens
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import ch.brickinventoryapp.ui.components.GedrosselteAnsage
-import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import android.app.Activity
 import android.content.ContentValues
 import android.content.Context

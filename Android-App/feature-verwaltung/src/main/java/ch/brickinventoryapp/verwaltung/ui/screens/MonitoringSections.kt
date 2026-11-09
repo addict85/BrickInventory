@@ -133,7 +133,7 @@ private fun BricksetAktionen(
  * gilt.
  */
 @Composable
-fun ZeitplanZeile(
+internal fun ZeitplanZeile(
     jobKey: String,
     plan: ZeitplanAnsicht,
     aktionen: MonitoringAktionen,

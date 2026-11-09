@@ -27,9 +27,9 @@ import ch.brickinventoryapp.data.di.Anwendungsbereiche
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.util.LanguageManager
 import ch.brickinventoryapp.netz.util.NetworkPolicy
-import ch.brickinventoryapp.data.util.Protokoll
-import ch.brickinventoryapp.data.util.Geraetesperre
-import ch.brickinventoryapp.data.util.TokenVerschluesselung
+import ch.brickinventoryapp.netz.util.Protokoll
+import ch.brickinventoryapp.sicherheit.Geraetesperre
+import ch.brickinventoryapp.sicherheit.TokenVerschluesselung
 import androidx.hilt.work.HiltWorker
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject

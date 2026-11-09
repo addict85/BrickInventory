@@ -3,10 +3,10 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.VertrauenVerschluesseltTest
 Rot: ein Geheimtext unter fremdem Namen gilt nicht
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Vertrauenschiffre.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Vertrauenschiffre.kt
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Vertrauenschiffre.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Vertrauenschiffre.kt
 index 1ec3faf..10eb61e 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Vertrauenschiffre.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Vertrauenschiffre.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Vertrauenschiffre.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Vertrauenschiffre.kt
 @@ -12,11 +12,11 @@ class Vertrauenschiffre(schluessel: () -> ByteArray) {
      private val chiffre = AblageChiffre(schluessel)
  

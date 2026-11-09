@@ -55,6 +55,20 @@ data class GeraeteUiState(
     val geraete: List<GeraetAnsicht> = emptyList(),
     /** Meldung des Servers oder der Verbindung; null = nichts zu sagen. */
     val fehler: String? = null,
+    /** Die offene Passwort-Rückfrage vor dem Abmelden; null = keine. */
+    val rueckfrage: GeraeteRueckfrage? = null,
+)
+
+/**
+ * Ein fremdes Gerät meldet der Server nur mit Passwort (und Code) ab: Ein
+ * erbeuteter Zugang soll den Inhaber nicht aussperren. [tokenId] null heisst
+ * „alle anderen“.
+ */
+data class GeraeteRueckfrage(
+    val tokenId: String?,
+    val codeNoetig: Boolean = false,
+    val fehler: String? = null,
+    val laeuft: Boolean = false,
 )
 
 /** Zustand der Haushalts-Karte in den Einstellungen. */

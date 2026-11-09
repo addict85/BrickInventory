@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.data.Verbindungsabwurf
 import ch.brickinventoryapp.data.Vertrauensablage
 import ch.brickinventoryapp.zustand.ui.NutzerCaSchalter
-import ch.brickinventoryapp.data.util.ZertifikatsFrage
+import ch.brickinventoryapp.sicherheit.ZertifikatsFrage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 

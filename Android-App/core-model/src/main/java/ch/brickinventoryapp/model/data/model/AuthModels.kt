@@ -209,6 +209,18 @@ data class MeResponse(
 @Serializable
 data class TokenWiderruf(val success: Boolean, val deleted: Int = 0)
 
+/** POST /api/v1/settings/sessions/andere-beenden mit den App-Zugängen (`zugaenge`). */
+@Serializable
+data class AndereBeendenAnfrage(
+    val password: String? = null,
+    val code: String? = null,
+    val zugaenge: Boolean = true,
+)
+
+/** `deleted` zählt die Browser-Sitzungen, `zugaenge` die App-Zugänge. */
+@Serializable
+data class AndereBeendet(val success: Boolean, val deleted: Int = 0, val zugaenge: Int = 0)
+
 // ── Konto anlegen und Passwort vergessen ────────────────────────────────────
 //
 // Die Webapp konnte das von Anfang an, die App nicht: Wer die App als Erstes

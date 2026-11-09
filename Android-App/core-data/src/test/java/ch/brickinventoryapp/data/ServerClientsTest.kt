@@ -7,10 +7,10 @@ import ch.brickinventoryapp.data.cache.VorschauSpeicher
 import ch.brickinventoryapp.data.di.Netzablagen
 import ch.brickinventoryapp.data.di.NetzModule
 import ch.brickinventoryapp.data.di.buildInterceptorClient
-import ch.brickinventoryapp.data.util.AblageChiffre
-import ch.brickinventoryapp.data.util.Ablageschluessel
-import ch.brickinventoryapp.data.util.TokenVerschluesselung
-import ch.brickinventoryapp.data.util.ZertifikatsRueckfrage
+import ch.brickinventoryapp.sicherheit.AblageChiffre
+import ch.brickinventoryapp.sicherheit.Ablageschluessel
+import ch.brickinventoryapp.sicherheit.TokenVerschluesselung
+import ch.brickinventoryapp.sicherheit.ZertifikatsFrage
 import ch.brickinventoryapp.netz.util.BildHostWaechter
 import ch.brickinventoryapp.testing.testVertrauenschiffre
 import coil3.request.ImageRequest
@@ -80,11 +80,11 @@ class ServerClientsTest {
     }
 
     private fun apiClient() = buildInterceptorClient(netz, isApiClient = true, sessionExpired = SessionExpiredSignal(),
-        ctx = ctx, frage = ZertifikatsRueckfrage())
+        ctx = ctx, frage = ZertifikatsFrage())
 
     private fun bildClient() = NetzModule.provideImageOkHttpClient(ctx, netz, SessionExpiredSignal(),
         VorschauSpeicher({ File(ctx.filesDir, "vorschau-clients") }, AblageChiffre { ByteArray(32) { 2 } }),
-        ZertifikatsRueckfrage(), Ablageschluessel(File(ctx.noBackupFilesDir, "clients.schluessel"), Klartresor))
+        ZertifikatsFrage(), Ablageschluessel(File(ctx.noBackupFilesDir, "clients.schluessel"), Klartresor))
 
     private fun hole(client: OkHttpClient, adresse: String) =
         client.newCall(Request.Builder().url(adresse).build()).execute().use { it.code to it.body.string() }

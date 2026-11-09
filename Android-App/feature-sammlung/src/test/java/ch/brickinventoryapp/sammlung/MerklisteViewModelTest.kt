@@ -2,8 +2,8 @@ package ch.brickinventoryapp.sammlung
 
 import kotlinx.coroutines.runBlocking
 import ch.brickinventoryapp.model.data.model.MerkpostenRequest
-import ch.brickinventoryapp.data.lokal.Offlineablage
-import ch.brickinventoryapp.data.lokal.Bearbeitung
+import ch.brickinventoryapp.offline.Offlineablage
+import ch.brickinventoryapp.offline.Bearbeitung
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository

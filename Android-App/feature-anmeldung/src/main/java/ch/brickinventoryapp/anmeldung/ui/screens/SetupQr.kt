@@ -31,9 +31,9 @@ import com.google.mlkit.vision.common.InputImage
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.netz.util.NetworkPolicy
-import ch.brickinventoryapp.data.util.bestaetigtFingerabdruck
-import ch.brickinventoryapp.data.util.fingerabdruckAnfang
-import ch.brickinventoryapp.data.util.fingerabdruckLesbar
+import ch.brickinventoryapp.sicherheit.bestaetigtFingerabdruck
+import ch.brickinventoryapp.sicherheit.fingerabdruckAnfang
+import ch.brickinventoryapp.sicherheit.fingerabdruckLesbar
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll

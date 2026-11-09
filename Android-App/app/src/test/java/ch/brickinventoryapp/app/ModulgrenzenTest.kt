@@ -9,7 +9,7 @@ import ch.brickinventoryapp.testing.Quellen
 
 /**
  * Die Modulgrenzen, gelesen aus settings.gradle.kts und den build.gradle.kts:
- * app → feature-* → core-*, kein Bereich kennt einen anderen (nur feature-gemeinsam),
+ * app → feature-* → core-*, kein Bereich kennt einen anderen (ohne Ausnahme),
  * feste Schichtung der Kernmodule, core-model ohne Android, core-ui ohne Fachwissen.
  * Gradle bricht bei einem Zyklus ab, aber nicht bei einer Kante, die nur in die
  * falsche Richtung zeigt — die fängt dieser Test.
@@ -47,8 +47,13 @@ import ch.brickinventoryapp.testing.Quellen
  *      core-update fängt schon Gradle als Zyklus)
  *   P  gegenproben/zustand-haengt-an-ui.patch: core-zustand bindet core-ui ein →
  *      rot „Schichtung der Kernmodule: core-zustand hängt an [core-ui]“
- *   Q  gegenproben/gemeinsam-haengt-an-daten.patch: feature-gemeinsam bindet core-data ein →
- *      rot „feature-gemeinsam hängt an core-data“
+ *   Q  gegenproben/gemeinsam-haengt-an-daten.patch: core-ui-bestand bindet core-data ein →
+ *      rot „Schichtung der Kernmodule: core-ui-bestand hängt an [core-data]“
+ *   U  gegenproben/offline-haengt-an-daten.patch: core-offline bindet core-ui ein →
+ *      rot „Schichtung der Kernmodule: core-offline hängt an [core-ui]“ (core-data
+ *      ginge nicht: Den Zyklus bricht schon Gradle ab, ohne Testbericht)
+ *   T  gegenproben/bereich-kennt-bereich.patch: feature-teile bindet feature-katalog ein →
+ *      rot „feature-teile hängt an feature-katalog“
  *   R  gegenproben/ui-kennt-ansicht.patch: eine core-ui-Datei importiert eine Ansicht aus
  *      model.ui.model → rot „core-ui kennt Fachmodelle“ (Schichtung der Kernmodule)
  *   S  gegenproben/ui-neuer-bildschirm.patch: eine neue Datei in core-ui/ui/screens →
@@ -57,10 +62,6 @@ import ch.brickinventoryapp.testing.Quellen
  *      ch.brickinventoryapp.sammlung → rot „außerhalb des Paketstamms ihres Moduls“
  */
 class ModulgrenzenTest {
-
-    private companion object {
-        const val GEMEINSAM = "feature-gemeinsam"
-    }
 
     private data class Abhaengigkeit(val konfiguration: String, val ziel: String)
 
@@ -94,10 +95,11 @@ class ModulgrenzenTest {
         // verrät so das Modul, und kein Paket verteilt sich auf zwei Module.
         val stamm = mapOf(
             "app" to "app", "core-model" to "model", "core-netz" to "netz", "core-data" to "data",
+            "core-sicherheit" to "sicherheit", "core-offline" to "offline",
             "core-update" to "update", "core-dienste" to "dienste", "core-ui" to "ui", "core-zustand" to "zustand",
             "core-testing" to "testing", "feature-anmeldung" to "anmeldung", "feature-katalog" to "katalog",
             "feature-sammlung" to "sammlung", "feature-teile" to "teile", "feature-finanzen" to "finanzen",
-            "feature-konto" to "konto", "feature-verwaltung" to "verwaltung", "feature-gemeinsam" to "gemeinsam",
+            "feature-konto" to "konto", "feature-verwaltung" to "verwaltung", "core-ui-bestand" to "gemeinsam",
         )
         assertEquals("kein Stamm ist doppelt vergeben", stamm.size, stamm.values.toSet().size)
         val paketZeile = Regex("""^package\s+([\w.]+)""", RegexOption.MULTILINE)
@@ -126,17 +128,11 @@ class ModulgrenzenTest {
         val bereiche = module().filterKeys { it.startsWith("feature-") }
         assertTrue("Nur ${bereiche.size} Bereichsmodule", bereiche.size >= 5)
         for ((name, bau) in bereiche) {
-            // feature-gemeinsam ist der eine erlaubte Nachbar: Was mehrere Bereiche zeigen, liegt dort.
-            val falsch = hauptAbhaengigkeiten(bau).filter { (it.startsWith("feature-") && it != GEMEINSAM) || it == "app" || it == name }
+            // Ohne Ausnahme: Was mehrere Bereiche zeigen, liegt in core-ui-bestand.
+            val falsch = hauptAbhaengigkeiten(bau).filter { it.startsWith("feature-") || it == "app" }
             assertTrue("$name hängt an ${falsch.joinToString()}", falsch.isEmpty())
             assertTrue("$name kennt keine Kernmodule — Muster veraltet?", hauptAbhaengigkeiten(bau).any { it.startsWith("core-") })
         }
-        // Nur Darstellung: Mit Daten oder Zustand würde es zum Umweg, auf dem sich Bereiche doch kennen.
-        val gemeinsam = hauptAbhaengigkeiten(module().getValue(GEMEINSAM))
-        val zuviel = gemeinsam - setOf("core-model", "core-ressourcen", "core-ui")
-        assertTrue("$GEMEINSAM hängt an ${zuviel.joinToString()}", zuviel.isEmpty())
-        val nutzer = bereiche.filter { (_, bau) -> GEMEINSAM in hauptAbhaengigkeiten(bau) }.keys
-        assertTrue("Nur $nutzer nutzen $GEMEINSAM — Muster veraltet?", nutzer.size >= 3)
     }
 
     @Test
@@ -145,14 +141,20 @@ class ModulgrenzenTest {
             "core-model" to emptySet(),
             "core-ressourcen" to emptySet(),
             "core-netz" to setOf("core-model"),
-            "core-data" to setOf("core-model", "core-ressourcen", "core-netz"),
+            // Aus core-data abgespalten, darunter: Tresor und TLS-Vertrauen, dann Room und Offlineablage.
+            "core-sicherheit" to setOf("core-model", "core-netz"),
+            "core-offline" to setOf("core-model", "core-sicherheit"),
+            "core-data" to setOf("core-model", "core-ressourcen", "core-netz", "core-sicherheit", "core-offline"),
             // Aus core-data abgespalten: Sie hängen an core-data, nie umgekehrt und nie aneinander.
             "core-update" to setOf("core-ressourcen", "core-data"),
             "core-dienste" to setOf("core-ressourcen", "core-data"),
             "core-ui" to setOf("core-model", "core-ressourcen"),
+            // Fachliche Bausteine, nur Darstellung: Mit Daten oder Zustand würde es zum Umweg,
+            // auf dem sich Bereiche doch kennen.
+            "core-ui-bestand" to setOf("core-model", "core-ressourcen", "core-ui"),
             // Der Zustand liegt unter der Oberfläche: Bildschirme lesen ihn, er kennt kein Compose-Bauteil.
-            "core-zustand" to setOf("core-model", "core-ressourcen", "core-data", "core-dienste"),
-            "core-testing" to setOf("core-zustand", "core-data", "core-ui"),
+            "core-zustand" to setOf("core-model", "core-ressourcen", "core-data", "core-sicherheit", "core-dienste"),
+            "core-testing" to setOf("core-zustand", "core-data", "core-sicherheit", "core-ui"),
         )
         val kerne = module().filterKeys { it.startsWith("core-") }
         assertEquals("jedes Kernmodul hat eine Regel", erlaubt.keys, kerne.keys)
@@ -182,7 +184,7 @@ class ModulgrenzenTest {
     /**
      * core-ui ist das Design-System: Theme und Bausteine ohne Fachwissen. Wer eine Ansicht
      * (model.ui.model) oder ein Servermodell (model.data) braucht, ist ein fachlicher Baustein
-     * und gehört in den Bereich oder nach feature-gemeinsam.
+     * und gehört in den Bereich oder nach core-ui-bestand.
      */
     private fun pruefeUiOhneFachwissen() {
         val wurzel = File(projekt, "core-ui/src/main/java")

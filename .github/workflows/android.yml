@@ -183,15 +183,15 @@ jobs:
             echo "::warning title=Foto weicht ab::$name: $pixel Pixel verschieden, Bereich $feld (Bild $(identify -format '%wx%h' "$ref"))"
           done
 
-      # Room schreibt das Schema beim Übersetzen nach core-data/schemas und lässt eine
+      # Room schreibt das Schema beim Übersetzen nach core-offline/schemas und lässt eine
       # Datei stehen, solange ihr Aufbau gleich bleibt. Steht danach etwas
       # anderes da als eingecheckt, fehlt eine Fassung samt Migration.
       - name: Room-Schema eingecheckt?
         run: |
-          geaendert=$(git status --porcelain -- core-data/schemas)
+          geaendert=$(git status --porcelain -- core-offline/schemas)
           if [ -n "$geaendert" ]; then
             echo "::error title=Room-Schema::Das Schema der Datenbank weicht vom eingecheckten ab — Fassung erhöhen, Migration schreiben, Datei einchecken:%0A$geaendert"
-            git diff -- core-data/schemas > "$RUNNER_TEMP/schema.diff"
+            git diff -- core-offline/schemas > "$RUNNER_TEMP/schema.diff"
             head -80 "$RUNNER_TEMP/schema.diff"
             exit 1
           fi

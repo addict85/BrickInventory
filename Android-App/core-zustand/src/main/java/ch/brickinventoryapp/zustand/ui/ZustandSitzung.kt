@@ -5,6 +5,7 @@ import ch.brickinventoryapp.model.ui.model.LagerortAnsicht
 import ch.brickinventoryapp.model.ui.model.LagerortEintragAnsicht
 import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.model.ui.model.StartzustandAnsicht
+import ch.brickinventoryapp.model.data.ScopeFilter
 
 /*
  * Die Zustandsklassen liegen je Bereich in ui/Zustand*.kt; hier die der
@@ -42,11 +43,11 @@ data class AppUiState(
 /** Kontofilter und Haushaltskonten — gehalten von [Blickfeld]. */
 data class BlickfeldUiState(
     /**
-     * Kontofilter je Ansicht (Schlüssel aus ScopeFilter.View). Er reist als
+     * Kontofilter je Ansicht. Er reist als
      * `accounts=` mit und wird nur auf dem Server übersetzt, damit Liste, Gesamtzahl,
      * Kennzahlen und Summen zusammenpassen.
      */
-    val scopeModes: Map<String, String> = emptyMap(),
+    val scopeModes: Map<ScopeFilter.View, String> = emptyMap(),
     /**
      * Konten des Haushalts, eigenes zuerst. Mehr als einer heisst: Hauptkonto
      * mit Unterkonten — erst dann erscheinen Kontofilter, Kontoauswahl beim
@@ -63,7 +64,7 @@ data class BlickfeldUiState(
  */
 data class LagerUiState(
     /** Gewaehlter Lagerort JE ANSICHT — leer heisst „nicht gefiltert". */
-    val modi: Map<String, String> = emptyMap(),
+    val modi: Map<ScopeFilter.View, String> = emptyMap(),
     /** Die belegten Lagerorte im Blickfeld — speist den FILTER. */
     val orte: List<LagerortAnsicht> = emptyList(),
     /**

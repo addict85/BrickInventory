@@ -39,7 +39,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.konto.ui.HouseholdUiState
 import ch.brickinventoryapp.ui.components.ErklaerText
-import ch.brickinventoryapp.data.util.GeheimeZwischenablage
+import ch.brickinventoryapp.sicherheit.GeheimeZwischenablage
 
 /**
  * Haushalt: verknüpfte Konten, Konto einladen, Einladung annehmen — drei Abschnitte

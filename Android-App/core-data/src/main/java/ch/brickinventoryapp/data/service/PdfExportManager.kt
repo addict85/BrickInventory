@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data.service
 
 import ch.brickinventoryapp.data.di.SseClient
-import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import android.content.Context
 import ch.brickinventoryapp.data.SseEreignis
 import ch.brickinventoryapp.data.Zugangsdaten
@@ -28,7 +28,7 @@ import javax.inject.Singleton
 import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
 import ch.brickinventoryapp.data.repository.fehlerTextZuCode
 import ch.brickinventoryapp.data.util.LanguageManager
-import ch.brickinventoryapp.data.util.Protokoll
+import ch.brickinventoryapp.netz.util.Protokoll
 import ch.brickinventoryapp.ressourcen.R
 
 sealed class PdfExportState {

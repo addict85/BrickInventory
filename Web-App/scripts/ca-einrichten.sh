@@ -26,10 +26,10 @@ WURZEL_SCHLUESSEL="${WURZEL_SCHLUESSEL:-}"
 TAGE_WURZEL=3650
 TAGE_ZWISCHEN=3649
 command -v openssl >/dev/null || { echo "[ca] openssl fehlt." >&2; exit 1; }
-# Caddy läuft im Container als root ohne Capabilities (compose.yaml) und liest
-# deshalb nur Dateien, die root gehören.
+# ./caddy/ca gehört root bzw. Caddys Kennung (caddy-rechte in compose.yaml
+# übergibt den Schlüssel bei jedem `up`); schreiben kann dort nur root.
 if [ -z "${CA_ORDNER:-}" ] && [ "$(id -u)" != "0" ]; then
-  echo "[ca] Mit sudo ausführen: Caddy liest ./caddy/ca nur, wenn root die Dateien gehören." >&2
+  echo "[ca] Mit sudo ausführen: ./caddy/ca gehört root bzw. Caddy, nicht diesem Benutzer." >&2
   exit 1
 fi
 

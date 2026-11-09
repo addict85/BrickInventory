@@ -30,17 +30,20 @@ import ch.brickinventoryapp.testing.TestApi
  * Das Konto-ViewModel, ausgeführt gegen einen Testserver.
  *
  * Gegenproben:
- *  - In entwerteAndereGeraete() die Prüfung `liste.none { it.aktuell }`
- *    entfernt: „ohne erkanntes eigenes Gerät wird nichts entwertet" rot — es
- *    gingen zwei Entwertungen hinaus.
+ *  - In frageEntwerten() die Prüfung `liste.none { it.aktuell }`
+ *    entfernt: „ohne erkanntes eigenes Gerät wird nichts entwertet" rot — die
+ *    Rückfrage ging auf.
+ *  - In bestaetigeEntwerten() `codeNoetig` nicht gesetzt: „ein fremdes Gerät
+ *    verlangt Passwort und bei Bedarf den Code" rot; das Passwort nicht in den
+ *    Rumpf gelegt: dieselbe Prüfung rot (kein "password").
  *  - In aenderePasswort() den Aufruf `sitzungsDienst.abmelden()` entfernt: „nach dem
  *    Passwortwechsel wird abgemeldet" rot.
  *  - In zweiterFaktor() `erfolgText` nicht mehr gemeldet: „der bestätigte
  *    zweite Faktor zeigt die Codes" rot an der Meldung.
  *  - In alsGeraet() `.minOrNull()` → `.maxOrNull()`: „die
  *    Geräteliste zeigt Vollzugriff und die frühere Frist" rot (2027 statt 2026);
- *    `deleted` beim Zählen nicht beachtet: „ein schon entwertetes Gerät zählt
- *    nicht“ rot (m…:1 statt m…:0).
+ *    `zugaenge` beim Zählen nicht beachtet: „ein schon entwertetes Gerät zählt
+ *    nicht“ rot.
  *  - In abgelehnt() `codeNoetig` nicht gesetzt: „ohne Code
  *    verlangt der zweite Faktor …“ und „eine neue E-Mail …“ rot; in aenderePasswort()
  *    den Code nicht an changePassword() gereicht: dieselbe Prüfung rot (kein
@@ -100,22 +103,49 @@ class KontoViewModelTest {
         {"token_id":"c3","label":"Alt"}]}"""
 
     @Test
-    fun `andere Geraete werden entwertet, das eigene bleibt`() {
+    fun `andere Geraete gehen in einer bestaetigten Anfrage, das eigene bleibt`() {
         server.enqueue(antwort(geraete(aktuellDabei = true)))
         vm.ladeGeraete()
         bis("Liste") { vm.geraeteState.value.geraete.size == 3 && !vm.geraeteState.value.laedt }
         server.takeRequest()
 
-        server.enqueue(antwort("""{"success":true,"deleted":1}"""))
+        vm.frageEntwerten(null)
+        bis("Rückfrage") { vm.geraeteState.value.rueckfrage?.tokenId == null && vm.geraeteState.value.rueckfrage != null }
+        server.enqueue(antwort("""{"success":true,"deleted":0,"zugaenge":2}"""))
+        server.enqueue(antwort(geraete(aktuellDabei = true)))
+        vm.bestaetigeEntwerten("geheim", null)
+        bis("neu geladen") { server.requestCount == 3 && !vm.geraeteState.value.laedt }
+
+        val r = server.takeRequest()
+        assertTrue(r.path.orEmpty(), r.path.orEmpty().endsWith("/settings/sessions/andere-beenden"))
+        val rumpf = r.body.readUtf8()
+        assertTrue(rumpf, rumpf.contains("\"password\":\"geheim\"") && rumpf.contains("\"zugaenge\":true"))
+        assertNull(vm.geraeteState.value.rueckfrage)
+        assertEquals("m${R.plurals.tokens_revoked_n}:2", kanal.meldung.value)
+    }
+
+    @Test
+    fun `ein fremdes Geraet verlangt Passwort und bei Bedarf den Code`() {
+        server.enqueue(antwort(geraete(aktuellDabei = true)))
+        vm.ladeGeraete()
+        bis("Liste") { vm.geraeteState.value.geraete.size == 3 && !vm.geraeteState.value.laedt }
+        server.takeRequest()
+
+        vm.frageEntwerten("b2")
+        server.enqueue(antwort("""{"success":false,"error":"Code fehlt","code":"zweiter_faktor_noetig"}""", 400))
+        vm.bestaetigeEntwerten("geheim", null)
+        bis("Code verlangt") { vm.geraeteState.value.rueckfrage?.codeNoetig == true }
+        val ohne = server.takeRequest()
+        assertEquals("DELETE", ohne.method)
+        assertTrue(ohne.path.orEmpty(), ohne.path.orEmpty().endsWith("/settings/tokens/b2"))
+        assertTrue(ohne.body.readUtf8().contains("\"password\":\"geheim\""))
+
         server.enqueue(antwort("""{"success":true,"deleted":1}"""))
         server.enqueue(antwort(geraete(aktuellDabei = true)))
-        vm.entwerteAndereGeraete()
-        bis("neu geladen") { server.requestCount == 4 && !vm.geraeteState.value.laedt }
-
-        val entwertet = (1..2).map { server.takeRequest().path.orEmpty() }
-        assertTrue("Entwertet: $entwertet", entwertet.any { it.endsWith("b2") } && entwertet.any { it.endsWith("c3") })
-        assertFalse(entwertet.any { it.endsWith("a1") })
-        assertEquals("m${R.plurals.tokens_revoked_n}:2", kanal.meldung.value)
+        vm.bestaetigeEntwerten("geheim", "123456")
+        bis("erledigt") { server.requestCount == 4 && vm.geraeteState.value.rueckfrage == null }
+        assertTrue(server.takeRequest().body.readUtf8().contains("\"code\":\"123456\""))
+        assertEquals("t${R.string.tokens_revoked}", kanal.meldung.value)
     }
 
     @Test
@@ -143,11 +173,11 @@ class KontoViewModelTest {
         server.enqueue(antwort(geraete(aktuellDabei = true)))
         vm.ladeGeraete()
         bis("Liste") { vm.geraeteState.value.geraete.size == 3 && !vm.geraeteState.value.laedt }
-        server.enqueue(antwort("""{"success":true,"deleted":0}"""))
-        server.enqueue(antwort("""{"success":true,"deleted":0}"""))
+        vm.frageEntwerten(null)
+        server.enqueue(antwort("""{"success":true,"deleted":1,"zugaenge":0}"""))
         server.enqueue(antwort(geraete(aktuellDabei = true)))
-        vm.entwerteAndereGeraete()
-        bis("neu geladen") { server.requestCount == 4 && !vm.geraeteState.value.laedt }
+        vm.bestaetigeEntwerten("geheim", null)
+        bis("neu geladen") { server.requestCount == 3 && !vm.geraeteState.value.laedt }
         assertEquals("m${R.plurals.tokens_revoked_n}:0", kanal.meldung.value)
     }
 
@@ -157,9 +187,10 @@ class KontoViewModelTest {
         vm.ladeGeraete()
         bis("Liste") { vm.geraeteState.value.geraete.size == 3 && !vm.geraeteState.value.laedt }
 
-        vm.entwerteAndereGeraete()
+        vm.frageEntwerten(null)
         bis("Fehler") { vm.geraeteState.value.fehler != null }
         assertEquals("t${R.string.tokens_self_unknown}", vm.geraeteState.value.fehler)
+        assertNull(vm.geraeteState.value.rueckfrage)
         assertEquals(1, server.requestCount)
     }
 

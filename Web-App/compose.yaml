@@ -321,6 +321,39 @@ services:
   #     für jede Adresse — nur ausdrücklich, nie als stiller Rückfall.
   # Ohne einen davon startet Caddy nicht. Port 80 leitet um und liefert nur
   # /ca.crt im Klartext; den Fingerabdruck nennt das Protokoll zum Abgleich.
+  # ── Rechte für Caddy ─────────────────────────────────────────────────────────
+  # Caddy läuft ohne root als 10443:10443. Dieser Dienst übergibt ihm bei jedem
+  # `up` seine Ordner, das Volume der Wurzel und den Schlüssel der eigenen CA
+  # (ca-einrichten.sh legt ihn für root an) und endet.
+  caddy-rechte:
+    image: caddy:2.11.8-alpine@sha256:f6228111e5fafa1a5238258d0858e103f10599b8d1659a146e7726681a002bb9
+    container_name: brickinventory-caddy-rechte
+    logging: *protokoll
+    restart: "no"
+    user: root
+    network_mode: none
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE]
+    read_only: true
+    mem_limit: 64m
+    pids_limit: 16
+    cpus: 0.5
+    entrypoint:
+      - sh
+      - -c
+      - |
+        set -eu
+        chown -R 10443:10443 /data /config /ca-wurzel
+        chown 10443:10443 /ca-eigen
+        if [ -e /ca-eigen/zwischen.key ]; then chown 10443:10443 /ca-eigen/zwischen.key; fi
+    volumes:
+      - ./caddy/data:/data
+      - ./caddy/config:/config
+      - ./caddy/ca:/ca-eigen
+      - ca-wurzel:/ca-wurzel
+
   caddy:
     # Hier gebaut (Dockerfile.caddy: offizielle Basis per Digest, go-jose
     # nachgezogen); der erste `up` nach einem Update baut einige Minuten.
@@ -335,16 +368,23 @@ services:
     mem_limit: ${CADDY_MEM_LIMIT:-256m}
     pids_limit: 128
     cpus: ${CADDY_CPUS:-1}
-    # Caddy läuft als root im Container und braucht nur die Ports unter 1024.
+    # Ohne root und ohne jede Capability: Die Ports 80 und 443 gibt die
+    # Netz-Einstellung des Containers frei, nicht ein Recht des Prozesses.
+    # Die Ordner übergibt ihm caddy-rechte (oben).
+    user: "10443:10443"
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: 0
     security_opt:
       - no-new-privileges:true
     cap_drop: [ALL]
-    cap_add: [NET_BIND_SERVICE]
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=64m
     depends_on:
-      - app
+      app:
+        condition: service_started
+      caddy-rechte:
+        condition: service_completed_successfully
     # Nur root.crt verlässt Caddy: Die Schleife kopiert es in das Volume
     # ca-wurzel, das die App nur lesend sieht. Ein Datei-Mount von root.crt
     # taugt nicht — fehlt die Datei beim ersten Start, legt Docker an ihrer

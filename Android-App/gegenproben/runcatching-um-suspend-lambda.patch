@@ -1,0 +1,17 @@
+Gegenprobe: Offlineablage.bereich ruft die suspend-Quelle wieder in runCatching auf
+Modul: app
+Test: ch.brickinventoryapp.app.QuelltextRatscheTest
+Rot: kein runCatching verschluckt
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
+@@ -79,7 +79,7 @@ class Offlineablage(
+
+     /** Der gültige Bereich, gestreut; null = nicht angemeldet, dann wird nichts abgelegt. */
+     suspend fun bereich(): String? =
+-        fangeAusserAbbruch { bereichQuelle() }.getOrNull()?.takeIf { it.isNotBlank() }.also { aktuell.value = it }
++        runCatching { bereichQuelle() }.getOrNull()?.takeIf { it.isNotBlank() }.also { aktuell.value = it }
+
+     /** Wie viele Bearbeitungen noch auf den Server warten. */
+     @OptIn(ExperimentalCoroutinesApi::class)

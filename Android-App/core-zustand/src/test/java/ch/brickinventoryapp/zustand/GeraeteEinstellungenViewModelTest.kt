@@ -4,7 +4,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CoroutineScope
 import org.junit.Assert.assertTrue
-import ch.brickinventoryapp.data.util.AblageChiffre
+import ch.brickinventoryapp.sicherheit.AblageChiffre
 import ch.brickinventoryapp.data.cache.VorschauSpeicher
 import ch.brickinventoryapp.data.AlarmPlaner
 import ch.brickinventoryapp.data.GeraeteEinstellungen

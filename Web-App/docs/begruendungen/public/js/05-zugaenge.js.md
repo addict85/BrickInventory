@@ -71,18 +71,3 @@ aus.
 Der Browser selbst ist kein Token, sondern die Sitzung; die Liste zeigt die
 Geräte mit Token (App, ältere Browser-Anmeldungen).
 ```
-
-<a id="revokeothertokens"></a>
-## `revokeOtherTokens`
-
-```text
-Alle Zugänge ausser dem eigenen entwerten.
-
-Nacheinander über den bestehenden Endpunkt, statt dafür einen neuen zu
-bauen: Es sind eine Handvoll Zeilen, und eine zweite Adresse für „dasselbe,
-nur mehrfach" wäre genau die Art Doppelung, die dieses Projekt sonst
-abbaut. Gezählt wird, was WIRKLICH weg ist — nicht, wie oft geklickt wurde.
-
-Dieser Browser hängt an der Sitzung, nicht an einem Token — „alle anderen"
-sind darum alle Token und alle übrigen Sitzungen.
-```

@@ -67,7 +67,7 @@ test('die Bildroute behält Anmeldepflicht und CDN-Heilung', () => {
   // Anmeldung ausgeliefert wird (kein statischer Mount: test/media-auth.test.js).
   // strip() vor dem Schneiden, sonst schiebt ein Erklärtext die Zeile hinaus.
   // Ausführlich: docs/begruendungen/test/data-layout.test.js.md#src-stelle
-  assert.match(strip(read('routes/seiten.ts')), /router\.get\('\/images\/\*pfad', liefereBild\)/, 'Bildroute nicht gefunden');
+  assert.match(strip(read('routes/seiten.ts')), /router\.get\('\/images\/\*pfad',[^)]*\bliefereBild\)/, 'Bildroute nicht gefunden');
   const src = strip(read('src/katalog/http/bildAuslieferung.ts'));
   const start = src.indexOf('function liefereBild(');
   assert.ok(start > 0, 'Bildroute nicht gefunden');

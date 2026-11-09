@@ -186,7 +186,7 @@ für alle Hosts. Nur der Debug-Build darf http zu `localhost`, `127.0.0.1` und
 führt beim Start in die Einrichtung mit einer Anleitung (QR neu scannen oder
 https-Adresse eintragen).
 
-**Wem die App beim eigenen Server vertraut** (`data/util/ServerVertrauen.kt`):
+**Wem die App beim eigenen Server vertraut** (`sicherheit/ServerVertrauen.kt`):
 
 | Weg | Was passiert |
 | --- | --- |
@@ -206,7 +206,7 @@ regelmässige Erneuerung des Serverzertifikats durch Caddy. Andere Hosts
 Nutzerinstallierte CAs zählen nur, wenn der Nutzer das in den Einstellungen
 ausdrücklich einschaltet.
 
-**Logcat.** Die App schreibt nur über `data/util/Protokoll.kt`, und das nur im
+**Logcat.** Die App schreibt nur über `netz/util/Protokoll.kt`, und das nur im
 Debug-Build; dort zeigt der Netzmitschnitt Anfrage- und Statuszeile, nie Rümpfe,
 und schwärzt `Authorization`, `Cookie` und `Set-Cookie`. R8 entfernt im Release
 zusätzlich alle `android.util.Log`-Aufrufe (`proguard-rules.pro`).
@@ -215,7 +215,7 @@ zusätzlich alle `android.util.Log`-Aufrufe (`proguard-rules.pro`).
 ## Daten auf dem Gerät
 
 Was zum Konto gehört, liegt verschlüsselt mit einem Schlüssel aus dem Keystore
-(`data/util/Ablageschluessel.kt`, AES-GCM, je Zweck abgeleitet und an Dateiname und
+(`sicherheit/Ablageschluessel.kt`, AES-GCM, je Zweck abgeleitet und an Dateiname und
 Zweck gebunden):
 
 | Ablage | Wie |
@@ -248,7 +248,7 @@ prüft das ausgeführt.
 
 **Token-Schlüssel ohne `setUnlockedDeviceRequired`:** Preisalarm, Widget und
 Ausgang senden im Hintergrund, auch bei gesperrtem Gerät (Begründung in
-`data/util/TokenTresor.kt`). Abgefedert durch die Rotation mit Wiederverwendungs-
+`sicherheit/TokenTresor.kt`). Abgefedert durch die Rotation mit Wiederverwendungs-
 erkennung am Server und die harte Höchstdauer von 180 Tagen.
 
 **Pins und Nutzer-CA-Schalter verschlüsselt:** Sie liegen in `design_spiegel.xml`
@@ -301,8 +301,8 @@ Geheimnis nur, wenn man sie dort auswählt.
 ## Module
 
 Abhängigkeiten nur in diese Richtung: `app → feature-* → core-*`; kein Bereich
-kennt einen anderen, nur das geteilte `feature-gemeinsam` (`ModulgrenzenTest` prüft
-es an den Build-Dateien).
+kennt einen anderen, ohne Ausnahme; was mehrere Bereiche zeigen, liegt im Kernmodul
+`core-ui-bestand` (`ModulgrenzenTest` prüft es an den Build-Dateien).
 
 Den gemeinsamen Android-Block setzen Konventions-Plugins aus `build-logic/`
 (ein eigener Gradle-Bau, eingebunden in `settings.gradle.kts`, Plugin-IDs im
@@ -327,13 +327,16 @@ des Moduls, wo `ModulgrenzenTest` sie liest. Ein SDK-Sprung ist eine Zeile in
 
 | Modul | Paketstamm | Inhalt |
 | --- | --- | --- |
-| `core-model` | `ch.brickinventoryapp.model` | Server- und UI-Modelle, reine Regeln — reines Kotlin, ohne Android |
+| `core-model` | `ch.brickinventoryapp.model` | Server- und UI-Modelle, reine Regeln, `fangeAusserAbbruch` — reines Kotlin, ohne Android |
 | `core-ressourcen` | — (nur Ressourcen) | Texte (de/en), Schriften, Bilder; `ch.brickinventoryapp.ressourcen.R` |
-| `core-netz` | `ch.brickinventoryapp.netz` | Wächter-Interceptor (`ServerWaechter`), Netzrichtlinie, Adress- und Bild-Host-Prüfung; kennt weder Room noch Hilt |
-| `core-data` | `ch.brickinventoryapp.data` | Retrofit, OkHttp, Repositories, Room samt Schema (`core-data/schemas`), DataStore, verschlüsselte Ablagen, Ausgang, Abmelde-Arbeiter, PDF-Export |
+| `core-netz` | `ch.brickinventoryapp.netz` | Wächter-Interceptor (`ServerWaechter`), Netzrichtlinie, Adress- und Bild-Host-Prüfung, `Protokoll` (Logcat nur im Debug-Build); kennt weder Room noch Hilt |
+| `core-sicherheit` | `ch.brickinventoryapp.sicherheit` | Token-Tresor im Keystore, Ablageschlüssel und verschlüsselte Ablagen, TLS-Vertrauen zum eigenen Server (Pins), geheime Zwischenablage, Passwort- und Passkey-Regeln; kennt weder Room noch Repositories |
+| `core-offline` | `ch.brickinventoryapp.offline` | Room samt Schema (`core-offline/schemas`, SQLCipher), Offlineablage, Ausgang und lokale Anwendung von Bearbeitungen; kennt weder Netz noch Repositories |
+| `core-data` | `ch.brickinventoryapp.data` | Retrofit, OkHttp, Repositories, DataStore, Senden des Ausgangs (Abgleich, Worker), Abmelde-Arbeiter, PDF-Export |
 | `core-update` | `ch.brickinventoryapp.update` | Selbstaktualisierung: signierte Beschreibung, Frische, APK-Download, Signaturvergleich, Installation; hängt an `core-data` |
 | `core-dienste` | `ch.brickinventoryapp.dienste` | CSV-Import als Vordergrund-Dienst, stündlicher Preisalarm (WorkManager); hängt an `core-data` |
 | `core-ui` | `ch.brickinventoryapp.ui` | Design-System: Theme und Bausteine ohne Fachwissen (Karten, Zeilen, Suchfeld, Dialoge, Kamera-Bausteine); kennt keine Ansichten und keine Servermodelle |
+| `core-ui-bestand` | `ch.brickinventoryapp.gemeinsam` | Fachliche Bausteine mehrerer Bereiche: Filterblatt, Haushalt- und Lagerortwahl, eigene Einträge, Preisdiagramm, Wertkacheln; hängt nur an `core-model`, `core-ressourcen`, `core-ui` (Paketstamm aus der Zeit als `feature-gemeinsam`) |
 | `core-zustand` | `ch.brickinventoryapp.zustand` | Sitzung, Blickfeld, Bestandssignal, Texte, Basis der Bereichs-ViewModels, AppViewModel; ohne `core-ui` |
 | `core-testing` | `ch.brickinventoryapp.testing` | Testhilfen (Testserver, Testdienste, `Quellen`), nur als `testImplementation` |
 | `feature-anmeldung` | `ch.brickinventoryapp.anmeldung` | Anmelden, Server einrichten, QR |
@@ -343,7 +346,6 @@ des Moduls, wo `ModulgrenzenTest` sie liest. Ein SDK-Sprung ist eine Zeile in
 | `feature-finanzen` | `ch.brickinventoryapp.finanzen` | Finanzen, Gutscheine, PDF-Betrachter |
 | `feature-konto` | `ch.brickinventoryapp.konto` | Einstellungen |
 | `feature-verwaltung` | `ch.brickinventoryapp.verwaltung` | Monitoring für Verwalter |
-| `feature-gemeinsam` | `ch.brickinventoryapp.gemeinsam` | Fachliche Bausteine mehrerer Bereiche: Filterblatt, Haushalt- und Lagerortwahl, eigene Einträge, Preisdiagramm, Wertkacheln; hängt nur an `core-model`, `core-ressourcen`, `core-ui` |
 | `app` | `ch.brickinventoryapp.app` | Navigation, Hilt-Einstieg, Activity, Widget |
 
 Jedes Modul hat seinen eigenen Paketstamm: Paket = Stamm + bisheriger

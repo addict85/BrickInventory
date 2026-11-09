@@ -23,7 +23,7 @@ const SERVER = lies('src/katalog/http/bildAuslieferung.ts');
 function bilderKopfzeile() {
   // Die Route verweist auf liefereBild; dessen Rumpf setzt den Kopf.
   const ab = SERVER.indexOf("async function liefereBild(");
-  assert.ok(ROUTE.includes("router.get('/images/*pfad', liefereBild)"), 'Die /images-Route liefert nicht mehr über liefereBild');
+  assert.ok(/router\.get\('\/images\/\*pfad',[^)]*\bliefereBild\)/.test(ROUTE), 'Die /images-Route liefert nicht mehr über liefereBild');
   assert.ok(ab > 0, 'Die /images-Route ist nicht mehr zu finden');
   const abschnitt = SERVER.slice(ab, ab + 4000);
   const m = abschnitt.match(/setHeader\('Cache-Control',\s*'([^']+)'\)/);

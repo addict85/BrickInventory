@@ -53,12 +53,12 @@ class ErrorChannelTest {
         assert(felder.size >= 10) { "Nur ${felder.size} Felder gefunden — Muster veraltet?" }
 
         // Gelesen wird ausserhalb des ViewModels: in Bildschirmen, Dialogen und
-        // Navigationsgraphen. Das ViewModel selbst zählt NICHT als Leser — es
-        // schreibt das Feld ja, und genau darum ging es.
-        val leser = Quellen.unter("screens") + Quellen.unter("gemeinsam/ui") + Quellen.unter("dialogs") + Quellen.unter("nav") +
+        // Navigationsgraphen (in app/nav oder als *Graph.kt im Bereich). Das ViewModel
+        // selbst zählt NICHT als Leser — es schreibt das Feld ja, und genau darum ging es.
+        val leser = (Quellen.unter("screens") + Quellen.unter("gemeinsam/ui") + Quellen.unter("dialogs") + Quellen.unter("nav") +
             Quellen.alle().filter {
-                it.name in setOf("AppNavigation.kt", "MainActivity.kt", "MainScaffold.kt")
-            }
+                it.name in setOf("AppNavigation.kt", "MainActivity.kt", "MainScaffold.kt") || it.name.endsWith("Graph.kt")
+            }).distinct()
         assert(leser.size >= 20) { "Nur ${'$'}{leser.size} Leser-Dateien gefunden — Muster veraltet?" }
         val leserQuellen = leser.joinToString("\n") { Quellen.ohneKommentare(it.readText()) }
 

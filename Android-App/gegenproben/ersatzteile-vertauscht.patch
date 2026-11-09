@@ -1,0 +1,19 @@
+Gegenprobe: OHNE und NUR schicken einander die Werte; die Liste zeigte das Gegenteil
+Modul: core-data
+Test: ch.brickinventoryapp.data.TeileAbfrageWerteTest
+Rot: jede Ersatzteilwahl hat den Wert der Webapp
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/api/TeileApi.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/api/TeileApi.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/api/TeileApi.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/api/TeileApi.kt
+@@ -38,8 +38,8 @@
+ /** Der Wert von `spare`; null heisst alle. */
+ internal fun Ersatzteilwahl.alsAbfrage(): String? = when (this) {
+     Ersatzteilwahl.ALLE -> null
+-    Ersatzteilwahl.OHNE -> "0"
+-    Ersatzteilwahl.NUR -> "1"
++    Ersatzteilwahl.OHNE -> "1"
++    Ersatzteilwahl.NUR -> "0"
+ }
+
+ /** `with_sets=1` oder kein Parameter. */

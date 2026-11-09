@@ -1,6 +1,9 @@
 /**
  * Angemeldete Geräte: auflisten und aussperren — beide Wege, echte Datenbank.
  * Ausführlich: docs/begruendungen/test/geraete-verwaltung-db.test.js.md#kopf
+ *
+ * Gegenprobe (09.11.2026 gemessen): in DELETE /settings/tokens/:tokenId die
+ * Bestätigung gestrichen → rot: „ohne Passwort sperrt ein Gerät kein anderes aus“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -119,8 +122,11 @@ test('Zugänge auflisten und aussperren — über Sitzung UND über Token',
       'Vorbedingung: Der Token des Tablets muss VOR dem Löschen gelten und damit im Cache liegen');
 
     const zuLoeschen = perToken.body.tokens.find(x => x.label === 'Tablet');
-    const weg = await ruf(SETTINGS + '/tokens/' + zuLoeschen.token_id,
+    const ohne = await ruf(SETTINGS + '/tokens/' + zuLoeschen.token_id,
       { method: 'DELETE', headers: { authorization: `Bearer ${telefon.body.token}` } });
+    assert.equal(ohne.status, 400, 'ohne Passwort sperrt ein Gerät kein anderes aus');
+    const weg = await ruf(SETTINGS + '/tokens/' + zuLoeschen.token_id,
+      { method: 'DELETE', headers: { authorization: `Bearer ${telefon.body.token}` }, body: { password: PASS } });
     assert.equal(weg.status, 200);
     assert.equal(weg.body.deleted, 1);
 
@@ -151,13 +157,11 @@ test('Zugänge auflisten und aussperren — über Sitzung UND über Token',
     assert.deepEqual(fremdSicht.body.tokens.map(x => x.label), ['Fremd'],
       'Ein fremdes Konto darf die eigenen Zugänge nicht sehen');
     const fremdVersuch = await ruf(SETTINGS + '/tokens/' + danach.body.tokens[0].token_id,
-      { method: 'DELETE', headers: { authorization: `Bearer ${fremd.body.token}` } });
+      { method: 'DELETE', headers: { authorization: `Bearer ${fremd.body.token}` }, body: { password: PASS } });
     assert.equal(fremdVersuch.body.deleted, 0,
       'Ein fremdes Konto darf keinen Zugang entwerten');
 
-    // ── 5. Der %-Fall, gegen den escapeLike steht ───────────────────────────
-    // Ohne Maskierung wäre "%" ein LIKE-Platzhalter und löschte ALLE Zugänge
-    // des Kontos auf einmal.
+    // ── 5. Der %-Fall: Nur die volle Kennung (16 Hex-Zeichen) gilt ─────────
     const alles = await ruf(SETTINGS + '/tokens/' + encodeURIComponent('%'),
       { method: 'DELETE', headers: { authorization: `Bearer ${telefon.body.token}` } });
     // Seit 05.11.2026 weist schon der Vertrag (PFAD) die Kennung ab.

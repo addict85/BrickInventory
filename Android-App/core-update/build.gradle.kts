@@ -23,6 +23,9 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     // Nur für den blanken Update-Client; kein Modul darüber sieht OkHttp.
     implementation(libs.okhttp)
+    implementation(libs.kotlinx.coroutines.android)
+    // UpdateAblage merkt sich den Stand im DataStore der App.
+    implementation(libs.androidx.datastore)
 
     testImplementation(project(":core-testing"))
     testImplementation(libs.robolectric)

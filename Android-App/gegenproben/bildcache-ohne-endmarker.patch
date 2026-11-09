@@ -3,9 +3,9 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.BildZwischenspeicherTest
 Rot: eine hinten gekuerzte Datei gilt nicht
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/VerschluesseltesDateisystem.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/VerschluesseltesDateisystem.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/VerschluesseltesDateisystem.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/VerschluesseltesDateisystem.kt
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt
 @@ -106,7 +106,7 @@ internal class VerschluesseltesDateisystem(
  
          private fun naechster(): Boolean {

@@ -66,7 +66,7 @@ async function starteServer(ttlSek, drosselMs) {
   app.use(session({
     store: speicher, secret: process.env.SESSION_SECRET,
     resave: false, saveUninitialized: false,
-    cookie: { httpOnly: true, sameSite: 'lax' },   // kein maxAge — wie in server.ts
+    cookie: { httpOnly: true, sameSite: 'strict' },   // kein maxAge — wie in server.ts
   }));
   app.get('/anmelden', (req, res) => { req.session.userId = UID; res.json({ ok: true }); });
   app.get('/wer',      (req, res) => { res.json({ uid: req.session?.userId ?? null }); });

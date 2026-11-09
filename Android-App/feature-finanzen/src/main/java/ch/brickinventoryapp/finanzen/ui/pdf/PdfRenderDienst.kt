@@ -13,7 +13,7 @@ import android.os.DeadObjectException
 import android.os.IBinder
 import android.os.Parcel
 import androidx.core.graphics.createBitmap
-import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
@@ -75,7 +75,7 @@ class PdfRenderDienst : Service() {
 
 /** Die Seite der App: bindet den Dienst einmal und reicht Deskriptoren hinüber. */
 @Singleton
-class PdfRenderVerbindung @Inject constructor(@param:ApplicationContext private val ctx: Context) {
+internal class PdfRenderVerbindung @Inject constructor(@param:ApplicationContext private val ctx: Context) {
     private val sperre = Mutex()
     @Volatile private var binder: IBinder? = null
 

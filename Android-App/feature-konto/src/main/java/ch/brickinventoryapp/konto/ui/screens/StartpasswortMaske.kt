@@ -36,8 +36,8 @@ import ch.brickinventoryapp.ui.components.ZweiterFaktorCodeFeld
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Lesebreite
 import ch.brickinventoryapp.ui.theme.mittigBis
-import ch.brickinventoryapp.data.util.PASSWORT_MIN_ZEICHEN
-import ch.brickinventoryapp.data.util.passwortZuKurz
+import ch.brickinventoryapp.sicherheit.PASSWORT_MIN_ZEICHEN
+import ch.brickinventoryapp.sicherheit.passwortZuKurz
 import ch.brickinventoryapp.ui.components.SperrGrund
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 

@@ -31,13 +31,6 @@ const { pruefeParameter } = require('./helpers/sources');
 const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 
-test('ein Konto verknüpft sich nicht mit sich selbst', () => {
-  // Mehrere Elternkonten sind erlaubt (Migration 0046, Verhalten in
-  // household-db.test.js); die Verknüpfung mit sich selbst bleibt im Schema verboten.
-  const mig = read('db/migrations/0005-haushalt-kontoverknuepfung.sql');
-  assert.match(mig, /CHECK \(main_user_id <> sub_user_id\)/);
-});
-
 test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async t => {
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   const _req = require('./helpers/sources').buildAndRequire();
@@ -53,6 +46,15 @@ test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
     hh.leereHaushaltCache();
     await db.pool.end().catch(() => {});
+  });
+
+  await t.test('ein Konto verknüpft sich nicht mit sich selbst', async () => {
+    // Mehrere Elternkonten sind erlaubt (Migration 0046); die Verknüpfung mit sich selbst
+    // verbietet das Schema. Gegenprobe (09.11.2026): Regel account_links_no_self entfernt → rot.
+    await assert.rejects(
+      db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $1)', [ids[0]]),
+      (/** @type {any} */ e) => e.code === '23514',
+    );
   });
 
   await t.test('der Einladungscode steht nur als Hash in der Datenbank', async () => {

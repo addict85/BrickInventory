@@ -893,6 +893,14 @@
     <string name="schritt_untertitel">Mit Fingerabdruck, Gesicht oder der Sperre des Geräts bestätigen</string>
     <string name="schritt_entsperren">Bestätigen</string>
     <string name="schritt_kein_schluessel">Die Gerätesperre lässt sich gerade nicht prüfen. Bitte später erneut versuchen.</string>
+    <string name="schritt_server_fehler">Der Server hat die Bestätigung nicht angenommen. Bitte erneut versuchen.</string>
+    <string name="app_sperre_titel">App sperren</string>
+    <string name="app_sperre_hint">Nach so vielen Minuten im Hintergrund fragt die App nach Fingerabdruck oder Gerätesperre. Gilt für dieses Gerät.</string>
+    <string name="app_sperre_ohne_displaysperre">Braucht eine Displaysperre auf diesem Gerät.</string>
+    <string name="app_sperre_aus">Aus</string>
+    <string name="app_sperre_minuten">%1$d Min.</string>
+    <string name="app_sperre_gesperrt">BrickInventory ist gesperrt</string>
+    <string name="app_sperre_entsperren">Entsperren</string>
     <string name="schritt_ohne_sperre_titel">Keine Displaysperre</string>
     <string name="schritt_ohne_sperre_text">Dieser Schritt (%1$s) fragt sonst nach der Displaysperre. Dieses Gerät hat keine: Wer das Telefon in der Hand hat, kommt ohne Weiteres an Gutschein-PINs, Wiederherstellungscodes und die Verwaltung. Richte in den Systemeinstellungen unter Sicherheit eine PIN, ein Muster oder ein Passwort ein.</string>
     <string name="schritt_ohne_sperre_weiter">Ungeschützt fortfahren</string>

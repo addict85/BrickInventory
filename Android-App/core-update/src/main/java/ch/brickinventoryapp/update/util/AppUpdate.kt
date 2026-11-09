@@ -19,7 +19,7 @@ import kotlinx.serialization.Serializable
 import java.io.File
 import java.security.MessageDigest
 import ch.brickinventoryapp.data.util.UPDATE_ORDNER
-import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 
 /**
  * Die App aktualisiert sich selbst aus dem GitHub-Release: beim Start still
@@ -227,7 +227,7 @@ internal const val INSTALLATION_BESTAETIGEN = "android.content.pm.action.CONFIRM
  * Uri-Rechten. Gestartet wird danach genau die geprüfte Komponente.
  */
 @Suppress("DEPRECATION") // die Fassungen mit ResolveInfoFlags gibt es erst ab API 33
-fun installerZiel(pm: PackageManager, bestaetigung: Intent): ComponentName? {
+internal fun installerZiel(pm: PackageManager, bestaetigung: Intent): ComponentName? {
     val rechte = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
         Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
     if (bestaetigung.flags and rechte != 0 || bestaetigung.selector != null) return null

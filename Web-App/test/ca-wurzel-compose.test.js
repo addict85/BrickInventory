@@ -48,9 +48,10 @@ function caddySkript() {
 }
 
 test('kein Dienst ausser Caddy hängt Caddys Daten ein, die App nur das Zertifikat', () => {
-  const namen = [...compose.matchAll(/^ {2}([a-z]+):\s*$/gm)].map(m => m[1]);
+  const namen = [...compose.matchAll(/^ {2}([a-z-]+):\s*$/gm)].map(m => m[1]);
   assert.ok(namen.includes('app') && namen.includes('caddy'), `Dienste nicht gefunden: ${namen}`);
-  for (const n of namen.filter(n => n !== 'caddy')) {
+  // caddy-rechte übergibt Caddy seine Ordner und hat kein Netz (compose-haertung).
+  for (const n of namen.filter(n => n !== 'caddy' && n !== 'caddy-rechte')) {
     assert.deepEqual(einhaengungen(n).filter(e => e.quelle.startsWith('./caddy')), [], `${n} sieht Caddys Daten`);
   }
   const ca = einhaengungen('app').find(e => e.quelle === 'ca-wurzel');

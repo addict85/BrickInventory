@@ -27,6 +27,8 @@
  *      „die ausgelieferte Seite lädt nichts von fremden Hosts …“ (08.11.2026)
  *   I  die Normalisierung doppelter Schrägstriche in server.ts entfernt → rot:
  *      „doppelte Schrägstriche treffen dieselbe Route …“ (08.11.2026)
+ *   J  (09.11.2026) in sitzungsKeksOptionen() wieder `sameSite: 'lax'` → rot:
+ *      „das Sitzungscookie ist httpOnly und SameSite=Strict“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -127,13 +129,13 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async (t
     assert.deepEqual([r.status, await r.json()], [404, { success: false, code: 'nicht_gefunden', error: 'Not found' }]);
   });
 
-  await t.test('das Sitzungscookie ist httpOnly und SameSite=Lax', async () => {
+  await t.test('das Sitzungscookie ist httpOnly und SameSite=Strict', async () => {
     const r = await fetch(`${basis}/api/v1/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: NAME, password: PASS, ohne_token: true }) });
     assert.equal(r.status, 200, await r.text());
     const keks = r.headers.get('set-cookie');
     assert.match(keks, /HttpOnly/i);
-    assert.match(keks, /SameSite=Lax/i);
+    assert.match(keks, /SameSite=Strict/i);
   });
 
   await t.test('eine vergebene Adresse antwortet wie eine neue', async () => {

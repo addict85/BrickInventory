@@ -1,11 +1,11 @@
 Gegenprobe: Wertachse des Preisverlaufs ohne runden Schritt
-Modul: feature-gemeinsam
+Modul: core-ui-bestand
 Test: ch.brickinventoryapp.gemeinsam.AchsenRundTest
 Rot: Wertachse des Preisverlaufs steht auf runden Werten
 
-diff --git a/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/PriceChartMath.kt b/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/PriceChartMath.kt
---- a/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/PriceChartMath.kt
-+++ b/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/PriceChartMath.kt
+diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/PriceChartMath.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/PriceChartMath.kt
+--- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/PriceChartMath.kt
++++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/PriceChartMath.kt
 @@ -111,7 +111,7 @@ object PriceChartMath {
          val pad = if (spread > 0) spread * 0.15 else (rawMax * 0.1).takeIf { it > 0 } ?: 1.0
          val unten = (rawMin - pad).coerceAtLeast(0.0)

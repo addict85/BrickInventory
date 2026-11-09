@@ -7,8 +7,8 @@ import ch.brickinventoryapp.data.repository.KontoDatenLoescher
 import ch.brickinventoryapp.data.di.BildClient
 import ch.brickinventoryapp.data.di.BrickDispatchers
 import ch.brickinventoryapp.data.di.Dispatcher
-import ch.brickinventoryapp.data.util.Ablageschluessel
-import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.sicherheit.Ablageschluessel
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.util.raeumeAnleitungenAuf
 import ch.brickinventoryapp.data.util.raeumeKontoDateienAuf
 import ch.brickinventoryapp.data.util.raeumeVertraulichePdfsAuf

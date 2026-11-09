@@ -24,10 +24,13 @@ import ch.brickinventoryapp.testing.Quellen
  *   cache-schluckt-abbruch     macht „kein breiter Fang …“ rot
  *   runcatching-um-suspend     BrickInventoryApp übernimmt das alte Token wieder in runCatching
  *                              → rot „kein runCatching verschluckt …“
- *   voll-qualifiziert          `ch.brickinventoryapp.data.util.fangeAusserAbbruch` ausgeschrieben → rot
+ *   runcatching-um-suspend-lambda  Offlineablage ruft die suspend-Quelle (ein Feld vom Typ
+ *                              `suspend () -> String?`) in runCatching auf → rot, derselbe Test
+ *   voll-qualifiziert          `ch.brickinventoryapp.model.util.fangeAusserAbbruch` ausgeschrieben → rot
  *                              „kein voll qualifizierter Projektname …“ und „voll qualifizierte Namen …“
  *   warten-in-echtzeit         TeileViewModelTest schläft wieder 200 ms → rot „Echtzeit-Warten …“
  *   core-data-oeffentlich      liegtUnter ohne internal → rot „die oeffentliche Flaeche der Datenmodule …“
+ *   bereich-oeffentlich        qrWechseltServer ohne internal → rot „die oeffentliche Flaeche der Bereiche …“
  */
 class QuelltextRatscheTest {
 
@@ -319,6 +322,16 @@ class QuelltextRatscheTest {
         texte to (namen to Regex("""\b(?:${namen.joinToString("|")})\s*[({]"""))
     }
 
+    /** Parameter und Felder mit suspend-Funktionstyp (`quelle: suspend () -> T`); nur in ihrer Datei ein Name. */
+    private val suspendTyp = Regex("""\b(\w+)\s*:\s*\(?\s*suspend\b""")
+
+    /** Das Aufrufmuster für [c]: die suspend-Funktionen der App und die suspend-Lambdas der Datei. */
+    private fun aufrufIn(c: String): Regex {
+        val (namen, _) = suspendAufrufe.second
+        val alle = namen + suspendTyp.findAll(c).map { it.groupValues[1] }
+        return Regex("""\b(?:${alle.joinToString("|")})\s*[({]""")
+    }
+
     private val koroutinenBlock = Regex("""\b(?:launch|async|runBlocking|withContext\([^()]*\)|coroutineScope|supervisorScope|flow|runTest)\s*(?:\([^()]*\))?\s*$""")
 
     /** Läuft die Stelle [ab] in einer suspend-Funktion oder einem Koroutinen-Block? Nur dort gibt es einen Abbruch zu verschlucken. */
@@ -346,10 +359,10 @@ class QuelltextRatscheTest {
     fun `kein runCatching verschluckt das Abbrechen eines suspendierenden Aufrufs`() {
         // runCatching fängt auch die CancellationException wie ein breiter catch; der
         // abgebrochene Aufrufer liefe weiter. Dafür gibt es fangeAusserAbbruch.
-        val (texte, suche) = suspendAufrufe
-        val aufruf = suche.second
+        val texte = suspendAufrufe.first
         var geprueft = 0
         val funde = texte.flatMap { (f, c) ->
+            val aufruf = aufrufIn(c)
             Regex("""\brunCatching\s*\{""").findAll(c).mapNotNull { m ->
                 geprueft++
                 var tiefe = 1
@@ -371,9 +384,10 @@ class QuelltextRatscheTest {
         // CancellationException; der abgebrochene Aufrufer liefe weiter. Dafür gibt
         // es fangeAusserAbbruch oder einen vorangestellten Abbruch-Zweig.
         val (texte, suche) = suspendAufrufe
-        val (namen, aufruf) = suche
+        val namen = suche.first
         var geprueft = 0
         val funde = texte.flatMap { (f, c) ->
+            val aufruf = aufrufIn(c)
             breiterFang.findAll(c).mapNotNull { m ->
                 val schluckt = schlucktAbbruch(c, m, aufruf) ?: return@mapNotNull null
                 geprueft++
@@ -417,26 +431,42 @@ class QuelltextRatscheTest {
         ratsche("warteBis in Tests", WARTEN, warten, hinweis)
     }
 
+    private val oeffentlicheDekl = Regex("""^(?:@[\w.:]+(?:\([^)\n]*\))?\s+)*((?:(?:public|internal|private|protected|data|sealed|abstract|open|enum|inline|value|annotation|const|suspend|operator|infix|tailrec|lateinit|fun interface)\s+)*)(?:fun\s+interface|class|interface|object|typealias|fun|val|var)\s""", RegexOption.MULTILINE)
+
+    /** Öffentliche Deklarationen auf oberster Ebene im Hauptcode der [module]. */
+    private fun oeffentlich(module: List<File>, mindestens: Int): Int {
+        val dateien = module.flatMap { m ->
+            File(m, "src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        }
+        assert(dateien.size > mindestens) { "Nur ${dateien.size} Dateien in ${module.map { it.name }} — greift die Suche noch?" }
+        return dateien.sumOf { f ->
+            oeffentlicheDekl.findAll(f.readText()).count { "private" !in it.groupValues[1] && "internal" !in it.groupValues[1] }
+        }
+    }
+
     @Test
     fun `die oeffentliche Flaeche der Datenmodule waechst nicht`() {
         // Was nur das eigene Modul braucht, ist internal: Jede öffentliche Deklaration ist
         // Schnittstelle für alle Bereiche. Gezählt wird auf oberster Ebene, über core-data und
         // alles, was aus ihm abgespalten wird; sonst sänke die Zahl beim Verschieben zum Schein.
         // Darin UPDATE_ORDNER: öffentlich, weil core-data und core-update ihn teilen.
-        val GRENZE = 236
-        val dekl = Regex("""^(?:@[\w.:]+(?:\([^)\n]*\))?\s+)*((?:(?:public|internal|private|protected|data|sealed|abstract|open|enum|inline|value|annotation|const|suspend|operator|infix|tailrec|lateinit|fun interface)\s+)*)(?:fun\s+interface|class|interface|object|typealias|fun|val|var)\s""", RegexOption.MULTILINE)
-        val andere = setOf("core-model", "core-ressourcen", "core-ui", "core-zustand", "core-testing")
+        val GRENZE = 235
+        val andere = setOf("core-model", "core-ressourcen", "core-ui", "core-ui-bestand", "core-zustand", "core-testing")
         val module = Quellen.module.filter { it.name.startsWith("core-") && it.name !in andere }
         assert("core-data" in module.map { it.name }) { "core-data nicht unter ${module.map { it.name }} — greift die Suche noch?" }
-        val dateien = module.flatMap { m ->
-            File(m, "src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
-        }
-        assert(dateien.size > 100) { "Nur ${dateien.size} Dateien in ${module.map { it.name }} — greift die Suche noch?" }
-        val oeffentlich = dateien.sumOf { f ->
-            dekl.findAll(f.readText()).count { "private" !in it.groupValues[1] && "internal" !in it.groupValues[1] }
-        }
-        ratsche("öffentliche Deklarationen in ${module.joinToString { it.name }}", GRENZE, oeffentlich,
+        ratsche("öffentliche Deklarationen in ${module.joinToString { it.name }}", GRENZE, oeffentlich(module, 100),
             "Was nur das Modul braucht, wird internal.")
+    }
+
+    @Test
+    fun `die oeffentliche Flaeche der Bereiche waechst nicht`() {
+        // Ein Bereich zeigt der App Routen und Ziele; was nur er selbst braucht, ist internal.
+        // Noch öffentlich ist vieles, weil Graphen und Oberflächentests in app liegen.
+        val GRENZE = 217
+        val module = Quellen.module.filter { it.name.startsWith("feature-") }
+        assert(module.size >= 7) { "Nur ${module.size} Bereiche — greift die Suche noch?" }
+        ratsche("öffentliche Deklarationen der Bereiche", GRENZE, oeffentlich(module, 100),
+            "Was nur der Bereich braucht, wird internal.")
     }
 
     @Test
@@ -457,7 +487,7 @@ class QuelltextRatscheTest {
     @Test
     fun `voll qualifizierte Namen fremder Pakete werden weniger`() {
         // Ausgeschrieben nur bei echter Namensgleichheit, und dann besser mit `import … as`.
-        val HAUPT = 233
+        val HAUPT = 230
         val TESTS = 0
         val voll = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
         fun zaehle(dateien: Sequence<File>) = dateien.sumOf { f ->
