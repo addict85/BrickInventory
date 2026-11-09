@@ -22,8 +22,8 @@ complexity:
     ignoreAnnotatedParameter: ['Query']
     # Testhilfen mit Vorgaben für jede Variante (Design, Gerät, Schrift).
     excludes: ['**/test/**']
-    # Hilt-Konstruktoren; AppViewModel hat 15.
-    constructorThreshold: 16
+    # Hilt-Konstruktoren; der längste (SitzungsDienst) hat 14 Parameter.
+    constructorThreshold: 15
   NestedBlockDepth:
     threshold: 6
   TooManyFunctions:
