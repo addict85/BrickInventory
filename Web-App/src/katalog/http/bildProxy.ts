@@ -278,6 +278,20 @@ function vormerkenEinmal(url: string, setNummer: string): void {
   nacharbeit().bildVormerken(url, setNummer);
 }
 
+function ausSetBildern(req: Request, res: Response, setNummer: string, wantThumb: boolean): Promise<boolean> {
+  const stamm = path.join(SET_IMAGES_DIR, setNummer.replace(/[^a-z0-9-]/gi, '_'));
+  return liefereAusCache({
+    res,
+    req,
+    cacheFile: `${stamm}.jpg`,
+    thumbFile: `${stamm}_thumb.jpg`,
+    wantThumb,
+    darfErzeugen: false,
+    notiere: () => {},
+    streamFileToResponse,
+  });
+}
+
 /** Aus dem Cache des Proxys nach images/sets, dann vormerken; ohne Cache-Datei nichts. */
 async function setBildAusCache(url: string, setNummer: string, cacheFile: string): Promise<void> {
   try {
@@ -326,6 +340,11 @@ export async function bildDurchreichen(req: Request, res: Response) {
   const originalFehlt = setFehlt && !(await liegtDa(cacheFile));
   if (setFehlt && setNummer && !originalFehlt) await setBildAusCache(url, setNummer, cacheFile);
 
+  // Liegt das Set-Bild samt Vorschau in images/sets, kommt es von dort statt aus
+  // Cache oder CDN: Die Katalogsuche fragt Sets ausserhalb des Blickfelds bewusst
+  // hier und nicht unter /images/sets (bildBlickfeld.ts), und den Proxy-Cache
+  // räumt die Pflege nach 30 Tagen, images/sets nicht.
+  if (setNummer && !setFehlt && (await ausSetBildern(req, res, setNummer, wantThumb))) return;
   const ausCache = () =>
     liefereAusCache({ res, req, cacheFile, thumbFile, wantThumb, darfErzeugen, notiere, streamFileToResponse });
   // Scheitert der neue Abruf, bleibt es bei der Vorschau aus dem Cache.
