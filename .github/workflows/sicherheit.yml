@@ -68,7 +68,7 @@ jobs:
         with:
           languages: ${{ matrix.sprache }}
           build-mode: ${{ matrix.bau }}
-          queries: security-extended
+          config-file: ./.github/codeql/codeql-config.yml
 
       # Kotlin braucht einen echten Übersetzungslauf, sonst sieht CodeQL nichts:
       # ohne Build-Cache (sonst kommt compileKotlin FROM-CACHE) und mit dem

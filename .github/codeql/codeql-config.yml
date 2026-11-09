@@ -1,0 +1,8 @@
+# Testcode läuft nur in der CI und kommt nicht ins Image oder die App; seine
+# Funde (Testserver, abgeschaltete Zertifikatsprüfung gegen den Test-Caddy)
+# verdecken sonst die Funde im ausgelieferten Code. Gilt für JavaScript;
+# Kotlin wird übersetzt, dort wirkt paths-ignore nicht.
+queries:
+  - uses: security-extended
+paths-ignore:
+  - Web-App/test/**
