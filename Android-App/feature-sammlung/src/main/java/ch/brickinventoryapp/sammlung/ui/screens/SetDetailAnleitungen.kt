@@ -36,7 +36,7 @@ import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.netz.util.eigeneAdresse
 import ch.brickinventoryapp.netz.util.oeffneExtern
-import ch.brickinventoryapp.ui.screens.SectionCard
+import ch.brickinventoryapp.gemeinsam.ui.SectionCard
 
 /**
  * Anleitungen — ansehen, hinzufügen und entfernen. Die Karte steht auch ohne

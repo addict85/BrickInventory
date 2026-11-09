@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.zustand
 
-import ch.brickinventoryapp.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.zustand.ui.fehlerTextArgument
 import ch.brickinventoryapp.zustand.ui.fehlerklasse
 import ch.brickinventoryapp.zustand.ui.fehlerTextId

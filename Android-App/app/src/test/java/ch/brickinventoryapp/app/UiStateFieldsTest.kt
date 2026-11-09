@@ -158,49 +158,59 @@ class UiStateFieldsTest {
         wurzel.walkTopDown().filter { it.extension == "kt" }.forEach { datei ->
             val s = ohneKommentare(datei.readText())
             Regex("""\b(_\w+State)\.update\s*\{\s*(\w+)\s*->""").findAll(s).forEach { m ->
-                val felder = klassen[flows[m.groupValues[1]]] ?: return@forEach
-                val name = m.groupValues[2]
+                val kls = flows[m.groupValues[1]] ?: return@forEach
+                val felder = klassen[kls] ?: return@forEach
                 // Ende des Blocks über die Klammerbilanz — ein festes Fenster
                 // reichte in den nächsten Block hinein.
-                var tiefe = 1; var k = m.range.last + 1
-                while (k < s.length && tiefe > 0) {
-                    if (s[k] == '{') tiefe++ else if (s[k] == '}') tiefe--
-                    k++
-                }
-                val block = s.substring(m.range.last + 1, maxOf(m.range.last + 1, k - 1))
-
-                Regex("""\b$name\.(\w+)""").findAll(block).forEach { a ->
-                    val feld = a.groupValues[1]
-                    if (feld != "copy" && feld !in felder)
-                        fehler += "${datei.name}: $name.$feld gibt es in ${flows[m.groupValues[1]]} nicht"
-                }
-                Regex("""\b$name\.copy\(""").findAll(block).forEach { c ->
-                    var t = 1; var j = c.range.last + 1
-                    while (j < block.length && t > 0) {
-                        if (block[j] == '(') t++ else if (block[j] == ')') t--
-                        j++
-                    }
-                    val args = block.substring(c.range.last + 1, maxOf(c.range.last + 1, j - 1))
-                    // Nur die OBERSTE Ebene: verschachtelte copy() gehören
-                    // anderen Typen (etwa einer Set-Kachel in der Liste).
-                    var ebene = 0
-                    val oben = buildString {
-                        for (ch in args) {
-                            if (ch == '(' || ch == '[' || ch == '{') ebene++
-                            else if (ch == ')' || ch == ']' || ch == '}') ebene--
-                            append(if (ebene == 0) ch else ' ')
-                        }
-                    }
-                    Regex("""(?:^|,)\s*(\w+)\s*=""").findAll(oben).forEach { a ->
-                        if (a.groupValues[1] !in felder)
-                            fehler += "${datei.name}: copy(${a.groupValues[1]} = …) gibt es in ${flows[m.groupValues[1]]} nicht"
-                    }
-                }
+                val block = s.substring(m.range.last + 1, maxOf(m.range.last + 1, blockEnde(s, m.range.last + 1) - 1))
+                fehler += schreibfehler(block, m.groupValues[2], felder).map { "${datei.name}: $it gibt es in $kls nicht" }
             }
         }
         assert(fehler.isEmpty()) {
             "Schreibzugriffe auf entfernte Zustandsfelder:\n" + fehler.distinct().joinToString("\n")
         }
+    }
+
+    /** Wo ein Block endet, der vor [ab] mit `{` begann: Index hinter seiner `}`. */
+    private fun blockEnde(s: String, ab: Int): Int {
+        var tiefe = 1; var i = ab
+        while (i < s.length && tiefe > 0) {
+            if (s[i] == '{') tiefe++ else if (s[i] == '}') tiefe--
+            i++
+        }
+        return i
+    }
+
+    /** Lese- und copy-Zugriffe des Lambda-Namens [name] auf Felder, die es nicht gibt. */
+    private fun schreibfehler(block: String, name: String, felder: Set<String>): List<String> {
+        val fehler = Regex("""\b$name\.(\w+)""").findAll(block).map { it.groupValues[1] }
+            .filter { it != "copy" && it !in felder }.map { "$name.$it" }.toMutableList()
+        Regex("""\b$name\.copy\(""").findAll(block).forEach { c ->
+            fehler += copyNamenOben(block, c.range.last + 1).filter { it !in felder }.map { "copy($it = …)" }
+        }
+        return fehler
+    }
+
+    /**
+     * Die benannten Argumente eines copy(…) ab [ab], nur die OBERSTE Ebene:
+     * verschachtelte copy() gehören anderen Typen (etwa einer Set-Kachel in der Liste).
+     */
+    private fun copyNamenOben(block: String, ab: Int): List<String> {
+        var t = 1; var j = ab
+        while (j < block.length && t > 0) {
+            if (block[j] == '(') t++ else if (block[j] == ')') t--
+            j++
+        }
+        val args = block.substring(ab, maxOf(ab, j - 1))
+        var ebene = 0
+        val oben = buildString {
+            for (ch in args) {
+                if (ch == '(' || ch == '[' || ch == '{') ebene++
+                else if (ch == ')' || ch == ']' || ch == '}') ebene--
+                append(if (ebene == 0) ch else ' ')
+            }
+        }
+        return Regex("""(?:^|,)\s*(\w+)\s*=""").findAll(oben).map { it.groupValues[1] }.toList()
     }
 
     /**
@@ -249,9 +259,62 @@ class UiStateFieldsTest {
             .map { ohneKommentare(it.readText()) }.toList()
         assert(dateien.size >= 20) { "Zu wenige Kotlin-Dateien — Pfad veraltet?" }
 
-        // Fluss-Deklarationen des AppViewModels und der Grundlage der Bereiche.
-        // Ein baumweiter Lauf wäre hier falsch — MonitoringViewModel nennt
-        // seinen eigenen Fluss ebenfalls `_state`, und der trägt MonitoringUiState.
+        val app = appFluesse()
+        // Bildschirm-ViewModels: Klasse → {öffentlicher Flussname: Zustandstyp}
+        val jeVm = Quellen.fluesseJeViewModel()
+
+        val gelesen = klassen.keys.associateWith { mutableSetOf<String>() }
+        for (s in dateien) {
+            // Flüsse, die DIESE Datei selbst deklariert, gewinnen.
+            val priv = app.privat.toMutableMap()
+            Regex("""val\s+_(\w+)\s*=\s*MutableStateFlow\((\w+UiState)\(""").findAll(s)
+                .forEach { priv[it.groupValues[1]] = it.groupValues[2] }
+            val lokal = zustandsnamen(s, priv, app.oeffentlich, jeVm)
+            for ((name, kls) in lokal) {
+                val felder = klassen[kls] ?: continue
+                Regex("""\b${'$'}name\.(\w+)""").findAll(s).forEach { m ->
+                    if (m.groupValues[1] in felder) gelesen[kls]?.add(m.groupValues[1])
+                }
+            }
+            weitereLesezugriffe(s, priv, klassen, gelesen)
+        }
+
+        val fehler = nurGeschrieben(klassen, gelesen, dateien.joinToString("\n"), ausnahmen)
+        assert(fehler.isEmpty()) {
+            "Diese Felder werden gesetzt, aber nirgends gelesen:\n  " +
+                fehler.sorted().joinToString("\n  ") +
+                "\nEntweder fehlt die Anzeige, die sie auswerten sollte — dann ist " +
+                "es ein Fehler, den niemand sieht — oder das Feld gehoert geloescht."
+        }
+    }
+
+    /** Felder, die irgendwo gesetzt, aber nie gelesen werden. */
+    private fun nurGeschrieben(
+        klassen: Map<String, Set<String>>,
+        gelesen: Map<String, Set<String>>,
+        ganz: String,
+        ausnahmen: Map<String, String>,
+    ): List<String> {
+        val fehler = mutableListOf<String>()
+        for ((klasse, felder) in klassen) {
+            for (feld in felder) {
+                if (feld in ausnahmen) continue
+                val geschrieben = Regex("""[(,]\s*${'$'}feld\s*=""").containsMatchIn(ganz)
+                if (geschrieben && feld !in (gelesen[klasse] ?: emptySet<String>()))
+                    fehler += "${'$'}klasse.${'$'}feld"
+            }
+        }
+        return fehler
+    }
+
+    private class AppFluesse(val privat: Map<String, String>, val oeffentlich: Map<String, String>)
+
+    /**
+     * Fluss-Deklarationen des AppViewModels und der Grundlage der Bereiche.
+     * Ein baumweiter Lauf wäre hier falsch — MonitoringViewModel nennt
+     * seinen eigenen Fluss ebenfalls `_state`, und der trägt MonitoringUiState.
+     */
+    private fun appFluesse(): AppFluesse {
         val mvm = ohneKommentare(File(wurzel, "zustand/ui/AppViewModel.kt").readText() + "\n" +
             File(wurzel, "zustand/ui/viewmodel/Bereichshelfer.kt").readText())
         val privGlobal = Regex("""val\s+_(\w+)\s*=\s*MutableStateFlow\((\w+UiState)\(""")
@@ -262,128 +325,109 @@ class UiStateFieldsTest {
             // Flüsse, die eine eigene Klasse hält (Galerie), stehen mit ihrem Typ da.
             Regex("""val\s+(\w+)\s*:\s*[\w.]*StateFlow<(\w+UiState)>""")
                 .findAll(mvm).associate { it.groupValues[1] to it.groupValues[2] }
+        return AppFluesse(privGlobal, oeffentlich)
+    }
 
-        // Bildschirm-ViewModels: Klasse → {öffentlicher Flussname: Zustandstyp}
-        val jeVm = Quellen.fluesseJeViewModel()
-
-        val fest = mapOf(
+    /** Welcher Name trägt in der Datei [s] welchen Zustandstyp. */
+    private fun zustandsnamen(
+        s: String,
+        priv: Map<String, String>,
+        oeffentlich: Map<String, String>,
+        jeVm: Map<String, Map<String, String>>,
+    ): Map<String, String> {
+        val lokal = mutableMapOf(
             "catalogState" to "CatalogUiState", "partsState" to "PartsUiState",
             "setDetailState" to "SetDetailUiState", "manDetailState" to "ManualItemDetailUiState",
             "detailState" to "SetDetailUiState",
         )
+        Regex("""\b(\w+)\s*:\s*(?:[\w.]*\.)?(\w+UiState)\b""").findAll(s)
+            .forEach { lokal[it.groupValues[1]] = it.groupValues[2] }
+        Regex("""\bval\s+(\w+)\s+by\s+vm\.(\w+)\.collectAsStateWithLifecycle""").findAll(s)
+            .forEach { m -> oeffentlich[m.groupValues[2]]?.let { lokal[m.groupValues[1]] = it } }
+        // `val g = _galleryState.value` — der Zugriff im ViewModel selbst.
+        Regex("""\bval\s+(\w+)\s*=\s*_(\w+)\.value\b""").findAll(s)
+            .forEach { m -> priv[m.groupValues[2]]?.let { lokal[m.groupValues[1]] = it } }
+        // Ein Fluss als PARAMETER (MainScaffold bekommt csvImportState so).
+        val flussParam = Regex("""\b(\w+)\s*:\s*[\w.]*StateFlow<(\w+UiState)>""")
+            .findAll(s).associate { it.groupValues[1] to it.groupValues[2] }
+        Regex("""\bval\s+(\w+)\s+by\s+(\w+)\.collectAsStateWithLifecycle""").findAll(s)
+            .forEach { m -> flussParam[m.groupValues[2]]?.let { lokal[m.groupValues[1]] = it } }
+        // Bildschirm-ViewModel als Empfänger: `katalog.state`.
+        val vmNamen = Regex("""\b(\w+)\s*:\s*(?:[\w.]*\.)?(\w+ViewModel)\b""")
+            .findAll(s).associate { it.groupValues[1] to it.groupValues[2] }
+        Regex("""\bval\s+(\w+)\s+by\s+(\w+)\.(\w+)\.collectAsStateWithLifecycle""").findAll(s)
+            .forEach { m ->
+                jeVm[vmNamen[m.groupValues[2]]]?.get(m.groupValues[3])
+                    ?.let { lokal[m.groupValues[1]] = it }
+            }
+        lokal.putIfAbsent("state", "AppUiState")
+        return lokal
+    }
 
-        val gelesen = klassen.keys.associateWith { mutableSetOf<String>() }
-        for (s in dateien) {
-            // Flüsse, die DIESE Datei selbst deklariert, gewinnen.
-            val priv = privGlobal.toMutableMap()
-            Regex("""val\s+_(\w+)\s*=\s*MutableStateFlow\((\w+UiState)\(""").findAll(s)
-                .forEach { priv[it.groupValues[1]] = it.groupValues[2] }
-
-            val lokal = fest.toMutableMap()
-            Regex("""\b(\w+)\s*:\s*(?:[\w.]*\.)?(\w+UiState)\b""").findAll(s)
-                .forEach { lokal[it.groupValues[1]] = it.groupValues[2] }
-            Regex("""\bval\s+(\w+)\s+by\s+vm\.(\w+)\.collectAsStateWithLifecycle""").findAll(s)
-                .forEach { m -> oeffentlich[m.groupValues[2]]?.let { lokal[m.groupValues[1]] = it } }
-            // `val g = _galleryState.value` — der Zugriff im ViewModel selbst.
-            Regex("""\bval\s+(\w+)\s*=\s*_(\w+)\.value\b""").findAll(s)
-                .forEach { m -> priv[m.groupValues[2]]?.let { lokal[m.groupValues[1]] = it } }
-            // Ein Fluss als PARAMETER (MainScaffold bekommt csvImportState so).
-            val flussParam = Regex("""\b(\w+)\s*:\s*[\w.]*StateFlow<(\w+UiState)>""")
-                .findAll(s).associate { it.groupValues[1] to it.groupValues[2] }
-            Regex("""\bval\s+(\w+)\s+by\s+(\w+)\.collectAsStateWithLifecycle""").findAll(s)
-                .forEach { m -> flussParam[m.groupValues[2]]?.let { lokal[m.groupValues[1]] = it } }
-            // Bildschirm-ViewModel als Empfänger: `katalog.state`.
-            val vmNamen = Regex("""\b(\w+)\s*:\s*(?:[\w.]*\.)?(\w+ViewModel)\b""")
-                .findAll(s).associate { it.groupValues[1] to it.groupValues[2] }
-            Regex("""\bval\s+(\w+)\s+by\s+(\w+)\.(\w+)\.collectAsStateWithLifecycle""").findAll(s)
-                .forEach { m ->
-                    jeVm[vmNamen[m.groupValues[2]]]?.get(m.groupValues[3])
-                        ?.let { lokal[m.groupValues[1]] = it }
-                }
-            lokal.putIfAbsent("state", "AppUiState")
-
-            for ((name, kls) in lokal) {
-                val felder = klassen[kls] ?: continue
-                Regex("""\b${'$'}name\.(\w+)""").findAll(s).forEach { m ->
-                    if (m.groupValues[1] in felder) gelesen[kls]?.add(m.groupValues[1])
-                }
-            }
-            // ── Zwei weitere Formen, in denen ein Fluss gelesen wird ─────
-            //
-            // (Nachtrag 135) Beide stehen im MainViewModel und waren unsichtbar:
-            //
-            //     _state.value.appTheme               Startwert eines stateIn
-            //     _state.map { it.appTheme }          ein abgeleiteter Fluss
-            //
-            // Das sind ECHTE Lesezugriffe — der zweite ist sogar der einzige
-            // Weg, auf dem `appTheme` je auf den Bildschirm kommt (MainActivity
-            // sammelt `vm.appTheme`, nicht den ganzen Zustand; die Begründung
-            // steht dort). Aufgefallen ist es, als das Design vor die Anmeldung
-            // gezogen wurde: Erst dadurch stand irgendwo `(appTheme =`, und die
-            // SCHREIB-Erkennung griff. Das Feld galt damit als geschrieben und
-            // nie gelesen — obwohl sich am Lesen nichts geändert hatte.
-            //
-            // Beide bleiben TYPAUFGELÖST: Die Klasse kommt aus `priv`, also aus
-            // der Deklaration des Flusses in dieser Datei. Die Regel wird damit
-            // genauer, nicht nachsichtiger.
-            Regex("""_(\w+)\.value\.(\w+)""").findAll(s).forEach { m ->
-                val kls = priv[m.groupValues[1]] ?: return@forEach
-                if (m.groupValues[2] in (klassen[kls] ?: emptySet<String>()))
-                    gelesen[kls]?.add(m.groupValues[2])
-            }
-            Regex("""_(\w+)\s*(?:\r?\n\s*)?\.map\s*\{""").findAll(s).forEach { m ->
-                val kls = priv[m.groupValues[1]] ?: return@forEach
-                val felder = klassen[kls] ?: return@forEach
-                var tiefe = 1; var i = m.range.last + 1
-                while (i < s.length && tiefe > 0) {
-                    if (s[i] == '{') tiefe++ else if (s[i] == '}') tiefe--
-                    i++
-                }
-                Regex("""\b(?:it|st|s)\.(\w+)""").findAll(s.substring(m.range.last + 1, i))
-                    .forEach { t -> if (t.groupValues[1] in felder) gelesen[kls]?.add(t.groupValues[1]) }
-            }
-
-            // Der gemeinsame Zustand liegt in der Sitzung: `sitzung.state.value.x`
-            // und `sitzung.state.map { it.x }` lesen AppUiState.
-            val app = klassen["AppUiState"].orEmpty()
-            Regex("""\bsitzung\.state\.value\.(\w+)""").findAll(s).forEach { m ->
-                if (m.groupValues[1] in app) gelesen["AppUiState"]?.add(m.groupValues[1])
-            }
-            Regex("""\bsitzung\.state\s*(?:\r?\n\s*)?\.map\s*\{\s*it\.(\w+)""").findAll(s).forEach { m ->
-                if (m.groupValues[1] in app) gelesen["AppUiState"]?.add(m.groupValues[1])
-            }
-
-            // `it.feld` innerhalb eines update-Blocks auf dem zugehörigen Fluss:
-            // Dort wird der alte Wert tatsächlich verwendet.
-            Regex("""_(\w+)\.update\s*\{""").findAll(s).forEach { m ->
-                val kls = priv[m.groupValues[1]] ?: return@forEach
-                val felder = klassen[kls] ?: return@forEach
-                var tiefe = 1; var i = m.range.last + 1
-                while (i < s.length && tiefe > 0) {
-                    if (s[i] == '{') tiefe++ else if (s[i] == '}') tiefe--
-                    i++
-                }
-                Regex("""\b(?:it|st|s)\.(\w+)""").findAll(s.substring(m.range.last + 1, i))
-                    .forEach { t -> if (t.groupValues[1] in felder) gelesen[kls]?.add(t.groupValues[1]) }
-            }
+    /** Lesezugriffe, die nicht über einen Namen mit Zustandstyp laufen. */
+    private fun weitereLesezugriffe(
+        s: String,
+        priv: Map<String, String>,
+        klassen: Map<String, Set<String>>,
+        gelesen: Map<String, MutableSet<String>>,
+    ) {
+        // ── Zwei weitere Formen, in denen ein Fluss gelesen wird ─────
+        //
+        // (Nachtrag 135) Beide stehen im MainViewModel und waren unsichtbar:
+        //
+        //     _state.value.appTheme               Startwert eines stateIn
+        //     _state.map { it.appTheme }          ein abgeleiteter Fluss
+        //
+        // Das sind ECHTE Lesezugriffe — der zweite ist sogar der einzige
+        // Weg, auf dem `appTheme` je auf den Bildschirm kommt (MainActivity
+        // sammelt `vm.appTheme`, nicht den ganzen Zustand; die Begründung
+        // steht dort). Aufgefallen ist es, als das Design vor die Anmeldung
+        // gezogen wurde: Erst dadurch stand irgendwo `(appTheme =`, und die
+        // SCHREIB-Erkennung griff. Das Feld galt damit als geschrieben und
+        // nie gelesen — obwohl sich am Lesen nichts geändert hatte.
+        //
+        // Beide bleiben TYPAUFGELÖST: Die Klasse kommt aus `priv`, also aus
+        // der Deklaration des Flusses in dieser Datei. Die Regel wird damit
+        // genauer, nicht nachsichtiger.
+        Regex("""_(\w+)\.value\.(\w+)""").findAll(s).forEach { m ->
+            val kls = priv[m.groupValues[1]] ?: return@forEach
+            if (m.groupValues[2] in (klassen[kls] ?: emptySet<String>()))
+                gelesen[kls]?.add(m.groupValues[2])
+        }
+        Regex("""_(\w+)\s*(?:\r?\n\s*)?\.map\s*\{""").findAll(s).forEach { m ->
+            val kls = priv[m.groupValues[1]] ?: return@forEach
+            lieslambda(s, m.range.last + 1, kls, klassen, gelesen)
         }
 
-        val ganz = dateien.joinToString("\n")
-        val fehler = mutableListOf<String>()
-        for ((klasse, felder) in klassen) {
-            for (feld in felder) {
-                if (feld in ausnahmen) continue
-                val geschrieben = Regex("""[(,]\s*${'$'}feld\s*=""").containsMatchIn(ganz)
-                if (geschrieben && feld !in (gelesen[klasse] ?: emptySet<String>()))
-                    fehler += "${'$'}klasse.${'$'}feld"
-            }
+        // Der gemeinsame Zustand liegt in der Sitzung: `sitzung.state.value.x`
+        // und `sitzung.state.map { it.x }` lesen AppUiState.
+        val app = klassen["AppUiState"].orEmpty()
+        Regex("""\bsitzung\.state\.value\.(\w+)""").findAll(s).forEach { m ->
+            if (m.groupValues[1] in app) gelesen["AppUiState"]?.add(m.groupValues[1])
         }
-        assert(fehler.isEmpty()) {
-            "Diese Felder werden gesetzt, aber nirgends gelesen:\n  " +
-                fehler.sorted().joinToString("\n  ") +
-                "\nEntweder fehlt die Anzeige, die sie auswerten sollte — dann ist " +
-                "es ein Fehler, den niemand sieht — oder das Feld gehoert geloescht."
+        Regex("""\bsitzung\.state\s*(?:\r?\n\s*)?\.map\s*\{\s*it\.(\w+)""").findAll(s).forEach { m ->
+            if (m.groupValues[1] in app) gelesen["AppUiState"]?.add(m.groupValues[1])
         }
+
+        // `it.feld` innerhalb eines update-Blocks auf dem zugehörigen Fluss:
+        // Dort wird der alte Wert tatsächlich verwendet.
+        Regex("""_(\w+)\.update\s*\{""").findAll(s).forEach { m ->
+            val kls = priv[m.groupValues[1]] ?: return@forEach
+            lieslambda(s, m.range.last + 1, kls, klassen, gelesen)
+        }
+    }
+
+    /** `it.feld`, `st.feld`, `s.feld` im Lambda ab [ab] zählen als gelesen für [kls]. */
+    private fun lieslambda(
+        s: String,
+        ab: Int,
+        kls: String,
+        klassen: Map<String, Set<String>>,
+        gelesen: Map<String, MutableSet<String>>,
+    ) {
+        val felder = klassen[kls] ?: return
+        Regex("""\b(?:it|st|s)\.(\w+)""").findAll(s.substring(ab, blockEnde(s, ab)))
+            .forEach { t -> if (t.groupValues[1] in felder) gelesen[kls]?.add(t.groupValues[1]) }
     }
 
     // Aus ZustandsflussBreiteTest: Ein Sammler, der seinen Zustand nirgends

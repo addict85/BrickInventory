@@ -37,8 +37,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import ch.brickinventoryapp.finanzen.ui.finanzSummen
-import ch.brickinventoryapp.ui.lokaleAchse
-import ch.brickinventoryapp.ui.lokaleWerte
+import ch.brickinventoryapp.gemeinsam.ui.lokaleAchse
+import ch.brickinventoryapp.gemeinsam.ui.lokaleWerte
 import ch.brickinventoryapp.finanzen.ui.setZeilen
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 import java.math.BigDecimal

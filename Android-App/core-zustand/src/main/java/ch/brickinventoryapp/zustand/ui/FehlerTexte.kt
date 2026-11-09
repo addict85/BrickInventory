@@ -2,7 +2,7 @@ package ch.brickinventoryapp.zustand.ui
 
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Fehlerklasse
 
 /**
  * Welche Textressource gehört zu welchem Fehler? Eine eigene, reine Funktion

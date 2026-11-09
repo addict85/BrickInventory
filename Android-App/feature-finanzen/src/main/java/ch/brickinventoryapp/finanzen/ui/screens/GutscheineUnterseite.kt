@@ -16,7 +16,7 @@ import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import ch.brickinventoryapp.finanzen.ui.viewmodel.GutscheinViewModel
 import ch.brickinventoryapp.data.util.GeheimeZwischenablage
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
-import ch.brickinventoryapp.ui.screens.Unterseite
+import ch.brickinventoryapp.ui.components.Unterseite
 
 /**
  * Gutscheine — der erste Eintrag der Liste, weil sie im Laden gebraucht werden:

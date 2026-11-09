@@ -55,7 +55,7 @@ class ErrorChannelTest {
         // Gelesen wird ausserhalb des ViewModels: in Bildschirmen, Dialogen und
         // Navigationsgraphen. Das ViewModel selbst zählt NICHT als Leser — es
         // schreibt das Feld ja, und genau darum ging es.
-        val leser = Quellen.unter("screens") + Quellen.unter("dialogs") + Quellen.unter("nav") +
+        val leser = Quellen.unter("screens") + Quellen.unter("gemeinsam/ui") + Quellen.unter("dialogs") + Quellen.unter("nav") +
             Quellen.alle().filter {
                 it.name in setOf("AppNavigation.kt", "MainActivity.kt", "MainScaffold.kt")
             }

@@ -6,8 +6,8 @@ Rot: Praesentation holt nichts selbst am Netz
 diff --git a/Android-App/feature-konto/build.gradle.kts b/Android-App/feature-konto/build.gradle.kts
 --- a/Android-App/feature-konto/build.gradle.kts
 +++ b/Android-App/feature-konto/build.gradle.kts
-@@ -16,6 +16,7 @@ dependencies {
-     implementation(project(":core-ui"))
+@@ -17,6 +17,7 @@ dependencies {
+     implementation(project(":feature-gemeinsam"))
      implementation(project(":core-zustand"))
      implementation(project(":core-ressourcen"))
 +    implementation(libs.okhttp.sse)

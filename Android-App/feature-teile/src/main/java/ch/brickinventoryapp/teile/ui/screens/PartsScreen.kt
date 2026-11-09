@@ -44,10 +44,10 @@ import ch.brickinventoryapp.ui.components.detailSchluessel
 import ch.brickinventoryapp.ui.components.farbUebersetzer
 import ch.brickinventoryapp.ui.components.grosseSchrift
 import ch.brickinventoryapp.ui.components.kategorieUebersetzer
-import ch.brickinventoryapp.ui.screens.GalleryStatChip
-import ch.brickinventoryapp.ui.screens.KennzahlenReihe
-import ch.brickinventoryapp.ui.screens.SucheMitFilter
-import ch.brickinventoryapp.ui.screens.teileAufschluesselung
+import ch.brickinventoryapp.gemeinsam.ui.GalleryStatChip
+import ch.brickinventoryapp.gemeinsam.ui.KennzahlenReihe
+import ch.brickinventoryapp.gemeinsam.ui.SucheMitFilter
+import ch.brickinventoryapp.gemeinsam.ui.teileAufschluesselung
 
 /** Was der Teile- und der Figurenreiter zeigen; die Routen sammeln es aus den Flüssen. */
 data class TeileZustand(

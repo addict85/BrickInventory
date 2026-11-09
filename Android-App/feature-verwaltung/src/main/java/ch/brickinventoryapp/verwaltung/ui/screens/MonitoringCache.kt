@@ -33,7 +33,7 @@ import ch.brickinventoryapp.ui.components.Abschnittstitel
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.WahlChips
 import ch.brickinventoryapp.ui.components.mitSchrift
-import ch.brickinventoryapp.ui.screens.ConditionToggle
+import ch.brickinventoryapp.gemeinsam.ui.ConditionToggle
 
 /** Was der Cache-Abschnitt auslöst; MonitoringRoute verdrahtet die ViewModels. */
 class CacheEreignisse(

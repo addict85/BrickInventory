@@ -1,0 +1,16 @@
+Gegenprobe: der Zustand importiert wieder aus dem Retrofit-Paket data.api
+Modul: app
+Test: ch.brickinventoryapp.app.SchichtregelnTest
+Rot: ein Bereich kennt die Retrofit-Schnittstellen nicht
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
+@@ -3,6 +3,7 @@
+ import android.content.Context
+ import androidx.core.net.toUri
+ import ch.brickinventoryapp.data.Anmeldestand
++import ch.brickinventoryapp.data.api.ApiJson
+ import ch.brickinventoryapp.data.repository.fehlerTextZuCode
+ import ch.brickinventoryapp.data.repository.Ergebnis
+ import ch.brickinventoryapp.zustand.ui.fehlerTextArgument

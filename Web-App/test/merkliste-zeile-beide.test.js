@@ -102,7 +102,7 @@ test('5. Löschen: Papierkorb in der Webapp, nur im Detail in der App', () => {
     'Ohne position:relative sitzt der Papierkorb nicht in der Zeile.');
 
   // ── App: NICHT auf der Kachel und NICHT in der Zeile ─────────────────────
-  const kachelApp = rumpf(app('ui/screens/ManualItemComposables.kt'), 'fun ManuelleKachel(');
+  const kachelApp = rumpf(app('gemeinsam/ui/ManualItemComposables.kt'), 'fun ManuelleKachel(');
   assert.ok(!/Icons\.Default\.Delete/.test(kachelApp),
     'Die Kachel der App trägt einen Papierkorb — „nur in der webapp".');
 

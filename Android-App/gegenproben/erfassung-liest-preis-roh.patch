@@ -1,11 +1,11 @@
 Gegenprobe: erfassungsWerte liest den Preis wieder mit replace und toDoubleOrNull
-Modul: core-ui
-Test: ch.brickinventoryapp.ui.NumericInputTest
+Modul: feature-gemeinsam
+Test: ch.brickinventoryapp.gemeinsam.ErfassungswerteTest
 Rot: die Erfassung liest den Preis
 
-diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/Erfassungswerte.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/Erfassungswerte.kt
---- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/Erfassungswerte.kt
-+++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/Erfassungswerte.kt
+diff --git a/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Erfassungswerte.kt b/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Erfassungswerte.kt
+--- a/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Erfassungswerte.kt
++++ b/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Erfassungswerte.kt
 @@ -29,7 +29,7 @@ fun erfassungsWerte(
      haushalt: List<MitgliedAnsicht>,
  ): ErfassungsWerte = ErfassungsWerte(

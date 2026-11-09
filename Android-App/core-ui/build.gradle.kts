@@ -1,10 +1,9 @@
-// Theme, gemeinsame Composables (Karten, Zeilen, Filter, Kamera-Bausteine) und
-// reine Anzeigeregeln. Kennt nur die Modelle, keine Daten- oder Zustandsschicht.
+// Design-System: Theme, Bausteine ohne Fachwissen (Karten, Zeilen, Suchfeld, Dialoge,
+// Kamera) und reine Anzeigeregeln. Fachliche Bausteine liegen in feature-gemeinsam.
 plugins {
     alias(libs.plugins.brickinventory.android.library)
     alias(libs.plugins.brickinventory.android.unittests)
     alias(libs.plugins.brickinventory.android.compose)
-    alias(libs.plugins.brickinventory.android.hilt)
 }
 
 android {

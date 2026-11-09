@@ -1,0 +1,13 @@
+Gegenprobe: ein neuer Baustein landet wieder in core-ui/ui/screens
+Modul: app
+Test: ch.brickinventoryapp.app.ModulgrenzenTest
+Rot: Schichtung der Kernmodule
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Kaufzeile.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Kaufzeile.kt
+new file mode 100644
+--- /dev/null
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Kaufzeile.kt
+@@ -0,0 +1,3 @@
++package ch.brickinventoryapp.ui.screens
++
++internal const val KAUFZEILE = 1

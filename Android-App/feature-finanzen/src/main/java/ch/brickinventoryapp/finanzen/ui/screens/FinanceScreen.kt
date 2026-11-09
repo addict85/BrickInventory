@@ -33,15 +33,17 @@ import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.ui.components.grosseSchrift
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.ui.components.stueckzahl
-import ch.brickinventoryapp.ui.mengeManuell
+import ch.brickinventoryapp.gemeinsam.ui.mengeManuell
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtMoneyOrDash
 import ch.brickinventoryapp.ui.util.zahlenLocale
-import ch.brickinventoryapp.ui.screens.BezeichnungUndWert
-import ch.brickinventoryapp.ui.screens.ConditionBadges
-import ch.brickinventoryapp.ui.screens.FinanzBild
-import ch.brickinventoryapp.ui.screens.PnlBadge
-import ch.brickinventoryapp.ui.screens.ScopeFilterChip
+import ch.brickinventoryapp.ui.components.BezeichnungUndWert
+import ch.brickinventoryapp.gemeinsam.ui.ConditionBadges
+import ch.brickinventoryapp.gemeinsam.ui.FinanzBild
+import ch.brickinventoryapp.gemeinsam.ui.PnlBadge
+import ch.brickinventoryapp.gemeinsam.ui.ScopeFilterChip
+import ch.brickinventoryapp.gemeinsam.ui.lokaleAchse
+import ch.brickinventoryapp.gemeinsam.ui.lokaleWerte
 
 /** Was der Finanzen-Reiter zeigt; die Route sammelt es aus den Flüssen. */
 data class FinanzZustand(

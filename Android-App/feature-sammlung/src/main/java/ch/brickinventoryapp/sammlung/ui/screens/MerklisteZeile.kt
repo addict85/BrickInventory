@@ -26,7 +26,7 @@ import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Alarm
 import ch.brickinventoryapp.ui.components.ProduktBild
 import ch.brickinventoryapp.ui.util.fmtMoney
-import ch.brickinventoryapp.ui.screens.InfoPlakette
+import ch.brickinventoryapp.gemeinsam.ui.InfoPlakette
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

@@ -8,8 +8,8 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.SemanticsMatcher
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.ui.screens.GalleryStatChip
-import ch.brickinventoryapp.ui.screens.KennzahlenReihe
+import ch.brickinventoryapp.gemeinsam.ui.GalleryStatChip
+import ch.brickinventoryapp.gemeinsam.ui.KennzahlenReihe
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.After
 import org.junit.Assert.assertEquals

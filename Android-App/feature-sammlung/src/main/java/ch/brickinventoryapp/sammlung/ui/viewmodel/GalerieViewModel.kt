@@ -14,8 +14,8 @@ import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.zustand.ui.Aenderung
 import ch.brickinventoryapp.sammlung.ui.Galerie
 import ch.brickinventoryapp.sammlung.ui.GalleryUiState
-import ch.brickinventoryapp.ui.KachelPreis
-import ch.brickinventoryapp.ui.kachelPreise
+import ch.brickinventoryapp.sammlung.ui.KachelPreis
+import ch.brickinventoryapp.sammlung.ui.kachelPreise
 import ch.brickinventoryapp.zustand.ui.retryOnNetwork
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,7 +27,7 @@ import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.zustand.ui.AppUiState
 import ch.brickinventoryapp.zustand.ui.Sitzung
 import ch.brickinventoryapp.zustand.ui.Bestandssignal
-import ch.brickinventoryapp.ui.ScrollMemory
+import ch.brickinventoryapp.model.ui.ScrollMemory
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte

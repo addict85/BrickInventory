@@ -15,7 +15,7 @@ class ManualItemDetailRouteTest {
     fun `der alte Dialog ist entfernt, nicht nur ungenutzt`() {
         // Toter Code, den niemand mehr aufruft, wandert beim nächsten Umbau
         // erfahrungsgemäss versehentlich zurück in Gebrauch.
-        val src = File(Quellen.wurzel, "ui/screens/ManualItemComposables.kt").takeIf { it.exists() }
+        val src = File(Quellen.wurzel, "gemeinsam/ui/ManualItemComposables.kt").takeIf { it.exists() }
         assertTrue("ManualItemComposables.kt nicht gefunden", src != null)
         assertTrue("ManualItemDetailDialog gehört entfernt",
             !src!!.readText().contains("fun ManualItemDetailDialog"))

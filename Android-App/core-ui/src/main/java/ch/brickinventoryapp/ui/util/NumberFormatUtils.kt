@@ -4,7 +4,6 @@ import androidx.appcompat.app.AppCompatDelegate
 import java.text.NumberFormat
 import java.util.Currency
 import java.util.Locale
-import ch.brickinventoryapp.model.data.model.istGutscheinMaske
 import ch.brickinventoryapp.model.util.DatumJahr
 import ch.brickinventoryapp.model.util.fmtDatum
 
@@ -80,16 +79,6 @@ fun mitWaehrungsAbstand(text: String): String =
 
 /** Ein Tag aus der Serverantwort in der Form der App-Sprache — siehe fmtDatum. */
 fun fmtTag(iso: String?, jahr: DatumJahr = DatumJahr.VOLL): String? = fmtDatum(iso, appNumberLocale(), jahr)
-
-/**
- * Eine Gutscheinnummer zum Ablesen: erst die Trennzeichen des Herausgebers weg,
- * dann gleichmässig in Vierer — „1234-5678 9“ hiesse sonst „1234 -567 8 9“.
- */
-fun inVierergruppen(nummer: String): String =
-    // Die Maske des Servers („…1234“) bleibt, wie sie ist: gefiltert hiesse sie „1234“
-    // und sähe aus wie eine ganze, kurze Nummer.
-    if (istGutscheinMaske(nummer)) nummer
-    else nummer.filter { it.isLetterOrDigit() }.chunked(4).joinToString(" ")
 
 /** Wie fmtMoney, aber aus dem String der API — `null`/unlesbar ergibt „—". */
 fun fmtMoneyOrDash(amount: String?, currencyCode: String?): String {

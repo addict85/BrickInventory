@@ -195,6 +195,11 @@ class BildschirmZustandTest {
      */
     private val ausgenommen = setOf("ZoomableImageDialog.kt")
 
+    /** Geheim, flüchtig, Rollmerker, gemessen oder nicht speicherbar: Diese Zustände bleiben bei remember. */
+    private fun darfVergessen(name: String, zeile: String): Boolean =
+        geheim.containsMatchIn(name) || fluechtig.containsMatchIn(name) || rollMerker.containsMatchIn(name) ||
+            gemessen.containsMatchIn(name) || nichtSpeicherbar.containsMatchIn(zeile)
+
     @Test
     fun `vom Menschen eingegebener Zustand uebersteht eine Drehung`() {
         val versaeumt = mutableListOf<String>()
@@ -203,11 +208,7 @@ class BildschirmZustandTest {
             for ((zn, z) in zustandsZeilen(f)) {
                 if ("rememberSaveable" in z) continue
                 val name = nameAus.find(z)?.groupValues?.get(1) ?: continue
-                if (geheim.containsMatchIn(name)) continue
-                if (fluechtig.containsMatchIn(name)) continue
-                if (rollMerker.containsMatchIn(name)) continue
-                if (gemessen.containsMatchIn(name)) continue
-                if (nichtSpeicherbar.containsMatchIn(z)) continue
+                if (darfVergessen(name, z)) continue
                 // Eine ausgenommene Datei wird trotzdem DURCHSUCHT: Ihr Treffer
                 // belegt, dass die Ausnahme noch etwas beschreibt. Wird sie
                 // stattdessen gleich uebersprungen, bleibt ein toter Eintrag

@@ -46,9 +46,10 @@ import ch.brickinventoryapp.ui.components.farbUebersetzer
 import ch.brickinventoryapp.ui.components.grosseSchrift
 import ch.brickinventoryapp.ui.components.katalogName
 import ch.brickinventoryapp.ui.components.kategorieUebersetzer
-import ch.brickinventoryapp.ui.screens.ErsatzteilPlakette
-import ch.brickinventoryapp.ui.screens.ManuelleKachel
-import ch.brickinventoryapp.ui.screens.TabellenZeile
+import ch.brickinventoryapp.gemeinsam.ui.ErsatzteilPlakette
+import ch.brickinventoryapp.gemeinsam.ui.ManuelleKachel
+import ch.brickinventoryapp.gemeinsam.ui.TabellenZeile
+import ch.brickinventoryapp.gemeinsam.ui.mengeAusSet
 
 @Composable
 fun ManualPartTile(part: ManuellesTeilAnsicht, serverUrl: String, imageLoader: ImageLoader,

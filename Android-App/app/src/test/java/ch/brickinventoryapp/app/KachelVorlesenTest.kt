@@ -14,7 +14,7 @@ import ch.brickinventoryapp.model.ui.model.TeilAnsicht
 import ch.brickinventoryapp.katalog.ui.screens.CatalogSetCard
 import ch.brickinventoryapp.teile.ui.screens.MinifigCard
 import ch.brickinventoryapp.teile.ui.screens.PartCard
-import ch.brickinventoryapp.ui.screens.TabellenZeile
+import ch.brickinventoryapp.gemeinsam.ui.TabellenZeile
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.util.fmtInt
 import org.junit.After

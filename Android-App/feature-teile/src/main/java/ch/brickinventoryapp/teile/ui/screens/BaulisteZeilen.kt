@@ -33,7 +33,7 @@ import ch.brickinventoryapp.ui.components.farbUebersetzer
 import ch.brickinventoryapp.ui.components.katalogName
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.ui.components.stueckzahl
-import ch.brickinventoryapp.ui.mengeAusSet
+import ch.brickinventoryapp.gemeinsam.ui.mengeAusSet
 
 /** PDF der fertigen Liste; ein Fehler kommt als Dialog. Der Export läuft im ViewModel. */
 @Composable

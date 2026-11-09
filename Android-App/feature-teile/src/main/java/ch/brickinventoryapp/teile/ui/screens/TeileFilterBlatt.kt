@@ -15,12 +15,12 @@ import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.ui.model.LagerortAnsicht
 import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
-import ch.brickinventoryapp.ui.screens.AnsichtAbschnitt
-import ch.brickinventoryapp.ui.screens.FilterAbschnitt
-import ch.brickinventoryapp.ui.screens.FilterBlattRahmen
-import ch.brickinventoryapp.ui.screens.FilterWahl
-import ch.brickinventoryapp.ui.screens.KontoFilterAbschnitt
-import ch.brickinventoryapp.ui.screens.LagerortFilterAbschnitt
+import ch.brickinventoryapp.gemeinsam.ui.AnsichtAbschnitt
+import ch.brickinventoryapp.gemeinsam.ui.FilterAbschnitt
+import ch.brickinventoryapp.gemeinsam.ui.FilterBlattRahmen
+import ch.brickinventoryapp.gemeinsam.ui.FilterWahl
+import ch.brickinventoryapp.gemeinsam.ui.KontoFilterAbschnitt
+import ch.brickinventoryapp.gemeinsam.ui.LagerortFilterAbschnitt
 
 /** Das Filterblatt der Teile: Konto, Lagerort, Ersatzteile, Farbe und Kategorie, Ansicht. */
 @Composable

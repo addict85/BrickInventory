@@ -49,10 +49,11 @@ import ch.brickinventoryapp.ui.components.OfflineHinweis
 import ch.brickinventoryapp.ui.components.grosseSchrift
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.sammlung.ui.viewmodel.ErfassungViewModel
-import ch.brickinventoryapp.ui.screens.GalleryStatChip
-import ch.brickinventoryapp.ui.screens.KennzahlenReihe
-import ch.brickinventoryapp.ui.screens.SucheMitFilter
-import ch.brickinventoryapp.ui.screens.teileAufschluesselung
+import ch.brickinventoryapp.gemeinsam.ui.GalleryStatChip
+import ch.brickinventoryapp.gemeinsam.ui.KennzahlenReihe
+import ch.brickinventoryapp.gemeinsam.ui.SucheMitFilter
+import ch.brickinventoryapp.gemeinsam.ui.teileAufschluesselung
+import ch.brickinventoryapp.sammlung.ui.KachelPreis
 
 /** Was die Galerie zeigt; die Route sammelt es aus den Flüssen der ViewModels. */
 data class GalerieZustand(

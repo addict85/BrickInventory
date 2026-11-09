@@ -40,7 +40,7 @@ import ch.brickinventoryapp.ui.components.LocalSchrittschutz
 import ch.brickinventoryapp.ui.components.Sichtschutz
 import ch.brickinventoryapp.data.util.GeheimeZwischenablage
 import ch.brickinventoryapp.netz.util.otpauthAdresse
-import ch.brickinventoryapp.ui.screens.SettingsCard
+import ch.brickinventoryapp.ui.components.SettingsCard
 
 /**
  * Die Notfallcodes an eine App der Wahl (Passwortmanager, Notizen): nur auf Tipp und
