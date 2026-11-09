@@ -50,10 +50,11 @@ import ch.brickinventoryapp.gemeinsam.ui.SucheMitFilter
 import ch.brickinventoryapp.gemeinsam.ui.teileAufschluesselung
 import ch.brickinventoryapp.model.ui.Listenansicht
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
+import ch.brickinventoryapp.teile.ui.TeileSitzungUiState
 
 /** Was der Teile- und der Figurenreiter zeigen; die Routen sammeln es aus den Flüssen. */
 data class TeileZustand(
-    val state: AppUiState,
+    val state: TeileSitzungUiState,
     val blick: BlickfeldUiState,
     val partsState: PartsUiState,
     val lagerState: LagerUiState,

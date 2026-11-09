@@ -75,7 +75,7 @@ class PdfRenderDienst : Service() {
 
 /** Die Seite der App: bindet den Dienst einmal und reicht Deskriptoren hinüber. */
 @Singleton
-class PdfRenderVerbindung @Inject constructor(@param:ApplicationContext private val ctx: Context) {
+internal class PdfRenderVerbindung @Inject constructor(@param:ApplicationContext private val ctx: Context) {
     private val sperre = Mutex()
     @Volatile private var binder: IBinder? = null
 

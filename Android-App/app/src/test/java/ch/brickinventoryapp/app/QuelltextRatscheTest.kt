@@ -30,6 +30,7 @@ import ch.brickinventoryapp.testing.Quellen
  *                              „kein voll qualifizierter Projektname …“ und „voll qualifizierte Namen …“
  *   warten-in-echtzeit         TeileViewModelTest schläft wieder 200 ms → rot „Echtzeit-Warten …“
  *   core-data-oeffentlich      liegtUnter ohne internal → rot „die oeffentliche Flaeche der Datenmodule …“
+ *   bereich-oeffentlich        qrWechseltServer ohne internal → rot „die oeffentliche Flaeche der Bereiche …“
  */
 class QuelltextRatscheTest {
 
@@ -430,6 +431,19 @@ class QuelltextRatscheTest {
         ratsche("warteBis in Tests", WARTEN, warten, hinweis)
     }
 
+    private val oeffentlicheDekl = Regex("""^(?:@[\w.:]+(?:\([^)\n]*\))?\s+)*((?:(?:public|internal|private|protected|data|sealed|abstract|open|enum|inline|value|annotation|const|suspend|operator|infix|tailrec|lateinit|fun interface)\s+)*)(?:fun\s+interface|class|interface|object|typealias|fun|val|var)\s""", RegexOption.MULTILINE)
+
+    /** Öffentliche Deklarationen auf oberster Ebene im Hauptcode der [module]. */
+    private fun oeffentlich(module: List<File>, mindestens: Int): Int {
+        val dateien = module.flatMap { m ->
+            File(m, "src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        }
+        assert(dateien.size > mindestens) { "Nur ${dateien.size} Dateien in ${module.map { it.name }} — greift die Suche noch?" }
+        return dateien.sumOf { f ->
+            oeffentlicheDekl.findAll(f.readText()).count { "private" !in it.groupValues[1] && "internal" !in it.groupValues[1] }
+        }
+    }
+
     @Test
     fun `die oeffentliche Flaeche der Datenmodule waechst nicht`() {
         // Was nur das eigene Modul braucht, ist internal: Jede öffentliche Deklaration ist
@@ -437,19 +451,22 @@ class QuelltextRatscheTest {
         // alles, was aus ihm abgespalten wird; sonst sänke die Zahl beim Verschieben zum Schein.
         // Darin UPDATE_ORDNER: öffentlich, weil core-data und core-update ihn teilen.
         val GRENZE = 235
-        val dekl = Regex("""^(?:@[\w.:]+(?:\([^)\n]*\))?\s+)*((?:(?:public|internal|private|protected|data|sealed|abstract|open|enum|inline|value|annotation|const|suspend|operator|infix|tailrec|lateinit|fun interface)\s+)*)(?:fun\s+interface|class|interface|object|typealias|fun|val|var)\s""", RegexOption.MULTILINE)
         val andere = setOf("core-model", "core-ressourcen", "core-ui", "core-ui-bestand", "core-zustand", "core-testing")
         val module = Quellen.module.filter { it.name.startsWith("core-") && it.name !in andere }
         assert("core-data" in module.map { it.name }) { "core-data nicht unter ${module.map { it.name }} — greift die Suche noch?" }
-        val dateien = module.flatMap { m ->
-            File(m, "src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
-        }
-        assert(dateien.size > 100) { "Nur ${dateien.size} Dateien in ${module.map { it.name }} — greift die Suche noch?" }
-        val oeffentlich = dateien.sumOf { f ->
-            dekl.findAll(f.readText()).count { "private" !in it.groupValues[1] && "internal" !in it.groupValues[1] }
-        }
-        ratsche("öffentliche Deklarationen in ${module.joinToString { it.name }}", GRENZE, oeffentlich,
+        ratsche("öffentliche Deklarationen in ${module.joinToString { it.name }}", GRENZE, oeffentlich(module, 100),
             "Was nur das Modul braucht, wird internal.")
+    }
+
+    @Test
+    fun `die oeffentliche Flaeche der Bereiche waechst nicht`() {
+        // Ein Bereich zeigt der App Routen und Ziele; was nur er selbst braucht, ist internal.
+        // Noch öffentlich ist vieles, weil Graphen und Oberflächentests in app liegen.
+        val GRENZE = 218
+        val module = Quellen.module.filter { it.name.startsWith("feature-") }
+        assert(module.size >= 7) { "Nur ${module.size} Bereiche — greift die Suche noch?" }
+        ratsche("öffentliche Deklarationen der Bereiche", GRENZE, oeffentlich(module, 100),
+            "Was nur der Bereich braucht, wird internal.")
     }
 
     @Test

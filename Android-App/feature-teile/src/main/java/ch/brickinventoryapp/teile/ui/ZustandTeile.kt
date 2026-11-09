@@ -118,3 +118,14 @@ data class TeilelisteUiState(
     /** Fertiges PDF, das der Bildschirm einmal zum Öffnen anbietet. */
     val pdfDatei: java.io.File? = null,
 )
+
+/**
+ * Was Teile und Figuren aus der Sitzung lesen: Server für die Bilder, Währung und
+ * der vorgewählte Zustand beim Erfassen. Nicht die ganze Sitzung, damit eine
+ * Änderung an Anmeldung oder Design die Listen nicht neu zeichnet.
+ */
+data class TeileSitzungUiState(
+    val serverUrl: String = "",
+    val currency: String = "EUR",
+    val userDefaultCondition: String? = null,
+)

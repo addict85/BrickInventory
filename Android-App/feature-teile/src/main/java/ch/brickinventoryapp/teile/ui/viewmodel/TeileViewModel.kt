@@ -28,7 +28,6 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import ch.brickinventoryapp.model.data.model.GenericResponse
 import androidx.lifecycle.ViewModel
-import ch.brickinventoryapp.zustand.ui.AppUiState
 import ch.brickinventoryapp.zustand.ui.Sitzung
 import ch.brickinventoryapp.zustand.ui.Bestandssignal
 import ch.brickinventoryapp.model.ui.ScrollMemory
@@ -38,6 +37,8 @@ import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
 import ch.brickinventoryapp.zustand.ui.viewmodel.folgeBestand
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 import ch.brickinventoryapp.model.ui.Listenansicht
+import ch.brickinventoryapp.teile.ui.TeileSitzungUiState
+import ch.brickinventoryapp.zustand.ui.abgeleitet
 
 /**
  * Teile und Minifiguren: Listen, Filter, Erfassen und Ändern manueller
@@ -59,7 +60,8 @@ class TeileViewModel @Inject constructor(
     private val gemerkt: SavedStateHandle,
 ) : ViewModel(), Filterwahl by filter, TeileAktionen {
 
-    val state: StateFlow<AppUiState> = sitzung.state
+    val state: StateFlow<TeileSitzungUiState> =
+        sitzung.state.abgeleitet { TeileSitzungUiState(it.serverUrl, it.currency, it.userDefaultCondition) }
 
     init {
         folgeAbmeldung(sitzung) { zuruecksetzen() }

@@ -45,7 +45,7 @@ fun parseQrPayload(raw: String): QrLoginPayload? = try {
  * Der Host des bisherigen Servers, wenn der Code woandershin führt: Das Ja meldet
  * dort ab und schickt alles Weitere an den neuen Server, also sagt der Dialog es.
  */
-fun qrWechseltServer(bisher: String, code: String): String? {
+internal fun qrWechseltServer(bisher: String, code: String): String? {
     if (bisher.isBlank() || NetworkPolicy.gleicheHerkunft(bisher, NetworkPolicy.normalisiere(code))) return null
     return NetworkPolicy.ansicht(bisher)?.host
 }

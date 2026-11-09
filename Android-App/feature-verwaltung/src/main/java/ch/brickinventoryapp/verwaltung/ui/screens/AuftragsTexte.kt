@@ -17,7 +17,7 @@ val AuftragStatus.statusText: Int?
     }
 
 /** Die Namen der Arten wie in der Webapp (monitor.art.*); unbekannte zeigt die Liste roh. */
-fun auftragsArtText(art: String): Int? = when (art) {
+internal fun auftragsArtText(art: String): Int? = when (art) {
     "nacharbeit" -> R.string.art_nacharbeit
     "bilder" -> R.string.art_bilder
     "pdf" -> R.string.art_pdf
