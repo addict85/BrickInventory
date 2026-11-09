@@ -35,8 +35,15 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
   await db.run(`DELETE FROM rate_limit_attempts WHERE key ~ '^(qr-login|qr-abholen)\\|'`);
   const ids = [];
   for (const n of NAMEN)
-    ids.push((await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-      VALUES ($1, $2, true, true) RETURNING id`, [n, await bcrypt.hash(PASS, 4)])).id);
+    ids.push(
+      (
+        await db.get(
+          `INSERT INTO users (username, password_hash, is_active, email_verified)
+      VALUES ($1, $2, true, true) RETURNING id`,
+          [n, await bcrypt.hash(PASS, 4)],
+        )
+      ).id,
+    );
   t.after(async () => {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
     await db.pool.end().catch(() => {});
@@ -45,7 +52,10 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
   const { base } = testServer(_req, { sitzung, routen: { '/api/v1/auth': 'routes/auth.js' }, t });
   const ruf = async (methode, pfad, body) => {
     const r = await fetch(`${base}/api/v1/auth${pfad}`, {
-      method: methode, headers: { 'content-type': 'application/json' }, body: body && JSON.stringify(body) });
+      method: methode,
+      headers: { 'content-type': 'application/json' },
+      body: body && JSON.stringify(body),
+    });
     return { status: r.status, body: await r.json().catch(() => null) };
   };
   const neuerCode = async () => {
@@ -53,12 +63,12 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
     assert.equal(qr.status, 200, JSON.stringify(qr.body));
     return qr.body;
   };
-  const melde = async (qr) => {
+  const melde = async qr => {
     const m = await ruf('POST', '/qr-login', { token: qr.token, label: 'Pixel Probe' });
     assert.equal(m.status, 200, JSON.stringify(m.body));
     return m.body;
   };
-  const abholen = (m) => ruf('POST', '/qr-login/abholen', { abholung: m.abholung });
+  const abholen = m => ruf('POST', '/qr-login/abholen', { abholung: m.abholung });
   const bestaetige = (qr, code) => ruf('POST', `/qr-kopplung/${qr.kopplung}/bestaetigen`, { code });
 
   await t.test('ohne Bestätigung kein Token, danach genau einer', async () => {
@@ -69,13 +79,18 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
     const vorher = await abholen(m);
     assert.deepEqual([vorher.status, vorher.body.wartet, vorher.body.token], [200, true, undefined]);
     const stand = await ruf('GET', `/qr-kopplung/${qr.kopplung}`);
-    assert.deepEqual([stand.body.stand, stand.body.geraet, stand.body.ip_bereich], ['wartet', 'Pixel Probe', '127.0.0.0/24']);
+    assert.deepEqual(
+      [stand.body.stand, stand.body.geraet, stand.body.ip_bereich],
+      ['wartet', 'Pixel Probe', '127.0.0.0/24'],
+    );
     assert.equal((await bestaetige(qr, m.code)).status, 200);
     const da = await abholen(m);
     assert.equal(da.status, 200, JSON.stringify(da.body));
     assert.equal(da.body.userId, ids[0]);
     assert.equal(da.body.token_info.scope, 'app');
-    const zeile = await db.get('SELECT label FROM api_tokens WHERE token = $1', [_req('src/konto/auth.js').hashToken(da.body.token)]);
+    const zeile = await db.get('SELECT label FROM api_tokens WHERE token = $1', [
+      _req('src/konto/auth.js').hashToken(da.body.token),
+    ]);
     assert.equal(zeile.label, 'Pixel Probe');
     assert.equal((await abholen(m)).status, 401, 'Ein zweites Abholen gibt keinen zweiten Token');
   });
@@ -90,8 +105,7 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
     const qr = await neuerCode();
     const m = await melde(qr);
     const falsch = m.code === '000000' ? '111111' : '000000';
-    for (let i = 0; i < 2; i++)
-      assert.deepEqual([(await bestaetige(qr, falsch)).body.code], ['qr_code_falsch']);
+    for (let i = 0; i < 2; i++) assert.deepEqual([(await bestaetige(qr, falsch)).body.code], ['qr_code_falsch']);
     assert.equal((await bestaetige(qr, falsch)).body.code, 'qr_abgelehnt');
     assert.equal((await bestaetige(qr, m.code)).status, 409, 'Nach der Ablehnung hilft auch der richtige Code nicht');
     const r = await abholen(m);
@@ -112,7 +126,9 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
     try {
       assert.equal((await ruf('GET', `/qr-kopplung/${qr.kopplung}`)).status, 404);
       assert.equal((await bestaetige(qr, m.code)).status, 404);
-    } finally { Object.assign(sitzung, { userId: ids[0], username: NAMEN[0] }); }
+    } finally {
+      Object.assign(sitzung, { userId: ids[0], username: NAMEN[0] });
+    }
     assert.equal((await abholen(m)).body.wartet, true);
   });
 });

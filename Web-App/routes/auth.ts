@@ -343,7 +343,8 @@ router.post('/qr-login/abholen', ipThrottle('qr-abholen', 600, 60 * 60 * 1000), 
   if (a.stand === 'wartet') return res.json({ success: true, wartet: true });
   if (a.stand === 'abgelehnt') return sendeFehler(req, res, 403, 'qr_abgelehnt');
   if (a.stand !== 'fertig') return sendeFehler(req, res, 401, 'token_ungueltig');
-  const user = (await K.kontoKurz(a.uid))!;
+  const user = await K.kontoKurz(a.uid);
+  if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
   meldeAnmeldung({ ip: req.ip, konto: user.id, zugang: 'qr' });
   // Keine Sitzung: Sie trüge die vollen Rechte des Kontos an Scope `app` vorbei.
   res.json({ success: true, wartet: false, token: a.token, username: user.username, isAdmin: false, userId: user.id,

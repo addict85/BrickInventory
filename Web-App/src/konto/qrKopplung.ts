@@ -2,7 +2,7 @@
  * sich damit an und zeigt einen Bestätigungscode, die Web-Sitzung tippt ihn ein.
  * Erst dann holt die App ihren Token ab: Ein abfotografierter QR-Code allein
  * öffnet kein Konto, der Inhaber sieht jedes Gerät, bevor es Zugang bekommt. */
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import * as repo from './repository/qrKopplung';
 import { createToken, hashToken, ipBereich } from './auth';
 import { APP_HOECHSTDAUER_TAGE, tokenLabel } from './tokenWunsch';
@@ -18,25 +18,41 @@ export async function erzeuge(uid: number, tage: number | null): Promise<{ token
   return { token: `bim:${nonce}`, kopplung };
 }
 
-export async function meldeGeraet(token: unknown, geraet: unknown, ip: string | null | undefined):
-    Promise<{ abholung: string; code: string; uid: number } | null> {
+export async function meldeGeraet(
+  token: unknown,
+  geraet: unknown,
+  ip: string | null | undefined,
+): Promise<{ abholung: string; code: string; uid: number } | null> {
   if (typeof token !== 'string' || !token.startsWith('bim:')) return null;
   const abholung = crypto.randomBytes(32).toString('base64url');
   const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
-  const z = await repo.melde(hashToken(token.slice(4)), { abholung: hashToken(abholung), codeHash: hashToken(code),
-    geraet: tokenLabel(geraet, 'Android App'), ipBereich: ipBereich(ip), fristS: QR_TTL_MS / 1000 });
+  const z = await repo.melde(hashToken(token.slice(4)), {
+    abholung: hashToken(abholung),
+    codeHash: hashToken(code),
+    geraet: tokenLabel(geraet, 'Android App'),
+    ipBereich: ipBereich(ip),
+    fristS: QR_TTL_MS / 1000,
+  });
   return z ? { abholung, code, uid: z.user_id } : null;
 }
 
-export type Abholung = { stand: 'wartet' | 'abgelehnt' | 'ungueltig' } | { stand: 'fertig'; token: string; uid: number };
+export type Abholung =
+  | { stand: 'wartet' | 'abgelehnt' | 'ungueltig' }
+  | { stand: 'fertig'; token: string; uid: number };
 
-export async function holeAb(abholung: unknown, ip: string | null | undefined,
-                            darf: (uid: number) => Promise<boolean>): Promise<Abholung> {
+export async function holeAb(
+  abholung: unknown,
+  ip: string | null | undefined,
+  darf: (uid: number) => Promise<boolean>,
+): Promise<Abholung> {
   const z = typeof abholung === 'string' && abholung ? await repo.nachAbholung(hashToken(abholung)) : undefined;
   if (z?.stand === 'wartet' || z?.stand === 'abgelehnt') return { stand: z.stand };
-  if (z?.stand !== 'bestaetigt' || !await darf(z.user_id) || !await repo.holeAb(z.id)) return { stand: 'ungueltig' };
-  const token = await createToken(z.user_id, z.geraet ?? 'qr-login', true, z.token_days ?? APP_HOECHSTDAUER_TAGE,
-                                  { scope: 'app', ip });
+  if (z?.stand !== 'bestaetigt' || !(await darf(z.user_id)) || !(await repo.holeAb(z.id)))
+    return { stand: 'ungueltig' };
+  const token = await createToken(z.user_id, z.geraet ?? 'qr-login', true, z.token_days ?? APP_HOECHSTDAUER_TAGE, {
+    scope: 'app',
+    ip,
+  });
   return { stand: 'fertig', token, uid: z.user_id };
 }
 
@@ -59,11 +75,11 @@ export async function bestaetige(kopplung: number, uid: number, code: unknown): 
   if (!z) return 'unbekannt';
   if (z.stand !== 'wartet') return 'nicht_wartend';
   if (!codePasst(z.code_hash, code)) {
-    if (await repo.zaehleFehlversuch(z.id) < QR_FEHLVERSUCHE) return 'code_falsch';
+    if ((await repo.zaehleFehlversuch(z.id)) < QR_FEHLVERSUCHE) return 'code_falsch';
     await repo.lehneAb(z.id);
     return 'abgelehnt';
   }
-  return await repo.bestaetige(z.id) ? 'ok' : 'nicht_wartend';
+  return (await repo.bestaetige(z.id)) ? 'ok' : 'nicht_wartend';
 }
 
 export async function lehneAb(kopplung: number, uid: number): Promise<boolean> {

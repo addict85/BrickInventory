@@ -35,8 +35,11 @@ test('Trusted Types', { timeout: 180_000 }, async t => {
     assert.match(csp, /(^|; )report-uri \/csp-bericht; report-to csp(;|$)/, csp);
     assert.equal(r.headers.get('reporting-endpoints'), 'csp="/csp-bericht"');
     // Auch ohne Herkunft, wie der Browser einen Bericht schickt: angenommen, ohne Inhalt.
-    const bericht = await fetch(`http://127.0.0.1:${app.port}/csp-bericht`, { method: 'POST',
-      headers: { 'content-type': 'application/csp-report', 'sec-fetch-site': 'same-origin' }, body: '{}' });
+    const bericht = await fetch(`http://127.0.0.1:${app.port}/csp-bericht`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/csp-report', 'sec-fetch-site': 'same-origin' },
+      body: '{}',
+    });
     assert.equal(bericht.status, 204);
   });
 

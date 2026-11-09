@@ -14,45 +14,78 @@ const express = require('express');
 
 const _req = require('./helpers/sources').buildAndRequire();
 
-test('CSP-Berichte', async (t) => {
+test('CSP-Berichte', async t => {
   const app = express();
   app.set('trust proxy', true);
   app.use(_req('src/http/cspBericht.js'));
   const srv = app.listen(0);
   t.after(() => srv.close());
-  const basis = `http://127.0.0.1:${srv.address().port}/csp-bericht`;
+  const basis = `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (srv.address()).port}/csp-bericht`;
   const log = [];
   const echt = console.warn;
-  console.warn = (...a) => { log.push(a.join(' ')); };
-  t.after(() => { console.warn = echt; });
+  console.warn = (...a) => {
+    log.push(a.join(' '));
+  };
+  t.after(() => {
+    console.warn = echt;
+  });
   let n = 0;
   const melde = async (rumpf, typ, adresse = `10.0.0.${++n}`) => {
     log.length = 0;
-    const r = await fetch(basis, { method: 'POST', headers: { 'content-type': typ, 'x-forwarded-for': adresse },
-      body: typeof rumpf === 'string' ? rumpf : JSON.stringify(rumpf) });
+    const r = await fetch(basis, {
+      method: 'POST',
+      headers: { 'content-type': typ, 'x-forwarded-for': adresse },
+      body: typeof rumpf === 'string' ? rumpf : JSON.stringify(rumpf),
+    });
     return { status: r.status, text: await r.text() };
   };
 
   await t.test('report-uri: Regel, Ziel und Seite, ohne Anfrageteil', async () => {
-    const r = await melde({ 'csp-report': { 'effective-directive': 'require-trusted-types-for',
-      'blocked-uri': 'trusted-types-sink', 'document-uri': 'https://lego.test/reset?token=geheim#x',
-      'script-sample': 'Element innerHTML|<b>x' } }, 'application/csp-report');
+    const r = await melde(
+      {
+        'csp-report': {
+          'effective-directive': 'require-trusted-types-for',
+          'blocked-uri': 'trusted-types-sink',
+          'document-uri': 'https://lego.test/reset?token=geheim#x',
+          'script-sample': 'Element innerHTML|<b>x',
+        },
+      },
+      'application/csp-report',
+    );
     assert.deepEqual(r, { status: 204, text: '' });
     assert.equal(log.length, 1);
-    assert.match(log[0], /\[csp\] require-trusted-types-for blockierte trusted-types-sink auf https:\/\/lego\.test\/reset \(Element innerHTML\|<b>x\)/);
+    assert.match(
+      log[0],
+      /\[csp\] require-trusted-types-for blockierte trusted-types-sink auf https:\/\/lego\.test\/reset \(Element innerHTML\|<b>x\)/,
+    );
     assert.doesNotMatch(log[0], /geheim/);
   });
 
   await t.test('report-to: die Liste der Reporting-API', async () => {
-    await melde([{ type: 'csp-violation', body: { effectiveDirective: 'script-src-elem', blockedURL: 'https://fremd.example/x.js',
-      documentURL: 'https://lego.test/' } }, { type: 'deprecation', body: {} }], 'application/reports+json');
+    await melde(
+      [
+        {
+          type: 'csp-violation',
+          body: {
+            effectiveDirective: 'script-src-elem',
+            blockedURL: 'https://fremd.example/x.js',
+            documentURL: 'https://lego.test/',
+          },
+        },
+        { type: 'deprecation', body: {} },
+      ],
+      'application/reports+json',
+    );
     assert.deepEqual(log, ['[csp] script-src-elem blockierte https://fremd.example/x.js auf https://lego.test/']);
   });
 
   await t.test('eine Adresse meldet höchstens zehn je Minute', async () => {
     const bericht = { 'csp-report': { 'effective-directive': 'img-src' } };
     const zeilen = [];
-    for (let i = 0; i < 12; i++) { await melde(bericht, 'application/csp-report', '10.9.9.9'); zeilen.push(...log); }
+    for (let i = 0; i < 12; i++) {
+      await melde(bericht, 'application/csp-report', '10.9.9.9');
+      zeilen.push(...log);
+    }
     assert.equal(zeilen.length, 10);
   });
 

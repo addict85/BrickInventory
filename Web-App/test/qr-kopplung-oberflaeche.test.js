@@ -18,12 +18,26 @@ async function kopplung(knopf, endStand) {
   let stand = 'offen';
   const gesendet = [];
   const o = await oeffneOberflaeche({
-    '/v1/auth/qr-token': { success: true, url: 'https://lego.example.org', token: 'bim:abc', kopplung: 7,
-      expires_in: 300, token_days: null },
+    '/v1/auth/qr-token': {
+      success: true,
+      url: 'https://lego.example.org',
+      token: 'bim:abc',
+      kopplung: 7,
+      expires_in: 300,
+      token_days: null,
+    },
     '/v1/auth/qr-kopplung/7': () => ({ success: true, stand, geraet: 'Pixel 9', ip_bereich: '10.0.0.0/24' }),
-    '/v1/auth/qr-kopplung/7/bestaetigen': (_u, init) => { gesendet.push(['ja', JSON.parse(init.body)]); stand = endStand; return { success: true }; },
+    '/v1/auth/qr-kopplung/7/bestaetigen': (_u, init) => {
+      gesendet.push(['ja', JSON.parse(init.body)]);
+      stand = endStand;
+      return { success: true };
+    },
     '/v1/settings/tokens': { success: true, tokens: [] },
-    '/v1/auth/qr-kopplung/7/ablehnen': () => { gesendet.push(['nein']); stand = endStand; return { success: true }; },
+    '/v1/auth/qr-kopplung/7/ablehnen': () => {
+      gesendet.push(['nein']);
+      stand = endStand;
+      return { success: true };
+    },
   });
   const d = o.d;
   try {
@@ -35,9 +49,15 @@ async function kopplung(knopf, endStand) {
     d.getElementById('qr-kopplung-code').value = '123 456';
     d.querySelector(`[data-click="${knopf}"]`).click();
     await warte(() => gesendet.length && d.getElementById('qr-kopplung-feld').hidden, 6000);
-    return { frage, gesendet, ende: d.getElementById('qr-kopplung-text').textContent,
-             qr: d.getElementById('qr-code').textContent };
-  } finally { o.w.close(); }
+    return {
+      frage,
+      gesendet,
+      ende: d.getElementById('qr-kopplung-text').textContent,
+      qr: d.getElementById('qr-code').textContent,
+    };
+  } finally {
+    o.w.close();
+  }
 }
 
 test('die Frage nennt das Gerät, Bestätigen schickt den Code der App', async () => {

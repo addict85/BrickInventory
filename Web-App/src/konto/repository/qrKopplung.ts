@@ -3,8 +3,13 @@ import * as db from '../../../db/database';
 export type QrStand = 'offen' | 'wartet' | 'bestaetigt' | 'abgeholt' | 'abgelehnt' | 'abgelaufen';
 
 export interface QrZeile {
-  id: number; user_id: number; token_days: number | null; geraet: string | null; ip_bereich: string | null;
-  code_hash: string | null; stand: QrStand;
+  id: number;
+  user_id: number;
+  token_days: number | null;
+  geraet: string | null;
+  ip_bereich: string | null;
+  code_hash: string | null;
+  stand: QrStand;
 }
 
 const STAND = `CASE WHEN abgelehnt_am IS NOT NULL THEN 'abgelehnt' WHEN abgeholt_am IS NOT NULL THEN 'abgeholt'
@@ -19,18 +24,23 @@ export async function raeumeAuf(): Promise<void> {
 export async function legeAn(hash: string, uid: number, bis: Date, tage: number | null): Promise<number> {
   const z = await db.get<{ id: number }>(
     'INSERT INTO qr_login_tokens (token, user_id, expires_at, token_days) VALUES ($1,$2,$3,$4) RETURNING id::int AS id',
-    [hash, uid, bis, tage]);
-  return z!.id;
+    [hash, uid, bis, tage],
+  );
+  if (!z) throw new Error('qr_login_tokens: INSERT ohne Zeile');
+  return z.id;
 }
 
 /** Atomar: Nur der erste Scan meldet sein Gerät an; die Frist beginnt neu für die Bestätigung. */
-export function melde(hash: string, a: { abholung: string; codeHash: string; geraet: string; ipBereich: string | null; fristS: number }):
-    Promise<QrZeile | undefined> {
+export function melde(
+  hash: string,
+  a: { abholung: string; codeHash: string; geraet: string; ipBereich: string | null; fristS: number },
+): Promise<QrZeile | undefined> {
   return db.get<QrZeile>(
     `UPDATE qr_login_tokens SET used_at = NOW(), abholung = $2, code_hash = $3, geraet = $4, ip_bereich = $5,
             expires_at = NOW() + make_interval(secs => $6)
       WHERE token = $1 AND used_at IS NULL AND expires_at > NOW() RETURNING ${SPALTEN}`,
-    [hash, a.abholung, a.codeHash, a.geraet, a.ipBereich, a.fristS]);
+    [hash, a.abholung, a.codeHash, a.geraet, a.ipBereich, a.fristS],
+  );
 }
 
 export function nachAbholung(abholung: string): Promise<QrZeile | undefined> {
@@ -43,24 +53,37 @@ export function desKontos(id: number, uid: number): Promise<QrZeile | undefined>
 
 /** Nur aus „bestätigt": Zwei gleichzeitige Abholungen bekommen nicht zwei Tokens. */
 export async function holeAb(id: number): Promise<boolean> {
-  return !!(await db.run(`UPDATE qr_login_tokens SET abgeholt_am = NOW()
+  return !!(
+    await db.run(
+      `UPDATE qr_login_tokens SET abgeholt_am = NOW()
     WHERE id = $1 AND bestaetigt_am IS NOT NULL AND abgeholt_am IS NULL AND abgelehnt_am IS NULL AND expires_at > NOW()`,
-  [id])).changes;
+      [id],
+    )
+  ).changes;
 }
 
 export async function bestaetige(id: number): Promise<boolean> {
-  return !!(await db.run(`UPDATE qr_login_tokens SET bestaetigt_am = NOW()
+  return !!(
+    await db.run(
+      `UPDATE qr_login_tokens SET bestaetigt_am = NOW()
     WHERE id = $1 AND used_at IS NOT NULL AND bestaetigt_am IS NULL AND abgelehnt_am IS NULL AND expires_at > NOW()`,
-  [id])).changes;
+      [id],
+    )
+  ).changes;
 }
 
 /** @returns die Zahl der Fehlversuche danach */
 export async function zaehleFehlversuch(id: number): Promise<number> {
   const z = await db.get<{ n: number }>(
-    'UPDATE qr_login_tokens SET fehlversuche = fehlversuche + 1 WHERE id = $1 RETURNING fehlversuche AS n', [id]);
+    'UPDATE qr_login_tokens SET fehlversuche = fehlversuche + 1 WHERE id = $1 RETURNING fehlversuche AS n',
+    [id],
+  );
   return z?.n ?? 0;
 }
 
 export async function lehneAb(id: number): Promise<void> {
-  await db.run('UPDATE qr_login_tokens SET abgelehnt_am = COALESCE(abgelehnt_am, NOW()) WHERE id = $1 AND abgeholt_am IS NULL', [id]);
+  await db.run(
+    'UPDATE qr_login_tokens SET abgelehnt_am = COALESCE(abgelehnt_am, NOW()) WHERE id = $1 AND abgeholt_am IS NULL',
+    [id],
+  );
 }

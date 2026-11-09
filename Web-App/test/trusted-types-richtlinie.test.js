@@ -17,7 +17,7 @@ const { pathToFileURL } = require('node:url');
 const richtlinien = {};
 globalThis.trustedTypes = {
   createPolicy(name, regeln) {
-    const r = { createHTML: (s) => ({ geprueft: regeln.createHTML(s) }) };
+    const r = { createHTML: s => ({ geprueft: regeln.createHTML(s) }) };
     richtlinien[name] = r;
     return r;
   },
@@ -27,8 +27,9 @@ const laden = () => import(pathToFileURL(path.join(__dirname, '..', 'public', 'j
 
 test('Markup aus html`` wird TrustedHTML, der Wert darin maskiert', async () => {
   const { alsHtml, html } = await laden();
-  assert.deepEqual(alsHtml(html`<b>${'<img src=x onerror=alert(1)>'}</b>`),
-    { geprueft: '<b>&lt;img src=x onerror=alert(1)&gt;</b>' });
+  assert.deepEqual(alsHtml(html`<b>${'<img src=x onerror=alert(1)>'}</b>`), {
+    geprueft: '<b>&lt;img src=x onerror=alert(1)&gt;</b>',
+  });
   assert.deepEqual(alsHtml([html`<i>a</i>`, html`<i>b</i>`]), { geprueft: '<i>a</i><i>b</i>' });
 });
 

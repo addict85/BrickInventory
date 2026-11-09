@@ -109,7 +109,10 @@ test('Bild-Proxy merkt Set-Bilder für images/sets vor', async t => {
     imCache(url);
     angelegt.push(path.join(SET_IMAGES_DIR, `${neu}.jpg`));
     const alle = [];
-    for (let i = 0; i < 3; i++) { assert.equal(await hole(url), 200); alle.push(...notizen); }
+    for (let i = 0; i < 3; i++) {
+      assert.equal(await hole(url), 200);
+      alle.push(...notizen);
+    }
     assert.deepEqual(alle, [[url, neu]]);
   });
   await t.test('über der Drossel bleibt die Notiz aus', async () => {

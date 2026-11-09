@@ -227,7 +227,7 @@ function entpackt(roh: Readable, enc: string, res: Response, url: string, expect
 
 /** @returns true, wenn Bild oder Vorschau unter images/sets noch fehlen */
 async function setBildFehlt(setNummer: string): Promise<boolean> {
-  if (!await setBildVollstaendig(setNummer)) return true;
+  if (!(await setBildVollstaendig(setNummer))) return true;
   // Liegen beide schon da, fehlt oft nur der Eintrag: Danach fragt die Oberfläche nicht mehr hier.
   await setBildLokalEintragen(setNummer).catch(logAndContinue('img-proxy:setBildLokal'));
   return false;
@@ -249,8 +249,11 @@ function vormerkenEinmal(url: string, setNummer: string): void {
 
 /** Aus dem Cache des Proxys nach images/sets, dann vormerken; ohne Cache-Datei nichts. */
 async function setBildAusCache(url: string, setNummer: string, cacheFile: string): Promise<void> {
-  try { await alsSetBildAblegen(cacheFile, setNummer); }
-  catch (e) { return ohneFehlendeDatei('img-proxy:setbild')(e); }
+  try {
+    await alsSetBildAblegen(cacheFile, setNummer);
+  } catch (e) {
+    return ohneFehlendeDatei('img-proxy:setbild')(e);
+  }
   vormerkenEinmal(url, setNummer);
 }
 

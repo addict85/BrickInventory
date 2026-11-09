@@ -14,8 +14,12 @@ router.get('/ca.crt', async (req, res) => {
   // Wert nennen nur die angemeldete Oberfläche und das Protokoll des Servers.
   const name = req.secure ? 'brickinventory-ca.crt' : 'brickinventory-ca-fingerabdruck-pruefen.crt';
   res.set('Content-Disposition', `attachment; filename="${name}"`);
-  if (!req.secure) res.set('X-Fingerabdruck-Pruefen', 'SHA-256 vor dem Installieren mit der angemeldeten Web-Oberflaeche '
-    + '(Einstellungen > Server-Zertifikat) oder dem Protokoll von Caddy vergleichen');
+  if (!req.secure)
+    res.set(
+      'X-Fingerabdruck-Pruefen',
+      'SHA-256 vor dem Installieren mit der angemeldeten Web-Oberflaeche ' +
+        '(Einstellungen > Server-Zertifikat) oder dem Protokoll von Caddy vergleichen',
+    );
   res.type('application/x-x509-ca-cert').send(stand.pem);
 });
 

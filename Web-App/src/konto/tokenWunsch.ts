@@ -13,11 +13,20 @@ export function tokenLabel(roh: unknown, vorgabe: string): string {
   return text ? Array.from(text).slice(0, LABEL_MAX).join('') : vorgabe;
 }
 
-export function tokenScope(roh: unknown): TokenScope { return roh === 'voll' ? 'voll' : 'app'; }
+export function tokenScope(roh: unknown): TokenScope {
+  return roh === 'voll' ? 'voll' : 'app';
+}
 
 /** `expires_at` ist die frühere der beiden Fristen, `null` nur bei „unbegrenzt". */
 export async function tokenAngaben(klartext: string) {
   const z = await tokenStand(hashToken(klartext));
-  return z ? { scope: z.scope, expires_at: z.expires_at, hard_expires_at: z.hard_expires_at,
-               never_expires: z.never_expires, rotiert_am: z.rotiert_am } : null;
+  return z
+    ? {
+        scope: z.scope,
+        expires_at: z.expires_at,
+        hard_expires_at: z.hard_expires_at,
+        never_expires: z.never_expires,
+        rotiert_am: z.rotiert_am,
+      }
+    : null;
 }

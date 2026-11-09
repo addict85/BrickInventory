@@ -1,10 +1,9 @@
-'use strict';
 /**
  * Der ganze QR-Weg wie App und Browser ihn gehen: Die App meldet sich mit dem
  * Code, der Browser bestätigt mit dem Code, den die App zeigt, die App holt
  * ihren Token ab. Liefert die erste Antwort, die nicht 200 ist, sonst die Abholung.
  *
- * @typedef {{ status: number, body: any }} Antwort
+ * @typedef {{ status: number, body: any } & Record<string, any>} Antwort
  * @param {(pfad: string, body: object, kopf: Record<string, string>) => Promise<Antwort>} post
  *        POST unter /api/v1/auth
  * @param {{ token: string, kopplung: number }} qr  die Antwort von /qr-token

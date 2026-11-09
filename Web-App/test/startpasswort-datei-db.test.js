@@ -28,8 +28,13 @@ const db = _req('db/database.js');
 const { keineDb } = require('./helpers/db');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
-test('Startpasswort in einer Datei statt im Log', async (t) => {
-  try { await db.get('SELECT 1'); } catch (e) { keineDb(t, e); return; }
+test('Startpasswort in einer Datei statt im Log', async t => {
+  try {
+    await db.get('SELECT 1');
+  } catch (e) {
+    keineDb(t, e);
+    return;
+  }
   t.after(async () => {
     await db.pool.end().catch(() => {});
     fs.rmSync(wurzel, { recursive: true, force: true });
@@ -38,10 +43,20 @@ test('Startpasswort in einer Datei statt im Log', async (t) => {
   await db.run('CREATE SCHEMA public');
   const ausgabe = [];
   const echt = { log: console.log, warn: console.warn, schreib: process.stdout.write };
-  console.log = console.warn = (...a) => { ausgabe.push(a.join(' ')); };
-  process.stdout.write = (s) => { ausgabe.push(String(s)); return true; };
-  try { await db.initSchema(); }
-  finally { console.log = echt.log; console.warn = echt.warn; process.stdout.write = echt.schreib; }
+  console.log = console.warn = (...a) => {
+    ausgabe.push(a.join(' '));
+  };
+  process.stdout.write = s => {
+    ausgabe.push(String(s));
+    return true;
+  };
+  try {
+    await db.initSchema();
+  } finally {
+    console.log = echt.log;
+    console.warn = echt.warn;
+    process.stdout.write = echt.schreib;
+  }
 
   const datei = path.join(wurzel, 'data', 'admin-startpasswort.txt');
   const [name, passwort] = fs.readFileSync(datei, 'utf8').split('\n');

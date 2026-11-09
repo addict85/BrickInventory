@@ -1,7 +1,7 @@
 /** Das zufällige Startpasswort des ersten Verwalters steht in einer Datei, die nur der
  * Dienst lesen kann, nicht im Container-Log: Das Log sammeln und behalten oft andere. */
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import { DATA_DIR } from './appPaths';
 
 export function startpasswortDatei(): string {
