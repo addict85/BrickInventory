@@ -204,9 +204,6 @@ const NUR_WEB = new Map([
    'Was bleibt: Die Befunde in der Kopfzeile (welcher Betrag ersetzt wurde ' +
    'und welcher nicht) liest nur die Webapp; im Betrachter steht das PDF, ' +
    'nicht die Auskunft darueber.'],
-  ['/api/v1/settings/sessions/andere-beenden',
-    'Beendet die übrigen BROWSER-Sitzungen. Die App hat keine Sitzung; ihre ' +
-    'Gegenstücke sind die Token, die beide über /settings/tokens verwalten.'],
   ['/api/v1/settings/import',
    'Spielt eine gesicherte Verwaltungs-Konfiguration aus einer JSON-Datei ' +
    'zurück. Dasselbe Urteil wie bei der Nutzerverwaltung: eine Aufgabe für ' +
@@ -271,11 +268,12 @@ test('was nur die Webapp kann, hat einen Grund', () => {
   const { apiQuelltext } = require('../scripts/kotlin-vertrag.js');
 
   const appPfade = new Set([...ohneKommentare(apiQuelltext(SERVICE))
-    .matchAll(/@(?:GET|POST|PUT|DELETE|PATCH)\(\s*"([^"]+)"\s*\)/g)]
+    // @HTTP(method = …, path = "…"): Retrofits Weg zu DELETE mit Rumpf.
+    .matchAll(/@(?:GET|POST|PUT|DELETE|PATCH)\(\s*"([^"]+)"\s*\)|@HTTP\([^)]*\bpath\s*=\s*"([^"]+)"/g)]
     // Retrofit schreibt `{setNumber}`, Express `:setNumber` — beides wird zu
     // `:X`. form() oben kennt nur die Express-Form; ohne diesen Schritt galten
     // sechs Adressen als „nur Webapp", die die App sehr wohl aufruft.
-    .map(m => form('/' + m[1].replace(/^\/+/, '').replace(/\{[^}]+\}/g, ':X'))));
+    .map(m => form('/' + (m[1] ?? m[2]).replace(/^\/+/, '').replace(/\{[^}]+\}/g, ':X'))));
   // GEMESSEN sind es 94 Adressen.
   assert.ok(appPfade.size >= 60, `Nur ${appPfade.size} App-Adressen — Muster veraltet?`);
 

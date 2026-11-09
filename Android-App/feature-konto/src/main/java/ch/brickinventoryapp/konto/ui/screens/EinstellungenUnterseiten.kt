@@ -150,8 +150,9 @@ fun KontoRoute(
         GeraeteCard(
             zustand = geraeteZustand,
             onReload = { konto.ladeGeraete() },
-            onRevoke = { konto.entwerteGeraet(it) },
-            onRevokeOthers = { konto.entwerteAndereGeraete() },
+            onFrage = { konto.frageEntwerten(it) },
+            onBestaetigen = { pw, code -> konto.bestaetigeEntwerten(pw, code) },
+            onAbbrechen = { konto.entwertenAbbrechen() },
         )
     }
 }

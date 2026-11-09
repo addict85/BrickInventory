@@ -155,8 +155,8 @@ test('der Verbindungs-Pool ist weit genug', async () => {
 
 test('die Diagnose-Endpunkte sind vorhanden', () => {
   const route = fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8');
-  assert.match(route, /router\.get\('\/admin\/img-probe', requireApiAdmin/, 'img-probe fehlt');
-  assert.match(route, /router\.get\('\/admin\/price-probe', requireApiAdmin/, 'price-probe fehlt');
+  assert.match(route, /router\.post\('\/admin\/img-probe', requireApiAdmin/, 'img-probe fehlt');
+  assert.match(route, /router\.post\('\/admin\/price-probe', requireApiAdmin/, 'price-probe fehlt');
   // Die Abrufe selbst stehen im Dienst der Verwaltung (Routen rufen nicht ins Netz).
   const admin = fs.readFileSync(path.join(ROOT, 'src/verwaltung/dienst.ts'), 'utf8');
   assert.match(

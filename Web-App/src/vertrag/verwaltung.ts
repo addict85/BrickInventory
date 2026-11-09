@@ -235,7 +235,7 @@ export const routen = {
   'GET /api/v1/admin/protokoll': { klein: true, antwort: ProtokollEintraege },
   'GET /api/v1/admin/image-diag/:setNumber': { klein: true, antwort: BildDiagnose },
   'POST /api/v1/admin/forget-image-misses': { eingabe: z.strictObject({ set_numbers: z.array(TEXT(40)).max(10_000).optional(), thumbs: JA_NEIN.optional() }), antwort: BildMerkerVergessen },
-  'GET /api/v1/admin/img-probe': { antwort: Diagnose, abfrage: abfrage({ url: Q.text(2048) }) },
-  'GET /api/v1/admin/price-probe': { antwort: Diagnose, abfrage: abfrage({ set: Q.text(64), live: Q.schalter }) },
+  'POST /api/v1/admin/img-probe': { antwort: Diagnose, eingabe: z.strictObject({ url: TEXT(2048).optional() }) },
+  'POST /api/v1/admin/price-probe': { antwort: Diagnose, eingabe: z.strictObject({ set: TEXT(64).optional(), live: z.boolean().optional() }) },
   'GET /api/v1/': { antwort: Endpunkte },
 } satisfies Record<string, Route>;

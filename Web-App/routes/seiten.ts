@@ -4,10 +4,14 @@ import express from 'express';
 import { fehlerAntwort } from '../src/http/httpAntwort';
 import { sendeStartseite } from '../src/konto/indexHtml';
 import { liefereBild } from '../src/katalog/http/bildAuslieferung';
+import { requireLoginOrToken } from '../src/konto/http/anmeldung';
+import { eingangsSperre } from './api_v1/middleware';
 
 const router = express.Router();
 
-router.get('/images/*pfad', liefereBild);
+// Wie die übrigen Dateirouten: Wer erst das Passwort wechseln oder den
+// zweiten Faktor einrichten muss, bekommt auch keine Bilder.
+router.get('/images/*pfad', requireLoginOrToken, eingangsSperre, liefereBild);
 
 // Erst ein Knopf auf der Seite wirkt (POST), sonst bestätigte schon der
 // Link-Scanner des Mailanbieters eine fremde Adresse.
