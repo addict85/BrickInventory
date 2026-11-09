@@ -12,6 +12,7 @@ dependencies {
     api(project(":core-zustand"))
     // Testserver und Testdienste zeigen Typen aus beiden nach aussen.
     api(project(":core-data"))
+    api(project(":core-sicherheit"))
     api(project(":core-ui"))
     api(libs.bundles.unit.tests)
     api(libs.retrofit)

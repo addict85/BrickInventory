@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data.cache
 
 import android.content.Context
-import ch.brickinventoryapp.data.util.AblageChiffre
-import ch.brickinventoryapp.data.util.Ablageschluessel
+import ch.brickinventoryapp.sicherheit.AblageChiffre
+import ch.brickinventoryapp.sicherheit.Ablageschluessel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.security.MessageDigest

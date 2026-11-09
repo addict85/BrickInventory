@@ -4,7 +4,7 @@ import ch.brickinventoryapp.model.data.model.CsvImportStatus
 import ch.brickinventoryapp.model.data.model.GenericAdminResponse
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
-import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector

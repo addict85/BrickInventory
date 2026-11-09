@@ -9,7 +9,7 @@ import ch.brickinventoryapp.data.util.ANLEITUNG_ENDUNG
 import ch.brickinventoryapp.data.util.ANLEITUNG_PRAEFIX
 import ch.brickinventoryapp.data.util.AnleitungsAblage
 import ch.brickinventoryapp.data.util.PdfSchritt
-import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.util.ladePdfInDenSpeicher
 import ch.brickinventoryapp.data.util.pdfSchritt
 import dagger.hilt.android.qualifiers.ApplicationContext

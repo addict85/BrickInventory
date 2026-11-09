@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.teile.ui
 
-import ch.brickinventoryapp.data.lokal.Lokal
+import ch.brickinventoryapp.offline.Lokal
 import ch.brickinventoryapp.model.data.model.BrickColorsResponse
 import ch.brickinventoryapp.model.data.model.FigValuationItem
 import ch.brickinventoryapp.model.data.model.ManualFigsResponse

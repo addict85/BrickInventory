@@ -2,10 +2,10 @@ package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.lokal.Bearbeitung
-import ch.brickinventoryapp.data.lokal.Faecher
-import ch.brickinventoryapp.data.lokal.Lokal
-import ch.brickinventoryapp.data.lokal.Offlineablage
+import ch.brickinventoryapp.offline.Bearbeitung
+import ch.brickinventoryapp.offline.Faecher
+import ch.brickinventoryapp.offline.Lokal
+import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.model.data.model.*
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject

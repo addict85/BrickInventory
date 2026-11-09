@@ -5,7 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.data.util.TokenVerschluesselung
+import ch.brickinventoryapp.sicherheit.TokenVerschluesselung
 import ch.brickinventoryapp.testing.testVertrauenschiffre
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope

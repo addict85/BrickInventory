@@ -1,11 +1,11 @@
 Gegenprobe: Kann der Entsperr-Schlüssel nicht verschlüsseln, geht der getauschte Token verloren
-Modul: core-data
-Test: ch.brickinventoryapp.data.TresorSperreTest
+Modul: core-sicherheit
+Test: ch.brickinventoryapp.sicherheit.TresorSperreTest
 Rot: kann der Entsperr-Schluessel nicht verschluesseln
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Tresorbefund.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Tresorbefund.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Tresorbefund.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Tresorbefund.kt
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
 @@ -38,8 +38,7 @@
      private val immer: TokenVerschluesselung,
  ) : TokenVerschluesselung {

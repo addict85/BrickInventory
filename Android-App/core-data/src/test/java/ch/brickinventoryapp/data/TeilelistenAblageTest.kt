@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.util.AblageChiffre
+import ch.brickinventoryapp.sicherheit.AblageChiffre
 import ch.brickinventoryapp.data.util.TEILELISTE_DATEI
 import ch.brickinventoryapp.data.util.TEILELISTE_FRIST_MS
 import ch.brickinventoryapp.data.util.Teilelistentresor

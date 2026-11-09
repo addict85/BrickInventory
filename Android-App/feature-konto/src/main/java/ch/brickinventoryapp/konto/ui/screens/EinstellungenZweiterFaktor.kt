@@ -38,7 +38,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.konto.ui.ZweiterFaktorUiState
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz
 import ch.brickinventoryapp.ui.components.Sichtschutz
-import ch.brickinventoryapp.data.util.GeheimeZwischenablage
+import ch.brickinventoryapp.sicherheit.GeheimeZwischenablage
 import ch.brickinventoryapp.netz.util.otpauthAdresse
 import ch.brickinventoryapp.ui.components.SettingsCard
 

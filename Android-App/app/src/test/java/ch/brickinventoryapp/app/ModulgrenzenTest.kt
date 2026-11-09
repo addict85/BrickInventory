@@ -49,6 +49,8 @@ import ch.brickinventoryapp.testing.Quellen
  *      rot „Schichtung der Kernmodule: core-zustand hängt an [core-ui]“
  *   Q  gegenproben/gemeinsam-haengt-an-daten.patch: core-ui-bestand bindet core-data ein →
  *      rot „Schichtung der Kernmodule: core-ui-bestand hängt an [core-data]“
+ *   U  gegenproben/offline-haengt-an-daten.patch: core-offline bindet core-data ein →
+ *      rot „Schichtung der Kernmodule: core-offline hängt an [core-data]“
  *   T  gegenproben/bereich-kennt-bereich.patch: feature-teile bindet feature-katalog ein →
  *      rot „feature-teile hängt an feature-katalog“
  *   R  gegenproben/ui-kennt-ansicht.patch: eine core-ui-Datei importiert eine Ansicht aus
@@ -92,6 +94,7 @@ class ModulgrenzenTest {
         // verrät so das Modul, und kein Paket verteilt sich auf zwei Module.
         val stamm = mapOf(
             "app" to "app", "core-model" to "model", "core-netz" to "netz", "core-data" to "data",
+            "core-sicherheit" to "sicherheit", "core-offline" to "offline",
             "core-update" to "update", "core-dienste" to "dienste", "core-ui" to "ui", "core-zustand" to "zustand",
             "core-testing" to "testing", "feature-anmeldung" to "anmeldung", "feature-katalog" to "katalog",
             "feature-sammlung" to "sammlung", "feature-teile" to "teile", "feature-finanzen" to "finanzen",
@@ -137,7 +140,10 @@ class ModulgrenzenTest {
             "core-model" to emptySet(),
             "core-ressourcen" to emptySet(),
             "core-netz" to setOf("core-model"),
-            "core-data" to setOf("core-model", "core-ressourcen", "core-netz"),
+            // Aus core-data abgespalten, darunter: Tresor und TLS-Vertrauen, dann Room und Offlineablage.
+            "core-sicherheit" to setOf("core-model", "core-netz"),
+            "core-offline" to setOf("core-model", "core-sicherheit"),
+            "core-data" to setOf("core-model", "core-ressourcen", "core-netz", "core-sicherheit", "core-offline"),
             // Aus core-data abgespalten: Sie hängen an core-data, nie umgekehrt und nie aneinander.
             "core-update" to setOf("core-ressourcen", "core-data"),
             "core-dienste" to setOf("core-ressourcen", "core-data"),
@@ -146,8 +152,8 @@ class ModulgrenzenTest {
             // auf dem sich Bereiche doch kennen.
             "core-ui-bestand" to setOf("core-model", "core-ressourcen", "core-ui"),
             // Der Zustand liegt unter der Oberfläche: Bildschirme lesen ihn, er kennt kein Compose-Bauteil.
-            "core-zustand" to setOf("core-model", "core-ressourcen", "core-data", "core-dienste"),
-            "core-testing" to setOf("core-zustand", "core-data", "core-ui"),
+            "core-zustand" to setOf("core-model", "core-ressourcen", "core-data", "core-sicherheit", "core-dienste"),
+            "core-testing" to setOf("core-zustand", "core-data", "core-sicherheit", "core-ui"),
         )
         val kerne = module().filterKeys { it.startsWith("core-") }
         assertEquals("jedes Kernmodul hat eine Regel", erlaubt.keys, kerne.keys)

@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app.widget
 
-import ch.brickinventoryapp.data.util.Geraetesperre
-import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.sicherheit.Geraetesperre
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import android.content.Context
 import android.util.Base64
 import androidx.core.content.edit
@@ -43,8 +43,8 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.util.AblageChiffre
-import ch.brickinventoryapp.data.util.Ablageschluessel
+import ch.brickinventoryapp.sicherheit.AblageChiffre
+import ch.brickinventoryapp.sicherheit.Ablageschluessel
 import ch.brickinventoryapp.data.util.LanguageManager
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn

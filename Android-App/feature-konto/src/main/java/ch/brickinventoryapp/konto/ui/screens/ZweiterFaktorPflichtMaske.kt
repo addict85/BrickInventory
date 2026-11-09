@@ -60,7 +60,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.Lesebreite
 import ch.brickinventoryapp.ui.theme.mittigBis
-import ch.brickinventoryapp.data.util.GeheimeZwischenablage
+import ch.brickinventoryapp.sicherheit.GeheimeZwischenablage
 import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.netz.util.otpauthAdresse
 import ch.brickinventoryapp.ui.components.ErklaerText

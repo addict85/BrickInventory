@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.teile.ui
 
-import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.model.data.model.BestandTeil
 import ch.brickinventoryapp.model.data.model.Minifig
 import ch.brickinventoryapp.model.data.model.Part

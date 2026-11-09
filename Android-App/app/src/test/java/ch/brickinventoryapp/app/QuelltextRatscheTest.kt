@@ -26,7 +26,7 @@ import ch.brickinventoryapp.testing.Quellen
  *                              → rot „kein runCatching verschluckt …“
  *   runcatching-um-suspend-lambda  Offlineablage ruft die suspend-Quelle (ein Feld vom Typ
  *                              `suspend () -> String?`) in runCatching auf → rot, derselbe Test
- *   voll-qualifiziert          `ch.brickinventoryapp.data.util.fangeAusserAbbruch` ausgeschrieben → rot
+ *   voll-qualifiziert          `ch.brickinventoryapp.model.util.fangeAusserAbbruch` ausgeschrieben → rot
  *                              „kein voll qualifizierter Projektname …“ und „voll qualifizierte Namen …“
  *   warten-in-echtzeit         TeileViewModelTest schläft wieder 200 ms → rot „Echtzeit-Warten …“
  *   core-data-oeffentlich      liegtUnter ohne internal → rot „die oeffentliche Flaeche der Datenmodule …“
@@ -436,7 +436,7 @@ class QuelltextRatscheTest {
         // Schnittstelle für alle Bereiche. Gezählt wird auf oberster Ebene, über core-data und
         // alles, was aus ihm abgespalten wird; sonst sänke die Zahl beim Verschieben zum Schein.
         // Darin UPDATE_ORDNER: öffentlich, weil core-data und core-update ihn teilen.
-        val GRENZE = 236
+        val GRENZE = 235
         val dekl = Regex("""^(?:@[\w.:]+(?:\([^)\n]*\))?\s+)*((?:(?:public|internal|private|protected|data|sealed|abstract|open|enum|inline|value|annotation|const|suspend|operator|infix|tailrec|lateinit|fun interface)\s+)*)(?:fun\s+interface|class|interface|object|typealias|fun|val|var)\s""", RegexOption.MULTILINE)
         val andere = setOf("core-model", "core-ressourcen", "core-ui", "core-ui-bestand", "core-zustand", "core-testing")
         val module = Quellen.module.filter { it.name.startsWith("core-") && it.name !in andere }
@@ -470,7 +470,7 @@ class QuelltextRatscheTest {
     @Test
     fun `voll qualifizierte Namen fremder Pakete werden weniger`() {
         // Ausgeschrieben nur bei echter Namensgleichheit, und dann besser mit `import … as`.
-        val HAUPT = 233
+        val HAUPT = 231
         val TESTS = 0
         val voll = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
         fun zaehle(dateien: Sequence<File>) = dateien.sumOf { f ->

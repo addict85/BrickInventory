@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import android.os.Bundle
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -65,9 +65,9 @@ import ch.brickinventoryapp.sammlung.ui.viewmodel.ErfassungViewModel
 import ch.brickinventoryapp.finanzen.ui.viewmodel.GutscheinViewModel
 import ch.brickinventoryapp.konto.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.app.nav.AktivitaetsZustand
-import ch.brickinventoryapp.data.util.GeheimeZwischenablage
+import ch.brickinventoryapp.sicherheit.GeheimeZwischenablage
 import ch.brickinventoryapp.data.util.LanguageManager
-import ch.brickinventoryapp.data.util.Protokoll
+import ch.brickinventoryapp.netz.util.Protokoll
 import ch.brickinventoryapp.BuildConfig
 
 @AndroidEntryPoint

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.finanzen.ui.pdf
 
-import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import android.content.Context
 import ch.brickinventoryapp.data.di.BrickDispatchers
 import ch.brickinventoryapp.data.di.Dispatcher

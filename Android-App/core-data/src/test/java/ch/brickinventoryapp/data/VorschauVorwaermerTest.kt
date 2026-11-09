@@ -3,7 +3,7 @@ package ch.brickinventoryapp.data
 import ch.brickinventoryapp.data.cache.VorschauSpeicher
 import ch.brickinventoryapp.data.cache.VorschauVorwaermer
 import ch.brickinventoryapp.data.cache.Vorwaermung
-import ch.brickinventoryapp.data.util.AblageChiffre
+import ch.brickinventoryapp.sicherheit.AblageChiffre
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow

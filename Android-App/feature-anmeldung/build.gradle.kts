@@ -12,6 +12,7 @@ android {
 dependencies {
     implementation(project(":core-model"))
     implementation(project(":core-data"))
+    implementation(project(":core-sicherheit"))
     implementation(project(":core-ui"))
     implementation(project(":core-zustand"))
     implementation(project(":core-ressourcen"))

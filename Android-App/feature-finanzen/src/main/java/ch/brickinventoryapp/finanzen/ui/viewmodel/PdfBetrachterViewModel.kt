@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.finanzen.ui.viewmodel
 
-import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.DownloadGescheitert

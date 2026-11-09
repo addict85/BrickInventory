@@ -6,8 +6,8 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.edit
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.netz.util.NetworkPolicy
-import ch.brickinventoryapp.data.util.TokenVerschluesselung
-import ch.brickinventoryapp.data.util.Tresorbefund
+import ch.brickinventoryapp.sicherheit.TokenVerschluesselung
+import ch.brickinventoryapp.sicherheit.Tresorbefund
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

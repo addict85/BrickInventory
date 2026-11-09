@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.anmeldung.ui
 
 import ch.brickinventoryapp.netz.util.NetworkPolicy
-import ch.brickinventoryapp.data.util.istFingerabdruck
+import ch.brickinventoryapp.sicherheit.istFingerabdruck
 
 /**
  * Der Inhalt eines Anmelde-QR-Codes: `{"url": …, "token": "bim:…", "fp": …}`.

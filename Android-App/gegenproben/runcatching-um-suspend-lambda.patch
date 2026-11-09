@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
 Rot: kein runCatching verschluckt
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Offlineablage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Offlineablage.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Offlineablage.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Offlineablage.kt
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
 @@ -79,7 +79,7 @@ class Offlineablage(
 
      /** Der gültige Bereich, gestreut; null = nicht angemeldet, dann wird nichts abgelegt. */

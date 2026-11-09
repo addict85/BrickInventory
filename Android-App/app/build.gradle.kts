@@ -203,6 +203,7 @@ dependencies {
     implementation(project(":core-model"))
     implementation(project(":core-ressourcen"))
     implementation(project(":core-data"))
+    implementation(project(":core-sicherheit"))
     implementation(project(":core-update"))
     implementation(project(":core-dienste"))
     implementation(project(":core-ui"))
@@ -216,6 +217,8 @@ dependencies {
     implementation(project(":feature-konto"))
     implementation(project(":feature-verwaltung"))
     testImplementation(project(":core-testing"))
+    // GeraeteSchutzTest baut die TokenAblage auf einem eigenen DataStore.
+    testImplementation(libs.androidx.datastore)
     implementation(libs.androidx.core.ktx)
     // Startbild statt weissem Fenster beim Kaltstart (MainActivity.installSplashScreen).
     implementation(libs.androidx.core.splashscreen)

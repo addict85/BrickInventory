@@ -860,7 +860,7 @@ Abmelden entwertet den Token am Server. Gelingt das in 3 s nicht (kein Netz,
 5xx), geht ein Auftrag mit dem verschlüsselten Token an WorkManager
 (`data/Entwertung.kt`, `EntwertungsWorker`), der mit Rückzug wiederholt, bis
 der Server bestätigt oder 401 sagt. Ein gesperrter Keystore heisst „später“,
-nie „abgemeldet“ (`data/util/Tresorbefund.kt`). Geprüft: `EntwertungTest`,
+nie „abgemeldet“ (`sicherheit/Tresorbefund.kt`). Geprüft: `EntwertungTest`,
 `TresorSperreTest`.
 
 ## Delegierte Zustands-Properties erlauben keinen Smart Cast

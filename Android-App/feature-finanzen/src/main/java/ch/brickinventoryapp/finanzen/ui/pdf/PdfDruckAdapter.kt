@@ -9,7 +9,7 @@ import android.print.PrintDocumentAdapter
 import android.print.PrintDocumentAdapter.LayoutResultCallback
 import android.print.PrintDocumentAdapter.WriteResultCallback
 import android.print.PrintDocumentInfo
-import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch

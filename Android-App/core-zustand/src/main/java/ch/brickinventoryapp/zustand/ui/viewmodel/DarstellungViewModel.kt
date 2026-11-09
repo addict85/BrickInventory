@@ -7,7 +7,7 @@ import ch.brickinventoryapp.data.Darstellungsablage
 import ch.brickinventoryapp.zustand.ui.Sitzung
 import ch.brickinventoryapp.zustand.ui.Widgetanstoss
 import ch.brickinventoryapp.data.util.LanguageManager
-import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

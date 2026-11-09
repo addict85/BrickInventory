@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import android.app.Application
 import android.os.Process
 import androidx.work.Configuration
@@ -15,10 +15,10 @@ import ch.brickinventoryapp.data.Sprachablage
 import ch.brickinventoryapp.data.Tokenuebernahme
 import ch.brickinventoryapp.data.di.Anwendungsbereiche
 import ch.brickinventoryapp.data.util.LanguageManager
-import ch.brickinventoryapp.data.util.Protokoll
+import ch.brickinventoryapp.netz.util.Protokoll
 import ch.brickinventoryapp.data.util.raeumeAlteTeilelisteAuf
 import ch.brickinventoryapp.data.util.raeumeKlartextAnleitungenAuf
-import ch.brickinventoryapp.data.util.raeumeKlartextBildcachesAuf
+import ch.brickinventoryapp.sicherheit.raeumeKlartextBildcachesAuf
 import ch.brickinventoryapp.data.util.raeumeVertraulichePdfsAuf
 import android.os.Build
 

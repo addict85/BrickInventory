@@ -26,9 +26,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.data.util.ZertifikatUngeklaert
-import ch.brickinventoryapp.data.util.fingerabdruckAnfang
-import ch.brickinventoryapp.data.util.fingerabdruckLesbar
+import ch.brickinventoryapp.sicherheit.ZertifikatUngeklaert
+import ch.brickinventoryapp.sicherheit.fingerabdruckAnfang
+import ch.brickinventoryapp.sicherheit.fingerabdruckLesbar
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 

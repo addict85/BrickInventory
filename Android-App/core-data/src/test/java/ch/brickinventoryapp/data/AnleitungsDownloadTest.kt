@@ -2,7 +2,7 @@ package ch.brickinventoryapp.data
 
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.data.util.AblageChiffre
+import ch.brickinventoryapp.sicherheit.AblageChiffre
 import ch.brickinventoryapp.data.util.AnleitungsAblage
 import ch.brickinventoryapp.data.util.pdfAblage
 import kotlinx.coroutines.ExperimentalCoroutinesApi

@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.testing.ResponseCache
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest

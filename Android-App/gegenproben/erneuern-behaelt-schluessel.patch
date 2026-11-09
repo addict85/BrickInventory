@@ -3,9 +3,9 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.AblageVerschluesselungTest
 Rot: nach dem Erneuern ist alles Alte unlesbar
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Ablageschluessel.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Ablageschluessel.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Ablageschluessel.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Ablageschluessel.kt
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
 @@ -62,7 +62,6 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenVerschl
          vorErneuerung.forEach { it() }
          datei.delete()

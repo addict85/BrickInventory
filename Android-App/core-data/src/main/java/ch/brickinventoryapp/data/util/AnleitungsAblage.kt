@@ -9,6 +9,9 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import javax.inject.Inject
+import ch.brickinventoryapp.sicherheit.AblageChiffre
+import ch.brickinventoryapp.sicherheit.Ablageschluessel
+import ch.brickinventoryapp.sicherheit.VerschluesseltesDateisystem
 
 /** Namensanfang der Anleitungen im Zwischenspeicher ([pdfAblage]); `.part` dahinter heisst: Download läuft. */
 internal const val ANLEITUNG_PRAEFIX = "anleitung_"

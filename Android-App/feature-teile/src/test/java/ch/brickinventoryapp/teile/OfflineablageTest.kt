@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.teile
 
 import ch.brickinventoryapp.data.repository.GutscheineRepositoryImpl
-import ch.brickinventoryapp.data.lokal.Bearbeitung
-import ch.brickinventoryapp.data.lokal.Faecher
-import ch.brickinventoryapp.data.lokal.Offlineablage
-import ch.brickinventoryapp.data.lokal.SpeicherAusgang
-import ch.brickinventoryapp.data.lokal.SpeicherBestand
+import ch.brickinventoryapp.offline.Bearbeitung
+import ch.brickinventoryapp.offline.Faecher
+import ch.brickinventoryapp.offline.Offlineablage
+import ch.brickinventoryapp.offline.SpeicherAusgang
+import ch.brickinventoryapp.offline.SpeicherBestand
 import ch.brickinventoryapp.model.data.model.AddPartRequest
 import ch.brickinventoryapp.model.data.model.AddSetRequest
 import ch.brickinventoryapp.model.data.model.Gutschein

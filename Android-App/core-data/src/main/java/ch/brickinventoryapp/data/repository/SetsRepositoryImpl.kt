@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.lokal.Bearbeitung
-import ch.brickinventoryapp.data.lokal.Faecher
-import ch.brickinventoryapp.data.lokal.Lokal
+import ch.brickinventoryapp.offline.Bearbeitung
+import ch.brickinventoryapp.offline.Faecher
+import ch.brickinventoryapp.offline.Lokal
 import kotlinx.coroutines.flow.Flow
-import ch.brickinventoryapp.data.lokal.Offlineablage
+import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.model.data.model.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody

@@ -1,11 +1,11 @@
 Gegenprobe: MIGRATION_1_2 fehlt in BestandDatenbank.MIGRATIONEN
-Modul: core-data
-Test: ch.brickinventoryapp.data.BestandMigrationTest
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.BestandMigrationTest
 Rot: jede frühere Fassung
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/room/BestandDatenbank.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/room/BestandDatenbank.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/room/BestandDatenbank.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/room/BestandDatenbank.kt
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/BestandDatenbank.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/BestandDatenbank.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/BestandDatenbank.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/BestandDatenbank.kt
 @@ -129,7 +129,7 @@ internal abstract class BestandDatenbank : RoomDatabase() {
          const val NAME = "bestand.db"
  

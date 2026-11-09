@@ -13,7 +13,7 @@ import android.os.DeadObjectException
 import android.os.IBinder
 import android.os.Parcel
 import androidx.core.graphics.createBitmap
-import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex

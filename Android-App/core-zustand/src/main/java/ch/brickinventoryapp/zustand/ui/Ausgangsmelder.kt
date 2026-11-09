@@ -2,9 +2,9 @@ package ch.brickinventoryapp.zustand.ui
 
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.lokal.Abgleichsereignis
-import ch.brickinventoryapp.data.lokal.Bestandsart
-import ch.brickinventoryapp.data.lokal.Offlineablage
+import ch.brickinventoryapp.offline.Abgleichsereignis
+import ch.brickinventoryapp.offline.Bestandsart
+import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
