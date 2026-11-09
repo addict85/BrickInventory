@@ -9,9 +9,12 @@ export function sitzungsKeksName(k: Konfig = konfig()): string {
   return cookieSicher(k) ? NAME_TLS : NAME_OHNE_TLS;
 }
 
-/** Auch fürs Löschen: Ohne Secure verwirft der Browser den Löschbefehl. Kein maxAge. */
+/** Auch fürs Löschen: Ohne Secure verwirft der Browser den Löschbefehl. Kein maxAge.
+ * Strict: Kein Link einer fremden Seite trägt die Sitzung mit. Die Oberfläche
+ * holt alles per fetch von der eigenen Seite und bleibt so auch nach einem
+ * Mail-Link angemeldet; Mail-Links selbst brauchen keine Sitzung. */
 export function sitzungsKeksOptionen(k: Konfig = konfig()): CookieOptions & { path: '/' } {
-  return { path: '/', httpOnly: true, sameSite: 'lax', secure: cookieSicher(k) };
+  return { path: '/', httpOnly: true, sameSite: 'strict', secure: cookieSicher(k) };
 }
 
 /** Beide Namen: Für die Herkunftsprüfung zählt jedes Sitzungscookie. */

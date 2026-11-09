@@ -47,7 +47,9 @@ interface KontoRepository {
 
     suspend fun getTokens(): Ergebnis<TokensResponse>
 
-    suspend fun revokeToken(tokenId: String): Ergebnis<TokenWiderruf>
+    suspend fun revokeToken(tokenId: String, bestaetigung: ZweiterFaktorAnfrage): Ergebnis<TokenWiderruf>
+
+    suspend fun andereBeenden(bestaetigung: ZweiterFaktorAnfrage): Ergebnis<AndereBeendet>
 
     suspend fun tokenRotieren(alterToken: String): Ergebnis<GetauschterToken>
 

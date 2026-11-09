@@ -19,6 +19,8 @@
  *   G  priceFor() in setValue.ts nimmt immer den Neupreis → rot „computePnl
  *      bewertet nach dem Zustand der Erfassungen“ (effectiveCondition allein
  *      auf 'N' gestellt bleibt grün: Mit Erfassungen gilt deren Zustand)
+ *   H  (09.11.2026) Route und Vertrag der Preis-Probe wieder als GET → rot
+ *      „die Preis-Probe …“ (GET 200 statt 404)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -202,7 +204,10 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
   });
 
   await t.test('die Preis-Probe läuft ohne Serverfehler', async () => {
-    const r = await anfrage('GET', `/admin/price-probe?set=${SN}`);
+    // Per GET löste schon ein Link einer fremden Seite (Lax-Cookie) den Abruf aus.
+    const perLink = await fetch(`${base}/api/v1/admin/price-probe?set=${SN}&live=1`);
+    assert.equal(perLink.status, 404, 'die Probe lässt sich per GET auslösen');
+    const r = await anfrage('POST', '/admin/price-probe', { set: SN });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.condition_logic?.chosen_for_price, 'U', 'Die Probe zeigt nicht die Regel der Bewertung');
     assert.deepEqual(

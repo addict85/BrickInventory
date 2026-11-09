@@ -118,8 +118,11 @@ class KontoRepositoryImpl @Inject constructor(
 
     override suspend fun getTokens(): Ergebnis<TokensResponse> = safeCall { api.getTokens() }
 
-    override suspend fun revokeToken(tokenId: String): Ergebnis<TokenWiderruf> =
-        safeCall { api.revokeToken(tokenId) }
+    override suspend fun revokeToken(tokenId: String, bestaetigung: ZweiterFaktorAnfrage): Ergebnis<TokenWiderruf> =
+        safeCall { api.revokeToken(tokenId, bestaetigung) }
+
+    override suspend fun andereBeenden(bestaetigung: ZweiterFaktorAnfrage): Ergebnis<AndereBeendet> =
+        safeCall { api.andereBeenden(AndereBeendenAnfrage(bestaetigung.password, bestaetigung.code)) }
 
     /**
      * Den Token tauschen; [alterToken] geht ausdrücklich mit (siehe data/TokenTausch).

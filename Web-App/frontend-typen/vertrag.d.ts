@@ -56,6 +56,12 @@ export type AddSetResponse = {
   error?: string | null;
   [feld: string]: unknown;
 };
+export type AndereBeendet = {
+  success: true;
+  deleted: number;
+  zugaenge?: number;
+  [feld: string]: unknown;
+};
 export type AnleitungenGeladen = {
   success: true;
   count: number;
@@ -2122,12 +2128,12 @@ export type Route =
   | { m: 'POST'; p: '/v1/admin/default-condition'; a: VerwaltungZustand }
   | { m: 'POST'; p: '/v1/admin/forget-image-misses'; a: BildMerkerVergessen }
   | { m: 'GET'; p: `/v1/admin/image-diag/${string}`; a: BildDiagnose }
-  | { m: 'GET'; p: '/v1/admin/img-probe'; a: Diagnose }
+  | { m: 'POST'; p: '/v1/admin/img-probe'; a: Diagnose }
   | { m: 'POST'; p: '/v1/admin/job-schedule'; a: POST_api_v1_sets_import_csv_cancel }
   | { m: 'GET'; p: '/v1/admin/job-status'; a: PreisJobStand }
   | { m: 'GET'; p: '/v1/admin/jobs'; a: JobsResponse }
   | { m: 'GET'; p: '/v1/admin/logs'; a: ProtokollResponse }
-  | { m: 'GET'; p: '/v1/admin/price-probe'; a: Diagnose }
+  | { m: 'POST'; p: '/v1/admin/price-probe'; a: Diagnose }
   | { m: 'GET'; p: '/v1/admin/protokoll'; a: ProtokollEintraege }
   | { m: 'POST'; p: '/v1/admin/redownload-missing-images'; a: VerwaltungGestartet }
   | { m: 'POST'; p: '/v1/admin/reimport-instructions'; a: VerwaltungMeldung }
@@ -2279,7 +2285,7 @@ export type Route =
   | { m: 'POST'; p: '/v1/settings/import'; a: SicherungEingespielt }
   | { m: 'POST'; p: '/v1/settings/quelle-testen'; a: DELETE_api_v1_papierkorb_id }
   | { m: 'GET'; p: '/v1/settings/raw'; a: RoheEinstellungen }
-  | { m: 'POST'; p: '/v1/settings/sessions/andere-beenden'; a: Geloescht }
+  | { m: 'POST'; p: '/v1/settings/sessions/andere-beenden'; a: AndereBeendet }
   | { m: 'POST'; p: '/v1/settings/smtp-test'; a: SmtpProbe }
   | { m: 'GET'; p: '/v1/settings/theme'; a: AppThemeResponse }
   | { m: 'GET'; p: '/v1/settings/tls'; a: TlsStand }

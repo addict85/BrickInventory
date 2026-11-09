@@ -189,20 +189,19 @@ router.post('/admin/job-schedule', requireApiAdmin, async (req: Anfrage<'POST /a
 });
 
 /** Fragt eine Bild-URL vom SERVER aus ab (mit, ohne Referer, ohne Kopfzeilen),
- * um „fehlt", „Hotlink-Schutz" und „nicht erreichbar" zu unterscheiden.
+ * um „fehlt", „Hotlink-Schutz" und „nicht erreichbar" zu unterscheiden. POST,
+ * weil eine fremde Seite ein GET samt Lax-Cookie per Link auslösen könnte.
  * Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-img-probe */
-router.get('/admin/img-probe', requireApiAdmin, async (req: Anfrage<'GET /api/v1/admin/img-probe'>, res: Antwort<'GET /api/v1/admin/img-probe'>) => {
-  const url = req.abfrage.url ?? '';
-  res.json(await bildProbe(url));
+router.post('/admin/img-probe', requireApiAdmin, async (req: Anfrage<'POST /api/v1/admin/img-probe'>, res: Antwort<'POST /api/v1/admin/img-probe'>) => {
+  res.json(await bildProbe(req.eingabe.url ?? ''));
 });
 /** Alles, was in die Marktpreis-Anzeige eines Sets einfliesst, auf Wunsch mit
- * der aktuellen BrickLink-Antwort. Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-price-probe */
-router.get('/admin/price-probe', requireApiAdmin, async (req: Anfrage<'GET /api/v1/admin/price-probe'>, res: Antwort<'GET /api/v1/admin/price-probe'>) => {
-  const setNumber = (req.abfrage.set ?? '').trim();
+ * der aktuellen BrickLink-Antwort; POST aus demselben Grund wie oben.
+ * Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-price-probe */
+router.post('/admin/price-probe', requireApiAdmin, async (req: Anfrage<'POST /api/v1/admin/price-probe'>, res: Antwort<'POST /api/v1/admin/price-probe'>) => {
+  const setNumber = (req.eingabe.set ?? '').trim();
   if (!setNumber) return sendeFehler(req, res, 400, 'parameter_set_fehlt');
-  const uid = req.apiUser.user_id;
-
-  res.json(await preisProbe(uid, setNumber, req.abfrage.live ?? false));
+  res.json(await preisProbe(req.apiUser.user_id, setNumber, req.eingabe.live ?? false));
 });
 
 router.use(fehlerAntwort);

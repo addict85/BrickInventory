@@ -74,11 +74,11 @@ const OHNE_AUFRUFER = new Map([
   // Die Token-Routen fehlen hier, weil ihre Oberfläche jetzt unter
   // „Angemeldete Geräte“ steht und sie damit einen Aufrufer haben.
   // Ausführlich: docs/begruendungen/test/api-aufrufer.test.js.md#stelle
-  ['GET /api/v1/admin/img-probe',
+  ['POST /api/v1/admin/img-probe',
     'Diagnosewerkzeug, von Hand gerufen: zeigt, was der Bild-Proxy vom ' +
     'Ursprungsserver bekommt. Entstanden, weil Minifiguren-Bilder über den ' +
     'Proxy fehlschlugen, im Browser aber luden.'],
-  ['GET /api/v1/admin/price-probe',
+  ['POST /api/v1/admin/price-probe',
     'Diagnosewerkzeug, von Hand gerufen: zeigt, woher ein Preis stammt ' +
     '(Zustandswahl, Cache oder BrickLink-Antwort).'],
   ['GET /api/v1/admin/image-diag/:setNumber',

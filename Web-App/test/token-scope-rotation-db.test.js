@@ -25,6 +25,8 @@
  *      „App-Anmeldung: feste Höchstdauer …“ (hard_expires_at null)
  *   K  (02.11.2026) in legeNachfolgerAn() hard_expires_at auf NOW() + 180
  *      Tage gesetzt → rot: dieselbe Prüfung („der Tausch verlängert …“)
+ *   L  (09.11.2026) in zugangLoeschen() den Vorgänger (`left(ersetzt_durch, 16)`)
+ *      nicht mitgelöscht → rot: „Geräteliste: …“ (der Vorgänger lebt weiter)
  *
  * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
  */
@@ -269,9 +271,10 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
     assert.equal(e.never_expires, false);
 
     assert.equal(e.token_id, auth.hashToken(neu).slice(0, 16), 'Es steht der neue Token da');
-    const weg = await ruf('/settings/tokens/' + e.token_id, { method: 'DELETE', cookie: sitzung });
-    assert.equal(weg.body.deleted, 1);
+    const weg = await ruf('/settings/tokens/' + e.token_id, { method: 'DELETE', cookie: sitzung, body: { password: PASS, code: await code() } });
+    assert.equal(weg.body.deleted, 1, 'der Vorgänger in der Überlappung zählt nicht als eigenes Gerät');
     assert.equal((await ruf('/auth/me', { token: neu })).status, 401);
+    assert.equal((await ruf('/auth/me', { token: g })).status, 401, 'der Vorgänger in der Überlappung lebt weiter');
   });
 
   await t.test('Migration 0080: Bestand bekommt Scope voll und höchstens 90 Tage', async () => {

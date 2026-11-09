@@ -197,7 +197,7 @@ export async function mailBereit(neu: { smtp_host?: unknown; smtp_user?: unknown
 export type KontoHinweis = 'passkey_neu' | 'passwort_geaendert' | 'passwort_zurueckgesetzt' | 'token_neu' | 'qr_zugang_neu'
   | 'zweiter_faktor_entfernt' | 'verwalter_ernannt' | 'verwaltung_faktor_entfernt' | 'token_wiederverwendet'
   | 'passwort_durch_verwalter' | 'verwaltung_passwort_gesetzt' | 'zweiter_faktor_eingerichtet' | 'zweiter_faktor_abgeschaltet'
-  | 'anmeldung_gebremst' | 'bestaetigung_gebremst' | 'einstellungen_geaendert';
+  | 'anmeldung_gebremst' | 'bestaetigung_gebremst' | 'einstellungen_geaendert' | 'zugang_beendet' | 'zugaenge_beendet';
 
 /** Ohne Geheimnisse und ohne Link. `haushalt` nennt die Konten, die diese
  * Sammlung sehen: Ein Eindringling könnte sich dort eingetragen haben. */
@@ -234,6 +234,10 @@ export async function sendKontoHinweisMail(to: string, username: string, art: Ko
                               : 'in einer angemeldeten Sitzung oder App deines Kontos wurde beim Bestätigen mehrmals ein falsches Passwort oder ein falscher Code eingegeben; weitere Versuche werden vorerst gebremst.',
     einstellungen_geaendert: en ? `“${o.durch ?? ''}” changed security-relevant settings: ${o.konto ?? ''}.`
                                 : `„${o.durch ?? ''}“ hat sicherheitsrelevante Einstellungen geändert: ${o.konto ?? ''}.`,
+    zugang_beendet: en ? `the app token “${o.passkey ?? ''}” of your account was signed out from another device.`
+                       : `der App-Zugang „${o.passkey ?? ''}“ deines Kontos wurde von einem anderen Gerät aus abgemeldet.`,
+    zugaenge_beendet: en ? 'all other sign-ins and app tokens of your account were ended.'
+                         : 'alle anderen Anmeldungen und App-Zugänge deines Kontos wurden beendet.',
     token_wiederverwendet: en ? `an already replaced app token (“${o.passkey ?? ''}”) was used again, so someone has a copy. All tokens of that device were ended; sign in to the app again.`
                               : `ein schon ersetzter App-Zugang („${o.passkey ?? ''}“) wurde erneut benutzt, jemand hat also eine Kopie. Alle Zugänge dieses Geräts sind beendet; melde die App neu an.`,
   }[art];

@@ -18,6 +18,9 @@
  *      „kein zweiter Weg zum Passwortvergleich"
  *   F  (05.11.2026) in NurCode (konto.ts) `password: txtLeer(…)` statt
  *      `z.null()` → rot: „jede Passwort-Eingabe trägt die Marke"
+ *   G  (09.11.2026) DELETE /settings/tokens/:tokenId wieder mit
+ *      `eingabe: OHNE_RUMPF` statt bestaetigt() → rot: „die Pflichtrouten
+ *      tragen die Marke"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -57,6 +60,7 @@ const PFLICHT = ['POST /api/v1/auth/token-create', 'POST /api/v1/auth/qr-token',
   'POST /api/v1/auth/change-password', 'PUT /api/v1/auth/profile', 'DELETE /api/v1/auth/passkeys/:id',
   'POST /api/v1/auth/passkey/registrieren/optionen', 'POST /api/v1/auth/zweiter-faktor/abschalten',
   'POST /api/v1/settings/household/redeem', 'POST /api/v1/settings', 'POST /api/v1/settings/sessions/andere-beenden',
+  'DELETE /api/v1/settings/tokens/:tokenId',
   'DELETE /api/v1/papierkorb', 'DELETE /api/v1/papierkorb/:id', 'DELETE /api/v1/vouchers/:id',
   'POST /api/v1/vouchers/:id/klartext', 'POST /api/v1/vouchers/:id/pdf-freigabe', 'POST /api/v1/vouchers/export/pdf-freigabe'];
 /** Vor der Anmeldung gibt es nichts zu bestätigen. */
@@ -98,7 +102,7 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async (t) => {
   const basis = testServer(_req, { sitzung: { userId: chef, username: CHEF, isAdmin: true }, routen, t }).base;
   const ruf = async (b, schluessel, body) => {
     const [methode, muster] = schluessel.split(' ');
-    const r = await fetch(b + muster.replace(':id', String(ziel)), { method: methode,
+    const r = await fetch(b + muster.replace(':id', String(ziel)).replace(':tokenId', '0123456789abcdef'), { method: methode,
       headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
     return { status: r.status, body: await r.json().catch(() => ({})) };
   };

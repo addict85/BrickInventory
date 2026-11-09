@@ -1,4 +1,4 @@
-/** `sameSite: lax` hält fremde Websites ab, aber keine Nachbar-Subdomain.
+/** `sameSite: strict` hält fremde Websites ab, aber keine Nachbar-Subdomain.
  * Fehlt bei einer Cookie-Sitzung jede Herkunftsangabe, wird abgelehnt;
  * Bearer-Token schickt kein Browser von selbst mit. */
 import type { Request, Response, NextFunction } from 'express';

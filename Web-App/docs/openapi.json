@@ -934,20 +934,9 @@
       }
     },
     "/api/v1/admin/img-probe": {
-      "get": {
+      "post": {
         "tags": [
           "verwaltung"
-        ],
-        "parameters": [
-          {
-            "name": "url",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "maxLength": 2048
-            }
-          }
         ],
         "responses": {
           "200": {
@@ -967,6 +956,22 @@
                 "schema": {
                   "$ref": "#/components/schemas/Fehler"
                 }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "maxLength": 2048
+                  }
+                },
+                "additionalProperties": false
               }
             }
           }
@@ -1147,34 +1152,9 @@
       }
     },
     "/api/v1/admin/price-probe": {
-      "get": {
+      "post": {
         "tags": [
           "verwaltung"
-        ],
-        "parameters": [
-          {
-            "name": "set",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "maxLength": 64
-            }
-          },
-          {
-            "name": "live",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "0",
-                "1",
-                "true",
-                "false"
-              ]
-            }
-          }
         ],
         "responses": {
           "200": {
@@ -1194,6 +1174,25 @@
                 "schema": {
                   "$ref": "#/components/schemas/Fehler"
                 }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "set": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "live": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
               }
             }
           }
@@ -11745,7 +11744,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Geloescht"
+                  "$ref": "#/components/schemas/AndereBeendet"
                 }
               }
             }
@@ -11767,6 +11766,9 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "zugaenge": {
+                    "type": "boolean"
+                  },
                   "password": {
                     "anyOf": [
                       {
@@ -12014,7 +12016,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+              "pattern": "^[0-9a-f]{16}$"
             }
           }
         ],
@@ -12045,11 +12047,59 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": {},
+                "properties": {
+                  "password": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "code": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 64
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "passkey": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
                 "additionalProperties": false
               }
             }
           }
+        },
+        "x-bestaetigung": {
+          "passwort": "password",
+          "code": "code"
         }
       }
     },
@@ -14390,6 +14440,30 @@
             ]
           }
         },
+        "additionalProperties": {}
+      },
+      "AndereBeendet": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "deleted": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "zugaenge": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "success",
+          "deleted"
+        ],
         "additionalProperties": {}
       },
       "AnleitungenGeladen": {

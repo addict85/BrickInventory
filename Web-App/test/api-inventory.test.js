@@ -154,10 +154,10 @@ const C = {
   // Passwort eines anderen Nutzers setzen — Administratorfunktion der Webapp.
   // Die Android-App hat keine Nutzerverwaltung, daher kein v1-Gegenstück.
   'PUT /api/v1/auth/users/:id/password': 'nur-web',
-  'GET /api/v1/admin/img-probe': 'nur-v1',
+  'POST /api/v1/admin/img-probe': 'nur-v1',
   // Dasselbe für Preise: Erfassungen, gewählter Zustand, Cache-Zeilen und
   // optional die Live-Antwort von BrickLink.
-  'GET /api/v1/admin/price-probe': 'nur-v1',
+  'POST /api/v1/admin/price-probe': 'nur-v1',
   'GET /api/v1/sets/barcode/:barcode': 'nur-v1',
   'GET /api/v1/sets/:setNumber/parts-list': 'nur-v1',
   'GET /api/v1/sets/:setNumber/minifigs-list': 'nur-v1',
