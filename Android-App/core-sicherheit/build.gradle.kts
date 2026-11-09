@@ -19,13 +19,6 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.okhttp)
-    // Allein griffe das Modul auf arch-core 2.0.0 und tracing 1.1.0 zurück; geprüft
-    // sind nur die Fassungen, die der Rest der App ohnehin nimmt.
-    constraints {
-        implementation(libs.androidx.arch.core.common)
-        implementation(libs.androidx.arch.core.runtime)
-        implementation(libs.androidx.tracing)
-    }
 
     testImplementation(project(":core-testing"))
     testImplementation(libs.robolectric)

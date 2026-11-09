@@ -33,6 +33,18 @@ internal fun Project.guavaMindestens() {
     dependencies.constraints.add("implementation", "com.google.guava:guava:$fassung")
 }
 
+/**
+ * Ein Modul mit wenigen Abhängigkeiten griffe allein auf arch-core 2.0.0 und
+ * tracing 1.1.0 zurück, die nicht im Prüfsummenverzeichnis stehen. Einschränkungen
+ * wie bei Guava heben sie auf die Fassungen, die die App ohnehin nimmt.
+ */
+internal fun Project.androidxMindestens() {
+    for (alias in listOf("androidx.arch.core.common", "androidx.arch.core.runtime", "androidx.tracing")) {
+        val bib = libs.findLibrary(alias).get().get()
+        dependencies.constraints.add("implementation", "${bib.module}:${bib.versionConstraint.requiredVersion}")
+    }
+}
+
 internal fun Project.gruppe(konfiguration: String, alias: String) {
     dependencies.add(konfiguration, libs.findBundle(alias).get())
 }

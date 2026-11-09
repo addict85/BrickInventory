@@ -14,8 +14,8 @@ ksp                         = "2.3.13"
 coreKtx                     = "1.19.1"
 coreSplashscreen            = "1.2.0"
 lifecycleRuntimeKtx         = "2.11.0"
-# Untergrenzen für core-sicherheit und core-offline: Allein zögen sie arch-core 2.0.0 und
-# tracing 1.1.0, die nicht im Prüfsummenverzeichnis stehen; die App nimmt diese Fassungen.
+# Untergrenzen aller Android-Module (build-logic, androidxMindestens): Allein zöge ein schlankes
+# Modul arch-core 2.0.0 und tracing 1.1.0, die nicht im Prüfsummenverzeichnis stehen.
 archCore                    = "2.2.0"
 tracing                     = "2.0.1"
 activityCompose             = "1.13.0"
