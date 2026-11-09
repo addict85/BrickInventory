@@ -17,7 +17,7 @@ data class LokaleListe(val zeilen: List<LokaleZeile>, val stand: Long?)
 
 /**
  * Die lokale Ablage des Bestands, je Bereich (Server und Konto) getrennt. Im
- * Gerät Room ([ch.brickinventoryapp.data.lokal.room.RoomBestand]); die
+ * Gerät Room ([ch.brickinventoryapp.offline.room.RoomBestand]); die
  * Schnittstelle hält die Abgleichslogik ohne Android prüfbar.
  *
  * Zeilen tragen das Server-Modell als JSON: Die App filtert und sortiert auf dem
