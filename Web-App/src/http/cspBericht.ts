@@ -75,11 +75,12 @@ router.post('/csp-bericht', express.raw({ type: () => true, limit: '8kb' }), (re
   } catch {
     return;
   }
-  for (const v of verstoesse(daten))
-    console.warn(
+  for (const v of verstoesse(daten)) {
+    const zeile =
       `[csp] ${ohneAnfrageteil(v.regel)} blockierte ${ohneAnfrageteil(v.blockiert) || '?'} auf ${ohneAnfrageteil(v.seite) || '?'}` +
-        (v.probe ? ` (${ohneAnfrageteil(v.probe)})` : ''),
-    );
+      (v.probe ? ` (${ohneAnfrageteil(v.probe)})` : '');
+    console.warn(zeile.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+  }
 });
 
 router.use(fehlerAntwort);
