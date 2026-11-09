@@ -12,9 +12,9 @@ export const QR_TTL_MS = 5 * 60 * 1000;
 export const QR_FEHLVERSUCHE = 3;
 
 export async function erzeuge(uid: number, tage: number | null): Promise<{ token: string; kopplung: number }> {
-  await repo.raeumeAuf();
+  await repo.raeumeQrKopplungenAuf();
   const nonce = crypto.randomBytes(32).toString('base64url');
-  const kopplung = await repo.legeAn(hashToken(nonce), uid, new Date(Date.now() + QR_TTL_MS), tage);
+  const kopplung = await repo.legeQrKopplungAn(hashToken(nonce), uid, new Date(Date.now() + QR_TTL_MS), tage);
   return { token: `bim:${nonce}`, kopplung };
 }
 
@@ -40,14 +40,14 @@ export type Abholung =
   | { stand: 'wartet' | 'abgelehnt' | 'ungueltig' }
   | { stand: 'fertig'; token: string; uid: number };
 
-export async function holeAb(
+export async function holeQrTokenAb(
   abholung: unknown,
   ip: string | null | undefined,
   darf: (uid: number) => Promise<boolean>,
 ): Promise<Abholung> {
   const z = typeof abholung === 'string' && abholung ? await repo.nachAbholung(hashToken(abholung)) : undefined;
   if (z?.stand === 'wartet' || z?.stand === 'abgelehnt') return { stand: z.stand };
-  if (z?.stand !== 'bestaetigt' || !(await darf(z.user_id)) || !(await repo.holeAb(z.id)))
+  if (z?.stand !== 'bestaetigt' || !(await darf(z.user_id)) || !(await repo.markiereAbgeholt(z.id)))
     return { stand: 'ungueltig' };
   const token = await createToken(z.user_id, z.geraet ?? 'qr-login', true, z.token_days ?? APP_HOECHSTDAUER_TAGE, {
     scope: 'app',
@@ -56,8 +56,8 @@ export async function holeAb(
   return { stand: 'fertig', token, uid: z.user_id };
 }
 
-export async function stand(kopplung: number, uid: number) {
-  const z = await repo.desKontos(kopplung, uid);
+export async function kopplungsStand(kopplung: number, uid: number) {
+  const z = await repo.qrKopplungDesKontos(kopplung, uid);
   return z ? { stand: z.stand, geraet: z.geraet, ip_bereich: z.ip_bereich } : null;
 }
 
@@ -70,20 +70,20 @@ function codePasst(gespeichert: string | null, eingabe: unknown): boolean {
 export type Bestaetigung = 'ok' | 'code_falsch' | 'abgelehnt' | 'nicht_wartend' | 'unbekannt';
 
 /** Nach QR_FEHLVERSUCHE falschen Codes ist die Kopplung abgelehnt: Sechs Ziffern hält das lange genug. */
-export async function bestaetige(kopplung: number, uid: number, code: unknown): Promise<Bestaetigung> {
-  const z = await repo.desKontos(kopplung, uid);
+export async function bestaetigeKopplung(kopplung: number, uid: number, code: unknown): Promise<Bestaetigung> {
+  const z = await repo.qrKopplungDesKontos(kopplung, uid);
   if (!z) return 'unbekannt';
   if (z.stand !== 'wartet') return 'nicht_wartend';
   if (!codePasst(z.code_hash, code)) {
-    if ((await repo.zaehleFehlversuch(z.id)) < QR_FEHLVERSUCHE) return 'code_falsch';
-    await repo.lehneAb(z.id);
+    if ((await repo.zaehleQrFehlversuch(z.id)) < QR_FEHLVERSUCHE) return 'code_falsch';
+    await repo.markiereAbgelehnt(z.id);
     return 'abgelehnt';
   }
-  return (await repo.bestaetige(z.id)) ? 'ok' : 'nicht_wartend';
+  return (await repo.markiereBestaetigt(z.id)) ? 'ok' : 'nicht_wartend';
 }
 
-export async function lehneAb(kopplung: number, uid: number): Promise<boolean> {
-  const z = await repo.desKontos(kopplung, uid);
-  if (z) await repo.lehneAb(z.id);
+export async function lehneKopplungAb(kopplung: number, uid: number): Promise<boolean> {
+  const z = await repo.qrKopplungDesKontos(kopplung, uid);
+  if (z) await repo.markiereAbgelehnt(z.id);
   return !!z;
 }

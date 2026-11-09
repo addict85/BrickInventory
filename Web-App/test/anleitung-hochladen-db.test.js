@@ -43,6 +43,8 @@ test('Anleitung hochladen', { concurrency: 1 }, async (t) => {
                 VALUES ($1, 'Hochladeprobe', 2024, 'Test', 10, 0) ON CONFLICT (set_number) DO NOTHING`, [SET]);
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, SET]);
   const ordner = path.join(DATA_DIR, 'uploads', String(uid));
+  // Leer beginnen: Dieselbe Kontonummer gibt es in den Kopien der anderen Testdateien auch.
+  fs.rmSync(ordner, { recursive: true, force: true });
   const altKontingent = process.env.UPLOAD_KONTINGENT_MB;
   t.after(async () => {
     if (altKontingent === undefined) delete process.env.UPLOAD_KONTINGENT_MB; else process.env.UPLOAD_KONTINGENT_MB = altKontingent;

@@ -55,6 +55,7 @@ import { deleteManualPart } from './03-parts.js';
     'merkpostenDetailLoeschen', 'gutscheinLoeschen', 'loescheAlarm', 'loescheLagerort',
     'papierkorbEndgueltig', 'papierkorbLeeren', 'deleteBricksetQueueEntry',
     'revokeToken', 'revokeOtherTokens', 'passkeyHinzufuegen', 'passkeyLoeschen',
+    'qrKopplungBestaetigen', 'qrKopplungAblehnen',
     'zfEinrichten', 'zfNeueCodes', 'zfAbschalten', 'zfZuruecksetzen',
     'createHouseholdInvite', 'redeemHouseholdInvite', 'unlinkHousehold', 'unlinkFromParent',
     'delUser', 'kontoFreischalten', 'toggleAdmin', 'toggleAktiv', 'openRpw', 'saveRegEnabled', 'importConfig',

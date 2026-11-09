@@ -339,7 +339,7 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req:
 // Die App fragt alle paar Sekunden, bis die Web-Sitzung bestätigt oder ablehnt.
 router.post('/qr-login/abholen', ipThrottle('qr-abholen', 600, 60 * 60 * 1000), async (req: OffeneAnfrage<'POST /api/v1/auth/qr-login/abholen'>, res: Antwort<'POST /api/v1/auth/qr-login/abholen'>) => {
   if (!req.eingabe.abholung) return sendeFehler(req, res, 400, 'token_ungueltig');
-  const a = await QR.holeAb(req.eingabe.abholung, req.ip, darfAnmelden);
+  const a = await QR.holeQrTokenAb(req.eingabe.abholung, req.ip, darfAnmelden);
   if (a.stand === 'wartet') return res.json({ success: true, wartet: true });
   if (a.stand === 'abgelehnt') return sendeFehler(req, res, 403, 'qr_abgelehnt');
   if (a.stand !== 'fertig') return sendeFehler(req, res, 401, 'token_ungueltig');
@@ -353,7 +353,7 @@ router.post('/qr-login/abholen', ipThrottle('qr-abholen', 600, 60 * 60 * 1000), 
 
 router.get('/qr-kopplung/:id', requireLogin, async (req: OffeneAnfrage<'GET /api/v1/auth/qr-kopplung/:id'>, res: Antwort<'GET /api/v1/auth/qr-kopplung/:id'>) => {
   if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
-  const s = await QR.stand(req.pfad.id, angemeldeteNutzerId(req));
+  const s = await QR.kopplungsStand(req.pfad.id, angemeldeteNutzerId(req));
   if (!s) return sendeFehler(req, res, 404, 'nicht_gefunden');
   res.json({ success: true, ...s });
 });
@@ -364,19 +364,19 @@ const BESTAETIGUNG_FEHLER = { code_falsch: [400, 'qr_code_falsch'], abgelehnt: [
 router.post('/qr-kopplung/:id/bestaetigen', requireLogin, async (req: OffeneAnfrage<'POST /api/v1/auth/qr-kopplung/:id/bestaetigen'>, res: Antwort<'POST /api/v1/auth/qr-kopplung/:id/bestaetigen'>) => {
   if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
   const uid = angemeldeteNutzerId(req);
-  const ergebnis = await QR.bestaetige(req.pfad.id, uid, req.eingabe.code);
+  const ergebnis = await QR.bestaetigeKopplung(req.pfad.id, uid, req.eingabe.code);
   if (ergebnis !== 'ok') {
     const [status, code] = BESTAETIGUNG_FEHLER[ergebnis];
     return sendeFehler(req, res, status, code);
   }
-  const s = await QR.stand(req.pfad.id, uid);
+  const s = await QR.kopplungsStand(req.pfad.id, uid);
   hinweisNebenher(uid, 'token_neu', s?.geraet ?? 'qr-login');
   res.json({ success: true });
 });
 
 router.post('/qr-kopplung/:id/ablehnen', requireLogin, async (req: OffeneAnfrage<'POST /api/v1/auth/qr-kopplung/:id/ablehnen'>, res: Antwort<'POST /api/v1/auth/qr-kopplung/:id/ablehnen'>) => {
   if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
-  if (!await QR.lehneAb(req.pfad.id, angemeldeteNutzerId(req))) return sendeFehler(req, res, 404, 'nicht_gefunden');
+  if (!await QR.lehneKopplungAb(req.pfad.id, angemeldeteNutzerId(req))) return sendeFehler(req, res, 404, 'nicht_gefunden');
   res.json({ success: true });
 });
 
