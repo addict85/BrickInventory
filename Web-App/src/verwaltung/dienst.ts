@@ -11,6 +11,7 @@ import * as verwaltung from './repository/verwaltung';
 import { naechsteUhrzeit, taeglicheUhrzeit, DAILY_JOBS, ziehePlanVor, zeitplanGeaendert } from '../auftraege/zeitplan';
 import { DATA_DIR, PDF_JOB_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
 import { fehlertext, meldeFehler, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../infra/fehler';
+import { Abstriche } from '../infra/ergebnis';
 import { fetchPrice } from '../finanzen/financeCalc';
 import { getRateLimitStatus, setzeKontingentZurueck } from '../katalog/apiKontingent';
 import { ohneBricklinkPreis } from '../infra/setNummer';
@@ -25,7 +26,7 @@ import { zaehleArt, stelleAuftragEin } from '../auftraege/dienst';
 import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';
 import { bricksetJetzt, bricksetZahlen } from '../auftraege/bricksetAuftrag';
 import { anfragenJeMinute, bildbedarfAnstossen } from '../katalog/bilder/bildbedarf';
-import { fehlerWerfen, type FehlerCode } from '../infra/fehlerTexte';
+import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
 import { alsAbrufFehler, pruefeBricklinkZugang, ausRetryWarteschlange, pruefeBricksetZugang, pruefeRebrickableZugang, oeffneBild } from '../katalog/quellen';
 
 // Eine Frist für beide Kacheln; drei Minuten bei einem Takt von zwanzig Sekunden.
@@ -51,22 +52,23 @@ function quellenAbsage(e: unknown): FehlerCode {
 /** null, wenn der Zugang antwortet; sonst Code, Name und roher Grund. Wirft nur bei unbekannter Quelle. */
 export async function quellePruefen(quelle: string): Promise<{ code: FehlerCode; quelle: string; grund: string } | null> {
   const pruefe = Object.hasOwn(QUELLEN, quelle) ? QUELLEN[quelle] : undefined;
-  if (!pruefe) fehlerWerfen('quelle_unbekannt', 400);
+  if (!pruefe) fachfehler('ungueltig', 'quelle_unbekannt');
   try { await pruefe(); return null; }
   catch (e) { return { code: quellenAbsage(e), quelle: QUELLEN_NAME[quelle] ?? quelle, grund: fehlertext(e).slice(0, 200) }; }
 }
 
 export async function cacheStatistik() {
   const leer = { count: 0, limit: 0, remaining: 0 };
+  const ab = new Abstriche();
   const [stats, stale, rlBL, rlRB, rlBS] = await Promise.all([
-    getCacheStats().catch(meldeUndLiefere('verwaltung:getCacheStats', { prices: 0, subsets: 0, catalog: 0 })),
-    verwaltung.veraltetePreise().catch(meldeUndLiefere('verwaltung:veraltetePreise', 0)),
-    getRateLimitStatus('bricklink').catch(meldeUndLiefere('verwaltung:kontingent', leer)),
-    getRateLimitStatus('rebrickable').catch(meldeUndLiefere('verwaltung:kontingent', leer)),
-    getRateLimitStatus('brickset').catch(meldeUndLiefere('verwaltung:kontingent', leer)),
+    ab.oder('cache', getCacheStats(), { prices: 0, subsets: 0, catalog: 0 }),
+    ab.oder('veraltete_preise', verwaltung.veraltetePreise(), 0),
+    ab.oder('kontingent_bricklink', getRateLimitStatus('bricklink'), leer),
+    ab.oder('kontingent_rebrickable', getRateLimitStatus('rebrickable'), leer),
+    ab.oder('kontingent_brickset', getRateLimitStatus('brickset'), leer),
   ]);
   return { success: true, ...stats, price_stale: stale,
-    rate_limits: { bricklink: rlBL, rebrickable: rlRB, brickset: rlBS }, db_pool: verwaltung.getPoolStats() };
+    rate_limits: { bricklink: rlBL, rebrickable: rlRB, brickset: rlBS }, db_pool: verwaltung.getPoolStats(), ...ab.angabe() };
 }
 
 export async function cachesLeeren(alle: boolean) {
@@ -137,12 +139,12 @@ export async function jobZeitplanSetzen(name: unknown, time: unknown, minutes: u
   const daily = DAILY_JOBS.find(j => j.monitorKey === name);
   if (daily) {
     const m = /^(\d{1,2}):(\d{2})$/.exec(String(time || '').trim());
-    if (!m || +(m[1] ?? '') > 23 || +(m[2] ?? '') > 59) fehlerWerfen('uhrzeit_ungueltig', 400);
+    if (!m || +(m[1] ?? '') > 23 || +(m[2] ?? '') > 59) fachfehler('ungueltig', 'uhrzeit_ungueltig');
     await setGlobalSetting(`job_time_${daily.name}`, `${String(+(m[1] ?? '')).padStart(2, '0')}:${String(+(m[2] ?? '')).padStart(2, '0')}`);
   } else if (name === 'priceJob') {
     await setGlobalSetting('price_job_interval_minutes', String(Math.max(5, parseInt(String(minutes)) || 60)));
   } else {
-    fehlerWerfen('unbekannter_job', 400);
+    fachfehler('ungueltig', 'unbekannter_job');
   }
   await zeitplanNeuPlanen();
 }
@@ -159,11 +161,11 @@ type Kachel = Record<string, unknown>;
 type SubTeil = { code: string; werte?: Record<string, number | string>; vor?: 'bestand' };
 const teil = (code: string, werte?: Record<string, number | string>): SubTeil => (werte ? { code, werte } : { code });
 type Kacheln = Record<string, Kachel>;
-const zahl = (p: Promise<number>, ort: string) => p.catch(meldeUndLiefere(`verwaltung:${ort}`, 0));
+const zahl = (ab: Abstriche, p: Promise<number>, ort: string) => ab.oder(ort, p, 0);
 
 /** Ein JSON-Stand aus laufzustand; ein beschädigter zählt wie keiner. */
-async function liesStand<T>(schluessel: string): Promise<T | null> {
-  const roh = await liesZustand(schluessel).catch(meldeUndLiefere(`verwaltung:${schluessel}`, null));
+async function liesStand<T>(ab: Abstriche, schluessel: string): Promise<T | null> {
+  const roh = await ab.oder(schluessel, liesZustand(schluessel), null);
   try { return roh ? JSON.parse(roh) as T : null; } catch { return null; }
 }
 
@@ -175,8 +177,8 @@ function blIdsKachel(alt: Kachel, gemappt: number, gesamt: number): Kachel | nul
 }
 
 /** Einmal gezählt: offen, erledigt und gescheitert aus derselben Abfrage. */
-async function anleitungsAuftraege() {
-  const z = await zaehleArt('anleitung').catch(meldeUndLiefere('verwaltung:anleitungen', null));
+async function anleitungsAuftraege(ab: Abstriche) {
+  const z = await ab.oder('anleitungen', zaehleArt('anleitung'), null);
   return { offen: z ? z.offen + z.laeuft : 0, erledigt: z?.erledigt ?? 0, fehler: z?.fehler ?? 0 };
 }
 
@@ -188,8 +190,8 @@ function anleitungsKachel(alt: Kachel, a: { offen: number; erledigt: number; feh
     sub_teile: [a.offen > 0 ? teil('ausstehend', { n: a.offen }) : teil('all_done')] };
 }
 
-async function bricksetKachel(): Promise<Kachel> {
-  const { wartend, faellig } = await bricksetZahlen().catch(meldeUndLiefere('verwaltung:bricksetZahlen', { wartend: 0, faellig: 0 }));
+async function bricksetKachel(ab: Abstriche): Promise<Kachel> {
+  const { wartend, faellig } = await ab.oder('brickset', bricksetZahlen(), { wartend: 0, faellig: 0 });
   return { label: 'Brickset Retry Queue', status: wartend === 0 ? 'done' : 'idle', progress: 0, total: wartend, lastRun: null,
     sub: wartend === 0 ? 'Keine ausstehenden Einträge'
       : faellig > 0 ? `${faellig} Sets bereit zum Retry, ${wartend - faellig} warten` : `${wartend} Sets warten auf morgen`,
@@ -203,27 +205,27 @@ const frisch = (zeit: unknown) => typeof zeit === 'number' && Date.now() - zeit 
 /** Bestand, Neuladen und Katalog in EINER Kachel, sonst meldete sie „alle gecacht",
  * während der Hintergrund-Job nachlädt.
  * Ausführlich: docs/begruendungen/src/verwaltung/dienst.ts.md#get-admin-jobs-katalogoffen */
-async function bildKachel(): Promise<Kachel> {
+async function bildKachel(ab: Abstriche): Promise<Kachel> {
   const [teileOffen, fertig, setFiguren, bestandsFiguren, katalogOffen] = await Promise.all([
-    zahl(verwaltung.teilbilderOffen(), 'teilbilderOffen'), zahl(verwaltung.teilbilderFertig(), 'teilbilderFertig'),
-    zahl(verwaltung.setFigurenbilderOffen(), 'setFigurenbilderOffen'),
+    zahl(ab, verwaltung.teilbilderOffen(), 'bilder'), zahl(ab, verwaltung.teilbilderFertig(), 'bilder'),
+    zahl(ab, verwaltung.setFigurenbilderOffen(), 'bilder'),
     // Figuren des Bestands legt derselbe Lauf lokal ab; sie gehören in die offene Menge.
-    zahl(verwaltung.bestandsFigurenbilderOffen(), 'bestandsFigurenbilderOffen'),
-    zahl(verwaltung.katalogBilderOffen(), 'katalogBilderOffen'),
+    zahl(ab, verwaltung.bestandsFigurenbilderOffen(), 'bilder'),
+    zahl(ab, verwaltung.katalogBilderOffen(), 'bilder'),
   ]);
   const offen = teileOffen + setFiguren + bestandsFiguren;
-  const job = await monitor.get('imgDl').catch(meldeUndLiefere('verwaltung:get', null));
+  const job = await ab.oder('bilder', monitor.get('imgDl'), null);
   // Gedeckelt auf die wirklich offenen Bilder: Das heilt einen verwaisten Zähler nach einem Absturz.
-  let aktiv = await monitor.imgDlPending().catch(meldeUndLiefere('verwaltung:imgDlPending', 0));
+  let aktiv = await ab.oder('bilder', monitor.imgDlPending(), 0);
   if (offen === 0 && aktiv > 0) { await monitor.imgDlReset().catch(logAndContinue('verwaltung:imgDlReset')); aktiv = 0; }
   aktiv = Math.min(aktiv, offen);
-  const reDl = await liesStand<{ running?: boolean; at?: number; phase?: string; done?: number; total?: number }>('imgredl_status');
+  const reDl = await liesStand<{ running?: boolean; at?: number; phase?: string; done?: number; total?: number }>(ab, 'imgredl_status');
   const reDlLaeuft = reDl?.running === true && (typeof reDl.at !== 'number' || frisch(reDl.at));
   const reDlSub = !reDlLaeuft ? null : reDl?.phase === 'scanning' ? '↻ suche fehlende Bilder…'
     : `↻ ${reDl?.done || 0}/${reDl?.total || 0} fehlende neu geladen`;
   // „läuft“ heisst: hat kürzlich etwas getan, laut Datenbank.
   // Ausführlich: docs/begruendungen/src/verwaltung/dienst.ts.md#get-admin-jobs-letzterlauf
-  const letzterLauf = await liesStand<{ zeit?: number }>('imgqueue_last_run');
+  const letzterLauf = await liesStand<{ zeit?: number }>(ab, 'imgqueue_last_run');
   const seitLauf = letzterLauf?.zeit ? Date.now() - letzterLauf.zeit : null;
   const jobLaeuft = frisch(letzterLauf?.zeit);
   const katalogSub = katalogOffen > 0
@@ -276,17 +278,18 @@ async function zeitplaene(): Promise<Record<string, { type: string; time?: strin
 /** Ergänzt um Zahlen, die nur die Datenbank kennt; je Kachel eine Funktion. */
 export async function jobUebersicht() {
   const jobs: Kacheln = await monitor.all(); // aus laufzustand: der Job-Prozess schreibt, hier wird gelesen
+  const ab = new Abstriche();
   const [anleitungen, gemappt, blGesamt, rbTeile, rbInventar, lastSync] = await Promise.all([
-    anleitungsAuftraege(),
-    zahl(verwaltung.zugeordneteTeile(), 'zugeordneteTeile'), zahl(verwaltung.bricklinkTeile(), 'bricklinkTeile'),
-    zahl(verwaltung.rbTeile(), 'rbTeile'), zahl(verwaltung.rbInventarTeile(), 'rbInventarTeile'),
+    anleitungsAuftraege(ab),
+    zahl(ab, verwaltung.zugeordneteTeile(), 'bl_zuordnung'), zahl(ab, verwaltung.bricklinkTeile(), 'bl_zuordnung'),
+    zahl(ab, verwaltung.rbTeile(), 'katalog'), zahl(ab, verwaltung.rbInventarTeile(), 'katalog'),
     liesZustand('rb_csv_last_sync'),
   ]);
   const blIds = blIdsKachel(jobs.blIds ?? {}, gemappt, blGesamt);
   if (blIds) jobs.blIds = blIds;
   const anleitung = anleitungsKachel(jobs.instrQueue ?? {}, anleitungen);
   if (anleitung) jobs.instrQueue = anleitung;
-  [jobs.bricksetRetry, jobs.imgDl] = await Promise.all([bricksetKachel(), bildKachel()]);
+  [jobs.bricksetRetry, jobs.imgDl] = await Promise.all([bricksetKachel(ab), bildKachel(ab)]);
   jobs.pdfJobs = pdfKachel();
   return {
     success: true, jobs, schedules: await zeitplaene(),
@@ -295,17 +298,18 @@ export async function jobUebersicht() {
       blMapping:  { mapped: gemappt, total: blGesamt },
       csvCache:   { parts: rbTeile, inventoryParts: rbInventar, lastSync: lastSync || null },
     },
+    ...ab.angabe(),
   };
 }
 
 /** Meldet, was der Proxy davon ausliefern würde — mit und ohne Referer. */
 export async function bildProbe(url: string) {
-  if (!/^https:\/\//.test(url)) fehlerWerfen('url_fehlt_https', 400);
+  if (!/^https:\/\//.test(url)) fachfehler('ungueltig', 'url_fehlt_https');
   const adresse = urlOderNull(url);
-  if (!adresse) fehlerWerfen('url_ungueltig', 400);
+  if (!adresse) fachfehler('ungueltig', 'url_ungueltig');
   // Dieselben Hosts wie der Bild-Proxy: Der Abruf läuft aus dem internen Netz;
   // jede Adresse zuzulassen wäre Server-Side Request Forgery.
-  if (!hostErlaubt(url, ERLAUBTE_BILD_HOSTS)) fehlerWerfen('host_nicht_erlaubt', 403, { host: adresse.hostname });
+  if (!hostErlaubt(url, ERLAUBTE_BILD_HOSTS)) fachfehler('verboten', 'host_nicht_erlaubt', { host: adresse.hostname });
   const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
   const variants = [
     { name: 'mit Referer',  headers: { 'User-Agent': UA, 'Referer': 'https://rebrickable.com/', 'Accept': 'image/*,*/*;q=0.8' } },
@@ -372,12 +376,13 @@ export async function bildProbe(url: string) {
 
 /** Mit `live` auch die Antwort von BrickLink. */
 export async function preisProbe(uid: number, setNumber: string, live: boolean) {
+  const ab = new Abstriche();
   const [setRow, acqs, cacheRows, histRows, currRow, ttlRow] = await Promise.all([
     verwaltung.probeSet(uid, setNumber),
     verwaltung.probeErfassungen(uid, setNumber),
     verwaltung.probePreisCache(setNumber),
     verwaltung.probePreisVerlauf(setNumber),
-    verwaltung.probeWaehrung(uid).catch(meldeUndLiefere('verwaltung:probeWaehrung', null)),
+    ab.oder('waehrung', verwaltung.probeWaehrung(uid), null),
     getGlobalSetting('price_cache_ttl'),
   ]);
 
@@ -386,7 +391,7 @@ export async function preisProbe(uid: number, setNumber: string, live: boolean) 
   const chosen = anyUsed ? 'U' : 'N';
 
   const out: any = {
-    success: true,
+    success: true, ...ab.angabe(),
     set: setRow || null,
     acquisitions: acqs,
     condition_logic: {
@@ -483,13 +488,13 @@ export async function katalogBilderEinreihen(alleErneut: boolean) {
     };
 }
 export { KontoBildzeile, bildZeilenDerKonten, fehlanzeigeDerVorschau, fehlanzeigeDesSets, katalogBild, protokollSeit, setFehlanzeigen, vorschauFehlanzeigen } from './repository/verwaltung';
-export { letzteEintraege, protokolliere, raeumeProtokollAuf } from './repository/protokoll';
+export { letzteEintraege, protokolliere, raeumeProtokollAuf } from '../konto/verwalterProtokoll';
 
 /** Die wiederkehrenden Fragen zu einer leeren Kachel in einer Antwort: Datenbank, Platte, Proxy, Fehlanzeige. */
 export async function bildDiagnose(sn: string) {
-  const konten: KontoBildzeile = await verwaltung.bildZeilenDerKonten(sn)
-    .catch(meldeUndLiefere('verwaltung:bildZeilenDerKonten', { anzahl_konten: 0, image_local: null, image_url: null }));
-  const katalog = await verwaltung.katalogBild(sn).catch(meldeUndLiefere('verwaltung:katalogBild', null));
+  const ab = new Abstriche();
+  const konten: KontoBildzeile = await ab.oder('konten', verwaltung.bildZeilenDerKonten(sn), { anzahl_konten: 0, image_local: null, image_url: null });
+  const katalog = await ab.oder('katalog', verwaltung.katalogBild(sn), null);
 
   const safe = sn.replace(/[^a-z0-9-]/gi, '_');
   const datei = async (p: string) => {
@@ -509,10 +514,11 @@ export async function bildDiagnose(sn: string) {
     }
   }
 
-  const merker = await verwaltung.fehlanzeigeDesSets(sn).catch(meldeUndLiefere('verwaltung:fehlanzeigeDesSets', null));
-  const vorschauMerker = await verwaltung.fehlanzeigeDerVorschau(safe).catch(meldeUndLiefere('verwaltung:fehlanzeigeDerVorschau', null));
+  const merker = await ab.oder('fehlanzeige', verwaltung.fehlanzeigeDesSets(sn), null);
+  const vorschauMerker = await ab.oder('fehlanzeige', verwaltung.fehlanzeigeDerVorschau(safe), null);
 
-  const hinweise: string[] = [];
+  // Eine Diagnose aus Ersatzwerten führte in die Irre: zuerst sagen, was nicht lesbar war.
+  const hinweise: string[] = ab.teile.length ? [`Nicht lesbar, dort stehen Ersatzwerte: ${ab.teile.join(', ')}.`] : [];
   if (!konten.anzahl_konten) hinweise.push('Kein Konto führt dieses Set.');
   if (konten.anzahl_konten && !konten.image_local && !cdnUrl)
     hinweise.push('Weder lokale Datei noch CDN-Adresse bekannt — die Clients können nichts anzeigen.');

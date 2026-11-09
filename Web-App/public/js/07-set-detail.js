@@ -269,6 +269,8 @@ export function autosaveSet(){
       // Annahme da.
       // Ausführlich: docs/begruendungen/public/js/07-set-detail.js.md#echt
       const echt = d.quantity != null && Number.isInteger(d.quantity) ? d.quantity : qty;
+      // Gespeichert, aber ohne Marktpreis für die neue Erfassung: Er kommt mit dem Preislauf nach.
+      if (d.degradiert?.includes('kaufpreis')) toast(tRaw('set.kaufpreis_folgt'), 'info');
       set.quantity = echt;
       if (echt !== qty) G('m-qty').value = String(echt);
       // Bei jeder Mengenänderung die Erfassungs-Übersicht neu laden: beim Erhöhen entsteht eine neue Zeile,

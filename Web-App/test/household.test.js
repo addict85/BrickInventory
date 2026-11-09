@@ -177,7 +177,11 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
   // Zielkonto oder einem festen Schluessel — laeuft in
   // test/sperre-beim-verschieben-db.test.js ueber die echte Adresse; beides
   // zusammen, nicht eines statt des anderen.
-  assert.ok(src.includes('verschiebeSet(sn, fromId'), 'Das Verschieben läuft über verschiebeSet');
+  assert.ok(src.includes('sets.setVerschieben('), 'Die Route ruft den Dienst');
+  assert.ok(
+    read('src/sets/dienst.ts').includes('verschiebeSet(sn, fromId'),
+    'Das Verschieben läuft über verschiebeSet',
+  );
   assert.ok(mv.includes('withInventoryLock(fromId, sn'), 'Serialisiert über das Quellkonto');
   // Ganzes Set und einzelne Kaufpreise laufen durch DIESELBE Umsetzung — der
   // Teilfall ist kein Sonderweg, sondern der allgemeine Fall mit Auswahl.
@@ -362,20 +366,18 @@ test('der Umschalter lädt nur die betroffene Ansicht neu', () => {
   );
 });
 
-test('Verschieben geht NUR über den Kaufpreis', () => {
+test('Verschieben geht NUR über den Kaufpreis', async () => {
   // Ein Set als Ganzes zu verschieben klingt bequem, verdeckt aber, was
   // tatsächlich wandert: Drei Erfassungen sind drei Käufe, die im Haushalt
   // verschiedenen Kindern gehören können. Wer alles verschieben will, ändert
   // jede Zeile — und sieht dabei, wie viele es sind. …
   // Ausführlich: docs/begruendungen/test/household.test.js.md#for-stelle-3
-  for (const f of ['routes/api_v1/sets.ts']) {
-    const src = read(f);
-    assert.match(
-      src,
-      /if \(!acqIds\.length\)\s*\n\s*return sendeFehler\(req, res, 400/,
-      `${f}: move ohne acquisition_ids muss abgelehnt werden`,
-    );
-  }
+  const { setVerschieben } = require('./helpers/sources').buildAndRequire()('src/sets/index.js');
+  await assert.rejects(
+    setVerschieben(1, '10294-1', 1, 2, []),
+    (/** @type {any} */ e) => e.art === 'ungueltig' && e.code === 'kaufpreise_angeben',
+    'move ohne acquisition_ids muss abgelehnt werden',
+  );
 
   // Und die Oberfläche bietet es gar nicht erst an.
   assert.doesNotMatch(require('./helpers/sources').adminQuelle(), /renderMoveBox|moveSetToAccount/);
@@ -403,7 +405,7 @@ test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   assert.ok(src.includes('moveManualAcquisition(tx, art, keys, id, from, to)'), `${f}: Wechsel fehlt`);
   assert.match(
     src,
-    /if \(to === null\) fehlerWerfen\('kein_schreibrecht', 403\)/,
+    /if \(to === null\) fachfehler\('verboten', 'kein_schreibrecht'\)/,
     `${f}: ohne Schreibrecht muss 403 kommen`,
   );
 });

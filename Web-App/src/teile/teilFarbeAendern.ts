@@ -5,7 +5,7 @@ import { meldeFehler, meldeUndLiefere } from '../infra/fehler';
 import { merkeTeilFarbe, katalogTeil } from '../katalog/katalogPflege';
 import { colorId } from '../infra/validate';
 import * as repo from './repository/teilFarbe';
-import { fehlerWerfen } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/fehlerTexte';
 
 // Falsche Farben ohne Neuerfassen ändern. Ausführlich: docs/begruendungen/src/teile/teilFarbeAendern.ts.md#farbwechsel
 export type FarbWechsel = {
@@ -60,7 +60,7 @@ export async function aendereTeilFarbe(
   const wechsel = await db.transaction(async (tx: DbSchnittstelle): Promise<Omit<FarbWechsel, 'bild'>> => {
     const quelle = await repo.manuelleTeilzeileSperren(tx, uid, partNumber, alt);
     if (!quelle) {
-      fehlerWerfen('teil_nicht_manuell', 404);
+      fachfehler('nicht_gefunden', 'teil_nicht_manuell');
     }
     // Gleiche Farbe wird GESAGT statt als Erfolg gemeldet: Ein Verklicken sähe
     // sonst aus wie eine echte Änderung.

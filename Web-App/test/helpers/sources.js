@@ -100,7 +100,12 @@ function buildAndRequire() {
   process.env.NODE_ENV ??= 'test';
   baueDist();
   // Wie server.ts: Ohne Verdrahtung prüften Tests eine stumme Fassung der Nacharbeit.
-  require(path.join(ROOT, 'dist', 'jobs/verdrahtung.js')).verdrahte();
+  // Die Bauteile erst beim ersten Gebrauch: Viele Tests stellen Klienten nach diesem
+  // Aufruf über require.cache; ein früher geladener Dienst hielte die echten fest.
+  const echt = () => require(path.join(ROOT, 'dist', 'startup/verdrahtung.js')).baueVerdrahtung();
+  const faul = new Proxy({}, { get: (_z, k) => (...a) => echt().nacharbeit[k](...a) });
+  require(path.join(ROOT, 'dist', 'src/auftraege/nacharbeit.js')).verdrahteNacharbeit(faul);
+  require(path.join(ROOT, 'dist', 'db/database.js')).setzeErststart(() => echt().erststart());
   return rel => require(path.join(ROOT, 'dist', rel));
 }
 
@@ -190,6 +195,7 @@ function setKernQuelle() {
     ['routes/api_v1/sets.ts'],
     ['src/sets/dienst.ts'],
     ['src/sets/setService.ts'],
+    ['src/sets/erfassen.ts'],
     ['src/katalog/partsImport.ts'],
     ['src/katalog/minifigsImport.ts'],
   ].map(p => dienstQuelle(p[0])).join('\n');
@@ -508,7 +514,8 @@ module.exports.frontendQuelle = frontendQuelle;
 /** Die Anmelderouten: routes/auth.ts setzt sie aus routes/auth/*.ts zusammen. */
 function anmeldeQuelle() {
   const teile = fs.readdirSync(path.join(ROOT, 'routes', 'auth')).filter(n => n.endsWith('.ts')).sort();
-  return ['routes/auth.ts', ...teile.map(n => `routes/auth/${n}`)]
+  // Die Abläufe nach der Prüfung stehen seit dem 09.11.2026 in src/konto/anmeldungAblauf.ts.
+  return ['routes/auth.ts', ...teile.map(n => `routes/auth/${n}`), 'src/konto/anmeldungAblauf.ts']
     .map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
 }
 module.exports.anmeldeQuelle = anmeldeQuelle;

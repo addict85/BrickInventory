@@ -70,8 +70,3 @@ export async function verschluesseleGutscheinAltbestand(o: { alle?: boolean } = 
   return n;
 }
 
-export async function loescheKontoDateien(userId: number): Promise<void> {
-  if (!Number.isInteger(userId) || userId <= 0) return;
-  for (const art of ['uploads', 'vouchers'])
-    await fs.promises.rm(path.join(DATA_DIR, art, String(userId)), { recursive: true, force: true });
-}

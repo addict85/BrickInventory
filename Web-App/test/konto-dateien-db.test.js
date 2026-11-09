@@ -8,7 +8,7 @@
  *      und Kartennummer stehen im Klartext auf der Platte“
  *   B  verschluesseleGutscheinAltbestand() überspringt alles → rot: „der
  *      Altbestand bleibt Klartext“
- *   C  in routes/auth.ts den Aufruf von loescheKontoDateien() entfernt → rot:
+ *   C  in kontoEntfernen() (src/konto) den Aufruf von loescheKontoDateien() entfernt → rot:
  *      „data/uploads/<id> bleibt nach dem Löschen liegen“
  *   D  GET /vouchers/:id/pdf liefert die Datei wieder roh (liefereDatei) →
  *      rot: „das ausgelieferte PDF ist nicht das hochgeladene“

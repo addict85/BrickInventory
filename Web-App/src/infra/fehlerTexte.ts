@@ -134,7 +134,7 @@ export const FEHLER = {
   waehrung_ungleich:           {
     de: 'Beide Konten müssen dieselbe Währung verwenden (Hauptkonto: {haupt}, dieses Konto: {unter}).',
     en: 'Both accounts must use the same currency (main account: {haupt}, this account: {unter}).' },
-  // Die 60 steht ausgeschrieben, weil fehlerWerfen() keine Platzhalter füllt;
+  // Die 60 steht ausgeschrieben, weil fachfehler() keine Platzhalter füllt;
   // test/lagerort.test.js hält sie mit LAGERORT_MAX_ZEICHEN zusammen.
   lagerort_zu_lang:            {
     de: 'Der Lagerort ist zu lang (höchstens 60 Zeichen).',
@@ -407,10 +407,15 @@ export function antwortSprache(req: { headers?: Record<string, unknown> } | unde
   return roh.startsWith('en') || roh.includes(',en') ? 'en' : 'de';
 }
 
-/** Code und Status reisen mit, der Satz entsteht erst in der Antwort in der
+/** Was schiefging, fachlich gesagt. Welcher HTTP-Status dazu gehört, weiss nur
+ * src/http/fehlerArt.ts: Dienste laufen auch im Job-Prozess und in Skripten. */
+export type FehlerArt = 'ungueltig' | 'nicht_angemeldet' | 'verboten' | 'nicht_gefunden' | 'konflikt' | 'zu_gross'
+  | 'falscher_typ' | 'zu_viele' | 'intern' | 'fremddienst' | 'nicht_verfuegbar' | 'zeitueberschreitung';
+
+/** Art und Code reisen mit, der Satz entsteht erst in der Antwort in der
  * Sprache des Anfragenden. */
 export class Fachfehler extends Error {
-  constructor(readonly code: FehlerCode, readonly status: number, readonly vars?: Record<string, string | number>) {
+  constructor(readonly art: FehlerArt, readonly code: FehlerCode, readonly vars?: Record<string, string | number>) {
     super(fehlerText(code, 'de', vars));
     this.name = 'Fachfehler';
   }
@@ -427,22 +432,22 @@ export class Meldung extends Error {
 
 /** Zwei gleichzeitige Anlagen (23505) sind eine Nutzereingabe, kein
  * Serverfehler; alles andere geht unverändert weiter. */
-export function alsDoppelt(code: FehlerCode, status = 409): (e: unknown) => never {
+export function alsDoppelt(code: FehlerCode): (e: unknown) => never {
   return (e: unknown) => {
-    if ((e as { code?: unknown } | null)?.code === '23505') throw new Fachfehler(code, status);
+    if ((e as { code?: unknown } | null)?.code === '23505') throw new Fachfehler('konflikt', code);
     throw e;
   };
 }
 
-// Helfer werfen den Code, die Route übersetzt. Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#fehlerwerfen
-export function fehlerWerfen(code: FehlerCode, status: number, vars?: Record<string, string | number>): never {
-  throw dateiFehler(code, status, vars);
+/** Bricht den Dienst mit einem Grund ab, den die Route dem Anfragenden nennt.
+ * Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#fehlerwerfen */
+export function fachfehler(art: FehlerArt, code: FehlerCode, vars?: Record<string, string | number>): never {
+  throw new Fachfehler(art, code, vars);
 }
 
 /** Für Rückrufe wie multers fileFilter, die einen Fehler übergeben statt ihn zu werfen. */
-export function dateiFehler(code: FehlerCode, status: number, vars?: Record<string, string | number>): Error {
-  // Deutsch als `message`, damit ein Protokolleintrag lesbar bleibt.
-  return new Fachfehler(code, status, vars);
+export function dateiFehler(art: FehlerArt, code: FehlerCode, vars?: Record<string, string | number>): Error {
+  return new Fachfehler(art, code, vars);
 }
 
 export function fehlerText(

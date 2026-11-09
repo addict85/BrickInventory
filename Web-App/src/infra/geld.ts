@@ -1,7 +1,7 @@
 /** In Zehntausendsteln (NUMERIC(12,4)), gerundet erst am Ende: 120,3333 × 2
  * bleibt 240,67; toFixed() rundet 1,005 dagegen auf 1,00. */
 
-import { fehlerWerfen, type FehlerCode } from './fehlerTexte';
+import { fachfehler, type FehlerCode } from './fehlerTexte';
 
 /** null heisst „unbekannt", nicht 0. */
 export type Zehntel4 = number;
@@ -25,9 +25,9 @@ export function geldEingabe(v: unknown, feld: string, max = 1_000_000, einCode?:
   const n =
     typeof v === 'number' ? v : typeof v === 'string' && GELD_TEXT.test(v) ? Number(v.trim().replace(',', '.')) : NaN;
   // Ein eigener Code (Gutscheine) gilt für jede Abweisung, den kennen die Apps dort.
-  if (!Number.isFinite(n)) fehlerWerfen(einCode ?? 'betrag_ungueltig', 400);
-  if (n < 0) fehlerWerfen(einCode ?? 'feld_negativ', 400, { feld });
-  if (n > max) fehlerWerfen(einCode ?? 'feld_zu_hoch', 400, { feld });
+  if (!Number.isFinite(n)) fachfehler('ungueltig', einCode ?? 'betrag_ungueltig');
+  if (n < 0) fachfehler('ungueltig', einCode ?? 'feld_negativ', { feld });
+  if (n > max) fachfehler('ungueltig', einCode ?? 'feld_zu_hoch', { feld });
   return Math.round(n * FAKTOR) / FAKTOR;
 }
 

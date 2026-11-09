@@ -5,7 +5,7 @@
 export const ITEM_NUMBER_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,63}$/;
 
 import { z } from 'zod';
-import { fehlerWerfen, type FehlerCode } from './fehlerTexte';
+import { fachfehler, type FehlerCode } from './fehlerTexte';
 import { geldEingabe } from './geld';
 
 /** Die Spalten sind integer (int4): Ein grösserer Wert endete als 500 in PostgreSQL. */
@@ -58,9 +58,9 @@ export function einmalDekodiert(text: string): string {
 
 export function requireItemNumber(value: unknown, field = 'part_number'): string {
   const v = String(value ?? '').trim();
-  if (!v) fehlerWerfen('feld_erforderlich', 400, { feld: field });
+  if (!v) fachfehler('ungueltig', 'feld_erforderlich', { feld: field });
   if (!ITEM_NUMBER_RE.test(v))
-    fehlerWerfen('feld_nummer_ungueltig', 400, { feld: field });
+    fachfehler('ungueltig', 'feld_nummer_ungueltig', { feld: field });
   return v;
 }
 
@@ -76,10 +76,10 @@ export function optionalText(value: unknown, maxLen = 200): string | null {
 export function optionalImageUrl(value: unknown): string | null {
   if (value === undefined || value === null || value === '') return null;
   const v = String(value).trim();
-  if (v.length > 2048) fehlerWerfen('bild_url_zu_lang', 400);
+  if (v.length > 2048) fachfehler('ungueltig', 'bild_url_zu_lang');
   let u: URL;
-  try { u = new URL(v); } catch { fehlerWerfen('bild_url_ungueltig', 400); }
-  if (u.protocol !== 'https:') fehlerWerfen('bild_url_nicht_https', 400);
+  try { u = new URL(v); } catch { fachfehler('ungueltig', 'bild_url_ungueltig'); }
+  if (u.protocol !== 'https:') fachfehler('ungueltig', 'bild_url_nicht_https');
   return u.toString();
 }
 
@@ -93,7 +93,7 @@ export function positiveInt(value: unknown, fallback = 1, max = 1_000_000): numb
  * „Menge 0" und löschte den Bestand. */
 export function bestandsMenge(value: unknown, min = 0, max = 100_000): number {
   const roh = typeof value === 'number' || typeof value === 'string' ? String(value).trim() : '';
-  if (!/^\d{1,6}$/.test(roh) || +roh < min || +roh > max) fehlerWerfen('wert_ungueltig', 400);
+  if (!/^\d{1,6}$/.test(roh) || +roh < min || +roh > max) fachfehler('ungueltig', 'wert_ungueltig');
   return +roh;
 }
 
@@ -126,7 +126,7 @@ export function acquisitionQuantity(value: unknown, fallback = 1): number {
 export function mengenDelta(value: unknown): number | null {
   if (value === undefined || value === null) return null;
   const roh = typeof value === 'number' || typeof value === 'string' ? String(value).trim() : '';
-  if (!/^-?\d{1,4}$/.test(roh)) fehlerWerfen('wert_ungueltig', 400);
+  if (!/^-?\d{1,4}$/.test(roh)) fachfehler('ungueltig', 'wert_ungueltig');
   return Number(roh);
 }
 
@@ -135,7 +135,7 @@ export function mengenDelta(value: unknown): number | null {
 export function strictBool(value: unknown, feld = 'Wert'): boolean {
   if (value === true  || value === 'true'  || value === 1 || value === '1') return true;
   if (value === false || value === 'false' || value === 0 || value === '0') return false;
-  fehlerWerfen('feld_kein_wahrheitswert', 400, { feld });
+  fachfehler('ungueltig', 'feld_kein_wahrheitswert', { feld });
 }
 
 /** Aggregate kommen als Zeichenkette, und "0" ist in JavaScript wahr.

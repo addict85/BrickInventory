@@ -1,8 +1,7 @@
 import path from 'node:path';
 import { erzeugeWorker, type Bearbeitertabelle, type WorkerOptionen } from './auftragsWorker';
-import { zieheNach, ladeSetBilder } from '../src/sets/nachErfassung';
+import { zieheNach, ladeSetBilder, fuehreCsvImportAus, csvImportAufgegeben } from '../src/sets';
 import { erzeugePdf, pdfAufgegeben } from '../src/katalog/pdf/pdfErzeugung';
-import { fuehreCsvImportAus, csvImportAufgegeben } from '../src/sets/csvImportLauf';
 import { fuehreImportAus } from '../src/sammlung/importAuftraege';
 import { anleitungLaden } from '../src/katalog/anleitungLaden';
 import { bricksetNachlauf } from '../src/katalog/bricksetNachlauf';
@@ -16,6 +15,7 @@ import { aufraeumen, aufraeumenTaeglich } from '../src/verwaltung/aufraeumen';
 import type { AuftragsArt } from '../src/auftraege/auftraege';
 import { kursauftrag } from '../src/finanzen/wechselkurse';
 import { preiseNachladen } from '../src/finanzen/preiseNachladen';
+import { loescheKontoDateien } from '../src/konto/kontoEntfernen';
 
 /** Exklusiv sind Arten, die eine Gegenseite schonen oder Tabellen tauschen. */
 const BEARBEITER: Bearbeitertabelle = {
@@ -46,6 +46,7 @@ const BEARBEITER: Bearbeitertabelle = {
   aufraeumen:          { ausfuehren: (_n, k) => aufraeumen(k), exklusiv: true },
   aufraeumen_taeglich: { ausfuehren: (_n, k) => aufraeumenTaeglich(k), exklusiv: true },
   preise_nachladen:    { ausfuehren: (n, k) => preiseNachladen(n, k), exklusiv: true },
+  konto_dateien:       { ausfuehren: (n) => loescheKontoDateien(n.user_id) },
 };
 
 // Der Katalog-Import läuft in einem eigenen Prozess, dessen Einstieg neben dieser Datei liegt.

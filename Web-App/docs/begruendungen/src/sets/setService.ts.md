@@ -163,33 +163,6 @@ Haushalts, nicht aus einer Spalte; eine leere eigene Zeile verdirbt ihn
 damit nicht mehr.
 ```
 
-<a id="addset"></a>
-## `addSet`
-
-```text
-Ein Set erfassen — mit Lagerort, wenn einer mitkommt.
-
-── Warum der Lagerort HIER und nicht im Rumpf steht ────────────────────────
-
-Marcos Befund vom 24.09.: „Wenn ich ein Set in der Galerie hinzufuegen will,
-kann ich den Lagerort nicht waehlen." Das stimmte, und es war kein fehlendes
-Eingabefeld: Bis dahin liess sich der Lagerort ausschliesslich NACH dem
-Erfassen im Detaildialog setzen, ueber PUT …/storage.
-
-Der Rumpf hat zwei Zweige — Erst-Erfassung und Aufstocken —, und beide
-muessten die Spalte schreiben. Stattdessen schreibt sie KEINER von beiden:
-Der Lagerort wird danach ueber setzeLagerort() gesetzt, dieselbe Funktion,
-die auch der Detaildialog ruft. Damit gilt die Laengengrenze einmal, das
-Trimmen einmal, und — das ist der eigentliche Grund — ein neu getippter Ort
-landet ueber stelleOrteSicher() im Vorrat. Ohne das stuende der Ort am Set,
-fehlte aber in der Liste, aus der er gewaehlt werden soll.
-
-GEPRUEFT wird vorher: Ein zu langer Name soll nicht erst das Set anlegen und
-dann absagen.
-
-`sendProgress` meldet Zwischenschritte an den SSE-Strom; null beim CSV-Import.
-```
-
 <a id="addsetintern-zustand"></a>
 ## `zustand`
 
@@ -210,40 +183,6 @@ war der Preis falsch, hier der Vermerk. Die Staffelung steht seit dem
 Zusammenlegen in src/einstellungen/settings.ts.
 ```
 
-<a id="addsetintern-readdprice"></a>
-## `reAddPrice`
-
-```text
-Kaufpreis dieser Erfassung festhalten (ging früher verloren!) —
-ohne Angabe aktuellen Marktpreis übernehmen, wie bei Neu-Erfassung.
-Auch hier den gewählten Zustand mitgeben, sonst kommt der Neupreis.
-
-Der Marktpreis wird VOR der Sperre geholt: Das ist ein Netzaufruf, und
-eine Sperre über einen Netzaufruf zu halten blockiert jeden anderen
-Schreibvorgang auf diesem Set für die Dauer der Antwort.
-purchasePrice ist number|null. NACHGEMESSEN: Es gibt genau drei
-Importeure (routes/sets.ts, routes/api_v1/sets.ts, addSetWithDate), und
-alle drei normalisieren vorher — V.optionalPrice() bzw. routes/sets.ts
-Zeile 549 beim CSV-Import. Die frueheren Pruefungen auf '' und das
-parseFloat verteidigten gegen eine Form, die hier nicht ankommt; der Typ
-hat das sichtbar gemacht ("number und string haben keine Ueberschneidung").
-```
-
-<a id="addsetintern"></a>
-## Abschnitt
-
-```text
-── Menge und Erfassung GESPERRT schreiben ────────────────────────────
-
-Vorher standen die drei Schreibvorgänge ungesperrt nebeneinander, und
-recordAcquisitionForDay() liest erst und schreibt dann. Zehn parallele
-Erfassungen desselben Sets ergaben am laufenden Server: sets.quantity =
-10, aber drei Erfassungszeilen mit Summe 7 — drei verlorene Exemplare
-und drei Tageszeilen, wo genau eine erlaubt ist. Alle anderen
-Schreibwege (Mengenänderung, Verschieben, Eigentümerwechsel) hielten
-diese Sperre längst; ausgerechnet das Erfassen nicht.
-```
-
 <a id="addsetintern-2"></a>
 ## Abschnitt
 
@@ -262,22 +201,6 @@ gerechnet (db/bestandsmenge.ts).
 Hier folgte aussserdem ein UPDATE auf sets.purchase_price („Preis der
 letzten Erfassung"). Die Spalte ist mit Migration 0032 weg;
 recordAcquisition() schreibt den Preis an seinen einzigen Ort.
-```
-
-<a id="addsetintern-3"></a>
-## Abschnitt
-
-```text
-── Der Katalog ist seit Migration 0033 die EINZIGE Stelle ──────────────
-
-Hier stand `.catch(()=>{})`. Das ging, solange die Stammdaten gleich
-darunter noch einmal in die sets-Zeile geschrieben wurden: Scheiterte der
-Katalog, hatte das Set immer noch seinen Namen.
-
-Jetzt nicht mehr. Scheitert diese Anweisung, hat das Set nirgends einen
-Namen, kein Jahr und kein Bild — und niemand erfaehrt davon. Deshalb kein
-Fang: Das Erfassen bricht ab, und zwar mit der Meldung von Postgres. Ein
-Set ohne Namen ist der schlechtere Ausgang.
 ```
 
 <a id="addsetintern-4"></a>

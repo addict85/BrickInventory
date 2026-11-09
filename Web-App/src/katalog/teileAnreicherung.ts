@@ -78,7 +78,7 @@ async function downloadImage(
 async function enrichSetParts(setNumber: string) {
   const n = mitVersion(setNumber);
 
-  const invId = await neuestesInventar(setNumber).catch(meldeUndLiefere('teile-enrich:neuestesInventar', null));
+  const invId = await neuestesInventar(setNumber);
   if (!invId) return;
 
   const csvParts = await repo.teileDesInventars(invId);
@@ -90,8 +90,7 @@ async function enrichSetParts(setNumber: string) {
 
   // Die ZEILE in bl_zuordnung zählt, nicht ihr Wert: leer heisst „nachgesehen,
   // keine abweichende Nummer".
-  const lookedUp = await repo.blZuordnungen(csvParts.map(p => p.part_num))
-    .catch(meldeUndLiefere('teile-enrich:lookedUp', []));
+  const lookedUp = await repo.blZuordnungen(csvParts.map(p => p.part_num));
   const lookedUpSet = new Set(lookedUp.map((r: { rb_id: string }) => r.rb_id));
 
   // Nur Teile, die noch nie nachgesehen wurden — jeder Abruf kostet Kontingent.
@@ -167,8 +166,7 @@ async function ergaenzeBlNummern(apiParts: Record<string, ApiTeil>, missingBl: s
 
 async function merkeTeileDesSets(n: string, csvParts: Awaited<ReturnType<typeof repo.teileDesInventars>>,
                                  apiParts: Record<string, ApiTeil>): Promise<void> {
-    const blMapRows = await repo.blZuordnungen(csvParts.map(p => p.part_num))
-      .catch(meldeUndLiefere('teile-enrich:blMapRows', []));
+    const blMapRows = await repo.blZuordnungen(csvParts.map(p => p.part_num));
     const blMap: Record<string, string | null> = {};
     for (const r of blMapRows) blMap[r.rb_id] = r.bl_id;
 
@@ -187,7 +185,7 @@ async function merkeTeileDesSets(n: string, csvParts: Awaited<ReturnType<typeof 
 }
 
 async function ergaenzeSetFiguren(n: string, rbKey: string): Promise<void> {
-  const existingFigs = await repo.figurenImSetkatalog(n).catch(meldeUndLiefere('teile-enrich:existingFigs', 0));
+  const existingFigs = await repo.figurenImSetkatalog(n);
 
   if (!existingFigs) {
     const figsData = await apiGet(
@@ -344,11 +342,11 @@ async function enrichSetMinifigs(setNumber: string) {
   const rbKey = await getRbKey();
   if (!rbKey) return;
 
-  const figs = await repo.figurenDesSets(n).catch(meldeUndLiefere('teile-enrich:figs', []));
+  const figs = await repo.figurenDesSets(n);
   if (!figs.length) return;
 
   const figNums = figs.map((f: { fig_number: string }) => f.fig_number);
-  const invRows = await repo.inventareDerFiguren(figNums).catch(meldeUndLiefere('teile-enrich:invRows', []));
+  const invRows = await repo.inventareDerFiguren(figNums);
 
   // Je set_num die höchste Version (erste wegen ORDER BY DESC).
   const invMap: Record<string, number> = {};
@@ -372,7 +370,7 @@ async function enrichSetMinifigs(setNumber: string) {
   if (!allPartNums.size) return;
 
   // bl_zuordnung: die Nummer, einmal je Teil.
-  const rbBlRows = await repo.blZuordnungen([...allPartNums]).catch(meldeUndLiefere('teile-enrich:rbBlRows', []));
+  const rbBlRows = await repo.blZuordnungen([...allPartNums]);
   const rbBlMap: Record<string, string> = {};
   for (const r of rbBlRows) rbBlMap[r.rb_id] = r.bl_id ?? '';
 
@@ -468,7 +466,7 @@ async function _redownloadMissingImages(lauf?: AuftragsLauf) {
   try {
     fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
     await _redlSetStatus({ running: true, phase: 'scanning', total: 0, done: 0, redownloaded: 0, cleared: 0 });
-    const rows = await repo.lokaleBilderMitAdresse().catch(meldeUndLiefere('teile-enrich:bildpfade lesen', []));
+    const rows = await repo.lokaleBilderMitAdresse();
     // Auch fehlende Vorschauen: Sie entstehen sonst nur beim Erfassen und hätten
     // keinen zweiten Anlauf.
     const missing: { image_local: string; image_url: string | null; fp: string }[] = [];

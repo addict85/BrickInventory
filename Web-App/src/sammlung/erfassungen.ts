@@ -6,12 +6,10 @@ import { writableIds, acquisitionMoveSource, resolveWriteTarget, blickfeldAus, t
 import { findSameDayAcquisition } from '../bestand/acquisitions';
 import { meldeUndLiefere } from '../infra/fehler';
 import { withInventoryLock, bestandsSchluessel } from '../../db/txLock';
-import { moveSetBetweenAccounts, moveManualAcquisition } from '../sets/setMove';
+import { moveSetBetweenAccounts, moveManualAcquisition, withSetAggregate, deleteSetRows } from '../sets';
 import { getCurrentMarketPrice, getCurrentPartMarketPrice, getCurrentFigMarketPrice } from '../finanzen/marketPrice';
-import { withSetAggregate } from '../sets/lesen';
-import { deleteSetRows } from '../sets/loeschen';
 import { loescheManuellesTeil, loescheManuelleFigur } from '../bestand/gemeinsam';
-import { fehlerWerfen } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/fehlerTexte';
 import type { FehlerCode } from '../infra/fehlerTexte';
 import { blAbrufNummer } from '../katalog/blZuordnung';
 import { mengeDesSets, mengeDerPosition, preisSpalte } from '../../db/bestandsmenge';
@@ -68,7 +66,7 @@ function mengeDesBestands(tx: DbSchnittstelle, art: ErfassungsArt, ownerId: numb
 async function zeileImSchreibfeld(tx: DbSchnittstelle, art: ErfassungsArt, wids: number[], id: number, keys: Schluessel): Promise<Zeile> {
   const a = ARTEN[art];
   const z = await repo.erfassungImSchreibfeld(tx, art, id, wids, keys);
-  if (!z) fehlerWerfen(a.notFound, 404);
+  if (!z) fachfehler('nicht_gefunden', a.notFound);
   return z;
 }
 
@@ -87,7 +85,7 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
   if (ownerReq !== undefined && ownerReq !== null && ownerReq !== '') {
     const from = await acquisitionMoveSource(uid, art, id);
     const to = await resolveWriteTarget(uid, ownerReq);
-    if (to === null) fehlerWerfen('kein_schreibrecht', 403);
+    if (to === null) fachfehler('verboten', 'kein_schreibrecht');
     if (from === to) return { success: true, unchanged: true };
     // Wie verschiebeSet(): Gegenrichtungen sperren die Zeilen beider Konten umgekehrt.
     const moved = await withInventoryLock(from, bestandsSchluessel(art, keys), (tx) =>
@@ -120,7 +118,7 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
     const ownerId = Number(acq.user_id);
     let neuesDatum: string | null = null;
     if (date !== undefined && date !== null && date !== '') {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) fehlerWerfen('datum_ungueltig', 400);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) fachfehler('ungueltig', 'datum_ungueltig');
       neuesDatum = String(date);
     }
     const hatZustand = condition !== undefined && condition !== null;
@@ -130,7 +128,7 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
     if (neuesDatum || rawPrice !== undefined || hatZustand) {
       const clash = await findSameDayAcquisition(art, ownerId, keys, neuesDatum || acq.tag, id, zielZustand, tx,
         { preis: rawPrice !== undefined ? priceVal : acq.preis, geschaetzt: zielGeschaetzt, waehrung: acq.currency });
-      if (clash) fehlerWerfen('datum_belegt', 409);
+      if (clash) fachfehler('konflikt', 'datum_belegt');
     }
     if (quantity !== undefined && quantity !== null) {
       await repo.setzeErfassungsMenge(tx, art, id, bestandsMenge(quantity, 1), wids);

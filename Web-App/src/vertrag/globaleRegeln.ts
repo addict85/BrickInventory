@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { eingabe } from '../infra/validate';
-import { fehlerWerfen, type FehlerCode } from '../infra/fehlerTexte';
+import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
 
 /** Dieselbe Liste wie ALLOWED in public/js/00-theme-boot.js (theme.test.js). */
 export const DESIGNS: readonly string[] = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
@@ -8,7 +8,7 @@ export const DESIGNS: readonly string[] = ['classic', 'brick', 'werkbank', 'farb
 /** Ein globaler Wert wird als Text gespeichert, auch wenn er als Zahl kommt. */
 const wert = (gueltig: (v: string) => boolean, json: Record<string, unknown>, code: FehlerCode = 'wert_ungueltig') =>
   eingabe.regel((v): string => {
-    if ((typeof v !== 'string' && typeof v !== 'number') || !gueltig(String(v))) fehlerWerfen(code, 400);
+    if ((typeof v !== 'string' && typeof v !== 'number') || !gueltig(String(v))) fachfehler('ungueltig', code);
     return String(v);
   }, json);
 const ganzzahl = (min: number, max: number, code?: FehlerCode) =>

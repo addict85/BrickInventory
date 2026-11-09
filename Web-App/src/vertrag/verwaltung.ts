@@ -116,6 +116,8 @@ export const CacheStatsResponse = z.looseObject({
   catalog: z.number().int(),
   price_stale: z.number().int(),
   rate_limits: RateLimits.nullable().optional(),
+  /** Teile der Antwort, die nach einem Fehler nur Ersatzwerte tragen. */
+  degradiert: z.array(z.string()).optional(),
 });
 
 export const CacheTtlResponse = z.looseObject({
@@ -156,6 +158,7 @@ export const JobsResponse = z.looseObject({
   success: z.boolean(),
   jobs: z.record(z.string(), JobStatus),
   schedules: z.record(z.string(), JobSchedule),
+  degradiert: z.array(z.string()).optional(),
 });
 
 export const ProtokollZeile = z.looseObject({
@@ -207,9 +210,9 @@ export const VerwaltungDesign = GenericAdminResponse.extend({ theme: z.string() 
 export const routen = {
   'GET /api/v1/sets/import/csv/status': { antwort: CsvImportStatus },
   'GET /api/v1/admin/logs': { klein: true, antwort: ProtokollResponse, abfrage: abfrage({ minutes: Q.zahl() }) },
-  'GET /api/v1/admin/jobs': { antwort: JobsResponse },
+  'GET /api/v1/admin/jobs': { antwort: JobsResponse, klein: true },
   'GET /api/v1/admin/brickset-queue': { antwort: BricksetQueueResponse, abfrage: abfrage(SEITE) },
-  'GET /api/v1/admin/cache-stats': { antwort: CacheStatsResponse },
+  'GET /api/v1/admin/cache-stats': { antwort: CacheStatsResponse, klein: true },
   'GET /api/v1/admin/cache-ttl': { antwort: CacheTtlResponse },
   'GET /api/v1/admin/api-limits': { antwort: ApiLimitsResponse },
   'GET /api/v1/admin/auftraege': { klein: true, antwort: AuftraegeResponse, abfrage: abfrage({ status: Q.text(20), art: Q.text(40) }) },

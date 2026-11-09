@@ -4,7 +4,7 @@
  * dem ersten eigenen Passwortwechsel verschwindet die Datei.
  *
  * Gegenproben (09.11.2026 gemessen, je einzeln):
- *   A  in legeAdminAn() (db/database.ts) zusätzlich das Passwort per
+ *   A  in legeStartVerwalterAn() (src/konto/startVerwalter.ts) zusätzlich das Passwort per
  *      console.log ausgegeben → rot: „das Log nennt den Pfad, nicht das Passwort“
  *   B  in schreibeStartpasswort() `mode: 0o644` → rot: „nur der Dienst kann sie lesen“
  *   C  in aendereEigenesPasswort() (src/konto/konten.ts) startpasswortErledigt()

@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import androidx.lifecycle.ViewModel
@@ -223,6 +224,7 @@ class ErfassungViewModel @Inject constructor(
                         if (r.data.katalogOffen) R.string.vm_set_added_no_catalog else R.string.vm_set_added,
                         if (r.data.katalogOffen) setNum else r.data.name ?: setNum))
                     bestand.melde(Aenderung.Sets)
+                    meldeNachErgaenzung(r.data)
                 }
                 is Ergebnis.Error -> meldeFehlgeschlageneErfassung(setNum, meldungen.meldung(r))
             }
@@ -300,12 +302,19 @@ class ErfassungViewModel @Inject constructor(
                             else -> R.string.vm_updated
                         }, if (r.data.katalogOffen) r.data.setNumber else r.data.name ?: r.data.setNumber))
                         bestand.melde(Aenderung.Sets)
+                        meldeNachErgaenzung(r.data)
                     }
                     else -> meldeFehlgeschlageneErfassung(sn, r.data.error)
                 }
                 is Ergebnis.Error -> meldeFehlgeschlageneErfassung(sn, meldungen.meldung(r))
             }
         }
+    }
+
+    /** Name, Bild und Marktpreis holt der Server als Auftrag nach; danach die Galerie neu laden. */
+    private fun meldeNachErgaenzung(antwort: AddSetResponse) {
+        if (antwort.ergaenzung != "ausstehend") return
+        viewModelScope.launch { delay(ERGAENZUNG_NACH_MS); bestand.melde(Aenderung.Sets) }
     }
 
     /** Ein Fehlschlag beim Erfassen nennt Setnummer und Grund — sonst sieht man nur, dass nichts geschah. */
@@ -325,3 +334,6 @@ class ErfassungViewModel @Inject constructor(
         _barcodeState.value = BarcodeUiState()
     }
 }
+
+/** Der Auftrag beginnt sofort, im Ereignisstrom nach einer Minute. */
+private const val ERGAENZUNG_NACH_MS = 70_000L

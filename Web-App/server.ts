@@ -19,7 +19,7 @@ import { hinweisOhneBasisUrl } from './src/infra/basisUrl';
 import { sitzungsKeksName, sitzungsKeksOptionen } from './src/http/sitzungsKeks';
 import { bereiteDatenbankVor } from './startup/datenbank';
 import { starteJobs, stoppeJobs } from './startup/jobsProzess';
-import { verdrahte } from './jobs/verdrahtung';
+import { verdrahte, baueVerdrahtung } from './startup/verdrahtung';
 import { drossleBeruehren } from './src/konto/sitzungsBeruehrung';
 import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './src/konto/sitzungsFrist';
 import { sitzungsVersionPruefen } from './src/konto/http/sitzungsPruefung';
@@ -346,8 +346,10 @@ async function starte(): Promise<void> {
     + 'Der Host-Filter gegen DNS-Rebinding ist aus, jede Webseite im Heimnetz erreicht die Anmeldung.');
   if (web) sitzungsGeheimnis();   // vor der Datenbank: Ein Startverbot soll nicht auf sie warten
   console.log(`[start] Prozess ${process.pid}, Rolle ${k.rolle}`);
+  // Datenbankzugang und Verdrahtung entstehen hier, nicht beim Import eines Moduls;
   // Erfassungen und Einstellungen stossen ihre Nacharbeit in jedem Prozess an.
-  verdrahte();
+  db.setzeStandardDb(db.erzeugeDb(db.dbKonfigAusUmgebung()));
+  verdrahte(baueVerdrahtung());
 
   try { await bereiteDatenbankVor(); }
   catch (e) {

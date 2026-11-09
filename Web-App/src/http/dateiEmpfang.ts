@@ -80,12 +80,12 @@ export function privaterEmpfang(o: { ordner: (req: Request) => Promise<string>; 
       destination: (req, _file, cb) => { o.ordner(req).then(d => cb(null, d), (e: Error) => cb(e, '')); },
       filename: (req, file, cb) => {
         const ext = ausTabelle(o.typen, file.mimetype);
-        if (!ext) return cb(dateiFehler('datei_typ_falsch', 415), '');
+        if (!ext) return cb(dateiFehler('falscher_typ', 'datei_typ_falsch'), '');
         cb(null, `${o.praefix(req).replace(/[^a-z0-9-]/gi, '_')}_${crypto.randomBytes(12).toString('hex')}${ext}`);
       },
     }),
     limits: { ...FORMULAR_GRENZEN, fileSize: o.maxBytes },
-    fileFilter: (_req, file, cb) => { if (ausTabelle(o.typen, file.mimetype)) cb(null, true); else cb(dateiFehler('datei_typ_falsch', 415)); },
+    fileFilter: (_req, file, cb) => { if (ausTabelle(o.typen, file.mimetype)) cb(null, true); else cb(dateiFehler('falscher_typ', 'datei_typ_falsch')); },
   });
 }
 

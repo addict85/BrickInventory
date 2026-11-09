@@ -1,28 +1,40 @@
 /** SQL, Rebrickable und Aufträge stehen nur hier und darunter, damit die Routen nur Anfrage und Antwort kennen. */
-import { blickfeldAus } from '../haushalt/haushalt';
+import { blickfeldAus, schreibziel } from '../haushalt/haushalt';
 import type { Sicht } from '../haushalt/haushalt';
 import { vorDem, fehlertext, ohneFehlendeDatei, oeffentlicherFehler } from '../infra/fehler';
 import fs from 'fs';
 import path from 'path';
-import { APP_ROOT } from '../infra/appPaths';
+import { APP_ROOT, DATA_DIR } from '../infra/appPaths';
 import { stelleAuftragEin } from '../auftraege/dienst';
 import { resolveImageLocal, proxyImageUrl } from '../katalog/bilder/images';
 import { getSetting } from '../einstellungen/settings';
+import { normalisiereLagerort, setzeLagerort, orteFuer, vorgabeVon } from '../bestand/lagerort';
+import { alarmeFuer, loescheAlarm, setzeAlarm } from '../finanzen/preisalarm';
+import { importAlsAuftrag } from '../auftraege/importAlsAuftrag';
+import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';
+import { anleitungenZuSet, anleitungenZusammenlegen, loescheAnleitungen, anleitungNeuLadenErlaubt, anzahlAnleitungen } from '../katalog/instructions';
+import { importPartsForSet } from '../katalog/partsImport';
+import { zaehleAnfrage } from '../konto/loginLimiter';
 import { setBildSichtbar } from '../katalog/bilder/bildBlickfeld';
-import { normalizeSetNumber } from './setAdd';
+import { normalizeSetNumber, findSetInScope } from './erfassen';
 import { istErsatzteil } from '../infra/validate';
 import { istVermutung } from '../katalog/barcodeQuelle';
 import { setnummerKandidaten } from '../katalog/produkttitel';
 import { fetchPrice, resolveSetCondition } from '../finanzen/financeCalc';
 import { neuestesInventar } from '../katalog/rbInventar';
-import { mitVersion, ohneVersion } from '../infra/setNummer';
+import { mitVersion, ohneVersion, normalisiereSetNummer, moeglicheSetNummer } from '../infra/setNummer';
 import { figurenAusKatalog } from '../katalog/minifigsImport';
 import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, zeilenListe } from '../infra/csvExport';
-import { jobGet, jobSet, jobUpdate, emitJobStatus } from '../auftraege/importAuftrag';
+import type { CsvImportBericht } from '../infra/csvExport';
+import { jobGet, jobSet, jobUpdate, emitJobStatus, buildJobStatus, csvImportBus, beiImportStand } from '../auftraege/importAuftrag';
+import { setTeileAnreichern } from '../auftraege/nacharbeit';
+import { getSetPriceHistory } from '../finanzen/priceHistory';
+import { verschiebeSet } from './setMove';
 import { getSetByBarcode, getSetByEan, getMinifigInfo, getSetMinifigs, rebrickableJson, produktTitel } from '../katalog/quellen';
 import { getAllSetParts } from '../katalog/rebrickableKatalog';
 import type { RbSetTeil } from '../katalog/quellen';
-import { fehlerWerfen } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/fehlerTexte';
+import type { Sprache } from '../infra/fehlerTexte';
 import { merkeFigur, merkeSetFiguren } from '../katalog/katalogPflege';
 import { randomUUID } from 'crypto';
 import * as repo from './repository/setDetail';
@@ -312,10 +324,10 @@ function csvMenge(roh: string): number | null {
 export function setCsvZeilen(text: string): { rows: ImportZeile[]; uebersprungen: number[] } {
   let gelesen;
   try { gelesen = csvEinlesen(text); }
-  catch (e) { fehlerWerfen('csv_parse_fehler', 400, { grund: fehlertext(e) }); }
+  catch (e) { fachfehler('ungueltig', 'csv_parse_fehler', { grund: fehlertext(e) }); }
   if (!gelesen.records.length) {
-    if (gelesen.uebersprungen.length) fehlerWerfen('csv_keine_brauchbare_zeile', 400, { zeilen: zeilenListe(gelesen.uebersprungen) });
-    fehlerWerfen('csv_keine_datenzeilen', 400);
+    if (gelesen.uebersprungen.length) fachfehler('ungueltig', 'csv_keine_brauchbare_zeile', { zeilen: zeilenListe(gelesen.uebersprungen) });
+    fachfehler('ungueltig', 'csv_keine_datenzeilen');
   }
   const rows: ImportZeile[] = [];
   for (const [i, roh] of gelesen.records.entries()) {
@@ -373,3 +385,110 @@ export async function setCsvImportAbbrechen(userId: number) {
   await emitJobStatus(userId);
 }
 
+// ── Was die Set-Routen aus anderen Bereichen brauchen; Absagen sind Fachfehler ──
+
+/** Die Währung aus den Einstellungen, nicht aus der Anfrage: Zwei Quellen
+ * liefen beim nächsten Wechsel auseinander. */
+export async function waehrungVon(uid: number): Promise<string> {
+  return String(await getSetting(uid, 'currency', 'EUR'));
+}
+
+/** Trifft alle Zeilen des Sets im Schreibbereich: Wer die Kiste packt, packt
+ * sie für alle, die darin nachsehen. */
+export async function lagerortDesSetsSetzen(uid: number, sn: string, storage: unknown) {
+  const ort = normalisiereLagerort(storage);
+  const n = await setzeLagerort('set', { schreiber: uid }, [normalizeSetNumber(sn)], ort);
+  return { ort, n };
+}
+
+/** Die Liste kann über mehrere Konten spannen, die Vorgabe ist immer die des
+ * Anfragenden: Ein geerbter Stern wäre eine Aussage über eine fremde Wohnung. */
+export async function lagerorteMitVorgabe(uid: number, owner: string | undefined) {
+  const [orte, vorgabe] = await Promise.all([orteFuer(uid, owner), vorgabeVon(uid)]);
+  return { orte, vorgabe };
+}
+
+// ── Preisalarm: gehört genau EINEM Konto, deshalb uid statt Blickfeld ────────
+
+export function setAlarmeLesen(uid: number, sn: string) {
+  return alarmeFuer(uid, normalizeSetNumber(sn));
+}
+
+export async function alarmDesSetsSetzen(uid: number, sn: string, eingabe: Parameters<typeof setzeAlarm>[3]) {
+  return setzeAlarm(uid, normalizeSetNumber(sn), await waehrungVon(uid), eingabe);
+}
+
+export function alarmDesSetsLoeschen(uid: number, sn: string, condition: unknown) {
+  return loescheAlarm(uid, normalizeSetNumber(sn), String(condition || 'N'));
+}
+
+export async function alarmCsvImportStarten(uid: number, text: string) {
+  return importAlsAuftrag<CsvImportBericht>(uid, 'alarme_csv', { waehrung: await waehrungVon(uid), text });
+}
+
+/** Nur zu Sets im Blickfeld und gedrosselt: Jeder Import kann Rebrickable-Kontingent kosten. */
+export async function teileDesSetsImportieren(uid: number, sn: string): Promise<number> {
+  const set = await findSetInScope(uid, sn);
+  if (!set) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
+  const takt = await zaehleAnfrage('teile-import', `konto:${uid}`, 60 * 60 * 1000);
+  if (takt.count > 30) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: takt.waitMin });
+  return importPartsForSet(set.set_number, set.owner_user_id);
+}
+
+/** Die Anleitungen sind geteilt: Ersetzen darf nur der Verwalter (ein leerer
+ * Abruf löschte sie sonst für alle). Andere holen, was fehlt, einmal je Set und Tag. */
+export async function anleitungenNeuLaden(uid: number, roh: string, verwalter: boolean) {
+  const sn = normalisiereSetNummer(roh);
+  if (!moeglicheSetNummer(sn)) fachfehler('ungueltig', 'setnummer_ungueltig');
+  if (verwalter) await loescheAnleitungen(sn);
+  else {
+    if (!(await findSetInScope(uid, sn))) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
+    if ((await anzahlAnleitungen(sn)) > 0) fachfehler('verboten', 'nur_admins');
+    if (!(await anleitungNeuLadenErlaubt(sn))) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: 24 * 60 });
+  }
+  const auftrag = await anleitungEinreihen(sn, { jetzt: true });
+  const instructions = anleitungenZusammenlegen(await anleitungenZuSet(sn), []);
+  return { instructions, auftrag };
+}
+
+/** Hochgeladene Anleitungen liegen je Konto in einem eigenen Ordner darunter. */
+export const ANLEITUNGS_WURZEL = path.join(DATA_DIR, 'uploads');
+
+type Kopf = { headers?: Record<string, unknown> };
+
+export async function csvImportStand(uid: number, req: Kopf) {
+  return buildJobStatus(await jobGet(uid), req);
+}
+
+/** Im offenen Strom gibt es keinen Statuscode mehr: Ein Lesefehler wird zu „kein Import“. */
+export async function csvImportStandFuerStrom(uid: number, req: Kopf, sprache: Sprache) {
+  return buildJobStatus(await jobGet(uid), req, sprache);
+}
+
+/** Die Route kennt den Auftragsweg der Teile nicht; ohne Inventar reichert der Job-Prozess an. */
+export function teilelisteFuerKonto(setNum: string) {
+  return teilelisteDesSets(setNum, setTeileAnreichern);
+}
+
+export async function setPreisVerlauf(uid: number, sicht: Sicht | number[], sn: string) {
+  return getSetPriceHistory(sicht, sn, await waehrungVon(uid));
+}
+
+/** Meldet jeden Stand des CSV-Imports dieses Kontos, aus diesem und aus anderen Prozessen. */
+export function csvImportStandAbonnieren(uid: number, melde: () => void): () => void {
+  const lokal = () => melde();
+  csvImportBus.on(`progress:${uid}`, lokal);
+  const abmelden = beiImportStand((konto) => { if (String(konto) === String(uid)) melde(); });
+  return () => { csvImportBus.off(`progress:${uid}`, lokal); abmelden(); };
+}
+
+/** Drei Erfassungen sind drei Käufe und können im Haushalt verschiedenen Kindern
+ * gehören; wer alles will, wählt alle Zeilen. */
+export async function setVerschieben(uid: number, roh: string, von: unknown, nach: unknown, erfassungen: number[]) {
+  if (!erfassungen.length) fachfehler('ungueltig', 'kaufpreise_angeben');
+  const sn = mitVersion(roh);
+  const fromId = await schreibziel(uid, von ?? uid);
+  const toId = await schreibziel(uid, nach);
+  if (fromId === toId) fachfehler('ungueltig', 'quelle_ziel_identisch');
+  return { set_number: sn, from_user_id: fromId, to_user_id: toId, ...await verschiebeSet(sn, fromId, toId, erfassungen) };
+}

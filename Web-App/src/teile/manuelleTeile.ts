@@ -17,7 +17,7 @@ import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
 import { merkeTeil, merkeTeilFarbe, katalogTeil } from '../katalog/katalogPflege';
 import * as V0 from '../infra/validate';
 import { geldEingabe } from '../infra/geld';
-import { fehlerWerfen } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/fehlerTexte';
 
 export const getPartColorList = farbliste;
 
@@ -154,7 +154,7 @@ async function addManualPartIntern(uid: number, rawBody: Record<string, unknown>
  * @returns die Menge danach, wenn sie Teil der Anfrage war */
 export async function updateManualPart(uid: number, partNumber: string, colorId: number, body: Record<string, unknown>): Promise<{ quantity?: number }> {
   const existing = await repo.teilZeileMitZustand(uid, partNumber, colorId);
-  if (!existing) fehlerWerfen('teil_nicht_manuell', 404);
+  if (!existing) fachfehler('nicht_gefunden', 'teil_nicht_manuell');
 
   const raus: { quantity?: number } = {};
   const wunsch = mengenwunsch(body);

@@ -22,9 +22,11 @@ Module.prototype.require = function (name) {
   if (typeof name === 'string' && /sets[/\\]nachErfassung(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) =>
       (k === 'zieheNach' || k === 'zieheNachNeuanlage') ? () => {} : t[k] });
-  if (typeof name === 'string' && /[/\\]setService(\.js)?$/.test(name))
+  // Gestellt wird das Anlegen; das Ergänzen im Strom ohne Netz.
+  if (typeof name === 'string' && /[/\\]erfassen(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) => {
-      if (k !== 'addSet' || gestellteAddSet === null) return t[k];
+      if (k === 'setErgaenzen' && gestellteAddSet !== null) return async () => ({ name: 'Testset' });
+      if (k !== 'setErfassen' || gestellteAddSet === null) return t[k];
       return async (...args) => { stellungGerufen++; return gestellteAddSet(...args); };
     } });
   return m;
@@ -73,20 +75,21 @@ test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet',
   try {
     // ── 1. Die Praemisse, mit der ECHTEN Funktion ────────────────────────────
     //
-    // Stuende `success` schon in addSet()s Ergebnis, pruefte alles Weitere
+    // Stuende `success` schon im Ergebnis von setErfassen(), pruefte alles Weitere
     // nichts: Die Routen muessten es dann gar nicht erst hinzufuegen. Der
-    // „updated"-Zweig laeuft rein auf der Datenbank und braucht kein Netz.
-    const { addSet } = _req('src/sets/setService.js');
-    const echt = await addSet(DA, 1, uid, null, null, 'N');
-    assert.equal(echt.action, 'updated', 'der Aufbau des Tests stimmt nicht mehr');
+    // „exists"-Zweig laeuft rein auf der Datenbank und braucht kein Netz.
+    const { setErfassen } = _req('src/sets/index.js');
+    const echt = await setErfassen({ anfragender: uid, setNumber: DA });
+    assert.equal(echt.action, 'exists', 'der Aufbau des Tests stimmt nicht mehr');
     assert.equal('success' in echt, false,
-      'addSet() liefert jetzt selbst ein success — dann sagt dieser Test nichts mehr ueber die Routen');
+      'setErfassen() liefert jetzt selbst ein success — dann sagt dieser Test nichts mehr ueber die Routen');
 
     // ── 2. Der Strom: das `done`-Ereignis ───────────────────────────────────
     //
-    // Gestellt wird GENAU die Form, die addSetIntern() fuer ein neues Set
+    // Gestellt wird GENAU die Form, die setErfassen() fuer ein neues Set
     // zurueckgibt.
-    gestellteAddSet = async (sn) => ({ action: 'added', set_number: sn, name: 'Testset' });
+    gestellteAddSet = async (e) => ({ action: 'added', set_number: e.setNumber, name: 'Testset', katalog_offen: true,
+      ergaenzung: 'ausstehend', besitzer: e.anfragender });
     const vorher = stellungGerufen;
 
     const strom = await fetch(`${base}/api/v1/sets/add-stream`, {
@@ -98,7 +101,7 @@ test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet',
       'fuer ein neues Set muss es der Ereignisstrom sein, nicht die JSON-Form');
     const roh = await strom.text();
     assert.ok(stellungGerufen > vorher,
-      'addSet() wurde nicht gerufen — die Stellung greift nicht, der Test prueft nichts');
+      'setErfassen() wurde nicht gerufen — die Stellung greift nicht, der Test prueft nichts');
 
     const ereignisse = roh.split('\n')
       .filter(z => z.startsWith('data:'))
@@ -124,7 +127,7 @@ test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet',
     });
     assert.equal(token.status, 200);
     const tb = await token.json();
-    assert.ok(stellungGerufen > vorher2, 'addSet() wurde auf der Token-Route nicht gerufen');
+    assert.ok(stellungGerufen > vorher2, 'setErfassen() wurde auf der Token-Route nicht gerufen');
     assert.equal(tb.success, true);
 
     // ── 4. Eine Antwort, eine Form ──────────────────────────────────────────

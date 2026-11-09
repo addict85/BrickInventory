@@ -47,22 +47,6 @@ beschränkt und schliesst das eigene Konto aus: Für sich selbst führt der Weg
 ändern und den rechtmässigen Besitzer auszusperren.
 ```
 
-<a id="delete-users-id"></a>
-## Abschnitt
-
-```text
-── Die Zeile ist weg, der Zugang war es nicht ─────────────────────────
-
-Die Bearer-Tokens gehen per ON DELETE CASCADE mit (siehe db/schema.sql).
-user_sessions dagegen ist der Tabellenraum des Session-Stores und hat
-KEINEN Fremdschluessel auf users — die offene Sitzung des geloeschten
-Kontos lief weiter, und war es ein Verwalter, blieb es einer.
-
-Derselbe Aufruf steht schon beim Admin-Passwortreset, bei
-/change-password und bei /reset-password. Er fehlte ausgerechnet dort,
-wo das Konto ganz verschwindet.
-```
-
 <a id="put-users-id-admin-vorher"></a>
 ## `vorher`
 

@@ -195,7 +195,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('die Übernahme eines Sets, das man schon hat, stockt NICHT auf', async () => {
-    // Dieselbe Regel wie beim Erfassen (src/sets/setAdd.ts): Schon im Blickfeld
+    // Dieselbe Regel wie beim Erfassen (src/sets/erfassen.ts): Schon im Blickfeld
     // heisst „Detail öffnen", nicht „Menge erhöhen". Sie darf nicht davon
     // abhängen, über welchen der vier Wege jemand kommt.
     const vorher = await mengeVon(db, U.opa, '75192-1');

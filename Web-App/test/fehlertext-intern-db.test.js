@@ -5,10 +5,12 @@
  *
  * Gegenproben (01.11.2026 gemessen):
  *   A  in POST /sets/add-stream wieder `error: fehlertext(e)` → rot: „der
- *      Erfassungsstrom nennt keinen internen Text“ und „ein Fachfehler …“ (ohne Code)
+ *      Erfassungsstrom nennt keinen internen Text“
+ *   A2 (09.11.2026) im Strom nach gescheitertem Ergänzen `ergaenzung` weggelassen
+ *      → rot: „der Erfassungsstrom …“ (das Set ist angelegt, die Antwort muss es sagen)
  *   B  im Merklisten-CSV-Import wieder `error: e?.message` → rot: „der
  *      CSV-Bericht nennt keinen internen Text“
- *   C  oeffentlicherFehler() ohne den Zweig für Fachfehler → rot: „ein
+ *   C  handleRouteError() ohne den Zweig für Fachfehler mit Code → rot: „ein
  *      Fachfehler kommt mit seinem Code an“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -34,9 +36,14 @@ const { dateiFehler, fehlerText } = _req('src/infra/fehlerTexte.js');
 // Vor dem Laden der Routen: Die Dienste werfen, was im Betrieb aus der Datenbank käme.
 // Die Merkliste eine Ebene tiefer: Der Import läuft als Auftrag und ruft den Dienst intern.
 ersetze('src/merkliste/repository/merkliste.js', { merkeSetVor: async () => { throw new Error(GEHEIM); } });
-ersetze('src/sets/setService.js', { addSet: async (sn) => {
-  throw sn === 'FACH-1' ? dateiFehler('setnummer_ungueltig', 400) : new Error(GEHEIM);
-} });
+// Angelegt wird ohne Netz; scheitern kann danach nur das Ergänzen im offenen Strom.
+ersetze('src/sets/erfassen.js', {
+  setErfassen: async (e) => {
+    if (e.setNumber === 'FACH-1') throw dateiFehler('ungueltig', 'setnummer_ungueltig');
+    return { action: 'added', set_number: e.setNumber, name: e.setNumber, katalog_offen: true, ergaenzung: 'ausstehend', besitzer: e.anfragender };
+  },
+  setErgaenzen: async () => { throw new Error(GEHEIM); },
+});
 
 const db = _req('db/database.js');
 
@@ -63,20 +70,25 @@ test('kein interner Fehlertext an den Client', { concurrency: 1 }, async (t) => 
     const r = await fetch(`${base}/api/v1/sets/add-stream`, { method: 'POST',
       headers: { 'content-type': 'application/json', 'accept-language': sprache },
       body: JSON.stringify({ set_number: setNumber }) });
-    const ereignisse = (await r.text()).split('\n').filter(z => z.startsWith('data: ')).map(z => JSON.parse(z.slice(6)));
+    const text = await r.text();
+    if (!r.headers.get('content-type')?.includes('event-stream')) return { status: r.status, ...JSON.parse(text) };
+    const ereignisse = text.split('\n').filter(z => z.startsWith('data: ')).map(z => JSON.parse(z.slice(6)));
     return ereignisse.at(-1);
   };
 
   await t.test('der Erfassungsstrom nennt keinen internen Text', async () => {
     const letztes = await strom('GEHEIM-1', 'en');
-    assert.equal(letztes.step, 'error');
     assert.ok(!JSON.stringify(letztes).includes('geheime_tabelle'), JSON.stringify(letztes));
-    assert.equal(letztes.code, 'interner_fehler');
-    assert.equal(letztes.error, fehlerText('interner_fehler', 'en'));
+    // Angelegt ist das Set schon: Das Ende sagt, dass ein Auftrag ergänzt, statt „Fehler“.
+    assert.equal(letztes.step, 'done');
+    assert.equal(letztes.success, true);
+    assert.equal(letztes.ergaenzung, 'ausstehend');
+    assert.equal(letztes.katalog_offen, true);
   });
 
   await t.test('ein Fachfehler kommt mit seinem Code an', async () => {
     const letztes = await strom('FACH-1');
+    assert.equal(letztes.status, 400);
     assert.equal(letztes.code, 'setnummer_ungueltig');
     assert.equal(letztes.error, fehlerText('setnummer_ungueltig', 'de'));
   });

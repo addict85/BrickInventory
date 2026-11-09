@@ -144,10 +144,10 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts',
 
     // 4. AUSNAHME: Der CSV-Import ruft addSet() direkt und fasst weiterhin
     //    zusammen. Die Regel darf nicht dort hineingerutscht sein.
-    // Fundort seit einer früheren Runde: src/sets/setService.js.
-    const { addSet } = _req('src/sets/setService.js');
+    // Fundort: src/sets/erfassen.ts, erreichbar über den Einstieg src/sets.
+    const { addSet } = _req('src/sets/index.js');
     const vorImport = await stand(KIND);
-    const erg = await addSet(KIND, 1, subId, null, null, 'N');
+    const erg = await addSet({ setNumber: KIND, menge: 1, konto: subId, zustand: 'N' });
     assert.equal(erg.action, 'updated',
       'addSet() selbst muss weiterhin zusammenfassen — sonst steht der CSV-Import still');
     assert.equal((await stand(KIND)).menge, vorImport.menge + 1);
@@ -163,7 +163,7 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts',
 test('normalizeSetNumber stimmt mit sanitizeSetNumber überein', () => {
   // Warum das jetzt anders geprueft wird
   // Ausführlich: docs/begruendungen/test/set-add-exists-db.test.js.md#stelle
-  const { normalizeSetNumber } = _req('src/sets/setAdd.js');
+  const { normalizeSetNumber } = _req('src/sets/erfassen.js');
   const { sanitizeSetNumber }  = _req('src/sets/setService.js');
   assert.equal(typeof sanitizeSetNumber, 'function',
     'sanitizeSetNumber ist nicht mehr exportiert — dann prueft dieser Test nichts');

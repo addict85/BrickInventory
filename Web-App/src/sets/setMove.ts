@@ -3,7 +3,7 @@
 import type { DbSchnittstelle } from '../../db/database';
 import { withInventoryLock } from '../../db/txLock';
 import { recordAcquisitionForDay } from '../bestand/acquisitions';
-import { fehlerWerfen } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/fehlerTexte';
 import * as repo from './repository/verschieben';
 
 export interface MoveResult {
@@ -30,13 +30,13 @@ export async function moveSetBetweenAccounts(
   tx: DbSchnittstelle, sn: string, fromId: number, toId: number, acquisitionIds?: number[]
 ): Promise<MoveResult> {
   const src = await repo.setZeile(tx, fromId, sn);
-  if (!src) fehlerWerfen('nicht_gefunden', 404);
+  if (!src) fachfehler('nicht_gefunden', 'nicht_gefunden');
 
   const all = await repo.erfassungenZumVerschieben(tx, fromId, sn);
   const wanted = acquisitionIds?.length
     ? all.filter(a => acquisitionIds.includes(parseInt(String(a.id))))
     : all;
-  if (!wanted.length) fehlerWerfen('kaufpreis_nicht_gefunden', 404);
+  if (!wanted.length) fachfehler('nicht_gefunden', 'kaufpreis_nicht_gefunden');
 
   const gesamtQty = all.reduce((s, a) => s + (a.quantity || 1), 0);
   const movingQty = wanted.reduce((s, a) => s + (a.quantity || 1), 0);
@@ -75,10 +75,10 @@ export async function moveManualAcquisition(
   fromId: number, toId: number
 ): Promise<{ quantity: number; merged: boolean; source_emptied: boolean }> {
   const acq = await repo.manuelleErfassung(tx, kind, acquisitionId, fromId, keyValues);
-  if (!acq) fehlerWerfen('kaufpreis_nicht_gefunden', 404);
+  if (!acq) fachfehler('nicht_gefunden', 'kaufpreis_nicht_gefunden');
 
   const src = await repo.manuelleZeile(tx, kind, fromId, keyValues);
-  if (!src) fehlerWerfen('nicht_gefunden', 404);
+  if (!src) fachfehler('nicht_gefunden', 'nicht_gefunden');
 
   const movingQty = Math.max(1, parseInt(String(acq.quantity)) || 1);
   const remaining = Math.max(0, await repo.erfassteMenge(tx, kind, fromId, keyValues) - movingQty);

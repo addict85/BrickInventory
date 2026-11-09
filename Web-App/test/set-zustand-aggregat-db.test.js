@@ -37,9 +37,9 @@ Module.prototype.require = function (/** @type {string} */ name, /** @type {any[
   const m = _echtesRequire.call(this, name, ...rest);
   if (typeof name === 'string' && /sets[/\\]nachErfassung(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) => (k === 'zieheNach' || k === 'zieheNachNeuanlage' ? () => {} : t[k]) });
-  if (typeof name === 'string' && /[/\\]setService(\.js)?$/.test(name))
+  if (typeof name === 'string' && /[/\\]erfassen(\.js)?$/.test(name))
     return new Proxy(m, {
-      get: (t, k) => (k === 'addSet' && gestellteAddSet ? gestellteAddSet : t[k]),
+      get: (t, k) => (k === 'setErfassen' && gestellteAddSet ? gestellteAddSet : t[k]),
     });
   return m;
 };
@@ -119,8 +119,8 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
   });
 
   await t.test('der Marktpreis als Kaufpreis richtet sich nach dem gewählten Zustand', async () => {
-    const { addSet } = _req('src/sets/setService.js');
-    const r = await addSet(SN, 1, uid, null, null, 'U');
+    const { addSet } = _req('src/sets/index.js');
+    const r = await addSet({ setNumber: SN, menge: 1, konto: uid, zustand: 'U' });
     assert.equal(r.action, 'updated', 'Aufbau: der Aufstock-Weg ohne Katalog und Netz');
     const neu = await db.get(
       `SELECT condition, purchase_price::float AS preis FROM set_acquisitions
@@ -213,11 +213,18 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
   });
 
   await t.test('der im Formular gewählte Zustand kommt beim Anlegen an', async () => {
-    /** @type {unknown[][]} */
+    /** @type {any[][]} */
     const aufrufe = [];
     gestellteAddSet = async (...a) => {
       aufrufe.push(a);
-      return { action: 'added', set_number: a[0], name: 'Testset' };
+      return {
+        action: 'added',
+        set_number: /** @type {any} */ (a[0]).setNumber,
+        name: 'Testset',
+        katalog_offen: true,
+        ergaenzung: 'ausstehend',
+        besitzer: uid,
+      };
     };
     try {
       const r = await anfrage('POST', '/sets', {
@@ -229,8 +236,8 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     } finally {
       gestellteAddSet = null;
     }
-    assert.equal(aufrufe.length, 1, 'addSet wurde nicht gerufen');
-    assert.equal(aufrufe[0][4], 20, 'Der Kaufpreis kommt nicht an');
-    assert.equal(aufrufe[0][5], 'U', 'Der Zustand aus dem Formular kommt nicht bei addSet an');
+    assert.equal(aufrufe.length, 1, 'setErfassen wurde nicht gerufen');
+    assert.equal(aufrufe[0][0].kaufpreis, 20, 'Der Kaufpreis kommt nicht an');
+    assert.equal(aufrufe[0][0].zustand, 'U', 'Der Zustand aus dem Formular kommt nicht bei setErfassen an');
   });
 });
