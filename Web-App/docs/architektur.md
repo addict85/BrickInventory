@@ -93,6 +93,19 @@ kennen einander nicht. Von unten nach oben:
 | 17 | `startup` |
 | 18 | `server.ts` |
 
+## Schema
+
+Die Wahrheit sind die Migrationen in `db/migrations/`. Daraus erzeugt
+`npm run schema:stand` zwei Dateien, beide geprüft:
+
+| Datei | Wozu | Prüfung |
+|---|---|---|
+| `db/basis.sql` | Erststart: eine leere Datenbank bekommt dieses Abbild der ersten N Migrationen, danach laufen nur die jüngeren | `test/schema-basis-db.test.js`: lückenlose Folge vorhandener Migrationen; mit gleichem pg_dump erzeugt das Abbild sich selbst |
+| `db/schema-stand.sql` | Lesefassung des Schemas nach allen Migrationen, für Reviews | `test/schema-frisch-db.test.js`: gleich dem Schema einer frisch gestarteten Datenbank |
+
+Von Hand geändert wird keine der beiden; eine Schemaänderung ist immer eine
+neue Migration.
+
 ## API-Vertrag
 
 `src/vertrag/` beschreibt jede Route mit zod: Antwort und, für jede

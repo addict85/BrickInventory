@@ -11,6 +11,9 @@
  *   D  (29.10.) in initSchema() wieder die Sperre „älter als 0050“ → rot:
  *      „eine Datenbank mit 0045, aber ohne 0050 startet …“ (der Stand von
  *      main bis 1ad80a5).
+ *   F  (09.11.) in db/basis.sql eine Zeile `ALTER TABLE ONLY public.users ALTER COLUMN …` von Hand
+ *      ergänzt → rot: „db/basis.sql ist ein unverändertes Abbild …“; ebenso eine Migration, die
+ *      in basis.sql als angewandt steht, deren Datei es nicht gibt → rot: „… eine lückenlose Folge …“
  *   E  (08.11.) in initSchemaOnce() den Aufruf pruefeMindeststand() entfernt
  *      → rot: „eine Datenbank älter als 0050 hält den Start an …“ (der Start
  *      lief durch und spielte die offenen Migrationen ein)
@@ -99,5 +102,46 @@ test('Erststart über db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
       'auf dem zu alten Stand lief eine Migration');
     await db.run('DROP TABLE schema_migrations');
     await assert.rejects(db.initSchemaOnce(), /älter als Migration 0050/, 'ohne Migrationstabelle gilt die Datenbank als zu alt');
+  });
+});
+
+test('db/basis.sql ist erzeugt, nicht geschrieben', { concurrency: 1, timeout: 180_000 }, async (t) => {
+  const admin = new Client({ connectionString: BASIS });
+  try { await admin.connect(); }
+  catch (e) {
+    if (process.env.REQUIRE_DB === '1')
+      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
+    t.skip('Test-DB nicht erreichbar'); return;
+  }
+  const NAME2 = testName('schema_abbild');
+  await raeumeReste(admin, 'schema_abbild');
+  await admin.query(`CREATE DATABASE ${id(NAME2)}`);
+  const ziel2 = new URL(BASIS); ziel2.pathname = '/' + NAME2;
+  const c = new Client({ connectionString: ziel2.toString() });
+  t.after(async () => {
+    await c.end().catch(() => {});
+    await admin.query(`DROP DATABASE IF EXISTS ${id(NAME2)} WITH (FORCE)`).catch(() => {});
+    await admin.end().catch(() => {});
+  });
+  await c.connect();
+  const datei = fs.readFileSync(path.join(ROOT, 'db/basis.sql'), 'utf8');
+  await c.query(datei);
+
+  await t.test('die Basis nennt eine lückenlose Folge vorhandener Migrationen', async () => {
+    const inBasis = (await c.query('SELECT name FROM schema_migrations ORDER BY name')).rows.map(r => r.name);
+    const dateien = fs.readdirSync(path.join(ROOT, 'db/migrations')).filter(f => f.endsWith('.sql')).sort();
+    assert.ok(inBasis.length > 50, `nur ${inBasis.length} Migrationen in der Basis`);
+    assert.deepEqual(inBasis, dateien.slice(0, inBasis.length), 'Die Basis ist ein Abbild der ersten N Migrationsdateien');
+  });
+
+  await t.test('db/basis.sql ist ein unverändertes Abbild der Datenbank, die es erzeugt', async (tt) => {
+    const sk = require(path.join(ROOT, 'scripts', 'schema-stand.js'));
+    const erzeugtMit = Number((datei.match(/^-- Erzeugt mit pg_dump (\d+)\./m) || [])[1]);
+    let jetzt = null;
+    try { jetzt = sk.pgDumpVersion(); } catch { /* kein pg_dump im Pfad */ }
+    // pg_dump schreibt je Hauptversion anders; verglichen wird nur mit derselben.
+    if (jetzt !== erzeugtMit) { tt.skip(`pg_dump ${jetzt ?? 'fehlt'}, die Basis ist mit ${erzeugtMit} erzeugt`); return; }
+    assert.equal(sk.basisText(ziel2.toString()), datei,
+      'db/basis.sql weicht vom Erzeugnis ab — nicht von Hand ändern, neu erzeugen: npm run build && npm run schema:stand');
   });
 });
