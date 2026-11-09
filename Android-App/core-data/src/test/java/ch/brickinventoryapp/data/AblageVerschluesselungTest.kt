@@ -1,12 +1,10 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.lokal.room.istKlartextDatenbank
-import ch.brickinventoryapp.data.lokal.room.sqlcipherPasswort
-import ch.brickinventoryapp.data.util.AblageChiffre
-import ch.brickinventoryapp.data.util.Ablageschluessel
-import ch.brickinventoryapp.data.util.TokenVerschluesselung
-import ch.brickinventoryapp.data.util.Tresorbefund
+import ch.brickinventoryapp.sicherheit.AblageChiffre
+import ch.brickinventoryapp.sicherheit.Ablageschluessel
+import ch.brickinventoryapp.sicherheit.TokenVerschluesselung
+import ch.brickinventoryapp.sicherheit.Tresorbefund
 import ch.brickinventoryapp.testing.ResponseCache
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.builtins.ListSerializer
@@ -196,17 +194,5 @@ class AblageVerschluesselungTest {
         // Eine Datei ohne Verschlüsselung wird nicht gelesen.
         dateien.single().writeText("""["untergeschoben"]""")
         assertNull(cache.getMitStand("konto", "sets", liste))
-    }
-
-    @Test
-    fun `die Datenbank bekommt einen fertigen Schluessel und erkennt Klartext`() {
-        val schluessel = ByteArray(32) { it.toByte() }
-        val p = String(sqlcipherPasswort(schluessel), Charsets.US_ASCII)
-        assertEquals("x'000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f'", p)
-        val klar = File(ordner, "bestand.db").apply { writeBytes("SQLite format 3\u0000".toByteArray() + ByteArray(100)) }
-        assertTrue(istKlartextDatenbank(klar))
-        val verschluesselt = File(ordner, "neu.db").apply { writeBytes(ByteArray(116) { (it * 7).toByte() }) }
-        assertFalse(istKlartextDatenbank(verschluesselt))
-        assertFalse(istKlartextDatenbank(File(ordner, "fehlt.db")))
     }
 }

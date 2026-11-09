@@ -7,6 +7,11 @@ import type { DbSchnittstelle } from './database';
 import { LOCKS } from '../src/infra/lockNamespaces';
 import { meldeFehler } from '../src/infra/fehler';
 
+/** Eine Transaktionssperre auf (Klasse, hashtext(schluessel)); sie endet mit COMMIT oder ROLLBACK. */
+async function sperreBisZumEnde(tx: DbSchnittstelle, klasse: number, schluessel: string): Promise<void> {
+  await tx.run('SELECT pg_advisory_xact_lock($1, hashtext($2))', [klasse, schluessel]);
+}
+
 /** Führt fn in einer Transaktion aus, die exklusiven Zugriff auf den
  * angegebenen Bestandsschlüssel hat.
  * Ausführlich: docs/begruendungen/db/txLock.ts.md#withinventorylock
@@ -18,7 +23,7 @@ async function withInventoryLock<T>(userId: number, scopeKey: string | number, f
     // Konto 42 beim Verschieben eines Sets den Bild-Download desselben Sets
     // (LOCKS.BILD_DOWNLOAD = 42, hashtext(Setnummer)). Gleiche Streuwerte
     // verschiedener Schlüssel serialisieren nur, was es nicht müsste.
-    await tx.run('SELECT pg_advisory_xact_lock($1, hashtext($2))', [LOCKS.INVENTAR, `${userId}|${scopeKey}`]);
+    await sperreBisZumEnde(tx, LOCKS.INVENTAR, `${userId}|${scopeKey}`);
     return fn(tx);
   }, o);
 }
@@ -88,4 +93,4 @@ async function gibSchluesselSperreFrei(c: Abfrager, namensraum: number, schluess
 }
 
 export { withInventoryLock, bestandsSchluessel, sperreHaushaltswaehrung, mitSitzungsSperre, belegeSitzungsSperre,
-  versucheSchluesselSperre, gibSchluesselSperreFrei };
+  versucheSchluesselSperre, gibSchluesselSperreFrei, sperreBisZumEnde };

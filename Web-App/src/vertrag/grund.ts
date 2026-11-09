@@ -51,7 +51,8 @@ export const PFAD = {
   jobId: imPfad(/^\d{10,16}-[a-z0-9]{4,12}$/),
   condition: imPfad(/^[NUnu]$/).transform(v => v.toUpperCase() as 'N' | 'U'),
   art: imPfad(/^[a-z_]{1,40}$/),
-  tokenId: imPfad(/^[A-Za-z0-9_-]{1,64}$/),
+  // Genau die Kennung aus GET /settings/tokens: Ein Präfix träfe mehrere Zugänge.
+  tokenId: imPfad(/^[0-9a-f]{16}$/),
   barcode: imPfad(/^[A-Za-z0-9-]{1,64}$/),
 } as const;
 type Namen<P extends string> = P extends `${string}/:${infer N}/${infer R}` ? N | Namen<`/${R}`>

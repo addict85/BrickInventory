@@ -2,7 +2,7 @@ import * as db from '../../db/database';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
 import { nacharbeit } from '../auftraege/nacharbeit';
 import { schreibeNutzerEinstellung, nutzerWertGueltig, deleteUserSetting } from '../einstellungen/settings';
-import { fehlerWerfen } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/fehlerTexte';
 import { zaehleAnfrage } from './loginLimiter';
 import * as repo from './repository/waehrung';
 
@@ -12,7 +12,7 @@ import * as repo from './repository/waehrung';
 export async function setUserSetting(userId: number, key: string, value: unknown) {
   if (key !== 'currency') return schreibeNutzerEinstellung(userId, key, value);
   const v = String(value).trim();
-  if (!nutzerWertGueltig(key, v)) fehlerWerfen('wert_ungueltig', 400);
+  if (!nutzerWertGueltig(key, v)) fachfehler('ungueltig', 'wert_ungueltig');
   return setzeHaushaltswaehrung(userId, v);
 }
 
@@ -24,15 +24,15 @@ async function setzeHaushaltswaehrung(userId: number, waehrung: string) {
     const alt = await repo.waehrungIn(tx, userId);
     const unterkonto = await repo.hatHauptkonto(tx, userId);
     if (alt !== waehrung) {
-      if (unterkonto) fehlerWerfen('waehrung_nur_hauptkonto', 403);
+      if (unterkonto) fachfehler('verboten', 'waehrung_nur_hauptkonto');
       // Jeder Wechsel stösst einen vollen Preislauf an.
       const takt = await zaehleAnfrage('waehrung', `konto:${userId}`, 60 * 60 * 1000);
-      if (takt.count > 5) fehlerWerfen('zu_viele_anfragen', 429, { minuten: takt.waitMin });
+      if (takt.count > 5) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: takt.waitMin });
     }
     if (unterkonto) return alt;
     const haushalt = await repo.eigenerHaushalt(tx, userId);
     if ((await repo.fremdGeteilt(tx, haushalt, waehrung)).length) {
-      if (alt !== waehrung) fehlerWerfen('waehrung_geteiltes_unterkonto', 409);
+      if (alt !== waehrung) fachfehler('konflikt', 'waehrung_geteiltes_unterkonto');
       return alt;
     }
     await repo.setzeWaehrungFuer(tx, haushalt, waehrung);

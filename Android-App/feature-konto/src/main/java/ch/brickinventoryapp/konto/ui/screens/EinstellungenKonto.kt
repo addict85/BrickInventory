@@ -20,13 +20,13 @@ import ch.brickinventoryapp.ui.components.FehlerZeile
 import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ui.components.PasswortArt
 import ch.brickinventoryapp.ui.components.PasswortFeld
-import ch.brickinventoryapp.data.util.PASSWORT_MIN_ZEICHEN
+import ch.brickinventoryapp.sicherheit.PASSWORT_MIN_ZEICHEN
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.konto.ui.*
 import ch.brickinventoryapp.model.ui.*
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.zustand.ui.*
-import ch.brickinventoryapp.data.util.passwortZuKurz
+import ch.brickinventoryapp.sicherheit.passwortZuKurz
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.DESIGN_NAMEN
 import ch.brickinventoryapp.ui.DESIGN_TEXTE

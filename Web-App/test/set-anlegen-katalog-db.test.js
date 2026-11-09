@@ -60,7 +60,7 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async (t) =
     });
 
     await t.test('erneutes Erfassen ohne Quellen lässt den Katalognamen stehen', async () => {
-      const r = await _req('src/sets/setService.js').addSet(SN, 1, uid, null, 10, 'N');
+      const r = await _req('src/sets/index.js').addSet({ setNumber: SN, menge: 1, konto: uid, kaufpreis: 10, zustand: 'N' });
       assert.equal(r.action, 'added');
       const kat = await db.get('SELECT name, year FROM set_catalog WHERE set_number=$1', [SN]);
       assert.equal(kat.name, 'Titanic');
@@ -68,9 +68,9 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async (t) =
     });
 
     await t.test('eine Eingabe ohne Ziffer wird nicht als Set angelegt', async () => {
-      const { addSet } = _req('src/sets/setService.js');
-      await assert.rejects(addSet('abc', 1, uid, null, null, 'N'),
-        (e) => e.status === 400 && e.code === 'setnummer_ungueltig');
+      const { addSet } = _req('src/sets/index.js');
+      await assert.rejects(addSet({ setNumber: 'abc', menge: 1, konto: uid, zustand: 'N' }),
+        (e) => e.art === 'ungueltig' && e.code === 'setnummer_ungueltig');
       assert.equal(await db.get(`SELECT 1 FROM sets WHERE user_id=$1 AND set_number='abc-1'`, [uid]), undefined);
       const { moeglicheSetNummer } = _req('src/infra/setNummer.js');
       for (const gut of ['10294-1', '928-1', 'comcon001-1', 'llca37-1', '5005358-2'])

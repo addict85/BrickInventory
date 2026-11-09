@@ -110,7 +110,7 @@ fun FinanceScreen(
     val figsValuation = financeState.figsValuation
     val pnl = financeState.pnl
     val householdMembers = blick.householdMembers
-    val scopeMode = blick.scopeModes[ScopeFilter.View.FINANCE.key]
+    val scopeMode = blick.scopeModes[ScopeFilter.View.FINANCE]
         ?: ScopeFilter.ALL
 
     val onScopeChange: (String) -> Unit = { aktionen.setScope(ScopeFilter.View.FINANCE, it) }

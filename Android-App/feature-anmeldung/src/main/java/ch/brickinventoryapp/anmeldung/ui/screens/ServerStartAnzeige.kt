@@ -32,7 +32,7 @@ import ch.brickinventoryapp.ui.components.ausserhalbDerSystemleisten
  * Ausführlich: docs/begruendungen/feature-anmeldung/anmeldung/ui/screens/ServerStartAnzeige.kt.md#serverstartanzeige
  */
 @Composable
-fun ServerStartAnzeige(status: StartzustandAnsicht, modifier: Modifier = Modifier) {
+internal fun ServerStartAnzeige(status: StartzustandAnsicht, modifier: Modifier = Modifier) {
     Box(modifier.fillMaxSize().ausserhalbDerSystemleisten(), contentAlignment = Alignment.Center) {
         Column(
             Modifier.padding(Abstaende.riesig),

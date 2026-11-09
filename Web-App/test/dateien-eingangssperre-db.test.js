@@ -1,5 +1,5 @@
 /**
- * Dateien und Bild-Proxy stehen vor dem Eingang von /api/v1; die Sperren
+ * Dateien, Bilder und Bild-Proxy stehen vor dem Eingang von /api/v1; die Sperren
  * „Passwortwechsel nötig“ und „2. Faktor Pflicht für Verwalter“ gelten trotzdem.
  *
  * Gegenproben (am 08.11.2026 gemessen):
@@ -10,6 +10,9 @@
  *      Teiltests beim Bild-Proxy (nicht mehr 403)
  *   C  Prüfung zweiterFaktorPflicht in eingangsSperre gestrichen → rot:
  *      „Verwalter ohne zweiten Faktor“, „Passwortwechsel“ bleibt grün
+ *   D  (09.11.2026) in routes/seiten.ts die Bildroute wieder ohne
+ *      requireLoginOrToken, eingangsSperre → rot: beide Sperr-Teiltests bei
+ *      /images/parts/probe.png (200 statt 403)
  *
  * REQUIRE_DB=1.
  */
@@ -58,10 +61,13 @@ test('Dateien und Bild-Proxy: Eingangssperren', { concurrency: 1 }, async t => {
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [normal, SN]);
   fs.mkdirSync(path.join(WURZEL, 'data', 'instructions'), { recursive: true });
   fs.writeFileSync(path.join(WURZEL, 'data', 'instructions', `${SN}_1.pdf`), '%PDF-1.4');
+  fs.mkdirSync(path.join(WURZEL, 'data', 'images', 'parts'), { recursive: true });
+  fs.writeFileSync(path.join(WURZEL, 'data', 'images', 'parts', 'probe.png'), 'kein echtes png');
 
   const sitzung = {};
   const { app, base } = testServer(_req, { sitzung, routen: { '/': 'routes/datenDateien.js' }, t });
   _req('routes/imgProxy.js').registerImgProxy(app);
+  app.use('/', _req('routes/seiten.js'));
   const hole = async (uid, weg) => {
     const k = await db.get('SELECT is_admin FROM users WHERE id = $1', [uid]);
     Object.assign(sitzung, { userId: uid, isAdmin: k.is_admin === true });
@@ -75,6 +81,7 @@ test('Dateien und Bild-Proxy: Eingangssperren', { concurrency: 1 }, async t => {
     `/data/instructions/${SN}_1.pdf`,
     `/api/v1/img-proxy?${bild}`,
     `/api/img-proxy?${bild}`,
+    '/images/parts/probe.png',
   ];
 
   t.after(async () => {
@@ -102,6 +109,7 @@ test('Dateien und Bild-Proxy: Eingangssperren', { concurrency: 1 }, async t => {
   await t.test('gewöhnliches Konto und Verwalter mit zweitem Faktor kommen durch', async () => {
     assert.equal((await hole(normal, `/data/uploads/${normal}/a.pdf`)).status, 200);
     assert.equal((await hole(normal, `/data/instructions/${SN}_1.pdf`)).status, 200);
+    assert.equal((await hole(normal, '/images/parts/probe.png')).status, 200);
     assert.equal((await hole(chef2fa, `/data/uploads/${chef2fa}/a.pdf`)).status, 200);
     // 400 kommt erst vom Proxy selbst: Die Sperre liess den Verwalter durch.
     assert.equal((await hole(chef2fa, '/api/v1/img-proxy?url=http%3A%2F%2Fnein')).status, 400);

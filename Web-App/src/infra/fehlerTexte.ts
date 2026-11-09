@@ -79,6 +79,20 @@ export const FEHLER = {
                                  en: 'This app is too old for the server (needs interface {min}) — please update the app.' },
   nur_mit_sitzung:             { de: 'Das geht nur aus einer angemeldeten Browser-Sitzung.',
                                  en: 'This is only possible from a signed-in browser session.' },
+  nur_mit_app_token:           { de: 'Das geht nur mit dem Zugang der App.',
+                                 en: 'This is only possible with the app’s access token.' },
+  geraeteschluessel_fehlt:     { de: 'Dieser Schritt braucht die Gerätesperre, und dieser Zugang ist an keine gebunden. Bitte die App aktualisieren, eine Displaysperre einrichten und neu anmelden – oder den Schritt in der Webapp ausführen.',
+                                 en: 'This step needs the device lock, and this access token is not bound to one. Please update the app, set up a screen lock and sign in again – or do this step in the web app.' },
+  geraeteschluessel_ungueltig: { de: 'Der Geräteschlüssel ist ungültig (erwartet: EC P-256).',
+                                 en: 'The device key is invalid (expected: EC P-256).' },
+  geraeteschluessel_vorhanden: { de: 'Dieser Zugang ist schon an einen anderen Geräteschlüssel gebunden. Bitte neu anmelden.',
+                                 en: 'This access token is already bound to another device key. Please sign in again.' },
+  geraeteschluessel_frist:     { de: 'Ein Geräteschlüssel lässt sich nur gleich nach der Anmeldung hinterlegen. Bitte neu anmelden.',
+                                 en: 'A device key can only be registered right after signing in. Please sign in again.' },
+  schritt_freigabe_noetig:     { de: 'Bitte diesen Schritt zuerst mit der Gerätesperre bestätigen.',
+                                 en: 'Please confirm this step with the device lock first.' },
+  schritt_signatur_ungueltig:  { de: 'Die Bestätigung mit der Gerätesperre wurde nicht angenommen. Wurde ein Fingerabdruck neu eingerichtet, bitte neu anmelden.',
+                                 en: 'The device-lock confirmation was not accepted. If a fingerprint was added recently, please sign in again.' },
   import_unterbrochen:         { de: 'Der Import wurde unterbrochen — der Server wurde neu gestartet oder der Import hing. Bitte erneut starten.',
                                  en: 'The import was interrupted — the server restarted or the import stalled. Please start it again.' },
   import_zeile_unterbrochen:   { de: 'Der Server wurde während dieses Sets neu gestartet — bitte die Menge prüfen.',
@@ -134,7 +148,7 @@ export const FEHLER = {
   waehrung_ungleich:           {
     de: 'Beide Konten müssen dieselbe Währung verwenden (Hauptkonto: {haupt}, dieses Konto: {unter}).',
     en: 'Both accounts must use the same currency (main account: {haupt}, this account: {unter}).' },
-  // Die 60 steht ausgeschrieben, weil fehlerWerfen() keine Platzhalter füllt;
+  // Die 60 steht ausgeschrieben, weil fachfehler() keine Platzhalter füllt;
   // test/lagerort.test.js hält sie mit LAGERORT_MAX_ZEICHEN zusammen.
   lagerort_zu_lang:            {
     de: 'Der Lagerort ist zu lang (höchstens 60 Zeichen).',
@@ -407,10 +421,15 @@ export function antwortSprache(req: { headers?: Record<string, unknown> } | unde
   return roh.startsWith('en') || roh.includes(',en') ? 'en' : 'de';
 }
 
-/** Code und Status reisen mit, der Satz entsteht erst in der Antwort in der
+/** Was schiefging, fachlich gesagt. Welcher HTTP-Status dazu gehört, weiss nur
+ * src/http/fehlerArt.ts: Dienste laufen auch im Job-Prozess und in Skripten. */
+export type FehlerArt = 'ungueltig' | 'nicht_angemeldet' | 'verboten' | 'nicht_gefunden' | 'konflikt' | 'zu_gross'
+  | 'falscher_typ' | 'zu_viele' | 'intern' | 'fremddienst' | 'nicht_verfuegbar' | 'zeitueberschreitung';
+
+/** Art und Code reisen mit, der Satz entsteht erst in der Antwort in der
  * Sprache des Anfragenden. */
 export class Fachfehler extends Error {
-  constructor(readonly code: FehlerCode, readonly status: number, readonly vars?: Record<string, string | number>) {
+  constructor(readonly art: FehlerArt, readonly code: FehlerCode, readonly vars?: Record<string, string | number>) {
     super(fehlerText(code, 'de', vars));
     this.name = 'Fachfehler';
   }
@@ -427,22 +446,22 @@ export class Meldung extends Error {
 
 /** Zwei gleichzeitige Anlagen (23505) sind eine Nutzereingabe, kein
  * Serverfehler; alles andere geht unverändert weiter. */
-export function alsDoppelt(code: FehlerCode, status = 409): (e: unknown) => never {
+export function alsDoppelt(code: FehlerCode): (e: unknown) => never {
   return (e: unknown) => {
-    if ((e as { code?: unknown } | null)?.code === '23505') throw new Fachfehler(code, status);
+    if ((e as { code?: unknown } | null)?.code === '23505') throw new Fachfehler('konflikt', code);
     throw e;
   };
 }
 
-// Helfer werfen den Code, die Route übersetzt. Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#fehlerwerfen
-export function fehlerWerfen(code: FehlerCode, status: number, vars?: Record<string, string | number>): never {
-  throw dateiFehler(code, status, vars);
+/** Bricht den Dienst mit einem Grund ab, den die Route dem Anfragenden nennt.
+ * Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#fehlerwerfen */
+export function fachfehler(art: FehlerArt, code: FehlerCode, vars?: Record<string, string | number>): never {
+  throw new Fachfehler(art, code, vars);
 }
 
 /** Für Rückrufe wie multers fileFilter, die einen Fehler übergeben statt ihn zu werfen. */
-export function dateiFehler(code: FehlerCode, status: number, vars?: Record<string, string | number>): Error {
-  // Deutsch als `message`, damit ein Protokolleintrag lesbar bleibt.
-  return new Fachfehler(code, status, vars);
+export function dateiFehler(art: FehlerArt, code: FehlerCode, vars?: Record<string, string | number>): Error {
+  return new Fachfehler(art, code, vars);
 }
 
 export function fehlerText(

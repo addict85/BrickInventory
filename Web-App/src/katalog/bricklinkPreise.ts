@@ -4,7 +4,7 @@
 import { bricklinkRequest, alsAbrufFehler } from './quellen';
 import { mitVersion, ohneBricklinkPreis, ohneVersion } from '../infra/setNummer';
 import * as repo from './repository/katalogCache';
-import { fehlerWerfen } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/fehlerTexte';
 import type { KatalogEintrag } from './repository/katalogCache';
 
 // Ob ein Datensatz einen Preis hat, an einer Stelle statt in drei Fassungen.
@@ -39,7 +39,7 @@ async function getPriceGuideRaw(setNumber: string, condition = 'N', guideType = 
   const cached = await katalogEintrag(n);
   if (cached?.bl_type === 'GEAR') return await bricklinkRequest('GET', `/items/gear/${bare}/price`, params);
   if (cached?.bl_type === 'BOOK') return await bricklinkRequest('GET', `/items/book/${bare}/price`, params);
-  if (ohneBricklinkPreis(cached)) fehlerWerfen('kein_bricklink_preis', 404);
+  if (ohneBricklinkPreis(cached)) fachfehler('nicht_gefunden', 'kein_bricklink_preis');
   try {
     return await bricklinkRequest('GET', `/items/set/${n}/price`, params);
   } catch (e) {

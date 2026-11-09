@@ -11,13 +11,13 @@ import { KEINE_FARBE } from '../infra/validate';
 
 export async function bilderFuerNachlauf() {
   const [sets, teile, figuren] = await Promise.all([
-    repo.setsMitFehlendenKatalogbildern().catch(meldeUndLiefere('bild-nachlauf:sets', [])),
+    repo.setsMitFehlendenKatalogbildern(),
     // Der gemeinsame Katalog führt nur geprüfte Adressen: Die Datei gilt für alle Konten.
     // Ausführlich: docs/begruendungen/src/katalog/bildlage.ts.md#electprimaryworker-manualparts
-    repo.manuelleTeileOhneBild().catch(meldeUndLiefere('bild-nachlauf:manualParts', [])),
+    repo.manuelleTeileOhneBild(),
     // Alle Figuren, nicht nur manuelle: Sonst lief jede Kachel über den Proxy.
     // Ausführlich: docs/begruendungen/src/katalog/bildlage.ts.md#electprimaryworker-figstofetch
-    repo.figurenOhneBild().catch(meldeUndLiefere('bild-nachlauf:figsToFetch', [])),
+    repo.figurenOhneBild(),
   ]);
   return { sets, teile, figuren };
 }
@@ -72,7 +72,7 @@ export async function setBildLokalEintragen(setNumber: string): Promise<void> {
 
 export async function setBilderNachladen(): Promise<void> {
   try {
-    const missing = await repo.setBilderOhneDatei().catch(meldeUndLiefere('nachlauf:missing', []));
+    const missing = await repo.setBilderOhneDatei();
     if (!missing.length) return;
     console.log(`[set-img-bg] Downloading ${missing.length} missing set images…`);
     for (const { set_number, image_url } of missing) {

@@ -4,11 +4,10 @@
 import { blickfeldAus } from '../haushalt/haushalt';
 import type { Sicht } from '../haushalt/haushalt';
 import { nacharbeit } from '../auftraege/nacharbeit';
-import { addSet, sanitizeSetNumber } from '../sets/setService';
-import { findSetInScope } from '../sets/setAdd';
+import { addSet, sanitizeSetNumber, findSetInScope } from '../sets';
 import { loescheAlarm } from '../finanzen/preisalarm';
 import * as V from '../infra/validate';
-import { fehlerWerfen } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/fehlerTexte';
 import { geldEingabe } from '../infra/geld';
 import { nutzerStandardZustand, getSetting } from '../einstellungen/settings';
 import { meldeFehler, meldeUndLiefere, oeffentlicherFehler } from '../infra/fehler';
@@ -188,19 +187,19 @@ export async function uebernimm(
   // verschwindet; `eingabe.condition` der, in dem das Set erfasst wird.
   const merkpostenZustand = await zustandOder(condition, besitzerId);
   // Übernommen wird ein Merkposten; ohne ihn wäre das ein zweiter Weg zum Erfassen.
-  if (!await repo.istVorgemerkt(besitzerId, sn, merkpostenZustand)) fehlerWerfen('nicht_gefunden', 404);
+  if (!await repo.istVorgemerkt(besitzerId, sn, merkpostenZustand)) fachfehler('nicht_gefunden', 'nicht_gefunden');
   const zustand = eingabe.condition == null
     ? merkpostenZustand
     : await zustandOder(eingabe.condition, besitzerId);
 
-  // Schon im Blickfeld? Dann NICHT die Menge erhöhen (src/sets/setAdd.ts). Der
+  // Schon im Blickfeld? Dann NICHT die Menge erhöhen (src/sets/erfassen.ts). Der
   // Merkposten ist trotzdem erledigt und verschwindet.
   const vorhanden = await findSetInScope(leserId, sn);
   const ergebnis = vorhanden
     ? { action: 'exists', set_number: sn }
-    : await addSet(sn, V.acquisitionQuantity(eingabe.quantity ?? 1), besitzerId, null,
-                   geldEingabe(eingabe.purchase_price, 'Kaufpreis'), zustand,
-                   eingabe.storage == null ? null : String(eingabe.storage));
+    : await addSet({ setNumber: sn, menge: V.acquisitionQuantity(eingabe.quantity ?? 1), konto: besitzerId,
+                     kaufpreis: geldEingabe(eingabe.purchase_price, 'Kaufpreis'), zustand,
+                     lagerort: eingabe.storage == null ? null : String(eingabe.storage) });
 
   // Nach dem MERKPOSTEN-Zustand: Es geht um die Zeile, die man erfüllt hat.
   await loescheMerkposten(besitzerId, sn, merkpostenZustand);

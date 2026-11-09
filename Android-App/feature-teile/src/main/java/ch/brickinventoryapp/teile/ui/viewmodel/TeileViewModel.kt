@@ -28,7 +28,6 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import ch.brickinventoryapp.model.data.model.GenericResponse
 import androidx.lifecycle.ViewModel
-import ch.brickinventoryapp.zustand.ui.AppUiState
 import ch.brickinventoryapp.zustand.ui.Sitzung
 import ch.brickinventoryapp.zustand.ui.Bestandssignal
 import ch.brickinventoryapp.model.ui.ScrollMemory
@@ -36,6 +35,10 @@ import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
 import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
 import ch.brickinventoryapp.zustand.ui.viewmodel.folgeBestand
+import ch.brickinventoryapp.model.data.Ersatzteilwahl
+import ch.brickinventoryapp.model.ui.Listenansicht
+import ch.brickinventoryapp.teile.ui.TeileSitzungUiState
+import ch.brickinventoryapp.zustand.ui.abgeleitet
 
 /**
  * Teile und Minifiguren: Listen, Filter, Erfassen und Ändern manueller
@@ -57,7 +60,8 @@ class TeileViewModel @Inject constructor(
     private val gemerkt: SavedStateHandle,
 ) : ViewModel(), Filterwahl by filter, TeileAktionen {
 
-    val state: StateFlow<AppUiState> = sitzung.state
+    val state: StateFlow<TeileSitzungUiState> =
+        sitzung.state.abgeleitet { TeileSitzungUiState(it.serverUrl, it.currency, it.userDefaultCondition) }
 
     init {
         folgeAbmeldung(sitzung) { zuruecksetzen() }
@@ -139,12 +143,12 @@ class TeileViewModel @Inject constructor(
     override fun loadPartsColors() = teile.ladeFarben()
 
     override fun setPartsQuery(q: String) { gemerkt[F_SUCHE] = q; teile.setzeSuche(q) }
-    override fun setPartsSpare(wert: String) { gemerkt[F_ERSATZ] = wert; teile.setzeErsatzteile(wert) }
-    override fun setPartsView(wert: String) { gemerkt[F_ANSICHT] = wert; teile.setzeAnsicht(wert) }
+    override fun setPartsSpare(wert: Ersatzteilwahl) { gemerkt[F_ERSATZ] = wert; teile.setzeErsatzteile(wert) }
+    override fun setPartsView(wert: Listenansicht) { gemerkt[F_ANSICHT] = wert; teile.setzeAnsicht(wert) }
     override fun setPartsColorFilter(wert: String) { gemerkt[F_FARBE] = wert; teile.setzeFarbe(wert) }
     override fun setPartsCategoryFilter(wert: String) { gemerkt[F_KATEGORIE] = wert; teile.setzeKategorie(wert) }
     override fun setMinifigsQuery(q: String) { gemerkt[F_FIGUR_SUCHE] = q; teile.setzeFigurSuche(q) }
-    override fun setMinifigsView(wert: String) { gemerkt[F_FIGUR_ANSICHT] = wert; teile.setzeFigurAnsicht(wert) }
+    override fun setMinifigsView(wert: Listenansicht) { gemerkt[F_FIGUR_ANSICHT] = wert; teile.setzeFigurAnsicht(wert) }
 
     // ── Erfassen und Ändern ──────────────────────────────────────────────────
 

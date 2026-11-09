@@ -1,14 +1,14 @@
 package ch.brickinventoryapp.zustand
 
 import ch.brickinventoryapp.data.lokal.Abgleich
-import ch.brickinventoryapp.data.lokal.Abgleichsereignis
+import ch.brickinventoryapp.offline.Abgleichsereignis
 import ch.brickinventoryapp.data.lokal.Abgleichsergebnis
-import ch.brickinventoryapp.data.lokal.Bearbeitung
+import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.data.lokal.Bearbeitungssender
-import ch.brickinventoryapp.data.lokal.Offlineablage
+import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.data.lokal.Sendeergebnis
-import ch.brickinventoryapp.data.lokal.SpeicherAusgang
-import ch.brickinventoryapp.data.lokal.SpeicherBestand
+import ch.brickinventoryapp.offline.SpeicherAusgang
+import ch.brickinventoryapp.offline.SpeicherBestand
 import ch.brickinventoryapp.data.lokal.einordnen
 import ch.brickinventoryapp.data.lokal.einordnenLoeschen
 import ch.brickinventoryapp.data.repository.Ergebnis

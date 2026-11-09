@@ -3,28 +3,21 @@
 import { sitzungsKeksName, sitzungsKeksOptionen } from '../src/http/sitzungsKeks';
 const router  = vertragsRouter();
 import * as K from '../src/konto/konten';
-import { meldeHaushaltsaenderung } from '../src/haushalt/haushalt';
-import { logAndContinue, meldeFehler, fehlertext, meldeUndLiefere } from '../src/infra/fehler';
+import * as A from '../src/konto/anmeldungAblauf';
+import { kontoEntfernen } from '../src/konto/kontoEntfernen';
+import { logAndContinue, meldeFehler } from '../src/infra/fehler';
 import { fehlerAntwort } from '../src/http/httpAntwort';
-import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, deleteToken, USERNAME_RE, emailGueltig, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS, nameGueltig, geraeteNameGueltig, geraeteNameInhaltGueltig } from '../src/konto/auth';
-import { APP_HOECHSTDAUER_TAGE, tokenAngaben, tokenLabel, tokenScope } from '../src/konto/tokenWunsch';
+import { pruefeToken, assertLoginAllowed, deleteToken, USERNAME_RE, emailGueltig, rotiereToken, rotationFaellig, UEBERLAPPUNG_MS, nameGueltig, geraeteNameGueltig, geraeteNameInhaltGueltig } from '../src/konto/auth';
+import { tokenAngaben } from '../src/konto/tokenWunsch';
 import * as QR from '../src/konto/qrKopplung';
-import { kontoGedrosselt } from '../src/konto/zielDrossel';
 import { meldeAnmeldung } from '../src/konto/loginLimiter';
 import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigeMitFaktor, zweiterFaktorPflicht } from '../src/konto/http/anmeldung';
-import { tlsStand } from '../src/infra/tlsWurzel';
 import { hinweisNebenher } from '../src/konto/kontoHinweis';
-import crypto from 'crypto';
-import { passwortMangel } from '../src/infra/passwortRegel';
-import { sendEmailGeaendertMail, sendRegistrierungsVersuchMail, sendVerificationMail } from '../src/mail/mailer';
 import type { Request, Response } from 'express';
-import { getSetting } from '../src/einstellungen/settings';
 import { requireApiAdmin } from './api_v1/middleware';
 import { sendeFehler, fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
-import { basisUrl, hinweisOhneBasisUrl, mailBasisUrl, ueberTls, unbegrenztNurMitTls } from '../src/infra/basisUrl';
 import * as zf from '../src/konto/zweiterFaktor';
 import * as P from '../src/konto/passkeys';
-import { loescheKontoDateien } from '../src/gutscheine/gutscheinDateien';
 import { vertragsRouter } from '../src/vertrag/pruefen';
 import type { Antwort, OffeneAnfrage } from '../src/vertrag';
 import benutzerRouter = require('./auth/benutzer');
@@ -35,45 +28,16 @@ import registrierungRouter = require('./auth/registrierung');
 // einem reinen Sitzungswächter von Routen ausgesperrt. Ausführlich: docs/begruendungen/routes/auth.ts.md#requirelogin
 const requireLogin = requireLoginOrToken;
 const requireAdmin = requireApiAdmin;
-type Angemeldet = { id: number | string; username: string; is_admin: boolean; must_change_password?: boolean };
-
-/** Sitzung, Token und Antwort — derselbe Weg nach Passwort und Passkey. */
-/** Wie der Token heissen und gelten soll; beide Anmeldewege prüft der Vertrag. */
-type TokenWunsch = { label?: unknown; never_expires?: boolean | undefined; scope?: string | undefined };
-
-async function angemeldetAntworten(req: Request, res: Response, user: Angemeldet, wunsch: TokenWunsch, mitToken: boolean, mitPasswort = false) {
-  const { label, never_expires, scope } = wunsch;
-  const uid = Number(user.id);
-  // Token ODER Sitzung: Die Sitzung trüge die vollen Rechte am Scope des Tokens vorbei.
+/** Sitzung, Token und Antwort — derselbe Weg nach Passwort und Passkey. Token
+ * ODER Sitzung: Die Sitzung trüge die vollen Rechte am Scope des Tokens vorbei. */
+async function angemeldetAntworten(req: Request, res: Response, user: A.Angemeldet, wunsch: A.TokenWunsch, mitToken: boolean, mitPasswort = false) {
   if (!mitToken) await establishSession(req, {
-    userId:   uid,
-    username: user.username,
-    isAdmin:  user.is_admin,
+    userId: Number(user.id), username: user.username, isAdmin: user.is_admin,
     mussPasswortAendern: user.must_change_password === true,
     // Nur nach einem Passwort, nicht nach einem Passkey allein: Grundlage der Gnadenfrist.
     ...(mitPasswort ? { passwortBestaetigtAm: Date.now() } : {}),
   });
-  // Ein Token, den die Datenbank nie sah, liefe im SSE-Kanal in ein 401.
-  const dauerhaft = never_expires === true;
-  let token: string | null = null;
-  // Die Webapp nur mit httpOnly-Cookie: Ein Token wäre per Skript auslesbar.
-  if (mitToken) {
-    token = await createToken(uid, tokenLabel(label, 'webapp-session'), dauerhaft, dauerhaft ? APP_HOECHSTDAUER_TAGE : null,
-                              { scope: tokenScope(scope), ip: req.ip })
-      .catch((e: unknown) => { console.warn('[login] Token konnte nicht gespeichert werden:', fehlertext(e)); return null; });
-    if (!token) return sendeFehler(req, res, 500, 'token_nicht_ausgestellt');
-    // Ein neues Gerät wie bei token-create und qr-token: Der Inhaber soll es merken.
-    hinweisNebenher(uid, 'token_neu', tokenLabel(label, 'webapp-session'));
-  }
-  // Verwalterrechte trägt die Sitzung und ein Token mit Scope `voll`, nicht `app`.
-  const verwalter = user.is_admin && (!mitToken || tokenScope(scope) === 'voll');
-  // `never_expires` nennt, was gilt: Mit gleitender Frist ist nichts unbegrenzt.
-  res.json({ success: true, ...(token ? { token } : {}), ...(token ? { token_info: await tokenAngaben(token) } : {}),
-    never_expires: false,
-    user: { id: user.id, username: user.username, is_admin: user.is_admin,
-    // Startpasswort (db/database.ts) oder vom Verwalter vergeben (routes/auth/benutzer.ts).
-    mustChangePassword: user.must_change_password,
-    zweiterFaktorPflicht: verwalter && !await zf.istAktiv(uid) } });
+  res.json({ success: true, ...await A.anmeldeAntwort(user, wunsch, mitToken, req.ip) });
 }
 
 /** Die EINE Anmeldung für Webapp und App, damit beide dieselben Regeln erfüllen.
@@ -100,7 +64,7 @@ router.post('/login', async (req: OffeneAnfrage<'POST /api/v1/auth/login'>, res:
     }
     return sendeFehler(req, res, status, code, vars);
   }
-  await angemeldetAntworten(req, res, pruefung.user as Angemeldet, req.eingabe, ohne_token !== true, true);
+  await angemeldetAntworten(req, res, pruefung.user as A.Angemeldet, req.eingabe, ohne_token !== true, true);
 });
 
 /** Sitzung beenden UND Token entwerten, damit ein Aufruf beides wegräumt.
@@ -180,10 +144,8 @@ router.post('/token-create', requireLogin, async (req: OffeneAnfrage<'POST /api/
   if (!geraeteNameInhaltGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
   const userId = angemeldeteNutzerId(req);
   if (!await bestaetigeMitFaktor(req, res, userId, req.eingabe.password)) return;
-  const label = tokenLabel(req.eingabe.label, 'Android App');
-  const neu = await createToken(userId, label, true, null, { scope: tokenScope(req.eingabe.scope), ip: req.ip });
-  hinweisNebenher(userId, 'token_neu', label);
-  res.json({ success: true, token: neu, label, never_expires: false, token_info: await tokenAngaben(neu) });
+  const t = await A.geraeteTokenAusstellen(userId, req.eingabe.label, req.eingabe.scope, req.ip);
+  res.json({ success: true, token: t.token, label: t.label, never_expires: false, token_info: t.token_info });
 });
 
 router.get('/profile', requireLogin, async (req: OffeneAnfrage<'GET /api/v1/auth/profile'>, res: Antwort<'GET /api/v1/auth/profile'>) => {
@@ -207,53 +169,15 @@ router.put('/profile', requireLogin, async (req: OffeneAnfrage<'PUT /api/v1/auth
     return sendeFehler(req, res, 400, 'benutzername_ungueltig');
   if (!nameGueltig(first_name) || !nameGueltig(last_name)) return sendeFehler(req, res, 400, 'name_ungueltig');
 
-  const nameNeu = username && username.toLowerCase() !== String(user.username || '').toLowerCase();
-  const emailChanged = email && email.toLowerCase() !== String(user.email || '').toLowerCase();
-  if (emailChanged && !emailGueltig(email))
+  if (A.emailWirdGeaendert(user, email) && !emailGueltig(email))
     return sendeFehler(req, res, 400, 'email_ungueltig');
   // Jede Änderung mit Passwort (und zweitem Faktor): Über eine neue Adresse liesse
   // sich das Passwort zurücksetzen, und erst danach verrät die Vergabeprüfung, ob
   // es einen Namen oder eine Adresse schon gibt.
   if (!password_current) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
   if (!await bestaetigeMitFaktor(req, res, user.id, String(password_current))) return;
-  if (nameNeu || emailChanged) {
-    // Jede Vergabeprüfung verrät, ob es ein Konto gibt; die Registrierung verbirgt das.
-    const zuOft = await kontoGedrosselt('profil-vergabe', user.id, 10, 60 * 60 * 1000);
-    if (zuOft) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: zuOft.waitMin });
-    // Case-insensitiv und auch gegen die E-Mail-Spalte, weil der Login mit LOWER() beide vergleicht.
-    if (nameNeu && await K.nameVergeben(username, user.id)) return sendeFehler(req, res, 400, 'benutzername_vergeben');
-  }
-
-  const felder: Record<string, unknown> = {};
-  if (username) felder.username = username;
-  if (first_name !== undefined) felder.first_name = first_name || null;
-  if (last_name  !== undefined) felder.last_name  = last_name  || null;
-  if (emailChanged) {
-    // Auch für Verwalter: Ob die Adresse dem Inhaber gehört, zeigt erst der Link.
-    // Bis dahin gilt die alte, und die neue belegt nichts.
-    const token   = crypto.randomBytes(32).toString('hex');
-    await K.merkeEmailNeu(user.id, email, hashToken(token), new Date(Date.now() + 24*60*60*1000));
-    await K.aendereProfil(user.id, felder);
-    // Sprache des Kontos, nicht die Vorgabe. Ausführlich: docs/begruendungen/routes/auth.ts.md#put-profile-emailsent
-    let emailSent = false;
-    const lang = String(await getSetting(user.id, 'language', 'de').catch(meldeUndLiefere('anmeldung:sprache', 'de')));
-    const basis = mailBasisUrl();
-    // Belegt antwortet wie frei, sonst liessen sich Adressen abfragen; der Inhaber
-    // bekommt einen Hinweis statt des Links (uebernimmEmailNeu() wiese ihn ab).
-    const inhaber = await K.kontoMitEmail(email);
-    if (inhaber && inhaber.id !== user.id) {
-      const sprache = String(await getSetting(inhaber.id, 'language', 'de').catch(meldeUndLiefere('anmeldung:sprache', 'de')));
-      if (basis) emailSent = await sendRegistrierungsVersuchMail(inhaber.email, sprache, 'adresse')
-        .then(r => r.success, meldeUndLiefere('anmeldung:versuchsmail', false));
-    } else if (basis) emailSent = await sendVerificationMail(email, token, basis, lang, 'adresse')
-      .then(r => r.success, meldeUndLiefere('anmeldung:bestaetigungsmail', false));
-    // Die alte Adresse erfährt davon — war es nicht der Inhaber, merkt er es so.
-    if (user.email) await sendEmailGeaendertMail(user.email, user.username, email, lang)
-      .catch((e: unknown) => meldeFehler('anmeldung:hinweis-alte-adresse', e));
-    return res.json({ success: true, emailChanged: true, emailSent });
-  }
-
-  await K.aendereProfil(user.id, felder);
+  const r = await A.profilAendern(user, { username, email, first_name, last_name });
+  if (r.emailChanged) return res.json({ success: true, emailChanged: true, emailSent: r.emailSent ?? false });
   res.json({ success: true });
 });
 
@@ -261,11 +185,7 @@ router.put('/profile', requireLogin, async (req: OffeneAnfrage<'PUT /api/v1/auth
 router.delete('/konto', requireLogin, async (req: OffeneAnfrage<'DELETE /api/v1/auth/konto'>, res: Antwort<'DELETE /api/v1/auth/konto'>) => {
   const uid = angemeldeteNutzerId(req);
   if (!await bestaetigeMitFaktor(req, res, uid, req.eingabe.password)) return;
-  if (!await K.loescheEigenesKonto(uid)) return sendeFehler(req, res, 409, 'letzter_verwalter');
-  await revokeAllSessions(uid);
-  await loescheKontoDateien(uid);
-  leereTokenCache();
-  meldeHaushaltsaenderung();
+  if (await kontoEntfernen(uid, null) !== 'entfernt') return sendeFehler(req, res, 409, 'letzter_verwalter');
   console.log(`[konto] Konto ${uid} hat sich selbst gelöscht`);
   req.session.destroy(() => res.clearCookie(sitzungsKeksName(), sitzungsKeksOptionen()).json({ success: true }));
 });
@@ -277,13 +197,8 @@ router.post('/change-password', requireLogin, async (req: OffeneAnfrage<'POST /a
   if (uid == null) return sendeFehler(req, res, 401, 'nicht_angemeldet');
   if (!await bestaetigeMitFaktor(req, res, uid, String(current))) return;
   // NACH der Prüfung des alten Passworts: Ein Fremder erfährt über das neue nichts.
-  // Der Name aus der Tabelle: Mit App-Token gibt es keine Sitzung, die ihn trägt.
-  const konto = await K.kontoKurz(uid);
-  const mangel = passwortMangel(newPassword, konto?.username);
-  if (mangel) return sendeFehler(req, res, 400, mangel);
   // Beendet alle Zugänge, auch den eigenen; die Sitzung wird danach neu aufgebaut.
-  await K.aendereEigenesPasswort(uid, newPassword, { passkeysWiderrufen: req.eingabe.passkeys_widerrufen === true });
-  hinweisNebenher(uid, 'passwort_geaendert');
+  const konto = await A.eigenesPasswortAendern(uid, newPassword, req.eingabe.passkeys_widerrufen === true);
   if (req.session?.userId && konto) {
     await establishSession(req, { userId: uid, username: konto.username, isAdmin: req.session.isAdmin === true,
                                   mussPasswortAendern: false, passwortBestaetigtAm: Date.now() });
@@ -299,25 +214,8 @@ router.post('/qr-token', requireLogin, async (req: OffeneAnfrage<'POST /api/v1/a
   // zugang; nur aus der Sitzung, mit Passwort und zweitem Faktor.
   if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
   if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.password)) return;
-  // Ohne Adresse verweigern statt raten: Eine falsche Adresse im QR-Code fiele
-  // erst später in einem anderen Netz auf. Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token-basis
-  const basis = basisUrl();
-  if (!basis) {
-    // Der Betreiber sähe die Absage sonst in keinem Protokoll.
-    hinweisOhneBasisUrl('auth:qr',
-      'der QR-Code zur Verknuepfung der App laesst sich nicht erzeugen.');
-    return sendeFehler(req, res, 503, 'qr_ohne_basis_url');
-  }
-  // Gewählt von der angemeldeten Sitzung, nicht im unangemeldeten /qr-login.
-  // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token-tage
-  const tage = laufzeitTage(req.eingabe.gueltigkeit) ?? APP_HOECHSTDAUER_TAGE;
-  if (tage === UNBEGRENZT) unbegrenztNurMitTls(basis);
-  const { token, kopplung } = await QR.erzeuge(angemeldeteNutzerId(req), tage);
-  hinweisNebenher(angemeldeteNutzerId(req), 'qr_zugang_neu');
-  // `fp` nur mit TLS: Die App pinnt damit die Wurzel der internen CA.
-  const ca = ueberTls(basis) ? await tlsStand() : null;
-  res.json({ success: true, token, kopplung, expires_in: QR.QR_TTL_MS / 1000,
-    token_days: tage, url: basis, ...(ca ? { fp: ca.fp, zert_sha256: ca.zert_sha256 } : {}) });
+  // Die Laufzeit wählt die angemeldete Sitzung, nicht das unangemeldete /qr-login.
+  res.json({ success: true, ...await A.qrZugangErzeugen(angemeldeteNutzerId(req), req.eingabe.gueltigkeit) });
 });
 
 /** Das Konto muss bei der Meldung und bei der Abholung noch anmelden dürfen. */

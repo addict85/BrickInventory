@@ -3,9 +3,9 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.PinZweckTest
 Rot: ein Zertifikat fuer einen anderen Zweck passt nicht zum Pin
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/ServerVertrauen.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/ServerVertrauen.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/ServerVertrauen.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/ServerVertrauen.kt
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 @@ -306,7 +306,7 @@ internal fun auftragsVertrauen(
   */
  fun passtZumPin(chain: Array<X509Certificate>, pin: String): Boolean {

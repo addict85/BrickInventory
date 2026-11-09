@@ -5,7 +5,7 @@ import { sperreHaushaltswaehrung } from '../../db/txLock';
 import { getSetting } from '../einstellungen/settings';
 import * as repo from './repository';
 import type { ErfassungsArt } from './repository';
-import { fehlerWerfen } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/fehlerTexte';
 import * as pgNotify from '../../db/pgNotify';
 import crypto from 'crypto';
 
@@ -298,7 +298,7 @@ export async function siehtKonto(nutzer: number, besitzer: number): Promise<bool
 export async function schreibziel(nutzer: number, wunsch: unknown,
                                   absage: 'kein_schreibrecht' | 'kein_zugriff_konto' = 'kein_schreibrecht'): Promise<number> {
   const ziel = await resolveWriteTarget(nutzer, wunsch);
-  if (ziel === null) fehlerWerfen(absage, 403);
+  if (ziel === null) fachfehler('verboten', absage);
   return ziel;
 }
 
@@ -322,7 +322,7 @@ export async function acquisitionMoveSource(
   actorId: number, kind: ErfassungsArt, acqId: number
 ): Promise<number> {
   const owner = await repo.besitzerDerErfassung(kind, acqId);
-  if (owner === null || !(await canWriteFor(actorId, owner))) fehlerWerfen('kaufpreis_nicht_gefunden', 404);
+  if (owner === null || !(await canWriteFor(actorId, owner))) fachfehler('nicht_gefunden', 'kaufpreis_nicht_gefunden');
   return owner;
 }
 

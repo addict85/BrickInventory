@@ -907,6 +907,14 @@
     <string name="schritt_untertitel">Confirm with fingerprint, face or your device lock</string>
     <string name="schritt_entsperren">Confirm</string>
     <string name="schritt_kein_schluessel">The device lock cannot be checked right now. Please try again later.</string>
+    <string name="schritt_server_fehler">The server did not accept the confirmation. Please try again.</string>
+    <string name="app_sperre_titel">Lock the app</string>
+    <string name="app_sperre_hint">After this many minutes in the background the app asks for your fingerprint or device lock. Applies to this device.</string>
+    <string name="app_sperre_ohne_displaysperre">Needs a screen lock on this device.</string>
+    <string name="app_sperre_aus">Off</string>
+    <string name="app_sperre_minuten">%1$d min</string>
+    <string name="app_sperre_gesperrt">BrickInventory is locked</string>
+    <string name="app_sperre_entsperren">Unlock</string>
     <string name="schritt_ohne_sperre_titel">No screen lock</string>
     <string name="schritt_ohne_sperre_text">This step (%1$s) normally asks for the screen lock. This device has none: anyone holding the phone can get to voucher PINs, recovery codes and administration without further ado. Set up a PIN, pattern or password in the system settings under Security.</string>
     <string name="schritt_ohne_sperre_weiter">Continue unprotected</string>

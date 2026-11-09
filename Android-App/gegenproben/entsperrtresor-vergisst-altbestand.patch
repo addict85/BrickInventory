@@ -1,11 +1,11 @@
 Gegenprobe: Ein Token älterer Fassung (ohne Präfix) wird über den Entsperr-Schlüssel geöffnet und ist weg
-Modul: core-data
-Test: ch.brickinventoryapp.data.TresorSperreTest
+Modul: core-sicherheit
+Test: ch.brickinventoryapp.sicherheit.TresorSperreTest
 Rot: ein Geheimtext ohne Praefix bleibt
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Tresorbefund.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Tresorbefund.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Tresorbefund.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Tresorbefund.kt
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
 @@ -44,8 +44,7 @@
      override fun entschluessle(gespeichert: String): String? = (oeffne(gespeichert) as? Tresorbefund.Lesbar)?.klartext
  

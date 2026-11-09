@@ -71,7 +71,7 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async (t) => {
     return;
   }
   await seed();
-  const setService = _req('src/sets/setService.js');
+  const setService = _req('src/sets/index.js');
   const teile      = _req('src/teile/manuelleTeile.js');
   const figuren    = _req('src/figuren/manuelleFiguren.js');
   const merkliste  = _req('src/merkliste/merkliste.js');
@@ -81,7 +81,7 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async (t) => {
     // Ohne Netz: getSetInfo/Brickset scheitern still und addSet legt die Zeile
     // trotzdem an („Set 10179-1"). Genau das ist hier erwünscht — geprüft wird
     // der Lagerort, nicht die Anreicherung.
-    await setService.addSet('10179-1', 1, U.ich, null, null, 'N', 'Kiste 3');
+    await setService.addSet({ setNumber: '10179-1', menge: 1, konto: U.ich, zustand: 'N', lagerort: 'Kiste 3' });
     const ort = await ortVon(db, 'sets', 't.user_id=$1 AND t.set_number=$2',
       [U.ich, '10179-1']);
     assert.equal(ort, 'Kiste 3',
@@ -148,7 +148,7 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async (t) => {
     // Vorrat nicht mehr kennt.
     const ort = await db.get(
       'SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [U.ich, 'Vitrine']);
-    // Geprüft wird `code`, nicht der Text: fehlerWerfen() legt die deutsche
+    // Geprüft wird `code`, nicht der Text: fachfehler() legt die deutsche
     // Fassung in `message` und den Code daneben (src/infra/fehlerTexte.ts). Auf
     // den Text zu prüfen hiesse, die Regel an eine Übersetzung zu hängen.
     await assert.rejects(() => L.loescheOrt(U.ich, parseInt(ort.id)),

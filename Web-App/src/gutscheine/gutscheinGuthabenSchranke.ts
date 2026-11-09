@@ -90,6 +90,6 @@ export async function frageGuthabenAb(
     // Ein Fehler der Gegenseite ist kein Serverfehler: Wer gefragt hat, soll den Grund lesen.
     const grund = verdecke(String((e as Error)?.message || e), nummer, pin);
     console.warn(`[guthaben] Abfrage gescheitert: ${grund}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
-    throw new Fachfehler('guthaben_fehlgeschlagen', 502, { grund });
+    throw new Fachfehler('fremddienst', 'guthaben_fehlgeschlagen', { grund });
   }
 }

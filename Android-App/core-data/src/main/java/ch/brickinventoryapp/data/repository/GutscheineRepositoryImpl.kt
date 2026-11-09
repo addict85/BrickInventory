@@ -2,8 +2,8 @@ package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.api.GutscheineApi
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.lokal.Faecher
-import ch.brickinventoryapp.data.lokal.Offlineablage
+import ch.brickinventoryapp.offline.Faecher
+import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.model.data.model.*
 import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
 import okhttp3.MediaType.Companion.toMediaType

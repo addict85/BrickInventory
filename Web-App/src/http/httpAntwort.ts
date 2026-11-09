@@ -5,8 +5,9 @@ import type { Request, Response, NextFunction } from 'express';
 import type { ServerResponse } from 'http';
 import { konfig } from '../infra/konfig';
 import { FEHLER, fehlerText, antwortSprache, dateiFehler, Meldung, sendeFehler } from '../infra/fehlerTexte';
-import type { FehlerCode } from '../infra/fehlerTexte';
 import { fehlertext } from '../infra/fehler';
+import { statusVon } from './fehlerArt';
+import type { FehlerArt, FehlerCode } from '../infra/fehlerTexte';
 
 export interface FehlerZiel { headersSent: boolean; status(code: number): { json(body: unknown): unknown } }
 export interface FehlerQuelle { method?: string; originalUrl?: string; url?: string; headers?: Record<string, unknown> }
@@ -16,7 +17,7 @@ interface Geworfen { status?: unknown; code?: unknown; vars?: Record<string, str
 // Interna ins Protokoll, nicht zum Client. Ausführlich: docs/begruendungen/src/http/httpAntwort.ts.md#handlerouteerror
 export function handleRouteError(res: FehlerZiel, fehler: unknown, status?: number, req?: FehlerQuelle): void {
   const e = alsUploadFehler(fehler) as Geworfen | null | undefined;
-  const code = status || (typeof e?.status === 'number' ? e.status : 500);
+  const code = status || statusVon(e);
   // Erst der Pfad sagt, welche Route es war: Eine Stelle bedient oft mehrere.
   const wo = req?.originalUrl || req?.url;
   // Ohne Zeilenumbrüche: Ein Pfad oder Text mit Umbruch täuschte sonst eine zweite Protokollzeile vor.
@@ -52,13 +53,13 @@ export function handleRouteError(res: FehlerZiel, fehler: unknown, status?: numb
 }
 
 /** SQLSTATE der Integritätsregeln → Antwort. Das Protokoll nennt weiter die verletzte Regel. */
-const DB_REGELN: Record<string, [FehlerCode, number]> = {
-  '22003': ['wert_ungueltig', 400],  // numeric_value_out_of_range
-  '22P02': ['wert_ungueltig', 400],  // invalid_text_representation
-  '23502': ['wert_ungueltig', 400],  // not_null_violation
-  '23514': ['wert_ungueltig', 400],  // check_violation
-  '23505': ['schon_vorhanden', 409], // unique_violation
-  '23503': ['bezug_fehlt', 409],     // foreign_key_violation
+const DB_REGELN: Record<string, [FehlerCode, FehlerArt]> = {
+  '22003': ['wert_ungueltig', 'ungueltig'],  // numeric_value_out_of_range
+  '22P02': ['wert_ungueltig', 'ungueltig'],  // invalid_text_representation
+  '23502': ['wert_ungueltig', 'ungueltig'],  // not_null_violation
+  '23514': ['wert_ungueltig', 'ungueltig'],  // check_violation
+  '23505': ['schon_vorhanden', 'konflikt'],  // unique_violation
+  '23503': ['bezug_fehlt', 'konflikt'],      // foreign_key_violation
 };
 
 /** Ohne Status sähe eine zu grosse Datei wie ein Serverfehler aus; hier wird
@@ -66,19 +67,19 @@ const DB_REGELN: Record<string, [FehlerCode, number]> = {
 function alsUploadFehler<T>(e: T): T | Error {
   const m = e as { name?: unknown; code?: unknown; type?: unknown } | null;
   // Fehler des Body-Parsers: Sein Text nennt Parser und Zeichenposition.
-  if (m?.type === 'entity.parse.failed') return dateiFehler('anfrage_json_ungueltig', 400);
+  if (m?.type === 'entity.parse.failed') return dateiFehler('ungueltig', 'anfrage_json_ungueltig');
   // Zweite Linie hinter dem Vertrag: Was erst an einer Regel der Datenbank
   // scheitert, ist eine falsche Eingabe oder ein Wettlauf, kein Serverfehler.
   if (typeof m?.code === 'string' && m.code in DB_REGELN) {
-    const [code, status] = DB_REGELN[m.code]!;
-    return dateiFehler(code, status);
+    const [code, art] = DB_REGELN[m.code]!;
+    return dateiFehler(art, code);
   }
-  if (m?.type === 'entity.too.large') return dateiFehler('anfrage_zu_gross', 413);
+  if (m?.type === 'entity.too.large') return dateiFehler('zu_gross', 'anfrage_zu_gross');
   if (typeof m?.type === 'string' && /^(charset|encoding)\.unsupported$|^request\.aborted$|^entity\.verify\.failed$/.test(m.type))
-    return dateiFehler('anfrage_unlesbar', 400);
+    return dateiFehler('ungueltig', 'anfrage_unlesbar');
   if (m?.name !== 'MulterError') return e;
   const zuGross = m.code === 'LIMIT_FILE_SIZE';
-  return dateiFehler(zuGross ? 'datei_zu_gross' : 'upload_ungueltig', zuGross ? 413 : 400);
+  return dateiFehler(zuGross ? 'zu_gross' : 'ungueltig', zuGross ? 'datei_zu_gross' : 'upload_ungueltig');
 }
 
 // Express 5 liefert Platzhalter auch als Array; verbunden wird mit / statt Komma.

@@ -2,14 +2,17 @@ package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.lokal.Bearbeitung
-import ch.brickinventoryapp.data.lokal.Faecher
-import ch.brickinventoryapp.data.lokal.Lokal
-import ch.brickinventoryapp.data.lokal.Offlineablage
+import ch.brickinventoryapp.offline.Bearbeitung
+import ch.brickinventoryapp.offline.Faecher
+import ch.brickinventoryapp.offline.Lokal
+import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.model.data.model.*
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
+import ch.brickinventoryapp.model.data.Ersatzteilwahl
+import ch.brickinventoryapp.data.api.alsAbfrage
+import ch.brickinventoryapp.data.api.mitSetsAlsAbfrage
 
 /**
  * Teile, Minifiguren und Farben — über Retrofit; die gemeinsame Abruflogik steht in RepoBasis.kt.
@@ -24,13 +27,9 @@ class TeileRepositoryImpl @Inject constructor(
     override suspend fun getParts(search: String?, color: String?,
                          category: String?, page: Int,
                          accounts: String?,
-                         /**
-                          * "0" ohne, "1" nur Ersatzteile, null alle — wie parts-spare in der
-                          * Webapp.
-                          */
-                         spare: String?,
-                         /** "1" nur in der Tabellenansicht — siehe TeileApi.getParts. */
-                         withSets: String?,
+                         spare: Ersatzteilwahl,
+                         /** Nur die Tabellenansicht bestellt „In Sets“ — siehe TeileApi.getParts. */
+                         withSets: Boolean,
                          /** Lagerort — eigener Parameter, nicht Teil der Suche. */
                          storage: String?): Ergebnis<PartsResponse> =
         // Manuell erfasste Teile haben ihren eigenen Bereich — die Set-Teileliste
@@ -39,14 +38,14 @@ class TeileRepositoryImpl @Inject constructor(
         // nur Platz. `storage` gehört in die Bedingung, sonst landete eine nach Lagerort
         // gefilterte Antwort unter dem Schlüssel der vollen Liste.
         if (page == 1 && listOf(color, category, accounts).all { it == null } &&
-            listOf(search, spare, withSets, storage).all { it.isNullOrBlank() })
+            listOf(search, storage).all { it.isNullOrBlank() } && spare == Ersatzteilwahl.ALLE && !withSets)
             abgeglichen(Faecher.TEILE, { it.parts }, { PartsResponse(success = true, total = it.size, parts = it) }) {
                 safeCall { api.getParts(null, null, null, 1, pageSize = 500, excludeManual = "1") }
             }
         else safeCall { api.getParts(search, color, category, page, pageSize = 500,
                                      excludeManual = "1", accounts = accounts,
-                                     spare = spare?.ifBlank { null },
-                                     withSets = withSets?.ifBlank { null },
+                                     spare = spare.alsAbfrage(),
+                                     withSets = mitSetsAlsAbfrage(withSets),
                                      storage = storage?.ifBlank { null }) }
 
     /** Die lokalen Listen (ungefiltert); sie ändern sich auch durch offline Bearbeitetes. */

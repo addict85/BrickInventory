@@ -2028,3 +2028,27 @@ docker compose exec postgres psql -U brickinventory -c "SELECT max(name) FROM sc
   setzen: In den Repository-Einstellungen unter *Environments* einrichten.
 - **Externer Penetrationstest:** steht aus; die interne Prüfung ersetzt ihn
   nicht.
+
+## 47. Geräte abmelden mit Passwort, Caddy ohne root
+
+- **Ein anderes Gerät abmelden** (Einstellungen → Angemeldete Geräte, App:
+  Konto → Geräte) verlangt jetzt das Passwort und bei aktivem zweitem Faktor
+  den Code. Ein erbeuteter App-Zugang kann so die übrigen Geräte nicht mehr
+  aussperren. Das eigene Gerät meldet sich weiter ohne Passwort ab. Die
+  Adresse nimmt nur noch die volle Kennung aus der Liste (16 Zeichen), kein
+  Präfix. „Alle anderen abmelden“ ist eine einzige bestätigte Anfrage. Der
+  Inhaber bekommt jeweils eine Hinweis-Mail. **Die App muss mit diesem Update
+  aktualisiert werden**; eine ältere Fassung bekommt beim Abmelden eines
+  anderen Geräts „Aktuelles Passwort falsch“.
+- **Bilder unter `/images/`** gelten wie die übrigen Dateien erst nach
+  Passwortwechsel bzw. eingerichtetem zweitem Faktor, wo diese Pflicht ist.
+- **Diagnose-Proben** `/api/v1/admin/img-probe` und `/api/v1/admin/price-probe`
+  nehmen nur noch `POST` mit JSON (`{"url": …}` bzw. `{"set": …, "live": true}`):
+  Ein Link auf einer fremden Seite löst sie nicht mehr aus.
+- **Caddy läuft ohne root** als `10443:10443`, ohne jede Capability; die Ports
+  80/443 gibt `net.ipv4.ip_unprivileged_port_start=0` im Container frei. Der
+  neue Dienst `caddy-rechte` übergibt bei jedem `up` `./caddy/data`,
+  `./caddy/config`, das Volume `ca-wurzel` und `./caddy/ca/zwischen.key` an
+  diese Kennung und endet. Nichts von Hand zu tun: `docker compose up -d`
+  genügt. Nach `scripts/ca-einrichten.sh` wie bisher `docker compose up -d
+  caddy` (nicht `restart`), damit `caddy-rechte` den neuen Schlüssel übergibt.

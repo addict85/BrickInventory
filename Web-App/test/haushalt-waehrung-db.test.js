@@ -63,7 +63,7 @@ test('Haushaltswährung', { concurrency: 1 }, async (t) => {
   await t.test('ein Unterkonto ändert die Haushaltswährung nicht', async () => {
     for (const unter of [ids[1], ids[2]]) {
       await assert.rejects(setUserSetting(unter, 'currency', 'USD'),
-        e => e.code === 'waehrung_nur_hauptkonto' && e.status === 403);
+        e => e.code === 'waehrung_nur_hauptkonto' && e.art === 'verboten');
     }
     await setUserSetting(ids[1], 'currency', 'CHF');
     assert.deepEqual((await waehrungen()).slice(0, 4), ['CHF', 'CHF', 'CHF', 'EUR'], 'derselbe Wert bleibt erlaubt und ändert nichts');
@@ -78,7 +78,7 @@ test('Haushaltswährung', { concurrency: 1 }, async (t) => {
     // Ungerichtet erreichte carl über dora auch erik — einen fremden Haushalt.
     // Dora mitziehen hiesse eriks Haushalt zwei Währungen geben: abgelehnt.
     await assert.rejects(setUserSetting(ids[4], 'currency', 'CHF'),
-      e => e.code === 'waehrung_geteiltes_unterkonto' && e.status === 409);
+      e => e.code === 'waehrung_geteiltes_unterkonto' && e.art === 'konflikt');
     assert.deepEqual((await waehrungen()).slice(4), ['EUR', 'EUR', 'EUR', 'EUR'], 'ein geteiltes Unterkonto …');
     await setUserSetting(ids[6], 'currency', 'EUR');
     assert.deepEqual((await waehrungen()).slice(4), ['EUR', 'EUR', 'EUR', 'EUR'], 'derselbe Wert geht durch');
@@ -90,7 +90,7 @@ test('Haushaltswährung', { concurrency: 1 }, async (t) => {
   await t.test('höchstens fünf Wechsel je Stunde', async () => {
     // Der Wechsel oben war der erste dieses Kontos.
     for (const w of ['GBP', 'EUR', 'CHF', 'SEK']) await setUserSetting(ids[3], 'currency', w);
-    await assert.rejects(setUserSetting(ids[3], 'currency', 'NOK'), e => e.code === 'zu_viele_anfragen' && e.status === 429);
+    await assert.rejects(setUserSetting(ids[3], 'currency', 'NOK'), e => e.code === 'zu_viele_anfragen' && e.art === 'zu_viele');
     await setUserSetting(ids[3], 'currency', 'SEK');
     assert.equal((await waehrungen())[3], 'SEK', 'ein unveränderter Wert zählt nicht und geht durch');
   });

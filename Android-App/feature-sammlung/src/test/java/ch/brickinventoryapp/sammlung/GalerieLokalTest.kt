@@ -2,7 +2,7 @@ package ch.brickinventoryapp.sammlung
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
-import ch.brickinventoryapp.data.lokal.Lokal
+import ch.brickinventoryapp.offline.Lokal
 import ch.brickinventoryapp.model.data.model.SetItem
 import ch.brickinventoryapp.model.data.model.SetsResponse
 import ch.brickinventoryapp.model.data.model.StatsResponse

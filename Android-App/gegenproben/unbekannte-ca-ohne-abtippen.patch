@@ -3,9 +3,9 @@ Modul: core-zustand
 Test: ch.brickinventoryapp.zustand.DarstellungUndVertrauenTest
 Rot: ohne bekannte CA zaehlt nur der abgetippte Fingerabdruck
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/ServerVertrauen.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/ServerVertrauen.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/ServerVertrauen.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/ServerVertrauen.kt
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 @@ -180,7 +180,6 @@
      override fun bestaetige(pins: PinAblage, eingabe: String?): Boolean {
          val f = _offen.value ?: return false

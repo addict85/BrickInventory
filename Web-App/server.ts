@@ -19,7 +19,7 @@ import { hinweisOhneBasisUrl } from './src/infra/basisUrl';
 import { sitzungsKeksName, sitzungsKeksOptionen } from './src/http/sitzungsKeks';
 import { bereiteDatenbankVor } from './startup/datenbank';
 import { starteJobs, stoppeJobs } from './startup/jobsProzess';
-import { verdrahte } from './jobs/verdrahtung';
+import { verdrahte, baueVerdrahtung } from './startup/verdrahtung';
 import { drossleBeruehren } from './src/konto/sitzungsBeruehrung';
 import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './src/konto/sitzungsFrist';
 import { sitzungsVersionPruefen } from './src/konto/http/sitzungsPruefung';
@@ -37,6 +37,7 @@ import { horcheAufTokenWiderruf } from './src/konto/auth';
 import * as pgNotify from './db/pgNotify';
 import { registerImgProxy } from './routes/imgProxy';
 import { anmeldungAmEingang, rumpfLesen } from './routes/api_v1/middleware';
+import { schrittschutzAmEingang } from './src/konto/http/schrittschutz';
 import { apiDrossel } from './src/http/apiDrossel';
 import { idempotenz } from './src/idempotenz/http/middleware';
 import { vertragPruefen } from './src/vertrag/pruefen';
@@ -272,6 +273,8 @@ function apiRouten(app: express.Express): void {
   // Danach das Budget je Konto, VOR dem Rumpf: Eine abgewiesene Anfrage soll
   // ihren Rumpf nicht mehr lesen (src/http/apiDrossel.ts).
   app.use('/api/v1',          apiDrossel);
+  // Heikle Schritte eines App-Tokens erst nach der Gerätesperre (src/konto/http/schrittschutz.ts).
+  app.use('/api/v1',          schrittschutzAmEingang);
   // Rümpfe erst nach der Anmeldung lesen: Unangemeldet gibt es nur 16 KB (rumpfLesen).
   app.use('/api/v1',          rumpfLesen);
   app.use('/api/v1',          idempotenz);
@@ -346,8 +349,10 @@ async function starte(): Promise<void> {
     + 'Der Host-Filter gegen DNS-Rebinding ist aus, jede Webseite im Heimnetz erreicht die Anmeldung.');
   if (web) sitzungsGeheimnis();   // vor der Datenbank: Ein Startverbot soll nicht auf sie warten
   console.log(`[start] Prozess ${process.pid}, Rolle ${k.rolle}`);
+  // Datenbankzugang und Verdrahtung entstehen hier, nicht beim Import eines Moduls;
   // Erfassungen und Einstellungen stossen ihre Nacharbeit in jedem Prozess an.
-  verdrahte();
+  db.setzeStandardDb(db.erzeugeDb(db.dbKonfigAusUmgebung()));
+  verdrahte(baueVerdrahtung());
 
   try { await bereiteDatenbankVor(); }
   catch (e) {

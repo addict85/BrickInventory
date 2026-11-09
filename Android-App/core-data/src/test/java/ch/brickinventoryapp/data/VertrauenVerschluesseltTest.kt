@@ -5,7 +5,7 @@ import android.content.SharedPreferences
 import androidx.core.content.edit
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.data.util.Vertrauenschiffre
+import ch.brickinventoryapp.sicherheit.Vertrauenschiffre
 import ch.brickinventoryapp.testing.testVertrauenschiffre
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

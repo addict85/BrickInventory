@@ -9,6 +9,10 @@ export const AddSetResponse = z.looseObject({
   set_number: z.string().nullable().optional(),
   name: z.string().nullable().optional(),
   katalog_offen: z.boolean().optional(),
+  /** ausstehend: angelegt, Katalog, Bild oder Marktpreis holt noch ein Auftrag. */
+  ergaenzung: z.enum(['ausstehend', 'erledigt']).optional(),
+  owner_user_id: z.number().int().optional(),
+  is_self: z.boolean().optional(),
   error: z.string().nullable().optional(),
 });
 

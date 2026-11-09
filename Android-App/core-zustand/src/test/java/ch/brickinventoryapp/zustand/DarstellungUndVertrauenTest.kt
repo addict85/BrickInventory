@@ -6,8 +6,8 @@ import ch.brickinventoryapp.data.Vertrauensablage
 import ch.brickinventoryapp.zustand.ui.Sitzung
 import ch.brickinventoryapp.zustand.ui.viewmodel.DarstellungViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.VertrauenViewModel
-import ch.brickinventoryapp.data.util.ZertifikatUngeklaert
-import ch.brickinventoryapp.data.util.ZertifikatsFrage
+import ch.brickinventoryapp.sicherheit.ZertifikatUngeklaert
+import ch.brickinventoryapp.sicherheit.ZertifikatsFrage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel

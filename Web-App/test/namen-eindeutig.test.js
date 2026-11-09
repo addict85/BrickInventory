@@ -14,9 +14,6 @@ const ROOT = path.join(__dirname, '..');
 
 /** Name -> warum er mehrfach vorkommen darf. */
 const ERLAUBT = new Map([
-  ['get',   'db/database (eine Zeile holen) und src/auftraege/jobMonitor (einen Job-Stand holen) — ' +
-            'dieselbe Sache, verschiedene Speicher.'],
-  ['all',   'wie get.'],
   ['run',   'db/database und drei Jobs: „ausfuehren". In den Jobs ist es der Einstieg, ' +
             'in der Datenbank die Anweisung — gleicher Begriff, kein gemeinsamer Gegenstand.'],
   ['log',   'drei Jobs, jeder schreibt mit seinem eigenen Praefix.'],

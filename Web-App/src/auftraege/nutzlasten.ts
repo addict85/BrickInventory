@@ -68,7 +68,7 @@ const PreiseNachladen = z.object({ user_id: KONTO, waehrung: z.string().min(3).m
 export const NACHLAUF_SCHRITTE = ['geheimnisse', 'vorschauen', 'katalog', 'anleitungen', 'set_bilder', 'kaufpreise'] as const;
 
 export const NUTZLASTEN = {
-  nacharbeit: z.object({ set_number: SETNR, user_id: KONTO, art: z.enum(['zweit', 'neu', 'csv']).optional() }),
+  nacharbeit: z.object({ set_number: SETNR, user_id: KONTO, art: z.enum(['zweit', 'neu', 'csv', 'ergaenzen']).optional() }),
   bilder: z.object({ set_number: SETNR, nur_bilder: z.boolean().optional() }),
   pdf: z.object({ job_id: z.string().min(1), user_id: KONTO,
     sets: z.array(z.object({ set_number: z.string(), name: z.string().nullish() })), parts: z.array(PdfTeil) }),
@@ -84,6 +84,7 @@ export const NUTZLASTEN = {
   bild_nachlauf: LEER,
   aufraeumen: LEER,
   aufraeumen_taeglich: LEER,
+  konto_dateien: z.object({ user_id: KONTO }),
   preise_nachladen: PreiseNachladen,
 } satisfies Record<AuftragsArt, z.ZodType>;
 

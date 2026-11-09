@@ -8,7 +8,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
@@ -24,7 +23,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.konto.ui.GeraeteUiState
 import ch.brickinventoryapp.model.ui.model.GeraetAnsicht
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
+import ch.brickinventoryapp.ui.components.PasswortRueckfrage
 import ch.brickinventoryapp.ui.util.fmtTag
 import ch.brickinventoryapp.ui.components.SettingsCard
 
@@ -36,12 +35,10 @@ import ch.brickinventoryapp.ui.components.SettingsCard
 internal fun GeraeteCard(
     zustand: GeraeteUiState,
     onReload: () -> Unit,
-    onRevoke: (String) -> Unit,
-    onRevokeOthers: () -> Unit,
+    onFrage: (tokenId: String?) -> Unit,
+    onBestaetigen: (passwort: String, code: String?) -> Unit,
+    onAbbrechen: () -> Unit,
 ) {
-    var fragt by rememberSaveable { mutableStateOf<String?>(null) }
-    var fragtAlle by rememberSaveable { mutableStateOf(false) }
-
     SettingsCard(title = stringResource(R.string.tokens_title), icon = Icons.Default.Devices) {
         Text(stringResource(R.string.tokens_hint),
             style = MaterialTheme.typography.bodySmall,
@@ -60,7 +57,7 @@ internal fun GeraeteCard(
                      color = MaterialTheme.colorScheme.onSurfaceVariant)
             else -> Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 for (g in zustand.geraete) {
-                    GeraetZeile(g, onEntwerten = { fragt = g.tokenId })
+                    GeraetZeile(g, onEntwerten = { onFrage(g.tokenId) })
                 }
             }
         }
@@ -73,7 +70,7 @@ internal fun GeraeteCard(
             // immer „es gibt keine anderen" meldet, ist schlimmer als keiner.
             if (zustand.geraete.count { !it.aktuell } > 0) {
                 OutlinedButton(
-                    onClick = { fragtAlle = true },
+                    onClick = { onFrage(null) },
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                     border = nebenKnopfRand(),
                 ) { Text(stringResource(R.string.tokens_revoke_others)) }
@@ -81,16 +78,22 @@ internal fun GeraeteCard(
         }
     }
 
-    // Rückfrage: Ein Zugang, der weg ist, kommt nicht wieder — das Gerät
-    // dahinter muss sich neu anmelden.
-    val zuEntwerten = fragt
-    if (zuEntwerten != null) EntwertenFrage(zustand, zuEntwerten,
-        onSchliessen = { fragt = null },
-        onEntwerten = { fragt = null; onRevoke(zuEntwerten) })
-
-    if (fragtAlle) AndereEntwertenFrage(zustand,
-        onSchliessen = { fragtAlle = false },
-        onEntwerten = { fragtAlle = false; onRevokeOthers() })
+    // Rückfrage mit Passwort: Ein Zugang, der weg ist, kommt nicht wieder, und
+    // ein erbeuteter Zugang allein soll die anderen nicht abmelden können.
+    val frage = zustand.rueckfrage
+    if (frage != null) {
+        val betroffen = zustand.geraete.count { !it.aktuell }
+        PasswortRueckfrage(
+            titel = stringResource(if (frage.tokenId == null) R.string.tokens_revoke_others_title else R.string.tokens_revoke_title),
+            text = if (frage.tokenId == null) pluralStringResource(R.plurals.tokens_revoke_others_text, betroffen, betroffen)
+                   else stringResource(R.string.tokens_revoke_text,
+                       zustand.geraete.firstOrNull { it.tokenId == frage.tokenId }?.bezeichnung ?: "—"),
+            bestaetigen = stringResource(R.string.tokens_revoke_confirm),
+            codeNoetig = frage.codeNoetig, fehler = frage.fehler, laeuft = frage.laeuft,
+            onBestaetigen = onBestaetigen,
+            onAbbrechen = onAbbrechen,
+        )
+    }
 }
 
 /** Ein angemeldetes Gerät: Bezeichnung, Marken, Daten und, ausser beim eigenen, Aussperren. */
@@ -138,51 +141,4 @@ private fun GeraetZeile(g: GeraetAnsicht, onEntwerten: () -> Unit) {
             }
         }
     }
-}
-
-/** Rückfrage vor dem Aussperren eines einzelnen Geräts. */
-@Composable
-private fun EntwertenFrage(zustand: GeraeteUiState, zuEntwerten: String, onSchliessen: () -> Unit, onEntwerten: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onSchliessen,
-        title = { Text(stringResource(R.string.tokens_revoke_title)) },
-        text = {
-            Ueberdeckungsschutz()
-            Text(stringResource(R.string.tokens_revoke_text,
-                zustand.geraete.firstOrNull { it.tokenId == zuEntwerten }?.bezeichnung ?: "—"))
-        },
-        confirmButton = {
-            TextButton(onClick = onEntwerten) {
-                Text(stringResource(R.string.tokens_revoke_confirm),
-                     color = MaterialTheme.colorScheme.error)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onSchliessen) { Text(stringResource(R.string.common_cancel)) }
-        },
-    )
-}
-
-/** Rückfrage vor dem Aussperren aller anderen Geräte. */
-@Composable
-private fun AndereEntwertenFrage(zustand: GeraeteUiState, onSchliessen: () -> Unit, onEntwerten: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onSchliessen,
-        title = { Text(stringResource(R.string.tokens_revoke_others_title)) },
-        text = {
-            Ueberdeckungsschutz()
-            val betroffen = zustand.geraete.count { !it.aktuell }
-            Text(pluralStringResource(
-                R.plurals.tokens_revoke_others_text, betroffen, betroffen))
-        },
-        confirmButton = {
-            TextButton(onClick = onEntwerten) {
-                Text(stringResource(R.string.tokens_revoke_confirm),
-                     color = MaterialTheme.colorScheme.error)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onSchliessen) { Text(stringResource(R.string.common_cancel)) }
-        },
-    )
 }

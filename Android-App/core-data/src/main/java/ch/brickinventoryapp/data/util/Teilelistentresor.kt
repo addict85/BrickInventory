@@ -3,6 +3,8 @@ package ch.brickinventoryapp.data.util
 import java.io.File
 import java.io.IOException
 import javax.inject.Inject
+import ch.brickinventoryapp.sicherheit.AblageChiffre
+import ch.brickinventoryapp.sicherheit.Ablageschluessel
 
 /** Die verschlüsselte Teileliste in filesDir/pdf; ältere Fassungen legten `teileliste.pdf` im Klartext ab. */
 internal const val TEILELISTE_DATEI = "teileliste.bin"

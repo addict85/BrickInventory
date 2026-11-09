@@ -8,7 +8,7 @@ import kotlin.math.roundToInt
  * sie ohne Compose in JUnit prüfbar ist.
  * Ausführlich: docs/begruendungen/feature-katalog/katalog/ui/CatalogYearMath.kt.md#catalogyearmath
  */
-object CatalogYearMath {
+internal object CatalogYearMath {
 
     /**
      * Anteil (0..1) an der Leiste zu einer Berührung bei y Pixeln. Wie in der Webapp

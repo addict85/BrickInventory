@@ -77,13 +77,13 @@ async function syncSetCatalog(setNumber: string) {
 }
 
 async function syncAllMissing() {
-  const sets = await setsOhneTeilekatalog().catch(meldeUndLiefere('katalog-sync:sets', []));
+  const sets = await setsOhneTeilekatalog();
   for (const s of sets) await syncSetCatalog(s);
 }
 
 /** Die gewählte Farbe, nicht das oft falschfarbige Standardbild. */
 async function teilfarbenbilderNachtragen() {
-  const rows = await manuelleFarbteile().catch(meldeUndLiefere('kaufpreis-nachtrag:rows', []));
+  const rows = await manuelleFarbteile();
   if (!rows.length) return;
   console.log(`  [purchase-price-backfill] Teile mit Farbbild zu prüfen: ${rows.length}`);
   let done = 0;

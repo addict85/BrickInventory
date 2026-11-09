@@ -171,6 +171,8 @@ export const PasskeyAnmeldung = LoginResponse.extend({
 });
 /** Anzahl gelöschter Zeilen, wie beim Widerruf eines Tokens. */
 export const Geloescht = z.looseObject({ success: z.literal(true), deleted: ganz });
+/** `deleted` zählt die Browser-Sitzungen, `zugaenge` die App-Zugänge. */
+export const AndereBeendet = Geloescht.extend({ zugaenge: ganz.optional() });
 
 /** Der Scan meldet das Gerät an; den Code zeigt die App, eingetippt wird er im Browser. */
 export const QrMeldung = z.looseObject({ success: z.literal(true), wartet: z.literal(true), abholung: z.string(),
@@ -228,7 +230,8 @@ export const routen = {
   'POST /api/v1/auth/zweiter-faktor/bestaetigen': { antwort: ZweiterFaktorCodes, eingabe: NurCode, geheim: true },
   'POST /api/v1/auth/zweiter-faktor/abschalten': { antwort: GenericResponse, ...bestaetigt() },
   'POST /api/v1/auth/zweiter-faktor/codes': { antwort: ZweiterFaktorCodes, eingabe: NurCode, geheim: true },
-  'DELETE /api/v1/settings/tokens/:tokenId': { eingabe: OHNE_RUMPF, antwort: TokenWiderruf },
+  // Bestätigt wird nur der Widerruf eines FREMDEN Zugangs; den eigenen beendet jedes Gerät selbst.
+  'DELETE /api/v1/settings/tokens/:tokenId': { antwort: TokenWiderruf, ...bestaetigt() },
   'POST /api/v1/auth/token-rotieren': { eingabe: OHNE_RUMPF, antwort: TokenRotation, geheim: true },
   'GET /api/v1/auth/users': { klein: true, antwort: KontenListe },
   'POST /api/v1/auth/users': { antwort: Erfolg, ...verwalterBestaetigt({ is_admin: eingabe.schalterOderNein('is_admin'),
@@ -251,5 +254,5 @@ export const routen = {
   'POST /api/v1/auth/passkey/anmelden/optionen': { eingabe: z.strictObject({ zweck: TEXT(40).optional() }), antwort: PasskeyOptionen },
   'POST /api/v1/auth/passkey/anmelden': { antwort: PasskeyAnmeldung, geheim: true,
     eingabe: z.strictObject({ antwort: z.record(z.string(), z.unknown()).nullable().optional(), mit_token: z.boolean().optional(), ...tokenWunsch }) },
-  'POST /api/v1/settings/sessions/andere-beenden': { antwort: Geloescht, ...bestaetigt() },
+  'POST /api/v1/settings/sessions/andere-beenden': { antwort: AndereBeendet, ...bestaetigt({ zugaenge: z.boolean().optional() }) },
 } satisfies Record<string, Route>;

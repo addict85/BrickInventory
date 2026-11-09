@@ -1,0 +1,17 @@
+Gegenprobe: Nach der Gerätesperre geht es weiter, ohne dass der Server die Signatur geprüft hat
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.SchrittfreigabeTest
+Rot: lehnt der Server die Signatur ab
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittablauf.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittablauf.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittablauf.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittablauf.kt
+@@ -30,7 +30,7 @@ class Schrittablauf(private val bindung: Schrittbindung, private val freigabe: S
+             Schrittantwort.NichtGebunden -> freigabe.nonce()
+         }
+         val unterschrift = freigabe.unterschrift(entsperren(), nachricht) ?: return Ausgang.Abgebrochen
+-        if (c !is Schrittantwort.Challenge) return Ausgang.Weiter
++        if (c !is Schrittantwort.Challenge || c.challenge.isNotEmpty()) return Ausgang.Weiter
+         return when (val f = bindung.freigeben(c.challenge, unterschrift)) {
+             Schrittantwort.Frei -> Ausgang.Weiter
+             is Schrittantwort.Abgelehnt -> Ausgang.Abgelehnt(f.meldung)

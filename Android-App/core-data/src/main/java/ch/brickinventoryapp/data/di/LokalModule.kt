@@ -1,23 +1,18 @@
 package ch.brickinventoryapp.data.di
 
-import android.content.Context
-import androidx.room.Room
-import ch.brickinventoryapp.data.lokal.Ausgang
-import ch.brickinventoryapp.data.lokal.AusgangPlaner
+import ch.brickinventoryapp.offline.Ausgang
+import ch.brickinventoryapp.offline.AusgangPlaner
 import ch.brickinventoryapp.data.lokal.Bearbeitungssender
-import ch.brickinventoryapp.data.lokal.LokalerBestand
+import ch.brickinventoryapp.offline.LokalerBestand
+import ch.brickinventoryapp.offline.Offlineablage
+import ch.brickinventoryapp.data.cache.CacheBesitzer
+import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.lokal.ServerSender
 import ch.brickinventoryapp.data.lokal.WorkManagerPlaner
-import ch.brickinventoryapp.data.lokal.room.BestandDatenbank
-import ch.brickinventoryapp.data.lokal.room.RoomAusgang
-import ch.brickinventoryapp.data.lokal.room.RoomBestand
-import ch.brickinventoryapp.data.lokal.room.VerschluesselteBestandsfabrik
-import ch.brickinventoryapp.data.util.Ablageschluessel
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 import ch.brickinventoryapp.data.CsvImportSseClient
@@ -54,19 +49,15 @@ import ch.brickinventoryapp.data.PasswortPflicht
 import ch.brickinventoryapp.data.PasswortPflichtZustand
 import ch.brickinventoryapp.data.ZweiterFaktorPflicht
 import ch.brickinventoryapp.data.ZweiterFaktorZustand
-import ch.brickinventoryapp.data.util.ZertifikatsFrage
-import ch.brickinventoryapp.data.util.ZertifikatsRueckfrage
 
 /**
- * Die lokale Ablage: Room für Listen und Ausgang, WorkManager fürs Senden.
- * Die Logik (Offlineablage, Abgleich) kennt nur die Schnittstellen und ist so
- * ohne Android prüfbar.
+ * Die lokale Ablage: Room (core-offline) für Listen und Ausgang, WorkManager fürs
+ * Senden. Die Logik (Offlineablage, Abgleich) kennt nur die Schnittstellen und ist
+ * so ohne Android prüfbar.
  */
 @Module
 @InstallIn(SingletonComponent::class)
 internal abstract class LokalModule {
-    @Binds abstract fun bestand(r: RoomBestand): LokalerBestand
-    @Binds abstract fun ausgang(r: RoomAusgang): Ausgang
     @Binds abstract fun planer(p: WorkManagerPlaner): AusgangPlaner
     @Binds abstract fun entwertung(p: WorkManagerEntwertung): EntwertungsPlaner
     @Binds abstract fun sender(s: ServerSender): Bearbeitungssender
@@ -91,16 +82,12 @@ internal abstract class LokalModule {
     @Binds abstract fun meldungen(m: MeldungsWarteschlange): MeldungsKanal
     @Binds abstract fun passwortPflicht(p: PasswortPflichtZustand): PasswortPflicht
     @Binds abstract fun faktorPflicht(z: ZweiterFaktorZustand): ZweiterFaktorPflicht
-    @Binds abstract fun zertifikatsFrage(z: ZertifikatsRueckfrage): ZertifikatsFrage
 
     companion object {
+        /** Der Bereich kommt aus dem angemeldeten Konto, gestreut wie im Antwort-Zwischenspeicher. */
         @Provides
         @Singleton
-        fun datenbank(@ApplicationContext context: Context, ablage: Ablageschluessel): BestandDatenbank =
-            Room.databaseBuilder(context, BestandDatenbank::class.java, BestandDatenbank.NAME)
-                // Verschlüsselt mit SQLCipher; ein Klartext-Altbestand wird beim ersten Öffnen übernommen.
-                .openHelperFactory(VerschluesselteBestandsfabrik(context, ablage))
-                .addMigrations(*BestandDatenbank.MIGRATIONEN)
-                .build()
+        fun offlineablage(bestand: LokalerBestand, ausgang: Ausgang, besitzer: CacheBesitzer, planer: AusgangPlaner): Offlineablage =
+            Offlineablage(bestand, ausgang, bereichQuelle = { besitzer.kontoBereich()?.let { ResponseCache.bereichsName(it) } }, planer = planer)
     }
 }

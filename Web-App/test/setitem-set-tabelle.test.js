@@ -70,7 +70,7 @@ test('die gemeinsame Tabellenzeile sagt der Sprachausgabe, was das Antippen tut'
   // verschwunden — ein Verlust, den kein Bild zeigt und nur hoert, wer die
   // App nicht sieht.
   const zeile = ohneKommentare(
-    fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'feature-gemeinsam', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'gemeinsam', 'ui', 'TabellenZeile.kt'), 'utf8'));
+    fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-ui-bestand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'gemeinsam', 'ui', 'TabellenZeile.kt'), 'utf8'));
   assert.match(zeile, /onClickLabel: String\? = null/,
     'TabellenZeile nimmt keine Beschriftung für die Sprachausgabe entgegen');
   // Weitere Argumente (role = Role.Button) dürfen dazwischen stehen.

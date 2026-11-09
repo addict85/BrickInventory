@@ -83,8 +83,17 @@ interface KontoApi {
     @GET("api/v1/settings/tokens")
     suspend fun getTokens(): Response<TokensResponse>
 
-    @DELETE("api/v1/settings/tokens/{tokenId}")
-    suspend fun revokeToken(@Path("tokenId") tokenId: String): Response<TokenWiderruf>
+    // @HTTP statt @DELETE: Retrofit erlaubt bei @DELETE keinen Rumpf, und ein
+    // fremdes Gerät meldet der Server nur mit Passwort und Code ab.
+    @HTTP(method = "DELETE", path = "api/v1/settings/tokens/{tokenId}", hasBody = true)
+    suspend fun revokeToken(
+        @Path("tokenId") tokenId: String,
+        @Body bestaetigung: ZweiterFaktorAnfrage,
+    ): Response<TokenWiderruf>
+
+    /** Alle übrigen Anmeldungen und App-Zugänge in einer Anfrage: Ein Code gilt nur einmal. */
+    @POST("api/v1/settings/sessions/andere-beenden")
+    suspend fun andereBeenden(@Body anfrage: AndereBeendenAnfrage): Response<AndereBeendet>
 
     /**
      * Den Token tauschen (Rotation). Der alte geht ausdrücklich mit, weil der

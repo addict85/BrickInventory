@@ -278,7 +278,7 @@ test('die Images aus compose.yaml haben einen Update-Pfad und gehen durch Trivy'
   assert.equal(r.status, 0, r.stdout + r.stderr);
   const images = JSON.parse(fs.readFileSync(ausgabe, 'utf8').match(/^images=(.*)$/m)?.[1] ?? '[]');
   fs.rmSync(ort, { recursive: true, force: true });
-  // Caddy baut compose.yaml selbst (Dockerfile.caddy), pgweb gibt es nicht mehr.
+  // Caddy baut compose.yaml selbst (Dockerfile.caddy), auch für caddy-rechte; pgweb gibt es nicht mehr.
   assert.deepEqual(images.map(i => i.split(':')[0]).sort(), ['postgres']);
   assert.ok(images.every(i => /@sha256:[0-9a-f]{64}$/.test(i)), images.join(', '));
 

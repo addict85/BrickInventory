@@ -159,7 +159,7 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
   const erg = leeresErgebnis();
   const pause = await liesPause('bildbedarf');
   if (pause && new Date(pause.bis).getTime() > Date.now()) return erg;   // CDN hat gedrosselt, siehe unten
-  const rows = await nimmBildwuensche(NOTIZ_GILT_MS, STAPEL).catch(meldeUndLiefere('bild-job:rows', []));
+  const rows = await nimmBildwuensche(NOTIZ_GILT_MS, STAPEL);
   if (!rows.length) { merkeLauf(erg); return erg; }
 
 

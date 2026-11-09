@@ -1,11 +1,11 @@
 Gegenprobe: Das Lesen des Tokens zählt auch bei gesperrtem Gerät jeden Versuch und gibt nach zehn Minuten auf
-Modul: core-data
-Test: ch.brickinventoryapp.data.TresorSperreTest
+Modul: core-sicherheit
+Test: ch.brickinventoryapp.sicherheit.TresorSperreTest
 Rot: bei gesperrtem Geraet wartet das Lesen
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Tresorbefund.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Tresorbefund.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Tresorbefund.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/Tresorbefund.kt
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
 @@ -131,7 +131,7 @@
                  warte(TRESOR_ANLAUF_MS.getOrElse(versuch) { TRESOR_NACHLAUF_MS })
                  // Bei gesperrtem Gerät gibt der Schlüssel erst nach dem Entsperren frei:

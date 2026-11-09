@@ -158,7 +158,7 @@ fun MerklisteScreen(
     // Dieselben Bausteine in derselben Reihenfolge wie in der Galerie: Kontofilter,
     // Suchfeld, Chips. Kein Lagerortfilter — was man nicht hat, liegt nirgends; dafür
     // der Zustand, weil dasselbe Set neu und gebraucht dastehen kann.
-    val scopeModus = blick.scopeModes[ScopeFilter.View.MERKLISTE.key]
+    val scopeModus = blick.scopeModes[ScopeFilter.View.MERKLISTE]
         ?: ScopeFilter.ALL
     // Das Eingabefeld haelt seinen Text selbst (Tippen bleibt fluessig); die
     // Entprellung liegt im ViewModel. Wechselt der Wert von aussen, zieht das

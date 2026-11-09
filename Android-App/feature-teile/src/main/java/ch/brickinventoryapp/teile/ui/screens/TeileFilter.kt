@@ -68,7 +68,7 @@ data class TeileFilterEintrag(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TeileFilterZeile(
+internal fun TeileFilterZeile(
     farben: List<TeileFilterEintrag>,
     kategorien: List<TeileFilterEintrag>,
     farbeGewaehlt: String,

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.util.Protokoll
+import ch.brickinventoryapp.netz.util.Protokoll
 import ch.brickinventoryapp.data.util.netzMitschnitt
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -18,7 +18,7 @@ import ch.brickinventoryapp.testing.Quellen
 
 /**
  * Was die App ins Logcat schreibt: im Release nichts, im Debug-Build weder Token
- * noch Rümpfe, und ausser der Hülle data/util/Protokoll.kt schreibt niemand.
+ * noch Rümpfe, und ausser der Hülle netz/util/Protokoll.kt schreibt niemand.
  *
  * Gegenproben:
  *   A  in Protokoll.warnung() `if (aktiv)` entfernt → rot „im Release-Build
@@ -98,6 +98,6 @@ class ProtokollTest {
             }
         }
         assertTrue("Die Hülle selbst wurde nicht gefunden", dateien.any { it.name == "Protokoll.kt" })
-        assertTrue("Ins Logcat nur über data/util/Protokoll.kt:\n" + treffer.joinToString("\n"), treffer.isEmpty())
+        assertTrue("Ins Logcat nur über netz/util/Protokoll.kt:\n" + treffer.joinToString("\n"), treffer.isEmpty())
     }
 }

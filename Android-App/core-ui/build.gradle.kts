@@ -1,5 +1,5 @@
 // Design-System: Theme, Bausteine ohne Fachwissen (Karten, Zeilen, Suchfeld, Dialoge,
-// Kamera) und reine Anzeigeregeln. Fachliche Bausteine liegen in feature-gemeinsam.
+// Kamera) und reine Anzeigeregeln. Fachliche Bausteine liegen in core-ui-bestand.
 plugins {
     alias(libs.plugins.brickinventory.android.library)
     alias(libs.plugins.brickinventory.android.unittests)

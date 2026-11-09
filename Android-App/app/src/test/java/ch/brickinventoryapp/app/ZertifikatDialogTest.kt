@@ -11,8 +11,8 @@ import androidx.compose.ui.test.performTextInput
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.app.ui.components.ZertifikatDialog
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.data.util.ZertifikatUngeklaert
-import ch.brickinventoryapp.data.util.fingerabdruckLesbar
+import ch.brickinventoryapp.sicherheit.ZertifikatUngeklaert
+import ch.brickinventoryapp.sicherheit.fingerabdruckLesbar
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test

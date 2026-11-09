@@ -19,6 +19,8 @@
  *   G  priceFor() in setValue.ts nimmt immer den Neupreis → rot „computePnl
  *      bewertet nach dem Zustand der Erfassungen“ (effectiveCondition allein
  *      auf 'N' gestellt bleibt grün: Mit Erfassungen gilt deren Zustand)
+ *   H  (09.11.2026) Route und Vertrag der Preis-Probe wieder als GET → rot
+ *      „die Preis-Probe …“ (GET 200 statt 404)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -37,9 +39,9 @@ Module.prototype.require = function (/** @type {string} */ name, /** @type {any[
   const m = _echtesRequire.call(this, name, ...rest);
   if (typeof name === 'string' && /sets[/\\]nachErfassung(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) => (k === 'zieheNach' || k === 'zieheNachNeuanlage' ? () => {} : t[k]) });
-  if (typeof name === 'string' && /[/\\]setService(\.js)?$/.test(name))
+  if (typeof name === 'string' && /[/\\]erfassen(\.js)?$/.test(name))
     return new Proxy(m, {
-      get: (t, k) => (k === 'addSet' && gestellteAddSet ? gestellteAddSet : t[k]),
+      get: (t, k) => (k === 'setErfassen' && gestellteAddSet ? gestellteAddSet : t[k]),
     });
   return m;
 };
@@ -119,8 +121,8 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
   });
 
   await t.test('der Marktpreis als Kaufpreis richtet sich nach dem gewählten Zustand', async () => {
-    const { addSet } = _req('src/sets/setService.js');
-    const r = await addSet(SN, 1, uid, null, null, 'U');
+    const { addSet } = _req('src/sets/index.js');
+    const r = await addSet({ setNumber: SN, menge: 1, konto: uid, zustand: 'U' });
     assert.equal(r.action, 'updated', 'Aufbau: der Aufstock-Weg ohne Katalog und Netz');
     const neu = await db.get(
       `SELECT condition, purchase_price::float AS preis FROM set_acquisitions
@@ -202,7 +204,10 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
   });
 
   await t.test('die Preis-Probe läuft ohne Serverfehler', async () => {
-    const r = await anfrage('GET', `/admin/price-probe?set=${SN}`);
+    // Per GET löste schon ein Link einer fremden Seite (Lax-Cookie) den Abruf aus.
+    const perLink = await fetch(`${base}/api/v1/admin/price-probe?set=${SN}&live=1`);
+    assert.equal(perLink.status, 404, 'die Probe lässt sich per GET auslösen');
+    const r = await anfrage('POST', '/admin/price-probe', { set: SN });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.condition_logic?.chosen_for_price, 'U', 'Die Probe zeigt nicht die Regel der Bewertung');
     assert.deepEqual(
@@ -213,11 +218,18 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
   });
 
   await t.test('der im Formular gewählte Zustand kommt beim Anlegen an', async () => {
-    /** @type {unknown[][]} */
+    /** @type {any[][]} */
     const aufrufe = [];
     gestellteAddSet = async (...a) => {
       aufrufe.push(a);
-      return { action: 'added', set_number: a[0], name: 'Testset' };
+      return {
+        action: 'added',
+        set_number: /** @type {any} */ (a[0]).setNumber,
+        name: 'Testset',
+        katalog_offen: true,
+        ergaenzung: 'ausstehend',
+        besitzer: uid,
+      };
     };
     try {
       const r = await anfrage('POST', '/sets', {
@@ -229,8 +241,8 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     } finally {
       gestellteAddSet = null;
     }
-    assert.equal(aufrufe.length, 1, 'addSet wurde nicht gerufen');
-    assert.equal(aufrufe[0][4], 20, 'Der Kaufpreis kommt nicht an');
-    assert.equal(aufrufe[0][5], 'U', 'Der Zustand aus dem Formular kommt nicht bei addSet an');
+    assert.equal(aufrufe.length, 1, 'setErfassen wurde nicht gerufen');
+    assert.equal(aufrufe[0][0].kaufpreis, 20, 'Der Kaufpreis kommt nicht an');
+    assert.equal(aufrufe[0][0].zustand, 'U', 'Der Zustand aus dem Formular kommt nicht bei setErfassen an');
   });
 });

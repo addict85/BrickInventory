@@ -58,7 +58,7 @@ class ServerStartTest {
 
     @Test
     fun `die Anmeldung zeigt den Fortschritt statt des Formulars`() {
-        val s = code(read("app/nav/AuthGraph.kt"))
+        val s = code(read("anmeldung/ui/AnmeldungGraph.kt"))
         assert(s.contains("ServerStartAnzeige(serverStart)")) {
             "Die Anmeldung zeigt den Startfortschritt nicht"
         }

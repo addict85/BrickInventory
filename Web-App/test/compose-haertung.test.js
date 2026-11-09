@@ -56,7 +56,8 @@ test('kein Dienst gewinnt Rechte, jeder hat nur die nötigen Capabilities', () =
     postgres: ['CHOWN', 'DAC_OVERRIDE', 'FOWNER', 'SETGID', 'SETUID'],
     app: ['CHOWN', 'DAC_OVERRIDE', 'SETGID', 'SETUID'],
     'db-rolle': [],
-    caddy: ['NET_BIND_SERVICE'],
+    caddy: [],
+    'caddy-rechte': ['CHOWN', 'DAC_OVERRIDE'],
   };
   for (const [dienst, caps] of Object.entries(erwartet)) {
     const block = leseDienst(compose, dienst);
@@ -144,6 +145,44 @@ test('die App ist nur über Caddy erreichbar', () => {
     `Caddy-Basis nicht per Digest: ${basis}`,
   );
   assert.match(app, /^\s*-\s*ca-wurzel:\/caddy-ca:ro\s*$/m, 'das Wurzelzertifikat ist nicht nur lesend eingehängt');
+});
+
+// Gegenproben (09.11.2026 gemessen, je einzeln): bei caddy `user:` gestrichen →
+// rot „Caddy läuft als root“; `sysctls` gestrichen → rot „… Ports unter 1024“;
+// in caddy-rechte 1000:1000 statt 10443:10443 → rot „… andere Kennung“;
+// `- ./caddy/config:/config` aus caddy-rechte gestrichen → rot „… nicht übergeben“;
+// die Abhängigkeit auf caddy-rechte gestrichen → rot „Caddy wartet nicht …“.
+test('Caddy läuft ohne root, caddy-rechte übergibt ihm seine Ordner', () => {
+  const caddy = leseDienst(compose, 'caddy');
+  const rechte = leseDienst(compose, 'caddy-rechte');
+  const kennung = caddy.match(/^\s*user:\s*"?(\d+):(\d+)"?\s*$/m);
+  assert.ok(kennung && kennung[1] !== '0' && kennung[2] !== '0', 'Caddy läuft als root');
+  assert.match(
+    caddy,
+    /^\s*sysctls:\s*\n\s*net\.ipv4\.ip_unprivileged_port_start:\s*0\s*$/m,
+    'ohne root und ohne NET_BIND_SERVICE braucht Caddy die Ports unter 1024 freigegeben',
+  );
+  assert.match(
+    caddy,
+    /caddy-rechte:\s*\n\s*condition: service_completed_successfully/,
+    'Caddy wartet nicht auf caddy-rechte',
+  );
+
+  assert.match(rechte, /^\s*network_mode:\s*none\s*$/m, 'caddy-rechte braucht kein Netz');
+  assert.match(rechte, /^\s*read_only:\s*true\s*$/m);
+  const ziel = `${kennung[1]}:${kennung[2]}`;
+  const chown = [...rechte.matchAll(/chown (?:-R )?(\d+:\d+) ([^;\n]+)/g)];
+  assert.ok(
+    chown.length && chown.every(m => m[1] === ziel),
+    `caddy-rechte übergibt an eine andere Kennung als ${ziel}`,
+  );
+  const uebergeben = chown.flatMap(m => m[2].trim().split(/\s+/));
+  // Jeder Ordner, den Caddy einhängt (ausser dem Caddyfile), ist dort eingehängt und gehört danach ihm.
+  const einh = block => [...block.matchAll(/^\s*-\s*([^\s:]+):(\/[^:\s]+)(:ro)?\s*$/gm)].map(m => `${m[1]}:${m[2]}`);
+  const ordner = einh(caddy).filter(e => !e.endsWith(':/etc/caddy/Caddyfile'));
+  assert.ok(ordner.length >= 4, `Caddys Ordner nicht gefunden: ${ordner}`);
+  const fehlt = ordner.filter(e => !einh(rechte).includes(e) || !uebergeben.some(u => e.endsWith(':' + u)));
+  assert.deepEqual(fehlt, [], 'diese Orte hat caddy-rechte nicht übergeben');
 });
 
 test('Caddy: Aussteller aus dem Startskript, eigene Anfragekennung, /ca.crt im Klartext', () => {

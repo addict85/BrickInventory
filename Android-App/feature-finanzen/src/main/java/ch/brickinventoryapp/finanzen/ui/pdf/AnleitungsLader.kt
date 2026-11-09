@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.finanzen.ui.pdf
 
-import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import android.content.Context
 import ch.brickinventoryapp.data.di.BrickDispatchers
 import ch.brickinventoryapp.data.di.Dispatcher
@@ -39,7 +39,7 @@ internal interface PdfLaderModul {
  * Anleitungen gehen streamend und verschlüsselt auf die Platte ([AnleitungsAblage]),
  * Gutscheine nur in den Speicher.
  */
-class AnleitungsLader @Inject constructor(
+internal class AnleitungsLader @Inject constructor(
     @param:ApplicationContext private val ctx: Context,
     /** Das Netz liegt in der Datenschicht; hier nur Ablage, Aufbereitung und Seitenzahl. */
     private val netz: AnleitungsRepository,

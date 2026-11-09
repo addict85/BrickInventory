@@ -344,7 +344,7 @@ test('der Preisverlauf-Graph benutzt den Zustand DES SETS, nicht den globalen St
   );
   assert.match(
     fn,
-    /getSetPriceHistory\(sichtVon\(req\), sn, currency\)/,
+    /sets\.setPreisVerlauf\(req\.apiUser\.user_id, sichtVon\(req\), sn\)/,
     'Die Route muss den gemeinsamen Helfer benutzen — mit Blickfeld',
   );
   assert.doesNotMatch(
@@ -353,6 +353,11 @@ test('der Preisverlauf-Graph benutzt den Zustand DES SETS, nicht den globalen St
     'Die Abfrage gehört in src/finanzen/priceHistory.ts, nicht in die Route',
   );
 
+  assert.match(
+    fs.readFileSync(path.join(ROOT, 'src/sets/dienst.ts'), 'utf8'),
+    /getSetPriceHistory\(sicht, sn, await waehrungVon\(uid\)\)/,
+    'Der Dienst nutzt den gemeinsamen Helfer',
+  );
   const helper = fs.readFileSync(path.join(ROOT, 'src/finanzen/priceHistory.ts'), 'utf8');
   assert.match(
     helper,
@@ -399,7 +404,7 @@ test('Android-API: Marktpreis benutzt den Zustand des Sets, nicht den globalen S
   // der Webapp — die rund fünfzig Zeilen, die dort standen, waren eine Kopie.
   assert.match(
     historyRoute,
-    /getSetPriceHistory\(sichtVon\(req\), sn, currency\)/,
+    /sets\.setPreisVerlauf\(req\.apiUser\.user_id, sichtVon\(req\), sn\)/,
     'Der Verlauf muss den gemeinsamen Helfer benutzen',
   );
   assert.doesNotMatch(

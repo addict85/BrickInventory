@@ -9,7 +9,7 @@ import android.print.PrintDocumentAdapter
 import android.print.PrintDocumentAdapter.LayoutResultCallback
 import android.print.PrintDocumentAdapter.WriteResultCallback
 import android.print.PrintDocumentInfo
-import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -20,7 +20,7 @@ import java.io.FileOutputStream
  * kopiert wird darum über [schreiber] in [bereich], und ein Abbruch im Druckdialog
  * beendet das Kopieren, statt die ganze Datei noch zu schreiben.
  */
-class PdfDruckAdapter(
+internal class PdfDruckAdapter(
     private val quelle: PdfQuelle,
     private val name: String,
     private val schreiber: PdfSchreiber,

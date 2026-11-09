@@ -1,4 +1,4 @@
-import { fehlerWerfen } from './fehlerTexte';
+import { fachfehler } from './fehlerTexte';
 /** Einmal gelesen statt an drei Stellen mit eigener Schreibweise.
  * Ausführlich: docs/begruendungen/src/infra/basisUrl.ts.md#basisurl */
 import { konfig } from './konfig';
@@ -29,5 +29,5 @@ export function ueberTls(basis: string | null): boolean {
 }
 
 export function unbegrenztNurMitTls(basis: string | null): void {
-  if (!ueberTls(basis)) fehlerWerfen('unbegrenzt_nur_https', 400);
+  if (!ueberTls(basis)) fachfehler('ungueltig', 'unbegrenzt_nur_https');
 }

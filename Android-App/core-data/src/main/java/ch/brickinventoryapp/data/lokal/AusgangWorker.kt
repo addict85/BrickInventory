@@ -10,12 +10,13 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.hilt.work.HiltWorker
-import ch.brickinventoryapp.data.util.Geraetesperre
+import ch.brickinventoryapp.sicherheit.Geraetesperre
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
+import ch.brickinventoryapp.offline.AusgangPlaner
 
 /**
  * Sendet den Ausgang, sobald Netz da ist. WorkManager übernimmt Netzbedingung,

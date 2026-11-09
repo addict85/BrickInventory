@@ -1,0 +1,17 @@
+Gegenprobe: Die App-Sperre fragt nach jeder gescheiterten Signatur erneut
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.AppEntsperrungTest
+Rot: fremd signiert entsperrt nicht
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppEntsperrung.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppEntsperrung.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppEntsperrung.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppEntsperrung.kt
+@@ -30,7 +30,7 @@ private fun versuche(weiter: () -> Unit, nochmal: Boolean) {
+         frage(signatur) { freigegeben ->
+             when {
+                 freigabe.gilt(freigegeben) -> weiter()
+                 freigegeben != null && nochmal -> {
+                     runCatching { schluessel.verwerfe() }
+-                    versuche(weiter, nochmal = false)
++                    versuche(weiter, nochmal = true)
+                 }

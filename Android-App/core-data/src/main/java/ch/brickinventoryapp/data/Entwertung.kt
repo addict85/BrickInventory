@@ -5,10 +5,10 @@ import ch.brickinventoryapp.netz.di.ServerWaechter
 import ch.brickinventoryapp.netz.di.Zugangslage
 import ch.brickinventoryapp.netz.util.KlartextAbgelehnt
 import ch.brickinventoryapp.netz.util.NetworkPolicy
-import ch.brickinventoryapp.data.util.Tresorbefund
-import ch.brickinventoryapp.data.util.ZertifikatUngeklaert
+import ch.brickinventoryapp.sicherheit.Tresorbefund
+import ch.brickinventoryapp.sicherheit.ZertifikatUngeklaert
 import ch.brickinventoryapp.netz.util.eigeneAdresse
-import ch.brickinventoryapp.data.util.pinSchluessel
+import ch.brickinventoryapp.sicherheit.pinSchluessel
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request

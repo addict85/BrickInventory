@@ -11,7 +11,7 @@ diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand
              // Erst Netzlage und Platz prüfen, sonst kostet jeder Start vier Listenabrufe umsonst.
              if (!vorwaermer.darfStarten()) return@launch
 -            val basis = fangeAusserAbbruch { prefs.serverUrlJetzt() }.getOrNull().orEmpty()
-+            val basis = ch.brickinventoryapp.data.util.fangeAusserAbbruch { prefs.serverUrlJetzt() }.getOrNull().orEmpty()
++            val basis = ch.brickinventoryapp.model.util.fangeAusserAbbruch { prefs.serverUrlJetzt() }.getOrNull().orEmpty()
              if (basis.isBlank()) return@launch
              vorwaermer.vorwaermen(bildAdressenDerSammlung(sets, teile, figuren, blickfeld, basis))
          }

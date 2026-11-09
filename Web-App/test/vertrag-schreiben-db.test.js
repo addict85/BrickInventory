@@ -14,6 +14,9 @@
  *   D  in routes/parts.ts wieder `NULLIF($1, 0)` ohne ::numeric → rot: „jeder
  *      Schritt antwortet mit 200" (PUT /parts: 500, invalid input syntax for
  *      type integer) und „Stückpreis mit Nachkommastellen"
+ *   E  (09.11.2026) in andereZugaengeLoeschen() ohne `$2::text IS NULL OR`
+ *      (NULL IS DISTINCT FROM NULL ist falsch) → rot: „die Schreibantworten …“
+ *      (zugaenge 0 statt 1 aus einer Browser-Sitzung)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -57,6 +60,9 @@ const AUSGELASSEN = new Map([
   ['POST /api/v1/vouchers/{id}/klartext',           'verlangt Passwort und zweiten Faktor; Antwort geprüft in gutscheine-db'],
   ['POST /api/v1/vouchers/{id}/pdf-freigabe',       'verlangt Passwort und zweiten Faktor; Ticket geprüft in gutscheine-db'],
   ['POST /api/v1/vouchers/export/pdf-freigabe',     'verlangt Passwort und zweiten Faktor; Ticket geprüft in gutscheine-db'],
+  ['POST /api/v1/geraet/schluessel',                'nur mit App-Token, dieser Lauf hat eine Sitzung; geprüft in schrittschutz-db'],
+  ['POST /api/v1/geraet/schritt/challenge',         'nur mit App-Token und Schlüssel; geprüft in schrittschutz-db'],
+  ['POST /api/v1/geraet/schritt/freigabe',          'braucht eine Signatur des Geräteschlüssels; geprüft in schrittschutz-db'],
 ]);
 
 /** Ein PDF mit den übergebenen Zeilen. */
@@ -202,7 +208,10 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
     { m: 'DELETE', p: '/api/v1/settings/tokens/{tokenId}', davor: async () => {
         await _req('src/konto/auth.js').createToken(uid, 'Zum Entwerten');
         w.tokenId = (await erst(`SELECT substring(token, 1, 16) AS t FROM api_tokens WHERE user_id = $1 AND label = 'Zum Entwerten'`, [uid])).t;
-      } },
+      }, body: { password: PASS } },
+    { m: 'POST', p: '/api/v1/settings/sessions/andere-beenden', body: { password: PASS, zugaenge: true },
+      davor: async () => { await _req('src/konto/auth.js').createToken(uid, 'Anderes Gerät'); },
+      danach: (j) => { assert.equal(j.zugaenge, 1); } },
 
     // ── Lagerorte ─────────────────────────────────────────────────────────
     { m: 'POST', p: '/api/v1/storage/locations', body: { name: 'Regal Probe' }, danach: (j) => { w.id = String(j.ort.id); } },

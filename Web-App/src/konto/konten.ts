@@ -8,7 +8,7 @@ import { erhoeheSitzungsVersion } from './sitzungsVersion';
 import { emailGueltig } from '../infra/validate';
 import { entferneStartpasswort } from '../infra/startpasswort';
 
-export { LETZTER_VERWALTER, aendereProfil, aktivesKontoNachEmail, emailVergeben, erneuereEmailTokenWennFrei, kontoExistiert, kontoKurz, kontoMitEmail, kontoNachRuecksetzToken, kontoVoll, loescheEigenesKonto, loescheKonto, merkeEmailNeu, mussPasswortAendern, nameVergeben, nameZuEmailToken, offeneRegistrierungen, schalteRegistrierungFrei, setzeRuecksetzTokenWennFrei, tokenStand, zugaengeDesKontos, zugaengeLoeschen } from './repository/konten';
+export { LETZTER_VERWALTER, aendereProfil, aktivesKontoNachEmail, emailVergeben, erneuereEmailTokenWennFrei, kontoExistiert, kontoKurz, kontoMitEmail, kontoNachRuecksetzToken, kontoVoll, loescheEigenesKonto, loescheKonto, merkeEmailNeu, mussPasswortAendern, nameVergeben, nameZuEmailToken, offeneRegistrierungen, schalteRegistrierungFrei, setzeRuecksetzTokenWennFrei, tokenStand, zugaengeDesKontos, zugangLoeschen, andereZugaengeLoeschen } from './repository/konten';
 
 /** Die neue Version schreibt der Aufrufer in die Sitzung, die bleibt. */
 export async function andereSitzungenBeenden(uid: number, eigeneSid: string): Promise<{ beendet: number; version: number }> {

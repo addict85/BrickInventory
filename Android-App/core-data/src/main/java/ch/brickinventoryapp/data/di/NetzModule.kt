@@ -28,14 +28,14 @@ import ch.brickinventoryapp.data.TokenTausch
 import ch.brickinventoryapp.data.ZweiterFaktorPflicht
 import ch.brickinventoryapp.data.cache.VorschauSpeicher
 import ch.brickinventoryapp.data.cache.Vorwaermung
-import ch.brickinventoryapp.data.util.AblageChiffre
-import ch.brickinventoryapp.data.util.Ablageschluessel
+import ch.brickinventoryapp.sicherheit.AblageChiffre
+import ch.brickinventoryapp.sicherheit.Ablageschluessel
 import ch.brickinventoryapp.netz.util.BildHostWaechter
-import ch.brickinventoryapp.data.util.VerschluesseltesDateisystem
-import ch.brickinventoryapp.data.util.ZertifikatsFrage
+import ch.brickinventoryapp.sicherheit.VerschluesseltesDateisystem
+import ch.brickinventoryapp.sicherheit.ZertifikatsFrage
 import ch.brickinventoryapp.netz.util.istEigenerBildServer
 import ch.brickinventoryapp.data.Verbindungsabwurf
-import ch.brickinventoryapp.data.util.SystemWurzeln
+import ch.brickinventoryapp.sicherheit.SystemWurzeln
 
 /** OkHttp-Clients, Bildlader und Retrofit — alles, was über das Netz geht. */
 @Module

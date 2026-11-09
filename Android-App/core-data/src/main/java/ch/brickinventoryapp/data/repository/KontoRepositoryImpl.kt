@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.api.KontoApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.model.data.model.*
@@ -19,7 +19,7 @@ import ch.brickinventoryapp.model.data.model.QrAbholung
 import ch.brickinventoryapp.model.data.model.QrLoginRequest
 import ch.brickinventoryapp.model.data.model.QrMeldung
 import ch.brickinventoryapp.netz.util.NetworkPolicy
-import ch.brickinventoryapp.data.util.Protokoll
+import ch.brickinventoryapp.netz.util.Protokoll
 
 /**
  * Anmeldung und das eigene Konto: Profil, Passwort, zweiter Faktor, Geräte, Design und Einstellungen — über Retrofit; die gemeinsame Abruflogik steht in RepoBasis.kt.
@@ -118,8 +118,11 @@ class KontoRepositoryImpl @Inject constructor(
 
     override suspend fun getTokens(): Ergebnis<TokensResponse> = safeCall { api.getTokens() }
 
-    override suspend fun revokeToken(tokenId: String): Ergebnis<TokenWiderruf> =
-        safeCall { api.revokeToken(tokenId) }
+    override suspend fun revokeToken(tokenId: String, bestaetigung: ZweiterFaktorAnfrage): Ergebnis<TokenWiderruf> =
+        safeCall { api.revokeToken(tokenId, bestaetigung) }
+
+    override suspend fun andereBeenden(bestaetigung: ZweiterFaktorAnfrage): Ergebnis<AndereBeendet> =
+        safeCall { api.andereBeenden(AndereBeendenAnfrage(bestaetigung.password, bestaetigung.code)) }
 
     /**
      * Den Token tauschen; [alterToken] geht ausdrücklich mit (siehe data/TokenTausch).

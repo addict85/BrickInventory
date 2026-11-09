@@ -11,7 +11,9 @@ import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.model.ui.model.alsGeraet
 import ch.brickinventoryapp.konto.ui.DesignWahl
+import ch.brickinventoryapp.konto.ui.GeraeteRueckfrage
 import ch.brickinventoryapp.konto.ui.GeraeteUiState
+import ch.brickinventoryapp.model.data.model.ZweiterFaktorAnfrage
 import ch.brickinventoryapp.konto.ui.KontoUiState
 import ch.brickinventoryapp.zustand.ui.Sitzung
 import ch.brickinventoryapp.zustand.ui.SitzungsRepository
@@ -195,38 +197,59 @@ class KontoViewModel @Inject constructor(
         }
     }
 
-    fun entwerteGeraet(tokenId: String) {
-        viewModelScope.launch {
-            _geraeteState.update { it.copy(laedt = true, fehler = null) }
-            when (val r = konto.revokeToken(tokenId)) {
-                is Ergebnis.Success -> {
-                    // deleted = 0: schon weg (anderes Gerät war schneller) — die Liste stimmt danach wieder.
-                    meldungen.zeige(texte.text(if (r.data.deleted > 0) R.string.tokens_revoked else R.string.tokens_already_gone))
-                    ladeGeraete()
-                }
-                is Ergebnis.Error -> _geraeteState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
-            }
-        }
-    }
-
     /**
-     * Alle anderen Geräte abmelden. Ohne als „aktuell" erkanntes Gerät wird
-     * nichts entwertet — sonst träfe es womöglich das eigene.
+     * Die Rückfrage vor dem Abmelden öffnen; [tokenId] null heisst alle anderen.
+     * Ohne als „aktuell" erkanntes Gerät wird nichts entwertet — sonst träfe es
+     * womöglich das eigene.
      */
-    fun entwerteAndereGeraete() {
-        viewModelScope.launch {
-            val liste = _geraeteState.value.geraete
+    fun frageEntwerten(tokenId: String?) {
+        val liste = _geraeteState.value.geraete
+        if (tokenId == null) {
             if (liste.none { it.aktuell }) {
                 _geraeteState.update { it.copy(fehler = texte.text(R.string.tokens_self_unknown)) }
-                return@launch
+                return
             }
-            val andere = liste.filter { !it.aktuell }
-            if (andere.isEmpty()) { meldungen.zeige(texte.text(R.string.tokens_no_others)); return@launch }
-            _geraeteState.update { it.copy(laedt = true, fehler = null) }
-            var weg = 0
-            for (g in andere) if (((konto.revokeToken(g.tokenId) as? Ergebnis.Success)?.data?.deleted ?: 0) > 0) weg++
-            meldungen.zeige(texte.menge(R.plurals.tokens_revoked_n, weg, weg))
-            ladeGeraete()
+            if (liste.none { !it.aktuell }) { meldungen.zeige(texte.text(R.string.tokens_no_others)); return }
+        }
+        _geraeteState.update { it.copy(rueckfrage = GeraeteRueckfrage(tokenId), fehler = null) }
+    }
+
+    fun entwertenAbbrechen() = _geraeteState.update { it.copy(rueckfrage = null) }
+
+    /** Passwort und, wenn der Server ihn verlangt hat, Code; eine Absage lässt die Rückfrage offen. */
+    fun bestaetigeEntwerten(passwort: String, code: String?) {
+        val frage = _geraeteState.value.rueckfrage ?: return
+        if (frage.laeuft) return
+        _geraeteState.update { it.copy(rueckfrage = frage.copy(laeuft = true, fehler = null)) }
+        val anfrage = ZweiterFaktorAnfrage(password = passwort, code = code?.trim()?.ifEmpty { null })
+        viewModelScope.launch {
+            val fehler: Ergebnis.Error? = if (frage.tokenId != null) {
+                when (val r = konto.revokeToken(frage.tokenId, anfrage)) {
+                    is Ergebnis.Success -> {
+                        // deleted = 0: schon weg (anderes Gerät war schneller) — die Liste stimmt danach wieder.
+                        meldungen.zeige(texte.text(if (r.data.deleted > 0) R.string.tokens_revoked else R.string.tokens_already_gone))
+                        null
+                    }
+                    is Ergebnis.Error -> r
+                }
+            } else {
+                when (val r = konto.andereBeenden(anfrage)) {
+                    is Ergebnis.Success -> {
+                        val weg = r.data.zugaenge
+                        meldungen.zeige(texte.menge(R.plurals.tokens_revoked_n, weg, weg))
+                        null
+                    }
+                    is Ergebnis.Error -> r
+                }
+            }
+            if (fehler == null) {
+                _geraeteState.update { it.copy(rueckfrage = null) }
+                ladeGeraete()
+            } else _geraeteState.update {
+                it.copy(rueckfrage = it.rueckfrage?.copy(laeuft = false, fehler = texte.meldung(fehler),
+                    codeNoetig = it.rueckfrage.codeNoetig || fehler.code == Fehlercode.ZWEITER_FAKTOR_NOETIG ||
+                        fehler.code == Fehlercode.ZWEITER_FAKTOR_FALSCH))
+            }
         }
     }
 

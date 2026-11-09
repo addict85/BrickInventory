@@ -25,6 +25,8 @@ export const LOCKS = {
   VERWALTER_BESTAND:  81,
   /** Zweiter Wert: hashtext('<user_id>|<schlüssel>'). */
   INVENTAR:          61,
+  /** Zweiter Wert: hashtext(Setnummer); „schon im Blickfeld?“ und Anlegen in einem Schritt. */
+  SET_ERFASSEN:      64,
   PROXY_THUMBS:       918273645,
   SCHEMA_INIT:        55667788,
 } as const;

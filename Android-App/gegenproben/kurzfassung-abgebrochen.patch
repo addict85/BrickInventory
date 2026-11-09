@@ -3,15 +3,15 @@ Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
 Rot: eine Kurzfassung endet mit einem ganzen Satz
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/TokenTresor.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/TokenTresor.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/TokenTresor.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/TokenTresor.kt
-@@ -11,7 +11,7 @@ import javax.crypto.spec.GCMParameterSpec
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/TokenTresor.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/TokenTresor.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/TokenTresor.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/TokenTresor.kt
+@@ -11,7 +11,7 @@
  
  /**
   * Verschlüsselung für das Bearer-Token. Das Token öffnet ein Konto auf dem Server und läuft
 - * erst nach TOKEN_IDLE_DAYS Untätigkeit ab.
 + * erst nach TOKEN_IDLE_DAYS Untätigkeit ab, und
-  * Ausführlich: docs/begruendungen/core-data/data/util/TokenTresor.kt.md#z12
+  * Ausführlich: docs/begruendungen/core-sicherheit/sicherheit/TokenTresor.kt.md#z12
   */
  

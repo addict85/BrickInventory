@@ -28,7 +28,7 @@ const { dateiFehler } = _req('src/infra/fehlerTexte.js');
 const pa = require.resolve(path.join(require('./helpers/sources').DIST, 'src/finanzen/preisalarm.js'));
 _req('src/finanzen/preisalarm.js');
 require.cache[pa].exports = Object.assign({}, require.cache[pa].exports,
-  { alarmeAusCsv: async () => { throw dateiFehler('alarm_schwelle_ungueltig', 400); } });
+  { alarmeAusCsv: async () => { throw dateiFehler('ungueltig', 'alarm_schwelle_ungueltig'); } });
 
 test('Import als Auftrag', { concurrency: 1 }, async (t) => {
   const db = await dbOderSkip(t, _req);
@@ -45,7 +45,7 @@ test('Import als Auftrag', { concurrency: 1 }, async (t) => {
 
   await t.test('ohne Worker bleibt der Auftrag offen', async () => {
     await assert.rejects(importAlsAuftrag(uid, 'teile_csv', { text: csv('ohne1') }, { wartenMs: 300 }),
-      (e) => e.code === 'import_laeuft_noch' && e.status === 504);
+      (e) => e.code === 'import_laeuft_noch' && e.art === 'zeitueberschreitung');
     const a = await db.get(`SELECT status, nutzlast->>'quelle' AS quelle FROM auftraege
       WHERE art = 'csv_import' AND user_id = $1 ORDER BY id DESC LIMIT 1`, [uid]);
     assert.deepEqual(a, { status: 'offen', quelle: 'teile_csv' });
@@ -68,6 +68,6 @@ test('Import als Auftrag', { concurrency: 1 }, async (t) => {
   await t.test('ein Fachfehler kommt mit Code an', async (tt) => {
     importWorker(tt, _req);
     await assert.rejects(importAlsAuftrag(uid, 'alarme_csv', { waehrung: 'CHF', text: 'set_number\n1-1\n' }),
-      (e) => e.code === 'alarm_schwelle_ungueltig' && e.status === 400);
+      (e) => e.code === 'alarm_schwelle_ungueltig' && e.art === 'ungueltig');
   });
 });

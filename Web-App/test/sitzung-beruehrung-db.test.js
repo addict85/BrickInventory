@@ -38,7 +38,7 @@ async function starteServer(frist) {
   app.use(session({
     store: speicher, secret: process.env.SESSION_SECRET,
     resave: false, saveUninitialized: false,
-    cookie: { httpOnly: true, sameSite: 'lax' },
+    cookie: { httpOnly: true, sameSite: 'strict' },
   }));
   app.get('/anmelden', (req, res) => { req.session.userId = 990601; res.json({ ok: true }); });
   app.get('/bild',     (req, res) => { res.json({ uid: req.session?.userId ?? null }); });

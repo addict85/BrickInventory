@@ -185,6 +185,15 @@ CREATE TABLE figur_eigen (
   CONSTRAINT figur_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE geraete_schluessel (
+  user_id integer NOT NULL,
+  familie timestamp with time zone NOT NULL,
+  oeffentlich text NOT NULL,
+  angelegt_am timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT geraete_schluessel_pkey PRIMARY KEY (user_id, familie),
+  CONSTRAINT geraete_schluessel_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE global_settings (
   key text NOT NULL,
   value text NOT NULL,
@@ -743,6 +752,30 @@ CREATE TABLE schema_migrations (
   applied_at timestamp with time zone NOT NULL DEFAULT now(),
   pruefsumme text,
   CONSTRAINT schema_migrations_pkey PRIMARY KEY (name)
+);
+
+CREATE TABLE schritt_challenges (
+  challenge text NOT NULL,
+  user_id integer NOT NULL,
+  familie timestamp with time zone NOT NULL,
+  aktion text NOT NULL,
+  angelegt_am timestamp with time zone NOT NULL DEFAULT now(),
+  ablauf timestamp with time zone NOT NULL,
+  CONSTRAINT schritt_challenges_aktion_check CHECK ((aktion = ANY (ARRAY['gutschein'::text, 'verwaltung'::text, 'zweiter_faktor'::text]))),
+  CONSTRAINT schritt_challenges_pkey PRIMARY KEY (challenge),
+  CONSTRAINT schritt_challenges_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_schritt_challenges_familie ON schritt_challenges USING btree (user_id, familie);
+
+CREATE TABLE schritt_freigaben (
+  user_id integer NOT NULL,
+  familie timestamp with time zone NOT NULL,
+  aktion text NOT NULL,
+  bis timestamp with time zone NOT NULL,
+  hoechstens timestamp with time zone NOT NULL,
+  CONSTRAINT schritt_freigaben_aktion_check CHECK ((aktion = ANY (ARRAY['gutschein'::text, 'verwaltung'::text, 'zweiter_faktor'::text]))),
+  CONSTRAINT schritt_freigaben_pkey PRIMARY KEY (user_id, familie, aktion),
+  CONSTRAINT schritt_freigaben_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE set_acquisitions (

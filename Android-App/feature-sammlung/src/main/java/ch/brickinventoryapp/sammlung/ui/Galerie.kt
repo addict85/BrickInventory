@@ -4,7 +4,7 @@ import ch.brickinventoryapp.model.data.model.SetItem
 import ch.brickinventoryapp.model.data.model.SetsResponse
 import ch.brickinventoryapp.model.data.model.StatsResponse
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.data.lokal.Lokal
+import ch.brickinventoryapp.offline.Lokal
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
 import ch.brickinventoryapp.model.ui.model.alsAnsicht
 import kotlinx.coroutines.flow.Flow

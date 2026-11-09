@@ -34,14 +34,18 @@ include(":app")
 
 // Abhängigkeiten nur in diese Richtung: app → feature-* → core-*; kein Bereich
 // kennt einen anderen. Unter den Kernmodulen: core-update und core-dienste →
-// core-data → core-netz → core-model. ModulgrenzenTest prüft das an den Build-Dateien.
+// core-data → core-offline → core-sicherheit → core-netz → core-model.
+// ModulgrenzenTest prüft das an den Build-Dateien.
 include(":core-model")
 include(":core-ressourcen")
 include(":core-netz")
+include(":core-sicherheit")
+include(":core-offline")
 include(":core-data")
 include(":core-update")
 include(":core-dienste")
 include(":core-ui")
+include(":core-ui-bestand")
 include(":core-zustand")
 include(":core-testing")
 include(":feature-anmeldung")
@@ -51,4 +55,3 @@ include(":feature-teile")
 include(":feature-finanzen")
 include(":feature-konto")
 include(":feature-verwaltung")
-include(":feature-gemeinsam")

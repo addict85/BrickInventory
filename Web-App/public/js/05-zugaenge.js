@@ -5,7 +5,7 @@ import { fehlerMeldung, api } from './01-api.js';
 import { ico, G, knopfBesetzt, setzeHtml } from './01-dom.js';
 import { toast } from './01-meldungen.js';
 import { html, sichereUrl } from './00-escapen.js';
-import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
+import { bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
 
 // Zugänge des Kontos: App-Tokens, QR-Anmeldung und das TLS-Zertifikat für die App.
 // Nach dem Scan meldet sich die App mit einem Gerätenamen und zeigt einen Code; erst wenn er hier eingetippt
@@ -209,21 +209,21 @@ export async function ladeTls() {
 }
 
 /**
+ * Ein fremdes Gerät abmelden: Der Server verlangt Passwort und Faktor, damit ein erbeuteter Zugang den
+ * Inhaber nicht aussperrt. Der eigene Zugang hat hier keinen Knopf.
  * @param {string} tokenId
  * @param {string} label
  */
 async function revokeToken(tokenId, label) {
-  if (!await confirmDelete(tRaw('tokens.revoke.title'), tRaw('tokens.revoke.text', { name: label || '—' }), 'schluessel', { knopf: 'confirm.btn.geraet_abmelden', art: 'bp' })) return;
-  const d = await api('DELETE', `/v1/settings/tokens/${encodeURIComponent(tokenId)}`);
+  const password = await bestaetigeMitPasswort(tRaw('tokens.revoke.title'), tRaw('tokens.revoke.text', { name: label || '—' }), 'schluessel', { knopf: 'confirm.btn.geraet_abmelden', art: 'bp' });
+  if (password === null) return;
+  const d = await mitZweitemFaktor(z => api('DELETE', `/v1/settings/tokens/${encodeURIComponent(tokenId)}`, { password, ...z }));
+  if (!d) return;
   if (d.success) { toast(tRaw('tokens.revoked'), 'success'); loadTokens(); }
   else toast(d.error || t('settings.error'), 'error');
 }
 
-/**
- * Alle Zugänge ausser dem eigenen entwerten, nacheinander über den bestehenden Endpunkt: Eine zweite Adresse
- * für „dasselbe, mehrfach“ wäre Doppelung. Gezählt wird, was wirklich weg ist.
- * Ausführlich: docs/begruendungen/public/js/05-zugaenge.js.md#revokeothertokens
- */
+/** Alle übrigen Browser und App-Zugänge in EINER bestätigten Anfrage: Ein Code des zweiten Faktors gilt nur einmal. */
 async function revokeOtherTokens() {
   const d = await api('GET', '/v1/settings/tokens');
   if (!d.success) { toast(d.error || t('settings.error'), 'error'); return; }
@@ -231,16 +231,10 @@ async function revokeOtherTokens() {
   const password = await bestaetigeMitPasswort(tRaw('tokens.revoke_others.title'),
                                                tRaw('tokens.revoke_others.text', { n: andere.length }), 'abmelden', { knopf: 'confirm.btn.abmelden', art: 'bp' });
   if (password === null) return;
-  // Zuerst die übrigen Browser: Dort prüft der Server das Passwort.
-  const s = await mitZweitemFaktor(z => api('POST', '/v1/settings/sessions/andere-beenden', { password, ...z }));
+  const s = await mitZweitemFaktor(z => api('POST', '/v1/settings/sessions/andere-beenden', { password, zugaenge: true, ...z }));
   if (s === null) return;
   if (!s.success) { toast(s.error || t('settings.error'), 'error'); return; }
-  let weg = 0;
-  for (const tk of andere) {
-    const r = await api('DELETE', `/v1/settings/tokens/${encodeURIComponent(tk.token_id)}`);
-    weg += r.deleted || 0;
-  }
-  toast(tRaw('tokens.revoked_n', { n: weg + (s.deleted || 0) }), weg === andere.length ? 'success' : 'error');
+  toast(tRaw('tokens.revoked_n', { n: (s.zugaenge || 0) + (s.deleted || 0) }), 'success');
   loadTokens();
 }
 

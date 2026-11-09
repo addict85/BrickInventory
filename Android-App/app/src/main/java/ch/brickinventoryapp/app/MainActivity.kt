@@ -1,7 +1,8 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import android.os.Bundle
+import android.widget.Toast
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import androidx.activity.compose.setContent
@@ -48,7 +49,15 @@ import javax.inject.Inject
 import ch.brickinventoryapp.dienste.alarm.PreisalarmRepository
 import ch.brickinventoryapp.zustand.ui.Meldungseingang
 import ch.brickinventoryapp.ui.components.GeraeteSchrittschutz
+import ch.brickinventoryapp.model.schritt.Schrittbindung
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz
+import ch.brickinventoryapp.ui.components.AppSperre
+import ch.brickinventoryapp.ui.components.AppSperreSchirm
+import ch.brickinventoryapp.ui.components.LocalAppSperre
+import ch.brickinventoryapp.ui.components.entsperreMitGeraetesperre
+import android.os.SystemClock
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import ch.brickinventoryapp.app.ui.components.NutzerCaDialog
 import ch.brickinventoryapp.ui.components.OhneSperreWarnung
 import ch.brickinventoryapp.ui.components.Sichtschutz
@@ -65,9 +74,9 @@ import ch.brickinventoryapp.sammlung.ui.viewmodel.ErfassungViewModel
 import ch.brickinventoryapp.finanzen.ui.viewmodel.GutscheinViewModel
 import ch.brickinventoryapp.konto.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.app.nav.AktivitaetsZustand
-import ch.brickinventoryapp.data.util.GeheimeZwischenablage
+import ch.brickinventoryapp.sicherheit.GeheimeZwischenablage
 import ch.brickinventoryapp.data.util.LanguageManager
-import ch.brickinventoryapp.data.util.Protokoll
+import ch.brickinventoryapp.netz.util.Protokoll
 import ch.brickinventoryapp.BuildConfig
 
 @AndroidEntryPoint
@@ -100,11 +109,21 @@ class MainActivity : NurLauncherStart() {
         GeraeteSchrittschutz(this, keinSchluessel = {
             android.widget.Toast.makeText(this, LanguageManager.localizedContext(this).getString(R.string.schritt_kein_schluessel),
                 android.widget.Toast.LENGTH_LONG).show()
+        }, bindung = schrittbindung, abgelehnt = { meldung ->
+            // Der Satz des Servers sagt, was zu tun ist (neu anmelden, Displaysperre einrichten).
+            Toast.makeText(this, meldung ?: LanguageManager.localizedContext(this).getString(R.string.schritt_server_fehler),
+                Toast.LENGTH_LONG).show()
         }) {
             LanguageManager.localizedContext(this)
                 .getString(R.string.schritt_untertitel)
         }
     }
+
+    /** Optional, Vorgabe aus: nach N Minuten im Hintergrund erst nach der Gerätesperre weiter. */
+    private val appSperre by lazy { AppSperre(SystemClock::elapsedRealtime, AppSperreAblage(this)) }
+
+    /** Bindet den Schrittschutz an den Server (routes/api_v1/geraet.ts). */
+    @Inject lateinit var schrittbindung: Schrittbindung
 
     /** Das Ziel einer angetippten Meldung; abgelegt nur vom nicht exportierten MeldungsEinstieg. */
     @Inject lateinit var meldungseingang: Meldungseingang
@@ -134,6 +153,7 @@ class MainActivity : NurLauncherStart() {
      */
     override fun onStart() {
         super.onStart()
+        appSperre.imVordergrund()
         lifecycleScope.launch {
             fangeAusserAbbruch { preisalarme.durchgang() }
                 .onFailure { Protokoll.warnung("Preisalarm", "Abruf beim Oeffnen fehlgeschlagen", it) }
@@ -143,6 +163,7 @@ class MainActivity : NurLauncherStart() {
     override fun onStop() {
         super.onStop()
         schrittschutz.vergiss()
+        appSperre.imHintergrund()
     }
 
     /** Ein abgelaufenes Geheimnis lässt sich ab Android 10 erst mit Fokus aus der Zwischenablage nehmen. */
@@ -178,10 +199,15 @@ class MainActivity : NurLauncherStart() {
                 CompositionLocalProvider(
                     LocalAppFassung provides AppFassung(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
                     LocalSchrittschutz provides schrittschutz,
+                    LocalAppSperre provides appSperre,
                 ) { TastaturOhneLernen {
                     // App-weit: Gutschein-Nummer und PIN, Passwörter, Codes und
                     // Einladungen; Setnamen lernt die Tastatur dafür auch nicht mit.
-                    BrickInventoryRoute(aktivitaetsZustand(), imageLoader)
+                    val gesperrt by appSperre.gesperrt.collectAsStateWithLifecycle()
+                    // Gesperrt liest auch TalkBack nichts darunter vor.
+                    Box(if (gesperrt) Modifier.clearAndSetSemantics {} else Modifier) {
+                        BrickInventoryRoute(aktivitaetsZustand(), imageLoader)
+                    }
                     // Ohne Displaysperre fragt der Schrittschutz hier nach, statt still durchzulassen.
                     OhneSperreWarnung(schrittschutz.ohneSperre)
                     // Mit Startpasswort weist der Server alles ab: nur die Maske, bis es ersetzt ist.
@@ -190,6 +216,8 @@ class MainActivity : NurLauncherStart() {
                     // und StateFlow.value in der Komposition verbietet Lint.
                     val angemeldet by remember { vm.state.map { it.isLoggedIn }.distinctUntilChanged() }
                         .collectAsStateWithLifecycle(false)
+                    // Den Geräteschlüssel gleich nach der Anmeldung hinterlegen: Später nimmt der Server keinen an.
+                    LaunchedEffect(angemeldet) { if (angemeldet) schrittschutz.bindeAnServer() }
                     // Ebenso Verwalterrechte ohne zweiten Faktor; das Startpasswort kommt zuerst.
                     val faktorPflicht by vm.zweiterFaktorNoetig.collectAsStateWithLifecycle()
                     if (startpasswort && angemeldet) {
@@ -229,6 +257,12 @@ class MainActivity : NurLauncherStart() {
                             onJa = vertrauen.nutzerCa::bestaetigen,
                             onAbbrechen = vertrauen.nutzerCa::abbrechen,
                         )
+                    }
+                    // Zuoberst: Die App-Sperre deckt auch die Pflichtmasken ab.
+                    if (gesperrt) AppSperreSchirm {
+                        val texte = LanguageManager.localizedContext(this@MainActivity)
+                        entsperreMitGeraetesperre(this@MainActivity, texte.getString(R.string.app_sperre_gesperrt),
+                            texte.getString(R.string.schritt_untertitel)) { appSperre.entsperrt() }
                     }
                 } }
             }

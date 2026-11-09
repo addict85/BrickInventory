@@ -46,6 +46,7 @@ import ch.brickinventoryapp.gemeinsam.ui.GalleryStatChip
 import ch.brickinventoryapp.gemeinsam.ui.KennzahlenReihe
 import ch.brickinventoryapp.gemeinsam.ui.KontoFilterAbschnitt
 import ch.brickinventoryapp.gemeinsam.ui.SucheMitFilter
+import ch.brickinventoryapp.model.ui.Listenansicht
 
 /** Der Figuren-Reiter am Navigationsziel: reicht Zustand und Aktionen an [MinifigsScreen]. */
 @Composable
@@ -84,7 +85,7 @@ fun MinifigsScreen(
     val waehrung = state.currency
     val defaultCondition = state.userDefaultCondition ?: "N"
     val householdMembers = blick.householdMembers
-    val scopeMode = blick.scopeModes[ScopeFilter.View.MINIFIGS.key]
+    val scopeMode = blick.scopeModes[ScopeFilter.View.MINIFIGS]
         ?: ScopeFilter.ALL
     val manualFigs = partsState.manualFigs ?: emptyList()
     val lagerState = zustand.lagerState
@@ -195,12 +196,12 @@ fun MinifigsScreen(
                     itemsIndexed(
                         figs,
                         key = { index, fig -> "${fig.figNumber}_${fig.source}_$index" },
-                        span = { _, _ -> if (ansicht == "table") GridItemSpan(maxLineSpan) else GridItemSpan(1) },
+                        span = { _, _ -> if (ansicht == Listenansicht.TABELLE) GridItemSpan(maxLineSpan) else GridItemSpan(1) },
                     ) { _, fig ->
                         // BEIDE Ansichten oeffnen denselben Dialog.
                         val oeffne = { aktionen.oeffneSetItem("fig", fig.figNumber) }
                         Bewegt {
-                            if (ansicht == "table") MinifigTableRow(fig, serverUrl, imageLoader, oeffne)
+                            if (ansicht == Listenansicht.TABELLE) MinifigTableRow(fig, serverUrl, imageLoader, oeffne)
                             else MinifigCard(fig, serverUrl, imageLoader, oeffne,
                                 ausgewaehlt = gewaehlt == detailSchluessel("fig", fig.figNumber))
                         }

@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.util.AblageChiffre
-import ch.brickinventoryapp.data.util.VerschluesseltesDateisystem
-import ch.brickinventoryapp.data.util.raeumeKlartextBildcachesAuf
+import ch.brickinventoryapp.sicherheit.AblageChiffre
+import ch.brickinventoryapp.sicherheit.VerschluesseltesDateisystem
+import ch.brickinventoryapp.sicherheit.raeumeKlartextBildcachesAuf
 import okhttp3.Cache
 import okhttp3.CacheControl
 import okhttp3.OkHttpClient

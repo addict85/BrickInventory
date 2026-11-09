@@ -378,7 +378,7 @@ test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', ()
   const src = require('./helpers/sources').setKernQuelle();
   const fn = src.slice(
     src.indexOf('async function adjustAcquisitionsToQuantity'),
-    src.indexOf('async function addSet'),
+    src.indexOf('async function schreibeInLetzteErfassung'),
   );
   assert.doesNotMatch(
     fn,
@@ -387,7 +387,7 @@ test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', ()
   );
   assert.match(
     fn,
-    /await recordAcquisition\(userId, setNumber, delta, plan\.price, plan\.condition, dbh, !!plan\.geschaetzt, plan\.currency \?\? null\);/,
+    /await recordAcquisition\(\{ konto: userId, setNumber, menge: delta, kaufpreis: plan\.price, zustand: plan\.condition,/,
     'Auch die Erhöhung läuft über den gemeinsamen Schreibweg',
   );
   // Der Preis kommt aus priceForNewAcquisition() — ausgelagert, weil der

@@ -42,7 +42,7 @@ test('ohne page_size bleibt alles wie bisher', () => {
   const v1 = fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8');
   const route = v1.slice(v1.indexOf("router.get('/sets', requireToken"), v1.indexOf("router.get('/sets/:setNumber'"));
   // Die geprüfte Abfrage als GANZES: Eine Auswahl daneben liess einst `storage` fallen.
-  assert.match(route, /await getSets\([^;]*\breq\.abfrage\)/,
+  assert.match(route, /await (?:sets\.)?getSets\([^;]*\breq\.abfrage\)/,
     'Die Route muss alle Filterparameter durchreichen — sonst filtert der Client wieder selbst');
 });
 

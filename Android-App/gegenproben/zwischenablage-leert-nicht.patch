@@ -1,11 +1,11 @@
 Gegenprobe: Das abgelaufene Geheimnis bleibt in der Zwischenablage
-Modul: core-data
-Test: ch.brickinventoryapp.data.GeheimeZwischenablageTest
+Modul: core-sicherheit
+Test: ch.brickinventoryapp.sicherheit.GeheimeZwischenablageTest
 Rot: ein kopiertes Geheimnis ist nach einer Minute weg
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/GeheimeZwischenablage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/GeheimeZwischenablage.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/GeheimeZwischenablage.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/GeheimeZwischenablage.kt
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/GeheimeZwischenablage.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/GeheimeZwischenablage.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/GeheimeZwischenablage.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/GeheimeZwischenablage.kt
 @@ -56,7 +56,6 @@ object GeheimeZwischenablage {
              GeheimSchritt.WARTEN -> Unit
              GeheimSchritt.VERGESSEN -> kennung = null

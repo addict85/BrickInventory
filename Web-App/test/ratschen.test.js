@@ -85,9 +85,10 @@ test('stille Faenge werden weniger, nie mehr', () => {
 
 test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', () => {
   // Ein Ersatzwert nach einem Fehler sieht für den Aufrufer aus wie „leer“; src/infra/ergebnis.ts
-  // gibt den Fehlschlag weiter. Gemessen 349 Aufrufe am 09.11.2026, 318 nach dem Umbau von src/sets.
-  // Gegenprobe (09.11.2026): in src/sets/setAdd.ts wieder `.catch(meldeUndLiefere(…))` → rot (319).
-  const SCHRANKE = 318;
+  // gibt den Fehlschlag weiter. Gemessen 349 Aufrufe am 09.11.2026, 318 nach dem Umbau von src/sets,
+  // 279 mit `degradiert` (Abstriche) und Aufträgen, die sichtbar scheitern statt leer weiterzulaufen.
+  // Gegenprobe (09.11.2026): in src/sets/erfassen.ts wieder `.catch(meldeUndLiefere(…))` → rot (280).
+  const SCHRANKE = 279;
   const muster = /\b(?:logAndContinue|meldeUndLiefere)\(/g;
   const ist = zaehle([muster]);
   assert.ok(ist <= SCHRANKE, `${ist}-mal logAndContinue/meldeUndLiefere, erlaubt sind ${SCHRANKE}`);
@@ -95,6 +96,23 @@ test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', 
   assert.ok(sets.length > 10, 'src/sets nicht gefunden');
   assert.deepEqual(sets.filter(f => new RegExp(muster.source).test(require('./helpers/sources').ohneKommentare(fs.readFileSync(f, 'utf8')))).map(f => path.relative(WEB, f)), []);
   if (ist < SCHRANKE) console.log(`  ℹ logAndContinue/meldeUndLiefere: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
+function nimmtProzesszugang(f) {
+  if (/[\\/]db[\\/]database\.ts$/.test(f)) return false;
+  return /^import (?:\* as \w+|\{[^}]*\}) from '[./]+\/db\/database';/m.test(fs.readFileSync(f, 'utf8'));
+}
+
+test('der Kompatibilitätsweg zur Datenbank wird weniger, nie mehr', () => {
+  // db/database.ts hat eine Fabrik (erzeugeDb); wer noch die Funktionen des
+  // Prozesszugangs importiert, statt einen Zugang übergeben zu bekommen, zählt hier.
+  // Gemessen 98 Dateien am 09.11.2026, 99 nach dem Zusammenführen mit dem Schrittschutz.
+  // Gegenprobe (09.11.2026): ein `import * as db from '../../db/database'` in src/sets/zeilen.ts → rot.
+  const SCHRANKE = 99;
+  const ist = quellen().filter(nimmtProzesszugang).length;
+  assert.ok(ist > 50, `nur ${ist} Importe gefunden — greift die Suche noch?`);
+  assert.ok(ist <= SCHRANKE, `${ist} Dateien nehmen den Prozesszugang aus db/database, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE) console.log(`  ℹ Kompatibilitätsweg db/database: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
 test('any wird weniger, nie mehr', () => {
@@ -145,7 +163,7 @@ test('Datenbankzeilen sind ohne Typargument unknown', () => {
 test('ungetypte Datenbankabfragen werden weniger, nie mehr', () => {
   // Erlaubt, solange niemand Felder der Zeile liest — dann verlangt der
   // Übersetzer ohnehin ein Typargument. Gemessen 68 am 06.11.2026.
-  // Gegenprobe (05.11.2026): Schranke auf 68 → rot.
+  // Gegenprobe (05.11.2026): Schranke auf 68 → rot. 65 am 09.11.2026 (beide Zweige zusammen).
   const SCHRANKE = 65;
   const ist = zaehle([/\b(?:db|tx|dbh|d)\.(?:get|all)\(/g]);
   assert.ok(ist <= SCHRANKE, `${ist} ungetypte db.get/all, erlaubt sind ${SCHRANKE}`);
@@ -167,9 +185,9 @@ test('rohe req.body und req.query in Routen werden weniger, nie mehr', () => {
 
 test('Schreibziele in Routen werden weniger, nie mehr', () => {
   // schreibziel() prüft im Haushalt, für wen geschrieben wird; besser nimmt der
-  // Dienst den Wunsch selbst entgegen. Gemessen 17 am 05.11.2026.
-  // Gegenprobe (05.11.2026): Schranke auf 16 → rot.
-  const SCHRANKE = 17;
+  // Dienst den Wunsch selbst entgegen. Gemessen 17 am 05.11.2026, 13 am 09.11.2026
+  // (Set erfassen und verschieben nehmen den Wunsch im Dienst). Gegenprobe (05.11.2026): Schranke auf 16 → rot.
+  const SCHRANKE = 13;
   let ist = 0;
   for (const f of quellen().filter(f => /[\\/]routes[\\/]/.test(f)))
     ist += (require('./helpers/sources').ohneKommentare(fs.readFileSync(f, 'utf8')).match(/\bschreibziel\(/g) || []).length;
@@ -563,7 +581,7 @@ test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie meh
 test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () => {
   // Je Ordner eine Schranke, gemessen am 06.11.2026.
   // Gegenprobe: 40 Kommentarzeilen an clients/ezb.ts gehängt → rot (clients).
-  const SCHRANKE = { db: 27.2, clients: 19.7, scripts: 25.5 };
+  const SCHRANKE = { db: 25.8, clients: 19.7, scripts: 25.5 };
   const zuViel = [];
   for (const [ordner, schranke] of Object.entries(SCHRANKE)) {
     let zeilen = 0, kommentar = 0;
@@ -795,9 +813,9 @@ test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie meh
 
 test('Testdateien ohne Gegenprobe werden weniger, nie mehr', () => {
   // Jeder Test nennt im Kopf seine Gegenprobe (CLAUDE.md); die älteren ohne
-  // werden beim Anfassen nachgetragen. Gemessen 89 am 09.11.2026.
+  // werden beim Anfassen nachgetragen. Gemessen 88 am 09.11.2026.
   // Gegenprobe (05.11.2026): in lint-ratsche.test.js „Gegenproben“ umbenannt → rot (112).
-  const SCHRANKE = 89;
+  const SCHRANKE = 88;
   const ohne = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js'))
     .filter(n => !fs.readFileSync(path.join(__dirname, n), 'utf8').includes('Gegenprobe'));
   assert.ok(ohne.length <= SCHRANKE, `${ohne.length} Testdateien ohne Gegenprobe, erlaubt sind ${SCHRANKE}`);

@@ -6,8 +6,8 @@ import android.net.NetworkCapabilities
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.cache.VorschauSpeicher
-import ch.brickinventoryapp.data.util.Ablageschluessel
-import ch.brickinventoryapp.data.util.TokenVerschluesselung
+import ch.brickinventoryapp.sicherheit.Ablageschluessel
+import ch.brickinventoryapp.sicherheit.TokenVerschluesselung
 import ch.brickinventoryapp.testing.testVertrauenschiffre
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking

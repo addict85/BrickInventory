@@ -2,19 +2,15 @@
  * Ausführlich: docs/begruendungen/db/database.ts.md#ueberblick */
 
 import { Pool, types as pgTypes, Client } from 'pg';
-import type { PoolClient } from 'pg';
+import type { PoolClient, PoolConfig } from 'pg';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { runMigrations } from './migrate';
 import type { DbSchnittstelle } from './typen';
-import fs from 'fs';
-import path from 'path';
-import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import { LOCKS } from '../src/infra/lockNamespaces';
 import { fehlerCode, meldeFehler, logAndContinue } from '../src/infra/fehler';
 import { konfig, datenbankVerbindung } from '../src/infra/konfig';
-import { passwortMangel } from '../src/infra/passwortRegel';
-import { entferneStartpasswort, schreibeStartpasswort } from '../src/infra/startpasswort';
 
 // Alle Abhängigkeiten stehen hier oben: Ein require() im Rumpf versteckt sie
 // und liefert `any`. Ausführlich: docs/begruendungen/db/database.ts.md#importe-am-kopf
@@ -24,34 +20,34 @@ import { entferneStartpasswort, schreibeStartpasswort } from '../src/infra/start
 // Ausführlich: docs/begruendungen/db/database.ts.md#numeric-als-zahl
 pgTypes.setTypeParser(pgTypes.builtins.NUMERIC, (v: string | null) => (v === null ? null : parseFloat(v)));
 
-// ── Connection pool ───────────────────────────────────────────────────────────
 // Höchstens zwei Prozesse (web und jobs) mit je 15 Verbindungen: weit unter
 // max_connections, mit Luft für Werkzeuge und den CSV-Importprozess.
 const VORGABE_POOL = 15;
 
-const K = konfig();
-const POOL_CONFIG = {
-  max:                    K.pgPoolMax ?? VORGABE_POOL,
-  min:                    K.pgPoolMin,
-  idleTimeoutMillis:      K.pgIdleMs,
-  connectionTimeoutMillis:K.pgConnMs,
-  // Über die Verbindungsoptionen statt je Anfrage. Die Zeitzone des
-  // Erfassungstags steht in der Datenbank (schreibeErfassungsZeitzone).
-  options:                `-c statement_timeout=${K.pgStmtMs} -c idle_in_transaction_session_timeout=${K.pgLeerlaufTxMs} -c lock_timeout=${K.pgSperreMs}`,
-  keepAlive:              true,
-  keepAliveInitialDelayMillis: 10000,
-};
+/** Was eine Verbindung braucht; der Prozess liest es einmal und reicht es weiter. */
+export interface DbKonfig {
+  verbindung: PoolConfig;
+  pool: PoolConfig;
+}
 
-const baseConfig = datenbankVerbindung();
+export function dbKonfigAusUmgebung(): DbKonfig {
+  const K = konfig();
+  return {
+    verbindung: datenbankVerbindung(),
+    pool: {
+      max:                    K.pgPoolMax ?? VORGABE_POOL,
+      min:                    K.pgPoolMin,
+      idleTimeoutMillis:      K.pgIdleMs,
+      connectionTimeoutMillis:K.pgConnMs,
+      // Über die Verbindungsoptionen statt je Anfrage. Die Zeitzone des
+      // Erfassungstags steht in der Datenbank (schreibeErfassungsZeitzone).
+      options:                `-c statement_timeout=${K.pgStmtMs} -c idle_in_transaction_session_timeout=${K.pgLeerlaufTxMs} -c lock_timeout=${K.pgSperreMs}`,
+      keepAlive:              true,
+      keepAliveInitialDelayMillis: 10000,
+    },
+  };
+}
 
-const pool = new Pool({ ...baseConfig, ...POOL_CONFIG });
-
-// Ohne Lauscher brächte der Abriss einer ruhenden Verbindung den Prozess zu Fall.
-pool.on('error', (err) => {
-  console.error('[db-pool] idle client error:', err.message);
-});
-
-// ── Query helper with retry on transient errors ───────────────────────────────
 const RETRYABLE_CODES = new Set([
   '40001', // serialization_failure
   '40P01', // deadlock_detected
@@ -84,76 +80,60 @@ export async function queryWithRetry<T>(queryFn: () => Promise<T>, lesend: boole
       const code = fehlerCode(err) ?? '';
       const wiederholbar = RETRYABLE_CODES.has(code) || (lesend && NUR_LESEND_WIEDERHOLBAR.has(code));
       if (!wiederholbar || attempt === maxRetries) throw err;
-      const wait = 50 * Math.pow(2, attempt); // 50 ms, 100 ms
+      const wait = 50 * 2 ** attempt; // 50 ms, 100 ms
       await new Promise(r => setTimeout(r, wait));
     }
   }
   throw lastErr;
 }
 
-// Für den Gesundheits-Endpunkt.
-function getPoolStats() {
-  return {
-    total:   pool.totalCount,
-    idle:    pool.idleCount,
-    waiting: pool.waitingCount,
-    active:  pool.totalCount - pool.idleCount,
-  };
-}
-
-/** Für /api/v1/health/ready: eine Abfrage ohne Tabelle, die nur die Verbindung prüft. */
-async function alsSuperuserVerbunden(): Promise<boolean> {
-  return !!(await get<{ s: boolean }>('SELECT rolsuper AS s FROM pg_roles WHERE rolname = current_user'))?.s;
-}
-
-async function datenbankAntwortet(): Promise<boolean> {
-  return pool.query('SELECT 1').then(() => true, (e: unknown) => { meldeFehler('health:ready', e); return false; });
-}
-
-
-// Benannt, damit tx-Rückrufe geprüft werden. Ausführlich: docs/begruendungen/db/database.ts.md#dbschnittstelle
 /** Eine Zeile mit den Spalten, die der Aufrufer liest; weitere reisen als `unknown` mit. */
 export type Zeile<T extends object = object> = T & Record<string, unknown>;
 
+// Benannt, damit tx-Rückrufe geprüft werden. Ausführlich: docs/begruendungen/db/database.ts.md#dbschnittstelle
 export type { DbSchnittstelle };
+
+export interface TxOptionen {
+  /** Bei Deadlock (40P01) oder Serialisierungsfehler (40001) die ganze Transaktion
+   * bis zu zweimal neu beginnen. Nur für Rümpfe ohne Wirkung nach aussen (Netz,
+   * Dateien, Mails): Sie laufen dann mehrfach. In einer äusseren Transaktion
+   * ohne Wirkung; dort entscheidet deren Option. */
+  wiederholeBeiKonflikt?: boolean;
+}
+const TX_KONFLIKT = new Set(['40P01', '40001']);
+const TX_NEUVERSUCHE = 2;
+
+/** Was nach dem Einspielen der Basis in eine leere Datenbank geschieht (das erste
+ * Konto). Die Datenbankschicht kennt keine Konten; der Prozess setzt es beim Start. */
+type Erststart = () => Promise<void>;
+let _erststart: Erststart | null = null;
+export function setzeErststart(fn: Erststart | null): void { _erststart = fn; }
+
+export interface Db extends DbSchnittstelle {
+  readonly pool: Pool;
+  transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>, o?: TxOptionen): Promise<T>;
+  inTransaktion(): boolean;
+  getPoolStats(): { total: number; idle: number; waiting: number; active: number };
+  datenbankAntwortet(): Promise<boolean>;
+  alsSuperuserVerbunden(): Promise<boolean>;
+  eigeneVerbindung(): Promise<Client>;
+  initSchema(): Promise<boolean>;
+  initSchemaOnce(): Promise<void>;
+}
 
 /** Die laufende Transaktion dieses Aufrufpfads: all/get/run/exec gehen dann
  * über ihre Verbindung, auch aus Repositories ohne tx-Parameter. Sonst läse
  * ein Dienst mitten in der Transaktion über eine zweite Verbindung ausserhalb
  * ihres Stands. `offen` schützt vor Nachzüglern nach COMMIT. */
-const laufendeTx = new AsyncLocalStorage<{ client: PoolClient; offen: boolean }>();
-const txClient = (): PoolClient | null => { const t = laufendeTx.getStore(); return t?.offen ? t.client : null; };
+const laufendeTx = new AsyncLocalStorage<{ client: PoolClient; offen: boolean; db: object }>();
 
-/** Ob dieser Aufrufpfad in einer Transaktion läuft (für Tests und Wächter). */
-export function inTransaktion(): boolean { return txClient() !== null; }
-
-/** Alle Zeilen einer Abfrage. T ist ungeprüft: Der Aufrufer sagt, welche
- * Spalten sein SQL liefert; ohne Angabe bleibt es `unknown`. */
-async function all<T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> {
-  const c = txClient();
-  if (c) return (await c.query(sql, params)).rows as T[];
-  return queryWithRetry(async () => {
-    const { rows } = await pool.query(sql, params);
-    return rows;
-  }, istLesend(sql));
-}
-
-/** Erste Zeile einer Abfrage, oder undefined. T wie bei all(). */
-async function get<T = unknown>(sql: string, params: unknown[] = []): Promise<T | undefined> {
-  return (await all<T>(sql, params))[0];
-}
-
-/** Schreibende Abfrage: Anzahl betroffener Zeilen. Wer die neue id braucht,
- * schreibt RETURNING und liest mit get(). */
-async function run(sql: string, params: unknown[] = []): Promise<{ changes: number }> {
-  const c = txClient();
-  if (c) return { changes: (await c.query(sql, params)).rowCount || 0 };
-  return queryWithRetry(async () => ({ changes: (await pool.query(sql, params)).rowCount || 0 }), false);
-}
-
-/** Rohes SQL ohne Parameter, für Schema und Migrationen. */
-async function exec(sql: string): Promise<void> {
-  await (txClient() ?? pool).query(sql);
+function txSchnittstelle(client: PoolClient): DbSchnittstelle {
+  return {
+    all:  <T = unknown>(sql: string, p?: unknown[]) => client.query(sql, p).then(r => r.rows as T[]),
+    get:  <T = unknown>(sql: string, p?: unknown[]) => client.query(sql, p).then(r => r.rows[0] as T | undefined),
+    run:  (sql: string, p?: unknown[]) => client.query(sql, p).then(r => ({ changes: r.rowCount ?? 0 })),
+    exec: (sql: string)            => client.query(sql).then(() => undefined),
+  };
 }
 
 /** Innerhalb einer Transaktion ein Sicherungspunkt: Scheitert der innere Teil
@@ -172,170 +152,156 @@ async function innereTransaktion<T>(client: PoolClient, fn: (tx: DbSchnittstelle
   }
 }
 
-function txSchnittstelle(client: PoolClient): DbSchnittstelle {
-  return {
-    all:  <T = unknown>(sql: string, p?: unknown[]) => client.query(sql, p).then(r => r.rows as T[]),
-    get:  <T = unknown>(sql: string, p?: unknown[]) => client.query(sql, p).then(r => r.rows[0] as T | undefined),
-    run:  (sql: string, p?: unknown[]) => client.query(sql, p).then(r => ({ changes: r.rowCount ?? 0 })),
-    exec: (sql: string)            => client.query(sql).then(() => undefined),
-  };
-}
-
-export interface TxOptionen {
-  /** Bei Deadlock (40P01) oder Serialisierungsfehler (40001) die ganze Transaktion
-   * bis zu zweimal neu beginnen. Nur für Rümpfe ohne Wirkung nach aussen (Netz,
-   * Dateien, Mails): Sie laufen dann mehrfach. In einer äusseren Transaktion
-   * ohne Wirkung; dort entscheidet deren Option. */
-  wiederholeBeiKonflikt?: boolean;
-}
-const TX_KONFLIKT = new Set(['40P01', '40001']);
-const TX_NEUVERSUCHE = 2;
-
-async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>, o: TxOptionen = {}): Promise<T> {
-  const aussen = txClient();
-  if (aussen) return innereTransaktion(aussen, fn);
-  for (let versuch = 0; ; versuch++) {
-    try { return await einmaligeTransaktion(fn); }
-    catch (e) {
-      if (!o.wiederholeBeiKonflikt || versuch >= TX_NEUVERSUCHE || !TX_KONFLIKT.has(fehlerCode(e) ?? '')) throw e;
-      // Versetzt, damit die Gegenspieler nicht im Gleichschritt wieder aufeinandertreffen.
-      await new Promise(r => setTimeout(r, 25 * (versuch + 1) + Math.random() * 50));
-    }
-  }
-}
-
-async function einmaligeTransaktion<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
-  const client = await pool.connect();
-  const stand = { client, offen: true };
-  let kaputt: Error | undefined;
-  // Reisst die Verbindung mitten in der Transaktion ab, meldet der Client das
-  // als 'error'-Ereignis; ohne Zuhörer beendete es den ganzen Prozess.
-  const abriss = (e: Error) => { kaputt = e; };
-  client.on('error', abriss);
-  try {
-    await client.query('BEGIN');
-    const result = await laufendeTx.run(stand, () => fn(txSchnittstelle(client)));
-    stand.offen = false;
-    await client.query('COMMIT');
-    return result;
-  } catch (e) {
-    stand.offen = false;
-    // Scheitert auch das ROLLBACK, ist die Verbindung kaputt: Sie darf nicht
-    // in den Pool zurück, und gemeldet wird der Fehler, der es ausgelöst hat.
-    try { await client.query('ROLLBACK'); }
-    catch (r) { kaputt = r instanceof Error ? r : new Error(String(r)); }
-    throw e;
-  } finally {
-    client.off('error', abriss);
-    client.release(kaputt);
-  }
-}
-
-// SQL geht unverändert an PostgreSQL: Die frühere SQLite-Übersetzung hängte
-// still ON CONFLICT an und ersetzte ? auch in JSONB-Operatoren.
-// Ausführlich: docs/begruendungen/db/database.ts.md#sql-unuebersetzt
-
+// SQL geht unverändert an PostgreSQL. Ausführlich: docs/begruendungen/db/database.ts.md#sql-unuebersetzt
 
 // Die älteste Migration, auf der eine bestehende Datenbank aufsetzen darf: db/basis.sql
 // und alle Migrationen danach kennen nur Schemas ab hier. Was älter ist, holt
 // zuerst eine Fassung nach, die die früheren Startstufen noch mitbringt (UPGRADE.md).
 const MINDESTSTAND = '0050-teilezaehler-nur-bestehende-konten.sql';
 
-/** Eine LEERE Datenbank bekommt db/basis.sql (Abbild der Migrationen, aus
- * scripts/schema-stand.js), danach nur die jüngeren Migrationen; eine
- * bestehende bleibt unberührt. So hat jede Tabelle genau einen Weg.
- * true, wenn die Basis eingespielt wurde. */
-async function initSchema(): Promise<boolean> {
-  const c = await eigeneVerbindung();
-  try {
-    const leer = !(await c.query("SELECT to_regclass('public.users') AS t")).rows[0].t;
-    if (!leer) return false;
-    // Eigene Verbindung, weil die Basis Sitzungswerte setzt (SET …), die
-    // sonst an einer Pool-Verbindung hängen blieben.
-    await c.query('BEGIN');
-    await c.query(fs.readFileSync(path.join(__dirname, 'basis.sql'), 'utf8'));
-    await c.query('COMMIT');
-  } catch (e) {
-    await c.query('ROLLBACK').catch((r: Error) => console.warn('[schema] ROLLBACK gescheitert:', r.message));
-    throw e;
-  } finally {
-    await c.end().catch((r: Error) => console.warn('[schema] Verbindung schliessen:', r.message));
+/** Ein Zugang zur Datenbank mit eigenem Pool. Der Pool entsteht hier, nicht
+ * beim Import: Wer die Adresse kennt, ruft die Fabrik. */
+export function erzeugeDb(k: DbKonfig): Db {
+  const pool = new Pool({ ...k.verbindung, ...k.pool });
+  // Ohne Lauscher brächte der Abriss einer ruhenden Verbindung den Prozess zu Fall.
+  pool.on('error', (err) => {
+    console.error('[db-pool] idle client error:', err.message);
+  });
+  const ich = {};
+  const txClient = (): PoolClient | null => { const t = laufendeTx.getStore(); return t?.offen && t.db === ich ? t.client : null; };
+
+  /** Alle Zeilen einer Abfrage. T ist ungeprüft: Der Aufrufer sagt, welche
+   * Spalten sein SQL liefert; ohne Angabe bleibt es `unknown`. */
+  async function all<T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> {
+    const c = txClient();
+    if (c) return (await c.query(sql, params)).rows as T[];
+    return queryWithRetry(async () => (await pool.query(sql, params)).rows, istLesend(sql));
   }
-  await legeAdminAn();
-  console.log('✅ PostgreSQL schema ready');
-  return true;
+  async function get<T = unknown>(sql: string, params: unknown[] = []): Promise<T | undefined> {
+    return (await all<T>(sql, params))[0];
+  }
+  /** Wer die neue id braucht, schreibt RETURNING und liest mit get(). */
+  async function run(sql: string, params: unknown[] = []): Promise<{ changes: number }> {
+    const c = txClient();
+    if (c) return { changes: (await c.query(sql, params)).rowCount || 0 };
+    return queryWithRetry(async () => ({ changes: (await pool.query(sql, params)).rowCount || 0 }), false);
+  }
+  async function exec(sql: string): Promise<void> {
+    await (txClient() ?? pool).query(sql);
+  }
+
+  async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>, o: TxOptionen = {}): Promise<T> {
+    const aussen = txClient();
+    if (aussen) return innereTransaktion(aussen, fn);
+    for (let versuch = 0; ; versuch++) {
+      try { return await einmaligeTransaktion(fn); }
+      catch (e) {
+        if (!o.wiederholeBeiKonflikt || versuch >= TX_NEUVERSUCHE || !TX_KONFLIKT.has(fehlerCode(e) ?? '')) throw e;
+        // Versetzt, damit die Gegenspieler nicht im Gleichschritt wieder aufeinandertreffen.
+        await new Promise(r => setTimeout(r, 25 * (versuch + 1) + Math.random() * 50));
+      }
+    }
+  }
+
+  async function einmaligeTransaktion<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
+    const client = await pool.connect();
+    const stand = { client, offen: true, db: ich };
+    let kaputt: Error | undefined;
+    // Reisst die Verbindung mitten in der Transaktion ab, meldet der Client das
+    // als 'error'-Ereignis; ohne Zuhörer beendete es den ganzen Prozess.
+    const abriss = (e: Error) => { kaputt = e; };
+    client.on('error', abriss);
+    try {
+      await client.query('BEGIN');
+      const result = await laufendeTx.run(stand, () => fn(txSchnittstelle(client)));
+      stand.offen = false;
+      await client.query('COMMIT');
+      return result;
+    } catch (e) {
+      stand.offen = false;
+      // Scheitert auch das ROLLBACK, ist die Verbindung kaputt: Sie darf nicht
+      // in den Pool zurück, und gemeldet wird der Fehler, der es ausgelöst hat.
+      try { await client.query('ROLLBACK'); }
+      catch (r) { kaputt = r instanceof Error ? r : new Error(String(r)); }
+      throw e;
+    } finally {
+      client.off('error', abriss);
+      client.release(kaputt);
+    }
+  }
+
+  /** Eine EIGENE Verbindung, die NICHT aus dem Pool kommt.
+   * Ausführlich: docs/begruendungen/db/database.ts.md#eigeneverbindung */
+  async function eigeneVerbindung() {
+    const c = new Client({ ...k.verbindung });
+    await c.connect();
+    return c;
+  }
+
+  /** Eine LEERE Datenbank bekommt db/basis.sql (Abbild der Migrationen), danach
+   * nur die jüngeren Migrationen; eine bestehende bleibt unberührt.
+   * true, wenn die Basis eingespielt wurde. */
+  async function initSchema(): Promise<boolean> {
+    const c = await eigeneVerbindung();
+    try {
+      const leer = !(await c.query("SELECT to_regclass('public.users') AS t")).rows[0].t;
+      if (!leer) return false;
+      // Eigene Verbindung, weil die Basis Sitzungswerte setzt (SET …), die
+      // sonst an einer Pool-Verbindung hängen blieben.
+      await c.query('BEGIN');
+      await c.query(fs.readFileSync(path.join(__dirname, 'basis.sql'), 'utf8'));
+      await c.query('COMMIT');
+    } catch (e) {
+      await c.query('ROLLBACK').catch((r: Error) => console.warn('[schema] ROLLBACK gescheitert:', r.message));
+      throw e;
+    } finally {
+      await c.end().catch((r: Error) => console.warn('[schema] Verbindung schliessen:', r.message));
+    }
+    if (_erststart) await _erststart();
+    else console.warn('⚠️  [schema] Leere Datenbank ohne Erststart: kein erstes Konto angelegt.');
+    console.log('✅ PostgreSQL schema ready');
+    return true;
+  }
+
+  // Erststart und Migrationen unter einem Advisory-Lock (LOCKS.SCHEMA_INIT):
+  // Starten web und jobs zugleich, migriert genau einer; der andere wartet.
+  async function initSchemaOnce() {
+    const client = await pool.connect();
+    try {
+      // Warten auf den anderen Prozess ist hier gewollt, auch länger als lock_timeout
+      // und statement_timeout: Eine lange Migration dort bräche den Start (57014) ab.
+      await client.query('SET lock_timeout = 0');
+      await client.query('SET statement_timeout = 0');
+      await client.query(`SELECT pg_advisory_lock(${LOCKS.SCHEMA_INIT})`);
+      await client.query('RESET statement_timeout');
+      const neu = await initSchema();
+      if (!neu) await pruefeMindeststand(client);
+      // Vor offenen Migrationen eine Kopie der Nutzerdaten — nicht bei einer
+      // eben angelegten, leeren Datenbank.
+      const applied = await runMigrations(client, { sichern: !neu });
+      await schreibeErfassungsZeitzone(client);
+      if (applied.length) console.log(`✅ ${applied.length} Migration(en) angewandt`);
+      else if (!neu) console.log('✅ Schema aktuell — keine offenen Migrationen');
+    } finally {
+      await client.query(`SELECT pg_advisory_unlock(${LOCKS.SCHEMA_INIT})`).catch(logAndContinue('db:pg_advisory_unlock'));
+      await client.query('RESET lock_timeout').catch(logAndContinue('db:lock_timeout'));
+      await client.query('RESET statement_timeout').catch(logAndContinue('db:statement_timeout'));
+      client.release();
+    }
+  }
+
+  return {
+    pool, all, get, run, exec, transaction, initSchema, initSchemaOnce, eigeneVerbindung,
+    inTransaktion: () => txClient() !== null,
+    getPoolStats: () => ({ total: pool.totalCount, idle: pool.idleCount, waiting: pool.waitingCount,
+      active: pool.totalCount - pool.idleCount }),
+    datenbankAntwortet: () => pool.query('SELECT 1').then(() => true, (e: unknown) => { meldeFehler('health:ready', e); return false; }),
+    alsSuperuserVerbunden: async () => !!(await get<{ s: boolean }>('SELECT rolsuper AS s FROM pg_roles WHERE rolname = current_user'))?.s,
+  };
 }
 
-/**
- * Das erste Konto einer neuen Installation.
- * Ausführlich: docs/begruendungen/db/database.ts.md#frueherzurlaufzeitangelegt
- */
-async function legeAdminAn() {
-  const { rows } = await pool.query('SELECT COUNT(*) as c FROM users');
-  if (parseInt(rows[0].c) !== 0) {
-    const offen = await pool.query('SELECT 1 FROM users WHERE is_admin AND must_change_password LIMIT 1');
-    if (!offen.rowCount) entferneStartpasswort();
-    return;
-  }
-  // Aus einer Konstante entschieden, damit der Übersetzer verengen kann.
-  const envPasswort = konfig().adminPasswort;
-  // Dieselbe Regel wie jeder andere Weg; ein schwaches ADMIN_PASSWORD wird
-  // durch ein zufälliges ersetzt, das beim ersten Login zu ändern ist.
-  const mangel = envPasswort !== '' ? passwortMangel(envPasswort, 'admin') : null;
-  if (mangel) console.warn(`⚠️  [start] ADMIN_PASSWORD wird nicht verwendet (${mangel}); es gilt ein zufälliges Startpasswort.`);
-  const useEnvPassword = envPasswort !== '' && !mangel;
-  const plainPassword = useEnvPassword
-    ? envPasswort
-    : crypto.randomBytes(15).toString('base64url'); // 20 Zeichen, URL-sicher
-  // Vor dem Anlegen: Ist die Datei nicht schreibbar, bricht der Start ab, statt
-  // ein Konto mit einem Passwort zu hinterlassen, das niemand kennt.
-  const datei = useEnvPassword ? null : schreibeStartpasswort('admin', plainPassword);
-  // 12 wie BCRYPT_ROUNDS in src/konto/auth.ts: Mit weniger Runden antwortete ein
-  // Fehlversuch gegen „admin“ messbar schneller und verriet das Konto.
-  const hash = bcrypt.hashSync(plainPassword, 12);
-  await pool.query(
-    `INSERT INTO users (username, password_hash, is_admin, is_active, email_verified, must_change_password)
-     VALUES ('admin', $1, true, true, true, $2)`,
-    [hash, !useEnvPassword]
-  );
-  if (!datei) console.log('✅ Standard-Admin erstellt (Passwort aus ADMIN_PASSWORD).');
-  else console.log(`✅ Standard-Admin erstellt. Das Startpasswort steht in ${datei} (nur für den Dienst lesbar); `
-    + 'die Datei verschwindet mit dem ersten Passwortwechsel.');
-}
-
-// initSchemaOnce: Erststart und Migrationen unter einem Advisory-Lock
-// (LOCKS.SCHEMA_INIT): Starten web und jobs zugleich, migriert genau einer;
-// der andere wartet blockierend und findet danach alles vor.
-async function initSchemaOnce() {
-  const LOCK_ID = LOCKS.SCHEMA_INIT;
-  const client = await pool.connect();
-  try {
-    // Warten auf den anderen Prozess ist hier gewollt, auch länger als lock_timeout
-    // und statement_timeout: Eine lange Migration dort bräche den Start (57014) ab.
-    await client.query('SET lock_timeout = 0');
-    await client.query('SET statement_timeout = 0');
-    await client.query(`SELECT pg_advisory_lock(${LOCK_ID})`);
-    await client.query('RESET statement_timeout');
-    const neu = await initSchema();
-    if (!neu) await pruefeMindeststand(client);
-    // Vor offenen Migrationen eine Kopie der Nutzerdaten — nicht bei einer
-    // eben angelegten, leeren Datenbank.
-    const applied = await runMigrations(client, { sichern: !neu });
-    await schreibeErfassungsZeitzone(client);
-    if (applied.length) console.log(`✅ ${applied.length} Migration(en) angewandt`);
-    else if (!neu) console.log('✅ Schema aktuell — keine offenen Migrationen');
-  } finally {
-    await client.query(`SELECT pg_advisory_unlock(${LOCK_ID})`).catch(logAndContinue('db:pg_advisory_unlock'));
-    await client.query('RESET lock_timeout').catch(logAndContinue('db:lock_timeout'));
-    await client.query('RESET statement_timeout').catch(logAndContinue('db:statement_timeout'));
-    client.release();
-  }
-}
-
-/**
- * Die konfigurierte Zeitzone für den Trigger erfassung_tag() (Migration
- * 0078) — in der Datenbank, damit jede Verbindung denselben Tag rechnet.
- */
+/** Die konfigurierte Zeitzone für den Trigger erfassung_tag() (Migration
+ * 0078) — in der Datenbank, damit jede Verbindung denselben Tag rechnet. */
 async function schreibeErfassungsZeitzone(client: import('pg').ClientBase): Promise<void> {
   await client.query(
     `INSERT INTO global_settings (key, value) VALUES ('erfassung_zeitzone', $1)
@@ -355,14 +321,47 @@ async function pruefeMindeststand(client: import('pg').ClientBase): Promise<void
     + 'Entfernen der früheren Startstufen aktualisieren, dann auf diese (UPGRADE.md, Abschnitt 45).');
 }
 
-/**
- * Eine EIGENE Verbindung, die NICHT aus dem Pool kommt.
- * Ausführlich: docs/begruendungen/db/database.ts.md#eigeneverbindung
- */
-async function eigeneVerbindung() {
-  const c = new Client({ ...baseConfig });
-  await c.connect();
-  return c;
+// ── Kompatibilitätsweg: der Zugang des Prozesses ────────────────────────────
+// Die meisten Module importieren noch die Funktionen unten statt einen Zugang
+// übergeben zu bekommen; test/ratschen.test.js zählt sie. Der Pool entsteht beim
+// ersten Gebrauch oder wenn der Prozess setzeStandardDb() ruft, nie beim Import.
+
+let _standard: Db | null = null;
+
+export function setzeStandardDb(d: Db): void {
+  if (_standard && _standard !== d) throw new Error('Der Datenbankzugang des Prozesses ist schon gesetzt');
+  _standard = d;
 }
+
+export function standardDb(): Db {
+  if (!_standard) _standard = erzeugeDb(dbKonfigAusUmgebung());
+  return _standard;
+}
+
+/** Der Pool des Prozesses; erst beim ersten Zugriff angelegt. */
+const pool: Pool = new Proxy({} as Pool, {
+  get(_ziel, k) {
+    const p = standardDb().pool;
+    const v: unknown = Reflect.get(p, k, p);
+    return typeof v === 'function' ? (v as (...a: unknown[]) => unknown).bind(p) : v;
+  },
+  // Wer eine Methode ersetzt (Messung, Probe), meint den echten Pool.
+  set: (_ziel, k, v) => Reflect.set(standardDb().pool, k, v),
+});
+
+const all = <T>(sql: string, params?: unknown[]): Promise<T[]> => standardDb().all<T>(sql, params);
+const get = <T>(sql: string, params?: unknown[]): Promise<T | undefined> => standardDb().get<T>(sql, params);
+const run = (sql: string, params?: unknown[]) => standardDb().run(sql, params);
+const exec = (sql: string) => standardDb().exec(sql);
+const transaction = <T>(fn: (tx: DbSchnittstelle) => Promise<T>, o?: TxOptionen) => standardDb().transaction(fn, o);
+const initSchema = () => standardDb().initSchema();
+const initSchemaOnce = () => standardDb().initSchemaOnce();
+const getPoolStats = () => standardDb().getPoolStats();
+const datenbankAntwortet = () => standardDb().datenbankAntwortet();
+const alsSuperuserVerbunden = () => standardDb().alsSuperuserVerbunden();
+const eigeneVerbindung = () => standardDb().eigeneVerbindung();
+
+/** Ob dieser Aufrufpfad in einer Transaktion läuft (für Tests und Wächter). */
+export function inTransaktion(): boolean { return standardDb().inTransaktion(); }
 
 export { pool, all, get, run, exec, transaction, initSchema, initSchemaOnce, getPoolStats, datenbankAntwortet, alsSuperuserVerbunden, eigeneVerbindung };

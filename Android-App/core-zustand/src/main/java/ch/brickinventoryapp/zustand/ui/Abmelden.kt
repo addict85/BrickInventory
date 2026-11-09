@@ -3,7 +3,7 @@ package ch.brickinventoryapp.zustand.ui
 import ch.brickinventoryapp.data.Abmeldeweg
 import ch.brickinventoryapp.data.Abmeldung
 import ch.brickinventoryapp.data.SitzungsBereinigung
-import ch.brickinventoryapp.data.util.fangeAusserAbbruch
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import javax.inject.Inject
 
 /**

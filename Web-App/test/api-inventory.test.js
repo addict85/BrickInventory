@@ -122,6 +122,10 @@ const C = {
   // Die App fragt vor einem Klartext-Zugang, ob der Server ihren Token kennt.
   // Tausch des eigenen Tokens: ein Weg der App (Rotation).
   'POST /api/v1/auth/token-rotieren': 'nur-v1',
+  // Schrittschutz der App: Keystore-Schlüssel und Freigabe; der Browser bestätigt mit Passwort.
+  'POST /api/v1/geraet/schluessel': 'nur-v1',
+  'POST /api/v1/geraet/schritt/challenge': 'nur-v1',
+  'POST /api/v1/geraet/schritt/freigabe': 'nur-v1',
   // Passkeys sind WebAuthn im Browser; die Anmeldung legt eine Sitzung an.
   'GET /api/v1/auth/passkeys': 'nur-web',
   'DELETE /api/v1/auth/passkeys/:id': 'nur-web',
@@ -150,10 +154,10 @@ const C = {
   // Passwort eines anderen Nutzers setzen — Administratorfunktion der Webapp.
   // Die Android-App hat keine Nutzerverwaltung, daher kein v1-Gegenstück.
   'PUT /api/v1/auth/users/:id/password': 'nur-web',
-  'GET /api/v1/admin/img-probe': 'nur-v1',
+  'POST /api/v1/admin/img-probe': 'nur-v1',
   // Dasselbe für Preise: Erfassungen, gewählter Zustand, Cache-Zeilen und
   // optional die Live-Antwort von BrickLink.
-  'GET /api/v1/admin/price-probe': 'nur-v1',
+  'POST /api/v1/admin/price-probe': 'nur-v1',
   'GET /api/v1/sets/barcode/:barcode': 'nur-v1',
   'GET /api/v1/sets/:setNumber/parts-list': 'nur-v1',
   'GET /api/v1/sets/:setNumber/minifigs-list': 'nur-v1',

@@ -1,11 +1,11 @@
-Gegenprobe: feature-gemeinsam bindet core-data ein und wird so zum Umweg zwischen den Bereichen
+Gegenprobe: core-ui-bestand bindet core-data ein und wird so zum Umweg zwischen den Bereichen
 Modul: app
 Test: ch.brickinventoryapp.app.ModulgrenzenTest
-Rot: kein Bereich hängt an einem anderen Bereich
+Rot: Schichtung der Kernmodule
 
-diff --git a/Android-App/feature-gemeinsam/build.gradle.kts b/Android-App/feature-gemeinsam/build.gradle.kts
---- a/Android-App/feature-gemeinsam/build.gradle.kts
-+++ b/Android-App/feature-gemeinsam/build.gradle.kts
+diff --git a/Android-App/core-ui-bestand/build.gradle.kts b/Android-App/core-ui-bestand/build.gradle.kts
+--- a/Android-App/core-ui-bestand/build.gradle.kts
++++ b/Android-App/core-ui-bestand/build.gradle.kts
 @@ -15,6 +15,7 @@
  dependencies {
      api(project(":core-model"))

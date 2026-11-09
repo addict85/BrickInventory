@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.util.ANLEITUNG_ANZEIGE_ORDNER
-import ch.brickinventoryapp.data.util.AblageChiffre
+import ch.brickinventoryapp.sicherheit.AblageChiffre
 import ch.brickinventoryapp.data.util.AnleitungsAblage
 import ch.brickinventoryapp.data.util.pdfAblage
 import ch.brickinventoryapp.data.util.raeumeAnleitungenAuf

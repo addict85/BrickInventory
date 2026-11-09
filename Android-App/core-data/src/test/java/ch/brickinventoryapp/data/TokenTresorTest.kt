@@ -6,10 +6,8 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.data.util.EntsperrTresor
-import ch.brickinventoryapp.data.util.KeystoreTokenTresor
-import ch.brickinventoryapp.data.util.tresorSpezifikation
-import ch.brickinventoryapp.data.util.TokenVerschluesselung
+import ch.brickinventoryapp.sicherheit.EntsperrTresor
+import ch.brickinventoryapp.sicherheit.TokenVerschluesselung
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -39,8 +37,6 @@ import java.io.File
  *                                   „Abmelden entfernt beide Eintraege“
  *   altbestand-nicht-umgeschluesselt  uebernehmeAltesToken() ohne umschluesseln(prefs) → rot
  *                                   „ein Token unter dem alten Schluessel kommt beim Start …“
- *   token-schluessel-ohne-sperre    tresorSpezifikation() ohne setUnlockedDeviceRequired → rot
- *                                   „der Schluessel des Tokens arbeitet nur entsperrt …“
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -156,19 +152,5 @@ class TokenTresorTest {
         val geheim = platte()[TokenAblage.AUTH_TOKEN_ENC]!!
         assertFalse("Umgeschlüsselt: $geheim", tresor.veraltet(geheim))
         assertEquals("alt", runBlocking { start(tresor).tokenJetzt() })
-    }
-
-    @Test
-    fun `der Schluessel des Tokens arbeitet nur entsperrt, die der Ablagen immer`() {
-        assertTrue(tresorSpezifikation("token", nurEntsperrt = true).build().isUnlockedDeviceRequired)
-        assertFalse("Ausgang und Pins brauchen ihre Schlüssel im Hintergrund",
-            tresorSpezifikation("ablage", nurEntsperrt = false).build().isUnlockedDeviceRequired)
-    }
-
-    @Test
-    fun `der Keystore-Tresor gibt Unlesbares nie als Klartext zurueck`() {
-        // Robolectric hat keinen AndroidKeyStore: Jeder Versuch scheitert, und das darf
-        // nur „nicht lesbar“ heissen, nie der Eingabewert.
-        assertNull(KeystoreTokenTresor("test_alias").entschluessle("klartext-statt-geheimtext"))
     }
 }

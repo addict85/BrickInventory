@@ -8,11 +8,11 @@ import { requireApiAdmin as requireAdmin, requireToken, bearerToken, kontoSchran
 import { SECRET_KEYS, isMaskedValue, readSettings, designFuer, deleteUserSetting, setGlobalSetting, globalerWertGueltig, deleteGlobalSetting, globalDefaultCondition, nutzerStandardZustand, getGlobalSetting, getSetting } from '../../src/einstellungen/settings';
 import { setzeEigenesDesign, setUserSetting } from '../../src/konto/nutzerEinstellung';
 import { quellePruefen, bricksetLimitGesetzt, protokolliere } from '../../src/verwaltung/dienst';
-import { zugaengeDesKontos, zugaengeLoeschen, andereSitzungenBeenden, mussPasswortAendern, profil } from '../../src/konto/konten';
-import { escapeLike, hashToken, leereTokenCache } from '../../src/konto/auth';
+import { zugaengeDesKontos, zugangLoeschen, andereZugaengeLoeschen, andereSitzungenBeenden, mussPasswortAendern, profil } from '../../src/konto/konten';
+import { hashToken, leereTokenCache } from '../../src/konto/auth';
 import { kontoGedrosselt } from '../../src/konto/zielDrossel';
-import { resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
-import { verwalterHinweisNebenher } from '../../src/konto/kontoHinweis';
+import { resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, bestaetigeMitFaktor, perSitzung } from '../../src/konto/http/anmeldung';
+import { hinweisNebenher, verwalterHinweisNebenher } from '../../src/konto/kontoHinweis';
 import { householdStatus, createInvite, redeemInvite, pruefeEinladung, unlink, verwerfeGetrennt } from '../../src/haushalt/haushalt';
 import { sendMail, testSmtp, sendHaushaltVerknuepftMail, mailBereit } from '../../src/mail/mailer';
 import { sendeFehler, fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
@@ -62,22 +62,35 @@ router.get('/settings/tokens', requireLoginOrToken, async (req: OffeneAnfrage<'G
 });
 
 /** Die Zeile ist sofort weg, der Token-Cache gilt aber noch kurz nach.
+ * Einen FREMDEN Zugang widerruft nur, wer Passwort und Faktor kennt: Ein
+ * erbeuteter Token soll den Inhaber nicht von seinen Geräten aussperren.
  * Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#delete-tokens-tokenid */
 router.delete('/settings/tokens/:tokenId', requireLoginOrToken, async (req: OffeneAnfrage<'DELETE /api/v1/settings/tokens/:tokenId'>, res: Antwort<'DELETE /api/v1/settings/tokens/:tokenId'>) => {
-  // escapeLike: ohne das löscht ein "%" als tokenId ALLE Tokens des Nutzers.
-  const prefix = escapeLike(req.pfad.tokenId).slice(0, 64);
-  if (!prefix) return sendeFehler(req, res, 400, 'token_id_fehlt');
-  const geloescht = await zugaengeLoeschen(angemeldeteNutzerId(req), prefix);
-  if (geloescht) leereTokenCache();
-  res.json({ success: true, deleted: geloescht });
+  const uid = angemeldeteNutzerId(req);
+  const eigener = bearerToken(req);
+  const eigenesGeraet = !!eigener && hashToken(eigener).startsWith(req.pfad.tokenId);
+  if (!eigenesGeraet && !await bestaetigeMitFaktor(req, res, uid, req.eingabe.password)) return;
+  const { anzahl, label } = await zugangLoeschen(uid, req.pfad.tokenId);
+  if (anzahl) {
+    leereTokenCache();
+    if (!eigenesGeraet) hinweisNebenher(uid, 'zugang_beendet', label ?? undefined);
+  }
+  res.json({ success: true, deleted: anzahl });
 });
 
 // Mit Passwort: Eine erbeutete Sitzung soll den Inhaber nicht aussperren können.
+// `zugaenge` nimmt die App-Zugänge mit, damit ein Code für alles reicht.
 router.post('/settings/sessions/andere-beenden', requireLogin, async (req: OffeneAnfrage<'POST /api/v1/settings/sessions/andere-beenden'>, res: Antwort<'POST /api/v1/settings/sessions/andere-beenden'>) => {
-  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.password)) return;
-  const { beendet, version } = await andereSitzungenBeenden(angemeldeteNutzerId(req), req.sessionID);
-  req.session.sitzungsVersion = version;
-  res.json({ success: true, deleted: beendet });
+  const uid = angemeldeteNutzerId(req);
+  if (!await bestaetigeMitFaktor(req, res, uid, req.eingabe.password)) return;
+  const { beendet, version } = await andereSitzungenBeenden(uid, req.sessionID);
+  // Nur eine echte Sitzung merkt sich die Version; sonst bekäme die App eine.
+  if (perSitzung(req)) req.session.sitzungsVersion = version;
+  const eigener = bearerToken(req);
+  const zugaenge = req.eingabe.zugaenge ? await andereZugaengeLoeschen(uid, eigener ? hashToken(eigener) : null) : 0;
+  if (zugaenge) leereTokenCache();
+  if (beendet || zugaenge) hinweisNebenher(uid, 'zugaenge_beendet');
+  res.json({ success: true, deleted: beendet, zugaenge });
 });
 
 /** Ausdrücklich aufgezählt: Die App bekommt nur, was sie liest, keine globalen

@@ -170,6 +170,8 @@ data class AddSetResponse(
     val name: String? = null,
     /** Weder Rebrickable noch Brickset haben geantwortet: gespeichert, Name und Bild fehlen noch. */
     @SerialName("katalog_offen") val katalogOffen: Boolean = false,
+    /** "ausstehend": angelegt, Katalog, Bild und Marktpreis holt der Server noch als Auftrag. */
+    val ergaenzung: String? = null,
     val error: String? = null
 )
 

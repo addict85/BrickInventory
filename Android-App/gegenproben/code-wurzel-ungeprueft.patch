@@ -3,9 +3,9 @@ Modul: feature-anmeldung
 Test: ch.brickinventoryapp.anmeldung.ZertifikatPinTest
 Rot: ein Code mit System-Wurzel muss genau diese Wurzel treffen
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/ServerVertrauen.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/ServerVertrauen.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/ServerVertrauen.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/ServerVertrauen.kt
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 @@ -231,7 +231,7 @@
          val oeffentlich = runCatching { mit(fremdeHosts) }.isSuccess
          // Ein öffentlicher Pin bindet Host und System-Gültigkeit, nicht eine Wurzel:

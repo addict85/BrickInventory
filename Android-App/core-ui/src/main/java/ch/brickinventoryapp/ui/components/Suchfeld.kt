@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.model.ui.Listenansicht
 
 /**
  * Umschalter Karten/Tabelle als zwei Chips: Bei zwei Möglichkeiten wäre ein
@@ -27,12 +28,15 @@ import ch.brickinventoryapp.ui.theme.Formen
  */
 @Composable
 fun AnsichtUmschalter(
-    aktuell: String,
-    onWechsel: (String) -> Unit,
+    aktuell: Listenansicht,
+    onWechsel: (Listenansicht) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     SegmentWahl(
-        optionen = listOf("grid" to stringResource(R.string.view_cards), "table" to stringResource(R.string.view_table)),
+        optionen = listOf(
+            Listenansicht.KARTEN to stringResource(R.string.view_cards),
+            Listenansicht.TABELLE to stringResource(R.string.view_table),
+        ),
         gewaehlt = aktuell,
         onWahl = onWechsel,
         modifier = modifier,

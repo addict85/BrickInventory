@@ -7,7 +7,7 @@ import * as orte from './repository/lagerort';
 import type { LagerTabelle } from './repository/lagerort';
 import { asIds, scopeIds, writableIds, blickfeldAus, type Sicht, schreibbereichAus, type Schreiber } from '../haushalt/haushalt';
 import type { BlickfeldEingabe } from '../haushalt/haushalt';
-import { fehlerWerfen } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/fehlerTexte';
 import { deleteUserSetting } from '../einstellungen/settings';
 import { setUserSetting } from '../konto/nutzerEinstellung';
 
@@ -22,7 +22,7 @@ export type LagerArt = LagerTabelle;
 export function normalisiereLagerort(v: unknown): string | null {
   const s = String(v ?? '').trim();
   if (!s) return null;
-  if (s.length > LAGERORT_MAX_ZEICHEN) fehlerWerfen('lagerort_zu_lang', 400);
+  if (s.length > LAGERORT_MAX_ZEICHEN) fachfehler('ungueltig', 'lagerort_zu_lang');
   return s;
 }
 
@@ -49,8 +49,8 @@ export interface Lagerort { id: number; user_id: number; name: string }
 
 function nameOderFehler(v: unknown): string {
   const s = String(v ?? '').trim();
-  if (!s) fehlerWerfen('lagerort_leer', 400);
-  if (s.length > LAGERORT_MAX_ZEICHEN) fehlerWerfen('lagerort_zu_lang', 400);
+  if (!s) fachfehler('ungueltig', 'lagerort_leer');
+  if (s.length > LAGERORT_MAX_ZEICHEN) fachfehler('ungueltig', 'lagerort_zu_lang');
   return s;
 }
 
@@ -66,7 +66,7 @@ export async function lagerKonten(nutzer: number, wunsch: string | number | unde
 /** EIN Konto je Schreibaufruf, damit jeder Ort für sich scheitern kann; 403 ohne Recht. */
 export async function lagerSchreibkonto(nutzer: number, wunsch: string | number | undefined): Promise<number> {
   const konto = (await lagerKonten(nutzer, wunsch, true))[0];
-  if (konto === undefined) fehlerWerfen('kein_schreibrecht', 403);
+  if (konto === undefined) fachfehler('verboten', 'kein_schreibrecht');
   return konto;
 }
 
@@ -96,7 +96,7 @@ export async function legeOrtAn(userId: number, name: unknown):
   const alt = await orte.ortNachName(userId, n);
   // Ohne Treffer ging etwas anderes schief als ein Duplikat — lieber eine
   // Absage als ein stilles „schon da".
-  if (!alt) fehlerWerfen('lagerort_unbekannt', 500);
+  if (!alt) fachfehler('intern', 'lagerort_unbekannt');
   return { ort: { id: parseInt(String(alt.id)), user_id: userId, name: alt.name },
            war_neu: false };
 }
@@ -105,10 +105,10 @@ export async function legeOrtAn(userId: number, name: unknown):
 export async function benenneOrtUm(userId: number, id: number, name: unknown): Promise<Lagerort> {
   const neu = nameOderFehler(name);
   const alt = await orte.ortName(id, userId);
-  if (!alt) fehlerWerfen('lagerort_unbekannt', 404);
+  if (!alt) fachfehler('nicht_gefunden', 'lagerort_unbekannt');
   // Die Absage vorher ist verständlicher als der Fehler am Index.
   const kollision = await orte.andererOrtGleichenNamens(userId, neu, id);
-  if (kollision) fehlerWerfen('lagerort_doppelt', 409);
+  if (kollision) fachfehler('konflikt', 'lagerort_doppelt');
   await orte.schreibeOrtNamen(id, userId, neu);
   return { id, user_id: userId, name: neu };
 }
@@ -117,11 +117,11 @@ export async function benenneOrtUm(userId: number, id: number, name: unknown): P
  * die der Löschende nicht im Blick hatte, ohne Weg zurück. */
 export async function loescheOrt(userId: number, id: number): Promise<void> {
   const ort = await orte.ortName(id, userId);
-  if (!ort) fehlerWerfen('lagerort_unbekannt', 404);
+  if (!ort) fachfehler('nicht_gefunden', 'lagerort_unbekannt');
   // Alle drei Tabellen, über die ID: Sonst liesse sich ein Ort löschen, in dem
   // nur Figuren liegen oder der anders geschrieben zugeordnet ist.
   const belegt = await orte.ortBelegung(userId, id);
-  if (parseInt(String(belegt?.n ?? 0)) > 0) fehlerWerfen('lagerort_in_benutzung', 409);
+  if (parseInt(String(belegt?.n ?? 0)) > 0) fachfehler('konflikt', 'lagerort_in_benutzung');
   await orte.entferneOrt(id, userId);
 }
 
@@ -179,7 +179,7 @@ export async function setzeVorgabe(userId: number, id: number | null): Promise<L
     return null;
   }
   const ort = await orte.ortDesKontos(id, userId);
-  if (!ort) fehlerWerfen('lagerort_unbekannt', 404);
+  if (!ort) fachfehler('nicht_gefunden', 'lagerort_unbekannt');
   // Über die Einstellungen des Kontos: user_settings gehört dorthin.
   await setUserSetting(userId, VORGABE_SCHLUESSEL, String(id));
   return { id: parseInt(String(ort.id)), user_id: userId, name: ort.name };

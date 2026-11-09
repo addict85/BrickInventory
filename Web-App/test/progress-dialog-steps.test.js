@@ -76,6 +76,9 @@ function erreichbareSchritte() {
   // Schritte, die eine Route direkt in ihren eigenen Strom schreibt, sind immer
   // erreichbar — dort gibt es keinen durchgereichten Melder.
   for (const m of alles.matchAll(/\bsend\(\{\s*step\s*:\s*'([^']+)'/g)) erreichbar.add(m[1]);
+  // Eine JSON-Antwort statt eines Stroms (Fachfehler, „exists“) macht readSSE() zu einem Ereignis.
+  const lesen = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-fortschritt.js'), 'utf8');
+  for (const m of lesen.matchAll(/onEvent\(\{\s*step:[^,}]*\?\s*'(\w+)'\s*:\s*'(\w+)'/g)) { erreichbar.add(m[1]); erreichbar.add(m[2]); }
 
   for (const [datei, src] of quellen) {
     for (const m of src.matchAll(/(?:async\s+)?function\s+(\w+)\s*\(/g)) {
@@ -154,14 +157,18 @@ test('kein Sprachschlüssel für die entfernten Schritte bleibt zurück', () => 
  * Ausführlich: docs/begruendungen/test/progress-dialog-steps.test.js.md#nach-dem-letzten-ereignis-haengt-kein-pu
  */
 test('nach dem letzten Ereignis hängt kein Punkt mehr auf „aktiv"', () => {
-  // ── Sendereihenfolge, wie addSet() sie erzeugt ───────────────────────────
-  const dienst = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/sets/setService.ts'), 'utf8'));
-  const beginn = dienst.indexOf('async function addSet(');
-  assert.notEqual(beginn, -1, 'addSet() nicht gefunden — Anker stimmt nicht mehr');
-  const folge = [...dienst.slice(beginn).matchAll(/sendProgress\(\{\s*step\s*:\s*'([^']+)'/g)]
-    .map((m) => m[1]);
-  assert.ok(folge.length >= 2, `addSet() meldet nur ${folge.length} Schritte — Anker stimmt nicht mehr`);
-  folge.push('done'); // routes/sets.ts schliesst den Strom damit ab
+  // ── Sendereihenfolge, wie der Erfassungsstrom sie erzeugt ───────────────
+  // Die Route meldet vor und nach dem Ergänzen selbst; dazwischen meldet katalogHolen().
+  const lies = (rel) => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
+  const route = lies('routes/api_v1/sets.ts');
+  const strom = route.slice(route.indexOf("router.post('/sets/add-stream'"), route.indexOf("router.post('/sets/:setNumber/parts'"));
+  assert.ok(strom.includes('setErgaenzen('), 'Erfassungsstrom nicht gefunden — Anker stimmt nicht mehr');
+  const erfassen = lies('src/sets/erfassen.ts');
+  const katalog = erfassen.slice(erfassen.indexOf('async function katalogHolen('), erfassen.indexOf('export async function setErgaenzen('));
+  const schritte = (t) => [...t.matchAll(/step\s*:\s*'([^']+)'/g)].map((m) => m[1]);
+  const [vor, nach] = strom.split('setErgaenzen(');
+  const folge = [...schritte(vor), ...schritte(katalog), ...schritte(nach)];
+  assert.ok(folge.length >= 4, `der Strom meldet nur ${folge.length} Schritte — Anker stimmt nicht mehr`);
 
   // ── Schaltlogik, wie handleSseEvent() sie ausführt ───────────────────────
   const schalter = galerie.slice(galerie.indexOf('export function handleSseEvent'));

@@ -53,7 +53,16 @@ export type AddSetResponse = {
   set_number?: string | null;
   name?: string | null;
   katalog_offen?: boolean;
+  ergaenzung?: "ausstehend" | "erledigt";
+  owner_user_id?: number;
+  is_self?: boolean;
   error?: string | null;
+  [feld: string]: unknown;
+};
+export type AndereBeendet = {
+  success: true;
+  deleted: number;
+  zugaenge?: number;
   [feld: string]: unknown;
 };
 export type AnleitungenGeladen = {
@@ -80,6 +89,7 @@ export type AnleitungHochgeladen = {
   minifigs?: number | null;
   source_emptied?: boolean;
   quantity?: number | null;
+  degradiert?: string[];
   instruction: {
     url: string;
     description: string | null;
@@ -314,6 +324,7 @@ export type CacheStatsResponse = {
   catalog: number;
   price_stale: number;
   rate_limits?: RateLimits | null;
+  degradiert?: string[];
   [feld: string]: unknown;
 };
 export type CacheTtlResponse = {
@@ -476,6 +487,7 @@ export type DELETE_api_v1_minifigs_figNumber = {
   minifigs?: number | null;
   source_emptied?: boolean;
   quantity?: number | null;
+  degradiert?: string[];
   papierkorb: number[];
   [feld: string]: unknown;
 };
@@ -540,6 +552,7 @@ export type EinstellungenGespeichert = {
   minifigs?: number | null;
   source_emptied?: boolean;
   quantity?: number | null;
+  degradiert?: string[];
   updated: number;
   [feld: string]: unknown;
 };
@@ -555,7 +568,7 @@ export type Fehler = {
   code: string;
   [feld: string]: unknown;
 };
-export type Fehlercode = "nicht_angemeldet" | "auth_fehler" | "nur_admins" | "tausch_laeuft" | "token_ungueltig" | "token_id_fehlt" | "token_rotation_noetig" | "passkey_ungueltig" | "passkey_ohne_domain" | "unbegrenzt_nur_https" | "token_nicht_ausgestellt" | "konto_deaktiviert" | "email_nicht_bestaetigt" | "zu_viele_anfragen" | "zu_viele_fehlversuche" | "anmeldedaten_ungueltig" | "name_oder_email_eingeben" | "registrierung_deaktiviert" | "registrierung_braucht_mail" | "konto_nicht_wartend" | "registrierung_felder" | "benutzername_passwort" | "benutzername_vergeben" | "benutzername_oder_email_vergeben" | "email_vergeben" | "benutzername_ungueltig" | "email_ungueltig" | "name_ungueltig" | "geraetename_ungueltig" | "email_erforderlich" | "passwort_zu_kurz" | "passwort_zu_lang" | "passwort_zu_haeufig" | "aktuelles_passwort_erforderlich" | "passwort_ueber_change_password" | "fremde_herkunft" | "fremder_host" | "bestaetigungslink_ungueltig" | "app_zu_alt" | "nur_mit_sitzung" | "import_unterbrochen" | "import_zeile_unterbrochen" | "aktuelles_passwort_falsch" | "passwort_wechsel_noetig" | "letzter_verwalter" | "verwalter_muss_bleiben" | "zweiter_faktor_pflicht" | "alle_felder_erforderlich" | "passwort_reset_nicht_eingerichtet" | "token_passwort_erforderlich" | "eigenes_konto_passwort" | "eigene_adminrolle" | "benutzer_nicht_gefunden" | "eigenes_konto_deaktivieren" | "bestaetigung_nicht_eingerichtet" | "bestaetigung_gesendet" | "eigener_zweiter_faktor" | "benutzer_nicht_gefunden_oder_eigenes" | "kein_schreibrecht" | "kein_zugriff_konto" | "einladungscode_ungueltig" | "einladungen_zu_viele" | "einladungscode_abgelaufen" | "konto_mit_sich_selbst" | "konto_bereits_verknuepft" | "verknuepfung_erzeugt_kreis" | "konto_id_ungueltig" | "waehrung_ungleich" | "lagerort_zu_lang" | "lagerort_leer" | "lagerort_doppelt" | "lagerort_unbekannt" | "lagerort_in_benutzung" | "alarm_richtung_ungueltig" | "alarm_schwelle_ungueltig" | "alarm_zustand_ungueltig" | "quelle_ziel_identisch" | "kaufpreise_angeben" | "set_nicht_gefunden" | "setnummer_ungueltig" | "set_nicht_im_katalog" | "katalog_nicht_geladen" | "set_number_erforderlich" | "parameter_set_fehlt" | "barcode_kein_set" | "teil_nicht_manuell" | "farbe_erforderlich" | "minifig_nicht_manuell" | "keine_teile" | "zustand_n_oder_u" | "erfassung_felder" | "kein_bricklink_preis" | "kein_bricklink_zugang" | "bricklink_tageslimit" | "bricklink_zugang_fehlt" | "keine_datei" | "datei_zu_gross" | "datei_typ_falsch" | "upload_ungueltig" | "datei_inhalt_falsch" | "upload_kontingent_voll" | "datei_nicht_verfuegbar" | "json_ungueltig" | "anfrage_json_ungueltig" | "anfrage_zu_gross" | "anfrage_unlesbar" | "anfrage_ungueltig" | "anfrage_zu_langsam" | "interner_fehler" | "csv_parse_fehler" | "csv_keine_datenzeilen" | "csv_keine_brauchbare_zeile" | "csv_uebersprungen" | "csv_menge_ungueltig" | "csv_keine_setnummer" | "import_zeitueberschreitung" | "import_kontingent" | "feld_erforderlich" | "feld_nummer_ungueltig" | "bild_url_zu_lang" | "bild_url_ungueltig" | "bild_url_nicht_https" | "feld_negativ" | "feld_zu_hoch" | "feld_kein_wahrheitswert" | "kein_import_laeuft" | "pdf_nicht_fertig" | "pdf_nicht_verfuegbar" | "pdf_auftrag_laeuft" | "job_id_ungueltig" | "job_nicht_gefunden" | "unbekannter_job" | "auftrag_nicht_aenderbar" | "nummer_ungueltig" | "pin_ungueltig" | "betrag_ungueltig" | "waehrung_ungueltig" | "waehrung_geteiltes_unterkonto" | "waehrung_nur_hauptkonto" | "gutschein_existiert" | "nur_pdf" | "pdf_zu_viele_seiten" | "upload_laeuft" | "quelle_unbekannt" | "quelle_test_fehlgeschlagen" | "quelle_ohne_schluessel" | "quelle_nicht_erreichbar" | "quelle_abgelehnt" | "zweiter_faktor_noetig" | "zweiter_faktor_falsch" | "zweiter_faktor_schon_aktiv" | "zweiter_faktor_nicht_aktiv" | "papierkorb_schon_vorhanden" | "keine_gutscheine" | "pdf_freigabe_noetig" | "pdf_unlesbar" | "kein_gutschein_im_pdf" | "guthaben_pin_fehlt" | "guthaben_abstand" | "guthaben_botschutz" | "guthaben_fehlgeschlagen" | "guthaben_land_ungueltig" | "korrekturen_ungueltig" | "keine_wanted_liste" | "id_ungueltig" | "eingabe_ungueltig" | "feld_unbekannt" | "nicht_gefunden" | "kaufpreis_nicht_gefunden" | "datum_ungueltig" | "erfassung_nicht_gefunden" | "datum_belegt" | "server_ausgelastet" | "datenbank_nicht_erreichbar" | "import_abgebrochen" | "import_fehlgeschlagen" | "import_laeuft_noch" | "idempotenz_schluessel_ungueltig" | "idempotenz_schluessel_anders" | "idempotenz_laeuft" | "idempotenz_nicht_wiederholbar" | "zu_viele_verbindungen" | "zeitlimit" | "wert_ungueltig" | "schon_vorhanden" | "bezug_fehlt" | "uhrzeit_ungueltig" | "design_ungueltig" | "tageslimit_bereich" | "unbekannte_aufgabe" | "smtp_nicht_konfiguriert" | "smtp_zertifikat" | "smtp_fehler" | "keine_ziel_email" | "url_ungueltig" | "url_fehlt_https" | "host_nicht_erlaubt" | "qr_ohne_basis_url" | "qr_abgelehnt" | "qr_code_falsch" | "qr_nicht_wartend";
+export type Fehlercode = "nicht_angemeldet" | "auth_fehler" | "nur_admins" | "tausch_laeuft" | "token_ungueltig" | "token_id_fehlt" | "token_rotation_noetig" | "passkey_ungueltig" | "passkey_ohne_domain" | "unbegrenzt_nur_https" | "token_nicht_ausgestellt" | "konto_deaktiviert" | "email_nicht_bestaetigt" | "zu_viele_anfragen" | "zu_viele_fehlversuche" | "anmeldedaten_ungueltig" | "name_oder_email_eingeben" | "registrierung_deaktiviert" | "registrierung_braucht_mail" | "konto_nicht_wartend" | "registrierung_felder" | "benutzername_passwort" | "benutzername_vergeben" | "benutzername_oder_email_vergeben" | "email_vergeben" | "benutzername_ungueltig" | "email_ungueltig" | "name_ungueltig" | "geraetename_ungueltig" | "email_erforderlich" | "passwort_zu_kurz" | "passwort_zu_lang" | "passwort_zu_haeufig" | "aktuelles_passwort_erforderlich" | "passwort_ueber_change_password" | "fremde_herkunft" | "fremder_host" | "bestaetigungslink_ungueltig" | "app_zu_alt" | "nur_mit_sitzung" | "nur_mit_app_token" | "geraeteschluessel_fehlt" | "geraeteschluessel_ungueltig" | "geraeteschluessel_vorhanden" | "geraeteschluessel_frist" | "schritt_freigabe_noetig" | "schritt_signatur_ungueltig" | "import_unterbrochen" | "import_zeile_unterbrochen" | "aktuelles_passwort_falsch" | "passwort_wechsel_noetig" | "letzter_verwalter" | "verwalter_muss_bleiben" | "zweiter_faktor_pflicht" | "alle_felder_erforderlich" | "passwort_reset_nicht_eingerichtet" | "token_passwort_erforderlich" | "eigenes_konto_passwort" | "eigene_adminrolle" | "benutzer_nicht_gefunden" | "eigenes_konto_deaktivieren" | "bestaetigung_nicht_eingerichtet" | "bestaetigung_gesendet" | "eigener_zweiter_faktor" | "benutzer_nicht_gefunden_oder_eigenes" | "kein_schreibrecht" | "kein_zugriff_konto" | "einladungscode_ungueltig" | "einladungen_zu_viele" | "einladungscode_abgelaufen" | "konto_mit_sich_selbst" | "konto_bereits_verknuepft" | "verknuepfung_erzeugt_kreis" | "konto_id_ungueltig" | "waehrung_ungleich" | "lagerort_zu_lang" | "lagerort_leer" | "lagerort_doppelt" | "lagerort_unbekannt" | "lagerort_in_benutzung" | "alarm_richtung_ungueltig" | "alarm_schwelle_ungueltig" | "alarm_zustand_ungueltig" | "quelle_ziel_identisch" | "kaufpreise_angeben" | "set_nicht_gefunden" | "setnummer_ungueltig" | "set_nicht_im_katalog" | "katalog_nicht_geladen" | "set_number_erforderlich" | "parameter_set_fehlt" | "barcode_kein_set" | "teil_nicht_manuell" | "farbe_erforderlich" | "minifig_nicht_manuell" | "keine_teile" | "zustand_n_oder_u" | "erfassung_felder" | "kein_bricklink_preis" | "kein_bricklink_zugang" | "bricklink_tageslimit" | "bricklink_zugang_fehlt" | "keine_datei" | "datei_zu_gross" | "datei_typ_falsch" | "upload_ungueltig" | "datei_inhalt_falsch" | "upload_kontingent_voll" | "datei_nicht_verfuegbar" | "json_ungueltig" | "anfrage_json_ungueltig" | "anfrage_zu_gross" | "anfrage_unlesbar" | "anfrage_ungueltig" | "anfrage_zu_langsam" | "interner_fehler" | "csv_parse_fehler" | "csv_keine_datenzeilen" | "csv_keine_brauchbare_zeile" | "csv_uebersprungen" | "csv_menge_ungueltig" | "csv_keine_setnummer" | "import_zeitueberschreitung" | "import_kontingent" | "feld_erforderlich" | "feld_nummer_ungueltig" | "bild_url_zu_lang" | "bild_url_ungueltig" | "bild_url_nicht_https" | "feld_negativ" | "feld_zu_hoch" | "feld_kein_wahrheitswert" | "kein_import_laeuft" | "pdf_nicht_fertig" | "pdf_nicht_verfuegbar" | "pdf_auftrag_laeuft" | "job_id_ungueltig" | "job_nicht_gefunden" | "unbekannter_job" | "auftrag_nicht_aenderbar" | "nummer_ungueltig" | "pin_ungueltig" | "betrag_ungueltig" | "waehrung_ungueltig" | "waehrung_geteiltes_unterkonto" | "waehrung_nur_hauptkonto" | "gutschein_existiert" | "nur_pdf" | "pdf_zu_viele_seiten" | "upload_laeuft" | "quelle_unbekannt" | "quelle_test_fehlgeschlagen" | "quelle_ohne_schluessel" | "quelle_nicht_erreichbar" | "quelle_abgelehnt" | "zweiter_faktor_noetig" | "zweiter_faktor_falsch" | "zweiter_faktor_schon_aktiv" | "zweiter_faktor_nicht_aktiv" | "papierkorb_schon_vorhanden" | "keine_gutscheine" | "pdf_freigabe_noetig" | "pdf_unlesbar" | "kein_gutschein_im_pdf" | "guthaben_pin_fehlt" | "guthaben_abstand" | "guthaben_botschutz" | "guthaben_fehlgeschlagen" | "guthaben_land_ungueltig" | "korrekturen_ungueltig" | "keine_wanted_liste" | "id_ungueltig" | "eingabe_ungueltig" | "feld_unbekannt" | "nicht_gefunden" | "kaufpreis_nicht_gefunden" | "datum_ungueltig" | "erfassung_nicht_gefunden" | "datum_belegt" | "server_ausgelastet" | "datenbank_nicht_erreichbar" | "import_abgebrochen" | "import_fehlgeschlagen" | "import_laeuft_noch" | "idempotenz_schluessel_ungueltig" | "idempotenz_schluessel_anders" | "idempotenz_laeuft" | "idempotenz_nicht_wiederholbar" | "zu_viele_verbindungen" | "zeitlimit" | "wert_ungueltig" | "schon_vorhanden" | "bezug_fehlt" | "uhrzeit_ungueltig" | "design_ungueltig" | "tageslimit_bereich" | "unbekannte_aufgabe" | "smtp_nicht_konfiguriert" | "smtp_zertifikat" | "smtp_fehler" | "keine_ziel_email" | "url_ungueltig" | "url_fehlt_https" | "host_nicht_erlaubt" | "qr_ohne_basis_url" | "qr_abgelehnt" | "qr_code_falsch" | "qr_nicht_wartend";
 export type FigsValuationResponse = {
   success: boolean;
   total: number;
@@ -862,6 +875,7 @@ export type JobsResponse = {
   success: boolean;
   jobs: Record<string, JobStatus>;
   schedules: Record<string, JobSchedule>;
+  degradiert?: string[];
   [feld: string]: unknown;
 };
 export type JobStatus = {
@@ -1145,6 +1159,7 @@ export type MerkpostenGeloescht = {
   minifigs?: number | null;
   source_emptied?: boolean;
   quantity?: number | null;
+  degradiert?: string[];
   geloescht: number;
   [feld: string]: unknown;
 };
@@ -1605,6 +1620,7 @@ export type ProfilGespeichert = {
   minifigs?: number | null;
   source_emptied?: boolean;
   quantity?: number | null;
+  degradiert?: string[];
   emailChanged?: boolean;
   emailSent?: boolean;
   [feld: string]: unknown;
@@ -1652,6 +1668,7 @@ export type PUT_api_v1_sets_setNumber_acquisitions_acqId = {
   minifigs?: number | null;
   source_emptied?: boolean;
   quantity?: number | null;
+  degradiert?: string[];
   [feld: string]: unknown;
 };
 export type QrAbholung = {
@@ -1724,6 +1741,19 @@ export type RegistrationStatusResponse = {
 export type RoheEinstellungen = {
   success: true;
   settings: Record<string, string>;
+  [feld: string]: unknown;
+};
+export type SchrittChallenge = {
+  success: true;
+  challenge: string;
+  nachricht: string;
+  gueltig_bis: string;
+  [feld: string]: unknown;
+};
+export type SchrittFreigabe = {
+  success: true;
+  aktion: "gutschein" | "verwaltung" | "zweiter_faktor";
+  gueltig_bis: string;
   [feld: string]: unknown;
 };
 export type SetExistsResponse = {
@@ -2109,12 +2139,12 @@ export type Route =
   | { m: 'POST'; p: '/v1/admin/default-condition'; a: VerwaltungZustand }
   | { m: 'POST'; p: '/v1/admin/forget-image-misses'; a: BildMerkerVergessen }
   | { m: 'GET'; p: `/v1/admin/image-diag/${string}`; a: BildDiagnose }
-  | { m: 'GET'; p: '/v1/admin/img-probe'; a: Diagnose }
+  | { m: 'POST'; p: '/v1/admin/img-probe'; a: Diagnose }
   | { m: 'POST'; p: '/v1/admin/job-schedule'; a: POST_api_v1_sets_import_csv_cancel }
   | { m: 'GET'; p: '/v1/admin/job-status'; a: PreisJobStand }
   | { m: 'GET'; p: '/v1/admin/jobs'; a: JobsResponse }
   | { m: 'GET'; p: '/v1/admin/logs'; a: ProtokollResponse }
-  | { m: 'GET'; p: '/v1/admin/price-probe'; a: Diagnose }
+  | { m: 'POST'; p: '/v1/admin/price-probe'; a: Diagnose }
   | { m: 'GET'; p: '/v1/admin/protokoll'; a: ProtokollEintraege }
   | { m: 'POST'; p: '/v1/admin/redownload-missing-images'; a: VerwaltungGestartet }
   | { m: 'POST'; p: '/v1/admin/reimport-instructions'; a: VerwaltungMeldung }
@@ -2176,6 +2206,9 @@ export type Route =
   | { m: 'GET'; p: '/v1/finance/pnl'; a: PnlResponse }
   | { m: 'GET'; p: '/v1/finance/portfolio-history'; a: PortfolioHistoryResponse }
   | { m: 'GET'; p: '/v1/finance/valuation'; a: ValuationResponse }
+  | { m: 'POST'; p: '/v1/geraet/schluessel'; a: DELETE_api_v1_papierkorb_id }
+  | { m: 'POST'; p: '/v1/geraet/schritt/challenge'; a: SchrittChallenge }
+  | { m: 'POST'; p: '/v1/geraet/schritt/freigabe'; a: SchrittFreigabe }
   | { m: 'GET'; p: '/v1/health'; a: Gesundheit }
   | { m: 'GET'; p: '/v1/health/live'; a: Lebenszeichen }
   | { m: 'GET'; p: '/v1/health/ready'; a: Lebenszeichen }
@@ -2263,7 +2296,7 @@ export type Route =
   | { m: 'POST'; p: '/v1/settings/import'; a: SicherungEingespielt }
   | { m: 'POST'; p: '/v1/settings/quelle-testen'; a: DELETE_api_v1_papierkorb_id }
   | { m: 'GET'; p: '/v1/settings/raw'; a: RoheEinstellungen }
-  | { m: 'POST'; p: '/v1/settings/sessions/andere-beenden'; a: Geloescht }
+  | { m: 'POST'; p: '/v1/settings/sessions/andere-beenden'; a: AndereBeendet }
   | { m: 'POST'; p: '/v1/settings/smtp-test'; a: SmtpProbe }
   | { m: 'GET'; p: '/v1/settings/theme'; a: AppThemeResponse }
   | { m: 'GET'; p: '/v1/settings/tls'; a: TlsStand }

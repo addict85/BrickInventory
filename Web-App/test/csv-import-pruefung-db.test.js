@@ -26,7 +26,7 @@ const Module = require('node:module');
 const _echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = _echtesRequire.apply(this, arguments);
-  if (typeof name === 'string' && /[/\\]setService(\.js)?$/.test(name))
+  if (typeof name === 'string' && /[/\\]erfassen(\.js)?$/.test(name))
     return new Proxy(m, {
       get: (t, k) => {
         if (k === 'nacharbeitEinstellen') return async () => {};

@@ -18,6 +18,7 @@ dependencies {
     api(project(":core-model"))
     // Innen: Die Bereiche nennen core-data selbst.
     implementation(project(":core-data"))
+    implementation(project(":core-sicherheit"))
     // CsvImportDienst: Der CSV-Import startet und beendet seinen Vordergrund-Dienst.
     implementation(project(":core-dienste"))
     implementation(project(":core-ressourcen"))

@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
 Rot: Wert-Kacheln zeigen vierstellige Betraege auf schmalem Telefon bei 100 Prozent
 
-diff --git a/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt b/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
---- a/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
-+++ b/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
+diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
+--- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
++++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
 @@ -421,7 +421,7 @@ fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier =
          val bedarf = with(dichte) { breitester.toDp() } + Abstaende.mittel * 2 + 2.dp
          val abstand = Abstaende.klein

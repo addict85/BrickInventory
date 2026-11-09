@@ -43,7 +43,7 @@ fun interface PdfSeitenQuelle {
 }
 
 /** Gerendert im isolierten Prozess; der Aufruf dorthin blockiert, also nicht auf Main. */
-class PdfRendererSeiten @Inject constructor(
+internal class PdfRendererSeiten @Inject constructor(
     private val renderer: PdfRenderVerbindung,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
 ) : PdfSeitenQuelle {

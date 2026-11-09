@@ -456,7 +456,7 @@ async function doAddSet(){
       handleSseEvent(ev, num);
       if(ev.step==='done' && ev.action==='exists'){
         // Set steht schon im Blickfeld — der Server hat NICHTS geschrieben (Marcos Festlegung,
-        // src/sets/setAdd.ts). Statt einer Meldung öffnet sich die Detailansicht, genau wie in der App.
+        // src/sets/erfassen.ts). Statt einer Meldung öffnet sich die Detailansicht, genau wie in der App.
         streamFertig();
         hideProgress();
         G('add-num').value='';
@@ -475,7 +475,8 @@ async function doAddSet(){
           else toast(tRaw(ev.action==='added'?'gallery.set_hinzugefuegt':'gallery.set_aktualisiert', { num: ev.set_number }),'success');
           // Hintergrundaufträge laufen noch: alle Reiter regelmässig auffrischen
           set_lastImportAt(Date.now());
-          [3000, 8000, 15000, 25000].forEach(delay => setTimeout(()=>{
+          // Konnte der Strom nicht ergänzen, holt ein Auftrag Name und Bild nach einer Minute.
+          [3000, 8000, 15000, 25000, ...(ev.ergaenzung === 'ausstehend' ? [70000, 120000] : [])].forEach(delay => setTimeout(()=>{
             loadGallery(); loadStats();
             const activeTab = aktiverReiter();
             if(activeTab==='parts')    { loadParts(); loadManualParts(); }

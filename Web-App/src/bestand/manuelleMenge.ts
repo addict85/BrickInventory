@@ -3,7 +3,7 @@
  * überschriebe den anderen Zugang. */
 import { withInventoryLock, bestandsSchluessel } from '../../db/txLock';
 import { bestandsMenge } from '../infra/validate';
-import { fehlerWerfen } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/fehlerTexte';
 import { meldeUndLiefere } from '../infra/fehler';
 import { recordAcquisitionForDay } from './acquisitions';
 import * as repo from './repository/manuelleMengen';
@@ -18,7 +18,7 @@ export type Mengenwunsch = { absolut: number } | { delta: number };
 export function mengenwunsch(body: { quantity?: unknown; quantity_delta?: unknown }): Mengenwunsch | null {
   if (body.quantity_delta !== undefined && body.quantity_delta !== null) {
     const delta = Number(body.quantity_delta);
-    if (!Number.isInteger(delta) || Math.abs(delta) > 9999) fehlerWerfen('wert_ungueltig', 400);
+    if (!Number.isInteger(delta) || Math.abs(delta) > 9999) fachfehler('ungueltig', 'wert_ungueltig');
     return { delta };
   }
   if (body.quantity !== undefined) return { absolut: bestandsMenge(body.quantity, MINDESTENS) };

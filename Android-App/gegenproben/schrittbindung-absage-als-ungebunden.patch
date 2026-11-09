@@ -1,0 +1,17 @@
+Gegenprobe: Jede Absage des Servers und jeder Netzfehler gilt als „kennt keinen Schrittschutz“; die App prüft dann nur im Gerät
+Modul: core-data
+Test: ch.brickinventoryapp.data.SchrittbindungTest
+Rot: eine Absage des Servers haelt an
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SchrittbindungImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SchrittbindungImpl.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SchrittbindungImpl.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SchrittbindungImpl.kt
+@@ -27,7 +27,7 @@ class SchrittbindungImpl @Inject constructor(
+         val kennung = aktion.kennung ?: return Schrittantwort.NichtGebunden
+         return when (val r = safeCall { api.schrittChallenge(SchrittChallengeAnfrage(kennung)) }) {
+             is Ergebnis.Success -> Schrittantwort.Challenge(r.data.challenge, r.data.nachricht)
+-            is Ergebnis.Error -> if (r is Ergebnis.Error.Server && r.status == 404) Schrittantwort.NichtGebunden
++            is Ergebnis.Error -> if (r.transient || r is Ergebnis.Error.Server) Schrittantwort.NichtGebunden
+                 else Schrittantwort.Abgelehnt(r.message.ifBlank { null })
+         }
+     }

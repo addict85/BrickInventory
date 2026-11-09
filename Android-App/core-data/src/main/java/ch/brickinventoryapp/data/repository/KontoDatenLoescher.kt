@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.lokal.Offlineablage
+import ch.brickinventoryapp.offline.Offlineablage
 import javax.inject.Inject
 
 /** Was beim Abmelden von den Daten des Kontos verschwinden muss: Antwort-Cache, lokale Listen und Ausgang. */

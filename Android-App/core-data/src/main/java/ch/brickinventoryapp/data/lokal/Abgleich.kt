@@ -10,6 +10,11 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
+import ch.brickinventoryapp.offline.Abgleichsereignis
+import ch.brickinventoryapp.offline.Ausgangsposten
+import ch.brickinventoryapp.offline.Bearbeitung
+import ch.brickinventoryapp.offline.Bestandsart
+import ch.brickinventoryapp.offline.Offlineablage
 
 /** Was der Server zu einer Bearbeitung sagte. */
 sealed class Sendeergebnis {
