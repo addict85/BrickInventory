@@ -29,7 +29,7 @@ import ch.brickinventoryapp.testing.Quellen
  * `LanguageManager.localizedContext(...)` stammt. Der Name des Empfängers ist
  * dabei gleichgültig — geprüft wird die Herkunft.
  *
- * NICHT geprüft werden die Bildschirme unter `ui/screens/`: Dort ist `ctx`
+ * NICHT geprüft werden die Bildschirme unter `ui/screens/` und `gemeinsam/ui/`: Dort ist `ctx`
  * `LocalContext.current`, also der Activity-Context — und den lokalisiert
  * AppCompatDelegate. Sie mit derselben Regel zu belegen hiesse, eine
  * Umständlichkeit zu erzwingen, die nichts repariert.
@@ -58,7 +58,7 @@ class SpracheDerMeldungenTest {
         Quellen.alle()
             .filter { f ->
                 val p = f.absolutePath.replace('\\', '/')
-                ("/ui/" in p || "/service/" in p) && "/ui/screens/" !in p
+                ("/ui/" in p || "/service/" in p) && "/ui/screens/" !in p && "/gemeinsam/ui/" !in p
             }
             .map { it.name to Quellen.ohneKommentare(it.readText()) }
 

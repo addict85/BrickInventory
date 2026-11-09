@@ -14,8 +14,8 @@ import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.zustand.ui.Aenderung
 import ch.brickinventoryapp.sammlung.ui.Galerie
 import ch.brickinventoryapp.sammlung.ui.GalleryUiState
-import ch.brickinventoryapp.ui.KachelPreis
-import ch.brickinventoryapp.ui.kachelPreise
+import ch.brickinventoryapp.sammlung.ui.KachelPreis
+import ch.brickinventoryapp.sammlung.ui.kachelPreise
 import ch.brickinventoryapp.zustand.ui.retryOnNetwork
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

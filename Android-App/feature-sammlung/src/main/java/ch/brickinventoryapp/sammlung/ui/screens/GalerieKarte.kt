@@ -66,8 +66,12 @@ import ch.brickinventoryapp.ui.theme.LocalIsFarbfaecherTheme
 import ch.brickinventoryapp.ui.theme.LocalSteinDekor
 import ch.brickinventoryapp.ui.theme.faecherTon
 import ch.brickinventoryapp.ui.theme.lichtStreifen
-import ch.brickinventoryapp.ui.screens.ConditionBadges
-import ch.brickinventoryapp.ui.screens.OwnerBadges
+import ch.brickinventoryapp.gemeinsam.ui.ConditionBadges
+import ch.brickinventoryapp.gemeinsam.ui.OwnerBadges
+import ch.brickinventoryapp.sammlung.ui.KachelPreis
+import ch.brickinventoryapp.sammlung.ui.KachelQuelle
+import ch.brickinventoryapp.sammlung.ui.kachelBetrag
+import ch.brickinventoryapp.sammlung.ui.kachelQuelle
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable

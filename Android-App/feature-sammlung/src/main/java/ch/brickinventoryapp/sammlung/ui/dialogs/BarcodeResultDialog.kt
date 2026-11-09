@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.dialogs
 
-import ch.brickinventoryapp.ui.screens.InfoPlakette
+import ch.brickinventoryapp.gemeinsam.ui.InfoPlakette
 import ch.brickinventoryapp.ui.components.ErfassenDialog
 import androidx.compose.runtime.saveable.rememberSaveable
 import ch.brickinventoryapp.sammlung.ui.viewmodel.ErfassungAktionen
@@ -38,9 +38,9 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.ProduktBild
 import ch.brickinventoryapp.ui.components.bewegungReduziert
 import ch.brickinventoryapp.ui.components.mitSchrift
-import ch.brickinventoryapp.ui.screens.LagerortErfassung
-import ch.brickinventoryapp.ui.screens.OwnerPicker
-import ch.brickinventoryapp.ui.screens.Zustandszeile
+import ch.brickinventoryapp.gemeinsam.ui.LagerortErfassung
+import ch.brickinventoryapp.gemeinsam.ui.OwnerPicker
+import ch.brickinventoryapp.gemeinsam.ui.Zustandszeile
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.util.fmtInt
 

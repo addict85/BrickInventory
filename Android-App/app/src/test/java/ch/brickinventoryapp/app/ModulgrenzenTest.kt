@@ -9,10 +9,10 @@ import ch.brickinventoryapp.testing.Quellen
 
 /**
  * Die Modulgrenzen, gelesen aus settings.gradle.kts und den build.gradle.kts:
- * app → feature-* → core-*, kein Bereich kennt einen anderen, die Kernmodule
- * liegen in fester Schichtung, core-model bleibt reines Kotlin ohne Android.
- * Gradle bricht bei einem Zyklus ab, aber nicht bei einer Kante, die nur in
- * die falsche Richtung zeigt — die fängt dieser Test.
+ * app → feature-* → core-*, kein Bereich kennt einen anderen (nur feature-gemeinsam),
+ * feste Schichtung der Kernmodule, core-model ohne Android, core-ui ohne Fachwissen.
+ * Gradle bricht bei einem Zyklus ab, aber nicht bei einer Kante, die nur in die
+ * falsche Richtung zeigt — die fängt dieser Test.
  *
  * Gegenproben:
  *   A  feature-sammlung: `implementation(project(":feature-teile"))` → rot
@@ -47,10 +47,20 @@ import ch.brickinventoryapp.testing.Quellen
  *      core-update fängt schon Gradle als Zyklus)
  *   P  gegenproben/zustand-haengt-an-ui.patch: core-zustand bindet core-ui ein →
  *      rot „Schichtung der Kernmodule: core-zustand hängt an [core-ui]“
+ *   Q  gegenproben/gemeinsam-haengt-an-daten.patch: feature-gemeinsam bindet core-data ein →
+ *      rot „feature-gemeinsam hängt an core-data“
+ *   R  gegenproben/ui-kennt-ansicht.patch: eine core-ui-Datei importiert eine Ansicht aus
+ *      model.ui.model → rot „core-ui kennt Fachmodelle“ (Schichtung der Kernmodule)
+ *   S  gegenproben/ui-neuer-bildschirm.patch: eine neue Datei in core-ui/ui/screens →
+ *      rot „core-ui/ui/screens enthält nur die Kamera-Bausteine“ (Schichtung …)
  *   O  gegenproben/fremder-paketstamm.patch: feature-teile bekommt eine Datei im Paket
  *      ch.brickinventoryapp.sammlung → rot „außerhalb des Paketstamms ihres Moduls“
  */
 class ModulgrenzenTest {
+
+    private companion object {
+        const val GEMEINSAM = "feature-gemeinsam"
+    }
 
     private data class Abhaengigkeit(val konfiguration: String, val ziel: String)
 
@@ -87,7 +97,7 @@ class ModulgrenzenTest {
             "core-update" to "update", "core-dienste" to "dienste", "core-ui" to "ui", "core-zustand" to "zustand",
             "core-testing" to "testing", "feature-anmeldung" to "anmeldung", "feature-katalog" to "katalog",
             "feature-sammlung" to "sammlung", "feature-teile" to "teile", "feature-finanzen" to "finanzen",
-            "feature-konto" to "konto", "feature-verwaltung" to "verwaltung",
+            "feature-konto" to "konto", "feature-verwaltung" to "verwaltung", "feature-gemeinsam" to "gemeinsam",
         )
         assertEquals("kein Stamm ist doppelt vergeben", stamm.size, stamm.values.toSet().size)
         val paketZeile = Regex("""^package\s+([\w.]+)""", RegexOption.MULTILINE)
@@ -116,10 +126,17 @@ class ModulgrenzenTest {
         val bereiche = module().filterKeys { it.startsWith("feature-") }
         assertTrue("Nur ${bereiche.size} Bereichsmodule", bereiche.size >= 5)
         for ((name, bau) in bereiche) {
-            val falsch = hauptAbhaengigkeiten(bau).filter { it.startsWith("feature-") || it == "app" }
+            // feature-gemeinsam ist der eine erlaubte Nachbar: Was mehrere Bereiche zeigen, liegt dort.
+            val falsch = hauptAbhaengigkeiten(bau).filter { (it.startsWith("feature-") && it != GEMEINSAM) || it == "app" || it == name }
             assertTrue("$name hängt an ${falsch.joinToString()}", falsch.isEmpty())
             assertTrue("$name kennt keine Kernmodule — Muster veraltet?", hauptAbhaengigkeiten(bau).any { it.startsWith("core-") })
         }
+        // Nur Darstellung: Mit Daten oder Zustand würde es zum Umweg, auf dem sich Bereiche doch kennen.
+        val gemeinsam = hauptAbhaengigkeiten(module().getValue(GEMEINSAM))
+        val zuviel = gemeinsam - setOf("core-model", "core-ressourcen", "core-ui")
+        assertTrue("$GEMEINSAM hängt an ${zuviel.joinToString()}", zuviel.isEmpty())
+        val nutzer = bereiche.filter { (_, bau) -> GEMEINSAM in hauptAbhaengigkeiten(bau) }.keys
+        assertTrue("Nur $nutzer nutzen $GEMEINSAM — Muster veraltet?", nutzer.size >= 3)
     }
 
     @Test
@@ -159,6 +176,24 @@ class ModulgrenzenTest {
         assertTrue("Nur ${importe.size} Importe in core-netz — Pfad veraltet?", importe.size > 20)
         val fremd = importe.filter { Regex(""": (androidx\.room|dagger|javax\.inject|retrofit2|ch\.brickinventoryapp\.data\.(repository|lokal|cache))\b""").containsMatchIn(it) }
         assertTrue("core-netz importiert Ablage, Repositories oder DI: $fremd", fremd.isEmpty())
+        pruefeUiOhneFachwissen()
+    }
+
+    /**
+     * core-ui ist das Design-System: Theme und Bausteine ohne Fachwissen. Wer eine Ansicht
+     * (model.ui.model) oder ein Servermodell (model.data) braucht, ist ein fachlicher Baustein
+     * und gehört in den Bereich oder nach feature-gemeinsam.
+     */
+    private fun pruefeUiOhneFachwissen() {
+        val wurzel = File(projekt, "core-ui/src/main/java")
+        val dateien = wurzel.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        assertTrue("Nur ${dateien.size} Dateien in core-ui — Pfad veraltet?", dateien.size >= 40)
+        val fach = Regex("""\bch\.brickinventoryapp\.model\.(data|ui\.model)\b""")
+        val funde = dateien.filter { fach.containsMatchIn(Quellen.ohneKommentare(it.readText())) }.map { it.relativeTo(wurzel).path }
+        assertTrue("core-ui kennt Fachmodelle: $funde", funde.isEmpty())
+        // Die Kamera-Bausteine heissen noch ui.screens; neue Bildschirme oder Bausteine kommen nicht dorthin.
+        val screens = File(wurzel, "ch/brickinventoryapp/ui/screens").listFiles().orEmpty().map { it.name }.sorted()
+        assertEquals("core-ui/ui/screens enthält nur die Kamera-Bausteine", listOf("KameraAufbau.kt", "KameraErlaubnis.kt"), screens)
     }
 
     @Test

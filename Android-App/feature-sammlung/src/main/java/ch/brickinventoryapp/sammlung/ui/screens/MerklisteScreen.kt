@@ -49,8 +49,8 @@ import ch.brickinventoryapp.ui.components.ScanKnopf
 import ch.brickinventoryapp.ui.components.SegmentWahl
 import ch.brickinventoryapp.ui.components.SortierMenue
 import ch.brickinventoryapp.ui.components.mitSchrift
-import ch.brickinventoryapp.ui.screens.ScopeFilterZeile
-import ch.brickinventoryapp.ui.screens.Suchfeld
+import ch.brickinventoryapp.gemeinsam.ui.ScopeFilterZeile
+import ch.brickinventoryapp.ui.components.Suchfeld
 
 /**
  * Der Schlüssel einer Zeile: Nummer, Zustand und Konto. Dasselbe Set kann neu und

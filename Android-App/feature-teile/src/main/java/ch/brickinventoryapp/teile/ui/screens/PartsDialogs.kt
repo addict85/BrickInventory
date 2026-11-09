@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.teile.ui.screens
 
 import ch.brickinventoryapp.ui.theme.farbeAusHex
-import ch.brickinventoryapp.ui.erfassungUngueltig
-import ch.brickinventoryapp.ui.erfassungsWerte
+import ch.brickinventoryapp.gemeinsam.ui.erfassungUngueltig
+import ch.brickinventoryapp.gemeinsam.ui.erfassungsWerte
 import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.background
@@ -25,8 +25,8 @@ import ch.brickinventoryapp.model.ui.model.OHNE_FARBE
 import ch.brickinventoryapp.model.ui.ohneKeineFarbe
 import androidx.compose.material3.ExperimentalMaterial3Api
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.screens.ErfassungsFelder
-import ch.brickinventoryapp.ui.screens.OwnerPicker
+import ch.brickinventoryapp.gemeinsam.ui.ErfassungsFelder
+import ch.brickinventoryapp.gemeinsam.ui.OwnerPicker
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

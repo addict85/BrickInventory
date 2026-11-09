@@ -58,16 +58,16 @@ import ch.brickinventoryapp.model.ui.model.PreisalarmAnsicht
 import ch.brickinventoryapp.ui.util.fmtEingabe
 import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.util.fmtMoney
-import ch.brickinventoryapp.ui.screens.AcquisitionSummarySection
-import ch.brickinventoryapp.ui.screens.DetailRow2
-import ch.brickinventoryapp.ui.screens.KennzahlenReihe
-import ch.brickinventoryapp.ui.screens.LagerortFeld
-import ch.brickinventoryapp.ui.screens.MarketPriceByCondition
-import ch.brickinventoryapp.ui.screens.PreisLaedtZeile
-import ch.brickinventoryapp.ui.screens.PriceChart
-import ch.brickinventoryapp.ui.screens.SectionCard
-import ch.brickinventoryapp.ui.screens.StatChipV2
-import ch.brickinventoryapp.ui.screens.WertKacheln
+import ch.brickinventoryapp.gemeinsam.ui.AcquisitionSummarySection
+import ch.brickinventoryapp.gemeinsam.ui.DetailRow2
+import ch.brickinventoryapp.gemeinsam.ui.KennzahlenReihe
+import ch.brickinventoryapp.gemeinsam.ui.LagerortFeld
+import ch.brickinventoryapp.gemeinsam.ui.MarketPriceByCondition
+import ch.brickinventoryapp.gemeinsam.ui.PreisLaedtZeile
+import ch.brickinventoryapp.gemeinsam.ui.PriceChart
+import ch.brickinventoryapp.gemeinsam.ui.SectionCard
+import ch.brickinventoryapp.gemeinsam.ui.StatChipV2
+import ch.brickinventoryapp.gemeinsam.ui.WertKacheln
 
 /**
  * Marktpreis je Zustand und Verlauf. Die grosse Preiszeile steht nicht mehr hier: Markt-,

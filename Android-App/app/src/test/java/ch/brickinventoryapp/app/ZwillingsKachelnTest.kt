@@ -54,7 +54,7 @@ class ZwillingsKachelnTest {
 
     @Test
     fun `beide Kacheln zeigen die Zustands-Plaketten`() {
-        val gemeinsam = code(read("ui/screens/ManualItemComposables.kt"))
+        val gemeinsam = code(read("gemeinsam/ui/ManualItemComposables.kt"))
         assert(gemeinsam.contains("ConditionBadges(zustaende, zustand)")) {
             "ManuelleKachel zeigt die Zustaende nicht mehr — dann fehlen sie in " +
                 "BEIDEN Ansichten"
@@ -96,7 +96,7 @@ class ZwillingsKachelnTest {
 
     @Test
     fun `beide Kacheln zeigen den Besitzer`() {
-        val gemeinsam = code(read("ui/screens/ManualItemComposables.kt"))
+        val gemeinsam = code(read("gemeinsam/ui/ManualItemComposables.kt"))
         // Der Anker hing am ganzen Aufruf samt Innenabstand:
         //
         //     OwnerBadges(besitzer, Modifier.padding(top = 2.dp))

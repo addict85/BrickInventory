@@ -77,13 +77,13 @@ import ch.brickinventoryapp.model.ui.model.BrickLinkAnsicht
 import ch.brickinventoryapp.model.ui.model.KatalogDetailAnsicht
 import ch.brickinventoryapp.katalog.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.finanzen.ui.screens.FinanceRoute
-import ch.brickinventoryapp.ui.screens.GalleryStatChip
-import ch.brickinventoryapp.ui.screens.KennzahlenReihe
+import ch.brickinventoryapp.gemeinsam.ui.GalleryStatChip
+import ch.brickinventoryapp.gemeinsam.ui.KennzahlenReihe
 import ch.brickinventoryapp.anmeldung.ui.screens.LoginScreen
 import ch.brickinventoryapp.konto.ui.screens.PreisalarmeRoute
 import ch.brickinventoryapp.anmeldung.ui.screens.SetupScreen
 import ch.brickinventoryapp.konto.ui.screens.StartpasswortMaske
-import ch.brickinventoryapp.ui.screens.StatChipV2
+import ch.brickinventoryapp.gemeinsam.ui.StatChipV2
 import ch.brickinventoryapp.konto.ui.screens.ZweiterFaktorPflichtMaske
 import ch.brickinventoryapp.ui.theme.Lesebreite
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser

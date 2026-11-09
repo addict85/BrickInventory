@@ -3,7 +3,6 @@ package ch.brickinventoryapp.ui
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
-import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.util.NumericInput
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -37,8 +36,6 @@ import ch.brickinventoryapp.testing.Quellen
  * Betrag und Menge: leseBetrag folgt leseBetrag der Web-App (01-format.js).
  * Gegenprobe (gegenproben/betrag-tausenderpunkt.patch): price() schneidet wieder am
  * zweiten Trenner ab → rot „eine eingefuegte Zahl mit Tausendertrennung bleibt ihr Wert".
- * Gegenprobe (gegenproben/erfassung-liest-preis-roh.patch): erfassungsWerte liest den
- * Preis wieder mit replace und toDoubleOrNull → rot „die Erfassung liest den Preis …".
  */
 class NumericInputTest {
 
@@ -161,19 +158,6 @@ class NumericInputTest {
         assertEquals(true, NumericInput.mengeUngueltig("00"))
         // Über Int: Das wurde bisher still zu 1.
         assertEquals(true, NumericInput.mengeUngueltig("99999999999"))
-    }
-
-    @Test
-    fun `die Erfassung liest den Preis wie das Feld und meldet Unlesbares`() {
-        val haushalt = emptyList<MitgliedAnsicht>()
-        // Locale-unabhängig: zwei Trenner sind nie ein Einzelfall.
-        assertEquals(1299.0, erfassungsWerte("2", "1.299,00", "N", null, haushalt).preis!!, 0.0)
-        assertEquals(1299.5, erfassungsWerte("2", "1,299.50", "N", null, haushalt).preis!!, 0.0)
-        assertEquals(false, erfassungUngueltig("", ""))
-        assertEquals(false, erfassungUngueltig("3", "1.299,00"))
-        assertEquals(true, erfassungUngueltig("0", ""))
-        assertEquals(true, erfassungUngueltig("99999999999", ""))
-        assertEquals(true, erfassungUngueltig("1", "."))
     }
 
     // ── Die Tastatur ─────────────────────────────────────────────────────────

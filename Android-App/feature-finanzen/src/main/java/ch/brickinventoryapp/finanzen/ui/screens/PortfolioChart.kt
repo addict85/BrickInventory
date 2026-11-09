@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.*
 import ch.brickinventoryapp.model.ui.model.DiagrammAchse
 import ch.brickinventoryapp.model.ui.model.DiagrammPunkt
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.ui.diagrammZusammenfassung
+import ch.brickinventoryapp.gemeinsam.ui.diagrammZusammenfassung
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtProzent
 import ch.brickinventoryapp.ui.theme.Abstaende

@@ -40,12 +40,12 @@ import ch.brickinventoryapp.ui.components.LocalOffenesDetail
 import ch.brickinventoryapp.ui.components.OfflineHinweis
 import ch.brickinventoryapp.ui.components.detailSchluessel
 import ch.brickinventoryapp.ui.components.grosseSchrift
-import ch.brickinventoryapp.ui.screens.AnsichtAbschnitt
-import ch.brickinventoryapp.ui.screens.FilterBlattRahmen
-import ch.brickinventoryapp.ui.screens.GalleryStatChip
-import ch.brickinventoryapp.ui.screens.KennzahlenReihe
-import ch.brickinventoryapp.ui.screens.KontoFilterAbschnitt
-import ch.brickinventoryapp.ui.screens.SucheMitFilter
+import ch.brickinventoryapp.gemeinsam.ui.AnsichtAbschnitt
+import ch.brickinventoryapp.gemeinsam.ui.FilterBlattRahmen
+import ch.brickinventoryapp.gemeinsam.ui.GalleryStatChip
+import ch.brickinventoryapp.gemeinsam.ui.KennzahlenReihe
+import ch.brickinventoryapp.gemeinsam.ui.KontoFilterAbschnitt
+import ch.brickinventoryapp.gemeinsam.ui.SucheMitFilter
 
 /** Der Figuren-Reiter am Navigationsziel: reicht Zustand und Aktionen an [MinifigsScreen]. */
 @Composable

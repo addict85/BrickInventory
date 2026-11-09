@@ -138,7 +138,7 @@ import ch.brickinventoryapp.sammlung.ui.dialogs.BarcodeResultDialog
 import ch.brickinventoryapp.sammlung.ui.screens.AcquisitionManagementRoute
 import ch.brickinventoryapp.sammlung.ui.screens.BarcodeScannerScreen
 import ch.brickinventoryapp.verwaltung.ui.screens.CacheEreignisse
-import ch.brickinventoryapp.ui.screens.CsvImportBanner
+import ch.brickinventoryapp.app.ui.components.CsvImportBanner
 import ch.brickinventoryapp.konto.ui.screens.EinstellungenZustand
 import ch.brickinventoryapp.finanzen.ui.screens.GutscheineRoute
 import ch.brickinventoryapp.ui.screens.KameraErlaubnisHinweis

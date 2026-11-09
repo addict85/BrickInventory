@@ -10,7 +10,7 @@ import ch.brickinventoryapp.model.ui.model.PreisDiagrammAnsicht
 import ch.brickinventoryapp.model.ui.model.PreisPunktAnsicht
 import ch.brickinventoryapp.model.ui.model.PreisReiheAnsicht
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.ui.screens.PriceChart
+import ch.brickinventoryapp.gemeinsam.ui.PriceChart
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.util.fmtAmount
 import org.junit.After

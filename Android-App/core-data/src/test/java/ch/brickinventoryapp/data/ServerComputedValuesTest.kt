@@ -47,7 +47,7 @@ class ServerComputedValuesTest {
     fun `die Summenzeile der Erfassungen kommt vom Server`() {
         for (f in listOf(
             "sammlung/ui/screens/AcquisitionManagementScreen.kt",
-            "ui/screens/ManualItemComposables.kt",
+            "gemeinsam/ui/ManualItemComposables.kt",
         )) {
             val c = code(read(f))
             assert(!c.contains("acquisitions.sumOf")) {

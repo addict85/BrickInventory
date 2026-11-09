@@ -206,6 +206,7 @@ dependencies {
     implementation(project(":core-update"))
     implementation(project(":core-dienste"))
     implementation(project(":core-ui"))
+    implementation(project(":feature-gemeinsam"))
     implementation(project(":core-zustand"))
     implementation(project(":feature-anmeldung"))
     implementation(project(":feature-katalog"))

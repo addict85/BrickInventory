@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.dp
 import coil3.ImageLoader
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
-import ch.brickinventoryapp.ui.screens.TabellenZeile
+import ch.brickinventoryapp.gemeinsam.ui.TabellenZeile
 import ch.brickinventoryapp.model.util.resolveFullUrlViaProxy
 import ch.brickinventoryapp.ui.util.rememberTileImageWithFallback
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -35,8 +35,8 @@ import ch.brickinventoryapp.ui.components.ProduktBild
 import ch.brickinventoryapp.ui.components.ZurueckKnopf
 import ch.brickinventoryapp.ui.components.farbUebersetzer
 import ch.brickinventoryapp.ui.components.kategorieUebersetzer
-import ch.brickinventoryapp.ui.mengeAusSet
-import ch.brickinventoryapp.ui.screens.LagerortFeld
+import ch.brickinventoryapp.gemeinsam.ui.mengeAusSet
+import ch.brickinventoryapp.gemeinsam.ui.LagerortFeld
 
 /**
  * Detail für ein Teil / eine Figur aus einem Set, auf dem Telefon als Blatt von unten:

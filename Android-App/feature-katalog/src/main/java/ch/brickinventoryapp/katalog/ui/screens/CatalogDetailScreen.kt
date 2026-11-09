@@ -48,17 +48,17 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import ch.brickinventoryapp.ui.components.ProduktBild
 import ch.brickinventoryapp.ui.components.ansagen
-import ch.brickinventoryapp.ui.erfassungUngueltig
+import ch.brickinventoryapp.gemeinsam.ui.erfassungUngueltig
 import ch.brickinventoryapp.ui.components.SegmentWahl
 import ch.brickinventoryapp.ui.components.bewegungReduziert
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.ui.theme.Lesebreite
 import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.netz.util.oeffneExtern
-import ch.brickinventoryapp.ui.screens.CatalogDetailRow
-import ch.brickinventoryapp.ui.screens.LagerortErfassung
-import ch.brickinventoryapp.ui.screens.OwnerPicker
-import ch.brickinventoryapp.ui.screens.Zustandszeile
+import ch.brickinventoryapp.ui.components.CatalogDetailRow
+import ch.brickinventoryapp.gemeinsam.ui.LagerortErfassung
+import ch.brickinventoryapp.gemeinsam.ui.OwnerPicker
+import ch.brickinventoryapp.gemeinsam.ui.Zustandszeile
 
 /**
  * Katalog-Detail: Bild, Metadaten (Jahr, Thema, Teile, Minifiguren) und

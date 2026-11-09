@@ -8,7 +8,7 @@ import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.ui.screens.CsvImportBanner
+import ch.brickinventoryapp.app.ui.components.CsvImportBanner
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
