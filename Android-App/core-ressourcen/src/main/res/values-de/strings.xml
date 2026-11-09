@@ -634,6 +634,7 @@
     <string name="setup_build">Build %1$s</string>
     <string name="err_generic">Der Server hat die Anfrage ohne Begründung abgelehnt</string>
     <string name="err_login_failed">Anmeldung fehlgeschlagen</string>
+    <string name="login_qr_bestaetigen_hinweis">Gib diesen Code im Browser ein, in dem du den QR-Code erzeugt hast. Erst dann bekommt dieses Gerät Zugang.</string>
     <string name="err_qr_login_failed">QR-Anmeldung fehlgeschlagen</string>
     <string name="err_network">Keine Verbindung zum Server</string>
     <string name="err_timeout">Der Server hat nicht rechtzeitig geantwortet</string>

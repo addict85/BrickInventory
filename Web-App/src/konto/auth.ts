@@ -75,8 +75,7 @@ export async function verifiziereEmailToken(token: unknown): Promise<{ ok: boole
   return neu.ok ? { ok: true, userId: neu.id } : { ok: false, grund: 'vergeben', userId: neu.id };
 }
 
-/** Kurz, weil ein Widerruf in einem anderen Prozess nur per NOTIFY ankommt: Bleibt
- * es aus, gilt ein widerrufener Token höchstens so lange weiter. */
+/** Obergrenze für einen Eintrag; ein Widerruf leert ihn sofort (NOTIFY). */
 export const TOKEN_TTL_MS = 5 * 1000;
 const TAG_MS = 86_400_000;
 
@@ -91,6 +90,9 @@ export const UEBERLAPPUNG_MS = 5 * 60 * 1000;
 export const WIEDERVERWENDUNG_SCHONFRIST_S = 60;
 
 const _tokenCache = new Map<string, CacheEintrag>();
+/** Zählt jedes Leeren: Eine Zeile, die vor einem Widerruf gelesen wurde, kommt danach nicht mehr hinein. */
+let _stand = 0;
+function leere(): void { _tokenCache.clear(); _stand++; }
 
 function _pruneCache() {
   if (_tokenCache.size <= 200) return;
@@ -143,7 +145,8 @@ export async function pruefeToken(token: string | null | undefined,
     o.zweck !== 'rotation' && rotationPflicht(u, now)
       ? { nutzer: null, grund: 'token_rotation_noetig' } : { nutzer: u };
 
-  const hit = _tokenCache.get(token);
+  const nutzbar = cacheNutzbar(), stand = _stand;
+  const hit = nutzbar ? _tokenCache.get(token) : undefined;
   if (hit && now - hit.cachedAt < TOKEN_TTL_MS) {
     // Beide Fristen auch hier: Dieser Zweig fragt die Datenbank nicht.
     if (fristErreicht(hit.user.expires_at, now) || fristErreicht(hit.user.hard_expires_at, now)) {
@@ -173,7 +176,7 @@ export async function pruefeToken(token: string | null | undefined,
   }
 
   const entry: CacheEintrag = { user: row, cachedAt: now, dbKey: hashed };
-  _tokenCache.set(token, entry);
+  if (nutzbar && stand === _stand) _tokenCache.set(token, entry);
   _pruneCache();
   _touchLastUsed(entry, o.ip);
   return ergebnis(row);
@@ -221,15 +224,23 @@ function _touchLastUsed(entry: CacheEintrag, ip?: string | null): void {
 export function invalidateToken(token: string | null | undefined): void {
   if (!token) return;
   _tokenCache.delete(token);
+  _stand++;
   meldeWiderruf();
 }
 
-/** Jeder Web-Prozess hält seinen eigenen Cache; ein Widerruf leert ihn in allen. */
+/** Jeder Web-Prozess hält seinen eigenen Cache; ein Widerruf leert ihn in allen.
+ * Ohne stehende Horch-Verbindung käme ein fremder Widerruf nicht an: Dann gilt
+ * nur die Datenbank (fail closed). */
 const WIDERRUF_KANAL = 'token_widerrufen';
 let _verteilt = false;
 export function horcheAufTokenWiderruf(): void {
   _verteilt = true;
-  pgNotify.listen(WIDERRUF_KANAL, () => { _tokenCache.clear(); });
+  pgNotify.listen(WIDERRUF_KANAL, leere);
+}
+function cacheNutzbar(): boolean {
+  if (_verteilt && pgNotify.hoertZu(WIDERRUF_KANAL)) return true;
+  leere();
+  return false;
 }
 function meldeWiderruf(): void {
   if (_verteilt) void pgNotify.notify(WIDERRUF_KANAL);
@@ -238,7 +249,7 @@ function meldeWiderruf(): void {
 /** Für Löschungen ohne Klartext (die Token-Verwaltung kennt nur den
  * Hash-Anfang). Den Cache hält nur der Web-Prozess. */
 export function leereTokenCache(): void {
-  _tokenCache.clear();
+  leere();
   meldeWiderruf();
 }
 

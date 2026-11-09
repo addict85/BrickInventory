@@ -14,7 +14,10 @@ import javax.inject.Singleton
 import ch.brickinventoryapp.data.Entwertungsergebnis
 import ch.brickinventoryapp.data.GetauschterToken
 import ch.brickinventoryapp.data.einordnenEntwertung
+import ch.brickinventoryapp.model.data.model.QrAbholRequest
+import ch.brickinventoryapp.model.data.model.QrAbholung
 import ch.brickinventoryapp.model.data.model.QrLoginRequest
+import ch.brickinventoryapp.model.data.model.QrMeldung
 import ch.brickinventoryapp.netz.util.NetworkPolicy
 import ch.brickinventoryapp.data.util.Protokoll
 
@@ -73,8 +76,11 @@ class KontoRepositoryImpl @Inject constructor(
         safeCall { api.passkeyAnmelden(PasskeyAnmeldung(antwort, scope = scope,
             neverExpires = NetworkPolicy.istHttps(serverUrl))) }
 
-    override suspend fun qrLogin(token: String): Ergebnis<LoginResponse> =
-        safeCall { api.qrLogin(QrLoginRequest(token)) }
+    override suspend fun qrLogin(token: String, label: String): Ergebnis<QrMeldung> =
+        safeCall { api.qrLogin(QrLoginRequest(token, label)) }
+
+    override suspend fun qrAbholen(abholung: String): Ergebnis<QrAbholung> =
+        safeCall { api.qrAbholen(QrAbholRequest(abholung)) }
 
     override suspend fun getMe(): Ergebnis<MeResponse> = safeCall { api.getMe() }
 

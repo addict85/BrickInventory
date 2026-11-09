@@ -205,7 +205,8 @@ class AnmeldungViewModelTest {
 
     @Test
     fun `ein QR-Code mit Fingerabdruck haelt den Pin fuer die erste Anfrage vor und merkt ihn erst danach`() {
-        pfade.antworten["/api/v1/auth/qr-login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco"}}"""
+        pfade.antworten["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
+        pfade.antworten["/api/v1/auth/qr-login/abholen"] = """{"success":true,"wartet":false,"token":"abc","user":{"id":1,"username":"marco"}}"""
         val vm = vm(wurzeln = setOf(fp))
         vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp)
         assertTrue("angemeldet", t.sitzung.state.value.isLoggedIn && ablage.protokoll.any { it.startsWith("vergiss:") })
@@ -231,7 +232,8 @@ class AnmeldungViewModelTest {
 
     @Test
     fun `ein QR-Code mit anderem Schluessel ersetzt den Pin nie still`() {
-        pfade.antworten["/api/v1/auth/qr-login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco"}}"""
+        pfade.antworten["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
+        pfade.antworten["/api/v1/auth/qr-login/abholen"] = """{"success":true,"wartet":false,"token":"abc","user":{"id":1,"username":"marco"}}"""
         ablage.pins["brick.example.org:443"] = fpAlt
         val vm = vm()
         assertEquals("Der Bildschirm bekommt den bisherigen", fpAlt, vm.bisherigerPin("brick.example.org", fp))
@@ -263,7 +265,8 @@ class AnmeldungViewModelTest {
 
     @Test
     fun `ein eigener Schluessel aus dem QR-Code gilt beim ersten Einrichten nur abgetippt`() {
-        pfade.antworten["/api/v1/auth/qr-login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco"}}"""
+        pfade.antworten["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
+        pfade.antworten["/api/v1/auth/qr-login/abholen"] = """{"success":true,"wartet":false,"token":"abc","user":{"id":1,"username":"marco"}}"""
         val vm = vm(wurzeln = setOf(fpAlt))
         assertTrue("Eigene Wurzel: abtippen", vm.mussAbtippen("https://brick.example.org/", fp))
         assertFalse("System-Wurzel: ihre Kette muss ohnehin öffentlich gelten", vm.mussAbtippen("https://brick.example.org/", fpAlt))
@@ -322,7 +325,8 @@ class AnmeldungViewModelTest {
 
     @Test
     fun `ein QR-Code mit http-Adresse wird nicht uebernommen und sagt warum`() {
-        pfade.antworten["/api/v1/auth/qr-login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco"}}"""
+        pfade.antworten["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
+        pfade.antworten["/api/v1/auth/qr-login/abholen"] = """{"success":true,"wartet":false,"token":"abc","user":{"id":1,"username":"marco"}}"""
         val vm = vm()
         vm.loginWithQrToken("http://nas:3000", "bim:x")
         assertEquals("t${R.string.setup_qr_klartext_abgelehnt}", vm.anmeldeState.value.loginError)

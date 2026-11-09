@@ -182,7 +182,7 @@ function inDenCache(
       await fs.promises.writeFile(cacheFile + '.ct', contentType);
       await fs.promises.rename(tmpFile, cacheFile);
       merkeCacheZuwachs(st.size);
-      if (o.setNummer) await alsSetBildAblegen(cacheFile, o.setNummer).catch(logAndContinue('img-proxy:setbild'));
+      if (o.setNummer) await setBildAusCache(url, o.setNummer, cacheFile).catch(logAndContinue('img-proxy:setbild'));
       // Gleich miterzeugen, sonst später für eine ganze Kachelwand auf einmal.
       if (wantThumb) {
         if (darfErzeugen) queueThumb(cacheFile, thumbFile);
@@ -226,15 +226,35 @@ function entpackt(roh: Readable, enc: string, res: Response, url: string, expect
 }
 
 /** @returns true, wenn Bild oder Vorschau unter images/sets noch fehlen */
-async function setBildVersorgen(url: string, setNummer: string, cacheFile: string): Promise<boolean> {
-  if (await setBildVollstaendig(setNummer)) {
-    // Liegen beide schon da, fehlt oft nur der Eintrag: Danach fragt die Oberfläche nicht mehr hier.
-    await setBildLokalEintragen(setNummer).catch(logAndContinue('img-proxy:setBildLokal'));
-    return false;
-  }
-  await alsSetBildAblegen(cacheFile, setNummer).catch(ohneFehlendeDatei('img-proxy:setbild'));
+async function setBildFehlt(setNummer: string): Promise<boolean> {
+  if (!(await setBildVollstaendig(setNummer))) return true;
+  // Liegen beide schon da, fehlt oft nur der Eintrag: Danach fragt die Oberfläche nicht mehr hier.
+  await setBildLokalEintragen(setNummer).catch(logAndContinue('img-proxy:setBildLokal'));
+  return false;
+}
+
+/** Vorgemerkt wird nur, was der Proxy als Bild hat (Cache oder gedrosselter Abruf),
+ * und je Set einmal in VORMERKEN_FRIST_MS: Sonst füllte ein Konto mit erfundenen
+ * Set-Nummern die Notizen des Bild-Auftrags. */
+const VORMERKEN_FRIST_MS = 15 * 60_000;
+const _vorgemerkt = new Map<string, number>();
+function vormerkenEinmal(url: string, setNummer: string): void {
+  const jetzt = Date.now();
+  if (jetzt - (_vorgemerkt.get(setNummer) ?? -Infinity) < VORMERKEN_FRIST_MS) return;
+  if (_vorgemerkt.size >= 5000)
+    for (const [sn, t] of _vorgemerkt) if (jetzt - t >= VORMERKEN_FRIST_MS) _vorgemerkt.delete(sn);
+  _vorgemerkt.set(setNummer, jetzt);
   nacharbeit().bildVormerken(url, setNummer);
-  return true;
+}
+
+/** Aus dem Cache des Proxys nach images/sets, dann vormerken; ohne Cache-Datei nichts. */
+async function setBildAusCache(url: string, setNummer: string, cacheFile: string): Promise<void> {
+  try {
+    await alsSetBildAblegen(cacheFile, setNummer);
+  } catch (e) {
+    return ohneFehlendeDatei('img-proxy:setbild')(e);
+  }
+  vormerkenEinmal(url, setNummer);
 }
 
 export async function bildDurchreichen(req: Request, res: Response) {
@@ -268,7 +288,8 @@ export async function bildDurchreichen(req: Request, res: Response) {
   // Ein Set-Bild gehört samt Vorschau nach images/sets; der Bild-Job holt es,
   // sobald es einmal über den Proxy gefragt war.
   const setNummer = setAusUrl();
-  const setFehlt = setNummer ? await setBildVersorgen(url, setNummer, cacheFile) : false;
+  const setFehlt = setNummer ? await setBildFehlt(setNummer) : false;
+  if (setFehlt && setNummer) await setBildAusCache(url, setNummer, cacheFile);
 
   if (
     await liefereAusCache({

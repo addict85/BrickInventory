@@ -1,5 +1,5 @@
 import { tRaw } from '../i18n.js';
-import { alsHtml, esc, einsetzen, html, ungeprueft } from './00-escapen.js';
+import { alsHtml, esc, html, ungeprueft } from './00-escapen.js';
 
 // Kleine DOM-Helfer, die jede Ansicht braucht: Elemente holen, Symbole, Leerzustand, besetzte Knöpfe. Ohne
 // Abhängigkeit über Escaping und Sprache hinaus, damit jedes Modul sie laden kann.
@@ -141,7 +141,7 @@ export const TRASH_ICON_SVG = html`<svg viewBox="0 0 24 24" xmlns="http://www.w3
  */
 export function setzeHtml(el, inhalt) {
   if (typeof inhalt === 'string' && inhalt !== '') throw new TypeError('setzeHtml: nur html`` oder ungeprueft()');
-  if (el) el.innerHTML = alsHtml(einsetzen(inhalt));
+  if (el) el.innerHTML = alsHtml(inhalt);
 }
 
 /**
@@ -152,5 +152,5 @@ export function setzeHtml(el, inhalt) {
  */
 export function fuegeHtmlEin(el, wo, inhalt) {
   if (typeof inhalt === 'string' && inhalt !== '') throw new TypeError('fuegeHtmlEin: nur html`` oder ungeprueft()');
-  el?.insertAdjacentHTML(wo, alsHtml(einsetzen(inhalt)));
+  el?.insertAdjacentHTML(wo, alsHtml(inhalt));
 }

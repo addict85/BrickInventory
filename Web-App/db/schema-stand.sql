@@ -635,10 +635,21 @@ CREATE TABLE qr_login_tokens (
   expires_at timestamp with time zone NOT NULL,
   used_at timestamp with time zone,
   token_days integer,
+  id bigint NOT NULL,
+  abholung text,
+  code_hash text,
+  geraet text,
+  ip_bereich text,
+  fehlversuche integer NOT NULL DEFAULT 0,
+  bestaetigt_am timestamp with time zone,
+  abgelehnt_am timestamp with time zone,
+  abgeholt_am timestamp with time zone,
   CONSTRAINT qr_login_tokens_pkey PRIMARY KEY (token),
   CONSTRAINT qr_login_tokens_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+CREATE UNIQUE INDEX idx_qr_login_abholung ON qr_login_tokens USING btree (abholung) WHERE (abholung IS NOT NULL);
 CREATE INDEX idx_qr_login_expires ON qr_login_tokens USING btree (expires_at);
+CREATE UNIQUE INDEX idx_qr_login_id ON qr_login_tokens USING btree (id);
 CREATE INDEX idx_qr_login_user ON qr_login_tokens USING btree (user_id);
 
 CREATE TABLE rate_limit_attempts (

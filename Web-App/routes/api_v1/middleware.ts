@@ -30,7 +30,7 @@ const OEFFENTLICH: ReadonlyArray<readonly [string, RegExp]> = [
   ['GET', /^\/auth\/(me|registration-status)$/],
   // token-rotieren prüft selbst: Ein unbegrenzter Token nach der Pflichtfrist
   // gilt nur noch dort, und das kann der Eingang nicht wissen.
-  ['POST', /^\/auth\/(login|logout|qr-login|register|forgot-password|reset-password|bestaetigung-erneut|email-bestaetigen(?:\/vorschau)?|token-rotieren)$/],
+  ['POST', /^\/auth\/(login|logout|qr-login(?:\/abholen)?|register|forgot-password|reset-password|bestaetigung-erneut|email-bestaetigen(?:\/vorschau)?|token-rotieren)$/],
   ['POST', /^\/auth\/passkey\/anmelden(\/optionen)?$/],
 ];
 

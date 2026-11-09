@@ -274,23 +274,6 @@ allerersten Start in die Logs geschrieben wird und dessen Konto als
 "muss geändert werden" markiert ist (must_change_password s.o.).
 ```
 
-<a id="frueherzurlaufzeitangelegt-banner"></a>
-## `banner`
-
-```text
-── NICHT über console.log ──────────────────────────────────────────
-
-„NUR JETZT sichtbar" stimmte nicht mehr: Der Log-Abfänger in server.ts
-schreibt JEDE Konsolenzeile nach app_logs, und der Admin-Log-Viewer
-(GET /api/v1/admin/logs) gab das Passwort 48 Stunden lang im Klartext
-wieder aus — mitsamt jedem Datenbank-Backup aus diesem Zeitraum.
-
-Direkt auf stdout geschrieben, geht die Zeile am Abfänger vorbei und
-steht nur dort, wo sie hingehört: im Container-Log des ersten Starts.
-Ein Filter im Abfänger wäre die Alternative gewesen — der hinge dann
-an einer Zeichenkette, die jemand später umformuliert.
-```
-
 <a id="frueherzurlaufzeitangelegt-partscondexists"></a>
 ## `partsCondExists`
 

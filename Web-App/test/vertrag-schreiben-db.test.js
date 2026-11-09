@@ -113,7 +113,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
   });
 
   // Die Drosseln für Registrieren & Co. zählen je IP über Läufe hinweg.
-  await db.run(`DELETE FROM rate_limit_attempts WHERE key ~ '^(register|forgot-password|qr-login)\\|'`);
+  await db.run(`DELETE FROM rate_limit_attempts WHERE key ~ '^(register|forgot-password|qr-login|qr-abholen)\\|'`);
   // Die Währung steht schon: Ein Wechsel stiesse den Preisauftrag samt Zeitgeber an.
   // Für alle drei: Der Haushaltsbeitritt verlangt dieselbe Währung, und die
   // Vorgabe des Servers kann ein anderer Test verstellt haben.
@@ -169,7 +169,12 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
         await db.run(`INSERT INTO qr_login_tokens (token, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '5 minutes')`,
           [_req('src/konto/auth.js').hashToken(nonce), uid]);
         w.qr = 'bim:' + nonce;
-      }, body: () => ({ token: w.qr }) },
+      }, body: () => ({ token: w.qr, label: 'Vertrag' }), danach: (j) => { w.abholung = j.abholung; } },
+    // Bestätigt wird im Browser (qr-kopplung/:id/bestaetigen); hier zählt die Antwort an die App.
+    { m: 'POST', p: '/api/v1/auth/qr-login/abholen', davor: async () => {
+        await db.run('UPDATE qr_login_tokens SET bestaetigt_am = NOW() WHERE token = $1',
+          [_req('src/konto/auth.js').hashToken(w.qr.slice(4))]);
+      }, body: () => ({ abholung: w.abholung }) },
     { m: 'POST', p: '/api/v1/auth/register', davor: async () => {
         await db.run(`INSERT INTO global_settings (key, value) VALUES ('registration_enabled', '1') ON CONFLICT (key) DO UPDATE SET value = '1'`);
       }, body: { username: `${NAME}_reg`, email: `${NAME}_reg@example.org`, password: PASS, language: 'de' } },

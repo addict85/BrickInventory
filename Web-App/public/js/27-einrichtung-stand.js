@@ -47,7 +47,7 @@ function baueZeilen() {
   _gebaut = true;
 }
 
-/** @param {{ erledigt: boolean, schritte: { id: string, ok: boolean, pflicht: boolean }[], ca: { vorhanden: boolean, fp_hex?: string, gueltig_bis?: string } }} d */
+/** @param {{ erledigt: boolean, schritte: { id: string, ok: boolean, pflicht: boolean }[], ca: { vorhanden: boolean, fp_hex?: string, zert_sha256?: string, gueltig_bis?: string } }} d */
 function zeige(d) {
   const banner = G('es-banner');
   banner.hidden = false;
@@ -73,7 +73,7 @@ function zeige(d) {
       wert.textContent = tRaw(stand.ok ? 'es.ok' : 'es.missing') + (stand.pflicht ? '' : ' · ' + tRaw('es.optional'));
   }
 
-  G('es-ca-fp').textContent = d.ca?.vorhanden ? d.ca.fp_hex || '' : tRaw('es.ca_none');
+  G('es-ca-fp').textContent = d.ca?.vorhanden ? d.ca.zert_sha256 || d.ca.fp_hex || '' : tRaw('es.ca_none');
   G('es-ca-zeit').textContent = d.ca?.gueltig_bis
     ? tRaw('es.ca_until', { datum: new Date(d.ca.gueltig_bis).toLocaleDateString(locale()) })
     : '';

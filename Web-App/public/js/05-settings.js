@@ -15,7 +15,7 @@ import { loadMinifigs } from './06-minifigs.js';
 import { meldeAbschnitt } from './24-router.js';
 import { verstaendlicherGrund } from './01-bausteine.js';
 import { CURRENCY, ME, _settingsCache, set_CURRENCY, set_settingsCache } from './00-zustand.js';
-import { html, sichereUrl, ungeprueft } from './00-escapen.js';
+import { html, sichereUrl } from './00-escapen.js';
 import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor, mitPasswortBestaetigen, speichereEinstellungen } from './01-rueckfrage.js';
 import { loadFinance } from './04-finance.js';
 import { LAND_ZUR_WAEHRUNG } from './17-gutscheine.js';
@@ -193,7 +193,76 @@ export async function loadApiLimits() {
   G('lim-bs').value = String(d.limits.brickset);
 }
 
-// QR-Code über QRCode.js aus public/vendor/qrcode (npm qrcodejs, scripts/qrcode-kopieren.js)
+// Nach dem Scan meldet sich die App mit einem Gerätenamen und zeigt einen Code; erst wenn er hier eingetippt
+// ist, bekommt sie ihren Zugang. Ein abfotografierter QR-Code allein öffnet so kein Konto.
+/** @type {{ id: number, timer: ReturnType<typeof setInterval> } | null} */
+let _kopplung = null;
+
+function kopplungBeenden() {
+  if (_kopplung) clearInterval(_kopplung.timer);
+  _kopplung = null;
+}
+
+/** @param {string} text @param {boolean} mitFeld */
+function zeigeKopplung(text, mitFeld) {
+  const kasten = G('qr-kopplung');
+  if (!kasten) return;
+  kasten.hidden = false;
+  G('qr-kopplung-text').textContent = text;
+  G('qr-kopplung-feld').hidden = G('qr-kopplung-knoepfe').hidden = !mitFeld;
+}
+
+async function kopplungPruefen() {
+  const k = _kopplung;
+  if (!k) return;
+  const d = await api('GET', `/v1/auth/qr-kopplung/${k.id}`);
+  if (!d.success || _kopplung !== k) return;
+  const geraet = d.geraet || '—';
+  if (d.stand === 'wartet') {
+    // Der Code ist verbraucht; stehen bliebe nur ein Bild, das nichts mehr öffnet.
+    G('qr-code').replaceChildren();
+    if (G('qr-kopplung').hidden || G('qr-kopplung-feld').hidden)
+      zeigeKopplung(tRaw('qr.kopplung_frage', { geraet, netz: d.ip_bereich || '—' }), true);
+  } else if (d.stand === 'bestaetigt') zeigeKopplung(tRaw('qr.kopplung_bestaetigt', { geraet }), false);
+  else if (d.stand === 'abgeholt') {
+    kopplungBeenden();
+    G('qr-code').replaceChildren();
+    zeigeKopplung(tRaw('qr.kopplung_fertig', { geraet }), false);
+    loadTokens();
+  } else if (d.stand === 'abgelehnt' || d.stand === 'abgelaufen') {
+    kopplungBeenden();
+    G('qr-code').replaceChildren();
+    zeigeKopplung(tRaw('qr.kopplung_abgelehnt'), false);
+  }
+}
+
+async function qrKopplungBestaetigen() {
+  const k = _kopplung;
+  const feld = G('qr-kopplung-code');
+  if (!k || !feld) return;
+  const d = await api('POST', `/v1/auth/qr-kopplung/${k.id}/bestaetigen`, { code: feld.value.trim() });
+  feld.value = '';
+  if (!d.success) toast(d.error || t('settings.error'), 'error');
+  kopplungPruefen();
+}
+
+async function qrKopplungAblehnen() {
+  const k = _kopplung;
+  if (!k) return;
+  await api('POST', `/v1/auth/qr-kopplung/${k.id}/ablehnen`, {});
+  kopplungPruefen();
+}
+
+// QR-Code über QRCode.js aus public/vendor/qrcode (npm qrcodejs, scripts/qrcode-kopieren.js); ohne die
+// Bibliothek steht der Inhalt als Text da.
+/** @param {HTMLElement} container @param {string} qrData */
+function zeichneQr(container, qrData) {
+  container.replaceChildren();
+  if (typeof QRCode === 'undefined') { container.textContent = qrData; return; }
+  new QRCode(container, { text: qrData, width: 220, height: 220, colorDark: '#1e293b', colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M });
+}
+
 async function generateQrCode() {
   const btn = G('btn-gen-qr');
   const hint = G('qr-hint');
@@ -208,6 +277,8 @@ async function generateQrCode() {
     const pw = G('qr-password');
     const password = pw?.value || '';
     if (pw) pw.value = '';
+    kopplungBeenden();
+    if (G('qr-kopplung')) G('qr-kopplung').hidden = true;
     const d = await mitZweitemFaktor(z => api('POST', '/v1/auth/qr-token', { gueltigkeit, password, ...z }));
     if (d === null) { frei(); return; }
     if (!d.success) {
@@ -227,24 +298,8 @@ async function generateQrCode() {
     // Mit `fp` (Fingerabdruck der CA-Wurzel) pinnt die App das Zertifikat; der Server schickt ihn nur zu
     // einer https-Adresse.
     const qrData = JSON.stringify({ url: serverUrl, token: d.token, ...(d.fp ? { fp: d.fp } : {}) });
-    // Clear and render QR code
-    container.replaceChildren();
-    if (typeof QRCode !== 'undefined') {
-      new QRCode(container, {
-        text: qrData,
-        width: 220, height: 220,
-        colorDark: '#1e293b', colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.M
-      });
-    } else {
-      // Fallback: show as text
-      container.textContent = qrData;
-    }
-    // Countdown timer
-    //
-    // Dauer vom Server nehmen, nicht fest verdrahten: /qr-token liefert expires_in mit. Hier stand 1800 (30
-    // Minuten), während der Token seit der Sicherheitshärtung nach 5 Minuten abläuft — der Zähler lief also
-    // 25 Minuten weiter, obwohl der Code längst ungültig war.
+    zeichneQr(container, qrData);
+    // Die Dauer nennt der Server (expires_in): Ein fester Wert lief am Ende des Codes vorbei.
     let secs = Number(d.expires_in) || 300;
     const fmt = (/** @type {number} */ v) => `${Math.floor(v/60)}:${(v%60).toString().padStart(2,'0')}`;
     const timer = setInterval(() => {
@@ -252,11 +307,17 @@ async function generateQrCode() {
       hint.textContent = tRaw('qr.valid_for',{t:fmt(secs)});
       if (secs <= 0) { clearInterval(timer); hint.textContent = tRaw('qr.expired'); container.replaceChildren(); }
     }, 1000);
+    _kopplung = { id: d.kopplung, timer: setInterval(kopplungPruefen, 2000) };
     hint.textContent = tRaw('qr.valid_for',{t:fmt(secs)});
     // Die Laufzeit aus der Serverantwort, nicht aus der Auswahl: Kennt er den Wert nicht, gilt die
     // Gleitfrist. Drei Fälle — 0 heisst unbegrenzt, null nichts gewählt; ein einfacher Wahrheitstest würfe
     // beide zusammen.
     // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#klartext
+    const caFp = G('qr-ca-fp');
+    if (caFp) {
+      caFp.hidden = !d.zert_sha256;
+      caFp.textContent = d.zert_sha256 ? tRaw('qr.ca_fp', { fp: d.zert_sha256 }) : '';
+    }
     const klartext = G('qr-tls-hint');
     if (klartext) {
       klartext.hidden = !/^http:\/\//i.test(serverUrl || '');
@@ -299,11 +360,11 @@ export async function loadTokens() {
       <th>${tRaw('tokens.col.last_used')}</th><th>${tRaw('tokens.col.scope')}</th><th>${tRaw('tokens.col.ip')}</th>
       <th>${tRaw('tokens.col.expires')}</th><th>${tRaw('users.col.actions')}</th></tr></thead><tbody>${d.tokens.map(tk => html`<tr>
       <td><strong>${tk.label || '—'}</strong>${tk.aktuell ? html` <span class="rb ra">${tRaw('tokens.current')}</span>` : ''}</td>
-      <td>${ungeprueft(tokenDatum(tk.created_at))}</td>
-      <td>${ungeprueft(tokenDatum(tk.last_used))}</td>
+      <td>${tokenDatum(tk.created_at)}</td>
+      <td>${tokenDatum(tk.last_used)}</td>
       <td>${tk.scope === 'voll' ? tRaw('tokens.scope.voll') : tRaw('tokens.scope.app')}</td>
       <td>${tk.ip_bereich || '—'}</td>
-      <td>${tk.never_expires ? tRaw('tokens.never') : ungeprueft(tokenDatum(tk.expires_at))}${tk.hard_expires_at ? html` <span class="rb ra" title="${tokenDatum(tk.hard_expires_at)}">${tRaw('tokens.fixed')}</span>` : ''}</td>
+      <td>${tk.never_expires ? tRaw('tokens.never') : tokenDatum(tk.expires_at)}${tk.hard_expires_at ? html` <span class="rb ra" title="${tokenDatum(tk.hard_expires_at)}">${tRaw('tokens.fixed')}</span>` : ''}</td>
       <td>${tk.aktuell ? '' : html`<button class="btn bd btn-sm" data-click="revokeToken"${echt()} data-arg="${tk.token_id}" data-arg2="${tk.label || ''}" aria-label="${tRaw('common.delete')}">${ico('loeschen')}</button>`}</td>
     </tr>`)}</tbody></table></div>`);
 }
@@ -323,6 +384,8 @@ export async function ladeTls() {
   }
   setzeHtml(ziel, html`<p class="hinweis-absatz">${tRaw('tls.hint')}</p>
     <div class="text-klein">${tRaw('tls.subject')}: ${d.subject}<br>${tRaw('tls.valid_until')}: ${tokenDatum(d.gueltig_bis)}</div>
+    <div class="text-klein abstand-o-075">${tRaw('tls.zert_sha256')}</div>
+    <code id="tls-zert-sha256" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${d.zert_sha256 || ''}</code>
     <div class="text-klein abstand-o-075">${tRaw('tls.fp_sha256')}</div>
     <code id="tls-fp-hex" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${d.fp_hex}</code>
     <div class="text-klein abstand-o-075">${tRaw('tls.fp_base64')}</div>
@@ -702,6 +765,8 @@ async function einstellungenQuellePruefen(quelle) {
 stelleZielBereit({ einstAbschnitt });
 
 registerActions({
+  qrKopplungBestaetigen,
+  qrKopplungAblehnen,
   einstellungenQuellePruefen,
   speichereWaehrung,
   speichereZustand,

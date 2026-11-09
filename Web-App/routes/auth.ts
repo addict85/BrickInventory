@@ -7,10 +7,11 @@ import { meldeHaushaltsaenderung } from '../src/haushalt/haushalt';
 import { logAndContinue, meldeFehler, fehlertext, meldeUndLiefere } from '../src/infra/fehler';
 import { fehlerAntwort } from '../src/http/httpAntwort';
 import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, deleteToken, USERNAME_RE, emailGueltig, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS, nameGueltig, geraeteNameGueltig, geraeteNameInhaltGueltig } from '../src/konto/auth';
+import { APP_HOECHSTDAUER_TAGE, tokenAngaben, tokenLabel, tokenScope } from '../src/konto/tokenWunsch';
+import * as QR from '../src/konto/qrKopplung';
 import { kontoGedrosselt } from '../src/konto/zielDrossel';
 import { meldeAnmeldung } from '../src/konto/loginLimiter';
 import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigeMitFaktor, zweiterFaktorPflicht } from '../src/konto/http/anmeldung';
-import type { TokenScope } from '../src/konto/auth';
 import { tlsStand } from '../src/infra/tlsWurzel';
 import { hinweisNebenher } from '../src/konto/kontoHinweis';
 import crypto from 'crypto';
@@ -34,26 +35,6 @@ import registrierungRouter = require('./auth/registrierung');
 // einem reinen Sitzungswächter von Routen ausgesperrt. Ausführlich: docs/begruendungen/routes/auth.ts.md#requirelogin
 const requireLogin = requireLoginOrToken;
 const requireAdmin = requireApiAdmin;
-// Feste Obergrenze ab Anmeldung; der Tausch erbt sie (legeNachfolgerAn), die App meldet dann ab.
-const APP_HOECHSTDAUER_TAGE = 180;
-
-/** Das Label steht in der Geräteliste; ohne Grenze lägen dort beliebig lange Zeilen. */
-const LABEL_MAX = 100;
-
-function tokenLabel(roh: unknown, vorgabe: string): string {
-  const text = typeof roh === 'string' ? roh.trim() : '';
-  return text ? Array.from(text).slice(0, LABEL_MAX).join('') : vorgabe;
-}
-
-function tokenScope(roh: unknown): TokenScope { return roh === 'voll' ? 'voll' : 'app'; }
-
-/** `expires_at` ist die frühere der beiden Fristen, `null` nur bei „unbegrenzt". */
-async function tokenAngaben(klartext: string) {
-  const z = await K.tokenStand(hashToken(klartext));
-  return z ? { scope: z.scope, expires_at: z.expires_at, hard_expires_at: z.hard_expires_at,
-               never_expires: z.never_expires, rotiert_am: z.rotiert_am } : null;
-}
-
 type Angemeldet = { id: number | string; username: string; is_admin: boolean; must_change_password?: boolean };
 
 /** Sitzung, Token und Antwort — derselbe Weg nach Passwort und Passkey. */
@@ -311,11 +292,8 @@ router.post('/change-password', requireLogin, async (req: OffeneAnfrage<'POST /a
 });
 
 // Der QR-Code trägt nur eine einmalige Nonce (SHA-256 in qr_login_tokens),
-// kein Geheimnis des Kontos. Ausführlich: docs/begruendungen/routes/auth.ts.md#qr-ttl-ms
-const QR_TTL_MS = 5 * 60 * 1000;
-
-// POST, weil die Route eine Nonce anlegt, die fünf Minuten ein Konto öffnet;
-// ein GET liesse sich von fremden Seiten auslösen. Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token
+// kein Geheimnis des Kontos; den Ablauf beschreibt src/konto/qrKopplung.ts.
+// POST, weil die Route eine Nonce anlegt; ein GET liesse sich von fremden Seiten auslösen.
 router.post('/qr-token', requireLogin, async (req: OffeneAnfrage<'POST /api/v1/auth/qr-token'>, res: Antwort<'POST /api/v1/auth/qr-token'>) => {
   // Wie /token-create: Ein QR-Code eröffnet einen neuen, langlebigen Geräte-
   // zugang; nur aus der Sitzung, mit Passwort und zweitem Faktor.
@@ -330,44 +308,76 @@ router.post('/qr-token', requireLogin, async (req: OffeneAnfrage<'POST /api/v1/a
       'der QR-Code zur Verknuepfung der App laesst sich nicht erzeugen.');
     return sendeFehler(req, res, 503, 'qr_ohne_basis_url');
   }
-  await K.raeumeQrTokensAuf().catch(logAndContinue('qr-token:aufräumen'));
   // Gewählt von der angemeldeten Sitzung, nicht im unangemeldeten /qr-login.
-  // Ohne gültige Wahl gilt dieselbe Höchstdauer wie bei der App-Anmeldung.
   // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token-tage
   const tage = laufzeitTage(req.eingabe.gueltigkeit) ?? APP_HOECHSTDAUER_TAGE;
   if (tage === UNBEGRENZT) unbegrenztNurMitTls(basis);
-  const nonce = crypto.randomBytes(32).toString('base64url');
-  await K.legeQrTokenAn(hashToken(nonce), nutzerId(req), new Date(Date.now() + QR_TTL_MS), tage);
+  const { token, kopplung } = await QR.erzeuge(angemeldeteNutzerId(req), tage);
   hinweisNebenher(angemeldeteNutzerId(req), 'qr_zugang_neu');
-  // `token_days` nennt, was gespeichert wurde, nicht was gewünscht war.
-  // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token-2
-  // `fp` nur mit TLS: Die App pinnt damit die Wurzel der internen CA; ohne
-  // lesbare CA-Datei vertraut sie dem System.
-  const fp = ueberTls(basis) ? (await tlsStand())?.fp ?? null : null;
-  res.json({ success: true, token: `bim:${nonce}`, expires_in: QR_TTL_MS / 1000,
-    token_days: tage, url: basis, ...(fp ? { fp } : {}) });
+  // `fp` nur mit TLS: Die App pinnt damit die Wurzel der internen CA.
+  const ca = ueberTls(basis) ? await tlsStand() : null;
+  res.json({ success: true, token, kopplung, expires_in: QR.QR_TTL_MS / 1000,
+    token_days: tage, url: basis, ...(ca ? { fp: ca.fp, zert_sha256: ca.zert_sha256 } : {}) });
 });
+
+/** Das Konto muss bei der Meldung und bei der Abholung noch anmelden dürfen. */
+async function darfAnmelden(uid: number): Promise<boolean> {
+  const user = await K.kontoVoll(uid);
+  return !!user && !assertLoginAllowed(user);
+}
 
 // Gedrosselt, weil der Endpunkt ohne Anmeldung in die Datenbank schreibt.
 router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req: OffeneAnfrage<'POST /api/v1/auth/qr-login'>, res: Antwort<'POST /api/v1/auth/qr-login'>) => {
-  const { token } = req.eingabe;
-  if (typeof token !== 'string' || !token.startsWith('bim:'))
-    return sendeFehler(req, res, 400, 'token_ungueltig');
-  const claimed = await K.loeseQrTokenEin(hashToken(token.slice(4)));
-  if (!claimed) return sendeFehler(req, res, 401, 'token_ungueltig');
+  const { token, label } = req.eingabe;
+  if (!token?.startsWith('bim:')) return sendeFehler(req, res, 400, 'token_ungueltig');
+  if (!geraeteNameInhaltGueltig(label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
+  const m = await QR.meldeGeraet(token, label, req.ip);
+  if (!m || !await darfAnmelden(m.uid)) return sendeFehler(req, res, 401, 'token_ungueltig');
+  res.json({ success: true, wartet: true, abholung: m.abholung, code: m.code, expires_in: QR.QR_TTL_MS / 1000 });
+});
 
-  const user = await K.kontoVoll(claimed.user_id);
+// Die App fragt alle paar Sekunden, bis die Web-Sitzung bestätigt oder ablehnt.
+router.post('/qr-login/abholen', ipThrottle('qr-abholen', 600, 60 * 60 * 1000), async (req: OffeneAnfrage<'POST /api/v1/auth/qr-login/abholen'>, res: Antwort<'POST /api/v1/auth/qr-login/abholen'>) => {
+  if (!req.eingabe.abholung) return sendeFehler(req, res, 400, 'token_ungueltig');
+  const a = await QR.holeAb(req.eingabe.abholung, req.ip, darfAnmelden);
+  if (a.stand === 'wartet') return res.json({ success: true, wartet: true });
+  if (a.stand === 'abgelehnt') return sendeFehler(req, res, 403, 'qr_abgelehnt');
+  if (a.stand !== 'fertig') return sendeFehler(req, res, 401, 'token_ungueltig');
+  const user = await K.kontoKurz(a.uid);
   if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
-  const blocked = assertLoginAllowed(user);
-  if (blocked) return sendeFehler(req, res, blocked.status, blocked.code);
   meldeAnmeldung({ ip: req.ip, konto: user.id, zugang: 'qr' });
-
   // Keine Sitzung: Sie trüge die vollen Rechte des Kontos an Scope `app` vorbei.
-  // Die Laufzeit kommt aus der Zeile der Nonce, nicht aus der Anfrage.
-  const bearerToken = await createToken(user.id, 'qr-login', true, claimed.token_days ?? APP_HOECHSTDAUER_TAGE,
-                                        { scope: 'app', ip: req.ip });
-  res.json({ success: true, token: bearerToken, username: user.username, isAdmin: false, userId: user.id,
-    user: { id: user.id, username: user.username }, token_info: await tokenAngaben(bearerToken) });
+  res.json({ success: true, wartet: false, token: a.token, username: user.username, isAdmin: false, userId: user.id,
+    user: { id: user.id, username: user.username }, token_info: await tokenAngaben(a.token) });
+});
+
+router.get('/qr-kopplung/:id', requireLogin, async (req: OffeneAnfrage<'GET /api/v1/auth/qr-kopplung/:id'>, res: Antwort<'GET /api/v1/auth/qr-kopplung/:id'>) => {
+  if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
+  const s = await QR.stand(req.pfad.id, angemeldeteNutzerId(req));
+  if (!s) return sendeFehler(req, res, 404, 'nicht_gefunden');
+  res.json({ success: true, ...s });
+});
+
+const BESTAETIGUNG_FEHLER = { code_falsch: [400, 'qr_code_falsch'], abgelehnt: [403, 'qr_abgelehnt'],
+  nicht_wartend: [409, 'qr_nicht_wartend'], unbekannt: [404, 'nicht_gefunden'] } as const;
+
+router.post('/qr-kopplung/:id/bestaetigen', requireLogin, async (req: OffeneAnfrage<'POST /api/v1/auth/qr-kopplung/:id/bestaetigen'>, res: Antwort<'POST /api/v1/auth/qr-kopplung/:id/bestaetigen'>) => {
+  if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
+  const uid = angemeldeteNutzerId(req);
+  const ergebnis = await QR.bestaetige(req.pfad.id, uid, req.eingabe.code);
+  if (ergebnis !== 'ok') {
+    const [status, code] = BESTAETIGUNG_FEHLER[ergebnis];
+    return sendeFehler(req, res, status, code);
+  }
+  const s = await QR.stand(req.pfad.id, uid);
+  hinweisNebenher(uid, 'token_neu', s?.geraet ?? 'qr-login');
+  res.json({ success: true });
+});
+
+router.post('/qr-kopplung/:id/ablehnen', requireLogin, async (req: OffeneAnfrage<'POST /api/v1/auth/qr-kopplung/:id/ablehnen'>, res: Antwort<'POST /api/v1/auth/qr-kopplung/:id/ablehnen'>) => {
+  if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
+  if (!await QR.lehneAb(req.pfad.id, angemeldeteNutzerId(req))) return sendeFehler(req, res, 404, 'nicht_gefunden');
+  res.json({ success: true });
 });
 
 // ── Passkeys: Verwalten im Konto, Anmelden auf der Anmeldeseite ─────────────

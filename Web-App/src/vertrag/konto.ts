@@ -152,8 +152,8 @@ export const TokenErstellt = z.looseObject({
   token_info: TokenAngaben.nullable(),
 });
 export const QrToken = z.looseObject({
-  success: z.literal(true), token: z.string(), expires_in: ganz, url: z.string(),
-  token_days: ganz.nullable().optional(), fp: z.string().optional(),
+  success: z.literal(true), token: z.string(), kopplung: ganz, expires_in: ganz, url: z.string(),
+  token_days: ganz.nullable().optional(), fp: z.string().optional(), zert_sha256: z.string().optional(),
 });
 export const Passkey = z.looseObject({
   id: ganz, name: z.string().nullable(), transports: z.string().nullable().optional(),
@@ -172,8 +172,15 @@ export const PasskeyAnmeldung = LoginResponse.extend({
 /** Anzahl gelöschter Zeilen, wie beim Widerruf eines Tokens. */
 export const Geloescht = z.looseObject({ success: z.literal(true), deleted: ganz });
 
-/** Die QR-Anmeldung nennt Name und Konto zusätzlich flach (ältere Web-Oberfläche). */
-export const QrLoginResponse = LoginResponse.extend({ username: z.string(), isAdmin: z.literal(false), userId: ganz });
+/** Der Scan meldet das Gerät an; den Code zeigt die App, eingetippt wird er im Browser. */
+export const QrMeldung = z.looseObject({ success: z.literal(true), wartet: z.literal(true), abholung: z.string(),
+  code: z.string(), expires_in: ganz });
+/** Bis zur Bestätigung nur `wartet`; danach wie eine Anmeldung, Name und Konto zusätzlich flach. */
+export const QrAbholung = LoginResponse.extend({ wartet: z.boolean(), username: z.string().optional(),
+  isAdmin: z.literal(false).optional(), userId: ganz.optional() });
+export const QrKopplungStand = z.looseObject({ success: z.literal(true),
+  stand: z.enum(['offen', 'wartet', 'bestaetigt', 'abgeholt', 'abgelehnt', 'abgelaufen']),
+  geraet: z.string().nullable(), ip_bereich: z.string().nullable() });
 export const ProfilGespeichert = GenericResponse.extend({ emailChanged: z.boolean().optional(), emailSent: z.boolean().optional() });
 
 /** Eingaben der Kontorouten: Typ und Länge; die Regeln (USERNAME_RE, Passwort)
@@ -203,7 +210,11 @@ export const routen = {
   'GET /api/v1/auth/me': { antwort: MeResponse },
   'GET /api/v1/settings/tokens': { klein: true, antwort: TokensResponse },
   'POST /api/v1/auth/login': { antwort: LoginResponse, eingabe: Anmeldedaten, geheim: true },
-  'POST /api/v1/auth/qr-login': { antwort: QrLoginResponse, eingabe: z.strictObject({ token: txt(200) }), geheim: true },
+  'POST /api/v1/auth/qr-login': { antwort: QrMeldung, eingabe: z.strictObject({ token: txt(200), label: z.unknown().optional() }), geheim: true },
+  'POST /api/v1/auth/qr-login/abholen': { antwort: QrAbholung, eingabe: z.strictObject({ abholung: txt(100) }), geheim: true },
+  'GET /api/v1/auth/qr-kopplung/:id': { antwort: QrKopplungStand },
+  'POST /api/v1/auth/qr-kopplung/:id/bestaetigen': { antwort: Erfolg, eingabe: z.strictObject({ code: txt(20) }) },
+  'POST /api/v1/auth/qr-kopplung/:id/ablehnen': { antwort: Erfolg, eingabe: OHNE_RUMPF },
   'POST /api/v1/auth/logout': { eingabe: OHNE_RUMPF, antwort: GenericResponse },
   'POST /api/v1/auth/register': { antwort: RegisterResponse, eingabe: Registrierung },
   'POST /api/v1/auth/forgot-password': { antwort: ForgotPasswordResponse, eingabe: z.strictObject({ email: txt(254) }) },

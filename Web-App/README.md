@@ -21,7 +21,7 @@ sh scripts/geheimnisse-einrichten.sh      # Sitzungsgeheimnis und DB-Passwörter
 sudo sh scripts/ca-einrichten.sh          # eigene CA, die nur für BRICK_HOST gilt (siehe unten)
 sh scripts/image-pruefen.sh               # Signatur prüfen, Image als Digest in .env, pull (braucht cosign)
 docker compose up -d
-docker compose logs app jobs | grep -A2 Standard-Admin   # Erstpasswort von admin
+docker compose exec app cat /app/data/admin-startpasswort.txt   # Erstpasswort von admin
 ```
 
 Danach unter `https://<BRICK_HOST>` (Port 80 leitet auf HTTPS um). Was dabei
@@ -175,7 +175,7 @@ ist der Host `postgres`, den es nur im Compose-Netz gibt.
 export DATABASE_URL=postgres://bim:geheim@127.0.0.1:5432/bim
 npm ci --ignore-scripts && npm rebuild esbuild
 npm run dev        # baut das Bündel, startet den Server mit tsx watch (NODE_ENV=development)
-# → http://localhost:3000, Konto `admin`: Passwort aus ADMIN_PASSWORD oder einmalig im Log
+# → http://localhost:3000, Konto `admin`: Passwort aus ADMIN_PASSWORD oder in data/admin-startpasswort.txt
 ```
 
 Ohne `npm run dev` geht es auch gebaut: `npm run build`, dann
@@ -354,7 +354,7 @@ Leserolle, sondern mit `psql` als App-Rolle.
 | `UPLOAD_KONTINGENT_MB` | Wie viel Platz eigene Anleitungen (PDF/JPG/PNG) je Konto belegen dürfen, in MB (Vorgabe `2048`). Der Inhalt jeder Datei wird geprüft; eine Datei, deren Inhalt nicht zum Typ passt, wird abgewiesen. |
 | `DATA_KEY` | Schlüssel (32 Byte, Base64) für die verschlüsselten Geheimnisse in der Datenbank: `openssl rand -base64 32`. Geht `DATA_KEY_FILE` vor. |
 | `DATA_KEY_FILE` | Datei mit dem Schlüssel, ausserhalb von `data/` (compose.yaml: `/app/schluessel/datenschluessel`, Vorgabe `<APP_ROOT>/schluessel/datenschluessel`). Fehlt sie, legt der erste Start sie an (nur für den Besitzer lesbar). |
-| `ADMIN_PASSWORD` | Passwort des beim ersten Start angelegten Admins (nur `npm start`; `compose.yaml` reicht es nicht durch). Sonst wird ein Zufallspasswort erzeugt und **einmalig** ins Log geschrieben. |
+| `ADMIN_PASSWORD` | Passwort des beim ersten Start angelegten Admins (nur `npm start`; `compose.yaml` reicht es nicht durch). Sonst wird ein Zufallspasswort erzeugt und in `data/admin-startpasswort.txt` (Rechte 0600) abgelegt; das Log nennt nur den Pfad, die Datei verschwindet mit dem ersten Passwortwechsel. |
 | `SESSION_SECRET` | Pflicht in Produktion (der Start bricht sonst ab). Mit Docker als Datei: `SESSION_SECRET_FILE` (setzt `compose.yaml`). |
 | `NODE_ENV` | Nur `development` und `test` lockern die Regeln (Startverbote, Superuser-Verbot, Fehlertexte, sicheres Cookie). **Ohne Angabe gelten die Regeln des Betriebs** wie mit `production`. |
 | `PGSSLMODE` | TLS zur Datenbank. Liegt sie auf einem anderen Rechner (nicht `postgres`, nicht Loopback), `verify-full` setzen (oder `sslmode=verify-full` in `DATABASE_URL`); sonst warnt der Start mit `[datenbank]`. |

@@ -2581,6 +2581,153 @@
         }
       }
     },
+    "/api/v1/auth/qr-kopplung/{id}": {
+      "get": {
+        "tags": [
+          "konto"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Erfolg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QrKopplungStand"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Fehler",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/qr-kopplung/{id}/ablehnen": {
+      "post": {
+        "tags": [
+          "konto"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Erfolg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DELETE_api_v1_papierkorb_id"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Fehler",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/qr-kopplung/{id}/bestaetigen": {
+      "post": {
+        "tags": [
+          "konto"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,15}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Erfolg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DELETE_api_v1_papierkorb_id"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Fehler",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "maxLength": 20
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/qr-login": {
       "post": {
         "tags": [
@@ -2592,7 +2739,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/QrLoginResponse"
+                  "$ref": "#/components/schemas/QrMeldung"
                 }
               }
             }
@@ -2617,6 +2764,53 @@
                   "token": {
                     "type": "string",
                     "maxLength": 200
+                  },
+                  "label": {}
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "x-geheim": true
+      }
+    },
+    "/api/v1/auth/qr-login/abholen": {
+      "post": {
+        "tags": [
+          "konto"
+        ],
+        "responses": {
+          "200": {
+            "description": "Erfolg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QrAbholung"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Fehler",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "abholung": {
+                    "type": "string",
+                    "maxLength": 100
                   }
                 },
                 "additionalProperties": false
@@ -16220,6 +16414,9 @@
               "fp_hex": {
                 "type": "string"
               },
+              "zert_sha256": {
+                "type": "string"
+              },
               "gueltig_bis": {
                 "type": "string"
               },
@@ -16628,7 +16825,10 @@
           "url_ungueltig",
           "url_fehlt_https",
           "host_nicht_erlaubt",
-          "qr_ohne_basis_url"
+          "qr_ohne_basis_url",
+          "qr_abgelehnt",
+          "qr_code_falsch",
+          "qr_nicht_wartend"
         ]
       },
       "FigsValuationResponse": {
@@ -22045,7 +22245,7 @@
         ],
         "additionalProperties": {}
       },
-      "QrLoginResponse": {
+      "QrAbholung": {
         "type": "object",
         "properties": {
           "success": {
@@ -22089,6 +22289,9 @@
               }
             ]
           },
+          "wartet": {
+            "type": "boolean"
+          },
           "username": {
             "type": "string"
           },
@@ -22104,9 +22307,78 @@
         },
         "required": [
           "success",
-          "username",
-          "isAdmin",
-          "userId"
+          "wartet"
+        ],
+        "additionalProperties": {}
+      },
+      "QrKopplungStand": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "stand": {
+            "type": "string",
+            "enum": [
+              "offen",
+              "wartet",
+              "bestaetigt",
+              "abgeholt",
+              "abgelehnt",
+              "abgelaufen"
+            ]
+          },
+          "geraet": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ip_bereich": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "success",
+          "stand",
+          "geraet",
+          "ip_bereich"
+        ],
+        "additionalProperties": {}
+      },
+      "QrMeldung": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "wartet": {
+            "type": "boolean",
+            "const": true
+          },
+          "abholung": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "expires_in": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "success",
+          "wartet",
+          "abholung",
+          "code",
+          "expires_in"
         ],
         "additionalProperties": {}
       },
@@ -22119,6 +22391,11 @@
           },
           "token": {
             "type": "string"
+          },
+          "kopplung": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "expires_in": {
             "type": "integer",
@@ -22142,11 +22419,15 @@
           },
           "fp": {
             "type": "string"
+          },
+          "zert_sha256": {
+            "type": "string"
           }
         },
         "required": [
           "success",
           "token",
+          "kopplung",
           "expires_in",
           "url"
         ],
@@ -22882,6 +23163,9 @@
             ]
           },
           "fp_hex": {
+            "type": "string"
+          },
+          "zert_sha256": {
             "type": "string"
           },
           "subject": {

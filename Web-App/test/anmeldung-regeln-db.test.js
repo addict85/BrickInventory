@@ -5,8 +5,8 @@
  * Speichern des Tokens, bekommt die App einen Fehler statt eines halben Erfolgs.
  *
  * Gegenproben (08.11.2026 gemessen, je einzeln):
- *   A  in loeseQrTokenEin (src/konto/repository/konten.ts) `AND used_at IS
- *      NULL` gestrichen → rot: „QR-Zugang: einmalig …“
+ *   A  in loeseQrTokenEin `AND used_at IS NULL` gestrichen → rot: „QR-Zugang:
+ *      einmalig …“ (heute melde() in src/konto/repository/qrKopplung.ts)
  *   B  in POST /qr-token `expires_in: 1800` → rot: dieselbe Prüfung
  *   C  in PUT /profile die Prüfung mit USERNAME_RE gestrichen → rot:
  *      „Profil: Benutzername …“; nameVergeben() ohne LOWER() → rot: dort
@@ -19,6 +19,7 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.APP_BASE_URL = 'http://localhost';
+const { qrKoppeln } = require('./helpers/qr');
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
@@ -66,7 +67,7 @@ test('Regeln der Anmeldung', { concurrency: 1, timeout: 60_000 }, async t => {
     assert.equal(qr.status, 200, JSON.stringify(qr.body));
     assert.equal(qr.body.expires_in, 300, 'Die Oberfläche zählt von dieser Dauer herunter');
     assert.doesNotMatch(JSON.stringify(qr.body), /\$2[aby]\$/, 'Ein bcrypt-Hash im QR-Code ist offline knackbar');
-    const erst = await ruf('POST', '/qr-login', { token: qr.body.token });
+    const erst = await qrKoppeln((p, body) => ruf('POST', p, body), qr.body);
     assert.equal(erst.status, 200, JSON.stringify(erst.body));
     assert.equal(erst.body.userId, uid);
     const zweit = await ruf('POST', '/qr-login', { token: qr.body.token });

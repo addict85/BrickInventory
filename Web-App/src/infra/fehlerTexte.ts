@@ -391,6 +391,12 @@ export const FEHLER = {
                                  en: 'The server does not know its own address: APP_BASE_URL is not set. Without it '
                                    + 'the QR code would carry the address from the browser bar, and the app would '
                                    + 'never find the server again outside the home network. Please set APP_BASE_URL.' },
+  qr_abgelehnt:                { de: 'Die Kopplung wurde im Browser abgelehnt. Bitte einen neuen QR-Code erzeugen.',
+                                 en: 'Pairing was declined in the browser. Please create a new QR code.' },
+  qr_code_falsch:              { de: 'Der Code stimmt nicht. Bitte den Code eingeben, den die App zeigt.',
+                                 en: 'The code does not match. Please enter the code shown in the app.' },
+  qr_nicht_wartend:            { de: 'Kein Gerät wartet auf diese Kopplung, oder sie ist abgelaufen.',
+                                 en: 'No device is waiting for this pairing, or it has expired.' },
 } as const;
 
 export type FehlerCode = keyof typeof FEHLER;

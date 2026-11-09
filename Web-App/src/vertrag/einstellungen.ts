@@ -63,7 +63,7 @@ export const Einrichtung = z.looseObject({
 export const EinrichtungStand = z.looseObject({
   success: z.literal(true), erledigt: z.boolean(), konfiguriert: z.boolean(),
   schritte: z.array(z.looseObject({ id: z.string(), ok: z.boolean(), pflicht: z.boolean() })),
-  ca: z.looseObject({ vorhanden: z.boolean(), fp_hex: z.string().optional(),
+  ca: z.looseObject({ vorhanden: z.boolean(), fp_hex: z.string().optional(), zert_sha256: z.string().optional(),
                       gueltig_bis: z.string().optional(), download: z.string() }),
   basis_url: z.string().nullable(), https: z.boolean(),
 });
@@ -71,6 +71,7 @@ export const EinrichtungStand = z.looseObject({
 export const RoheEinstellungen = z.looseObject({ success: z.literal(true), settings: z.record(z.string(), z.string()) });
 export const TlsStand = z.looseObject({
   success: z.literal(true), https: z.boolean(), fp: z.string().nullable(), fp_hex: z.string().optional(),
+  zert_sha256: z.string().optional(),
   subject: z.string().optional(), gueltig_bis: zeit.optional(), download: z.string().optional(),
 });
 export const Sicherung = z.looseObject({

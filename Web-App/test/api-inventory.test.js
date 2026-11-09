@@ -118,6 +118,7 @@ const C = {
   'POST /api/v1/auth/logout': 'nur-v1',
   'POST /api/v1/auth/token-create': 'nur-v1',
   'POST /api/v1/auth/qr-login': 'nur-v1',
+  'POST /api/v1/auth/qr-login/abholen': 'nur-v1',
   // Die App fragt vor einem Klartext-Zugang, ob der Server ihren Token kennt.
   // Tausch des eigenen Tokens: ein Weg der App (Rotation).
   'POST /api/v1/auth/token-rotieren': 'nur-v1',
@@ -347,6 +348,9 @@ const C = {
   // Anmelde-Nonce AN und war als GET die einzige zustandsaendernde Route,
   // die SameSite=lax durchliess.
   'POST /api/v1/auth/qr-token': 'nur-web',
+  'GET /api/v1/auth/qr-kopplung/:id': 'nur-web',
+  'POST /api/v1/auth/qr-kopplung/:id/bestaetigen': 'nur-web',
+  'POST /api/v1/auth/qr-kopplung/:id/ablehnen': 'nur-web',
   'GET /api/v1/auth/users': 'nur-web',
   'POST /api/v1/auth/users': 'nur-web',
   'DELETE /api/v1/auth/users/:id': 'nur-web',

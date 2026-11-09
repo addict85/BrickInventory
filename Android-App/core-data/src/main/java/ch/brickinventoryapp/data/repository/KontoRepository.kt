@@ -18,7 +18,8 @@ interface KontoRepository {
 
     suspend fun passkeyAnmelden(serverUrl: String, antwort: JsonObject, scope: String = TOKEN_SCOPE_APP): Ergebnis<LoginResponse>
 
-    suspend fun qrLogin(token: String): Ergebnis<LoginResponse>
+    suspend fun qrLogin(token: String, label: String): Ergebnis<QrMeldung>
+    suspend fun qrAbholen(abholung: String): Ergebnis<QrAbholung>
 
     suspend fun getMe(): Ergebnis<MeResponse>
 

@@ -24,6 +24,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 process.env.APP_BASE_URL = 'https://lego.example.org';
 
 const { buildAndRequire, einhaengung, ohneKommentare } = require('./helpers/sources');
+const { qrKoppeln } = require('./helpers/qr');
 const _req = buildAndRequire();
 const AUTH = einhaengung('auth');
 const db = _req('db/database.js');
@@ -74,6 +75,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
     });
     return { status: r.status, cookie: r.headers.get('set-cookie'), body: await r.json().catch(() => null) };
   };
+  const koppeln = (qr, keks) => qrKoppeln((p, body, kopf) => ruf(p, { method: 'POST', headers: kopf, body }), qr, { cookie: keks });
   /** Die api_tokens-Zeile zu einem ausgegebenen Klartext-Token. */
   const zeile = (token) => db.get(
     'SELECT expires_at, hard_expires_at, sliding FROM api_tokens WHERE token = $1',
@@ -105,7 +107,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
     assert.equal(sechs.body.token_days, 180, 'Sechs Monate sind 180 Tage');
 
     // ── 2. Beim Einloesen entstehen BEIDE Fristen ──────────────────────────
-    const ein = await ruf('/qr-login', { method: 'POST', body: { token: sechs.body.token } });
+    const ein = await koppeln(sechs.body, keks);
     assert.equal(ein.status, 200, JSON.stringify(ein.body));
     const z = await zeile(ein.body.token);
     assert.ok(z, 'Zum ausgegebenen Token muss eine Zeile existieren');
@@ -126,7 +128,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
       body: { token: ohne.body.token, gueltigkeit: 'unbegrenzt', token_days: 3650 } });
     // Der Vertrag kennt beim Einlösen keinen Wunsch: 400, und der Code bleibt unverbraucht.
     assert.deepEqual([versuch.status, versuch.body.code], [400, 'feld_unbekannt'], JSON.stringify(versuch.body));
-    const eingeloest = await ruf('/qr-login', { method: 'POST', body: { token: ohne.body.token } });
+    const eingeloest = await koppeln(ohne.body, keks);
     assert.equal(eingeloest.status, 200, JSON.stringify(eingeloest.body));
     const zv = await zeile(eingeloest.body.token);
     assert.ok(zv.hard_expires_at && Math.abs(tageVoraus(zv.hard_expires_at) - 180) < 1,
@@ -140,7 +142,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
       body: { gueltigkeit: 'unbegrenzt', password: PASS } });
     assert.equal(ewig.body.token_days, 0,
       '„unbegrenzt" reist als 0 mit — null hiesse „nichts gewaehlt"');
-    const zugangEwig = await ruf('/qr-login', { method: 'POST', body: { token: ewig.body.token } });
+    const zugangEwig = await koppeln(ewig.body, keks);
     const rohEwig = zugangEwig.body.token;
     const ze = await zeile(rohEwig);
     assert.equal(ze.expires_at, null, 'Unbegrenzt heisst: keine gleitende Frist');
@@ -178,7 +180,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
     // validateToken() waere sie nur Zierde.
     const abgelaufen = await ruf('/qr-token', { method: 'POST', headers: { cookie: keks },
       body: { gueltigkeit: '1m', password: PASS } });
-    const zugang = await ruf('/qr-login', { method: 'POST', body: { token: abgelaufen.body.token } });
+    const zugang = await koppeln(abgelaufen.body, keks);
     const roh = zugang.body.token;
     assert.ok(await auth.validateToken(roh), 'Frisch ausgestellt muss der Zugang gelten');
     await db.run(
