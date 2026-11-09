@@ -38,7 +38,7 @@ const upload = multer({
     // Wörtlicher Vergleich: Bei einem erlaubten Typ gibt es keinen geerbten
     // Tabellenwert, an dem man vorbeilaufen könnte.
     if (file.mimetype === 'application/pdf') cb(null, true);
-    else cb(dateiFehler('nur_pdf', 415));
+    else cb(dateiFehler('falscher_typ', 'nur_pdf'));
   },
 });
 

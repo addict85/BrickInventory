@@ -3,7 +3,7 @@
  * wie jedes andere Passwort. Mit weniger antwortete ein Fehlversuch gegen
  * „admin“ messbar schneller als gegen einen unbekannten Namen.
  *
- * Gegenprobe (am 28.10.2026 gemessen): in db/database.ts wieder
+ * Gegenprobe (am 28.10.2026 gemessen; seit 09.11. in src/konto/startVerwalter.ts): wieder
  * `hashSync(plainPassword, 10)` → rot (10 statt 12).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (das Schema wird neu angelegt).

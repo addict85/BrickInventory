@@ -6,8 +6,8 @@ import * as repo from './repository/auftraege';
 import type { Fortschritt } from './auftraege';
 import type { z } from 'zod';
 import type { ImportNutzlast, NutzlastEingabe } from './nutzlasten';
-import { Fachfehler, fehlerWerfen } from '../infra/fehlerTexte';
-import type { FehlerCode } from '../infra/fehlerTexte';
+import { Fachfehler, fachfehler } from '../infra/fehlerTexte';
+import type { FehlerArt, FehlerCode } from '../infra/fehlerTexte';
 
 export type ImportQuelle = z.input<typeof ImportNutzlast>['quelle'];
 /** Was der Import der Quelle braucht (src/auftraege/nutzlasten.ts). */
@@ -18,7 +18,7 @@ export const IMPORT_WARTEN_MS = 10 * 60_000;
 const TAKT_MS = 150;
 
 /** Was der Job ablegt: das Ergebnis, oder der Fachfehler, den die Route meldet. */
-type Abgelegt = { ergebnis?: Record<string, unknown>; fachfehler?: { code: FehlerCode; status: number; vars?: Record<string, string | number> } };
+type Abgelegt = { ergebnis?: Record<string, unknown>; fachfehler?: { code: FehlerCode; art: FehlerArt; vars?: Record<string, string | number> } };
 
 export async function setzeErgebnis(id: string, ergebnis: Record<string, unknown>): Promise<void> {
   await repo.schreibeErgebnis(id, { ergebnis } satisfies Abgelegt);
@@ -26,7 +26,7 @@ export async function setzeErgebnis(id: string, ergebnis: Record<string, unknown
 
 /** Ein Fachfehler (falsche Datei, fehlendes Recht) kommt bei der Anfrage mit Code an. */
 export async function setzeFachfehler(id: string, e: Fachfehler): Promise<void> {
-  await repo.schreibeErgebnis(id, { fachfehler: { code: e.code, status: e.status, ...(e.vars ? { vars: e.vars } : {}) } } satisfies Abgelegt);
+  await repo.schreibeErgebnis(id, { fachfehler: { code: e.code, art: e.art, ...(e.vars ? { vars: e.vars } : {}) } } satisfies Abgelegt);
 }
 
 /** @typeParam T die Antwort, die der Job ablegt; der Vertrag prüft sie im Testlauf. */
@@ -36,7 +36,7 @@ export async function importAlsAuftrag<T = Record<string, unknown>, Q extends Im
   // tsc verbindet Q nicht mit dem Zweig der Union; geprüft wird beim Einstellen.
   const nutzlast = { user_id: uid, quelle, eingabe } as NutzlastEingabe<'csv_import'>;
   const id = await stelleAuftragEin('csv_import', nutzlast, { userId: uid, maxVersuche: 1 });
-  if (!id) fehlerWerfen('interner_fehler', 500);
+  if (!id) fachfehler('intern', 'interner_fehler');
   const bis = Date.now() + (o.wartenMs ?? IMPORT_WARTEN_MS);
   let zuletzt = '';
   for (;;) {
@@ -46,15 +46,15 @@ export async function importAlsAuftrag<T = Record<string, unknown>, Q extends Im
       if (j !== zuletzt) { zuletzt = j; o.fortschritt(s.fortschritt); }
     }
     const abgelegt = (s?.ergebnis ?? {}) as Abgelegt;
-    if (abgelegt.fachfehler) throw new Fachfehler(abgelegt.fachfehler.code, abgelegt.fachfehler.status, abgelegt.fachfehler.vars);
+    if (abgelegt.fachfehler) throw new Fachfehler(abgelegt.fachfehler.art ?? 'ungueltig', abgelegt.fachfehler.code, abgelegt.fachfehler.vars);
     if (s?.status === 'erledigt') {
       // Gelesen ist gelesen: Das Ergebnis trägt Namen und Nummern aus der Datei.
       await repo.schreibeErgebnis(id, null);
       return (abgelegt.ergebnis ?? {}) as T;
     }
-    if (!s || s.status === 'abgebrochen') fehlerWerfen('import_abgebrochen', 409);
-    if (s.status === 'fehler') fehlerWerfen('import_fehlgeschlagen', 500);
-    if (Date.now() > bis) fehlerWerfen('import_laeuft_noch', 504);
+    if (!s || s.status === 'abgebrochen') fachfehler('konflikt', 'import_abgebrochen');
+    if (s.status === 'fehler') fachfehler('intern', 'import_fehlgeschlagen');
+    if (Date.now() > bis) fachfehler('zeitueberschreitung', 'import_laeuft_noch');
     await new Promise(r => setTimeout(r, TAKT_MS));
   }
 }

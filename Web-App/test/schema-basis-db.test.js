@@ -6,7 +6,7 @@
  *   A  in initSchema() die Prüfung auf eine leere Datenbank entfernt → rot:
  *      „eine bestehende Datenbank bleibt, wie sie ist“ (die Basis scheitert an
  *      vorhandenen Tabellen)
- *   B  legeAdminAn() nicht aufgerufen → rot: „eine leere Datenbank bekommt
+ *   B  der Erststart (setzeErststart, src/konto/startVerwalter.ts) nicht aufgerufen → rot: „eine leere Datenbank bekommt
  *      Basis, Vorgaben und einen Administrator“
  *   D  (29.10.) in initSchema() wieder die Sperre „älter als 0050“ → rot:
  *      „eine Datenbank mit 0045, aber ohne 0050 startet …“ (der Stand von

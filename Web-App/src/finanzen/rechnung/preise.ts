@@ -10,7 +10,7 @@ import { asIds } from '../../haushalt/haushalt';
 import { checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus } from '../../katalog/apiKontingent';
 import { bricklinkRequest } from '../../katalog/quellen';
 import { fehlertext, logAndContinue, meldeUndLiefere } from '../../infra/fehler';
-import { fehlerWerfen } from '../../infra/fehlerTexte';
+import { fachfehler } from '../../infra/fehlerTexte';
 import { mitVersion, ohneBricklinkPreis } from '../../infra/setNummer';
 import { katalogEintrag, getPriceGuide, hatPreis } from '../../katalog/bricklinkPreise';
 import { effectiveCondition } from './zustand';
@@ -137,7 +137,7 @@ export async function fetchPrice(setNumber: string, condition: string, guideType
   }
 
   const rl1 = await kontingentFrei('bricklink');
-  if (!rl1.allowed) fehlerWerfen('bricklink_tageslimit', 429);
+  if (!rl1.allowed) fachfehler('zu_viele', 'bricklink_tageslimit');
 
   const pd = await tryFetch(condition);
   // An avg_price festgemacht, weil alle Verbraucher diesen Wert lesen.
@@ -148,12 +148,12 @@ export async function fetchPrice(setNumber: string, condition: string, guideType
     return { min_price: cachedFallback.min_price, avg_price: cachedFallback.avg_price, max_price: cachedFallback.max_price, qty_avg_price: cachedFallback.qty_avg_price, from_cache: true, condition_used: fallbackCondition, is_fallback: true };
 
   const rl2 = await kontingentFrei('bricklink');
-  if (!rl2.allowed) { if (pd) return { ...pd, condition_used: condition }; fehlerWerfen('bricklink_tageslimit', 429); }
+  if (!rl2.allowed) { if (pd) return { ...pd, condition_used: condition }; fachfehler('zu_viele', 'bricklink_tageslimit'); }
 
   const pd2 = await tryFetch(fallbackCondition);
   if (pd2 && hatPreis(pd2)) return { ...pd2, condition_used: fallbackCondition, is_fallback: true };
   if (pd) return { ...pd, condition_used: condition };
-  fehlerWerfen('kein_bricklink_preis', 404);
+  fachfehler('nicht_gefunden', 'kein_bricklink_preis');
 }
 
 export interface PreisDaten {
@@ -398,7 +398,7 @@ export async function fetchPartPrice(partNumber: string, rbColorId: number, cond
   let pd: Awaited<ReturnType<typeof tryFetch>> = null;
   if (!skipPrimaryFetch) {
     const rl1 = await kontingentFrei('bricklink');
-    if (!rl1.allowed) fehlerWerfen('bricklink_tageslimit', 429);
+    if (!rl1.allowed) fachfehler('zu_viele', 'bricklink_tageslimit');
     pd = await tryFetch(condition);
     if (pd && hatPreis(pd)) return { ...pd, condition_used: condition };
 
@@ -410,7 +410,7 @@ export async function fetchPartPrice(partNumber: string, rbColorId: number, cond
   const rl2 = await kontingentFrei('bricklink');
   if (!rl2.allowed) {
     if (pd) return { ...pd, condition_used: condition };
-    fehlerWerfen('bricklink_tageslimit', 429);
+    fachfehler('zu_viele', 'bricklink_tageslimit');
   }
 
   const pd2 = await tryFetch(fallbackCondition);
@@ -473,7 +473,7 @@ export async function fetchMinifigPrice(figNumber: string, condition: string, cu
   let pd: Awaited<ReturnType<typeof tryFetch>> = null;
   if (!skipPrimaryFetch) {
     const rl1 = await kontingentFrei('bricklink');
-    if (!rl1.allowed) fehlerWerfen('bricklink_tageslimit', 429);
+    if (!rl1.allowed) fachfehler('zu_viele', 'bricklink_tageslimit');
     pd = await tryFetch(condition);
     if (pd && hatPreis(pd)) return { ...pd, condition_used: condition };
 
@@ -485,7 +485,7 @@ export async function fetchMinifigPrice(figNumber: string, condition: string, cu
   const rl2 = await kontingentFrei('bricklink');
   if (!rl2.allowed) {
     if (pd) return { ...pd, condition_used: condition };
-    fehlerWerfen('bricklink_tageslimit', 429);
+    fachfehler('zu_viele', 'bricklink_tageslimit');
   }
 
   const pd2 = await tryFetch(fallbackCondition);

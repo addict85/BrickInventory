@@ -9,7 +9,7 @@
  *      „eine Sicht wählt die Konten im Dienst“
  *   B  in loescheSetFuer() die Kontenwahl übergangen (`gewaehlt = schreibbar`)
  *      → rot: „Löschen folgt der Kontenwahl, im Schreibbereich“
- *   C  in schreibziel() ohne fehlerWerfen (null zurück) → rot: „ein Unterkonto
+ *   C  in schreibziel() ohne fachfehler (null zurück) → rot: „ein Unterkonto
  *      schreibt nicht für sein Hauptkonto“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -61,6 +61,6 @@ test('Dienste lösen die Sicht auf', { concurrency: 1 }, async (t) => {
   await t.test('ein Unterkonto schreibt nicht für sein Hauptkonto', async () => {
     assert.equal(await H.schreibziel(haupt, sub), sub);
     assert.equal(await H.schreibziel(sub, undefined), sub, 'ohne Wunsch das eigene Konto');
-    await assert.rejects(H.schreibziel(sub, haupt), (e) => e.code === 'kein_schreibrecht' && e.status === 403);
+    await assert.rejects(H.schreibziel(sub, haupt), (e) => e.code === 'kein_schreibrecht' && e.art === 'verboten');
   });
 });

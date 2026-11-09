@@ -623,7 +623,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/admin/cache-ttl": {
@@ -1107,7 +1108,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/admin/logs": {
@@ -14433,6 +14435,21 @@
           "katalog_offen": {
             "type": "boolean"
           },
+          "ergaenzung": {
+            "type": "string",
+            "enum": [
+              "ausstehend",
+              "erledigt"
+            ]
+          },
+          "owner_user_id": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "is_self": {
+            "type": "boolean"
+          },
           "error": {
             "type": [
               "string",
@@ -14612,6 +14629,12 @@
                 "type": "null"
               }
             ]
+          },
+          "degradiert": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "instruction": {
             "type": "object",
@@ -15659,6 +15682,12 @@
                 "type": "null"
               }
             ]
+          },
+          "degradiert": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -16507,6 +16536,12 @@
               }
             ]
           },
+          "degradiert": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "papierkorb": {
             "type": "array",
             "items": {
@@ -16797,6 +16832,12 @@
                 "type": "null"
               }
             ]
+          },
+          "degradiert": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "updated": {
             "type": "integer",
@@ -18576,6 +18617,12 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/JobSchedule"
             }
+          },
+          "degradiert": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -20032,6 +20079,12 @@
                 "type": "null"
               }
             ]
+          },
+          "degradiert": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "geloescht": {
             "type": "integer",
@@ -22226,6 +22279,12 @@
               }
             ]
           },
+          "degradiert": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "emailChanged": {
             "type": "boolean"
           },
@@ -22477,6 +22536,12 @@
                 "type": "null"
               }
             ]
+          },
+          "degradiert": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [

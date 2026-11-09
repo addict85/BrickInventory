@@ -136,7 +136,7 @@ test('kein Zustand auf global', () => {
 
 test('src/ und clients/ importieren nichts aus jobs/', () => {
   // Was src/ an Hintergrundarbeit anstösst, läuft über src/auftraege/nacharbeit.ts;
-  // die Ausführung setzt jobs/verdrahtung.ts ein.
+  // die Ausführung setzt startup/verdrahtung.ts ein.
   // Gegenprobe (28.10.2026): require('../jobs/imageQueue') in merkliste.ts → rot.
   const treffer = [];
   for (const d of innereDateien().filter(f => /^(src|clients)\//.test(f)))
@@ -160,10 +160,10 @@ test('db/, clients/ und jobs/ kennen keine HTTP-Antwort', () => {
 const codeZeilen = (rel) => quelltext(rel).split('\n').filter(z => z.trim()).length;
 
 test('jobs/ führt Aufträge aus, die Arbeit eines Auftrags steht in src/', () => {
-  // jobs/ hält den Worker (Pacht, Wiederholung, Abbruch), die Bearbeitertabelle, die Verdrahtung
+  // jobs/ hält den Worker (Pacht, Wiederholung, Abbruch), die Bearbeitertabelle
   // und den Einstieg des Importprozesses; was ein Auftrag fachlich tut, liegt in src/<bereich>/.
-  // Gemessen am 09.11.2026: vorher 20 Dateien, 1597 Codezeilen, 4 mit Import aus db/; jetzt 4, 287, 0.
-  // Gegenproben (09.11.2026): `import * as db from '../db/database'` in jobs/verdrahtung.ts → rot
+  // Gemessen am 09.11.2026: vorher 20 Dateien, 1597 Codezeilen, 4 mit Import aus db/; jetzt 4, 287, 0; 265, seit die Verdrahtung in startup/ liegt.
+  // Gegenproben (09.11.2026): `import * as db from '../db/database'` in jobs/auftraegeStarten.ts → rot
   // (db/); fetchAndCachePrice und zustaendeJeSet zurück nach jobs/auftraegeStarten.ts → rot (113
   // Zeilen); `import { STAPEL } from '../src/katalog/bilder/bildbedarf'` in jobs/auftragsWorker.ts → rot.
   const KERN = 'jobs/auftragsWorker.ts';
@@ -175,7 +175,7 @@ test('jobs/ führt Aufträge aus, die Arbeit eines Auftrags steht in src/', () =
   assert.deepEqual(fremd, [], 'Der Worker kennt keine Fachbereiche, nur Aufträge');
   const zuLang = dateien.filter(d => d !== KERN && codeZeilen(d) > 80).map(d => `${d} (${codeZeilen(d)})`);
   assert.deepEqual(zuLang, [], 'Ein Bearbeiter ruft einen Dienst; seine Arbeit gehört nach src/<bereich>/');
-  const SCHRANKE = 287;
+  const SCHRANKE = 265;
   const summe = dateien.reduce((n, d) => n + codeZeilen(d), 0);
   assert.ok(summe <= SCHRANKE, `${summe} Codezeilen in jobs/, erlaubt sind ${SCHRANKE}`);
   if (summe < SCHRANKE) console.log(`  ℹ Codezeilen in jobs/: ${summe} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
@@ -393,8 +393,9 @@ test('SQL steht nur in Repositories und in db/', () => {
 });
 
 /** Was ein Dienst aus db/database nehmen darf: die Arbeitseinheit und den Betrieb, keine Abfrage. */
+// Seit 09.11.2026 auch das Anlegen des Zugangs (erzeugeDb …): Das tun nur server.ts und startup/.
 const DB_AUSSERHALB = new Set(['transaction', 'pool', 'eigeneVerbindung', 'datenbankAntwortet', 'getPoolStats',
-  'alsSuperuserVerbunden', 'initSchemaOnce', 'DbSchnittstelle']);
+  'alsSuperuserVerbunden', 'initSchemaOnce', 'DbSchnittstelle', 'erzeugeDb', 'setzeStandardDb', 'dbKonfigAusUmgebung', 'setzeErststart']);
 
 test('ausserhalb von repository/ und db/ fragt niemand die Datenbank ab', () => {
   // Die SQL-Suche oben liest Text; ein Aufruf unter anderem Namen (`datenbank.all(SQL)` mit dem

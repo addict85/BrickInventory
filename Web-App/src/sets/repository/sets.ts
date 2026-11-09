@@ -3,6 +3,8 @@ import { ausTabelle } from '../../infra/validate';
 import type { DbSchnittstelle, Zeile } from '../../../db/database';
 import * as db from '../../../db/database';
 import { LIKE_ESCAPE as E, enthaeltMuster } from '../../../db/likeSuche';
+import { LOCKS } from '../../infra/lockNamespaces';
+import { sperreBisZumEnde } from '../../../db/txLock';
 
 /** Das eigene Konto gewinnt, wenn mehrere Konten das Set halten. */
 export function setImBlickfeld(ids: number[], setNumber: string, viewerId: number) {
@@ -59,6 +61,31 @@ export function merkeSetKatalog(setNumber: string, name: string | null, year: nu
 
 export function legeSetZeileAn(tx: DbSchnittstelle, userId: number, setNumber: string) {
   return tx.run('INSERT INTO sets (user_id,set_number) VALUES ($1,$2) ON CONFLICT (user_id,set_number) DO NOTHING', [userId, setNumber]);
+}
+
+/** Je Setnummer, dann wie jede andere Änderung dieses Bestands (db/txLock.ts); bis zum Ende der Transaktion. */
+export async function sperreSetErfassen(tx: DbSchnittstelle, setNumber: string, besitzer: number) {
+  await sperreBisZumEnde(tx, LOCKS.SET_ERFASSEN, setNumber);
+  await sperreBisZumEnde(tx, LOCKS.INVENTAR, `${besitzer}|${setNumber}`);
+}
+
+const PLATZHALTER_SQL = "(name = 'Set ' || set_number AND year IS NULL AND theme IS NULL AND pieces IS NULL)";
+
+/** Ohne Netz angelegt: Der Platzhalter macht das Set lesbar, bis der Auftrag den Katalog holt. */
+export async function merkeKatalogPlatzhalter(dbh: DbSchnittstelle, setNumber: string) {
+  await dbh.run("INSERT INTO set_catalog (set_number, name) VALUES ($1, 'Set ' || $1) ON CONFLICT (set_number) DO NOTHING", [setNumber]);
+  return katalogStand(setNumber, dbh);
+}
+
+export function katalogStand(setNumber: string, dbh: DbSchnittstelle = db) {
+  return dbh.get<{ name: string | null; image_local: string | null; minifigs: number | null; platzhalter: boolean }>(
+    `SELECT name, image_local, minifigs, ${PLATZHALTER_SQL} AS platzhalter FROM set_catalog WHERE set_number = $1`, [setNumber]);
+}
+
+export function erfassungenOhnePreisDesSets(userId: number, setNumber: string) {
+  return db.all<{ id: number; condition: string | null }>(
+    'SELECT id, condition FROM set_acquisitions WHERE user_id = $1 AND set_number = $2 AND purchase_price IS NULL ORDER BY id',
+    [userId, setNumber]);
 }
 
 export function setzeFigurenzahl(minifigs: number, setNumber: string) {

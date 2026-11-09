@@ -7,6 +7,9 @@
  *
  * Gegenprobe (durchgeführt): writableIds in beiden Routen zurück auf die
  * eigene ID → der erste Teilschritt endet wieder in 404.
+ * Gegenprobe (09.11.2026 gemessen): in requireToken den Sitzungszweig entfernt →
+ * rot: „Webapp: … 401 !== 200“. Der App-Weg kommt ohne Sitzung, mit echtem Token;
+ * ein falscher Token ergibt 401 (eigene Zusicherung vor der Schleife).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).
  */
@@ -37,12 +40,15 @@ test('Löschen im Haushalt: vorwärts erlaubt, rückwärts nicht',
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
                [hauptId, subId]);
 
+  // Die Webapp kommt mit der Sitzung, die App mit einem echten Token und ohne Sitzung.
+  const { createToken } = _req('src/konto/auth.js');
+  const token = { [hauptId]: await createToken(hauptId, 'test-app', false, null, { scope: 'app' }),
+                  [subId]: await createToken(subId, 'test-app', false, null, { scope: 'app' }) };
   const appFuer = (userId) => {
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => {
-      req.session = { userId };
-      req.apiUser = { user_id: userId, is_admin: 0 };
+      req.session = req.headers.authorization ? {} : { userId };
       next();
     });
     app.use('/api/v1', _req('routes/api_v1/index.js'));
@@ -71,15 +77,17 @@ test('Löschen im Haushalt: vorwärts erlaubt, rückwärts nicht',
 
   try {
     // 1. VORWÄRTS: Hauptkonto löscht ein Set des Unterkontos — und zwar ganz.
+    // Ohne Token und ohne Sitzung kein Zugang: Der App-Weg prüft wirklich den Token.
+    const ohne = await fetch(`${baseHaupt}/api/v1/sets/${SN}`, { method: 'DELETE', headers: { authorization: 'Bearer falsch' } });
+    assert.equal(ohne.status, 401, 'der App-Weg darf nicht über die Sitzung laufen');
+    // Eine Adresse, zwei Ausweise: Sitzung (Webapp) und Token (App).
+    const ausweis = (name, uid) => (name === 'Android' ? { authorization: `Bearer ${token[uid]}` } : {});
     for (const [name, base, pfad] of [
-      // Es gibt nur noch EINE Adresse. Beide Zeilen prüfen sie —
-      // die Unterscheidung Webapp/App liegt jetzt am Ausweis, nicht am Pfad,
-      // und die Sitzung ist in diesem Test für beide gesetzt.
       ['Webapp',  baseHaupt, `/api/v1/sets/${SN}`],
       ['Android', baseHaupt, `/api/v1/sets/${SN}`],
     ]) {
       await anlegen(subId);
-      const r = await fetch(`${base}${pfad}`, { method: 'DELETE' });
+      const r = await fetch(`${base}${pfad}`, { method: 'DELETE', headers: ausweis(name, hauptId) });
       assert.equal(r.status, 200, `${name}: das Löschen darf nicht mehr in 404 enden`);
       const b = await bestand(subId);
       assert.equal(b.set, false, `${name}: das Set muss weg sein`);
@@ -96,7 +104,7 @@ test('Löschen im Haushalt: vorwärts erlaubt, rückwärts nicht',
       ['Android', `/api/v1/sets/${SN}`],
     ]) {
       await anlegen(hauptId);
-      const r = await fetch(`${baseSub}${pfad}`, { method: 'DELETE' });
+      const r = await fetch(`${baseSub}${pfad}`, { method: 'DELETE', headers: ausweis(name, subId) });
       assert.equal(r.status, 404, `${name}: ein Unterkonto darf rückwärts nicht löschen`);
       const b = await bestand(hauptId);
       assert.equal(b.set, true, `${name}: das Set des Hauptkontos muss unangetastet bleiben`);

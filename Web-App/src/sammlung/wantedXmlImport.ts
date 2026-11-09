@@ -5,7 +5,7 @@ import { merkeBlNummer, merkeEigeneBlNummer } from '../katalog/blZuordnung';
 import { starteAuftrag, meldeAuftrag, beendeAuftrag, istAbgebrochen } from '../auftraege/importAuftrag';
 import { addManualPart } from '../teile/manuelleTeile';
 import { addManualFig } from '../figuren/manuelleFiguren';
-import { addSet } from '../sets/setService';
+import { addSet } from '../sets';
 import { logAndContinue } from '../infra/fehler';
 import type { Nutzlast } from '../auftraege/nutzlasten';
 import type { AuftragsKontext } from '../auftraege/auftraege';
@@ -57,7 +57,7 @@ async function importiereWantedXml(uid: number, e: WantedXmlEingabe, k: Auftrags
         figur: (u, body) => addManualFig(u, body),
         // Kaufpreis ist MAXPRICE aus der Datei.
         // Ausführlich: docs/begruendungen/src/sammlung/wantedXmlImport.ts.md#post-wanted-list-import-xml-3
-        set:   (u, sn, menge, zustand, kaufpreis) => addSet(sn, menge, u, null, kaufpreis, zustand),
+        set:   (u, sn, menge, zustand, kaufpreis) => addSet({ setNumber: sn, menge, konto: u, kaufpreis, zustand }),
       },
     });
     // Erst die Kette abwarten, dann schliessen: Sonst stünde der Balken anderswo noch auf „läuft".

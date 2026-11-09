@@ -199,9 +199,11 @@ test('ein Passwortwechsel beendet auch die offenen Sitzungen', () => {
     assert.ok(start > 0, `${name}: Route nicht gefunden`);
     const ende = auth.indexOf('router.', start + 10);
     const block = auth.slice(start, ende === -1 ? auth.length : ende);
-    assert.match(block, /K\.(setzeFremdesPasswort|aendereEigenesPasswort|setzePasswortZurueck)\(/,
+    assert.match(block, /K\.(setzeFremdesPasswort|aendereEigenesPasswort|setzePasswortZurueck)\(|A\.eigenesPasswortAendern\(/,
       `${name}: Passwort nicht über den Kontodienst gesetzt — die Zugänge bleiben gültig`);
   }
+  assert.match(abschnitt(ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/konto/anmeldungAblauf.ts'), 'utf8')),
+    'function eigenesPasswortAendern(', '\n}'), /K\.aendereEigenesPasswort\(/, 'der Ablauf setzt das Passwort nicht über den Kontodienst');
   // Der Kontodienst beendet in jedem dieser Wege Tokens UND Sitzungen.
   const konten = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/konto/konten.ts'), 'utf8'));
   assert.match(konten, /async function zugaengeBeenden[^}]*revokeAllTokens\(uid\);[^}]*revokeAllSessions\(uid\);/);

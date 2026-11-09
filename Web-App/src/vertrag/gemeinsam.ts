@@ -108,6 +108,8 @@ export const GenericResponse = z.looseObject({
   minifigs: z.number().int().nullable().optional(),
   source_emptied: z.boolean().optional(),
   quantity: z.number().int().nullable().optional(),
+  /** Teile der Antwort, die nach einem Fehler nur Ersatzwerte tragen (etwa `kaufpreis`). */
+  degradiert: z.array(z.string()).optional(),
 });
 
 export const Minifig = z.looseObject({

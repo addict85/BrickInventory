@@ -49,6 +49,6 @@ test('Mengenänderung ohne verlorene Zugänge', { concurrency: 1 }, async (t) =>
   });
 
   await t.test('ein ungültiger Schritt wird abgewiesen', async () => {
-    await assert.rejects(updateSet(uid, SN, { quantity_delta: 1.5 }), (e) => e.status === 400);
+    await assert.rejects(updateSet(uid, SN, { quantity_delta: 1.5 }), (e) => e.art === 'ungueltig');
   });
 });

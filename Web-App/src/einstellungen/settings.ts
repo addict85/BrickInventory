@@ -1,7 +1,7 @@
 
 import * as repo from './repository';
 import { verschluessele, entschluessele, umschluesseln, kontext } from '../infra/geheimnis';
-import { fehlerWerfen, dateiFehler } from '../infra/fehlerTexte';
+import { fachfehler, dateiFehler } from '../infra/fehlerTexte';
 import { meldeUndLiefere } from '../infra/fehler';
 import { GLOBALE_REGELN, DESIGNS, type GlobalerSchluessel } from '../vertrag/globaleRegeln';
 
@@ -47,7 +47,7 @@ export async function schreibeNutzerEinstellung(userId: number, key: string, val
   const v = String(value).trim();
   if (key === 'currency') throw new Error('Währung nur über setUserSetting');
   const regel = NUTZER_REGELN[key];
-  if (regel && !regel(v)) fehlerWerfen('wert_ungueltig', 400);
+  if (regel && !regel(v)) fachfehler('ungueltig', 'wert_ungueltig');
   await repo.schreibeNutzerWert(userId, key, v);
 }
 
@@ -98,7 +98,7 @@ export function beiGlobalerAenderung(fn: () => void): void {
  * Ausführlich: docs/begruendungen/src/einstellungen/settings.ts.md#setglobalsetting */
 export async function setGlobalSetting(key: string, value: unknown) {
   const r = regelFuer(key)?.safeParse(value);
-  if (!r?.success) throw (r?.error.issues[0] as { params?: { fehler?: unknown } } | undefined)?.params?.fehler ?? dateiFehler('wert_ungueltig', 400);
+  if (!r?.success) throw (r?.error.issues[0] as { params?: { fehler?: unknown } } | undefined)?.params?.fehler ?? dateiFehler('ungueltig', 'wert_ungueltig');
   await repo.schreibeGlobalenWert(key, SECRET_KEYS.has(key) ? verschluessele(r.data, globalerKontext(key)) : r.data);
   for (const fn of _beiGlobalerAenderung) fn();
 }

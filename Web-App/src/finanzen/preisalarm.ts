@@ -3,7 +3,7 @@
  * Ausführlich: docs/begruendungen/src/finanzen/preisalarm.ts.md#abschnitt */
 import { meldeUndLiefere, meldeFehler, fehlertext } from '../infra/fehler';
 import { scopeIds } from '../haushalt/haushalt';
-import { fehlerWerfen } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/fehlerTexte';
 import * as mailer from '../mail/mailer';
 import { toCsv, csvZeilenAusAnfrage, uebersprungenHinweis } from '../infra/csvExport';
 import { normalisiereSetNummer } from '../infra/setNummer';
@@ -43,13 +43,13 @@ const ZUSTAENDE = new Set(['N', 'U']);
 
 function pruefeEingabe(richtung: unknown, schwelle: unknown, condition: unknown) {
   const r = String(richtung ?? '');
-  if (r !== 'unter' && r !== 'ueber') fehlerWerfen('alarm_richtung_ungueltig', 400);
+  if (r !== 'unter' && r !== 'ueber') fachfehler('ungueltig', 'alarm_richtung_ungueltig');
   const s = Number(schwelle);
   // Number.isFinite fängt auch NaN aus einer leeren Eingabe; `> 0` allein
   // meldete zwei verschiedene Fehler gleich.
-  if (!Number.isFinite(s) || s <= 0) fehlerWerfen('alarm_schwelle_ungueltig', 400);
+  if (!Number.isFinite(s) || s <= 0) fachfehler('ungueltig', 'alarm_schwelle_ungueltig');
   const c = String(condition ?? 'N').toUpperCase();
-  if (!ZUSTAENDE.has(c)) fehlerWerfen('alarm_zustand_ungueltig', 400);
+  if (!ZUSTAENDE.has(c)) fachfehler('ungueltig', 'alarm_zustand_ungueltig');
   return { richtung: r as Richtung, schwelle: s, condition: c };
 }
 

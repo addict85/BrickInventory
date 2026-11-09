@@ -11,14 +11,14 @@ import {
   getGlobalSetting,
 } from '../einstellungen/settings';
 import { setUserSetting } from '../konto/nutzerEinstellung';
-import { buildSetsCsv } from '../sets/setService';
+import { buildSetsCsv } from '../sets';
 import { buildPartsCsv, buildFigsCsv } from '../bestand/bestandExport';
 import { buildMerklisteCsv } from '../merkliste/merkliste';
 import { buildPreisalarmeCsv } from '../finanzen/preisalarm';
 import { DAILY_JOBS } from '../auftraege/zeitplan';
 import { zeitplanNeuPlanen, protokolliere } from './dienst';
 import { jsonOderNull } from '../infra/validate';
-import { fehlerWerfen } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/fehlerTexte';
 import { KonfigExport } from '../vertrag/einstellungen';
 
 /** Mailserver, Registrierung und API-Schlüssel nimmt nur das Formular, mit Passwort. */
@@ -93,13 +93,13 @@ const KONTO_IMPORT = ['currency', 'user_default_condition'];
 export async function konfigImport(uid: number, verwalter: boolean, datei: Buffer) {
   const gelesen = jsonOderNull(datei.toString('utf-8'));
   const geprueft = gelesen ? KonfigExport.safeParse(gelesen.wert) : null;
-  if (!geprueft?.success) fehlerWerfen('json_ungueltig', 400);
+  if (!geprueft?.success) fachfehler('ungueltig', 'json_ungueltig');
   const { global, user_settings: konto } = geprueft.data;
   let imported = 0;
   const smtpUebergangen = global ? Object.keys(global).filter(istHeikel) : [];
   if (global && verwalter) {
     if (GLOBAL_IMPORT.some(k => global[k] !== undefined && !globalerWertGueltig(k, global[k])))
-      fehlerWerfen('wert_ungueltig', 400);
+      fachfehler('ungueltig', 'wert_ungueltig');
     const geaendert: string[] = [];
     for (const key of GLOBAL_IMPORT.filter(k => global[k] !== undefined)) {
       // Maskierte Werte aus älteren Exporten dürfen echte Schlüssel nicht überschreiben.

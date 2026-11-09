@@ -4,6 +4,9 @@
  *
  * Gegenprobe (durchgeführt): writableIds in updateSet zurück auf die eigene ID
  * → beide Teilschritte enden wieder in 404.
+ * Gegenprobe (09.11.2026 gemessen): in requireToken den Sitzungszweig entfernt →
+ * rot: „Webapp: … 401 !== 200“. Der App-Weg kommt ohne Sitzung, mit echtem Token;
+ * ein falscher Token ergibt 401 (eigene Zusicherung vor der Schleife).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).
  */
@@ -35,12 +38,11 @@ test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto',
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
                [hauptId, subId]);
 
-  const { base, srv } = testServer(_req, {
-    sitzung: { userId: hauptId },
-    apiNutzer: { user_id: hauptId, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  // Die Webapp kommt mit der Sitzung, die App mit einem echten Token und ohne Sitzung.
+  const web = testServer(_req, { sitzung: { userId: hauptId }, routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
+  const app = testServer(_req, { sitzung: {}, routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
+  const token = await _req('src/konto/auth.js').createToken(hauptId, 'test-app', false, null, { scope: 'app' });
+  const srv = web.srv;
 
   const aufbauen = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
@@ -61,13 +63,18 @@ test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto',
   };
 
   try {
-    for (const [name, pfad] of [
-      ['Webapp',  `/api/v1/sets/${SN}`],
-      ['Android', `/api/v1/sets/${SN}`],
-    ]) {
+    const ohne = await fetch(`${app.base}/api/v1/sets/${SN}`, { method: 'PUT', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ quantity: 3 }) });
+    assert.equal(ohne.status, 401, 'der App-Weg darf ohne Token nicht durchkommen');
+    /** @type {[string, string, Record<string, string>][]} */
+    const wege = [
+      ['Webapp',  web.base, {}],
+      ['Android', app.base, { authorization: `Bearer ${token}` }],
+    ];
+    for (const [name, base, ausweis] of wege) {
       await aufbauen();
-      const r = await fetch(`${base}${pfad}`, {
-        method: 'PUT', headers: { 'content-type': 'application/json' },
+      const r = await fetch(`${base}/api/v1/sets/${SN}`, {
+        method: 'PUT', headers: { 'content-type': 'application/json', ...ausweis },
         body: JSON.stringify({ quantity: 3 }),
       });
       assert.equal(r.status, 200, `${name}: die Mengenänderung darf nicht mehr in 404 enden`);

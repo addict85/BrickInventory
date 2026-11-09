@@ -85,7 +85,7 @@ test('Preisalarm gegen echte Datenbank', async (t) => {
     for (const [feld, wert] of [['richtung', 'seitwärts'], ['schwelle', 0],
                                 ['schwelle', -5], ['schwelle', 'abc'], ['condition', 'X']]) {
       const eingabe = { richtung: 'unter', schwelle: 200, condition: 'N', [feld]: wert };
-      // Auf `code` geprüft, nicht auf die Meldung: fehlerWerfen() setzt als
+      // Auf `code` geprüft, nicht auf die Meldung: fachfehler() setzt als
       // `message` den DEUTSCHEN Satz — ein Test darauf bräche bei jeder
       // Umformulierung, ohne dass sich das Verhalten ändert.
       await assert.rejects(() => A.setzeAlarm(U.ich, SN, 'EUR', eingabe),

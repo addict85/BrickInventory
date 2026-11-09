@@ -10,11 +10,24 @@ import { refreshPriceForSet } from '../finanzen/preisLauf';
 import { enrichSetParts, enrichSetMinifigs, downloadSetImages } from '../katalog/teileAnreicherung';
 import { pruefeAbbruch, type AuftragsLauf } from '../auftraege/auftraege';
 import { versuche } from '../infra/ergebnis';
+import { setErgaenzen } from './erfassen';
 
-/** zweit: ein vorhandenes Set noch einmal erfasst; neu: angelegt; csv: aus dem CSV-Import. */
-export type NacharbeitArt = 'zweit' | 'neu' | 'csv';
+/** zweit: ein vorhandenes Set noch einmal erfasst; neu: angelegt; csv: aus dem CSV-Import;
+ * ergaenzen: ohne Netz angelegt (setErfassen), Katalog, Bild und Kaufpreis fehlen noch. */
+export type NacharbeitArt = 'zweit' | 'neu' | 'csv' | 'ergaenzen';
 
-async function zieheNach(setNumber: string, userId: number, art: NacharbeitArt, lauf?: AuftragsLauf): Promise<void> {
+async function zieheNach(
+  setNumber: string,
+  userId: number,
+  artWunsch: NacharbeitArt,
+  lauf?: AuftragsLauf,
+): Promise<void> {
+  // Ohne Katalog fehlt dem Set der Name; scheitert er, versucht es der Auftrag noch einmal.
+  if (artWunsch === 'ergaenzen') {
+    await setErgaenzen(setNumber, userId);
+    pruefeAbbruch(lauf);
+  }
+  const art = artWunsch === 'ergaenzen' ? 'neu' : artWunsch;
   // Ein gescheiterter Schritt hält die übrigen nicht auf, steht aber im Stand des Auftrags.
   const ohne: string[] = [];
   const schritt = async (name: string, arbeit: () => Promise<unknown>) => {

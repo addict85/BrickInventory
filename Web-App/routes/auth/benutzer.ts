@@ -2,16 +2,15 @@
  * zweiten Faktor des Verwalters und steht im Protokoll. */
 import { protokolliere } from '../../src/verwaltung/dienst';
 import * as K from '../../src/konto/konten';
-import { meldeHaushaltsaenderung } from '../../src/haushalt/haushalt';
 import { fehlerAntwort } from '../../src/http/httpAntwort';
-import { revokeAllSessions, USERNAME_RE, leereTokenCache } from '../../src/konto/auth';
+import { USERNAME_RE } from '../../src/konto/auth';
+import { kontoEntfernen } from '../../src/konto/kontoEntfernen';
 import { nutzerId, angemeldeteNutzerId, bestaetigeMitFaktor, nutzerName } from '../../src/konto/http/anmeldung';
 import { hinweisNebenher, verwalterHinweisNebenher } from '../../src/konto/kontoHinweis';
 import { passwortMangel } from '../../src/infra/passwortRegel';
 import { requireApiAdmin } from '../api_v1/middleware';
 import { sendeFehler, alsDoppelt } from '../../src/infra/fehlerTexte';
 import * as zf from '../../src/konto/zweiterFaktor';
-import { loescheKontoDateien } from '../../src/gutscheine/gutscheinDateien';
 import { vertragsRouter } from '../../src/vertrag/pruefen';
 import type { Antwort, OffeneAnfrage } from '../../src/vertrag';
 
@@ -117,24 +116,10 @@ router.put('/users/:id/password', requireAdmin, async (req: OffeneAnfrage<'PUT /
 });
 
 router.delete('/users/:id', requireAdmin, async (req: OffeneAnfrage<'DELETE /api/v1/auth/users/:id'>, res: Antwort<'DELETE /api/v1/auth/users/:id'>) => {
-  const targetId = req.pfad.id;
   if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password)) return;
-  if (targetId !== nutzerId(req) && await K.kontoExistiert(targetId))
-    await protokolliere(angemeldeteNutzerId(req), targetId, 'konto_geloescht');
-  const geloescht = await K.loescheKonto(targetId, nutzerId(req));
-  if (geloescht === K.LETZTER_VERWALTER) return sendeFehler(req, res, 409, 'verwalter_muss_bleiben');
-  if (!geloescht) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden_oder_eigenes');
-  // user_sessions hat keinen Fremdschlüssel auf users: Die offene Sitzung des
-  // gelöschten Kontos bliebe ohne diesen Aufruf gültig.
-  // Ausführlich: docs/begruendungen/routes/auth/benutzer.ts.md#delete-users-id
-  await revokeAllSessions(targetId);
-  // Eigene Anleitungen und Gutschein-PDFs gehören zum Konto; liegen blieben sie ohne Besitzer.
-  await loescheKontoDateien(targetId);
-  // Der Token-Cache bediente gelöschte Zeilen sonst noch bis zu 60 Sekunden.
-  leereTokenCache();
-  // account_links verschwindet per CASCADE, ohne dass der Haushalt davon
-  // erfährt; sonst bliebe das Unterkonto bis zu fünf Minuten im Blickfeld.
-  meldeHaushaltsaenderung();
+  const r = await kontoEntfernen(req.pfad.id, angemeldeteNutzerId(req));
+  if (r === K.LETZTER_VERWALTER) return sendeFehler(req, res, 409, 'verwalter_muss_bleiben');
+  if (r !== 'entfernt') return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden_oder_eigenes');
   res.json({ success: true });
 });
 

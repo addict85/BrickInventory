@@ -1,4 +1,4 @@
-/** src/ importiert jobs/ nicht; jobs/verdrahtung.ts setzt die Ausführung
+/** src/ importiert jobs/ nicht; startup/verdrahtung.ts setzt die Ausführung
  * beim Start ein. Ohne Verdrahtung (Skripte) entfällt sie: Nacharbeit ist nie
  * Voraussetzung für eine Antwort. */
 export interface Nacharbeit {

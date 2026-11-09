@@ -231,6 +231,7 @@ export async function loadMonitor() {
 
     setzeHtml(el, html`
       <p class="mon-hinweis">${tRaw('monitor.services_hint')}</p>
+      ${d.degradiert?.length ? html`<p class="mon-hinweis" role="status">${tRaw('monitor.degradiert', { teile: d.degradiert.join(', ') })}</p>` : ''}
       <div class="tw"><table class="dt mon-tabelle mon-dienste" aria-label="${tRaw('tabelle.dienste')}">
         <thead><tr><th>${tRaw('monitor.col.dienst')}</th><th>${tRaw('monitor.col.zustand')}</th><th>${tRaw('monitor.col.zeitplan')}</th><th>${tRaw('monitor.col.zuletzt')}</th><th>${tRaw('monitor.col.aktionen')}</th></tr></thead>
         <tbody>${Object.entries(jobs).map(([k, j]) => html`<tr>
@@ -286,6 +287,7 @@ const ARTNAMEN = {
   bild_nachlauf: () => tRaw('monitor.art.bild_nachlauf'),
   aufraeumen: () => tRaw('monitor.art.aufraeumen'),
   aufraeumen_taeglich: () => tRaw('monitor.art.aufraeumen_taeglich'),
+  konto_dateien: () => tRaw('monitor.art.konto_dateien'),
 };
 /** @type {Record<string, () => string>} */
 const STATUSNAMEN = {

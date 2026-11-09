@@ -183,6 +183,8 @@ export async function loadCacheStats(){
   if(G('cs-prices'))  G('cs-prices').textContent  = String(d.prices  || 0);
   if(G('cs-subsets')) G('cs-subsets').textContent = String(d.subsets || 0);
   if(G('cs-catalog')) G('cs-catalog').textContent = String(d.catalog || 0);
+  // Nach einem Lesefehler steht 0 da; der Hinweis sagt, dass es keine echte 0 ist.
+  if (d.degradiert?.length) toast(tRaw('monitor.degradiert', { teile: d.degradiert.join(', ') }), 'info');
 }
 export async function loadApiLimits() {
   const d = await api('GET', '/v1/admin/api-limits');

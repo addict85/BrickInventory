@@ -53,6 +53,9 @@ export type AddSetResponse = {
   set_number?: string | null;
   name?: string | null;
   katalog_offen?: boolean;
+  ergaenzung?: "ausstehend" | "erledigt";
+  owner_user_id?: number;
+  is_self?: boolean;
   error?: string | null;
   [feld: string]: unknown;
 };
@@ -86,6 +89,7 @@ export type AnleitungHochgeladen = {
   minifigs?: number | null;
   source_emptied?: boolean;
   quantity?: number | null;
+  degradiert?: string[];
   instruction: {
     url: string;
     description: string | null;
@@ -320,6 +324,7 @@ export type CacheStatsResponse = {
   catalog: number;
   price_stale: number;
   rate_limits?: RateLimits | null;
+  degradiert?: string[];
   [feld: string]: unknown;
 };
 export type CacheTtlResponse = {
@@ -482,6 +487,7 @@ export type DELETE_api_v1_minifigs_figNumber = {
   minifigs?: number | null;
   source_emptied?: boolean;
   quantity?: number | null;
+  degradiert?: string[];
   papierkorb: number[];
   [feld: string]: unknown;
 };
@@ -546,6 +552,7 @@ export type EinstellungenGespeichert = {
   minifigs?: number | null;
   source_emptied?: boolean;
   quantity?: number | null;
+  degradiert?: string[];
   updated: number;
   [feld: string]: unknown;
 };
@@ -868,6 +875,7 @@ export type JobsResponse = {
   success: boolean;
   jobs: Record<string, JobStatus>;
   schedules: Record<string, JobSchedule>;
+  degradiert?: string[];
   [feld: string]: unknown;
 };
 export type JobStatus = {
@@ -1151,6 +1159,7 @@ export type MerkpostenGeloescht = {
   minifigs?: number | null;
   source_emptied?: boolean;
   quantity?: number | null;
+  degradiert?: string[];
   geloescht: number;
   [feld: string]: unknown;
 };
@@ -1611,6 +1620,7 @@ export type ProfilGespeichert = {
   minifigs?: number | null;
   source_emptied?: boolean;
   quantity?: number | null;
+  degradiert?: string[];
   emailChanged?: boolean;
   emailSent?: boolean;
   [feld: string]: unknown;
@@ -1658,6 +1668,7 @@ export type PUT_api_v1_sets_setNumber_acquisitions_acqId = {
   minifigs?: number | null;
   source_emptied?: boolean;
   quantity?: number | null;
+  degradiert?: string[];
   [feld: string]: unknown;
 };
 export type QrAbholung = {

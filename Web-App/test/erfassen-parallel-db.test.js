@@ -133,7 +133,7 @@ test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
   // und zählte deren Sperren mit.
   // Ausführlich: docs/begruendungen/test/erfassen-parallel-db.test.js.md#addsetintern
   const beginn = sets.indexOf('async function addSetIntern(');
-  const naechste = sets.slice(beginn + 10).search(/\n(?:async )?function [a-zA-Z_$]/);
+  const naechste = sets.slice(beginn + 10).search(/\n(?:export )?(?:async )?function [a-zA-Z_$]/);
   const addSet = sets.slice(beginn, beginn + 10 + naechste);
   // Und die Huelle selbst schreibt keine Erfassung an der Sperre vorbei.
   const huelleAb = sets.indexOf('async function addSet(');

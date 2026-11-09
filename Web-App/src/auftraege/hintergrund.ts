@@ -4,13 +4,13 @@ import { AUFTRAGS_ARTEN, type AuftragsArt } from './auftraege';
 import { zieheVor, leereArt, wiederhole, brichAb, beendePause } from './dienst';
 import * as repo from './repository/auftraege';
 import { hatZeitplan, planeNaechsten, ziehePlanVor } from './zeitplan';
-import { fehlerWerfen } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/fehlerTexte';
 
 const LEBENSZEICHEN_GILT_SEK = 120;
 const STATUS = ['offen', 'laeuft', 'fehler', 'abgebrochen', 'erledigt'] as const;
 
 function pruefeArt(art: string): AuftragsArt {
-  if (!(AUFTRAGS_ARTEN as readonly string[]).includes(art)) fehlerWerfen('unbekannter_job', 400);
+  if (!(AUFTRAGS_ARTEN as readonly string[]).includes(art)) fachfehler('ungueltig', 'unbekannter_job');
   return art as AuftragsArt;
 }
 
@@ -36,13 +36,13 @@ export async function auftraegeImUeberblick(filter: { status?: string | undefine
 /** Bei einer geplanten Art steht danach der nächste reguläre Termin an. */
 export async function auftragAbbrechen(id: string) {
   const a = await brichAb(id);
-  if (!a) fehlerWerfen('auftrag_nicht_aenderbar', 409);
+  if (!a) fachfehler('konflikt', 'auftrag_nicht_aenderbar');
   if (hatZeitplan(a.art)) await planeNaechsten(a.art);
   return { success: true, id, status: 'abgebrochen' };
 }
 
 export async function auftragWiederholen(id: string) {
-  if (!await wiederhole(id)) fehlerWerfen('auftrag_nicht_aenderbar', 409);
+  if (!await wiederhole(id)) fachfehler('konflikt', 'auftrag_nicht_aenderbar');
   return { success: true, id, status: 'offen' };
 }
 

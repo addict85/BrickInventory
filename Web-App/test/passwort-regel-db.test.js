@@ -12,7 +12,7 @@
  *      Byte …" (danach „ein gutes Passwort …": das Konto gibt es schon)
  *   C  /reset-password prüft wieder nur die Länge → rot: „häufige
  *      Passwörter …" und „mehr als 72 Byte …" (nur diese Route nimmt es an)
- *   D  db/database.ts nimmt ADMIN_PASSWORD ungeprüft → rot: „ein schwaches
+ *   D  src/konto/startVerwalter.ts nimmt ADMIN_PASSWORD ungeprüft → rot: „ein schwaches
  *      ADMIN_PASSWORD …"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (der letzte Fall legt das

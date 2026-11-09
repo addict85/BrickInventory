@@ -258,22 +258,6 @@ Notausgang, hinter dem keine Tretmine liegen soll. Die ursprueglich
 gemeinte Wirkung bleibt vollstaendig erhalten.
 ```
 
-<a id="frueherzurlaufzeitangelegt"></a>
-## Abschnitt
-
-```text
-Default admin user
-
-VORHER: Immer 'admin' / 'admin'. Das ist kein Startwert, den man später
-ändert, sondern ein öffentlich bekanntes Credential — jede erreichbare
-Installation, deren Betreiber den Login-Screen nicht sofort besucht, ist
-damit sofort übernehmbar (Shodan-Scans nach genau diesem Muster sind
-Alltag). Jetzt: ADMIN_PASSWORD aus der Umgebung, falls gesetzt (für
-automatisierte Deployments); sonst ein zufälliges Passwort, das NUR beim
-allerersten Start in die Logs geschrieben wird und dessen Konto als
-"muss geändert werden" markiert ist (must_change_password s.o.).
-```
-
 <a id="frueherzurlaufzeitangelegt-partscondexists"></a>
 ## `partsCondExists`
 
