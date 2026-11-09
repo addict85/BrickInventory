@@ -3,6 +3,8 @@ package ch.brickinventoryapp.data
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.model.data.model.SetItem
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 import ch.brickinventoryapp.testing.Quellen
@@ -39,53 +41,19 @@ class PurchasePriceDisplayTest {
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
-    /**
-     * Alle Modelldateien als EIN Text (Nachtrag 155).
-     *
-     * Vorher stand hier "data/model/Models.kt" — ein Dateiname. Die 92
-     * Datenklassen lagen in einer Datei mit 1158 Zeilen; beim Aufteilen nach
-     * Sachgebieten waeren alle Pruefungen hier rot geworden, obwohl sich an den
-     * Klassen nichts geaendert hat. Gemeint sind DIE MODELLE, nicht eine Datei.
-     */
-    private fun modelle(): String =
-        File(Quellen.wurzel, "model/data/model")
-            .listFiles { f -> f.extension == "kt" }
-            .orEmpty().sortedBy { it.name }
-            .joinToString("\n") { it.readText() }
-
-    // Gegenprobe: anzeigeKaufpreis auf maxPurchasePrice
-    // gestellt → rot „die Anzeigeregel steht im Modell …“.
+    // Gegenproben: anzeigeKaufpreis auf maxPurchasePrice gestellt → rot „die Anzeigeregel …“;
+    // gegenproben/setitem-liest-purchase-price.patch (das Feld zurück in SetItem) → rot, derselbe Test.
     @Test
     fun `die Anzeigeregel steht im Modell und bevorzugt den Durchschnitt`() {
         val set = ApiJson.decodeFromString(SetItem.serializer(),
             """{"set_number":"75192-1","avg_purchase_price":712.5,"max_purchase_price":800,"purchase_price":99}""")
         assertEquals("Der mengengewichtete Wert, nie der alte gespiegelte", 712.5, set.anzeigeKaufpreis!!, 1e-9)
-        val m = code(modelle())
-        // Umgedrehte Richtung, siehe Kopfkommentar: Das Feld darf nicht zurück.
-        //
-        // Geprüft wird der Kopf von SetItem, nicht die ganze Modelldatei:
-        // `purchase_price` ist in den ANFRAGEN (AddSetRequest,
-        // UpdateQuantityRequest, Merkposten-Übernahme) weiterhin richtig — dort
-        // schickt die App einen Preis HIN. Eine Suche über alles würde die
-        // verbieten und wäre schlicht falsch.
-        val kopf = m.substringAfter("data class SetItem(").substringBefore("\n)")
-        assert(kopf.isNotEmpty() && kopf.contains("setNumber")) {
-            "Der Kopf von SetItem wurde nicht gefunden — die Prüfung darunter wäre leer wahr"
-        }
-        // Der GANZE Name mit Anführungszeichen, nicht die Teilzeichenfolge.
-        //
-        // GEMESSEN, als hier `contains("purchase_price")` stand: Die Prüfung war
-        // immer rot, weil `avg_purchase_price` und `max_purchase_price` die
-        // Zeichenfolge enthalten — beide gehören in den Kopf und sind genau die
-        // Felder, die den Kaufpreis jetzt liefern.
-        assert(kopf.contains("""@SerialName("avg_purchase_price")""")) {
-            "avg_purchase_price fehlt in SetItem — dann hat die Kachel gar keinen " +
-                "Kaufpreis mehr, und die Prüfung darunter wäre nebenbei leer wahr"
-        }
-        assert(!kopf.contains("""@SerialName("purchase_price")""")) {
-            "SetItem hat purchase_price wieder — der Server liefert es für Sets " +
-                "seit Migration 0032 nicht mehr, das Feld wäre immer leer"
-        }
+        // Was SetItem aus der Antwort liest: purchase_price kommt seit Migration 0032 immer
+        // leer und darf nicht wieder als Feld auftauchen; in den ANFRAGEN ist es richtig.
+        val felder = (0 until SetItem.serializer().descriptor.elementsCount)
+            .map { SetItem.serializer().descriptor.getElementName(it) }
+        assertTrue("avg_purchase_price fehlt in SetItem", "avg_purchase_price" in felder)
+        assertFalse("SetItem liest purchase_price wieder", "purchase_price" in felder)
     }
 
     @Test

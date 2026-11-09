@@ -131,7 +131,7 @@ class PdfZoomTest {
     // ── Die drei Entscheidungen, die man versehentlich umdrehen kann ─────────
 
     private val quelle: String by lazy {
-        Quellen.ohneKommentare(Quellen.lies("finanzen/ui/screens/PdfViewerScreen.kt"))
+        Quellen.ohneKommentare(Quellen.lies("finanzen/ui/screens/PdfSeiten.kt"))
     }
 
     @Test

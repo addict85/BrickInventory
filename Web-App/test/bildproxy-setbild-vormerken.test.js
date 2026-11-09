@@ -6,6 +6,8 @@
  * Gegenprobe (06.11.2026): in bildDurchreichen() die Zeile mit
  * setBildVollstaendig()/bildVormerken() gestrichen → rot: „ein fehlendes
  * Set-Bild wird vorgemerkt“.
+ * Gegenprobe (08.11.2026): den Aufruf alsSetBildAblegen() in bildDurchreichen()
+ * gestrichen → rot: „was der Proxy hat, liegt danach unter images/sets“.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -72,6 +74,21 @@ test('Bild-Proxy merkt Set-Bilder für images/sets vor', async t => {
   await t.test('ein fehlendes Set-Bild wird vorgemerkt', async () => {
     assert.equal(await hole(fehltUrl), 200);
     assert.deepEqual(notizen, [[fehltUrl, fehlt]]);
+  });
+  await t.test('was der Proxy hat, liegt danach unter images/sets', async () => {
+    const abgelegt = path.join(SET_IMAGES_DIR, `${fehlt}.jpg`);
+    angelegt.push(abgelegt);
+    assert.equal(await hole(fehltUrl), 200);
+    assert.deepEqual(
+      fs.readFileSync(abgelegt),
+      Buffer.alloc(300, 1),
+      'was der Proxy hat, liegt danach unter images/sets',
+    );
+    assert.deepEqual(
+      fs.readdirSync(SET_IMAGES_DIR).filter(n => n.startsWith(fehlt) && n.endsWith('.teil')),
+      [],
+      'keine halbe Datei bleibt liegen',
+    );
   });
   await t.test('liegen Bild und Vorschau schon in images/sets, bleibt die Notiz aus', async () => {
     assert.equal(await hole(liegtUrl), 200);

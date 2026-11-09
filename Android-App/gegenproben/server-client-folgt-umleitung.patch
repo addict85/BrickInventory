@@ -1,0 +1,16 @@
+Gegenprobe: die Server-Clients folgen Umleitungen selbst, am Wächter vorbei
+Modul: core-data
+Test: ch.brickinventoryapp.data.ServerClientsTest
+Rot: kein Server-Client folgt
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/ServerClient.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/ServerClient.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/ServerClient.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/ServerClient.kt
+@@ -131,7 +131,6 @@
+         }
+         // Keine Umleitung am Wächter vorbei: Er sieht nur, was er selbst schickt, und
+         // folgt nur innerhalb derselben Herkunft (ServerWaechter.senden).
+-        .followRedirects(false)
+         .followSslRedirects(false)
+         .addInterceptor(ServerWaechter(GeraeteZugang(prefs.token), isApiClient, NetworkPolicy.entwicklung,
+             sitzungAbgelaufen = { sessionExpired.notifyExpired() }, versionsMeldung = versionsMeldung,

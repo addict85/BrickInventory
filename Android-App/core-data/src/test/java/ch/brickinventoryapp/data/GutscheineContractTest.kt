@@ -67,7 +67,10 @@ class GutscheineContractTest {
 
     private val repo by lazy { code(lies("data/repository/GutscheineRepositoryImpl.kt")) }
     private val feature by lazy { code(lies("finanzen/ui/viewmodel/GutscheinViewModel.kt")) }
-    private val karte by lazy { code(lies("finanzen/ui/screens/GutscheineCard.kt")) }
+    // Die Karte samt ihren Geschwisterdateien: Liste, Formular und Einzelkarte.
+    private val karte by lazy {
+        code(listOf("GutscheineCard.kt", "GutscheinFormular.kt", "GutscheinKarte.kt").joinToString("\n") { lies("finanzen/ui/screens/$it") })
+    }
 
     /** Gutscheine gegen einen Testserver, mit Plattenablage in einem Wegwerf-Ordner. */
     private fun <T> mitServer(block: (PfadServer, GutscheineRepository, File) -> T): T {

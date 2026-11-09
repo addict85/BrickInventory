@@ -49,7 +49,7 @@ class CatalogUsesLocalImagesTest {
 
     @Test
     fun `Katalog-Bildschirme reichen das Feld durch, statt null zu erzwingen`() {
-        val list = code(read("katalog/ui/screens/CatalogScreen.kt"))
+        val list = code(Quellen.bildschirm("katalog/ui/screens/CatalogScreen.kt"))
         // rememberTileImageWithFallback(...) zählt ebenfalls (Nachtrag 42):
         assert(list.contains("resolveThumbUrl(serverUrl, set.imageLocal, set.imageUrl)") ||
                list.contains("rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)")) {
@@ -130,7 +130,7 @@ class CatalogUsesLocalImagesTest {
             "teile/ui/screens/MinifigsScreen.kt",
             "katalog/ui/screens/CatalogScreen.kt",
             "katalog/ui/screens/CatalogDetailScreen.kt",
-        )
+        ).flatMap { Quellen.bildschirmDateien(it) }
         for (rel in screensToCheck) {
             val raw = read(rel)
             // Nur Funktionsdefinitionen auf oberster Ebene (Spalte 0) zählen.
@@ -167,7 +167,7 @@ class CatalogUsesLocalImagesTest {
             "katalog/ui/screens/CatalogScreen.kt" to 1,     // CatalogSetCard
         )
         for ((rel, expectedCount) in expectations) {
-            val src = read(rel)
+            val src = Quellen.bildschirm(rel)
             val count = Regex("""rememberTileImageWithFallback\(serverUrl""").findAll(src).count()
             assert(count == expectedCount) {
                 "$rel: $count statt $expectedCount Verwendungen von rememberTileImageWithFallback()"

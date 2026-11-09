@@ -1,10 +1,13 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.api.BrickApiService
+import ch.brickinventoryapp.model.data.model.Preisalarm
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.SetsRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -76,6 +79,10 @@ import ch.brickinventoryapp.testing.TestApi
  * demselben Stand war gruen, und die beiden hier unberuehrten Regeln der
  * Klasse blieben gruen. Ein Eingriff, der vier Tests reisst, sagt nichts
  * darueber, welcher davon wirklich prueft.
+ *
+ * Gegenprobe (gegenproben/alarm-besitzt-vorgabe-falsch.patch): Vorgabe von `besitzt`
+ * auf false → rot „ein fehlendes besitzt-Feld …“. Laden, Ändern, Löschen nach Rückfrage,
+ * Klick und Zustandswörter prüft PreisalarmeAnzeigeTest gezeichnet.
  */
 class AlarmUebersichtTest {
 
@@ -99,30 +106,6 @@ class AlarmUebersichtTest {
         }
     }
 
-    // Seit dem 16.10. liegt die Rubrik auf ihrer eigenen Seite
-    // (EinstellungenUnterseiten.kt) — die Einstellungen fuehren mit einer
-    // Zeile dorthin. Die Zusicherung ist dieselbe geblieben: Die Rubrik haengt
-    // irgendwo, und sie holt ihre Daten selbst.
-    @Test
-    fun `die Rubrik steht in den Einstellungen und laedt sich selbst`() {
-        val s = quelle("konto/ui/screens/EinstellungenUnterseiten.kt") + quelle("konto/ui/screens/EinstellungenAlarme.kt")
-        // Nur der Anfang des Aufrufs, nicht die ganze Zeile: Die Rubrik hat
-        // inzwischen vier Parameter (Bild, Serveradresse, Klick), und eine
-        // Regel, die an der Anzahl haengt, prueft nicht mehr das, was sie
-        // sagt — sie geht beim naechsten Parameter kaputt, ohne dass etwas
-        // kaputt waere. Genau das ist hier passiert (Lauf 286).
-        assert(s.contains("PreisalarmeCard(uebersicht, aktionen,")) {
-            "Die Rubrik ist nicht in den Einstellungen eingehaengt — sie existiert, " +
-                "aber niemand sieht sie."
-        }
-        assert(s.contains("vm.ladeAlarmUebersicht()")) {
-            "Die Rubrik holt ihre Daten nicht — sie bliebe leer."
-        }
-        // Loeschen und Aendern, beides: Genau das hat Marco verlangt.
-        assert(s.contains("aktionen.loescheAlarm(")) { "Der Alarm laesst sich nicht loeschen." }
-        assert(s.contains("aktionen.aendereAlarmSchwelle(")) { "Der Wert laesst sich nicht anpassen." }
-    }
-
     @Test
     fun `geschrieben wird ueber die bestehende Route zum Set`() {
         // Zwei Schreibwege zum selben Zustand wären zwei Stellen, an denen die Regeln
@@ -140,34 +123,18 @@ class AlarmUebersichtTest {
     }
 
     /**
-     * Vorschaubild und Klick in die Detailansicht — Marcos Nachtrag vom 26.09.
-     *
-     * „Bitte bei den Zeilen jeweils in beiden Apps noch das Thumbnail anzeigen
-     * (analog wie bei den Finanzen). Die Zeilen sollen zudem klickbar sein,
-     * dass dann der entsprechende Detaildialog geöffnet wird."
-     *
-     * Geprueft wird ausdruecklich auf [FinanzBild] und [resolveThumbUrl] und
-     * nicht bloss auf „irgendein Bild": „analog wie bei den Finanzen" ist die
-     * Vorgabe, und ein zweites, anders beschnittenes Bild an derselben Stelle
-     * waere genau das, was Marco seit Monaten anmerkt.
+     * Das Vorschaubild kommt wie in den Finanzen über [FinanzBild] und [resolveThumbUrl].
+     * Dass die Zeile ein Bild zeigt und nur ein Set aus der Sammlung öffnet, prüft
+     * PreisalarmeAnzeigeTest gezeichnet.
      */
     @Test
-    fun `die Zeile zeigt ein Bild und fuehrt in die Detailansicht`() {
+    fun `die Zeile zeigt das Bild wie die Finanzen`() {
         val s = quelle("konto/ui/screens/EinstellungenAlarme.kt")
         assert(s.contains("FinanzBild(")) {
             "Die Zeile hat kein Vorschaubild — oder ein eigenes statt des der Finanzen."
         }
         assert(s.contains("resolveThumbUrl(")) {
             "Die Bildadresse wird nicht ueber die gemeinsame Stelle gebildet."
-        }
-        assert(s.contains("onSetClick(a.setNumber)")) {
-            "Die Zeile oeffnet die Detailansicht nicht — genau das hat Marco verlangt."
-        }
-        // Nur anklickbar, wenn es das Set gibt: Ein Alarm ueberlebt das
-        // Entfernen des Sets, und /v1/sets/:nummer gaebe es dann nicht mehr.
-        assert(s.contains("a.besitzt")) {
-            "Die Zeile ist auch dann anklickbar, wenn das Set nicht (mehr) in der " +
-                "Sammlung liegt — der Klick liefe in eine Fehlermeldung."
         }
     }
 
@@ -196,15 +163,11 @@ class AlarmUebersichtTest {
      */
     @Test
     fun `ein fehlendes besitzt-Feld macht die Zeile nicht tot`() {
-        val m = quelle("model/data/model/SetModels.kt")
-        val i = m.indexOf("data class Preisalarm(")
-        assert(i > 0) { "data class Preisalarm fehlt — Muster veraltet?" }
-        val rumpf = m.substring(i, m.indexOf("\n)", i))
-        assert(rumpf.contains("val besitzt: Boolean = true")) {
-            "Der Vorgabewert von `besitzt` ist nicht `true`. Ein Server, der das " +
-                "Feld nicht kennt, schaltet damit die ganze Rubrik ab — genau der " +
-                "Befund vom 26.09."
-        }
+        val alarm = ApiJson.decodeFromString(Preisalarm.serializer(),
+            """{"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF"}""")
+        assertTrue("Ohne das Feld gilt das Set als nicht vorhanden — die ganze Rubrik waere tot", alarm.besitzt)
+        val weg = ApiJson.decodeFromString(Preisalarm.serializer(), """{"set_number":"75192-1","besitzt":false}""")
+        assertFalse(weg.besitzt)
     }
 
     /**
@@ -241,30 +204,6 @@ class AlarmUebersichtTest {
     }
 
     /**
-     * Vor dem Loeschen wird gefragt — wie in der Webapp.
-     *
-     * „Auch in der Android App soll beim Löschen eines Preisalarm noch
-     * nachgefragt werden ob der Eintrag wirklich gelöscht werden soll."
-     *
-     * Die Webapp fragt seit jeher (`confirm` in 05-settings.js). Geprueft wird
-     * nicht nur, dass es einen Dialog GIBT, sondern dass der Loeschknopf nicht
-     * mehr direkt loescht — sonst stuende der Dialog daneben und der Knopf
-     * fuehre weiter an ihm vorbei.
-     */
-    @Test
-    fun `vor dem Loeschen wird gefragt`() {
-        val s = quelle("konto/ui/screens/EinstellungenAlarme.kt")
-        assert(s.contains("R.string.alerts_confirm_delete")) {
-            "Es gibt keine Rueckfrage vor dem Loeschen eines Preisalarms."
-        }
-        assert(Regex("""IconButton\(onClick\s*=\s*\{\s*fragtLoeschen\s*=""")
-                   .containsMatchIn(s)) {
-            "Der Loeschknopf fragt nicht, sondern loescht — der Dialog stuende daneben " +
-                "und niemand kaeme an ihm vorbei."
-        }
-    }
-
-    /**
      * Der Alarmzustand steht als Plakette da, nicht als Kleintext.
      *
      * „Bitte in der Android-App das ‚scharf' analog der Webapp mit einem Label
@@ -277,11 +216,8 @@ class AlarmUebersichtTest {
      */
     @Test
     fun `der Alarmzustand steht als Plakette da`() {
+        // Dass sie „Aktiv“ und „Ausgelöst“ in Worten zeigt, prüft PreisalarmeAnzeigeTest.
         val s = quelle("konto/ui/screens/EinstellungenAlarme.kt")
-        assert(s.contains("fun AlarmZustandPlakette(")) { "Es gibt keine Plakette." }
-        assert(s.contains("AlarmZustandPlakette(a.ausgeloest)")) {
-            "Die Plakette wird nicht benutzt — sie steht da und niemand zeigt sie."
-        }
         // Der Speichern-Knopf erscheint nur bei einer Aenderung. Ohne diese
         // Schranke steht wieder dauerhaft ein Symbol daneben, das wie eine
         // Zustandsanzeige aussieht.
@@ -320,36 +256,6 @@ class AlarmUebersichtTest {
                 "`$verboten` traegt eine Bedeutung ueber die Farbe. Genau das soll " +
                     "die Plakette nicht mehr tun."
             }
-        }
-    }
-
-    /**
-     * Ohne Farbe muss der Text allein sagen, was gilt: „Aktiv“ gegen „Ausgelöst“, und
-     * die Zeile unter dem Feld, worauf ein ausgelöster Alarm wartet. Kreiszeichen las
-     * TalkBack als „schwarzer Kreis“ vor (UI-Prüfung 10, N4). Die Erklärung steht nicht
-     * mehr in der Plakette: Dort brach sie auf dem Telefon die Zeile (UI-Prüfung 12, H1).
-     * Geprüft in BEIDEN Sprachdateien.
-     */
-    @Test
-    fun `die beiden Alarmzustaende sagen ohne Farbe und Zeichen, was gilt`() {
-        for (datei in listOf("values/strings.xml", "values-de/strings.xml")) {
-            val xml = File(Quellen.res, datei).readText()
-            fun text(name: String) =
-                Regex("<string name=\"" + name + "\">(.*?)</string>")
-                    .find(xml)?.groupValues?.get(1) ?: ""
-            val aktiv = text("alerts_armed")
-            val ausgeloest = text("alerts_fired")
-            assert(aktiv.isNotBlank() && ausgeloest.isNotBlank()) { "Die Zustandstexte fehlen in $datei." }
-            assert(aktiv.lowercase() != ausgeloest.lowercase()) { "Beide Zustaende heissen in $datei gleich." }
-            // Geometrische Formen (U+25A0–U+25FF) sind Bild, nicht Wort.
-            for (t in listOf(aktiv, ausgeloest)) {
-                assert(t.none { it in '\u25A0'..'\u25FF' }) { "„$t“ in $datei traegt ein Sinnbildzeichen." }
-                assert(t.count { it.isLetter() } >= 4) { "„$t“ in $datei ist kein Wort." }
-            }
-            // Der ausgeloeste Zustand sagt, worauf er wartet — sonst bliebe offen,
-            // ob der Alarm noch etwas tut. Das steht unter jedem ausgelösten Feld.
-            val erklaerung = text("detail_alert_fired")
-            assert(erklaerung.trim().contains(' ')) { "„$erklaerung“ in $datei erklaert nicht, was als Naechstes geschieht." }
         }
     }
 

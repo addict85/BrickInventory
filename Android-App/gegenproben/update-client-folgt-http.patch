@@ -1,0 +1,17 @@
+Gegenprobe: der Update-Client folgt einer Umleitung von https auf http
+Modul: core-data
+Test: ch.brickinventoryapp.data.UpdateClientTest
+Rot: der Update-Client traegt nichts
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
+@@ -75,7 +75,7 @@
+             // Umleitungen (github.com → *.githubusercontent.com) folgt der Wächter selbst,
+             // nur zu GitHub über https; OkHttp folgte ihnen sonst zu jedem Host.
+             .followRedirects(false)
+-            .followSslRedirects(false)
++            .followSslRedirects(true)
+             .addInterceptor(UpdateUmleitungen())
+             .connectTimeout(15, TimeUnit.SECONDS)
+             .readTimeout(120, TimeUnit.SECONDS)

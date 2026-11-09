@@ -1,0 +1,16 @@
+Gegenprobe: das Vorwärmen holt auch volle Auflösung und schon Abgelegtes
+Modul: core-data
+Test: ch.brickinventoryapp.data.VorschauVorwaermerTest
+Rot: es holt nur fehlende
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt
+@@ -90,7 +90,6 @@
+             // wuerde der Abgriff gar nicht erst schreiben — es zu holen waere
+             // reines Datenvolumen ohne Ertrag. Und was schon daliegt, braucht
+             // das Netz nicht noch einmal.
+-            .filter { vorschau.istVorschau(it) && !vorschau.hat(it) }
+ 
+         for (schub in offen.chunked(GLEICHZEITIG)) {
+             // Je Schub neu messen statt einmal am Anfang: Waehrenddessen legt

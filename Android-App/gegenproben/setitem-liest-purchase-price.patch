@@ -1,0 +1,16 @@
+Gegenprobe: SetItem liest wieder das gespiegelte purchase_price
+Modul: core-data
+Test: ch.brickinventoryapp.data.PurchasePriceDisplayTest
+Rot: die Anzeigeregel steht im Modell
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/SetModels.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/SetModels.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/SetModels.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/SetModels.kt
+@@ -60,6 +60,7 @@
+     val owners: List<KontoName> = emptyList(),
+     @SerialName("max_purchase_price") val maxPurchasePrice: Double? = null,
+     /** Mengengewichteter Kaufpreis über die Erfassungen (Server rechnet ihn). */
++    @SerialName("purchase_price") val purchasePrice: Double? = null,
+     @SerialName("avg_purchase_price") val avgPurchasePrice: Double? = null,
+     @SerialName("used_count") val usedCount: Int? = null,
+     val instructions: List<Instruction> = emptyList(),

@@ -1,0 +1,18 @@
+Gegenprobe: ein 504 des Zwischenspeichers geht durch, statt aus der Ablage ersetzt zu werden
+Modul: core-data
+Test: ch.brickinventoryapp.data.VorschauAbgriffTest
+Rot: ein 504
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
+@@ -282,9 +282,6 @@
+             // 504 kommt vom erzwungenen Zwischenspeicher weiter
+             // unten, wenn dort nichts lag. Auch das ist ein Fall
+             // fuer die Ablage.
+-            antwort.code == 504 ->
+-                vorschauAntwort(anfrage, vorschau.lies(adresse))
+-                    ?.also { antwort.close() } ?: antwort
+             else -> antwort
+         }
+     }

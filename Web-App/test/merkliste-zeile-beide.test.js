@@ -41,7 +41,7 @@ test('1. die Merklisten-ZEILE trägt keinen Übernahme-Knopf mehr', () => {
   assert.ok(!/merkpostenUebernehmen/.test(zeileWeb),
     'Die Webapp-Zeile ruft weiterhin die Übernahme auf.');
 
-  const zeileApp = rumpf(app('sammlung/ui/screens/MerklisteScreen.kt'), 'private fun MerkpostenZeile(');
+  const zeileApp = rumpf(app('sammlung/ui/screens/MerklisteZeile.kt'), 'internal fun MerkpostenZeile(');
   assert.ok(!/wanted_take/.test(zeileApp),
     'Die App-Zeile trägt weiterhin den Knopf „In die Galerie".');
 });
@@ -51,7 +51,7 @@ test('2. dafür steht der Marktpreis darin', () => {
   assert.match(zeileWeb, /marktpreis/,
     'Die Webapp-Zeile zeigt den Marktpreis nicht.');
 
-  const zeileApp = rumpf(app('sammlung/ui/screens/MerklisteScreen.kt'), 'private fun MerkpostenZeile(');
+  const zeileApp = rumpf(app('sammlung/ui/screens/MerklisteZeile.kt'), 'internal fun MerkpostenZeile(');
   assert.match(zeileApp, /marktpreis/,
     'Die App-Zeile zeigt den Marktpreis nicht.');
 });
@@ -106,7 +106,7 @@ test('5. Löschen: Papierkorb in der Webapp, nur im Detail in der App', () => {
   assert.ok(!/Icons\.Default\.Delete/.test(kachelApp),
     'Die Kachel der App trägt einen Papierkorb — „nur in der webapp".');
 
-  const zeileApp = rumpf(app('sammlung/ui/screens/MerklisteScreen.kt'), 'private fun MerkpostenZeile(');
+  const zeileApp = rumpf(app('sammlung/ui/screens/MerklisteZeile.kt'), 'internal fun MerkpostenZeile(');
   assert.ok(!/common_delete/.test(zeileApp),
     'Die Merklisten-Zeile der App trägt den Löschen-Knopf — „nur in der webapp".');
 

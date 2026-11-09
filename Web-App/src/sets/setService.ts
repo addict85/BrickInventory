@@ -4,14 +4,14 @@ import { meldeFehler, fehlertext, logAndContinue, meldeUndLiefere } from '../inf
 import { scopeIds, writableIds } from '../haushalt/haushalt';
 import { recordAcquisitionForDay } from '../bestand/acquisitions';
 import { withInventoryLock } from '../../db/txLock';
-import { downloadSetImage } from '../katalog/bilder/setImages';
+import { downloadSetImage, rebrickableSetBild } from '../katalog/bilder/setImages';
 import { getCurrentMarketPrice } from '../finanzen/marketPrice';
 import { zustandFuerPreis, getSetting } from '../einstellungen/settings';
 import { deleteSetRows } from './abfragen';
 import { legeInPapierkorb } from '../bestand/papierkorb';
 import { toCsv } from '../infra/csvExport';
 import { getSetInfo } from '../katalog/rebrickableKatalog';
-import { brickset, getItemImageUrl } from '../katalog/quellen';
+import { brickset } from '../katalog/quellen';
 import { generateThumb } from '../katalog/bilder/thumbs';
 import { stelleAuftragEin } from '../auftraege/dienst';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../infra/setNummer';
@@ -175,10 +175,10 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
     if (bsInfo) {
       if (!name) name=bsInfo.name; if (!year) year=bsInfo.year;
       if (!theme) theme=bsInfo.theme; if (!pieces) pieces=bsInfo.pieces;
-      if (!minifigs) minifigs=bsInfo.minifigs; if (!imageUrl) imageUrl=bsInfo.image_url;
+      if (!minifigs) minifigs=bsInfo.minifigs;
     }
   }
-  if (!imageUrl) imageUrl = getItemImageUrl(normalized);
+  if (!imageUrl) imageUrl = rebrickableSetBild(normalized);
 
   if (sendProgress) sendProgress({ step:'image', set:normalized });
   let localImage: string | null = null;

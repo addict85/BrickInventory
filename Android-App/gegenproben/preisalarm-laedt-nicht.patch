@@ -1,0 +1,16 @@
+Gegenprobe: die Preisalarm-Übersicht holt ihre Alarme nicht selbst
+Modul: app
+Test: ch.brickinventoryapp.app.PreisalarmeAnzeigeTest
+Rot: die Uebersicht holt
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenUnterseiten.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenUnterseiten.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenUnterseiten.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenUnterseiten.kt
+@@ -53,7 +53,6 @@
+     meldeSchalter: @Composable () -> Unit = { PreisalarmSchalterRoute() },
+ ) {
+     val uebersicht by vm.alarmUebersicht.collectAsStateWithLifecycle()
+-    LaunchedEffect(Unit) { vm.ladeAlarmUebersicht() }
+     PreisalarmeUnterseite(uebersicht, vm, imageLoader, serverUrl, snackbarHostState, onSetClick, onZurueck, meldeSchalter)
+ }
+ 

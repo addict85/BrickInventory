@@ -68,7 +68,7 @@ class AddPathOwnerTest {
         val wege = listOf(
             "sammlung/ui/screens/GalerieErfassen.kt" to "Set über die Galerie",
             "teile/ui/screens/PartsDialogs.kt"    to "manuelles Teil",
-            "teile/ui/screens/MinifigsScreen.kt"  to "manuelle Minifigur",
+            "teile/ui/screens/FigurenErfassen.kt" to "manuelle Minifigur",
         )
         for ((datei, name) in wege) {
             assert(code(read(datei)).contains("OwnerPicker(")) {
@@ -85,7 +85,7 @@ class AddPathOwnerTest {
      */
     @Test
     fun `ohne Haushalt geht kein Eigentuemer mit`() {
-        for (datei in listOf("teile/ui/screens/PartsDialogs.kt", "teile/ui/screens/MinifigsScreen.kt")) {
+        for (datei in listOf("teile/ui/screens/PartsDialogs.kt", "teile/ui/screens/FigurenErfassen.kt")) {
             assert(code(read(datei)).contains("erfassungsWerte(")) {
                 "$datei rechnet die Eingaben wieder selbst um statt über erfassungsWerte()"
             }

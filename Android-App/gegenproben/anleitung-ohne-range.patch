@@ -1,0 +1,16 @@
+Gegenprobe: das Fortsetzen schickt keinen Range-Kopf
+Modul: core-data
+Test: ch.brickinventoryapp.data.AnleitungsDownloadTest
+Rot: ein abgerissener Download
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/AnleitungsRepository.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/AnleitungsRepository.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/AnleitungsRepository.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/AnleitungsRepository.kt
+@@ -128,7 +128,6 @@
+     /** Ein Abruf ab Byte [ab] in die Teildatei; der Server antwortet mit 206 (fortsetzen) oder 200 (neu). */
+     private suspend fun holeAb(client: OkHttpClient, url: String, ab: Long, teil: File, onProgress: (Long, Long) -> Unit) {
+         val reqBuilder = Request.Builder().url(url)
+-        if (ab > 0) reqBuilder.header("Range", "bytes=$ab-")
+         client.newCall(reqBuilder.build()).execute().use { resp ->
+             if (!resp.isSuccessful) throw IOException("HTTP ${resp.code}")
+             val resuming = resp.code == 206 && ab > 0

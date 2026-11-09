@@ -1,0 +1,18 @@
+Gegenprobe: die Galerie filtert die Liste des Servers selbst nach dem Suchtext
+Modul: app
+Test: ch.brickinventoryapp.app.GalerieMeldetNachObenTest
+Rot: Suchtext geht nach oben
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
+@@ -277,7 +277,8 @@
+             LeerSymbol(Icons.Default.SearchOff)
+             Text(stringResource(R.string.gallery_no_results, suchtext), fontWeight = FontWeight.SemiBold)
+         }
+-        GalerieAnzeige.LISTE -> GalerieRaster(zustand, imageLoader, gridState, onSetClick)
++        GalerieAnzeige.LISTE -> GalerieRaster(zustand.copy(galerie = zustand.galerie.copy(sets = zustand.galerie.sets
++            .filter { it.name.orEmpty().contains(suchtext, ignoreCase = true) })), imageLoader, gridState, onSetClick)
+     }
+ }
+ 

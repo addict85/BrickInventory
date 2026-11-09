@@ -1,0 +1,17 @@
+Gegenprobe: die Plakette nennt jeden Alarm „Aktiv“
+Modul: app
+Test: ch.brickinventoryapp.app.PreisalarmeAnzeigeTest
+Rot: eine Zeile oeffnet
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
+@@ -256,7 +256,7 @@
+  */
+ @Composable
+ private fun AlarmZustandPlakette(ausgeloest: Boolean) {
+-    val text = stringResource(if (ausgeloest) R.string.alerts_fired else R.string.alerts_armed)
++    val text = stringResource(R.string.alerts_armed)
+     // Gefuellt = aktiv, umrandet = ausgeloest. Die Flaeche ist der Unterschied,
+     // den man auch dann sieht, wenn die beiden Farben gleich aussehen.
+     Surface(

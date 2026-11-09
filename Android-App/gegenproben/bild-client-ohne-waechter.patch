@@ -1,0 +1,21 @@
+Gegenprobe: der Bild-Client lädt ohne Host-Wächter
+Modul: core-data
+Test: ch.brickinventoryapp.data.ServerClientsTest
+Rot: der Bild-Client spricht
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
+@@ -105,12 +105,6 @@
+             .addInterceptor(vorschauAbgriff(vorschau))
+             // Nur der eigene Server (util/BildHosts.kt); Umleitungen prüft
+             // der Wächter selbst, OkHttp folgte ihnen sonst an ihm vorbei.
+-            .addInterceptor(BildHostWaechter(
+-                eigenerServer = { url ->
+-                    istEigenerBildServer(url, prefs.token.serverUrlState.value ?: "", NetworkPolicy.entwicklung)
+-                },
+-                basisPfad = { NetworkPolicy.basisPfad(prefs.token.serverUrlState.value.orEmpty()).orEmpty() },
+-            ))
+             .followRedirects(false)
+             // Bild-Downloads drosseln, aber nicht so eng, dass Kacheln verhungern: Dies ist
+             // der eine ImageLoader der App. Bei 3 Verbindungen je Host warteten Kacheln, Coil

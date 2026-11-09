@@ -82,7 +82,7 @@ class ThumbFallbackTest {
     fun `CatalogSetCard faellt bei einem Fehler auf die volle Aufloesung zurueck`() {
         // Das Ersatzbild steht seit ProduktBild (ui/components) an EINER Stelle; die
         // Katalogkachel reicht nur noch den Fehler an den Rückfall weiter.
-        val src = read("katalog/ui/screens/CatalogScreen.kt")
+        val src = read("katalog/ui/screens/KatalogKarte.kt")
         assert(src.contains("ProduktBild(")) { "Die Katalogkachel benutzt das gemeinsame Bild mit Ersatz" }
         assert(src.contains("AsyncImagePainter.State.Error) onThumbError()")) {
             "Ein Fehler muss den Rückfall auf die volle Auflösung auslösen"
@@ -201,7 +201,7 @@ class PartsMinifigsFullResBypassProxyTest {
             // rememberTileImageWithFallback()"). Ohne diesen Schritt meldet
             // die Pruefung genau diese Erwaehnung als Aufruf ohne
             // fullViaProxy — beim Nachrechnen ist mir das sofort passiert.
-            val src = Quellen.ohneKommentare(read(rel))
+            val src = Quellen.ohneKommentare(Quellen.bildschirm(rel))
             val stellen = aufruf.findAll(src).toList()
             // Selbstbeweis: Findet das Muster nichts, waere die Schleife leer
             // und der Test gruen, ohne etwas geprueft zu haben.
@@ -221,8 +221,8 @@ class PartsMinifigsFullResBypassProxyTest {
         val gallery = Quellen.galerie()
         assert(!gallery.contains("fullViaProxy")) { "Die Galerie darf fullViaProxy nicht setzen — Sets bleiben direkt" }
 
-        val catalog = read("katalog/ui/screens/CatalogScreen.kt")
-        assert(!catalog.contains("fullViaProxy")) { "CatalogScreen.kt darf fullViaProxy nicht setzen — Katalog bleibt direkt" }
+        val catalog = Quellen.bildschirm("katalog/ui/screens/CatalogScreen.kt")
+        assert(!catalog.contains("fullViaProxy")) { "Der Katalog darf fullViaProxy nicht setzen — Katalog bleibt direkt" }
     }
 }
 

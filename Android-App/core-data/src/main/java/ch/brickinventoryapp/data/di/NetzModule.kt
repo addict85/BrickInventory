@@ -12,6 +12,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Dispatcher
 import okhttp3.ResponseBody.Companion.toResponseBody
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import java.io.IOException
@@ -80,27 +81,6 @@ object NetzModule {
             .readTimeout(120, TimeUnit.SECONDS)
             .build()
 
-    /**
-     * Aus abgelegten Bytes eine Antwort bauen, oder null. Status 200, damit Coil und
-     * der HTTP-Zwischenspeicher sie wie jede andere behandeln; `X-Vorschau-Ablage`
-     * zeigt im Protokoll, dass sie aus der Ablage kam.
-     */
-    private fun vorschauAntwort(anfrage: okhttp3.Request, bytes: ByteArray?): okhttp3.Response? {
-        if (bytes == null || bytes.isEmpty()) return null
-        return okhttp3.Response.Builder()
-            .request(anfrage)
-            .protocol(okhttp3.Protocol.HTTP_1_1)
-            .code(200)
-            .message("aus der Vorschau-Ablage")
-            .header("X-Vorschau-Ablage", "1")
-            // no-store: Diese Antwort stammt bereits aus einer dauerhaften
-            // Ablage. Sie ein zweites Mal in den HTTP-Zwischenspeicher zu
-            // legen brauchte Platz fuer dieselben Bytes.
-            .header("Cache-Control", "no-store")
-            .body(bytes.toResponseBody("image/jpeg".toMediaTypeOrNull()))
-            .build()
-    }
-
     @Provides
     @Singleton
     @BildClient
@@ -122,50 +102,7 @@ object NetzModule {
             // Offline-Rückfall unten ist der innere. Er ergänzt den
             // LRU-Zwischenspeicher unter `cacheDir`, den Android jederzeit leeren darf; diese
             // Ablage liegt unter `filesDir` und räumt nur selbst (VorschauSpeicher).
-            .addInterceptor { chain ->
-                val anfrage = chain.request()
-                val adresse = anfrage.url.toString()
-                if (!vorschau.istVorschau(adresse)) {
-                    chain.proceed(anfrage)
-                } else {
-                    // Kein eigenes If-None-Match: OkHttp führt die bedingte Anfrage selbst; ein von
-                    // Hand gesetzter Kopf liesse es seinen Cache übergehen. Die Ablage füllt sich
-                    // bei Erfolg und springt nur ein, wenn nichts mehr geht.
-                    val antwort = try {
-                        chain.proceed(anfrage)
-                    } catch (e: java.io.IOException) {
-                        vorschauAntwort(anfrage, vorschau.lies(adresse)) ?: throw e
-                    }
-                    when {
-                        antwort.isSuccessful -> {
-                            // peekBody statt body.bytes(): Der Rumpf darf nur
-                            // EINMAL gelesen werden, und der Aufrufer braucht
-                            // ihn noch. Eine Vorschau ist klein genug, um sie
-                            // nebenbei mitzunehmen.
-                            val bytes = runCatching {
-                                antwort.peekBody(2L * 1024 * 1024).bytes()
-                            }.getOrNull()
-                            if (bytes != null && bytes.isNotEmpty()) {
-                                // Spekulativ oder gebraucht? Nur die Anfragen des Vorwärmers tragen
-                                // das Tag (VorschauVorwaermer); ein vorgewärmtes Bild wird beim
-                                // ersten echten Aufruf von selbst zu einem gebrauchten.
-                                val spekulativ = anfrage.tag(
-                                    Vorwaermung::class.java
-                                ) != null
-                                vorschau.schreibe(adresse, bytes, spekulativ)
-                            }
-                            antwort
-                        }
-                        // 504 kommt vom erzwungenen Zwischenspeicher weiter
-                        // unten, wenn dort nichts lag. Auch das ist ein Fall
-                        // fuer die Ablage.
-                        antwort.code == 504 ->
-                            vorschauAntwort(anfrage, vorschau.lies(adresse))
-                                ?.also { antwort.close() } ?: antwort
-                        else -> antwort
-                    }
-                }
-            }
+            .addInterceptor(vorschauAbgriff(vorschau))
             // Nur der eigene Server (util/BildHosts.kt); Umleitungen prüft
             // der Wächter selbst, OkHttp folgte ihnen sonst an ihm vorbei.
             .addInterceptor(BildHostWaechter(
@@ -302,4 +239,74 @@ object NetzModule {
             .client(client)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
+}
+
+/**
+ * Der Abgriff der Vorschau-Ablage im Bild-Client: legt erfolgreiche Vorschauen ab und
+ * springt mit ihnen ein, wenn Netz und Zwischenspeicher nichts liefern.
+ */
+internal fun vorschauAbgriff(vorschau: VorschauSpeicher): Interceptor = Interceptor { chain ->
+    val anfrage = chain.request()
+    val adresse = anfrage.url.toString()
+    if (!vorschau.istVorschau(adresse)) {
+        chain.proceed(anfrage)
+    } else {
+        // Kein eigenes If-None-Match: OkHttp führt die bedingte Anfrage selbst; ein von
+        // Hand gesetzter Kopf liesse es seinen Cache übergehen. Die Ablage füllt sich
+        // bei Erfolg und springt nur ein, wenn nichts mehr geht.
+        val antwort = try {
+            chain.proceed(anfrage)
+        } catch (e: java.io.IOException) {
+            vorschauAntwort(anfrage, vorschau.lies(adresse)) ?: throw e
+        }
+        when {
+            antwort.isSuccessful -> {
+                // peekBody statt body.bytes(): Der Rumpf darf nur
+                // EINMAL gelesen werden, und der Aufrufer braucht
+                // ihn noch. Eine Vorschau ist klein genug, um sie
+                // nebenbei mitzunehmen.
+                val bytes = runCatching {
+                    antwort.peekBody(2L * 1024 * 1024).bytes()
+                }.getOrNull()
+                if (bytes != null && bytes.isNotEmpty()) {
+                    // Spekulativ oder gebraucht? Nur die Anfragen des Vorwärmers tragen
+                    // das Tag (VorschauVorwaermer); ein vorgewärmtes Bild wird beim
+                    // ersten echten Aufruf von selbst zu einem gebrauchten.
+                    val spekulativ = anfrage.tag(
+                        Vorwaermung::class.java
+                    ) != null
+                    vorschau.schreibe(adresse, bytes, spekulativ)
+                }
+                antwort
+            }
+            // 504 kommt vom erzwungenen Zwischenspeicher weiter
+            // unten, wenn dort nichts lag. Auch das ist ein Fall
+            // fuer die Ablage.
+            antwort.code == 504 ->
+                vorschauAntwort(anfrage, vorschau.lies(adresse))
+                    ?.also { antwort.close() } ?: antwort
+            else -> antwort
+        }
+    }
+}
+
+/**
+ * Aus abgelegten Bytes eine Antwort bauen, oder null. Status 200, damit Coil und
+ * der HTTP-Zwischenspeicher sie wie jede andere behandeln; `X-Vorschau-Ablage`
+ * zeigt im Protokoll, dass sie aus der Ablage kam.
+ */
+private fun vorschauAntwort(anfrage: okhttp3.Request, bytes: ByteArray?): okhttp3.Response? {
+    if (bytes == null || bytes.isEmpty()) return null
+    return okhttp3.Response.Builder()
+        .request(anfrage)
+        .protocol(okhttp3.Protocol.HTTP_1_1)
+        .code(200)
+        .message("aus der Vorschau-Ablage")
+        .header("X-Vorschau-Ablage", "1")
+        // no-store: Diese Antwort stammt bereits aus einer dauerhaften
+        // Ablage. Sie ein zweites Mal in den HTTP-Zwischenspeicher zu
+        // legen brauchte Platz fuer dieselben Bytes.
+        .header("Cache-Control", "no-store")
+        .body(bytes.toResponseBody("image/jpeg".toMediaTypeOrNull()))
+        .build()
 }

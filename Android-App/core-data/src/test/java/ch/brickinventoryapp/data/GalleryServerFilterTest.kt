@@ -9,7 +9,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 import ch.brickinventoryapp.testing.PfadServer
-import ch.brickinventoryapp.testing.Quellen
 import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.testing.TestApi
@@ -35,65 +34,13 @@ import ch.brickinventoryapp.testing.TestApi
  * nächsten Umbau zählt — ein „schnelles" lokales Filtern wäre sofort wieder
  * die zweite Fassung.
  *
- * Gegenproben: in GalleryScreen wieder ein `sets.filter { … }` eingesetzt → der
- * erste Teilschritt wird rot (durchgeführt). In SetsRepository.getSets die
- * Bedingung `ungefiltert` auf `true` gesetzt → rot „der Ablage-Cache greift nur
- * ungefiltert“ .
+ * Dass der Schirm Werte nur meldet und nicht selbst filtert, prüft
+ * GalerieMeldetNachObenTest (app) gezeichnet.
+ *
+ * Gegenprobe: in SetsRepository.getSets die Bedingung `ungefiltert` auf `true`
+ * gesetzt → rot „der Ablage-Cache greift nur ungefiltert“.
  */
 class GalleryServerFilterTest {
-
-    /** Kommentare ausblenden — die Erklärtexte nennen die geprüften Muster selbst. */
-    private fun code(s: String) = s.lines()
-        .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
-
-    @Test
-    fun `der Schirm filtert und sortiert die Liste nicht selbst`() {
-        val s = code(Quellen.galerie())
-        for (muster in listOf("sets.filter", "sets.sortedBy", "sets.sortedWith", "sets.mapNotNull")) {
-            assert(!s.contains(muster)) {
-                "GalleryScreen bearbeitet die Liste selbst ($muster) — damit gibt es " +
-                    "wieder zwei Fassungen der Suche, und die hier kann weniger"
-            }
-        }
-        assert(!s.contains("debouncedQuery")) {
-            "Die Entprellung gehört ins ViewModel, wo auch der Abruf und die " +
-                "Filter-Generation liegen — sonst filtert der Schirm doch wieder mit"
-        }
-    }
-
-    @Test
-    fun `Suchtext, Thema und Sortierung werden nach oben gemeldet`() {
-        val s = code(Quellen.galerie())
-        for (r in listOf("ereignisse.suche", "ereignisse.thema", "ereignisse.sortierung", "ereignisse.mehrLaden")) {
-            assert(s.contains(r)) { "Rückruf $r fehlt — der Wert käme nie beim Server an" }
-        }
-        // Die Themen kommen vom Server, NICHT aus der geladenen Seite —
-        // abgeleitet schrumpfte die Liste beim Blaettern.
-        //
-        // Frueher stand die Regel als Parameter `themes: List<String>` im
-        // Bildschirm. Seit die Bildschirme ihren Zustand selbst abholen
-        // (Nachtrag 96/115) ist es ein Feld des Galerie-Zustands. Geprueft
-        // wird deshalb die ABSICHT — Herkunft Zustand, keine eigene Ableitung
-        // aus `sets` — statt der damaligen Schreibweise.
-        assert(Regex("""\w+\.galleryThemes""").containsMatchIn(s)) {
-            "Die Themenliste kommt nicht mehr aus dem Zustand (…galleryThemes)"
-        }
-        assert(!Regex("""themes[^\n]*=[^\n]*\bsets\b""").containsMatchIn(s)) {
-            "Die Themenliste wird aus `sets` abgeleitet — dann schrumpft sie beim Blättern"
-        }
-    }
-
-    @Test
-    fun `die Sortierwerte sind die des Servers`() {
-        val s = code(Quellen.galerie())
-        // Genau die Schlüssel aus SET_SORTS (utils/handlers.ts). Ein Wert, den
-        // der Server nicht kennt, fiele dort still auf die Vorgabe zurück —
-        // die Sortierung sähe aus, als täte sie nichts.
-        for (w in listOf("added_desc", "added_asc", "name_asc", "num_asc",
-                         "year_desc", "price_desc", "price_asc", "qty_desc", "qty_asc")) {
-            assert(s.contains("\"$w\"")) { "Sortierwert $w fehlt in der Auswahl" }
-        }
-    }
 
     /**
      * Sonst läge die Antwort eines Filters unter demselben Schlüssel wie die volle

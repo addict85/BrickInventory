@@ -1,0 +1,17 @@
+Gegenprobe: ein gemessenes WLAN gilt als WLAN
+Modul: core-data
+Test: ch.brickinventoryapp.data.VorschauGeraetTest
+Rot: ein gemessenes WLAN
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzlage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzlage.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzlage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzlage.kt
+@@ -43,7 +43,7 @@
+                 // Tablet in der Dockingstation genau das, was „zu Hause" meint.
+                 faehig.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                     faehig.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ->
+-                    if (gemessen) Art.MOBIL else Art.WLAN
++                    if (gemessen && false) Art.MOBIL else Art.WLAN
+                 // Etwas anderes (Bluetooth-Tethering, VPN ohne erkennbaren
+                 // Untergrund): vorsichtig als Mobilfunk behandeln. Bei einer
+                 // Einstellung, die Datenvolumen kostet, ist die Vorgabe „lieber

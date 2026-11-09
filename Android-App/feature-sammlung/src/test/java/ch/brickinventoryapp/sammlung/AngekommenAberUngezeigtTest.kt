@@ -34,7 +34,8 @@ import ch.brickinventoryapp.testing.Quellen
  * — zeigt SIE den Wert, ist es eine Luecke; zeigt ihn keiner von beiden, ist
  * es Ballast.
  *
- * Der Test liest nur Quelltext: kein Geraet, kein Compose.
+ * Die Zahl der Anleitungen im Kopf der Galerie prüft GalerieMeldetNachObenTest (app)
+ * gezeichnet; das Protokoll liest dieser Test noch im Quelltext.
  */
 class AngekommenAberUngezeigtTest {
 
@@ -67,20 +68,5 @@ class AngekommenAberUngezeigtTest {
         val src = Quellen.ohneKommentare(Quellen.lies("verwaltung/ui/screens/MonitoringProtokoll.kt"))
         assert(src.contains("versteckteStufen")) { "Der Stufenfilter des Protokolls fehlt" }
         assert(src.contains("R.string.admin_log_search")) { "Das Suchfeld des Protokolls fehlt" }
-    }
-
-    /**
-     * Die Galerie zeigt die Zahl der Anleitungen.
-     *
-     * Die Weboberflaeche zeigt im Kopf vier Zahlen (02-gallery.js: `hs-sets`,
-     * `hs-parts`, `hs-minifigs`, `hs-instr`), die App zeigte drei davon plus
-     * die Einheiten. `total_instructions` kam mit und wurde nirgends gelesen.
-     */
-    @Test
-    fun `die Galerie zeigt die Zahl der Anleitungen`() {
-        val src = Quellen.ohneKommentare(Quellen.lies("sammlung/ui/screens/GalleryScreen.kt"))
-        assert(src.contains("stats.totalInstructions")) {
-            "Der Kopf der Galerie zeigt die Anleitungen nicht — die Weboberflaeche tut es"
-        }
     }
 }

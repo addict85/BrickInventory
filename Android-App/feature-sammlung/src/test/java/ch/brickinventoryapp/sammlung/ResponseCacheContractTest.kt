@@ -164,45 +164,6 @@ class MinifigImageFieldTest {
 }
 
 /**
- * Bild-Nebenläufigkeit des gemeinsamen Coil-Clients.
- *
- * Der OkHttpClient hinter dem ImageLoader ist eine einzige, app-weit geteilte
- * Instanz (siehe MainActivity). Eine für den Katalog gedachte Drosselung
- * (3 Verbindungen pro Host) traf dadurch auch die Galerie: Bei einer
- * Kachelwand mit mehr als drei gleichzeitigen Bildanfragen an denselben Host
- * standen die übrigen in einer Warteschlange, und ein Wegscrollen liess Coil
- * die wartende Anfrage abbrechen — die Kachel blieb dauerhaft leer.
- */
-class ImageConcurrencyConfigTest {
-
-    private fun read(rel: String): String {
-        val f = File(Quellen.wurzel, rel)
-        assert(f.exists()) { "Datei nicht gefunden: $rel" }
-        return f.readText()
-    }
-
-    @Test
-    fun `Bild-Nebenläufigkeit ist nicht zu eng für eine Kachelwand`() {
-        val src = Quellen.di()
-        val perHost = Regex("""maxRequestsPerHost\s*=\s*(\d+)""").find(src)
-        val total   = Regex("""maxRequests\s*=\s*(\d+)(?!PerHost)""").find(src)
-        assertNotNull("maxRequestsPerHost nicht gefunden", perHost)
-        assertNotNull("maxRequests nicht gefunden", total)
-
-        val perHostVal = perHost!!.groupValues[1].toInt()
-        val totalVal = total!!.groupValues[1].toInt()
-
-        // Drei war zu eng — Regression, die zu leeren Galerie-Kacheln führte.
-        assert(perHostVal >= 6) { "maxRequestsPerHost=$perHostVal ist zu eng für eine Kachelwand" }
-        // Weiterhin klar unter den OkHttp-Standardwerten (5 Host / 64 gesamt
-        // wären ohne diese Einstellung aktiv) — die Drosselung für den
-        // Katalog auf langsamen Verbindungen bleibt bestehen, nur nicht mehr
-        // eng genug, um die Galerie zu verhungern.
-        assert(totalVal in perHostVal..32) { "maxRequests=$totalVal wirkt nicht mehr wie eine bewusste Drosselung" }
-    }
-}
-
-/**
  * Wiederholversuch für Galerie-Kacheln nach einem Ladefehler.
  *
  * Beobachtet: Kacheln blieben leer, das Bild erschien aber sofort, sobald man
@@ -239,39 +200,6 @@ class GalleryImageRetryTest {
         }
         assert(src.contains("kotlinx.coroutines.delay(1000)")) {
             "Der Wiederholversuch sollte verzögert erfolgen, nicht sofort im selben Moment"
-        }
-    }
-}
-
-/**
- * Browser-ähnliche Kennung für Bildanfragen an fremde Hosts.
- *
- * Weder die breitere Warteschlange noch der Wiederholversuch hatten eine
- * Wirkung — das spricht gegen einen transienten Fehler und für eine
- * PERSISTENTE Ablehnung, die bei jedem Versuch neu greift. OkHttps
- * Standard-User-Agent identifiziert die Anfrage eindeutig als
- * Nicht-Browser-Client; Cloudflare vor Rebrickables CDN kann solche Anfragen
- * dauerhaft blockieren oder mit einer HTML-Challenge statt des Bildes
- * beantworten.
- */
-class ImageRequestHeadersTest {
-
-    private fun read(rel: String): String {
-        val f = File(Quellen.wurzel, rel)
-        assert(f.exists()) { "Datei nicht gefunden: $rel" }
-        return f.readText()
-    }
-
-    /** Was der Wächter tut, prüft BildHostWaechterTest (core-netz); hier nur, dass er drin ist. */
-    @Test
-    fun `der Bild-Client laeuft ueber den Host-Waechter und folgt keiner Umleitung selbst`() {
-        val src = Quellen.di()
-        val fn = src.substring(src.indexOf("fun provideImageOkHttpClient")).lines()
-            .joinToString("\n") { line -> if (line.trim().startsWith("//")) "" else line }
-        assert(fn.contains("BildHostWaechter")) { "Der Bild-Client lädt ohne Host-Wächter" }
-        assert(fn.contains(".followRedirects(false)")) { "OkHttp folgte Umleitungen am Wächter vorbei" }
-        assert(fn.contains("maxRequestsPerHost")) {
-            "Die Nebenläufigkeits-Drosselung aus der vorigen Runde darf nicht verloren gegangen sein"
         }
     }
 }
