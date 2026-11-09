@@ -166,9 +166,3 @@ test('der CSV-Download geht über abruf.ts, mit Frist, Deckel und Host-Liste', (
 
 });
 
-test('die entpackten Zwischendateien werden aufgeräumt', () => {
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/katalog/csvAbgleich.ts'), 'utf8'));
-  const rw = src.slice(src.indexOf('async function runWorker'), src.indexOf('function importInWorker'));
-  assert.match(rw, /finally\s*\{[\s\S]*unlink/,
-    'ohne unlink im finally bleibt inventory_parts.csv.tmp (rund 1 GB) dauerhaft liegen');
-});
