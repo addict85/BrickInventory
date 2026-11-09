@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.data.api
+package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.model.data.model.Fehlercode
 import ch.brickinventoryapp.ressourcen.R

@@ -3,7 +3,7 @@ package ch.brickinventoryapp.zustand.ui.viewmodel
 import android.content.Context
 import androidx.core.net.toUri
 import ch.brickinventoryapp.data.Anmeldestand
-import ch.brickinventoryapp.data.api.fehlerTextZuCode
+import ch.brickinventoryapp.data.repository.fehlerTextZuCode
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.zustand.ui.fehlerTextArgument
 import ch.brickinventoryapp.zustand.ui.fehlerTextId

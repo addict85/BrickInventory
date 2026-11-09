@@ -3,9 +3,9 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.FehlercodeTest
 Rot: Upload-Sperre, Verbindungsgrenze
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/api/FehlercodeTexte.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/api/FehlercodeTexte.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/api/FehlercodeTexte.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/api/FehlercodeTexte.kt
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/FehlercodeTexte.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/FehlercodeTexte.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/FehlercodeTexte.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/FehlercodeTexte.kt
 @@ -10,7 +10,6 @@ import ch.brickinventoryapp.ressourcen.R
   */
  fun fehlerTextZuCode(code: Fehlercode?): Int? = when (code) {

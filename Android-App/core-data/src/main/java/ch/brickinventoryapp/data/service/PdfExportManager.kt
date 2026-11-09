@@ -26,7 +26,7 @@ import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
-import ch.brickinventoryapp.data.api.fehlerTextZuCode
+import ch.brickinventoryapp.data.repository.fehlerTextZuCode
 import ch.brickinventoryapp.data.util.LanguageManager
 import ch.brickinventoryapp.data.util.Protokoll
 import ch.brickinventoryapp.ressourcen.R
