@@ -32,6 +32,12 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     implementation(libs.sqlcipher.android)
     ksp(libs.androidx.room.compiler)
+    // Ohne die übrigen Bibliotheken von core-data griffe Room auf arch-core 2.0.0 zurück;
+    // geprüft ist nur die Fassung, die der Rest der App ohnehin nimmt.
+    constraints {
+        implementation(libs.androidx.arch.core.common)
+        implementation(libs.androidx.arch.core.runtime)
+    }
 
     testImplementation(project(":core-testing"))
     // Room-Tests laufen unter Robolectric (BestandMigrationTest).

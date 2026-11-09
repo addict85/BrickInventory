@@ -49,8 +49,9 @@ import ch.brickinventoryapp.testing.Quellen
  *      rot „Schichtung der Kernmodule: core-zustand hängt an [core-ui]“
  *   Q  gegenproben/gemeinsam-haengt-an-daten.patch: core-ui-bestand bindet core-data ein →
  *      rot „Schichtung der Kernmodule: core-ui-bestand hängt an [core-data]“
- *   U  gegenproben/offline-haengt-an-daten.patch: core-offline bindet core-data ein →
- *      rot „Schichtung der Kernmodule: core-offline hängt an [core-data]“
+ *   U  gegenproben/offline-haengt-an-daten.patch: core-offline bindet core-ui ein →
+ *      rot „Schichtung der Kernmodule: core-offline hängt an [core-ui]“ (core-data
+ *      ginge nicht: Den Zyklus bricht schon Gradle ab, ohne Testbericht)
  *   T  gegenproben/bereich-kennt-bereich.patch: feature-teile bindet feature-katalog ein →
  *      rot „feature-teile hängt an feature-katalog“
  *   R  gegenproben/ui-kennt-ansicht.patch: eine core-ui-Datei importiert eine Ansicht aus

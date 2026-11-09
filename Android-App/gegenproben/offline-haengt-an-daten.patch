@@ -1,4 +1,4 @@
-Gegenprobe: core-offline bindet core-data ein; die Ablage kennte das Netz und die Repositories
+Gegenprobe: core-offline bindet core-ui ein; die Ablage kennte die Oberfläche
 Modul: app
 Test: ch.brickinventoryapp.app.ModulgrenzenTest
 Rot: Schichtung der Kernmodule
@@ -10,7 +10,7 @@ diff --git a/Android-App/core-offline/build.gradle.kts b/Android-App/core-offlin
      api(project(":core-model"))
      // Der Schlüssel der Datenbank kommt aus dem Ablageschlüssel.
      implementation(project(":core-sicherheit"))
-+    implementation(project(":core-data"))
++    implementation(project(":core-ui"))
      implementation(libs.androidx.core.ktx)
      implementation(libs.kotlinx.coroutines.android)
      implementation(libs.androidx.room.runtime)
