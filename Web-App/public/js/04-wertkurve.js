@@ -6,7 +6,7 @@ import { api } from './01-api.js';
 import { ico, G, setzeHtml } from './01-dom.js';
 import { fmtDatum } from './01-format.js';
 import { scopeMode } from './14-scope.js';
-import { CURRENCY, _pnlCache } from './00-zustand.js';
+import { CURRENCY, } from './00-zustand.js';
 import { diagrammBreite, portfolioChartSVG, zeitpunkt, diagrammLeer } from './01-diagramme.js';
 
 // Wertentwicklung des Bestands: Zeitraum, Kurve und ihre Bezugslinie (Einstand) aus den Kennzahlen.

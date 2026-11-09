@@ -1,11 +1,13 @@
 /**
  * Die zwei Kaufadressen am Set-Detail: BrickLink und Preisvergleich.
  * Ausführlich: docs/begruendungen/test/kaufadressen.test.js.md#kopf
+ *
+ * Gegenprobe (09.11.2026): suchUrl() ohne encodeURIComponent → rot: „die Suchadresse maskiert, was hineingeht“.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const path   = require('node:path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const P = require('./helpers/sources').buildAndRequire()('src/katalog/preisvergleich.js');
 
@@ -30,7 +32,7 @@ test('die Variante faellt weg, der Name kommt dazu', () => {
   // „-1" ist eine Rebrickable-Eigenheit und steht auf keiner Verpackung; ein
   // Preisvergleicher findet damit nichts. Der Name dagegen ist genau das,
   // wonach dort gesucht wird.
-  const mit  = decodeURIComponent(P.fuerSet('75192-1', 'Millennium Falcon'));
+  const mit = decodeURIComponent(P.fuerSet('75192-1', 'Millennium Falcon'));
   assert.ok(mit.includes('75192 '), `Die Nummer fehlt oder traegt noch die Variante: ${mit}`);
   assert.ok(!mit.includes('75192-1'), 'Die Variante „-1" steht noch drin');
   assert.ok(mit.includes('Millennium Falcon'), 'Der Name fehlt');
@@ -49,8 +51,10 @@ test('die Adresse des Preisvergleichs steht genau an EINER Stelle je Seite', () 
   const wurzel = path.join(__dirname, '..', '..');
   const treffer = [];
   for (const [basis, filter] of [
-    [path.join(wurzel, 'Web-App'), (f) => /\.(ts|js)$/.test(f)],
-    ...require('./helpers/android').quellwurzeln().map((w) => [w, (f) => f.endsWith('.kt')]),
+    [path.join(wurzel, 'Web-App'), f => /\.(ts|js)$/.test(f)],
+    ...require('./helpers/android')
+      .quellwurzeln()
+      .map(w => [w, f => f.endsWith('.kt')]),
   ]) {
     const stapel = [basis];
     while (stapel.length) {
@@ -69,12 +73,27 @@ test('die Adresse des Preisvergleichs steht genau an EINER Stelle je Seite', () 
       }
     }
   }
-  assert.deepEqual(treffer.sort(), [
-    path.join('Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'ui', 'screens', 'ComparisonScreen.kt'),
-    path.join('Web-App', 'test', 'kaufadressen.test.js'),
-    path.join('Web-App', 'src/katalog/preisvergleich.ts'),
-  ].sort(),
-    'Die Adresse des Preisvergleichs steht an einer weiteren Stelle. Entweder '
-    + 'kommt sie dort vom Server (Set-Detail: preisvergleich_url), oder der '
-    + 'neue Ort gehoert hier eingetragen — sonst laufen zwei Fassungen auseinander.');
+  assert.deepEqual(
+    treffer.sort(),
+    [
+      path.join(
+        'Android-App',
+        'feature-sammlung',
+        'src',
+        'main',
+        'java',
+        'ch',
+        'brickinventoryapp',
+        'sammlung',
+        'ui',
+        'screens',
+        'ComparisonScreen.kt',
+      ),
+      path.join('Web-App', 'test', 'kaufadressen.test.js'),
+      path.join('Web-App', 'src/katalog/preisvergleich.ts'),
+    ].sort(),
+    'Die Adresse des Preisvergleichs steht an einer weiteren Stelle. Entweder ' +
+      'kommt sie dort vom Server (Set-Detail: preisvergleich_url), oder der ' +
+      'neue Ort gehoert hier eingetragen — sonst laufen zwei Fassungen auseinander.',
+  );
 });

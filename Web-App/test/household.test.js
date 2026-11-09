@@ -292,7 +292,9 @@ test('die Oberfläche zeigt Besitzer und Kontoauswahl nur im Haushalt', () => {
     'Das ganze Set darf nicht mehr auf einmal verschoben werden',
   );
   const ownerCols = (
-    adm.match(/erfassung\.mitglieder\.length > 1 \? (?:html)?`<th>\$\{t(?:Raw)?\('household\.owner'\)\}<\/th>` : ''/g) || []
+    adm.match(
+      /erfassung\.mitglieder\.length > 1 \? (?:html)?`<th>\$\{t(?:Raw)?\('household\.owner'\)\}<\/th>` : ''/g,
+    ) || []
   ).length;
   assert.equal(ownerCols, 2, 'Eigentümer-Spalte fehlt in einem der beiden Kaufpreis-Dialoge');
 });

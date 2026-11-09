@@ -5,7 +5,6 @@ import { G } from './01-dom.js';
 import { fmtPct } from './01-format.js';
 import { toast } from './01-meldungen.js';
 import { gibStart, importZaehler, protokollZeile, csvPollAktiv, addCsvLog, hideProgress, setProgBar, showProgress, setzeCsvPollAktiv } from './01-fortschritt.js';
-import { _lastImportAt, _pnlCache } from './00-zustand.js';
 import { confirmDelete } from './01-rueckfrage.js';
 import { loadGallery } from './02-gallery.js';
 

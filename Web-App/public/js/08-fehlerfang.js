@@ -33,12 +33,12 @@ function vonUns(fehler) {
 }
 
 export function bindGlobalErrorHandlers() {
-  window.addEventListener('unhandledrejection', (ev) => {
+  window.addEventListener('unhandledrejection', ev => {
     if (vonUns(ev.reason)) meldeUnerwartet('promise', ev.reason);
   });
   // Ressourcenfehler (Bilder) laufen ebenfalls über 'error', blubbern aber nicht bis window hoch — hier
   // kommen nur echte Skriptfehler an.
-  window.addEventListener('error', (ev) => {
+  window.addEventListener('error', ev => {
     const fehler = ev.error || ev.message;
     if (vonUns(ev.error)) meldeUnerwartet('script', fehler);
   });

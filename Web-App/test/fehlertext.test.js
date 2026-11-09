@@ -1,6 +1,9 @@
 /**
  * Ein gefangener Fehler ergibt IMMER einen lesbaren Text.
  * Ausführlich: docs/begruendungen/test/fehlertext.test.js.md#kopf
+ *
+ * Gegenprobe (09.11.2026): in fehlertext() die Zeile für Error-artige Objekte ohne Prototyp gestrichen
+ * → rot: „fehlertext liefert nie "undefined"“.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -12,8 +15,11 @@ test('fehlertext liefert nie "undefined"', () => {
 
   // ── Die vier Faelle, die vorher „undefined" ergaben ──────────────────────
   assert.equal(fehlertext('kaputt'), 'kaputt', 'eine geworfene Zeichenkette ist die Meldung');
-  assert.equal(fehlertext({ message: 'aus einem Fremdmodul' }), 'aus einem Fremdmodul',
-    'Error-artige Objekte ohne Error-Prototyp zaehlen auch — so kommen sie ueber Prozessgrenzen');
+  assert.equal(
+    fehlertext({ message: 'aus einem Fremdmodul' }),
+    'aus einem Fremdmodul',
+    'Error-artige Objekte ohne Error-Prototyp zaehlen auch — so kommen sie ueber Prozessgrenzen',
+  );
   assert.equal(fehlertext(undefined), 'Unbekannter Fehler');
   assert.equal(fehlertext(null), 'Unbekannter Fehler');
 
@@ -50,8 +56,11 @@ test('fehlertext gibt NICHT das ganze Objekt preis', () => {
 test('fehlerCode liest Node- und Postgres-Codes', () => {
   assert.equal(fehlerCode(Object.assign(new Error('x'), { code: 'ECONNREFUSED' })), 'ECONNREFUSED');
   // Postgres liefert numerische Codes (23505 = Eindeutigkeitsverletzung).
-  assert.equal(fehlerCode(Object.assign(new Error('x'), { code: 23505 })), '23505',
-    'ein numerischer Code wird zur Zeichenkette — sonst schluege jeder Vergleich fehl');
+  assert.equal(
+    fehlerCode(Object.assign(new Error('x'), { code: 23505 })),
+    '23505',
+    'ein numerischer Code wird zur Zeichenkette — sonst schluege jeder Vergleich fehl',
+  );
   // Ohne Code ist undefined die richtige Antwort: Jeder Vergleich damit
   // schlaegt sauber fehl, statt zufaellig zu treffen.
   assert.equal(fehlerCode(new Error('x')), undefined);

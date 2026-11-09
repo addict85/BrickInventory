@@ -4,7 +4,6 @@ import { api } from './01-api.js';
 import { G } from './01-dom.js';
 import { fmtN } from './01-format.js';
 import { toast } from './01-meldungen.js';
-import { _settingsCache } from './00-zustand.js';
 import { _gutscheine, ladeGutscheine } from './17-gutscheine.js';
 
 // Guthaben bei LEGO auf Knopfdruck abfragen. Die Grenze (eine Anfrage je 30 s über alle Benutzer) setzt der
@@ -56,10 +55,13 @@ async function eineAbfrage(id) {
 function meldeErfolg(antwort) {
   const v = antwort.voucher;
   if (!v) return;
-  toast(tRaw('vouchers.balance_done', {
-    nummer: v.number,
-    betrag: antwort.angezeigt || fmtN(v.amount, v.currency),
-  }), 'success');
+  toast(
+    tRaw('vouchers.balance_done', {
+      nummer: v.number,
+      betrag: antwort.angezeigt || fmtN(v.amount, v.currency),
+    }),
+    'success',
+  );
   // Eine stillschweigend geänderte Währung wäre eine geänderte Summe ohne Hinweis — die Liste rechnet nur,
   // wenn alle Gutscheine dieselbe tragen.
   if (antwort.waehrung_geaendert) {
@@ -101,17 +103,29 @@ export async function guthabenAlleAbfragen() {
     toast(tRaw('vouchers.balance_keine'), 'info');
     return;
   }
-  let fertig = 0, fehler = 0;
+  let fertig = 0,
+    fehler = 0;
   for (const g of dran) {
     let erledigt = false;
     for (let versuch = 1; !erledigt && versuch <= ABSTAND_VERSUCHE; versuch++) {
       if (status) {
-        status.textContent = tRaw('vouchers.balance_progress',
-          { n: fertig + fehler + 1, total: dran.length, nummer: g.number });
+        status.textContent = tRaw('vouchers.balance_progress', {
+          n: fertig + fehler + 1,
+          total: dran.length,
+          nummer: g.number,
+        });
       }
       const r = await eineAbfrage(g.id);
-      if (r.art === 'ok') { fertig++; meldeErfolg(r.antwort); erledigt = true; break; }
-      if (r.art === 'abstand') { await warteSichtbar(r.wartenSek, g.number); continue; }
+      if (r.art === 'ok') {
+        fertig++;
+        meldeErfolg(r.antwort);
+        erledigt = true;
+        break;
+      }
+      if (r.art === 'abstand') {
+        await warteSichtbar(r.wartenSek, g.number);
+        continue;
+      }
       fehler++;
       toast(r.fehler, 'error');
       erledigt = true;
@@ -123,11 +137,13 @@ export async function guthabenAlleAbfragen() {
         return;
       }
     }
-    if (!erledigt) { fehler++; toast(tRaw('vouchers.balance_belegt'), 'error'); }
+    if (!erledigt) {
+      fehler++;
+      toast(tRaw('vouchers.balance_belegt'), 'error');
+    }
   }
   if (status) status.textContent = '';
-  toast(tRaw('vouchers.balance_alle_fertig', { fertig, fehler }),
-    fehler ? 'info' : 'success');
+  toast(tRaw('vouchers.balance_alle_fertig', { fertig, fehler }), fehler ? 'info' : 'success');
   await ladeGutscheine();
 }
 

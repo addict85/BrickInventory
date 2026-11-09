@@ -72,7 +72,7 @@ const BASIS_DATEN = ['auftrag_exklusiv', 'global_settings', 'gutschein_guthaben_
 
 /** Hauptversion des pg_dump im Pfad; das Abbild unterscheidet sich zwischen Versionen. */
 function pgDumpVersion() {
-  const { execFileSync } = require('child_process');
+  const { execFileSync } = require('node:child_process');
   return Number((execFileSync('pg_dump', ['--version'], { encoding: 'utf8' }).match(/\) (\d+)\./) || [])[1]) || null;
 }
 
@@ -82,7 +82,7 @@ function pgDumpVersion() {
  * @param {string} url
  */
 function basisText(url) {
-  const { execFileSync } = require('child_process');
+  const { execFileSync } = require('node:child_process');
   /** @param {string[]} args */
   const dump = (args) => execFileSync('pg_dump', [...args, '--no-owner', '--no-privileges', '--no-comments', url],
     { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });

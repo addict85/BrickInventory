@@ -3,9 +3,7 @@ import { t, tRaw } from '../i18n.js';
 import { fmtDatum } from './01-format.js';
 import { fehlerMeldung, api } from './01-api.js';
 import { ico, G, knopfBesetzt, setzeHtml } from './01-dom.js';
-import { _updateLangSelect } from './01-konto.js';
 import { toast } from './01-meldungen.js';
-import { _settingsCache } from './00-zustand.js';
 import { html, sichereUrl, ungeprueft } from './00-escapen.js';
 import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
 
