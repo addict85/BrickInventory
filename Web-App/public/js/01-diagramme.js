@@ -100,7 +100,6 @@ function achsenLage(teilung, cur, fs, W, rechts) {
 // Achse statt nach Index — sonst stünde ein Monat so breit da wie ein Tag.
 
 /** Achsenteilung: erster und letzter Strich, dazwischen alle Werte. @typedef {{ von: number, bis: number, werte: number[] }} Teilung */
-/** Ein Punkt des Fadenkreuzes: x in viewBox-Einheiten, je Reihe ein y, Beschriftungszeilen. @typedef {{ x: number, y: (number | null)[], t: string[] }} Punkt */
 
 /**
  * Teilung nach 1-2-5 über [min, max] mit höchstens etwa `ziel` Strichen.

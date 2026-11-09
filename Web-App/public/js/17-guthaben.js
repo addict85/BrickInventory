@@ -4,7 +4,7 @@ import { api } from './01-api.js';
 import { G } from './01-dom.js';
 import { fmtN } from './01-format.js';
 import { toast } from './01-meldungen.js';
-import { _gutscheine, ladeGutscheine } from './17-gutscheine.js';
+import { gutscheine, ladeGutscheine } from './17-gutscheine.js';
 
 // Guthaben bei LEGO auf Knopfdruck abfragen. Die Grenze (eine Anfrage je 30 s über alle Benutzer) setzt der
 // Server; die Oberfläche befolgt sie: Bei 429 wartet sie wartenSek ab und fragt dieselbe Karte erneut. Eine
@@ -73,7 +73,7 @@ function meldeErfolg(antwort) {
 /** @param {string} id */
 export async function guthabenAbfragen(id) {
   const status = G('vouchers-balance-status');
-  const g = _gutscheine.find(x => String(x.id) === String(id));
+  const g = gutscheine().find(x => String(x.id) === String(id));
   if (status) status.textContent = tRaw('vouchers.balance_running');
   for (let versuch = 1; ; versuch++) {
     const r = await eineAbfrage(id);
@@ -98,7 +98,7 @@ export async function guthabenAbfragen(id) {
 /** Alle Karten mit PIN, eine nach der anderen. */
 export async function guthabenAlleAbfragen() {
   const status = G('vouchers-balance-status');
-  const dran = _gutscheine.filter(g => g.pin);
+  const dran = gutscheine().filter(g => g.pin);
   if (!dran.length) {
     toast(tRaw('vouchers.balance_keine'), 'info');
     return;

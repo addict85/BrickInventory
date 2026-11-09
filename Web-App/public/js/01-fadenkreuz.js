@@ -1,7 +1,7 @@
 import { esc, html, ungeprueft } from './00-escapen.js';
 
 // Das Fadenkreuz aller Diagramme: Zeigen, Tippen und Pfeiltasten über dieselben Punkte am SVG.
-/** @typedef {import('./01-diagramme.js').Punkt} Punkt */
+/** Ein Punkt des Fadenkreuzes: x in viewBox-Einheiten, je Reihe ein y, Beschriftungszeilen. @typedef {{ x: number, y: (number | null)[], t: string[] }} Punkt */
 /**
  * Das Fadenkreuz: unsichtbar, bis jemand zeigt, tippt oder mit den Pfeiltasten wandert. Die Punkte stehen als
  * JSON am SVG (x in viewBox-Einheiten, je Reihe ein y, dazu die Beschriftung), damit eine Steuerung für alle

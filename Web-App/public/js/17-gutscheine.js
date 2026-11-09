@@ -16,7 +16,9 @@ import { bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
 
 /** Die zuletzt geladene Liste — für die Knöpfe, die auf eine Zeile zeigen. */
 /** @type {import('../../frontend-typen/vertrag').Gutschein[]} */
-export let _gutscheine = [];
+let _gutscheine = [];
+/** Die zuletzt geladenen Gutscheine, zum Lesen für die Guthabenabfrage. */
+export const gutscheine = () => _gutscheine;
 
 /** Die id des Gutscheins, der gerade bearbeitet wird; null = neuer Eintrag. */
 /** @type {number | string | null} */
