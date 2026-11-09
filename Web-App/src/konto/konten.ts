@@ -6,6 +6,7 @@ import * as passkeyRepo from './repository/passkeys';
 import { BCRYPT_ROUNDS, leereTokenCache, revokeAllSessions, revokeAllTokens } from './auth';
 import { erhoeheSitzungsVersion } from './sitzungsVersion';
 import { emailGueltig } from '../infra/validate';
+import { entferneStartpasswort } from '../infra/startpasswort';
 
 export { LETZTER_VERWALTER, aendereProfil, aktivesKontoNachEmail, emailVergeben, erneuereEmailTokenWennFrei, kontoExistiert, kontoKurz, kontoMitEmail, kontoNachRuecksetzToken, kontoVoll, legeQrTokenAn, loescheEigenesKonto, loescheKonto, loeseQrTokenEin, merkeEmailNeu, mussPasswortAendern, nameVergeben, nameZuEmailToken, offeneRegistrierungen, raeumeQrTokensAuf, schalteRegistrierungFrei, setzeRuecksetzTokenWennFrei, tokenStand, zugaengeDesKontos, zugaengeLoeschen } from './repository/konten';
 
@@ -46,6 +47,10 @@ async function zugaengeBeenden(uid: number): Promise<void> {
   await revokeAllSessions(uid);
 }
 
+async function startpasswortErledigt(uid: number): Promise<void> {
+  if ((await repo.kontoKurz(uid))?.is_admin) entferneStartpasswort();
+}
+
 export async function setzeFremdesPasswort(uid: number, passwort: unknown): Promise<boolean> {
   if (!await repo.setzePasswortHash(uid, await hashe(passwort))) return false;
   await zugaengeBeenden(uid);
@@ -58,6 +63,7 @@ export async function aendereEigenesPasswort(uid: number, passwort: unknown,
                                              o: { passkeysWiderrufen?: boolean } = {}): Promise<void> {
   await repo.setzeEigenesPasswort(uid, await hashe(passwort));
   await zugaengeBeenden(uid);
+  await startpasswortErledigt(uid);
   if (o.passkeysWiderrufen) await passkeyRepo.loescheAlleDesKontos(uid);
 }
 
@@ -65,6 +71,7 @@ export async function aendereEigenesPasswort(uid: number, passwort: unknown,
 export async function setzePasswortZurueck(uid: number, passwort: unknown): Promise<void> {
   await repo.setzePasswortNachRuecksetzen(uid, await hashe(passwort));
   await zugaengeBeenden(uid);
+  await startpasswortErledigt(uid);
   await passkeyRepo.loescheAlleDesKontos(uid);
 }
 

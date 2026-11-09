@@ -32,7 +32,7 @@ Bedienung.
 | Variable | Wirkung |
 |---|---|
 | `APP_BASE_URL` | Basis-URL für Links in Mails. **Sollte gesetzt werden** — ohne sie stammt der Host aus dem Request-Header. **Überholt durch Abschnitt 25 und 38:** Der Host kommt nie aus dem Request; ohne `APP_BASE_URL` startet der Web-Prozess im Betrieb nicht. |
-| `ADMIN_PASSWORD` | Passwort des beim ersten Start angelegten Admins. Ohne die Variable wird ein Zufallspasswort erzeugt und einmalig ins Log geschrieben. |
+| `ADMIN_PASSWORD` | Passwort des beim ersten Start angelegten Admins. Ohne die Variable wird ein Zufallspasswort erzeugt und in `data/admin-startpasswort.txt` (0600) abgelegt (Abschnitt 46). |
 | `REQUIRE_DB=1` | Nur für CI: Tests dürfen sich nicht mehr überspringen, wenn keine Datenbank erreichbar ist. |
 
 `PG_POOL_MAX` ist aus Dockerfile und compose.yaml **entfernt**. Die App rechnet

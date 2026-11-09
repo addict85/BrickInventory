@@ -14,6 +14,7 @@ import { LOCKS } from '../src/infra/lockNamespaces';
 import { fehlerCode, meldeFehler, logAndContinue } from '../src/infra/fehler';
 import { konfig, datenbankVerbindung } from '../src/infra/konfig';
 import { passwortMangel } from '../src/infra/passwortRegel';
+import { entferneStartpasswort, schreibeStartpasswort } from '../src/infra/startpasswort';
 
 // Alle Abhängigkeiten stehen hier oben: Ein require() im Rumpf versteckt sie
 // und liefert `any`. Ausführlich: docs/begruendungen/db/database.ts.md#importe-am-kopf
@@ -271,42 +272,35 @@ async function initSchema(): Promise<boolean> {
  */
 async function legeAdminAn() {
   const { rows } = await pool.query('SELECT COUNT(*) as c FROM users');
-  if (parseInt(rows[0].c) === 0) {
-    // Aus einer Konstante entschieden, damit der Übersetzer verengen kann.
-    const envPasswort = konfig().adminPasswort;
-    // Dieselbe Regel wie jeder andere Weg; ein schwaches ADMIN_PASSWORD wird
-    // durch ein zufälliges ersetzt, das beim ersten Login zu ändern ist.
-    const mangel = envPasswort !== '' ? passwortMangel(envPasswort, 'admin') : null;
-    if (mangel) console.warn(`⚠️  [start] ADMIN_PASSWORD wird nicht verwendet (${mangel}); ein zufälliges Startpasswort steht unten.`);
-    const useEnvPassword = envPasswort !== '' && !mangel;
-    const plainPassword = useEnvPassword
-      ? envPasswort
-      : crypto.randomBytes(15).toString('base64url'); // 20 Zeichen, URL-sicher
-    // 12 wie BCRYPT_ROUNDS in src/konto/auth.ts: Mit weniger Runden antwortete ein
-    // Fehlversuch gegen „admin“ messbar schneller und verriet das Konto.
-    const hash = bcrypt.hashSync(plainPassword, 12);
-    await pool.query(
-      `INSERT INTO users (username, password_hash, is_admin, is_active, email_verified, must_change_password)
-       VALUES ('admin', $1, true, true, true, $2)`,
-      [hash, !useEnvPassword]
-    );
-    if (useEnvPassword) {
-      console.log('✅ Standard-Admin erstellt (Passwort aus ADMIN_PASSWORD).');
-    } else {
-      // Auf stdout statt console.log: am Protokoll-Abfänger vorbei, nur im Container-Log.
-      // Ausführlich: docs/begruendungen/db/database.ts.md#frueherzurlaufzeitangelegt-banner
-      const banner = [
-        '╔══════════════════════════════════════════════════════════╗',
-        '║  Standard-Admin erstellt — Passwort NUR JETZT sichtbar:    ║',
-        `║    admin / ${plainPassword}`,
-        '║  Bitte nach dem ersten Login sofort ändern                 ║',
-        '║  (Einstellungen → Passwort ändern).                        ║',
-        '╚══════════════════════════════════════════════════════════╝',
-      ];
-      process.stdout.write(banner.join('\n') + '\n');
-    }
+  if (parseInt(rows[0].c) !== 0) {
+    const offen = await pool.query('SELECT 1 FROM users WHERE is_admin AND must_change_password LIMIT 1');
+    if (!offen.rowCount) entferneStartpasswort();
+    return;
   }
-
+  // Aus einer Konstante entschieden, damit der Übersetzer verengen kann.
+  const envPasswort = konfig().adminPasswort;
+  // Dieselbe Regel wie jeder andere Weg; ein schwaches ADMIN_PASSWORD wird
+  // durch ein zufälliges ersetzt, das beim ersten Login zu ändern ist.
+  const mangel = envPasswort !== '' ? passwortMangel(envPasswort, 'admin') : null;
+  if (mangel) console.warn(`⚠️  [start] ADMIN_PASSWORD wird nicht verwendet (${mangel}); es gilt ein zufälliges Startpasswort.`);
+  const useEnvPassword = envPasswort !== '' && !mangel;
+  const plainPassword = useEnvPassword
+    ? envPasswort
+    : crypto.randomBytes(15).toString('base64url'); // 20 Zeichen, URL-sicher
+  // Vor dem Anlegen: Ist die Datei nicht schreibbar, bricht der Start ab, statt
+  // ein Konto mit einem Passwort zu hinterlassen, das niemand kennt.
+  const datei = useEnvPassword ? null : schreibeStartpasswort('admin', plainPassword);
+  // 12 wie BCRYPT_ROUNDS in src/konto/auth.ts: Mit weniger Runden antwortete ein
+  // Fehlversuch gegen „admin“ messbar schneller und verriet das Konto.
+  const hash = bcrypt.hashSync(plainPassword, 12);
+  await pool.query(
+    `INSERT INTO users (username, password_hash, is_admin, is_active, email_verified, must_change_password)
+     VALUES ('admin', $1, true, true, true, $2)`,
+    [hash, !useEnvPassword]
+  );
+  if (!datei) console.log('✅ Standard-Admin erstellt (Passwort aus ADMIN_PASSWORD).');
+  else console.log(`✅ Standard-Admin erstellt. Das Startpasswort steht in ${datei} (nur für den Dienst lesbar); `
+    + 'die Datei verschwindet mit dem ersten Passwortwechsel.');
 }
 
 // initSchemaOnce: Erststart und Migrationen unter einem Advisory-Lock
