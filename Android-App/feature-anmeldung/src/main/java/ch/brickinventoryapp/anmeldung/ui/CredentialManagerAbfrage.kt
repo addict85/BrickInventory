@@ -15,7 +15,7 @@ import androidx.credentials.exceptions.NoCredentialException
  * die Passkeys der Domain nur heraus, wenn ihr assetlinks.json diese App nennt
  * (PASSKEY_ANDROID_ZERTIFIKATE auf dem Server).
  */
-class CredentialManagerAbfrage(context: Context) : PasskeyAbfrage {
+internal class CredentialManagerAbfrage(context: Context) : PasskeyAbfrage {
 
     // Die Sprachwahl der App legt einen ContextWrapper um die Activity.
     private val activity: Context = generateSequence(context) { (it as? android.content.ContextWrapper)?.baseContext }

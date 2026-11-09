@@ -1,48 +1,36 @@
-package ch.brickinventoryapp.app.nav
+package ch.brickinventoryapp.anmeldung.ui
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.navigation.compose.*
-import ch.brickinventoryapp.anmeldung.ui.*
-import ch.brickinventoryapp.finanzen.ui.*
-import ch.brickinventoryapp.katalog.ui.*
-import ch.brickinventoryapp.konto.ui.*
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.sammlung.ui.*
-import ch.brickinventoryapp.teile.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.verwaltung.ui.*
-import ch.brickinventoryapp.zustand.ui.*
-import ch.brickinventoryapp.anmeldung.ui.screens.*
-import ch.brickinventoryapp.finanzen.ui.screens.*
-import ch.brickinventoryapp.katalog.ui.screens.*
-import ch.brickinventoryapp.konto.ui.screens.*
-import ch.brickinventoryapp.sammlung.ui.screens.*
-import ch.brickinventoryapp.teile.ui.screens.*
-import ch.brickinventoryapp.ui.screens.*
-import ch.brickinventoryapp.verwaltung.ui.screens.*
 import android.os.Build
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraphBuilder
-import ch.brickinventoryapp.app.*
-import ch.brickinventoryapp.anmeldung.ui.CredentialManagerAbfrage
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.composable
+import ch.brickinventoryapp.anmeldung.ui.screens.LoginScreen
 import ch.brickinventoryapp.anmeldung.ui.screens.ServerStartAnzeige
+import ch.brickinventoryapp.anmeldung.ui.screens.SetupScreen
+import ch.brickinventoryapp.anmeldung.ui.viewmodel.AnmeldungViewModel
+import ch.brickinventoryapp.zustand.ui.Screen
 
-/** Navigationsziele der Anmeldung; das AnmeldungViewModel lebt an der Activity. */
-fun NavGraphBuilder.authGraph(u: ZielUmgebung) {
-    einrichtungsZiel(u)
-    anmeldeZiel(u)
+/**
+ * Navigationsziele der Anmeldung. Das ViewModel lebt an der Activity, weil eine
+ * QR-Anmeldung in der Einrichtung beginnt und nach dem Wechsel zur Anmeldung
+ * weiterläuft; die App reicht es herein, gelesen erst beim Zeigen.
+ */
+fun NavGraphBuilder.anmeldungGraph(navController: NavHostController, anmeldung: () -> AnmeldungViewModel) {
+    einrichtungsZiel(navController, anmeldung)
+    anmeldeZiel(navController, anmeldung)
 }
 
 /** Serveradresse eintragen oder per QR-Code übernehmen. */
-private fun NavGraphBuilder.einrichtungsZiel(u: ZielUmgebung) {
-    val navController = u.navController
+private fun NavGraphBuilder.einrichtungsZiel(navController: NavHostController, anmeldung: () -> AnmeldungViewModel) {
     composable<Screen.Setup> {
         // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
         // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
-        val anmeldungVm = u.aktivitaet.anmeldung
+        val anmeldungVm = anmeldung()
         val state by anmeldungVm.state.collectAsStateWithLifecycle()
         SetupScreen(
             currentUrl = state.serverUrl,
@@ -72,15 +60,14 @@ private fun NavGraphBuilder.einrichtungsZiel(u: ZielUmgebung) {
 }
 
 /** Anmelden, Registrieren und Passkey; während der Server startet, sein Fortschritt. */
-private fun NavGraphBuilder.anmeldeZiel(u: ZielUmgebung) {
-    val navController = u.navController
+private fun NavGraphBuilder.anmeldeZiel(navController: NavHostController, anmeldung: () -> AnmeldungViewModel) {
     composable<Screen.Login> {
         // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
         // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
-        val anmeldungVm = u.aktivitaet.anmeldung
+        val anmeldungVm = anmeldung()
         val state by anmeldungVm.state.collectAsStateWithLifecycle()
-        val anmeldung by anmeldungVm.anmeldeState.collectAsStateWithLifecycle()
-        val aktivitaet = androidx.compose.ui.platform.LocalContext.current
+        val anmeldeZustand by anmeldungVm.anmeldeState.collectAsStateWithLifecycle()
+        val aktivitaet = LocalContext.current
         val passkeys = remember(aktivitaet) { CredentialManagerAbfrage(aktivitaet) }
         // Einmal beim Betreten: Steht die Registrierung ueberhaupt offen?
         // Ohne Anmeldung erreichbar — die Frage kommt ja, bevor es ein
@@ -95,21 +82,21 @@ private fun NavGraphBuilder.anmeldeZiel(u: ZielUmgebung) {
             ServerStartAnzeige(serverStart)
         } else LoginScreen(
             serverUrl = state.serverUrl,
-            isLoading = anmeldung.loginLaeuft,
-            error = anmeldung.loginError,
-            qrBestaetigung = anmeldung.qrBestaetigung,
-            codeNoetig = anmeldung.codeNoetig,
-            formular = anmeldung.formular,
-            registrierungOffen = anmeldung.registrierungOffen,
-            kontoLaeuft = anmeldung.laeuft,
-            kontoMeldung = anmeldung.meldung,
-            kontoFehler = anmeldung.fehler,
+            isLoading = anmeldeZustand.loginLaeuft,
+            error = anmeldeZustand.loginError,
+            qrBestaetigung = anmeldeZustand.qrBestaetigung,
+            codeNoetig = anmeldeZustand.codeNoetig,
+            formular = anmeldeZustand.formular,
+            registrierungOffen = anmeldeZustand.registrierungOffen,
+            kontoLaeuft = anmeldeZustand.laeuft,
+            kontoMeldung = anmeldeZustand.meldung,
+            kontoFehler = anmeldeZustand.fehler,
             onLogin = { user, pw, code -> anmeldungVm.login(user, pw, code) },
-            vollerZugriff = anmeldung.vollerZugriff,
+            vollerZugriff = anmeldeZustand.vollerZugriff,
             onVollerZugriff = { anmeldungVm.setzeVollerZugriff(it) },
             // Die Abfrage hängt an der Activity (Auswahldialog des Systems); das ViewModel lebt länger.
             onPasskey = { anmeldungVm.passkeyAnmelden(passkeys) },
-            passkeyStattCode = anmeldung.passkeyStattCode,
+            passkeyStattCode = anmeldeZustand.passkeyStattCode,
             onPasskeyStattCode = { user, pw -> anmeldungVm.passkeyStattCode(user, pw, passkeys) },
             onFormular = { anmeldungVm.zeigeAnmeldeFormular(it) },
             onRegistrieren = { u, e, v, n, pw -> anmeldungVm.registriere(u, e, v, n, pw) },

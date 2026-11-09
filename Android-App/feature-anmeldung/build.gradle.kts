@@ -1,6 +1,6 @@
 // Anmelden, Server einrichten und QR-Anmeldung.
-// Hängt nur an core-*; was ein anderer Bereich braucht, liegt in core-ui oder
-// core-zustand, sonst kennten sich die Bereiche (ModulgrenzenTest).
+// Hängt nur an core-*; was ein anderer Bereich braucht, liegt in core-ui-bestand,
+// core-ui oder core-zustand, sonst kennten sich die Bereiche (ModulgrenzenTest).
 plugins {
     alias(libs.plugins.brickinventory.android.feature)
 }
@@ -21,6 +21,8 @@ dependencies {
     // Passkeys über den Credential Manager (ui/CredentialManagerAbfrage.kt).
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services)
+    // Der Bereich liefert seine Navigationsziele selbst (ui/AnmeldungGraph.kt).
+    implementation(libs.androidx.navigation.compose)
 
     testImplementation(project(":core-testing"))
 }

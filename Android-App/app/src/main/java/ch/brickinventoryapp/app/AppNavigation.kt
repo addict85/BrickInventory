@@ -13,7 +13,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.navigation.compose.*
-import ch.brickinventoryapp.app.nav.authGraph
+import ch.brickinventoryapp.anmeldung.ui.anmeldungGraph
 import ch.brickinventoryapp.app.nav.collectionGraph
 import ch.brickinventoryapp.app.nav.catalogGraph
 import ch.brickinventoryapp.app.nav.toolsGraph
@@ -184,7 +184,7 @@ fun BrickInventoryRoute(
 
 /** Alle Ziele der App; der NavHost und ErreichbareRoutenTest bauen denselben Graphen. */
 internal fun androidx.navigation.NavGraphBuilder.alleZiele(u: ZielUmgebung) {
-    authGraph(u)
+    anmeldungGraph(u.navController) { u.aktivitaet.anmeldung }
     collectionGraph(u)
     catalogGraph(u)
     toolsGraph(u)
