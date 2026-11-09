@@ -36,11 +36,17 @@ export async function tlsStand(): Promise<TlsStand | null> {
   const pfad = konfig().caZertifikat;
   if (!pfad) return null;
   try {
-    const st = await fs.promises.stat(pfad);
-    if (_zwischen?.pfad === pfad && _zwischen.mtimeMs === st.mtimeMs) return _zwischen.stand;
-    const stand = tlsStandAus(await fs.promises.readFile(pfad, 'utf8'));
-    _zwischen = { pfad, mtimeMs: st.mtimeMs, stand };
-    return stand;
+    // Stand und Inhalt aus derselben geöffneten Datei: Tauscht Caddy sie dazwischen, passt der Zwischenstand sonst nicht.
+    const datei = await fs.promises.open(pfad, 'r');
+    try {
+      const st = await datei.stat();
+      if (_zwischen?.pfad === pfad && _zwischen.mtimeMs === st.mtimeMs) return _zwischen.stand;
+      const stand = tlsStandAus(await datei.readFile('utf8'));
+      _zwischen = { pfad, mtimeMs: st.mtimeMs, stand };
+      return stand;
+    } finally {
+      await datei.close();
+    }
   } catch (e) {
     if ((e as NodeJS.ErrnoException)?.code !== 'ENOENT')
       console.warn(`[tls] Wurzelzertifikat ${pfad} nicht lesbar:`, (e as Error)?.message || e);
