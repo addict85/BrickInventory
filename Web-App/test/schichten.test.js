@@ -349,7 +349,9 @@ const SQL_TEXT = /[`'"]\s*(?:SELECT|INSERT\s+INTO|UPDATE\s+\w+\s+(?:\w+\s+)?SET|
 const SQL_AUFRUF = /\b(?:db|tx|client|pool)\.(?:run|get|all|query|exec)\s*(?:<[^>]*>)?\(/;
 /** Auch ein Fragment mitten in einer Zeichenkette, etwa `EXISTS (SELECT 1 FROM …)`. */
 const SQL_FRAGMENT = /\bSELECT\b[^;`'"]*\bFROM\b/;
-const hatSql = (rel) => { const s = quelltext(rel); return SQL_TEXT.test(s) || SQL_AUFRUF.test(s) || SQL_FRAGMENT.test(s); };
+/** Ein Stück einer Anweisung in einer Zeichenkette: Sortierung, Bedingung, Upsert, Join. */
+const SQL_KLAUSEL = /[`'"][^`'"\n]*\b(?:ILIKE|COALESCE\(|ON CONFLICT|EXCLUDED\.|NULLS (?:LAST|FIRST)|ORDER BY|GROUP BY|(?:LEFT |INNER )?JOIN \w+ \w+ ON|RETURNING|WHERE \w)/;
+const hatSql = (rel) => { const s = quelltext(rel); return SQL_TEXT.test(s) || SQL_AUFRUF.test(s) || SQL_FRAGMENT.test(s) || SQL_KLAUSEL.test(s); };
 
 test('SQL steht nur in Repositories und in db/', () => {
   // Ein Verbot, keine Ratsche mehr: Die Liste der Ausnahmen ist seit dem
@@ -361,6 +363,33 @@ test('SQL steht nur in Repositories und in db/', () => {
   assert.deepEqual(dateien.filter(d => !istRepository(d) && hatSql(d)), [],
     'SQL gehört in das Repository des Bereichs (src/<bereich>/repository…).');
   assert.ok(tsUnter('src').filter(istRepository).every(hatSql), 'ein Repository ohne SQL ist keines');
+  // Die Klauselsuche muss in den Repositories greifen, sonst sähe sie auch draussen nichts.
+  assert.ok(tsUnter('src').filter(istRepository).filter(d => SQL_KLAUSEL.test(quelltext(d))).length > 30);
+});
+
+/** Was ein Dienst aus db/database nehmen darf: die Arbeitseinheit und den Betrieb, keine Abfrage. */
+const DB_AUSSERHALB = new Set(['transaction', 'pool', 'eigeneVerbindung', 'datenbankAntwortet', 'getPoolStats',
+  'alsSuperuserVerbunden', 'initSchemaOnce', 'DbSchnittstelle']);
+
+test('ausserhalb von repository/ und db/ fragt niemand die Datenbank ab', () => {
+  // Die SQL-Suche oben liest Text; ein Aufruf unter anderem Namen (`datenbank.all(SQL)` mit dem
+  // Text aus einem Repository) ginge an ihr vorbei. Gegenproben (09.11.2026):
+  // `import * as datenbank from '../../db/database'` und `datenbank.all(repo.SQL)` in
+  // src/sets/loeschen.ts → rot „src/sets/loeschen.ts: all“, die Prüfung oben blieb grün;
+  // die Merklisten-Sortierung (COALESCE … NULLS LAST) zurück in src/merkliste/merkliste.ts → rot oben.
+  const treffer = [];
+  let gesehen = 0;
+  for (const d of tsUnter('src', 'jobs', 'clients', 'routes', 'startup').concat('server.ts').filter(d => !istRepository(d))) {
+    const s = quelltext(d);
+    for (const m of s.matchAll(/import\s+(type\s+)?(?:\*\s+as\s+(\w+)|\{([^}]*)\})\s+from\s+'[./]+\/db\/database'/g)) {
+      gesehen++;
+      const namen = m[2] ? [...s.matchAll(new RegExp(`\\b${m[2]}\\.(\\w+)`, 'g'))].map(x => x[1])
+        : m[3].split(',').map(n => n.trim().replace(/^type\s+/, '').split(/\s+as\s+/)[0]).filter(Boolean);
+      for (const n of namen) if (!DB_AUSSERHALB.has(n)) treffer.push(`${d}: ${n}`);
+    }
+  }
+  assert.ok(gesehen > 20, `nur ${gesehen} Importe von db/database gefunden — greift die Suche noch?`);
+  assert.deepEqual(treffer, []);
 });
 
 test('Routen, Aufträge und Clients importieren keine Repositories', () => {

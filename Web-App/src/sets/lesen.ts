@@ -1,16 +1,13 @@
 import { resolveOne } from '../katalog/bricklinkLink';
 import { meldeFehler, meldeUndLiefere } from '../infra/fehler';
 import { fuerSet } from '../katalog/preisvergleich';
-import * as db from '../../db/database';
 import * as repo from './repository/sets';
-import type { DbSchnittstelle } from '../../db/database';
 import { resolveImageLocal } from '../katalog/bilder/images';
-import { asIds, withOwners, blickfeldAus, writableIds, type Sicht } from '../haushalt/haushalt';
+import { asIds, withOwners, blickfeldAus, type Sicht } from '../haushalt/haushalt';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand/gemeinsam';
 import { anleitungenZuSet, anleitungenZusammenlegen } from '../katalog/instructions';
-import { legeInPapierkorb } from '../bestand/papierkorb';
 
-// Leseabfragen; Zustand aus den Erfassungen. Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#set-sorts
+// Leseabfragen; Zustand aus den Erfassungen. Ausführlich: docs/begruendungen/src/sets/lesen.ts.md#set-sorts
 
 
 import type { BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
@@ -22,8 +19,8 @@ export async function getSets(userIdWahl: Sicht | Blickfeld, query: Abfrage<'GET
   const userId = await blickfeldAus(userIdWahl);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
-  // Ausdrückliche Spalten statt SELECT *: Die Antwort trägt nur, was die
-  // Clients lesen. Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#getsets-set-cols
+  // Die Spaltenliste steht im Repository; die Antwort trägt nur, was die
+  // Clients lesen. Ausführlich: docs/begruendungen/src/sets/lesen.ts.md#getsets-set-cols
   const { search, theme, sort, page = 1, page_size = null } = query;
   const size = page_size ? clampPageSize(page_size, 60) : null;
   const { sets, countRow, themeRows } = await repo.setListe(uids, {
@@ -79,7 +76,7 @@ export async function getSets(userIdWahl: Sicht | Blickfeld, query: Abfrage<'GET
 }
 
 // Eine gebrauchte Erfassung macht das Set gebraucht; die Regel steht nur hier.
-// Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#getsetconditionaggregate
+// Ausführlich: docs/begruendungen/src/sets/lesen.ts.md#getsetconditionaggregate
 export async function getSetConditionAggregate(userId: Blickfeld, setNumber: string) {
   const uids = asIds(userId);
   const acq = await repo.setErfassungsKennzahlen(uids, setNumber);
@@ -98,7 +95,7 @@ export async function getSetConditionAggregate(userId: Blickfeld, setNumber: str
 }
 
 /** Damit die Schreib-Endpunkte die Kachel ohne Neuladen aktualisieren.
- * Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#withsetaggregate */
+ * Ausführlich: docs/begruendungen/src/sets/lesen.ts.md#withsetaggregate */
 export async function withSetAggregate<T extends object>(userId: Blickfeld, setNumber: string, payload: T) {
   const uids = asIds(userId);
   const agg = await getSetConditionAggregate(uids, setNumber).catch(meldeUndLiefere('sets-handler:getSetConditionAggregate', null));
@@ -110,7 +107,7 @@ export async function getSet(userIdWahl: Sicht | Blickfeld, setNumber: string) {
   const uids = asIds(userId);
   const [set, shared, uploaded] = await Promise.all([
     // Die eigene Zeile gewinnt für Zustand und Kaufpreis; die MENGE ist die Summe
-    // über das Blickfeld. Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#getset
+    // über das Blickfeld. Ausführlich: docs/begruendungen/src/sets/lesen.ts.md#getset
     repo.setDetailZeile(uids, setNumber, uids[0]),
     anleitungenZuSet(setNumber),
     repo.eigeneAnleitungenDesSets(uids, setNumber),
@@ -135,34 +132,3 @@ export async function getSet(userIdWahl: Sicht | Blickfeld, setNumber: string) {
     image_local: resolveImageLocal(set.image_local),
     instructions: anleitungenZusammenlegen(shared, uploaded) };
 }
-
-// Für Löschen und Wegfall; sonst verwaisen Teile. Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#deletesetrows
-export async function deleteSetRows(tx: DbSchnittstelle, uids: number[], setNumber: string) {
-  await repo.entferneSetZeilen(tx, uids, setNumber);
-}
-
-/** Standardmässig im ganzen Schreibbereich; eine Kontenwahl schränkt ihn ein, erweitert ihn nie. */
-export async function loescheSetFuer(s: Sicht, setNumber: string) {
-  const schreibbar = await writableIds(s.nutzer);
-  const gewaehlt = s.konten === undefined ? schreibbar : await blickfeldAus(s);
-  return deleteSet(gewaehlt.filter(id => schreibbar.includes(id)), setNumber);
-}
-
-export async function deleteSet(userId: Blickfeld, setNumber: string) {
-  const uids = asIds(userId);
-  // Atomar: Ein abgebrochenes DELETE liesse sonst Teile und Figuren ohne Set in
-  // Teileliste und Finanzsummen zurück.
-  return db.transaction(async (tx) => {
-    const besitzer = await repo.besitzerDesSets(tx, uids, setNumber);
-    if (!besitzer.length) return false;
-    // Ein Eintrag je Konto: Wiederhergestellt wird in das Konto, dem es gehörte.
-    const papierkorb: number[] = [];
-    for (const b of besitzer) {
-      const id = await legeInPapierkorb(tx, 'set', b.user_id, setNumber);
-      if (id !== null) papierkorb.push(id);
-    }
-    await deleteSetRows(tx, uids, setNumber);
-    return papierkorb;
-  });
-}
-

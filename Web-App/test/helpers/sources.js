@@ -197,7 +197,7 @@ function setKernQuelle() {
 module.exports.setKernQuelle = setKernQuelle;
 
 /** Die Leseabfragen je Fachbereich als EIN Quelltext. */
-const HANDLER_MODULE = ['src/bestand/gemeinsam', 'src/haushalt/haushalt', 'src/teile/abfragen', 'src/sets/abfragen',
+const HANDLER_MODULE = ['src/bestand/gemeinsam', 'src/haushalt/haushalt', 'src/teile/abfragen', 'src/sets/lesen', 'src/sets/loeschen',
   'src/figuren/abfragen', 'src/bestand/kennzahlen'];
 function handlerQuelle() {
   const path = require('path'), fs = require('fs');

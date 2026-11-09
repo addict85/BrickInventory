@@ -7,7 +7,7 @@ import { withInventoryLock } from '../../db/txLock';
 import { downloadSetImage, rebrickableSetBild } from '../katalog/bilder/setImages';
 import { getCurrentMarketPrice } from '../finanzen/marketPrice';
 import { zustandFuerPreis, getSetting } from '../einstellungen/settings';
-import { deleteSetRows } from './abfragen';
+import { deleteSetRows } from './loeschen';
 import { legeInPapierkorb } from '../bestand/papierkorb';
 import { toCsv } from '../infra/csvExport';
 import { getSetInfo } from '../katalog/rebrickableKatalog';

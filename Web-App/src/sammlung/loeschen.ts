@@ -3,7 +3,7 @@
 import * as db from '../../db/database';
 import { legeInPapierkorb } from '../bestand/papierkorb';
 import { loescheManuellesTeil, loescheManuelleFigur } from '../bestand/gemeinsam';
-import { deleteSet } from '../sets/abfragen';
+import { deleteSet } from '../sets/loeschen';
 import * as repo from './repository/loeschen';
 
 export async function loescheTeil(besitzer: number, pn: string, cid: number): Promise<number | null> {
