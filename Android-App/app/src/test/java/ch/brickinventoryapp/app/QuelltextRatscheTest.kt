@@ -24,6 +24,8 @@ import ch.brickinventoryapp.testing.Quellen
  *   cache-schluckt-abbruch     macht „kein breiter Fang …“ rot
  *   runcatching-um-suspend     BrickInventoryApp übernimmt das alte Token wieder in runCatching
  *                              → rot „kein runCatching verschluckt …“
+ *   runcatching-um-suspend-lambda  Offlineablage ruft die suspend-Quelle (ein Feld vom Typ
+ *                              `suspend () -> String?`) in runCatching auf → rot, derselbe Test
  *   voll-qualifiziert          `ch.brickinventoryapp.data.util.fangeAusserAbbruch` ausgeschrieben → rot
  *                              „kein voll qualifizierter Projektname …“ und „voll qualifizierte Namen …“
  *   warten-in-echtzeit         TeileViewModelTest schläft wieder 200 ms → rot „Echtzeit-Warten …“
@@ -319,6 +321,16 @@ class QuelltextRatscheTest {
         texte to (namen to Regex("""\b(?:${namen.joinToString("|")})\s*[({]"""))
     }
 
+    /** Parameter und Felder mit suspend-Funktionstyp (`quelle: suspend () -> T`); nur in ihrer Datei ein Name. */
+    private val suspendTyp = Regex("""\b(\w+)\s*:\s*\(?\s*suspend\b""")
+
+    /** Das Aufrufmuster für [c]: die suspend-Funktionen der App und die suspend-Lambdas der Datei. */
+    private fun aufrufIn(c: String): Regex {
+        val (namen, _) = suspendAufrufe.second
+        val alle = namen + suspendTyp.findAll(c).map { it.groupValues[1] }
+        return Regex("""\b(?:${alle.joinToString("|")})\s*[({]""")
+    }
+
     private val koroutinenBlock = Regex("""\b(?:launch|async|runBlocking|withContext\([^()]*\)|coroutineScope|supervisorScope|flow|runTest)\s*(?:\([^()]*\))?\s*$""")
 
     /** Läuft die Stelle [ab] in einer suspend-Funktion oder einem Koroutinen-Block? Nur dort gibt es einen Abbruch zu verschlucken. */
@@ -346,10 +358,10 @@ class QuelltextRatscheTest {
     fun `kein runCatching verschluckt das Abbrechen eines suspendierenden Aufrufs`() {
         // runCatching fängt auch die CancellationException wie ein breiter catch; der
         // abgebrochene Aufrufer liefe weiter. Dafür gibt es fangeAusserAbbruch.
-        val (texte, suche) = suspendAufrufe
-        val aufruf = suche.second
+        val texte = suspendAufrufe.first
         var geprueft = 0
         val funde = texte.flatMap { (f, c) ->
+            val aufruf = aufrufIn(c)
             Regex("""\brunCatching\s*\{""").findAll(c).mapNotNull { m ->
                 geprueft++
                 var tiefe = 1
@@ -371,9 +383,10 @@ class QuelltextRatscheTest {
         // CancellationException; der abgebrochene Aufrufer liefe weiter. Dafür gibt
         // es fangeAusserAbbruch oder einen vorangestellten Abbruch-Zweig.
         val (texte, suche) = suspendAufrufe
-        val (namen, aufruf) = suche
+        val namen = suche.first
         var geprueft = 0
         val funde = texte.flatMap { (f, c) ->
+            val aufruf = aufrufIn(c)
             breiterFang.findAll(c).mapNotNull { m ->
                 val schluckt = schlucktAbbruch(c, m, aufruf) ?: return@mapNotNull null
                 geprueft++

@@ -3,6 +3,7 @@ package ch.brickinventoryapp.data.lokal
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.cache.CacheBesitzer
 import ch.brickinventoryapp.data.cache.ResponseCache
+import ch.brickinventoryapp.data.util.fangeAusserAbbruch
 import ch.brickinventoryapp.model.data.model.FigValuationItem
 import ch.brickinventoryapp.model.data.model.Gutschein
 import ch.brickinventoryapp.model.data.model.Merkposten
@@ -78,7 +79,7 @@ class Offlineablage(
 
     /** Der gültige Bereich, gestreut; null = nicht angemeldet, dann wird nichts abgelegt. */
     suspend fun bereich(): String? =
-        runCatching { bereichQuelle() }.getOrNull()?.takeIf { it.isNotBlank() }.also { aktuell.value = it }
+        fangeAusserAbbruch { bereichQuelle() }.getOrNull()?.takeIf { it.isNotBlank() }.also { aktuell.value = it }
 
     /** Wie viele Bearbeitungen noch auf den Server warten. */
     @OptIn(ExperimentalCoroutinesApi::class)
