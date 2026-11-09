@@ -91,7 +91,7 @@ test('keine hartkodierten Limitzahlen mehr in Meldungen und Labels', () => {
 
   const i18n = require('./helpers/sources').i18nAll();
   for (const key of ['monitor.api.rebrickable', 'monitor.api.bricklink', 'monitor.api.brickset']) {
-    const vals = [...i18n.matchAll(new RegExp(`'${key.replace(/\./g, '\\.')}':\\s*'([^']*)'`, 'g'))].map(m => m[1]);
+    const vals = [...i18n.matchAll(new RegExp(`'${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}':\\s*'([^']*)'`, 'g'))].map(m => m[1]);
     assert.ok(vals.length > 0, `${key} fehlt in i18n.js`);
     for (const v of vals) {
       assert.doesNotMatch(v, /\d+\s*\/\s*(Tag|day)/,

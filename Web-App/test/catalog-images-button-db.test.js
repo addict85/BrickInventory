@@ -127,7 +127,12 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async (t) => {
       for (let i = 1; i <= 10; i++) {
         for (const suf of ['.jpg', '_thumb.jpg']) {
           const f = path.join(SET_IMAGES_DIR, `${P}_${i}${suf}`);
-          if (!fs.existsSync(f)) { fs.writeFileSync(f, 'x'); extra.push(f); }
+          try {
+            fs.writeFileSync(f, 'x', { flag: 'wx' });
+            extra.push(f);
+          } catch (e) {
+            if (e.code !== 'EEXIST') throw e;
+          }
         }
       }
       try {
