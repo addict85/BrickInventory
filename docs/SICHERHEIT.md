@@ -190,7 +190,7 @@ den Commits, nicht hier.
 
 ### Gemeinsame Daten (3)
 - Bildcache nur aus geprüften Katalogadressen (`bild_von IS NULL`), nie aus
-  Angaben des Clients: `jobs/pdfErzeugung.ts`, `jobs/bildNachlauf.ts` —
+  Angaben des Clients: `src/katalog/pdf/pdfErzeugung.ts`, `src/katalog/bildNachlauf.ts` —
   `bildcache-quelle-db`.
 - Setnummer für den Bild-Job nur aus einer reinen Rebrickable-Setadresse:
   `routes/imgProxy.ts` — `bildcache-quelle-db`.
