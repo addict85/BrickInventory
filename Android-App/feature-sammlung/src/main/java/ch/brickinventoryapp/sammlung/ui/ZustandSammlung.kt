@@ -2,7 +2,7 @@ package ch.brickinventoryapp.sammlung.ui
 
 import ch.brickinventoryapp.model.ui.model.*
 import ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT
-import ch.brickinventoryapp.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Fehlerklasse
 
 /**
  * Galerie: Liste, Filter, Blätterstand und Kennzahlen. Eigener Fluss, weil sich

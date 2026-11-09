@@ -2,7 +2,7 @@ package ch.brickinventoryapp.sammlung.ui
 
 import ch.brickinventoryapp.model.ui.model.*
 import ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT
-import ch.brickinventoryapp.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Fehlerklasse
 
 /**
  * Die Merkliste — was man haben möchte, getrennt vom Besitz. Eigener Zustand statt

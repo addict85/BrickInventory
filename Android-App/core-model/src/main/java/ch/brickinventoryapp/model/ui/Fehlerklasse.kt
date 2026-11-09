@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.ui
+package ch.brickinventoryapp.model.ui
 
 /**
  * Wofür ein Ladefehler steht, grob genug für Symbol, Überschrift und Rat: Wer offline

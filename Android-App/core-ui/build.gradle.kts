@@ -4,7 +4,6 @@ plugins {
     alias(libs.plugins.brickinventory.android.library)
     alias(libs.plugins.brickinventory.android.unittests)
     alias(libs.plugins.brickinventory.android.compose)
-    alias(libs.plugins.brickinventory.android.hilt)
 }
 
 android {

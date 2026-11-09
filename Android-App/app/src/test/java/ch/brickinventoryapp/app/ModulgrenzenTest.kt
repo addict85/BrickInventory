@@ -45,6 +45,8 @@ import ch.brickinventoryapp.testing.Quellen
  *   N  gegenproben/dienste-haengt-an-update.patch: core-dienste bindet core-update ein →
  *      rot „Schichtung der Kernmodule: core-dienste hängt an [core-update]“ (core-data →
  *      core-update fängt schon Gradle als Zyklus)
+ *   P  gegenproben/zustand-haengt-an-ui.patch: core-zustand bindet core-ui ein →
+ *      rot „Schichtung der Kernmodule: core-zustand hängt an [core-ui]“
  *   O  gegenproben/fremder-paketstamm.patch: feature-teile bekommt eine Datei im Paket
  *      ch.brickinventoryapp.sammlung → rot „außerhalb des Paketstamms ihres Moduls“
  */
@@ -131,7 +133,8 @@ class ModulgrenzenTest {
             "core-update" to setOf("core-ressourcen", "core-data"),
             "core-dienste" to setOf("core-ressourcen", "core-data"),
             "core-ui" to setOf("core-model", "core-ressourcen"),
-            "core-zustand" to setOf("core-model", "core-ressourcen", "core-data", "core-dienste", "core-ui"),
+            // Der Zustand liegt unter der Oberfläche: Bildschirme lesen ihn, er kennt kein Compose-Bauteil.
+            "core-zustand" to setOf("core-model", "core-ressourcen", "core-data", "core-dienste"),
             "core-testing" to setOf("core-zustand", "core-data", "core-ui"),
         )
         val kerne = module().filterKeys { it.startsWith("core-") }

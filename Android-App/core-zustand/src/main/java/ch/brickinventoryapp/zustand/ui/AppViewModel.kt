@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
-import ch.brickinventoryapp.ui.ScrollMemory
+import ch.brickinventoryapp.model.ui.ScrollMemory
 
 /**
  * Was MainActivity zeigt: Sitzung, Snackbar, die Pflichtmasken und das Ziel einer

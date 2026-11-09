@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.katalog.ui
 
 import ch.brickinventoryapp.model.ui.model.*
-import ch.brickinventoryapp.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Fehlerklasse
 
 /**
  * Katalog-Zustand — eigener Flow (wie SetDetail/CsvImport): Suche und

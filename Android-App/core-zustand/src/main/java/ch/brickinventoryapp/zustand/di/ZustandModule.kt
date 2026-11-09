@@ -4,6 +4,7 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
 import ch.brickinventoryapp.zustand.ui.Abmelden
 import ch.brickinventoryapp.zustand.ui.FilterAblage
 import ch.brickinventoryapp.zustand.ui.SammlungVorwaermen
@@ -20,8 +21,8 @@ import ch.brickinventoryapp.zustand.ui.BestandsVerteiler
 import ch.brickinventoryapp.zustand.ui.Bestandssignal
 import ch.brickinventoryapp.zustand.ui.Blickfeld
 import ch.brickinventoryapp.zustand.ui.BlickfeldDienst
-import ch.brickinventoryapp.ui.ScrollMemory
-import ch.brickinventoryapp.ui.ScrollSpeicher
+import ch.brickinventoryapp.model.ui.ScrollMemory
+import ch.brickinventoryapp.model.ui.ScrollSpeicher
 import ch.brickinventoryapp.zustand.ui.Sitzung
 import ch.brickinventoryapp.zustand.ui.SitzungsDienst
 import ch.brickinventoryapp.zustand.ui.SitzungsRepository
@@ -59,7 +60,8 @@ object ZustandModule {
     @Provides fun provideBlickfeld(b: BlickfeldDienst): Blickfeld = b
     @Provides fun provideBestandssignal(b: BestandsVerteiler): Bestandssignal = b
     @Provides fun provideAusgangsmelder(a: AusgangsBeobachter): Ausgangsmelder = a
-    @Provides fun provideScrollMemory(s: ScrollSpeicher): ScrollMemory = s
+    // Ein Merker für alle Reiter: Ein zweiter hätte die Stellen des ersten nicht.
+    @Provides @Singleton fun provideScrollMemory(): ScrollMemory = ScrollSpeicher()
     @Provides fun provideMeldungen(m: AppMeldungen): Meldungen = m
     @Provides fun provideFilterwahl(f: BereichsFilter): Filterwahl = f
 }
