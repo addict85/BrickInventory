@@ -532,9 +532,10 @@ test('ungeprueft() wird weniger, nie mehr', () => {
 
 test('keine Datei der Oberfläche über 1000 Zeilen, die grossen werden kleiner', () => {
   // Eine Sammeldatei zieht Neues an, weil es dort schon liegt. Gemessen nach dem Teilen von
-  // 01-core.js, 05-settings.js und 13-acquisition-modals.js: grösste 859 am 06.11.2026, über 600 Zeilen 8.
-  // Gegenprobe: an 13-acquisition-modals.js 60 Kommentarzeilen gehängt → rot: „grösste Datei 977 Zeilen“.
-  const SCHRANKE_GROESSTE = 859, SCHRANKE_UEBER_600 = 8;
+  // 01-core.js, 05-settings.js und 13-acquisition-modals.js: grösste 859 am 06.11.2026, über 600 Zeilen 8;
+  // am 09.11.2026 die acht geteilt: grösste 598, über 600 keine.
+  // Gegenprobe (09.11.2026): an 04-finance.js drei Leerzeilen gehängt → rot: „grösste Datei 601 Zeilen“.
+  const SCHRANKE_GROESSTE = 598, SCHRANKE_UEBER_600 = 0;
   const laengen = oberflaeche().map(f => ({ f: path.relative(WEB, f), n: fs.readFileSync(f, 'utf8').split('\n').length }));
   assert.ok(laengen.length > 40, `nur ${laengen.length} Dateien gefunden — greift die Suche noch?`);
   const ueber1000 = laengen.filter(x => x.n > 1000).map(x => `${x.f} (${x.n})`);

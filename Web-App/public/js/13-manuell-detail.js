@@ -15,7 +15,8 @@ import { lagerortBlock, ladeOrtAuswahl } from './02-detailfelder.js';
 import { confirmDelete } from './01-rueckfrage.js';
 import { acqSummary, renderManAcqSummary, kurzfassungMan } from './13-kaufpreis-anzeige.js';
 import { diagrammBreite, priceChartSVG, renderMarketRows } from './01-diagramme.js';
-import { deleteManualPart, loadBrickColors, loadManualParts, manuelleTeile, updateManualPart } from './03-parts.js';
+import { deleteManualPart, loadManualParts, manuelleTeile, updateManualPart } from './03-parts.js';
+import { loadBrickColors } from './03-teil-erfassen.js';
 import { erfassung, gespeichert, setzeMitFokus, isoTag, datumFeld, gespeichertMarke, zeigeGespeichert } from './13-erfassung-zustand.js';
 import { closeAcqModal } from './13-acquisition-modals.js';
 /** @typedef {import('../../frontend-typen/vertrag').AcquisitionTotals} Erfassungssumme */
