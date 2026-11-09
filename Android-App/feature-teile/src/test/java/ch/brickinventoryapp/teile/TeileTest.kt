@@ -114,7 +114,7 @@ class TeileTest {
     @Test
     fun `ein Filterwechsel vergisst die Scrollstelle`() = runTest {
         val t = teile(Quelle())
-        t.setzeFarbe("5"); t.setzeKategorie("11"); t.setzeErsatzteile("1"); t.setzeSuche("stein")
+        t.setzeFarbe("5"); t.setzeKategorie("11"); t.setzeErsatzteile(Ersatzteilwahl.NUR); t.setzeSuche("stein")
         assertEquals(4, vergessen)
         t.setzeFarbe("5")
         assertEquals("Dieselbe Farbe noch einmal ist kein Wechsel", 4, vergessen)
