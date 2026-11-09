@@ -4,6 +4,7 @@ import ch.brickinventoryapp.model.data.model.*
 import retrofit2.Response
 import retrofit2.http.*
 import ch.brickinventoryapp.model.data.model.ManualPartsResponse
+import ch.brickinventoryapp.model.data.Ersatzteilwahl
 
 /**
  * Die Teileliste abfragen — für den Teile-Reiter und den Inhalt eines Sets;
@@ -33,6 +34,16 @@ interface TeileAbfrageApi {
         @Query("storage") storage: String? = null
     ): Response<PartsResponse>
 }
+
+/** Der Wert von `spare`; null heisst alle. */
+internal fun Ersatzteilwahl.alsAbfrage(): String? = when (this) {
+    Ersatzteilwahl.ALLE -> null
+    Ersatzteilwahl.OHNE -> "0"
+    Ersatzteilwahl.NUR -> "1"
+}
+
+/** `with_sets=1` oder kein Parameter. */
+internal fun mitSetsAlsAbfrage(mitSets: Boolean): String? = if (mitSets) "1" else null
 
 /**
  * Einzelteile, Farben und Lagerorte (TeileRepository). Lagerorte stehen hier,

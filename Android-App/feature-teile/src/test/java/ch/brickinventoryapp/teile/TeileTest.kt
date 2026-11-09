@@ -29,6 +29,8 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Test
+import ch.brickinventoryapp.model.data.Ersatzteilwahl
+import ch.brickinventoryapp.model.ui.Listenansicht
 
 /**
  * Teile- und Figurenliste als Ablauf geprüft, mit nachgebauter Quelle.
@@ -100,12 +102,12 @@ class TeileTest {
     fun `die Filter reisen mit jeder Seite mit`() = runTest {
         val q = Quelle()
         val t = teile(q)
-        t.setzeFarbe("5"); t.setzeKategorie("11"); t.setzeErsatzteile("0"); t.setzeAnsicht("table")
+        t.setzeFarbe("5"); t.setzeKategorie("11"); t.setzeErsatzteile(Ersatzteilwahl.OHNE); t.setzeAnsicht(Listenansicht.TABELLE)
         advanceUntilIdle()
         t.laden(seite = 2); advanceUntilIdle()
         val zweite = q.abfragen.last()
-        assertEquals(TeileAbfrage(suche = null, farbe = "5", kategorie = "11", ersatzteile = "0",
-            mitSets = "1", seite = 2), zweite)
+        assertEquals(TeileAbfrage(suche = null, farbe = "5", kategorie = "11", ersatzteile = Ersatzteilwahl.OHNE,
+            mitSets = true, seite = 2), zweite)
         assertEquals("Seite 2 wird angehängt, nicht ersetzt", 2, t.state.value.parts.size)
     }
 

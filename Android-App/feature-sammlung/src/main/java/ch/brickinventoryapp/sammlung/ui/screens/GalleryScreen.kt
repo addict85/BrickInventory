@@ -207,10 +207,10 @@ fun GalleryScreen(
 
 /** Der Bereich des Kontos und der gewählte Lagerort der Galerie. */
 internal fun GalerieZustand.kontoWahl(): String =
-    blick.scopeModes[ScopeFilter.View.GALLERY.key] ?: ScopeFilter.ALL
+    blick.scopeModes[ScopeFilter.View.GALLERY] ?: ScopeFilter.ALL
 
 internal fun GalerieZustand.lagerWahl(): String =
-    lager.modi[ScopeFilter.View.GALLERY.key] ?: ""
+    lager.modi[ScopeFilter.View.GALLERY] ?: ""
 
 /** Suche, Filterknopf, Scannen und Sortierung über dem Raster. */
 @Composable

@@ -2,6 +2,8 @@ package ch.brickinventoryapp.teile.ui.viewmodel
 
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.data.model.KEINE_FARBE
+import ch.brickinventoryapp.model.data.Ersatzteilwahl
+import ch.brickinventoryapp.model.ui.Listenansicht
 
 /**
  * Was die Teile- und Figurenbildschirme auslösen können. Die Bildschirme kennen
@@ -13,12 +15,12 @@ interface TeileAktionen {
     fun loadMinifigs(debounce: Boolean = false)
     fun loadPartsColors()
     fun setPartsQuery(q: String)
-    fun setPartsSpare(wert: String)
-    fun setPartsView(wert: String)
+    fun setPartsSpare(wert: Ersatzteilwahl)
+    fun setPartsView(wert: Listenansicht)
     fun setPartsColorFilter(wert: String)
     fun setPartsCategoryFilter(wert: String)
     fun setMinifigsQuery(q: String)
-    fun setMinifigsView(wert: String)
+    fun setMinifigsView(wert: Listenansicht)
     fun setScope(view: ScopeFilter.View, value: String)
     fun setLagerFilter(view: ScopeFilter.View, value: String)
     fun loadLagerortVorrat(besitzer: List<Int>)

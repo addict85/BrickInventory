@@ -26,6 +26,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.zustand.ui.fehlerklasse
+import ch.brickinventoryapp.model.data.Ersatzteilwahl
+import ch.brickinventoryapp.model.ui.Listenansicht
 
 /**
  * Eine Seite der Teileliste, wie sie zum Server geht. Leer heisst „kein
@@ -33,7 +35,7 @@ import ch.brickinventoryapp.zustand.ui.fehlerklasse
  */
 internal data class TeileAbfrage(
     val suche: String?, val farbe: String?, val kategorie: String?,
-    val ersatzteile: String?, val mitSets: String?, val seite: Int,
+    val ersatzteile: Ersatzteilwahl, val mitSets: Boolean, val seite: Int,
 )
 
 /** Die Abrufe der Teile- und Figurenliste; Blickfeld und Lagerort setzt der Aufrufer. */
@@ -116,7 +118,7 @@ internal class Teile(
 
     private fun teileUngefiltert(st: PartsUiState) =
         st.partsQuery.isBlank() && st.partsColorFilter.isBlank() && st.partsCategoryFilter.isBlank() &&
-            st.partsSpare.isBlank() && st.partsView != "table" && !teileEingeschraenkt()
+            st.partsSpare == Ersatzteilwahl.ALLE && st.partsView != Listenansicht.TABELLE && !teileEingeschraenkt()
 
     // Ein neuer Auftrag bricht den alten ab: Eine langsame alte Antwort
     // überschriebe sonst eine neuere, und beim Tippen löscht jeder Tastendruck
@@ -136,9 +138,9 @@ internal class Teile(
                 suche = st.partsQuery.ifBlank { null },
                 farbe = st.partsColorFilter.ifBlank { null },
                 kategorie = st.partsCategoryFilter.ifBlank { null },
-                ersatzteile = st.partsSpare.ifBlank { null },
+                ersatzteile = st.partsSpare,
                 // „In Sets" kostet eine eigene Abfrage; nur die Tabelle zeigt es.
-                mitSets = if (st.partsView == "table") "1" else null,
+                mitSets = st.partsView == Listenansicht.TABELLE,
                 seite = seite,
             )
             when (val r = quelle.seite(abfrage)) {
@@ -174,15 +176,15 @@ internal class Teile(
         laden(entprellt = true)
     }
 
-    /** "" alle, "0" ohne, "1" nur Ersatzteile. Ein Klick ist ein fertiger Wunsch: nicht entprellt. */
-    fun setzeErsatzteile(wert: String) {
+    /** Ein Klick ist ein fertiger Wunsch: nicht entprellt. */
+    fun setzeErsatzteile(wert: Ersatzteilwahl) {
         vergissScroll()
         _state.update { it.copy(partsSpare = wert) }
         laden()
     }
 
     /** Karten oder Tabelle; neu laden, weil die Tabelle „In Sets" mitbestellt. */
-    fun setzeAnsicht(wert: String) {
+    fun setzeAnsicht(wert: Listenansicht) {
         if (_state.value.partsView == wert) return
         _state.update { it.copy(partsView = wert) }
         laden()
@@ -224,7 +226,7 @@ internal class Teile(
     }
 
     /** Karten oder Tabelle der Figuren; ohne Neuladen, die Felder sind schon da. */
-    fun setzeFigurAnsicht(wert: String) = _state.update { it.copy(minifigsView = wert) }
+    fun setzeFigurAnsicht(wert: Listenansicht) = _state.update { it.copy(minifigsView = wert) }
 
     /**
      * Figurenliste laden. Die Kennzahlen kommen nebenher und zeigen den ganzen

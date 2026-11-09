@@ -6,6 +6,7 @@ import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.zustand.ui.Filterzahl
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import ch.brickinventoryapp.model.data.Ersatzteilwahl
 
 /**
  * Die Zahl am Knopf „Filter“ zählt, was die Liste wirklich einschränkt — nicht,
@@ -31,7 +32,7 @@ class FilterzahlTest {
     @Test
     fun `ohne Abweichung steht keine Zahl`() {
         assertEquals(0, Filterzahl.galerie(haushalt, ScopeFilter.ALL, orte, "", ""))
-        assertEquals(0, Filterzahl.teile(haushalt, ScopeFilter.ALL, orte, "", "", "", ""))
+        assertEquals(0, Filterzahl.teile(haushalt, ScopeFilter.ALL, orte, "", Ersatzteilwahl.ALLE, "", ""))
     }
 
     @Test
@@ -56,7 +57,7 @@ class FilterzahlTest {
 
     @Test
     fun `bei den Teilen zaehlen Ersatzteile, Farbe und Kategorie`() {
-        assertEquals(3, Filterzahl.teile(haushalt, ScopeFilter.ALL, orte, "", "0", "Red", "Bricks"))
-        assertEquals(5, Filterzahl.teile(haushalt, "own", orte, "Keller", "1", "Red", "Bricks"))
+        assertEquals(3, Filterzahl.teile(haushalt, ScopeFilter.ALL, orte, "", Ersatzteilwahl.OHNE, "Red", "Bricks"))
+        assertEquals(5, Filterzahl.teile(haushalt, "own", orte, "Keller", Ersatzteilwahl.NUR, "Red", "Bricks"))
     }
 }

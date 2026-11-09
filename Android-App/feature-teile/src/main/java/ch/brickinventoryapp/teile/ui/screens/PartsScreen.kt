@@ -48,6 +48,8 @@ import ch.brickinventoryapp.gemeinsam.ui.GalleryStatChip
 import ch.brickinventoryapp.gemeinsam.ui.KennzahlenReihe
 import ch.brickinventoryapp.gemeinsam.ui.SucheMitFilter
 import ch.brickinventoryapp.gemeinsam.ui.teileAufschluesselung
+import ch.brickinventoryapp.model.ui.Listenansicht
+import ch.brickinventoryapp.model.data.Ersatzteilwahl
 
 /** Was der Teile- und der Figurenreiter zeigen; die Routen sammeln es aus den Flüssen. */
 data class TeileZustand(
@@ -108,7 +110,7 @@ fun PartsScreen(
     val waehrung = state.currency
     val defaultCondition = state.userDefaultCondition ?: "N"
     val householdMembers = blick.householdMembers
-    val scopeMode = blick.scopeModes[ScopeFilter.View.PARTS.key]
+    val scopeMode = blick.scopeModes[ScopeFilter.View.PARTS]
         ?: ScopeFilter.ALL
     val manualParts = partsState.manualParts ?: emptyList()
 
@@ -120,7 +122,7 @@ fun PartsScreen(
     val onLoadMore: (Int) -> Unit = { aktionen.loadParts(page = it) }
     val onScopeChange: (String) -> Unit = { aktionen.setScope(ScopeFilter.View.PARTS, it) }
     val lagerorte = lagerState.orte
-    val lagerModus = lagerState.modi[ScopeFilter.View.PARTS.key] ?: ""
+    val lagerModus = lagerState.modi[ScopeFilter.View.PARTS] ?: ""
     val onLagerChange: (String) -> Unit = { aktionen.setLagerFilter(ScopeFilter.View.PARTS, it) }
     val ansicht = partsState.partsView
     val onAddPart: (String, Int, String?, String?, Int, Double?, String?, Int?, String?) -> Unit =
@@ -206,7 +208,7 @@ fun PartsScreen(
                     searchQuery = ""; onSearch("")
                     if (Filterzahl.konto(householdMembers, scopeMode) > 0) onScopeChange(ScopeFilter.ALL)
                     if (Filterzahl.lager(lagerorte, lagerModus) > 0) onLagerChange("")
-                    if (partsState.partsSpare.isNotBlank()) aktionen.setPartsSpare("")
+                    if (partsState.partsSpare != Ersatzteilwahl.ALLE) aktionen.setPartsSpare(Ersatzteilwahl.ALLE)
                     if (partsState.partsColorFilter.isNotBlank()) aktionen.setPartsColorFilter("")
                     if (partsState.partsCategoryFilter.isNotBlank()) aktionen.setPartsCategoryFilter("")
                 }) { Text(stringResource(R.string.search_clear_all)) }
@@ -263,13 +265,13 @@ fun PartsScreen(
                     items(
                         distinctParts,
                         key = { "${it.partNumber}-${it.colorId}" },
-                        span = { if (ansicht == "table") GridItemSpan(maxLineSpan) else GridItemSpan(1) },
+                        span = { if (ansicht == Listenansicht.TABELLE) GridItemSpan(maxLineSpan) else GridItemSpan(1) },
                     ) { part ->
                         // BEIDE Ansichten oeffnen denselben Dialog — eine
                         // Ansicht darf nicht koennen, was die andere nicht kann.
                         val oeffne = { aktionen.oeffneSetItem("part", part.partNumber, part.colorId) }
                         Bewegt {
-                            if (ansicht == "table") PartTableRow(part, serverUrl, imageLoader, oeffne)
+                            if (ansicht == Listenansicht.TABELLE) PartTableRow(part, serverUrl, imageLoader, oeffne)
                             else PartCard(part, serverUrl, imageLoader, oeffne,
                                 ausgewaehlt = gewaehlt == detailSchluessel("part", part.partNumber, part.colorId))
                         }

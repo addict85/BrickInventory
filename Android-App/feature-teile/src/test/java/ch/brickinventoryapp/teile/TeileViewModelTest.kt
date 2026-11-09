@@ -23,6 +23,8 @@ import org.junit.Before
 import org.junit.Test
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.TestDienste
+import ch.brickinventoryapp.model.data.Ersatzteilwahl
+import ch.brickinventoryapp.model.ui.Listenansicht
 
 /**
  * Das Teile-ViewModel, ausgeführt gegen die Regeln eines PfadServers ohne Netz
@@ -85,13 +87,13 @@ class TeileViewModelTest {
         val erstes = vm(gemerkt)
         erstes.setPartsColorFilter("5")
         erstes.setPartsCategoryFilter("11")
-        erstes.setPartsSpare("1")
-        erstes.setPartsView("table")
+        erstes.setPartsSpare(Ersatzteilwahl.NUR)
+        erstes.setPartsView(Listenansicht.TABELLE)
 
         pfade.neuerProzess(io = takt) { pfade, t ->
             val neu = vm(gemerkt, t)
             val st = neu.partsState.value
-            assertEquals(listOf("5", "11", "1", "table"),
+            assertEquals(listOf("5", "11", Ersatzteilwahl.NUR, Listenansicht.TABELLE),
                 listOf(st.partsColorFilter, st.partsCategoryFilter, st.partsSpare, st.partsView))
             neu.loadParts()
             assertTrue("Liste geladen", neu.partsState.value.parts.isNotEmpty())

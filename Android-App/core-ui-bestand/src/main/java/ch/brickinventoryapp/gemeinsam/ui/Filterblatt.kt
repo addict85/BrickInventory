@@ -49,6 +49,7 @@ import ch.brickinventoryapp.ui.components.ScanKnopf
 import ch.brickinventoryapp.ui.components.grosseSchrift
 import ch.brickinventoryapp.ui.components.AnsichtUmschalter
 import ch.brickinventoryapp.ui.components.Suchfeld
+import ch.brickinventoryapp.model.ui.Listenansicht
 
 /**
  * Suche und daneben ein Knopf „Filter“ — der Kopf über Galerie, Teilen und
@@ -231,6 +232,6 @@ fun LagerortFilterAbschnitt(orte: List<LagerortAnsicht>, current: String, onSele
 
 /** Karten oder Tabelle — keine Filterwahl, aber derselbe Ort wie die Filter. */
 @Composable
-fun AnsichtAbschnitt(aktuell: String, onWechsel: (String) -> Unit) {
+fun AnsichtAbschnitt(aktuell: Listenansicht, onWechsel: (Listenansicht) -> Unit) {
     FilterAbschnitt(stringResource(R.string.filter_section_view)) { AnsichtUmschalter(aktuell, onWechsel) }
 }

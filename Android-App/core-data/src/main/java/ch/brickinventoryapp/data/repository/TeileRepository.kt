@@ -3,6 +3,7 @@ package ch.brickinventoryapp.data.repository
 import ch.brickinventoryapp.offline.Lokal
 import ch.brickinventoryapp.model.data.model.*
 import kotlinx.coroutines.flow.Flow
+import ch.brickinventoryapp.model.data.Ersatzteilwahl
 
 /**
  * Teile: Bestand, manuell erfasste Teile, Farben, Lagerorte.
@@ -13,13 +14,9 @@ interface TeileRepository {
     suspend fun getParts(search: String? = null, color: String? = null,
                          category: String? = null, page: Int = 1,
                          accounts: String? = null,
-                         /**
-                          * "0" ohne, "1" nur Ersatzteile, null alle — wie parts-spare in der
-                          * Webapp.
-                          */
-                         spare: String? = null,
-                         /** "1" nur in der Tabellenansicht — siehe TeileApi.getParts. */
-                         withSets: String? = null,
+                         spare: Ersatzteilwahl = Ersatzteilwahl.ALLE,
+                         /** Nur die Tabellenansicht bestellt „In Sets“ — siehe TeileApi.getParts. */
+                         withSets: Boolean = false,
                          /** Lagerort — eigener Parameter, nicht Teil der Suche. */
                          storage: String? = null): Ergebnis<PartsResponse>
 

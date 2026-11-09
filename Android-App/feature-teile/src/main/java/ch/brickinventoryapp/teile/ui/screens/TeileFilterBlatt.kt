@@ -21,6 +21,7 @@ import ch.brickinventoryapp.gemeinsam.ui.FilterBlattRahmen
 import ch.brickinventoryapp.gemeinsam.ui.FilterWahl
 import ch.brickinventoryapp.gemeinsam.ui.KontoFilterAbschnitt
 import ch.brickinventoryapp.gemeinsam.ui.LagerortFilterAbschnitt
+import ch.brickinventoryapp.model.data.Ersatzteilwahl
 
 /** Das Filterblatt der Teile: Konto, Lagerort, Ersatzteile, Farbe und Kategorie, Ansicht. */
 @Composable
@@ -44,7 +45,7 @@ internal fun TeileFilterBlatt(
     val zuruecksetzen: () -> Unit = {
         if (Filterzahl.konto(householdMembers, scopeMode) > 0) onScopeChange(ScopeFilter.ALL)
         if (Filterzahl.lager(lagerorte, lagerModus) > 0) onLagerChange("")
-        if (ersatz.isNotBlank()) aktionen.setPartsSpare("")
+        if (ersatz != Ersatzteilwahl.ALLE) aktionen.setPartsSpare(Ersatzteilwahl.ALLE)
         if (farbe.isNotBlank()) aktionen.setPartsColorFilter("")
         if (kategorie.isNotBlank()) aktionen.setPartsCategoryFilter("")
     }
@@ -52,13 +53,13 @@ internal fun TeileFilterBlatt(
     FilterBlattRahmen(onSchliessen = onSchliessen, onZuruecksetzen = zuruecksetzen.takeIf { aktiv > 0 }) {
         KontoFilterAbschnitt(householdMembers, scopeMode, onScopeChange)
         LagerortFilterAbschnitt(lagerorte, lagerModus, onLagerChange, nachTeilen = true)
-        // Ersatzteile — dieselben drei Werte wie parts-spare in der Webapp,
+        // Ersatzteile — dieselbe Wahl wie parts-spare in der Webapp,
         // gefiltert auf dem SERVER (partsSpare im Zustand).
         FilterAbschnitt(stringResource(R.string.filter_section_spare)) {
             for ((wert, text) in listOf(
-                "" to R.string.parts_filter_all,
-                "0" to R.string.parts_filter_no_spare,
-                "1" to R.string.parts_filter_spare,
+                Ersatzteilwahl.ALLE to R.string.parts_filter_all,
+                Ersatzteilwahl.OHNE to R.string.parts_filter_no_spare,
+                Ersatzteilwahl.NUR to R.string.parts_filter_spare,
             )) {
                 FilterWahl(stringResource(text), ersatz == wert) { aktionen.setPartsSpare(wert) }
             }

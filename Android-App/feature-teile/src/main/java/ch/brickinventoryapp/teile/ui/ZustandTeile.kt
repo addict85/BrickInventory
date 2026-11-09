@@ -2,6 +2,8 @@ package ch.brickinventoryapp.teile.ui
 
 import ch.brickinventoryapp.model.ui.model.*
 import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.data.Ersatzteilwahl
+import ch.brickinventoryapp.model.ui.Listenansicht
 
 /**
  * Teile und Minifiguren — eigener Fluss: Nur zwei Bildschirme brauchen die Felder,
@@ -25,17 +27,14 @@ data class PartsUiState(
      * hängte `onLoadMore` eine ungefilterte Seite 2 an eine gefilterte Seite 1.
      */
     val partsQuery: String = "",
+    /** Ersatzteil-Filter wie parts-spare der Webapp; im Zustand aus demselben Grund wie partsQuery. */
+    val partsSpare: Ersatzteilwahl = Ersatzteilwahl.ALLE,
     /**
-     * Ersatzteil-Filter: "" alle, "0" ohne, "1" nur Ersatzteile — die Werte der Webapp
-     * (parts-spare). Im Zustand aus demselben Grund wie partsQuery.
+     * Darstellung der Teileliste wie parts-view in der Webapp. Im Zustand, weil der
+     * Ladeweg sie braucht: `with_sets=1` kostet den Server eine eigene Abfrage und
+     * wird nur für die Tabelle geholt.
      */
-    val partsSpare: String = "",
-    /**
-     * Darstellung der Teileliste: "grid" oder "table", wie parts-view in der Webapp.
-     * Im Zustand, weil der Ladeweg ihn braucht: `with_sets=1` kostet den Server eine
-     * eigene Abfrage und wird nur für die Tabelle geholt.
-     */
-    val partsView: String = "grid",
+    val partsView: Listenansicht = Listenansicht.KARTEN,
     /**
      * Die beiden Filterlisten des Reiters — Farbe und Kategorie, mit Anzahl
      * (/parts/colors und /parts/categories, wie in der Webapp).
@@ -72,10 +71,10 @@ data class PartsUiState(
      */
     val minifigsQuery: String = "",
     /**
-     * Darstellung der Figurenliste: "grid" oder "table", wie figs-view in der Webapp.
-     * Im Zustand, damit die Ansicht beim Zurücknavigieren dieselbe ist.
+     * Darstellung der Figurenliste wie figs-view in der Webapp. Im Zustand, damit
+     * die Ansicht beim Zurücknavigieren dieselbe ist.
      */
-    val minifigsView: String = "grid",
+    val minifigsView: Listenansicht = Listenansicht.KARTEN,
     val partsStats: TeileKennzahlenAnsicht? = null,
     val partsColors: List<FarbeAnsicht> = emptyList(),
 )

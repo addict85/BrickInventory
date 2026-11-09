@@ -14,7 +14,8 @@ import java.io.File
  * Schlüssel als Hex-Literal (kein zweites Ableiten in SQLCipher), und ein
  * Klartext-Altbestand wird an seinem Dateikopf erkannt.
  *
- * Gegenprobe (misst die CI; SQLCipher fehlt lokal): gegenproben/bestand-kopf-ungeprueft.patch,
+ * Gegenprobe (lokal am ausgeschnittenen Bestandsverschluesselung.kt gemessen):
+ * gegenproben/bestand-kopf-ungeprueft.patch,
  * istKlartextDatenbank() ohne Vergleich mit dem Kopf → rot „die Datenbank bekommt einen
  * fertigen Schluessel …“ (die verschlüsselte Datei gälte als Klartext).
  */
