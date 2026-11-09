@@ -14,8 +14,10 @@ ksp                         = "2.3.13"
 coreKtx                     = "1.19.1"
 coreSplashscreen            = "1.2.0"
 lifecycleRuntimeKtx         = "2.11.0"
-# Nur als Untergrenze in core-offline: Room allein zöge arch-core 2.0.0, das nicht im Prüfsummenverzeichnis steht.
+# Untergrenzen für core-sicherheit und core-offline: Allein zögen sie arch-core 2.0.0 und
+# tracing 1.1.0, die nicht im Prüfsummenverzeichnis stehen; die App nimmt diese Fassungen.
 archCore                    = "2.2.0"
+tracing                     = "2.0.1"
 activityCompose             = "1.13.0"
 # Setzt die Fassungen der Compose-Artefakte; graphics-path steht unten eigens.
 composeBom                  = "2026.09.00"
@@ -76,6 +78,7 @@ androidx-core-splashscreen          = { group = "androidx.core",              na
 androidx-lifecycle-runtime-ktx      = { group = "androidx.lifecycle",         name = "lifecycle-runtime-ktx",             version.ref = "lifecycleRuntimeKtx" }
 androidx-arch-core-common          = { group = "androidx.arch.core",         name = "core-common",                       version.ref = "archCore" }
 androidx-arch-core-runtime         = { group = "androidx.arch.core",         name = "core-runtime",                      version.ref = "archCore" }
+androidx-tracing                   = { group = "androidx.tracing",           name = "tracing",                           version.ref = "tracing" }
 androidx-lifecycle-viewmodel         = { group = "androidx.lifecycle",        name = "lifecycle-viewmodel",               version.ref = "lifecycleRuntimeKtx" }
 androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle",        name = "lifecycle-viewmodel-compose",       version.ref = "lifecycleRuntimeKtx" }
 androidx-lifecycle-runtime-compose   = { group = "androidx.lifecycle",        name = "lifecycle-runtime-compose",         version.ref = "lifecycleRuntimeKtx" }

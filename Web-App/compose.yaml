@@ -326,7 +326,11 @@ services:
   # `up` seine Ordner, das Volume der Wurzel und den Schlüssel der eigenen CA
   # (ca-einrichten.sh legt ihn für root an) und endet.
   caddy-rechte:
-    image: caddy:2.11.8-alpine@sha256:f6228111e5fafa1a5238258d0858e103f10599b8d1659a146e7726681a002bb9
+    # Das hier gebaute Caddy-Image (siehe caddy): Das offizielle trüge ein
+    # zweites, ungeprüftes Caddy-Binary in den Betrieb, obwohl hier nur chown läuft.
+    # `never`: Gebaut wird es mit caddy im selben `up`, nie aus einem Register geholt.
+    image: brickinventory-caddy:2.11.8
+    pull_policy: never
     container_name: brickinventory-caddy-rechte
     logging: *protokoll
     restart: "no"
