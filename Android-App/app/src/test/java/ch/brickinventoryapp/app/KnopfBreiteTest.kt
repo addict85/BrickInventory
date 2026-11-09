@@ -98,6 +98,31 @@ class KnopfBreiteTest {
         return s.length - 1
     }
 
+    /**
+     * Steht die Beschriftung AUSSCHLIESSLICH im anderen Zweig als der Kreisel ab [kreisel]?
+     * Dann verschwindet sie waehrend der Arbeit; steht sie daneben, ist alles gut.
+     */
+    private fun verliertBeschriftung(inhalt: String, kreisel: Int): Boolean {
+        val sonst = inhalt.indexOf("else", kreisel)
+        if (sonst < 0 || inhalt.substring(kreisel, sonst).contains("Text(")) return false
+        return zweigNach(inhalt, sonst)?.contains("Text(") == true
+    }
+
+    /** Der Zweig hinter `else` ab [sonst]: Block oder einzelner Aufruf. */
+    private fun zweigNach(inhalt: String, sonst: Int): String? {
+        var p = sonst + 4
+        while (p < inhalt.length && inhalt[p].isWhitespace()) p++
+        if (p >= inhalt.length) return null
+        if (inhalt[p] == '{') return inhalt.substring(p, gruppeEnde(inhalt, p, '}') + 1)
+        val a = inhalt.indexOf('(', p)
+        return if (a < 0) inhalt.substring(p) else inhalt.substring(p, gruppeEnde(inhalt, a, ')') + 1)
+    }
+
+    /** Feste Breite: dort aendert der Tausch nichts. */
+    private fun festeBreite(klammern: String): Boolean =
+        klammern.contains("fillMaxWidth") || klammern.contains("weight(") ||
+            klammern.contains(".width(") || klammern.contains(".size(")
+
     @Test
     fun `kein Knopf versteckt seine Beschriftung hinter dem Kreisel`() {
         val dateien = Quellen.wurzel
@@ -128,29 +153,9 @@ class KnopfBreiteTest {
                 val kreisel = inhalt.indexOf("CircularProgressIndicator")
                 if (kreisel < 0) continue
                 geprueft++
-
-                val sonst = inhalt.indexOf("else", kreisel)
-                if (sonst < 0) continue
-                // Steht die Beschriftung NEBEN dem Kreisel, ist alles gut.
-                if (inhalt.substring(kreisel, sonst).contains("Text(")) continue
-                // Der andere Zweig: Block oder einzelner Aufruf.
-                var p = sonst + 4
-                while (p < inhalt.length && inhalt[p].isWhitespace()) p++
-                if (p >= inhalt.length) continue
-                val zweig = if (inhalt[p] == '{') {
-                    inhalt.substring(p, gruppeEnde(inhalt, p, '}') + 1)
-                } else {
-                    val a = inhalt.indexOf('(', p)
-                    if (a < 0) inhalt.substring(p) else inhalt.substring(p, gruppeEnde(inhalt, a, ')') + 1)
+                if (verliertBeschriftung(inhalt, kreisel) && !festeBreite(klammern)) {
+                    flackern += "${datei.name}:${s.substring(0, i).count { z -> z == '\n' } + 1}"
                 }
-                // Nur wenn die Beschriftung AUSSCHLIESSLICH im anderen Zweig
-                // steht, verschwindet sie waehrend der Arbeit.
-                if (!zweig.contains("Text(")) continue
-                // Feste Breite: dort aendert der Tausch nichts.
-                val fest = klammern.contains("fillMaxWidth") || klammern.contains("weight(") ||
-                    klammern.contains(".width(") || klammern.contains(".size(")
-                if (fest) continue
-                flackern += "${datei.name}:${s.substring(0, i).count { z -> z == '\n' } + 1}"
             }
         }
         check(geprueft >= 3) { "Nur $geprueft Knoepfe mit Kreisel gefunden — greift die Suche noch?" }

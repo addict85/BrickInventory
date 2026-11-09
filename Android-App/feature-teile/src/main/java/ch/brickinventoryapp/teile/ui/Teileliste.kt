@@ -2,6 +2,8 @@ package ch.brickinventoryapp.teile.ui
 
 import ch.brickinventoryapp.data.util.fangeAusserAbbruch
 import ch.brickinventoryapp.model.data.model.BestandTeil
+import ch.brickinventoryapp.model.data.model.Minifig
+import ch.brickinventoryapp.model.data.model.Part
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
@@ -45,71 +47,64 @@ internal class Teileliste @Inject constructor(
             // Teil als fehlend. Angezeigt wird weiterhin die BrickLink-Nummer.
             val deduped = mutableMapOf<String, PlPart>()
             if (partsResult is Ergebnis.Success) {
-                val serverBase = serverUrl.trimEnd('/')
-                for (p in partsResult.data.parts) {
-                    val blNum = p.blPartNumber ?: p.partNumber
-                    val key   = "${p.partNumber}|${p.colorId}"
-                    val existing = deduped[key]
-                    val qty = p.totalQuantity.takeIf { it > 0 } ?: 1
-                    if (existing != null) {
-                        deduped[key] = existing.copy(quantity = existing.quantity + qty)
-                    } else {
-                        // Bilder immer über den Server: image_local und Pfade sind serverrelativ,
-                        // rohe CDN-Adressen brauchen die Kopfzeilen des Proxys.
-                        val bild = p.imageUrl
-                        val resolvedImageUrl = when {
-                            p.imageLocal != null ->
-                                "$serverBase${p.imageLocal}"
-                            bild == null -> null
-                            bild.startsWith("/") ->
-                                "$serverBase$bild"
-                            bild.startsWith("https://") || bild.startsWith("http://") ->
-                                // Noch nicht über den Server geleitet: Coil darf kein CDN direkt fragen.
-                                "$serverBase$IMG_PROXY?url=${java.net.URLEncoder.encode(bild, "UTF-8")}"
-                            else -> "$serverBase$bild"
-                        }
-                        deduped[key] = PlPart(
-                            partNumber    = p.partNumber,
-                            blPartNumber  = blNum.takeIf { it != p.partNumber },
-                            partName      = p.partName ?: p.partNumber,
-                            colorName     = p.colorName ?: "",
-                            colorHex      = p.colorHex,
-                            colorId       = p.colorId,
-                            blColorId     = p.blColorId,
-                            quantity      = qty,
-                            imageUrl      = resolvedImageUrl,
-                            imageLocal    = p.imageLocal
-                        )
-                    }
-                }
+                for (p in partsResult.data.parts) fasseZusammen(deduped, "${p.partNumber}|${p.colorId}", teilZeile(p, serverUrl))
             }
             // Figuren als Ganzes, nicht in ihre Teile zerlegt — wie in der Webapp.
             if (figsResult is Ergebnis.Success) {
-                for (f in figsResult.data.figs) {
-                    val figQty = f.totalQuantity?.takeIf { it > 0 } ?: f.quantity
-                    val key = "fig:${f.figNumber}"
-                    val existing = deduped[key]
-                    if (existing != null) {
-                        deduped[key] = existing.copy(quantity = existing.quantity + figQty)
-                    } else {
-                        deduped[key] = PlPart(
-                            partNumber   = f.figNumber,
-                            blPartNumber = f.figNumber,  // Figurennummern sind die BrickLink-Nummern
-                            partName     = f.figName ?: f.figNumber,
-                            colorName    = "Minifiguren",
-                            colorHex     = "f5a800",
-                            quantity     = figQty,
-                            imageUrl     = f.imageUrl?.let {
-                                if (it.startsWith("/")) "${serverUrl}$it" else it
-                            },
-                            isFig        = true
-                        )
-                    }
-                }
+                for (f in figsResult.data.figs) fasseZusammen(deduped, "fig:${f.figNumber}", figurZeile(f, serverUrl))
             }
             Pair(setName, deduped.values.toList())
         }.getOrElse { Pair(setNumber, listOf()) }
     }
+
+    /** Eine Zeile unter [key] ablegen; gibt es sie schon, zählt nur die Menge dazu. */
+    private fun fasseZusammen(deduped: MutableMap<String, PlPart>, key: String, zeile: PlPart) {
+        val existing = deduped[key]
+        deduped[key] = existing?.copy(quantity = existing.quantity + zeile.quantity) ?: zeile
+    }
+
+    private fun teilZeile(p: Part, serverUrl: String): PlPart {
+        val blNum = p.blPartNumber ?: p.partNumber
+        return PlPart(
+            partNumber    = p.partNumber,
+            blPartNumber  = blNum.takeIf { it != p.partNumber },
+            partName      = p.partName ?: p.partNumber,
+            colorName     = p.colorName ?: "",
+            colorHex      = p.colorHex,
+            colorId       = p.colorId,
+            blColorId     = p.blColorId,
+            quantity      = p.totalQuantity.takeIf { it > 0 } ?: 1,
+            imageUrl      = bildUeberServer(serverUrl.trimEnd('/'), p.imageLocal, p.imageUrl),
+            imageLocal    = p.imageLocal
+        )
+    }
+
+    /**
+     * Bilder immer über den Server: image_local und Pfade sind serverrelativ,
+     * rohe CDN-Adressen brauchen die Kopfzeilen des Proxys.
+     */
+    private fun bildUeberServer(serverBase: String, imageLocal: String?, bild: String?): String? = when {
+        imageLocal != null -> "$serverBase$imageLocal"
+        bild == null -> null
+        bild.startsWith("/") -> "$serverBase$bild"
+        bild.startsWith("https://") || bild.startsWith("http://") ->
+            // Noch nicht über den Server geleitet: Coil darf kein CDN direkt fragen.
+            "$serverBase$IMG_PROXY?url=${java.net.URLEncoder.encode(bild, "UTF-8")}"
+        else -> "$serverBase$bild"
+    }
+
+    private fun figurZeile(f: Minifig, serverUrl: String) = PlPart(
+        partNumber   = f.figNumber,
+        blPartNumber = f.figNumber,  // Figurennummern sind die BrickLink-Nummern
+        partName     = f.figName ?: f.figNumber,
+        colorName    = "Minifiguren",
+        colorHex     = "f5a800",
+        quantity     = f.totalQuantity?.takeIf { it > 0 } ?: f.quantity,
+        imageUrl     = f.imageUrl?.let {
+            if (it.startsWith("/")) "${serverUrl}$it" else it
+        },
+        isFig        = true
+    )
 
     /**
      * „Kann ich das bauen?" — dieselbe Liste mit gesetztem `vorhanden`, oder

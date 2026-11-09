@@ -99,42 +99,7 @@ fun TabellenZeile(
                     contentScale = ContentScale.Fit,
                     ersatzGroesse = 20.dp,
                 )
-                Column(Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        if (farbe != null) {
-                            Surface(color = farbe,
-                                shape = CircleShape,
-                                modifier = Modifier.size(10.dp)) {}
-                        }
-                        Text(
-                            nummer,
-                            fontFamily = FontFamily.Monospace,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.primary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    // Katalognamen sind englisch; TalkBack spricht sie so aus (katalogName).
-                    Text(
-                        name?.let { katalogName(it) } ?: AnnotatedString(stringResource(R.string.name_unknown)),
-                        color = if (name == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    if (!zweiteZeile.isNullOrBlank()) {
-                        Text(
-                            zweiteZeile,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
+                TabellenText(nummer, name, farbe, zweiteZeile, Modifier.weight(1f))
                 Text(
                     fmtInt(menge),
                     Modifier.vorgelesenAls(stueckzahl(menge)),
@@ -144,6 +109,47 @@ fun TabellenZeile(
                 )
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        }
+    }
+}
+
+/** Nummer mit Farbpunkt, Name und zweite Zeile: die Mitte einer [TabellenZeile]. */
+@Composable
+private fun TabellenText(nummer: String, name: String?, farbe: Color?, zweiteZeile: String?, modifier: Modifier) {
+    Column(modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            if (farbe != null) {
+                Surface(color = farbe,
+                    shape = CircleShape,
+                    modifier = Modifier.size(10.dp)) {}
+            }
+            Text(
+                nummer,
+                fontFamily = FontFamily.Monospace,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        // Katalognamen sind englisch; TalkBack spricht sie so aus (katalogName).
+        Text(
+            name?.let { katalogName(it) } ?: AnnotatedString(stringResource(R.string.name_unknown)),
+            color = if (name == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (!zweiteZeile.isNullOrBlank()) {
+            Text(
+                zweiteZeile,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
