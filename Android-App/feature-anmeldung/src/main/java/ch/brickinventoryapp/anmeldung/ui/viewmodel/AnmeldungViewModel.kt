@@ -31,7 +31,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import ch.brickinventoryapp.model.data.model.QrAbholung
+import ch.brickinventoryapp.model.data.model.QrMeldung
 import javax.inject.Inject
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.zustand.ui.AppUiState
@@ -40,6 +43,9 @@ import ch.brickinventoryapp.zustand.ui.SitzungsRepository
 import ch.brickinventoryapp.zustand.ui.Blickfeld
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
 import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
+
+/** So oft fragt die App nach dem QR-Scan, ob der Browser die Kopplung bestätigt hat. */
+internal const val QR_ABFRAGE_MS = 2_000L
 
 /**
  * Server einrichten, anmelden (Passwort, zweiter Faktor, Passkey, QR), Konto anlegen,
@@ -191,7 +197,7 @@ class AnmeldungViewModel @Inject constructor(
      */
     fun loginWithQrToken(
         serverUrl: String, token: String, fingerabdruck: String? = null,
-        pinWechselEingabe: String? = null,
+        pinWechselEingabe: String? = null, geraet: String = "Android App",
     ) {
         val neu = NetworkPolicy.normalisiere(serverUrl)
         qrAbgelehnt(serverUrl, neu, fingerabdruck, pinWechselEingabe)?.let { satz ->
@@ -204,15 +210,8 @@ class AnmeldungViewModel @Inject constructor(
             if (schluessel != null && fingerabdruck != null) ablage.halteVor(schluessel, fingerabdruck)
             try {
                 richteEin(neu)
-                when (val r = konto.qrLogin(token)) {
-                    is Ergebnis.Success -> {
-                        val neuesToken = r.data.token
-                        if (r.data.success && neuesToken != null) {
-                            if (schluessel != null && fingerabdruck != null) ablage.merkePin(schluessel, fingerabdruck)
-                            angemeldet(neuesToken, r.data.user?.username ?: "", r.data.verwalter)
-                            _anmeldeState.update { it.copy(loginLaeuft = false) }
-                        } else qrGescheitert(r.data.error ?: meldungen.text(R.string.err_qr_login_failed))
-                    }
+                when (val r = konto.qrLogin(token, geraet)) {
+                    is Ergebnis.Success -> koppleQr(r.data, schluessel, fingerabdruck)
                     is Ergebnis.Error -> qrGescheitert(meldungen.meldung(r))
                 }
             } finally {
@@ -220,6 +219,25 @@ class AnmeldungViewModel @Inject constructor(
                 if (schluessel != null) ablage.vergissVorgehaltenen(schluessel)
             }
         }
+    }
+
+    /**
+     * Der Pin wird erst gemerkt, wenn der Browser die Kopplung bestätigt hat: Ein
+     * abgelehnter oder verfallener Code darf keinen Schlüssel zurücklassen.
+     */
+    private suspend fun koppleQr(antwort: QrMeldung, schluessel: String?, fingerabdruck: String?) {
+        val abholung = antwort.abholung
+        val code = antwort.code
+        if (!antwort.success || abholung == null || code == null) {
+            qrGescheitert(antwort.error ?: meldungen.text(R.string.err_qr_login_failed))
+            return
+        }
+        _anmeldeState.update { it.copy(qrBestaetigung = code) }
+        val fertig = warteAufBestaetigung(abholung, antwort.expiresIn) ?: return
+        val neuesToken = fertig.token ?: return
+        if (schluessel != null && fingerabdruck != null) ablage.merkePin(schluessel, fingerabdruck)
+        angemeldet(neuesToken, fertig.user?.username ?: "", false)
+        _anmeldeState.update { it.copy(loginLaeuft = false, qrBestaetigung = null) }
     }
 
     /**
@@ -261,10 +279,28 @@ class AnmeldungViewModel @Inject constructor(
         return if (gemerkt != null) gemerkt != fingerabdruck else !systemWurzeln.enthaelt(fingerabdruck)
     }
 
+    /**
+     * Fragt, bis der Browser die Kopplung bestätigt oder ablehnt; null heisst gescheitert,
+     * der Zustand sagt dann schon, warum. Nach der Frist des Codes fragt die App nicht weiter.
+     */
+    private suspend fun warteAufBestaetigung(abholung: String, sekunden: Int): QrAbholung? {
+        val ende = System.currentTimeMillis() + sekunden * 1000L
+        while (System.currentTimeMillis() < ende) {
+            when (val r = konto.qrAbholen(abholung)) {
+                is Ergebnis.Success -> if (r.data.token != null) return r.data
+                    else if (!r.data.wartet) return qrGescheitert(r.data.error ?: meldungen.text(R.string.err_qr_login_failed))
+                is Ergebnis.Error -> return qrGescheitert(meldungen.meldung(r))
+            }
+            delay(QR_ABFRAGE_MS)
+        }
+        return qrGescheitert(meldungen.text(R.string.err_qr_login_failed))
+    }
+
     /** Ein zweiter QR-Anlauf nach einer gelungenen Anmeldung ist kein Fehler (siehe qrFehler). */
-    private fun qrGescheitert(satz: String) {
+    private fun qrGescheitert(satz: String): QrAbholung? {
         val schonAngemeldet = sitzung.state.value.isLoggedIn
-        _anmeldeState.update { it.copy(loginLaeuft = false, loginError = qrFehler(schonAngemeldet, satz)) }
+        _anmeldeState.update { it.copy(loginLaeuft = false, qrBestaetigung = null, loginError = qrFehler(schonAngemeldet, satz)) }
+        return null
     }
 
     /**

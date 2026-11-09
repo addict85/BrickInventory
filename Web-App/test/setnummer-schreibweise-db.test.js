@@ -55,7 +55,7 @@ test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { conc
       `INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,$2,'NONE',true)
        ON CONFLICT (set_number) DO UPDATE SET bl_type='NONE', is_gear=true`, [MITV, `Set ${MITV}`]);
 
-    const { fetchAndCachePrice } = _req('jobs/priceJob.js');
+    const { fetchAndCachePrice } = _req('src/finanzen/preisLauf.js');
     const { fetchPrice } = _req('src/finanzen/financeCalc.js');
 
     // Gegenprobe: in src/infra/setNummer.ts das mitVersion() aus katalogEintrag()

@@ -149,49 +149,6 @@ benutzt — ein Eintrag im Sitzungsspeicher fuer einen Client, der gar
 keine Cookies fuehrt.
 ```
 
-<a id="qr-ttl-ms"></a>
-## `QR_TTL_MS`
-
-```text
-── QR-Login ──────────────────────────────────────────────────────────────────
-VORHER: Der QR-Code enthielt den bcrypt-Hash des Nutzers (`h: password_hash`)
-in einem base64-Payload, HMAC-signiert mit dem SESSION_SECRET. Der Kommentar
-dort sagte „safe to include (can't reverse to plaintext)" — das stimmt fürs
-Reversieren, nicht fürs Knacken: Wer den Code fotografiert, über die Schulter
-scannt oder den Screenshot findet, hat den Hash offline und unbegrenzt zum
-Durchprobieren, und derselbe Hash ist der Webapp-Login. Zusätzlich war der
-Code 30 Minuten lang beliebig oft einlösbar.
-
-JETZT: Der QR-Code enthält nur noch eine zufällige, einmalig einlösbare
-Nonce. Sie steht (als SHA-256) in qr_login_tokens, läuft nach 5 Minuten ab
-und wird beim Einlösen atomar entwertet. Kein Geheimnis im Code, keine
-HMAC-Signatur nötig, keine Zweitverwendung des SESSION_SECRET.
-```
-
-<a id="post-qr-token"></a>
-## `post-/qr-token`
-
-```text
-POST /api/v1/auth/qr-token — Nonce erzeugen (nur für die eigene Session)
-── POST statt GET (Nachtrag 154) ────────────────────────────────────────────
-Diese Route LEGT ETWAS AN: eine QR-Login-Nonce, die fünf Minuten lang ein
-Konto öffnet. Als GET war sie die einzige zustandsändernde Route im Baum,
-die an der Session hängt — und genau die Lücke, die SameSite=lax offen
-lässt: Bei einer Navigation von einer fremden Seite (window.open, ein Link,
-location=) schickt der Browser das Sitzungs-Cookie mit, und der Server legt
-eine Nonce an.
-
-Lesen konnte ein Angreifer die Antwort nicht — eine Navigation quer über
-Ursprünge hinweg gibt ihm keinen Zugriff auf den Rumpf. Erzwingen konnte er
-sie aber, und dasselbe tun Link-Vorschauen, Virenscanner und die
-Vorab-Ladelogik der Browser: alles, was ein GET für gefahrlos hält, weil GET
-gefahrlos sein SOLL.
-
-Mit POST ist es unabhängig von jeder CSRF-Entscheidung erledigt: SameSite=lax
-schickt bei einem fremden POST kein Cookie mit. Einziger Aufrufer war
-public/js/05-settings.js — dort mitgeändert.
-```
-
 <a id="post-qr-token-basis"></a>
 ## `basis`
 
@@ -230,20 +187,4 @@ db/migrations/0016-token-laufzeit.sql.
 Ein unbekannter Wert wird nicht abgewiesen, sondern zu „keine feste
 Frist" — dann gilt wie bisher allein die Gleitfrist. Ein aelterer
 Client, der das Feld gar nicht kennt, verhaelt sich damit unveraendert.
-```
-
-<a id="post-qr-token-2"></a>
-## Abschnitt
-
-```text
-`token_days`: was tatsaechlich gespeichert wurde, nicht was gewuenscht
-war. Ein unbekannter Wert wird zu null, und die Oberflaeche soll die
-Frist nennen koennen, die wirklich gilt.
-
-Die LISTE der Auswahlmoeglichkeiten steht hier bewusst NICHT mit in der
-Antwort: Sie wird gebraucht, BEVOR dieser Aufruf geschieht — das
-Auswahlfeld steht ja neben dem Knopf. Ein zweiter Abruf beim Laden der
-Seite nur dafuer waere Aufwand fuer nichts. Dass die vier Werte im
-Markup zu TOKEN_LAUFZEITEN passen, haelt test/token-laufzeit-db.test.js
-fest.
 ```

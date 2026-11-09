@@ -60,7 +60,7 @@ async function berechne(verwalter: boolean): Promise<EinrichtungStandAntwort> {
     success: true as const,
     ca: {
       vorhanden: !!ca,
-      ...(ca ? { fp_hex: ca.fp_hex, gueltig_bis: ca.gueltig_bis } : {}),
+      ...(ca ? { fp_hex: ca.fp_hex, zert_sha256: ca.zert_sha256, gueltig_bis: ca.gueltig_bis } : {}),
       download: '/ca.crt',
     },
     basis_url: verwalter ? k.appBaseUrl : null,

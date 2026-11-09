@@ -12,6 +12,7 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.zustand.ui.AnmeldeFormular
 import ch.brickinventoryapp.ui.components.Sichtschutz
 import ch.brickinventoryapp.anmeldung.ui.screens.LoginScreen
+import ch.brickinventoryapp.anmeldung.ui.screens.QrSetupScannerScreen
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -35,6 +36,8 @@ import androidx.compose.ui.platform.InterceptPlatformTextInput
  *       Passwort …“ (gegenproben/passwort-ohne-sichtschutz.patch)
  *   (c) TastaturOhneLernen setzt die Flagge nicht mehr → rot „Passwort
  *       und Code lernt die Tastatur nicht mit“ (gegenproben/tastatur-lernt-mit.patch)
+ *   (d) Sichtschutz() aus QrSetupScannerScreen entfernt → rot „der Scanner fuer den
+ *       Anmeldecode …“ (gegenproben/qr-scanner-ohne-sichtschutz.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class AnmeldeSchutzTest {
@@ -88,6 +91,13 @@ class AnmeldeSchutzTest {
         val info = checkNotNull(gesehen) { "Das Passwortfeld hat keine Eingabe gestartet" }
         assertTrue("Die Tastatur darf das Passwort lernen",
             (info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) != 0)
+    }
+
+    @Test
+    fun `der Scanner fuer den Anmeldecode kommt in kein Bildschirmfoto`() {
+        compose.setContent { BrickInventoryManagerTheme { QrSetupScannerScreen(onResult = {}, onDismiss = {}) } }
+        compose.waitForIdle()
+        assertTrue("Das Kamerabild mit dem Anmeldecode ist nicht geschützt", geschuetzt())
     }
 
     @Test

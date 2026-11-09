@@ -127,7 +127,12 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async (t) => {
       for (let i = 1; i <= 10; i++) {
         for (const suf of ['.jpg', '_thumb.jpg']) {
           const f = path.join(SET_IMAGES_DIR, `${P}_${i}${suf}`);
-          if (!fs.existsSync(f)) { fs.writeFileSync(f, 'x'); extra.push(f); }
+          try {
+            fs.writeFileSync(f, 'x', { flag: 'wx' });
+            extra.push(f);
+          } catch (e) {
+            if (e.code !== 'EEXIST') throw e;
+          }
         }
       }
       try {
@@ -144,7 +149,7 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async (t) => {
     });
 
     await t.test('der Job holt nur, was fehlt', async () => {
-      const IQ = _req('jobs/imageQueue.js');
+      const IQ = _req('src/katalog/bilder/bildbedarfLauf.js');
       let n = 0;
       // `.gesamt` = bearbeitete Notizen (geladen, Vorschau erzeugt oder
       // übersprungen). Seit einer früheren Runde liefert der Durchgang eine

@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
 Rot: Kaufpreis bei 200 Prozent
 
-diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/ManualItemComposables.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/ManualItemComposables.kt
---- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/ManualItemComposables.kt
-+++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/ManualItemComposables.kt
+diff --git a/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/ManualItemComposables.kt b/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/ManualItemComposables.kt
+--- a/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/ManualItemComposables.kt
++++ b/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/ManualItemComposables.kt
 @@ -58,7 +58,7 @@ fun AcquisitionSummarySection(
  ) {
      // Bei grosser Schrift die Käufe UNTER die Bezeichnung: Neben ihr blieb für

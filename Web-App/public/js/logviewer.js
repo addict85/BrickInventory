@@ -18,12 +18,23 @@
   const el = (id) => /** @type {HTMLElement} */ (document.getElementById(id));
   /** @param {string} k */
   const tx = (k) => L[k] || k;
-  // Das Fenster erbt die CSP samt Trusted Types: eigene Richtlinie für das schon maskierte Markup.
+  // Das Fenster erbt die CSP samt Trusted Types: eigene Richtlinie für das hier maskierte Markup. Wie in
+  // 00-escapen.js nimmt sie nur den Text an, den alsHtml() ihr gerade freigibt.
   const tt = /** @type {{ trustedTypes?: { createPolicy(n: string, r: object): { createHTML(s: string): string } } }} */ (
     /** @type {unknown} */ (window)).trustedTypes;
-  const richtlinie = tt ? tt.createPolicy('app', { createHTML: (/** @type {string} */ s) => s }) : null;
+  /** @type {string | null} */
+  let freigabe = null;
+  const richtlinie = tt ? tt.createPolicy('app', { createHTML: (/** @type {string} */ s) => {
+    if (freigabe === null || s !== freigabe) throw new TypeError('Trusted Types: Markup nur über alsHtml()');
+    freigabe = null;
+    return s;
+  } }) : null;
   /** @param {string} s @returns {string} */
-  const alsHtml = (s) => richtlinie ? richtlinie.createHTML(s) : s;
+  const alsHtml = (s) => {
+    if (!richtlinie) return s;
+    freigabe = s;
+    try { return richtlinie.createHTML(s); } finally { freigabe = null; }
+  };
   /** @param {string} s */
   const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 

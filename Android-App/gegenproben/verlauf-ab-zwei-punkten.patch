@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.FeinschliffRegelnTest
 Rot: Preisverlauf
 
-diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailComponents.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailComponents.kt
---- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailComponents.kt
-+++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailComponents.kt
+diff --git a/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt b/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
+--- a/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
++++ b/Android-App/feature-gemeinsam/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
 @@ -246,7 +246,7 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: String) {
  }
  

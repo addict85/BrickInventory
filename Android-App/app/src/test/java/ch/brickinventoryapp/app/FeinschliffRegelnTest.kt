@@ -46,8 +46,8 @@ import ch.brickinventoryapp.model.ui.model.PreisPunktAnsicht
 import ch.brickinventoryapp.model.ui.model.PreisReiheAnsicht
 import ch.brickinventoryapp.sammlung.ui.screens.GalleryRoute
 import ch.brickinventoryapp.teile.ui.screens.PartsRoute
-import ch.brickinventoryapp.ui.screens.PriceChart
-import ch.brickinventoryapp.ui.screens.Zustandszeile
+import ch.brickinventoryapp.gemeinsam.ui.PriceChart
+import ch.brickinventoryapp.gemeinsam.ui.Zustandszeile
 import ch.brickinventoryapp.sammlung.ui.viewmodel.ErfassungViewModel
 import ch.brickinventoryapp.ui.util.fmtMoney
 import android.content.Context

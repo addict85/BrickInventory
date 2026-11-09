@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app.widget
 
+import ch.brickinventoryapp.data.util.Geraetesperre
 import ch.brickinventoryapp.data.util.fangeAusserAbbruch
 import android.content.Context
 import android.util.Base64
@@ -115,25 +116,27 @@ class WidgetArbeiter @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val finanzen: FinanzenRepository,
     private val zugang: Zugangsdaten,
+    private val sperre: Geraetesperre,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): androidx.work.ListenableWorker.Result =
-        fangeAusserAbbruch { aktualisiere(applicationContext) }.fold(
-            { androidx.work.ListenableWorker.Result.success() },
-            { androidx.work.ListenableWorker.Result.retry() },
-        )
+        if (fangeAusserAbbruch { aktualisiere(applicationContext) }.getOrDefault(false)) androidx.work.ListenableWorker.Result.success()
+        else androidx.work.ListenableWorker.Result.retry()
 
-    private suspend fun aktualisiere(ctx: Context) {
+    /** false: später noch einmal. */
+    private suspend fun aktualisiere(ctx: Context): Boolean {
         // Abgemeldet gibt es nichts zu zeigen; der alte Stand bliebe sonst fremd sichtbar.
         if (zugang.tokenJetzt().isBlank()) {
+            if (ohneToken(sperre.gesperrt()) == OhneToken.SPAETER) return false
             WidgetAblage.leeren(ctx)
             SammlungsWidget().updateAll(ctx)
-            return
+            return true
         }
         val pnl = (finanzen.getPnl() as? Ergebnis.Success)?.data
         val verlauf = (finanzen.getPortfolioHistory("week") as? Ergebnis.Success)?.data
         widgetZahlen(pnl, verlauf, System.currentTimeMillis())?.let { WidgetAblage.schreibe(ctx, it) }
         SammlungsWidget().updateAll(ctx)
+        return true
     }
 
     companion object {

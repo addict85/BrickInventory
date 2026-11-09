@@ -102,7 +102,7 @@ test('Konto selbst löschen und offene Registrierungen', { concurrency: 1 }, asy
     const adresse = await konto(NAMEN[5]);
     await db.run(`UPDATE users SET email_verified = false, verification_token = 'x', created_at = NOW() - INTERVAL '30 days' WHERE id = $1`, [adresse]);
 
-    await _req('jobs/aufraeumen.js').aufraeumenTaeglich();
+    await _req('src/verwaltung/aufraeumen.js').aufraeumenTaeglich();
     const stand = { alt: await da(alt.id), neu: await da(neu.id), bestaetigt: await da(bestaetigt.id), adresse: await da(adresse) };
     assert.deepEqual(stand, { alt: false, neu: true, bestaetigt: true, adresse: true });
   });

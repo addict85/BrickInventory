@@ -83,9 +83,23 @@ test('stille Faenge werden weniger, nie mehr', () => {
   }
 });
 
+test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', () => {
+  // Ein Ersatzwert nach einem Fehler sieht für den Aufrufer aus wie „leer“; src/infra/ergebnis.ts
+  // gibt den Fehlschlag weiter. Gemessen 349 Aufrufe am 09.11.2026, 318 nach dem Umbau von src/sets.
+  // Gegenprobe (09.11.2026): in src/sets/setAdd.ts wieder `.catch(meldeUndLiefere(…))` → rot (319).
+  const SCHRANKE = 318;
+  const muster = /\b(?:logAndContinue|meldeUndLiefere)\(/g;
+  const ist = zaehle([muster]);
+  assert.ok(ist <= SCHRANKE, `${ist}-mal logAndContinue/meldeUndLiefere, erlaubt sind ${SCHRANKE}`);
+  const sets = quellen().filter(f => /[\\/]src[\\/]sets[\\/]/.test(f));
+  assert.ok(sets.length > 10, 'src/sets nicht gefunden');
+  assert.deepEqual(sets.filter(f => new RegExp(muster.source).test(require('./helpers/sources').ohneKommentare(fs.readFileSync(f, 'utf8')))).map(f => path.relative(WEB, f)), []);
+  if (ist < SCHRANKE) console.log(`  ℹ logAndContinue/meldeUndLiefere: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
 test('any wird weniger, nie mehr', () => {
-  // Gemessen 23 am 08.11.2026; wie die Zahl sinkt, steht im git log.
-  const SCHRANKE = 23;
+  // Gemessen 22 am 09.11.2026; wie die Zahl sinkt, steht im git log.
+  const SCHRANKE = 22;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +
@@ -100,7 +114,7 @@ test('any in allen Formen wird weniger, nie mehr', () => {
   // Auch Promise<any>, any[] und Record<string, any>: Die enge Zählung oben sah
   // nur `as any` und `: any`. Gemessen 36 am 08.11.2026.
   // Gegenprobe (05.11.2026): getSetting wieder `fallback?: any` ohne Überladungen → rot.
-  const SCHRANKE = 36;
+  const SCHRANKE = 35;
   const ist = zaehle([/\bany\b/g]);
   assert.ok(ist <= SCHRANKE, `${ist}-mal any, erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ any (alle Formen): ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
@@ -111,7 +125,7 @@ test('eigene REQUIRE_DB-Blöcke in Tests werden weniger, nie mehr', () => {
   // prüft die Erreichbarkeit anders (Rollen, zweite Datenbank, Server).
   // Gemessen 116 Dateien am 05.11.2026.
   // Gegenprobe (05.11.2026): den Block zurück in acquisition-all-paths-db → rot.
-  const SCHRANKE = 116;
+  const SCHRANKE = 115;
   const ist = fs.readdirSync(__dirname).filter(n => n.endsWith('.js') && n !== path.basename(__filename))
     .filter(n => fs.readFileSync(path.join(__dirname, n), 'utf8').includes('REQUIRE_DB=1, aber')).length;
   assert.ok(ist <= SCHRANKE, `${ist} Testdateien mit eigener REQUIRE_DB-Prüfung, erlaubt sind ${SCHRANKE}`);
@@ -132,7 +146,7 @@ test('ungetypte Datenbankabfragen werden weniger, nie mehr', () => {
   // Erlaubt, solange niemand Felder der Zeile liest — dann verlangt der
   // Übersetzer ohnehin ein Typargument. Gemessen 68 am 06.11.2026.
   // Gegenprobe (05.11.2026): Schranke auf 68 → rot.
-  const SCHRANKE = 68;
+  const SCHRANKE = 65;
   const ist = zaehle([/\b(?:db|tx|dbh|d)\.(?:get|all)\(/g]);
   assert.ok(ist <= SCHRANKE, `${ist} ungetypte db.get/all, erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ ungetypte Abfragen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
@@ -181,8 +195,8 @@ function reineQuelltextTests() {
 }
 
 test('reine Quelltext-Tests werden weniger, nie mehr', () => {
-  // Gemessen 72 am 08.11.2026; wie die Zahl gesunken ist, steht im git log.
-  const SCHRANKE = 72;
+  // Gemessen 71 am 09.11.2026; wie die Zahl gesunken ist, steht im git log.
+  const SCHRANKE = 71;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
   const ist = reineQuelltextTests();
@@ -222,10 +236,10 @@ function quelltextFaelle() {
 }
 
 test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
-  // Gemessen 495 am 08.11.2026 (Prüfbericht: 632; die Ratschen selbst zählen mit).
+  // Gemessen 495 am 08.11.2026, 492 am 09.11.2026 (Prüfbericht: 632; die Ratschen selbst zählen mit).
   // Gegenprobe (08.11.2026): `\b_req\w*\(` aus FALL_FUEHRT_AUS entfernt → rot (574).
   // Gegenprobe (05.11.2026): parts-paging.test.js auf den Stand vor den jsdom-Tests → rot.
-  const SCHRANKE = 495;
+  const SCHRANKE = 492;
   const { n, alle } = quelltextFaelle();
   assert.ok(alle > 2000, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
   assert.ok(n <= SCHRANKE, `${n} Testfälle lesen nur Quelltext, erlaubt sind ${SCHRANKE}. ` +
@@ -508,7 +522,7 @@ test('ungeprueft() wird weniger, nie mehr', () => {
   // html`` maskiert jeden eingesetzten Wert; ungeprueft() setzt eine Zeichenkette als Markup ein, die
   // vor dem Umbau schon maskiert gebaut wurde. Wer eine Stelle auf html`` umstellt, senkt die Schranke.
   // Gegenprobe: `${ungeprueft(x)}` in 01-dom.js ergänzt → rot mit 159.
-  const SCHRANKE = 142;
+  const SCHRANKE = 140;
   const ist = oberflaechenCode().reduce((n, x) => n + (x.z.match(/(?<![\w.])ungeprueft\(/g) || []).length
     - (/export function ungeprueft\(/.test(x.z) ? 1 : 0), 0);
   assert.ok(ist > 0, 'kein ungeprueft() gefunden — greift die Suche noch?');
@@ -518,9 +532,10 @@ test('ungeprueft() wird weniger, nie mehr', () => {
 
 test('keine Datei der Oberfläche über 1000 Zeilen, die grossen werden kleiner', () => {
   // Eine Sammeldatei zieht Neues an, weil es dort schon liegt. Gemessen nach dem Teilen von
-  // 01-core.js, 05-settings.js und 13-acquisition-modals.js: grösste 859 am 06.11.2026, über 600 Zeilen 8.
-  // Gegenprobe: an 13-acquisition-modals.js 60 Kommentarzeilen gehängt → rot: „grösste Datei 977 Zeilen“.
-  const SCHRANKE_GROESSTE = 859, SCHRANKE_UEBER_600 = 8;
+  // 01-core.js, 05-settings.js und 13-acquisition-modals.js: grösste 859 am 06.11.2026, über 600 Zeilen 8;
+  // am 09.11.2026 die acht geteilt: grösste 598, über 600 keine.
+  // Gegenprobe (09.11.2026): an 04-finance.js drei Leerzeilen gehängt → rot: „grösste Datei 601 Zeilen“.
+  const SCHRANKE_GROESSTE = 598, SCHRANKE_UEBER_600 = 0;
   const laengen = oberflaeche().map(f => ({ f: path.relative(WEB, f), n: fs.readFileSync(f, 'utf8').split('\n').length }));
   assert.ok(laengen.length > 40, `nur ${laengen.length} Dateien gefunden — greift die Suche noch?`);
   const ueber1000 = laengen.filter(x => x.n > 1000).map(x => `${x.f} (${x.n})`);
@@ -579,7 +594,7 @@ test('Geschichte in Testkommentaren wird weniger, nie mehr', () => {
   // woher ein Test kam, steht im Commit. Gezählt werden Kommentarzeilen mit
   // den typischen Erzählmarken. Gemessen 58 am 08.11.2026 (vorher 424).
   // Gegenprobe (05.11.2026): den alten Kopf von scope-reset.test.js zurück → rot.
-  const SCHRANKE = 58;
+  const SCHRANKE = 57;
 
   const MARKE = /(Nachtr(ag|äge) [0-9]|Hier stand|Vorher stand|NACHGEMESSEN|kam(en)? am [0-9]|Marcos (Frage|Wunsch|Bericht|Rückfrage|Konsole))/;
   const dateien = [
@@ -780,9 +795,9 @@ test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie meh
 
 test('Testdateien ohne Gegenprobe werden weniger, nie mehr', () => {
   // Jeder Test nennt im Kopf seine Gegenprobe (CLAUDE.md); die älteren ohne
-  // werden beim Anfassen nachgetragen. Gemessen 94 am 08.11.2026.
+  // werden beim Anfassen nachgetragen. Gemessen 89 am 09.11.2026.
   // Gegenprobe (05.11.2026): in lint-ratsche.test.js „Gegenproben“ umbenannt → rot (112).
-  const SCHRANKE = 94;
+  const SCHRANKE = 89;
   const ohne = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js'))
     .filter(n => !fs.readFileSync(path.join(__dirname, n), 'utf8').includes('Gegenprobe'));
   assert.ok(ohne.length <= SCHRANKE, `${ohne.length} Testdateien ohne Gegenprobe, erlaubt sind ${SCHRANKE}`);

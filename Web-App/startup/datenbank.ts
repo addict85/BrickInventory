@@ -1,7 +1,7 @@
 import * as db from '../db/database';
 import { logAndContinue } from '../src/infra/fehler';
 import { initImageMisses } from '../src/katalog/bilder/imageMisses';
-import { initImageQueue } from '../jobs/imageQueue';
+import { initImageQueue } from '../src/katalog/bilder/bildbedarfLauf';
 import { gutscheineNeuVerschluesseln, kopienVerschluesseln, nummernNachverschluesseln } from '../src/gutscheine/dienst';
 import { verschluesseleGutscheinAltbestand } from '../src/gutscheine/gutscheinDateien';
 import { verschluesseleAltbestand } from '../src/konto/geheimnisAltbestand';

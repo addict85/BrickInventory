@@ -140,7 +140,7 @@ test('unbehandelte Fehler landen nicht nur in der Konsole', () => {
   // Fehler in einem Rückruf oder eine Zusage, die niemand einsammelt. Ohne
   // Auffangnetz sieht der Benutzer davon nichts — er klickt, und es passiert
   // einfach nichts.
-  const init = fs.readFileSync(path.join(ROOT, 'public', 'js', '08-init.js'), 'utf8');
+  const init = fs.readFileSync(path.join(ROOT, 'public', 'js', '08-fehlerfang.js'), 'utf8');
   assert.match(init, /addEventListener\('unhandledrejection'/,
     'Abgewiesene Zusagen brauchen ein Auffangnetz');
   assert.match(init, /addEventListener\('error'/, 'Skriptfehler ebenso');

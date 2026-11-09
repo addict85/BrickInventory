@@ -6,12 +6,12 @@ Rot: Kontogrenze bricht den Durchgang ab
 diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/GutscheinViewModel.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/GutscheinViewModel.kt
 --- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/GutscheinViewModel.kt
 +++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/GutscheinViewModel.kt
-@@ -370,7 +370,7 @@ class GutscheinViewModel @Inject constructor(
-                                     meldungen.zeige(d.error ?: texte.text(R.string.err_generic))
-                                     // Bot-Schutz gilt für alle, die Kontogrenze für dieses Konto:
-                                     // Weitere Karten liefen in dieselbe Absage.
--                                    if (d.grund == "botschutz" || d.grund == "konto") return@launch
-+                                    if (d.grund == "botschutz") return@launch
-                                 }
-                             }
-                             is Ergebnis.Error -> {
+@@ -385,7 +385,7 @@
+                         meldungen.zeige(d.error ?: texte.text(R.string.err_generic))
+                         // Bot-Schutz gilt für alle, die Kontogrenze für dieses Konto:
+                         // Weitere Karten liefen in dieselbe Absage.
+-                        val alle = d.grund == "botschutz" || d.grund == "konto"
++                        val alle = d.grund == "botschutz"
+                         return if (alle) Guthabenabfrage.ABBRUCH else Guthabenabfrage.FEHLER
+                     }
+                 }

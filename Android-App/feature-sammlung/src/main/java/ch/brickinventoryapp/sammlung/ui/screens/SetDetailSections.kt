@@ -58,16 +58,16 @@ import ch.brickinventoryapp.model.ui.model.PreisalarmAnsicht
 import ch.brickinventoryapp.ui.util.fmtEingabe
 import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.util.fmtMoney
-import ch.brickinventoryapp.ui.screens.AcquisitionSummarySection
-import ch.brickinventoryapp.ui.screens.DetailRow2
-import ch.brickinventoryapp.ui.screens.KennzahlenReihe
-import ch.brickinventoryapp.ui.screens.LagerortFeld
-import ch.brickinventoryapp.ui.screens.MarketPriceByCondition
-import ch.brickinventoryapp.ui.screens.PreisLaedtZeile
-import ch.brickinventoryapp.ui.screens.PriceChart
-import ch.brickinventoryapp.ui.screens.SectionCard
-import ch.brickinventoryapp.ui.screens.StatChipV2
-import ch.brickinventoryapp.ui.screens.WertKacheln
+import ch.brickinventoryapp.gemeinsam.ui.AcquisitionSummarySection
+import ch.brickinventoryapp.gemeinsam.ui.DetailRow2
+import ch.brickinventoryapp.gemeinsam.ui.KennzahlenReihe
+import ch.brickinventoryapp.gemeinsam.ui.LagerortFeld
+import ch.brickinventoryapp.gemeinsam.ui.MarketPriceByCondition
+import ch.brickinventoryapp.gemeinsam.ui.PreisLaedtZeile
+import ch.brickinventoryapp.gemeinsam.ui.PriceChart
+import ch.brickinventoryapp.gemeinsam.ui.SectionCard
+import ch.brickinventoryapp.gemeinsam.ui.StatChipV2
+import ch.brickinventoryapp.gemeinsam.ui.WertKacheln
 
 /**
  * Marktpreis je Zustand und Verlauf. Die grosse Preiszeile steht nicht mehr hier: Markt-,
@@ -81,26 +81,31 @@ fun LazyListScope.setDetailPriceSection(detailState: SetDetailUiState, price: Se
             // die Kachel „Marktpreis“, zweimal derselbe Titel las sich wie ein Doppel.
             val verlauf = history?.chart?.values?.isNotEmpty() == true || detailState.priceHistoryLoading
             SectionCard(title = stringResource(if (verlauf) R.string.detail_section_price_history else R.string.detail_section_market)) {
-                if (detailState.setPriceLoading && price == null) {
-                    PreisLaedtZeile()
-                } else if (price != null && !price.noPrice) {
-                    // Je Zustand eine Zeile, aber nur bei mehr als einem: Mit einem einzigen
-                    // Zustand stünden Preis und G&V der Wert-Kacheln oben gleich noch einmal da.
-                    history?.byCondition?.let { byCond ->
-                        if (byCond.present().size > 1) MarketPriceByCondition(byCond, currency)
-                    }
-                    // Preis und Verlauf sind zwei Abrufe; der Hinweis verhindert, dass das
-                    // Diagramm später kommentarlos in die Karte springt.
-                    val chart = history?.chart
-                    if (chart != null && chart.values.isNotEmpty()) {
-                        Spacer(Modifier.height(Abstaende.klein))
-                        PriceChart(chart, currency)
-                    } else if (detailState.priceHistoryLoading) {
-                        Spacer(Modifier.height(Abstaende.klein))
-                        PreisLaedtZeile()
-                    }
-                }
+                PreisKarteInhalt(detailState, price, history, currency)
             }
+        }
+    }
+}
+
+@Composable
+private fun PreisKarteInhalt(detailState: SetDetailUiState, price: SetPreisAnsicht?, history: PreisverlaufAnsicht?, currency: String) {
+    if (detailState.setPriceLoading && price == null) {
+        PreisLaedtZeile()
+    } else if (price != null && !price.noPrice) {
+        // Je Zustand eine Zeile, aber nur bei mehr als einem: Mit einem einzigen
+        // Zustand stünden Preis und G&V der Wert-Kacheln oben gleich noch einmal da.
+        history?.byCondition?.let { byCond ->
+            if (byCond.present().size > 1) MarketPriceByCondition(byCond, currency)
+        }
+        // Preis und Verlauf sind zwei Abrufe; der Hinweis verhindert, dass das
+        // Diagramm später kommentarlos in die Karte springt.
+        val chart = history?.chart
+        if (chart != null && chart.values.isNotEmpty()) {
+            Spacer(Modifier.height(Abstaende.klein))
+            PriceChart(chart, currency)
+        } else if (detailState.priceHistoryLoading) {
+            Spacer(Modifier.height(Abstaende.klein))
+            PreisLaedtZeile()
         }
     }
 }

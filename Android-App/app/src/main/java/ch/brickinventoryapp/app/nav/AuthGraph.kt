@@ -23,6 +23,7 @@ import ch.brickinventoryapp.sammlung.ui.screens.*
 import ch.brickinventoryapp.teile.ui.screens.*
 import ch.brickinventoryapp.ui.screens.*
 import ch.brickinventoryapp.verwaltung.ui.screens.*
+import android.os.Build
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraphBuilder
 import ch.brickinventoryapp.app.*
@@ -57,8 +58,9 @@ private fun NavGraphBuilder.einrichtungsZiel(u: ZielUmgebung) {
             // Erst nach der Bestätigung im Einrichtungsbildschirm; die Anmeldung
             // springt nach Erfolg in die Galerie.
             onQrScanned = { qr, pinEingabe ->
+                // Der Gerätename steht im Browser bei der Frage „Gerät koppeln?“.
                 anmeldungVm.loginWithQrToken(qr.url, qr.token, fingerabdruck = qr.fingerabdruck,
-                    pinWechselEingabe = pinEingabe)
+                    pinWechselEingabe = pinEingabe, geraet = Build.MODEL.orEmpty().ifBlank { "Android App" })
                 navController.navigate(Screen.Login) {
                     popUpTo<Screen.Setup> { inclusive = true }
                 }
@@ -95,6 +97,7 @@ private fun NavGraphBuilder.anmeldeZiel(u: ZielUmgebung) {
             serverUrl = state.serverUrl,
             isLoading = anmeldung.loginLaeuft,
             error = anmeldung.loginError,
+            qrBestaetigung = anmeldung.qrBestaetigung,
             codeNoetig = anmeldung.codeNoetig,
             formular = anmeldung.formular,
             registrierungOffen = anmeldung.registrierungOffen,

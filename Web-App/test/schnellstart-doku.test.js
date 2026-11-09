@@ -16,7 +16,8 @@
  *      keinen Port“
  *   E  compose.yaml: bei jobs `image:` gestrichen → rot: „jobs zieht das
  *      veröffentlichte Image“
- *   F  README.md: `docker compose logs app worker` → rot: „unbekannter Dienst worker“
+ *   F  README.md: `docker compose logs app worker` → rot: „unbekannter Dienst worker“;
+ *      (09.11.2026) `docker compose exec worker cat …` → rot: „unbekannter Dienst worker“
  * Gegenprobe L1 (05.11.2026 gemessen): in beiden READMEs wieder `docker
  *   compose pull` statt `sh scripts/image-pruefen.sh` → rot: „docker compose
  *   config“ (BRICK_IMAGE fehlt).
@@ -102,7 +103,9 @@ for (const { datei, abschnitt } of DOKUS) {
     for (const z of dockerZeilen) {
       const [, befehl, rest = ''] = z.match(/^docker compose (\w+)((?:\s+[\w-]+)*)/) || [];
       assert.ok(befehl, `unbekannte Form: ${z}`);
-      for (const d of rest.trim().split(/\s+/).filter(w => w && !w.startsWith('-')))
+      const woerter = rest.trim().split(/\s+/).filter(w => w && !w.startsWith('-'));
+      // Bei exec und run folgt auf den Dienst der Befehl im Container.
+      for (const d of ['exec', 'run'].includes(befehl) ? woerter.slice(0, 1) : woerter)
         assert.ok(dienste.includes(d), `unbekannter Dienst ${d} in „${z}“`);
     }
 

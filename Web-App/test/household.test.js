@@ -292,7 +292,9 @@ test('die Oberfläche zeigt Besitzer und Kontoauswahl nur im Haushalt', () => {
     'Das ganze Set darf nicht mehr auf einmal verschoben werden',
   );
   const ownerCols = (
-    adm.match(/_householdMembers\.length > 1 \? (?:html)?`<th>\$\{t(?:Raw)?\('household\.owner'\)\}<\/th>` : ''/g) || []
+    adm.match(
+      /erfassung\.mitglieder\.length > 1 \? (?:html)?`<th>\$\{t(?:Raw)?\('household\.owner'\)\}<\/th>` : ''/g,
+    ) || []
   ).length;
   assert.equal(ownerCols, 2, 'Eigentümer-Spalte fehlt in einem der beiden Kaufpreis-Dialoge');
 });
@@ -318,7 +320,7 @@ test('der Kontofilter gilt je Ansicht und wird überall mitgeschickt', () => {
 
   // Im Finanzreiter ALLE vier Abfragen — sonst stünde eine Summe aus einem
   // Blickfeld neben einer Aufstellung aus einem anderen.
-  const fin = read('public/js/04-finance.js');
+  const fin = read('public/js/04-finance.js') + read('public/js/04-wertkurve.js');
   // Adressen seit Etappe 5 unter /v1 — die Regel ist unverändert: ALLE vier
   // Abfragen des Reiters tragen denselben Filter.
   for (const ep of [

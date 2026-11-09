@@ -5,13 +5,15 @@
  * ebenso. Die Sammlung baut sich trotzdem auf, und das Protokollfenster
  * (eigenes Dokument, erbt die CSP) zeigt seine Einträge.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln):
+ * Gegenproben (05.11.2026 gemessen, je einzeln; D am 09.11.2026):
  *   A  die beiden Trusted-Types-Zeilen aus der CSP (server.ts) entfernt → rot:
  *      „die CSP verlangt Trusted Types“ und „innerHTML ausserhalb …“ (kein Fehler)
  *   B  in setzeHtml() wieder `el.innerHTML = einsetzen(inhalt)` (Bündel neu
  *      gebaut) → rot schon beim Start: Die Anmeldemaske erscheint nicht
  *   C  in logviewer.js die Richtlinie weggelassen (Zeichenkette an innerHTML)
  *      → rot: „das Protokollfenster …“
+ *   D  report-uri/report-to aus der CSP (server.ts) entfernt → rot: „die CSP
+ *      verlangt Trusted Types und meldet Verstösse …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -25,10 +27,20 @@ test('Trusted Types', { timeout: 180_000 }, async t => {
     return;
   }
 
-  await t.test('die CSP verlangt Trusted Types', async () => {
-    const csp = (await fetch(`http://127.0.0.1:${app.port}/`)).headers.get('content-security-policy') ?? '';
+  await t.test('die CSP verlangt Trusted Types und meldet Verstösse an den Server', async () => {
+    const r = await fetch(`http://127.0.0.1:${app.port}/`);
+    const csp = r.headers.get('content-security-policy') ?? '';
     assert.match(csp, /(^|; )require-trusted-types-for 'script'(;|$)/, csp);
     assert.match(csp, /(^|; )trusted-types app default(;|$)/, csp);
+    assert.match(csp, /(^|; )report-uri \/csp-bericht; report-to csp(;|$)/, csp);
+    assert.equal(r.headers.get('reporting-endpoints'), 'csp="/csp-bericht"');
+    // Auch ohne Herkunft, wie der Browser einen Bericht schickt: angenommen, ohne Inhalt.
+    const bericht = await fetch(`http://127.0.0.1:${app.port}/csp-bericht`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/csp-report', 'sec-fetch-site': 'same-origin' },
+      body: '{}',
+    });
+    assert.equal(bericht.status, 204);
   });
 
   await t.test('setzeHtml() baut die Sammlung, innerHTML ausserhalb wirft TypeError', async () => {

@@ -6,12 +6,12 @@ Rot: wer abtippt
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
-@@ -68,7 +68,7 @@ fun ZertifikatDialog(
+@@ -72,7 +72,7 @@
                  // eines Angreifers ab statt aus der Webapp. Der Anfang zeigt nur, welche Zeile.
                  Text(stringResource(if (abschreiben) R.string.zert_beginnt_mit else R.string.zert_fingerabdruck),
                      style = MaterialTheme.typography.labelMedium)
 -                Text(if (abschreiben) fingerabdruckAnfang(frage.fingerabdruck) else fingerabdruckLesbar(frage.fingerabdruck),
 +                Text(fingerabdruckLesbar(frage.fingerabdruck),
                      fontFamily = FontFamily.Monospace,
-                     style = MaterialTheme.typography.bodySmall,
-                     color = if (geaendert) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
+                     // Ohne Abtippen ist der Vergleich die ganze Prüfung: gross genug zum Lesen.
+                     style = if (abschreiben) MaterialTheme.typography.bodySmall else MaterialTheme.typography.titleMedium,

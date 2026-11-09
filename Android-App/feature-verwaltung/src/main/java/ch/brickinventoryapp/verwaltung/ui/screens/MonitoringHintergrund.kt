@@ -68,23 +68,36 @@ internal fun HintergrundSection(
                 Text(stringResource(R.string.hintergrund_leer), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             for ((art, gruppe) in ansicht.auftraege.groupBy { it.art }) {
-                HorizontalDivider()
-                val name = auftragsArtText(art)?.let { stringResource(it) } ?: art
-                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                    Text(name, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { onStarten(art, name) }) {
-                        Text(stringResource(R.string.hintergrund_jetzt))
-                    }
-                    TextButton(onClick = { onLeeren(art) }) {
-                        Text(stringResource(R.string.hintergrund_leeren))
-                    }
-                }
-                for (a in gruppe) AuftragZeile(a,
-                    onAbbrechen = { onAbbrechen(a.id) },
-                    onWiederholen = { onWiederholen(a.id) })
+                AuftragsGruppe(art, gruppe, onStarten, onLeeren, onAbbrechen, onWiederholen)
             }
         }
     }
+}
+
+/** Die Aufträge einer Art unter ihrem Kopf mit „Jetzt“ und „Leeren“. */
+@Composable
+private fun AuftragsGruppe(
+    art: String,
+    gruppe: List<AuftragAnsicht>,
+    onStarten: (art: String, name: String) -> Unit,
+    onLeeren: (art: String) -> Unit,
+    onAbbrechen: (id: String) -> Unit,
+    onWiederholen: (id: String) -> Unit,
+) {
+    HorizontalDivider()
+    val name = auftragsArtText(art)?.let { stringResource(it) } ?: art
+    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+        Text(name, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        TextButton(onClick = { onStarten(art, name) }) {
+            Text(stringResource(R.string.hintergrund_jetzt))
+        }
+        TextButton(onClick = { onLeeren(art) }) {
+            Text(stringResource(R.string.hintergrund_leeren))
+        }
+    }
+    for (a in gruppe) AuftragZeile(a,
+        onAbbrechen = { onAbbrechen(a.id) },
+        onWiederholen = { onWiederholen(a.id) })
 }
 
 @Composable

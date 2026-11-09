@@ -5,7 +5,6 @@ import fs from 'fs';
 import { AbrufFehler } from '../../infra/abruf';
 import { holeBild, BILD_KOPFZEILEN } from '../quellen';
 import { SET_IMAGES_DIR } from '../../infra/appPaths';
-import { appVersion } from '../../infra/appVersion';
 import { mitVersion } from '../../infra/setNummer';
 
 // Set-Bilder vom CDN holen; hier statt im Router, damit die Aufrufer echt importieren.
@@ -15,12 +14,10 @@ import { mitVersion } from '../../infra/setNummer';
 // Ausführlich: docs/begruendungen/src/katalog/bilder/setImages.ts.md#set-img-max-bytes
 export const SET_IMG_MAX_BYTES = 20 * 1024 * 1024;
 
-/** Sauber und eindeutig: Sieht er nach einem Standard-Scraper aus, sperrt Cloudflare.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/setImages.ts.md#bilduseragent */
+/** Dieselbe Browser-Kennung wie der Bild-Proxy: Eine eigene weist das CDN mit 403 ab,
+ * und der Bild-Auftrag pausierte dann endlos. IMG_USER_AGENT bleibt als Ausweg. */
 export function bildUserAgent(): string {
-  const eigener = konfig().bildUserAgent;
-  if (eigener) return eigener;
-  return `BrickInventoryManager/${appVersion()} (self-hosted; +https://github.com/brickinventory)`;
+  return konfig().bildUserAgent || String(BILD_KOPFZEILEN['User-Agent']);
 }
 
 /** Nur Rebrickable-Bilder legt der Proxy samt Vorschau unter images/sets ab. */
@@ -48,7 +45,7 @@ export async function downloadSetImage(url: string, setNumber: string, info?: { 
     }).then(r => {
       if (r.status === 200) return r.koerper;
       // „404" und „403 Bot-Erkennung" verlangen verschiedene Massnahmen; ohne
-      // echten Code gilt es in jobs/imageQueue.ts als vorübergehend.
+      // echten Code gilt es in src/katalog/bilder/bildbedarfLauf.ts als vorübergehend.
       const nichtVorhanden = r.status === 404 || r.status === 410;
       (nichtVorhanden ? console.warn : console.error)(`[set-img] ${setNumber}: HTTP ${r.status} vom Bildserver: ${url}`);
       if (info && r.status) info.status = r.status;

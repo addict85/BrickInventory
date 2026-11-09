@@ -1,6 +1,8 @@
 /**
  * Keine Schema-Anweisung im Anfragepfad.
  * Ausführlich: docs/begruendungen/test/schema-am-start.test.js.md#kopf
+ *
+ * Gegenprobe (09.11.2026): `'ALTER TABLE sets ADD COLUMN probe INT'` in src/sets/lesen.ts → rot.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

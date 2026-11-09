@@ -60,6 +60,16 @@ fun widgetZahlen(pnl: PnlResponse?, verlauf: PortfolioHistoryResponse?, jetzt: L
 fun widgetAnzeige(abgelegt: WidgetZahlen?, angemeldet: Boolean): WidgetZahlen? =
     if (angemeldet) abgelegt else null
 
+/** Was der Arbeiter ohne Token tut. */
+enum class OhneToken { LEEREN, SPAETER }
+
+/**
+ * Abgemeldet wird die Ablage geleert. Bei gesperrtem Gerät ist das Token nur noch nicht
+ * gelesen (sein Schlüssel arbeitet nur entsperrt); geleert stünde nach dem Entsperren
+ * bis zum nächsten Lauf ein leeres Widget da.
+ */
+fun ohneToken(geraetGesperrt: Boolean): OhneToken = if (geraetGesperrt) OhneToken.SPAETER else OhneToken.LEEREN
+
 /** Statt eines Betrags, solange der Nutzer Geldwerte im Widget nicht erlaubt hat. */
 const val WIDGET_VERDECKT = "••••"
 

@@ -105,6 +105,12 @@ fun interface SystemWurzeln {
 interface PinAblage {
     fun pin(schluessel: String): String?
     fun merkePin(schluessel: String, fingerabdruck: String)
+
+    /**
+     * Stammt der Pin aus einem eben gescannten Code (vorgehalten, noch nicht gemerkt)?
+     * Dann muss der Server genau ihn zeigen, auch über eine öffentliche CA.
+     */
+    fun ausCode(schluessel: String): Boolean = false
 }
 
 /**
@@ -131,6 +137,11 @@ class ZertifikatUngeklaert(
         NUTZER_CA,
         /** Der Server zeigt einen anderen Schlüssel als den gemerkten. */
         GEAENDERT,
+        /**
+         * Der Server zeigt einen anderen Schlüssel als der eben gescannte Code. Nicht zu
+         * bestätigen: Code und Server sollten aus derselben Quelle stammen.
+         */
+        CODE_ABWEICHUNG,
     }
 }
 
@@ -168,6 +179,7 @@ internal class ZertifikatsRueckfrage @Inject constructor() : ZertifikatsFrage {
      */
     override fun bestaetige(pins: PinAblage, eingabe: String?): Boolean {
         val f = _offen.value ?: return false
+        if (f.art == ZertifikatUngeklaert.Art.CODE_ABWEICHUNG) return false
         if (f.art != ZertifikatUngeklaert.Art.ERSTKONTAKT && !bestaetigtFingerabdruck(eingabe, f.fingerabdruck)) return false
         pins.merkePin(f.schluessel, f.fingerabdruck)
         _offen.value = null
@@ -210,6 +222,7 @@ class PinVertrauen(
         if (schluessel == null) return ohneHost(chain) { mit(fremdeHosts) }
         if (chain.isEmpty() || schluessel != eigenerServer()) return mit(fremdeHosts)
         val pin = pins.pin(schluessel)
+        val ausCode = pin != null && pins.ausCode(schluessel)
         // Ein Pin auf eine System-Wurzel gilt nur über die System-Prüfung samt Certificate
         // Transparency: Schickt der Server die Wurzel mit, umginge der Abgleich die CT-Prüfung.
         val oeffentlicherPin = pin != null && pin in systemWurzeln
@@ -218,7 +231,7 @@ class PinVertrauen(
         val oeffentlich = runCatching { mit(fremdeHosts) }.isSuccess
         // Ein öffentlicher Pin bindet Host und System-Gültigkeit, nicht eine Wurzel:
         // Wechselt die CA ihre Wurzel (Let's Encrypt X1 → X2), fragt die App nicht neu.
-        if (oeffentlicherPin && oeffentlich) return
+        if (oeffentlicherPin && oeffentlich && !ausCode) return
         val ueberNutzerCa = !oeffentlich && runCatching { mit(kette) }.isSuccess
         val wurzel = when {
             oeffentlich -> anker(chain, fremdeHosts.acceptedIssuers)
@@ -226,10 +239,13 @@ class PinVertrauen(
             else -> null
         }
         val fp = spkiFingerabdruck(wurzel ?: chain.last())
+        // Der Code nennt eine System-Wurzel: Sie muss die Kette auch tragen, nicht irgendeine.
+        if (oeffentlicherPin && oeffentlich && fp == pin) return
         if (pin != null) {
             // Gepinnte Nutzer-CA: Die Kette hat eben bis zu ihr gegolten.
             if (ueberNutzerCa && wurzel != null && fp == pin && !oeffentlicherPin) return
-            throw gemeldet(ZertifikatUngeklaert(schluessel, fp, ZertifikatUngeklaert.Art.GEAENDERT, erwartet = pin))
+            val art = if (ausCode) ZertifikatUngeklaert.Art.CODE_ABWEICHUNG else ZertifikatUngeklaert.Art.GEAENDERT
+            throw gemeldet(ZertifikatUngeklaert(schluessel, fp, art, erwartet = pin))
         }
         val art = when {
             oeffentlich -> ZertifikatUngeklaert.Art.ERSTKONTAKT

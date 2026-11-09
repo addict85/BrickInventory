@@ -40,7 +40,7 @@ import androidx.compose.material.icons.filled.*
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.SortierMenue
 import ch.brickinventoryapp.ui.components.mitSchrift
-import ch.brickinventoryapp.ui.screens.Suchfeld
+import ch.brickinventoryapp.ui.components.Suchfeld
 
 /** Filterzeile: Thema und Jahr; sortiert wird über das Menü neben der Suche. */
 @Composable

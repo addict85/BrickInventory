@@ -10,7 +10,7 @@ import { bildbedarfAnstossen, offenerBildbedarf } from '../src/katalog/bilder/bi
 import { planeKursabruf } from '../src/finanzen/wechselkurse';
 import { starteAuftragsWorker, stoppeAuftragsWorker } from '../jobs/auftraegeStarten';
 import { meldeProzessAn, meldeProzessAb } from '../src/auftraege/prozess';
-import { NACHLAEUFE, type Nachlauf } from '../jobs/startNachlaeufe';
+import { NACHLAEUFE, type Nachlauf } from '../src/verwaltung/startNachlaeufe';
 
 /** Der Healthcheck des Dienstes `jobs` (compose.yaml) sieht auf das Alter dieser Datei. */
 export const LEBENSZEICHEN_DATEI = '/tmp/brickinventory-jobs.lebt';

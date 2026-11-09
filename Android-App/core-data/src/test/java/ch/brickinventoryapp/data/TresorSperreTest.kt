@@ -2,6 +2,9 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.util.TRESOR_ANLAUF_MS
 import ch.brickinventoryapp.data.util.TRESOR_NACHLAUF_MS
+import ch.brickinventoryapp.data.util.EntsperrTresor
+import ch.brickinventoryapp.data.util.Geraetesperre
+import ch.brickinventoryapp.data.util.TRESOR_NACHLAUF_VERSUCHE
 import ch.brickinventoryapp.data.util.TokenVerschluesselung
 import ch.brickinventoryapp.data.util.Tresorbefund
 import ch.brickinventoryapp.data.util.liesToken
@@ -34,6 +37,13 @@ import javax.crypto.BadPaddingException
  *      rot „ein gesperrter Keystore beim Start …“ und „… nachgemeldet“
  *   D  liesToken() hört nach dem Anlauf auf (`return` nach dem ersten „“) → rot
  *      „ein länger gesperrter Keystore meldet das Token nach“
+ * Gegenproben zum Schlüssel, der nur bei entsperrtem Gerät arbeitet (lokal gemessen):
+ *   E  liesToken() zählt jeden Versuch (`versuch++` ohne Bedingung) → rot „bei
+ *      gesperrtem Geraet wartet das Lesen …“; gegenproben/sperre-zaehlt-versuche.patch
+ *   F  EntsperrTresor.verschluessle() ohne Ausweg (nur `nurEntsperrt`) → rot „kann der
+ *      Entsperr-Schluessel nicht …“; gegenproben/entsperrtresor-ohne-ausweg.patch
+ *   G  EntsperrTresor.oeffne() immer über `nurEntsperrt` → rot „ein Geheimtext ohne
+ *      Praefix …“; gegenproben/entsperrtresor-vergisst-altbestand.patch
  */
 class TresorSperreTest {
 
@@ -74,11 +84,71 @@ class TresorSperreTest {
         override fun oeffne(gespeichert: String): Tresorbefund = if (rest.size > 1) rest.removeFirst() else rest.first()
     }
 
-    private fun lies(tresor: TokenVerschluesselung, alt: String? = null): Pair<List<String>, List<Long>> {
+    private fun lies(
+        tresor: TokenVerschluesselung,
+        alt: String? = null,
+        sperre: Geraetesperre = Geraetesperre { false },
+    ): Pair<List<String>, List<Long>> {
         val gemeldet = mutableListOf<String>()
         val pausen = mutableListOf<Long>()
-        runBlocking { liesToken(tresor, "geheim", alt, melde = { gemeldet += it }, warte = { pausen += it }) }
+        runBlocking { liesToken(tresor, "geheim", alt, melde = { gemeldet += it }, warte = { pausen += it }, sperre = sperre) }
         return gemeldet to pausen
+    }
+
+    /**
+     * Eine Nacht gesperrt: weit mehr Versuche, als der Nachlauf erlaubt. Danach entsperrt
+     * und lesbar; das Token muss zurückkommen, sonst stünde morgens die Anmeldemaske da.
+     */
+    @Test
+    fun `bei gesperrtem Geraet wartet das Lesen ohne Frist und meldet das Token nach dem Entsperren`() {
+        val nacht = TRESOR_ANLAUF_MS.size + TRESOR_NACHLAUF_VERSUCHE + 50
+        var gelesen = 0
+        val tresor = object : TokenVerschluesselung {
+            override fun verschluessle(klartext: String) = klartext
+            override fun entschluessle(gespeichert: String): String? = null
+            override fun oeffne(gespeichert: String): Tresorbefund =
+                if (gelesen++ < nacht) Tresorbefund.Gesperrt else Tresorbefund.Lesbar("token")
+        }
+        val (gemeldet, pausen) = lies(tresor, sperre = { gelesen < nacht })
+        assertEquals("Einmal leer, dann das Token", listOf("", "token"), gemeldet)
+        assertEquals(nacht, pausen.size)
+    }
+
+    private class Attrappe(val name: String, val gesperrt: () -> Boolean = { false }) : TokenVerschluesselung {
+        override fun verschluessle(klartext: String): String {
+            if (gesperrt()) throw InvalidKeyException("Gerät gesperrt")
+            return "$name(" + klartext.reversed() + ")"
+        }
+        override fun entschluessle(gespeichert: String): String? =
+            gespeichert.takeIf { it.startsWith("$name(") }?.removePrefix("$name(")?.removeSuffix(")")?.reversed()
+    }
+
+    @Test
+    fun `der Entsperr-Tresor legt unter dem strengen Schluessel ab und erkennt den Altbestand`() {
+        val tresor = EntsperrTresor(Attrappe("streng"), Attrappe("immer"))
+        val geheim = tresor.verschluessle("token")
+        assertTrue(geheim, geheim.contains("streng("))
+        assertFalse(tresor.veraltet(geheim))
+        assertEquals(Tresorbefund.Lesbar("token"), tresor.oeffne(geheim))
+    }
+
+    @Test
+    fun `kann der Entsperr-Schluessel nicht verschluesseln, nimmt der andere den Wert`() {
+        var gesperrt = true
+        val tresor = EntsperrTresor(Attrappe("streng") { gesperrt }, Attrappe("immer"))
+        val geheim = tresor.verschluessle("neu-getauscht")
+        assertEquals("immer(thcsuateg-uen)", geheim)
+        assertTrue("Der nächste Start schlüsselt um", tresor.veraltet(geheim))
+        assertEquals(Tresorbefund.Lesbar("neu-getauscht"), tresor.oeffne(geheim))
+        gesperrt = false
+        assertFalse(tresor.veraltet(tresor.verschluessle("neu-getauscht")))
+    }
+
+    @Test
+    fun `ein Geheimtext ohne Praefix bleibt ueber den alten Schluessel lesbar`() {
+        val tresor = EntsperrTresor(Attrappe("streng"), Attrappe("immer"))
+        assertEquals(Tresorbefund.Lesbar("alt"), tresor.oeffne("immer(tla)"))
+        assertTrue(tresor.veraltet("immer(tla)"))
     }
 
     @Test

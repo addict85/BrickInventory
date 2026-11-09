@@ -45,7 +45,9 @@ function sendePlatzhalter(res: Response) {
     try {
       _platzhalter = fs.readFileSync(path.join(PUBLIC_DIR, 'assets', 'set-placeholder.svg'));
     } catch (e) {
-      console.error(`[img-proxy] Platzhalter nicht lesbar: ${fehlertext(e)}`);
+      console.error(
+        `[img-proxy] Platzhalter nicht lesbar: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''),
+      );
       _platzhalter = Buffer.alloc(0);
     }
   }
@@ -58,8 +60,15 @@ function sendePlatzhalter(res: Response) {
   return res.status(200).end(_platzhalter);
 }
 
-/** Erst mit Referer, dann ohne; ein 404 wird gemerkt. @returns null, wenn schon geantwortet ist */
-async function vomCdn(url: string, cacheKey: string, res: Response): Promise<AbrufStrom | null> {
+/** Erst mit Referer, dann ohne; ein 404 wird gemerkt. `ersatz` antwortet statt
+ * des Fehlers, wenn es kann (etwa mit der Vorschau aus dem Cache).
+ * @returns null, wenn schon geantwortet ist */
+async function vomCdn(
+  url: string,
+  cacheKey: string,
+  res: Response,
+  ersatz: () => Promise<boolean> = async () => false,
+): Promise<AbrufStrom | null> {
   // Unkomprimiert: Ein komprimierter Körper ergäbe still eine weisse Fläche.
   const HEADER_SETS = [
     { ...BILD_KOPFZEILEN, 'Accept-Language': 'en-US,en;q=0.9', 'Accept-Encoding': 'identity' },
@@ -82,7 +91,12 @@ async function vomCdn(url: string, cacheKey: string, res: Response): Promise<Abr
     if (zeit) imgProxyFailures.timeout++;
     else imgProxyFailures.error++;
     imgProxyFailures.lastError = fehlertext(e);
-    console.error(`[img-proxy] ${zeit ? 'Zeitüberschreitung nach 25 s' : 'Verbindungsfehler'}: ${fehlertext(e)}`);
+    console.error(
+      `[img-proxy] ${zeit ? 'Zeitüberschreitung nach 25 s' : 'Verbindungsfehler'}: ${fehlertext(e)}`
+        .replace(/\r?\n/g, ' ⏎ ')
+        .replace(/\n|\r/g, ''),
+    );
+    if (await ersatz()) return null;
     if (!res.headersSent) res.status(zeit ? 504 : 502).end();
     return null;
   }
@@ -102,8 +116,9 @@ async function vomCdn(url: string, cacheKey: string, res: Response): Promise<Abr
     imgProxyFailures.lastError = `HTTP ${r.status} — ${url}`;
     // 404 ist eine Auskunft, kein Fehler: als `error` verstopfte es das Protokoll.
     const meldung = `[img-proxy] CDN antwortete ${r.status} (auch ohne Referer): ${url}`;
-    if (r.status === 404) console.info(meldung);
-    else console.error(meldung);
+    if (r.status === 404) console.info(meldung.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+    else console.error(meldung.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+    if (await ersatz()) return null;
     void (r.status === 404 ? sendePlatzhalter(res) : res.status(r.status || 502).end());
     return null;
   }
@@ -152,7 +167,9 @@ function inDenCache(
     fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('bild-proxy:unlink'));
     imgProxyFailures.other++;
     imgProxyFailures.lastError = `${grund}: ${url}`;
-    console.error(`[img-proxy] ${grund} — weder gecacht noch verkleinert: ${url}`);
+    console.error(
+      `[img-proxy] ${grund} — weder gecacht noch verkleinert: ${url}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''),
+    );
   };
   // Der entpackte Strom zählt: Auch Komprimiertes darf nicht beliebig wachsen.
   body.on('data', (chunk: Buffer) => {
@@ -175,14 +192,18 @@ function inDenCache(
       // Nur vollständig: Eine abgeschnittene ginge dauerhaft mit 200 hinaus.
       const st = await fs.promises.stat(tmpFile);
       if (!enc && expected > 0 && st.size !== expected) {
-        console.error(`[img-proxy] unvollständig (${st.size}/${expected} Bytes), nicht gecacht: ${url}`);
+        console.error(
+          `[img-proxy] unvollständig (${st.size}/${expected} Bytes), nicht gecacht: ${url}`
+            .replace(/\r?\n/g, ' ⏎ ')
+            .replace(/\n|\r/g, ''),
+        );
         await fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('bild-proxy:unlink'));
         return;
       }
       await fs.promises.writeFile(cacheFile + '.ct', contentType);
       await fs.promises.rename(tmpFile, cacheFile);
       merkeCacheZuwachs(st.size);
-      if (o.setNummer) await alsSetBildAblegen(cacheFile, o.setNummer).catch(logAndContinue('img-proxy:setbild'));
+      if (o.setNummer) await setBildAusCache(url, o.setNummer, cacheFile).catch(logAndContinue('img-proxy:setbild'));
       // Gleich miterzeugen, sonst später für eine ganze Kachelwand auf einmal.
       if (wantThumb) {
         if (darfErzeugen) queueThumb(cacheFile, thumbFile);
@@ -209,7 +230,7 @@ function entpackt(roh: Readable, enc: string, res: Response, url: string, expect
     body = roh.pipe(dec);
     // Die angekündigte Länge gilt für den komprimierten Körper.
     res.removeHeader('Content-Length');
-    console.log(`[img-proxy] entpacke ${enc}: ${url}`);
+    console.log(`[img-proxy] entpacke ${enc}: ${url}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
   }
   let sentToClient = 0;
   body.on('data', (c: Buffer) => {
@@ -219,22 +240,52 @@ function entpackt(roh: Readable, enc: string, res: Response, url: string, expect
     if (!enc && expected > 0 && sentToClient !== expected) {
       imgProxyFailures.other++;
       imgProxyFailures.lastError = `Länge weicht ab: ${sentToClient}/${expected} — ${url}`;
-      console.error(`[img-proxy] an den Client gingen ${sentToClient} von ${expected} Bytes: ${url}`);
+      console.error(
+        `[img-proxy] an den Client gingen ${sentToClient} von ${expected} Bytes: ${url}`
+          .replace(/\r?\n/g, ' ⏎ ')
+          .replace(/\n|\r/g, ''),
+      );
     }
   });
   return body;
 }
 
+const liegtDa = (datei: string) =>
+  fs.promises.access(datei).then(
+    () => true,
+    () => false,
+  );
+
 /** @returns true, wenn Bild oder Vorschau unter images/sets noch fehlen */
-async function setBildVersorgen(url: string, setNummer: string, cacheFile: string): Promise<boolean> {
-  if (await setBildVollstaendig(setNummer)) {
-    // Liegen beide schon da, fehlt oft nur der Eintrag: Danach fragt die Oberfläche nicht mehr hier.
-    await setBildLokalEintragen(setNummer).catch(logAndContinue('img-proxy:setBildLokal'));
-    return false;
-  }
-  await alsSetBildAblegen(cacheFile, setNummer).catch(ohneFehlendeDatei('img-proxy:setbild'));
+async function setBildFehlt(setNummer: string): Promise<boolean> {
+  if (!(await setBildVollstaendig(setNummer))) return true;
+  // Liegen beide schon da, fehlt oft nur der Eintrag: Danach fragt die Oberfläche nicht mehr hier.
+  await setBildLokalEintragen(setNummer).catch(logAndContinue('img-proxy:setBildLokal'));
+  return false;
+}
+
+/** Vorgemerkt wird nur, was der Proxy als Bild hat (Cache oder gedrosselter Abruf),
+ * und je Set einmal in VORMERKEN_FRIST_MS: Sonst füllte ein Konto mit erfundenen
+ * Set-Nummern die Notizen des Bild-Auftrags. */
+const VORMERKEN_FRIST_MS = 15 * 60_000;
+const _vorgemerkt = new Map<string, number>();
+function vormerkenEinmal(url: string, setNummer: string): void {
+  const jetzt = Date.now();
+  if (jetzt - (_vorgemerkt.get(setNummer) ?? -Infinity) < VORMERKEN_FRIST_MS) return;
+  if (_vorgemerkt.size >= 5000)
+    for (const [sn, t] of _vorgemerkt) if (jetzt - t >= VORMERKEN_FRIST_MS) _vorgemerkt.delete(sn);
+  _vorgemerkt.set(setNummer, jetzt);
   nacharbeit().bildVormerken(url, setNummer);
-  return true;
+}
+
+/** Aus dem Cache des Proxys nach images/sets, dann vormerken; ohne Cache-Datei nichts. */
+async function setBildAusCache(url: string, setNummer: string, cacheFile: string): Promise<void> {
+  try {
+    await alsSetBildAblegen(cacheFile, setNummer);
+  } catch (e) {
+    return ohneFehlendeDatei('img-proxy:setbild')(e);
+  }
+  vormerkenEinmal(url, setNummer);
 }
 
 export async function bildDurchreichen(req: Request, res: Response) {
@@ -268,34 +319,33 @@ export async function bildDurchreichen(req: Request, res: Response) {
   // Ein Set-Bild gehört samt Vorschau nach images/sets; der Bild-Job holt es,
   // sobald es einmal über den Proxy gefragt war.
   const setNummer = setAusUrl();
-  const setFehlt = setNummer ? await setBildVersorgen(url, setNummer, cacheFile) : false;
+  const setFehlt = setNummer ? await setBildFehlt(setNummer) : false;
+  // Liegt nur noch die Vorschau im Cache (die Pflege löscht das unbenutzte Original
+  // nach 30 Tagen), holt der Proxy das Original neu: Den Abruf des Bild-Jobs mit
+  // eigener Kennung weist das CDN ab, ohne diesen Weg bekäme das Set nie eine Datei.
+  const originalFehlt = setFehlt && !(await liegtDa(cacheFile));
+  if (setFehlt && setNummer && !originalFehlt) await setBildAusCache(url, setNummer, cacheFile);
 
-  if (
-    await liefereAusCache({
-      res,
-      req,
-      cacheFile,
-      thumbFile,
-      wantThumb,
-      darfErzeugen,
-      notiere,
-      streamFileToResponse,
-    })
-  )
-    return;
+  const ausCache = () =>
+    liefereAusCache({ res, req, cacheFile, thumbFile, wantThumb, darfErzeugen, notiere, streamFileToResponse });
+  // Scheitert der neue Abruf, bleibt es bei der Vorschau aus dem Cache.
+  const ersatz = async () => originalFehlt && (await ausCache());
+  if (!originalFehlt && (await ausCache())) return;
 
   // Der Merker (eine Stunde) erspart dem CDN die Frage bei jedem Seitenaufruf.
+  if (istBekanntFehlend(cacheKey) && (await ersatz())) return;
   if (istBekanntFehlend(cacheKey)) return sendePlatzhalter(res);
 
   // Nur Abrufe beim CDN zählen: Jeder füllt Platte und Bandbreite, Treffer nicht.
   const takt = await zaehleAnfrage('bild-abruf', `konto:${proxyUserId}`, 60_000);
   if (takt.count > konfig().bildAbrufeJeMinute) {
+    if (await ersatz()) return;
     res.setHeader('Retry-After', String(takt.waitMin * 60));
     res.setHeader('Cache-Control', 'no-store');
     return res.status(429).end();
   }
 
-  const r = await vomCdn(url, cacheKey, res);
+  const r = await vomCdn(url, cacheKey, res, ersatz);
   if (!r) return;
   const rohTyp = String(r.kopf['content-type'] || 'image/jpeg');
 
@@ -307,7 +357,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
     r.verwerfen();
     imgProxyFailures.other++;
     imgProxyFailures.lastError = `Kein Bild (${mime}) — ${url}`;
-    console.warn(`[img-proxy] Antwort ist kein Bild (${mime}): ${url}`);
+    console.warn(`[img-proxy] Antwort ist kein Bild (${mime}): ${url}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
     return res.status(415).end();
   }
 
@@ -341,7 +391,11 @@ export async function bildDurchreichen(req: Request, res: Response) {
   // Abbruch beim Scrollen: Die CDN-Verbindung muss sofort zurück in den Pool.
   res.on('close', () => {
     if (res.writableFinished || !res.destroyed) return;
-    console.log(`[img-proxy] Client hat abgebrochen, Verbindung freigegeben: ${url}`);
+    console.log(
+      `[img-proxy] Client hat abgebrochen, Verbindung freigegeben: ${url}`
+        .replace(/\r?\n/g, ' ⏎ ')
+        .replace(/\n|\r/g, ''),
+    );
     roh.destroy();
   });
 

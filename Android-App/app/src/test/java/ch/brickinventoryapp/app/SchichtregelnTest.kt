@@ -15,6 +15,7 @@ import ch.brickinventoryapp.testing.Quellen
  *   schicht-praesentation-netz  `import retrofit2.Response` in GalleryScreen → rot „Präsentation …“
  *   schicht-bereich-api         `import ch.brickinventoryapp.data.api.SetsApi` in MerklisteViewModel
  *                               → rot „ein Bereich kennt die Retrofit-Schnittstellen nicht“
+ *   schicht-zustand-api         `import ch.brickinventoryapp.data.api.ApiJson` in AppTexte → dasselbe rot
  *   schicht-zustand-context     `import android.content.Context` in Sitzung.kt → rot „core-zustand …“
  */
 class SchichtregelnTest {
@@ -53,10 +54,11 @@ class SchichtregelnTest {
         assert(f.isEmpty()) { "Präsentation mit OkHttp oder Retrofit (H3):\n  " + f.joinToString("\n  ") }
     }
 
+    /** Auch der Zustand nicht: Er sieht Repositories und Ergebnis, nicht den Retrofit-Weg dahinter. */
     @Test
     fun `ein Bereich kennt die Retrofit-Schnittstellen nicht`() {
-        val f = verstoesse({ it.modul.startsWith("feature-") }) { it.startsWith("ch.brickinventoryapp.data.api.") }
-        assert(f.isEmpty()) { "Bereiche mit Importen aus data.api (M2):\n  " + f.joinToString("\n  ") }
+        val f = verstoesse(::praesentation) { it.startsWith("ch.brickinventoryapp.data.api.") }
+        assert(f.isEmpty()) { "Bereiche oder Zustand mit Importen aus data.api (M2):\n  " + f.joinToString("\n  ") }
     }
 
     /** AppTexte.kt ist die bewusste Ausnahme: Texte und Dateien gehen über Context, bis M7 sie verlegt. */

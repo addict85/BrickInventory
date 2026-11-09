@@ -15,7 +15,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { zeichnePdfImFaden } = _req('jobs/pdfZeichnen.js');
+const { zeichnePdfImFaden } = _req('src/katalog/pdf/pdfZeichnen.js');
 
 test('die Ereignisschleife bleibt frei, während das PDF entsteht', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pdf-faden-'));

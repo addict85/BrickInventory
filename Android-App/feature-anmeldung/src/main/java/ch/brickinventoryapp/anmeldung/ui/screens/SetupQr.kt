@@ -42,6 +42,7 @@ import ch.brickinventoryapp.anmeldung.ui.QrLoginPayload
 import ch.brickinventoryapp.anmeldung.ui.qrWechseltServer
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.Sichtschutz
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import ch.brickinventoryapp.ui.screens.KameraErlaubnisHinweis
 import ch.brickinventoryapp.ui.screens.KameraUeberlagerung
@@ -160,6 +161,8 @@ fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
     LaunchedEffect(Unit) {
         if (!cameraPermission.erteilt) cameraPermission.anfragen()
     }
+    // Das Bild zeigt einen Anmeldecode: In einer Aufnahme meldete er ein fremdes Gerät an.
+    Sichtschutz()
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         when {

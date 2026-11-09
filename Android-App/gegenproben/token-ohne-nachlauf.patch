@@ -6,12 +6,12 @@ Rot: ein neuer Prozess
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
-@@ -160,9 +160,6 @@
+@@ -164,9 +164,6 @@
          // Der Nachlauf aus dem DataStore: für den Kaltstart und für Änderungen,
          // die nicht über die save-Funktionen kamen (Übernahme eines alten Tokens).
          spiegle<String, String>(::adresseAus, _serverUrlState) { r, melde -> melde(r) }
 -        spiegle<Pair<String?, String?>, String>({ it[AUTH_TOKEN_ENC] to it[AUTH_TOKEN] }, _authTokenState) { (geheim, alt), melde ->
--            liesToken(tresor, geheim, alt, melde)
+-            liesToken(tresor, geheim, alt, melde, sperre = sperre)
 -        }
          spiegle<String?, String?>({ it[TOKEN_HERKUNFT] }, _tokenHerkunftState) { r, melde -> melde(r) }
          prefsScope.launch {

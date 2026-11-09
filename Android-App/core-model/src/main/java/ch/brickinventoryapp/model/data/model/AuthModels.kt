@@ -53,8 +53,37 @@ data class TokenRotation(
     @SerialName("ueberlappung_sek") val ueberlappungSek: Int? = null,
 )
 
+/** Der Scan meldet das Gerät unter [label] an; den Zugang gibt es erst nach der Bestätigung im Browser. */
 @Serializable
-data class QrLoginRequest(val token: String)
+data class QrLoginRequest(val token: String, val label: String = "Android App")
+
+/**
+ * Antwort auf den Scan: noch kein Token. [code] zeigt die App, eingetippt wird er im
+ * Browser; mit [abholung] fragt die App, bis der Zugang bereitliegt.
+ */
+@Serializable
+data class QrMeldung(
+    val success: Boolean,
+    val wartet: Boolean = false,
+    val abholung: String? = null,
+    val code: String? = null,
+    @SerialName("expires_in") val expiresIn: Int = 300,
+    val error: String? = null,
+)
+
+@Serializable
+data class QrAbholRequest(val abholung: String)
+
+/** Bis zur Bestätigung im Browser nur [wartet]; danach wie eine Anmeldung, immer mit Scope "app". */
+@Serializable
+data class QrAbholung(
+    val success: Boolean,
+    val wartet: Boolean = false,
+    val token: String? = null,
+    val user: User? = null,
+    val error: String? = null,
+    @SerialName("token_info") val tokenInfo: TokenInfo? = null,
+)
 
 @Serializable
 data class LoginResponse(

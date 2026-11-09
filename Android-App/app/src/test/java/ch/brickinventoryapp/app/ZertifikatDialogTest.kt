@@ -31,6 +31,8 @@ import java.util.Base64
  *       (gegenproben/zertifikat-zeigt-alles.patch)
  *   (b) `abschreiben` nur für GEAENDERT → rot „ueber eine Nutzer-CA …“
  *       (gegenproben/nutzerca-ein-tipp.patch)
+ *   (c) ZertifikatDialog ohne den Zweig für CODE_ABWEICHUNG → rot „weicht der
+ *       Server vom Code ab …“ (gegenproben/code-abweichung-im-dialog.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class ZertifikatDialogTest {
@@ -73,6 +75,18 @@ class ZertifikatDialogTest {
         zeige(ZertifikatUngeklaert.Art.ERSTKONTAKT)
         assertEquals(1, gezeigt(hex))
         compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen)).assertIsEnabled()
+    }
+
+    @Test
+    fun `weicht der Server vom Code ab, gibt es nichts zu bestaetigen`() {
+        val laut = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+        zeige(ZertifikatUngeklaert.Art.CODE_ABWEICHUNG, erwartet = laut)
+        compose.onNodeWithText(ctx.getString(R.string.zert_titel_code_abweichung)).assertExists()
+        assertEquals("Der Wert des Servers steht ganz da", 1, gezeigt(hex))
+        assertEquals("Der Wert des Codes steht ganz da", 1, gezeigt(fingerabdruckLesbar(laut)))
+        assertEquals("Kein Knopf zum Vertrauen", 0, gezeigt(ctx.getString(R.string.zert_vertrauen)))
+        assertEquals("Kein Feld zum Abtippen", 0,
+            compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().size)
     }
 
     @Test

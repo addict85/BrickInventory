@@ -24,7 +24,11 @@ import javax.crypto.spec.GCMParameterSpec
  * (setRandomizedEncryptionRequired ist Vorgabe und bleibt an).
  */
 // [alias]: Die lokalen Ablagen umhüllen ihren Schlüssel unter einem eigenen (Ablageschluessel).
-internal class KeystoreTokenTresor(private val alias: String = ALIAS) : TokenVerschluesselung {
+internal class KeystoreTokenTresor(
+    private val alias: String = ALIAS,
+    /** setUnlockedDeviceRequired: nur für das Token (EntsperrTresor), nie für die Ablagen. */
+    private val nurEntsperrt: Boolean = false,
+) : TokenVerschluesselung {
 
     private fun schluessel(): SecretKey {
         val ks = KeyStore.getInstance(KEYSTORE).apply { load(null) }
@@ -45,19 +49,7 @@ internal class KeystoreTokenTresor(private val alias: String = ALIAS) : TokenVer
         return gen.generateKey()
     }
 
-    /**
-     * Weder Nutzerauthentifizierung noch setUnlockedDeviceRequired: Preisalarm,
-     * Widget und Ausgang senden mit dem Token im Hintergrund, auch bei gesperrtem
-     * Gerät. Ein gesperrter Schlüssel liesse sie scheitern, und ein unlesbarer
-     * Token heisst hier „abgemeldet“ (siehe oben) — die App meldete sich selbst ab.
-     */
-    private fun spezifikation() = KeyGenParameterSpec.Builder(
-        alias,
-        KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
-    )
-        .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-        .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-        .setKeySize(256)
+    private fun spezifikation() = tresorSpezifikation(alias, nurEntsperrt)
 
     override fun verschluessle(klartext: String): String {
         val c = Cipher.getInstance(TRANSFORMATION)
@@ -90,11 +82,25 @@ internal class KeystoreTokenTresor(private val alias: String = ALIAS) : TokenVer
         KeyStore.getInstance(KEYSTORE).apply { load(null) }.deleteEntry(alias)
     }
 
-    private companion object {
-        const val KEYSTORE = "AndroidKeyStore"
-        const val ALIAS = "brickinventory_auth_token"
-        const val TRANSFORMATION = "AES/GCM/NoPadding"
-        const val IV_LAENGE = 12      // GCM-Standard
-        const val GCM_TAG_BITS = 128
+    companion object {
+        private const val KEYSTORE = "AndroidKeyStore"
+        private const val ALIAS = "brickinventory_auth_token"
+        /** Eigener Alias: Ein bestehender Schlüssel nimmt die Bedingung nachträglich nicht an. */
+        const val ALIAS_ENTSPERRT = "brickinventory_auth_token_entsperrt"
+        private const val TRANSFORMATION = "AES/GCM/NoPadding"
+        private const val IV_LAENGE = 12      // GCM-Standard
+        private const val GCM_TAG_BITS = 128
     }
 }
+
+/**
+ * Keine Nutzerauthentifizierung: Ausgang, Preisalarm und Abmeldeauftrag laufen ohne
+ * Nutzer. [nurEntsperrt] sperrt den Schlüssel, solange das Gerät gesperrt ist; was
+ * dann im Hintergrund wartet, steht in liesToken und entwertungsSchritt.
+ */
+internal fun tresorSpezifikation(alias: String, nurEntsperrt: Boolean): KeyGenParameterSpec.Builder =
+    KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+        .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+        .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+        .setKeySize(256)
+        .setUnlockedDeviceRequired(nurEntsperrt)

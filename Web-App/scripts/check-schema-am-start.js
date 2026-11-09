@@ -11,7 +11,8 @@ const ROOT = path.join(__dirname, '..');
 /** Der Anfragepfad — hier wird geprüft. */
 const ANFRAGEPFAD = [
   'routes' + path.sep,
-  path.join('src', 'sets', 'abfragen.ts'),
+  path.join('src', 'sets', 'lesen.ts'),
+  path.join('src', 'sets', 'loeschen.ts'),
   path.join('src', 'teile', 'abfragen.ts'),
   path.join('src', 'figuren', 'abfragen.ts'),
   path.join('src', 'bestand', 'gemeinsam.ts'),

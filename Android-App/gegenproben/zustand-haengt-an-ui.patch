@@ -1,0 +1,16 @@
+Gegenprobe: core-zustand bindet core-ui ein; der Zustand liegt unter der Oberfläche
+Modul: app
+Test: ch.brickinventoryapp.app.ModulgrenzenTest
+Rot: Schichtung der Kernmodule
+
+diff --git a/Android-App/core-zustand/build.gradle.kts b/Android-App/core-zustand/build.gradle.kts
+--- a/Android-App/core-zustand/build.gradle.kts
++++ b/Android-App/core-zustand/build.gradle.kts
+@@ -18,6 +18,7 @@
+     api(project(":core-model"))
+     // Innen: Die Bereiche nennen core-data selbst.
+     implementation(project(":core-data"))
++    implementation(project(":core-ui"))
+     // CsvImportDienst: Der CSV-Import startet und beendet seinen Vordergrund-Dienst.
+     implementation(project(":core-dienste"))
+     implementation(project(":core-ressourcen"))

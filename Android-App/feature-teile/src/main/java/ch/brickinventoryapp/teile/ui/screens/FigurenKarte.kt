@@ -38,10 +38,11 @@ import ch.brickinventoryapp.ui.components.grosseSchrift
 import ch.brickinventoryapp.ui.components.katalogName
 import ch.brickinventoryapp.model.util.DatumJahr
 import ch.brickinventoryapp.ui.util.fmtTag
-import ch.brickinventoryapp.ui.screens.ConditionBadges
-import ch.brickinventoryapp.ui.screens.ManuelleKachel
-import ch.brickinventoryapp.ui.screens.OwnerBadges
-import ch.brickinventoryapp.ui.screens.TabellenZeile
+import ch.brickinventoryapp.gemeinsam.ui.ConditionBadges
+import ch.brickinventoryapp.gemeinsam.ui.ManuelleKachel
+import ch.brickinventoryapp.gemeinsam.ui.OwnerBadges
+import ch.brickinventoryapp.gemeinsam.ui.TabellenZeile
+import ch.brickinventoryapp.gemeinsam.ui.mengeAusSet
 
 @Composable
 fun ManualFigTile(fig: ManuelleFigurAnsicht, serverUrl: String, imageLoader: ImageLoader,

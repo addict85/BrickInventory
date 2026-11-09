@@ -6,7 +6,9 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.test.core.app.ApplicationProvider
+import ch.brickinventoryapp.data.util.EntsperrTresor
 import ch.brickinventoryapp.data.util.KeystoreTokenTresor
+import ch.brickinventoryapp.data.util.tresorSpezifikation
 import ch.brickinventoryapp.data.util.TokenVerschluesselung
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,6 +37,10 @@ import java.io.File
  *                                   „Speichern legt nur noch verschluesselt ab“
  *   abmelden-laesst-geheimtext      clearSession() ohne remove(AUTH_TOKEN_ENC) → rot
  *                                   „Abmelden entfernt beide Eintraege“
+ *   altbestand-nicht-umgeschluesselt  uebernehmeAltesToken() ohne umschluesseln(prefs) → rot
+ *                                   „ein Token unter dem alten Schluessel kommt beim Start …“
+ *   token-schluessel-ohne-sperre    tresorSpezifikation() ohne setUnlockedDeviceRequired → rot
+ *                                   „der Schluessel des Tokens arbeitet nur entsperrt …“
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -124,6 +130,39 @@ class TokenTresorTest {
     fun `ein nicht entschluesselbarer Eintrag gilt als kein Token`() {
         lege(geheim = "ENC(sinnlos)")
         assertEquals("", runBlocking { start(Attrappe(kaputt = true)).tokenJetzt() })
+    }
+
+    /** Streng wie das Gerät: verschlüsselt nur, solange [gesperrt] nein sagt. */
+    private class Streng(val gesperrt: () -> Boolean) : TokenVerschluesselung {
+        override fun verschluessle(klartext: String): String {
+            check(!gesperrt()) { "Gerät gesperrt" }
+            return "S(" + klartext.reversed() + ")"
+        }
+        override fun entschluessle(gespeichert: String): String? =
+            gespeichert.takeIf { it.startsWith("S(") }?.removePrefix("S(")?.removeSuffix(")")?.reversed()
+    }
+
+    @Test
+    fun `ein Token unter dem alten Schluessel kommt beim Start unter den strengen`() {
+        lege(geheim = "ENC(tla)")
+        var gesperrt = true
+        val tresor = EntsperrTresor(Streng { gesperrt }, Attrappe())
+        runBlocking { start(tresor).uebernehmeAltesToken() }
+        assertEquals("Gesperrt bleibt der Altbestand, wie er ist", "ENC(tla)", platte()[TokenAblage.AUTH_TOKEN_ENC])
+
+        gesperrt = false
+        val prefs = start(tresor)
+        runBlocking { prefs.uebernehmeAltesToken() }
+        val geheim = platte()[TokenAblage.AUTH_TOKEN_ENC]!!
+        assertFalse("Umgeschlüsselt: $geheim", tresor.veraltet(geheim))
+        assertEquals("alt", runBlocking { start(tresor).tokenJetzt() })
+    }
+
+    @Test
+    fun `der Schluessel des Tokens arbeitet nur entsperrt, die der Ablagen immer`() {
+        assertTrue(tresorSpezifikation("token", nurEntsperrt = true).build().isUnlockedDeviceRequired)
+        assertFalse("Ausgang und Pins brauchen ihre Schlüssel im Hintergrund",
+            tresorSpezifikation("ablage", nurEntsperrt = false).build().isUnlockedDeviceRequired)
     }
 
     @Test

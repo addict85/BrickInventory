@@ -132,7 +132,7 @@ class Entwerter(
     }
 }
 
-enum class Entwertungsschritt { FERTIG, NOCHMAL, AUFGEGEBEN }
+internal enum class Entwertungsschritt { FERTIG, NOCHMAL, AUFGEGEBEN }
 
 /** Etwa eine Woche bei WorkManagers Rückzug (30 s, verdoppelt, höchstens 5 h). */
 internal const val ENTWERTUNG_HOECHSTVERSUCHE = 40
@@ -142,10 +142,19 @@ internal const val ENTWERTUNG_HOECHSTVERSUCHE = 40
  * Grund zu warten (util/Tresorbefund); ein verlorener Schlüssel macht das Token
  * auch für einen Dieb unbrauchbar, also gibt es nichts mehr zu tun.
  */
-internal fun entwertungsSchritt(befund: Tresorbefund, versuch: Int, entwerte: (String) -> Entwertungsergebnis): Entwertungsschritt =
+// [geraetGesperrt]: Der Schlüssel des Tokens gibt erst nach dem Entsperren frei; Warten
+// darauf ist kein Fehlversuch, sonst gäbe ein tagelang gesperrtes Gerät den Auftrag auf.
+internal fun entwertungsSchritt(
+    befund: Tresorbefund,
+    versuch: Int,
+    geraetGesperrt: Boolean = false,
+    entwerte: (String) -> Entwertungsergebnis,
+): Entwertungsschritt =
     when (befund) {
         Tresorbefund.Weg -> Entwertungsschritt.AUFGEGEBEN
-        Tresorbefund.Gesperrt -> if (versuch + 1 >= ENTWERTUNG_HOECHSTVERSUCHE) Entwertungsschritt.AUFGEGEBEN else Entwertungsschritt.NOCHMAL
+        Tresorbefund.Gesperrt ->
+            if (!geraetGesperrt && versuch + 1 >= ENTWERTUNG_HOECHSTVERSUCHE) Entwertungsschritt.AUFGEGEBEN
+            else Entwertungsschritt.NOCHMAL
         is Tresorbefund.Lesbar -> when (entwerte(befund.klartext)) {
             Entwertungsergebnis.ENTWERTET -> Entwertungsschritt.FERTIG
             Entwertungsergebnis.AUFGEBEN -> Entwertungsschritt.AUFGEGEBEN

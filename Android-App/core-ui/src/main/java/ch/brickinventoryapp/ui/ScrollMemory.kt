@@ -10,38 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-
-/**
- * Gemerkte Rollpositionen je Reiter. Mitschreiben und beim Betreten ausdrücklich
- * scrollToItem(index, offset) — der Weg, der im Katalog zuverlässig an dieselbe Zeile führt;
- * ein über den NavHost geretteter LazyGridState stand danach verschoben.
- * Ausführlich: docs/begruendungen/core-ui/ui/ScrollMemory.kt.md#constructor
- */
-interface ScrollMemory {
-    fun lies(schluessel: String): Pair<Int, Int>
-    fun merke(schluessel: String, index: Int, offset: Int)
-
-    /** Nach einem Filterwechsel: Die alte Stelle zeigt auf Einträge, die es nicht mehr gibt. */
-    fun vergiss(schluessel: String)
-}
-
-/** Für Tests ohne Hilt. */
-fun ScrollMemory(): ScrollMemory = ScrollSpeicher()
-
-@javax.inject.Singleton
-class ScrollSpeicher @javax.inject.Inject constructor() : ScrollMemory {
-    private val positionen = mutableMapOf<String, Pair<Int, Int>>()
-
-    override fun lies(schluessel: String): Pair<Int, Int> = positionen[schluessel] ?: (0 to 0)
-
-    override fun merke(schluessel: String, index: Int, offset: Int) {
-        positionen[schluessel] = index to offset
-    }
-
-    override fun vergiss(schluessel: String) {
-        positionen.remove(schluessel)
-    }
-}
+import ch.brickinventoryapp.model.ui.ScrollMemory
 
 /**
  * Die Reihenfolge ist die ganze Regel: erst zurückspringen, dann melden.

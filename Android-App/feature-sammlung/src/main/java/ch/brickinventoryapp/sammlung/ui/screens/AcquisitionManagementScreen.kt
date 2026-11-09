@@ -40,8 +40,8 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.model.ui.model.OHNE_FARBE
 import ch.brickinventoryapp.ui.util.fmtEingabe
-import ch.brickinventoryapp.ui.screens.ConditionToggle
-import ch.brickinventoryapp.ui.screens.OwnerPicker
+import ch.brickinventoryapp.gemeinsam.ui.ConditionToggle
+import ch.brickinventoryapp.gemeinsam.ui.OwnerPicker
 
 /**
  * Eigener Screen für die Kaufpreis-Verwaltung — analog zum acq-modal der Webapp,

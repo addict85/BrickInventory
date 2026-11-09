@@ -52,29 +52,6 @@ Beide Grenzen zusammen anheben — sonst repariert man den einen Weg und der
 andere fällt weiterhin heraus.
 ```
 
-<a id="bilduseragent"></a>
-## `bildUserAgent`
-
-```text
-Der Ausweis, mit dem wir uns beim Bildserver melden.
-
-── Marcos Vorgabe ──────────────────────────────────────────────────────────
-„Nutze einen sauberen, eindeutigen User-Agent-Header. Fehlt der Header oder
-sieht er nach Standard-Scrapern aus, schlägt die Cloudflare-Heuristik
-deutlich schneller an."
-
-Hier stand bisher eine vorgetäuschte Chrome-Kennung. Das ist die schlechteste
-aller Möglichkeiten: Sie sagt nicht, wer wir sind, und ein Browser, der
-tausende Bilder ohne die üblichen Begleitanfragen holt, fällt einer Heuristik
-gerade dadurch auf. Eine ehrliche Produktkennung mit Version ist üblich, gut
-erkennbar — und wenn jemand beim Betreiber nachfragen will, weiss er wen.
-
-── Warum über eine Umgebungsvariable ───────────────────────────────────────
-Ich kann von hier aus nicht ausprobieren, wie der echte Bildserver auf die
-neue Kennung reagiert. Sollte er ausgerechnet Produktkennungen abweisen,
-lässt sich mit IMG_USER_AGENT umschalten, ohne neu zu bauen.
-```
-
 <a id="downloadsetimage-nichtvorhanden"></a>
 ## `nichtVorhanden`
 

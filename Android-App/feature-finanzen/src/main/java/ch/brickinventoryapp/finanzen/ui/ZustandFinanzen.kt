@@ -2,7 +2,7 @@ package ch.brickinventoryapp.finanzen.ui
 
 import ch.brickinventoryapp.model.ui.model.KlartextAnsicht
 import ch.brickinventoryapp.model.ui.model.*
-import ch.brickinventoryapp.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Fehlerklasse
 
 /**
  * Finanzen: Bewertung, Gewinn/Verlust und Portfolio-Verlauf — eigener Fluss, weil

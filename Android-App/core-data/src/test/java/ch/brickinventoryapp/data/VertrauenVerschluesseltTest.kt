@@ -40,6 +40,8 @@ import java.util.Base64
  *                                    hingelegter Klartext gilt nicht“
  *   vertrauen-fehler-als-klartext    merkePin() legt bei gescheitertem Verschlüsseln
  *                                    Klartext ab → rot „ohne Schluessel bleibt nichts …“
+ *   code-pin-ueber-alte-verbindung   halteVor() ruft die Hörer nicht → rot „ein Pin aus dem
+ *                                    Code gilt nur ueber eine neue Verbindung“
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -158,5 +160,23 @@ class VertrauenVerschluesseltTest {
         val roh = Base64.getDecoder().decode(b64)
         roh[roh.size - 1] = (roh[roh.size - 1].toInt() xor 1).toByte()
         return Base64.getEncoder().encodeToString(roh)
+    }
+
+    /**
+     * Die Server-Clients bauen auf das Signal ihren TLS-Kontext neu und leeren den
+     * Verbindungsvorrat (di/ServerClient); ohne es liefe die Anmeldung über eine schon
+     * offene Verbindung, und der Fingerabdruck aus dem Code würde nie geprüft.
+     */
+    @Test
+    fun `ein Pin aus dem Code gilt nur ueber eine neue Verbindung`() {
+        val g = start()
+        var neu = 0
+        g.beimNutzerCaWechsel { neu++ }
+        g.halteVor(host, fp)
+        assertEquals(1, neu)
+        assertTrue(g.ausCode(host))
+        assertEquals(fp, g.pin(host))
+        g.merkePin(host, fp)
+        assertFalse("Gemerkt gilt er nicht mehr als Pin aus dem Code", g.ausCode(host))
     }
 }

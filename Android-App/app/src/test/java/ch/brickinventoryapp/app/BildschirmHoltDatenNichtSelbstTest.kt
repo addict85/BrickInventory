@@ -35,7 +35,7 @@ import ch.brickinventoryapp.testing.Quellen
  */
 class BildschirmHoltDatenNichtSelbstTest {
 
-    private val bildschirmOrdner = listOf("ui/screens", "ui/dialogs", "ui/components")
+    private val bildschirmOrdner = listOf("ui/screens", "ui/dialogs", "ui/components", "gemeinsam/ui")
 
     // Jedes Modul trägt die Ordner unter seinem eigenen Paketstamm; unter() sammelt sie.
     private fun dateien(): List<File> = bildschirmOrdner.flatMap { Quellen.unter(it) }.distinct()
@@ -149,7 +149,7 @@ class BildschirmHoltDatenNichtSelbstTest {
      */
     @Test
     fun `kein Bildschirm kennt die Server-Modelle`() {
-        val bildschirme = listOf("screens", "components", "dialogs").flatMap { Quellen.unter(it) }
+        val bildschirme = listOf("screens", "components", "dialogs", "gemeinsam/ui").flatMap { Quellen.unter(it) }
         assert(bildschirme.size >= 50) { "Bildschirme nicht gefunden — Muster veraltet?" }
         val mitModell = bildschirme.filter { "data.model" in Quellen.ohneKommentare(it.readText()) }.map { it.name }
         assert(mitModell.isEmpty()) {

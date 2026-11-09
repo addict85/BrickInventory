@@ -36,7 +36,7 @@ import ch.brickinventoryapp.model.ui.model.ProfilAnsicht
 import ch.brickinventoryapp.ui.components.PasswortRueckfrage
 import ch.brickinventoryapp.ui.components.SperrGrund
 import ch.brickinventoryapp.ui.components.WahlChips
-import ch.brickinventoryapp.ui.screens.SettingsCard
+import ch.brickinventoryapp.ui.components.SettingsCard
 
 /**
  * Das eigene Konto: Profil und Passwort. Über /auth/profile und

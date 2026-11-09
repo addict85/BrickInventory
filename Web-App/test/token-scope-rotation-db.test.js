@@ -39,6 +39,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 process.env.APP_BASE_URL = 'http://lego.test:3000';
 
 const { buildAndRequire } = require('./helpers/sources');
+const { qrKoppeln } = require('./helpers/qr');
 const _req = buildAndRequire();
 const db   = _req('db/database.js');
 const auth = _req('src/konto/auth.js');
@@ -113,7 +114,8 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
   const qrLogin = async (gueltigkeit) => {
     const q = await qrToken(gueltigkeit);
     assert.equal(q.status, 200, JSON.stringify(q.body));
-    const l = await ruf('/auth/qr-login', { method: 'POST', body: { token: q.body.token } });
+    const l = await qrKoppeln((p, body, kopf) => ruf('/auth' + p, { method: 'POST', body, cookie: kopf.cookie }), q.body,
+      { cookie: sitzung });
     assert.equal(l.status, 200, JSON.stringify(l.body));
     return l;
   };

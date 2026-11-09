@@ -42,7 +42,7 @@ import ch.brickinventoryapp.zustand.ui.AppUiState
 import ch.brickinventoryapp.sammlung.ui.BarcodeUiState
 import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
 import ch.brickinventoryapp.katalog.ui.CatalogUiState
-import ch.brickinventoryapp.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.zustand.ui.LagerUiState
 import ch.brickinventoryapp.sammlung.ui.dialogs.BarcodeDialogZustand
 import ch.brickinventoryapp.sammlung.ui.dialogs.BarcodeResultDialog

@@ -2,9 +2,8 @@
  * Käufe eines Tages werden zusammengezählt. Ausführlich: docs/begruendungen/src/bestand/acquisitions.ts.md#abschnitt */
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
-import { erfassungsTagSql, preisSpalte, schluesselSpalten } from '../../db/bestandsmenge';
+import { preisSpalte, schluesselSpalten } from '../../db/bestandsmenge';
 import * as repo from './repository/kaufErfassungen';
-export { erfassungsTagSql };
 
 export type AcquisitionKind = 'set' | 'part' | 'fig';
 

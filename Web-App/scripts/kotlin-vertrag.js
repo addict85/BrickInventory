@@ -38,7 +38,12 @@ function kotlinDateien(dir) {
  * @param {string} pfad @returns {string}
  */
 function apiQuelltext(pfad) {
-  if (!fs.statSync(pfad).isDirectory()) return fs.readFileSync(pfad, 'utf8');
+  const fd = fs.openSync(pfad, 'r');
+  try {
+    if (!fs.fstatSync(fd).isDirectory()) return fs.readFileSync(fd, 'utf8');
+  } finally {
+    fs.closeSync(fd);
+  }
   return kotlinDateien(pfad).sort().map(d => fs.readFileSync(d, 'utf8')).join('\n');
 }
 

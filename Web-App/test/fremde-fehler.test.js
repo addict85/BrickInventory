@@ -3,17 +3,17 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const QUELLE = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '08-init.js'), 'utf8');
+const QUELLE = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '08-fehlerfang.js'), 'utf8');
 
 /**
  * Das Auffangnetz faengt nur UNSERE Fehler.
  * Ausführlich: docs/begruendungen/test/fremde-fehler.test.js.md#stelle
  */
 
-/** `vonUns` woertlich aus 08-init.js holen und mit gestelltem Ursprung laufen lassen. */
+/** `vonUns` woertlich aus 08-fehlerfang.js holen und mit gestelltem Ursprung laufen lassen. */
 function holeVonUns(ursprung = 'https://lego.bigolin.online') {
   const auf = QUELLE.indexOf('function vonUns(');
-  assert.ok(auf > 0, 'vonUns() steht nicht mehr in 08-init.js — heisst die Regel noch so?');
+  assert.ok(auf > 0, 'vonUns() steht nicht mehr in 08-fehlerfang.js — heisst die Regel noch so?');
   const zu = QUELLE.indexOf('\n}', auf) + 2;
   const text = QUELLE.slice(auf, zu);
   assert.ok(text.includes('location.origin'),

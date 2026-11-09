@@ -34,7 +34,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const IQ = _req('jobs/imageQueue.js');
+const IQ = _req('src/katalog/bilder/bildbedarfLauf.js');
 const IM = _req('src/katalog/bilder/imageMisses.js');
 
 const einreihen = async (sn) => {
@@ -157,7 +157,7 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     const fs = require('node:fs');
     const { ohneKommentare } = require('./helpers/sources');
     const proxy = ohneKommentare(require('./helpers/sources').proxyThumbQuelle());
-    const job   = ohneKommentare(fs.readFileSync(path.join(ROOT, 'jobs/imageQueue.ts'), 'utf8'));
+    const job   = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/bildbedarfLauf.ts'), 'utf8'));
     assert.match(proxy, /status === 404[\s\S]{0,200}merkeFehlend/,
       'Im Proxy hängt die Fehlanzeige nicht mehr am 404');
     assert.match(job, /info\.status === 404/,

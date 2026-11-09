@@ -8,12 +8,17 @@
  * Set-Bild wird vorgemerkt“.
  * Gegenprobe (08.11.2026): den Aufruf alsSetBildAblegen() in bildDurchreichen()
  * gestrichen → rot: „was der Proxy hat, liegt danach unter images/sets“.
+ * Gegenproben (09.11.2026): bildVormerken() wieder vor liefereAusCache() und
+ * der Drossel, ohne vormerkenEinmal() → rot: „je Set eine Notiz“ (3 statt 1)
+ * und „über der Drossel bleibt die Notiz aus“ (1 statt 0).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
+// Ein Abruf beim CDN je Minute: Die Probe über der Drossel braucht so kein Netz.
+process.env.BILD_ABRUFE_JE_MINUTE = '1';
 const _req = require('./helpers/sources').buildAndRequire();
 
 test('Bild-Proxy merkt Set-Bilder für images/sets vor', async t => {
@@ -96,6 +101,24 @@ test('Bild-Proxy merkt Set-Bilder für images/sets vor', async t => {
   });
   await t.test('ein Teilebild ist kein Set-Bild', async () => {
     assert.equal(await hole(teilUrl), 200);
+    assert.deepEqual(notizen, []);
+  });
+  await t.test('je Set eine Notiz', async () => {
+    const neu = `7${process.pid}-1`;
+    const url = `https://cdn.rebrickable.com/media/sets/${neu}.jpg`;
+    imCache(url);
+    angelegt.push(path.join(SET_IMAGES_DIR, `${neu}.jpg`));
+    const alle = [];
+    for (let i = 0; i < 3; i++) {
+      assert.equal(await hole(url), 200);
+      alle.push(...notizen);
+    }
+    assert.deepEqual(alle, [[url, neu]]);
+  });
+  await t.test('über der Drossel bleibt die Notiz aus', async () => {
+    const url = `https://cdn.rebrickable.com/media/sets/6${process.pid}-1.jpg`;
+    await _req('src/konto/loginLimiter.js').zaehleAnfrage('bild-abruf', 'konto:1', 60_000);
+    assert.equal(await hole(url), 429);
     assert.deepEqual(notizen, []);
   });
 });

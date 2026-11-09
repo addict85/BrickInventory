@@ -26,8 +26,8 @@ import ch.brickinventoryapp.ui.components.LocalSchrittschutz
 import ch.brickinventoryapp.ui.components.PasswortRueckfrage
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.finanzen.ui.gutscheinSumme
-import ch.brickinventoryapp.ui.screens.BezeichnungUndWert
-import ch.brickinventoryapp.ui.screens.SettingsCard
+import ch.brickinventoryapp.ui.components.BezeichnungUndWert
+import ch.brickinventoryapp.ui.components.SettingsCard
 
 /**
  * Gutscheine — LEGO-Geschenkkarten im eigenen Profil, möglichst einfach erreichbar

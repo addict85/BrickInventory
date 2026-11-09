@@ -351,7 +351,7 @@ Läuft ohne Android-Gerät. Die Kamera-Prüfungen lesen nur die Quelldateien.
 
 ## Preisverlauf-Diagramm: Nullen und Zeitachse
 
-**Dateien:** `ui/PriceChartMath.kt`, `ui/screens/SetDetailComponents.kt`
+**Dateien:** `gemeinsam/ui/PriceChartMath.kt`, `gemeinsam/ui/SetDetailComponents.kt`
 **Test:** `PriceChartMathTest`
 
 Der Server liefert fertige Diagrammreihen mit **gemeinsamer** x-Achse. Kürzere

@@ -1,0 +1,16 @@
+Gegenprobe: Ein Token unter dem alten Schlüssel bleibt dort, der Start schlüsselt nicht um
+Modul: core-data
+Test: ch.brickinventoryapp.data.TokenTresorTest
+Rot: ein Token unter dem alten Schluessel kommt beim Start
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+@@ -324,7 +324,6 @@
+                 // Leerer Alteintrag: nichts zu verschlüsseln, aber weg damit.
+                 prefs.remove(AUTH_TOKEN)
+             }
+-            umschluesseln(prefs)
+         }
+         return uebernommen
+     }

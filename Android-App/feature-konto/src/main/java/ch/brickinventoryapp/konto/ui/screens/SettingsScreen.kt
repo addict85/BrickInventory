@@ -48,7 +48,7 @@ import ch.brickinventoryapp.ui.theme.SYSTEMFARBEN_AB_SDK
 import ch.brickinventoryapp.ui.theme.helligkeitWaehlbar
 import ch.brickinventoryapp.update.util.UpdateFrische
 import ch.brickinventoryapp.update.util.erlaubnisAbsicht
-import ch.brickinventoryapp.ui.screens.SettingsCard
+import ch.brickinventoryapp.ui.components.SettingsCard
 
 /** Was die Einstellungen zeigen; die Route sammelt es aus vier Flüssen dreier ViewModels. */
 data class EinstellungenZustand(

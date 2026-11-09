@@ -10,6 +10,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.hilt.work.HiltWorker
+import ch.brickinventoryapp.data.util.Geraetesperre
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -25,14 +26,11 @@ internal class AusgangWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
     private val abgleich: Abgleich,
+    private val sperre: Geraetesperre,
 ) : CoroutineWorker(context, params) {
 
-    override suspend fun doWork(): Result {
-        return when (abgleich.sende()) {
-            Abgleichsergebnis.SPAETER -> Result.retry()
-            Abgleichsergebnis.FERTIG, Abgleichsergebnis.NICHT_ANGEMELDET -> Result.success()
-        }
-    }
+    override suspend fun doWork(): Result =
+        if (abgleich.sende().nochmal(sperre.gesperrt())) Result.retry() else Result.success()
 
     companion object {
         const val NAME = "ausgang-senden"

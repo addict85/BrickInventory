@@ -34,6 +34,7 @@ const ERWARTET_OFFEN = new Map([
   ['POST /api/v1/auth/logout',           'Muss auch ohne gültige Sitzung gehen'],
   ['GET /api/v1/auth/me',                'Antwortet „nicht angemeldet" — der Startpunkt der Oberfläche'],
   ['POST /api/v1/auth/qr-login',         'Anmeldung per QR-Code'],
+  ['POST /api/v1/auth/qr-login/abholen', 'Die App holt nach der Bestätigung im Browser ihren Zugang ab'],
   ['GET /api/v1/auth/registration-status', 'Ob Registrierung offen ist — vor dem Konto'],
   ['POST /api/v1/auth/forgot-password',  'Wer sein Passwort vergisst, kann sich nicht anmelden'],
   ['POST /api/v1/auth/bestaetigung-erneut', 'Ein unbestätigtes Konto kann sich nicht anmelden'],

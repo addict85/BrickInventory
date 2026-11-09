@@ -16,11 +16,10 @@ android {
 
 dependencies {
     api(project(":core-model"))
-    // Innen: Die Bereiche nennen core-data und core-ui selbst.
+    // Innen: Die Bereiche nennen core-data selbst.
     implementation(project(":core-data"))
     // CsvImportDienst: Der CSV-Import startet und beendet seinen Vordergrund-Dienst.
     implementation(project(":core-dienste"))
-    implementation(project(":core-ui"))
     implementation(project(":core-ressourcen"))
     implementation(libs.androidx.core.ktx)
     api(libs.androidx.lifecycle.runtime.ktx)

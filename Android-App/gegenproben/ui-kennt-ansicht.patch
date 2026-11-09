@@ -1,0 +1,16 @@
+Gegenprobe: ein Baustein in core-ui holt sich eine Ansicht der Bereiche
+Modul: app
+Test: ch.brickinventoryapp.app.ModulgrenzenTest
+Rot: Schichtung der Kernmodule
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/DetailZeile.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/DetailZeile.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/DetailZeile.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/DetailZeile.kt
+@@ -9,6 +9,7 @@
+ import androidx.compose.ui.text.TextStyle
+ import androidx.compose.ui.text.font.FontWeight
+ import ch.brickinventoryapp.ui.theme.Abstaende
++import ch.brickinventoryapp.model.ui.model.KaufAnsicht
+ import ch.brickinventoryapp.ui.theme.Lesebreite
+ 
+ /** Eine Zeile der Detailkarten (Katalog, Merkposten), auf dem Tablet höchstens in Lesebreite. */

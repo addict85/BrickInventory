@@ -42,6 +42,9 @@ import ch.brickinventoryapp.testing.ResponseCache
  *      wartet …“
  *   E in entwerte() die Prüfung der Herkunft entfernt → rot
  *      „ein Auftrag für einen anderen Server schickt nichts“ (gegenproben/entwerter-ohne-herkunft.patch)
+ *   F  entwertungsSchritt(): Gesperrt gibt auch bei gesperrtem Gerät nach den Höchstversuchen
+ *      auf (`!geraetGesperrt &&` entfernt) → rot „bei gesperrtem Geraet gibt der Auftrag nicht auf“
+ *      (gegenproben/entwertung-gibt-bei-sperre-auf.patch; nur CI)
  */
 class EntwertungTest {
 
@@ -142,14 +145,27 @@ class EntwertungTest {
     fun `ein gesperrter Keystore wartet, ein verlorener Schluessel beendet den Auftrag`() {
         var gerufen = 0
         val entwerte = { _: String -> gerufen++; Entwertungsergebnis.SPAETER }
-        assertEquals(Entwertungsschritt.NOCHMAL, entwertungsSchritt(Tresorbefund.Gesperrt, 0, entwerte))
-        assertEquals(Entwertungsschritt.AUFGEGEBEN, entwertungsSchritt(Tresorbefund.Weg, 0, entwerte))
+        assertEquals(Entwertungsschritt.NOCHMAL, entwertungsSchritt(Tresorbefund.Gesperrt, 0, entwerte = entwerte))
+        assertEquals(Entwertungsschritt.AUFGEGEBEN, entwertungsSchritt(Tresorbefund.Weg, 0, entwerte = entwerte))
         assertEquals("Ohne Token kein Aufruf", 0, gerufen)
-        assertEquals(Entwertungsschritt.NOCHMAL, entwertungsSchritt(Tresorbefund.Lesbar("t"), 0, entwerte))
+        assertEquals(Entwertungsschritt.NOCHMAL, entwertungsSchritt(Tresorbefund.Lesbar("t"), 0, entwerte = entwerte))
         assertEquals(Entwertungsschritt.AUFGEGEBEN,
-            entwertungsSchritt(Tresorbefund.Lesbar("t"), ENTWERTUNG_HOECHSTVERSUCHE - 1, entwerte))
+            entwertungsSchritt(Tresorbefund.Lesbar("t"), ENTWERTUNG_HOECHSTVERSUCHE - 1, entwerte = entwerte))
         assertEquals(Entwertungsschritt.FERTIG,
             entwertungsSchritt(Tresorbefund.Lesbar("t"), 3) { Entwertungsergebnis.ENTWERTET })
         assertTrue(ENTWERTUNG_HOECHSTVERSUCHE >= 10)
+    }
+
+    /** Der Schlüssel des Tokens arbeitet nur entsperrt: Tagelang gesperrt ist kein Fehlschlag. */
+    @Test
+    fun `bei gesperrtem Geraet gibt der Auftrag nicht auf`() {
+        val letzter = ENTWERTUNG_HOECHSTVERSUCHE - 1
+        val entwerte = { _: String -> Entwertungsergebnis.SPAETER }
+        assertEquals(Entwertungsschritt.NOCHMAL,
+            entwertungsSchritt(Tresorbefund.Gesperrt, letzter, geraetGesperrt = true, entwerte = entwerte))
+        assertEquals(Entwertungsschritt.NOCHMAL,
+            entwertungsSchritt(Tresorbefund.Gesperrt, letzter * 3, geraetGesperrt = true, entwerte = entwerte))
+        assertEquals("Entsperrt und weiter gesperrt: ein anderer Fehler, der aufgibt", Entwertungsschritt.AUFGEGEBEN,
+            entwertungsSchritt(Tresorbefund.Gesperrt, letzter, geraetGesperrt = false, entwerte = entwerte))
     }
 }

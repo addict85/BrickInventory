@@ -38,6 +38,10 @@ const path = require('node:path');
 const tls = require('node:tls');
 const crypto = require('node:crypto');
 const { spawn, spawnSync } = require('node:child_process');
+const net = require('node:net');
+
+/** Ein Port, den gerade niemand belegt; aus der Prozessnummer abgeleitet traf es im parallelen CI-Lauf belegte. */
+const freierPort = () => new Promise((r) => { const s = net.createServer().listen(0, '127.0.0.1', () => { const p = /** @type {import('node:net').AddressInfo} */ (s.address()).port; s.close(() => r(p)); }); });
 
 const ROOT = path.join(__dirname, '..');
 const SKRIPT = path.join(ROOT, 'scripts', 'ca-einrichten.sh');
@@ -227,18 +231,24 @@ test('Caddy liefert die Wurzel mit aus', { skip: !CADDY && 'kein Caddy (CADDY_BI
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
   const ordner = path.join(tmp, 'ca');
   assert.equal(einrichten(ordner, 'nas.example.lan').status, 0);
-  const port = 20000 + (process.pid % 20000);
+  const port = await freierPort(), port80 = await freierPort();
   const datei = fs.readFileSync(path.join(ROOT, 'Caddyfile'), 'utf8')
-    .replace('https://{$BRICK_HOST} {', `https://{$BRICK_HOST}:${port} {`).replace('http:// {', `http://:${port + 1} {`);
+    .replace('https://{$BRICK_HOST} {', `https://{$BRICK_HOST}:${port} {`).replace('http:// {', `http://:${port80} {`);
   fs.writeFileSync(path.join(tmp, 'Caddyfile'), datei);
-  const starte = (mitCa) => spawn(CADDY, ['run', '--config', path.join(tmp, 'Caddyfile'), '--adapter', 'caddyfile'], {
-    stdio: 'ignore', env: { PATH: process.env.PATH, XDG_DATA_HOME: path.join(tmp, mitCa ? 'd1' : 'd2'), XDG_CONFIG_HOME: path.join(tmp, 'c'),
+  let protokoll = '';
+  const starte = (mitCa) => {
+    const p = spawn(CADDY, ['run', '--config', path.join(tmp, 'Caddyfile'), '--adapter', 'caddyfile'], {
+    stdio: ['ignore', 'ignore', 'pipe'], env: { PATH: process.env.PATH, XDG_DATA_HOME: path.join(tmp, mitCa ? 'd1' : 'd2'), XDG_CONFIG_HOME: path.join(tmp, 'c'),
       BRICK_HOST: 'nas.example.lan', BRICK_BASE_URL: 'https://nas.example.lan',
       ...(mitCa ? { BRICK_TLS_AUSSTELLER: 'internal', BRICK_TLS_OPTIONEN: 'ca local', BRICK_CA_EIGEN:
         `root {\ncert ${ordner}/root.crt\n}\nintermediate {\ncert ${ordner}/zwischen-kette.crt\nkey ${ordner}/zwischen.key\n}` }
         : { BRICK_TLS_AUSSTELLER: 'internal', BRICK_TLS_OPTIONEN: 'sign_with_root' }) } });
+    p.stderr.on('data', (d) => { protokoll = (protokoll + d).slice(-3000); });
+    return p;
+  };
+  // Unter Last (vier Testdateien parallel) braucht der erste Start mit eigener CA länger als 10 s.
   const kette = async (ca) => {
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 300; i++) {
       const r = await new Promise((fertig) => {
         const s = tls.connect({ host: '127.0.0.1', port, servername: 'nas.example.lan', ca, rejectUnauthorized: !!ca }, () => {
           const liste = []; for (let c = s.getPeerCertificate(true); c && !liste.includes(c.fingerprint256); c = c.issuerCertificate) liste.push(c.fingerprint256);
@@ -255,7 +265,7 @@ test('Caddy liefert die Wurzel mit aus', { skip: !CADDY && 'kein Caddy (CADDY_BI
   try {
     const wurzel = fs.readFileSync(path.join(ordner, 'root.crt'));
     const r = await kette(wurzel);
-    assert.ok(r, 'Caddy antwortet nicht');
+    assert.ok(r, `Caddy antwortet nicht:\n${protokoll}`);
     assert.equal(r.ok, true, 'der Client traut der Kette mit der eigenen Wurzel nicht');
     // Ohne `ca` baut der Client nichts dazu: Das ist die Kette, die Caddy sendet und die App pinnt.
     const gesendet = await kette(null);
@@ -266,7 +276,7 @@ test('Caddy liefert die Wurzel mit aus', { skip: !CADDY && 'kein Caddy (CADDY_BI
   const p2 = starte(false);
   try {
     const r = await kette(null);
-    assert.ok(r, 'Caddy ohne eigene CA antwortet nicht');
+    assert.ok(r, `Caddy ohne eigene CA antwortet nicht:\n${protokoll}`);
     assert.equal(r.liste.length, 2, 'mit CA_OHNE_NAMENSBESCHRAENKUNG=ja: Blatt und Caddys Wurzel');
   } finally { p2.kill('SIGKILL'); }
 });

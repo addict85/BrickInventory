@@ -274,7 +274,7 @@ test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
 test('der Cache-Aufräumlauf ist ein geplanter Auftrag', () => {
   // Das tägliche Aufräumen stand einmal in registerImgProxy() und lief damit
   // in jedem Web-Worker; heute ist es ein Schritt des geplanten Auftrags
-  // 'aufraeumen_taeglich' (jobs/aufraeumen.ts) und läuft nur im Job-Prozess.
+  // 'aufraeumen_taeglich' (src/verwaltung/aufraeumen.ts) und läuft nur im Job-Prozess.
   assert.match(
     SERVER,
     /export async function raeumeBildCacheAuf/,
@@ -288,7 +288,7 @@ test('der Cache-Aufräumlauf ist ein geplanter Auftrag', () => {
   );
   assert.doesNotMatch(reg, /setInterval/, 'Kein eigenes Intervall im Teil, den der Web-Prozess ausführt');
   const plan = require('./helpers/sources').ohneKommentare(
-    fs.readFileSync(path.join(ROOT, 'jobs/aufraeumen.ts'), 'utf8'),
+    fs.readFileSync(path.join(ROOT, 'src/verwaltung/aufraeumen.ts'), 'utf8'),
   );
   assert.match(
     plan.slice(plan.indexOf('function aufraeumenTaeglich')),

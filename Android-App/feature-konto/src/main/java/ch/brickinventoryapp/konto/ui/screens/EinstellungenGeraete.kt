@@ -26,7 +26,7 @@ import ch.brickinventoryapp.model.ui.model.GeraetAnsicht
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import ch.brickinventoryapp.ui.util.fmtTag
-import ch.brickinventoryapp.ui.screens.SettingsCard
+import ch.brickinventoryapp.ui.components.SettingsCard
 
 /**
  * Angemeldete Geräte: die ausgestellten Zugänge sehen und aussperren.

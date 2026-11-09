@@ -1,0 +1,16 @@
+Gegenprobe: Ein Pin aus dem Code baut keinen neuen TLS-Kontext; eine offene Verbindung umgeht ihn
+Modul: core-data
+Test: ch.brickinventoryapp.data.VertrauenVerschluesseltTest
+Rot: ein Pin aus dem Code gilt nur ueber eine neue Verbindung
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+@@ -318,7 +318,6 @@
+     // wiederaufgenommene Verbindung prüfte den Pin aus dem Code nie.
+     fun halteVor(schluessel: String, fingerabdruck: String) {
+         vorgehalten[schluessel] = fingerabdruck
+-        nutzerCaHoerer.forEach { it() }
+     }
+     override fun ausCode(schluessel: String): Boolean = vorgehalten.containsKey(schluessel)
+     fun vergissVorgehaltenen(schluessel: String) { vorgehalten.remove(schluessel) }

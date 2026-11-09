@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.teile.ui.screens
 
-import ch.brickinventoryapp.ui.erfassungUngueltig
-import ch.brickinventoryapp.ui.erfassungsWerte
+import ch.brickinventoryapp.gemeinsam.ui.erfassungUngueltig
+import ch.brickinventoryapp.gemeinsam.ui.erfassungsWerte
 import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
@@ -20,8 +20,8 @@ import ch.brickinventoryapp.model.ui.*
 import ch.brickinventoryapp.teile.ui.*
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.zustand.ui.*
-import ch.brickinventoryapp.ui.screens.ErfassungsFelder
-import ch.brickinventoryapp.ui.screens.OwnerPicker
+import ch.brickinventoryapp.gemeinsam.ui.ErfassungsFelder
+import ch.brickinventoryapp.gemeinsam.ui.OwnerPicker
 
 @Composable
 fun AddMinifigDialog(

@@ -19,7 +19,7 @@ const Module = require('node:module');
 const _echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = _echtesRequire.apply(this, arguments);
-  if (typeof name === 'string' && /jobs[/\\]nachErfassung(\.js)?$/.test(name))
+  if (typeof name === 'string' && /sets[/\\]nachErfassung(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) =>
       (k === 'zieheNach' || k === 'zieheNachNeuanlage') ? () => {} : t[k] });
   if (typeof name === 'string' && /[/\\]setService(\.js)?$/.test(name))

@@ -7,6 +7,7 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.model.data.model.GutscheinAntwort
 import ch.brickinventoryapp.model.ui.model.KlartextAnsicht
+import ch.brickinventoryapp.model.ui.model.GutscheinAnsicht
 import ch.brickinventoryapp.model.data.model.ZweiterFaktorAnfrage
 import ch.brickinventoryapp.model.ui.model.alsAnsicht
 import ch.brickinventoryapp.model.data.model.GutscheinRequest
@@ -348,41 +349,10 @@ class GutscheinViewModel @Inject constructor(
             var fehler = 0
             try {
                 for (g in dran) {
-                    var erledigt = false
-                    var versuch = 1
-                    while (!erledigt && versuch <= ABSTAND_VERSUCHE) {
-                        _state.update {
-                            it.copy(guthabenLaeuft = g.id, guthabenLauf = GuthabenLauf(
-                                erledigt = fertig + fehler, gesamt = dran.size,
-                                nummer = g.number, wartenSek = 0))
-                        }
-                        when (val r = repo.guthaben(g.id)) {
-                            is Ergebnis.Success -> {
-                                val d = r.data
-                                if (d.success) {
-                                    fertig++; erledigt = true
-                                } else if (d.grund == "abstand" && (d.wartenSek ?: 0) > 0) {
-                                    warteSichtbar(d.wartenSek ?: 0, g.number)
-                                    versuch++
-                                } else {
-                                    fehler++
-                                    erledigt = true
-                                    meldungen.zeige(d.error ?: texte.text(R.string.err_generic))
-                                    // Bot-Schutz gilt für alle, die Kontogrenze für dieses Konto:
-                                    // Weitere Karten liefen in dieselbe Absage.
-                                    if (d.grund == "botschutz" || d.grund == "konto") return@launch
-                                }
-                            }
-                            is Ergebnis.Error -> {
-                                fehler++
-                                erledigt = true
-                                meldungen.zeige(texte.meldungFuerSnackbar(r))
-                            }
-                        }
-                    }
-                    if (!erledigt) {
-                        fehler++
-                        melde(R.string.vouchers_balance_belegt)
+                    when (frageGuthaben(g, fertig + fehler, dran.size)) {
+                        Guthabenabfrage.FERTIG -> fertig++
+                        Guthabenabfrage.FEHLER -> fehler++
+                        Guthabenabfrage.ABBRUCH -> { fehler++; return@launch }
                     }
                 }
             } finally {
@@ -395,6 +365,38 @@ class GutscheinViewModel @Inject constructor(
                     fertig.toString(), fehler.toString()))
             }
         }
+    }
+
+    /** Eine Karte; meldet der Server „abstand", wird gewartet und neu gefragt. */
+    private suspend fun frageGuthaben(g: GutscheinAnsicht, bisher: Int, gesamt: Int): Guthabenabfrage {
+        repeat(ABSTAND_VERSUCHE) {
+            _state.update {
+                it.copy(guthabenLaeuft = g.id, guthabenLauf = GuthabenLauf(
+                    erledigt = bisher, gesamt = gesamt,
+                    nummer = g.number, wartenSek = 0))
+            }
+            when (val r = repo.guthaben(g.id)) {
+                is Ergebnis.Success -> {
+                    val d = r.data
+                    if (d.success) return Guthabenabfrage.FERTIG
+                    if (d.grund == "abstand" && (d.wartenSek ?: 0) > 0) {
+                        warteSichtbar(d.wartenSek ?: 0, g.number)
+                    } else {
+                        meldungen.zeige(d.error ?: texte.text(R.string.err_generic))
+                        // Bot-Schutz gilt für alle, die Kontogrenze für dieses Konto:
+                        // Weitere Karten liefen in dieselbe Absage.
+                        val alle = d.grund == "botschutz" || d.grund == "konto"
+                        return if (alle) Guthabenabfrage.ABBRUCH else Guthabenabfrage.FEHLER
+                    }
+                }
+                is Ergebnis.Error -> {
+                    meldungen.zeige(texte.meldungFuerSnackbar(r))
+                    return Guthabenabfrage.FEHLER
+                }
+            }
+        }
+        melde(R.string.vouchers_balance_belegt)
+        return Guthabenabfrage.FEHLER
     }
 
     fun guthabenLaufAbbrechen() {
@@ -421,6 +423,8 @@ class GutscheinViewModel @Inject constructor(
     fun gutscheinPdfQuittieren() = _state.update { it.copy(pdfZiel = null) }
 
     private fun melde(id: Int) { meldungen.zeige(texte.text(id)) }
+
+    private enum class Guthabenabfrage { FERTIG, FEHLER, ABBRUCH }
 }
 
 /** Schritte, die der Klartext erledigt; PDF und Löschen fragen jedes Mal. */

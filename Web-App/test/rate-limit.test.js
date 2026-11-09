@@ -43,7 +43,7 @@ test('das Tageskontingent zählt für die Installation, nicht je Worker', () => 
   // Alle Aufrufstellen gehen über den gemeinsamen Weg.
   for (const datei of ['clients/rebrickable.ts', 'src/katalog/partsImport.ts', 'src/sets/dienst.ts',
                        'src/katalog/teileAnreicherung.ts',
-                       'jobs/rebrickableCsvSync.ts']) {
+                       'src/katalog/csvAbgleich.ts']) {
     const src = fs.readFileSync(path.join(ROOT, datei), 'utf8');
     assert.doesNotMatch(src, /rebrickableDailyLimiter/,
       `${datei}: zählt noch am gemeinsamen Zähler vorbei`);
@@ -91,7 +91,7 @@ test('keine hartkodierten Limitzahlen mehr in Meldungen und Labels', () => {
 
   const i18n = require('./helpers/sources').i18nAll();
   for (const key of ['monitor.api.rebrickable', 'monitor.api.bricklink', 'monitor.api.brickset']) {
-    const vals = [...i18n.matchAll(new RegExp(`'${key.replace(/\./g, '\\.')}':\\s*'([^']*)'`, 'g'))].map(m => m[1]);
+    const vals = [...i18n.matchAll(new RegExp(`'${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}':\\s*'([^']*)'`, 'g'))].map(m => m[1]);
     assert.ok(vals.length > 0, `${key} fehlt in i18n.js`);
     for (const v of vals) {
       assert.doesNotMatch(v, /\d+\s*\/\s*(Tag|day)/,
@@ -167,7 +167,7 @@ test('die Aufrufstellen warten auf das Ergebnis', () => {
 test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () => {
   // Woher dieser Test kommt
   // Ausführlich: docs/begruendungen/test/rate-limit.test.js.md#job-stelle
-  const job = (fs.readFileSync(path.join(ROOT, 'jobs/priceJob.ts'), 'utf8') + fs.readFileSync(path.join(ROOT, 'db/txLock.ts'), 'utf8'))
+  const job = (fs.readFileSync(path.join(ROOT, 'src/finanzen/preisLauf.ts'), 'utf8') + fs.readFileSync(path.join(ROOT, 'db/txLock.ts'), 'utf8'))
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
 
   assert.match(job, /pg_try_advisory_lock/,

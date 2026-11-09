@@ -21,7 +21,7 @@ import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import ch.brickinventoryapp.ui.theme.Lesebreite
 import ch.brickinventoryapp.konto.ui.viewmodel.KontoViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
-import ch.brickinventoryapp.ui.screens.Unterseite
+import ch.brickinventoryapp.ui.components.Unterseite
 
 /**
  * Die Unterseiten der Einstellungen: je Rubrik eine Seite mit Titel und

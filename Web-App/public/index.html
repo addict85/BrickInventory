@@ -1427,6 +1427,18 @@
                Ausführlich: docs/begruendungen/public/index.html.md#qr-access-hint -->
           <div class="text-klein" id="qr-access-hint"></div>
           <div class="text-klein hinweis-warnung" id="qr-tls-hint" role="note" hidden></div>
+          <div class="text-klein" id="qr-ca-fp" hidden></div>
+          <div class="abstand-o-075" id="qr-kopplung" role="status" aria-live="polite" hidden>
+            <p id="qr-kopplung-text"></p>
+            <div class="fg" id="qr-kopplung-feld">
+              <label for="qr-kopplung-code" data-i18n="qr.kopplung_code">Code aus der App</label>
+              <input type="text" id="qr-kopplung-code" inputmode="numeric" autocomplete="off" maxlength="7">
+            </div>
+            <div class="zeile luecke-10 umbruch" id="qr-kopplung-knoepfe">
+              <button type="button" class="btn bp" data-click="qrKopplungBestaetigen" data-i18n="qr.kopplung_bestaetigen">Gerät koppeln</button>
+              <button type="button" class="btn bd" data-click="qrKopplungAblehnen" data-i18n="qr.kopplung_ablehnen">Ablehnen</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1872,7 +1884,7 @@
     <section class="es-ca">
       <h3 data-i18n="es.ca_title">Wurzelzertifikat installieren</h3>
       <p class="text-klein" data-i18n="es.ca_hint">Der Server verschlüsselt mit einer eigenen Zertifizierungsstelle. Damit Browser und App ihm vertrauen, muss ihr Zertifikat einmal je Gerät installiert werden.</p>
-      <p class="text-klein" data-i18n="es.ca_fp">SHA-256-Fingerabdruck</p>
+      <p class="text-klein" data-i18n="es.ca_fp">SHA-256-Fingerabdruck des Zertifikats. Vor dem Installieren mit dem Wert vergleichen, den das Gerät zeigt, und mit dem im Protokoll des Servers.</p>
       <p class="es-fp" id="es-ca-fp"></p>
       <p class="text-klein" id="es-ca-zeit"></p>
       <a class="btn bs btn-sm" id="es-ca-link" href="/ca.crt" download data-i18n="es.ca_download">Zertifikat herunterladen</a>

@@ -286,7 +286,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     //   b) image_local fest auf null → „die lokale Datei gewinnt" rot.
     const fs = require('node:fs');
     const path = require('node:path');
-    const IQ = _req('jobs/imageQueue.js');
+    const IQ = _req('src/katalog/bilder/bildbedarfLauf.js');
     const ORDNER = path.join(__dirname, '..', 'data', 'images', 'sets');
 
     // ZWEI Setnummern, und das ist kein Zufall: resolveIfExists() merkt sich

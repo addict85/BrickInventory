@@ -3,7 +3,9 @@ package ch.brickinventoryapp.app
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.model.data.model.PnlResponse
 import ch.brickinventoryapp.model.data.model.PortfolioHistoryResponse
+import ch.brickinventoryapp.app.widget.OhneToken
 import ch.brickinventoryapp.app.widget.WIDGET_VERDECKT
+import ch.brickinventoryapp.app.widget.ohneToken
 import ch.brickinventoryapp.app.widget.WidgetZahlen
 import ch.brickinventoryapp.app.widget.gvText
 import ch.brickinventoryapp.app.widget.widgetAnzeige
@@ -31,6 +33,8 @@ import org.junit.Test
  *   F  gegenproben/widget-guv-aus-allen.patch: Basis
  *      übergangen → rot „mit Basis stehen Wert und G&V wie in der Finanzkarte“
  *      (32.40 statt 212.40)
+ *   G  ohneToken() immer LEEREN → rot „ohne Token leert der Arbeiter nur abgemeldet …“;
+ *      gegenproben/widget-leert-bei-sperre.patch
  */
 class WidgetZahlenTest {
 
@@ -44,6 +48,12 @@ class WidgetZahlenTest {
         val z = widgetZahlen(pnl, verlauf, jetzt = 7)!!
         assertNull("Die Ablage hält noch Zahlen, gezeigt werden sie nicht", widgetAnzeige(z, angemeldet = false))
         assertEquals(z, widgetAnzeige(z, angemeldet = true))
+    }
+
+    @Test
+    fun `ohne Token leert der Arbeiter nur abgemeldet, bei gesperrtem Geraet wartet er`() {
+        assertEquals(OhneToken.LEEREN, ohneToken(geraetGesperrt = false))
+        assertEquals(OhneToken.SPAETER, ohneToken(geraetGesperrt = true))
     }
 
     @Test

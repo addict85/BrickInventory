@@ -43,9 +43,9 @@ import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.ui.util.fmtEingabe
 import ch.brickinventoryapp.ui.util.fmtMoney
-import ch.brickinventoryapp.ui.screens.FinanzBild
-import ch.brickinventoryapp.ui.screens.SettingsCard
-import ch.brickinventoryapp.ui.screens.Zustandszeile
+import ch.brickinventoryapp.gemeinsam.ui.FinanzBild
+import ch.brickinventoryapp.ui.components.SettingsCard
+import ch.brickinventoryapp.gemeinsam.ui.Zustandszeile
 
 /**
  * Alle Preisalarme an einem Ort — ändern und löschen wie im Web. Der letzte Preis

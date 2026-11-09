@@ -22,9 +22,10 @@ import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ui.components.ErfassenDialog
-import ch.brickinventoryapp.ui.screens.LagerortErfassung
-import ch.brickinventoryapp.ui.screens.OwnerPicker
-import ch.brickinventoryapp.ui.screens.Zustandszeile
+import ch.brickinventoryapp.gemeinsam.ui.LagerortErfassung
+import ch.brickinventoryapp.gemeinsam.ui.OwnerPicker
+import ch.brickinventoryapp.gemeinsam.ui.Zustandszeile
+import ch.brickinventoryapp.gemeinsam.ui.erfassungUngueltig
 
 /**
  * Ein Set erfassen. Zur Wahl steht der VORRAT an Lagerorten, nicht die belegten:

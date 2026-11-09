@@ -2,10 +2,7 @@
 -- seiner Erzeugung gab. db/database.ts spielt es in eine leere Datenbank,
 -- danach laufen nur die jüngeren Migrationen. Nicht von Hand ändern —
 -- neu erzeugen mit `npm run build && npm run schema:stand`.
---
--- PostgreSQL database dump
---
-
+-- Erzeugt mit pg_dump 16.
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
@@ -16,15 +13,7 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
---
--- Name: pg_trgm; Type: EXTENSION; Schema: -; Owner: -
---
-
 CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
-
---
--- Name: auftrag_exklusiv_belegen(); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.auftrag_exklusiv_belegen() RETURNS trigger
     LANGUAGE plpgsql
@@ -40,17 +29,9 @@ BEGIN
   RETURN NEW;
 END $$;
 
---
--- Name: bild_stamm(text); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.bild_stamm(pfad text) RETURNS text
     LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE
     AS $_$ SELECT regexp_replace(regexp_replace(pfad, '^.*/', ''), '\.[^.]*$', '') $_$;
-
---
--- Name: bump_parts_version_del(); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.bump_parts_version_del() RETURNS trigger
     LANGUAGE plpgsql
@@ -61,10 +42,6 @@ BEGIN
   ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
   RETURN NULL;
 END $$;
-
---
--- Name: bump_parts_version_erfassung_upd(); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.bump_parts_version_erfassung_upd() RETURNS trigger
     LANGUAGE plpgsql
@@ -82,10 +59,6 @@ BEGIN
   RETURN NULL;
 END $$;
 
---
--- Name: bump_parts_version_ins(); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.bump_parts_version_ins() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -95,10 +68,6 @@ BEGIN
   ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
   RETURN NULL;
 END $$;
-
---
--- Name: bump_parts_version_lagerort_upd(); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.bump_parts_version_lagerort_upd() RETURNS trigger
     LANGUAGE plpgsql
@@ -111,10 +80,6 @@ BEGIN
   RETURN NULL;
 END $$;
 
---
--- Name: bump_parts_version_upd(); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.bump_parts_version_upd() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -126,10 +91,6 @@ BEGIN
   ON CONFLICT (user_id) DO UPDATE SET v = parts_version_user.v + 1;
   RETURN NULL;
 END $$;
-
---
--- Name: erfassung_tag(); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.erfassung_tag() RETURNS trigger
     LANGUAGE plpgsql
@@ -144,10 +105,6 @@ BEGIN
   RETURN NEW;
 END $$;
 
---
--- Name: erfassung_waehrung(); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.erfassung_waehrung() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -158,10 +115,6 @@ BEGIN
   RETURN NEW;
 END $$;
 
---
--- Name: in_waehrung(numeric, text, text, date); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.in_waehrung(betrag numeric, von text, nach text, t date) RETURNS numeric
     LANGUAGE sql STABLE
     AS $$
@@ -169,10 +122,6 @@ CREATE FUNCTION public.in_waehrung(betrag numeric, von text, nach text, t date) 
               WHEN upper(von) = upper(nach) THEN betrag
               ELSE round(betrag / kurs_je_eur(von, t) * kurs_je_eur(nach, t), 4) END
 $$;
-
---
--- Name: konto_waehrung(integer); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.konto_waehrung(uid integer) RETURNS text
     LANGUAGE sql STABLE
@@ -183,10 +132,6 @@ CREATE FUNCTION public.konto_waehrung(uid integer) RETURNS text
     'EUR')
 $$;
 
---
--- Name: kurs_je_eur(text, date); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.kurs_je_eur(w text, t date) RETURNS numeric
     LANGUAGE sql STABLE
     AS $$
@@ -195,10 +140,6 @@ CREATE FUNCTION public.kurs_je_eur(w text, t date) RETURNS numeric
                      WHERE k.waehrung = upper(w) AND k.tag <= t
                      ORDER BY k.tag DESC LIMIT 1) END
 $$;
-
---
--- Name: merke_teilekatalog_alt(); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.merke_teilekatalog_alt() RETURNS trigger
     LANGUAGE plpgsql
@@ -213,10 +154,6 @@ BEGIN
   END IF;
   RETURN NULL;
 END $$;
-
---
--- Name: merke_teilekatalog_beide(); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.merke_teilekatalog_beide() RETURNS trigger
     LANGUAGE plpgsql
@@ -234,10 +171,6 @@ BEGIN
   RETURN NULL;
 END $$;
 
---
--- Name: merke_teilekatalog_neu(); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.merke_teilekatalog_neu() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -252,17 +185,9 @@ BEGIN
   RETURN NULL;
 END $$;
 
---
--- Name: set_nummer_mit_version(text); Type: FUNCTION; Schema: public; Owner: -
---
-
 CREATE FUNCTION public.set_nummer_mit_version(n text) RETURNS text
     LANGUAGE sql IMMUTABLE
     AS $_$ SELECT CASE WHEN n IS NULL OR n ~ '-[0-9]+$' THEN n ELSE n || '-1' END $_$;
-
---
--- Name: setnum_normalisieren(); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.setnum_normalisieren() RETURNS trigger
     LANGUAGE plpgsql
@@ -271,10 +196,6 @@ BEGIN
   NEW.set_num := set_nummer_mit_version(NEW.set_num);
   RETURN NEW;
 END $$;
-
---
--- Name: setnummer_normalisieren(); Type: FUNCTION; Schema: public; Owner: -
---
 
 CREATE FUNCTION public.setnummer_normalisieren() RETURNS trigger
     LANGUAGE plpgsql
@@ -288,10 +209,6 @@ SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
---
--- Name: account_link_invites; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.account_link_invites (
     token_hash text NOT NULL,
     main_user_id integer NOT NULL,
@@ -301,20 +218,12 @@ CREATE TABLE public.account_link_invites (
     used_by integer
 );
 
---
--- Name: account_links; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.account_links (
     main_user_id integer NOT NULL,
     sub_user_id integer NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT account_links_no_self CHECK ((main_user_id <> sub_user_id))
 );
-
---
--- Name: api_aufrufe; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.api_aufrufe (
     tag date NOT NULL,
@@ -325,18 +234,10 @@ CREATE TABLE public.api_aufrufe (
     CONSTRAINT api_aufrufe_api_check CHECK ((api = ANY (ARRAY['bricklink'::text, 'rebrickable'::text, 'brickset'::text])))
 );
 
---
--- Name: api_takt; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.api_takt (
     api text NOT NULL,
     naechster timestamp with time zone DEFAULT now() NOT NULL
 );
-
---
--- Name: api_tokens; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.api_tokens (
     token text NOT NULL,
@@ -356,20 +257,12 @@ CREATE TABLE public.api_tokens (
     CONSTRAINT api_tokens_scope_check CHECK ((scope = ANY (ARRAY['app'::text, 'voll'::text])))
 );
 
---
--- Name: api_tokens_verbraucht; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.api_tokens_verbraucht (
     token text NOT NULL,
     user_id integer NOT NULL,
     familie timestamp with time zone NOT NULL,
     verbraucht_am timestamp with time zone DEFAULT now() NOT NULL
 );
-
---
--- Name: app_logs; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.app_logs (
     id bigint NOT NULL,
@@ -378,10 +271,6 @@ CREATE TABLE public.app_logs (
     logged_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
---
--- Name: app_logs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE public.app_logs_id_seq
     START WITH 1
     INCREMENT BY 1
@@ -389,15 +278,7 @@ CREATE SEQUENCE public.app_logs_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: app_logs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.app_logs_id_seq OWNED BY public.app_logs.id;
-
---
--- Name: auftraege; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.auftraege (
     id bigint NOT NULL,
@@ -421,10 +302,6 @@ CREATE TABLE public.auftraege (
     CONSTRAINT auftraege_status_check CHECK ((status = ANY (ARRAY['offen'::text, 'laeuft'::text, 'erledigt'::text, 'fehler'::text, 'abgebrochen'::text])))
 );
 
---
--- Name: auftraege_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE public.auftraege_id_seq
     START WITH 1
     INCREMENT BY 1
@@ -432,23 +309,11 @@ CREATE SEQUENCE public.auftraege_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: auftraege_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.auftraege_id_seq OWNED BY public.auftraege.id;
-
---
--- Name: auftrag_exklusiv; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.auftrag_exklusiv (
     art text NOT NULL
 );
-
---
--- Name: auftrag_pausen; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.auftrag_pausen (
     art text NOT NULL,
@@ -456,10 +321,6 @@ CREATE TABLE public.auftrag_pausen (
     grund text,
     stufe integer DEFAULT 0 NOT NULL
 );
-
---
--- Name: bl_zuordnung; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.bl_zuordnung (
     art text NOT NULL,
@@ -469,10 +330,6 @@ CREATE TABLE public.bl_zuordnung (
     CONSTRAINT bl_zuordnung_art CHECK ((art = ANY (ARRAY['part'::text, 'fig'::text, 'set'::text])))
 );
 
---
--- Name: bl_zuordnung_eigen; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.bl_zuordnung_eigen (
     user_id integer NOT NULL,
     art text NOT NULL,
@@ -481,10 +338,6 @@ CREATE TABLE public.bl_zuordnung_eigen (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT bl_zuordnung_eigen_art CHECK ((art = ANY (ARRAY['part'::text, 'fig'::text, 'set'::text])))
 );
-
---
--- Name: catalog_cache; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.catalog_cache (
     set_number text NOT NULL,
@@ -499,10 +352,6 @@ CREATE TABLE public.catalog_cache (
     CONSTRAINT catalog_cache_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
 
---
--- Name: figur_eigen; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.figur_eigen (
     user_id integer NOT NULL,
     fig_number text NOT NULL,
@@ -511,19 +360,11 @@ CREATE TABLE public.figur_eigen (
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
---
--- Name: global_settings; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.global_settings (
     key text NOT NULL,
     value text NOT NULL,
     updated_at timestamp with time zone DEFAULT now()
 );
-
---
--- Name: gutschein_guthaben_schranke; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.gutschein_guthaben_schranke (
     id smallint DEFAULT 1 NOT NULL,
@@ -532,20 +373,12 @@ CREATE TABLE public.gutschein_guthaben_schranke (
     CONSTRAINT gutschein_guthaben_schranke_id_check CHECK ((id = 1))
 );
 
---
--- Name: household_former_links; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.household_former_links (
     main_user_id integer NOT NULL,
     sub_user_id integer NOT NULL,
     via_user_id integer,
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
---
--- Name: idempotenz; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.idempotenz (
     user_id integer NOT NULL,
@@ -557,29 +390,17 @@ CREATE TABLE public.idempotenz (
     CONSTRAINT idempotenz_schluessel_check CHECK (((length(schluessel) >= 1) AND (length(schluessel) <= 100)))
 );
 
---
--- Name: image_misses; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.image_misses (
     cache_key text NOT NULL,
     checked_at timestamp with time zone DEFAULT now() NOT NULL,
     reason text
 );
 
---
--- Name: image_wanted; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.image_wanted (
     url text NOT NULL,
     set_number text,
     requested_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
---
--- Name: import_stand; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.import_stand (
     user_id integer NOT NULL,
@@ -595,10 +416,6 @@ CREATE TABLE public.import_stand (
     CONSTRAINT csv_import_jobs_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'running'::text, 'done'::text, 'error'::text, 'cancelled'::text])))
 );
 
---
--- Name: instructions; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.instructions (
     id integer NOT NULL,
     user_id integer NOT NULL,
@@ -610,10 +427,6 @@ CREATE TABLE public.instructions (
     CONSTRAINT instructions_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
 
---
--- Name: instructions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE public.instructions_id_seq
     AS integer
     START WITH 1
@@ -622,25 +435,13 @@ CREATE SEQUENCE public.instructions_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: instructions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.instructions_id_seq OWNED BY public.instructions.id;
-
---
--- Name: laufzustand; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.laufzustand (
     schluessel text NOT NULL,
     wert text DEFAULT ''::text NOT NULL,
     aktualisiert timestamp with time zone DEFAULT now() NOT NULL
 );
-
---
--- Name: minifig_acquisitions; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.minifig_acquisitions (
     id integer NOT NULL,
@@ -659,10 +460,6 @@ CREATE TABLE public.minifig_acquisitions (
     CONSTRAINT minifig_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 
---
--- Name: minifig_acquisitions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE public.minifig_acquisitions_id_seq
     AS integer
     START WITH 1
@@ -671,25 +468,13 @@ CREATE SEQUENCE public.minifig_acquisitions_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: minifig_acquisitions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.minifig_acquisitions_id_seq OWNED BY public.minifig_acquisitions.id;
-
---
--- Name: minifig_parts_cache; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.minifig_parts_cache (
     fig_number text NOT NULL,
     data text NOT NULL,
     fetched_at timestamp with time zone DEFAULT now()
 );
-
---
--- Name: minifig_price_cache; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.minifig_price_cache (
     id integer NOT NULL,
@@ -706,10 +491,6 @@ CREATE TABLE public.minifig_price_cache (
     CONSTRAINT minifig_price_cache_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
 );
 
---
--- Name: minifig_price_cache_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE public.minifig_price_cache_id_seq
     AS integer
     START WITH 1
@@ -718,15 +499,7 @@ CREATE SEQUENCE public.minifig_price_cache_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: minifig_price_cache_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.minifig_price_cache_id_seq OWNED BY public.minifig_price_cache.id;
-
---
--- Name: minifig_price_history; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.minifig_price_history (
     id integer NOT NULL,
@@ -743,10 +516,6 @@ CREATE TABLE public.minifig_price_history (
     CONSTRAINT minifig_price_history_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
 );
 
---
--- Name: minifig_price_history_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE public.minifig_price_history_id_seq
     AS integer
     START WITH 1
@@ -755,15 +524,7 @@ CREATE SEQUENCE public.minifig_price_history_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: minifig_price_history_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.minifig_price_history_id_seq OWNED BY public.minifig_price_history.id;
-
---
--- Name: minifigs; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.minifigs (
     id integer NOT NULL,
@@ -776,10 +537,6 @@ CREATE TABLE public.minifigs (
     CONSTRAINT minifigs_source_check CHECK ((source = ANY (ARRAY['set'::text, 'manual'::text])))
 );
 
---
--- Name: minifigs_catalog; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.minifigs_catalog (
     fig_number text NOT NULL,
     fig_name text,
@@ -787,10 +544,6 @@ CREATE TABLE public.minifigs_catalog (
     image_local text,
     updated_at timestamp with time zone DEFAULT now()
 );
-
---
--- Name: minifigs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
 
 CREATE SEQUENCE public.minifigs_id_seq
     AS integer
@@ -800,15 +553,7 @@ CREATE SEQUENCE public.minifigs_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: minifigs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.minifigs_id_seq OWNED BY public.minifigs.id;
-
---
--- Name: papierkorb; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.papierkorb (
     id integer NOT NULL,
@@ -822,10 +567,6 @@ CREATE TABLE public.papierkorb (
     CONSTRAINT papierkorb_art_check CHECK ((art = ANY (ARRAY['set'::text, 'teil'::text, 'figur'::text])))
 );
 
---
--- Name: papierkorb_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE public.papierkorb_id_seq
     AS integer
     START WITH 1
@@ -834,15 +575,7 @@ CREATE SEQUENCE public.papierkorb_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: papierkorb_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.papierkorb_id_seq OWNED BY public.papierkorb.id;
-
---
--- Name: part_acquisitions; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.part_acquisitions (
     id integer NOT NULL,
@@ -862,10 +595,6 @@ CREATE TABLE public.part_acquisitions (
     CONSTRAINT part_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 
---
--- Name: part_acquisitions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE public.part_acquisitions_id_seq
     AS integer
     START WITH 1
@@ -874,15 +603,7 @@ CREATE SEQUENCE public.part_acquisitions_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: part_acquisitions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.part_acquisitions_id_seq OWNED BY public.part_acquisitions.id;
-
---
--- Name: part_catalog; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.part_catalog (
     part_number text NOT NULL,
@@ -890,10 +611,6 @@ CREATE TABLE public.part_catalog (
     category_name text,
     updated_at timestamp with time zone DEFAULT now()
 );
-
---
--- Name: part_color_catalog; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.part_color_catalog (
     part_number text NOT NULL,
@@ -904,10 +621,6 @@ CREATE TABLE public.part_color_catalog (
     image_local text,
     updated_at timestamp with time zone DEFAULT now()
 );
-
---
--- Name: part_price_cache; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.part_price_cache (
     id integer NOT NULL,
@@ -923,10 +636,6 @@ CREATE TABLE public.part_price_cache (
     CONSTRAINT part_price_cache_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
 );
 
---
--- Name: part_price_cache_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE public.part_price_cache_id_seq
     AS integer
     START WITH 1
@@ -935,15 +644,7 @@ CREATE SEQUENCE public.part_price_cache_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: part_price_cache_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.part_price_cache_id_seq OWNED BY public.part_price_cache.id;
-
---
--- Name: part_price_history; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.part_price_history (
     id integer NOT NULL,
@@ -959,10 +660,6 @@ CREATE TABLE public.part_price_history (
     CONSTRAINT part_price_history_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
 );
 
---
--- Name: part_price_history_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE public.part_price_history_id_seq
     AS integer
     START WITH 1
@@ -971,15 +668,7 @@ CREATE SEQUENCE public.part_price_history_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: part_price_history_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.part_price_history_id_seq OWNED BY public.part_price_history.id;
-
---
--- Name: parts; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.parts (
     id integer NOT NULL,
@@ -994,10 +683,6 @@ CREATE TABLE public.parts (
     CONSTRAINT parts_source_check CHECK ((source = ANY (ARRAY['set'::text, 'manual'::text])))
 );
 
---
--- Name: parts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE public.parts_id_seq
     AS integer
     START WITH 1
@@ -1006,24 +691,12 @@ CREATE SEQUENCE public.parts_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: parts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.parts_id_seq OWNED BY public.parts.id;
-
---
--- Name: parts_katalog_offen; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.parts_katalog_offen (
     id bigint NOT NULL,
     nummer text NOT NULL
 );
-
---
--- Name: parts_katalog_offen_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
 
 CREATE SEQUENCE public.parts_katalog_offen_id_seq
     START WITH 1
@@ -1032,15 +705,7 @@ CREATE SEQUENCE public.parts_katalog_offen_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: parts_katalog_offen_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.parts_katalog_offen_id_seq OWNED BY public.parts_katalog_offen.id;
-
---
--- Name: parts_summary; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.parts_summary (
     user_id integer NOT NULL,
@@ -1060,28 +725,16 @@ CREATE TABLE public.parts_summary (
     storage text
 );
 
---
--- Name: parts_summary_state; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.parts_summary_state (
     user_id integer NOT NULL,
     built_version bigint DEFAULT 0 NOT NULL,
     built_at timestamp with time zone DEFAULT now()
 );
 
---
--- Name: parts_version_user; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.parts_version_user (
     user_id integer NOT NULL,
     v bigint DEFAULT 0 NOT NULL
 );
-
---
--- Name: passkeys; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.passkeys (
     id integer NOT NULL,
@@ -1095,10 +748,6 @@ CREATE TABLE public.passkeys (
     last_used timestamp with time zone
 );
 
---
--- Name: passkeys_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE public.passkeys_id_seq
     AS integer
     START WITH 1
@@ -1107,15 +756,7 @@ CREATE SEQUENCE public.passkeys_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: passkeys_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.passkeys_id_seq OWNED BY public.passkeys.id;
-
---
--- Name: price_alerts; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.price_alerts (
     user_id integer NOT NULL,
@@ -1133,10 +774,6 @@ CREATE TABLE public.price_alerts (
     CONSTRAINT price_alerts_schwelle CHECK ((schwelle > (0)::numeric)),
     CONSTRAINT price_alerts_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
-
---
--- Name: price_cache; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.price_cache (
     id integer NOT NULL,
@@ -1156,10 +793,6 @@ CREATE TABLE public.price_cache (
     CONSTRAINT price_cache_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
 );
 
---
--- Name: price_cache_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE public.price_cache_id_seq
     AS integer
     START WITH 1
@@ -1168,15 +801,7 @@ CREATE SEQUENCE public.price_cache_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: price_cache_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.price_cache_id_seq OWNED BY public.price_cache.id;
-
---
--- Name: price_history; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.price_history (
     id integer NOT NULL,
@@ -1195,10 +820,6 @@ CREATE TABLE public.price_history (
     CONSTRAINT price_history_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
 );
 
---
--- Name: price_history_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE public.price_history_id_seq
     AS integer
     START WITH 1
@@ -1207,15 +828,7 @@ CREATE SEQUENCE public.price_history_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: price_history_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.price_history_id_seq OWNED BY public.price_history.id;
-
---
--- Name: qr_login_tokens; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.qr_login_tokens (
     token text NOT NULL,
@@ -1224,10 +837,6 @@ CREATE TABLE public.qr_login_tokens (
     used_at timestamp with time zone,
     token_days integer
 );
-
---
--- Name: rate_limit_attempts; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.rate_limit_attempts (
     key text NOT NULL,
@@ -1238,10 +847,6 @@ CREATE TABLE public.rate_limit_attempts (
     laufend_seit timestamp with time zone
 );
 
---
--- Name: rb_colors; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.rb_colors (
     id integer NOT NULL,
     name text,
@@ -1250,10 +855,6 @@ CREATE TABLE public.rb_colors (
     bl_color_id integer
 );
 
---
--- Name: rb_inventories; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.rb_inventories (
     id integer NOT NULL,
     set_num text,
@@ -1261,20 +862,12 @@ CREATE TABLE public.rb_inventories (
     CONSTRAINT rb_inventories_setnummer_mit_version CHECK ((set_num ~ '-[0-9]+$'::text))
 );
 
---
--- Name: rb_inventory_minifigs; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.rb_inventory_minifigs (
     id integer NOT NULL,
     inventory_id integer NOT NULL,
     fig_num text NOT NULL,
     quantity integer
 );
-
---
--- Name: rb_inventory_minifigs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
 
 CREATE SEQUENCE public.rb_inventory_minifigs_id_seq
     AS integer
@@ -1284,15 +877,7 @@ CREATE SEQUENCE public.rb_inventory_minifigs_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: rb_inventory_minifigs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.rb_inventory_minifigs_id_seq OWNED BY public.rb_inventory_minifigs.id;
-
---
--- Name: rb_inventory_parts; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.rb_inventory_parts (
     id integer NOT NULL,
@@ -1304,10 +889,6 @@ CREATE TABLE public.rb_inventory_parts (
     img_url text
 );
 
---
--- Name: rb_inventory_parts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE public.rb_inventory_parts_id_seq
     AS integer
     START WITH 1
@@ -1316,24 +897,12 @@ CREATE SEQUENCE public.rb_inventory_parts_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: rb_inventory_parts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.rb_inventory_parts_id_seq OWNED BY public.rb_inventory_parts.id;
-
---
--- Name: rb_part_categories; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.rb_part_categories (
     id integer NOT NULL,
     name text
 );
-
---
--- Name: rb_parts; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.rb_parts (
     part_num text NOT NULL,
@@ -1341,10 +910,6 @@ CREATE TABLE public.rb_parts (
     part_cat_id integer,
     part_img_url text
 );
-
---
--- Name: rb_sets; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.rb_sets (
     set_num text NOT NULL,
@@ -1355,29 +920,17 @@ CREATE TABLE public.rb_sets (
     set_img_url text
 );
 
---
--- Name: rb_themes; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.rb_themes (
     id integer NOT NULL,
     name text,
     parent_id integer
 );
 
---
--- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.schema_migrations (
     name text NOT NULL,
     applied_at timestamp with time zone DEFAULT now() NOT NULL,
     pruefsumme text
 );
-
---
--- Name: set_acquisitions; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.set_acquisitions (
     id integer NOT NULL,
@@ -1397,10 +950,6 @@ CREATE TABLE public.set_acquisitions (
     CONSTRAINT set_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 
---
--- Name: set_acquisitions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE public.set_acquisitions_id_seq
     AS integer
     START WITH 1
@@ -1409,15 +958,7 @@ CREATE SEQUENCE public.set_acquisitions_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: set_acquisitions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.set_acquisitions_id_seq OWNED BY public.set_acquisitions.id;
-
---
--- Name: set_catalog; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.set_catalog (
     set_number text NOT NULL,
@@ -1433,10 +974,6 @@ CREATE TABLE public.set_catalog (
     CONSTRAINT set_catalog_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
 
---
--- Name: set_figuren; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.set_figuren (
     set_number text NOT NULL,
     fig_number text NOT NULL,
@@ -1445,10 +982,6 @@ CREATE TABLE public.set_figuren (
     CONSTRAINT set_figuren_menge_positiv CHECK ((quantity > 0)),
     CONSTRAINT set_figuren_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
-
---
--- Name: set_minifigs_catalog; Type: VIEW; Schema: public; Owner: -
---
 
 CREATE VIEW public.set_minifigs_catalog AS
  SELECT f.set_number,
@@ -1461,10 +994,6 @@ CREATE VIEW public.set_minifigs_catalog AS
    FROM (public.set_figuren f
      LEFT JOIN public.minifigs_catalog mc ON ((mc.fig_number = f.fig_number)));
 
---
--- Name: set_teile; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.set_teile (
     set_number text NOT NULL,
     part_number text NOT NULL,
@@ -1474,10 +1003,6 @@ CREATE TABLE public.set_teile (
     updated_at timestamp with time zone DEFAULT now(),
     CONSTRAINT set_teile_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
-
---
--- Name: set_parts_catalog; Type: VIEW; Schema: public; Owner: -
---
 
 CREATE VIEW public.set_parts_catalog AS
  SELECT t.set_number,
@@ -1495,10 +1020,6 @@ CREATE VIEW public.set_parts_catalog AS
    FROM ((public.set_teile t
      LEFT JOIN public.part_catalog pc ON ((pc.part_number = t.part_number)))
      LEFT JOIN public.part_color_catalog pcc ON (((pcc.part_number = t.part_number) AND (pcc.color_id = t.color_id))));
-
---
--- Name: set_stamm; Type: VIEW; Schema: public; Owner: -
---
 
 CREATE VIEW public.set_stamm AS
  SELECT n.set_number,
@@ -1527,10 +1048,6 @@ CREATE VIEW public.set_stamm AS
      LEFT JOIN public.rb_themes th ON ((th.id = rb.theme_id)))
      LEFT JOIN public.catalog_cache cc ON ((cc.set_number = n.set_number)));
 
---
--- Name: sets; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.sets (
     id integer NOT NULL,
     user_id integer NOT NULL,
@@ -1541,10 +1058,6 @@ CREATE TABLE public.sets (
     CONSTRAINT sets_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
 
---
--- Name: sets_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE public.sets_id_seq
     AS integer
     START WITH 1
@@ -1553,15 +1066,7 @@ CREATE SEQUENCE public.sets_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: sets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.sets_id_seq OWNED BY public.sets.id;
-
---
--- Name: shared_instructions; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.shared_instructions (
     id integer NOT NULL,
@@ -1572,10 +1077,6 @@ CREATE TABLE public.shared_instructions (
     fetched_at timestamp with time zone DEFAULT now()
 );
 
---
--- Name: shared_instructions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE public.shared_instructions_id_seq
     AS integer
     START WITH 1
@@ -1584,15 +1085,7 @@ CREATE SEQUENCE public.shared_instructions_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: shared_instructions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.shared_instructions_id_seq OWNED BY public.shared_instructions.id;
-
---
--- Name: storage_locations; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.storage_locations (
     id integer NOT NULL,
@@ -1600,10 +1093,6 @@ CREATE TABLE public.storage_locations (
     name text NOT NULL,
     created_at timestamp with time zone DEFAULT now()
 );
-
---
--- Name: storage_locations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
 
 CREATE SEQUENCE public.storage_locations_id_seq
     AS integer
@@ -1613,25 +1102,13 @@ CREATE SEQUENCE public.storage_locations_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: storage_locations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.storage_locations_id_seq OWNED BY public.storage_locations.id;
-
---
--- Name: subsets_cache; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.subsets_cache (
     set_number text NOT NULL,
     data text NOT NULL,
     fetched_at timestamp with time zone DEFAULT now()
 );
-
---
--- Name: teil_eigen; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.teil_eigen (
     user_id integer NOT NULL,
@@ -1640,10 +1117,6 @@ CREATE TABLE public.teil_eigen (
     category_name text,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
---
--- Name: teil_farbe_eigen; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.teil_farbe_eigen (
     user_id integer NOT NULL,
@@ -1655,19 +1128,11 @@ CREATE TABLE public.teil_farbe_eigen (
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
---
--- Name: user_sessions; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.user_sessions (
     sid character varying NOT NULL,
     sess json NOT NULL,
     expire timestamp with time zone NOT NULL
 );
-
---
--- Name: user_settings; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.user_settings (
     user_id integer NOT NULL,
@@ -1675,10 +1140,6 @@ CREATE TABLE public.user_settings (
     value text NOT NULL,
     updated_at timestamp with time zone DEFAULT now()
 );
-
---
--- Name: users; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.users (
     id integer NOT NULL,
@@ -1703,10 +1164,6 @@ CREATE TABLE public.users (
     email_neu_bis timestamp with time zone
 );
 
---
--- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE public.users_id_seq
     AS integer
     START WITH 1
@@ -1715,15 +1172,7 @@ CREATE SEQUENCE public.users_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: users_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
-
---
--- Name: verwaltungsprotokoll; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.verwaltungsprotokoll (
     id integer NOT NULL,
@@ -1735,10 +1184,6 @@ CREATE TABLE public.verwaltungsprotokoll (
     einzelheiten text
 );
 
---
--- Name: verwaltungsprotokoll_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE public.verwaltungsprotokoll_id_seq
     AS integer
     START WITH 1
@@ -1747,15 +1192,7 @@ CREATE SEQUENCE public.verwaltungsprotokoll_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: verwaltungsprotokoll_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.verwaltungsprotokoll_id_seq OWNED BY public.verwaltungsprotokoll.id;
-
---
--- Name: vouchers; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.vouchers (
     id integer NOT NULL,
@@ -1773,10 +1210,6 @@ CREATE TABLE public.vouchers (
     CONSTRAINT vouchers_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text))
 );
 
---
--- Name: vouchers_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE public.vouchers_id_seq
     AS integer
     START WITH 1
@@ -1785,15 +1218,7 @@ CREATE SEQUENCE public.vouchers_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: vouchers_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.vouchers_id_seq OWNED BY public.vouchers.id;
-
---
--- Name: wanted; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.wanted (
     id integer NOT NULL,
@@ -1804,10 +1229,6 @@ CREATE TABLE public.wanted (
     CONSTRAINT wanted_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
 
---
--- Name: webauthn_challenges; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.webauthn_challenges (
     challenge text NOT NULL,
     user_id integer,
@@ -1815,10 +1236,6 @@ CREATE TABLE public.webauthn_challenges (
     expires_at timestamp with time zone NOT NULL,
     CONSTRAINT webauthn_challenges_zweck_check CHECK ((zweck = ANY (ARRAY['registrieren'::text, 'anmelden'::text, 'zweiter_faktor'::text])))
 );
-
---
--- Name: wechselkurse; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.wechselkurse (
     tag date NOT NULL,
@@ -1828,10 +1245,6 @@ CREATE TABLE public.wechselkurse (
     CONSTRAINT wechselkurse_waehrung_check CHECK (((waehrung ~ '^[A-Z]{3}$'::text) AND (waehrung <> 'EUR'::bpchar)))
 );
 
---
--- Name: wishlist_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE public.wishlist_id_seq
     AS integer
     START WITH 1
@@ -1840,15 +1253,7 @@ CREATE SEQUENCE public.wishlist_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: wishlist_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.wishlist_id_seq OWNED BY public.wanted.id;
-
---
--- Name: zweiter_faktor; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE public.zweiter_faktor (
     user_id integer NOT NULL,
@@ -1858,20 +1263,12 @@ CREATE TABLE public.zweiter_faktor (
     eingerichtet_am timestamp with time zone DEFAULT now() NOT NULL
 );
 
---
--- Name: zweiter_faktor_codes; Type: TABLE; Schema: public; Owner: -
---
-
 CREATE TABLE public.zweiter_faktor_codes (
     id integer NOT NULL,
     user_id integer NOT NULL,
     code_hash text NOT NULL,
     verbraucht_am timestamp with time zone
 );
-
---
--- Name: zweiter_faktor_codes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
 
 CREATE SEQUENCE public.zweiter_faktor_codes_id_seq
     AS integer
@@ -1881,1902 +1278,722 @@ CREATE SEQUENCE public.zweiter_faktor_codes_id_seq
     NO MAXVALUE
     CACHE 1;
 
---
--- Name: zweiter_faktor_codes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.zweiter_faktor_codes_id_seq OWNED BY public.zweiter_faktor_codes.id;
-
---
--- Name: app_logs id; Type: DEFAULT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.app_logs ALTER COLUMN id SET DEFAULT nextval('public.app_logs_id_seq'::regclass);
 
---
--- Name: auftraege id; Type: DEFAULT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.auftraege ALTER COLUMN id SET DEFAULT nextval('public.auftraege_id_seq'::regclass);
-
---
--- Name: instructions id; Type: DEFAULT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.instructions ALTER COLUMN id SET DEFAULT nextval('public.instructions_id_seq'::regclass);
 
---
--- Name: minifig_acquisitions id; Type: DEFAULT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.minifig_acquisitions ALTER COLUMN id SET DEFAULT nextval('public.minifig_acquisitions_id_seq'::regclass);
-
---
--- Name: minifig_price_cache id; Type: DEFAULT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.minifig_price_cache ALTER COLUMN id SET DEFAULT nextval('public.minifig_price_cache_id_seq'::regclass);
 
---
--- Name: minifig_price_history id; Type: DEFAULT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.minifig_price_history ALTER COLUMN id SET DEFAULT nextval('public.minifig_price_history_id_seq'::regclass);
-
---
--- Name: minifigs id; Type: DEFAULT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.minifigs ALTER COLUMN id SET DEFAULT nextval('public.minifigs_id_seq'::regclass);
 
---
--- Name: papierkorb id; Type: DEFAULT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.papierkorb ALTER COLUMN id SET DEFAULT nextval('public.papierkorb_id_seq'::regclass);
-
---
--- Name: part_acquisitions id; Type: DEFAULT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.part_acquisitions ALTER COLUMN id SET DEFAULT nextval('public.part_acquisitions_id_seq'::regclass);
 
---
--- Name: part_price_cache id; Type: DEFAULT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.part_price_cache ALTER COLUMN id SET DEFAULT nextval('public.part_price_cache_id_seq'::regclass);
-
---
--- Name: part_price_history id; Type: DEFAULT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.part_price_history ALTER COLUMN id SET DEFAULT nextval('public.part_price_history_id_seq'::regclass);
 
---
--- Name: parts id; Type: DEFAULT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.parts ALTER COLUMN id SET DEFAULT nextval('public.parts_id_seq'::regclass);
-
---
--- Name: parts_katalog_offen id; Type: DEFAULT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.parts_katalog_offen ALTER COLUMN id SET DEFAULT nextval('public.parts_katalog_offen_id_seq'::regclass);
 
---
--- Name: passkeys id; Type: DEFAULT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.passkeys ALTER COLUMN id SET DEFAULT nextval('public.passkeys_id_seq'::regclass);
-
---
--- Name: price_cache id; Type: DEFAULT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.price_cache ALTER COLUMN id SET DEFAULT nextval('public.price_cache_id_seq'::regclass);
 
---
--- Name: price_history id; Type: DEFAULT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.price_history ALTER COLUMN id SET DEFAULT nextval('public.price_history_id_seq'::regclass);
-
---
--- Name: rb_inventory_minifigs id; Type: DEFAULT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.rb_inventory_minifigs ALTER COLUMN id SET DEFAULT nextval('public.rb_inventory_minifigs_id_seq'::regclass);
 
---
--- Name: rb_inventory_parts id; Type: DEFAULT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.rb_inventory_parts ALTER COLUMN id SET DEFAULT nextval('public.rb_inventory_parts_id_seq'::regclass);
-
---
--- Name: set_acquisitions id; Type: DEFAULT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.set_acquisitions ALTER COLUMN id SET DEFAULT nextval('public.set_acquisitions_id_seq'::regclass);
 
---
--- Name: sets id; Type: DEFAULT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.sets ALTER COLUMN id SET DEFAULT nextval('public.sets_id_seq'::regclass);
-
---
--- Name: shared_instructions id; Type: DEFAULT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.shared_instructions ALTER COLUMN id SET DEFAULT nextval('public.shared_instructions_id_seq'::regclass);
 
---
--- Name: storage_locations id; Type: DEFAULT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.storage_locations ALTER COLUMN id SET DEFAULT nextval('public.storage_locations_id_seq'::regclass);
-
---
--- Name: users id; Type: DEFAULT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
 
---
--- Name: verwaltungsprotokoll id; Type: DEFAULT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.verwaltungsprotokoll ALTER COLUMN id SET DEFAULT nextval('public.verwaltungsprotokoll_id_seq'::regclass);
-
---
--- Name: vouchers id; Type: DEFAULT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vouchers ALTER COLUMN id SET DEFAULT nextval('public.vouchers_id_seq'::regclass);
 
---
--- Name: wanted id; Type: DEFAULT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.wanted ALTER COLUMN id SET DEFAULT nextval('public.wishlist_id_seq'::regclass);
 
---
--- Name: zweiter_faktor_codes id; Type: DEFAULT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.zweiter_faktor_codes ALTER COLUMN id SET DEFAULT nextval('public.zweiter_faktor_codes_id_seq'::regclass);
-
---
--- Name: account_link_invites account_link_invites_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.account_link_invites
     ADD CONSTRAINT account_link_invites_pkey PRIMARY KEY (token_hash);
 
---
--- Name: account_links account_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.account_links
     ADD CONSTRAINT account_links_pkey PRIMARY KEY (main_user_id, sub_user_id);
-
---
--- Name: api_aufrufe api_aufrufe_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.api_aufrufe
     ADD CONSTRAINT api_aufrufe_pkey PRIMARY KEY (tag, api, konto);
 
---
--- Name: api_takt api_takt_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.api_takt
     ADD CONSTRAINT api_takt_pkey PRIMARY KEY (api);
-
---
--- Name: api_tokens api_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.api_tokens
     ADD CONSTRAINT api_tokens_pkey PRIMARY KEY (token);
 
---
--- Name: api_tokens_verbraucht api_tokens_verbraucht_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.api_tokens_verbraucht
     ADD CONSTRAINT api_tokens_verbraucht_pkey PRIMARY KEY (token);
-
---
--- Name: app_logs app_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.app_logs
     ADD CONSTRAINT app_logs_pkey PRIMARY KEY (id);
 
---
--- Name: auftraege auftraege_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.auftraege
     ADD CONSTRAINT auftraege_pkey PRIMARY KEY (id);
-
---
--- Name: auftrag_exklusiv auftrag_exklusiv_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.auftrag_exklusiv
     ADD CONSTRAINT auftrag_exklusiv_pkey PRIMARY KEY (art);
 
---
--- Name: auftrag_pausen auftrag_pausen_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.auftrag_pausen
     ADD CONSTRAINT auftrag_pausen_pkey PRIMARY KEY (art);
-
---
--- Name: bl_zuordnung_eigen bl_zuordnung_eigen_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.bl_zuordnung_eigen
     ADD CONSTRAINT bl_zuordnung_eigen_pkey PRIMARY KEY (user_id, art, rb_id);
 
---
--- Name: bl_zuordnung bl_zuordnung_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.bl_zuordnung
     ADD CONSTRAINT bl_zuordnung_pkey PRIMARY KEY (art, rb_id);
-
---
--- Name: catalog_cache catalog_cache_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.catalog_cache
     ADD CONSTRAINT catalog_cache_pkey PRIMARY KEY (set_number);
 
---
--- Name: import_stand csv_import_jobs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.import_stand
     ADD CONSTRAINT csv_import_jobs_pkey PRIMARY KEY (user_id);
-
---
--- Name: figur_eigen figur_eigen_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.figur_eigen
     ADD CONSTRAINT figur_eigen_pkey PRIMARY KEY (user_id, fig_number);
 
---
--- Name: global_settings global_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.global_settings
     ADD CONSTRAINT global_settings_pkey PRIMARY KEY (key);
-
---
--- Name: gutschein_guthaben_schranke gutschein_guthaben_schranke_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.gutschein_guthaben_schranke
     ADD CONSTRAINT gutschein_guthaben_schranke_pkey PRIMARY KEY (id);
 
---
--- Name: household_former_links household_former_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.household_former_links
     ADD CONSTRAINT household_former_links_pkey PRIMARY KEY (main_user_id, sub_user_id);
-
---
--- Name: idempotenz idempotenz_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.idempotenz
     ADD CONSTRAINT idempotenz_pkey PRIMARY KEY (user_id, schluessel);
 
---
--- Name: image_misses image_misses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.image_misses
     ADD CONSTRAINT image_misses_pkey PRIMARY KEY (cache_key);
-
---
--- Name: image_wanted image_wanted_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.image_wanted
     ADD CONSTRAINT image_wanted_pkey PRIMARY KEY (url);
 
---
--- Name: instructions instructions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.instructions
     ADD CONSTRAINT instructions_pkey PRIMARY KEY (id);
-
---
--- Name: laufzustand laufzustand_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.laufzustand
     ADD CONSTRAINT laufzustand_pkey PRIMARY KEY (schluessel);
 
---
--- Name: minifig_acquisitions minifig_acquisitions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.minifig_acquisitions
     ADD CONSTRAINT minifig_acquisitions_pkey PRIMARY KEY (id);
-
---
--- Name: minifig_parts_cache minifig_parts_cache_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.minifig_parts_cache
     ADD CONSTRAINT minifig_parts_cache_pkey PRIMARY KEY (fig_number);
 
---
--- Name: minifig_price_cache minifig_price_cache_fig_number_condition_currency_code_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.minifig_price_cache
     ADD CONSTRAINT minifig_price_cache_fig_number_condition_currency_code_key UNIQUE (fig_number, condition, currency_code);
-
---
--- Name: minifig_price_cache minifig_price_cache_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.minifig_price_cache
     ADD CONSTRAINT minifig_price_cache_pkey PRIMARY KEY (id);
 
---
--- Name: minifig_price_history minifig_price_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.minifig_price_history
     ADD CONSTRAINT minifig_price_history_pkey PRIMARY KEY (id);
-
---
--- Name: minifigs_catalog minifigs_catalog_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.minifigs_catalog
     ADD CONSTRAINT minifigs_catalog_pkey PRIMARY KEY (fig_number);
 
---
--- Name: minifigs minifigs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.minifigs
     ADD CONSTRAINT minifigs_pkey PRIMARY KEY (id);
-
---
--- Name: papierkorb papierkorb_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.papierkorb
     ADD CONSTRAINT papierkorb_pkey PRIMARY KEY (id);
 
---
--- Name: part_acquisitions part_acquisitions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.part_acquisitions
     ADD CONSTRAINT part_acquisitions_pkey PRIMARY KEY (id);
-
---
--- Name: part_catalog part_catalog_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.part_catalog
     ADD CONSTRAINT part_catalog_pkey PRIMARY KEY (part_number);
 
---
--- Name: part_color_catalog part_color_catalog_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.part_color_catalog
     ADD CONSTRAINT part_color_catalog_pkey PRIMARY KEY (part_number, color_id);
-
---
--- Name: part_price_cache part_price_cache_part_number_color_id_condition_currency_co_key; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.part_price_cache
     ADD CONSTRAINT part_price_cache_part_number_color_id_condition_currency_co_key UNIQUE (part_number, color_id, condition, currency_code);
 
---
--- Name: part_price_cache part_price_cache_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.part_price_cache
     ADD CONSTRAINT part_price_cache_pkey PRIMARY KEY (id);
-
---
--- Name: part_price_history part_price_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.part_price_history
     ADD CONSTRAINT part_price_history_pkey PRIMARY KEY (id);
 
---
--- Name: parts_katalog_offen parts_katalog_offen_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.parts_katalog_offen
     ADD CONSTRAINT parts_katalog_offen_pkey PRIMARY KEY (id);
-
---
--- Name: parts parts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.parts
     ADD CONSTRAINT parts_pkey PRIMARY KEY (id);
 
---
--- Name: parts_summary parts_summary_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.parts_summary
     ADD CONSTRAINT parts_summary_pkey PRIMARY KEY (user_id, part_key, color_id);
-
---
--- Name: parts_summary_state parts_summary_state_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.parts_summary_state
     ADD CONSTRAINT parts_summary_state_pkey PRIMARY KEY (user_id);
 
---
--- Name: parts_version_user parts_version_user_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.parts_version_user
     ADD CONSTRAINT parts_version_user_pkey PRIMARY KEY (user_id);
-
---
--- Name: passkeys passkeys_credential_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.passkeys
     ADD CONSTRAINT passkeys_credential_id_key UNIQUE (credential_id);
 
---
--- Name: passkeys passkeys_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.passkeys
     ADD CONSTRAINT passkeys_pkey PRIMARY KEY (id);
-
---
--- Name: price_alerts price_alerts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.price_alerts
     ADD CONSTRAINT price_alerts_pkey PRIMARY KEY (user_id, set_number, condition);
 
---
--- Name: price_cache price_cache_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.price_cache
     ADD CONSTRAINT price_cache_pkey PRIMARY KEY (id);
-
---
--- Name: price_cache price_cache_set_number_condition_currency_code_key; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.price_cache
     ADD CONSTRAINT price_cache_set_number_condition_currency_code_key UNIQUE (set_number, condition, currency_code);
 
---
--- Name: price_history price_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.price_history
     ADD CONSTRAINT price_history_pkey PRIMARY KEY (id);
-
---
--- Name: qr_login_tokens qr_login_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.qr_login_tokens
     ADD CONSTRAINT qr_login_tokens_pkey PRIMARY KEY (token);
 
---
--- Name: rate_limit_attempts rate_limit_attempts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.rate_limit_attempts
     ADD CONSTRAINT rate_limit_attempts_pkey PRIMARY KEY (key);
-
---
--- Name: rb_colors rb_colors_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.rb_colors
     ADD CONSTRAINT rb_colors_pkey PRIMARY KEY (id);
 
---
--- Name: rb_inventories rb_inventories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.rb_inventories
     ADD CONSTRAINT rb_inventories_pkey PRIMARY KEY (id);
-
---
--- Name: rb_inventory_minifigs rb_inventory_minifigs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.rb_inventory_minifigs
     ADD CONSTRAINT rb_inventory_minifigs_pkey PRIMARY KEY (id);
 
---
--- Name: rb_inventory_parts rb_inventory_parts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.rb_inventory_parts
     ADD CONSTRAINT rb_inventory_parts_pkey PRIMARY KEY (id);
-
---
--- Name: rb_part_categories rb_part_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.rb_part_categories
     ADD CONSTRAINT rb_part_categories_pkey PRIMARY KEY (id);
 
---
--- Name: rb_parts rb_parts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.rb_parts
     ADD CONSTRAINT rb_parts_pkey PRIMARY KEY (part_num);
-
---
--- Name: rb_sets rb_sets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.rb_sets
     ADD CONSTRAINT rb_sets_pkey PRIMARY KEY (set_num);
 
---
--- Name: rb_themes rb_themes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.rb_themes
     ADD CONSTRAINT rb_themes_pkey PRIMARY KEY (id);
-
---
--- Name: schema_migrations schema_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.schema_migrations
     ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (name);
 
---
--- Name: set_acquisitions set_acquisitions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.set_acquisitions
     ADD CONSTRAINT set_acquisitions_pkey PRIMARY KEY (id);
-
---
--- Name: set_catalog set_catalog_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.set_catalog
     ADD CONSTRAINT set_catalog_pkey PRIMARY KEY (set_number);
 
---
--- Name: set_figuren set_figuren_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.set_figuren
     ADD CONSTRAINT set_figuren_pkey PRIMARY KEY (set_number, fig_number);
-
---
--- Name: set_teile set_teile_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.set_teile
     ADD CONSTRAINT set_teile_pkey PRIMARY KEY (set_number, part_number, color_id);
 
---
--- Name: sets sets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.sets
     ADD CONSTRAINT sets_pkey PRIMARY KEY (id);
-
---
--- Name: sets sets_user_id_set_number_key; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.sets
     ADD CONSTRAINT sets_user_id_set_number_key UNIQUE (user_id, set_number);
 
---
--- Name: shared_instructions shared_instructions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.shared_instructions
     ADD CONSTRAINT shared_instructions_pkey PRIMARY KEY (id);
-
---
--- Name: shared_instructions shared_instructions_set_number_url_key; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.shared_instructions
     ADD CONSTRAINT shared_instructions_set_number_url_key UNIQUE (set_number, url);
 
---
--- Name: storage_locations storage_locations_konto_id; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.storage_locations
     ADD CONSTRAINT storage_locations_konto_id UNIQUE (user_id, id);
-
---
--- Name: storage_locations storage_locations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.storage_locations
     ADD CONSTRAINT storage_locations_pkey PRIMARY KEY (id);
 
---
--- Name: subsets_cache subsets_cache_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.subsets_cache
     ADD CONSTRAINT subsets_cache_pkey PRIMARY KEY (set_number);
-
---
--- Name: teil_eigen teil_eigen_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.teil_eigen
     ADD CONSTRAINT teil_eigen_pkey PRIMARY KEY (user_id, part_number);
 
---
--- Name: teil_farbe_eigen teil_farbe_eigen_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.teil_farbe_eigen
     ADD CONSTRAINT teil_farbe_eigen_pkey PRIMARY KEY (user_id, part_number, color_id);
-
---
--- Name: user_sessions user_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.user_sessions
     ADD CONSTRAINT user_sessions_pkey PRIMARY KEY (sid);
 
---
--- Name: user_settings user_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.user_settings
     ADD CONSTRAINT user_settings_pkey PRIMARY KEY (user_id, key);
-
---
--- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
 
---
--- Name: users users_username_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_username_key UNIQUE (username);
-
---
--- Name: verwaltungsprotokoll verwaltungsprotokoll_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.verwaltungsprotokoll
     ADD CONSTRAINT verwaltungsprotokoll_pkey PRIMARY KEY (id);
 
---
--- Name: vouchers vouchers_nummer_verschluesselt; Type: CHECK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE public.vouchers
     ADD CONSTRAINT vouchers_nummer_verschluesselt CHECK (((number ~~ 'v2:%'::text) AND (nummer_suche IS NOT NULL))) NOT VALID;
-
---
--- Name: vouchers vouchers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vouchers
     ADD CONSTRAINT vouchers_pkey PRIMARY KEY (id);
 
---
--- Name: vouchers vouchers_user_id_nummer_suche_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.vouchers
     ADD CONSTRAINT vouchers_user_id_nummer_suche_key UNIQUE (user_id, nummer_suche);
-
---
--- Name: webauthn_challenges webauthn_challenges_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.webauthn_challenges
     ADD CONSTRAINT webauthn_challenges_pkey PRIMARY KEY (challenge);
 
---
--- Name: wechselkurse wechselkurse_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.wechselkurse
     ADD CONSTRAINT wechselkurse_pkey PRIMARY KEY (waehrung, tag);
-
---
--- Name: wanted wishlist_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.wanted
     ADD CONSTRAINT wishlist_pkey PRIMARY KEY (id);
 
---
--- Name: wanted wishlist_user_id_set_number_condition_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.wanted
     ADD CONSTRAINT wishlist_user_id_set_number_condition_key UNIQUE (user_id, set_number, condition);
-
---
--- Name: zweiter_faktor_codes zweiter_faktor_codes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.zweiter_faktor_codes
     ADD CONSTRAINT zweiter_faktor_codes_pkey PRIMARY KEY (id);
 
---
--- Name: zweiter_faktor zweiter_faktor_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.zweiter_faktor
     ADD CONSTRAINT zweiter_faktor_pkey PRIMARY KEY (user_id);
 
---
--- Name: idx_account_link_invites_main; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_account_link_invites_main ON public.account_link_invites USING btree (main_user_id, expires_at);
-
---
--- Name: idx_account_links_sub; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_account_links_sub ON public.account_links USING btree (sub_user_id);
 
---
--- Name: idx_api_tokens_expires; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_api_tokens_expires ON public.api_tokens USING btree (expires_at) WHERE (expires_at IS NOT NULL);
-
---
--- Name: idx_api_tokens_hard; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_api_tokens_hard ON public.api_tokens USING btree (hard_expires_at) WHERE (hard_expires_at IS NOT NULL);
 
---
--- Name: idx_api_tokens_idle; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_api_tokens_idle ON public.api_tokens USING btree (last_used) WHERE (expires_at IS NULL);
-
---
--- Name: idx_api_tokens_user_created; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_api_tokens_user_created ON public.api_tokens USING btree (user_id, created_at DESC);
 
---
--- Name: idx_api_tokens_verbraucht_familie; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_api_tokens_verbraucht_familie ON public.api_tokens_verbraucht USING btree (user_id, familie);
-
---
--- Name: idx_app_logs_logged_at; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_app_logs_logged_at ON public.app_logs USING btree (logged_at DESC);
 
---
--- Name: idx_auftraege_art; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_auftraege_art ON public.auftraege USING btree (art, status);
-
---
--- Name: idx_auftraege_frist; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_auftraege_frist ON public.auftraege USING btree (frist_bis) WHERE (status = 'laeuft'::text);
 
---
--- Name: idx_auftraege_offen_faellig; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_auftraege_offen_faellig ON public.auftraege USING btree (faellig_ab) WHERE (status = 'offen'::text);
-
---
--- Name: idx_auftraege_schluessel; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE UNIQUE INDEX idx_auftraege_schluessel ON public.auftraege USING btree (schluessel) WHERE (status = 'offen'::text);
 
---
--- Name: idx_auftraege_user; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_auftraege_user ON public.auftraege USING btree (user_id) WHERE (user_id IS NOT NULL);
-
---
--- Name: idx_bl_zuordnung_bl; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_bl_zuordnung_bl ON public.bl_zuordnung USING btree (art, bl_id);
 
---
--- Name: idx_bl_zuordnung_eigen_bl; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_bl_zuordnung_eigen_bl ON public.bl_zuordnung_eigen USING btree (user_id, art, bl_id);
-
---
--- Name: idx_household_former_sub; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_household_former_sub ON public.household_former_links USING btree (sub_user_id);
 
---
--- Name: idx_household_former_via; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_household_former_via ON public.household_former_links USING btree (via_user_id);
-
---
--- Name: idx_idempotenz_angelegt; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_idempotenz_angelegt ON public.idempotenz USING btree (angelegt);
 
---
--- Name: idx_image_wanted_alter; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_image_wanted_alter ON public.image_wanted USING btree (requested_at);
-
---
--- Name: idx_instructions_user; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_instructions_user ON public.instructions USING btree (user_id, set_number);
 
---
--- Name: idx_invite_used_by; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_invite_used_by ON public.account_link_invites USING btree (used_by);
-
---
--- Name: idx_minifig_acq_erfassungstag; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE UNIQUE INDEX idx_minifig_acq_erfassungstag ON public.minifig_acquisitions USING btree (user_id, fig_number, COALESCE(tag, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
 
---
--- Name: idx_minifig_price_cache_lookup; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_minifig_price_cache_lookup ON public.minifig_price_cache USING btree (fig_number, condition, currency_code, fetched_at DESC);
-
---
--- Name: idx_minifig_price_history_lookup; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_minifig_price_history_lookup ON public.minifig_price_history USING btree (fig_number, currency_code, recorded_at);
 
---
--- Name: idx_minifig_price_history_tag; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE UNIQUE INDEX idx_minifig_price_history_tag ON public.minifig_price_history USING btree (fig_number, condition, currency_code, (((recorded_at AT TIME ZONE 'UTC'::text))::date));
-
---
--- Name: idx_minifigs_catalog_bild_stamm; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_minifigs_catalog_bild_stamm ON public.minifigs_catalog USING btree (public.bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
 
---
--- Name: idx_minifigs_catalog_name_trgm; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_minifigs_catalog_name_trgm ON public.minifigs_catalog USING gin (lower(fig_name) public.gin_trgm_ops);
-
---
--- Name: idx_minifigs_eindeutig; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE UNIQUE INDEX idx_minifigs_eindeutig ON public.minifigs USING btree (user_id, COALESCE(set_number, ''::text), fig_number);
 
---
--- Name: idx_minifigs_set; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_minifigs_set ON public.minifigs USING btree (user_id, set_number);
-
---
--- Name: idx_minifigs_storage_id; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_minifigs_storage_id ON public.minifigs USING btree (user_id, storage_id) WHERE (storage_id IS NOT NULL);
 
---
--- Name: idx_minifigs_storage_ref; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_minifigs_storage_ref ON public.minifigs USING btree (storage_id) WHERE (storage_id IS NOT NULL);
-
---
--- Name: idx_papierkorb_konto; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_papierkorb_konto ON public.papierkorb USING btree (user_id, geloescht_am DESC);
 
---
--- Name: idx_part_acq_erfassungstag; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE UNIQUE INDEX idx_part_acq_erfassungstag ON public.part_acquisitions USING btree (user_id, part_number, color_id, COALESCE(tag, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
-
---
--- Name: idx_part_catalog_category; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_part_catalog_category ON public.part_catalog USING btree (category_name);
 
---
--- Name: idx_part_catalog_name_trgm; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_part_catalog_name_trgm ON public.part_catalog USING gin (lower(part_name) public.gin_trgm_ops);
-
---
--- Name: idx_part_color_catalog_bild_stamm; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_part_color_catalog_bild_stamm ON public.part_color_catalog USING btree (public.bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
 
---
--- Name: idx_part_price_cache_lookup; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_part_price_cache_lookup ON public.part_price_cache USING btree (part_number, color_id, condition, currency_code, fetched_at DESC);
-
---
--- Name: idx_part_price_history_lookup; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_part_price_history_lookup ON public.part_price_history USING btree (part_number, color_id, currency_code, recorded_at);
 
---
--- Name: idx_part_price_history_tag; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE UNIQUE INDEX idx_part_price_history_tag ON public.part_price_history USING btree (part_number, color_id, condition, currency_code, (((recorded_at AT TIME ZONE 'UTC'::text))::date));
-
---
--- Name: idx_parts_color_id; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_parts_color_id ON public.parts USING btree (user_id, color_id);
 
---
--- Name: idx_parts_eindeutig; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE UNIQUE INDEX idx_parts_eindeutig ON public.parts USING btree (user_id, COALESCE(set_number, ''::text), part_number, color_id);
-
---
--- Name: idx_parts_gruppe; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_parts_gruppe ON public.parts USING btree (user_id, part_number, color_id);
 
---
--- Name: idx_parts_number_trgm; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_parts_number_trgm ON public.parts USING gin (lower(part_number) public.gin_trgm_ops);
-
---
--- Name: idx_parts_set; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_parts_set ON public.parts USING btree (user_id, set_number);
 
---
--- Name: idx_parts_storage_id; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_parts_storage_id ON public.parts USING btree (user_id, storage_id) WHERE (storage_id IS NOT NULL);
-
---
--- Name: idx_parts_storage_ref; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_parts_storage_ref ON public.parts USING btree (storage_id) WHERE (storage_id IS NOT NULL);
 
---
--- Name: idx_parts_summary_cat; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_parts_summary_cat ON public.parts_summary USING btree (user_id, category_name);
-
---
--- Name: idx_parts_summary_color; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_parts_summary_color ON public.parts_summary USING btree (user_id, color_id);
 
---
--- Name: idx_parts_summary_sort; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_parts_summary_sort ON public.parts_summary USING btree (user_id, color_name, part_name);
-
---
--- Name: idx_passkeys_konto; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_passkeys_konto ON public.passkeys USING btree (user_id);
 
---
--- Name: idx_price_alerts_set; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_price_alerts_set ON public.price_alerts USING btree (set_number, condition);
-
---
--- Name: idx_price_cache_lookup; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_price_cache_lookup ON public.price_cache USING btree (set_number, condition, currency_code, fetched_at DESC);
 
---
--- Name: idx_price_history_set; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_price_history_set ON public.price_history USING btree (set_number, recorded_at);
-
---
--- Name: idx_price_history_tag; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE UNIQUE INDEX idx_price_history_tag ON public.price_history USING btree (set_number, condition, currency_code, (((recorded_at AT TIME ZONE 'UTC'::text))::date));
 
---
--- Name: idx_psum_blnumber_trgm; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_psum_blnumber_trgm ON public.parts_summary USING gin (bl_part_number public.gin_trgm_ops) WITH (fastupdate=off);
-
---
--- Name: idx_psum_name_trgm; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_psum_name_trgm ON public.parts_summary USING gin (part_name public.gin_trgm_ops) WITH (fastupdate=off);
 
---
--- Name: idx_psum_number_trgm; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_psum_number_trgm ON public.parts_summary USING gin (part_number public.gin_trgm_ops) WITH (fastupdate=off);
-
---
--- Name: idx_qr_login_expires; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_qr_login_expires ON public.qr_login_tokens USING btree (expires_at);
 
---
--- Name: idx_qr_login_user; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_qr_login_user ON public.qr_login_tokens USING btree (user_id);
-
---
--- Name: idx_rate_limit_first_at; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_rate_limit_first_at ON public.rate_limit_attempts USING btree (first_at);
 
---
--- Name: idx_rb_inv_minifigs_inv; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_rb_inv_minifigs_inv ON public.rb_inventory_minifigs USING btree (inventory_id);
-
---
--- Name: idx_rb_inv_parts; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_rb_inv_parts ON public.rb_inventory_parts USING btree (inventory_id);
 
---
--- Name: idx_rb_inv_setnum; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_rb_inv_setnum ON public.rb_inventories USING btree (set_num);
-
---
--- Name: idx_rb_sets_name_trgm; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_rb_sets_name_trgm ON public.rb_sets USING gin (name public.gin_trgm_ops);
 
---
--- Name: idx_rb_sets_setnum_trgm; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_rb_sets_setnum_trgm ON public.rb_sets USING gin (set_num public.gin_trgm_ops);
-
---
--- Name: idx_rb_sets_theme_year; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_rb_sets_theme_year ON public.rb_sets USING btree (theme_id, year);
 
---
--- Name: idx_rb_sets_year; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_rb_sets_year ON public.rb_sets USING btree (year);
-
---
--- Name: idx_set_acq_erfassungstag; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE UNIQUE INDEX idx_set_acq_erfassungstag ON public.set_acquisitions USING btree (user_id, set_number, COALESCE(tag, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(purchase_price, ('-1'::integer)::numeric), price_estimated, currency);
 
---
--- Name: idx_set_catalog_bild_stamm; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_set_catalog_bild_stamm ON public.set_catalog USING btree (public.bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
-
---
--- Name: idx_set_figuren_fig; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_set_figuren_fig ON public.set_figuren USING btree (fig_number);
 
---
--- Name: idx_sets_setnum; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_sets_setnum ON public.sets USING btree (set_number);
-
---
--- Name: idx_sets_storage_id; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_sets_storage_id ON public.sets USING btree (user_id, storage_id) WHERE (storage_id IS NOT NULL);
 
---
--- Name: idx_sets_storage_ref; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_sets_storage_ref ON public.sets USING btree (storage_id) WHERE (storage_id IS NOT NULL);
-
---
--- Name: idx_user_sessions_expire; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_user_sessions_expire ON public.user_sessions USING btree (expire);
 
---
--- Name: idx_verwaltungsprotokoll_verwalter; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_verwaltungsprotokoll_verwalter ON public.verwaltungsprotokoll USING btree (verwalter_id);
-
---
--- Name: idx_verwaltungsprotokoll_zeit; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_verwaltungsprotokoll_zeit ON public.verwaltungsprotokoll USING btree (zeit DESC);
 
---
--- Name: idx_wanted_user; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_wanted_user ON public.wanted USING btree (user_id, created_at DESC);
-
---
--- Name: idx_webauthn_challenges_frist; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_webauthn_challenges_frist ON public.webauthn_challenges USING btree (expires_at);
 
---
--- Name: idx_webauthn_challenges_konto; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE INDEX idx_webauthn_challenges_konto ON public.webauthn_challenges USING btree (user_id);
-
---
--- Name: idx_zweiter_faktor_codes_konto; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE INDEX idx_zweiter_faktor_codes_konto ON public.zweiter_faktor_codes USING btree (user_id);
 
---
--- Name: storage_locations_konto_name; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE UNIQUE INDEX storage_locations_konto_name ON public.storage_locations USING btree (user_id, lower(name));
-
---
--- Name: users_email_lower; Type: INDEX; Schema: public; Owner: -
---
 
 CREATE UNIQUE INDEX users_email_lower ON public.users USING btree (lower(email));
 
---
--- Name: users_username_lower; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE UNIQUE INDEX users_username_lower ON public.users USING btree (lower(username));
-
---
--- Name: auftraege auftrag_exklusiv; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER auftrag_exklusiv BEFORE UPDATE OF status, belegt_von ON public.auftraege FOR EACH ROW WHEN (((new.status = 'laeuft'::text) AND (new.belegt_von IS DISTINCT FROM old.belegt_von))) EXECUTE FUNCTION public.auftrag_exklusiv_belegen();
 
---
--- Name: catalog_cache catalog_cache_setnummer; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER catalog_cache_setnummer BEFORE INSERT OR UPDATE OF set_number ON public.catalog_cache FOR EACH ROW EXECUTE FUNCTION public.setnummer_normalisieren();
-
---
--- Name: instructions instructions_setnummer; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER instructions_setnummer BEFORE INSERT OR UPDATE OF set_number ON public.instructions FOR EACH ROW EXECUTE FUNCTION public.setnummer_normalisieren();
 
---
--- Name: minifig_acquisitions minifig_acquisitions_tag; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER minifig_acquisitions_tag BEFORE INSERT OR UPDATE ON public.minifig_acquisitions FOR EACH ROW EXECUTE FUNCTION public.erfassung_tag();
-
---
--- Name: minifig_acquisitions minifig_acquisitions_waehrung; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER minifig_acquisitions_waehrung BEFORE INSERT OR UPDATE ON public.minifig_acquisitions FOR EACH ROW EXECUTE FUNCTION public.erfassung_waehrung();
 
---
--- Name: minifigs minifigs_setnummer; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER minifigs_setnummer BEFORE INSERT OR UPDATE OF set_number ON public.minifigs FOR EACH ROW EXECUTE FUNCTION public.setnummer_normalisieren();
-
---
--- Name: part_acquisitions part_acquisitions_tag; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER part_acquisitions_tag BEFORE INSERT OR UPDATE ON public.part_acquisitions FOR EACH ROW EXECUTE FUNCTION public.erfassung_tag();
 
---
--- Name: part_acquisitions part_acquisitions_waehrung; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER part_acquisitions_waehrung BEFORE INSERT OR UPDATE ON public.part_acquisitions FOR EACH ROW EXECUTE FUNCTION public.erfassung_waehrung();
-
---
--- Name: parts parts_setnummer; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER parts_setnummer BEFORE INSERT OR UPDATE OF set_number ON public.parts FOR EACH ROW EXECUTE FUNCTION public.setnummer_normalisieren();
 
---
--- Name: price_alerts price_alerts_setnummer; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER price_alerts_setnummer BEFORE INSERT OR UPDATE OF set_number ON public.price_alerts FOR EACH ROW EXECUTE FUNCTION public.setnummer_normalisieren();
-
---
--- Name: rb_inventories rb_inventories_setnummer; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER rb_inventories_setnummer BEFORE INSERT OR UPDATE OF set_num ON public.rb_inventories FOR EACH ROW EXECUTE FUNCTION public.setnum_normalisieren();
 
---
--- Name: set_acquisitions set_acquisitions_setnummer; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER set_acquisitions_setnummer BEFORE INSERT OR UPDATE OF set_number ON public.set_acquisitions FOR EACH ROW EXECUTE FUNCTION public.setnummer_normalisieren();
-
---
--- Name: set_acquisitions set_acquisitions_tag; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER set_acquisitions_tag BEFORE INSERT OR UPDATE ON public.set_acquisitions FOR EACH ROW EXECUTE FUNCTION public.erfassung_tag();
 
---
--- Name: set_acquisitions set_acquisitions_waehrung; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER set_acquisitions_waehrung BEFORE INSERT OR UPDATE ON public.set_acquisitions FOR EACH ROW EXECUTE FUNCTION public.erfassung_waehrung();
-
---
--- Name: set_catalog set_catalog_setnummer; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER set_catalog_setnummer BEFORE INSERT OR UPDATE OF set_number ON public.set_catalog FOR EACH ROW EXECUTE FUNCTION public.setnummer_normalisieren();
 
---
--- Name: set_figuren set_figuren_setnummer; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER set_figuren_setnummer BEFORE INSERT OR UPDATE OF set_number ON public.set_figuren FOR EACH ROW EXECUTE FUNCTION public.setnummer_normalisieren();
-
---
--- Name: set_teile set_teile_setnummer; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER set_teile_setnummer BEFORE INSERT OR UPDATE OF set_number ON public.set_teile FOR EACH ROW EXECUTE FUNCTION public.setnummer_normalisieren();
 
---
--- Name: sets sets_setnummer; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER sets_setnummer BEFORE INSERT OR UPDATE OF set_number ON public.sets FOR EACH ROW EXECUTE FUNCTION public.setnummer_normalisieren();
-
---
--- Name: parts trg_bump_parts_version_del; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER trg_bump_parts_version_del AFTER DELETE ON public.parts REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION public.bump_parts_version_del();
 
---
--- Name: set_acquisitions trg_bump_parts_version_del; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER trg_bump_parts_version_del AFTER DELETE ON public.set_acquisitions REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION public.bump_parts_version_del();
-
---
--- Name: sets trg_bump_parts_version_del; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER trg_bump_parts_version_del AFTER DELETE ON public.sets REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION public.bump_parts_version_del();
 
---
--- Name: parts trg_bump_parts_version_ins; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER trg_bump_parts_version_ins AFTER INSERT ON public.parts REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.bump_parts_version_ins();
-
---
--- Name: set_acquisitions trg_bump_parts_version_ins; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER trg_bump_parts_version_ins AFTER INSERT ON public.set_acquisitions REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.bump_parts_version_ins();
 
---
--- Name: sets trg_bump_parts_version_ins; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER trg_bump_parts_version_ins AFTER INSERT ON public.sets REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.bump_parts_version_ins();
-
---
--- Name: parts trg_bump_parts_version_upd; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON public.parts REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.bump_parts_version_upd();
 
---
--- Name: set_acquisitions trg_bump_parts_version_upd; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON public.set_acquisitions REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.bump_parts_version_erfassung_upd();
-
---
--- Name: sets trg_bump_parts_version_upd; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON public.sets REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.bump_parts_version_upd();
 
---
--- Name: storage_locations trg_bump_parts_version_upd; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON public.storage_locations REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.bump_parts_version_lagerort_upd();
-
---
--- Name: bl_zuordnung trg_teilekatalog_del; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON public.bl_zuordnung REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_alt();
 
---
--- Name: bl_zuordnung_eigen trg_teilekatalog_del; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON public.bl_zuordnung_eigen REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_alt();
-
---
--- Name: part_catalog trg_teilekatalog_del; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON public.part_catalog REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_alt();
 
---
--- Name: part_color_catalog trg_teilekatalog_del; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON public.part_color_catalog REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_alt();
-
---
--- Name: set_teile trg_teilekatalog_del; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON public.set_teile REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_alt();
 
---
--- Name: teil_eigen trg_teilekatalog_del; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON public.teil_eigen REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_alt();
-
---
--- Name: teil_farbe_eigen trg_teilekatalog_del; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON public.teil_farbe_eigen REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_alt();
 
---
--- Name: bl_zuordnung trg_teilekatalog_ins; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON public.bl_zuordnung REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_neu();
-
---
--- Name: bl_zuordnung_eigen trg_teilekatalog_ins; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON public.bl_zuordnung_eigen REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_neu();
 
---
--- Name: part_catalog trg_teilekatalog_ins; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON public.part_catalog REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_neu();
-
---
--- Name: part_color_catalog trg_teilekatalog_ins; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON public.part_color_catalog REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_neu();
 
---
--- Name: set_teile trg_teilekatalog_ins; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON public.set_teile REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_neu();
-
---
--- Name: teil_eigen trg_teilekatalog_ins; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON public.teil_eigen REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_neu();
 
---
--- Name: teil_farbe_eigen trg_teilekatalog_ins; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON public.teil_farbe_eigen REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_neu();
-
---
--- Name: bl_zuordnung trg_teilekatalog_upd; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON public.bl_zuordnung REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_beide();
 
---
--- Name: bl_zuordnung_eigen trg_teilekatalog_upd; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON public.bl_zuordnung_eigen REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_beide();
-
---
--- Name: part_catalog trg_teilekatalog_upd; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON public.part_catalog REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_beide();
 
---
--- Name: part_color_catalog trg_teilekatalog_upd; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON public.part_color_catalog REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_beide();
-
---
--- Name: set_teile trg_teilekatalog_upd; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON public.set_teile REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_beide();
 
---
--- Name: teil_eigen trg_teilekatalog_upd; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON public.teil_eigen REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_beide();
-
---
--- Name: teil_farbe_eigen trg_teilekatalog_upd; Type: TRIGGER; Schema: public; Owner: -
---
 
 CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON public.teil_farbe_eigen REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_beide();
 
---
--- Name: vouchers vouchers_waehrung; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER vouchers_waehrung BEFORE INSERT OR UPDATE ON public.vouchers FOR EACH ROW EXECUTE FUNCTION public.erfassung_waehrung();
 
---
--- Name: wanted wanted_setnummer; Type: TRIGGER; Schema: public; Owner: -
---
-
 CREATE TRIGGER wanted_setnummer BEFORE INSERT OR UPDATE OF set_number ON public.wanted FOR EACH ROW EXECUTE FUNCTION public.setnummer_normalisieren();
-
---
--- Name: account_link_invites account_link_invites_main_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.account_link_invites
     ADD CONSTRAINT account_link_invites_main_user_id_fkey FOREIGN KEY (main_user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
---
--- Name: account_link_invites account_link_invites_used_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.account_link_invites
     ADD CONSTRAINT account_link_invites_used_by_fkey FOREIGN KEY (used_by) REFERENCES public.users(id) ON DELETE SET NULL;
-
---
--- Name: account_links account_links_main_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.account_links
     ADD CONSTRAINT account_links_main_user_id_fkey FOREIGN KEY (main_user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
---
--- Name: account_links account_links_sub_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.account_links
     ADD CONSTRAINT account_links_sub_user_id_fkey FOREIGN KEY (sub_user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
---
--- Name: api_tokens api_tokens_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.api_tokens
     ADD CONSTRAINT api_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
---
--- Name: api_tokens_verbraucht api_tokens_verbraucht_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.api_tokens_verbraucht
     ADD CONSTRAINT api_tokens_verbraucht_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
---
--- Name: auftraege auftraege_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.auftraege
     ADD CONSTRAINT auftraege_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
---
--- Name: bl_zuordnung_eigen bl_zuordnung_eigen_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.bl_zuordnung_eigen
     ADD CONSTRAINT bl_zuordnung_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
---
--- Name: import_stand csv_import_jobs_user_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.import_stand
     ADD CONSTRAINT csv_import_jobs_user_fk FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
---
--- Name: figur_eigen figur_eigen_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.figur_eigen
     ADD CONSTRAINT figur_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
---
--- Name: household_former_links household_former_links_main_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.household_former_links
     ADD CONSTRAINT household_former_links_main_user_id_fkey FOREIGN KEY (main_user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
---
--- Name: household_former_links household_former_links_sub_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.household_former_links
     ADD CONSTRAINT household_former_links_sub_user_id_fkey FOREIGN KEY (sub_user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
---
--- Name: household_former_links household_former_links_via_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.household_former_links
     ADD CONSTRAINT household_former_links_via_user_id_fkey FOREIGN KEY (via_user_id) REFERENCES public.users(id) ON DELETE SET NULL;
 
---
--- Name: idempotenz idempotenz_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.idempotenz
     ADD CONSTRAINT idempotenz_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
---
--- Name: instructions instructions_set_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.instructions
     ADD CONSTRAINT instructions_set_fk FOREIGN KEY (user_id, set_number) REFERENCES public.sets(user_id, set_number) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
 
---
--- Name: instructions instructions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.instructions
     ADD CONSTRAINT instructions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
---
--- Name: minifig_acquisitions minifig_acquisitions_user_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.minifig_acquisitions
     ADD CONSTRAINT minifig_acquisitions_user_fk FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
---
--- Name: minifigs minifigs_set_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.minifigs
     ADD CONSTRAINT minifigs_set_fk FOREIGN KEY (user_id, set_number) REFERENCES public.sets(user_id, set_number) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
-
---
--- Name: minifigs minifigs_storage_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.minifigs
     ADD CONSTRAINT minifigs_storage_id_fkey FOREIGN KEY (user_id, storage_id) REFERENCES public.storage_locations(user_id, id) ON DELETE SET NULL (storage_id);
 
---
--- Name: minifigs minifigs_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.minifigs
     ADD CONSTRAINT minifigs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
---
--- Name: papierkorb papierkorb_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.papierkorb
     ADD CONSTRAINT papierkorb_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
---
--- Name: part_acquisitions part_acquisitions_user_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.part_acquisitions
     ADD CONSTRAINT part_acquisitions_user_fk FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
---
--- Name: parts parts_set_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.parts
     ADD CONSTRAINT parts_set_fk FOREIGN KEY (user_id, set_number) REFERENCES public.sets(user_id, set_number) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
 
---
--- Name: parts parts_storage_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.parts
     ADD CONSTRAINT parts_storage_id_fkey FOREIGN KEY (user_id, storage_id) REFERENCES public.storage_locations(user_id, id) ON DELETE SET NULL (storage_id);
-
---
--- Name: parts_summary_state parts_summary_state_user_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.parts_summary_state
     ADD CONSTRAINT parts_summary_state_user_fk FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
---
--- Name: parts_summary parts_summary_user_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.parts_summary
     ADD CONSTRAINT parts_summary_user_fk FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
---
--- Name: parts parts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.parts
     ADD CONSTRAINT parts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
---
--- Name: parts_version_user parts_version_user_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.parts_version_user
     ADD CONSTRAINT parts_version_user_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
---
--- Name: passkeys passkeys_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.passkeys
     ADD CONSTRAINT passkeys_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
---
--- Name: price_alerts price_alerts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.price_alerts
     ADD CONSTRAINT price_alerts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
---
--- Name: qr_login_tokens qr_login_tokens_user_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.qr_login_tokens
     ADD CONSTRAINT qr_login_tokens_user_fk FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
---
--- Name: set_acquisitions set_acquisitions_bestand_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.set_acquisitions
     ADD CONSTRAINT set_acquisitions_bestand_fkey FOREIGN KEY (user_id, set_number) REFERENCES public.sets(user_id, set_number) DEFERRABLE INITIALLY DEFERRED;
-
---
--- Name: set_acquisitions set_acquisitions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.set_acquisitions
     ADD CONSTRAINT set_acquisitions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
---
--- Name: sets sets_storage_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.sets
     ADD CONSTRAINT sets_storage_id_fkey FOREIGN KEY (user_id, storage_id) REFERENCES public.storage_locations(user_id, id) ON DELETE SET NULL (storage_id);
-
---
--- Name: sets sets_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.sets
     ADD CONSTRAINT sets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
---
--- Name: storage_locations storage_locations_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.storage_locations
     ADD CONSTRAINT storage_locations_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
---
--- Name: teil_eigen teil_eigen_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.teil_eigen
     ADD CONSTRAINT teil_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
---
--- Name: teil_farbe_eigen teil_farbe_eigen_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.teil_farbe_eigen
     ADD CONSTRAINT teil_farbe_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
---
--- Name: user_settings user_settings_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.user_settings
     ADD CONSTRAINT user_settings_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
---
--- Name: verwaltungsprotokoll verwaltungsprotokoll_verwalter_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.verwaltungsprotokoll
     ADD CONSTRAINT verwaltungsprotokoll_verwalter_id_fkey FOREIGN KEY (verwalter_id) REFERENCES public.users(id) ON DELETE SET NULL;
-
---
--- Name: vouchers vouchers_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.vouchers
     ADD CONSTRAINT vouchers_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
---
--- Name: webauthn_challenges webauthn_challenges_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.webauthn_challenges
     ADD CONSTRAINT webauthn_challenges_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
---
--- Name: wanted wishlist_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.wanted
     ADD CONSTRAINT wishlist_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
---
--- Name: zweiter_faktor_codes zweiter_faktor_codes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.zweiter_faktor_codes
     ADD CONSTRAINT zweiter_faktor_codes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
---
--- Name: zweiter_faktor zweiter_faktor_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.zweiter_faktor
     ADD CONSTRAINT zweiter_faktor_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
---
--- PostgreSQL database dump complete
---
-
---
--- PostgreSQL database dump
---
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -3788,10 +2005,6 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
---
--- Data for Name: auftrag_exklusiv; Type: TABLE DATA; Schema: public; Owner: -
---
-
 INSERT INTO public.auftrag_exklusiv (art) VALUES ('anleitung');
 INSERT INTO public.auftrag_exklusiv (art) VALUES ('brickset');
 INSERT INTO public.auftrag_exklusiv (art) VALUES ('bildbedarf');
@@ -3802,10 +2015,6 @@ INSERT INTO public.auftrag_exklusiv (art) VALUES ('bild_nachlauf');
 INSERT INTO public.auftrag_exklusiv (art) VALUES ('aufraeumen');
 INSERT INTO public.auftrag_exklusiv (art) VALUES ('aufraeumen_taeglich');
 INSERT INTO public.auftrag_exklusiv (art) VALUES ('preise_nachladen');
-
---
--- Data for Name: global_settings; Type: TABLE DATA; Schema: public; Owner: -
---
 
 INSERT INTO public.global_settings (key, value, updated_at) VALUES ('bricklink_consumer_key', '', '2026-10-28 17:10:03.355398+00');
 INSERT INTO public.global_settings (key, value, updated_at) VALUES ('bricklink_consumer_secret', '', '2026-10-28 17:10:03.355398+00');
@@ -3828,15 +2037,7 @@ INSERT INTO public.global_settings (key, value, updated_at) VALUES ('smtp_from',
 INSERT INTO public.global_settings (key, value, updated_at) VALUES ('smtp_secure', '0', '2026-10-28 17:10:03.355398+00');
 INSERT INTO public.global_settings (key, value, updated_at) VALUES ('erfassung_zeitzone', 'UTC', '2026-10-30 21:28:11.712633+00');
 
---
--- Data for Name: gutschein_guthaben_schranke; Type: TABLE DATA; Schema: public; Owner: -
---
-
 INSERT INTO public.gutschein_guthaben_schranke (id, letzter_abruf, sperre_bis) VALUES (1, NULL, NULL);
-
---
--- Data for Name: schema_migrations; Type: TABLE DATA; Schema: public; Owner: -
---
 
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0001-baseline.sql', '2026-10-28 17:10:03.530662+00', '39083650d47643c61ef5779b6398bf7fcb442930caac9fd501f3655962672f0e');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0003-preisverlauf-teile-minifiguren.sql', '2026-10-28 17:10:03.532728+00', '68a2a26b36db3e33eaef01812ef40b5e83587ed03d8cb737d6221b896fa75ac2');
@@ -3936,8 +2137,3 @@ INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('009
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0098-auftrag-ergebnis.sql', '2026-11-05 06:06:22.87462+00', 'dba73f3660407e202cbad6ca49ad5f3406dd45b758bc6a14cb9c54d0b97bdeea');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0099-auftrag-exklusiv.sql', '2026-11-05 19:45:56.053488+00', 'a44f1f7e2c0f28df52c9695cd677fc73b8129cde61adabfefda2f36ce3ab21ac');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0100-preise-nachladen-schema.sql', '2026-11-05 20:38:44.34808+00', '9a7da05eae906cb0c73cab8fd8cc3d0942d660d65df1228f1d59a3b08cb574eb');
-
---
--- PostgreSQL database dump complete
---
-

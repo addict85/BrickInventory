@@ -13,6 +13,8 @@
  *   Am 08.11.2026 gestrichen: „getPriceGuide holt ohne Angabe den Neupreis“ und
  *   „ohne Verkauf in sechs Monaten wird auf 'stock' ausgewichen“ →
  *   bricklink-preisfuehrer-db.test.js (Gegenproben A–D dort).
+ *   Am 09.11.2026 gestrichen: drei SQL-Suchen in Dateien ohne SQL (prüften nichts) und „der Preisjob
+ *   holt alle Zustände …“ → preislauf-zustaende-db.test.js führt zustaendeJeSet() aus.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -124,17 +126,6 @@ test('qty_avg_price wird für Set-Preise nirgends mehr gelesen', () => {
   // Ausführlich: docs/begruendungen/test/set-value.test.js.md#stelle
 });
 
-test('die Sortierung "hat einen Preis vor passendem Zustand" ist überall weg', () => {
-  for (const f of ['src/sets/dienst.ts', 'routes/api_v1/sets.ts']) {
-    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
-    assert.doesNotMatch(
-      src,
-      /ORDER BY \(qty_avg_price[^)]*\) DESC, \(condition/,
-      `${f}: Diese Sortierung liefert für ein neues Set den Gebraucht-Preis`,
-    );
-  }
-});
-
 test("guide_type ist überall 'sold', nicht 'stock'", () => {
   // 'sold' = tatsächlich erzielte Preise der letzten sechs Monate.
   // 'stock' wären eingestellte Angebote, also auch das, was niemand zahlt.
@@ -143,7 +134,7 @@ test("guide_type ist überall 'sold', nicht 'stock'", () => {
     'src/katalog/bricklinkPreise.ts',
     'routes/api_v1/sets.ts',
     'src/finanzen/financeCalc.ts',
-    'jobs/priceJob.ts',
+    'src/finanzen/preisLauf.ts',
   ]) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
     const code = src.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
@@ -161,93 +152,6 @@ test("guide_type ist überall 'sold', nicht 'stock'", () => {
     assert.doesNotMatch(code, /'price_guide_type',\s*'stock'/, `${f}: Vorgabe der Einstellung ist noch 'stock'`);
     assert.doesNotMatch(code, /guideType = 'stock'/, `${f}: Parametervorgabe ist noch 'stock'`);
   }
-});
-
-test('Fallback zwischen den Zuständen bleibt — aber in der richtigen Reihenfolge', () => {
-  // Der angefragte Zustand gewinnt, wenn er einen Preis hat. Der andere kommt
-  // nur zum Zug, wenn dort keiner steht. Genau umgekehrt war der gemeldete
-  // Fehler: „hat einen Preis" schlug „passender Zustand".
-  for (const f of ['src/sets/dienst.ts', 'src/finanzen/financeCalc.ts']) {
-    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
-    for (const m of src.matchAll(/SELECT[\s\S]{0,240}?FROM price_cache[\s\S]{0,260}?`/g)) {
-      const q = m[0];
-      if (!/condition IN \('N','U'\)/.test(q)) continue; // strikte Abfragen ohne Fallback
-      // Nur Abfragen prüfen, die EINE Zeile auswählen. Seit der Detail-Dialog
-      // Neu- und Gebrauchtpreis nebeneinander zeigt, gibt es Abfragen, die
-      // bewusst BEIDE Zeilen liefern (routes/finance.ts, `current`). Dort ist
-      // die Rückfall-Sortierung sinnlos — es wird ja nichts verworfen — und
-      // ihre Abwesenheit ist kein Fehler.
-      if (!/LIMIT 1|DISTINCT ON/.test(q)) continue;
-      assert.match(q, /avg_price > 0/, `${f}: Ohne diesen Filter gilt ein leerer Eintrag als gültiger Preis`);
-      assert.match(q, /ORDER BY \(condition = \$\d\) DESC/, `${f}: Der angefragte Zustand muss zuerst sortiert werden`);
-      assert.doesNotMatch(
-        q,
-        /ORDER BY \(avg_price[^)]*\) DESC, \(condition/,
-        `${f}: alte Sortierung — sie liefert für ein neues Set den Gebraucht-Preis`,
-      );
-    }
-  }
-});
-
-test('der Preisjob holt alle Zustände, die ein Set tatsächlich führt', () => {
-  // Seit der zustandsabhängigen Bewertung braucht ein Set mit einem neuen UND
-  // einem gebrauchten Exemplar beide Preise im Cache. Vorher holte der Job
-  // immer nur einen Zustand und wich nur bei komplett fehlendem Preis auf den
-  // anderen aus — bei gemischten Sets fehlte damit dauerhaft eine Hälfte. …
-  // Ausführlich: docs/begruendungen/test/set-value.test.js.md#job-stelle
-  const job =
-    fs.readFileSync(path.join(ROOT, 'jobs/priceJob.ts'), 'utf8') +
-    fs.readFileSync(path.join(ROOT, 'src/finanzen/repository/preisLauf.ts'), 'utf8');
-
-  // EINE Stelle, und sie arbeitet gebündelt: Der Einzelfall (Sofort-Abruf) ist
-  // eine Liste mit einem Eintrag. Vorher stand die Regel zweimal da — einmal
-  // hier und einmal ausgeschrieben in der Schleife —, und nur eine der beiden
-  // Fassungen kannte die Merkliste.
-  assert.match(
-    job,
-    /async function zustaendeJeSet/,
-    'Es braucht eine Stelle, die die vorkommenden Zustände eines Sets ermittelt',
-  );
-  assert.match(
-    job,
-    /FROM set_acquisitions WHERE user_id=\$1 AND set_number = ANY\(\$2\)/,
-    'Die Zustände müssen aus den Erfassungen kommen, nicht aus einer Vorgabe',
-  );
-
-  // Sofort-Abruf: Schleife über die ermittelten Zustände
-  const immediate = job.slice(job.indexOf('async function refreshPriceForSet'));
-  assert.match(immediate, /for \(const c of conditions\)/, 'refreshPriceForSet muss jeden benötigten Zustand holen');
-
-  // Hintergrundlauf: ebenfalls je Set über die Zustände
-  const bg = job.slice(job.indexOf('async function runPriceRefresh'), job.indexOf('async function refreshPriceForSet'));
-  assert.match(bg, /for \(const c of conditions\)/, 'Auch der Hintergrundlauf muss beide Zustände abdecken');
-  assert.match(
-    job,
-    /GROUP BY set_number, COALESCE\(condition,'N'\)/,
-    'Die Zustände aller Sets gehören in EINE Abfrage — sonst ein Roundtrip je Set',
-  );
-
-  // Reine Sets dürfen nicht doppelt abgefragt werden (BrickLink-Tageskontingent)
-  assert.match(
-    bg,
-    /const conditions = zustaende\.get\(sn\)/,
-    'Nur die tatsächlich vorkommenden Zustände abrufen, nicht pauschal beide',
-  );
-  // Ohne Kommentare: Die Doku der Staffelung nennt ['N','U'] als Beispiel für
-  // einen Rückgabewert. Das ist eine Erklärung, keine Abfrage — die Regel gilt
-  // dem Code.
-  const bgCode = bg.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
-  assert.doesNotMatch(bgCode, /\['N'\s*,\s*'U'\]/, 'Der Lauf darf nie pauschal beide Zustände holen');
-
-  // Und der Beschluss steht VOR der Schleife: Eine Abfrage je Set wäre ein
-  // Roundtrip je Set — genau dafür ist die gebündelte Fassung da.
-  const aufgaben = bg.slice(bg.indexOf('const tasks = valid.map'), bg.indexOf('await parallelLimit(tasks'));
-  assert.ok(aufgaben.length > 200, 'Der Aufgabenblock wurde nicht gefunden');
-  assert.doesNotMatch(
-    aufgaben,
-    /db\.(all|get)\(/,
-    'In der Schleife über die Sets darf keine Abfrage stehen — die Zustände ' + 'sind vorher gebündelt bestimmt',
-  );
 });
 
 test('ein gecachter Null-Preis blockiert den Rückfall nicht dauerhaft', () => {
@@ -270,30 +174,6 @@ test('ein gecachter Null-Preis blockiert den Rückfall nicht dauerhaft', () => {
     false,
     'qty_avg_price allein ist kein Preis',
   );
-});
-
-test('KEINE Abfrage stellt mehr "hat einen Preis" vor "passender Zustand"', () => {
-  // Diese Sortierung war der eigentliche Grund für den falschen Marktpreis.
-  // Sie steckte an fünf Stellen; vier waren beim ersten Anlauf behoben, die
-  // fünfte (der P&L-Pfad in financeCalc.ts) speist aber genau die Anzeige in
-  // Galerie und Detail-Dialog — dort blieb der Gebraucht-Preis stehen.
-  const files = [
-    'src/sets/dienst.ts',
-    'routes/api_v1/sets.ts',
-    'src/finanzen/financeCalc.ts',
-    'src/finanzen/portfolioHistory.ts',
-  ];
-  for (const f of files) {
-    const src = fs
-      .readFileSync(path.join(ROOT, f), 'utf8')
-      .replace(/\/\/[^\n]*/g, '')
-      .replace(/\/\*[\s\S]*?\*\//g, '');
-    assert.doesNotMatch(
-      src,
-      /ORDER BY[^`]*\(qty_avg_price\s*>\s*0\)\s*DESC\s*,\s*\(condition/,
-      `${f}: alte Sortierung — sie liefert für ein neues Set den Gebraucht-Preis`,
-    );
-  }
 });
 
 test('die Finanz-Ansicht zeigt avg_price als Marktpreis', () => {

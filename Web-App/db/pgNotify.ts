@@ -19,13 +19,15 @@ let _retryMs = 1000;
 let _reconnectTimer: NodeJS.Timeout | null = null;
 /** Nach close() wird nicht wieder verbunden — bis ein neues listen() kommt. */
 let _closed = false;
+/** Kanäle, deren LISTEN auf der lebenden Verbindung steht; leer, solange sie fehlt. */
+const _lauscht = new Set<string>();
 
 
 async function connect() {
   if (_connecting || _client || _closed) return;
   _connecting = true;
   try {
-    const c = new Client(konfig.datenbankVerbindung());
+    const c = new Client({ ...konfig.datenbankVerbindung(), keepAlive: true });
     c.on('error', () => { retire(c); });
     c.on('end',   () => { retire(c); });
     c.on('notification', (msg: import('pg').Notification) => {
@@ -42,8 +44,9 @@ async function connect() {
     }
     // Aufholen: Ein Signal, das während der Trennung kam, ist verloren — die
     // Handler prüfen ihren Datenbankeintrag deshalb einmal beim Verbinden.
-    for (const hs of _handlers.values()) {
+    for (const [channel, hs] of _handlers) {
       for (const h of hs) Promise.resolve(h()).catch(logAndContinue('notify:h'));
+      if (_client === c) _lauscht.add(channel);
     }
   } catch (e) {
     console.error('[notify] Verbindung fehlgeschlagen:', (e as Error).message);
@@ -65,6 +68,7 @@ function retire(c: Client) {
   c.on('error', () => {});
   if (_client !== c) return;   // Nachzügler desselben Abrisses
   _client = null;
+  _lauscht.clear();
   scheduleReconnect();
 }
 
@@ -99,12 +103,20 @@ export function listen(channel: string, handler: Handler) {
   _closed = false;
   if (!_handlers.has(channel)) _handlers.set(channel, []);
   _handlers.get(channel)!.push(handler);
-  if (_client) {
-    _client.query(`LISTEN ${quoteIdent(channel)}`).catch(logAndContinue('notify:quoteIdent'));
-    Promise.resolve(handler()).catch(logAndContinue('notify:handler'));
+  const c = _client;
+  if (c) {
+    c.query(`LISTEN ${quoteIdent(channel)}`).then(() => {
+      Promise.resolve(handler()).catch(logAndContinue('notify:handler'));
+      if (_client === c) _lauscht.add(channel);
+    }, logAndContinue('notify:quoteIdent'));
   } else {
     connect().catch(logAndContinue('notify:connect'));
   }
+}
+
+/** Kommt ein Signal auf diesem Kanal gerade an? Wer darauf einen Zwischenspeicher baut, fragt hier. */
+export function hoertZu(channel: string): boolean {
+  return _lauscht.has(channel);
 }
 
 /**
@@ -129,7 +141,7 @@ export function unlisten(channel: string, handler: Handler) {
   if (!hs) return;
   const i = hs.indexOf(handler);
   if (i !== -1) hs.splice(i, 1);
-  if (!hs.length) _handlers.delete(channel);
+  if (!hs.length) { _handlers.delete(channel); _lauscht.delete(channel); }
 }
 
 /** Für Tests und den geordneten Herunterfahren-Pfad. */
@@ -142,6 +154,7 @@ export async function close() {
   if (_reconnectTimer) { clearTimeout(_reconnectTimer); _reconnectTimer = null; }
   const c = _client;
   _client = null;
+  _lauscht.clear();
   _handlers.clear();
   _retryMs = 1000;
   if (c) {

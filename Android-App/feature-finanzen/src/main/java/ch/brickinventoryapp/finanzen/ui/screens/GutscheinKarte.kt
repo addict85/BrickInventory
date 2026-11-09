@@ -27,7 +27,7 @@ import ch.brickinventoryapp.model.ui.model.GutscheinAnsicht
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.util.fmtTag
 import ch.brickinventoryapp.ui.util.fmtMoney
-import ch.brickinventoryapp.ui.util.inVierergruppen
+import ch.brickinventoryapp.finanzen.ui.inVierergruppen
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.model.ui.model.KlartextAnsicht

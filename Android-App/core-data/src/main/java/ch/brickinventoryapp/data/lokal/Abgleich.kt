@@ -49,7 +49,19 @@ private fun einordnenFehler(r: Ergebnis.Error): Sendeergebnis = when (r) {
     Ergebnis.Error.Abgebrochen, Ergebnis.Error.Klartext, is Ergebnis.Error.Unbekannt -> Sendeergebnis.Spaeter
 }
 
-enum class Abgleichsergebnis { FERTIG, SPAETER, NICHT_ANGEMELDET }
+enum class Abgleichsergebnis {
+    FERTIG, SPAETER, NICHT_ANGEMELDET;
+
+    /**
+     * Soll der Arbeiter es später noch einmal versuchen? Ohne Anmeldung nicht, ausser
+     * das Gerät ist gesperrt: Dann ist das Token nur noch nicht gelesen (liesToken).
+     */
+    fun nochmal(geraetGesperrt: Boolean): Boolean = when (this) {
+        SPAETER -> true
+        FERTIG -> false
+        NICHT_ANGEMELDET -> geraetGesperrt
+    }
+}
 
 /**
  * Sendet den Ausgang der Reihe nach. Ein Posten verlässt den Ausgang erst, wenn

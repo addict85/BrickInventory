@@ -37,10 +37,10 @@ import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtTag
 import ch.brickinventoryapp.netz.util.oeffneExtern
-import ch.brickinventoryapp.ui.screens.CatalogDetailRow
-import ch.brickinventoryapp.ui.screens.OwnerPicker
-import ch.brickinventoryapp.ui.screens.PreisLaedtZeile
-import ch.brickinventoryapp.ui.screens.PriceChart
+import ch.brickinventoryapp.ui.components.CatalogDetailRow
+import ch.brickinventoryapp.gemeinsam.ui.OwnerPicker
+import ch.brickinventoryapp.gemeinsam.ui.PreisLaedtZeile
+import ch.brickinventoryapp.gemeinsam.ui.PriceChart
 
 /**
  * Das Detail eines Merkpostens — dieselben Zeilen in derselben Reihenfolge wie das

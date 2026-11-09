@@ -22,7 +22,7 @@ import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.zustand.ui.Bestandssignal
 import ch.brickinventoryapp.zustand.ui.Blickfeld
 import ch.brickinventoryapp.zustand.ui.FilterAblage
-import ch.brickinventoryapp.ui.ScrollMemory
+import ch.brickinventoryapp.model.ui.ScrollMemory
 import ch.brickinventoryapp.zustand.ui.Sitzung
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen

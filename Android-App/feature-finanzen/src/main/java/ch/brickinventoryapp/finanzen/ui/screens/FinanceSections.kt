@@ -43,12 +43,12 @@ import ch.brickinventoryapp.ui.components.vorgelesenAls
 import ch.brickinventoryapp.ui.components.Abschnittstitel
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.ui.components.stueckzahl
-import ch.brickinventoryapp.ui.mengeManuell
+import ch.brickinventoryapp.gemeinsam.ui.mengeManuell
 import ch.brickinventoryapp.model.ui.model.OHNE_FARBE
-import ch.brickinventoryapp.ui.screens.BezeichnungUndWert
-import ch.brickinventoryapp.ui.screens.ConditionBadges
-import ch.brickinventoryapp.ui.screens.FinanzBild
-import ch.brickinventoryapp.ui.screens.PnlBadge
+import ch.brickinventoryapp.ui.components.BezeichnungUndWert
+import ch.brickinventoryapp.gemeinsam.ui.ConditionBadges
+import ch.brickinventoryapp.gemeinsam.ui.FinanzBild
+import ch.brickinventoryapp.gemeinsam.ui.PnlBadge
 
 /**
  * Gesamt-Total: Sets + manuell erfasste Teile + Minifiguren. `valuation` ist hier nicht nullbar: FinanceScreen() steigt bei `null` vorher

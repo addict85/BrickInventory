@@ -29,7 +29,7 @@ import kotlinx.coroutines.launch
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.SegmentWahl
-import ch.brickinventoryapp.ui.screens.Suchfeld
+import ch.brickinventoryapp.ui.components.Suchfeld
 
 /**
  * Das Server-Protokoll, wie „Logs“ in der Webapp. Nicht von selbst geladen: bis zu

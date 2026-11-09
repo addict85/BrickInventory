@@ -3,7 +3,7 @@
  * nicht erneut versucht, und ein von einem neuen Import abgelöster Lauf hört
  * auf, statt weiter in dieselbe Statuszeile zu schreiben.
  *
- * Der Import läuft als Auftrag (jobs/setCsvImport.ts); der Test startet den
+ * Der Import läuft als Auftrag (src/sets/csvImportLauf.ts); der Test startet den
  * Worker dafür selbst, beschränkt auf die Art csv_import.
  *
  * Gegenproben (am 28.10.2026 gemessen, am 29.10. nach dem Umzug in den

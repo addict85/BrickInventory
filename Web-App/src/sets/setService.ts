@@ -1,13 +1,13 @@
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
-import { meldeFehler, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
+import { meldeFehler, fehlertext } from '../infra/fehler';
 import { scopeIds, writableIds } from '../haushalt/haushalt';
 import { recordAcquisitionForDay } from '../bestand/acquisitions';
 import { withInventoryLock } from '../../db/txLock';
 import { downloadSetImage, rebrickableSetBild } from '../katalog/bilder/setImages';
 import { getCurrentMarketPrice } from '../finanzen/marketPrice';
 import { zustandFuerPreis, getSetting } from '../einstellungen/settings';
-import { deleteSetRows } from './abfragen';
+import { deleteSetRows } from './loeschen';
 import { legeInPapierkorb } from '../bestand/papierkorb';
 import { toCsv } from '../infra/csvExport';
 import { getSetInfo } from '../katalog/rebrickableKatalog';
@@ -21,6 +21,7 @@ import { bestandsMenge } from '../infra/validate';
 import { resolveSetCondition } from '../finanzen/financeCalc';
 import * as repo from './repository/sets';
 import type { Eingabe } from '../vertrag';
+import { versuche, wertOder } from '../infra/ergebnis';
 
 /** Sets anlegen, ändern und ausgeben — eine Umsetzung für Web und App, damit
  * beide dieselben Regeln für Menge, Kaufpreis und Blickfeld erfüllen. */
@@ -31,21 +32,21 @@ export function sanitizeSetNumber(input: unknown) {
 }
 
 /** Reihenfolge Preis-Cache → BrickLink → Historie; bleibt alles leer, trägt
- * jobs/purchasePriceBackfill.ts nach.
+ * src/bestand/kaufpreisNachtrag.ts nach.
  * Ausführlich: docs/begruendungen/src/sets/setService.ts.md#pricefornewacquisition */
 async function priceForNewAcquisition(userId: number, setNumber: string, dbh: DbSchnittstelle = db) {
   // Über das Blickfeld: Mit einer nackten ID fände der Hauptaccount das Set des Unterkontos nicht.
-  const blickfeld = await scopeIds(userId).catch(meldeUndLiefere('sets:kaufpreis-blickfeld', [userId]));
+  const blickfeld = wertOder(await versuche('sets:kaufpreis-blickfeld', scopeIds(userId)), [userId]);
   const cond = await resolveSetCondition(blickfeld, setNumber, dbh);
   // Die Währung DES KONTOS: Der Preis wird in ihr gesucht und gespeichert.
   const currency = String(await getSetting(userId, 'currency', 'EUR'));
-  const cached = await repo.marktpreisAusCache(dbh, setNumber, currency, cond).catch(meldeUndLiefere('set-service:cached', null));
+  const cached = wertOder(await versuche('set-service:cached', repo.marktpreisAusCache(dbh, setNumber, currency, cond)), null);
   let pp = Number(cached?.avg_price ?? 0) || null;
-  if (!pp) pp = await getCurrentMarketPrice(setNumber, userId, cond).catch(meldeUndLiefere('set-service:getCurrentMarketPrice', null));
+  if (!pp) pp = wertOder(await versuche('set-service:getCurrentMarketPrice', getCurrentMarketPrice(setNumber, userId, cond)), null);
   if (!pp) {
-    // Der Verlauf füllt die Lücke, wenn Cache und BrickLink-Kontingent beim
-    // CSV-Import leer ausgehen; sonst entstünde die Erfassung ohne Kaufpreis.
-    const hist = await repo.marktpreisAusVerlauf(dbh, setNumber, currency, cond).catch(meldeUndLiefere('set-service:hist', null));
+    // Der Verlauf füllt die Lücke, wenn Cache und BrickLink-Kontingent beim CSV-Import leer ausgehen; sonst
+    // entstünde die Erfassung ohne Kaufpreis.
+    const hist = wertOder(await versuche('set-service:hist', repo.marktpreisAusVerlauf(dbh, setNumber, currency, cond)), null);
     pp = Number(hist?.avg_price ?? 0) || null;
   }
   return { price: pp, condition: cond, geschaetzt: pp != null, currency };
@@ -64,15 +65,16 @@ export async function recordAcquisition(userId: number, setNumber: string, quant
  *        darf dbh KEINE Transaktion sein, weil ein Netzaufruf darin steckt. */
 async function adjustAcquisitionsToQuantity(userId: number, setNumber: string, newTotalQty: number, dbh: DbSchnittstelle = db,
                                             pricePlan: { price: number | null; condition: string; geschaetzt?: boolean; currency?: string } | null = null) {
-  const rows: { id: number; quantity: number; created_at: Date }[] = await repo.setErfassungenNeuesteZuerst(dbh, userId, setNumber).catch(meldeUndLiefere('set-service:rows', []));
+  // Ohne Fang: Mit einer leeren Liste nach einem Lesefehler buchte die Anpassung die ganze Menge neu.
+  const rows: { id: number; quantity: number; created_at: Date }[] = await repo.setErfassungenNeuesteZuerst(dbh, userId, setNumber);
   const current = rows.reduce((sum: number, r: { quantity?: number | null }) => sum + (r.quantity || 0), 0);
   let delta = newTotalQty - current;
   if (delta === 0) return;
   if (delta > 0) {
     if (rows.length) {
       {
-        // Aufstocken oder neue Tageszeile entscheidet recordAcquisitionForDay(), damit
-        // die Regel nur einmal existiert.
+        // Aufstocken oder neue Tageszeile entscheidet recordAcquisitionForDay(), damit die Regel nur einmal
+        // existiert.
         const plan = pricePlan ?? await priceForNewAcquisition(userId, setNumber, dbh);
         await recordAcquisition(userId, setNumber, delta, plan.price, plan.condition, dbh, !!plan.geschaetzt, plan.currency ?? null);
       }
@@ -96,7 +98,8 @@ async function adjustAcquisitionsToQuantity(userId: number, setNumber: string, n
  * Importschleife stellt sie selbst ein und schont so Pool und Tageskontingent. */
 export interface ErfassenOptionen { massenimport?: boolean; waehrung?: string | null }
 
-// Das Datum geht in DIESELBE Erfassung — ein nachträgliches UPDATE datierte einen fremden Kauf desselben Tages um.
+// Das Datum geht in DIESELBE Erfassung — ein nachträgliches UPDATE datierte einen fremden Kauf desselben
+// Tages um.
 export async function addSetWithDate(setNumber: string, quantity: number, userId: number, purchasePrice: number | null,
                               condition: string | null, acquiredAt: string | null) {
   return addSet(setNumber, quantity, userId, null, purchasePrice, condition, null, acquiredAt, { massenimport: true });
@@ -121,9 +124,8 @@ export async function addSet(setNumber: string, quantity: number, userId: number
 /** Nie Voraussetzung für die Antwort: Scheitert das Einstellen, ist das Set
  * trotzdem erfasst, und der Fehler steht im Protokoll. */
 export async function nacharbeitEinstellen(setNumber: string, userId: number, art: 'zweit' | 'neu' | 'csv') {
-  await stelleAuftragEin('nacharbeit', { set_number: setNumber, user_id: userId, art },
-    { userId, schluessel: `nacharbeit:${userId}:${setNumber}`, maxVersuche: 3 })
-    .catch(logAndContinue(`set-anlegen:nacharbeit ${setNumber}`));
+  await versuche(`set-anlegen:nacharbeit ${setNumber}`, stelleAuftragEin('nacharbeit', { set_number: setNumber, user_id: userId, art },
+    { userId, schluessel: `nacharbeit:${userId}:${setNumber}`, maxVersuche: 3 }));
 }
 
 async function addSetIntern(setNumber: string, quantity: number, userId: number,
@@ -140,18 +142,17 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
 
   const existing = await repo.setZeileDesKontos(userId, normalized);
   if (existing) {
-    // Ohne Angabe gilt der Marktpreis des gewählten Zustands, geholt VOR der Sperre:
-    // Ein Netzaufruf in der Sperre blockierte jeden anderen Schreiber.
-    // Ausführlich: docs/begruendungen/src/sets/setService.ts.md#addsetintern-readdprice
+    // Ohne Angabe gilt der Marktpreis des gewählten Zustands, geholt VOR der Sperre: Ein Netzaufruf in der
+    // Sperre blockierte jeden anderen Schreiber. Ausführlich:
+    // docs/begruendungen/src/sets/setService.ts.md#addsetintern-readdprice
     let reAddPrice: number | null = purchasePrice;
     const reAddGeschaetzt = reAddPrice === null || isNaN(reAddPrice);
     if (reAddGeschaetzt) {
-      reAddPrice = await getCurrentMarketPrice(normalized, userId, zustand).catch(meldeUndLiefere('set-service:getCurrentMarketPrice', null));
+      reAddPrice = wertOder(await versuche('set-service:getCurrentMarketPrice', getCurrentMarketPrice(normalized, userId, zustand)), null);
     }
 
-    // Gesperrt, weil recordAcquisitionForDay() erst liest und dann schreibt;
-    // parallele Erfassungen verloren sonst Mengen.
-    // Ausführlich: docs/begruendungen/src/sets/setService.ts.md#addsetintern
+    // Gesperrt, weil recordAcquisitionForDay() erst liest und dann schreibt; parallele Erfassungen verloren
+    // sonst Mengen. Ausführlich: docs/begruendungen/src/sets/setService.ts.md#addsetintern
     await withInventoryLock(userId, normalized, async (tx) => {
       // Nur die Erfassung wird geschrieben; die Menge wird beim Lesen daraus gerechnet (db/bestandsmenge.ts).
       await recordAcquisition(userId, normalized, quantity, reAddPrice, zustand, tx, reAddGeschaetzt,
@@ -163,7 +164,7 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
 
   let name: string | null = null, year: number | null = null, theme: string | null = null,
       pieces: number | null = null, minifigs: number | null = null, imageUrl: string | null = null;
-  const rb = await getSetInfo(normalized).catch(meldeUndLiefere('set-service:getSetInfo', null));
+  const rb = wertOder(await versuche('set-service:getSetInfo', getSetInfo(normalized)), null);
   if (rb) { name=rb.name; year=rb.year; theme=rb.theme; pieces=rb.pieces; imageUrl=rb.image_url; }
 
   // Brickset ergänzt, blockiert aber nie; beim Massenimport holt es die Nacharbeit.
@@ -186,10 +187,9 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
     const imgTimeout = new Promise<never>((_,rej)=>setTimeout(()=>rej(new Error('Image timeout')),15000).unref());
     localImage = await Promise.race([downloadSetImage(imageUrl, normalized), imgTimeout]);
   } catch (e) { meldeFehler('set-anlegen:bild-laden', e); }
-  if (localImage) generateThumb(localImage).catch(logAndContinue('set-anlegen:vorschau'));
-  // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild;
-  // scheitert er, bricht das Erfassen mit der Meldung von Postgres ab.
-  // Ausführlich: docs/begruendungen/src/sets/setService.ts.md#addsetintern-3
+  if (localImage) void versuche('set-anlegen:vorschau', generateThumb(localImage));
+  // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild; scheitert er, bricht das Erfassen
+  // mit der Meldung von Postgres ab. Ausführlich: docs/begruendungen/src/sets/setService.ts.md#addsetintern-3
   await repo.merkeSetKatalog(normalized, name, year, theme||null, pieces, minifigs, imageUrl, localImage);
 
   const effectiveCondition = zustand;
@@ -213,7 +213,8 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
 
   if (sendProgress) sendProgress({ step:'done_meta', set:normalized });
   if (!massenimport) await nacharbeitEinstellen(normalized, userId, 'neu');
-  // katalog_offen: Keine Quelle hat geantwortet; die Oberfläche soll das sagen statt eines schlichten „hinzugefügt".
+  // katalog_offen: Keine Quelle hat geantwortet; die Oberfläche soll das sagen statt eines schlichten
+  // „hinzugefügt".
   return { action:'added', set_number:normalized, name: name ?? `Set ${normalized}`, katalog_offen: !name };
 }
 
@@ -244,8 +245,8 @@ export async function updateSet(uid: number, sn: string, body: Eingabe<'PUT /api
     if (delta !== null && (!Number.isInteger(delta) || Math.abs(delta) > 9999)) fehlerWerfen('wert_ungueltig', 400);
     const gewuenschtGesamt = delta === null ? bestandsMenge(body.quantity) : null;
     const leseFeld = await scopeIds(uid);
-    // Angezeigt wird der Haushalt, geändert nur das eigene Konto.
-    // Ausführlich: docs/begruendungen/src/sets/setService.ts.md#updateset-gewuenschtgesamt
+    // Angezeigt wird der Haushalt, geändert nur das eigene Konto. Ausführlich:
+    // docs/begruendungen/src/sets/setService.ts.md#updateset-gewuenschtgesamt
     const eigenesZiel = async (dbh: Pick<typeof db, 'get'>) => {
       const gesamtVorher = await repo.setMenge(dbh, 'blickfeld', leseFeld, sn);
       const eigenVorher = await repo.setMenge(dbh, 'eines', uid, sn);
@@ -256,7 +257,7 @@ export async function updateSet(uid: number, sn: string, body: Eingabe<'PUT /api
     // Der Marktpreis wird VOR der Sperre geholt (Netzaufruf); massgeblich ist die Rechnung in der Sperre.
     const vorab = await eigenesZiel(db);
     const plan = vorab.eigenZiel > vorab.eigenVorher
-      ? await priceForNewAcquisition(uid, sn).catch(meldeUndLiefere('sets:kaufpreis', { price: null, condition: 'N' }))
+      ? wertOder(await versuche('sets:kaufpreis', priceForNewAcquisition(uid, sn)), { price: null, condition: 'N' })
       : { price: null, condition: 'N' };
     await withInventoryLock(uid, sn, async (tx) => {
       const { eigenVorher, eigenZiel } = await eigenesZiel(tx);
@@ -273,13 +274,14 @@ export async function updateSet(uid: number, sn: string, body: Eingabe<'PUT /api
       }
     });
   }
-  // Mit einer Mengenänderung schickt die App alten Preis und Zustand als Echo;
-  // angewandt überschrieben sie den Marktpreis der neuen Erfassung.
+  // Mit einer Mengenänderung schickt die App alten Preis und Zustand als Echo; angewandt überschrieben sie
+  // den Marktpreis der neuen Erfassung.
   if (body.purchase_price !== undefined && !hasQuantity) {
     let pp: number | null = body.purchase_price;
     if (pp === null || isNaN(pp)) {
-      // Zustand der LETZTEN Erfassung, sonst käme der Preis für „Neu".
-      const lastCond = await repo.zustandNeuesteSetErfassung(ownerId, sn).catch(meldeUndLiefere('set-service:lastCond', null));
+      // Zustand der LETZTEN Erfassung, sonst käme der Preis für „Neu". Ohne Fang: Nach einem Lesefehler käme
+      // sonst der Neupreis in ein gebrauchtes Set.
+      const lastCond = await repo.zustandNeuesteSetErfassung(ownerId, sn);
       pp = await getCurrentMarketPrice(sn, ownerId, lastCond?.condition || null);
     }
     const val = (pp !== null && !isNaN(pp)) ? pp : null;
@@ -295,8 +297,9 @@ export async function updateSet(uid: number, sn: string, body: Eingabe<'PUT /api
       console.error('[updateSet] condition update skipped (migration pending?):', fehlertext(e));
     }
   }
-  const nachher = await repo.setMenge(db, 'blickfeld', await scopeIds(uid), sn).catch(meldeUndLiefere('set-service:scopeIds', null));
-  return { quantity: nachher ?? 0, ...(papierkorb ? { papierkorb } : {}) };
+  // Geschrieben ist schon; scheitert nur das Nachlesen, sagt die Antwort „unbekannt“ statt 0.
+  const nachher = await versuche('set-service:menge-nachher', async () => repo.setMenge(db, 'blickfeld', await scopeIds(uid), sn));
+  return { quantity: nachher.ok ? nachher.wert ?? 0 : null, ...(papierkorb ? { papierkorb } : {}) };
 }
 
 

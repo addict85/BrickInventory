@@ -13,10 +13,6 @@ type Schreiber = stamm.Schreiber;
  * hat. Eingetipptes landet in dessen eigenen Angaben, nie im gemeinsamen Katalog. */
 type Von = number | null;
 
-/** Im gemeinsamen Katalog stehen nur geprüfte Werte; der erste bleibt. */
-const ersterWert = (tabelle: string, feld: string): string =>
-  `${feld} = COALESCE(${tabelle}.${feld}, EXCLUDED.${feld})`;
-
 const leer = (v: string | null | undefined): string | null => (v === undefined || v === null || v === '') ? null : v;
 /** Ein eingetipptes Bild nur von den Hosts, die der Bild-Proxy ohnehin zeigt. */
 const bildEingabe = (url: string | null, von: Von): string | null =>
@@ -35,7 +31,7 @@ export async function merkeTeil(
   const name = leer(partName);
   const kategorie = leer(categoryName) === 'Unknown' ? null : leer(categoryName);
   if (von !== null) { await stamm.schreibeTeilEigen(dbh, von, partNumber, name, kategorie); return; }
-  await stamm.schreibeTeilKatalog(dbh, partNumber, name, kategorie, ersterWert('part_catalog', 'part_name'), ersterWert('part_catalog', 'category_name'));
+  await stamm.schreibeTeilKatalog(dbh, partNumber, name, kategorie);
 }
 
 /** Je Teil UND Farbe — ein roter Stein sieht anders aus als ein blauer. */
@@ -56,7 +52,7 @@ export async function merkeTeilFarbe(
   const bild = bildEingabe(leer(imageUrl), von);
   // image_local schreibt nur der Server selbst (heruntergeladene Datei).
   if (von !== null) { await stamm.schreibeTeilFarbeEigen(dbh, von, partNumber, farbe, name, code, bild); return; }
-  await stamm.schreibeTeilFarbe(dbh, partNumber, farbe, name, code, bild, imageLocal ?? null, ersterWert('part_color_catalog', 'color_name'), ersterWert('part_color_catalog', 'color_hex'), ersterWert('part_color_catalog', 'image_url'));
+  await stamm.schreibeTeilFarbe(dbh, partNumber, farbe, name, code, bild, imageLocal ?? null);
 }
 
 export async function merkeFigur(
@@ -71,7 +67,7 @@ export async function merkeFigur(
   const name = leer(figName);
   const bild = bildEingabe(leer(imageUrl), von);
   if (von !== null) { await stamm.schreibeFigurEigen(dbh, von, figNumber, name, bild); return; }
-  await stamm.schreibeFigurKatalog(dbh, figNumber, name, bild, imageLocal ?? null, ersterWert('minifigs_catalog', 'fig_name'), ersterWert('minifigs_catalog', 'image_url'));
+  await stamm.schreibeFigurKatalog(dbh, figNumber, name, bild, imageLocal ?? null);
 }
 
 /** Nur Menge und Ersatzteil-Kennzeichen; Name, Farbe und Bild stehen je Teil
@@ -112,10 +108,10 @@ export async function merkeSetTeile(setNumber: string, zeilen: SetTeilZeile[], d
   if (!setNumber || !zeilen.length) return;
   const teile = jeSchluessel(zeilen, z => z.partNumber);
   const kat = (v: string | null) => leer(v) === 'Unknown' ? null : leer(v);
-  await stamm.schreibeTeileKatalog(dbh, teile.map(z => z.partNumber), teile.map(z => leer(z.partName)), teile.map(z => kat(z.kategorie)), ersterWert('part_catalog', 'part_name'), ersterWert('part_catalog', 'category_name'));
+  await stamm.schreibeTeileKatalog(dbh, teile.map(z => z.partNumber), teile.map(z => leer(z.partName)), teile.map(z => kat(z.kategorie)));
 
   const farben = jeSchluessel(zeilen, z => `${z.partNumber}|${z.colorId}`);
-  await stamm.schreibeTeilFarben(dbh, farben.map(z => z.partNumber), farben.map(z => z.colorId), farben.map(z => leer(z.colorName)), farben.map(z => leer(z.colorHex)), farben.map(z => leer(z.imageUrl)), farben.map(z => z.imageLocal), ersterWert('part_color_catalog', 'color_name'), ersterWert('part_color_catalog', 'color_hex'), ersterWert('part_color_catalog', 'image_url'));
+  await stamm.schreibeTeilFarben(dbh, farben.map(z => z.partNumber), farben.map(z => z.colorId), farben.map(z => leer(z.colorName)), farben.map(z => leer(z.colorHex)), farben.map(z => leer(z.imageUrl)), farben.map(z => z.imageLocal));
 
   const liste = jeSchluessel(zeilen.map(z => ({ ...z })), z => `${z.partNumber}|${z.colorId}`, (a, b) => {
     if (a.isSpare === b.isSpare) return { ...a, quantity: a.quantity + b.quantity };
@@ -129,7 +125,7 @@ export async function merkeFiguren(
 ) {
   const f = jeSchluessel(figuren.filter(x => x.figNumber), x => x.figNumber);
   if (!f.length) return;
-  await stamm.schreibeFigurenKatalog(dbh, f.map(x => x.figNumber), f.map(x => leer(x.figName)), f.map(x => leer(x.imageUrl)), ersterWert('minifigs_catalog', 'fig_name'), ersterWert('minifigs_catalog', 'image_url'));
+  await stamm.schreibeFigurenKatalog(dbh, f.map(x => x.figNumber), f.map(x => leer(x.figName)), f.map(x => leer(x.imageUrl)));
 }
 
 /** Ohne COALESCE: Nach einem echten Download ist der neue Pfad richtig, der

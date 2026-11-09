@@ -5,7 +5,7 @@
  * Vorschau schon da sind.
  *
  * Gegenproben (07.11.2026):
- *   A  in jobs/imageQueue.ts den Aufruf setBildLokalEintragen() im Zweig
+ *   A  in src/katalog/bilder/bildbedarfLauf.ts den Aufruf setBildLokalEintragen() im Zweig
  *      „Datei schon da“ gestrichen → rot: „der Bild-Job trägt die Datei ein“
  *   B  in bildDurchreichen() den else-Zweig mit setBildLokalEintragen()
  *      gestrichen → rot: „der Proxy trägt vorhandene Dateien ein“
@@ -54,7 +54,7 @@ test('Set-Bilder in images/sets werden eingetragen', { concurrency: 1 }, async t
     await leereWarteschlange(db);
     lege(path.join(SET_IMAGES_DIR, `${job}.jpg`));
     lege(path.join(SET_IMAGES_DIR, `${job}_thumb.jpg`));
-    const IQ = _req('jobs/imageQueue.js');
+    const IQ = _req('src/katalog/bilder/bildbedarfLauf.js');
     IQ.merkeGebraucht(cdn(job), job);
     await IQ._schreibePuffer();
     await IQ._arbeiteStapel();

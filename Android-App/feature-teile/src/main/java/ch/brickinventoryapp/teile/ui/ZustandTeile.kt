@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.teile.ui
 
 import ch.brickinventoryapp.model.ui.model.*
-import ch.brickinventoryapp.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Fehlerklasse
 
 /**
  * Teile und Minifiguren — eigener Fluss: Nur zwei Bildschirme brauchen die Felder,

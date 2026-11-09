@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -62,6 +64,8 @@ fun LoginScreen(
     onPasskey: (() -> Unit)? = null,
     passkeyStattCode: Boolean = false,
     onPasskeyStattCode: (String, String) -> Unit = { _, _ -> },
+    /** Nach einem QR-Scan: der Code, den man im Browser eintippt. */
+    qrBestaetigung: String? = null,
 ) {
     var username by rememberSaveable { mutableStateOf("") }
     // remember, nicht rememberSaveable: Gesicherter Zustand landet im Bundle und bei
@@ -106,6 +110,12 @@ fun LoginScreen(
                     Icon(Icons.Default.Edit, null, Modifier.size(mitSchrift(16.dp)),
                         tint = MaterialTheme.colorScheme.primary)
                 }
+            }
+            if (qrBestaetigung != null) {
+                Spacer(Modifier.height(Abstaende.mittel))
+                Text(stringResource(R.string.login_qr_bestaetigen_hinweis), style = MaterialTheme.typography.bodyMedium)
+                Text(qrBestaetigung.chunked(3).joinToString(" "), Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    style = MaterialTheme.typography.headlineMedium)
             }
     }
     val karte: @Composable (breit: Boolean) -> Unit = { breit ->

@@ -68,7 +68,7 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht',
   try {
     // Die Liste löst seit einer früheren Runde gar keine Bildarbeit mehr aus (sie lief
     // an allen Drosselungen vorbei). Der Weg führt jetzt über den Proxy und
-    // jobs/imageQueue.ts — geprüft wird deshalb der MERKER selbst, nicht mehr
+    // src/katalog/bilder/bildbedarfLauf.ts — geprüft wird deshalb der MERKER selbst, nicht mehr
     // die Liste.
     await besuch();
     assert.equal(versuche, 0,

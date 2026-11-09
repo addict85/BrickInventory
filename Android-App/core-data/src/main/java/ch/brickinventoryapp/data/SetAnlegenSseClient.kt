@@ -15,6 +15,8 @@ import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody
+import okhttp3.Response
 import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -53,25 +55,7 @@ internal class SetAnlegenSseClient @Inject constructor(
             trySend(SetAnlegenSchritt.Fehler("")); close(); return@callbackFlow
         }
 
-        // Von Hand gebaut statt ueber eine Datenklasse: Die Felder, die NICHT
-        // gesetzt sind, sollen auch nicht im Rumpf stehen — der Server
-        // unterscheidet „kein Kaufpreis" von „Kaufpreis null" (utils/validate).
-        val felder = buildList {
-            add("\"set_number\":${json.encodeToString(kotlinx.serialization.serializer(), setNumber)}")
-            add("\"quantity\":$quantity")
-            if (purchasePrice != null) add("\"purchase_price\":$purchasePrice")
-            if (condition != null) add("\"condition\":\"$condition\"")
-            if (ownerUserId != null) add("\"owner_user_id\":$ownerUserId")
-            // Der Lagerort ist freier Text und muss deshalb ueber den
-            // Serialisierer, nicht in die Zeichenkette gesetzt: Ein
-            // Anfuehrungszeichen im Namen („Regal \"A\"") zerbraeche den Rumpf
-            // sonst. Dieselbe Vorsicht wie eine Zeile hoeher bei set_number.
-            if (!storage.isNullOrBlank())
-                add("\"storage\":${json.encodeToString(kotlinx.serialization.serializer(), storage)}")
-        }
-        val rumpf = "{${felder.joinToString(",")}}"
-            .toRequestBody("application/json; charset=utf-8".toMediaType())
-
+        val rumpf = anlegeRumpf(setNumber, quantity, purchasePrice, condition, ownerUserId, storage)
         val anfrage = Request.Builder()
             .url("$baseUrl/api/v1/sets/add-stream")
             .header("Accept", "text/event-stream")
@@ -84,32 +68,8 @@ internal class SetAnlegenSseClient @Inject constructor(
             close()
         }
         try {
-            aufruf.execute().use { antwort ->
-                // `antwort.body` ist seit OkHttp 5 nicht nullbar.
-                val koerper = antwort.body
-                if (!antwort.isSuccessful) {
-                    trySend(SetAnlegenSchritt.Fehler(fehlertextAus(koerper.string())))
-                    close(); return@use
-                }
-                // Die JSON-Form: Das Set stand schon im Blickfeld.
-                if (antwort.header("Content-Type")?.contains("application/json") == true) {
-                    val text = koerper.string()
-                    trySend(SetAnlegenSchritt.Fertig(json.decodeFromString(AddSetResponse.serializer(), text)))
-                    close(); return@use
-                }
-                // Die Stromform: `data: {…}` je Zeile, Leerzeilen trennen.
-                koerper.source().use { quelle ->
-                    while (!quelle.exhausted()) {
-                        val zeile = quelle.readUtf8LineStrict()
-                        if (!zeile.startsWith("data:")) continue
-                        val nutzlast = zeile.removePrefix("data:").trim()
-                        if (nutzlast.isEmpty()) continue
-                        val fertig = verarbeite(nutzlast) { trySend(it) }
-                        if (fertig) break
-                    }
-                }
-                close()
-            }
+            aufruf.execute().use { antwort -> leseAntwort(antwort) { trySend(it) } }
+            close()
         } catch (_: java.net.UnknownHostException) {
             trySend(SetAnlegenSchritt.KeineVerbindung); close()
         } catch (_: java.net.ConnectException) {
@@ -128,6 +88,58 @@ internal class SetAnlegenSseClient @Inject constructor(
         }
         awaitClose { aufruf.cancel() }
     }.flowOn(io)
+
+    /**
+     * Von Hand gebaut statt ueber eine Datenklasse: Die Felder, die NICHT
+     * gesetzt sind, sollen auch nicht im Rumpf stehen — der Server
+     * unterscheidet „kein Kaufpreis" von „Kaufpreis null" (utils/validate).
+     */
+    private fun anlegeRumpf(
+        setNumber: String, quantity: Int, purchasePrice: Double?,
+        condition: String?, ownerUserId: Int?, storage: String?,
+    ): RequestBody {
+        val felder = buildList {
+            add("\"set_number\":${json.encodeToString(kotlinx.serialization.serializer(), setNumber)}")
+            add("\"quantity\":$quantity")
+            if (purchasePrice != null) add("\"purchase_price\":$purchasePrice")
+            if (condition != null) add("\"condition\":\"$condition\"")
+            if (ownerUserId != null) add("\"owner_user_id\":$ownerUserId")
+            // Der Lagerort ist freier Text und muss deshalb ueber den
+            // Serialisierer, nicht in die Zeichenkette gesetzt: Ein
+            // Anfuehrungszeichen im Namen („Regal \"A\"") zerbraeche den Rumpf
+            // sonst. Dieselbe Vorsicht wie eine Zeile hoeher bei set_number.
+            if (!storage.isNullOrBlank())
+                add("\"storage\":${json.encodeToString(kotlinx.serialization.serializer(), storage)}")
+        }
+        return "{${felder.joinToString(",")}}"
+            .toRequestBody("application/json; charset=utf-8".toMediaType())
+    }
+
+    /** Die Antwort lesen: Absage, die JSON-Form oder der Ereignisstrom. */
+    private fun leseAntwort(antwort: Response, sende: (SetAnlegenSchritt) -> Unit) {
+        // `antwort.body` ist seit OkHttp 5 nicht nullbar.
+        val koerper = antwort.body
+        if (!antwort.isSuccessful) {
+            sende(SetAnlegenSchritt.Fehler(fehlertextAus(koerper.string())))
+            return
+        }
+        // Die JSON-Form: Das Set stand schon im Blickfeld.
+        if (antwort.header("Content-Type")?.contains("application/json") == true) {
+            val text = koerper.string()
+            sende(SetAnlegenSchritt.Fertig(json.decodeFromString(AddSetResponse.serializer(), text)))
+            return
+        }
+        // Die Stromform: `data: {…}` je Zeile, Leerzeilen trennen.
+        koerper.source().use { quelle ->
+            while (!quelle.exhausted()) {
+                val zeile = quelle.readUtf8LineStrict()
+                if (!zeile.startsWith("data:")) continue
+                val nutzlast = zeile.removePrefix("data:").trim()
+                if (nutzlast.isEmpty()) continue
+                if (verarbeite(nutzlast, sende)) break
+            }
+        }
+    }
 
     /**
      * Ein Ereignis auswerten.

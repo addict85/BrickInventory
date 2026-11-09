@@ -48,7 +48,7 @@ class LagerortBeimErfassenTest {
             Triple("sammlung/ui/screens/GalerieErfassen.kt", "fun AddSetDialog(", "Set hinzufuegen (Galerie)"),
             Triple("katalog/ui/screens/CatalogDetailScreen.kt", "fun CatalogAddDialog(", "Katalog → Galerie"),
             Triple("sammlung/ui/screens/MerklisteDialoge.kt", "fun UebernahmeDialog(", "Merkliste → Galerie"),
-            Triple("ui/screens/ManualItemComposables.kt", "fun ErfassungsFelder(", "manuelle Teile und Figuren"),
+            Triple("gemeinsam/ui/ManualItemComposables.kt", "fun ErfassungsFelder(", "manuelle Teile und Figuren"),
             Triple("sammlung/ui/dialogs/BarcodeResultDialog.kt", "fun BarcodeResultDialog(", "Barcode"),
         )
         check(wege.size >= 5) { "Nur ${wege.size} Wege — Liste unvollstaendig?" }
