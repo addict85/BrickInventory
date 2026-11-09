@@ -31,7 +31,7 @@ export function sanitizeSetNumber(input: unknown) {
 }
 
 /** Reihenfolge Preis-Cache → BrickLink → Historie; bleibt alles leer, trägt
- * jobs/purchasePriceBackfill.ts nach.
+ * src/bestand/kaufpreisNachtrag.ts nach.
  * Ausführlich: docs/begruendungen/src/sets/setService.ts.md#pricefornewacquisition */
 async function priceForNewAcquisition(userId: number, setNumber: string, dbh: DbSchnittstelle = db) {
   // Über das Blickfeld: Mit einer nackten ID fände der Hauptaccount das Set des Unterkontos nicht.

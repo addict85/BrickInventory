@@ -1,6 +1,6 @@
-# Begründungen zu `jobs/rebrickableCsvSync.ts`
+# Begründungen zu `src/katalog/csvAbgleich.ts`
 
-Die ausführlichen Kommentare aus `jobs/rebrickableCsvSync.ts`, wörtlich. Im Code steht je
+Die ausführlichen Kommentare aus `src/katalog/csvAbgleich.ts`, wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 

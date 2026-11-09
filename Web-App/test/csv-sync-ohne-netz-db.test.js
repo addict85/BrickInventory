@@ -42,7 +42,7 @@ test('Katalogabgleich ohne Netz', { concurrency: 1 }, async (t) => {
   zustand.setzeStartZustand({ ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 });
   try {
     await t.test('ohne Netz ist der Server trotzdem bereit', async () => {
-      await assert.rejects(_req('jobs/rebrickableCsvSync.js').run(), 'der Auftrag soll den Fehler sehen und wiederholen');
+      await assert.rejects(_req('src/katalog/csvAbgleich.js').run(), 'der Auftrag soll den Fehler sehen und wiederholen');
       assert.equal(zustand.startZustand().ready, true, JSON.stringify(zustand.startZustand()));
       const gespeichert = JSON.parse((await db.get(`SELECT wert AS value FROM laufzustand WHERE schluessel='startup_status'`)).value);
       assert.equal(gespeichert.ready, true, 'die anderen Worker lesen den Stand aus der Datenbank');

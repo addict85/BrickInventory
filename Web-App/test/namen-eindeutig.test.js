@@ -24,7 +24,7 @@ const ERLAUBT = new Map([
                    'verschiedene Dienste. Der Dateiname sagt, welcher gemeint ist.'],
   ['httpsGet',     'clients/bricklink und clients/brickset — jeder mit der Signatur seines ' +
                    'Dienstes (BrickLink braucht einen Authorization-Kopf, Brickset nicht).'],
-  ['schreibePuffer', 'jobs/imageQueue und src/katalog/bilder/imageMisses — jeder schreibt SEINEN Puffer.'],
+  ['schreibePuffer', 'src/katalog/bilder/bildbedarfLauf und src/katalog/bilder/imageMisses — jeder schreibt SEINEN Puffer.'],
 ]);
 
 test('ein Funktionsname bedeutet eine Sache', () => {

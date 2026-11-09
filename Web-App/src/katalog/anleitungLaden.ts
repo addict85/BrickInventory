@@ -1,16 +1,15 @@
 /** Brickset und brickinstructions.com wollen Abstand: Nach einem echten Abruf
  * pausiert die ganze Art 15 Sekunden, nach einer Cloudflare-Sperre 5–20
  * Minuten und dann bis zum nächsten Tag.
- * Ausführlich: docs/begruendungen/jobs/instructionQueue.ts.md#brickset-und-brickinstructions-com-wolle */
-import { mitSitzungsSperre } from '../db/txLock';
-import { downloadSetInstructions, letzterAbrufWarExtern, anzahlAnleitungen, scrapeInstructionsFromFallback } from '../src/katalog/instructions';
-import { fehlertext } from '../src/infra/fehler';
-import { alsAbrufFehler } from '../src/katalog/quellen';
-import { zaehleArt, beendePause, pausiereArt, liesPause } from '../src/auftraege/dienst';
-import { LOCKS } from '../src/infra/lockNamespaces';
-import { AuftragVerschieben } from './auftragsWorker';
-import type { Nutzlast } from '../src/auftraege/nutzlasten';
-import type { AuftragsLauf } from '../src/auftraege/auftraege';
+ * Ausführlich: docs/begruendungen/src/katalog/anleitungLaden.ts.md#brickset-und-brickinstructions-com-wolle */
+import { mitSitzungsSperre } from '../../db/txLock';
+import { downloadSetInstructions, letzterAbrufWarExtern, anzahlAnleitungen, scrapeInstructionsFromFallback } from './instructions';
+import { fehlertext } from '../infra/fehler';
+import { alsAbrufFehler } from './quellen';
+import { zaehleArt, beendePause, pausiereArt, liesPause } from '../auftraege/dienst';
+import { LOCKS } from '../infra/lockNamespaces';
+import type { Nutzlast } from '../auftraege/nutzlasten';
+import { type AuftragsLauf, AuftragVerschieben } from '../auftraege/auftraege';
 
 const TAKT_NACH_ABRUF_MS = 15_000;
 /** Pausen nach der ersten bis vierten Cloudflare-Sperre; danach bis morgen. */

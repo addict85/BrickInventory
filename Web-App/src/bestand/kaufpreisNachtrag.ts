@@ -1,8 +1,8 @@
-import { getCurrentMarketPrice, getCurrentFigMarketPrice, getCurrentPartMarketPrice } from '../src/finanzen/marketPrice';
-import { setzeGeschaetztenPreis, setErfassungenOhnePreis, teilErfassungenOhnePreis, figurErfassungenOhnePreis } from '../src/bestand/acquisitions';
-import { teilfarbenbilderNachtragen } from '../src/katalog/katalogAbgleich';
-import { blAbrufNummer } from '../src/katalog/blZuordnung';
-import { fehlertext, meldeFehler, meldeUndLiefere } from '../src/infra/fehler';
+import { getCurrentMarketPrice, getCurrentFigMarketPrice, getCurrentPartMarketPrice } from '../finanzen/marketPrice';
+import { setzeGeschaetztenPreis, setErfassungenOhnePreis, teilErfassungenOhnePreis, figurErfassungenOhnePreis } from './acquisitions';
+import { teilfarbenbilderNachtragen } from '../katalog/katalogAbgleich';
+import { blAbrufNummer } from '../katalog/blZuordnung';
+import { fehlertext, meldeFehler, meldeUndLiefere } from '../infra/fehler';
 import { setTimeout as warte } from 'node:timers/promises';
 
 // Idempotent: Erfassungen ohne Kaufpreis bekommen den Marktpreis, wie beim
@@ -15,7 +15,7 @@ function log(msg: string) {
 
 
 // Scheitert BrickLink beim CSV-Import am Tageslimit, bleibt die Erfassung ohne Preis; hier wird nachgetragen.
-// Ausführlich: docs/begruendungen/jobs/purchasePriceBackfill.ts.md#backfillacquisitions
+// Ausführlich: docs/begruendungen/src/bestand/kaufpreisNachtrag.ts.md#backfillacquisitions
 async function backfillAcquisitions() {
   const rows = await setErfassungenOhnePreis().catch(meldeUndLiefere('kaufpreis-nachtrag:rows', []));
   if (!rows.length) return;
@@ -38,7 +38,7 @@ async function backfillAcquisitions() {
 }
 
 // Dieselbe Lücke wie bei den Sets, für Teile- und Figuren-Erfassungen.
-// Ausführlich: docs/begruendungen/jobs/purchasePriceBackfill.ts.md#backfillteileerfassungen
+// Ausführlich: docs/begruendungen/src/bestand/kaufpreisNachtrag.ts.md#backfillteileerfassungen
 async function backfillTeileErfassungen() {
   const rows = await teilErfassungenOhnePreis().catch(meldeUndLiefere('kaufpreis-nachtrag:rows', []));
   if (!rows.length) return;

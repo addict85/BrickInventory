@@ -143,7 +143,7 @@ test("guide_type ist überall 'sold', nicht 'stock'", () => {
     'src/katalog/bricklinkPreise.ts',
     'routes/api_v1/sets.ts',
     'src/finanzen/financeCalc.ts',
-    'jobs/priceJob.ts',
+    'src/finanzen/preisLauf.ts',
   ]) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
     const code = src.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
@@ -196,7 +196,7 @@ test('der Preisjob holt alle Zustände, die ein Set tatsächlich führt', () => 
   // anderen aus — bei gemischten Sets fehlte damit dauerhaft eine Hälfte. …
   // Ausführlich: docs/begruendungen/test/set-value.test.js.md#job-stelle
   const job =
-    fs.readFileSync(path.join(ROOT, 'jobs/priceJob.ts'), 'utf8') +
+    fs.readFileSync(path.join(ROOT, 'src/finanzen/preisLauf.ts'), 'utf8') +
     fs.readFileSync(path.join(ROOT, 'src/finanzen/repository/preisLauf.ts'), 'utf8');
 
   // EINE Stelle, und sie arbeitet gebündelt: Der Einzelfall (Sofort-Abruf) ist

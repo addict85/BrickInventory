@@ -216,7 +216,7 @@ export async function buildMerklisteCsv(uid: number): Promise<string> {
   return toCsv(['set_number', 'condition', 'created_at'], rows);
 }
 
-/** Das Gegenstück zu buildMerklisteCsv(); läuft als Auftrag (jobs/importAuftraege.ts). */
+/** Das Gegenstück zu buildMerklisteCsv(); läuft als Auftrag (src/sammlung/importAuftraege.ts). */
 export async function importiereMerklisteCsv(owner: number, text: string) {
   const { records, bereinigt, uebersprungen } =
     csvZeilenAusAnfrage(text);

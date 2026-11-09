@@ -1,12 +1,12 @@
 /** Je Schritt ein Auftrag 'nachlauf', damit ein Fehler wiederholt wird und in
  * der Verwaltung zu sehen ist. */
-import { anleitungenNachtragen, setBilderNachladen, vorschaubilderNachtragen } from '../src/katalog/bildlage';
-import { verschluesseleAltbestand } from '../src/konto/geheimnisAltbestand';
-import { verschluesseleGutscheinAltbestand } from '../src/gutscheine/gutscheinDateien';
-import * as catalogSync from '../src/katalog/katalogAbgleich';
-import * as purchasePriceBackfill from './purchasePriceBackfill';
-import type { Nutzlast } from '../src/auftraege/nutzlasten';
-import { pruefeAbbruch, type AuftragsLauf } from '../src/auftraege/auftraege';
+import { anleitungenNachtragen, setBilderNachladen, vorschaubilderNachtragen } from '../katalog/bildlage';
+import { verschluesseleAltbestand } from '../konto/geheimnisAltbestand';
+import { verschluesseleGutscheinAltbestand } from '../gutscheine/gutscheinDateien';
+import * as catalogSync from '../katalog/katalogAbgleich';
+import * as purchasePriceBackfill from '../bestand/kaufpreisNachtrag';
+import type { Nutzlast } from '../auftraege/nutzlasten';
+import { pruefeAbbruch, type AuftragsLauf } from '../auftraege/auftraege';
 
 /** Geheimnisse aus der Zeit vor der Verschlüsselung (src/infra/geheimnis.ts). */
 async function geheimnisseVerschluesseln(): Promise<void> {

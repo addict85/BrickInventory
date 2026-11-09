@@ -1,6 +1,6 @@
-# Begründungen zu `jobs/imageQueue.ts`
+# Begründungen zu `src/katalog/bilder/bildbedarfLauf.ts`
 
-Die ausführlichen Kommentare aus `jobs/imageQueue.ts`, wörtlich. Im Code steht je
+Die ausführlichen Kommentare aus `src/katalog/bilder/bildbedarfLauf.ts`, wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 

@@ -1,5 +1,5 @@
 /**
- * Der Anleitungsabruf als Auftrag 'anleitung' (jobs/instructionQueue.ts):
+ * Der Anleitungsabruf als Auftrag 'anleitung' (src/katalog/anleitungLaden.ts):
  * Abstand nur nach einem echten Abruf, die Cloudflare-Leiter als Pause der
  * ganzen Art, die Sperre gegen einen zweiten Job-Prozess, ein Set nur einmal
  * offen. Der Abruf selbst ist nachgestellt; geprüft wird, was der Bearbeiter
@@ -47,7 +47,7 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async (t) => {
     if (process.env.REQUIRE_DB === '1') throw e;
     t.skip('Test-DB nicht erreichbar'); return;
   }
-  const Q = _req('jobs/instructionQueue.js');
+  const Q = _req('src/katalog/anleitungLaden.js');
   const A = Object.assign({}, _req('src/auftraege/auftraege.js'), _req('src/auftraege/dienst.js'));
   const { AuftragVerschieben } = _req('jobs/auftragsWorker.js');
   const pause = () => A.liesPause('anleitung');

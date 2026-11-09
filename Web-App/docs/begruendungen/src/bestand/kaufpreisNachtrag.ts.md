@@ -1,6 +1,6 @@
-# Begründungen zu `jobs/purchasePriceBackfill.ts`
+# Begründungen zu `src/bestand/kaufpreisNachtrag.ts`
 
-Die ausführlichen Kommentare aus `jobs/purchasePriceBackfill.ts`, wörtlich. Im Code steht je
+Die ausführlichen Kommentare aus `src/bestand/kaufpreisNachtrag.ts`, wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 

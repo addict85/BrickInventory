@@ -156,6 +156,31 @@ test('db/, clients/ und jobs/ kennen keine HTTP-Antwort', () => {
   assert.deepEqual(treffer, []);
 });
 
+/** Codezeilen ohne Leerzeilen und Kommentare. */
+const codeZeilen = (rel) => quelltext(rel).split('\n').filter(z => z.trim()).length;
+
+test('jobs/ führt Aufträge aus, die Arbeit eines Auftrags steht in src/', () => {
+  // jobs/ hält den Worker (Pacht, Wiederholung, Abbruch), die Bearbeitertabelle, die Verdrahtung
+  // und den Einstieg des Importprozesses; was ein Auftrag fachlich tut, liegt in src/<bereich>/.
+  // Gemessen am 09.11.2026: vorher 20 Dateien, 1597 Codezeilen, 4 mit Import aus db/; jetzt 4, 287, 0.
+  // Gegenproben (09.11.2026): `import * as db from '../db/database'` in jobs/verdrahtung.ts → rot
+  // (db/); fetchAndCachePrice und zustaendeJeSet zurück nach jobs/auftraegeStarten.ts → rot (113
+  // Zeilen); `import { STAPEL } from '../src/katalog/bilder/bildbedarf'` in jobs/auftragsWorker.ts → rot.
+  const KERN = 'jobs/auftragsWorker.ts';
+  const dateien = tsUnter('jobs');
+  assert.ok(dateien.includes(KERN) && dateien.includes('jobs/auftraegeStarten.ts'), 'Worker oder Bearbeitertabelle fehlt');
+  assert.deepEqual(dateien.flatMap(d => importe(d).filter(z => /(?:^|\/)db\//.test(z)).map(z => `${d} -> ${z}`)), [],
+    'jobs/ erreicht die Datenbank nur über src/auftraege und die Fachdienste');
+  const fremd = aufgeloesteImporte(KERN).filter(z => z.startsWith('src/') && !['auftraege', 'infra'].includes(bereichVon(z)));
+  assert.deepEqual(fremd, [], 'Der Worker kennt keine Fachbereiche, nur Aufträge');
+  const zuLang = dateien.filter(d => d !== KERN && codeZeilen(d) > 80).map(d => `${d} (${codeZeilen(d)})`);
+  assert.deepEqual(zuLang, [], 'Ein Bearbeiter ruft einen Dienst; seine Arbeit gehört nach src/<bereich>/');
+  const SCHRANKE = 287;
+  const summe = dateien.reduce((n, d) => n + codeZeilen(d), 0);
+  assert.ok(summe <= SCHRANKE, `${summe} Codezeilen in jobs/, erlaubt sind ${SCHRANKE}`);
+  if (summe < SCHRANKE) console.log(`  ℹ Codezeilen in jobs/: ${summe} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
 test('db/ importiert nichts aus jobs/', () => {
   // Die Datenbankschicht ist die unterste; die Bilddienste startet
   // startup/datenbank.ts. Gegenprobe (28.10.2026): der Import von
@@ -356,7 +381,7 @@ const hatSql = (rel) => { const s = quelltext(rel); return SQL_TEXT.test(s) || S
 test('SQL steht nur in Repositories und in db/', () => {
   // Ein Verbot, keine Ratsche mehr: Die Liste der Ausnahmen ist seit dem
   // 31.10.2026 leer. Gegenproben (31.10.2026): `await db.get('SELECT 1')` in
-  // src/haushalt/haushalt.ts → rot; `'SELECT 1'` in jobs/aufraeumen.ts → rot;
+  // src/haushalt/haushalt.ts → rot; `'SELECT 1'` in src/verwaltung/aufraeumen.ts → rot;
   // (05.11.2026) das EXISTS-Fragment zurück nach src/finanzen/preisalarm.ts → rot.
   const dateien = tsUnter('src', 'jobs', 'clients', 'routes', 'startup').concat('server.ts');
   assert.ok(dateien.length > 150, `nur ${dateien.length} Dateien gefunden`);

@@ -1,6 +1,6 @@
-# Begründungen zu `jobs/priceJob.ts`
+# Begründungen zu `src/finanzen/preisLauf.ts`
 
-Die ausführlichen Kommentare aus `jobs/priceJob.ts`, wörtlich. Im Code steht je
+Die ausführlichen Kommentare aus `src/finanzen/preisLauf.ts`, wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 

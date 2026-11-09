@@ -1,15 +1,15 @@
 import fs from 'fs';
 import path from 'path';
-import { logAndContinue, meldeUndLiefere } from '../src/infra/fehler';
-import { downloadSetImage } from '../src/katalog/bilder/setImages';
-import { setBildLokalEintragen } from '../src/katalog/bildlage';
-import { grundFuer, istBekanntFehlend, merkeFehlend } from '../src/katalog/bilder/imageMisses';
-import { generateThumb } from '../src/katalog/bilder/thumbs';
-import { SET_IMAGES_DIR } from '../src/infra/appPaths';
-import { setzeZustand } from '../src/auftraege/laufzustand';
-import { pausiereArt, liesPause } from '../src/auftraege/dienst';
-import { STAPEL, TAKT_MS, NOTIZ_GILT_MS, merkeGebraucht, schreibePuffer, notiereBildbedarf, loescheVerfallene, initImageQueue, anfragenJeMinute, nimmBildwuensche } from '../src/katalog/bilder/bildbedarf';
-import { AuftragUnterbrochen, AuftragVerschieben, type AuftragsKontext } from './auftragsWorker';
+import { logAndContinue, meldeUndLiefere } from '../../infra/fehler';
+import { downloadSetImage } from './setImages';
+import { setBildLokalEintragen } from '../bildlage';
+import { grundFuer, istBekanntFehlend, merkeFehlend } from './imageMisses';
+import { generateThumb } from './thumbs';
+import { SET_IMAGES_DIR } from '../../infra/appPaths';
+import { setzeZustand } from '../../auftraege/laufzustand';
+import { pausiereArt, liesPause } from '../../auftraege/dienst';
+import { STAPEL, TAKT_MS, NOTIZ_GILT_MS, merkeGebraucht, schreibePuffer, notiereBildbedarf, loescheVerfallene, initImageQueue, anfragenJeMinute, nimmBildwuensche } from './bildbedarf';
+import { AuftragUnterbrochen, AuftragVerschieben, type AuftragsKontext } from '../../auftraege/auftraege';
 
 /** Über den Proxy angefragte Bilder im HINTERGRUND lokal ablegen, samt
  * Vorschau — damit die Anfrage selbst nie auf das CDN wartet. */
@@ -20,7 +20,7 @@ const VERZOEGERUNG_MAX_MS = 1000;
 
 /** Deckel je Takt; der Takt zählt echte Arbeit, sonst liefe er über Hunderte
  * schon vorhandener Bilder unendlich langsam.
- * Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#durchgang-max-notizen */
+ * Ausführlich: docs/begruendungen/src/katalog/bilder/bildbedarfLauf.ts.md#durchgang-max-notizen */
 const DURCHGANG_MAX_NOTIZEN = 500;
 
 const LAUF_SCHLUESSEL = 'imgqueue_last_run';
@@ -54,7 +54,7 @@ async function pauseVorArbeit(): Promise<void> {
 }
 
 /** Ein Fehlschlag wird gemerkt, sonst kostet jede nicht lesbare Datei bei
- * jedem Durchgang einen vergeblichen Lauf. Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#vorschauerzeugen */
+ * jedem Durchgang einen vergeblichen Lauf. Ausführlich: docs/begruendungen/src/katalog/bilder/bildbedarfLauf.ts.md#vorschauerzeugen */
 async function vorschauErzeugen(relPfad: string, schluessel: string): Promise<boolean> {
   if (istBekanntFehlend('thumb:' + schluessel)) return false;
   const ok = await generateThumb(relPfad).catch(meldeUndLiefere('bild-job:generateThumb', false));
@@ -63,7 +63,7 @@ async function vorschauErzeugen(relPfad: string, schluessel: string): Promise<bo
 }
 
 /** Mehrere Zähler statt einer Zahl, damit das Log zeigt, welcher Ausgang
- * genommen wurde. Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#stapelergebnis */
+ * genommen wurde. Ausführlich: docs/begruendungen/src/katalog/bilder/bildbedarfLauf.ts.md#stapelergebnis */
 export type StapelErgebnis = {
   geholt: number; vorschau: number; uebersprungen: number; gesamt: number;
   /** Jeder Weg durch die Schleife erhöht einen Zähler, damit die Summe aufgeht. */
@@ -99,7 +99,7 @@ export function meldung(e: StapelErgebnis): string {
 }
 
 /** Auch in der Datenbank, weil die Kachel in einem anderen Prozess liest.
- * Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#letzterlauf */
+ * Ausführlich: docs/begruendungen/src/katalog/bilder/bildbedarfLauf.ts.md#letzterlauf */
 export const letzterLauf: { zeit: number | null; ergebnis: StapelErgebnis | null } =
   { zeit: null, ergebnis: null };
 
@@ -137,7 +137,7 @@ async function nurVorschau(setNummer: string, vorschau: string, st: StapelStand)
 async function nachFehlschlag(setNummer: string, info: { status?: number }, st: StapelStand): Promise<boolean> {
   const status = info.status;
   // Eine Drosselung ist KEINE Fehlanzeige: Die Bilder gibt es, und stures
-  // Weiterfragen verlängert die Sperre. Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#arbeitestapel-2
+  // Weiterfragen verlängert die Sperre. Ausführlich: docs/begruendungen/src/katalog/bilder/bildbedarfLauf.ts.md#arbeitestapel-2
   if (status === 403 || status === 429) {
     const bis = new Date(Date.now() + DROSSEL_PAUSE_MS);
     await pausiereArt('bildbedarf', bis, `CDN drosselt (HTTP ${status})`);
@@ -146,7 +146,7 @@ async function nachFehlschlag(setNummer: string, info: { status?: number }, st: 
   }
   // NUR ein 404/410 heisst „das Bild gibt es nicht"; Zeitüberschreitungen und
   // Netzaussetzer dürfen ein Bild nicht dauerhaft sperren.
-  // Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#arbeitestapel-hartfehlend
+  // Ausführlich: docs/begruendungen/src/katalog/bilder/bildbedarfLauf.ts.md#arbeitestapel-hartfehlend
   const hartFehlend = info.status === 404 || info.status === 410;
   if (hartFehlend) merkeFehlend('set:' + setNummer, `HTTP ${status} vom CDN`);
   else st.etwasZuTun = true;
@@ -232,7 +232,7 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
 }
 
 /** Der Abbruch hängt an echter Arbeit, nicht an angefassten Notizen.
- * Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#taktdurchgang */
+ * Ausführlich: docs/begruendungen/src/katalog/bilder/bildbedarfLauf.ts.md#taktdurchgang */
 async function taktDurchgang(): Promise<StapelErgebnis> {
   const summe = leeresErgebnis();
   while (summe.gesamt < DURCHGANG_MAX_NOTIZEN && summe.arbeit < STAPEL) {

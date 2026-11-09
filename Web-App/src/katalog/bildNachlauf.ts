@@ -1,11 +1,11 @@
 /** Stündlich, der erste 30 s nach dem Start (src/auftraege/zeitplan.ts). */
-import { bilderFuerNachlauf } from '../src/katalog/bildlage';
-import { logAndContinue, meldeUndLiefere } from '../src/infra/fehler';
-import { generateThumb } from '../src/katalog/bilder/thumbs';
-import { setzeTeilBildLokal, setzeFigurBildLokal } from '../src/katalog/katalogPflege';
-import { KEINE_FARBE } from '../src/infra/validate';
-import * as enrich from '../src/katalog/teileAnreicherung';
-import { AuftragUnterbrochen, type AuftragsKontext } from './auftragsWorker';
+import { bilderFuerNachlauf } from './bildlage';
+import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
+import { generateThumb } from './bilder/thumbs';
+import { setzeTeilBildLokal, setzeFigurBildLokal } from './katalogPflege';
+import { KEINE_FARBE } from '../infra/validate';
+import * as enrich from './teileAnreicherung';
+import { AuftragUnterbrochen, type AuftragsKontext } from '../auftraege/auftraege';
 
 async function bildNachlauf(k: AuftragsKontext): Promise<void> {
   const { sets, teile: manualParts, figuren: figsToFetch } = await bilderFuerNachlauf();

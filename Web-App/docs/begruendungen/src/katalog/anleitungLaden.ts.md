@@ -1,6 +1,6 @@
-# Begründungen zu `jobs/instructionQueue.ts`
+# Begründungen zu `src/katalog/anleitungLaden.ts`
 
-Die ausführlichen Kommentare aus `jobs/instructionQueue.ts`, wörtlich. Im Code steht je
+Die ausführlichen Kommentare aus `src/katalog/anleitungLaden.ts`, wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 

@@ -1,17 +1,16 @@
 /** Die Importe ausser dem Set-CSV (das in setCsvImport.ts zeilenweise
  * fortsetzt). Die Route reicht ein und wartet (src/auftraege/importAlsAuftrag.ts). */
-import { importiereTeileCsv } from '../src/teile/manuelleTeile';
-import { importiereFigurenCsv } from '../src/figuren/manuelleFiguren';
-import { importiereMerklisteCsv } from '../src/merkliste/merkliste';
-import { alarmeAusCsv } from '../src/finanzen/preisalarm';
-import { csvImportBericht } from '../src/infra/csvExport';
-import { Fachfehler } from '../src/infra/fehlerTexte';
+import { importiereTeileCsv } from '../teile/manuelleTeile';
+import { importiereFigurenCsv } from '../figuren/manuelleFiguren';
+import { importiereMerklisteCsv } from '../merkliste/merkliste';
+import { alarmeAusCsv } from '../finanzen/preisalarm';
+import { csvImportBericht } from '../infra/csvExport';
+import { Fachfehler } from '../infra/fehlerTexte';
 import type { z } from 'zod';
-import { setzeErgebnis, setzeFachfehler } from '../src/auftraege/importAlsAuftrag';
-import type { ImportNutzlast as ImportNutzlastSchema } from '../src/auftraege/nutzlasten';
-import type { AuftragsZeile } from '../src/auftraege/auftraege';
-import type { AuftragsKontext } from './auftragsWorker';
+import { setzeErgebnis, setzeFachfehler } from '../auftraege/importAlsAuftrag';
+import type { ImportNutzlast as ImportNutzlastSchema } from '../auftraege/nutzlasten';
 import { importiereWantedXml } from './wantedXmlImport';
+import { type AuftragsZeile, type AuftragsKontext } from '../auftraege/auftraege';
 
 export type ImportNutzlast = z.output<typeof ImportNutzlastSchema>;
 

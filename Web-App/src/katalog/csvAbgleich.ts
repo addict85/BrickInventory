@@ -1,17 +1,17 @@
 /** Rebrickable-CSVs täglich laden: Der lokale Katalog spart je Anzeige einen
- * API-Abruf und das Tageskontingent. Ausführlich: docs/begruendungen/jobs/rebrickableCsvSync.ts.md#abschnitt */
-import { meldeStartZustand } from '../src/auftraege/startZustand';
-import { fetchMissingBlIds } from '../src/katalog/partsImport';
-import { getRbKey, httpsGetRobust, ladeKatalogCsv } from '../src/katalog/quellen';
-import { fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../src/infra/fehler';
-import { merkeBlFarbnummer, blFarbnummerAus } from '../src/katalog/blZuordnung';
-import { liesZustand, setzeZustand, loescheZustand } from '../src/auftraege/laufzustand';
+ * API-Abruf und das Tageskontingent. Ausführlich: docs/begruendungen/src/katalog/csvAbgleich.ts.md#abschnitt */
+import { meldeStartZustand } from '../auftraege/startZustand';
+import { fetchMissingBlIds } from './partsImport';
+import { getRbKey, httpsGetRobust, ladeKatalogCsv } from './quellen';
+import { fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../infra/fehler';
+import { merkeBlFarbnummer, blFarbnummerAus } from './blZuordnung';
+import { liesZustand, setzeZustand, loescheZustand } from '../auftraege/laufzustand';
 import fs from 'fs';
 import path from 'path';
-import { DATA_DIR } from '../src/infra/appPaths';
+import { DATA_DIR } from '../infra/appPaths';
 import { fork as _fork } from 'child_process';
-import type { Nutzlast } from '../src/auftraege/nutzlasten';
-import type { AuftragsLauf as CsvLauf } from '../src/auftraege/auftraege';
+import type { Nutzlast } from '../auftraege/nutzlasten';
+import type { AuftragsLauf as CsvLauf } from '../auftraege/auftraege';
 
 const SYNC_KEY = 'rb_csv_last_sync';
 const PART_CAT_KEY = 'rb_part_categories_last_sync';
@@ -19,9 +19,10 @@ const CATALOG_EXTRAS_KEY = 'rb_catalog_extras_last_sync';
 
 function log(msg: string) { console.log(`[rb-csv-sync] ${msg}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, '')); }
 
-// __dirname ist hier RICHTIG: Der Worker liegt neben dieser Datei, ob aus den
-// Quellen oder aus dist/; ein Pfad über die Wurzel träfe dort nichts.
-const _workerPath = path.join(__dirname, 'csvImportWorker.js');
+// Der Import läuft in einem eigenen Prozess; dessen Einstieg ist Ausführung und
+// liegt in jobs/, der Auftrag setzt ihn ein (jobs/auftraegeStarten.ts).
+let _workerPath: string | null = null;
+export function setzeImportProzess(pfad: string): void { _workerPath = pfad; }
 
 // Jede Datei belegt einen Abschnitt von TOTAL_STEPS, damit der Balken
 // durchgehend wächst statt je Datei zu springen.
@@ -71,6 +72,7 @@ async function runWorker(lauf: CsvLauf, task: string, stepNum: number, stepLabel
 function importInWorker(lauf: CsvLauf, task: string, stepNum: number, stepLabel: string) {
   const melde = melder(lauf);
   return new Promise((resolve, reject) => {
+    if (!_workerPath) { reject(new Error('Kein Importprozess eingesetzt (jobs/auftraegeStarten.ts)')); return; }
     const worker = _fork(_workerPath, [], { silent: false });
     const abbruch = () => { worker.kill(); reject(lauf.signal?.reason ?? new Error('abgebrochen')); };
     lauf.signal?.addEventListener('abort', abbruch, { once: true });

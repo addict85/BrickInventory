@@ -64,7 +64,7 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
   });
 
   await t.test('jeder Nachlauf ist einmal eingestellt', async () => {
-    const { NACHLAEUFE } = _req('jobs/startNachlaeufe.js');
+    const { NACHLAEUFE } = _req('src/verwaltung/startNachlaeufe.js');
     for (const schritt of Object.keys(NACHLAEUFE))
       assert.ok(zeilen.some(z => z.schluessel === `nachlauf:${schritt}`), `Nachlauf ${schritt} fehlt`);
     await _req('startup/jobsProzess.js').starteJobs(true);

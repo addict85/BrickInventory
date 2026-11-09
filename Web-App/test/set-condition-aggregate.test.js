@@ -257,7 +257,7 @@ test('Erfassungen ohne Kaufpreis werden nachgetragen', () => {
   // entstand dann ohne Kaufpreis — der Marktpreis erschien später trotzdem,
   // sobald der Preis-Job den Cache füllte. Genau diese Abweichung war gemeldet.
   const job =
-    fs.readFileSync(path.join(ROOT, 'jobs/purchasePriceBackfill.ts'), 'utf8') +
+    fs.readFileSync(path.join(ROOT, 'src/bestand/kaufpreisNachtrag.ts'), 'utf8') +
     fs.readFileSync(path.join(ROOT, 'src/bestand/repository/nachtrag.ts'), 'utf8');
 
   assert.match(job, /async function backfillAcquisitions\(\)/, 'Nachtrag fehlt');
@@ -298,7 +298,7 @@ test('neue Sets holen den richtigen Zustand, nicht den Standard', () => {
   // fiel auf 'N' zurück — ein als „Gebraucht" importiertes Set bekam den
   // Neupreis als Kaufpreis, weil die anschliessende Preisabfrage für 'U' noch …
   // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#job-stelle
-  const job = fs.readFileSync(path.join(ROOT, 'jobs/priceJob.ts'), 'utf8');
+  const job = fs.readFileSync(path.join(ROOT, 'src/finanzen/preisLauf.ts'), 'utf8');
   const { hatParameter } = require('./helpers/sources');
   assert.ok(hatParameter(job, 'conditionsNeededFor', 'hintCondition', true), 'Der Hinweis-Parameter fehlt');
   assert.match(

@@ -1,6 +1,6 @@
-# Begründungen zu `jobs/wantedXmlImport.ts`
+# Begründungen zu `src/sammlung/wantedXmlImport.ts`
 
-Die ausführlichen Kommentare aus `jobs/wantedXmlImport.ts`, wörtlich. Im Code steht je
+Die ausführlichen Kommentare aus `src/sammlung/wantedXmlImport.ts`, wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 

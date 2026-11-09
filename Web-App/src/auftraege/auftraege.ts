@@ -53,3 +53,30 @@ export type Belegung = Pick<AuftragsZeile, 'id' | 'belegt_von'>;
 
 export interface Pause { art: string; bis: Date; grund: string | null; stufe: number }
 
+/** Was ein Bearbeiter vom Worker bekommt; die Fachdienste kennen nur dies, nicht den Worker. */
+export interface AuftragsKontext {
+  /** false: Der Auftrag gehört nicht mehr diesem Lauf (abgebrochen, neu vergeben). */
+  lebenszeichen(): Promise<boolean>;
+  fortschritt(f: Fortschritt): Promise<boolean>;
+  /** Abgebrochen, neu vergeben oder der Prozess endet: Abrufe und Schleifen hören auf. */
+  readonly signal: AbortSignal;
+  /** Ein langer Auftrag hört an der nächsten sicheren Stelle auf. */
+  readonly beendet: boolean;
+  readonly versuch: number;
+}
+
+/** Wird zurückgegeben und später fortgesetzt, ohne als gescheitert zu gelten. */
+export class AuftragUnterbrochen extends Error {
+  constructor() { super('Auftrag unterbrochen'); }
+}
+
+export class AuftragVerloren extends Error {
+  constructor() { super('Auftrag gehört nicht mehr diesem Lauf'); }
+}
+
+/** Die Gegenseite drosselt oder ein Kontingent ist erschöpft. `zaehlt`
+ * entscheidet, ob es als Versuch gilt (und damit irgendwann endet). */
+export class AuftragVerschieben extends Error {
+  constructor(readonly bis: Date, readonly grund: string, readonly zaehlt = false) { super(grund); }
+}
+

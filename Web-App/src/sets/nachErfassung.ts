@@ -1,15 +1,15 @@
 /** Als Auftrag im Job-Prozess: Ein Neustart verliert nichts, und ein
  * gescheiterter Import von Teilen oder Figuren wird wiederholt. Die
  * Anreicherungen danach melden ihren Fehler, ohne den Auftrag scheitern zu lassen. */
-import { importiereTeile, fetchMissingBlIds } from '../src/katalog/partsImport';
-import { importiereFiguren } from '../src/katalog/minifigsImport';
-import { downloadSetInstructions } from '../src/katalog/instructions';
-import { logAndContinue } from '../src/infra/fehler';
-import { fuelleAusBrickset } from '../src/katalog/bildlage';
-import { anleitungEinreihen } from '../src/auftraege/anleitungsAuftrag';
-import { refreshPriceForSet } from './priceJob';
-import { enrichSetParts, enrichSetMinifigs, downloadSetImages } from '../src/katalog/teileAnreicherung';
-import { pruefeAbbruch, type AuftragsLauf } from '../src/auftraege/auftraege';
+import { importiereTeile, fetchMissingBlIds } from '../katalog/partsImport';
+import { importiereFiguren } from '../katalog/minifigsImport';
+import { downloadSetInstructions } from '../katalog/instructions';
+import { logAndContinue } from '../infra/fehler';
+import { fuelleAusBrickset } from '../katalog/bildlage';
+import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';
+import { refreshPriceForSet } from '../finanzen/preisLauf';
+import { enrichSetParts, enrichSetMinifigs, downloadSetImages } from '../katalog/teileAnreicherung';
+import { pruefeAbbruch, type AuftragsLauf } from '../auftraege/auftraege';
 
 /** zweit: ein vorhandenes Set noch einmal erfasst; neu: angelegt; csv: aus dem CSV-Import. */
 export type NacharbeitArt = 'zweit' | 'neu' | 'csv';

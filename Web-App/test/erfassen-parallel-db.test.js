@@ -185,7 +185,7 @@ test('alle drei Importwege melden übersprungene Zeilen', () => {
                                ['routes/api_v1/minifigs.ts', 'src/figuren/manuelleFiguren.ts']]) {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8')
       + '\n' + fs.readFileSync(path.join(ROOT, dienst), 'utf8')
-      + '\n' + fs.readFileSync(path.join(ROOT, 'jobs/importAuftraege.ts'), 'utf8'));
+      + '\n' + fs.readFileSync(path.join(ROOT, 'src/sammlung/importAuftraege.ts'), 'utf8'));
     assert.match(src, /csvEinlesen\(|csvZeilenAusAnfrage\(/, `${rel}: liest noch selbst`);
     assert.match(src, /skipped_hint|csvImportBericht\(/,
       `${rel}: sagt dem Nutzer nichts über übersprungene Zeilen`);

@@ -13,7 +13,7 @@
  *      Die wirksame Gegenprobe ist die alte REIHENFOLGE — Null-Zeile erst
  *      nach dem Rueckfall, Rueckfall springt heraus. Damit ist Teilschritt 1
  *      rot: zweiter Lauf 'updated' statt 'skipped'.
- *   c) Einen zweiten INSERT INTO price_cache in jobs/priceJob.ts gesetzt
+ *   c) Einen zweiten INSERT INTO price_cache in src/finanzen/preisLauf.ts gesetzt
  *      → Teilschritt 2 rot.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -69,7 +69,7 @@ test('ein BrickLink-Preis wird auf einem Weg weggeschrieben', { concurrency: 1 }
   try {
     // 1. Der Job schreibt die Null-Zeile mit — sonst kostet dasselbe Set
     //    jeden Lauf erneut zwei Abrufe.
-    const { fetchAndCachePrice } = _req('jobs/priceJob.js');
+    const { fetchAndCachePrice } = _req('src/finanzen/preisLauf.js');
     abrufe = [];
     assert.equal(await fetchAndCachePrice(JOB, 'N', 'sold', 'EUR', 24), 'updated');
     const nachLauf1 = abrufe.length;

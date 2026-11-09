@@ -1,42 +1,16 @@
 import { belegKennung } from '../src/auftraege/prozess';
 import {
-  type AuftragsArt, type AuftragsZeile, type Fortschritt,
+  type AuftragsArt, type AuftragsZeile, type Fortschritt, type AuftragsKontext,
+  AuftragUnterbrochen, AuftragVerloren, AuftragVerschieben,
 } from '../src/auftraege/auftraege';
 import {
-  AUFTRAG_KANAL, AUFTRAG_STAND_KANAL, imNamenDesAuftrags, gibZurueck, verschoben, fehlgeschlagen, erledigt,
+  imNamenDesAuftrags, gibZurueck, verschoben, fehlgeschlagen, erledigt, beiNeuemAuftrag, beiAuftragsStand,
   setzeFortschritt, lebenszeichen, gehoertNoch, belegeAuftrag, merkeExklusive,
 } from '../src/auftraege/dienst';
 import { planeNaechsten, hatZeitplan } from '../src/auftraege/zeitplan';
 import { pruefeNutzlast, NutzlastUngueltig, type Nutzlast } from '../src/auftraege/nutzlasten';
-import { listen, unlisten } from '../db/pgNotify';
 import { fehlertext, logAndContinue } from '../src/infra/fehler';
 import { konfig } from '../src/infra/konfig';
-
-export interface AuftragsKontext {
-  /** false: Der Auftrag gehört nicht mehr diesem Lauf (abgebrochen, neu vergeben). */
-  lebenszeichen(): Promise<boolean>;
-  fortschritt(f: Fortschritt): Promise<boolean>;
-  /** Abgebrochen, neu vergeben oder der Prozess endet: Abrufe und Schleifen hören auf. */
-  readonly signal: AbortSignal;
-  /** Ein langer Auftrag hört an der nächsten sicheren Stelle auf. */
-  readonly beendet: boolean;
-  readonly versuch: number;
-}
-
-/** Wird zurückgegeben und später fortgesetzt, ohne als gescheitert zu gelten. */
-class AuftragUnterbrochen extends Error {
-  constructor() { super('Auftrag unterbrochen'); }
-}
-
-class AuftragVerloren extends Error {
-  constructor() { super('Auftrag gehört nicht mehr diesem Lauf'); }
-}
-
-/** Die Gegenseite drosselt oder ein Kontingent ist erschöpft. `zaehlt`
- * entscheidet, ob es als Versuch gilt (und damit irgendwann endet). */
-class AuftragVerschieben extends Error {
-  constructor(readonly bis: Date, readonly grund: string, readonly zaehlt = false) { super(grund); }
-}
 
 /** Die Nutzlast kommt geprüft an (src/auftraege/nutzlasten.ts). */
 export interface Bearbeiter<A extends AuftragsArt = AuftragsArt> {
@@ -143,6 +117,7 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
   const laufend = new Map<string, Lauf>();
   let beendet = false, gestartet = false, pumpt = false;
   let takt: NodeJS.Timeout | null = null;
+  let abmelden: (() => void)[] = [];
   // Am Ende jeder Runde: Daran hängt das Lebenszeichen (startup/jobsProzess.ts).
   let letzteRunde = 0;
   const exklusivGemerkt = merkeExklusive(exklusiv).catch(logAndContinue('auftraege:exklusiv'));
@@ -204,8 +179,7 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
     if (gestartet) return;
     gestartet = true;
     letzteRunde = Date.now();
-    listen(AUFTRAG_KANAL, geweckt);
-    listen(AUFTRAG_STAND_KANAL, standGeaendert);
+    abmelden = [beiNeuemAuftrag(geweckt), beiAuftragsStand(standGeaendert)];
     takt = setInterval(geweckt, o.taktMs ?? 5000);
     takt.unref();
     void pumpe();
@@ -214,7 +188,7 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
   async function stoppe(wartenMs = 3000): Promise<void> {
     beendet = true;
     if (takt) clearInterval(takt);
-    if (gestartet) { unlisten(AUFTRAG_KANAL, geweckt); unlisten(AUFTRAG_STAND_KANAL, standGeaendert); }
+    for (const ab of abmelden) ab();
     await pumpLauf;
     const alle = [...laufend.values()];
     for (const l of alle) if (!l.ac.signal.aborted) l.ac.abort(new AuftragUnterbrochen());
@@ -228,3 +202,4 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
 }
 
 export { AuftragUnterbrochen, AuftragVerloren, AuftragVerschieben, erzeugeWorker };
+export type { AuftragsKontext };

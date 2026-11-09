@@ -53,7 +53,7 @@ require.cache[blPfad].exports = Object.assign({}, echt, {
 async function nachladen() {
   const a = await db.get(`SELECT id, nutzlast FROM auftraege WHERE art = 'preise_nachladen' AND status = 'offen' ORDER BY id DESC LIMIT 1`);
   if (!a) return false;
-  const { preiseNachladen } = _req('jobs/preiseNachladen.js');
+  const { preiseNachladen } = _req('src/finanzen/preiseNachladen.js');
   await preiseNachladen(a.nutzlast, { signal: new AbortController().signal, fortschritt: async () => true });
   await db.run(`DELETE FROM auftraege WHERE art = 'preise_nachladen'`);
   return true;

@@ -1,17 +1,17 @@
 import fsp from 'fs/promises';
 import path from 'path';
-import { bilderAusKatalog as katalogbilder } from '../src/katalog/bildlage';
-import { MINIFIG_IMAGES_DIR } from '../src/infra/appPaths';
-import { getMinifigInfo } from '../src/katalog/quellen';
-import { logAndContinue, meldeFehler } from '../src/infra/fehler';
-import { pdfDateiPfad } from '../src/auftraege/pdfAuftraege';
-import { downloadImage, downloadSetImages } from '../src/katalog/teileAnreicherung';
+import { bilderAusKatalog as katalogbilder } from '../bildlage';
+import { MINIFIG_IMAGES_DIR } from '../../infra/appPaths';
+import { getMinifigInfo } from '../quellen';
+import { logAndContinue, meldeFehler } from '../../infra/fehler';
+import { pdfDateiPfad } from '../../auftraege/pdfAuftraege';
+import { downloadImage, downloadSetImages } from '../teileAnreicherung';
 import { zeichnePdfImFaden, type PdfTeil } from './pdfZeichnen';
-import type { Nutzlast } from '../src/auftraege/nutzlasten';
-import { KEINE_FARBE } from '../src/infra/validate';
-import { merkeFigurBildAdresse, setzeFigurBildLokal, setzeTeilBildLokal } from '../src/katalog/katalogPflege';
-import { normalisiereSetNummer, moeglicheSetNummer } from '../src/infra/setNummer';
-import { pruefeAbbruch, type AuftragsLauf } from '../src/auftraege/auftraege';
+import type { Nutzlast } from '../../auftraege/nutzlasten';
+import { KEINE_FARBE } from '../../infra/validate';
+import { merkeFigurBildAdresse, setzeFigurBildLokal, setzeTeilBildLokal } from '../katalogPflege';
+import { normalisiereSetNummer, moeglicheSetNummer } from '../../infra/setNummer';
+import { pruefeAbbruch, type AuftragsLauf } from '../../auftraege/auftraege';
 
 /** Erst fehlende Bilder holen, dann im eigenen Faden zeichnen. */
 export type PdfNutzlast = Nutzlast<'pdf'>;

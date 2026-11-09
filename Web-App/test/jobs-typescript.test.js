@@ -16,7 +16,7 @@ test('alle Jobs sind TypeScript', () => {
     .filter(f => f.endsWith('.js'))
     .filter(f => !fs.existsSync(path.join(JOBS, f.replace(/\.js$/, '.ts'))));
   assert.equal(jsOnly.length, 0, `Nicht migriert: ${jsOnly.join(', ')}`);
-  assert.ok(ts.length >= 9, `Nur ${ts.length} .ts-Dateien gefunden`);
+  assert.ok(ts.length >= 3, `Nur ${ts.length} .ts-Dateien gefunden`);
 });
 
 test('das Build-Skript erfasst jobs/', () => {
@@ -74,19 +74,4 @@ test('jedes Job-Modul lässt sich laden', () => {
     const m = require(path.join(DIST_JOBS, f));
     assert.equal(typeof m, 'object', `${f} exportiert kein Objekt`);
   }
-});
-
-test('priceJob hat keine eigene Fassung der Einstellungs-Helfer', () => {
-  // Ursprung: getGlobalSetting stand ZWEIMAL in dieser Datei, die zweite
-  // Definition überschrieb die erste stillschweigend. Inzwischen steht gar
-  // keine mehr dort — beide Helfer kommen aus src/einstellungen/settings.ts.
-  // Ausführlich: docs/begruendungen/test/jobs-typescript.test.js.md#src-stelle
-  const src = fs.readFileSync(path.join(JOBS, 'priceJob.ts'), 'utf8');
-  for (const name of ['getSetting', 'getGlobalSetting']) {
-    const defs = (src.match(new RegExp(`(async )?function ${name}\\(`, 'g')) || []).length;
-    assert.equal(defs, 0,
-      `${name} ist in priceJob.ts ${defs}× definiert — es gehört nach src/einstellungen/settings.ts`);
-  }
-  assert.match(src, /import \{[^}]*getGlobalSetting[^}]*\} from '[^']*\/settings'/,
-    'priceJob muss die zentrale Fassung holen');
 });

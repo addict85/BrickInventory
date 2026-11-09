@@ -219,7 +219,7 @@ function startQuelle() {
   const path = require('path'), fs = require('fs');
   const ROOT = path.join(__dirname, '..', '..');
   const dir = path.join(ROOT, 'startup');
-  const teile = ['server.ts', 'jobs/bildNachlauf.ts', 'jobs/startNachlaeufe.ts', 'jobs/aufraeumen.ts',
+  const teile = ['server.ts', 'src/katalog/bildNachlauf.ts', 'src/verwaltung/startNachlaeufe.ts', 'src/verwaltung/aufraeumen.ts',
     'src/katalog/bildlage.ts']
     .map(f => dienstQuelle(f));
   if (fs.existsSync(dir)) {

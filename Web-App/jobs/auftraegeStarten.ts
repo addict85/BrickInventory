@@ -1,20 +1,21 @@
+import path from 'path';
 import { erzeugeWorker, type Bearbeitertabelle, type WorkerOptionen } from './auftragsWorker';
-import { zieheNach, ladeSetBilder } from './nachErfassung';
-import { erzeugePdf, pdfAufgegeben } from './pdfErzeugung';
-import { fuehreCsvImportAus, csvImportAufgegeben } from './setCsvImport';
-import { fuehreImportAus } from './importAuftraege';
-import { anleitungLaden } from './instructionQueue';
-import { bricksetNachlauf } from './bricksetRetry';
-import { bildbedarfAbarbeiten } from './imageQueue';
+import { zieheNach, ladeSetBilder } from '../src/sets/nachErfassung';
+import { erzeugePdf, pdfAufgegeben } from '../src/katalog/pdf/pdfErzeugung';
+import { fuehreCsvImportAus, csvImportAufgegeben } from '../src/sets/csvImportLauf';
+import { fuehreImportAus } from '../src/sammlung/importAuftraege';
+import { anleitungLaden } from '../src/katalog/anleitungLaden';
+import { bricksetNachlauf } from '../src/katalog/bricksetNachlauf';
+import { bildbedarfAbarbeiten } from '../src/katalog/bilder/bildbedarfLauf';
 import { redownloadMissingImages, downloadSetImages } from '../src/katalog/teileAnreicherung';
-import { nachlauf } from './startNachlaeufe';
-import { csvAbgleich } from './rebrickableCsvSync';
-import { runPriceRefresh } from './priceJob';
-import { bildNachlauf } from './bildNachlauf';
-import { aufraeumen, aufraeumenTaeglich } from './aufraeumen';
+import { nachlauf } from '../src/verwaltung/startNachlaeufe';
+import { csvAbgleich, setzeImportProzess } from '../src/katalog/csvAbgleich';
+import { runPriceRefresh } from '../src/finanzen/preisLauf';
+import { bildNachlauf } from '../src/katalog/bildNachlauf';
+import { aufraeumen, aufraeumenTaeglich } from '../src/verwaltung/aufraeumen';
 import type { AuftragsArt } from '../src/auftraege/auftraege';
 import { kursauftrag } from '../src/finanzen/wechselkurse';
-import { preiseNachladen } from './preiseNachladen';
+import { preiseNachladen } from '../src/finanzen/preiseNachladen';
 
 /** Exklusiv sind Arten, die eine Gegenseite schonen oder Tabellen tauschen. */
 const BEARBEITER: Bearbeitertabelle = {
@@ -46,6 +47,9 @@ const BEARBEITER: Bearbeitertabelle = {
   aufraeumen_taeglich: { ausfuehren: (_n, k) => aufraeumenTaeglich(k), exklusiv: true },
   preise_nachladen:    { ausfuehren: (n, k) => preiseNachladen(n, k), exklusiv: true },
 };
+
+// Der Katalog-Import läuft in einem eigenen Prozess, dessen Einstieg neben dieser Datei liegt.
+setzeImportProzess(path.join(__dirname, 'csvImportWorker.js'));
 
 let _worker: ReturnType<typeof erzeugeWorker> | null = null;
 
