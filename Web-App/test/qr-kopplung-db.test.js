@@ -50,8 +50,10 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
   });
   const sitzung = { userId: ids[0], username: NAMEN[0] };
   const { base } = testServer(_req, { sitzung, routen: { '/api/v1/auth': 'routes/auth.js' }, t });
+  // Über IPv4: Mit „localhost“ fragt der CI-Läufer über ::1, und das geprüfte Netz hiesse 0:0:0::/48.
+  const adresse = base.replace('localhost', '127.0.0.1');
   const ruf = async (methode, pfad, body) => {
-    const r = await fetch(`${base}/api/v1/auth${pfad}`, {
+    const r = await fetch(`${adresse}/api/v1/auth${pfad}`, {
       method: methode,
       headers: { 'content-type': 'application/json' },
       body: body && JSON.stringify(body),
