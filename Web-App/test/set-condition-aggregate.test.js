@@ -382,10 +382,9 @@ test('Android-API: Marktpreis benutzt den Zustand des Sets, nicht den globalen S
   // seit einer früheren Runde mit Blickfeld (uids aus scopeIds) — sonst 404 im Haushalt
   assert.match(
     priceRoute,
-    /const cond = await resolveSetCondition\(blickfeld, sn\);/,
+    /fetchPrice\(sn, await resolveSetCondition\(blickfeld, sn\), /,
     'Der Zustand muss über den gemeinsamen Helfer aufgelöst werden',
   );
-  assert.match(priceRoute, /fetchPrice\(sn, cond, /, 'fetchPrice muss den aufgelösten Zustand bekommen');
 
   const historyRoute = src.slice(
     src.indexOf("router.get('/sets/:setNumber/price-history'"),
