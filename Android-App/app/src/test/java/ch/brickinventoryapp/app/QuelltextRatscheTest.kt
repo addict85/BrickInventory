@@ -16,6 +16,10 @@ import ch.brickinventoryapp.testing.Quellen
  *   schranke-zu-hoch           Schranke der Quelltext-Funktionen +1 → rot „Testfunktionen,
  *                              die Quelltext lesen …“ (gesunken, nachziehen)
  *   helfer-zaehlt-nicht        ein lesender Helfer zählt nicht mehr → rot, derselbe Test
+ *   werkzeugausgabe-zaehlt     die Ausgabe eines Werkzeugs zählt wieder als Quelltext → rot „die Ausgabe
+ *                              eines Werkzeugs …“ und „Testfunktionen, die Quelltext lesen …“
+ *   geschichte-im-testkopf     Nachtragsnummer und Melder im Kopf von TabOpensAtTopTest → rot „lange
+ *                              Kommentare im Workflow und in Tests …“
  *   kommentar-zu-lang          sechs Zeilen Prosa über AppViewModel → rot „kein Kommentar hat …“
  *   bau-kommentar-zu-lang      sechs Zeilen in gradle.properties → rot „kein Kommentar in Build …“
  *   verweis-ins-leere          ein Anker in Vorwaermen.kt verschrieben → rot „jeder Verweis …“
@@ -46,8 +50,12 @@ class QuelltextRatscheTest {
             schranke.toDouble(), gemessen.toDouble(), 0.0)
     }
 
-    /** Was als Lesen von Quelltext zählt: Quellen.*, Pfade unter src/main, Workflow, Ressourcen, Dateitext. */
-    private val liestQuelle = Regex("""Quellen\.|"src/main/|File\("src/main|\.\./\.\./\.github|res/values|readText\(\)|readLines\(\)""")
+    /**
+     * Was als Lesen von Quelltext zählt: Quellen.*, Pfade unter src/main, Workflow, Ressourcen,
+     * Dateitext. Die Ausgabe eines gestarteten Werkzeugs (`bufferedReader().readText()`) ist
+     * ein Ergebnis, kein Quelltext.
+     */
+    private val liestQuelle = Regex("""Quellen\.|"src/main/|File\("src/main|\.\./\.\./\.github|res/values|(?<!bufferedReader\(\)\.)readText\(\)|readLines\(\)""")
 
     /**
      * (Testfunktionen, davon lesend) einer Datei. Eine Funktion liest Quelltext, wenn ihr Rumpf
@@ -66,8 +74,8 @@ class QuelltextRatscheTest {
 
     @Test
     fun `Testfunktionen, die Quelltext lesen, werden weniger, nie mehr`() {
-        val FUNKTIONEN = 282
-        val NUR_QUELLTEXT = 50
+        val FUNKTIONEN = 254
+        val NUR_QUELLTEXT = 42
         val alle = Quellen.tests.walkTopDown().filter { it.isFile && it.name.endsWith("Test.kt") }
             .filter { it.name != "QuelltextRatscheTest.kt" }.toList()
         val zaehlung = alle.associate { it.name to quelltextFunktionen(it.readText()) }
@@ -84,6 +92,14 @@ class QuelltextRatscheTest {
         val datei = "private val src = Quellen.lies(\"x.kt\")\n" +
             "@Test\nfun a() {\n    assert(\"y\" in src)\n    }\n" +
             "@Test\nfun b() {\n    assert(1 + 1 == 2)\n    }\n"
+        assertEquals(2 to 1, quelltextFunktionen(datei))
+    }
+
+    @Test
+    fun `die Ausgabe eines Werkzeugs ist kein Quelltext`() {
+        val datei = "private fun lauf() = ProcessBuilder(\"python3\").start().inputStream.bufferedReader().readText()\n" +
+            "@Test\nfun a() {\n    assert(\"ok\" in lauf())\n    }\n\n" +
+            "@Test\nfun b() {\n    assert(\"x\" in File(\"y\").readText())\n    }\n"
         assertEquals(2 to 1, quelltextFunktionen(datei))
     }
 
@@ -198,8 +214,9 @@ class QuelltextRatscheTest {
     @Test
     fun `lange Kommentare im Workflow und in Tests werden weniger`() {
         val WORKFLOW = 3
-        val TESTS = 86
+        val TESTS = 64
         val DATUM_UND_KENNUNG = 0
+        val GESCHICHTE = 27
         val wf = File(Quellen.projekt, "../.github/workflows/android.yml").readLines()
         val wfLang = rautenBloecke(wf).filter { it.second > 5 }
         // In Tests darf ein Absatz nur dann länger sein, wenn er die Gegenproben aufzählt.
@@ -213,11 +230,21 @@ class QuelltextRatscheTest {
                     kennung.containsMatchIn(t) && !t.contains("Gegenprobe", ignoreCase = true)
             }.map { "${f.name}: ${it.trim()}" }
         }
+        // Wer was gemeldet hat und in welchem Nachtrag, steht im Commit, nicht im Testkopf.
+        val erzaehlung = Regex("""Nachtr[aä]g\w*\s+[0-9]|\bMarcos?\b|Woher dies""")
+        val erzaehlt = dateien.flatMap { f ->
+            f.readLines().filter { z ->
+                val t = z.trim()
+                (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) && erzaehlung.containsMatchIn(t)
+            }.map { "${f.name}: ${it.trim()}" }
+        }
         assertTrue("Nur ${wf.size} Zeilen Workflow — Pfad veraltet?", wf.size > 500)
         ratsche("Workflow-Kommentare über fünf Zeilen", WORKFLOW, wfLang.size, wfLang.joinToString())
         ratsche("Absätze über fünf Zeilen in Tests ohne Gegenproben", TESTS, testLang.size, testLang.take(20).joinToString())
         ratsche("Datum oder Prüfkennung in Testkommentaren ausserhalb der Gegenproben", DATUM_UND_KENNUNG, geschichte.size,
             geschichte.take(20).joinToString("\n  "))
+        ratsche("Geschichte (Nachtrag, Melder, Herkunft) in Testkommentaren", GESCHICHTE, erzaehlt.size,
+            erzaehlt.take(20).joinToString("\n  "))
     }
 
     /** Zeilennummern der Kommentar-Absätze über fünf Prosazeilen, die nicht mit „Gegenprobe“ beginnen. */
