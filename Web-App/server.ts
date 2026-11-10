@@ -19,7 +19,7 @@ import { hinweisOhneBasisUrl } from './src/infra/basisUrl';
 import { sitzungsKeksName, sitzungsKeksOptionen } from './src/http/sitzungsKeks';
 import { bereiteDatenbankVor } from './startup/datenbank';
 import { starteJobs, stoppeJobs } from './startup/jobsProzess';
-import { verdrahte, baueVerdrahtung } from './startup/verdrahtung';
+import { verdrahteProzess } from './startup/verdrahtung';
 import { drossleBeruehren } from './src/konto/sitzungsBeruehrung';
 import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './src/konto/sitzungsFrist';
 import { sitzungsVersionPruefen } from './src/konto/http/sitzungsPruefung';
@@ -350,9 +350,7 @@ async function starte(): Promise<void> {
   console.log(`[start] Prozess ${process.pid}, Rolle ${k.rolle}`);
   // Datenbankzugang und Verdrahtung entstehen hier, nicht beim Import eines Moduls;
   // Erfassungen und Einstellungen stossen ihre Nacharbeit in jedem Prozess an.
-  const zugang = db.erzeugeDb(db.dbKonfigAusUmgebung());
-  db.setzeStandardDb(zugang);
-  verdrahte(baueVerdrahtung(), zugang);
+  verdrahteProzess();
 
   try { await bereiteDatenbankVor(); }
   catch (e) {

@@ -191,7 +191,7 @@ async function main() {
     await raeumeAuf(a, vorlage, true);
     await a.query(`CREATE DATABASE ${id(vorlage)}`);
     execFileSync(process.execPath, ['-e',
-      "const db = require('./dist/db/database.js'); require('./dist/startup/verdrahtung.js').verdrahte(); db.initSchemaOnce().then(() => db.pool.end()).catch(e => { console.error(e); process.exit(1); })"],
+      "const db = require('./dist/startup/verdrahtung.js').verdrahteProzess(); db.initSchemaOnce().then(() => db.pool.end()).catch(e => { console.error(e); process.exit(1); })"],
       { cwd: ROOT, stdio: ['ignore', 'ignore', 'inherit'], env: { ...process.env, DATABASE_URL: mitDb(basis, vorlage) } });
     env = { ...env, TEST_DB_VORLAGE: vorlage, TEST_DB_BASIS: basis };
   }

@@ -6,18 +6,18 @@ import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
 import { merkeTeil, merkeTeilFarbe, merkeSetTeil, setzeTeilBildLokal, merkeFiguren, merkeSetFiguren } from './katalogPflege';
 import { logAndContinue, meldeUndLiefere, meldeFehler } from '../infra/fehler';
-import { katalogBildstand, inventarTeileOhneErsatz, inventarFiguren, setsOhneTeilekatalog, manuelleFarbteile, ersetzeTeilfarbenbild } from './repository/csvKatalog';
 import path from 'path';
 import fs from 'fs';
 import { PART_IMAGES_DIR as IMG_DIR } from '../infra/appPaths';
 import { rebrickableBackgroundLimiter as rebrickableLimiter } from './rateLimiter';
 import { KEINE_FARBE } from '../infra/validate';
+import { katalog } from './prozess';
 async function syncSetCatalog(setNumber: string) {
   // mitVersion(): Sonst ergäbe `alt` denselben Wert wie `n`, und die blanke
   // Nummer würde nie geprüft.
   const n = mitVersion(setNumber);
 
-  const stand = await katalogBildstand(n).catch(meldeUndLiefere('katalog-sync:existing', { total: 0, mitBild: 0 }));
+  const stand = await katalog().csvKatalog.katalogBildstand(n).catch(meldeUndLiefere('katalog-sync:existing', { total: 0, mitBild: 0 }));
   const total = stand.total, withImg = stand.mitBild;
   if (total > 0 && withImg >= total) {
     return;
@@ -27,7 +27,7 @@ async function syncSetCatalog(setNumber: string) {
     return;
   }
 
-  const parts = await inventarTeileOhneErsatz(invId).catch(meldeUndLiefere('katalog-sync:inventar lesen', []));
+  const parts = await katalog().csvKatalog.inventarTeileOhneErsatz(invId).catch(meldeUndLiefere('katalog-sync:inventar lesen', []));
 
   if (!parts.length) {
     // Noch keine Teile im CSV-Zwischenspeicher — still überspringen.
@@ -68,7 +68,7 @@ async function syncSetCatalog(setNumber: string) {
     }
   }
 
-  const figs = await inventarFiguren(invId).catch(meldeUndLiefere('katalog-sync:figs', []));
+  const figs = await katalog().csvKatalog.inventarFiguren(invId).catch(meldeUndLiefere('katalog-sync:figs', []));
 
   await merkeFiguren(figs.map(f => ({ figNumber: f.fig_number, figName: f.fig_name, imageUrl: f.image_url })))
     .catch(logAndContinue('katalog-sync:figur merken'));
@@ -77,13 +77,13 @@ async function syncSetCatalog(setNumber: string) {
 }
 
 async function syncAllMissing() {
-  const sets = await setsOhneTeilekatalog();
+  const sets = await katalog().csvKatalog.setsOhneTeilekatalog();
   for (const s of sets) await syncSetCatalog(s);
 }
 
 /** Die gewählte Farbe, nicht das oft falschfarbige Standardbild. */
 async function teilfarbenbilderNachtragen() {
-  const rows = await manuelleFarbteile();
+  const rows = await katalog().csvKatalog.manuelleFarbteile();
   if (!rows.length) return;
   console.log(`  [purchase-price-backfill] Teile mit Farbbild zu prüfen: ${rows.length}`);
   let done = 0;
@@ -91,7 +91,7 @@ async function teilfarbenbilderNachtragen() {
     try {
       const info = await lookupPart(row.part_number, row.color_id);
       if (info?.image_url) {
-        await ersetzeTeilfarbenbild(row.part_number, row.color_id, info.image_url);
+        await katalog().csvKatalog.ersetzeTeilfarbenbild(row.part_number, row.color_id, info.image_url);
         done++;
       }
     } catch (e) { meldeFehler('kaufpreis-nachtrag:teilebild', e); }

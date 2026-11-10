@@ -1,4 +1,4 @@
-import * as repo from './repository/katalogSuche';
+import type * as repo from './repository/katalogSuche';
 import { meldeUndLiefere } from '../infra/fehler';
 import { resolveIfExists, resolveImageLocal } from './bilder/images';
 import { dateiStamm } from './bilder/bildBlickfeld';
@@ -9,6 +9,7 @@ import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
 import { nacharbeit } from '../auftraege/nacharbeit';
 import { scopeIds } from '../haushalt/haushalt';
+import { katalog } from './prozess';
 
 // rb_themes ändert sich höchstens täglich; der Baum wird je Prozess eine
 // Stunde gemerkt, weil jeder Filter ihn braucht.
@@ -23,7 +24,7 @@ const THEME_CACHE_TTL = 60 * 60 * 1000;
 
 async function getThemeTree() {
   if (_themeCache && Date.now() - _themeCache.at < THEME_CACHE_TTL) return _themeCache;
-  const rows = await repo.themen();
+  const rows = await katalog().katalogSuche.themen();
   const byId = new Map<number, ThemeNode>();
   const children = new Map<number, number[]>();
   for (const r of rows) {
@@ -73,9 +74,9 @@ function descendantIds(tree: Awaited<ReturnType<typeof getThemeTree>>, rootId: n
 export async function katalogMeta() {
   const tree = await getThemeTree();
   const [counts, years, yearCounts] = await Promise.all([
-    repo.setsJeThema(),
-    repo.jahresspanne(),
-    repo.setsJeJahr(),
+    katalog().katalogSuche.setsJeThema(),
+    katalog().katalogSuche.jahresspanne(),
+    katalog().katalogSuche.setsJeJahr(),
   ]);
   const direct = new Map<number, number>();
   for (const c of counts) direct.set(c.theme_id, c.n);
@@ -98,13 +99,13 @@ async function waehle(f: KatalogFilter): Promise<repo.KatalogWahl> {
 
 /** NULL-Jahre stehen bei absteigender Sortierung vorn, wie in der Liste. */
 export async function jahrVerteilung(f: KatalogFilter, absteigend: boolean) {
-  return repo.setsJeJahrGefiltert(await waehle({ q: f.q, themeId: f.themeId }), absteigend);
+  return katalog().katalogSuche.setsJeJahrGefiltert(await waehle({ q: f.q, themeId: f.themeId }), absteigend);
 }
 
 export async function katalogSeite(userId: number, f: KatalogFilter, sortRoh: unknown, page: number, limit: number) {
   const wahl = await waehle(f);
   const [total, sets] = await Promise.all([
-    repo.katalogAnzahl(wahl), repo.katalogZeilen(await scopeIds(userId), wahl, sortRoh, limit, (page - 1) * limit)]);
+    katalog().katalogSuche.katalogAnzahl(wahl), katalog().katalogSuche.katalogZeilen(await scopeIds(userId), wahl, sortRoh, limit, (page - 1) * limit)]);
   const tree = await getThemeTree();
   // Die Liste stösst keine Bildarbeit an; fehlende Bilder holt der Bild-Proxy.
   return { total, page, page_size: limit, pages: Math.max(1, Math.ceil(total / limit)),
@@ -112,14 +113,14 @@ export async function katalogSeite(userId: number, f: KatalogFilter, sortRoh: un
       theme_name: tree.pathName.get(s.theme_id) || null })) };
 }
 
-export const katalogGeladen = async () => !(await repo.katalogLeer());
+export const katalogGeladen = async () => !(await katalog().katalogSuche.katalogLeer());
 
 export async function katalogSet(userId: number, roh: string) {
   const n = mitVersion(roh.trim());
-  const set = await repo.katalogZeile(await scopeIds(userId), n);
+  const set = await katalog().katalogSuche.katalogZeile(await scopeIds(userId), n);
   if (!set) return null;
   const invId = await neuestesInventar(n).catch(meldeUndLiefere('katalog:neuestesInventar', null));
-  const m = invId ? await repo.figurenImInventar(invId)
+  const m = invId ? await katalog().katalogSuche.figurenImInventar(invId)
     .catch(meldeUndLiefere('katalog:figuren', undefined)) : undefined;
   const tree = await getThemeTree();
   // Geprüft wird gegen BrickLink nur hier, auf einer geöffneten Seite.

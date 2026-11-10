@@ -57,7 +57,7 @@ export class RateLimiter {
 
 import { meldeFehler, meldeUndLiefere } from '../infra/fehler';
 import { checkAndIncrementRateLimit, getRateLimitStatus, REBRICKABLE_DEFAULT_DAILY } from './apiKontingent';
-import * as repo from './repository/apiTakt';
+import { katalog } from './prozess';
 
 // Nach einem Datenbankfehler eine Minute ohne gemeinsamen Takt: Jeder Aufruf
 // liefe sonst erst in den Verbindungs-Timeout. Die eigene Drossel bleibt.
@@ -68,7 +68,7 @@ let taktGestoertBis = 0;
 export async function warteAufTakt(api: string, abstandMs: number): Promise<void> {
   if (Date.now() < taktGestoertBis) return;
   try {
-    const r = await repo.belegeTakt(api, abstandMs);
+    const r = await katalog().apiTakt.belegeTakt(api, abstandMs);
     const warte = Math.ceil(Number(r?.warte_ms) || 0);
     if (warte > 0) await new Promise(res => setTimeout(res, warte));
   } catch (e) {
@@ -80,7 +80,7 @@ export async function warteAufTakt(api: string, abstandMs: number): Promise<void
 /** Ein 429 gilt für alle Prozesse. */
 function taktAussetzen(api: string, waitMs: number) {
   if (Date.now() < taktGestoertBis) return;
-  repo.schiebeTakt(api, waitMs)
+  katalog().apiTakt.schiebeTakt(api, waitMs)
     .catch(e => meldeFehler('drossel:takt-aussetzen', e));
 }
 

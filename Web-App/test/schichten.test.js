@@ -394,7 +394,7 @@ test('SQL steht nur in Repositories und in db/', () => {
 // seit 10.11.2026 der Typ Db (Kontext eines Bereichs) und standardDb() für die Verdrahtung.
 const DB_AUSSERHALB = new Set(['transaction', 'pool', 'eigeneVerbindung', 'datenbankAntwortet', 'getPoolStats',
   'alsSuperuserVerbunden', 'initSchemaOnce', 'DbSchnittstelle', 'Db', 'erzeugeDb', 'setzeStandardDb', 'standardDb',
-  'dbKonfigAusUmgebung', 'setzeErststart']);
+  'dbKonfigAusUmgebung']);
 
 test('ausserhalb von repository/ und db/ fragt niemand die Datenbank ab', () => {
   // Die SQL-Suche oben liest Text; ein Aufruf unter anderem Namen (`datenbank.all(SQL)` mit dem

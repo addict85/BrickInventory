@@ -369,7 +369,7 @@ test('restore.sh spielt als App-Rolle ein', { timeout: 240_000 }, async (t) => {
     const u = new URL(basis); u.pathname = '/' + db; u.username = nutzer; u.password = pw; return u.toString();
   };
   const schema = (url) => spawnSync(process.execPath, ['-e',
-    "const db = require('./dist/db/database.js'); require('./dist/startup/verdrahtung.js').verdrahte(); db.initSchemaOnce().then(() => db.pool.end()).catch(e => { console.error(e.message); process.exit(1); })"],
+    "const db = require('./dist/startup/verdrahtung.js').verdrahteProzess(); db.initSchemaOnce().then(() => db.pool.end()).catch(e => { console.error(e.message); process.exit(1); })"],
   { cwd: ROOT, encoding: 'utf8', env: { ...process.env, DATABASE_URL: url } });
   const rolle = () => spawnSync('sh', [path.join(ROOT, 'postgres', 'app-rolle.sh')], { encoding: 'utf8', env: umgebung });
 

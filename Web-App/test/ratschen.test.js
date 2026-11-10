@@ -106,16 +106,24 @@ function nimmtProzesszugang(f) {
   return /^import (?:\* as \w+|\{[^}]*\}) from '[./]+\/db\/database';/m.test(fs.readFileSync(f, 'utf8'));
 }
 
-test('der Kompatibilitätsweg zur Datenbank wird weniger, nie mehr', () => {
+test('der Kompatibilitätsweg zur Datenbank und modulweite let werden weniger, nie mehr', () => {
   // db/database.ts hat eine Fabrik (erzeugeDb); wer noch die Funktionen des
   // Prozesszugangs importiert, statt einen Zugang übergeben zu bekommen, zählt hier.
-  // Gemessen 94 am 10.11.2026.
+  // Gemessen 73 am 10.11.2026 (src/katalog über erzeugeKatalog).
   // Gegenprobe (09.11.2026): ein `import * as db from '../../db/database'` in src/sets/zeilen.ts → rot.
-  const SCHRANKE = 94;
+  const SCHRANKE = 73;
   const ist = quellen().filter(nimmtProzesszugang).length;
   assert.ok(ist > 50, `nur ${ist} Importe gefunden — greift die Suche noch?`);
   assert.ok(ist <= SCHRANKE, `${ist} Dateien nehmen den Prozesszugang aus db/database, erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ Kompatibilitätsweg db/database: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+
+  // Modulweite let: Zustand, den alle Aufrufer eines Prozesses teilen; ein Bereich
+  // bekommt seinen über die Fabrik. Gemessen 58 am 10.11.2026.
+  // Gegenprobe (10.11.2026): `let _probe = 0;` in src/katalog/kontext.ts → rot mit 59.
+  const LET_SCHRANKE = 58;
+  const lets = quellen().reduce((n, f) => n + (fs.readFileSync(f, 'utf8').match(/^(?:export )?let /gm) || []).length, 0);
+  assert.ok(lets > 20 && lets <= LET_SCHRANKE, `${lets} modulweite let, erlaubt sind ${LET_SCHRANKE}`);
+  if (lets < LET_SCHRANKE) console.log(`  ℹ modulweite let: ${lets} (Schranke ${LET_SCHRANKE}) — Schranke nachziehen`);
 });
 
 test('any wird weniger, nie mehr', () => {
@@ -257,10 +265,10 @@ function quelltextFaelle() {
 }
 
 test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
-  // Gemessen 404 am 10.11.2026 (die Ratschen selbst zählen mit).
+  // Gemessen 393 am 10.11.2026 (die Ratschen selbst zählen mit).
   // Gegenprobe (08.11.2026): `\b_req\w*\(` aus FALL_FUEHRT_AUS entfernt → rot (574).
   // Gegenprobe (05.11.2026): parts-paging.test.js auf den Stand vor den jsdom-Tests → rot.
-  const SCHRANKE = 394;
+  const SCHRANKE = 393;
   const { n, alle } = quelltextFaelle();
   assert.ok(alle > 2000, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
   assert.ok(n <= SCHRANKE, `${n} Testfälle lesen nur Quelltext, erlaubt sind ${SCHRANKE}. ` +
@@ -372,8 +380,8 @@ test('kein Modul wird in einer Datei zweimal importiert', () => {
 });
 
 test('der Kommentaranteil im Server sinkt, nie steigt', () => {
-  // Gezählt in server.ts, routes/, src/ und jobs/. Gemessen 13,1 % am 10.11.2026.
-  const SCHRANKE = 13.2;
+  // Gezählt in server.ts, routes/, src/ und jobs/. Gemessen 12,5 % am 10.11.2026.
+  const SCHRANKE = 12.5;
   let zeilen = 0, kommentar = 0;
   for (const f of quellen().filter(f => /[\\/](routes|src|jobs)[\\/]/.test(f) || /[\\/]server\.ts$/.test(f))) {
     for (const z of fs.readFileSync(f, 'utf8').split('\n')) {
@@ -401,9 +409,9 @@ function oberflaeche() {
 const TYPZEILE = /^(\/\*\*\s*)?\*?\s*@(param|type|returns?|typedef|template|this|property)\b|^\/\*\*$|^\*\/$|^\*$/;
 
 test('der Kommentaranteil der Oberfläche sinkt, nie steigt', () => {
-  // Ohne Typzeilen gezählt. Gemessen 19,6 % am 10.11.2026.
+  // Ohne Typzeilen gezählt. Gemessen 18,4 % am 10.11.2026.
   // Gegenprobe: 300 Kommentarzeilen an 01-dom.js → rot.
-  const SCHRANKE = 20.0;
+  const SCHRANKE = 18.4;
   let zeilen = 0, kommentar = 0;
   for (const f of oberflaeche()) {
     for (const z of fs.readFileSync(f, 'utf8').split('\n')) {
@@ -478,9 +486,9 @@ function funktionsLaengen(dateien = oberflaeche()) {
 }
 
 test('keine Funktion der Oberfläche über 100 Zeilen, über 80 werden weniger', () => {
-  // Gemessen 0 über 100 und 5 über 80 am 10.11.2026. Gegenprobe: loadFinance wieder in einem Stück
+  // Gemessen 0 über 100 und 4 über 80 am 10.11.2026. Gegenprobe: loadFinance wieder in einem Stück
   // (vor dem Aufteilen) → rot mit „04-finance.js … loadFinance“.
-  const SCHRANKE_80 = 5;
+  const SCHRANKE_80 = 4;
   const alle = funktionsLaengen();
   assert.ok(alle.length > 500, `nur ${alle.length} Funktionen gefunden — greift die Suche noch?`);
   const ueber100 = alle.filter(x => x.zeilen > 100).map(x => `${x.ort} (${x.zeilen})`);
@@ -525,9 +533,9 @@ test('ungeprueft() wird weniger, nie mehr', () => {
 });
 
 test('keine Datei der Oberfläche über 1000 Zeilen, die grossen werden kleiner', () => {
-  // Eine Sammeldatei zieht Neues an, weil es dort schon liegt. Gemessen grösste 598, über 600 keine am 09.11.2026.
+  // Eine Sammeldatei zieht Neues an, weil es dort schon liegt. Gemessen grösste 591, über 600 keine am 10.11.2026.
   // Gegenprobe (09.11.2026): an 04-finance.js drei Leerzeilen gehängt → rot: „grösste Datei 601 Zeilen“.
-  const SCHRANKE_GROESSTE = 598, SCHRANKE_UEBER_600 = 0;
+  const SCHRANKE_GROESSTE = 591, SCHRANKE_UEBER_600 = 0;
   const laengen = oberflaeche().map(f => ({ f: path.relative(WEB, f), n: fs.readFileSync(f, 'utf8').split('\n').length }));
   assert.ok(laengen.length > 40, `nur ${laengen.length} Dateien gefunden — greift die Suche noch?`);
   const ueber1000 = laengen.filter(x => x.n > 1000).map(x => `${x.f} (${x.n})`);
@@ -553,9 +561,9 @@ test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie meh
 });
 
 test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () => {
-  // Je Ordner eine Schranke, gemessen am 06.11.2026.
+  // Je Ordner eine Schranke, gemessen am 10.11.2026.
   // Gegenprobe: 40 Kommentarzeilen an clients/ezb.ts gehängt → rot (clients).
-  const SCHRANKE = { db: 25.8, clients: 16.2, scripts: 25.5 };
+  const SCHRANKE = { db: 24.4, clients: 15.6, scripts: 24.9 };
   const zuViel = [];
   for (const [ordner, schranke] of Object.entries(SCHRANKE)) {
     let zeilen = 0, kommentar = 0;
@@ -607,9 +615,9 @@ test('Geschichte in Testkommentaren wird weniger, nie mehr', () => {
 test('der Kommentaranteil der Tests sinkt, nie steigt', () => {
   // Eigene Schranke: Testköpfe zählen ihre Gegenproben auf (CLAUDE.md), der
   // Anteil liegt deshalb höher als im Server. Geschichte gehört auch hier in
-  // den Commit. Gezählt in test/*.js und test/helpers/. Gemessen 21,6 % am 10.11.2026.
+  // den Commit. Gezählt in test/*.js und test/helpers/. Gemessen 21 % am 10.11.2026.
   // Gegenprobe: 300 Kommentarzeilen an eine Testdatei gehängt → rot.
-  const SCHRANKE = 21.6;
+  const SCHRANKE = 21;
   const dateien = [
     ...fs.readdirSync(__dirname).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, n)),
     ...fs.readdirSync(path.join(__dirname, 'helpers')).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, 'helpers', n)),
@@ -701,9 +709,9 @@ function langeBloecke(/** @type {string} */ text) {
 test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie mehr', () => {
   // Im Code steht das Warum in wenigen Zeilen, die Geschichte im Commit (CLAUDE.md);
   // Gegenprobenlisten zählen nicht.
-  // Gemessen am 10.11.2026: Tests 64 Blöcke, scripts 0, index.html 216 Zeilen.
+  // Gemessen am 10.11.2026: Tests 58 Blöcke, scripts 0, index.html 165 Zeilen.
   // Gegenprobe (06.11.2026): sechs Zeilen Prosa vor die Gegenprobe im Kopf von hsts.test.js → rot (Tests 75).
-  const SCHRANKE = { tests: 62, scripts: 0, indexHtml: 216 };
+  const SCHRANKE = { tests: 58, scripts: 0, indexHtml: 165 };
   const js = (/** @type {string} */ d) => fs.readdirSync(d).filter(f => f.endsWith('.js')).map(f => path.join(d, f));
   const zaehle = (/** @type {string[]} */ l) => l.reduce((n, f) => n + langeBloecke(fs.readFileSync(f, 'utf8')), 0);
   let html = 0;

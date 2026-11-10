@@ -1,7 +1,7 @@
-import * as db from '../../../db/database';
+import type { DbSchnittstelle } from '../../../db/database';
 
 /** Alle Setnummern eines Blickfelds; `besitz` nur für Sets im Bestand. */
-export function setsImBlickfeld(ids: number[]) {
+export function setsImBlickfeld(db: DbSchnittstelle, ids: number[]) {
   return db.all<{ set_number: string; besitz: boolean }>(
     `SELECT set_number, bool_or(besitz) AS besitz FROM (
        SELECT set_number, true AS besitz FROM sets WHERE user_id = ANY($1)

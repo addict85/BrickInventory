@@ -1,6 +1,6 @@
 import { logAndContinue, meldeUndLiefere } from '../../infra/fehler';
 import { stelleAuftragEin } from '../../auftraege/dienst';
-import * as repo from '../repository/bildbedarf';
+import { katalog } from '../prozess';
 
 /** Daten, keine Warteschlange: je Adresse eine Zeile. Abgearbeitet vom EINEN
  * Auftrag 'bildbedarf', der in Stapeln mit Rücksicht auf das CDN holt. */
@@ -32,7 +32,7 @@ export function merkeGebraucht(url: string, setNumber: string | null): void {
 }
 
 export async function notiereBildbedarf(urls: string[], sets: (string | null)[]): Promise<void> {
-  await repo.merkeBildwuensche(urls, sets);
+  await katalog().bildbedarf.merkeBildwuensche(urls, sets);
 }
 
 export async function schreibePuffer(): Promise<void> {
@@ -50,24 +50,24 @@ export async function initImageQueue(): Promise<void> {
 
 // Sonst bleiben alte Notizen.
 export async function loescheVerfallene(): Promise<number> {
-  const r = await repo.loescheAlteBildwuensche(String(NOTIZ_GILT_MS)).catch(meldeUndLiefere('bild-job:r', null));
+  const r = await katalog().bildbedarf.loescheAlteBildwuensche(String(NOTIZ_GILT_MS)).catch(meldeUndLiefere('bild-job:r', null));
   return r?.changes || 0;
 }
 
 /** Katalogbilder für den Bildbedarf vormerken; liefert, wie viele neu dazukamen. */
 export async function katalogBilderVormerken(urls: string[], sets: string[]): Promise<number> {
-  return (await repo.reiheKatalogBilderEin(urls, sets))?.n ?? 0;
+  return (await katalog().bildbedarf.reiheKatalogBilderEin(urls, sets))?.n ?? 0;
 }
 
 export async function offenerBildbedarf(): Promise<number> {
-  return (await repo.zaehleBildwuensche())?.n ?? 0;
+  return (await katalog().bildbedarf.zaehleBildwuensche())?.n ?? 0;
 }
 
 export async function leereBildbedarf(): Promise<number> {
-  return (await repo.loescheAlleBildwuensche())?.changes ?? 0;
+  return (await katalog().bildbedarf.loescheAlleBildwuensche())?.changes ?? 0;
 }
 
 /** In einem Schritt herausgenommen, damit zwei Läufe nicht dieselben Bilder holen. */
 export function nimmBildwuensche(gueltigMs: number, anzahl: number): Promise<{ url: string; set_number: string | null }[]> {
-  return repo.entnimmBildwuensche(String(gueltigMs), anzahl);
+  return katalog().bildbedarf.entnimmBildwuensche(String(gueltigMs), anzahl);
 }

@@ -1,24 +1,24 @@
-import * as db from '../../../db/database';
+import type { DbSchnittstelle } from '../../../db/database';
 import { LIKE_ESCAPE as E, enthaeltMuster } from '../../../db/likeSuche';
 import { mengeJoin, mengeAus } from '../../../db/bestandsmenge';
 import { ausTabelle } from '../../infra/validate';
 
 export type Thema = { id: number; name: string; parent_id: number | null };
 
-export function themen() {
+export function themen(db: DbSchnittstelle) {
   return db.all<Thema>('SELECT id, name, parent_id FROM rb_themes');
 }
 
-export function setsJeThema() {
+export function setsJeThema(db: DbSchnittstelle) {
   return db.all<{ theme_id: number; n: number }>('SELECT theme_id, COUNT(*)::int AS n FROM rb_sets GROUP BY theme_id');
 }
 
-export function jahresspanne() {
+export function jahresspanne(db: DbSchnittstelle) {
   return db.get<{ year_min: number | null; year_max: number | null }>(
     'SELECT MIN(year)::int AS year_min, MAX(year)::int AS year_max FROM rb_sets WHERE year > 0');
 }
 
-export function setsJeJahr() {
+export function setsJeJahr(db: DbSchnittstelle) {
   return db.all<{ year: number; n: number }>(
     'SELECT year::int AS year, COUNT(*)::int AS n FROM rb_sets WHERE year > 0 GROUP BY year ORDER BY year');
 }
@@ -39,7 +39,7 @@ function katalogWo(f: KatalogWahl, params: unknown[]): string {
   return `WHERE ${where.join(' AND ')}`;
 }
 
-export function setsJeJahrGefiltert(f: KatalogWahl, absteigend: boolean) {
+export function setsJeJahrGefiltert(db: DbSchnittstelle, f: KatalogWahl, absteigend: boolean) {
   const params: unknown[] = [];
   return db.all<{ year: number | null; n: number }>(`SELECT rb.year, COUNT(*)::int AS n FROM rb_sets rb ${katalogWo(f, params)}
                   GROUP BY rb.year ORDER BY rb.year ${absteigend ? 'DESC NULLS FIRST' : 'ASC NULLS LAST'}`, params);
@@ -68,12 +68,12 @@ const BESITZ_JOIN = `LEFT JOIN (SELECT s.set_number, SUM(${mengeAus('sm', 0)})::
                    WHERE s.user_id = ANY($1)
                    GROUP BY s.set_number) b ON b.set_number = rb.set_num`;
 
-export async function katalogAnzahl(f: KatalogWahl): Promise<number> {
+export async function katalogAnzahl(db: DbSchnittstelle, f: KatalogWahl): Promise<number> {
   const params: unknown[] = [];
   return (await db.get<{ n: number }>(`SELECT COUNT(*)::int AS n FROM rb_sets rb ${katalogWo(f, params)}`, params))?.n ?? 0;
 }
 
-export function katalogZeilen(konten: number[], f: KatalogWahl, ordnung: unknown, limit: number, offset: number) {
+export function katalogZeilen(db: DbSchnittstelle, konten: number[], f: KatalogWahl, ordnung: unknown, limit: number, offset: number) {
   // ausTabelle: ?sort=constructor darf keine geerbte Eigenschaft liefern.
   const sortSql = ausTabelle(ORDNUNGEN, ordnung, ORDNUNGEN.year_desc);
   const params: unknown[] = [konten];
@@ -89,7 +89,7 @@ export function katalogZeilen(konten: number[], f: KatalogWahl, ordnung: unknown
       LIMIT $${params.length - 1} OFFSET $${params.length}`, params);
 }
 
-export function katalogZeile(konten: number[], setNumber: string) {
+export function katalogZeile(db: DbSchnittstelle, konten: number[], setNumber: string) {
   return db.get<KatalogSet>(
     `SELECT ${SET_SPALTEN}
        FROM rb_sets rb
@@ -98,12 +98,12 @@ export function katalogZeile(konten: number[], setNumber: string) {
       WHERE rb.set_num = $2 AND (b.set_number IS NOT NULL OR NOT ${PLATZHALTER})`, [konten, setNumber]);
 }
 
-export async function katalogLeer(): Promise<boolean> {
+export async function katalogLeer(db: DbSchnittstelle): Promise<boolean> {
   // Zeilen der Erfassung ('api') gibt es auch ohne CSV-Abgleich.
   return !(await db.get<{ x: number }>("SELECT 1 AS x FROM rb_sets WHERE herkunft = 'csv' LIMIT 1"));
 }
 
-export function figurenImInventar(inventarId: number) {
+export function figurenImInventar(db: DbSchnittstelle, inventarId: number) {
   return db.get<{ n: number }>(
     'SELECT COALESCE(SUM(quantity), 0)::int AS n FROM rb_inventory_minifigs WHERE inventory_id = $1', [inventarId]);
 }
