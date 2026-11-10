@@ -214,7 +214,7 @@ function reineQuelltextTests() {
 
 test('reine Quelltext-Tests werden weniger, nie mehr', () => {
   // Gemessen 71 am 09.11.2026; wie die Zahl gesunken ist, steht im git log.
-  const SCHRANKE = 41;
+  const SCHRANKE = 39;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
   const ist = reineQuelltextTests();
@@ -257,12 +257,31 @@ test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
   // Gemessen 495 am 08.11.2026, 492 am 09.11.2026, 405 am 10.11.2026 (Prüfbericht: 632; die Ratschen selbst zählen mit).
   // Gegenprobe (08.11.2026): `\b_req\w*\(` aus FALL_FUEHRT_AUS entfernt → rot (574).
   // Gegenprobe (05.11.2026): parts-paging.test.js auf den Stand vor den jsdom-Tests → rot.
-  const SCHRANKE = 405;
+  const SCHRANKE = 400;
   const { n, alle } = quelltextFaelle();
   assert.ok(alle > 2000, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
   assert.ok(n <= SCHRANKE, `${n} Testfälle lesen nur Quelltext, erlaubt sind ${SCHRANKE}. ` +
     'Verhalten gehört in einen Test, der den Code ausführt (jsdom, buildAndRequire, testServer).');
   if (n < SCHRANKE) console.log(`  ℹ Quelltext-Testfälle: ${n} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
+/**
+ * Web-Tests, die Android-Quellen lesen. Was nur die App betrifft, prüft die Android-Suite;
+ * hier bleibt der bewusste Abgleich beider Seiten (Vertrag, gemeinsame Konstanten). Solange
+ * Web-Tests Android-Dateien lesen, muss web-ci auch bei Android-Änderungen laufen.
+ */
+const LIEST_ANDROID = /Android-App|helpers\/android['"]|kotlin-vertrag|\.kt\b/;
+
+test('Web-Tests, die Android-Quellen lesen, werden weniger, nie mehr', () => {
+  // Gegenprobe: `// Android-App` in eine beliebige Testdatei → rot (55).
+  const SCHRANKE = 54;
+  const ist = fs.readdirSync(__dirname)
+    .filter(n => n.endsWith('.test.js') && n !== 'ratschen.test.js')
+    .filter(n => LIEST_ANDROID.test(fs.readFileSync(path.join(__dirname, n), 'utf8')));
+  assert.ok(ist.length >= 10, `Nur ${ist.length} Treffer — greift das Muster noch?`);
+  assert.ok(ist.length <= SCHRANKE, `${ist.length} Web-Tests lesen Android-Quellen, erlaubt sind ${SCHRANKE}. ` +
+    'Was nur die App betrifft, gehört in die Android-Suite (Android-App/*/src/test).');
+  if (ist.length < SCHRANKE) console.log(`  ℹ Web-Tests mit Android-Quellen: ${ist.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
 test('feste Wartezeiten in Tests werden weniger, nie mehr', () => {
@@ -765,7 +784,7 @@ test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie meh
   // docs/begruendungen/ oder im Commit (CLAUDE.md); Gegenprobenlisten zählen nicht.
   // Gemessen am 08.11.2026: Tests 72 Blöcke, scripts 0, index.html 216 Zeilen.
   // Gegenprobe (06.11.2026): sechs Zeilen Prosa vor die Gegenprobe im Kopf von hsts.test.js → rot (Tests 75).
-  const SCHRANKE = { tests: 64, scripts: 0, indexHtml: 216 };
+  const SCHRANKE = { tests: 63, scripts: 0, indexHtml: 216 };
   const js = (/** @type {string} */ d) => fs.readdirSync(d).filter(f => f.endsWith('.js')).map(f => path.join(d, f));
   const zaehle = (/** @type {string[]} */ l) => l.reduce((n, f) => n + langeBloecke(fs.readFileSync(f, 'utf8')), 0);
   let html = 0;
