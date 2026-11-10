@@ -1,8 +1,11 @@
 /** Was untere Schichten von höheren brauchen, ohne sie zu importieren: Nacharbeit
- * nach dem Erfassen und das erste Konto einer leeren Datenbank. Jeder Prozess
- * baut es beim Start und reicht es weiter (server.ts, Skripte, Testhilfen). */
+ * nach dem Erfassen, das erste Konto einer leeren Datenbank und die Dienste der
+ * Bereiche mit Fabrik. Jeder Prozess baut es beim Start und reicht es weiter
+ * (server.ts, Skripte, Testhilfen). */
 import { verdrahteNacharbeit, type Nacharbeit } from '../src/auftraege/nacharbeit';
-import { setzeErststart } from '../db/database';
+import { setzeErststart, standardDb, type Db } from '../db/database';
+import { erzeugeSets } from '../src/sets/bereich';
+import { verdrahteSets } from '../src/sets/prozess';
 import { ziehePlanVor } from '../src/auftraege/zeitplan';
 import { refreshPriceForSet } from '../src/finanzen/preisLauf';
 import { merkeGebraucht } from '../src/katalog/bilder/bildbedarf';
@@ -38,7 +41,9 @@ export function baueVerdrahtung(): Verdrahtung {
   };
 }
 
-export function verdrahte(v: Verdrahtung = baueVerdrahtung()): void {
+/** Der Zugang zur Datenbank kommt vom Einstieg; ohne Angabe der des Prozesses. */
+export function verdrahte(v: Verdrahtung = baueVerdrahtung(), db: Db = standardDb()): void {
   verdrahteNacharbeit(v.nacharbeit);
   setzeErststart(v.erststart);
+  verdrahteSets(() => erzeugeSets({ db, nacharbeit: v.nacharbeit }));
 }

@@ -353,8 +353,9 @@ async function starte(): Promise<void> {
   console.log(`[start] Prozess ${process.pid}, Rolle ${k.rolle}`);
   // Datenbankzugang und Verdrahtung entstehen hier, nicht beim Import eines Moduls;
   // Erfassungen und Einstellungen stossen ihre Nacharbeit in jedem Prozess an.
-  db.setzeStandardDb(db.erzeugeDb(db.dbKonfigAusUmgebung()));
-  verdrahte(baueVerdrahtung());
+  const zugang = db.erzeugeDb(db.dbKonfigAusUmgebung());
+  db.setzeStandardDb(zugang);
+  verdrahte(baueVerdrahtung(), zugang);
 
   try { await bereiteDatenbankVor(); }
   catch (e) {

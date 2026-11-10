@@ -106,9 +106,10 @@ function nimmtProzesszugang(f) {
 test('der Kompatibilitätsweg zur Datenbank wird weniger, nie mehr', () => {
   // db/database.ts hat eine Fabrik (erzeugeDb); wer noch die Funktionen des
   // Prozesszugangs importiert, statt einen Zugang übergeben zu bekommen, zählt hier.
-  // Gemessen 98 Dateien am 09.11.2026, 99 nach dem Zusammenführen mit dem Schrittschutz.
+  // Gemessen 98 Dateien am 09.11.2026, 99 nach dem Zusammenführen mit dem Schrittschutz,
+  // 94 am 10.11.2026 (src/sets bekommt seinen Zugang über erzeugeSets).
   // Gegenprobe (09.11.2026): ein `import * as db from '../../db/database'` in src/sets/zeilen.ts → rot.
-  const SCHRANKE = 99;
+  const SCHRANKE = 94;
   const ist = quellen().filter(nimmtProzesszugang).length;
   assert.ok(ist > 50, `nur ${ist} Importe gefunden — greift die Suche noch?`);
   assert.ok(ist <= SCHRANKE, `${ist} Dateien nehmen den Prozesszugang aus db/database, erlaubt sind ${SCHRANKE}`);

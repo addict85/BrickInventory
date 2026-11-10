@@ -1,8 +1,7 @@
-import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
 import { fehlertext } from '../infra/fehler';
 import { scopeIds, writableIds } from '../haushalt/haushalt';
-import { withInventoryLock } from '../../db/txLock';
+import { mitInventarSperre } from '../../db/txLock';
 import { getCurrentMarketPrice } from '../finanzen/marketPrice';
 import { getSetting } from '../einstellungen/settings';
 import { deleteSetRows } from './loeschen';
@@ -16,6 +15,7 @@ import { resolveSetCondition } from '../finanzen/financeCalc';
 import * as repo from './repository/sets';
 import type { Eingabe } from '../vertrag';
 import { versuche, wertOder, Abstriche } from '../infra/ergebnis';
+import type { SetsKontext } from './kontext';
 
 /** Sets anlegen, ändern und ausgeben — eine Umsetzung für Web und App, damit
  * beide dieselben Regeln für Menge, Kaufpreis und Blickfeld erfüllen. */
@@ -28,7 +28,7 @@ export function sanitizeSetNumber(input: unknown) {
 /** Reihenfolge Preis-Cache → BrickLink → Historie; bleibt alles leer, trägt
  * src/bestand/kaufpreisNachtrag.ts nach.
  * Ausführlich: docs/begruendungen/src/sets/setService.ts.md#pricefornewacquisition */
-async function priceForNewAcquisition(userId: number, setNumber: string, dbh: DbSchnittstelle = db) {
+async function priceForNewAcquisition(sk: SetsKontext, userId: number, setNumber: string, dbh: DbSchnittstelle = sk.db) {
   // Über das Blickfeld: Mit einer nackten ID fände der Hauptaccount das Set des Unterkontos nicht.
   const blickfeld = wertOder(await versuche('sets:kaufpreis-blickfeld', scopeIds(userId)), [userId]);
   const cond = await resolveSetCondition(blickfeld, setNumber, dbh);
@@ -48,7 +48,7 @@ async function priceForNewAcquisition(userId: number, setNumber: string, dbh: Db
 
 /** @param pricePlan vorab ermittelt; ohne Angabe wird er hier geholt — dann
  *        darf dbh KEINE Transaktion sein, weil ein Netzaufruf darin steckt. */
-async function adjustAcquisitionsToQuantity(userId: number, setNumber: string, newTotalQty: number, dbh: DbSchnittstelle = db,
+async function adjustAcquisitionsToQuantity(sk: SetsKontext, userId: number, setNumber: string, newTotalQty: number, dbh: DbSchnittstelle = sk.db,
                                             pricePlan: { price: number | null; condition: string; geschaetzt?: boolean; currency?: string } | null = null) {
   // Ohne Fang: Mit einer leeren Liste nach einem Lesefehler buchte die Anpassung die ganze Menge neu.
   const rows: { id: number; quantity: number; created_at: Date }[] = await repo.setErfassungenNeuesteZuerst(dbh, userId, setNumber);
@@ -60,13 +60,13 @@ async function adjustAcquisitionsToQuantity(userId: number, setNumber: string, n
       {
         // Aufstocken oder neue Tageszeile entscheidet recordAcquisitionForDay(), damit die Regel nur einmal
         // existiert.
-        const plan = pricePlan ?? await priceForNewAcquisition(userId, setNumber, dbh);
-        await recordAcquisition({ konto: userId, setNumber, menge: delta, kaufpreis: plan.price, zustand: plan.condition,
+        const plan = pricePlan ?? await priceForNewAcquisition(sk, userId, setNumber, dbh);
+        await recordAcquisition(sk, { konto: userId, setNumber, menge: delta, kaufpreis: plan.price, zustand: plan.condition,
           geschaetzt: !!plan.geschaetzt, waehrung: plan.currency ?? null }, dbh);
       }
     } else {
-      const plan = pricePlan ?? await priceForNewAcquisition(userId, setNumber, dbh);
-      await recordAcquisition({ konto: userId, setNumber, menge: newTotalQty, kaufpreis: plan.price,
+      const plan = pricePlan ?? await priceForNewAcquisition(sk, userId, setNumber, dbh);
+      await recordAcquisition(sk, { konto: userId, setNumber, menge: newTotalQty, kaufpreis: plan.price,
         zustand: plan.condition || 'N', geschaetzt: !!plan.geschaetzt, waehrung: plan.currency ?? null }, dbh);
     }
     return;
@@ -82,17 +82,17 @@ async function adjustAcquisitionsToQuantity(userId: number, setNumber: string, n
 
 /** Die LETZTE Erfassung, weil der Detail-Dialog genau sie bearbeitet.
  * @param feld  fester Spaltenname, KEINE Eingabe von aussen */
-async function schreibeInLetzteErfassung(
+async function schreibeInLetzteErfassung(sk: SetsKontext,
   feld: 'purchase_price' | 'condition', wert: number | string | null, ownerId: number, sn: string,
 ) {
-  await repo.schreibeInNeuesteSetErfassung(wert, ownerId, sn, feld);
+  await repo.schreibeInNeuesteSetErfassung(sk.db, wert, ownerId, sn, feld);
 }
 
-export async function updateSet(uid: number, sn: string, body: Eingabe<'PUT /api/v1/sets/:setNumber'>) {
+export async function updateSet(sk: SetsKontext, uid: number, sn: string, body: Eingabe<'PUT /api/v1/sets/:setNumber'>) {
   // SCHREIB-Blickfeld statt eigener ID, sonst fände ein Set des Unterkontos keine Zeile.
   const _wids = await writableIds(uid);
   // Die EIGENE Zeile gewinnt, sonst entschiede die Tabellenreihenfolge.
-  const existing = await repo.setZeileImSchreibfeld(_wids, sn, uid);
+  const existing = await repo.setZeileImSchreibfeld(sk.db, _wids, sn, uid);
   if (!existing) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
   // Ab hier zählt der BESITZER, sonst entstünden Erfassungen im falschen Konto.
   const ownerId = parseInt(String(existing.user_id));
@@ -111,7 +111,7 @@ export async function updateSet(uid: number, sn: string, body: Eingabe<'PUT /api
     const leseFeld = await scopeIds(uid);
     // Angezeigt wird der Haushalt, geändert nur das eigene Konto. Ausführlich:
     // docs/begruendungen/src/sets/setService.ts.md#updateset-gewuenschtgesamt
-    const eigenesZiel = async (dbh: Pick<typeof db, 'get'>) => {
+    const eigenesZiel = async (dbh: Pick<DbSchnittstelle, 'get'>) => {
       const gesamtVorher = await repo.setMenge(dbh, 'blickfeld', leseFeld, sn);
       const eigenVorher = await repo.setMenge(dbh, 'eines', uid, sn);
       // Bei 0 gedeckelt: Exemplare eines anderen Kontos kann ich nicht wegnehmen.
@@ -119,11 +119,11 @@ export async function updateSet(uid: number, sn: string, body: Eingabe<'PUT /api
       return { eigenVorher, eigenZiel: Math.max(0, eigenVorher + aenderung) };
     };
     // Der Marktpreis wird VOR der Sperre geholt (Netzaufruf); massgeblich ist die Rechnung in der Sperre.
-    const vorab = await eigenesZiel(db);
+    const vorab = await eigenesZiel(sk.db);
     const plan = vorab.eigenZiel > vorab.eigenVorher
-      ? await ab.oder('kaufpreis', priceForNewAcquisition(uid, sn), { price: null, condition: 'N' })
+      ? await ab.oder('kaufpreis', priceForNewAcquisition(sk, uid, sn), { price: null, condition: 'N' })
       : { price: null, condition: 'N' };
-    await withInventoryLock(uid, sn, async (tx) => {
+    await mitInventarSperre(sk.db, uid, sn, async (tx) => {
       const { eigenVorher, eigenZiel } = await eigenesZiel(tx);
       if (eigenZiel === eigenVorher) return;
       // Gehörte das Set bisher nur einem anderen Konto, liefe die Anpassung sonst ins Leere.
@@ -134,7 +134,7 @@ export async function updateSet(uid: number, sn: string, body: Eingabe<'PUT /api
         papierkorb = await legeInPapierkorb(tx, 'set', uid, sn);
         await deleteSetRows(tx, [uid], sn);
       } else {
-        await adjustAcquisitionsToQuantity(uid, sn, eigenZiel, tx, plan);
+        await adjustAcquisitionsToQuantity(sk, uid, sn, eigenZiel, tx, plan);
       }
     });
   }
@@ -145,30 +145,30 @@ export async function updateSet(uid: number, sn: string, body: Eingabe<'PUT /api
     if (pp === null || isNaN(pp)) {
       // Zustand der LETZTEN Erfassung, sonst käme der Preis für „Neu". Ohne Fang: Nach einem Lesefehler käme
       // sonst der Neupreis in ein gebrauchtes Set.
-      const lastCond = await repo.zustandNeuesteSetErfassung(ownerId, sn);
+      const lastCond = await repo.zustandNeuesteSetErfassung(sk.db, ownerId, sn);
       pp = await getCurrentMarketPrice(sn, ownerId, lastCond?.condition || null);
     }
     const val = (pp !== null && !isNaN(pp)) ? pp : null;
-    await schreibeInLetzteErfassung('purchase_price', val, ownerId, sn);
+    await schreibeInLetzteErfassung(sk, 'purchase_price', val, ownerId, sn);
   }
   // null heisst „nicht gesetzt", nicht 'N'.
   if (body.condition !== undefined && body.condition !== null && !hasQuantity) {
     const cond = ['N','U'].includes(body.condition) ? body.condition : 'N';
     try {
       // ownerId: Mit dem Aufrufer träfe das UPDATE beim Unterkonto keine Zeile.
-      await schreibeInLetzteErfassung('condition', cond, ownerId, sn);
+      await schreibeInLetzteErfassung(sk, 'condition', cond, ownerId, sn);
     } catch (e) {
       console.error('[updateSet] condition update skipped (migration pending?):', fehlertext(e));
     }
   }
   // Geschrieben ist schon; scheitert nur das Nachlesen, sagt die Antwort „unbekannt“ statt 0.
-  const nachher = await ab.oder('menge', async () => (await repo.setMenge(db, 'blickfeld', await scopeIds(uid), sn)) ?? 0, null);
+  const nachher = await ab.oder('menge', async () => (await repo.setMenge(sk.db, 'blickfeld', await scopeIds(uid), sn)) ?? 0, null);
   return { quantity: nachher, ...(papierkorb ? { papierkorb } : {}), ...ab.angabe() };
 }
 
 
-export async function buildSetsCsv(uid: number) {
-  const rows = await repo.setsFuerCsv(uid);
+export async function buildSetsCsv(sk: SetsKontext, uid: number) {
+  const rows = await repo.setsFuerCsv(sk.db, uid);
 
   return toCsv(['set_number', 'quantity', 'purchase_price', 'condition', 'acquired_at'],
     rows.map((r: any) => ({ ...r, purchase_price: r.purchase_price ?? '' })));

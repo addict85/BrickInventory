@@ -163,8 +163,8 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts',
 test('normalizeSetNumber stimmt mit sanitizeSetNumber überein', () => {
   // Warum das jetzt anders geprueft wird
   // Ausführlich: docs/begruendungen/test/set-add-exists-db.test.js.md#stelle
-  const { normalizeSetNumber } = _req('src/sets/erfassen.js');
-  const { sanitizeSetNumber }  = _req('src/sets/setService.js');
+  const { normalizeSetNumber } = _req('src/sets/index.js');
+  const { sanitizeSetNumber }  = _req('src/sets/index.js');
   assert.equal(typeof sanitizeSetNumber, 'function',
     'sanitizeSetNumber ist nicht mehr exportiert — dann prueft dieser Test nichts');
   for (const eingabe of ['75192', '75192-1', ' 75192 ', '75192; irgendwas', '75192 Falcon', 'ab-12', '4002!!']) {

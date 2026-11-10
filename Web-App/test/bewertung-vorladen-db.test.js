@@ -113,7 +113,7 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
     for (const [preis, waehrung] of [[100, 'CHF'], [300, 'EUR']])
       await db.run(`INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency)
                     VALUES ($1, $2, 1, $3, 'N', $4)`, [uid, SN, preis, waehrung]);
-    const { getSets } = _req('src/sets/lesen.js');
+    const { getSets } = _req('src/sets/index.js');
     const r = await getSets([uid], {});
     const zeile = (r.sets || r).find(z => z.set_number === SN);
     assert.ok(zeile, 'das Set fehlt in der Liste');

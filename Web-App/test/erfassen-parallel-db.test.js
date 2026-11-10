@@ -142,7 +142,7 @@ test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
     'Die Huelle von addSet() schreibt selbst eine Erfassung — die laeuft dann ohne Sperre.');
   const schreibt = (addSet.match(/recordAcquisition\(/g) || []).length;
   assert.ok(schreibt >= 2, `nur ${schreibt} Erfassungs-Schreibstellen gefunden`);
-  assert.equal((addSet.match(/withInventoryLock\(/g) || []).length, schreibt,
+  assert.equal((addSet.match(/mitInventarSperre\(/g) || []).length, schreibt,
     'nicht jede Schreibstelle in addSet() läuft unter der Bestandssperre');
 });
 

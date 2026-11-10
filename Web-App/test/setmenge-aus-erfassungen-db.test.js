@@ -213,7 +213,7 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen',
                        ($3,$2,3, 90,'N', NOW() - INTERVAL '2 days')`,
     [haupt.id, SN, kind.id]);
 
-  const H = _req('src/sets/lesen.js');
+  const H = _req('src/sets/index.js');
 
   // ── Ein Konto ────────────────────────────────────────────────────────────
   const eins = await H.getSets([haupt.id], { page_size: 60 });

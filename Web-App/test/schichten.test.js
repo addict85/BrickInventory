@@ -393,9 +393,11 @@ test('SQL steht nur in Repositories und in db/', () => {
 });
 
 /** Was ein Dienst aus db/database nehmen darf: die Arbeitseinheit und den Betrieb, keine Abfrage. */
-// Seit 09.11.2026 auch das Anlegen des Zugangs (erzeugeDb …): Das tun nur server.ts und startup/.
+// Seit 09.11.2026 auch das Anlegen des Zugangs (erzeugeDb …): Das tun nur server.ts und startup/;
+// seit 10.11.2026 der Typ Db (Kontext eines Bereichs) und standardDb() für die Verdrahtung.
 const DB_AUSSERHALB = new Set(['transaction', 'pool', 'eigeneVerbindung', 'datenbankAntwortet', 'getPoolStats',
-  'alsSuperuserVerbunden', 'initSchemaOnce', 'DbSchnittstelle', 'erzeugeDb', 'setzeStandardDb', 'dbKonfigAusUmgebung', 'setzeErststart']);
+  'alsSuperuserVerbunden', 'initSchemaOnce', 'DbSchnittstelle', 'Db', 'erzeugeDb', 'setzeStandardDb', 'standardDb',
+  'dbKonfigAusUmgebung', 'setzeErststart']);
 
 test('ausserhalb von repository/ und db/ fragt niemand die Datenbank ab', () => {
   // Die SQL-Suche oben liest Text; ein Aufruf unter anderem Namen (`datenbank.all(SQL)` mit dem

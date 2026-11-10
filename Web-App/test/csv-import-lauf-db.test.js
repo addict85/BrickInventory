@@ -30,7 +30,7 @@ const _echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = _echtesRequire.apply(this, arguments);
   if (typeof name === 'string' && /[/\\]erfassen(\.js)?$/.test(name))
-    return new Proxy(m, { get: (t, k) => k !== 'addSetWithDate' ? t[k] : async (sn) => {
+    return new Proxy(m, { get: (t, k) => k !== 'addSetWithDate' ? t[k] : async (_sk, sn) => {
       aufrufe.push(sn);
       await new Promise(r => setTimeout(r, dauer));
       return { action: 'added', set_number: sn };

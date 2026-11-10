@@ -105,7 +105,11 @@ function buildAndRequire() {
   const echt = () => require(path.join(ROOT, 'dist', 'startup/verdrahtung.js')).baueVerdrahtung();
   const faul = new Proxy({}, { get: (_z, k) => (...a) => echt().nacharbeit[k](...a) });
   require(path.join(ROOT, 'dist', 'src/auftraege/nacharbeit.js')).verdrahteNacharbeit(faul);
-  require(path.join(ROOT, 'dist', 'db/database.js')).setzeErststart(() => echt().erststart());
+  const dbModul = require(path.join(ROOT, 'dist', 'db/database.js'));
+  dbModul.setzeErststart(() => echt().erststart());
+  // prozess.js lädt nichts; bereich.js erst beim ersten Gebrauch der Sets-Dienste.
+  require(path.join(ROOT, 'dist', 'src/sets/prozess.js')).verdrahteSets(() =>
+    require(path.join(ROOT, 'dist', 'src/sets/bereich.js')).erzeugeSets({ db: dbModul.standardDb(), nacharbeit: faul }));
   return rel => require(path.join(ROOT, 'dist', rel));
 }
 
@@ -226,8 +230,9 @@ module.exports.handlerQuelle = handlerQuelle;
 
 /** Das gebaute Modul für einen Namen aus den Leseabfragen. */
 function handlerModul(_req) {
+  // Die Sets-Dienste bekommen ihren Kontext über die Fassade (src/sets/index.ts).
   return Object.assign({},
-    ..._req && HANDLER_MODULE.map(m => _req(`${m}.js`)));
+    ..._req && HANDLER_MODULE.map(m => _req(`${m}.js`)), _req && _req('src/sets/index.js'));
 }
 module.exports.handlerModul = handlerModul;
 

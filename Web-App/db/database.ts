@@ -137,10 +137,10 @@ function txSchnittstelle(client: PoolClient): DbSchnittstelle {
 }
 
 /** Innerhalb einer Transaktion ein Sicherungspunkt: Scheitert der innere Teil
- * und fängt der Aufrufer das, bleibt die äussere Transaktion benutzbar. */
-let _sicherungspunkt = 0;
-async function innereTransaktion<T>(client: PoolClient, fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
-  const name = `sp_${++_sicherungspunkt}`;
+ * und fängt der Aufrufer das, bleibt die äussere Transaktion benutzbar. Der
+ * Name braucht nur innerhalb der Transaktion eindeutig zu sein. */
+async function innereTransaktion<T>(client: PoolClient, nummer: number, fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
+  const name = `sp_${nummer}`;
   await client.query(`SAVEPOINT ${name}`);
   try {
     const r = await fn(txSchnittstelle(client));
@@ -168,6 +168,7 @@ export function erzeugeDb(k: DbKonfig): Db {
     console.error('[db-pool] idle client error:', err.message);
   });
   const ich = {};
+  let sicherungspunkte = 0;
   const txClient = (): PoolClient | null => { const t = laufendeTx.getStore(); return t?.offen && t.db === ich ? t.client : null; };
 
   /** Alle Zeilen einer Abfrage. T ist ungeprüft: Der Aufrufer sagt, welche
@@ -192,7 +193,7 @@ export function erzeugeDb(k: DbKonfig): Db {
 
   async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>, o: TxOptionen = {}): Promise<T> {
     const aussen = txClient();
-    if (aussen) return innereTransaktion(aussen, fn);
+    if (aussen) return innereTransaktion(aussen, ++sicherungspunkte, fn);
     for (let versuch = 0; ; versuch++) {
       try { return await einmaligeTransaktion(fn); }
       catch (e) {

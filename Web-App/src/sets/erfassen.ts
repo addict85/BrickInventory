@@ -2,11 +2,10 @@
  * Blickfeld, Menge und Kaufpreis. Was das Netz braucht (Katalog, Bild,
  * Marktpreis), hält die Anfrage nicht auf, sondern läuft als Auftrag.
  * Ausführlich: docs/begruendungen/src/sets/erfassen.ts.md#abschnitt */
-import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
 import { scopeIds, schreibziel } from '../haushalt/haushalt';
 import { recordAcquisitionForDay, setzeGeschaetztenPreis } from '../bestand/acquisitions';
-import { withInventoryLock } from '../../db/txLock';
+import { mitInventarSperre } from '../../db/txLock';
 import { downloadSetImage, rebrickableSetBild } from '../katalog/bilder/setImages';
 import { getCurrentMarketPrice } from '../finanzen/marketPrice';
 import { zustandFuerPreis } from '../einstellungen/settings';
@@ -19,6 +18,7 @@ import { fachfehler } from '../infra/fehlerTexte';
 import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
 import * as repo from './repository/sets';
 import { versuche, wertOder } from '../infra/ergebnis';
+import type { SetsKontext } from './kontext';
 
 /** Eine Erfassung: eine Zeile in set_acquisitions, der einzige Ort für Kaufpreis und Zustand. */
 export interface Erfassung {
@@ -33,7 +33,7 @@ export interface Erfassung {
   erfasstAm?: string | null;
 }
 
-export async function recordAcquisition(e: Erfassung, dbh: DbSchnittstelle = db) {
+export async function recordAcquisition(sk: SetsKontext, e: Erfassung, dbh: DbSchnittstelle = sk.db) {
   const pp = e.kaufpreis !== null && e.kaufpreis !== undefined && !Number.isNaN(e.kaufpreis) ? e.kaufpreis : null;
   const cond = e.zustand === 'N' || e.zustand === 'U' ? e.zustand : 'N';
   await recordAcquisitionForDay(
@@ -68,9 +68,13 @@ export interface VorhandenesSet {
 /** Im BLICKFELD, nicht nur im eigenen Konto: Webapp und App sollen dieselbe
  * Eingabe gleich behandeln. Ohne Fang: null hiesse sonst „nicht da“.
  * Ausführlich: docs/begruendungen/src/sets/erfassen.ts.md#findsetinscope */
-export async function findSetInScope(viewerId: number, setNumber: string): Promise<VorhandenesSet | null> {
+export async function findSetInScope(
+  sk: SetsKontext,
+  viewerId: number,
+  setNumber: string,
+): Promise<VorhandenesSet | null> {
   const sn = normalizeSetNumber(setNumber);
-  const row = await repo.setImBlickfeld(await scopeIds(viewerId), sn, viewerId);
+  const row = await repo.setImBlickfeld(sk.db, await scopeIds(viewerId), sn, viewerId);
   if (!row) return null;
   return { set_number: row.set_number, owner_user_id: row.user_id, is_self: row.user_id === viewerId };
 }
@@ -109,7 +113,7 @@ export type SetErfasst =
 /** Anlegen ohne Netz: „schon im Blickfeld?“ und Anlegen unter einer Sperre je
  * Setnummer, sonst legten zwei gleichzeitige Anfragen (auch zweier Konten im
  * Haushalt) das Set zweimal an. Katalog, Bild und Marktpreis holt der Auftrag. */
-export async function setErfassen(e: NeuesSet): Promise<SetErfasst> {
+export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfasst> {
   const roh = String(e.setNumber ?? '').trim();
   if (!roh) fachfehler('ungueltig', 'set_number_erforderlich');
   if (e.streng && !GETIPPTE_NUMMER.test(roh)) fachfehler('ungueltig', 'setnummer_ungueltig');
@@ -120,13 +124,14 @@ export async function setErfassen(e: NeuesSet): Promise<SetErfasst> {
   const ort = await ortFuerNeuerfassung(besitzer, e.lagerort ?? null);
   const kaufpreis = e.kaufpreis ?? null;
 
-  return db.transaction(async tx => {
+  return sk.db.transaction(async tx => {
     await repo.sperreSetErfassen(tx, sn, besitzer);
-    const vorhanden = await findSetInScope(e.anfragender, sn);
+    const vorhanden = await findSetInScope(sk, e.anfragender, sn);
     if (vorhanden) return { action: 'exists' as const, ...vorhanden };
     const katalog = await repo.merkeKatalogPlatzhalter(tx, sn);
     await repo.legeSetZeileAn(tx, besitzer, sn);
     await recordAcquisition(
+      sk,
       {
         konto: besitzer,
         setNumber: sn,
@@ -166,7 +171,7 @@ export type Fortschritt = (n: { step: string; set: string }) => void;
 
 /** Rebrickable, dann Brickset für Lücken, dann das Bild. `gestoert`: Rebrickable
  * hat nicht geantwortet (anders als „kennt die Nummer nicht“). */
-async function katalogHolen(sn: string, mitBrickset: boolean, sendProgress: Fortschritt | null) {
+async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, sendProgress: Fortschritt | null) {
   let name: string | null = null,
     year: number | null = null,
     theme: string | null = null,
@@ -200,26 +205,27 @@ async function katalogHolen(sn: string, mitBrickset: boolean, sendProgress: Fort
   if (lokal) void versuche('set-anlegen:vorschau', generateThumb(lokal));
   // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild.
   // Ausführlich: docs/begruendungen/src/sets/erfassen.ts.md#addsetintern-3
-  await repo.merkeSetKatalog(sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal);
-  if (minifigs) await repo.setzeFigurenzahl(minifigs, sn);
+  await repo.merkeSetKatalog(sk.db, sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal);
+  if (minifigs) await repo.setzeFigurenzahl(sk.db, minifigs, sn);
   return { name, gestoert: !rbErgebnis.ok, bild: !!lokal };
 }
 
-/** Was setErfassen() offen liess; idempotent, damit Strom und Auftrag sich nicht
+/** Was setErfassen(sk) offen liess; idempotent, damit Strom und Auftrag sich nicht
  * stören. Wirft, solange Rebrickable gestört ist: Der Auftrag versucht es später. */
 export async function setErgaenzen(
+  sk: SetsKontext,
   sn: string,
   konto: number,
   sendProgress: Fortschritt | null = null,
 ): Promise<{ name: string | null }> {
-  const stand = await repo.katalogStand(sn);
+  const stand = await repo.katalogStand(sn, sk.db);
   let name = stand && !stand.platzhalter ? stand.name : null;
   if (!stand || stand.platzhalter || !stand.image_local) {
-    const k = await katalogHolen(sn, true, sendProgress);
+    const k = await katalogHolen(sk, sn, true, sendProgress);
     if (k.gestoert && !k.name) throw new Error(`Katalog für ${sn} nicht erreichbar`);
     name = k.name ?? name;
   }
-  for (const z of await repo.erfassungenOhnePreisDesSets(konto, sn)) {
+  for (const z of await repo.erfassungenOhnePreisDesSets(sk.db, konto, sn)) {
     const preis = await getCurrentMarketPrice(sn, konto, z.condition || null);
     if (preis) await setzeGeschaetztenPreis('set', z.id, preis);
   }
@@ -243,16 +249,17 @@ export interface SetHinzufuegen {
 
 /** Steht das Set schon im eigenen Konto, kommt eine Erfassung dazu (CSV, Merkliste).
  * Ausführlich: docs/begruendungen/src/sets/erfassen.ts.md#addset */
-export async function addSet(s: SetHinzufuegen) {
+export async function addSet(sk: SetsKontext, s: SetHinzufuegen) {
   // Ohne Ort gilt der Vorgabeort des Kontos (CSV- und Wanted-Import haben keinen).
   const ort = await ortFuerNeuerfassung(s.konto, s.lagerort ?? null);
-  const ergebnis = await addSetIntern(s);
+  const ergebnis = await addSetIntern(sk, s);
   if (ort && ergebnis?.set_number) await setzeLagerort('set', [s.konto], [ergebnis.set_number], ort);
   return ergebnis;
 }
 
 // Das Datum geht in DIESELBE Erfassung — ein nachträgliches UPDATE datierte einen fremden Kauf desselben Tages um.
 export async function addSetWithDate(
+  sk: SetsKontext,
   setNumber: string,
   menge: number,
   konto: number,
@@ -260,7 +267,7 @@ export async function addSetWithDate(
   zustand: string | null,
   erfasstAm: string | null,
 ) {
-  return addSet({ setNumber, menge, konto, kaufpreis, zustand, erfasstAm, massenimport: true });
+  return addSet(sk, { setNumber, menge, konto, kaufpreis, zustand, erfasstAm, massenimport: true });
 }
 
 /** Nie Voraussetzung für die Antwort: Scheitert das Einstellen, ist das Set
@@ -276,7 +283,7 @@ export async function nacharbeitEinstellen(setNumber: string, userId: number, ar
   );
 }
 
-async function addSetIntern(s: SetHinzufuegen) {
+async function addSetIntern(sk: SetsKontext, s: SetHinzufuegen) {
   const { konto: userId, menge, fortschritt } = s;
   const massenimport = s.massenimport === true;
   const normalized = normalizeSetNumber(s.setNumber);
@@ -297,12 +304,13 @@ async function addSetIntern(s: SetHinzufuegen) {
         )
       : kaufpreis;
 
-  if (await repo.setZeileDesKontos(userId, normalized)) {
+  if (await repo.setZeileDesKontos(sk.db, userId, normalized)) {
     const preis = await marktpreis();
     // Gesperrt, weil recordAcquisitionForDay() erst liest und dann schreibt.
     // Ausführlich: docs/begruendungen/src/sets/erfassen.ts.md#addsetintern
-    await withInventoryLock(userId, normalized, async tx => {
+    await mitInventarSperre(sk.db, userId, normalized, async tx => {
       await recordAcquisition(
+        sk,
         {
           konto: userId,
           setNumber: normalized,
@@ -320,13 +328,14 @@ async function addSetIntern(s: SetHinzufuegen) {
     return { action: 'updated', set_number: normalized };
   }
 
-  const { name } = await katalogHolen(normalized, !massenimport, fortschritt ?? null);
+  const { name } = await katalogHolen(sk, normalized, !massenimport, fortschritt ?? null);
   const preis = await marktpreis();
   // Gesperrt: Zwei gleichzeitige Erst-Erfassungen überschrieben sich sonst.
-  await withInventoryLock(userId, normalized, async tx => {
+  await mitInventarSperre(sk.db, userId, normalized, async tx => {
     await repo.legeSetZeileAn(tx, userId, normalized);
     // Nur ein bezahlter Betrag trägt die gewählte Währung; ein Marktpreis steht in der des Kontos.
     await recordAcquisition(
+      sk,
       {
         konto: userId,
         setNumber: normalized,

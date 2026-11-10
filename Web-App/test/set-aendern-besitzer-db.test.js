@@ -43,7 +43,7 @@ test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, 
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
                   VALUES ($1,$2,1,10,'N')`, [subId, SET]);
 
-    const { updateSet } = _req('src/sets/setService.js');
+    const { updateSet } = _req('src/sets/index.js');
     // Die sets-Zeile traegt seit Migration 0032 nur noch Menge und Besitzer —
     // Kaufpreis und Zustand stehen in der Erfassung.
     const stand = async () => ({
@@ -92,7 +92,7 @@ test('die Menge geht bewusst auf das eigene Konto', () => {
   // Besitzer ab. Das steht hier, damit es niemand „mit vereinheitlicht".
   const src = fs.readFileSync(path.join(ROOT, 'src/sets/setService.ts'), 'utf8');
   const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
-  assert.match(code, /adjustAcquisitionsToQuantity\(uid, sn/,
+  assert.match(code, /adjustAcquisitionsToQuantity\(sk, uid, sn/,
     'Die Mengenanpassung laeuft nicht mehr auf das eigene Konto — dann erhoeht ' +
     'ein „+" den Bestand eines fremden Kontos');
   // Und Preis/Zustand gehen NICHT ueber den Aufrufer.

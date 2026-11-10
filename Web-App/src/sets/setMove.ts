@@ -1,10 +1,11 @@
 /** Verschoben wird über die Erfassungen: Die Menge beider Konten folgt daraus
  * beim Lesen, hier wird keine Menge geschrieben. Ausführlich: docs/begruendungen/src/sets/setMove.ts.md#abschnitt */
 import type { DbSchnittstelle } from '../../db/database';
-import { withInventoryLock } from '../../db/txLock';
+import { mitInventarSperre } from '../../db/txLock';
 import { recordAcquisitionForDay } from '../bestand/acquisitions';
 import { fachfehler } from '../infra/fehlerTexte';
 import * as repo from './repository/verschieben';
+import type { SetsKontext } from './kontext';
 
 export interface MoveResult {
   quantity: number;
@@ -99,8 +100,8 @@ export async function moveManualAcquisition(
 }
 
 /** Unter der Sperre des Quellbestands, damit kein zweiter Weg dazwischen bucht. */
-export function verschiebeSet(sn: string, fromId: number, toId: number, erfassungen: number[]): Promise<MoveResult> {
+export function verschiebeSet(sk: SetsKontext, sn: string, fromId: number, toId: number, erfassungen: number[]): Promise<MoveResult> {
   // Zwei Verschiebungen in Gegenrichtung sperren die Zeilen beider Konten in umgekehrter Reihenfolge.
-  return withInventoryLock(fromId, sn, (tx) => moveSetBetweenAccounts(tx, sn, fromId, toId, erfassungen),
+  return mitInventarSperre(sk.db, fromId, sn, (tx) => moveSetBetweenAccounts(tx, sn, fromId, toId, erfassungen),
     { wiederholeBeiKonflikt: true });
 }
