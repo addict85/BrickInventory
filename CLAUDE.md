@@ -12,11 +12,11 @@ Gemessen am 25.10.2026: 50,5 % der Zeilen in `server.ts`, `routes/` und
 40 Zeilen Logik und 200 Zeilen Erzählung ist nicht prüfbar.
 
 - Neue Kommentare halten sich daran.
-- Die langen Kommentare des Servers stehen seit dem 25.10.2026 wörtlich in
-  `Web-App/docs/begruendungen/<datei>.md`; im Code steht je Stelle der erste
-  Absatz und ein Verweis `Ausführlich: docs/begruendungen/…#anker`. Die
-  Kurzfassung ist maschinell gewählt — wer die Stelle anfasst, schreibt sie zu
-  einem echten *Warum* um. Neues kommt nicht dorthin, sondern in den Commit.
+- Lange Begründungen stehen nicht im Baum; die Geschichte einer Stelle
+  gehört in die Commit-Nachricht. Das frühere Archiv `Web-App/docs/begruendungen/`
+  ist über `git log -- Web-App/docs/begruendungen` erreichbar (zuletzt
+  enthalten in `fd6cf5e`). Viele Kurzfassungen im Code sind noch maschinell
+  gewählt — wer die Stelle anfasst, schreibt sie zu einem echten *Warum* um.
 - Ein Test prüft Code, nicht Kommentartext. Wo eine Begründung im Code stehen
   muss (z. B. eine bewusste Ausnahme), gehört sie in die Kurzfassung.
 - Testdateien dürfen im Kopf die Gegenproben aufzählen; das ist dort Teil

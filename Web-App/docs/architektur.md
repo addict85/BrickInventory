@@ -115,8 +115,8 @@ Android-Client (`test/vertrag-kotlin.test.js`).
 
 ## Begründungen
 
-Lange Begründungen einzelner Stellen liegen unter `docs/begruendungen/`;
-der Code verweist mit `Ausführlich: docs/begruendungen/…#anker`.
+Im Code steht das Warum in wenigen Zeilen; lange Begründungen und die
+Geschichte einer Stelle stehen in der Commit-Nachricht (CLAUDE.md).
 
 ## Oberfläche
 

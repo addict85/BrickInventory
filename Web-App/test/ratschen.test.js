@@ -304,20 +304,6 @@ test('Inline-Stile in index.html werden weniger, nie mehr', () => {
   if (ist < SCHRANKE) console.log(`  ℹ Inline-Stile: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
-/** Quelltext von Server und Oberfläche — für die beiden Kommentar-Ratschen unten. */
-function serverUndOberflaeche() {
-  const js = path.join(WEB, 'public', 'js');
-  return [...quellen(), ...fs.readdirSync(js).filter(f => /^\d\d-.*\.js$/.test(f)).map(f => path.join(js, f)),
-          path.join(WEB, 'public', 'i18n.js')];
-}
-
-/** Alles, was auf docs/begruendungen verweisen darf: Server, Oberfläche, index.html, Tests, Skripte. */
-function mitBegruendungen() {
-  const js = (/** @type {string} */ d) => fs.readdirSync(d).filter(f => f.endsWith('.js')).map(f => path.join(d, f));
-  return [...serverUndOberflaeche(), path.join(WEB, 'public', 'index.html'),
-    ...js(__dirname), ...js(path.join(__dirname, 'helpers')), ...js(path.join(WEB, 'scripts'))];
-}
-
 test('kein Verweis auf „Nachtrag N" unter Web-App/', () => {
   // Die Geschichte einer Stelle steht im Commit (CLAUDE.md); eine Nummer im
   // Kommentar verweist auf eine Liste, die es im Baum nicht gibt. Ausgenommen:
@@ -616,78 +602,15 @@ test('der Kommentaranteil der Tests sinkt, nie steigt', () => {
   if (anteil < SCHRANKE - 0.5) console.log(`  ℹ Kommentaranteil Tests: ${anteil} % (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
-test('jeder Verweis auf docs/begruendungen trifft Datei und Anker', () => {
-  // Die langen Begründungen liegen in docs/begruendungen/<datei>.md; der Code
-  // verweist mit „Ausführlich: …#anker". Beim Verschieben einer Datei wandert
-  // das Dokument mit — dieser Test hält Verweis und Ziel zusammen.
-  // Und nur in das Dokument der EIGENEN Datei: Sonst bleibt beim Teilen
-  // einer Datei die Begründung beim alten Namen liegen.
-  // Gegenproben: #post-tokens statt #get-tokens in routes/api_v1/settings.ts
-  // → rot (31.10.2026); in routes/auth/benutzer.ts wieder auf
-  // routes/auth.ts.md#delete-users-id verwiesen → rot (05.11.2026).
-  const kaputt = [];
-  let n = 0;
-  for (const f of mitBegruendungen()) {
-    const eigen = path.relative(WEB, f).split(path.sep).join('/') + '.md';
-    for (const m of fs.readFileSync(f, 'utf8').matchAll(/docs\/begruendungen\/([^\s#`'"]+\.md)#([\w-]+)/g)) {
-      n++;
-      if (m[1] !== eigen) { kaputt.push(`${path.relative(WEB, f)}: verweist auf ${m[1]} statt ${eigen}`); continue; }
-      const doc = path.join(WEB, 'docs', 'begruendungen', m[1]);
-      if (!fs.existsSync(doc)) { kaputt.push(`${path.relative(WEB, f)}: ${m[1]} fehlt`); continue; }
-      if (!fs.readFileSync(doc, 'utf8').includes(`<a id="${m[2]}"></a>`)) kaputt.push(`${path.relative(WEB, f)}: ${m[1]}#${m[2]}`);
-    }
-  }
-  assert.ok(n > 200, `nur ${n} Verweise gefunden — greift die Suche noch?`);
-  assert.deepEqual(kaputt, []);
-});
-
-test('Anker ohne Verweis werden weniger, nie mehr', () => {
-  // Ein Abschnitt, auf den kein Code mehr zeigt, gehört zu einer gekürzten
-  // oder entfernten Stelle — Geschichte, die nach git gehört.
-  // Gemessen 285 von 901 am 05.11.2026. Gegenprobe: einen Verweis in
-  // routes/auth/benutzer.ts gestrichen → rot (289).
-  const SCHRANKE = 285;
-  const verwiesen = new Set();
-  for (const f of mitBegruendungen())
-    for (const m of fs.readFileSync(f, 'utf8').matchAll(/docs\/begruendungen\/([^\s#`'"]+\.md)#([\w-]+)/g)) verwiesen.add(`${m[1]}#${m[2]}`);
-  const wurzel = path.join(WEB, 'docs', 'begruendungen');
-  let alle = 0, ohne = 0;
-  (function lauf(d) {
-    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
-      const p = path.join(d, e.name);
-      if (e.isDirectory()) { lauf(p); continue; }
-      const rel = path.relative(wurzel, p).split(path.sep).join('/');
-      for (const m of fs.readFileSync(p, 'utf8').matchAll(/<a id="([\w-]+)"><\/a>/g)) {
-        alle++;
-        if (!verwiesen.has(`${rel}#${m[1]}`)) ohne++;
-      }
-    }
-  })(wurzel);
-  assert.ok(alle > 500, `nur ${alle} Anker gefunden — greift die Suche noch?`);
-  assert.ok(ohne <= SCHRANKE, `${ohne} Anker ohne Verweis, erlaubt sind ${SCHRANKE}`);
-  if (ohne < SCHRANKE) console.log(`  ℹ Anker ohne Verweis: ${ohne} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
-});
-
-test('jedes Dokument unter docs/begruendungen wird vom Code erreicht', () => {
-  // Ein Dokument ohne Verweis ist Geschichte und gehört nach git, nicht in
-  // den Baum; eines, dessen Code umgezogen ist, zieht mit (Dateiname = Ort).
-  // Gegenprobe: docs/begruendungen/src/verwaist.ts.md angelegt → rot
-  // („src/verwaist.ts.md" in der Liste der unerreichten Dokumente).
-  const verwiesen = new Set();
-  for (const f of mitBegruendungen()) {
-    for (const m of fs.readFileSync(f, 'utf8').matchAll(/docs\/begruendungen\/([^\s#`'"]+\.md)#/g)) verwiesen.add(m[1]);
-  }
-  const wurzel = path.join(WEB, 'docs', 'begruendungen');
-  const dokumente = [];
-  (function lauf(d) {
-    for (const n of fs.readdirSync(d)) {
-      const p = path.join(d, n);
-      if (fs.statSync(p).isDirectory()) lauf(p);
-      else dokumente.push(path.relative(wurzel, p).split(path.sep).join('/'));
-    }
-  })(wurzel);
-  assert.ok(dokumente.length > 50, `nur ${dokumente.length} Dokumente gefunden — greift die Suche noch?`);
-  assert.deepEqual(dokumente.filter(d => !verwiesen.has(d)), []);
+test('kein Verweis auf das frühere Begründungsarchiv', () => {
+  // Lange Begründungen stehen nicht im Baum (CLAUDE.md); das Archiv ist über git erreichbar. Ratsche 0:
+  // Ein Verweis darauf zeigte ins Leere. Das Skript findet dieselben Verweise, die es entfernt.
+  // Gegenprobe (10.11.2026): `// Ausführlich: docs/…/x.md#a` (voller Pfad) in src/infra/appPaths.ts → rot
+  // mit „src/infra/appPaths.ts“; den Ordner docs/begruendungen/ wieder angelegt → rot.
+  assert.equal(fs.existsSync(path.join(WEB, 'docs', 'begruendungen')), false, 'docs/begruendungen/ gehört nicht in den Baum');
+  const r = require('node:child_process').spawnSync(
+    process.execPath, [path.join(WEB, 'scripts', 'begruendungen-entfernen.js'), '--pruefen'], { encoding: 'utf8' });
+  assert.equal(r.status, 0, `Verweise ins frühere Archiv — \`node scripts/begruendungen-entfernen.js\` entfernt sie:\n${r.stdout}${r.stderr}`);
 });
 
 test('der Kommentaranteil der Betriebsdateien sinkt, nie steigt', () => {
@@ -749,8 +672,8 @@ function langeBloecke(/** @type {string} */ text) {
 }
 
 test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie mehr', () => {
-  // Im Code steht das Warum in wenigen Zeilen; die Geschichte liegt in
-  // docs/begruendungen/ oder im Commit (CLAUDE.md); Gegenprobenlisten zählen nicht.
+  // Im Code steht das Warum in wenigen Zeilen, die Geschichte im Commit (CLAUDE.md);
+  // Gegenprobenlisten zählen nicht.
   // Gemessen am 10.11.2026: Tests 64 Blöcke, scripts 0, index.html 216 Zeilen.
   // Gegenprobe (06.11.2026): sechs Zeilen Prosa vor die Gegenprobe im Kopf von hsts.test.js → rot (Tests 75).
   const SCHRANKE = { tests: 64, scripts: 0, indexHtml: 216 };
