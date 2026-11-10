@@ -3,6 +3,7 @@
  * vergessen.
  * Ausführlich: docs/begruendungen/test/passwortlaenge.test.js.md#kopf
  */
+// Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -15,7 +16,7 @@ const _req = buildAndRequire();
 const { PASSWORT_MIN_ZEICHEN, passwortZuKurz } = _req('src/konto/auth.js');
 
 // Ausgeschrieben statt ueber eine Schleifenvariable zusammengesetzt — siehe
-// test/baumbruecken.test.js, das diese Bruecken statisch aufloest.
+// test/abgleich-baumbruecken.test.js, das diese Bruecken statisch aufloest.
 
 test('die Regel selbst haelt auch das, was kein String ist', () => {
   // Seit dem 04.11.2026 zwölf statt acht.

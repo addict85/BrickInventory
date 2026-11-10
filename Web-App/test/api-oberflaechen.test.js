@@ -138,7 +138,7 @@ test('auch die direkt angemeldeten Routen stehen unter /api/v1', () => {
      '(Migration 0014) benutzen sie. Bedient bleibt die alte, weil ' +
      'INSTALLIERTE App-Fassungen sie selbst zusammenbauen (ImageUrls.kt) — ' +
      'wer nicht aktualisiert, bekaeme sonst gar keine Teilebilder mehr. Dass ' +
-     'nur noch die neue GEBAUT wird, haelt test/img-proxy-v1.test.js fest.'],
+     'nur noch die neue GEBAUT wird, haelt test/abgleich-img-proxy-v1.test.js fest.'],
   ]);
 
 

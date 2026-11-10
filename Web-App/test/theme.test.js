@@ -16,6 +16,7 @@
  *   design-je-konto-db.test.js; Route hinter requireLogin gelegt → dort rot
  *   „ohne Anmeldung: die Vorgabe“.
  */
+// Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');

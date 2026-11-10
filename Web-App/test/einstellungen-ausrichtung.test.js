@@ -18,7 +18,7 @@ const ROOT = path.join(__dirname, '..');
 const QUELLE = require('./helpers/sources').ansichtQuelle('05');
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
-/** Wie in test/catalog-frontend.test.js: die Modulverpackung weg. */
+/** Wie in test/abgleich-catalog-frontend.test.js: die Modulverpackung weg. */
 function ohneModul(src) {
   return src.replace(/^import[^;]*;\s*$/gm, '').replace(/^export\s+/gm, '');
 }

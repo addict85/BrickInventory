@@ -5,7 +5,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const { androidDateien } = require('./helpers/android');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
@@ -203,35 +202,6 @@ test('der Sicherheitslauf prüft Code, Abhängigkeiten, Image und den laufenden 
   assert.ok(fs.existsSync(path.join(WURZEL, '.github', 'zap-regeln.tsv')), 'die ZAP-Regeln fehlen');
 });
 
-// Gegenproben (31.10.2026 gemessen): `continue-on-error: true` an den Schritt
-// „Gegenproben messen“ → rot; im Kopf von ablauf-anzahl-fest.patch `Modul: app`
-// → `Modul: core-ui` → rot „… liegt nicht in core-ui“.
-test('der Gegenproben-Job misst jede Patch-Gegenprobe gegen eine echte Testklasse', () => {
-  const yml = fs.readFileSync(path.join(ECHTER_ORT, 'android.yml'), 'utf8')
-    .split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
-  const job = yml.split(/\n  gegenproben:\n/)[1]?.split(/\n  [\w-]+:\n/)[0] ?? '';
-  assert.match(job, /python3 tools\/gegenproben\.py gegenproben/, 'der Job ruft das Werkzeug nicht');
-  assert.doesNotMatch(job, /continue-on-error/, 'eine grüne Gegenprobe muss den Lauf rot machen');
-  // Diese Klassen müssen mindestens eine Gegenprobe haben; weitere sind willkommen.
-  const PFLICHT = ['AblaufTest', 'BestandMigrationTest'];
-  const ordner = path.join(WURZEL, 'Android-App', 'gegenproben');
-  const klassen = new Set();
-  for (const n of fs.readdirSync(ordner).filter(d => d.endsWith('.patch'))) {
-    const kopf = fs.readFileSync(path.join(ordner, n), 'utf8').split(/\ndiff --git /)[0];
-    const feld = (f) => (kopf.match(new RegExp(`^${f}: (.+)$`, 'm')) || [])[1];
-    assert.ok(feld('Gegenprobe') && feld('Rot'), `${n}: Kopf ohne Gegenprobe oder Rot`);
-    const voll = feld('Test') ?? '';
-    const endung = ['', feld('Modul'), 'src', 'test', 'java', ...voll.split('.')].join(path.sep) + '.kt';
-    assert.equal(androidDateien(f => f.endsWith(endung), 'test').length, 1, `${n}: ${voll} liegt nicht in ${feld('Modul')}`);
-    klassen.add(voll.split('.').pop());
-  }
-  for (const k of PFLICHT) assert.ok(klassen.has(k), `${k} braucht eine Gegenprobe`);
-});
-
-// Renovate liest nur die renovate.json im Wurzelverzeichnis; Web-App/renovate.json
-// stand dort lange ohne Wirkung. Gegenproben (02.11.2026 gemessen): `npm` aus
-// enabledManagers gestrichen → rot; eine leere Web-App/renovate.json angelegt → rot;
-// minimumReleaseAge gestrichen → rot (npm und gradle ohne Wartezeit).
 test('Renovate pflegt npm der Web-App aus der Wurzel-Konfiguration', () => {
   const konf = JSON.parse(fs.readFileSync(path.join(WURZEL, 'renovate.json'), 'utf8'));
   assert.ok(konf.enabledManagers.includes('npm'), 'Die npm-Pakete der Web-App hält niemand aktuell');
@@ -505,39 +475,4 @@ test('veröffentlicht und bescheinigt wird nur, was der Signierjob ausgab (sec17
   assert.equal(lauf().status, 0, lauf().stdout + lauf().stderr);
   fs.writeFileSync(path.join(ort, 'signiert', 'version-signiert.json'), '{ }');
   assert.notEqual(lauf().status, 0, 'ein verändertes Byte wird bescheinigt');
-});
-
-// Gegenproben (05.11.2026 gemessen): in der README eine Ziffer des Zertifikats geändert → rot
-// „… nennt nicht das hinterlegte Zertifikat“; pull_request ohne android.yml → rot „… Workflow-Pfad“;
-// im Signierjob `| sha256sum -c -` der Werkzeuge durch `| cat` ersetzt → rot „… feste Prüfsummen“.
-test('Release-Weg: festes Werkzeug, Zertifikat für Neuinstallationen, Fork-Läufe ohne installierbares APK', () => {
-  const android = fs.readFileSync(path.join(ECHTER_ORT, 'android.yml'), 'utf8');
-  // sec17 B-N6: festes Image und festgelegte Werkzeuge mit Prüfsumme.
-  for (const job of ['build', 'signieren', 'apk-pruefen', 'release'])
-    assert.match(jobVon(android, job), /runs-on: ubuntu-24\.04/, `${job} läuft auf einem wechselnden Image`);
-  assert.doesNotMatch(android, /build-tools\/\*\//, 'Werkzeuge „das neueste des Images“');
-  const signieren = schrittNach(android, 'Signieren');
-  assert.match(signieren, /WERKZEUGE="\$ANDROID_HOME\/build-tools\/\d+\.\d+\.\d+"/);
-  assert.match(signieren, /[0-9a-f]{64} "\$WERKZEUGE\/zipalign"[\s\\]+[0-9a-f]{64} "\$WERKZEUGE\/lib\/apksigner\.jar"[\s\\]+\| sha256sum -c -/,
-    'die Signierwerkzeuge werden nicht gegen feste Prüfsummen geprüft');
-  // sec17 B-N9: Zertifikat im Release-Text und in der README, gleich dem hinterlegten.
-  const soll = fs.readFileSync(path.join(WURZEL, 'Android-App', 'tools', 'release-zertifikat.sha256'), 'utf8')
-    .split('\n').map(z => z.split('#')[0].trim()).find(z => /^[0-9a-f]{64}$/.test(z));
-  const readme = fs.readFileSync(path.join(WURZEL, 'Android-App', 'README.md'), 'utf8');
-  assert.ok(soll && readme.includes(`SHA-256 ${soll}`), 'Die README nennt nicht das hinterlegte Zertifikat');
-  const veroeffentlichen = schrittNach(android, 'BrickInventory.apk als Release bereitstellen');
-  assert.match(veroeffentlichen, /tools\/release-zertifikat\.sha256/);
-  assert.match(veroeffentlichen, /Signierzertifikat SHA-256: \\`\$ZERT\\`/);
-  assert.match(veroeffentlichen, /apksigner verify --print-certs/);
-  // sec17 B-N14: auch ein PR, der nur den Workflow ändert, bekommt einen Lauf.
-  const pr = android.split('\n  pull_request:\n')[1].split('\n  workflow_dispatch:')[0];
-  assert.match(pr, /- '\.github\/workflows\/android\.yml'/, 'pull_request ohne Workflow-Pfad');
-  // sec17 B-N15: ausserhalb eines Etiketts kein installierbares APK im Artefakt.
-  assert.match(signieren, /if \[ "\$ECHT" != "true" \]; then\n\s+mv "\$APK_AUS" "\$AUS\/apk\/release\/BrickInventory\.apk\.probe-nicht-installieren"/);
-  assert.match(schrittNach(android, 'Probe-APK für die Prüfung benennen'), /BrickInventory\.apk\.probe-nicht-installieren/);
-  // sec17 B-N2: die Zusammenfassung der Prüfsummen entsteht ohne Gradle.
-  assert.doesNotMatch(jobVon(android, 'pruefsummen'), /pruefsummen-vergleich/);
-  const zusammen = jobVon(android, 'pruefsummen-zusammenfassen');
-  assert.match(zusammen, /pruefsummen-vergleich\.py/);
-  assert.doesNotMatch(zusammen, /gradlew|setup-gradle/, 'die Zusammenfassung entsteht ohne Gradle');
 });

@@ -1,0 +1,16 @@
+Gegenprobe: Der Gegenproben-Job darf scheitern (continue-on-error)
+Modul: app
+Test: ch.brickinventoryapp.app.AndroidWorkflowTest
+Rot: der Gegenproben-Job misst jede Patch-Gegenprobe
+
+diff --git a/.github/workflows/android.yml b/.github/workflows/android.yml
+--- a/.github/workflows/android.yml
++++ b/.github/workflows/android.yml
+@@ -1029,6 +1029,7 @@
+   gegenproben:
+     if: ${{ !inputs.pruefsummen && !inputs.bildschirmfotos }}
+     runs-on: ubuntu-latest
++    continue-on-error: true
+     # Vier Teile mit je jedem vierten Patch; seriell dauerte der Volllauf über 180 min.
+     strategy:
+       fail-fast: false

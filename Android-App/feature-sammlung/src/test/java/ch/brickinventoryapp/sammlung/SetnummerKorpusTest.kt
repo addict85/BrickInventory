@@ -31,7 +31,7 @@ import java.io.File
  *
  * Die Faelle stehen in shared/setnummer-korpus.json, samt Begruendung je Fall.
  * Ein neuer Fall wird EINMAL eingetragen und prueft ab sofort beide Apps.
- * Die Gegenprobe auf der anderen Seite ist Web-App/test/setnummer-korpus.test.js.
+ * Die Gegenprobe auf der anderen Seite ist Web-App/test/abgleich-setnummer-korpus.test.js.
  *
  * Selbstbeweis ueber Mindestzahlen: Ginge das Einlesen schief, waere die
  * Schleife leer und der Test gruen, ohne etwas geprueft zu haben.
