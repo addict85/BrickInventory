@@ -6,8 +6,9 @@
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
  *   a) setContentIntent aus der Benachrichtigung entfernt → Schritt 1 rot.
  *   b) Das Auslesen in AppNavigation entfernt             → Schritt 2 rot.
- *   c) Den Knopf aus der Mail entfernt                    → Schritt 3 rot.
- *   d) Das Auslesen von ?set= in showApp() entfernt       → Schritt 4 rot.
+ *   d) (10.11.2026, jsdom) Das Auslesen von ?set= in showApp() entfernt → Schritt 4 rot;
+ *      history.replaceState dort entfernt → Schritt 4 rot („nicht bereinigt“).
+ * Schritt 3 (die Mail trägt den Link) prüft alarm-mail-knopf.test.js am gebauten Mailtext.
  *   e) (01.11.2026) MeldungsEinstieg exported="true"      → Schritte 5, 6 rot.
  *   f) (01.11.2026) MainActivity liest wieder
  *      getStringExtra(EXTRA_SET)                          → Schritte 2, 5 rot.
@@ -82,35 +83,22 @@ test('2. und die App löst es ein', () => {
     'Der Sprung prüft nicht, ob überhaupt jemand angemeldet ist.');
 });
 
-test('3. die Mail trägt einen Link', () => {
-  const m = web('src/mail/mailer.ts');
-  const i = m.indexOf('async function baueAlarmMail(');
-  assert.ok(i > 0, 'baueAlarmMail() nicht gefunden');
-  const body = m.slice(i, m.indexOf('\n// ──', i) < 0 ? undefined : m.indexOf('\n// ──', i));
-  assert.match(body, /\/\?set=\$\{encodeURIComponent\(d\.setNumber\)\}/,
-    'Die Mail verlinkt das Set nicht.');
-  assert.match(body, /emailBtn\(url/, 'Der Link steht nicht als Knopf in der Mail.');
-  // Ohne APP_BASE_URL kein Knopf: Ein geratener Host wäre schlimmer als keiner.
-  assert.match(body, /url \? emailBtn/,
-    'Der Knopf erscheint auch ohne bekannte Adresse — dann zeigt er ins Leere.');
-});
+// 3. Die Mail trägt den Link als Knopf: alarm-mail-knopf.test.js baut sie (Schritte 1 und 2).
 
-test('4. und die Webapp löst ihn ein', () => {
-  // DER Schritt, der am 25.09. gefehlt hat.
-  const core = web('public/js/26-sitzung.js');
-  const i = core.indexOf('function showApp()');
-  assert.ok(i > 0, 'showApp() nicht gefunden');
-  const block = core.slice(i, i + 3000);
-  assert.match(block, /new URLSearchParams\(location\.search\)\.get\('set'\)/,
-    'Die Webapp liest ?set= nicht — der Knopf in der Mail öffnet nur die Startseite.');
-  assert.match(block, /openModal\(setAusLink\)/, 'Die Webapp öffnet das Set-Detail nicht.');
-  assert.match(block, /history\.replaceState/,
-    'Die Adresse wird nicht bereinigt — ein F5 reisst das Detail erneut auf.');
+test('4. und die Webapp löst ihn ein', async () => {
+  const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
+  const { w, d, aufrufe } = await oeffneOberflaeche({
+    '/v1/sets/10294-1': { success: true, set: { set_number: '10294-1', name: 'Titanic', quantity: 1 } },
+  }, { vorher: (fenster) => fenster.history.replaceState({}, '', '/?set=10294-1') });
+  try {
+    assert.ok(await warte(() => aufrufe.some(a => a.url.includes('/v1/sets/10294-1'))),
+      'Die Webapp liest ?set= nicht — der Knopf in der Mail öffnet nur die Startseite.');
+    assert.ok(await warte(() => d.getElementById('set-modal').classList.contains('open') && d.getElementById('m-tit').textContent.includes('Titanic')),
+      'Das Set-Detail öffnet sich nicht.');
+    // Sonst reisst ein F5 das Detail erneut auf.
+    assert.equal(w.location.search, '', 'Die Adresse wird nicht bereinigt');
+  } finally { w.close(); }
 });
-
-// ── Fremde Apps ──────────────────────────────────────────────────────────────
-// MainActivity ist für den Launcher exportiert; jede App kann sie mit beliebigen
-// Extras starten. Ein Ziel nimmt darum nur der nicht exportierte Einstieg an.
 
 const MANIFEST = () => ohneHtmlKommentare(fs.readFileSync(
   path.join(ROOT, '../Android-App/app/src/main/AndroidManifest.xml'), 'utf8'));
