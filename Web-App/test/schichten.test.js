@@ -162,7 +162,7 @@ const codeZeilen = (rel) => quelltext(rel).split('\n').filter(z => z.trim()).len
 test('jobs/ führt Aufträge aus, die Arbeit eines Auftrags steht in src/', () => {
   // jobs/ hält den Worker (Pacht, Wiederholung, Abbruch), die Bearbeitertabelle
   // und den Einstieg des Importprozesses; was ein Auftrag fachlich tut, liegt in src/<bereich>/.
-  // Gemessen am 09.11.2026: vorher 20 Dateien, 1597 Codezeilen, 4 mit Import aus db/; jetzt 4, 287, 0; 265, seit die Verdrahtung in startup/ liegt.
+  // Gemessen 265 Codezeilen am 09.11.2026.
   // Gegenproben (09.11.2026): `import * as db from '../db/database'` in jobs/auftraegeStarten.ts → rot
   // (db/); fetchAndCachePrice und zustaendeJeSet zurück nach jobs/auftraegeStarten.ts → rot (113
   // Zeilen); `import { STAPEL } from '../src/katalog/bilder/bildbedarf'` in jobs/auftragsWorker.ts → rot.

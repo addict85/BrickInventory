@@ -63,9 +63,8 @@ test('die Suche findet die Quellen ueberhaupt', () => {
 });
 
 test('stille Faenge werden weniger, nie mehr', () => {
-  // Die beiden übrigen sind Rebrickable-Vermutungen, deren 404 die Antwort
-  // ist; wie die Zahl gesunken ist, steht im git log. Mit dem Ersatzwert-Muster
-  // wurden am 08.11.2026 fünf weitere gefunden und behoben (Stand danach: 2).
+  // Die beiden übrigen sind Rebrickable-Vermutungen, deren 404 die Antwort ist.
+  // Gemessen 2 am 08.11.2026.
   const SCHRANKE = 2;
   // Selbstbeweis des letzten Musters: Es muss einen Ersatzwert ohne Meldung finden, die Meldung nicht.
   const ersatz = STILLE_FAENGE[STILLE_FAENGE.length - 1];
@@ -85,8 +84,7 @@ test('stille Faenge werden weniger, nie mehr', () => {
 
 test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', () => {
   // Ein Ersatzwert nach einem Fehler sieht für den Aufrufer aus wie „leer“; src/infra/ergebnis.ts
-  // gibt den Fehlschlag weiter. Gemessen 349 Aufrufe am 09.11.2026, 318 nach dem Umbau von src/sets,
-  // 279 mit `degradiert` (Abstriche) und Aufträgen, die sichtbar scheitern statt leer weiterzulaufen.
+  // gibt den Fehlschlag weiter. Gemessen 279 am 09.11.2026.
   // Gegenprobe (09.11.2026): in src/sets/erfassen.ts wieder `.catch(meldeUndLiefere(…))` → rot (280).
   const SCHRANKE = 279;
   const muster = /\b(?:logAndContinue|meldeUndLiefere)\(/g;
@@ -106,7 +104,7 @@ function nimmtProzesszugang(f) {
 test('der Kompatibilitätsweg zur Datenbank wird weniger, nie mehr', () => {
   // db/database.ts hat eine Fabrik (erzeugeDb); wer noch die Funktionen des
   // Prozesszugangs importiert, statt einen Zugang übergeben zu bekommen, zählt hier.
-  // Gemessen 98 Dateien am 09.11.2026, 99 nach dem Zusammenführen mit dem Schrittschutz.
+  // Gemessen 99 am 09.11.2026.
   // Gegenprobe (09.11.2026): ein `import * as db from '../../db/database'` in src/sets/zeilen.ts → rot.
   const SCHRANKE = 99;
   const ist = quellen().filter(nimmtProzesszugang).length;
@@ -116,7 +114,7 @@ test('der Kompatibilitätsweg zur Datenbank wird weniger, nie mehr', () => {
 });
 
 test('any wird weniger, nie mehr', () => {
-  // Gemessen 22 am 09.11.2026; wie die Zahl sinkt, steht im git log.
+  // Gemessen 22 am 09.11.2026.
   const SCHRANKE = 22;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
@@ -130,7 +128,7 @@ test('any wird weniger, nie mehr', () => {
 
 test('any in allen Formen wird weniger, nie mehr', () => {
   // Auch Promise<any>, any[] und Record<string, any>: Die enge Zählung oben sah
-  // nur `as any` und `: any`. Gemessen 36 am 08.11.2026.
+  // nur `as any` und `: any`. Gemessen 35 am 10.11.2026.
   // Gegenprobe (05.11.2026): getSetting wieder `fallback?: any` ohne Überladungen → rot.
   const SCHRANKE = 35;
   const ist = zaehle([/\bany\b/g]);
@@ -141,7 +139,7 @@ test('any in allen Formen wird weniger, nie mehr', () => {
 test('eigene REQUIRE_DB-Blöcke in Tests werden weniger, nie mehr', () => {
   // Die Form steht in test/helpers/db.js (dbOderSkip); was davon abweicht,
   // prüft die Erreichbarkeit anders (Rollen, zweite Datenbank, Server).
-  // Gemessen 116 Dateien am 05.11.2026.
+  // Gemessen 115 am 10.11.2026.
   // Gegenprobe (05.11.2026): den Block zurück in acquisition-all-paths-db → rot.
   const SCHRANKE = 115;
   const ist = fs.readdirSync(__dirname).filter(n => n.endsWith('.js') && n !== path.basename(__filename))
@@ -162,8 +160,8 @@ test('Datenbankzeilen sind ohne Typargument unknown', () => {
 
 test('ungetypte Datenbankabfragen werden weniger, nie mehr', () => {
   // Erlaubt, solange niemand Felder der Zeile liest — dann verlangt der
-  // Übersetzer ohnehin ein Typargument. Gemessen 68 am 06.11.2026.
-  // Gegenprobe (05.11.2026): Schranke auf 68 → rot. 65 am 09.11.2026 (beide Zweige zusammen).
+  // Übersetzer ohnehin ein Typargument. Gemessen 65 am 09.11.2026.
+  // Gegenprobe (05.11.2026): Schranke auf 68 → rot.
   const SCHRANKE = 65;
   const ist = zaehle([/\b(?:db|tx|dbh|d)\.(?:get|all)\(/g]);
   assert.ok(ist <= SCHRANKE, `${ist} ungetypte db.get/all, erlaubt sind ${SCHRANKE}`);
@@ -185,8 +183,8 @@ test('rohe req.body und req.query in Routen werden weniger, nie mehr', () => {
 
 test('Schreibziele in Routen werden weniger, nie mehr', () => {
   // schreibziel() prüft im Haushalt, für wen geschrieben wird; besser nimmt der
-  // Dienst den Wunsch selbst entgegen. Gemessen 17 am 05.11.2026, 13 am 09.11.2026
-  // (Set erfassen und verschieben nehmen den Wunsch im Dienst). Gegenprobe (05.11.2026): Schranke auf 16 → rot.
+  // Dienst den Wunsch selbst entgegen. Gemessen 13 am 09.11.2026.
+  // Gegenprobe (05.11.2026): Schranke auf 16 → rot.
   const SCHRANKE = 13;
   let ist = 0;
   for (const f of quellen().filter(f => /[\\/]routes[\\/]/.test(f)))
@@ -213,7 +211,7 @@ function reineQuelltextTests() {
 }
 
 test('reine Quelltext-Tests werden weniger, nie mehr', () => {
-  // Gemessen 71 am 09.11.2026; wie die Zahl gesunken ist, steht im git log.
+  // Gemessen 41 am 10.11.2026.
   const SCHRANKE = 41;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
@@ -254,7 +252,7 @@ function quelltextFaelle() {
 }
 
 test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
-  // Gemessen 495 am 08.11.2026, 492 am 09.11.2026, 405 am 10.11.2026 (Prüfbericht: 632; die Ratschen selbst zählen mit).
+  // Gemessen 405 am 10.11.2026 (die Ratschen selbst zählen mit).
   // Gegenprobe (08.11.2026): `\b_req\w*\(` aus FALL_FUEHRT_AUS entfernt → rot (574).
   // Gegenprobe (05.11.2026): parts-paging.test.js auf den Stand vor den jsdom-Tests → rot.
   const SCHRANKE = 405;
@@ -268,7 +266,7 @@ test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
 test('feste Wartezeiten in Tests werden weniger, nie mehr', () => {
   // Eine feste Pause ist unter Last zu kurz und sonst zu lang; gewartet wird auf
   // eine Bedingung (helpers/zeit.js bis(), ruhig() der Oberflächenhilfen).
-  // Gemessen 111 laut Prüfbericht, 37 am 05.11.2026. Eigene Warte-Helfer: 0.
+  // Gemessen 37 am 05.11.2026; eigene Warte-Helfer: 0.
   // Gegenprobe (05.11.2026): `await warte(500);` in verlauf-browser.test.js → rot (38).
   const SCHRANKE = 37;
   const FEST = /^\s*await (warte|takt|new Promise\(r(esolve)? => setTimeout\(r(esolve)?,)\s*\(?\s*[0-9]{3,}/;
@@ -294,11 +292,7 @@ test('feste Wartezeiten in Tests werden weniger, nie mehr', () => {
  * Skripte schalten es um.
  */
 test('Inline-Stile in index.html werden weniger, nie mehr', () => {
-  // GEMESSEN am 28.10.2026: 455 vor dem Umzug in Klassen, danach 170,
-  // davon 56 reines display:none. 112 am 29.10. (Merkliste-Kasten als Klasse),
-  // 52 am selben Tag (Diagramm, Banner, Dialogfüsse, PDF-Ansicht als Klassen).
-  // 51 am 30.10. (Kennzahlen der Minifiguren ohne eigenes Raster). 47 am 03.11.
-  // 38 am 04.11. (Bauliste und Zwischenspeicher als Klassen); 36 am selben Tag (Bauliste-Chips und Status), 35 am 06.11.
+  // Gemessen 35 am 06.11.2026.
   const SCHRANKE = 35;
   const html = require('./helpers/sources').ohneHtmlKommentare(fs.readFileSync(path.join(WEB, 'public', 'index.html'), 'utf8'));
   const stile = [...html.matchAll(/<[a-zA-Z][^>]*?\sdata-stil="([^"]*)"/g)].map(m => m[1].trim().replace(/;$/, ''));
@@ -365,8 +359,7 @@ test('kein Modul wird in einer Datei zweimal importiert', () => {
 });
 
 test('der Kommentaranteil im Server sinkt, nie steigt', () => {
-  // Gemessen 13,8 % in server.ts, routes/, src/ und jobs/; 13,2 % mit dem
-  // API-Vertrag (src/vertrag/). Schranke 13,2.
+  // Gezählt in server.ts, routes/, src/ und jobs/. Gemessen 13,1 % am 10.11.2026.
   const SCHRANKE = 13.2;
   let zeilen = 0, kommentar = 0;
   for (const f of quellen().filter(f => /[\\/](routes|src|jobs)[\\/]/.test(f) || /[\\/]server\.ts$/.test(f))) {
@@ -395,8 +388,8 @@ function oberflaeche() {
 const TYPZEILE = /^(\/\*\*\s*)?\*?\s*@(param|type|returns?|typedef|template|this|property)\b|^\/\*\*$|^\*\/$|^\*$/;
 
 test('der Kommentaranteil der Oberfläche sinkt, nie steigt', () => {
-  // Ohne Typzeilen gezählt: 22,0 % vor, 20,0 % nach dem Streichen von Geschichte und dem Umbruch
-  // der Kommentare auf 110 Zeichen wie im Code. Gegenprobe: 300 Kommentarzeilen an 01-dom.js → rot.
+  // Ohne Typzeilen gezählt. Gemessen 19,6 % am 10.11.2026.
+  // Gegenprobe: 300 Kommentarzeilen an 01-dom.js → rot.
   const SCHRANKE = 20.0;
   let zeilen = 0, kommentar = 0;
   for (const f of oberflaeche()) {
@@ -428,8 +421,7 @@ test('any in den Typangaben der Oberfläche wird weniger, nie mehr', () => {
 
 test('kein Kommentar der Oberfläche hat mehr als fünf Zeilen Prosa', () => {
   // CLAUDE.md: Ein Kommentar sagt in zwei bis fünf Zeilen, warum. JSDoc-Tags
-  // (@param, @returns …) zählen nicht mit. Gemessen am 05.11.2026: 206 Blöcke,
-  // ausgelagert nach docs/begruendungen/public/; seitdem 0.
+  // (@param, @returns …) zählen nicht mit. Gemessen 0 am 10.11.2026.
   // Gegenprobe: ein //-Block mit sechs Zeilen in 01-dom.js → rot mit Fundstelle.
   const lang = [];
   let bloecke = 0;
@@ -473,8 +465,7 @@ function funktionsLaengen(dateien = oberflaeche()) {
 }
 
 test('keine Funktion der Oberfläche über 100 Zeilen, über 80 werden weniger', () => {
-  // Gemessen am 05.11.2026: 13 über 100 (loadFinance 262); nach dem Aufteilen
-  // 0 über 100 und 8 über 80, seitdem 5. Gegenprobe: loadFinance wieder in einem Stück
+  // Gemessen 0 über 100 und 5 über 80 am 10.11.2026. Gegenprobe: loadFinance wieder in einem Stück
   // (vor dem Aufteilen) → rot mit „04-finance.js … loadFinance“.
   const SCHRANKE_80 = 5;
   const alle = funktionsLaengen();
@@ -500,8 +491,7 @@ function oberflaechenCode() {
 }
 
 test('Markup kommt nur über setzeHtml()/fuegeHtmlEin() in die Seite', () => {
-  // Gemessen vor dem Umbau: 171 innerHTML-Zuweisungen und 9 +=/insertAdjacentHTML. Jetzt schreiben
-  // nur die beiden Helfer in 01-dom.js; das Protokollfenster (01-monitor.js) baut ein eigenes
+  // Nur die beiden Helfer in 01-dom.js schreiben Markup; das Protokollfenster (01-monitor.js) baut ein eigenes
   // Dokument per document.write. Gegenprobe: in 02-gallery.js `grid.innerHTML = ''` → rot mit Fundort.
   const ERLAUBT = ['01-dom.js', '01-dom.js', '01-monitor.js'];
   const roh = oberflaechenCode().filter(x => /\.(innerHTML|outerHTML)\s*\+?=(?!=)|insertAdjacentHTML\(|document\.write\(/.test(x.z));
@@ -522,9 +512,7 @@ test('ungeprueft() wird weniger, nie mehr', () => {
 });
 
 test('keine Datei der Oberfläche über 1000 Zeilen, die grossen werden kleiner', () => {
-  // Eine Sammeldatei zieht Neues an, weil es dort schon liegt. Gemessen nach dem Teilen von
-  // 01-core.js, 05-settings.js und 13-acquisition-modals.js: grösste 859 am 06.11.2026, über 600 Zeilen 8;
-  // am 09.11.2026 die acht geteilt: grösste 598, über 600 keine.
+  // Eine Sammeldatei zieht Neues an, weil es dort schon liegt. Gemessen grösste 598, über 600 keine am 09.11.2026.
   // Gegenprobe (09.11.2026): an 04-finance.js drei Leerzeilen gehängt → rot: „grösste Datei 601 Zeilen“.
   const SCHRANKE_GROESSTE = 598, SCHRANKE_UEBER_600 = 0;
   const laengen = oberflaeche().map(f => ({ f: path.relative(WEB, f), n: fs.readFileSync(f, 'utf8').split('\n').length }));
@@ -583,9 +571,9 @@ test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () =
 test('Geschichte in Testkommentaren wird weniger, nie mehr', () => {
   // Ein Testkopf nennt, was geprüft wird, und seine Gegenproben (CLAUDE.md);
   // woher ein Test kam, steht im Commit. Gezählt werden Kommentarzeilen mit
-  // den typischen Erzählmarken. Gemessen 58 am 08.11.2026 (vorher 424).
+  // den typischen Erzählmarken. Gemessen 51 am 10.11.2026.
   // Gegenprobe (05.11.2026): den alten Kopf von scope-reset.test.js zurück → rot.
-  const SCHRANKE = 52;
+  const SCHRANKE = 51;
 
   const MARKE = /(Nachtr(ag|äge) [0-9]|Hier stand|Vorher stand|NACHGEMESSEN|kam(en)? am [0-9]|Marcos (Frage|Wunsch|Bericht|Rückfrage|Konsole))/;
   const dateien = [
@@ -606,7 +594,7 @@ test('Geschichte in Testkommentaren wird weniger, nie mehr', () => {
 test('der Kommentaranteil der Tests sinkt, nie steigt', () => {
   // Eigene Schranke: Testköpfe zählen ihre Gegenproben auf (CLAUDE.md), der
   // Anteil liegt deshalb höher als im Server. Geschichte gehört auch hier in
-  // den Commit. Gemessen 22,2 % in test/*.js und test/helpers/ (08.11.2026, vorher 33,3).
+  // den Commit. Gezählt in test/*.js und test/helpers/. Gemessen 21,6 % am 10.11.2026.
   // Gegenprobe: 300 Kommentarzeilen an eine Testdatei gehängt → rot.
   const SCHRANKE = 21.6;
   const dateien = [
@@ -705,7 +693,7 @@ test('jedes Dokument unter docs/begruendungen wird vom Code erreicht', () => {
 test('der Kommentaranteil der Betriebsdateien sinkt, nie steigt', () => {
   // Workflows, Dockerfile, compose.yaml, tsconfig.json: Auch dort steht das
   // Warum in wenigen Zeilen, die Geschichte im Commit (CLAUDE.md). Gemessen
-  // am 06.11.2026: 23,5 % (vorher 44,0 %). Das Caddyfile zählt nicht mit:
+  // 23,5 % am 06.11.2026. Das Caddyfile zählt nicht mit:
   // Kein Block darin ist länger als fünf Zeilen.
   // Gegenprobe (04.11.2026): 60 Kommentarzeilen an das Dockerfile → rot.
   const SCHRANKE = 23.5;
@@ -763,7 +751,7 @@ function langeBloecke(/** @type {string} */ text) {
 test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie mehr', () => {
   // Im Code steht das Warum in wenigen Zeilen; die Geschichte liegt in
   // docs/begruendungen/ oder im Commit (CLAUDE.md); Gegenprobenlisten zählen nicht.
-  // Gemessen am 08.11.2026: Tests 72 Blöcke, scripts 0, index.html 216 Zeilen.
+  // Gemessen am 10.11.2026: Tests 64 Blöcke, scripts 0, index.html 216 Zeilen.
   // Gegenprobe (06.11.2026): sechs Zeilen Prosa vor die Gegenprobe im Kopf von hsts.test.js → rot (Tests 75).
   const SCHRANKE = { tests: 64, scripts: 0, indexHtml: 216 };
   const js = (/** @type {string} */ d) => fs.readdirSync(d).filter(f => f.endsWith('.js')).map(f => path.join(d, f));
@@ -786,7 +774,7 @@ test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie meh
 
 test('Testdateien ohne Gegenprobe werden weniger, nie mehr', () => {
   // Jeder Test nennt im Kopf seine Gegenprobe (CLAUDE.md); die älteren ohne
-  // werden beim Anfassen nachgetragen. Gemessen 88 am 09.11.2026.
+  // werden beim Anfassen nachgetragen. Gemessen 74 am 10.11.2026.
   // Gegenprobe (05.11.2026): in lint-ratsche.test.js „Gegenproben“ umbenannt → rot (112).
   const SCHRANKE = 74;
   const ohne = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js'))
