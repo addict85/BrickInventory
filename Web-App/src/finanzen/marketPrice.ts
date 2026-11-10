@@ -224,7 +224,7 @@ export async function schaetzeFigurenpreis(figNumber: string, userId: number, co
 
     return { preis: total, abdeckung };
   } catch (e) {
-    console.warn(`[minifig-price-estimate] ${figNumber}: ${fehlertext(e)}`.replace(/\n|\r/g, ' '));
+    console.warn(`[minifig-price-estimate] ${figNumber}: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
     return null;
   }
 }

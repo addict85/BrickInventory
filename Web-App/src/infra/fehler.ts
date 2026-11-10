@@ -42,7 +42,7 @@ export function pruefeErsatzInTransaktion(kontext: string, e: unknown): void {
   if (!_waechter?.verdirbt(e)) return;
   if (istDatenbankFehler(e)) throw e;
   if (_waechter.streng()) throw new Error(`Ersatzwert in einer Transaktion (${kontext}): ${fehlertext(e)}`, { cause: e });
-  console.error(`[ersatz-in-transaktion] ${kontext}: ${fehlertext(e)}`.replace(/\n|\r/g, ' '));
+  console.error(`[ersatz-in-transaktion] ${kontext}: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
 }
 
 /** Ein Fehler des Servers (pg.DatabaseError) trägt SQLSTATE und Schwere. */
