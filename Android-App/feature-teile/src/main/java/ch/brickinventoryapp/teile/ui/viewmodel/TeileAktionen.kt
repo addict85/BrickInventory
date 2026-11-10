@@ -14,7 +14,7 @@ import ch.brickinventoryapp.model.ui.Listenansicht
  * nur diese Schnittstelle, nicht das ViewModel: So lassen sie sich mit einem
  * festen Zustand und einer Attrappe zeigen, ohne Hilt und ohne Server.
  */
-interface TeileAktionen {
+internal interface TeileAktionen {
     fun loadParts(page: Int = 1, debounce: Boolean = false)
     fun loadMinifigs(debounce: Boolean = false)
     fun loadPartsColors()

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.app.nav.Reiter
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
@@ -239,8 +240,8 @@ class OberflaechenRegelnTest {
         zeige {
             val nav = rememberNavController()
             val reiter = remember {
-                listOf<Triple<Screen, @Composable () -> Unit, String>>(
-                    Triple(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"))
+                listOf(
+                    Reiter(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"))
             }
             MainScaffold(
                 title = "Sammlung", navController = nav, bottomNavItems = reiter,
@@ -265,8 +266,8 @@ class OberflaechenRegelnTest {
         zeige {
             val nav = rememberNavController()
             val reiter = remember {
-                listOf<Triple<Screen, @Composable () -> Unit, String>>(
-                    Triple(Screen.Finance, { Icon(Icons.Default.ViewInAr, null) }, "Finanzen"))
+                listOf(
+                    Reiter(Screen.Finance, { Icon(Icons.Default.ViewInAr, null) }, "Finanzen"))
             }
             MainScaffold(
                 title = "Finanzen", navController = nav, bottomNavItems = reiter,
@@ -300,9 +301,9 @@ class OberflaechenRegelnTest {
         zeige {
             val nav = rememberNavController()
             val reiter = remember {
-                listOf<Triple<Screen, @Composable () -> Unit, String>>(
-                    Triple(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
-                    Triple(Screen.Mehr, { Icon(Icons.Default.ViewInAr, null) }, ctx.getString(R.string.nav_more)))
+                listOf(
+                    Reiter(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                    Reiter(Screen.Mehr, { Icon(Icons.Default.ViewInAr, null) }, ctx.getString(R.string.nav_more)))
             }
             MainScaffold(
                 title = "Sammlung", navController = nav, bottomNavItems = reiter,
@@ -461,9 +462,9 @@ class OberflaechenRegelnTest {
         zeige {
             val nav = rememberNavController()
             val reiter = remember {
-                listOf<Triple<Screen, @Composable () -> Unit, String>>(
-                    Triple(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
-                    Triple(Screen.Mehr, { Icon(Icons.Default.ViewInAr, null) }, mehr))
+                listOf(
+                    Reiter(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                    Reiter(Screen.Mehr, { Icon(Icons.Default.ViewInAr, null) }, mehr))
             }
             MainScaffold(
                 title = "Seite", navController = nav, bottomNavItems = reiter,

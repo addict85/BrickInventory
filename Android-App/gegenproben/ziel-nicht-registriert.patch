@@ -3,10 +3,10 @@ Modul: app
 Test: ch.brickinventoryapp.app.ErreichbareRoutenTest
 Rot: jedes Ziel steht im Graphen der App
 
-diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/ToolsGraph.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/ToolsGraph.kt
---- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/ToolsGraph.kt
-+++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/ToolsGraph.kt
-@@ -265,7 +265,4 @@ private fun NavGraphBuilder.einstellungsZiele(u: ZielUmgebung) {
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/KontoGraph.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/KontoGraph.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/KontoGraph.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/KontoGraph.kt
+@@ -104,7 +104,4 @@ private fun NavGraphBuilder.unterseiten(navigation: KontoNavigation) {
          CsvImportRoute(hiltViewModel<EinstellungenViewModel>(), snackbarHostState) { navController.popBackStack() }
      }
  

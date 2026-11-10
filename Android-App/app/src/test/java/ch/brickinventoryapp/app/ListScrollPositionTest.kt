@@ -141,21 +141,21 @@ class ListScrollPositionTest {
                     "Ebene, die beim Navigieren nicht verlassen wird"
             }
         }
-        val graph = code(read("app/nav/CollectionGraph.kt"))
+        val graph = code(read("sammlung/ui/SammlungGraph.kt") + read("teile/ui/TeileGraph.kt"))
         for (paar in listOf(
             "gridState = galleryGridState",
             "gridState = partsGridState",
             "gridState = minifigsGridState",
         )) {
-            assert(graph.contains(paar)) { "CollectionGraph übergibt `$paar` nicht" }
+            assert(graph.contains(paar)) { "Der Graph übergibt `$paar` nicht" }
         }
 
         for (name in listOf("finanzen", "teileliste")) {
             assert(nav.contains("$name = androidx.compose.foundation.lazy.rememberLazyListState()")) { "$name wird nicht oberhalb des NavHost angelegt" }
         }
-        val tools = code(read("app/nav/ToolsGraph.kt"))
-        for (paar in listOf("listState = financeListState", "listState = partsListState")) {
-            assert(tools.contains(paar)) { "ToolsGraph übergibt `$paar` nicht" }
+        val tools = code(read("finanzen/ui/FinanzenGraph.kt") + read("teile/ui/TeileGraph.kt"))
+        for (paar in listOf("listState = financeListState", "listState = navigation.rollen.teileliste")) {
+            assert(tools.contains(paar)) { "Der Graph übergibt `$paar` nicht" }
         }
     }
 
@@ -170,8 +170,8 @@ class ListScrollPositionTest {
         // beim Betreten ausdrücklich scrollToItem() rufen („im Katalog ist sie
         // auf der korrekten Zeile"). Den nimmt jetzt jeder Reiter — einmal
         // umgesetzt in ScrollMemory.kt statt dreimal abgeschrieben.
-        val col = code(read("app/nav/CollectionGraph.kt"))
-        val tools = code(read("app/nav/ToolsGraph.kt"))
+        val col = code(read("sammlung/ui/SammlungGraph.kt") + read("teile/ui/TeileGraph.kt"))
+        val tools = code(read("finanzen/ui/FinanzenGraph.kt"))
         for (schluessel in listOf("Screen.Gallery.rollSchluessel", "Screen.Parts.rollSchluessel", "Screen.Minifigs.rollSchluessel")) {
             assert(col.contains("ScrollPositionKeeper(") && col.contains(schluessel)) {
                 "Für $schluessel wird die Position nicht ausdrücklich wiederhergestellt"

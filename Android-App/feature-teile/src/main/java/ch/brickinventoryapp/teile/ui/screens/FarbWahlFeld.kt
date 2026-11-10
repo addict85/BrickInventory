@@ -39,7 +39,7 @@ import ch.brickinventoryapp.ui.theme.Formen
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FarbWahlFeld(
+internal fun FarbWahlFeld(
     farben: List<FarbeAnsicht>,
     aktuell: Int,
     aktuellerName: String?,

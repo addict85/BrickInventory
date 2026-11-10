@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.teile.ui.TeileListeUndDetailRoute
+import ch.brickinventoryapp.app.nav.Reiter
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
 
@@ -78,7 +80,6 @@ import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
-import ch.brickinventoryapp.app.nav.TeileListeUndDetailRoute
 import ch.brickinventoryapp.katalog.ui.CatalogUiState
 import ch.brickinventoryapp.konto.ui.KontoUiState
 import ch.brickinventoryapp.teile.ui.TeilelisteUiState
@@ -422,12 +423,12 @@ class BildschirmFotoVariantenTest {
     ) {
         val nav = rememberNavController()
         val reiter = remember {
-            listOf<Triple<Screen, @Composable () -> Unit, String>>(
-                Triple(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
-                Triple(Screen.Finance, { Icon(Icons.AutoMirrored.Filled.ShowChart, null) }, "Finanzen"),
-                Triple(Screen.Wanted, { Icon(Icons.Default.BookmarkBorder, null) }, "Merkliste"),
-                Triple(Screen.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, "Katalog"),
-                Triple(Screen.Mehr, { Icon(Icons.Default.MoreHoriz, null) }, "Mehr"),
+            listOf(
+                Reiter(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                Reiter(Screen.Finance, { Icon(Icons.AutoMirrored.Filled.ShowChart, null) }, "Finanzen"),
+                Reiter(Screen.Wanted, { Icon(Icons.Default.BookmarkBorder, null) }, "Merkliste"),
+                Reiter(Screen.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, "Katalog"),
+                Reiter(Screen.Mehr, { Icon(Icons.Default.MoreHoriz, null) }, "Mehr"),
             )
         }
         // Der Titel folgt dem Ziel wie in der App (ToolsGraph setzt nav_more): Fest

@@ -4,7 +4,7 @@ import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.ScopeFilter
 
 /** Was Merkliste und Merkposten-Detail auslösen; die Bildschirme kennen nur diese Schnittstelle. */
-interface MerklisteAktionen {
+internal interface MerklisteAktionen {
     fun ladeMerkliste()
     fun setScope(view: ScopeFilter.View, value: String)
     fun setzeMerklisteSuche(q: String)

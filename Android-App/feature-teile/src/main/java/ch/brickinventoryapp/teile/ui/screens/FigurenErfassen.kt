@@ -26,7 +26,7 @@ import ch.brickinventoryapp.gemeinsam.ui.ErfassungsFelder
 import ch.brickinventoryapp.gemeinsam.ui.OwnerPicker
 
 @Composable
-fun AddMinifigDialog(
+internal fun AddMinifigDialog(
     onDismiss: () -> Unit,
     onAdd: (Figurenerfassung) -> Unit,
     defaultCondition: Zustand = Zustand.NEU,

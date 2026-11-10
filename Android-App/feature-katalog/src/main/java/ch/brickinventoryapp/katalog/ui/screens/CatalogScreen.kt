@@ -45,7 +45,7 @@ import ch.brickinventoryapp.ui.components.mitSchrift
  * laufen aber serverseitig, das Grid lädt beim Scrollen seitenweise nach.
  */
 @Composable
-fun CatalogRoute(
+internal fun CatalogRoute(
     katalog: CatalogViewModel,
     serverUrl: String,
     imageLoader: ImageLoader,

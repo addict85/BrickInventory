@@ -16,7 +16,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.createGraph
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.app.nav.Reiter
-import ch.brickinventoryapp.app.nav.Rollzustaende
+import ch.brickinventoryapp.zustand.ui.Rollzustaende
 import ch.brickinventoryapp.app.nav.ZielUmgebung
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.zustand.ui.Screen
@@ -95,12 +95,12 @@ class ErreichbareRoutenTest {
         // Material sieht höchstens fünf Reiter vor: die Bestandsziele in der Folge der
         // Webapp (Merkliste vor Katalog) und „Mehr“.
         assertEquals(listOf(Screen.Gallery, Screen.Finance, Screen.Wanted, Screen.Catalog, Screen.Mehr),
-            leiste.map { it.first })
+            leiste.map { it.ziel })
         assertEquals("Jeder Eintrag auf „Mehr“ nennt genau ein Ziel", anzahl, vonMehr.size)
         assertTrue("Die Einstellungen stehen auf „Mehr“", Screen.Settings in vonMehr)
         assertFalse("Der Serverwechsel gehört in die Einstellungen, nicht auf „Mehr“", Screen.Setup in vonMehr)
 
-        val erreicht = (vonMehr + leiste.map { it.first } + SAMMLUNGS_ZIELE +
+        val erreicht = (vonMehr + leiste.map { it.ziel } + SAMMLUNGS_ZIELE +
             StartZiel.entries.map(::startRoute)).map(::name).toSet()
         // Ziele mit Werten öffnet nur, wer die Werte hat (eine Kachel, eine Zeile).
         val ohneWerte = ziele.filterValues { it == StructureKind.OBJECT }.keys

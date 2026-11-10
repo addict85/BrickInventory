@@ -67,7 +67,7 @@ data class EinstellungenZustand(
 
 /** Die Einstellungen am Navigationsziel; Darstellung, Vertrauen und Update leben an der Activity. */
 @Composable
-fun SettingsRoute(
+internal fun SettingsRoute(
     vm: EinstellungenViewModel,
     onLogout: () -> Unit,
     onServerWechseln: () -> Unit,

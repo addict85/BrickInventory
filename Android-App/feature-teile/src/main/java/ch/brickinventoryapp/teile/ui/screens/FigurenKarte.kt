@@ -45,7 +45,7 @@ import ch.brickinventoryapp.gemeinsam.ui.TabellenZeile
 import ch.brickinventoryapp.gemeinsam.ui.mengeAusSet
 
 @Composable
-fun ManualFigTile(fig: ManuelleFigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
+internal fun ManualFigTile(fig: ManuelleFigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                   waehrung: String, onEdit: () -> Unit) {
     // Vorschaubild mit Rückfall auf volle Auflösung — siehe
     // util/BildRueckfall.kt, rememberTileImageWithFallback().
@@ -177,7 +177,7 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
  * konstant.
  */
 @Composable
-fun MinifigTableRow(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
+internal fun MinifigTableRow(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                     onClick: (() -> Unit)? = null) {
     val (bildUrl, onFehler) = rememberTileImageWithFallback(
         serverUrl, fig.imageLocal, fig.imageUrl, fullViaProxy = true)

@@ -63,7 +63,7 @@ class TeilFarbeAendernTest {
         Quellen.ohneKommentare(Quellen.lies("teile/ui/screens/ManualItemDetailScreen.kt"))
     }
     private val graph by lazy {
-        Quellen.ohneKommentare(Quellen.lies("app/nav/CollectionGraph.kt"))
+        Quellen.ohneKommentare(Quellen.lies("teile/ui/TeileGraph.kt"))
     }
     private val feld by lazy {
         Quellen.ohneKommentare(Quellen.lies("teile/ui/screens/FarbWahlFeld.kt"))
@@ -93,7 +93,7 @@ class TeilFarbeAendernTest {
     fun `nach der Aenderung oeffnet der Bildschirm mit der neuen Farbe`() {
         assertTrue(
             "Der Bildschirm wird nach der Aenderung nicht neu geoeffnet: In " +
-                "CollectionGraph.kt fehlt onFarbeGeaendert. Die Farbe ist Teil der " +
+                "TeileGraph.kt fehlt onFarbeGeaendert. Die Farbe ist Teil der " +
                 "Route und der Suche nach der Zeile — der Bildschirm stuende leer da, " +
                 "obwohl die Aenderung geklappt hat.",
             graph.contains("onFarbeGeaendert")

@@ -31,7 +31,7 @@ import ch.brickinventoryapp.ui.components.Unterseite
 
 /** Der Melde-Schalter mit den Geräte-Einstellungen verdrahtet. */
 @Composable
-fun PreisalarmSchalterRoute(geraet: GeraeteEinstellungenViewModel = hiltViewModel()) {
+internal fun PreisalarmSchalterRoute(geraet: GeraeteEinstellungenViewModel = hiltViewModel()) {
     val an by geraet.alarmMeldungenAn.collectAsStateWithLifecycle()
     PreisalarmCard(an, geraet::alarmMeldungen)
 }
@@ -58,7 +58,7 @@ fun PreisalarmeRoute(
 }
 
 @Composable
-fun PreisalarmeUnterseite(
+internal fun PreisalarmeUnterseite(
     uebersicht: AlarmUebersichtUiState,
     aktionen: EinstellungenAktionen,
     imageLoader: ImageLoader,

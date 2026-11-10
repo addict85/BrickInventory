@@ -241,7 +241,7 @@ internal fun setNumberCandidates(text: String): List<String> {
 
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
 @Composable
-fun CameraPreviewBarcode(
+internal fun CameraPreviewBarcode(
     frozen: Boolean,
     ocrEnabled: Boolean,
     onBarcodeFound: (String) -> Unit,

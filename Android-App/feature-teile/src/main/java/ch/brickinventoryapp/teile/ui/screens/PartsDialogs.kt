@@ -32,7 +32,7 @@ import ch.brickinventoryapp.gemeinsam.ui.OwnerPicker
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddPartDialog(
+internal fun AddPartDialog(
     colors: List<FarbeAnsicht> = emptyList(),
     onDismiss: () -> Unit,
     onAdd: (Teilerfassung) -> Unit,

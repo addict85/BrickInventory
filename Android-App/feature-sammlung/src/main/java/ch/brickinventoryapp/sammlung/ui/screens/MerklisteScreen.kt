@@ -61,7 +61,7 @@ import ch.brickinventoryapp.ui.components.Suchfeld
 private fun merkpostenSchluessel(w: MerkpostenAnsicht) = "${w.setNumber}|${w.condition.kennung}|${w.userId}"
 
 /** Was Merkliste und Merkposten-Detail zeigen; die Route sammelt es aus den Flüssen. */
-data class MerklisteZustand(
+internal data class MerklisteZustand(
     val appState: AppUiState,
     val blick: BlickfeldUiState,
     val liste: MerklisteUiState,
@@ -111,7 +111,7 @@ fun MerkpostenRueckgaengigRoute(vm: MerklisteViewModel, snackbarHostState: Snack
 
 /** Das Merkposten-Detail als eigene Seite (Telefon). */
 @Composable
-fun MerkpostenDetailRoute(
+internal fun MerkpostenDetailRoute(
     vm: MerklisteViewModel,
     setNumber: String,
     condition: Zustand,
@@ -133,7 +133,7 @@ fun MerkpostenDetailRoute(
  * Server (utils/merkliste.ts); der Bildschirm zeigt und ruft.
  */
 @Composable
-fun MerklisteScreen(
+internal fun MerklisteScreen(
     ansicht: MerklisteZustand,
     aktionen: MerklisteAktionen,
     imageLoader: coil3.ImageLoader,
@@ -297,7 +297,7 @@ fun MerklisteScreen(
  * das Detail als eigene Seite. Ein Zustand für beide Hälften: dasselbe ViewModel.
  */
 @Composable
-fun MerklisteUndDetail(
+internal fun MerklisteUndDetail(
     ansicht: MerklisteZustand,
     aktionen: MerklisteAktionen,
     imageLoader: coil3.ImageLoader,

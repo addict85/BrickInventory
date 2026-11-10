@@ -20,7 +20,10 @@ class ScreenViewModelWiringTest {
     /** Ein @Composable mit Namen, Parameterliste und Rumpf, aus dem Quelltext geschnitten. */
     private data class Composable(val modul: String, val datei: String, val name: String, val parameter: String, val rumpf: String)
 
-    /** Das app-Modul ist die Wurzel der Oberfläche (Gerüst, Graphen); dort dürfen ViewModels geholt werden. */
+    /**
+     * Das app-Modul ist die Wurzel der Oberfläche (Gerüst); dort und im Graphen eines
+     * Bereichs (`*Graph.kt`) dürfen ViewModels geholt werden.
+     */
     private val module = Quellen.module.filter { it.name == "app" || it.name.startsWith("core-") || it.name.startsWith("feature-") }
 
     private fun composables(): List<Composable> {
@@ -76,7 +79,7 @@ class ScreenViewModelWiringTest {
     @Test
     fun `kein Bildschirm holt sich ein ViewModel selbst`() {
         val fehler = composables()
-            .filter { it.modul != "app" && !it.name.endsWith("Route") }
+            .filter { it.modul != "app" && !it.name.endsWith("Route") && !it.datei.endsWith("Graph.kt") }
             .filter { Regex("""\b(hiltViewModel|aktivitaetsViewModel)\s*[<(]""").containsMatchIn(it.rumpf) }
             .map { "${it.datei}: ${it.name}" }
         assert(fehler.isEmpty()) {

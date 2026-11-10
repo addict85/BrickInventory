@@ -183,7 +183,7 @@ class AlarmUebersichtTest {
      */
     @Test
     fun `die Einstellungen merken sich ihre Rollposition`() {
-        val graph = quelle("app/nav/ToolsGraph.kt")
+        val graph = quelle("konto/ui/KontoGraph.kt")
         assert(graph.contains("settingsScrollState")) {
             "Die Einstellungen halten ihren Rollzustand noch selbst — nach der " +
                 "Rueckkehr aus der Detailansicht stuende man wieder ganz oben."

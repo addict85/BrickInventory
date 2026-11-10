@@ -18,7 +18,7 @@ private val QR_ABGELEHNT = setOf(NetworkPolicy.Adressfehler.UNLESBAR, NetworkPol
  * Geprüft vor dem Trimmen: Ein Code hat keinen Grund für Leerraum, aber mit einem
  * Zeilenumbruch stellte ein Angreifer im Dialog einen zweiten, harmlosen Namen hin.
  */
-fun qrAdresseUngueltig(url: String): Boolean =
+internal fun qrAdresseUngueltig(url: String): Boolean =
     url.any { it.isWhitespace() || it.isISOControl() } ||
         NetworkPolicy.adressfehler(url, NetworkPolicy.entwicklung) in QR_ABGELEHNT
 
@@ -26,7 +26,7 @@ fun qrAdresseUngueltig(url: String): Boolean =
  * Ein unlesbares `fp` macht den ganzen Code ungültig: Stillschweigend ohne Pin
  * weiterzumachen hiesse, die Prüfung, die der Server verlangt, wegzulassen.
  */
-fun parseQrPayload(raw: String): QrLoginPayload? = try {
+internal fun parseQrPayload(raw: String): QrLoginPayload? = try {
     val obj = org.json.JSONObject(raw)
     val url = obj.optString("url", "")
     val token = obj.optString("token", "")

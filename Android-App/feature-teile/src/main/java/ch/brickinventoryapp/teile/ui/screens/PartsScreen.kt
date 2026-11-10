@@ -55,7 +55,7 @@ import ch.brickinventoryapp.model.data.Ersatzteilwahl
 import ch.brickinventoryapp.teile.ui.TeileSitzungUiState
 
 /** Was der Teile- und der Figurenreiter zeigen; die Routen sammeln es aus den Flüssen. */
-data class TeileZustand(
+internal data class TeileZustand(
     val state: TeileSitzungUiState,
     val blick: BlickfeldUiState,
     val partsState: PartsUiState,
@@ -79,7 +79,7 @@ fun PartsRoute(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun PartsScreen(
+internal fun PartsScreen(
     zustand: TeileZustand,
     aktionen: TeileAktionen,
     imageLoader: ImageLoader,

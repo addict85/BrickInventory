@@ -52,7 +52,7 @@ import ch.brickinventoryapp.gemeinsam.ui.PriceChart
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MerkpostenDetailScreen(
+internal fun MerkpostenDetailScreen(
     ansicht: MerklisteZustand,
     aktionen: MerklisteAktionen,
     setNumber: String,

@@ -3,10 +3,10 @@ Modul: app
 Test: ch.brickinventoryapp.app.FeinschliffRegelnTest
 Rot: Tablet zeigt Teil
 
-diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/CollectionGraph.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/CollectionGraph.kt
---- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/CollectionGraph.kt
-+++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/CollectionGraph.kt
-@@ -356,7 +356,7 @@ internal fun TeileListeUndDetailRoute(
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileGraph.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileGraph.kt
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileGraph.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileGraph.kt
+@@ -217,7 +217,7 @@ fun TeileListeUndDetailRoute(
      liste: @Composable (oeffneManuell: (Postenart, String, Int, String) -> Unit) -> Unit,
  ) {
      BoxWithConstraints(Modifier.fillMaxSize()) {

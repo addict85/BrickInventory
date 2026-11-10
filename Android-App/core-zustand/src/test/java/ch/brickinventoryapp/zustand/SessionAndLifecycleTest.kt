@@ -141,7 +141,7 @@ class SessionAndLifecycleTest {
         assert(code(read("sammlung/ui/viewmodel/ErfassungViewModel.kt")).contains("fun resolveBarcode(")) {
             "resolveBarcode() fehlt — der live genutzte Auflösungspfad"
         }
-        assert(code(read("app/nav/ToolsGraph.kt")).contains("erfassung.resolveBarcode(")) {
+        assert(code(read("sammlung/ui/SammlungGraph.kt")).contains("erfassung.resolveBarcode(")) {
             "Der Scanner-Screen ruft resolveBarcode() nicht mehr auf"
         }
     }

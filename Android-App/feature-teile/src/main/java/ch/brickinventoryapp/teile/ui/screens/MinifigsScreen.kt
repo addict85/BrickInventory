@@ -67,7 +67,7 @@ fun MinifigsRoute(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun MinifigsScreen(
+internal fun MinifigsScreen(
     zustand: TeileZustand,
     aktionen: TeileAktionen,
     imageLoader: ImageLoader,

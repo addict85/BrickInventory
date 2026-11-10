@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.teile.ui.TeileListeUndDetailRoute
+import ch.brickinventoryapp.app.nav.Reiter
+
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ViewInAr
@@ -41,7 +44,6 @@ import org.robolectric.annotation.GraphicsMode
 import ch.brickinventoryapp.data.SetAnlegenSchritt
 import ch.brickinventoryapp.data.SetAnleger
 import ch.brickinventoryapp.data.repository.KatalogRepository
-import ch.brickinventoryapp.app.nav.TeileListeUndDetailRoute
 import ch.brickinventoryapp.model.ui.model.PreisDiagrammAnsicht
 import ch.brickinventoryapp.model.ui.model.PreisPunktAnsicht
 import ch.brickinventoryapp.model.ui.model.PreisReiheAnsicht
@@ -142,7 +144,7 @@ class FeinschliffRegelnTest {
         zeige(schrift = 2f) {
             val nav = rememberNavController()
             val reiter = remember {
-                ziele.map { (ziel, text) -> Triple<Screen, @Composable () -> Unit, String>(ziel, { Icon(Icons.Default.ViewInAr, null) }, text) }
+                ziele.map { (ziel, text) -> Reiter(ziel, { Icon(Icons.Default.ViewInAr, null) }, text) }
             }
             MainScaffold(
                 title = "Titel", navController = nav, bottomNavItems = reiter,
@@ -169,7 +171,7 @@ class FeinschliffRegelnTest {
             normal = MaterialTheme.typography.labelMedium.fontSize.value
             val nav = rememberNavController()
             val reiter = remember {
-                ziele.map { (ziel, text) -> Triple<Screen, @Composable () -> Unit, String>(ziel, { Icon(Icons.Default.ViewInAr, null) }, text) }
+                ziele.map { (ziel, text) -> Reiter(ziel, { Icon(Icons.Default.ViewInAr, null) }, text) }
             }
             MainScaffold(
                 title = "Titel", navController = nav, bottomNavItems = reiter,
@@ -206,7 +208,7 @@ class FeinschliffRegelnTest {
             normal = MaterialTheme.typography.labelMedium.fontSize.value
             val nav = rememberNavController()
             val reiter = remember {
-                ziele.map { (ziel, text) -> Triple<Screen, @Composable () -> Unit, String>(ziel, { Icon(Icons.Default.ViewInAr, null) }, text) }
+                ziele.map { (ziel, text) -> Reiter(ziel, { Icon(Icons.Default.ViewInAr, null) }, text) }
             }
             MainScaffold(
                 title = "Titel", navController = nav, bottomNavItems = reiter,

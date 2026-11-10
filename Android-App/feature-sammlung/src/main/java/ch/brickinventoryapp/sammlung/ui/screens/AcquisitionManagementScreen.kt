@@ -67,7 +67,7 @@ fun AcquisitionManagementRoute(
 }
 
 /** Was die Kaufverwaltung zeigt: ein Zustand für Sets, Teile und Figuren. */
-data class KaeufeZustand(
+internal data class KaeufeZustand(
     val state: AppUiState,
     val blick: BlickfeldUiState,
     val manDetailState: ManualItemDetailUiState,
@@ -75,7 +75,7 @@ data class KaeufeZustand(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AcquisitionManagementScreen(
+internal fun AcquisitionManagementScreen(
     zustand: KaeufeZustand,
     aktionen: KaeufeAktionen,
     type: Postenart,

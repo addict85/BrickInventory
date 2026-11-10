@@ -48,7 +48,7 @@ import ch.brickinventoryapp.gemeinsam.ui.lokaleAchse
 import ch.brickinventoryapp.gemeinsam.ui.lokaleWerte
 
 /** Was der Finanzen-Reiter zeigt; die Route sammelt es aus den Flüssen. */
-data class FinanzZustand(
+internal data class FinanzZustand(
     val state: AppUiState,
     val blick: BlickfeldUiState,
     val financeState: FinanceUiState,
@@ -71,7 +71,7 @@ fun FinanceRoute(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FinanceScreen(
+internal fun FinanceScreen(
     zustand: FinanzZustand,
     aktionen: FinanzAktionen,
     imageLoader: ImageLoader,
@@ -232,7 +232,7 @@ fun FinanceScreen(
 }
 
 @Composable
-fun ManualFinanceRow(
+internal fun ManualFinanceRow(
     imageUrl: String?,
     imageLoader: ImageLoader,
     /** Öffnet den Detail-Dialog — analog zur Set-Zeile, die auf den Screen führt. */
@@ -324,13 +324,13 @@ internal fun gewinnText(betrag: Double, fmtWert: (Double?) -> String): String =
     if (betrag >= 0.005) "+" + fmtWert(betrag) else fmtWert(betrag)
 
 @Composable
-fun SubtotalRow(label: String, value: String) {
+internal fun SubtotalRow(label: String, value: String) {
     BezeichnungUndWert(label, value, Modifier.padding(horizontal = Abstaende.winzig, vertical = Abstaende.winzig),
         stil = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold))
 }
 
 @Composable
-fun PriceColumn(label: String, value: String, farbe: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onPrimary) {
+internal fun PriceColumn(label: String, value: String, farbe: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onPrimary) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, style = MaterialTheme.typography.bodySmall, color = farbe)
         Text(value, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium, color = farbe)

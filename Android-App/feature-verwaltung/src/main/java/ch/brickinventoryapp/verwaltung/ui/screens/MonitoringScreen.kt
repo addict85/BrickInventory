@@ -39,6 +39,7 @@ import kotlinx.coroutines.launch
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.mitSchrift
+
 /** Was die Verwaltungsseite zeigt; die Route sammelt es aus den Flüssen. */
 data class MonitoringZustand(
     val monState: MonitoringUiState,
@@ -54,7 +55,7 @@ data class MonitoringZustand(
  * Sekunden (nur sichtbar, repeatOnLifecycle) und das Nachladen der Einstellungen.
  */
 @Composable
-fun MonitoringRoute(
+internal fun MonitoringRoute(
     appTheme: String,
     /** Design oder Vorgabe-Zustand geändert: Die App lädt ihre Einstellungen nach. */
     onEinstellungenNeu: () -> Unit,

@@ -489,7 +489,7 @@ class QuelltextRatscheTest {
     fun `die oeffentliche Flaeche der Bereiche waechst nicht`() {
         // Ein Bereich zeigt der App Routen und Ziele; was nur er selbst braucht, ist internal.
         // Noch öffentlich ist vieles, weil Graphen und Oberflächentests in app liegen.
-        val GRENZE = 218
+        val GRENZE = 163
         val module = Quellen.module.filter { it.name.startsWith("feature-") }
         assert(module.size >= 7) { "Nur ${module.size} Bereiche — greift die Suche noch?" }
         ratsche("öffentliche Deklarationen der Bereiche", GRENZE, oeffentlich(module, 100),
@@ -514,7 +514,7 @@ class QuelltextRatscheTest {
     @Test
     fun `voll qualifizierte Namen fremder Pakete werden weniger`() {
         // Ausgeschrieben nur bei echter Namensgleichheit, und dann besser mit `import … as`.
-        val HAUPT = 229
+        val HAUPT = 225
         val TESTS = 0
         val voll = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
         fun zaehle(dateien: Sequence<File>) = dateien.sumOf { f ->

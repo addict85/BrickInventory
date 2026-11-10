@@ -6,6 +6,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.foundation.selection.selectableGroup
 import ch.brickinventoryapp.ui.components.AuswahlChip
+
 /**
  * Die Abschnitte der Katalogseite: Suchfeld, Filterzeile (Thema, Jahr, Sortierung)
  * und Trefferliste neben dem Raster. Anders als bei SetDetail und Finance
@@ -44,7 +45,7 @@ import ch.brickinventoryapp.ui.components.Suchfeld
 
 /** Filterzeile: Thema und Jahr; sortiert wird über das Menü neben der Suche. */
 @Composable
-fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThemeSheet: MutableState<Boolean>, showYearSheet: MutableState<Boolean>) {
+internal fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThemeSheet: MutableState<Boolean>, showYearSheet: MutableState<Boolean>) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -75,7 +76,7 @@ fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThem
 
 /** Das Suchfeld über der Liste, daneben die Sortierung. */
 @Composable
-fun CatalogSearchField(state: CatalogUiState, onQueryChange: (String) -> Unit, onSortChange: (String) -> Unit) {
+internal fun CatalogSearchField(state: CatalogUiState, onQueryChange: (String) -> Unit, onSortChange: (String) -> Unit) {
     // Suchfeld — derselbe Baustein wie in Galerie, Teilen und Minifiguren
     // (TabellenZeile.kt), damit der Leeren-Knopf überall gleich heisst.
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -99,7 +100,7 @@ fun CatalogSearchField(state: CatalogUiState, onQueryChange: (String) -> Unit, o
 /** Auswahlblatt für das Jahr. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CatalogYearSheet(state: CatalogUiState, showYearSheet: MutableState<Boolean>, onYearChange: (Int?) -> Unit) {
+internal fun CatalogYearSheet(state: CatalogUiState, showYearSheet: MutableState<Boolean>, onYearChange: (Int?) -> Unit) {
     if (showYearSheet.value) {
         ModalBottomSheet(onDismissRequest = { showYearSheet.value = false }) {
             Column(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.sehrGross)) {
@@ -131,7 +132,7 @@ fun CatalogYearSheet(state: CatalogUiState, showYearSheet: MutableState<Boolean>
 /** Auswahlblatt für das Thema (durchsuchbare Liste). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CatalogThemeSheet(state: CatalogUiState, showThemeSheet: MutableState<Boolean>, onThemeChange: (Int?) -> Unit) {
+internal fun CatalogThemeSheet(state: CatalogUiState, showThemeSheet: MutableState<Boolean>, onThemeChange: (Int?) -> Unit) {
     if (showThemeSheet.value) {
         ModalBottomSheet(onDismissRequest = { showThemeSheet.value = false }) {
             var themeFilter by rememberSaveable { mutableStateOf("") }

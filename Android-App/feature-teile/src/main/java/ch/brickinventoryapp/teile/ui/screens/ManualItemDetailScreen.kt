@@ -85,7 +85,7 @@ fun ManualItemDetailRoute(
 }
 
 /** Was die Detailansicht eines manuellen Eintrags zeigt. */
-data class EinzelstueckZustand(
+internal data class EinzelstueckZustand(
     val state: AppUiState,
     val partsState: PartsUiState,
     val manDetailState: ManualItemDetailUiState,
@@ -94,7 +94,7 @@ data class EinzelstueckZustand(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ManualItemDetailScreen(
+internal fun ManualItemDetailScreen(
     zustand: EinzelstueckZustand,
     kaeufe: KaeufeAktionen,
     /** Die Zeile des Eintrags und das Ändern, Löschen, Umfärben. */

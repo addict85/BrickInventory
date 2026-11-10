@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.app.nav.Reiter
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -170,8 +171,8 @@ class GeruestUndFormularTest {
     private fun Geruest(meldung: SnackbarHostState, offen: Int = 0, inhalt: @Composable () -> Unit) {
         val nav = rememberNavController()
         val reiter = remember {
-            listOf<Triple<Screen, @Composable () -> Unit, String>>(
-                Triple(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"))
+            listOf(
+                Reiter(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"))
         }
         MainScaffold(
             title = "Sammlung", navController = nav, bottomNavItems = reiter,

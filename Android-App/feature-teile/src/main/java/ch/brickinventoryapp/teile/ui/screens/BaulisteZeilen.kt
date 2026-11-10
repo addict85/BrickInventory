@@ -87,7 +87,7 @@ internal fun FarbGruppenKopf(colorName: String, colorParts: List<PlPart>) {
 }
 
 @Composable
-fun PartListRow(
+internal fun PartListRow(
     part: PlPart,
     serverUrl: String,
     imageLoader: ImageLoader,

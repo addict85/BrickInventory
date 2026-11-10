@@ -30,7 +30,7 @@ fun SetPruefungRoute(vm: ErfassungViewModel) {
 }
 
 @Composable
-fun SetPruefungDialog(erfassung: ErfassungUiState, aktionen: ErfassungAktionen) {
+internal fun SetPruefungDialog(erfassung: ErfassungUiState, aktionen: ErfassungAktionen) {
     val schritt = erfassung.pruefung ?: return
 
     AlertDialog(

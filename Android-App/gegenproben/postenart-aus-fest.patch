@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.RoutenRundwegTest
 Rot: jede Postenart kommt als dieselbe an
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/Postenart.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/Postenart.kt
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/Postenart.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/Postenart.kt
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Postenart.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Postenart.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Postenart.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Postenart.kt
 @@ -13,6 +13,6 @@ enum class Postenart(val kennung: String) {
  
      companion object {

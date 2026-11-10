@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+
 // rememberSaveable liegt im UNTERPAKET runtime.saveable — der Sammelimport
 // darueber deckt es nicht ab (Kotlin-Sternimporte gelten nicht fuer
 // Unterpakete). Genau daran ist Lauf 81 gescheitert.
@@ -46,7 +47,7 @@ import ch.brickinventoryapp.gemeinsam.ui.LagerortFeld
  * Ausführlich: docs/begruendungen/feature-teile/teile/ui/dialogs/SetItemDetailDialog.kt.md#setitemdetaildialog
  */
 @Composable
-fun SetItemDetailDialog(
+internal fun SetItemDetailDialog(
     zustand: SetItemUiState,
     lagerZustand: LagerUiState,
     aktionen: TeileAktionen,
@@ -62,7 +63,7 @@ fun SetItemDetailDialog(
  * der Merkliste): Titel mit Schliessen-Knopf, darunter der Inhalt, rollbar.
  */
 @Composable
-fun SetItemDetailBereich(
+internal fun SetItemDetailBereich(
     zustand: SetItemUiState,
     lagerZustand: LagerUiState,
     aktionen: TeileAktionen,
