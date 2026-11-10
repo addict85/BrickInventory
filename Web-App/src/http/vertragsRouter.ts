@@ -34,13 +34,16 @@ export function eingabePruefen(req: Request, res: Response, next: NextFunction):
   const route = req.route ? routeZu(`${req.method} ${req.baseUrl}${req.route.path}`) : undefined;
   const geprueft = req as unknown as { eingabe: unknown; abfrage: unknown; pfad: Record<string, unknown> };
   geprueft.pfad = Object.create(null) as Record<string, unknown>;
-  if (route) for (const [name, wert] of Object.entries(req.params ?? {})) {
-    const schema = (PFAD as Record<string, z.ZodType>)[name];
-    const r = schema?.safeParse(wert);
-    if (!r?.success) return KENNUNGEN.has(name) ? sendeFehler(req, res, 400, 'id_ungueltig')
-      : sendeFehler(req, res, 400, 'eingabe_ungueltig', { feld: name.slice(0, 40) });
+  // Geschrieben wird nur unter Namen aus PFAD, nie unter einem aus der Anfrage.
+  if (route) for (const [name, schema] of Object.entries(PFAD as Record<string, z.ZodType>)) {
+    if (!Object.hasOwn(req.params ?? {}, name)) continue;
+    const r = schema.safeParse(req.params[name]);
+    if (!r.success) return KENNUNGEN.has(name) ? sendeFehler(req, res, 400, 'id_ungueltig')
+      : sendeFehler(req, res, 400, 'eingabe_ungueltig', { feld: name });
     geprueft.pfad[name] = r.data;
   }
+  const fremd = route && Object.keys(req.params ?? {}).find(name => !Object.hasOwn(PFAD, name));
+  if (fremd) { sendeFehler(req, res, 400, 'eingabe_ungueltig', { feld: fremd.slice(0, 40) }); return; }
   if (route?.abfrage) {
     const q = route.abfrage.safeParse(req.query ?? {});
     if (!q.success) return meldeAbweichung(req, res, q.error);

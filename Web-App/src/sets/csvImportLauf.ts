@@ -44,7 +44,7 @@ async function bucheZeile(sk: SetsKontext, z: CsvZeile, userId: number): Promise
       // Nur ein Kontingent-Fehler wird wiederholt: Nach einer Zeitüberschreitung
       // läuft der erste Versuch weiter und bucht womöglich noch.
       if (isRateLimit && !isTimeout && versuch < 2) {
-        console.warn(`CSV: ${z.sn} retry after ${msg}...`);
+        console.warn(`CSV: ${z.sn} retry after ${msg}...`.replace(/\n|\r/g, ' '));
         await new Promise(r => setTimeout(r, 5000));
         continue;
       }
