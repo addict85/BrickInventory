@@ -39,9 +39,23 @@ class FigurenRepositoryImpl @Inject constructor(
         }
     }
 
-    /** Die lokalen Listen (ungefiltert), wie TeileRepository.beobachteTeile. */
-    override fun beobachteFiguren(): Flow<Lokal<Minifig>> = ablage.beobachte(Faecher.FIGUREN)
-    override fun beobachteManuelleFiguren(): Flow<Lokal<FigValuationItem>> = ablage.beobachte(Faecher.MANUELLE_FIGUREN)
+    /** Die lokalen Listen nach dem Suchtext, wie TeileRepository.beobachteTeile. */
+    override fun beobachteFiguren(suche: String?): Flow<Lokal<Minifig>> =
+        ablage.beobachte(Faecher.FIGUREN, Filterspalten(suchtext = suche?.ifBlank { null }))
+
+    override fun beobachteManuelleFiguren(suche: String?): Flow<Lokal<FigValuationItem>> =
+        ablage.beobachte(Faecher.MANUELLE_FIGUREN, Filterspalten(suchtext = suche?.ifBlank { null }))
+
+    override suspend fun aktualisiereFiguren(): Ergebnis<Unit> {
+        // Beide Listen kommen ganz, ohne Seiten: Die Gesamtzahl ist die Länge der Antwort.
+        val figuren = ablage.aktualisiereSeitenweise(Faecher.FIGUREN, { it.figs }, { it.figs.size }) { _ ->
+            sicherAufrufen { api.getMinifigs(source = "set") }
+        }
+        if (figuren is Ergebnis.Error) return figuren
+        return ablage.aktualisiereSeitenweise(Faecher.MANUELLE_FIGUREN, { it.figs }, { it.figs.size }) { _ ->
+            sicherAufrufen { api.getManualMinifigs(null, null) }
+        }
+    }
 
     override suspend fun getManualMinifigs(accounts: String?,
                                   search: String?): Ergebnis<ManualFigsResponse> {

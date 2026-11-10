@@ -115,9 +115,11 @@ class TeileViewModelTest {
         val teile = pfade.anfragenAn("GET /api/v1/parts/manual?").last { "search=stein" in it }
         assertTrue(teile, "storage=Keller" in teile)
 
+        // Ohne Kontofilter sucht die Figurensuche in der Ablage; abgerufen wird ungefiltert.
         vm.setMinifigsQuery("han")
         vm.loadMinifigs()
-        assertTrue("manuelle Figuren", pfade.anfragenAn("GET /api/v1/minifigs/manual?").any { "search=han" in it })
+        val figuren = pfade.anfragenAn("GET /api/v1/minifigs/manual")
+        assertTrue("manuelle Figuren abgerufen: $figuren", figuren.isNotEmpty() && figuren.none { "search=" in it })
     }
 
     @Test

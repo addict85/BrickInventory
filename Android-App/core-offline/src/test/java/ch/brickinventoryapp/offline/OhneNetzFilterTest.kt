@@ -14,6 +14,8 @@ import ch.brickinventoryapp.model.data.Ersatzteilwahl
 import ch.brickinventoryapp.model.data.model.AddSetRequest
 import ch.brickinventoryapp.model.data.model.Part
 import ch.brickinventoryapp.model.data.model.PartsResponse
+import ch.brickinventoryapp.model.data.model.ManualPartsResponse
+import ch.brickinventoryapp.model.data.model.PartValuationItem
 import ch.brickinventoryapp.model.data.model.SetItem
 import ch.brickinventoryapp.model.data.model.SetsResponse
 import ch.brickinventoryapp.offline.room.BestandDatenbank
@@ -44,6 +46,7 @@ import java.net.ConnectException
  *                              rot „eine weitere Seite schreibt nur ihre Zeilen“
  *   seite-ohne-ausgang         beim Anhängen wird der Ausgang nicht angewandt → rot „die Serverzeile trägt …“
  *   galerie-ablage-ungefiltert beobachteSets übergibt keine Filterspalten → rot „die Galerie filtert in Room …“
+ *   teile-nur-seite-eins       aktualisiereSeitenweise bricht nach Seite 1 ab → rot „alle Seiten der Teile …“
  */
 @RunWith(RobolectricTestRunner::class)
 class OhneNetzFilterTest {
@@ -93,6 +96,10 @@ class OhneNetzFilterTest {
             // Zwei je Seite: So liegt die lokale Liste erst nach Seite 2 ganz da.
             val seite = teile.drop((page - 1) * 2).take(2)
             return Response.success(PartsResponse(success = true, total = teile.size, parts = seite))
+        }
+        override suspend fun getManualParts(accounts: String?, search: String?, storage: String?): Response<ManualPartsResponse> {
+            if (offline) throw ConnectException("aus")
+            return Response.success(ManualPartsResponse(success = true, parts = listOf(PartValuationItem(partNumber = "m1"))))
         }
     }
     private val teileRepo = TeileRepositoryImpl(teileApi, ablage)
@@ -178,6 +185,15 @@ class OhneNetzFilterTest {
         offline = true
         assertTrue("ohne Netz meldet der Abruf den Fehler", setsRepo.aktualisiereSets() is Ergebnis.Error)
         assertEquals("und die Ablage bleibt", sets.size, setsRepo.beobachteSets().first().liste.size)
+    }
+
+    @Test
+    fun `die Teile kommen ganz in die Ablage und filtern dort`() = runBlocking {
+        assertTrue(teileRepo.aktualisiereTeile() is Ergebnis.Success)
+        assertEquals("alle Seiten der Teile in der Ablage", teile.size, teileRepo.beobachteTeile().first().liste.size)
+        assertEquals("die manuellen Teile ebenso", listOf("m1"), teileRepo.beobachteManuelleTeile().first().liste.map { it.partNumber })
+        val rot = teileRepo.beobachteTeile(farbe = "Red", ersatzteile = Ersatzteilwahl.OHNE).first().liste.map { it.partNumber }
+        assertEquals("Farbe und Ersatzteile filtern in Room", listOf("3001"), rot)
     }
 
     /** Zählt, was die Ablage mit dem Bestand tut — die Seitenübernahme ist so von aussen sichtbar. */

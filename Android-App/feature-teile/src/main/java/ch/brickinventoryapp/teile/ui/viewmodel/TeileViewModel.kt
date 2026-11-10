@@ -109,8 +109,14 @@ class TeileViewModel @Inject constructor(
         meldeFehler = { meldungen.zeige(meldungen.meldungFuerSnackbar(it)) },
         vergissScroll = { scrollMemory.vergiss("parts") },
         beschreibeFehler = { meldungen.meldung(it) },
-        lokal = TeileLokal(repo.beobachteTeile(), repo.beobachteManuelleTeile(),
-            figuren.beobachteFiguren(), figuren.beobachteManuelleFiguren()),
+        lokal = TeileLokal(
+            teile = { st -> repo.beobachteTeile(st.partsQuery, st.partsColorFilter, st.partsCategoryFilter, st.partsSpare) },
+            manuelleTeile = { st -> repo.beobachteManuelleTeile(st.partsQuery) },
+            figuren = { st -> figuren.beobachteFiguren(st.minifigsQuery) },
+            manuelleFiguren = { st -> figuren.beobachteManuelleFiguren(st.minifigsQuery) },
+            aktualisiereTeile = { retryOnNetwork { repo.aktualisiereTeile() } },
+            aktualisiereFiguren = { retryOnNetwork { figuren.aktualisiereFiguren() } },
+        ),
         teileEingeschraenkt = {
             filter.kontoFuer(ScopeFilter.View.PARTS) != null || !filter.lagerFuer(ScopeFilter.View.PARTS).isNullOrBlank()
         },

@@ -21,9 +21,14 @@ interface TeileRepository {
                          /** Lagerort — eigener Parameter, nicht Teil der Suche. */
                          storage: String? = null): Ergebnis<PartsResponse>
 
-    fun beobachteTeile(): Flow<Lokal<Part>>
+    /** Die Teile aus der Ablage nach Suche, Farbe, Kategorie und Ersatzteilen; [aktualisiereTeile] füllt sie. */
+    fun beobachteTeile(suche: String? = null, farbe: String? = null, kategorie: String? = null,
+                       ersatzteile: Ersatzteilwahl = Ersatzteilwahl.ALLE): Flow<Lokal<Part>>
 
-    fun beobachteManuelleTeile(): Flow<Lokal<PartValuationItem>>
+    fun beobachteManuelleTeile(suche: String? = null): Flow<Lokal<PartValuationItem>>
+
+    /** Alle Seiten der Teile und die manuellen Teile in die Ablage; gezeigt wird die Ablage. */
+    suspend fun aktualisiereTeile(): Ergebnis<Unit>
 
     suspend fun getPartsStats(accounts: String? = null): Ergebnis<PartsStatsResponse>
 

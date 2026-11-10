@@ -14,9 +14,13 @@ import kotlinx.coroutines.flow.Flow
 interface FigurenRepository {
     suspend fun getMinifigs(accounts: String? = null, search: String? = null): Ergebnis<MinifigsResponse>
 
-    fun beobachteFiguren(): Flow<Lokal<Minifig>>
+    /** Die Figuren aus der Ablage nach dem Suchtext; [aktualisiereFiguren] füllt sie. */
+    fun beobachteFiguren(suche: String? = null): Flow<Lokal<Minifig>>
 
-    fun beobachteManuelleFiguren(): Flow<Lokal<FigValuationItem>>
+    fun beobachteManuelleFiguren(suche: String? = null): Flow<Lokal<FigValuationItem>>
+
+    /** Set-Figuren und manuelle Figuren in die Ablage; gezeigt wird die Ablage. */
+    suspend fun aktualisiereFiguren(): Ergebnis<Unit>
 
     suspend fun getManualMinifigs(accounts: String? = null,
                                   search: String? = null): Ergebnis<ManualFigsResponse>

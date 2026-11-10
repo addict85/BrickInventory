@@ -55,9 +55,24 @@ class TeileRepositoryImpl @Inject constructor(
         }
     }
 
-    /** Die lokalen Listen (ungefiltert); sie ändern sich auch durch offline Bearbeitetes. */
-    override fun beobachteTeile(): Flow<Lokal<Part>> = ablage.beobachte(Faecher.TEILE)
-    override fun beobachteManuelleTeile(): Flow<Lokal<PartValuationItem>> = ablage.beobachte(Faecher.MANUELLE_TEILE)
+    /** Die lokalen Listen nach den Filtern der Anzeige; sie ändern sich auch durch offline Bearbeitetes. */
+    override fun beobachteTeile(suche: String?, farbe: String?, kategorie: String?, ersatzteile: Ersatzteilwahl): Flow<Lokal<Part>> =
+        ablage.beobachte(Faecher.TEILE, Filterspalten(suchtext = suche?.ifBlank { null }, farbe = farbe?.ifBlank { null },
+            kategorie = kategorie?.ifBlank { null }, ersatzteil = ersatzteile.alsMerkmal()))
+
+    override fun beobachteManuelleTeile(suche: String?): Flow<Lokal<PartValuationItem>> =
+        ablage.beobachte(Faecher.MANUELLE_TEILE, Filterspalten(suchtext = suche?.ifBlank { null }))
+
+    override suspend fun aktualisiereTeile(): Ergebnis<Unit> {
+        val teile = ablage.aktualisiereSeitenweise(Faecher.TEILE, { it.parts }, { it.total }) { seite ->
+            sicherAufrufen { api.getParts(null, null, null, seite, pageSize = 500, excludeManual = "1") }
+        }
+        if (teile is Ergebnis.Error) return teile
+        // Eine Liste ohne Seiten: Die Gesamtzahl ist die Länge der Antwort.
+        return ablage.aktualisiereSeitenweise(Faecher.MANUELLE_TEILE, { it.parts }, { it.parts.size }) { _ ->
+            sicherAufrufen { api.getManualParts(null, null, null) }
+        }
+    }
 
     override suspend fun getPartsStats(accounts: String?): Ergebnis<PartsStatsResponse> =
         sicherAufrufen { api.getPartsStats(accounts) }

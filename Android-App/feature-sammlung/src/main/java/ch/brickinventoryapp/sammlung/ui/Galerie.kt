@@ -9,6 +9,7 @@ import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
 import ch.brickinventoryapp.model.ui.model.alsAnsicht
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -52,7 +53,6 @@ internal class Galerie(
     val state: StateFlow<GalleryUiState> = _state.asStateFlow()
 
     private var lokalJob: Job? = null
-    private var lokalStand: Long? = null
 
     // Filter-Generation: Eine späte Antwort eines alten Filters wird verworfen,
     // sonst hinge sie mit gemischtem Inhalt an der neuen Liste.
@@ -93,11 +93,9 @@ internal class Galerie(
      * die Ablage. Ohne Netz bleibt die abgelegte Liste stehen, mit ihrem Stand.
      */
     private fun ladenLokal(gen: Int, quelle: Flow<Lokal<SetItem>>) {
-        lokalStand = null
         lokalJob = scope.launch {
             quelle.collect { l ->
                 if (l.stand == null || gen != galleryGeneration) return@collect
-                lokalStand = l.stand
                 _state.update {
                     it.copy(sets = l.liste.map { s -> s.alsAnsicht() }, galleryTotal = l.liste.size, galleryPage = 1,
                         galleryThemes = if (it.galleryQuery.isBlank() && it.galleryTheme.isBlank()) themenAus(l.liste) else it.galleryThemes)
@@ -108,7 +106,8 @@ internal class Galerie(
             _state.update { it.copy(galleryLoading = true, galleryLoadingMore = false, galleryPage = 1, galleryFehler = null) }
             val r = aktualisiere()
             if (gen != galleryGeneration) return@launch
-            val stand = lokalStand
+            // Ohne Netz zählt, was die Ablage schon hält; sie hat sich durch den Fehlschlag nicht geändert.
+            val stand = if (r is Ergebnis.Error && r.transient) quelle.first().stand else null
             when {
                 r is Ergebnis.Success -> _state.update { it.copy(galleryLoading = false, offlineStand = null) }
                 r is Ergebnis.Error && r.transient && stand != null ->
