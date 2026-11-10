@@ -4,7 +4,8 @@ import java.io.File
 
 /**
  * Was mit einer zwischengespeicherten Anleitung als Nächstes zu tun ist.
- * Ausführlich: docs/begruendungen/core-data/data/util/PdfCache.kt.md#pdfschritt
+ * Der Zustand hängt am Dateinamen: Ein Download schreibt in `<name>.part` und wird erst am Ende
+ * umbenannt, also heisst `<name>` vorhanden = vollständig.
  */
 internal sealed class PdfSchritt {
     /** Die Datei liegt vollstaendig vor. Nichts holen. */

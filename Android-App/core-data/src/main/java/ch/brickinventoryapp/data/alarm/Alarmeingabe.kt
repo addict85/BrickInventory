@@ -4,7 +4,6 @@ package ch.brickinventoryapp.data.alarm
  * Was aus dem, was jemand ins Schwellenfeld tippt, wird. Gespeichert wird beim Tippen,
  * entprellt, wie der Kaufpreis — nicht erst beim Fokusverlust: Am Telefon tippt man die Zahl,
  * schliesst die Tastatur und geht zurück, und dieser Fokuswechsel kommt nie.
- * Ausführlich: docs/begruendungen/core-data/data/alarm/Alarmeingabe.kt.md#alarmeingabe
  */
 object Alarmeingabe {
 
@@ -21,7 +20,6 @@ object Alarmeingabe {
      * Die getippte Zeichenkette als Zahl — oder `null`, wenn der Alarm weg soll. Das
      * Feld zu leeren ist die natürliche Geste, einen Alarm loszuwerden; ein eigener
      * Knopf wäre ein zweiter Weg für dieselbe Absicht.
-     * Ausführlich: docs/begruendungen/core-data/data/alarm/Alarmeingabe.kt.md#zahl
      */
     fun zahl(roh: String): Double? {
         val z = roh.replace(',', '.').trim().toDoubleOrNull() ?: return null

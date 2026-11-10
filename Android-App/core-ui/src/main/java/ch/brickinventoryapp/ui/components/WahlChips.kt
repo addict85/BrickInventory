@@ -54,7 +54,6 @@ import ch.brickinventoryapp.ui.theme.Formen
  * Genau eine von zwei bis vier gleichrangigen Möglichkeiten (Neu | Gebraucht,
  * Fällt unter | Steigt über): Material sieht dafür die Segmentschaltfläche vor —
  * zwei Chips nebeneinander lasen sich wie zwei Filter, die man beide setzen kann.
- * Ausführlich: docs/begruendungen/core-ui/ui/components/WahlChips.kt.md#segmentwahl
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

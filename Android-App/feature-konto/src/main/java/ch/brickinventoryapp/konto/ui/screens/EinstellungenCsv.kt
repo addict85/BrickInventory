@@ -30,7 +30,6 @@ import ch.brickinventoryapp.konto.ui.viewmodel.CSV_MAX_BYTES
  * über dieselben Adressen wie die Webapp. Der Fortschritt danach kommt über den
  * bestehenden Kanal: Der Import läuft auf dem Server weiter, auch wenn die App
  * zugeklappt wird.
- * Ausführlich: docs/begruendungen/feature-konto/konto/ui/screens/EinstellungenCsv.kt.md#csvimportcard
  */
 @Composable
 internal fun CsvImportCard(

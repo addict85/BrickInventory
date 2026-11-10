@@ -6,10 +6,10 @@ Rot: ein laufender Import
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CsvImportBanner.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CsvImportBanner.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CsvImportBanner.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CsvImportBanner.kt
-@@ -123,7 +123,7 @@
+@@ -122,7 +122,7 @@
+         // abbrechen will, soll nicht erst herausfinden muessen,
          // dass der Balken sich aufklappen laesst. In der Webapp
          // steht der Knopf ebenfalls dauerhaft da.
-         // Ausführlich: docs/begruendungen/app/app/ui/components/CsvImportBanner.kt.md#if
 -        if (running) {
 +        if (running && expanded) {
              // Volle 48 dp: Der Balken wird dadurch etwas höher, dafür

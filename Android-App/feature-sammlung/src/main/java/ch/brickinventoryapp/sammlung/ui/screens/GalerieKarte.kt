@@ -97,7 +97,6 @@ fun SetCard(
     // Erfassen ist das Bild auf dem Server oft noch nicht fertig, und Coil wiederholt
     // eine gescheiterte Anfrage nie von selbst. An Setnummer und Adresse gebunden,
     // damit eine wiederverwendete Kachel neu zählt; memoryCacheKeyExtra("retry", …)
-    // Ausführlich: docs/begruendungen/feature-sammlung/sammlung/ui/screens/GalleryScreen.kt.md#retrynonce-by-remember
     var retryNonce by remember(set.setNumber, imageUrl) { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
 

@@ -31,7 +31,7 @@ import ch.brickinventoryapp.testing.TestDienste
 
 /**
  * Der QR-Dialog ist die einzige Hürde gegen einen untergeschobenen Code. Geprüft
- * mit den Eingaben aus dem Nachweis der Sicherheitsprüfung (sec7, M1): Jede sah
+ * mit den Eingaben aus dem Nachweis der Sicherheitsprüfung: Jede sah
  * im Dialog nach `brick.meinserver.ch` aus und führte woandershin.
  *
  * Gegenproben:

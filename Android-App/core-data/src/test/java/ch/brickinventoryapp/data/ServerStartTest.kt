@@ -12,19 +12,10 @@ import ch.brickinventoryapp.testing.VerwaltungRepository
 import ch.brickinventoryapp.testing.mitRepo
 
 /**
- * Waehrend der Server startet, zeigt die App den Fortschritt — keinen Fehler.
- *
- * ── Woher dieser Test kommt (Nachtrag 136) ──────────────────────────────────
- *
- * Aus derselben Messung wie die Nachtraege davor: /v1/startup-status war eine
- * der Adressen, die nur die Webapp ruft. Sie zeigt damit einen
- * Fortschrittsbalken, solange der Server hochfaehrt, und begruendet das im
- * eigenen Kommentar (01-core.js): Der erste Start einer Neuinstallation holt
- * den Rebrickable-Katalog und dauert VIELE MINUTEN.
- *
- * Die App zeigte in dieser ganzen Zeit ihre allgemeine Netzmeldung. Wer seinen
- * Server frisch aufsetzt und die App oeffnet, sieht „keine Verbindung" — und
- * haelt das eine oder das andere fuer kaputt, obwohl alles richtig laeuft.
+ * Waehrend der Server startet, zeigt die App den Fortschritt — keinen Fehler. Der erste
+ * Start einer Neuinstallation holt den Rebrickable-Katalog und dauert Minuten; eine
+ * Netzmeldung liesse App oder Server kaputt aussehen. Wie die Webapp über
+ * /v1/startup-status.
  *
  * Die Abfrage läuft gegen einen Testserver; die Auswertung im AppViewModel führt
  * AppViewModelTest aus, die Anzeige liest Quelltext (Gerät und Compose fehlen hier).

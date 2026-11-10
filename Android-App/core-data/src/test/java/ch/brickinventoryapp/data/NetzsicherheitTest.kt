@@ -104,7 +104,7 @@ class NetzsicherheitTest {
     /** Die dritte Linie: Was zum Konto gehört, wandert weder per Transfer noch per Sicherung mit. */
     @Test
     fun `Kontodaten verlassen das Geraet nicht`() {
-        // Ganze Domänen (sec17 B-N13): Eine neue Ablage geht nicht mit, nur weil sie hier fehlt.
+        // Ganze Domänen: Eine neue Ablage geht nicht mit, nur weil sie hier fehlt.
         val noetig = setOf("root:.", "file:.", "database:.", "external:.", "device_root:.")
         val r = regeln("data_extraction_rules.xml")
         val listen = mapOf(

@@ -3,9 +3,8 @@ package ch.brickinventoryapp.testing
 import java.io.File
 
 /**
- * Gemeinsame Fassung für alle Tests, die QUELLTEXT lesen statt Verhalten
- * auszuführen.
- * Ausführlich: docs/begruendungen/core-testing/testing/Quellen.kt.md#quellen
+ * Gemeinsame Pfade und Schnitte für Strukturprüfungen (Modulgrenzen, Manifest, Build,
+ * Verbote). Verhalten prüft ein Test, indem er den Code ausführt, nicht hier.
  */
 object Quellen {
 
@@ -51,8 +50,9 @@ object Quellen {
     }
 
     /**
-     * Der Android-Workflow, ohne Kommentarzeilen.
-     * Ausführlich: docs/begruendungen/core-testing/testing/Quellen.kt.md#workflow
+     * Der Android-Workflow, ohne Kommentarzeilen: Ein Kommentar, der eine alte Schreibweise
+     * erklärt, nennt sie und wäre sonst selbst ein Fund. Der Pfad gilt, weil Gradle die
+     * Tests aus dem Modulordner startet.
      */
     fun workflow(): String {
         val f = File("../../.github/workflows/android.yml")
@@ -124,8 +124,8 @@ object Quellen {
     }
 
     /**
-     * Alle Kotlin-Quelldateien des Hauptbaums.
-     * Ausführlich: docs/begruendungen/core-testing/testing/Quellen.kt.md#alle
+     * Alle Kotlin-Quelldateien des Hauptbaums, mit Untergrenze: Fände ein falscher Pfad
+     * nichts, bestünde jede Sammelprüfung darauf grün, ohne etwas geprüft zu haben.
      */
     fun alle(): List<File> {
         val dateien = wurzel.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
@@ -138,9 +138,8 @@ object Quellen {
     }
 
     /**
-     * Alle Quelldateien unterhalb eines Unterordners, z. B. `"ui"` oder
-     * `"ui/screens"`.
-     * Ausführlich: docs/begruendungen/core-testing/testing/Quellen.kt.md#unter
+     * Alle Quelldateien unterhalb eines Unterordners, z. B. `"ui/screens"`. Verglichen über
+     * invariantSeparatorsPath, weil `path` unter Windows Backslashes liefert und dann nichts fände.
      */
     fun unter(ordner: String): List<File> {
         val muster = "/${ordner.trim('/')}/"
@@ -184,8 +183,9 @@ object Quellen {
     }
 
     /**
-     * Kommentare ausblenden — ZEILENWEISE und bewusst konservativ.
-     * Ausführlich: docs/begruendungen/core-testing/testing/Quellen.kt.md#ohnekommentare
+     * Kommentare ausblenden, zeilenweise: Kotlin verschachtelt Blockkommentare, und ein
+     * Muster über die ganze Datei verschluckte ab einem Sternchen nach einem Schrägstrich
+     * in einem Kommentar den Rest.
      */
     fun ohneKommentare(quelle: String): String = quelle.lines().joinToString("\n") { zeile ->
         val t = zeile.trim()
@@ -195,7 +195,6 @@ object Quellen {
     /**
      * Welcher öffentliche Zustandsfluss des ViewModels trägt welchen Typ?
      * Ergebnis z. B. `catalogState -> CatalogUiState`.
-     * Ausführlich: docs/begruendungen/core-testing/testing/Quellen.kt.md#zustandsfluesse
      */
     fun zustandsFluesse(): Map<String, String> {
         val src = lies("zustand/ui/AppViewModel.kt") + "\n" + lies("zustand/ui/viewmodel/Bereichshelfer.kt")
@@ -208,7 +207,6 @@ object Quellen {
 
     /**
      * Dasselbe für JEDES ViewModel: Klasse → (öffentlicher Flussname → Typ).
-     * Ausführlich: docs/begruendungen/core-testing/testing/Quellen.kt.md#fluessejeviewmodel
      */
     fun fluesseJeViewModel(): Map<String, Map<String, String>> {
         val ergebnis = mutableMapOf<String, Map<String, String>>()
@@ -257,7 +255,6 @@ object Quellen {
     /**
      * Was bietet eine `…UiState`-Datenklasse an — Felder UND abgeleitete
      * Mitglieder?
-     * Ausführlich: docs/begruendungen/core-testing/testing/Quellen.kt.md#mitgliederjeuistate
      */
     fun mitgliederJeUiState(): Map<String, Set<String>> {
         val quelle = zustaende()
@@ -277,7 +274,6 @@ object Quellen {
 
     /**
      * Welchen Zustandstyp trägt ein Name in DIESER Datei?
-     * Ausführlich: docs/begruendungen/core-testing/testing/Quellen.kt.md#zustandsnamen
      */
     fun zustandsNamen(quelle: String): Map<String, String> {
         val sauber = ohneKommentare(quelle)
@@ -304,8 +300,8 @@ object Quellen {
     }
 
     /**
-     * Ein Ausschnitt ab dem ersten Vorkommen von [ab], gemessen in ZEILEN.
-     * Ausführlich: docs/begruendungen/core-testing/testing/Quellen.kt.md#fenster
+     * Ein Ausschnitt ab dem ersten Vorkommen von [ab], gemessen in Zeilen ohne Kommentare:
+     * Ein Absatz Erklärung mehr über der Fundstelle verschiebt so nichts.
      */
     fun fenster(quelle: String, ab: String, zeilen: Int): String {
         val sauber = ohneKommentare(quelle)
@@ -319,7 +315,6 @@ object Quellen {
      * Der Rumpf einer Funktion, ab ihrer Signatur bis zu ihrer schliessenden
      * Klammer. Genauer als ein festes Fenster, wo es um „steht X in dieser
      * Funktion?" geht.
-     * Ausführlich: docs/begruendungen/core-testing/testing/Quellen.kt.md#funktion
      */
     fun funktion(quelle: String, signatur: String): String {
         val sauber = ohneKommentare(quelle)
@@ -338,8 +333,8 @@ object Quellen {
     }
 
     /**
-     * Ein Kamerabildschirm samt allem, was zu seiner Kamera gehört.
-     * Ausführlich: docs/begruendungen/core-testing/testing/Quellen.kt.md#kameraquelle
+     * Ein Kamerabildschirm samt allem, was zu seiner Kamera gehört: Die Kamera besteht aus
+     * mehreren Dateien, und wer nur eine liest, findet die halbe Regel.
      */
     fun kameraQuelle(rel: String): String = buildString {
         append(bildschirm(rel))

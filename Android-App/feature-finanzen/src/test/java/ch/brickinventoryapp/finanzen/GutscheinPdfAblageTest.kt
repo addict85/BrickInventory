@@ -26,8 +26,7 @@ import ch.brickinventoryapp.testing.Quellen
  * Speicher prüft PdfImSpeicherTest (core-data). Dass der Betrachter diesen Weg nimmt,
  * braucht ein Gerät; das hält die Struktur-Prüfung unten fest.
  *
- * Gegenproben (30.10.2026, gemessen mit kt-b2/bau.sh; B und C galten der Datei, die
- * es seit sec11 nicht mehr gibt):
+ * Gegenproben (30.10.2026, gemessen mit kt-b2/bau.sh):
  *   A  in pdfAblage() `vertraulich` übergangen (immer cacheDir) → rot „ein
  *      Gutschein-PDF bekommt keine Datei …“
  *   D  pdfDarfGespeichertWerden() immer true → rot „ein
@@ -110,7 +109,7 @@ class GutscheinPdfAblageTest {
     @Test
     fun `Betrachter, Abmelden und Start raeumen auf`() {
         val betrachter = Quellen.ohneKommentare(Quellen.lies("finanzen/ui/screens/PdfViewerScreen.kt"))
-        // Laden und Halten liegen seit M1 (arch14) im Lader und im ViewModel.
+        // Laden und Halten liegen seit M1 im Lader und im ViewModel.
         val lader = Quellen.ohneKommentare(Quellen.lies("finanzen/ui/pdf/AnleitungsLader.kt") + Quellen.lies("finanzen/ui/pdf/PdfQuelle.kt") +
             Quellen.lies("data/AnleitungsRepository.kt"))
         val vm = Quellen.ohneKommentare(Quellen.lies("finanzen/ui/viewmodel/PdfBetrachterViewModel.kt"))

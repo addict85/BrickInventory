@@ -9,28 +9,11 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Die Oberflächen rechnen nicht — sie zeigen an.
+ * Die Oberflächen rechnen nicht — sie zeigen an. Summen und Kennzahlen kommen aus der
+ * Antwort des Servers, nicht aus einer Schleife über eine (womöglich gefilterte) Liste;
+ * sonst zeigten Webapp und App aus denselben Daten verschiedene Zahlen.
  *
- * ── Woher dieser Test kommt (Marcos Frage) ──────────────────────────────────
- * „Kannst du sicherstellen, dass Berechnungen zentral in einer Komponente für
- * Webapp und Android-App durchgeführt werden, damit die GUIs nur das Rendering
- * übernehmen müssen?"
- *
- * Zwei Rechnungen standen noch in dieser App, und beide zeigten dadurch etwas
- * anderes als die Webapp:
- *
- *   • Die Summenzeile der Erfassungen (Menge und Betrag) — dieselbe Rechnung
- *     stand nochmal zweimal in der Webapp, und die vier Fassungen lasen den
- *     Preis aus verschiedenen Feldern.
- *   • Die drei Kacheln im Minifiguren-Reiter. Sie rechneten über `figs`, und
- *     diese Liste ist gefiltert (`source != "manual"`). „Manuell erfasst"
- *
- * Der Test hält das Ergebnis nicht fest (das prüft die Serverseite), sondern
- * die REGEL: Diese Zahlen kommen aus der Antwort, nicht aus einer Schleife
- * über die Liste. Genau die Regel ist das, was beim nächsten neuen Bildschirm
- * zählt.
- *
- * Gegenprobe (durchgeführt): in AcquisitionManagementScreen wieder
+ * Gegenprobe: in AcquisitionManagementScreen wieder
  * `acquisitions.sumOf { it.quantity }` eingesetzt → der erste Teilschritt wird
  * rot; in MinifigsScreen wieder `figs.size` → der zweite.
  */
@@ -100,7 +83,7 @@ class ServerComputedValuesTest {
     fun `der Mengenregler folgt der Serverantwort, nicht der eigenen Annahme`() {
         // ── Warum ───────────────────────────────────────────────────────────
         // Angezeigt wird die Menge ALLER Konten, geschrieben wird die Differenz
-        // auf das eigene (Nachtrag 85). Beim Verringern deckelt der Server bei
+        // auf das eigene. Beim Verringern deckelt der Server bei
         // den eigenen Exemplaren — fremde lassen sich nicht wegnehmen — und
         // antwortet mit der tatsächlichen Gesamtmenge.
         //

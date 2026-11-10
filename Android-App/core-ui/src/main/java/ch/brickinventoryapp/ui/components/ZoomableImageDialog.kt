@@ -45,7 +45,7 @@ import kotlin.math.roundToInt
 
 /**
  * Bild bildschirmfuellend anzeigen, mit Zoom und Verschieben.
- * Ausführlich: docs/begruendungen/core-ui/ui/components/ZoomableImageDialog.kt.md#zoomableimagedialog
+ * Eine Komponente für Set-Detail und Katalog, damit die Gestenlogik nicht doppelt steht.
  *
  * Zoomen geht auch ohne zwei Finger (WCAG 2.5.1): Doppeltipp und die Leiste unten mit
  * Minus, Faktor (zurück auf 100 %) und Plus, wie im PDF-Betrachter.

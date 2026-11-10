@@ -20,7 +20,8 @@ import kotlinx.coroutines.launch
 
 /**
  * Die Adressen aller Kacheln der eigenen Sammlung, zum Vorwärmen.
- * Ausführlich: docs/begruendungen/core-zustand/zustand/ui/Vorwaermen.kt.md#bildadressendersammlung
+ * Hier und nicht im Vorwärmer, weil nur hier der Kontofilter bekannt ist; der Katalog bleibt
+ * draussen, er verdrängte die eigene Sammlung.
  */
 internal suspend fun bildAdressenDerSammlung(
     sets: SetsRepository, teile: TeileRepository, figuren: FigurenRepository, blickfeld: Blickfeld, basis: String,

@@ -99,7 +99,7 @@ class DeadCodeTest {
             //     KameraErlaubnisHinweis { cameraPermission.launchPermissionRequest() }
             //
             // Das IST ein Aufruf, nur ohne `(`. Dieser Test hat ihn nicht
-            // gezaehlt und meldete die Funktion als tot — Lauf 105 fiel darueber.
+            // gezaehlt und meldete die Funktion als tot.
             //
             // Die Luecke war schon vorher da und hat nur nie zugeschlagen:
             // GEMESSEN benutzen genau ZWEI eigene Funktionen diese Form,

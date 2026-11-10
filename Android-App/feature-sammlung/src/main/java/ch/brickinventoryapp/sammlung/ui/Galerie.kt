@@ -22,7 +22,8 @@ import ch.brickinventoryapp.zustand.ui.fehlerklasse
 
 /**
  * Der Zustand der Galerie und wie er sich ändert — an EINER Stelle.
- * Ausführlich: docs/begruendungen/feature-sammlung/sammlung/ui/Galerie.kt.md#galerie
+ * Der Fluss ist privat, Änderungen gehen über benannte Methoden: So schreibt nicht jede Datei des
+ * Moduls hinein.
  */
 internal class Galerie(
     private val scope: CoroutineScope,

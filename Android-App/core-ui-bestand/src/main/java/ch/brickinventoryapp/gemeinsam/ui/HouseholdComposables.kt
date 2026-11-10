@@ -29,7 +29,6 @@ import ch.brickinventoryapp.ui.components.mitSchrift
  * üblichen Abstand, nur wenn es etwas zu wählen gibt. Eine Zeile für Teile,
  * Minifiguren und Galerie, damit ein abweichender Abstand nicht erst beim
  * Reiterwechsel auffällt.
- * Ausführlich: docs/begruendungen/core-ui-bestand/gemeinsam/ui/HouseholdComposables.kt.md#scopefilterzeile
  */
 @Composable
 fun ScopeFilterZeile(

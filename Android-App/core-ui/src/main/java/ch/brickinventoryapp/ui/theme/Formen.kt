@@ -64,9 +64,9 @@ object Formen {
      */
     val kachelBreite = 112.dp
     /**
-     * Höhe der Bestandskachel, nachgerechnet für den schlimmsten Fall bei bodySmall
-     * (16 dp Zeilenhöhe):
-     * Ausführlich: docs/begruendungen/core-ui/ui/theme/Formen.kt.md#kachelhoehe
+     * Höhe der Bestandskachel, nachgerechnet für den schlimmsten Fall bei labelSmall (Name
+     * zweizeilig, Farbe, Preis, Notiz, Zustand, Besitzer, Bild): 203 dp. 208 lässt etwas Luft;
+     * höher passten weniger Reihen auf den Bildschirm.
      */
     val kachelHoehe  = 208.dp
 

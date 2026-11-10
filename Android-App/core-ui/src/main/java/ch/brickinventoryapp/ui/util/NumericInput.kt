@@ -9,7 +9,8 @@ import java.text.DecimalFormatSymbols
 /**
  * Zahlenfelder — eine Fassung für Tastatur und erlaubte Zeichen, für Setnummer,
  * Preise und Anzahlen.
- * Ausführlich: docs/begruendungen/core-ui/ui/util/NumericInput.kt.md#numericinput
+ * Tastaturwahl und Zeichenfilter gehören zusammen: Die Tastatur ist nur eine Bitte, über
+ * Zwischenablage oder Hardwaretastatur kommt trotzdem Text.
  */
 object NumericInput {
 

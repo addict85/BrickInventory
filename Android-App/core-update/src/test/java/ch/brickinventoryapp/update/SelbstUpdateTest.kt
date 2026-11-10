@@ -170,9 +170,8 @@ class SelbstUpdateTest {
 
     @Test
     fun `der Workflow legt die Beschreibung neben das APK`() {
-        // Ueber Quellen.workflow(), nicht mit eigener Pfadangabe: Genau daran
-        // ist dieser Test in Lauf 131 gescheitert — `../.github/…` statt
-        // `../../.github/…`. Gradle-Tests laufen aus Android-App/app.
+        // Ueber Quellen.workflow(), nicht mit eigener Pfadangabe: Gradle-Tests laufen
+        // aus dem Modulordner, und ein eigener relativer Pfad verzählt sich leicht.
         val text = Quellen.workflow()
         assert(text.contains("""gh release upload "${'$'}ETIKETT" version.json --clobber""")) {
             "Der Workflow laedt keine version.json mehr hoch — ohne sie findet die App " +

@@ -26,7 +26,7 @@ import ch.brickinventoryapp.testing.KontoRepository
 import ch.brickinventoryapp.testing.ResponseCache
 
 /**
- * Abmelden ohne Netz lässt das Token am Server nicht gültig (sec7, N3): Scheitert
+ * Abmelden ohne Netz lässt das Token am Server nicht gültig: Scheitert
  * der kurze Versuch, geht ein Auftrag in die Warteschlange, der wiederholt, bis der
  * Server bestätigt. Der Arbeiter selbst (WorkManager) läuft nur auf dem Gerät;
  * geprüft werden Abmeldung, Entwerter und die Entscheidung je Lauf.

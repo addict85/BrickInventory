@@ -1,17 +1,16 @@
-Gegenprobe: Eine Kurzfassung vor „Ausführlich“ bricht mitten im Satz ab
+Gegenprobe: Ein Kommentar verweist wieder auf das Begründungsarchiv
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: eine Kurzfassung endet mit einem ganzen Satz
+Rot: kein Verweis auf das Begruendungsarchiv
 
 diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/TokenTresor.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/TokenTresor.kt
 --- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/TokenTresor.kt
 +++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/TokenTresor.kt
-@@ -11,7 +11,7 @@
- 
+@@ -12,6 +12,7 @@
  /**
   * Verschlüsselung für das Bearer-Token. Das Token öffnet ein Konto auf dem Server und läuft
-- * erst nach TOKEN_IDLE_DAYS Untätigkeit ab.
-+ * erst nach TOKEN_IDLE_DAYS Untätigkeit ab, und
-  * Ausführlich: docs/begruendungen/core-sicherheit/sicherheit/TokenTresor.kt.md#z12
+  * erst nach TOKEN_IDLE_DAYS Untätigkeit ab.
++ * Ausführlich: docs/begruendungen/core-sicherheit/sicherheit/TokenTresor.kt.md#z12
   */
  
+ /**

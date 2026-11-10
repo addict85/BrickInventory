@@ -35,7 +35,6 @@ import ch.brickinventoryapp.ui.theme.Formen
 /**
  * Die Farbe eines manuell erfassten Teils auswählen — zum Korrigieren, wenn sie
  * beim Import nicht richtig übernommen wurde.
- * Ausführlich: docs/begruendungen/feature-teile/teile/ui/screens/FarbWahlFeld.kt.md#farbwahlfeld
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

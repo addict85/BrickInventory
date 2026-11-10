@@ -29,7 +29,6 @@ import ch.brickinventoryapp.ui.components.ausserhalbDerSystemleisten
  * Webapp über /v1/startup-status. Der erste Start einer Neuinstallation holt den
  * Rebrickable-Katalog und dauert viele Minuten; eine allgemeine Netzmeldung liesse
  * dabei App oder Server kaputt aussehen, obwohl alles richtig läuft.
- * Ausführlich: docs/begruendungen/feature-anmeldung/anmeldung/ui/screens/ServerStartAnzeige.kt.md#serverstartanzeige
  */
 @Composable
 internal fun ServerStartAnzeige(status: StartzustandAnsicht, modifier: Modifier = Modifier) {

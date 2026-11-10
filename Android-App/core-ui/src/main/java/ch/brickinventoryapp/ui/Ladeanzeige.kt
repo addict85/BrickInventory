@@ -3,8 +3,8 @@ package ch.brickinventoryapp.ui
 /**
  * Was ein Bildschirm mit geladenem Inhalt zeigt. Ein Ladefehler, eine leere
  * Sammlung und eine Suche ohne Treffer verlangen Verschiedenes: „Erneut
- * versuchen“, „etwas erfassen“, „Filter lockern“. Vorher sah ein Fehler in
- * Merkliste und Finanzen aus wie eine leere Liste.
+ * versuchen“, „etwas erfassen“, „Filter lockern“. Ein Fehler darf nicht
+ * aussehen wie eine leere Liste.
  */
 enum class Ladeanzeige { LISTE, LAEDT, FEHLER, KEINE_TREFFER, LEER }
 

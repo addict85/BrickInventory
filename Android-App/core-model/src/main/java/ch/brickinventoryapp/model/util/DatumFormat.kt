@@ -42,7 +42,6 @@ enum class DatumJahr { VOLL, KURZ, OHNE }
  * ISO-Zeitstempel aus einer Serverantwort als Uhrzeit — HH:MM:SS, für das
  * Protokoll der Verwaltung wie in der Webapp (public/js/logviewer.js): Ohne Zeit
  * ist „von eben oder von gestern?“ nicht zu beantworten.
- * Ausführlich: docs/begruendungen/core-model/model/util/DatumFormat.kt.md#fmtuhrzeit
  */
 fun fmtUhrzeit(iso: String?): String? {
     if (iso.isNullOrBlank()) return null

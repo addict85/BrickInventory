@@ -5,7 +5,6 @@ import androidx.compose.ui.unit.dp
 /**
  * Die Abstandsskala der App — damit Abstände einen Namen haben statt als blanke
  * Zahlen in den Bildschirmen zu stehen, wie die CSS-Klassen der Webapp.
- * Ausführlich: docs/begruendungen/core-ui/ui/theme/Abstaende.kt.md#abstaende
  */
 object Abstaende {
     /** Haarfein — Trennlinien, dicht gesetzte Plaketten. */
@@ -34,7 +33,6 @@ object Abstaende {
      * an dem eine Seite beginnt; er steht vielfach im Baum (ScopeFilterZeile, Suchfeld,
      * Chip-Zeilen), und ihn auf 16 zu ziehen wäre eine Gestaltungsänderung an all diesen
      * Stellen.
-     * Ausführlich: docs/begruendungen/core-ui/ui/theme/Abstaende.kt.md#rand
      */
     val rand = 14.dp
 }

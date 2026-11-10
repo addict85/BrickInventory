@@ -17,7 +17,7 @@ import org.junit.Test
 import java.io.IOException
 
 /**
- * Der Update-Client folgt Umleitungen nur zu GitHub über https (sec17 B-N8): Ein
+ * Der Update-Client folgt Umleitungen nur zu GitHub über https: Ein
  * fremdes Umleitungsziel wird nicht einmal verbunden. Mit Testservern statt GitHub;
  * die Regel für GitHub selbst prüft der letzte Fall.
  *

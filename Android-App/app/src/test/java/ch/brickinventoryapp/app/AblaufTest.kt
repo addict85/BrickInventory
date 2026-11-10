@@ -240,7 +240,7 @@ class AblaufTest {
         assertEquals(List(2) { ctx.getString(R.string.schritt_gutschein) }, gefragt)
     }
 
-    /** Runde 8: Die Nummer allein ist kein Geld mehr, aber Klartext — auch sie erst nach der Sperre. */
+    /** Die Nummer allein ist kein Geld, aber Klartext — auch sie erst nach der Sperre. */
     @Test
     fun `ohne Geraetesperre wird auch die Nummer nicht kopiert`() {
         val gefragt = mutableListOf<String>()

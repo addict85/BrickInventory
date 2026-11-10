@@ -4,7 +4,7 @@ import ch.brickinventoryapp.data.repository.Ergebnis
 
 /**
  * Wiederholen, solange der Fehler vorübergehend ist.
- * Ausführlich: docs/begruendungen/core-zustand/zustand/ui/Netzwiederholung.kt.md#retryonnetwork
+ * Eine paketweite Funktion, weil sie weder Zustand noch Repository braucht.
  */
 suspend fun <T> retryOnNetwork(
     maxAttempts: Int = 10,

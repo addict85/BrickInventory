@@ -33,7 +33,6 @@ import ch.brickinventoryapp.zustand.ui.Bestandssignal
  * Kaufpreise, Mengen, Daten, Besitzer, dazu Preisverlauf und Lagerort der
  * manuellen Einträge. Dient der Detailansicht manueller Einträge und der
  * Verwaltung der Käufe.
- * Ausführlich: docs/begruendungen/core-zustand/zustand/ui/viewmodel/KaeufeViewModel.kt.md#constructor
  */
 @HiltViewModel
 class KaeufeViewModel @Inject constructor(

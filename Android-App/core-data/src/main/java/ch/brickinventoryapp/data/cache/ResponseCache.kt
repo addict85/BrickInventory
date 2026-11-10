@@ -20,7 +20,7 @@ import javax.inject.Singleton
 /**
  * Plattenspeicher für API-Antworten, damit die App nach dem Start gefüllt ist und
  * offline benutzbar bleibt.
- * Ausführlich: docs/begruendungen/core-data/data/cache/ResponseCache.kt.md#responsecache
+ * Gelesen wird nur, wenn der Netzabruf scheitert — der Server bleibt die Wahrheit.
  */
 @Singleton
 class ResponseCache(

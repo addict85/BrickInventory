@@ -14,7 +14,6 @@ typealias Frage = suspend (String?) -> Abrufergebnis<PendingAlertsResponse>
  * Was beim Abholen der ausgelösten Preisalarme entschieden wird — ausserhalb des
  * Workers, weil sich ein ListenableWorker nur mit laufendem Android prüfen lässt.
  * Der Worker beschafft den Kontext, ruft hier an und zeigt an, was zurückkommt.
- * Ausführlich: docs/begruendungen/core-dienste/dienste/alarm/Alarmabholung.kt.md#z7
  */
 object Alarmabholung {
 

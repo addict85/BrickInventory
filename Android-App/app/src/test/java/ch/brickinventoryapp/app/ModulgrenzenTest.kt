@@ -234,7 +234,7 @@ class ModulgrenzenTest {
             assertEquals("$datei, pluginManagement und dependencyResolutionManagement: $google", 2, google.size)
             for (z in google) assertTrue("Ohne Inhaltsfilter in $datei: $z", z.startsWith("google { content {") &&
                 listOf("com\\\\.android.*", "com\\\\.google.*", "androidx.*").all { z.contains("includeGroupByRegex(\"$it\")") })
-            // Exklusiv: androidx, com.android und com.google.android nur von Google (sec17 B-N4).
+            // Exklusiv: androidx, com.android und com.google.android nur von Google.
             val exklusiv = Regex("""exclusiveContent \{\s*forRepository \{ google\(\) }\s*filter \{([^\n]*)}""")
                 .findAll(settings).map { it.groupValues[1] }.toList()
             assertEquals("exclusiveContent je Block in $datei", 2, exklusiv.size)
@@ -258,7 +258,7 @@ class ModulgrenzenTest {
         assertTrue("Konventionen tragen keine Modulkanten ein: $mitKante", mitKante.isEmpty())
     }
 
-    /** pdfium parst Dateien von Dritten; nur der Dienst im isolierten Prozess darf es (sec17 A-N6). */
+    /** pdfium parst Dateien von Dritten; nur der Dienst im isolierten Prozess darf es. */
     @Test
     fun `PdfRenderer steht nur im isolierten Render-Dienst`() {
         val aufruf = Regex("""\bPdfRenderer\s*\(""")
@@ -271,7 +271,7 @@ class ModulgrenzenTest {
 
     /**
      * Ein Schlüssel mit Gruppen-Regex deckte jedes künftige Paket der Gruppe, ohne
-     * Prüfsummeneintrag (sec17 B-N3). Ein neuer Prüfsummenlauf schreibt wieder Regexe:
+     * Prüfsummeneintrag. Ein neuer Prüfsummenlauf schreibt wieder Regexe:
      * Dann hier rot, und im Pull-Request werden sie durch die Gruppen ersetzt.
      */
     @Test
@@ -282,7 +282,7 @@ class ModulgrenzenTest {
         assertEquals("Gruppen-Regex im Vertrauen: $regex", emptyList<String>(), regex)
     }
 
-    /** Lücken im Bauwerkzeug sind begründet, befristet und betreffen eine Fassung, die es gibt (sec17 B-N5). */
+    /** Lücken im Bauwerkzeug sind begründet, befristet und betreffen eine Fassung, die es gibt. */
     @Test
     fun `jede Luecke im Bauwerkzeug ist begruendet, befristet und aktuell`() {
         val meta = File(projekt, "gradle/verification-metadata.xml").readText()

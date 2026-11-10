@@ -24,7 +24,7 @@ import ch.brickinventoryapp.ui.components.mitSchrift
 
 /**
  * Die eigenen Lagerorte verwalten, je Benutzer.
- * Ausführlich: docs/begruendungen/feature-konto/konto/ui/screens/EinstellungenLagerorte.kt.md#lagerortecard
+ * Nur die eigenen: Fremde Regale umzubenennen wäre ein Versehen — lesen weit, schreiben eng.
  */
 @Composable
 internal fun LagerorteCard(lager: LagerUiState, aktionen: EinstellungenAktionen) {

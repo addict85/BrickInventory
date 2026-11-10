@@ -22,7 +22,7 @@ import org.junit.Test
  * entscheiden, dann den Zustand überschreiben) und das Nachladen prüft
  * CsvImportViewModelTest am ausgeführten ViewModel.
  *
- * ── Gegenprobe (ausgeführt, Lauf 33632359947) ───────────────────────────────
+ * ── Gegenprobe ───────────────────────────────
  * Im Gegenprobe-Commit gab `csvFolge()` im Fall „fertig" immer NACHLADEN
  * zurück, also ohne `warVorherAktiv`.
  * Ergebnis: `351 tests completed, 1 failed`, und zwar

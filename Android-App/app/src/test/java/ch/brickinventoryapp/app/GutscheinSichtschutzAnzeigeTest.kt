@@ -29,7 +29,7 @@ import ch.brickinventoryapp.testing.NummernTexte
 import ch.brickinventoryapp.testing.PfadServer
 
 /**
- * Gutscheinseite und Gutschein-PDF setzen FLAG_SECURE, ausgeführt (sec17 A-N4); eine
+ * Gutscheinseite und Gutschein-PDF setzen FLAG_SECURE, ausgeführt; eine
  * Bauanleitung im selben Betrachter nicht. Ersetzt die Quelltext-Prüfung in
  * feature-finanzen/GutscheinSichtschutzTest.
  *

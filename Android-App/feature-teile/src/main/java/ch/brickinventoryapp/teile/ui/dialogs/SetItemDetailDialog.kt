@@ -43,7 +43,6 @@ import ch.brickinventoryapp.gemeinsam.ui.LagerortFeld
  * Bild mit Zoom und die Sets, die es verwenden, mit Link zum Set-Detail. Ein Blatt
  * statt eines Dialogs, weil Lagerort und Liste Platz brauchen und das Wischen nach
  * unten schliesst wie überall.
- * Ausführlich: docs/begruendungen/feature-teile/teile/ui/dialogs/SetItemDetailDialog.kt.md#setitemdetaildialog
  */
 @Composable
 fun SetItemDetailDialog(
@@ -160,7 +159,6 @@ private fun SetItemDetail(
                         // steckt in ihrem Set, dessen Ort im Set-Detail steht — ein zweiter
                         // Ort könnte auseinanderlaufen. Bearbeitbar wie in der Webapp; das
                         // Feld schreibt auf alle Zeilen dieses Teil-Farb-Paares.
-                        // Ausführlich: docs/begruendungen/feature-teile/teile/ui/dialogs/SetItemDetailDialog.kt.md#kopffarbe
                         val kopfFarbe = kopf?.colorId
                         if (kopf != null && kopfFarbe != null) {
                             Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),

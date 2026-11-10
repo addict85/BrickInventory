@@ -64,7 +64,7 @@ class GutscheinKlartextTest {
     private fun antwort(rumpf: String, code: Int = 200) = TestApi.antwort(rumpf, code)
     private fun warteBis(was: String, bedingung: () -> Boolean) = TestApi.warteBis(was, bedingung)
 
-    /** So antwortet der Server seit Runde 8: nur die Maske. */
+    /** So antwortet der Server: nur die Maske. */
     private val maskiert = """{"success":true,"vouchers":[
         {"id":1,"number":"…3333","pin":"•••","amount":50,"currency":"CHF","hat_pdf":true}]}"""
     private val klartext = """{"success":true,"id":1,"number":"6000111122223333","pin":"1234"}"""

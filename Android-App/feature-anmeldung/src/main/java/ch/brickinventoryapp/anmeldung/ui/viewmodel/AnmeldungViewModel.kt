@@ -193,7 +193,6 @@ class AnmeldungViewModel @Inject constructor(
      * Erst nach der Bestätigung im Einrichtungsbildschirm: Die Adresse kommt aus dem Code.
      * Sein Fingerabdruck gilt schon für die erste Anfrage, gemerkt wird er aber erst nach
      * gelungener Anmeldung.
-     * Ausführlich: docs/begruendungen/feature-anmeldung/anmeldung/ui/viewmodel/AnmeldungViewModel.kt.md#loginwithqrtoken
      */
     fun loginWithQrToken(
         serverUrl: String, token: String, fingerabdruck: String? = null,

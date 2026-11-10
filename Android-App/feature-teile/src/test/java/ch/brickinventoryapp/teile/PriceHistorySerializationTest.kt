@@ -15,10 +15,9 @@ import ch.brickinventoryapp.data.api.ApiJson
 /**
  * Client-seitiger API-Vertrag für den Preisverlauf und die Bewertung.
  *
- * Der Verlaufs-Endpunkt hat sich mit Server-Stand hardened-89 GEBROCHEN
- * geändert: statt einer zusammengefalteten `history` kommen beide Zustände
- * getrennt, dazu fertige Diagrammdaten. Ohne diesen Test fällt eine solche
- * Änderung erst am Gerät auf — und dort als leeres Diagramm ohne Fehlermeldung.
+ * Der Verlaufs-Endpunkt liefert beide Zustände getrennt, dazu fertige
+ * Diagrammdaten. Ändert sich die Form, fällt das sonst erst am Gerät auf — und
+ * dort als leeres Diagramm ohne Fehlermeldung.
  *
  * Die Beträge stehen bewusst teils als STRING im Testdatensatz: Postgres
  * liefert NUMERIC als Zeichenkette, und der Server reicht die Verlaufszeilen

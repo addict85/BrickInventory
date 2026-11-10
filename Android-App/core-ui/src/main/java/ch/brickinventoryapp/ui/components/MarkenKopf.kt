@@ -75,8 +75,8 @@ fun MarkenKopf(modifier: Modifier = Modifier, untertitel: String? = null) {
 
 /**
  * Die Karte unter dem Markenkopf: Anmelden, Registrieren, Startpasswort und zweiter
- * Faktor stehen gleich gerahmt da. Vorher lagen die beiden Pflichtmasken frei auf dem
- * Grund, mit anderer Überschrift — es sah nach zwei Apps aus.
+ * Faktor stehen gleich gerahmt da: Frei auf dem Grund und mit anderer Überschrift sähen
+ * die Pflichtmasken aus wie eine zweite App.
  */
 @Composable
 fun AnmeldeKarte(modifier: Modifier = Modifier, inhalt: @Composable ColumnScope.() -> Unit) {

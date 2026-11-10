@@ -55,7 +55,7 @@ class CameraFocusConfigTest {
      * anzufassen. Eine aufgezählte Liste wäre die dritte Fassung derselben
      * Regel gewesen.
      *
-     * ── Gegenprobe (Lauf 33635964430) ───────────────────────────────────────
+     * ── Gegenprobe ───────────────────────────────────────
      * Die erweiterte Prüfung wurde ABSICHTLICH allein veröffentlicht, vor der
      * Behebung. Der Lauf meldete `354 tests completed, 1 failed`, und zwar
      * genau diesen Test. Der Fehler war also echt und nicht nachgestellt —

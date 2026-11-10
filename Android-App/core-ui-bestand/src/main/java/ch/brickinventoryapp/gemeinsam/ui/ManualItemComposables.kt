@@ -206,11 +206,9 @@ fun InfoPlakette(text: String, modifier: Modifier = Modifier, icon: androidx.com
     }
 }
 
-// Der frühere ManualItemDetailDialog steht hier nicht mehr: Die Detailansicht
-// manueller Teile und Minifiguren ist seit hardened-99 ein ganzer Screen
-// (ui/screens/ManualItemDetailScreen.kt), wie bei den Sets. Übrig bleiben hier
-// die Bausteine, die BEIDE Seiten benutzen — AcquisitionSummarySection,
-// ConditionBadge(s) und der Kaufpreis-Editor.
+// Hier stehen nur Bausteine, die Set-Detail und ManualItemDetailScreen beide benutzen
+// (AcquisitionSummarySection, ConditionBadge(s), Kaufpreis-Editor), damit beide Seiten
+// Kaufpreise gleich zeigen.
 
 /**
  * Der Fuss einer Kachel für einen manuell erfassten Eintrag: der Preis, wie auf

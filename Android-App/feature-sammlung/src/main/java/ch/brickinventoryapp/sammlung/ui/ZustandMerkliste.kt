@@ -18,7 +18,6 @@ data class MerklisteUiState(
     // Drei Werte hier; der vierte, der Inhaber, steht wie in jeder Ansicht in
     // AppUiState.scopeModes — dieselbe Wahl unter demselben Schlüssel wie in Galerie, Teilen,
     // Minifiguren und Finanzen.
-    // Ausführlich: docs/begruendungen/feature-sammlung/sammlung/ui/ZustandMerkliste.kt.md#z16
     /** Suchtext — trifft Nummer UND Name. Leer heisst: kein Filter. */
     val query: String = "",
     /** "N", "U" — oder leer fuer beide Zustaende. */
@@ -38,7 +37,6 @@ data class MerkpostenDetailUiState(
      * Daran erkennt setzePreisalarm(), dass der Bildschirm offen ist und die Alarme
      * nachgeladen werden dürfen; das Merkposten-Detail lädt kein SetDetail, an dem es sonst
      * zu sehen wäre.
-     * Ausführlich: docs/begruendungen/feature-sammlung/sammlung/ui/ZustandMerkliste.kt.md#setnumber
      */
     val setNumber: String? = null,
     /** Thema, Teile, Minifiguren, BrickLink, Preisvergleich. */
