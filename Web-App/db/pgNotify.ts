@@ -36,6 +36,14 @@ async function connect() {
       }
     });
     await c.connect();
+    // close() kam während des Aufbaus: Diese Verbindung will niemand mehr, und
+    // offen gelassen hielte sie den Prozess für immer am Leben.
+    if (_closed) {
+      c.removeAllListeners();
+      c.on('error', () => {});
+      await c.end().catch((e: Error) => console.warn('[pg-notify] Verbindung schliessen:', e.message));
+      return;
+    }
     _client = c;
     _retryMs = 1000;
 

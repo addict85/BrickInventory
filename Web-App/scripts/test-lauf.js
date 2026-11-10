@@ -39,8 +39,10 @@ function fristBeiLast(/** @type {number} */ grund) {
  */
 function lauf(dateien, n, env, frist = 60_000) {
   if (!dateien.length) return Promise.resolve({ code: 0, frist: [], andere: 0 });
-  // textausgabe.js hält Text aus dem Strom der Berichtsrahmen (Begründung dort).
+  // textausgabe.js hält Text aus dem Strom der Berichtsrahmen, auslauf.js
+  // beendet ein Kind, das nicht endet (Begründungen dort).
   const vorlader = ['--require', path.join(ROOT, 'test', 'helpers', 'textausgabe.js'),
+    '--require', path.join(ROOT, 'test', 'helpers', 'auslauf.js'),
     ...(env.TEST_DB_VORLAGE ? ['--require', path.join(ROOT, 'test', 'helpers', 'eigene-db.js')] : [])];
   const bericht = path.join(os.tmpdir(), `test-lauf-${process.pid}-${Date.now()}.tap`);
   const reporter = process.stdout.isTTY ? 'spec' : 'tap';
@@ -49,7 +51,8 @@ function lauf(dateien, n, env, frist = 60_000) {
       [...vorlader, '--test', `--test-concurrency=${n}`, `--test-timeout=${frist}`,
         `--test-reporter=${reporter}`, '--test-reporter-destination=stdout',
         '--test-reporter=tap', `--test-reporter-destination=${bericht}`, ...dateien],
-      { cwd: ROOT, stdio: 'inherit', env: { ...process.env, ...env } });
+      // Die Datei als Ganzes darf länger als ein Test brauchen, aber nicht ewig.
+      { cwd: ROOT, stdio: 'inherit', env: { TEST_DATEI_FRIST_MS: String(Math.max(600_000, 3 * frist)), ...process.env, ...env } });
     p.on('exit', (code) => {
       const tap = fs.existsSync(bericht) ? fs.readFileSync(bericht, 'utf8') : '';
       fs.rmSync(bericht, { force: true });

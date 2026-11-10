@@ -5,6 +5,9 @@
  * Gegenprobe (durchgeführt): retire() in db/pgNotify.ts wieder durch die
  * alte Fassung ersetzt (removeAllListeners ohne Ersatz-Zuhörer) → dieser Test
  * wird rot, Exitcode 7 statt 0.
+ * Gegenprobe (10.11.2026 gemessen): in db/pgNotify.ts die Prüfung auf _closed
+ * nach c.connect() gestrichen → rot: „close() während des Verbindungsaufbaus
+ * …“ (das Kind endet nicht, ETIMEDOUT nach 15 s).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip.
  */
@@ -80,4 +83,26 @@ test('ein Abriss der LISTEN-Verbindung beendet den Prozess NICHT und verbindet n
     fs.rmSync(file, { force: true });
     await db.pool.end().catch(() => {});
   }
+});
+
+// Unter Last ist der Aufbau noch unterwegs, wenn ein Test close() ruft; die
+// Verbindung, die danach ankam, hielt den Prozess für immer offen.
+test('close() während des Verbindungsaufbaus lässt keine Verbindung offen', async (t) => {
+  // Der Pool ist nach dem ersten Test zu: eine eigene Verbindung für die Probe.
+  const probe = new (require(path.join(ROOT, 'node_modules', 'pg')).Client)({ connectionString: process.env.DATABASE_URL });
+  try { await probe.connect(); }
+  catch (e) {
+    if (process.env.REQUIRE_DB === '1')
+      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
+    t.skip('Test-DB nicht erreichbar'); return;
+  } finally { await probe.end().catch(() => {}); }
+  // Kein process.exit im Kind: Es muss von selbst enden.
+  const kind = `
+process.env.DATABASE_URL = ${JSON.stringify(process.env.DATABASE_URL)};
+const notify = require(${JSON.stringify(path.join(ROOT, 'dist/db/pgNotify.js'))});
+notify.listen('rennen_probe', () => {});
+notify.close().then(() => console.log('GESCHLOSSEN'));
+`;
+  const out = execFileSync(process.execPath, ['-e', kind], { encoding: 'utf8', timeout: 15_000 });
+  assert.match(out, /GESCHLOSSEN/);
 });
