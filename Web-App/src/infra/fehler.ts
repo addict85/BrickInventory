@@ -9,11 +9,11 @@ import type { FehlerCode } from './fehlerTexte';
 export function logAndContinue(kontext: string) {
   return (e: unknown) => {
     pruefeErsatzInTransaktion(kontext, e);
-    protokolliere(kontext, e);
+    protokolliereWarnung(kontext, e);
   };
 }
 
-function protokolliere(kontext: string, e: unknown) {
+function protokolliereWarnung(kontext: string, e: unknown) {
   const roh = e instanceof Error && e.stack ? e.stack : (e as { message?: unknown } | null)?.message || e;
   console.warn(`[weiter-trotz-fehler] ${kontext}: ${String(roh)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
 }
@@ -60,7 +60,7 @@ export function ohneFehlendeDatei<T>(kontext: string, ersatz?: T) {
 
 /** Nur das Protokoll: Wer meldet und dann selbst entscheidet, liefert keinen Ersatz. */
 export function meldeFehler(kontext: string, e: unknown) {
-  protokolliere(kontext, e);
+  protokolliereWarnung(kontext, e);
 }
 
 // Nicht nur Error fliegt; sonst „Fehler: undefined“. Ausführlich: docs/begruendungen/src/infra/fehler.ts.md#fehlertext
