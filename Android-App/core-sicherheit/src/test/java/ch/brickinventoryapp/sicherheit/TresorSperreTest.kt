@@ -14,7 +14,7 @@ import javax.crypto.AEADBadTagException
 import javax.crypto.BadPaddingException
 
 /**
- * Ein vorübergehender Keystore-Fehler meldet nicht ab (sec7, N7). Bisher ergab
+ * Ein vorübergehender Keystore-Fehler meldet nicht ab. Bisher ergab
  * jede Ausnahme beim Entschlüsseln „kein Token“, auch ein KeyStoreException beim
  * Hochfahren oder ein hängender StrongBox-Chip.
  *

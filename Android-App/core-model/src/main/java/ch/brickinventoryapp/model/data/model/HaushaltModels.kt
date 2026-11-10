@@ -154,9 +154,9 @@ data class AcquisitionsResponse(
 @Serializable
 data class UpdateAcquisitionRequest(
     /**
-     * Der Kaufpreis einer Erfassungszeile — bei Sets. Der Server liest das Preisfeld
-     * unter dem Namen der Spalte (`req.body[cfg.priceCol]`):
-     * Ausführlich: docs/begruendungen/core-model/model/data/model/HaushaltModels.kt.md#z156
+     * Der Kaufpreis einer Erfassungszeile. Der Server liest das Preisfeld unter dem Namen der
+     * Spalte (`req.body[cfg.priceCol]`): purchase_price bei Sets, unit_price bei Teilen und
+     * Figuren; unter dem falschen Namen bliebe der Preis still unverändert.
      */
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     /** Der Kaufpreis je Stück — bei TEILEN und MINIFIGUREN. Siehe oben. */
@@ -169,7 +169,6 @@ data class UpdateAcquisitionRequest(
      * behandelt das Feld vor allen anderen und beendet damit die Anfrage: Preis oder
      * Datum im selben Aufruf hiesse, die Zeile zweimal zu suchen, beim Empfänger
      * womöglich schon verschmolzen.
-     * Ausführlich: docs/begruendungen/core-model/model/data/model/HaushaltModels.kt.md#z174
      */
     @SerialName("owner_user_id") val ownerUserId: Int? = null
 ) {

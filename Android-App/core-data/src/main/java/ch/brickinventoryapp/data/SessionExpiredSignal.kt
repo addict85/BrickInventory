@@ -11,7 +11,6 @@ import javax.inject.Singleton
  * 401 zurückgibt) mit dem SitzungsDienst (der Einzige, der abmelden darf).
  * Ein Zustand bis zur Quittung statt eines Ereignisses: Ein 401 vor dem ersten
  * Sammler (Kaltstart, Worker) ginge sonst verloren.
- * Ausführlich: docs/begruendungen/core-data/data/SessionExpiredSignal.kt.md#constructor
  */
 @Singleton
 class SessionExpiredSignal @Inject constructor() {

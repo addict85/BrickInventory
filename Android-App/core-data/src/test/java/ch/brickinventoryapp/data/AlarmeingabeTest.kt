@@ -13,9 +13,8 @@ import org.junit.Test
  * loescht einen Alarm, den jemand gerade eintippt — und zwar lautlos, denn
  * ein Loeschen ist kein Fehler.
  *
- * Seit Marcos Befund wird beim TIPPEN gespeichert, nicht mehr beim Verlassen
- * des Feldes. Damit laufen Zwischenstaende wie „249." durch diese Funktion,
- * die es vorher nie erreicht haben.
+ * Gespeichert wird beim TIPPEN, nicht beim Verlassen des Feldes; darum laufen
+ * auch Zwischenstaende wie „249." durch diese Funktion.
  */
 class AlarmeingabeTest {
 
@@ -50,9 +49,7 @@ class AlarmeingabeTest {
     fun `ein Punkt am Ende ist eine Zahl, kein Loeschen`() {
         // ── Was ich zuerst falsch behauptet habe ─────────────────────────
         //
-        // Hier stand „249." in der Loesch-Liste, und der Erklaertext in
-        // Alarmeingabe.kt stuetzte darauf die Begruendung fuer die Ruhezeit.
-        // Der CI-Lauf hat es gemeldet, und nachgemessen stimmt es nicht:
+        // „249." ist kein Loeschen:
         // Double.parseDouble("249.") ist 249.0 — Java nimmt den Punkt am
         // Ende an. Die Webapp ebenso (parseFloat("249.") ist 249).
         //

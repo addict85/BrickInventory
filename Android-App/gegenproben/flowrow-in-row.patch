@@ -1,0 +1,26 @@
+Gegenprobe: Die FlowRow der Besitzer-Etiketten steht in einer Row
+Modul: app
+Test: ch.brickinventoryapp.app.ComposeLayoutRegelnTest
+Rot: keine FlowRow in einer waagerechten Row
+
+diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/HouseholdComposables.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/HouseholdComposables.kt
+--- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/HouseholdComposables.kt
++++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/HouseholdComposables.kt
+@@ -188,7 +188,8 @@
+     // FlowRow statt Row: Zwei Besitzer mit langen Namen sind breiter als die Kachel,
+     // in einer Row schöben sich die Etiketten übereinander. FlowRow bricht um, damit
+     // alle lesbar bleiben.
+-    FlowRow(
++    Row(Modifier) {
++        FlowRow(
+         modifier,
+         horizontalArrangement = Arrangement.spacedBy(3.dp),
+         verticalArrangement = Arrangement.spacedBy(Abstaende.haar),
+@@ -208,6 +209,7 @@
+             }
+         }
+     }
++    }
+ }
+ 
+ /**

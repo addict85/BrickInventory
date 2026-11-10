@@ -93,7 +93,6 @@ fun ComparisonScreen() {
                     // Hier tippt man Setnummern und Barcodes, keine Namen — deshalb die
                     // Zahlentastatur. Der Filter gehört dazu: Eine angeschlossene Tastatur, die
                     // Zwischenablage und manche Bildschirmtastaturen liefern trotzdem Buchstaben.
-                    // Ausführlich: docs/begruendungen/feature-sammlung/sammlung/ui/screens/ComparisonScreen.kt.md#z87
                     onValueChange = {
                         searchText = NumericInput.setNumber(it)
                         if (searchText.isNotBlank()) scannedBarcode = null

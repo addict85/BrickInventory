@@ -47,7 +47,6 @@ import ch.brickinventoryapp.gemeinsam.ui.PriceChart
  * Set-Detail, ohne was ein Merkposten nicht hat (Kaufpreis, Anzahl, Lagerort, Anleitungen;
  * „hinzugefügt“ heisst hier „auf der Liste seit“). Marktpreis und Verlauf zeichnet dieselbe
  * PriceChart().
- * Ausführlich: docs/begruendungen/feature-sammlung/sammlung/ui/screens/MerkpostenDetailScreen.kt.md#merkpostendetailscreen
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

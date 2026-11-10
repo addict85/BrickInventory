@@ -23,7 +23,6 @@ import ch.brickinventoryapp.update.util.erlaubnisAbsicht
  * ein Punkt am Konto-Symbol leicht übersehen wird. Geladen wird trotzdem nie von
  * allein: Der Dialog fragt, der Ladevorgang beginnt erst auf „Jetzt aktualisieren“
  * — fragen ist nicht automatisch handeln.
- * Ausführlich: docs/begruendungen/feature-konto/konto/ui/dialogs/UpdateDialog.kt.md#updateroute
  */
 @Composable
 fun UpdateRoute(selbstUpdate: UpdateViewModel) {

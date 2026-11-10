@@ -8,7 +8,6 @@ import kotlinx.serialization.Serializable
  * routes/api_v1/vouchers.ts ausgibt — keine eigene Form, keine Umbenennung —, weil
  * beide Apps dieselben Dienste des Backends verwenden; was hier anders hiesse,
  * müsste die Webapp nachziehen.
- * Ausführlich: docs/begruendungen/core-model/model/data/model/GutscheinModels.kt.md#gutschein
  */
 @Serializable
 data class Gutschein(
@@ -40,7 +39,8 @@ data class Gutschein(
 
 /**
  * Die Antwort der Guthaben-Abfrage.
- * Ausführlich: docs/begruendungen/core-model/model/data/model/GutscheinModels.kt.md#guthabenantwort
+ * `wartenSek` und `grund` kommen bei HTTP 429 und stehen hier, weil ignoreUnknownKeys sie sonst
+ * still verwürfe.
  */
 @Serializable
 data class GuthabenAntwort(

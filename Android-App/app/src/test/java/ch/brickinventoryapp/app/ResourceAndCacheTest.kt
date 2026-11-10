@@ -5,9 +5,9 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Absicherung der Aufräumrunde: Kamera-Ressourcen, PDF-Cache-Budget,
- * Bild-Cache beim Abmelden, feste Debug-Version und die Zusammenführung
- * der beiden CSV-Statuspfade.
+ * Aufbauregeln, die ohne Gerät nur im Quelltext stehen: Kamera-Ressourcen, PDF-Cache-Budget,
+ * feste Debug-Version und ein CSV-Statuspfad. Dass Abmelden alle Caches leert, prüft
+ * AbmeldenRaeumtAllesTest ausgeführt.
  */
 class ResourceAndCacheTest {
 
@@ -65,24 +65,6 @@ class ResourceAndCacheTest {
         assert(src.contains("keep.absolutePath")) {
             "Die gerade angeforderte Datei ist nicht vom Löschen ausgenommen — ihr " +
                 "Teil-Download ginge verloren und der Resume-Mechanismus liefe ins Leere"
-        }
-    }
-
-    // ── Abmelden ─────────────────────────────────────────────────────────────
-
-    @Test
-    fun `beim Abmelden werden API- UND Bild-Cache geleert`() {
-        val src = code(read("data/SitzungsBereinigung.kt"))
-        assert(src.contains("kontoDaten.loesche()")) { "API-Cache wird nicht geleert" }
-        assert(src.contains("imageLoader.diskCache?.clear()")) {
-            "Der Coil-Disk-Cache bleibt beim Abmelden liegen — inkonsistent zur " +
-                "Begründung, mit der kontoDaten.loesche() eingeführt wurde"
-        }
-        val mem = src.indexOf("memoryCache?.clear()")
-        val disk = src.indexOf("diskCache?.clear()")
-        assert(mem in 0 until disk) {
-            "Memory-Cache muss VOR dem Disk-Cache geleert werden — sonst schreibt Coil " +
-                "beim nächsten Speicher-Treffer sofort wieder auf die Platte"
         }
     }
 

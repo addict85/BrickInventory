@@ -20,65 +20,9 @@ import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
- * Die Preisalarm-Uebersicht gibt es in der App genauso wie in der Webapp.
- *
- * ── Marcos Frage und sein Auftrag vom 25.09. ────────────────────────────────
- *
- *   „Wie finde ich alle Preisalarme?"
- *   „Baue die Uebersicht in beiden Apps in den Einstellungen als Rubrik. Ich
- *    moechte dort den Alarm direkt loeschen koennen oder den Wert anpassen
- *    koennen."
- *
- * Bis dahin war ein Alarm nur im Detail SEINES Sets zu sehen — man musste das
- * Set also schon gefunden haben. Wer fuenfzig setzt, hatte keinen Ort, an dem
- * sie zusammen stehen.
- *
- * ── Warum der Test die WEBAPP mitliest ──────────────────────────────────────
- *
- * „In beiden Apps" ist die Aussage, und sie zerfaellt genau dann still, wenn
- * eine Seite spaeter nachgezogen und die andere vergessen wird. Die Webapp
- * hat dafuer ihre eigene Regel (test/webapp-endpunkte.test.js sagt: entweder
- * die App zieht nach, oder es steht ein Grund dabei) — diese hier ist die
- * Gegenrichtung.
- *
- * ── Gegenproben (gemessen im Lauf 281, Zweig claude/gegenproben-alarm) ──────
- *
- * Eine Regel, die auch dann gruen bleibt, wenn man das Gepruefte kaputt macht,
- * prueft nichts. Also wurde jede der drei Aussagen einzeln kaputt gemacht und
- * der Lauf gemessen — nicht behauptet:
- *
- *   a) LaunchedEffect(Unit) { vm.ladeAlarmUebersicht() } aus SettingsScreen.kt
- *      entfernt
- *        → „die Rubrik steht in den Einstellungen und laedt sich selbst" rot
- *   b) (die Schwelle prueft EinstellungenViewModelTest
- *      ausgefuehrt, „eine Schwelle von null geht nicht hinaus")
- *
- * Ergebnis des Laufs: 495 Tests, genau 3 rot — einer je Eingriff, keiner
- * zusaetzlich. Damit haengt jede Regel an ihrer eigenen Aussage und nicht an
- * einer Nachbarregel.
- *
- * Der vierte Test („geschrieben wird ueber die bestehende Route zum Set") ist
- * bewusst NICHT gegengeprueft: seine Aussage ist eine Verneinung — es gibt
- * keinen zweiten Schreibweg. Um ihn rot zu bekommen, muesste man einen
- * zweiten Schreibweg bauen; der wuerde zugleich „jede Funktion hat einen
- * Aufrufer" reissen, und die Zuordnung Eingriff↔Test waere dahin.
- *
- * ── Gegenproben der fuenf NEUEN Regeln (gemessen im Lauf 291) ───────────────
- *
- * Zweig claude/gegenproben-alarm-2, fuenf Eingriffe einzeln gefahren:
- *
- *   a) FinanzBild-Aufruf aus SettingsScreen entfernt
- *        → „die Zeile zeigt ein Bild und fuehrt in die Detailansicht" rot
- *   b) Schluessel des Rollmerkers von "settings" auf "einstellungen"
- *
- * Ergebnis: 501 Tests, GENAU 5 rot — einer je Eingriff, keiner zusaetzlich.
- * Jeder Anker war vorher auf Eindeutigkeit geprueft (je genau 1 Fundstelle);
- * ohne das waere die Zuordnung eine Vermutung.
- *
- * Zwei Dinge, die derselbe Lauf mitbewiesen hat: Der Basislauf 290 auf
- * demselben Stand war gruen, und die beiden hier unberuehrten Regeln der
- * Klasse blieben gruen. Ein Eingriff, der vier Tests reisst, sagt nichts
- * darueber, welcher davon wirklich prueft.
+ * Die Preisalarm-Uebersicht gibt es in der App genauso wie in der Webapp: Ein Alarm,
+ * der nur im Detail seines Sets steht, ist nur auffindbar, wenn man das Set schon kennt.
+ * Die Webapp prüft die Gegenrichtung (test/abgleich-webapp-endpunkte.test.js).
  *
  * Gegenprobe (gegenproben/alarm-besitzt-vorgabe-falsch.patch): Vorgabe von `besitzt`
  * auf false → rot „ein fehlendes besitzt-Feld …“. Laden, Ändern, Löschen nach Rückfrage,
@@ -139,27 +83,10 @@ class AlarmUebersichtTest {
     }
 
     /**
-     * Ein fehlendes Feld schaltet die Rubrik nicht ab.
-     *
-     * ── Marcos Befund vom 26.09. ───────────────────────────────────────────
-     *
-     *   „Das Bild in der Android-App ist sichtbar aber die Eintraege in den
-     *    Preisalarme sind nicht klickbar."
-     *
-     * Zwei Ursachen, beide meine. Die im Server (Verbindung auf das eigene
-     * Konto statt auf das Blickfeld) hat ihre Regel in
-     * Web-App/test/alarm-uebersicht-db.test.js. Die hier ist die in der App:
-     *
-     * Sein Server war noch der alte und schickte `besitzt` gar nicht mit —
-     * das Bild kam aus `set_img_url`, das es dort schon gab. Mit dem
-     * Vorgabewert `false` hiess „Feld fehlt" dasselbe wie „Set gibt es
-     * nicht", und die ganze Rubrik war stillschweigend tot.
-     *
-     * Ein fehlendes Feld ist aber keine Aussage. Der Vorgabewert muss `true`
-     * sein: im Zweifel versuchen. Auf einem neuen Server schickt die Antwort
-     * das Feld immer mit, er greift also nur gegen einen alten — und dort ist
-     * ein Klick, der in einer Fehlermeldung endet, allemal besser als eine
-     * Liste, in der nichts geht.
+     * Ein fehlendes Feld schaltet die Rubrik nicht ab. Ein älterer Server schickt
+     * `besitzt` nicht mit; mit der Vorgabe `false` hiesse „Feld fehlt" dasselbe wie „Set
+     * gibt es nicht", und keine Zeile wäre mehr klickbar. Im Zweifel versuchen: Ein Klick,
+     * der in einer Fehlermeldung endet, ist besser als eine Liste, in der nichts geht.
      */
     @Test
     fun `ein fehlendes besitzt-Feld macht die Zeile nicht tot`() {
@@ -229,14 +156,10 @@ class AlarmUebersichtTest {
 
         // ── Der Unterschied darf nicht in der Farbe liegen ──────────────────
         //
-        // Marco ist rot-gruen-schwach. Bis dahin trug die Farbe die ganze
-        // Aussage: gruen = scharf, grau = nicht mehr scharf — fuer ihn
-        // zweimal dasselbe. Die Zwischenfassung faerbte sogar mit
-        // `colorScheme.tertiary`, das NACHGEMESSEN in keinem der fuenf
-        // Designs gruen ist (im Standarddesign BrandRed); „scharf" waere rot
-        // dagestanden.
+        // Rot-Gruen-Schwaeche ist haeufig; „scharf" gegen „nicht mehr scharf" darf nicht
+        // allein an gruen gegen grau haengen.
         //
-        // Beides sind Symptome derselben Sache: Eine Aussage, die nur in der
+        // Eine Aussage, die nur in der
         // Farbe steht, steht nirgends. Dieser Test verlangt deshalb einen
         // Unterschied, den man OHNE Farbe sieht.
         val rumpf = s.substring(s.indexOf("fun AlarmZustandPlakette("))
@@ -261,7 +184,7 @@ class AlarmUebersichtTest {
 
     // Die Gegenrichtung — „hat die WEBAPP die Rubrik auch?" — steht bewusst
     // NICHT hier. Sie hat dort ihre eigene Regel: Web-App/test/
-    // webapp-endpunkte.test.js verlangt, dass eine Adresse, die nur die Webapp
+    // abgleich-webapp-endpunkte.test.js verlangt, dass eine Adresse, die nur die Webapp
     // ruft, entweder von der App nachgezogen wird oder einen Grund bei sich
     // traegt. Genau diese Regel hat den Bau dieser Rubrik ausgeloest.
     //

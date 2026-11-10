@@ -20,12 +20,8 @@ import ch.brickinventoryapp.testing.TestApi
 /**
  * Gutscheine — LEGO-Geschenkkarten im eigenen Profil.
  *
- * ── Marcos Vorgabe ──────────────────────────────────────────────────────────
- *
- *   „Im Eigenen Profil sollen Lego-Gutscheine mit Gutscheinnummer und Pins und
- *    Betrag hinterlegt werden können. Für die Erfassung soll dies entweder
- *    manuell möglich sein für die 3 Werte oder das PDF des Gutscheins soll
- *    hochgeladen werden können und die App soll daraus die Werte extrahieren.
+ * Gutscheine werden mit Nummer, PIN und Betrag von Hand erfasst oder aus dem PDF
+ * gelesen; beides macht der Server, die App ruft nur seine Dienste.
  *
  * ── Was dieser Test prueft, und was NICHT ───────────────────────────────────
  *
@@ -36,8 +32,8 @@ import ch.brickinventoryapp.testing.TestApi
  * zweite, schwaechere Fassung.
  *
  * Hier steht die eine Aussage, die NUR auf dieser Seite nachweisbar ist: dass
- * die App dieselben Dienste benutzt und keine eigenen baut. Genau das war
- * Marcos Vorgabe, und genau das laeuft erfahrungsgemaess auseinander.
+ * die App dieselben Dienste benutzt und keine eigenen baut — das laeuft am
+ * leichtesten auseinander.
  *
  * Gegenproben: in GutscheineRepository.liste() den Abruf
  * mit cached("gutscheine", …) umhüllt → rot „die Liste wird nicht
@@ -85,8 +81,8 @@ class GutscheineContractTest {
     }
 
     /**
-     * Marcos Vorgabe wörtlich: EIN Dienst im Backend, beide Apps daran — der
-     * Router routes/api_v1/vouchers.ts. Andere Adressen hiessen zwei Umsetzungen.
+     * EIN Dienst im Backend, beide Apps daran — der Router routes/api_v1/vouchers.ts.
+     * Andere Adressen hiessen zwei Umsetzungen.
      */
     @Test
     fun `die App ruft dieselben Adressen wie die Webapp`() = mitServer { pfade, repo, _ ->
@@ -209,8 +205,7 @@ class GutscheineContractTest {
 
     @Test
     fun `Nummer und PIN lassen sich durch Antippen kopieren`() {
-        // Marcos Vorgabe: „Wenn ich in der Android-App den Gutscheincode oder
-        // den Pin anklicke, soll dieser kopiert werden."
+        // Antippen kopiert, weil Nummer und PIN meist in ein Bezahlfeld wandern.
         // Beide Zeilen sind KopierZeilen: ganze Zeile antippbar (clickable), 48 dp hoch, mit
         // Kopiersymbol. Die Höhe und die Beschreibung prüft OberflaechenRegelnTest am Bildschirm.
         assert(karte.contains("clickable(role = Role.Button, onClickLabel = beschreibung, onClick = onKopieren)")) {
@@ -231,9 +226,8 @@ class GutscheineContractTest {
 
     @Test
     fun `der Gutschein hat keine Notiz mehr`() {
-        // Marcos Vorgabe: „Das Feld ‚Notiz' bitte vollständig inkl. Spalten
-        // auf der Datenbank entfernen." Ein Rest in der App waere eine Zeile,
-        // die der Server gar nicht mehr beantwortet.
+        // Der Server kennt keine Notiz mehr; ein Rest in der App waere eine Zeile,
+        // die er nicht beantwortet.
         for (datei in listOf(karte, feature)) {
             assert(!datei.contains("notiz") && !datei.contains(".note")) {
                 "In der App steht noch eine Notiz am Gutschein."
@@ -242,32 +236,9 @@ class GutscheineContractTest {
     }
 
     /**
-     * Die Gutscheine stehen als ERSTES in den Einstellungen.
-     *
-     * Marco: „Kannst du in der Android-App auch noch gleich die Gutscheine in
-     * den Einstellungen ganz an den Anfang verschieben?"
-     *
-     * Eine Reihenfolge ist das, was beim naechsten Einbau still verrutscht:
-     * Wer etwas Neues hinzufuegt, setzt es oben hin, weil dort Platz ist — und
-     * niemand merkt es, bis Marco wieder rollen muss.
-     *
-     * ── Was sich am 16.10. geaendert hat ────────────────────────────────────
-     *
-     * Bis dahin war es die erste KARTE einer sehr langen Rolle. Seit Marcos
-     * Befund („Generell wirkt dieser Dialog überladen […] Evtl. Auch Elemente
-     * aus den Einstellungen in eine eigene Sicht verschieben?") standen die
-     * Rubriken als Liste da, und die Gutscheine waren deren erster Eintrag.
-     *
-     * ── Und am 17.10. ───────────────────────────────────────────────────────
-     *
-     * „in der Android-App sollten die Punkte unter Einstellungen eine ebene
-     * nach aussen wandern wo heute Einstellungen und Abmelden und Monitoring
-     * zu finden sind." Die Liste ist damit ganz aus den Einstellungen heraus
-     * und sitzt seit dem 02.11. auf der Seite „Mehr“ (MehrBildschirm.kt).
-     *
-     * Die Zusicherung ist DIESELBE geblieben — „ohne Suchen erreichbar" —:
-     * erster Eintrag der Seite. Geprueft wird die REIHENFOLGE und nicht bloss
-     * das Vorkommen: Eine Pruefung auf Vorkommen waere auch an letzter Stelle gruen.
+     * Die Gutscheine sind der erste Eintrag der Seite „Mehr“ (MehrBildschirm.kt), damit
+     * man sie an der Kasse ohne Suchen findet. Geprueft wird die Reihenfolge, nicht bloss
+     * das Vorkommen: Wer etwas Neues einbaut, setzt es gern oben hin.
      */
     @Test
     fun `die Gutscheine stehen ganz oben auf der Seite Mehr`() {
@@ -279,7 +250,7 @@ class GutscheineContractTest {
         val erste = Regex("""MehrEintrag\(R\.string\.(\w+)""").find(gruppeNull)?.groupValues?.get(1)
         assert(erste == "vouchers_title") {
             "Der erste Eintrag der Seite Mehr fuehrt zu $erste statt zu den " +
-                "GUTSCHEINEN — dann muss Marco fuer seine Karten wieder suchen."
+                "GUTSCHEINEN — dann muss man fuer die Karten wieder suchen."
         }
     }
 

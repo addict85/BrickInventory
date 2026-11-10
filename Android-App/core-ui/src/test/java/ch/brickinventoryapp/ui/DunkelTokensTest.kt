@@ -19,7 +19,7 @@ import java.awt.Color
  * (shared/design-tokens.json, Abschnitt `dunkel`), und ihre Rollen sind lesbar.
  *
  * Dass DunkelTokens.kt die Quelle wiedergibt, prüft seit dem 30.10. der
- * Generator selbst: Web-App/test/design-abschrift.test.js vergleicht die Datei
+ * Generator selbst: Web-App/test/abgleich-design-abschrift.test.js vergleicht die Datei
  * mit baueKotlinDunkel() („erzeugt = Quelle“). Der Wert-für-Wert-Vergleich, der
  * hier für die Abschrift stand, ist damit entfallen.
  *

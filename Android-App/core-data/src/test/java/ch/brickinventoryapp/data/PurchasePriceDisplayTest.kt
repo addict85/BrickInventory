@@ -10,29 +10,10 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Beide Clients zeigen denselben Kaufpreis: den MENGENGEWICHTETEN.
- *
- * ── Woher dieser Test kommt (Marcos Befund, Nachtrag 76) ────────────────────
- * „In der Android-App wird der Kaufpreis des gebrauchten Sets angezeigt, in der
- * Webapp der gewichtete Durchschnittspreis. Beide sollen den gewichteten
- * Durchschnitt zeigen."
- *
- * Der Server rechnet ihn längst und liefert ihn auf BEIDEN Wegen als
- * `avg_purchase_price` (nachgemessen: 2×7.41 + 1×9.48 → 8.10 in Liste UND
- * Detail). Die Webapp nutzt das Feld seit jeher. Nur die Kachel der App las
- * `purchase_price` — und das war bloss der in die sets-Zeile gespiegelte Wert
- * der NEUESTEN Erfassung, also der letzte Kauf statt der Sammlung.
- *
- * Die Regel steht jetzt EINMAL im Modell (`anzeigeKaufpreis`) statt in jeder
- * Ansicht. Genau darum geht es: nicht „an zwei Stellen dasselbe hinschreiben",
- * sondern eine Stelle, die beide Ansichten benutzen.
- *
- * ── Was Migration 0032 daran geändert hat ───────────────────────────────────
- * Die gespiegelte Spalte ist weg, und mit ihr das Feld `purchasePrice` an
- * SetItem. `anzeigeKaufpreis` hat deshalb keinen Rückfall mehr. Die Prüfung
- * darauf ist umgedreht: Das Modell darf das Feld NICHT wieder einführen, denn
- * es käme ab jetzt immer leer vom Server — und ein leerer Rückfall hinter
- * einem gefüllten Wert fällt niemandem auf, bis der gefüllte einmal fehlt.
+ * Beide Clients zeigen denselben Kaufpreis: den MENGENGEWICHTETEN `avg_purchase_price`
+ * des Servers, nicht den Preis der neuesten Erfassung. Die Regel steht einmal im Modell
+ * (`anzeigeKaufpreis`), damit keine Ansicht ein anderes Feld liest; `purchasePrice` an
+ * SetItem darf nicht zurückkommen, weil es immer leer vom Server käme.
  */
 class PurchasePriceDisplayTest {
 

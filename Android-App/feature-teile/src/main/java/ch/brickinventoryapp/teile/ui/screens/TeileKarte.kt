@@ -197,7 +197,8 @@ fun SectionHeader(text: String) {
 
 /**
  * Ein Teil als Tabellenzeile.
- * Ausführlich: docs/begruendungen/feature-teile/teile/ui/screens/PartsScreen.kt.md#parttablerow
+ * Kategorie und Sets stehen als zweite Zeile darunter, weil sieben Spalten wie in der Webapp auf
+ * kein Telefon passen.
  */
 @Composable
 fun PartTableRow(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,

@@ -22,7 +22,9 @@ import ch.brickinventoryapp.testing.Quellen
  *                              Kommentare im Workflow und in Tests …“
  *   kommentar-zu-lang          sechs Zeilen Prosa über AppViewModel → rot „kein Kommentar hat …“
  *   bau-kommentar-zu-lang      sechs Zeilen in gradle.properties → rot „kein Kommentar in Build …“
- *   verweis-ins-leere          ein Anker in Vorwaermen.kt verschrieben → rot „jeder Verweis …“
+ *   verweis-aufs-archiv        ein „Ausführlich: docs/begruendungen/…“ in TokenTresor.kt → rot „kein Verweis
+ *                              auf das Begründungsarchiv …“
+ *   kdoc-doppelt               ein verwaister KDoc-Block vor Alarmabholung → rot, derselbe Test
  *   detekt-baseline-waechst    Obergrenze eins unter den Einträgen → rot „die detekt-Baseline …“
  *   detekt-baseline-fremde-regel  ein MagicNumber-Eintrag → rot, derselbe Test
  *   cache-schluckt-abbruch     macht „kein breiter Fang …“ rot
@@ -74,8 +76,8 @@ class QuelltextRatscheTest {
 
     @Test
     fun `Testfunktionen, die Quelltext lesen, werden weniger, nie mehr`() {
-        val FUNKTIONEN = 254
-        val NUR_QUELLTEXT = 42
+        val FUNKTIONEN = 222
+        val NUR_QUELLTEXT = 37
         val alle = Quellen.tests.walkTopDown().filter { it.isFile && it.name.endsWith("Test.kt") }
             .filter { it.name != "QuelltextRatscheTest.kt" }.toList()
         val zaehlung = alle.associate { it.name to quelltextFunktionen(it.readText()) }
@@ -214,15 +216,15 @@ class QuelltextRatscheTest {
     @Test
     fun `lange Kommentare im Workflow und in Tests werden weniger`() {
         val WORKFLOW = 3
-        val TESTS = 64
+        val TESTS = 52
         val DATUM_UND_KENNUNG = 0
-        val GESCHICHTE = 27
+        val GESCHICHTE = 0
         val wf = File(Quellen.projekt, "../.github/workflows/android.yml").readLines()
         val wfLang = rautenBloecke(wf).filter { it.second > 5 }
         // In Tests darf ein Absatz nur dann länger sein, wenn er die Gegenproben aufzählt.
         val dateien = Quellen.tests.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
         val testLang = dateien.flatMap { f -> langeAbsaetze(f.readLines()).map { "${f.name}:$it" } }
-        val kennung = Regex("""[0-9]{2}\.[0-9]{2}\.20[0-9]{2}|\b(?:arch|sec|ux|perf)[0-9]+ [HMN][0-9]*""")
+        val kennung = Regex("""[0-9]{2}\.[0-9]{2}\.20[0-9]{2}|\b(?:arch|sec|ux|perf)[0-9]+\b|\bhardened-[0-9]+""")
         val geschichte = dateien.flatMap { f ->
             f.readLines().filter { z ->
                 val t = z.trim()
@@ -231,7 +233,7 @@ class QuelltextRatscheTest {
             }.map { "${f.name}: ${it.trim()}" }
         }
         // Wer was gemeldet hat und in welchem Nachtrag, steht im Commit, nicht im Testkopf.
-        val erzaehlung = Regex("""Nachtr[aä]g\w*\s+[0-9]|\bMarcos?\b|Woher dies""")
+        val erzaehlung = Regex("""Nachtr[aä]g\w*\s+[0-9]|\bMarcos?\b|Woher dies|\bLauf [0-9]{2,}|CI-Lauf|\bRunde [0-9]+""")
         val erzaehlt = dateien.flatMap { f ->
             f.readLines().filter { z ->
                 val t = z.trim()
@@ -269,46 +271,23 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `jeder Verweis auf docs-begruendungen trifft Datei und Anker`() {
-        val verweis = Regex("""docs/begruendungen/(\S+?\.md)#([\w-]+)""")
-        var n = 0
-        val kaputt = produktivDateien().flatMap { f ->
-            verweis.findAll(f.readText()).mapNotNull { m ->
-                n++
-                val doc = File(Quellen.projekt, "docs/begruendungen/" + m.groupValues[1])
-                when {
-                    !doc.isFile -> "${f.name}: ${m.groupValues[1]} fehlt"
-                    "<a id=\"${m.groupValues[2]}\"></a>" !in doc.readText() -> "${f.name}: ${m.value}"
-                    else -> null
-                }
-            }.toList()
-        }
-        assert(n >= 100) { "Nur $n Verweise gefunden — greift die Suche noch?" }
-        assert(kaputt.isEmpty()) { "Verweise ins Leere:\n  " + kaputt.joinToString("\n  ") }
-    }
-
-    @Test
-    fun `eine Kurzfassung endet mit einem ganzen Satz, und keine KDoc haengt an nichts`() {
-        // Die maschinell gewählten Kurzfassungen brachen mitten im Satz ab, und
-        // verschobene Blöcke standen als zweite KDoc vor fremden Deklarationen.
-        val satzende = Regex("""[.:!?)“"»\]═]$""")
-        var verweise = 0
+    fun `kein Verweis auf das Begruendungsarchiv, und keine KDoc haengt an nichts`() {
+        // Das Archiv docs/begruendungen ist nicht mehr im Baum; das Warum steht im Kommentar,
+        // die Geschichte im Commit. Ein zweiter KDoc-Block direkt davor hängt an nichts.
+        var kdocs = 0
         val funde = produktivDateien().flatMap { f ->
             val z = f.readLines()
             z.indices.mapNotNull { i ->
-                val vor = if (i > 0) z[i - 1].trim().trimStart('/', '*').trim() else ""
+                if (z[i].trim().startsWith("/**")) kdocs++
                 when {
-                    "Ausführlich: docs/begruendungen/" in z[i] -> {
-                        verweise++
-                        if (vor.isNotEmpty() && !satzende.containsMatchIn(vor)) "${f.name}:$i bricht ab: $vor" else null
-                    }
+                    "docs/begruendungen/" in z[i] -> "${f.name}:${i + 1} verweist auf das Archiv"
                     z[i].trim().startsWith("/**") && i > 0 && z[i - 1].trim().endsWith("*/") -> "${f.name}:${i + 1} zweite KDoc"
                     else -> null
                 }
             }
         }
-        assert(verweise >= 100) { "Nur $verweise Verweise gefunden — greift die Suche noch?" }
-        assert(funde.isEmpty()) { "Kurzfassungen zu einem Warum umschreiben:\n  " + funde.joinToString("\n  ") }
+        assert(kdocs >= 500) { "Nur $kdocs KDoc-Blöcke gefunden — greift die Suche noch?" }
+        assert(funde.isEmpty()) { "Das Warum in den Kommentar, die Geschichte in den Commit:\n  " + funde.joinToString("\n  ") }
     }
 
     /** Index der öffnenden Klammer zur schliessenden bei [zu], -1 wenn keine. */

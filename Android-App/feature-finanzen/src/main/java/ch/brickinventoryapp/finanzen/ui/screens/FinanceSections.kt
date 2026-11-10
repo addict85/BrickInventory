@@ -183,7 +183,6 @@ fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean,
     // Ein Set mit einem Kaufpreis für „Neu“ und einem für „Gebraucht“ erscheint zweimal, jede
     // Karte mit dem Marktpreis ihres Zustands — sonst würde das neu gekaufte Exemplar mit dem
     // Gebrauchtpreis bewertet.
-    // Ausführlich: docs/begruendungen/feature-finanzen/finanzen/ui/screens/FinanceSections.kt.md#items
     items(setZeilen(valuation.sets), key = { it.second.schluessel }) { (set, zeile) ->
         val priceStr    = fmtWert(zeile.wert)
         val rowQty      = zeile.menge

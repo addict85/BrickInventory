@@ -40,7 +40,6 @@ import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
  * prüfen, nie von allein laden, dazu ein Knopf in den Einstellungen. Die stille
  * Prüfung meldet keinen Fehler: Wer ohne Netz startet, hat nichts gefragt; wer den
  * Knopf drückt, schon.
- * Ausführlich: docs/begruendungen/feature-konto/konto/ui/viewmodel/UpdateViewModel.kt.md#constructor
  */
 @HiltViewModel
 class UpdateViewModel @Inject constructor(
@@ -139,7 +138,6 @@ class UpdateViewModel @Inject constructor(
      * installiert wird: 1. Die Adresse zeigt in unsere Release-Ablage (schon in der Prüfung,
      * hier nochmal — zwischen Prüfung und Klick kann ein neuer Zustand stehen). 2. Die
      * Signatur stimmt mit der installierten App überein.
-     * Ausführlich: docs/begruendungen/feature-konto/konto/ui/viewmodel/UpdateViewModel.kt.md#ladeupdate
      */
     override fun ladeUpdate() {
         val fassung = _state.value.neuereFassung ?: return

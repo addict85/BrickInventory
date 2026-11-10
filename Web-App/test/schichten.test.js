@@ -15,7 +15,7 @@ const ROOT = path.join(__dirname, '..');
  */
 const AUSNAHMEN = new Set([]);
 
-/** Quelltext ohne Kommentare — zeilenweise, siehe test/baumbruecken.test.js. */
+/** Quelltext ohne Kommentare — zeilenweise, siehe test/abgleich-baumbruecken.test.js. */
 function ohneKommentare(s) {
   const zeilen = [];
   let imBlock = false;

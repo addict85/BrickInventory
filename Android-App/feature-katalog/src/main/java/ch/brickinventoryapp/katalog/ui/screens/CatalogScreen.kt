@@ -88,7 +88,6 @@ fun CatalogScreen(
 
     // Die Liste führt alle `total` Plätze; geladen wird die Seite eines sichtbar gewordenen
     // Platzes, mit einer Seite Vorlauf — so kann die Leiste rechts überallhin springen.
-    // Ausführlich: docs/begruendungen/feature-katalog/katalog/ui/screens/CatalogScreen.kt.md#launchedeffect
     LaunchedEffect(gridState, state.total, state.loadedPages.size) {
         snapshotFlow {
             val sichtbar = gridState.layoutInfo.visibleItemsInfo
@@ -104,7 +103,6 @@ fun CatalogScreen(
 
     // Die Liste verlässt beim Wechsel die Komposition und ihre Länge trifft erst später ein,
     // deshalb hilft Compose' Wiederherstellung nicht.
-    // Ausführlich: docs/begruendungen/feature-katalog/katalog/ui/screens/CatalogScreen.kt.md#wiederhergestellt-by-remember
     var wiederhergestellt by remember { mutableStateOf(false) }
     LaunchedEffect(state.total) {
         if (wiederhergestellt || state.total == 0) return@LaunchedEffect

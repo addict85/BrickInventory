@@ -27,7 +27,8 @@ import androidx.camera.core.resolutionselector.ResolutionStrategy
 
 /**
  * Eine Bildanalyse mit den Einstellungen, die für beide Scanner gelten.
- * Ausführlich: docs/begruendungen/core-ui/ui/screens/KameraAufbau.kt.md#bildanalyse
+ * Der AF-Modus steht auch hier, nicht nur an der Vorschau: CameraX führt beide zu einem Request
+ * zusammen, und je nach Gerät entscheidet die Analyse mit.
  */
 fun bildAnalyse(breite: Int, hoehe: Int): ImageAnalysis =
     ImageAnalysis.Builder()
@@ -72,9 +73,9 @@ fun autofokusDauerhaft(bauer: Preview.Builder) {
 }
 
 /**
- * Vorschau und Bildanalyse an den Lebenszyklus binden — für beide Scanner. Zwei
- * Regeln stecken darin:
- * Ausführlich: docs/begruendungen/core-ui/ui/screens/KameraAufbau.kt.md#kamerabinden
+ * Vorschau und Bildanalyse an den Lebenszyklus binden — für beide Scanner. Das `try` umschliesst
+ * den ganzen Rückruf, weil `future.get()` seit CameraX 1.4 wirft, wenn die Kamera belegt ist;
+ * `unbindAll()` vorher, sonst hängt eine frühere Bindung.
  */
 fun kameraBinden(
     ctx: Context,

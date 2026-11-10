@@ -9,7 +9,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 
-/** Zeilenweise Kommentarentfernung — siehe test/baumbruecken.test.js. */
+/** Zeilenweise Kommentarentfernung — siehe test/abgleich-baumbruecken.test.js. */
 function ohneKommentare(s) {
   const zeilen = [];
   let imBlock = false;

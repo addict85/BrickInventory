@@ -61,7 +61,6 @@ data class HintergrundUiState(
 /**
  * Der Monitoring-Bildschirm holt seine Daten über dieses ViewModel statt aus den Composables,
  * damit die Ladelogik ohne Compose-Laufzeit prüfbar ist.
- * Ausführlich: docs/begruendungen/feature-verwaltung/verwaltung/ui/viewmodel/MonitoringViewModel.kt.md#hintergrundarbeiten
  */
 @HiltViewModel
 class MonitoringViewModel @Inject constructor(

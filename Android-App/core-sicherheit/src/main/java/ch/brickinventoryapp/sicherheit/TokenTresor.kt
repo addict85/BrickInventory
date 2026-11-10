@@ -12,7 +12,6 @@ import javax.crypto.spec.GCMParameterSpec
 /**
  * Verschlüsselung für das Bearer-Token. Das Token öffnet ein Konto auf dem Server und läuft
  * erst nach TOKEN_IDLE_DAYS Untätigkeit ab.
- * Ausführlich: docs/begruendungen/core-sicherheit/sicherheit/TokenTresor.kt.md#z12
  */
 
 /**

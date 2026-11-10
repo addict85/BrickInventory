@@ -20,8 +20,8 @@ import org.junit.Test
 
 /**
  * Der Bild-Client lädt nur vom eigenen Server; ein fremder Host — auch ein Bild-CDN —
- * wird nicht angefragt, auch nicht über eine Umleitung (sec17 A-N7: Die Bilder kommen
- * über den Proxy des Servers, ein direkter Weg gäbe Dritten die IP des Geräts).
+ * wird nicht angefragt, auch nicht über eine Umleitung: Die Bilder kommen über den
+ * Proxy des Servers, ein direkter Weg gäbe Dritten die IP des Geräts.
  *
  * Gegenproben:
  *   A  in vorbereitet() jede Anfrage durchgelassen → rot „ein fremder Host wird

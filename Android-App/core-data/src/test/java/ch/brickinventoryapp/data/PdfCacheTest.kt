@@ -5,36 +5,14 @@ import ch.brickinventoryapp.data.util.pdfSchritt
 import org.junit.Test
 
 /**
- * Eine fertig geladene Anleitung wird nicht „fortgesetzt".
+ * Eine fertig geladene Anleitung wird nicht „fortgesetzt": Nach einem vollständigen
+ * Download zeigte `Range: bytes=<Grösse>-` hinter das letzte Byte, und der Server
+ * antwortet zu Recht mit 416 (über die Anleitungs-Route als 404). Die Entscheidung
+ * „fertig oder ab welchem Byte" ist darum eine reine Funktion und hier ausgeführt;
+ * die Serverhälfte prüft Web-App/test/anleitung-bereich.test.js.
  *
- * ── Marcos Meldung ──────────────────────────────────────────────────────────
- *
- * „Nach ein paar Mal die Anleitung abrufen aus der App erscheint folgende
- * Meldung" — „Fehler beim Laden: HTTP 404". Die Anleitung lag die ganze Zeit
- * auf dem Server.
- *
- * ── Der Ablauf, der dahin fuehrte ───────────────────────────────────────────
- *
- *  1. Der Viewer laedt fortsetzbar: Liegt im Cache schon etwas, schickt er
- *     `Range: bytes=<vorhanden>-`.
- *  2. Nach einem VOLLSTAENDIGEN Download ist `vorhanden` genau die
- *     Dateigroesse. Der Bereich beginnt hinter dem letzten Byte.
- *
- * NACHGEMESSEN auf der Serverseite (express 4.22.3 / send 0.19.2, Datei mit
- * 5000 Bytes): `bytes=2500-` → 206, `bytes=5000-` → 416. Beide Haelften sind
- * repariert; die Serverhaelfte haelt Web-App/test/anleitung-bereich.test.js
- * fest, diese hier die App-Haelfte.
- *
- * ── Warum eine eigene Funktion dafuer ───────────────────────────────────────
- *
- * Die Entscheidung „fertig oder ab welchem Byte" liess sich vorher nicht
- * pruefen: Sie stand als zwei Zeilen mitten in einer Schleife, die Netz,
- * Dateisystem und Compose-Zustand anfasst. Ohne Android-SDK ist davon nichts
- * ausfuehrbar. Als reine Funktion ist sie es — und genau sie war falsch.
- *
- * Gegenprobe (durchgefuehrt): in pdfSchritt() den ersten Zweig entfernt, so
- * dass eine fertige Datei wieder als Fortsetzpunkt gilt → der erste Schritt
- * unten wird rot.
+ * Gegenprobe: in pdfSchritt() den ersten Zweig entfernt, so dass eine fertige Datei
+ * wieder als Fortsetzpunkt gilt → der erste Schritt unten wird rot.
  */
 class PdfCacheTest {
 

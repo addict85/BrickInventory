@@ -6,7 +6,6 @@ import kotlin.math.roundToInt
 /**
  * Reine Mathematik der Jahres-Leiste (CatalogScreen) — ein eigenes Objekt, damit
  * sie ohne Compose in JUnit prüfbar ist.
- * Ausführlich: docs/begruendungen/feature-katalog/katalog/ui/CatalogYearMath.kt.md#catalogyearmath
  */
 internal object CatalogYearMath {
 
@@ -55,7 +54,6 @@ internal object CatalogYearMath {
      * Welches Jahr liegt an diesem Anteil der Liste? Wie in der Webapp
      * (js/09-catalog.js → _jahrAnPosition): Aus dem Anteil wird eine laufende Nummer,
      * die durch die Verteilung wandert, bis sie in einen Jahrgang fällt.
-     * Ausführlich: docs/begruendungen/feature-katalog/katalog/ui/CatalogYearMath.kt.md#jahranposition
      */
     fun jahrAnPosition(anteil: Float, total: Int, verteilung: List<JahrAnzahlAnsicht>): Int? {
         if (verteilung.isEmpty() || total <= 0) return null

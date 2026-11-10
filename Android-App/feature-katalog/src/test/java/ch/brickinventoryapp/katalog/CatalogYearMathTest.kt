@@ -25,7 +25,7 @@ import org.junit.Test
  *
  * Dieselbe Rechnung steht in der Webapp (js/09-catalog.js → _jahrAnPosition).
  * Dass beide sie haben und keine von beiden linear schätzt, prüft
- * Web-App/test/catalog-frontend.test.js über beide Quellbäume.
+ * Web-App/test/abgleich-catalog-frontend.test.js über beide Quellbäume.
  */
 class CatalogYearMathTest {
 

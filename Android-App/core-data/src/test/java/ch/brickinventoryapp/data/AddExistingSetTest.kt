@@ -13,28 +13,10 @@ import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
- * Ein bereits erfasstes Set wird geöffnet, nicht stillschweigend erhöht.
- *
- * ── Marcos Festlegung ───────────────────────────────────────────────────────
- * „Besitzt der Account oder einer der Unteraccounts das Set bereits, soll sich
- * nur der Detail-Dialog des Sets öffnen. Egal ob die Erfassung via
- * Barcodescanner, OCR oder per Nummer-Erfassung erfolgt. Einziger Unterschied:
- *
- * ── Was sich gegenüber den Nachträgen 57–59 geändert hat ────────────────────
- * Damals prüfte diese App selbst, VOR dem Anlegen, mit `repo.getSetDetail()`
- * und einer eigenen Auswertung von „Netzfehler" gegen „nicht gefunden". Die
- * Webapp hatte diese Regel gar nicht und erhöhte still die Menge — dieselbe
- * Eingabe, zwei Ausgänge.
- *
- * Jetzt liegt die Regel auf dem Server (utils/setAdd.ts, findSetInScope):
- *
- *   • NUMMERN-Weg: kein Vorab-Aufruf mehr. Das Erfassen selbst antwortet mit
- *     `action = "exists"` und schreibt nichts; die App öffnet daraufhin die
- *     Detailansicht. Ein Aufruf weniger, und die Regel kann nicht mehr
- *     zwischen den Clients auseinanderlaufen.
- *
- * Der frühere `transient`-Zweig ist damit entfallen: Ein Fehler ist jetzt
- * eindeutig ein Fehler, weil „nicht vorhanden" nicht mehr als Fehler kommt.
+ * Ein bereits erfasstes Set wird geöffnet, nicht stillschweigend erhöht — gleich ob
+ * über Barcode, Texterkennung oder Nummer. Die Regel liegt auf dem Server
+ * (utils/setAdd.ts): Das Erfassen antwortet mit `action = "exists"` und schreibt
+ * nichts, damit sie nicht zwischen den Clients auseinanderläuft.
  *
  * Ausgeführt geprüft wird das in ErfassungViewModelTest (Nummern-Weg,
  * Scanner, Texterkennung, Fehler der Vorabfrage). Hier: die Vorabfrage gegen
@@ -52,8 +34,8 @@ class AddExistingSetTest {
 
     /**
      * Die Frage lautet „habe ich das schon?", nicht „sehe ich das gerade?". Ohne
-     * accounts nimmt der Server sein Standard-Blickfeld — Haupt- UND Unterkonten;
-     * darauf beruht Marcos Zusage „oder einer der Unteraccounts".
+     * accounts nimmt der Server sein Standard-Blickfeld — Haupt- UND Unterkonten, und
+     * ein Set eines Unterkontos gilt als vorhanden.
      */
     @Test
     fun `die Existenzpruefung schickt keinen Kontofilter mit`() {

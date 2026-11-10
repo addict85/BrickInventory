@@ -34,7 +34,6 @@ internal fun importLaeuft(status: String?): Boolean =
 /**
  * Die eigentliche Regel: Nachgeladen wird beim Übergang von „läuft“ zu „fertig“, nicht in
  * jedem Zustand „fertig“.
- * Ausführlich: docs/begruendungen/core-zustand/zustand/ui/CsvUebergang.kt.md#csvfolge
  */
 internal fun csvFolge(warVorherAktiv: Boolean, status: String?): CsvFolge = when {
     // Läuft: Dienst nur beim Anlaufen starten, nicht bei jeder Fortschrittszeile.

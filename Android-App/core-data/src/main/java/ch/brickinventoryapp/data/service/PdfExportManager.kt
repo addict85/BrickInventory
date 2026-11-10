@@ -151,7 +151,7 @@ class PdfExportManager @Inject constructor(
                 is Ergebnis.Error -> _state.value = PdfExportState.Error(r.message)
                 // downloadResult ist als Ergebnis<ByteArray>? deklariert, damit die
                 // Wiederholschleife oben es überschreiben kann.
-                // Ausführlich: docs/begruendungen/core-data/data/service/PdfExportManager.kt.md#z146
+                // Ein null-Zweig statt eines else hält das when über Ergebnis erschöpfend.
                 null -> _state.value =
                     PdfExportState.Error(s(R.string.pdfexp_unknown_error))
             }

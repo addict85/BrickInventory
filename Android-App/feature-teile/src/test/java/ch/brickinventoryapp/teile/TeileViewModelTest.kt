@@ -105,7 +105,7 @@ class TeileViewModelTest {
     @Test
     fun `Suchtext und Lagerort erreichen auch die manuell erfassten Stuecke`() {
         // Sonst filtert der Text die Set-Teile, und die manuellen Kacheln
-        // darüber bleiben stehen (Marcos Befund an den Teilen).
+        // darüber bleiben stehen.
         val vm = vm()
         vm.setLagerFilter(ScopeFilter.View.PARTS, "Keller")
         vm.setPartsQuery("stein")

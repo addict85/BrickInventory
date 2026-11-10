@@ -56,7 +56,6 @@ import ch.brickinventoryapp.gemeinsam.ui.WertKacheln
  * Detailansicht eines manuell erfassten Teils / einer Minifigur — als ganzer Screen wie bei
  * den Sets, weil der Inhalt (Bild, Mengenwahl, Kaufpreise und Marktpreise je Zustand,
  * Preisverlauf, Löschen) für einen AlertDialog zu lang ist.
- * Ausführlich: docs/begruendungen/feature-teile/teile/ui/screens/ManualItemDetailScreen.kt.md#manualitemdetailroute
  */
 @Composable
 fun ManualItemDetailRoute(

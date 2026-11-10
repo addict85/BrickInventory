@@ -40,7 +40,6 @@ class KontoRepositoryImpl @Inject constructor(
      * `zweiter_faktor: true`. Das wird hier zu einer gewöhnlichen Antwort mit
      * success=false umgebogen (wie GutscheineRepository.guthaben), sonst gingen
      * Kennzeichen und Satz in sicherAufrufen verloren. [passkey] ersetzt den Code.
-     * Ausführlich: docs/begruendungen/core-data/data/repository/KontoRepository.kt.md#login
      */
     override suspend fun login(serverUrl: String, username: String, password: String, code: String?,
                       scope: String, passkey: JsonObject?): Ergebnis<Anmeldeantwort> {

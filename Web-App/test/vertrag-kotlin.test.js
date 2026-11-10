@@ -23,6 +23,7 @@
  *   H  in Fehlercode.kt BARCODE_KEIN_SET("barcode_kein_satz") →
  *      rot: „jeder Fehlercode der App steht im Vertrag“ nennt barcode_kein_satz
  */
+// Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');

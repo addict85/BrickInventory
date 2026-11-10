@@ -14,26 +14,9 @@ import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
- * Galerie: Suchen, Filtern, Sortieren und Blättern macht der SERVER.
- *
- * ── Marcos Vorgabe ──────────────────────────────────────────────────────────
- * „Beide Apps sollen den Filter auf dem Server anwenden. Passt zur vorherigen
- * Frage, dass Logiken immer zentral sein sollen und nicht doppelt
- * implementiert werden. UIs sollen nur das Rendering übernehmen."
- *
- * ── Was vorher war ──────────────────────────────────────────────────────────
- * Die App holte ALLE Sets und filterte im Gerät. Das war eine zweite Fassung
- * der Suche neben der des Servers — und sie konnte weniger:
- *
- *   • kein Jahr im Suchtext (die Webapp findet mit „2019" die Sets des Jahres)
- *   • gar keine Sortierung (die Webapp bietet neun Möglichkeiten)
- *   • die Themenliste entstand aus der GELADENEN Liste statt aus dem Bestand
- *
- * Der Test hält die Regel fest, nicht das Aussehen: Der Schirm bekommt Werte
- * und meldet Änderungen, er rechnet nicht. Das ist die Aussage, die beim
- * nächsten Umbau zählt — ein „schnelles" lokales Filtern wäre sofort wieder
- * die zweite Fassung.
- *
+ * Galerie: Suchen, Filtern, Sortieren und Blättern macht der SERVER. Eine zweite
+ * Fassung der Suche im Gerät konnte weniger (kein Jahr im Suchtext, keine Sortierung,
+ * Themen nur aus der geladenen Seite) und lief auseinander; die Oberfläche zeigt nur an.
  * Dass der Schirm Werte nur meldet und nicht selbst filtert, prüft
  * GalerieMeldetNachObenTest (app) gezeichnet.
  *

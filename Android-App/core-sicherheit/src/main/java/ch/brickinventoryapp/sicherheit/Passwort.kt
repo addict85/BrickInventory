@@ -2,7 +2,7 @@ package ch.brickinventoryapp.sicherheit
 
 /**
  * Die Mindestlaenge eines Passworts — an einer Stelle.
- * Ausführlich: docs/begruendungen/core-sicherheit/sicherheit/Passwort.kt.md#passwort-min-zeichen
+ * Eine Konstante, weil eine an jeder Stelle neu getippte Zahl auseinanderläuft.
  */
 const val PASSWORT_MIN_ZEICHEN = 12
 

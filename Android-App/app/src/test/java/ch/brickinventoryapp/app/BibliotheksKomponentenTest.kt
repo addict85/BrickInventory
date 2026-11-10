@@ -16,7 +16,7 @@ import org.robolectric.annotation.Config
 
 /**
  * Exportierte Komponenten aus Bibliotheken, die die App nicht braucht, stehen nicht
- * im zusammengeführten Manifest (CI-Lauf 42086613735, Job apk-pruefen). Gelesen über
+ * im zusammengeführten Manifest. Gelesen über
  * den PackageManager, der das Manifest des Builds kennt.
  *
  * Gegenproben (Robolectric, misst die CI; Job `gegenproben`):
@@ -25,7 +25,7 @@ import org.robolectric.annotation.Config
  *   profilempfaenger-exportiert tools:node="remove" am ProfileInstallReceiver entfernt →
  *                               rot „der Profileinstaller …“
  *   pdf-renderer-im-app-prozess isolatedProcess am PdfRenderDienst entfernt → rot
- *                               „der PDF-Renderer läuft isoliert …“ (sec17 A-N6)
+ *                               „der PDF-Renderer läuft isoliert …“
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])

@@ -45,7 +45,7 @@ import ch.brickinventoryapp.testing.Quellen
  * die Webapp schnell.
  *
  * ── Wie geprueft wird ───────────────────────────────────────────────────────
- * Die Ruhe steht seit arch14 (M1) im ViewModel (Sichtfensterlader) und laeuft
+ * Die Ruhe steht im ViewModel (Sichtfensterlader) und laeuft
  * hier mit StandardTestDispatcher: ein Zug mit hundert Fenstern, virtuelle Zeit,
  * gezaehlte Abrufe. Dass die Leiste selbst nicht laedt, bleibt am Quelltext.
  *

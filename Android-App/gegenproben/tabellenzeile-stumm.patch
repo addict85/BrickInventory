@@ -1,0 +1,17 @@
+Gegenprobe: TabellenZeile reicht onClickLabel nicht an clickable weiter
+Modul: app
+Test: ch.brickinventoryapp.app.ComposeLayoutRegelnTest
+Rot: die Tabellenzeile sagt der Sprachausgabe
+
+diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/TabellenZeile.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/TabellenZeile.kt
+--- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/TabellenZeile.kt
++++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/TabellenZeile.kt
+@@ -76,7 +76,7 @@
+     Surface(
+         modifier = modifier.fillMaxWidth()
+             .let {
+-                if (onClick != null) it.fokusRahmen(Formen.etikett).clickable(onClickLabel = onClickLabel, role = Role.Button, onClick = onClick)
++                if (onClick != null) it.fokusRahmen(Formen.etikett).clickable(role = Role.Button, onClick = onClick)
+                 else it
+             },
+         color = MaterialTheme.colorScheme.surface,

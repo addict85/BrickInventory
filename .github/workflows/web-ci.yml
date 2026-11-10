@@ -1,14 +1,35 @@
 # CI der Web-App: frisch ausgecheckt, aus der Lockfile installiert, neu gebaut,
 # gegen ein leeres PostgreSQL. REQUIRE_DB und REQUIRE_BROWSER machen aus einer
 # fehlenden Datenbank oder einem fehlenden Chrome einen Fehler statt eines
-# stillen Überspringens. Kein paths-Filter: Die Suite liest auch Android-App/
-# (Retrofit-Schnittstelle, Setnummer-Regel).
+# stillen Überspringens. Der paths-Filter schliesst ein, was die Suite liest: Die
+# Abgleich-Dateien (test/abgleich-*.test.js und die vier in test/ratschen.test.js)
+# lesen Android-Quellen, workflow-ort.test.js die Workflows und die Wurzeldateien.
 name: CI
 
 on:
   push:
     branches: ['**']
+    paths:
+      - 'Web-App/**'
+      - 'shared/**'
+      - 'Android-App/**/src/**'
+      - 'Android-App/**/*.kt'
+      - 'Android-App/*/build.gradle.kts'
+      - '.github/**'
+      - 'docs/**'
+      - 'README.md'
+      - 'renovate.json'
   pull_request:
+    paths:
+      - 'Web-App/**'
+      - 'shared/**'
+      - 'Android-App/**/src/**'
+      - 'Android-App/**/*.kt'
+      - 'Android-App/*/build.gradle.kts'
+      - '.github/**'
+      - 'docs/**'
+      - 'README.md'
+      - 'renovate.json'
   workflow_dispatch:
 
 # Ein neuer Push auf denselben Zweig bricht den vorherigen Lauf ab.

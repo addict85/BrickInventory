@@ -15,22 +15,11 @@ import ch.brickinventoryapp.testing.TestApi
 import ch.brickinventoryapp.testing.VerwaltungRepository
 
 /**
- * Drei Verwalter-Handlungen, die nur die Webapp konnte.
- *
- * ── Woher dieser Test kommt (Nachtrag 137) ──────────────────────────────────
- *
- * Aus derselben Messung wie die Nachtraege davor — Server-Adressen beider
- * Clients gegeneinander. Uebrig blieben drei, die zu Bildschirmen gehoeren,
- * die die App laengst hat:
- *
- *   /v1/admin/job-schedule    Zeitplan eines Jobs aendern
- *   /v1/admin/catalog-images  fehlende KATALOGbilder einreihen
- *   /v1/settings/admin/theme  das globale Design umstellen
- *
- * Beim Zeitplan war der Befund besonders deutlich: `/api/v1/admin/jobs`
- * SCHICKT `schedules` seit jeher mit, und die App hat das Feld nie eingelesen.
- * Ein Wert, der ueber die Leitung kommt und niemanden erreicht — dieselbe Sorte
- * Fund wie „geschrieben und nie gelesen", nur von der anderen Seite.
+ * Drei Verwalter-Handlungen, die die Webapp schon kann, auch in der App: Zeitplan eines
+ * Jobs ändern (/v1/admin/job-schedule), fehlende Katalogbilder einreihen
+ * (/v1/admin/catalog-images), das globale Design umstellen (/v1/settings/admin/theme).
+ * `schedules` aus /api/v1/admin/jobs muss dabei auch gelesen werden, sonst erreicht der
+ * Wert niemanden.
  *
  * Gegen einen Testserver; Zustand und Anzeige prüfen MonitoringNachladenTest und
  * MonitoringJobsAnzeigeTest (app).

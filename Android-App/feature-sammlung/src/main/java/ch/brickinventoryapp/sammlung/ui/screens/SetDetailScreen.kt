@@ -179,7 +179,6 @@ fun SetDetailScreen(
         // nach dem Erfassen ist die Datei auf dem Server oft noch nicht fertig, und Coil
         // versucht von sich aus nie erneut; die Fläche bliebe leer bis zum nächsten
         // Öffnen.
-        // Ausführlich: docs/begruendungen/feature-sammlung/sammlung/ui/screens/SetDetailScreen.kt.md#detailretrystate
         val detailRetryState = remember(set.setNumber, imageUrl) { mutableIntStateOf(0) }
         val detailScope = rememberCoroutineScope()
         val zoomImageUrl = imageUrl

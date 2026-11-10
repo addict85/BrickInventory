@@ -161,8 +161,8 @@ suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Ergebnis<T> {
         Ergebnis.Error.Netz(technisch = e.message)
     } catch (e: Exception) {
         // e.message ist hier durchweg englischer Bibliothekstext ("Socket
-        // closed", "unexpected end of stream"). Als Meldung an den Nutzer
-        // war das nie sinnvoll; sie steht jetzt im Log-Feld statt im Satz.
+        // closed", "unexpected end of stream") — kein Satz an einen Menschen,
+        // deshalb nur im technischen Feld fürs Protokoll.
         Ergebnis.Error.Unbekannt(technisch = e.message)
     }
 }

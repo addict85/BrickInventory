@@ -19,7 +19,6 @@ import ch.brickinventoryapp.ui.screens.bildAnalyse
  * Bestätigungszählung und Drosselung. Getrennt von der Einbettung der Kamera-Vorschau, weil
  * wer an der Erkennung arbeitet, mit PreviewView, Lebenszyklus und Fokus-Gesten nichts zu tun
  * hat.
- * Ausführlich: docs/begruendungen/feature-sammlung/sammlung/ui/screens/BarcodeAnalyzer.kt.md#z16
  */
 // Einverständnis für imageProxy.image: `@androidx.annotation.OptIn` ist die Form
 // für einen in Java definierten Marker — `@ExperimentalGetImage` an der lokalen
@@ -103,7 +102,6 @@ fun rememberBarcodeAnalyzer(
                                 // Absicht: Der Barcode ist eindeutig, die gelesene Zahl nur
                                 // wahrscheinlich — auf der Verpackung gewinnt der Barcode, die
                                 // Texterkennung greift auf der Anleitung.
-                                // Ausführlich: docs/begruendungen/feature-sammlung/sammlung/ui/screens/BarcodeAnalyzer.kt.md#jetzt
                                 val jetzt = System.currentTimeMillis()
                                 if (jetzt - letzteOcr.get() < OCR_INTERVALL_MS) {
                                     onStatus(aimHint)

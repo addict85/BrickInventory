@@ -58,7 +58,7 @@ import ch.brickinventoryapp.testing.NummernTexte
  *                                rot „mehr als angekuendigt wird nicht geschrieben“
  *   update-still-mit-fehler      die stille Prüfung meldet Fehler →
  *                                rot „eine unsignierte Beschreibung meldet sich nur auf Knopfdruck“
- *   update-start-ohne-schalter   pruefeBeimStart() fragt den Schalter nicht (sec17 A-N7) →
+ *   update-start-ohne-schalter   pruefeBeimStart() fragt den Schalter nicht →
  *                                rot „ausgeschaltet fragt der Start nicht bei GitHub“
  *   update-abmelden-behaelt      kein Zurücksetzen beim Abmelden → rot „beim Abmelden verfaellt …“
  */
