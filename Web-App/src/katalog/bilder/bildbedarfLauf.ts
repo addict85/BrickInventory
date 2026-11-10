@@ -174,7 +174,7 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
     const vorschau = path.join(SET_IMAGES_DIR, `${r.set_number}_thumb.jpg`);
     if (fs.existsSync(datei)) {   // kein zweiter Download
       await nurVorschau(r.set_number, vorschau, st);
-      await setBildLokalEintragen(r.set_number).catch(logAndContinue('bild-job:setBildLokal'));
+      await setBildLokalEintragen(r.set_number, r.url).catch(logAndContinue('bild-job:setBildLokal'));
       continue;
     }
 
@@ -210,7 +210,7 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
     // Originaldatei.
     await vorschauErzeugen(lokal, vorschau);
     // Erst der Eintrag lässt die Oberfläche die Datei statt des Proxys laden.
-    await setBildLokalEintragen(r.set_number).catch(logAndContinue('bild-job:setBildLokal'));
+    await setBildLokalEintragen(r.set_number, r.url).catch(logAndContinue('bild-job:setBildLokal'));
     erg.geholt++;
   }
   // Zurückgelegte Zeilen sind NICHT bearbeitet.

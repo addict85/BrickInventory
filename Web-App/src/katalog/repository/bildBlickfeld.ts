@@ -1,6 +1,6 @@
 import * as db from '../../../db/database';
 
-/** Alle Sets, deren Bild ein Blickfeld zeigt; `besitz` nur für Sets im Bestand. */
+/** Alle Setnummern eines Blickfelds; `besitz` nur für Sets im Bestand. */
 export function setsImBlickfeld(ids: number[]) {
   return db.all<{ set_number: string; besitz: boolean }>(
     `SELECT set_number, bool_or(besitz) AS besitz FROM (

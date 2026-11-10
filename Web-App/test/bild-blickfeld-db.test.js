@@ -1,20 +1,20 @@
 /**
- * Set-Bilder und Anleitungen gibt es nur zu Sets im eigenen Blickfeld
- * (Haushalt eingeschlossen); ein fremdes antwortet wie ein fehlendes (404).
- * Teilebilder sind Katalog und bleiben für jedes Konto offen. Gefragt wird der
- * echte Server mit echten Dateien unter data/.
+ * Anleitungen gibt es nur zu Sets im eigenen Blickfeld (Haushalt
+ * eingeschlossen); eine fremde antwortet wie eine fehlende (404). Set- und
+ * Teilebilder sind Katalog und gehen an jedes angemeldete Konto (Entscheidung
+ * zu Migration 0105). Gefragt wird der echte Server mit echten Dateien unter data/.
  *
- * Gegenproben (01.11.2026 gemessen):
- *   A  die Prüfung bildFreigegeben() in server.ts entfernt → rot: „ein fremdes
- *      Set-Bild antwortet …“ (200 statt 404) und „das Hauptkonto sieht …“
+ * Gegenproben (01.11.2026 gemessen, A und E am 10.11.2026 neu):
+ *   A  bildFreigegeben() prüft sets/ wieder gegen das Blickfeld
+ *      (`imBlickfeld(uid, stamm, 'nummern')`) → rot: „Set-Bilder gehen an jedes
+ *      angemeldete Konto“ (404 statt 200)
  *   B  anleitungFreigegeben() in routes/datenDateien.ts entfernt → rot:
  *      „Anleitungen nur zu eigenen Sets“ (200 statt 404)
  *   C  bildFreigegeben() lässt nur sets/ durch (Teile wie Sets geprüft) → rot:
  *      „Teilebilder sind Katalog“ (404)
- *   D  scopeIds() durch [uid] ersetzt → rot: „das Hauptkonto sieht …“,
- *      „Anleitungen nur zu eigenen Sets“ und „die API nennt …“
- *   E  in GET /sets/info den Abgleich mit setBildSichtbar() entfernt → rot:
- *      „die API nennt fremde lokale Bilder nicht“
+ *   D  scopeIds() durch [uid] ersetzt → rot: „Anleitungen nur zu eigenen Sets“
+ *   E  in setInfoFuerKonto() (src/sets/dienst.ts) image_local für Sets ausserhalb
+ *      des Blickfelds wieder auf null → rot: „die API nennt das lokale Bild jedes Sets“
  *   F  beiHaushaltsaenderung() in bildBlickfeld.ts nicht aufgerufen (60 s
  *      Treffer-Frist bleibt) → rot: „nach dem Lösen der Verknüpfung …“ (200 statt 404)
  *   G  (08.11.2026) liefereBild ohne die 401-Zeile bzw. mit `public` statt
@@ -33,6 +33,7 @@ const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhos
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { katalogSet } = require('./helpers/bestand');
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { warte } = require('./helpers/zeit');
@@ -60,15 +61,14 @@ test('Bilder und Anleitungen im Blickfeld', { concurrency: 1, timeout: 180_000 }
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2), ($3, $4)', [ids[1], SN.unter, ids[2], SN.fremd]);
   await db.run('INSERT INTO wanted (user_id, set_number) VALUES ($1, $2)', [ids[0], SN.gemerkt]);
   for (const sn of [SN.unter, SN.fremd])
-    await db.run('INSERT INTO set_catalog (set_number, name, image_local) VALUES ($1, $1, $2) ON CONFLICT DO NOTHING',
-      [sn, `/images/sets/${sn}.jpg`]);
+    await katalogSet(db, sn, { name: sn, image_local: `/images/sets/${sn}.jpg` });
   for (const f of DATEIEN) { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, `Inhalt ${path.basename(f)}`); }
   const auth = _req('src/konto/auth.js');
   const token = {};
   for (const [k, id] of [['haupt', ids[0]], ['unter', ids[1]], ['fremd', ids[2]]]) token[k] = await auth.createToken(id, 'Prüfung', true);
   t.after(async () => {
     for (const f of DATEIEN) fs.rmSync(f, { force: true });
-    await db.run('DELETE FROM set_catalog WHERE set_number = ANY($1)', [[SN.unter, SN.fremd]]).catch(() => {});
+    await db.run('DELETE FROM rb_sets WHERE set_num = ANY($1)', [[SN.unter, SN.fremd]]).catch(() => {});
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
@@ -115,18 +115,13 @@ test('Bilder und Anleitungen im Blickfeld', { concurrency: 1, timeout: 180_000 }
     assert.equal((await hole('fremd', bild(SN.fremd))).status, 200);
   });
 
-  await t.test('das Hauptkonto sieht das Bild des Unterkontos, nicht umgekehrt', async () => {
-    assert.equal((await hole('haupt', bild(SN.unter))).status, 200);
-    assert.equal((await hole('haupt', bild(SN.gemerkt))).status, 200, 'die eigene Merkliste gehört zum Blickfeld');
-    assert.equal((await hole('unter', bild(SN.gemerkt))).status, 404);
-  });
-
-  await t.test('ein fremdes Set-Bild antwortet wie ein fehlendes', async () => {
-    const fremd = await hole('haupt', bild(SN.fremd));
-    const keins = await hole('haupt', bild(SN.keins));
-    assert.equal(fremd.status, 404, log.slice(-500));
-    assert.deepEqual(fremd, keins);
-    assert.equal((await hole('fremd', bild(SN.unter, '_thumb'))).status, 404);
+  await t.test('Set-Bilder gehen an jedes angemeldete Konto', async () => {
+    for (const [wer, sn] of [['haupt', SN.unter], ['haupt', SN.gemerkt], ['unter', SN.gemerkt], ['haupt', SN.fremd]]) {
+      const r = await hole(wer, bild(sn));
+      assert.deepEqual(r, { status: 200, text: `Inhalt ${sn}.jpg` }, `${wer} → ${sn}`);
+    }
+    assert.equal((await hole('fremd', bild(SN.unter, '_thumb'))).status, 200);
+    assert.equal((await hole('haupt', bild(SN.keins))).status, 404, 'eine fehlende Datei bleibt 404');
   });
 
   await t.test('Teilebilder sind Katalog', async () => {
@@ -142,21 +137,20 @@ test('Bilder und Anleitungen im Blickfeld', { concurrency: 1, timeout: 180_000 }
     assert.equal((await hole('haupt', `/data/instructions/${SN.gemerkt}_bdp.pdf`)).status, 404, 'gemerkt ist nicht besessen');
   });
 
-  await t.test('die API nennt fremde lokale Bilder nicht', async () => {
+  await t.test('die API nennt das lokale Bild jedes Sets', async () => {
     const info = async (sn) => JSON.parse((await hole('haupt', `/api/v1/sets/info/${sn}`)).text);
     assert.equal((await info(SN.unter)).image_local, `/images/sets/${SN.unter}.jpg`);
-    assert.equal((await info(SN.fremd)).image_local, null);
+    assert.equal((await info(SN.fremd)).image_local, `/images/sets/${SN.fremd}.jpg`);
   });
 
-  await t.test('nach dem Lösen der Verknüpfung sieht das Hauptkonto das Bild und die Anleitung sofort nicht mehr', async () => {
-    assert.equal((await hole('haupt', bild(SN.unter))).status, 200, 'vorher: im Zwischenspeicher als Treffer');
-    assert.equal((await hole('haupt', `/data/instructions/${SN.unter}_1.pdf`)).status, 200);
+  await t.test('nach dem Lösen der Verknüpfung sieht das Hauptkonto die Anleitung sofort nicht mehr', async () => {
+    assert.equal((await hole('haupt', `/data/instructions/${SN.unter}_1.pdf`)).status, 200, 'vorher: im Zwischenspeicher als Treffer');
     const r = await fetch(`http://127.0.0.1:${port}/api/v1/settings/household/unlink`, {
       method: 'POST', headers: { Authorization: `Bearer ${token.unter}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ main_user_id: ids[0] }),
     });
     assert.equal(r.status, 200, await r.text());
-    assert.equal((await hole('haupt', bild(SN.unter))).status, 404);
     assert.equal((await hole('haupt', `/data/instructions/${SN.unter}_1.pdf`)).status, 404);
+    assert.equal((await hole('haupt', bild(SN.unter))).status, 200, 'das Set-Bild bleibt Katalog');
   });
 });

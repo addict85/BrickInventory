@@ -9,6 +9,13 @@
  *      „Datei schon da“ gestrichen → rot: „der Bild-Job trägt die Datei ein“
  *   B  in bildDurchreichen() den else-Zweig mit setBildLokalEintragen()
  *      gestrichen → rot: „der Proxy trägt vorhandene Dateien ein“
+ * Gegenproben (10.11.2026, Katalog-Sets ausserhalb des Bestands):
+ *   C  in setBildFehlt() setBildLokalEintragen(setNummer) ohne Quelle → rot:
+ *      „der Proxy trägt … ein“ (image_url null)
+ *   D  merkeSetBildLokal() wieder als UPDATE ohne INSERT … SELECT FROM rb_sets → rot:
+ *      „der Proxy trägt … ein“ (fehlende set_catalog-Zeile bleibt fehlen)
+ *   E  in katalogSuche.ts c.image_local aus SET_SPALTEN entfernt → rot: „… und die
+ *      Katalogsuche nennt danach die lokale Adresse“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -20,6 +27,7 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { katalogSet } = require('./helpers/bestand');
 const { dbOderSkip } = require('./helpers/db');
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const db = _req('db/database.js');
@@ -37,18 +45,16 @@ test('Set-Bilder in images/sets werden eingetragen', { concurrency: 1 }, async t
   const job = `7${process.pid}-1`,
     proxy = `6${process.pid}-1`;
   const cdn = sn => `https://cdn.rebrickable.com/media/sets/${sn}.jpg`;
-  for (const sn of [job, proxy])
-    await db.run(
-      `INSERT INTO set_catalog (set_number, name, image_url) VALUES ($1, 'Probe', $2)
-       ON CONFLICT (set_number) DO UPDATE SET image_local = NULL, image_url = EXCLUDED.image_url`,
-      [sn, cdn(sn)],
-    );
+  for (const sn of [job, proxy]) {
+    await katalogSet(db, sn, { name: 'Probe' });
+    await db.run(`UPDATE set_catalog SET image_local = NULL, image_url = $2 WHERE set_number = $1`, [sn, cdn(sn)]);
+  }
   t.after(async () => {
     for (const f of angelegt) fs.rmSync(f, { force: true });
-    await db.run('DELETE FROM set_catalog WHERE set_number = ANY($1)', [[job, proxy]]).catch(() => {});
+    await db.run('DELETE FROM rb_sets WHERE set_num = ANY($1)', [[job, proxy]]).catch(() => {});
   });
   const lokal = async sn =>
-    (await db.get('SELECT image_local FROM set_catalog WHERE set_number = $1', [sn])).image_local;
+    (await db.get('SELECT image_local FROM set_catalog WHERE set_number = $1', [sn]))?.image_local;
 
   await t.test('der Bild-Job trägt die Datei ein', async () => {
     await leereWarteschlange(db);
@@ -61,7 +67,9 @@ test('Set-Bilder in images/sets werden eingetragen', { concurrency: 1 }, async t
     assert.equal(await lokal(job), `/images/sets/${job}.jpg`);
   });
 
-  await t.test('der Proxy trägt vorhandene Dateien ein', async () => {
+  await t.test('der Proxy trägt vorhandene Dateien samt Quelle ein, auch ohne set_catalog-Zeile', async () => {
+    // Ein Katalog-Set ausserhalb jedes Bestands: rb_sets kennt es, set_catalog ausnahmsweise nicht.
+    await db.run('DELETE FROM set_catalog WHERE set_number = $1', [proxy]);
     const express = require('express');
     const { bildDurchreichen } = _req('src/katalog/http/bildProxy.js');
     const { proxyAdresse, proxyCacheSchluessel } = _req('src/katalog/bilder/images.js');
@@ -84,6 +92,30 @@ test('Set-Bilder in images/sets werden eingetragen', { concurrency: 1 }, async t
     const r = await fetch(`http://127.0.0.1:${port}/p?url=${encodeURIComponent(cdn(proxy))}`);
     await r.arrayBuffer();
     assert.equal(r.status, 200);
-    assert.equal(await lokal(proxy), `/images/sets/${proxy}.jpg`);
+    // Ohne Warten eingetragen: Die Auslieferung hängt nicht am Schreiben.
+    let z;
+    for (let i = 0; i < 50; i++) {
+      z = await db.get('SELECT image_local, image_url FROM set_catalog WHERE set_number = $1', [proxy]);
+      if (z?.image_local) break;
+      await new Promise(w => setTimeout(w, 50));
+    }
+    assert.deepEqual(z, { image_local: `/images/sets/${proxy}.jpg`, image_url: cdn(proxy) });
+    // Ein zweiter Abruf schreibt nichts neu.
+    const vorher = (await db.get('SELECT updated_at FROM set_catalog WHERE set_number = $1', [proxy])).updated_at;
+    await (await fetch(`http://127.0.0.1:${port}/p?url=${encodeURIComponent(cdn(proxy))}`)).arrayBuffer();
+    await new Promise(w => setTimeout(w, 200));
+    assert.deepEqual(
+      (await db.get('SELECT updated_at FROM set_catalog WHERE set_number = $1', [proxy])).updated_at,
+      vorher,
+    );
+  });
+
+  await t.test('… und die Katalogsuche nennt danach die lokale Adresse', async () => {
+    const { katalogSeite } = _req('src/katalog/dienst.js');
+    const seite = await katalogSeite(1, { q: proxy, themeId: null }, 'num_asc', 1, 10);
+    assert.deepEqual(
+      seite.sets.map(x => [x.set_number, x.image_local]),
+      [[proxy, `/images/sets/${proxy}_thumb.jpg`]],
+    );
   });
 });

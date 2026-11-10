@@ -25,14 +25,18 @@ export function setsJeJahr() {
 
 export interface KatalogWahl { q: string; themenIds: number[] | null; vonJahr?: number | null; bisJahr?: number | null }
 
+/** Ein Platzhalter der Erfassung ('Set …' ohne Daten) verriete nur, dass jemand die Nummer erfasst hat. */
+const PLATZHALTER = `(rb.herkunft = 'api' AND rb.name = 'Set ' || rb.set_num
+  AND rb.year IS NULL AND rb.theme_id IS NULL AND rb.num_parts IS NULL)`;
+
 function katalogWo(f: KatalogWahl, params: unknown[]): string {
-  const where: string[] = [];
+  const where: string[] = [`NOT ${PLATZHALTER}`];
   // "75192" trifft auch "75192-1".
   if (f.q) { params.push(enthaeltMuster(f.q)); where.push(`(rb.set_num ILIKE $${params.length}${E} OR rb.name ILIKE $${params.length}${E})`); }
   if (f.themenIds) { params.push(f.themenIds); where.push(`rb.theme_id = ANY($${params.length})`); }
   if (f.vonJahr) { params.push(f.vonJahr); where.push(`rb.year >= $${params.length}`); }
   if (f.bisJahr) { params.push(f.bisJahr); where.push(`rb.year <= $${params.length}`); }
-  return where.length ? `WHERE ${where.join(' AND ')}` : '';
+  return `WHERE ${where.join(' AND ')}`;
 }
 
 export function setsJeJahrGefiltert(f: KatalogWahl, absteigend: boolean) {
@@ -52,10 +56,12 @@ const ORDNUNGEN = {
 
 export interface KatalogSet {
   set_number: string; name: string | null; year: number | null; theme_id: number; num_parts: number | null;
-  image_url: string | null; owned: boolean; owned_quantity: number;
+  image_url: string | null; image_local: string | null; owned: boolean; owned_quantity: number;
 }
-const SET_SPALTEN = `rb.set_num AS set_number, rb.name, rb.year, rb.theme_id, rb.num_parts, rb.set_img_url AS image_url,
+const SET_SPALTEN = `rb.set_num AS set_number, rb.name, rb.year, rb.theme_id, rb.num_parts,
+            COALESCE(NULLIF(rb.set_img_url, ''), c.image_url) AS image_url, c.image_local,
             (b.set_number IS NOT NULL) AS owned, COALESCE(b.menge, 0)::int AS owned_quantity`;
+const BILD_JOIN = 'LEFT JOIN set_catalog c ON c.set_number = rb.set_num';
 /** Besitz über das Blickfeld ($1) wie in Merkliste und Sammlung; eine Zeile je Set, Mengen summiert. */
 const BESITZ_JOIN = `LEFT JOIN (SELECT s.set_number, SUM(${mengeAus('sm', 0)})::int AS menge
                     FROM sets s ${mengeJoin('s', 'sm', '= ANY($1)')}
@@ -76,6 +82,7 @@ export function katalogZeilen(konten: number[], f: KatalogWahl, ordnung: unknown
   return db.all<KatalogSet>(
     `SELECT ${SET_SPALTEN}
        FROM rb_sets rb
+       ${BILD_JOIN}
        ${BESITZ_JOIN}
        ${wo}
       ORDER BY ${sortSql}
@@ -86,12 +93,14 @@ export function katalogZeile(konten: number[], setNumber: string) {
   return db.get<KatalogSet>(
     `SELECT ${SET_SPALTEN}
        FROM rb_sets rb
+       ${BILD_JOIN}
        ${BESITZ_JOIN}
-      WHERE rb.set_num = $2`, [konten, setNumber]);
+      WHERE rb.set_num = $2 AND (b.set_number IS NOT NULL OR NOT ${PLATZHALTER})`, [konten, setNumber]);
 }
 
 export async function katalogLeer(): Promise<boolean> {
-  return !(await db.get<{ x: number }>('SELECT 1 AS x FROM rb_sets LIMIT 1'));
+  // Zeilen der Erfassung ('api') gibt es auch ohne CSV-Abgleich.
+  return !(await db.get<{ x: number }>("SELECT 1 AS x FROM rb_sets WHERE herkunft = 'csv' LIMIT 1"));
 }
 
 export function figurenImInventar(inventarId: number) {
