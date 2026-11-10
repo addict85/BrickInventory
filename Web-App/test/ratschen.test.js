@@ -252,10 +252,10 @@ function quelltextFaelle() {
 }
 
 test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
-  // Gemessen 405 am 10.11.2026 (die Ratschen selbst zählen mit).
+  // Gemessen 404 am 10.11.2026 (die Ratschen selbst zählen mit).
   // Gegenprobe (08.11.2026): `\b_req\w*\(` aus FALL_FUEHRT_AUS entfernt → rot (574).
   // Gegenprobe (05.11.2026): parts-paging.test.js auf den Stand vor den jsdom-Tests → rot.
-  const SCHRANKE = 405;
+  const SCHRANKE = 404;
   const { n, alle } = quelltextFaelle();
   assert.ok(alle > 2000, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
   assert.ok(n <= SCHRANKE, `${n} Testfälle lesen nur Quelltext, erlaubt sind ${SCHRANKE}. ` +
@@ -704,4 +704,43 @@ test('Testdateien ohne Gegenprobe werden weniger, nie mehr', () => {
     .filter(n => !fs.readFileSync(path.join(__dirname, n), 'utf8').includes('Gegenprobe'));
   assert.ok(ohne.length <= SCHRANKE, `${ohne.length} Testdateien ohne Gegenprobe, erlaubt sind ${SCHRANKE}`);
   if (ohne.length < SCHRANKE) console.log(`  ℹ Testdateien ohne Gegenprobe: ${ohne.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
+test('in Testkommentaren genannte Pfade gibt es', () => {
+  // Eine Gegenprobe, die eine verschwundene Datei nennt, lässt sich nicht wiederholen. Geprüft wird jede
+  // Kommentarzeile in test/ und test/helpers/; ein .js-Pfad gilt auch, wenn die .ts-Quelle dazu existiert.
+  // Gegenprobe (10.11.2026): in acquisition-scope-db.test.js den Pfad bei writableIds auf den früheren der
+  // Set-Routen zurückgesetzt → rot mit dieser Zeile als Fundstelle.
+  const REPO = path.join(WEB, '..');
+  const ordner = [WEB, REPO]
+    .flatMap(w => fs.readdirSync(w, { withFileTypes: true }).filter(e => e.isDirectory()).map(e => e.name))
+    .filter(n => !['node_modules', 'dist', 'coverage', 'data', '.git'].includes(n));
+  const PFAD = new RegExp(
+    `(?<![\\w./-])((?:${ordner.map(n => n.replace('.', '\\.')).join('|')})/[\\w./-]*\\w\\.` +
+      '(?:ts|js|sql|html|css|json|md|sh|ya?ml|kt|kts|xml|txt))\\b',
+    'g',
+  );
+  const gibt = (/** @type {string} */ p) =>
+    [WEB, REPO].some(
+      w => fs.existsSync(path.join(w, p)) || (p.endsWith('.js') && fs.existsSync(path.join(w, `${p.slice(0, -3)}.ts`))),
+    );
+  const dateien = [__dirname, path.join(__dirname, 'helpers')].flatMap(d =>
+    fs.readdirSync(d).filter(n => n.endsWith('.js')).map(n => path.join(d, n)),
+  );
+  const fehlt = [];
+  let n = 0;
+  for (const f of dateien) {
+    fs.readFileSync(f, 'utf8')
+      .split('\n')
+      .forEach((z, i) => {
+        const t = z.trim();
+        if (!t.startsWith('//') && !t.startsWith('*') && !t.startsWith('/*')) return;
+        for (const m of t.matchAll(PFAD)) {
+          n++;
+          if (!gibt(m[1])) fehlt.push(`${path.relative(WEB, f)}:${i + 1} ${m[1]}`);
+        }
+      });
+  }
+  assert.ok(n > 400, `nur ${n} Pfade gefunden — greift die Suche noch?`);
+  assert.deepEqual(fehlt, [], 'Pfad auf die heutige Datei ändern; Geschichte gehört in den Commit');
 });

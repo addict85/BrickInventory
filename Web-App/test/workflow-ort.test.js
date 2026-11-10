@@ -228,9 +228,9 @@ test('der Gegenproben-Job misst jede Patch-Gegenprobe gegen eine echte Testklass
   for (const k of PFLICHT) assert.ok(klassen.has(k), `${k} braucht eine Gegenprobe`);
 });
 
-// Renovate liest nur die renovate.json im Wurzelverzeichnis; Web-App/renovate.json
-// stand dort lange ohne Wirkung. Gegenproben (02.11.2026 gemessen): `npm` aus
-// enabledManagers gestrichen → rot; eine leere Web-App/renovate.json angelegt → rot;
+// Renovate liest nur die renovate.json im Wurzelverzeichnis; eine zweite unter Web-App/
+// bliebe ohne Wirkung. Gegenproben (02.11.2026 gemessen): `npm` aus
+// enabledManagers gestrichen → rot; eine leere renovate.json unter Web-App/ angelegt → rot;
 // minimumReleaseAge gestrichen → rot (npm und gradle ohne Wartezeit).
 test('Renovate pflegt npm der Web-App aus der Wurzel-Konfiguration', () => {
   const konf = JSON.parse(fs.readFileSync(path.join(WURZEL, 'renovate.json'), 'utf8'));
