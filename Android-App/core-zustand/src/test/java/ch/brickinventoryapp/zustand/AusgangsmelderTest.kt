@@ -33,7 +33,9 @@ import org.junit.Test
  *      steht ein eigener Satz da“
  *   D  `lage.planeLiegengebliebenes()` beim Start weggelassen → rot „was vom letzten
  *      Mal wartet, wird beim Start eingeplant“
- *   (B und D lokal mit kotlinc gemessen)
+ *   E  in AusgangsBeobachter.starte die Prüfung `gestartet` entfernt → rot „ein zweiter
+ *      Start folgt dem Ausgang nicht doppelt“ (2 statt 1)
+ *   (B, D und E lokal mit kotlinc gemessen)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AusgangsmelderTest {
@@ -63,13 +65,14 @@ class AusgangsmelderTest {
         val kanal = MeldungsKanal()
         val gesehen = mutableListOf<Aenderung>()
         backgroundScope.launch { signal.aenderungen.collect { gesehen += it } }
-        val offene = Ausgangsmelder(lage, signal, kanal, Aufschreiber).starte(backgroundScope)
+        val melder = Ausgangsmelder(lage, signal, kanal, Aufschreiber)
+        melder.starte(backgroundScope)
         runCurrent()
         assertEquals("was vom letzten Mal wartet, wird beim Start eingeplant", 1, lage.geplant)
 
         lage.zahl.value = 1
         runCurrent()
-        assertEquals(1, offene.value)
+        assertEquals(1, melder.offene.value)
         assertEquals("offline Gespeichertes wird gemeldet", "m${R.plurals.offline_ausgang}:1", kanal.meldung.value)
 
         lage.gemeldet.emit(Abgleichsereignis.Gesendet(setOf(Bestandsart.SETS, Bestandsart.MANUELLE_TEILE)))
@@ -81,5 +84,17 @@ class AusgangsmelderTest {
         runCurrent()
         assertEquals("ohne Grund vom Server steht ein eigener Satz da",
             "t${R.string.offline_verworfen}(10001-1, t${R.string.offline_verworfen_ohne_grund}())", kanal.meldung.value)
+    }
+
+    @Test
+    fun `ein zweiter Start folgt dem Ausgang nicht doppelt`() = runTest {
+        val lage = Lage()
+        val kanal = MeldungsKanal()
+        val melder = Ausgangsmelder(lage, Bestandssignal(), kanal, Aufschreiber)
+        melder.starte(backgroundScope)
+        melder.starte(backgroundScope)
+        runCurrent()
+        assertEquals("ein zweiter Start folgt dem Ausgang nicht doppelt", 1, lage.geplant)
+        assertEquals(1, lage.zahl.subscriptionCount.value)
     }
 }

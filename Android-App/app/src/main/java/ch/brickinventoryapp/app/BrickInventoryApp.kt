@@ -1,7 +1,9 @@
 package ch.brickinventoryapp.app
 
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
+import android.app.Activity
 import android.app.Application
+import android.os.Bundle
 import android.os.Process
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
@@ -14,6 +16,8 @@ import ch.brickinventoryapp.data.Alarmablage
 import ch.brickinventoryapp.data.Sprachablage
 import ch.brickinventoryapp.data.Tokenuebernahme
 import ch.brickinventoryapp.data.di.Anwendungsbereiche
+import ch.brickinventoryapp.zustand.ui.Ausgangsmelder
+import ch.brickinventoryapp.zustand.ui.SitzungsRepository
 import ch.brickinventoryapp.data.util.LanguageManager
 import ch.brickinventoryapp.netz.util.Protokoll
 import ch.brickinventoryapp.data.util.raeumeAlteTeilelisteAuf
@@ -33,6 +37,8 @@ class BrickInventoryApp : Application(), Configuration.Provider {
     private val sprache get() = spracheLazy.get()
     @Inject lateinit var bereiche: Anwendungsbereiche
     @Inject lateinit var workerFabrik: HiltWorkerFactory
+    @Inject lateinit var sitzungLazy: dagger.Lazy<SitzungsRepository>
+    @Inject lateinit var ausgangsmelderLazy: dagger.Lazy<Ausgangsmelder>
 
     /**
      * WorkManager auf Abruf statt beim Start, das Gegenstück zum tools:node="remove"
@@ -46,6 +52,12 @@ class BrickInventoryApp : Application(), Configuration.Provider {
         super.onCreate()
         // Im Render-Prozess (ui/pdf/PdfRenderDienst) gibt es weder Dateien noch Konto.
         if (Process.isIsolated()) return
+        // Sitzung und Ausgang starten mit der ersten MainActivity und leben dann so lange
+        // wie der Prozess, nicht wie ein ViewModel; ein Worker allein (Preisalarm) weckt sie nicht.
+        registerActivityLifecycleCallbacks(BeiErsterOberflaeche {
+            sitzungLazy.get().starte()
+            ausgangsmelderLazy.get().starte(bereiche.anwendung)
+        })
 
         // Ein Klartext-Token älterer Fassungen einmalig verschlüsselt ablegen, im
         // Hintergrund: Der Lesepfad kommt auch ohne Übernahme an das alte Token.
@@ -85,4 +97,22 @@ class BrickInventoryApp : Application(), Configuration.Provider {
             }
         }
     }
+}
+
+/** Ruft [los] einmal, wenn die erste MainActivity entsteht; andere Activities zählen nicht. */
+private class BeiErsterOberflaeche(private val los: () -> Unit) : Application.ActivityLifecycleCallbacks {
+    private var gelaufen = false
+
+    override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
+        if (gelaufen || activity !is MainActivity) return
+        gelaufen = true
+        los()
+    }
+
+    override fun onActivityStarted(activity: Activity) = Unit
+    override fun onActivityResumed(activity: Activity) = Unit
+    override fun onActivityPaused(activity: Activity) = Unit
+    override fun onActivityStopped(activity: Activity) = Unit
+    override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
+    override fun onActivityDestroyed(activity: Activity) = Unit
 }
