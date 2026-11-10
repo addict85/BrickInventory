@@ -59,6 +59,8 @@ async function streamInsert(tmpFile: string, chunkSize: number, mapRow: (spalten
 interface Tausch {
   tabelle: string; filename: string; tmp: string; cols: string[]; konflikt?: repo.Konflikt;
   chunkSize?: number; mapRow: (c: string[]) => unknown[];
+  /** Statt des Tauschs; rb_sets gleicht per Upsert ab. */
+  abgleich?: typeof repo.tausche;
 }
 
 // Über eine Schattentabelle: Leser sehen bis zum Tausch die alte, nie eine leere Tabelle.
@@ -74,7 +76,7 @@ async function importiereMitTausch(pool: Pool, melde: (m: Meldung) => void, t: T
         chunk => repo.fuegeBlockEin(client, schatten, t.cols, chunk, t.konflikt), t.filename, melde);
       // Eine leere Datei ist ein Fehler, kein leerer Katalog.
       if (total === 0) throw new Error(`${t.filename}: 0 Zeilen gelesen — Tausch abgebrochen, bisheriger Bestand bleibt erhalten`);
-      await repo.tausche(client, t.tabelle, schatten, t.cols);
+      await (t.abgleich ?? repo.tausche)(client, t.tabelle, schatten, t.cols);
       await repo.entferneSchatten(client, schatten).catch(logAndContinue('csv-worker:query'));
       await repo.pflege(client, t.tabelle);
       return total;
@@ -113,6 +115,7 @@ export function katalogImporte(pool: Pool, melde: (m: Meldung) => void) {
       tabelle: 'rb_sets', filename: 'sets.csv.gz', tmp: path.join(DATA_DIR, 'sets.csv.tmp'),
       cols: ['set_num', 'name', 'year', 'theme_id', 'num_parts', 'set_img_url'],
       konflikt: ['set_num'],
+      abgleich: (c, _tabelle, schatten, cols) => repo.gleicheSetsAb(c, schatten, cols),
       mapRow: c => [sp(c, 0), sp(c, 1), parseInt(sp(c, 2)) || 0, parseInt(sp(c, 3)) || 0, parseInt(sp(c, 4)) || 0, sp(c, 5)],
     }),
     inventories: tausch({

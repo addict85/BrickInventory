@@ -47,7 +47,7 @@ const KONTO   = 'konto';     // gehört einem Konto über einen anderen Schlüss
 const GEMEINSAM = {
   bl_zuordnung:          { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/blZuordnung.ts'] },
   catalog_cache:         { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogCache.ts', 'src/katalog/repository/rebrickableCache.ts', 'src/sets/repository/setDetail.ts'] },
-  set_catalog:           { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/bildlage.ts', 'src/sets/repository/sets.ts'] },
+  set_catalog:           { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/bildlage.ts', 'src/katalog/repository/csvTausch.ts', 'src/sets/repository/sets.ts'] },
   part_catalog:          { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogStamm.ts'] },
   part_color_catalog:    { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvKatalog.ts', 'src/katalog/repository/katalogStamm.ts'] },
   minifigs_catalog:      { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogStamm.ts'] },
@@ -62,7 +62,7 @@ const GEMEINSAM = {
   rb_inventory_parts:    { art: KATALOG, eingabe: false, schreiber: [] },
   rb_part_categories:    { art: KATALOG, eingabe: false, schreiber: [] },
   rb_parts:              { art: KATALOG, eingabe: false, schreiber: [] },
-  rb_sets:               { art: KATALOG, eingabe: false, schreiber: [] },
+  rb_sets:               { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/bildlage.ts', 'src/katalog/repository/csvTausch.ts', 'src/sets/repository/sets.ts'] },
   rb_themes:             { art: KATALOG, eingabe: false, schreiber: [] },
   price_cache:           { art: KATALOG, eingabe: false, schreiber: ['src/finanzen/repository/preisCache.ts', 'src/verwaltung/repository/verwaltung.ts'] },
   price_history:         { art: KATALOG, eingabe: false, schreiber: ['src/finanzen/repository/preisCache.ts', 'src/finanzen/repository/preisLauf.ts', 'src/finanzen/repository/preisverlauf.ts'] },

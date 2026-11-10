@@ -60,6 +60,33 @@ export async function tausche(c: PoolClient, tabelle: string, schatten: string, 
   }
 }
 
+/** rb_sets bildet den Dump nach: einfügen, ändern, entfernen. Nur ein Set, an dem
+ * Bestand, Merkliste oder Preisalarm hängt, bleibt als 'api'-Zeile, sonst verlöre
+ * ein Konto Name und Bild. Danach hat jede Zeile ihren set_catalog-Eintrag (0105). */
+export async function gleicheSetsAb(c: PoolClient, schatten: string, spalten: string[]): Promise<void> {
+  const neu = spalten.filter(s => s !== 'set_num');
+  const verschwunden = `NOT EXISTS (SELECT 1 FROM ${schatten} n WHERE n.set_num = rb_sets.set_num)`;
+  const bezug = `(EXISTS (SELECT 1 FROM sets s WHERE s.set_number = rb_sets.set_num)
+               OR EXISTS (SELECT 1 FROM wanted w WHERE w.set_number = rb_sets.set_num)
+               OR EXISTS (SELECT 1 FROM price_alerts a WHERE a.set_number = rb_sets.set_num))`;
+  await c.query('BEGIN');
+  try {
+    await c.query(`INSERT INTO rb_sets (${spalten.join(',')}, herkunft) SELECT ${spalten.join(',')}, 'csv' FROM ${schatten}
+                   ON CONFLICT (set_num) DO UPDATE SET ${neu.map(s => `${s}=EXCLUDED.${s}`).join(',')}, herkunft='csv'
+                   WHERE (${neu.map(s => `rb_sets.${s}`).join(',')}, rb_sets.herkunft)
+                         IS DISTINCT FROM (${neu.map(s => `EXCLUDED.${s}`).join(',')}, 'csv')`);
+    await c.query(`UPDATE rb_sets SET herkunft = 'api' WHERE herkunft = 'csv' AND ${verschwunden} AND ${bezug}`);
+    // set_catalog geht per ON DELETE CASCADE mit.
+    await c.query(`DELETE FROM rb_sets WHERE ${verschwunden} AND NOT ${bezug}`);
+    await c.query(`INSERT INTO set_catalog (set_number) SELECT set_num FROM rb_sets WHERE set_num ~ '-[0-9]+$'
+                   ON CONFLICT (set_number) DO NOTHING`);
+    await c.query('COMMIT');
+  } catch (e) {
+    await c.query('ROLLBACK').catch(logAndContinue('csv-abgleich:rollback'));
+    throw e;
+  }
+}
+
 export async function entferneSchatten(c: PoolClient, schatten: string): Promise<void> {
   await c.query(`DROP TABLE IF EXISTS ${schatten}`);
 }

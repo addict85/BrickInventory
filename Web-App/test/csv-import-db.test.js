@@ -15,6 +15,14 @@
  * EXCLUDING CONSTRAINTS → rot: „Set-Nummern ohne Versionsendung bekommen sie
  * beim Tausch“ (rb_inventories_setnummer_mit_version in der Schattentabelle).
  *
+ * Gegenproben zu „rb_sets bildet den Dump nach“ (10.11.2026, in
+ * gleicheSetsAb(), src/katalog/repository/csvTausch.ts, je einzeln):
+ *   E  im Upsert `herkunft='csv'` weggelassen → rot: „geändert“ (B bleibt 'api')
+ *   F  das UPDATE auf herkunft='api' entfernt → rot: „mit Bezug“ (C bleibt 'csv')
+ *   G  das DELETE entfernt → rot: „ohne Bezug“ (D und F bleiben)
+ *   H  im Bezug die Merkliste (wanted) entfernt → rot: „mit Bezug“ (E fehlt)
+ *   I  das abschliessende INSERT INTO set_catalog entfernt → rot: „neu“ (G ohne Zeile)
+ *
  * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
  * Ohne DB: skip.
  */
@@ -143,6 +151,34 @@ test('Katalog-Import tauscht, statt zu leeren', async (t) => {
     await worker.TASKS.colors();
     const zeile = await db.get('SELECT name FROM rb_colors WHERE id=7');
     assert.equal(zeile.name, 'Trans "Neon" Grün');
+  });
+
+  await t.test('rb_sets bildet den Dump nach: neu, geändert, mit Bezug, ohne Bezug', async () => {
+    await db.run('DELETE FROM rb_sets');
+    const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ('csv-abgleich','x') RETURNING id`)).id;
+    await db.run(`INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, herkunft) VALUES
+      ('1-1','A alt',2000,1,10,'csv'), ('2-1','Set 2-1',NULL,NULL,NULL,'api'), ('3-1','C',2001,1,10,'csv'),
+      ('4-1','D',2002,1,10,'csv'), ('5-1','E',2003,1,10,'api'), ('6-1','F',2004,1,10,'api')`);
+    await db.run(`INSERT INTO set_catalog (set_number, image_local) SELECT set_num, '/images/sets/' || set_num || '.jpg' FROM rb_sets`);
+    await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '3-1')`, [uid]);
+    await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1, '5-1', 'N')`, [uid]);
+    csvSchreiben('sets.csv.tmp', ['set_num,name,year,theme_id,num_parts,img_url',
+      '1-1,A neu,2000,2,11,https://cdn/1.jpg', '2-1,B echt,2020,3,99,', '7-1,G,2024,1,7,']);
+    const worker = _req('jobs/csvImportWorker.js');
+    assert.equal(await worker.TASKS.sets(), 3);
+    const zeilen = Object.fromEntries((await db.all(
+      `SELECT r.set_num, r.name, r.theme_id, r.num_parts, r.set_img_url, r.herkunft, (c.set_number IS NOT NULL) AS katalog
+         FROM rb_sets r LEFT JOIN set_catalog c ON c.set_number = r.set_num`)).map(z => [z.set_num, z]));
+    assert.deepEqual(zeilen['7-1'] && [zeilen['7-1'].herkunft, zeilen['7-1'].katalog], ['csv', true], 'neu: eingefügt, mit set_catalog');
+    assert.deepEqual(['1-1', '2-1'].map(n => zeilen[n] && [zeilen[n].name, zeilen[n].theme_id, zeilen[n].num_parts, zeilen[n].herkunft]),
+      [['A neu', 2, 11, 'csv'], ['B echt', 3, 99, 'csv']], 'geändert: aktualisiert, eine api-Zeile wird csv');
+    assert.equal(zeilen['1-1'].set_img_url, 'https://cdn/1.jpg');
+    assert.deepEqual(['3-1', '5-1'].map(n => zeilen[n] && [zeilen[n].herkunft, zeilen[n].katalog]),
+      [['api', true], ['api', true]], 'mit Bezug (Bestand, Merkliste): bleibt als api');
+    assert.deepEqual(['4-1', '6-1'].filter(n => zeilen[n]), [], 'ohne Bezug: entfernt');
+    assert.equal((await db.get(`SELECT count(*)::int AS n FROM set_catalog WHERE set_number IN ('4-1','6-1')`)).n, 0,
+      'ohne Bezug: die set_catalog-Zeile geht mit');
+    await db.run('DELETE FROM users WHERE id = $1', [uid]);
   });
 
   await t.test('nach dem Lauf bleibt keine Schattentabelle zurück', async () => {
