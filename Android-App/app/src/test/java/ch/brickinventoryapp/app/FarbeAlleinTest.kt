@@ -6,20 +6,11 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Keine Aussage haengt allein an der Farbe.
  *
- * ── Woher diese Regel kommt (Nachtrag 138) ─────────────────────────────────
+ * Rot-Grün-Schwäche trifft rund acht Prozent der Männer; eine Aussage, die nur
+ * in der Farbe liegt (beim Preisalarm „scharf“ grün gegen grau), steht für sie
+ * nicht da.
  *
- * Marco, am 26.09.:
- *
- *   „Ok entschuldige ich habe eine rot gruen schwaeche. Deshalb sind labels
- *    mit scharf / unscharf fuer mich einfacher."
- *
- * Die Entschuldigung war an der falschen Stelle. Nicht das Auge ist der
- * Fehler, sondern eine Oberflaeche, die eine Information NUR in die Farbe
- * legt — beim Preisalarm stand „scharf" gegen „nicht mehr scharf" als gruen
- * gegen grau und sonst nirgends. Rot-Gruen-Schwaeche trifft rund acht Prozent
- * der Maenner; fuer sie stand die Aussage einfach nicht da.
- *
- * Danach wurde der ganze Baum durchgesehen. [LocalStatusFarben] ist die
+ * [LocalStatusFarben] ist die
  * Stelle, an der Farbe BEDEUTUNG traegt (Erfolg, Warnung, Fehler) — anders
  * als das Material-Schema, das Flaechen einfaerbt. Wer sie benutzt, sagt
  * damit etwas aus, und diese Aussage braucht einen zweiten Traeger.

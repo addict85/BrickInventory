@@ -7,23 +7,6 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Suchmuster in Tests müssen im App-Code auch wirklich vorkommen.
  *
- * ── Woher dieser Test kommt ────────────────────────────────────────────────
- * Beim Aufteilen von BrickRepository in Sachgebiete wurden aus `repo.addSet(`
- * Aufrufe wie `repo.sets.addSet(`. Zwei Tests suchten den alten Namen — aber
- * mit maskiertem Punkt (`repo\.addSet\(`), weshalb die Umstellung sie nicht
- * erwischte. Beide Tests wurden grün-blind: Ihre Muster fanden nichts mehr,
- * das positive Muster fiel auf 0 Treffer und der Lauf war rot, ohne dass am
- * App-Code irgendetwas fehlte.
- *
- * Das ist die eigentliche Gefahr an quelltextlesenden Tests: Sie prüfen eine
- * Zeichenkette, und eine Zeichenkette veraltet lautlos. Ein `!contains(...)`
- * ist dann sogar dauerhaft grün und prüft in Wahrheit gar nichts mehr.
- *
- * Deshalb diese Wache: Jedes `repo.…(` das in einer TEST-ZEICHENKETTE steht,
- * muss im App-Code vorkommen. Nur Zeichenketten — echte Kotlin-Aufrufe wie
- * `repo.getMe()` in BrickRepositoryErrorMappingTest prüft schon der
- * Übersetzer, und Kommentare dürfen die alte Geschichte weiter erzählen.
- *
  * Gegenprobe (durchgeführt): In AddPathOwnerTest das Muster wieder auf
  * `repo\.addSet\(` zurückgedreht → dieser Test meldet genau diesen Verweis.
  */

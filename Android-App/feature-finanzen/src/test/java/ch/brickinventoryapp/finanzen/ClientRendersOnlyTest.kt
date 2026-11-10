@@ -15,15 +15,6 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Die App rechnet keine Geldbeträge nach — sie zeigt, was der Server liefert.
  *
- * ── Marcos Frage (Nachtrag 107) ─────────────────────────────────────────────
- * „Ist sichergestellt, dass die ganze Logik im Server zentral ist und Webapp
- * wie Android-App die Daten gleich beziehen und nur rendern?"
- *
- * Für die App war die Antwort bis auf eine Stelle ja: Den Gesamtwert (Sets +
- * manuell erfasste Teile + Minifiguren) addierte sie selbst — genau wie die
- * Webapp, jede auf ihre Art. Er kommt jetzt als `totals.grand_total` aus
- * /finance/pnl.
- *
  * ── Was diese Prüfung NICHT beanstandet ─────────────────────────────────────
  * Summen über Stückzahlen (`sumOf { it.quantity }`). Die sind Anzeige: „x7"
  * neben einer Zeile. Erst wo GELD summiert wird, entsteht eine zweite Fassung
@@ -36,7 +27,7 @@ class ClientRendersOnlyTest {
         val dateien = Quellen.unter("ui")
         val geld = Regex("""sumOf\s*\{[^}]{0,120}?\.(price|Price|value|Value|total|Total|purchase|Purchase)\w*""")
         val treffer = mutableListOf<String>()
-        // Untergrenze (Nachtrag 118): Ein Dateilauf, der nichts findet, lässt
+        // Untergrenze: Ein Dateilauf, der nichts findet, lässt
         // jede Sammelprüfung darunter stillschweigend bestehen.
         check(dateien.size >= 20) {
             "Zu wenige Kotlin-Dateien unter ui/ (${dateien.size}) — Pfad veraltet?"
@@ -73,7 +64,7 @@ class ClientRendersOnlyTest {
                 "sie ihn wieder selbst, und die Webapp tut dasselbe auf ihre Art."
         }
         // Das Modellfeld muss es geben, sonst liest der Ausdruck oben ins Leere.
-        // Alle Modelldateien (Nachtrag 155): Vorher stand hier ein Dateiname,
+        // Alle Modelldateien: Vorher stand hier ein Dateiname,
         // und die Klassen liegen seither nach Sachgebieten verteilt.
         val models = File(Quellen.wurzel, "model/data/model")
             .listFiles { f -> f.extension == "kt" }

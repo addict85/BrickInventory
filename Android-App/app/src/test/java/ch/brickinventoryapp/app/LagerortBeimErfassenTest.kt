@@ -6,20 +6,10 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Jeder Erfassungsweg fragt nach dem Lagerort — und der Merkposten nach dem Konto.
  *
- * ── Marcos Befund vom 24.09. ────────────────────────────────────────────────
- *
- *   „Wenn ich etwas aus dem Katalog auf die Merkliste setze kann ich den
- *    Account nicht waehlen. Wenn ich aus dem Katalog etwas in die Galerie
- *    aufnehme, kann ich den Lagerort nicht setzen. Wenn ich etwas aus der
- *    Merkliste in die Galerie aufnehme, kann ich den Lagerort nicht setzen.
- *
  * ── Das Muster dahinter ─────────────────────────────────────────────────────
  *
- * Es ist dasselbe, das diesen Baum schon mehrfach erwischt hat: Ein Feld wird
- * an EINEM Erfassungsweg eingebaut, und die anderen vier bleiben zurueck. Beim
- * Eigentuemer war es der Barcode-Weg (Nachtrag 44) und der Katalog-Dialog
- * (Nachtrag 66), jetzt beim Lagerort gleich fuenf Wege auf einmal — er liess
- * sich ueberhaupt nur NACH dem Erfassen setzen, im Detaildialog.
+ * Ein Feld, das an EINEM Erfassungsweg eingebaut wird, fehlt leicht an den
+ * anderen vier; deshalb zählt die Regel alle Wege ab.
  *
  * Diese Regel zaehlt die Wege ab. Sie kann nicht pruefen, ob das Feld auch
  * gesendet wird — das tun die Datenbankpruefungen der Webapp
@@ -66,7 +56,7 @@ class LagerortBeimErfassenTest {
     }
 
     /**
-     * Jeder Erfassungsweg STARTET bei der Vorgabe — Marcos Stern.
+     * Jeder Erfassungsweg STARTET bei der Vorgabe (dem Stern im Lagerort-Vorrat).
      *
      * „Weiter moechte ich ein Lagerort in den Einstellungen als Default setzen
      *  koennen. Der soll dann bei einer Neuerfassung bereits vorausgewaehlt
@@ -76,10 +66,8 @@ class LagerortBeimErfassenTest {
      *
      * Die Pruefung darueber zaehlt ab, welcher Weg ein Lagerortfeld HAT. Diese
      * hier zaehlt ab, welcher es VORBELEGT — zwei verschiedene Aussagen ueber
-     * dieselben Wege. Und es ist genau das Muster, an dem dieser Baum schon
-     * mehrfach haengengeblieben ist: Ein Feld wird an einem Weg eingebaut, die
-     * anderen bleiben zurueck (Eigentuemer: Nachtrag 44 und 66, Lagerort: fuenf
-     * Wege auf einmal).
+     * dieselben Wege; ein Feld, das an einem Weg eingebaut wird, fehlt leicht an
+     * den anderen.
      *
      * Geprueft wird der ZUSTAND und nicht das Feld: Die Vorbelegung steht in
      * der Zeile, die ihn anlegt. Sechs Halter und nicht fuenf Wege, weil die

@@ -8,12 +8,6 @@ import ch.brickinventoryapp.testing.Quellen
  * Abstaende und Schriftgroessen kommen aus der Skala — und die Ausnahmen
  * werden weniger, nie mehr.
  *
- * ── Marcos Vorgabe ──────────────────────────────────────────────────────────
- * „saubere Architektur, clean Code, saubere Strukturen und in den UIs
- * einheitliche Ansichten." Die Webapp fuehrt ihre Abstaende in CSS-Klassen;
- * die App hatte gar nichts — 486 blanke Zahlen an Abstandsstellen, 109 an
- * Schriftstellen, verteilt ueber die Bildschirme.
- *
  * ── Warum eine RATSCHE und keine harte Regel ────────────────────────────────
  *
  * Gemessen, bevor irgendetwas geaendert wurde: Die App benutzte kein 4er- oder
@@ -158,7 +152,7 @@ class AbstandsskalaTest {
         // unterscheiden, sind nebeneinander nicht als Unterschied lesbar; das
         // ist der Kandidat, den man als Erstes zusammenlegen wuerde.
         //
-        // 54 -> 51 (Nachtrag 176): Die drei Chips der Filterzeile
+        // 54 -> 51: Die drei Chips der Filterzeile
         // (HouseholdComposables) standen auf 13.sp und stehen jetzt auf
         // Schrift.klein. Anlass war ein vierter Chip daneben — der
         // Lagerortfilter. Zwei Groessen nebeneinander, die sich um einen
@@ -166,7 +160,7 @@ class AbstandsskalaTest {
         // beschreibt; ihn beim Hinzufuegen des vierten stehen zu lassen
         // haette die Zahl auf 55 gehoben.
         //
-        // 55 -> 54 (Nachtrag 160): Genau dieser Kandidat ist zweimal gefallen.
+        // 55 -> 54: Genau dieser Kandidat ist zweimal gefallen.
         //
         // 51 -> 2 (27.10.): Die rohen Groessen sind auf Rollen der Material-
         // Skala umgestellt (bodyMedium, labelSmall, titleMedium …).

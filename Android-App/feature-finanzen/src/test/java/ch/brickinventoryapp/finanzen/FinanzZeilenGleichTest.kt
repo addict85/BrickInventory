@@ -11,26 +11,6 @@ import org.junit.Test
 /**
  * Die zwei Zeilen der Finanztabelle zeigen dasselbe.
  *
- * ── Woher dieser Test kommt (Nachtrag 133) ──────────────────────────────────
- *
- * Nicht aus einem Fehlerbericht, sondern aus einer Messung: Eine Suche nach
- * gleichen Achtzeilern ueber den ganzen App-Baum meldete `FinanceScreen.kt` und
- * `FinanceSections.kt` mit demselben Block. Beim Nachsehen war es zweimal
- * dieselbe Zeile — einmal fuer Sets, einmal fuer manuell erfasste Teile und
- * Minifiguren — und der UNTERSCHIED war der Fund:
- *
- *     Set-Zeile      Marktpreis, darunter „Kauf: X", darunter die Entwicklung
- *     Manuelle Zeile Marktpreis, darunter die Entwicklung   ← kein Kaufpreis
- *
- * Die Webapp zeigt den Kaufpreis in BEIDEN Tabellen (public/js/04-finance.js,
- * `pmRow`, Spalte `detail.purchase_price`). Die App hatte die Zahl im Speicher
- * — PartValuationItem, FigValuationItem und ValuationAcquisition tragen alle
- * `purchase_price` —, sie kam nur nie auf den Bildschirm.
- *
- * Die Wahl des Kaufpreises (Erfassung vor Eintrag) läuft in finanzen/ui/Finanzzeilen.kt
- * und wird hier ausgeführt; dass die Zeilen ihn zeigen, prüft FinanzKaufpreisZeilenTest
- * (app) gezeichnet.
- *
  * Gegenprobe: in teilZeilen() `acq?.purchasePrice ?:
  * p.purchasePrice` durch `p.purchasePrice` ersetzt → rot „beide Aufrufstellen
  * reichen den Kaufpreis durch“ (150.0 statt 120.0).

@@ -6,23 +6,6 @@ import ch.brickinventoryapp.testing.Quellen
 
 /**
  * Was nicht mehr benutzt wird, fällt auf.
- *
- * ── Woher dieser Test kommt (Nachtrag 119) ──────────────────────────────────
- *
- * Zweimal in Folge ist derselbe Fehlertyp ZUFÄLLIG aufgefallen, beim Umbau von
- * etwas anderem: `saveUserDefaultCondition()` ohne Aufrufer (Nachtrag 115),
- * `defaultPriceCondition` geladen und nie gelesen (Nachtrag 118). Beim dritten
- * Mal ergab die gezielte Suche 19 unbenutzte Textressourcen und 325 Zeilen
- * Composables ohne Aufrufer.
- *
- * Der Schaden ist selten der tote Code selbst — er ist, was er verdeckt. Zwei
- * der 19 Texte („— Globale Vorgabe —" und der Hinweis dazu) waren nicht übrig
- * geblieben, sondern nie angekommen: Die Einstellungskarte bot nur zwei Chips
- * und hatte keinen Weg zurück zur Vorgabe des Servers. Und in Nachtrag 115
- * habe ich zwei Texte ins Deutsche übersetzt, die niemand je zu sehen bekam.
- *
- * `shrinkResources` räumt ungenutzte Ressourcen aus dem Release-APK. Im
- * Quelltext bleiben sie — und dort stören sie.
  */
 class DeadCodeTest {
 
@@ -52,7 +35,7 @@ class DeadCodeTest {
         // Gesucht wird im Kotlin-Code UND in den übrigen XML-Dateien (Themes,
         // Menüs, das Manifest binden Texte ebenfalls ein).
         //
-        // OHNE KOMMENTARE (Nachtrag 134). Ein Schluessel, der nur in einem
+        // OHNE KOMMENTARE. Ein Schluessel, der nur in einem
         // Kommentar VORKOMMT, wird nicht benutzt — er wird erwaehnt. Der
         // Unterschied ist nicht theoretisch: Beim Umstellen des Vergleich-
         // Suchfelds auf `cd_search_clear` wurde `comparison_clear` frei, und
@@ -108,7 +91,7 @@ class DeadCodeTest {
             // Argument `name =`. Weniger Treffer als Deklarationen heisst:
             // ausser der Deklaration steht nichts da.
             //
-            // ── Die vierte Form: `name { … }` (Nachtrag 133) ────────────────
+            // ── Die vierte Form: `name { … }` ────────────────
             //
             // Kotlin darf den letzten Parameter als Block HINTER die Klammern
             // ziehen, und dann faellt die Klammer ganz weg:

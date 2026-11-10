@@ -5,16 +5,8 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Texterkennung liest die Setnummer von der ANLEITUNG (Nachtrag 60).
- *
- * ── Marcos Wunsch ───────────────────────────────────────────────────────────
- * „Beim OCR wird direkt die Setnummer gelesen. Das heisst bei dieser Erkennung
- * entfällt die Auflösung der EAN-Nummer via Rebrickable. Bitte das Modul fest
- * einbauen."
- *
- * Auf der Anleitung gibt es keinen Barcode — die Nummer steht nur gedruckt da.
- * Der Filter ist deshalb der Kern der Sache: Die Kamera sieht auf so einer
- * Seite mehrere Zahlen, und ohne Einschränkung käme ständig Unsinn heraus.
+ * Texterkennung liest die Setnummer von der ANLEITUNG. Dort gibt es keinen Barcode,
+ * und die Kamera sieht mehrere Zahlen: Ohne den Filter käme ständig Unsinn heraus.
  *
  * ── Was hier NICHT mehr steht ──────────────────────────────────────────────
  * Die Auswahlregel selbst (welche Zahl im Text die Setnummer ist) wird gegen
@@ -23,7 +15,7 @@ import ch.brickinventoryapp.testing.Quellen
  *
  * BEKANNTE GRENZE, bewusst so gelassen: Sind zwei Zahlen gleich plausibel,
  * kann die falsche gewinnen. Dagegen steht der Bestätigungsdialog mit Bild und
- * Name — und seit Marcos Meldung sagt er ausdrücklich, dass die Nummer geraten
+ * Name — und er sagt ausdrücklich, dass die Nummer geraten
  * ist (BarcodeUiState.unsicher). Er ist Teil des Entwurfs, nicht nur
  * Höflichkeit.
  */
@@ -34,14 +26,7 @@ class OcrSetNumberTest {
 
     @Test
     fun `Texterkennung laeuft NUR beim Erfassen, nicht im Preisvergleich`() {
-        // ── Nachtrag 61, Marcos Vorgabe ─────────────────────────────────────
-        // „Nur bei Set hinzufügen und Teileliste hinzufügen. Beim Preisvergleich
-        // wird diese Erkennung nicht benötigt."
-        //
-        // Der Schalter steht auf AUS als Standard: Wer die Texterkennung will,
-        // schaltet sie ein. Damit erbt sie auch kein künftiger Aufrufer
-        // versehentlich — genau die Sorte stiller Ausbreitung, die in diesem
-        // Projekt schon mehrfach für Überraschungen gesorgt hat.
+        // Der Schalter steht auf AUS: So erbt kein künftiger Aufrufer die Texterkennung.
         val screen = code(File(Quellen.wurzel,
             "sammlung/ui/screens/BarcodeScannerScreen.kt").readText())
         assert(screen.contains("ocrEnabled: Boolean = false")) {

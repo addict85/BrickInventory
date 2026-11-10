@@ -10,18 +10,6 @@ import ch.brickinventoryapp.zustand.ui.qrFehler
 /**
  * „Etwas ist schiefgelaufen" muss sagen, WAS schiefgelaufen ist.
  *
- * ── Woher dieser Test kommt ─────────────────────────────────────────────────
- *
- * Marcos Befund: „In der Android-App werden die Teile nicht angezeigt", dazu
- * die Meldung „Etwas ist schiefgelaufen". Das ist [Ergebnis.Error.Unbekannt] — der
- * Auffangzweig in RepoBasis für JEDE geworfene Ausnahme.
- *
- * Ihre Ursache lag die ganze Zeit vor: `Result.Error(technisch = e.message)`.
- * NACHGEMESSEN wurde sie von niemandem gelesen — `grep -rn "\.technisch"` über
- * den Hauptbaum ergab null Treffer. Die Fehlersuche lief deshalb über mehrere
- * Runden im Kreis: Server geprüft (in Ordnung), Antwortform geprüft (passt),
- * Token geprüft (gültig) — und die App wusste die ganze Zeit, was los war.
- *
  * ── Was hier geprüft wird ───────────────────────────────────────────────────
  *
  * Beide Richtungen, denn beide sind Regeln:
@@ -55,8 +43,7 @@ class UrsacheSichtbarTest {
     fun `bei benannten Ursachen bleibt der Bibliothekstext draussen`() {
         // Die Gegenrichtung, und sie ist die wichtigere: Ein Test, der nur
         // Punkt 1 prüft, wäre auch dann grün, wenn die Ursache ÜBERALL
-        // angehängt würde — also genau die Regel bräche, gegen die
-        // Nachtrag 116 gebaut ist.
+        // angehängt würde — also genau die Regel bräche, um die es geht.
         for (art in listOf(Ergebnis.Error.Netz("Socket closed"), Ergebnis.Error.Zeitueberschreitung,
                            Ergebnis.Error.Server(500), Ergebnis.Error.Abgewiesen(),
                            Ergebnis.Error.LeereAntwort("Socket closed"), Ergebnis.Error.Abgebrochen,
@@ -75,15 +62,6 @@ class UrsacheSichtbarTest {
 /**
  * Ein zweiter QR-Anlauf darf keine Fehlermeldung erzeugen, wenn die Anmeldung
  * bereits steht.
- *
- * ── Marcos Befund ───────────────────────────────────────────────────────────
- * „Wenn ich mich mit dem QR-Code in der App einloggen will, erscheint
- * ‚Ungültiges oder abgelaufenes Token'. Ich werde aber trotzdem eingeloggt."
- *
- * Beides zugleich kann nur heissen: Der Aufruf ging zweimal raus. Der QR-Token
- * ist einmalig (routes/auth.ts: `SET used_at = NOW() WHERE used_at IS NULL`) —
- * der erste Anlauf hat ihn eingelöst und angemeldet, der zweite fand ihn
- * verbraucht.
  */
 class QrZweiterAnlaufTest {
 

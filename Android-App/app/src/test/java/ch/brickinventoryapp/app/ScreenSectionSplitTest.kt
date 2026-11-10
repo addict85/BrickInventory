@@ -7,7 +7,7 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Die grossen Bildschirme sind in Abschnitte aufgeteilt.
  *
- * ── Warum (Nachtrag 98) ─────────────────────────────────────────────────────
+ * ── Warum ─────────────────────────────────────────────────────
  *
  * `SetDetailScreen()` war 526 Zeilen, `FinanceScreen()` 482 — die ganze Datei
  * enthielt jeweils EIN Composable, obwohl daneben `SetDetailComponents.kt` mit
@@ -47,7 +47,7 @@ class ScreenSectionSplitTest {
     /**
      * Länge einer benannten Funktion.
      *
-     * ── Zwei Anläufe, bis es stimmte (Nachtrag 98) ──────────────────────────
+     * ── Zwei Anläufe, bis es stimmte ──────────────────────────
      * Ein naiver Zähler ab der `fun`-Zeile bricht bei MEHRZEILIGEN Signaturen
      * sofort ab — die enthalten kein `{`. So wurde `SetDetailScreen` als zwei
      * Zeilen gemeldet, und die 526 Zeilen fielen lange nicht auf.
@@ -118,7 +118,7 @@ class ScreenSectionSplitTest {
         // Der Kategoriefilter der Finanzen stand hier als dritter Fall. Er ist
         // ausgezogen: Ein `remember` überlebt zwar eine Rekomposition, aber
         // nicht das Verlassen der Komposition — nach einem Ausflug in einen
-        // Detail-Bildschirm stand wieder „alle" da (Marcos Befund). Er liegt
+        // Detail-Bildschirm stand wieder „alle" da. Er liegt
         // jetzt in FinanceUiState.kategorien, und der Abschnitt meldet den
         // Klick nach oben, statt selbst zu setzen. Damit gibt es dort nichts
         // mehr, wovon eine Kopie schaden könnte.
@@ -140,7 +140,7 @@ class ScreenSectionSplitTest {
 
     @Test
     fun `die Bildanalyse steht getrennt von der Kamera-Vorschau`() {
-        // ── Warum (Nachtrag 99) ─────────────────────────────────────────────
+        // ── Warum ─────────────────────────────────────────────
         // `CameraPreviewBarcode()` war 289 Zeilen und tat zwei verschiedene
         // Dinge: eine ImageAnalysis-Schleife aufbauen (Barcode-Leser,
         // Texterkennung, Bestätigungszählung, Drosselung) und die Kamera-

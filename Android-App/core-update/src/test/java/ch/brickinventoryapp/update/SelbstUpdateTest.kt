@@ -10,11 +10,6 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Die App aktualisiert sich selbst — und tut es vorsichtig.
  *
- * ── Marcos Wunsch ───────────────────────────────────────────────────────────
- * „Wie gross waere der Aufwand dass sich die Android-App selbstaendig mit
- * Hilfe des bereitgestellten apk updatet?" — beim Start still pruefen, nie von
- * allein laden, plus ein Knopf in den Einstellungen.
- *
  * ── Warum dieser Test schwerer wiegt als andere ─────────────────────────────
  * Ein Selbst-Updater ist der einzige Weg in dieser App, ueber den FREMDER CODE
  * auf das Geraet kommt. Jede der Regeln unten ist die Antwort auf eine Art,
@@ -33,12 +28,7 @@ class SelbstUpdateTest {
     /**
      * Ein Befund, den niemand zu sehen bekommt, ist kein Befund.
      *
-     * ── Woher diese Regel kommt ──────────────────────────────────────────────
-     *
-     * Marcos Befund: „obwohl der Bau durch ist erhalte ich beim Starten der
-     * Android-App keine Update-Meldung."
-     *
-     * Die Pruefung lief. AppNavigation.kt stoesst sie beim Start an
+     * Die stille Pruefung beim Start allein genügt nicht: AppNavigation.kt stoesst sie beim Start an
      * (`pruefeAufUpdate(still = true)`), und der Kommentar dort sagt
      * ausdruecklich, die Frage „gibt es etwas Neueres?" gelte DER GANZEN APP.
      *
@@ -53,14 +43,8 @@ class SelbstUpdateTest {
      */
     @Test
     fun `das Ergebnis der stillen Pruefung wird auch ausserhalb der Einstellungen gezeigt`() {
-        // Gesucht wird das ABONNIEREN, nicht das blosse Vorkommen des Namens.
-        //
-        // Mein erster Entwurf suchte nur „updateState". Damit waere die Regel
-        // erfuellt gewesen, ohne dass irgendetwas angezeigt wird: UpdateFeature.kt
-        // SETZT den Zustand (`_updateState.update { … }`) und MainViewModel HAELT
-        // ihn — beide nennen den Namen und zeichnen nichts. Die oertliche
-        // Gegenprobe hat es gemeldet: Ohne die Anzeige blieb die Liste bei
-        // [UpdateFeature.kt] und der Test gruen.
+        // Gesucht wird das ABONNIEREN, nicht das blosse Vorkommen des Namens: Wer den
+        // Zustand setzt oder haelt, nennt ihn auch und zeichnet nichts.
         //
         // `collectAsStateWithLifecycle` kann nur ein Composable, und ein
         // Composable, das ihn abonniert, zeichnet ihn auch.
@@ -129,7 +113,7 @@ class SelbstUpdateTest {
 
     @Test
     fun `die Pruefung beim Start ist still`() {
-        // Marcos Vorgabe: beim Start pruefen, nie von allein laden.
+        // Beim Start pruefen, nie von allein laden: Laden ist eine Entscheidung des Nutzers.
         val nav = quelle("app/AppNavigation.kt")
         // Der Start fragt über pruefeBeimStart(), das nur bei gesetztem Schalter still prüft.
         val vm = Quellen.funktion(Quellen.ohneKommentare(Quellen.lies("konto/ui/viewmodel/UpdateViewModel.kt")), "fun pruefeBeimStart(")
@@ -209,11 +193,8 @@ class SelbstUpdateTest {
 
     @Test
     fun `kein Feld verspricht eine Pruefung, die es nicht gibt`() {
-        // ── Woher diese Pruefung kommt ──────────────────────────────────────
-        // Das Feld hiess `sha` und stand zwischen `apkUrl` und `apkSize`. Drin
-        // war immer $GITHUB_SHA — der Git-Commit, aus dem gebaut wurde. Neben
-        // einer Adresse und einer Groesse liest sich `sha` aber unweigerlich
-        // als PRUEFSUMME DES APK, und geprueft wurde nichts dergleichen.
+        // Das Feld traegt den Git-Commit, aus dem gebaut wurde. Hiesse es `sha`, laese es
+        // sich neben `apkUrl` und `apkSize` als PRUEFSUMME DES APK.
         //
         // Eine echte Pruefsumme kaeme hier auch nicht in Frage: Sie stuende in
         // derselben Datei wie die Adresse — wer version.json faelscht,
@@ -239,15 +220,8 @@ class SelbstUpdateTest {
         }
     }
 
-    // ── Der Hinweis beim Start (Marcos Nachtrag) ────────────────────────────
-    //
-    // „Kannst du noch umsetzen, dass direkt beim Start ein Popup erscheint
-    // (mit Updaten, Ja/Nein), wenn es eine neue Version gibt? Aktuell wird nur
-    // eine Kugel in den Einstellungen angezeigt was oft übersehen wird."
-    //
-    // Was der Dialog tut und NICHT tut (laden ohne Klick), prüft UpdateDialogTest
-    // gezeichnet; hier steht nur, dass er über der ganzen App hängt.
-
+    // Was der Startdialog tut und nicht tut, prüft UpdateDialogTest gezeichnet; hier nur,
+    // dass er über der ganzen App hängt.
     @Test
     fun `der Dialog haengt ueber der ganzen App, nicht an einem Bildschirm`() {
         val nav = Quellen.ohneKommentare(Quellen.lies("app/AppNavigation.kt"))

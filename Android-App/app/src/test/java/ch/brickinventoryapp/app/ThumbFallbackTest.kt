@@ -65,7 +65,7 @@ class ThumbFallbackTest {
         assert(src.contains("onImageError()")) {
             "Der Fehlerfall muss den Rückfall auslösen"
         }
-        // ── Nachgezogen (Nachtrag 38) ───────────────────────────────────────
+        // ── Nachgezogen ───────────────────────────────────────
         // Hier standen zwei Verbote: kein `retryNonce`, kein `setParameter`
         // (das hiess in Coil 2 so; heute `memoryCacheKeyExtra`).
         //
@@ -125,7 +125,7 @@ class ImageClientLoggingTest {
 /**
  * ALLE Bildabrufe laufen über den Server-Proxy — auch die volle Auflösung.
  *
- * ── Umgekehrt (Nachtrag 38, Marcos Entscheidung: „die Proxy-Lösung") ────────
+ * ── Umgekehrt ────────
  * Diese Klasse verlangte früher das Gegenteil: volle Auflösung direkt vom
  * Gerät zum CDN, weil das für eine einmalige Anzeige schneller sei und den
  * Server entlaste. Das ist die Ausnahme, die die Regel wertlos macht — ein

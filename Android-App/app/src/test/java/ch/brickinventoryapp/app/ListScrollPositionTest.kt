@@ -7,15 +7,6 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Der Scroll-Zustand einer Liste überlebt den Abstecher in eine Detailansicht.
  *
- * ── Marcos Bericht (Nachtrag 92) ────────────────────────────────────────────
- * „In der Android-App springt der Scrollbalken immer ganz nach oben, wenn man
- * die Detailseite eines Sets öffnet und wieder schliesst. Der Scrollbalken
- * sollte aber an der Position verbleiben, wo er vorher war."
- *
- * Die Detailansicht ist ein eigenes Navigationsziel. Beim Wechsel verlässt die
- * darunterliegende Liste die Komposition, und ein `rememberLazyGridState()`
- * INNERHALB des Ziels beginnt bei der Rückkehr wieder bei null.
- *
  * ── Warum das ein Familienfehler war ────────────────────────────────────────
  * Für die FINANZ-Liste war es längst gelöst: `financeListState` liegt oberhalb
  * des NavHost und wird durchgereicht, samt Begründung im Code. Der KATALOG hat
@@ -97,10 +88,8 @@ class ListScrollPositionTest {
     @Test
     fun `auch die Listen-Reiter bekommen ihren Zustand von aussen`() {
         // Finanzen hatte es seit jeher, die Teileliste nicht — dort führt der
-        // Weg zum Barcode-Scanner aus dem Bildschirm HERAUS. Dass dieser
-        // Bildschirm dabei verlassen wird, war seit Nachtrag 64 bekannt (damals
-        // verschwanden die gesammelten Sets); nur die Rollposition hatte
-        // niemand nachgezogen.
+        // Weg zum Barcode-Scanner aus dem Bildschirm HERAUS; dabei verlässt er
+        // die Komposition.
         for (datei in spalten) {
             val src = code(read(datei))
             assert(!src.contains("val listState = rememberLazyListState()")) {
@@ -117,11 +106,9 @@ class ListScrollPositionTest {
 
     @Test
     fun `jeder Reiter mit Rollbereich ist abgedeckt`() {
-        // ── Warum diese Prüfung existiert (Nachtrag 94) ─────────────────────
+        // ── Warum diese Prüfung existiert ─────────────────────
         //
-        // Marco musste dreimal melden: erst die Galerie, dann der Katalog, dann
-        // „bei ALLEN Reitern". Jedes Mal hatte ich genau das repariert, was
-        // gemeldet war, statt die Reiter einmal durchzuzählen.
+        // Gezählt werden alle Reiter, nicht die bekannten: Ein neuer soll hier auffallen.
         //
         // Diese Prüfung zählt sie. Kommt ein Reiter dazu, der scrollt und in
         // eine Detailansicht führt, wird sie rot, bis er hier eingetragen ist.
@@ -174,13 +161,10 @@ class ListScrollPositionTest {
 
     @Test
     fun `jeder Reiter stellt seine Position ausdruecklich wieder her`() {
-        // ── Warum das hochgezogene Objekt nicht reichte (Nachtrag 95) ───────
+        // ── Warum das hochgezogene Objekt nicht reichte ───────
         //
-        // In 92/94 lag der Zustand oberhalb des NavHost — das Objekt überlebt
-        // den Ausflug, also sollte auch die Position überleben. Marcos Befund
-        // war ein anderer: „in der Galerie ist sie verschoben" — nicht oben,
-        // aber auch nicht dort, wo sie war. Der Zustand überlebt, nur misst das
-        // Raster beim Wiederanhängen nicht dieselbe Stelle heraus.
+        // Ein Zustand oberhalb des NavHost überlebt den Ausflug, aber das Raster misst
+        // beim Wiederanhängen nicht dieselbe Stelle heraus; die Liste stünde verschoben.
         //
         // Nachweislich richtig landet der Weg des Katalogs: mitschreiben und
         // beim Betreten ausdrücklich scrollToItem() rufen („im Katalog ist sie
@@ -197,8 +181,8 @@ class ListScrollPositionTest {
             "Die Finanz-Liste stellt ihre Position nicht ausdrücklich wieder her"
         }
 
-        // Und die beiden Fallen aus Nachtrag 93 dürfen im gemeinsamen Helfer
-        // nicht wieder auftauchen.
+        // Und die beiden Fallen von oben dürfen im gemeinsamen Helfer nicht
+        // wieder auftauchen.
         val helfer = code(read("ui/ScrollMemory.kt"))
         assert(!helfer.contains("rememberSaveable")) {
             "Der Merker im Helfer ist `rememberSaveable` — dann überlebt er den " +
@@ -218,8 +202,7 @@ class ListScrollPositionTest {
         // auf Sets, die in der neuen Liste woanders oder gar nicht stehen.
         val gal = code(read("sammlung/ui/Galerie.kt"))
         for (fn in listOf("setzeSuche", "setzeThema", "setzeSortierung")) {
-            // Funktionsrumpf statt eines festen Zeichenfensters (Nachtrag
-            // 115). Siehe Quellen.kt.
+            // Funktionsrumpf statt eines festen Zeichenfensters. Siehe Quellen.kt.
             val rumpf = Quellen.funktion(gal, "fun $fn(")
             assert(rumpf.isNotEmpty()) { "$fn fehlt" }
             assert(rumpf.contains("vergissScroll()")) {
@@ -232,8 +215,8 @@ class ListScrollPositionTest {
 
     @Test
     fun `der Griff der Jahresleiste folgt der Liste`() {
-        // Marcos Befund: „im Katalog ist sie auf der korrekten Zeile, aber die
-        // Scrollbar zeigt an, dass man sich zuoberst befindet."
+        // Steht die Liste an der richtigen Zeile, muss auch der Griff der Leiste
+        // dort stehen und nicht zuoberst.
         //
         // Der Griff folgte NIE der Liste, sondern nur dem eigenen Ziehen:
         // previewYear startete auf yearMax, und thumbOffset(yearMax) ist genau
@@ -249,7 +232,7 @@ class ListScrollPositionTest {
             "Der Griff zeigt weiterhin nur die gezogene Stelle — ohne Ziehen bliebe " +
                 "er dort stehen, wo zuletzt gezogen wurde"
         }
-        // ── Die REGEL, nicht die Schreibweise (Nachtrag 160) ────────────────
+        // ── Die REGEL, nicht die Schreibweise ────────────────
         //
         // Hier stand `katalog.contains("listenNummer = gridState.firstVisibleItemIndex")`.
         // Das war genau der Fehler, den der Test direkt darunter als bekanntes
@@ -293,14 +276,10 @@ class ListScrollPositionTest {
 
     @Test
     fun `der Katalog springt nach der Rueckkehr wirklich zurueck`() {
-        // ── Warum diese Prüfung schärfer ist als die alte (Nachtrag 93) ─────
+        // ── Warum diese Prüfung schärfer ist als die alte ─────
         //
-        // In Nachtrag 92 stand hier nur, dass `onScrollPos` und `scrollToItem`
-        // im Katalog VORKOMMEN. Beides tat es — und die Mechanik war trotzdem
-        // abgeschaltet. Marco musste den Fehler erneut melden, und mein Test
-        // hatte ihn festgeschrieben. Dieselbe Sorte Test, die schon einmal eine
-        // Sicherheitslücke konserviert hat: Er prüfte die ANWESENHEIT von
-        // Bauteilen statt die Regel, auf die es ankommt.
+        // Dass `onScrollPos` und `scrollToItem` VORKOMMEN, reicht nicht: Die Mechanik
+        // kann trotzdem abgeschaltet sein. Geprüft wird die Regel, nicht die Bauteile.
         //
         // Die Regel heisst: erst zurückspringen, DANN wieder melden.
         val katalog = code(read("katalog/ui/screens/CatalogScreen.kt"))

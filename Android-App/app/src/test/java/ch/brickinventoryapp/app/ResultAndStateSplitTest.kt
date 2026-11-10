@@ -21,7 +21,7 @@ class ResultAndStateSplitTest {
     private fun kotlinSources(): List<File> =
         root.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
             .also {
-                // Untergrenze (Nachtrag 118): ein leerer Dateilauf lässt jede
+                // Untergrenze: ein leerer Dateilauf lässt jede
                 // Sammelprüfung darunter stillschweigend bestehen.
                 check(it.size >= 20) { "Zu wenige Kotlin-Dateien gefunden (${'$'}{it.size}) — Pfad veraltet?" }
             }
@@ -51,7 +51,7 @@ class ResultAndStateSplitTest {
     // ── Result ohne Loading ──────────────────────────────────────────────────
 
     /**
-     * Alle Dateien der Datenschicht als EIN Text (Nachtrag 155).
+     * Alle Dateien der Datenschicht als EIN Text.
      *
      * Vorher stand hier "data/repository/BrickRepository.kt" — ein Dateiname.
      * Die 78 Funktionen liegen seither in fuenf Klassen nach Sachgebieten,
@@ -127,7 +127,7 @@ class ResultAndStateSplitTest {
         for (field in listOf(
             "val parts:", "val partsLoading:", "val minifigs:", "val partsStats:",
             "val valuation:", "val pnl:", "val historyPoints:", "val historyPeriod:",
-            // Nachtrag 117: Ein Scan erzeugt viele Zwischenstände (Auflösen,
+            // Ein Scan erzeugt viele Zwischenstände (Auflösen,
             // Sperre gegen den zweiten Klick). Lagen sie im Haupt-Zustand,
             // rekomponierte jeder davon Galerie, Teile, Minifiguren und
             // Finanzen mit — obwohl der Scanner sie nichts angeht.

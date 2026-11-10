@@ -10,12 +10,9 @@ import ch.brickinventoryapp.data.repository.Ergebnis
 /**
  * Jede Fehlerursache bekommt einen eigenen Satz — ausgeführt, nicht gelesen.
  *
- * In Nachtrag 116 stand diese Prüfung noch als Textsuche in
- * `ErrorMessageLayerTest`: Sie sah nach, ob in `meldung()` für jede
- * `Fehlerart` ein `Fehlerart.X ->` VORKOMMT. Das findet einen vergessenen
- * Zweig, aber nicht, ob zwei Arten versehentlich denselben Text zeigen — und
- * es bricht, sobald jemand die Funktion umformuliert (genau das ist in 117
- * passiert).
+ * Ausgeführt statt gelesen: Eine Textsuche nach `Fehlerart.X ->` fände einen
+ * vergessenen Zweig, aber nicht, ob zwei Arten denselben Text zeigen, und sie
+ * bräche, sobald jemand die Funktion umformuliert.
  *
  * Möglich wurde der echte Test dadurch, dass die Zuordnung aus `meldung()`
  * herausgelöst ist: `fehlerTextId()` braucht keinen `Context` und ist damit

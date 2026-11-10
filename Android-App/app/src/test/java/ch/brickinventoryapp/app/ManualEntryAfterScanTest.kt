@@ -6,14 +6,6 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Ein erfolgloser Scan führt zur manuellen Erfassung — überall.
  *
- * ── Marcos Vorgabe (Nachtrag 113) ───────────────────────────────────────────
- * „Wenn der Barcode erkannt wurde, aber die API keine Setnummer liefert, oder
- * wenn die Texterkennung keine Nummer erkennt, soll automatisch die manuelle
- * Erfassung erscheinen. Dies an allen Stellen so implementieren, wo der
- * Barcodescanner implementiert ist. Wenn der Dialog für die manuelle Erfassung
- * erscheint, soll der Cursor bereits im Set-Feld sein — dies soll immer so
- * sein, wenn das Formular angezeigt wird."
- *
  * ── Vier erfolglose Wege, ein Feld ──────────────────────────────────────────
  * Alle vier liegen im ViewModel:
  *
@@ -25,7 +17,7 @@ import ch.brickinventoryapp.testing.Quellen
 class ManualEntryAfterScanTest {
 
     // Gemeinsame Fassung statt einer eigenen Kopie je Testdatei — siehe
-    // Quellen.kt (Nachtrag 115).
+    // Quellen.kt.
     private fun lies(rel: String) = Quellen.lies(rel)
     private fun code(src: String) = Quellen.ohneKommentare(src)
 

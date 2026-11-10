@@ -6,7 +6,7 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Bildschirmzustand übersteht Drehung und Prozesstod (Nachtrag 155).
+ * Bildschirmzustand übersteht Drehung und Prozesstod.
  *
  * ── Der Befund ──────────────────────────────────────────────────────────────
  *
@@ -54,7 +54,7 @@ import ch.brickinventoryapp.testing.Quellen
  * Dieselbe Falle ist in diesem Baum schon einmal zugeschnappt: ScrollMemory.kt
  * hält in seiner eigenen Erklärung fest, dass der dortige Merker als
  * `rememberSaveable` „die Wiederherstellung nach dem ersten Betreten für immer
- * abschaltete" (Nachtrag 93). Deshalb ist die Datei hier ausdrücklich
+ * abschaltete". Deshalb ist die Datei hier ausdrücklich
  * ausgenommen.
  */
 class BildschirmZustandTest {
@@ -104,23 +104,11 @@ class BildschirmZustandTest {
     // ist weg. Eine Fingerzahl beschreibt immer die Geste von jetzt, nie
     // etwas, das jemand eingegeben hat.
 
-    // ── „fokus" kam mit Nachtrag 175 dazu ───────────────────────────────────
-    //
-    // Zwei Eingabefelder (Lagerort in SetDetailSections.kt und
-    // SetItemDetailDialog.kt) merken sich, ob sie den Fokus SCHON EINMAL
-    // hatten — nur so laesst sich „beim Verlassen speichern" von „beim
-    // ersten Zeichnen" unterscheiden.
-    //
-    // Er darf eine Drehung ausdruecklich NICHT ueberleben: Nach einer Drehung
-    // baut Compose das Feld neu auf und der Fokus ist weg. Ein
-    // wiederhergestelltes „hatte Fokus" liesse den naechsten Aufbau als
-    // Fokusverlust gelten — und schickte eine Speicheranfrage, die niemand
-    // ausgeloest hat.
 
     /**
      * Merker der Rollpositions-Wiederherstellung — dürfen ERST RECHT nicht überleben.
      *
-     * ── Warum das eine eigene Kategorie ist (Nachtrag 155) ──────────────────
+     * ── Warum das eine eigene Kategorie ist ──────────────────
      *
      * Beim ersten Anlauf dieser Umstellung stand hier nur eine Ausnahme für die
      * DATEI ScrollMemory.kt. CatalogScreen.kt hat aber einen eigenen,
@@ -129,8 +117,7 @@ class BildschirmZustandTest {
      *
      * Zu Recht: Überlebt so ein Merker den Ausflug in die Detailseite, gilt die
      * Liste nach dem allerersten Betreten für immer als wiederhergestellt, und
-     * die Rückkehr springt nie mehr zurück. Genau das ist in Nachtrag 93 schon
-     * einmal passiert und musste ein zweites Mal gemeldet werden.
+     * die Rückkehr springt nie mehr zurück.
      *
      * Deshalb wird jetzt die ART des Zustands geprüft, nicht sein Wohnort.
      */
@@ -138,7 +125,7 @@ class BildschirmZustandTest {
 
     /**
      * EINMALIG GEMESSENE WERTE — die muessen neu gelesen, nicht wiederhergestellt
-     * werden (Nachtrag 158).
+     * werden.
      *
      * Der Fall: `ablageBytes` in MonitoringSections.kt haelt fest, wie viele
      * Bytes die Vorschau-Ablage unter filesDir belegt. Der Wert wird EINMAL
@@ -187,11 +174,8 @@ class BildschirmZustandTest {
      * `hatteGespeicherte` und `nutzerGeste` — allesamt schon von `rollMerker`
      * erfasst.
      *
-     * Der Eintrag stammt aus dem ersten Anlauf, als die Prüfung noch am
-     * WOHNORT hing. Nachtrag 155 hat sie auf die ART des Zustands umgestellt
-     * (siehe KDoc am rollMerker) und die alte Ausnahme stehen lassen. Sie
-     * verbarg seither nichts, nahm aber die ganze Datei dauerhaft aus der
-     * Prüfung — auch für jeden Zustand, der später dazukäme.
+     * Die Prüfung hängt an der ART des Zustands (siehe KDoc am rollMerker), nicht
+     * am Wohnort; eine Ausnahme je Datei nähme jeden späteren Zustand mit aus.
      */
     private val ausgenommen = setOf("ZoomableImageDialog.kt")
 
@@ -274,7 +258,7 @@ class BildschirmZustandTest {
     @Test
     fun `ScrollMemory benutzt bewusst remember und bleibt dabei`() {
         // Nicht der Vollständigkeit halber: Diese Datei hat den Fehler schon
-        // einmal gehabt (Nachtrag 93). Eine spätere Sammel-Umstellung soll sie
+        // einmal gehabt. Eine spätere Sammel-Umstellung soll sie
         // nicht versehentlich mitnehmen.
         val f = File(uiWurzel, "ScrollMemory.kt")
         assertTrue("ScrollMemory.kt gibt es nicht mehr — diese Prüfung anpassen", f.exists())

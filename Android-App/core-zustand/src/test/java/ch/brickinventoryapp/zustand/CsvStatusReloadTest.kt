@@ -8,32 +8,6 @@ import org.junit.Test
 /**
  * Ein abgeschlossener CSV-Import lädt die Daten GENAU EINMAL neu.
  *
- * ── Marcos Befund (Nachtrag 110) ────────────────────────────────────────────
- * „In der Galerie springt die Liste beim Scrollen zurück — immer auf dieselbe
- * Zeile." Sein Protokoll zeigte es unmissverständlich:
- *
- *     Seite 2: 60 empfangen, Liste  60 -> 120
- *     Seite 3: 60 empfangen, Liste 120 -> 180
- *     Seite 4: 60 empfangen, Liste 180 -> 240
- *     Seite 2: 60 empfangen, Liste  60 -> 120     ← zurück auf Anfang
- *
- * Alle fünf bis zehn Sekunden fiel die Liste auf 60 Einträge zurück; das Raster
- * landete auf der letzten noch vorhandenen Zeile — immer derselben.
- *
- * Ursache: Der SSE-Strom meldet den Importstatus fortlaufend, auch lange
- * nachdem der Import fertig ist. Die Bedingung fragte nur „läuft gerade nicht
- * und ist kein Fehler" — das trifft auf JEDE Meldung eines abgeschlossenen
- * Imports zu. Also lief `finishCsvImport()` alle paar Sekunden erneut und
- * ersetzte mit `loadSets()` die ganze Liste durch Seite 1. Der Wächter
- * `csvFinishing` half nicht: Er wird nach fünf Sekunden wieder freigegeben —
- * genau im Takt der Meldungen.
- *
- * Die Regel: Ein Abschluss ist ein ÜBERGANG, kein Zustand. Nachgeladen wird
- * nur, wenn vorher tatsächlich ein Import lief. Dieselbe Verwechslung wie beim
- * Takt der Anleitungs-Warteschlange (Manager-Nachtrag 142) und beim Bild-Job
- * (217): Eine Handlung wurde an einen Zustand gehängt statt an das Ereignis,
- * das sie auslösen soll.
- *
  * ── Warum dieser Test jetzt anders aussieht ─────────────────────────────────
  * Bis hierher stand die Prüfung als Textsuche im Quelltext von
  * `MainViewModel.kt`: gesucht wurde die Zeichenfolge
@@ -50,7 +24,7 @@ import org.junit.Test
  *
  * ── Gegenprobe (ausgeführt, Lauf 33632359947) ───────────────────────────────
  * Im Gegenprobe-Commit gab `csvFolge()` im Fall „fertig" immer NACHLADEN
- * zurück, also ohne `warVorherAktiv` — genau der Fehler aus Nachtrag 110.
+ * zurück, also ohne `warVorherAktiv`.
  * Ergebnis: `351 tests completed, 1 failed`, und zwar
  * `ein seit Stunden fertiger Import laedt nicht nach` (Zeile 74).
  *
@@ -75,7 +49,7 @@ class CsvStatusReloadTest {
 
     @Test
     fun `ein seit Stunden fertiger Import laedt nicht nach`() {
-        // Genau Marcos Rücksprung: Der Strom meldet „done" weiter, ohne dass
+        // Der Rücksprung: Der Strom meldet „done" weiter, ohne dass
         // vorher noch etwas lief.
         for (status in listOf("done", "cancelled", "finished")) {
             assert(csvFolge(warVorherAktiv = false, status = status) == CsvFolge.NICHTS) {

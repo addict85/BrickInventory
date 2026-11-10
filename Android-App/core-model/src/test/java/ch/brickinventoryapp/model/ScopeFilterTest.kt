@@ -40,7 +40,7 @@ class ScopeFilterTest {
 
     @Test
     fun `kein Sammelposten Unterkonten mehr`() {
-        // Auf Marcos Wunsch entfallen: Der Eintrag beantwortete nur „nicht
+        // Entfallen: Der Eintrag beantwortete nur „nicht
         // mir" und stand zwischen zwei Einträgen, die dieselbe Frage genauer
         // beantworten. Auch bei mehreren Kindern darf er nicht wieder
         // auftauchen.
@@ -104,9 +104,8 @@ class ScopeFilterTest {
         // Wer in der Galerie den ganzen Haushalt sieht, will in den Finanzen
         // womöglich nur die eigenen Zahlen.
         //
-        // „merkliste" ist am 24.09. dazugekommen — Marcos Vorgabe: „In der
-        // Merkliste noch einen Filter analog den Sets einbauen inkl. Inhaber."
-        // Diese Prüfung hat den Umbau gemeldet, und genau dafür steht sie hier:
+        // Die Merkliste filtert wie die Sets, samt Inhaber. Diese Prüfung meldet
+        // jede neue Ansicht, und genau dafür steht sie hier:
         val keys = ScopeFilter.View.entries.map { it.key }
         assertEquals(listOf("gallery", "parts", "minifigs", "finance", "merkliste"), keys)
         assertEquals(keys.size, keys.toSet().size)

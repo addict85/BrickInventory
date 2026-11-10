@@ -23,17 +23,6 @@ private fun <T> mitServer(block: (PfadServer, ResponseCache) -> T): T {
 /**
  * Der Teile-Reiter filtert nach Farbe und Kategorie — wie die Webapp.
  *
- * ── Woher dieser Test kommt (Nachtrag 134) ──────────────────────────────────
- *
- * Gemessen, nicht gelesen: Ein Vergleich der Server-Adressen beider Clients
- * (Retrofit-Annotationen gegen `api(...)` und `fetch(...)` in public/js)
- * meldete 21 Adressen, die NUR die Webapp ruft. Zwei davon sind
- * /v1/parts/colors und /v1/parts/categories — die beiden Filterlisten des
- * Teile-Reiters, jede mit Zaehlwerten daneben.
- *
- * Die App bot dort ausschliesslich die Suche. Bei tausenden Teilen ist die
- * Farbe der naheliegendste Weg, ueberhaupt etwas wiederzufinden.
- *
  * ── Der eigentlich bemerkenswerte Teil ──────────────────────────────────────
  *
  * Die Leitung lag bereits: `BrickApiService.getParts` deklariert
@@ -70,16 +59,6 @@ class TeileFilterTest {
 
 /**
  * Der CSV-Import laesst sich abbrechen — wie in der Webapp.
- *
- * ── Woher dieser Test kommt (Nachtrag 134) ──────────────────────────────────
- *
- * Aus derselben Messung wie die Filter darueber: /v1/sets/import/csv/cancel
- * war eine von 21 Server-Adressen, die nur die Webapp ruft. Die App zeigte
- * denselben Fortschrittsbalken (CsvImportBanner) und bot keinen Weg heraus —
- * ein versehentlich gestarteter Import ueber hunderte Sets holt zu jedem die
- * Stammdaten und musste ausgesessen werden.
- *
- * Dass der Knopf zugeklappt in der Kopfzeile steht, prüft CsvAbbrechenKnopfTest (app).
  */
 class CsvAbbruchTest {
 

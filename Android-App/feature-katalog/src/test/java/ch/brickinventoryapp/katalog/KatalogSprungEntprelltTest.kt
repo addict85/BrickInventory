@@ -18,23 +18,13 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Ein Zug an der Jahresleiste holt EINE Seite, nicht hundert.
  *
- * ── Marcos Befund ───────────────────────────────────────────────────────────
- * Zuerst: „wenn ich im Katalog zu einem Jahr springe dauert es einige Sekunden
- * bis die Bilder angezeigt werden. wenn ich sonst scrolle kommen sie fluessig."
- *
- * Nach meiner ersten Behebung UNVERAENDERT: „In der Android-App dauert es im
- * Katalog noch immer 3-5 Sek." Dazu drei Beobachtungen, die zusammen die
- * Ursache festnageln:
- *   • Der Bereich ist in dieser Zeit GANZ LEER — es fehlen die Seitendaten,
- *     nicht die Bilder.
- *
  * ── Was gemessen wurde, bevor etwas geaendert wurde ─────────────────────────
  * Zuerst war die Datenbank verdaechtig — ein `ORDER BY year DESC … LIMIT 60
  * OFFSET <gross>` wird bei grossen Spruengen teuer. An 25'000 Sets mit
  * realistischer Jahresverteilung nachgemessen: Seite 1 braucht 1,0 ms, die
  * Mitte 9,2 ms, das Ende 19,9 ms, der COUNT(*) je Seite 1,8 ms. Selbst der
  * schlechteste Fall bleibt weit unter einer Sekunde. Die Sekunden kommen NICHT
- * von dort — und Marcos „in der Webapp sofort" bestaetigt das unabhaengig.
+ * von dort — und die Webapp springt mit derselben Datenbank sofort.
  *
  * ── Die Ursache, und mein eigener Fehlgriff dabei ───────────────────────────
  * Es gibt ZWEI Wege, auf denen eine Seite angefordert wird:
@@ -44,13 +34,10 @@ import ch.brickinventoryapp.testing.Quellen
  *   2. der Sichtfenster-Lader — er laeuft, wann immer sich das sichtbare
  *      Fenster aendert.
  *
- * Mein erster Anlauf entprellte NUR Weg 1 und schrieb fuer Weg 2 sogar
- * ausdruecklich fest, er habe „weiterhin unmittelbar" zu laden. Das war
- * falsch, und zwar aus einem Denkfehler: Die Leiste ROLLT die Liste wirklich
+ * Beide Wege werden entprellt, auch Weg 2: Die Leiste ROLLT die Liste wirklich
  * an jede Zwischenposition (ihr Rueckruf setzt ueber `state.scrollTo` ein
  * `gridState.scrollToItem`). Weg 2 sah damit jeden einzelnen Punkt des Zuges
- * und forderte dort weiter drei Seiten an. Die Zahl der Abrufe blieb, wie sie
- * war — deshalb aenderte sich fuer Marco nichts.
+ * und forderte dort sonst drei Seiten an.
  *
  * Die Ruhe steht jetzt im Sichtfenster-Lader. Sie deckt beide Wege ab, denn
  * beide enden dort. Genau so macht es die Webapp seit jeher
@@ -99,7 +86,7 @@ class KatalogSprungEntprelltTest {
         // Punkten je Sekunde sind das ueber hundert Abrufe fuer einen Zug —
         // jeder ueber 60 Sets, keiner abgebrochen, und der API-Client laesst
         // nur eine Handvoll gleichzeitig zu. Die Zielseite steht dann hinter
-        // allen anderen in der Schlange. Das sind Marcos 3 bis 5 Sekunden.
+        // allen anderen in der Schlange: drei bis fünf Sekunden.
         val gesamtSeiten = (total - 1) / CATALOG_PAGE_SIZE + 1
         assert(seiten.size >= gesamtSeiten - 1) {
             "Der Weg beruehrt nur ${seiten.size} von $gesamtSeiten Seiten. Dann " +
