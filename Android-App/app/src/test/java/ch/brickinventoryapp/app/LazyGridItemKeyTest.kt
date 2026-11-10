@@ -5,35 +5,12 @@ import ch.brickinventoryapp.testing.Quellen
 
 /**
  * In einer verschlüsselten Liste hat JEDER Eintrag einen Schlüssel.
- *
- * ── Marcos Befund (Nachtrag 108) ────────────────────────────────────────────
- * „Sobald neue Tiles geladen werden, springt die Galerie auf ca. die 6. Zeile —
- * unabhängig davon, ob ich schnell oder langsam scrolle."
- *
- * Das „unabhängig" schliesst das Wettrennen aus Nachtrag 106 als alleinige
- * Ursache aus. Gefunden wurde stattdessen: Die Kacheln der Galerie sind
- * verschlüsselt (`key = { it.setNumber }`), der Lade-Eintrag darunter war es
- * NICHT.
- *
- * Ein Eintrag ohne Schlüssel bekommt in einer solchen Liste einen Ersatz, der
- * aus seinem INDEX gebildet wird. Wächst die Liste von 100 auf 200, wechselt
- * dieser Ersatzschlüssel — für das Raster verschwindet damit ein Eintrag und
- * ein anderer erscheint, statt dass derselbe stehen bleibt.
- *
- * Dass Teile- und Minifiguren-Raster ihren Kopfzeilen längst Schlüssel geben
- * (`key = "manual-header"`, `key = "sets-header"`), war der Hinweis: Die
- * Galerie war die Ausnahme, nicht die Regel.
- *
- * EHRLICH DAZU: Ob dies Marcos Sprung erklärt, ist damit nicht bewiesen — es
- * ist ein belegter Mangel an derselben Stelle. Deshalb liegt in
- * ScrollMemory.kt zusätzlich eine Log-Zeile, die im nächsten Lauf entscheidet,
- * ob die Wiederherstellung feuert oder das Raster von sich aus springt.
  */
 class LazyGridItemKeyTest {
 
     @Test
     fun `kein schluessselloser Eintrag in einer verschluesselten Liste`() {
-        // Untergrenze über Quellen.alle() (Nachtrag 118): Fände der Dateilauf
+        // Untergrenze über Quellen.alle(): Fände der Dateilauf
         // nichts, bliebe die Verstossliste leer und der Test grün, ohne etwas
         // geprüft zu haben.
         val ui = Quellen.unter("ui")

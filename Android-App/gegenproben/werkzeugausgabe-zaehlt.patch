@@ -1,0 +1,18 @@
+Gegenprobe: Die Ausgabe eines gestarteten Werkzeugs zählt wieder als Quelltext
+Modul: app
+Test: ch.brickinventoryapp.app.QuelltextRatscheTest
+Rot: die Ausgabe eines Werkzeugs
+
+diff --git a/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRatscheTest.kt b/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRatscheTest.kt
+index f37e038..48efd95 100644
+--- a/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRatscheTest.kt
++++ b/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRatscheTest.kt
+@@ -51,7 +51,7 @@ class QuelltextRatscheTest {
+      * Dateitext. Die Ausgabe eines gestarteten Werkzeugs (`bufferedReader().readText()`) ist
+      * ein Ergebnis, kein Quelltext.
+      */
+-    private val liestQuelle = Regex("""Quellen\.|"src/main/|File\("src/main|\.\./\.\./\.github|res/values|(?<!bufferedReader\(\)\.)readText\(\)|readLines\(\)""")
++    private val liestQuelle = Regex("""Quellen\.|"src/main/|File\("src/main|\.\./\.\./\.github|res/values|readText\(\)|readLines\(\)""")
+ 
+     /**
+      * (Testfunktionen, davon lesend) einer Datei. Eine Funktion liest Quelltext, wenn ihr Rumpf

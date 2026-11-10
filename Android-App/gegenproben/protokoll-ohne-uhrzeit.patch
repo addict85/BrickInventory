@@ -1,0 +1,18 @@
+Gegenprobe: Die Protokollzeile zeigt die Uhrzeit nicht
+Modul: app
+Test: ch.brickinventoryapp.app.MonitoringProtokollAnzeigeTest
+Rot: jede Zeile nennt
+
+diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringProtokoll.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringProtokoll.kt
+index 6b54475..95aa832 100644
+--- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringProtokoll.kt
++++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringProtokoll.kt
+@@ -174,7 +174,7 @@ private fun ProtokollEintrag(zeile: ProtokollZeileAnsicht) {
+         // `logged_at` kam seit jeher mit und wurde nie
+         // gezeigt; ohne sie ist eine Protokollzeile kaum zu
+         // gebrauchen.
+-        Text(fmtUhrzeit(zeile.loggedAt) ?: "",
++        Text("",
+             style = MaterialTheme.typography.bodySmall,
+             fontFamily = FontFamily.Monospace,
+             color = MaterialTheme.colorScheme.onSurfaceVariant,

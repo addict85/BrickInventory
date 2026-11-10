@@ -7,13 +7,6 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Die Fokus-Einstellungen des Barcodescanners.
  *
- * ── Marcos Befund (Nachtrag 112) ────────────────────────────────────────────
- * „Die Kamera im Barcodescanner stellt WIEDER nicht scharf."
- *
- * Das „wieder" traf zu: Der Dateikopf von BarcodeScannerScreen.kt verweist seit
- * jeher auf einen `CameraFocusConfigTest` — den es nicht gab. Er ist irgendwann
- * verschwunden, und damit war die Regel unbewacht. Diese Datei stellt ihn her.
- *
  * ── Der Fehler ──────────────────────────────────────────────────────────────
  * Auf derselben `previewView` standen ZWEI `setOnTouchListener`. Das fügt nicht
  * hinzu, es ERSETZT: Der zweite lief später (im Kamera-Rückruf) und überschrieb
@@ -54,11 +47,8 @@ class CameraFocusConfigTest {
     /**
      * Jede Datei, die Tap-to-Focus anbietet — nicht nur der Scanner.
      *
-     * Bis hierher sah dieser Test allein in BarcodeScannerScreen.kt nach. Der
-     * SetupScreen bietet dasselbe an und stand die ganze Zeit auf
-     * `setAutoCancelDuration(3, SECONDS)` — also genau der Fassung, die der
-     * Test zwei Zeilen weiter als Ursache von Nachtrag 112 verbietet. Behoben
-     * wurde damals nur die Kopie, die der Test ansah.
+     * Der SetupScreen bietet dasselbe an wie BarcodeScannerScreen.kt; eine Regel,
+     * die nur eine Kopie ansieht, lässt die andere zurück.
      *
      * Die Liste wird deshalb nicht aufgezählt, sondern GEFUNDEN: Wer eine
      * dritte Kamera-Ansicht baut, ist sofort mitgeprüft, ohne diese Datei

@@ -6,24 +6,6 @@ import ch.brickinventoryapp.testing.Quellen
 
 /**
  * Jeder Text steht in BEIDEN Sprachen, und kein Text steht im Quelltext.
- *
- * ── Woher dieser Test kommt (Nachtrag 115) ──────────────────────────────────
- *
- * Zwei Lücken, die niemand sieht, weil beide nur die jeweils andere Sprache
- * treffen:
- *
- *  1. Vier Schlüssel gab es nur in `values/strings.xml`:
- *
- *  2. `PdfViewerScreen.kt` benutzte kein einziges `stringResource`.
- *     Beschriftungen, Ladetexte und drei Toasts standen als deutsche Literale
- *     im Code — für einen englischsprachigen Nutzer der einzige Bildschirm,
- *     der die Sprache wechselt, samt unübersetzter Beschriftungen für den
- *     Bildschirmleser.
- *
- * Durchgerutscht sind beide, weil die vorhandenen Prüfungen (ServicePolishTest,
- * IconButtonLabelTest) je eine LISTE von Schlüsseln abhaken. Was nicht auf der
- * Liste steht, prüft niemand. Dieser Test hakt keine Liste ab, sondern
- * vergleicht die Dateien vollständig.
  */
 class StringResourceParityTest {
 
@@ -73,7 +55,7 @@ class StringResourceParityTest {
     /**
      * Mengenformen: beide Dateien, dieselben Klassen.
      *
-     * ── Warum es diese Prüfung gibt (Nachtrag 161) ──────────────────────────
+     * ── Warum es diese Prüfung gibt ──────────────────────────
      *
      * Die Prüfung oben sucht `<string name=`. `<plurals>` war ihr unsichtbar —
      * solange es keine gab, war das kein Loch. Mit dem Beheben der zehn
@@ -135,13 +117,11 @@ class StringResourceParityTest {
     /**
      * Gleicher Text in beiden Dateien heisst: nicht uebersetzt.
      *
-     * ── Warum der Test oben das nicht faengt (Nachtrag 136) ─────────────────
+     * ── Warum der Test oben das nicht faengt ─────────────────
      *
      * `jeder Text steht in beiden Sprachdateien` vergleicht NAMEN. Die zehn
      * Texte der Preisalarm-Rubrik standen brav in beiden Dateien — nur trug
-     * die deutsche denselben englischen Satz. Marco las in den Einstellungen
-     * seiner deutschen App „rises above" und „○ has fired" und musste
-     * nachfragen, was die Rubrik ihm eigentlich sagt.
+     * die deutsche denselben englischen Satz; die deutsche App zeigte „rises above".
      *
      * Der Fehler ist nicht das Vergessen, sondern seine Form: Wer einen neuen
      * Text anlegt, kopiert den Block in die zweite Datei — und uebersetzt ihn
@@ -189,7 +169,7 @@ class StringResourceParityTest {
             "setup_url_placeholder",
             // PIN ist in beiden Sprachen PIN — ein Begriff, kein Satz.
             "vouchers_pin",
-            // Reine Rahmen ohne eigenen Text (Nachtrag 161): Seit die zehn
+            // Reine Rahmen ohne eigenen Text: Seit die zehn
             // PluralsCandidate-Befunde behoben sind, setzen diese beiden einen
             // Satz aus Mengenform-Bruchstuecken zusammen. Sie enthalten nur
             // Platzhalter und Satzzeichen — uebersetzt wird in den <plurals>.

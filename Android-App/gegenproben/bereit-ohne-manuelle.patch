@@ -1,0 +1,18 @@
+Gegenprobe: Die Teile gelten ohne die manuellen Einträge als geladen
+Modul: app
+Test: ch.brickinventoryapp.app.ManualItemsFirstTest
+Rot: beide Listen zaehlen
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/CollectionGraph.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/CollectionGraph.kt
+index 03a2f83..cf82822 100644
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/CollectionGraph.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/CollectionGraph.kt
+@@ -226,7 +226,7 @@ private fun NavGraphBuilder.teileZiele(u: ZielUmgebung) {
+                 // „die Antwort ist zurück“ — auch bei null manuell erfassten Teilen. Mit
+                 // `isNotEmpty()` würde die Position bei jemandem ohne eigene Teile nie
+                 // wiederhergestellt.
+-                bereit = partsState.parts.isNotEmpty() && partsState.manualParts != null,
++                bereit = partsState.parts.isNotEmpty(),
+                 speicher = vm.scrollMemory,
+                 obenNachziehend = partsState.manualParts?.size ?: 0)
+             // Das Detail eines Teils (aus Sets oder manuell) steht auf dem Tablet neben

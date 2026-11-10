@@ -21,9 +21,7 @@ import ch.brickinventoryapp.testing.Quellen
  * ── Warum die Prüfung über ALLE Bildschirme geht ───────────────────────────
  * Weil der Befund nicht „Monitoring" hiess, sondern „irgendein Bildschirm holt
  * sich seine Daten selbst". Eine Prüfung auf die zwei reparierten Dateien
- * fände den nächsten Fall nicht — und diesen Fehler hat dieses Projekt schon
- * mehrfach gemacht (Nachtrag 93, 155: eine Regel, die nur den einen
- * bekannten Ort kannte).
+ * fände den nächsten Fall nicht.
  *
  * Ausgenommen ist ui/ selbst (nicht die Unterordner): Dort liegen
  * MainViewModel und seine Feature-Erweiterungen. Die SIND die Zustandsschicht

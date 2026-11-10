@@ -6,26 +6,14 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Ein arbeitender Knopf darf seine Beschriftung nicht verlieren.
  *
- * ── Marcos Video vom 22.09. ─────────────────────────────────────────────────
- *
- * Aufgenommen war die WEBAPP, Reiter „Teileliste": Beim Druck auf „Bereits
- * vorhandene Teile eintragen" zuckt die ganze Zeile kurz zusammen und springt
- * zurueck. Nachgemessen an den Einzelbildern (1458×576, 30 Bilder/s): zweimal
- * je sieben Bilder, also gut 0,2 s, und veraendert ist der Streifen ueber die
- * volle Zeilenbreite — Knopf UND die beiden Kaestchen daneben.
- *
- * Ursache dort: Der Helfer knopfBesetzt() tauscht die Beschriftung gegen „…".
- * Das ist rund 200 px schmaler, und in einer flex-Zeile rutscht alles rechts
- * daneben mit. Die Webapp friert die Breite jetzt ein (01-core.js).
- *
  * ── Warum dieselbe Regel hier ───────────────────────────────────────────────
  *
  * Die App macht an derselben Stelle dasselbe, nur mit anderen Mitteln: Drei
  * Knoepfe im Teilelisten-Bildschirm ersetzten waehrend der Arbeit ihren ganzen
  * Inhalt — Symbol UND Beschriftung — durch einen 16.dp-Kreisel. Der Knopf
- * schrumpft damit von seiner Beschriftungsbreite auf Kreiselbreite. Marcos
- * Vorgabe ist „in den UIs einheitliche Ansichten"; ein Flackern, das in der
- * Webapp behoben ist und in der App bleibt, waere genau das Gegenteil.
+ * schrumpft damit von seiner Beschriftungsbreite auf Kreiselbreite. Webapp und
+ * App sollen gleich aussehen; ein Flackern, das nur in der Webapp behoben ist,
+ * waere das Gegenteil.
  *
  * Richtig ist, was SettingsScreen schon vorgemacht hat (Knopf „Suchen"): Der
  * Kreisel tritt NEBEN die Beschriftung, nicht an ihre Stelle.

@@ -1,99 +1,116 @@
 package ch.brickinventoryapp.app
 
-import org.junit.Test
+import android.content.Context
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ViewInAr
+import androidx.compose.material3.Icon
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.test.core.app.ApplicationProvider
+import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import ch.brickinventoryapp.zustand.ui.CsvImportUiState
+import ch.brickinventoryapp.zustand.ui.Screen
+import kotlinx.coroutines.flow.MutableStateFlow
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 /**
- * Ein angetippter Reiter beginnt oben.
+ * Ein angetippter Reiter beginnt oben: Das Gerüst meldet das Antippen, bevor es
+ * navigiert, damit der Rollmerker die Stelle verwirft, ehe der Bildschirm sie liest.
+ * „Ich komme zurück“ behält die Stelle; unterscheiden lässt sich das nur im Gerüst.
  *
- * ── Marcos Vorgabe (Nachtrag 114) ───────────────────────────────────────────
- * „Im Reiter Teile muss ich beim Öffnen nach oben scrollen, damit die manuell
- * erfassten Teile angezeigt werden. Das Gleiche gilt evtl. auch im Reiter
- * Minifiguren. Wenn der Reiter geöffnet wird, soll die Seite direkt die manuell
- * erfassten Teile bzw. Minifiguren anzeigen."
- *
- * Sein „evtl. auch" traf zu: Beide Raster beginnen mit `key = "manual-header"`
- * und den manuell erfassten Einträgen, danach folgt „Aus Sets".
- *
- * ── Zwei Absichten, die man trennen muss ────────────────────────────────────
- * Der Scroll-Merker (Nachträge 92 bis 95) ist dafür da, dass die Liste beim
- * ZURÜCKKEHREN aus einer Detailansicht wieder an derselben Stelle steht. Er
- * griff bisher auch beim Antippen des Reiters — dann öffnete sich dieser
- * irgendwo in der Mitte.
- *
- * „Ich komme zurück" behält die Stelle. „Ich gehe auf diesen Reiter" fängt oben
- * an. Unterschieden wird das in der unteren Leiste, wo der Unterschied bekannt
- * ist — im Bildschirm selbst ist beides nicht auseinanderzuhalten.
+ * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
+ *   reiter-meldet-nach-navigation      onTabAngetippt erst nach zuReiter → rot „die untere Leiste meldet …“
+ *   umschalter-meldet-nach-navigation  im Sammlungs-Umschalter ebenso → rot „der Sammlungs-Umschalter meldet …“
+ *   geruest-vergisst-nicht             ReiterGeruest verwirft die Rollposition nicht → rot „kein Reiter-Ziel …“
  */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
 class TabOpensAtTopTest {
 
-    // Gemeinsame Fassung statt einer eigenen Kopie je Testdatei — siehe
-    // Quellen.kt (Nachtrag 115).
-    private fun lies(rel: String) = Quellen.lies(rel)
-    private fun code(src: String) = Quellen.ohneKommentare(src)
+    @get:Rule
+    val compose = createComposeRule()
+
+    private val ctx: Context = ApplicationProvider.getApplicationContext()
+
+    /** Gemeldetes Ziel und ob beim Melden noch die Galerie offen war. */
+    private val gemeldet = mutableListOf<Pair<Screen, Boolean>>()
+    private lateinit var nav: NavHostController
+
+    private fun zeige() {
+        compose.setContent {
+            BrickInventoryManagerTheme(theme = "classic") {
+                nav = rememberNavController()
+                val reiter = remember {
+                    listOf<Triple<Screen, @Composable () -> Unit, String>>(
+                        Triple(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                        Triple(Screen.Finance, { Icon(Icons.Default.ViewInAr, null) }, "Finanzen"))
+                }
+                MainScaffold(
+                    title = "Sammlung", navController = nav, bottomNavItems = reiter,
+                    snackbarHostState = remember { SnackbarHostState() },
+                    csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
+                    onCsvAbbrechen = {},
+                    onTabAngetippt = { ziel -> gemeldet += ziel to (nav.currentDestination?.hasRoute<Screen.Gallery>() == true) },
+                ) {
+                    NavHost(nav, startDestination = Screen.Gallery) {
+                        composable<Screen.Gallery> { }
+                        composable<Screen.Parts> { }
+                        composable<Screen.Finance> { }
+                    }
+                }
+            }
+        }
+        compose.waitForIdle()
+    }
 
     @Test
-    fun `das Antippen eines Reiters verwirft dessen Rollposition`() {
-        val ms = code(lies("app/MainScaffold.kt"))
-        assert(ms.contains("onTabAngetippt")) { "Der Rückruf fehlt in MainScaffold" }
-        // Er muss VOR der Navigation laufen — danach ist der Bildschirm unter
-        // Umständen schon zusammengesetzt und hat die alte Stelle gelesen.
-        val ruf = ms.indexOf("onTabAngetippt(screen)")
-        val nav = ms.indexOf("navController.zuReiter(screen)")
-        assert(nav > 0) { "Die Leiste navigiert nicht mehr über zuReiter() — Test veraltet?" }
-        assert(ruf in 0 until nav) {
-            "onTabAngetippt läuft nicht VOR der Navigation — dann kann der " +
-                "Bildschirm die alte Stelle bereits wiederhergestellt haben."
-        }
+    fun `die untere Leiste meldet den Reiter, bevor sie navigiert`() {
+        zeige()
+        compose.onNodeWithText("Finanzen").performClick()
+        compose.waitForIdle()
+        assertEquals(listOf(Screen.Finance to true), gemeldet)
+        assertTrue("Die Leiste navigiert nicht mehr", nav.currentDestination?.hasRoute<Screen.Finance>() == true)
+    }
+
+    @Test
+    fun `der Sammlungs-Umschalter meldet den Reiter, bevor er navigiert`() {
+        zeige()
+        compose.onNodeWithText(ctx.getString(R.string.nav_parts)).performClick()
+        compose.waitForIdle()
+        assertEquals(listOf(Screen.Parts to true), gemeldet)
+        assertTrue("Der Umschalter navigiert nicht mehr", nav.currentDestination?.hasRoute<Screen.Parts>() == true)
     }
 
     @Test
     fun `kein Reiter-Ziel baut das Geruest selbst`() {
-        // Bis Nachtrag 119 stand hier: "jede MainScaffold-Einbindung reicht den
-        // Rueckruf durch" — neunmal dieselben fuenf Zeilen, und dieser Test
-        // zaehlte nach, ob keine davon etwas vergessen hatte. Seit Nachtrag 120
-        // gibt es ReiterGeruest, das den Rueckruf EINMAL setzt; zu zaehlen gibt
-        // es damit nichts mehr. Die Aussage ist jetzt: Kein Ziel geht am
-        // Geruest vorbei.
-        //
-        // ZUR UNTERGRENZE: Hier stand `>= 20` — fuer einen Ordner mit vier
-        // Dateien. Der Test waere bei jedem Lauf an seiner eigenen Wache
-        // gescheitert. Mein Fehler aus Nachtrag 118: dieselbe Zahl in fuenf
-        // Testdateien gesetzt, ohne zu pruefen, worauf sie jeweils zeigt. Eine
-        // Untergrenze muss zum Bereich passen, sonst ist sie kein Schutz,
-        // sondern ein Ausfall.
+        // Struktur: ReiterGeruest setzt den Rückruf einmal; ein Ziel, das MainScaffold
+        // selbst baut, müsste ihn wieder von Hand durchreichen.
         val ziele = Quellen.unter("nav")
-        assert(ziele.size >= 3) { "Nur ${ziele.size} Dateien unter nav/ — Pfad veraltet?" }
-
-        val direkt = ziele.filter { code(it.readText()).contains("MainScaffold(") }
-        assert(direkt.isEmpty()) {
-            "Diese Navigationsdateien bauen MainScaffold selbst statt ReiterGeruest zu " +
-                "nutzen: ${direkt.joinToString { it.name }}. Dann muessen sie den Rueckruf, " +
-                "das Abmelden und serverUrl/isAdmin wieder von Hand durchreichen — und " +
-                "genau dabei ist in Nachtrag 114 einer vergessen worden."
-        }
-
-        val geruest = code(lies("app/MainScaffold.kt"))
-        assert(geruest.contains("fun ReiterGeruest(")) { "ReiterGeruest fehlt" }
-        assert(geruest.contains("onTabAngetippt = { ziel -> vm.scrollMemory.vergissReiter(ziel.rollSchluessel) }")) {
-            "Das Geruest verwirft die Rollposition nicht mehr — dann beginnt der Reiter " +
-                "je nach Herkunft mal oben und mal in der Mitte."
-        }
-    }
-
-    @Test
-    fun `die manuell erfassten Eintraege stehen oben`() {
-        // Die Vorgabe lautet „direkt die manuell erfassten anzeigen" — das setzt
-        // voraus, dass sie am Anfang der Liste stehen. Kehrt die Reihenfolge
-        // sich um, wäre das Verwerfen der Rollposition wirkungslos.
-        for (datei in listOf("teile/ui/screens/PartsScreen.kt", "teile/ui/screens/MinifigsScreen.kt")) {
-            val c = code(lies(datei))
-            val manuell = c.indexOf("\"manual-header\"")
-            val ausSets = c.indexOf("\"sets-header\"")
-            assert(manuell >= 0) { "$datei: kein Abschnitt für manuell erfasste Einträge" }
-            assert(ausSets < 0 || manuell < ausSets) {
-                "$datei: „Aus Sets\" steht vor den manuell erfassten Einträgen"
-            }
-        }
+        assertTrue("Nur ${ziele.size} Dateien unter nav/ — Pfad veraltet?", ziele.size >= 3)
+        val direkt = ziele.filter { Quellen.ohneKommentare(it.readText()).contains("MainScaffold(") }
+        assertTrue("Diese Ziele bauen MainScaffold selbst statt ReiterGeruest: ${direkt.joinToString { it.name }}",
+            direkt.isEmpty())
+        val geruest = Quellen.ohneKommentare(Quellen.lies("app/MainScaffold.kt"))
+        assertTrue("Das Gerüst verwirft die Rollposition des angetippten Reiters nicht mehr",
+            geruest.contains("onTabAngetippt = { ziel -> vm.scrollMemory.vergissReiter(ziel.rollSchluessel) }"))
     }
 }

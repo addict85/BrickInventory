@@ -9,31 +9,9 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Was auf einer manuell erfassten Kachel steht — und was frueher fehlte.
- *
- * ── Woher dieser Test kommt (Marcos Wunsch, Nachtrag 134) ───────────────────
- *
- * „bitte auch die Preise und Notizen aus der Webapp inkl. Preisverlauf in der
- * Android-App auf den manuell erfassten Teilen und Minifiguren nachziehen"
- *
- * Nachgesehen, was die Webapp auf ihrer `man-tile` zeigt (06-minifigs.js
- * Zeilen 321-331 fuer Figuren, 479-489 fuer Teile):
- *
- *     Bild, Nummer, Name, [Farbe], ×Menge + Zustand + Besitzer,
- *     PREIS (fett), NOTIZ
- *
- * Die App zeigte die letzten beiden Zeilen nicht. Bei der NOTIZ war das mehr
- * als eine fehlende Zeile: Der Erfassungsdialog fragt sie ab und schickt sie
- * an den Server — danach war sie in der ganzen App nirgends mehr zu sehen,
- * auch nicht in der Detailansicht. Eine Eingabe, die nirgends wieder
- * auftaucht, sieht aus, als waere sie verlorengegangen.
- *
- * Der PREISVERLAUF war schon da (ManualItemDetailScreen, Abschnitt Marktpreis
- * mit MarketPriceByCondition und PriceChart, geladen von
- * loadManualPriceHistory fuer BEIDE Arten). Der Test haelt ihn hier fest,
- * damit er nicht wieder verschwindet.
- *
- * Der Test liest nur Quelltext: kein Geraet, kein Compose.
+ * Was eine manuell erfasste Kachel und ihr Detail brauchen: den mengengewichteten
+ * Kaufpreis vom Server und den Preisverlauf für Teile und Figuren. Was die Kachel
+ * zeichnet, prüft ManuelleKachelAnzeigeTest (app) unter Robolectric.
  */
 class ManuelleKachelTest {
 
@@ -41,21 +19,6 @@ class ManuelleKachelTest {
         File(Quellen.wurzel, "$rel").readText()
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
-
-    @Test
-    fun `beide Kacheln zeigen den Kaufpreis`() {
-        // Die Notiz stand hier als zweite Zusicherung; sie ist mit Migration
-        // 0022 ausgebaut — Masken und Spalten.
-        val teile = code(read("teile/ui/screens/TeileKarte.kt"))
-        assert(teile.contains("preis = part.avgPurchasePrice ?: part.unitPrice ?: part.purchasePrice")) {
-            "Die Teile-Kachel zeigt den Kaufpreis nicht in der Reihenfolge der Webapp"
-        }
-
-        val figuren = code(read("teile/ui/screens/FigurenKarte.kt"))
-        assert(figuren.contains("preis = fig.avgPurchasePrice ?: fig.unitPrice ?: fig.purchasePrice")) {
-            "Die Figuren-Kachel zeigt den Kaufpreis nicht in der Reihenfolge der Webapp"
-        }
-    }
 
     @Test
     fun `der mengengewichtete Kaufpreis kommt vom Server`() {

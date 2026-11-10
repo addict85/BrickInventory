@@ -113,7 +113,7 @@ class TargetSdkConfigTest {
      */
     @Test
     fun `es gibt weiterhin keinen eigenen BackHandler`() {
-        // Untergrenze (Nachtrag 118): Diese Prüfung behauptet eine ABWESENHEIT.
+        // Untergrenze: Diese Prüfung behauptet eine ABWESENHEIT.
         // Fände der Dateilauf nichts, wäre sie grün — und zwar genau dann,
         // wenn sie am wenigsten wert ist.
         val hits = Quellen.alle()

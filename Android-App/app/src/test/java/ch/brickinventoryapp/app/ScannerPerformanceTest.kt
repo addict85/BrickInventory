@@ -6,25 +6,11 @@ import ch.brickinventoryapp.testing.Quellen
 
 /**
  * Der Scanner darf die Kamera nicht ausbremsen.
- *
- * ── Woher dieser Test kommt (Marcos Meldung, Nachtrag 71) ───────────────────
- * „Der Fokus im Barcodescanner ist sehr träge, es dauert lange bis er scharf
- * stellt."
- *
- * Der Autofokus selbst war nicht das Problem — die Last daneben war es: Seit
- * Nachtrag 60 lief die Texterkennung auf JEDEM Bild ohne Barcode, bei
- * 1920×1080. Das kostet je Bild ein Vielfaches der Barcode-Suche und hält den
- * Analyse-Thread dauerhaft belegt; Kamera und Vorschau teilen sich dieselbe
- * Rechenzeit, also wirkt auch das Scharfstellen zäh.
- *
- * Zwei Massnahmen, beide hier festgehalten:
- *   1. Texterkennung nur alle 700 ms — der Barcode-Leser bleibt bei voller Rate
- *   2. Tippen zum Scharfstellen, damit man den Fokus selbst auslösen kann
  */
 class ScannerPerformanceTest {
 
     // Beide Dateien des Scanners: Der Bildschirm traegt den Tap-to-Focus, die
-    // Drosselung der Texterkennung steht seit Nachtrag 99 in BarcodeAnalyzer.kt.
+    // Drosselung der Texterkennung steht in BarcodeAnalyzer.kt.
     // Die Reihenfolge-Pruefungen unten bleiben gueltig — barcodeScanner.process(),
     // letzteOcr und textRecognizer.process() stehen ausschliesslich in der
     // Analyse-Datei, ihre Reihenfolge zueinander aendert das Voranstellen nicht.

@@ -1,127 +1,190 @@
 package ch.brickinventoryapp.app
 
-import org.junit.Test
+import android.content.Context
+import android.os.Looper
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.ComposeTimeoutException
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
+import androidx.compose.ui.unit.dp
+import androidx.test.core.app.ApplicationProvider
+import ch.brickinventoryapp.model.ui.ScrollSpeicher
+import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.teile.ui.screens.MinifigsRoute
+import ch.brickinventoryapp.teile.ui.screens.PartsRoute
 import ch.brickinventoryapp.testing.Quellen
+import ch.brickinventoryapp.ui.ScrollPositionKeeper
+import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+import java.util.Locale
 
 /**
- * Teile und Minifiguren beginnen bei den MANUELL ERFASSTEN Einträgen.
+ * Teile und Minifiguren beginnen bei den manuell erfassten Einträgen. Die Set-Teile
+ * kommen meist zuerst an, und das Raster hält beim Einfügen oben den sichtbaren
+ * Eintrag fest; deshalb gehört zur Reihenfolge die Korrektur im Rollmerker, die
+ * gespeicherte Stellen und eigene Gesten in Ruhe lässt.
  *
- * ── Woher dieser Test kommt (Nachtrag 122) ──────────────────────────────────
- *
- * Marcos Befund: „Der Reiter Teile startet nicht zuoberst. Man sieht die Teile
- * aus den Sets und muss nach oben scrollen, um die manuell erfassten zu sehen."
- * Seine Vermutung — die Listen würden unabhängig geladen — war richtig, und der
- * Rest folgt daraus:
- *
- *  1. Beim Betreten laufen `loadParts()` und `loadValuation()` GLEICHZEITIG los.
- *     Die Set-Teile sind meist zuerst da.
- *  2. Das Raster zeigt sie, Position 0.
- *  3. Die manuellen Teile treffen ein und werden mit zwei Zwischenüberschriften
- *     OBEN eingefügt.
- *
- * Die Anordnung im Raster war also nie falsch, und ein Test, der nur sie prüft,
- * wäre die ganze Zeit grün geblieben. Deshalb prüft dieser Test beides: die
- * Reihenfolge UND die Korrektur, die den Sprung rückgängig macht.
+ * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
+ *   manuelle-teile-unten           der Abschnitt der manuellen Teile hinter den Set-Teilen → rot „Teile: die manuell …“
+ *   nachzuegler-ohne-korrektur     die Korrektur rollt nicht mehr an den Anfang → rot „ohne gespeicherte Stelle …“
+ *   korrektur-ueber-gespeicherte   die Korrektur ohne !hatteGespeicherte → rot „eine gespeicherte Stelle …“
+ *   korrektur-ueber-geste          die Korrektur ohne !nutzerGeste → rot „nach einer eigenen Geste …“
+ *   bereit-ohne-manuelle           Teile gelten ohne manualParts als geladen → rot „beide Listen zaehlen …“
  */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
 class ManualItemsFirstTest {
 
-    // Der zweite Wert ist der AUFRUF, mit dem die Einträge aus den Sets ins
-    // Raster kommen — bei den Teilen `items(...)`, bei den Minifiguren
-    // `itemsIndexed(...)`, weil dort der Schlüssel den Index braucht (dieselbe
-    // Figur kann aus mehreren Sets stammen).
-    //
-    // Als MUSTER, nicht als Zeichenkette: Die Aufrufe stehen ueber mehrere
-    // Zeilen, sobald sie mehr als zwei Argumente haben —
-    //
-    //     items(
-    //         distinctParts,
-    //         key = { … },
-    //         span = { … },
-    //     ) { part -> … }
-    //
-    // Die feste Zeichenkette "items(distinctParts" fand das nicht mehr und
-    // meldete „Name geaendert?", obwohl sich nur der Zeilenumbruch geaendert
-    // hatte. Geprueft werden soll die REIHENFOLGE im Raster, nicht die
-    // Formatierung.
-    private val bildschirme = mapOf(
-        "teile/ui/screens/PartsScreen.kt" to Pair(
-            Regex("""items\s*\(\s*manualParts"""),
-            Regex("""items\s*\(\s*distinctParts""")),
-        "teile/ui/screens/MinifigsScreen.kt" to Pair(
-            Regex("""items\s*\(\s*manualFigs"""),
-            Regex("""itemsIndexed\s*\(""")),
-    )
+    @get:Rule
+    val compose = createComposeRule()
 
-    @Test
-    fun `die manuell erfassten Eintraege stehen im Raster vor denen aus Sets`() {
-        for ((rel, listen) in bildschirme) {
-            val (manuell, ausSets) = listen
-            val s = Quellen.ohneKommentare(Quellen.lies(rel))
-            val kopf = s.indexOf("\"manual-header\"")
-            val manuellItems = manuell.find(s)?.range?.first ?: -1
-            val setItems = ausSets.find(s)?.range?.first ?: -1
-            assert(kopf >= 0) { "$rel: Zwischenüberschrift der manuellen Einträge fehlt" }
-            assert(manuellItems >= 0) { "$rel: ${manuell.pattern} fehlt — Name geändert?" }
-            assert(setItems >= 0) { "$rel: ${ausSets.pattern} fehlt — Name geändert?" }
-            assert(kopf < manuellItems && manuellItems < setItems) {
-                "$rel: Die manuell erfassten Einträge stehen nicht mehr vor denen aus Sets"
+    private val vorher = Locale.getDefault()
+    private val ctx: Context = ApplicationProvider.getApplicationContext()
+    private val bilder = Beispielbilder.loader(ctx)
+    private val welt = Beispiele.Welt(KontextTexte())
+
+    init { Locale.setDefault(Locale.forLanguageTag("de-CH")) }
+
+    @After
+    fun zu() {
+        Locale.setDefault(vorher)
+        welt.close()
+    }
+
+    private fun zeige(inhalt: @Composable () -> Unit) {
+        compose.setContent {
+            BrickInventoryManagerTheme(theme = "classic") {
+                Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
             }
         }
+        compose.waitForIdle()
+    }
+
+    /** Den Hauptlooper treiben, bis [bereit] gilt. */
+    private fun warte(was: String, bereit: () -> Boolean) {
+        try {
+            compose.waitUntil(10_000) { shadowOf(Looper.getMainLooper()).idle(); bereit() }
+        } catch (e: ComposeTimeoutException) {
+            throw AssertionError("$was: nach 10 s nicht da", e)
+        }
+        compose.waitForIdle()
+    }
+
+    private fun oben(text: String) = compose.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.top
+
+    @Test
+    fun `Teile - die manuell erfassten stehen vor denen aus Sets`() {
+        welt.pfade.antworten["/api/v1/parts/manual"] =
+            """{"success":true,"parts":[{"id":7,"part_number":"3005","part_name":"Brick 1 x 1 manuell","color_id":1,"quantity":4}]}"""
+        val vm = welt.teile().also { it.loadParts() }
+        warte("Teile") { vm.partsState.value.let { it.parts.isNotEmpty() && !it.manualParts.isNullOrEmpty() } }
+        zeige { PartsRoute(vm = vm, imageLoader = bilder) }
+        val kopf = oben(ctx.getString(R.string.parts_manual_section))
+        val kachel = oben("Brick 1 x 1 manuell")
+        val ausSets = oben(ctx.getString(R.string.parts_sets_section))
+        assertTrue("Reihenfolge: Kopf $kopf, manuelles Teil $kachel, „Aus Sets“ $ausSets", kopf < kachel && kachel < ausSets)
+        assertTrue("Das erste Teil aus Sets steht nicht unter „Aus Sets“", oben("Brick 2 x 4") > ausSets)
+    }
+
+    @Test
+    fun `Figuren - die manuell erfassten stehen vor denen aus Sets`() {
+        welt.pfade.antworten["/api/v1/minifigs/manual"] =
+            """{"success":true,"figs":[{"id":8,"fig_number":"sw0100","fig_name":"Prinzessin Leia manuell","quantity":1}]}"""
+        val vm = welt.teile().also { it.loadMinifigs() }
+        warte("Figuren") { vm.partsState.value.let { it.minifigs.isNotEmpty() && !it.manualFigs.isNullOrEmpty() } }
+        zeige { MinifigsRoute(vm = vm, imageLoader = bilder) }
+        val kopf = oben(ctx.getString(R.string.minifigs_manual_section))
+        val kachel = oben("Prinzessin Leia manuell")
+        val ausSets = oben(ctx.getString(R.string.minifigs_sets_section))
+        assertTrue("Reihenfolge: Kopf $kopf, manuelle Figur $kachel, „Aus Sets“ $ausSets", kopf < kachel && kachel < ausSets)
+        assertTrue("Die erste Figur aus Sets steht nicht unter „Aus Sets“",
+            oben("Luke Skywalker (Pilot Suit, White Helmet)") > ausSets)
+    }
+
+    private val speicher = ScrollSpeicher()
+    private val nachzuegler = mutableStateListOf<String>()
+    private lateinit var raster: LazyGridState
+
+    /** Ein Raster wie das der Teile: oben Platz für Nachzügler, darunter 40 Einträge aus Sets. */
+    private fun zeigeRaster() {
+        zeige {
+            raster = rememberLazyGridState()
+            LazyVerticalGrid(GridCells.Fixed(2), Modifier.height(300.dp).testTag("raster"), state = raster) {
+                items(nachzuegler.toList(), key = { it }) { Text(it, Modifier.height(100.dp)) }
+                items((0 until 40).map { "set-$it" }, key = { it }) { Text(it, Modifier.height(100.dp)) }
+            }
+            ScrollPositionKeeper("teile", raster, bereit = true, speicher = speicher, obenNachziehend = nachzuegler.size)
+        }
+    }
+
+    private fun nachzueglerKommen() {
+        nachzuegler.addAll((0 until 5).map { "manuell-$it" })
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun `ohne gespeicherte Stelle zieht die Liste nach oben, wenn oben Eintraege nachkommen`() {
+        zeigeRaster()
+        nachzueglerKommen()
+        assertEquals("Erster sichtbarer Eintrag", 0, raster.firstVisibleItemIndex)
+        compose.onNodeWithText("manuell-0").fetchSemanticsNode()
+    }
+
+    @Test
+    fun `eine gespeicherte Stelle bleibt, auch wenn oben Eintraege nachkommen`() {
+        speicher.merke("teile", 10, 0)
+        zeigeRaster()
+        assertEquals("Wiederhergestellt", 10, raster.firstVisibleItemIndex)
+        nachzueglerKommen()
+        assertTrue("Die Liste sprang von der gespeicherten Stelle weg: ${raster.firstVisibleItemIndex}",
+            raster.firstVisibleItemIndex >= 10)
+    }
+
+    @Test
+    fun `nach einer eigenen Geste bleibt die Liste, wo der Nutzer sie hingerollt hat`() {
+        zeigeRaster()
+        compose.onNodeWithTag("raster").performTouchInput { swipeUp() }
+        compose.waitForIdle()
+        assertTrue("Die Geste hat nicht gerollt", raster.firstVisibleItemIndex > 0)
+        nachzueglerKommen()
+        assertTrue("Die Korrektur riss die Liste nach oben", raster.firstVisibleItemIndex > 0)
     }
 
     @Test
     fun `beide Listen zaehlen als geladen, nicht nur die aus den Sets`() {
-        // Stand für die Teile auf `partsState.parts.isNotEmpty()` — also nur auf
-        // der Set-Liste. Die Position wurde damit wiederhergestellt, bevor die
-        // manuellen Einträge überhaupt da waren.
-        //
-        // Und auf `!= null` statt `isNotEmpty()`: "die Liste ist zurück", nicht
-        // "sie enthält etwas". Bei den Minifiguren stand hier
-        // `figsValuation?.figs?.isNotEmpty() == true` — wer keine manuell
-        // erfassten Minifiguren hat, bekam damit NIE eine Position
-        // wiederhergestellt.
-        //
-        // Die QUELLE hat gewechselt (Nachtrag 124): Die manuellen Einträge kamen
-        // aus der Bewertung (partsValuation/figsValuation), jetzt aus
-        // /parts/manual bzw. /minifigs/manual — dieselbe Adresse wie in der
-        // Webapp. Gewartet wird deshalb auf manualParts/manualFigs. Auf die
-        // Bewertung zu warten hiesse jetzt: auf etwas warten, das dieser Reiter
-        // gar nicht mehr holt.
+        // Verdrahtung im Graphen: Erst wenn auch die manuellen Einträge da sind (null heisst
+        // „noch nicht geladen“), stellt der Merker die Stelle wieder her.
         val graph = Quellen.ohneKommentare(Quellen.lies("app/nav/CollectionGraph.kt"))
-        for ((schluessel, liste) in listOf(
-            "Screen.Parts.rollSchluessel" to "manualParts",
-            "Screen.Minifigs.rollSchluessel" to "manualFigs",
-        )) {
-            // Der Schlüssel steht als erstes Argument auf eigener Zeile; die Einrückung zählt nicht.
+        for ((schluessel, liste) in listOf("Screen.Parts.rollSchluessel" to "manualParts", "Screen.Minifigs.rollSchluessel" to "manualFigs")) {
             val block = Quellen.fenster(graph, "$schluessel, ", 12)
-            assert(block.isNotEmpty()) { "Kein ScrollPositionKeeper für $schluessel gefunden" }
-            assert(block.contains("$liste != null")) {
-                "$schluessel: `bereit` wartet nicht auf $liste — dann wird die " +
-                    "Position gesetzt, bevor die manuellen Einträge da sind"
-            }
-            assert(block.contains("obenNachziehend =")) {
-                "$schluessel: obenNachziehend fehlt — ohne das bleibt der Sprung, den " +
-                    "das nachträgliche Einfügen oben auslöst"
-            }
-        }
-    }
-
-    @Test
-    fun `die Korrektur laesst gespeicherte Position und eigene Geste in Ruhe`() {
-        // Der Sprung an den Anfang darf NUR passieren, wenn niemand etwas
-        // anderes wollte. Wer aus der Detailansicht zurückkommt, will an seine
-        // Stelle; wer gerade wischt, erst recht.
-        val s = Quellen.ohneKommentare(Quellen.lies("ui/ScrollMemory.kt"))
-        val korrektur = Quellen.fenster(s, "LaunchedEffect(obenNachziehend)", 8)
-        assert(korrektur.isNotEmpty()) { "Die Korrektur fehlt in ScrollMemory.kt" }
-        for (wache in listOf("!hatteGespeicherte", "!nutzerGeste")) {
-            assert(korrektur.contains(wache)) {
-                "Die Korrektur prüft $wache nicht — dann reisst sie den Nutzer aus " +
-                    "seiner Position"
-            }
-        }
-        assert(s.contains("hatteGespeicherte = true")) {
-            "hatteGespeicherte wird nie gesetzt — die Wache wäre wirkungslos"
+            assertTrue("Kein ScrollPositionKeeper für $schluessel gefunden", block.isNotEmpty())
+            assertTrue("$schluessel: `bereit` wartet nicht auf $liste", block.contains("$liste != null"))
+            assertTrue("$schluessel: obenNachziehend fehlt", block.contains("obenNachziehend ="))
         }
     }
 }

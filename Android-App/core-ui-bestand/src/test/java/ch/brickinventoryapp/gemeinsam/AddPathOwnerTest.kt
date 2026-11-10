@@ -11,23 +11,6 @@ import ch.brickinventoryapp.gemeinsam.ui.erfassungsWerte
 /**
  * Jeder Erfassungsweg lässt den Eigentümer wählen — auch der Barcode-Scanner.
  *
- * ── Woher dieser Test kommt (Marcos Bericht, Nachtrag 44) ───────────────────
- * „In der Android-App kann der Eigentümer bei der Erfassung mit dem Barcode
- * nicht ausgewählt werden."
- *
- * Repository, API-Vertrag und Server-Route kannten den Eigentümer seit jeher
- * (`addSet(..., ownerUserId)`); der Galerie-Dialog, die Teile- und die
- * Minifiguren-Erfassung fragen ihn über OwnerPicker ab. Nur der
- * Barcode-Dialog tat es nicht — er rief `repo.addSet(setNum, 1, price,
- * condition)` ohne den fünften Parameter. Das Ergebnis war kein Fehler,
- * sondern etwas Stilleres: Ein per Barcode erfasstes Set landete IMMER beim
- * eigenen Konto, ohne dass es jemand merkte.
- *
- * Wieder das Muster, das sich durch dieses Projekt zieht: eine Regel fehlt an
- * einem ZWEITEN Weg (vgl. requireAdmin, forgot-password, die Preisroute im
- * Haushalt). Deshalb prüft dieser Test nicht die eine reparierte Stelle,
- * sondern ALLE Erfassungswege — der nächste neue Weg soll hier auffallen.
- *
  * Gegenprobe (durchgeführt): ownerUserId aus dem confirmAddBarcode-Aufruf
  * entfernt → der erste Teilschritt wird rot.
  */
@@ -80,8 +63,7 @@ class AddPathOwnerTest {
     }
 
     /**
-     * Die Umrechnung der Eingaben steht an einer Stelle (erfassungsWerte, Nachtrag
-     * 140): Die Dialoge benutzen sie (Struktur), und sie wird hier ausgeführt.
+     * Die Umrechnung der Eingaben steht an einer Stelle (erfassungsWerte): Die Dialoge benutzen sie (Struktur), und sie wird hier ausgeführt.
      * Gegenprobe: in erfassungsWerte `haushalt.size > 1` →
      * `haushalt.size > 0` → rot „ohne Haushalt geht kein Eigentuemer mit“.
      */

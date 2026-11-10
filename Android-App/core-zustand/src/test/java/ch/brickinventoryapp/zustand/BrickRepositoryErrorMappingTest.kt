@@ -28,14 +28,14 @@ import ch.brickinventoryapp.testing.ResponseCache
  * Der erste Test in diesem Projekt, der VERHALTEN ausführt statt Quelltext zu
  * lesen.
  *
- * ── Warum das bisher nicht ging (Nachtrag 117) ──────────────────────────────
+ * ── Warum das bisher nicht ging ──────────────────────────────
  *
  * `testImplementation(libs.junit)` war die einzige Testabhängigkeit. Ohne
  * Testbibliothek für Koroutinen und ohne HTTP-Attrappe blieb nur, den
  * Quelltext nach Mustern abzusuchen — daher lasen 41 von 47 Testdateien Text.
  *
  * Hier läuft jetzt ein echter HTTP-Server im Test, und geprüft wird die
- * Abbildung, die Nachtrag 116 eingeführt hat: Was macht das Repository aus
+ * Abbildung: Was macht das Repository aus
  * einer Antwort? Die Gegenprobe dafür ist der Server selbst — antwortet er
  * anders, muss sich das Ergebnis ändern.
  *
@@ -67,7 +67,7 @@ class BrickRepositoryErrorMappingTest {
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(BrickApiService::class.java)
-        // KontoRepository statt BrickRepository (Nachtrag 155): getMe() liegt
+        // KontoRepository statt BrickRepository: getMe() liegt
         // seit der Aufteilung dort. Geprueft wird hier die Fehlerumsetzung in
         // safeCall() — die steht in RepoBasis und ist fuer alle fuenf
         // Teil-Repositories dieselbe; getMe ist nur das Vehikel.

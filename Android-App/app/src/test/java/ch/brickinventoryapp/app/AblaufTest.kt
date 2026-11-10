@@ -253,7 +253,7 @@ class AblaufTest {
     }
 
     /**
-     * Runde 8: Die Rückfrage fragt nach dem Passwort; das Codefeld kommt erst, wenn der
+     * Die Rückfrage fragt nach dem Passwort; das Codefeld kommt erst, wenn der
      * Server es verlangt hat. Ohne Eingabe bleibt „Bestätigen“ aus. Getippt wird nicht:
      * Ein fokussiertes Feld blinkt, und Robolectric käme nie zur Ruhe.
      */

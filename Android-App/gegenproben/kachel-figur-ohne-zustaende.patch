@@ -1,0 +1,18 @@
+Gegenprobe: ManualFigTile reicht die Zustände nicht an die gemeinsame Kachel weiter
+Modul: app
+Test: ch.brickinventoryapp.app.ManuelleKachelAnzeigeTest
+Rot: die manuelle Figur zeigt
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/FigurenKarte.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/FigurenKarte.kt
+index f9de1fe..43f2ab1 100644
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/FigurenKarte.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/FigurenKarte.kt
+@@ -60,7 +60,7 @@ fun ManualFigTile(fig: ManuelleFigurAnsicht, serverUrl: String, imageLoader: Ima
+         imageLoader = imageLoader,
+         name = fig.figName ?: fig.figNumber,
+         menge = fig.quantity,
+-        zustaende = fig.conditions,
++        zustaende = emptyList(),
+         zustand = fig.condition,
+         besitzer = fig.owners,
+         preis = fig.avgPurchasePrice ?: fig.unitPrice ?: fig.purchasePrice,

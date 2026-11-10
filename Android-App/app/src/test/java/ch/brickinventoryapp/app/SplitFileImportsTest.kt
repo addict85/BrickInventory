@@ -5,23 +5,9 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Aufgeteilte Dateien erben die Wildcard-Importe ihrer Quelldatei.
- *
- * ── Marcos Build brach hier ab (Nachtrag 100) ───────────────────────────────
- *
- *     CatalogSections.kt:55:53 Unresolved reference 'ArrowDropDown'.
- *
- * Beim Aufteilen der grossen Bildschirme habe ich die Importe der neuen Dateien
- * geprüft — aber nur gegen die EINZELimporte der Quelldatei. Namen, die dort per
- * `androidx.compose.material.icons.filled.*` gedeckt waren, tauchten in dieser
- * Liste gar nicht auf und konnten deshalb nicht als fehlend gemeldet werden.
- *
- * Die Lehre ist nicht „diesen einen Namen nachtragen", sondern: Eine
- * herausgelöste Datei bekommt die Wildcards ihrer Quelle mit. Sonst muss man
- * Name für Name raten, und genau das geht schief.
- *
- * Diese Prüfung braucht keinen Compiler und läuft in Millisekunden — der
- * Gradle-Lauf, der denselben Fehler findet, dauert Minuten.
+ * Aufgeteilte Dateien erben die Wildcard-Importe ihrer Quelldatei: Was die Quelle per
+ * `…filled.*` deckt, steht in keinem ihrer Einzelimporte. Die Prüfung braucht keinen
+ * Compiler und läuft in Millisekunden statt der Minuten eines Gradle-Laufs.
  */
 class SplitFileImportsTest {
 
@@ -103,7 +89,7 @@ class SplitFileImportsTest {
         )
         val wurzel = Quellen.wurzel
         val fehler = mutableListOf<String>()
-        // Untergrenze (Nachtrag 118): ein leerer Dateilauf lässt jede
+        // Untergrenze: ein leerer Dateilauf lässt jede
         // Sammelprüfung darunter stillschweigend bestehen.
         check(wurzel.walkTopDown().count { it.extension == "kt" } >= 20) {
             "Zu wenige Kotlin-Dateien unter ${'$'}{wurzel.path} — Pfad veraltet?"
@@ -244,20 +230,10 @@ class SplitFileImportsTest {
 
     @Test
     fun `keine Datei ruft eine private Deklaration einer anderen`() {
-        // ── Marcos zweiter Build brach hier ab (Nachtrag 101) ────────────────
-        //
-        //     CatalogSections.kt:79:36 Cannot access 'fun sortLabel(...)':
-        //     it is private in file.
-        //
-        // `private` gilt in Kotlin DATEIWEIT. Wandert ein Block in eine andere
-        // Datei, verliert er den Zugriff auf alle privaten Nachbarn seiner
-        // Quelle — ohne dass sich an Namen oder Importen etwas ändert. Keine
-        // Import-Prüfung kann das sehen; es ist eine reine Sichtbarkeitsfrage.
-        //
-        // Die Antwort ist `internal`: sichtbar im Modul, weiterhin nicht Teil
-        // einer öffentlichen Schnittstelle.
+        // `private` gilt dateiweit: Ein verschobener Block verliert den Zugriff auf die privaten
+        // Nachbarn seiner Quelle. Die Antwort ist `internal`.
         val wurzel = Quellen.wurzel
-        // Untergrenze (Nachtrag 118): ein leerer Dateilauf lässt jede
+        // Untergrenze: ein leerer Dateilauf lässt jede
         // Sammelprüfung darunter stillschweigend bestehen.
         check(wurzel.walkTopDown().count { it.extension == "kt" } >= 20) {
             "Zu wenige Kotlin-Dateien unter ${'$'}{wurzel.path} — Pfad veraltet?"
@@ -301,17 +277,8 @@ class SplitFileImportsTest {
 
     @Test
     fun `experimentelle APIs stehen unter OptIn`() {
-        // ── Marcos dritter Build brach hier ab (Nachtrag 102) ────────────────
-        //
-        //     CatalogSections.kt:125:9 This material API is experimental …
-        //
-        // `@OptIn` steht in Kotlin an der DEKLARATION oder an der Datei. Beim
-        // Aufteilen trug die Quellfunktion die Annotation — der herausgelöste
-        // Block erbt sie nicht. Wie bei `private` ist das weder eine Import-
-        // noch eine Namensfrage, sondern eine Annotationsfrage.
-        //
-        // Geprüft wird der ganze Baum, nicht nur die aufgeteilten Paare: Auch
-        // ein neu geschriebenes Composable kann die Annotation vergessen.
+        // Ein herausgelöster Block erbt das @OptIn seiner Quellfunktion nicht; geprüft wird
+        // der ganze Baum, auch neu geschriebene Composables.
         val noetig = mapOf(
             "ModalBottomSheet" to "ExperimentalMaterial3Api",
             "rememberModalBottomSheetState" to "ExperimentalMaterial3Api",
@@ -330,7 +297,7 @@ class SplitFileImportsTest {
         val wurzel = Quellen.wurzel
         val fehler = mutableListOf<String>()
 
-        // Untergrenze (Nachtrag 118): Ein Dateilauf, der nichts findet, lässt
+        // Untergrenze: Ein Dateilauf, der nichts findet, lässt
         // jede Sammelprüfung darunter stillschweigend bestehen.
         check(wurzel.walkTopDown().count { it.extension == "kt" } >= 20) {
             "Zu wenige Kotlin-Dateien unter ${'$'}{wurzel.path} — Pfad veraltet?"
@@ -360,7 +327,7 @@ class SplitFileImportsTest {
 
                 val rumpf = code.subList(s0, e0).joinToString("\n")
                 for ((api, marker) in noetig) {
-                    // ── Der volle Paketname kam an der Regel vorbei (Nachtrag 141)
+                    // ── Der volle Paketname kam an der Regel vorbei
                     //
                     // `(?<![\w.])` soll verhindern, dass `irgendwas.TopAppBar(`
                     // als Treffer zaehlt. Es schloss aber auch die vollstaendig
@@ -391,20 +358,9 @@ class SplitFileImportsTest {
 
     @Test
     fun `jeder Projekt-Import hat ein Ziel`() {
-        // ── Marcos fünfter Build brach hier ab (Nachtrag 105) ────────────────
-        //
-        //     SetDetailSections.kt:60:34 Unresolved reference 'fmtPrice'.
-        //
-        // Zeile 60 war ein IMPORT: `import ch.brickinventoryapp.util.fmtPrice`.
-        // Den habe ich beim Erzeugen der Datei GERATEN — in util gibt es nur
-        // fmtMoney, fmtMoneyOrDash und fmtInt. `fmtPrice` ist eine lokale
-        // Funktion von SetDetailScreen und kommt seit Nachtrag 104 als
-        // Parameter.
-        //
-        // Die bisherigen Prüfungen fragten, ob ein BENUTZTER Name gedeckt ist.
-        // Diese fragt umgekehrt: Zeigt jeder Import auf etwas, das es gibt?
+        // Umgekehrt zu den Prüfungen oben: Zeigt jeder Import auf etwas, das es gibt?
         val wurzel = Quellen.wurzel
-        // Untergrenze (Nachtrag 118): ein leerer Dateilauf lässt jede
+        // Untergrenze: ein leerer Dateilauf lässt jede
         // Sammelprüfung darunter stillschweigend bestehen.
         check(wurzel.walkTopDown().count { it.extension == "kt" } >= 20) {
             "Zu wenige Kotlin-Dateien unter ${'$'}{wurzel.path} — Pfad veraltet?"

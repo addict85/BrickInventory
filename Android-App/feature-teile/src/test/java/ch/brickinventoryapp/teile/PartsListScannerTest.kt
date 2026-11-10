@@ -6,23 +6,6 @@ import ch.brickinventoryapp.testing.Quellen
 
 /**
  * Der Barcode-Scanner der TEILELISTE zeigt keine Erfassungsfelder.
- *
- * ── Woher dieser Test kommt (Marcos Wunsch, Nachtrag 56) ────────────────────
- * „Im Reiter Teileliste soll der Barcodescanner nur das Bild anzeigen ohne
- * Konto, Kaufpreis und Zustand. Beim Klick auf Hinzufügen soll das Set nur in
- * die Teileliste hinzugefügt werden, um die Liste zu generieren."
- *
- * Der zweite Teil war bereits erfüllt: confirmAddBarcode() verzweigt bei
- * `scannerSource == "partslist"` und reicht die Nummer nur an die Teileliste
- * weiter — es entsteht KEIN Bestand. Genau deshalb waren die Felder aber
- * besonders unangenehm: Eigentümer, Kaufpreis und Zustand liessen sich
- * ausfüllen, und nichts davon wurde je gespeichert. Eine Eingabe, die aussieht,
- * als zählte sie, ist schlimmer als gar keine.
- *
- * Bild, Name, Setnummer und die Kennzahlen bleiben sichtbar — sie helfen beim
- * Prüfen, ob das richtige Set gescannt wurde, und darum geht es hier.
- *
- * Der Test liest nur die Quelldatei — kein Gerät, kein Compose.
  */
 class PartsListScannerTest {
 

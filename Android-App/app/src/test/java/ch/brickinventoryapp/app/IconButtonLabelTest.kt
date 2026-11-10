@@ -7,17 +7,6 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Bedienelemente, die NUR aus einem Symbol bestehen, brauchen eine Beschriftung.
  *
- * ── Woher dieser Test kommt ─────────────────────────────────────────────────
- * Vier IconButtons trugen `contentDescription = null`: Suche leeren (Katalog
- * und Teileliste), Passwort ein-/ausblenden im Login und das Dreipunkt-Menü auf
- * der Galerie-Kachel. TalkBack liest dort nur „Schaltfläche" vor — für jemanden
- * mit Bildschirmleser ist das ein Knopf ohne Funktion.
- *
- * Aufgefallen ist es im Vergleich zur Webapp: Die hat in hardened-62 einen
- * eigenen Durchgang bekommen (57 verknüpfte Beschriftungen, 19 aria-label,
- * sieben Dialoge mit role="dialog"). Die App hatte denselben Anspruch nur noch
- * nicht eingelöst.
- *
  * ── Was dieser Test NICHT verlangt ──────────────────────────────────────────
  * `contentDescription = null` an einem Symbol NEBEN einem Text ist richtig und
  * bleibt: Sonst liest TalkBack dieselbe Sache zweimal („Suchen, Suchen"). Der
@@ -36,7 +25,7 @@ class IconButtonLabelTest {
         Quellen.wurzel
             .walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
             .also {
-                // Untergrenze (Nachtrag 118): ein leerer Dateilauf lässt jede
+                // Untergrenze: ein leerer Dateilauf lässt jede
                 // Sammelprüfung darunter stillschweigend bestehen.
                 check(it.size >= 20) { "Zu wenige Kotlin-Dateien gefunden (${'$'}{it.size}) — Pfad veraltet?" }
             }

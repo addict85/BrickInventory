@@ -6,12 +6,6 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Wo eine Zahl hingehoert, erscheint die Zahlentastatur.
  *
- * ── Marcos Vorgabe vom 28.09. ───────────────────────────────────────────────
- *
- *   „Beim Preisvergleich in der Android-App soll nur das Zahlenfeld erscheinen
- *    wenn man in das Eingabefeld klickt. Bitte sicherstellen, dass dies so in
- *    allen Feldern in der Android-App der Fall ist."
- *
  * ── Woran man ein Zahlenfeld erkennt ────────────────────────────────────────
  *
  * Nicht an der Beschriftung — „Teilenummer" klingt nach Zahl und heisst
@@ -153,10 +147,7 @@ class ZahlentastaturTest {
      *
      * Die Regel darueber haengt am FILTER. Damit kann sie ein Feld, das die
      * Tastatur hat und den Filter nicht, grundsaetzlich nicht sehen — es faellt
-     * schon in der ersten Zeile aus ihrer Schleife. Genau dieser blinde Fleck
-     * hat am 28.09. zwei Felder verdeckt, und ich habe trotzdem „alle 19 Felder
-     * in Ordnung" gemeldet. Die Zahl stimmte; sie beantwortete nur eine andere
-     * Frage als Marcos.
+     * schon in der ersten Zeile aus ihrer Schleife. Diese Regel fragt umgekehrt.
      *
      * GEFUNDEN wurden dadurch (gemessen, nicht geschaetzt): 21 Felder mit
      * Zahlentastatur, davon 2 ohne Filter —
@@ -197,9 +188,9 @@ class ZahlentastaturTest {
     /**
      * Der Preisvergleich im Besonderen.
      *
-     * Er stand hier nicht zufaellig: Das Feld war eine Freitextsuche, und
-     * Marco hat den Tausch ausdruecklich gewaehlt. Steht der Filter wieder
-     * auf Freitext, ist die Entscheidung stillschweigend zurueckgenommen.
+     * Er stand hier nicht zufaellig: Das Feld war eine Freitextsuche, und der
+     * Tausch war gewollt. Steht der Filter wieder auf Freitext, ist die
+     * Entscheidung stillschweigend zurueckgenommen.
      *
      * ── Warum das keine dritte Fassung derselben Regel ist ──────────────────
      *
@@ -209,7 +200,7 @@ class ZahlentastaturTest {
      * beiden wird rot — es ist dann eben kein Zahlenfeld mehr.
      *
      * Diese Regel sagt UNBEDINGT etwas: Dieses eine Feld IST ein Zahlenfeld,
-     * weil Marco das am 28.09. so entschieden hat. Das kann keine Regel
+     * weil das so entschieden ist. Das kann keine Regel
      * wissen, die Felder nur an ihrer Bauart erkennt — dieselbe Luecke, die in
      * NumericInputTest schon „jedes Setnummernfeld nimmt Filter und Zahlenpad"
      * schliesst.

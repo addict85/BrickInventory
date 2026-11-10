@@ -7,7 +7,7 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Der Navigationsaufbau baut Navigation — sonst nichts.
  *
- * ── Warum (Nachtrag 97) ─────────────────────────────────────────────────────
+ * ── Warum ─────────────────────────────────────────────────────
  *
  * `BrickInventoryManagerApp()` war 277 Zeilen lang. Davon waren rund fünfzehn
  * der eigentliche NavHost; den grössten Block machte ein AlertDialog aus, der

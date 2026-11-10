@@ -55,7 +55,7 @@ class NoDirectCdnAccessTest {
         )
         for (rel in screensWithOwnResolution) {
             val fn = code(read(rel))
-            // rememberTileImageWithFallback() zählt ebenfalls (Nachtrag 38):
+            // rememberTileImageWithFallback() zählt ebenfalls:
             // Der Helfer in ui/util/BildRueckfall.kt ruft intern resolveThumbUrl()
             assert(fn.contains("resolveThumbUrl(") || fn.contains("resolveFullUrl(") ||
                    fn.contains("rememberTileImageWithFallback(")) {
