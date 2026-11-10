@@ -1,22 +1,37 @@
 /**
- * Preisalarm — dieselbe Antwort in beiden Oberflächen.
+ * Preisalarm — dieselbe Antwort in beiden Oberflächen. Die Webapp läuft im
+ * echten Bündel (jsdom), mit der Ruhezeit, die die App in Alarmeingabe.kt
+ * nennt; die App bleibt Kotlin-Struktur (kein SDK hier). Ob die Meldung zum
+ * richtigen Zeitpunkt kommt und je Konto getrennt ist, prüft
+ * preisalarm-db.test.js gegen echte Daten.
  *
- * Wie test/bauabgleich-beide.test.js und test/lagerort-beide.test.js: Marcos
- * stehende Vorgabe ist „zwei saubere Apps, ansonsten identische Funktion".
- * Geprüft wird die NAHT; ob die Meldung zum richtigen Zeitpunkt kommt,
- * beantwortet test/preisalarm-db.test.js gegen echte Daten.
+ * Gegenproben (10.11.2026 gemessen, je einzeln, Bündel neu gebaut), in
+ * public/js/02-detailfelder.js:
+ *   A  ALARM_RUHE 800 → 300 → rot: „Webapp: beim Tippen …“ (PUT vor der Ruhezeit)
+ *   B  in alarmGetippt die Ruhezeit nicht zurückgesetzt (kein clearTimeout) →
+ *      rot: ebenda (drei PUT statt einem)
+ *   C  in sendeAlarm `const loeschen = zahl == null` → `false` → rot: „Webapp:
+ *      ein leeres Feld …“
+ *   D  wechsleAlarmZustand ruft speichereAlarm → rot: ebenda (Zustandswechsel schreibt)
+ *   E  in zeigeOffeneAlarme `if (!marke) return;` entfernt → rot: „Webapp: offene
+ *      Alarme …“ (Meldung beim ersten Besuch)
+ *   F  dort die Marke aus Date.now() statt d.now → rot: ebenda
+ *   G  in zeigeAlarmMerker alert_fired/alert_armed vertauscht → rot: „Webapp: beim Tippen …“
+ *   H  in Alarmeingabe.kt RUHE_MS 800 → 500 (bzw. 1200) → rot: „Webapp: beim
+ *      Tippen …“ — die Ruhezeit beider Oberflächen ist dieselbe
+ * Die übrigen Kotlin-Fälle sind Struktur (kein Android-SDK hier).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { oeffneOberflaeche, warte, takt, ANMELDUNG } = require('./helpers/oberflaeche');
+const Q = require('./helpers/sources');
+const ohneKommentare = (/** @type {string} */ s) => Q.ohneKommentare(s);
 
-const WEB = path.join(__dirname, '..');
-const APP = path.join(WEB, '..', 'Android-App', 'app', 'src', 'main');
+const APP = path.join(__dirname, '..', '..', 'Android-App', 'app', 'src', 'main');
 const lies = p => fs.readFileSync(p, 'utf8');
-const web  = rel => lies(path.join(WEB, rel));
 
-// Jeder Pfad in den Android-Baum AUSGESCHRIEBEN — siehe test/baumbruecken.test.js.
 const KT_API    = require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'api'));
 // Seit dem Schnitt des MainViewModels (28.10.2026): das entprellte Speichern
 // in Preisalarmeingabe.kt, gehalten vom SetDetailViewModel.
@@ -42,352 +57,157 @@ const KT_PLANER = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-die
 const XML_EN    = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values', 'strings.xml'));
 const XML_DE    = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values-de', 'strings.xml'));
 
-test('beide Oberflächen sprechen dieselben drei Endpunkte an', () => {
-  const route = web('routes/api_v1/sets.ts');
-  for (const m of ['get', 'put', 'delete']) {
-    assert.match(route, new RegExp(`router\\.${m}\\('/sets/:setNumber/alert'`),
-      `Der Endpunkt ${m.toUpperCase()} fehlt`);
-  }
-  const js = web('public/js/02-detailfelder.js');
-  assert.match(js, /\/alert`\)/,  'Die Webapp liest den Alarm nicht');
-  assert.match(js, /'PUT', `\/v1\/sets\/\$\{encodeURIComponent\(sn\)\}\/alert`/, 'Die Webapp setzt ihn nicht');
-  assert.match(js, /'DELETE', `\/v1\/sets\/\$\{encodeURIComponent\(sn\)\}\/alert\?condition=/, 'Die Webapp löscht ihn nicht');
+const SN = '10305-1';
+const de = Q.loadTranslations().de;
+const RUHE = Number(/const val RUHE_MS = (\d+)L/.exec(KT_ALARMEINGABE)?.[1]);
 
+/** Set-Detail öffnen, wie ein Klick auf die Kachel. */
+async function detail(antworten = {}) {
+  const o = await oeffneOberflaeche({
+    [`/v1/sets/${SN}`]: { success: true, set: { set_number: SN, name: 'Burg', quantity: 1, conditions: ['N'], instructions: [] } },
+    [`/v1/sets/${SN}/alert`]: (_u, opt) => opt.method === 'PUT'
+      ? { success: true, alert: { set_number: SN, condition: 'N', richtung: 'unter', schwelle: 249, currency_code: 'EUR', ausgeloest: true } }
+      : { success: true, alerts: [] },
+    ...antworten,
+  });
+  const knopf = o.d.createElement('button');
+  Object.assign(knopf.dataset, { click: 'openModal', arg: SN });
+  o.d.body.append(knopf);
+  knopf.click();
+  assert.ok(await warte(() => o.d.getElementById('m-alert-val'), 4000), 'kein Alarmfeld im Set-Detail');
+  await o.ruhig();
+  return o;
+}
+const schreibend = o => o.aufrufe.filter(a => /\/alert(\?|$)/.test(a.url) && a.method !== 'GET');
+const tippe = (o, wert) => {
+  const f = o.d.getElementById('m-alert-val');
+  f.value = wert;
+  f.dispatchEvent(new o.w.Event('input', { bubbles: true }));
+};
+
+test('Webapp: beim Tippen gespeichert, entprellt mit der Ruhezeit der App', async () => {
+  assert.ok(RUHE >= 300, `RUHE_MS der App nicht gefunden (${RUHE})`);
+  const o = await detail();
+  try {
+    for (const w of ['2', '24', '249']) { tippe(o, w); await takt(RUHE / 4); }
+    await takt(RUHE * 3 / 4 - 120);
+    assert.deepEqual(schreibend(o), [], 'gespeichert, bevor die Ruhezeit um war');
+    assert.ok(await warte(() => schreibend(o).length > 0, 400), 'nicht in der Ruhezeit der App gespeichert');
+    await takt(RUHE);
+    const [put, ...mehr] = schreibend(o);
+    assert.equal(mehr.length, 0, `${mehr.length + 1} Schreibaufrufe statt einem`);
+    assert.equal(put.method, 'PUT');
+    assert.deepEqual(JSON.parse(put.body), { richtung: 'unter', schwelle: 249, condition: 'N' });
+    assert.ok(await warte(() => o.d.getElementById('m-alert-state').textContent === de['detail.alert_fired']),
+      `der Merker zeigt „${o.d.getElementById('m-alert-state').textContent}“`);
+  } finally { o.w.close(); }
+});
+
+test('Webapp: ein leeres Feld löscht, ein Zustandswechsel lädt nur', async () => {
+  const o = await detail({ [`/v1/sets/${SN}/alert`]: (_u, opt) => opt.method === 'DELETE' ? { success: true }
+    : { success: true, alerts: [{ set_number: SN, condition: 'N', richtung: 'ueber', schwelle: 300, currency_code: 'EUR', ausgeloest: false }] } });
+  try {
+    assert.equal(o.d.getElementById('m-alert-dir').value, 'ueber');
+    const zustand = o.d.getElementById('m-alert-cond');
+    zustand.value = 'U';
+    zustand.dispatchEvent(new o.w.Event('change', { bubbles: true }));
+    await o.ruhig();
+    assert.deepEqual(schreibend(o), [], 'ein Zustandswechsel schreibt');
+    zustand.value = 'N';
+    zustand.dispatchEvent(new o.w.Event('change', { bubbles: true }));
+    await o.ruhig();
+    tippe(o, '');
+    assert.ok(await warte(() => schreibend(o).length === 1, RUHE + 1000), 'nichts gelöscht');
+    assert.equal(schreibend(o)[0].method, 'DELETE');
+    assert.match(schreibend(o)[0].url, /condition=N$/);
+  } finally { o.w.close(); }
+});
+
+test('Webapp: offene Alarme — der erste Besuch merkt nur, danach die Meldung wie in der App', async () => {
+  const JETZT = '2026-11-10T08:00:00.123Z';
+  const offen = { success: true, now: JETZT, alerts: [{ set_number: SN, richtung: 'unter', schwelle: 200, zuletzt_preis: 199.5, currency_code: 'CHF' }] };
+  const meldungen = o => [...o.d.querySelectorAll('#toasts > *')].map(t => t.textContent.trim());
+  const erst = await oeffneOberflaeche({ '/v1/alerts/pending': offen });
+  try {
+    await erst.ruhig();
+    const abruf = erst.aufrufe.filter(a => a.url.includes('/v1/alerts/pending'));
+    assert.equal(abruf.length, 1, 'beim Öffnen nicht nachgefragt');
+    assert.doesNotMatch(abruf[0].url, /since=/);
+    assert.deepEqual(meldungen(erst).filter(m => m.includes(SN)), [], 'beim ersten Besuch gemeldet');
+    assert.equal(erst.w.localStorage.getItem(`bim_alarm_marke_${ANMELDUNG['/v1/auth/me'].user.id}`), JETZT, 'nicht die Marke des Servers');
+  } finally { erst.w.close(); }
+  const dann = await oeffneOberflaeche({ '/v1/alerts/pending': offen },
+    { vorher: w => w.localStorage.setItem(`bim_alarm_marke_${ANMELDUNG['/v1/auth/me'].user.id}`, '2026-11-09T08:00:00Z') });
+  try {
+    await dann.ruhig();
+    assert.ok(dann.aufrufe.some(a => a.url.includes('/v1/alerts/pending?since=2026-11-09T08%3A00%3A00Z')));
+    assert.ok(await warte(() => meldungen(dann).some(m => m.includes(SN))), 'keine Meldung');
+    // Derselbe Aufbau wie Alarmabholung.text() der App: Währung des Alarms, zwei Stellen.
+    assert.ok(meldungen(dann).includes(`${SN}: CHF 199.50 (${de['detail.alert_below']} CHF 200.00)`), meldungen(dann).join(' | '));
+    const kt = ohneKommentare(KT_ABHOL);
+    assert.match(kt, /a\.currencyCode/, 'Die App nimmt nicht die Währung des Alarms');
+    assert.match(kt, /"%\.2f"/, 'Die App rundet nicht auf zwei Stellen');
+  } finally { dann.w.close(); }
+});
+
+test('App: dieselben drei Endpunkte und dieselbe Abholung, ohne Kontofilter', () => {
   assert.match(KT_API, /@GET\("api\/v1\/sets\/\{setNumber\}\/alert"\)/);
   assert.match(KT_API, /@PUT\("api\/v1\/sets\/\{setNumber\}\/alert"\)/);
   assert.match(KT_API, /@DELETE\("api\/v1\/sets\/\{setNumber\}\/alert"\)/);
+  assert.match(KT_API, /@GET\("api\/v1\/alerts\/pending"\)/, 'Die App fragt nicht nach');
+  // Ein Alarm gehört einem Konto; ein Kontofilter wäre eine falsche Absicht.
+  assert.doesNotMatch(KT_API.slice(KT_API.indexOf('getPreisalarme'), KT_API.indexOf('// ── Lagerort')), /@Query\("accounts"\)/);
 });
 
-test('ein Alarm gehört EINEM Konto — kein Blickfeld, nirgends', () => {
-  // Der einzige Ort im Projekt, an dem `user_id` ohne scopeIds()/writableIds()
-  // richtig ist: Wer eine Schwelle setzt, will selbst benachrichtigt werden.
-  // Das Elternkonto hätte nichts davon, die Merkposten seiner Kinder per Mail zu
-  // bekommen — und dürfte sie schon gar nicht löschen.
-  const route = web('routes/api_v1/sets.ts');
-  const i = route.indexOf("router.get('/sets/:setNumber/alert'");
-  // Bis zur nächsten Route nach den Alarmen: Die Lagerort-Routen danach
-  // filtern zu Recht nach Konto.
-  const j = route.indexOf("router.get('/alerts/pending'");
-  assert.ok(i > 0 && j > i, 'Die Alarm-Routen stehen nicht, wo erwartet');
-  const block = route.slice(i, j);
-  assert.doesNotMatch(block, /scopeIds|writableIds|parseScopeMode/,
-    'Eine Alarm-Route filtert nach Blickfeld — dann bekämen Eltern die Mails der Kinder');
-
-  assert.doesNotMatch(KT_API.slice(KT_API.indexOf('getPreisalarme'),
-                                   KT_API.indexOf('// ── Lagerort')), /@Query\("accounts"\)/,
-    'Die App schickt einen Kontofilter mit — der Server ignoriert ihn, aber die Absicht wäre falsch');
-});
-
-test('ein leeres Feld löscht — in beiden', () => {
-  // Die natürliche Geste, einen Alarm loszuwerden, ist das Feld zu leeren.
-  // Ein eigener Knopf daneben wäre ein zweiter Weg für dieselbe Absicht, und
-  // eine „Schwelle 0" wäre ein Alarm, der nie oder immer meldet.
-  // Ausführlich: docs/begruendungen/test/preisalarm-beide.test.js.md#stelle
-  assert.match(web('public/js/02-detailfelder.js'), /const loeschen = (zahl == null|!\((zahl != null && )?zahl > 0\));/,
-    'Die Webapp löscht bei leerem Feld nicht');
-  assert.match(KT_ALARMEINGABE, /return if \(z > 0\.0\) z else null/,
-    'Die App löscht bei leerem Feld nicht');
-  assert.match(KT_FEAT, /if \(schwelle == null\)\s*\n?\s*sets\.deletePreisalarm/,
-    'Die App löscht bei leerem Feld nicht');
-});
-
-test('beide speichern beim TIPPEN, entprellt, mit derselben Ruhezeit', () => {
-  // ── Marcos Befund ─────────────────────────────────────────────────────────
-  //
-  // „Der Preisalarm wird nicht gespeichert … soll gespeichert werden, wenn
-  // man was einträgt. Analog dem Kaufpreis."
-  //
-  // Beide hingen am Verlassen des Feldes. Am Telefon tippt man die Zahl,
-  // schliesst die Tastatur und geht zurück — dieser Fokuswechsel kommt nie.
-  const js = require('./helpers/sources').ohneKommentare(web('public/js/02-detailfelder.js'));
-  assert.match(js, /data-input="alarmGetippt"/,
-    'Das Schwellenfeld der Webapp hängt nicht am Tippen');
-  assert.doesNotMatch(js, /id="m-alert-val"[^>]*data-change/,
-    'Das Schwellenfeld hängt wieder am Fokuswechsel');
-  // Geprüft wird die BEHAUPTUNG — beim Tippen wird gespeichert —, nicht der
-  // Wortlaut der Zeile. Vorher stand hier die ganze Zeile als Muster; am
-  // 28.09. bekam das Feld einen NumericInput-Filter, der Aufruf rückte in
-  // einen mehrzeiligen Lambda, und der Test wurde rot, obwohl er weiter beim …
-  // Ausführlich: docs/begruendungen/test/preisalarm-beide.test.js.md#stelle-2
-  assert.match(require('./helpers/sources').ohneKommentare(KT_SECT),
-    /onValueChange = \{[\s\S]{0,400}?onSetze\(setNumber, richtung, (?!schwelle\b)\w+, zustand\)/,
+test('App: ein leeres Feld löscht, gespeichert wird beim Tippen in der Ruhezeit des ViewModels', () => {
+  const ohne = ohneKommentare;
+  assert.match(KT_ALARMEINGABE, /return if \(z > 0\.0\) z else null/, 'Die App löscht bei leerem Feld nicht');
+  assert.match(KT_FEAT, /if \(schwelle == null\)\s*\n?\s*sets\.deletePreisalarm/, 'Die App löscht bei leerem Feld nicht');
+  assert.match(ohne(KT_SECT), /onValueChange = \{[\s\S]{0,400}?onSetze\(setNumber, richtung, (?!schwelle\b)\w+, zustand\)/,
     'Das Schwellenfeld der App hängt nicht am Tippen');
-  assert.doesNotMatch(require('./helpers/sources').ohneKommentare(KT_SECT),
-    /alarmFokus/, 'Die App speichert noch am Fokuswechsel');
-
-  // Dieselbe Ruhezeit in beiden: Laufen sie auseinander, verhält sich
-  // dasselbe Feld an zwei Stellen verschieden, ohne dass es jemandem auffiele.
-  const webRuhe = /const ALARM_RUHE = (\d+);/.exec(js);
-  const appRuhe = /const val RUHE_MS = (\d+)L/.exec(KT_ALARMEINGABE);
-  assert.ok(webRuhe && appRuhe, 'Eine der beiden Ruhezeiten steht nicht mehr da');
-  assert.equal(webRuhe[1], appRuhe[1],
-    `Webapp ${webRuhe[1]} ms, App ${appRuhe[1]} ms — dasselbe Feld, zwei Takte`);
+  assert.doesNotMatch(ohne(KT_SECT), /alarmFokus/, 'Die App speichert noch am Fokuswechsel');
+  assert.match(KT_VM, /Preisalarmeingabe\(\s*\n?\s*scope = viewModelScope/, 'Der Auftrag hängt nicht mehr am ViewModel');
+  assert.match(ohne(KT_FEAT), /job\?\.cancel\(\)\s*\n\s*job = scope\.launch/, 'Die Ruhezeit läuft nicht im übergebenen Scope');
+  assert.doesNotMatch(ohne(KT_SECT), /LaunchedEffect\([^)]*schwelle/, 'Die Ruhezeit stirbt mit dem Bildschirm');
+  assert.match(KT_VM, /val setNumber: String = gemerkt\[ARG_SET\]/, 'Das Set der Detailansicht kommt fest aus der Route');
 });
 
-test('die Ruhezeit der App überlebt das Verlassen des Bildschirms', () => {
-  // Ein LaunchedEffect mit delay() wäre die naheliegende Lösung und hätte
-  // denselben Fehler nur verschoben: Er hängt an der Komposition. Wer während
-  // der Ruhezeit zurückgeht, löst sie auf und bricht den Auftrag ab — wieder
-  // nichts gespeichert, nur seltener.
-  assert.match(KT_VM, /Preisalarmeingabe\(\s*\n?\s*scope = viewModelScope/,
-    'Der Auftrag hängt nicht mehr am ViewModel');
-  const f = require('./helpers/sources').ohneKommentare(KT_FEAT);
-  assert.match(f, /job\?\.cancel\(\)\s*\n\s*job = scope\.launch/,
-    'Die Ruhezeit läuft nicht im übergebenen Scope');
-  assert.doesNotMatch(require('./helpers/sources').ohneKommentare(KT_SECT),
-    /LaunchedEffect\([^)]*schwelle/,
-    'Die Ruhezeit steht wieder in einem LaunchedEffect — sie stirbt mit dem Bildschirm');
-  // Und die späte Antwort darf nicht im Zustand eines ANDEREN Sets landen:
-  // Jedes SetDetailViewModel gehört zu genau einem Set (Navigationsargument).
-  assert.match(KT_VM, /val setNumber: String = gemerkt\[ARG_SET\]/,
-    'Das Set der Detailansicht kommt nicht mehr fest aus der Route');
-});
-
-test('beide zeigen, ob schon gemeldet wurde', () => {
-  // Der Unterschied zwischen „der Alarm steht" und „der Alarm hat gefeuert".
-  // Ohne diese Zeile fragt man sich, warum keine Mail mehr kommt — und die
-  // Antwort (Hysterese) steht nirgends auf dem Bildschirm.
-  assert.match(web('public/js/02-detailfelder.js'), /a\.ausgeloest \? tRaw\('detail\.alert_fired'\)/,
-    'Die Webapp zeigt den Merker nicht');
-  assert.match(KT_SECT, /alarm\.ausgeloest\) R\.string\.detail_alert_fired/,
-    'Die App zeigt den Merker nicht');
-});
-
-test('beide Sprachen sind gepflegt — in beiden Oberflächen', () => {
-  for (const datei of ['public/locales/de.js', 'public/locales/en.js']) {
-    const s = web(datei);
-    for (const k of ['detail.alert', 'detail.alert_below', 'detail.alert_above',
-                     'detail.alert_armed', 'detail.alert_fired']) {
-      assert.ok(s.includes(`'${k}'`), `${datei}: ${k} fehlt`);
-    }
-  }
-  for (const [datei, s] of [['res/values/strings.xml', XML_EN],
-                            ['res/values-de/strings.xml', XML_DE]]) {
-    for (const k of ['detail_alert', 'detail_alert_below', 'detail_alert_above',
-                     'detail_alert_armed', 'detail_alert_fired']) {
+test('App: Merker, wählbarer Zustand, Texte', () => {
+  const kt = ohneKommentare(KT_SECT);
+  assert.match(KT_SECT, /alarm\.ausgeloest\) R\.string\.detail_alert_fired/, 'Die App zeigt den Merker nicht');
+  assert.match(kt, /var zustand by rememberSaveable/, 'Der App fehlt die Zustandswahl — oder sie übersteht keine Drehung');
+  assert.match(kt, /R\.string\.condition_used/, 'Der App fehlt der Knopf für „gebraucht"');
+  assert.match(kt, /onWahl = \{ zustand = it \}/, 'Der Zustandswechsel der App tut mehr als umschalten');
+  assert.match(KT_WORKER, /R\.string\.detail_alert_below/, 'Die App erfindet eigene Richtungstexte');
+  for (const [datei, s] of [['res/values/strings.xml', XML_EN], ['res/values-de/strings.xml', XML_DE]])
+    for (const k of ['detail_alert', 'detail_alert_below', 'detail_alert_above', 'detail_alert_armed', 'detail_alert_fired',
+                     'alert_channel_name', 'alert_channel_desc', 'alert_notify', 'alert_notify_hint'])
       assert.ok(s.includes(`name="${k}"`), `${datei}: ${k} fehlt`);
-    }
-  }
 });
 
-test('die Prüfung hängt am Ende des Preislaufs, nicht an jedem Preisabruf', () => {
-  // In fetchAndCachePrice() liefe sie pro Lauf tausendfach — auch bei
-  // Cache-Treffern, bei denen sich nichts geändert hat — und meldete dieselbe
-  // Schwelle mehrfach je Durchgang.
-  const job = require('./helpers/sources').ohneKommentare(web('src/finanzen/preisLauf.ts'));
-  assert.match(job, /pruefeSet/, 'Der Preislauf prüft keine Alarme');
-  // Bis zur SCHLIESSENDEN Klammer der Funktion, nicht bis zur nächsten
-  // Deklaration: Zwischen fetchAndCachePrice() und refreshPriceForSet() liegt
-  // die Hauptschleife des Laufs — und genau dort steht die Prüfung richtig.
-  // Der erste Entwurf schnitt bis dorthin und meldete deshalb die richtige
-  // Stelle als Fehler.
-  const i = job.indexOf('async function fetchAndCachePrice');
-  assert.ok(i > 0, 'fetchAndCachePrice nicht gefunden');
-  const fetchTeil = job.slice(i, job.indexOf('\n}', i));
-  assert.doesNotMatch(fetchTeil, /pruefeSet/,
-    'Die Prüfung hängt am einzelnen Preisabruf — dann meldet sie mehrfach je Lauf');
-  assert.match(job, /setsMitAlarm\(\)/, 'Es müssen nur die Sets geprüft werden, auf die jemand wartet');
-  assert.match(web('src/finanzen/repository/preisLauf.ts'), /SELECT DISTINCT set_number FROM price_alerts/,
-    'Es müssen nur die Sets geprüft werden, auf die jemand wartet');
-});
-
-// ═══ Das Melden: die App fragt stündlich nach, die Webapp beim Öffnen ═══════
-// Ausführlich: docs/begruendungen/test/preisalarm-beide.test.js.md#beide-holen-dieselbe-liste-beim-selben-e
-
-test('beide holen dieselbe Liste beim selben Endpunkt ab', () => {
-  assert.match(web('routes/api_v1/sets.ts'), /router\.get\('\/alerts\/pending'/,
-    'Der Endpunkt fehlt');
-  assert.match(web('public/js/02-detailfelder.js'), /['`]\/v1\/alerts\/pending['`$]/,
-    'Die Webapp fragt nicht nach');
-  assert.match(KT_API, /@GET\("api\/v1\/alerts\/pending"\)/,
-    'Die App fragt nicht nach');
-  // Und die Webapp fragt auch TATSÄCHLICH — ein Aufruf, den niemand aufruft,
-  // ist genau die Sorte Halbfertiges, die hier schon zweimal stehen blieb.
-  // Ausführlich: docs/begruendungen/test/preisalarm-beide.test.js.md#stelle-3
-  //
-  // ohneKommentare(): Die Gegenprobe zu dieser Zeile blieb GRÜN. Über dem
-  // Aufruf in showApp() steht seine Begründung, und darin kommt der Name
-  // vor — die Prüfung fand also ihre eigene Erklärung und hätte auch einen
-  // gelöschten Aufruf durchgehen lassen. Dieselbe Falle wie in
-  // household.test.js und ratschen.test.js.
-  assert.match(require('./helpers/sources').ohneKommentare(web('public/js/26-sitzung.js')),
-    /zeigeOffeneAlarme/,
-    'zeigeOffeneAlarme() wird beim Anmelden nicht aufgerufen');
-});
-
-test('beide fragen auch beim Nach-vorn-Kommen, nicht nur im Hintergrund', () => {
-  // Marcos Befund vom 25.09.
-  // Ausführlich: docs/begruendungen/test/preisalarm-beide.test.js.md#ohne
-  const ohne = require('./helpers/sources').ohneKommentare;
-
-  // Webapp: beim Anmelden (die Zeile selbst prüft die Regel darüber).
-  assert.match(ohne(web('public/js/26-sitzung.js')), /zeigeOffeneAlarme/,
-    'Die Webapp fragt beim Anmelden nicht nach');
-
-  // App: beim Nach-vorn-Kommen der Activity.
-  const act = ohne(lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'app', 'MainActivity.kt')));
-  assert.match(act, /override fun onStart\(\)/,
-    'Die App fragt nur noch im Hintergrund nach — wer sie öffnet, wartet bis zu einer Stunde.');
+test('App: Abholen beim Nach-vorn-Kommen und stündlich, Marke vom Server, erster Durchgang still', () => {
+  const act = ohneKommentare(lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'app', 'MainActivity.kt')));
   const i = act.indexOf('override fun onStart()');
-  assert.match(act.slice(i, i + 400), /(?:PreisalarmWorker|preisalarme)\.durchgang\(/,
-    'onStart() holt die ausgelösten Alarme nicht ab.');
-
-  // onStart und nicht onCreate: onCreate läuft einmal je Activity. Wer die App
-  // eine Woche liegen lässt und zurückkommt, durchläuft es NICHT — und genau
-  // dann ist die Frage am interessantesten.
-  assert.ok(!/override fun onCreate[\s\S]{0,600}?(?:PreisalarmWorker|preisalarme)\.durchgang\(/.test(act),
-    'Der Abruf hängt an onCreate — dann trifft er das Zurückkommen aus dem Hintergrund nicht.');
-
-  // Und der Rumpf steht EINMAL: Der stündliche Auftrag und der Abruf beim
-  // Öffnen müssen dasselbe tun, sonst laufen sie auseinander.
-  assert.match(KT_WORKER, /suspend fun durchgang\((?:context: Context)?\)/,
-    'Der gemeinsame Rumpf fehlt — dann steht das Abholen zweimal da.');
+  assert.ok(i > 0, 'Die App fragt nur im Hintergrund nach');
+  assert.match(act.slice(i, i + 400), /(?:PreisalarmWorker|preisalarme)\.durchgang\(/, 'onStart() holt nicht ab.');
+  assert.ok(!/override fun onCreate[\s\S]{0,600}?(?:PreisalarmWorker|preisalarme)\.durchgang\(/.test(act), 'Der Abruf hängt an onCreate');
+  assert.match(KT_WORKER, /suspend fun durchgang\((?:context: Context)?\)/, 'Der gemeinsame Rumpf fehlt');
   const dw = KT_WORKER.slice(KT_WORKER.indexOf('override suspend fun doWork'));
-  assert.match(dw.slice(0, 300), /durchgang\((?:applicationContext)?\)/,
-    'doWork() benutzt den gemeinsamen Rumpf nicht.');
+  assert.match(dw.slice(0, 300), /durchgang\((?:applicationContext)?\)/, 'doWork() benutzt den gemeinsamen Rumpf nicht.');
+  assert.match(KT_ABHOL, /antwort\.now\?\.takeIf/, 'Die App nimmt nicht den Zeitpunkt des Servers als Marke');
+  assert.doesNotMatch(KT_ABHOL, /System\.currentTimeMillis|Instant\.now/, 'Die App nimmt ihre eigene Uhr');
+  assert.match(KT_ABHOL, /if \(marke\.isNullOrBlank\(\)\) return Ergebnis\.Markiert/, 'Die App meldet beim ersten Durchgang');
 });
 
-test('die Marke kommt vom SERVER, nicht von der eigenen Uhr', () => {
-  // Nähme jede Seite ihre eigene Uhr, entschiede die Gangabweichung zum
-  // Server darüber, ob eine Meldung doppelt kommt (Uhr geht nach) oder
-  // verloren geht (sie geht vor). Beides fällt niemandem als Uhrenproblem
-  // auf — man sieht nur eine Meldung zu viel oder keine.
-  assert.match(web('src/finanzen/repository/preisalarme.ts'), /SELECT NOW\(\) AS jetzt/,
-    'Der Server reicht seinen Zeitpunkt nicht mit');
-
-  const js = require('./helpers/sources').ohneKommentare(web('public/js/02-detailfelder.js'));
-  const i = js.indexOf('export async function zeigeOffeneAlarme');
-  assert.ok(i > 0, 'zeigeOffeneAlarme() nicht gefunden');
-  const block = js.slice(i, js.indexOf('\nexport ', i + 10));
-  assert.match(block, /localStorage\.setItem\(schluessel, String\(d\.now\)\)/,
-    'Die Webapp merkt sich nicht den Zeitpunkt des Servers');
-  assert.doesNotMatch(block, /Date\.now\(\)|new Date\(\)/,
-    'Die Webapp nimmt ihre eigene Uhr');
-
-  assert.match(KT_ABHOL, /antwort\.now\?\.takeIf/,
-    'Die App nimmt nicht den Zeitpunkt des Servers als neue Marke');
-  assert.doesNotMatch(KT_ABHOL, /System\.currentTimeMillis|Instant\.now/,
-    'Die App nimmt ihre eigene Uhr');
-});
-
-test('der erste Durchgang meldet NICHTS — in beiden', () => {
-  // Eine frisch eingerichtete App (oder ein frisch angemeldetes Konto am
-  // Browser) soll nicht mit Schwellen aufschlagen, die vor Wochen gerissen
-  // sind. Der Server liefert ohne `since` schon eine leere Liste; beide
-  // Oberflächen sagen es trotzdem selbst, damit es im Code steht und nicht
-  // nur als Nebenwirkung einer Serverantwort existiert.
-  const js = require('./helpers/sources').ohneKommentare(web('public/js/02-detailfelder.js'));
-  const i = js.indexOf('export async function zeigeOffeneAlarme');
-  assert.match(js.slice(i, js.indexOf('\nexport ', i + 10)), /if \(!marke\) return;/,
-    'Die Webapp meldet beim ersten Besuch');
-  assert.match(KT_ABHOL, /if \(marke\.isNullOrBlank\(\)\) return Ergebnis\.Markiert/,
-    'Die App meldet beim ersten Durchgang');
-});
-
-test('der Abruf der App steht auf einer Stunde und ist abschaltbar', () => {
-  assert.match(KT_WORKER, /PeriodicWorkRequestBuilder<PreisalarmWorker>\(1, TimeUnit\.HOURS\)/,
-    'Das Intervall ist nicht eine Stunde — Marcos ausdrückliche Vorgabe');
-  // Ohne Netz gar nicht erst anlaufen, statt vergeblich das Funkmodem zu
-  // wecken. Das ist der grösste Einzelposten am Akkuverbrauch.
-  assert.match(KT_WORKER, /setRequiredNetworkType\(NetworkType\.CONNECTED\)/,
-    'Der Auftrag läuft auch ohne Netz an');
-  // KEEP, nicht UPDATE: Sonst schöbe jeder App-Start den nächsten Lauf nach
-  // hinten, und bei häufiger Benutzung fände der Abruf nie statt.
-  assert.match(KT_WORKER, /ExistingPeriodicWorkPolicy\.KEEP/,
-    'Ein häufig geöffneter App verschiebt den Abruf endlos');
-  // Der Schalter muss den Auftrag SOFORT einplanen und abbestellen — sonst
-  // wäre „eingeschaltet" eine Stunde lang eine Behauptung ohne Wirkung.
-  // Der Weg: Schalter → GeraeteEinstellungenViewModel → AlarmPlaner → Worker.
-  assert.match(KT_EINST, /PreisalarmCard\(an, geraet::alarmMeldungen\)/,
-    'Der Schalter meldet den Wunsch nicht an das ViewModel');
-  assert.match(KT_GERAET, /fun alarmMeldungen\(an: Boolean\)[\s\S]{0,200}?planer\.einplanen\(an\)/,
-    'Der Schalter plant den Auftrag nicht ein');
-  assert.match(KT_PLANER, /PreisalarmWorker\.einplanen\(context, an\)/,
-    'Der AlarmPlaner plant den Auftrag nicht ein');
-  // `return@runCatching` und nicht mehr `return`: einplanen() faengt seit dem
-  // 25.09. selbst, weil derselbe Aufruf am Schalter ungesichert stand und die
-  // App schloss (test/alarm-einplanen-faellt-nicht.test.js). Der Rumpf liegt
-  // damit in einem Lambda, und aus einem Lambda kehrt man beschriftet zurueck.
-  assert.match(KT_WORKER, /if \(!an\) \{ wm\.cancelUniqueWork\(NAME\); return@runCatching \}/,
-    'Ausschalten bestellt den Auftrag nicht ab');
-  // Und beim Start wieder einplanen: WorkManager überlebt Neustarts, aber
-  // nicht ein Zurücksetzen der App-Daten oder ein „Force Stop", nach dem
-  // manche Hersteller die Aufträge verwerfen.
-  // Der Aufruf steht seit dem 25.09. über zwei Zeilen, weil er sein Ergebnis …
-  // Ausführlich: docs/begruendungen/test/preisalarm-beide.test.js.md#stelle-4
-  assert.match(KT_START, /PreisalarmWorker\s*\n?\s*\.einplanen\(this@BrickInventoryApp, true\)/,
-    'Nach einem Zurücksetzen käme nie wieder eine Meldung');
-});
-
-test('beide formulieren die Meldung gleich', () => {
-  // Wer beide benutzt, soll nicht zwei Formulierungen derselben Nachricht
-  // lesen. Die Zahlen stehen mit zwei Nachkommastellen und in der Währung
-  // des ALARMS, nicht der aktuellen Kontowährung: Die Schwelle wurde in
-  // jener Währung gesetzt, und 200 CHF sind nicht 200 EUR.
-  assert.match(KT_ABHOL, /a\.currencyCode/, 'Die App nimmt nicht die Währung des Alarms');
-  assert.match(KT_ABHOL, /"%\.2f"/, 'Die App rundet nicht auf zwei Stellen');
-  const js = web('public/js/02-detailfelder.js');
-  assert.match(js, /a\.currency_code/, 'Die Webapp nimmt nicht die Währung des Alarms');
-  assert.match(js, /toFixed\(2\)/, 'Die Webapp rundet nicht auf zwei Stellen');
-  // Dieselben zwei Richtungstexte wie im Detailfenster, nicht zwei neue.
-  assert.match(js, /tRaw\('detail\.alert_below'\), ueber = tRaw\('detail\.alert_above'\)/,
-    'Die Webapp erfindet eigene Richtungstexte');
-  assert.match(KT_WORKER, /R\.string\.detail_alert_below/,
-    'Die App erfindet eigene Richtungstexte');
-});
-
-test('die Benachrichtigung der App ist gepflegt und erklärt sich', () => {
-  for (const [datei, s] of [['res/values/strings.xml', XML_EN],
-                            ['res/values-de/strings.xml', XML_DE]]) {
-    for (const k of ['alert_channel_name', 'alert_channel_desc',
-                     'alert_notify', 'alert_notify_hint']) {
-      assert.ok(s.includes(`name="${k}"`), `${datei}: ${k} fehlt`);
-    }
-  }
-  // Ab Android 13 ist POST_NOTIFICATIONS eine Laufzeitberechtigung. Ohne sie
-  // wirft notify() nicht — es passiert schlicht nichts.
-  assert.match(lies(path.join(APP, 'AndroidManifest.xml')),
-    /android\.permission\.POST_NOTIFICATIONS/, 'Die Berechtigung fehlt im Manifest');
-  assert.match(KT_WORKER, /checkSelfPermission/,
-    'Der Worker prüft die Berechtigung nicht — die Meldung verschwände lautlos');
-});
-
-test('der Alarm gilt für einen ZUSTAND, und der ist wählbar — in beiden', () => {
-  // Was hier vorher stand
-  // Ausführlich: docs/begruendungen/test/preisalarm-beide.test.js.md#js-stelle
-  const js = require('./helpers/sources').ohneKommentare(web('public/js/02-detailfelder.js'));
-  assert.doesNotMatch(js, /const ALARM_ZUSTAND = /,
-    'Die Webapp hat den Zustand wieder festgenagelt');
-  // Der Anker ist gewandert: Das Markup lag inline im Set-Dialog und trug
-  // feste IDs. Seit das Merkposten-Detail denselben Alarm zeigt — derselbe
-  // Eintrag in price_alerts, am selben Schluessel — steht es in
-  // alarmBlock(praefix), und die ID entsteht aus dem Praefix. Geprueft wird
-  // weiterhin, DASS es eine Zustandswahl gibt.
-  assert.match(js, /id="\$\{p\}-alert-cond"/, 'Der Webapp fehlt die Zustandswahl');
-  assert.match(js, /export function alarmBlock\(/,
-    'Der Alarmblock ist nicht mehr gemeinsam — dann hat die Merkliste eine zweite Maske');
-  assert.match(js, /function alarmZustand\(\)/,
-    'Die Webapp liest den gewählten Zustand nicht');
-
-  const kt = require('./helpers/sources').ohneKommentare(KT_SECT);
-  assert.match(kt, /var zustand by rememberSaveable/,
-    'Der App fehlt die Zustandswahl — oder sie übersteht keine Drehung');
-  assert.match(kt, /R\.string\.condition_used/,
-    'Der App fehlt der Knopf für „gebraucht"');
-
-  // ── Ein Wechsel LÄDT, er speichert nicht ─────────────────────────────────
-  //
-  // Ein Wechsel ist die Frage „was steht für gebraucht?", keine Eingabe.
-  // Würde dabei gespeichert, legte schon das Umschalten einen Alarm im neuen
-  // Zustand an — oder löschte ihn, wenn das Feld gerade leer ist.
-  assert.match(js, /data-change="wechsleAlarmZustand"/,
-    'Die Zustandswahl der Webapp hängt am Speichern statt am Laden');
-  const i = js.indexOf('export function wechsleAlarmZustand');
-  assert.ok(i > 0, 'wechsleAlarmZustand fehlt');
-  const block = js.slice(i, js.indexOf('\n}', i));
-  assert.doesNotMatch(block, /sendeAlarm|api\('PUT'|api\('DELETE'/,
-    'Ein Zustandswechsel der Webapp schreibt');
-  // Die App wählt seit dem 02.11.2026 über eine Segmentschaltfläche (SegmentWahl).
-  assert.match(kt, /onWahl = \{ zustand = it \}/,
-    'Der Zustandswechsel der App tut mehr als umschalten');
+test('App: der Abruf steht auf einer Stunde, ist abschaltbar und braucht die Berechtigung', () => {
+  assert.match(KT_WORKER, /PeriodicWorkRequestBuilder<PreisalarmWorker>\(1, TimeUnit\.HOURS\)/, 'Das Intervall ist nicht eine Stunde');
+  assert.match(KT_WORKER, /setRequiredNetworkType\(NetworkType\.CONNECTED\)/, 'Der Auftrag läuft auch ohne Netz an');
+  assert.match(KT_WORKER, /ExistingPeriodicWorkPolicy\.KEEP/, 'Ein häufig geöffneter App verschiebt den Abruf endlos');
+  assert.match(KT_EINST, /PreisalarmCard\(an, geraet::alarmMeldungen\)/, 'Der Schalter meldet den Wunsch nicht');
+  assert.match(KT_GERAET, /fun alarmMeldungen\(an: Boolean\)[\s\S]{0,200}?planer\.einplanen\(an\)/, 'Der Schalter plant nicht ein');
+  assert.match(KT_PLANER, /PreisalarmWorker\.einplanen\(context, an\)/, 'Der AlarmPlaner plant nicht ein');
+  assert.match(KT_WORKER, /if \(!an\) \{ wm\.cancelUniqueWork\(NAME\); return@runCatching \}/, 'Ausschalten bestellt nicht ab');
+  assert.match(KT_START, /PreisalarmWorker\s*\n?\s*\.einplanen\(this@BrickInventoryApp, true\)/, 'Nach einem Zurücksetzen käme nie wieder eine Meldung');
+  assert.match(lies(path.join(APP, 'AndroidManifest.xml')), /android\.permission\.POST_NOTIFICATIONS/, 'Die Berechtigung fehlt im Manifest');
+  assert.match(KT_WORKER, /checkSelfPermission/, 'Der Worker prüft die Berechtigung nicht');
 });

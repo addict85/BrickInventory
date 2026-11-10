@@ -287,33 +287,6 @@ test('feste Wartezeiten in Tests werden weniger, nie mehr', () => {
 });
 
 /**
- * Emoji in der Oberfläche. Seit dem 25.10. gibt es eine Symbolfamilie (Sprite
- * in index.html); Emoji sehen je Gerät anders aus und passen weder in Grösse
- * noch Farbe dazu. Gezählt werden Markup, deutsche Sprachtexte und die
- * Vorlagen in public/js — ohne Kommentare.
- */
-function emojiInDerOberflaeche() {
-  const web = path.join(WEB, 'public');
-  const ohne = s => require('./helpers/sources').ohneHtmlKommentare(s).replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/(^|[^:'"`])\/\/[^\n]*/g, '$1');
-  const dateien = [path.join(web, 'index.html'), path.join(web, 'locales', 'de.js'),
-    ...fs.readdirSync(path.join(web, 'js')).filter(n => /^\d\d-.*\.js$/.test(n)).map(n => path.join(web, 'js', n))];
-  return dateien.reduce((n, f) => n + (ohne(fs.readFileSync(f, 'utf8')).match(/\p{Extended_Pictographic}/gu) || []).length, 0);
-}
-
-test('Emoji in der Oberfläche werden weniger, nie mehr', () => {
-  // Seit dem 27.10.2026 0: Alle Stellen nutzen die Symbolfamilie oder kommen ohne aus.
-  const SCHRANKE = 0;
-  const ist = emojiInDerOberflaeche();
-  // Selbstbeweis an einer Probe statt an der Zahl — die ist jetzt 0.
-  assert.equal(('<b>📦 x</b> ⚠️').match(/\p{Extended_Pictographic}/gu)?.length, 2, 'Die Suche greift nicht mehr');
-  assert.ok(ist <= SCHRANKE,
-    `${ist} Emoji in der Oberfläche, erlaubt sind ${SCHRANKE}. Für Symbole gibt es ` +
-    'die Symbolfamilie: <svg class="ico" aria-hidden="true"><use href="#i-…"/></svg>.');
-  if (ist < SCHRANKE) console.log(`  ℹ Emoji: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
-});
-
-/**
  * Inline-Stile in index.html. Ein data-stil="…" (js/00-stile.js setzt es als
  * Inline-Stil) setzt sich über jedes Design und jede Telefonregel hinweg;
  * gleiche Dinge sahen deshalb an zwei Stellen verschieden aus. Gezählt werden

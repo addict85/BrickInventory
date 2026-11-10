@@ -1,16 +1,29 @@
 /**
- * Lagerort — dieselbe Antwort in beiden Oberflächen.
+ * Lagerort — dieselbe Antwort in beiden Oberflächen. Die Webapp läuft im
+ * echten Bündel (jsdom), die Längengrenze am Servermodul; die App bleibt
+ * Kotlin-Struktur (kein SDK hier). Den Server selbst (Endpunkte, Vorrat,
+ * Filter, Besitzerliste, Schreibbereich) prüfen lagerort-db, lagerort-vorrat-db,
+ * lagerort-id-db, lagerort-detail-und-vorrat-db und lagerort-beim-erfassen-db;
+ * die Verwaltung in den Einstellungen formulare-rueckmeldung-oberflaeche.
  * Ausführlich: docs/begruendungen/test/lagerort-beide.test.js.md#kopf
+ *
+ * Gegenproben (10.11.2026 gemessen, je einzeln, Bündel neu gebaut):
+ *   A  in lagerortGewaehlt das dispatchEvent(change) entfernt → rot: „Webapp:
+ *      im Set-Detail …“ und „Webapp: das Teil …“ (kein PUT)
+ *   B  in 07-set-detail.js ladeOrtAuswahl ohne die Besitzer → rot: ebenda (owner=)
+ *   C  in 13-set-teile.js `if (type === 'part')` → `if (true)` → rot: „Webapp: das
+ *      Teil …“ (Feld bei der Figur)
+ *   D  maxlength="60" → "80" in lagerortBlock → rot: „die Längengrenze …“
+ *   E  in 14-scope.js addLagerParam ohne p.set → rot: „Webapp: der Filter …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
+const _req = require('./helpers/sources').buildAndRequire();
 
-const WEB = path.join(__dirname, '..');
 const lies = p => fs.readFileSync(p, 'utf8');
-const web  = rel => lies(path.join(WEB, rel));
-
 // Jeder Pfad in den Android-Baum AUSGESCHRIEBEN — test/baumbruecken.test.js
 // löst diese Brücken statisch auf und kann eine Variable nicht sehen.
 const KT_API    = require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'api'));
@@ -40,276 +53,142 @@ const KT_EINST  = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-
 const XML_EN    = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values', 'strings.xml'));
 const XML_DE    = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values-de', 'strings.xml'));
 
-test('beide Oberflächen setzen den Lagerort über dieselben Endpunkte', () => {
-  const route = web('routes/api_v1/parts.ts') + web('routes/api_v1/sets.ts');
-  assert.match(route, /router\.put\('\/parts\/:partNumber\/:colorId\/storage'/);
-  assert.match(route, /router\.put\('\/sets\/:setNumber\/storage'/);
-  assert.match(route, /router\.get\('\/storage'/);
+const SN = '10305-1';
 
-  // Die Adresse wird seit dem 24.09. VORHER zusammengesetzt (`adresse`): Der
-  // Handler bedient jetzt Teile UND Figuren, und eine Figur hat keine Farbe —
-  // sie braucht deshalb eine eigene Route. Geprüft wird weiter, dass genau
-  // dieser eine Weg speichert, nur eben ohne die Adresse im selben Ausdruck.
-  assert.match(require('./helpers/sources').ansichtQuelle('13'),
-    /api\('PUT', adresse, \{ storage: el\.value \}\)/,
-    'Die Webapp speichert den Lagerort eines Teils nicht');
-  assert.match(require('./helpers/sources').ansichtQuelle('13'),
-    /\/v1\/minifigs\/\$\{encodeURIComponent\(nummer\)\}\/storage/,
-    'Die Webapp kennt die Lagerort-Adresse der Minifiguren nicht (Migration 0024)');
-  assert.match((web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')), /\/storage`, \{ storage: el\.value \}/,
-    'Die Webapp speichert den Lagerort eines Sets nicht');
+/** Ein Detail öffnen wie ein Klick: data-click mit Argumenten. */
+function klick(o, daten) {
+  const k = o.d.createElement('button');
+  Object.assign(k.dataset, daten);
+  o.d.body.append(k);
+  k.click();
+}
+const schreibt = (o, pfad) => o.aufrufe.filter(a => a.method === 'PUT' && a.url.endsWith(pfad));
+const waehle = (o, id, wert) => {
+  const s = o.d.getElementById(id);
+  s.value = wert;
+  assert.equal(s.value, wert, `${id} bietet „${wert}“ nicht an`);
+  s.dispatchEvent(new o.w.Event('change', { bubbles: true }));
+};
 
+test('Webapp: im Set-Detail aus dem Vorrat des Besitzers wählen oder neu eintippen', async () => {
+  const o = await oeffneOberflaeche({
+    [`/v1/sets/${SN}`]: { success: true, set: { set_number: SN, name: 'Burg', quantity: 1, conditions: ['N'], instructions: [],
+      storage: 'Keller', owners: [{ id: 7, username: 'ben' }] } },
+    '/v1/storage/locations': u => ({ success: true, orte: /owner=7/.test(u) ? [{ id: 1, name: 'Keller' }, { id: 2, name: 'Regal A' }] : [] }),
+    [`/v1/sets/${SN}/storage`]: { success: true },
+  });
+  try {
+    klick(o, { click: 'openModal', arg: SN });
+    assert.ok(await warte(() => o.d.querySelector('#m-storage-sel option[value="Regal A"]'), 4000), 'der Vorrat des Besitzers fehlt in der Auswahl');
+    assert.ok(o.aufrufe.some(a => /\/v1\/storage\/locations\?owner=7$/.test(a.url)), 'nicht nach der Liste des Besitzers gefragt');
+    assert.equal(o.d.getElementById('m-storage-sel').value, 'Keller');
+    waehle(o, 'm-storage-sel', 'Regal A');
+    assert.ok(await warte(() => schreibt(o, `/v1/sets/${SN}/storage`).length === 1), 'die Wahl speichert nicht');
+    assert.deepEqual(JSON.parse(schreibt(o, `/v1/sets/${SN}/storage`)[0].body), { storage: 'Regal A' });
+    const auswahl = o.d.getElementById('m-storage-sel');
+    auswahl.selectedIndex = [...auswahl.options].findIndex(x => x.dataset.neu === '1');
+    assert.ok(auswahl.selectedIndex > 0, 'kein Eintrag „neuer Ort“');
+    auswahl.dispatchEvent(new o.w.Event('change', { bubbles: true }));
+    assert.equal(o.d.getElementById('m-storage').style.display, '', '„neuer Ort“ öffnet kein Textfeld');
+    assert.equal(o.d.getElementById('m-storage').value, '');
+  } finally { o.w.close(); }
+});
+
+test('Webapp: das Teil hat das Feld und speichert, die Figur nicht', async () => {
+  const o = await oeffneOberflaeche({
+    '/v1/parts/3001/5/sets': { success: true, item: { name: 'Stein', color_name: 'Red', total_quantity: 2, owner_ids: [1], storage: null }, sets: [] },
+    '/v1/minifigs/sw0001/sets': { success: true, item: { name: 'Figur', total_quantity: 1 }, sets: [] },
+    '/v1/storage/locations': { success: true, orte: [{ id: 3, name: 'Kiste 3' }] },
+    '/v1/parts/3001/5/storage': { success: true },
+  });
+  try {
+    klick(o, { click: 'openSetItemDetail', arg: 'part', arg2: '3001', arg3: '5' });
+    assert.ok(await warte(() => o.d.querySelector('#setitem-storage-sel option[value="Kiste 3"]')), 'Teil: kein Lagerortfeld');
+    waehle(o, 'setitem-storage-sel', 'Kiste 3');
+    assert.ok(await warte(() => schreibt(o, '/v1/parts/3001/5/storage').length === 1), 'Teil: die Wahl speichert nicht');
+    o.d.getElementById('setitem-modal').classList.remove('open');
+    klick(o, { click: 'openSetItemDetail', arg: 'fig', arg2: 'sw0001', arg3: '0' });
+    assert.ok(await warte(() => o.d.getElementById('setitem-tit').textContent === 'Figur'));
+    await o.ruhig();
+    assert.equal(o.d.getElementById('setitem-storage'), null, 'Figur: das Feld steht auch bei Figuren');
+  } finally { o.w.close(); }
+});
+
+test('Webapp: der Filter steht neben dem Kontofilter und geht an den Server', async () => {
+  const o = await oeffneOberflaeche({ '/v1/storage': { success: true, orte: [{ ort: 'Regal A', sets: 1, teile: 0, figuren: 0 }] } });
+  try {
+    await o.ruhig();
+    for (const view of ['gallery', 'parts'])
+      assert.equal(o.d.getElementById(`storage-${view}`).parentElement, o.d.getElementById(`scope-${view}`).parentElement,
+        `${view}: die beiden Filter stehen nicht beieinander`);
+    assert.ok(await warte(() => o.d.querySelector('#storage-gallery option[value="Regal A"]')), 'der Filter kennt den Ort nicht');
+    waehle(o, 'storage-gallery', 'Regal A');
+    assert.ok(await warte(() => o.aufrufe.some(a => /\/v1\/sets\?.*storage=Regal(\+|%20)A/.test(a.url))), 'der Filter geht nicht an den Server');
+  } finally { o.w.close(); }
+});
+
+test('die Längengrenze steht in Server, Fehlertext, Webapp und App gleich', async () => {
+  const { LAGERORT_MAX_ZEICHEN: max, normalisiereLagerort } = _req('src/bestand/lagerort.js');
+  assert.ok(max > 0);
+  assert.equal(normalisiereLagerort('x'.repeat(max)), 'x'.repeat(max));
+  assert.throws(() => normalisiereLagerort('x'.repeat(max + 1)), e => e instanceof Error && e.message.includes(`höchstens ${max} Zeichen`));
+  const o = await oeffneOberflaeche({ [`/v1/sets/${SN}`]: { success: true, set: { set_number: SN, name: 'Burg', quantity: 1, conditions: ['N'], instructions: [] } } });
+  try {
+    klick(o, { click: 'openModal', arg: SN });
+    assert.ok(await warte(() => o.d.getElementById('m-storage'), 4000));
+    assert.equal(Number(o.d.getElementById('m-storage').getAttribute('maxlength')), max, 'Das Eingabefeld der Webapp begrenzt anders');
+  } finally { o.w.close(); }
+  assert.ok(KT_FELD.includes(`it.length <= ${max}`), `Das Eingabefeld der App begrenzt nicht auf ${max}`);
+});
+
+test('App: dieselben Endpunkte für Lagerort, Filter und Vorrat', () => {
   assert.match(KT_API, /@PUT\("api\/v1\/parts\/\{partNumber\}\/\{colorId\}\/storage"\)/);
   assert.match(KT_API, /@PUT\("api\/v1\/sets\/\{setNumber\}\/storage"\)/);
   assert.match(KT_API, /@GET\("api\/v1\/storage"\)/);
-});
-
-test('beide zeigen den Lagerort dort, wo er hingehört', () => {
-  // Set-Detail und Teil-Detail, in beiden Oberflächen. NICHT bei Figuren:
-  // Eine Minifigur steckt in ihrem Set, und dessen Ort steht im Set-Detail —
-  // ein zweiter Ort für dieselbe Sache wäre eine Stelle, an der zwei
-  // Antworten auseinanderlaufen können. …
-  // Ausführlich: docs/begruendungen/test/lagerort-beide.test.js.md#stelle
-  assert.match((web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')), /lagerortBlock\('m-storage'/, 'Webapp: Set-Detail');
-  assert.match(require('./helpers/sources').ansichtQuelle('13'), /lagerortBlock\('setitem-storage'/,
-    'Webapp: Teil-Detail');
-
-  // Marcos Vorgabe: „Das Feld Lagerort soll ein Auswahlfeld sein (analog den
-  // Feldern beim Preisalarm), zusaetzlich sollen dort aber auch neue Werte
-  // erfasst werden koennen." Ein blosses Textfeld mit datalist war genau das
-  // nicht — es sieht aus wie ein Textfeld und klappt in Chrome nicht auf.
-  const baustein = (web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js'));
-  const block = baustein.slice(baustein.indexOf('export function lagerortBlock'),
-                               baustein.indexOf('export function lagerortGewaehlt'));
-  assert.match(block, /<select/, 'Der Lagerort ist kein Auswahlfeld mehr');
-  assert.match(block, /<input type="text"/, 'Ohne Textfeld lassen sich keine neuen Orte erfassen');
-  assert.match(baustein, /ORT_NEU/, 'Der Eintrag fuer einen NEUEN Ort fehlt in der Auswahl');
-  // Und es gibt genau EINEN Speicherweg: Die Auswahl schreibt ins Textfeld und
-  // loest dessen change-Ereignis aus, statt selbst zum Server zu gehen. Sonst
-  // gaebe es die Speicherregel zweimal — einmal fuer „gewaehlt", einmal fuer
-  // „getippt".
-  assert.match(baustein, /dispatchEvent\(new Event\('change'/,
-    'Die Auswahl speichert an der Eingabe vorbei');
-  assert.match(KT_SETDET, /R\.string\.detail_storage/, 'App: Set-Detail');
-  assert.match(KT_DIALOG, /LagerortFeld\(/, 'App: Teil-Detail');
-
-  // Und in BEIDEN nur für Teile, nicht für Figuren.
-  assert.match(require('./helpers/sources').ansichtQuelle('13'), /if \(type === 'part'\) \{/,
-    'Webapp: das Feld steht auch bei Figuren');
-  // Die Farbe als lokale Variable: Das Modell liegt in einem anderen Modul.
-  assert.match(KT_DIALOG, /val kopfFarbe = kopf\?\.colorId[\s\S]{0,80}kopfFarbe != null/,
-    'App: das Feld steht auch bei Figuren (Figuren haben keine Farbe)');
-});
-
-test('beide filtern am Server, nicht im Gerät', () => {
-  // Eine Kachelwand liesse sich im Klienten aussieben, die Gesamtzahl darunter
-  // nicht. Dieselbe Begründung wie beim Kontofilter — und derselbe Weg.
-  // Seit Migration 0031 traegt die Zeile eine ID, der Name steht im Vorrat —
-  // der Filter vergleicht deshalb `lo.name` statt `p.storage`. Die Aussage ist
-  // dieselbe: Gefiltert wird am Server.
-  assert.match(web('src/teile/repository/teileListe.ts'), /lo\.name = \$\$\{pi\+\+\}/,
-    'Der Server filtert Teile nicht nach Lagerort');
-  assert.match(web('src/sets/repository/sets.ts'), /s\.storage = \$\$\{params\.length\}/,
-    'Der Server filtert Sets nicht nach Lagerort');
-
-  assert.match(web('public/js/14-scope.js'), /p\.set\('storage', m\)/,
-    'Die Webapp schickt den Lagerort nicht mit');
   assert.match(KT_API, /@Query\("storage"\)/, 'Die App schickt den Lagerort nicht mit');
-  assert.match(KT_SCOPE, /fun lagerAsQuery/, 'Der App fehlt die Umsetzung in den Parameter');
-});
-
-test('der Filter wird beim Anmelden zurückgesetzt — in beiden', () => {
-  // Er liegt bewusst auf dem Gerät (Ansichtseinstellung). Genau das machte den
-  // Kontofilter zur Falle: Er überlebte Abmelden und Anmelden, und die halbe
-  // Sammlung schien verschwunden. Der Lagerortfilter erbt die Falle, wenn er
-  // die Lösung nicht erbt.
-  const js = web('public/js/14-scope.js');
-  const fn = js.slice(js.indexOf('export function resetScopeModes'),
-                      js.indexOf('export function addScopeParam'));
-  assert.match(fn, /resetLagerModi\(\)/,
-    'Die Webapp setzt den Lagerortfilter beim Anmelden nicht zurück');
-
-  // Bis zum nächsten Doc-Kommentar statt einer festen Zeichenzahl: Der erste
-  // Entwurf schnitt bei 400 Zeichen ab und lag damit GENAU auf der Grenze —
-  // der Aufruf stand drin, die Prüfung war trotzdem rot. Eine Zahl, die man
-  // beim Umformulieren eines Kommentars nachziehen muss, ist keine Grenze.
-  const i = KT_SCOPE.indexOf('suspend fun resetAll');
-  assert.ok(i > 0, 'resetAll nicht gefunden');
-  const kt = KT_SCOPE.slice(i, KT_SCOPE.indexOf('\n    /**', i));
-  assert.match(kt, /remove\(lagerKey\(view\)\)/,
-    'Die App setzt den Lagerortfilter beim Anmelden nicht zurück');
-});
-
-test('eine gefilterte Antwort landet nicht im Speicher der vollen Liste', () => {
-  // Die App legt die ungefilterte erste Seite ab. Fiele `storage` aus der
-  // Bedingung, läge dort irgendwann der Inhalt EINER Kiste unter dem Schlüssel
-  // der ganzen Sammlung — und der Reiter zeigte je nach Cache-Zustand mal
-  // alles, mal eine Kiste. Genau dafür steht `accounts` dort schon.
-  for (const [name, s] of [
-    ['SetsRepository.kt', lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'repository', 'SetsRepositoryImpl.kt'))],
-    ['TeileRepository.kt', lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'repository', 'TeileRepositoryImpl.kt'))],
-  ]) {
-    assert.match(s, /storage\.isNullOrBlank\(\)/,
-      `${name}: der Lagerort fehlt in der Bedingung für „ungefiltert"`);
-  }
-});
-
-test('beide Sprachen sind gepflegt — in beiden Oberflächen', () => {
-  for (const datei of ['public/locales/de.js', 'public/locales/en.js']) {
-    const s = web(datei);
-    for (const k of ['detail.storage', 'detail.storage_ph', 'filter.storage_all']) {
-      assert.ok(s.includes(`'${k}'`), `${datei}: ${k} fehlt`);
-    }
-  }
-  for (const [datei, s] of [['res/values/strings.xml', XML_EN],
-                            ['res/values-de/strings.xml', XML_DE]]) {
-    for (const k of ['detail_storage', 'detail_storage_ph', 'filter_storage_all']) {
-      assert.ok(s.includes(`name="${k}"`), `${datei}: ${k} fehlt`);
-    }
-  }
-});
-
-test('die Längengrenze steht in beiden Fassungen gleich', () => {
-  // LAGERORT_MAX_ZEICHEN setzt sie durch, der Fehlertext nennt sie, und die
-  // beiden Eingabefelder begrenzen schon beim Tippen. Vier Orte, eine Zahl —
-  // dasselbe Vorgehen wie bei PASSWORT_MIN_ZEICHEN.
-  const max = /LAGERORT_MAX_ZEICHEN = (\d+)/.exec(web('src/bestand/lagerort.ts'))?.[1];
-  assert.ok(max, 'LAGERORT_MAX_ZEICHEN nicht gefunden');
-  assert.ok(web('src/infra/fehlerTexte.ts').includes(`höchstens ${max} Zeichen`),
-    `Der Fehlertext nennt eine andere Zahl als ${max}`);
-  assert.ok(web('public/index.html').includes(`maxlength="${max}"`) ||
-            (web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')).includes(`maxlength="${max}"`),
-    `Das Eingabefeld der Webapp begrenzt nicht auf ${max}`);
-  assert.ok(KT_FELD.includes(`it.length <= ${max}`),
-    `Das Eingabefeld der App begrenzt nicht auf ${max}`);
-});
-
-test('der Filter steht neben dem Kontofilter, nicht darunter', () => {
-  // Zwei Fragen an dieselbe Liste („wessen" und „wo"), die sich frei
-  // kombinieren lassen. Nebeneinander sieht man beide Antworten auf einen
-  // Blick; untereinander sucht man die zweite.
-  const html = web('public/index.html');
-  for (const view of ['gallery', 'parts']) {
-    const i = html.indexOf(`id="scope-${view}"`);
-    const j = html.indexOf(`id="storage-${view}"`);
-    assert.ok(i > 0 && j > i && j - i < 700,
-      `Webapp/${view}: die beiden Filter stehen nicht beieinander`);
-  }
-  assert.match(KT_CHIPS, /LagerortFilterChip\(orte = lagerorte/,
-    'Der App fehlt der Lagerortfilter in der Filterzeile');
-  assert.match(KT_HAUS, /fun setLagerFilter\(/,
-    'Der App fehlt das Umschalten');
-});
-
-// ═══ Der VORRAT: auswählen ODER neu eintippen ═══════════════════════════════
-// Ausführlich: docs/begruendungen/test/lagerort-beide.test.js.md#beide-sprechen-dieselben-vier-endpunkte
-
-test('beide sprechen dieselben vier Endpunkte des Vorrats an', () => {
-  const route = web('routes/api_v1/sets.ts');
-  assert.match(route, /router\.get\('\/storage\/locations'/);
-  assert.match(route, /router\.post\('\/storage\/locations'/);
-  assert.match(route, /router\.put\('\/storage\/locations\/:id'/);
-  assert.match(route, /router\.delete\('\/storage\/locations\/:id'/);
-
-  const js = (web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')) + require('./helpers/sources').ansichtQuelle('05');
-  assert.match(js, /'\/v1\/storage\/locations'/, 'Die Webapp liest den Vorrat nicht');
-  assert.match(js, /'POST', '\/v1\/storage\/locations'/, 'Die Webapp legt nichts an');
-  assert.match(js, /'PUT', `\/v1\/storage\/locations\/\$\{encodeURIComponent\(id\)\}`/,
-    'Die Webapp benennt nichts um');
-  assert.match(js, /'DELETE', `\/v1\/storage\/locations\/\$\{encodeURIComponent\(id\)\}`/,
-    'Die Webapp löscht nichts');
-
   assert.match(KT_API, /@GET\("api\/v1\/storage\/locations"\)/);
   assert.match(KT_API, /@POST\("api\/v1\/storage\/locations"\)/);
   assert.match(KT_API, /@PUT\("api\/v1\/storage\/locations\/\{id\}"\)/);
   assert.match(KT_API, /@DELETE\("api\/v1\/storage\/locations\/\{id\}"\)/);
 });
 
-test('beim Set gilt die Liste des BESITZERS, nicht die des Betrachters', () => {
-  // Marcos Festlegung. Ein Lagerort ist ein Regal in einer Wohnung: Beim Set
-  // des Enkels gehören die Regale des Enkels zur Wahl — ein Set des Enkels in
-  // „Grossvaters Keller" wäre eine Aussage über die falsche Wohnung.
-  assert.match(web('routes/api_v1/sets.ts'), /lagerSchreibkonto\(req\.apiUser\.user_id, req\.abfrage\.owner \?\? req\.eingabe\.owner\)/,
-    'Der Server nimmt gar keinen Besitzer entgegen');
-  // Lesen weit, Schreiben eng — dieselbe Trennung wie überall im Baum.
-  assert.match(web('src/bestand/lagerort.ts'),
-    /schreiben \? await writableIds\(nutzer\) : await scopeIds\(nutzer\)/,
-    'Lesen und Schreiben verwenden dieselbe Menge');
-
-  assert.match((web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')), /ladeOrtAuswahl\((curSet|set)\.owners\)/,
-    'Die Webapp fragt nicht nach der Liste des Besitzers');
-  assert.match(KT_SETDET, /aktionen\.loadLagerortVorrat\(set\.owners\.map \{ it\.id \}\)/,
-    'Die App fragt nicht nach der Liste des Besitzers');
-});
-
-test('auch das TEIL kennt seine Besitzer — es war die letzte Lücke', () => {
-  // Was hier fehlte
-  // Ausführlich: docs/begruendungen/test/lagerort-beide.test.js.md#geteilt
-  const geteilt = web('src/bestand/gemeinsam.ts');
-  assert.match(geteilt, /owner_ids: number\[\];/,
-    'Der Teil-Kopf führt keine Besitzer');
-  assert.match(geteilt, /owner_ids:\s+\[\.\.\.new Set\(sets\.map\(s => s\.owner_user_id\)\)\]/,
-    'Die Besitzer kommen nicht aus denselben Zeilen wie die Set-Liste');
-
-  assert.match(require('./helpers/sources').ansichtQuelle('13'), /ladeOrtAuswahl\(item\?\.owner_ids\)/,
-    'Die Webapp fragt beim Teil nicht nach der Liste des Besitzers');
-  assert.match(lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'teile', 'ui', 'dialogs', 'SetItemDetailDialog.kt')),
-    /aktionen\.loadLagerortVorrat\(zustand\.kopf\?\.ownerIds \?: emptyList\(\)\)/,
+test('App: Feld im Set- und Teil-Detail (nicht bei Figuren), aus der Liste des Besitzers, auswählen oder tippen', () => {
+  assert.match(KT_SETDET, /R\.string\.detail_storage/, 'App: Set-Detail');
+  assert.match(KT_DIALOG, /LagerortFeld\(/, 'App: Teil-Detail');
+  assert.match(KT_DIALOG, /val kopfFarbe = kopf\?\.colorId[\s\S]{0,80}kopfFarbe != null/, 'App: das Feld steht auch bei Figuren');
+  assert.match(KT_SETDET, /aktionen\.loadLagerortVorrat\(set\.owners\.map \{ it\.id \}\)/, 'Die App fragt nicht nach der Liste des Besitzers');
+  assert.match(KT_DIALOG, /aktionen\.loadLagerortVorrat\(zustand\.kopf\?\.ownerIds \?: emptyList\(\)\)/,
     'Die App fragt beim Teil nicht nach der Liste des Besitzers');
+  assert.match(KT_FELD, /ExposedDropdownMenuBox/, 'Das Feld der App klappt nicht auf');
 });
 
-test('beide bieten auswählen UND neu eintippen in EINEM Feld', () => {
-  // Ein reines Auswahlfeld kann nur das erste, ein reines Textfeld nur das
-  // zweite. Die Webapp nimmt eine Auswahl mit dem Eintrag „neuer Ort“, der das
-  // Textfeld öffnet, die App einen ExposedDropdownMenuBox.
-  const feld = require('./helpers/sources').ohneKommentare(web('public/js/02-detailfelder.js'));
-  assert.match(feld, /<select [^>]*data-ortauswahl="1"/, 'Das Feld der Webapp klappt nicht auf');
-  assert.match(feld, /<option value="" \$\{ORT_NEU_MARKE\}>/, 'Die Auswahl der Webapp nimmt keinen neuen Ort an');
-  assert.match(KT_FELD, /ExposedDropdownMenuBox/,
-    'Das Feld der App klappt nicht auf');
-  // Und getippte Werte landen im Vorrat — sonst stünde der Ort am Set und
-  // fehlte in der Liste, aus der er gewählt werden soll.
-  // Hier stand `stelleOrteSicher(besitzerIds, ort)`. Die Funktion gibt es nicht
-  // mehr: Mit der ID muss der Ort VOR dem Zuordnen im Vorrat stehen (ohne …
-  // Ausführlich: docs/begruendungen/test/lagerort-beide.test.js.md#stelle-2
-  assert.match(web('src/bestand/repository/lagerort.ts'),
-    /INSERT INTO storage_locations \(user_id, name\)\s*\n\s*SELECT id, \$2 FROM users/,
-    'Ein frisch getippter Ort landet nicht im Vorrat');
-});
-
-test('beide verwalten die Orte in den Einstellungen', () => {
-  const html = web('public/index.html');
-  assert.match(html, /id="storage-list"/, 'Der Webapp fehlt die Liste');
-  assert.match(html, /data-click="legeLagerortAn"/, 'Der Webapp fehlt das Anlegen');
-  assert.match(require('./helpers/sources').ansichtQuelle('05'), /function benenneLagerortUm/,
-    'Der Webapp fehlt das Umbenennen');
-  assert.match(require('./helpers/sources').ansichtQuelle('05'), /function loescheLagerort/,
-    'Der Webapp fehlt das Löschen');
-
-  assert.match(KT_EINST, /LagerorteCard\(lager, vm\)/, 'Der App fehlt die Karte');
-  for (const fn of ['legeLagerortAn', 'benenneLagerortUm', 'loescheLagerort']) {
-    assert.match(KT_HAUS, new RegExp(`fun ${fn}\\(`),
-      `Der App fehlt ${fn}`);
-  }
-  // Nur die EIGENEN: Fremde Regale umzubenennen ist keine Einstellung,
-  // sondern ein Versehen.
-  assert.match(KT_HAUS, /getLagerortVorrat\(null\)/,
-    'Die App holt für die Einstellungen nicht die eigene Liste');
-  assert.match(require('./helpers/sources').ansichtQuelle('05'), /'\/v1\/storage\/locations'\)/,
-    'Die Webapp holt für die Einstellungen nicht die eigene Liste');
-});
-
-test('beide speichern den Lagerort beim Tippen, nicht beim Fokuswechsel', () => {
-  // Dieselbe Falle wie beim Preisalarm (Marcos Befund): Am Telefon tippt man,
-  // schliesst die Tastatur und geht zurück — der Fokuswechsel kommt nie. Für
-  // den Lagerort galt dasselbe, es hat nur noch niemand gemeldet.
+test('App: gespeichert wird beim Tippen, die Ruhezeit lebt im ViewModel', () => {
   const ohneK = require('./helpers/sources').ohneKommentare;
-  assert.doesNotMatch(ohneK(KT_FELD), /onFocusChanged/,
-    'Das Feld der App hängt wieder am Fokuswechsel');
-  assert.match(ohneK(KT_HAUS) + ohneK(KT_SETDET), /onWert = \{/,
-    'Das Feld gibt den getippten Wert nicht weiter');
-  // Und die Ruhezeit liegt im ViewModel, damit sie den Bildschirm überlebt.
+  assert.doesNotMatch(ohneK(KT_FELD), /onFocusChanged/, 'Das Feld der App hängt wieder am Fokuswechsel');
+  assert.match(ohneK(KT_HAUS) + ohneK(KT_SETDET), /onWert = \{/, 'Das Feld gibt den getippten Wert nicht weiter');
   const gal = ohneK(lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'ui', 'viewmodel', 'SetDetailViewModel.kt')));
-  assert.match(gal, /lagerJob\?\.cancel\(\)\s*\n\s*lagerJob = viewModelScope\.launch/,
-    'Die Ruhezeit des Lagerorts läuft nicht im viewModelScope');
+  assert.match(gal, /lagerJob\?\.cancel\(\)\s*\n\s*lagerJob = viewModelScope\.launch/, 'Die Ruhezeit läuft nicht im viewModelScope');
+});
+
+test('App: Filter neben dem Kontofilter, beim Anmelden zurückgesetzt, nicht im Speicher der vollen Liste', () => {
+  assert.match(KT_SCOPE, /fun lagerAsQuery/, 'Der App fehlt die Umsetzung in den Parameter');
+  const i = KT_SCOPE.indexOf('suspend fun resetAll');
+  assert.ok(i > 0, 'resetAll nicht gefunden');
+  assert.match(KT_SCOPE.slice(i, KT_SCOPE.indexOf('\n    /**', i)), /remove\(lagerKey\(view\)\)/, 'Die App setzt den Lagerortfilter beim Anmelden nicht zurück');
+  for (const [datei, s] of [
+    ['SetsRepositoryImpl.kt', lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'repository', 'SetsRepositoryImpl.kt'))],
+    ['TeileRepositoryImpl.kt', lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'repository', 'TeileRepositoryImpl.kt'))],
+  ]) assert.match(s, /storage\.isNullOrBlank\(\)/, `${datei}: der Lagerort fehlt in der Bedingung für „ungefiltert"`);
+  assert.match(KT_CHIPS, /LagerortFilterChip\(orte = lagerorte/, 'Der App fehlt der Lagerortfilter in der Filterzeile');
+  assert.match(KT_HAUS, /fun setLagerFilter\(/, 'Der App fehlt das Umschalten');
+});
+
+test('App: Verwaltung in den Einstellungen (nur die eigenen Orte) und beide Sprachen', () => {
+  assert.match(KT_EINST, /LagerorteCard\(lager, vm\)/, 'Der App fehlt die Karte');
+  for (const fn of ['legeLagerortAn', 'benenneLagerortUm', 'loescheLagerort'])
+    assert.match(KT_HAUS, new RegExp(`fun ${fn}\\(`), `Der App fehlt ${fn}`);
+  assert.match(KT_HAUS, /getLagerortVorrat\(null\)/, 'Die App holt für die Einstellungen nicht die eigene Liste');
+  for (const [datei, s] of [['res/values/strings.xml', XML_EN], ['res/values-de/strings.xml', XML_DE]])
+    for (const k of ['detail_storage', 'detail_storage_ph', 'filter_storage_all'])
+      assert.ok(s.includes(`name="${k}"`), `${datei}: ${k} fehlt`);
 });

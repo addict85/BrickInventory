@@ -3,23 +3,28 @@
  * dieselben Sortierungen an wie der Server.
  * Ausführlich: docs/begruendungen/test/merkliste-filter-beide.test.js.md#kopf
  *
- * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
+ * Schritt 1 läuft im echten Bündel (jsdom); 2–4 gleichen die Auswahl der
+ * Oberflächen mit der Servertabelle MERK_SORTS ab (Struktur, App ohne SDK).
+ *
+ * Gegenproben:
  *   a) qty_desc in die Auswahl der Webapp aufgenommen → Schritt 3 rot.
  *   b) price_asc aus der App-Auswahl entfernt         → Schritt 3 rot.
  *   c) accounts aus der App-Abfrage entfernt          → Schritt 2 rot.
- *   d) addScopeParam aus 16-merkliste.js entfernt     → Schritt 1 rot.
+ *   d) (10.11.2026) addScopeParam aus 16-merkliste.js entfernt → Schritt 1 rot.
  *   e) Das Suchfeld aus MerklisteScreen entfernt      → Schritt 2 rot.
+ *   f) (10.11.2026) in merklisteParams die Sortierung nicht gesetzt → Schritt 1 rot.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { ROOT, ohneKommentare } = require('./helpers/sources');
+const { ROOT } = require('./helpers/sources');
+const ohneKommentare = (/** @type {string} */ s) => require('./helpers/sources').ohneKommentare(s);
 const { androidDatei } = require('./helpers/android');
+const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
 // Die App-Quellen über alle Module: androidDatei() meldet eine fehlende Datei mit Namen.
 
-const web = (rel) => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 const app = (rel) => ohneKommentare(fs.readFileSync(androidDatei(rel), 'utf8'));
 
 /** Die Sortierwerte einer Quelle — alles, was wie ein MERK_SORTS-Schlüssel aussieht. */
@@ -27,27 +32,26 @@ function sortWerte(quelle) {
   return [...new Set((quelle.match(/\b(?:added|name|num|year|price|qty)_(?:asc|desc)\b/g) || []))].sort();
 }
 
-test('1. die Webapp hat alle vier Filter', () => {
-  const html = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8'));
-  // Suche, Zustand, Sortierung — und der Inhaber als dasselbe Auswahlfeld wie
-  // in den vier anderen Ansichten.
-  for (const id of ['mks', 'mkcond', 'mksort', 'scope-merkliste']) {
-    assert.match(html, new RegExp(`id="${id}"`),
-      `Der Merkliste fehlt das Filterfeld ${id}.`);
-  }
-
-  const js = web('public/js/16-merkliste.js');
-  for (const p of ['search', 'condition', 'sort']) {
-    assert.match(js, new RegExp(`p\\.set\\('${p}'`), `Die Webapp schickt ${p} nicht mit.`);
-  }
-  assert.match(js, /addScopeParam\(p, 'merkliste'\)/,
-    'Die Webapp schickt den Inhaber nicht mit.');
-
-  // Die fünfte Ansicht muss in der Liste stehen, sonst füllt initScopeSelects()
-  // das Auswahlfeld nie — es bliebe für immer verborgen.
-  assert.match(web('public/js/14-scope.js'),
-    /SCOPE_VIEWS = \['gallery', 'parts', 'minifigs', 'finance', 'merkliste'\]/,
-    "'merkliste' fehlt in SCOPE_VIEWS.");
+test('1. die Webapp schickt alle vier Filter an den Server', async () => {
+  const o = await oeffneOberflaeche({
+    '/v1/sets/household-members': { success: true, members: [
+      { id: 1, username: 'anna', is_self: true, tiefe: 0 }, { id: 7, username: 'ben', is_self: false, tiefe: 1 }] },
+    '/v1/wanted': { success: true, merkposten: [] },
+  });
+  try {
+    await reiter(o.w, 'wanted');
+    await o.ruhig();
+    const setze = (id, wert) => { const f = o.d.getElementById(id); f.value = wert; assert.equal(f.value, wert, `${id} kennt ${wert} nicht`);
+      f.dispatchEvent(new o.w.Event(f.tagName === 'INPUT' ? 'input' : 'change', { bubbles: true })); };
+    setze('scope-merkliste', '7');
+    setze('mkcond', 'U');
+    setze('mksort', 'price_asc');
+    setze('mks', 'Burg');
+    assert.ok(await warte(() => o.aufrufe.some(a => /\/v1\/wanted\?.*search=Burg/.test(a.url)), 2000), 'die Suche lädt nicht neu');
+    await o.ruhig();
+    const p = new URL(o.aufrufe.filter(a => /\/v1\/wanted\?/.test(a.url)).at(-1).url, 'http://x').searchParams;
+    assert.deepEqual([p.get('search'), p.get('condition'), p.get('sort'), p.get('accounts')], ['Burg', 'U', 'price_asc', '7']);
+  } finally { o.w.close(); }
 });
 
 test('2. die App hat dieselben vier', () => {
