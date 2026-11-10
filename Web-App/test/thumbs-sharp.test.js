@@ -14,7 +14,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const Module = require('node:module');
+const Module = /** @type {{ _load: (anfrage: string, ...rest: unknown[]) => unknown }} */ (/** @type {unknown} */ (require('node:module')));
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
@@ -53,7 +53,7 @@ test('ohne sharp rechnet Jimp dieselbe Vorschau', async () => {
   const laden = Module._load;
   const warnungen = [];
   const warn = console.warn;
-  Module._load = function (anfrage, ...rest) {
+  Module._load = function (/** @type {string} */ anfrage, /** @type {unknown[]} */ ...rest) {
     if (anfrage === 'sharp') throw new Error('Cannot find module sharp');
     return laden.call(this, anfrage, ...rest);
   };

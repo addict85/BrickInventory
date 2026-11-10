@@ -42,7 +42,7 @@ fs.mkdirSync(path.join(wurzel, 'data', 'images', 'sets'), { recursive: true });
 let cdnRumpf = Buffer.alloc(300, 7);
 let mitLaenge = true;
 const echt = https.get;
-https.get = (_url, _o, cb) => {
+https.get = /** @type {typeof https.get} */ (/** @type {unknown} */ ((/** @type {unknown} */ _url, /** @type {unknown} */ _o, /** @type {(r: unknown) => void} */ cb) => {
   const req = Object.assign(new EventEmitter(), { setTimeout: () => req, destroy: () => {} });
   const rumpf = cdnRumpf;
   // In Stücken wie ein echter Strom: Die Grenze greift mitten im Lesen.
@@ -51,7 +51,7 @@ https.get = (_url, _o, cb) => {
   setImmediate(() => cb(Object.assign(Readable.from(stuecke), {
     statusCode: 200, headers: { 'content-type': 'image/jpeg', ...(mitLaenge ? { 'content-length': String(rumpf.length) } : {}) } })));
   return req;
-};
+}));
 
 // Die Vorschau-Sperre hält eine eigene Verbindung; mitgeschrieben, damit der Test sie schliesst.
 const eigene = [];
@@ -61,11 +61,11 @@ standard.eigeneVerbindung = async () => { const c = await verbinde(); eigene.pus
 
 const app = express();
 let konto = 0;
-app.use((req, _res, next) => { req.session = { userId: 500000 + (konto++ % 1000) }; next(); });
+app.use((req, _res, next) => { Object.assign(req, { session: { userId: 500000 + (konto++ % 1000) } }); next(); });
 app.get('/p', bildDurchreichen);
 const srv = app.listen(0);
 const hole = (adresse, thumb = false) =>
-  fetch(`http://127.0.0.1:${srv.address().port}/p?url=${encodeURIComponent(adresse)}${thumb ? '&thumb=1' : ''}`)
+  fetch(`http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (srv.address()).port}/p?url=${encodeURIComponent(adresse)}${thumb ? '&thumb=1' : ''}`)
     .then(async r => ({ status: r.status, n: (await r.arrayBuffer().catch(() => new ArrayBuffer(0))).byteLength }))
     .catch(e => ({ status: 0, n: 0, fehler: e }));
 const imCache = () => (fs.existsSync(cacheDir) ? fs.readdirSync(cacheDir) : []);
@@ -103,7 +103,10 @@ test('ein Bild über der Grenze wird verworfen, gezählt und gemeldet', async (t
   cdnRumpf = Buffer.alloc(SET_IMG_MAX_BYTES + 1, 4);
   const vorherCache = imCache().length;
   // Mit Content-Length lehnt schon der Abruf ab; ohne zählt der Strom mit und bricht ab.
-  for (const [laenge, zaehler, meldung] of [[true, 'error', /Antwort über 20971520 Byte/], [false, 'other', /Antwort über 20971520 Byte.*weder gecacht/]]) {
+  /** @type {Array<{ laenge: boolean, zaehler: 'error' | 'other', meldung: RegExp }>} */
+  const faelle = [{ laenge: true, zaehler: 'error', meldung: /Antwort über 20971520 Byte/ },
+    { laenge: false, zaehler: 'other', meldung: /Antwort über 20971520 Byte.*weder gecacht/ }];
+  for (const { laenge, zaehler, meldung } of faelle) {
     mitLaenge = laenge;
     const vorher = imgProxyFailures[zaehler];
     const zeilen = await mitFehlern(async () => {

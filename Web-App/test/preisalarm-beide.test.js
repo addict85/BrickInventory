@@ -26,7 +26,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { oeffneOberflaeche, warte, takt, ANMELDUNG } = require('./helpers/oberflaeche');
-const { loadTranslations, ohneKommentare } = require('./helpers/sources');
+const Q = require('./helpers/sources');
+const ohneKommentare = (/** @type {string} */ s) => Q.ohneKommentare(s);
 
 const APP = path.join(__dirname, '..', '..', 'Android-App', 'app', 'src', 'main');
 const lies = p => fs.readFileSync(p, 'utf8');
@@ -57,7 +58,7 @@ const XML_EN    = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-res
 const XML_DE    = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values-de', 'strings.xml'));
 
 const SN = '10305-1';
-const de = loadTranslations().de;
+const de = Q.loadTranslations().de;
 const RUHE = Number(/const val RUHE_MS = (\d+)L/.exec(KT_ALARMEINGABE)?.[1]);
 
 /** Set-Detail öffnen, wie ein Klick auf die Kachel. */

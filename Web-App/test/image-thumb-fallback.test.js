@@ -50,12 +50,12 @@ test('fehlt die Vorschau, kommt das Original vor dem CDN', async (t) => {
   await sharp({ create: { width: 600, height: 400, channels: 3, background: '#c33' } }).jpeg().toFile(original);
 
   const app = express();
-  app.use((req, _res, next) => { req.session = { userId: 1 }; next(); });
+  app.use((req, _res, next) => { Object.assign(req, { session: { userId: 1 } }); next(); });
   app.get('/images/*pfad', liefereBild);
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const hole = async p => {
-    const r = await fetch(`http://127.0.0.1:${srv.address().port}${p}`, { redirect: 'manual' });
+    const r = await fetch(`http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (srv.address()).port}${p}`, { redirect: 'manual' });
     return { status: r.status, n: (await r.arrayBuffer()).byteLength, ort: r.headers.get('location') };
   };
 

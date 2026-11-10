@@ -1,4 +1,3 @@
-'use strict';
 /**
  * Der Zeitplan im Monitor setzt die Werte des Servers maskiert ein — wie
  * data-arg in derselben Zeile. Echtes Bündel in jsdom, Verwalterkonto.

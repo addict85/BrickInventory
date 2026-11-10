@@ -41,11 +41,11 @@ test('der Server bedient beide Adressen', async (t) => {
   if (!await dbOderSkip(t, _req, { migrieren: false })) return;
   // Ältere App-Fassungen bauen die alte Adresse selbst zusammen.
   const app = require('express')();
-  app.use((req, _res, next) => { req.session = { userId: 1 }; next(); });
+  app.use((req, _res, next) => { Object.assign(req, { session: { userId: 1 } }); next(); });
   _req('routes/imgProxy.js').registerImgProxy(app);
   const srv = app.listen(0);
   t.after(() => srv.close());
-  const status = p => fetch(`http://127.0.0.1:${srv.address().port}${p}`).then(r => r.status);
+  const status = p => fetch(`http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (srv.address()).port}${p}`).then(r => r.status);
   // Beide antworten wie der Proxy (ohne gültiges Konto abgewiesen), eine unbekannte Adresse mit 404.
   const [neu, alt, fremd] = [await status(NEU), await status(ALT), await status('/api/v2/img-proxy')];
   assert.equal(fremd, 404);

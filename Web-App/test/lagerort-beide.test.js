@@ -131,7 +131,7 @@ test('die Längengrenze steht in Server, Fehlertext, Webapp und App gleich', asy
   const { LAGERORT_MAX_ZEICHEN: max, normalisiereLagerort } = _req('src/bestand/lagerort.js');
   assert.ok(max > 0);
   assert.equal(normalisiereLagerort('x'.repeat(max)), 'x'.repeat(max));
-  assert.throws(() => normalisiereLagerort('x'.repeat(max + 1)), e => String(e.message).includes(`höchstens ${max} Zeichen`));
+  assert.throws(() => normalisiereLagerort('x'.repeat(max + 1)), e => e instanceof Error && e.message.includes(`höchstens ${max} Zeichen`));
   const o = await oeffneOberflaeche({ [`/v1/sets/${SN}`]: { success: true, set: { set_number: SN, name: 'Burg', quantity: 1, conditions: ['N'], instructions: [] } } });
   try {
     klick(o, { click: 'openModal', arg: SN });
@@ -175,9 +175,10 @@ test('App: Filter neben dem Kontofilter, beim Anmelden zurückgesetzt, nicht im 
   const i = KT_SCOPE.indexOf('suspend fun resetAll');
   assert.ok(i > 0, 'resetAll nicht gefunden');
   assert.match(KT_SCOPE.slice(i, KT_SCOPE.indexOf('\n    /**', i)), /remove\(lagerKey\(view\)\)/, 'Die App setzt den Lagerortfilter beim Anmelden nicht zurück');
-  for (const datei of ['SetsRepositoryImpl.kt', 'TeileRepositoryImpl.kt'])
-    assert.match(lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'repository', datei)),
-      /storage\.isNullOrBlank\(\)/, `${datei}: der Lagerort fehlt in der Bedingung für „ungefiltert"`);
+  for (const [datei, s] of [
+    ['SetsRepositoryImpl.kt', lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'repository', 'SetsRepositoryImpl.kt'))],
+    ['TeileRepositoryImpl.kt', lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'repository', 'TeileRepositoryImpl.kt'))],
+  ]) assert.match(s, /storage\.isNullOrBlank\(\)/, `${datei}: der Lagerort fehlt in der Bedingung für „ungefiltert"`);
   assert.match(KT_CHIPS, /LagerortFilterChip\(orte = lagerorte/, 'Der App fehlt der Lagerortfilter in der Filterzeile');
   assert.match(KT_HAUS, /fun setLagerFilter\(/, 'Der App fehlt das Umschalten');
 });

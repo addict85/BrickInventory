@@ -14,8 +14,8 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { ohneKommentare, buildAndRequire } = require('./helpers/sources');
-const _req = buildAndRequire();
+const ohneKommentare = (/** @type {string} */ s) => require('./helpers/sources').ohneKommentare(s);
+const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 test.after(() => _req('db/database.js').pool.end().catch(() => {}));
 

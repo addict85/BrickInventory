@@ -18,7 +18,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const { ohneKommentare } = require('./helpers/sources');
+const ohneKommentare = (/** @type {string} */ s) => require('./helpers/sources').ohneKommentare(s);
 const { androidDatei } = require('./helpers/android');
 const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 

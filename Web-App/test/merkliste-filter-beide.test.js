@@ -18,13 +18,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { ROOT, ohneKommentare } = require('./helpers/sources');
+const { ROOT } = require('./helpers/sources');
+const ohneKommentare = (/** @type {string} */ s) => require('./helpers/sources').ohneKommentare(s);
 const { androidDatei } = require('./helpers/android');
 const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
 // Die App-Quellen über alle Module: androidDatei() meldet eine fehlende Datei mit Namen.
 
-const web = (rel) => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 const app = (rel) => ohneKommentare(fs.readFileSync(androidDatei(rel), 'utf8'));
 
 /** Die Sortierwerte einer Quelle — alles, was wie ein MERK_SORTS-Schlüssel aussieht. */

@@ -18,7 +18,6 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { oeffneOberflaeche, ANMELDUNG, sicht, takt } = require('./helpers/oberflaeche');
-const { loadTranslations } = require('./helpers/sources');
 
 const KONTO = (admin) => ({ '/v1/auth/me': { success: true, loggedIn: true,
   user: { ...ANMELDUNG['/v1/auth/me'].user, is_admin: admin } } });
@@ -74,7 +73,7 @@ test('Einstellungen und Hintergrundarbeiten sieht nur ein Verwalter', async () =
 });
 
 test('jeder Menüeintrag behält sein Symbol, auch nach dem Übersetzen', async () => {
-  const woerter = loadTranslations().en;
+  const woerter = require('./helpers/sources').loadTranslations().en;
   const o = await oeffneOberflaeche({}, { sprache: 'en' });
   try {
     await o.ruhig();

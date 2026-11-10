@@ -17,10 +17,9 @@ const path   = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const lies = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
-const { ohneKommentare, loadTranslations } = require('./helpers/sources');
+const ohneKommentare = (/** @type {string} */ s) => require('./helpers/sources').ohneKommentare(s);
 
 const FORTSCHRITT = 'public/js/01-fortschritt.js';
-const GALERIE     = 'public/js/02-set-csv-import.js';
 
 test('nur EINE Fassung baut die Zeile fürs Import-Protokoll', () => {
   const quellen = fs.readdirSync(path.join(ROOT, 'public', 'js'))
@@ -39,7 +38,7 @@ test('nur EINE Fassung baut die Zeile fürs Import-Protokoll', () => {
 
 test('der Fortschrittstext spricht nicht von Sets', () => {
   // Derselbe Balken trägt Sets, Teile und Minifiguren; geprüft an den geladenen Wörterbüchern.
-  const { de, en } = loadTranslations();
+  const { de, en } = require('./helpers/sources').loadTranslations();
   assert.equal(de['csv.sets_progress'] ?? en['csv.sets_progress'], undefined, 'der alte Schlüssel ist zurück');
   for (const [sprache, text] of [['de', de['csv.items_progress']], ['en', en['csv.items_progress']]]) {
     assert.ok(text, `csv.items_progress fehlt (${sprache})`);

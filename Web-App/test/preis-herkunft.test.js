@@ -14,7 +14,6 @@
  *      „eine eingetippte Zahl …“ (Herkunft 'U' an einem eigenen Preis)
  *   D  in 03-teil-erfassen.js den Hinweis weggelassen → rot: „die Webapp nennt …“
  */
-'use strict';
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
@@ -23,10 +22,8 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
-const { haeltTeil } = require('./helpers/bestand');
-const { oeffneOberflaeche, ANMELDUNG, warte, loadTranslations } = { ...require('./helpers/oberflaeche'), ...require('./helpers/sources') };
+const { oeffneOberflaeche, ANMELDUNG, warte } = require('./helpers/oberflaeche');
 
-const WURZEL = path.join(__dirname, '..');
 const U = 990811, TEIL = `ph-teil-${process.pid}`, FIG = `ph-fig-${process.pid}`, FARBE = 4;
 
 function ohneKommentare(text) {
@@ -49,7 +46,7 @@ async function aufbau(t) {
   t.after(weg);
   await db.run("INSERT INTO users (id,username,password_hash) VALUES ($1,$2,'x')", [U, `ph${process.pid}`]);
   await db.run("INSERT INTO rb_colors (id,name,bl_color_id) VALUES ($1,'Rot',$1) ON CONFLICT (id) DO UPDATE SET bl_color_id=$1", [FARBE]);
-  for (const [zustand, preis] of [['N', 0], ['U', 0.9]]) {
+  for (const { zustand, preis } of [{ zustand: 'N', preis: 0 }, { zustand: 'U', preis: 0.9 }]) {
     await db.run(`INSERT INTO part_price_cache (part_number,color_id,condition,currency_code,avg_price,qty_avg_price,fetched_at)
       VALUES ($1,$2,$3,'EUR',$4,$4,NOW())`, [TEIL, FARBE, zustand, preis]);
     await db.run(`INSERT INTO minifig_price_cache (fig_number,condition,currency_code,avg_price,qty_avg_price,fetched_at)
@@ -80,8 +77,8 @@ test('eine eingetippte Zahl hat keine Herkunft', async (t) => {
 });
 
 test('die Webapp nennt die Herkunft bei Teil und Figur', async () => {
-  const de = loadTranslations().de;
-  const posten = (art) => (url, o) => (o.method === 'POST'
+  const de = require('./helpers/sources').loadTranslations().de;
+  const posten = (art) => (_url, o) => (o.method === 'POST'
     ? { success: true, action: 'added', [`${art}_number`]: `${art}-1`, price_from_condition: 'U' }
     : ANMELDUNG[`/v1/${art === 'part' ? 'parts' : 'minifigs'}`]);
   const o = await oeffneOberflaeche({ '/v1/parts': posten('part'), '/v1/minifigs': posten('fig') });
