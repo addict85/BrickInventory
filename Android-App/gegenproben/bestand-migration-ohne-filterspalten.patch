@@ -4,7 +4,7 @@ Test: ch.brickinventoryapp.offline.BestandMigrationTest
 Rot: jede frühere Fassung
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/BestandDatenbank.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/BestandDatenbank.kt
-index 1a465e5..f41bfa8 100644
+index ab6057e..6afa262 100644
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/BestandDatenbank.kt
 +++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/BestandDatenbank.kt
 @@ -202,7 +202,7 @@ internal val MIGRATION_2_3 = object : Migration(2, 3) {
@@ -14,5 +14,5 @@ index 1a465e5..f41bfa8 100644
 -        for ((bereich, art, schluessel, inhalt) in zeilen) {
 +        for ((bereich, art, schluessel, inhalt) in zeilen.take(0)) {
              val schranke = arrayOf<Any?>(bereich, art, schluessel)
-             val m = Faecher.merkmaleAus(art, inhalt)
+             val m = Faecher.spaltenAus(art, inhalt)
              if (m == null) db.execSQL("DELETE FROM `bestand` WHERE bereich = ? AND art = ? AND schluessel = ?", schranke)

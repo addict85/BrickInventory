@@ -4,7 +4,7 @@ Test: ch.brickinventoryapp.offline.BestandMigrationTest
 Rot: jede frühere Fassung
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/BestandDatenbank.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/BestandDatenbank.kt
-index 1a465e5..df68639 100644
+index ab6057e..cdabdc9 100644
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/BestandDatenbank.kt
 +++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/BestandDatenbank.kt
 @@ -168,7 +168,7 @@ internal abstract class BestandDatenbank : RoomDatabase() {
