@@ -706,10 +706,10 @@ App einen solchen Schlüssel (`core-ressourcen/src/main/res/raw/beschreibungs_sc
 nimmt sie nur noch dessen Signatur an; solange die Datei leer ist, gilt der
 Übergangsweg über die Signierer der App.
 
-**Stand:** Die Datei ist noch leer (Betreiberaufgabe). Jeder CI-Lauf warnt
-„Beschreibungsschlüssel fehlt“, und ein Etikett `android-v…` bricht im Job
-`apk-pruefen` ab, bis die Schritte unten erledigt sind; danach meldet derselbe
-Schritt „Beschreibungsschlüssel steht in der App.“
+**Stand:** Eingerichtet (10.11.2026): ein Schlüssel in
+`beschreibungs_schluessel.pem`, das Secret `BESCHREIBUNG_SCHLUESSEL` in der
+Environment `release`. Ab dieser Fassung gilt für die App nur noch die
+Beschreibungssignatur; ein Etikett ohne das Secret bricht in `apk-pruefen` ab.
 
 Einrichten (einmalig, in dieser Reihenfolge):
 
@@ -742,7 +742,7 @@ Push, um Code bis vor die Freigabe zu bringen.
 | `KEYSTORE_PASSWORT` | Passwort des Schlüsselspeichers |
 | `KEY_ALIAS`         | `brickinventory`              |
 | `KEY_PASSWORT`      | Passwort des Schlüssels       |
-| `BESCHREIBUNG_SCHLUESSEL` | privater Beschreibungsschlüssel (PEM, oben); bis zur Einrichtung leer |
+| `BESCHREIBUNG_SCHLUESSEL` | privater Beschreibungsschlüssel (PEM, oben) |
 
 Der Job `signieren` schreibt den Schlüsselspeicher nach `$RUNNER_TEMP`, signiert
 das unsignierte APK aus dem Bau-Job mit `apksigner` aus dem SDK des Runners und

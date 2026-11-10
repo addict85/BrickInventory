@@ -809,11 +809,10 @@ lässt `CacheBereichTest` scheitern, bis es hier eingeordnet ist.
 - **Eigener Schlüssel für die Update-Beschreibung (sec11 H1):** Kennt die App
   einen Beschreibungsschlüssel (`res/raw/beschreibungs_schluessel.pem`), gilt
   nur dessen Signatur; der APK-Schlüssel signiert dann nichts, was sie als
-  Beschreibung annimmt. Bis der Betreiber ihn einrichtet (README,
-  „Beschreibungsschlüssel“), gilt der Übergangsweg über die Signierer der App.
-  Auf dem Runner liegen beide nur verschlüsselt und werden nach dem Schritt
-  gelöscht. Solange das Secret `BESCHREIBUNG_SCHLUESSEL` fehlt, warnt der
-  Release-Lauf (sec12 H1); einrichten muss es der Betreiber.
+  Beschreibung annimmt; seit 10.11.2026 steht er in der App (README,
+  „Beschreibungsschlüssel“). Auf dem Runner liegen beide nur verschlüsselt und
+  werden nach dem Schritt gelöscht. Fehlt das Secret
+  `BESCHREIBUNG_SCHLUESSEL` bei einem Etikett, bricht `apk-pruefen` ab.
 - **Unsignierte `version.json` bis 01.02.2027 (sec12 H3):** nur für Fassungen vor
   sec8 N4, die die signierte Beschreibung nicht kennen. Die Frist wird nicht
   verlängert; danach löscht der Release-Lauf den Anhang selbst.
