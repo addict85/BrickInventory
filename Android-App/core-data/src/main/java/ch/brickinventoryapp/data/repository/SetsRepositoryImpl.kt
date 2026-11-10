@@ -4,6 +4,7 @@ import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.offline.Bearbeitung
+import ch.brickinventoryapp.offline.Filterspalten
 import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.offline.Lokal
 import kotlinx.coroutines.flow.Flow
@@ -27,9 +28,10 @@ class SetsRepositoryImpl @Inject constructor(
 ) : RepoBasis<SetsApi>(api, cache, ablage), SetsRepository {
 
     /**
-     * Galerie-Seite vom Server — gefiltert, sortiert, paginiert. Lokal abgelegt wird
-     * nur die ungefilterte Liste (Seite für Seite): Eine gefilterte Antwort erschiene
-     * offline als der ganze Bestand.
+     * Galerie-Seite vom Server — gefiltert, sortiert, paginiert. Die ungefilterte
+     * Liste wird Seite für Seite abgelegt; gefiltert beantwortet sie ohne Netz
+     * dieselben Filter. Nicht beim Kontofilter: Menge und Preise rechnet der Server
+     * über die gewählten Konten, die lokale Zeile trägt die Summe aller.
      */
     override suspend fun getSets(
         accounts: String?,
@@ -40,19 +42,23 @@ class SetsRepositoryImpl @Inject constructor(
         pageSize: Int,
         storage: String?
     ): Ergebnis<SetsResponse> {
-        // `storage` gehört in die Bedingung für „ungefiltert“: Sonst landete eine nach
-        // Lagerort gefilterte Antwort unter dem Schlüssel der vollen Liste, und die
-        // Galerie zeigte je nach Cache-Zustand mal alles, mal eine Kiste.
-        val ungefiltert = accounts == null && search.isNullOrBlank() && theme.isNullOrBlank() &&
-            storage.isNullOrBlank() &&
+        val filter = Filterspalten(suchtext = search?.ifBlank { null }, thema = theme?.ifBlank { null },
+            lagerort = storage?.ifBlank { null })
+        val ausLokal = { l: List<SetItem> -> l.sortiert(setOrdnung(sort)).let {
+            SetsResponse(success = true, count = it.size, sets = it, total = it.size)
+        } }
+        val ungefiltert = search.isNullOrBlank() && theme.isNullOrBlank() && storage.isNullOrBlank() &&
             (sort == null || sort == GALLERY_DEFAULT_SORT)
-        return if (ungefiltert)
-            abgeglichen(Faecher.SETS, { it.sets },
-                { SetsResponse(success = true, count = it.size, sets = it, total = it.size) },
-                anhaengen = page > 1) {
-                safeCall { api.getSets(null, null, null, sort, page, pageSize) }
+        return when {
+            accounts != null -> safeCall { api.getSets(accounts, filter.suchtext, filter.thema, sort, page, pageSize, filter.lagerort) }
+            ungefiltert ->
+                abgeglichen(Faecher.SETS, { it.sets }, ausLokal, anhaengen = page > 1) {
+                    safeCall { api.getSets(null, null, null, sort, page, pageSize) }
+                }
+            else -> gefiltert(Faecher.SETS, filter, ausLokal) {
+                safeCall { api.getSets(null, filter.suchtext, filter.thema, sort, page, pageSize, filter.lagerort) }
             }
-        else safeCall { api.getSets(accounts, search?.ifBlank { null }, theme?.ifBlank { null }, sort, page, pageSize, storage?.ifBlank { null }) }
+        }
     }
 
     /**
@@ -94,15 +100,20 @@ class SetsRepositoryImpl @Inject constructor(
     // man noch nicht hat — dieselbe Sache, andere Tabelle. Ein sechstes
     // Repository fuer vier Aufrufe waere mehr Apparat als Nutzen.
 
-    /** Lokal abgelegt wird nur die ungefilterte Liste — wie bei der Galerie. */
+    /** Wie die Galerie: ungefiltert abgelegt, gefiltert ohne Netz aus der lokalen Liste. */
     override suspend fun getMerkliste(search: String?, condition: String?,
-                             sort: String?, accounts: String?): Ergebnis<MerklisteResponse> =
-        if (search.isNullOrBlank() && condition.isNullOrBlank() && accounts == null &&
-            (sort == null || sort == MERKLISTE_DEFAULT_SORT))
-            abgeglichen(Faecher.MERKLISTE, { it.merkposten }, { MerklisteResponse(success = true, merkposten = it) }) {
-                safeCall { api.getMerkliste(search, condition, sort, accounts) }
-            }
-        else safeCall { api.getMerkliste(search, condition, sort, accounts) }
+                             sort: String?, accounts: String?): Ergebnis<MerklisteResponse> {
+        val filter = Filterspalten(suchtext = search?.ifBlank { null }, zustand = condition?.ifBlank { null })
+        val ausLokal = { l: List<Merkposten> -> MerklisteResponse(success = true, merkposten = l.sortiert(merkOrdnung(sort))) }
+        return when {
+            accounts != null -> safeCall { api.getMerkliste(search, condition, sort, accounts) }
+            filter == Filterspalten() && (sort == null || sort == MERKLISTE_DEFAULT_SORT) ->
+                abgeglichen(Faecher.MERKLISTE, { it.merkposten }, ausLokal) {
+                    safeCall { api.getMerkliste(search, condition, sort, accounts) }
+                }
+            else -> gefiltert(Faecher.MERKLISTE, filter, ausLokal) { safeCall { api.getMerkliste(search, condition, sort, accounts) } }
+        }
+    }
 
     /** Die lokale Merkliste (ungefiltert), wie beobachteSets. */
     override fun beobachteMerkliste(): Flow<Lokal<Merkposten>> = ablage.beobachte(Faecher.MERKLISTE)

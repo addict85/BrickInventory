@@ -7,11 +7,6 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Die Jahres-Leiste im Katalog SPRINGT, sie filtert nicht.
  *
- * ── Marcos Vorgabe ──────────────────────────────────────────────────────────
- * „Im Katalog die Zeitleiste rechts anpassen. Diese soll nicht ein Filter sein,
- * sondern zum Schnellscrollen verwendet werden können, analog wie es in der
- * Android-Galerie-Foto-App der Fall ist." Dazu sein Hinweis auf die Umsetzung:
- *
  * ── Warum das die Liste umbaut ──────────────────────────────────────────────
  * Vorher hing die Liste am Endlos-Scroll: Seite 1, 2, 3 … angehängt. Wer auf
  * Jahr 2005 springt, landet mitten im Bestand — und mit einer angehängten Liste
@@ -27,8 +22,8 @@ import ch.brickinventoryapp.testing.Quellen
  *   • Die Liste zählt über `total`, nicht über die geladene Teilmenge.
  *   • Geladen wird in BEIDE Richtungen.
  *
- * Der ausdrückliche Jahresfilter (Chip und Auswahlblatt) bleibt: Marco wollte
- * die LEISTE anders, nicht das Filtern abschaffen.
+ * Der ausdrückliche Jahresfilter (Chip und Auswahlblatt) bleibt: Die LEISTE
+ * rollt, das Filtern ist ein eigener Weg.
  */
 class CatalogScrubberTest {
 
@@ -44,7 +39,7 @@ class CatalogScrubberTest {
         val i = s.indexOf("YearScrubber(")
         assert(i > 0) { "die Leiste fehlt ganz" }
         val aufruf = s.substring(i, minOf(i + 700, s.length))
-        // Seit Marcos Vorgabe „die gleiche Leiste wie die Webapp" rollt sie an
+        // Wie in der Webapp rollt die Leiste an
         // eine STELLE, statt auf das erste Set eines Jahres zu springen. Der
         // Unterschied zum Filter bleibt derselbe: Ein Filter wirft die anderen
         // Jahre weg, ein Rollen laesst sie stehen.
@@ -99,21 +94,8 @@ class CatalogScrubberTest {
 
     @Test
     fun `die Rollposition ueberlebt den Wechsel zur Detailseite`() {
-        // ── Marcos Befund ───────────────────────────────────────────────────
-        // „Wenn im Katalog eine Detailseite aufgerufen und wieder geschlossen
-        // wird, ist der Scrollbalken ganz zuoberst und nicht an der Stelle von
-        // vor dem Aufruf."
-        //
-        // Die Position lag im LazyGridState des Bildschirms. Die Detailseite
-        // ist ein EIGENER Navigationspunkt — beim Wechsel verlässt die Liste
-        // die Komposition. Bei einer Liste, deren Länge (`total`) und Inhalt
-        // (`loadedPages`) erst nachträglich eintreffen, hilft auch Compose'
-        // Wiederherstellung nicht: Sind im Moment der Wiederherstellung noch
-        // keine Plätze da, gibt es keine Stelle, an die gesprungen werden
-        // könnte.
-        //
-        // Deshalb liegt sie im ZUSTAND — der lebt im ViewModel und überlebt
-        // jeden Wechsel des Bildschirms.
+        // Die Liste verlässt beim Wechsel ins Detail die Komposition, und Länge wie Inhalt
+        // kommen erst nachträglich; die Stelle liegt deshalb im Zustand des ViewModels.
         val u = code(read("katalog/ui/ZustandKatalog.kt"))
         assert(u.contains("val scrollIndex: Int = 0") && u.contains("val scrollOffset: Int = 0")) {
             "Der Katalog-Zustand merkt sich die Rollposition nicht"

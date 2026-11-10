@@ -1,9 +1,15 @@
 /**
- * Vorschaubilder entstehen ATOMAR — halbe Dateien gehen nie an den Client.
- * Ausführlich: docs/begruendungen/test/thumb-atomic.test.js.md#kopf
+ * Vorschaubilder entstehen ATOMAR: Beide Erzeuger (generateThumb für eigene
+ * Bilder, makeProxyThumb für den Bild-Proxy) schreiben auf einen temporären
+ * Namen und benennen erst die fertige Datei um. Eine unbrauchbar kleine
+ * Vorschau im Cache wird verworfen, ausgeliefert wird das Original.
  *
- * Gegenprobe (durchgeführt): rename in routes/imgProxy.ts entfernt und wieder
- * direkt auf den Zielnamen geschrieben → der erste Teilschritt wird rot.
+ * Gegenproben (10.11.2026 gemessen, je einzeln, dist neu gebaut):
+ *   A  in thumbs.ts direkt auf thumbFs geschrieben (rename entfernt) → rot:
+ *      „generateThumb schreibt …“
+ *   B  dasselbe in proxyThumbs.ts → rot: „makeProxyThumb schreibt …“
+ *   C  in imgCacheServe.ts `tst0.size < 200` → `< 20` → rot: „eine
+ *      unbrauchbar kleine Vorschau …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -11,71 +17,86 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
-const lies = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
-const ohneKommentare = s => s
-  .replace(/\/\*[\s\S]*?\*\//g, '')
-  .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
+const sharp = require('sharp');
 
-test('beide Vorschau-Erzeuger schreiben über eine temporäre Datei', () => {
-  // Fundort seit einer früheren Runde: src/katalog/bilder/proxyThumbs.ts.
-  for (const datei of ['src/katalog/bilder/proxyThumbs.ts', 'src/katalog/bilder/thumbs.ts']) {
-    const src = ohneKommentare(lies(datei));
-    // Seit einer früheren Runde schreibt src/katalog/bilder/thumbs.ts über verkleinern() (sharp,
-    // mit Jimp als Rückfall); der Bild-Proxy hat weiterhin seinen eigenen
-    // Jimp-Aufruf. Geprüft wird deshalb die AUSSAGE — geschrieben wird auf den
-    // temporären Namen — statt einer bestimmten Bibliothek.
-    assert.ok(/(await bg\.write\(tmpThumb|verkleinern\([^)]*tmpThumb\))/.test(src),
-      `${datei}: die Vorschau wird direkt auf den endgültigen Namen geschrieben — ` +
-      'eine parallele Anfrage liefert dann eine halbe Datei aus');
-    assert.ok(/fs\.promises\.rename\(tmpThumb/.test(src),
-      `${datei}: das abschliessende rename fehlt`);
-  }
+// Die Vorschau-Sperre hält eine eigene Verbindung offen; mitgeschrieben, damit der Test sie schliessen kann.
+const eigene = [];
+const standard = _req('db/database.js').standardDb();
+const verbinde = standard.eigeneVerbindung;
+standard.eigeneVerbindung = async () => { const c = await verbinde(); eigene.push(c); return c; };
+test.after(async () => {
+  for (const c of eigene) await c.end().catch(() => {});
+  await _req('db/database.js').pool?.end?.().catch(() => {});
 });
 
-test('eine unbrauchbar kleine Vorschau wird verworfen statt ausgeliefert', () => {
-  // Diese Prüfung gehört zur AUSLIEFERUNG, nicht zur Erzeugung: Sie steht
-  // weiterhin in routes/imgProxy.ts. (Beim Umzug in einer früheren Runde hatte ich sie
-  // per Massenersetzung mit auf src/katalog/bilder/proxyThumbs.ts umgebogen — zum dritten
-  // Mal in dieser Reihe eine zu breite Ersetzung.)
-  // Fundort seit einer früheren Runde: src/katalog/bilder/imgCacheServe.ts (die Auslieferung).
-  const src = ohneKommentare(lies('src/katalog/bilder/imgCacheServe.ts'));
-  assert.ok(/tst0\.size < 200/.test(src),
-    'Altbestände aus der Zeit vor dem atomaren Schreiben müssen abgefangen werden');
-  assert.ok(/unlink\(thumbFile\)/.test(src),
-    'die unbrauchbare Datei muss entfernt werden, damit sie neu entsteht');
-});
+/** Ruft `arbeit` und schreibt jedes rename mit: Quelle, Ziel, gab es das Ziel schon, wie gross war die Quelle. */
+async function mitRenameSpur(arbeit) {
+  const echt = fs.promises.rename;
+  const spur = [];
+  fs.promises.rename = async (von, nach) => {
+    spur.push({ von: String(von), nach: String(nach), zielDa: fs.existsSync(nach), groesse: fs.statSync(von).size });
+    return echt.call(fs.promises, von, nach);
+  };
+  try { return { ergebnis: await arbeit(), spur }; } finally { fs.promises.rename = echt; }
+}
 
-test('unteilbares Umbenennen zeigt Lesern nie einen Zwischenstand', async () => {
-  // Das Verhalten selbst, unabhängig vom Quelltext: Während die Datei
-  // geschrieben wird, darf ein paralleler Leser sie entweder gar nicht sehen
-  // oder vollständig — niemals halb.
-  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'thumbatom-'));
-  const ziel = path.join(ordner, 'bild_thumb.jpg');
-  const tmp  = ziel + '.tmp';
-  const GESAMT = 12000;
+function pruefeAtomar(spur, ziel) {
+  assert.equal(spur.length, 1, `${spur.length} Umbenennungen`);
+  const [r] = spur;
+  assert.equal(r.nach, ziel);
+  assert.match(r.von, /\.tmp\.jpg$/, 'der temporäre Name endet nicht auf .tmp.jpg');
+  assert.equal(path.dirname(r.von), path.dirname(ziel), 'temporär in einem anderen Ordner: rename wäre nicht atomar');
+  assert.equal(r.zielDa, false, 'die Vorschau lag schon vor dem Umbenennen unter ihrem Namen');
+  assert.equal(r.groesse, fs.statSync(ziel).size, 'umbenannt wurde eine unfertige Datei');
+  assert.deepEqual(fs.readdirSync(path.dirname(ziel)).filter(f => f.endsWith('.tmp.jpg')), []);
+}
 
+test('generateThumb schreibt über eine temporäre Datei', async () => {
+  const { DATA_DIR } = _req('src/infra/appPaths.js');
+  const ordner = path.join(DATA_DIR, 'images', 'sets');
+  fs.mkdirSync(ordner, { recursive: true });
+  const name = `zz-atomar-${process.pid}`;
+  const original = path.join(ordner, `${name}.jpg`), vorschau = path.join(ordner, `${name}_thumb.jpg`);
+  await sharp({ create: { width: 400, height: 300, channels: 3, background: '#c00' } }).jpeg().toFile(original);
   try {
-    const ws = fs.createWriteStream(tmp);
-    let n = 0;
-    await new Promise(fertig => {
-      const iv = setInterval(() => {
-        ws.write(Buffer.alloc(2000, 1));
-        n += 2000;
-        if (n >= GESAMT) { clearInterval(iv); ws.end(); }
-      }, 5);
-      ws.on('close', fertig);
-      // Mitten im Schreiben nachsehen — wie eine parallele Bildanfrage.
-      setTimeout(() => {
-        assert.equal(fs.existsSync(ziel), false,
-          'während des Schreibens darf der endgültige Name noch nicht existieren');
-      }, 12);
-    });
+    const { ergebnis, spur } = await mitRenameSpur(() => _req('src/katalog/bilder/thumbs.js').generateThumb(`/images/sets/${name}.jpg`));
+    assert.equal(ergebnis, `/images/sets/${name}_thumb.jpg`);
+    pruefeAtomar(spur, vorschau);
+  } finally { fs.rmSync(original, { force: true }); fs.rmSync(vorschau, { force: true }); }
+});
 
-    fs.renameSync(tmp, ziel);
-    assert.equal(fs.statSync(ziel).size, GESAMT,
-      'nach dem Umbenennen liegt die Datei vollständig vor');
-  } finally {
-    fs.rmSync(ordner, { recursive: true, force: true });
-  }
+test('makeProxyThumb schreibt über eine temporäre Datei', async (t) => {
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
+  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'proxyvorschau-'));
+  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
+  const quelle = path.join(ordner, 'a'.repeat(40)), ziel = quelle + '_thumb.jpg';
+  await sharp({ create: { width: 400, height: 300, channels: 3, background: '#0a0' } }).jpeg().toFile(quelle + '.jpg');
+  fs.renameSync(quelle + '.jpg', quelle);
+  const { ergebnis, spur } = await mitRenameSpur(() => _req('src/katalog/bilder/proxyThumbs.js').makeProxyThumb(quelle, ziel));
+  assert.equal(ergebnis, true);
+  pruefeAtomar(spur, ziel);
+  assert.deepEqual([(await sharp(ziel).metadata()).width, (await sharp(ziel).metadata()).height], [200, 200]);
+});
+
+test('eine unbrauchbar kleine Vorschau wird verworfen, ausgeliefert wird das Original', async (t) => {
+  const { liefereAusCache } = _req('src/katalog/bilder/imgCacheServe.js');
+  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'cachevorschau-'));
+  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
+  const cacheFile = path.join(ordner, 'b'.repeat(40)), thumbFile = cacheFile + '_thumb.jpg';
+  fs.writeFileSync(cacheFile, Buffer.alloc(5000, 1));
+  fs.writeFileSync(thumbFile, Buffer.alloc(150, 2));
+  const kopf = {};
+  const res = { setHeader: (k, v) => { kopf[k.toLowerCase()] = v; }, status: () => ({ end() {} }) };
+  const geliefert = [];
+  let notiert = 0;
+  const beantwortet = await liefereAusCache({ res, req: { fresh: false }, cacheFile, thumbFile, wantThumb: true,
+    darfErzeugen: false, notiere: () => { notiert++; }, streamFileToResponse: (_r, datei) => geliefert.push(datei) });
+  assert.equal(beantwortet, true);
+  assert.deepEqual(geliefert, [cacheFile], 'nicht das Original ausgeliefert');
+  assert.equal(kopf['content-length'], '5000');
+  assert.equal(fs.existsSync(thumbFile), false, 'die kaputte Vorschau liegt noch da');
+  assert.equal(notiert, 1, 'die neue Vorschau ist nicht vorgemerkt');
 });

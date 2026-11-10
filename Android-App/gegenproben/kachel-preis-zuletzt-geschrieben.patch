@@ -1,0 +1,18 @@
+Gegenprobe: Die Teile-Kachel zeigt den zuletzt geschriebenen statt des gemittelten Kaufpreises
+Modul: app
+Test: ch.brickinventoryapp.app.ManuelleKachelAnzeigeTest
+Rot: das manuelle Teil zeigt
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt
+index 1b41cb9..d95a7c9 100644
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt
+@@ -71,7 +71,7 @@ fun ManualPartTile(part: ManuellesTeilAnsicht, serverUrl: String, imageLoader: I
+         zustaende = part.conditions,
+         zustand = part.condition,
+         besitzer = part.owners,
+-        preis = part.avgPurchasePrice ?: part.unitPrice ?: part.purchasePrice,
++        preis = part.unitPrice ?: part.avgPurchasePrice ?: part.purchasePrice,
+         waehrung = waehrung,
+         onEdit = onEdit,
+         farbe = farbe,

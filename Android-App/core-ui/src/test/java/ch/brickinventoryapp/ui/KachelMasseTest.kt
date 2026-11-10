@@ -53,18 +53,6 @@ class KachelMasseTest {
     }
 
     /**
-     * ── Nachtrag 138: aus zwei Kacheln wurde eine ───────────────────────────
-     *
-     * Hier stand `nutzer >= 2` mit der Begruendung „erwartet werden die Teile-
-     * und die Minifiguren-Kachel". Das war richtig, solange es zwei gab. Seit
-     * beide ueber `ManuelleKachel` laufen, traegt genau EINE Datei die
-     * Geometrie — und der Lauf wurde rot, obwohl das Zusammenlegen genau das
-     * Ziel dieses Tests weiterfuehrt.
-     *
-     * Die Untergrenze ist deshalb keine Zahl mehr, sondern eine Aussage: Die
-     * Masse stehen genau einmal, und zwar in der gemeinsamen Kachel. Ein
-     * Selbstbeweis bleibt es trotzdem — findet der Dateilauf nichts, ist
-     * `nutzer` null und der Test rot.
      */
     @Test
     fun `die gemeinsame Kachel holt ihre Masse dort`() {

@@ -1,0 +1,18 @@
+Gegenprobe: Der Suchtext des Protokolls blendet keine Zeile aus
+Modul: app
+Test: ch.brickinventoryapp.app.MonitoringProtokollAnzeigeTest
+Rot: die Suche
+
+diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringProtokoll.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringProtokoll.kt
+index 6b54475..73fd760 100644
+--- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringProtokoll.kt
++++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringProtokoll.kt
+@@ -92,7 +92,7 @@ internal fun ProtokollSection(verwaltung: VerwaltungUiState, aktionen: Monitorin
+                         val suche = protokollSuche.trim().lowercase()
+                         verwaltung.protokoll.filter { z ->
+                             z.level?.lowercase() !in versteckteStufen &&
+-                                (suche.isEmpty() || z.message.orEmpty().lowercase().contains(suche))
++                                suche.length >= 0
+                         }
+                     }
+                     if (verwaltung.protokoll.isNotEmpty() && sichtbar.isEmpty()) {

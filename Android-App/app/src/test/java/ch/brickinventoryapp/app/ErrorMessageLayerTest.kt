@@ -6,17 +6,6 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Fehlermeldungen entstehen an EINER Stelle, und die kann übersetzen.
  *
- * ── Woher dieser Test kommt (Nachtrag 116) ──────────────────────────────────
- *
- * `BrickRepository.safeCall()` formulierte seine Meldungen selbst:
- *
- * Von 36 Snackbar-Zuweisungen liefen damals 19 über `getString`; der Rest
- * reichte durch, was aus der Datenschicht kam. Es waren also zwei Sprachregime
- * nebeneinander, und welches griff, hing davon ab, wo der Fehler entstand.
- *
- * Jetzt meldet die Datenschicht nur noch die URSACHE als Art von `Ergebnis.Error`;
- * den Satz formuliert `AppTexte.meldung()`. Dieser Test hält beide Hälften fest.
- *
  * Gegenprobe: gegenproben/fehler-satz-in-datenschicht.patch — sicherAufrufen()
  * legt einen festen Satz in Ergebnis.Error.Server → rot „die Datenschicht baut
  * keine Meldung …“.
@@ -24,7 +13,7 @@ import ch.brickinventoryapp.testing.Quellen
 class ErrorMessageLayerTest {
 
     private val datenschicht = listOf(
-        // Alle Dateien der Datenschicht (Nachtrag 155) — vorher nur die eine.
+        // Alle Dateien der Datenschicht — vorher nur die eine.
         "data/repository/Ergebnis.kt",
         "data/repository/RepoBasis.kt",
         "data/repository/SetsRepositoryImpl.kt",
@@ -62,7 +51,7 @@ class ErrorMessageLayerTest {
 
     @Test
     fun `die Zuordnung Ursache zu Text liegt ausserhalb von meldung`() {
-        // Ob jede Fehlerart einen eigenen Satz hat, prüft seit Nachtrag 117
+        // Ob jede Fehlerart einen eigenen Satz hat, prüft
         // FehlerTexteTest — ausgeführt statt gelesen. Hier bleibt nur die
         // Aussage, die eine Textsuche wirklich treffen kann: dass die
         // Zuordnung eine eigene, Context-freie Funktion IST. Wandert sie

@@ -1,44 +1,53 @@
 /**
  * „Verwendet in" zeigt Bild, Nummer und Bezeichnung — in BEIDEN Oberflächen.
+ * Die Webapp im echten Bündel (jsdom); die App liest Kotlin (Struktur, kein SDK hier).
  * Ausführlich: docs/begruendungen/test/setitem-set-tabelle.test.js.md#kopf
+ *
+ * Gegenproben (10.11.2026 gemessen, je einzeln, Bündel neu gebaut), alle in
+ * 13-set-teile.js → rot „die Webapp zeigt die Sets als Tabelle …“:
+ *   A  die Bildzelle `${setBild(s)}` geleert
+ *   B  zeilenStil 'flex-direction:column…' entfernt (Tabelle neben der Beschriftung)
+ *   C  `orig:` aus bildTag entfernt (kein Rückfall auf das CDN-Bild)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
+
+const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
 
 const ohneKommentare = (s) =>
   s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*(\/\/|\*).*$/gm, '');
 
-test('die Webapp zeigt die Sets als Tabelle mit Bild', () => {
-  const src = ohneKommentare(
-    require('./helpers/sources').ansichtQuelle('13'));
-  const i = src.indexOf("t('setitem.used_in')");
-  assert.ok(i > 0, 'Der Abschnitt „Verwendet in" ist nicht mehr da');
-  // Der Aufbau steht ÜBER der detailZeile — von dort rückwärts bis zum
-  // vorigen Abschnitt schneiden, damit der Rest des Dialogs nicht mitzählt.
-  const block = src.slice(src.lastIndexOf('const setBild', i), i);
-  assert.ok(block.length > 0,
-    'Es gibt keinen setBild-Helfer mehr — dann steht die Liste wieder ohne Bild da');
-  assert.match(block, /thumbUrl\(s\.image_local \|\| s\.image_url\)/,
-    'Das Set-Bild wird nicht als Vorschau aufgelöst — im Dialog stünde die volle Auflösung');
-  assert.match(block, /<table/,
-    'Die Sets stehen nicht in einer Tabelle — Nummer und Name haben dann keine gemeinsame Kante');
-  for (const feld of ['s.set_number', 's.set_name'])
-    assert.ok(block.includes(feld), `${feld} fehlt in der Tabelle`);
-});
-
-test('die Tabelle beginnt auf einer eigenen Zeile', () => {
-  // Marcos Befund am Bild
-  // Ausführlich: docs/begruendungen/test/setitem-set-tabelle.test.js.md#src-stelle
-  const src = ohneKommentare(
-    require('./helpers/sources').ansichtQuelle('13'));
-  assert.match(src,
-    /detailZeile\(t\('setitem\.used_in'\), liste,\s*\{\s*zeilenStil: 'flex-direction:column/,
-    'Die Set-Tabelle steht wieder NEBEN der Beschriftung „Verwendet in" — bei ' +
-    'einem einzelnen Set schiebt sie sich dann in das erste Vorschaubild');
+test('die Webapp zeigt die Sets als Tabelle mit Bild, Nummer und Name, unter der Beschriftung', async () => {
+  const SETS = [
+    { set_number: '10305-1', set_name: 'Löwenritterburg', quantity: 4, image_local: '/images/sets/10305-1.jpg', image_url: 'https://cdn.rebrickable.com/media/sets/10305-1.jpg' },
+    { set_number: '6080-1', set_name: 'Königsburg', quantity: 1, image_local: null, image_url: null },
+  ];
+  const o = await oeffneOberflaeche({
+    '/v1/parts/3001/5/sets': { success: true, item: { name: 'Stein 2 x 4', color_name: 'Red', total_quantity: 5, owner_ids: [1] }, sets: SETS },
+  });
+  try {
+    await o.ruhig();
+    const knopf = o.d.createElement('button');
+    Object.assign(knopf.dataset, { click: 'openSetItemDetail', arg: 'part', arg2: '3001', arg3: '5' });
+    o.d.body.append(knopf);
+    knopf.click();
+    await warte(() => o.d.querySelector('#setitem-body table'));
+    const tabelle = o.d.querySelector('#setitem-body table');
+    const zeilen = [...tabelle.querySelectorAll('tbody tr')];
+    assert.equal(zeilen.length, 2);
+    const text = zeilen.map(z => [...z.cells].map(c => c.textContent.trim()));
+    assert.deepEqual(text.map(z => z.slice(1, 3)), [['10305-1', 'Löwenritterburg'], ['6080-1', 'Königsburg']]);
+    const bild = zeilen[0].cells[0].querySelector('img');
+    assert.ok(bild, 'das erste Set hat kein Bild');
+    assert.match(bild.getAttribute('src'), /\/images\/sets\/10305-1\.jpg$/, 'das lokale Bild fehlt');
+    assert.match(bild.dataset.orig ?? '', /10305-1\.jpg/, 'ohne data-orig kein Rückfall auf das CDN-Bild');
+    assert.ok(zeilen[1].cells[0].querySelector('.bild-ph'), 'ein Set ohne Bild zeigt keinen Platzhalter');
+    const zeile = tabelle.closest('.dr');
+    assert.equal(zeile.style.flexDirection, 'column', 'die Tabelle steht neben der Beschriftung');
+  } finally { o.w.close(); }
 });
 
 test('die App zeigt dieselben drei Spalten', () => {

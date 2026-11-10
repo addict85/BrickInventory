@@ -8,7 +8,9 @@ const fs     = require('fs');
 const path   = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const { ausTabelle } = require(path.join(ROOT, 'dist', 'src/infra/validate.js'));
+// Über buildAndRequire: Ein veraltetes dist/ prüfte sonst den Stand vor der letzten Änderung.
+const _req = require('./helpers/sources').buildAndRequire();
+const { ausTabelle } = _req('src/infra/validate.js');
 
 const TABELLE = { year_desc: 'rb.year DESC', name_asc: 'rb.name ASC' };
 

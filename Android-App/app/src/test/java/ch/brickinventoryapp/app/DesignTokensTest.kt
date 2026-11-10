@@ -5,23 +5,6 @@ import ch.brickinventoryapp.testing.Quellen
 
 /**
  * Formen und Farben stehen im Design, nicht im Bildschirm.
- *
- * ── Woher dieser Test kommt (Nachtrag 120) ──────────────────────────────────
- *
- * Die FARBEN machten es längst richtig: zwei Designs über `colorScheme`,
- * Diagrammfarben über `LocalChartColors`. Formen und Erhebungen waren von
- * dieser Sorgfalt ausgenommen — 129 fest eingetragene
- * `RoundedCornerShape(N.dp)` in neun Radien, und die Kartenoptik stand
- * siebenmal wörtlich da. „Mach die Karten runder" hiess: vierzehn Stellen
- * suchen und hoffen, keine zu übersehen.
- *
- * Dazu zwölf feste Farben im Quelltext, darunter ZWEI verschiedene Grüns für
- * dieselbe Aussage („erfolgreich") in vier Dateien. Im Stein-Design zogen sie
- * nicht mit.
- *
- * Der Umbau hat die Werte nur VERSCHOBEN, nicht geändert — bis auf die
- * Vereinheitlichung der beiden Grüns. Dieser Test hält fest, dass sie dort
- * bleiben.
  */
 class DesignTokensTest {
 

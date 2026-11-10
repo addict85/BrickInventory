@@ -1,69 +1,86 @@
 /**
- * Der Kategoriefilter der Finanzen steht in BEIDEN Oberflaechen — gleich.
- * Ausführlich: docs/begruendungen/test/finanzen-filter-gleich.test.js.md#kopf
+ * Der Kategoriefilter der Finanzen steht in BEIDEN Oberflächen — gleich: dieselben Arten, „leer heisst
+ * alle“, additiv. Die Webapp läuft in jsdom (echtes Bündel), die App wird als Struktur gelesen (kein
+ * Android-SDK hier).
+ *
+ * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen, Bündel neu gebaut):
+ *   A  finFilter() ersetzt die Auswahl (`finKategorien.clear()` vor dem Hinzufügen) → rot:
+ *      „Webapp: der Filter häuft …“
+ *   B  in der Zeichenfunktion den Aufruf `finFilterAnwenden();` nach setzeHtml gestrichen → rot:
+ *      „Webapp: … überlebt das Neuzeichnen“
+ *   C  im Markup den Chip data-arg="figs" auf "minifigs" → rot: „dieselben Arten …“
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
 const fs     = require('node:fs');
 const path   = require('node:path');
-
-const ROOT = path.join(__dirname, '..');
-
 const { ohneKommentare } = require('./helpers/sources');
+const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
-const lies = (p) => fs.readFileSync(p, 'utf8');
+// Jeder Pfad ausgeschrieben: baumbruecken.test.js löst die Brücken in den Android-Baum statisch auf.
+const KT_ABSCHNITTE = path.join(__dirname, '..', '..', 'Android-App', 'feature-finanzen', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'finanzen', 'ui', 'screens', 'FinanceSections.kt');
+const KT_ZUSTAND = path.join(__dirname, '..', '..', 'Android-App', 'feature-finanzen', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'finanzen', 'ui', 'ZustandFinanzen.kt');
+const kt = (voll) => ohneKommentare(fs.readFileSync(voll, 'utf8'));
 
-test('Finanzen-Filter: dieselben vier Arten in Webapp und App', () => {
-  const html = lies(path.join(ROOT, 'public/index.html'));
-  const web  = ohneKommentare(lies(path.join(ROOT, 'public/js/04-finance.js')));
-  const kt   = ohneKommentare(lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-finanzen', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'finanzen', 'ui', 'screens', 'FinanceSections.kt')));
+const posten = (feld, nr, name) => ({ [`${feld}_number`]: nr, [`${feld}_name`]: name, quantity: 1, condition: 'N', conditions: ['N'],
+  acquisitions: [], avg_price: 2, purchase_price: 1, wert_gesamt: 2, total_value: '2.00', display_value: '2.00' });
 
-  // ── 1. Dieselben Schluessel ──────────────────────────────────────────────
-  const appArten = [...kt.matchAll(/KategorieChip\("(\w+)"/g)].map(m => m[1]);
-  assert.deepEqual(appArten, ['sets', 'parts', 'figs'],
-    'Die App kennt andere Arten als erwartet — Muster veraltet oder Arten geaendert');
+async function finanzen() {
+  const o = await oeffneOberflaeche({
+    '/v1/finance/valuation': { success: true, currency: 'EUR', condition: 'N', total_value: '5', kaufpreise_fremde_waehrung: 0,
+      totals: { min: '0', avg: '5', max: '0', qty_avg: '5' },
+      sets: [{ set_number: '10294-1', name: 'Titanic', quantity: 1, avg_price: 5, wert_gesamt: 5, from_cache: true,
+               is_fallback: false, no_price: false, mixed: false, acquisitions: [] }] },
+    '/v1/finance/parts-valuation': { success: true, currency: 'EUR', total_value: '2', wert_gesamt: 2,
+      parts: [{ ...posten('part', '3001', 'Stein 2 x 4'), color_id: 5, color_name: 'Red' }] },
+    '/v1/finance/minifigs-valuation': { success: true, currency: 'EUR', total_value: '2', wert_gesamt: 2,
+      figs: [posten('fig', 'sw0001', 'Luke')] },
+  });
+  await reiter(o.w, 'finance');
+  assert.ok(await warte(() => o.d.querySelectorAll('#fin-tbl [data-fin-art]').length === 3), 'nicht alle drei Abschnitte da');
+  o.sichtbar = () => [...o.d.querySelectorAll('#fin-tbl [data-fin-art]')].filter(el => el.style.display !== 'none').map(el => el.dataset.finArt);
+  o.chip = (art) => o.d.querySelector(`#fin-filter [data-click="finFilter"][data-arg="${art}"]`).click();
+  return o;
+}
 
-  const webArten = [...html.matchAll(/data-click="finFilter" data-arg="(\w+)"/g)].map(m => m[1]);
-  assert.deepEqual(webArten, ['alle', ...appArten],
-    'Die Chips der Webapp decken sich nicht mit denen der App');
+test('dieselben Arten in Webapp und App, und jede hat einen Abschnitt', async () => {
+  const appArten = [...kt(KT_ABSCHNITTE).matchAll(/KategorieChip\("(\w+)"/g)].map(m => m[1]);
+  assert.deepEqual(appArten, ['sets', 'parts', 'figs'], 'Die App kennt andere Arten als erwartet');
+  const o = await finanzen();
+  try {
+    const webArten = [...o.d.querySelectorAll('#fin-filter [data-click="finFilter"]')].map(b => b.dataset.arg);
+    assert.deepEqual(webArten, ['alle', ...appArten], 'Die Chips der Webapp decken sich nicht mit denen der App');
+    // Ein Chip ohne zugehörigen Abschnitt wäre ein Knopf, der nichts tut.
+    assert.deepEqual(o.sichtbar(), appArten);
+  } finally { o.w.close(); }
+});
 
-  // Und jede Art blendet auch wirklich etwas aus: Ein Chip ohne zugehoerigen
-  // Abschnitt waere ein Knopf, der nichts tut.
-  for (const art of appArten) {
-    // Teile und Figuren baut manuellerAbschnitt({ art: … }) mit demselben Attribut.
-    assert.ok(web.includes(`data-fin-art="${art}"`) || web.includes(`art: '${art}'`),
-      `Zur Art „${art}" gibt es in der Webapp keinen gekennzeichneten Abschnitt`);
-  }
+test('Webapp: leer heisst alle, der Filter häuft und überlebt das Neuzeichnen', async () => {
+  const o = await finanzen();
+  try {
+    o.chip('parts');
+    assert.deepEqual(o.sichtbar(), ['parts']);
+    o.chip('figs');
+    assert.deepEqual(o.sichtbar(), ['parts', 'figs'], 'ein zweiter Chip ersetzt die Auswahl, statt sie zu häufen');
+    assert.equal(o.d.querySelector('#fin-filter [data-arg="figs"]').getAttribute('aria-pressed'), 'true');
+    o.chip('parts');
+    assert.deepEqual(o.sichtbar(), ['figs'], 'ein zweiter Klick nimmt die Art nicht wieder heraus');
+    // Die Suche zeichnet die Tabelle neu: Der alte Abschnitt wird ersetzt.
+    const vorher = o.d.querySelector('#fin-tbl [data-fin-art="figs"]');
+    const feld = o.d.getElementById('fin-suche');
+    feld.value = '0';
+    feld.dispatchEvent(new o.w.Event('input', { bubbles: true }));
+    assert.ok(await warte(() => !vorher.isConnected && o.d.querySelectorAll('#fin-tbl [data-fin-art]').length === 3, 1500), 'nicht neu gezeichnet');
+    assert.deepEqual(o.sichtbar(), ['figs']);
+    o.chip('figs');
+    assert.deepEqual(o.sichtbar(), ['sets', 'parts', 'figs'], 'keine Auswahl heisst alle');
+    assert.equal(o.d.querySelector('#fin-filter [data-arg="alle"]').getAttribute('aria-pressed'), 'true');
+  } finally { o.w.close(); }
+});
 
-  // ── 2. Dieselbe Regel „leer heisst alle" ─────────────────────────────────
-  const zustand = ohneKommentare(lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-finanzen', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'finanzen', 'ui', 'ZustandFinanzen.kt')));
-  assert.ok(/fun zeigt\(kategorie: String\): Boolean = kategorien\.isEmpty\(\) \|\| kategorie in kategorien/
-    .test(zustand), 'Die Regel der App steht nicht mehr, wo dieser Test sie erwartet');
-  assert.ok(/function finZeigt\(art\)\{ return finKategorien\.size === 0 \|\| finKategorien\.has\(art\); \}/
-    .test(web), 'Die Webapp beantwortet „wird das gezeigt" anders als die App');
-
-  // ── 3. Additiv in beiden ─────────────────────────────────────────────────
-  //
-  // Das ist der Punkt, an dem die beiden am ehesten auseinanderlaufen: Ein
-  // Single-Select saehe fast gleich aus und verhielte sich anders.
-  assert.ok(/if \(kategorie in kategorien\) kategorien - kategorie/.test(zustand),
-    'Die App ersetzt die Auswahl wieder, statt sie zu haeufen');
-  assert.ok(/finKategorien\.has\(art\)\) finKategorien\.delete\(art\);/.test(web),
-    'Die Webapp ersetzt die Auswahl wieder, statt sie zu haeufen');
-
-  // 4. Der Filter ueberlebt das Neuzeichnen
-  // Ausführlich: docs/begruendungen/test/finanzen-filter-gleich.test.js.md#ab-stelle
-  //
-  // Genau das hat die Gegenprobe zu diesem Test aufgedeckt: `finFilterAnwenden()`
-  // steht zweimal in der Datei (hier und im Klick-Handler). Ein Ausschnitt bis
-  // zum Dateiende fand deshalb IMMER einen Treffer — auch nachdem ich den
-  // Aufruf aus loadFinance() entfernt hatte. Die Pruefung war gruen und
-  // pruefte nichts.
-  const ab = web.indexOf("setzeHtml(G('fin-tbl'), html`${leer}${setsTabelle(");
-  assert.ok(ab > 0, 'Die Zeile, die die Tabelle zeichnet, wurde nicht gefunden — Muster veraltet?');
-  const ende = web.indexOf('\n}', ab);
-  assert.ok(ende > ab, 'Das Ende von loadFinance() wurde nicht gefunden');
-  const nachZeichnen = web.slice(ab, ende);
-  assert.ok(nachZeichnen.includes('finFilterAnwenden();'),
-    'Nach dem Neuzeichnen der Tabelle wird der Filter nicht wieder angewandt');
+test('App: dieselbe Regel „leer heisst alle“, additiv', () => {
+  const zustand = kt(KT_ZUSTAND);
+  assert.match(zustand, /fun zeigt\(kategorie: String\): Boolean = kategorien\.isEmpty\(\) \|\| kategorie in kategorien/);
+  // Ein Single-Select sähe fast gleich aus und verhielte sich anders.
+  assert.match(zustand, /if \(kategorie in kategorien\) kategorien - kategorie/);
 });

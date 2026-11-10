@@ -1,0 +1,19 @@
+Gegenprobe: Der Sammlungs-Umschalter auf dem Telefon meldet erst nach der Navigation
+Modul: app
+Test: ch.brickinventoryapp.app.TabOpensAtTopTest
+Rot: der Sammlungs-Umschalter meldet
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+index b274d3e..88b864b 100644
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+@@ -182,8 +182,8 @@ fun MainScaffold(
+                 )
+                 if (art == Navigationsart.LEISTE_UNTEN && currentDest?.istEinesVon(SAMMLUNG) == true) {
+                     SammlungUmschalter(sammlungsZiel(currentDest), onWahl = { ziel ->
+-                        onTabAngetippt(ziel)
+                         navController.zuReiter(ziel)
++                        onTabAngetippt(ziel)
+                     }, modifier = Modifier.mitLeisteEinklappen { einklappen.state.collapsedFraction })
+                 }
+               }

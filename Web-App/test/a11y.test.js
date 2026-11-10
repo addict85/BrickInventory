@@ -1,97 +1,121 @@
 /**
- * Barrierefreiheit — die strukturellen Zusicherungen.
- * Ausführlich: docs/begruendungen/test/a11y.test.js.md#kopf
+ * Barrierefreiheit an der geladenen Oberfläche (jsdom, echtes Bündel): Was
+ * ein Vorleseprogramm zu Feldern, Knöpfen, Dialogen und den Preiszeichen der
+ * Finanztabelle sagen kann, nachdem die Sprache angewandt ist.
+ *
+ * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen, Bündel neu gebaut):
+ *   A  in index.html `for="s-cur"` vom Label entfernt → rot: „jedes Formularfeld
+ *      ist beschriftet“ (s-cur)
+ *   B  dasselbe Label auf `for="s-curx"` → rot: „jedes Formularfeld …“ und „jedes for= …“
+ *   C  role="dialog" an #confirm-modal entfernt → rot: „modale Overlays …“
+ *   D  in i18n.js `document.documentElement.lang = lang;` gestrichen → rot:
+ *      „die Sprache steht am <html>-Element“
+ *   E  in priceStatusBadge() (04-finance.js) aria-label der Fehler-Plakette
+ *      entfernt → rot: „bedeutungstragende Zeichen …“
+ *   F  #btn-sav-pw ohne Text und data-i18n, mit aria-label="btn-sav-pw" →
+ *      rot: „kein aria-label, das nur der Bezeichner ist“
+ *   G  #btn-sav-pw ohne Text und data-i18n → rot: „jedes sichtbare Bedienelement …“
+ * Ersetzt bedienelement-name.test.js, das dieselben Regeln per Regex am Markup prüfte.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const path   = require('node:path');
-
-const HTML = fs.readFileSync(
-  path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
 /** Felder, die bewusst keine sichtbare Beschriftung brauchen. */
 const EXEMPT = new Set([
-  'cfg-import-file',        // verstecktes <input type="file">, ausgelöst über einen beschrifteten Knopf
+  'cfg-import-file', // verstecktes <input type="file">, ausgelöst über einen beschrifteten Knopf
 ]);
 
-/** Alle id-tragenden Formularfelder aus dem Markup. */
-function formFields() {
-  return [...HTML.matchAll(/<(input|select|textarea)\b([^>]*)>/g)]
-    .map(m => ({ tag: m[1], attrs: m[2], raw: m[0] }))
-    .filter(f => /\bid="/.test(f.attrs))
-    .map(f => ({ ...f, id: f.attrs.match(/\bid="([^"]+)"/)[1] }));
+const FIN_SETS = [
+  { set_number: '10294-1', name: 'Titanic', avg_price: 600, wert_gesamt: 600 },
+  { set_number: '10295-1', name: 'Porsche', error: 'Zeitüberschreitung', avg_price: null, wert_gesamt: 0 },
+  { set_number: '10296-1', name: 'Mini', no_price: true, avg_price: null, wert_gesamt: 0 },
+].map(s => ({ quantity: 1, from_cache: true, is_fallback: false, no_price: false, mixed: false, acquisitions: [], ...s }));
+
+let _o;
+/** Eine Oberfläche für alle Fälle: Laden dauert, geprüft wird nur gelesen. */
+async function oberflaeche() {
+  _o ??= await oeffneOberflaeche({
+    '/v1/finance/valuation': { success: true, currency: 'EUR', condition: 'N', total_value: '600', kaufpreise_fremde_waehrung: 0,
+      totals: { min: '0', avg: '600', max: '0', qty_avg: '600' }, sets: FIN_SETS },
+  });
+  return _o;
 }
+test.after(() => _o?.w.close());
 
-test('jedes Formularfeld ist beschriftet', () => {
-  const labelledFor = new Set([...HTML.matchAll(/<label for="([^"]+)"/g)].map(m => m[1]));
-  // Umschliessende Labels: <label …><input id="x">
-  const wrapped = new Set([...HTML.matchAll(/<label\b[^>]*>\s*<(?:input|select|textarea)\b[^>]*\bid="([^"]+)"/g)].map(m => m[1]));
+const felder = d => [...d.querySelectorAll('input[id], select[id], textarea[id]')]
+  .filter(f => f.type !== 'hidden' && !EXEMPT.has(f.id));
 
-  const bare = formFields().filter(f =>
-    !labelledFor.has(f.id) &&
-    !wrapped.has(f.id) &&
-    !/aria-label=/.test(f.attrs) &&
-    !/type="hidden"/.test(f.attrs) &&
-    !EXEMPT.has(f.id));
-
-  assert.deepEqual(bare.map(f => f.id), [],
-    `Ohne Beschriftung: ${bare.map(f => f.id).join(', ')}`);
+test('jedes Formularfeld ist beschriftet', async () => {
+  const { d } = await oberflaeche();
+  const alle = felder(d);
+  assert.ok(alle.length >= 50, `nur ${alle.length} Felder gefunden`);
+  const ohne = alle.filter(f => !f.labels?.length && !f.getAttribute('aria-label') && !f.getAttribute('aria-labelledby'));
+  assert.deepEqual(ohne.map(f => f.id), []);
 });
 
-test('jedes for= zeigt auf ein existierendes Feld', () => {
-  const fieldIds = new Set(formFields().map(f => f.id));
-  const dangling = [...HTML.matchAll(/<label for="([^"]+)"/g)]
-    .map(m => m[1])
-    .filter(id => !fieldIds.has(id));
-  assert.deepEqual(dangling, [], `for= ohne Ziel: ${dangling.join(', ')}`);
+test('jedes for= zeigt auf ein existierendes Feld, ein umschliessendes Label auf sein eigenes', async () => {
+  const { d } = await oberflaeche();
+  const labels = [...d.querySelectorAll('label[for]')];
+  assert.ok(labels.length >= 30, `nur ${labels.length} Labels mit for=`);
+  assert.deepEqual(labels.filter(l => !l.control).map(l => l.htmlFor), [], 'for= ohne Ziel');
+  // Ein Klick setzt den Fokus auf das Ziel von for=, nicht auf das umschlossene Feld.
+  const fremd = labels.filter(l => { const innen = l.querySelector('input, select, textarea'); return innen && l.control !== innen; });
+  assert.deepEqual(fremd.map(l => `${l.htmlFor} → ${l.querySelector('input, select, textarea').id}`), []);
 });
 
-test('ein umschliessendes Label trägt kein fremdes for=', () => {
-  // Beim maschinellen Nachrüsten der for=-Attribute sind zwei Labels erwischt
-  // worden, die ihr Feld UMSCHLIESSEN — sie zeigten danach auf das jeweils
-  // nächste fremde Feld. Ein Klick hätte dann den Fokus woanders hin gesetzt.
-  const wrong = [...HTML.matchAll(/<label for="([^"]+)"[^>]*>\s*<(?:input|select|textarea)\b[^>]*\bid="([^"]+)"/g)]
-    .filter(m => m[1] !== m[2])
-    .map(m => `${m[1]} → ${m[2]}`);
-  assert.deepEqual(wrong, [], `Fehlzuordnung: ${wrong.join(', ')}`);
+test('modale Overlays sind als Dialog ausgezeichnet', async () => {
+  const { d } = await oberflaeche();
+  const modals = [...d.querySelectorAll('div.ovl[id$="modal"]')];
+  assert.ok(modals.length >= 5, `Nur ${modals.length} Modals gefunden`);
+  assert.deepEqual(modals.filter(m => m.getAttribute('role') !== 'dialog' || m.getAttribute('aria-modal') !== 'true').map(m => m.id), []);
 });
 
-test('modale Overlays sind als Dialog ausgezeichnet', () => {
-  const modals = [...HTML.matchAll(/<div class="ovl" id="([a-z0-9-]*modal)"([^>]*)>/g)];
-  assert.ok(modals.length >= 5, `Nur ${modals.length} Modals gefunden — Prüfung liefe ins Leere`);
-  const missing = modals
-    .filter(m => !/role="dialog"/.test(m[2]) || !/aria-modal="true"/.test(m[2]))
-    .map(m => m[1]);
-  assert.deepEqual(missing, [], `Ohne Dialog-Semantik: ${missing.join(', ')}`);
+test('die Sprache steht am <html>-Element', async () => {
+  // Ohne lang= rät der Screenreader die Aussprache — bei gemischt deutsch-englischen Oberflächen hörbar falsch.
+  const en = await oeffneOberflaeche({}, { sprache: 'en' });
+  try { assert.equal(en.d.documentElement.lang, 'en'); } finally { en.w.close(); }
+  assert.equal((await oberflaeche()).d.documentElement.lang, 'de');
 });
 
-test('die Sprache steht am <html>-Element', () => {
-  // Ohne lang= rät der Screenreader die Aussprache — bei gemischt deutsch-
-  // englischen Oberflächen hörbar falsch. src/konto/indexHtml.ts setzt den Wert
-  // serverseitig passend zur ausgelieferten Sprachdatei.
-  assert.match(HTML, /<html[^>]*\slang="[a-z]{2}"/, 'lang= fehlt am <html>');
-});
-
-test('bedeutungstragende Zeichen in der Finanztabelle sind erklärt', () => {
-  // Die Preisstatus-Spalte besteht aus einem einzigen Zeichen. Ohne title
-  // (Maus) und aria-label (Vorleseprogramm) ist sie unlesbar — Marco musste
-  // nachfragen, was ⚡ und 🔴 bedeuten sollten. Kommentare vorher ausblenden,
-  // sonst hält dieser Erklärtext die Prüfung selbst grün.
-  const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '04-finance.js'), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
-
-  const badges = [...src.matchAll(/<span class="pst[^"]*"([^>]*)>/g)].map(m => m[1]);
-  // Drei seit dem 25.10.: Preis da, Abruf gescheitert, kein Preis bekannt.
-  assert.equal(badges.length, 3, `Erwartet genau drei Zustände (Preis da / Abruf gescheitert / kein Preis), gefunden: ${badges.length}`);
-  for (const attrs of badges) {
-    assert.match(attrs, /\btitle="/,      `Plakette ohne title: ${attrs}`);
-    assert.match(attrs, /\baria-label="/, `Plakette ohne aria-label: ${attrs}`);
+test('bedeutungstragende Zeichen in der Finanztabelle sind erklärt', async () => {
+  // Die Preisstatus-Spalte ist ein einziges Zeichen; ohne title (Maus) und aria-label (Vorleser) unlesbar.
+  // Die Zeichen der Legende sind aria-hidden: Der Satz daneben erklärt sie.
+  const { w, d } = await oberflaeche();
+  await reiter(w, 'finance');
+  assert.ok(await warte(() => d.querySelectorAll('#fin-tbl .pst:not([aria-hidden])').length >= 3), 'Plaketten fehlen');
+  const zustaende = new Set();
+  for (const p of d.querySelectorAll('#fin-tbl .pst:not([aria-hidden])')) {
+    zustaende.add([...p.classList].find(k => k.startsWith('pst-')));
+    for (const a of ['title', 'aria-label'])
+      assert.ok(p.getAttribute(a) && !/^finance\./.test(p.getAttribute(a)), `${p.className}: ${a}="${p.getAttribute(a)}"`);
   }
+  assert.deepEqual([...zustaende].sort(), ['pst-err', 'pst-leer', 'pst-ok']);
+});
 
-  // Die Texte kommen aus den Sprachdateien, nicht als Literal im Code.
-  for (const key of ['finance.price_loaded', 'finance.price_failed', 'finance.price_status',
-                     'finance.price_none', 'finance.price_unknown_bl']) {
-    assert.ok(src.includes(`'${key}'`), `Schlüssel ${key} wird nicht verwendet`);
-  }
+/** Sichtbar heisst hier: kein Vorfahr mit display:none (Markup oder Skript). */
+const sichtbar = el => { for (let e = el; e; e = e.parentElement) if (e.style?.display === 'none' || e.hidden) return false; return true; };
+
+test('jedes sichtbare Bedienelement hat einen vorlesbaren Namen', async () => {
+  const { d } = await oberflaeche();
+  const name = el => el.getAttribute('aria-label') || el.getAttribute('title')
+    || (el.getAttribute('aria-labelledby') || '').split(/\s+/).map(id => d.getElementById(id)?.textContent || '').join(' ')
+    || [...(el.labels || [])].map(l => l.textContent).join(' ') || el.textContent;
+  const elemente = [...d.querySelectorAll('button, a[href], select, textarea')].filter(sichtbar);
+  assert.ok(elemente.length >= 50, `Nur ${elemente.length} Bedienelemente gefunden`);
+  // Mindestens zwei Buchstaben — ein Symbol oder ein ✕ ist kein Name.
+  const ohne = elemente.filter(el => !/[^\W\d_]{2,}/u.test(name(el) || ''))
+    .map(el => `<${el.tagName.toLowerCase()}> ${el.id || el.className}`);
+  assert.deepEqual(ohne, []);
+});
+
+test('kein aria-label, das nur der Bezeichner ist', async () => {
+  // Vorgelesen wird der Wert — „mon-default-condition" hilft niemandem.
+  const { d } = await oberflaeche();
+  const mit = [...d.querySelectorAll('[aria-label]')].filter(sichtbar);
+  assert.ok(mit.length >= 20, `Nur ${mit.length} aria-label gefunden`);
+  const schlecht = mit.filter(el => { const v = el.getAttribute('aria-label');
+    return v === el.id || (!/\s/.test(v) && /[-_.]/.test(v) && v === v.toLowerCase()); })
+    .map(el => `${el.id}: ${el.getAttribute('aria-label')}`);
+  assert.deepEqual(schlecht, []);
 });

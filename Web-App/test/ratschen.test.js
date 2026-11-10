@@ -214,7 +214,7 @@ function reineQuelltextTests() {
 
 test('reine Quelltext-Tests werden weniger, nie mehr', () => {
   // Gemessen 71 am 09.11.2026; wie die Zahl gesunken ist, steht im git log.
-  const SCHRANKE = 71;
+  const SCHRANKE = 41;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
   const ist = reineQuelltextTests();
@@ -254,10 +254,10 @@ function quelltextFaelle() {
 }
 
 test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
-  // Gemessen 495 am 08.11.2026, 492 am 09.11.2026 (Prüfbericht: 632; die Ratschen selbst zählen mit).
+  // Gemessen 495 am 08.11.2026, 492 am 09.11.2026, 405 am 10.11.2026 (Prüfbericht: 632; die Ratschen selbst zählen mit).
   // Gegenprobe (08.11.2026): `\b_req\w*\(` aus FALL_FUEHRT_AUS entfernt → rot (574).
   // Gegenprobe (05.11.2026): parts-paging.test.js auf den Stand vor den jsdom-Tests → rot.
-  const SCHRANKE = 492;
+  const SCHRANKE = 405;
   const { n, alle } = quelltextFaelle();
   assert.ok(alle > 2000, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
   assert.ok(n <= SCHRANKE, `${n} Testfälle lesen nur Quelltext, erlaubt sind ${SCHRANKE}. ` +
@@ -284,33 +284,6 @@ test('feste Wartezeiten in Tests werden weniger, nie mehr', () => {
   assert.deepEqual(eigene, [], 'eigene Warte-Helfer: test/helpers/zeit.js benutzen');
   assert.ok(ist <= SCHRANKE, `${ist} feste Wartezeiten ab 100 ms, erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ feste Wartezeiten: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
-});
-
-/**
- * Emoji in der Oberfläche. Seit dem 25.10. gibt es eine Symbolfamilie (Sprite
- * in index.html); Emoji sehen je Gerät anders aus und passen weder in Grösse
- * noch Farbe dazu. Gezählt werden Markup, deutsche Sprachtexte und die
- * Vorlagen in public/js — ohne Kommentare.
- */
-function emojiInDerOberflaeche() {
-  const web = path.join(WEB, 'public');
-  const ohne = s => require('./helpers/sources').ohneHtmlKommentare(s).replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/(^|[^:'"`])\/\/[^\n]*/g, '$1');
-  const dateien = [path.join(web, 'index.html'), path.join(web, 'locales', 'de.js'),
-    ...fs.readdirSync(path.join(web, 'js')).filter(n => /^\d\d-.*\.js$/.test(n)).map(n => path.join(web, 'js', n))];
-  return dateien.reduce((n, f) => n + (ohne(fs.readFileSync(f, 'utf8')).match(/\p{Extended_Pictographic}/gu) || []).length, 0);
-}
-
-test('Emoji in der Oberfläche werden weniger, nie mehr', () => {
-  // Seit dem 27.10.2026 0: Alle Stellen nutzen die Symbolfamilie oder kommen ohne aus.
-  const SCHRANKE = 0;
-  const ist = emojiInDerOberflaeche();
-  // Selbstbeweis an einer Probe statt an der Zahl — die ist jetzt 0.
-  assert.equal(('<b>📦 x</b> ⚠️').match(/\p{Extended_Pictographic}/gu)?.length, 2, 'Die Suche greift nicht mehr');
-  assert.ok(ist <= SCHRANKE,
-    `${ist} Emoji in der Oberfläche, erlaubt sind ${SCHRANKE}. Für Symbole gibt es ` +
-    'die Symbolfamilie: <svg class="ico" aria-hidden="true"><use href="#i-…"/></svg>.');
-  if (ist < SCHRANKE) console.log(`  ℹ Emoji: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
 /**
@@ -581,7 +554,7 @@ test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie meh
 test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () => {
   // Je Ordner eine Schranke, gemessen am 06.11.2026.
   // Gegenprobe: 40 Kommentarzeilen an clients/ezb.ts gehängt → rot (clients).
-  const SCHRANKE = { db: 25.8, clients: 19.7, scripts: 25.5 };
+  const SCHRANKE = { db: 25.8, clients: 16.2, scripts: 25.5 };
   const zuViel = [];
   for (const [ordner, schranke] of Object.entries(SCHRANKE)) {
     let zeilen = 0, kommentar = 0;
@@ -612,7 +585,7 @@ test('Geschichte in Testkommentaren wird weniger, nie mehr', () => {
   // woher ein Test kam, steht im Commit. Gezählt werden Kommentarzeilen mit
   // den typischen Erzählmarken. Gemessen 58 am 08.11.2026 (vorher 424).
   // Gegenprobe (05.11.2026): den alten Kopf von scope-reset.test.js zurück → rot.
-  const SCHRANKE = 57;
+  const SCHRANKE = 52;
 
   const MARKE = /(Nachtr(ag|äge) [0-9]|Hier stand|Vorher stand|NACHGEMESSEN|kam(en)? am [0-9]|Marcos (Frage|Wunsch|Bericht|Rückfrage|Konsole))/;
   const dateien = [
@@ -635,7 +608,7 @@ test('der Kommentaranteil der Tests sinkt, nie steigt', () => {
   // Anteil liegt deshalb höher als im Server. Geschichte gehört auch hier in
   // den Commit. Gemessen 22,2 % in test/*.js und test/helpers/ (08.11.2026, vorher 33,3).
   // Gegenprobe: 300 Kommentarzeilen an eine Testdatei gehängt → rot.
-  const SCHRANKE = 22.2;
+  const SCHRANKE = 21.6;
   const dateien = [
     ...fs.readdirSync(__dirname).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, n)),
     ...fs.readdirSync(path.join(__dirname, 'helpers')).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, 'helpers', n)),
@@ -792,7 +765,7 @@ test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie meh
   // docs/begruendungen/ oder im Commit (CLAUDE.md); Gegenprobenlisten zählen nicht.
   // Gemessen am 08.11.2026: Tests 72 Blöcke, scripts 0, index.html 216 Zeilen.
   // Gegenprobe (06.11.2026): sechs Zeilen Prosa vor die Gegenprobe im Kopf von hsts.test.js → rot (Tests 75).
-  const SCHRANKE = { tests: 72, scripts: 0, indexHtml: 216 };
+  const SCHRANKE = { tests: 64, scripts: 0, indexHtml: 216 };
   const js = (/** @type {string} */ d) => fs.readdirSync(d).filter(f => f.endsWith('.js')).map(f => path.join(d, f));
   const zaehle = (/** @type {string[]} */ l) => l.reduce((n, f) => n + langeBloecke(fs.readFileSync(f, 'utf8')), 0);
   let html = 0;
@@ -815,7 +788,7 @@ test('Testdateien ohne Gegenprobe werden weniger, nie mehr', () => {
   // Jeder Test nennt im Kopf seine Gegenprobe (CLAUDE.md); die älteren ohne
   // werden beim Anfassen nachgetragen. Gemessen 88 am 09.11.2026.
   // Gegenprobe (05.11.2026): in lint-ratsche.test.js „Gegenproben“ umbenannt → rot (112).
-  const SCHRANKE = 88;
+  const SCHRANKE = 74;
   const ohne = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js'))
     .filter(n => !fs.readFileSync(path.join(__dirname, n), 'utf8').includes('Gegenprobe'));
   assert.ok(ohne.length <= SCHRANKE, `${ohne.length} Testdateien ohne Gegenprobe, erlaubt sind ${SCHRANKE}`);

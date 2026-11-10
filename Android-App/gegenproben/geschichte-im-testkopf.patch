@@ -1,0 +1,18 @@
+Gegenprobe: Ein Testkopf erzählt wieder, aus welchem Nachtrag er stammt
+Modul: app
+Test: ch.brickinventoryapp.app.QuelltextRatscheTest
+Rot: lange Kommentare im Workflow und in Tests
+
+diff --git a/Android-App/app/src/test/java/ch/brickinventoryapp/app/TabOpensAtTopTest.kt b/Android-App/app/src/test/java/ch/brickinventoryapp/app/TabOpensAtTopTest.kt
+index e94f1eb..39e3cf5 100644
+--- a/Android-App/app/src/test/java/ch/brickinventoryapp/app/TabOpensAtTopTest.kt
++++ b/Android-App/app/src/test/java/ch/brickinventoryapp/app/TabOpensAtTopTest.kt
+@@ -32,7 +32,7 @@ import org.robolectric.annotation.Config
+ import org.robolectric.annotation.GraphicsMode
+ 
+ /**
+- * Ein angetippter Reiter beginnt oben: Das Gerüst meldet das Antippen, bevor es
++ * Ein angetippter Reiter beginnt oben (Nachtrag 114, Marcos Vorgabe): Das Gerüst meldet das Antippen, bevor es
+  * navigiert, damit der Rollmerker die Stelle verwirft, ehe der Bildschirm sie liest.
+  * „Ich komme zurück“ behält die Stelle; unterscheiden lässt sich das nur im Gerüst.
+  *

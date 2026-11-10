@@ -7,11 +7,6 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Der Kategoriefilter der Finanzen bleibt stehen — und laesst sich haeufen.
  *
- * ── Marcos Befund ───────────────────────────────────────────────────────────
- * „Wird in der Android-App im Reiter Finanzen ein Filter gesetzt und dann ein
- * Eintrag abgewaehlt und den Detail Dialog wieder verlassen ist der Filter weg
- * (nicht mehr gewaehlt). Kann der Filter zudem aditiv sein?"
- *
  * ── Was daran was war ───────────────────────────────────────────────────────
  * Der Filter lag im Bildschirm:
  *
@@ -32,7 +27,7 @@ import ch.brickinventoryapp.testing.Quellen
  *  1. AM VERHALTEN: Die Mengenrechnung stimmt — dazunehmen, wegnehmen, und die
  *     leere Auswahl zeigt alles.
  *  2. AM QUELLTEXT: Der Bildschirm haelt den Filter nicht wieder selbst.
- *     Haelfte 1 bliebe gruen, waehrend Marcos Befund zurueck waere.
+ *     Haelfte 1 bliebe gruen, waehrend der Filter wieder verloren ginge.
  */
 class FinanzFilterBleibtTest {
 

@@ -1,146 +1,125 @@
 /**
- * Reihenfolge der Reiter-Bereiche: Erfassen → Suche/Filter → Liste.
- * Ausführlich: docs/begruendungen/test/tab-layout.test.js.md#kopf
+ * Reihenfolge der Reiter-Bereiche: Erfassen → Suche/Filter → Liste, so wie
+ * Chrome sie zeichnet (echtes index.html mit den Stilen, alle Reiter und alle
+ * erst später eingeblendeten Bereiche offen, 1200 px breit). Gemessen werden die Oberkanten, nicht die Zeilen im Markup:
+ * Eine Flex-Reihenfolge oder ein Raster kann die Folge umdrehen.
+ * Die App bleibt Kotlin-Struktur (kein SDK hier).
  *
- * Gegenprobe (durchgeführt): Filterleiste der Galerie probeweise zurück in
- * den .ph-Kopf gesetzt → der Galerie-Schritt wird rot.
+ * Gegenproben (10.11.2026 gemessen, je einzeln):
+ *   A  in styles.css #tab-gallery als Flex-Spalte mit `.erfassen-leiste{order:9}`
+ *      → rot: „Erfassen steht über den Filtern …“ (Galerie) — im Markup
+ *      stünde alles noch richtig
+ *   B  `.filterzeile{… margin-bottom:1rem}` → rot: „die Filterleisten halten Abstand …“
+ *   C  #btn-pl-bestand hinter #pl-setnr in die Werkzeugzeile verschoben → rot:
+ *      „der eigene Bestand …“
+ *   D  in PartsListScreen.kt R.string.partslist_reset umbenannt → rot: „die App …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
+const { chrome } = require('./helpers/app-browser');
 
-const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+const PUBLIC = path.join(__dirname, '..', 'public');
+const STILE = ['vendor/fonts/fonts.css', 'tokens.css', 'styles.css'];
 
-const REITER = [
-  // [Name, Erfassen-Kennung, Filter-Kennung, Listen-Kennung]
-  // Alle drei erfassen seit dem 25.10. im Dialog; davor steht der Knopf dazu.
-  ['Galerie',     'data-click="oeffneErfassen" data-arg="set"', 'id="gs"',  '<div id="gallery"></div>'],
-  ['Teile',       'data-click="oeffneErfassen" data-arg="part"', 'id="parts-search"', '<div id="parts-main">'],
-  ['Minifiguren', 'data-click="oeffneErfassen" data-arg="fig"', 'id="fig-search"',   '<div id="figs-list"></div>'],
-];
+/** Erfassen, Filter, Liste je Reiter — als Selektoren auf das gezeichnete Dokument. */
+const REITER = {
+  Galerie:     ['[data-click="oeffneErfassen"][data-arg="set"]',  '#gs',           '#gallery'],
+  Teile:       ['[data-click="oeffneErfassen"][data-arg="part"]', '#parts-search', '#manual-parts-list', '#parts-main'],
+  Minifiguren: ['[data-click="oeffneErfassen"][data-arg="fig"]',  '#fig-search',   '#manual-figs-list',  '#figs-list'],
+  Katalog:     ['[data-tab-title="catalog"]',                     '#cat-search',   '#catalog-grid'],
+};
+const EINMAL = ['gs', 'gtheme', 'gsort', 'scope-gallery', 'vg', 'vl', 'parts-search', 'parts-spare', 'parts-view',
+  'scope-parts', 'fig-search', 'figs-view', 'scope-minifigs'];
 
-test('Erfassen steht vor den Filtern, die Filter stehen vor der Liste', () => {
-  for (const [name, erfassen, filter, liste] of REITER) {
-    const a = html.indexOf(erfassen);
-    const b = html.indexOf(filter);
-    const c = html.indexOf(liste);
-    assert.ok(a >= 0 && b >= 0 && c >= 0, `${name}: Kennungen nicht gefunden`);
-    assert.ok(a < b, `${name}: die Filterleiste muss NACH der Erfassen-Box stehen (Marcos Wunsch)`);
-    assert.ok(b < c, `${name}: die Filterleiste muss VOR der Liste stehen, auf die sie wirkt`);
+/** Misst im gezeichneten index.html; liefert, was `messung` (Funktionsrumpf im Browser) zurückgibt. */
+let _ergebnis;
+function gemessen(t) {
+  if (_ergebnis !== undefined) return _ergebnis;
+  const bin = chrome();
+  if (!bin) { t.skip('kein Chrome gefunden'); _ergebnis = null; return null; }
+  const html = require('./helpers/sources').ohneHtmlKommentare(fs.readFileSync(path.join(PUBLIC, 'index.html'), 'utf8'));
+  const koerper = html.slice(html.indexOf('<body'), html.lastIndexOf('</body>')).replace(/<script[\s\S]*?<\/script>/g, '')
+    .replace(/data-stil="display:none;?/g, 'style="').replace(/data-stil="/g, 'style="').replace(/ hidden(?=[ >])/g, '').replace(/<details /g, '<details open ');
+  const css = STILE.map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`).join('\n');
+  const seite = `<!doctype html><html lang="de"><head><meta charset="utf-8">${css}
+<style>#app{display:block!important}.tab{display:block!important}#login-screen,#startgeruest{display:none!important}</style></head>
+${koerper.replace(/^<body[^>]*>/, '<body>')}
+<pre id="ergebnis"></pre>
+<script>
+window.addEventListener('load', () => document.fonts.ready.then(() => {
+  const REITER = ${JSON.stringify(REITER)}, EINMAL = ${JSON.stringify(EINMAL)};
+  const oben = s => { const e = document.querySelector(s); return e ? Math.round(e.getBoundingClientRect().top) : null; };
+  const aus = { reiter: {}, einmal: {}, leisten: [], bestand: {} };
+  for (const [n, sel] of Object.entries(REITER)) aus.reiter[n] = sel.map(s => [s, oben(s)]);
+  for (const id of EINMAL) aus.einmal[id] = document.querySelectorAll('#' + id).length;
+  for (const l of document.querySelectorAll('.filterzeile'))
+    aus.leisten.push(parseFloat(getComputedStyle(l).marginBottom) / parseFloat(getComputedStyle(document.documentElement).fontSize));
+  const r = id => document.getElementById(id)?.getBoundingClientRect();
+  const nr = r('pl-setnr'), b = r('btn-pl-bestand'), lose = r('pl-bestand-lose');
+  aus.bestand = { setnr: nr && [nr.top, nr.bottom], knopf: b && [b.top, b.bottom], lose: lose && [lose.top, lose.bottom] };
+  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify(aus) + 'ENDE';
+}));
+</script></body></html>`;
+  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'reiterfolge-'));
+  try {
+    const datei = path.join(ordner, 'seite.html');
+    fs.writeFileSync(datei, seite);
+    const dom = execFileSync(bin, ['--headless', '--no-sandbox', '--disable-gpu', '--allow-file-access-from-files',
+      '--window-size=1200,900', '--virtual-time-budget=3000', '--dump-dom', `file://${datei}`],
+      { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] });
+    const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
+    assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
+    _ergebnis = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
+    return _ergebnis;
+  } finally { fs.rmSync(ordner, { recursive: true, force: true }); }
+}
+
+test('Erfassen steht über den Filtern, die Filter über den Listen (auch der manuellen)', (t) => {
+  const e = gemessen(t);
+  if (!e) return;
+  const falsch = [];
+  for (const [name, folge] of Object.entries(e.reiter)) {
+    for (const [s, y] of folge) if (y == null) falsch.push(`${name}: ${s} fehlt`);
+    for (let i = 1; i < folge.length; i++)
+      if (folge[i - 1][1] != null && folge[i][1] != null && !(folge[i - 1][1] < folge[i][1]))
+        falsch.push(`${name}: ${folge[i - 1][0]} (${folge[i - 1][1]}) steht nicht über ${folge[i][0]} (${folge[i][1]})`);
   }
+  assert.deepEqual(falsch, []);
 });
 
-test('die Reiterköpfe enthalten keine Filter-Bedienelemente mehr', () => {
-  // Der Kopf (.ph) trägt nur noch den Titel. Ein Filterelement, das dorthin
-  // zurückwandert, stünde wieder VOR der Erfassung.
-  for (const [name, , filter] of REITER) {
-    const kopfStart = html.indexOf(filter) >= 0 ? html.lastIndexOf('<div class="ph"', html.indexOf(filter)) : -1;
-    const kopfEnde  = kopfStart >= 0 ? html.indexOf('</div>', html.indexOf('</h1>', kopfStart)) : -1;
-    const kopf = kopfStart >= 0 ? html.slice(kopfStart, kopfEnde) : '';
-    assert.ok(!kopf.includes(filter),
-      `${name}: ${filter} steht wieder im Reiterkopf statt unter der Erfassen-Box`);
-  }
+test('jede Bedienelement-ID gibt es genau einmal', (t) => {
+  const e = gemessen(t);
+  if (!e) return;
+  assert.deepEqual(Object.entries(e.einmal).filter(([, n]) => n !== 1).map(([id, n]) => `${id}: ${n}×`), [],
+    'Die IDs sind der Vertrag mit dem JS');
 });
 
-test('jede Bedienelement-ID existiert genau einmal', () => {
-  const ids = ['id="gs"', 'id="gtheme"', 'id="gsort"', 'id="scope-gallery"', 'id="vg"', 'id="vl"',
-               'id="parts-search"', 'id="parts-spare"', 'id="parts-view"', 'id="scope-parts"',
-               // fig-source ist entfernt: ein Auswahlfeld mit einer einzigen
-               // Option, das von nirgends gefüllt wurde.
-               'id="fig-search"', 'id="figs-view"', 'id="scope-minifigs"'];
-  for (const id of ids) {
-    const n = html.split(id).length - 1;
-    assert.equal(n, 1, `${id} kommt ${n}× vor — die IDs sind der Vertrag mit dem JS`);
-  }
+test('die Filterleisten halten Abstand zur Liste', (t) => {
+  const e = gemessen(t);
+  if (!e) return;
+  assert.equal(e.leisten.length, 5, 'Galerie, Teile, Minifiguren, Katalog, Merkliste');
+  assert.deepEqual(e.leisten.filter(rem => rem < 1.5), [], 'Abstand unter 1.5rem');
 });
 
-test('die manuell erfassten Listen stehen unter der Filterleiste', () => {
-  // Marcos Hinweis: Der Filter der Reiter Teile und Minifiguren wirkt auf
-  // BEIDE Listen — die manuell erfassten Einträge und die aus Sets. Stand die
-  // manuelle Liste über der Filterleiste, sah es aus, als beträfe der Filter
-  // nur die Set-Einträge.
-  const faelle = [
-    ['Teile',       'data-click="oeffneErfassen" data-arg="part"', 'id="parts-search"', 'id="manual-parts-list"', '<div id="parts-main">'],
-    ['Minifiguren', 'data-click="oeffneErfassen" data-arg="fig"',  'id="fig-search"',   'id="manual-figs-list"',  '<div id="figs-list"></div>'],
-  ];
-  for (const [name, erfassen, filter, manuelleListe, setListe] of faelle) {
-    const a = html.indexOf(erfassen), b = html.indexOf(filter);
-    const c = html.indexOf(manuelleListe), d = html.indexOf(setListe);
-    assert.ok(a >= 0 && b >= 0 && c >= 0 && d >= 0, `${name}: Kennungen nicht gefunden`);
-    assert.ok(a < b, `${name}: Erfassen vor der Filterleiste`);
-    assert.ok(b < c, `${name}: die manuelle Liste muss UNTER der Filterleiste stehen — der Filter betrifft sie`);
-    assert.ok(c < d, `${name}: die manuelle Liste steht vor der Liste aus Sets`);
-  }
-});
-
-test('der Katalogtitel steht allein, die Suche darunter', () => {
-  // Analog zu den anderen Reitern (Marcos Wunsch, eine frühere Runde).
-  const titel = html.indexOf('data-tab-title="catalog"');
-  const suche = html.indexOf('id="cat-search"');
-  const liste = html.indexOf('id="catalog-grid"');
-  assert.ok(titel >= 0 && suche >= 0 && liste >= 0);
-  assert.ok(titel < suche, 'der Titel steht vor der Suche');
-  assert.ok(suche < liste, 'die Suche steht über der Liste');
-  // Der Kopf trägt nur noch den Titel.
-  const kopfStart = html.lastIndexOf('<div class="ph"', titel);
-  const kopfEnde = html.indexOf('</div>', html.indexOf('</h1>', kopfStart));
-  assert.ok(!html.slice(kopfStart, kopfEnde).includes('id="cat-search"'),
-    'die Katalogsuche steht wieder im Reiterkopf');
-});
-
-test('die Filterleisten halten Abstand zur Liste', () => {
-  // Marcos Wunsch: „Der Zwischenraum sollte grösser sein, damit es schön
-  // aussieht." Gemeinsamer Wert für alle fünf Filterleisten — 1rem war zu eng.
-  // Ausführlich: docs/begruendungen/test/tab-layout.test.js.md#leisten
-  const leisten = [...html.matchAll(/class="[^"]*\bfilterzeile\b[^"]*"/g)].length;
-  assert.equal(leisten, 5,
-    `erwartet werden fünf Filterleisten (Galerie, Teile, Minifiguren, Katalog, Merkliste), gefunden: ${leisten}`);
-  const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
-  const regel = /\.filterzeile\{[^}]*margin-bottom:([\d.]+)rem/.exec(css);
-  assert.ok(regel, 'Die Regel .filterzeile fehlt in styles.css');
-  assert.ok(parseFloat(regel[1]) >= 1.5, `die Filterleisten stehen auf ${regel[1]}rem — zu eng (mindestens 1.5rem)`);
-});
-
-/**
- * Der eigene Bestand steht in der Teileliste auf einer EIGENEN Zeile.
- * Ausführlich: docs/begruendungen/test/tab-layout.test.js.md#der-eigene-bestand-steht-nicht-in-der-we
- *
- * Gegenproben (beide durchgefuehrt): den Bestand-Knopf zurueck in die erste
- * Zeile gesetzt → Schritt 1 rot; in der App `partslist_fill_owned` zurueck
- * in die Werkzeug-Row → Schritt 2 rot.
- */
-test('der eigene Bestand steht nicht in der Werkzeugzeile der Teileliste', () => {
-  const ab = html.indexOf('id="tab-partslist"');
-  const bis = html.indexOf('id="pl-result"', ab);
-  assert.ok(ab >= 0 && bis > ab, 'Der Teileliste-Reiter ist nicht mehr zu finden');
-  const kopf = html.slice(ab, bis);
-
-  // Die Werkzeugzeile: vom ersten <div style="display:flex … bis zu ihrem Ende.
-  const zeileAb = kopf.indexOf('id="pl-setnr"');
-  const zeileBis = kopf.indexOf('id="pl-bestand-zeile"');
-  assert.ok(zeileAb >= 0, 'Das Set-Nummer-Feld fehlt');
-  assert.ok(zeileBis > zeileAb,
-    'Es gibt keine eigene Bestand-Zeile mehr (#pl-bestand-zeile) — sind die ' +
-    'Knöpfe wieder in die Werkzeugzeile gewandert?');
-  const werkzeugzeile = kopf.slice(zeileAb, zeileBis);
-
-  for (const id of ['btn-pl-bestand', 'pl-bestand-lose']) {
-    assert.ok(!werkzeugzeile.includes(`id="${id}"`),
-      `#${id} steht wieder in der Werkzeugzeile. Sie trägt flex-wrap:nowrap — ` +
-      'ein Knopf mehr schiebt dort den Rest aus dem Bild, statt umzubrechen.');
-  }
-  const zeile = kopf.slice(zeileBis);
-  for (const id of ['btn-pl-bestand', 'pl-bestand-lose']) {
-    assert.ok(zeile.includes(`id="${id}"`), `#${id} fehlt in der Bestand-Zeile`);
-  }
+test('der eigene Bestand steht in der Teileliste auf einer eigenen Zeile', (t) => {
+  const e = gemessen(t);
+  if (!e) return;
+  const { setnr, knopf, lose } = e.bestand;
+  assert.ok(setnr && knopf && lose, 'Set-Nummer, Bestand-Knopf oder „nur lose“ fehlt');
+  // Die Werkzeugzeile trägt flex-wrap:nowrap: ein Knopf mehr schöbe dort den Rest aus dem Bild.
+  assert.ok(knopf[0] >= setnr[1], `der Bestand-Knopf (${knopf[0]}) steht in der Werkzeugzeile (bis ${setnr[1]})`);
+  assert.ok(lose[0] >= setnr[1], '„nur lose Teile“ steht in der Werkzeugzeile');
 });
 
 test('die App hält den eigenen Bestand ebenfalls aus der Werkzeugzeile heraus', () => {
   // Dieselbe Regel für die andere Oberfläche. In der App ist die Reihenfolge
   // im Quelltext die Aussage: „Reset" ist der letzte Knopf der Werkzeug-Row,
   // also steht alles danach ausserhalb davon.
-  const { ohneKommentare } = require('./helpers/sources');
+  const ohneKommentare = (/** @type {string} */ s) => require('./helpers/sources').ohneKommentare(s);
   const src = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'teile', 'ui', 'screens', 'PartsListScreen.kt'), 'utf8'));
 
   const reset  = src.indexOf('R.string.partslist_reset');

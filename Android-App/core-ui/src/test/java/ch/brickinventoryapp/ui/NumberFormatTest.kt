@@ -15,23 +15,6 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Zahlen und Beträge kommen aus EINER Fassung — und die folgt der App-Sprache.
  *
- * ── Woher dieser Test kommt ─────────────────────────────────────────────────
- * Für denselben Betrag gab es drei Schreibweisen: Die Webapp formatierte über
- * `Intl.NumberFormat(locale(), {style:'currency'})`, der Finanzreiter der App
- * setzte das Symbol VOR den Betrag, alle übrigen Bildschirme den Währungscode
- * DAHINTER. Dazu nagelte `fmtSwissAmount()` de-CH fest, während die Webapp der
- * eingestellten Sprache folgt — ein englischsprachiger App-Nutzer sah
- * `1'234.50`, im Browser `1,234.50`.
- *
- * Der Test prüft zwei Dinge getrennt:
- *   • die REGEL (Teil 1): keine Ansicht baut sich ihren Betrag mehr selbst
- *     zusammen. Das ist die Aussage, die beim nächsten neuen Bildschirm zählt.
- *   • das ERGEBNIS (Teil 2): die Helfer liefern tatsächlich etwas Brauchbares.
- *
- * Bewusst NICHT festgenagelt: wo de-CH das Währungssymbol setzt — das
- * entscheidet die Plattform. Festgenagelt sind dagegen Tausender- und
- * Dezimalzeichen je Landesform (Teil 3), denn die wählt unser Code.
- *
  * Gegenproben Teil 3 :
  *   A  zahlenLocale() wieder fest de-CH/en-GB → rot „de-DE schreibt Punkt und
  *      Komma …“ und „ohne passende Landesform …“ (de-AT)

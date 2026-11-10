@@ -6,24 +6,13 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Die GANZE Anleitungszeile oeffnet das PDF — nicht nur das Symbol rechts.
  *
- * ── Marcos Befund ───────────────────────────────────────────────────────────
- *
- * „Kannst du noch anpassen, dass die ganze Anleitung in der Android-App auf dem
- *  Detail-Dialog klickbar ist (zum PDF öffnen) und nicht nur das Icon rechts
- *  daneben?"
- *
- * Antippbar war allein ein 36-dp-Knopf am rechten Rand. Links davon lagen eine
- * 38-dp-Kachel mit PDF-Symbol und zwei Zeilen Text, und die Adresse stand in
- * der Akzentfarbe — in der Farbe also, die in dieser Oberflaeche „hier geht
- * etwas auf" heisst. Es sah aus wie ein Verweis und war keiner.
- *
  * ── Warum das eine Pruefung braucht ─────────────────────────────────────────
  *
  * Eine Antippflaeche ist nichts, was man im Quelltext SIEHT: `clickable` steht
  * an einem Modifier, drei Zeilen ueber dem, was es antippbar macht. Wer die
  * Zeile spaeter umbaut — ein Symbol dazu, die Spalten anders geschnitten —,
  * nimmt den Modifier mit und merkt nichts davon, weil alles weiter aussieht wie
- * vorher. Genau dieser Befund kam von Marco und nicht aus einem Lauf.
+ * vorher.
  *
  * Geprueft wird deshalb die STRUKTUR und nicht, dass irgendwo „clickable"
  * vorkommt: Daran haengt die Handlung (`oeffneAnleitung`), am Symbol haengt

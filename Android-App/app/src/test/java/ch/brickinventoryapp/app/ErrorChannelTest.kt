@@ -5,31 +5,6 @@ import ch.brickinventoryapp.testing.Quellen
 
 /**
  * Ein Fehler, den der Nutzer nicht sieht, ist kein behandelter Fehler.
- *
- * ── Woher dieser Test kommt (Nachtrag 118) ──────────────────────────────────
- *
- * `AppUiState` hatte ein Feld `error`. Vier Feature-Dateien beschrieben es —
- * Anmeldung, Galerie, Teile, Finanzen, vierundzwanzig Stellen. GELESEN wurde es
- * an genau EINER: dem Anmeldebildschirm (`AuthGraph`). Achtzehn Fehlerpfade
- * schrieben also in ein Feld, das niemand anzeigt.
- *
- * Für den Nutzer hiess das: Ein misslungenes Löschen einer Minifigur, ein
- * fehlgeschlagener Bewertungsabruf, eine Galerie, die nicht lädt — nichts.
- * Keine Meldung, keine Erklärung, nur eine Liste, die sich nicht ändert.
- * `clearError()` hatte dazu passend null Aufrufer; das Feld wurde nur beim
- * Abmelden mit dem ganzen Zustand geleert.
- *
- * Die Ursache war ein zweiter, unfertiger Meldungsweg neben `_snackbar`. Beide
- * gab es, eine Regel welcher wofür gilt gab es nicht, und einer war nirgends
- * verdrahtet. Auffällig ist, dass es einmal schon aufgefallen WAR: Der
- * Kommentar über `meldeFehlgeschlageneErfassung()` in GalleryFeature.kt
- * beschreibt genau dieses Problem — behoben wurde damals nur die eine Stelle,
- * an der es jemand bemerkt hatte.
- *
- * Die Regel lautet jetzt:
- *  - flüchtige Meldungen → `_snackbar`
- *  - bleibende Formularfehler → `loginError` (nur Anmeldung; steht im Formular,
- *    während der Nutzer das Passwort korrigiert)
  */
 class ErrorChannelTest {
 
@@ -89,8 +64,7 @@ class ErrorChannelTest {
     /*
      * KEIN dritter Test „jeder Result.Error-Zweig meldet etwas".
      *
-     * Ich habe ihn gebaut und wieder verworfen: Er fand zwanzig Zweige, und die
-     * meisten sind zu Recht still. Ein misslungener Hintergrund-Nachladevorgang
+     * Die meisten Fehlerzweige sind zu Recht still. Ein misslungener Hintergrund-Nachladevorgang
      * behält den letzten Stand, statt zu nörgeln (SetDetailFeature, Preisverlauf,
      * Katalog-Metadaten); die Haushaltsliste bleibt ohne Haushalt einfach leer.
      *

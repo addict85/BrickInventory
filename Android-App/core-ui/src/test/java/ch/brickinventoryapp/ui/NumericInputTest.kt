@@ -11,11 +11,6 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Zahlenfelder: Zahlenpad und erlaubte Zeichen — eine Fassung.
  *
- * ── Marcos Wunsch ───────────────────────────────────────────────────────────
- * „Die Felder mit der Setnummer (beim Erfassen) sollen nur Zahlen erlauben, und
- * wenn darin geklickt wird, soll nur das Zahlenpad angezeigt werden. Bei allen
- * Preis- und Anzahlfeldern ebenfalls."
- *
  * ── Warum beides zusammengehört ─────────────────────────────────────────────
  * Die Tastaturwahl ist eine BITTE an die Tastatur-App, keine Zusicherung: Viele
  * Tastaturen zeigen auf `Number` trotzdem eine Umschalttaste zu Buchstaben, und
@@ -175,7 +170,7 @@ class NumericInputTest {
         val dateien = Quellen.wurzel
             .walkTopDown().filter { it.extension == "kt" }.toList()
             .also {
-                // Untergrenze (Nachtrag 118): ein leerer Dateilauf lässt jede
+                // Untergrenze: ein leerer Dateilauf lässt jede
                 // Sammelprüfung darunter stillschweigend bestehen.
                 check(it.size >= 20) { "Zu wenige Kotlin-Dateien gefunden (${it.size}) — Pfad veraltet?" }
             }
@@ -219,20 +214,8 @@ class NumericInputTest {
 
     @Test
     fun `jedes Setnummernfeld nimmt Filter und Zahlenpad`() {
-        // ── Marcos Meldung vom 22.09. ────────────────────────────────────────
-        // „Wenn ich in der Android-App im Reiter Teileliste ins Feld klicke,
-        // soll sich analog den anderen Feldern nicht die Tastatur sondern nur
-        // das Zahlenfeld angezeigt werden."
-        //
-        // Das Feld in PartsListScreen war das einzige der drei
-        // Setnummernfelder, das weder Filter noch Tastaturwahl trug. Die Regel
-        // darüber konnte es nicht sehen: Sie greift erst, wenn ein Feld
-        // NumericInput SCHON benutzt — ein Feld, das gar nicht erst als
-        // Zahlenfeld gebaut ist, fällt durch ihr Raster.
-        //
-        // Erkannt werden die Felder an der Beschriftung, denn die steht als
-        // Textbaustein daneben und lässt sich nicht mit einer Umbenennung der
-        // Zustandsvariablen verlieren.
+        // Auch ein Feld, das nicht als Zahlenfeld gebaut ist; erkannt an der Beschriftung,
+        // die eine Umbenennung der Zustandsvariablen übersteht.
         val felder = textfelder().filter { (_, _, block) ->
             Regex("""R\.string\.[A-Za-z0-9_]*set_number[A-Za-z0-9_]*""").containsMatchIn(block)
         }

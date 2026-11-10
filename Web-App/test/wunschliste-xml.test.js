@@ -1,33 +1,34 @@
-'use strict';
+/**
+ * Der Zeitplan im Monitor setzt die Werte des Servers maskiert ein — wie
+ * data-arg in derselben Zeile. Echtes Bündel in jsdom, Verwalterkonto.
+ * Die Maskierung der BrickLink-Wunschliste selbst läuft am Modul in
+ * bricklink-wanted-xml.test.js.
+ *
+ * Gegenprobe (10.11.2026 gemessen, Bündel neu gebaut): in 01-monitor.js
+ * schedInput `value="${sc.time}"` per ungeprueft() eingesetzt → rot (ein
+ * fremdes <img> steht in der Tabelle, der Wert ist abgeschnitten).
+ */
 const test = require('node:test');
 const assert = require('node:assert');
+const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
-/**
- * Die BrickLink-Wunschliste der Webapp wird maskiert.
- * Ausführlich: docs/begruendungen/test/wunschliste-xml.test.js.md#wurzel
- *
- * Gegenproben der am 08.11.2026 gestrichenen Fälle: Maskierung jedes Textfelds
- * und die fünf Entitäten von esc() laufen am Modul in bricklink-wanted-xml.test.js
- * (ITEMTYPE ohne esc() → Fall 5 rot; ' nicht ersetzt → Fall 5b rot).
- */
+const BOESE = '03:00"><img id="eingeschleust" src="x">';
 
-const ohneKommentare = (s) => s
-  .replace(/\/\*[\s\S]*?\*\//g, (m) => '\n'.repeat((m.match(/\n/g) || []).length))
-  .split('\n').filter(z => !z.trim().startsWith('//') && !z.trim().startsWith('*')).join('\n');
-
-test('der Zeitplan im Monitor geht durch denselben Escaper wie sein Nachbar', () => {
-  // Der Server prueft die Werte (routes/api_v1/admin.ts) — hier kann heute
-  // nichts Boesartiges ankommen. Der Punkt ist die Gleichbehandlung: In
-  // derselben Zeile ging `data-arg` durch esc() und `value` nicht. Eine Zeile,
-  // die dieselbe Regel zweimal verschieden anwendet, ist der Anfang der …
-  // Ausführlich: docs/begruendungen/test/wunschliste-xml.test.js.md#core
-  const core = ohneKommentare(require('./helpers/sources').coreQuelle());
-  const treffer = [...core.matchAll(/class="job-sched-input[^"]*"[^`]*?value="\$\{([^}]+)\}"/g)];
-  assert.strictEqual(treffer.length, 2,
-    `${treffer.length} Zeitplan-Eingabefelder gefunden, erwartet 2 — Muster veraltet?`);
-  // In html`` maskiert die Vorlage selbst; ausserhalb muss esc() dastehen.
-  const inHtml = (/** @type {number} */ i) => core.slice(core.lastIndexOf('`', i) - 4, core.lastIndexOf('`', i)) === 'html';
-  for (const m of treffer)
-    assert.ok(m[1].startsWith('esc(') || inHtml(m.index ?? 0),
-      `Das Zeitplan-Feld setzt „${m[1]}" roh ein, waehrend data-arg daneben esc() nutzt`);
+test('der Zeitplan im Monitor setzt Serverwerte maskiert ein', async () => {
+  const o = await oeffneOberflaeche({
+    '/v1/admin/job-status': { success: true, job: { running: false } },
+    '/v1/admin/auftraege': { success: true, auftraege: [], zusammenfassung: [], job_prozess: { laeuft: true }, bildbedarf: 0, pausen: [] },
+    '/v1/admin/jobs': { success: true,
+      jobs: { priceJob: { status: 'idle', progress: 0, total: 0 }, imgDl: { status: 'idle', progress: 0, total: 0 } },
+      schedules: { priceJob: { type: 'daily', time: BOESE }, imgDl: { type: 'interval', minutes: 15 } },
+      db: { csvCache: {}, blMapping: {} } },
+  });
+  try {
+    await reiter(o.w, 'monitor');
+    assert.ok(await warte(() => o.d.querySelectorAll('.job-sched-input').length === 2), 'keine Zeitplanfelder');
+    assert.equal(o.d.getElementById('eingeschleust'), null, 'ein Wert des Servers wurde zu Markup');
+    assert.equal(o.d.querySelector('.mon-minuten').value, '15');
+    assert.equal(o.d.querySelector('.mon-zeit').value, BOESE, 'der Wert kam nicht unverändert ins Feld');
+    assert.equal(o.d.querySelector('.mon-zeit').dataset.arg, 'priceJob');
+  } finally { o.w.close(); }
 });

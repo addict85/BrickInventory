@@ -1,0 +1,61 @@
+Gegenprobe: Der Abschnitt der manuell erfassten Teile steht hinter den Teilen aus Sets
+Modul: app
+Test: ch.brickinventoryapp.app.ManualItemsFirstTest
+Rot: Teile - die manuell erfassten
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsScreen.kt
+index 6b7e9ee..aa026e9 100644
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsScreen.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsScreen.kt
+@@ -235,6 +235,25 @@ fun PartsScreen(
+                     if (stats != null) {
+                         item(span = { GridItemSpan(maxLineSpan) }, key = "parts-stats") { TeileKennzahlen(stats) }
+                     }
++                    // In der Tabellenansicht nimmt jede Zeile die ganze Breite (span =
++                    // maxLineSpan). Derselbe Raster-Container, sonst wären Scrollstand,
++                    // Endlos-Nachladen und die manuelle Sektion doppelt zu pflegen. Die manuellen
++                    // Einträge bleiben in beiden Ansichten Kacheln, wie in der Webapp
++                    // (#manual-parts-list hängt nicht an parts-view).
++                    items(
++                        distinctParts,
++                        key = { "${it.partNumber}-${it.colorId}" },
++                        span = { if (ansicht == Listenansicht.TABELLE) GridItemSpan(maxLineSpan) else GridItemSpan(1) },
++                    ) { part ->
++                        // BEIDE Ansichten oeffnen denselben Dialog — eine
++                        // Ansicht darf nicht koennen, was die andere nicht kann.
++                        val oeffne = { aktionen.oeffneSetItem("part", part.partNumber, part.colorId) }
++                        Bewegt {
++                            if (ansicht == Listenansicht.TABELLE) PartTableRow(part, serverUrl, imageLoader, oeffne)
++                            else PartCard(part, serverUrl, imageLoader, oeffne,
++                                ausgewaehlt = gewaehlt == detailSchluessel("part", part.partNumber, part.colorId))
++                        }
++                    }
+                     // Manuell erfasste Teile als Grid-Sektion statt in einer FlowRow über dem Grid:
+                     // So scrollt alles als eine Liste, nicht nur der Set-Teil.
+                     if (manualParts.isNotEmpty()) {
+@@ -258,25 +277,6 @@ fun PartsScreen(
+                             }
+                         }
+                     }
+-                    // In der Tabellenansicht nimmt jede Zeile die ganze Breite (span =
+-                    // maxLineSpan). Derselbe Raster-Container, sonst wären Scrollstand,
+-                    // Endlos-Nachladen und die manuelle Sektion doppelt zu pflegen. Die manuellen
+-                    // Einträge bleiben in beiden Ansichten Kacheln, wie in der Webapp
+-                    // (#manual-parts-list hängt nicht an parts-view).
+-                    items(
+-                        distinctParts,
+-                        key = { "${it.partNumber}-${it.colorId}" },
+-                        span = { if (ansicht == Listenansicht.TABELLE) GridItemSpan(maxLineSpan) else GridItemSpan(1) },
+-                    ) { part ->
+-                        // BEIDE Ansichten oeffnen denselben Dialog — eine
+-                        // Ansicht darf nicht koennen, was die andere nicht kann.
+-                        val oeffne = { aktionen.oeffneSetItem("part", part.partNumber, part.colorId) }
+-                        Bewegt {
+-                            if (ansicht == Listenansicht.TABELLE) PartTableRow(part, serverUrl, imageLoader, oeffne)
+-                            else PartCard(part, serverUrl, imageLoader, oeffne,
+-                                ausgewaehlt = gewaehlt == detailSchluessel("part", part.partNumber, part.colorId))
+-                        }
+-                    }
+                     if (isLoading) {
+                         // Fester Schlüssel wie bei den Kopfzeilen darüber — Begründung in
+                         // GalleryScreen.kt.

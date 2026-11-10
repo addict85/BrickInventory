@@ -1,0 +1,18 @@
+Gegenprobe: Die Korrektur nach oben übergeht eine eigene Wischgeste
+Modul: app
+Test: ch.brickinventoryapp.app.ManualItemsFirstTest
+Rot: nach einer eigenen Geste
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/ScrollMemory.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/ScrollMemory.kt
+index 3805f7b..6c8c97c 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/ScrollMemory.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/ScrollMemory.kt
+@@ -60,7 +60,7 @@ fun ScrollPositionKeeper(
+     // Nachzügler oben: an den Anfang, aber nur wenn niemand etwas anderes
+     // wollte — weder eine gespeicherte Position noch eine eigene Wischgeste.
+     LaunchedEffect(obenNachziehend) {
+-        if (obenNachziehend > 0 && !hatteGespeicherte && !nutzerGeste &&
++        if (obenNachziehend > 0 && !hatteGespeicherte &&
+             gridState.firstVisibleItemIndex > 0
+         ) {
+             gridState.scrollToItem(0)

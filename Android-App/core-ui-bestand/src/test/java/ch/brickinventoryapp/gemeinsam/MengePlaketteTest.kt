@@ -10,23 +10,6 @@ import ch.brickinventoryapp.gemeinsam.ui.mengeManuell
 /**
  * Die Mengen-Plakette auf einer Kachel steht ueberall gleich herum.
  *
- * ── Woher dieser Test kommt (Nachtrag 133) ──────────────────────────────────
- *
- * Wieder ein Fund aus einer Messung statt aus einem Bericht: Beim Zaehlen
- * gleicher Achtzeiler fielen `MinifigsScreen.kt` und `PartsScreen.kt` auf. Die
- * beiden Ansichten sind Zwillinge — dieselbe Kachel, einmal fuer Teile, einmal
- * fuer Figuren. Beim Nachsehen war die Ecken-Plakette VIERMAL da, in ZWEI
- * Schreibweisen:
- *
- *     ManualPartTile   „N×"   manuell erfasstes Teil
- *     ManualFigTile    „N×"   manuell erfasste Figur   (ueber eine Textressource)
- *     PartCard         „N×"   Teil aus einem Set
- *     MinifigCard      „×N"   Figur aus einem Set
- *
- * Es ist EIN Bedienelement: dieselbe Form (Formen.marke), dieselbe Ecke
- * (TopEnd), dieselbe Schrift (labelSmall, onPrimary, fett). Nur die Zahl stand
- * mal vor und mal hinter dem Zeichen.
- *
  * ── Welche Schreibweise wo gilt ─────────────────────────────────────────────
  *
  * Nicht geraten, sondern aus der Webapp gelesen. Dort ist die Regel eindeutig:
@@ -50,17 +33,6 @@ class MengePlaketteTest {
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     /**
-     * ── Nachtrag 138: eine Stelle statt zwei ────────────────────────────────
-     *
-     * Hier standen zwei Pruefungen, eine je Zwillingsdatei. Seit die beiden
-     * manuellen Kacheln ueber [ManuelleKachel] laufen, gibt es die Plakette nur
-     * noch EINMAL — die alte Fassung suchte in PartsScreen.kt und
-     * MinifigsScreen.kt und fand nichts mehr.
-     *
-     * Geprueft wird jetzt beides: dass die gemeinsame Kachel die Plakette in
-     * der Schreibweise der Webapp traegt, UND dass die beiden Zwillinge sie
-     * wirklich benutzen. Ohne das zweite koennte eine der beiden wieder eine
-     * eigene Kachel bauen, und der Test bliebe still.
      */
     // Gegenproben: mengeAusSet() zurück auf "$menge×" → rot;
     // mengeManuell() auf "$menge×" → rot.

@@ -11,17 +11,10 @@ import ch.brickinventoryapp.testing.Quellen
  * Nach dem Anmelden darf kein „Ungültiger oder abgelaufener Token" stehen
  * bleiben — und niemand darf den Token wieder nachlaufend lesen.
  *
- * ── Marcos Befund vom 25.09. ────────────────────────────────────────────────
- *
- *   „Wenn ich mich in der Webapp einlogge, einen qr Code erzeuge und mit diesem
- *    in die App einlogge funktioniert es, es erscheint aber die Meldung, dass
- *    das token nicht gültig sei. Wenn ich einen 2. Qr Code generiere und
- *    nochmals einlogge erscheint die Meldung nicht mehr."
- *
  * ── Was NICHT bewiesen ist ──────────────────────────────────────────────────
  *
- * Welche Anfrage den 401 bekam. Ohne Logcat war das nicht festzustellen, und
- * Marco konnte keines liefern. Diese Datei prüft deshalb ausdrücklich nicht
+ * Welche Anfrage den 401 bekam, war ohne Logcat nicht festzustellen. Diese
+ * Datei prüft deshalb ausdrücklich nicht
  * „der Fehler ist weg", sondern zwei Regeln, die die KLASSE schliessen. Wer
  * das später liest, soll den Unterschied sehen.
  *
@@ -155,9 +148,8 @@ class AbgewiesenTest {
 
     @Test
     fun `keine Snackbar bekommt den Satz an der Regel vorbei`() {
-        // DIE Regel, die Marcos Befund verhindert haette: Wer in die Snackbar
-        // schreibt, geht ueber meldungFuerSnackbar(). Sechsunddreissig Stellen
-        // taten es vorher ueber meldung() — eine neue faellt jetzt auf.
+        // Wer in die Snackbar schreibt, geht ueber meldungFuerSnackbar(); eine neue
+        // Stelle mit meldung() faellt hier auf.
         val treffer = mutableListOf<String>()
         val schreibt = Regex("""\bzeigeMeldung\(|\b(?:meldungen|kanal)\.zeige\(""")
         var schreiber = 0

@@ -10,11 +10,6 @@ import ch.brickinventoryapp.testing.Quellen
  * Der PDF-Betrachter kann zoomen — und bleibt dabei scharf, ohne den Speicher
  * zu sprengen.
  *
- * ── Woher dieser Test kommt ─────────────────────────────────────────────────
- *
- * Marcos Wunsch: „Kannst du bei den PDF Viewer in der Android App und der
- * Webapp dass man Zoom kann?"
- *
  * ── Was hier geprueft wird, und was NICHT ───────────────────────────────────
  *
  * GERECHNET wird die Rechnung: [renderStufe] und [bitmapMasse] sind genau
@@ -223,8 +218,7 @@ class PdfZoomTest {
         // Die eine Schwaeche, die beim Bauen schon benannt war: Die LazyColumn
         // ist das TIEFERE Glied und sieht die Bewegung vor dem transformable.
         // Geht eine Geste auch nur ein wenig senkrecht auseinander, beansprucht
-        // sie die Liste — und gezoomt wird nicht. Marcos Befund: „Das zoomen in
-        // der Android-App verhaelt sich noch nicht gut."
+        // sie die Liste — und gezoomt wird nicht.
         assert(quelle.contains("userScrollEnabled = !zweiFinger")) {
             "Die Liste rollt waehrend einer Zwei-Finger-Geste weiter. Dann gewinnt " +
                 "sie den Streit um die Bewegung und der Zoom kommt nicht zum Zug."

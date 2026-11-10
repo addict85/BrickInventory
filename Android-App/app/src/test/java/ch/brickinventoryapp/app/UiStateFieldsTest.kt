@@ -8,16 +8,6 @@ import ch.brickinventoryapp.testing.Quellen
  * Ersatz für den Compiler: Verweist irgendwo Code auf ein Zustandsfeld, das es
  * nicht (mehr) gibt?
  *
- * ── Woher dieser Test kommt ─────────────────────────────────────────────────
- * Beim Umbau des Katalogs auf das Fensterladen (Nachtrag 86) ist
- * `CatalogUiState.sets` entfallen — ersetzt durch `loadedPages` und `total`.
- *
- * Kotlin lässt sich in der Prüfumgebung nicht übersetzen; die üblichen
- * Behelfe (Klammerbilanz, Textsuche) finden so etwas nicht. Dieser Test tut
- * genau das, was der Compiler hier täte: Er sammelt die Felder JEDER
- * `…UiState`-Datenklasse ein und prüft jeden Zugriff der Form `xyzState.feld`
- * dagegen.
- *
  * ── Warum das mehr ist als eine Textsuche ───────────────────────────────────
  * Der Typ hinter einem Namen wird je Datei bestimmt: In CatalogScreen heisst
  * der Parameter schlicht `state`, ist aber ein `CatalogUiState`. Ein Test, der
@@ -30,7 +20,7 @@ class UiStateFieldsTest {
 
     // Kommentare über Quellen.ohneKommentare(): Das frühere Muster hier lief
     // über die GANZE Datei und ist in dieser Reihe schon zweimal in Kotlins
-    // verschachtelte Blockkommentare gelaufen (Nachtrag 39b). Siehe Quellen.kt.
+    // verschachtelte Blockkommentare gelaufen. Siehe Quellen.kt.
     private fun ohneKommentare(s: String) = Quellen.ohneKommentare(s)
 
     /**
@@ -74,7 +64,7 @@ class UiStateFieldsTest {
                          "collectAsStateWithLifecycle")
 
         val fehler = mutableListOf<String>()
-        // Untergrenze (Nachtrag 118): ein leerer Dateilauf lässt jede
+        // Untergrenze: ein leerer Dateilauf lässt jede
         // Sammelprüfung darunter stillschweigend bestehen.
         check(wurzel.walkTopDown().count { it.extension == "kt" } >= 20) {
             "Zu wenige Kotlin-Dateien unter ${'$'}{wurzel.path} — Pfad veraltet?"
@@ -88,7 +78,7 @@ class UiStateFieldsTest {
                 lokal[it.groupValues[1]] = it.groupValues[2]
             }
             // Bildschirme, die ihren Zustand SELBST beim ViewModel abholen
-            // (Nachtrag 96/115), haben keinen Parameter mehr, an dem der Typ
+            // haben keinen Parameter mehr, an dem der Typ
             // ablesbar wäre — die Angabe steht in der Zeile
             //   val katalog by vm.catalogState.collectAsStateWithLifecycle()
             Regex("""\bval\s+(\w+)\s+by\s+vm\.(\w+)\.collectAsStateWithLifecycle""")
@@ -129,19 +119,8 @@ class UiStateFieldsTest {
 
     @Test
     fun `kein update-Block schreibt in ein Feld, das es nicht gibt`() {
-        // ── Marcos zweiter Übersetzungsfehler ───────────────────────────────
-        // `CatalogFeature.kt:226 No parameter with name 'sets' found.`
-        //
-        // Die erste Fassung dieses Tests fand ihn NICHT: Der Zugriff steckte in
-        // `_catalogState.update { st -> st.copy(sets = …) }`, und der Name `st`
-        // war nirgends als Zustandstyp deklariert. Ein Muster über die ganze
-        // Datei half auch nicht — dasselbe `st` bedeutet in einer anderen
-        // Zeile derselben Datei einen anderen Zustand.
-        //
-        // Deshalb wird jeder update-Block EINZELN betrachtet: Der Lambda-Name
-        // gilt nur innerhalb seiner geschweiften Klammern. Geprüft werden
-        // beide Formen, die der Compiler bemängelt hätte — der Lesezugriff
-        // `st.feld` und das benannte Argument `st.copy(feld = …)`.
+        // Jeder update-Block einzeln: Der Lambda-Name (`st`) gilt nur in seinen Klammern.
+        // Geprüft werden der Lesezugriff `st.feld` und das benannte Argument `st.copy(feld = …)`.
         val klassen = felderJeKlasse()
         val flows = mapOf(
             "_catalogState" to "CatalogUiState",
@@ -150,7 +129,7 @@ class UiStateFieldsTest {
             "_manDetailState" to "ManualItemDetailUiState",
         )
         val fehler = mutableListOf<String>()
-        // Untergrenze (Nachtrag 118): ein leerer Dateilauf lässt jede
+        // Untergrenze: ein leerer Dateilauf lässt jede
         // Sammelprüfung darunter stillschweigend bestehen.
         check(wurzel.walkTopDown().count { it.extension == "kt" } >= 20) {
             "Zu wenige Kotlin-Dateien unter ${'$'}{wurzel.path} — Pfad veraltet?"
@@ -373,7 +352,7 @@ class UiStateFieldsTest {
     ) {
         // ── Zwei weitere Formen, in denen ein Fluss gelesen wird ─────
         //
-        // (Nachtrag 135) Beide stehen im MainViewModel und waren unsichtbar:
+        // Beide stehen im MainViewModel und waren unsichtbar:
         //
         //     _state.value.appTheme               Startwert eines stateIn
         //     _state.map { it.appTheme }          ein abgeleiteter Fluss

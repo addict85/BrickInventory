@@ -6,13 +6,10 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Bedienelemente unter 48 dp fallen auf — die vorhandenen sind eingetragen.
  *
- * ── Was hier wirklich der Fall ist (Nachtrag 118) ───────────────────────────
+ * ── Was hier wirklich der Fall ist ───────────────────────────
  *
- * In der Durchsicht hatte ich sechs `IconButton(modifier = Modifier.size(…))`
- * unter 48 dp als Barrierefreiheits-Mangel gemeldet. Es sind vierzehn in neun Dateien; nach dem
- * Aufräumen in Nachtrag 119 sind es zwölf in sieben — meine Suche hatte nur die einzeiligen Formen gefunden, in denen der
- * Modifier direkt hinter dem Klammerbeginn steht. Beim Umsetzen habe ich
- * genauer hingesehen, und das war zu scharf formuliert: Material3 legt in
+ * Ein `IconButton(modifier = Modifier.size(…))` unter 48 dp ist kein
+ * Barrierefreiheits-Mangel: Material3 legt in
  * `IconButton` ein `minimumInteractiveComponentSize()` in die Modifier-Kette,
  * das die ANTIPPFLÄCHE unabhängig von der sichtbaren Grösse auf mindestens
  * 48 dp aufzieht. Das ist ausdrücklich der Zweck dieses Modifiers.
@@ -37,10 +34,6 @@ class TouchTargetSizeTest {
      * Bekannte kleine Bedienelemente, mit dem Grund, warum sie klein sind.
      * Kurz halten: Jeder Eintrag ist eine Stelle, die niemand mehr nachmisst.
      */
-    // ManualItemComposables.kt und SetDetailComponents.kt sind in Nachtrag 119
-    // herausgefallen: Ihre kleinen Knöpfe standen in AcquisitionEditRow und
-    // AcquisitionRow — beides Funktionen ohne Aufrufer, die dabei entfernt
-    // wurden. Gemeldet hat es die zweite Behauptung dieses Tests, nicht ich.
     private val bekannt = emptyMap<String, String>()
 
     @Test

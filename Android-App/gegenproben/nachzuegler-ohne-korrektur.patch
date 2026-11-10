@@ -1,0 +1,18 @@
+Gegenprobe: Kommen oben Einträge nach, rollt der Merker nicht mehr an den Anfang
+Modul: app
+Test: ch.brickinventoryapp.app.ManualItemsFirstTest
+Rot: ohne gespeicherte Stelle
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/ScrollMemory.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/ScrollMemory.kt
+index 3805f7b..f5f64fe 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/ScrollMemory.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/ScrollMemory.kt
+@@ -63,7 +63,7 @@ fun ScrollPositionKeeper(
+         if (obenNachziehend > 0 && !hatteGespeicherte && !nutzerGeste &&
+             gridState.firstVisibleItemIndex > 0
+         ) {
+-            gridState.scrollToItem(0)
++            Unit
+         }
+     }
+ 

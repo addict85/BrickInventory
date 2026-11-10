@@ -1,0 +1,22 @@
+Gegenprobe: Die Leisten melden den angetippten Reiter erst nach der Navigation
+Modul: app
+Test: ch.brickinventoryapp.app.TabOpensAtTopTest
+Rot: die untere Leiste meldet
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+index b274d3e..206c007 100644
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+@@ -130,11 +130,11 @@ fun MainScaffold(
+     // Leiste unten und Seitenleiste teilen sich diesen Weg, damit beide die
+     // Rollposition gleich behandeln.
+     fun reiterWaehlen(screen: Screen) {
+-        onTabAngetippt(screen)
+         if (navController.currentBackStackEntry?.destination?.hasRoute<Screen.Monitoring>() == true) {
+             navController.popBackStack()
+         }
+         navController.zuReiter(screen)
++        onTabAngetippt(screen)
+     }
+ 
+     // Das Symbol eines Ziels, an „Mehr“ mit dem Punkt für eine neue Version.

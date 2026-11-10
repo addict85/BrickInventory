@@ -1,216 +1,116 @@
 /**
- * Jede Sicht hinter dem Menü ist erreichbar — und jeder Eintrag führt irgendwohin.
- * Ausführlich: docs/begruendungen/test/menue-sichten.test.js.md#kopf
+ * Das Kontomenü führt zu jeder Sicht, die keinen Reiter hat; jeder Eintrag
+ * öffnet seine Fläche und lädt, was sie zeigt. Echtes Bündel in jsdom.
  *
- * ── Gegenproben (durchgeführt, Befunde gemessen) ────────────────────────────
- *
- *   data-arg="gutscheine" → "gutschein"   -> Fälle 1, 2 UND 3 rot
- *   data-arg="daten"      → "datenX"      -> Fälle 1, 2 UND 3 rot
- *   SICHTEN-Eintrag `app` entfernt        -> Fall 3 rot
- *
- * Die ersten beiden ziehen drei Fälle mit, und das ist kein Mangel, sondern
- * die Kette: Ein verschriebener Eintrag hat keine Fläche (1), lässt seine
- * Fläche unerreichbar zurück (2) und passt nicht mehr zur Lader-Tabelle (3).
- * Vorhergesagt hatte ich je einen Fall — gemessen waren es drei.
+ * Gegenproben (10.11.2026 gemessen, je einzeln, Bündel neu gebaut):
+ *   A  in index.html data-arg="gutscheine" → "gutschein" → rot: „jeder
+ *      Menüeintrag öffnet …“ und „jede Sicht ohne Reiter …“
+ *   B  in 25-navigation.js den SICHTEN-Eintrag `daten` entfernt → rot: „jeder
+ *      Menüeintrag öffnet …“ (daten öffnet nichts)
+ *   C  in 26-sitzung.js die Zeile, die #ntab-settings für Verwalter einblendet,
+ *      entfernt → rot: „Einstellungen und Hintergrundarbeiten …“
+ *   D  am Konto-Eintrag data-i18n vom <span> an den <button> verschoben → rot:
+ *      „jeder Menüeintrag behält sein Symbol …“
+ *   E  in 26-sitzung.js den onclick an btn-logout entfernt → rot: „Abmelden …“
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const path   = require('node:path');
+const fs = require('node:fs');
+const path = require('node:path');
+const { oeffneOberflaeche, ANMELDUNG, sicht, takt } = require('./helpers/oberflaeche');
 
-const ROOT = path.join(__dirname, '..');
-/**
- * index.html OHNE Kommentare.
- * Ausführlich: docs/begruendungen/test/menue-sichten.test.js.md#html
- */
-const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8')
-  .replace(/<!--[\s\S]*?-->/g, '');
-const NAV  = fs.readFileSync(path.join(ROOT, 'public', 'js', '25-navigation.js'), 'utf8');
+const KONTO = (admin) => ({ '/v1/auth/me': { success: true, loggedIn: true,
+  user: { ...ANMELDUNG['/v1/auth/me'].user, is_admin: admin } } });
+// Jede Sicht bekommt eine leere, vertragsgemässe Antwort (pruefeAntwort ergänzt die Pflichtfelder).
+const SICHTDATEN = Object.fromEntries(['/v1/vouchers', '/v1/alerts', '/v1/storage/locations', '/v1/storage',
+  '/v1/papierkorb', '/v1/settings/tokens', '/v1/settings/tls', '/v1/settings/household', '/v1/auth/profile',
+  '/v1/auth/zweiter-faktor', '/v1/auth/passkeys'].map(p => [p, { success: true }]));
+const eintraege = d => [...d.querySelectorAll('.umenu-item[data-click="oeffneSicht"]')];
 
-/** Die Namen aus dem Menü — `data-click="oeffneSicht" data-arg="…"`. */
-function menueEintraege() {
-  return [...HTML.matchAll(/data-click="oeffneSicht"\s+data-arg="([\w-]+)"/g)].map(m => m[1]);
-}
-
-/** Alle `.tab`-Flächen, die kein Reiter in der Leiste anspricht. */
-function sichtFlaechen() {
-  const reiter = new Set([...HTML.matchAll(/class="ntab[^"]*"[^>]*data-tab="([\w-]+)"/g)]
-    .map(m => m[1]));
-  return [...HTML.matchAll(/<div class="tab[^"]*" id="tab-([\w-]+)"/g)]
-    .map(m => m[1])
-    .filter(n => !reiter.has(n));
-}
-
-test('jeder Menüeintrag hat seine Fläche', () => {
-  const eintraege = menueEintraege();
-  // Selbstnachweis: Ohne Treffer wäre die Schleife darunter still grün.
-  assert.ok(eintraege.length >= 5,
-    `Nur ${eintraege.length} Menüeinträge gefunden — greift das Muster noch?`);
-  const ohneFlaeche = eintraege.filter(n => !HTML.includes(`<div class="tab" id="tab-${n}">`));
-  assert.deepEqual(ohneFlaeche, [],
-    'Diese Menüeinträge zeigen auf eine Fläche, die es nicht gibt — der Klick ' +
-    `täte nichts: ${ohneFlaeche.join(', ')}`);
+test('jeder Menüeintrag öffnet seine Fläche und lädt sie', async () => {
+  const o = await oeffneOberflaeche(SICHTDATEN);
+  try {
+    await o.ruhig();
+    const namen = eintraege(o.d).map(e => e.dataset.arg);
+    assert.equal(namen.length, 7, `${namen.length} Sichten im Menü statt sieben`);
+    const fehler = [];
+    for (const name of namen) {
+      const vorher = o.aufrufe.length;
+      await sicht(o.w, name);
+      await o.ruhig();
+      const aktiv = [...o.d.querySelectorAll('.tab.active')].map(t => t.id);
+      if (aktiv.join() !== `tab-${name}`) fehler.push(`${name}: aktiv ist ${aktiv.join(', ') || 'nichts'}`);
+      if (o.aufrufe.length === vorher) fehler.push(`${name}: lädt nichts`);
+    }
+    assert.deepEqual(fehler, []);
+    assert.deepEqual(o.fehler.map(e => e.message), [], 'ein Lader ist gescheitert');
+  } finally { o.w.close(); }
 });
 
-test('jede Sicht ist über das Menü erreichbar', () => {
-  const flaechen = sichtFlaechen();
-  assert.ok(flaechen.length >= 5,
-    `Nur ${flaechen.length} Sichten gefunden — greift das Muster noch?`);
-  const eintraege = new Set(menueEintraege());
-  const ohneWeg = flaechen.filter(n => !eintraege.has(n));
-  assert.deepEqual(ohneWeg, [],
-    'Diese Flächen hängen im Markup, aber kein Menüeintrag führt dorthin:\n  ' +
-    ohneWeg.join('\n  ') +
-    '\nEine Seite, die niemand öffnen kann, ist keine Seite — sie ist ' +
-    'Markup mit Pflegekosten. (Dieselbe Regel wie ErreichbareRoutenTest in ' +
-    'der Android-App.)');
+test('jede Sicht ohne Reiter ist über das Menü erreichbar', async () => {
+  const o = await oeffneOberflaeche();
+  try {
+    const reiter = new Set([...o.d.querySelectorAll('.ntab[data-tab]')].map(r => r.dataset.tab));
+    const imMenue = new Set(eintraege(o.d).map(e => e.dataset.arg));
+    const flaechen = [...o.d.querySelectorAll('.tab[id^="tab-"]')].map(t => t.id.slice(4));
+    assert.ok(flaechen.length >= 14, `nur ${flaechen.length} Flächen gefunden`);
+    assert.deepEqual(flaechen.filter(n => !reiter.has(n) && !imMenue.has(n)), [],
+      'Diese Flächen öffnet weder ein Reiter noch das Menü');
+  } finally { o.w.close(); }
 });
 
-test('jede Sicht lädt, was sie zeigt', () => {
-  // `const SICHTEN = { … };` in js/25-navigation.js — die Zuordnung Name → Lader.
-  const block = NAV.slice(NAV.indexOf('const SICHTEN = {'));
-  const ende  = block.indexOf('\n};');
-  assert.ok(ende > 0, 'SICHTEN nicht gefunden — umbenannt?');
-  const namen = [...block.slice(0, ende).matchAll(/^\s{2}(\w+):/gm)].map(m => m[1]);
-  assert.deepEqual(namen.sort(), menueEintraege().sort(),
-    'Menü und Lader-Tabelle nennen nicht dieselben Sichten. Ein Eintrag ohne ' +
-    'Lader öffnet eine Seite, auf der nichts steht — und das sieht aus wie ' +
-    '„keine Daten vorhanden".');
-});
-
-test('der Reiter „Einstellungen" ist Verwaltersache', () => {
-  // Marcos Vorgabe: nur noch, was ein Administrator setzen kann. Deshalb ist
-  // der Reiter wie das Monitoring vorgeblendet und wird erst für Admins
-  // sichtbar (js/26-sitzung.js).
-  assert.match(HTML, /id="ntab-settings"[^>]*data-stil="display:none"/,
-    'Der Einstellungs-Reiter steht wieder für alle da — für Nicht-Admins wäre ' +
-    'er leer.');
-  const core = fs.readFileSync(path.join(ROOT, 'public', 'js', '26-sitzung.js'), 'utf8');
-  assert.match(core, /ntab-settings'\);\s*if\s*\(ns\)\s*ns\.style\.display\s*=\s*''/,
-    'Niemand blendet den Reiter für Admins wieder ein — dann fehlt er auch dort.');
-});
-
-/**
- * Nachtrag vom 17.10.: das Symbol, das zur Laufzeit verschwand
- * Ausführlich: docs/begruendungen/test/menue-sichten.test.js.md#stelle
- *
- * Gegenproben (durchgeführt, Ergebnisse abgeschrieben) — siehe unten an den
- * Fällen selbst.
- */
-
-/**
- * Die Pfade AUSGESCHRIEBEN und nicht über `sprache + '.js'` zusammengesetzt.
- * Ausführlich: docs/begruendungen/test/menue-sichten.test.js.md#sprachdatei
- */
-const SPRACHDATEI = {
-  de: path.join(ROOT, 'public', 'locales', 'de.js'),
-  en: path.join(ROOT, 'public', 'locales', 'en.js'),
-};
-
-/** Die Sprachtexte einer Datei als Map. */
-function texte(sprache) {
-  const datei = SPRACHDATEI[sprache];
-  assert.ok(datei, `Keine Sprachdatei für "${sprache}" hinterlegt`);
-  const roh = fs.readFileSync(datei, 'utf8');
-  const map = new Map();
-  for (const m of roh.matchAll(/^\s*'([^']+)':\s*'((?:[^'\\]|\\.)*)'/gm)) map.set(m[1], m[2]);
-  return map;
-}
-
-/** Schlüssel und Markup-Text der Menüeinträge, in der Reihenfolge des Menüs. */
-function eintragsTexte() {
-  const auf = HTML.indexOf('<div class="umenu-pop"');
-  const zu  = HTML.indexOf('</div>', auf);
-  assert.ok(auf > 0 && zu > auf, 'Die Menüklappe ist nicht mehr zu finden — umbenannt?');
-  return [...HTML.slice(auf, zu).matchAll(/data-i18n="([^"]+)">([^<]+)</g)]
-    .map(m => ({ schluessel: m[1], markup: m[2].trim() }));
-}
-
-test('jeder Menüeintrag trägt sein Symbol — NEBEN dem Sprachtext', () => {
-  // Seit dem 25.10. kommt das Symbol aus der Symbolfamilie (Sprite in
-  // index.html) statt als Emoji aus dem Sprachtext. Die Falle von oben bleibt
-  // dieselbe: `data-i18n` ersetzt beim Übersetzen den INHALT seines Elements.
-  // Steht es am Knopf, ist das Symbol nach dem Übersetzen weg — es gehört an
-  // ein eigenes Element neben dem Symbol.
-  const auf = HTML.indexOf('<div class="umenu-pop"');
-  const zu  = HTML.indexOf('</div>', auf);
-  const knoepfe = [...HTML.slice(auf, zu).matchAll(/<button([^>]*)>([\s\S]*?)<\/button>/g)];
-  // Selbstbeweis: sieben Sichten, zwei Verwalterseiten, Abmelden.
-  assert.equal(knoepfe.length, 10,
-    `${knoepfe.length} Einträge abgeleitet statt zehn — greift die Ableitung noch?`);
-  const symbole = new Set([...HTML.matchAll(/<symbol id="([\w-]+)"/g)].map(m => m[1]));
-  const falsch = [];
-  for (const [, attr, inhalt] of knoepfe) {
-    const name = (/data-i18n="([^"]+)"/.exec(inhalt) || /data-i18n="([^"]+)"/.exec(attr) || [])[1] || attr;
-    if (/data-i18n=/.test(attr)) falsch.push(`${name}: data-i18n am Knopf — das Übersetzen löscht das Symbol`);
-    const use = /<svg class="ico"[^>]*>\s*<use href="#([\w-]+)"/.exec(inhalt);
-    if (!use) falsch.push(`${name}: kein Symbol`);
-    else if (!symbole.has(use[1])) falsch.push(`${name}: #${use[1]} fehlt im Sprite`);
+test('Einstellungen und Hintergrundarbeiten sieht nur ein Verwalter', async () => {
+  for (const admin of [true, false]) {
+    const o = await oeffneOberflaeche(KONTO(admin));
+    try {
+      await o.ruhig();
+      const sichtbar = el => el.style.display !== 'none';
+      assert.equal(sichtbar(o.d.getElementById('ntab-settings')), admin, `Reiter Einstellungen, Verwalter=${admin}`);
+      for (const el of o.d.querySelectorAll('.umenu-item.admin-only'))
+        assert.equal(sichtbar(el), admin, `${el.dataset.arg} im Menü, Verwalter=${admin}`);
+    } finally { o.w.close(); }
   }
-  // Gegenprobe (am 25.10. gemessen): data-i18n beim Profil-Eintrag zurück an
-  // den Knopf → rot mit „settings.group.profile: data-i18n am Knopf".
-  assert.deepEqual(falsch, [], 'Menüeinträge ohne sichtbares Symbol:\n  ' + falsch.join('\n  '));
 });
 
-test('das Markup eines Menüeintrags zeigt, was der Sprachtext sagt', () => {
-  // Die eigentliche Lehre aus dem Befund: Weichen Markup und Sprachtext
-  // voneinander ab, sieht man beim Entwickeln das eine und im Betrieb das
-  // andere. Geprüft wird gegen DEUTSCH — die Markup-Texte sind deutsch.
-  const de = texte('de');
-  const abweichend = [];
-  for (const { schluessel, markup } of eintragsTexte()) {
-    const wert = de.get(schluessel);
-    if (wert !== markup) abweichend.push(`${schluessel}: Markup "${markup}" ≠ Sprachtext "${wert}"`);
-  }
-  // Gegenprobe (durchgeführt): das 👤 nur im Markup gelassen und aus de.js
-  // genommen → dieser Fall rot mit genau dieser Zeile. Das ist der Zustand,
-  // den Marco im Bildschirmfoto gesehen hat.
-  assert.deepEqual(abweichend, [],
-    'Markup und Sprachtext laufen auseinander:\n  ' + abweichend.join('\n  ') +
-    '\n\nSichtbar ist der SPRACHTEXT. Der Text im Markup ist nur der Rückfall ' +
-    'für den Augenblick vor dem Übersetzen.');
+test('jeder Menüeintrag behält sein Symbol, auch nach dem Übersetzen', async () => {
+  const woerter = require('./helpers/sources').loadTranslations().en;
+  const o = await oeffneOberflaeche({}, { sprache: 'en' });
+  try {
+    await o.ruhig();
+    const knoepfe = [...o.d.querySelectorAll('#umenu-pop button')];
+    assert.equal(knoepfe.length, 10, `${knoepfe.length} Einträge statt zehn`);
+    const falsch = [];
+    for (const k of knoepfe) {
+      const ziel = k.querySelector('svg.ico use')?.getAttribute('href');
+      const text = k.querySelector('[data-i18n]');
+      if (!ziel || !o.d.getElementById(ziel.slice(1))) falsch.push(`${k.textContent.trim()}: kein Symbol aus dem Sprite`);
+      if (!text || text.textContent !== woerter[text.dataset.i18n]) falsch.push(`${k.textContent.trim()}: nicht übersetzt`);
+    }
+    assert.deepEqual(falsch, []);
+  } finally { o.w.close(); }
 });
 
-test('die Kopfleiste behaelt ihre bewusste Hoehe', () => {
-  // Was dieser Fall einmal war, und was aus ihm geworden ist
-  // Ausführlich: docs/begruendungen/test/menue-sichten.test.js.md#css-stelle
-  const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
-  assert.match(css, /\.umenu\{[^}]*--kopf-hoehe:\s*(max\()?\d+px/,
-    'In `.umenu` steht keine Hoehe mehr.');
-  assert.match(css, /\.umenu \.ubadge\{height:var\(--kopf-hoehe\)\}/,
-    'Der Namensknopf nimmt die Hoehe nicht mehr.');
-  // Nicht an `.btn-sm`: die Klasse haengt an 28 Stellen in index.html und in
-  // fuenf JS-Dateien. Eine Hoehe dort verschoebe die halbe Oberflaeche.
-  // min-height 32 px ist die kompakte Knopfgrösse (zwei Grössen); feste Höhe bleibt verboten.
-  assert.doesNotMatch(css, /\.btn-sm\{[^}]*(?<!min-)height:/,
-    '`.btn-sm` hat eine feste Hoehe bekommen — diese Klasse traegt die halbe ' +
-    'Oberflaeche, die Hoehe gehoert in die Kopfleiste.');
+test('Abmelden steht einmal, in der Klappe, und meldet ab', async () => {
+  const o = await oeffneOberflaeche({ '/v1/auth/logout': { success: true } });
+  try {
+    await o.ruhig();
+    const knopf = o.d.querySelectorAll('#btn-logout');
+    assert.equal(knopf.length, 1);
+    assert.ok(o.d.getElementById('umenu-pop').contains(knopf[0]), 'Abmelden steht nicht in der Klappe');
+    assert.ok(knopf[0].previousElementSibling?.matches('hr.umenu-trenner'), 'vor Abmelden fehlt der Trenner');
+    knopf[0].click();
+    await takt(30);
+    await o.ruhig();
+    assert.ok(o.aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v1/auth/logout')), 'kein Abmeldeaufruf');
+    assert.equal(o.d.getElementById('login-screen').style.display, 'flex', 'die Anmeldemaske erscheint nicht');
+  } finally { o.w.close(); }
 });
 
-test('Abmelden steht in der Klappe und nicht mehr in der Kopfleiste', () => {
-  // Marcos Vorgabe vom 17.10.: „Kannst du abmelden ebenfalls in das neue Menu
-  // integrieren?"
-  //
-  // Geprueft wird BEIDES. Nur „steht in der Klappe" waere gruen geblieben,
-  // haette ich den Knopf verdoppelt statt verschoben — und zwei Abmeldeknoepfe
-  // sieht man im Markup nicht, wohl aber auf dem Bildschirm.
-  const kopfAuf = HTML.indexOf('<header');
-  const kopfZu  = HTML.indexOf('</header>');
-  const kopf    = HTML.slice(kopfAuf, kopfZu);
-  const klappeAuf = HTML.indexOf('<div class="umenu-pop"');
-  const klappe    = HTML.slice(klappeAuf, HTML.indexOf('</div>', klappeAuf));
-
-  assert.ok(klappe.includes('id="btn-logout"'),
-    'Abmelden steht nicht in der Menueklappe.');
-  assert.equal((kopf.match(/id="btn-logout"/g) || []).length, 1,
-    'Abmelden kommt in der Kopfleiste nicht genau einmal vor — verdoppelt oder verschwunden? '
-    + '(Die Klappe liegt INNERHALB des <header>, der eine Treffer ist der in der Klappe.)');
-  assert.ok(klappe.includes('umenu-trenner'),
-    'Der Trenner vor „Abmelden" fehlt — dann steht die Handlung als achter Punkt '
-    + 'in einer Reihe mit sieben Sichtwechseln.');
-
-  // Und 26-sitzung.js haengt seinen Handler weiterhin an diese ID.
-  const core = fs.readFileSync(path.join(ROOT, 'public', 'js', '26-sitzung.js'), 'utf8');
-  assert.match(core, /G\('btn-logout'\)\.onclick/,
-    'Niemand verdrahtet btn-logout mehr — der Eintrag taete dann nichts.');
+test('die Kopfleiste behält ihre bewusste Höhe', () => {
+  // Die Höhe gehört der Kopfleiste, nicht .btn-sm: Die Klasse trägt die halbe
+  // Oberfläche; min-height 32 px ist die kompakte Knopfgrösse.
+  const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
+  assert.match(css, /\.umenu\{[^}]*--kopf-hoehe:\s*(max\()?\d+px/, 'In `.umenu` steht keine Höhe mehr.');
+  assert.match(css, /\.umenu \.ubadge\{height:var\(--kopf-hoehe\)\}/, 'Der Namensknopf nimmt die Höhe nicht mehr.');
+  assert.doesNotMatch(css, /\.btn-sm\{[^}]*(?<!min-)height:/, '`.btn-sm` hat eine feste Höhe bekommen.');
 });

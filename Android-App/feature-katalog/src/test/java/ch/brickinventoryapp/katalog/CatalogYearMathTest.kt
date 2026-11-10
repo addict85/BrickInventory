@@ -12,15 +12,13 @@ import org.junit.Test
  *
  * ── Der Fehler, den das verhindert ──────────────────────────────────────────
  * Hier stand vorher ein lineares Modell: oben yearMax, unten yearMin, die
- * Strecke dazwischen gleichmässig auf die Jahre verteilt. Genau das hatte
- * Marco in der Webapp gemeldet:
- *
- *   „Es wurden die Sets von 1999 geladen, obwohl rechts 1965 steht."
+ * Strecke dazwischen gleichmässig auf die Jahre verteilt; die Leiste zeigte
+ * 1965 und lud die Sets von 1999.
  *
  * Die Annahme dahinter — in jedem Jahr läge gleich viel — stimmt nicht: Der
  * weitaus grösste Teil des Katalogs stammt aus den letzten Jahrzehnten.
  *
- * Die Zahlen unten sind Marcos Fall im Kleinen: drei Jahrgänge, von denen der
+ * Die Zahlen unten sind dieser Fall im Kleinen: drei Jahrgänge, von denen der
  * neueste neunzig von hundert Sets stellt. Bei neun Zehnteln der Leiste steht
  * man deshalb IMMER NOCH im neuesten Jahrgang — linear gerechnet käme dort der
  * älteste heraus.
@@ -46,7 +44,7 @@ class CatalogYearMathTest {
 
     @Test
     fun `neun Zehntel hinunter ist noch nicht beim aeltesten Jahrgang`() {
-        // Marcos Fall: linear käme hier 1965 heraus. Tatsächlich reicht der
+        // Linear käme hier 1965 heraus. Tatsächlich reicht der
         // Jahrgang 2024 bis zur laufenden Nummer 89, und 0.9 * 99 = 89.
         assertEquals(2024, jahr(0.9f))
     }

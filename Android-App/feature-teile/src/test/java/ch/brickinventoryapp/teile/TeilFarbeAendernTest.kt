@@ -23,13 +23,6 @@ import ch.brickinventoryapp.testing.TestDienste
 /**
  * Die Farbe eines manuell erfassten Teils nachtraeglich aendern — App-Seite.
  *
- * ── Marcos Bitte ────────────────────────────────────────────────────────────
- *
- *   „Ich habe mehrere wanted listen importiert. Die Farbe wurde nicht immer
- *    uebernommen und die Teile sind nun mehrfach vorhanden (bsp 3001). …
- *    Weiter moechte ich die Farbe nachtraeglich anpassen koennen fuer den Fall
- *    dass diese nicht korrekt geladen wurde."
- *
  * ── Was hier geprueft wird und was NICHT ────────────────────────────────────
  *
  * Was die Aenderung TUT — Umziehen oder Zusammenlegen, Erfassungen vom
@@ -39,9 +32,8 @@ import ch.brickinventoryapp.testing.TestDienste
  *
  * Hier stehen die drei Aussagen, die nur auf DIESER Seite nachweisbar sind:
  *
- *   1. Die App ruft denselben Dienst wie die Webapp (Marcos Vorgabe: „Bitte
- *      die Login jeweils nur 1x im Backend bauen. Beide Apps sollen die
- *      gleichen Services des Backends verwenden.")
+ *   1. Die App ruft denselben Dienst wie die Webapp: Die Logik steht einmal im
+ *      Backend, beide Oberflächen benutzen sie.
  *
  * ── Gegenproben ─────────────────────────────────────────────────────────────
  *

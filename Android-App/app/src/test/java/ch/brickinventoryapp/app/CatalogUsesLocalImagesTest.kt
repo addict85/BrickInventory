@@ -50,7 +50,7 @@ class CatalogUsesLocalImagesTest {
     @Test
     fun `Katalog-Bildschirme reichen das Feld durch, statt null zu erzwingen`() {
         val list = code(Quellen.bildschirm("katalog/ui/screens/CatalogScreen.kt"))
-        // rememberTileImageWithFallback(...) zählt ebenfalls (Nachtrag 42):
+        // rememberTileImageWithFallback(...) zählt ebenfalls:
         assert(list.contains("resolveThumbUrl(serverUrl, set.imageLocal, set.imageUrl)") ||
                list.contains("rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)")) {
             "Die Katalog-Liste muss set.imageLocal durchreichen, nicht null"
@@ -89,7 +89,7 @@ class CatalogUsesLocalImagesTest {
         // Die generische Prüfung oben deckt die SIGNATUR ab; hier zusätzlich
         // der konkrete Aufruf, der beim gemeldeten Fehler tatsächlich fehlte.
         //
-        // ── Auf die REGEL geprüft, nicht auf den Wortlaut (Nachtrag 161) ────
+        // ── Auf die REGEL geprüft, nicht auf den Wortlaut ────
         //
         // Vorher stand hier ein contains() auf den ganzen Aufruf, schliessende
         // Klammer inbegriffen. Diese Zusicherung ist gefallen, als das Design

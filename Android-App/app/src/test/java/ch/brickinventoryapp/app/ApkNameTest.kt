@@ -56,11 +56,10 @@ class ApkNameTest {
      * Der Workflow liegt ausserhalb des Gradle-Moduls. Der Pfad wird deshalb
      * geprüft, nicht angenommen: Eine fehlende Datei würde die Prüfungen unten
      * sonst stillschweigend bestehen lassen — dieselbe Falle wie bei einem
-     * Dateilauf, der nichts findet (Nachtrag 118).
+     * Dateilauf, der nichts findet.
      *
-     * Er steht seit Lauf 131 in Quellen.workflow() statt hier: SelbstUpdateTest
-     * schrieb ihn ein zweites Mal aus, eine Ebene zu kurz. Eine Pfadangabe in
-     * zwei Schreibweisen ist dieselbe Fehlerart wie eine Regel in zwei Kopien.
+     * Er steht in Quellen.workflow() statt hier: Eine Pfadangabe in zwei
+     * Schreibweisen ist dieselbe Fehlerart wie eine Regel in zwei Kopien.
      */
     private fun workflow(): String = Quellen.workflow()
 
@@ -150,22 +149,8 @@ class ApkNameTest {
 
     @Test
     fun `das APK wird roh ausgeliefert, nicht als Zip`() {
-        // ── Marcos Wunsch ───────────────────────────────────────────────────
-        // „am Ende kein zip, sondern direkt das BrickInventory.apk".
-        //
-        // Als Artefakt geht das NICHT, und das ist keine Einstellungssache —
-        // nachgelesen in der Anleitung von actions/upload-artifact:
-        //
-        //   "When an Artifact is uploaded, all the files are assembled into an
-        //    immutable Zip archive. There is currently no way to download
-        //    artifacts in a format other than a Zip [...]"
-        //
-        // Wer die APK also wieder an einen upload-artifact-Schritt haengt,
-        // bekommt zwangslaeufig wieder ein Zip — ohne dass irgendwo eine
-        // Fehlermeldung stuende. Genau davor steht diese Pruefung.
-        //
-        // Gesucht, nicht aufgezaehlt: JEDER Artefaktschritt wird angesehen,
-        // auch ein kuenftiger.
+        // upload-artifact liefert immer ein Zip; die APK darf deshalb an keinem
+        // Artefaktschritt hängen. Geprüft wird jeder Schritt, auch ein künftiger.
         val ziel = zielname()
         val alle = schritte()
 
