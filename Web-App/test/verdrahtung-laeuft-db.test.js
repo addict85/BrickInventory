@@ -3,6 +3,7 @@
  * Ausführlich: docs/begruendungen/test/verdrahtung-laeuft-db.test.js.md#kopf
  */
 const test   = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -100,8 +101,8 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
                   ON CONFLICT (key) DO UPDATE SET value='1'`);
     await mailserverEintragen(db);
     const basisVorher = process.env.APP_BASE_URL;
-    process.env.APP_BASE_URL = 'http://localhost';
-    t.after(() => { if (basisVorher === undefined) delete process.env.APP_BASE_URL; else process.env.APP_BASE_URL = basisVorher; });
+    umgebung({ APP_BASE_URL: 'http://localhost' });
+    t.after(() => { if (basisVorher === undefined) umgebung({ APP_BASE_URL: undefined }); else umgebung({ APP_BASE_URL: basisVorher }); });
     const r = await fetch(`${mit.base}/api/v1/auth/register`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: 'neuling', email: 'n@example.org',

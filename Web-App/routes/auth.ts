@@ -6,7 +6,7 @@ import * as K from '../src/konto/konten';
 import * as A from '../src/konto/anmeldungAblauf';
 import { kontoEntfernen } from '../src/konto/kontoEntfernen';
 import { logAndContinue, meldeFehler } from '../src/infra/fehler';
-import { fehlerAntwort } from '../src/http/httpAntwort';
+import { fehlerAntwort, sendeFehler } from '../src/http/httpAntwort';
 import { pruefeToken, assertLoginAllowed, deleteToken, USERNAME_RE, emailGueltig, rotiereToken, rotationFaellig, UEBERLAPPUNG_MS, nameGueltig, geraeteNameGueltig, geraeteNameInhaltGueltig } from '../src/konto/auth';
 import { tokenAngaben } from '../src/konto/tokenWunsch';
 import * as QR from '../src/konto/qrKopplung';
@@ -15,14 +15,15 @@ import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, 
 import { hinweisNebenher } from '../src/konto/kontoHinweis';
 import type { Request, Response } from 'express';
 import { requireApiAdmin } from './api_v1/middleware';
-import { sendeFehler, fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
+import { fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
 import * as zf from '../src/konto/zweiterFaktor';
 import * as P from '../src/konto/passkeys';
-import { vertragsRouter } from '../src/vertrag/pruefen';
-import type { Antwort, OffeneAnfrage } from '../src/vertrag';
 import benutzerRouter = require('./auth/benutzer');
 import zweiterFaktorRouter = require('./auth/zweiterFaktor');
 import registrierungRouter = require('./auth/registrierung');
+import { STATUS_DER_ART } from '../src/http/fehlerArt';
+import { vertragsRouter } from '../src/http/vertragsRouter';
+import type { Antwort, OffeneAnfrage } from '../src/http/vertragsRouter';
 
 // Ein Wächter für Sitzung UND Token: Die App hat keine Sitzung und war mit
 // einem reinen Sitzungswächter von Routen ausgesperrt. Ausführlich: docs/begruendungen/routes/auth.ts.md#requirelogin
@@ -47,7 +48,8 @@ router.post('/login', async (req: OffeneAnfrage<'POST /api/v1/auth/login'>, res:
   if (!geraeteNameInhaltGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
   const pruefung = await anmelden(req, username, password, zweiterCode, passkey);
   if (!pruefung.ok) {
-    const { status, code, vars, unverified, zweiterFaktor, passkey: mitPasskey } = pruefung.absage;
+    const { art, code, vars, unverified, zweiterFaktor, passkey: mitPasskey } = pruefung.absage;
+    const status = STATUS_DER_ART[art];
     // `zweiter_faktor`: Codefeld zeigen und erneut senden (oder `passkey`).
     if (zweiterFaktor) {
       return res.status(status).json({
@@ -333,7 +335,7 @@ router.post('/passkey/anmelden', ipThrottle('passkey-anmelden', 30, 60 * 60 * 10
   const user = await K.kontoVoll(uid);
   if (!user) return sendeFehler(req, res, 401, 'passkey_ungueltig');
   const gesperrt = assertLoginAllowed(user);
-  if (gesperrt) return sendeFehler(req, res, gesperrt.status, gesperrt.code);
+  if (gesperrt) return sendeFehler(req, res, STATUS_DER_ART[gesperrt.art], gesperrt.code);
   meldeAnmeldung({ ip: req.ip, konto: user.id, zugang: 'passkey' });
   await angemeldetAntworten(req, res, user, req.eingabe, req.eingabe.mit_token === true);
 });

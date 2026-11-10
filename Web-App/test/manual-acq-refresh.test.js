@@ -387,7 +387,7 @@ test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', ()
   );
   assert.match(
     fn,
-    /await recordAcquisition\(\{ konto: userId, setNumber, menge: delta, kaufpreis: plan\.price, zustand: plan\.condition,/,
+    /await recordAcquisition\(sk, \{ konto: userId, setNumber, menge: delta, kaufpreis: plan\.price, zustand: plan\.condition,/,
     'Auch die Erhöhung läuft über den gemeinsamen Schreibweg',
   );
   // Der Preis kommt aus priceForNewAcquisition() — ausgelagert, weil der
@@ -395,7 +395,7 @@ test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', ()
   // in offener Transaktion hielte Sperre und Verbindung).
   assert.match(
     fn,
-    /pricePlan \?\? await priceForNewAcquisition\(userId, setNumber, dbh\)/,
+    /pricePlan \?\? await priceForNewAcquisition\(sk, userId, setNumber, dbh\)/,
     'Ein vorab ermittelter Preis muss durchgereicht werden können',
   );
   // Ziel der Mengenänderung ist seit einer früheren Runde das EIGENE Konto (`uid`) und
@@ -404,7 +404,7 @@ test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', ()
   // geprüfte REGEL ist unverändert: Preis ermitteln (Netzaufruf), DANN sperren.
   assert.match(
     src,
-    /const plan = [\s\S]{0,120}priceForNewAcquisition\(uid, sn\)[\s\S]{0,400}withInventoryLock\(uid, sn/,
+    /const plan = [\s\S]{0,120}priceForNewAcquisition\(sk, uid, sn\)[\s\S]{0,400}mitInventarSperre\(sk\.db, uid, sn/,
     'In updateSet muss der Preis VOR der Sperre stehen',
   );
   assert.doesNotMatch(src, /function isToday\(/, 'Die eigene Tagesprüfung gehört entfernt');
@@ -421,7 +421,7 @@ test('eine Mengenänderung läuft unter der Bestandssperre', () => {
     .replace(/\/\/[^\n]*/g, '');
   // Ziel ist seit einer früheren Runde das eigene Konto (`uid`) — die Regel bleibt:
   // EINE gesperrte Transaktion für Menge und Erfassungen.
-  assert.match(fn, /withInventoryLock\(uid, sn/, 'Menge und Erfassungen gehören in EINE gesperrte Transaktion');
+  assert.match(fn, /mitInventarSperre\(sk\.db, uid, sn/, 'Menge und Erfassungen gehören in EINE gesperrte Transaktion');
   assert.doesNotMatch(
     fn,
     /adjustAcquisitionsToQuantity\([^)]*\)\.catch\(/,

@@ -43,7 +43,7 @@ export function drainThumbQueue() {
       .finally(() => { _thumbRunning--; _thumbInFlight.delete(dst); drainThumbQueue(); });
   }
 }
-let _thumbInFlight = new Map<string, boolean>();
+const _thumbInFlight = new Map<string, boolean>();
 /** EIN Vorschau-Lauf für den ganzen Server, nicht je Arbeitsprozess.
  * Ausführlich: docs/begruendungen/src/katalog/bilder/proxyThumbs.ts.md#abschnitt */
 const THUMB_LOCK_KEY = LOCKS.PROXY_THUMBS;

@@ -23,8 +23,9 @@ import { verdrahte, baueVerdrahtung } from './startup/verdrahtung';
 import { drossleBeruehren } from './src/konto/sitzungsBeruehrung';
 import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './src/konto/sitzungsFrist';
 import { sitzungsVersionPruefen } from './src/konto/http/sitzungsPruefung';
-import { merkeAnfrage } from './src/infra/anfrageKonto';
-import { proxyVertrauen, proxyHinweis } from './src/infra/proxyVertrauen';
+import { merkeAnfrage } from './src/http/anfrageKonto';
+import { proxyVertrauen } from './src/infra/proxyVertrauen';
+import { proxyHinweis } from './src/http/proxyHinweis';
 import { nurEigeneHerkunft, nurEigenerHost } from './src/http/herkunft';
 import { API_VERSION, API_MIN_APP, appFassungPruefen } from './src/http/apiVersion';
 import { PUBLIC_DIR } from './src/infra/appPaths';
@@ -40,7 +41,6 @@ import { anmeldungAmEingang, rumpfLesen } from './routes/api_v1/middleware';
 import { schrittschutzAmEingang } from './src/konto/http/schrittschutz';
 import { apiDrossel } from './src/http/apiDrossel';
 import { idempotenz } from './src/idempotenz/http/middleware';
-import { vertragPruefen } from './src/vertrag/pruefen';
 import datenDateien = require('./routes/datenDateien');
 import apiV1Router = require('./routes/api_v1/index');
 import authRouter = require('./routes/auth');
@@ -49,6 +49,7 @@ import cspBerichtRouter = require('./src/http/cspBericht');
 import wellKnownRouter = require('./routes/wellKnown');
 import gesundheitRouter = require('./routes/gesundheit');
 import seitenRouter = require('./routes/seiten');
+import { vertragPruefen } from './src/http/vertragsRouter';
 
 // Nur loggen: Ein abgelehntes Versprechen ist meist ein Nebenläufer ohne catch;
 // Anfragen und Jobs halten ihren Zustand in der Datenbank. Ein Neustart risse
@@ -262,7 +263,8 @@ function dateienUndBilder(app: express.Express): void {
 }
 
 function apiRouten(app: express.Express): void {
-  app.use('/api/v1', vertragPruefen);
+  const pruefung = vertragPruefen();
+  if (pruefung) app.use('/api/v1', pruefung);
   // Vor dem Eingang: Gefragt wird, bevor Schema, Migrationen und /api/v1-Router stehen.
   app.use('/api/v1',          gesundheitRouter);
 
@@ -351,8 +353,9 @@ async function starte(): Promise<void> {
   console.log(`[start] Prozess ${process.pid}, Rolle ${k.rolle}`);
   // Datenbankzugang und Verdrahtung entstehen hier, nicht beim Import eines Moduls;
   // Erfassungen und Einstellungen stossen ihre Nacharbeit in jedem Prozess an.
-  db.setzeStandardDb(db.erzeugeDb(db.dbKonfigAusUmgebung()));
-  verdrahte(baueVerdrahtung());
+  const zugang = db.erzeugeDb(db.dbKonfigAusUmgebung());
+  db.setzeStandardDb(zugang);
+  verdrahte(baueVerdrahtung(), zugang);
 
   try { await bereiteDatenbankVor(); }
   catch (e) {

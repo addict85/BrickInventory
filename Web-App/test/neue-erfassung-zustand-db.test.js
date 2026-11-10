@@ -53,7 +53,7 @@ test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', {
                     VALUES ($1,$2,'EUR',$3,$3,$3,$3,5,NOW())
                     ON CONFLICT (set_number,condition,currency_code) DO UPDATE SET avg_price=$3`, [SET, c, p]);
 
-    const { updateSet } = _req('src/sets/setService.js');
+    const { updateSet } = _req('src/sets/index.js');
     await updateSet(uid, SET, { quantity: 2 });
 
     const erf = await db.all(

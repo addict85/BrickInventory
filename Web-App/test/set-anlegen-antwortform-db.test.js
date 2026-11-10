@@ -27,7 +27,7 @@ Module.prototype.require = function (name) {
     return new Proxy(m, { get: (t, k) => {
       if (k === 'setErgaenzen' && gestellteAddSet !== null) return async () => ({ name: 'Testset' });
       if (k !== 'setErfassen' || gestellteAddSet === null) return t[k];
-      return async (...args) => { stellungGerufen++; return gestellteAddSet(...args); };
+      return async (_sk, ...args) => { stellungGerufen++; return gestellteAddSet(...args); };
     } });
   return m;
 };

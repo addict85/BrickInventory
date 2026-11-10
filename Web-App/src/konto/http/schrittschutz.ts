@@ -3,8 +3,8 @@
  * zweiten Faktor: Sie haben keinen Keystore. */
 import type { Request, Response, NextFunction } from 'express';
 import { familieAus, pruefeFreigabe, type Schrittaktion } from '../geraeteChallenge';
-import { sendeFehler } from '../../infra/fehlerTexte';
 import { meldeFehler } from '../../infra/fehler';
+import { sendeFehler } from '../../http/httpAntwort';
 
 /** Die Schritte, vor denen die App ihren Schrittschutz zeigt. Die Verwaltung
  * prüft requireApiAdmin selbst, damit keine Verwalter-Route an der Liste vorbeigeht. */

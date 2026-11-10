@@ -41,7 +41,7 @@ Module.prototype.require = function (/** @type {string} */ name, /** @type {any[
     return new Proxy(m, { get: (t, k) => (k === 'zieheNach' || k === 'zieheNachNeuanlage' ? () => {} : t[k]) });
   if (typeof name === 'string' && /[/\\]erfassen(\.js)?$/.test(name))
     return new Proxy(m, {
-      get: (t, k) => (k === 'setErfassen' && gestellteAddSet ? gestellteAddSet : t[k]),
+      get: (t, k) => (k === 'setErfassen' && gestellteAddSet ? (_sk, ...a) => gestellteAddSet?.(...a) : t[k]),
     });
   return m;
 };
@@ -108,7 +108,7 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     });
     return { status: r.status, body: await r.json() };
   };
-  const { getSets, getSet } = _req('src/sets/lesen.js');
+  const { getSets, getSet } = _req('src/sets/index.js');
 
   await t.test('ein ausdrücklich angefragter Zustand schlägt die Erfassungs-Bewertung', async () => {
     const { getCurrentMarketPrice } = _req('src/finanzen/marketPrice.js');

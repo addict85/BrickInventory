@@ -1,4 +1,4 @@
-import { fehlerAntwort } from '../../src/http/httpAntwort';
+import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
 import { schreibziel } from '../../src/haushalt/haushalt';
 import { getBlColorMap, getManualParts, getOwnedQuantities, getParts, getPartsColors, getPartsStats, getPartsCategories } from '../../src/teile/abfragen';
@@ -10,13 +10,12 @@ import { getSetting } from '../../src/einstellungen/settings';
 import { getPartPriceHistory } from '../../src/finanzen/priceHistory';
 import { aendereTeilFarbe } from '../../src/teile/teilFarbeAendern';
 import { verwendendeSets } from '../../src/bestand/gemeinsam';
-import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../../src/bestand/lagerort';
 import { loescheTeil } from '../../src/sammlung/loeschen';
-import { vertragsRouter } from '../../src/vertrag/pruefen';
 import { seiteAus } from '../../src/infra/seite';
 import { Abstriche } from '../../src/infra/ergebnis';
-import type { Anfrage, Antwort } from '../../src/vertrag';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
 const router = vertragsRouter();
 
 router.get('/parts', requireToken, async (req: Anfrage<'GET /api/v1/parts'>, res: Antwort<'GET /api/v1/parts'>) => {

@@ -2,7 +2,7 @@
  * Ausführlich: docs/begruendungen/src/finanzen/financeCalc.ts.md#abschnitt */
 export {
   DEFAULT_PRICE_CONDITION,
-  speicherePreis, cacheUsable, preisAusCache,
+  speicherePreis, cacheUsable, preisAusCache, leerePreisCache,
   checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus,
   fetchPrice, parallelLimit, resolveBlColorId, resolveBlPartNumber,
   fetchPartPrice, fetchMinifigPrice, ladeTeilepreiseVor, ladeFigurenpreiseVor,

@@ -1,8 +1,7 @@
 /** /api/v1/wanted — die Merkliste. Die Regeln stehen in src/merkliste/; hier
  * nur Blickfeld, Schreibrecht und Fehlerübersetzung. */
 import { oeffentlicherFehler } from '../../src/infra/fehler';
-import { fehlerAntwort } from '../../src/http/httpAntwort';
-import { sendeFehler } from '../../src/infra/fehlerTexte';
+import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
 import { schreibziel } from '../../src/haushalt/haushalt';
 import { legeMerkpostenAn, loescheMerkposten, verschiebeMerkposten, uebernimm, merkpostenVon, preiseBeiderZustaende } from '../../src/merkliste/merkliste';
@@ -16,9 +15,9 @@ import type { z } from 'zod';
 import type { WantedXmlErgebnis } from '../../src/vertrag/merkliste';
 
 import { jsonOderNull } from '../../src/infra/validate';
-import { vertragsRouter } from '../../src/vertrag/pruefen';
 import { seiteAus } from '../../src/infra/seite';
-import type { Anfrage, Antwort } from '../../src/vertrag';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
 const router = vertragsRouter();
 type WantedXmlBericht = z.infer<typeof WantedXmlErgebnis>;
 

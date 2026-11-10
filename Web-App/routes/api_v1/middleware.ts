@@ -14,8 +14,8 @@ import type { Sicht } from '../../src/haushalt/haushalt';
 /** Wer fragt und welche Konten er gewählt hat; den Bereich löst der Dienst auf. */
 export const sichtVon = (req: AuthedRequest & { abfrage: { accounts?: string | undefined } }): Sicht =>
   ({ nutzer: req.apiUser.user_id, konten: req.abfrage.accounts });
-import { sendeFehler } from '../../src/infra/fehlerTexte';
-import { waechter } from '../../src/vertrag/pruefen';
+import { sendeFehler } from '../../src/http/httpAntwort';
+import { waechter } from '../../src/http/vertragsRouter';
 
 export function bearerToken(req: { headers: { authorization?: string | undefined } }): string | null {
   const auth = req.headers.authorization || '';

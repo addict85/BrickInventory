@@ -37,13 +37,17 @@ const { dateiFehler, fehlerText } = _req('src/infra/fehlerTexte.js');
 // Die Merkliste eine Ebene tiefer: Der Import läuft als Auftrag und ruft den Dienst intern.
 ersetze('src/merkliste/repository/merkliste.js', { merkeSetVor: async () => { throw new Error(GEHEIM); } });
 // Angelegt wird ohne Netz; scheitern kann danach nur das Ergänzen im offenen Strom.
-ersetze('src/sets/erfassen.js', {
+// Die Sets-Dienste des Prozesses mit zwei ersetzten (src/sets/prozess.ts).
+const setsProzess = _req('src/sets/prozess.js');
+const echteSets = setsProzess.sets();
+setsProzess.verdrahteSets(() => ({
+  ...echteSets,
   setErfassen: async (e) => {
     if (e.setNumber === 'FACH-1') throw dateiFehler('ungueltig', 'setnummer_ungueltig');
     return { action: 'added', set_number: e.setNumber, name: e.setNumber, katalog_offen: true, ergaenzung: 'ausstehend', besitzer: e.anfragender };
   },
   setErgaenzen: async () => { throw new Error(GEHEIM); },
-});
+}));
 
 const db = _req('db/database.js');
 

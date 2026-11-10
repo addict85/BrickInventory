@@ -4,6 +4,7 @@
  * Ausführlich: docs/begruendungen/test/portfolio-history-db.test.js.md#kopf
  */
 const test   = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -210,7 +211,7 @@ test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, a
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price,recorded_at)
                    VALUES ('88888-1','N','CHF',5,5, NOW() - INTERVAL '4000 days'),
                           ('__portfolio__1','N','CHF',7,7, NOW() - INTERVAL '4000 days')`);
-    process.env.PRICE_HISTORY_KEEP_DAYS = '1095';
+    umgebung({ PRICE_HISTORY_KEEP_DAYS: '1095' });
     const weg = await purgeAltePreise();
     assert.ok(weg >= 2, `nicht alles entfernt: ${weg}`);
     for (const sn of ['88888-1', '__portfolio__1'])
@@ -222,10 +223,10 @@ test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, a
     const { purgeAltePreise } = _req('src/finanzen/priceHistory.js');
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price,recorded_at)
                    VALUES ('77777-1','N','CHF',5,5, NOW() - INTERVAL '4000 days')`);
-    process.env.PRICE_HISTORY_KEEP_DAYS = '0';
+    umgebung({ PRICE_HISTORY_KEEP_DAYS: '0' });
     assert.equal(await purgeAltePreise(), 0);
     assert.equal((await db2.get(`SELECT COUNT(*)::int c FROM price_history WHERE set_number='77777-1'`)).c, 1);
-    delete process.env.PRICE_HISTORY_KEEP_DAYS;
+    umgebung({ PRICE_HISTORY_KEEP_DAYS: undefined });
   });
 
   await db2.pool.end().catch(() => {});

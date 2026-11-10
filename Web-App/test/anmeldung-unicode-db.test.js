@@ -62,10 +62,10 @@ test('Unicode-Schreibweisen derselben Adresse', { concurrency: 1 }, async (t) =>
     const anfrage = { ip: '203.0.113.9', socket: {}, headers: {} };
     for (let i = 0; i < 5; i++) {
       const r = await pruefeAnmeldedaten(anfrage, MAIL, 'falsch');
-      assert.equal(r.absage?.status, 401, `Versuch ${i + 1}`);
+      assert.equal(r.absage?.art, 'nicht_angemeldet', `Versuch ${i + 1}`);
     }
     const r = await pruefeAnmeldedaten(anfrage, VARIANTE, 'richtig-geheim');
-    assert.equal(r.absage?.status, 429, 'die Variante bekam frische Zähler');
+    assert.equal(r.absage?.art, 'zu_viele', 'die Variante bekam frische Zähler');
   });
 
   await t.test('die Rücksetz-Mail geht an die gespeicherte Adresse', async () => {

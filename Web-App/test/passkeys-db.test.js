@@ -30,14 +30,15 @@
  * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
  */
 const test = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
-process.env.APP_BASE_URL = 'https://lego.test';
+umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
+umgebung({ APP_BASE_URL: 'https://lego.test' });
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
@@ -203,8 +204,8 @@ test('Passkeys', { concurrency: 1 }, async (t) => {
   const appHerkunft = (h) => `android:apk-key-hash:${b64u(h)}`;
 
   await t.test('die eingetragene App meldet sich an und bekommt einen Token', async (tt) => {
-    process.env.PASSKEY_ANDROID_ZERTIFIKATE = APP_HASH.toString('hex').match(/../g).join(':');
-    tt.after(() => { delete process.env.PASSKEY_ANDROID_ZERTIFIKATE; });
+    umgebung({ PASSKEY_ANDROID_ZERTIFIKATE: APP_HASH.toString('hex').match(/../g).join(':') });
+    tt.after(() => { umgebung({ PASSKEY_ANDROID_ZERTIFIKATE: undefined }); });
     const a = await ruf('/passkey/anmelden', { antwort: anna.anmelden(await optionen(), { origin: appHerkunft(APP_HASH) }),
       mit_token: true, scope: 'app', label: 'Pixel' });
     assert.equal(a.status, 200, JSON.stringify(a.body));
@@ -224,11 +225,11 @@ test('Passkeys', { concurrency: 1 }, async (t) => {
 
   await t.test('eine App mit anderem oder ohne eingetragenes Zertifikat wird abgewiesen', async (tt) => {
     const fremd = crypto.createHash('sha256').update('fremdes-zertifikat').digest();
-    process.env.PASSKEY_ANDROID_ZERTIFIKATE = APP_HASH.toString('hex');
-    tt.after(() => { delete process.env.PASSKEY_ANDROID_ZERTIFIKATE; });
+    umgebung({ PASSKEY_ANDROID_ZERTIFIKATE: APP_HASH.toString('hex') });
+    tt.after(() => { umgebung({ PASSKEY_ANDROID_ZERTIFIKATE: undefined }); });
     const r = await ruf('/passkey/anmelden', { antwort: anna.anmelden(await optionen(), { origin: appHerkunft(fremd) }), mit_token: true });
     assert.equal(r.status, 401);
-    delete process.env.PASSKEY_ANDROID_ZERTIFIKATE;
+    umgebung({ PASSKEY_ANDROID_ZERTIFIKATE: undefined });
     const ohne = await ruf('/passkey/anmelden', { antwort: anna.anmelden(await optionen(), { origin: appHerkunft(APP_HASH) }), mit_token: true });
     assert.equal(ohne.status, 401, 'Ohne Eintrag nimmt der Server keine App an');
   });

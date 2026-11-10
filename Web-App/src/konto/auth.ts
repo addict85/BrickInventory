@@ -14,7 +14,7 @@ import { kontoGedrosselt } from './zielDrossel';
 import * as zf from './zweiterFaktor';
 import * as passkeys from './passkeys';
 import * as V from '../infra/validate';
-import type { FehlerCode } from '../infra/fehlerTexte';
+import type { FehlerArt, FehlerCode } from '../infra/fehlerTexte';
 import * as repo from './repository/zugaenge';
 import * as kontenRepo from './repository/konten';
 import type { TokenScope } from './repository/zugaenge';
@@ -296,11 +296,11 @@ export function isValidLoginIdentifier(value: unknown): boolean {
  * Route weiss, welche Sprache der Anfragende sieht.
  * @returns null = Login erlaubt */
 export function assertLoginAllowed(user: KontoZustand):
-    { status: number; code: FehlerCode; unverified?: boolean } | null {
+    { art: FehlerArt; code: FehlerCode; unverified?: boolean } | null {
   if (!user.is_active)
-    return { status: 403, code: 'konto_deaktiviert' };
+    return { art: 'verboten', code: 'konto_deaktiviert' };
   if (user.registrierung_offen === true && !user.is_admin)
-    return { status: 403, code: 'email_nicht_bestaetigt', unverified: true };
+    return { art: 'verboten', code: 'email_nicht_bestaetigt', unverified: true };
   return null;
 }
 
@@ -308,8 +308,9 @@ export function assertLoginAllowed(user: KontoZustand):
  * einem echten Konto, mit denselben Runden erzeugt. */
 const DUMMY_HASH = bcrypt.hashSync('nonexistent-account-placeholder', BCRYPT_ROUNDS);
 
+/** Fachlich, nicht HTTP: Den Status wählt die HTTP-Seite (src/http/fehlerArt.ts). */
 export interface AnmeldeAbsage {
-  status: number;
+  art: FehlerArt;
   code: FehlerCode;
   vars?: Record<string, string | number>;
   /** Der Client blendet dann „E-Mail erneut senden" ein. */
@@ -332,24 +333,24 @@ export interface Herkunft { ip?: string | null }
  * @param username Benutzername ODER E-Mail-Adresse. */
 export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, password: unknown, code?: unknown,
                                   passkeyAntwort?: unknown): Promise<AnmeldeErgebnis> {
-  const absage = (status: number, code: FehlerCode,
+  const absage = (art: FehlerArt, code: FehlerCode,
                   vars?: Record<string, string | number>, unverified?: boolean,
                   zweiterFaktor?: boolean): AnmeldeErgebnis =>
-    ({ ok: false, absage: { status, code, ...(vars ? { vars } : {}),
+    ({ ok: false, absage: { art, code, ...(vars ? { vars } : {}),
                             ...(unverified ? { unverified: true } : {}),
                             ...(zweiterFaktor ? { zweiterFaktor: true } : {}) } });
 
   if (!username || !password)
-    return absage(400, 'benutzername_passwort');
+    return absage('ungueltig', 'benutzername_passwort');
   if (!isValidLoginIdentifier(username))
-    return absage(400, 'name_oder_email_eingeben');
+    return absage('ungueltig', 'name_oder_email_eingeben');
 
   const ip = herkunft.ip || '?';
   const name = String(username);
   const gesperrt = await checkLoginAllowed(ip, name);
   if (gesperrt) {
     meldeAnmeldeereignis('anmeldung_gesperrt', { ip, konto: (await repo.kontoZurAnmeldung(name))?.id ?? null });
-    return absage(429, gesperrt.code, gesperrt.vars);
+    return absage('zu_viele', gesperrt.code, gesperrt.vars);
   }
 
   const user = await repo.kontoZurAnmeldung(name);
@@ -361,12 +362,12 @@ export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, 
   catch (e) {
     if (!(e instanceof BcryptUeberlast)) throw e;
     await gibAnmeldeplatzFrei(ip, name);
-    return absage(503, 'server_ausgelastet');
+    return absage('nicht_verfuegbar', 'server_ausgelastet');
   }
   // Gesperrt oder unbestätigt wie falsches Passwort: Eine eigene Absage verriete, dass es stimmte.
   if (!user || !passtDasPasswort || assertLoginAllowed(user)) {
     await fehlversuch('anmeldung_fehlgeschlagen', ip, name, user?.id);
-    return absage(401, 'anmeldedaten_ungueltig');
+    return absage('nicht_angemeldet', 'anmeldedaten_ungueltig');
   }
 
   let zugang: Anmeldeweg = 'passwort';
@@ -379,14 +380,14 @@ export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, 
     if (!mitPasskey && !String(code ?? '').trim()) {
       // Das Passwort stimmte; nur der Code fehlt noch — kein Fehlversuch.
       await gibAnmeldeplatzFrei(ip, name);
-      return ergaenzt(absage(401, 'zweiter_faktor_noetig', undefined, false, true));
+      return ergaenzt(absage('nicht_angemeldet', 'zweiter_faktor_noetig', undefined, false, true));
     }
     const gilt = mitPasskey
       ? await passkeys.anmeldungPruefen(passkeyAntwort, 'zweiter_faktor', user.id) === user.id
       : await zf.pruefeCode(user.id, code);
     if (!gilt) {
       await fehlversuch('zweiter_faktor_falsch', ip, name, user.id);
-      return ergaenzt(absage(401, 'zweiter_faktor_falsch', undefined, false, true));
+      return ergaenzt(absage('nicht_angemeldet', 'zweiter_faktor_falsch', undefined, false, true));
     }
   }
   await recordLoginSuccess(ip, name);

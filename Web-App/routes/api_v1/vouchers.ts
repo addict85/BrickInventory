@@ -5,8 +5,8 @@ import path from 'path';
 import multer from 'multer';
 import { FORMULAR_GRENZEN } from '../../src/http/dateiEmpfang';
 import { ohneFehlendeDatei } from '../../src/infra/fehler';
-import { fehlerAntwort } from '../../src/http/httpAntwort';
-import { sendeFehler, fehlerText, antwortSprache, dateiFehler, type FehlerCode, alsDoppelt } from '../../src/infra/fehlerTexte';
+import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
+import { fehlerText, antwortSprache, dateiFehler, type FehlerCode, alsDoppelt } from '../../src/infra/fehlerTexte';
 import { getGlobalSetting, getSetting } from '../../src/einstellungen/settings';
 import { landErlaubt, landFuerWaehrung } from '../../src/gutscheine/gutscheinGuthaben';
 import { frageGuthabenAb, ABSTAND_SEK } from '../../src/gutscheine/gutscheinGuthabenSchranke';
@@ -20,12 +20,11 @@ import { verbindeGutscheine } from '../../src/gutscheine/gutscheinPdfSchreiben';
 import { liesImHintergrund, HOECHSTENS_SEITEN } from '../../src/gutscheine/pdfLesen';
 import type { ExportGutschein } from '../../src/gutscheine/gutscheinPdfSchreiben';
 
-import { gutscheineDesKontos, gutschein, gutscheinAnlegen, gutscheinErsetzen, gutscheinAendern,
-         gutscheinPdfMerken, gutscheinLoeschen, guthabenMerken } from '../../src/gutscheine/dienst';
+import { gutscheineDesKontos, gutschein, gutscheinAnlegen, gutscheinErsetzen, gutscheinAendern, gutscheinPdfMerken, gutscheinLoeschen, guthabenMerken } from '../../src/gutscheine/dienst';
 import type { GutscheinZeile } from '../../src/gutscheine/dienst';
-import { vertragsRouter } from '../../src/vertrag/pruefen';
 import { seiteAus } from '../../src/infra/seite';
-import type { Anfrage, Antwort } from '../../src/vertrag';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
 
 const router = vertragsRouter();
 

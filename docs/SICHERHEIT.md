@@ -235,7 +235,7 @@ den Commits, nicht hier.
   Posten, Feldlängen, Menge 1–9999; nur bekannte Felder gehen in den Auftrag
   — `pdf-jobs-db`.
 - Rumpf und Abfrage im Betrieb gegen den API-Vertrag, unmittelbar vor der
-  Route (`eingabePruefen` in `src/vertrag/pruefen.ts`): falscher Typ,
+  Route (`eingabePruefen` in `src/http/vertragsRouter.ts`): falscher Typ,
   zu langer Text oder wiederholter Abfrageparameter ergeben 400
   `eingabe_ungueltig` — `eingabe-vertrag-db`. Routen ohne `eingabe` im
   Vertrag prüfen selbst (`src/infra/validate.ts`).

@@ -15,6 +15,7 @@
  *   f) baueAlarmMail ohne emailTemplate (html = text) → Schritt 4 rot
  */
 const test = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -77,7 +78,7 @@ test('2. und beherrscht beide Sprachen wirklich', () => {
 
 test('3. und jeder Aufrufer gibt sie mit — die Mail ist in der Sprache des Kontos', { timeout: 60_000 }, async (t) => {
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-  process.env.APP_BASE_URL = 'http://localhost';
+  umgebung({ APP_BASE_URL: 'http://localhost' });
   const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
   const gesendet = mailAttrappe();
   const _req = require('./helpers/sources').buildAndRequire();

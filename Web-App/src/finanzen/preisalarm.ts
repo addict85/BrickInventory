@@ -66,6 +66,11 @@ export async function setzeAlarm(
   return alarme.find(a => a.condition === condition)!;
 }
 
+/** Der Alarm wandert mit einer Vormerkung ins andere Konto (src/merkliste). */
+export async function alarmUebertragen(zuId: number, vonId: number, setNumber: string, condition: string): Promise<void> {
+  await repo.uebertrageAlarm(zuId, vonId, setNumber, condition);
+}
+
 /** Kein Fehler, wenn es keinen gab — der Wunsch ist erfüllt. */
 export async function loescheAlarm(userId: number, setNumber: string, condition: string) {
   const c = String(condition ?? 'N').toUpperCase();

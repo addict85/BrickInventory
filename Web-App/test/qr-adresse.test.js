@@ -16,13 +16,14 @@
  * Meldungen sind richtig; die zweite ist die, auf die es ankommt.
  */
 const test = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
+umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
 
 const { buildAndRequire, einhaengung, ohneKommentare } = require('./helpers/sources');
 const { testServer } = require('./helpers/server');
@@ -71,9 +72,9 @@ test('1. ohne APP_BASE_URL kommt kein Code — und keine Nonce', { concurrency: 
 
   // ── Fall 1: Die Variable fehlt ────────────────────────────────────────────
   const vorher = process.env.APP_BASE_URL;
-  t.after(() => { if (vorher === undefined) delete process.env.APP_BASE_URL;
-                  else process.env.APP_BASE_URL = vorher; });
-  delete process.env.APP_BASE_URL;
+  t.after(() => { if (vorher === undefined) umgebung({ APP_BASE_URL: undefined });
+                  else umgebung({ APP_BASE_URL: vorher }); });
+  umgebung({ APP_BASE_URL: undefined });
 
   const abgelehnt = await hole();
   assert.equal(abgelehnt.status, 503,
@@ -94,7 +95,7 @@ test('1. ohne APP_BASE_URL kommt kein Code — und keine Nonce', { concurrency: 
   // ── Fall 2: Die Variable ist gesetzt ──────────────────────────────────────
   // Mit ueberzaehligem Schraegstrich, denn genau der wuerde sich sonst zu
   // `https://host//?set=…` durchschlagen.
-  process.env.APP_BASE_URL = 'https://lego.example.org//';
+  umgebung({ APP_BASE_URL: 'https://lego.example.org//' });
   const gut = await hole();
   assert.equal(gut.status, 200, 'Mit APP_BASE_URL muss ein Code entstehen.');
   const d = await gut.json();

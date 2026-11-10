@@ -115,6 +115,33 @@ export async function setsMitBestandteil(uids: number[], tabelle: 'parts' | 'min
     params);
 }
 
+/** Mit dem Set gehen seine Teile und Figuren. */
+export async function entferneSetInhalt(tx: DbSchnittstelle, uids: number[], setNumber: string): Promise<void> {
+  await tx.run('DELETE FROM parts WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
+  await tx.run('DELETE FROM minifigs WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
+}
+
+/** Nur Schlüssel und Herkunft: Beschreibung und Stückzahl stehen im Katalog. */
+export async function kopiereSetInhalt(tx: DbSchnittstelle, tabelle: 'parts' | 'minifigs', sn: string, von: number, nach: number): Promise<number> {
+  const sql = {
+    parts: `INSERT INTO parts (user_id, set_number, part_number, color_id, source)
+            SELECT $1, set_number, part_number, color_id, source FROM parts
+             WHERE user_id = $2 AND set_number = $3 AND COALESCE(source,'set') <> 'manual'`,
+    minifigs: `INSERT INTO minifigs (user_id, set_number, fig_number, source)
+               SELECT $1, set_number, fig_number, source FROM minifigs
+                WHERE user_id = $2 AND set_number = $3 AND COALESCE(source,'set') <> 'manual'`,
+  }[tabelle];
+  return (await tx.run(sql, [nach, von, sn])).changes ?? 0;
+}
+
+/** Ohne Menge: Sie entsteht aus der Erfassung, die gleich mitwandert. */
+export async function legeManuellAn(tx: DbSchnittstelle, art: 'part' | 'fig', uid: number, schluessel: (string | number)[]): Promise<void> {
+  if (art === 'part')
+    await tx.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1,$2,$3,'manual')`, [uid, ...schluessel]);
+  else
+    await tx.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1,$2,'manual')`, [uid, ...schluessel]);
+}
+
 export function loescheTeilZeile(dbh: Pick<DbSchnittstelle, 'run'>, ownerId: number, partNumber: string, colorId: number) {
   return dbh.run("DELETE FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'",
     [ownerId, partNumber, colorId]);

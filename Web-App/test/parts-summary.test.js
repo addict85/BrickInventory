@@ -3,6 +3,7 @@
  * Ausführlich: docs/begruendungen/test/parts-summary.test.js.md#kopf
  */
 const test = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -67,7 +68,7 @@ try {
   // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
   process.env.DATABASE_URL = DB_URL;
-  process.env.SESSION_SECRET = 'test';
+  umgebung({ SESSION_SECRET: 'test' });
   db = _req('db/database.js');
   H  = require('./helpers/sources').handlerModul(_req);
   PS = _req('src/teile/partsSummary.js');

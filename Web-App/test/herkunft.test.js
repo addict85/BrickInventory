@@ -20,6 +20,7 @@
  *      Cookie-Sitzung ohne jede Herkunftsangabe", „ein Bearer-Kopf …"
  */
 const test   = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const path   = require('node:path');
 
@@ -65,18 +66,18 @@ test('Herkunft schreibender Anfragen', async (t) => {
     assert.equal(await ruf('POST', { origin: 'https://boese.example' }), 403, 'auch ohne Sitzung (Anmelde-CSRF)');
   });
   await t.test('ein Host, der nur so anfängt wie der eigene', async () => {
-    process.env.APP_BASE_URL = 'https://lego.example.org';
+    umgebung({ APP_BASE_URL: 'https://lego.example.org' });
     try {
       assert.equal(await ruf('POST', { ...SITZUNG, origin: 'https://lego.example.org.boese.example' }), 403);
       assert.equal(await ruf('POST', { ...SITZUNG, referer: 'https://lego.example.org.boese.example/' }), 403);
-    } finally { delete process.env.APP_BASE_URL; }
+    } finally { umgebung({ APP_BASE_URL: undefined }); }
   });
   await t.test('ein alter Browser von der eigenen Seite', async () => {
     assert.equal(await ruf('POST', { ...SITZUNG, origin: eigen() }), 200);
     assert.equal(await ruf('POST', { ...SITZUNG, referer: `${eigen()}/#/sets` }), 200);
-    process.env.APP_BASE_URL = 'https://lego.example.org';
+    umgebung({ APP_BASE_URL: 'https://lego.example.org' });
     try { assert.equal(await ruf('POST', { ...SITZUNG, origin: 'https://lego.example.org' }), 200, 'APP_BASE_URL'); }
-    finally { delete process.env.APP_BASE_URL; }
+    finally { umgebung({ APP_BASE_URL: undefined }); }
   });
   await t.test('lesend und mit Token', async () => {
     assert.equal(await ruf('GET', { 'sec-fetch-site': 'cross-site' }), 200);

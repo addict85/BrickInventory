@@ -11,6 +11,7 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (als Superuser verbunden).
  */
 const test = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
@@ -81,7 +82,7 @@ test('als Superuser ohne NODE_ENV: Start verweigert', { timeout: 60_000 }, async
 
 test('ein 5xx nennt ohne NODE_ENV keine Interna', () => {
   const alt = process.env.NODE_ENV;
-  delete process.env.NODE_ENV;
+  umgebung({ NODE_ENV: undefined });
   try {
     const { handleRouteError } = _req('src/http/httpAntwort.js');
     let antwort;
@@ -103,6 +104,6 @@ test('ein 5xx nennt ohne NODE_ENV keine Interna', () => {
     assert.equal(antwort.code, 'interner_fehler');
     assert.doesNotMatch(antwort.error, /geheim_intern/);
   } finally {
-    process.env.NODE_ENV = alt;
+    umgebung({ NODE_ENV: alt });
   }
 });

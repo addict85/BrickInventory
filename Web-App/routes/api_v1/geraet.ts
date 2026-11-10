@@ -1,12 +1,11 @@
 /** Der Geräteschlüssel der App und die Freigabe heikler Schritte; nur mit
  * App-Token, eine Browser-Sitzung bestätigt mit Passwort und zweitem Faktor. */
-import { fehlerAntwort } from '../../src/http/httpAntwort';
-import { sendeFehler } from '../../src/infra/fehlerTexte';
+import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken } from './middleware';
 import { familieAus, hinterlegeSchluessel, neueChallenge, loeseEin } from '../../src/konto/geraeteChallenge';
 import { istAppToken } from '../../src/konto/http/schrittschutz';
-import { vertragsRouter } from '../../src/vertrag/pruefen';
-import type { Anfrage, Antwort } from '../../src/vertrag';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
 
 const router = vertragsRouter();
 

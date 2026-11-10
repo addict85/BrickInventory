@@ -1,6 +1,6 @@
 /**
  * Eingaben werden im Betrieb gegen den Vertrag geprüft, bevor die Route läuft
- * (eingabePruefen in src/vertrag/pruefen.ts, von vertragsRouter() vor
+ * (eingabePruefen in src/http/vertragsRouter.ts, von vertragsRouter() vor
  * jeden Endpunkt gesetzt). Eine Liste statt eines Textes kam vorher an
  * USERNAME_RE vorbei bis ins SQL, und Freitext war unbegrenzt.
  *

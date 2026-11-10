@@ -1,5 +1,4 @@
 import net from 'node:net';
-import express from 'express';
 
 /** Nur ausdrücklich genannte Adressen: Jeder vertraute Absender kann seine
  * Client-Adresse frei angeben und so die Anmeldesperre umgehen. Hop-Zahlen,
@@ -33,14 +32,14 @@ export function proxyEintragGueltig(eintrag: string): boolean {
   return art === 4 ? p >= 16 && p <= 32 : p >= 64 && p <= 128;
 }
 
-const ohneV4Huelle = (adresse: string) => adresse.replace(/^::ffff:(?=\d+\.\d+\.\d+\.\d+$)/i, '');
+export const ohneV4Huelle = (adresse: string) => adresse.replace(/^::ffff:(?=\d+\.\d+\.\d+\.\d+$)/i, '');
 
 function nurLoopback(adresse: string): boolean {
   const a = ohneV4Huelle(adresse);
   return a === '::1' || /^127\.\d+\.\d+\.\d+$/.test(a);
 }
 
-function imDockerNetz(adresse: string): boolean {
+export function imDockerNetz(adresse: string): boolean {
   const a = ohneV4Huelle(adresse);
   const v4 = /^(\d+)\.(\d+)\.\d+\.\d+$/.exec(a);
   if (v4) return Number(v4[1]) === 172 && Number(v4[2]) >= 16 && Number(v4[2]) <= 31;
@@ -54,32 +53,4 @@ export function istDockerGateway(adresse: string): boolean {
   if (a.includes(':')) return a.toLowerCase().split(':').pop() === '1';
   const [, , o3, o4] = a.split('.');
   return o3 === '0' && o4 === '1';
-}
-
-/** Über das Gateway kommen auch Clients herein; geraten wird deshalb nie zu
- * ihm, sondern zu einer festen Proxy-Adresse. */
-export function proxyHinweis(trustProxy: string | undefined, warne: (text: string) => void = console.warn) {
-  let vertrauen: ReturnType<typeof proxyVertrauen>;
-  try { vertrauen = proxyVertrauen(trustProxy); } catch { vertrauen = false; }
-  // Dieselbe Auswertung wie im Server, damit Hinweis und Wirkung übereinstimmen.
-  const pruefer = express();
-  pruefer.set('trust proxy', vertrauen);
-  const vertraut = pruefer.get('trust proxy fn') as (adresse: string, hop: number) => boolean;
-  let gewarnt = vertrauen === false;
-  return (req: import('express').Request, _res: import('express').Response, next: import('express').NextFunction) => {
-    const von = req.socket?.remoteAddress || '';
-    if (!gewarnt && req.headers['x-forwarded-for'] && imDockerNetz(von) && !vertraut(von, 0)) {
-      gewarnt = true;
-      const ip = ohneV4Huelle(von);
-      warne(istDockerGateway(von)
-        ? `⚠️ [sicherheit] X-Forwarded-For kommt über das Docker-Gateway ${ip} und wird verworfen. Über das Gateway `
-          + 'erreichen auch Clients selbst den Server; ihm zu vertrauen hiesse, ihnen ihre Adresse zu glauben. Den '
-          + 'Reverse-Proxy mit fester Adresse ins Netz brickinventory-net stellen und genau diese in TRUST_PROXY '
-          + 'eintragen — siehe compose.yaml und README.md.'
-        : `⚠️ [sicherheit] Ein Reverse-Proxy erreicht den Server aus dem Docker-Netz unter ${ip}. Sein X-Forwarded-For `
-          + 'wird verworfen, und alle Clients teilen sich eine Adresse (Anmeldesperre, Drosseln). Ist das der eigene '
-          + `Proxy, ihm eine feste Adresse geben und TRUST_PROXY=${ip} setzen — siehe README.md.`);
-    }
-    next();
-  };
 }

@@ -18,7 +18,13 @@ async function sperreBisZumEnde(tx: DbSchnittstelle, klasse: number, schluessel:
  * @param scopeKey Bestandsschlüssel, z. B. die Set- oder Teilenummer */
 async function withInventoryLock<T>(userId: number, scopeKey: string | number, fn: (tx: DbSchnittstelle) => Promise<T>,
                                     o: db.TxOptionen = {}): Promise<T> {
-  return db.transaction(async (tx) => {
+  return mitInventarSperre(db, userId, scopeKey, fn, o);
+}
+
+/** Dasselbe über einen übergebenen Zugang (Bereiche mit Fabrik, src/sets/bereich.ts). */
+async function mitInventarSperre<T>(zugang: Pick<db.Db, 'transaction'>, userId: number, scopeKey: string | number,
+                                    fn: (tx: DbSchnittstelle) => Promise<T>, o: db.TxOptionen = {}): Promise<T> {
+  return zugang.transaction(async (tx) => {
     // Eine eigene Klasse statt der user_id als erstem Wert: Sonst sperrte
     // Konto 42 beim Verschieben eines Sets den Bild-Download desselben Sets
     // (LOCKS.BILD_DOWNLOAD = 42, hashtext(Setnummer)). Gleiche Streuwerte
@@ -92,5 +98,5 @@ async function gibSchluesselSperreFrei(c: Abfrager, namensraum: number, schluess
   await c.query('SELECT pg_advisory_unlock($1, hashtext($2))', [namensraum, schluessel]);
 }
 
-export { withInventoryLock, bestandsSchluessel, sperreHaushaltswaehrung, mitSitzungsSperre, belegeSitzungsSperre,
+export { withInventoryLock, mitInventarSperre, bestandsSchluessel, sperreHaushaltswaehrung, mitSitzungsSperre, belegeSitzungsSperre,
   versucheSchluesselSperre, gibSchluesselSperreFrei, sperreBisZumEnde };

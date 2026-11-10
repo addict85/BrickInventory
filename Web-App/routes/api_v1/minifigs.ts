@@ -1,4 +1,4 @@
-import { fehlerAntwort } from '../../src/http/httpAntwort';
+import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
 import { schreibziel } from '../../src/haushalt/haushalt';
 import { getManualMinifigs, getMinifigStats, getMinifigs } from '../../src/figuren/abfragen';
@@ -6,17 +6,16 @@ import { addManualFig, updateManualFig } from '../../src/figuren/manuelleFiguren
 import { getSetting } from '../../src/einstellungen/settings';
 import { getMinifigPriceHistory } from '../../src/finanzen/priceHistory';
 import { verwendendeSets } from '../../src/bestand/gemeinsam';
-import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../../src/bestand/lagerort';
 import { loescheFigur } from '../../src/sammlung/loeschen';
 import { teileDerFigur } from '../../src/figuren/dienst';
 import { csvEmpfang } from '../../src/http/dateiEmpfang';
 import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
-import { vertragsRouter } from '../../src/vertrag/pruefen';
 import { seiteAus } from '../../src/infra/seite';
 import { Abstriche } from '../../src/infra/ergebnis';
-import type { Anfrage, Antwort } from '../../src/vertrag';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
 const router = vertragsRouter();
 
 router.get('/minifigs', requireToken, async (req: Anfrage<'GET /api/v1/minifigs'>, res: Antwort<'GET /api/v1/minifigs'>) => {

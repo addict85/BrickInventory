@@ -18,12 +18,13 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test   = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const fs     = require('node:fs');
 const path   = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
+umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
@@ -47,7 +48,7 @@ test('Anleitung hochladen', { concurrency: 1 }, async (t) => {
   fs.rmSync(ordner, { recursive: true, force: true });
   const altKontingent = process.env.UPLOAD_KONTINGENT_MB;
   t.after(async () => {
-    if (altKontingent === undefined) delete process.env.UPLOAD_KONTINGENT_MB; else process.env.UPLOAD_KONTINGENT_MB = altKontingent;
+    if (altKontingent === undefined) umgebung({ UPLOAD_KONTINGENT_MB: undefined }); else umgebung({ UPLOAD_KONTINGENT_MB: altKontingent });
     fs.rmSync(ordner, { recursive: true, force: true });
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.run('DELETE FROM set_catalog WHERE set_number = $1', [SET]).catch(() => {});
@@ -93,7 +94,7 @@ test('Anleitung hochladen', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('über dem Kontingent', async () => {
-    process.env.UPLOAD_KONTINGENT_MB = String(1 / 1024);   // 1 KB
+    umgebung({ UPLOAD_KONTINGENT_MB: String(1 / 1024) });   // 1 KB
     const gross = Buffer.concat([PDF, Buffer.alloc(2048, 0x20)]);
     const vorher = dateien().length;
     const r = await hochladen(gross, 'application/pdf', 'gross.pdf');
@@ -105,7 +106,7 @@ test('Anleitung hochladen', { concurrency: 1 }, async (t) => {
   await t.test('abgewiesen, bevor der Inhalt ankommt', async () => {
     // Nur der Kopf mit 10 MB Content-Length, der Inhalt bleibt aus: Antwortet
     // der Server trotzdem, hat er vor dem Lesen entschieden.
-    process.env.UPLOAD_KONTINGENT_MB = '1';
+    umgebung({ UPLOAD_KONTINGENT_MB: '1' });
     const http = require('node:http');
     const status = await new Promise((fertig, fehl) => {
       const anfrage = http.request(`${base}/api/v1/sets/${SET}/instructions/upload`, { method: 'POST',
@@ -119,7 +120,7 @@ test('Anleitung hochladen', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('für ein Set, das das Konto nicht hat', async () => {
-    delete process.env.UPLOAD_KONTINGENT_MB;
+    umgebung({ UPLOAD_KONTINGENT_MB: undefined });
     const vorher = dateien().length;
     const r = await hochladen(PDF, 'application/pdf', 'fremd.pdf', '99074-1');
     assert.equal(r.status, 404, JSON.stringify(r.body));

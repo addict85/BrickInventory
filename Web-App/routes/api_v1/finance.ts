@@ -4,9 +4,9 @@ import { requireToken, sichtVon } from './middleware';
 import { getPortfolioHistory } from '../../src/finanzen/portfolioHistory';
 import { computeMinifigsValuation, computePartsValuation, computePnl, computeSetsValuation } from '../../src/finanzen/financeCalc';
 import { einzelwert } from '../../src/infra/validate';
-import { vertragsRouter } from '../../src/vertrag/pruefen';
 import { seiteAus } from '../../src/infra/seite';
-import type { Anfrage, Antwort } from '../../src/vertrag';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
 const router = vertragsRouter();
 
 /** Preisfehler kommen mit Code aus der Bewertung; der Text folgt der Sprache der Anfrage, nicht dem Server. */

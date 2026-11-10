@@ -2,17 +2,17 @@
  * zweiten Faktor des Verwalters und steht im Protokoll. */
 import { protokolliere } from '../../src/verwaltung/dienst';
 import * as K from '../../src/konto/konten';
-import { fehlerAntwort } from '../../src/http/httpAntwort';
+import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { USERNAME_RE } from '../../src/konto/auth';
 import { kontoEntfernen } from '../../src/konto/kontoEntfernen';
 import { nutzerId, angemeldeteNutzerId, bestaetigeMitFaktor, nutzerName } from '../../src/konto/http/anmeldung';
 import { hinweisNebenher, verwalterHinweisNebenher } from '../../src/konto/kontoHinweis';
 import { passwortMangel } from '../../src/infra/passwortRegel';
 import { requireApiAdmin } from '../api_v1/middleware';
-import { sendeFehler, alsDoppelt } from '../../src/infra/fehlerTexte';
+import { alsDoppelt } from '../../src/infra/fehlerTexte';
 import * as zf from '../../src/konto/zweiterFaktor';
-import { vertragsRouter } from '../../src/vertrag/pruefen';
-import type { Antwort, OffeneAnfrage } from '../../src/vertrag';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Antwort, OffeneAnfrage } from '../../src/http/vertragsRouter';
 
 const router = vertragsRouter();
 const requireAdmin = requireApiAdmin;

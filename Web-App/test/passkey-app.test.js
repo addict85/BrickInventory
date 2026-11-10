@@ -13,6 +13,7 @@
  *      Eintrag gibt es kein Dokument“ und „das Dokument nennt …“
  */
 const test = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const { buildAndRequire } = require('./helpers/sources');
@@ -28,9 +29,9 @@ const MIT_DOPPELPUNKT = HASH.toString('hex').toUpperCase().match(/../g).join(':'
 
 function mitUmgebung(t, werte) {
   const vorher = Object.fromEntries(Object.keys(werte).map(k => [k, process.env[k]]));
-  Object.assign(process.env, werte);
+  umgebung(werte);
   t.after(() => {
-    for (const [k, v] of Object.entries(vorher)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+    for (const [k, v] of Object.entries(vorher)) { if (v === undefined) umgebung({ [k]: undefined }); else umgebung({ [k]: v }); }
   });
 }
 

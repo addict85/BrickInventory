@@ -181,10 +181,10 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
   // zusammen, nicht eines statt des anderen.
   assert.ok(src.includes('sets.setVerschieben('), 'Die Route ruft den Dienst');
   assert.ok(
-    read('src/sets/dienst.ts').includes('verschiebeSet(sn, fromId'),
+    read('src/sets/dienst.ts').includes('verschiebeSet(sk, sn, fromId'),
     'Das Verschieben läuft über verschiebeSet',
   );
-  assert.ok(mv.includes('withInventoryLock(fromId, sn'), 'Serialisiert über das Quellkonto');
+  assert.ok(mv.includes('mitInventarSperre(sk.db, fromId, sn'), 'Serialisiert über das Quellkonto');
   // Ganzes Set und einzelne Kaufpreise laufen durch DIESELBE Umsetzung — der
   // Teilfall ist kein Sonderweg, sondern der allgemeine Fall mit Auswahl.
   // Ausführlich: docs/begruendungen/test/household.test.js.md#acq-stelle

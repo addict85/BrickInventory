@@ -19,12 +19,13 @@
  * Schema neu an).
  */
 const test = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.APP_BASE_URL = 'http://localhost';
-delete process.env.ADMIN_PASSWORD;
+umgebung({ APP_BASE_URL: 'http://localhost' });
+umgebung({ ADMIN_PASSWORD: undefined });
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
@@ -132,10 +133,10 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
   await t.test('ein schwaches ADMIN_PASSWORD wird nicht übernommen', async () => {
     await db.run('DROP SCHEMA public CASCADE');
     await db.run('CREATE SCHEMA public');
-    process.env.ADMIN_PASSWORD = 'passwort123';
+    umgebung({ ADMIN_PASSWORD: 'passwort123' });
     const echt = { log: console.log, warn: console.warn }, warnungen = [];
     console.log = () => {}; console.warn = (...a) => warnungen.push(a.join(' '));
-    try { await db.initSchema(); } finally { Object.assign(console, echt); delete process.env.ADMIN_PASSWORD; }
+    try { await db.initSchema(); } finally { Object.assign(console, echt); umgebung({ ADMIN_PASSWORD: undefined }); }
     const admin = await db.get("SELECT password_hash, must_change_password FROM users WHERE username = 'admin'");
     assert.equal(bcrypt.compareSync('passwort123', admin.password_hash), false, 'das schwache Passwort gilt');
     assert.equal(admin.must_change_password, true);

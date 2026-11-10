@@ -12,6 +12,7 @@
  *      rot: „der Server meldet die gebaute Version“ („unbekannt“)
  */
 const test = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -45,11 +46,11 @@ test('der Server meldet die gebaute Version', () => {
   const _req = require('./helpers/sources').buildAndRequire();
   const gebaut = JSON.parse(fs.readFileSync(path.join(ROOT, 'dist', 'version.json'), 'utf8')).version;
   const alt = process.env.APP_VERSION;
-  delete process.env.APP_VERSION;
+  umgebung({ APP_VERSION: undefined });
   try {
     const { appVersion } = _req('src/infra/appVersion.js');
     assert.equal(appVersion(), gebaut);
-    process.env.APP_VERSION = 'laufzeit-1';
+    umgebung({ APP_VERSION: 'laufzeit-1' });
     assert.equal(appVersion(), 'laufzeit-1', 'APP_VERSION zur Laufzeit geht vor');
-  } finally { if (alt === undefined) delete process.env.APP_VERSION; else process.env.APP_VERSION = alt; }
+  } finally { if (alt === undefined) umgebung({ APP_VERSION: undefined }); else umgebung({ APP_VERSION: alt }); }
 });

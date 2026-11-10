@@ -31,7 +31,7 @@ Module.prototype.require = function (name) {
       get: (t, k) => {
         if (k === 'nacharbeitEinstellen') return async () => {};
         if (k !== 'addSetWithDate') return t[k];
-        return async (sn, qty) => {
+        return async (_sk, sn, qty) => {
           if (sn === 'abc') throw new Error('Das ist keine Setnummer');
           gebucht.push(`${sn}×${qty}`);
           return { action: 'added', set_number: sn, ...(sn === '99999-1' ? { katalog_offen: true } : {}) };

@@ -480,16 +480,3 @@ export function fehlerText(
   }
   return text;
 }
-
-/** `code` steht neben dem Satz, damit ein Client reagieren kann, ohne Text zu
- * vergleichen. */
-export function sendeFehler(
-  req: { headers?: Record<string, unknown> } | undefined, res: { status(c: number): { json(b: unknown): unknown } },
-  status: number, code: FehlerCode, vars?: Record<string, string | number>,
-): void {
-  res.status(status).json({
-    success: false,
-    error: fehlerText(code, antwortSprache(req), vars),
-    code,
-  });
-}

@@ -37,7 +37,7 @@ const finanzQuelle = () => {
   return teile.join('\n');
 };
 
-module.exports = { ROOT, serverOnly, imgProxy, serverAll, finanzQuelle };
+module.exports = { ROOT, serverOnly, imgProxy, serverAll, finanzQuelle, umgebung };
 
 /**
  * Baut die .ts-Quellen nach dist/ (nie neben die Quellen) und liefert einen
@@ -93,7 +93,7 @@ function baueDist() {
 }
 
 function buildAndRequire() {
-  // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/vertrag/pruefen.ts).
+  // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/http/vertragsRouter.ts).
   process.env.VERTRAG_PRUEFEN ??= '1';
   // Ohne NODE_ENV gelten die Regeln des Betriebs (Superuser-Verbot, APP_BASE_URL);
   // die Test-DB läuft als Superuser, und gestartete Server erben diese Umgebung.
@@ -105,11 +105,27 @@ function buildAndRequire() {
   const echt = () => require(path.join(ROOT, 'dist', 'startup/verdrahtung.js')).baueVerdrahtung();
   const faul = new Proxy({}, { get: (_z, k) => (...a) => echt().nacharbeit[k](...a) });
   require(path.join(ROOT, 'dist', 'src/auftraege/nacharbeit.js')).verdrahteNacharbeit(faul);
-  require(path.join(ROOT, 'dist', 'db/database.js')).setzeErststart(() => echt().erststart());
+  const dbModul = require(path.join(ROOT, 'dist', 'db/database.js'));
+  dbModul.setzeErststart(() => echt().erststart());
+  // prozess.js lädt nichts; bereich.js erst beim ersten Gebrauch der Sets-Dienste.
+  require(path.join(ROOT, 'dist', 'src/sets/prozess.js')).verdrahteSets(() =>
+    require(path.join(ROOT, 'dist', 'src/sets/bereich.js')).erzeugeSets({ db: dbModul.standardDb(), nacharbeit: faul }));
   return rel => require(path.join(ROOT, 'dist', rel));
 }
 
 module.exports.buildAndRequire = buildAndRequire;
+
+/** Stellt Umgebungsvariablen um (undefined löscht) und lässt konfig() sie neu
+ *  lesen: Der Server liest sie einmal beim Start (src/infra/konfig.ts). */
+function umgebung(werte) {
+  for (const [k, v] of Object.entries(werte)) {
+    if (v === undefined) delete process.env[k];
+    else process.env[k] = v;
+  }
+  // Noch nicht geladen: Der erste konfig()-Aufruf liest die neuen Werte ohnehin.
+  const datei = path.join(ROOT, 'dist', 'src/infra/konfig.js');
+  if (require.cache[datei]) require(datei).konfigNeuLesen();
+}
 module.exports.baueDist = baueDist;
 module.exports.DIST = path.join(ROOT, 'dist');
 
@@ -214,8 +230,9 @@ module.exports.handlerQuelle = handlerQuelle;
 
 /** Das gebaute Modul für einen Namen aus den Leseabfragen. */
 function handlerModul(_req) {
+  // Die Sets-Dienste bekommen ihren Kontext über die Fassade (src/sets/index.ts).
   return Object.assign({},
-    ..._req && HANDLER_MODULE.map(m => _req(`${m}.js`)));
+    ..._req && HANDLER_MODULE.map(m => _req(`${m}.js`)), _req && _req('src/sets/index.js'));
 }
 module.exports.handlerModul = handlerModul;
 

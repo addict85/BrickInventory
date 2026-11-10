@@ -288,6 +288,10 @@ export function auftragsStand(id: string) {
     'SELECT status, fortschritt, ergebnis FROM auftraege WHERE id = $1', [id]);
 }
 
+export function zieheBricksetTermineVor(bis: Date) {
+  return db.run(`UPDATE auftraege SET faellig_ab = $1 WHERE art = 'brickset' AND status = 'offen' AND faellig_ab > NOW()`, [bis]);
+}
+
 export async function schreibeErgebnis(id: string, ergebnis: Record<string, unknown> | null): Promise<void> {
   await db.run('UPDATE auftraege SET ergebnis = $2 WHERE id = $1', [id, ergebnis === null ? null : JSON.stringify(ergebnis)]);
 }

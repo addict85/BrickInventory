@@ -3,19 +3,19 @@
 import type express from 'express';
 import path from 'path';
 import { fehlertext, oeffentlicherFehler } from '../../src/infra/fehler';
-import { fehlerAntwort, pfadParam } from '../../src/http/httpAntwort';
+import { fehlerAntwort, pfadParam, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
 import { householdMembers } from '../../src/haushalt/haushalt';
 import { lagerorte, legeOrtAn, benenneOrtUm, loescheOrt, lagerSchreibkonto, setzeVorgabe } from '../../src/bestand/lagerort';
 import { alleAlarme, ausgeloesteSeit } from '../../src/finanzen/preisalarm';
 import { csvEmpfang, uploadKontingentBytes, privaterOrdner, privaterEmpfang, kontingentReichtFuer, pruefeEmpfangeneDatei } from '../../src/http/dateiEmpfang';
 import { sendCsv, uebersprungenHinweis } from '../../src/infra/csvExport';
-import { sendeFehler, antwortSprache } from '../../src/infra/fehlerTexte';
+import { antwortSprache } from '../../src/infra/fehlerTexte';
 import * as sets from '../../src/sets';
 import { registerSse } from '../../src/http/sseRegistry';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/http/anmeldung';
-import { vertragsRouter } from '../../src/vertrag/pruefen';
-import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/vertrag';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/http/vertragsRouter';
 const router = vertragsRouter();
 
 // ── Feste Pfade VOR den Pfaden mit :setNumber ────────────────────────────────

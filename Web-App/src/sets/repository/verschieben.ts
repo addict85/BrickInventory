@@ -6,20 +6,11 @@ export async function hatInhalt(tx: DbSchnittstelle, tabelle: Inhalt, uid: numbe
   return !!await tx.get(`SELECT 1 AS ok FROM ${tabelle} WHERE user_id=$1 AND set_number=$2 LIMIT 1`, [uid, sn]);
 }
 
-/** Nur Schlüssel und Herkunft: Beschreibung und Stückzahl stehen im Katalog. */
-export async function kopiereInhalt(tx: DbSchnittstelle, tabelle: Inhalt, sn: string, von: number, nach: number): Promise<number> {
-  const sql = {
-    parts: `INSERT INTO parts (user_id, set_number, part_number, color_id, source)
-            SELECT $1, set_number, part_number, color_id, source FROM parts
-             WHERE user_id = $2 AND set_number = $3 AND COALESCE(source,'set') <> 'manual'`,
-    minifigs: `INSERT INTO minifigs (user_id, set_number, fig_number, source)
-               SELECT $1, set_number, fig_number, source FROM minifigs
-                WHERE user_id = $2 AND set_number = $3 AND COALESCE(source,'set') <> 'manual'`,
-    instructions: `INSERT INTO instructions (user_id, set_number, url, description, local_path)
+/** Teile und Figuren kopiert der Bestand (src/bestand/gemeinsam.ts). */
+export async function kopiereAnleitungen(tx: DbSchnittstelle, sn: string, von: number, nach: number): Promise<number> {
+  return (await tx.run(`INSERT INTO instructions (user_id, set_number, url, description, local_path)
                    SELECT $1, set_number, url, description, local_path
-                     FROM instructions WHERE user_id = $2 AND set_number = $3`,
-  }[tabelle];
-  return (await tx.run(sql, [nach, von, sn])).changes ?? 0;
+                     FROM instructions WHERE user_id = $2 AND set_number = $3`, [nach, von, sn])).changes ?? 0;
 }
 
 /** Spalten ausgeschrieben: Ein Stern verliert still eine gelöschte Spalte. */
@@ -90,13 +81,6 @@ export async function erfassteMenge(tx: DbSchnittstelle, art: Art, uid: number, 
   return Number(r?.summe ?? 0);
 }
 
-/** Ohne Menge: Sie entsteht aus der Erfassung, die gleich mitwandert. */
-export async function legeManuellAn(tx: DbSchnittstelle, art: Art, uid: number, schluessel: (string | number)[]): Promise<void> {
-  if (art === 'part')
-    await tx.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1,$2,$3,'manual')`, [uid, ...schluessel]);
-  else
-    await tx.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1,$2,'manual')`, [uid, ...schluessel]);
-}
 
 export async function loescheManuelleErfassung(tx: DbSchnittstelle, art: Art, id: number, konten: number[]): Promise<void> {
   await tx.run(`DELETE FROM ${ERF[art]} WHERE id = $1 AND user_id = ANY($2)`, [id, konten]);
