@@ -48,29 +48,6 @@ export function setZeileDesKontos(userId: number, setNumber: string) {
   return db.get<{ id: number }>('SELECT id FROM sets WHERE user_id = $1 AND set_number = $2', [userId, setNumber]);
 }
 
-/** Vorhandene Werte bleiben, wo der neue Abruf nichts liefert. Name, Jahr, Thema
- * und Teile gehen nach rb_sets, aber nur in eine Zeile der Erfassung ('api'):
- * Was das Rebrickable-CSV führt, überschreibt kein Einzelabruf. */
-export function merkeSetKatalog(setNumber: string, name: string | null, year: number | null, theme: string | null, pieces: number | null, minifigs: number | null, imageUrl: string | null, localImage: string | null, themeId: number | null = null) {
-  return db.transaction(async tx => {
-    await tx.run(`INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, herkunft)
-                  VALUES ($1, COALESCE($2, 'Set ' || $1), $3,
-                          COALESCE($6, (SELECT t.id FROM rb_themes t WHERE t.name = $4
-                                         ORDER BY t.parent_id NULLS FIRST, t.id LIMIT 1)), $5, 'api')
-                  ON CONFLICT (set_num) DO UPDATE SET
-                    name = COALESCE($2, rb_sets.name), year = COALESCE($3, rb_sets.year),
-                    theme_id = COALESCE(EXCLUDED.theme_id, rb_sets.theme_id),
-                    num_parts = COALESCE($5, rb_sets.num_parts)
-                  WHERE rb_sets.herkunft = 'api'`, [setNumber, name, year, theme, pieces, themeId]);
-    await tx.run(`INSERT INTO set_catalog (set_number, minifigs, image_url, image_local) VALUES ($1, $2, $3, $4)
-                  ON CONFLICT (set_number) DO UPDATE SET
-                    minifigs = COALESCE($2, set_catalog.minifigs),
-                    image_url = COALESCE($3, set_catalog.image_url),
-                    image_local = COALESCE($4, set_catalog.image_local), updated_at = NOW()`,
-                 [setNumber, minifigs, imageUrl, localImage]);
-  });
-}
-
 export function legeSetZeileAn(tx: DbSchnittstelle, userId: number, setNumber: string) {
   return tx.run('INSERT INTO sets (user_id,set_number) VALUES ($1,$2) ON CONFLICT (user_id,set_number) DO NOTHING', [userId, setNumber]);
 }
@@ -81,31 +58,10 @@ export async function sperreSetErfassen(tx: DbSchnittstelle, setNumber: string, 
   await sperreBisZumEnde(tx, LOCKS.INVENTAR, `${besitzer}|${setNumber}`);
 }
 
-const PLATZHALTER_SQL = "(rs.name = 'Set ' || rs.set_num AND rs.year IS NULL AND rs.theme_id IS NULL AND rs.num_parts IS NULL)";
-
-/** Ohne Netz angelegt: Der Platzhalter macht das Set lesbar, bis der Auftrag den Katalog holt.
- * Kennt rb_sets das Set schon (CSV), bleibt dessen Zeile. */
-export async function merkeKatalogPlatzhalter(dbh: DbSchnittstelle, setNumber: string) {
-  await dbh.run("INSERT INTO rb_sets (set_num, name, herkunft) VALUES ($1, 'Set ' || $1, 'api') ON CONFLICT (set_num) DO NOTHING", [setNumber]);
-  await dbh.run('INSERT INTO set_catalog (set_number) VALUES ($1) ON CONFLICT (set_number) DO NOTHING', [setNumber]);
-  return katalogStand(setNumber, dbh);
-}
-
-export function katalogStand(setNumber: string, dbh: DbSchnittstelle = db) {
-  return dbh.get<{ name: string | null; image_local: string | null; minifigs: number | null; platzhalter: boolean }>(
-    `SELECT rs.name, c.image_local, c.minifigs, ${PLATZHALTER_SQL} AS platzhalter
-       FROM rb_sets rs LEFT JOIN set_catalog c ON c.set_number = rs.set_num
-      WHERE rs.set_num = $1`, [setNumber]);
-}
-
 export function erfassungenOhnePreisDesSets(userId: number, setNumber: string) {
   return db.all<{ id: number; condition: string | null }>(
     'SELECT id, condition FROM set_acquisitions WHERE user_id = $1 AND set_number = $2 AND purchase_price IS NULL ORDER BY id',
     [userId, setNumber]);
-}
-
-export function setzeFigurenzahl(minifigs: number, setNumber: string) {
-  return db.run('UPDATE set_catalog SET minifigs = $1 WHERE set_number = $2', [minifigs, setNumber]);
 }
 
 /** `feld` ist ein fester Spaltenname, keine Eingabe von aussen. */

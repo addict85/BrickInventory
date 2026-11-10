@@ -18,6 +18,7 @@ import { normalisiereSetNummer, moeglicheSetNummer } from '../infra/setNummer';
 import { fachfehler } from '../infra/fehlerTexte';
 import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
 import * as repo from './repository/sets';
+import * as setStamm from '../katalog/setStamm';
 import { versuche, wertOder } from '../infra/ergebnis';
 
 /** Eine Erfassung: eine Zeile in set_acquisitions, der einzige Ort für Kaufpreis und Zustand. */
@@ -124,7 +125,7 @@ export async function setErfassen(e: NeuesSet): Promise<SetErfasst> {
     await repo.sperreSetErfassen(tx, sn, besitzer);
     const vorhanden = await findSetInScope(e.anfragender, sn);
     if (vorhanden) return { action: 'exists' as const, ...vorhanden };
-    const katalog = await repo.merkeKatalogPlatzhalter(tx, sn);
+    const katalog = await setStamm.merkeKatalogPlatzhalter(tx, sn);
     await repo.legeSetZeileAn(tx, besitzer, sn);
     await recordAcquisition(
       {
@@ -202,8 +203,7 @@ async function katalogHolen(sn: string, mitBrickset: boolean, sendProgress: Fort
   if (lokal) void versuche('set-anlegen:vorschau', generateThumb(lokal));
   // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild.
   // Ausführlich: docs/begruendungen/src/sets/erfassen.ts.md#addsetintern-3
-  await repo.merkeSetKatalog(sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
-  if (minifigs) await repo.setzeFigurenzahl(minifigs, sn);
+  await setStamm.merkeSetKatalog(db, sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
   return { name, gestoert: !rbErgebnis.ok, bild: !!lokal };
 }
 
@@ -214,7 +214,7 @@ export async function setErgaenzen(
   konto: number,
   sendProgress: Fortschritt | null = null,
 ): Promise<{ name: string | null }> {
-  const stand = await repo.katalogStand(sn);
+  const stand = await setStamm.katalogStand(db, sn);
   let name = stand && !stand.platzhalter ? stand.name : null;
   if (!stand || stand.platzhalter || !stand.image_local) {
     const k = await katalogHolen(sn, true, sendProgress);

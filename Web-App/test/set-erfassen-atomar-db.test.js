@@ -10,7 +10,8 @@
  *   C  in setErfassen() stelleAuftragEin() weggelassen → rot: „… und stellt den Auftrag ein“
  *   D  in setErgaenzen() die Schleife über die Erfassungen ohne Preis entfernt →
  *      rot: „der Auftrag ergänzt Katalog und Kaufpreis“ (Preis null)
- *   E  (10.11.) in merkeKatalogPlatzhalter() das INSERT INTO rb_sets entfernt → rot:
+ *   E  (10.11.) in merkeKatalogPlatzhalter() (src/katalog/repository/setStamm.ts) das
+ *      INSERT INTO rb_sets entfernt → rot:
  *      alle drei Teile (set_catalog_rb_sets_fkey; die Route antwortet 409 statt 200)
  *   F  (10.11.) in merkeSetKatalog() `WHERE rb_sets.herkunft = 'api'` zu 'csv' →
  *      rot: „der Auftrag ergänzt …“ (Name „Set …“ statt „Testset“)
