@@ -9,6 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
@@ -39,13 +40,8 @@ import ch.brickinventoryapp.zustand.ui.Screen
 import ch.brickinventoryapp.zustand.ui.rollSchluessel
 import ch.brickinventoryapp.zustand.ui.viewmodel.KaeufeViewModel
 
-/**
- * Was die Sammlung von der App braucht. Die Erfassung lebt mit der Activity: Ihr
- * Bestätigungsdialog und die Prüfanzeige stehen über jedem Bildschirm.
- */
-interface SammlungNavigation : Bereichsumgebung {
-    val erfassung: ErfassungViewModel
-}
+/** Was die Sammlung von der App braucht; die Erfassung hängt am Ziel, das scannt. */
+interface SammlungNavigation : Bereichsumgebung
 
 /** Galerie, Set-Detail, Käufe, Merkliste, Scanner und Preisvergleich. */
 fun NavGraphBuilder.sammlungGraph(navigation: SammlungNavigation) {
@@ -94,27 +90,19 @@ fun merkpostenMitAlarm(): (String, Zustand, String, String, Int?) -> Unit {
 private fun NavGraphBuilder.galerieZiel(navigation: SammlungNavigation) {
     val navController = navigation.navController
     val galleryGridState = navigation.rollen.galerie
-    composable<Screen.Gallery> {
+    composable<Screen.Gallery> { eintrag ->
         val vm = navigation.app
         val galerieVm: GalerieViewModel = hiltViewModel()
         val state by galerieVm.state.collectAsStateWithLifecycle()
         val galerie by galerieVm.galleryState.collectAsStateWithLifecycle()
-        val erfassung = navigation.erfassung
-        val barcode by erfassung.barcodeState.collectAsStateWithLifecycle()
+        val erfassung: ErfassungViewModel = hiltViewModel()
+        Erfassungsrahmen(eintrag, erfassung, navigation.bilder) { navController.navigate(Screen.SetDetail(it)) }
         LaunchedEffect(state.serverUrl) { galerieVm.ladeWennLeer() }
         // Rollposition ausdrücklich wiederherstellen — der hochgezogene Zustand allein
         // landet verschoben.
         ScrollPositionKeeper(
             Screen.Gallery.rollSchluessel, galleryGridState, galerie.sets.isNotEmpty(), vm.scrollMemory)
 
-        // Suche per Scan: Ein vorhandenes Set öffnet sein Detail.
-        LaunchedEffect(barcode.gefundenesSet) {
-            val found = barcode.gefundenesSet
-            if (found != null) {
-                erfassung.gallerySearchFoundConsumed()
-                navController.navigate(Screen.SetDetail(found))
-            }
-        }
         GalerieRueckgaengigRoute(galerieVm, navigation.snackbar)
         val ziel = this
         navigation.Reiter(stringResource(R.string.nav_collection)) {
@@ -179,7 +167,8 @@ private fun NavGraphBuilder.setDetailZiel(navigation: SammlungNavigation) {
         // anderes Set ersetzt dieses Detail, statt sich darüber zu stapeln. Ohne
         // gemeinsames Bild: Kachel und Detail sind dann beide zu sehen.
         BoxWithConstraints {
-            if (galerieUnten != null && listeUndDetail(maxWidth.value)) GalerieNebenDetailRoute(navigation, galerieUnten, setNumber, detail)
+            if (galerieEintrag != null && galerieUnten != null && listeUndDetail(maxWidth.value))
+                GalerieNebenDetailRoute(navigation, backStack, galerieEintrag, galerieUnten, setNumber, detail)
             else MitZiel(this@composable) { detail() }
         }
     }
@@ -187,15 +176,25 @@ private fun NavGraphBuilder.setDetailZiel(navigation: SammlungNavigation) {
 
 /** Die Galerie links neben dem Set-Detail; ein anderes Set ersetzt das Detail, statt sich zu stapeln. */
 @Composable
-private fun GalerieNebenDetailRoute(navigation: SammlungNavigation, galerie: GalerieViewModel, setNumber: String, detail: @Composable () -> Unit) {
+private fun GalerieNebenDetailRoute(
+    navigation: SammlungNavigation,
+    eintrag: NavBackStackEntry,
+    galerieEintrag: NavBackStackEntry,
+    galerie: GalerieViewModel,
+    setNumber: String,
+    detail: @Composable () -> Unit,
+) {
     val navController = navigation.navController
+    // Die Erfassung der Galerie; den Scan gibt der Scanner diesem Ziel zurück.
+    val erfassung: ErfassungViewModel = hiltViewModel(galerieEintrag)
+    Erfassungsrahmen(eintrag, erfassung, navigation.bilder) { navController.navigate(Screen.SetDetail(it)) }
     navigation.Reiter(stringResource(R.string.nav_collection)) {
         ListeUndDetail(
             liste = {
                 CompositionLocalProvider(LocalOffenesDetail provides setNumber) {
                     GalleryRoute(
                         vm = galerie,
-                        erfassung = navigation.erfassung,
+                        erfassung = erfassung,
                         imageLoader = navigation.bilder,
                         onScanBarcode = { navController.navigate(Screen.BarcodeScanner(Scannerherkunft.GALERIE_SUCHE)) },
                         onSetClick = { sn ->
@@ -218,7 +217,9 @@ private fun GalerieNebenDetailRoute(navigation: SammlungNavigation, galerie: Gal
  */
 private fun NavGraphBuilder.merklisteZiele(navigation: SammlungNavigation) {
     val navController = navigation.navController
-    composable<Screen.Wanted> {
+    composable<Screen.Wanted> { eintrag ->
+        val erfassung: ErfassungViewModel = hiltViewModel()
+        Erfassungsrahmen(eintrag, erfassung, navigation.bilder) { navController.navigate(Screen.SetDetail(it)) }
         // Auf breiten Fenstern Liste und Detail nebeneinander (Lesebreite.kt).
         BoxWithConstraints {
             val nebeneinander = listeUndDetail(maxWidth.value)
@@ -256,23 +257,21 @@ private fun NavGraphBuilder.merklisteZiele(navigation: SammlungNavigation) {
 private fun NavGraphBuilder.scannerZiel(navigation: SammlungNavigation) {
     val navController = navigation.navController
     composable<Screen.BarcodeScanner> { eintrag ->
-        val erfassung = navigation.erfassung
         val herkunft = eintrag.toRoute<Screen.BarcodeScanner>().herkunft
+        // Der Treffer geht an das Ziel darunter; dessen Erfassung löst ihn auf.
+        fun zurueck(wert: String, setnummer: Boolean) {
+            navController.previousBackStackEntry?.savedStateHandle?.legeScanAb(wert, setnummer, herkunft)
+            navController.popBackStack()
+        }
         BarcodeScannerScreen(
             // Texterkennung nur hier: Dieser Scanner bedient „Set hinzufügen“ (Galerie) und
             // „Teileliste hinzufügen“. Der Preisvergleich hat einen eigenen Aufruf und lässt
             // den Standard aus.
             ocrEnabled = true,
-            onResult = { scannedValue ->
-                navController.popBackStack()
-                erfassung.resolveBarcode(scannedValue, herkunft)
-            },
+            onResult = { scannedValue -> zurueck(scannedValue, setnummer = false) },
             // Die Texterkennung liefert die Setnummer fertig — der Umweg über die
             // EAN-Auflösung entfällt, das spart je Scan bis zu acht Rebrickable-Aufrufe.
-            onSetNumberResult = { setNumber ->
-                navController.popBackStack()
-                erfassung.useScannedSetNumber(setNumber, herkunft)
-            },
+            onSetNumberResult = { setNumber -> zurueck(setNumber, setnummer = true) },
             onDismiss = { navController.popBackStack() }
         )
     }

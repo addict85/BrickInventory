@@ -55,7 +55,7 @@ import ch.brickinventoryapp.ui.util.fmtInt
  * an einer Stelle, wann er erscheint, und hier nur, wie er aussieht.
  */
 @Composable
-fun BarcodeResultRoute(vm: ErfassungViewModel, imageLoader: ImageLoader) {
+internal fun BarcodeResultRoute(vm: ErfassungViewModel, imageLoader: ImageLoader) {
     val state by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
     val barcodeState by vm.barcodeState.collectAsStateWithLifecycle()

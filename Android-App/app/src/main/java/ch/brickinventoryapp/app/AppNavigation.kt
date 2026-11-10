@@ -45,8 +45,6 @@ import ch.brickinventoryapp.netz.util.NetworkPolicy
 import ch.brickinventoryapp.app.nav.Reiter
 import ch.brickinventoryapp.app.nav.ZielUmgebung
 import ch.brickinventoryapp.ui.components.UebergangsRahmen
-import ch.brickinventoryapp.sammlung.ui.dialogs.BarcodeResultRoute
-import ch.brickinventoryapp.sammlung.ui.dialogs.SetPruefungRoute
 import ch.brickinventoryapp.konto.ui.dialogs.UpdateRoute
 import ch.brickinventoryapp.zustand.ui.Rollzustaende
 
@@ -65,8 +63,6 @@ fun BrickInventoryRoute(
     // collectAsStateWithLifecycle: Collection stoppt, wenn die App im
     // Hintergrund ist — kein unnötiges Recomposition-/State-Processing mehr.
     val state by vm.state.collectAsStateWithLifecycle()
-    val erfassung = aktivitaet.erfassung
-    val barcodeState by erfassung.barcodeState.collectAsStateWithLifecycle()
     val selbstUpdate = aktivitaet.update
     val csvImport = aktivitaet.csvImport
     val navController = rememberNavController()
@@ -125,17 +121,11 @@ fun BrickInventoryRoute(
     }
 
     val startDest = startRoute(startZiel(state.serverUrl, state.isLoggedIn, NetworkPolicy.entwicklung))
+    val wurzel: Any = if (startDest == Screen.Gallery) Screen.Gallery else AnmeldungBereich
+    // Der Beginn der Anmeldung bleibt, solange sie läuft: Ein anderer baute den Graphen
+    // neu und beendete ihr ViewModel mitten in der QR-Anmeldung.
+    val anmeldeBeginn = remember(wurzel) { startDest }
     val bottomNavItems = reiterDerLeiste()
-
-    // ── Barcode-Bestätigung — über jedem Bildschirm ──
-    // Der Dialog steht in ui/dialogs/BarcodeResultDialog.kt; hier nur, wann er erscheint.
-    if (barcodeState.result != null) {
-        BarcodeResultRoute(erfassung, imageLoader)
-    }
-
-    // ── „Wird geprüft“ — über allem, auch über dem Scanner-Weg ──
-    // Hier, weil die Prüfung zu keinem einzelnen Bildschirm gehört: Sie beginnt im Scanner, der sich sofort schliesst, und läuft über Galerie, Teileliste oder Katalog weiter.
-    SetPruefungRoute(erfassung)
 
     // ── „Es gibt eine neue Fassung“ — ebenfalls über allem ──
     //
@@ -164,7 +154,7 @@ fun BrickInventoryRoute(
     UebergangsRahmen {
     // Dezente Übergänge: kurz einblenden und ein Stück nachrücken, zurück in die
     // Gegenrichtung. Die Vorgabe (700 ms reines Überblenden) wirkte träge.
-    NavHost(navController, startDestination = startDest,
+    NavHost(navController, startDestination = wurzel,
         enterTransition = { fadeIn(tween(UEBERGANG_MS)) + slideInHorizontally(tween(UEBERGANG_MS)) { it / 16 } },
         exitTransition = { fadeOut(tween(UEBERGANG_MS / 2)) },
         popEnterTransition = { fadeIn(tween(UEBERGANG_MS)) },
@@ -173,7 +163,7 @@ fun BrickInventoryRoute(
         // Kein Zustand hinein: Der NavHost-Builder läuft nur einmal, ein durchgereichter
         // Wert bliebe die Momentaufnahme des ersten Frames. Die Ziele lesen selbst.
         alleZiele(ZielUmgebung(navController, imageLoader, bottomNavItems,
-            snackbarHostState, rollen) { aktivitaet })
+            snackbarHostState, rollen) { aktivitaet }, anmeldeBeginn)
     }
     }
 }
@@ -182,8 +172,8 @@ fun BrickInventoryRoute(
  * Alle Ziele der App; der NavHost und ErreichbareRoutenTest bauen denselben Graphen.
  * Jeder Bereich bringt seine Ziele mit, die App setzt sie nur zusammen.
  */
-internal fun androidx.navigation.NavGraphBuilder.alleZiele(u: ZielUmgebung) {
-    anmeldungGraph(u.navController) { u.aktivitaet.anmeldung }
+internal fun androidx.navigation.NavGraphBuilder.alleZiele(u: ZielUmgebung, anmeldeBeginn: Screen = Screen.Setup) {
+    anmeldungGraph(u.navController, anmeldeBeginn)
     sammlungGraph(u)
     katalogGraph(u)
     teileGraph(u)

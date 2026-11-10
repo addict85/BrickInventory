@@ -76,3 +76,10 @@ val Screen.rollSchluessel: String
         Screen.Settings -> "settings"
         else -> toString()
     }
+
+/**
+ * Der Teilgraph aus Einrichtung und Anmeldung. Kein [Screen]: Er ist kein Ziel,
+ * sondern hält das ViewModel, das beide teilen; die App beginnt in ihm.
+ */
+@Serializable
+data object AnmeldungBereich

@@ -38,9 +38,9 @@ import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
  * Sets erfassen: Barcode und Texterkennung, das Erfassen über die Setnummer
  * (Galerie, Katalog) und die Prüfanzeige „wird geprüft“.
  *
- * An die Activity gebunden (MainActivity, AktivitaetsZustand): Der Scanner schliesst
- * sich sofort, die Prüfung und der Bestätigungsdialog laufen über jedem
- * Bildschirm weiter, und die Galerie öffnet danach das gefundene Set.
+ * An das Ziel gebunden, das scannt oder erfasst (Erfassungsrahmen): Der Scanner
+ * gibt seinen Treffer dorthin zurück, Prüfung und Bestätigung stehen über diesem
+ * Ziel, und kein anderes Ziel liest die Ergebnisse.
  */
 @HiltViewModel
 class ErfassungViewModel @Inject constructor(

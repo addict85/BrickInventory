@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
@@ -39,22 +40,20 @@ import ch.brickinventoryapp.zustand.ui.rollSchluessel
 import ch.brickinventoryapp.zustand.ui.viewmodel.KaeufeViewModel
 import coil3.ImageLoader
 
-/** Was der Scanner für die Teileliste gefunden hat. */
-data class TeilelistenScan(
+/** Was der Scanner für die Teileliste gefunden hat, samt den Quittungen. */
+class TeilelistenScan(
     /** Die gescannte Setnummer, bis die Teileliste sie übernommen hat. */
-    val setNumber: String? = null,
+    val setNumber: String?,
     /** Der Scan blieb ohne Nummer: Der Cursor soll ins Set-Feld. */
-    val manuellErfassen: Boolean = false,
+    val manuellErfassen: Boolean,
+    val uebernommen: () -> Unit,
+    val manuellQuittiert: () -> Unit,
 )
 
-/** Was Teile und Figuren von der App brauchen: den Scan, den die Sammlung auflöst. */
+/** Was Teile und Figuren von der App brauchen: den Scan, den die Sammlung am Ziel [eintrag] auflöst. */
 interface TeileNavigation : Bereichsumgebung {
     @Composable
-    fun teilelistenScan(): TeilelistenScan
-
-    fun teilelistenScanUebernommen()
-
-    fun manuelleErfassungQuittiert()
+    fun teilelistenScan(eintrag: NavBackStackEntry): TeilelistenScan
 }
 
 /** Teile, Minifiguren, ihre Einzelseiten und die Teileliste. */
@@ -179,11 +178,11 @@ private fun NavGraphBuilder.einzelstueckZiel(navigation: TeileNavigation) {
 /** Die Teileliste eines Sets; den Scan löst die Sammlung auf und reicht die Nummer herein. */
 private fun NavGraphBuilder.teilelistenZiel(navigation: TeileNavigation) {
     val navController = navigation.navController
-    composable<Screen.PartsList> {
+    composable<Screen.PartsList> { eintrag ->
         val vm = navigation.app
         val state by vm.state.collectAsStateWithLifecycle()
         val blick by vm.blickfeld.collectAsStateWithLifecycle()
-        val scan = navigation.teilelistenScan()
+        val scan = navigation.teilelistenScan(eintrag)
         navigation.Reiter(stringResource(R.string.nav_partslist)) {
             PartsListRoute(
                 serverUrl = state.serverUrl,
@@ -191,12 +190,12 @@ private fun NavGraphBuilder.teilelistenZiel(navigation: TeileNavigation) {
                 onScanBarcode = { navController.navigate(Screen.BarcodeScanner(Scannerherkunft.TEILELISTE)) },
                 // Erfolgloser Scan → Cursor ins Set-Feld.
                 manuelleErfassungAnfordern = scan.manuellErfassen,
-                onManuelleErfassungQuittiert = navigation::manuelleErfassungQuittiert,
+                onManuelleErfassungQuittiert = scan.manuellQuittiert,
                 // Dieselbe Regel wie in der Webapp (02-gallery.js): Mehr als
                 // ein Mitglied im Haushalt heisst „es gibt Unterkonten".
                 hatUnterkonten = blick.householdMembers.size > 1,
                 barcodeSetNumber = scan.setNumber,
-                onBarcodeConsumed = navigation::teilelistenScanUebernommen,
+                onBarcodeConsumed = scan.uebernommen,
                 listState = navigation.rollen.teileliste
             )
         }

@@ -30,8 +30,9 @@ import kotlinx.serialization.Serializable
  * der beiden Bereiche.
  */
 interface KatalogNavigation : Bereichsumgebung {
-    /** Ein Set in die Galerie aufnehmen; die Prüfanzeige steht über jedem Bildschirm. */
-    fun erfasse(wunsch: Erfassungswunsch)
+    /** Ein Set in die Galerie aufnehmen; die Erfassung hängt an [eintrag], ihre Prüfanzeige darüber. */
+    @Composable
+    fun erfassen(eintrag: NavBackStackEntry): (Erfassungswunsch) -> Unit
 
     /** Der Merkposten zu [setNumber], wenn das Set auf der Merkliste steht. */
     @Composable
@@ -91,6 +92,7 @@ private fun KatalogDetailZiel(navigation: KatalogNavigation, backStack: NavBackS
     // Steht das Set schon auf der Merkliste? Dann zeigt das Detail den Posten statt „Auf die Merkliste“.
     val gemerkt = navigation.gemerkt(catSetNumber)
     val merken = navigation.merken()
+    val erfasse = navigation.erfassen(backStack)
     // loadCatalogDetail() meldet über denselben Kanal wie alle ViewModels
     // (data/MeldungsKanal.kt), eingesammelt in AppNavigation.kt.
     CatalogDetailScreen(
@@ -107,7 +109,7 @@ private fun KatalogDetailZiel(navigation: KatalogNavigation, backStack: NavBackS
         lagerorte = lagerZustand.eigene.map { it.name },
         lagerortVorgabe = lagerZustand.vorgabe?.name ?: "",
         onAddToGallery = { wunsch ->
-            navigation.erfasse(wunsch)
+            erfasse(wunsch)
             katalog.markiereAufgenommen(wunsch.setNumber, wunsch.menge)
         },
         onWish = merken,

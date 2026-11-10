@@ -105,7 +105,7 @@ internal fun GalerieRueckgaengigRoute(vm: GalerieViewModel, snackbarHostState: S
 @Composable
 fun GalleryRoute(
     vm: GalerieViewModel,
-    /** Erfassen und Scannen gehören der ganzen App, nicht der Galerie. */
+    /** Die Erfassung dieses Ziels; der Graph bindet sie an dessen Eintrag. */
     erfassung: ErfassungViewModel,
     imageLoader: ImageLoader,
     /** Barcode-Scanner öffnen — nur der Graph kennt den NavController. */

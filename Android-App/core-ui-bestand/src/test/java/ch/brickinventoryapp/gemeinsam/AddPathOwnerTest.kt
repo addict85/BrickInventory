@@ -29,11 +29,9 @@ class AddPathOwnerTest {
 
     @Test
     fun `der Barcode-Dialog zeigt die Auswahl an`() {
-        // Der Barcode-Dialog steht seit seiner Auslagerung in
-        // sammlung/ui/dialogs/BarcodeResultDialog.kt; AppNavigation.kt ruft ihn nur noch
-        // auf. Gelesen werden BEIDE Dateien, damit die Regel dort gefunden
-        // wird, wo sie heute steht.
-        val nav = code(read("app/AppNavigation.kt") + "\n" + read("sammlung/ui/dialogs/BarcodeResultDialog.kt"))
+        // Der Dialog steht in BarcodeResultDialog.kt; der Erfassungsrahmen zeigt ihn. Beide
+        // Dateien, damit die Regel gefunden wird, wo sie steht.
+        val nav = code(read("sammlung/ui/Erfassungsrahmen.kt") + "\n" + read("sammlung/ui/dialogs/BarcodeResultDialog.kt"))
         assert(nav.contains("OwnerPicker(")) {
             "im Barcode-Dialog fehlt die Eigentümer-Auswahl — OwnerPicker blendet sich " +
                 "ohne Haushalt ohnehin selbst aus, schadet also nie"

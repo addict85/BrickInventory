@@ -34,8 +34,8 @@ import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 
 /**
  * Gutscheine im eigenen Profil. Das PDF liest und die Werte prüft der Server, einmal
- * für beide Apps; hier wird nur angezeigt. An die Activity gebunden, weil die
- * Guthabenabfrage über alle Karten Minuten dauert.
+ * für beide Apps; hier wird nur angezeigt. Ans Ziel gebunden: Eine Guthabenabfrage
+ * über alle Karten endet mit der Seite, jede fertige Karte hat der Server gespeichert.
  */
 @HiltViewModel
 class GutscheinViewModel @Inject constructor(

@@ -9,12 +9,10 @@ import ch.brickinventoryapp.testing.Quellen
  */
 class PartsListScannerTest {
 
-    // Der Barcode-Dialog steht seit seiner Auslagerung in
-    // sammlung/ui/dialogs/BarcodeResultDialog.kt; AppNavigation.kt ruft ihn nur noch auf.
+    // Der Dialog steht in BarcodeResultDialog.kt; der Erfassungsrahmen zeigt ihn über dem scannenden Ziel.
     private val src: String by lazy {
-        val w = ""
-        File(Quellen.wurzel, w + "app/AppNavigation.kt").readText() + "\n" +
-            File(Quellen.wurzel, w + "sammlung/ui/dialogs/BarcodeResultDialog.kt").readText()
+        File(Quellen.wurzel, "sammlung/ui/Erfassungsrahmen.kt").readText() + "\n" +
+            File(Quellen.wurzel, "sammlung/ui/dialogs/BarcodeResultDialog.kt").readText()
     }
 
     /** Kommentare ausblenden — die Erklärtexte nennen die geprüften Muster selbst. */

@@ -71,7 +71,7 @@ class ErreichbareRoutenTest {
                 // Den Zustand holen erst die Ziele beim Zeichnen; der Graph allein braucht ihn nicht.
                 error("Ziele werden hier nicht gezeichnet")
             }
-            nav.createGraph(startDestination = Screen.Setup) { alleZiele(umgebung) }
+            nav.createGraph(startDestination = Screen.Gallery) { alleZiele(umgebung) }
         }
         val registriert = routen(graph).map { it.substringBefore('/').substringBefore('?') }.toSet()
         assertTrue("Nur ${ziele.size} Ziele gefunden — liest die Suche die Serialisierung noch?", ziele.size >= 20)

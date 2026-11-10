@@ -68,10 +68,7 @@ import ch.brickinventoryapp.konto.ui.screens.ZweiterFaktorPflichtMaske
 import ch.brickinventoryapp.zustand.ui.viewmodel.DarstellungViewModel
 import ch.brickinventoryapp.konto.ui.viewmodel.KontoViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.VertrauenViewModel
-import ch.brickinventoryapp.anmeldung.ui.viewmodel.AnmeldungViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.CsvImportViewModel
-import ch.brickinventoryapp.sammlung.ui.viewmodel.ErfassungViewModel
-import ch.brickinventoryapp.finanzen.ui.viewmodel.GutscheinViewModel
 import ch.brickinventoryapp.konto.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.app.nav.AktivitaetsZustand
 import ch.brickinventoryapp.sicherheit.GeheimeZwischenablage
@@ -84,16 +81,12 @@ class MainActivity : NurLauncherStart() {
     private val vm: AppViewModel by viewModels()
     private val darstellung: DarstellungViewModel by viewModels()
     private val vertrauen: VertrauenViewModel by viewModels()
-    private val erfassung: ErfassungViewModel by viewModels()
     private val selbstUpdate: UpdateViewModel by viewModels()
     private val csvImport: CsvImportViewModel by viewModels()
-    private val anmeldung: AnmeldungViewModel by viewModels()
-    private val gutschein: GutscheinViewModel by viewModels()
 
     /** Einmal hier geholt, damit kein Ziel selbst im ViewModelStore der Activity sucht. */
     private fun aktivitaetsZustand() = AktivitaetsZustand(
-        app = vm, erfassung = erfassung, update = selbstUpdate, csvImport = csvImport,
-        anmeldung = anmeldung, gutschein = gutschein, darstellung = darstellung, vertrauen = vertrauen,
+        app = vm, update = selbstUpdate, csvImport = csvImport, darstellung = darstellung, vertrauen = vertrauen,
     )
 
     // Nur für die Pflichtmasken (Startpasswort, zweiter Faktor), die über allem liegen.

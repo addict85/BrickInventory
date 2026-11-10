@@ -21,13 +21,8 @@ import ch.brickinventoryapp.zustand.ui.Bereichsumgebung
 import ch.brickinventoryapp.zustand.ui.Screen
 import ch.brickinventoryapp.zustand.ui.rollSchluessel
 
-/**
- * Was die Finanzen von der App brauchen. Die Gutscheine leben mit der Activity: Eine
- * Guthabenabfrage über alle Karten läuft weiter, wenn man die Seite verlässt.
- */
-interface FinanzenNavigation : Bereichsumgebung {
-    val gutschein: GutscheinViewModel
-}
+/** Was die Finanzen von der App brauchen. */
+interface FinanzenNavigation : Bereichsumgebung
 
 /** Finanzen, Gutscheine und der PDF-Betrachter. */
 fun NavGraphBuilder.finanzenGraph(navigation: FinanzenNavigation) {
@@ -64,7 +59,9 @@ fun NavGraphBuilder.finanzenGraph(navigation: FinanzenNavigation) {
     }
     composable<Screen.Gutscheine> {
         val vm = navigation.app
-        val gutscheinVm = navigation.gutschein
+        // Am Ziel: Klartext und PIN enden mit der Seite. Der PDF-Betrachter liegt
+        // darüber, die Seite bleibt also bestehen, solange er offen ist.
+        val gutscheinVm: GutscheinViewModel = hiltViewModel()
         val state by vm.state.collectAsStateWithLifecycle()
         val gutscheine by gutscheinVm.state.collectAsStateWithLifecycle()
         // Ein freigegebenes Gutschein-PDF (eines oder alle): Das Ziel mit Ticket

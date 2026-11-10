@@ -1,36 +1,49 @@
 package ch.brickinventoryapp.anmeldung.ui
 
 import android.os.Build
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.navigation
 import ch.brickinventoryapp.anmeldung.ui.screens.LoginScreen
 import ch.brickinventoryapp.anmeldung.ui.screens.ServerStartAnzeige
 import ch.brickinventoryapp.anmeldung.ui.screens.SetupScreen
 import ch.brickinventoryapp.anmeldung.ui.viewmodel.AnmeldungViewModel
+import ch.brickinventoryapp.zustand.ui.AnmeldungBereich
 import ch.brickinventoryapp.zustand.ui.Screen
 
 /**
- * Navigationsziele der Anmeldung. Das ViewModel lebt an der Activity, weil eine
- * QR-Anmeldung in der Einrichtung beginnt und nach dem Wechsel zur Anmeldung
- * weiterläuft; die App reicht es herein, gelesen erst beim Zeigen.
+ * Einrichtung und Anmeldung als eigener Teilgraph ([AnmeldungBereich]): Eine
+ * QR-Anmeldung beginnt in der Einrichtung und läuft nach dem Wechsel zur Anmeldung
+ * weiter. Das ViewModel hängt deshalb am Eintrag des Teilgraphen und endet mit ihm.
+ * [beginn] ist Einrichtung oder Anmeldung.
  */
-fun NavGraphBuilder.anmeldungGraph(navController: NavHostController, anmeldung: () -> AnmeldungViewModel) {
-    einrichtungsZiel(navController, anmeldung)
-    anmeldeZiel(navController, anmeldung)
+fun NavGraphBuilder.anmeldungGraph(navController: NavHostController, beginn: Screen) {
+    navigation<AnmeldungBereich>(startDestination = beginn) {
+        einrichtungsZiel(navController)
+        anmeldeZiel(navController)
+    }
+}
+
+/** Das ViewModel des Teilgraphen, an dessen Eintrag gebunden. */
+@Composable
+private fun anmeldungViewModel(navController: NavHostController, eintrag: NavBackStackEntry): AnmeldungViewModel {
+    val bereich = remember(eintrag) { navController.getBackStackEntry<AnmeldungBereich>() }
+    return hiltViewModel(bereich)
 }
 
 /** Serveradresse eintragen oder per QR-Code übernehmen. */
-private fun NavGraphBuilder.einrichtungsZiel(navController: NavHostController, anmeldung: () -> AnmeldungViewModel) {
-    composable<Screen.Setup> {
-        // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
-        // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
-        val anmeldungVm = anmeldung()
+private fun NavGraphBuilder.einrichtungsZiel(navController: NavHostController) {
+    composable<Screen.Setup> { eintrag ->
+        val anmeldungVm = anmeldungViewModel(navController, eintrag)
         val state by anmeldungVm.state.collectAsStateWithLifecycle()
         SetupScreen(
             currentUrl = state.serverUrl,
@@ -60,11 +73,9 @@ private fun NavGraphBuilder.einrichtungsZiel(navController: NavHostController, a
 }
 
 /** Anmelden, Registrieren und Passkey; während der Server startet, sein Fortschritt. */
-private fun NavGraphBuilder.anmeldeZiel(navController: NavHostController, anmeldung: () -> AnmeldungViewModel) {
-    composable<Screen.Login> {
-        // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
-        // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
-        val anmeldungVm = anmeldung()
+private fun NavGraphBuilder.anmeldeZiel(navController: NavHostController) {
+    composable<Screen.Login> { eintrag ->
+        val anmeldungVm = anmeldungViewModel(navController, eintrag)
         val state by anmeldungVm.state.collectAsStateWithLifecycle()
         val anmeldeZustand by anmeldungVm.anmeldeState.collectAsStateWithLifecycle()
         val aktivitaet = LocalContext.current
