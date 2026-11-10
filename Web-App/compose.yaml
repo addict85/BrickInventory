@@ -25,8 +25,8 @@ services:
   postgres:
     # Eine neue Hauptversion liest die Daten der alten nicht, und ab 18 liegt
     # PGDATA eine Ebene tiefer: Ein Tausch des Tags allein schlägt fehl. Der
-    # Weg (pg_dumpall, neues Verzeichnis, einspielen) steht in UPGRADE.md unter
-    # „PostgreSQL 18“; ./pgdata (16) bleibt als Rückfallebene liegen.
+    # Weg (pg_dumpall, neues Verzeichnis, einspielen) steht in POSTGRES-18.md;
+    # ./pgdata (16) bleibt als Rückfallebene liegen.
     image: postgres:18-alpine@sha256:123b17998ccaf47e53b502e8c6a1e79afd8f579c6f3eec83c563da026f957395
     container_name: brickinventory-db
     logging: *protokoll
@@ -178,8 +178,7 @@ services:
     #   - "${APP_BIND:-127.0.0.1}:3000:3000"
     volumes:
       # Alle Bilder samt Vorschaubildern liegen unter data/ (src/infra/appPaths.ts);
-      # eine Sicherung von ./data erfasst sie mit. Ein altes ./images: UPGRADE.md,
-      # Abschnitt 10.
+      # eine Sicherung von ./data erfasst sie mit.
       - ./data:/app/data
       # Der Datenschlüssel für gespeicherte Geheimnisse, getrennt von ./data:
       # Eine Sicherung von data/ (scripts/backup.sh) enthält ihn so nie. Nur
