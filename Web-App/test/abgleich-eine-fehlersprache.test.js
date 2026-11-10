@@ -1,6 +1,5 @@
 /**
  * Der Server antwortet in der Sprache, die der Anfragende ZEIGT.
- * Ausführlich: docs/begruendungen/test/abgleich-eine-fehlersprache.test.js.md#kopf
  *
  * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
  *   A  im deutschen Text von einladungen_zu_viele `{n}` durch `n` ersetzt → rot:
@@ -28,7 +27,6 @@ const ERLAUBT = {
 };
 
 // Drei Eintraege standen hier und beschrieben nichts mehr
-// Ausführlich: docs/begruendungen/test/abgleich-eine-fehlersprache.test.js.md#stelle
 
 /** Alle .ts unter den angegebenen Ordnern, auch in Unterordnern. */
 function tsDateien(dir, praefix = '') {
@@ -60,7 +58,6 @@ test('keine Route verschickt einen festen Fehlersatz', () => {
     // beides und lief damit über Zeilenenden hinweg — er meldete sechs Stellen,
     // an denen `error:` mitten in einem PROTOKOLLTEXT steht
     // (`console.error(\`[pdf] error: \`, e.message)`). Sechs Fehlalarme für …
-    // Ausführlich: docs/begruendungen/test/abgleich-eine-fehlersprache.test.js.md#for-stelle
     for (const m of src.matchAll(/error:\s*(['"])((?:[^\\\n]|\\.)*?)\1/g)) {
       const text = m[2];
       // Variablen und leere Werte sind keine Sätze.

@@ -22,7 +22,6 @@ const router = vertragsRouter();
 type WantedXmlBericht = z.infer<typeof WantedXmlErgebnis>;
 
 // Blickfeld wie überall: Wer ein Geschenk sucht, sieht die Merkposten der Enkel.
-// Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#get-wanted
 router.get('/wanted', requireToken, async (req: Anfrage<'GET /api/v1/wanted'>, res: Antwort<'GET /api/v1/wanted'>) => {
   const ids = sichtVon(req);
   // Die Währung des LESERS; price_cache ist je Währung verschlüsselt, deshalb
@@ -38,7 +37,7 @@ router.get('/wanted', requireToken, async (req: Anfrage<'GET /api/v1/wanted'>, r
 });
 
 /** Alle drei Wege (Katalog, Setnummer, Barcode) landen hier, damit die Regeln
- * nicht vom Weg abhängen. Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#post-wanted */
+ * nicht vom Weg abhängen. */
 router.post('/wanted', requireToken, async (req: Anfrage<'POST /api/v1/wanted'>, res: Antwort<'POST /api/v1/wanted'>) => {
   const { set_number, condition, owner_user_id } = req.eingabe;
   if (!set_number) return sendeFehler(req, res, 400, 'set_number_erforderlich');
@@ -48,7 +47,6 @@ router.post('/wanted', requireToken, async (req: Anfrage<'POST /api/v1/wanted'>,
 });
 
 // Zwei Kontenprüfungen: heraus aus dem einen UND hinein ins andere Konto.
-// Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#put-wanted-setnumber-condition-inhaber
 router.put('/wanted/:setNumber/:condition/inhaber', requireToken, async (req: Anfrage<'PUT /api/v1/wanted/:setNumber/:condition/inhaber'>, res: Antwort<'PUT /api/v1/wanted/:setNumber/:condition/inhaber'>) => {
   const von = await schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
   const zu  = await schreibziel(req.apiUser.user_id, req.eingabe.neuer_inhaber);
@@ -65,8 +63,7 @@ router.delete('/wanted/:setNumber/:condition', requireToken, async (req: Anfrage
   res.json({ success: true, geloescht: weg });
 });
 
-/** BEIDE Zustände, frisch geholt.
- * Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#get-wanted-setnumber-preise */
+/** BEIDE Zustände, frisch geholt. */
 router.get('/wanted/:setNumber/preise', requireToken, async (req: Anfrage<'GET /api/v1/wanted/:setNumber/preise'>, res: Antwort<'GET /api/v1/wanted/:setNumber/preise'>) => {
   const sn = req.pfad.setNumber;
   const preise = await preiseBeiderZustaende(req.apiUser.user_id, sn);
@@ -82,8 +79,7 @@ router.post('/wanted/:setNumber/:condition/uebernehmen', requireToken, async (re
   res.json({ success: true, ...r });
 });
 
-/** Das Gegenstück zu buildMerklisteCsv().
- * Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#post-wanted-import-csv */
+/** Das Gegenstück zu buildMerklisteCsv(). */
 router.post('/wanted/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'),
   async (req: Anfrage<'POST /api/v1/wanted/import/csv'>, res: Antwort<'POST /api/v1/wanted/import/csv'>) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
@@ -96,8 +92,7 @@ router.post('/wanted/import/csv', requireToken, kontoSchranke('upload'), csvEmpf
 /** Die Vorschau ist die VORGABE: Ohne `schreiben=1` wird nichts angelegt, weil
  * die dritte Sicherheitsstufe der Abbildung nur eine Vermutung ist. Gerechnet
  * wird im Auftrag (src/sammlung/wantedXmlImport.ts); mit `strom=1` gehen dessen
- * Zwischenstände als NDJSON-Zeilen hinaus, ohne als eine JSON-Antwort (App).
- * Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#post-wanted-list-import-xml */
+ * Zwischenstände als NDJSON-Zeilen hinaus, ohne als eine JSON-Antwort (App). */
 router.post('/wanted-list/import/xml', requireToken, kontoSchranke('upload'), xmlEmpfang.single('file'),
   async (req: Anfrage<'POST /api/v1/wanted-list/import/xml'>, res: Antwort<'POST /api/v1/wanted-list/import/xml'>) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');

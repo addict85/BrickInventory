@@ -1,6 +1,5 @@
 /**
  * Die Lagerort-VORGABE gegen eine echte Datenbank.
- * Ausführlich: docs/begruendungen/test/lagerort-vorgabe-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -83,7 +82,6 @@ test('Lagerort-Vorgabe gegen echte Datenbank', async (t) => {
     // diese Grenze stuende mein Stern an einem Ort in einer anderen Wohnung.
     // Geprueft wird `e.code` und nicht der Text: Der erste Entwurf suchte
     // „lagerort_unbekannt" in der MELDUNG, und die lautet auf Deutsch …
-    // Ausführlich: docs/begruendungen/test/lagerort-vorgabe-db.test.js.md#stelle
     await assert.rejects(() => L.setzeVorgabe(U.ich, fremd.id),
       e => String(e.code) === 'lagerort_unbekannt',
       'Ein fremder Ort liess sich als eigene Vorgabe setzen');

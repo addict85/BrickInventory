@@ -3,7 +3,6 @@
  * in GEMEINSAM, je Tabelle mit Art und ob Eingaben eines Kontos hinein dürfen.
  * Die Tabellen kommen aus dem echten Schema, die schreibenden Stellen aus dem
  * Quelltext (eine neue Stelle auf eine Katalogtabelle muss hier eingetragen …
- * Ausführlich: docs/begruendungen/test/gemeinsame-tabellen-db.test.js.md#kopf
  *
  * Gegenproben (am 04.11.2026 gemessen, je eine Änderung, danach zurück):
  *   A  routes/api_v1/wanted.ts: merkeNummer schreibt immer merkeBlNummer →

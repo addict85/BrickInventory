@@ -1,6 +1,5 @@
 /**
  * Die Ablaufzeit der Sitzung wird gedrosselt geschrieben.
- * Ausführlich: docs/begruendungen/test/sitzung-beruehrung-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

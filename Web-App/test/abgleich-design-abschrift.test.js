@@ -1,6 +1,5 @@
 /**
  * Die Farben, die BEIDE Oberflaechen gleich fuehren muessen, stehen EINMAL.
- * Ausführlich: docs/begruendungen/test/abgleich-design-abschrift.test.js.md#kopf
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 const test = require('node:test');
@@ -26,7 +25,6 @@ const DATEN = JSON.parse(fs.readFileSync(QUELLE, 'utf8'));
 
 /**
  * `--name: #wert` aus einer CSS-Datei lesen und `var(--x)` einmal aufloesen.
- * Ausführlich: docs/begruendungen/test/abgleich-design-abschrift.test.js.md#tokentabelle
  */
 function tokenTabelle(datei) {
   // Die dunklen Varianten (seit 29.10.) sind eine zweite Belegung derselben
@@ -50,7 +48,6 @@ test('die erzeugten Dateien stimmen mit shared/design-tokens.json ueberein', () 
   // Android-Build kein Node kennt und DesignTokens.kt sonst gar nicht haette.
   // Damit sie trotzdem nicht von Hand gepflegt werden, wird hier dieselbe
   // Rechnung nochmals angestellt und verglichen. …
-  // Ausführlich: docs/begruendungen/test/abgleich-design-abschrift.test.js.md#for-stelle
   //
   // Gegenprobe (30.10., gemessen): dort "txt" von Hand auf #e6e9ee → rot.
   for (const [datei, erwartet] of [[ZIEL_CSS, baueCss(DATEN)], [ZIEL_KT, baueKotlin(DATEN)],
@@ -105,7 +102,6 @@ test('index.html laedt die erzeugten Tokens', () => {
 
 test('jede Herkunftsangabe in Theme.kt stimmt', () => {
   // Was hier noch geprueft wird
-  // Ausführlich: docs/begruendungen/test/abgleich-design-abschrift.test.js.md#kt-stelle
   const KT = fs.readFileSync(KT_THEME, 'utf8');
   const BASIS = tokenTabelle(CSS_BASIS);
   // Das Stein-Design ueberschreibt nur einen TEIL der Tokens; alles andere

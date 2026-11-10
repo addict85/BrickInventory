@@ -6,7 +6,6 @@
  *
  * Gegenprobe (05.11.2026 gemessen): page_size in routes/api_v1/catalog.ts
  * nicht gelesen → rot: „Pagination“ (die Seite hat 60 statt 10 Sets).
- * Ausführlich: docs/begruendungen/test/catalog-api.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -41,7 +40,6 @@ async function dbReachable() {
 
 /**
  * Stellt das echte Schema wieder her, das seed() durch Attrappen ersetzt.
- * Ausführlich: docs/begruendungen/test/catalog-api.test.js.md#schemawiederherstellen
  */
 async function schemaWiederherstellen() {
   await db.run('DROP SCHEMA public CASCADE');
@@ -67,7 +65,6 @@ async function seed() {
   // 0036 in set_acquisitions, und die Katalogliste liest sie von dort
   // (owned_quantity ueber db/bestandsmenge.ts) — mit nur `sets`
   // antwortete sie 0 (gemessen: „expected 2, actual 0").
-  // Ausführlich: docs/begruendungen/test/catalog-api.test.js.md#stelle
   await db.run(`CREATE TABLE sets (user_id INTEGER, set_number TEXT)`);
   await db.run(`INSERT INTO rb_themes VALUES (1,'Star Wars',NULL),(2,'Ultimate Collector Series',1),(3,'Technic',NULL) ON CONFLICT DO NOTHING`);
   let i = 0;
@@ -82,7 +79,6 @@ async function seed() {
   await db.run(`INSERT INTO rb_inventory_minifigs (inventory_id, fig_num, quantity) VALUES (2,'fig-001',2),(2,'fig-002',1),(1,'fig-old',9) ON CONFLICT DO NOTHING`);
   // Der Bestand: Konto 1 haelt 9000-1, und zwar zwei Exemplare — die Zahl
   // steht in der Erfassung.
-  // Ausführlich: docs/begruendungen/test/catalog-api.test.js.md#stelle-2
   await db.run(`INSERT INTO users (id, username, password_hash)
                 VALUES (1, 'katalogprobe', 'x') ON CONFLICT (id) DO NOTHING`);
   await db.run(`INSERT INTO sets (user_id, set_number) VALUES (1, '9000-1')`);
@@ -188,7 +184,6 @@ test('Katalog-API (Postgres-Integration)', async (t) => {
 
   srv.close();
   // REIHENFOLGE: erst das Schema, dann der Pool
-  // Ausführlich: docs/begruendungen/test/catalog-api.test.js.md#stelle-3
   await schemaWiederherstellen();
   await db.pool.end();   // pg-Pool schließen, sonst hält er den Prozess offen
 });

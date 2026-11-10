@@ -1,6 +1,5 @@
 /**
  * Die E-Mail-Verifikation steht nur noch an EINER Stelle.
- * Ausführlich: docs/begruendungen/test/email-verify.test.js.md#kopf
  *
  * ── Gegenprobe (04.11.2026 gemessen) ────────────────────────────────────────
  * Die Abfrage aus uebernimmEmailNeu() zusätzlich als eigene Funktion in
@@ -58,5 +57,4 @@ test('E-Mail-Verifikation steht nur an einer Stelle', async (t) => {
   });
 
   // „der API-Weg antwortet NICHT mit einer Weiterleitung" ist entfallen
-  // Ausführlich: docs/begruendungen/test/email-verify.test.js.md#stelle
 });

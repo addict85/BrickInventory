@@ -1,6 +1,5 @@
 // Wanted-Listen schreiben, die Gegenrichtung zu 18-wanted-xml.js. Eine eigene, DOM-freie Datei, damit ein
 // Test sie einlesen kann — 08-init.js greift schon beim Laden aufs Dokument zu.
-// Ausführlich: docs/begruendungen/public/js/19-bricklink-xml.js.md#die-gegenrichtung-zu-js-18-wanted-xml-js
 
 /**
  * Höchstgrösse eines Uploads, in Bytes.
@@ -44,7 +43,6 @@ export function baueWantedXml(posten) {
 /**
  * Die Liste in Stücke schneiden, die BrickLink annimmt. Gemessen in Bytes (TextEncoder), weil Umlaute mehr
  * Bytes als Zeichen sind. Ein einzeln zu grosser Posten bekommt sein Stück, statt still zu fehlen.
- * Ausführlich: docs/begruendungen/public/js/19-bricklink-xml.js.md#bauewantedxmlstuecke
  */
 /** @param {Parameters<typeof item>[0][]} posten */
 export function baueWantedXmlStuecke(posten, grenze = BL_UPLOAD_MAX_BYTES) {

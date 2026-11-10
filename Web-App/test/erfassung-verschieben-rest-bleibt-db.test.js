@@ -1,6 +1,5 @@
 /**
  * Eine Erfassung verschieben nimmt nur SIE mit — nicht den ganzen Bestand.
- * Ausführlich: docs/begruendungen/test/erfassung-verschieben-rest-bleibt-db.test.js.md#kopf
  *
  * ── Gegenproben (durchgefuehrt) ─────────────────────────────────────────────
  *

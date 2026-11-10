@@ -1,6 +1,5 @@
 /**
  * Ordnung unter data/ — Bilder nach Art getrennt, Anleitungen ohne "shared".
- * Ausführlich: docs/begruendungen/test/data-layout.test.js.md#kopf
  *
  * Gegenprobe (am 25.10. gemessen): in downloadImage() immer PART_IMAGES_DIR
  * → rot: „Figurenbild nicht im Figurenordner".
@@ -66,7 +65,6 @@ test('die Bildroute behält Anmeldepflicht und CDN-Heilung', () => {
   // EINE Route für den ganzen Baum unter data/images/, damit kein Teil ohne
   // Anmeldung ausgeliefert wird (kein statischer Mount: test/media-auth.test.js).
   // strip() vor dem Schneiden, sonst schiebt ein Erklärtext die Zeile hinaus.
-  // Ausführlich: docs/begruendungen/test/data-layout.test.js.md#src-stelle
   assert.match(strip(read('routes/seiten.ts')), /router\.get\('\/images\/\*pfad',[^)]*\bliefereBild\)/, 'Bildroute nicht gefunden');
   const src = strip(read('src/katalog/http/bildAuslieferung.ts'));
   const start = src.indexOf('function liefereBild(');
@@ -80,7 +78,6 @@ test('die Bildroute behält Anmeldepflicht und CDN-Heilung', () => {
 
 test('es gibt keine Abwärtskompatibilität für die alten Pfade mehr', () => {
   // Bewusste Entscheidung
-  // Ausführlich: docs/begruendungen/test/data-layout.test.js.md#src-stelle-2
   const src = read('server.ts');
   assert.doesNotMatch(src, /app\.get\([^)]*['"`]\/data\/part_images/,
     'Weiterleitung für den alten Bildpfad ist wieder da');

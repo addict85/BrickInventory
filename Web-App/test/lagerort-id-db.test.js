@@ -1,6 +1,5 @@
 /**
  * Der Lagerort am Bestand ist eine ID — und was das rettet.
- * Ausführlich: docs/begruendungen/test/lagerort-id-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

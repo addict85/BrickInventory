@@ -1,6 +1,5 @@
 /**
  * Erfassungsliste im Detail-Dialog manueller Teile und Minifiguren.
- * Ausführlich: docs/begruendungen/test/manual-acq-refresh.test.js.md#kopf
  *
  * Die Mengen- und Tagesregeln laufen gegen die Datenbank, das Nachladen der
  * Liste in der ganzen Oberfläche (jsdom).
@@ -412,7 +411,6 @@ test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', ()
 
 test('eine Mengenänderung läuft unter der Bestandssperre', () => {
   // Woher dieser Test kommt
-  // Ausführlich: docs/begruendungen/test/manual-acq-refresh.test.js.md#src-stelle
   const src = require('./helpers/sources').setKernQuelle();
   const fn = src
     .slice(src.indexOf('async function updateSet'), src.indexOf("router.put('/:setNumber'"))
@@ -436,7 +434,6 @@ test('eine Mengenänderung läuft unter der Bestandssperre', () => {
   // aus der Zeile eines einzelnen Kontos — sonst zeigte das Detail eine
   // Haushaltszahl an, während das „+" gegen eine andere rechnete.
   // Die Abfrage steht seit Migration 0036 in db/bestandsmenge.ts; hier …
-  // Ausführlich: docs/begruendungen/test/manual-acq-refresh.test.js.md#stelle-3
   assert.match(
     fn,
     /repo\.setMenge\(dbh, 'blickfeld', leseFeld/,

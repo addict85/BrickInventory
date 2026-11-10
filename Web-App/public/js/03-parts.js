@@ -154,7 +154,6 @@ export function teileFilterZuruecksetzen(){
 // Seitenweise mit Endlos-Scroll statt der ganzen Wand auf einmal: Alle Teil/Farb-Kombinationen waren 20 MB
 // und zehntausende Knoten je Tabwechsel. Eine Farbe kann über die Seitengrenze laufen; _partsLastColor hängt
 // die neue Seite deshalb an die letzte Gruppe an statt eine zweite Überschrift.
-// Ausführlich: docs/begruendungen/public/js/03-parts.js.md#parts-page-size
 
 const PARTS_PAGE_SIZE = 100;
 let _partsPage = 0;          // zuletzt geladene Seite
@@ -347,7 +346,6 @@ function bumpGroupCount(groupEl, add){
 /**
  * Ersatzteil-Plakette. `p.is_spare` genügt, weil der Server die vier Schreibweisen in istErsatzteil() zu
  * einem echten Wahrheitswert macht — die Zeichenkette "0" wäre in JavaScript wahr.
- * Ausführlich: docs/begruendungen/public/js/03-parts.js.md#ersatzteilplakette
  * @param {{ is_spare?: boolean | null }} p
  */
 function ersatzteilPlakette(p){
@@ -437,7 +435,6 @@ function maybeLoadMoreParts(){
 /**
  * Der Suchtext gilt für BEIDE Listen des Reiters: Die Filterleiste steht über den manuellen Teilen, also
  * müssen sie mitfiltern. Eine Entprellung für beide, damit keine Liste vergessen werden kann.
- * Ausführlich: docs/begruendungen/public/js/03-parts.js.md#teilefiltergeaendert
  */
 function teileFilterGeaendert() {
   loadPartsData();
@@ -458,7 +455,6 @@ G('parts-ordnung').addEventListener('change', () => {
 /**
  * Der Ansichtsumschalter gilt für beide Listen. Die Set-Teile laden neu (Tabelle braucht with_sets=1), die
  * manuellen werden nur neu gezeichnet: Sie haben die Daten schon, ein zweiter Abruf wäre nur Wartezeit.
- * Ausführlich: docs/begruendungen/public/js/03-parts.js.md#teileansichtgeaendert
  */
 function teileAnsichtGeaendert() {
   loadPartsData();

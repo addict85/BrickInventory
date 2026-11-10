@@ -3,7 +3,6 @@
  *   - Bestätigungsdialog: Escape gibt den Fokus an den Auslöser zurück; ist
  *     „Weitere Aktionen“ zugeklappt (es klappt bei der Wahl zu), an dessen <summary>;
  *   - Set-Ansicht: „Teile neu importieren“ (unter „Weitere Aktionen“) ist ein …
- * Ausführlich: docs/begruendungen/test/bedienung-browser.test.js.md#kopf
  *
  * Gegenproben (02.11.2026 gemessen, je einzeln):
  *   A  rueckziel() in 01-dialoge.js gibt nur `el` zurück → rot:

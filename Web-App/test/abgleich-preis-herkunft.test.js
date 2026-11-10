@@ -4,7 +4,6 @@
  * die Antwort sagt es (price_from_condition). Server gegen die Test-DB (der
  * Preis-Cache kennt „Neuware ohne Preis“ und „Gebraucht mit Preis“, also kein
  * Abruf), Webapp im echten Bündel (jsdom), App als Kotlin-Struktur.
- * Ausführlich: docs/begruendungen/test/abgleich-preis-herkunft.test.js.md#wurzel
  *
  * Gegenproben (10.11.2026 gemessen, je einzeln, dist bzw. Bündel neu gebaut):
  *   A  in preise.ts fetchPartPrice beim Cache-Rückfall ohne `is_fallback: true`

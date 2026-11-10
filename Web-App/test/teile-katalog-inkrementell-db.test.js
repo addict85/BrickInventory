@@ -3,7 +3,6 @@
  * nach, die die geänderte Nummer enthalten, und nur in den Konten, die sie
  * führen (Migration 0079, zieheKatalogNach). Das Ergebnis gleicht einem
  * vollen Neuaufbau.
- * Ausführlich: docs/begruendungen/test/teile-katalog-inkrementell-db.test.js.md#kopf
  *
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  in zieheKatalogNach() statt der Gruppen das ganze Konto gelöscht und

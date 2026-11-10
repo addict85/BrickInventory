@@ -14,7 +14,6 @@ import { esc, html, ungeprueft } from './00-escapen.js';
 
 // Lagerorte verwalten. Nur die eigenen: Ein Ort ist ein Regal in der eigenen Wohnung, fremde umzubenennen
 // wäre ein Versehen. Die Auswahl selbst steckt im Detailfenster (ladeOrtAuswahl).
-// Ausführlich: docs/begruendungen/public/js/05-alarme.js.md#der-lagerort-soll-ein-auswahlfeld-mit-ei
 
 /** Ein Preisalarm direkt in der Übersicht, ohne Umweg über das Set. */
 async function legeAlarmAn() {
@@ -35,7 +34,6 @@ async function legeAlarmAn() {
  * Alle Preisalarme an einem Ort: Im Set-Detail findet man einen Alarm nur, wenn man das Set schon gefunden
  * hat. Schwelle als Feld (speichert beim Verlassen), dazu der letzte Preis, ohne den sie nicht zu beurteilen
  * ist.
- * Ausführlich: docs/begruendungen/public/js/05-alarme.js.md#alle-preisalarme-des-kontos-die-uebersic
  */
 export async function ladeAlarmUebersicht() {
   const el = G('alerts-list');
@@ -60,7 +58,6 @@ export async function ladeAlarmUebersicht() {
       : t('alerts.last', { preis: fmtN(a.zuletzt_preis, a.currency_code) });
     // „scharf“ gegen „unscharf“ nicht über die Farbe allein, denn grün und grau sind für Rot-Grün-Schwache
     // gleich: Wort, Fläche (gefüllt/umrandet) und Zeichen (●/○) tragen es je für sich, wie in der App.
-    // Ausführlich: docs/begruendungen/public/js/05-alarme.js.md#marke
     const marke = a.ausgeloest
       ? `<span class="alarm-marke alarm-marke-aus">${esc(tRaw('alerts.fired'))}</span>`
       : `<span class="alarm-marke alarm-marke-an">${esc(tRaw('alerts.armed'))}</span>`;
@@ -74,7 +71,6 @@ export async function ladeAlarmUebersicht() {
     // Die Zeile öffnet das Set-Detail, aber nur wenn das Set im Bestand ist — sonst käme statt Dialog ein
     // Fehler. Feld und Löschknopf haben eigenes data-click, sonst öffnete jeder Klick ins Feld den Dialog
     // darüber.
-    // Ausführlich: docs/begruendungen/public/js/05-alarme.js.md#oeffnet
     const oeffnet = a.besitzt
       ? ` class="zeiger" data-click="openModal" data-arg="${esc(a.set_number)}"`
       : '';
@@ -148,7 +144,6 @@ async function loescheAlarm(schluessel, setNumber) {
  * Preisalarme aus einer CSV einlesen. Die Schwellen werden nicht umgerechnet (ein falscher Kurs wäre
  * schlimmer), gelten aber in der Kontowährung; ein Währungshinweis meldet deshalb mit „info“ statt im
  * Erfolgston.
- * Ausführlich: docs/begruendungen/public/js/05-alarme.js.md#importalarmecsv
  */
 async function importAlarmeCsv() {
   const status = G('alerts-csv-status');

@@ -1,6 +1,5 @@
 /**
  * Rauchtest für das Frontend-Bündel.
- * Ausführlich: docs/begruendungen/test/bundle-smoke.test.js.md#kopf
  *
  * „jeder Handler aus dem Markup ist angemeldet“ läuft seit dem 08.11.2026 am
  * laufenden Bündel in aktionen-dispatcher-oberflaeche.test.js (Gegenprobe:
@@ -60,7 +59,6 @@ test('das Bündel lässt sich auswerten, ohne zu werfen', async () => {
 // HINWEIS: Hier stand der Versuch eines Wächters gegen vergessene Importe —
 // erst als Klick-Test durch alle Reiter, dann als statische Prüfung "jeder
 // modulfremde Aufruf muss importiert sein".
-// Ausführlich: docs/begruendungen/test/bundle-smoke.test.js.md#api-liefert-bei-jedem-fehlschlag-ein-obj
 //
 // Beide sind wieder entfernt, weil sie nicht funktionierten:
 //   • Der Klick-Test scheiterte an abgewiesenen Zusagen aus den Datenabrufen.
@@ -73,7 +71,6 @@ test('das Bündel lässt sich auswerten, ohne zu werfen', async () => {
 
 test('api() liefert bei jedem Fehlschlag ein Objekt statt zu werfen', async () => {
   // Woher dieser Test kommt
-  // Ausführlich: docs/begruendungen/test/bundle-smoke.test.js.md#http
   const http = require('node:http');
   const srv = http.createServer((q, r) => {
     const sende = (code, typ, körper) => { r.writeHead(code, { 'content-type': typ }); r.end(körper); };
@@ -151,7 +148,6 @@ test('unbehandelte Fehler landen nicht nur in der Konsole', () => {
 
 test('ein 401 führt zurück zur Anmeldung, nicht in eine tote Oberfläche', () => {
   // Woher dieser Test kommt
-  // Ausführlich: docs/begruendungen/test/bundle-smoke.test.js.md#core
   const core = require('./helpers/sources').coreQuelle();
   assert.match(core, /if \(res\.status === 401\) melde\('sitzungBeendet', path\);/,
     'Der 401 muss zentral behandelt werden, nicht an 88 Aufrufstellen');

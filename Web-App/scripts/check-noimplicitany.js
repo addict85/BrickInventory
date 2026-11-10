@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 /**
  * noImplicitAny — gestaffelt, mit einer Liste, die nur kürzer werden darf.
- * Ausführlich: docs/begruendungen/scripts/check-noimplicitany.js.md#kopf
  */
 'use strict';
 const { execFileSync } = require('node:child_process');
@@ -11,7 +10,6 @@ const ROOT = path.join(__dirname, '..');
 
 /**
  * Dateien, die `noImplicitAny` noch NICHT bestehen.
- * Ausführlich: docs/begruendungen/scripts/check-noimplicitany.js.md#stelle
  */
 // Der Typ steht hier, seit die Liste LEER ist: `new Set([])` ergibt sonst
 // Set<never>, und dieses Skript faellt durch seine eigene Pruefung. Genau die

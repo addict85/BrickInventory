@@ -1,7 +1,6 @@
 /**
  * Einstellungen: einheitliche Speichern-Knöpfe und benannte Aktionen der
  * Benutzertabelle — am echten Bündel in jsdom nach dem Übersetzen.
- * Ausführlich: docs/begruendungen/test/einstellungen-oberflaeche.test.js.md#kopf
  *
  * Gegenproben (am 28.10. gemessen):
  *   A  btn-sav-bl wieder mit data-ico="schluessel" → rot: „Speichern-Knöpfe“

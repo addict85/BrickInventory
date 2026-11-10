@@ -12,7 +12,6 @@ import { bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
 
 // Gutscheine (LEGO-Geschenkkarten) stehen direkt im Profil statt in einem eigenen Reiter: Sie sollen schnell
 // erreichbar sein, und wie in der App erfassen, ändern und anzeigen.
-// Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#im-eigenen-profil-sollen-lego-gutscheine
 
 /** Die zuletzt geladene Liste — für die Knöpfe, die auf eine Zeile zeigen. */
 /** @type {import('../../frontend-typen/vertrag').Gutschein[]} */
@@ -216,7 +215,6 @@ const GUTSCHEIN_FELDER = { nummer_ungueltig: 'v-number', gutschein_existiert: 'v
 /**
  * Speichern, ein Knopf für beide Wege: Liegt eine Datei im Feld, liest der Server sie, und ausgefüllte Felder
  * gewinnen. So kann man ein PDF hochladen und den Betrag selbst ergänzen, wenn es ihn nicht hergibt.
- * Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#speichern-der-eine-knopf-fuer-beide-wege
  */
 export async function gutscheinSpeichern() {
   const number   = el('v-number').value.trim();
@@ -270,7 +268,6 @@ export async function gutscheinSpeichern() {
 
     // Ob ein PDF einen oder mehrere Gutscheine ergab, entscheidet der Server; `mehrere` sagt es. Dann
     // dieselbe Meldung wie bei CSV-Importen, damit niemand bei drei Gutscheinen „gespeichert“ liest und rät.
-    // Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#ob-ein-pdf-einen-oder
     if (d.mehrere) {
       toast(tRaw('import.summary', { added: d.mehrere.added, updated: d.mehrere.updated,
                                      errors: d.mehrere.errors }),
@@ -323,7 +320,6 @@ export async function gutscheinPinUmschalten(id) {
 /**
  * Das PDF im Betrachter der Anleitungen, wie in der Android-App: Er kann anzeigen und herunterladen, zwei
  * eigene Knöpfe dafür wären doppelt.
- * Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#gutscheinpdfoeffnen
  */
 /** @param {string} id */
 export async function gutscheinPdfOeffnen(id) {
@@ -353,7 +349,6 @@ async function pdfFreigabe(pfad) {
 /**
  * Nummer oder PIN kopieren, roh statt gruppiert: Die Leerzeichen sind eine Lesehilfe an der Kasse, ein
  * Bezahlfeld nimmt sie nicht an. navigator.clipboard braucht HTTPS, daher der Rückfall.
- * Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#gutscheinkopieren
  */
 /** @param {string} id @param {string} feld */
 export async function gutscheinKopieren(id, feld) {
@@ -388,7 +383,6 @@ export async function gutscheinKopieren(id, feld) {
 /**
  * Alle Gutscheine als ein PDF, per fetch statt Link: Die Kopfzeile X-Gutschein-Befunde sagt, wo der Betrag
  * nicht ersetzt werden konnte — ein <a href> würfe genau diese Auskunft weg.
- * Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#gutscheineexportieren
  */
 async function gutscheineExportieren() {
   const f = await pdfFreigabe('/v1/vouchers/export/pdf-freigabe');
@@ -429,7 +423,6 @@ async function gutscheineExportieren() {
       // tRaw statt t(), weil ein Toast reiner Text ist: t() maskiert, und aus 9'325 würde sichtbar
       // „9&#39;325“. Die Nummern stehen in der Meldung, damit man weiss, welche Karte auf Papier den alten
       // Betrag trägt.
-      // Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#toast
       toast(tRaw('vouchers.export_done', { n: befunde.length }) + ' — '
           + tRaw('vouchers.export_offen', { n: offen.length }) + ': '
           + offen.map(b => b.number).join(', '), 'info');

@@ -1,6 +1,5 @@
 /**
  * E-Mails im Design der Webapp.
- * Ausführlich: docs/begruendungen/test/mail-theme.test.js.md#kopf
  *
  * Gegenproben (08.11.2026 gemessen, je einzeln):
  *   A  brick.primary in src/mail/vorlage.ts auf '#2563eb' → rot: „je Design

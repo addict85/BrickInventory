@@ -1,6 +1,5 @@
 /**
  * Sicherung und Wiederherstellung — einmal wirklich durchgespielt.
- * Ausführlich: docs/begruendungen/test/backup-restore-db.test.js.md#kopf
  *
  * Gegenprobe, dass ein abgeschnittener Dump ohne sie stillschweigend
  * durchginge.
@@ -58,7 +57,6 @@ test('Sicherung und Wiederherstellung', async (t) => {
   const psql   = klient('psql');
   /**
    * Die Fassung eines Klienten — gehört in die Fehlermeldung.
-   * Ausführlich: docs/begruendungen/test/backup-restore-db.test.js.md#fassung
    */
   const fassung = (bin) => {
     if (!bin) return '—';
@@ -80,7 +78,6 @@ test('Sicherung und Wiederherstellung', async (t) => {
   const dump = path.join(arbeit, 'db.sql');
 
   // psql mit einem Dump füttern
-  // Ausführlich: docs/begruendungen/test/backup-restore-db.test.js.md#lauf
   const lauf = (args, datei) => spawnSync(psql, [...args, url, '-f', datei],
     { encoding: 'utf8', stdio: 'pipe', env: { ...process.env } });
   /** Exit-Code; `grund()` liefert danach die Meldung von psql dazu. */

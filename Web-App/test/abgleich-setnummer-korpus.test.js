@@ -1,7 +1,6 @@
 /**
  * Der GEMEINSAME Korpus: Web-App und Android-App müssen dieselbe Setnummer
  * lesen.
- * Ausführlich: docs/begruendungen/test/abgleich-setnummer-korpus.test.js.md#kopf
  *
  * Gegenprobe auf der anderen Seite ist SetnummerKorpusTest.kt.
  *

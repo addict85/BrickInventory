@@ -1,6 +1,5 @@
 /**
  * Der Filter der Reiter „Teile" und „Minifiguren" trifft BEIDE Listen.
- * Ausführlich: docs/begruendungen/test/manuelle-listen-filter-db.test.js.md#kopf
  *
  * ── Gegenproben (am 20.10. GEMESSEN, Zahlen abgeschrieben) ──────────────────
  *

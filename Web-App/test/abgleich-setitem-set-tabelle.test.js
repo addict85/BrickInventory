@@ -1,7 +1,6 @@
 /**
  * „Verwendet in" zeigt Bild, Nummer und Bezeichnung — in BEIDEN Oberflächen.
  * Die Webapp im echten Bündel (jsdom); die App liest Kotlin (Struktur, kein SDK hier).
- * Ausführlich: docs/begruendungen/test/abgleich-setitem-set-tabelle.test.js.md#kopf
  *
  * Gegenproben (10.11.2026 gemessen, je einzeln, Bündel neu gebaut), alle in
  * 13-set-teile.js → rot „die Webapp zeigt die Sets als Tabelle …“:
@@ -56,7 +55,6 @@ test('die App zeigt dieselben drei Spalten', () => {
   const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
 
   // Warum hier NICHT resolveThumbUrl steht
-  // Ausführlich: docs/begruendungen/test/abgleich-setitem-set-tabelle.test.js.md#stelle
   assert.match(src, /rememberTileImageWithFallback\(serverUrl, s\.imageLocal, s\.imageUrl\)/,
     'Die App löst das Set-Bild nicht als Vorschau mit Rückfall auf — die Zeile ' +
     'bliebe ohne Bild, wo die Webapp über data-orig nachlädt');

@@ -1,4 +1,4 @@
-// Hier allein: wessen Daten eine Anfrage sieht. Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#abschnitt
+// Hier allein: wessen Daten eine Anfrage sieht.
 import { logAndContinue } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
 import * as db from '../../db/database';
@@ -138,7 +138,7 @@ export async function pruefeEinladung(uid: number, code: string) {
   return { inviter: { id: mainId, username: (await repo.kontoName(mainId)) || String(mainId) } };
 }
 
-// Atomar entwertet, bei Fehlschlag frei. Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#redeeminvite
+// Atomar entwertet, bei Fehlschlag frei.
 export async function redeemInvite(uid: number, code: string) {
   const subId = parseInt(String(uid));
   if (typeof code !== 'string' || code.length < 8) {
@@ -241,7 +241,6 @@ export async function householdStatus(uid: number) {
 }
 
 // Der Kontofilter wird hier zu IDs, damit Liste und Summen dieselben Konten zählen.
-// Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#abschnitt-2
 export type ScopeMode = 'all' | 'own' | 'subs' | number;
 
 /** Unbekanntes ergibt 'all'. Eine Zahl wird NICHT hier geprüft: Ob sie zum
@@ -268,8 +267,7 @@ export async function scopeIds(uid: number, mode: ScopeMode = 'all'): Promise<nu
 }
 
 /** Vor `asIds()` ID oder Liste, danach `Blickfeld` (immer Liste): zwei Namen,
- * damit eine Signatur sagt, in welchem Moment sie steht.
- * Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#blickfeldeingabe */
+ * damit eine Signatur sagt, in welchem Moment sie steht. */
 export type BlickfeldEingabe = number | number[];
 
 export type Blickfeld = number[];
@@ -309,7 +307,6 @@ export async function schreibziel(nutzer: number, wunsch: unknown,
 }
 
 /** Prüft die RICHTUNG (Haupt- für Unterkonto), nicht nur die Mitgliedschaft.
- * Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#resolvewritetarget
  * @returns die Ziel-ID, oder null wenn nicht erlaubt (Aufrufer antwortet 403) */
 export async function resolveWriteTarget(
   actorId: number, requested: unknown
@@ -332,8 +329,7 @@ export async function acquisitionMoveSource(
   return owner;
 }
 
-/** Beide Formen hier, damit die Namensauflösung nur einmal existiert.
- * Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#withowners */
+/** Beide Formen hier, damit die Namensauflösung nur einmal existiert. */
 export async function withOwners(uids: number[], rows: any[]) {
   if (uids.length < 2 || !rows?.length) return rows;
   const owners = await repo.benutzerNamen(uids);

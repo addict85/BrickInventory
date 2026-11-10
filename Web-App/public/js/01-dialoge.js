@@ -1,6 +1,5 @@
 // Tastaturbedienung aller Dialoge an einer Stelle: Escape, Fokus hinein, Tab bleibt drin, Fokus zurück.
 // Geschlossen wird über den Knopf data-dialog-zu, damit dieselbe Aufräumarbeit läuft wie beim Klick auf ✕.
-// Ausführlich: docs/begruendungen/public/js/01-dialoge.js.md#fuer-jedes-ovl-role-dialog-an-einer-stel
 
 // `summary` gehört dazu: Fehlt es, springt die Falle vor „Weitere Aktionen“
 // zurück an den Anfang, und alles dahinter ist per Tastatur unerreichbar.

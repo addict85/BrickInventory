@@ -1,6 +1,5 @@
 /**
  * Den Betrag im Original-PDF ersetzen, Gutscheine verbinden, zurueckeinlesen.
- * Ausführlich: docs/begruendungen/test/gutschein-pdf-schreiben.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Befunde GEMESSEN) ────────────────────────────
  *
@@ -236,7 +235,6 @@ test('8. dieselbe Karte zweimal im Stapel ergibt EINEN Eintrag', async () => {
 
 test('9. die Nachprüfung fängt ein Ersetzen, das die Kartennummer trifft', async () => {
   // Woher dieser Fall kommt (Gegenprobe)
-  // Ausführlich: docs/begruendungen/test/gutschein-pdf-schreiben.test.js.md#nummermit400
   const nummerMit400 = '5045076374400011166';
   const original = await baueGutschein('400', nummerMit400, '5225', null);
   const vorher = werteAusPdf(original);

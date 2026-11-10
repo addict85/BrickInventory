@@ -1,6 +1,5 @@
 /**
  * Adminrechte entziehen — an BEIDEN Wegen, mit Wahrheitswerten als Text.
- * Ausführlich: docs/begruendungen/test/admin-role-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): strictBool() in einem der beiden Endpunkte wieder
  * durch `is_admin ? 1 : 0` ersetzt → der zugehörige Teilschritt wird rot.

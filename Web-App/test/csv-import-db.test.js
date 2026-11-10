@@ -47,7 +47,6 @@ test('Katalog-Import tauscht, statt zu leeren', async (t) => {
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   // Und die MIGRATIONEN, nicht nur das Schema
-  // Ausführlich: docs/begruendungen/test/csv-import-db.test.js.md#stelle
   {
     const mc = await db.pool.connect();
     try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }

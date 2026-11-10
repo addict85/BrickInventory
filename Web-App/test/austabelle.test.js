@@ -1,6 +1,5 @@
 /**
  * Nachschlagetabellen mit Schlüssel von aussen.
- * Ausführlich: docs/begruendungen/test/austabelle.test.js.md#kopf
  */
 const test   = require('node:test');
 const assert = require('node:assert');

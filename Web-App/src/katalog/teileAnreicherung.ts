@@ -49,8 +49,7 @@ async function apiGet(url: string, rbKey: string) {
   }
 }
 
-/** @param kind Bestimmt Zielverzeichnis und Web-Pfad.
- * Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#abschnitt */
+/** @param kind Bestimmt Zielverzeichnis und Web-Pfad. */
 async function downloadImage(
   imgUrl: string | null | undefined,
   partNum: string,
@@ -413,11 +412,9 @@ async function enrichSetMinifigs(setNumber: string) {
 
 // „Fehlend" = image_local gesetzt, Datei fehlt. Nicht wiederherstellbare
 // Einträge werden geleert, damit die Oberflächen auf die CDN-Adresse zurückfallen.
-// Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#abschnitt-2
 let _redlRunning = false;
 
 // Für alle drei Bildarten; sonst verwarf der Nachlauf Set- und Figurenbilder.
-// Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#fspathfromlocal
 function _fsPathFromLocal(imageLocal: string) {
   if (!imageLocal) return null;
   const bereiche: Array<[string, string]> = [
@@ -437,7 +434,6 @@ function _fsPathFromLocal(imageLocal: string) {
 }
 
 // Mit await, sonst ginge der Endstand bei einem Neustart verloren.
-// Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#redlsetstatus
 async function _redlSetStatus(obj: Record<string, unknown>) {
   await setzeZustand('imgredl_status', JSON.stringify({ ...obj, at: Date.now() }))
     .catch(logAndContinue('teile-enrich:setzeZustand'));
@@ -524,7 +520,6 @@ async function _redownloadMissingImages(lauf?: AuftragsLauf) {
           redownloaded++;
         } else {
           // Die Liste MUSS zu den Tabellen passen, die die Spalte wirklich haben.
-          // Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#redownloadmissingimages
           for (const tbl of repo.KATALOGE_MIT_BILD) {
             await repo.vergissLokalesBild(tbl, m.image_local)
               .catch(logAndContinue(`img-redl:leeren ${tbl}`));

@@ -1,6 +1,5 @@
 /**
  * Funktionen ohne Aufrufer.
- * Ausführlich: docs/begruendungen/test/dead-code.test.js.md#kopf
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -52,7 +51,6 @@ test('keine Funktion ohne einen einzigen Aufrufer', () => {
 
 /**
  * Die zweite Haelfte: EXPORTIERTE Namen ohne Aufrufer.
- * Ausführlich: docs/begruendungen/test/dead-code.test.js.md#kein-exportierter-wert-ohne-einen-einzig
  */
 test('kein exportierter Wert ohne einen einzigen Aufrufer', () => {
   const quellen = ['routes', 'src', 'jobs', 'db', 'clients', 'startup']
@@ -110,7 +108,6 @@ test('kein exportierter Wert ohne einen einzigen Aufrufer', () => {
   }
 
   // Selbstbeweis, je Schreibweise EINZELN
-  // Ausführlich: docs/begruendungen/test/dead-code.test.js.md#stelle
   //
   // Hier stand eine Summe ueber beide Muster. Die Gegenprobe hat sie
   // ueberlebt: Ich habe das erste Muster zerstoert, das zweite fand weiterhin

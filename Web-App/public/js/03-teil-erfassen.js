@@ -57,7 +57,6 @@ G('btn-add-part')?.addEventListener('click', async () => {
   const colorSel = G('ap-color-select');
   // „Keine Farbe“ ist null, nicht 0: 0 ist bei Rebrickable Schwarz. Mit 0 für beides suchte der Server für
   // schwarze Teile kein Farbbild und zeigte das allgemeine, meist weisse.
-  // Ausführlich: docs/begruendungen/public/js/03-teil-erfassen.js.md#rawcolor
   const rawColor = colorSel?.value ?? '';
   const colorId = String(rawColor).trim() === '' ? null : parseInt(rawColor) || 0;
   const colorOpt = colorSel?.options[colorSel.selectedIndex];

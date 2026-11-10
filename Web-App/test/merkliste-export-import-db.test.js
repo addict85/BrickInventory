@@ -1,6 +1,5 @@
 /**
  * Die Merkliste geht als CSV hinaus und kommt als Merkliste zurück.
- * Ausführlich: docs/begruendungen/test/merkliste-export-import-db.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Befunde GEMESSEN) ────────────────────────────
  *
@@ -208,7 +207,6 @@ test('Merkliste: Rundlauf über die echten Adressen', { concurrency: 1 }, async 
     // Die Gegenrichtung zu Fall 3: Der Import muss auch auf eine GEFUELLTE
     // Liste anwendbar sein. Ohne diesen Fall waere ein Import „richtig", der
     // nur auf der leeren Tabelle funktioniert.
-    // Ausführlich: docs/begruendungen/test/merkliste-export-import-db.test.js.md#einlesen
     const einlesen = async () => {
       const fd = new FormData();
       fd.append('file', new Blob([csvAusPosten()], { type: 'text/csv' }), 'merkliste.csv');

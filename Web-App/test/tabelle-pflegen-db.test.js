@@ -1,7 +1,6 @@
 /**
  * Nach einem Masseneinfuegen wird die Tabelle aufgefrischt — sonst nimmt der
  * Planer den falschen Index.
- * Ausführlich: docs/begruendungen/test/tabelle-pflegen-db.test.js.md#kopf
  *
  * ── Gegenproben (durchgefuehrt) ─────────────────────────────────────────────
  *

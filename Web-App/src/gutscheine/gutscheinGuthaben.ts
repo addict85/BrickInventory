@@ -1,5 +1,4 @@
 // Guthaben einer LEGO-Geschenkkarte; greift der Bot-Schutz, folgt kein weiterer Aufruf.
-// Ausführlich: docs/begruendungen/src/gutscheine/gutscheinGuthaben.ts.md#abschnitt
 import { meldeUndLiefere } from '../infra/fehler';
 import { hostErlaubt } from '../infra/fremdeAdressen';
 import { legoAbruf, ERLAUBTE_GUTHABEN_HOSTS, type LegoAbruf } from '../katalog/quellen';
@@ -9,8 +8,7 @@ const ENDPUNKT = 'https://www.lego.com/api/graphql/giftCardBalanceQuery';
 const LOGIN    = 'https://www.lego.com/api/graphql/Login';
 
 
-/** Hier statt in der Oberfläche, weil auch die Route den gespeicherten Wert prüft.
- * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinGuthaben.ts.md#laender */
+/** Hier statt in der Oberfläche, weil auch die Route den gespeicherten Wert prüft. */
 export const LAENDER = [
   'de-CH', 'de-DE', 'de-AT', 'fr-FR', 'it-IT', 'nl-NL', 'en-GB', 'en-US',
 ] as const;
@@ -78,8 +76,7 @@ function kurz(nummer: string): string {
 
 interface Sitzung { token: string; kekse: Map<string, string>; ablauf: number }
 
-/** Im Gedächtnis, nicht in der Datenbank: Der Gast-Token gehört keinem Konto.
- * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinGuthaben.ts.md#sitzungen */
+/** Im Gedächtnis, nicht in der Datenbank: Der Gast-Token gehört keinem Konto. */
 const sitzungen = new Map<string, Sitzung>();
 
 /** 0, wenn er sich nicht lesen lässt. */
@@ -265,8 +262,7 @@ async function frageAb(
   };
 }
 
-/** Ein Neuversuch nur bei 401 mit Token aus dem Vorrat — der kann abgelaufen sein.
- * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinGuthaben.ts.md#holeguthaben */
+/** Ein Neuversuch nur bei 401 mit Token aus dem Vorrat — der kann abgelaufen sein. */
 export async function holeGuthaben(
   nummer: string, pin: string, opt: { locale?: string; abruf?: Abruf } = {},
 ): Promise<Guthaben> {

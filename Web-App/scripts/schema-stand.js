@@ -1,7 +1,6 @@
 'use strict';
 /**
  * Das vollständige Schema an einer Stelle: db/schema-stand.sql.
- * Ausführlich: docs/begruendungen/scripts/schema-stand.js.md#fs-stelle
  */
 const fs = require('fs');
 const path = require('path');

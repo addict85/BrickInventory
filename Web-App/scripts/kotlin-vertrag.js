@@ -218,7 +218,6 @@ const FEHLEN_ERLAUBT = new Map([
  * Geprüft wird, was die App beim Lesen braucht: Jedes Feld des Modells steht
  * im Schema (unter seinem JSON-Namen), mit passendem Typ; was das Schema null
  * sein lässt, ist in Kotlin nullbar; was das Schema weglassen darf, hat in …
- * Ausführlich: docs/begruendungen/scripts/kotlin-vertrag.js.md#vergleiche
  * @param {KTyp} t @param {any} schema @param {KModelle} modelle
  * @param {(ref: string) => any} aufloesen  `$ref` → Schema
  * @param {string} [ort] @param {{ route?: string, standardwerte?: boolean }} [o]

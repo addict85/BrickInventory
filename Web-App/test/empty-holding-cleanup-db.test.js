@@ -1,6 +1,5 @@
 /**
  * Wird der letzte Kaufpreis gelöscht, bleibt NICHTS zurück.
- * Ausführlich: docs/begruendungen/test/empty-holding-cleanup-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): cleanupWhenEmpty aus der Set-Konfiguration
  * entfernt → drei der vier Teilschritte werden rot (Galerie, Statistik,
@@ -114,7 +113,6 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz',
       // einer Erfassung den ganzen Bestand mitnähme.
       // Zwei Fragen, zwei Tabellen (Migration 0036): Steht die Bestandszeile
       // noch, und wie viele Exemplare sagen die Erfassungen? Vorher …
-      // Ausführlich: docs/begruendungen/test/empty-holding-cleanup-db.test.js.md#stelle
       assert.ok(await haltZeile(db, uid, BLEIBT), 'das andere Set wurde mitgelöscht');
       assert.equal(await mengeVon(db, uid, BLEIBT), 1,
         'das andere Set hat seine Erfassung verloren');

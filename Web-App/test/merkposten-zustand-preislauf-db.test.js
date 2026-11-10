@@ -1,6 +1,5 @@
 /**
  * Welchen Zustand holt der Preislauf für einen Merkposten?
- * Ausführlich: docs/begruendungen/test/merkposten-zustand-preislauf-db.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
  *   a) Die wanted-Abfrage in zustaendeJeSet() entfernt → rot in Zeile 68,
@@ -60,7 +59,6 @@ test('Preislauf: der Zustand eines Merkpostens ist der des Nutzers', { concurren
       'neu und gebraucht sind zwei Merkposten — für beide braucht das Detail einen Preis');
 
     // Bestand ohne Merkposten: der Zustand kommt aus der Erfassung
-    // Ausführlich: docs/begruendungen/test/merkposten-zustand-preislauf-db.test.js.md#stelle
     await haeltSet(db, a, '75192-1', 0);  // Menge 0: die Erfassung dahinter traegt sie
     await db.run(`INSERT INTO set_acquisitions (user_id, set_number, quantity, condition) VALUES ($1,'75192-1',1,'U')`, [a]);
     assert.deepEqual((await zustaendeJeSet(a, ['75192-1'])).get('75192-1'), ['U'],

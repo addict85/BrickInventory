@@ -1,6 +1,5 @@
 /**
  * Jede Adresse, die die Android-App aufruft, muss es auf dem Server geben.
- * Ausführlich: docs/begruendungen/test/abgleich-app-endpunkte.test.js.md#kopf
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 const test = require('node:test');
@@ -52,7 +51,6 @@ function serverRouten() {
   }
 
   // Routen, die DIREKT an der App haengen
-  // Ausführlich: docs/begruendungen/test/abgleich-app-endpunkte.test.js.md#stelle
   {
     const srv = fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
     for (const m of srv.matchAll(/\bapp\.(get|post|put|patch|delete)\(\s*['"](\/api\/[^'"]+)['"]/g))

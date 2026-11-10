@@ -1,4 +1,4 @@
-// BrickLink-Nummern stehen nur in bl_zuordnung. Ausführlich: docs/begruendungen/src/katalog/blZuordnung.ts.md#abschnitt
+// BrickLink-Nummern stehen nur in bl_zuordnung.
 import { meldeUndLiefere } from '../infra/fehler';
 import * as repo from './repository/blZuordnung';
 import type { BlArt } from '../../db/blZuordnungSql';
@@ -48,7 +48,6 @@ export function blAbrufNummer(art: BlArt, rbId: string, konto?: number | number[
 }
 
 // Eine Abfrage für viele Nummern; jede Zeile kommt zurück, damit nichts zweimal gefragt wird.
-// Ausführlich: docs/begruendungen/src/katalog/blZuordnung.ts.md#blabrufnummern
 export async function blAbrufNummern(art: BlArt, rbIds: string[], konto?: number | number[] | null): Promise<Map<string, string>> {
   const raus = new Map<string, string>();
   if (!rbIds.length) return raus;

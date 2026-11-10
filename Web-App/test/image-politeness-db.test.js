@@ -1,6 +1,5 @@
 /**
  * Schonender Umgang mit dem Bildserver.
- * Ausführlich: docs/begruendungen/test/image-politeness-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -104,7 +103,6 @@ test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async (t) => 
 
 test('auch reine Vorschau-Arbeit wird gebremst', { concurrency: 1 }, async (t) => {
   // Marcos Log
-  // Ausführlich: docs/begruendungen/test/image-politeness-db.test.js.md#stelle
   try { await db.initSchemaOnce(); }
   catch (e) {
     if (process.env.REQUIRE_DB === '1') throw e;

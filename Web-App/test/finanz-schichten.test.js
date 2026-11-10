@@ -7,7 +7,6 @@ const ORDNER = path.join(__dirname, '..', 'src/finanzen/rechnung');
 
 /**
  * Die Finanzschicht steht aufeinander — und zwar in EINE Richtung.
- * Ausführlich: docs/begruendungen/test/finanz-schichten.test.js.md#stelle
  */
 
 /** Die Reihenfolge — wer weiter unten steht, darf nichts weiter oben holen. */
@@ -68,7 +67,6 @@ test('die Fassade reicht nur durch', () => {
 
 test('Blickfeld ist an einer Stelle erklaert', () => {
   // Ein Name, zwei Bedeutungen
-  // Ausführlich: docs/begruendungen/test/finanz-schichten.test.js.md#wurzel
   const wurzel = path.join(__dirname, '..');
   const treffer = [];
   (function lauf(d) {

@@ -38,7 +38,6 @@ router.put('/minifigs/:figNumber', requireToken, async (req: Anfrage<'PUT /api/v
 });
 
 // Trifft alle Zeilen der Figur im Schreibbereich: Gemeint ist die Figur, nicht eine Zeile.
-// Ausführlich: docs/begruendungen/routes/api_v1/minifigs.ts.md#put-minifigs-fignumber-storage
 router.put('/minifigs/:figNumber/storage', requireToken, async (req: Anfrage<'PUT /api/v1/minifigs/:figNumber/storage'>, res: Antwort<'PUT /api/v1/minifigs/:figNumber/storage'>) => {
   const ort = normalisiereLagerort(req.eingabe.storage);
   const n = await setzeLagerort('fig', { schreiber: req.apiUser.user_id },
@@ -61,8 +60,7 @@ router.get('/minifigs/manual', requireToken, async (req: Anfrage<'GET /api/v1/mi
   res.json({ success: true, figs, ...seite, ...ab.angabe() });
 });
 
-/** Dieselbe Gruppierung wie die Liste, damit Kennzahl und Liste übereinstimmen.
- * Ausführlich: docs/begruendungen/routes/api_v1/minifigs.ts.md#get-minifigs-stats */
+/** Dieselbe Gruppierung wie die Liste, damit Kennzahl und Liste übereinstimmen. */
 router.get('/minifigs/stats', requireToken, async (req: Anfrage<'GET /api/v1/minifigs/stats'>, res: Antwort<'GET /api/v1/minifigs/stats'>) => {
   const stats = await getMinifigStats(
     sichtVon(req));
@@ -88,7 +86,6 @@ router.post('/minifigs/import/csv', requireToken, kontoSchranke('upload'), csvEm
 });
 
 // Dieselbe Abfrage wie bei Teilen (src/bestand/gemeinsam.ts), im Blickfeld des Haushalts.
-// Ausführlich: docs/begruendungen/routes/api_v1/minifigs.ts.md#get-minifigs-fignumber-sets
 router.get('/minifigs/:figNumber/sets', requireToken, async (req: Anfrage<'GET /api/v1/minifigs/:figNumber/sets'>, res: Antwort<'GET /api/v1/minifigs/:figNumber/sets'>) => {
   const uids = sichtVon(req);
   const { item, sets } = await verwendendeSets(uids, 'minifigs', {

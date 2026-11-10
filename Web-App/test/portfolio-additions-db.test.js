@@ -1,6 +1,5 @@
 /**
  * Neu erfasste Sets verändern die Prozentzahl der Portfolio-Kurve NICHT.
- * Ausführlich: docs/begruendungen/test/portfolio-additions-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): die Rückschreibung in src/finanzen/portfolioHistory.ts
  * entfernt (Ersteintrag wieder am eigenen Tag statt am Anfang der Reihe) →
@@ -69,7 +68,6 @@ test('die Portfolio-Prozentzahl misst Preise, nicht Zukäufe',
       `Grundfall stimmt nicht: ${vorher.period_change_pct} statt +10 %`);
 
     // Der Fall aus Marcos Bild: heute 24 Sets dazu
-    // Ausführlich: docs/begruendungen/test/portfolio-additions-db.test.js.md#for-stelle
     for (let i = 3; i <= 26; i++) await setMit(i, 1, 50, 50);
     const nachher = await kurve();
     assert.ok(nachher.period_change_pct <= vorher.period_change_pct + 0.01,

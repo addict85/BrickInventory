@@ -1,6 +1,5 @@
 /**
  * Kaufpreis ändern → die Kachel zieht mit, auf BEIDEN Wegen.
- * Ausführlich: docs/begruendungen/test/acquisition-price-mirror-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): in getSetConditionAggregate() avg_purchase_price
  * auf `MAX(purchase_price)` umgestellt → „Gegenrichtung" wird rot
@@ -79,7 +78,6 @@ test('der geänderte Kaufpreis erreicht die Kachel — Webapp UND App',
     }
 
     // Gegenrichtung — und hier liegt der Unterschied zu vorher.
-    // Ausführlich: docs/begruendungen/test/acquisition-price-mirror-db.test.js.md#alt-stelle
     const alt = await aufbauen();
     // Ein anderer TAG, nicht bloss eine Stunde später: Der Index
     // idx_set_acq_tag_zustand lässt pro Tag und Set nur EINE Erfassung zu. Mit

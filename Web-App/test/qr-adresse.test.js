@@ -1,7 +1,6 @@
 /**
  * Der QR-Code traegt die Adresse, unter der der Server von AUSSEN erreichbar
  * ist — oder es kommt kein Code.
- * Ausführlich: docs/begruendungen/test/qr-adresse.test.js.md#kopf
  *
  * ── Gegenproben (durchgefuehrt, Ergebnis im Commit) ─────────────────────────
  *   a) Absage entfernt, `url: basis` bleibt         → Schritt 1 rot (200 statt 503)

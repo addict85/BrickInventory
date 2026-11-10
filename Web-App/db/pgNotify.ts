@@ -1,6 +1,5 @@
 /**
  * PostgreSQL LISTEN/NOTIFY statt Datenbank-Polling.
- * Ausführlich: docs/begruendungen/db/pgNotify.ts.md#ueberblick
  */
 import { logAndContinue } from '../src/infra/fehler';
 import { Client } from 'pg';
@@ -67,7 +66,6 @@ async function connect() {
 
 /**
  * Eine tote Verbindung aus dem Verkehr ziehen.
- * Ausführlich: docs/begruendungen/db/pgNotify.ts.md#retire
  */
 function retire(c: Client) {
   c.removeAllListeners();
@@ -142,7 +140,6 @@ export async function notify(channel: string, payload = '') {
 
 /**
  * Handler wieder abmelden.
- * Ausführlich: docs/begruendungen/db/pgNotify.ts.md#unlisten
  */
 export function unlisten(channel: string, handler: Handler) {
   const hs = _handlers.get(channel);

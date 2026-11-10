@@ -173,7 +173,6 @@ export function bindTabs(){
 
 // Die Sichten hinter dem Benutzermenü, wie in der Android-App. Jede Sicht lädt nur, was sie zeigt: Vorher
 // holte der Einstellungs-Reiter bei jedem Öffnen fünf Bereiche, von denen man meist einen sehen wollte.
-// Ausführlich: docs/begruendungen/public/js/25-navigation.js.md#sichten
 /** @type {Record<string, () => unknown>} */
 const SICHTEN = {
   profil:     () => { loadSettings(); loadProfile(); ladeZweitenFaktor(); ladePasskeys(); },

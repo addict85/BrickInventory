@@ -2,7 +2,6 @@
  * Seit db/basis.sql gibt es den Stand VOR dieser Migration nicht mehr: Die
  * Fälle zu Riegel, Nachtrag und Zwischenstand sind entfallen. Geprüft werden
  * der Endstand und die Lesewege.
- * Ausführlich: docs/begruendungen/test/teile-katalogspalten-db.test.js.md#kopf
  *
  *      Gegenprobe: ohne Riegel läuft dieselbe Lage durch und der Name ist weg.
  *   3. Die Teileliste liefert Name, Farbe, Bild und Ersatzteilkennzeichen
@@ -179,7 +178,6 @@ test('die Teileliste liefert Beschreibung und Lagerort aus den Katalogen',
     'Der Farbfilter greift nicht über part_color_catalog');
 
   // Der Lagerortfilter — und seine ZAEHLUNG
-  // Ausführlich: docs/begruendungen/test/teile-katalogspalten-db.test.js.md#inkiste
   const inKiste = await handlers.getParts(uid, { exclude_manual: '1', storage: 'Kiste 3' });
   assert.deepEqual(inKiste.parts.map(p => String(p.part_number)), ['3001'],
     'Der Lagerortfilter liefert die falschen Teile');

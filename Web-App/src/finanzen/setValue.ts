@@ -1,5 +1,5 @@
 /** Je Erfassung mit dem Preis ihres Zustands, weil gemischte Bestände sonst
- * einen falschen Durchschnitt bekämen. Ausführlich: docs/begruendungen/src/finanzen/setValue.ts.md#abschnitt */
+ * einen falschen Durchschnitt bekämen. */
 import { inZehntel4, aufRappen, alsText } from '../infra/geld';
 import * as repo from './repository/setWert';
 
@@ -98,7 +98,6 @@ export async function getSetValue(
 }
 
 // Jede Erfassung mit dem Marktpreis IHRES Zustands — für die Finanztabelle.
-// Ausführlich: docs/begruendungen/src/finanzen/setValue.ts.md#pnl-eps
 
 /** Die eine Regel für Sets, Teile, Figuren, Kachel und Verlauf. null bei
  * Kaufpreis 0: Gegen ein Geschenk gibt es keine Prozentzahl (gegen 0,01

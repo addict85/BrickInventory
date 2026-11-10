@@ -1,7 +1,6 @@
 /** Sets erfassen: Web, App, CSV und Merkliste gehen durch dieselben Regeln für
  * Blickfeld, Menge und Kaufpreis. Was das Netz braucht (Katalog, Bild,
- * Marktpreis), hält die Anfrage nicht auf, sondern läuft als Auftrag.
- * Ausführlich: docs/begruendungen/src/sets/erfassen.ts.md#abschnitt */
+ * Marktpreis), hält die Anfrage nicht auf, sondern läuft als Auftrag. */
 import type { DbSchnittstelle } from '../../db/database';
 import { scopeIds, schreibziel } from '../haushalt/haushalt';
 import { recordAcquisitionForDay, setzeGeschaetztenPreis } from '../bestand/acquisitions';
@@ -54,7 +53,6 @@ export async function recordAcquisition(sk: SetsKontext, e: Erfassung, dbh: DbSc
 }
 
 // Dieselbe Regel wie beim Schreiben, sonst prüfte die Suche eine andere Nummer.
-// Ausführlich: docs/begruendungen/src/sets/erfassen.ts.md#normalizesetnumber
 export function normalizeSetNumber(input: string): string {
   return normalisiereSetNummer(input);
 }
@@ -67,8 +65,7 @@ export interface VorhandenesSet {
 }
 
 /** Im BLICKFELD, nicht nur im eigenen Konto: Webapp und App sollen dieselbe
- * Eingabe gleich behandeln. Ohne Fang: null hiesse sonst „nicht da“.
- * Ausführlich: docs/begruendungen/src/sets/erfassen.ts.md#findsetinscope */
+ * Eingabe gleich behandeln. Ohne Fang: null hiesse sonst „nicht da“. */
 export async function findSetInScope(
   sk: SetsKontext,
   viewerId: number,
@@ -205,7 +202,6 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
   const lokal = wertOder(bild, null);
   if (lokal) void versuche('set-anlegen:vorschau', generateThumb(lokal));
   // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild.
-  // Ausführlich: docs/begruendungen/src/sets/erfassen.ts.md#addsetintern-3
   await katalogStamm.merkeSetKatalog(sk.db, sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal);
   if (minifigs) await katalogStamm.setzeFigurenzahl(sk.db, minifigs, sn);
   return { name, gestoert: !rbErgebnis.ok, bild: !!lokal };
@@ -248,8 +244,7 @@ export interface SetHinzufuegen {
   fortschritt?: Fortschritt | null;
 }
 
-/** Steht das Set schon im eigenen Konto, kommt eine Erfassung dazu (CSV, Merkliste).
- * Ausführlich: docs/begruendungen/src/sets/erfassen.ts.md#addset */
+/** Steht das Set schon im eigenen Konto, kommt eine Erfassung dazu (CSV, Merkliste). */
 export async function addSet(sk: SetsKontext, s: SetHinzufuegen) {
   // Ohne Ort gilt der Vorgabeort des Kontos (CSV- und Wanted-Import haben keinen).
   const ort = await ortFuerNeuerfassung(s.konto, s.lagerort ?? null);
@@ -295,7 +290,6 @@ async function addSetIntern(sk: SetsKontext, s: SetHinzufuegen) {
   const kaufpreis = s.kaufpreis ?? null;
   // Ohne Angabe gilt der Marktpreis des gewählten Zustands, geholt VOR der Sperre:
   // Ein Netzaufruf in der Sperre blockierte jeden anderen Schreiber.
-  // Ausführlich: docs/begruendungen/src/sets/erfassen.ts.md#addsetintern-readdprice
   const geschaetzt = kaufpreis === null || Number.isNaN(kaufpreis);
   const marktpreis = async () =>
     geschaetzt
@@ -308,7 +302,6 @@ async function addSetIntern(sk: SetsKontext, s: SetHinzufuegen) {
   if (await repo.setZeileDesKontos(sk.db, userId, normalized)) {
     const preis = await marktpreis();
     // Gesperrt, weil recordAcquisitionForDay() erst liest und dann schreibt.
-    // Ausführlich: docs/begruendungen/src/sets/erfassen.ts.md#addsetintern
     await mitInventarSperre(sk.db, userId, normalized, async tx => {
       await recordAcquisition(
         sk,

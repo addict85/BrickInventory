@@ -4,7 +4,6 @@
  * sichtbare Element mit data-click, das kein Knopf, Link oder Feld ist,
  * tabindex="0" und eine Rolle; eine Tabellenzeile trägt dafür einen Zeilenknopf
  * (.zeile-oeffnen) mit derselben Aktion. Ausgenommen …
- * Ausführlich: docs/begruendungen/test/klickflaechen-tastatur-browser.test.js.md#kopf
  *
  * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  Figurenkachel aus Sets wieder ohne tabindex und role (06-minifigs.js) →

@@ -1,6 +1,5 @@
 /**
  * Ein Rebrickable-Inventar wird ueberall nach denselben Kandidaten gesucht.
- * Ausführlich: docs/begruendungen/test/inventar-nachschlag-db.test.js.md#kopf
  *
  * Gegenproben (durchgefuehrt): siehe unten am jeweiligen Teilschritt.
  *

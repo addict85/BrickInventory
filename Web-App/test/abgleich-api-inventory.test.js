@@ -3,7 +3,6 @@
  * sein. Der Test parst die Routen-Dateien; taucht ein neuer Endpunkt auf, der
  * hier fehlt, wird die Suite rot — so kann keine API mehr ungeprüft/undoku-
  * mentiert dazukommen. Umgekehrt melden verwaiste Einträge entfernte Routen.
- * Ausführlich: docs/begruendungen/test/abgleich-api-inventory.test.js.md#kopf
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 const test = require('node:test');
@@ -190,7 +189,6 @@ const C = {
   // Android-App zeichnet dort (noch) kein Diagramm — deshalb kein v1-Gegenstück.
   // Seit hardened-96 gibt es beide auch für die Android-App — der
   // Detail-Dialog dort zeigte vorher weder Marktpreis je Zustand noch Verlauf. …
-  // Ausführlich: docs/begruendungen/test/abgleich-api-inventory.test.js.md#stelle
   
   'GET /api/v1/sets/household-members': 'paritaet',
   
@@ -211,7 +209,6 @@ const C = {
   'POST /api/v1/admin/trigger-price-job': 'nur-v1',
 
   // Beide Clients, frueher nur die Webapp
-  // Ausführlich: docs/begruendungen/test/abgleich-api-inventory.test.js.md#stelle-2
   'DELETE /api/v1/sets/:setNumber/instructions/:instrId': 'nur-v1',
   'GET /api/v1/auth/profile': 'nur-v1',
   'GET /api/v1/auth/registration-status': 'nur-v1',
@@ -233,7 +230,6 @@ const C = {
   // unter /api. GET /storage spannt Sets UND Teile und gehoert deshalb zu
   // keiner der beiden Familien allein.
   // Preisalarm — beide Oberflaechen. Ohne Kontofilter: Ein …
-  // Ausführlich: docs/begruendungen/test/abgleich-api-inventory.test.js.md#stelle-3
   'GET /api/v1/alerts/pending': 'nur-v1',
   // Die UEBERSICHT ueber alle Alarme — beide Oberflaechen. Bewusst getrennt
   // von /alerts/pending: Das sind zwei Fragen. `pending` ist fluechtig („was
@@ -272,7 +268,6 @@ const C = {
   'POST /api/v1/settings/user/theme': 'nur-v1',
 
   // Gutscheine
-  // Ausführlich: docs/begruendungen/test/abgleich-api-inventory.test.js.md#stelle-4
   'GET /api/v1/vouchers': 'nur-v1',
   'POST /api/v1/vouchers': 'nur-v1',
   'POST /api/v1/vouchers/pdf': 'nur-v1',
@@ -325,7 +320,6 @@ const C = {
   // Bitte vom 19.10., nach dem Import mehrerer Wanted-Listen). nur-v1 wie der
   // Lagerort darueber: Beide Oberflaechen rufen dieselbe Adresse, eine
   // Sitzungs-Entsprechung gibt es nicht. Was sie TUT — Umziehen oder …
-  // Ausführlich: docs/begruendungen/test/abgleich-api-inventory.test.js.md#stelle-5
   'PUT /api/v1/parts/:partNumber/:colorId/color': 'nur-v1',
   'PUT /api/v1/sets/:setNumber/storage': 'nur-v1',
   // Seit Migration 0024 traegt auch eine Minifigur einen Lagerort. Dieselbe
@@ -346,7 +340,6 @@ const C = {
   'GET /api/v1/sets/info/:setNumber': 'nur-v1',
 
   // Nur Webapp
-  // Ausführlich: docs/begruendungen/test/abgleich-api-inventory.test.js.md#stelle-6
   'POST /api/v1/auth/reset-password': 'nur-web',
   // von GET auf POST umgestellt — die Route LEGT eine
   // Anmelde-Nonce AN und war als GET die einzige zustandsaendernde Route,
@@ -404,7 +397,6 @@ test('keine verwaisten Klassifikations-Einträge', () => {
 
 /**
  * Jede Adresse, die die Android-App ruft.
- * Ausführlich: docs/begruendungen/test/abgleich-api-inventory.test.js.md#androidadressen
  */
 function androidAdressen() {
   const gefunden = new Set();

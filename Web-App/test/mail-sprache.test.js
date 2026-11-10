@@ -1,7 +1,6 @@
 /**
  * Jede Mail geht in der Sprache ihres EMPFÄNGERS hinaus — und sieht aus wie
  * die anderen.
- * Ausführlich: docs/begruendungen/test/mail-sprache.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
  *   a) `lang` aus sendPasswordResetMail() entfernt        → Schritt 1 rot.

@@ -1,6 +1,5 @@
 /**
  * Der Kontowechsel einer Erfassung — über die ROUTE, nicht über ein Muster.
- * Ausführlich: docs/begruendungen/test/kontowechsel-ueber-die-route-db.test.js.md#kopf
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');

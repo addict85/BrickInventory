@@ -6,7 +6,7 @@ import { legeInPapierkorb } from '../bestand/papierkorb';
 import type { BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
 import type { SetsKontext } from './kontext';
 
-// Für Löschen und Wegfall; sonst verwaisen Teile. Ausführlich: docs/begruendungen/src/sets/loeschen.ts.md#deletesetrows
+// Für Löschen und Wegfall; sonst verwaisen Teile.
 export async function deleteSetRows(tx: DbSchnittstelle, uids: number[], setNumber: string) {
   await repo.entferneSetZeilen(tx, uids, setNumber);
   await entferneSetInhalt(tx, uids, setNumber);

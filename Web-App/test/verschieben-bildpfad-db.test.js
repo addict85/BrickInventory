@@ -1,6 +1,5 @@
 /**
  * Nach dem Verschieben eines Sets hat JEDER Bestandteil im Zielkonto sein Bild.
- * Ausführlich: docs/begruendungen/test/verschieben-bildpfad-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -25,7 +25,6 @@ let _catGen = 0;
 // Fensterladen statt Endlos-Scroll: Die Jahresleiste springt mitten in die Liste, und eine angehängte Liste
 // hätte darüber und darunter nichts. Ein Block je Seite; geladen wird, was ins Bild kommt, Platzhalter halten
 // die Höhe frei.
-// Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#cat-limit
 const CAT_LIMIT = 60;
 let _catTotal = 0;
 let _catPageCount = 0;
@@ -205,7 +204,6 @@ async function loadCatalogSets(){
       ? html`<div class="sgrid cat-page" data-page="1">${ungeprueft(_catItems.map(catCard).join(''))}</div>`
       // Ungeladene Seiten sind EIN leerer Block statt 60 Platzhalterkacheln: Bei 25 000 Sets wären das 25 000
       // Elemente. Die Höhe kommt aus der gemessenen ersten Seite, weil die Spaltenzahl am Fenster hängt.
-      // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#ungeladene-seiten-sind-ein-leerer-block
       : html`<div class="cat-page cat-page-ph" data-page="${seite}" data-anzahl="${anzahl}"></div>`;
   }
   setzeHtml(grid, ungeprueft(markup));
@@ -238,7 +236,6 @@ function _setzePlatzhalterHoehe(){
 /**
  * Die Lage der Seitenblöcke einmal messen, dann aus dem Gedächtnis: getBoundingClientRect je Block und Bild
  * erzwang über 400 Layouts, und das Ziehen am Balken legte die CPU auf 100 %.
- * Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#catblocklagen
  */
 /** @type {{ seite: number, oben: number, unten: number }[]} */
 let _catBlockLagen = [];
@@ -262,7 +259,6 @@ function _messeBloecke(){
 /**
  * Erst laden, wenn das Rollen ruht (150 ms): Ein Zug über die ganze Leiste forderte sonst hunderte Seiten an,
  * von denen nur die letzte angesehen wird. Beim normalen Scrollen merkt man die Pause nicht.
- * Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#die-seiten-laden-die-im-bild-stehen-erst
  */
 /** @type {number | null} */
 let _catLadeTimer = null;
@@ -343,7 +339,6 @@ export async function ladeSeite(seite){
 function catCard(s){
   // Vorschau über den Server wie bei Sets, Teilen und Figuren: kleiner als die volle CDN-Auflösung, und schon
   // heruntergeladene Bilder (image_local) sparen den Weg zum CDN ganz.
-  // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#vorschau-ueber-den-server-wie
   const src = s.image_local || s.image_url;
   const img = src
     ? bildTag({ src: imgUrl(thumbUrl(src), 'nur'), alt: '', fade: true, ph: 'set' })
@@ -388,7 +383,6 @@ async function openCatModal(setNumber){
   leereLagerortFeld('cat-m-storage');
   // Die volle Auflösung im Detail direkt vom CDN, nicht über den Proxy: Für ein einmaliges grosses Bild ist
   // das schneller und entlastet den Server; der Proxy lohnt sich nur für die vielen kleinen Vorschauen.
-  // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#detailsrc
   const detailSrc = s.image_local || s.image_url;
   setzeDialogbild(G('cat-m-img'), detailSrc ? fullUrl(detailSrc) : PLATZHALTER_SET, PLATZHALTER_SET);
   /** @type {[string, string | number][]} */
@@ -403,7 +397,6 @@ async function openCatModal(setNumber){
   // Der Kauf-Link kommt fertig vom Server (bricklinkLink.ts): Aus der Rebrickable-Nummer gebaut, war er für
   // Gear, Bücher und Sammelfiguren falsch. Ist der Artikel nicht eindeutig, zeigt er auf die Suche — nie
   // ausblenden.
-  // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#der-kauf-link-kommt-fertig
   const bl = s.bricklink;
   const blBtn = G('cat-m-bricklink');
   blBtn.style.display = '';
@@ -418,7 +411,6 @@ async function openCatModal(setNumber){
   G('cat-m-price').value = '';
   // Die Setnummer hängt am Modal: Der Merklisten-Knopf liegt in einem anderen Modul, und das Modal weiss
   // ohnehin, was es zeigt. Ein Export von _catCurSet wäre ein zweiter Weg zum selben Zustand.
-  // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#cat-modal
   G('cat-modal').dataset.setNumber = s.set_number;
   G('cat-modal').classList.add('open');
 }
@@ -492,7 +484,6 @@ registerActions({
 
 // Den Balken zeichnet die Anwendung (#app-scrollbar); der Katalog liefert nur das Jahr daneben. Gelesen aus
 // der obersten sichtbaren Kachel — geschätzt wird nur, wo noch nichts geladen ist.
-// Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#jahranposition
 function _jahrAnPosition(){
   const grid = G('catalog-grid');
   if (!grid) return null;
@@ -508,7 +499,6 @@ function _jahrAnPosition(){
   }
   // Zweite Wahl: über die tatsächliche Verteilung der Jahre rechnen. Linear auf 1949–2027 umgerechnet stand
   // bei neun Zehnteln „1965“, weil der Katalog fast ganz aus den letzten Jahrzehnten stammt.
-  // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#zweite-wahl-ueber-die-tatsaechliche
   if (!_catJahrVerteilung.length || !_catTotal) return null;
   const doc = document.documentElement;
   const rollbar = Math.max(1, doc.scrollHeight - window.innerHeight);

@@ -1,6 +1,5 @@
 /**
  * Knopf „Katalogbilder holen" und die Vorschau dazu.
- * Ausführlich: docs/begruendungen/test/catalog-images-button-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -85,7 +84,6 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async (t) => {
       const d = await (await fetch(`${base}/api/v1/admin/catalog-images`, { method: 'POST' })).json();
       assert.equal(d.success, true);
       // Fertiges bleibt aussen vor
-      // Ausführlich: docs/begruendungen/test/catalog-images-button-db.test.js.md#stelle
       assert.equal(d.queued, 8,
         `${d.queued} eingereiht statt 8 — draussen bleiben Sets mit BESTÄTIGTER ` +
         'Fehlanzeige UND solche, die Bild samt Vorschau schon lokal haben');
@@ -120,7 +118,6 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async (t) => {
       // den ganzen Katalog zurück in die Warteschlange. Der Job arbeitete das
       // richtig ab (Datei da → überspringen), aber die Kachel zeigte
       // Zehntausende offene Bilder, und jede Notiz kostete einen Durchgang.
-      // Ausführlich: docs/begruendungen/test/catalog-images-button-db.test.js.md#stelle-2
       await db.run(`DELETE FROM image_wanted`);
       const extra = [];
       for (let i = 1; i <= 10; i++) {

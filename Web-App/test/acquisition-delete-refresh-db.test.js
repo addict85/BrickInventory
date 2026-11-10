@@ -1,6 +1,5 @@
 /**
  * Eine Erfassung löschen → Preis und Zustand der ANTWORT werden NEU bestimmt.
- * Ausführlich: docs/begruendungen/test/acquisition-delete-refresh-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -100,7 +99,6 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu',
 
     // 3. Letzte Erfassung löschen: Es bleibt keine übrig — und seit
     //  auch keine Elternzeile mehr.
-    // Ausführlich: docs/begruendungen/test/acquisition-delete-refresh-db.test.js.md#stelle
     await aufbauen();
     for (const row of await db.all(
       `SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [uid, SN])) {

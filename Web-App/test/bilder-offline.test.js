@@ -1,6 +1,5 @@
 /**
  * Die Bilder der Tabellen stehen auch ohne Netz.
- * Ausführlich: docs/begruendungen/test/bilder-offline.test.js.md#kopf
  *
  * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
  *   A  in liefereBild() `private, max-age=0` → `private, no-cache` → rot: „… duerfen offline …“

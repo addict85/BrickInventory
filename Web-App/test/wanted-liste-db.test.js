@@ -1,6 +1,5 @@
 /**
  * BrickLink-Wanted-Listen lesen und auf Rebrickable-Nummern abbilden.
- * Ausführlich: docs/begruendungen/test/wanted-liste-db.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Befunde GEMESSEN — siehe Commit) ─────────────
  *
@@ -181,7 +180,6 @@ test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 },
 
 /**
  * .10.: was der SCHREIBWEG mit `farbeOffen` tut
- * Ausführlich: docs/begruendungen/test/wanted-liste-db.test.js.md#der-import-erfindet-keine-farbe-und-schr
  *
  * ── Gegenproben (am 19.10. GEMESSEN, Zahlen abgeschrieben) ──────────────────
  *
@@ -280,7 +278,6 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
 
   await t.test('MAXPRICE wird zum Kaufpreis — und -1 bleibt keiner', async () => {
     // Marcos Entscheidung vom 21.10.
-    // Ausführlich: docs/begruendungen/test/wanted-liste-db.test.js.md#z-stelle
     const z = zaehler();
     await importiereWantedListe(1, liste(
       item('P', '3001', 5, 2, 'N', '0.8578'),
@@ -315,7 +312,6 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
   });
 
   // Abbrechen (Marcos Wunsch vom 20.10., indirekt)
-  // Ausführlich: docs/begruendungen/test/wanted-liste-db.test.js.md#ein-abbruch-haelt-nach-spaetestens-zehn
 
   await t.test('ein Abbruch hält nach spätestens zehn Posten an', async () => {
     // 25 abbildbare Posten derselben Nummer in verschiedenen Mengen; die

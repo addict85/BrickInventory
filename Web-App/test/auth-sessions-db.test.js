@@ -1,6 +1,5 @@
 /**
  * Passwortwechsel gegen echte Datenbank und echten Session-Store.
- * Ausführlich: docs/begruendungen/test/auth-sessions-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

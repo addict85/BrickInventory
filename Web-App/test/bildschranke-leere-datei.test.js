@@ -1,6 +1,5 @@
 /**
  * Eine leere oder abgeschnittene Datei ist kein Bild.
- * Ausführlich: docs/begruendungen/test/bildschranke-leere-datei.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt) ──────────────────────────────────────────────
  *

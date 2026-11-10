@@ -1,6 +1,5 @@
 /**
  * Was ein Ersatzteil ist, entscheidet EINE Stelle.
- * Ausführlich: docs/begruendungen/test/ersatzteil-eine-lesart.test.js.md#kopf
  */
 const test = require('node:test');
 const { after } = require('node:test');
@@ -41,7 +40,6 @@ test('die Schreibweisen werden nur an einer Stelle aufgezaehlt', () => {
   // Zwei Formen, beide OHNE Fenster — ein Fenster von 200 Zeichen hat beim
   // ersten Versuch quer über den Zeilenumbruch hinweg den FILTER-Parameter
   // (`spare === '1'`) mitgefangen und drei von vier Treffern waren falsch.
-  // Ausführlich: docs/begruendungen/test/ersatzteil-eine-lesart.test.js.md#verdaechtig
   const verdaechtig = [
     /\bis_spare\s*===?\s*'(?:t|true|True|1)'/,
     /===?\s*'True'/,

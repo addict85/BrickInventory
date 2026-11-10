@@ -1,6 +1,5 @@
 /**
  * Jeder API-Pfad des Frontends trifft eine Route des Servers.
- * Ausführlich: docs/begruendungen/test/frontend-api-paths.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -48,7 +47,6 @@ function passt(methode, pfad) {
 
 /**
  * `${…}` wird zu einem Platzhalter-Segment, Abfrageteil fällt weg.
- * Ausführlich: docs/begruendungen/test/frontend-api-paths.test.js.md#normieren
  */
 function normieren(roh) {
   return ('/api' + pfadForm(roh, ':x')).replace(/\/$/, '');
@@ -63,7 +61,6 @@ test('jeder API-Pfad des Frontends trifft eine Route', () => {
     .filter(Boolean));
 
   // Auch die .js direkt unter public/
-  // Ausführlich: docs/begruendungen/test/frontend-api-paths.test.js.md#dateien
   const dateien = [
     ...fs.readdirSync(path.join(ROOT, 'public'))
         .filter(x => x.endsWith('.js'))
@@ -80,7 +77,6 @@ test('jeder API-Pfad des Frontends trifft eine Route', () => {
     // Das Literal wird GELESEN, nicht mit einem Muster geschnitten: Hier
     // stand ``(`[^`]*`|'[^']*')``, und das bricht an einem Backtick IM
     // Inneren ab. GEMESSEN lieferte es für
-    // Ausführlich: docs/begruendungen/test/frontend-api-paths.test.js.md#for-stelle
     for (const m of s.matchAll(/\bapi(?:Roh)?\(\s*'(GET|POST|PUT|DELETE|PATCH)'\s*,\s*/g)) {
       const lit = leseLiteral(s, m.index + m[0].length);
       if (!lit || !lit.text.startsWith('/')) continue;

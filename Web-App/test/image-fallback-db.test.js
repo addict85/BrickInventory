@@ -40,7 +40,6 @@ test('fehlt die Bildadresse am Set, kommt sie aus dem gemeinsamen Katalog',
   await db.run(`DELETE FROM set_catalog WHERE set_number = ANY($1)`, [[OHNE, MIT]]);
 
   // Was Migration 0033 an diesem Aufbau geaendert hat
-  // Ausführlich: docs/begruendungen/test/image-fallback-db.test.js.md#stelle
   await haeltSet(db, uid, OHNE, 1);
   await db.run(`INSERT INTO set_catalog (set_number,name,image_url) VALUES ($1,'F1 Truck',$2)
                 ON CONFLICT (set_number) DO UPDATE SET image_url=EXCLUDED.image_url`, [OHNE, CDN]);

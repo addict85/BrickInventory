@@ -1,6 +1,5 @@
 /**
  * Zwei Zustände am selben Tag sind ZWEI Erfassungen, mit eigenen Preisen.
- * Ausführlich: docs/begruendungen/test/erfassung-je-zustand-db.test.js.md#kopf
  *
  * ── Gegenproben (am 21.10. GEMESSEN, Zahlen abgeschrieben) ──────────────────
  *

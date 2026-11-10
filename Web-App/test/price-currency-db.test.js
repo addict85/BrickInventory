@@ -1,7 +1,6 @@
 /**
  * Marktpreis der Detailansicht: Die Währung bestimmt der SERVER, nicht der
  * Client — gegen echte Route und Tabelle.
- * Ausführlich: docs/begruendungen/test/price-currency-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): `req.query.currency ||` wieder vorangestellt →
  * der erste Teilschritt hier wird rot (no_price statt 629.90).

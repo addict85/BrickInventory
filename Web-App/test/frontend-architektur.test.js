@@ -1,6 +1,5 @@
 /**
  * Aufbau des Frontends: kein Importkreis, kein API-Aufruf an der Hülle vorbei.
- * Ausführlich: docs/begruendungen/test/frontend-architektur.test.js.md#kopf
  *
  * Gegenproben (am 05.11.2026 gemessen):
  *   A  in 01-api.js `import { loadGallery } from './02-gallery.js'` samt

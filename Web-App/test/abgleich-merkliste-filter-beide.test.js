@@ -1,7 +1,6 @@
 /**
  * Der Filter der Merkliste steht in BEIDEN Oberflächen — und beide bieten
  * dieselben Sortierungen an wie der Server.
- * Ausführlich: docs/begruendungen/test/abgleich-merkliste-filter-beide.test.js.md#kopf
  *
  * Schritt 1 läuft im echten Bündel (jsdom); 2–4 gleichen die Auswahl der
  * Oberflächen mit der Servertabelle MERK_SORTS ab (Struktur, App ohne SDK).

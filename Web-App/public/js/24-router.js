@@ -8,7 +8,6 @@ import { ME } from './00-zustand.js';
 // Jede Ansicht als #/pfad, Filter als Query dahinter: Ein Hash-Router braucht keine Serverrouten, und
 // Anmeldelinks (?token=, ?set=) bleiben unberührt. Offene Dialoge sind Verlaufseinträge, damit „Zurück“ sie
 // schliesst.
-// Ausführlich: docs/begruendungen/public/js/24-router.js.md#jede-ansicht-steht-als-pfad-in-der-adres
 
 /** Ansicht (data-tab bzw. Sicht) → Pfad in der Adresse. */
 /** @type {Record<string, string>} */

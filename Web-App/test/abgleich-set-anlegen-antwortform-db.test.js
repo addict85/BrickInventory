@@ -1,6 +1,5 @@
 /**
  * Ein NEU angelegtes Set wird in beiden Erfassungs-Routen gleich beantwortet.
- * Ausführlich: docs/begruendungen/test/abgleich-set-anlegen-antwortform-db.test.js.md#kopf
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 const test = require('node:test');
@@ -12,7 +11,6 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 // Der Nachzug nach dem Erfassen haengt an einem setTimeout und laeuft NACH
 // diesem Test, gegen einen dann geschlossenen Pool. Gleiche Vorsichtsmassnahme
 // wie in set-add-exists-db.test.js.
-// Ausführlich: docs/begruendungen/test/abgleich-set-anlegen-antwortform-db.test.js.md#gestellteaddset
 let gestellteAddSet = null;
 let stellungGerufen = 0;
 const Module = require('node:module');
@@ -141,7 +139,6 @@ test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet',
       `${JSON.stringify(felder(tb))} — dieselbe Auskunft in zwei Formen`);
 
     // 5. Die App verlangt nichts, was der Server nicht schickt
-    // Ausführlich: docs/begruendungen/test/abgleich-set-anlegen-antwortform-db.test.js.md#ktpfad
     const ktPfad = path.join(__dirname, '..', '..', 'Android-App', 'core-model', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'model', 'data', 'model', 'SetModels.kt');
     const kt = ohneKommentare(require('node:fs').readFileSync(ktPfad, 'utf8'));
     const ab = kt.indexOf('data class AddSetResponse(');

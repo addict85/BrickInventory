@@ -130,7 +130,6 @@ function grundschutz(app: express.Express): void {
   app.use(proxyHinweis(konfig().trustProxy));
 
   // `//api/…` fiele sonst bis zum SPA-Catch-all durch und bekäme index.html mit 200.
-  // Ausführlich: docs/begruendungen/server.ts.md#abschnitt-3
   app.use((req, _res, next) => {
     if (req.url.startsWith('//') || req.url.includes('//', 1)) {
       const [pathTeil, ...rest] = req.url.split('?');
@@ -174,7 +173,6 @@ function sicherheitsKoepfe(req: Request, res: Response, next: NextFunction): voi
 
   // HSTS nur über TLS. req.secure, weil Express X-Forwarded-Proto nur von einem
   // vertrauten Proxy übernimmt; den rohen Kopf kann jeder Client schicken.
-  // Ausführlich: docs/begruendungen/server.ts.md#port-uebertls
   const ueberTls = req.secure;
   const hstsAlter = konfig().hstsMaxAge;   // Vorgabe ein Jahr, 0 schaltet ab
   if (ueberTls && hstsAlter !== 0) {
@@ -217,7 +215,7 @@ function sitzung(app: express.Express): void {
     tableName: 'user_sessions',
     createTableIfMissing: false,
     pruneSessionInterval: 60 * 15,
-    // Nach Stunden Leerlauf endet eine Webapp-Sitzung. Ausführlich: docs/begruendungen/server.ts.md#sitzungsspeicher
+    // Nach Stunden Leerlauf endet eine Webapp-Sitzung.
     ttl: SITZUNG_LEERLAUF_SEK,
     errorLog: (err) => {
       if (!err.message?.includes('timeout') && !err.message?.includes('terminated')) {
@@ -270,7 +268,7 @@ function apiRouten(app: express.Express): void {
 
   // EIN Eingang: anmeldungAmEingang verlangt Sitzung oder Token für alles unter
   // /api/v1 ausser den ausdrücklich öffentlichen Pfaden. Der Schutz je Route
-  // bleibt als zweite Linie. Ausführlich: docs/begruendungen/server.ts.md#abschnitt-7
+  // bleibt als zweite Linie.
   app.use('/api/v1',          anmeldungAmEingang);
   // Danach das Budget je Konto, VOR dem Rumpf: Eine abgewiesene Anfrage soll
   // ihren Rumpf nicht mehr lesen (src/http/apiDrossel.ts).
@@ -290,7 +288,7 @@ function rueckfaelle(app: express.Express): void {
   app.use((req, res, next) => /^\/api(\/|$)/i.test(req.path) ? unbekannterApiPfad(req, res) : next());
 
   // '{*splat}' statt '/*splat': Express 5 verlangt einen Namen, und die
-  // naheliegende Form träfe die Startseite `/` nicht. Ausführlich: docs/begruendungen/server.ts.md#abschnitt-8
+  // naheliegende Form träfe die Startseite `/` nicht.
   app.get('/{*splat}', async (req, res) => {
     res.set('Cache-Control', 'no-cache');
     await sendeStartseite(res, req.session?.userId);
@@ -301,8 +299,7 @@ function rueckfaelle(app: express.Express): void {
 }
 
 /** SSE-Ströme zuerst beenden: Sie enden nie von selbst und hielten close() auf.
- * Ohne geordnetes Ende bräche jedes Deploy laufende Antworten ab.
- * Ausführlich: docs/begruendungen/server.ts.md#electprimaryworker-shutdown-timeout-ms */
+ * Ohne geordnetes Ende bräche jedes Deploy laufende Antworten ab. */
 const SHUTDOWN_TIMEOUT_MS = 8000;
 let _beendetWird = false;
 

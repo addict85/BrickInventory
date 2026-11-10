@@ -1,6 +1,5 @@
 /**
  * Farbfilter und Kategoriefilter zaehlen dasselbe Blickfeld.
- * Ausführlich: docs/begruendungen/test/teile-filter-blickfeld-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -38,7 +37,6 @@ test('Farb- und Kategorienliste sehen im Haushalt denselben Bestand',
     // beide Zaehlungen zufaellig dieselbe Zahl und der Test pruefte nichts.
     // Name, Farbbezeichnung und Kategorie stehen seit Migration 0034 in den
     // Katalogen — und sie sind hier der Kern der Sache: Beide Listen dieses …
-    // Ausführlich: docs/begruendungen/test/teile-filter-blickfeld-db.test.js.md#stelle
     await db.run(`INSERT INTO part_catalog (part_number, part_name, category_name) VALUES
         ('3001','Brick 2x4','Bricks'), ('3002','Plate 1x2','Plates')
         ON CONFLICT (part_number) DO UPDATE SET category_name = EXCLUDED.category_name`);

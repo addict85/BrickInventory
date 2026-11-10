@@ -1,6 +1,5 @@
 /**
  * Gutschein-Export und -Import über ihre echten Adressen.
- * Ausführlich: docs/begruendungen/test/gutscheine-export-import-db.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Befunde GEMESSEN — siehe Commit) ─────────────
  *
@@ -16,7 +15,6 @@ const PDFKit = require('pdfkit');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 // APP_ROOT, nicht DATA_DIR
-// Ausführlich: docs/begruendungen/test/gutscheine-export-import-db.test.js.md#sandkasten
 const SANDKASTEN = fs.mkdtempSync(path.join(os.tmpdir(), 'gutschein-wurzel-'));
 fs.mkdirSync(path.join(SANDKASTEN, 'data'), { recursive: true });
 // package.json, damit findRoot() hier stehenbleibt und nicht weiter nach oben

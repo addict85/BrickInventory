@@ -1,6 +1,5 @@
 /**
  * Die drei Striche stecken IM Benutzernamen — und bleiben dort.
- * Ausführlich: docs/begruendungen/test/benutzername-menueknopf.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Ergebnisse abgeschrieben) ────────────────────
  *
@@ -55,7 +54,6 @@ function kopfleiste() {
 
 /**
  * Den Menüknopf über seinen HANDLER finden, nicht über die ID.
- * Ausführlich: docs/begruendungen/test/benutzername-menueknopf.test.js.md#menueknopf
  */
 function menueKnopf(document) {
   const knopf = document.querySelector('[data-click="benutzerMenue"]');
@@ -128,7 +126,6 @@ test('der Knopf sagt einem Bildschirmleser, dass er ein Menü ist', () => {
 
 /**
  * Nachtrag vom 17.10.: der Verwalter-Hinweis steht IM Namen
- * Ausführlich: docs/begruendungen/test/benutzername-menueknopf.test.js.md#der-namenszug-traegt-den-verwalter-hinwe
  *
  * Gegenproben (durchgeführt): `ME.isAdmin` in der Bedingung durch `true`
  * ersetzt → „ohne Verwalterrecht steht nur der Name" rot. Den Zusatz ganz

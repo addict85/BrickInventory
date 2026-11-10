@@ -30,7 +30,6 @@ import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
 import { alsAbrufFehler, pruefeBricklinkZugang, ausRetryWarteschlange, pruefeBricksetZugang, pruefeRebrickableZugang, oeffneBild } from '../katalog/quellen';
 
 // Eine Frist für beide Kacheln; drei Minuten bei einem Takt von zwanzig Sekunden.
-// Ausführlich: docs/begruendungen/src/verwaltung/dienst.ts.md#job-frisch-ms
 const JOB_FRISCH_MS = 3 * 60_000;
 
 const QUELLEN: Record<string, () => Promise<void>> = {
@@ -203,8 +202,7 @@ async function bricksetKachel(ab: Abstriche): Promise<Kachel> {
 const frisch = (zeit: unknown) => typeof zeit === 'number' && Date.now() - zeit < JOB_FRISCH_MS;
 
 /** Bestand, Neuladen und Katalog in EINER Kachel, sonst meldete sie „alle gecacht",
- * während der Hintergrund-Job nachlädt.
- * Ausführlich: docs/begruendungen/src/verwaltung/dienst.ts.md#get-admin-jobs-katalogoffen */
+ * während der Hintergrund-Job nachlädt. */
 async function bildKachel(ab: Abstriche): Promise<Kachel> {
   const [teileOffen, fertig, setFiguren, bestandsFiguren, katalogOffen] = await Promise.all([
     zahl(ab, verwaltung.teilbilderOffen(), 'bilder'), zahl(ab, verwaltung.teilbilderFertig(), 'bilder'),
@@ -224,7 +222,6 @@ async function bildKachel(ab: Abstriche): Promise<Kachel> {
   const reDlSub = !reDlLaeuft ? null : reDl?.phase === 'scanning' ? '↻ suche fehlende Bilder…'
     : `↻ ${reDl?.done || 0}/${reDl?.total || 0} fehlende neu geladen`;
   // „läuft“ heisst: hat kürzlich etwas getan, laut Datenbank.
-  // Ausführlich: docs/begruendungen/src/verwaltung/dienst.ts.md#get-admin-jobs-letzterlauf
   const letzterLauf = await liesStand<{ zeit?: number }>(ab, 'imgqueue_last_run');
   const seitLauf = letzterLauf?.zeit ? Date.now() - letzterLauf.zeit : null;
   const jobLaeuft = frisch(letzterLauf?.zeit);
@@ -442,7 +439,6 @@ export async function katalogBilderEinreihen(alleErneut: boolean) {
       ? await vergissFehlend(zuVergessen.map(r => r.cache_key))
       : 0;
     // Was schon fertig ist, wird nicht wieder eingereiht.
-    // Ausführlich: docs/begruendungen/src/verwaltung/dienst.ts.md#post-admin-catalog-images-fs
         let vorhanden: Set<string> = new Set();
     try {
       const namen = new Set<string>(fs.readdirSync(SET_IMAGES_DIR));

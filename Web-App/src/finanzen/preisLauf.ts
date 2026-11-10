@@ -19,7 +19,6 @@ const PRICE_JOB_LOCK = LOCKS.PREIS_JOB;
 
 /** Auf einer EIGENEN Verbindung über die ganze Laufzeit: Manuelle Auslöser
  * laufen in anderen Prozessen, `state.running` sieht sie nicht.
- * Ausführlich: docs/begruendungen/src/finanzen/preisLauf.ts.md#acquirerunlock
  * @returns Freigabefunktion, oder null wenn anderswo bereits ein Lauf läuft */
 async function acquireRunLock(): Promise<(() => Promise<void>) | null> {
   let freigabe: (() => Promise<void>) | null;
@@ -94,7 +93,6 @@ async function runPriceRefresh(k?: AuftragsKontext) {
   await k?.fortschritt({ erledigt: 0, gesamt: 0, text: 'Starte…' });
   try {
     // Auch Merkposten: /price-history liest den Cache nur, und ohne diesen Lauf bliebe ihr Preisverlauf leer.
-    // Ausführlich: docs/begruendungen/src/finanzen/preisLauf.ts.md#runpricerefresh-eigene
     const eigene = await bestandsPlaetze();
     const gewuenschte = await merklistenPlaetze().catch(meldeUndLiefere('preis-job:gewuenschte', []));
     const allSets = [...eigene, ...(gewuenschte || [])]
@@ -163,7 +161,6 @@ async function runPriceRefresh(k?: AuftragsKontext) {
     } catch(e) { log(`Daily snapshot error: ${fehlertext(e)}`); }
 
     // Preisalarme hier und nicht je Abruf: Dort liefe die Prüfung tausendfach und meldete dasselbe mehrmals.
-    // Ausführlich: docs/begruendungen/src/finanzen/preisLauf.ts.md#runpricerefresh-2
     try {
       const wartende = await setsMitAlarm().catch(meldeUndLiefere('preis-job:wartende', []));
       let gemeldet = 0;
@@ -178,7 +175,7 @@ async function runPriceRefresh(k?: AuftragsKontext) {
 }
 
 /** Gemischte Sets brauchen beide Preise, reine nur einen — eine Fassung für
- * den Nachtlauf und das Erfassen. Ausführlich: docs/begruendungen/src/finanzen/preisLauf.ts.md#zustaendejeset
+ * den Nachtlauf und das Erfassen.
  * @param hintCondition Zustand einer Erfassung, die es noch nicht GIBT
  * @returns Map mit einem Eintrag je übergebenem Set, nie leer je Eintrag */
 async function zustaendeJeSet(userId: number, setNumbers: string[],
@@ -212,7 +209,7 @@ async function zustaendeJeSet(userId: number, setNumbers: string[],
 }
 
 /** Beim Erfassen gibt es die Erfassung noch nicht; ohne den Hinweis fiele die
- * Regel auf 'N' zurück. Ausführlich: docs/begruendungen/src/finanzen/preisLauf.ts.md#conditionsneededfor
+ * Regel auf 'N' zurück.
  * @returns z. B. ['N'], ['U'] oder ['N','U'] */
 async function conditionsNeededFor(setNumber: string, userId: number,
                                    hintCondition: string | null = null): Promise<string[]> {

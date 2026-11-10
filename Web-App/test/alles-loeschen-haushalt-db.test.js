@@ -1,6 +1,5 @@
 /**
  * „Alle meine Sets löschen" löscht MEINE Sets — nicht die des Haushalts.
- * Ausführlich: docs/begruendungen/test/alles-loeschen-haushalt-db.test.js.md#kopf
  *
  * Gegenprobe (01.11.2026 gemessen): bestaetigePasswort() aus DELETE /bestand
  * entfernt → rot: „ohne Passwort gelöscht“ (Code fehlt in der Antwort).
@@ -35,7 +34,6 @@ test('Alles-Loeschen fasst die verknuepften Konten nicht an', async (t) => {
   await db.run('CREATE SCHEMA public');
   await db.initSchemaOnce();
   // Und die MIGRATIONEN, nicht nur das Schema
-  // Ausführlich: docs/begruendungen/test/alles-loeschen-haushalt-db.test.js.md#stelle
   {
     const mc = await db.pool.connect();
     try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }

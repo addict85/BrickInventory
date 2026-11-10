@@ -63,7 +63,6 @@ router.put('/users/:id/admin', requireAdmin, async (req: OffeneAnfrage<'PUT /api
 
   // Sitzungen enden, weil istVerwalter() zuerst das nie nachgeführte
   // `req.session.isAdmin` fragt; ein Entzug wirkte sonst im offenen Fenster nicht.
-  // Ausführlich: docs/begruendungen/routes/auth/benutzer.ts.md#put-users-id-admin
   res.json({ success: true });
 });
 
@@ -92,8 +91,7 @@ router.put('/users/:id/freischalten', requireAdmin, async (req: OffeneAnfrage<'P
   res.json({ success: true });
 });
 
-/** Ohne aktuelles Passwort des Ziels, aber mit dem des Verwalters.
- * Ausführlich: docs/begruendungen/routes/auth/benutzer.ts.md#put-users-id-password */
+/** Ohne aktuelles Passwort des Ziels, aber mit dem des Verwalters. */
 router.put('/users/:id/password', requireAdmin, async (req: OffeneAnfrage<'PUT /api/v1/auth/users/:id/password'>, res: Antwort<'PUT /api/v1/auth/users/:id/password'>) => {
   const { password } = req.eingabe || {};
   const targetId = req.pfad.id;

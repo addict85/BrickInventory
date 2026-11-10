@@ -13,16 +13,14 @@ export type Sicherheit =
    * Bericht zeigt, was ein Abruf gekostet hat. */
   | 'rebrickable'
   /** Von Hand eingetragen — eigene Stufe, damit der Bericht nicht behauptet, der
-   * Katalog habe geliefert, was jemand getippt hat.
-   * Ausführlich: docs/begruendungen/src/merkliste/wantedAufloesung.ts.md#sicherheit */
+   * Katalog habe geliefert, was jemand getippt hat. */
   | 'korrigiert';
 
 export interface Aufloesung {
   posten: WantedPosten;
   rbId: string | null;
   rbFarbe: number | null;
-  /** Reisen mit, weil die Teileliste den Farbnamen von der Zeile liest.
-   * Ausführlich: docs/begruendungen/src/merkliste/wantedAufloesung.ts.md#aufloesung */
+  /** Reisen mit, weil die Teileliste den Farbnamen von der Zeile liest. */
   rbFarbName: string | null;
   rbFarbHex: string | null;
   sicherheit: Sicherheit | null;
@@ -30,7 +28,7 @@ export interface Aufloesung {
 }
 
 /** Ohne fremden Abruf; die drei Stufen bleiben getrennt, weil sie verschieden
- * sicher sind. Ausführlich: docs/begruendungen/src/merkliste/wantedAufloesung.ts.md#loeselokalauf */
+ * sicher sind. */
 export async function loeseLokalAuf(posten: WantedPosten[], uid: number | null = null): Promise<Aufloesung[]> {
   if (!posten.length) return [];
 
@@ -90,10 +88,8 @@ export async function loeseLokalAuf(posten: WantedPosten[], uid: number | null =
   });
 }
 
-/** Rebrickable ist der einzige direkte Weg von BL- zu RB-Nummern.
- * Ausführlich: docs/begruendungen/src/merkliste/wantedAufloesung.ts.md#abschnitt-2 */
-/** Zwei Phasen, weil die Rebrickable-Abrufe ungleich länger dauern.
- * Ausführlich: docs/begruendungen/src/merkliste/wantedAufloesung.ts.md#wantedfortschritt */
+/** Rebrickable ist der einzige direkte Weg von BL- zu RB-Nummern. */
+/** Zwei Phasen, weil die Rebrickable-Abrufe ungleich länger dauern. */
 export type WantedFortschritt = {
   phase: 'rebrickable' | 'schreiben';
   fertig: number;
@@ -137,8 +133,7 @@ export async function loeseUeberRebrickableAuf(
   return { auf: ergebnis, gefragt, gefunden, filterWirkungslos: blFilterWirkungslos() };
 }
 
-/** Adressiert über den Index: Dieselbe Nummer darf mehrfach in der Liste stehen.
- * Ausführlich: docs/begruendungen/src/merkliste/wantedAufloesung.ts.md#korrektur */
+/** Adressiert über den Index: Dieselbe Nummer darf mehrfach in der Liste stehen. */
 export interface Korrektur {
   index: number;
   /** Gegenprobe — muss zu dem Posten an [index] passen. */
@@ -147,7 +142,7 @@ export interface Korrektur {
   rbId?: string | null | undefined;
   rbFarbe?: number | null | undefined;
   /** Die Werte aus der Datei, von Hand geändert, damit ein Vertipper nicht ein
-   * erneutes Einlesen erzwingt. Ausführlich: docs/begruendungen/src/merkliste/wantedAufloesung.ts.md#korrektur-2 */
+   * erneutes Einlesen erzwingt. */
   menge?: number | undefined;
   /** null heisst „Standard des Kontos". */
   zustand?: string | null | undefined;
@@ -155,8 +150,7 @@ export interface Korrektur {
   kaufpreis?: number | null | undefined;
 }
 
-/** Drei Abfragen für die ganze Liste, nicht eine je Posten.
- * Ausführlich: docs/begruendungen/src/merkliste/wantedAufloesung.ts.md#beschreibeposten */
+/** Drei Abfragen für die ganze Liste, nicht eine je Posten. */
 export async function beschreibePosten(
   auf: Aufloesung[],
 ): Promise<Map<number, { name: string | null; bild: string | null; geraten: boolean }>> {
@@ -225,8 +219,7 @@ export async function beschreibePosten(
 }
 
 /** Jede Korrektur wird gegen Art und Nummer am Index geprüft, sonst wirkte sie
- * nach Dateiwechsel lautlos auf einen fremden Posten.
- * Ausführlich: docs/begruendungen/src/merkliste/wantedAufloesung.ts.md#wendekorrekturenan */
+ * nach Dateiwechsel lautlos auf einen fremden Posten. */
 export function wendeKorrekturenAn(
   auf: Aufloesung[],
   korrekturen: Korrektur[],

@@ -6,7 +6,6 @@ import { figurSichtJoin, FIGUR } from '../../../db/katalogSicht';
 import { LIKE_ESCAPE as E, enthaeltMuster } from '../../../db/likeSuche';
 
 // Eine Suche für beide Figurenlisten; gesucht wird die Nummer auf der Kachel.
-// Ausführlich: docs/begruendungen/src/figuren/repository/figurenListe.ts.md#figurensuche
 function figurenSuche(nummer: string, name: string, pi: number) {
   return `(${nummer} ILIKE $${pi}${E} OR ${name} ILIKE $${pi}${E})`;
 }
@@ -110,7 +109,6 @@ export async function manuelleFigurenListe(uids: number[], search: string | null
   }
   const figs = await db.all<Zeile<{ fig_number: string; image_local: string | null }>>(
     // Name und Bild: geprüft aus dem Katalog, sonst die eigene Angabe des Kontos.
-    // Ausführlich: docs/begruendungen/src/figuren/repository/figurenListe.ts.md#getmanualminifigs
     `SELECT m.id, m.user_id, m.set_number, m.fig_number,
             -- Die BrickLink-Nummer aus der Zuordnung (Migration 0037); hier
             -- stand m.bl_fig_number, eine Abschrift je Konto. Der Feldname

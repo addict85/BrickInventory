@@ -27,7 +27,7 @@ export async function zweiterFaktorPflicht(req: Request): Promise<boolean> {
 }
 
 /** req.ip statt X-Forwarded-For: Express wertet den Kopf nur aus, wenn er von
- * einem vertrauten Proxy kommt. Ausführlich: docs/begruendungen/src/konto/http/anmeldung.ts.md#ipof */
+ * einem vertrauten Proxy kommt. */
 export function adresse(req: Request): string {
   return req.ip || req.socket?.remoteAddress || '?';
 }
@@ -38,7 +38,7 @@ export function anmelden(req: Request, username: unknown, password: unknown, cod
 }
 
 /** Neue Session-ID gegen Session-Fixation; sofort speichern, damit die nächste
- * Anfrage die neue ID schon kennt. Ausführlich: docs/begruendungen/src/konto/http/anmeldung.ts.md#establishsession */
+ * Anfrage die neue ID schon kennt. */
 export async function establishSession(req: Request, data: { userId: number; username: string; isAdmin: boolean;
                                                        mussPasswortAendern?: boolean; passwortBestaetigtAm?: number }): Promise<void> {
   // Ohne Antwort 0: Im Zweifel meldet der Vergleich der nächsten Anfrage ab.
@@ -74,8 +74,7 @@ export function gnadenfristVerbrauchen(req: Request): boolean {
 }
 
 /** Der ganze Nutzer, nicht nur die Kennung: Sonst wüsste ein Handler nicht, ob
- * es ein Verwalter ist. ?token= zählt nicht, nur der Authorization-Header.
- * Ausführlich: docs/begruendungen/src/konto/http/anmeldung.ts.md#resolveuserid */
+ * es ein Verwalter ist. ?token= zählt nicht, nur der Authorization-Header. */
 export async function resolveUserId(req: Request): Promise<number | null> {
   if (req.session?.userId) return req.session.userId;
   const auth = req.headers.authorization || '';
@@ -119,8 +118,7 @@ export function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
 export const requireLoginOrToken = loginOrTokenGuard();
 
 /** Die Rechnung steht in src/http/nutzerId: Auch die Drossel dort braucht sie,
- * und Infra darf keine HTTP-Seite importieren. Hier bleibt der Name für die Routen.
- * Ausführlich: docs/begruendungen/src/konto/http/anmeldung.ts.md#nutzerid */
+ * und Infra darf keine HTTP-Seite importieren. Hier bleibt der Name für die Routen. */
 export { nutzerId, angemeldeteNutzerId };
 
 /** Sitzung ODER Token: `req.session.username` ist bei Token-Anfragen undefined. */

@@ -1,7 +1,6 @@
 /**
  * Der Bilder-Nachlauf deckt ALLE Bildarten ab — und zieht fehlende Vorschauen
  * nach, nicht nur fehlende Dateien.
- * Ausführlich: docs/begruendungen/test/image-catchup-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): `/images/sets/` aus _fsPathFromLocal entfernt →
  * thumbs bleibt 0 und die Datei entsteht nicht.

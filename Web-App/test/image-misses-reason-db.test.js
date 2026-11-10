@@ -1,6 +1,5 @@
 /**
  * Was „fehlend" heisst — und wie man es zurücknimmt.
- * Ausführlich: docs/begruendungen/test/image-misses-reason-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -76,7 +75,6 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
 
   await t.test('ein Stapel aus lauter 404ern meldet sich als warn, nicht als error', async () => {
     // Marcos Protokoll
-    // Ausführlich: docs/begruendungen/test/image-misses-reason-db.test.js.md#sn-stelle
     const sn = `${P}_leise`;
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
     IM._leereVordergrund();

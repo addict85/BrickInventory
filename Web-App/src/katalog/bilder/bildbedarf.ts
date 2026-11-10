@@ -48,7 +48,7 @@ export async function initImageQueue(): Promise<void> {
   setInterval(() => { schreibePuffer().catch(logAndContinue('bild-job:schreibePuffer')); }, 10_000).unref();
 }
 
-// Sonst bleiben alte Notizen. Ausführlich: docs/begruendungen/src/katalog/bilder/bildbedarf.ts.md#loescheverfallene
+// Sonst bleiben alte Notizen.
 export async function loescheVerfallene(): Promise<number> {
   const r = await repo.loescheAlteBildwuensche(String(NOTIZ_GILT_MS)).catch(meldeUndLiefere('bild-job:r', null));
   return r?.changes || 0;

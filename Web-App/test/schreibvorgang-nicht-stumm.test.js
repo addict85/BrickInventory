@@ -1,6 +1,5 @@
 /**
  * Ein verschluckter SCHREIBVORGANG auf Nutzerdaten.
- * Ausführlich: docs/begruendungen/test/schreibvorgang-nicht-stumm.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -31,7 +30,6 @@ test('kein stiller catch auf einem Schreibvorgang mit Nutzerdaten', () => {
   assert.ok(dateien.length >= 60, `nur ${dateien.length} Dateien gefunden — der Pfad stimmt nicht`);
 
   // Warum hier geklammert und nicht nur ein Fenster gelesen wird
-  // Ausführlich: docs/begruendungen/test/schreibvorgang-nicht-stumm.test.js.md#aufruf
   const aufruf = /\b(?:db|tx|dbh|client)\.(?:run|query)\(|\bpool\.query\(/g;
   const stillDanach = /^\s*\)?\s*\.catch\(\s*\(?\s*_?\w*\s*\)?\s*=>\s*(\{\s*\}|null|undefined)\s*\)/;
   const schreib = new RegExp(

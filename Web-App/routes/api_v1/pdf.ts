@@ -1,6 +1,5 @@
 /** Asynchron: Die Route stellt nur einen Auftrag ein; Bilder holt und zeichnet
- * der Job-Prozess in einem eigenen Faden, damit der Web-Prozess frei bleibt.
- * Ausführlich: docs/begruendungen/routes/api_v1/pdf.ts.md#abschnitt */
+ * der Job-Prozess in einem eigenen Faden, damit der Web-Prozess frei bleibt. */
 import { meldeFehler, ohneFehlendeDatei } from '../../src/infra/fehler';
 import { fehlerAntwort, streamFileToResponse, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke } from './middleware';

@@ -1,6 +1,5 @@
 /**
  * Jeder Klassenname tut etwas — er gestaltet oder er ist ein Griff.
- * Ausführlich: docs/begruendungen/test/klassenname.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

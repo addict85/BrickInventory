@@ -1,6 +1,5 @@
 /**
  * Die Einstellungen richten ihre Spalten aneinander aus, nicht an der Textlänge.
- * Ausführlich: docs/begruendungen/test/einstellungen-ausrichtung.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt) ──────────────────────────────────────────────
  *

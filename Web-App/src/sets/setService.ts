@@ -26,8 +26,7 @@ export function sanitizeSetNumber(input: unknown) {
 }
 
 /** Reihenfolge Preis-Cache → BrickLink → Historie; bleibt alles leer, trägt
- * src/bestand/kaufpreisNachtrag.ts nach.
- * Ausführlich: docs/begruendungen/src/sets/setService.ts.md#pricefornewacquisition */
+ * src/bestand/kaufpreisNachtrag.ts nach. */
 async function priceForNewAcquisition(sk: SetsKontext, userId: number, setNumber: string, dbh: DbSchnittstelle = sk.db) {
   // Über das Blickfeld: Mit einer nackten ID fände der Hauptaccount das Set des Unterkontos nicht.
   const blickfeld = wertOder(await versuche('sets:kaufpreis-blickfeld', scopeIds(userId)), [userId]);
@@ -109,8 +108,7 @@ export async function updateSet(sk: SetsKontext, uid: number, sn: string, body: 
     if (delta !== null && (!Number.isInteger(delta) || Math.abs(delta) > 9999)) fachfehler('ungueltig', 'wert_ungueltig');
     const gewuenschtGesamt = delta === null ? bestandsMenge(body.quantity) : null;
     const leseFeld = await scopeIds(uid);
-    // Angezeigt wird der Haushalt, geändert nur das eigene Konto. Ausführlich:
-    // docs/begruendungen/src/sets/setService.ts.md#updateset-gewuenschtgesamt
+    // Angezeigt wird der Haushalt, geändert nur das eigene Konto.
     const eigenesZiel = async (dbh: Pick<DbSchnittstelle, 'get'>) => {
       const gesamtVorher = await repo.setMenge(dbh, 'blickfeld', leseFeld, sn);
       const eigenVorher = await repo.setMenge(dbh, 'eines', uid, sn);

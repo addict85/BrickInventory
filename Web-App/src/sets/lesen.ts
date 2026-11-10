@@ -7,7 +7,7 @@ import { asIds, withOwners, blickfeldAus, type Sicht } from '../haushalt/haushal
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand/gemeinsam';
 import { anleitungenZuSet, anleitungenZusammenlegen } from '../katalog/instructions';
 
-// Leseabfragen; Zustand aus den Erfassungen. Ausführlich: docs/begruendungen/src/sets/lesen.ts.md#set-sorts
+// Leseabfragen; Zustand aus den Erfassungen.
 
 
 import type { BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
@@ -22,7 +22,7 @@ export async function getSets(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, qu
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   // Die Spaltenliste steht im Repository; die Antwort trägt nur, was die
-  // Clients lesen. Ausführlich: docs/begruendungen/src/sets/lesen.ts.md#getsets-set-cols
+  // Clients lesen.
   const { search, theme, sort, page = 1, page_size = null } = query;
   const size = page_size ? clampPageSize(page_size, 60) : null;
   const { sets, countRow, themeRows } = await repo.setListe(sk.db, uids, {
@@ -78,7 +78,6 @@ export async function getSets(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, qu
 }
 
 // Eine gebrauchte Erfassung macht das Set gebraucht; die Regel steht nur hier.
-// Ausführlich: docs/begruendungen/src/sets/lesen.ts.md#getsetconditionaggregate
 export async function getSetConditionAggregate(sk: SetsKontext, userId: Blickfeld, setNumber: string) {
   const uids = asIds(userId);
   const acq = await repo.setErfassungsKennzahlen(sk.db, uids, setNumber);
@@ -96,8 +95,7 @@ export async function getSetConditionAggregate(sk: SetsKontext, userId: Blickfel
   };
 }
 
-/** Damit die Schreib-Endpunkte die Kachel ohne Neuladen aktualisieren.
- * Ausführlich: docs/begruendungen/src/sets/lesen.ts.md#withsetaggregate */
+/** Damit die Schreib-Endpunkte die Kachel ohne Neuladen aktualisieren. */
 export async function withSetAggregate<T extends object>(sk: SetsKontext, userId: Blickfeld, setNumber: string, payload: T) {
   const uids = asIds(userId);
   const agg = await versuche('sets-handler:getSetConditionAggregate', getSetConditionAggregate(sk, uids, setNumber));
@@ -109,7 +107,7 @@ export async function getSet(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, set
   const uids = asIds(userId);
   const [set, shared, uploaded] = await Promise.all([
     // Die eigene Zeile gewinnt für Zustand und Kaufpreis; die MENGE ist die Summe
-    // über das Blickfeld. Ausführlich: docs/begruendungen/src/sets/lesen.ts.md#getset
+    // über das Blickfeld.
     repo.setDetailZeile(sk.db, uids, setNumber, uids[0]),
     anleitungenZuSet(setNumber),
     repo.eigeneAnleitungenDesSets(sk.db, uids, setNumber),

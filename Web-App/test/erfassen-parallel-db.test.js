@@ -1,6 +1,5 @@
 /**
  * Erfassen: gleichzeitig, und mit unsinnigen Eingaben.
- * Ausführlich: docs/begruendungen/test/erfassen-parallel-db.test.js.md#kopf
  *
  * Deshalb hier: echte parallele Aufrufe gegen echte Postgres-Verbindungen.
  * Ohne Sperre schlagen die Prüfungen sofort an — nachgewiesen per Gegenprobe.
@@ -131,7 +130,6 @@ test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
   // Nur der Rumpf von addSet(): bis zur NÄCHSTEN Funktion auf oberster Ebene.
   // Ein Schnitt bis addSetWithDate() umfasste 1200 Zeilen samt fremder Routen
   // und zählte deren Sperren mit.
-  // Ausführlich: docs/begruendungen/test/erfassen-parallel-db.test.js.md#addsetintern
   const beginn = sets.indexOf('async function addSetIntern(');
   const naechste = sets.slice(beginn + 10).search(/\n(?:export )?(?:async )?function [a-zA-Z_$]/);
   const addSet = sets.slice(beginn, beginn + 10 + naechste);
@@ -212,7 +210,6 @@ test('die Teileliste liefert, was sie meldet', () => {
   const H = require('./helpers/sources').handlerModul(_req);
 
   // Die Teileliste EINES Sets darf mehr als eine normale Seite liefern
-  // Ausführlich: docs/begruendungen/test/erfassen-parallel-db.test.js.md#stelle
   assert.ok(H.SET_PARTS_MAX_PAGE_SIZE > H.MAX_PAGE_SIZE,
     'Ein einzelnes Set braucht eine höhere Grenze als die allgemeine Liste');
   assert.ok(H.SET_PARTS_MAX_PAGE_SIZE >= 5000,
@@ -242,7 +239,6 @@ test('die Teileliste liefert, was sie meldet', () => {
     'Die Antwort spiegelt wieder die Anfrage zurück statt zu sagen, was geliefert wurde');
 
   // Und die SET-Liste bleibt unbegrenzt
-  // Ausführlich: docs/begruendungen/test/erfassen-parallel-db.test.js.md#setliste
   const getSets = src.slice(src.indexOf('async function setListe'));
   assert.match(getSets, /if \(f\.seite\) \{/,
     'Die Set-Liste darf ohne page_size NICHT gedeckelt werden — Aufrufer ohne ' +

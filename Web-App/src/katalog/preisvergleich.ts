@@ -3,8 +3,7 @@
 const BASIS = 'https://www.toppreise.ch/produktsuche?q=';
 
 /** Eine SUCHE, keine Produktseite: Die Setnummer ist beim Preisvergleicher
- * kein Schlüssel, und welche Schreibweise er führt, weiss nur er.
- * Ausführlich: docs/begruendungen/src/katalog/preisvergleich.ts.md#basis */
+ * kein Schlüssel, und welche Schreibweise er führt, weiss nur er. */
 export function suchUrl(begriff: string): string {
   const q = String(begriff ?? '').trim();
   if (!q) return '';

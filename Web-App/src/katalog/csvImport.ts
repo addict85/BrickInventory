@@ -13,7 +13,7 @@ export type Meldung = { type: 'progress'; total: number; pct: number; filename: 
 
 const sp = (c: string[], i: number): string => c[i] ?? '';
 
-// Verdoppeltes " bleibt ein Zeichen. Ausführlich: docs/begruendungen/src/katalog/csvImport.ts.md#parsecsvline
+// Verdoppeltes " bleibt ein Zeichen.
 export function parseCsvLine(line: string): string[] {
   const result: string[] = [];
   let cur = '', inQuotes = false;
@@ -62,7 +62,6 @@ interface Tausch {
 }
 
 // Über eine Schattentabelle: Leser sehen bis zum Tausch die alte, nie eine leere Tabelle.
-// Ausführlich: docs/begruendungen/src/katalog/csvImport.ts.md#importieremittausch
 async function importiereMitTausch(pool: Pool, melde: (m: Meldung) => void, t: Tausch): Promise<number> {
   const schatten = `${t.tabelle}_import`;
   const client = await pool.connect();

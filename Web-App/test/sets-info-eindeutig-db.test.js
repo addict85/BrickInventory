@@ -2,7 +2,6 @@
  * Der Namensabruf /sets/info/:setNumber steht in routes/api_v1/sets.ts vor
  * /sets/:setNumber/…: Sonst landet eine Nummer, die wie ein Pfadwort der ersten aussieht, landete dort:
  * GET /api/v1/sets/info/price-history traf /sets/:setNumber/price-history mit …
- * Ausführlich: docs/begruendungen/test/sets-info-eindeutig-db.test.js.md#kopf
  *
  * Gegenprobe (am 29.10.2026 gemessen): die Route /sets/info/:setNumber hinter
  * die Routen /sets/:setNumber/… gestellt → rot:

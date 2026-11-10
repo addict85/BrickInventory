@@ -10,14 +10,12 @@ import { heuteIso } from './01-bausteine.js';
 /**
  * Mindestlänge eines Passworts. Der Server setzt sie durch, der Browser sagt sie vorher;
  * test/passwortlaenge.test.js hält Server, Web und App gleich.
- * Ausführlich: docs/begruendungen/public/js/01-formular.js.md#passwort-min-zeichen
  */
 export const PASSWORT_MIN_ZEICHEN = 12;
 
 /**
  * Die Webapp prüfte die Länge an keiner der fünf Stellen, die ein Passwort setzen, und lief in den
  * Serverfehler, wo die App den Knopf gar nicht erst freigibt. Hier wird vorher gefragt.
- * Ausführlich: docs/begruendungen/public/js/01-formular.js.md#passwortzukurz
  * @param {unknown} p
  */
 export function passwortZuKurz(p){ return String(p ?? '').length < PASSWORT_MIN_ZEICHEN; }

@@ -1,6 +1,5 @@
 /**
  * Die Gleitfrist des App-Tokens — echte Datenbank.
- * Ausführlich: docs/begruendungen/test/token-gleitfrist-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -89,7 +88,6 @@ test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung',
     assert.equal(tageBis(webZeile.expires_at), 7, 'Die sieben festen Tage des Browsers bleiben');
 
     // 3. Die stille Erneuerung
-    // Ausführlich: docs/begruendungen/test/token-gleitfrist-db.test.js.md#stelle
     await db.run('UPDATE api_tokens SET expires_at = NOW() + INTERVAL \'3 days\' WHERE token = $1',
       [auth.hashToken(appToken)]);
     auth.leereTokenCache();
@@ -120,7 +118,6 @@ test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung',
       'Der Browser-Token darf durch Benutzung nicht laenger werden');
 
     // 4. Altzeilen nachziehen
-    // Ausführlich: docs/begruendungen/test/token-gleitfrist-db.test.js.md#alt-stelle
     const alt = 'a'.repeat(64);
     await db.run('DELETE FROM api_tokens WHERE token = $1', [alt]);
     await db.run(
@@ -139,7 +136,6 @@ test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung',
     // Datei nicht zu Ende, sondern in das 60-Sekunden-Zeitlimit von
     // `npm test` — die Pruefungen darin sind laengst gruen, die Datei gilt
     // trotzdem als gescheitert. Genau so ist es beim Schreiben dieses Tests …
-    // Ausführlich: docs/begruendungen/test/token-gleitfrist-db.test.js.md#stelle-2
     await new Promise(r => srv.close(r));
     await db.run('DELETE FROM users WHERE username = $1', [NAME]).catch(() => {});
     await db.pool.end().catch(() => {});

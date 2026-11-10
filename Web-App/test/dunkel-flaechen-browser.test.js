@@ -3,7 +3,6 @@
  * unlesbar. Gemessen in Chrome an der echten App: je Design data-dunkel
  * setzen, jeden Reiter und das Set-Detail öffnen und jedes sichtbare Element
  * prüfen — eigene Hintergrundfarbe nicht hell (relative Helligkeit ≤ 0,4), …
- * Ausführlich: docs/begruendungen/test/dunkel-flaechen-browser.test.js.md#kopf
  *
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  in styles.css .cond-used wieder `background:#fef3c7;color:#92400e`

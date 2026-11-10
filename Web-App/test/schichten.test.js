@@ -1,6 +1,5 @@
 /**
  * Die Abhängigkeiten zeigen nach innen.
- * Ausführlich: docs/begruendungen/test/schichten.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -11,7 +10,6 @@ const ROOT = path.join(__dirname, '..');
 
 /**
  * Was noch aus einer Route nach innen geholt wird — und warum es noch steht.
- * Ausführlich: docs/begruendungen/test/schichten.test.js.md#ausnahmen
  */
 const AUSNAHMEN = new Set([]);
 
@@ -308,7 +306,6 @@ test('die Ausnahmeliste bleibt ehrlich — jeder Eintrag hat noch einen Fall', (
 
 test('in routes/ liegt nichts, was keine Route ist', () => {
   // Woher diese Pruefung kommt
-  // Ausführlich: docs/begruendungen/test/schichten.test.js.md#erlaubtohnerouter
   const erlaubtOhneRouter = {
     'imgProxy.ts':          'registriert seine Routen ueber app.get() statt router.get()',
     'api_v1/middleware.ts': 'Waechter FUER Routen; ohne Routen sinnlos',

@@ -1,6 +1,5 @@
 /**
  * Preisverlauf im Haushalt — Set, manuelles Teil UND manuelle Minifigur.
- * Ausführlich: docs/begruendungen/test/manual-price-history-scope-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): scopeIds() in den beiden Minifiguren-Routen
  * zurück auf `uid` → beide Minifiguren-Teilschritte werden rot, Set und Teil

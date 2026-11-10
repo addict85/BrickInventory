@@ -1,6 +1,5 @@
 /**
  * Ein Workflow, der nicht im Wurzelverzeichnis liegt, läuft NIE.
- * Ausführlich: docs/begruendungen/test/workflow-ort.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -52,7 +51,6 @@ test('im Wurzelverzeichnis stehen die Workflows, die es geben soll', () => {
   // Selbstbeweis 2: Eine Mindestzahl statt einer Aufzählung. Verschwände der
   // Ordner oder griffe das Muster nicht, wäre die Liste leer — und die
   // Prüfung darunter hätte nichts zu sagen.
-  // Ausführlich: docs/begruendungen/test/workflow-ort.test.js.md#stelle
   assert.ok(dateien.length >= 3,
     `Nur ${dateien.length} Workflows im Wurzelverzeichnis: ${dateien.join(', ')}`);
 
@@ -64,7 +62,6 @@ test('im Wurzelverzeichnis stehen die Workflows, die es geben soll', () => {
 
 test('ein Workflow benutzt jede Action überall in derselben Fassung', () => {
   // Warum
-  // Ausführlich: docs/begruendungen/test/workflow-ort.test.js.md#fassungen
   const fassungen = new Map();   // Action -> Map(Fassung -> [Dateien])
   for (const f of fs.readdirSync(ECHTER_ORT).filter(f => /\.ya?ml$/.test(f))) {
     const yml = fs.readFileSync(path.join(ECHTER_ORT, f), 'utf8')
@@ -102,7 +99,6 @@ test('ein Workflow benutzt jede Action überall in derselben Fassung', () => {
 
 test('ein Lauf, der Tests ausführt, läuft auf JEDEM Zweig', () => {
   // Warum
-  // Ausführlich: docs/begruendungen/test/workflow-ort.test.js.md#testbefehle
   const TESTBEFEHLE = [/npm\s+test/, /testDebugUnitTest/];
 
   const pruefend = [];

@@ -1,6 +1,5 @@
 /**
  * Der eigene Katalog wird VOR Rebrickable gefragt.
- * Ausführlich: docs/begruendungen/test/katalog-vor-rebrickable-db.test.js.md#kopf
  *
  * ── Gegenproben (am 20.10. GEMESSEN, Zahlen abgeschrieben) ──────────────────
  *

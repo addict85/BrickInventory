@@ -1,6 +1,5 @@
 /**
  * Die Portfoliokurve gehört zum GEWÄHLTEN Konto, nicht zum Betrachter.
- * Ausführlich: docs/begruendungen/test/portfolio-scope-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): in getPortfolioHistory statt `ids` wieder
  * `viewerId` als Blickfeld benutzt → beide Kurven werden gleich.

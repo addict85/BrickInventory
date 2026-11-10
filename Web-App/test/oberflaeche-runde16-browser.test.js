@@ -3,7 +3,6 @@
  * bei 200 % Zoom, Zahlenformat nach Konto, Fremdwährung und Kachel, neue
  * Lagerorte beim Erfassen, Sprachwechsel samt erzeugter Auswahlfelder,
  * aria-label und Trefferzahl für Vorleser, Besitzer im Set-Detail, Knöpfe im …
- * Ausführlich: docs/begruendungen/test/oberflaeche-runde16-browser.test.js.md#kopf
  *
  * Gegenproben (05.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  .tw ohne position:relative UND die Media-Regel für 641–1100 px

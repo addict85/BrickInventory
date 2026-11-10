@@ -1,6 +1,5 @@
 /**
  * Eine verlorene Erfassung verschwindet nicht stillschweigend.
- * Ausführlich: docs/begruendungen/test/erfassung-nicht-still.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

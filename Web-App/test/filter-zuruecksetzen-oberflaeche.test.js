@@ -1,7 +1,6 @@
 /**
  * „Filter zurücksetzen“ im Leerzustand ohne Treffer — am echten Bündel in
  * jsdom.
- * Ausführlich: docs/begruendungen/test/filter-zuruecksetzen-oberflaeche.test.js.md#kopf
  *
  * Gegenproben (am 28.10.2026 gemessen):
  *   A  in renderGallery `knopf: zuruecksetzenKnopf('gallery')` entfernt → rot:

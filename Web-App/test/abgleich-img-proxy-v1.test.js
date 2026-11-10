@@ -2,7 +2,6 @@
  * Der Bild-Proxy ist nach /api/v1 gezogen — überall, auch in den Daten.
  * Adressbau und Server laufen echt; dass nirgends die alte Adresse gebaut
  * wird (Web, Kotlin) und die Migration jede Tabelle erfasst, bleibt Struktur.
- * Ausführlich: docs/begruendungen/test/abgleich-img-proxy-v1.test.js.md#kopf
  *
  * Gegenproben (10.11.2026 gemessen, dist neu gebaut):
  *   A  in routes/imgProxy.ts die Zeile app.get(IMG_PROXY_PFAD_ALT, …) entfernt
@@ -126,7 +125,6 @@ test('die Migration erfasst JEDE Tabelle mit image_url', () => {
   // achte Tabelle mit image_url soll auffallen, nicht durchrutschen.
   // Die Tabellen mit image_url, die es VOR 0014 gab — abgelesen aus dem
   // Schema vor db/basis.sql. 0014 ist …
-  // Ausführlich: docs/begruendungen/test/abgleich-img-proxy-v1.test.js.md#tabellen
   const tabellen = ['sets', 'set_catalog', 'set_parts_catalog', 'set_minifigs_catalog', 'parts', 'catalog_cache', 'minifigs'];
   // GEMESSEN sind es sieben.
   assert.ok(tabellen.length >= 5,
@@ -143,7 +141,6 @@ test('die Migration erfasst JEDE Tabelle mit image_url', () => {
     '\nSonst bleiben dort Adressen in der alten Form stehen.');
 
   // Tabellen, die es bei Migration 0014 noch nicht gab
-  // Ausführlich: docs/begruendungen/test/abgleich-img-proxy-v1.test.js.md#umgeschrieben
   const umgeschrieben = [...mig.matchAll(/UPDATE\s+(\w+)\s/g)].map(m => m[1]);
   assert.ok(umgeschrieben.length >= 5,
     `Nur ${umgeschrieben.length} UPDATE-Ziele in 0014 gefunden — Muster veraltet?`);

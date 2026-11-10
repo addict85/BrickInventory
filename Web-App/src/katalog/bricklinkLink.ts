@@ -1,5 +1,4 @@
 // Gear und Bücher führt BrickLink anders als Rebrickable; der Link muss das wissen.
-// Ausführlich: docs/begruendungen/src/katalog/bricklinkLink.ts.md#abschnitt
 import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { bricklinkRequest } from './quellen';
 import { getGlobalSetting } from '../einstellungen/settings';
@@ -21,7 +20,6 @@ export interface BlLink {
 }
 
 // Die Schreibweise kommt aus src/infra/setNummer.ts, nicht aus einer dritten Fassung.
-// Ausführlich: docs/begruendungen/src/katalog/bricklinkLink.ts.md#withvariant
 export function withVariant(setNumber: string): string {
   return mitVersion(String(setNumber || '').trim());
 }
@@ -41,7 +39,6 @@ export function buildUrl(type: BlType, number: string): string | null {
 }
 
 // Ohne eindeutige Zuordnung (etwa Sammelfiguren) eine Suche statt eines falschen Links.
-// Ausführlich: docs/begruendungen/src/katalog/bricklinkLink.ts.md#searchurl
 export function searchUrl(number: string): string {
   return `https://www.bricklink.com/v2/search.page?q=${encodeURIComponent(bareNumber(number))}`;
 }
@@ -83,8 +80,7 @@ export async function resolveOne(setNumber: string): Promise<BlLink> {
 }
 
 /** Dieselbe Kette wie beim Preisabruf (set → gear → book → NONE), aber über
- * /items — günstiger, wenn nur der Typ zählt.
- * Ausführlich: docs/begruendungen/src/katalog/bricklinkLink.ts.md#resolveviaapi */
+ * /items — günstiger, wenn nur der Typ zählt. */
 export async function resolveViaApi(setNumber: string): Promise<BlLink> {
   const n = withVariant(setNumber);
   const bare = bareNumber(setNumber);

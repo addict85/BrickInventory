@@ -1,7 +1,6 @@
 /**
  * Eine Meldung führt zum SET — angetippt auf dem Telefon, angeklickt in der
  * Mail.
- * Ausführlich: docs/begruendungen/test/abgleich-alarm-direktlink-beide.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
  *   a) setContentIntent aus der Benachrichtigung entfernt → Schritt 1 rot.

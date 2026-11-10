@@ -55,8 +55,7 @@ export function nutzerWertGueltig(key: string, value: string): boolean {
   return NUTZER_REGELN[key]?.(value) ?? true;
 }
 
-/** Eigener Wert → globaler Standard → 'N'; eine Stelle statt drei Fassungen.
- * Ausführlich: docs/begruendungen/src/einstellungen/settings.ts.md#nutzerstandardzustand */
+/** Eigener Wert → globaler Standard → 'N'; eine Stelle statt drei Fassungen. */
 export async function nutzerStandardZustand(userId: number): Promise<'N' | 'U'> {
   const eigen = await repo.nutzerWert(userId, 'user_default_condition');
   if (eigen === 'N' || eigen === 'U') return eigen;
@@ -94,8 +93,7 @@ export function beiGlobalerAenderung(fn: () => void): void {
   _beiGlobalerAenderung.push(fn);
 }
 
-/** Die EINE Schreibstelle; jeder Schlüssel braucht eine Regel in GLOBALE_REGELN.
- * Ausführlich: docs/begruendungen/src/einstellungen/settings.ts.md#setglobalsetting */
+/** Die EINE Schreibstelle; jeder Schlüssel braucht eine Regel in GLOBALE_REGELN. */
 export async function setGlobalSetting(key: string, value: unknown) {
   const r = regelFuer(key)?.safeParse(value);
   if (!r?.success) throw (r?.error.issues[0] as { params?: { fehler?: unknown } } | undefined)?.params?.fehler ?? dateiFehler('ungueltig', 'wert_ungueltig');
@@ -133,7 +131,7 @@ export async function deleteUserSetting(userId: number, key: string) {
 // Einstellungen LESEN — eine Fassung für beide Oberflächen, damit die Apps
 // gleich funktionieren.
 
-/** Werden nie im Klartext ausgeliefert. Ausführlich: docs/begruendungen/src/einstellungen/settings.ts.md#secret-keys */
+/** Werden nie im Klartext ausgeliefert. */
 export const SECRET_KEYS = new Set([
   'bricklink_consumer_key', 'bricklink_consumer_secret',
   'bricklink_token', 'bricklink_token_secret',

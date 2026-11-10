@@ -7,8 +7,7 @@ import { zaehleAnfrage } from './loginLimiter';
 import * as repo from './repository/waehrung';
 
 /** Die eine Schreibstelle: Ein Währungswechsel muss den Preis-Job anstossen,
- * weil der Preis-Cache je Währung verschlüsselt ist.
- * Ausführlich: docs/begruendungen/src/konto/nutzerEinstellung.ts.md#setusersetting */
+ * weil der Preis-Cache je Währung verschlüsselt ist. */
 export async function setUserSetting(userId: number, key: string, value: unknown) {
   if (key !== 'currency') return schreibeNutzerEinstellung(userId, key, value);
   const v = String(value).trim();

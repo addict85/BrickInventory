@@ -3,7 +3,6 @@
  * Oberflächen. Und der Lagerort steht im Detail der manuellen Einträge. Die
  * Webapp läuft im echten Bündel (jsdom), der Server gegen die Test-DB; die App
  * bleibt Kotlin-Struktur (kein SDK hier).
- * Ausführlich: docs/begruendungen/test/abgleich-merkliste-zeile-beide.test.js.md#kopf
  *
  * Gegenproben (10.11.2026 gemessen, je einzeln, Bündel bzw. dist neu gebaut):
  *   A  in 16-merkliste.js zeile() den Marktpreis weggelassen → rot: „die Webapp-Zeile …“

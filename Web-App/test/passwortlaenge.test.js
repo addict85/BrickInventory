@@ -1,7 +1,6 @@
 /**
  * Die Mindestlaenge eines Passworts — an allen Stellen dieselbe, und nirgends
  * vergessen.
- * Ausführlich: docs/begruendungen/test/passwortlaenge.test.js.md#kopf
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 const test = require('node:test');
@@ -73,7 +72,6 @@ test('Server, Webapp und App nennen dieselbe Zahl', () => {
   // `const PASSWORT_MIN_ZEICHEN = 8` — ohne `val`, und das ist kein gueltiges
   // Kotlin. Dieser Regex traf die Zeichenkette trotzdem, der Test blieb gruen,
   // und der Fehler fiel erst im Android-Lauf auf (Lauf 140, nach 83 Sekunden …
-  // Ausführlich: docs/begruendungen/test/passwortlaenge.test.js.md#appzahl
   const appZahl = /const val PASSWORT_MIN_ZEICHEN = (\d+)\b/.exec(fs.readFileSync(kotlinDatei, 'utf8'));
   assert.ok(appZahl,
     'Die App fuehrt keine Konstante mehr — oder nicht als `const val` (ohne `val` ' +
@@ -122,7 +120,6 @@ test('beide Oberflaechen pruefen vor dem Absenden', () => {
     `Nur ${webAufrufe} Vorkommen — nicht alle fuenf Formulare pruefen vor dem Absenden`);
 
   // Gezaehlt, nicht bloss gesucht
-  // Ausführlich: docs/begruendungen/test/passwortlaenge.test.js.md#for-stelle
   //
   // Hier stand `assert.match(quelle, /passwortZuKurz\(/)` — also „kommt in der
   // Datei vor". SettingsScreen benutzt die Regel an DREI Stellen derselben

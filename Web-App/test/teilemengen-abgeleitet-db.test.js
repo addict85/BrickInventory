@@ -2,7 +2,6 @@
  * Seit db/basis.sql gibt es den Stand VOR dieser Migration nicht mehr: Die
  * Fälle zu Riegel, Nachtrag und Zwischenstand sind entfallen. Geprüft werden
  * der Endstand und die Lesewege.
- * Ausführlich: docs/begruendungen/test/teilemengen-abgeleitet-db.test.js.md#kopf
  *
  *      Gegenprobe: fehlende Katalogzeile (nachgetragen), Drift (angehalten),
  *      Doppelte (zusammengelegt) — und jeweils der Lauf OHNE den Schritt, der
@@ -117,7 +116,6 @@ test('nach der ganzen Kette tragen parts und minifigs keine quantity mehr',
   // Kosmetik: Ohne sie war das `ON CONFLICT DO NOTHING` der Importe
   // WIRKUNGSLOS (es gab keinen Konflikt, auf den es treffen konnte), und
   // jeder erneute Import desselben Sets legte neue Zeilen an. Ab 0038 liest …
-  // Ausführlich: docs/begruendungen/test/teilemengen-abgeleitet-db.test.js.md#ix-stelle
   const ix = await indizes();
   for (const name of ['idx_parts_eindeutig', 'idx_minifigs_eindeutig',
                       'idx_part_acq_erfassungstag', 'idx_minifig_acq_erfassungstag']) {
@@ -196,7 +194,6 @@ test('niemand schreibt die Stückzahl eines Teils oder einer Figur mehr', () => 
     'genau das war bei sets.quantity gemessen worden: 10 bei drei Erfassungen mit Summe 7.');
 
   // Selbstbeweis
-  // Ausführlich: docs/begruendungen/test/teilemengen-abgeleitet-db.test.js.md#proben
   const proben = [
     ['UPDATE parts SET quantity = $1 WHERE user_id=$2', 'setzt parts'],
     ['UPDATE minifigs SET quantity = $2 WHERE user_id=$1', 'setzt minifigs'],
@@ -245,7 +242,6 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen',
   const SN = '75192-1';
 
   // Die Lage
-  // Ausführlich: docs/begruendungen/test/teilemengen-abgeleitet-db.test.js.md#stelle
   await db.run(`INSERT INTO set_catalog (set_number,name,year,pieces)
                 VALUES ($1,'Millennium Falcon',2017,7541)
                 ON CONFLICT (set_number) DO NOTHING`, [SN]);
@@ -343,7 +339,6 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen',
   // der Oberflaeche ihren eigenen Bereich (der Filter steht in
   // src/teile/partsSummary.ts und im Rueckfall darunter). Also 12, nicht 17. Diese
   // Zahl ist hier kein Nebenbefund: Stuende 17, zaehlte die Kennzahl die …
-  // Ausführlich: docs/begruendungen/test/teilemengen-abgeleitet-db.test.js.md#stelle-2
   assert.equal(Number((await P.getPartsStats([haupt])).total_parts), 12,
     'Die Teile-Kennzahl zaehlt nur Set-Teile: 6 × 2 Exemplare = 12');
 
@@ -394,7 +389,6 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen',
   // ensureFresh() schon einen HINTERGRUNDaufbau angestossen, und der haelt
   // die Sperre pg_try_advisory_xact_lock. rebuild() direkt gerufen sieht die
   // Sperre, kehrt stillschweigend zurueck („ein anderer baut gerade") und baut …
-  // Ausführlich: docs/begruendungen/test/teilemengen-abgeleitet-db.test.js.md#stelle-3
   const { rebuildNow } = _req('src/teile/partsSummary.js');
   await rebuildNow(haupt);
   const zus = await db.get(
@@ -405,7 +399,6 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen',
     `Die vorberechnete Zahl ist 6 × 2 = 12, bekam ${zus.total_quantity}`);
 
   // Bewertung und CSV
-  // Ausführlich: docs/begruendungen/test/teilemengen-abgeleitet-db.test.js.md#b-stelle
   const B = _req('src/finanzen/rechnung/bewertung.js');
   const bewP = await B.computePartsValuation(haupt, [haupt]);
   const bewZeile = (bewP.parts || []).find(x => x.part_number === '3070b');

@@ -1,6 +1,5 @@
 /**
  * Bestand anlegen und lesen — für Testaufbauten.
- * Ausführlich: docs/begruendungen/test/helpers/bestand.js.md#kopf
  */
 const path = require('node:path');
 
@@ -78,7 +77,6 @@ async function haltZeile(db, userId, setNumber) {
 // ═══════════════════════════════════════════════════════════════════════════
 // Teile und Minifiguren
 // ═══════════════════════════════════════════════════════════════════════════
-// Ausführlich: docs/begruendungen/test/helpers/bestand.js.md#stelle
 
 /**
  * „Dieses Konto hält dieses Teil."
@@ -125,7 +123,6 @@ async function haeltTeil(db, userId, partNumber, opt = {}) {
     // Position SETZT die Menge, statt abzubrechen oder sie zu addieren.
     // Das ist die Zusage dieser Funktion — „dieses Konto haelt N davon",
     // nicht „kauf N dazu". Wer zwei Kaeufe braucht, gibt zwei Daten mit …
-    // Ausführlich: docs/begruendungen/test/helpers/bestand.js.md#stelle-2
     await db.run(
       `DELETE FROM part_acquisitions
         WHERE user_id = $1 AND part_number = $2 AND color_id = $3 AND condition = $4

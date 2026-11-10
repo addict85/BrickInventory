@@ -12,7 +12,6 @@ const db = _req('db/database.js');
 
 /**
  * Der Schemastart darf keinen Fehler verschlucken.
- * Ausführlich: docs/begruendungen/test/schema-start-ohne-fehler-db.test.js.md#der-schemastart-meldet-keinen-verschluck
  */
 test('der Schemastart meldet keinen verschluckten Fehler', async (t) => {
   // Der Pool wird IM NACHLAUF geschlossen, nicht am Ende des Rumpfes: Sonst

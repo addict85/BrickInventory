@@ -1,6 +1,5 @@
 /**
  * Marktwert eines Sets je Zustand (src/finanzen/setValue.ts).
- * Ausführlich: docs/begruendungen/test/set-value.test.js.md#kopf
  *
  * Gegenproben (08.11.2026 gemessen, jeweils zurückgenommen):
  *   cacheUsable ohne die kurze Frist für 0-Einträge → rot „ein gecachter
@@ -118,7 +117,6 @@ test('qty_avg_price wird für Set-Preise nirgends mehr gelesen', () => {
   assert.ok(von > 0 && bis > von, 'setPreis() nicht gefunden');
   const sets = roh.slice(0, von) + roh.slice(bis);
   assert.equal((sets.match(/qty_avg_price/g) || []).length, 0, 'Set-Kern: Set-Preise müssen über avg_price laufen');
-  // Ausführlich: docs/begruendungen/test/set-value.test.js.md#stelle
 });
 
 test("guide_type ist überall 'sold', nicht 'stock'", () => {
@@ -245,7 +243,6 @@ test('Finanzen: Kaufpreis statt zweiter Marktpreis-Spalte', () => {
 
 test('eine späte Antwort schreibt nicht in einen fremden Dialog', () => {
   // Marcos Konsole
-  // Ausführlich: docs/begruendungen/test/set-value.test.js.md#src-stelle
   const src = require('./helpers/sources').adminQuelle();
   const i = src.indexOf("api('GET', `/v1/minifigs?source=set`)");
   assert.ok(i > 0, 'Die Nachfrage nach den Minifiguren fehlt');
@@ -259,7 +256,6 @@ test('eine späte Antwort schreibt nicht in einen fremden Dialog', () => {
 
 test('die Vorschau-Erzeugung ist gedeckelt', () => {
   // Marcos Messung
-  // Ausführlich: docs/begruendungen/test/set-value.test.js.md#server
   const server = require('./helpers/sources').serverAll();
   const parallel = server.match(/const THUMB_MAX_PARALLEL = (\d+)/);
   assert.ok(parallel, 'THUMB_MAX_PARALLEL nicht gefunden');
@@ -277,7 +273,6 @@ test('die Vorschau-Erzeugung ist gedeckelt', () => {
   );
 
   // Und die Grenze muss für den GANZEN Server gelten
-  // Ausführlich: docs/begruendungen/test/set-value.test.js.md#stelle-3
   assert.match(
     server,
     /pg_try_advisory_lock\(\$1\)/,
@@ -298,7 +293,6 @@ test('die Vorschau-Erzeugung ist gedeckelt', () => {
   );
 
   // Und der Katalog erzeugt gar keine Vorschauen
-  // Ausführlich: docs/begruendungen/test/set-value.test.js.md#stelle-4
   assert.match(
     server,
     /const darfErzeugen = req\.query\.gen !== '0'/,
@@ -381,7 +375,6 @@ test('die Verlaufs-Endpunkte liefern fertige Diagrammdaten', () => {
   // src/finanzen/priceHistory.ts (die Android-Routen brauchen dieselbe Antwort) — sie
   // teilen sich dort EINEN Aufbau, deshalb steht buildChart zweimal in der
   // Datei: einmal für Sets, einmal für beide manuellen Arten.
-  // Ausführlich: docs/begruendungen/test/set-value.test.js.md#uses
   const uses = (ph.match(/buildChart\(/g) || []).length;
   assert.equal(uses, 2, `${uses} statt 2 buildChart-Aufrufe in src/finanzen/priceHistory.ts`);
   // Auch dort, wo die Verlaufs-Routen stehen: Ein Adapter baut keine Diagrammdaten.

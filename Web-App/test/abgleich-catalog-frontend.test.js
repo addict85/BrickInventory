@@ -1,6 +1,5 @@
 /**
  * Frontend-Tests für public/js/09-catalog.js in jsdom (devDependency).
- * Ausführlich: docs/begruendungen/test/abgleich-catalog-frontend.test.js.md#kopf
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 const test = require('node:test');
@@ -11,7 +10,6 @@ const { JSDOM } = require('jsdom');
 
 /**
  * import-/export-Syntax aus einer Moduldatei entfernen.
- * Ausführlich: docs/begruendungen/test/abgleich-catalog-frontend.test.js.md#stripmodulesyntax
  * @param {string} src
  * @returns {string}
  */
@@ -23,14 +21,12 @@ function stripModuleSyntax(src) {
   // Entfernen der Importe nicht definiert. In der Sandbox interessiert die
   // Anmeldung nicht — dass sie aufgerufen WIRD, prüfen test/csp-actions.test.js
   // und test/bundle-smoke.test.js gegen den echten Quelltext. …
-  // Ausführlich: docs/begruendungen/test/abgleich-catalog-frontend.test.js.md#registeractions
   return 'function registerActions() {}\n'
        + 'function tRaw(k, v) { return typeof t === "function" ? t(k, v) : k; }\n'
        + body;
 }
 
 // Die Ansichts-Bausteine kommen MIT in die Sandbox, nicht als Attrappe.
-// Ausführlich: docs/begruendungen/test/abgleich-catalog-frontend.test.js.md#bausteine
 const BAUSTEINE = stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '01-bausteine.js'), 'utf8'));
 const CODE = BAUSTEINE + '\n' + stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '09-catalog.js'), 'utf8'));
 const dom = new JSDOM(`<!doctype html><html><body>
@@ -159,7 +155,6 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
   // also hält _ladeSichtbareSeiten() jeden Block für sichtbar und lädt sofort
   // alles. Im Browser passiert das nicht — dort haben die Blöcke echte
   // Koordinaten. Geprüft wird hier deshalb das ERGEBNIS des Nachladens; dass …
-  // Ausführlich: docs/begruendungen/test/abgleich-catalog-frontend.test.js.md#stelle
   await sleep(80);
   check('alle Seiten geladen (85 Kacheln)', echteKacheln() === 85, echteKacheln());
   check('keine Platzhalter mehr übrig', platzhalter() === 0, platzhalter());
@@ -183,7 +178,6 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
   check('ohne Filter wieder alles', hasYearFilter(lastSetsReq()) === false, lastSetsReq());
 
   // Der Scrollbalken gehört der ganzen Anwendung
-  // Ausführlich: docs/begruendungen/test/abgleich-catalog-frontend.test.js.md#css-stelle
   const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
   check('Browser-Balken ausgeblendet (Firefox)', /html\{scrollbar-width:none/.test(css), null);
   check('Browser-Balken ausgeblendet (WebKit)', /html::-webkit-scrollbar\{width:0/.test(css), null);
@@ -221,14 +215,12 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
   check('gedrosselt über requestAnimationFrame',
     /requestAnimationFrame\([\s\S]{0,120}_ladeSichtbareSeiten/.test(quelle), null);
   // Die Last beim Ziehen
-  // Ausführlich: docs/begruendungen/test/abgleich-catalog-frontend.test.js.md#check
   check('Blocklagen kommen aus dem Gedächtnis',
     /_catBlockLagen/.test(quelle) && /function _messeBloecke/.test(quelle), null);
   check('beim Rollen wird NICHT neu gemessen',
     !/requestAnimationFrame\([\s\S]{0,160}_messeBloecke/.test(quelle), null);
   // 2. Geladen wird erst, wenn das Rollen zur Ruhe kommt. Sonst fordert ein Zug
   //    über die Leiste hunderte Seiten an, von denen nur die letzte zählt.
-  // Ausführlich: docs/begruendungen/test/abgleich-catalog-frontend.test.js.md#check-2
   //
   //    Das hier ist eine Aussage über den TEXT: die Zeile steht da. Dass sie
   //    auch WIRKT, misst katalog-zug-entprellt.test.js — dort fährt ein
@@ -251,7 +243,6 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
     !/_catYearMax - anteil \* spanne/.test(quelle), null);
 
   // Und dasselbe in der App (Marcos Vorgabe: „die gleiche Leiste")
-  // Ausführlich: docs/begruendungen/test/abgleich-catalog-frontend.test.js.md#kotlin
   const kotlin = [];
   const gehen = (d) => {
     if (!fs.existsSync(d)) return;

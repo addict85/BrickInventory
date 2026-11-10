@@ -1,6 +1,5 @@
 /**
  * Jede Adresse, die die Webapp aufruft, muss es auf dem Server geben.
- * Ausführlich: docs/begruendungen/test/abgleich-webapp-endpunkte.test.js.md#kopf
  *
  * ── Warum es diese Prüfung gibt ─────────────────────────────────────────────
  * Für die Android-App steht das seit test/abgleich-app-endpunkte.test.js fest — dort
@@ -27,7 +26,6 @@ function form(p) {
 
 /**
  * Template-Ausdrücke auflösen, dann den Abfrageteil abschneiden.
- * Ausführlich: docs/begruendungen/test/abgleich-webapp-endpunkte.test.js.md#pfadformv1
  */
 function pfadFormV1(roh) {
   return form(pfadForm(roh));
@@ -101,7 +99,6 @@ test('jede Adresse der Webapp existiert auf dem Server', () => {
 
 /**
  * Und die Gegenrichtung: Was kann nur die Webapp?
- * Ausführlich: docs/begruendungen/test/abgleich-webapp-endpunkte.test.js.md#papierkorb
  */
 const PAPIERKORB =
   'Papierkorb: vorerst nur in der Webapp. Löschen in der App landet trotzdem ' +
@@ -219,7 +216,6 @@ const NUR_WEB = new Map([
    'prüfen.'],
 
   // Vier Adressen, die die App KANNTE und nicht mehr aufruft
-  // Ausführlich: docs/begruendungen/test/abgleich-webapp-endpunkte.test.js.md#stelle
   ['/api/v1/sets/:X/instructions',
    'Verwirft die hinterlegten Anleitungen eines Sets und lässt die ' +
    'automatische Suche noch einmal laufen. War im Set-Detail der App und ist ' +

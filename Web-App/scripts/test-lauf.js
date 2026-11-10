@@ -5,7 +5,6 @@
  * und Migrationen), dann die Testdateien parallel — jede mit eigener Kopie der
  * Vorlage (test/helpers/eigene-db.js). Browser-Tests laufen danach einzeln:
  * Mehrere Chromium nebeneinander reissen auf schwachen Rechnern die Fristen.
- * Ausführlich: docs/begruendungen/scripts/test-lauf.js.md#stelle
  */
 const { execFileSync, spawn, spawnSync } = require('child_process');
 const fs = require('fs');

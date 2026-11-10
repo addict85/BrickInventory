@@ -1,6 +1,5 @@
 /**
  * Beide Oberflächen rechnen keine Geldbeträge nach.
- * Ausführlich: docs/begruendungen/test/clients-render-only.test.js.md#kopf
  *
  * Gegenproben (08.11.2026 gemessen): in 04-finance.js den Gesamtwert wieder
  * selbst addieren (`const grandTotal = setsQtyAvg + extra`) → rot: „die

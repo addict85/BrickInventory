@@ -11,7 +11,6 @@ import { fadenkreuzTeile } from './01-fadenkreuz.js';
 /**
  * Marktpreis und Entwicklung je Zustand. Der Server liefert nur Zustände mit Erfassung; nach jedem Speichern
  * neu geladen, erscheint eine neue Zeile so von selbst.
- * Ausführlich: docs/begruendungen/public/js/01-diagramme.js.md#rendermarketrows
  * @param {{ by_condition?: import('../../frontend-typen/vertrag').PriceByCondition }} ph
  */
 export function renderMarketRows(ph, targetId = 'm-market-rows') {

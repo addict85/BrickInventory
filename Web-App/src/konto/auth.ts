@@ -1,6 +1,5 @@
 /** Anmeldung und Geräte-Tokens. Der Token-Cache spart je Anfrage zwei
- * Datenbank-Rundläufe, weil die App beim Öffnen viele Anfragen parallel feuert.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#abschnitt */
+ * Datenbank-Rundläufe, weil die App beim Öffnen viele Anfragen parallel feuert. */
 import * as passwortRegel from '../infra/passwortRegel';
 import { konfig } from '../infra/konfig';
 import * as db from '../../db/database';
@@ -255,8 +254,7 @@ export function leereTokenCache(): void {
 
 export const BCRYPT_ROUNDS = 12;
 
-/** Eine Konstante, damit alle Routen, die ein Passwort setzen, dieselbe Länge prüfen.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#passwort-min-zeichen */
+/** Eine Konstante, damit alle Routen, die ein Passwort setzen, dieselbe Länge prüfen. */
 export const PASSWORT_MIN_ZEICHEN = passwortRegel.PASSWORT_MIN_ZEICHEN;
 export const passwortZuKurz = passwortRegel.passwortZuKurz;
 
@@ -285,8 +283,7 @@ export function geraeteNameInhaltGueltig(v: unknown): boolean {
 
 export const EMAIL_RE = V.EMAIL_RE, emailGueltig: typeof V.emailGueltig = V.emailGueltig;
 
-/** Name ODER E-Mail, weil die Anmeldung in beiden Spalten sucht.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#isvalidloginidentifier */
+/** Name ODER E-Mail, weil die Anmeldung in beiden Spalten sucht. */
 export function isValidLoginIdentifier(value: unknown): boolean {
   const v = String(value || '');
   return USERNAME_RE.test(v) || emailGueltig(v);
@@ -329,7 +326,6 @@ export interface Herkunft { ip?: string | null }
 
 /** Die einzige Stelle, an der Anmeldedaten geprüft werden: Zwei Fassungen für
  * Webapp und App waren schon einmal auseinandergelaufen.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#pruefeanmeldedaten
  * @param username Benutzername ODER E-Mail-Adresse. */
 export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, password: unknown, code?: unknown,
                                   passkeyAntwort?: unknown): Promise<AnmeldeErgebnis> {
@@ -407,11 +403,11 @@ async function fehlversuch(ereignis: Anmeldeereignis, ip: string, name: string, 
 export function escapeLike(s: unknown): string { return String(s ?? '').replace(/([%_\\])/g, '\\$1'); }
 
 /** 0, weil null schon „nichts gewählt, Gleitfrist" heisst und beide mit der
- * Nonce in einem Feld reisen. Ausführlich: docs/begruendungen/src/konto/auth.ts.md#unbegrenzt */
+ * Nonce in einem Feld reisen. */
 export const UNBEGRENZT = 0;
 
 /** „unbegrenzt" ist nicht die Vorgabe: Es nimmt die einzige selbsttätige
- * Reissleine für ein verlorenes Gerät weg. Ausführlich: docs/begruendungen/src/konto/auth.ts.md#token-laufzeiten */
+ * Reissleine für ein verlorenes Gerät weg. */
 const TOKEN_LAUFZEITEN: Record<string, number> = {
   '1m':  30,
   '2m':  60,
@@ -509,8 +505,7 @@ export async function deleteToken(token: string): Promise<void> {
   invalidateToken(token);
 }
 
-/** In user_sessions, wo der Session-Store wirklich liegt.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#revokeallsessions */
+/** In user_sessions, wo der Session-Store wirklich liegt. */
 export async function revokeAllSessions(userId: number): Promise<void> {
   await erhoeheSitzungsVersion(userId);
   await repo.loescheSitzungenDesKontos(userId);
@@ -534,11 +529,11 @@ export async function revokeAllTokens(userId: number): Promise<void> {
 }
 
 /** Gerätezugänge haben kein festes Ende; diese Frist begrenzt, wie lange ein
- * vergessenes Gerät gilt. Ausführlich: docs/begruendungen/src/konto/auth.ts.md#token-idle-days */
+ * vergessenes Gerät gilt. */
 export const TOKEN_IDLE_DAYS = konfig().tokenLeerlaufTage;
 
 /** Altzeilen ohne Ablaufdatum bekommen vorher ihre Gleitfrist, damit sie nach
- * derselben Regel fallen wie neue. Ausführlich: docs/begruendungen/src/konto/auth.ts.md#purgeexpiredtokens */
+ * derselben Regel fallen wie neue. */
 export async function purgeExpiredTokens() {
   const warn = (was: string) => (e: Error) => { console.warn(`[tokens] ${was}:`, e?.message || e); return 0; };
   const m = await repo.ziehAltzeilenNach(TOKEN_IDLE_DAYS).catch(warn('Altzeilen nachziehen'));

@@ -1,6 +1,5 @@
 /**
  * Prüfungen aus dem Review-Durchgang hardened-131.
- * Ausführlich: docs/begruendungen/test/review-131.test.js.md#kopf
  *
  * Gegenproben (08.11.2026 gemessen, je einzeln):
  *   A  in der Strom-Route der erste send() vor die Anmeldung der Hörer
@@ -102,7 +101,6 @@ test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
   // hier stehen die Endpunkte, die naturgemäss vor der Anmeldung erreichbar
   // sind. Jeder schreibende darf entweder eine Anmeldung verlangen (per
   // Middleware oder im Rumpf), oder er zählt Versuche je IP. qr-login hatte …
-  // Ausführlich: docs/begruendungen/test/review-131.test.js.md#src-stelle
   const src = ohneKommentare(require('./helpers/sources').anmeldeQuelle());
   const stellen = [...src.matchAll(/router\.(post|put|delete)\('([^']+)'/g)];
   assert.ok(stellen.length >= 6, `nur ${stellen.length} Endpunkte gefunden — die Prüfung liefe ins Leere`);

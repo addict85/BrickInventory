@@ -3,7 +3,6 @@
  * E-Mail ändern zusätzlich einen Code (bestaetigeMitFaktor in
  * src/konto/http/anmeldung.ts). Ein fehlender Code wird abgewiesen, bevor
  * etwas geprüft wird; ein falscher zählt in der Bremse. Ohne zweiten Faktor …
- * Ausführlich: docs/begruendungen/test/zweiter-faktor-heikel-db.test.js.md#kopf
  *
  * Gegenproben (01.11.2026 gemessen, je einzeln):
  *   A  change-password wieder mit bestaetigePasswort ohne Code → rot:

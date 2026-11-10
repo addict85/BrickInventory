@@ -1,6 +1,5 @@
 /**
  * Die Teileliste liefert die REBRICKABLE-Nummer, nicht die BrickLink-Nummer.
- * Ausführlich: docs/begruendungen/test/parts-list-nummern-db.test.js.md#kopf
  *
  * Gegenprobe (durchgefuehrt): `part_number: p.part_number` zurueck auf
  * `blId` gesetzt → Schritt 1 wird rot; zusaetzlich den Schluessel auf

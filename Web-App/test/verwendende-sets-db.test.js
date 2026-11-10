@@ -1,6 +1,5 @@
 /**
  * Welche Sets verwenden dieses Teil / diese Figur?
- * Ausführlich: docs/begruendungen/test/verwendende-sets-db.test.js.md#kopf
  */
 const test = require('node:test');
 const { after } = require('node:test');
@@ -28,7 +27,6 @@ test('die Liste der verwendenden Sets folgt dem Blickfeld', async (t) => {
   await db.run('CREATE SCHEMA public');
   await db.initSchemaOnce();
   // Und die MIGRATIONEN, nicht nur das Schema
-  // Ausführlich: docs/begruendungen/test/verwendende-sets-db.test.js.md#stelle
   {
     const mc = await db.pool.connect();
     try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
@@ -60,7 +58,6 @@ test('die Liste der verwendenden Sets folgt dem Blickfeld', async (t) => {
   await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ('sw0001','Han Solo')`);
 
   // Dasselbe Teil in drei Sets — zweimal beim Hauptkonto, einmal beim Kind.
-  // Ausführlich: docs/begruendungen/test/verwendende-sets-db.test.js.md#stelle-2
   await haeltTeil(db, haupt, '3001', { setNumber: '75192-1', menge: 15, colorId: 4 });
   await haeltTeil(db, haupt, '3001', { setNumber: '10305-1', menge: 7, colorId: 4 });
   await haeltTeil(db, kind, '3001', { setNumber: '21058-1', menge: 3, colorId: 4 });

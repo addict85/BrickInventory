@@ -1,6 +1,5 @@
 /**
  * Der Lagerort lässt sich beim ERFASSEN setzen — nicht erst danach.
- * Ausführlich: docs/begruendungen/test/lagerort-beim-erfassen-db.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
  *   a) Der Lagerort-Aufruf in addSet() entfernt            → Schritt 1 rot.

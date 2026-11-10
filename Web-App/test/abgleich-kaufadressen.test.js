@@ -1,6 +1,5 @@
 /**
  * Die zwei Kaufadressen am Set-Detail: BrickLink und Preisvergleich.
- * Ausführlich: docs/begruendungen/test/abgleich-kaufadressen.test.js.md#kopf
  *
  * Gegenprobe (09.11.2026): suchUrl() ohne encodeURIComponent → rot: „die Suchadresse maskiert, was hineingeht“.
  */

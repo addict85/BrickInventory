@@ -1,6 +1,5 @@
 /**
  * „Kann ich das bauen?" — dieselbe Antwort in beiden Oberflächen.
- * Ausführlich: docs/begruendungen/test/abgleich-bauabgleich-beide.test.js.md#kopf
  *
  * Die Webapp läuft in jsdom (echtes Bündel), die App wird als Struktur gelesen.
  *
@@ -18,12 +17,10 @@ const path = require('node:path');
 const WEB = path.join(__dirname, '..');
 const { ohneKommentare } = require('./helpers/sources');
 // Kommentare ABSTREIFEN, und zwar hier schon beim Lesen.
-// Ausführlich: docs/begruendungen/test/abgleich-bauabgleich-beide.test.js.md#lies
 const lies = p => ohneKommentare(fs.readFileSync(p, 'utf8'));
 const web  = rel => lies(path.join(WEB, rel));
 
 // Jeder Pfad in den Android-Baum AUSGESCHRIEBEN
-// Ausführlich: docs/begruendungen/test/abgleich-bauabgleich-beide.test.js.md#kt-api
 const KT_API   = ohneKommentare(require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'api')));
 const KT_FEAT  = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'teile', 'ui', 'Teileliste.kt'));
 const KT_SCREEN= lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'teile', 'ui', 'screens', 'PartsListScreen.kt'));
@@ -113,7 +110,6 @@ test('App: unterscheidet „alles" von „nur lose"', () => {
 
 test('App: fragt ihr Blickfeld an DIESER Stelle', () => {
   // Was sich geändert hat (Marcos Vorgabe)
-  // Ausführlich: docs/begruendungen/test/abgleich-bauabgleich-beide.test.js.md#js-stelle
   assert.match(KT_SCREEN, /(?:Checkbox\(checked = |KaestchenZeile\(stringResource\(R\.string\.partslist_include_subs\), )mitUnterkonten/,
     'Der App fehlt die Wahl „Unterkonten mit einbeziehen"');
   assert.match(KT_FEAT, /if \(mitUnterkonten\) null else "own"/,

@@ -1,6 +1,5 @@
 /**
  * Der Wanted-Listen-Import über seine echte Adresse.
- * Ausführlich: docs/begruendungen/test/wanted-liste-route-db.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Befunde GEMESSEN) ────────────────────────────
  *
@@ -182,7 +181,6 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     // selbst ein echter Wert dürfte nicht als Kaufpreis landen — sonst stünde
     // in der Finanzansicht ein Betrag, den niemand ausgegeben hat.
     // Die Spalte heisst `unit_price`, nicht `price` — nachgesehen, nachdem mein …
-    // Ausführlich: docs/begruendungen/test/wanted-liste-route-db.test.js.md#preise
     const preise = await db.all(
       'SELECT unit_price FROM part_acquisitions WHERE user_id=$1', [HAUPT]);
     assert.ok(preise.length > 0, 'Vorbedingung: es gibt Erfassungen');
@@ -201,7 +199,6 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
   });
 
   // Der Fortschritt (Marcos Wunsch vom 20.10.)
-  // Ausführlich: docs/begruendungen/test/wanted-liste-route-db.test.js.md#7-mit-strom-1-kommen-fortschrittszeilen
 
   await t.test('7. mit strom=1 kommen Fortschrittszeilen, zuletzt der Bericht', async () => {
     const { status, typ, zeilen } = await hochladenStrom(srv.base, XML, '?schreiben=1&strom=1');
@@ -230,7 +227,6 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
   });
 
   // Derselbe Balken wie beim Set-Import (Marcos Wunsch vom 20.10.)
-  // Ausführlich: docs/begruendungen/test/wanted-liste-route-db.test.js.md#9-ein-import-hinterlaesst-einen-abgeschl
 
   await t.test('9. ein Import hinterlässt einen abgeschlossenen Auftrag', async () => {
     await db.run('DELETE FROM import_stand WHERE user_id = $1', [HAUPT]);
@@ -255,7 +251,6 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
       `${body.angelegt} angelegt und ${body.aufgestockt} aufgestockt`);
 
     // Jede Zeile BENENNT ihren Posten (Marcos Befund vom 21.10.)
-    // Ausführlich: docs/begruendungen/test/wanted-liste-route-db.test.js.md#stelle
     assert.equal(results.length, 3, 'Je Posten eine Zeile, auch für den offenen');
     for (const r of results) {
       assert.ok(r.set_number,

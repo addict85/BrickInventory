@@ -7,7 +7,6 @@ const QUELLE = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '08-fe
 
 /**
  * Das Auffangnetz faengt nur UNSERE Fehler.
- * Ausführlich: docs/begruendungen/test/fremde-fehler.test.js.md#stelle
  */
 
 /** `vonUns` woertlich aus 08-fehlerfang.js holen und mit gestelltem Ursprung laufen lassen. */
@@ -105,7 +104,6 @@ test('beide Lauscher gehen durch die Pruefung', () => {
 
 test('keine liegengebliebene Fehlersuche im Auslieferungsstand', () => {
   // Der zweite Befund aus derselben Konsole
-  // Ausführlich: docs/begruendungen/test/fremde-fehler.test.js.md#ordner
   const ordner = path.join(__dirname, '..', 'public', 'js');
   const dateien = fs.readdirSync(ordner).filter(n => n.endsWith('.js') && n !== 'app.bundle.js');
   assert.ok(dateien.length >= 10, `Nur ${dateien.length} Skripte — greift die Suche noch?`);

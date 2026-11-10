@@ -1,6 +1,5 @@
 /**
  * Der Lagerort muss im DETAIL stehen — und nur in den Konten, die ihn haben.
- * Ausführlich: docs/begruendungen/test/lagerort-detail-und-vorrat-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -135,7 +134,6 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async (t) => {
     // Zeile hält". Hält das Unterkonto ein Exemplar, gehört der Ort auch dorthin
     // — und zwar als EIGENE Zeile, weil ein Regal in einer Wohnung steht
     // (Migration 0020). …
-    // Ausführlich: docs/begruendungen/test/lagerort-detail-und-vorrat-db.test.js.md#stelle
     await haeltSet(db, KIND, SN, 1);
     const n = await L.setzeLagerort('set', schreibbar, [SN], 'Keller');
     assert.equal(n, 2, `${n} Zeilen getroffen, erwartet 2 (beide Konten halten das Set)`);
@@ -154,7 +152,6 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async (t) => {
 
 /**
  * Befund 3: der Lagerortfilter der Set-Liste — über die ROUTE geprüft.
- * Ausführlich: docs/begruendungen/test/lagerort-detail-und-vorrat-db.test.js.md#der-lagerortfilter-der-listen-wirkt-uebe
  *
  * ── Gegenproben (durchgeführt) ──────────────────────────────────────────────
  *

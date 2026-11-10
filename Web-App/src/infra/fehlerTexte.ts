@@ -1,9 +1,9 @@
 /** Die Fehlermeldungen an EINER Stelle, in beiden Sprachen: Die Route kennt
- * die Sprache des Anfragenden, der Dienst nicht. Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#sprache */
+ * die Sprache des Anfragenden, der Dienst nicht. */
 
 export type Sprache = 'de' | 'en';
 
-// Jeder Text einmal, in beiden Sprachen. Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#fehler
+// Jeder Text einmal, in beiden Sprachen.
 export const FEHLER = {
   // ── Anmeldung und Konto ──────────────────────────────────────────────────
   nicht_angemeldet:            { de: 'Nicht angemeldet', en: 'Not signed in' },
@@ -415,7 +415,7 @@ export const FEHLER = {
 
 export type FehlerCode = keyof typeof FEHLER;
 
-// Aus Accept-Language; ohne Treffer Deutsch. Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#antwortsprache
+// Aus Accept-Language; ohne Treffer Deutsch.
 export function antwortSprache(req: { headers?: Record<string, unknown> } | undefined): Sprache {
   const roh = String(req?.headers?.['accept-language'] || '').toLowerCase();
   return roh.startsWith('en') || roh.includes(',en') ? 'en' : 'de';
@@ -453,8 +453,7 @@ export function alsDoppelt(code: FehlerCode): (e: unknown) => never {
   };
 }
 
-/** Bricht den Dienst mit einem Grund ab, den die Route dem Anfragenden nennt.
- * Ausführlich: docs/begruendungen/src/infra/fehlerTexte.ts.md#fehlerwerfen */
+/** Bricht den Dienst mit einem Grund ab, den die Route dem Anfragenden nennt. */
 export function fachfehler(art: FehlerArt, code: FehlerCode, vars?: Record<string, string | number>): never {
   throw new Fachfehler(art, code, vars);
 }

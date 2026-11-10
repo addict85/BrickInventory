@@ -1,6 +1,5 @@
 /** Die Mount-Reihenfolge ist unkritisch: Die Module haben keine überlappenden
- * Pfad-Muster. Die Anmeldung hängt als eigener Router unter /api/v1/auth.
- * Ausführlich: docs/begruendungen/routes/api_v1/index.ts.md#abschnitt */
+ * Pfad-Muster. Die Anmeldung hängt als eigener Router unter /api/v1/auth. */
 import setsRouter from './sets';
 import pdfRouter from './pdf';
 import acquisitionsRouter from './acquisitions';

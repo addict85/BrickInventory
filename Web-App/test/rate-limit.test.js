@@ -1,6 +1,5 @@
 /**
  * Tageslimit für Rebrickable-API-Aufrufe.
- * Ausführlich: docs/begruendungen/test/rate-limit.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -21,7 +20,6 @@ test('Standard-Tageslimit ist 25000 — an EINER Stelle', () => {
   // Rebrickable seinen eigenen Zähler hatte, sah es diese Tabelle nie — seit
   // beide über checkAndIncrementRateLimit laufen, wäre es eine stille Kürzung
   // auf ein Sechstel gewesen. Zwei Konstanten mit derselben Bedeutung driften …
-  // Ausführlich: docs/begruendungen/test/rate-limit.test.js.md#fc-stelle
   const fc = fs.readFileSync(path.join(ROOT, 'src/katalog/apiKontingent.ts'), 'utf8');
   assert.match(fc, /rebrickable: REBRICKABLE_DEFAULT_DAILY/,
     'Der Rückfallwert muss die gemeinsame Konstante sein, nicht eine eigene Zahl danebenstehen');
@@ -30,7 +28,6 @@ test('Standard-Tageslimit ist 25000 — an EINER Stelle', () => {
 
 test('das Tageskontingent zählt für die Installation, nicht je Worker', () => {
   // Woher dieser Test kommt
-  // Ausführlich: docs/begruendungen/test/rate-limit.test.js.md#rl-stelle
   const rl = fs.readFileSync(path.join(ROOT, 'src/katalog/rateLimiter.ts'), 'utf8');
   assert.match(rl, /async function consumeRebrickableDaily/,
     'Der Verbrauch muss über den gemeinsamen Zähler laufen');
@@ -52,7 +49,6 @@ test('das Tageskontingent zählt für die Installation, nicht je Worker', () => 
   // Aufruf gelesen, statt in einen Prozessspeicher kopiert zu werden.
   // Kommentare raus: Die Notiz an der alten Stelle nennt den Namen weiterhin
   // (sie erklärt ja, warum dort nichts mehr steht) — ohne das Ausblenden hielte …
-  // Ausführlich: docs/begruendungen/test/rate-limit.test.js.md#server
   const server = require('./helpers/sources').serverAll().replace(/\/\/[^\n]*/g, '');
   assert.doesNotMatch(server, /loadDailyLimitsFromDb\(\)/,
     'Ein In-Memory-Limit muss nicht mehr geladen werden');
@@ -63,7 +59,6 @@ test('ein geändertes Limit gilt sofort in ALLEN Workern', () => {
   // Worker, der die Anfrage bearbeitet hat. Die übrigen liefen bis zum
   // Neustart mit dem alten Wert weiter, und beim Start musste
   // loadDailyLimitsFromDb() den Wert in jeden Prozess kopieren.
-  // Ausführlich: docs/begruendungen/test/rate-limit.test.js.md#admin
   const admin = fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8')
     .replace(/\/\/[^\n]*/g, '');
   assert.doesNotMatch(admin, /setMax\(/,
@@ -132,7 +127,6 @@ test('bei DB-Ausfall greift die Rückfallebene', () => {
 test('die Aufrufstellen warten auf das Ergebnis', () => {
   // checkLoginAllowed ist seit der Umstellung asynchron — ein vergessenes
   // await liefert ein Promise, das immer truthy ist und JEDEN Login sperrt.
-  // Ausführlich: docs/begruendungen/test/rate-limit.test.js.md#dateien
   const dateien = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
     const p = path.join(dir, e.name);
     return e.isDirectory() ? dateien(p) : (e.name.endsWith('.ts') ? [p] : []);
@@ -165,7 +159,6 @@ test('die Aufrufstellen warten auf das Ergebnis', () => {
 
 test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () => {
   // Woher dieser Test kommt
-  // Ausführlich: docs/begruendungen/test/rate-limit.test.js.md#job-stelle
   const job = (fs.readFileSync(path.join(ROOT, 'src/finanzen/preisLauf.ts'), 'utf8') + fs.readFileSync(path.join(ROOT, 'db/txLock.ts'), 'utf8'))
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
 
@@ -195,7 +188,6 @@ test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () 
     'routes/api_v1/admin.ts: ohne await meldet die Route ein Promise als „gestartet"');
 
   // Der Namensraum kommt aus der gemeinsamen Liste.
-  // Ausführlich: docs/begruendungen/test/rate-limit.test.js.md#stelle
   assert.match(job, /LOCKS\.PREIS_JOB/,
     'Der Namensraum gehört aus src/infra/lockNamespaces.ts, nicht eingetippt');
 });

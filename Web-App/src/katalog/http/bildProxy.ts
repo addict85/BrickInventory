@@ -25,8 +25,7 @@ import { setBildLokalEintragen } from '../bildlage';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../../infra/fremdeAdressen';
 
 import { einmalDekodiert, urlOderNull } from '../../infra/validate';
-/** 20 MB, weil grosse Set-Bilder sonst nie vollständig im Speicher landeten.
- * Ausführlich: docs/begruendungen/src/katalog/http/bildProxy.ts.md#proxy-cache-max-bytes */
+/** 20 MB, weil grosse Set-Bilder sonst nie vollständig im Speicher landeten. */
 const PROXY_CACHE_MAX_BYTES = 20 * 1024 * 1024;
 
 /** URLs, die das CDN mit 404 beantwortet hat → cacheKey → Zeitpunkt. */
@@ -322,7 +321,6 @@ export async function bildDurchreichen(req: Request, res: Response) {
   const wantThumb = req.query.thumb === '1';
   // gen=0: Die Anfrage rechnet nichts, sie hinterlässt eine Notiz für den
   // Auftrag 'bildbedarf' — gedrosselt und nur im Job-Prozess.
-  // Ausführlich: docs/begruendungen/src/katalog/http/bildProxy.ts.md#bilddurchreichen-darferzeugen
   const darfErzeugen = req.query.gen !== '0';
   const setAusUrl = () => setNummerAusBildAdresse(String(url || ''));
   const notiere = () => {
@@ -370,7 +368,6 @@ export async function bildDurchreichen(req: Request, res: Response) {
 
   // Nur Bilder: Auf den erlaubten CDNs liegen teils Nutzer-Uploads, und ein SVG
   // oder HTML liefe sonst unter unserer Herkunft.
-  // Ausführlich: docs/begruendungen/src/katalog/http/bildProxy.ts.md#bilddurchreichen-mime
   const mime = vorDem(rohTyp, ';').trim().toLowerCase();
   if (!mime.startsWith('image/') || mime === 'image/svg+xml') {
     r.verwerfen();

@@ -2,8 +2,7 @@ import * as stand from './repository/importStand';
 import { meldeFehler, logAndContinue } from '../infra/fehler';
 import { fehlerText, antwortSprache, type FehlerCode, type Sprache } from '../infra/fehlerTexte';
 
-/** EINE Zeile je Konto, damit alle Oberflächen denselben Balken zeigen.
- * Ausführlich: docs/begruendungen/src/auftraege/importAuftrag.ts.md#abschnitt */
+/** EINE Zeile je Konto, damit alle Oberflächen denselben Balken zeigen. */
 
 // Der Ereignisbus schiebt den Stand ohne Polling an verbundene Ströme; /status bleibt als Rückfall.
 import EventEmitter from 'events';
@@ -93,7 +92,7 @@ export async function setzeImportFort(userId: number, lauf: string):
 const MELDE_ABSTAND_MS = 300;
 
 /** `false`, wenn schon ein Auftrag LÄUFT: Der Balken bleibt bei dem, der zuerst
- * da war; der Import läuft trotzdem. Ausführlich: docs/begruendungen/src/auftraege/importAuftrag.ts.md#starteauftrag */
+ * da war; der Import läuft trotzdem. */
 export async function starteAuftrag(
   userId: number, angaben: { total: number; current?: string | null },
 ): Promise<boolean> {
@@ -115,8 +114,7 @@ export async function starteAuftrag(
   return true;
 }
 
-/** Gedrosselt, damit ein schneller Import nicht jede Zeile in die Datenbank schreibt.
- * Ausführlich: docs/begruendungen/src/auftraege/importAuftrag.ts.md#zuletzt */
+/** Gedrosselt, damit ein schneller Import nicht jede Zeile in die Datenbank schreibt. */
 const _zuletzt = new Map<number, number>();
 export async function meldeAuftrag(
   userId: number,
@@ -135,7 +133,6 @@ export async function meldeAuftrag(
 }
 
 // Ergebnisse je Posten, sonst zeigt der Balken „0 ok“; offen bleibt ein eigener Ausgang (warn).
-// Ausführlich: docs/begruendungen/src/auftraege/importAuftrag.ts.md#beendeauftrag
 export async function beendeAuftrag(
   userId: number,
   angaben: { ok: number; warn?: number; fehler: number; done: number; abgebrochen?: boolean },
@@ -157,7 +154,6 @@ export async function beendeAuftrag(
 }
 
 // Ohne diese Frage hätte der Balken ein Kreuz, das lügt; auch eine fehlende Zeile heisst abgebrochen.
-// Ausführlich: docs/begruendungen/src/auftraege/importAuftrag.ts.md#istabgebrochen
 export async function istAbgebrochen(userId: number): Promise<boolean> {
   const stand = await jobGet(userId)
     .catch((e) => { meldeFehler('import-auftrag:abbruch pruefen', e); return null; });

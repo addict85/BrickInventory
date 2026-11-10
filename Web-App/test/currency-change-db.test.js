@@ -1,6 +1,5 @@
 /**
  * Währungswechsel stösst den Preis-Job an — gegen echte Routen und Tabelle.
- * Ausführlich: docs/begruendungen/test/currency-change-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): den Anstoss in setUserSetting() entfernt →
  * die beiden „stösst an"-Schritte hier werden rot. Am 30.10.2026 mit dem

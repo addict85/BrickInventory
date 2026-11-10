@@ -1,7 +1,6 @@
 /**
  * Portfolio-Kurve: Rechnet die SQL-Fassung dasselbe wie eine unabhängige
  * JavaScript-Fassung derselben Regel?
- * Ausführlich: docs/begruendungen/test/portfolio-history-db.test.js.md#kopf
  */
 const test   = require('node:test');
 const { umgebung } = require('./helpers/sources');
@@ -74,7 +73,6 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   // Und die Migrationen, nicht nur das Schema
-  // Ausführlich: docs/begruendungen/test/portfolio-history-db.test.js.md#c0-stelle
   const c0 = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(c0); } finally { c0.release(); }
 
@@ -88,7 +86,6 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
   // Nur die Bestandszeilen; die Mengen stehen in den Erfassungen weiter unten
   // (Migration 0036). `1 + (g%3)` taucht dort genauso auf — dieselbe Formel,
   // und das ist der Punkt: Sie MUSS uebereinstimmen, sonst gewichtet …
-  // Ausführlich: docs/begruendungen/test/portfolio-history-db.test.js.md#stelle
   await db.run(
     `INSERT INTO sets (user_id, set_number)
      SELECT (CASE WHEN g%2=0 THEN $1::int ELSE $2::int END), (10000+g)||'-1'

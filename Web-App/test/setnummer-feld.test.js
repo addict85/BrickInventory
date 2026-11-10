@@ -3,7 +3,6 @@
  * meldet einen Fehler direkt am Feld — „abc“ wurde vorher als Set „abc-1“
  * angelegt, mit Erfolgsmeldung. Geprüft am echten Bündel in jsdom: Was das
  * Feld abweist, erreicht den Server nicht. Angenommen werden muss jede …
- * Ausführlich: docs/begruendungen/test/setnummer-feld.test.js.md#kopf
  *
  * Gegenproben (am 28.10. gemessen):
  *   A  in doAddSet() (02-gallery.js) die Prüfung entfernt → rot: „abc wird abgewiesen“

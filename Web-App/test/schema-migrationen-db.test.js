@@ -1,6 +1,5 @@
 /**
  * Schema-Änderungen gehören in db/migrations/ — nicht in initSchema().
- * Ausführlich: docs/begruendungen/test/schema-migrationen-db.test.js.md#kopf
  *
  * Gegenprobe (10.11.2026 gemessen): in 0015-api-tokens-sliding.sql die Spalte
  * `slidingx` genannt → rot: „api_tokens.sliding gibt es …“ (die Migration legt

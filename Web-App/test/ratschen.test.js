@@ -7,7 +7,6 @@ const WEB = path.join(__dirname, '..');
 
 /**
  * Ratschen: Ein gemessener Bestand darf sinken, nie steigen.
- * Ausführlich: docs/begruendungen/test/ratschen.test.js.md#stelle
  */
 
 /** Alle TypeScript-Quellen ohne Tests und ohne Erzeugnisse. */
@@ -40,7 +39,6 @@ const STILLE_FAENGE = [
 
 /**
  * Treffer zaehlen — im CODE, nicht in den Erklaerungen darueber.
- * Ausführlich: docs/begruendungen/test/ratschen.test.js.md#zaehle
  */
 function zaehle(muster) {
   const { ohneKommentare } = require('./helpers/sources');

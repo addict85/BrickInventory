@@ -4,7 +4,6 @@
  * Stellen, die erst nach und nach aufgeräumt werden. Rot ist nur, was die
  * Zahl über die Schranke in scripts/lint-schranken.json hebt; sinkt sie, nennt
  * das Skript die neue Zahl zum Nachziehen.
- * Ausführlich: docs/begruendungen/scripts/lint-ratsche.js.md#kopf
  */
 const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');

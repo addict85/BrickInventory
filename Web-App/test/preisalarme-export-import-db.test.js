@@ -1,6 +1,5 @@
 /**
  * Preisalarme gehen als CSV hinaus und kommen als Preisalarme zurueck.
- * Ausführlich: docs/begruendungen/test/preisalarme-export-import-db.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Befunde GEMESSEN) ────────────────────────────
  *
@@ -53,7 +52,6 @@ let HAUPT = 0, FREMD = 0;
  * `WHERE user_id` sonst nicht auffiele: Mit nur einem Konto im Aufbau sieht
  * eine Abfrage über ALLE Konten genauso aus wie die richtige. Das ist beim
  * Durchdenken der Gegenproben aufgefallen — Fall „user_id weggelassen" hätte …
- * Ausführlich: docs/begruendungen/test/preisalarme-export-import-db.test.js.md#fremder-alarm
  */
 const FREMDER_ALARM = { sn: '31203-1', c: 'N', r: 'unter', s: 77, w: 'CHF' };
 
@@ -273,7 +271,6 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
 
   await t.test('6. eine unbrauchbare Zeile wird gezählt, nicht verschluckt', async () => {
     // Was dieser Fall WIRKLICH unterscheidet (beim Gegenprobieren gelernt)
-    // Ausführlich: docs/begruendungen/test/preisalarme-export-import-db.test.js.md#stelle
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [HAUPT]);
     const kaputt = 'set_number,condition,richtung,schwelle,currency_code\n'
       + '75192-1,N,seitwaerts,600,CHF\n'      // Richtung gibt es nicht
@@ -309,7 +306,6 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
     // setzeAlarm() sagt zu: „Der Merker ausgeloest wird beim Ändern
     // ZURÜCKGESETZT: Eine neue Schwelle ist eine neue Frage, und die soll
     // beantwortet werden, auch wenn die alte schon einmal gemeldet hat."
-    // Ausführlich: docs/begruendungen/test/preisalarme-export-import-db.test.js.md#stelle-2
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [HAUPT]);
     await db.run(`INSERT INTO price_alerts
                     (user_id,set_number,condition,richtung,schwelle,currency_code,ausgeloest)

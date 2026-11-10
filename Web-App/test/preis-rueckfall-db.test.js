@@ -1,7 +1,6 @@
 /**
  * Finanzen: Ein gebrauchtes Set ohne Gebraucht-Preis bekommt den Preis für
  * „Neu" — auch wenn der nur noch alt im Cache liegt.
- * Ausführlich: docs/begruendungen/test/preis-rueckfall-db.test.js.md#kopf
  *
  * Gegenproben (am 25.10. gemessen):
  *   A  der Abruf des anderen Zustands im Null-Zweig entfernt (der Stand vor

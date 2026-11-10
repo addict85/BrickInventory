@@ -1,6 +1,5 @@
 /**
  * CSV-Import und Erfassen von Hand müssen dasselbe hinterlassen.
- * Ausführlich: docs/begruendungen/test/teile-import-preis-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -48,7 +47,6 @@ test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concur
     await addManualPart(uid, { part_number: VON_HAND, part_name: 'Testteil', color_id: 0, quantity: 3 });
 
     // Gelesen aus der ERFASSUNG
-    // Ausführlich: docs/begruendungen/test/teile-import-preis-db.test.js.md#spalten
     const spalten = 'unit_price, condition, quantity';
     const imp = await db.get(
       `SELECT ${spalten} FROM part_acquisitions WHERE user_id=$1 AND part_number=$2`,

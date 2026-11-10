@@ -2,7 +2,6 @@
  * Die ganze Weboberfläche in jsdom: echtes index.html, echtes Bündel, und ein
  * fetch, der je Pfad eine vorgegebene Antwort liefert. So prüft ein Test, was
  * die Oberfläche aus einer Serverantwort macht, ohne Server und ohne Browser.
- * Ausführlich: docs/begruendungen/test/helpers/oberflaeche.js.md#kopf
  */
 const fs = require('node:fs');
 const path = require('node:path');

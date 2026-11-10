@@ -1,7 +1,6 @@
 /**
  * Kein Markup aus Daten: Namen, Themen, Kategorien und Lagerorte mit XSS-Nutzlast
  * durch die Hauptansichten gerendert, im echten Chrome.
- * Ausführlich: docs/begruendungen/test/xss-ansichten-browser.test.js.md#kopf
  *
  * Gegenproben (gemessen):
  *   A  im Kachelnamen der Sammlung (02-gallery.js) den Namen in ungeprueft()

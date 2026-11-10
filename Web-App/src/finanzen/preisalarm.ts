@@ -1,6 +1,5 @@
 /** Der Preislauf holt die Marktpreise ohnehin; hier fehlte nur der Schritt,
- * eine Schwelle damit zu vergleichen. Ein Alarm gehört EINEM Konto.
- * Ausführlich: docs/begruendungen/src/finanzen/preisalarm.ts.md#abschnitt */
+ * eine Schwelle damit zu vergleichen. Ein Alarm gehört EINEM Konto. */
 import { meldeUndLiefere, meldeFehler, fehlertext } from '../infra/fehler';
 import { scopeIds } from '../haushalt/haushalt';
 import { fachfehler } from '../infra/fehlerTexte';
@@ -53,8 +52,7 @@ function pruefeEingabe(richtung: unknown, schwelle: unknown, condition: unknown)
   return { richtung: r as Richtung, schwelle: s, condition: c };
 }
 
-/** Höchstens EIN Alarm je Set und Zustand (Primärschlüssel).
- * Ausführlich: docs/begruendungen/src/finanzen/preisalarm.ts.md#setzealarm */
+/** Höchstens EIN Alarm je Set und Zustand (Primärschlüssel). */
 export async function setzeAlarm(
   userId: number, setNumber: string, waehrung: string,
   eingabe: { richtung?: unknown; schwelle?: unknown; condition?: unknown },
@@ -92,8 +90,7 @@ export async function alarmeFuer(userId: number, setNumber: string): Promise<Pre
   }));
 }
 
-/** Damit man Alarme findet, ohne das Set zu kennen.
- * Ausführlich: docs/begruendungen/src/finanzen/preisalarm.ts.md#alarmmitname */
+/** Damit man Alarme findet, ohne das Set zu kennen. */
 export interface AlarmMitName extends Preisalarm {
   name: string | null;
   set_img_url: string | null;
@@ -102,7 +99,6 @@ export interface AlarmMitName extends Preisalarm {
   image_local: string | null;
   image_url: string | null;
   // Nur mit Set im Blickfeld anklickbar, sonst endete der Klick in einem Fehler.
-  // Ausführlich: docs/begruendungen/src/finanzen/preisalarm.ts.md#alarmmitname-2
   besitzt: boolean;
 }
 
@@ -122,12 +118,10 @@ export async function alleAlarme(userId: number): Promise<AlarmMitName[]> {
   }));
 }
 
-/** Die App fragt, statt dass der Server schiebt: Push liefe über fremde Server.
- * Ausführlich: docs/begruendungen/src/finanzen/preisalarm.ts.md#ausgeloesteseit */
+/** Die App fragt, statt dass der Server schiebt: Push liefe über fremde Server. */
 export async function ausgeloesteSeit(userId: number, seit: unknown) {
   // Die Zeit der Datenbank: Postgres speichert Mikro-, JavaScript nur
   // Millisekunden; mit der JS-Uhr käme eine Meldung zweimal.
-  // Ausführlich: docs/begruendungen/src/finanzen/preisalarm.ts.md#ausgeloesteseit-jetztrow
   const jetztRow = await repo.datenbankJetzt();
   const jetzt = jetztRow?.jetzt ?? new Date();
 
@@ -161,12 +155,10 @@ export function reisst(richtung: Richtung, preis: number, schwelle: number): boo
   return richtung === 'unter' ? preis < schwelle : preis > schwelle;
 }
 
-/** Gemeldet wird der ÜBERGANG, nicht der Zustand.
- * Ausführlich: docs/begruendungen/src/finanzen/preisalarm.ts.md#versender */
+/** Gemeldet wird der ÜBERGANG, nicht der Zustand. */
 export type Versender = (mail: { to: string; subject: string; text: string; html?: string; link?: string }) => Promise<unknown>;
 
-/** Als Parameter, damit ein Test den Versand ersetzen kann.
- * Ausführlich: docs/begruendungen/src/finanzen/preisalarm.ts.md#standardversand */
+/** Als Parameter, damit ein Test den Versand ersetzen kann. */
 async function standardVersand(mail: { to: string; subject: string; text: string; html?: string; link?: string }) {
   return mailer.sendMail(mail);
 }
@@ -235,8 +227,7 @@ async function verschicke(versende: Versender, a: AlarmZeile, preis: number, sch
   await versende({ to: a.email!, ...mail });
 }
 
-/** Eigene Datei statt Spalten an sets.csv: Ein Alarm braucht das Set nicht zu besitzen.
- * Ausführlich: docs/begruendungen/src/finanzen/preisalarm.ts.md#buildpreisalarmecsv */
+/** Eigene Datei statt Spalten an sets.csv: Ein Alarm braucht das Set nicht zu besitzen. */
 export async function buildPreisalarmeCsv(uid: number): Promise<string> {
   const rows = await repo.alarmeFuerExport(uid);
 

@@ -1,4 +1,4 @@
-// Sucht mit und ohne Versionsanhang. Ausführlich: docs/begruendungen/src/katalog/rbInventar.ts.md#abschnitt
+// Sucht mit und ohne Versionsanhang.
 import { inventarNachKandidaten } from './repository/katalogStamm';
 import { mitVersion } from '../infra/setNummer';
 

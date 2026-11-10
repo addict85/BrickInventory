@@ -1,6 +1,5 @@
 /**
  * `global_settings` wird über src/einstellungen/settings.ts angefasst.
- * Ausführlich: docs/begruendungen/test/global-settings-zentral.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

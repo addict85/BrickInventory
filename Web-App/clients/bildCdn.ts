@@ -21,8 +21,7 @@ export const BILD_KOPFZEILEN_OHNE_REFERER: Readonly<Record<string, string>> = {
 };
 
 /** Begrenzt, damit eine Kachelwand nicht beliebig viele TLS-Verbindungen öffnet;
- * IPv4, weil Abrufe ohne IPv6-Route sonst stumm bis zur Frist liefen.
- * Ausführlich: docs/begruendungen/clients/bildCdn.ts.md#cdnagent */
+ * IPv4, weil Abrufe ohne IPv6-Route sonst stumm bis zur Frist liefen. */
 const POOL = new https.Agent({ keepAlive: true, maxSockets: 32, maxFreeSockets: 16, timeout: 30_000, family: 4 });
 
 export interface BildAbruf {

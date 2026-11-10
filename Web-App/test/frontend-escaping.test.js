@@ -1,6 +1,5 @@
 /**
  * Statischer XSS-Regressionstest für public/js/.
- * Ausführlich: docs/begruendungen/test/frontend-escaping.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -117,7 +116,6 @@ test('esc/escJs/escUrl/escHex sind genau einmal definiert', () => {
 
 test('Übersetzungen für reinen Text laufen über tRaw(), nicht über t()', () => {
   // Woher dieser Test kommt
-  // Ausführlich: docs/begruendungen/test/frontend-escaping.test.js.md#jsdir
   const jsDir = path.join(__dirname, '..', 'public', 'js');
   const offenders = [];
   for (const f of fs.readdirSync(jsDir)) {
@@ -136,7 +134,6 @@ test('Übersetzungen für reinen Text laufen über tRaw(), nicht über t()', () 
 
 test('serverseitige Fehlermeldungen laufen im HTML-Kontext durch esc()', () => {
   // Woher dieser Test kommt
-  // Ausführlich: docs/begruendungen/test/frontend-escaping.test.js.md#bad-stelle
   const bad = [];
   const FELD = /\w+\.(?:error|message)\b/g;
   for (const f of FILES) {

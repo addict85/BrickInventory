@@ -45,7 +45,6 @@ const KOPFFELDER = {
 } as const;
 
 // Seit 0034 steht die Beschreibung im Katalog; JOINs über den Primärschlüssel ändern die Gruppierung nicht.
-// Ausführlich: docs/begruendungen/src/bestand/repository/gemeinsam.ts.md#katalogjoin
 const KATALOGJOIN = {
   parts: `${teilSichtJoin('x.user_id', 'x.part_number', 'x.color_id')}
           LEFT JOIN set_teile spc ON spc.set_number  = x.set_number

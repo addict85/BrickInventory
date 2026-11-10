@@ -1,6 +1,5 @@
 /**
  * Ein Bereich hinter dem Dateiende ist kein „Datei nicht gefunden".
- * Ausführlich: docs/begruendungen/test/anleitung-bereich.test.js.md#kopf
  *
  * Gegenprobe (durchgefuehrt): in antwortAufDateiFehler() wieder bedingungslos
  * `res.status(404)` gesetzt → Schritt „416" wird rot, die anderen bleiben gruen.

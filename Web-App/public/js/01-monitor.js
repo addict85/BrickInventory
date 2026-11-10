@@ -1,5 +1,4 @@
 // Beide Seiten der Überwachung beieinander: die Liste der Dienste und das Protokollfenster.
-// Ausführlich: docs/begruendungen/public/js/01-monitor.js.md#dieser-block-lag-in-js-01-core-js-deren
 import { echt, registerActions } from './00-registry.js';
 import { alsHtml, escHtmlAttr, esc, html, ungeprueft } from './00-escapen.js';
 import { api, apiDaten } from './01-api.js';

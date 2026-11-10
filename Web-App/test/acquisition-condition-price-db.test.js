@@ -64,7 +64,6 @@ test('ein geleerter Kaufpreis wird im Zustand der Zeile nachgefüllt', { concurr
 
 test('jeder Marktpreis-Abruf bekommt einen Zustand mit', () => {
   // Zweimal dieselbe Lücke
-  // Ausführlich: docs/begruendungen/test/acquisition-condition-price-db.test.js.md#fs-stelle
   const fs = require('node:fs');
   const path = require('node:path');
 const { ohneKommentare } = require('./helpers/sources');

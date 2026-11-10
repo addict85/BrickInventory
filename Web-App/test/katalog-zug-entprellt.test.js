@@ -1,6 +1,5 @@
 /**
  * Ein Zug ueber die Jahres-Leiste holt EINE Seite, nicht hundert.
- * Ausführlich: docs/begruendungen/test/katalog-zug-entprellt.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

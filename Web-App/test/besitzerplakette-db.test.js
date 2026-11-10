@@ -1,6 +1,5 @@
 /**
  * Wo ein Client eine Besitzer-Plakette zeichnet, muss die Antwort sie tragen.
- * Ausführlich: docs/begruendungen/test/besitzerplakette-db.test.js.md#kopf
  */
 const test = require('node:test');
 const { after } = require('node:test');
@@ -27,7 +26,6 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async (
   await db.run('CREATE SCHEMA public');
   await db.initSchemaOnce();
   // Und die MIGRATIONEN, nicht nur das Schema
-  // Ausführlich: docs/begruendungen/test/besitzerplakette-db.test.js.md#stelle
   {
     const mc = await db.pool.connect();
     try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }

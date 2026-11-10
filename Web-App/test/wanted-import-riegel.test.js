@@ -2,7 +2,6 @@
  * Der Import einer Wanted-Liste lässt sich nicht zweimal anstossen: am echten
  * Bündel in jsdom, mit einer Serverantwort, die der Test zurückhält, bricht
  * oder stückweise schickt.
- * Ausführlich: docs/begruendungen/test/wanted-import-riegel.test.js.md#kopf
  *
  * Gegenproben (08.11.2026 gemessen, je einzeln, danach zurückgenommen):
  *   A  `_laeuft` aus der Bedingung in lies() entfernt → rot: „ein zweiter

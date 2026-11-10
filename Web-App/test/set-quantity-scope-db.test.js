@@ -1,6 +1,5 @@
 /**
  * Menge eines UNTERKONTO-Sets ändern — beide Routenfamilien.
- * Ausführlich: docs/begruendungen/test/set-quantity-scope-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): writableIds in updateSet zurück auf die eigene ID
  * → beide Teilschritte enden wieder in 404.
@@ -80,7 +79,6 @@ test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto',
       // ── Marcos neue Regel ────────────────────────────────
       // „Die Anzahl soll immer von allen angezeigt werden. Wenn ich diese
       // erhöhe, soll es für meinen Account einen neuen Kaufpreis-Eintrag …
-      // Ausführlich: docs/begruendungen/test/set-quantity-scope-db.test.js.md#beimbesitzer
       const beimBesitzer = await mengeVon(db, subId, SN);
       assert.equal(beimBesitzer, 1,
         `${name}: der Bestand des Unterkontos darf sich durch eine fremde Erhöhung nicht ändern`);

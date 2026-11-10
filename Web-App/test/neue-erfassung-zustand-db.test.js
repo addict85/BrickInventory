@@ -1,6 +1,5 @@
 /**
  * Ein neues Exemplar bekommt den Zustand, den das Set WIRKLICH hat.
- * Ausführlich: docs/begruendungen/test/neue-erfassung-zustand-db.test.js.md#kopf
  *
  * Gegenproben: siehe am jeweiligen Teilschritt.
  *
@@ -75,7 +74,6 @@ test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', {
 
 /**
  * Warum diese Regel umgeschrieben wurde
- * Ausführlich: docs/begruendungen/test/neue-erfassung-zustand-db.test.js.md#kein-quelltext-liest-kaufpreis-oder-zust
  */
 test('kein Quelltext liest Kaufpreis oder Zustand aus sets', () => {
   // Gefunden, nicht aufgezaehlt.
@@ -95,7 +93,6 @@ test('kein Quelltext liest Kaufpreis oder Zustand aus sets', () => {
   // Gesucht werden die Formen, in denen die zwei Spalten in diesem Baum
   // tatsaechlich vorkamen — GEFUNDEN, nicht erdacht (git log von Migration
   // 0032 nennt jede Stelle):
-  // Ausführlich: docs/begruendungen/test/neue-erfassung-zustand-db.test.js.md#verboten
   const verboten = [
     /\bs\.purchase_price\b/i,
     /\bs\.condition\b/i,

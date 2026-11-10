@@ -9,7 +9,6 @@ export async function getStats(userIdWahl: Sicht | number | number[]) {
   const uids = asIds(userId);
   const [setsRow, instrRow, partsRow, minifigsRow, cur, einzelnRow] = await Promise.all([
     // COUNT(DISTINCT set_number): Im Haushalt besitzen mehrere Konten dasselbe Set.
-    // Ausführlich: docs/begruendungen/src/bestand/kennzahlen.ts.md#getstats-2
     repo.setZahlen(uids),
     repo.anleitungsZahlen(uids, uids),
     // `fehlt = 1` in einer Multiplikation: Ein manuelles Teil ohne Set zählt einfach.

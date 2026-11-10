@@ -1,6 +1,5 @@
 /**
  * Ein BrickLink-Preis wird auf EINEM Weg weggeschrieben.
- * Ausführlich: docs/begruendungen/test/preis-schreibweg-db.test.js.md#kopf
  *
  * Gegenproben (durchgefuehrt):
  *   a) In speicherePreis() den price_history-Schreibvorgang entfernt

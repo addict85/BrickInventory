@@ -1,7 +1,6 @@
 // Eine einzige Fassung des Maskierens, ohne Zugriff auf document: Auch das DOM-freie 19-bricklink-xml.js
 // braucht sie, und ein zweiter Maskierer daneben ist genau die Doppelung, die schon einmal
 // auseinandergelaufen ist.
-// Ausführlich: docs/begruendungen/public/js/00-escapen.js.md#hier-stand-esc-bis-zum-20-10-in-js-01-co
 
 /**
  * Text für HTML und XML sicher machen: die fünf Entitäten.
@@ -22,7 +21,6 @@ export function esc(s){
 // Ansichten entstehen per innerHTML aus Vorlagen; jeder Wert aus Datenbank, CSV oder Fremd-API muss durch
 // einen dieser Helfer, sonst ist jedes freie Textfeld ein gespeichertes XSS. esc() für Text, escJs() in
 // data-arg, escUrl() für src/href, escHex() für Farben.
-// Ausführlich: docs/begruendungen/public/js/00-escapen.js.md#alle-listen-und-detailansichten-werden-p
 
 /**
  * Wert in einem einfach-gequoteten JS-String innerhalb eines doppelt-gequoteten HTML-Attributs. Erst
@@ -68,7 +66,6 @@ export function escHex(hex, fallback){
 /**
  * Wie escHex(), aber ohne „#“: für Attribute, deren Leser das Doppelkreuz selbst ergänzen (data-hex).
  * escHex() dort ergäbe „##RRGGBB“.
- * Ausführlich: docs/begruendungen/public/js/00-escapen.js.md#hexziffern
  * @param {unknown} hex
  */
 export function hexZiffern(hex){

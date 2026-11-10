@@ -1,7 +1,6 @@
 'use strict';
 /**
  * Ohne BrickLink-Preis wird der Minifiguren-Preis aus den Teilen geschätzt.
- * Ausführlich: docs/begruendungen/test/minifig-schaetzung.test.js.md#test
  *
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  in figMarktpreisMitHerkunft() nur [blFigNumber] versucht → rot: „die

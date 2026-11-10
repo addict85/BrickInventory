@@ -1,6 +1,5 @@
 /**
  * Bilder werden im HINTERGRUND lokal abgelegt — die Anfrage rechnet nichts.
- * Ausführlich: docs/begruendungen/test/image-queue-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -72,7 +71,6 @@ test('die Anfrage notiert, der Job legt ab', { concurrency: 1 }, async (t) => {
       // Rückstau in einem Rutsch gerechnet werden.
       // Die Stapelgrösse steht in der Quelle (: von 5 auf 20
       // erhöht, nachdem die CPU-Ursachen behoben waren). Der Test liest sie …
-      // Ausführlich: docs/begruendungen/test/image-queue-db.test.js.md#stapel
       const stapel = IQ.STAPEL;
       assert.ok(stapel > 0, 'STAPEL nicht auffindbar');
       const vorher = geladen;
@@ -101,7 +99,6 @@ test('die Anfrage notiert, der Job legt ab', { concurrency: 1 }, async (t) => {
 test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
   { concurrency: 1 }, async (t) => {
   // Marcos Wunsch
-  // Ausführlich: docs/begruendungen/test/image-queue-db.test.js.md#stelle
   try { await db.initSchemaOnce(); }
   catch (e) {
     if (process.env.REQUIRE_DB === '1') throw e;
@@ -144,7 +141,6 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
     assert.match(voll.sub, /Bestand:/,
       'Ohne diese Beschriftung sind die beiden Zahlen nicht auseinanderzuhalten');
     // „running" heisst jetzt: hat kürzlich etwas getan
-    // Ausführlich: docs/begruendungen/test/image-queue-db.test.js.md#stelle-2
     await db.run(`DELETE FROM laufzustand WHERE schluessel='imgqueue_last_run'`);
     await db.run(`DELETE FROM laufzustand WHERE schluessel='imgredl_status'`);
     await _req('src/auftraege/jobMonitor.js').imgDlReset().catch(() => {});
@@ -166,7 +162,6 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
     assert.ok(voll.total >= 137, `total=${voll.total} enthält die Warteschlange nicht`);
 
     // Ein STEHENGEBLIEBENES „läuft" ist kein Betrieb
-    // Ausführlich: docs/begruendungen/test/image-queue-db.test.js.md#stelle-3
     await db.run(`DELETE FROM laufzustand WHERE schluessel='imgqueue_last_run'`);
     _req('src/katalog/bilder/bildbedarfLauf.js').letzterLauf.zeit = null;
     await _req('src/auftraege/jobMonitor.js').imgDlReset().catch(() => {});
@@ -200,7 +195,6 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
 
 test('der Job meldet auch reine Übersprünge', () => {
   // Marcos Befund
-  // Ausführlich: docs/begruendungen/test/image-queue-db.test.js.md#stelle-4
   const { meldung } = _req('src/katalog/bilder/bildbedarfLauf.js');
   const nurUebersprungen = {
     geholt: 0, vorschau: 0, uebersprungen: 10, gesamt: 10,
@@ -230,7 +224,6 @@ test('der Job meldet auch reine Übersprünge', () => {
 
 test('die Bild-Tabellen kommen aus einer MIGRATION, nicht aus initSchema', () => {
   // Marcos Befund
-  // Ausführlich: docs/begruendungen/test/image-queue-db.test.js.md#mig-stelle
   const mig = fs.readFileSync(
     path.join(ROOT, 'db/migrations/0009-bild-tabellen.sql'), 'utf8');
   assert.match(mig, /CREATE TABLE IF NOT EXISTS image_wanted/, 'image_wanted fehlt in der Migration');
@@ -256,7 +249,6 @@ test('die Bild-Tabellen kommen aus einer MIGRATION, nicht aus initSchema', () =>
 
 test('der Puffer wird in JEDEM Arbeitsprozess weggeschrieben', () => {
   // Marcos Befund
-  // Ausführlich: docs/begruendungen/test/image-queue-db.test.js.md#q-stelle
   const q = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/bildbedarf.ts'), 'utf8');
   const init = q.slice(q.indexOf('export async function initImageQueue'),
                        q.indexOf('export async function loescheVerfallene'));
@@ -270,7 +262,6 @@ test('der Puffer wird in JEDEM Arbeitsprozess weggeschrieben', () => {
   // tiefer bei start(), nur hatte diese Nachbarzusicherung den Fehler behalten:
   // Sie verlangte die Schreibweise `jobs/imageQueue').initImageQueue()`, also
   // ausdruecklich ein require(). Als daraus ein Top-Level-Import wurde, wurde …
-  // Ausführlich: docs/begruendungen/test/image-queue-db.test.js.md#stelle-5
   assert.match(dbInit, /\binitImageQueue\(\)/,
     'initImageQueue() wird nicht beim Aufbau der Datenbank aufgerufen');
 

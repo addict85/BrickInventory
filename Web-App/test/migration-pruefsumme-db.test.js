@@ -3,7 +3,6 @@
  * angewandte Datei danach geändert worden, bricht runMigrations() mit einer
  * Meldung ab, die die Datei nennt. Eine fehlende Summe (vor der Prüfung
  * angewandt) wird nachgetragen.
- * Ausführlich: docs/begruendungen/test/migration-pruefsumme-db.test.js.md#kopf
  *
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  in pruefeAngewandte() den Vergleich `r.pruefsumme !== ist` entfernt →

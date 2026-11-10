@@ -4,18 +4,15 @@ import type { DbSchnittstelle } from '../../db/database';
 import { istErsatzteil, KEINE_FARBE } from '../infra/validate';
 import { asIds, blickfeldAus, type Sicht } from '../haushalt/haushalt';
 
-// Was Sets, Teile und Figuren gemeinsam brauchen. Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#abschnitt
+// Was Sets, Teile und Figuren gemeinsam brauchen.
 
-/** Je Anfrage, unabhängig vom Abfrageweg — eine Stelle statt fünf Literale.
- * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#max-page-size */
+/** Je Anfrage, unabhängig vom Abfrageweg — eine Stelle statt fünf Literale. */
 export const MAX_PAGE_SIZE = 500;
 
-/** Ohne page_size läge sonst der ganze Bestand in einer Antwort im Speicher.
- * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#unpaged-limit */
+/** Ohne page_size läge sonst der ganze Bestand in einer Antwort im Speicher. */
 export const UNPAGED_LIMIT = 2000;
 
-/** Die Set-Detailansicht der App holt nur Seite 1; die normale Grenze schnitte ab.
- * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#set-parts-max-page-size */
+/** Die Set-Detailansicht der App holt nur Seite 1; die normale Grenze schnitte ab. */
 export const SET_PARTS_MAX_PAGE_SIZE = 5000;
 
 export function clampPageSize(value: unknown, fallback: number): number {
@@ -36,8 +33,7 @@ export function conditionFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlw
   return 'N';
 }
 
-/** Für die Plaketten: Wer neu und gebraucht hat, soll beides sehen.
- * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#conditionsfromacquisitions */
+/** Für die Plaketten: Wer neu und gebraucht hat, soll beides sehen. */
 export function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert): ('N' | 'U')[] {
   const acq  = parseInt(String(acqCount ?? ''))  || 0;
   const used = parseInt(String(usedCount ?? '')) || 0;
@@ -50,7 +46,6 @@ export function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehl
 }
 
 // Wie bei Sets: Eine gebrauchte Erfassung macht den Eintrag gebraucht; eine Abfrage je Seite.
-// Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#abschnitt-2
 type Schluessel = { part_number?: string; color_id?: number | null; fig_number?: string };
 export async function applyManualCondition<R extends Schluessel>(userId: number | number[], rows: R[], kind: 'part' | 'fig') {
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
@@ -83,7 +78,6 @@ export async function applyManualCondition<R extends Schluessel>(userId: number 
 }
 
 // Eine Funktion für Teile und Figuren: Nur Tabelle und Schlüssel wechseln.
-// Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#verwendendesset
 export interface VerwendendesSet {
   set_number: string;
   set_name: string | null;
@@ -105,8 +99,7 @@ export interface BestandteilKopf {
   is_spare: boolean;
   /** string_agg: Dasselbe Teil kann in mehreren Kisten liegen; ein Wert verschwiege die anderen. */
   storage: string | null;
-  /** Für die Lagerort-Auswahl im Dialog.
-   * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#bestandteilkopf-2 */
+  /** Für die Lagerort-Auswahl im Dialog. */
   owner_ids: number[];
   total_quantity: number;
 }
@@ -156,7 +149,6 @@ export async function verwendendeSets(
 }
 
 /** Eine Stelle für Löschroute und Aufräumen der Erfassungen.
- * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#loeschemanuellesteil
  * @param dbh Transaktionsgriff, wo einer gebraucht wird */
 export async function loescheManuellesTeil(
   dbh: Pick<DbSchnittstelle, 'run'>, ownerId: number, partNumber: string, colorId: number,

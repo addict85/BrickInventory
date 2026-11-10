@@ -1,6 +1,5 @@
 /**
  * Der Filter der Merkliste — Suche, Zustand, Sortierung und Inhaber.
- * Ausführlich: docs/begruendungen/test/merkliste-filter-db.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
  *   a) `OR rb.name ILIKE` aus der Suche entfernt   → Schritt 2 rot.
@@ -54,7 +53,6 @@ async function seed() {
   // einer, der nur „50" enthält. Ohne das zweite Set wäre der Schritt unten
   // wirkungslos — die Gegenprobe hat genau das gezeigt: Maskierung entfernt,
   // Prüfung blieb grün, weil „%50%%" im damaligen Bestand nichts anderes traf …
-  // Ausführlich: docs/begruendungen/test/merkliste-filter-db.test.js.md#stelle
   await db.run(`INSERT INTO rb_sets (set_num, name, year) VALUES ('60000-1','Sale 50% Feuerwehr',2013)`);
   await db.run(`INSERT INTO rb_sets (set_num, name, year) VALUES ('60001-1','Feuerwehr 5000er',2014)`);
 
@@ -148,7 +146,6 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async (t) => {
 
   await t.test('5. Sortierung: der fehlende Wert steht hinten', async () => {
     // 99999-1 hat keinen Namen (nicht im Katalog).
-    // Ausführlich: docs/begruendungen/test/merkliste-filter-db.test.js.md#nachname
     const nachName = await M.merkpostenVon(alle, undefined, 'EUR', { sortierung: 'name_asc' });
     assert.equal(nachName[nachName.length - 1].set_number, '99999-1',
       `Ohne Namen steht nicht hinten: ${nummern(nachName).join(', ')}`);

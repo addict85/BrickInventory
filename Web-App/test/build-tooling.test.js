@@ -248,7 +248,6 @@ test('beide Workflows melden, was rot war', () => {
     assert.ok(fehler >= 2,
       `${datei}: nur ${fehler} Fehler-Annotation(en) — beide Ausgaenge muessen gemeldet werden`);
     // Und der Reporter, den die eingestellte Node-Fassung wirklich nimmt
-    // Ausführlich: docs/begruendungen/test/build-tooling.test.js.md#if-stelle
     if (datei === 'web-ci.yml') {
       const zuweisung = (yml.match(/^\s*ROT_MUSTER=.*$/m) || [''])[0];
       assert.ok(zuweisung, `${datei}: kein ROT_MUSTER definiert`);
@@ -282,7 +281,6 @@ function schrittRumpf(yml, teilname) {
 
 test('die Sicherheitsprüfung sagt, was sie gefunden hat', () => {
   // Der Befund
-  // Ausführlich: docs/begruendungen/test/build-tooling.test.js.md#yml-stelle
   const yml = fs.readFileSync(
     path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml'), 'utf8');
   const rumpf = schrittRumpf(yml, 'Sicherheitsprüfung');
@@ -352,7 +350,6 @@ test('der CI-Workflow prüft, was er prüfen soll', () => {
   // 3. Die vier Schritte, die zusammen die Aussage tragen. `npm ci` statt
   //    `npm install` gehört dazu: nur ersteres scheitert, wenn package.json
   //    und Lockfile auseinanderlaufen.
-  // Ausführlich: docs/begruendungen/test/build-tooling.test.js.md#code
   const code = yml.split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
   for (const [muster, warum] of [
     [/\bnpm ci\b/,          'npm install würde ein abweichendes Lockfile stillschweigend hinnehmen'],
@@ -374,7 +371,6 @@ test('der CI-Workflow prüft, was er prüfen soll', () => {
 
 test('eine Pipe im Workflow verliert den Fehlschlag nicht', () => {
   // Gemessen, nicht vermutet
-  // Ausführlich: docs/begruendungen/test/build-tooling.test.js.md#durchreicher
   const DURCHREICHER = /\|\s*(tee|head|tail|cat)\b/;
   const wf = path.join(ROOT, '..', '.github', 'workflows');
   let geprueft = 0;
@@ -416,7 +412,6 @@ test('die noImplicitAny-Ausnahmeliste stimmt noch', () => {
  * CI-Workflow schrieb `node-version: '20'` mit der Begründung „wie im
  * Dockerfile". Die Begründung war richtig, die Zahl falsch — Node 20 hatte am
  * 30.04.2026 sein Lebensende erreicht und bekam seitdem keine …
- * Ausführlich: docs/begruendungen/test/build-tooling.test.js.md#dockerfile-und-ci-laufen-auf-derselben-u
  */
 test('Dockerfile und CI laufen auf derselben, unterstützten Node-Version', () => {
   const docker = read('Dockerfile');
@@ -477,7 +472,6 @@ test('@types/node passt zur Node-Version aus dem Dockerfile', () => {
 /**
  * Eine Migration, die es in der Quelle nicht mehr gibt, liegt nach dem Bau
  * auch nicht mehr in dist/.
- * Ausführlich: docs/begruendungen/test/build-tooling.test.js.md#verwaiste-sql-dateien-verschwinden-beim
  */
 test('verwaiste .sql-Dateien verschwinden beim naechsten Bau', async (t) => {
   const ziel = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-bau-'));

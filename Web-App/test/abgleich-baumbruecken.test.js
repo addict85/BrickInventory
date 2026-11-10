@@ -6,7 +6,6 @@ const path = require('node:path');
 
 /**
  * Die Bruecken zwischen den beiden Baeumen duerfen nicht ins Leere zeigen.
- * Ausführlich: docs/begruendungen/test/abgleich-baumbruecken.test.js.md#stelle
  *
  * Damit prueft die erste Fassung den BASISORDNER — und der verschwindet fast
  * nie. Die einzelnen .kt-Dateien verschwinden. Die Gegenprobe hat es gezeigt:
@@ -78,12 +77,10 @@ function bruecken() {
     // als Beispiel zeigt, ist kein Zugriff. Diese Datei selbst ist der beste
     // Beleg — ihr eigener Block darueber nennt zwei, und der erste Entwurf
     // meldete sie prompt als „nicht aufloesbar".
-    // Ausführlich: docs/begruendungen/test/abgleich-baumbruecken.test.js.md#quelle
     const quelle = ohneKommentare(fs.readFileSync(path.join(TESTORDNER, datei), 'utf8'));
     if (!quelle.includes('Android-App')) continue;
     const basen = androidBasen(quelle);
     // ZWEI Sorten von Bruecken, und beide werden gebraucht:
-    // Ausführlich: docs/begruendungen/test/abgleich-baumbruecken.test.js.md#if-stelle
     if (!basen.size && !quelle.includes('Android-App')) continue;
     for (const m of quelle.matchAll(/path\.join\(\s*([A-Za-z_$][\w$]*)\s*,([^;)]*)\)/gs)) {
       const ueberVariable = basen.has(m[1]);
@@ -126,7 +123,6 @@ test('was sich nicht aufloesen laesst, wird benannt', () => {
   // GEMESSEN: null offene, sechzehn aufgeloeste. Der einzige Fall (abgleich-preis-herkunft.test.js mit einem
   // variablen Ordnernamen) ist ausgeschrieben worden, als diese Pruefung ihn
   // meldete — der Gewinn an Kuerze war einer, den niemand sieht.
-  // Ausführlich: docs/begruendungen/test/abgleich-baumbruecken.test.js.md#stelle-2
   assert.ok(offen.length <= 1,
     `${offen.length} Bruecken lassen sich nicht aufloesen (erlaubt: 1):\n  ` +
     offen.map(o => `${o.datei}: ${o.ausdruck}`).join('\n  ') +

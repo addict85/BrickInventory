@@ -1,6 +1,5 @@
 /**
  * Serialisierung nebenläufiger Mutationen an derselben Bestandszeile.
- * Ausführlich: docs/begruendungen/db/txLock.ts.md#ueberblick
  */
 import * as db from './database';
 import type { DbSchnittstelle } from './database';
@@ -14,7 +13,6 @@ async function sperreBisZumEnde(tx: DbSchnittstelle, klasse: number, schluessel:
 
 /** Führt fn in einer Transaktion aus, die exklusiven Zugriff auf den
  * angegebenen Bestandsschlüssel hat.
- * Ausführlich: docs/begruendungen/db/txLock.ts.md#withinventorylock
  * @param scopeKey Bestandsschlüssel, z. B. die Set- oder Teilenummer */
 async function withInventoryLock<T>(userId: number, scopeKey: string | number, fn: (tx: DbSchnittstelle) => Promise<T>,
                                     o: db.TxOptionen = {}): Promise<T> {

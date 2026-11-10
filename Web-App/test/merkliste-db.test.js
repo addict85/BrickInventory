@@ -1,6 +1,5 @@
 /**
  * Die Merkliste — gegen eine echte Datenbank.
- * Ausführlich: docs/begruendungen/test/merkliste-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -188,7 +187,6 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     // Genau der U-Merkposten ist weg. Der N-Merkposten auf dasselbe Set bleibt
     // stehen — er ist ein ANDERER Merkposten, und genau dafuer steht der Zustand
     // im Schluessel.
-    // Ausführlich: docs/begruendungen/test/merkliste-db.test.js.md#uebrig
     const uebrig = (await W.merkpostenVon([U.enkel], '10276-1')).map(w => w.condition);
     assert.deepEqual(uebrig, ['N'], 'Der U-Merkposten steht noch — oder der N-Merkposten wurde mitgenommen');
     assert.equal((await P.alarmeFuer(U.enkel, '10276-1')).length, 0, 'Der Alarm steht noch');
@@ -279,7 +277,6 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
 
   await t.test('das Bild kommt lokal — und fehlt es, wird es bestellt', async () => {
     // Marcos zwei Befunde in einem Test:
-    // Ausführlich: docs/begruendungen/test/merkliste-db.test.js.md#fs-stelle
     //
     // Gegenproben (durchgeführt, Ergebnis im Commit):
     //   a) merkeGebraucht()-Zeile aus merkpostenVon() entfernt → „bestellt" rot.

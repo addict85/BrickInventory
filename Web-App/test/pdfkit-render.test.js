@@ -1,7 +1,6 @@
 /**
  * pdfkit erzeugt tatsächlich ein gültiges PDF — mit genau der API, die diese
  * Anwendung benutzt.
- * Ausführlich: docs/begruendungen/test/pdfkit-render.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

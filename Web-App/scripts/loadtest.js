@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 /**
  * Lastprofil — wie verhält sich der Server unter GLEICHZEITIGEN Anfragen?
- * Ausführlich: docs/begruendungen/scripts/loadtest.js.md#kopf
  */
 
 const path = require('node:path');
@@ -78,7 +77,6 @@ async function seed() {
   USER.id = (await db.get(`SELECT id FROM users WHERE username = $1`, [USER.username])).id;
 
   // Dieser Aufbau war kaputt, und niemand hat es gemerkt
-  // Ausführlich: docs/begruendungen/scripts/loadtest.js.md#stelle
   await db.run(
     `INSERT INTO set_catalog (set_number, name, year, theme, pieces, minifigs)
      SELECT (10000+g)||'-1', 'Set '||g, 1990 + (g % 35), 'Theme '||(g%12),
@@ -127,7 +125,6 @@ async function seed() {
        FROM generate_series(1, $2) g, generate_series(1, 4) m`, [USER.id, N_SETS]);
 
   // Marktpreise je Zustand — ohne sie rechnen die Finanz-Endpunkte im Leeren.
-  // Ausführlich: docs/begruendungen/scripts/loadtest.js.md#stelle-2
   await db.run(
     `INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity)
      SELECT (10000+g)||'-1', c, 'EUR', 10+(g%300), 30+(g%500), 60+(g%800), 31+(g%500), 5
@@ -165,7 +162,6 @@ function buildApp() {
 
 // Die Endpunkte, die eine Sitzung tatsächlich anfasst: Galerie öffnen, Teile
 // durchblättern, Finanzen ansehen.
-// Ausführlich: docs/begruendungen/scripts/loadtest.js.md#stelle-3
 /** @type {Array<[string, string]>} */
 const PFADE = [
   ['Galerie (Seite 1)',      '/api/sets/?page=1&page_size=60'],

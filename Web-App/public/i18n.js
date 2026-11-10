@@ -3,7 +3,6 @@ import { SicheresHtml } from './js/00-escapen.js';
 
 // Minimales Übersetzungs-System: t('key', {name}) liefert den Text. Die Sprache wird im localStorage gemerkt,
 // damit beim nächsten Laden nichts verzögert. Nur die aktive Sprache wird ausgeliefert.
-// Ausführlich: docs/begruendungen/public/i18n.js.md#minimales-uebersetzungs-system-sprache-w
 
 /**
  * Wörterbuch der geladenen Sprachen. Mindestens eine ist beim Start da; die zweite kommt per loadLang() dazu.
@@ -16,7 +15,6 @@ if (window.I18N_EN) I18N.en = window.I18N_EN;
 /**
  * Eine Sprachdatei nachladen, bevor neu übersetzt wird: Sonst stünden eine halbe Sekunde lang Schlüsselnamen
  * da. Scheitert es, bleibt die bisherige Sprache — der Aufrufer prüft I18N[lang].
- * Ausführlich: docs/begruendungen/public/i18n.js.md#loadlang
  * @param {string} lang 'de' oder 'en'
  * @returns {Promise<void>}
  */
@@ -101,7 +99,6 @@ function mehrzahlSchluessel(dict, key, vars) {
  * Übersetzten Text als Markup holen: Die Werte werden maskiert und das Ergebnis ist SicheresHtml, damit tsc
  * meldet, wenn es in textContent, toast() oder einen Dialogtext geriete — dort stünde sonst „&amp;“. Für
  * reinen Text gibt es tRaw().
- * Ausführlich: docs/begruendungen/public/i18n.js.md#uebersetzten-text-holen-und-platzhalter
  * @param {string} key
  * @param {Record<string, unknown>} [vars]
  * @returns {SicheresHtml}
@@ -155,7 +152,6 @@ let _langApplied = null;
 /**
  * Farbnamen nur in der Anzeige übersetzen: Daten und BrickLink-Abfragen brauchen die englischen Namen. Ein
  * Wortschatz statt einer Liste aller Farben, damit auch neue Rebrickable-Farben lesbar werden.
- * Ausführlich: docs/begruendungen/public/i18n.js.md#color-words-de
  */
 /** @type {Record<string, string>} */
 const COLOR_WORDS_DE = {
@@ -206,7 +202,6 @@ export function colorName(en) {
   // Bekannte Modifikatoren ans nächste Wort hängen („Dunkelbläulichgrau“), unbekannte Wörter getrennt lassen.
   // Entschieden am vorigen Token, nicht am Zusammengesetzten — sonst bräche die Kette nach dem zweiten Glied
   // ab.
-  // Ausführlich: docs/begruendungen/public/i18n.js.md#bekannte-modifikatoren-ans-naechste-wort
   let res = '';
   let joinNext = false;
   for (const cur of out) {
@@ -250,7 +245,6 @@ function schreibeI18n(el) {
 export function applyLang(lang, persist) {
   // Sprache noch nicht geladen: nachladen und erneut anlaufen. Ein stilles return hiesse, der Klick auf
   // Englisch tut nichts. Synchron, damit die rund zwanzig Aufrufstellen bleiben, wie sie sind.
-  // Ausführlich: docs/begruendungen/public/i18n.js.md#sprache-noch-nicht-geladen-nachladen
   if (!I18N[lang]) {
     loadLang(lang).then(() => { if (I18N[lang]) applyLang(lang, persist); });
     return;

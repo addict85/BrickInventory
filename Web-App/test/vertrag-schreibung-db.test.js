@@ -3,7 +3,6 @@
  * mit grossem Anfangsbuchstaben nach /api/v1 und mit angehängtem „/“. Am
  * echten Server mit Idempotency-Key. Eine andere Schreibung ist eine andere
  * Route (404) und hinterlässt nichts in `idempotenz`; der Schrägstrich am Ende …
- * Ausführlich: docs/begruendungen/test/vertrag-schreibung-db.test.js.md#kopf
  *
  * Gegenproben (am 04.11.2026 gemessen, je eine Änderung, danach zurück):
  *   A  server.ts ohne `case sensitive routing` und vertragsRouter() ohne

@@ -1,6 +1,5 @@
 /**
  * Ein Set, das schon im Blickfeld steht, wird beim Erfassen NICHT erhöht.
- * Ausführlich: docs/begruendungen/test/set-add-exists-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): den findSetInScope-Zweig aus routes/api_v1/sets.ts
  * entfernt → der erste Teilschritt wird rot (Menge 1 → 2).
@@ -13,7 +12,6 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 // Der Nachzug nach dem Erfassen (src/sets/nachErfassung.ts) wird abgefangen.
-// Ausführlich: docs/begruendungen/test/set-add-exists-db.test.js.md#module
 const Module = require('node:module');
 const _echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
@@ -159,7 +157,6 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts',
 
 test('normalizeSetNumber stimmt mit sanitizeSetNumber überein', () => {
   // Warum das jetzt anders geprueft wird
-  // Ausführlich: docs/begruendungen/test/set-add-exists-db.test.js.md#stelle
   const { normalizeSetNumber } = _req('src/sets/index.js');
   const { sanitizeSetNumber }  = _req('src/sets/index.js');
   assert.equal(typeof sanitizeSetNumber, 'function',

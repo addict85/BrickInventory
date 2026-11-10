@@ -1,6 +1,5 @@
 /**
  * Ein async-Handler, der wirft, wird zu einer 500 — ohne eigenen Wrapper.
- * Ausführlich: docs/begruendungen/test/async-routes.test.js.md#kopf
  *
  * Gegenprobe (am 27.10. gemessen): ein Handler, der nie antwortet, statt des
  * werfenden → rot mit „hängt" — die Sonde erkennt einen Hänger also.

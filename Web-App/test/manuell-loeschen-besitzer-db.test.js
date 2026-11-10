@@ -1,6 +1,5 @@
 /**
  * Der Papierkorb löscht die Karte, auf die geklickt wurde.
- * Ausführlich: docs/begruendungen/test/manuell-loeschen-besitzer-db.test.js.md#kopf
  */
 const test = require('node:test');
 const { after } = require('node:test');
@@ -32,7 +31,6 @@ test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async (t) =>
   await db.run('CREATE SCHEMA public');
   await db.initSchemaOnce();
   // Und die MIGRATIONEN, nicht nur das Schema
-  // Ausführlich: docs/begruendungen/test/manuell-loeschen-besitzer-db.test.js.md#stelle
   {
     const mc = await db.pool.connect();
     try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
@@ -132,7 +130,6 @@ test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async (t) =>
 
 /**
  * Damit eine Ansicht den Besitzer MITGEBEN kann, muss sie ihn erst BEKOMMEN.
- * Ausführlich: docs/begruendungen/test/manuell-loeschen-besitzer-db.test.js.md#beide-bewertungen-fuehren-den-besitzer-m
  */
 test('beide Bewertungen fuehren den Besitzer mit', async (t) => {
   if (!await erreichbar()) {
@@ -143,7 +140,6 @@ test('beide Bewertungen fuehren den Besitzer mit', async (t) => {
   // schon frisch aufgebaut, und jedes weitere Fallenlassen ist eine Sperre
   // mehr, die mit dem Verbindungspool einer gerade beendeten Testdatei
   // zusammentreffen kann. Die Vorlage hier benutzt deshalb eigene Namen (h2, …
-  // Ausführlich: docs/begruendungen/test/manuell-loeschen-besitzer-db.test.js.md#stelle-2
   await db.initSchemaOnce();
   // Migrationen auch hier — siehe die Begruendung weiter oben.
   {
@@ -159,7 +155,6 @@ test('beide Bewertungen fuehren den Besitzer mit', async (t) => {
   // Bestandszeile.
   // Menge UND Preis in einem Aufruf: haeltTeil/haeltFigur legen die Erfassung
   // selbst an. Ein zweites INSERT daneben verstiesse gegen idx_part_acq_tag_zustand …
-  // Ausführlich: docs/begruendungen/test/manuell-loeschen-besitzer-db.test.js.md#stelle-3
   await haeltTeil(db, haupt, '3001', { menge: 5, colorId: 4, preis: 0.5 });
   await haeltTeil(db, kind, '3020', { menge: 9, colorId: 0, preis: 0.3 });
   await haeltFigur(db, haupt, 'sw0001', { menge: 1, preis: 12.0 });

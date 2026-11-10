@@ -1,6 +1,5 @@
 /**
  * Der geschätzte Minifiguren-Marktpreis wird zwischengespeichert.
- * Ausführlich: docs/begruendungen/test/minifig-estimate-cache-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

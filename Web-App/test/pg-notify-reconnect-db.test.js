@@ -1,6 +1,5 @@
 /**
  * LISTEN/NOTIFY überlebt einen Verbindungsabriss — gegen echte Datenbank.
- * Ausführlich: docs/begruendungen/test/pg-notify-reconnect-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): retire() in db/pgNotify.ts wieder durch die
  * alte Fassung ersetzt (removeAllListeners ohne Ersatz-Zuhörer) → dieser Test

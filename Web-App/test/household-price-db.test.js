@@ -1,6 +1,5 @@
 /**
  * Marktpreis und Preisverlauf für HAUSHALTS-Sets — gegen echte Routen.
- * Ausführlich: docs/begruendungen/test/household-price-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): scopeIds in der Preisroute wieder durch die
  * nackte ID ersetzt → der 404-Schritt hier wird rot.

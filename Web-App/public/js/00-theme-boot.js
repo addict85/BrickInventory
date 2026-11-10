@@ -1,7 +1,6 @@
 // Läuft blockierend im <head>, vor dem ersten Paint: Auch Anmelde- und Startseite tragen so sofort das
 // richtige Design. Erst der letzte bekannte Wert, dann der Abgleich mit dem Server — so blinkt nichts und
 // nichts veraltet.
-// Ausführlich: docs/begruendungen/public/js/00-theme-boot.js.md#laeuft-als-blockierendes-skript-im-head
 
 (function () {
   var KEY = 'bim_theme';
@@ -12,7 +11,6 @@
   /**
    * Wendet ein Design an. Ein leerer Wert heisst „keine Auskunft“ und ändert nichts: Ein Rückfall auf classic
    * liess die Seite beim Anmelden umspringen und schrieb den falschen Wert in den Cache.
-   * Ausführlich: docs/begruendungen/public/js/00-theme-boot.js.md#apply
    * @param {string | null | undefined} theme
    */
   function apply(theme) {

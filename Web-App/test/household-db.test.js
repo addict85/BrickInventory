@@ -1,6 +1,5 @@
 /**
  * Haushalt gegen eine ECHTE Datenbank.
- * Ausführlich: docs/begruendungen/test/household-db.test.js.md#kopf
  *
  * Gegenproben zum Haushalt mit mehreren Elternkonten (am 28.10. gemessen):
  *   A  canWriteFor() wieder über alle Nachfahren → rot: „Rechte gelten nur
@@ -318,7 +317,6 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     const own  = await handlers.getStats(await household.scopeIds(U.eltern, 'own'));
 
     // Warum hier jetzt 2 steht und vorher 3
-    // Ausführlich: docs/begruendungen/test/household-db.test.js.md#stelle
     assert.equal(parseInt(all.total_sets, 10), 2, 'verschiedene Sets im Haushalt — wie die Galerie sie zeigt');
     assert.equal(parseInt(all.total_quantity, 10), 4, 'Exemplare: 1 + 2 + 1');
     assert.equal(parseInt(own.total_sets, 10), 0);
@@ -384,7 +382,6 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     // Nach der Umstellung auf user_id = ANY($1) bekam getSetting() die
     // ID-LISTE statt einer ID, und alle vier Endpunkte antworteten mit
     //   500 invalid input syntax for type integer: "{"2"}" …
-    // Ausführlich: docs/begruendungen/test/household-db.test.js.md#for-stelle
     for (const mode of ['all', 'own', 'subs']) {
       const q = mode === 'all' ? '' : `?accounts=${mode}`;
       // Adressen seit Etappe 5 unter /api/v1 (zusammengelegt) — die Aussage
@@ -461,7 +458,6 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     // das Ziel bekommt eine Kopie. Ein Umhängen hätte die Quelle mit einem
     // Exemplar ohne Teile zurückgelassen.
     // Wird EIN Kaufpreis von zweien umgehängt, muss ALLES in beiden Konten …
-    // Ausführlich: docs/begruendungen/test/household-db.test.js.md#inbeiden
     const inBeiden = async (table) => {
       const n = async uid => (await db.get(
         `SELECT COUNT(*)::int AS n FROM ${table} WHERE user_id=$1 AND set_number='21318-1'`,
@@ -495,7 +491,6 @@ test('Haushalt gegen echte Datenbank', async (t) => {
 
   await t.test('der Eigentümerwechsel greift die ZEILE, nicht den Betrachter', async () => {
     // Woher dieser Test kommt
-    // Ausführlich: docs/begruendungen/test/household-db.test.js.md#stelle-2
     await giveSet(U.kindB, '31120-1', 1, 80);
     const acq = await db.get(
       `SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number='31120-1'`, [U.kindB]);
@@ -591,7 +586,6 @@ test('Haushalt gegen echte Datenbank', async (t) => {
 
   await t.test('in ein fremdes Konto schreiben — die Richtung entscheidet', async () => {
     // Warum diese Prüfung hier steht
-    // Ausführlich: docs/begruendungen/test/household-db.test.js.md#stelle-3
 
     /** Über die v1-Fabrik anlegen, mit gewähltem Zielkonto. */
     async function anlegen(actor, pfad, koerper) {

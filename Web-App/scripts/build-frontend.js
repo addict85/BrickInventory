@@ -3,7 +3,6 @@
 
 /**
  * Bündelt und minifiziert das Frontend.
- * Ausführlich: docs/begruendungen/scripts/build-frontend.js.md#stelle
  */
 
 const { execFileSync } = require('child_process');

@@ -1,6 +1,5 @@
 /**
  * Zu jeder Route gehört jemand, der sie ruft — oder ein eingetragener Grund.
- * Ausführlich: docs/begruendungen/test/abgleich-api-aufrufer.test.js.md#kopf
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 const test = require('node:test');
@@ -66,14 +65,12 @@ function clientQuellen() {
  * Route gefunden, die niemand mehr braucht.
  */
 // Fuenf Eintraege sind hier verschwunden, weil die Routen es sind
-// Ausführlich: docs/begruendungen/test/abgleich-api-aufrufer.test.js.md#ohne-aufrufer
 const OHNE_AUFRUFER = new Map([
   ['GET /api/v1/health', 'Für Überwachung von aussen (Status, Details nur für Verwalter).'],
   ['GET /api/v1/health/live', 'Lebenszeichen des Prozesses für eine Überwachung von aussen.'],
   ['GET /api/v1/health/ready', 'Gesundheitsprüfung von compose.yaml (node -e im Container).'],
   // Die Token-Routen fehlen hier, weil ihre Oberfläche jetzt unter
   // „Angemeldete Geräte“ steht und sie damit einen Aufrufer haben.
-  // Ausführlich: docs/begruendungen/test/abgleich-api-aufrufer.test.js.md#stelle
   ['POST /api/v1/admin/img-probe',
     'Diagnosewerkzeug, von Hand gerufen: zeigt, was der Bild-Proxy vom ' +
     'Ursprungsserver bekommt. Entstanden, weil Minifiguren-Bilder über den ' +

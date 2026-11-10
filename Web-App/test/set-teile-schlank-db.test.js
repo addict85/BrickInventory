@@ -3,7 +3,6 @@
  * Ersatzteil; Name, Kategorie, Farbe und Bild stehen in den Katalogen. Die View
  * set_parts_catalog zeigt den Lesestellen dieselben Spalten — und wie vorher
  * nur geprüfte Werte, keinen eingetippten Platzhalter eines Kontos.
- * Ausführlich: docs/begruendungen/test/set-teile-schlank-db.test.js.md#kopf
  *
  * Gegenproben (am 28.10.2026 gemessen):
  *   A  im View den Filter `CASE WHEN pc.name_von IS NULL …` weggelassen

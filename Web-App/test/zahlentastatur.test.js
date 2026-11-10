@@ -1,6 +1,5 @@
 /**
  * Auf dem Handy erscheint bei Zahlenfeldern die Zahlentastatur.
- * Ausführlich: docs/begruendungen/test/zahlentastatur.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
  *   a) inputmode bei #add-price entfernt   → Schritt 1 rot, nennt die Stelle

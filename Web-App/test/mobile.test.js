@@ -1,6 +1,5 @@
 /**
  * Frontend-Tests für public/js/10-mobile.js in jsdom.
- * Ausführlich: docs/begruendungen/test/mobile.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

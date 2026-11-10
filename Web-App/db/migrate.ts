@@ -1,6 +1,5 @@
 /**
  * Schema-Migrationen mit nummerierten Dateien.
- * Ausführlich: docs/begruendungen/db/migrate.ts.md#ueberblick
  */
 import fs from 'fs';
 import path from 'path';
@@ -9,8 +8,7 @@ import type { ClientBase } from 'pg';
 import { meldeFehler, fehlertext, logAndContinue } from '../src/infra/fehler';
 import type { DbSchnittstelle } from './typen';
 
-/** Alle noch nicht angewandten Migrationen; `client` ist eine eigene Verbindung, nicht der Pool.
- * Ausführlich: docs/begruendungen/db/migrate.ts.md#runmigrations */
+/** Alle noch nicht angewandten Migrationen; `client` ist eine eigene Verbindung, nicht der Pool. */
 async function runMigrations(client: ClientBase, { sichern = false }: { sichern?: boolean } = {}): Promise<string[]> {
   await client.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (

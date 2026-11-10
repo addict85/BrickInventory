@@ -1,5 +1,4 @@
-/** Der Zugang zu PostgreSQL: Pool, Abfragen, Transaktionen, Erststart.
- * Ausführlich: docs/begruendungen/db/database.ts.md#ueberblick */
+/** Der Zugang zu PostgreSQL: Pool, Abfragen, Transaktionen, Erststart. */
 
 import { Pool, types as pgTypes, Client } from 'pg';
 import type { PoolClient, PoolConfig } from 'pg';
@@ -13,11 +12,10 @@ import { fehlerCode, meldeFehler, logAndContinue, setzeTransaktionsWaechter } fr
 import { konfig, datenbankVerbindung } from '../src/infra/konfig';
 
 // Alle Abhängigkeiten stehen hier oben: Ein require() im Rumpf versteckt sie
-// und liefert `any`. Ausführlich: docs/begruendungen/db/database.ts.md#importe-am-kopf
+// und liefert `any`.
 
 // NUMERIC als Zahl: NUMERIC(12,4) bleibt weit unter 2^53, gerechnet wird in
 // src/infra/geld.ts in Zehntausendsteln.
-// Ausführlich: docs/begruendungen/db/database.ts.md#numeric-als-zahl
 pgTypes.setTypeParser(pgTypes.builtins.NUMERIC, (v: string | null) => (v === null ? null : parseFloat(v)));
 
 // Höchstens zwei Prozesse (web und jobs) mit je 15 Verbindungen: weit unter
@@ -67,8 +65,7 @@ export function istLesend(sql: string): boolean {
   return /^(SELECT|WITH)\b/i.test(s) && !/\b(INSERT|UPDATE|DELETE|MERGE)\b|\bFOR\s+(UPDATE|SHARE)\b/i.test(s);
 }
 
-/** Mit Wiederholung bei transienten Fehlern.
- * Ausführlich: docs/begruendungen/db/database.ts.md#querywithretry */
+/** Mit Wiederholung bei transienten Fehlern. */
 export async function queryWithRetry<T>(queryFn: () => Promise<T>, lesend: boolean, maxRetries = 2): Promise<T> {
   let lastErr: unknown;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -90,7 +87,7 @@ export async function queryWithRetry<T>(queryFn: () => Promise<T>, lesend: boole
 /** Eine Zeile mit den Spalten, die der Aufrufer liest; weitere reisen als `unknown` mit. */
 export type Zeile<T extends object = object> = T & Record<string, unknown>;
 
-// Benannt, damit tx-Rückrufe geprüft werden. Ausführlich: docs/begruendungen/db/database.ts.md#dbschnittstelle
+// Benannt, damit tx-Rückrufe geprüft werden.
 export type { DbSchnittstelle };
 
 export interface TxOptionen {
@@ -170,7 +167,7 @@ setzeTransaktionsWaechter({
   streng: () => konfig().nodeEnv === 'test',
 });
 
-// SQL geht unverändert an PostgreSQL. Ausführlich: docs/begruendungen/db/database.ts.md#sql-unuebersetzt
+// SQL geht unverändert an PostgreSQL.
 
 // Die älteste Migration, auf der eine bestehende Datenbank aufsetzen darf: db/basis.sql
 // und alle Migrationen danach kennen nur Schemas ab hier. Was älter ist, holt
@@ -250,8 +247,7 @@ export function erzeugeDb(k: DbKonfig): Db {
     }
   }
 
-  /** Eine EIGENE Verbindung, die NICHT aus dem Pool kommt.
-   * Ausführlich: docs/begruendungen/db/database.ts.md#eigeneverbindung */
+  /** Eine EIGENE Verbindung, die NICHT aus dem Pool kommt. */
   async function eigeneVerbindung() {
     const c = new Client({ ...k.verbindung });
     await c.connect();

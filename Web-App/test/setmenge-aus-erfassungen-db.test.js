@@ -2,7 +2,6 @@
  * Seit db/basis.sql gibt es den Stand VOR dieser Migration nicht mehr: Die
  * Fälle zu Riegel, Nachtrag und Zwischenstand sind entfallen. Geprüft werden
  * der Endstand und die Lesewege.
- * Ausführlich: docs/begruendungen/test/setmenge-aus-erfassungen-db.test.js.md#kopf
  *
  *      GEGENPROBE: Ändert sich eine Erfassung, folgt die Antwort.
  *
@@ -96,7 +95,6 @@ test('niemand schreibt die Stückzahl eines Sets mehr', () => {
   // dieser Test, sondern die Datenbank: Nach Migration 0036 gibt es die Spalte
   // nicht, jede verbliebene Lesestelle ist ein harter Fehler — und genau
   // deshalb laufen die Lesewege unten gegen eine migrierte Datenbank.
-  // Ausführlich: docs/begruendungen/test/setmenge-aus-erfassungen-db.test.js.md#dateien
   const dateien = [];
   const lauf = (verz) => {
     for (const e of fs.readdirSync(verz, { withFileTypes: true })) {

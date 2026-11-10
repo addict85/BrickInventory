@@ -3,7 +3,6 @@
  * 1280 × 900 oder Telefon 390 × 844), hell und dunkel: jeder Reiter, alle
  * Abschnitte der Einstellungen, die Seiten hinter dem Menü und die
  * wichtigsten Dialoge. Je Zustand: axe-core ohne Verstoss jeder Stufe, Layout, Tastatur …
- * Ausführlich: docs/begruendungen/test/helpers/oberflaeche-pruefung.js.md#kopf
  *
  * Gegenproben (30.10.2026, zusammen angewendet; welche Datei rot war, steht
  * in ihrem Kopf):

@@ -1,6 +1,5 @@
 /**
  * BrickLink-Link-Auflösung für Katalog-Sets (src/katalog/bricklinkLink.ts).
- * Ausführlich: docs/begruendungen/test/bricklink-link.test.js.md#kopf
  *
  * Gegenproben (08.11.2026 gemessen, am Bündel in jsdom):
  *   A  in openCatModal wieder `blBtn.style.display = bl ? '' : 'none'` → rot:

@@ -41,7 +41,6 @@ abonniere('zweiterFaktorPflicht', () => zeigeZweitpflicht());
 /**
  * Ein 401 heisst: Die Sitzung ist nicht mehr gültig. Statt eines Hinweises je Klick über alten Daten geht es
  * zurück zur Anmeldung mit „Sitzung abgelaufen“ — wie in der Android-App.
- * Ausführlich: docs/begruendungen/public/js/26-sitzung.js.md#abonniere
  */
 abonniere('sitzungBeendet', (path) => {
   if (path.startsWith('/v1/auth/me') || path.startsWith('/v1/auth/login')) return;
@@ -450,7 +449,6 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   // ?set=<nummer> öffnet das Set direkt (Knopf der Preisalarm-Mail). Hier und nicht beim Laden, weil erst
   // hier eine Sitzung besteht. Geöffnet wird über die Adresse #/set/…: routeBeimStart() unten schliesst jeden
   // Dialog, den die Adresse nicht nennt. Der Parameter fällt weg, damit F5 nicht erneut einen Link einlöst.
-  // Ausführlich: docs/begruendungen/public/js/26-sitzung.js.md#setauslink
   const setAusLink = new URLSearchParams(location.search).get('set');
   if (setAusLink) history.replaceState({}, '', `${location.pathname}#/set/${encodeURIComponent(setAusLink)}`);
   // Apply saved language immediately (from localStorage) so static elements translate before server responds

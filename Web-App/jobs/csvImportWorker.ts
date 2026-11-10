@@ -5,7 +5,7 @@ import { fehlertext, logAndContinue } from '../src/infra/fehler';
 import { datenbankVerbindung } from '../src/infra/konfig';
 import { katalogImporte, parseCsvLine } from '../src/katalog/csvImport';
 
-// Ohne IPC-Kanal nach stderr statt TypeError. Ausführlich: docs/begruendungen/jobs/csvImportWorker.ts.md#send
+// Ohne IPC-Kanal nach stderr statt TypeError.
 function send(msg: Record<string, unknown>) {
   if (typeof process.send === 'function') process.send(msg);
   else console.error('[csv-worker] kein IPC-Kanal — Meldung verworfen:', JSON.stringify(msg).slice(0, 200));

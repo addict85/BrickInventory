@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 /**
  * Bild-Diagnose für EIN Set — wo bricht die Kette?
- * Ausführlich: docs/begruendungen/scripts/diagnose-image.js.md#kopf
  */
 const path = require('path');
 const fs = require('fs');

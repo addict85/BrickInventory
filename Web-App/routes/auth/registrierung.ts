@@ -138,7 +138,6 @@ router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000)
   // Höchstens ein Link je Konto und RUECKSETZ_PAUSE_MIN: Sonst flutet ein Fremder das Postfach.
   if (user && await K.setzeRuecksetzTokenWennFrei(user.id, hashToken(token), RUECKSETZ_GUELTIG_MIN, RUECKSETZ_PAUSE_MIN)) {
     // Nicht awaiten, sonst verriete die Dauer des SMTP-Versands die Adresse.
-    // Ausführlich: docs/begruendungen/routes/auth/registrierung.ts.md#post-forgot-password-2
     getSetting(user.id, 'language', 'de')
       .catch(meldeUndLiefere('registrierung:sprache', 'de'))
       // An die GESPEICHERTE Adresse: Die eingegebene passt per LOWER() auch als Unicode-Variante.

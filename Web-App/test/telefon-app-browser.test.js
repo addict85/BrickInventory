@@ -1,7 +1,6 @@
 /**
  * Die App am Telefon (390 × 844, mobile) — gemessen in Chrome am echten
  * Server mit den echten Stylesheets.
- * Ausführlich: docs/begruendungen/test/telefon-app-browser.test.js.md#kopf
  *
  * Gegenproben (am 28.10.2026 gemessen):
  *   A  diagrammBreite() liefert immer 700 → rot: „Diagrammschrift

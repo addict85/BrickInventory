@@ -38,7 +38,7 @@ router.get('/settings/theme', async (req: OffeneAnfrage<'GET /api/v1/settings/th
 });
 
 // Vor router.use(requireLogin), weil requireLogin nur die Sitzung kennt und
-// die App ihre Zugänge mit Token verwaltet. Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#abschnitt
+// die App ihre Zugänge mit Token verwaltet.
 router.get('/settings/tokens', requireLoginOrToken, async (req: OffeneAnfrage<'GET /api/v1/settings/tokens'>, res: Antwort<'GET /api/v1/settings/tokens'>) => {
   const eigener = bearerToken(req);
   const eigenerHash = eigener ? hashToken(eigener) : null;
@@ -63,8 +63,7 @@ router.get('/settings/tokens', requireLoginOrToken, async (req: OffeneAnfrage<'G
 
 /** Die Zeile ist sofort weg, der Token-Cache gilt aber noch kurz nach.
  * Einen FREMDEN Zugang widerruft nur, wer Passwort und Faktor kennt: Ein
- * erbeuteter Token soll den Inhaber nicht von seinen Geräten aussperren.
- * Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#delete-tokens-tokenid */
+ * erbeuteter Token soll den Inhaber nicht von seinen Geräten aussperren. */
 router.delete('/settings/tokens/:tokenId', requireLoginOrToken, async (req: OffeneAnfrage<'DELETE /api/v1/settings/tokens/:tokenId'>, res: Antwort<'DELETE /api/v1/settings/tokens/:tokenId'>) => {
   const uid = angemeldeteNutzerId(req);
   const eigener = bearerToken(req);
@@ -94,7 +93,7 @@ router.post('/settings/sessions/andere-beenden', requireLogin, async (req: Offen
 });
 
 /** Ausdrücklich aufgezählt: Die App bekommt nur, was sie liest, keine globalen
- * oder Verwalterfelder. Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#app-felder */
+ * oder Verwalterfelder. */
 const APP_FELDER = ['currency', 'price_condition', 'price_cache_ttl',
                     'default_price_condition', 'user_default_condition'] as const;
 
@@ -139,7 +138,6 @@ router.get('/settings/default-condition', requireToken, async (_req: AuthedReque
 });
 
 // Der wirksame Wert, für Webapp und App aus einer Route.
-// Ausführlich: docs/begruendungen/routes/api_v1/settings.ts.md#get-settings-user-default-condition
 router.get('/settings/user/default-condition', requireToken, async (req: Anfrage<'GET /api/v1/settings/user/default-condition'>, res: Antwort<'GET /api/v1/settings/user/default-condition'>) => {
   res.json({ success: true, condition: await nutzerStandardZustand(req.apiUser.user_id) });
 });

@@ -35,7 +35,6 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 /**
  * import-/export-Syntax aus einer Moduldatei entfernen.
- * Ausführlich: docs/begruendungen/test/parts-paging.test.js.md#stripmodulesyntax
  * @param {string} src
  * @returns {string}
  */
@@ -47,7 +46,6 @@ function stripModuleSyntax(src) {
   // Entfernen der Importe nicht definiert. In der Sandbox interessiert die
   // Anmeldung nicht — dass sie aufgerufen WIRD, prüfen test/csp-actions.test.js
   // und test/bundle-smoke.test.js gegen den echten Quelltext. …
-  // Ausführlich: docs/begruendungen/test/parts-paging.test.js.md#registeractions
   return (
     'function registerActions() {}\n' + 'function tRaw(k, v) { return typeof t === "function" ? t(k, v) : k; }\n' + body
   );

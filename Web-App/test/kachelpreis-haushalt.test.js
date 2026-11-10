@@ -1,6 +1,5 @@
 /**
  * Eine Kachel, mehrere Besitzer — welchen Preis und welche G&V zeigt sie?
- * Ausführlich: docs/begruendungen/test/kachelpreis-haushalt.test.js.md#kopf
  *
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  in kachelWerte() bei mehreren Zeilen die letzte statt der gewichteten

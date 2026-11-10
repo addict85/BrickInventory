@@ -1,6 +1,5 @@
 /**
  * Die Teile-Bewertung darf nicht je Teil viermal nachfragen.
- * Ausführlich: docs/begruendungen/test/bewertung-abfragen-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

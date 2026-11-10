@@ -50,7 +50,6 @@ export async function loadStats(){
   sammlungTitel();
   // Kennzahlen mit demselben Kontofilter wie die Liste: Sonst stand über „nur meine“ weiter die Summe des
   // ganzen Haushalts.
-  // Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#kennzahlen-mit-demselben-kontofilter-wie
   const d = await api('GET', `/v1/stats${scopeQuery('gallery')}`);
   if (d.success && d.stats) {
     // Die Kennzahlen stehen in jedem Design als Kacheln über der Sammlung. Stück wie Teile und Figuren
@@ -76,7 +75,6 @@ let curView='grid';
 /**
  * Übernimmt das Zustands-Aggregat vom Server: Die eigene Nachrechnung nahm die zuletzt erfasste Position und
  * zeigte bei [U, N] „neu“ statt „gebraucht“.
- * Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#applysetaggregate
  * @param {Partial<Kachel> | null | undefined} agg
  */
 export function applySetAggregate(agg){
@@ -153,7 +151,6 @@ function maybeLoadMoreGallery(){
 /**
  * Selbst nachsehen, ob der Sentinel sichtbar ist: IntersectionObserver meldet nur Übergänge, und wird der
  * Inhalt darunter ersetzt, lädt sonst nichts mehr, bis man hoch- und wieder herunterscrollt.
- * Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#kickgallerysentinel
  */
 function kickGallerySentinel(){
   const sent = G('gallery-sentinel');
@@ -273,7 +270,6 @@ export function renderGallery(){
 /**
  * Preise in die bestehenden Kacheln nachtragen statt die Wand neu zu bauen: Neu gebaute <img> blendeten
  * erneut ein und liessen die Galerie flackern.
- * Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#updategalleryprices
  */
 export function updateGalleryPrices(){
   const bySet = new Map(allSets.map(x => [x.set_number, x]));
@@ -500,7 +496,6 @@ G('gsort').addEventListener('change',() => loadGallery());
 /**
  * Ein Set löschen, mit genau EINER Rückfrage hier an der einen Stelle, die löscht: Der Detail-Dialog fragte
  * vorher selbst und dann noch einmal.
- * Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#delset
  * @returns {Promise<boolean>} true, wenn wirklich gelöscht wurde
  * @param {string} sn
  */
@@ -565,7 +560,6 @@ abonniere('bestandGeaendert', () => { loadGallery(); loadStats(); });
 
 // Kein Kommentar zwischen den Namen: test/bundle-smoke.test.js trennt die Schlüssel an Kommas, und ein
 // Kommentar wanderte in den ersten Namen.
-// Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#registeractions
 registerActions({
   loadGallery,
   delSet,

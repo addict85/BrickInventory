@@ -1,6 +1,5 @@
 /**
  * Der Preisalarm wird beim TIPPEN gespeichert — aber nur einmal.
- * Ausführlich: docs/begruendungen/test/alarm-entprellt.test.js.md#kopf
  *
  * ── Die Gegenprobe läuft MIT ────────────────────────────────────────────────
  */
@@ -19,7 +18,6 @@ const ADMIN  = fs.readFileSync(path.join(ROOT, 'public', 'js', '02-detailfelder.
 
 /**
  * Die drei Bedienelemente des Alarms — AUS DEM ECHTEN QUELLTEXT geschnitten.
- * Ausführlich: docs/begruendungen/test/alarm-entprellt.test.js.md#alarmmarkup
  *
  * Genau das stand hier zuerst, und die Gegenprobe dazu blieb GRÜN: Ich habe
  * die Verdrahtung im Quelltext von `data-input="alarmGetippt"` auf das alte

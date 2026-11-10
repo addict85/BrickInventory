@@ -1,6 +1,5 @@
 /**
  * Vorberechnete Teile-Zusammenfassung (src/teile/partsSummary.ts).
- * Ausführlich: docs/begruendungen/test/parts-summary.test.js.md#kopf
  */
 const test = require('node:test');
 const { umgebung } = require('./helpers/sources');
@@ -52,7 +51,6 @@ test('set_number und storage gehen bewusst an der Zusammenfassung vorbei', () =>
   // Zwei Filter, ein Grund: Die Zusammenfassung ist nach Teil und Farbe
   // verdichtet und kann nach nichts filtern, was INNERHALB einer Gruppe
   // verschieden ist.
-  // Ausführlich: docs/begruendungen/test/parts-summary.test.js.md#h-stelle
   const h = require('./helpers/sources').handlerQuelle();
   const zeile = /if \(filter\.ohneManuelle && ([^)]*)\)/.exec(h)?.[1] || '';
   assert.ok(zeile.includes('!filter.set_number'),
@@ -161,7 +159,6 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht',
     'eine geänderte Set-Menge muss durchschlagen');
 
   // Der Schreibvorgang eines FREMDEN Kontos darf nichts entwerten
-  // Ausführlich: docs/begruendungen/test/parts-summary.test.js.md#fremd
   const FREMD = 990502;
   await db.run("INSERT INTO users (id,username,password_hash,is_admin) VALUES ($1,'psum2','x',false) ON CONFLICT DO NOTHING", [FREMD]);
   await PS.rebuildNow(U);
@@ -218,7 +215,6 @@ test('der Neuaufbau blockiert den Request nicht', () => {
   // Version SYNCHRON neu aufgebaut. Weil der Trigger die Version bei jeder
   // Änderung an parts hochsetzt (CSV-Import, Set hinzufügen,
   // Katalog-Anreicherung), zahlte der nächste Aufruf des Teile-Reiters den …
-  // Ausführlich: docs/begruendungen/test/parts-summary.test.js.md#src-stelle
   const src = fs.readFileSync(path.join(ROOT, 'src/teile/partsSummary.ts'), 'utf8');
   const fn = src.slice(src.indexOf('export async function ensureFresh'),
                        src.indexOf('export async function rebuildNow'));
@@ -257,7 +253,6 @@ test('Kennzahlen benutzen keinen veralteten Stand', () => {
 test('beide Pfade der Kennzahlen zählen DASSELBE — auch mit manuellen Teilen',
   { skip: skip || undefined }, async (t) => {
   // Der Befund
-  // Ausführlich: docs/begruendungen/test/parts-summary.test.js.md#stelle
   try { await db.initSchema(); }
   catch (e) {
     if (process.env.REQUIRE_DB === '1') {

@@ -3,7 +3,6 @@
  * Setnummer liegt, sehen alle. Deshalb holt der Server Bilder nur von
  * Adressen aus dem Katalog, die aus geprüfter Quelle stammen — nie von einer,
  * die ein Client mitschickt oder eingetippt hat.
- * Ausführlich: docs/begruendungen/test/bildcache-quelle-db.test.js.md#kopf
  *
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  bilderAusKatalog() setzt image_url/image_local des Clients nicht mehr

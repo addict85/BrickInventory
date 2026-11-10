@@ -1,6 +1,5 @@
 /**
  * Das Wertdiagramm in Finanzen — am echten Bündel in jsdom.
- * Ausführlich: docs/begruendungen/test/wertdiagramm-oberflaeche.test.js.md#kopf
  *
  * Gegenproben (am 28.10.2026 gemessen):
  *   A  in loadPortfolioChart die Bedingung `messpunkte < 2` entfernt → rot:

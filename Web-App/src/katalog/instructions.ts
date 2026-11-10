@@ -12,15 +12,13 @@ import * as repo from './repository/anleitungen';
 const PDF_ANFANG = Buffer.from('%PDF-');
 
 /** Mehrere Quellen, weil keine allein alle Sets führt; aus Bildseiten notfalls
- * ein PDF. Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#abschnitt */
+ * ein PDF. */
 
-/** Damit der Takt der Warteschlange nur nach echten Abrufen wartet.
- * Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#letzterabrufwarextern */
+/** Damit der Takt der Warteschlange nur nach echten Abrufen wartet. */
 let _letzterAbrufWarExtern = false;
 export function letzterAbrufWarExtern(): boolean { return _letzterAbrufWarExtern; }
 
 // Zählen, lesen, löschen an einer Stelle statt verstreut.
-// Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#anzahlanleitungen
 
 export async function anzahlAnleitungen(setNumber: string): Promise<number> {
   const r = await repo.zaehleAnleitungen(mitVersion(setNumber)).catch(meldeUndLiefere('anleitung:mitVersion', null));
@@ -31,8 +29,7 @@ export async function anleitungenZuSet(setNumber: string) {
   return repo.anleitungenDesSets(mitVersion(setNumber)).catch(meldeUndLiefere('anleitung:mitVersion', []));
 }
 
-/** Erst die automatisch importierten, dann die selbst hochgeladenen.
- * Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#anleitungenzusammenlegen */
+/** Erst die automatisch importierten, dann die selbst hochgeladenen. */
 export function anleitungenZusammenlegen<A extends object, B extends object>(geteilt: A[], eigene: B[]) {
   return [
     ...geteilt.map(i => ({ ...i, is_manual: false })),
@@ -51,7 +48,7 @@ export async function loescheAnleitungen(setNumber: string) {
   return repo.loescheAnleitungenDesSets(mitVersion(setNumber));
 }
 
-// Ein Fund für Anlegen und Suchen. Ausführlich: docs/begruendungen/src/katalog/instructions.ts.md#brickinstructionsfund
+// Ein Fund für Anlegen und Suchen.
 async function brickinstructionsFund(n: string) {
   const baseNum = pfadSegment(ohneVersion(n));
   const folder  = String(Math.floor(parseInt(baseNum) / 1000) * 1000).padStart(5, '0');

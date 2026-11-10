@@ -43,7 +43,6 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const ladeZeiten = [];
 /**
  * Schalter für den abgefangenen Download.
- * Ausführlich: docs/begruendungen/test/image-queue-pace-db.test.js.md#ladenschlaegtfehl
  */
 let ladenSchlaegtFehl = false;
 const echtesRequire = Module.prototype.require;
@@ -273,7 +272,6 @@ test('ein Takt sieht höchstens DURCHGANG_MAX_NOTIZEN Notizen durch',
 
 test('verfallene Notizen werden wirklich gelöscht', { concurrency: 1 }, async (t) => {
   // Was der Kommentar behauptete und der Code nicht tat
-  // Ausführlich: docs/begruendungen/test/image-queue-pace-db.test.js.md#stelle
   try { await db.initSchemaOnce(); }
   catch (e) {
     if (process.env.REQUIRE_DB === '1') throw e;
@@ -334,7 +332,6 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
   // das bereits erzeugte dist/ und legt nur einen Takt hin.
   // ── Warum das Kind die Adresse NICHT selbst setzt ────────────────────────
   // Hier stand als erste Zeile des Kind-Skripts …
-  // Ausführlich: docs/begruendungen/test/image-queue-pace-db.test.js.md#execfilesync
   execFileSync(process.execPath, ['-e', `
     const db = require(${JSON.stringify(path.join(ROOT, 'dist', 'db', 'database.js'))});
     const IQ = require(${JSON.stringify(path.join(ROOT, 'dist', 'src/katalog/bilder/bildbedarfLauf.js'))});
@@ -355,7 +352,6 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
   assert.ok(Date.now() - stand.zeit < 60_000, 'Der abgelegte Zeitpunkt ist nicht plausibel');
 
   // Und jetzt bis zur KACHEL
-  // Ausführlich: docs/begruendungen/test/image-queue-pace-db.test.js.md#iqhier
   const IQhier = _req('src/katalog/bilder/bildbedarfLauf.js');
   IQhier.letzterLauf.zeit = null;
   IQhier.letzterLauf.ergebnis = null;
@@ -390,9 +386,6 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
   await db.run(`DELETE FROM laufzustand WHERE schluessel='imgqueue_last_run'`).catch(() => {});
 });
 
-
-//
-// Ausführlich: docs/begruendungen/test/image-queue-pace-db.test.js.md#jeder-ausgang-der-schleife-hat-einen-zae
 
 test('jeder Ausgang der Schleife hat einen Zähler', { concurrency: 1 }, async (t) => {
   try { await db.initSchemaOnce(); }

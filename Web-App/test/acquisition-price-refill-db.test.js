@@ -1,6 +1,5 @@
 /**
  * Kaufpreis LÖSCHEN → Marktpreis nachfüllen, auf beiden Wegen.
- * Ausführlich: docs/begruendungen/test/acquisition-price-refill-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): resolvePrice zurück auf null → der
  * Android-Teilschritt bleibt leer, die Webapp füllt weiterhin.
@@ -65,7 +64,6 @@ test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND Ap
   // DENSELBEN Vorgang. Ursache war eine zweite, eigene Preisregel im
   // Webapp-Weg, die die GLOBALE Währung las statt der des Kontos. Deshalb
   // steht hier bewusst eine abweichende globale Währung mit anderen Preisen: …
-  // Ausführlich: docs/begruendungen/test/acquisition-price-refill-db.test.js.md#stelle
   await db.run(`INSERT INTO global_settings (key,value) VALUES ('currency','EUR')
                 ON CONFLICT (key) DO UPDATE SET value='EUR'`);
   await db.run(`INSERT INTO price_cache (set_number,currency_code,condition,avg_price,fetched_at)

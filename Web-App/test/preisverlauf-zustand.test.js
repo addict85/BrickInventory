@@ -1,7 +1,6 @@
 'use strict';
 /**
  * Der Preisverlauf zeichnet nur Zustände, zu denen es eine Erfassung gibt.
- * Ausführlich: docs/begruendungen/test/preisverlauf-zustand.test.js.md#test
  *
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  in manualPriceHistory() wieder beide Zustände fest gezeichnet

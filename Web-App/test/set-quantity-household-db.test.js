@@ -1,6 +1,5 @@
 /**
  * Die Anzahl zeigt den HAUSHALT — geändert wird das EIGENE Konto.
- * Ausführlich: docs/begruendungen/test/set-quantity-household-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): Ziel wieder auf `ownerId` gestellt → der
  * Erhöhungs-Teilschritt wird rot (die Exemplare landen beim Unterkonto).

@@ -13,10 +13,8 @@ export async function bilderFuerNachlauf() {
   const [sets, teile, figuren] = await Promise.all([
     repo.setsMitFehlendenKatalogbildern(),
     // Der gemeinsame Katalog führt nur geprüfte Adressen: Die Datei gilt für alle Konten.
-    // Ausführlich: docs/begruendungen/src/katalog/bildlage.ts.md#electprimaryworker-manualparts
     repo.manuelleTeileOhneBild(),
     // Alle Figuren, nicht nur manuelle: Sonst lief jede Kachel über den Proxy.
-    // Ausführlich: docs/begruendungen/src/katalog/bildlage.ts.md#electprimaryworker-figstofetch
     repo.figurenOhneBild(),
   ]);
   return { sets, teile, figuren };

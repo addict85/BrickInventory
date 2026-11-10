@@ -3,7 +3,6 @@
  * 390 px: Das Benutzermenü bleibt im Bildschirm, die Knöpfe des Bestätigens
  * überlappen nicht, Felder im Erfassen- und Kaufpreis-Dialog sind hoch genug
  * für ihre Schrift und ragen nicht hinaus. Dazu der Weg einer Geldeingabe bis …
- * Ausführlich: docs/begruendungen/test/dialoge-grosse-schrift-browser.test.js.md#kopf
  *
  * Gegenproben (02.11.2026 gemessen, je einzeln):
  *   A  .umenu-pop wieder min-width:14rem ohne max-width → rot: „Benutzermenü“

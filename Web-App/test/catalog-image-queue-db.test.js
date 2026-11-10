@@ -1,6 +1,5 @@
 /**
  * Der Katalog stösst nicht mehr Bilder an, als jemand ansieht.
- * Ausführlich: docs/begruendungen/test/catalog-image-queue-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -61,7 +60,6 @@ test('die Katalogliste löst gar keine Bildarbeit aus', { concurrency: 1 }, asyn
     await new Promise(r => setTimeout(r, 2500));
 
     // Aus dem Deckel wurde eine Null
-    // Ausführlich: docs/begruendungen/test/catalog-image-queue-db.test.js.md#stelle
     assert.equal(angestossen, 0,
       `${angestossen} Bild-Aufträge aus der LISTE. Sie darf gar keine mehr ` +
       'auslösen — jeder Aufruf von hier läuft an allen Drosselungen vorbei.');

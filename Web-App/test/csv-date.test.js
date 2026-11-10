@@ -1,6 +1,5 @@
 /**
  * Datumsangaben aus CSV-Dateien.
- * Ausführlich: docs/begruendungen/test/csv-date.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -45,11 +44,9 @@ test('leere und unbrauchbare Eingaben ergeben null', () => {
 
 // Geprüft wird jeder Import, nicht eine aufgezählte Liste: Ein Import, der in
 // keiner Liste steht, wird sonst von niemandem geprüft.
-// Ausführlich: docs/begruendungen/test/csv-date.test.js.md#stelle
 
 /**
  * Jeder CSV-Import läuft durch parseCsvDate — nicht nur die, an die jemand dachte.
- * Ausführlich: docs/begruendungen/test/csv-date.test.js.md#jeder-csv-import-normalisiert-das-datum
  *
  * Gegenprobe (29.10.2026): parseCsvDate in setCsvZeilen weggelassen → rot.
  */

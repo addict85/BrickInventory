@@ -1,6 +1,5 @@
 /** Der Bild-Proxy (src/katalog/http/bildProxy.ts) unter BEIDEN Adressen: Die alte
- * steht in Datenbankzeilen und installierten Apps.
- * Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#registerimgproxy */
+ * steht in Datenbankzeilen und installierten Apps. */
 import type { Express } from 'express';
 import { bildDurchreichen, setNummerAusBildAdresse } from '../src/katalog/http/bildProxy';
 import { requireLoginOrToken } from '../src/konto/http/anmeldung';

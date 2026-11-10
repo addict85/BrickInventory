@@ -1,6 +1,5 @@
 /**
  * Teil und Minifigur ohne Marktpreis hinterlassen DASSELBE.
- * Ausführlich: docs/begruendungen/test/manueller-kaufpreis-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

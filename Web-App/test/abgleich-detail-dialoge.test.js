@@ -1,6 +1,5 @@
 /**
  * Die Fusszeilen der vier Detail-Dialoge — was dort steht und wie gross es ist.
- * Ausführlich: docs/begruendungen/test/abgleich-detail-dialoge.test.js.md#kopf
  *
  * Gegenproben (alle drei durchgefuehrt):
  *   1. `btn-sm` an #man-detail-del zurueckgesetzt  → Schritt 1 rot.
@@ -79,7 +78,6 @@ test('der Teile-/Figuren-Dialog hat keinen zweiten Weg hinaus', () => {
 /**
  * Dieselbe Regel fuer die App — die Detail-Bildschirme tragen den Papierkorb
  * an derselben Stelle.
- * Ausführlich: docs/begruendungen/test/abgleich-detail-dialoge.test.js.md#jeder-detail-bildschirm-der-app-traegt-d
  *
  * Gegenproben (beide durchgefuehrt): `actions`-Block im
  * MerkpostenDetailScreen einmal auskommentiert und einmal ganz geloescht →
@@ -112,7 +110,6 @@ test('jeder Detail-Bildschirm der App traegt den Papierkorb in der Kopfleiste', 
 
 /**
  * Titel- und Fussleiste der Dialoge bleiben beim Rollen stehen.
- * Ausführlich: docs/begruendungen/test/abgleich-detail-dialoge.test.js.md#titel-und-fussleiste-kleben-und-koennen
  *
  * Gegenproben (durchgefuehrt):
  *   a) Ein <div> um den Rumpf von #set-modal gelegt  -> Schritt 1 rot.

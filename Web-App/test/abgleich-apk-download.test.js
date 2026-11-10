@@ -1,6 +1,5 @@
 /**
  * Der Download-Knopf zeigt dorthin, wo der Workflow das APK wirklich ablegt.
- * Ausführlich: docs/begruendungen/test/abgleich-apk-download.test.js.md#kopf
  *
  * Knopf in jsdom (echtes Bündel), Workflow und App als Struktur.
  *

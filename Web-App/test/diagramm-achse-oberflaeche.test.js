@@ -3,7 +3,6 @@
  *   - Der Preisverlauf beginnt beim ersten Marktpreis; ein früherer Kauf steht
  *     als Punkt am linken Rand statt drei leere Monate aufzuspannen.
  *   - Die Beschriftung der Einstand-Linie steht unter der Linie, wenn die …
- * Ausführlich: docs/begruendungen/test/diagramm-achse-oberflaeche.test.js.md#kopf
  *
  * Gegenproben (am 03.11.2026 gemessen):
  *   A  in priceChartSVG wieder `first = axis[0]` → rot: „Achse ab erstem Marktpreis“

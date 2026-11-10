@@ -1,7 +1,6 @@
 'use strict';
 /**
  * Die Fehlerzeile nennt, WELCHE Anfrage gescheitert ist.
- * Ausführlich: docs/begruendungen/test/routenfehler-protokoll.test.js.md#test
  *
  * Gegenprobe (29.10.2026): in handleRouteError wieder jede Stufe über
  * console.error mit `e?.stack` → rot: „ein 4xx ist eine Warnung ohne Stack“

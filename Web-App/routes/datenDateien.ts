@@ -22,7 +22,6 @@ function alsAnhang(res: Response, datei: string): void {
 
 // Das Hauptkonto sieht die Uploads seiner Unterkonten, nicht umgekehrt. Ein
 // erstes Segment ohne Benutzer-ID wird abgewiesen.
-// Ausführlich: docs/begruendungen/routes/datenDateien.ts.md#servedatafile
 router.get('/data/uploads/*pfad', requireLoginOrToken, eingangsSperre, async (req: WildcardRequest, res: Response) => {
   const userId = angemeldeteNutzerId(req);
   // Rechnungen und Gutscheine: nie in einen Zwischenspeicher, auch keine Absage.

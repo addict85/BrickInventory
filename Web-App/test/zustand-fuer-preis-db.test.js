@@ -1,6 +1,5 @@
 /**
  * Die Zustands-Staffelung Eingabe → Bestand → Standard, ausgeführt.
- * Ausführlich: docs/begruendungen/test/zustand-fuer-preis-db.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, siehe Kommentar im Commit) ───────────────────
  *   a) `if (bisher) return bisher;` → `if (bisher != null) return bisher;`

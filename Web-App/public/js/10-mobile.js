@@ -1,6 +1,5 @@
 // Was mobile.css nicht deklarativ kann: Tabellenzellen bekommen ihre Spaltenbeschriftung in data-label
 // gestempelt, statt zehn Vorlagen anzufassen und künftige zu vergessen. Läuft immer, wirkt nur schmal.
-// Ausführlich: docs/begruendungen/public/js/10-mobile.js.md#ergaenzt-mobile-css-um-die-zwei-dinge-di
 
 (function () {
   'use strict';
@@ -88,7 +87,6 @@
 
   // Bedingung ist <body>, nicht der readyState: Das Skript steht am Ende des Body, die Beschriftungen greifen
   // so vor dem ersten Paint. Nur auf DOMContentLoaded zu warten liefe bei spätem Laden nie an.
-  // Ausführlich: docs/begruendungen/public/js/10-mobile.js.md#start
   start();
   if (!started) document.addEventListener('DOMContentLoaded', start);
 

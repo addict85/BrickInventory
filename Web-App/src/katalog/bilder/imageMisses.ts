@@ -1,13 +1,11 @@
 import { logAndContinue, meldeUndLiefere } from '../../infra/fehler';
 import * as repo from '../repository/bildFehlschlaege';
 
-/** EINMAL gemerkt, für alle Prozesse; nach einer Woche wird erneut gefragt.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/imageMisses.ts.md#erneut-pruefen-ms */
+/** EINMAL gemerkt, für alle Prozesse; nach einer Woche wird erneut gefragt. */
 const ERNEUT_PRUEFEN_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** Keine Datenbankabfrage je Bild: Ein Schwung Bildanfragen nahm sonst anderen
- * Routen die Verbindungen. Der Speicher wird im Takt aufgefrischt.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/imageMisses.ts.md#auffrischen-ms */
+ * Routen die Verbindungen. Der Speicher wird im Takt aufgefrischt. */
 const AUFFRISCHEN_MS = 5 * 60 * 1000;
 
 const _vorne = new Map<string, number>();
@@ -57,7 +55,7 @@ export function grundFuer(key: string): string {
   return _gruende.get(key) || '';
 }
 
-// Der Weg zurück aus der Sperre. Ausführlich: docs/begruendungen/src/katalog/bilder/imageMisses.ts.md#vergissfehlend
+// Der Weg zurück aus der Sperre.
 export async function vergissFehlend(keys?: string[]): Promise<number> {
   const r = keys?.length
     ? await repo.vergissFehlschlaege(keys)

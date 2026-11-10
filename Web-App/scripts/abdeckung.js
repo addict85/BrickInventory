@@ -4,7 +4,6 @@
  * Server aus dist/, Oberfläche über die Sourcemap des Mess-Bündels bis in
  * public/js/. Eigene Auswertung statt `c8 report`: c8 verwarf die Funktionen
  * der Oberfläche beim Umschreiben der Sourcemap-Pfade (alles 100 %, 0 Funktionen).
- * Ausführlich: docs/begruendungen/scripts/abdeckung.js.md#kopf
  */
 const fs = require('node:fs');
 const path = require('node:path');

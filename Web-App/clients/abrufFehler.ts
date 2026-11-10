@@ -1,6 +1,5 @@
 /**
  * Die Zusatzangaben, die die Abruf-Klienten an ihre Fehler haengen.
- * Ausführlich: docs/begruendungen/clients/abrufFehler.ts.md#abruffehler
  */
 type AbrufFehler = Error & {
   /** Tageskontingent des API-Schluessels erschoepft. */

@@ -1,6 +1,5 @@
 /**
  * knopfBesetzt() richtig aufrufen — der Knopf, der seinen eigenen Quelltext zeigt.
- * Ausführlich: docs/begruendungen/test/knopf-besetzt.test.js.md#kopf
  *
  * ── Gegenproben (durchgefuehrt, Ergebnis im Commit) ────────────────────────
  *   a) Eine der drei Stellen auf die alte Form zurueckgedreht → rot.
@@ -75,7 +74,6 @@ test('knopfBesetzt(): zweites Argument ist eine Beschriftung, kein Rückruf', ()
 
 /**
  * Der arbeitende Knopf behält seine Beschriftung — und seine Breite.
- * Ausführlich: docs/begruendungen/test/knopf-besetzt.test.js.md#knopfbesetzt-beschriftung-und-breite-ble
  *
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
  *   a) Beschriftung wieder gegen „…" getauscht → Schritt 1 rot.

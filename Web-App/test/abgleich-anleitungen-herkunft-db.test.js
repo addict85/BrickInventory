@@ -1,6 +1,5 @@
 /**
  * Der Papierkorb steht nur an SELBST hochgeladenen Anleitungen.
- * Ausführlich: docs/begruendungen/test/abgleich-anleitungen-herkunft-db.test.js.md#kopf
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 const test = require('node:test');

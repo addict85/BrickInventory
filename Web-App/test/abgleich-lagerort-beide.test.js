@@ -5,7 +5,6 @@
  * Filter, Besitzerliste, Schreibbereich) prüfen lagerort-db, lagerort-vorrat-db,
  * lagerort-id-db, lagerort-detail-und-vorrat-db und lagerort-beim-erfassen-db;
  * die Verwaltung in den Einstellungen formulare-rueckmeldung-oberflaeche.
- * Ausführlich: docs/begruendungen/test/abgleich-lagerort-beide.test.js.md#kopf
  *
  * Gegenproben (10.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  in lagerortGewaehlt das dispatchEvent(change) entfernt → rot: „Webapp:
@@ -46,7 +45,6 @@ const KT_FELD   = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ui-
 // selbst traegt nur die Liste, jede Rubrik hat ihre eigene Seite
 // (EinstellungenUnterseiten.kt) mit der Karte in Einstellungen*.kt. Gelesen
 // werden deshalb alle, die es betrifft — die …
-// Ausführlich: docs/begruendungen/test/abgleich-lagerort-beide.test.js.md#kt-einst
 const KT_EINST  = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'konto', 'ui', 'screens', 'SettingsScreen.kt'))
                 + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'konto', 'ui', 'screens', 'EinstellungenUnterseiten.kt'))
                 + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'konto', 'ui', 'screens', 'EinstellungenAlarme.kt'))

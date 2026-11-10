@@ -214,7 +214,6 @@ async function getInstructions(setNumber: string) {
     );
     if (status !== 200) {
       // 5xx ist ein Fehler der Gegenseite, kein Kontingentproblem.
-      // Ausführlich: docs/begruendungen/clients/brickset.ts.md#getinstructions-errmsg
       const errMsg = `HTTP ${status}: ${auszug(body, 300)}`;
       console.log(
         `  Brickset getInstructions HTTP ${status} for ${n}: ${auszug(body)}`
@@ -272,7 +271,6 @@ async function getInstructions(setNumber: string) {
 
 /**
  * Set über eine freie Suchanfrage finden — EAN, Barcode oder Bestellnummer.
- * Ausführlich: docs/begruendungen/clients/brickset.ts.md#findsetbyquery
  */
 async function findSetByQuery(query: string, herkunft: string) {
   const key = await getApiKey();

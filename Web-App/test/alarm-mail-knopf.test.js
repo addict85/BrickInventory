@@ -1,7 +1,6 @@
 /**
  * Der Knopf „Set ansehen" in der Preisalarm-Mail — und was passiert, wenn er
  * nicht gebaut werden kann.
- * Ausführlich: docs/begruendungen/test/alarm-mail-knopf.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
  *   a) Den Knopf bedingungslos setzen (auch ohne Basis) → Schritt 2 rot.
@@ -49,7 +48,6 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async (t) => {
     // Bequemlichkeit: Der Hinweis faellt genau EINMAL je Prozess, also muss
     // der erste Aufruf ohne Basis-URL beide Fragen beantworten. Ein zweiter
     // Schritt davor haette den Merker verbraucht — genau das ist beim ersten …
-    // Ausführlich: docs/begruendungen/test/alarm-mail-knopf.test.js.md#stelle
     umgebung({ APP_BASE_URL: undefined });
     let m;
     const gesammelt = await warnungenVon(async () => { m = await mailer.baueAlarmMail(DATEN); });
@@ -81,7 +79,6 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async (t) => {
   });
 
   // Marcos Befund vom 25.09.: die Kacheln stiessen aneinander
-  // Ausführlich: docs/begruendungen/test/alarm-mail-knopf.test.js.md#4-die-beiden-kacheln-lassen-in-der-mitte
   //
   // Gegenproben (durchgefuehrt, je rot, danach wieder gruen):
   //   a) zurueck auf 50 / 12px / 50  -> rot: „Gefunden: 2" (der Abstand steht

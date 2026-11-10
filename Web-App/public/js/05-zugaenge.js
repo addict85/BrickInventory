@@ -87,7 +87,6 @@ async function generateQrCode() {
     // POST, weil der Aufruf eine Nonce anlegt: Als GET löste ihn eine fremde Seite per Navigation aus
     // (SameSite=lax). Die Laufzeit des späteren Tokens reist mit der Erzeugung, sonst wählte sich der Finder
     // eines Codes die längste.
-    // Ausführlich: docs/begruendungen/public/js/05-zugaenge.js.md#gueltigkeit
     const gueltigkeit = G('qr-validity')?.value || '';
     const pw = G('qr-password');
     const password = pw?.value || '';
@@ -107,7 +106,6 @@ async function generateQrCode() {
     // Nur die Adresse, die der Server nennt (APP_BASE_URL): Die in der Browserzeile ist die des Betrachters,
     // etwa eine LAN-Adresse, die ausser Haus nicht existiert. Lieber kein Code als einer, der sich falsch
     // scannen lässt.
-    // Ausführlich: docs/begruendungen/public/js/05-zugaenge.js.md#serverurl
     const serverUrl = d.url;
 
     // Mit `fp` (Fingerabdruck der CA-Wurzel) pinnt die App das Zertifikat; der Server schickt ihn nur zu
@@ -127,7 +125,6 @@ async function generateQrCode() {
     // Die Laufzeit aus der Serverantwort, nicht aus der Auswahl: Kennt er den Wert nicht, gilt die
     // Gleitfrist. Drei Fälle — 0 heisst unbegrenzt, null nichts gewählt; ein einfacher Wahrheitstest würfe
     // beide zusammen.
-    // Ausführlich: docs/begruendungen/public/js/05-zugaenge.js.md#klartext
     const caFp = G('qr-ca-fp');
     if (caFp) {
       caFp.hidden = !d.zert_sha256;
@@ -153,7 +150,6 @@ G('btn-gen-qr').onclick = generateQrCode;
 
 // Angemeldete Geräte einzeln aussperren: Sonst blieb für ein verlorenes Telefon nur das Passwort zu ändern,
 // und das wirft alle Zugänge hinaus. Der Browser selbst hängt an der Sitzung, nicht an einem Token.
-// Ausführlich: docs/begruendungen/public/js/05-zugaenge.js.md#die-endpunkte-v1-settings-tokens-gab-es
 
 /**
  * „—", wenn nie benutzt: `new Date(null)` wäre der 1.1.1970.

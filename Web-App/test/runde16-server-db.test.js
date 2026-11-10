@@ -3,7 +3,6 @@
  *   - Meldungen kommen als Code und in der Sprache des Anfragenden (M2):
  *     leere CSV-Datei, Zeilenfehler im Importstand, übersprungene Zeilen.
  *   - Lagerorte: /v1/storage/locations liefert auch leere Orte, /v1/storage …
- * Ausführlich: docs/begruendungen/test/runde16-server-db.test.js.md#kopf
  *
  * Gegenproben (05.11.2026 gemessen, je einzeln):
  *   A  in sets/dienst.ts wieder `throw new Meldung('Keine Datenzeilen in der

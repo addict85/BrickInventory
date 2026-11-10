@@ -1,6 +1,5 @@
 /**
  * Alle Preisalarme an EINEM Ort — und dort änderbar und löschbar.
- * Ausführlich: docs/begruendungen/test/abgleich-alarm-uebersicht-db.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
  *   a) `WHERE a.user_id = $1` entfernt     → Schritt 2 rot (fremder Alarm dabei)
@@ -70,7 +69,6 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
                    SET name = EXCLUDED.name, set_img_url = EXCLUDED.set_img_url`);
   // Dasselbe Set liegt ZUSÄTZLICH in meiner Sammlung — nur dann gibt es einen
   // Detaildialog, und nur dann gibt es das heruntergeladene Bild.
-  // Ausführlich: docs/begruendungen/test/abgleich-alarm-uebersicht-db.test.js.md#stelle
   await db.run(`INSERT INTO sets (user_id, set_number)
                 VALUES ($1,'70002-1')
                 ON CONFLICT (user_id, set_number) DO NOTHING`, [ich.id]);
@@ -189,7 +187,6 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
 
   await t.test('7. jedes gelieferte Feld kommt in der App auch an', async () => {
     // Warum das nicht der Kotlin-Übersetzer erledigt
-    // Ausführlich: docs/begruendungen/test/abgleich-alarm-uebersicht-db.test.js.md#a-stelle
     const a = await alleAlarme(ich.id);
     const felder = Object.keys(a[0]);
     assert.ok(felder.length >= 10, `Nur ${felder.length} Felder — Abfrage kaputt?`);
@@ -211,7 +208,6 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
 
   await t.test('8. scharf/unscharf ist ohne Farbe zu erkennen', () => {
     // Marcos Befund vom 26.09.
-    // Ausführlich: docs/begruendungen/test/abgleich-alarm-uebersicht-db.test.js.md#js-stelle
     const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('05'));
     const css = fs.readFileSync(path.join(ROOT, 'public/styles.css'), 'utf8');
 
@@ -255,7 +251,6 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
   await t.test('9. ein Set des HAUSHALTS zählt auch — Marcos Befund vom 26.09.', async () => {
     // „Das Bild in der Android-App ist sichtbar aber die Einträge in den
     // Preisalarme sind nicht klickbar."
-    // Ausführlich: docs/begruendungen/test/abgleich-alarm-uebersicht-db.test.js.md#a-stelle-2
     const a = await alleAlarme(ich.id);
     const vomKind = a.find(x => x.set_number === '60000-1');
     assert.ok(vomKind, 'Der Alarm auf das Set des Kindes fehlt ganz.');

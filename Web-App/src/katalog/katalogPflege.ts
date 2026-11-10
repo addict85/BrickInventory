@@ -7,7 +7,6 @@ import * as stamm from './repository/katalogStamm';
 type Schreiber = stamm.Schreiber;
 
 // Die Beschreibung gilt für alle Konten und steht nur im Katalog (Migration 0034).
-// Ausführlich: docs/begruendungen/src/katalog/katalogPflege.ts.md#merketeil
 
 /** `null` heisst: aus einer geprüften Quelle, sonst das Konto, das es eingetippt
  * hat. Eingetipptes landet in dessen eigenen Angaben, nie im gemeinsamen Katalog. */
@@ -164,8 +163,7 @@ export async function setzeFigurBildLokal(
   await stamm.schreibeFigurBildLokal(dbh, figNumber, imageLocal);
 }
 
-/** Vor jedem Abruf bei Rebrickable gefragt, damit Bekanntes nichts kostet.
- * Ausführlich: docs/begruendungen/src/katalog/katalogPflege.ts.md#katalogteil */
+/** Vor jedem Abruf bei Rebrickable gefragt, damit Bekanntes nichts kostet. */
 export interface KatalogTeil {
   name: string | null;
   kategorie: string | null;

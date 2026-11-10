@@ -1,6 +1,5 @@
 /**
  * Die Farbe eines manuell erfassten Teils NACHTRÄGLICH ändern.
- * Ausführlich: docs/begruendungen/test/teil-farbe-aendern-db.test.js.md#kopf
  *
  * ── Gegenproben (am 19.10. GEMESSEN, Zahlen abgeschrieben) ──────────────────
  *
@@ -293,7 +292,6 @@ test('die Farbe eines manuellen Teils lässt sich nachträglich ändern',
   });
 
   // Das Bild der neuen Farbe (Marcos Befund vom 20.10.)
-  // Ausführlich: docs/begruendungen/test/teil-farbe-aendern-db.test.js.md#ein-schon-vorhandenes-farbbild-wird-nich
 
   await t.test('ein schon vorhandenes Farbbild wird nicht überschrieben', async () => {
     await leeren();

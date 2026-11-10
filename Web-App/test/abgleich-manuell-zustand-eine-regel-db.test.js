@@ -1,6 +1,5 @@
 /**
  * Ein manuell erfasstes Stück hat EINEN Zustand — egal, wer danach fragt.
- * Ausführlich: docs/begruendungen/test/abgleich-manuell-zustand-eine-regel-db.test.js.md#kopf
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 const test = require('node:test');
@@ -114,7 +113,6 @@ test('manuelle Teile und Figuren: Liste und Bewertung sagen denselben Zustand',
 
 test('beide Oberflaechen holen die manuellen Stuecke aus derselben Adresse', () => {
   // Der Befund
-  // Ausführlich: docs/begruendungen/test/abgleich-manuell-zustand-eine-regel-db.test.js.md#fs-stelle
   const fs = require('node:fs');
   const path = require('node:path');
   const kotlin = [];

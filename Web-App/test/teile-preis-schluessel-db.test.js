@@ -1,6 +1,5 @@
 /**
  * Der Teile-Preis-Cache hat EINEN Schlüsselraum.
- * Ausführlich: docs/begruendungen/test/teile-preis-schluessel-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -80,7 +79,6 @@ test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async (t) => 
       'Der Kaufpreis steht unter der Nummer des Benutzers und muss weiter gefunden werden');
 
     // 3. OHNE Zuordnung gilt die Rebrickable-Nummer
-    // Ausführlich: docs/begruendungen/test/teile-preis-schluessel-db.test.js.md#stelle
     await haeltTeil(db, uid, RB2, { menge: 1, colorId: FARBE });
     await db.run(
       `INSERT INTO part_price_cache (part_number,color_id,condition,currency_code,avg_price,qty_avg_price,fetched_at)

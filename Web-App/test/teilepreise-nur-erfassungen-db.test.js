@@ -2,7 +2,6 @@
  * Seit db/basis.sql gibt es den Stand VOR dieser Migration nicht mehr: Die
  * Fälle zu Riegel, Nachtrag und Zwischenstand sind entfallen. Geprüft werden
  * der Endstand und die Lesewege.
- * Ausführlich: docs/begruendungen/test/teilepreise-nur-erfassungen-db.test.js.md#kopf
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -65,7 +64,6 @@ test('nach der ganzen Kette tragen parts und minifigs keinen Preis mehr',
   // bl_part_number stand hier und ist weg: Migration 0037 hat sie geloescht,
   // die BrickLink-Nummer steht in bl_zuordnung (einmal je Teil statt je
   // Konto). Siehe test/bricklink-zuordnung-db.test.js. …
-  // Ausführlich: docs/begruendungen/test/teilepreise-nur-erfassungen-db.test.js.md#for-stelle
   for (const sp of ['id', 'user_id', 'set_number', 'part_number', 'color_id',
                     'source', 'storage_id', 'added_at']) {
     assert.ok(nachher.includes(sp), `parts.${sp} fehlt — die Spalte gehoert zum Bestand`);

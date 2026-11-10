@@ -1,6 +1,5 @@
 /**
  * Die Teileliste hat ZWEI Wege — sie müssen dieselben Typen liefern.
- * Ausführlich: docs/begruendungen/test/teile-zweige-gleich-db.test.js.md#kopf
  */
 const test = require('node:test');
 const { umgebung } = require('./helpers/sources');
@@ -40,7 +39,6 @@ test('beide Wege der Teileliste liefern dieselben Typen', async (t) => {
     // Zweig zufällig richtig liegen, ohne die Umwandlung zu machen.
     // Das Ersatzteilkennzeichen steht seit Migration 0034 in
     // set_parts_catalog — es gehoert zur TEILELISTE eines Sets, nicht zum …
-    // Ausführlich: docs/begruendungen/test/teile-zweige-gleich-db.test.js.md#stelle
     await db.run(`INSERT INTO set_teile (set_number,part_number,color_id,quantity,is_spare)
                   VALUES ('Z-1','3001',5,3,false),
                          ('Z-1','3002',1,1,true)

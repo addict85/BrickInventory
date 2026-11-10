@@ -1,7 +1,6 @@
 /**
  * Der PDF-Betrachter kann zoomen — und verliert dabei weder die Stelle noch
  * die linke Seitenhaelfte.
- * Ausführlich: docs/begruendungen/test/pdf-zoom.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -62,7 +61,6 @@ async function werkbank(umbau) {
 
   /**
    * Gestellter IntersectionObserver — jsdom hat keinen.
-   * Ausführlich: docs/begruendungen/test/pdf-zoom.test.js.md#beobachtet
    */
   const beobachtet = [];
   let sichtbareSeiten = new Set([1, 2]);

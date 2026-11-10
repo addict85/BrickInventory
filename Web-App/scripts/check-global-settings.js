@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 /**
  * `global_settings` wird über src/einstellungen/settings.ts angefasst, nicht direkt.
- * Ausführlich: docs/begruendungen/scripts/check-global-settings.js.md#kopf
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -19,7 +18,6 @@ const ERLAUBT = new Map([
 /**
  * Der Rest-Bestand. Diese Zahlen duerfen nur SINKEN.
  * Wer eine Datei leerraeumt, streicht ihre Zeile.
- * Ausführlich: docs/begruendungen/scripts/check-global-settings.js.md#offen
  */
 const OFFEN = new Map([]);
 

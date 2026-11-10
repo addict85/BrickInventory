@@ -1,6 +1,5 @@
 /**
  * Angemeldete Geräte: auflisten und aussperren — beide Wege, echte Datenbank.
- * Ausführlich: docs/begruendungen/test/geraete-verwaltung-db.test.js.md#kopf
  *
  * Gegenprobe (09.11.2026 gemessen): in DELETE /settings/tokens/:tokenId die
  * Bestätigung gestrichen → rot: „ohne Passwort sperrt ein Gerät kein anderes aus“
@@ -101,7 +100,6 @@ test('Zugänge auflisten und aussperren — über Sitzung UND über Token',
     assert.equal(perToken.body.tokens.length, 3);
     assert.equal(perToken.body.tokens.find(x => x.aktuell)?.label, 'Pixel 8');
     // Und die Laufzeiten stehen richtig drin — daran hängt die Anzeige.
-    // Ausführlich: docs/begruendungen/test/geraete-verwaltung-db.test.js.md#for-stelle
     for (const label of ['Pixel 8', 'webapp-session']) {
       const zeile = perToken.body.tokens.find(x => x.label === label);
       assert.equal(zeile.never_expires, false, `${label}: kein Token laeuft mehr „nie" ab`);
@@ -115,7 +113,6 @@ test('Zugänge auflisten und aussperren — über Sitzung UND über Token',
       'Der App-Token muss laenger laufen als die sieben Tage des Browsers');
 
     // 3. Ein fremdes Gerät aussperren
-    // Ausführlich: docs/begruendungen/test/geraete-verwaltung-db.test.js.md#aufwaermen
     const aufwaermen = await ruf(AUTH + '/me',
       { headers: { authorization: `Bearer ${tablet.body.token}` } });
     assert.equal(aufwaermen.body.loggedIn, true,

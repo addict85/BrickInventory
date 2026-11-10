@@ -8,13 +8,11 @@ import { LOCKS } from '../../infra/lockNamespaces';
 import * as sperre from '../repository/sitzungsSperre';
 
 // Warteschlange, Sperre und Verkleinern gehören zusammen.
-// Ausführlich: docs/begruendungen/src/katalog/bilder/proxyThumbs.ts.md#proxy-thumb-size
 
 export const PROXY_THUMB_SIZE = 200;
 
 /** Vorschaubilder sind die teuerste Arbeit im Server und belegen den
- * Event-Loop; nie wartet eine Anfrage darauf, sie entstehen im Hintergrund.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/proxyThumbs.ts.md#thumb-max-parallel */
+ * Event-Loop; nie wartet eine Anfrage darauf, sie entstehen im Hintergrund. */
 const THUMB_MAX_PARALLEL = 1;
 /** Wer schnell durchscrollt, will diese Vorschauen nicht; ohne Deckel rechnete
  * der Server den halben Katalog stur ab. */
@@ -44,8 +42,7 @@ export function drainThumbQueue() {
   }
 }
 const _thumbInFlight = new Map<string, boolean>();
-/** EIN Vorschau-Lauf für den ganzen Server, nicht je Arbeitsprozess.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/proxyThumbs.ts.md#abschnitt */
+/** EIN Vorschau-Lauf für den ganzen Server, nicht je Arbeitsprozess. */
 const THUMB_LOCK_KEY = LOCKS.PROXY_THUMBS;
 
 /** EINMAL aufgebaut, dann wiederverwendet. */

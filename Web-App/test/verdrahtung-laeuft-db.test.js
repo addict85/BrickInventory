@@ -1,6 +1,5 @@
 /**
  * Fünf Verdrahtungen, die bisher nur als Textmuster zugesichert waren.
- * Ausführlich: docs/begruendungen/test/verdrahtung-laeuft-db.test.js.md#kopf
  */
 const test   = require('node:test');
 const { umgebung } = require('./helpers/sources');
@@ -135,7 +134,6 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
     // Erfassung auf einen Tag schiebt, an dem für dieselbe Position schon
     // eine steht, bekommt 409. Ohne die Prüfung liefe es in den eindeutigen
     // Index (seit 0047 idx_set_acq_tag_merkmale) und käme als 500 zurück. …
-    // Ausführlich: docs/begruendungen/test/verdrahtung-laeuft-db.test.js.md#heute
     const heute  = new Date().toISOString().slice(0, 10);
     const gestern = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);

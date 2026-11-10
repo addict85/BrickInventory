@@ -9,7 +9,6 @@ import { gutscheine, ladeGutscheine } from './17-gutscheine.js';
 // Guthaben bei LEGO auf Knopfdruck abfragen. Die Grenze (eine Anfrage je 30 s über alle Benutzer) setzt der
 // Server; die Oberfläche befolgt sie: Bei 429 wartet sie wartenSek ab und fragt dieselbe Karte erneut. Eine
 // Sammelroute hielte dafür Minuten eine Verbindung offen.
-// Ausführlich: docs/begruendungen/public/js/17-guthaben.js.md#kannst-du-dies-bei-den-gutscheinen-einba
 
 /** Höchstens so oft dieselbe Karte erneut versuchen, wenn die Schranke bremst. */
 const ABSTAND_VERSUCHE = 4;

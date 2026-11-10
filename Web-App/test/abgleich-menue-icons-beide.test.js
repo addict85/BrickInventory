@@ -1,6 +1,5 @@
 /**
  * Das Menü oben rechts trägt in BEIDEN Oberflächen dieselben Symbole.
- * Ausführlich: docs/begruendungen/test/abgleich-menue-icons-beide.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Ergebnisse abgeschrieben) ────────────────────
  *
@@ -32,7 +31,6 @@ const lies = p => fs.readFileSync(p, 'utf8');
 
 /**
  * Die ZUORDNUNG — die einzige Stelle, an der sie steht.
- * Ausführlich: docs/begruendungen/test/abgleich-menue-icons-beide.test.js.md#zuordnung
  */
 const ZUORDNUNG = [
   { web: 'settings.group.profile', app: 'konto_title',          sinnbild: 'Person',       symbol: 'i-profil',        vektor: 'Icons.Outlined.AccountCircle' },

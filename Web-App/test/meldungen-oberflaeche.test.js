@@ -2,7 +2,6 @@
  * Meldungen (Toasts), am echten Bündel in jsdom: Fehler und Meldungen mit
  * Knopf laufen nicht ab, andere halten unter Maus oder Fokus an, ein Klick
  * räumt weg.
- * Ausführlich: docs/begruendungen/test/meldungen-oberflaeche.test.js.md#kopf
  *
  * Gegenproben (am 28.10.2026 gemessen):
  *   A  (05.11.2026 neu gemessen) `bleibt` in toast() immer false → rot:

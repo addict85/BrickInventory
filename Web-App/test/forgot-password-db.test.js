@@ -1,7 +1,6 @@
 /**
  * Passwort-vergessen gegen echte Datenbank: E-Mail-Vergleich ohne Beachtung
  * der Gross-/Kleinschreibung.
- * Ausführlich: docs/begruendungen/test/forgot-password-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): LOWER($1) in routes/auth.ts wieder auf $1
  * zurückgedreht → genau der erste Teilschritt hier wird rot.

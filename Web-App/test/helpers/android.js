@@ -1,6 +1,5 @@
 /**
  * Android-Quellen über alle Gradle-Module.
- * Ausführlich: docs/begruendungen/test/helpers/android.js.md#kopf
  */
 const fs = require('node:fs');
 const path = require('node:path');

@@ -1,6 +1,5 @@
 /**
  * Bild-Diagnose: „Warum fehlt das Bild für Set X?" in EINER Antwort.
- * Ausführlich: docs/begruendungen/test/image-diag-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): den Hinweis-Block für „Vorschau fehlt" entfernt →
  * Teilschritt A wird rot.

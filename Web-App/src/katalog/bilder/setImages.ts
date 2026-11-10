@@ -8,10 +8,8 @@ import { SET_IMAGES_DIR } from '../../infra/appPaths';
 import { mitVersion } from '../../infra/setNummer';
 
 // Set-Bilder vom CDN holen; hier statt im Router, damit die Aufrufer echt importieren.
-// Ausführlich: docs/begruendungen/src/katalog/bilder/setImages.ts.md#abschnitt
 
 // Wie im Bild-Proxy; mit 5 MB blieben grosse Set-Bilder ohne lokale Datei.
-// Ausführlich: docs/begruendungen/src/katalog/bilder/setImages.ts.md#set-img-max-bytes
 export const SET_IMG_MAX_BYTES = 20 * 1024 * 1024;
 
 /** Dieselbe Browser-Kennung wie der Bild-Proxy: Eine eigene weist das CDN mit 403 ab,

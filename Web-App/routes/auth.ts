@@ -26,7 +26,7 @@ import { vertragsRouter } from '../src/http/vertragsRouter';
 import type { Antwort, OffeneAnfrage } from '../src/http/vertragsRouter';
 
 // Ein Wächter für Sitzung UND Token: Die App hat keine Sitzung und war mit
-// einem reinen Sitzungswächter von Routen ausgesperrt. Ausführlich: docs/begruendungen/routes/auth.ts.md#requirelogin
+// einem reinen Sitzungswächter von Routen ausgesperrt.
 const requireLogin = requireLoginOrToken;
 const requireAdmin = requireApiAdmin;
 /** Sitzung, Token und Antwort — derselbe Weg nach Passwort und Passkey. Token
@@ -41,8 +41,7 @@ async function angemeldetAntworten(req: Request, res: Response, user: A.Angemeld
   res.json({ success: true, ...await A.anmeldeAntwort(user, wunsch, mitToken, req.ip) });
 }
 
-/** Die EINE Anmeldung für Webapp und App, damit beide dieselben Regeln erfüllen.
- * Ausführlich: docs/begruendungen/routes/auth.ts.md#post-login */
+/** Die EINE Anmeldung für Webapp und App, damit beide dieselben Regeln erfüllen. */
 router.post('/login', async (req: OffeneAnfrage<'POST /api/v1/auth/login'>, res: Antwort<'POST /api/v1/auth/login'>) => {
   const { username, password, code: zweiterCode, ohne_token, passkey } = req.eingabe;
   if (!geraeteNameInhaltGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
@@ -69,8 +68,7 @@ router.post('/login', async (req: OffeneAnfrage<'POST /api/v1/auth/login'>, res:
   await angemeldetAntworten(req, res, pruefung.user as A.Angemeldet, req.eingabe, ohne_token !== true, true);
 });
 
-/** Sitzung beenden UND Token entwerten, damit ein Aufruf beides wegräumt.
- * Ausführlich: docs/begruendungen/routes/auth.ts.md#post-logout */
+/** Sitzung beenden UND Token entwerten, damit ein Aufruf beides wegräumt. */
 router.post('/logout', async (req: OffeneAnfrage<'POST /api/v1/auth/logout'>, res: Antwort<'POST /api/v1/auth/logout'>) => {
   const auth = String(req.headers.authorization || '');
   // Nur loggen: Die Abmeldung darf daran nicht scheitern, still bliebe der Fall
@@ -83,8 +81,7 @@ router.post('/logout', async (req: OffeneAnfrage<'POST /api/v1/auth/logout'>, re
   res.json({ success: true });
 });
 
-/** Sitzung ODER Token; ohne Anmeldung 200 für den Browser, 401 bei Token.
- * Ausführlich: docs/begruendungen/routes/auth.ts.md#get-me */
+/** Sitzung ODER Token; ohne Anmeldung 200 für den Browser, 401 bei Token. */
 router.get('/me', async (req: OffeneAnfrage<'GET /api/v1/auth/me'>, res: Antwort<'GET /api/v1/auth/me'>) => {
   const auth = String(req.headers.authorization || '');
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;

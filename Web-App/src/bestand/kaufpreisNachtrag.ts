@@ -15,7 +15,6 @@ function log(msg: string) {
 
 
 // Scheitert BrickLink beim CSV-Import am Tageslimit, bleibt die Erfassung ohne Preis; hier wird nachgetragen.
-// Ausführlich: docs/begruendungen/src/bestand/kaufpreisNachtrag.ts.md#backfillacquisitions
 async function backfillAcquisitions() {
   const rows = await setErfassungenOhnePreis();
   if (!rows.length) return;
@@ -38,7 +37,6 @@ async function backfillAcquisitions() {
 }
 
 // Dieselbe Lücke wie bei den Sets, für Teile- und Figuren-Erfassungen.
-// Ausführlich: docs/begruendungen/src/bestand/kaufpreisNachtrag.ts.md#backfillteileerfassungen
 async function backfillTeileErfassungen() {
   const rows = await teilErfassungenOhnePreis();
   if (!rows.length) return;

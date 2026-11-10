@@ -1,6 +1,5 @@
 /**
  * Kaufpreis und Zustand landen im selben Konto.
- * Ausführlich: docs/begruendungen/test/set-aendern-besitzer-db.test.js.md#kopf
  *
  * Gegenproben: siehe am jeweiligen Teilschritt.
  *

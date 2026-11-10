@@ -2,7 +2,6 @@
  * Seit db/basis.sql gibt es den Stand VOR dieser Migration nicht mehr: Die
  * Fälle zu Riegel, Nachtrag und Zwischenstand sind entfallen. Geprüft werden
  * der Endstand und die Lesewege.
- * Ausführlich: docs/begruendungen/test/bricklink-zuordnung-db.test.js.md#kopf
  *
  *      GEGENPROBE: Ändert sich die Zuordnung, folgt die Antwort.
  *

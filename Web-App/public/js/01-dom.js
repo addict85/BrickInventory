@@ -6,7 +6,6 @@ import { alsHtml, esc, html, ungeprueft } from './00-escapen.js';
 
 // function statt const: Andere Module rufen G() & Co. schon beim eigenen Laden. Eine const-Pfeilfunktion läge
 // dann noch in der Todeszone und würfe „G is not a function“.
-// Ausführlich: docs/begruendungen/public/js/01-dom.js.md#diese-helfer-werden-von-anderen-modulen
 /**
  * Als Formularelement typisiert: Die meisten Aufrufe lesen .value, .checked oder .disabled. Für ein anderes
  * Element sind diese Felder schlicht leer — die Typprüfung soll an den echten Fehlern hängen, nicht an jedem
@@ -81,7 +80,6 @@ export function zuruecksetzenKnopf(ansicht) {
 /**
  * Sperrt einen Knopf für die Dauer eines Aufrufs und merkt sich seine Beschriftung, statt sie danach neu zu
  * setzen: Fest eingetragene Texte waren falsch übersetzt, und ein kurz leerer Knopf sah wie ein Fehler aus.
- * Ausführlich: docs/begruendungen/public/js/01-dom.js.md#knopfbesetzt
  * @param {HTMLButtonElement | HTMLInputElement} btn
  * @param {string} [laeuft] Andere Beschriftung waehrend der Arbeit. NUR
  *   angeben, wenn der Knopf wirklich etwas anderes sagen soll: Die
@@ -96,7 +94,6 @@ export function knopfBesetzt(btn, laeuft) {
   const vorher = btn.textContent;
   // Die Breite einfrieren, bevor sich etwas ändert: Ein kürzerer Wartetext liesse sonst die ganze flex-Zeile
   // daneben nachrutschen.
-  // Ausführlich: docs/begruendungen/public/js/01-dom.js.md#breite
   const breite = btn.offsetWidth;
   const minVorher = btn.style.minWidth;
   if (breite) btn.style.minWidth = breite + 'px';
@@ -120,7 +117,6 @@ export function knopfBesetzt(btn, laeuft) {
  * Symbol für die BrickLink-XML-Knöpfe: eine Datei mit spitzen Klammern zeigt, was der Knopf tut. Der
  * Ziegelstein stand schon für Teile und Sets, und das fremde BrickLink-Logo nachzuzeichnen wäre eine
  * Anmassung.
- * Ausführlich: docs/begruendungen/public/js/01-dom.js.md#xml-icon-svg
  */
 export const XML_ICON_SVG = html`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" data-stil="width:1.05em;height:1.05em;display:inline-block;vertical-align:-.18em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M10 12.5 8 14.5l2 2"/><path d="M14 12.5l2 2-2 2"/></svg>`;
 

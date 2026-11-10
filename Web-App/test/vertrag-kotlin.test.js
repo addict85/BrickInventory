@@ -3,7 +3,6 @@
  * als JSON-Schema wie in docs/openapi.json): Jede Route, die die App aufruft,
  * hat einen Vertrag, und ihr Antworttyp liest jede Antwort, die der Vertrag
  * erlaubt — Feldnamen (@SerialName), Typ, Nullbarkeit, Pflicht oder optional. …
- * Ausführlich: docs/begruendungen/test/vertrag-kotlin.test.js.md#kopf
  *
  * Gegenproben (31.10.2026 gemessen):
  *   A  im Vertrag SetItem.quantity als z.string() → rot: „die Kotlin-Modelle

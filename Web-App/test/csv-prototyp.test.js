@@ -1,7 +1,6 @@
 /**
  * Eine CSV-Kopfzeile darf die Prototypenkette nicht treffen — geprüft am Einleser des Imports
  * (csvEinlesen in src/infra/csvExport.ts), nicht an einer Kopie seiner Einstellungen.
- * Ausführlich: docs/begruendungen/test/csv-prototyp.test.js.md#stelle
  *
  * Gegenproben (09.11.2026):
  *   A  in csvEinlesen() wieder `columns: true` → rot: „eine Spalte __proto__ …“ und „auch constructor …“

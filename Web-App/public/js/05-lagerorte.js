@@ -40,7 +40,6 @@ export async function ladeLagerortVerwaltung() {
   // Das Raster liegt an der Liste, die Zeilen sind display:contents: So teilen alle Zeilen dieselben
   // Spaltenbreiten, und das Namensfeld wird nicht vom Belegungstext daneben schmal gedrückt. minmax(0,1fr),
   // damit ein langer Name die Spalte nicht sprengt; der Trennstrich liegt darum an jeder Zelle.
-  // Ausführlich: docs/begruendungen/public/js/05-lagerorte.js.md#marcos-befund-dass-die-felder-alle-schoe
   setzeHtml(el, html`${html`<div data-stil="font-size:var(--fs-1);color:var(--mut);margin-bottom:6px">`}${html`${tRaw('storage.default_hint')}</div>`}${html`<div class="lager-raster" data-stil="display:grid;grid-template-columns:minmax(0,1fr) max-content max-content max-content;align-items:center;column-gap:8px">`}${orte.map(o => {
     const n = belegung.get(o.name);
     // Figuren stehen EIGEN da, nicht bei den Teilesorten (src/bestand/lagerort.ts): „18 Teilesorten" hiesse
@@ -112,7 +111,6 @@ async function benenneLagerortUm(id, wert) {
  * Den Stern umschalten. ★/☆ unterscheiden sich in der Form, nicht in der Farbe, und tragen Titel und
  * aria-pressed. Ein zweiter Druck auf denselben Stern schaltet die Vorgabe ab — ein eigener Knopf dafür wäre
  * zu viel.
- * Ausführlich: docs/begruendungen/public/js/05-lagerorte.js.md#schaltelagerortvorgabe
  * @param {string} id
  * @param {string} war
  */

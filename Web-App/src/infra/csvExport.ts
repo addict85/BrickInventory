@@ -16,7 +16,7 @@ type ExpressAntwort = {
   send(body: string | Buffer): unknown;
 };
 
-// Ein Feld mit = führte Excel beim Öffnen aus. Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#entschaerfe
+// Ein Feld mit = führte Excel beim Öffnen aus.
 export function entschaerfe(s: string): string {
   if (!FORMEL_START.test(s)) return s;
   if (/^\s*-?\d+([.,]\d+)?\s*$/.test(s)) return s;   // reine Zahl, auch negativ
@@ -62,8 +62,7 @@ export function sendCsv(res: ExpressAntwort, filename: string, headers: string[]
   res.send('\uFEFF' + csv); // BOM so Excel opens UTF-8 correctly
 }
 
-/** @returns ISO-Datum oder null, wenn nichts Brauchbares drinsteht
- * Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#parsecsvdate */
+/** @returns ISO-Datum oder null, wenn nichts Brauchbares drinsteht */
 export function parseCsvDate(raw: unknown) {
   const s = String(raw ?? '').trim();
   if (!s) return null;
@@ -86,8 +85,7 @@ export function parseCsvDate(raw: unknown) {
   return null;
 }
 
-/** Treffen die Prototypenkette statt eines Datenfelds.
- * Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#gefaehrliche-spalten */
+/** Treffen die Prototypenkette statt eines Datenfelds. */
 const GEFAEHRLICHE_SPALTEN = new Set(['__proto__', 'constructor', 'prototype']);
 
 /** `zeilen[i]` ist die Zeile der Datei, in der `records[i]` steht: Leerzeilen verschieben sonst die Zählung. */
@@ -100,7 +98,6 @@ export function csvEinlesen(csvText: string): { records: any[]; delimiter: strin
   const records = parse(text, {
     // Die Kopfzeile filtern: `columns: true` macht aus `__proto__` einen
     // Schlüssel, der in die Prototypenkette schreibt.
-    // Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#csveinlesen
     columns: (kopf: string[]) => kopf.map(name => {
       const rein = String(name || '').trim();
       return GEFAEHRLICHE_SPALTEN.has(rein) ? false : rein;
@@ -137,7 +134,6 @@ export function uebersprungenHinweis(zeilen: number[], sprache: Sprache = 'de'):
 }
 
 // Die gemeinsamen Spalten einmal gelesen, damit jede Behebung alle Importe trifft.
-// Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#csvgemeinsamefelder
 export function csvGemeinsameFelder(row: any): {
   menge: number;
   preis: number | null;

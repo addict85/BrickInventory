@@ -15,7 +15,6 @@ const quelle = JSON.parse(fs.readFileSync(path.join(BAUM, 'shared', 'design-toke
 
 /**
  * Das Design "noppe" — der Klemmbaustein als Bauteil der Oberflaeche.
- * Ausführlich: docs/begruendungen/test/abgleich-noppe-design.test.js.md#die-deckelfarben-stehen-in-beiden-oberfl
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 
@@ -43,7 +42,6 @@ test('die Steinfarbe laeuft in beiden Oberflaechen im selben Takt', () => {
   // die App durch vier, zeigt dasselbe Set auf Telefon und Rechner einen
   // anderen Deckel — und niemand kaeme auf die Idee, das fuer einen Fehler zu
   // halten, weil die Farbe ja nichts bedeutet. …
-  // Ausführlich: docs/begruendungen/test/abgleich-noppe-design.test.js.md#webtakt
   const webTakt = new Set([...css.matchAll(/nth-child\(6n\+?(\d*)\)/g)].map(m => m[1])).size;
   assert.equal(webTakt, 5,
     `themes/noppe.css zaehlt an ${webTakt} verschiedenen Positionen durch, erwartet fuenf ` +
@@ -122,9 +120,6 @@ test('beide Oberflaechen fuehren dieselbe Schrift', () => {
     'App dasselbe Design in einer anderen Schrift als das Web');
   assert.match(theme, /NunitoFamilie/, 'Theme.kt benutzt die Schrift nicht');
 });
-
-//
-// Ausführlich: docs/begruendungen/test/abgleich-noppe-design.test.js.md#hochglanz-erbt-die-palette-statt-sie-abz
 
 test('hochglanz erbt die Palette, statt sie abzuschreiben', () => {
   assert.equal(quelle.designs.hochglanz.erbt, 'noppe',
@@ -213,9 +208,6 @@ test('der Deckel ist EIN Baustein, nicht zwei', () => {
     'Es gibt einen zweiten Deckel-Baustein fuer den Glanz. Einer reicht, mit Parameter.');
 });
 
-//
-// Ausführlich: docs/begruendungen/test/abgleich-noppe-design.test.js.md#stelle
-
 /** Die beiden Regeln, die eine Noppenreihe zeichnen. */
 const noppenReihen = () => css.split('}')
   .filter(r => /header::before|\.sc::after/.test(r.slice(0, r.indexOf('{') + 1)));
@@ -254,7 +246,6 @@ test('Leiste und Deckel teilen sich EINE Noppenform', () => {
 
 test('der Glanz liegt im Takt der Maske', () => {
   // Die Stelle, an der es still falsch wird
-  // Ausführlich: docs/begruendungen/test/abgleich-noppe-design.test.js.md#maskentakte
   const maskenTakte = [...css.matchAll(/\bmask-size:(\d+)px \d+px/g)].map(m => m[1]);
   const glanzTakte = [...glanz.matchAll(/\bbackground-size:(\d+)px \d+px/g)].map(m => m[1]);
   // Selbstbeweis: GEMESSEN sind es vier Masken-Takte (je Reihe einmal mit und
@@ -281,7 +272,6 @@ test('die Noppe hat in beiden Oberflaechen dieselbe Form', () => {
 
 test('die Deckelfarbe loescht den Lack nicht', () => {
   // Der Fehler, den diese Zusicherung verhindert
-  // Ausführlich: docs/begruendungen/test/abgleich-noppe-design.test.js.md#farbregeln
   const farbregeln = css.replace(/\/\*[\s\S]*?\*\//g, '').split('}')
     .filter(r => /--stein-\d/.test(r));
   // Selbstbeweis: GEMESSEN sind es sechs — die Grundregel und fuenf Positionen.
@@ -297,9 +287,6 @@ test('die Deckelfarbe loescht den Lack nicht', () => {
     'eine Klasse zaehlt, gewinnt sie gegen hochglanz.css. `background-color:` ' +
     'setzt nur die Farbe und laesst den Lack stehen.');
 });
-
-//
-// Ausführlich: docs/begruendungen/test/abgleich-noppe-design.test.js.md#stein
 
 const stein = fs.readFileSync(path.join(BAUM, 'Web-App', 'public', 'themes', 'brick.css'), 'utf8');
 const grundCss = fs.readFileSync(path.join(BAUM, 'Web-App', 'public', 'styles.css'), 'utf8');

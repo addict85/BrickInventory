@@ -4,7 +4,6 @@ import { toast } from './01-meldungen.js';
 /**
  * Auffangnetz für Fehler, die niemand behandelt: api() wirft nicht mehr, aber ein Programmierfehler in einem
  * Rückruf endete sonst nur in der Konsole — man klickt, nichts passiert, und niemand erfährt es.
- * Ausführlich: docs/begruendungen/public/js/08-fehlerfang.js.md#letztefehlermeldung
  */
 let _letzteFehlermeldung = 0;
 /** @param {string} quelle @param {unknown} fehler */
@@ -21,7 +20,6 @@ function meldeUnerwartet(quelle, fehler) {
 /**
  * Stammt der Fehler aus unserem Code? Das Netz hört am Fenster und fängt auch Ablehnungen von
  * Browser-Erweiterungen (MetaMask); als „Unerwarteter Fehler“ gemeldet, suchte man den Fehler bei uns.
- * Ausführlich: docs/begruendungen/public/js/08-fehlerfang.js.md#vonuns
  * @param {unknown} fehler
  */
 function vonUns(fehler) {

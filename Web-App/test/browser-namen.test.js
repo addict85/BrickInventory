@@ -1,6 +1,5 @@
 /**
  * Typprüfung der Oberfläche: kein unbekannter Name, keine Meldung.
- * Ausführlich: docs/begruendungen/test/browser-namen.test.js.md#kopf
  *
  * Gegenproben (am 05.11.2026 gemessen; A–C seitdem im CI-Schritt
  * „Typprüfung Oberfläche“, nicht mehr in npm test):

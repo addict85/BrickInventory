@@ -474,7 +474,6 @@ async function importConfig() {
 
 // Der Import von Wanted-Listen steht bei Sets, Teilen und Figuren (js/18-wanted-xml.js), nicht mehr hier: Man
 // importiert dort, wo man die Posten danach sieht.
-// Ausführlich: docs/begruendungen/public/js/05-settings.js.md#marcos-vorgabe-bitte-auch-den-import-der
 
 /**
  * Ein verdecktes Feld zeigen oder wieder verdecken (Knopf mit dem Auge).

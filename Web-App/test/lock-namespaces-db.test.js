@@ -1,6 +1,5 @@
 /**
  * Sperr-Namensräume gegen eine ECHTE Datenbank.
- * Ausführlich: docs/begruendungen/test/lock-namespaces-db.test.js.md#kopf
  *
  * Gegenprobe (am 27.10. gemessen): txLock wieder mit der user_id als erstem
  * Wert → rot: „die Bestandssperre eines Kontos trifft keinen Job".

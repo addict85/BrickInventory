@@ -1,6 +1,5 @@
 /**
  * Was im Markup steht, ist auch das, was der Sprachtext sagt.
- * Ausführlich: docs/begruendungen/test/markup-und-sprachtext.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Ergebnisse abgeschrieben) ────────────────────
  *

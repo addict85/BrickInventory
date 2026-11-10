@@ -64,12 +64,11 @@ export async function getPortfolioHistory(
   else if (period==='year')  dateFilter = "AND recorded_at >= NOW() - INTERVAL '365 days'";
 
   // Für Woche und Monat je Tag, für Jahr und Max je MONAT.
-  // Ausführlich: docs/begruendungen/src/finanzen/portfolioHistory.ts.md#getportfoliohistory-monatsaufloesung
   let monatsAufloesung = period === 'year' || period === 'max';
   let bucketExpr = monatsAufloesung ? "'YYYY-MM'" : "'YYYY-MM-DD'";
 
   // Die Kurve zeigt den HEUTIGEN Bestand über die Zeit: Sonst erschiene jedes
-  // Erfassen als Kurssprung. Ausführlich: docs/begruendungen/src/finanzen/portfolioHistory.ts.md#kurve
+  // Erfassen als Kurssprung.
 
   const kurve = await rekonstruiereKurve({
     db, setNumbers, setQty, placeholders, dateFilter, bucketExpr,

@@ -1,4 +1,4 @@
-// Eigener Leser: pdfkit kann nur schreiben. Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdf.ts.md#abschnitt
+// Eigener Leser: pdfkit kann nur schreiben.
 import zlib from 'zlib';
 
 export interface GutscheinWerte {
@@ -11,8 +11,7 @@ export interface GutscheinWerte {
 /** Bewusst geschlossen: Jedes Drei-Buchstaben-Wort fängt „PDF" so gut wie „CHF". */
 const WAEHRUNGEN = ['CHF', 'EUR', 'USD', 'GBP', 'SEK', 'NOK', 'AUD', 'CAD', 'DKK'] as const;
 
-/** Ohne zu raten: Eine mehrdeutige Schreibweise bleibt null.
- * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdf.ts.md#zahllesen */
+/** Ohne zu raten: Eine mehrdeutige Schreibweise bleibt null. */
 export function zahlLesen(roh: string): number | null {
   const s = roh.replace(/[\s'’`]/g, '');
   if (!/^\d[\d.,]*$/.test(s)) return null;
@@ -142,7 +141,7 @@ export const STROEME_MAX = 2000;
 
 export class PdfZuGross extends Error {}
 
-// Eine Zeile je Operator: Nummer allein. Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdf.ts.md#abschnitt-2
+// Eine Zeile je Operator: Nummer allein.
 export function pdfText(daten: Buffer): string {
   const roh = daten.toString('latin1');
   const zeilen: string[] = [];
@@ -209,7 +208,6 @@ export function werteAusText(text: string): GutscheinWerte {
 
   // Die längste Ziffernfolge ab 13 Stellen: Die Grenze hält Jahreszahlen und PIN
   // draussen, „längste" eine Telefonnummer im Kleingedruckten.
-  // Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdf.ts.md#werteaustext-kandidaten
   const kandidaten: string[] = text.match(/\d{13,22}/g) ?? [];
   const nummer = kandidaten.length
     ? kandidaten.reduce((a, b) => (b.length > a.length ? b : a))

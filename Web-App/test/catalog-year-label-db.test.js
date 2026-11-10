@@ -1,6 +1,5 @@
 /**
  * Das Jahres-Etikett am Scrollbalken nennt das Jahr, das dort WIRKLICH steht.
- * Ausführlich: docs/begruendungen/test/catalog-year-label-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

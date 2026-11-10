@@ -1,6 +1,5 @@
 /**
  * Geldbeträge: exakt statt „fast".
- * Ausführlich: docs/begruendungen/test/money-numeric-db.test.js.md#kopf
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -13,7 +12,6 @@ const { haeltSet } = require('./helpers/bestand');
 
 /**
  * Alle Spalten, die Geld führen.
- * Ausführlich: docs/begruendungen/test/money-numeric-db.test.js.md#geldspalten
  */
 const GELDSPALTEN = `
   SELECT table_name || '.' || column_name AS spalte, data_type
@@ -49,7 +47,6 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async (t) => {
   await t.test('die Migration holt eine alte Datenbank nach', async () => {
     // Alte Installation nachstellen: Spalte zurück auf REAL, Migration erneut
     // laufen lassen (Vermerk in schema_migrations entfernen).
-    // Ausführlich: docs/begruendungen/test/money-numeric-db.test.js.md#for-stelle
     for (const [tab, sp] of [
       ['sets',     'purchase_price'],
       ['parts',    'purchase_price'],
@@ -78,7 +75,6 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async (t) => {
     assert.equal(nachher.data_type, 'numeric', 'Migration hat die Spalte nicht umgestellt');
 
     // Und den Endzustand wiederherstellen
-    // Ausführlich: docs/begruendungen/test/money-numeric-db.test.js.md#for-stelle-2
     for (const [tab, sp] of [
       ['sets',     'purchase_price'],
       ['parts',    'purchase_price'],

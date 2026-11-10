@@ -1,7 +1,6 @@
 /**
  * Die Schreib-/Löschwege in src/einstellungen/settings.ts und der Auslöser in
  * src/auftraege/repository/laufzustand.ts (seit Migration 0063 dort) gegen eine echte Datenbank.
- * Ausführlich: docs/begruendungen/test/settings-helfer-db.test.js.md#kopf
  *
  * Gegenproben (durchgeführt):
  *   a) `if (keys.length === 0) return;` in deleteGlobalSetting entfernt und den

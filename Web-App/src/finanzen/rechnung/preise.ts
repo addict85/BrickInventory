@@ -23,12 +23,11 @@ export type { Blickfeld } from '../../haushalt/haushalt';
 type PreisZeile = { avg_price?: unknown; fetched_at?: string | Date | null } | null | undefined;
 
 /** `string | number`, weil die Einstellung als Text aus der Datenbank kommt;
- * das `parseInt(String(…))` der Rechner ist deshalb tragend.
- * Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#stunden */
+ * das `parseInt(String(…))` der Rechner ist deshalb tragend. */
 type Stunden = string | number;
 
 /** DIE Zustandsauflösung für ein Set — eine, weil mehrere eigene Fassungen
- * auseinandergelaufen waren. Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#resolvesetcondition */
+ * auseinandergelaufen waren. */
 export async function resolveSetCondition(
   uid: number | number[], setNumber: string, dbh?: Pick<DbSchnittstelle, 'get'>,
 ): Promise<'N' | 'U'> {
@@ -44,7 +43,7 @@ export const DEFAULT_PRICE_CONDITION = 'U';
 
 
 /** Kürzer als das TTL-Fenster, damit ein Rückfall (sold → stock) überhaupt
- * wieder angefragt wird. Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#zero-price-ttl-hours */
+ * wieder angefragt wird. */
 const ZERO_PRICE_TTL_HOURS = 6;
 
 /** Die eine Stelle, die „frisch" festlegt. */
@@ -70,7 +69,6 @@ interface PreisFuehrer { min_price?: unknown; avg_price?: unknown; max_price?: u
 
 /** Erst Cache, dann — nur mit Preis — Verlaufspunkt; eine Funktion, weil drei
  * Fassungen derselben Regel auseinandergelaufen waren.
- * Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#speicherepreis
  * @returns die gelesenen Zahlen, damit der Aufrufer nicht erneut umwandeln muss */
 export async function speicherePreis(setNumber: string, condition: string, currency: string, g: PreisFuehrer | null | undefined) {
   const min  = parseFloat(String(g?.min_price     ?? 0)) || 0;
@@ -211,7 +209,6 @@ export async function parallelLimit<T>(tasks: (() => Promise<T>)[], limit: numbe
 
 // Gedächtnis für zwei Übersetzungstabellen, die sich während einer Bewertung
 // nicht ändern; je Teil kostete die Abfrage sonst die meiste Zeit.
-// Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#nachschlag-ttl-ms
 const NACHSCHLAG_TTL_MS = 10 * 60 * 1000;
 // Beim Überschreiten wird geleert statt einzeln aufgeräumt: eine Handvoll
 // Nutzer, kleine Tabellen (wie _tokenCache in src/konto/auth.ts).
@@ -243,8 +240,7 @@ function nachschlagwerk<S, W>(hole: (schluessel: S) => Promise<W | null>) {
 }
 
 /** Die ganze Tabelle (rund 200 Zeilen): Je Schlüssel bliebe eine unbekannte
- * Farbe je Teil eine eigene Abfrage, weil Fehlschläge nicht gemerkt werden.
- * Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#farbkarte */
+ * Farbe je Teil eine eigene Abfrage, weil Fehlschläge nicht gemerkt werden. */
 let _farbkarte: { karte: Map<number, number>; zeit: number } | null = null;
 // Der Ladevorgang wird geteilt, nicht nur sein Ergebnis: Parallele Bewerter
 // lüden sonst je selbst.
@@ -280,7 +276,6 @@ export async function resolveBlColorId(rbColorId: number): Promise<number | null
 
 // Ohne Übersetzung antwortet BrickLink für RB-Nummern mit 404. Eine Quelle
 // (bl_zuordnung), damit nicht zwei Orte auseinanderlaufen.
-// Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#blteil
 const _blTeil = nachschlagwerk(async (partNumber: string) => {
   return await blAbrufNummer('part', partNumber);
 });
@@ -295,8 +290,7 @@ export async function resolveBlPartNumber(partNumber: string, konto: number | nu
 }
 
 /** In zwei Abfragen, weil das Gedächtnis innerhalb einer Bewertung nicht hilft:
- * Jedes Teil hat eine andere Nummer.
- * Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#ladeblnummernvor */
+ * Jedes Teil hat eine andere Nummer. */
 export async function ladeBlNummernVor(teilnummern: string[]): Promise<void> {
   const offen = [...new Set(teilnummern.filter(Boolean).map(String))].filter(n => !_blTeil.kennt(n));
   if (!offen.length) return;
@@ -342,7 +336,6 @@ export interface PreisErgebnis {
 /** Mit Rückfall auf den anderen Zustand (viele ältere Teile gibt es nur
  * gebraucht). Nummer und Farbe werden zuerst übersetzt und dann für Cache,
  * Abruf und Schreiben benutzt — sonst passten Cache und Anfrage nicht.
- * Ausführlich: docs/begruendungen/src/finanzen/rechnung/preise.ts.md#fetchpartprice
  * @param vorrat aus ladeTeilepreiseVor; fehlt ein Schlüssel, gibt es keinen frischen Eintrag. */
 export async function fetchPartPrice(partNumber: string, rbColorId: number, condition: string, currency: string, ttlHours: Stunden,
                               vorrat: Map<string, Preiszeile> | null = null, konto: number | null = null): Promise<PreisErgebnis> {

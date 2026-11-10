@@ -22,8 +22,7 @@ export function uebertrageVormerkung(zuId: number, vonId: number, sn: string, c:
   return db.run('UPDATE wanted SET user_id=$1 WHERE user_id=$2 AND set_number=$3 AND condition=$4', [zuId, vonId, sn, c]);
 }
 
-/** Dieselben Namen wie SET_SORTS: Beide Oberflächen beschriften sie gleich.
- * Ausführlich: docs/begruendungen/src/merkliste/repository/merkliste.ts.md#merk-sorts */
+/** Dieselben Namen wie SET_SORTS: Beide Oberflächen beschriften sie gleich. */
 const MERK_SORTS = {
   added_desc: 'w.created_at DESC',
   added_asc:  'w.created_at ASC',

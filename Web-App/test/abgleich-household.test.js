@@ -135,7 +135,6 @@ test('die Portfoliokurve des Haushalts ist rückwirkend', () => {
   // Portfolio-Schnappschüsse ('__portfolio__<id>') gibt es nicht mehr. Sie
   // lagen je Konto zu unterschiedlichen Zeitpunkten — addiert ergäben sie
   // Einbrüche, die nie stattgefunden haben — und sie hielten fest, was AN …
-  // Ausführlich: docs/begruendungen/test/abgleich-household.test.js.md#p-stelle
   const p = require('./helpers/sources').portfolioQuelle();
   assert.doesNotMatch(
     p,
@@ -152,7 +151,6 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
   // Tages — genau den Zustand, den der Bearbeiten-Pfad ablehnt.
   // ohneKommentare(): Die BEGRÜNDUNGEN dieser Regeln stehen in setMove.ts als
   // Kommentar, und sie ZITIEREN die Anweisungen, die es nicht mehr geben darf …
-  // Ausführlich: docs/begruendungen/test/abgleich-household.test.js.md#mv-stelle
   const mv = require('./helpers/sources').ohneKommentare(
     require('./helpers/sources').dienstQuelle('src/sets/setMove.ts'),
   );
@@ -188,7 +186,6 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
   assert.ok(mv.includes('mitInventarSperre(sk.db, fromId, sn'), 'Serialisiert über das Quellkonto');
   // Ganzes Set und einzelne Kaufpreise laufen durch DIESELBE Umsetzung — der
   // Teilfall ist kein Sonderweg, sondern der allgemeine Fall mit Auswahl.
-  // Ausführlich: docs/begruendungen/test/abgleich-household.test.js.md#acq-stelle
   const acq = read('routes/api_v1/acquisitions.ts');
   const calls =
     (mv.match(/moveSetBetweenAccounts\(tx, sn/g) || []).length +
@@ -273,7 +270,6 @@ test('die Oberfläche zeigt Besitzer und Kontoauswahl nur im Haushalt', () => {
   // Teil, manuelle Minifigur. Vorher war die Kontoauswahl nur bei Sets da.
   // Seit sind es VIER Formulare — der Katalog-Dialog („In Galerie
   // aufnehmen") war als einziger nicht angeschlossen und erfasste immer aufs …
-  // Ausführlich: docs/begruendungen/test/abgleich-household.test.js.md#for-stelle-2
   for (const feld of ['add-owner', 'ap-owner', 'af-owner', 'cat-m-owner']) {
     assert.ok(
       gal.includes(`'${feld}'`),
@@ -374,7 +370,6 @@ test('Verschieben geht NUR über den Kaufpreis', async () => {
   // tatsächlich wandert: Drei Erfassungen sind drei Käufe, die im Haushalt
   // verschiedenen Kindern gehören können. Wer alles verschieben will, ändert
   // jede Zeile — und sieht dabei, wie viele es sind. …
-  // Ausführlich: docs/begruendungen/test/abgleich-household.test.js.md#for-stelle-3
   const { setVerschieben } = require('./helpers/sources').buildAndRequire()('src/sets/index.js');
   await assert.rejects(
     setVerschieben(1, '10294-1', 1, 2, []),
@@ -389,7 +384,6 @@ test('Verschieben geht NUR über den Kaufpreis', async () => {
 
 /**
  * Was diese Regel prüft, und was NICHT
- * Ausführlich: docs/begruendungen/test/abgleich-household.test.js.md#auch-manuelle-teile-und-minifiguren-wand
  */
 test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   // Dieselbe Regel für alle drei Arten. Ein manuell erfasstes Teil hat keinen

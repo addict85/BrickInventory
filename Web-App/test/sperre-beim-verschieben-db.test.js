@@ -1,7 +1,6 @@
 /**
  * Die Verschiebung eines Sets serialisiert über das QUELLKONTO — geprüft über
  * die echte Route, nicht am Quelltext.
- * Ausführlich: docs/begruendungen/test/sperre-beim-verschieben-db.test.js.md#kopf
  *
  * Gegenproben (gemessen):
  *   a) withInventoryLock → db.transaction (Sperre weg)  → A rot, B+C grün
@@ -57,7 +56,6 @@ async function sperrZeilen(userId, scopeKey, erteilt) {
 /**
  * Wartet, bis auf genau diesem Schlüssel ein Warter steht — oder bis die
  * Route fertig ist.
- * Ausführlich: docs/begruendungen/test/sperre-beim-verschieben-db.test.js.md#befundwarter
  */
 async function befundWarter(userId, scopeKey, istFertig, grenzeMs = 5000) {
   const bis = Date.now() + grenzeMs;
@@ -217,7 +215,6 @@ test('die Verschiebung sperrt auf (Quellkonto, Set)', { concurrency: 1 }, async 
     // Konto, aus dem etwas WEGgeht — dort wird gelesen, gerechnet und
     // gelöscht. GEMESSEN: Steht `toId` in der Route, werden A UND dieser Fall
     // rot. Und allein fängt dieser Fall eine Sperre auf BEIDEN Konten: auch …
-    // Ausführlich: docs/begruendungen/test/sperre-beim-verschieben-db.test.js.md#acq-stelle
     const acq = await erfassungsIds(HAUPT, SN_C);
     assert.equal(acq.length, 1, `Vorbedingung: eine Erfassung für ${SN_C}`);
 

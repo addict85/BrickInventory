@@ -1,4 +1,4 @@
-// Was Bewertung und Gewinn beide lesen. Ausführlich: docs/begruendungen/src/finanzen/rechnung/abfragen.ts.md#abschnitt
+// Was Bewertung und Gewinn beide lesen.
 
 export function zaehle(zeilen: Iterable<{ kaufpreis_fremd?: unknown; kaufpreis_umgerechnet?: unknown }>, merkmal: 'kaufpreis_fremd' | 'kaufpreis_umgerechnet'): number {
   let n = 0;

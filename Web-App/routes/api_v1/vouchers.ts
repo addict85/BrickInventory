@@ -1,4 +1,4 @@
-// Für beide Apps: Cookie und Token. Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#abschnitt
+// Für beide Apps: Cookie und Token.
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -48,7 +48,6 @@ const maskiert = (z: { number: string; pin: string | null }) =>
   ({ number: '…' + z.number.slice(-4), pin: z.pin ? PIN_MASKE : null });
 
 // Betrag einmal als Zahl; `hat_pdf` statt des Pfads, der niemanden etwas angeht.
-// Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#fueraussen
 function fuerAussen(z: GutscheinZeile) {
   return {
     id: z.id,
@@ -104,7 +103,7 @@ router.post('/vouchers', requireToken, async (req: Anfrage<'POST /api/v1/voucher
   res.json({ success: true, voucher: fuerAussen(zeile) });
 });
 
-/** Der Stapelfall von POST /vouchers/pdf. Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#stapelanlegen */
+/** Der Stapelfall von POST /vouchers/pdf. */
 async function stapelAnlegen(
   req: AuthedRequest, res: express.Response,
   gefunden: GutscheinWerte[],
@@ -133,7 +132,6 @@ async function stapelAnlegen(
 }
 
 // EIN Weg für beide Apps: Mitgeschickte Felder gewinnen gegen das Ausgelesene.
-// Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#post-vouchers-pdf
 router.post('/vouchers/pdf', requireToken, kontoSchranke('gutscheinPdf'), upload.single('file'), async (req: Anfrage<'POST /api/v1/vouchers/pdf'>, res: Antwort<'POST /api/v1/vouchers/pdf'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
 
@@ -325,7 +323,6 @@ router.get('/vouchers/:id/pdf', requireToken, async (req: Anfrage<'GET /api/v1/v
 
 // Keine Sammelroute: höchstens ein Abruf je 30 Sekunden über ALLE Benutzer,
 // eine Sammelroute müsste diese Wartezeit verstecken.
-// Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#post-vouchers-id-guthaben
 router.post('/vouchers/:id/guthaben', requireToken, async (req: Anfrage<'POST /api/v1/vouchers/:id/guthaben'>, res: Antwort<'POST /api/v1/vouchers/:id/guthaben'>) => {
   const id = req.pfad.id;
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');

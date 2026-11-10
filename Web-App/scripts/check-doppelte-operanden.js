@@ -1,7 +1,6 @@
 'use strict';
 /**
  * Derselbe Operand zweimal — der Tippfehler, der sich am besten versteckt.
- * Ausführlich: docs/begruendungen/scripts/check-doppelte-operanden.js.md#fs-stelle
  */
 const fs = require('fs');
 const path = require('path');

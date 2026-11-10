@@ -1,6 +1,5 @@
 /**
  * Eine geratene Setnummer muss als Vermutung erkennbar sein.
- * Ausführlich: docs/begruendungen/test/barcode-vermutung.test.js.md#kopf
  *
  * Gegenprobe (09.11.2026): istVermutung() nur noch `!quelle` → rot: „die zwei ratenden Wege …“
  * und „eine unbekannte Quelle gilt als Vermutung“.

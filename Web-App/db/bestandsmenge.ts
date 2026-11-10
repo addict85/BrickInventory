@@ -1,6 +1,5 @@
 /**
  * Die Stückzahl eines Sets — abgeleitet, nicht gespeichert.
- * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#ueberblick
  */
 
 /** `::int`: SUM(INTEGER) ergibt BIGINT, und das liefert der Treiber als
@@ -17,8 +16,7 @@ export function mengeSkalar(bezug: string): string {
 
 /** Stückzahl als gruppierte JOIN-Quelle (`<alias>.menge`). `konten`, z. B.
  * `= ANY($1)`, filtert schon in der Unterabfrage: Der Planer zieht die
- * Kontobedingung des JOIN nicht hinein und summierte sonst alle Konten.
- * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#mengejoin */
+ * Kontobedingung des JOIN nicht hinein und summierte sonst alle Konten. */
 export function mengeJoin(bezug: string, alias = 'sm', konten?: string): string {
   const filter = konten ? `
                       WHERE a.user_id ${konten}` : '';
@@ -30,15 +28,13 @@ export function mengeJoin(bezug: string, alias = 'sm', konten?: string): string 
 }
 
 /** Die Mengenspalte zu [mengeJoin], nie NULL (NULL machte jedes Produkt
- * NULL). `fehlt`: 0 für eine Stückzahl, 1 für einen Faktor.
- * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#mengeaus */
+ * NULL). `fehlt`: 0 für eine Stückzahl, 1 für einen Faktor. */
 export function mengeAus(alias = 'sm', fehlt: 0 | 1 = 0): string {
   return `COALESCE(${alias}.menge, ${fehlt})`;
 }
 
 /**
  * Die Stückzahl eines Sets über ein ganzes BLICKFELD, als fertige Abfrage.
- * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#mengesummesql
  * @param konten 'eines' für eine Konto-ID, 'blickfeld' für eine Liste.
  */
 export function mengeSummeSql(konten: 'eines' | 'blickfeld'): string {
@@ -58,7 +54,6 @@ type Schreiber = Pick<DbSchnittstelle, 'get'>;
 
 /**
  * Die Stückzahl EINER Set-Zeile — als Zahl, nicht als SQL-Schnipsel.
- * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#mengedessets
  */
 export async function mengeDesSets(
   userId: number,
@@ -73,7 +68,7 @@ export async function mengeDesSets(
 }
 
 // Teile und Figuren haben noch eine Mengenspalte, weil sie zwei Bedeutungen
-// trägt. Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#bestandsart
+// trägt.
 
 /** Welcher Bestand. Sets stehen hier nicht: ihre Spalte ist seit 0036 weg. */
 export interface ErfassungsZeile {
@@ -105,8 +100,7 @@ const ART = {
 } as const;
 
 /** Die JOIN-Quellen `<alias>_e` (Erfassungen) und `<alias>_k` (Katalog) für
- * die Stückzahl der Bestandszeile `bezug`; `konten` wie bei [mengeJoin].
- * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#teilmengejoin */
+ * die Stückzahl der Bestandszeile `bezug`; `konten` wie bei [mengeJoin]. */
 export function teilmengeJoin(bezug: string, art: Bestandsart, alias = 'tm', konten?: string): string {
   const a = ART[art];
   const farbErf = a.farbe
@@ -129,7 +123,6 @@ export function teilmengeJoin(bezug: string, art: Bestandsart, alias = 'tm', kon
 
 /**
  * Die Stückzahl der Bestandszeile — die Fallunterscheidung selbst.
- * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#teilmengeaus
  */
 export function teilmengeAus(bezug: string, _art: Bestandsart, alias = 'tm'): string {
   return `CASE WHEN COALESCE(${bezug}.source, 'set') = 'manual'
@@ -139,7 +132,6 @@ export function teilmengeAus(bezug: string, _art: Bestandsart, alias = 'tm'): st
 
 /**
  * Die Stückzahl EINER manuellen Position — als Zahl, nicht als Schnipsel.
- * Ausführlich: docs/begruendungen/db/bestandsmenge.ts.md#mengederposition
  */
 export async function mengeDerPosition(
   art: Bestandsart,

@@ -1,6 +1,5 @@
 /**
  * Der Takt der Anleitungs-Warteschlange gilt echten Abrufen, nicht Durchgängen.
- * Ausführlich: docs/begruendungen/test/instruction-queue-pace-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

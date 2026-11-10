@@ -1,7 +1,6 @@
 'use strict';
 /**
  * Das Schema steht an EINER Stelle — nicht im Anfragepfad.
- * Ausführlich: docs/begruendungen/scripts/check-schema-am-start.js.md#fs-stelle
  */
 const fs = require('fs');
 const path = require('path');
@@ -74,7 +73,6 @@ for (const datei of dateien) {
 }
 
 // Der Selbstbeweis, und warum er JEDEN Teil einzeln prüft
-// Ausführlich: docs/begruendungen/scripts/check-schema-am-start.js.md#migverz
 const migVerz = path.join(ROOT, 'db/migrations');
 const bekannt = ohneKommentare(fs.readdirSync(migVerz).filter(f => f.endsWith('.sql'))
   .map(f => fs.readFileSync(path.join(migVerz, f), 'utf8')).join('\n'));
@@ -102,7 +100,6 @@ if (treffer.length) {
 // ═══════════════════════════════════════════════════════════════════════════
 // Regel 2 — jede Tabelle und jeder Index wird an GENAU EINER Stelle angelegt
 // ═══════════════════════════════════════════════════════════════════════════
-// Ausführlich: docs/begruendungen/scripts/check-schema-am-start.js.md#stelle
 
 /**
  * Absichtlich doppelt, mit Grund. Die Liste darf nur KÜRZER werden.

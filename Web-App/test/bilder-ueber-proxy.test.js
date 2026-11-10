@@ -1,6 +1,5 @@
 /**
  * Jedes Bild geht über den eigenen Server — sonst blockt die Richtlinie es.
- * Ausführlich: docs/begruendungen/test/bilder-ueber-proxy.test.js.md#kopf
  *
  * ── Gegenprobe (durchgeführt, Ergebnis im Commit) ──────────────────────────
  *   Die alte Zeile in 16-merkliste.js wiederhergestellt → rot.
