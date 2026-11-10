@@ -440,7 +440,8 @@ function cancelImport(){
  * @param {string} path @param {object} body @param {(ev: SseEreignis) => void} onEvent
  * @returns {Promise<void>} */
 export function streamRequest(path, body, onEvent){
-  const ac = _activeAbort = new AbortController();
+  const ac = new AbortController();
+  _activeAbort = ac;
   G('btn-cancel-import').style.display='inline-flex';
   return apiRoh('POST', path, { body, signal: ac.signal })
     .then(res=>readSSE(res,onEvent,ac.signal))

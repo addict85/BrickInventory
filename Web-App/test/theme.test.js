@@ -214,7 +214,7 @@ test('jedes Theme unter public/themes/ deckt die Screens vor dem Login ab', () =
       new RegExp(`\\[data-theme="${name}"\\][^{]*#login-screen`),
       `${f} stylt den Login-Screen nicht — das Design würde nach dem Login umspringen`,
     );
-    assert.match(css, new RegExp(`--screen-bg\\s*:`), `${f} setzt --screen-bg nicht`);
+    assert.match(css, /--screen-bg\s*:/, `${f} setzt --screen-bg nicht`);
   }
 });
 

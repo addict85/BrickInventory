@@ -11,7 +11,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { ROOT, ohneKommentare } = require('./helpers/sources');
+const { ohneKommentare } = require('./helpers/sources');
 
 const { quellwurzeln } = require('./helpers/android');
 

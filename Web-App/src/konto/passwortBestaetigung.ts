@@ -68,6 +68,9 @@ export function pruefeCodeBestaetigung(uid: number, zugang: string, code: unknow
 export async function bestaetigeEinrichtungGebremst(uid: number, zugang: string, code: unknown): Promise<string[] | BestaetigungsAbsage> {
   let codes: string[] | null = null;
   const absage = await gebremst('faktor', uid, zugang,
-    async () => !!(codes = await zf.bestaetigeEinrichtung(uid, String(code ?? ''))), 'zweiter_faktor_falsch');
+    async () => {
+      codes = await zf.bestaetigeEinrichtung(uid, String(code ?? ''));
+      return !!codes;
+    }, 'zweiter_faktor_falsch');
   return absage ?? codes ?? { status: 400, code: 'zweiter_faktor_falsch' };
 }

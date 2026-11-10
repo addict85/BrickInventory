@@ -330,7 +330,7 @@ async function zeigeAuftraege() {
   if (!d?.success) { el.replaceChildren(); return; }
   /** @type {Record<string, Record<string, number>>} */
   const zahl = {};
-  for (const z of d.zusammenfassung) (zahl[z.art] ||= {})[z.status] = z.anzahl;
+  for (const z of d.zusammenfassung) { zahl[z.art] ||= {}; zahl[z.art][z.status] = z.anzahl; }
   // Der nächste Lauf je Art: der früheste wartende Auftrag dieser Art.
   /** @type {Record<string, string>} */
   const naechster = {};

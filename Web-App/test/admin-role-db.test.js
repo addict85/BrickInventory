@@ -9,9 +9,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
@@ -20,7 +18,6 @@ const { dbOderSkip } = require('./helpers/db');
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('Adminrechte lassen sich auch mit "false" als Text entziehen',
   { concurrency: 1 }, async (t) => {

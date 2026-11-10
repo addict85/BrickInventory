@@ -24,7 +24,6 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 const { starteApp, warte } = require('./helpers/app-browser');
 const { musterSammlung } = require('./helpers/bestand');
 

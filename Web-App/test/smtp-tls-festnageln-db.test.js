@@ -52,7 +52,7 @@ function smtpServer(z) {
     s.write('220 test ESMTP\r\n');
     s.on('data', (b) => {
       puffer += b.toString('latin1');
-      for (let i; (i = puffer.indexOf('\r\n')) >= 0;) {
+      for (let i = puffer.indexOf('\r\n'); i >= 0; i = puffer.indexOf('\r\n')) {
         const zeile = puffer.slice(0, i); puffer = puffer.slice(i + 2);
         if (daten !== null) {
           if (zeile === '.') { post.push(daten); daten = null; s.write('250 angenommen\r\n'); } else daten += zeile + '\n';

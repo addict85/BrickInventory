@@ -106,7 +106,11 @@ async function runPriceRefresh(k?: AuftragsKontext) {
     fortschritt.total = allSets.length;
     await k?.fortschritt({ erledigt: 0, gesamt: allSets.length, text: `0/${allSets.length} Sets` });
     const byUser: Record<string, string[]> = {};
-    for (const row of allSets) (byUser[row.user_id] = byUser[row.user_id] || []).push(row.set_number);
+    for (const row of allSets) {
+      const liste = byUser[row.user_id] ?? [];
+      byUser[row.user_id] = liste;
+      liste.push(row.set_number);
+    }
     for (const [userId, setNumbers] of Object.entries(byUser)) {
       // Number(): Object.entries() liefert Schlüssel als Zeichenketten.
       const currency  = await getSetting(Number(userId), 'currency', 'EUR');

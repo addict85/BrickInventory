@@ -86,8 +86,8 @@ function leserouten() {
 /** Alle Zeichenketten einer Antwort — egal wie tief verpackt. */
 function alleWerte(x, out = []) {
   if (typeof x === 'string') out.push(x);
-  else if (Array.isArray(x)) x.forEach(v => alleWerte(v, out));
-  else if (x && typeof x === 'object') Object.values(x).forEach(v => alleWerte(v, out));
+  else if (Array.isArray(x)) for (const v of x) alleWerte(v, out);
+  else if (x && typeof x === 'object') for (const v of Object.values(x)) alleWerte(v, out);
   return out;
 }
 

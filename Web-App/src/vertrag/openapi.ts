@@ -72,7 +72,8 @@ export function openapi(): Record<string, unknown> {
       if (r.geheim) op['x-geheim'] = true;
       if (r.klein) op['x-klein'] = true;
       const oaPfad = pfad.replace(/:(\w+)/g, '{$1}');
-      (paths[oaPfad] ??= {})[methode.toLowerCase()] = op;
+      paths[oaPfad] ??= {};
+      paths[oaPfad][methode.toLowerCase()] = op;
     }
   }
   const sortiert = <T>(o: Record<string, T>) => Object.fromEntries(Object.entries(o).sort(([a], [b]) => a.localeCompare(b)));

@@ -10,7 +10,8 @@ export function appVersion(): string {
   if (_gebaut) return _gebaut;
   try {
     const v = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'version.json'), 'utf8')).version;
-    if (v) return (_gebaut = String(v));
+    if (v) _gebaut = String(v);
   } catch (_) { /* ohne Bau (tsx) gibt es die Datei nicht */ }
-  return (_gebaut = 'unbekannt');
+  _gebaut ||= 'unbekannt';
+  return _gebaut;
 }

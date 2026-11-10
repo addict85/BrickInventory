@@ -319,9 +319,9 @@ test('Haushalt gegen echte Datenbank', async (t) => {
 
     // Warum hier jetzt 2 steht und vorher 3
     // Ausführlich: docs/begruendungen/test/household-db.test.js.md#stelle
-    assert.equal(parseInt(all.total_sets), 2, 'verschiedene Sets im Haushalt — wie die Galerie sie zeigt');
-    assert.equal(parseInt(all.total_quantity), 4, 'Exemplare: 1 + 2 + 1');
-    assert.equal(parseInt(own.total_sets), 0);
+    assert.equal(parseInt(all.total_sets, 10), 2, 'verschiedene Sets im Haushalt — wie die Galerie sie zeigt');
+    assert.equal(parseInt(all.total_quantity, 10), 4, 'Exemplare: 1 + 2 + 1');
+    assert.equal(parseInt(own.total_sets, 10), 0);
   });
 
   await t.test('Verschieben nimmt Teile, Minifiguren und Anleitungen mit', async () => {
@@ -359,7 +359,7 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     const rows = await db.all(
       `SELECT quantity, purchase_price FROM set_acquisitions
         WHERE user_id=$1 AND set_number='75192-1' ORDER BY purchase_price`, [U.kindB]);
-    assert.deepEqual(rows.map(r => [parseInt(r.quantity), Math.round(parseFloat(r.purchase_price))]),
+    assert.deepEqual(rows.map(r => [parseInt(r.quantity, 10), Math.round(parseFloat(r.purchase_price))]),
       [[1, 100], [2, 160]], 'Die Einzelkäufe müssen beim Verschieben erhalten bleiben');
 
     // Im Haushalt steht das Set weiterhin einmal, jetzt mit einem Besitzer.
@@ -515,7 +515,7 @@ test('Haushalt gegen echte Datenbank', async (t) => {
       'Der Absender muss aus der Zeile kommen, nicht aus dem Request');
     const owner = await db.get(
       `SELECT user_id FROM set_acquisitions WHERE set_number='31120-1'`);
-    assert.equal(parseInt(owner.user_id), U.eltern, 'Die Zeile ist nicht angekommen');
+    assert.equal(parseInt(owner.user_id, 10), U.eltern, 'Die Zeile ist nicht angekommen');
 
     // Die Richtungsprüfung bleibt: Die Zeile gehört jetzt eltern — kindB darf
     // sie NICHT zurückholen, auch nicht mit dreist passendem from_user_id.
@@ -531,7 +531,7 @@ test('Haushalt gegen echte Datenbank', async (t) => {
       `Ein Unterkonto konnte aus dem Hauptkonto ziehen (Status ${zurueck.status})`);
     const nachher = await db.get(
       `SELECT user_id FROM set_acquisitions WHERE set_number='31120-1'`);
-    assert.equal(parseInt(nachher.user_id), U.eltern, 'Die Zeile wanderte zurück');
+    assert.equal(parseInt(nachher.user_id, 10), U.eltern, 'Die Zeile wanderte zurück');
   });
 
   await t.test('der Filter kennt einzelne Konten — und greift auch bei manuellen Einträgen', async () => {

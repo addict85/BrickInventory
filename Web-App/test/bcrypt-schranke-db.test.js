@@ -56,7 +56,7 @@ test('die Schranke lässt n laufen, m warten und weist den Rest ab', async () =>
   const x = s.mit(blockiert), y = s.mit(blockiert);
   await assert.rejects(s.mit(async () => 'z'), BcryptUeberlast);
   assert.deepEqual(s.stand(), { laufend: 2, wartend: 0 });
-  offen.splice(0).forEach((r) => r()); await x; await y;
+  for (const r of offen.splice(0)) r(); await x; await y;
 });
 
 test('Vorrang: vorne in die Schlange, auch wenn sie voll ist', async () => {
@@ -105,7 +105,7 @@ test('bei voller Schranke antwortet die Anmeldung 503 und die Passwortbestätigu
     const bestaetigung = await post('/qr-token', { password: PASS });
     assert.deepEqual([bestaetigung.status, bestaetigung.body.code], [503, 'server_ausgelastet'], JSON.stringify(bestaetigung.body));
   } finally {
-    while (offen.length || bcryptSchranke.stand().laufend) { offen.splice(0).forEach((r) => r()); await new Promise((r) => setImmediate(r)); }
+    while (offen.length || bcryptSchranke.stand().laufend) { for (const r of offen.splice(0)) r(); await new Promise((r) => setImmediate(r)); }
     await Promise.all(belegt);
   }
   delete sitzung.userId;
@@ -125,7 +125,7 @@ test('bei voller Schranke antwortet die Anmeldung 503 und die Passwortbestätigu
     const r = await bekannt;
     assert.equal(r.status, 200, JSON.stringify(r.body));
   } finally {
-    while (offen.length || bcryptSchranke.stand().laufend) { offen.splice(0).forEach((r) => r()); await new Promise((r) => setImmediate(r)); }
+    while (offen.length || bcryptSchranke.stand().laufend) { for (const r of offen.splice(0)) r(); await new Promise((r) => setImmediate(r)); }
     await Promise.all(belegt);
   }
 });

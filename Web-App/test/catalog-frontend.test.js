@@ -71,9 +71,9 @@ function fakeApi(_method, url) {
     const p = new w.URLSearchParams(url.split('?')[1]);
     let rows = DATA.slice();
     if (p.get('q')) rows = rows.filter(s => s.name.includes(p.get('q')) || s.set_number.includes(p.get('q')));
-    if (p.get('year_from')) rows = rows.filter(s => s.year >= parseInt(p.get('year_from')));
-    if (p.get('year_to'))   rows = rows.filter(s => s.year <= parseInt(p.get('year_to')));
-    const limit = parseInt(p.get('limit') || '60'), page = parseInt(p.get('page') || '1');
+    if (p.get('year_from')) rows = rows.filter(s => s.year >= parseInt(p.get('year_from'), 10));
+    if (p.get('year_to'))   rows = rows.filter(s => s.year <= parseInt(p.get('year_to'), 10));
+    const limit = parseInt(p.get('limit') || '60', 10), page = parseInt(p.get('page') || '1', 10);
     return Promise.resolve({
       success: true, total: rows.length, page, pages: Math.max(1, Math.ceil(rows.length / limit)),
       sets: rows.slice((page - 1) * limit, page * limit),
@@ -143,7 +143,7 @@ const platzhalter = () => w.document.querySelectorAll('#catalog-grid .cat-page-p
 /** Eine Seite ins Bild schieben — so, wie es der Beobachter meldet. */
 const zeigeSeite = (n) => {
   const el = w.document.querySelector(`#catalog-grid .cat-page[data-page="${n}"]`);
-  w.__ioCallbacks.forEach(cb => cb([{ isIntersecting: true, target: el }]));
+  for (const cb of w.__ioCallbacks) cb([{ isIntersecting: true, target: el }]);
 };
 
 test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', async () => {

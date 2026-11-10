@@ -15,7 +15,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
+const { starteApp } = require('./helpers/app-browser');
 
 test('Verwalterseiten und unbekannte Pfade für normale Konten', { concurrency: 1, timeout: 300_000 }, async (t) => {
   const app = await starteApp(t, {

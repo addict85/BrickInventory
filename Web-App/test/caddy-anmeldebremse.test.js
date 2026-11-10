@@ -46,7 +46,7 @@ test('Caddy reicht die Anmeldewege ungebremst, aber nur mit ganzem Rumpf weiter'
   await new Promise(r => app.listen(0, '127.0.0.1', r));
   let caddy = null;
   const offen = [];
-  t.after(() => { offen.forEach(s => s.destroy()); caddy?.kill('SIGKILL'); app.close(); fs.rmSync(tmp, { recursive: true, force: true }); });
+  t.after(() => { for (const s of offen) s.destroy(); caddy?.kill('SIGKILL'); app.close(); fs.rmSync(tmp, { recursive: true, force: true }); });
   const port = 30000 + (process.pid % 15000);
   const datei = fs.readFileSync(path.join(ROOT, 'Caddyfile'), 'utf8')
     .replace('https://{$BRICK_HOST} {', `https://{$BRICK_HOST}:${port} {`).replace('http:// {', `http://:${port + 1} {`)

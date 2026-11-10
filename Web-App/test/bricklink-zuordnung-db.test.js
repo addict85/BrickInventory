@@ -52,8 +52,6 @@ const dbDa = async (t) => {
   }
 };
 
-const MIG_DIR = path.join(ROOT, 'db/migrations');
-const DATEI   = path.join(MIG_DIR, '0037-bricklink-nummern-in-einer-zuordnung.sql');
 
 test('nach der ganzen Kette stehen die Nummern nur in bl_zuordnung',
   { concurrency: 1 }, async (t) => {

@@ -22,7 +22,7 @@ export function zeigeVerbindung(erreichbar) {
     if (_offline) toast(tRaw('net.back'), 'success');
     if (_offline) schreibenSperren(false);
     // Was ohne Netz nicht laden konnte, lädt jetzt von selbst.
-    if (_offline) document.querySelectorAll('.tab.active .fehler-zustand [data-lesend]').forEach(k => /** @type {HTMLElement} */ (k).click());
+    if (_offline) document.querySelectorAll('.tab.active .fehler-zustand [data-lesend]').forEach(k => { /** @type {HTMLElement} */ (k).click(); });
     _offline = false; band.hidden = true; return;
   }
   _offline = true;

@@ -49,8 +49,6 @@ const dbDa = async (t) => {
   }
 };
 
-const MIG_DIR = path.join(ROOT, 'db/migrations');
-const DATEI   = path.join(MIG_DIR, '0036-setmenge-aus-erfassungen.sql');
 
 /** Frische Datenbank, Schema, alle Migrationen. */
 async function volleKette() {

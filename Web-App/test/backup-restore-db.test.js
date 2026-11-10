@@ -85,8 +85,14 @@ test('Sicherung und Wiederherstellung', async (t) => {
     { encoding: 'utf8', stdio: 'pipe', env: { ...process.env } });
   /** Exit-Code; `grund()` liefert danach die Meldung von psql dazu. */
   let letzterLauf = null;
-  const einspielen = (datei) => (letzterLauf = lauf(['-v', 'ON_ERROR_STOP=1'], datei)).status;
-  const einspielenOhneStopp = (datei) => (letzterLauf = lauf([], datei)).status;
+  const einspielen = (datei) => {
+    letzterLauf = lauf(['-v', 'ON_ERROR_STOP=1'], datei);
+    return letzterLauf.status;
+  };
+  const einspielenOhneStopp = (datei) => {
+    letzterLauf = lauf([], datei);
+    return letzterLauf.status;
+  };
   /** Was psql gesagt hat — die letzten Zeilen, damit die Meldung lesbar bleibt. */
   const grund = () => (letzterLauf?.stderr || '').trim().split('\n').slice(-8).join('\n')
     || '(psql hat nichts nach stderr geschrieben)';

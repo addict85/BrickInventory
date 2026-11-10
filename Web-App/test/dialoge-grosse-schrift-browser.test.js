@@ -21,7 +21,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
+const { starteApp } = require('./helpers/app-browser');
 const { musterSammlung } = require('./helpers/bestand');
 
 /** Was ein Prüfer sieht: über den Rand, überlappend, abgeschnitten, zu niedrig. */

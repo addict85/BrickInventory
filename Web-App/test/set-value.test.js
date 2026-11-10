@@ -264,7 +264,7 @@ test('die Vorschau-Erzeugung ist gedeckelt', () => {
   const parallel = server.match(/const THUMB_MAX_PARALLEL = (\d+)/);
   assert.ok(parallel, 'THUMB_MAX_PARALLEL nicht gefunden');
   assert.ok(
-    parseInt(parallel[1]) <= 1,
+    parseInt(parallel[1], 10) <= 1,
     `THUMB_MAX_PARALLEL = ${parallel[1]} — im Cluster vervielfacht sich das je ` +
       'Arbeitsprozess. Einer je Prozess genügt: Die Vorschau ist eine ' +
       'Beschleunigung für später, nichts, worauf jemand wartet.',

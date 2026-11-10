@@ -151,7 +151,7 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async (t) => {
     // Geprüft wird `code`, nicht der Text: fachfehler() legt die deutsche
     // Fassung in `message` und den Code daneben (src/infra/fehlerTexte.ts). Auf
     // den Text zu prüfen hiesse, die Regel an eine Übersetzung zu hängen.
-    await assert.rejects(() => L.loescheOrt(U.ich, parseInt(ort.id)),
+    await assert.rejects(() => L.loescheOrt(U.ich, parseInt(ort.id, 10)),
       (e) => e?.code === 'lagerort_in_benutzung',
       'Der Ort liess sich löschen, obwohl eine Figur darin liegt.');
   });
@@ -159,7 +159,7 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async (t) => {
   await t.test('8. Umbenennen nimmt die Figuren mit', async () => {
     const ort = await db.get(
       'SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [U.ich, 'Vitrine']);
-    await L.benenneOrtUm(U.ich, parseInt(ort.id), 'Vitrine Wohnzimmer');
+    await L.benenneOrtUm(U.ich, parseInt(ort.id, 10), 'Vitrine Wohnzimmer');
     const figurOrt = await ortVon(db, 'minifigs', 't.user_id=$1 AND t.fig_number=$2',
       [U.ich, 'sw0001']);
     assert.equal(figurOrt, 'Vitrine Wohnzimmer',

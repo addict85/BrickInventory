@@ -168,8 +168,6 @@ module.exports.regexWoertlich = regexWoertlich;
 
 /** Der Vorschau-Weg des Bild-Proxys (src/katalog/bilder/proxyThumbs.ts). */
 function proxyThumbQuelle() {
-  const path = require('path'), fs = require('fs');
-  const ROOT = path.join(__dirname, '..', '..');
   return ['src/katalog/http/bildProxy.ts', 'routes/imgProxy.ts', 'src/katalog/bilder/proxyThumbs.ts', 'src/katalog/bilder/imgCacheServe.ts']
     .map(dienstQuelle).join('\n');
 }
@@ -189,8 +187,6 @@ module.exports.adminQuelle = adminQuelle;
 
 /** Der Weg, auf dem ein Set entsteht oder sich ändert, samt Katalogarbeit. */
 function setKernQuelle() {
-  const path = require('path'), fs = require('fs');
-  const ROOT = path.join(__dirname, '..', '..');
   return [
     ['routes/api_v1/sets.ts'],
     ['src/sets/dienst.ts'],
@@ -206,8 +202,6 @@ module.exports.setKernQuelle = setKernQuelle;
 const HANDLER_MODULE = ['src/bestand/gemeinsam', 'src/haushalt/haushalt', 'src/teile/abfragen', 'src/sets/lesen', 'src/sets/loeschen',
   'src/figuren/abfragen', 'src/bestand/kennzahlen'];
 function handlerQuelle() {
-  const path = require('path'), fs = require('fs');
-  const wurzel = path.join(__dirname, '..', '..');
   return HANDLER_MODULE.map(m => dienstQuelle(m + '.ts')).join('\n');
 }
 module.exports.handlerQuelle = handlerQuelle;

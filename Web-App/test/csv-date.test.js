@@ -4,8 +4,6 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 // src/infra/csvExport ist TypeScript; das ladbare .js liegt seit der Umstellung
 // in dist/ und nicht mehr neben der Quelle. buildAndRequire() baut bei Bedarf
 // und löst dorthin auf.

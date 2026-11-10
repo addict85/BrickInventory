@@ -41,7 +41,9 @@ async function token() {
     if (fehler.length) {
       falsch++;
       console.error(`✗ ${schluessel}`);
-      [...new Set(fehler.map(f => f.replace(/\.\d+\./g, '.i.')))].slice(0, 10).forEach(f => console.error(`    ${f}`));
+      [...new Set(fehler.map(f => f.replace(/\.\d+\./g, '.i.')))].slice(0, 10).forEach(f => {
+        console.error(`    ${f}`);
+      });
     } else console.log(`✓ ${schluessel}`);
   }
   if (falsch) { console.error(`\n${falsch} von ${routen.length} Routen weichen vom Vertrag ab.`); process.exit(1); }

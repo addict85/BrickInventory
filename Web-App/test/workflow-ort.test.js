@@ -146,8 +146,8 @@ test('ein Lauf, der Tests ausführt, läuft auf JEDEM Zweig', () => {
 // Action wieder als `@v7` statt per SHA → rot „… per Commit-SHA …“.
 test('das Docker-Image entsteht nur aus einem Push auf main dieses Repositorys', () => {
   const yml = fs.readFileSync(path.join(ECHTER_ORT, 'docker-publish.yml'), 'utf8');
-  const job = yml.split(/\n  pruefen:\n/)[1]?.split(/\n    steps:\n/)[0] ?? '';
-  assert.match(job, /\n    if: /, 'der Prüfjob hat kein if:');
+  const job = yml.split(/\n {2}pruefen:\n/)[1]?.split(/\n {4}steps:\n/)[0] ?? '';
+  assert.match(job, /\n {4}if: /, 'der Prüfjob hat kein if:');
   assert.match(job, /workflow_run\.event == 'push'/, 'ein PR-Lauf der CI darf kein Image auslösen');
   assert.match(job, /workflow_run\.head_branch == 'main'/);
   assert.match(job, /workflow_run\.head_repository\.full_name == github\.repository/,
@@ -158,7 +158,7 @@ test('das Docker-Image entsteht nur aus einem Push auf main dieses Repositorys',
 // gestrichen → rot „… ohne Build-Cache …“.
 test('das Release-APK wird ohne Build-Cache gebaut', () => {
   const yml = fs.readFileSync(path.join(ECHTER_ORT, 'android.yml'), 'utf8');
-  const schritt = yml.split(/\n      - name: Release bauen\n/)[1]?.split(/\n      - name: /)[0] ?? '';
+  const schritt = yml.split(/\n {6}- name: Release bauen\n/)[1]?.split(/\n {6}- name: /)[0] ?? '';
   const aufrufe = schritt.split('\n').filter(z => !z.trimStart().startsWith('#') && /gradlew/.test(z));
   assert.ok(aufrufe.length > 0, 'Schritt „Release bauen“ mit gradlew nicht gefunden');
   for (const z of aufrufe)
@@ -186,7 +186,7 @@ test('der Sicherheitslauf prüft Code, Abhängigkeiten, Image und den laufenden 
   const roh = fs.readFileSync(path.join(ECHTER_ORT, 'sicherheit.yml'), 'utf8');
   const yml = roh.split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
   const oben = yml.slice(0, yml.indexOf('\njobs:'));
-  assert.match(oben, /\npermissions:\n  contents: read\n/, 'oben nur contents: read');
+  assert.match(oben, /\npermissions:\n {2}contents: read\n/, 'oben nur contents: read');
   const schreibend = [...yml.matchAll(/security-events:\s*write/g)].length;
   assert.equal(schreibend, 1, 'security-events: write darf nur der CodeQL-Job haben');
   const codeql = yml.slice(yml.indexOf('\n  codeql:'), yml.indexOf('\n  trivy:'));
@@ -209,7 +209,7 @@ test('der Sicherheitslauf prüft Code, Abhängigkeiten, Image und den laufenden 
 test('der Gegenproben-Job misst jede Patch-Gegenprobe gegen eine echte Testklasse', () => {
   const yml = fs.readFileSync(path.join(ECHTER_ORT, 'android.yml'), 'utf8')
     .split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
-  const job = yml.split(/\n  gegenproben:\n/)[1]?.split(/\n  [\w-]+:\n/)[0] ?? '';
+  const job = yml.split(/\n {2}gegenproben:\n/)[1]?.split(/\n {2}[\w-]+:\n/)[0] ?? '';
   assert.match(job, /python3 tools\/gegenproben\.py gegenproben/, 'der Job ruft das Werkzeug nicht');
   assert.doesNotMatch(job, /continue-on-error/, 'eine grüne Gegenprobe muss den Lauf rot machen');
   // Diese Klassen müssen mindestens eine Gegenprobe haben; weitere sind willkommen.
@@ -320,11 +320,11 @@ test('Checkouts behalten keine Zugangsdaten, ausser wo der Job schreibt', () => 
 test('das Image trägt Herkunft und Stückliste, bescheinigt am signierten Digest', () => {
   const yml = fs.readFileSync(path.join(ECHTER_ORT, 'docker-publish.yml'), 'utf8')
     .split('\n').filter(l => !/^\s*#/.test(l)).join('\n');
-  const bau = yml.split(/\n  build:\n/)[1].split(/\n  merge:\n/)[0];
+  const bau = yml.split(/\n {2}build:\n/)[1].split(/\n {2}merge:\n/)[0];
   assert.match(bau, /^\s+provenance: mode=max\s*$/m, 'keine Herkunft beim Bau');
   assert.match(bau, /^\s+sbom: generator=docker\/buildkit-syft-scanner:[\d.]+@sha256:[0-9a-f]{64}\s*$/m,
     'keine Stückliste beim Bau oder ihr Scanner nicht per Digest');
-  const merge = yml.split(/\n  merge:\n/)[1];
+  const merge = yml.split(/\n {2}merge:\n/)[1];
   assert.match(merge, /permissions:\s*\n\s+contents: read\s*\n\s+id-token: write\s*\n\s+attestations: write/,
     'der Merge-Job darf Nachweise ablegen');
   assert.match(merge, /uses: actions\/attest-build-provenance@[0-9a-f]{40}/, 'attest-build-provenance fehlt');
@@ -345,9 +345,9 @@ test('der signierte Bau ohne Cache, Trivy vor der Signatur, Paketsignaturen in d
   const ohneKommentar = (t) => t.split('\n').filter(l => !/^\s*#/.test(l)).join('\n');
   const pub = ohneKommentar(fs.readFileSync(path.join(ECHTER_ORT, 'docker-publish.yml'), 'utf8'));
   assert.doesNotMatch(pub, /cache-(from|to)|type=gha/, 'der signierte Bau liest keinen Cache');
-  const bau = pub.split(/\n  build:\n/)[1].split(/\n  merge:\n/)[0];
+  const bau = pub.split(/\n {2}build:\n/)[1].split(/\n {2}merge:\n/)[0];
   assert.match(bau, /^\s+no-cache: true\s*$/m, 'der signierte Bau liest keinen Cache');
-  const merge = pub.split(/\n  merge:\n/)[1];
+  const merge = pub.split(/\n {2}merge:\n/)[1];
   const trivy = merge.indexOf('uses: aquasecurity/trivy-action@'), signieren = merge.indexOf('cosign sign ');
   assert.ok(trivy > 0 && signieren > trivy, 'Trivy prüft den Digest, bevor er signiert wird');
   const schritt = merge.slice(trivy, merge.indexOf('\n      - ', trivy));
@@ -387,7 +387,7 @@ function jobVon(yml, name) {
   const ohne = yml.split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
   const teil = ohne.split(new RegExp(`\\n  ${name}:\\n`))[1];
   assert.ok(teil, `Job ${name} fehlt`);
-  return teil.split(/\n  [\w-]+:\n/)[0];
+  return teil.split(/\n {2}[\w-]+:\n/)[0];
 }
 
 /** Führt [skript] in bash aus, mit einem `gh`-Ersatz, der je Aufruf [antworten] befragt. */
@@ -441,7 +441,7 @@ test('die Lückenprüfung der App sperrt, und ohne sie wird kein Etikett signier
     assert.match(z, /^CVE-\d{4}-\d+ exp:\d{4}-\d{2}-\d{2}$/, `Ausnahme ohne Ablaufdatum: ${z}`);
     assert.match(zeilen[i - 1] ?? '', /^# \S.{10,}/, `Ausnahme ohne Grund darüber: ${z}`);
   });
-  const name = sicherheit.match(/\n  android-abhaengigkeiten:\n    name: ([^\n]+)/)[1];
+  const name = sicherheit.match(/\n {2}android-abhaengigkeiten:\n {4}name: ([^\n]+)/)[1];
   const android = fs.readFileSync(path.join(ECHTER_ORT, 'android.yml'), 'utf8');
   const skript = schrittNach(android, 'Abhängigkeiten ohne bekannte Lücke');
   assert.match(skript, /workflows\/sicherheit\.yml\/runs\?head_sha=\$GITHUB_SHA/, 'Etikett ohne grüne Lückenprüfung');

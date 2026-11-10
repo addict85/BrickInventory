@@ -31,8 +31,7 @@ const QUELLEN_FELDER = {
 
 function zeige() {
   const modal = G('einrichtung-modal');
-  alle('.ew-schritt', modal).forEach(el =>
-    el.classList.toggle('aktiv', el.dataset.schritt === _schritte[_jetzt]));
+  for (const el of alle('.ew-schritt', modal)) el.classList.toggle('aktiv', el.dataset.schritt === _schritte[_jetzt]);
   G('ew-schritte').textContent = tRaw('setup.step', { n: _jetzt + 1, von: _schritte.length });
   G('ew-spaeter').hidden = _jetzt === _schritte.length - 1;
   G('ew-zurueck').style.display = _jetzt > 0 ? '' : 'none';

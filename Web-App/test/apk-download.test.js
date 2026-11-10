@@ -88,7 +88,7 @@ test('signiert und veröffentlicht wird nur aus einem Etikett auf main, und Grad
     const i = yml.indexOf(`- name: ${name}`);
     assert.ok(i >= 0, `Schritt „${name}“ nicht gefunden`);
     const rest = yml.slice(i + 1);
-    const ende = rest.search(/\n      - name: /);
+    const ende = rest.search(/\n {6}- name: /);
     return ende < 0 ? rest : rest.slice(0, ende);
   };
   // Die Secrets stehen in genau einem Schritt, und der läuft nur unter derselben
@@ -96,7 +96,7 @@ test('signiert und veröffentlicht wird nur aus einem Etikett auf main, und Grad
   const bedingung = "github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')";
   assert.ok(schritt('BrickInventory.apk als Release bereitstellen').includes(`if: success() && ${bedingung}\n`),
     'Release läuft auch ohne Etikett');
-  assert.match(yml, /\n  push:\n    branches: \['\*\*'\]\n(?:    #.*\n)*    tags: \['android-v\*'\]\n/, 'Etiketten lösen den Lauf aus');
+  assert.match(yml, /\n {2}push:\n {4}branches: \['\*\*'\]\n(?: {4}#.*\n)* {4}tags: \['android-v\*'\]\n/, 'Etiketten lösen den Lauf aus');
   const aufMain = schritt('Etikett liegt auf main');
   assert.ok(aufMain.includes(`\n        if: ${bedingung}\n`));
   assert.match(aufMain, /compare\/main\.\.\.\$GITHUB_SHA/);
@@ -111,7 +111,7 @@ test('signiert und veröffentlicht wird nur aus einem Etikett auf main, und Grad
   assert.ok(yml.includes(`environment: \${{ ${bedingung} && 'release' || '' }}`));
   assert.ok(schritt('Signieren').includes(`ECHT: \${{ ${bedingung} }}`));
   // Nur dieser Schritt nennt Secrets; der Bau mit allen Gradle-Plugins nicht.
-  const andere = yml.split(/\n      - name: /).filter(t => !t.startsWith('Release-Schlüssel bereitstellen'))
+  const andere = yml.split(/\n {6}- name: /).filter(t => !t.startsWith('Release-Schlüssel bereitstellen'))
     .join('\n').split('\n').filter(z => !z.trimStart().startsWith('#') && /secrets\./.test(z));
   assert.deepEqual(andere, [], 'Secrets ausserhalb des Schritts „Release-Schlüssel bereitstellen“');
 });
@@ -134,10 +134,10 @@ test('signiert wird in einem eigenen Job ohne Projektcode, geprüft und veröffe
   const job = (name) => {
     const teil = yml.split(new RegExp(`\\n  ${name}:\\n`))[1];
     assert.ok(teil, `Job ${name} fehlt`);
-    return '\n' + teil.split(/\n  [\w-]+:\n/)[0] + '\n';
+    return '\n' + teil.split(/\n {2}[\w-]+:\n/)[0] + '\n';
   };
   const signieren = job('signieren');
-  assert.match(signieren, /\n    needs: build\n/);
+  assert.match(signieren, /\n {4}needs: build\n/);
   assert.ok(signieren.includes("\n    environment: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v') && 'release' || '' }}\n"),
     'die Secrets nur für ein Etikett und nur über die Environment release');
   for (const verboten of [/actions\/checkout/, /gradlew/, /tools\/[\w-]+\.py/, /python/, /setup-gradle/])
@@ -147,19 +147,19 @@ test('signiert wird in einem eigenen Job ohne Projektcode, geprüft und veröffe
   assert.doesNotMatch(job('build'), /secrets\./, 'der Bau-Job sieht kein Secret');
 
   const pruefen = job('apk-pruefen');
-  assert.match(pruefen, /\n    needs: signieren\n/);
+  assert.match(pruefen, /\n {4}needs: signieren\n/);
   assert.match(pruefen, /name: apk-signiert/);
   assert.match(pruefen, /python3 tools\/apk-pruefen\.py\s*\\?\s*\n?\s*app\/build\/outputs\/apk\/release\/BrickInventory\.apk/);
   assert.match(pruefen, /python3 tools\/apk-ausrichtung\.py\s*\\?\s*\n?\s*app\/build\/outputs\/apk\/release\/BrickInventory\.apk/);
   assert.doesNotMatch(pruefen, /secrets\./);
 
   const release = job('release');
-  assert.match(release, /\n    needs: \[signieren, apk-pruefen, bescheinigen\]\n/, 'veröffentlicht nur das geprüfte, signierte APK');
+  assert.match(release, /\n {4}needs: \[signieren, apk-pruefen, bescheinigen\]\n/, 'veröffentlicht nur das geprüfte, signierte APK');
   assert.match(release, /name: apk-signiert/);
-  assert.match(release, /\n    environment: release\n/, 'das Release mit Schreibrecht läuft erst nach Freigabe in der Environment release');
-  assert.match(release, /\n    permissions:\n      contents: write\n    defaults:/, 'der Release-Job schreibt nur, er bescheinigt nicht');
+  assert.match(release, /\n {4}environment: release\n/, 'das Release mit Schreibrecht läuft erst nach Freigabe in der Environment release');
+  assert.match(release, /\n {4}permissions:\n {6}contents: write\n {4}defaults:/, 'der Release-Job schreibt nur, er bescheinigt nicht');
   const bescheinigen = job('bescheinigen');
-  assert.match(bescheinigen, /\n    needs: \[signieren, apk-pruefen\]\n/);
+  assert.match(bescheinigen, /\n {4}needs: \[signieren, apk-pruefen\]\n/);
   assert.match(bescheinigen, /uses: \.\/\.github\/workflows\/android-bescheinigung\.yml/, 'die Herkunft des APK wird bescheinigt');
   const aussteller = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android-bescheinigung.yml'), 'utf8');
   assert.match(aussteller, /uses: actions\/attest-build-provenance@[0-9a-f]{40}/, 'die Herkunft des APK wird bescheinigt');
@@ -180,10 +180,10 @@ test('Prüfsummen kommen als Pull-Request, Bildschirmfotos nur als PNG', () => {
   const job = (name) => {
     const teil = yml.split(new RegExp(`\\n  ${name}:\\n`))[1];
     assert.ok(teil, `Job ${name} fehlt`);
-    return '\n' + teil.split(/\n  [\w-]+:\n/)[0] + '\n';
+    return '\n' + teil.split(/\n {2}[\w-]+:\n/)[0] + '\n';
   };
   const vorschlag = job('pruefsummen-vorschlagen');
-  assert.match(vorschlag, /\n    permissions:\n      contents: write\n      pull-requests: write\n/);
+  assert.match(vorschlag, /\n {4}permissions:\n {6}contents: write\n {6}pull-requests: write\n/);
   assert.match(vorschlag, /ZWEIG="pruefsummen\/\$GITHUB_RUN_ID"/);
   assert.match(vorschlag, /git push origin "HEAD:refs\/heads\/\$ZWEIG"/);
   assert.match(vorschlag, /gh pr create --base "\$GITHUB_REF_NAME" --head "\$ZWEIG"/);
@@ -191,7 +191,7 @@ test('Prüfsummen kommen als Pull-Request, Bildschirmfotos nur als PNG', () => {
   assert.doesNotMatch(vorschlag, /python|gradlew/, 'mit Schreibrecht läuft kein Werkzeug aus dem Repository');
   // Seit sec17 B-N2 ohne Schreibrecht UND ohne Gradle, in einem eigenen Job.
   assert.match(job('pruefsummen-zusammenfassen'), /tools\/pruefsummen-vergleich\.py/, 'die Zusammenfassung entsteht ohne Schreibrecht');
-  assert.match(job('pruefsummen-zusammenfassen'), /\n    permissions:\n      contents: read\n/);
+  assert.match(job('pruefsummen-zusammenfassen'), /\n {4}permissions:\n {6}contents: read\n/);
   for (const name of ['build', 'signieren', 'apk-pruefen', 'release', 'gegenproben', 'pruefsummen', 'pruefsummen-zusammenfassen',
     'bildschirmfotos', 'bildschirmfotos-einchecken'])
     assert.doesNotMatch(job(name), /pull-requests: write/, `${name}: nur der vorschlagende Job legt Pull-Requests an`);

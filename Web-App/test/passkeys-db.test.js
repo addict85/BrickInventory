@@ -73,7 +73,7 @@ function authenticator() {
       return { id: b64u(id), rawId: b64u(id), type: 'public-key', clientExtensionResults: {},
         response: { clientDataJSON: b64u(client), attestationObject: b64u(att), transports: ['internal'] } };
     },
-    /** @param o.uv User Verification gesetzt @param o.zaehler fester Zählerstand */
+    /** @param challenge @param {object} [o] @param [o.uv] User Verification gesetzt @param [o.zaehler] fester Zählerstand */
     anmelden(challenge, o = {}) {
       const origin = o.origin ?? ORIGIN;
       const stand = o.zaehler ?? ++zaehler;

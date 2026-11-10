@@ -269,8 +269,7 @@ async function scrapeInstructions(setNumber: string) {
       /href="(https?:\/\/cdn\.rebrickable\.com\/media\/instructions[^"]+\.pdf[^"]*)"/gi,
       /href="(https?:\/\/assets\.lego\.com[^"]*\.pdf[^"]*)"/gi,
     ]) {
-      let m: RegExpExecArray | null;
-      while ((m = re.exec(body)) !== null) {
+      for (const m of body.matchAll(re)) {
         // Als Konstante, weil der Rückruf `m` nicht als nicht-null kennt.
         const treffer = m[1];
         if (!found.find(f => f.url === treffer)) found.push({ url: treffer, description: `Anleitung ${n}` });
