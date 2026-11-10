@@ -63,7 +63,7 @@ class TeileSeitenTest {
             teileEingeschraenkt = { false })
         t.laden(); runCurrent()
         // Das Vorwärmen hat Seite 2 zur Hälfte abgelegt; die Liste folgt der Ablage.
-        lokal.value = Lokal(listOf("3001", "3002", "3003").map(::teil), stand = 1L)
+        lokal.value = Lokal(listOf("3001", "3002", "3003").map { teil(it) }, stand = 1L)
         runCurrent()
         assertEquals(listOf("3001", "3002", "3003"), t.state.value.parts.map { it.partNumber })
 
