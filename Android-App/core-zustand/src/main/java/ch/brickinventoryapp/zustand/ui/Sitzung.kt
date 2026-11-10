@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.zustand.ui
 
+import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,10 +36,10 @@ interface Sitzung {
     fun verwalterGeaendert(admin: Boolean)
 
     /** Der Server hat Währung und Bedingung des Kontos gespeichert. */
-    fun einstellungenGespeichert(currency: String, priceCondition: String)
+    fun einstellungenGespeichert(currency: String, priceCondition: Zustand)
 
     /** Die Einstellungen des Kontos vom Server; die Bedingung ist die aufgelöste (Nutzer → global → „N“). */
-    fun einstellungenGeladen(currency: String, priceCondition: String, defaultPriceCondition: String, userDefaultCondition: String?)
+    fun einstellungenGeladen(currency: String, priceCondition: Zustand, defaultPriceCondition: Zustand, userDefaultCondition: Zustand?)
 
     /** Eine Antwort des Servers nennt die Währung des Kontos (etwa die Bewertung). */
     fun waehrungUebernommen(currency: String)
@@ -81,11 +82,11 @@ class SitzungsZustand @Inject constructor() : Sitzung {
 
     override fun verwalterGeaendert(admin: Boolean) = _state.update { it.copy(isAdmin = admin) }
 
-    override fun einstellungenGespeichert(currency: String, priceCondition: String) =
+    override fun einstellungenGespeichert(currency: String, priceCondition: Zustand) =
         _state.update { it.copy(currency = currency, priceCondition = priceCondition) }
 
     override fun einstellungenGeladen(
-        currency: String, priceCondition: String, defaultPriceCondition: String, userDefaultCondition: String?,
+        currency: String, priceCondition: Zustand, defaultPriceCondition: Zustand, userDefaultCondition: Zustand?,
     ) = _state.update {
         it.copy(currency = currency, priceCondition = priceCondition,
             defaultPriceCondition = defaultPriceCondition, userDefaultCondition = userDefaultCondition)

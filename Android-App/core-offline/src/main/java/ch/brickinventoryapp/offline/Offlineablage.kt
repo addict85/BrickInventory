@@ -34,7 +34,7 @@ object Faecher {
             thema = it.theme, lagerort = it.storage)
     }
     val MERKLISTE = Fach(Bestandsart.MERKLISTE, Merkposten.serializer(), { LokaleAnwendung.merkSchluessel(it) }) {
-        Filterspalten(suchtext(it.setNumber, it.name), zustand = it.condition)
+        Filterspalten(suchtext(it.setNumber, it.name), zustand = it.condition.kennung)
     }
     val TEILE = Fach(Bestandsart.TEILE, Part.serializer(), { "${it.partNumber}|${it.colorId}|${it.isSpare}" }) {
         Filterspalten(suchtext(it.partNumber, it.partName, it.blPartNumber), farbe = it.colorName,

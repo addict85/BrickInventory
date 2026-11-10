@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.teile.ui.screens
 
+import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.zustand.ui.LagerUiState
 import ch.brickinventoryapp.zustand.ui.ManualItemDetailUiState
 import ch.brickinventoryapp.teile.ui.PartsUiState
@@ -61,13 +62,13 @@ import ch.brickinventoryapp.gemeinsam.ui.WertKacheln
 fun ManualItemDetailRoute(
     vm: KaeufeViewModel,
     teile: TeileViewModel,
-    type: String,
+    type: Postenart,
     id: String,
     colorId: Int = OHNE_FARBE,
     fallbackTitle: String,
     imageLoader: ImageLoader,
     onBack: () -> Unit,
-    onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit,
+    onNavigateToAcqMgmt: (type: Postenart, id: String, colorId: Int, title: String) -> Unit,
     onFarbeGeaendert: (neueFarbe: Int) -> Unit = {},
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -83,7 +84,7 @@ fun ManualItemDetailRoute(
 }
 
 /** Was die Detailansicht eines manuellen Eintrags zeigt. */
-data class EinzelstueckZustand(
+internal data class EinzelstueckZustand(
     val state: AppUiState,
     val partsState: PartsUiState,
     val manDetailState: ManualItemDetailUiState,
@@ -92,19 +93,19 @@ data class EinzelstueckZustand(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ManualItemDetailScreen(
+internal fun ManualItemDetailScreen(
     zustand: EinzelstueckZustand,
     kaeufe: KaeufeAktionen,
     /** Die Zeile des Eintrags und das Ändern, Löschen, Umfärben. */
     teile: TeileAktionen,
-    type: String,          // "part" | "fig"
+    type: Postenart,
     id: String,            // partNumber / figNumber
     colorId: Int = OHNE_FARBE,
     /** Aus der Navigation — bis die Bewertung geladen ist, steht er in der Leiste. */
     fallbackTitle: String,
     imageLoader: ImageLoader,
     onBack: () -> Unit,
-    onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit,
+    onNavigateToAcqMgmt: (type: Postenart, id: String, colorId: Int, title: String) -> Unit,
     /**
      * Die Farbe wurde geändert — der Screen muss mit der neuen Farbe neu geöffnet
      * werden: Sie ist Teil der Kennung (Route
@@ -119,7 +120,7 @@ fun ManualItemDetailScreen(
     val manDetailState = zustand.manDetailState
     val lagerZustand = zustand.lagerZustand
 
-    val isFig = type == "fig"
+    val isFig = type == Postenart.FIG
     val currency = state.currency
 
     LaunchedEffect(type, id, colorId) {

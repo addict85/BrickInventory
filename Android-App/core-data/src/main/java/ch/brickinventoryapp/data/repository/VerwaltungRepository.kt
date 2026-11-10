@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.model.*
 
 /**
@@ -60,5 +61,5 @@ interface VerwaltungRepository {
 
     suspend fun triggerPriceJob(): Ergebnis<GenericAdminResponse>
 
-    suspend fun setDefaultCondition(condition: String): Ergebnis<GenericAdminResponse>
+    suspend fun setDefaultCondition(condition: Zustand): Ergebnis<GenericAdminResponse>
 }

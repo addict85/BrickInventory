@@ -29,7 +29,7 @@ import ch.brickinventoryapp.ui.components.SegmentWahl
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun PortfolioChart(
+internal fun PortfolioChart(
     points: List<DiagrammPunkt>,
     yAxis: List<DiagrammAchse>,
     currency: String,

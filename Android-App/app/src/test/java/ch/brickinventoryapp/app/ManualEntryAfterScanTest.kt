@@ -37,8 +37,8 @@ class ManualEntryAfterScanTest {
         }
         assert(pl.contains("onManuelleErfassungQuittiert()")) { "Die Teileliste quittiert nicht" }
 
-        val tg = code(lies("app/nav/ToolsGraph.kt"))
-        assert(tg.contains("manuelleErfassungAnfordern = barcodeState.manuelleErfassungAnfordern")) {
+        val tg = code(lies("teile/ui/TeileGraph.kt"))
+        assert(tg.contains("manuelleErfassungAnfordern = scan.manuellErfassen")) {
             "Der Graph reicht die Anforderung nicht an die Teileliste durch"
         }
     }

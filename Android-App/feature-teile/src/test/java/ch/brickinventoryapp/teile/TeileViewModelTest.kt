@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.teile
 
+import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.ressourcen.R
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.data.ScopeFilter
@@ -166,7 +167,7 @@ class TeileViewModelTest {
     @Test
     fun `der Lagerort wird entprellt gespeichert und im offenen Dialog gezeigt`() {
         val vm = vm()
-        vm.oeffneSetItem("part", "3001", 5)
+        vm.oeffneSetItem(Postenart.PART, "3001", 5)
         assertTrue("Dialog geladen", !vm.setItemState.value.laedt)
         assertEquals("75192-1", vm.setItemState.value.sets.single().setNumber)
 
@@ -184,7 +185,7 @@ class TeileViewModelTest {
         val gemerkt = SavedStateHandle()
         val vm = vm(gemerkt)
         vm.setPartsColorFilter("5")
-        vm.oeffneSetItem("part", "3001", 5)
+        vm.oeffneSetItem(Postenart.PART, "3001", 5)
         assertTrue("geladen", vm.partsState.value.parts.isNotEmpty() && !vm.setItemState.value.laedt)
         t.sitzung.abgemeldet()
         assertTrue(vm.partsState.value.parts.isEmpty())

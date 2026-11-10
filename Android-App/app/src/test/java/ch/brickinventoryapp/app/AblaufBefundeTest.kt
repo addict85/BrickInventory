@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Erfassungswunsch
+import ch.brickinventoryapp.model.fach.Zustand
 import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -205,8 +207,7 @@ class AblaufBefundeTest {
         var menge = 0
         var preis: Double? = null
         val aktionen = object : ErfassungAktionen {
-            override fun confirmAddBarcode(setNum: String, purchasePrice: Double?, condition: String?, ownerUserId: Int?,
-                                           storage: String?, quantity: Int) { menge = quantity; preis = purchasePrice }
+            override fun confirmAddBarcode(wunsch: Erfassungswunsch) { menge = wunsch.menge; preis = wunsch.kaufpreis }
             override fun cancelBarcode() = Unit
             override fun brichPruefungAb() = Unit
         }
@@ -231,20 +232,20 @@ class AblaufBefundeTest {
 
     @Test
     fun `M6 das Katalog-Detail zeigt den Merkposten und oeffnet ihn`() {
-        var geoeffnet: Pair<String, String>? = null
-        val gemerkt = MerkpostenAnsicht(setNumber = "10305-1", condition = "N", name = "Lion Knights' Castle", waehrung = "CHF",
+        var geoeffnet: Pair<String, Zustand>? = null
+        val gemerkt = MerkpostenAnsicht(setNumber = "10305-1", condition = Zustand.NEU, name = "Lion Knights' Castle", waehrung = "CHF",
             alarm = MerkpostenAlarmAnsicht(richtung = "unter", schwelle = 349.0))
         zeige {
             CatalogDetailScreen(setNumber = "10305-1",
                 detail = KatalogDetailAnsicht(setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022),
                 isLoading = false, imageLoader = bilder, serverUrl = "", onLoad = {},
-                onAddToGallery = { _, _, _, _, _, _ -> }, onWish = { _, _, _, _, _ -> }, onOpenInGallery = {}, onBack = {},
+                onAddToGallery = {}, onWish = { _, _, _, _, _ -> }, onOpenInGallery = {}, onBack = {},
                 gemerkt = gemerkt, onOeffneMerkposten = { sn, z -> geoeffnet = sn to z })
         }
         compose.onNodeWithText(ctx.getString(R.string.catalog_auf_merkliste)).fetchSemanticsNode("Merkliste nicht genannt")
         compose.onAllNodesWithText(ctx.getString(R.string.wanted_add_submit)).assertCountEquals(0)
         compose.onNodeWithText(ctx.getString(R.string.catalog_merkposten_oeffnen)).performScrollTo().performClick()
-        assertEquals("10305-1" to "N", geoeffnet)
+        assertEquals("10305-1" to Zustand.NEU, geoeffnet)
     }
 
     @Test

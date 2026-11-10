@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
@@ -63,8 +64,8 @@ class AlarmSchwelleEntprelltTest {
     fun `getippte Schwelle speichert nach der Ruhezeit einmal, die letzte`() {
         val vm = t.merke(EinstellungenViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, KontoRepository(t.api, t.cache),
             VerwaltungRepository(t.api, t.cache), SetsRepository(t.api, t.cache), TeileRepository(t.api, t.cache), keinLeser))
-        vm.setzeAlarmSchwelle("75192-1", "N", "unter", "4")
-        vm.setzeAlarmSchwelle("75192-1", "N", "unter", "449,90")
+        vm.setzeAlarmSchwelle("75192-1", Zustand.NEU, "unter", "4")
+        vm.setzeAlarmSchwelle("75192-1", Zustand.NEU, "unter", "449,90")
         uhr.advanceTimeBy(500)
         assertTrue("Vor der Ruhezeit nichts gesendet", pfade.anfragenAn("PUT /api/v1/sets/75192-1/alert").isEmpty())
         uhr.advanceTimeBy(500)

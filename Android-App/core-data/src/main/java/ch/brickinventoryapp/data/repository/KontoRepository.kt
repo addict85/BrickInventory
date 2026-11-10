@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.Entwertungsergebnis
 import ch.brickinventoryapp.data.GetauschterToken
 import ch.brickinventoryapp.model.data.model.*
@@ -63,9 +64,10 @@ interface KontoRepository {
 
     suspend fun setzeEigenesDesign(theme: String): Ergebnis<AppThemeResponse>
 
-    suspend fun updateSettings(currency: String, condition: String): Ergebnis<GenericResponse>
+    suspend fun updateSettings(currency: String, condition: Zustand): Ergebnis<GenericResponse>
 
     suspend fun getDefaultCondition(): Ergebnis<DefaultConditionResponse>
 
-    suspend fun setUserDefaultCondition(condition: String): Ergebnis<GenericAdminResponse>
+    /** null: zurück auf die Vorgabe des Servers. */
+    suspend fun setUserDefaultCondition(condition: Zustand?): Ergebnis<GenericAdminResponse>
 }

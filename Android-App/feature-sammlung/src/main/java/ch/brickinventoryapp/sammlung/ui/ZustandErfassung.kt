@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui
 
+import ch.brickinventoryapp.model.ui.Scannerherkunft
 import ch.brickinventoryapp.model.data.model.*
 
 /**
@@ -14,8 +15,8 @@ data class BarcodeUiState(
      * Set, das schon in der Sammlung steht. Die Galerie navigiert und quittiert.
      */
     val gefundenesSet: String? = null,
-    /** "gallery", "gallery_search", "partslist" oder "wanted". */
-    val source: String = "gallery",
+    /** Von wo der laufende Scan kam. */
+    val source: Scannerherkunft = Scannerherkunft.GALERIE,
     /**
      * Der Scan blieb ohne Setnummer → die manuelle Erfassung soll aufgehen, überall wo
      * der Scanner eingebaut ist. Ein Zustandsfeld statt eines Aufrufs je Bildschirm:

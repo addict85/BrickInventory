@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.model.data.model.*
 import ch.brickinventoryapp.model.data.model.CsvImportStatus
@@ -29,31 +30,38 @@ interface SetsRepository {
     suspend fun getSetInfo(setNumber: String): Ergebnis<SetInfoResponse>
 
     suspend fun addSet(setNumber: String, quantity: Int = 1, purchasePrice: Double? = null,
-                       condition: String? = null, ownerUserId: Int? = null,
+                       condition: Zustand? = null, ownerUserId: Int? = null,
                        storage: String? = null): Ergebnis<AddSetResponse>
 
-    suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: String? = null): Ergebnis<GenericResponse>
+    suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: Zustand? = null): Ergebnis<GenericResponse>
 
     suspend fun aendereMengeUm(setNumber: String, schritt: Int): Ergebnis<GenericResponse>
 
-    suspend fun getMerkliste(search: String? = null, condition: String? = null,
+    suspend fun getMerkliste(search: String? = null, condition: Zustand? = null,
                              sort: String? = null, accounts: String? = null): Ergebnis<MerklisteResponse>
 
     fun beobachteMerkliste(): Flow<Lokal<Merkposten>>
 
-    suspend fun legeMerkpostenAn(setNumber: String, condition: String,
+    /**
+     * Die ungefilterte Merkliste vom Server in die lokale Ablage holen. Zu sehen ist
+     * sie nur über [beobachteMerkliste]: ein Weg für die Daten, der Abruf meldet nur
+     * Erfolg oder Fehler.
+     */
+    suspend fun aktualisiereMerkliste(): Ergebnis<Unit>
+
+    suspend fun legeMerkpostenAn(setNumber: String, condition: Zustand,
                              ownerUserId: Int? = null): Ergebnis<MerkpostenAntwort>
 
-    suspend fun verschiebeMerkposten(setNumber: String, condition: String,
+    suspend fun verschiebeMerkposten(setNumber: String, condition: Zustand,
                                  vonId: Int, zuId: Int): Ergebnis<MerkpostenInhaberAntwort>
 
-    suspend fun loescheMerkposten(setNumber: String, condition: String,
+    suspend fun loescheMerkposten(setNumber: String, condition: Zustand,
                               ownerUserId: Int? = null): Ergebnis<GenericResponse>
 
     suspend fun getMerkpostenPreise(setNumber: String): Ergebnis<MerkpostenPreiseResponse>
 
-    suspend fun uebernimmMerkposten(setNumber: String, condition: String, quantity: Int = 1,
-                                purchasePrice: Double? = null, erfasstAls: String? = null,
+    suspend fun uebernimmMerkposten(setNumber: String, condition: Zustand, quantity: Int = 1,
+                                purchasePrice: Double? = null, erfasstAls: Zustand? = null,
                                 ownerUserId: Int? = null,
                                 storage: String? = null): Ergebnis<MerkpostenUebernahmeResponse>
 
@@ -71,9 +79,9 @@ interface SetsRepository {
     suspend fun getPreisalarme(setNumber: String): Ergebnis<PreisalarmeResponse>
 
     suspend fun setPreisalarm(setNumber: String, richtung: String, schwelle: Double,
-                              condition: String = "N"): Ergebnis<PreisalarmResponse>
+                              condition: Zustand = Zustand.NEU): Ergebnis<PreisalarmResponse>
 
-    suspend fun deletePreisalarm(setNumber: String, condition: String = "N"): Ergebnis<PreisalarmResponse>
+    suspend fun deletePreisalarm(setNumber: String, condition: Zustand = Zustand.NEU): Ergebnis<PreisalarmResponse>
 
     suspend fun setSetStorage(setNumber: String, ort: String): Ergebnis<LagerortResponse>
 

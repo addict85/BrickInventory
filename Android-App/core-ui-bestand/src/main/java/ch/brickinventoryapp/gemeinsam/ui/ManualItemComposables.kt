@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.gemeinsam.ui
 
+import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.ui.graphics.luminance
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
@@ -137,16 +138,16 @@ private fun KaufZeile(acq: KaufAnsicht, currency: String) {
  * `condition` zurück.
  */
 @Composable
-fun ConditionBadges(conditions: List<String>, fallback: String? = null) {
-    val list = if (conditions.isNotEmpty()) conditions else listOf(fallback ?: "N")
+fun ConditionBadges(conditions: List<Zustand>, fallback: Zustand? = null) {
+    val list = if (conditions.isNotEmpty()) conditions else listOf(fallback ?: Zustand.NEU)
     Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
         list.forEach { ConditionBadge(it) }
     }
 }
 
 @Composable
-fun ConditionBadge(condition: String) {
-    val isUsed = condition == "U"
+fun ConditionBadge(condition: Zustand) {
+    val isUsed = condition == Zustand.GEBRAUCHT
     // Salbei nur im hellen Stein-Design: Im Dunkeln leuchtete die helle Pille auf der dunklen Karte.
     val isBrick = LocalIsBrickTheme.current && MaterialTheme.colorScheme.surface.luminance() > 0.5f
     val bgColor = when {
@@ -247,8 +248,8 @@ fun ErfassungsFelder(
     onAnzahl: (String) -> Unit,
     preis: String,
     onPreis: (String) -> Unit,
-    zustand: String,
-    onZustand: (String) -> Unit,
+    zustand: Zustand,
+    onZustand: (Zustand) -> Unit,
     /**
      * Lagerort und sein Vorrat — hier, weil er zum selben Block gehört wie die übrigen
      * Erfassungsfelder.
@@ -293,8 +294,8 @@ fun ManuelleKachel(
     imageLoader: ImageLoader,
     name: String,
     menge: Int,
-    zustaende: List<String>,
-    zustand: String?,
+    zustaende: List<Zustand>,
+    zustand: Zustand?,
     besitzer: List<KontoAnsicht>,
     preis: Double?,
     waehrung: String,

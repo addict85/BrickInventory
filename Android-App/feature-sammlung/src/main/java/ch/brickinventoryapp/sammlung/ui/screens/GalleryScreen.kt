@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import ch.brickinventoryapp.model.ui.model.KennzahlenAnsicht
@@ -74,9 +75,31 @@ class GalerieEreignisse(
     val konto: (String) -> Unit,
     val lagerort: (String) -> Unit,
     val aktualisieren: () -> Unit,
-    val setErfassen: (String, Int, Double?, String?, Int?, String?) -> Unit,
+    val setErfassen: (Erfassungswunsch) -> Unit,
     val manuelleErfassungQuittiert: () -> Unit,
 )
+
+/**
+ * „gelöscht“ mit „Rückgängig“. Gelöscht wird erst, wenn die Snackbar ohne Rückgängig
+ * endet — auch wenn sie verschwindet, weil man die Galerie verlässt. Jede Snackbar
+ * antwortet nur für ihr Set: Löst ein zweites Löschen sie ab, bleibt dessen Rückgängig.
+ */
+@Composable
+internal fun GalerieRueckgaengigRoute(vm: GalerieViewModel, snackbarHostState: SnackbarHostState) {
+    val vorgemerkt by vm.vorgemerkt.collectAsStateWithLifecycle()
+    val text = vorgemerkt?.let { stringResource(R.string.vm_set_deleted, it.name) }
+    val rueckgaengig = stringResource(R.string.common_undo)
+    LaunchedEffect(vorgemerkt) {
+        val v = vorgemerkt ?: return@LaunchedEffect
+        var zurueck = false
+        try {
+            zurueck = snackbarHostState.showSnackbar(text ?: v.name, rueckgaengig,
+                duration = SnackbarDuration.Long) == SnackbarResult.ActionPerformed
+        } finally {
+            if (zurueck) vm.rueckgaengig(v) else vm.loeschenAusfuehren(v)
+        }
+    }
+}
 
 /** Die Galerie am Navigationsziel: sammelt die Flüsse und reicht Zustand und Ereignisse weiter. */
 @Composable
@@ -110,7 +133,7 @@ fun GalleryRoute(
             lagerort = { vm.setLagerFilter(ScopeFilter.View.GALLERY, it) },
             // Auch die Filterlisten: Sie werden sonst nur beim Start geladen.
             aktualisieren = vm::aktualisieren,
-            setErfassen = { sn, qty, price, cond, owner, ort -> erfassung.addSet(sn, qty, price, cond, owner, ort) },
+            setErfassen = erfassung::addSet,
             manuelleErfassungQuittiert = { erfassung.manuelleErfassungQuittieren() },
         )
     }

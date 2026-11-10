@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile.ui.screens
 
+import ch.brickinventoryapp.model.fach.Postenart
+import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import ch.brickinventoryapp.ui.components.HinweisText
@@ -53,7 +55,7 @@ import ch.brickinventoryapp.model.data.Ersatzteilwahl
 import ch.brickinventoryapp.teile.ui.TeileSitzungUiState
 
 /** Was der Teile- und der Figurenreiter zeigen; die Routen sammeln es aus den Flüssen. */
-data class TeileZustand(
+internal data class TeileZustand(
     val state: TeileSitzungUiState,
     val blick: BlickfeldUiState,
     val partsState: PartsUiState,
@@ -77,7 +79,7 @@ fun PartsRoute(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun PartsScreen(
+internal fun PartsScreen(
     zustand: TeileZustand,
     aktionen: TeileAktionen,
     imageLoader: ImageLoader,
@@ -109,7 +111,7 @@ fun PartsScreen(
     val colors = partsState.partsColors
     val serverUrl = state.serverUrl
     val waehrung = state.currency
-    val defaultCondition = state.userDefaultCondition ?: "N"
+    val defaultCondition = state.userDefaultCondition ?: Zustand.NEU
     val householdMembers = blick.householdMembers
     val scopeMode = blick.scopeModes[ScopeFilter.View.PARTS]
         ?: ScopeFilter.ALL
@@ -126,10 +128,6 @@ fun PartsScreen(
     val lagerModus = lagerState.modi[ScopeFilter.View.PARTS] ?: ""
     val onLagerChange: (String) -> Unit = { aktionen.setLagerFilter(ScopeFilter.View.PARTS, it) }
     val ansicht = partsState.partsView
-    val onAddPart: (String, Int, String?, String?, Int, Double?, String?, Int?, String?) -> Unit =
-        { num, colorId, colorName, colorHex, qty, unitPrice, cond, owner, ort ->
-            aktionen.addPart(num, colorId, colorName, colorHex, qty, unitPrice, cond, owner, ort)
-        }
     // Der VORRAT an Lagerorten (nicht die belegten Orte): Beim Erfassen soll
     // auch ein leeres Regal zur Wahl stehen.
     val lagerortVorrat = lagerState.eigene.map { it.name }
@@ -270,7 +268,7 @@ fun PartsScreen(
                     ) { part ->
                         // BEIDE Ansichten oeffnen denselben Dialog — eine
                         // Ansicht darf nicht koennen, was die andere nicht kann.
-                        val oeffne = { aktionen.oeffneSetItem("part", part.partNumber, part.colorId) }
+                        val oeffne = { aktionen.oeffneSetItem(Postenart.PART, part.partNumber, part.colorId) }
                         Bewegt {
                             if (ansicht == Listenansicht.TABELLE) PartTableRow(part, serverUrl, imageLoader, oeffne)
                             else PartCard(part, serverUrl, imageLoader, oeffne,
@@ -322,9 +320,9 @@ fun PartsScreen(
             onDismiss = { showAddDialog = false },
             lagerorte = lagerortVorrat,
             lagerortVorgabe = lagerState.vorgabe?.name ?: "",
-            onAdd = { num, colorId, colorName, colorHex, qty, unitPrice, cond, owner, ort ->
+            onAdd = { erfassung ->
                 showAddDialog = false
-                onAddPart(num, colorId, colorName, colorHex, qty, unitPrice, cond, owner, ort)
+                aktionen.addPart(erfassung)
             },
             defaultCondition = defaultCondition
         )

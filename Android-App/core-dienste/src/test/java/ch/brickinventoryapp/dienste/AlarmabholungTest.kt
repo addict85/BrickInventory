@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.dienste
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.dienste.alarm.Alarmabholung
 import ch.brickinventoryapp.model.data.model.PendingAlertsResponse
 import ch.brickinventoryapp.model.data.model.Preisalarm
@@ -31,7 +32,7 @@ class AlarmabholungTest {
 
     private fun alarm(sn: String = "10179-1", richtung: String = "unter",
                       schwelle: Double = 200.0, preis: Double? = 100.0) =
-        Preisalarm(setNumber = sn, condition = "N", richtung = richtung,
+        Preisalarm(setNumber = sn, condition = Zustand.NEU, richtung = richtung,
                    schwelle = schwelle, currencyCode = "EUR",
                    ausgeloest = true, zuletztAm = "2026-09-19T17:00:00.000Z",
                    zuletztPreis = preis)

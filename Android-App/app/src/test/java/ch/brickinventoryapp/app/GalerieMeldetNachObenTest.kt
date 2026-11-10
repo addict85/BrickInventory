@@ -68,7 +68,7 @@ class GalerieMeldetNachObenTest {
     private val ereignisse = GalerieEreignisse(
         suche = { gesucht += it }, thema = { themen += it }, sortierung = { sortiert += it },
         mehrLaden = {}, konto = {}, lagerort = {}, aktualisieren = {},
-        setErfassen = { _, _, _, _, _, _ -> }, manuelleErfassungQuittiert = {},
+        setErfassen = {}, manuelleErfassungQuittiert = {},
     )
 
     private fun zeige() {

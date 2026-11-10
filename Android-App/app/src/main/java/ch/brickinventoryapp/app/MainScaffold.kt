@@ -59,6 +59,7 @@ import ch.brickinventoryapp.sammlung.ui.screens.*
 import ch.brickinventoryapp.teile.ui.screens.*
 import ch.brickinventoryapp.ui.screens.*
 import ch.brickinventoryapp.verwaltung.ui.screens.*
+import ch.brickinventoryapp.app.nav.Reiter
 import ch.brickinventoryapp.app.nav.ZielUmgebung
 import ch.brickinventoryapp.ui.components.AusgangLeiste
 import ch.brickinventoryapp.ui.components.LocalOffeneAenderungen
@@ -82,7 +83,7 @@ import ch.brickinventoryapp.app.ui.components.CsvImportBanner
 fun MainScaffold(
     title: String,
     navController: androidx.navigation.NavController,
-    bottomNavItems: List<Triple<Screen, @Composable () -> Unit, String>>,
+    bottomNavItems: List<Reiter>,
     snackbarHostState: SnackbarHostState,
     csvImportState: kotlinx.coroutines.flow.StateFlow<CsvImportUiState>,
     /**
@@ -255,7 +256,7 @@ fun ReiterGeruest(
         title = titel,
         navController = umgebung.navController,
         bottomNavItems = umgebung.reiter,
-        snackbarHostState = umgebung.snackbarHostState,
+        snackbarHostState = umgebung.snackbar,
         csvImportState = csvImport.csvImportState,
         onCsvAbbrechen = { csvImport.cancelCsvImport() },
         // Reiter angetippt → oben anfangen.
@@ -305,7 +306,7 @@ private fun ReiterZiel(
  */
 @Composable
 private fun ReiterLeiste(
-    ziele: List<Triple<Screen, @Composable () -> Unit, String>>,
+    ziele: List<Reiter>,
     gewaehlt: (Screen) -> Boolean, onWahl: (Screen) -> Unit,
     symbol: @Composable (Screen, @Composable () -> Unit) -> Unit,
 ) {
@@ -316,8 +317,8 @@ private fun ReiterLeiste(
     Surface(color = farben.leiste) {
         BoxWithConstraints(Modifier.fillMaxWidth().windowInsetsPadding(NavigationBarDefaults.windowInsets)) {
             val satz = with(dichte) {
-                reiterSatz(ziele.map { messer.measure(it.third, stil).size.width.toFloat() },
-                    ziele.indexOfFirst { gewaehlt(it.first) }, maxWidth.toPx(), (Abstaende.winzig * 2).toPx(),
+                reiterSatz(ziele.map { messer.measure(it.beschriftung, stil).size.width.toFloat() },
+                    ziele.indexOfFirst { gewaehlt(it.ziel) }, maxWidth.toPx(), (Abstaende.winzig * 2).toPx(),
                     ANZEIGE_MIN.toPx(), fontScale)
             }
             Row(Modifier.fillMaxWidth().heightIn(min = LEISTE_HOEHE).selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
@@ -338,7 +339,7 @@ private fun ReiterLeiste(
 /** Die Seitenleiste wird so breit, wie die längste Beschriftung in voller Grösse braucht. */
 @Composable
 private fun ReiterSeitenleiste(
-    ziele: List<Triple<Screen, @Composable () -> Unit, String>>,
+    ziele: List<Reiter>,
     gewaehlt: (Screen) -> Boolean, onWahl: (Screen) -> Unit,
     symbol: @Composable (Screen, @Composable () -> Unit) -> Unit,
 ) {

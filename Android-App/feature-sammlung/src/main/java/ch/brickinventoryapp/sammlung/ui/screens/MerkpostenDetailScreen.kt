@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.ui.theme.mittigBis
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
@@ -50,11 +51,11 @@ import ch.brickinventoryapp.gemeinsam.ui.PriceChart
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MerkpostenDetailScreen(
+internal fun MerkpostenDetailScreen(
     ansicht: MerklisteZustand,
     aktionen: MerklisteAktionen,
     setNumber: String,
-    condition: String,
+    condition: Zustand,
     imageLoader: coil3.ImageLoader,
     onBack: () -> Unit,
 ) {
@@ -164,7 +165,7 @@ fun MerkpostenDetailScreen(
                             CatalogDetailRow(stringResource(R.string.detail_minifigs), fmtInt(it))
                         }
                         CatalogDetailRow(stringResource(R.string.common_condition),
-                            stringResource(if (merkposten.condition == "U") R.string.condition_used
+                            stringResource(if (merkposten.condition == Zustand.GEBRAUCHT) R.string.condition_used
                                            else R.string.condition_new))
                         CatalogDetailRow(stringResource(R.string.wanted_since),
                             fmtTag(merkposten.createdAt) ?: "—")

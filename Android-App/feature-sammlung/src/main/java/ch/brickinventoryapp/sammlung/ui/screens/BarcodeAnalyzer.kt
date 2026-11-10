@@ -26,7 +26,7 @@ import ch.brickinventoryapp.ui.screens.bildAnalyse
 // UnsafeOptInUsageError). Dasselbe Muster wie in KameraAufbau.kt.
 @androidx.annotation.OptIn(ExperimentalGetImage::class)
 @Composable
-fun rememberBarcodeAnalyzer(
+internal fun rememberBarcodeAnalyzer(
     frozen: Boolean,
     ocrEnabled: Boolean,
     onBarcodeFound: (String) -> Unit,

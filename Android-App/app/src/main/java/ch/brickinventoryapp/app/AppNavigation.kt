@@ -14,9 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.navigation.compose.*
 import ch.brickinventoryapp.anmeldung.ui.anmeldungGraph
-import ch.brickinventoryapp.app.nav.collectionGraph
-import ch.brickinventoryapp.app.nav.catalogGraph
-import ch.brickinventoryapp.app.nav.toolsGraph
+import ch.brickinventoryapp.app.nav.mehrZiel
 import ch.brickinventoryapp.anmeldung.ui.*
 import ch.brickinventoryapp.finanzen.ui.*
 import ch.brickinventoryapp.katalog.ui.*
@@ -45,14 +43,12 @@ import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.app.nav.AktivitaetsZustand
 import ch.brickinventoryapp.netz.util.NetworkPolicy
 import ch.brickinventoryapp.app.nav.Reiter
-import ch.brickinventoryapp.app.nav.Rollzustaende
 import ch.brickinventoryapp.app.nav.ZielUmgebung
 import ch.brickinventoryapp.ui.components.UebergangsRahmen
 import ch.brickinventoryapp.sammlung.ui.dialogs.BarcodeResultRoute
 import ch.brickinventoryapp.sammlung.ui.dialogs.SetPruefungRoute
 import ch.brickinventoryapp.konto.ui.dialogs.UpdateRoute
-
-// Die Navigationsziele liegen seit der Aufteilung in nav/ (eigenes Paket).
+import ch.brickinventoryapp.zustand.ui.Rollzustaende
 
 /**
  * App-Navigation und Haupt-Gerüst: der NavHost mit allen Routen, die Dialoge, die
@@ -182,12 +178,19 @@ fun BrickInventoryRoute(
     }
 }
 
-/** Alle Ziele der App; der NavHost und ErreichbareRoutenTest bauen denselben Graphen. */
+/**
+ * Alle Ziele der App; der NavHost und ErreichbareRoutenTest bauen denselben Graphen.
+ * Jeder Bereich bringt seine Ziele mit, die App setzt sie nur zusammen.
+ */
 internal fun androidx.navigation.NavGraphBuilder.alleZiele(u: ZielUmgebung) {
     anmeldungGraph(u.navController) { u.aktivitaet.anmeldung }
-    collectionGraph(u)
-    catalogGraph(u)
-    toolsGraph(u)
+    sammlungGraph(u)
+    katalogGraph(u)
+    teileGraph(u)
+    finanzenGraph(u)
+    kontoGraph(u)
+    verwaltungGraph(u)
+    mehrZiel(u)
 }
 
 /** Wo die App beginnt, je nachdem, ob Server und Anmeldung schon da sind. */
@@ -211,11 +214,11 @@ internal fun reiterDerLeiste(): List<Reiter> {
     val mehr = stringResource(R.string.nav_more)
     return remember(sammlung, finanzen, merkliste, katalog, mehr) {
         listOf(
-            Triple(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, sammlung),
-            Triple(Screen.Finance, { Icon(Icons.AutoMirrored.Filled.ShowChart, null) }, finanzen),
-            Triple(Screen.Wanted, { Icon(Icons.Default.BookmarkBorder, null) }, merkliste),
-            Triple(Screen.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, katalog),
-            Triple(Screen.Mehr, { Icon(Icons.Default.MoreHoriz, null) }, mehr),
+            Reiter(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, sammlung),
+            Reiter(Screen.Finance, { Icon(Icons.AutoMirrored.Filled.ShowChart, null) }, finanzen),
+            Reiter(Screen.Wanted, { Icon(Icons.Default.BookmarkBorder, null) }, merkliste),
+            Reiter(Screen.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, katalog),
+            Reiter(Screen.Mehr, { Icon(Icons.Default.MoreHoriz, null) }, mehr),
         )
     }
 }

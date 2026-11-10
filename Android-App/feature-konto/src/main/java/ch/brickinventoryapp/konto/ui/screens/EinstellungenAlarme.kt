@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.konto.ui.screens
 
+import ch.brickinventoryapp.model.fach.Zustand
 import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.semantics.semantics
@@ -111,7 +112,7 @@ internal fun PreisalarmeCard(
                            verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
                         // Der Name zuerst wie in der Sammlung; Nummer und Zustand leiser
                         // darunter. Ohne Namen trägt die Nummer die Zeile.
-                        val zustand = if (a.condition == "U")
+                        val zustand = if (a.condition == Zustand.GEBRAUCHT)
                             stringResource(R.string.condition_used)
                         else stringResource(R.string.condition_new)
                         Text(a.name ?: a.setNumber,
@@ -213,7 +214,7 @@ internal fun PreisalarmeCard(
 @Composable
 private fun AlarmAnlegen(aktionen: EinstellungenAktionen) {
     var nummer by rememberSaveable { mutableStateOf("") }
-    var zustand by rememberSaveable { mutableStateOf("N") }
+    var zustand by rememberSaveable { mutableStateOf(Zustand.NEU) }
     var richtung by rememberSaveable { mutableStateOf("unter") }
     var schwelle by rememberSaveable { mutableStateOf("") }
     HorizontalDivider()

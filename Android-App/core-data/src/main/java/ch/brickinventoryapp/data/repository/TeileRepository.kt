@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.model.data.model.*
 import kotlinx.coroutines.flow.Flow
@@ -57,10 +58,10 @@ interface TeileRepository {
 
     suspend fun addPart(partNumber: String, colorId: Int = KEINE_FARBE, colorName: String? = null, colorHex: String? = null,
                          quantity: Int = 1, unitPrice: Double? = null,
-                         condition: String? = null, ownerUserId: Int? = null,
+                         condition: Zustand? = null, ownerUserId: Int? = null,
                          storage: String? = null): Ergebnis<AddPartResponse>
 
-    suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String? = null, owner: Int? = null): Ergebnis<GenericResponse>
+    suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: Zustand? = null, owner: Int? = null): Ergebnis<GenericResponse>
 
     suspend fun deletePart(partNumber: String, colorId: Int, owner: Int? = null): Ergebnis<GenericResponse>
 

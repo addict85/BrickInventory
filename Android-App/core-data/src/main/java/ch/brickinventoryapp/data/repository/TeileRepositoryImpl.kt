@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.offline.Filterspalten
@@ -151,7 +152,7 @@ class TeileRepositoryImpl @Inject constructor(
     /** Ohne Farbe KEINE_FARBE, nie 0 (Schwarz); Name und Code gehören dann nicht dazu. */
     override suspend fun addPart(partNumber: String, colorId: Int, colorName: String?, colorHex: String?,
                          quantity: Int, unitPrice: Double?,
-                         condition: String?, ownerUserId: Int?,
+                         condition: Zustand?, ownerUserId: Int?,
                          storage: String?): Ergebnis<AddPartResponse> {
         val ohne = colorId == KEINE_FARBE
         val anfrage = AddPartRequest(partNumber, colorId, colorName.takeUnless { ohne },
@@ -168,7 +169,7 @@ class TeileRepositoryImpl @Inject constructor(
      *
      * @param owner Besitzer der Karte; null = eigenes Konto.
      */
-    override suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String?, owner: Int?): Ergebnis<GenericResponse> {
+    override suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: Zustand?, owner: Int?): Ergebnis<GenericResponse> {
         val bisher = ablage.lies(Faecher.MANUELLE_TEILE)?.liste
             ?.firstOrNull { it.partNumber == partNumber && it.colorId == colorId && (owner == null || it.userId == owner) }?.quantity
         val anfrage = UpdateManualItemRequest(quantity, unitPrice, condition = condition, quantityDelta = bisher?.let { quantity - it })

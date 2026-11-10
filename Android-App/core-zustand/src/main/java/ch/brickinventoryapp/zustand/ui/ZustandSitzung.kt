@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.zustand.ui
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.model.*
 import ch.brickinventoryapp.model.ui.model.LagerortAnsicht
 import ch.brickinventoryapp.model.ui.model.LagerortEintragAnsicht
@@ -26,9 +27,11 @@ data class AppUiState(
     // Kein Token hier: Ihn liest allein der Interceptor (TokenAblage); im
     // Zustand stünde er für jede Oberfläche offen, als zweite Wahrheit.
     val currency: String = "EUR",
-    val priceCondition: String = "N",
-    val defaultPriceCondition: String = "N", // server-side default condition for new items (N=New, U=Used)
-    val userDefaultCondition: String? = null, // null = use global default
+    val priceCondition: Zustand = Zustand.NEU,
+    /** Vorgabe des Servers für neu Erfasstes. */
+    val defaultPriceCondition: Zustand = Zustand.NEU,
+    /** null: Das Konto übernimmt die Vorgabe des Servers. */
+    val userDefaultCondition: Zustand? = null,
     val appTheme: String = "classic", // wirksames Design: eigenes des Kontos, sonst die Vorgabe
     /**
      * Startzustand des Servers, solange er nicht `ready` meldet; sonst null. Der erste

@@ -53,6 +53,12 @@ import ch.brickinventoryapp.testing.TestDienste
  *   J in galleryState die Kennzahlen nicht angepasst
  *      (gegenproben/galerie-kennzahlen-beim-loeschen.patch) → rot „die Kennzahlen
  *      zaehlen das vorgemerkte Set nicht …“ (2 statt 1 Set)
+ *   K  in loeschenAusfuehren() die Prüfung auf [nur] entfernt
+ *      (gegenproben/galerie-abgeloestes-loeschen.patch) → rot „die Snackbar eines
+ *      abgeloesten Loeschens fuehrt das naechste nicht aus“ (DELETE für 75192-1)
+ *   L  in ladeWennLeer() die Prüfung auf eine leere Liste entfernt → rot „beim
+ *      Zeigen laedt die Galerie nur, wenn sie leer ist“ (zwei Abrufe)
+ *   K und L nur in der CI messbar (Android-Klassen im Testlauf).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GalerieViewModelTest {
@@ -194,6 +200,39 @@ class GalerieViewModelTest {
         assertTrue("Kein DELETE", pfade.anfragenAn("DELETE /api/v1/sets/10294-1").isEmpty())
         vm.loeschenAusfuehren()
         assertTrue("Nach Rückgängig gibt es nichts mehr auszuführen", pfade.anfragenAn("DELETE /api/v1/sets/10294-1").isEmpty())
+    }
+
+    @Test
+    fun `die Snackbar eines abgeloesten Loeschens fuehrt das naechste nicht aus`() {
+        val vm = vm()
+        vm.loadSets()
+        vm.loeschenVormerken("10294-1", "Titanic")
+        val erstes = vm.vorgemerkt.value
+        // Ein zweites Löschen führt das erste aus und merkt sich das zweite vor.
+        vm.loeschenVormerken("75192-1", "Falke")
+        assertTrue("erstes gelöscht", pfade.anfragenAn("DELETE /api/v1/sets/10294-1").isNotEmpty())
+        val zweites = vm.vorgemerkt.value
+        // Die Snackbar des ersten endet erst jetzt (abgelöst) — sie darf das zweite nicht anfassen.
+        vm.loeschenAusfuehren(erstes)
+        vm.rueckgaengig(erstes)
+        assertEquals("Falke", vm.vorgemerkt.value?.name)
+        assertTrue("zweites noch nicht gelöscht", pfade.anfragenAn("DELETE /api/v1/sets/75192-1").isEmpty())
+        vm.rueckgaengig(zweites)
+        assertEquals(null, vm.vorgemerkt.value)
+        assertTrue("zweites nie gelöscht", pfade.anfragenAn("DELETE /api/v1/sets/75192-1").isEmpty())
+    }
+
+    @Test
+    fun `beim Zeigen laedt die Galerie nur, wenn sie leer ist`() {
+        val vm = vm()
+        vm.ladeWennLeer()
+        assertTrue("ohne Server kein Abruf", abrufe().isEmpty())
+        t.sitzung.anmeldungGeaendert(pfade.server.url("/").toString(), angemeldet = true)
+        vm.ladeWennLeer()
+        assertEquals("leer: einmal geladen", 1, abrufe().size)
+        assertTrue("Kennzahlen mit", pfade.anfragenAn("GET /api/v1/stats").isNotEmpty())
+        vm.ladeWennLeer()
+        assertEquals("schon da: nicht noch einmal", 1, abrufe().size)
     }
 
     @Test

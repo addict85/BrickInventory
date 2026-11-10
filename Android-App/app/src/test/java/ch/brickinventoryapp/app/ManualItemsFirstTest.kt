@@ -179,7 +179,7 @@ class ManualItemsFirstTest {
     fun `beide Listen zaehlen als geladen, nicht nur die aus den Sets`() {
         // Verdrahtung im Graphen: Erst wenn auch die manuellen Einträge da sind (null heisst
         // „noch nicht geladen“), stellt der Merker die Stelle wieder her.
-        val graph = Quellen.ohneKommentare(Quellen.lies("app/nav/CollectionGraph.kt"))
+        val graph = Quellen.ohneKommentare(Quellen.lies("teile/ui/TeileGraph.kt"))
         for ((schluessel, liste) in listOf("Screen.Parts.rollSchluessel" to "manualParts", "Screen.Minifigs.rollSchluessel" to "manualFigs")) {
             val block = Quellen.fenster(graph, "$schluessel, ", 12)
             assertTrue("Kein ScrollPositionKeeper für $schluessel gefunden", block.isNotEmpty())

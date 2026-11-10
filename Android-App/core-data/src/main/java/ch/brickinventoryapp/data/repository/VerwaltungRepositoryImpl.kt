@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.api.VerwaltungApi
 import ch.brickinventoryapp.model.data.model.*
 import okhttp3.MediaType.Companion.toMediaType
@@ -117,5 +118,5 @@ class VerwaltungRepositoryImpl @Inject constructor(
     override suspend fun triggerPriceJob(): Ergebnis<GenericAdminResponse> = sicherAufrufen { api.triggerPriceJob() }
 
     // Admin-level: saves global default (Monitoring)
-    override suspend fun setDefaultCondition(condition: String): Ergebnis<GenericAdminResponse> = sicherAufrufen { api.setDefaultCondition(mapOf("condition" to condition)) }
+    override suspend fun setDefaultCondition(condition: Zustand): Ergebnis<GenericAdminResponse> = sicherAufrufen { api.setDefaultCondition(mapOf("condition" to condition.kennung)) }
 }

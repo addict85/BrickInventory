@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.model.ui.model
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.model.BrickColor
 import ch.brickinventoryapp.model.data.model.ChartPoint
 import ch.brickinventoryapp.model.data.model.ChartYAxis
@@ -71,7 +72,7 @@ fun Gutschein.alsAnsicht() = GutscheinAnsicht(id, number, pin, amount, currency,
 /** Ein Preisalarm; [unter] ist die Richtung als Wahrheitswert statt als Wort. */
 data class PreisalarmAnsicht(
     val setNumber: String,
-    val condition: String,
+    val condition: Zustand,
     val richtung: String,
     val schwelle: Double,
     val currencyCode: String,

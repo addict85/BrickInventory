@@ -6,9 +6,9 @@ Rot: eine Schwelle von null geht nicht hinaus
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt
-@@ -160,7 +160,6 @@ class EinstellungenViewModel @Inject constructor(
+@@ -161,7 +161,6 @@ class EinstellungenViewModel @Inject constructor(
  
-     override fun aendereAlarmSchwelle(setNumber: String, condition: String, richtung: String, schwelle: Double) {
+     override fun aendereAlarmSchwelle(setNumber: String, condition: Zustand, richtung: String, schwelle: Double) {
          wartendeSchwellen.remove(setNumber to condition)?.cancel()
 -        if (schwelle <= 0.0) { meldungen.zeige(meldungen.text(R.string.alerts_bad_value)); return }
          alarmSchleuse { sets.setPreisalarm(setNumber, richtung, schwelle, condition) }

@@ -11,7 +11,7 @@ import ch.brickinventoryapp.finanzen.ui.GutscheinPdfZiel
 fun gutscheinPdfAdresse(serverUrl: String, id: Int, ticket: String? = null): String =
     mitTicket(serverUrl.trimEnd('/') + "/api/v1/vouchers/" + id + "/pdf", ticket)
 
-fun gutscheinExportAdresse(serverUrl: String, ticket: String? = null): String =
+internal fun gutscheinExportAdresse(serverUrl: String, ticket: String? = null): String =
     mitTicket(serverUrl.trimEnd('/') + "/api/v1/vouchers/export/pdf", ticket)
 
 fun gutscheinPdfAdresse(serverUrl: String, ziel: GutscheinPdfZiel): String =
@@ -31,7 +31,7 @@ private fun mitTicket(adresse: String, ticket: String?): String =
  * Pfad, nicht als Teilstring: Express nimmt `/API/v1/Vouchers` und `%76ouchers`
  * genauso; was sich nicht lesen lässt, gilt als vertraulich.
  */
-fun zeigtGutscheine(pdfUrl: String): Boolean {
+internal fun zeigtGutscheine(pdfUrl: String): Boolean {
     val pfad = runCatching { java.net.URI(pdfUrl.trim()).path }.getOrNull() ?: return true
     val teile = pfad.split('/').filter { it.isNotEmpty() }.map { it.lowercase() }
     return teile.windowed(3).any { it == listOf("api", "v1", "vouchers") }
@@ -42,4 +42,4 @@ fun zeigtGutscheine(pdfUrl: String): Boolean {
  * die Datei in den öffentlichen Download-Ordner, den jede App mit Speicherzugriff
  * liest und der das Abmelden überlebt — für Nummer und PIN der falsche Ort.
  */
-fun pdfDarfGespeichertWerden(pdfUrl: String): Boolean = !zeigtGutscheine(pdfUrl)
+internal fun pdfDarfGespeichertWerden(pdfUrl: String): Boolean = !zeigtGutscheine(pdfUrl)

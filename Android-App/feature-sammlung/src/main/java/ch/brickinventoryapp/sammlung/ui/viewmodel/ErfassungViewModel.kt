@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.sammlung.ui.viewmodel
 
+import ch.brickinventoryapp.model.ui.Scannerherkunft
+import ch.brickinventoryapp.model.fach.Erfassungswunsch
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.model.Fehlercode
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
@@ -70,18 +73,14 @@ class ErfassungViewModel @Inject constructor(
      */
     private var erfassungsJob: Job? = null
 
-    /** Woher der Scan kommt: "gallery", "gallery_search", "partslist" oder "wanted". */
-    fun setScannerSource(source: String) {
-        _barcodeState.update { it.copy(source = source) }
-    }
-
     /**
      * Einen Barcode auflösen. Die Prüfanzeige steht, bis die Frage beantwortet
      * ist; ein neuer Scan bricht den alten ab, sonst beantwortete die Anzeige
      * eine Frage, die niemand mehr stellt.
      */
-    fun resolveBarcode(value: String) {
+    fun resolveBarcode(value: String, herkunft: Scannerherkunft = Scannerherkunft.GALERIE) {
         erfassungsJob?.cancel()
+        _barcodeState.update { it.copy(source = herkunft) }
         erfassungsJob = viewModelScope.launch {
             // Sechs Rückwege, vier davon vorzeitig: Nur das `finally` räumt die
             // Anzeige verlässlich weg.
@@ -95,7 +94,7 @@ class ErfassungViewModel @Inject constructor(
                             _barcodeState.update { it.copy(manuelleErfassungAnfordern = true) }
                             return@launch
                         }
-                        if (_barcodeState.value.source == "gallery_search" && zeigeVorhandenes(setNum)) return@launch
+                        if (_barcodeState.value.source == Scannerherkunft.GALERIE_SUCHE && zeigeVorhandenes(setNum)) return@launch
                         meldungen.quittiere()
                         _barcodeState.update { it.copy(
                             result = setNum, setName = r.data.name ?: setNum,
@@ -132,13 +131,14 @@ class ErfassungViewModel @Inject constructor(
      * Server, ob das Set schon im Blickfeld steht — nicht die geladene Liste,
      * die nur eine Seite und nicht die Unterkonten kennt.
      */
-    fun useScannedSetNumber(raw: String) {
+    fun useScannedSetNumber(raw: String, herkunft: Scannerherkunft = Scannerherkunft.GALERIE) {
         erfassungsJob?.cancel()
+        _barcodeState.update { it.copy(source = herkunft) }
         erfassungsJob = viewModelScope.launch {
             try {
                 val setNum = raw.trim().let { if (it.contains("-")) it else "$it-1" }
                 erfassung.zeige(setNum, Pruefphase.BESTAND)
-                val ausListe = _barcodeState.value.source in setOf("partslist", "wanted")
+                val ausListe = _barcodeState.value.source in setOf(Scannerherkunft.TEILELISTE, Scannerherkunft.MERKLISTE)
                 if (!ausListe && zeigeVorhandenes(setNum)) return@launch
                 when (val r = katalog.getCatalogSetDetail(setNum)) {
                     is Ergebnis.Success -> {
@@ -195,29 +195,30 @@ class ErfassungViewModel @Inject constructor(
     }
 
     /** Der Bestätigungsdialog nach einem Scan: merken, an die Teileliste geben oder anlegen. */
-    override fun confirmAddBarcode(setNum: String, purchasePrice: Double?, condition: String?,
-                          ownerUserId: Int?, storage: String?, quantity: Int) {
+    override fun confirmAddBarcode(wunsch: Erfassungswunsch) {
+        val setNum = wunsch.setNumber
         val stand = _barcodeState.value
         if (stand.adding) return
         when (stand.source) {
-            "wanted" -> {
+            Scannerherkunft.MERKLISTE -> {
                 viewModelScope.launch {
                     meldungen.zeige(merkpostenAnlegen(sets, meldungen, setNum,
-                                                        if (condition == "U") "U" else "N", ownerUserId))
+                                                        wunsch.zustand ?: Zustand.NEU, wunsch.besitzer))
                     bestand.melde(Aenderung.Merkliste)
                 }
                 cancelBarcode()
                 return
             }
-            "partslist" -> {
+            Scannerherkunft.TEILELISTE -> {
                 _barcodeState.update { ohneErgebnis(it).copy(fuerTeileliste = setNum) }
                 return
             }
+            Scannerherkunft.GALERIE, Scannerherkunft.GALERIE_SUCHE -> Unit
         }
         _barcodeState.update { ohneErgebnis(it).copy(adding = true) }
         viewModelScope.launch {
-            when (val r = sets.addSet(setNum, quantity.coerceAtLeast(1), purchasePrice, condition, ownerUserId,
-                                      storage?.trim()?.takeIf { it.isNotEmpty() })) {
+            when (val r = sets.addSet(setNum, wunsch.menge.coerceAtLeast(1), wunsch.kaufpreis, wunsch.zustand,
+                                      wunsch.besitzer, wunsch.lagerort?.trim()?.takeIf { it.isNotEmpty() })) {
                 is Ergebnis.Success -> {
                     // Offline gespeichert: Den Hinweis gibt der Ausgangsmelder, mit Zahl.
                     if (!r.gepuffert) meldungen.zeige(meldungen.text(
@@ -257,17 +258,16 @@ class ErfassungViewModel @Inject constructor(
      * Schritte des Ereignisstroms und verschwindet mit der Antwort, nicht erst
      * nach dem Nachladen.
      */
-    fun addSet(setNumber: String, quantity: Int = 1, purchasePrice: Double? = null,
-               condition: String? = null, ownerUserId: Int? = null, storage: String? = null) {
+    fun addSet(wunsch: Erfassungswunsch) {
         viewModelScope.launch {
-            val eingabe = setNumber.trim()
+            val eingabe = wunsch.setNumber.trim()
+            val lagerort = wunsch.lagerort?.trim()?.takeIf { it.isNotEmpty() }
             // Nur für die Anzeige auf die Grundvariante; angelegt wird mit der Eingabe.
             val sn = if (eingabe.contains("-")) eingabe else "$eingabe-1"
             val gestreamt = try {
                 erfassung.zeige(sn, Pruefphase.BESTAND)
                 var letzte: Ergebnis<AddSetResponse> = Ergebnis.Error.LeereAntwort()
-                anleger.anlegen(eingabe, quantity, purchasePrice, condition, ownerUserId,
-                                storage?.trim()?.takeIf { it.isNotEmpty() })
+                anleger.anlegen(eingabe, wunsch.menge, wunsch.kaufpreis, wunsch.zustand, wunsch.besitzer, lagerort)
                     .collect { schritt ->
                         when (schritt) {
                             is SetAnlegenSchritt.Stammdaten -> erfassung.zeige(schritt.name ?: sn, Pruefphase.ANLEGEN_STAMMDATEN)
@@ -287,8 +287,7 @@ class ErfassungViewModel @Inject constructor(
             // Ohne Verbindung kein Ereignisstrom: dann der gewöhnliche Aufruf, der in
             // den Ausgang geht, statt das Erfassen scheitern zu lassen.
             val r = if (gestreamt is Ergebnis.Error && gestreamt.transient)
-                sets.addSet(eingabe, quantity, purchasePrice, condition, ownerUserId,
-                            storage?.trim()?.takeIf { it.isNotEmpty() })
+                sets.addSet(eingabe, wunsch.menge, wunsch.kaufpreis, wunsch.zustand, wunsch.besitzer, lagerort)
             else gestreamt
             when (r) {
                 is Ergebnis.Success -> when {

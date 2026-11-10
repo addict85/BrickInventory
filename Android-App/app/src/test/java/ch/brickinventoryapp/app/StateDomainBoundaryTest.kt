@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.zustand.ui.AppUiState
 import ch.brickinventoryapp.zustand.ui.Sitzung
 import ch.brickinventoryapp.model.ui.model.StartzustandAnsicht
@@ -42,8 +43,8 @@ class StateDomainBoundaryTest {
         "angemeldet" to { it.angemeldet(admin = true) },
         "anmeldungGeaendert" to { it.anmeldungGeaendert("https://brick.example", true) },
         "verwalterGeaendert" to { it.verwalterGeaendert(true) },
-        "einstellungenGespeichert" to { it.einstellungenGespeichert("CHF", "U") },
-        "einstellungenGeladen" to { it.einstellungenGeladen("CHF", "U", "U", "U") },
+        "einstellungenGespeichert" to { it.einstellungenGespeichert("CHF", Zustand.GEBRAUCHT) },
+        "einstellungenGeladen" to { it.einstellungenGeladen("CHF", Zustand.GEBRAUCHT, Zustand.GEBRAUCHT, Zustand.GEBRAUCHT) },
         "waehrungUebernommen" to { it.waehrungUebernommen("CHF") },
         "spracheGeaendert" to { it.spracheGeaendert("fr") },
         "setzeDesign" to { it.setzeDesign("noppe") },

@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.app.nav.Reiter
 import android.content.Context
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ViewInAr
 import androidx.compose.material3.Icon
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -60,9 +60,9 @@ class TabOpensAtTopTest {
             BrickInventoryManagerTheme(theme = "classic") {
                 nav = rememberNavController()
                 val reiter = remember {
-                    listOf<Triple<Screen, @Composable () -> Unit, String>>(
-                        Triple(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
-                        Triple(Screen.Finance, { Icon(Icons.Default.ViewInAr, null) }, "Finanzen"))
+                    listOf(
+                        Reiter(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                        Reiter(Screen.Finance, { Icon(Icons.Default.ViewInAr, null) }, "Finanzen"))
                 }
                 MainScaffold(
                     title = "Sammlung", navController = nav, bottomNavItems = reiter,

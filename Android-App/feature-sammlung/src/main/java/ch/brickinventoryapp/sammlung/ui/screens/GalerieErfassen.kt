@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Erfassungswunsch
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
@@ -36,10 +38,9 @@ import ch.brickinventoryapp.gemeinsam.ui.erfassungUngueltig
 internal fun GalerieErfassen(zustand: GalerieZustand, ereignisse: GalerieEreignisse, onSchliessen: () -> Unit) {
     AddSetDialog(
         onDismiss = onSchliessen,
-        onAdd = { sn, qty, price, cond, owner, ort ->
-            onSchliessen(); ereignisse.setErfassen(sn, qty, price, cond, owner, ort) },
+        onAdd = { wunsch -> onSchliessen(); ereignisse.setErfassen(wunsch) },
         householdMembers = zustand.blick.householdMembers,
-        defaultCondition = zustand.app.userDefaultCondition ?: "N",
+        defaultCondition = zustand.app.userDefaultCondition ?: Zustand.NEU,
         lagerorte = zustand.lager.eigene.map { it.name },
         vorgabe = zustand.lager.vorgabe?.name ?: "",
     )
@@ -74,8 +75,8 @@ private fun nummerFehler(nummer: String, geprueft: Boolean): Int? = when {
 @Composable
 fun AddSetDialog(
     onDismiss: () -> Unit,
-    onAdd: (String, Int, Double?, String?, Int?, String?) -> Unit,
-    defaultCondition: String = "N",
+    onAdd: (Erfassungswunsch) -> Unit,
+    defaultCondition: Zustand = Zustand.NEU,
     /** Konten des Haushalts — ohne Unterkonten bleibt die Auswahl verborgen. */
     householdMembers: List<MitgliedAnsicht> = emptyList(),
     /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
@@ -120,10 +121,14 @@ fun AddSetDialog(
             if (sofortFokus) setFeldFokus.fokusWennOffen()
         } else if (!erfassungUngueltig(quantity, purchasePrice)) {
             // Bei unlesbarer Menge oder unlesbarem Preis bleibt der Dialog offen; die Felder zeigen den Fehler.
-            onAdd(setNumber, quantity.toIntOrNull() ?: 1,
-                  NumericInput.leseBetrag(purchasePrice), condition,
-                  eigentuemerFuerErfassung(householdMembers, owner),
-                  lagerort.trim().takeIf { it.isNotEmpty() })
+            onAdd(Erfassungswunsch(
+                setNumber = setNumber,
+                menge = quantity.toIntOrNull() ?: 1,
+                kaufpreis = NumericInput.leseBetrag(purchasePrice),
+                zustand = condition,
+                besitzer = eigentuemerFuerErfassung(householdMembers, owner),
+                lagerort = lagerort.trim().takeIf { it.isNotEmpty() },
+            ))
         }
     }
 

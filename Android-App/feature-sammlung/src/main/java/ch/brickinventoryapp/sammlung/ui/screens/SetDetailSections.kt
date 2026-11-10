@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Postenart
+import ch.brickinventoryapp.model.fach.Zustand
+
 /**
  * Die Abschnitte der Set-Detailseite. Erweiterungen auf LazyListScope und keine
  * Composables, weil sie Einträge in die LazyColumn der Seite eintragen; die
@@ -74,7 +77,7 @@ import ch.brickinventoryapp.gemeinsam.ui.WertKacheln
  * Kaufpreis und G&V stehen in jedem Design in den Wert-Kacheln oben, eine Zeile hier
  * wiederholte sie mit einer Prozentangabe aus dem Gesamtvergleich über den Zeilen je Zustand.
  */
-fun LazyListScope.setDetailPriceSection(detailState: SetDetailUiState, price: SetPreisAnsicht?, history: PreisverlaufAnsicht?, currency: String) {
+internal fun LazyListScope.setDetailPriceSection(detailState: SetDetailUiState, price: SetPreisAnsicht?, history: PreisverlaufAnsicht?, currency: String) {
     if (price != null && !price.noPrice || detailState.setPriceLoading) {
         item {
             // „Preisverlauf“, sobald ein Verlauf da ist: Direkt über der Karte steht schon
@@ -111,7 +114,7 @@ private fun PreisKarteInhalt(detailState: SetDetailUiState, price: SetPreisAnsic
 }
 
 /** Stammdaten: Nummer, Menge (änderbar), Erfassungsdatum. */
-fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, lagerZustand: LagerUiState, aktionen: SetDetailAktionen, acquisitions: List<KaufAnsicht>, currency: String, fmtDate: (String?) -> String, onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit) {
+internal fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, lagerZustand: LagerUiState, aktionen: SetDetailAktionen, acquisitions: List<KaufAnsicht>, currency: String, fmtDate: (String?) -> String, onNavigateToAcqMgmt: (type: Postenart, id: String, colorId: Int, title: String) -> Unit) {
     // ── Set details section ────────────────────────────────────────────
     item {
         SectionCard(title = stringResource(R.string.detail_section_details)) {
@@ -217,7 +220,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, la
                 acquisitions = acquisitions,
                 currency = currency,
                 onEditPrices = {
-                    onNavigateToAcqMgmt("set", capturedSetNumber, 0, capturedSetTitle)
+                    onNavigateToAcqMgmt(Postenart.SET, capturedSetNumber, 0, capturedSetTitle)
                 }
             )
         }
@@ -225,7 +228,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, la
 }
 
 /** Wert-Kacheln über den Angaben — in jedem Design (WertKacheln, core-ui). */
-fun LazyListScope.setDetailValueTiles(set: SetAnsicht, price: SetPreisAnsicht?, pnlPct: Double?, fmtPrice: (Double?) -> String) {
+internal fun LazyListScope.setDetailValueTiles(set: SetAnsicht, price: SetPreisAnsicht?, pnlPct: Double?, fmtPrice: (Double?) -> String) {
     item(key = "wertkacheln") {
         // avg_price zuerst: Marktpreis ist der einfache Schnitt, nicht der mengengewichtete.
         val marktpreis = price?.takeUnless { it.noPrice }?.let { it.avgPrice ?: it.qtyAvgPrice }
@@ -242,7 +245,7 @@ fun LazyListScope.setDetailValueTiles(set: SetAnsicht, price: SetPreisAnsicht?, 
 }
 
 /** Kennzahl-Chips: Jahr, Teile, Minifiguren, Thema. */
-fun LazyListScope.setDetailStatChips(set: SetAnsicht) {
+internal fun LazyListScope.setDetailStatChips(set: SetAnsicht) {
     // ── Quick-stat chips ───────────────────────────────────────────────
     item {
         val labelYear     = stringResource(R.string.detail_year)
@@ -262,7 +265,7 @@ fun LazyListScope.setDetailStatChips(set: SetAnsicht) {
 }
 
 /** Das grosse Set-Bild samt Nachladeversuch und Zoom-Auslöser. */
-fun LazyListScope.setDetailHeroImage(
+internal fun LazyListScope.setDetailHeroImage(
     set: SetAnsicht,
     imageUrl: String?,
     imageLoader: ImageLoader,
@@ -328,11 +331,11 @@ fun LazyListScope.setDetailHeroImage(
  * ViewModel, damit sie das Verlassen überlebt): Am Telefon kommt der Fokuswechsel
  * oft nie.
  */
-fun LazyListScope.setDetailAlarmSection(
+internal fun LazyListScope.setDetailAlarmSection(
     setNumber: String,
     alarme: List<PreisalarmAnsicht>,
     currency: String,
-    onSetze: (setNumber: String, richtung: String, roh: String, zustand: String) -> Unit,
+    onSetze: (setNumber: String, richtung: String, roh: String, zustand: Zustand) -> Unit,
     /** Aus, wo die Liste selbst schon einen Rand hat (Merkposten-Detail). */
     aussenAbstand: Boolean = true,
 ) {
@@ -351,7 +354,7 @@ fun LazyListScope.setDetailAlarmSection(
             // neuen Zustand an. Dass `alarm` oben am Zustand haengt, erledigt
             // das Laden von selbst: Die Liste traegt beide.
             SegmentWahl(
-                optionen = listOf("N" to stringResource(R.string.condition_new), "U" to stringResource(R.string.condition_used)),
+                optionen = listOf(Zustand.NEU to stringResource(R.string.condition_new), Zustand.GEBRAUCHT to stringResource(R.string.condition_used)),
                 gewaehlt = zustand,
                 onWahl = { zustand = it },
             )

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.model.ui.model
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.model.BestandteilKopf
 import ch.brickinventoryapp.model.data.model.FigValuationItem
 import ch.brickinventoryapp.model.data.model.Minifig
@@ -69,8 +70,8 @@ fun PartsStats.alsAnsicht() = TeileKennzahlenAnsicht(
 
 data class FigurAnsicht(
     val figNumber: String,
-    val condition: String? = null,
-    val conditions: List<String> = emptyList(),
+    val condition: Zustand? = null,
+    val conditions: List<Zustand> = emptyList(),
     val owners: List<KontoAnsicht> = emptyList(),
     val avgPurchasePrice: Double? = null,
     val figName: String? = null,
@@ -205,8 +206,8 @@ data class ManuellesTeilAnsicht(
     val pnlProzent: Double? = null,
     val displayValue: String? = null,
     val wertGesamt: Double? = null,
-    val condition: String? = null,
-    val conditions: List<String> = emptyList(),
+    val condition: Zustand? = null,
+    val conditions: List<Zustand> = emptyList(),
     val userId: Int? = null,
     val owners: List<KontoAnsicht> = emptyList(),
     val acquisitions: List<BewertungsKaufAnsicht> = emptyList(),
@@ -258,8 +259,8 @@ data class ManuelleFigurAnsicht(
     val pnlProzent: Double? = null,
     val displayValue: String? = null,
     val wertGesamt: Double? = null,
-    val condition: String? = null,
-    val conditions: List<String> = emptyList(),
+    val condition: Zustand? = null,
+    val conditions: List<Zustand> = emptyList(),
     val userId: Int? = null,
     val owners: List<KontoAnsicht> = emptyList(),
     val acquisitions: List<BewertungsKaufAnsicht> = emptyList(),
@@ -293,7 +294,7 @@ fun FigValuationItem.alsAnsicht() = ManuelleFigurAnsicht(
 
 data class BewertungsKaufAnsicht(
     val id: Int = 0,
-    val condition: String = "N",
+    val condition: Zustand = Zustand.NEU,
     val quantity: Int = 1,
     val purchasePrice: Double? = null,
     val avgPrice: Double? = null,

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.di.SseClient
 import ch.brickinventoryapp.model.data.model.AddSetResponse
 import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
@@ -46,7 +47,7 @@ internal class SetAnlegenSseClient @Inject constructor(
      */
     override fun anlegen(
         setNumber: String, quantity: Int, purchasePrice: Double?,
-        condition: String?, ownerUserId: Int?, storage: String?,
+        condition: Zustand?, ownerUserId: Int?, storage: String?,
     ): Flow<SetAnlegenSchritt> = callbackFlow {
         val baseUrl = prefs.serverUrlJetzt().trim().trimEnd('/')
         val token = prefs.tokenJetzt()
@@ -95,13 +96,13 @@ internal class SetAnlegenSseClient @Inject constructor(
      */
     private fun anlegeRumpf(
         setNumber: String, quantity: Int, purchasePrice: Double?,
-        condition: String?, ownerUserId: Int?, storage: String?,
+        condition: Zustand?, ownerUserId: Int?, storage: String?,
     ): RequestBody {
         val felder = buildList {
             add("\"set_number\":${json.encodeToString(kotlinx.serialization.serializer(), setNumber)}")
             add("\"quantity\":$quantity")
             if (purchasePrice != null) add("\"purchase_price\":$purchasePrice")
-            if (condition != null) add("\"condition\":\"$condition\"")
+            if (condition != null) add("\"condition\":\"${condition.kennung}\"")
             if (ownerUserId != null) add("\"owner_user_id\":$ownerUserId")
             // Der Lagerort ist freier Text und muss deshalb ueber den
             // Serialisierer, nicht in die Zeichenkette gesetzt: Ein

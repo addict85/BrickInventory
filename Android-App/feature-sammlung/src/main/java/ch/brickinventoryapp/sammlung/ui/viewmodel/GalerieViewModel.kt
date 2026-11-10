@@ -124,6 +124,18 @@ class GalerieViewModel @Inject constructor(
     }
 
     fun loadSets() = galerie.laden()
+
+    /**
+     * Beim Zeigen: laden, wenn die Galerie leer ist und ein Server eingetragen ist.
+     * Hier statt im Graphen, damit die Regel geprüft werden kann; ein Fehlschlag beim
+     * Start wird so beim nächsten Betreten wiederholt.
+     */
+    fun ladeWennLeer() {
+        val g = galerie.state.value
+        if (sitzung.state.value.serverUrl.isBlank() || g.sets.isNotEmpty() || g.galleryLoading) return
+        loadSets()
+        loadStats()
+    }
     fun loadMoreSets() = galerie.mehrLaden()
     fun loadStats() {
         galerie.ladeKennzahlen()
@@ -183,15 +195,24 @@ class GalerieViewModel @Inject constructor(
         _vorgemerkt.value = VorgemerktesLoeschen(setNumber, name, set)
     }
 
-    /** Das vorgemerkte Set bleibt; die Liste kommt neu vom Server, auf dem es nie fehlte. */
-    fun rueckgaengig() {
-        if (_vorgemerkt.value == null) return
+    /**
+     * Das vorgemerkte Set bleibt; die Liste kommt neu vom Server, auf dem es nie fehlte.
+     * [nur]: nur dieses — die Snackbar eines abgelösten Löschens holt nicht das nächste zurück.
+     */
+    fun rueckgaengig(nur: VorgemerktesLoeschen? = null) {
+        val v = _vorgemerkt.value ?: return
+        if (nur != null && v != nur) return
         _vorgemerkt.value = null
         loadSets()
     }
 
-    fun loeschenAusfuehren() {
+    /**
+     * [nur]: nur dieses. Endet die Snackbar eines abgelösten Löschens, darf sie das
+     * neue nicht ausführen — sonst wäre es ohne „Rückgängig“ gelöscht.
+     */
+    fun loeschenAusfuehren(nur: VorgemerktesLoeschen? = null) {
         val v = _vorgemerkt.value ?: return
+        if (nur != null && v != nur) return
         _vorgemerkt.value = null
         deleteSet(v.setNumber, erfolgMelden = false)
     }

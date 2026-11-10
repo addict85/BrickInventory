@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.model.data.model
 
+import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -109,7 +110,7 @@ data class Acquisition(
     val quantity: Int,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     @SerialName("unit_price") val unitPrice: Double? = null, // for parts/figs
-    val condition: String = "N", // "N" = Neu, "U" = Gebraucht
+    val condition: Zustand = Zustand.NEU,
     @SerialName("created_at") val createdAt: String? = null,
     /**
      * Eigentümer dieser Zeile — im Haushalt können die Kaufpreise eines Sets mehreren
@@ -161,7 +162,7 @@ data class UpdateAcquisitionRequest(
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     /** Der Kaufpreis je Stück — bei TEILEN und MINIFIGUREN. Siehe oben. */
     @SerialName("unit_price") val unitPrice: Double? = null,
-    val condition: String? = null,
+    val condition: Zustand? = null,
     val quantity: Int? = null,
     val date: String? = null,
     /**
@@ -175,7 +176,7 @@ data class UpdateAcquisitionRequest(
     companion object {
         /** Für Set-Erfassungen: Preis geht als `purchase_price`. */
         fun fuerSet(
-            preis: Double? = null, condition: String? = null, quantity: Int? = null,
+            preis: Double? = null, condition: Zustand? = null, quantity: Int? = null,
             date: String? = null, ownerUserId: Int? = null,
         ) = UpdateAcquisitionRequest(
             purchasePrice = preis, condition = condition, quantity = quantity,
@@ -183,7 +184,7 @@ data class UpdateAcquisitionRequest(
 
         /** Für Teile und Minifiguren: Preis geht als `unit_price`. */
         fun fuerStueck(
-            preis: Double? = null, condition: String? = null, quantity: Int? = null,
+            preis: Double? = null, condition: Zustand? = null, quantity: Int? = null,
             date: String? = null, ownerUserId: Int? = null,
         ) = UpdateAcquisitionRequest(
             unitPrice = preis, condition = condition, quantity = quantity,

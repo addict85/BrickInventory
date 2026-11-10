@@ -52,7 +52,7 @@ import ch.brickinventoryapp.gemeinsam.ui.TabellenZeile
 import ch.brickinventoryapp.gemeinsam.ui.mengeAusSet
 
 @Composable
-fun ManualPartTile(part: ManuellesTeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
+internal fun ManualPartTile(part: ManuellesTeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
                    waehrung: String, onEdit: () -> Unit) {
     val farbe = remember(part.colorHex) {
         farbeAusHex(part.colorHex)
@@ -190,7 +190,7 @@ private val ZEILE_BILD_BREITE = 96.dp
 
 /** Sektions-Überschrift innerhalb der Grids (Manuell erfasst / Aus Sets). */
 @Composable
-fun SectionHeader(text: String) {
+internal fun SectionHeader(text: String) {
     Abschnittstitel(text,
         Modifier.padding(horizontal = Abstaende.haar, vertical = Abstaende.winzig))
 }
@@ -201,7 +201,7 @@ fun SectionHeader(text: String) {
  * kein Telefon passen.
  */
 @Composable
-fun PartTableRow(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
+internal fun PartTableRow(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
                  onClick: (() -> Unit)? = null) {
     val farbe = remember(part.colorHex) {
         farbeAusHex(part.colorHex)

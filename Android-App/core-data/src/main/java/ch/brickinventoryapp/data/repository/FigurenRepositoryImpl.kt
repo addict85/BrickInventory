@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.api.FigurenApi
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.offline.Filterspalten
@@ -60,7 +61,7 @@ class FigurenRepositoryImpl @Inject constructor(
         sicherAufrufen { api.setFigStorage(figNumber, LagerortRequest(ort)) }
 
     override suspend fun addMinifig(figNumber: String, blFigNumber: String?, quantity: Int,
-                           unitPrice: Double?, condition: String?,
+                           unitPrice: Double?, condition: Zustand?,
                            ownerUserId: Int?,
                            storage: String?): Ergebnis<AddMinifigResponse> =
         AddMinifigRequest(figNumber, blFigNumber, quantity, unitPrice, condition, ownerUserId, storage).let { anfrage ->
@@ -75,7 +76,7 @@ class FigurenRepositoryImpl @Inject constructor(
      *
      * @param owner Besitzer der Karte; null = eigenes Konto.
      */
-    override suspend fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String?, condition: String?, owner: Int?): Ergebnis<GenericResponse> {
+    override suspend fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String?, condition: Zustand?, owner: Int?): Ergebnis<GenericResponse> {
         val bisher = ablage.lies(Faecher.MANUELLE_FIGUREN)?.liste
             ?.firstOrNull { it.figNumber == figNumber && (owner == null || it.userId == owner) }?.quantity
         val anfrage = UpdateManualItemRequest(quantity, unitPrice, blFigNumber, condition, quantityDelta = bisher?.let { quantity - it })

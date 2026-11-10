@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Zustand
 import android.os.Looper
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
@@ -168,7 +169,7 @@ class UmbruchWaechterTest {
 
     private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand, SetsRepository(welt.t.api, welt.t.cache),
         KatalogRepository(welt.t.api, welt.t.cache), object : SetAnleger {
-            override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?,
+            override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
                                  ownerUserId: Int?, storage: String?): Flow<SetAnlegenSchritt> = emptyFlow()
         }))
 
@@ -219,7 +220,7 @@ class UmbruchWaechterTest {
                 url = "https://www.bricklink.com/v2/catalog/catalogitem.page?S=10305-1"))
         pruefe("Katalog-Detail $schrift", schrift) {
             CatalogDetailScreen(setNumber = "10305-1", detail = detail, isLoading = false, imageLoader = bilder,
-                serverUrl = "", onLoad = {}, onAddToGallery = { _, _, _, _, _, _ -> }, onWish = { _, _, _, _, _ -> },
+                serverUrl = "", onLoad = {}, onAddToGallery = {}, onWish = { _, _, _, _, _ -> },
                 onOpenInGallery = {}, onBack = {})
         }
     }

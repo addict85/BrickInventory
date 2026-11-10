@@ -3,11 +3,10 @@ Modul: app
 Test: ch.brickinventoryapp.app.ManualItemsFirstTest
 Rot: beide Listen zaehlen
 
-diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/CollectionGraph.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/CollectionGraph.kt
-index 03a2f83..cf82822 100644
---- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/CollectionGraph.kt
-+++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/CollectionGraph.kt
-@@ -226,7 +226,7 @@ private fun NavGraphBuilder.teileZiele(u: ZielUmgebung) {
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileGraph.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileGraph.kt
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileGraph.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileGraph.kt
+@@ -90,7 +90,7 @@ private fun NavGraphBuilder.teileZiel(navigation: TeileNavigation) {
                  // „die Antwort ist zurück“ — auch bei null manuell erfassten Teilen. Mit
                  // `isNotEmpty()` würde die Position bei jemandem ohne eigene Teile nie
                  // wiederhergestellt.

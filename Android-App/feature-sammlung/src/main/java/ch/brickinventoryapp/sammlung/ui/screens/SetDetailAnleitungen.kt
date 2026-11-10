@@ -42,7 +42,7 @@ import ch.brickinventoryapp.gemeinsam.ui.SectionCard
  * Anleitungen — ansehen, hinzufügen und entfernen. Die Karte steht auch ohne
  * Anleitung, weil sie den Weg trägt, eine erste hinzuzufügen.
  */
-fun LazyListScope.setDetailInstructionsSection(
+internal fun LazyListScope.setDetailInstructionsSection(
     set: SetAnsicht, detailState: SetDetailUiState, serverUrl: String,
     onOpenPdf: (url: String, title: String) -> Unit,
     onAnleitungWaehlen: () -> Unit,

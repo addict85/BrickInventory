@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.model.data.model
 
+import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -56,7 +57,7 @@ data class PriceChartData(
 /** Aktueller Preis eines Zustands aus price_cache. */
 @Serializable
 data class CurrentPrice(
-    val condition: String = "",
+    val condition: Zustand? = null,
     @SerialName("avg_price") val avgPrice: Double? = null,
     @SerialName("min_price") val minPrice: Double? = null,
     @SerialName("max_price") val maxPrice: Double? = null,
@@ -82,9 +83,9 @@ data class PriceByCondition(
     @SerialName("U") val used: ConditionValuation? = null,
 ) {
     /** Nur die Zustände, zu denen der Server eine Zeile geliefert hat. */
-    fun present(): List<Pair<String, ConditionValuation>> = buildList {
-        new?.let  { add("N" to it) }
-        used?.let { add("U" to it) }
+    fun present(): List<Pair<Zustand, ConditionValuation>> = buildList {
+        new?.let  { add(Zustand.NEU to it) }
+        used?.let { add(Zustand.GEBRAUCHT to it) }
     }
 }
 
@@ -143,9 +144,9 @@ data class PartValuationItem(
     @SerialName("display_value") val displayValue: String? = null,
     /** display_value als Zahl: Marktwert des ganzen Eintrags, vom Server auf Rappen gerundet. */
     @SerialName("wert_gesamt") val wertGesamt: Double? = null,
-    val condition: String? = null,
+    val condition: Zustand? = null,
     /** Alle erfassten Zustände — je einer eine Plakette (siehe SetItem). */
-    val conditions: List<String> = emptyList(),
+    val conditions: List<Zustand> = emptyList(),
     /**
      * Konto, dem der Eintrag gehört: Im Haushalt zeigt der manuelle Bereich die
      * Einträge aller Konten, und der Papierkorb muss dem Server sagen, welche Karte
@@ -224,9 +225,9 @@ data class FigValuationItem(
     @SerialName("display_value") val displayValue: String? = null,
     /** display_value als Zahl: Marktwert des ganzen Eintrags, vom Server auf Rappen gerundet. */
     @SerialName("wert_gesamt") val wertGesamt: Double? = null,
-    val condition: String? = null,
+    val condition: Zustand? = null,
     /** Alle erfassten Zustände — je einer eine Plakette (siehe SetItem). */
-    val conditions: List<String> = emptyList(),
+    val conditions: List<Zustand> = emptyList(),
     /**
      * Konto, dem der Eintrag gehört: Im Haushalt zeigt der manuelle Bereich die
      * Einträge aller Konten, und der Papierkorb muss dem Server sagen, welche Karte
@@ -346,7 +347,7 @@ data class ValuationSet(
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     @SerialName("from_cache") val fromCache: Boolean = true,
     @SerialName("is_fallback") val isFallback: Boolean = false,
-    @SerialName("condition_used") val conditionUsed: String? = null,
+    @SerialName("condition_used") val conditionUsed: Zustand? = null,
     @SerialName("no_price") val noPrice: Boolean = false,
     /**
      * Eine Zeile je Kaufpreis-Erfassung, jede mit dem Marktpreis IHRES
@@ -367,7 +368,7 @@ data class ValuationSet(
 @Serializable
 data class ValuationAcquisition(
     val id: Int = 0,
-    val condition: String = "N",
+    val condition: Zustand = Zustand.NEU,
     val quantity: Int = 1,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     @SerialName("avg_price") val avgPrice: Double? = null,
@@ -392,7 +393,7 @@ data class Totals(
 data class ValuationResponse(
     val success: Boolean,
     val currency: String = "EUR",
-    val condition: String = "N",
+    val condition: Zustand = Zustand.NEU,
     /** Gültigkeit der Preise im Zwischenspeicher, in Stunden. */
     @SerialName("ttl_stunden") val ttlStunden: Int? = null,
     @SerialName("kaufpreise_fremde_waehrung") val kaufpreiseFremdeWaehrung: Int = 0,

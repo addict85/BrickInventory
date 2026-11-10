@@ -18,7 +18,7 @@ enum class KachelQuelle { MARKT, KAUF }
  * Je Set eine Angabe aus /finance/pnl. Betrag und G&V rechnet der Server
  * (kachel_preis, kachel_pnl_pct) — dieselbe Zahl wie im Web, auch im Haushalt.
  */
-fun kachelPreise(zeilen: List<PnlSetZeile>): Map<String, KachelPreis> =
+internal fun kachelPreise(zeilen: List<PnlSetZeile>): Map<String, KachelPreis> =
     zeilen.groupBy { it.setNumber }.mapValues { (_, z) ->
         val e = z[0]
         if (e.kachelPreis != null || e.kachelPnlPct != null) KachelPreis(e.kachelPreis, e.kachelPnlPct, e.kachelQuelle)
@@ -50,7 +50,7 @@ private fun kachelPreisVorServer(z: List<PnlSetZeile>): KachelPreis {
 }
 
 /** Der Betrag auf der Kachel: der des Servers, sonst der mengengewichtete Kaufpreis des Sets. */
-fun kachelBetrag(set: SetAnsicht, preis: KachelPreis?): Double? =
+internal fun kachelBetrag(set: SetAnsicht, preis: KachelPreis?): Double? =
     preis?.betrag?.takeIf { it > 0 } ?: set.avgPurchasePrice ?: set.maxPurchasePrice
 
 /**

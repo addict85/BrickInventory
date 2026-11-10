@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.verwaltung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import ch.brickinventoryapp.ui.components.AuswahlChip
@@ -37,7 +38,7 @@ import ch.brickinventoryapp.gemeinsam.ui.ConditionToggle
 
 /** Was der Cache-Abschnitt auslöst; MonitoringRoute verdrahtet die ViewModels. */
 class CacheEreignisse(
-    val vorgabeZustand: (String) -> Unit,
+    val vorgabeZustand: (Zustand) -> Unit,
     val ablageLeeren: () -> Unit,
     val netz: (VorwaermNetz, Boolean) -> Unit,
     val design: (String) -> Unit,
@@ -179,7 +180,7 @@ private fun CacheZahlen(cs: CacheKennzahlenAnsicht) {
 
 /** Der Zustand, mit dem neue Erfassungen beginnen (Neu oder Gebraucht). */
 @Composable
-private fun VorgabeZustandZeile(defaultCondition: String, onSelect: (String) -> Unit) {
+private fun VorgabeZustandZeile(defaultCondition: Zustand, onSelect: (Zustand) -> Unit) {
     Row(
         Modifier.fillMaxWidth(),
         Arrangement.SpaceBetween,

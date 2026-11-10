@@ -52,7 +52,7 @@ import ch.brickinventoryapp.ui.util.fmtInt
  * @param anzahl Verschiedene Teile — dieselbe Zahl, die die Webapp zeigt.
  * @param farbe  Farbpunkt, nur bei der Farbliste.
  */
-data class TeileFilterEintrag(
+internal data class TeileFilterEintrag(
     val wert: String,
     val text: String,
     val anzahl: Int,

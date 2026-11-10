@@ -6,12 +6,12 @@ Rot: Merkliste waehlt den Zustand mit Segmenten
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt
-@@ -236,7 +236,7 @@ fun MerklisteScreen(
+@@ -212,7 +212,7 @@ fun MerklisteScreen(
  
              // Der Zustand ist eine Einfachwahl mit drei Antworten — „beide“ ist die
              // Vorgabe, weil ein Filter sie immer hat (Zustandszeile kennt nur zwei).
 -            if (mitKopf) SegmentWahl(
 +            if (mitKopf) ch.brickinventoryapp.ui.components.WahlChips(
-                 optionen = listOf("" to stringResource(R.string.filter_condition_all),
-                                   "N" to stringResource(R.string.condition_new),
-                                   "U" to stringResource(R.string.condition_used)),
+                 optionen = listOf(null to stringResource(R.string.filter_condition_all),
+                                   Zustand.NEU to stringResource(R.string.condition_new),
+                                   Zustand.GEBRAUCHT to stringResource(R.string.condition_used)),

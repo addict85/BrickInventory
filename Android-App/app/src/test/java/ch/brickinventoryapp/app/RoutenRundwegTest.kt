@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -7,7 +8,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import ch.brickinventoryapp.model.data.model.KEINE_FARBE
-import ch.brickinventoryapp.zustand.ui.Postenart
+import ch.brickinventoryapp.model.fach.Postenart
+import ch.brickinventoryapp.model.ui.Scannerherkunft
 import ch.brickinventoryapp.zustand.ui.Screen
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -24,6 +26,9 @@ import org.robolectric.RobolectricTestRunner
  *   ManualItemDetail.title als @Transient → rot „Titel mit Sonderzeichen kommen unverändert an“
  * Gegenprobe (gegenproben/postenart-aus-fest.patch, nur in der CI messbar):
  *   Postenart.aus() liefert immer SET → rot „jede Postenart kommt als dieselbe an“
+ * Gegenprobe (nur in der CI messbar, nicht durchgeführt): ZustandSerializer mit
+ *   PrimitiveKind.STRING statt SerialKind.ENUM → rot „Setnummern und Merkposten
+ *   kommen unverändert an“ (Navigation findet keinen NavType für das Feld)
  */
 @RunWith(RobolectricTestRunner::class)
 class RoutenRundwegTest {
@@ -47,6 +52,7 @@ class RoutenRundwegTest {
                 composable<Screen.ManualItemDetail> { gelesen[it.id] = it.toRoute<Screen.ManualItemDetail>() }
                 composable<Screen.AcquisitionManagement> { gelesen[it.id] = it.toRoute<Screen.AcquisitionManagement>() }
                 composable<Screen.PdfViewer> { gelesen[it.id] = it.toRoute<Screen.PdfViewer>() }
+                composable<Screen.BarcodeScanner> { gelesen[it.id] = it.toRoute<Screen.BarcodeScanner>() }
             }
         }
         compose.waitForIdle()
@@ -96,6 +102,14 @@ class RoutenRundwegTest {
     }
 
     @Test
+    fun `der Scanner weiss, von wo er geoeffnet wurde`() {
+        aufbauen()
+        for (herkunft in Scannerherkunft.entries) {
+            assertEquals(Screen.BarcodeScanner(herkunft), hin(Screen.BarcodeScanner(herkunft)))
+        }
+    }
+
+    @Test
     fun `ohne Farbe kommt keine Farbe an, nicht Schwarz`() {
         aufbauen()
         assertEquals(KEINE_FARBE, (hin(Screen.ManualItemDetail(Postenart.FIG, "sw0001", title = "Luke")) as Screen.ManualItemDetail).colorId)
@@ -119,7 +133,7 @@ class RoutenRundwegTest {
         for (sn in listOf("75192-1", "col23-1", "a b/c%", "10 % +1")) {
             assertEquals(Screen.SetDetail(sn), hin(Screen.SetDetail(sn)))
             assertEquals(Screen.CatalogDetail(sn), hin(Screen.CatalogDetail(sn)))
-            assertEquals(Screen.MerkpostenDetail(sn, "U"), hin(Screen.MerkpostenDetail(sn, "U")))
+            assertEquals(Screen.MerkpostenDetail(sn, Zustand.GEBRAUCHT), hin(Screen.MerkpostenDetail(sn, Zustand.GEBRAUCHT)))
         }
     }
 }

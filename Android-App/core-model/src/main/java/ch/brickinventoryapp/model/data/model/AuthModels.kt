@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.model.data.model
 
+import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -117,11 +118,11 @@ data class User(
 @Serializable
 data class UserSettings(
     val currency: String = "EUR",
-    @SerialName("price_condition") val priceCondition: String = "N",
+    @SerialName("price_condition") val priceCondition: Zustand = Zustand.NEU,
     @SerialName("price_cache_ttl") val priceCacheTtl: String = "24",
-    @SerialName("default_price_condition") val defaultPriceCondition: String = "N",
-    @SerialName("user_default_condition") val userDefaultCondition: String? = null,
-    @SerialName("effective_condition") val effectiveCondition: String = "N", // resolved: user→global→'N'
+    @SerialName("default_price_condition") val defaultPriceCondition: Zustand = Zustand.NEU,
+    @SerialName("user_default_condition") val userDefaultCondition: Zustand? = null,
+    @SerialName("effective_condition") val effectiveCondition: Zustand = Zustand.NEU,
     @SerialName("app_theme") val appTheme: String = "classic" // Vorgabe des Verwalters; das des Kontos: /settings/theme
 )
 
