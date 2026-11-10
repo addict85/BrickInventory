@@ -1,0 +1,16 @@
+Gegenprobe: Eine unbekannte Sortierung fällt nicht auf die Vorgabe des Servers zurück
+Modul: core-model
+Test: ch.brickinventoryapp.model.FachtypenTest
+Rot: eine unbekannte Sortierung
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Sortierung.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Sortierung.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Sortierung.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Sortierung.kt
+@@ -19,6 +19,6 @@
+
+     companion object {
+         val VORGABE = NEUESTE
+-        fun aus(kennung: String?): Setsortierung = entries.firstOrNull { it.kennung == kennung } ?: VORGABE
++        fun aus(kennung: String?): Setsortierung = entries.firstOrNull { it.kennung == kennung } ?: NAME
+     }
+ }

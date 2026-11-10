@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.model.data.model
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -20,7 +21,7 @@ data class Gutschein(
     /** [GUTSCHEIN_PIN_MASKE] oder null: Nicht jede Karte traegt einen PIN. */
     val pin: String? = null,
     val amount: Double = 0.0,
-    val currency: String = "CHF",
+    val currency: Waehrung = Waehrung.CHF,
     /**
      * Ob ein PDF hinterlegt ist. Der Server gibt bewusst nicht den Dateipfad heraus —
      * der geht den Klienten nichts an; heruntergeladen wird über die id.
@@ -71,7 +72,7 @@ data class GelesenerGutschein(
     val number: String? = null,
     val pin: String? = null,
     val amount: Double? = null,
-    val currency: String? = null,
+    val currency: Waehrung? = null,
 )
 
 /**
@@ -105,7 +106,7 @@ data class GutscheinRequest(
     val number: String,
     val pin: String? = null,
     val amount: Double,
-    val currency: String = "CHF",
+    val currency: Waehrung = Waehrung.CHF,
 )
 
 /** So steht ein vorhandener PIN in jeder Gutschein-Antwort; PUT nimmt ihn als „unverändert“. */

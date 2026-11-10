@@ -1,7 +1,8 @@
 package ch.brickinventoryapp.sammlung.ui
 
+import ch.brickinventoryapp.model.fach.Merksortierung
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.model.*
-import ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 
 /**
@@ -20,9 +21,9 @@ data class MerklisteUiState(
     // Minifiguren und Finanzen.
     /** Suchtext — trifft Nummer UND Name. Leer heisst: kein Filter. */
     val query: String = "",
-    /** "N", "U" — oder leer fuer beide Zustaende. */
-    val zustandFilter: String = "",
-    val sortierung: String = MERKLISTE_DEFAULT_SORT,
+    /** null: beide Zustände. */
+    val zustandFilter: Zustand? = null,
+    val sortierung: Merksortierung = Merksortierung.VORGABE,
 )
 
 /**

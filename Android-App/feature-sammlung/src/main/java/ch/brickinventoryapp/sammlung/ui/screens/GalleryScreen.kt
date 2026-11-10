@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Setsortierung
+import ch.brickinventoryapp.model.fach.Merksortierung
+import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import ch.brickinventoryapp.model.ui.model.KennzahlenAnsicht
@@ -37,7 +40,6 @@ import ch.brickinventoryapp.ui.components.Bewegt
 import ch.brickinventoryapp.ui.components.SkelettRaster
 import ch.brickinventoryapp.ui.components.SortierMenue
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT
 import ch.brickinventoryapp.ui.components.BarcodeSymbol
 import ch.brickinventoryapp.ui.components.ErfassenFab
 import ch.brickinventoryapp.ui.components.FabPlatz
@@ -69,20 +71,42 @@ data class GalerieZustand(
 class GalerieEreignisse(
     val suche: (String) -> Unit,
     val thema: (String) -> Unit,
-    val sortierung: (String) -> Unit,
+    val sortierung: (Setsortierung) -> Unit,
     val mehrLaden: () -> Unit,
     val konto: (String) -> Unit,
     val lagerort: (String) -> Unit,
     val aktualisieren: () -> Unit,
-    val setErfassen: (String, Int, Double?, String?, Int?, String?) -> Unit,
+    val setErfassen: (Erfassungswunsch) -> Unit,
     val manuelleErfassungQuittiert: () -> Unit,
 )
+
+/**
+ * „gelöscht“ mit „Rückgängig“. Gelöscht wird erst, wenn die Snackbar ohne Rückgängig
+ * endet — auch wenn sie verschwindet, weil man die Galerie verlässt. Jede Snackbar
+ * antwortet nur für ihr Set: Löst ein zweites Löschen sie ab, bleibt dessen Rückgängig.
+ */
+@Composable
+internal fun GalerieRueckgaengigRoute(vm: GalerieViewModel, snackbarHostState: SnackbarHostState) {
+    val vorgemerkt by vm.vorgemerkt.collectAsStateWithLifecycle()
+    val text = vorgemerkt?.let { stringResource(R.string.vm_set_deleted, it.name) }
+    val rueckgaengig = stringResource(R.string.common_undo)
+    LaunchedEffect(vorgemerkt) {
+        val v = vorgemerkt ?: return@LaunchedEffect
+        var zurueck = false
+        try {
+            zurueck = snackbarHostState.showSnackbar(text ?: v.name, rueckgaengig,
+                duration = SnackbarDuration.Long) == SnackbarResult.ActionPerformed
+        } finally {
+            if (zurueck) vm.rueckgaengig(v) else vm.loeschenAusfuehren(v)
+        }
+    }
+}
 
 /** Die Galerie am Navigationsziel: sammelt die Flüsse und reicht Zustand und Ereignisse weiter. */
 @Composable
 fun GalleryRoute(
     vm: GalerieViewModel,
-    /** Erfassen und Scannen gehören der ganzen App, nicht der Galerie. */
+    /** Die Erfassung dieses Ziels; der Graph bindet sie an dessen Eintrag. */
     erfassung: ErfassungViewModel,
     imageLoader: ImageLoader,
     /** Barcode-Scanner öffnen — nur der Graph kennt den NavController. */
@@ -110,7 +134,7 @@ fun GalleryRoute(
             lagerort = { vm.setLagerFilter(ScopeFilter.View.GALLERY, it) },
             // Auch die Filterlisten: Sie werden sonst nur beim Start geladen.
             aktualisieren = vm::aktualisieren,
-            setErfassen = { sn, qty, price, cond, owner, ort -> erfassung.addSet(sn, qty, price, cond, owner, ort) },
+            setErfassen = erfassung::addSet,
             manuelleErfassungQuittiert = { erfassung.manuelleErfassungQuittieren() },
         )
     }
@@ -234,14 +258,10 @@ private fun GalerieSuche(
         onScannen = onScanBarcode,
         erfassen = erfassen,
         sortierung = {
-            // Dieselben Werte wie SET_SORTS auf dem Server (utils/handlers.ts):
-            // Einen unbekannten Wert setzte er still auf die Vorgabe zurück.
             SortierMenue(
-                optionen = listOf("added_desc", "added_asc", "name_asc", "num_asc",
-                                  "year_desc", "price_desc", "price_asc",
-                                  "qty_desc", "qty_asc").map { it to gallerySortLabel(it) },
+                optionen = Setsortierung.entries.map { it to it.beschriftung() },
                 gewaehlt = galerie.gallerySort, onWahl = ereignisse.sortierung,
-                vorgabe = GALLERY_DEFAULT_SORT,
+                vorgabe = Setsortierung.VORGABE,
             )
         },
     )
@@ -383,21 +403,28 @@ private fun GalerieHinweis(inhalt: @Composable ColumnScope.() -> Unit) {
     )
 }
 
-/**
- * Beschriftung eines Sortierwerts; die Werte sind die des Servers (SET_SORTS),
- * hier wird nur übersetzt. `internal`, weil die Merkliste dieselben Werte unter
- * denselben Beschriftungen braucht — eine zweite Fassung würde bei einer
- * Umbenennung nur zur Hälfte nachgezogen.
- */
+/** Beschriftung einer Sortierung; vollständig, damit ein neuer Wert hier auffällt. */
 @Composable
-internal fun gallerySortLabel(wert: String): String = when (wert) {
-    "added_asc"  -> stringResource(R.string.gallery_sort_added_asc)
-    "name_asc"   -> stringResource(R.string.gallery_sort_name)
-    "num_asc"    -> stringResource(R.string.gallery_sort_number)
-    "year_desc"  -> stringResource(R.string.gallery_sort_year_desc)
-    "price_desc" -> stringResource(R.string.gallery_sort_price_desc)
-    "price_asc"  -> stringResource(R.string.gallery_sort_price_asc)
-    "qty_desc"   -> stringResource(R.string.gallery_sort_qty_desc)
-    "qty_asc"    -> stringResource(R.string.gallery_sort_qty_asc)
-    else         -> stringResource(R.string.gallery_sort_added_desc)
-}
+internal fun Setsortierung.beschriftung(): String = stringResource(when (this) {
+    Setsortierung.NEUESTE -> R.string.gallery_sort_added_desc
+    Setsortierung.AELTESTE -> R.string.gallery_sort_added_asc
+    Setsortierung.NAME -> R.string.gallery_sort_name
+    Setsortierung.NUMMER -> R.string.gallery_sort_number
+    Setsortierung.JAHR -> R.string.gallery_sort_year_desc
+    Setsortierung.PREIS_ABSTEIGEND -> R.string.gallery_sort_price_desc
+    Setsortierung.PREIS_AUFSTEIGEND -> R.string.gallery_sort_price_asc
+    Setsortierung.MENGE_ABSTEIGEND -> R.string.gallery_sort_qty_desc
+    Setsortierung.MENGE_AUFSTEIGEND -> R.string.gallery_sort_qty_asc
+})
+
+/** Dieselben Beschriftungen für die Merkliste; dort ohne Menge. */
+@Composable
+internal fun Merksortierung.beschriftung(): String = stringResource(when (this) {
+    Merksortierung.NEUESTE -> R.string.gallery_sort_added_desc
+    Merksortierung.AELTESTE -> R.string.gallery_sort_added_asc
+    Merksortierung.NAME -> R.string.gallery_sort_name
+    Merksortierung.NUMMER -> R.string.gallery_sort_number
+    Merksortierung.JAHR -> R.string.gallery_sort_year_desc
+    Merksortierung.PREIS_ABSTEIGEND -> R.string.gallery_sort_price_desc
+    Merksortierung.PREIS_AUFSTEIGEND -> R.string.gallery_sort_price_asc
+})

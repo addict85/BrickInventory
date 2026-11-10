@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.katalog.ui.screens
 
+import ch.brickinventoryapp.model.fach.Erfassungswunsch
+import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.material.icons.filled.Bookmark
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.components.ErfassenDialog
@@ -72,7 +74,7 @@ fun CatalogDetailScreen(
     isLoading: Boolean,
     imageLoader: ImageLoader,
     serverUrl: String,
-    defaultCondition: String = "N",
+    defaultCondition: Zustand = Zustand.NEU,
     /** Mitglieder des Haushalts — die Kontowahl blendet sich ohne sie selbst aus. */
     householdMembers: List<MitgliedAnsicht> = emptyList(),
     /** Vorrat an Lagerorten fuer den Erfassungsdialog. */
@@ -80,7 +82,7 @@ fun CatalogDetailScreen(
     /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
     lagerortVorgabe: String = "",
     onLoad: (String) -> Unit,
-    onAddToGallery: (String, Int, Double?, String?, Int?, String?) -> Unit,
+    onAddToGallery: (Erfassungswunsch) -> Unit,
     /**
      * Auf die Merkliste — Setnummer, Zustand, Alarmrichtung, Schwelle (roh) und
      * Zielkonto. Die Schwelle kommt als Text: Leer heisst „kein Alarm“, nicht
@@ -88,13 +90,13 @@ fun CatalogDetailScreen(
      * (alarm/Alarmeingabe.kt). Das Zielkonto wie im Erfassungsdialog und in der Webapp
      * (cat-m-owner).
      */
-    onWish: (String, String, String, String, Int?) -> Unit,
+    onWish: (String, Zustand, String, String, Int?) -> Unit,
     onOpenInGallery: (String) -> Unit,
     onBack: () -> Unit,
     /** Der Merkposten zu diesem Set, falls es schon auf der Merkliste steht. */
     gemerkt: MerkpostenAnsicht? = null,
     /** Den Merkposten öffnen — Setnummer und Zustand. */
-    onOeffneMerkposten: (String, String) -> Unit = { _, _ -> },
+    onOeffneMerkposten: (String, Zustand) -> Unit = { _, _ -> },
 ) {
     LaunchedEffect(setNumber) { onLoad(setNumber) }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
@@ -205,9 +207,9 @@ fun CatalogDetailScreen(
             lagerorte = lagerorte,
             lagerortVorgabe = lagerortVorgabe,
             onDismiss = { showAddDialog = false },
-            onAdd = { qty, price, cond, owner, ort ->
+            onAdd = { wunsch ->
                 showAddDialog = false
-                onAddToGallery(detail.setNumber, qty, price, cond, owner, ort)
+                onAddToGallery(wunsch.copy(setNumber = detail.setNumber))
             }
         )
     }
@@ -316,7 +318,7 @@ private fun ColumnScope.KatalogAngaben(
 /** „Neu, Alarm unter CHF 349.00“ — Zustand und Alarm eines Merkpostens in einer Zeile. */
 @Composable
 private fun merkpostenText(m: MerkpostenAnsicht): String {
-    val zustand = stringResource(if (m.condition == "U") R.string.condition_used else R.string.condition_new)
+    val zustand = stringResource(if (m.condition == Zustand.GEBRAUCHT) R.string.condition_used else R.string.condition_new)
     val alarm = m.alarm?.let { a ->
         stringResource(if (a.richtung == "ueber") R.string.wanted_alert_above else R.string.wanted_alert_below,
             fmtMoney(a.schwelle, m.waehrung))
@@ -328,14 +330,15 @@ private fun merkpostenText(m: MerkpostenAnsicht): String {
 @Composable
 private fun CatalogAddDialog(
     setName: String,
-    defaultCondition: String,
+    defaultCondition: Zustand,
     householdMembers: List<MitgliedAnsicht>,
     /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
     lagerorte: List<String>,
     /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
     lagerortVorgabe: String = "",
     onDismiss: () -> Unit,
-    onAdd: (Int, Double?, String?, Int?, String?) -> Unit
+    /** Ohne Setnummer: Die setzt das Detail, zu dem der Dialog gehört. */
+    onAdd: (Erfassungswunsch) -> Unit
 ) {
     var quantity      by rememberSaveable { mutableStateOf("1") }
     var purchasePrice by rememberSaveable { mutableStateOf("") }
@@ -385,15 +388,16 @@ private fun CatalogAddDialog(
             }
         },
         confirmButton = {
-            Button(onClick = { if (!erfassungUngueltig(quantity, purchasePrice)) onAdd(
-                quantity.toIntOrNull() ?: 1,
-                NumericInput.leseBetrag(purchasePrice),
-                condition,
+            Button(onClick = { if (!erfassungUngueltig(quantity, purchasePrice)) onAdd(Erfassungswunsch(
+                setNumber = "",
+                menge = quantity.toIntOrNull() ?: 1,
+                kaufpreis = NumericInput.leseBetrag(purchasePrice),
+                zustand = condition,
                 // Ohne Haushalt gar nichts mitschicken — der Server bleibt dann
                 // beim eigenen Konto (gleiche Regel wie im Galerie-Dialog).
-                if (householdMembers.size > 1) owner else null,
-                lagerort.trim().takeIf { it.isNotEmpty() }
-            ) }) {
+                besitzer = if (householdMembers.size > 1) owner else null,
+                lagerort = lagerort.trim().takeIf { it.isNotEmpty() },
+            )) }) {
                 Text(stringResource(R.string.catalog_add_confirm))
             }
         },
@@ -410,11 +414,11 @@ private fun CatalogAddDialog(
 @Composable
 private fun MerkpostenDialog(
     setName: String,
-    defaultCondition: String,
+    defaultCondition: Zustand,
     /** Konten des Haushalts — ohne Unterkonten blendet sich die Wahl selbst aus. */
     householdMembers: List<MitgliedAnsicht>,
     onDismiss: () -> Unit,
-    onWish: (String, String, String, Int?) -> Unit,
+    onWish: (Zustand, String, String, Int?) -> Unit,
 ) {
     var zustand  by rememberSaveable { mutableStateOf(defaultCondition) }
     var richtung by rememberSaveable { mutableStateOf("unter") }

@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.model.ui.model
 
+import ch.brickinventoryapp.model.fach.Laufstatus
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.data.model.CsvImportErgebnis
 import ch.brickinventoryapp.model.data.model.CsvImportStatus
 import ch.brickinventoryapp.model.data.model.GetrenntesKonto
@@ -33,7 +35,7 @@ fun GetrenntesKonto.alsAnsicht() = GetrenntesKontoAnsicht(id, username, via)
 data class HaushaltStatusAnsicht(
     val isMain: Boolean,
     val isSub: Boolean,
-    val currency: String,
+    val currency: Waehrung,
     val elternkonten: List<KontoAnsicht>,
     val subAccounts: List<MitgliedAnsicht>,
     val openInvites: Int,
@@ -62,7 +64,7 @@ fun CsvImportErgebnis.alsAnsicht() = CsvErgebnisAnsicht(total, neuAngelegt, upda
 
 /** Ein Stand des laufenden CSV-Imports; fehlende Zahlen sind 0. */
 data class CsvImportStandAnsicht(
-    val status: String?,
+    val status: Laufstatus?,
     val total: Int,
     val done: Int,
     val current: String?,

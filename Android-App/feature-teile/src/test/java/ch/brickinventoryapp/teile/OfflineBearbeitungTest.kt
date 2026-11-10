@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.teile
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.cache.ResponseCache
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import okhttp3.MediaType.Companion.toMediaType
@@ -213,7 +214,7 @@ class OfflineBearbeitungTest {
         teile.getManualParts(); figuren.getManualMinifigs(); repo.getMerkliste()
         s.offline = true
         for (r in listOf(teile.deletePart("3001", 5, owner = 7), figuren.deleteMinifig("sw0001", owner = 7),
-                         repo.loescheMerkposten("20001-1", "N", 7)))
+                         repo.loescheMerkposten("20001-1", Zustand.NEU, 7)))
             assertTrue("Erwartet: offline gespeichert, kam $r", r is Ergebnis.Success && r.gepuffert)
         assertEquals("das gelöschte Teil verschwindet sofort", listOf("3002"),
             ablage.lies(Faecher.MANUELLE_TEILE)!!.liste.map { it.partNumber })

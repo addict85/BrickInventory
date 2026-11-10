@@ -24,13 +24,13 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  * nächste Set scannen.
  */
 @Composable
-fun SetPruefungRoute(vm: ErfassungViewModel) {
+internal fun SetPruefungRoute(vm: ErfassungViewModel) {
     val erfassung by vm.erfassungState.collectAsStateWithLifecycle()
     SetPruefungDialog(erfassung, vm)
 }
 
 @Composable
-fun SetPruefungDialog(erfassung: ErfassungUiState, aktionen: ErfassungAktionen) {
+internal fun SetPruefungDialog(erfassung: ErfassungUiState, aktionen: ErfassungAktionen) {
     val schritt = erfassung.pruefung ?: return
 
     AlertDialog(

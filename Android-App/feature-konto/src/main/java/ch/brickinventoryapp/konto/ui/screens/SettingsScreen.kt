@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.konto.ui.screens
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.ui.components.SchalterZeile
 import ch.brickinventoryapp.ui.components.AppSperreWahl
 import ch.brickinventoryapp.ui.components.LocalAppSperre
@@ -57,7 +60,7 @@ data class EinstellungenZustand(
     val appState: AppUiState,
     val updateZustand: UpdateUiState,
     val helligkeit: String,
-    val design: String,
+    val design: Design,
     val systemfarben: Boolean,
     val vorschauVerbergen: Boolean,
     val widgetWerte: Boolean,
@@ -66,7 +69,7 @@ data class EinstellungenZustand(
 
 /** Die Einstellungen am Navigationsziel; Darstellung, Vertrauen und Update leben an der Activity. */
 @Composable
-fun SettingsRoute(
+internal fun SettingsRoute(
     vm: EinstellungenViewModel,
     onLogout: () -> Unit,
     onServerWechseln: () -> Unit,
@@ -131,8 +134,8 @@ fun SettingsScreen(
 
     // Rückfall auf die globale Vorgabe des Servers beim Erfassen
     // (`defaultPriceCondition`), nicht auf die Preisgrundlage für Bewertungen. `null`
-    // heisst: keine eigene Vorgabe — nicht dasselbe wie "N".
-    val eigeneVorgabe = userDefaultCondition?.takeIf { it.isNotBlank() }
+    // heisst: keine eigene Vorgabe — nicht dasselbe wie NEU.
+    val eigeneVorgabe = userDefaultCondition
     val effectiveUserDefault = eigeneVorgabe ?: defaultPriceCondition
 
     Column(
@@ -236,7 +239,7 @@ fun SettingsScreen(
             // Währung und Preisgrundlage gehen zusammen an den Server (ein Endpunkt).
             Unterschrift(stringResource(R.string.settings_currency))
             WahlChips(
-                listOf("CHF", "EUR", "USD", "GBP").map { it to it },
+                Waehrung.WAEHLBAR.map { it to it.code },
                 gewaehlt = currency, onWahl = { aktionen.saveSettings(it, priceCondition) },
             )
 
@@ -245,27 +248,27 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             WahlChips(
-                listOf("N" to stringResource(R.string.settings_condition_new),
-                       "U" to stringResource(R.string.settings_condition_used)),
+                listOf(Zustand.NEU to stringResource(R.string.settings_condition_new),
+                       Zustand.GEBRAUCHT to stringResource(R.string.settings_condition_used)),
                 gewaehlt = priceCondition, onWahl = { aktionen.saveSettings(currency, it) },
             )
 
             // ── Standard-Zustand beim Erfassen ──
             //
             // Drei Möglichkeiten, damit es einen Weg zurück zur Vorgabe des Servers gibt; der
-            // Hinweis nennt, worauf sie steht. "" heisst beim Server: zurück auf die Vorgabe.
+            // Hinweis nennt, worauf sie steht.
             Unterschrift(stringResource(R.string.settings_default_condition))
-            val wirkt = if (effectiveUserDefault == "U") stringResource(R.string.condition_used)
+            val wirkt = if (effectiveUserDefault == Zustand.GEBRAUCHT) stringResource(R.string.condition_used)
                         else stringResource(R.string.condition_new)
             Text(stringResource(R.string.settings_default_condition_hint) + " " +
                     stringResource(R.string.settings_default_condition_effective, wirkt),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             WahlChips(
-                listOf("" to stringResource(R.string.settings_default_condition_global),
-                       "N" to stringResource(R.string.condition_new),
-                       "U" to stringResource(R.string.condition_used)),
-                gewaehlt = eigeneVorgabe ?: "", onWahl = { aktionen.saveUserDefaultCondition(it) },
+                listOf(null to stringResource(R.string.settings_default_condition_global),
+                       Zustand.NEU to stringResource(R.string.condition_new),
+                       Zustand.GEBRAUCHT to stringResource(R.string.condition_used)),
+                gewaehlt = eigeneVorgabe, onWahl = { aktionen.saveUserDefaultCondition(it) },
             )
         }
 

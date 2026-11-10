@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.zustand
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.zustand.ui.AppUiState
 import ch.brickinventoryapp.zustand.ui.abgeleitet
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,19 +27,19 @@ class AbgeleiteterZustandTest {
     fun `ein abgeleiteter Zustand meldet nur echte Aenderungen`() = runTest(UnconfinedTestDispatcher()) {
         val zustand = MutableStateFlow(AppUiState())
         val design = zustand.abgeleitet { it.appTheme }
-        val gesehen = mutableListOf<String>()
+        val gesehen = mutableListOf<Design>()
         val sammler = launch { design.collect { gesehen += it } }
         yield()
 
         for (schritt in listOf<(AppUiState) -> AppUiState>(
-            { it.copy(currency = "CHF") }, { it.copy(isAdmin = true) }, { it.copy(appTheme = "noppe") },
+            { it.copy(currency = Waehrung("CHF")) }, { it.copy(isAdmin = true) }, { it.copy(appTheme = Design.NOPPE) },
         )) {
             zustand.update(schritt)
             yield()
         }
         sammler.cancel()
 
-        assertEquals(listOf("classic", "noppe"), gesehen)
-        assertEquals("noppe", design.value)
+        assertEquals(listOf(Design.CLASSIC, Design.NOPPE), gesehen)
+        assertEquals(Design.NOPPE, design.value)
     }
 }

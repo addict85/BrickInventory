@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.testing
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.data.Sitzungsablage
 import ch.brickinventoryapp.data.api.BrickApiService
 import kotlinx.coroutines.flow.Flow
@@ -54,22 +56,22 @@ class FakeApi {
 class SpeicherSitzungsablage : Sitzungsablage {
     val server = MutableStateFlow("")
     val token = MutableStateFlow("")
-    val design = MutableStateFlow("classic")
-    val waehrung = MutableStateFlow("EUR")
+    val design = MutableStateFlow(Design.VORGABE)
+    val waehrung = MutableStateFlow(Waehrung.EUR)
     val sprache = MutableStateFlow("system")
     var abgelaufen = false
     val gescheitert: MutableSet<String> = mutableSetOf()
 
     override val serverUrl: Flow<String> = server
     override val authToken: Flow<String> = token
-    override val appTheme: Flow<String> = design
-    override val currency: Flow<String> = waehrung
+    override val appTheme: Flow<Design> = design
+    override val currency: Flow<Waehrung> = waehrung
     override val language: Flow<String> = sprache
     override suspend fun serverUrlJetzt() = server.value
     override suspend fun tokenJetzt() = token.value
     override suspend fun anmeldungAbgelaufen(jetzt: Long) = abgelaufen
-    override suspend fun saveAppTheme(theme: String) { design.value = theme }
-    override suspend fun saveCurrency(cur: String) { waehrung.value = cur }
+    override suspend fun saveAppTheme(theme: Design) { design.value = theme }
+    override suspend fun saveCurrency(cur: Waehrung) { waehrung.value = cur }
     override fun gescheiterteEntwertungen(): Set<String> = gescheitert.toSet()
     override fun quittiereGescheiterteEntwertungen() = gescheitert.clear()
 }

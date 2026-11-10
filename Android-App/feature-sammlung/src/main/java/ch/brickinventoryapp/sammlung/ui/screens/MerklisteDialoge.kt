@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.runtime.LaunchedEffect
 import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
 import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
@@ -35,7 +36,7 @@ internal fun UebernahmeDialog(
     /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
     lagerortVorgabe: String = "",
     onDismiss: () -> Unit,
-    onUebernehmen: (Int, String, String, String?) -> Unit,
+    onUebernehmen: (Int, String, Zustand, String?) -> Unit,
 ) {
     var anzahl   by rememberSaveable { mutableStateOf("1") }
     var preis    by rememberSaveable { mutableStateOf("") }
@@ -90,9 +91,9 @@ internal fun UebernahmeDialog(
 @Composable
 internal fun MerkpostenErfassenDialog(
     householdMembers: List<MitgliedAnsicht>,
-    defaultCondition: String,
+    defaultCondition: Zustand,
     onDismiss: () -> Unit,
-    onAnlegen: (String, String, Int?) -> Unit,
+    onAnlegen: (String, Zustand, Int?) -> Unit,
 ) {
     var nummer  by rememberSaveable { mutableStateOf("") }
     var zustand by rememberSaveable { mutableStateOf(defaultCondition) }

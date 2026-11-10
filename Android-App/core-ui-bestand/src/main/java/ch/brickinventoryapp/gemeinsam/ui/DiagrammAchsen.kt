@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.gemeinsam.ui
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.model.DiagrammAchse
 import ch.brickinventoryapp.model.ui.model.DiagrammPunkt
 import java.text.NumberFormat
@@ -46,11 +47,11 @@ fun lokaleAchse(punkte: List<DiagrammPunkt>, tage: List<String>, locale: Locale)
  * [kompakt] für grosse Schrift: „1,7k“ ohne Währung — ausgeschrieben nahm die Achse
  * bei 200 % ein Drittel der Diagrammbreite; der Betrag steht in der Kopfkarte darüber.
  */
-fun lokaleWerte(achse: List<DiagrammAchse>, waehrung: String, locale: Locale, kompakt: Boolean = false): List<DiagrammAchse> {
+fun lokaleWerte(achse: List<DiagrammAchse>, waehrung: Waehrung, locale: Locale, kompakt: Boolean = false): List<DiagrammAchse> {
     if (kompakt) return achse.map { it.copy(label = kompakterBetrag(it.value, locale)) }
     val nf = runCatching {
         NumberFormat.getCurrencyInstance(locale).apply {
-            currency = Currency.getInstance(waehrung)
+            currency = Currency.getInstance(waehrung.code)
             maximumFractionDigits = 0
             minimumFractionDigits = 0
         }

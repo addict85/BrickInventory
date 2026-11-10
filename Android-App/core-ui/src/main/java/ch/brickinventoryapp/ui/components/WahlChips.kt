@@ -141,12 +141,12 @@ fun WahlChip(text: String, an: Boolean, onClick: () -> Unit, modifier: Modifier 
  * Filter-Chips; ein Punkt am Symbol sagt, dass von [vorgabe] abgewichen wird.
  */
 @Composable
-fun SortierMenue(
-    optionen: List<Pair<String, String>>,
-    gewaehlt: String,
-    onWahl: (String) -> Unit,
+fun <T> SortierMenue(
+    optionen: List<Pair<T, String>>,
+    gewaehlt: T,
+    onWahl: (T) -> Unit,
     modifier: Modifier = Modifier,
-    vorgabe: String? = null,
+    vorgabe: T? = null,
 ) {
     var offen by rememberSaveable { mutableStateOf(false) }
     val aktuell = optionen.firstOrNull { it.first == gewaehlt }?.second ?: ""

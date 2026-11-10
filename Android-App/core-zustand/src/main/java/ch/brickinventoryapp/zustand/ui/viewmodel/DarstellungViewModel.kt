@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.zustand.ui.viewmodel
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.zustand.ui.abgeleitet
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -34,7 +35,7 @@ class DarstellungViewModel @Inject constructor(
     }
 
     /** Nur das Design, damit MainActivity nicht bei jeder Zustandsänderung neu komponiert. */
-    val appTheme: StateFlow<String> = sitzung.state.abgeleitet { it.appTheme }
+    val appTheme: StateFlow<Design> = sitzung.state.abgeleitet { it.appTheme }
 
     private val _helligkeit = MutableStateFlow(prefs.helligkeit())
     val helligkeit: StateFlow<String> = _helligkeit.asStateFlow()

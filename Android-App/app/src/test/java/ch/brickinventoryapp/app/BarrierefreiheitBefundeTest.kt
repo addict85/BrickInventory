@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.fach.Zustand
 import android.content.Context
 import ch.brickinventoryapp.testing.VerwaltungRepository
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
@@ -146,7 +148,7 @@ class BarrierefreiheitBefundeTest {
 
     private fun zeige(schrift: Float = 1f, inhalt: @Composable () -> Unit) {
         compose.setContent {
-            BrickInventoryManagerTheme(theme = "classic") {
+            BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 val d = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(d.density, schrift)) {
                     Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
@@ -238,7 +240,7 @@ class BarrierefreiheitBefundeTest {
                     PreisalarmCard(false) {}
                     SettingsScreen(
                         zustand = EinstellungenZustand(AppUiState(serverUrl = "https://brick.example.org"), UpdateUiState(),
-                            "system", "classic", false, false, false, false),
+                            "system", Design.CLASSIC, false, false, false, false),
                         aktionen = vm, update = update, darstellung = darstellung, onNutzerCa = { ca = it },
                         onLogout = {}, onServerWechseln = {}, scrollState = androidx.compose.foundation.rememberScrollState(),
                     )
@@ -346,7 +348,7 @@ class BarrierefreiheitBefundeTest {
         var hauptfarbe = 0
         val ablage = FocusRequester()
         compose.setContent {
-            BrickInventoryManagerTheme(theme = "classic") {
+            BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 hauptfarbe = MaterialTheme.colorScheme.primary.toArgb()
                 val modus = LocalInputModeManager.current
                 LaunchedEffect(Unit) { modus.requestInputMode(InputMode.Keyboard) }
@@ -410,7 +412,7 @@ class BarrierefreiheitBefundeTest {
     @Test
     fun `M13 Set- und Katalogkachel lesen zuerst den Namen und sind Knoepfe mit Ziel`() {
         val set = SetAnsicht(setNumber = "75192-1", name = "Millennium Falcon", theme = "Star Wars", quantity = 2,
-            conditions = listOf("N"))
+            conditions = listOf(Zustand.NEU))
         val katalog = KatalogSetAnsicht(setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022,
             numParts = 4514, owned = true, ownedQuantity = 2)
         zeige {

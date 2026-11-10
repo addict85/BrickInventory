@@ -9,12 +9,10 @@ import ch.brickinventoryapp.testing.Quellen
  */
 class PartsListScannerTest {
 
-    // Der Barcode-Dialog steht seit seiner Auslagerung in
-    // sammlung/ui/dialogs/BarcodeResultDialog.kt; AppNavigation.kt ruft ihn nur noch auf.
+    // Der Dialog steht in BarcodeResultDialog.kt; der Erfassungsrahmen zeigt ihn über dem scannenden Ziel.
     private val src: String by lazy {
-        val w = ""
-        File(Quellen.wurzel, w + "app/AppNavigation.kt").readText() + "\n" +
-            File(Quellen.wurzel, w + "sammlung/ui/dialogs/BarcodeResultDialog.kt").readText()
+        File(Quellen.wurzel, "sammlung/ui/Erfassungsrahmen.kt").readText() + "\n" +
+            File(Quellen.wurzel, "sammlung/ui/dialogs/BarcodeResultDialog.kt").readText()
     }
 
     /** Kommentare ausblenden — die Erklärtexte nennen die geprüften Muster selbst. */
@@ -24,7 +22,7 @@ class PartsListScannerTest {
     @Test
     fun `Eigentuemer, Kaufpreis und Zustand haengen an der Herkunft`() {
         val c = code(src)
-        val bedingung = c.indexOf("""if (barcodeState.source != "partslist")""")
+        val bedingung = c.indexOf("""if (barcodeState.source != Scannerherkunft.TEILELISTE)""")
         assert(bedingung > 0) {
             "Die Erfassungsfelder stehen nicht mehr unter der Herkunfts-Bedingung — aus der " +
                 "Teileliste wären sie wirkungslos, würden aber wie eine echte Eingabe aussehen"
@@ -44,7 +42,7 @@ class PartsListScannerTest {
     fun `das Bild bleibt in beiden Faellen sichtbar`() {
         val c = code(src)
         val bild = c.indexOf("ProduktBild(")
-        val bedingung = c.indexOf("""if (barcodeState.source != "partslist")""")
+        val bedingung = c.indexOf("""if (barcodeState.source != Scannerherkunft.TEILELISTE)""")
         assert(bild in 1 until bedingung) {
             "Das Vorschaubild darf NICHT im Erfassungs-Zweig liegen — es ist der Grund, " +
                 "warum der Dialog überhaupt erscheint: prüfen, ob das richtige Set gescannt wurde"
@@ -54,7 +52,7 @@ class PartsListScannerTest {
     @Test
     fun `aus der Teileliste wird nur die Setnummer uebergeben`() {
         val c = code(src)
-        assert(c.contains("""aktionen.confirmAddBarcode(barcodeState.result)""")) {
+        assert(c.contains("""aktionen.confirmAddBarcode(Erfassungswunsch(barcodeState.result))""")) {
             "Der Teilelisten-Weg soll nur die Nummer übergeben — Werte mitzuschicken, die " +
                 "niemand eingeben konnte, verschleiert beim Lesen, was gemeint ist"
         }

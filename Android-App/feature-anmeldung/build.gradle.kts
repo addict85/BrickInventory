@@ -7,6 +7,8 @@ plugins {
 
 android {
     namespace = "ch.brickinventoryapp.feature.anmeldung"
+    // Oberflächentests unter Robolectric lesen Texte und Schriften aus den Ressourcen.
+    testOptions.unitTests.isIncludeAndroidResources = true
 }
 
 dependencies {
@@ -27,4 +29,9 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
 
     testImplementation(project(":core-testing"))
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.androidx.ui.test.manifest)
 }

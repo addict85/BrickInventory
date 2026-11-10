@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.model.data.model
 
+import ch.brickinventoryapp.model.fach.Laufstatus
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -66,7 +67,7 @@ data class CacheTtlResponse(val success: Boolean, val ttl: String = "24")
 @Serializable
 data class JobStatus(
     val label: String = "",
-    val status: String = "idle",
+    val status: Laufstatus = Laufstatus.RUHT,
     val progress: Int = 0,
     val total: Int = 0,
     val sub: String? = null

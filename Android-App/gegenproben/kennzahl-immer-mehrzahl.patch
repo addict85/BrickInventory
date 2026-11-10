@@ -1,6 +1,6 @@
 Gegenprobe: Kennzahl fragt den Plural immer mit 2 („1 Exemplare“)
-Modul: app
-Test: ch.brickinventoryapp.app.KennzahlenPluralTest
+Modul: core-ui-bestand
+Test: ch.brickinventoryapp.gemeinsam.KennzahlenPluralTest
 Rot: bei 1 steht auf Deutsch die Einzahl
 
 diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt

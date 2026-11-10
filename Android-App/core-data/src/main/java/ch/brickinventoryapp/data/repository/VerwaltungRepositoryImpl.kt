@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.api.VerwaltungApi
 import ch.brickinventoryapp.model.data.model.*
 import okhttp3.MediaType.Companion.toMediaType
@@ -62,8 +64,8 @@ class VerwaltungRepositoryImpl @Inject constructor(
     override suspend fun queueCatalogImages(): Ergebnis<GenericAdminResponse> = sicherAufrufen { api.queueCatalogImages() }
 
     /** Das globale Design umstellen (nur Verwalter). */
-    override suspend fun setAppTheme(theme: String): Ergebnis<GenericAdminResponse> =
-        sicherAufrufen { api.setAppTheme(mapOf("theme" to theme)) }
+    override suspend fun setAppTheme(theme: Design): Ergebnis<GenericAdminResponse> =
+        sicherAufrufen { api.setAppTheme(mapOf("theme" to theme.kennung)) }
 
     /** Startzustand des Servers — ohne Anmeldung. */
     override suspend fun getStartupStatus(): Ergebnis<StartupStatus> = sicherAufrufen { api.getStartupStatus() }
@@ -117,5 +119,5 @@ class VerwaltungRepositoryImpl @Inject constructor(
     override suspend fun triggerPriceJob(): Ergebnis<GenericAdminResponse> = sicherAufrufen { api.triggerPriceJob() }
 
     // Admin-level: saves global default (Monitoring)
-    override suspend fun setDefaultCondition(condition: String): Ergebnis<GenericAdminResponse> = sicherAufrufen { api.setDefaultCondition(mapOf("condition" to condition)) }
+    override suspend fun setDefaultCondition(condition: Zustand): Ergebnis<GenericAdminResponse> = sicherAufrufen { api.setDefaultCondition(mapOf("condition" to condition.kennung)) }
 }

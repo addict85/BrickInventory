@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.app.nav.Reiter
+import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
@@ -17,7 +21,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.performScrollToNode
-import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
@@ -47,9 +50,7 @@ import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.sammlung.ui.KachelPreis
 import ch.brickinventoryapp.zustand.ui.Screen
 import ch.brickinventoryapp.ui.components.FehlerHinweis
-import ch.brickinventoryapp.model.ui.model.KaufAnsicht
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
-import ch.brickinventoryapp.gemeinsam.ui.AcquisitionSummarySection
 import ch.brickinventoryapp.sammlung.ui.screens.MerklisteRoute
 import ch.brickinventoryapp.sammlung.ui.screens.SetCard
 import ch.brickinventoryapp.sammlung.ui.screens.SetDetailRoute
@@ -76,7 +77,6 @@ import ch.brickinventoryapp.ui.components.SegmentWahl
 import ch.brickinventoryapp.finanzen.ui.screens.FinanceRoute
 import ch.brickinventoryapp.sammlung.ui.screens.GalleryRoute
 import ch.brickinventoryapp.teile.ui.screens.PartsRoute
-import ch.brickinventoryapp.gemeinsam.ui.WertKacheln
 import ch.brickinventoryapp.finanzen.ui.setZeilen
 import ch.brickinventoryapp.sammlung.ui.viewmodel.ErfassungViewModel
 import ch.brickinventoryapp.finanzen.ui.inVierergruppen
@@ -96,14 +96,12 @@ import java.util.Locale
 import ch.brickinventoryapp.testing.SetsRepository
 
 /**
- * Was die Bildschirmfotos zeigen, hier als Regel ausgeführt: Bei 200 % Schrift bricht
- * kein Betrag und keine Prozentzahl um, der Kaufpreis steht unter seiner Bezeichnung,
- * auf dem Tablet liegt der Umschalter rechts der Seitenleiste, ein Ladefehler nennt
- * seine Klasse, und die leere Merkliste bietet beide Wege zum ersten Eintrag.
+ * Was die Bildschirmfotos zeigen, hier als Regel ausgeführt: Auf dem Tablet liegt der
+ * Umschalter rechts der Seitenleiste, ein Ladefehler nennt seine Klasse, und die leere
+ * Merkliste bietet beide Wege zum ersten Eintrag. Kachel und Wert-Kacheln prüfen
+ * SetKachelTest und WertKachelnTest in den Modulen, die sie besitzen.
  *
  * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   grosse-schrift-kachel-row       Prozent wieder neben dem Betrag in einer Row → rot „Kachel …“
- *   grosse-schrift-kaufpreis-daneben Kaufpreis neben der Bezeichnung → rot „Kaufpreis …“
  *   tablet-umschalter-oben          Umschalter auch auf dem Tablet in der App-Leiste → rot „Tablet …“
  *   fehlerhinweis-roher-satz        der Satz der Datenschicht auch bei OFFLINE → rot „Fehlerhinweis …“
  *   merkliste-leer-ohne-knoepfe     Knopf „Set merken“ ohne Beschriftung → rot „leere Merkliste …“
@@ -113,7 +111,6 @@ import ch.brickinventoryapp.testing.SetsRepository
  *   teile-raster-fest               Teileraster wieder fest 120 dp → rot „Teile bei 200 Prozent …“
  *   finanzen-einspaltig             Finanzen auch auf dem Tablet einspaltig → rot „Finanzen stehen auf dem Tablet …“
  *   gutschein-pin-klein             PIN-Zeile ohne Mindesthöhe → rot „Gutschein-Knoepfe …“
- *   wertkacheln-immer-drei          Wert-Kacheln immer zu dritt nebeneinander → rot „Wert-Kacheln … 100 Prozent“
  *   bildflaeche-ohne-ersatz         ProduktBild ohne Ersatzbild → rot „Galerie zeigt ohne Bild das Ersatzbild“
  *   leiste-klappt-nicht-ein         TopAppBar ohne scrollBehavior → rot „App-Leiste weicht beim Rollen“
  *   merkliste-zustand-als-chips     Zustandsfilter der Merkliste als Radio-Chips → rot „Merkliste waehlt …“
@@ -123,7 +120,6 @@ import ch.brickinventoryapp.testing.SetsRepository
  *   teile-farben-englisch           Farbnamen unübersetzt, Teilenamen ohne Sprache → rot „Teile nennen Farben …“
  *   merkliste-leer-dreifach         leere Merkliste wieder mit Knopf und Suchzeile → rot „leere Merkliste …“
  *   segmente-bei-grosser-schrift    Einfachwahl auch bei 200 % als Segmente → rot „Einfachwahl bricht …“
- *   kachel-hoehe-nach-inhalt        Name ohne zwei feste Zeilen → rot „Kacheln einer Reihe …“
  *   finanzen-kauf-je-stueck         Kauf der Zeile wieder je Stück → rot „Finanzen nennen …“
  *   finanzen-kopf-ohne-basis        Kopfkarte aus allen Positionen statt der Basis → rot „Finanzkopf …“
  *   kachel-quelle-ignoriert         Kachel nennt auch den Kaufpreis „Marktpreis“ → rot „Galeriekachel …“
@@ -151,7 +147,7 @@ class OberflaechenRegelnTest {
 
     private fun zeige(schrift: Float = 1f, inhalt: @Composable () -> Unit) {
         compose.setContent {
-            BrickInventoryManagerTheme(theme = "classic") {
+            BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 val d = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(d.density, schrift)) {
                     Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
@@ -161,85 +157,14 @@ class OberflaechenRegelnTest {
         compose.waitForIdle()
     }
 
-    private fun zeilen(knoten: SemanticsNodeInteraction): Int {
-        val ergebnis = mutableListOf<TextLayoutResult>()
-        knoten.fetchSemanticsNode().config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
-        return ergebnis.single().lineCount
-    }
-
-    @Test
-    fun `Kachel bei 200 Prozent bricht weder Betrag noch Prozent um`() {
-        val bilder = coil3.ImageLoader.Builder(ctx).build()
-        zeige(schrift = 2f) {
-            Box(Modifier.width(188.dp)) {
-                SetCard(SetAnsicht(setNumber = "75192-1", name = "Millennium Falcon", theme = "Star Wars"),
-                    serverUrl = "", imageLoader = bilder, onClick = {},
-                    preis = KachelPreis(812.5, 16.1), waehrung = "CHF")
-            }
-        }
-        assertEquals("Prozent", 1, zeilen(compose.onNodeWithText(fmtProzent(16.1), useUnmergedTree = true)))
-        assertEquals("Betrag", 1, zeilen(compose.onNodeWithText(fmtMoney(812.5, "CHF"), useUnmergedTree = true)))
-    }
-
-    /**
-     * Prüft je Betrag: eine Zeile, nichts ausgelassen und nicht breiter als seine
-     * Kachel (mit softWrap = false liefe er sonst über den Rand). Kacheln derselben
-     * Reihe sind gleich hoch.
-     */
-    private fun wertKachelnGanz(schrift: Float) {
-        val markt = fmtMoney(1712.4, "CHF")
-        val kauf = fmtMoney(1500.0, "CHF")
-        val pnl = fmtProzent(14.2)
-        zeige(schrift) {
-            Box(Modifier.width(360.dp).padding(horizontal = 16.dp)) {
-                WertKacheln(markt, kauf, 14.2)
-            }
-        }
-        for (betrag in listOf(markt, kauf, pnl)) {
-            val ergebnis = mutableListOf<TextLayoutResult>()
-            compose.onNodeWithText(betrag, useUnmergedTree = true).fetchSemanticsNode()
-                .config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
-            val t = ergebnis.single()
-            assertEquals("$betrag in einer Zeile", 1, t.lineCount)
-            assertTrue("$betrag ist abgeschnitten (rechts ${t.getLineRight(0)} von ${t.size.width})",
-                !t.isLineEllipsized(0) && t.getLineEnd(0, visibleEnd = true) == betrag.length &&
-                    t.getLineRight(0) <= t.size.width + 0.5f)
-        }
-        val kacheln = listOf(R.string.detail_section_market, R.string.detail_purchase_price, R.string.detail_pnl_tile)
-            .map { compose.onNodeWithText(ctx.getString(it), substring = true).fetchSemanticsNode().boundsInRoot }
-        kacheln.groupBy { it.top }.values.filter { it.size > 1 }.forEach { reihe ->
-            assertTrue("Kacheln einer Reihe gleich hoch: ${reihe.map { it.height }}",
-                reihe.all { kotlin.math.abs(it.height - reihe[0].height) < 1f })
-        }
-    }
-
-    @Test
-    fun `Wert-Kacheln zeigen vierstellige Betraege auf schmalem Telefon bei 100 Prozent ganz`() = wertKachelnGanz(1f)
-
-    @Test
-    fun `Wert-Kacheln zeigen vierstellige Betraege auf schmalem Telefon bei 200 Prozent ganz`() = wertKachelnGanz(2f)
-
-    @Test
-    fun `Kaufpreis bei 200 Prozent steht unter der Bezeichnung in einer Zeile`() {
-        zeige(schrift = 2f) {
-            Box(Modifier.width(360.dp)) {
-                AcquisitionSummarySection(listOf(KaufAnsicht(id = 1, quantity = 1, purchasePrice = 700.0)), "CHF") {}
-            }
-        }
-        val betrag = compose.onNodeWithText(fmtMoney(700.0, "CHF"), useUnmergedTree = true)
-        assertEquals(1, zeilen(betrag))
-        val bezeichnung = compose.onNodeWithText(ctx.getString(R.string.detail_purchase_price)).fetchSemanticsNode().boundsInRoot
-        assertTrue("Der Betrag steht unter der Bezeichnung", betrag.fetchSemanticsNode().boundsInRoot.top >= bezeichnung.bottom)
-    }
-
     @Test
     fun `Tablet hat den Umschalter rechts der Seitenleiste`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         zeige {
             val nav = rememberNavController()
             val reiter = remember {
-                listOf<Triple<Screen, @Composable () -> Unit, String>>(
-                    Triple(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"))
+                listOf(
+                    Reiter(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"))
             }
             MainScaffold(
                 title = "Sammlung", navController = nav, bottomNavItems = reiter,
@@ -264,8 +189,8 @@ class OberflaechenRegelnTest {
         zeige {
             val nav = rememberNavController()
             val reiter = remember {
-                listOf<Triple<Screen, @Composable () -> Unit, String>>(
-                    Triple(Screen.Finance, { Icon(Icons.Default.ViewInAr, null) }, "Finanzen"))
+                listOf(
+                    Reiter(Screen.Finance, { Icon(Icons.Default.ViewInAr, null) }, "Finanzen"))
             }
             MainScaffold(
                 title = "Finanzen", navController = nav, bottomNavItems = reiter,
@@ -299,9 +224,9 @@ class OberflaechenRegelnTest {
         zeige {
             val nav = rememberNavController()
             val reiter = remember {
-                listOf<Triple<Screen, @Composable () -> Unit, String>>(
-                    Triple(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
-                    Triple(Screen.Mehr, { Icon(Icons.Default.ViewInAr, null) }, ctx.getString(R.string.nav_more)))
+                listOf(
+                    Reiter(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                    Reiter(Screen.Mehr, { Icon(Icons.Default.ViewInAr, null) }, ctx.getString(R.string.nav_more)))
             }
             MainScaffold(
                 title = "Sammlung", navController = nav, bottomNavItems = reiter,
@@ -358,9 +283,9 @@ class OberflaechenRegelnTest {
             compose.onNodeWithText(ctx.getString(R.string.detail_pnl_tile), useUnmergedTree = true).assertIsDisplayed()
             // Die G&V-Kachel nennt Betrag und Prozent (812.50 − 700.00); der Prozentwert allein steht
             // weiter unten in der Plakette je Zustand.
-            compose.onNodeWithText("+" + fmtMoney(112.5, "CHF") + " · " + fmtProzent(16.1), useUnmergedTree = true)
+            compose.onNodeWithText("+" + fmtMoney(112.5, Waehrung("CHF")) + " · " + fmtProzent(16.1), useUnmergedTree = true)
                 .assertIsDisplayed()
-            compose.onAllNodesWithText(fmtMoney(812.5, "CHF"), useUnmergedTree = true)[0].assertIsDisplayed()
+            compose.onAllNodesWithText(fmtMoney(812.5, Waehrung("CHF")), useUnmergedTree = true)[0].assertIsDisplayed()
         } finally {
             welt.close()
         }
@@ -373,7 +298,7 @@ class OberflaechenRegelnTest {
             SetsRepository(welt.t.api, welt.t.cache),
             KatalogRepository(welt.t.api, welt.t.cache),
             object : SetAnleger {
-                override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?,
+                override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
                                      ownerUserId: Int?, storage: String?) =
                     kotlinx.coroutines.flow.emptyFlow<SetAnlegenSchritt>()
             }))
@@ -460,9 +385,9 @@ class OberflaechenRegelnTest {
         zeige {
             val nav = rememberNavController()
             val reiter = remember {
-                listOf<Triple<Screen, @Composable () -> Unit, String>>(
-                    Triple(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
-                    Triple(Screen.Mehr, { Icon(Icons.Default.ViewInAr, null) }, mehr))
+                listOf(
+                    Reiter(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                    Reiter(Screen.Mehr, { Icon(Icons.Default.ViewInAr, null) }, mehr))
             }
             MainScaffold(
                 title = "Seite", navController = nav, bottomNavItems = reiter,
@@ -543,7 +468,7 @@ class OberflaechenRegelnTest {
                 SetsRepository(welt.t.api, welt.t.cache),
                 KatalogRepository(welt.t.api, welt.t.cache),
                 object : SetAnleger {
-                    override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?,
+                    override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
                                          ownerUserId: Int?, storage: String?) =
                         kotlinx.coroutines.flow.emptyFlow<SetAnlegenSchritt>()
                 }))
@@ -785,29 +710,6 @@ class OberflaechenRegelnTest {
         (zustaende + zeitraum).forEach { ganzEineZeile(it) }
     }
 
-    /**
-     * Kacheln einer Reihe sind gleich hoch, auch wenn bei einer Thema, Teilezahl und
-     * Preis fehlen und der Name kurz ist.
-     */
-    @Test
-    fun `Kacheln einer Reihe sind gleich hoch`() {
-        val bilder = coil3.ImageLoader.Builder(ctx).build()
-        val voll = SetAnsicht(setNumber = "10294-1", name = "Titanic mit sehr langem Namen über zwei Zeilen",
-            theme = "Icons", pieces = 9090, condition = "N")
-        val karg = SetAnsicht(setNumber = "1-1", name = "Box")
-        zeige {
-            Row(Modifier.width(380.dp)) {
-                Box(Modifier.weight(1f)) {
-                    SetCard(voll, "", bilder, {}, preis = KachelPreis(449.95, 12.5), waehrung = "CHF")
-                }
-                Box(Modifier.weight(1f)) { SetCard(karg, "", bilder, {}, waehrung = "CHF") }
-            }
-        }
-        val a = compose.onNode(hasText("10294-1") and hasClickAction()).fetchSemanticsNode().boundsInRoot
-        val b = compose.onNode(hasText("1-1") and hasClickAction()).fetchSemanticsNode().boundsInRoot
-        assertEquals("Kacheln einer Reihe gleich hoch", a.height, b.height, 1f)
-    }
-
     /** Titanic ×2: Marktwert und Kauf beide für zwei Stück, der Gewinn auch als Betrag. */
     @Test
     fun `Finanzen nennen bei zwei Stueck den Kauf gesamt und den Gewinn als Betrag`() {
@@ -820,10 +722,10 @@ class OberflaechenRegelnTest {
                 .first { it.menge > 1 && it.kaufpreis != null && it.wert != null }
             // Selbst gerechnet, nicht aus kaufGesamt/gewinn: Sonst prüfte der Test die Rechnung mit sich selbst.
             val gesamt = BigDecimal.valueOf(zeile.kaufpreis!!).multiply(BigDecimal(zeile.menge)).toDouble()
-            val kauf = ctx.getString(R.string.finance_purchase_total, fmtMoney(gesamt, "CHF"))
+            val kauf = ctx.getString(R.string.finance_purchase_total, fmtMoney(gesamt, Waehrung("CHF")))
             compose.onNodeWithText(kauf, useUnmergedTree = true).fetchSemanticsNode()
             val gewinn = BigDecimal.valueOf(zeile.wert!!).subtract(BigDecimal.valueOf(gesamt)).toDouble()
-            compose.onAllNodesWithText(fmtMoney(gewinn, "CHF"), substring = true, useUnmergedTree = true)
+            compose.onAllNodesWithText(fmtMoney(gewinn, Waehrung("CHF")), substring = true, useUnmergedTree = true)
                 .fetchSemanticsNodes().let { assertTrue("Gewinn als Betrag steht da", it.isNotEmpty()) }
         } finally {
             welt.close()
@@ -850,16 +752,16 @@ class OberflaechenRegelnTest {
             val guv = BigDecimal("212.40")
             val wert = BigDecimal("1712.40")
             assertEquals(0, einstand.add(guv).compareTo(wert))
-            val einstandText = ctx.getString(R.string.finance_einstand_zeile, fmtMoney(einstand.toDouble(), "CHF"))
+            val einstandText = ctx.getString(R.string.finance_einstand_zeile, fmtMoney(einstand.toDouble(), Waehrung("CHF")))
             assertTrue(einstandText, stehtDa(einstandText))
-            val guvText = ctx.getString(R.string.finance_guv_zeile, "+" + fmtMoney(guv.toDouble(), "CHF"))
+            val guvText = ctx.getString(R.string.finance_guv_zeile, "+" + fmtMoney(guv.toDouble(), Waehrung("CHF")))
             assertTrue(guvText, stehtDa(guvText))
-            assertTrue("Marktwert", stehtDa(fmtMoney(wert.toDouble(), "CHF")))
+            assertTrue("Marktwert", stehtDa(fmtMoney(wert.toDouble(), Waehrung("CHF"))))
             // Der Einstand ALLER Positionen (mit dem Baumhaus) stünde neben einem Marktwert ohne es.
-            val alle = ctx.getString(R.string.finance_einstand_zeile, fmtMoney(1680.0, "CHF"))
+            val alle = ctx.getString(R.string.finance_einstand_zeile, fmtMoney(1680.0, Waehrung("CHF")))
             assertTrue("kein Einstand aller Positionen", !stehtDa(alle))
             val gerechnet = ctx.resources.getQuantityString(R.plurals.finance_basis_gerechnet, 3, 2, 3)
-            val ohne = ctx.resources.getQuantityString(R.plurals.finance_basis_ohne_markt, 1, 1, fmtMoney(180.0, "CHF"))
+            val ohne = ctx.resources.getQuantityString(R.plurals.finance_basis_ohne_markt, 1, 1, fmtMoney(180.0, Waehrung("CHF")))
             assertTrue(gerechnet, stehtDa(gerechnet, substring = true))
             assertTrue(ohne, stehtDa(ohne, substring = true))
         } finally {
@@ -877,17 +779,17 @@ class OberflaechenRegelnTest {
             Row(Modifier.width(380.dp)) {
                 Box(Modifier.weight(1f)) {
                     SetCard(SetAnsicht(setNumber = "21318-1", name = "Baumhaus"), "", bilder, {},
-                        preis = KachelPreis(180.0, null, "kauf"), waehrung = "CHF")
+                        preis = KachelPreis(180.0, null, "kauf"), waehrung = Waehrung("CHF"))
                 }
                 // Ältere Server ohne kachel_quelle lieferten nur Marktpreise.
                 Box(Modifier.weight(1f)) {
                     SetCard(SetAnsicht(setNumber = "75192-1", name = "Millennium Falcon"), "", bilder, {},
-                        preis = KachelPreis(812.5, 16.1), waehrung = "CHF")
+                        preis = KachelPreis(812.5, 16.1), waehrung = Waehrung("CHF"))
                 }
             }
         }
         compose.onAllNodesWithText(kauf, useUnmergedTree = true).assertCountEquals(1)
         compose.onAllNodesWithText(markt, useUnmergedTree = true).assertCountEquals(1)
-        assertTrue(stehtDa(fmtMoney(180.0, "CHF")))
+        assertTrue(stehtDa(fmtMoney(180.0, Waehrung("CHF"))))
     }
 }

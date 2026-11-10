@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.gemeinsam
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.model.DiagrammAchse
 import ch.brickinventoryapp.model.ui.model.DiagrammPunkt
 import org.junit.Assert.assertEquals
@@ -57,10 +58,10 @@ class DiagrammAchsenTest {
     @Test
     fun `y-Achse ganze Betraege mit Tausendern der Sprache`() {
         val achse = listOf(DiagrammAchse("CHF 1'234", 1234.0, 0.0), DiagrammAchse("CHF 2'000", 2000.4, 1.0))
-        val en = lokaleWerte(achse, "CHF", Locale.forLanguageTag("en-GB")).map { it.label }
+        val en = lokaleWerte(achse, Waehrung("CHF"), Locale.forLanguageTag("en-GB")).map { it.label }
         assertTrue(en.toString(), en[0].contains("1,234") && en[1].contains("2,000") && en.none { "." in it })
         assertEquals("CHF\u00A01,234", en[0])
-        val de = lokaleWerte(achse, "CHF", Locale.forLanguageTag("de-CH")).map { it.label }
+        val de = lokaleWerte(achse, Waehrung("CHF"), Locale.forLanguageTag("de-CH")).map { it.label }
         assertTrue(de.toString(), de[0].contains("1’234") || de[0].contains("1'234"))
     }
 }

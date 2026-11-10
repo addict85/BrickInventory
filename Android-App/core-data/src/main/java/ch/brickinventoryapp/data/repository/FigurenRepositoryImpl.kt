@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.api.FigurenApi
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.offline.Filterspalten
@@ -38,9 +39,23 @@ class FigurenRepositoryImpl @Inject constructor(
         }
     }
 
-    /** Die lokalen Listen (ungefiltert), wie TeileRepository.beobachteTeile. */
-    override fun beobachteFiguren(): Flow<Lokal<Minifig>> = ablage.beobachte(Faecher.FIGUREN)
-    override fun beobachteManuelleFiguren(): Flow<Lokal<FigValuationItem>> = ablage.beobachte(Faecher.MANUELLE_FIGUREN)
+    /** Die lokalen Listen nach dem Suchtext, wie TeileRepository.beobachteTeile. */
+    override fun beobachteFiguren(suche: String?): Flow<Lokal<Minifig>> =
+        ablage.beobachte(Faecher.FIGUREN, Filterspalten(suchtext = suche?.ifBlank { null }))
+
+    override fun beobachteManuelleFiguren(suche: String?): Flow<Lokal<FigValuationItem>> =
+        ablage.beobachte(Faecher.MANUELLE_FIGUREN, Filterspalten(suchtext = suche?.ifBlank { null }))
+
+    override suspend fun aktualisiereFiguren(): Ergebnis<Unit> {
+        // Beide Listen kommen ganz, ohne Seiten: Die Gesamtzahl ist die Länge der Antwort.
+        val figuren = ablage.aktualisiereSeitenweise(Faecher.FIGUREN, { it.figs }, { it.figs.size }) { _ ->
+            sicherAufrufen { api.getMinifigs(source = "set") }
+        }
+        if (figuren is Ergebnis.Error) return figuren
+        return ablage.aktualisiereSeitenweise(Faecher.MANUELLE_FIGUREN, { it.figs }, { it.figs.size }) { _ ->
+            sicherAufrufen { api.getManualMinifigs(null, null) }
+        }
+    }
 
     override suspend fun getManualMinifigs(accounts: String?,
                                   search: String?): Ergebnis<ManualFigsResponse> {
@@ -60,7 +75,7 @@ class FigurenRepositoryImpl @Inject constructor(
         sicherAufrufen { api.setFigStorage(figNumber, LagerortRequest(ort)) }
 
     override suspend fun addMinifig(figNumber: String, blFigNumber: String?, quantity: Int,
-                           unitPrice: Double?, condition: String?,
+                           unitPrice: Double?, condition: Zustand?,
                            ownerUserId: Int?,
                            storage: String?): Ergebnis<AddMinifigResponse> =
         AddMinifigRequest(figNumber, blFigNumber, quantity, unitPrice, condition, ownerUserId, storage).let { anfrage ->
@@ -75,7 +90,7 @@ class FigurenRepositoryImpl @Inject constructor(
      *
      * @param owner Besitzer der Karte; null = eigenes Konto.
      */
-    override suspend fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String?, condition: String?, owner: Int?): Ergebnis<GenericResponse> {
+    override suspend fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String?, condition: Zustand?, owner: Int?): Ergebnis<GenericResponse> {
         val bisher = ablage.lies(Faecher.MANUELLE_FIGUREN)?.liste
             ?.firstOrNull { it.figNumber == figNumber && (owner == null || it.userId == owner) }?.quantity
         val anfrage = UpdateManualItemRequest(quantity, unitPrice, blFigNumber, condition, quantityDelta = bisher?.let { quantity - it })

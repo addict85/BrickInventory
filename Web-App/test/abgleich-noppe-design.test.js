@@ -83,7 +83,7 @@ test('die Steinfarbe bleibt Takt und wird nie Auskunft', () => {
   // Material und hat deshalb dieselben Verlaufsfarben. Stuende es in einem
   // eigenen Zweig, waere das die erste Stelle, an der die beiden auseinander
   // laufen koennten.
-  assert.match(theme, /"noppe", "hochglanz" -> ChartColors\(ChartNewNoppe, ChartUsedNoppe/,
+  assert.match(theme, /Design\.NOPPE, Design\.HOCHGLANZ -> ChartColors\(ChartNewNoppe, ChartUsedNoppe/,
     'Die Verlaufsfarben des Designs fehlen oder gelten nicht mehr fuer beide — ' +
     'dann erbt eines davon die des Grunddesigns');
 });

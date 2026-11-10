@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.gemeinsam
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.gemeinsam.ui.erfassungUngueltig
 import ch.brickinventoryapp.gemeinsam.ui.erfassungsWerte
 import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
@@ -18,8 +19,8 @@ class ErfassungswerteTest {
     fun `die Erfassung liest den Preis wie das Feld und meldet Unlesbares`() {
         val haushalt = emptyList<MitgliedAnsicht>()
         // Locale-unabhängig: zwei Trenner sind nie ein Einzelfall.
-        assertEquals(1299.0, erfassungsWerte("2", "1.299,00", "N", null, haushalt).preis!!, 0.0)
-        assertEquals(1299.5, erfassungsWerte("2", "1,299.50", "N", null, haushalt).preis!!, 0.0)
+        assertEquals(1299.0, erfassungsWerte("2", "1.299,00", Zustand.NEU, null, haushalt).preis!!, 0.0)
+        assertEquals(1299.5, erfassungsWerte("2", "1,299.50", Zustand.NEU, null, haushalt).preis!!, 0.0)
         assertEquals(false, erfassungUngueltig("", ""))
         assertEquals(false, erfassungUngueltig("3", "1.299,00"))
         assertEquals(true, erfassungUngueltig("0", ""))

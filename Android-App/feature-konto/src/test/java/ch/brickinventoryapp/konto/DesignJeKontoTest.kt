@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.konto
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.theme.Design
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.konto.ui.DesignWahl
@@ -66,26 +68,26 @@ class DesignJeKontoTest {
         val vm = vm()
         vm.ladeDesign()
         assertTrue("Design", vm.kontoState.value.design != null)
-        assertEquals(DesignWahl("brick", "classic", "brick"), vm.kontoState.value.design)
+        assertEquals(DesignWahl(Design.BRICK, Design.CLASSIC, Design.BRICK), vm.kontoState.value.design)
         assertEquals(listOf("GET /api/v1/settings/theme"), pfade.anfragen.toList())
     }
 
     @Test
     fun `die Wahl geht an den Server und gilt sofort in der ganzen App`() {
         val vm = vm()
-        vm.waehleDesign("noppe")
+        vm.waehleDesign(Design.NOPPE)
         assertTrue("gewählt", vm.kontoState.value.design != null)
         assertEquals(listOf("POST /api/v1/settings/user/theme"), pfade.anfragen.toList())
         assertEquals("""{"theme":"noppe"}""", pfade.koerper.single())
-        assertEquals(DesignWahl("noppe", "classic", "noppe"), vm.kontoState.value.design)
-        assertEquals("noppe", t.sitzung.state.value.appTheme)
+        assertEquals(DesignWahl(Design.NOPPE, Design.CLASSIC, Design.NOPPE), vm.kontoState.value.design)
+        assertEquals(Design.NOPPE, t.sitzung.state.value.appTheme)
 
         // Zurück zur Vorgabe: leerer Wert, die Antwort nennt das wirksame Design.
         pfade.antworten["/api/v1/settings/user/theme"] = """{"success":true,"theme":"classic","vorgabe":"classic","eigenes":null}"""
-        vm.waehleDesign("")
+        vm.waehleDesign(null)
         assertTrue("Vorgabe", vm.kontoState.value.design?.eigenes == null)
         assertEquals("""{"theme":""}""", pfade.koerper.last())
-        assertEquals("classic", t.sitzung.state.value.appTheme)
+        assertEquals(Design.CLASSIC, t.sitzung.state.value.appTheme)
     }
 
     @Test
@@ -101,18 +103,18 @@ class DesignJeKontoTest {
     @Test
     fun `die Einstellungen ueberschreiben das Design des Kontos nicht`() {
         pfade.antworten["/api/v1/settings"] = """{"success":true,"settings":{"currency":"CHF","app_theme":"classic"}}"""
-        t.sitzung.setzeDesign("noppe")
+        t.sitzung.setzeDesign(Design.NOPPE)
         runBlocking { t.sitzung.ladeEinstellungen(KontoRepository(t.api, t.cache)) }
-        assertEquals("CHF", t.sitzung.state.value.currency)
-        assertEquals("noppe", t.sitzung.state.value.appTheme)
+        assertEquals(Waehrung.CHF, t.sitzung.state.value.currency)
+        assertEquals(Design.NOPPE, t.sitzung.state.value.appTheme)
     }
 
     @Test
     fun `Abmelden laesst das Design stehen, bis die Vorgabe da ist`() {
-        t.sitzung.setzeDesign("noppe")
+        t.sitzung.setzeDesign(Design.NOPPE)
         t.sitzung.angemeldet(admin = false)
         t.sitzung.abgemeldet()
-        assertEquals("noppe", t.sitzung.state.value.appTheme)
+        assertEquals(Design.NOPPE, t.sitzung.state.value.appTheme)
         assertEquals(false, t.sitzung.state.value.isLoggedIn)
     }
 }

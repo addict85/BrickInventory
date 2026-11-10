@@ -35,7 +35,7 @@ class OcrSetNumberTest {
 
         // Der Scanner für Galerie und Teileliste schaltet sie ein …
         val tools = code(File(Quellen.wurzel,
-            "app/nav/ToolsGraph.kt").readText())
+            "sammlung/ui/SammlungGraph.kt").readText())
         assert(tools.contains("ocrEnabled = true")) {
             "Beim Erfassen fehlt die Texterkennung — genau dort ist sie gewollt"
         }

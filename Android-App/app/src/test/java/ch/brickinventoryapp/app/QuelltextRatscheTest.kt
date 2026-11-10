@@ -37,6 +37,8 @@ import ch.brickinventoryapp.testing.Quellen
  *   warten-in-echtzeit         TeileViewModelTest schläft wieder 200 ms → rot „Echtzeit-Warten …“
  *   core-data-oeffentlich      liegtUnter ohne internal → rot „die oeffentliche Flaeche der Datenmodule …“
  *   bereich-oeffentlich        qrWechseltServer ohne internal → rot „die oeffentliche Flaeche der Bereiche …“
+ *   erfassung-an-der-activity  ErfassungViewModel wieder per `by viewModels()` in MainActivity
+ *                              → rot „die Activity haelt nicht mehr ViewModels …“
  */
 class QuelltextRatscheTest {
 
@@ -456,7 +458,7 @@ class QuelltextRatscheTest {
         // Schnittstelle für alle Bereiche. Gezählt wird auf oberster Ebene, über core-data und
         // alles, was aus ihm abgespalten wird; sonst sänke die Zahl beim Verschieben zum Schein.
         // Darin UPDATE_ORDNER: öffentlich, weil core-data und core-update ihn teilen.
-        val GRENZE = 230
+        val GRENZE = 228
         val andere = setOf("core-model", "core-ressourcen", "core-ui", "core-ui-bestand", "core-zustand", "core-testing")
         val module = Quellen.module.filter { it.name.startsWith("core-") && it.name !in andere }
         assert("core-data" in module.map { it.name }) { "core-data nicht unter ${module.map { it.name }} — greift die Suche noch?" }
@@ -468,11 +470,23 @@ class QuelltextRatscheTest {
     fun `die oeffentliche Flaeche der Bereiche waechst nicht`() {
         // Ein Bereich zeigt der App Routen und Ziele; was nur er selbst braucht, ist internal.
         // Noch öffentlich ist vieles, weil Graphen und Oberflächentests in app liegen.
-        val GRENZE = 218
+        val GRENZE = 155
         val module = Quellen.module.filter { it.name.startsWith("feature-") }
         assert(module.size >= 7) { "Nur ${module.size} Bereiche — greift die Suche noch?" }
         ratsche("öffentliche Deklarationen der Bereiche", GRENZE, oeffentlich(module, 100),
             "Was nur der Bereich braucht, wird internal.")
+    }
+
+    @Test
+    fun `die Activity haelt nicht mehr ViewModels`() {
+        // Activity-weit nur, was über jedem Ziel liegt (AktivitaetsZustand) und die Pflichtmasken;
+        // alles andere holt sein Ziel mit hiltViewModel() an seinem Eintrag.
+        val GRENZE = 6
+        val activity = Quellen.module.map { File(it, "src/main") }.filter { it.isDirectory }
+            .flatMap { d -> d.walkTopDown().filter { it.isFile && it.name == "MainActivity.kt" }.toList() }
+        assertEquals("genau eine MainActivity", 1, activity.size)
+        val zahl = Regex("""\bby\s+viewModels\s*\(""").findAll(code(activity.single().readText())).count()
+        ratsche("ViewModels an der Activity", GRENZE, zahl, "Ein ViewModel gehört an sein Ziel.")
     }
 
     @Test
@@ -493,7 +507,7 @@ class QuelltextRatscheTest {
     @Test
     fun `voll qualifizierte Namen fremder Pakete werden weniger`() {
         // Ausgeschrieben nur bei echter Namensgleichheit, und dann besser mit `import … as`.
-        val HAUPT = 228
+        val HAUPT = 224
         val TESTS = 0
         val voll = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
         fun zaehle(dateien: Sequence<File>) = dateien.sumOf { f ->

@@ -11,6 +11,6 @@ diff --git a/Android-App/config/detekt/baseline.xml b/Android-App/config/detekt/
    <ManuallySuppressedIssues/>
    <CurrentIssues>
 +    <ID>MagicNumber:Probe.kt$42</ID>
-     <ID>CyclomaticComplexMethod:AcquisitionManagementScreen.kt$@Composable @OptIn(ExperimentalMaterial3Api::class) private fun AcquisitionManagementRow( acquisition: KaufAnsicht, currency: String, onSave: (price: Double?, cond: String?, qty: Int?, date: String?) -&gt; Unit, onDelete: () -&gt; Unit )</ID>
-     <ID>CyclomaticComplexMethod:AcquisitionManagementScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AcquisitionManagementScreen( zustand: KaeufeZustand, aktionen: KaeufeAktionen, type: String, // "set" | "part" | "fig" id: String, // setNumber / partNumber / figNumber colorId: Int = OHNE_FARBE, title: String, onBack: () -&gt; Unit )</ID>
+     <ID>CyclomaticComplexMethod:AcquisitionManagementScreen.kt$@Composable @OptIn(ExperimentalMaterial3Api::class) private fun AcquisitionManagementRow( acquisition: KaufAnsicht, currency: Waehrung, onSave: (price: Double?, cond: Zustand?, qty: Int?, date: String?) -&gt; Unit, onDelete: () -&gt; Unit )</ID>
+     <ID>CyclomaticComplexMethod:AcquisitionManagementScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable internal fun AcquisitionManagementScreen( zustand: KaeufeZustand, aktionen: KaeufeAktionen, type: Postenart, id: String, // setNumber / partNumber / figNumber colorId: Int = OHNE_FARBE, title: String, onBack: () -&gt; Unit )</ID>
      <ID>CyclomaticComplexMethod:BarcodeResultDialog.kt$@Composable fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktionen, imageLoader: ImageLoader)</ID>

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.model.ui.model
 
+import ch.brickinventoryapp.model.fach.Laufstatus
 import ch.brickinventoryapp.model.data.model.ApiLimits
 import ch.brickinventoryapp.model.data.model.BricksetQueueEntry
 import ch.brickinventoryapp.model.data.model.CacheStatsResponse
@@ -12,7 +13,7 @@ import ch.brickinventoryapp.model.data.model.RateLimits
 
 data class JobZustandAnsicht(
     val label: String = "",
-    val status: String = "idle",
+    val status: Laufstatus = Laufstatus.RUHT,
     val progress: Int = 0,
     val total: Int = 0,
     val sub: String? = null,

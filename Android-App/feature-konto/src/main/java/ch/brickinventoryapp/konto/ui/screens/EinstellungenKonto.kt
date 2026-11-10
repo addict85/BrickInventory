@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.konto.ui.screens
 
+import ch.brickinventoryapp.ui.titel
+import ch.brickinventoryapp.ui.beschreibung
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.ui.components.ZweiterFaktorCodeFeld
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
@@ -28,8 +31,6 @@ import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.zustand.ui.*
 import ch.brickinventoryapp.sicherheit.passwortZuKurz
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.DESIGN_NAMEN
-import ch.brickinventoryapp.ui.DESIGN_TEXTE
 import ch.brickinventoryapp.konto.ui.DesignWahl
 import ch.brickinventoryapp.konto.ui.KontoUiState
 import ch.brickinventoryapp.model.ui.model.ProfilAnsicht
@@ -233,24 +234,23 @@ private fun PasswortKarte(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun DesignCard(design: DesignWahl?, onWahl: (String) -> Unit) {
+internal fun DesignCard(design: DesignWahl?, onWahl: (Design?) -> Unit) {
     if (design == null) return
-    val namen = DESIGN_NAMEN.toMap()
     SettingsCard(title = stringResource(R.string.monitoring_theme), icon = Icons.Default.Palette) {
         Text(stringResource(R.string.konto_design_hint), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         // Eine Wahl aus mehreren — dieselben Radio-Chips wie in den Einstellungen;
-        // "" steht für „die Vorgabe des Servers“.
-        val vorgabe = namen[design.vorgabe]?.let { stringResource(it) } ?: design.vorgabe
+        // null steht für „die Vorgabe des Servers“.
+        val vorgabe = stringResource(design.vorgabe.titel())
         WahlChips(
-            optionen = listOf("" to stringResource(R.string.konto_design_vorgabe, vorgabe)) +
-                DESIGN_NAMEN.map { (wert, text) -> wert to stringResource(text) },
-            gewaehlt = design.eigenes ?: "",
-            onWahl = { wert -> if (wert != (design.eigenes ?: "")) onWahl(wert) },
+            optionen = listOf<Pair<Design?, String>>(null to stringResource(R.string.konto_design_vorgabe, vorgabe)) +
+                Design.entries.map { it to stringResource(it.titel()) },
+            gewaehlt = design.eigenes,
+            onWahl = { wert -> if (wert != design.eigenes) onWahl(wert) },
         )
         // Was das gewählte Design ausmacht — Werkbank allein am Bild vom dunklen Classic zu
         // unterscheiden, gelang kaum.
-        DESIGN_TEXTE[design.eigenes ?: design.vorgabe]?.let {
+        (design.eigenes ?: design.vorgabe).beschreibung().let {
             Text(stringResource(it), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

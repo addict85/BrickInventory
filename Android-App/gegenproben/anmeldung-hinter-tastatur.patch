@@ -1,6 +1,6 @@
 Gegenprobe: Anmeldebildschirme ohne imePadding: die Tastatur deckt den Hauptknopf
-Modul: app
-Test: ch.brickinventoryapp.app.AnmeldeRandTest
+Modul: feature-anmeldung
+Test: ch.brickinventoryapp.anmeldung.AnmeldeRandTest
 Rot: Registrieren bleibt ueber der Tastatur
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Systemleisten.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Systemleisten.kt

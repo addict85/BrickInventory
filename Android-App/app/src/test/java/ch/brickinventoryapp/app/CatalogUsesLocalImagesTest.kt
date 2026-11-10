@@ -78,9 +78,9 @@ class CatalogUsesLocalImagesTest {
         assert(Regex("""fun CatalogDetailScreen\([^)]*serverUrl: String""").containsMatchIn(screenSrc)) {
             "serverUrl fehlt in der Funktionssignatur"
         }
-        val graphSrc = code(read("app/nav/CatalogGraph.kt"))
+        val graphSrc = code(read("katalog/ui/KatalogGraph.kt"))
         assert(graphSrc.contains("serverUrl = state.serverUrl")) {
-            "Der Aufrufer in CatalogGraph.kt muss serverUrl übergeben"
+            "Der Aufrufer in KatalogGraph.kt muss serverUrl übergeben"
         }
     }
 

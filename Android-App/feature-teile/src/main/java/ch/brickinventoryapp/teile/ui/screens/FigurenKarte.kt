@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.teile.ui.screens
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import androidx.compose.material3.Button
 import ch.brickinventoryapp.ui.components.fokusRahmen
 import ch.brickinventoryapp.model.ui.model.FigurAnsicht
@@ -45,8 +46,8 @@ import ch.brickinventoryapp.gemeinsam.ui.TabellenZeile
 import ch.brickinventoryapp.gemeinsam.ui.mengeAusSet
 
 @Composable
-fun ManualFigTile(fig: ManuelleFigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
-                  waehrung: String, onEdit: () -> Unit) {
+internal fun ManualFigTile(fig: ManuelleFigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
+                  waehrung: Waehrung, onEdit: () -> Unit) {
     // Vorschaubild mit Rückfall auf volle Auflösung — siehe
     // util/BildRueckfall.kt, rememberTileImageWithFallback().
     val (bild, onBildFehler) =
@@ -177,7 +178,7 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
  * konstant.
  */
 @Composable
-fun MinifigTableRow(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
+internal fun MinifigTableRow(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                     onClick: (() -> Unit)? = null) {
     val (bildUrl, onFehler) = rememberTileImageWithFallback(
         serverUrl, fig.imageLocal, fig.imageUrl, fullViaProxy = true)

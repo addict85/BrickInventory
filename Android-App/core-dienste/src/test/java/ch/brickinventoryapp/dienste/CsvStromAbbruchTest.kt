@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.dienste
 
+import ch.brickinventoryapp.model.fach.Laufstatus
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.model.data.model.CsvImportStatus
 import ch.brickinventoryapp.dienste.service.folgeStrom
@@ -30,7 +31,7 @@ class CsvStromAbbruchTest {
             brichtAb { folgeStrom(flow { throw CancellationException("weg") }) { true } })
         assertFalse(folgeStrom(flow { throw IOException("weg") }) { true })
         assertFalse(folgeStrom(flowOf(CsvImportSseClient.Event.Failed("zu"))) { true })
-        val fertig = CsvImportStatus(status = "done")
+        val fertig = CsvImportStatus(status = Laufstatus.FERTIG)
         assertTrue(folgeStrom(flowOf(CsvImportSseClient.Event.Status(fertig))) { false })
     }
 }

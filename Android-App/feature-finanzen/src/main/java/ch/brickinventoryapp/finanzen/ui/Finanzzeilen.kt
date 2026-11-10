@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.finanzen.ui
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.model.BewertungAnsicht
 import ch.brickinventoryapp.model.ui.model.BewertungSetAnsicht
 import ch.brickinventoryapp.model.ui.model.BewertungsKaufAnsicht
@@ -22,7 +23,7 @@ data class FinanzZeile(
     val wert: Double?,
     val kaufpreis: Double?,
     /** Zustand der Erfassung; null bei einem Eintrag ohne Erfassungen. */
-    val zustand: String?,
+    val zustand: Zustand?,
     val pnlProzent: Double?,
 ) {
     /**
@@ -66,14 +67,14 @@ fun setZeilen(sets: List<BewertungSetAnsicht>): List<Pair<BewertungSetAnsicht, F
         )
     }
 
-fun teilZeilen(parts: List<ManuellesTeilAnsicht>): List<Pair<ManuellesTeilAnsicht, FinanzZeile>> =
+internal fun teilZeilen(parts: List<ManuellesTeilAnsicht>): List<Pair<ManuellesTeilAnsicht, FinanzZeile>> =
     jeKaufpreis(parts) { it.acquisitions }.map { (p, acq) ->
         p to FinanzZeile("part_${p.id}#${acq?.id ?: 0}", acq?.quantity ?: p.quantity,
             acq?.wertGesamt ?: p.wertGesamt, acq?.purchasePrice ?: p.purchasePrice,
             acq?.condition, acq?.pnlProzent ?: p.pnlProzent)
     }
 
-fun figurZeilen(figs: List<ManuelleFigurAnsicht>): List<Pair<ManuelleFigurAnsicht, FinanzZeile>> =
+internal fun figurZeilen(figs: List<ManuelleFigurAnsicht>): List<Pair<ManuelleFigurAnsicht, FinanzZeile>> =
     jeKaufpreis(figs) { it.acquisitions }.map { (f, acq) ->
         f to FinanzZeile("fig_${f.id}#${acq?.id ?: 0}", acq?.quantity ?: f.quantity,
             acq?.wertGesamt ?: f.wertGesamt, acq?.purchasePrice ?: f.purchasePrice,
@@ -104,7 +105,7 @@ fun finanzSummen(valuation: BewertungAnsicht, parts: TeileBewertungAnsicht?, fig
  * Wie viele Kaufpreise in einer anderen Währung fehlen. /finance/pnl zählt über
  * alle drei Arten; ohne diese Antwort die Zahlen der drei Bewertungen.
  */
-fun fremdeKaufpreise(valuation: BewertungAnsicht?, parts: TeileBewertungAnsicht?, figs: FigurenBewertungAnsicht?, pnl: GewinnAnsicht?): Int =
+internal fun fremdeKaufpreise(valuation: BewertungAnsicht?, parts: TeileBewertungAnsicht?, figs: FigurenBewertungAnsicht?, pnl: GewinnAnsicht?): Int =
     pnl?.totals?.kaufpreiseFremdeWaehrung
         ?: ((valuation?.kaufpreiseFremdeWaehrung ?: 0) + (parts?.kaufpreiseFremdeWaehrung ?: 0) +
             (figs?.kaufpreiseFremdeWaehrung ?: 0))
@@ -140,7 +141,7 @@ data class FinanzKopf(
  * pnl_prozent. Mit Basis, aber ohne eine bewertete Position, stehen die Summen aller
  * Positionen da und keine G/V — eine Prozentzahl gegen nichts wäre erfunden.
  */
-fun finanzKopf(valuation: BewertungAnsicht, parts: TeileBewertungAnsicht?, figs: FigurenBewertungAnsicht?, pnl: GewinnAnsicht?): FinanzKopf {
+internal fun finanzKopf(valuation: BewertungAnsicht, parts: TeileBewertungAnsicht?, figs: FigurenBewertungAnsicht?, pnl: GewinnAnsicht?): FinanzKopf {
     val alle = finanzSummen(valuation, parts, figs, pnl).gesamt
     val t = pnl?.totals
     if (t?.basisEinstand == null)

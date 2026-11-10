@@ -1,0 +1,17 @@
+Gegenprobe: Die Währung ist keine value class mehr und reist als Objekt statt als Text
+Modul: core-model
+Test: ch.brickinventoryapp.model.FachtypenTest
+Rot: eine Waehrung reist als blosser Text
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Waehrung.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Waehrung.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Waehrung.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Waehrung.kt
+@@ -9,7 +9,6 @@
+  * unbekannten zeigt sie als Text vor dem Betrag, statt die Antwort zu verwerfen.
+  */
+ @Serializable
+-@JvmInline
+-value class Waehrung(val code: String) {
++data class Waehrung(val code: String) {
+     /** Leer heisst: Der Server hat keine genannt. */
+     val bekannt: Boolean get() = code.isNotBlank()

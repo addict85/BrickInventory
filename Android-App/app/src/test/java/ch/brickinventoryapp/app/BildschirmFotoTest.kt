@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -106,7 +109,7 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
         Locale.setDefault(Locale.forLanguageTag("de-CH"))
         bereitstellen(name, bereit, zustand)
         compose.setContent {
-            BrickInventoryManagerTheme(theme = design, dunkel = dunkel) {
+            BrickInventoryManagerTheme(theme = checkNotNull(Design.aus(design)) { design }, dunkel = dunkel) {
                 Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
             }
         }
@@ -120,7 +123,7 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
 
     private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand, SetsRepository(welt.t.api, welt.t.cache),
         KatalogRepository(welt.t.api, welt.t.cache), object : SetAnleger {
-            override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?,
+            override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
                                  ownerUserId: Int?, storage: String?): Flow<SetAnlegenSchritt> = emptyFlow()
         }))
 
@@ -237,8 +240,8 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
 @Composable
 internal fun Gutscheine() {
     val gutscheine = GutscheinUiState(gutscheine = listOf(
-        Gutschein(id = 1, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = "CHF").alsAnsicht(),
-        Gutschein(id = 2, number = "6061 9876 5432", amount = 20.0, currency = "CHF").alsAnsicht()))
+        Gutschein(id = 1, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = Waehrung("CHF")).alsAnsicht(),
+        Gutschein(id = 2, number = "6061 9876 5432", amount = 20.0, currency = Waehrung("CHF")).alsAnsicht()))
     Column {
         GutscheineCard(
             zustand = gutscheine, onFeld = { _, _, _, _ -> }, onPinSchalten = {}, onBearbeiten = {},

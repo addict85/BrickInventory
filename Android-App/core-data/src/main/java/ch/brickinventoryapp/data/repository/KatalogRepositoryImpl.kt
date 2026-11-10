@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Katalogsortierung
 import ch.brickinventoryapp.data.api.KatalogApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.model.data.model.*
@@ -21,8 +22,8 @@ class KatalogRepositoryImpl @Inject constructor(
 
     override suspend fun getCatalogSets(
         q: String?, themeId: Int?, yearFrom: Int?, yearTo: Int?,
-        sort: String, page: Int, limit: Int
-    ): Ergebnis<CatalogSetsResponse> = sicherAufrufen { api.getCatalogSets(q, themeId, yearFrom, yearTo, sort, page, limit) }
+        sort: Katalogsortierung, page: Int, limit: Int
+    ): Ergebnis<CatalogSetsResponse> = sicherAufrufen { api.getCatalogSets(q, themeId, yearFrom, yearTo, sort.kennung, page, limit) }
 
     override suspend fun getCatalogSetDetail(setNumber: String): Ergebnis<CatalogSetDetailResponse> =
         sicherAufrufen { api.getCatalogSetDetail(setNumber) }
@@ -32,7 +33,7 @@ class KatalogRepositoryImpl @Inject constructor(
      * Leiste ihr Etikett rechnet. Einmal je Listenaufbau, nicht beim Rollen.
      */
     override suspend fun getCatalogYearVerteilung(
-        q: String?, themeId: Int?, sort: String
+        q: String?, themeId: Int?, sort: Katalogsortierung
     ): Ergebnis<CatalogYearVerteilungResponse> =
-        sicherAufrufen { api.getCatalogYearVerteilung(q, themeId, sort) }
+        sicherAufrufen { api.getCatalogYearVerteilung(q, themeId, sort.kennung) }
 }

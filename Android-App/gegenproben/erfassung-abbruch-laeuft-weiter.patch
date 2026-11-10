@@ -1,6 +1,6 @@
 Gegenprobe: Der Abbruch der Prüfanzeige bricht den laufenden Abruf nicht ab
-Modul: app
-Test: ch.brickinventoryapp.app.ErfassungViewModelTest
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.sammlung.ErfassungViewModelTest
 Rot: der Abbruch beendet den Abruf
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/ErfassungViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/ErfassungViewModel.kt

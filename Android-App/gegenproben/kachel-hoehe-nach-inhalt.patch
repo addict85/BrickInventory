@@ -1,6 +1,6 @@
 Gegenprobe: Kachel nur so hoch wie ihr Inhalt (Name einzeilig, wenn er kurz ist)
-Modul: app
-Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.sammlung.SetKachelTest
 Rot: Kacheln einer Reihe
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt

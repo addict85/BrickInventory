@@ -4,10 +4,9 @@ Test: ch.brickinventoryapp.app.ManualItemsFirstTest
 Rot: Teile - die manuell erfassten
 
 diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsScreen.kt
-index 6b7e9ee..aa026e9 100644
 --- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsScreen.kt
 +++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsScreen.kt
-@@ -235,6 +235,25 @@ fun PartsScreen(
+@@ -233,6 +233,25 @@ fun PartsScreen(
                      if (stats != null) {
                          item(span = { GridItemSpan(maxLineSpan) }, key = "parts-stats") { TeileKennzahlen(stats) }
                      }
@@ -23,7 +22,7 @@ index 6b7e9ee..aa026e9 100644
 +                    ) { part ->
 +                        // BEIDE Ansichten oeffnen denselben Dialog — eine
 +                        // Ansicht darf nicht koennen, was die andere nicht kann.
-+                        val oeffne = { aktionen.oeffneSetItem("part", part.partNumber, part.colorId) }
++                        val oeffne = { aktionen.oeffneSetItem(Postenart.PART, part.partNumber, part.colorId) }
 +                        Bewegt {
 +                            if (ansicht == Listenansicht.TABELLE) PartTableRow(part, serverUrl, imageLoader, oeffne)
 +                            else PartCard(part, serverUrl, imageLoader, oeffne,
@@ -33,7 +32,7 @@ index 6b7e9ee..aa026e9 100644
                      // Manuell erfasste Teile als Grid-Sektion statt in einer FlowRow über dem Grid:
                      // So scrollt alles als eine Liste, nicht nur der Set-Teil.
                      if (manualParts.isNotEmpty()) {
-@@ -258,25 +277,6 @@ fun PartsScreen(
+@@ -256,25 +275,6 @@ fun PartsScreen(
                              }
                          }
                      }
@@ -49,7 +48,7 @@ index 6b7e9ee..aa026e9 100644
 -                    ) { part ->
 -                        // BEIDE Ansichten oeffnen denselben Dialog — eine
 -                        // Ansicht darf nicht koennen, was die andere nicht kann.
--                        val oeffne = { aktionen.oeffneSetItem("part", part.partNumber, part.colorId) }
+-                        val oeffne = { aktionen.oeffneSetItem(Postenart.PART, part.partNumber, part.colorId) }
 -                        Bewegt {
 -                            if (ansicht == Listenansicht.TABELLE) PartTableRow(part, serverUrl, imageLoader, oeffne)
 -                            else PartCard(part, serverUrl, imageLoader, oeffne,

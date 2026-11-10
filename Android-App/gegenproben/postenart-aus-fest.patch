@@ -3,10 +3,10 @@ Modul: app
 Test: ch.brickinventoryapp.app.RoutenRundwegTest
 Rot: jede Postenart kommt als dieselbe an
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Navigation.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Navigation.kt
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Navigation.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Navigation.kt
-@@ -72,7 +72,7 @@ enum class Postenart(val kennung: String) {
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Postenart.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Postenart.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Postenart.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Postenart.kt
+@@ -13,6 +13,6 @@ enum class Postenart(val kennung: String) {
  
      companion object {
          /** Wirft bei einem unbekannten Text: Die Kennungen stammen aus dem eigenen Code. */
@@ -14,4 +14,3 @@ diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand
 +        fun aus(kennung: String): Postenart = SET
      }
  }
- 

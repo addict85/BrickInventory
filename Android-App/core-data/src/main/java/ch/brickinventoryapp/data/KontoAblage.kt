@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.theme.Design
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
@@ -14,14 +16,14 @@ internal class KontoAblage @Inject constructor(
 ) : Sitzungsablage, Anmeldeablage {
     override val serverUrl: Flow<String> get() = token.serverUrl
     override val authToken: Flow<String> get() = token.authToken
-    override val appTheme: Flow<String> get() = geraet.appTheme
-    override val currency: Flow<String> get() = geraet.currency
+    override val appTheme: Flow<Design> get() = geraet.appTheme
+    override val currency: Flow<Waehrung> get() = geraet.currency
     override val language: Flow<String> get() = geraet.language
     override suspend fun serverUrlJetzt(): String = token.serverUrlJetzt()
     override suspend fun tokenJetzt(): String = token.tokenJetzt()
     override suspend fun anmeldungAbgelaufen(jetzt: Long): Boolean = token.anmeldungAbgelaufen(jetzt)
-    override suspend fun saveAppTheme(theme: String) = geraet.saveAppTheme(theme)
-    override suspend fun saveCurrency(cur: String) = geraet.saveCurrency(cur)
+    override suspend fun saveAppTheme(theme: Design) = geraet.saveAppTheme(theme)
+    override suspend fun saveCurrency(cur: Waehrung) = geraet.saveCurrency(cur)
     override fun gescheiterteEntwertungen(): Set<String> = geraet.gescheiterteEntwertungen()
     override fun quittiereGescheiterteEntwertungen() = geraet.quittiereGescheiterteEntwertungen()
 

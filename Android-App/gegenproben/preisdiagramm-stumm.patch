@@ -1,6 +1,6 @@
 Gegenprobe: der Canvas des Preisdiagramms trägt keine Beschreibung
-Modul: app
-Test: ch.brickinventoryapp.app.PreisdiagrammBeschreibungTest
+Modul: core-ui-bestand
+Test: ch.brickinventoryapp.gemeinsam.PreisdiagrammBeschreibungTest
 Rot: das Preisdiagramm beschreibt
 
 diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt

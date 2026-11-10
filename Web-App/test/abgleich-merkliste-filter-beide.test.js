@@ -7,7 +7,7 @@
  *
  * Gegenproben:
  *   a) qty_desc in die Auswahl der Webapp aufgenommen → Schritt 3 rot.
- *   b) price_asc aus der App-Auswahl entfernt         → Schritt 3 rot.
+ *   b) price_asc aus Merksortierung (App) entfernt     → Schritt 3 rot.
  *   c) accounts aus der App-Abfrage entfernt          → Schritt 2 rot.
  *   d) (10.11.2026) addScopeParam aus 16-merkliste.js entfernt → Schritt 1 rot.
  *   e) Das Suchfeld aus MerklisteScreen entfernt      → Schritt 2 rot.
@@ -26,6 +26,13 @@ const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 // Die App-Quellen über alle Module: androidDatei() meldet eine fehlende Datei mit Namen.
 
 const app = (rel) => ohneKommentare(fs.readFileSync(androidDatei(rel), 'utf8'));
+
+/** Der Aufzählungstyp der Merkliste-Sortierungen in der App, bis zum Ende seiner Einträge. */
+function merksortierung() {
+  const q = app('model/fach/Sortierung.kt');
+  const block = q.slice(q.indexOf('enum class Merksortierung'));
+  return block.slice(0, block.indexOf('companion object'));
+}
 
 /** Die Sortierwerte einer Quelle — alles, was wie ein MERK_SORTS-Schlüssel aussieht. */
 function sortWerte(quelle) {
@@ -97,10 +104,10 @@ test('3. beide Oberflächen bieten genau die Sortierungen an, die der Server ken
     'Die Auswahl der Webapp und MERK_SORTS gehen auseinander — ein unbekannter ' +
     'Wert fällt am Server still auf die Vorgabe zurück.');
 
-  // ── App: die Liste im DropdownMenu ────────────────────────────────────────
-  const schirm = app('sammlung/ui/screens/MerklisteScreen.kt');
-  const liste = schirm.slice(schirm.indexOf('listOf("added_desc"'));
-  const appWerte = sortWerte(liste.slice(0, liste.indexOf(')')));
+  // ── App: der Aufzählungstyp, aus dem das Menü seine Einträge nimmt ────────
+  assert.match(app('sammlung/ui/screens/MerklisteScreen.kt'), /Merksortierung\.entries/,
+    'Das Menü der App nimmt seine Einträge nicht mehr aus Merksortierung.');
+  const appWerte = sortWerte(merksortierung());
   assert.deepEqual(appWerte, erlaubt,
     'Die Auswahl der App und MERK_SORTS gehen auseinander.');
 });
@@ -118,7 +125,9 @@ test('4. die Vorgabe-Sortierung ist in allen drei Bäumen dieselbe', () => {
   assert.match(feld.slice(0, 200), /<option value="added_desc"/,
     'Die Webapp hat eine andere Vorgabe — das erste <option> ist die Vorauswahl.');
 
-  assert.match(app('data/repository/Ergebnis.kt'),
-    /MERKLISTE_DEFAULT_SORT = "added_desc"/,
+  const q = app('model/fach/Sortierung.kt');
+  const block = q.slice(q.indexOf('enum class Merksortierung'));
+  assert.match(block, /NEUESTE\("added_desc"\)/, 'Die App kennt added_desc nicht.');
+  assert.match(block.slice(0, block.indexOf('enum class', 10)), /VORGABE = NEUESTE\b/,
     'Die App hat eine andere Vorgabe.');
 });

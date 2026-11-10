@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.sammlung.ui
 
+import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.ui.model.*
-import ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 
 /**
@@ -18,7 +18,7 @@ data class GalleryUiState(
      */
     val galleryQuery: String = "",
     val galleryTheme: String = "",
-    val gallerySort: String = GALLERY_DEFAULT_SORT,
+    val gallerySort: Setsortierung = Setsortierung.VORGABE,
     /** Themen des ganzen Bestands — vom Server, nicht aus der geladenen Seite. */
     val galleryThemes: List<String> = emptyList(),
     val galleryTotal: Int = 0,

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.zustand.ui
 
+import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.ui.model.*
 
 /**
@@ -13,7 +14,7 @@ data class ManualItemDetailUiState(
     val acquisitionTotals: KaufSummenAnsicht = KaufSummenAnsicht(),
     val isLoading: Boolean = false,
     // Identifiziert das aktuell geöffnete Element
-    val itemType: String = "",       // "part" | "fig"
+    val itemType: Postenart? = null,
     val itemId: String = "",         // part_number oder fig_number
     val colorId: Int = OHNE_FARBE,
     // `newQuantity` stand hier — die Gesamtmenge nach dem Loeschen einer

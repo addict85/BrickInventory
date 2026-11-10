@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Merksortierung
+import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material3.SnackbarDuration
@@ -36,7 +38,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT
 import ch.brickinventoryapp.sammlung.ui.viewmodel.MerklisteViewModel
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.model.data.ScopeFilter
@@ -57,10 +58,10 @@ import ch.brickinventoryapp.ui.components.Suchfeld
  * gebraucht und bei zwei Konten dastehen; mit der Nummer allein verlöre Compose
  * die Zuordnung.
  */
-private fun merkpostenSchluessel(w: MerkpostenAnsicht) = "${w.setNumber}|${w.condition}|${w.userId}"
+private fun merkpostenSchluessel(w: MerkpostenAnsicht) = "${w.setNumber}|${w.condition.kennung}|${w.userId}"
 
 /** Was Merkliste und Merkposten-Detail zeigen; die Route sammelt es aus den Flüssen. */
-data class MerklisteZustand(
+internal data class MerklisteZustand(
     val appState: AppUiState,
     val blick: BlickfeldUiState,
     val liste: MerklisteUiState,
@@ -74,7 +75,7 @@ fun MerklisteRoute(
     vm: MerklisteViewModel,
     imageLoader: coil3.ImageLoader,
     onScan: () -> Unit,
-    onOeffnenEinzeln: (String, String) -> Unit,
+    onOeffnenEinzeln: (String, Zustand) -> Unit,
     nebeneinander: Boolean = false,
 ) {
     val appState by vm.state.collectAsStateWithLifecycle()
@@ -110,10 +111,10 @@ fun MerkpostenRueckgaengigRoute(vm: MerklisteViewModel, snackbarHostState: Snack
 
 /** Das Merkposten-Detail als eigene Seite (Telefon). */
 @Composable
-fun MerkpostenDetailRoute(
+internal fun MerkpostenDetailRoute(
     vm: MerklisteViewModel,
     setNumber: String,
-    condition: String,
+    condition: Zustand,
     imageLoader: coil3.ImageLoader,
     onBack: () -> Unit,
 ) {
@@ -132,14 +133,14 @@ fun MerkpostenDetailRoute(
  * Server (utils/merkliste.ts); der Bildschirm zeigt und ruft.
  */
 @Composable
-fun MerklisteScreen(
+internal fun MerklisteScreen(
     ansicht: MerklisteZustand,
     aktionen: MerklisteAktionen,
     imageLoader: coil3.ImageLoader,
     onScan: () -> Unit,
-    onOeffnen: (String, String) -> Unit,
+    onOeffnen: (String, Zustand) -> Unit,
     /** Setnummer und Zustand des Merkpostens, dessen Detail daneben offen ist. */
-    gewaehlt: Pair<String, String>? = null,
+    gewaehlt: Pair<String, Zustand>? = null,
 ) {
     val zustand = ansicht.liste
     // Die Bildadressen zeigen auf den eigenen Server (Proxy), nicht roh aufs
@@ -168,7 +169,7 @@ fun MerklisteScreen(
     // Zwei Leermeldungen: „Noch keine Merkposten“ sagt etwas über die Liste,
     // „nichts gefunden“ über den Filter; ein Ladefehler eine dritte.
     val gefiltert = zustand.query.isNotBlank() ||
-        zustand.zustandFilter.isNotBlank() ||
+        zustand.zustandFilter != null ||
         scopeModus != ScopeFilter.ALL
     val anzeige = ladeanzeige(zustand.merkposten.isNotEmpty(), zustand.laedt, zustand.fehler, gefiltert)
     Box(Modifier.fillMaxSize()) {
@@ -196,15 +197,12 @@ fun MerklisteScreen(
                     platzhalter = stringResource(R.string.wanted_search),
                     modifier = Modifier.weight(1f),
                 )
-                // Dieselben Werte wie MERK_SORTS am Server und dieselbe Auswahl wie in
-                // der Webapp. qty_* fehlt in beiden: Ein Merkposten hat keine Anzahl.
                 SortierMenue(
-                    optionen = listOf("added_desc", "added_asc", "name_asc", "num_asc",
-                                      "year_desc", "price_desc", "price_asc").map { it to gallerySortLabel(it) },
+                    optionen = Merksortierung.entries.map { it to it.beschriftung() },
                     gewaehlt = zustand.sortierung,
                     onWahl = { aktionen.setzeMerklisteSortierung(it) },
                     modifier = Modifier.padding(end = Abstaende.winzig),
-                    vorgabe = MERKLISTE_DEFAULT_SORT,
+                    vorgabe = Merksortierung.VORGABE,
                 )
                 ScanKnopf({ onScan() }, Modifier.padding(end = 14.dp))
             }
@@ -212,9 +210,9 @@ fun MerklisteScreen(
             // Der Zustand ist eine Einfachwahl mit drei Antworten — „beide“ ist die
             // Vorgabe, weil ein Filter sie immer hat (Zustandszeile kennt nur zwei).
             if (mitKopf) SegmentWahl(
-                optionen = listOf("" to stringResource(R.string.filter_condition_all),
-                                  "N" to stringResource(R.string.condition_new),
-                                  "U" to stringResource(R.string.condition_used)),
+                optionen = listOf(null to stringResource(R.string.filter_condition_all),
+                                  Zustand.NEU to stringResource(R.string.condition_new),
+                                  Zustand.GEBRAUCHT to stringResource(R.string.condition_used)),
                 gewaehlt = zustand.zustandFilter,
                 onWahl = { aktionen.setzeMerklisteZustand(it) },
                 modifier = Modifier.padding(horizontal = Abstaende.rand).padding(bottom = Abstaende.klein),
@@ -280,7 +278,7 @@ fun MerklisteScreen(
     if (maskeOffen) {
         MerkpostenErfassenDialog(
             householdMembers = blick.householdMembers,
-            defaultCondition = appState.userDefaultCondition ?: "N",
+            defaultCondition = appState.userDefaultCondition ?: Zustand.NEU,
             onDismiss = { maskeOffen = false },
             onAnlegen = { nummer, zustandWahl, besitzer ->
                 aktionen.legeMerkpostenAn(nummer, zustandWahl, besitzer)
@@ -296,19 +294,19 @@ fun MerklisteScreen(
  * das Detail als eigene Seite. Ein Zustand für beide Hälften: dasselbe ViewModel.
  */
 @Composable
-fun MerklisteUndDetail(
+internal fun MerklisteUndDetail(
     ansicht: MerklisteZustand,
     aktionen: MerklisteAktionen,
     imageLoader: coil3.ImageLoader,
     nebeneinander: Boolean,
     onScan: () -> Unit,
-    onOeffnenEinzeln: (String, String) -> Unit,
+    onOeffnenEinzeln: (String, Zustand) -> Unit,
 ) {
     var offen by rememberSaveable { mutableStateOf<List<String>?>(null) }
-    val auswahl = offen?.let { it[0] to it[1] }
+    val auswahl = offen?.let { it[0] to (Zustand.aus(it[1]) ?: Zustand.NEU) }
     val liste: @Composable () -> Unit = {
         MerklisteScreen(ansicht = ansicht, aktionen = aktionen, imageLoader = imageLoader, onScan = onScan,
-            onOeffnen = { sn, z -> if (nebeneinander) offen = listOf(sn, z) else onOeffnenEinzeln(sn, z) },
+            onOeffnen = { sn, z -> if (nebeneinander) offen = listOf(sn, z.kennung) else onOeffnenEinzeln(sn, z) },
             gewaehlt = auswahl.takeIf { nebeneinander })
     }
     if (nebeneinander && auswahl != null) {

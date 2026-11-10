@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.offline.Filterspalten
@@ -54,9 +55,24 @@ class TeileRepositoryImpl @Inject constructor(
         }
     }
 
-    /** Die lokalen Listen (ungefiltert); sie ändern sich auch durch offline Bearbeitetes. */
-    override fun beobachteTeile(): Flow<Lokal<Part>> = ablage.beobachte(Faecher.TEILE)
-    override fun beobachteManuelleTeile(): Flow<Lokal<PartValuationItem>> = ablage.beobachte(Faecher.MANUELLE_TEILE)
+    /** Die lokalen Listen nach den Filtern der Anzeige; sie ändern sich auch durch offline Bearbeitetes. */
+    override fun beobachteTeile(suche: String?, farbe: String?, kategorie: String?, ersatzteile: Ersatzteilwahl): Flow<Lokal<Part>> =
+        ablage.beobachte(Faecher.TEILE, Filterspalten(suchtext = suche?.ifBlank { null }, farbe = farbe?.ifBlank { null },
+            kategorie = kategorie?.ifBlank { null }, ersatzteil = ersatzteile.alsMerkmal()))
+
+    override fun beobachteManuelleTeile(suche: String?): Flow<Lokal<PartValuationItem>> =
+        ablage.beobachte(Faecher.MANUELLE_TEILE, Filterspalten(suchtext = suche?.ifBlank { null }))
+
+    override suspend fun aktualisiereTeile(): Ergebnis<Unit> {
+        val teile = ablage.aktualisiereSeitenweise(Faecher.TEILE, { it.parts }, { it.total }) { seite ->
+            sicherAufrufen { api.getParts(null, null, null, seite, pageSize = 500, excludeManual = "1") }
+        }
+        if (teile is Ergebnis.Error) return teile
+        // Eine Liste ohne Seiten: Die Gesamtzahl ist die Länge der Antwort.
+        return ablage.aktualisiereSeitenweise(Faecher.MANUELLE_TEILE, { it.parts }, { it.parts.size }) { _ ->
+            sicherAufrufen { api.getManualParts(null, null, null) }
+        }
+    }
 
     override suspend fun getPartsStats(accounts: String?): Ergebnis<PartsStatsResponse> =
         sicherAufrufen { api.getPartsStats(accounts) }
@@ -151,7 +167,7 @@ class TeileRepositoryImpl @Inject constructor(
     /** Ohne Farbe KEINE_FARBE, nie 0 (Schwarz); Name und Code gehören dann nicht dazu. */
     override suspend fun addPart(partNumber: String, colorId: Int, colorName: String?, colorHex: String?,
                          quantity: Int, unitPrice: Double?,
-                         condition: String?, ownerUserId: Int?,
+                         condition: Zustand?, ownerUserId: Int?,
                          storage: String?): Ergebnis<AddPartResponse> {
         val ohne = colorId == KEINE_FARBE
         val anfrage = AddPartRequest(partNumber, colorId, colorName.takeUnless { ohne },
@@ -168,7 +184,7 @@ class TeileRepositoryImpl @Inject constructor(
      *
      * @param owner Besitzer der Karte; null = eigenes Konto.
      */
-    override suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String?, owner: Int?): Ergebnis<GenericResponse> {
+    override suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: Zustand?, owner: Int?): Ergebnis<GenericResponse> {
         val bisher = ablage.lies(Faecher.MANUELLE_TEILE)?.liste
             ?.firstOrNull { it.partNumber == partNumber && it.colorId == colorId && (owner == null || it.userId == owner) }?.quantity
         val anfrage = UpdateManualItemRequest(quantity, unitPrice, condition = condition, quantityDelta = bisher?.let { quantity - it })

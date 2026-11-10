@@ -14,9 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.navigation.compose.*
 import ch.brickinventoryapp.anmeldung.ui.anmeldungGraph
-import ch.brickinventoryapp.app.nav.collectionGraph
-import ch.brickinventoryapp.app.nav.catalogGraph
-import ch.brickinventoryapp.app.nav.toolsGraph
+import ch.brickinventoryapp.app.nav.mehrZiel
 import ch.brickinventoryapp.anmeldung.ui.*
 import ch.brickinventoryapp.finanzen.ui.*
 import ch.brickinventoryapp.katalog.ui.*
@@ -45,14 +43,10 @@ import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.app.nav.AktivitaetsZustand
 import ch.brickinventoryapp.netz.util.NetworkPolicy
 import ch.brickinventoryapp.app.nav.Reiter
-import ch.brickinventoryapp.app.nav.Rollzustaende
 import ch.brickinventoryapp.app.nav.ZielUmgebung
 import ch.brickinventoryapp.ui.components.UebergangsRahmen
-import ch.brickinventoryapp.sammlung.ui.dialogs.BarcodeResultRoute
-import ch.brickinventoryapp.sammlung.ui.dialogs.SetPruefungRoute
 import ch.brickinventoryapp.konto.ui.dialogs.UpdateRoute
-
-// Die Navigationsziele liegen seit der Aufteilung in nav/ (eigenes Paket).
+import ch.brickinventoryapp.zustand.ui.Rollzustaende
 
 /**
  * App-Navigation und Haupt-Gerüst: der NavHost mit allen Routen, die Dialoge, die
@@ -69,8 +63,6 @@ fun BrickInventoryRoute(
     // collectAsStateWithLifecycle: Collection stoppt, wenn die App im
     // Hintergrund ist — kein unnötiges Recomposition-/State-Processing mehr.
     val state by vm.state.collectAsStateWithLifecycle()
-    val erfassung = aktivitaet.erfassung
-    val barcodeState by erfassung.barcodeState.collectAsStateWithLifecycle()
     val selbstUpdate = aktivitaet.update
     val csvImport = aktivitaet.csvImport
     val navController = rememberNavController()
@@ -129,17 +121,11 @@ fun BrickInventoryRoute(
     }
 
     val startDest = startRoute(startZiel(state.serverUrl, state.isLoggedIn, NetworkPolicy.entwicklung))
+    val wurzel: Any = if (startDest == Screen.Gallery) Screen.Gallery else AnmeldungBereich
+    // Der Beginn der Anmeldung bleibt, solange sie läuft: Ein anderer baute den Graphen
+    // neu und beendete ihr ViewModel mitten in der QR-Anmeldung.
+    val anmeldeBeginn = remember(wurzel) { startDest }
     val bottomNavItems = reiterDerLeiste()
-
-    // ── Barcode-Bestätigung — über jedem Bildschirm ──
-    // Der Dialog steht in ui/dialogs/BarcodeResultDialog.kt; hier nur, wann er erscheint.
-    if (barcodeState.result != null) {
-        BarcodeResultRoute(erfassung, imageLoader)
-    }
-
-    // ── „Wird geprüft“ — über allem, auch über dem Scanner-Weg ──
-    // Hier, weil die Prüfung zu keinem einzelnen Bildschirm gehört: Sie beginnt im Scanner, der sich sofort schliesst, und läuft über Galerie, Teileliste oder Katalog weiter.
-    SetPruefungRoute(erfassung)
 
     // ── „Es gibt eine neue Fassung“ — ebenfalls über allem ──
     //
@@ -168,7 +154,7 @@ fun BrickInventoryRoute(
     UebergangsRahmen {
     // Dezente Übergänge: kurz einblenden und ein Stück nachrücken, zurück in die
     // Gegenrichtung. Die Vorgabe (700 ms reines Überblenden) wirkte träge.
-    NavHost(navController, startDestination = startDest,
+    NavHost(navController, startDestination = wurzel,
         enterTransition = { fadeIn(tween(UEBERGANG_MS)) + slideInHorizontally(tween(UEBERGANG_MS)) { it / 16 } },
         exitTransition = { fadeOut(tween(UEBERGANG_MS / 2)) },
         popEnterTransition = { fadeIn(tween(UEBERGANG_MS)) },
@@ -177,17 +163,24 @@ fun BrickInventoryRoute(
         // Kein Zustand hinein: Der NavHost-Builder läuft nur einmal, ein durchgereichter
         // Wert bliebe die Momentaufnahme des ersten Frames. Die Ziele lesen selbst.
         alleZiele(ZielUmgebung(navController, imageLoader, bottomNavItems,
-            snackbarHostState, rollen) { aktivitaet })
+            snackbarHostState, rollen) { aktivitaet }, anmeldeBeginn)
     }
     }
 }
 
-/** Alle Ziele der App; der NavHost und ErreichbareRoutenTest bauen denselben Graphen. */
-internal fun androidx.navigation.NavGraphBuilder.alleZiele(u: ZielUmgebung) {
-    anmeldungGraph(u.navController) { u.aktivitaet.anmeldung }
-    collectionGraph(u)
-    catalogGraph(u)
-    toolsGraph(u)
+/**
+ * Alle Ziele der App; der NavHost und ErreichbareRoutenTest bauen denselben Graphen.
+ * Jeder Bereich bringt seine Ziele mit, die App setzt sie nur zusammen.
+ */
+internal fun androidx.navigation.NavGraphBuilder.alleZiele(u: ZielUmgebung, anmeldeBeginn: Screen = Screen.Setup) {
+    anmeldungGraph(u.navController, anmeldeBeginn)
+    sammlungGraph(u)
+    katalogGraph(u)
+    teileGraph(u)
+    finanzenGraph(u)
+    kontoGraph(u)
+    verwaltungGraph(u)
+    mehrZiel(u)
 }
 
 /** Wo die App beginnt, je nachdem, ob Server und Anmeldung schon da sind. */
@@ -211,11 +204,11 @@ internal fun reiterDerLeiste(): List<Reiter> {
     val mehr = stringResource(R.string.nav_more)
     return remember(sammlung, finanzen, merkliste, katalog, mehr) {
         listOf(
-            Triple(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, sammlung),
-            Triple(Screen.Finance, { Icon(Icons.AutoMirrored.Filled.ShowChart, null) }, finanzen),
-            Triple(Screen.Wanted, { Icon(Icons.Default.BookmarkBorder, null) }, merkliste),
-            Triple(Screen.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, katalog),
-            Triple(Screen.Mehr, { Icon(Icons.Default.MoreHoriz, null) }, mehr),
+            Reiter(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, sammlung),
+            Reiter(Screen.Finance, { Icon(Icons.AutoMirrored.Filled.ShowChart, null) }, finanzen),
+            Reiter(Screen.Wanted, { Icon(Icons.Default.BookmarkBorder, null) }, merkliste),
+            Reiter(Screen.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, katalog),
+            Reiter(Screen.Mehr, { Icon(Icons.Default.MoreHoriz, null) }, mehr),
         )
     }
 }

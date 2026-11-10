@@ -2,34 +2,28 @@ package ch.brickinventoryapp.teile
 
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.model.data.model.BrickColorsResponse
-import ch.brickinventoryapp.model.data.model.FigValuationItem
 import ch.brickinventoryapp.model.data.model.ManualFigsResponse
 import ch.brickinventoryapp.model.data.model.ManualPartsResponse
-import ch.brickinventoryapp.model.data.model.Minifig
 import ch.brickinventoryapp.model.data.model.MinifigStatsResponse
 import ch.brickinventoryapp.model.data.model.MinifigsResponse
 import ch.brickinventoryapp.model.data.model.Part
-import ch.brickinventoryapp.model.data.model.PartValuationItem
 import ch.brickinventoryapp.model.data.model.PartsCategoriesResponse
 import ch.brickinventoryapp.model.data.model.PartsFilterColorsResponse
 import ch.brickinventoryapp.model.data.model.PartsResponse
 import ch.brickinventoryapp.model.data.model.PartsStatsResponse
-import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.teile.ui.Teile
 import ch.brickinventoryapp.teile.ui.TeileAbfrage
-import ch.brickinventoryapp.teile.ui.TeileLokal
 import ch.brickinventoryapp.teile.ui.TeileQuelle
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Die lokale Teileliste hält mehr als Seite 1, sobald weitere Seiten abgelegt
- * sind (Blättern, Vorwärmen). Steht sie so da, hängt das Nachladen von Seite 2
- * nur an, was noch fehlt — eine Zeile doppelt wäre ein doppelter Schlüssel im Raster.
+ * Mit Kontofilter blättert die Teileliste am Server. Liefert der Server bei gleichen
+ * Sortierwerten eine Zeile auf zwei Seiten, hängt Seite 2 sie nicht doppelt an — eine
+ * Zeile doppelt wäre ein doppelter Schlüssel im Raster.
  *
  * Gegenprobe: in Teile.anhaengen `bisher + neu` ohne Abgleich → rot „keine Zeile doppelt“
  * (gegenproben/teile-seite-doppelt.patch).
@@ -53,22 +47,13 @@ class TeileSeitenTest {
     }
 
     @Test
-    fun `steht die lokale Liste schon über Seite 1 hinaus da, hängt Seite 2 keine Zeile doppelt an`() = runTest {
-        val lokal = MutableStateFlow(Lokal(emptyList<Part>(), null))
+    fun `mit Kontofilter hängt Seite 2 keine Zeile doppelt an`() = runTest {
         val t = Teile(scope = backgroundScope,
-            quelle = Quelle(mapOf(1 to listOf(teil("3001"), teil("3002")), 2 to listOf(teil("3003"), teil("3004")))),
-            meldeFehler = {}, vergissScroll = {},
-            lokal = TeileLokal(lokal, MutableStateFlow(Lokal(emptyList<PartValuationItem>(), null)),
-                MutableStateFlow(Lokal(emptyList<Minifig>(), null)), MutableStateFlow(Lokal(emptyList<FigValuationItem>(), null))),
-            teileEingeschraenkt = { false })
+            quelle = Quelle(mapOf(1 to listOf(teil("3001"), teil("3002")), 2 to listOf(teil("3002"), teil("3003")))),
+            meldeFehler = {}, vergissScroll = {}, teileEingeschraenkt = { true })
         t.laden(); runCurrent()
-        // Das Vorwärmen hat Seite 2 zur Hälfte abgelegt; die Liste folgt der Ablage.
-        lokal.value = Lokal(listOf("3001", "3002", "3003").map { teil(it) }, stand = 1L)
-        runCurrent()
-        assertEquals(listOf("3001", "3002", "3003"), t.state.value.parts.map { it.partNumber })
-
         t.laden(seite = 2); runCurrent()
-        assertEquals("keine Zeile doppelt, die fehlende kommt dazu", listOf("3001", "3002", "3003", "3004"),
+        assertEquals("keine Zeile doppelt, die fehlende kommt dazu", listOf("3001", "3002", "3003"),
             t.state.value.parts.map { it.partNumber })
     }
 }

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.model.data.model.AcquisitionsResponse
 import org.junit.Assert.assertEquals
@@ -33,9 +34,9 @@ class ErfassungFelderTest {
     fun `Schaetzkennzeichen und Waehrung kommen an`() {
         val r = ApiJson.decodeFromString(AcquisitionsResponse.serializer(), antwort)
         assertTrue(r.acquisitions[0].priceEstimated)
-        assertEquals("CHF", r.acquisitions[0].currency)
+        assertEquals(Waehrung.CHF, r.acquisitions[0].currency)
         assertFalse(r.acquisitions[1].priceEstimated)
-        assertEquals("EUR", r.acquisitions[1].currency)
+        assertEquals(Waehrung.EUR, r.acquisitions[1].currency)
     }
 
     @Test

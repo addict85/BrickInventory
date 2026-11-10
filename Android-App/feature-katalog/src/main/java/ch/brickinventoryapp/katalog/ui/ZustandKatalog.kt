@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.katalog.ui
 
+import ch.brickinventoryapp.model.fach.Katalogsortierung
 import ch.brickinventoryapp.model.ui.model.*
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 
@@ -43,7 +44,7 @@ data class CatalogUiState(
     val query: String = "",
     val themeId: Int? = null,
     val year: Int? = null,
-    val sort: String = "year_desc",
+    val sort: Katalogsortierung = Katalogsortierung.VORGABE,
     // Meta
     val themes: List<KatalogThemaAnsicht> = emptyList(),
     val yearMin: Int? = null,

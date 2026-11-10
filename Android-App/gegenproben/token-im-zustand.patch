@@ -6,11 +6,11 @@ Rot: kein Feld von AppUiState traegt einen Token
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/ZustandSitzung.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/ZustandSitzung.kt
 --- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/ZustandSitzung.kt
 +++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/ZustandSitzung.kt
-@@ -24,6 +24,7 @@ data class AppUiState(
+@@ -25,6 +25,7 @@
+ data class AppUiState(
+     val serverUrl: String = "",
+     val isLoggedIn: Boolean = false,
++    val authToken: String = "",
      val isAdmin: Boolean = false,
      // Kein Token hier: Ihn liest allein der Interceptor (TokenAblage); im
      // Zustand stünde er für jede Oberfläche offen, als zweite Wahrheit.
-+    val authToken: String = "",
-     val currency: String = "EUR",
-     val priceCondition: String = "N",
-     val defaultPriceCondition: String = "N", // server-side default condition for new items (N=New, U=Used)

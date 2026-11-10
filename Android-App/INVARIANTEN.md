@@ -371,8 +371,8 @@ auseinandergelaufen sind.
 
 ## Rollpositionen werden ausdrücklich wiederhergestellt
 
-**Dateien:** `ui/ScrollMemory.kt` (Helfer), `app/nav/CollectionGraph.kt`,
-`app/nav/ToolsGraph.kt`
+**Dateien:** `ui/ScrollMemory.kt` (Helfer), `sammlung/ui/SammlungGraph.kt`,
+`teile/ui/TeileGraph.kt`, `finanzen/ui/FinanzenGraph.kt`
 **Test:** `ListScrollPositionTest`
 
 Jeder Reiter mit einer Liste ruft `ScrollPositionKeeper(...)` in seinem
@@ -404,7 +404,7 @@ die alte Stelle zeigt sonst auf Einträge, die es so nicht mehr gibt.
 
 ## Scroll-Zustände von Listen liegen ausserhalb ihres Navigationsziels
 
-**Dateien:** `AppNavigation.kt`, `app/nav/CollectionGraph.kt`, `app/nav/ToolsGraph.kt`
+**Dateien:** `AppNavigation.kt`, `sammlung/ui/SammlungGraph.kt`, `teile/ui/TeileGraph.kt`
 **Test:** `ListScrollPositionTest`
 
 Führt eine Liste in eine Detailansicht, gehört ihr `LazyGridState` /

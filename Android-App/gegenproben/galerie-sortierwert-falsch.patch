@@ -1,17 +1,17 @@
 Gegenprobe: die Galerie meldet einen Sortierwert, den der Server nicht kennt
-Modul: app
-Test: ch.brickinventoryapp.app.GalerieMeldetNachObenTest
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.sammlung.GalerieMeldetNachObenTest
 Rot: die Sortierung meldet
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
-@@ -236,7 +236,7 @@
-             // Dieselben Werte wie SET_SORTS auf dem Server (utils/handlers.ts):
-             // Einen unbekannten Wert setzte er still auf die Vorgabe zurück.
-             SortierMenue(
--                optionen = listOf("added_desc", "added_asc", "name_asc", "num_asc",
-+                optionen = listOf("added_desc", "added_asc", "name", "num_asc",
-                                   "year_desc", "price_desc", "price_asc",
-                                   "qty_desc", "qty_asc").map { it to gallerySortLabel(it) },
-                 gewaehlt = galerie.gallerySort, onWahl = ereignisse.sortierung,
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Sortierung.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Sortierung.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Sortierung.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Sortierung.kt
+@@ -9,7 +9,7 @@
+ enum class Setsortierung(val kennung: String) {
+     NEUESTE("added_desc"),
+     AELTESTE("added_asc"),
+-    NAME("name_asc"),
++    NAME("name"),
+     NUMMER("num_asc"),
+     JAHR("year_desc"),
+     PREIS_ABSTEIGEND("price_desc"),

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.model.data.model.JobsResponse
@@ -42,7 +43,7 @@ class VerwaltungLueckenTest {
             runBlocking {
                 admin.setJobSchedule("prices", zeit = "07:05")
                 admin.queueCatalogImages()
-                admin.setAppTheme("noppe")
+                admin.setAppTheme(Design.NOPPE)
             }
             assertEquals(listOf("POST /api/v1/admin/job-schedule", "POST /api/v1/admin/catalog-images",
                 "POST /api/v1/settings/admin/theme"), pfade.anfragen.toList())

@@ -207,7 +207,7 @@ fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
 // Markierung (Lint: UnsafeOptInUsageError).
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class, ExperimentalGetImage::class)
 @Composable
-fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
+internal fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val executor       = remember { java.util.concurrent.Executors.newSingleThreadExecutor() }
 

@@ -5,6 +5,12 @@
 -keepnames class kotlinx.serialization.** { *; }
 -keepclassmembers class kotlinx.serialization.** { *; }
 
+# Navigation lädt den Typ eines Enum-Felds einer Route über seinen Namen (Class.forName);
+# umbenannt fände es ihn nicht. core-model ist reines Kotlin und kennt kein @Keep.
+-keep enum ch.brickinventoryapp.model.fach.Postenart { *; }
+-keep enum ch.brickinventoryapp.model.fach.Zustand { *; }
+-keep enum ch.brickinventoryapp.model.ui.Scannerherkunft { *; }
+
 # ── ML Kit / Play Services ────────────────────────────────────────────────────
 # ML Kit ist Closed Source und stark reflexionsbasiert (Registrar-Discovery über
 # Manifest-Metadaten, interne Komponenten-Verdrahtung). Das aggressivere R8 unter

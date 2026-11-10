@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.model.ui.model
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.model.BrickLinkRef
 import ch.brickinventoryapp.model.data.model.Instruction
 import ch.brickinventoryapp.model.data.model.Merkposten
@@ -19,9 +21,9 @@ data class SetAnsicht(
     val imageUrl: String? = null,
     val imageLocal: String? = null,
     val addedAt: String? = null,
-    val condition: String? = null,
+    val condition: Zustand? = null,
     val storage: String? = null,
-    val conditions: List<String> = emptyList(),
+    val conditions: List<Zustand> = emptyList(),
     val owners: List<KontoAnsicht> = emptyList(),
     val maxPurchasePrice: Double? = null,
     val avgPurchasePrice: Double? = null,
@@ -91,7 +93,7 @@ fun BrickLinkRef.alsAnsicht() = BrickLinkAnsicht(
 
 data class MerkpostenAnsicht(
     val setNumber: String = "",
-    val condition: String = "N",
+    val condition: Zustand = Zustand.NEU,
     val createdAt: String? = null,
     val userId: Int = 0,
     val name: String? = null,
@@ -100,7 +102,7 @@ data class MerkpostenAnsicht(
     val imageUrl: String? = null,
     val imageLocal: String? = null,
     val marktpreis: Double? = null,
-    val waehrung: String = "EUR",
+    val waehrung: Waehrung = Waehrung.EUR,
     val owned: Boolean = false,
     val alarm: MerkpostenAlarmAnsicht? = null,
     val preisvergleichUrl: String? = null,

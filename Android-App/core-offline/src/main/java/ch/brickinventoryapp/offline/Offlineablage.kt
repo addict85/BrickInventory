@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.offline
 
+import kotlinx.coroutines.flow.mapLatest
 import ch.brickinventoryapp.model.lokal.Bestandsart
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
@@ -34,7 +35,7 @@ object Faecher {
             thema = it.theme, lagerort = it.storage)
     }
     val MERKLISTE = Fach(Bestandsart.MERKLISTE, Merkposten.serializer(), { LokaleAnwendung.merkSchluessel(it) }) {
-        Filterspalten(suchtext(it.setNumber, it.name), zustand = it.condition)
+        Filterspalten(suchtext(it.setNumber, it.name), zustand = it.condition.kennung)
     }
     val TEILE = Fach(Bestandsart.TEILE, Part.serializer(), { "${it.partNumber}|${it.colorId}|${it.isSpare}" }) {
         Filterspalten(suchtext(it.partNumber, it.partName, it.blPartNumber), farbe = it.colorName,
@@ -92,6 +93,15 @@ class Offlineablage(
         if (b == null) flowOf(Lokal(emptyList(), null))
         else bestand.beobachte(b, fach.art).map { dekodiere(fach, it) }
     }
+
+    /**
+     * Die lokale Liste, nur mit den Zeilen, die [filter] trifft — bei jeder Änderung
+     * neu gefragt, damit offline Geändertes auch in einer gefilterten Ansicht erscheint.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun <T : Any> beobachte(fach: Fach<T>, filter: Filterspalten): Flow<Lokal<T>> =
+        if (filter == Filterspalten()) beobachte(fach)
+        else beobachte(fach).mapLatest { alle -> if (alle.stand == null) alle else filtere(fach, filter) ?: alle }
 
     suspend fun <T : Any> lies(fach: Fach<T>): Lokal<T>? {
         val b = bereich() ?: return null
