@@ -46,6 +46,10 @@ Commit-Nachrichten, Kommentare, Testnamen und Oberflächentexte sind Deutsch.
   (`TEST_DATABASE_URL`, `REQUIRE_DB=1`) und läuft parallel, jede Testdatei auf
   einer eigenen Kopie einer Vorlage-Datenbank (`scripts/test-lauf.js`);
   `npm run test:seriell` läuft wie früher nacheinander.
+- Ohne Chrome überspringen die Browser-Dateien still. Lokal deshalb mit
+  `CHROME_BIN=<pfad zu chrome>` und `REQUIRE_BROWSER=1` laufen lassen (dann
+  ist ein fehlender Browser rot); die Abschlusszeile von `npm test` nennt,
+  wie viele Browser- und Caddy-Dateien übersprungen wurden.
 - Während eines Volllaufs **keine Dateien ändern**: Viele Wächter lesen den
   Arbeitsbaum, ein halbfertiger Stand ergibt falsche Fehlschläge.
 - Ein roter Lauf ist erst dann ein Ausrutscher, wenn der Test einzeln grün

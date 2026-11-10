@@ -7,7 +7,7 @@
  * Mehrere Chromium nebeneinander reissen auf schwachen Rechnern die Fristen.
  * Ausführlich: docs/begruendungen/scripts/test-lauf.js.md#stelle
  */
-const { execFileSync, spawn } = require('child_process');
+const { execFileSync, spawn, spawnSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -120,6 +120,22 @@ async function berichteAbdeckung() {
   fs.rmSync(path.join(ABDECKUNG, 'v8'), { recursive: true, force: true });
 }
 
+/**
+ * Wie viele Dateien mangels Werkzeug nur überspringen: Ohne Chrome sind die Browser-Dateien grün, ohne
+ * geprüft zu haben. Mit REQUIRE_BROWSER=1 bzw. REQUIRE_CADDY=1 scheitern sie stattdessen und zählen nicht.
+ * @param {string[]} browser @param {string[]} alle @param {(f: string) => string} quelle
+ */
+function ohneWerkzeug(browser, alle, quelle) {
+  let chromeDa = true;
+  // Dieselbe Suche wie die Browser-Tests; der Pfad als Ausdruck, damit tsc die Testhilfe nicht mitprüft.
+  try { chromeDa = !!require(path.join(ROOT, 'test', 'helpers', 'app-browser.js')).chrome(); } catch { /* REQUIRE_BROWSER=1: rot statt still */ }
+  const caddyDa = process.env.REQUIRE_CADDY === '1' || !!process.env.CADDY_BIN
+    || spawnSync('caddy', ['version'], { stdio: 'ignore' }).status === 0;
+  const caddy = alle.filter(f => /CADDY_BIN/.test(quelle(f))).length;
+  return `übersprungen: ${chromeDa ? 0 : browser.length} Browser-Dateien ohne Chrome (CHROME_BIN, REQUIRE_BROWSER=1), `
+    + `${caddyDa ? 0 : caddy} Caddy-Dateien ohne Caddy (CADDY_BIN, REQUIRE_CADDY=1)`;
+}
+
 async function main() {
   const start = Date.now();
   if (process.env.TEST_LAUF_GEBAUT !== '1') { // ein Lauf im Lauf baut nicht: parallele Dateien lesen dist/ und Bündel
@@ -142,12 +158,6 @@ async function main() {
 
   const dateien = auswahl.length ? auswahl
     : fs.readdirSync(path.join(ROOT, 'test')).filter(f => f.endsWith('.test.js')).sort().map(f => path.join('test', f));
-  if (seriell) {
-    const { code } = await lauf(dateien, 1, messung, fristBeiLast(60_000));
-    if (abdeckung) await berichteAbdeckung();
-    console.log(`[test-lauf] seriell, ${Math.round((Date.now() - start) / 1000)} s`);
-    process.exit(code);
-  }
   // Browser-Dateien haben je eigene Datenbank, Port und Chrome-Profil; sie laufen
   // getrennt, weil mehrere Chrome je Kern die Fristen reissen (TEST_PARALLEL_BROWSER).
   // Dateien mit `@einzeln` teilen etwas ausserhalb ihrer Datenbank (data/) und laufen allein.
@@ -155,6 +165,12 @@ async function main() {
   const istBrowser = (/** @type {string} */ f) =>
     /-browser\.test\.js$/.test(f) || /CHROME_BIN|helpers\/app-browser|helpers\/oberflaeche-pruefung/.test(quelle(f));
   const browser = dateien.filter(istBrowser);
+  if (seriell) {
+    const { code } = await lauf(dateien, 1, messung, fristBeiLast(60_000));
+    if (abdeckung) await berichteAbdeckung();
+    console.log(`[test-lauf] seriell, ${Math.round((Date.now() - start) / 1000)} s; ${ohneWerkzeug(browser, dateien, quelle)}`);
+    process.exit(code);
+  }
   const einzeln = dateien.filter(f => !istBrowser(f) && /@einzeln\b/.test(quelle(f)));
   const uebrige = dateien.filter(f => !browser.includes(f) && !einzeln.includes(f));
   // Doppelt so viele wie Kerne: Viele Dateien warten auf die Datenbank oder Zeitgeber.
@@ -196,7 +212,7 @@ async function main() {
   if (abdeckung) await berichteAbdeckung();
   console.log(`[test-lauf] ${uebrige.length} Dateien zu ${n} parallel, ${einzeln.length} @einzeln, `
     + `${browser.length} Browser zu ${nb}, `
-    + `${Math.round((Date.now() - start) / 1000)} s`);
+    + `${Math.round((Date.now() - start) / 1000)} s; ${ohneWerkzeug(browser, dateien, quelle)}`);
   process.exit(code);
 }
 
