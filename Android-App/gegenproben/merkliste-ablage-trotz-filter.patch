@@ -1,0 +1,17 @@
+Gegenprobe: Die Merkliste zeigt die Ablage auch mit Suchtext
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.sammlung.MerklisteViewModelTest
+Rot: ohne Filter folgt die Liste der Ablage, mit Suchtext nicht
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
+@@ -103,7 +103,7 @@ class MerklisteViewModel @Inject constructor(
+      */
+     val merklisteState: StateFlow<MerklisteUiState> = _merklisteState
+         .abgeleitet(lokal) { st, l ->
+-            if (l?.stand != null && ungefiltert(st)) st.copy(merkposten = l.liste.map { m -> m.alsAnsicht() }) else st
++            if (l?.stand != null) st.copy(merkposten = l.liste.map { m -> m.alsAnsicht() }) else st
+         }
+         .abgeleitet(_vorgemerkt) { st, v ->
+             if (v == null) st else st.copy(merkposten = st.merkposten.filterNot { it.setNumber == v.setNumber && it.condition == v.zustand })

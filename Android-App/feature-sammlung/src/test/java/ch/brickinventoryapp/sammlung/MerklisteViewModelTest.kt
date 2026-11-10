@@ -44,9 +44,12 @@ import ch.brickinventoryapp.testing.TestDienste
  *      Übernahme meldet Merkliste und Sets“
  *   D  im Preisalarm das Nachladen der Alarme des offenen Postens entfernt →
  *      rot „ein Preisalarm im Merkposten wird entprellt gespeichert …“
- *   E  im init-Sammler die Bedingung `ungefiltert(f)` entfernt →
- *      rot „mit Suchtext bleibt die Serverantwort stehen“
- *   F  den init-Sammler entfernt → rot „offline gelöscht“ (Zeitüberschreitung)
+ *   E  in merklisteState die Bedingung `ungefiltert(st)` entfernt
+ *      (gegenproben/merkliste-ablage-trotz-filter.patch) → rot „mit Suchtext
+ *      bleibt die Serverantwort stehen“
+ *   F  merklisteState sieht die Ablage nicht an (gegenproben/merkliste-ohne-ablage.patch)
+ *      → rot „Liste geladen“: Ohne Filter schreibt der Abruf nur in die Ablage.
+ *   E und F seit dem Umbau auf einen Datenweg nur in der CI gemessen.
  *   G  loescheMerkposten() löscht wieder sofort am Server
  *      (gegenproben/merkposten-loeschen-sofort.patch) → rot „ein geloeschter Merkposten …“
  *      („Noch kein DELETE“)

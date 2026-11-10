@@ -42,6 +42,13 @@ interface SetsRepository {
 
     fun beobachteMerkliste(): Flow<Lokal<Merkposten>>
 
+    /**
+     * Die ungefilterte Merkliste vom Server in die lokale Ablage holen. Zu sehen ist
+     * sie nur über [beobachteMerkliste]: ein Weg für die Daten, der Abruf meldet nur
+     * Erfolg oder Fehler.
+     */
+    suspend fun aktualisiereMerkliste(): Ergebnis<Unit>
+
     suspend fun legeMerkpostenAn(setNumber: String, condition: Zustand,
                              ownerUserId: Int? = null): Ergebnis<MerkpostenAntwort>
 

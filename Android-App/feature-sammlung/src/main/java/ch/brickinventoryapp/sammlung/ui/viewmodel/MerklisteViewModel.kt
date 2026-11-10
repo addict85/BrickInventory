@@ -1,5 +1,10 @@
 package ch.brickinventoryapp.sammlung.ui.viewmodel
 
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
+import ch.brickinventoryapp.offline.Lokal
+import ch.brickinventoryapp.model.data.model.MerklisteResponse
+import ch.brickinventoryapp.model.data.model.Merkposten
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.zustand.ui.abgeleitet
 import androidx.lifecycle.SavedStateHandle
@@ -88,8 +93,18 @@ class MerklisteViewModel @Inject constructor(
     private val _vorgemerkt = MutableStateFlow<VorgemerkterMerkposten?>(null)
     val vorgemerkt: StateFlow<VorgemerkterMerkposten?> = _vorgemerkt.asStateFlow()
 
-    /** Die Liste ohne den vorgemerkten Posten, auch wenn sie inzwischen neu kam (wie die Galerie). */
+    /** Die lokale Ablage; ohne Filter ist sie die einzige Quelle der Liste. */
+    private val lokal: StateFlow<Lokal<Merkposten>?> =
+        sets.beobachteMerkliste().stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /**
+     * Ohne Filter zeigt die Liste die Ablage — auch offline Angelegtes oder Gelöschtes
+     * sofort; mit Filter die Antwort des Servers. Der vorgemerkte Posten fehlt in beiden.
+     */
     val merklisteState: StateFlow<MerklisteUiState> = _merklisteState
+        .abgeleitet(lokal) { st, l ->
+            if (l?.stand != null && ungefiltert(st)) st.copy(merkposten = l.liste.map { m -> m.alsAnsicht() }) else st
+        }
         .abgeleitet(_vorgemerkt) { st, v ->
             if (v == null) st else st.copy(merkposten = st.merkposten.filterNot { it.setNumber == v.setNumber && it.condition == v.zustand })
         }
@@ -100,19 +115,6 @@ class MerklisteViewModel @Inject constructor(
     // Ein eigener Auftrag für die Suche: Ein neuer Tastendruck bricht den
     // wartenden Abruf ab, geladen wird erst nach der Pause.
     private var suchJob: Job? = null
-
-    init {
-        // Ohne Filter folgt die Liste der lokalen Ablage (Room), wie die Galerie:
-        // Offline Angelegtes oder Gelöschtes steht sofort da. Nicht während einer
-        // Ladung — deren Antwort setzt die Liste ohnehin.
-        viewModelScope.launch {
-            sets.beobachteMerkliste().collect { l ->
-                val f = _merklisteState.value
-                if (l.stand != null && !f.laedt && ungefiltert(f))
-                    _merklisteState.update { it.copy(merkposten = l.liste.map { m -> m.alsAnsicht() }) }
-            }
-        }
-    }
 
     private fun ungefiltert(f: MerklisteUiState) = f.query.isBlank() && f.zustandFilter == null &&
         (f.sortierung.isBlank() || f.sortierung == MERKLISTE_DEFAULT_SORT) && filter.kontoFuer(ScopeFilter.View.MERKLISTE) == null
@@ -131,15 +133,18 @@ class MerklisteViewModel @Inject constructor(
         viewModelScope.launch {
             val f = _merklisteState.value
             _merklisteState.update { it.copy(laedt = true, fehler = null) }
-            val r = sets.getMerkliste(
+            // Ohne Filter schreibt der Abruf nur in die Ablage; gezeigt wird sie (merklisteState).
+            val r = if (ungefiltert(f)) sets.aktualisiereMerkliste() else sets.getMerkliste(
                 search    = f.query.trim().ifBlank { null },
                 condition = f.zustandFilter,
                 sort      = f.sortierung.ifBlank { null },
                 accounts  = filter.kontoFuer(ScopeFilter.View.MERKLISTE),
             )
             when (r) {
-                is Ergebnis.Success ->
-                    _merklisteState.update { it.copy(merkposten = r.data.merkposten.map { m -> m.alsAnsicht() }, laedt = false) }
+                is Ergebnis.Success -> _merklisteState.update {
+                    val vomServer = (r.data as? MerklisteResponse)?.merkposten?.map { m -> m.alsAnsicht() }
+                    it.copy(merkposten = vomServer ?: it.merkposten, laedt = false)
+                }
                 is Ergebnis.Error -> {
                     _merklisteState.update { it.copy(laedt = false, fehler = meldungen.meldung(r),
                         fehlerKlasse = fehlerklasse(r)) }

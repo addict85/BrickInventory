@@ -119,6 +119,11 @@ class SetsRepositoryImpl @Inject constructor(
     /** Die lokale Merkliste (ungefiltert), wie beobachteSets. */
     override fun beobachteMerkliste(): Flow<Lokal<Merkposten>> = ablage.beobachte(Faecher.MERKLISTE)
 
+    override suspend fun aktualisiereMerkliste(): Ergebnis<Unit> = when (val r = getMerkliste()) {
+        is Ergebnis.Success -> Ergebnis.Success(Unit, r.stand, r.gepuffert)
+        is Ergebnis.Error -> r
+    }
+
     override suspend fun legeMerkpostenAn(setNumber: String, condition: Zustand,
                              ownerUserId: Int?): Ergebnis<MerkpostenAntwort> {
         val anfrage = MerkpostenRequest(setNumber, condition, ownerUserId)
