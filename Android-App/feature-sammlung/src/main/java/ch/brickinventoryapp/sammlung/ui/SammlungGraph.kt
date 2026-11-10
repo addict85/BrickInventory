@@ -1,8 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui
 
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -21,6 +19,7 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.sammlung.ui.screens.AcquisitionManagementRoute
 import ch.brickinventoryapp.sammlung.ui.screens.BarcodeScannerScreen
 import ch.brickinventoryapp.sammlung.ui.screens.ComparisonScreen
+import ch.brickinventoryapp.sammlung.ui.screens.GalerieRueckgaengigRoute
 import ch.brickinventoryapp.sammlung.ui.screens.GalleryRoute
 import ch.brickinventoryapp.sammlung.ui.screens.MerklisteRoute
 import ch.brickinventoryapp.sammlung.ui.screens.MerkpostenDetailRoute
@@ -102,12 +101,7 @@ private fun NavGraphBuilder.galerieZiel(navigation: SammlungNavigation) {
         val galerie by galerieVm.galleryState.collectAsStateWithLifecycle()
         val erfassung = navigation.erfassung
         val barcode by erfassung.barcodeState.collectAsStateWithLifecycle()
-        // Nachladen, wenn die Galerie leer ist und eine Serveradresse da ist.
-        LaunchedEffect(state.serverUrl) {
-            if (state.serverUrl.isNotBlank() && galerie.sets.isEmpty() && !galerie.galleryLoading) {
-                galerieVm.loadSets(); galerieVm.loadStats()
-            }
-        }
+        LaunchedEffect(state.serverUrl) { galerieVm.ladeWennLeer() }
         // Rollposition ausdrücklich wiederherstellen — der hochgezogene Zustand allein
         // landet verschoben.
         ScrollPositionKeeper(
@@ -121,21 +115,7 @@ private fun NavGraphBuilder.galerieZiel(navigation: SammlungNavigation) {
                 navController.navigate(Screen.SetDetail(found))
             }
         }
-        // Gelöscht wird erst, wenn die Snackbar ohne „Rückgängig“ endet — auch wenn
-        // sie verschwindet, weil man die Galerie verlässt (finally).
-        val vorgemerkt by galerieVm.vorgemerkt.collectAsStateWithLifecycle()
-        val geloeschtText = vorgemerkt?.let { stringResource(R.string.vm_set_deleted, it.name) }
-        val rueckgaengigText = stringResource(R.string.common_undo)
-        LaunchedEffect(vorgemerkt) {
-            if (vorgemerkt == null || geloeschtText == null) return@LaunchedEffect
-            var zurueck = false
-            try {
-                zurueck = navigation.snackbar.showSnackbar(geloeschtText, rueckgaengigText,
-                    duration = SnackbarDuration.Long) == SnackbarResult.ActionPerformed
-            } finally {
-                if (zurueck) galerieVm.rueckgaengig() else galerieVm.loeschenAusfuehren()
-            }
-        }
+        GalerieRueckgaengigRoute(galerieVm, navigation.snackbar)
         val ziel = this
         navigation.Reiter(stringResource(R.string.nav_collection)) {
             MitZiel(ziel) {

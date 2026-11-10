@@ -79,6 +79,28 @@ class GalerieEreignisse(
     val manuelleErfassungQuittiert: () -> Unit,
 )
 
+/**
+ * „gelöscht“ mit „Rückgängig“. Gelöscht wird erst, wenn die Snackbar ohne Rückgängig
+ * endet — auch wenn sie verschwindet, weil man die Galerie verlässt. Jede Snackbar
+ * antwortet nur für ihr Set: Löst ein zweites Löschen sie ab, bleibt dessen Rückgängig.
+ */
+@Composable
+internal fun GalerieRueckgaengigRoute(vm: GalerieViewModel, snackbarHostState: SnackbarHostState) {
+    val vorgemerkt by vm.vorgemerkt.collectAsStateWithLifecycle()
+    val text = vorgemerkt?.let { stringResource(R.string.vm_set_deleted, it.name) }
+    val rueckgaengig = stringResource(R.string.common_undo)
+    LaunchedEffect(vorgemerkt) {
+        val v = vorgemerkt ?: return@LaunchedEffect
+        var zurueck = false
+        try {
+            zurueck = snackbarHostState.showSnackbar(text ?: v.name, rueckgaengig,
+                duration = SnackbarDuration.Long) == SnackbarResult.ActionPerformed
+        } finally {
+            if (zurueck) vm.rueckgaengig(v) else vm.loeschenAusfuehren(v)
+        }
+    }
+}
+
 /** Die Galerie am Navigationsziel: sammelt die Flüsse und reicht Zustand und Ereignisse weiter. */
 @Composable
 fun GalleryRoute(
