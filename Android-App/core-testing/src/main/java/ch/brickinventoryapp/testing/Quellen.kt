@@ -96,11 +96,6 @@ object Quellen {
      */
     fun bildschirm(rel: String): String = bildschirmDateien(rel).joinToString("\n") { lies(it) }
 
-    /** Die Abschnitte der Überwachungsseite unterhalb der Job-Liste, ebenso verteilt. */
-    fun monitoringAbschnitte(): String =
-        listOf("MonitoringSections.kt", "MonitoringCache.kt", "MonitoringKontingente.kt", "MonitoringProtokoll.kt")
-            .joinToString("\n") { lies("verwaltung/ui/screens/$it") }
-
     /**
      * Das Hilt-Modul samt Netz: AppModule, NetzModule und der gemeinsame
      * Interceptor (ServerClient) liegen getrennt in den di/-Ordnern der Module; wer eine Regel des
@@ -193,113 +188,6 @@ object Quellen {
     }
 
     /**
-     * Welcher öffentliche Zustandsfluss des ViewModels trägt welchen Typ?
-     * Ergebnis z. B. `catalogState -> CatalogUiState`.
-     */
-    fun zustandsFluesse(): Map<String, String> {
-        val src = lies("zustand/ui/AppViewModel.kt") + "\n" + lies("zustand/ui/viewmodel/Bereichshelfer.kt")
-        // Zweite Form: ein Fluss, den eine eigene Klasse hält (Galerie), steht
-        // mit seinem Typ da — `val galleryState: StateFlow<GalleryUiState> = …`.
-        return (Regex("""_(\w+)\s*=\s*MutableStateFlow\((\w+UiState)\(""").findAll(src) +
-                Regex("""val\s+(\w+)\s*:\s*[\w.]*StateFlow<(\w+UiState)>""").findAll(src))
-            .associate { it.groupValues[1] to it.groupValues[2] }
-    }
-
-    /**
-     * Dasselbe für JEDES ViewModel: Klasse → (öffentlicher Flussname → Typ).
-     */
-    fun fluesseJeViewModel(): Map<String, Map<String, String>> {
-        val ergebnis = mutableMapOf<String, Map<String, String>>()
-        val erbt = mutableListOf<String>()
-        for (datei in alle().filter { it.name.endsWith("ViewModel.kt") }) {
-            val src = ohneKommentare(datei.readText())
-            val klasse = Regex("""class (\w+ViewModel)""").find(src)?.groupValues?.get(1) ?: continue
-            // privater Feldname (ohne Unterstrich) → UiState-Klasse
-            val privat = Regex("""(_\w+)\s*=\s*MutableStateFlow\((\w+UiState)\(""")
-                .findAll(src).associate { it.groupValues[1] to it.groupValues[2] }
-            val namen = mutableMapOf<String, String>()
-            privat.forEach { (feld, typ) -> namen[feld.removePrefix("_")] = typ }
-            Regex("""\bval\s+(\w+)\s*=\s*(_\w+)\.asStateFlow\(\)""").findAll(src).forEach { m ->
-                privat[m.groupValues[2]]?.let { namen[m.groupValues[1]] = it }
-            }
-            // Mit Typ ausgeschrieben, z. B. `val partsState: StateFlow<PartsUiState> = teile.state`.
-            Regex("""\bval\s+(\w+)\s*:\s*[\w.]*StateFlow<(\w+UiState)>""").findAll(src).forEach { m ->
-                namen[m.groupValues[1]] = m.groupValues[2]
-            }
-            // Was die Filterwahl anbietet, reicht ein Bereich per Delegation durch.
-            if (src.contains("Filterwahl by filter")) erbt += klasse
-            ergebnis[klasse] = namen
-        }
-        val filter = ohneKommentare(lies("zustand/ui/viewmodel/Bereichshelfer.kt"))
-        val grundlage = Regex("""\bval\s+(\w+)\s*:\s*[\w.]*StateFlow<(\w+UiState)>""").findAll(filter)
-            .associate { it.groupValues[1] to it.groupValues[2] }
-        for (k in erbt) ergebnis[k] = grundlage + ergebnis.getValue(k)
-        return ergebnis
-    }
-
-    /**
-     * Welcher Name in dieser Datei hält welches ViewModel?
-     *
-     * Aus Parametern (`katalog: CatalogViewModel`) und aus dem Einhängen
-     * (`val mon: MonitoringViewModel = hiltViewModel()`).
-     */
-    fun viewModelNamen(quelle: String): Map<String, String> {
-        val sauber = ohneKommentare(quelle)
-        val namen = mutableMapOf<String, String>()
-        Regex("""\b(\w+)\s*:\s*(?:[\w.]*\.)?(\w+ViewModel)\b""").findAll(sauber).forEach {
-            namen[it.groupValues[1]] = it.groupValues[2]
-        }
-        return namen
-    }
-
-    /**
-     * Was bietet eine `…UiState`-Datenklasse an — Felder UND abgeleitete
-     * Mitglieder?
-     */
-    fun mitgliederJeUiState(): Map<String, Set<String>> {
-        val quelle = zustaende()
-        val namen = Regex("""val\s+(\w+)\s*[:=]""")
-        val methoden = Regex("""fun\s+(\w+)\s*\(""")
-        return Regex("""data class (\w+UiState)\((.*?)\n\)(?: \{(.*?)\n\})?""",
-                     RegexOption.DOT_MATCHES_ALL)
-            .findAll(quelle)
-            .associate { m ->
-                val rumpf = m.groupValues[3]
-                m.groupValues[1] to (namen.findAll(m.groupValues[2]) +
-                                     namen.findAll(rumpf) +
-                                     methoden.findAll(rumpf))
-                    .map { it.groupValues[1] }.toSet()
-            }
-    }
-
-    /**
-     * Welchen Zustandstyp trägt ein Name in DIESER Datei?
-     */
-    fun zustandsNamen(quelle: String): Map<String, String> {
-        val sauber = ohneKommentare(quelle)
-        val fluesse = zustandsFluesse()
-        val namen = mutableMapOf<String, String>()
-        Regex("""\b(\w+)\s*:\s*(?:[\w.]*\.)?(\w+UiState)\b""").findAll(sauber).forEach {
-            namen[it.groupValues[1]] = it.groupValues[2]
-        }
-        Regex("""\bval\s+(\w+)\s+by\s+vm\.(\w+)\.collectAsStateWithLifecycle""")
-            .findAll(sauber).forEach { m ->
-                fluesse[m.groupValues[2]]?.let { namen[m.groupValues[1]] = it }
-            }
-        // Und dasselbe für jeden anderen Empfänger: `val state by katalog.state
-        // .collectAsStateWithLifecycle()`. Welchen Typ das trägt, verrät die
-        // Klasse hinter `katalog` — nicht der Name `state`.
-        val vms = viewModelNamen(sauber)
-        val jeVm = fluesseJeViewModel()
-        Regex("""\bval\s+(\w+)\s+by\s+(\w+)\.(\w+)\.collectAsStateWithLifecycle""")
-            .findAll(sauber).forEach { m ->
-                val klasse = vms[m.groupValues[2]] ?: return@forEach
-                jeVm[klasse]?.get(m.groupValues[3])?.let { namen[m.groupValues[1]] = it }
-            }
-        return namen
-    }
-
-    /**
      * Ein Ausschnitt ab dem ersten Vorkommen von [ab], gemessen in Zeilen ohne Kommentare:
      * Ein Absatz Erklärung mehr über der Fundstelle verschiebt so nichts.
      */
@@ -321,11 +209,7 @@ object Quellen {
         val i = sauber.indexOf(signatur)
         if (i < 0) return ""
         val rest = sauber.substring(i).lines()
-        // Einrückung der SIGNATURZEILE — nicht der Abstand der Fundstelle zum
-        // Zeilenanfang. Bei `internal fun AppViewModel.x(` liegt zwischen
-        // beidem das Wort `internal`, und der Abstand ergäbe neun Leerzeichen
-        // Einzug für eine Funktion, die auf Spalte 0 steht. Ende nie gefunden,
-        // Fenster wieder viel zu weit.
+        // Einrückung der Signaturzeile, nicht der Fundstelle: Vor `fun` kann `internal` stehen.
         val zeilenBeginn = sauber.lastIndexOf('\n', i) + 1
         val einzug = sauber.substring(zeilenBeginn).takeWhile { it == ' ' }
         val ende = rest.drop(1).indexOfFirst { it == "$einzug}" }

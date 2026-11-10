@@ -114,9 +114,8 @@ fun PartsListRoute(
     )
 }
 
-// ExperimentalLayoutApi für die FlowRow der Set-Chips — über der Funktion und mit
-// kurzem Namen, so wie SplitFileImportsTest sie sucht; ein @OptIn im Rumpf
-// übersetzt nicht.
+// ExperimentalLayoutApi für die FlowRow der Set-Chips — über der Funktion, weil ein
+// @OptIn im Rumpf nicht übersetzt.
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun PartsListScreen(

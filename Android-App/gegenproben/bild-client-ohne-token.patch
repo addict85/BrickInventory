@@ -1,0 +1,16 @@
+Gegenprobe: Der Bild-Client verliert den ServerWaechter und damit den Token
+Modul: core-data
+Test: ch.brickinventoryapp.data.ServerClientsTest
+Rot: beide Clients haengen den Server-Waechter ein
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt
+@@ -96,6 +96,7 @@
+     ): OkHttpClient =
+         buildInterceptorClient(prefs, isApiClient = false, sessionExpired = sessionExpired, ctx = context, frage = frage)
+             .newBuilder()
++            .apply { interceptors().removeAll { it is ch.brickinventoryapp.netz.di.ServerWaechter } }
+             // ── Dauerhafte Ablage der Vorschaubilder ──
+             //
+             // Zuerst in der Kette, damit der Abgriff das Endergebnis sieht — der

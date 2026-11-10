@@ -44,9 +44,8 @@ import ch.brickinventoryapp.ui.components.SettingsCard
  */
 @Composable
 internal fun KontoCard(
-    // `kontoZustand`, nicht `zustand`: UiStateFieldsTest bestimmt den Typ je Name und
-    // Datei; die Kontoseiten nehmen `zustand` schon für andere Zustände, und eine
-    // Verwechslung hielte die Felder für fehlend.
+    // `kontoZustand`, nicht `zustand`: Die Kontoseiten nehmen `zustand` schon für andere
+    // Zustände, und derselbe Name für zwei Typen verwechselt sich beim Lesen.
     kontoZustand: KontoUiState,
     onSpeichern: (String, String, String, String, String?, String?) -> Unit,
     onPasswort: (String, String, String?) -> Unit,

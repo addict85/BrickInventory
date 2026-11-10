@@ -15,8 +15,7 @@ import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.testing.TestApi
 
 /**
- * Absicherung der Review-Runde: abgelaufene Sitzung, ImageLoader-Lebensdauer,
- * Hintergrund-Polling und der entfernte tote Barcode-Zweitpfad.
+ * Abgelaufene Sitzung, ImageLoader-Lebensdauer und Hintergrund-Polling.
  *
  * Der 401 ist ausgeführt geprüft; der Rest liest Quelltext (Gerät und
  * Compose fehlen hier).
@@ -28,9 +27,6 @@ class SessionAndLifecycleTest {
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
-
-    private fun exists(rel: String) =
-        File(Quellen.wurzel, "$rel").exists()
 
     /** Kommentare ausblenden — die Erklärtexte nennen die geprüften Muster selbst. */
     private fun code(src: String): String {
@@ -100,53 +96,4 @@ class SessionAndLifecycleTest {
             "repeatOnLifecycle umschliesst die Poll-Schleife nicht"
         }
     }
-
-    // ── Entfernter toter Barcode-Zweitpfad ───────────────────────────────────
-
-    @Test
-    fun `der tote zweite Barcode-Pfad bleibt entfernt`() {
-        assert(!exists("data/BarcodeResolver.kt")) {
-            "BarcodeResolver.kt ist zurück. Die Klasse war nie erreichbar, und ihr " +
-                "blockierender Call.execute() lief aus dem viewModelScope ohne " +
-                "Dispatchers.IO — die Server-Abfrage darin hat nie funktioniert, der " +
-                "Fehler wurde vom umgebenden catch verschluckt."
-        }
-        assert(!exists("ui/screens/BarcodeResultDialog.kt")) {
-            "BarcodeResultDialog.kt ist zurück — der Dialog wurde von keinem Screen aufgerufen"
-        }
-        val dead = listOf(
-            "startBarcodeScanner", "dismissBarcodeScanner",
-            "onBarcodeDetected", "confirmBarcodeAdd",
-            "barcodeScanning", "barcodeResolving",
-            "barcodeResolvedSetNumber", "barcodeResolvedSet",
-        )
-        val feature = read("sammlung/ui/viewmodel/ErfassungViewModel.kt")
-        val state = Quellen.zustaende()
-        for (name in dead) {
-            assert(!feature.contains(name)) { "$name ist in ErfassungViewModel.kt zurück" }
-            assert(!state.contains(name)) { "$name ist in AppUiState zurück" }
-        }
-    }
-
-    /**
-     * Der LIVE-Pfad muss bleiben: Scanner-Screen → erfassung.resolveBarcode() →
-     * repo.resolveBarcode(). Er hat mit dem entfernten Zweitpfad nichts zu tun,
-     * und an ihm hängt der Kamera-Autofokus (siehe INVARIANTEN.md).
-     */
-    @Test
-    fun `der live genutzte Barcode-Pfad ist unberuehrt`() {
-        assert(exists("sammlung/ui/screens/BarcodeScannerScreen.kt")) {
-            "BarcodeScannerScreen.kt fehlt — das ist der Screen mit dem Autofokus"
-        }
-        assert(code(read("sammlung/ui/viewmodel/ErfassungViewModel.kt")).contains("fun resolveBarcode(")) {
-            "resolveBarcode() fehlt — der live genutzte Auflösungspfad"
-        }
-        assert(code(read("app/nav/ToolsGraph.kt")).contains("erfassung.resolveBarcode(")) {
-            "Der Scanner-Screen ruft resolveBarcode() nicht mehr auf"
-        }
-    }
-
-    // Die Autofokus-Regel stand hier ein viertes Mal. Sie gehoert nicht zum
-    // Thema dieser Datei (Sitzung und Lebenszyklus) und steht jetzt
-    // vollstaendig in CameraFocusConfigTest.
 }

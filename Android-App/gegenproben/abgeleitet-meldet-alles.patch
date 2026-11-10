@@ -1,0 +1,18 @@
+Gegenprobe: abgeleitet() reicht jede Änderung des Quellzustands weiter
+Modul: core-zustand
+Test: ch.brickinventoryapp.zustand.AbgeleiteterZustandTest
+Rot: ein abgeleiteter Zustand meldet nur echte Aenderungen
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AbgeleiteterZustand.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AbgeleiteterZustand.kt
+index 10de68f..4ea4a01 100644
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AbgeleiteterZustand.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AbgeleiteterZustand.kt
+@@ -34,7 +34,7 @@ fun <A, R> StateFlow<A>.abgeleitet(rechne: (A) -> R): StateFlow<R> {
+         override val value: R get() = rechne(a.value)
+         override val replayCache: List<R> get() = listOf(value)
+         override suspend fun collect(collector: FlowCollector<R>): Nothing {
+-            a.map(rechne).distinctUntilChanged().collect(collector)
++            a.map(rechne).collect(collector)
+             awaitCancellation()
+         }
+     }

@@ -11,6 +11,7 @@ import ch.brickinventoryapp.sicherheit.AblageChiffre
 import ch.brickinventoryapp.sicherheit.Ablageschluessel
 import ch.brickinventoryapp.sicherheit.TokenVerschluesselung
 import ch.brickinventoryapp.sicherheit.ZertifikatsFrage
+import ch.brickinventoryapp.netz.di.ServerWaechter
 import ch.brickinventoryapp.netz.util.BildHostWaechter
 import ch.brickinventoryapp.testing.testVertrauenschiffre
 import coil3.request.ImageRequest
@@ -46,6 +47,7 @@ import java.util.concurrent.TimeUnit
  * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
  *   server-client-folgt-umleitung  followRedirects(false) in buildInterceptorClient entfernt → rot „kein Server-Client …“
  *   bild-client-ohne-waechter      BildHostWaechter nicht eingehängt → rot „der Bild-Client spricht …“
+ *   bild-client-ohne-token         der ServerWaechter aus dem Bild-Client genommen → rot „beide Clients …“
  *   bild-client-ohne-rueckfall     der FORCE_CACHE-Rückfall wirft weiter → rot „ist der Server …“
  *   coil-ohne-bild-client          Coil ohne den Fetcher des Bild-Clients → rot „Coil lädt …“
  */
@@ -94,6 +96,14 @@ class ServerClientsTest {
         for ((name, c) in listOf("api" to apiClient(), "bild" to bildClient())) {
             assertFalse("$name: OkHttp folgte Umleitungen am Wächter vorbei", c.followRedirects)
             assertFalse("$name: OkHttp folgte einer Umleitung von https auf http", c.followSslRedirects)
+        }
+    }
+
+    /** Der ServerWaechter hängt den Token an (ServerWaechterTest); ohne ihn lüde jedes Bild mit 401. */
+    @Test
+    fun `beide Clients haengen den Server-Waechter ein`() {
+        for ((name, c) in listOf("api" to apiClient(), "bild" to bildClient())) {
+            assertTrue("$name: ohne ServerWaechter ginge kein Token mit", c.interceptors.any { it is ServerWaechter })
         }
     }
 
