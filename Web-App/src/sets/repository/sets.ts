@@ -3,6 +3,7 @@ import { ausTabelle } from '../../infra/validate';
 import type { DbSchnittstelle, Zeile } from '../../../db/database';
 import * as db from '../../../db/database';
 import { LIKE_ESCAPE as E, enthaeltMuster } from '../../../db/likeSuche';
+import { setStammJoin, SET } from '../../../db/katalogSicht';
 import { LOCKS } from '../../infra/lockNamespaces';
 import { sperreBisZumEnde } from '../../../db/txLock';
 
@@ -47,16 +48,27 @@ export function setZeileDesKontos(userId: number, setNumber: string) {
   return db.get<{ id: number }>('SELECT id FROM sets WHERE user_id = $1 AND set_number = $2', [userId, setNumber]);
 }
 
-/** Vorhandene Werte bleiben, wo der neue Abruf nichts liefert. */
-export function merkeSetKatalog(setNumber: string, name: string | null, year: number | null, theme: string | null, pieces: number | null, minifigs: number | null, imageUrl: string | null, localImage: string | null) {
-  return db.run(`INSERT INTO set_catalog (set_number,name,year,theme,pieces,minifigs,image_url,image_local)
-                VALUES ($1, COALESCE($2, 'Set ' || $1), $3,$4,$5,$6,$7,$8)
-                ON CONFLICT (set_number) DO UPDATE SET
-                  name = COALESCE($2, set_catalog.name), year = COALESCE($3, set_catalog.year),
-                  theme = COALESCE($4, set_catalog.theme), pieces = COALESCE($5, set_catalog.pieces),
-                  minifigs = COALESCE($6, set_catalog.minifigs),
-                  image_url = COALESCE($7, set_catalog.image_url),
-                  image_local = COALESCE($8, set_catalog.image_local), updated_at = NOW()`, [setNumber, name, year, theme, pieces, minifigs, imageUrl, localImage]);
+/** Vorhandene Werte bleiben, wo der neue Abruf nichts liefert. Name, Jahr, Thema
+ * und Teile gehen nach rb_sets, aber nur in eine Zeile der Erfassung ('api'):
+ * Was das Rebrickable-CSV führt, überschreibt kein Einzelabruf. */
+export function merkeSetKatalog(setNumber: string, name: string | null, year: number | null, theme: string | null, pieces: number | null, minifigs: number | null, imageUrl: string | null, localImage: string | null, themeId: number | null = null) {
+  return db.transaction(async tx => {
+    await tx.run(`INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, herkunft)
+                  VALUES ($1, COALESCE($2, 'Set ' || $1), $3,
+                          COALESCE($6, (SELECT t.id FROM rb_themes t WHERE t.name = $4
+                                         ORDER BY t.parent_id NULLS FIRST, t.id LIMIT 1)), $5, 'api')
+                  ON CONFLICT (set_num) DO UPDATE SET
+                    name = COALESCE($2, rb_sets.name), year = COALESCE($3, rb_sets.year),
+                    theme_id = COALESCE(EXCLUDED.theme_id, rb_sets.theme_id),
+                    num_parts = COALESCE($5, rb_sets.num_parts)
+                  WHERE rb_sets.herkunft = 'api'`, [setNumber, name, year, theme, pieces, themeId]);
+    await tx.run(`INSERT INTO set_catalog (set_number, minifigs, image_url, image_local) VALUES ($1, $2, $3, $4)
+                  ON CONFLICT (set_number) DO UPDATE SET
+                    minifigs = COALESCE($2, set_catalog.minifigs),
+                    image_url = COALESCE($3, set_catalog.image_url),
+                    image_local = COALESCE($4, set_catalog.image_local), updated_at = NOW()`,
+                 [setNumber, minifigs, imageUrl, localImage]);
+  });
 }
 
 export function legeSetZeileAn(tx: DbSchnittstelle, userId: number, setNumber: string) {
@@ -69,17 +81,21 @@ export async function sperreSetErfassen(tx: DbSchnittstelle, setNumber: string, 
   await sperreBisZumEnde(tx, LOCKS.INVENTAR, `${besitzer}|${setNumber}`);
 }
 
-const PLATZHALTER_SQL = "(name = 'Set ' || set_number AND year IS NULL AND theme IS NULL AND pieces IS NULL)";
+const PLATZHALTER_SQL = "(rs.name = 'Set ' || rs.set_num AND rs.year IS NULL AND rs.theme_id IS NULL AND rs.num_parts IS NULL)";
 
-/** Ohne Netz angelegt: Der Platzhalter macht das Set lesbar, bis der Auftrag den Katalog holt. */
+/** Ohne Netz angelegt: Der Platzhalter macht das Set lesbar, bis der Auftrag den Katalog holt.
+ * Kennt rb_sets das Set schon (CSV), bleibt dessen Zeile. */
 export async function merkeKatalogPlatzhalter(dbh: DbSchnittstelle, setNumber: string) {
-  await dbh.run("INSERT INTO set_catalog (set_number, name) VALUES ($1, 'Set ' || $1) ON CONFLICT (set_number) DO NOTHING", [setNumber]);
+  await dbh.run("INSERT INTO rb_sets (set_num, name, herkunft) VALUES ($1, 'Set ' || $1, 'api') ON CONFLICT (set_num) DO NOTHING", [setNumber]);
+  await dbh.run('INSERT INTO set_catalog (set_number) VALUES ($1) ON CONFLICT (set_number) DO NOTHING', [setNumber]);
   return katalogStand(setNumber, dbh);
 }
 
 export function katalogStand(setNumber: string, dbh: DbSchnittstelle = db) {
   return dbh.get<{ name: string | null; image_local: string | null; minifigs: number | null; platzhalter: boolean }>(
-    `SELECT name, image_local, minifigs, ${PLATZHALTER_SQL} AS platzhalter FROM set_catalog WHERE set_number = $1`, [setNumber]);
+    `SELECT rs.name, c.image_local, c.minifigs, ${PLATZHALTER_SQL} AS platzhalter
+       FROM rb_sets rs LEFT JOIN set_catalog c ON c.set_number = rs.set_num
+      WHERE rs.set_num = $1`, [setNumber]);
 }
 
 export function erfassungenOhnePreisDesSets(userId: number, setNumber: string) {
@@ -182,8 +198,8 @@ export type SetFilter = { search?: unknown; theme?: unknown; storage?: unknown; 
 function setsQuelle(uids: number[]): string {
   return uids.length > 1
     ? `(SELECT s.set_number,
-               MIN(c.name) AS name, MIN(c.year) AS year, MIN(c.theme) AS theme,
-               MIN(c.pieces) AS pieces, MIN(c.minifigs) AS minifigs,
+               MIN(${SET.name}) AS name, MIN(${SET.jahr}) AS year, MIN(${SET.thema}) AS theme,
+               MIN(${SET.teile}) AS pieces, MIN(c.minifigs) AS minifigs,
                -- Die Menge kommt aus den ERFASSUNGEN (Migration 0036 hat
                -- sets.quantity geloescht). Die gruppierte Quelle haengt
                -- db/bestandsmenge.ts an — hier stand SUM(s.quantity).
@@ -214,6 +230,7 @@ function setsQuelle(uids: number[]): string {
           -- kommen. LEFT JOIN, weil ein Set ohne Katalogzeile sonst aus der
           -- Liste verschwaende — lieber ohne Namen als unsichtbar.
           LEFT JOIN set_catalog c ON c.set_number = s.set_number
+          ${setStammJoin('s.set_number')}
           LEFT JOIN storage_locations lo ON lo.id = s.storage_id
           ${mengeJoin('s', 'sm', '= ANY($1)')}
          WHERE s.user_id = ANY($1)
@@ -224,10 +241,11 @@ function setsQuelle(uids: number[]): string {
                ${mengeAus('sm', 0)}::int AS quantity,
                s.added_at, s.updated_at, s.storage_id,
                lo.name AS storage,
-               c.name, c.year, c.theme, c.pieces, c.minifigs,
-               c.image_url, c.image_local
+               ${SET.name} AS name, ${SET.jahr} AS year, ${SET.thema} AS theme, ${SET.teile} AS pieces,
+               c.minifigs, c.image_url, c.image_local
           FROM sets s
           LEFT JOIN set_catalog c ON c.set_number = s.set_number
+          ${setStammJoin('s.set_number')}
           LEFT JOIN storage_locations lo ON lo.id = s.storage_id
           ${mengeJoin('s', 'sm', '= ANY($1)')}) s`;
 }
@@ -302,10 +320,11 @@ export async function setListe(uids: number[], f: SetFilter) {
     // Aus ALLEN Sets, sonst schrumpft das Auswahlfeld beim Blättern; nur auf der
     // ersten Seite.
     f.themen
-      ? db.all<{ theme: string }>(`SELECT DISTINCT c.theme AS theme
-                  FROM sets s JOIN set_catalog c ON c.set_number = s.set_number
-                 WHERE s.user_id = ANY($1) AND c.theme IS NOT NULL AND c.theme <> ''
-                 ORDER BY c.theme`, [uids])
+      ? db.all<{ theme: string }>(`SELECT DISTINCT rt.name AS theme
+                  FROM sets s JOIN rb_sets rs ON rs.set_num = s.set_number
+                  JOIN rb_themes rt ON rt.id = rs.theme_id
+                 WHERE s.user_id = ANY($1) AND rt.name IS NOT NULL AND rt.name <> ''
+                 ORDER BY rt.name`, [uids])
       : Promise.resolve(null),
   ]);
   return { sets, countRow, themeRows };
@@ -337,8 +356,8 @@ export function setDetailZeile(uids: number[], setNumber: string, eigenes: numbe
               -- ohne Migration 0033 braechte s.* ein zweites name mit, und
               -- der Zugriff darauf waere zweideutig (siehe die Begruendung
               -- bei setsFrom weiter oben).
-              c.name, c.year, c.theme, c.pieces, c.minifigs,
-              c.image_url, c.image_local,
+              ${SET.name} AS name, ${SET.jahr} AS year, ${SET.thema} AS theme, ${SET.teile} AS pieces,
+              c.minifigs, c.image_url, c.image_local,
               -- Die Gesamtmenge im Blickfeld, aus den ERFASSUNGEN. Hier
               -- stand eine Summe ueber sets.quantity; die Spalte ist mit
               -- Migration 0036 weg. Der JOIN auf sets haelt die
@@ -361,6 +380,7 @@ export function setDetailZeile(uids: number[], setNumber: string, eigenes: numbe
                  FROM sets e WHERE e.user_id = ANY($1) AND e.set_number = s.set_number) AS owner_ids
          FROM sets s
          LEFT JOIN set_catalog c ON c.set_number = s.set_number
+         ${setStammJoin('s.set_number')}
         WHERE s.user_id = ANY($1) AND s.set_number = $2
         ORDER BY (s.user_id = $3) DESC, s.id ASC
         LIMIT 1`, [uids, setNumber, eigenes]);

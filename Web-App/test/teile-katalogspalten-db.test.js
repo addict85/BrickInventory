@@ -22,7 +22,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
+const { haeltFigur, haeltSet, haeltTeil, katalogSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 // Dieselbe Begruendung wie in test/sets-ohne-kaufpreisspalte-db.test.js: Diese
@@ -135,7 +135,7 @@ test('die Teileliste liefert Beschreibung und Lagerort aus den Katalogen',
   const uid = u.id;
 
   // Ein Set mit zwei Teilen: eines Pflichtteil, eines Ersatzteil.
-  await db.run(`INSERT INTO set_catalog (set_number,name) VALUES ('75192-1','Falcon')`);
+  await katalogSet(db, '75192-1', { name: 'Falcon' });
   await haeltSet(db, uid, '75192-1', 2);
   await db.run(`INSERT INTO set_teile (set_number,part_number,color_id,is_spare,quantity)
     VALUES ('75192-1','3001',4,false,6), ('75192-1','3002',1,true,2)`);
@@ -213,7 +213,7 @@ test('die Figurenliste liefert Name und Bild aus minifigs_catalog',
   const u = await db.get(
     `INSERT INTO users (username,password_hash) VALUES ('figleser','x') RETURNING id`);
   const uid = u.id;
-  await db.run(`INSERT INTO set_catalog (set_number,name) VALUES ('75192-1','Falcon')`);
+  await katalogSet(db, '75192-1', { name: 'Falcon' });
   await haeltSet(db, uid, '75192-1', 3);
   await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name,image_url)
     VALUES ('fig-000123','Chewbacca','http://cdn/chewie.png')`);

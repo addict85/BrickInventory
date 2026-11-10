@@ -12,7 +12,7 @@ const db = _req('db/database.js');
 // Ein Bestand ist seit Migration 0036 ZWEI Zeilen: eine in `sets` („dieses
 // Konto haelt dieses Set") und eine je Kauf in `set_acquisitions`. haeltSet()
 // legt beide an — siehe test/helpers/bestand.js.
-const { haeltSet, haeltTeil } = require('./helpers/bestand');
+const { haeltSet, haeltTeil, katalogSet } = require('./helpers/bestand');
 const { testServer } = require('./helpers/server');
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
@@ -35,8 +35,7 @@ async function seed() {
   // Bestandszeile; die Stueckzahl seit 0036 in der Erfassung. Hier stand
   // `INSERT INTO sets (user_id, set_number, name, quantity)` — beide Spalten
   // gibt es nicht mehr.
-  await db.run(`INSERT INTO set_catalog (set_number, name) VALUES ($1,'Falcon')
-                ON CONFLICT (set_number) DO UPDATE SET name = EXCLUDED.name`, [SN]);
+  await katalogSet(db, SN, { name: 'Falcon' });
   // Das Set gehört dem HAUPTKONTO. Das Unterkonto hat gar keine Zeile — genau
   // die Lage, in der ein Eintrag in seinem Vorrat nichts beschreibt.
   await haeltSet(db, HAUPT, SN, 1);
@@ -177,8 +176,7 @@ test('der Lagerortfilter der Listen wirkt über die Route', async (t) => {
   // Ein zweites Set OHNE Lagerort — ohne es hätte der Filter nichts
   // auszusieben, und „alle" wäre von „die richtigen" nicht zu unterscheiden.
   const OHNE = '21058-1';
-  await db.run(`INSERT INTO set_catalog (set_number, name) VALUES ($1,'Cheops')
-                ON CONFLICT (set_number) DO NOTHING`, [OHNE]);
+  await katalogSet(db, OHNE, { name: 'Cheops' });
   await haeltSet(db, HAUPT, OHNE, 1);
   await L.setzeLagerort('set', [HAUPT], [SN], 'Estrich');
 

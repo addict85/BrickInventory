@@ -172,7 +172,8 @@ async function katalogHolen(sn: string, mitBrickset: boolean, sendProgress: Fort
     theme: string | null = null,
     pieces: number | null = null,
     minifigs: number | null = null,
-    imageUrl: string | null = null;
+    imageUrl: string | null = null,
+    themeId: number | null = null;
   const rbErgebnis = await versuche('set-service:getSetInfo', getSetInfo(sn));
   const rb = wertOder(rbErgebnis, null);
   if (rb) {
@@ -181,6 +182,7 @@ async function katalogHolen(sn: string, mitBrickset: boolean, sendProgress: Fort
     theme = rb.theme;
     pieces = rb.pieces;
     imageUrl = rb.image_url;
+    themeId = ('theme_id' in rb ? rb.theme_id : null) ?? null;
   }
   if (mitBrickset) {
     const bs = wertOder(await versuche('set-anlegen:brickset-info', brickset.getSetInfo(sn)), null);
@@ -200,7 +202,7 @@ async function katalogHolen(sn: string, mitBrickset: boolean, sendProgress: Fort
   if (lokal) void versuche('set-anlegen:vorschau', generateThumb(lokal));
   // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild.
   // Ausführlich: docs/begruendungen/src/sets/erfassen.ts.md#addsetintern-3
-  await repo.merkeSetKatalog(sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal);
+  await repo.merkeSetKatalog(sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
   if (minifigs) await repo.setzeFigurenzahl(minifigs, sn);
   return { name, gestoert: !rbErgebnis.ok, bild: !!lokal };
 }

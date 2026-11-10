@@ -40,6 +40,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { katalogSet } = require('./helpers/bestand');
 const { importWorker } = require('./helpers/auftraege');
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
@@ -79,8 +80,7 @@ async function aufbau(kontoWaehrung = 'CHF') {
   FREMD = (await db.get(`SELECT id FROM users WHERE username='fremd'`)).id;
   // KEINE Kontoverknuepfung: 'fremd' ist kein Unterkonto. Selbst mit einer
   // waere es falsch — ein Alarm kennt kein Blickfeld.
-  await db.run(`INSERT INTO set_catalog (set_number,name) VALUES ($1,$1)
-                ON CONFLICT (set_number) DO NOTHING`, [FREMDER_ALARM.sn]);
+  await katalogSet(db, FREMDER_ALARM.sn, { name: FREMDER_ALARM.sn });
   await db.run(`INSERT INTO price_alerts (user_id,set_number,condition,richtung,schwelle,currency_code)
                 VALUES ($1,$2,$3,$4,$5,$6)`,
     [FREMD, FREMDER_ALARM.sn, FREMDER_ALARM.c, FREMDER_ALARM.r, FREMDER_ALARM.s, FREMDER_ALARM.w]);
@@ -92,8 +92,7 @@ async function aufbau(kontoWaehrung = 'CHF') {
   // Tests gescheitert. Deshalb die Bestandszeile nur einmal je Nummer.
   const gelegt = new Set();
   for (const a of ALARME) {
-    await db.run(`INSERT INTO set_catalog (set_number,name) VALUES ($1,$1)
-                  ON CONFLICT (set_number) DO NOTHING`, [a.sn]);
+    await katalogSet(db, a.sn, { name: a.sn });
     if (a.besitzt && !gelegt.has(a.sn)) {
       gelegt.add(a.sn);
       await db.run(`INSERT INTO sets (user_id,set_number) VALUES ($1,$2)

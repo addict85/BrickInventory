@@ -19,7 +19,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
-const { haeltSet } = require('./helpers/bestand');
+const { haeltSet, katalogSet } = require('./helpers/bestand');
 
 test('fehlt die Bildadresse am Set, kommt sie aus dem gemeinsamen Katalog',
   { concurrency: 1 }, async (t) => {
@@ -42,14 +42,12 @@ test('fehlt die Bildadresse am Set, kommt sie aus dem gemeinsamen Katalog',
   // Was Migration 0033 an diesem Aufbau geaendert hat
   // Ausführlich: docs/begruendungen/test/image-fallback-db.test.js.md#stelle
   await haeltSet(db, uid, OHNE, 1);
-  await db.run(`INSERT INTO set_catalog (set_number,name,image_url) VALUES ($1,'F1 Truck',$2)
-                ON CONFLICT (set_number) DO UPDATE SET image_url=EXCLUDED.image_url`, [OHNE, CDN]);
+  await katalogSet(db, OHNE, { name: 'F1 Truck', image_url: CDN });
 
   // Gegenstück: eine ANDERE Adresse im Katalog — sie muss unveraendert
   // durchkommen. Vorher stand sie an der sets-Zeile ($1 = EIGEN).
   await haeltSet(db, uid, MIT, 1);
-  await db.run(`INSERT INTO set_catalog (set_number,name,image_url) VALUES ($1,'Anderes',$2)
-                ON CONFLICT (set_number) DO UPDATE SET image_url=EXCLUDED.image_url`, [MIT, EIGEN]);
+  await katalogSet(db, MIT, { name: 'Anderes', image_url: EIGEN });
 
   try {
     const { getSets } = require('./helpers/sources').handlerModul(_req);

@@ -65,9 +65,9 @@ export async function anleitungenNachtragen(): Promise<void> {
 
 /** Die Oberfläche lädt nur über image_local aus images/sets; ohne den Eintrag
  * ginge jedes Set-Bild weiter über den Proxy, obwohl die Datei längst da ist. */
-export async function setBildLokalEintragen(setNumber: string): Promise<void> {
+export async function setBildLokalEintragen(setNumber: string, quelle: string | null = null): Promise<void> {
   const safe = setNumber.replace(/[^a-z0-9-]/gi, '_');
-  await repo.merkeSetBildLokal(setNumber, `/images/sets/${safe}.jpg`);
+  await repo.merkeSetBildLokal(setNumber, `/images/sets/${safe}.jpg`, quelle);
 }
 
 export async function setBilderNachladen(): Promise<void> {

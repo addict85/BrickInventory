@@ -18,6 +18,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { katalogSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 // Dieselbe Begruendung wie in test/teilepreise-nur-erfassungen-db.test.js:
@@ -194,9 +195,7 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen',
     `INSERT INTO users (username,password_hash) VALUES ('mengeleser_kind','x') RETURNING id`);
   const SN = '10290-1';
 
-  await db.run(`INSERT INTO set_catalog (set_number,name,year,pieces)
-                VALUES ($1,'Pickup Truck',2022,1677)
-                ON CONFLICT (set_number) DO NOTHING`, [SN]);
+  await katalogSet(db, SN, { name: 'Pickup Truck', year: 2022, pieces: 1677 });
   // Zwei Konten halten dasselbe Set — der Haushaltszweig von getSets() fasst
   // sie zu EINER Kachel zusammen und muss die Mengen addieren.
   await db.run(`INSERT INTO sets (user_id,set_number) VALUES ($1,$2),($3,$2)`,

@@ -30,6 +30,7 @@ process.env.DATABASE_URL = URL_DB;
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { katalogSet } = require('./helpers/bestand');
 const { dbOderSkip } = require('./helpers/db');
 const { warte } = require('./helpers/zeit');
 const db = _req('db/database.js');
@@ -160,12 +161,13 @@ test('Set-Bild über Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }
                   ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert`,
       [k],
     );
-  for (const sn of [FRISCH, NUR_VORSCHAU])
-    await db.run(
-      `INSERT INTO set_catalog (set_number, name, image_url) VALUES ($1, 'Probe', $2)
-                  ON CONFLICT (set_number) DO UPDATE SET image_url = EXCLUDED.image_url, image_local = NULL`,
-      [sn, bildAdresse(sn)],
-    );
+  for (const sn of [FRISCH, NUR_VORSCHAU]) {
+    await katalogSet(db, sn, { name: 'Probe' });
+    await db.run(`UPDATE set_catalog SET image_url = $2, image_local = NULL WHERE set_number = $1`, [
+      sn,
+      bildAdresse(sn),
+    ]);
+  }
   const nutzer = await db.get(
     `INSERT INTO users (username, password_hash, is_active, email_verified)
                                VALUES ($1, 'x', true, true) RETURNING id`,

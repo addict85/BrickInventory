@@ -1,6 +1,6 @@
 /**
  * Set-Nummern tragen in der Datenbank immer ihre Version (Migration 0074),
- * set_stamm führt die drei Set-Kataloge zusammen (0076), und Ersatzteil ist
+ * der Set-Stamm liest rb_sets und füllt Lücken aus catalog_cache (0105), und Ersatzteil ist
  * überall 0 oder 1 (0075). Geprüft werden die Migrationen auf Altdaten, das
  * Schreiben ohne Versionsanhang und die Leser, die früher zwei Schreibweisen
  * per OR abfragten.
@@ -12,8 +12,8 @@
  *      „Teile des alten Sets bleiben“ (ON DELETE CASCADE nahm sie mit)
  *   C  im Teilefilter (src/teile/abfragen.ts) mitVersion() entfernt → rot:
  *      „der Filter findet das Set auch ohne Versionsanhang“
- *   D  in set_stamm den Platzhalter „Set …“ nicht ausgeblendet → rot:
- *      „ein Platzhalter ist kein Name“
+ *   D  (10.11.) in setStamm() (src/sets/repository/setDetail.ts) den Platzhalter
+ *      „Set …“ nicht ausgeblendet → rot: „ein Platzhalter ist kein Name“
  *   E  in 0075 'True' nicht als Ersatzteil gelesen → rot: „Ersatzteil wird 0/1“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -47,6 +47,9 @@ test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 
           EXECUTE format('DROP TRIGGER %I ON %s', r.tgname, r.t); END LOOP;
         FOR r IN SELECT conname, conrelid::regclass AS t FROM pg_constraint WHERE conname LIKE '%\\_setnummer\\_mit\\_version' LOOP
           EXECUTE format('ALTER TABLE %s DROP CONSTRAINT %I', r.t, r.conname); END LOOP; END $$`);
+      // Und vor 0105: set_catalog mit eigenen Stammspalten, ohne Bezug auf rb_sets.
+      await c.query(`ALTER TABLE set_catalog DROP CONSTRAINT set_catalog_rb_sets_fkey,
+        ADD COLUMN name text, ADD COLUMN year integer, ADD COLUMN theme text, ADD COLUMN pieces integer`);
       const A = (await q(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [`sn-${PID}`]))[0].id;
       const lager = (await q(`INSERT INTO storage_locations (user_id, name) VALUES ($1,'Regal') RETURNING id`, [A]))[0].id;
       const T1 = `T${PID}a`, T2 = `T${PID}b`, T3 = `T${PID}c`;
@@ -113,26 +116,22 @@ test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 
     }
   });
 
-  await t.test('set_stamm: set_catalog führt, die anderen füllen Lücken', async () => {
+  await t.test('Set-Stamm: rb_sets führt, catalog_cache füllt Lücken', async () => {
     const S = `S${PID}`;
     const weg = () => Promise.all([
-      db.run('DELETE FROM set_catalog WHERE set_number LIKE $1', [`${S}%`]),
       db.run('DELETE FROM rb_sets WHERE set_num LIKE $1', [`${S}%`]),
       db.run('DELETE FROM catalog_cache WHERE set_number LIKE $1', [`${S}%`])]);
     await weg();
     try {
-      await db.run(`INSERT INTO rb_sets (set_num, name, year, num_parts) VALUES ($1,'Aus Rebrickable',2020,100), ($2,'Nur RB',2021,5)`,
-        [`${S}a-1`, `${S}b-1`]);
-      await db.run(`INSERT INTO set_catalog (set_number, name, year) VALUES ($1,$2,NULL)`, [`${S}a-1`, `Set ${S}a-1`]);
-      await db.run(`INSERT INTO catalog_cache (set_number, name, year) VALUES ($1,'Nur Cache',2019)`, [`${S}c-1`]);
-      await db.run(`INSERT INTO set_catalog (set_number, name) VALUES ($1,'Eigener Name')`, [`${S}b-1`]);
-      const stamm = async (n) => db.get('SELECT name, year, herkunft FROM set_stamm WHERE set_number=$1', [n]);
-      assert.deepEqual(await stamm(`${S}a-1`), { name: 'Aus Rebrickable', year: 2020, herkunft: 'set_catalog' },
-        'ein Platzhalter ist kein Name');
-      assert.deepEqual(await stamm(`${S}b-1`), { name: 'Eigener Name', year: 2021, herkunft: 'set_catalog' });
-      assert.deepEqual(await stamm(`${S}c-1`), { name: 'Nur Cache', year: 2019, herkunft: 'catalog_cache' });
+      await db.run(`INSERT INTO rb_sets (set_num, name, year, num_parts) VALUES ($1,'Aus Rebrickable',2020,100)`, [`${S}a-1`]);
+      await db.run(`INSERT INTO rb_sets (set_num, name, herkunft) VALUES ($1,$2,'api')`, [`${S}b-1`, `Set ${S}b-1`]);
+      await db.run(`INSERT INTO catalog_cache (set_number, name, year) VALUES ($1,'Aus dem Abruf',2018), ($2,'Nur Cache',2019)`,
+        [`${S}b-1`, `${S}c-1`]);
       const { setInfo } = _req('src/sets/dienst.js');
-      assert.equal((await setInfo(`${S}c`))?.name, 'Nur Cache', 'setInfo liest set_stamm, auch ohne Versionsanhang');
+      const stamm = async (n) => { const r = await setInfo(n); return r && { name: r.name, year: r.year }; };
+      assert.deepEqual(await stamm(`${S}a-1`), { name: 'Aus Rebrickable', year: 2020 });
+      assert.deepEqual(await stamm(`${S}b-1`), { name: 'Aus dem Abruf', year: 2018 }, 'ein Platzhalter ist kein Name');
+      assert.deepEqual(await stamm(`${S}c`), { name: 'Nur Cache', year: 2019 }, 'setInfo liest den Cache, auch ohne Versionsanhang');
     } finally { await weg(); }
   });
 

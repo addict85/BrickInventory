@@ -36,7 +36,7 @@ export async function bestandsZeilen(tx: DbSchnittstelle, art: PapierArt, werte:
 }
 
 const BEZEICHNUNG: Record<PapierArt, string> = {
-  set:   'SELECT name AS b FROM set_catalog WHERE set_number = $1 AND $2::int IS NOT NULL',
+  set:   'SELECT name AS b FROM rb_sets WHERE set_num = $1 AND $2::int IS NOT NULL',
   teil:  `SELECT concat_ws(' · ', ${TEIL.name}, ${TEIL.farbname}) AS b
             FROM (SELECT $1::text AS nr, $2::int AS konto, $3::int AS farbe) x
             ${teilSichtJoin('x.konto', 'x.nr', 'x.farbe')}`,

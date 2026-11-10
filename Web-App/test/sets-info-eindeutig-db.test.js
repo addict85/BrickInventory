@@ -27,6 +27,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { katalogSet } = require('./helpers/bestand');
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
@@ -39,8 +40,8 @@ test('der Namensabruf unter /api/v1/sets ist eindeutig', { concurrency: 1 }, asy
   const fremdId = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [`${NAME}-f`])).id;
   const [fremd, eigen, nie] = [`${process.pid}7-1`, `${process.pid}8-1`, `${process.pid}9-1`];
   const nummern = ['price-history-1', `${process.pid}-1`, fremd, eigen];
-  await db.run(`INSERT INTO set_catalog (set_number, name) VALUES ($1, 'Pfadwort'), ($2, 'Gewöhnlich'), ($3, 'Set ' || $3), ($4, 'Set ' || $4)
-                ON CONFLICT (set_number) DO UPDATE SET name = EXCLUDED.name`, nummern);
+  for (const [i, name] of ['Pfadwort', 'Gewöhnlich', null, null].entries())
+    await katalogSet(db, nummern[i], { name: name ?? `Set ${nummern[i]}` });
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2), ($3, $4)', [fremdId, fremd, uid, eigen]);
   // Dieselbe Reihenfolge wie server.ts: zuerst der v1-Router, dann routes/sets.ts.
   const { base } = testServer(_req, {

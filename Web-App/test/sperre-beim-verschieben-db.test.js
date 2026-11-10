@@ -21,7 +21,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
-const { haeltSet } = require('./helpers/bestand');
+const { haeltSet, katalogSet } = require('./helpers/bestand');
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
 
@@ -110,8 +110,7 @@ async function aufbau() {
   HAUPT = await id('haupt'); KIND = await id('kind');
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [HAUPT, KIND]);
   for (const sn of [SN_A, SN_B, SN_C]) {
-    await db.run(`INSERT INTO set_catalog (set_number,name) VALUES ($1,$1)
-                  ON CONFLICT (set_number) DO NOTHING`, [sn]);
+    await katalogSet(db, sn, { name: sn });
     await haeltSet(db, HAUPT, sn, 1, { preis: 100 });
   }
 }

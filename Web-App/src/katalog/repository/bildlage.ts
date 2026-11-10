@@ -35,8 +35,17 @@ export async function setBilderOhneDatei(grenze = 500): Promise<{ set_number: st
      WHERE image_local IS NULL AND image_url IS NOT NULL LIMIT $1`, [grenze]);
 }
 
-export async function merkeSetBildLokal(setNumber: string, lokal: string): Promise<void> {
-  await db.run('UPDATE set_catalog SET image_local=$1 WHERE set_number=$2 AND image_local IS NULL', [lokal, setNumber]);
+/** Schreibt nur, was fehlt. Über rb_sets, damit eine fehlende set_catalog-Zeile
+ * entsteht, ohne den Fremdschlüssel zu verletzen; ein unbekanntes Set bleibt aussen vor. */
+export async function merkeSetBildLokal(setNumber: string, lokal: string, quelle: string | null = null): Promise<void> {
+  await db.run(
+    `INSERT INTO set_catalog (set_number, image_local, image_url)
+     SELECT rs.set_num, $1, $3 FROM rb_sets rs WHERE rs.set_num = $2
+     ON CONFLICT (set_number) DO UPDATE SET
+       image_local = COALESCE(set_catalog.image_local, EXCLUDED.image_local),
+       image_url = COALESCE(set_catalog.image_url, EXCLUDED.image_url), updated_at = NOW()
+     WHERE set_catalog.image_local IS NULL
+        OR (set_catalog.image_url IS NULL AND EXCLUDED.image_url IS NOT NULL)`, [lokal, setNumber, quelle]);
 }
 
 export async function lokaleKatalogbilder(): Promise<string[]> {
@@ -61,12 +70,17 @@ export async function figurenbilder(figuren: string[]): Promise<(Bildstand & { f
        FROM minifigs_catalog WHERE fig_number = ANY($1)`, [figuren]);
 }
 
+/** Nur Lücken einer Zeile der Erfassung ('api'): Was das Rebrickable-CSV führt, bleibt. */
 export async function fuelleSetLuecken(setNumber: string,
   i: { name?: string | null; year?: number | null; theme?: string | null; pieces?: number | null; minifigs?: number | null }): Promise<void> {
   await db.run(
-    `UPDATE set_catalog SET name=COALESCE(name,$1), year=COALESCE(year,$2), theme=COALESCE(theme,$3),
-            pieces=COALESCE(pieces,$4), minifigs=COALESCE(minifigs,$5) WHERE set_number=$6`,
-    [i.name ?? null, i.year ?? null, i.theme ?? null, i.pieces ?? null, i.minifigs ?? null, setNumber]);
+    `UPDATE rb_sets SET name = CASE WHEN name IS NULL OR name = 'Set ' || set_num THEN COALESCE($1, name) ELSE name END,
+            year = COALESCE(year, $2), num_parts = COALESCE(num_parts, $4),
+            theme_id = COALESCE(theme_id, (SELECT t.id FROM rb_themes t WHERE t.name = $3
+                                            ORDER BY t.parent_id NULLS FIRST, t.id LIMIT 1))
+      WHERE set_num = $5 AND herkunft = 'api'`,
+    [i.name ?? null, i.year ?? null, i.theme ?? null, i.pieces ?? null, setNumber]);
+  await db.run('UPDATE set_catalog SET minifigs = COALESCE(minifigs, $1) WHERE set_number = $2', [i.minifigs ?? null, setNumber]);
 }
 
 export async function setsOhneAnleitungsabruf(): Promise<string[]> {

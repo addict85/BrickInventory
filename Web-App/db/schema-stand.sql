@@ -733,6 +733,8 @@ CREATE TABLE rb_sets (
   theme_id integer,
   num_parts integer,
   set_img_url text,
+  herkunft text NOT NULL DEFAULT 'csv'::text,
+  CONSTRAINT rb_sets_herkunft CHECK ((herkunft = ANY (ARRAY['csv'::text, 'api'::text]))),
   CONSTRAINT rb_sets_pkey PRIMARY KEY (set_num)
 );
 CREATE INDEX idx_rb_sets_name_trgm ON rb_sets USING gin (name gin_trgm_ops);
@@ -808,16 +810,13 @@ CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON set_acquisitions REFER
 
 CREATE TABLE set_catalog (
   set_number text NOT NULL,
-  name text,
-  year integer,
-  theme text,
-  pieces integer,
   minifigs integer,
   image_url text,
   image_local text,
   brickset_id integer,
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT set_catalog_pkey PRIMARY KEY (set_number),
+  CONSTRAINT set_catalog_rb_sets_fkey FOREIGN KEY (set_number) REFERENCES rb_sets(set_num) ON DELETE CASCADE,
   CONSTRAINT set_catalog_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
 CREATE INDEX idx_set_catalog_bild_stamm ON set_catalog USING btree (bild_stamm(image_local)) WHERE (image_local IS NOT NULL);

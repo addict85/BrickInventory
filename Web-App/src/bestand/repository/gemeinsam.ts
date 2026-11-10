@@ -1,7 +1,7 @@
 import type { DbSchnittstelle } from '../../../db/database';
 import * as db from '../../../db/database';
 import { inKontowaehrung, kontowaehrungJoin, teilmengeAus, teilmengeJoin } from '../../../db/bestandsmenge';
-import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/katalogSicht';
+import { teilSichtJoin, figurSichtJoin, setStammJoin, TEIL, FIGUR, SET } from '../../../db/katalogSicht';
 
 /** Kaufpreis mengengewichtet in Kontowährung. */
 export function erfassungsKennzahlen(art: 'part' | 'fig', uids: number[]) {
@@ -87,7 +87,7 @@ export async function setsMitBestandteil(uids: number[], tabelle: 'parts' | 'min
             -- Unterscheidung — deshalb kommt sie wie KOPFFELDER aus einer
             -- Zuordnung je Tabelle.
             SUM(${teilmengeAus('x', ART[tabelle])})::int AS quantity,
-            c.name               AS set_name,
+            ${SET.name}          AS set_name,
             c.image_local        AS set_image_local,
             c.image_url          AS set_image_url,
             ${KOPFFELDER[tabelle]}
@@ -100,6 +100,7 @@ export async function setsMitBestandteil(uids: number[], tabelle: 'parts' | 'min
        -- Template-Literal, und ein Gegenstrich beendet es.
        LEFT JOIN sets s ON s.user_id = x.user_id AND s.set_number = x.set_number
        LEFT JOIN set_catalog c ON c.set_number = x.set_number
+       ${setStammJoin('x.set_number')}
        -- Der Lagerortname aus dem Vorrat (Migration 0031). Steht hier und
        -- nicht nur im parts-Zweig von KOPFFELDER, weil der minifigs-Zweig ihn
        -- als feste NULL fuehrt — ein unbenutzter LEFT JOIN kostet dort nichts
@@ -110,7 +111,7 @@ export async function setsMitBestandteil(uids: number[], tabelle: 'parts' | 'min
         AND x.set_number IS NOT NULL
         AND ${bedingungen.join(' AND ')}
       GROUP BY x.set_number, x.user_id, ${SCHLUESSELSPALTE[tabelle]},
-               c.name, c.image_local, c.image_url
+               rs.name, c.image_local, c.image_url
       ORDER BY x.set_number`,
     params);
 }

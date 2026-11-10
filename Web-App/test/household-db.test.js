@@ -28,7 +28,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
-const { haeltFigur, haeltSet, haeltTeil, mengeVon } = require('./helpers/bestand');
+const { haeltFigur, haeltSet, haeltTeil, mengeVon, katalogSet } = require('./helpers/bestand');
 
 /**
  * Die ECHTE Verschiebe-Route aufrufen — mit injizierter Session, wie in
@@ -113,9 +113,7 @@ async function giveSet(uid, sn, qty, price, cond = 'N', day = null) {
   // Der Name gehoert seit Migration 0033 in den Katalog, und zu jedem Set im
   // Bestand MUSS dort eine Zeile stehen (die Migration traegt sie nach und
   // prueft das). Die Vorlage stellt also die Lage her, die es wirklich gibt.
-  await db.run(
-    `INSERT INTO set_catalog (set_number, name, year) VALUES ($1,$2,2020)
-     ON CONFLICT (set_number) DO NOTHING`, [sn, 'Set ' + sn]);
+  await katalogSet(db, sn, { name: 'Set ' + sn, year: 2020 });
   // `cond` geht nur noch in die Erfassung — die sets-Zeile hat seit
   // Migration 0032 keine condition-Spalte mehr.
   await _req('src/bestand/acquisitions.js').recordAcquisitionForDay('set', uid, [sn], {

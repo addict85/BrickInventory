@@ -21,7 +21,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
-const { haeltSet, erfasse } = require('./helpers/bestand');
+const { haeltSet, erfasse, katalogSet } = require('./helpers/bestand');
 
 const NAME = `guvwaehrung_${process.pid}`;
 const NR = { eur: `9${process.pid}1-1`, gemischt: `9${process.pid}2-1`, null: `9${process.pid}3-1` };
@@ -33,7 +33,7 @@ test('G&V: ein Kaufpreis, in der Anzeigewährung', { concurrency: 1 }, async (t)
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')`, [uid]);
   const nummern = Object.values(NR);
   for (const nr of nummern) {
-    await db.run(`INSERT INTO set_catalog (set_number, name) VALUES ($1, $1) ON CONFLICT DO NOTHING`, [nr]);
+    await katalogSet(db, nr, { name: nr });
     await db.run(`INSERT INTO price_cache (set_number, condition, currency_code, avg_price, fetched_at)
       VALUES ($1, 'N', 'CHF', 120, NOW()) ON CONFLICT DO NOTHING`, [nr]);
   }

@@ -86,15 +86,14 @@ rb_inventory_minifigs: id, inventory_id, fig_num, quantity
 rb_inventory_parts: id, inventory_id, part_num, color_id, quantity, is_spare, img_url
 rb_part_categories: id, name
 rb_parts: part_num, name, part_cat_id, part_img_url
-rb_sets: set_num, name, year, theme_id, num_parts, set_img_url
+rb_sets: set_num, name, year, theme_id, num_parts, set_img_url, herkunft
 rb_themes: id, name, parent_id
 schema_migrations: name, applied_at, pruefsumme
 set_acquisitions: id, user_id, set_number, quantity, purchase_price, created_at, condition, currency, price_estimated, tag
-set_catalog: set_number, name, year, theme, pieces, minifigs, image_url, image_local, brickset_id, updated_at
+set_catalog: set_number, minifigs, image_url, image_local, brickset_id, updated_at
 set_figuren: set_number, fig_number, quantity, updated_at
 set_minifigs_catalog: set_number, fig_number, fig_name, quantity, image_url, image_local, updated_at
 set_parts_catalog: set_number, part_number, part_name, color_id, color_name, color_hex, category_name, image_url, image_local, is_spare, quantity, updated_at
-set_stamm: set_number, name, year, theme, pieces, minifigs, image_url, image_local, herkunft
 set_teile: set_number, part_number, color_id, is_spare, quantity, updated_at
 sets: id, user_id, set_number, added_at, updated_at, storage_id
 shared_instructions: id, set_number, url, description, local_path, fetched_at

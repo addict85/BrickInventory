@@ -31,6 +31,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { katalogSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 // Dieselbe Begruendung wie in test/setmenge-aus-erfassungen-db.test.js: Diese
@@ -248,9 +249,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen',
 
   // Die Lage
   // Ausführlich: docs/begruendungen/test/teilemengen-abgeleitet-db.test.js.md#stelle
-  await db.run(`INSERT INTO set_catalog (set_number,name,year,pieces)
-                VALUES ($1,'Millennium Falcon',2017,7541)
-                ON CONFLICT (set_number) DO NOTHING`, [SN]);
+  await katalogSet(db, SN, { name: 'Millennium Falcon', year: 2017, pieces: 7541 });
   await db.run(`INSERT INTO sets (user_id,set_number) VALUES ($1,$2),($3,$2)`,
     [haupt, SN, kind]);
   // Verschiedene Tage: idx_set_acq_tag_zustand (Migration 0008) erlaubt je Konto, Set

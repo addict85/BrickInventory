@@ -26,6 +26,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
 const S = require('./helpers/sources');
+const { katalogSet } = require('./helpers/bestand');
 const _req = S.buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { mailAttrappe } = require('./helpers/mail-attrappe');
@@ -150,11 +151,7 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
   });
 
   for (const s of [SET, SET2, SET3])
-    await db.run(
-      `INSERT INTO set_catalog (set_number, name, year, theme, pieces, minifigs)
-                  VALUES ($1, 'Fremdprobe', 2024, 'Test', 10, 1) ON CONFLICT (set_number) DO NOTHING`,
-      [s],
-    );
+    await katalogSet(db, s, { name: 'Fremdprobe', year: 2024, theme: 'Test', pieces: 10, minifigs: 1 });
   await db.run(
     `INSERT INTO part_catalog (part_number, part_name, category_name) VALUES ($1, 'Stein 2x2', 'Steine')
                 ON CONFLICT DO NOTHING`,

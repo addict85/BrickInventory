@@ -36,6 +36,7 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { katalogSet } = require('./helpers/bestand');
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
@@ -48,8 +49,7 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async (t) =
   await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [schluessel]);
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  await db.run(`INSERT INTO set_catalog (set_number, name, year) VALUES ($1, 'Titanic', 2021)
-                ON CONFLICT (set_number) DO UPDATE SET name='Titanic', year=2021`, [SN]);
+  await katalogSet(db, SN, { name: 'Titanic', year: 2021 });
   await db.run(`INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1, $2, 'NONE', false)
                 ON CONFLICT (set_number) DO UPDATE SET name=$2, fetched_at=NOW()`, [SN, `Set ${SN}`]);
 
@@ -62,7 +62,7 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async (t) =
     await t.test('erneutes Erfassen ohne Quellen lässt den Katalognamen stehen', async () => {
       const r = await _req('src/sets/index.js').addSet({ setNumber: SN, menge: 1, konto: uid, kaufpreis: 10, zustand: 'N' });
       assert.equal(r.action, 'added');
-      const kat = await db.get('SELECT name, year FROM set_catalog WHERE set_number=$1', [SN]);
+      const kat = await db.get('SELECT name, year FROM rb_sets WHERE set_num=$1', [SN]);
       assert.equal(kat.name, 'Titanic');
       assert.equal(kat.year, 2021);
     });
@@ -80,7 +80,7 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async (t) =
     });
   } finally {
     await db.run('DELETE FROM users WHERE id=$1', [uid]);
-    await db.run('DELETE FROM set_catalog WHERE set_number=$1', [SN]);
+    await db.run('DELETE FROM rb_sets WHERE set_num=$1', [SN]);
     await db.run('DELETE FROM catalog_cache WHERE set_number=$1', [SN]);
     for (const { key, value } of vorher)
       await db.run('INSERT INTO global_settings (key,value) VALUES ($1,$2) ON CONFLICT (key) DO UPDATE SET value=$2', [key, value]);

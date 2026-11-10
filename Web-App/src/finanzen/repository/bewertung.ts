@@ -2,7 +2,7 @@ import * as db from '../../../db/database';
 import { kaufpreisSpalten } from '../../../db/geldSql';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../../db/bestandsmenge';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
-import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/katalogSicht';
+import { teilSichtJoin, figurSichtJoin, setStammJoin, TEIL, FIGUR, SET } from '../../../db/katalogSicht';
 
 /** Eine Erfassung eines manuellen Teils oder einer Figur, Kaufpreis in der Kontowährung. */
 export interface ManuelleErfassung {
@@ -31,11 +31,12 @@ export interface BewertetesSet {
 
 /** Kaufpreis und Zustand stehen in den Erfassungen. */
 export function setsZurBewertung(uids: number[]) {
-  return db.all<BewertetesSet>(`SELECT s.user_id, s.set_number, c.name, c.year,
+  return db.all<BewertetesSet>(`SELECT s.user_id, s.set_number, ${SET.name} AS name, ${SET.jahr} AS year,
             ${mengeAus('sm', 0)}::int AS quantity,
             c.image_local, c.image_url, s.added_at
        FROM sets s
        LEFT JOIN set_catalog c ON c.set_number = s.set_number
+       ${setStammJoin('s.set_number')}
        ${mengeJoin('s', 'sm', '= ANY($1)')}
       WHERE s.user_id = ANY($1)`, [uids]);
 }

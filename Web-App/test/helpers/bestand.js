@@ -210,6 +210,34 @@ async function figurmengeVon(db, userId, figNumber) {
 
 
 /**
+ * Ein Set im Katalog (Migration 0105): Name, Jahr, Thema und Teile in rb_sets
+ * (das Thema über seinen Namen in rb_themes), Figuren und Bild in set_catalog.
+ * Fehlende Felder lassen vorhandene Werte stehen. `herkunft` wie in rb_sets
+ * ('api' als Vorgabe: so legt die Erfassung an).
+ */
+async function katalogSet(db, setNumber, f = {}) {
+  let themeId = null;
+  if (f.theme) {
+    let h = 0;
+    for (const z of f.theme) h = (h * 31 + z.charCodeAt(0)) % 90000;
+    themeId = 900000 + h;
+    await db.run('INSERT INTO rb_themes (id, name) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING', [themeId, f.theme]);
+  }
+  await db.run(`INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, herkunft)
+                VALUES (set_nummer_mit_version($1), COALESCE($2, 'Set ' || set_nummer_mit_version($1)), $3, $4, $5, $6)
+                ON CONFLICT (set_num) DO UPDATE SET name = COALESCE($2, rb_sets.name),
+                  year = COALESCE($3, rb_sets.year), theme_id = COALESCE($4, rb_sets.theme_id),
+                  num_parts = COALESCE($5, rb_sets.num_parts), herkunft = $6`,
+  [setNumber, f.name ?? null, f.year ?? null, themeId, f.pieces ?? null, f.herkunft ?? 'api']);
+  await db.run(`INSERT INTO set_catalog (set_number, minifigs, image_url, image_local, brickset_id)
+                VALUES (set_nummer_mit_version($1), $2, $3, $4, $5)
+                ON CONFLICT (set_number) DO UPDATE SET minifigs = COALESCE($2, set_catalog.minifigs),
+                  image_url = COALESCE($3, set_catalog.image_url), image_local = COALESCE($4, set_catalog.image_local),
+                  brickset_id = COALESCE($5, set_catalog.brickset_id)`,
+  [setNumber, f.minifigs ?? null, f.image_url ?? null, f.image_local ?? null, f.brickset_id ?? null]);
+}
+
+/**
  * Eine Sammlung, in der jede Ansicht etwas zeigt: Sets mit Thema, Kaufpreis
  * (auch 0 = Geschenk), Marktpreis und Verlauf, Teile in mehreren Farben
  * (Schwarz für den Farbpunkt im Dunkelmodus), Figuren und Merkliste. Für
@@ -223,8 +251,7 @@ async function musterSammlung(db, uid) {
     ['21318-1', 'Tree House', 'Ideas', 2019, 3036, 199.99, 'N', 186.2],
   ];
   for (const [nr, name, thema, jahr, teile, preis, zustand, markt] of sets) {
-    await db.run(`INSERT INTO set_catalog (set_number, name, year, theme, pieces, minifigs) VALUES ($1,$2,$3,$4,$5,4)
-                  ON CONFLICT (set_number) DO UPDATE SET name = $2, theme = $4`, [nr, name, jahr, thema, teile]);
+    await katalogSet(db, nr, { name, year: jahr, theme: thema, pieces: teile, minifigs: 4 });
     await haeltSet(db, uid, nr, 1, { preis, zustand, am: '2026-06-01T10:00:00Z' });
     await db.run(`INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
                   VALUES ($1,$2,'EUR',$3,$4,$5,$4,12,NOW()) ON CONFLICT (set_number, condition, currency_code) DO UPDATE SET avg_price = $4, qty_avg_price = $4`,
@@ -276,5 +303,5 @@ async function musterHaushalt(db, uid) {
   return kid;
 }
 
-module.exports = { musterSammlung, musterHaushalt, haeltSet, erfasse, mengeVon, haltZeile,
+module.exports = { katalogSet, musterSammlung, musterHaushalt, haeltSet, erfasse, mengeVon, haltZeile,
                    haeltTeil, haeltFigur, teilmengeVon, figurmengeVon };
