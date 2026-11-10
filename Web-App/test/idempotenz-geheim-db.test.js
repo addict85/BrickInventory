@@ -31,13 +31,14 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.DATA_KEY = Buffer.alloc(32, 7).toString('base64');
+umgebung({ DATA_KEY: Buffer.alloc(32, 7).toString('base64') });
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
@@ -153,10 +154,10 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async (
       abdruck({ password: 'z', current: 'y', admin_password: 'w', code: '9', faktor_code: '8', pin: '7', x: 1 }));
     assert.notEqual(abdruck({ password: 'a', x: 1 }), abdruck({ password: 'a', x: 2 }), 'der übrige Inhalt zählt weiter');
     const vorher = abdruck({ x: 1 });
-    process.env.DATA_KEY = Buffer.alloc(32, 8).toString('base64');
+    umgebung({ DATA_KEY: Buffer.alloc(32, 8).toString('base64') });
     geheimnis._vergissSchluessel();
     try { assert.notEqual(abdruck({ x: 1 }), vorher, 'ohne Datenschlüssel nachrechenbar'); }
-    finally { process.env.DATA_KEY = Buffer.alloc(32, 7).toString('base64'); geheimnis._vergissSchluessel(); }
+    finally { umgebung({ DATA_KEY: Buffer.alloc(32, 7).toString('base64') }); geheimnis._vergissSchluessel(); }
 
     await db.run(`INSERT INTO idempotenz (user_id, schluessel, anfrage, status) VALUES ($1, 'sha-1', $2, 200)`, [uid, alt]);
     assert.ok(await dienst.alteAbdrueckeLoeschen() >= 1);

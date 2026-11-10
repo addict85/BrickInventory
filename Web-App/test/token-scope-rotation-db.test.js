@@ -31,14 +31,15 @@
  * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
  */
 const test = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
-process.env.APP_BASE_URL = 'http://lego.test:3000';
+umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
+umgebung({ APP_BASE_URL: 'http://lego.test:3000' });
 
 const { buildAndRequire } = require('./helpers/sources');
 const { qrKoppeln } = require('./helpers/qr');
@@ -224,7 +225,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
     assert.equal(http.status, 400);
     assert.equal(http.body.code, 'unbegrenzt_nur_https');
 
-    process.env.APP_BASE_URL = 'https://lego.test';
+    umgebung({ APP_BASE_URL: 'https://lego.test' });
     try {
       const qr = await qrLogin('unbegrenzt');
       const u = qr.body.token;
@@ -252,7 +253,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
       const ok = await ruf('/settings/tokens', { token: neu.body.token });
       assert.equal(ok.status, 200);
       assert.equal(ok.kopf.get('x-token-rotation'), null);
-    } finally { process.env.APP_BASE_URL = 'http://lego.test:3000'; }
+    } finally { umgebung({ APP_BASE_URL: 'http://lego.test:3000' }); }
   });
 
   await t.test('Geräteliste: Name, Scope, Nutzung, Bereich, Ablauf; einzeln widerrufbar', async () => {

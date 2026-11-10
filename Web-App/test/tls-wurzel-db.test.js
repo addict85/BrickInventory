@@ -20,6 +20,7 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (für Sitzung und QR-Code).
  */
 const test = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -27,12 +28,12 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
-process.env.APP_BASE_URL = 'https://lego.test';
+umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
+umgebung({ APP_BASE_URL: 'https://lego.test' });
 
 const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'bim-ca-'));
 const CA = path.join(ordner, 'root.crt');
-process.env.CA_ZERTIFIKAT = CA;
+umgebung({ CA_ZERTIFIKAT: CA });
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
@@ -138,10 +139,10 @@ test('/ca.crt, Einstellungen und QR-Code tragen denselben Fingerabdruck', { conc
   assert.equal((await qr()).fp, FP2);
 
   // Zu einer http-Adresse gehört kein fp: Die App prüft dann kein Zertifikat.
-  process.env.APP_BASE_URL = 'http://192.168.1.5:3000';
+  umgebung({ APP_BASE_URL: 'http://192.168.1.5:3000' });
   try {
     const ohne = await qr();
     assert.equal(ohne.success, true);
     assert.equal(ohne.fp, undefined);
-  } finally { process.env.APP_BASE_URL = 'https://lego.test'; }
+  } finally { umgebung({ APP_BASE_URL: 'https://lego.test' }); }
 });

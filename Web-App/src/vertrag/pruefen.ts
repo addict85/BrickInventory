@@ -59,8 +59,8 @@ function meldeAbweichung(req: Request, res: Response, fehler: z.ZodError): void 
  * Abweichung wird zur 500, die der Test sieht. In Produktion kostete das je
  * Antwort einen Durchlauf über ganze Listen, ohne dass ein Nutzer etwas davon
  * hätte: Gehalten wird der Vertrag beim Übersetzen (tsc) und in den Tests. */
-export function vertragPruefen(req: Request, res: Response, next: NextFunction): void {
-  if (res.locals.vertragGeprueft || !konfig().vertragPruefen) return next();
+function antwortGegenVertrag(req: Request, res: Response, next: NextFunction): void {
+  if (res.locals.vertragGeprueft) return next();
   res.locals.vertragGeprueft = true;
   const senden = res.json.bind(res);
   res.json = (rumpf: unknown) => {
@@ -87,6 +87,12 @@ export function vertragPruefen(req: Request, res: Response, next: NextFunction):
   next();
 }
 
+/** Beim Bau des Routers entschieden, nicht je Anfrage: Im Betrieb hängt
+ * die Prüfung gar nicht erst in der Kette. */
+export function vertragPruefen(): ((req: Request, res: Response, next: NextFunction) => void) | null {
+  return konfig().vertragPruefen ? antwortGegenVertrag : null;
+}
+
 /** Middleware, die dem Rest der Kette einen engeren Request zusichert (z. B.
  * AuthedRequest hinter requireToken). Die Marke `sichert` hat nur, was mit
  * waechter() gebaut ist: Eine beliebige Funktion an erster Stelle sichert nichts zu. */
@@ -108,7 +114,8 @@ export type VertragsRouter = express.Router
 export function vertragsRouter(o: { grosseIds?: boolean } = {}): VertragsRouter {
   // Wie der Vertrag: Eine andere Schreibung ist eine andere Route (404), nicht dieselbe ohne Eintrag.
   const router = express.Router({ caseSensitive: true });
-  router.use(vertragPruefen);
+  const pruefung = vertragPruefen();
+  if (pruefung) router.use(pruefung);
   // Als letzter Schritt vor der Route, nach Anmeldung und Drossel: Deren
   // Antworten (401, 429) bleiben, wie sie sind.
   for (const m of ['get', 'post', 'put', 'patch', 'delete'] as const) {

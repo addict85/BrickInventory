@@ -3,6 +3,7 @@
  * Ausführlich: docs/begruendungen/test/teile-zweige-gleich-db.test.js.md#kopf
  */
 const test = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { haeltSet, haeltTeil } = require('./helpers/bestand');
@@ -14,7 +15,7 @@ let db, H, PS, skip = null;
 try {
   const _req = require('./helpers/sources').buildAndRequire();
   process.env.DATABASE_URL = DB_URL;
-  process.env.SESSION_SECRET = 'test';
+  umgebung({ SESSION_SECRET: 'test' });
   db = _req('db/database.js');
   H  = require('./helpers/sources').handlerModul(_req);
   PS = _req('src/teile/partsSummary.js');

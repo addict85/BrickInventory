@@ -262,7 +262,8 @@ function dateienUndBilder(app: express.Express): void {
 }
 
 function apiRouten(app: express.Express): void {
-  app.use('/api/v1', vertragPruefen);
+  const pruefung = vertragPruefen();
+  if (pruefung) app.use('/api/v1', pruefung);
   // Vor dem Eingang: Gefragt wird, bevor Schema, Migrationen und /api/v1-Router stehen.
   app.use('/api/v1',          gesundheitRouter);
 

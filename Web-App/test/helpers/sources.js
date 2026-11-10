@@ -37,7 +37,7 @@ const finanzQuelle = () => {
   return teile.join('\n');
 };
 
-module.exports = { ROOT, serverOnly, imgProxy, serverAll, finanzQuelle };
+module.exports = { ROOT, serverOnly, imgProxy, serverAll, finanzQuelle, umgebung };
 
 /**
  * Baut die .ts-Quellen nach dist/ (nie neben die Quellen) und liefert einen
@@ -110,6 +110,18 @@ function buildAndRequire() {
 }
 
 module.exports.buildAndRequire = buildAndRequire;
+
+/** Stellt Umgebungsvariablen um (undefined löscht) und lässt konfig() sie neu
+ *  lesen: Der Server liest sie einmal beim Start (src/infra/konfig.ts). */
+function umgebung(werte) {
+  for (const [k, v] of Object.entries(werte)) {
+    if (v === undefined) delete process.env[k];
+    else process.env[k] = v;
+  }
+  // Noch nicht geladen: Der erste konfig()-Aufruf liest die neuen Werte ohnehin.
+  const datei = path.join(ROOT, 'dist', 'src/infra/konfig.js');
+  if (require.cache[datei]) require(datei).konfigNeuLesen();
+}
 module.exports.baueDist = baueDist;
 module.exports.DIST = path.join(ROOT, 'dist');
 

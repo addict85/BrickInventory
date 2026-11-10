@@ -18,6 +18,7 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -26,11 +27,11 @@ const path = require('node:path');
 
 const WURZEL = fs.mkdtempSync(path.join(os.tmpdir(), 'schluesselwechsel-'));
 fs.writeFileSync(path.join(WURZEL, 'package.json'), '{}');
-process.env.APP_ROOT = WURZEL;
+umgebung({ APP_ROOT: WURZEL });
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const A = crypto.randomBytes(32).toString('base64'),
   B = crypto.randomBytes(32).toString('base64');
-process.env.DATA_KEY = A;
+umgebung({ DATA_KEY: A });
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
@@ -42,9 +43,9 @@ const { schluesselWechsel } = _req('startup/datenbank.js');
 
 /** Schlüssel umstellen, wie ein Neustart mit anderer Umgebung. */
 function schluessel(aktuell, vorig) {
-  process.env.DATA_KEY = aktuell;
-  if (vorig) process.env.DATA_KEY_ALT = vorig;
-  else delete process.env.DATA_KEY_ALT;
+  umgebung({ DATA_KEY: aktuell });
+  if (vorig) umgebung({ DATA_KEY_ALT: vorig });
+  else umgebung({ DATA_KEY_ALT: undefined });
   G._vergissSchluessel();
 }
 

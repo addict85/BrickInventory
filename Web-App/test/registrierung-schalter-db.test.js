@@ -24,6 +24,7 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 
@@ -79,14 +80,14 @@ test('Registrierung und Ja/Nein-Einstellungen', { concurrency: 1 }, async (t) =>
 
   await t.test('Anmeldewege nur, wenn der Server sie kann', async () => {
     const alt = process.env.APP_BASE_URL;
-    t.after(() => { if (alt === undefined) delete process.env.APP_BASE_URL; else process.env.APP_BASE_URL = alt; });
+    t.after(() => { if (alt === undefined) umgebung({ APP_BASE_URL: undefined }); else umgebung({ APP_BASE_URL: alt }); });
     const wege = async () => { const b = (await rufe('GET', '/auth/registration-status')).body; return [b.passkey, b.passwort_vergessen]; };
     await db.run("DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_user')");
-    delete process.env.APP_BASE_URL;
+    umgebung({ APP_BASE_URL: undefined });
     assert.deepEqual(await wege(), [false, false], 'ohne Adresse');
-    process.env.APP_BASE_URL = 'http://192.168.1.20:3000';
+    umgebung({ APP_BASE_URL: 'http://192.168.1.20:3000' });
     assert.deepEqual(await wege(), [false, false], 'IP-Adresse, ohne Mail');
-    process.env.APP_BASE_URL = 'https://inventar.example.org';
+    umgebung({ APP_BASE_URL: 'https://inventar.example.org' });
     assert.deepEqual(await wege(), [true, false], 'Domäne, ohne Mail');
     await db.run("INSERT INTO global_settings (key, value) VALUES ('smtp_host', 'mail.example.org'), ('smtp_user', 'inventar')");
     assert.deepEqual(await wege(), [true, true], 'Domäne und Mail');
@@ -101,7 +102,7 @@ test('Registrierung und Ja/Nein-Einstellungen', { concurrency: 1 }, async (t) =>
   });
 
   await t.test('ohne Mailversand bleibt sie zu und lässt sich nicht einschalten', async () => {
-    process.env.APP_BASE_URL = 'https://inventar.example.org';
+    umgebung({ APP_BASE_URL: 'https://inventar.example.org' });
     await db.run("DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_user')");
     const s = (await rufe('GET', '/auth/registration-status')).body;
     assert.deepEqual([s.enabled, s.mail_versand], [false, false], 'trotz "1"');

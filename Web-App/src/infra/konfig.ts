@@ -100,7 +100,7 @@ export class KonfigFehler extends Error {
   }
 }
 
-/** Auch für die Signatur des Zwischenspeichers. */
+/** Jede Variable, die ladeKonfig liest; .env.example nennt sie alle (test/konfig.test.js). */
 export const VARIABLEN = [
   'NODE_ENV', 'PORT', 'HSTS_MAX_AGE', 'TRUST_PROXY', 'SESSION_SECRET', 'COOKIE_SECURE',
   'SESSION_IDLE_MINUTES', 'SESSION_MAX_HOURS', 'TOKEN_IDLE_DAYS', 'ROLLE',
@@ -267,17 +267,25 @@ export function cookieSicher(k: Konfig): boolean {
   return k.cookieSecure ?? (k.betrieb || k.hinterTls);
 }
 
-let _signatur: string | null = null;
-let _konfig: Konfig | null = null;
+let _konfig: Readonly<Konfig> | null = null;
 
-/** Zwischengespeichert, solange sich keine Variable ändert — Tests setzen sie
- * zur Laufzeit um. */
-export function konfig(): Konfig {
-  const sig = [...VARIABLEN, ...VERALTET].map(n => process.env[n] ?? '\u0000').join('\u0001');
-  if (_konfig && sig === _signatur) return _konfig;
-  _konfig = ladeKonfig(process.env);
-  _signatur = sig;
+/** Beim ersten Aufruf gelesen und eingefroren: konfig() steht im heissen Pfad
+ * jeder Anfrage, und der Betrieb ändert seine Umgebung nicht zur Laufzeit.
+ * Wer es doch tut (Tests), sagt es ausdrücklich mit setzeKonfig/konfigNeuLesen. */
+export function konfig(): Readonly<Konfig> {
+  _konfig ??= Object.freeze(ladeKonfig(process.env));
   return _konfig;
+}
+
+/** Für Tests: einzelne Werte über die gelesene Konfiguration legen; null hebt das auf. */
+export function setzeKonfig(teil: Partial<Konfig> | null): Readonly<Konfig> {
+  _konfig = teil ? Object.freeze({ ...ladeKonfig(process.env), ...teil }) : null;
+  return konfig();
+}
+
+/** Für Tests und Skripte, die process.env nach dem Start umstellen. */
+export function konfigNeuLesen(): Readonly<Konfig> {
+  return setzeKonfig(null);
 }
 
 export function pruefeKonfigBeimStart(): Konfig {
