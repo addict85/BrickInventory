@@ -54,15 +54,6 @@ object Faecher {
     }
     val GUTSCHEINE = Fach(Bestandsart.GUTSCHEINE, Gutschein.serializer(), { it.id.toString() })
 
-    private val alle: Map<String, Fach<*>> =
-        listOf(SETS, MERKLISTE, TEILE, FIGUREN, MANUELLE_TEILE, MANUELLE_FIGUREN, GUTSCHEINE).associateBy { it.art.name }
-
-    /** Die Filterspalten einer abgelegten Zeile; null, wenn sie sich nicht mehr lesen lässt. */
-    internal fun spaltenAus(art: String, inhalt: String): Filterspalten? = alle[art]?.let { spaltenAus(it, inhalt) }
-
-    private fun <T : Any> spaltenAus(fach: Fach<T>, inhalt: String): Filterspalten? =
-        runCatching { fach.spalten(AblageJson.decodeFromString(fach.serializer, inhalt)) }.getOrNull()
-
     private fun suchtext(vararg felder: String?) = felder.filterNotNull().joinToString("\n").lowercase()
 }
 

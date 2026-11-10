@@ -13,7 +13,6 @@ import androidx.room.RoomDatabase
 import androidx.room.Transaction
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import ch.brickinventoryapp.offline.Faecher
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
 
@@ -157,7 +156,7 @@ internal interface AusgangDao {
 
 /**
  * Wer das Schema ändert, erhöht die Fassung, schreibt eine Migration und checkt
- * das Schema aus app/schemas ein: Der Ausgang trägt Änderungen, die es nur hier
+ * das Schema aus core-offline/schemas ein: Der Ausgang trägt Änderungen, die es nur hier
  * gibt — ein destruktiver Neuanfang verlöre sie.
  */
 @Database(entities = [BestandZeile::class, BestandStand::class, AusgangZeile::class], version = 3, exportSchema = true)
@@ -190,8 +189,8 @@ internal val MIGRATION_1_2 = object : Migration(1, 2) {
 /**
  * 2 → 3: Filterspalten. Die abgelegten Listen bleiben und bekommen ihre Werte
  * aus dem JSON daneben — sonst fände die Suche ohne Netz bis zum nächsten
- * Abgleich nichts. Eine Zeile, die sich nicht mehr lesen lässt, fiele beim
- * Lesen ohnehin weg; hier geht sie gleich.
+ * Abgleich nichts. Gelesen wird über [SpaltenFassung2], nie über die heutigen
+ * Modelle; eine unlesbare Zeile fiele beim Lesen ohnehin weg, hier geht sie gleich.
  */
 internal val MIGRATION_2_3 = object : Migration(2, 3) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -205,7 +204,7 @@ internal val MIGRATION_2_3 = object : Migration(2, 3) {
         }
         for ((bereich, art, schluessel, inhalt) in zeilen) {
             val schranke = arrayOf<Any?>(bereich, art, schluessel)
-            val m = Faecher.spaltenAus(art, inhalt)
+            val m = SpaltenFassung2.aus(art, inhalt)
             if (m == null) db.execSQL("DELETE FROM `bestand` WHERE bereich = ? AND art = ? AND schluessel = ?", schranke)
             else db.execSQL("UPDATE `bestand` SET suchtext = ?, thema = ?, lagerort = ?, farbe = ?, kategorie = ?, " +
                 "ersatzteil = ?, zustand = ? WHERE bereich = ? AND art = ? AND schluessel = ?",
