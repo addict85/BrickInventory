@@ -8,7 +8,7 @@
  * Budget je Replica — dann wäre es zu erhöhen, nicht zu vertrauen. */
 import type { Request, Response, NextFunction } from 'express';
 import { nutzerId } from './nutzerId';
-import { sendeFehler } from '../infra/fehlerTexte';
+import { sendeFehler } from './httpAntwort';
 
 export const FENSTER_MS = 5 * 60 * 1000;
 /** Einheiten je Konto und Fenster; ein Leseaufruf zählt 1. */

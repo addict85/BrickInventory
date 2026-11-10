@@ -1,10 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
-import { sendeFehler } from '../infra/fehlerTexte';
-
-/** Jede Antwort trägt beide als Kopfzeile, damit die App sagen kann, wer
- * aktualisieren muss. Erhöhen nur bei einer Änderung, die das Gegenstück bricht. */
-export const API_VERSION = 2;
-export const API_MIN_APP = 2;
+import { sendeFehler } from './httpAntwort';
+import { API_MIN_APP } from '../vertrag/version';
+export { API_VERSION, API_MIN_APP } from '../vertrag/version';
 
 /** Abgewiesen, bevor die App Antworten falsch liest. Ohne Kopfzeile
  * (Browser, Skripte) gilt nichts davon. */

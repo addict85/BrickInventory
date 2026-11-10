@@ -3,11 +3,11 @@
  * Wiederholung sie schon vor. */
 import type { Request, Response, NextFunction } from 'express';
 import { nutzerId } from '../../konto/http/anmeldung';
-import { sendeFehler } from '../../infra/fehlerTexte';
 import { meldeFehler } from '../../infra/fehler';
 import * as dienst from '../dienst';
 import { routeFuerAnfrage } from '../../vertrag';
 import { nichtWiederholbar } from '../../vertrag/grund';
+import { sendeFehler } from '../../http/httpAntwort';
 
 const SCHREIBEND = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 

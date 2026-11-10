@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { Route } from './grund';
 import { Fehler, Fehlercode, PFAD } from './grund';
 import { BEREICHE } from './index';
-import { API_VERSION } from '../http/apiVersion';
+import { API_VERSION } from './version';
 
 const MIME: Record<NonNullable<Route['art']>, string> = {
   pdf: 'application/pdf', datei: 'application/octet-stream', strom: 'text/event-stream',

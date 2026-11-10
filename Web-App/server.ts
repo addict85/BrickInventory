@@ -23,8 +23,9 @@ import { verdrahte, baueVerdrahtung } from './startup/verdrahtung';
 import { drossleBeruehren } from './src/konto/sitzungsBeruehrung';
 import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './src/konto/sitzungsFrist';
 import { sitzungsVersionPruefen } from './src/konto/http/sitzungsPruefung';
-import { merkeAnfrage } from './src/infra/anfrageKonto';
-import { proxyVertrauen, proxyHinweis } from './src/infra/proxyVertrauen';
+import { merkeAnfrage } from './src/http/anfrageKonto';
+import { proxyVertrauen } from './src/infra/proxyVertrauen';
+import { proxyHinweis } from './src/http/proxyHinweis';
 import { nurEigeneHerkunft, nurEigenerHost } from './src/http/herkunft';
 import { API_VERSION, API_MIN_APP, appFassungPruefen } from './src/http/apiVersion';
 import { PUBLIC_DIR } from './src/infra/appPaths';
@@ -40,7 +41,6 @@ import { anmeldungAmEingang, rumpfLesen } from './routes/api_v1/middleware';
 import { schrittschutzAmEingang } from './src/konto/http/schrittschutz';
 import { apiDrossel } from './src/http/apiDrossel';
 import { idempotenz } from './src/idempotenz/http/middleware';
-import { vertragPruefen } from './src/vertrag/pruefen';
 import datenDateien = require('./routes/datenDateien');
 import apiV1Router = require('./routes/api_v1/index');
 import authRouter = require('./routes/auth');
@@ -49,6 +49,7 @@ import cspBerichtRouter = require('./src/http/cspBericht');
 import wellKnownRouter = require('./routes/wellKnown');
 import gesundheitRouter = require('./routes/gesundheit');
 import seitenRouter = require('./routes/seiten');
+import { vertragPruefen } from './src/http/vertragsRouter';
 
 // Nur loggen: Ein abgelehntes Versprechen ist meist ein Nebenläufer ohne catch;
 // Anfragen und Jobs halten ihren Zustand in der Datenbank. Ein Neustart risse

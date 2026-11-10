@@ -66,8 +66,8 @@ test('unbekannter Anmeldename kostet dieselbe Zeit wie ein falsches Passwort',
         // Vorbedingung: wirklich abgelehnt, mit 401 — nicht 429 (Sperre) oder
         // 400 (Formfehler). Sonst misst der Test etwas anderes als gedacht.
         assert.equal(r.wert.ok, false, `${was}: hätte abgelehnt werden müssen`);
-        assert.equal(r.wert.absage.status, 401,
-          `${was}: erwartet 401, bekommen ${r.wert.absage.status} (${r.wert.absage.error})`);
+        assert.equal(r.wert.absage.art, 'nicht_angemeldet',
+          `${was}: erwartet nicht_angemeldet, bekommen ${r.wert.absage.art} (${r.wert.absage.error})`);
         messungen[was].push(r.ms);
       }
     }

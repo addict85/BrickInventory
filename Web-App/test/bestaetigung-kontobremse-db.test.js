@@ -35,6 +35,7 @@ const db = _req('db/database.js');
 const { dbOderSkip } = require('./helpers/db');
 const protokoll = _req('src/infra/protokoll.js');
 const { pruefeBestaetigung } = _req('src/konto/passwortBestaetigung.js');
+const { STATUS_DER_ART } = _req('src/http/fehlerArt.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 const PASS = 'Konto-Bremse-Passwort-1', FALSCH = 'Falsch-geraten-0815';
 
@@ -50,7 +51,7 @@ test('Bremse für Bestätigungen je Konto', { concurrency: 1, timeout: 120_000 }
   const zeilen = [];
   const zurueck = protokoll.installiereProtokoll({ out: () => {}, err: (z) => zeilen.push(z), jetzt: () => Date.now() });
   t.after(async () => { zurueck(); await leere(); await db.run('DELETE FROM users WHERE id = $1', [uid]); await db.pool.end().catch(() => {}); });
-  const versuch = async (zugang, pw = FALSCH) => (await pruefeBestaetigung(uid, zugang, pw, {}))?.status ?? 200;
+  const versuch = async (zugang, pw = FALSCH) => STATUS_DER_ART[(await pruefeBestaetigung(uid, zugang, pw, {}))?.art] ?? 200;
 
   await t.test('über viele Zugänge höchstens 20 Fehlversuche am Tag', async () => {
     const ist = [];

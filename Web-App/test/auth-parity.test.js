@@ -55,13 +55,13 @@ test('aktives, bestätigtes Konto darf sich anmelden', () => {
 test('deaktiviertes Konto wird abgelehnt — egal ob 0 oder false', () => {
   for (const v of [0, false]) {
     const r = assertLoginAllowed({ is_active: v, email_verified: 1, email: 'a@b.c' });
-    assert.equal(r?.status, 403, `is_active=${v} muss 403 ergeben`);
+    assert.equal(r?.art, 'verboten', `is_active=${v} muss verboten ergeben`);
   }
 });
 
 test('eine offene Registrierung wird abgelehnt, Admins ausgenommen', () => {
   const r = assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 0, registrierung_offen: true });
-  assert.equal(r?.status, 403);
+  assert.equal(r?.art, 'verboten');
   assert.equal(r?.unverified, true);
   assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 1, registrierung_offen: true }), null);
   assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 0, registrierung_offen: false }), null,

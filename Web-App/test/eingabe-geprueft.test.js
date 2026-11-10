@@ -23,7 +23,7 @@ const assert = require('node:assert/strict');
 const express = require('express');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { vertragsRouter } = _req('src/vertrag/pruefen.js');
+const { vertragsRouter } = _req('src/http/vertragsRouter.js');
 const { VERTRAG } = _req('src/vertrag/index.js');
 
 test('geprüfte Eingabe und Abfrage', { concurrency: 1 }, async (t) => {

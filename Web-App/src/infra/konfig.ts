@@ -79,7 +79,7 @@ export interface Konfig {
   /** PEM; null: keine eigene CA. */
   caZertifikat: string | null;
   hinterTls: boolean;
-  /** Nur in Tests: Antworten gegen den API-Vertrag prüfen (src/vertrag/pruefen.ts). */
+  /** Nur in Tests: Antworten gegen den API-Vertrag prüfen (src/http/vertragsRouter.ts). */
   vertragPruefen: boolean;
   /** SHA-256 der Signaturzertifikate der App, 64 Hex-Zeichen in Grossbuchstaben. */
   androidZertifikate: string[];

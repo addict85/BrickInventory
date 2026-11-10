@@ -1,20 +1,16 @@
 /** /api/v1/admin — jede Route über requireApiAdmin, damit kein Handler die
  * Prüfung vergessen kann. */
 import { meldeUndLiefere } from '../../src/infra/fehler';
-import { fehlerAntwort } from '../../src/http/httpAntwort';
+import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireApiAdmin } from './middleware';
 import { getLimitForApi } from '../../src/katalog/apiKontingent';
 import { vergissFehlend } from '../../src/katalog/bilder/imageMisses';
 import { setGlobalSetting, getGlobalSetting } from '../../src/einstellungen/settings';
-import { sendeFehler } from '../../src/infra/fehlerTexte';
-import { cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinreihen, preisJobStand, preisJobJetzt,
-         fehlendeBilderNachladen, bricksetWiederholen, bricksetEntfernen, jobZeitplanSetzen, jobUebersicht,
-         bildProbe, preisProbe, katalogBilderEinreihen, katalogAbgleichJetzt, bricksetListe,
-         letzteEintraege, bildDiagnose, protokollSeit, setFehlanzeigen, vorschauFehlanzeigen } from '../../src/verwaltung/dienst';
+import { cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinreihen, preisJobStand, preisJobJetzt, fehlendeBilderNachladen, bricksetWiederholen, bricksetEntfernen, jobZeitplanSetzen, jobUebersicht, bildProbe, preisProbe, katalogBilderEinreihen, katalogAbgleichJetzt, bricksetListe, letzteEintraege, bildDiagnose, protokollSeit, setFehlanzeigen, vorschauFehlanzeigen } from '../../src/verwaltung/dienst';
 import { auftragsUebersicht, auftragAbbrechen, auftragWiederholen, auftragsArtJetzt, auftragsArtLeeren } from '../../src/verwaltung/hintergrund';
-import { vertragsRouter } from '../../src/vertrag/pruefen';
 import { seiteAus } from '../../src/infra/seite';
-import type { Anfrage, Antwort } from '../../src/vertrag';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
 const router = vertragsRouter({ grosseIds: true });
 
 

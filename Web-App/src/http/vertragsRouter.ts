@@ -1,12 +1,22 @@
+/** Die HTTP-Seite des API-Vertrags: Router, Eingabe- und Antwortprüfung und
+ * die Typen von req/res einer Route. src/vertrag selbst kennt Express nicht. */
 import express from 'express';
 import type { z } from 'zod';
 import type { Request, Response, NextFunction } from 'express';
 import { konfig } from '../infra/konfig';
-import { routeZu } from './index';
-import { FLACHE_EINGABE, Fehler, PFAD } from './grund';
+import { routeZu } from '../vertrag';
+import type { Schluessel, AntwortRumpf, Eingabe, Abfrage } from '../vertrag';
+import { FLACHE_EINGABE, Fehler, PFAD } from '../vertrag/grund';
+import type { PfadVon } from '../vertrag/grund';
 import { GROESSTE_ID, idWert } from '../infra/validate';
-import { sendeFehler } from '../infra/fehlerTexte';
-import { handleRouteError } from '../http/httpAntwort';
+import { handleRouteError, sendeFehler } from './httpAntwort';
+
+/** Der Typ von `res` in einer Route: tsc meldet, wo die Antwort vom Vertrag abweicht. */
+export type Antwort<K extends Schluessel> = Response<AntwortRumpf<K> | z.input<typeof Fehler>>;
+/** Der Typ von `req` in einer Route: `eingabe`, `abfrage` und `pfad` so, wie der Vertrag sie geprüft hat. */
+export type Anfrage<K extends Schluessel, R extends Request = AuthedRequest> = R & { eingabe: Eingabe<K>; abfrage: Abfrage<K>; pfad: PfadVon<K> };
+/** Dasselbe ohne requireToken. */
+export type OffeneAnfrage<K extends Schluessel> = Anfrage<K, Request>;
 
 /** Ein Abfragewert ist ein Text: Wiederholt (?a=1&a=2) wird er zur Liste, und
  * `.trim()` oder eine Regex darauf verwechselte den Typ. */

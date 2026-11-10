@@ -45,8 +45,8 @@ test('Anmeldesperre unter gleichzeitigen Versuchen', { concurrency: 1 }, async (
     const anfrage = { ip: '203.0.113.7', socket: {}, headers: {} };
     const r = await Promise.all(Array.from({ length: 20 },
       () => pruefeAnmeldedaten(anfrage, NAME, 'falsch')));
-    const geprueft = r.filter(x => x.absage?.status === 401).length;
-    const gesperrt = r.filter(x => x.absage?.status === 429).length;
+    const geprueft = r.filter(x => x.absage?.art === 'nicht_angemeldet').length;
+    const gesperrt = r.filter(x => x.absage?.art === 'zu_viele').length;
     assert.ok(geprueft <= lim.MAX_ATTEMPTS, `${geprueft} Passwortprüfungen, ${gesperrt} gesperrt`);
     assert.equal(geprueft + gesperrt, 20);
   });

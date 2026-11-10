@@ -9,11 +9,13 @@ import type { BestaetigungsAbsage, Faktor } from '../passwortBestaetigung';
 import { createHash } from 'crypto';
 import { konfig } from '../../infra/konfig';
 import { routeZu } from '../../vertrag';
-import { sendeFehler, fehlerText, antwortSprache } from '../../infra/fehlerTexte';
+import { fehlerText, antwortSprache } from '../../infra/fehlerTexte';
 import { meldeUndLiefere } from '../../infra/fehler';
 import { sitzungsVersionAusDb } from '../sitzungsVersion';
 import { istAktiv } from '../zweiterFaktor';
 import { nutzerId, angemeldeteNutzerId } from '../../http/nutzerId';
+import { sendeFehler } from '../../http/httpAntwort';
+import { STATUS_DER_ART } from '../../http/fehlerArt';
 
 /** Verwalterrechte ohne TOTP: Das Passwort allein soll sie nicht tragen, bis zur
  * Einrichtung geht nur diese (anmeldungAmEingang). Ein Passkey zählt nicht, denn
@@ -154,8 +156,9 @@ export function zugangVon(req: Request): string {
 }
 
 function absagen(req: Request, res: Response, absage: BestaetigungsAbsage): void {
-  if (!absage.passkey) return sendeFehler(req, res, absage.status, absage.code, absage.vars);
-  res.status(absage.status).json({ success: false, code: absage.code, passkey: true,
+  const status = STATUS_DER_ART[absage.art];
+  if (!absage.passkey) return sendeFehler(req, res, status, absage.code, absage.vars);
+  res.status(status).json({ success: false, code: absage.code, passkey: true,
     error: fehlerText(absage.code, antwortSprache(req), absage.vars) });
 }
 

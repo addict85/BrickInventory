@@ -3,7 +3,7 @@
 import multer from 'multer';
 import { FORMULAR_GRENZEN } from '../../src/http/dateiEmpfang';
 import { logAndContinue, meldeUndLiefere } from '../../src/infra/fehler';
-import { fehlerAntwort } from '../../src/http/httpAntwort';
+import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireApiAdmin as requireAdmin, requireToken, bearerToken, kontoSchranke } from './middleware';
 import { SECRET_KEYS, isMaskedValue, readSettings, designFuer, deleteUserSetting, setGlobalSetting, globalerWertGueltig, deleteGlobalSetting, globalDefaultCondition, nutzerStandardZustand, getGlobalSetting, getSetting } from '../../src/einstellungen/settings';
 import { setzeEigenesDesign, setUserSetting } from '../../src/konto/nutzerEinstellung';
@@ -15,15 +15,15 @@ import { resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istV
 import { hinweisNebenher, verwalterHinweisNebenher } from '../../src/konto/kontoHinweis';
 import { householdStatus, createInvite, redeemInvite, pruefeEinladung, unlink, verwerfeGetrennt } from '../../src/haushalt/haushalt';
 import { sendMail, testSmtp, sendHaushaltVerknuepftMail, mailBereit } from '../../src/mail/mailer';
-import { sendeFehler, fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
+import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import { tlsAuskunft } from '../../src/infra/tlsWurzel';
 import { invalidateTheme } from '../../src/konto/indexHtml';
 import { emailGueltig } from '../../src/infra/validate';
-import { vertragsRouter } from '../../src/vertrag/pruefen';
 import { konfigExport, datenZip, konfigImport, istHeikel } from '../../src/verwaltung/datenexport';
 import { GLOBALE_EINSTELLUNGEN, KONTO_EINSTELLUNGEN } from '../../src/vertrag/einstellungen';
 import type { Request } from 'express';
-import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/vertrag';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/http/vertragsRouter';
 const router = vertragsRouter();
 
 const requireLogin = requireLoginOrToken;

@@ -18,7 +18,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { proxyHinweis, istDockerGateway } = _req('src/infra/proxyVertrauen.js');
+const { istDockerGateway } = _req('src/infra/proxyVertrauen.js');
+const { proxyHinweis } = _req('src/http/proxyHinweis.js');
 
 const anfrage = (von, xff) => ({ socket: { remoteAddress: von }, headers: xff ? { 'x-forwarded-for': xff } : {} });
 function lauf(trust, anfragen) {

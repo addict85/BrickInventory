@@ -1,10 +1,9 @@
-import { fehlerAntwort } from '../../src/http/httpAntwort';
+import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken } from './middleware';
 import { resolveMany } from '../../src/katalog/bricklinkLink';
-import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { katalogMeta, jahrVerteilung, katalogSeite, katalogSet, katalogGeladen } from '../../src/katalog/dienst';
-import { vertragsRouter } from '../../src/vertrag/pruefen';
-import type { Anfrage, Antwort } from '../../src/vertrag';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
 
 const router = vertragsRouter();
 
