@@ -1,0 +1,18 @@
+Gegenprobe: ManualPartTile reicht die Besitzer nicht an die gemeinsame Kachel weiter
+Modul: app
+Test: ch.brickinventoryapp.app.ManuelleKachelAnzeigeTest
+Rot: das manuelle Teil zeigt
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt
+index 1b41cb9..43d7a3a 100644
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt
+@@ -70,7 +70,7 @@ fun ManualPartTile(part: ManuellesTeilAnsicht, serverUrl: String, imageLoader: I
+         menge = part.quantity,
+         zustaende = part.conditions,
+         zustand = part.condition,
+-        besitzer = part.owners,
++        besitzer = emptyList(),
+         preis = part.avgPurchasePrice ?: part.unitPrice ?: part.purchasePrice,
+         waehrung = waehrung,
+         onEdit = onEdit,
