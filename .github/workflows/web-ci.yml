@@ -23,8 +23,9 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    # Regulär rund 12 Minuten, davon gut 6 für die Browser-Dateien (zwei zugleich).
-    timeout-minutes: 30
+    # Gemessen 23–30 Minuten (Testlauf mit Abdeckung gut 12, Browser-Dateien gut 14).
+    # Eine hängende Datei beendet test/helpers/auslauf.js; diese Grenze fängt nur den Rest.
+    timeout-minutes: 45
 
     defaults:
       run:
