@@ -19,27 +19,27 @@ internal class RoomBestand @Inject constructor(private val db: BestandDatenbank)
 
     override fun beobachte(bereich: String, art: Bestandsart): Flow<Lokal<LokaleZeile>> =
         combine(dao.beobachte(bereich, art.name), dao.beobachteStand(bereich, art.name)) { zeilen, stand ->
-            Lokal(zeilen.map { it.alsLokal() }, stand)
+            Lokal(zeilen.map(::alsLokal), stand)
         }
 
     override suspend fun lies(bereich: String, art: Bestandsart) =
-        Lokal(dao.lies(bereich, art.name).map { it.alsLokal() }, dao.stand(bereich, art.name))
+        Lokal(dao.lies(bereich, art.name).map(::alsLokal), dao.stand(bereich, art.name))
 
     override suspend fun filtere(bereich: String, art: Bestandsart, filter: Filterspalten): Lokal<LokaleZeile> {
         val f = filter
         val zeilen = dao.filtere(bereich, art.name, f.suchtext?.let(::enthaeltMuster), f.thema, f.lagerort, f.farbe,
             f.kategorie, f.ersatzteil, f.zustand)
-        return Lokal(zeilen.map { it.alsLokal() }, dao.stand(bereich, art.name))
+        return Lokal(zeilen.map(::alsLokal), dao.stand(bereich, art.name))
     }
 
     override suspend fun ersetze(bereich: String, art: Bestandsart, zeilen: List<LokaleZeile>, stand: Long?) =
         dao.ersetze(bereich, art.name,
             // Doppelte Schlüssel verletzten den Primärschlüssel; die spätere Zeile gilt.
-            zeilen.associateBy { it.schluessel }.values.mapIndexed { i, z -> z.alsZeile(bereich, art, i) },
+            zeilen.associateBy { it.schluessel }.values.mapIndexed { i, z -> alsZeile(z, bereich, art, i) },
             stand)
 
     override suspend fun haengeAn(bereich: String, art: Bestandsart, zeilen: List<LokaleZeile>, weg: Set<String>, stand: Long) =
-        dao.haengeAn(bereich, art.name, zeilen.associateBy { it.schluessel }.values.map { it.alsZeile(bereich, art, 0) },
+        dao.haengeAn(bereich, art.name, zeilen.associateBy { it.schluessel }.values.map { alsZeile(it, bereich, art, 0) },
             weg.toList(), stand)
 
     override suspend fun raeumeAndere(bereich: String) {
@@ -53,11 +53,13 @@ internal class RoomBestand @Inject constructor(private val db: BestandDatenbank)
     }
 }
 
-private fun BestandZeile.alsLokal() =
+private fun alsLokal(z: BestandZeile) = with(z) {
     LokaleZeile(schluessel, inhalt, Filterspalten(suchtext, thema, lagerort, farbe, kategorie, ersatzteil, zustand))
+}
 
-private fun LokaleZeile.alsZeile(bereich: String, art: Bestandsart, position: Int) = with(spalten) {
-    BestandZeile(bereich, art.name, schluessel, position, inhalt, suchtext.orEmpty(), thema, lagerort, farbe, kategorie, ersatzteil, zustand)
+private fun alsZeile(z: LokaleZeile, bereich: String, art: Bestandsart, position: Int) = with(z.spalten) {
+    BestandZeile(bereich, art.name, z.schluessel, position, z.inhalt, suchtext.orEmpty(), thema, lagerort, farbe, kategorie,
+        ersatzteil, zustand)
 }
 
 /** „Enthält“ als LIKE-Muster; `%`, `_` und `\` gelten wörtlich wie beim Server (likeSuche.ts). */

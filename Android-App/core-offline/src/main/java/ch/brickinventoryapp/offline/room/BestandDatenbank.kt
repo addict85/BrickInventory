@@ -6,6 +6,7 @@ import androidx.room.Database
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.RoomDatabase
@@ -88,7 +89,7 @@ internal abstract class BestandDao {
     @Insert
     abstract suspend fun fuegeEin(zeilen: List<BestandZeile>)
 
-    @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun setzeStand(stand: BestandStand)
 
     /** Ganz oder gar nicht: Ein Leser sieht nie eine halb ersetzte Liste. */
@@ -102,7 +103,7 @@ internal abstract class BestandDao {
     @Query("SELECT MAX(position) FROM bestand WHERE bereich = :bereich AND art = :art")
     abstract suspend fun letztePosition(bereich: String, art: String): Int?
 
-    @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun fuegeEinOderErsetze(zeilen: List<BestandZeile>)
 
     @Query("DELETE FROM bestand WHERE bereich = :bereich AND art = :art AND schluessel IN (:schluessel)")
@@ -209,7 +210,7 @@ internal val MIGRATION_2_3 = object : Migration(2, 3) {
             else db.execSQL("UPDATE `bestand` SET suchtext = ?, thema = ?, lagerort = ?, farbe = ?, kategorie = ?, " +
                 "ersatzteil = ?, zustand = ? WHERE bereich = ? AND art = ? AND schluessel = ?",
                 arrayOf<Any?>(m.suchtext.orEmpty(), m.thema, m.lagerort, m.farbe, m.kategorie, m.ersatzteil?.let { if (it) 1 else 0 },
-                    m.zustand) + schranke)
+                    m.zustand, *schranke))
         }
     }
 }
