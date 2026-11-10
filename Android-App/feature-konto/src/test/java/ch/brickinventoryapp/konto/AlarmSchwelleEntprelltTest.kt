@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.app
+package ch.brickinventoryapp.konto
 
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.repository.KontoRepository

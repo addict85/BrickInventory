@@ -1,6 +1,6 @@
 Gegenprobe: die Job-Karte bekommt den Zeitplan des Servers nicht
-Modul: app
-Test: ch.brickinventoryapp.app.MonitoringJobsAnzeigeTest
+Modul: feature-verwaltung
+Test: ch.brickinventoryapp.verwaltung.MonitoringJobsAnzeigeTest
 Rot: der Zeitplan des Servers
 
 diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt

@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.app
+package ch.brickinventoryapp.verwaltung
 
 import ch.brickinventoryapp.model.ui.theme.Design
 import androidx.activity.ComponentActivity

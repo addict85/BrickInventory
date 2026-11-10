@@ -118,7 +118,7 @@ data class GutscheinUiState(
  * BigDecimal, weil die App diese Summe selbst bildet und 0.1 + 0.2 als Double
  * nicht 0.3 ist.
  */
-fun gutscheinSumme(gutscheine: List<GutscheinAnsicht>): Pair<java.math.BigDecimal, Waehrung>? {
+internal fun gutscheinSumme(gutscheine: List<GutscheinAnsicht>): Pair<java.math.BigDecimal, Waehrung>? {
     val waehrung = gutscheine.map { it.currency }.distinct().singleOrNull() ?: return null
     return gutscheine.fold(java.math.BigDecimal.ZERO) { s, g -> s + java.math.BigDecimal.valueOf(g.amount) }
         .setScale(2, java.math.RoundingMode.HALF_UP) to waehrung

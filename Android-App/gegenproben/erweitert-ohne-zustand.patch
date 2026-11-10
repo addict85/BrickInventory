@@ -1,6 +1,6 @@
 Gegenprobe: „Erweitert“ ohne Zustand und ohne Auf-/Zuklappen für TalkBack
-Modul: app
-Test: ch.brickinventoryapp.app.AnmeldeRandTest
+Modul: feature-anmeldung
+Test: ch.brickinventoryapp.anmeldung.AnmeldeRandTest
 Rot: Erweitert meldet ob der Bereich offen ist
 
 diff --git a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/screens/LoginAnmelden.kt b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/screens/LoginAnmelden.kt

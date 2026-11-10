@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.app
+package ch.brickinventoryapp.anmeldung
 
 import ch.brickinventoryapp.model.ui.theme.Design
 import android.view.ViewGroup

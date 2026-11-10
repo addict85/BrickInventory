@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.app
+package ch.brickinventoryapp.konto
 
 import ch.brickinventoryapp.model.ui.theme.Design
 import android.view.WindowManager

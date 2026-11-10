@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.app
+package ch.brickinventoryapp.finanzen
 
 import android.content.ComponentName
 import android.content.Context

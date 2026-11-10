@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.app
+package ch.brickinventoryapp.anmeldung
 
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo

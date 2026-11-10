@@ -1,6 +1,6 @@
 Gegenprobe: Kaufpreis auch bei grosser Schrift neben seiner Bezeichnung
-Modul: app
-Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
+Modul: core-ui-bestand
+Test: ch.brickinventoryapp.gemeinsam.WertKachelnTest
 Rot: Kaufpreis bei 200 Prozent
 
 diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/ManualItemComposables.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/ManualItemComposables.kt

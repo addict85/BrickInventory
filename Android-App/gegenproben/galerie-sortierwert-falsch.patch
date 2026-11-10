@@ -1,6 +1,6 @@
 Gegenprobe: die Galerie meldet einen Sortierwert, den der Server nicht kennt
-Modul: app
-Test: ch.brickinventoryapp.app.GalerieMeldetNachObenTest
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.sammlung.GalerieMeldetNachObenTest
 Rot: die Sortierung meldet
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Sortierung.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Sortierung.kt

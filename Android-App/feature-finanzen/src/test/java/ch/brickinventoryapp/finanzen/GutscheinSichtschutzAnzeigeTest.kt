@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.app
+package ch.brickinventoryapp.finanzen
 
 import ch.brickinventoryapp.testing.GutscheineRepository
 import ch.brickinventoryapp.testing.ResponseCache

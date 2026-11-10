@@ -8,13 +8,13 @@ import ch.brickinventoryapp.finanzen.ui.GutscheinPdfZiel
  * Ort für Nummer und PIN, der das Abmelden überlebt. Das [ticket] kommt aus
  * GutscheineRepository.pdfFreigabe() und gilt für einen Abruf.
  */
-fun gutscheinPdfAdresse(serverUrl: String, id: Int, ticket: String? = null): String =
+internal fun gutscheinPdfAdresse(serverUrl: String, id: Int, ticket: String? = null): String =
     mitTicket(serverUrl.trimEnd('/') + "/api/v1/vouchers/" + id + "/pdf", ticket)
 
 internal fun gutscheinExportAdresse(serverUrl: String, ticket: String? = null): String =
     mitTicket(serverUrl.trimEnd('/') + "/api/v1/vouchers/export/pdf", ticket)
 
-fun gutscheinPdfAdresse(serverUrl: String, ziel: GutscheinPdfZiel): String =
+internal fun gutscheinPdfAdresse(serverUrl: String, ziel: GutscheinPdfZiel): String =
     if (ziel.id == null) gutscheinExportAdresse(serverUrl, ziel.ticket) else gutscheinPdfAdresse(serverUrl, ziel.id, ziel.ticket)
 
 /** Trägt die Adresse ein Ticket? Dann lädt der Betrachter in einem Zug, ohne Wiederholung. */

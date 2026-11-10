@@ -21,7 +21,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.performScrollToNode
-import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
@@ -51,9 +50,7 @@ import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.sammlung.ui.KachelPreis
 import ch.brickinventoryapp.zustand.ui.Screen
 import ch.brickinventoryapp.ui.components.FehlerHinweis
-import ch.brickinventoryapp.model.ui.model.KaufAnsicht
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
-import ch.brickinventoryapp.gemeinsam.ui.AcquisitionSummarySection
 import ch.brickinventoryapp.sammlung.ui.screens.MerklisteRoute
 import ch.brickinventoryapp.sammlung.ui.screens.SetCard
 import ch.brickinventoryapp.sammlung.ui.screens.SetDetailRoute
@@ -80,7 +77,6 @@ import ch.brickinventoryapp.ui.components.SegmentWahl
 import ch.brickinventoryapp.finanzen.ui.screens.FinanceRoute
 import ch.brickinventoryapp.sammlung.ui.screens.GalleryRoute
 import ch.brickinventoryapp.teile.ui.screens.PartsRoute
-import ch.brickinventoryapp.gemeinsam.ui.WertKacheln
 import ch.brickinventoryapp.finanzen.ui.setZeilen
 import ch.brickinventoryapp.sammlung.ui.viewmodel.ErfassungViewModel
 import ch.brickinventoryapp.finanzen.ui.inVierergruppen
@@ -100,14 +96,12 @@ import java.util.Locale
 import ch.brickinventoryapp.testing.SetsRepository
 
 /**
- * Was die Bildschirmfotos zeigen, hier als Regel ausgeführt: Bei 200 % Schrift bricht
- * kein Betrag und keine Prozentzahl um, der Kaufpreis steht unter seiner Bezeichnung,
- * auf dem Tablet liegt der Umschalter rechts der Seitenleiste, ein Ladefehler nennt
- * seine Klasse, und die leere Merkliste bietet beide Wege zum ersten Eintrag.
+ * Was die Bildschirmfotos zeigen, hier als Regel ausgeführt: Auf dem Tablet liegt der
+ * Umschalter rechts der Seitenleiste, ein Ladefehler nennt seine Klasse, und die leere
+ * Merkliste bietet beide Wege zum ersten Eintrag. Kachel und Wert-Kacheln prüfen
+ * SetKachelTest und WertKachelnTest in den Modulen, die sie besitzen.
  *
  * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   grosse-schrift-kachel-row       Prozent wieder neben dem Betrag in einer Row → rot „Kachel …“
- *   grosse-schrift-kaufpreis-daneben Kaufpreis neben der Bezeichnung → rot „Kaufpreis …“
  *   tablet-umschalter-oben          Umschalter auch auf dem Tablet in der App-Leiste → rot „Tablet …“
  *   fehlerhinweis-roher-satz        der Satz der Datenschicht auch bei OFFLINE → rot „Fehlerhinweis …“
  *   merkliste-leer-ohne-knoepfe     Knopf „Set merken“ ohne Beschriftung → rot „leere Merkliste …“
@@ -117,7 +111,6 @@ import ch.brickinventoryapp.testing.SetsRepository
  *   teile-raster-fest               Teileraster wieder fest 120 dp → rot „Teile bei 200 Prozent …“
  *   finanzen-einspaltig             Finanzen auch auf dem Tablet einspaltig → rot „Finanzen stehen auf dem Tablet …“
  *   gutschein-pin-klein             PIN-Zeile ohne Mindesthöhe → rot „Gutschein-Knoepfe …“
- *   wertkacheln-immer-drei          Wert-Kacheln immer zu dritt nebeneinander → rot „Wert-Kacheln … 100 Prozent“
  *   bildflaeche-ohne-ersatz         ProduktBild ohne Ersatzbild → rot „Galerie zeigt ohne Bild das Ersatzbild“
  *   leiste-klappt-nicht-ein         TopAppBar ohne scrollBehavior → rot „App-Leiste weicht beim Rollen“
  *   merkliste-zustand-als-chips     Zustandsfilter der Merkliste als Radio-Chips → rot „Merkliste waehlt …“
@@ -127,7 +120,6 @@ import ch.brickinventoryapp.testing.SetsRepository
  *   teile-farben-englisch           Farbnamen unübersetzt, Teilenamen ohne Sprache → rot „Teile nennen Farben …“
  *   merkliste-leer-dreifach         leere Merkliste wieder mit Knopf und Suchzeile → rot „leere Merkliste …“
  *   segmente-bei-grosser-schrift    Einfachwahl auch bei 200 % als Segmente → rot „Einfachwahl bricht …“
- *   kachel-hoehe-nach-inhalt        Name ohne zwei feste Zeilen → rot „Kacheln einer Reihe …“
  *   finanzen-kauf-je-stueck         Kauf der Zeile wieder je Stück → rot „Finanzen nennen …“
  *   finanzen-kopf-ohne-basis        Kopfkarte aus allen Positionen statt der Basis → rot „Finanzkopf …“
  *   kachel-quelle-ignoriert         Kachel nennt auch den Kaufpreis „Marktpreis“ → rot „Galeriekachel …“
@@ -163,77 +155,6 @@ class OberflaechenRegelnTest {
             }
         }
         compose.waitForIdle()
-    }
-
-    private fun zeilen(knoten: SemanticsNodeInteraction): Int {
-        val ergebnis = mutableListOf<TextLayoutResult>()
-        knoten.fetchSemanticsNode().config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
-        return ergebnis.single().lineCount
-    }
-
-    @Test
-    fun `Kachel bei 200 Prozent bricht weder Betrag noch Prozent um`() {
-        val bilder = coil3.ImageLoader.Builder(ctx).build()
-        zeige(schrift = 2f) {
-            Box(Modifier.width(188.dp)) {
-                SetCard(SetAnsicht(setNumber = "75192-1", name = "Millennium Falcon", theme = "Star Wars"),
-                    serverUrl = "", imageLoader = bilder, onClick = {},
-                    preis = KachelPreis(812.5, 16.1), waehrung = Waehrung("CHF"))
-            }
-        }
-        assertEquals("Prozent", 1, zeilen(compose.onNodeWithText(fmtProzent(16.1), useUnmergedTree = true)))
-        assertEquals("Betrag", 1, zeilen(compose.onNodeWithText(fmtMoney(812.5, Waehrung("CHF")), useUnmergedTree = true)))
-    }
-
-    /**
-     * Prüft je Betrag: eine Zeile, nichts ausgelassen und nicht breiter als seine
-     * Kachel (mit softWrap = false liefe er sonst über den Rand). Kacheln derselben
-     * Reihe sind gleich hoch.
-     */
-    private fun wertKachelnGanz(schrift: Float) {
-        val markt = fmtMoney(1712.4, Waehrung("CHF"))
-        val kauf = fmtMoney(1500.0, Waehrung("CHF"))
-        val pnl = fmtProzent(14.2)
-        zeige(schrift) {
-            Box(Modifier.width(360.dp).padding(horizontal = 16.dp)) {
-                WertKacheln(markt, kauf, 14.2)
-            }
-        }
-        for (betrag in listOf(markt, kauf, pnl)) {
-            val ergebnis = mutableListOf<TextLayoutResult>()
-            compose.onNodeWithText(betrag, useUnmergedTree = true).fetchSemanticsNode()
-                .config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
-            val t = ergebnis.single()
-            assertEquals("$betrag in einer Zeile", 1, t.lineCount)
-            assertTrue("$betrag ist abgeschnitten (rechts ${t.getLineRight(0)} von ${t.size.width})",
-                !t.isLineEllipsized(0) && t.getLineEnd(0, visibleEnd = true) == betrag.length &&
-                    t.getLineRight(0) <= t.size.width + 0.5f)
-        }
-        val kacheln = listOf(R.string.detail_section_market, R.string.detail_purchase_price, R.string.detail_pnl_tile)
-            .map { compose.onNodeWithText(ctx.getString(it), substring = true).fetchSemanticsNode().boundsInRoot }
-        kacheln.groupBy { it.top }.values.filter { it.size > 1 }.forEach { reihe ->
-            assertTrue("Kacheln einer Reihe gleich hoch: ${reihe.map { it.height }}",
-                reihe.all { kotlin.math.abs(it.height - reihe[0].height) < 1f })
-        }
-    }
-
-    @Test
-    fun `Wert-Kacheln zeigen vierstellige Betraege auf schmalem Telefon bei 100 Prozent ganz`() = wertKachelnGanz(1f)
-
-    @Test
-    fun `Wert-Kacheln zeigen vierstellige Betraege auf schmalem Telefon bei 200 Prozent ganz`() = wertKachelnGanz(2f)
-
-    @Test
-    fun `Kaufpreis bei 200 Prozent steht unter der Bezeichnung in einer Zeile`() {
-        zeige(schrift = 2f) {
-            Box(Modifier.width(360.dp)) {
-                AcquisitionSummarySection(listOf(KaufAnsicht(id = 1, quantity = 1, purchasePrice = 700.0)), Waehrung("CHF")) {}
-            }
-        }
-        val betrag = compose.onNodeWithText(fmtMoney(700.0, Waehrung("CHF")), useUnmergedTree = true)
-        assertEquals(1, zeilen(betrag))
-        val bezeichnung = compose.onNodeWithText(ctx.getString(R.string.detail_purchase_price)).fetchSemanticsNode().boundsInRoot
-        assertTrue("Der Betrag steht unter der Bezeichnung", betrag.fetchSemanticsNode().boundsInRoot.top >= bezeichnung.bottom)
     }
 
     @Test
@@ -787,29 +708,6 @@ class OberflaechenRegelnTest {
             }
         }
         (zustaende + zeitraum).forEach { ganzEineZeile(it) }
-    }
-
-    /**
-     * Kacheln einer Reihe sind gleich hoch, auch wenn bei einer Thema, Teilezahl und
-     * Preis fehlen und der Name kurz ist.
-     */
-    @Test
-    fun `Kacheln einer Reihe sind gleich hoch`() {
-        val bilder = coil3.ImageLoader.Builder(ctx).build()
-        val voll = SetAnsicht(setNumber = "10294-1", name = "Titanic mit sehr langem Namen über zwei Zeilen",
-            theme = "Icons", pieces = 9090, condition = Zustand.NEU)
-        val karg = SetAnsicht(setNumber = "1-1", name = "Box")
-        zeige {
-            Row(Modifier.width(380.dp)) {
-                Box(Modifier.weight(1f)) {
-                    SetCard(voll, "", bilder, {}, preis = KachelPreis(449.95, 12.5), waehrung = Waehrung("CHF"))
-                }
-                Box(Modifier.weight(1f)) { SetCard(karg, "", bilder, {}, waehrung = Waehrung("CHF")) }
-            }
-        }
-        val a = compose.onNode(hasText("10294-1") and hasClickAction()).fetchSemanticsNode().boundsInRoot
-        val b = compose.onNode(hasText("1-1") and hasClickAction()).fetchSemanticsNode().boundsInRoot
-        assertEquals("Kacheln einer Reihe gleich hoch", a.height, b.height, 1f)
     }
 
     /** Titanic ×2: Marktwert und Kauf beide für zwei Stück, der Gewinn auch als Betrag. */

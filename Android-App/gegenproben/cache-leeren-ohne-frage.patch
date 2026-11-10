@@ -1,6 +1,6 @@
 Gegenprobe: „Alles leeren“ leert den Preis-Cache ohne Rückfrage
-Modul: app
-Test: ch.brickinventoryapp.app.CacheLeerenFragtTest
+Modul: feature-verwaltung
+Test: ch.brickinventoryapp.verwaltung.CacheLeerenFragtTest
 Rot: das Leeren fragt erst nach
 
 diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt

@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.app
+package ch.brickinventoryapp.gemeinsam
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.MaterialTheme

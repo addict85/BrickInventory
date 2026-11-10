@@ -1,6 +1,6 @@
 Gegenprobe: Hinweis ohne Authenticator-App ohne ansagen()
-Modul: app
-Test: ch.brickinventoryapp.app.ZweiterFaktorMaskeTest
+Modul: feature-konto
+Test: ch.brickinventoryapp.konto.ZweiterFaktorMaskeTest
 Rot: ohne Authenticator-App
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt

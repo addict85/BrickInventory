@@ -1,6 +1,6 @@
 Gegenprobe: Schrittanzeige steht immer bei Schritt 1
-Modul: app
-Test: ch.brickinventoryapp.app.ZweiterFaktorMaskeTest
+Modul: feature-konto
+Test: ch.brickinventoryapp.konto.ZweiterFaktorMaskeTest
 Rot: die Schrittanzeige
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt

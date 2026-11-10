@@ -1,6 +1,6 @@
 Gegenprobe: die Themenwahl im Galerie-Filter meldet nichts nach oben
-Modul: app
-Test: ch.brickinventoryapp.app.GalerieMeldetNachObenTest
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.sammlung.GalerieMeldetNachObenTest
 Rot: ein Thema aus dem Filter
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieFilter.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieFilter.kt

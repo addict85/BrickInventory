@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.app
+package ch.brickinventoryapp.konto
 
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.getValue
