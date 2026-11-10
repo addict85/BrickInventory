@@ -114,5 +114,5 @@ export const routen = {
   'PUT /api/v1/parts/:partNumber/:colorId': { abfrage: abfrage({ owner: Q.konto }), eingabe: z.strictObject({ quantity: eingabe.mengeOderNichts(0, 100_000).optional(), quantity_delta: eingabe.mengenDelta(), unit_price: eingabe.geld('Stückpreis'), condition: ZUSTAND.nullable().optional() }), antwort: GenericResponse },
   'DELETE /api/v1/parts/:partNumber/:colorId': { eingabe: OHNE_RUMPF, antwort: InDenPapierkorb, abfrage: abfrage({ owner: Q.konto }) },
   'POST /api/v1/parts/import/csv': { formular: true, antwort: CsvImportErgebnis },
-  'GET /api/v1/parts/bl-color-map': { antwort: BlFarbTabelle },
+  'GET /api/v1/parts/bl-color-map': { klein: true, antwort: BlFarbTabelle },
 } satisfies Record<string, Route>;

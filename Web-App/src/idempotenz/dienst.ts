@@ -55,8 +55,8 @@ export async function beginne(uid: number, schluessel: string, abdruck: string):
   return { art: 'wiederholung', status: e.status, antwort };
 }
 
-/** Ein 5xx wird nicht gemerkt, sondern freigegeben: Die Wirkung ist unsicher,
- * eine Wiederholung soll es noch einmal versuchen dürfen. */
+/** Ein 5xx wird nicht gemerkt, sondern freigegeben: Ohne vermerkte Wirkung soll
+ * eine Wiederholung es noch einmal versuchen dürfen; mit ihr wäre es eine zweite. */
 export async function beende(uid: number, schluessel: string, status: number, antwort: string | null): Promise<void> {
   if (status >= 500) await repo.loescheLaufenden(uid, schluessel, status);
   else await repo.schliesseAb(uid, schluessel, status, antwort === null ? null : verschluessele(antwort, antwortKontext(uid, schluessel)));

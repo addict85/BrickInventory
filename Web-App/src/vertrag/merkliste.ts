@@ -89,7 +89,7 @@ export const MerkpostenGeloescht = GenericResponse.extend({ geloescht: ganz });
 export const routen = {
   'GET /api/v1/wanted': { antwort: MerklisteResponse, abfrage: abfrage({ accounts: Q.konten, search: Q.text(),
     condition: z.enum(['N', 'U', 'n', 'u', '']), sort: Q.text(40), ...SEITE }) },
-  'GET /api/v1/wanted/:setNumber/preise': { antwort: MerkpostenPreiseResponse },
+  'GET /api/v1/wanted/:setNumber/preise': { klein: true, antwort: MerkpostenPreiseResponse },
   'POST /api/v1/wanted': { eingabe: z.strictObject({ set_number: TEXT(40), condition: ZUSTAND.nullable().optional(), owner_user_id: KENNUNG.nullable().optional() }), antwort: MerkpostenAntwort },
   'PUT /api/v1/wanted/:setNumber/:condition/inhaber': { eingabe: z.strictObject({ owner_user_id: KENNUNG.nullable().optional(), neuer_inhaber: KENNUNG }), antwort: MerkpostenInhaberAntwort },
   'DELETE /api/v1/wanted/:setNumber/:condition': { eingabe: OHNE_RUMPF, antwort: MerkpostenGeloescht,

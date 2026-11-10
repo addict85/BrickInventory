@@ -7895,7 +7895,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/parts/brick-colors": {
@@ -14140,7 +14141,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/wanted/import/csv": {
