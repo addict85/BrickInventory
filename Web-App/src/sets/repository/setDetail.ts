@@ -13,10 +13,6 @@ export function setKatalog(db: DbSchnittstelle, setNumber: string) {
   return db.get<SetStamm>('SELECT name, image_local, image_url, year, pieces, theme, minifigs FROM set_catalog WHERE set_number=$1', [setNumber]);
 }
 
-export function merkeKatalogCache(db: DbSchnittstelle, setNumber: string, name: string, year: number | null, theme: string | null, pieces: number | null, imageUrl: string | null) {
-  return db.run('INSERT INTO catalog_cache(set_number,name,year,theme,pieces,image_url) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(set_number) DO UPDATE SET name=$2,year=$3,theme=$4,pieces=$5,image_url=$6', [setNumber, name, year, theme, pieces, imageUrl]);
-}
-
 export function katalogCacheEintrag(db: DbSchnittstelle, setNumber: string) {
   return db.get<SetStamm>('SELECT name, image_url, year, pieces, theme FROM catalog_cache WHERE set_number=$1', [setNumber]);
 }

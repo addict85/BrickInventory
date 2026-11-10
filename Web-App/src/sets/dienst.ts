@@ -37,6 +37,7 @@ import type { Sprache } from '../infra/fehlerTexte';
 import { merkeFigur, merkeSetFiguren } from '../katalog/katalogPflege';
 import { randomUUID } from 'crypto';
 import * as repo from './repository/setDetail';
+import * as katalogStamm from '../katalog/setStamm';
 import type { KatalogTeil, ListenTeil, SetStamm } from './zeilen';
 import { versuche, wertOder } from '../infra/ergebnis';
 import type { SetsKontext } from './kontext';
@@ -94,7 +95,7 @@ async function barcodeErgebnis(sk: SetsKontext, setNumber: string, name: string 
   }
   if (rbData?.set_num) {
     // Der Cache spart nur den nächsten Abruf; der Treffer gilt auch ohne ihn.
-    await versuche('sets:catalog_cache schreiben', repo.merkeKatalogCache(sk.db, setNumber, rbData.name, rbData.year, rbData.theme_name, rbData.num_parts, rbData.set_img_url));
+    await versuche('sets:catalog_cache schreiben', katalogStamm.merkeKatalogCache(sk.db, setNumber, rbData.name, rbData.year, rbData.theme_name, rbData.num_parts, rbData.set_img_url));
     return { success: true, unsicher, set_number: setNumber, name: rbData.name || name, year: rbData.year,
       pieces: rbData.num_parts, theme: rbData.theme_name, minifigs, image_url, source };
   }

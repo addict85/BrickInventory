@@ -54,6 +54,11 @@ export async function loescheVerfallene(): Promise<number> {
   return r?.changes || 0;
 }
 
+/** Katalogbilder für den Bildbedarf vormerken; liefert, wie viele neu dazukamen. */
+export async function katalogBilderVormerken(urls: string[], sets: string[]): Promise<number> {
+  return (await repo.reiheKatalogBilderEin(urls, sets))?.n ?? 0;
+}
+
 export async function offenerBildbedarf(): Promise<number> {
   return (await repo.zaehleBildwuensche())?.n ?? 0;
 }

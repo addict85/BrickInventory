@@ -46,18 +46,6 @@ export function setZeileDesKontos(db: DbSchnittstelle, userId: number, setNumber
   return db.get<{ id: number }>('SELECT id FROM sets WHERE user_id = $1 AND set_number = $2', [userId, setNumber]);
 }
 
-/** Vorhandene Werte bleiben, wo der neue Abruf nichts liefert. */
-export function merkeSetKatalog(db: DbSchnittstelle, setNumber: string, name: string | null, year: number | null, theme: string | null, pieces: number | null, minifigs: number | null, imageUrl: string | null, localImage: string | null) {
-  return db.run(`INSERT INTO set_catalog (set_number,name,year,theme,pieces,minifigs,image_url,image_local)
-                VALUES ($1, COALESCE($2, 'Set ' || $1), $3,$4,$5,$6,$7,$8)
-                ON CONFLICT (set_number) DO UPDATE SET
-                  name = COALESCE($2, set_catalog.name), year = COALESCE($3, set_catalog.year),
-                  theme = COALESCE($4, set_catalog.theme), pieces = COALESCE($5, set_catalog.pieces),
-                  minifigs = COALESCE($6, set_catalog.minifigs),
-                  image_url = COALESCE($7, set_catalog.image_url),
-                  image_local = COALESCE($8, set_catalog.image_local), updated_at = NOW()`, [setNumber, name, year, theme, pieces, minifigs, imageUrl, localImage]);
-}
-
 export function legeSetZeileAn(tx: DbSchnittstelle, userId: number, setNumber: string) {
   return tx.run('INSERT INTO sets (user_id,set_number) VALUES ($1,$2) ON CONFLICT (user_id,set_number) DO NOTHING', [userId, setNumber]);
 }
@@ -68,27 +56,10 @@ export async function sperreSetErfassen(tx: DbSchnittstelle, setNumber: string, 
   await sperreBisZumEnde(tx, LOCKS.INVENTAR, `${besitzer}|${setNumber}`);
 }
 
-const PLATZHALTER_SQL = "(name = 'Set ' || set_number AND year IS NULL AND theme IS NULL AND pieces IS NULL)";
-
-/** Ohne Netz angelegt: Der Platzhalter macht das Set lesbar, bis der Auftrag den Katalog holt. */
-export async function merkeKatalogPlatzhalter(dbh: DbSchnittstelle, setNumber: string) {
-  await dbh.run("INSERT INTO set_catalog (set_number, name) VALUES ($1, 'Set ' || $1) ON CONFLICT (set_number) DO NOTHING", [setNumber]);
-  return katalogStand(setNumber, dbh);
-}
-
-export function katalogStand(setNumber: string, dbh: DbSchnittstelle) {
-  return dbh.get<{ name: string | null; image_local: string | null; minifigs: number | null; platzhalter: boolean }>(
-    `SELECT name, image_local, minifigs, ${PLATZHALTER_SQL} AS platzhalter FROM set_catalog WHERE set_number = $1`, [setNumber]);
-}
-
 export function erfassungenOhnePreisDesSets(db: DbSchnittstelle, userId: number, setNumber: string) {
   return db.all<{ id: number; condition: string | null }>(
     'SELECT id, condition FROM set_acquisitions WHERE user_id = $1 AND set_number = $2 AND purchase_price IS NULL ORDER BY id',
     [userId, setNumber]);
-}
-
-export function setzeFigurenzahl(db: DbSchnittstelle, minifigs: number, setNumber: string) {
-  return db.run('UPDATE set_catalog SET minifigs = $1 WHERE set_number = $2', [minifigs, setNumber]);
 }
 
 /** `feld` ist ein fester Spaltenname, keine Eingabe von aussen. */
@@ -375,7 +346,5 @@ export function besitzerDesSets(tx: DbSchnittstelle, uids: number[], setNumber: 
 
 export async function entferneSetZeilen(tx: DbSchnittstelle, uids: number[], setNumber: string): Promise<void> {
   await tx.run('DELETE FROM sets WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
-  await tx.run('DELETE FROM parts WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
-  await tx.run('DELETE FROM minifigs WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
   await tx.run('DELETE FROM set_acquisitions WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
 }

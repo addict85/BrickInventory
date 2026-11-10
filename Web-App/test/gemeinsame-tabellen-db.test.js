@@ -16,6 +16,16 @@
  *   D  eine Tabelle `probe_gemeinsam (x int)` per Migration → rot: „jede
  *      Tabelle ohne user_id steht in der Liste“
  *
+ * Jede Tabelle hat einen Besitzer-Bereich (BESITZER); nur er schreibt hinein,
+ * andere rufen seinen Dienst. Gegenproben (10.11.2026 gemessen):
+ *   E  `DELETE FROM price_cache` zurück nach src/verwaltung/repository/verwaltung.ts
+ *      → rot: „jede Tabelle hat einen Besitzer, nur er schreibt hinein“ (und
+ *      „jede schreibende Stelle auf eine Katalogtabelle …“)
+ *   F  merkeKatalogCache zurück nach src/sets/repository/setDetail.ts → rot: dieselbe
+ *      Prüfung (und „jede schreibende Stelle auf eine Katalogtabelle …“)
+ *   G  die Zeile 'src/sammlung/repository/loeschen.ts → part_acquisitions' aus
+ *      FREMDSCHREIBER gestrichen → rot: dieselbe Prüfung
+ *
  * REQUIRE_DB=1.
  */
 const test   = require('node:test');
@@ -46,8 +56,8 @@ const KONTO   = 'konto';     // gehört einem Konto über einen anderen Schlüss
 /** art, eingabe (false oder warum Eingaben hinein dürfen), schreiber (nur Katalog). */
 const GEMEINSAM = {
   bl_zuordnung:          { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/blZuordnung.ts'] },
-  catalog_cache:         { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogCache.ts', 'src/katalog/repository/rebrickableCache.ts', 'src/sets/repository/setDetail.ts'] },
-  set_catalog:           { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/bildlage.ts', 'src/sets/repository/sets.ts'] },
+  catalog_cache:         { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogCache.ts', 'src/katalog/repository/rebrickableCache.ts', 'src/katalog/repository/setStamm.ts'] },
+  set_catalog:           { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/bildlage.ts', 'src/katalog/repository/setStamm.ts'] },
   part_catalog:          { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogStamm.ts'] },
   part_color_catalog:    { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvKatalog.ts', 'src/katalog/repository/katalogStamm.ts'] },
   minifigs_catalog:      { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogStamm.ts'] },
@@ -64,7 +74,7 @@ const GEMEINSAM = {
   rb_parts:              { art: KATALOG, eingabe: false, schreiber: [] },
   rb_sets:               { art: KATALOG, eingabe: false, schreiber: [] },
   rb_themes:             { art: KATALOG, eingabe: false, schreiber: [] },
-  price_cache:           { art: KATALOG, eingabe: false, schreiber: ['src/finanzen/repository/preisCache.ts', 'src/verwaltung/repository/verwaltung.ts'] },
+  price_cache:           { art: KATALOG, eingabe: false, schreiber: ['src/finanzen/repository/preisCache.ts'] },
   price_history:         { art: KATALOG, eingabe: false, schreiber: ['src/finanzen/repository/preisCache.ts', 'src/finanzen/repository/preisLauf.ts', 'src/finanzen/repository/preisverlauf.ts'] },
   part_price_cache:      { art: KATALOG, eingabe: false, schreiber: ['src/finanzen/repository/preisCache.ts'] },
   part_price_history:    { art: KATALOG, eingabe: false, schreiber: ['src/finanzen/repository/preisCache.ts'] },
@@ -105,6 +115,52 @@ const DYNAMISCH = {
   'src/sammlung/repository/erfassungen.ts':    'set_/part_/minifig_acquisitions (user_id)',
   'src/sets/repository/verschieben.ts':        'Bestand und Erfassungen (user_id)',
 };
+
+/** Je Bereich die Tabellen, in die nur er schreibt (INSERT, UPDATE, DELETE). */
+const BESITZER = {
+  'db': ['schema_migrations'],
+  'src/auftraege': ['auftraege', 'auftrag_exklusiv', 'auftrag_pausen', 'import_stand', 'laufzustand'],
+  'src/bestand': ['minifigs', 'papierkorb', 'parts', 'storage_locations'],
+  'src/einstellungen': ['global_settings', 'user_settings'],
+  'src/figuren': ['minifig_acquisitions'],
+  'src/finanzen': ['minifig_price_cache', 'minifig_price_history', 'part_price_cache', 'part_price_history',
+    'price_alerts', 'price_cache', 'price_history', 'wechselkurse'],
+  'src/gutscheine': ['gutschein_guthaben_schranke', 'vouchers'],
+  'src/haushalt': ['account_link_invites', 'account_links', 'household_former_links'],
+  'src/idempotenz': ['idempotenz'],
+  'src/infra': ['app_logs'],
+  'src/katalog': ['api_aufrufe', 'api_takt', 'bl_zuordnung', 'bl_zuordnung_eigen', 'catalog_cache', 'figur_eigen',
+    'image_misses', 'image_wanted', 'minifig_parts_cache', 'minifigs_catalog', 'part_catalog',
+    'part_color_catalog', 'rb_colors', 'rb_inventories', 'rb_inventory_minifigs', 'rb_inventory_parts',
+    'rb_part_categories', 'rb_parts', 'rb_sets', 'rb_themes', 'set_catalog', 'set_figuren', 'set_teile',
+    'shared_instructions', 'subsets_cache', 'teil_eigen', 'teil_farbe_eigen'],
+  'src/konto': ['api_tokens', 'api_tokens_verbraucht', 'geraete_schluessel', 'passkeys', 'qr_login_tokens',
+    'rate_limit_attempts', 'schritt_challenges', 'schritt_freigaben', 'user_sessions', 'users',
+    'verwaltungsprotokoll', 'webauthn_challenges', 'zweiter_faktor', 'zweiter_faktor_codes'],
+  'src/merkliste': ['wanted'],
+  'src/sets': ['instructions', 'set_acquisitions', 'sets'],
+  'src/teile': ['part_acquisitions', 'parts_katalog_offen', 'parts_summary', 'parts_summary_state',
+    'parts_version_user'],
+};
+
+/** Wer heute noch in eine fremde Tabelle schreibt — eine Ratsche: nur streichen, nie ergänzen. */
+const FREMDSCHREIBER = [
+  // Der Schemastart schreibt die Zeitzone, bevor es Dienste gibt.
+  'db/database.ts → global_settings',
+  // Teile und Figuren eines Sets: Der Katalog liegt unter dem Bestand und kann ihn nicht rufen.
+  'src/katalog/repository/setInhalt.ts → minifigs',
+  'src/katalog/repository/setInhalt.ts → parts',
+  'src/figuren/repository/manuelleFiguren.ts → minifigs',
+  'src/teile/repository/manuelleTeile.ts → parts',
+  'src/teile/repository/teilFarbe.ts → parts',
+  'src/sammlung/repository/loeschen.ts → minifig_acquisitions',
+  'src/sammlung/repository/loeschen.ts → part_acquisitions',
+  'src/gutscheine/repository/guthabenSchranke.ts → rate_limit_attempts',
+  'src/katalog/repository/anleitungen.ts → rate_limit_attempts',
+  'src/konto/repository/waehrung.ts → user_settings',
+];
+
+const bereichVon = (datei) => datei.startsWith('src/') ? datei.split('/').slice(0, 2).join('/') : datei.split('/')[0];
 
 const MARKE = 'zzmarke7q';
 
@@ -166,6 +222,21 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async (t) => {
     assert.deepEqual(ist, soll, 'Eine Katalogtabelle bekommt einen neuen Schreiber: Kommt der Wert aus einer '
       + 'geprüften Quelle, hier eintragen; ist es eine Eingabe, gehört sie in eine Tabelle des Kontos.');
     assert.deepEqual([...dynamisch].sort(), Object.keys(DYNAMISCH).sort());
+  });
+
+  await t.test('jede Tabelle hat einen Besitzer, nur er schreibt hinein', async () => {
+    const alle = (await db.all(`SELECT c.relname AS t FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public' WHERE c.relkind IN ('r', 'p')`)).map(z => z.t);
+    const besitzer = new Map(Object.entries(BESITZER).flatMap(([b, ts]) => ts.map(x => [x, b])));
+    assert.ok(alle.length > 60, `nur ${alle.length} Tabellen gefunden — greift die Abfrage noch?`);
+    assert.deepEqual(alle.filter(x => !besitzer.has(x)).sort(), [], 'Tabelle ohne Besitzer: in BESITZER eintragen');
+    assert.deepEqual([...besitzer.keys()].filter(x => !alle.includes(x)).sort(), [], 'BESITZER nennt eine Tabelle, die es nicht gibt');
+    const fremd = [];
+    // Tabellen ausserhalb des Schemas (Kopien vor Migrationen, temporäre) haben keinen Besitzer.
+    for (const [tabelle, dateien] of schreibendeStellen().tabellen)
+      for (const d of dateien) if (besitzer.has(tabelle) && bereichVon(d) !== besitzer.get(tabelle)) fremd.push(`${d} → ${tabelle}`);
+    assert.deepEqual(fremd.sort(), [...FREMDSCHREIBER].sort(),
+      'Schreib-SQL gehört in den Besitzer-Bereich der Tabelle; andere Bereiche rufen dessen Dienst.');
   });
 
   await t.test('Eingaben eines Kontos landen in keiner gemeinsamen Tabelle', async () => {

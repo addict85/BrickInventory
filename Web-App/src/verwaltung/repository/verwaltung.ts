@@ -19,9 +19,6 @@ export function veraltetePreise(): Promise<number> {
   return anzahl("SELECT COUNT(*)::int AS c FROM price_cache WHERE fetched_at <= NOW() - INTERVAL '24 hours'");
 }
 
-export async function leerePreisCache(): Promise<void> {
-  await db.run('DELETE FROM price_cache');
-}
 
 /** Nur die Zahl der Konten: Welches ein Set führt, geht auch den Verwalter nichts an. */
 export async function bildZeilenDerKonten(sn: string): Promise<KontoBildzeile> {
@@ -78,17 +75,6 @@ export function katalogBildKandidaten(): Promise<{ set_num: string; set_img_url:
                            WHERE m.cache_key = 'set:' || rb.set_num)`);
 }
 
-/** Zählt nur, was nicht schon wartete. */
-export function reiheKatalogBilderEin(urls: string[], sets: string[]): Promise<{ n: number } | undefined> {
-  return db.get(
-    `WITH neu AS (
-           INSERT INTO image_wanted (url, set_number)
-             SELECT * FROM unnest($1::text[], $2::text[])
-             ON CONFLICT (url) DO NOTHING
-           RETURNING 1
-         )
-         SELECT COUNT(*)::int AS n FROM neu`, [urls, sets]);
-}
 
 export function offeneBildauftraege(): Promise<{ n: number } | undefined> {
   return db.get(`SELECT COUNT(*)::int AS n FROM image_wanted`);
@@ -188,6 +174,3 @@ export function letzterLaufDerArt() {
       WHERE art = 'preise' AND status IN ('offen', 'laeuft') ORDER BY status = 'laeuft' DESC, faellig_ab LIMIT 1`);
 }
 
-export function bricksetTermineVorziehen(bis: Date) {
-  return db.run(`UPDATE auftraege SET faellig_ab = $1 WHERE art = 'brickset' AND status = 'offen' AND faellig_ab > NOW()`, [bis]);
-}

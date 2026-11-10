@@ -27,3 +27,15 @@ export function entnimmBildwuensche(gueltigMs: string, anzahl: number) {
                      ORDER BY requested_at ASC LIMIT $2)
       RETURNING url, set_number`, [gueltigMs, anzahl]);
 }
+
+/** Zählt nur, was nicht schon wartete. */
+export function reiheKatalogBilderEin(urls: string[], sets: string[]): Promise<{ n: number } | undefined> {
+  return db.get(
+    `WITH neu AS (
+           INSERT INTO image_wanted (url, set_number)
+             SELECT * FROM unnest($1::text[], $2::text[])
+             ON CONFLICT (url) DO NOTHING
+           RETURNING 1
+         )
+         SELECT COUNT(*)::int AS n FROM neu`, [urls, sets]);
+}

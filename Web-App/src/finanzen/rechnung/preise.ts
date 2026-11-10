@@ -49,6 +49,10 @@ export const DEFAULT_PRICE_CONDITION = 'U';
 const ZERO_PRICE_TTL_HOURS = 6;
 
 /** Die eine Stelle, die „frisch" festlegt. */
+export function leerePreisCache(): Promise<void> {
+  return repo.loescheAlleSetPreise();
+}
+
 export async function preisAusCache(setNumber: string, condition: string, currency: string, ttlStunden: number) {
   return repo.setPreisFrisch(setNumber, condition, currency, ttlStunden);
 }

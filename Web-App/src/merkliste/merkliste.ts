@@ -5,7 +5,7 @@ import { blickfeldAus } from '../haushalt/haushalt';
 import type { Sicht } from '../haushalt/haushalt';
 import { nacharbeit } from '../auftraege/nacharbeit';
 import { addSet, sanitizeSetNumber, findSetInScope } from '../sets';
-import { loescheAlarm } from '../finanzen/preisalarm';
+import { loescheAlarm, alarmUebertragen } from '../finanzen/preisalarm';
 import * as V from '../infra/validate';
 import { fachfehler } from '../infra/fehlerTexte';
 import { geldEingabe } from '../infra/geld';
@@ -110,7 +110,7 @@ export async function verschiebeMerkposten(
   const verschoben = (r.changes ?? 0) > 0;
   // Den Alarm NUR mitnehmen, wenn der Merkposten wirklich gewandert ist.
   if (verschoben) {
-    await repo.uebertrageAlarm(zuId, vonId, sn, c).catch((e: unknown) => meldeFehler('merkliste:alarm-umhaengen', e));
+    await alarmUebertragen(zuId, vonId, sn, c).catch((e: unknown) => meldeFehler('merkliste:alarm-umhaengen', e));
   }
   return { verschoben, zusammengefuehrt: false };
 }

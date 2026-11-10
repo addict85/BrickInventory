@@ -17,6 +17,7 @@ import { normalisiereSetNummer, moeglicheSetNummer } from '../infra/setNummer';
 import { fachfehler } from '../infra/fehlerTexte';
 import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
 import * as repo from './repository/sets';
+import * as katalogStamm from '../katalog/setStamm';
 import { versuche, wertOder } from '../infra/ergebnis';
 import type { SetsKontext } from './kontext';
 
@@ -128,7 +129,7 @@ export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfa
     await repo.sperreSetErfassen(tx, sn, besitzer);
     const vorhanden = await findSetInScope(sk, e.anfragender, sn);
     if (vorhanden) return { action: 'exists' as const, ...vorhanden };
-    const katalog = await repo.merkeKatalogPlatzhalter(tx, sn);
+    const katalog = await katalogStamm.merkeKatalogPlatzhalter(tx, sn);
     await repo.legeSetZeileAn(tx, besitzer, sn);
     await recordAcquisition(
       sk,
@@ -205,8 +206,8 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
   if (lokal) void versuche('set-anlegen:vorschau', generateThumb(lokal));
   // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild.
   // Ausführlich: docs/begruendungen/src/sets/erfassen.ts.md#addsetintern-3
-  await repo.merkeSetKatalog(sk.db, sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal);
-  if (minifigs) await repo.setzeFigurenzahl(sk.db, minifigs, sn);
+  await katalogStamm.merkeSetKatalog(sk.db, sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal);
+  if (minifigs) await katalogStamm.setzeFigurenzahl(sk.db, minifigs, sn);
   return { name, gestoert: !rbErgebnis.ok, bild: !!lokal };
 }
 
@@ -218,7 +219,7 @@ export async function setErgaenzen(
   konto: number,
   sendProgress: Fortschritt | null = null,
 ): Promise<{ name: string | null }> {
-  const stand = await repo.katalogStand(sn, sk.db);
+  const stand = await katalogStamm.katalogStand(sn, sk.db);
   let name = stand && !stand.platzhalter ? stand.name : null;
   if (!stand || stand.platzhalter || !stand.image_local) {
     const k = await katalogHolen(sk, sn, true, sendProgress);

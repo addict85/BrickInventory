@@ -1,4 +1,5 @@
 import * as repo from './repository/sets';
+import { entferneSetInhalt } from '../bestand/gemeinsam';
 import type { DbSchnittstelle } from '../../db/database';
 import { asIds, blickfeldAus, writableIds, type Sicht } from '../haushalt/haushalt';
 import { legeInPapierkorb } from '../bestand/papierkorb';
@@ -8,6 +9,7 @@ import type { SetsKontext } from './kontext';
 // Für Löschen und Wegfall; sonst verwaisen Teile. Ausführlich: docs/begruendungen/src/sets/loeschen.ts.md#deletesetrows
 export async function deleteSetRows(tx: DbSchnittstelle, uids: number[], setNumber: string) {
   await repo.entferneSetZeilen(tx, uids, setNumber);
+  await entferneSetInhalt(tx, uids, setNumber);
 }
 
 /** Standardmässig im ganzen Schreibbereich; eine Kontenwahl schränkt ihn ein, erweitert ihn nie. */

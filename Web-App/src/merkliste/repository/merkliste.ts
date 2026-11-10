@@ -22,11 +22,6 @@ export function uebertrageVormerkung(zuId: number, vonId: number, sn: string, c:
   return db.run('UPDATE wanted SET user_id=$1 WHERE user_id=$2 AND set_number=$3 AND condition=$4', [zuId, vonId, sn, c]);
 }
 
-/** Der Preisalarm wandert mit der Vormerkung ins andere Konto. */
-export function uebertrageAlarm(zuId: number, vonId: number, sn: string, c: string) {
-  return db.run('UPDATE price_alerts SET user_id=$1 WHERE user_id=$2 AND set_number=$3 AND condition=$4', [zuId, vonId, sn, c]);
-}
-
 /** Dieselben Namen wie SET_SORTS: Beide Oberflächen beschriften sie gleich.
  * Ausführlich: docs/begruendungen/src/merkliste/repository/merkliste.ts.md#merk-sorts */
 const MERK_SORTS = {
