@@ -35,26 +35,6 @@ Anzeige wird auf einer Seite verbessert, die andere bleibt stehen. Die Regel
 heisst deshalb „beide", nicht „die Webapp".
 ```
 
-<a id="src-stelle"></a>
-## `const src = ohneKommentare(`
-
-```text
-── Marcos Befund am Bild ─────────────────────────────────────────────────
-„Der Text 'Verwendet in' kommt in das erste Bild der Sets."
-
-Die Zeile ist ein `.dr` — ein Flex-Kasten mit
-`justify-content:space-between` (styles.css). Bei EINEM Set ist die
-Tabelle so schmal, dass sie neben die Beschriftung rutscht und das
-Vorschaubild sie beruehrt. `flex-direction:column` an der ZEILE stellt
-beides untereinander.
-
-Die Android-App macht das seit jeher so (erst der Text, dann die
-LazyColumn darunter); hier war die Webapp die Abweichung.
-Gemessen wird an der detailZeile SELBST, nicht am Aufbau darueber: Der
-erste Test schneidet bis zum `t('setitem.used_in')` und hoert damit genau
-vor der Stelle auf, um die es hier geht.
-```
-
 <a id="stelle"></a>
 ## `assert.match(src, /rememberTileImageWithFallback\(serverUrl, s\.imageL`
 

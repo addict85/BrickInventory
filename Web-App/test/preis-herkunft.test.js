@@ -1,88 +1,104 @@
+/**
+ * Der Kaufpreis wird übernommen — und seine Herkunft benannt: Führt BrickLink
+ * für den gewählten Zustand keinen Preis, gilt der des anderen Zustands, und
+ * die Antwort sagt es (price_from_condition). Server gegen die Test-DB (der
+ * Preis-Cache kennt „Neuware ohne Preis“ und „Gebraucht mit Preis“, also kein
+ * Abruf), Webapp im echten Bündel (jsdom), App als Kotlin-Struktur.
+ * Ausführlich: docs/begruendungen/test/preis-herkunft.test.js.md#wurzel
+ *
+ * Gegenproben (10.11.2026 gemessen, je einzeln, dist bzw. Bündel neu gebaut):
+ *   A  in preise.ts fetchPartPrice beim Cache-Rückfall ohne `is_fallback: true`
+ *      → rot: „Teil und Figur ohne Preis …“ (Teil)
+ *   B  dasselbe in fetchMinifigPrice → rot: ebenda (Figur)
+ *   C  in preisRegel.ts den Markt auch bei eingetippter Zahl gefragt → rot:
+ *      „eine eingetippte Zahl …“ (Herkunft 'U' an einem eigenen Preis)
+ *   D  in 03-teil-erfassen.js den Hinweis weggelassen → rot: „die Webapp nennt …“
+ */
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 
-/**
- * Der Kaufpreis wird uebernommen — und seine Herkunft benannt.
- * Ausführlich: docs/begruendungen/test/preis-herkunft.test.js.md#wurzel
- */
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
+const { haeltTeil } = require('./helpers/bestand');
+const { oeffneOberflaeche, ANMELDUNG, warte, loadTranslations } = { ...require('./helpers/oberflaeche'), ...require('./helpers/sources') };
 
 const WURZEL = path.join(__dirname, '..');
+const U = 990811, TEIL = `ph-teil-${process.pid}`, FIG = `ph-fig-${process.pid}`, FARBE = 4;
 
 function ohneKommentare(text) {
   return text.replace(/\/\*[\s\S]*?\*\//g, '')
     .split('\n').filter(z => !z.trim().startsWith('//') && !z.trim().startsWith('*')).join('\n');
 }
-const lies = (...p) => ohneKommentare(fs.readFileSync(path.join(WURZEL, ...p), 'utf8'));
 
-test('der Rueckfall wird nicht mehr verworfen', () => {
-  // Das war der zu scharfe Fix aus einer früheren Runde. Steht er wieder da, bleibt
-  // der Kaufpreis fuer alles leer, was BrickLink nur in einem Zustand fuehrt.
-  // In allen Quellen: Die Preisabrufe sind schon einmal umgezogen.
-  const quellen = require('./helpers/sources').alleQuellen();
-  assert.ok(quellen.length > 80, 'Quellen nicht gefunden');
-  for (const datei of quellen) {
-    assert.doesNotMatch(lies(datei), /is_fallback\)\s*(return null|continue)/,
-      `${datei} verwirft den Rueckfall wieder — dann bleibt der Kaufpreis leer`);
+test.after(() => _req('db/database.js').pool.end().catch(() => {}));
+
+async function aufbau(t) {
+  const db = await dbOderSkip(t, _req);
+  if (!db) return null;
+  const weg = async () => {
+    for (const tab of ['part_acquisitions', 'minifig_acquisitions', 'parts', 'minifigs']) await db.run(`DELETE FROM ${tab} WHERE user_id=$1`, [U]).catch(() => {});
+    await db.run('DELETE FROM part_price_cache WHERE part_number=$1', [TEIL]);
+    await db.run('DELETE FROM minifig_price_cache WHERE fig_number=$1', [FIG]);
+    await db.run('DELETE FROM users WHERE id=$1', [U]).catch(() => {});
+  };
+  await weg();
+  t.after(weg);
+  await db.run("INSERT INTO users (id,username,password_hash) VALUES ($1,$2,'x')", [U, `ph${process.pid}`]);
+  await db.run("INSERT INTO rb_colors (id,name,bl_color_id) VALUES ($1,'Rot',$1) ON CONFLICT (id) DO UPDATE SET bl_color_id=$1", [FARBE]);
+  for (const [zustand, preis] of [['N', 0], ['U', 0.9]]) {
+    await db.run(`INSERT INTO part_price_cache (part_number,color_id,condition,currency_code,avg_price,qty_avg_price,fetched_at)
+      VALUES ($1,$2,$3,'EUR',$4,$4,NOW())`, [TEIL, FARBE, zustand, preis]);
+    await db.run(`INSERT INTO minifig_price_cache (fig_number,condition,currency_code,avg_price,qty_avg_price,fetched_at)
+      VALUES ($1,$2,'EUR',$3,$3,NOW())`, [FIG, zustand, preis * 10]);
   }
+  return db;
+}
+
+test('Teil und Figur ohne Preis im gewählten Zustand übernehmen den anderen und sagen es', async (t) => {
+  if (!await aufbau(t)) return;
+  const { addManualPart } = _req('src/teile/manuelleTeile.js');
+  const { addManualFig } = _req('src/figuren/manuelleFiguren.js');
+  const teil = await addManualPart(U, { part_number: TEIL, color_id: FARBE, condition: 'N' });
+  const fig = await addManualFig(U, { fig_number: FIG, condition: 'N' });
+  assert.deepEqual([teil.price_from_condition, fig.price_from_condition], ['U', 'U']);
+  const { resolveManualPartPurchase } = _req('src/teile/manuelleTeile.js');
+  const r = await resolveManualPartPurchase(U, { partNumber: TEIL, colorId: FARBE, condition: 'N' });
+  assert.deepEqual([r.effectivePurchasePrice, r.preisAusZustand], [0.9, 'U'], 'der übernommene Preis fehlt');
+  const gleich = await resolveManualPartPurchase(U, { partNumber: TEIL, colorId: FARBE, condition: 'U' });
+  assert.deepEqual([gleich.effectivePurchasePrice, gleich.preisAusZustand], [0.9, null], 'ohne Rückfall keine Herkunft');
 });
 
-test('beide Preisabrufe geben die Herkunft mit', () => {
-  // Ein Fundort statt zwei
-  // Ausführlich: docs/begruendungen/test/preis-herkunft.test.js.md#src-stelle
-  const src = lies('src/finanzen/marketPrice.ts');
-  const treffer = [...src.matchAll(
-    /ausZustand: priceData\?\.is_fallback \? \(priceData\.condition_used \|\| null\) : null/g)];
-  assert.equal(treffer.length, 2,
-    `${treffer.length} statt 2 Preisabrufe melden, aus welchem Zustand der Preis ` +
-    'stammt (Teile und Minifiguren) — sonst steht die Zahl unkommentiert da, und ' +
-    'der Zustand sieht wieder aus wie eine Angabe ohne Wirkung');
+test('eine eingetippte Zahl hat keine Herkunft', async (t) => {
+  if (!await aufbau(t)) return;
+  const { resolveManualPartPurchase } = _req('src/teile/manuelleTeile.js');
+  const r = await resolveManualPartPurchase(U, { partNumber: TEIL, colorId: FARBE, unitPrice: '2.50', condition: 'N' });
+  assert.deepEqual([r.effectivePurchasePrice, r.preisAusZustand, r.geschaetzt], [2.5, null, false]);
 });
 
-test('der Rueckfall wird in beiden Preisabrufen markiert', () => {
-  // Uebernommen aus test/zustand-kein-rueckfall.test.js
-  // Ausführlich: docs/begruendungen/test/preis-herkunft.test.js.md#fc-stelle
-  const fc = require('./helpers/sources').finanzQuelle();
-  for (const name of ['async function fetchMinifigPrice', 'async function fetchPartPrice']) {
-    const i = fc.indexOf(name);
-    assert.ok(i > 0, `${name} ist nicht mehr zu finden`);
-    const body = fc.slice(i, fc.indexOf('\nasync function', i + 10) + 1 || undefined);
-    assert.match(body, /is_fallback:\s*true/,
-      `${name} markiert den Zustands-Rueckfall nicht mehr — dann kann keine ` +
-      'Stelle mehr sagen, aus welchem Zustand der Preis kommt.');
-  }
+test('die Webapp nennt die Herkunft bei Teil und Figur', async () => {
+  const de = loadTranslations().de;
+  const posten = (art) => (url, o) => (o.method === 'POST'
+    ? { success: true, action: 'added', [`${art}_number`]: `${art}-1`, price_from_condition: 'U' }
+    : ANMELDUNG[`/v1/${art === 'part' ? 'parts' : 'minifigs'}`]);
+  const o = await oeffneOberflaeche({ '/v1/parts': posten('part'), '/v1/minifigs': posten('fig') });
+  try {
+    await o.ruhig();
+    for (const [art, nr, knopf, ergebnis] of [['part', 'ap-num-inline', 'btn-add-part', 'ap-inline-result'],
+                                              ['fig', 'af-num-inline', 'btn-add-fig', 'af-inline-result']]) {
+      o.d.getElementById(nr).value = `${art}-1`;
+      o.d.getElementById(knopf).click();
+      await warte(() => o.d.getElementById(ergebnis).textContent.startsWith(`${art}-1`));
+      assert.ok(o.d.getElementById(ergebnis).textContent.includes(de['price.from_other_condition_used']),
+        `${art}: ${o.d.getElementById(ergebnis).textContent}`);
+    }
+  } finally { o.w.close(); }
 });
 
-test('die Herkunft erreicht beide Antworten', () => {
-  for (const datei of ['src/teile/manuelleTeile.ts', 'src/figuren/manuelleFiguren.ts']) {
-    const src = lies(datei);
-    assert.match(src, /price_from_condition: preisAusZustand/,
-      `${datei} liefert die Herkunft nicht aus — dann kann keine ` +
-      'Oberflaeche sie zeigen');
-  }
-});
-
-test('eine eingetippte Zahl fragt gar nicht erst nach dem Markt', () => {
-  // Sonst stuende ein Herkunftshinweis an einem Preis, den der Mensch selbst
-  // eingegeben hat — und daneben ein ueberfluessiger BrickLink-Aufruf.
-  const regel = lies('src/finanzen/preisRegel.ts');
-  assert.match(regel, /const markt = unitPrice !== null \? null : await marktpreis\(zustand\)/,
-    'Der Marktpreis wird auch bei eigener Eingabe geholt');
-  assert.match(regel, /preisAusZustand: \(kaufpreis > 0 && markt\?\.ausZustand\) \? markt\.ausZustand : null/,
-    'Eine Herkunft ohne uebernommenen Wert waere ein Hinweis auf nichts');
-});
-
-test('beide Oberflaechen zeigen den Hinweis, aus je EINER Stelle', () => {
-  // Der Baustein steht in 06-minifigs.js, die Teile-Erfassung in 03-teil-erfassen.js.
-  const web = ohneKommentare(['06-minifigs.js', '03-teil-erfassen.js']
-    .map(f => fs.readFileSync(path.join(WURZEL, 'public', 'js', f), 'utf8')).join('\n'));
-  assert.strictEqual((web.match(/function preisHerkunftHinweis\(/g) || []).length, 1,
-    'Der Hinweis der Webapp ist nicht (mehr) an genau einer Stelle gebaut');
-  assert.strictEqual((web.match(/preisHerkunftHinweis\(d\.price_from_condition\)/g) || []).length, 2,
-    'Der Hinweis fehlt bei einer der beiden Erfassungen (Teile / Figuren)');
-
+test('die App zeigt den Hinweis aus EINER Stelle bei beiden Erfassungen', () => {
   const app = ohneKommentare(fs.readFileSync(
     path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'teile', 'ui', 'viewmodel', 'TeileViewModel.kt'), 'utf8'));
   assert.strictEqual((app.match(/fun erfassungsMeldung\(/g) || []).length, 1,
@@ -95,17 +111,8 @@ test('beide Oberflaechen zeigen den Hinweis, aus je EINER Stelle', () => {
     'Die App liest die Herkunft nicht aus der Antwort');
 });
 
-test('die Texte gibt es in beiden Sprachen und beiden Oberflaechen', () => {
-  for (const sprache of ['de', 'en']) {
-    const loc = fs.readFileSync(path.join(WURZEL, 'public', 'locales', `${sprache}.js`), 'utf8');
-    for (const schluessel of ['price.from_other_condition_new', 'price.from_other_condition_used'])
-      assert.ok(loc.includes(schluessel), `${schluessel} fehlt in locales/${sprache}.js`);
-  }
-  // Beide Pfade ausgeschrieben statt `…, 'res', ordner, 'strings.xml'`: Ein
-  // variables Segment nimmt test/baumbruecken.test.js die Sicht — die Pruefung
-  // kann dann nicht mehr sagen, ob der Pfad ueberhaupt noch existiert. Der
-  // Gewinn an Kuerze war einer, den niemand sieht; der Verlust ist eine
-  // Bruecke in den Android-Baum, die still ins Leere zeigen koennte.
+test('die App führt beide Texte in beiden Sprachen', () => {
+  // Die Webapp: siehe oben (de) und i18n-duplicates.test.js (gleicher Schlüsselvorrat de/en).
   const STRINGS = [
     path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values', 'strings.xml'),
     path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values-de', 'strings.xml'),
