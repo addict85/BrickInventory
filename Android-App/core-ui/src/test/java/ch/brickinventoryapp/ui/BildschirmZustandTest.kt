@@ -104,7 +104,6 @@ class BildschirmZustandTest {
     // ist weg. Eine Fingerzahl beschreibt immer die Geste von jetzt, nie
     // etwas, das jemand eingegeben hat.
 
-
     /**
      * Merker der Rollpositions-Wiederherstellung — dürfen ERST RECHT nicht überleben.
      *

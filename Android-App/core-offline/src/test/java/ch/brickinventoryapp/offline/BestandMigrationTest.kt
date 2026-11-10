@@ -22,6 +22,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.File
+import java.util.UUID
 
 /**
  * Das eingecheckte Room-Schema (core-offline/schemas) passt zur Datenbank, und jede
@@ -105,9 +106,14 @@ class BestandMigrationTest {
             context.deleteDatabase(name)
             SQLiteDatabase.openOrCreateDatabase(context.getDatabasePath(name).apply { parentFile?.mkdirs() }, null).use { alt ->
                 nachSchema(alt, v)
-                for (n in 1..2) alt.execSQL(
-                    "INSERT INTO ausgang (bereich, bearbeitung, erstellt, versuche) VALUES ('a', ?, $n, 0)",
-                    arrayOf(AblageJson.encodeToString(Bearbeitung.serializer(), Bearbeitung.SetMenge("1000$n-1", n))))
+                // Ab Fassung 2 trägt jeder Posten seinen Schlüssel schon (Migration 1→2 oder beim Schreiben).
+                for (n in 1..2) {
+                    val b = AblageJson.encodeToString(Bearbeitung.serializer(), Bearbeitung.SetMenge("1000$n-1", n))
+                    if (v >= 2) alt.execSQL(
+                        "INSERT INTO ausgang (bereich, bearbeitung, erstellt, versuche, schluessel) VALUES ('a', ?, $n, 0, ?)",
+                        arrayOf(b, UUID.randomUUID().toString()))
+                    else alt.execSQL("INSERT INTO ausgang (bereich, bearbeitung, erstellt, versuche) VALUES ('a', ?, $n, 0)", arrayOf(b))
+                }
                 val set = SetItem(setNumber = "10002-1", name = "Polizeiwache", theme = "City", storage = "Kiste 2")
                 alt.execSQL("INSERT INTO bestand (bereich, art, schluessel, position, inhalt) VALUES ('a', 'SETS', ?, 0, ?)",
                     arrayOf(set.setNumber, AblageJson.encodeToString(SetItem.serializer(), set)))
