@@ -4,9 +4,9 @@ import ch.brickinventoryapp.offline.AblageJson
 import ch.brickinventoryapp.offline.Ausgang
 import ch.brickinventoryapp.offline.Ausgangsposten
 import ch.brickinventoryapp.offline.Bearbeitung
-import ch.brickinventoryapp.offline.Bestandsart
+import ch.brickinventoryapp.model.lokal.Bestandsart
 import ch.brickinventoryapp.offline.Filterspalten
-import ch.brickinventoryapp.offline.Lokal
+import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.offline.LokaleZeile
 import ch.brickinventoryapp.offline.LokalerBestand
 import kotlinx.coroutines.flow.Flow

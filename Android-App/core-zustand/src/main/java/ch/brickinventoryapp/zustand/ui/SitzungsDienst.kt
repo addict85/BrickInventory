@@ -9,7 +9,7 @@ import ch.brickinventoryapp.data.ZweiterFaktorPflicht
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
-import ch.brickinventoryapp.data.di.ApplicationScope
+import ch.brickinventoryapp.model.koroutinen.ApplicationScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.model.ui.model.alsAnsicht
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte

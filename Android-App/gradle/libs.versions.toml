@@ -67,8 +67,11 @@ glance                      = "1.2.0"
 # die Konvention hält es darauf fest. detekt 2 gibt es nur als alpha.
 detekt                      = "1.23.8"
 detektKotlin                = "2.0.21"
+# Nur @Qualifier für core-model; Hilt zieht dieselbe Fassung ohnehin.
+javaxInject                 = "1"
 
 [libraries]
+javax-inject                        = { group = "javax.inject",               name = "javax.inject",                      version.ref = "javaxInject" }
 junit                               = { group = "junit",                      name = "junit",                             version.ref = "junit" }
 json                                = { group = "org.json",                   name = "json",                              version.ref = "orgJson" }
 kotlinx-coroutines-test             = { group = "org.jetbrains.kotlinx",      name = "kotlinx-coroutines-test",           version.ref = "coroutines" }

@@ -55,7 +55,7 @@ class ResultAndStateSplitTest {
      *
      * Vorher stand hier "data/repository/BrickRepository.kt" — ein Dateiname.
      * Die 78 Funktionen liegen seither in fuenf Klassen nach Sachgebieten,
-     * die gemeinsame Mechanik in RepoBasis. Gemeint ist DIE DATENSCHICHT,
+     * die gemeinsame Mechanik in Abruf.kt. Gemeint ist DIE DATENSCHICHT,
      * nicht eine Datei.
      */
     private fun datenschicht(): String =

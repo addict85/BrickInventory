@@ -14,7 +14,7 @@ import ch.brickinventoryapp.model.data.model.PartsCategoriesResponse
 import ch.brickinventoryapp.model.data.model.PartsFilterColorsResponse
 import ch.brickinventoryapp.model.data.model.PartsResponse
 import ch.brickinventoryapp.model.data.model.PartsStatsResponse
-import ch.brickinventoryapp.offline.Lokal
+import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.teile.ui.Teile
 import ch.brickinventoryapp.teile.ui.TeileAbfrage
 import ch.brickinventoryapp.teile.ui.TeileLokal

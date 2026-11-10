@@ -2,9 +2,9 @@ package ch.brickinventoryapp.zustand.ui
 
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.offline.Abgleichsereignis
-import ch.brickinventoryapp.offline.Bestandsart
-import ch.brickinventoryapp.offline.Offlineablage
+import ch.brickinventoryapp.data.lokal.Abgleichsereignis
+import ch.brickinventoryapp.data.lokal.Ausgangslage
+import ch.brickinventoryapp.model.lokal.Bestandsart
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
@@ -25,21 +25,21 @@ interface Ausgangsmelder {
 
 /** Für Tests ohne Hilt. */
 fun Ausgangsmelder(
-    ablage: Offlineablage,
+    lage: Ausgangslage,
     bestand: Bestandssignal,
     meldungen: MeldungsKanal,
     texte: Texte,
-): Ausgangsmelder = AusgangsBeobachter(ablage, bestand, meldungen, texte)
+): Ausgangsmelder = AusgangsBeobachter(lage, bestand, meldungen, texte)
 
 class AusgangsBeobachter @Inject constructor(
-    private val ablage: Offlineablage,
+    private val lage: Ausgangslage,
     private val bestand: Bestandssignal,
     private val meldungen: MeldungsKanal,
     private val texte: Texte,
 ) : Ausgangsmelder {
     /** Einmal je Prozess starten (AppViewModel); liefert die Zahl offener Änderungen. */
     override fun starte(scope: CoroutineScope): StateFlow<Int> {
-        val offene = ablage.offene().stateIn(scope, SharingStarted.Eagerly, 0)
+        val offene = lage.offene().stateIn(scope, SharingStarted.Eagerly, 0)
         scope.launch {
             var vorher = 0
             offene.collect { n ->
@@ -47,9 +47,9 @@ class AusgangsBeobachter @Inject constructor(
                 vorher = n
             }
         }
-        scope.launch { ablage.ereignisse.collect { melde(it) } }
+        scope.launch { lage.ereignisse.collect { melde(it) } }
         // Was vom letzten Mal noch wartet, geht beim Start raus.
-        scope.launch { if (ablage.wartet()) ablage.planeSenden() }
+        scope.launch { lage.planeLiegengebliebenes() }
         return offene
     }
 
@@ -60,7 +60,7 @@ class AusgangsBeobachter @Inject constructor(
                 if (signale.isNotEmpty()) bestand.melde(*signale.toTypedArray())
             }
             is Abgleichsereignis.Verworfen -> meldungen.zeige(texte.text(R.string.offline_verworfen,
-                e.bearbeitung.ziel, e.meldung.ifBlank { texte.text(R.string.offline_verworfen_ohne_grund) }))
+                e.ziel, e.meldung.ifBlank { texte.text(R.string.offline_verworfen_ohne_grund) }))
         }
     }
 

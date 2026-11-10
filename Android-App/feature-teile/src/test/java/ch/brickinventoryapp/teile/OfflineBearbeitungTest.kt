@@ -4,7 +4,7 @@ import ch.brickinventoryapp.data.cache.ResponseCache
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import okhttp3.MediaType.Companion.toMediaType
 import ch.brickinventoryapp.data.lokal.Abgleich
-import ch.brickinventoryapp.offline.Abgleichsereignis
+import ch.brickinventoryapp.data.lokal.Abgleichsereignis
 import ch.brickinventoryapp.data.lokal.Abgleichsergebnis
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.offline.Faecher
@@ -44,16 +44,16 @@ import ch.brickinventoryapp.testing.TestApi
  * einen Testserver, der die Verbindung auf Wunsch abreisst.
  *
  * Gegenproben:
- *   A  in RepoBasis.schreibe den Zweig für transiente Fehler entfernt → rot
+ *   A  in Offlineablage.schreibe (Abruf.kt) den Zweig für transiente Fehler entfernt → rot
  *      „ohne Verbindung geht die Menge in den Ausgang“ (Ergebnis.Error statt gepuffert)
- *   B  in RepoBasis.schreibe die Prüfung `ablage.wartet()` entfernt → rot
+ *   B  in Offlineablage.schreibe (Abruf.kt) die Prüfung `ablage.wartet()` entfernt → rot
  *      „wartet etwas, geht Neues dahinter“ (die zweite Änderung ging direkt raus)
  *   C  in ServerSender für SetMenge `quantity = schritt` statt `quantityDelta` →
  *      rot „gesendet wird der Schritt“
- *   D  in RepoBasis.abgeglichen den Rückfall auf die Ablage entfernt → rot
+ *   D  in Offlineablage.abgeglichen (Abruf.kt) den Rückfall auf die Ablage entfernt → rot
  *      „ohne Verbindung kommt die Liste aus der Ablage“
  *   (E–I gemessen)
- *   E  in RepoBasis.schreibe beim Puffern nach dem direkten Versuch einen neuen
+ *   E  in Offlineablage.schreibe (Abruf.kt) beim Puffern nach dem direkten Versuch einen neuen
  *      Schlüssel nehmen (`puffere(bearbeitung)`) → rot „… denselben Schlüssel“
  *   F  in TeileRepository.deletePart wieder direkt `safeCall` statt `schreibe` →
  *      rot „offline gelöscht …“ (Ergebnis.Error statt gepuffert)
@@ -99,7 +99,9 @@ class OfflineBearbeitungTest {
 
     private val s = Server()
     private val cacheDir = File(System.getProperty("java.io.tmpdir"), "bim-offline-${System.nanoTime()}")
-    private val ablage = Offlineablage(SpeicherBestand(), SpeicherAusgang(), { "konto" })
+    /** Der Test behält den Ausgang, um nachzusehen; die Ablage zeigt ihn nicht. */
+    private val ausgang = SpeicherAusgang()
+    private val ablage = Offlineablage(SpeicherBestand(), ausgang, { "konto" })
     /** Ohne Netz: Die Verbindung kommt gar nicht erst zustande, wie im Funkloch. */
     private val api = retrofit2.Retrofit.Builder().baseUrl(s.mock.url("/"))
         .client(okhttp3.OkHttpClient.Builder().addInterceptor { kette ->
@@ -117,7 +119,7 @@ class OfflineBearbeitungTest {
     private val repo = SetsRepository(api, ResponseCache { cacheDir }, ablage)
     private val teile = TeileRepository(api, ResponseCache { cacheDir }, ablage)
     private val figuren = FigurenRepository(api, ResponseCache { cacheDir }, ablage)
-    private val abgleich = Abgleich(ablage, ServerSender(api, api, api))
+    private val abgleich = Abgleich(ablage, ausgang, ServerSender(api, api, api))
 
     @After
     fun zu() {
@@ -132,13 +134,13 @@ class OfflineBearbeitungTest {
         val r = repo.aendereMengeUm("10001-1", 1)
         assertTrue("Erwartet: offline gespeichert, kam $r", r is Ergebnis.Success && r.gepuffert)
         assertEquals(2, ablage.lies(Faecher.SETS)!!.liste.single().quantity)
-        assertEquals(listOf(Bearbeitung.SetMenge("10001-1", 1)), ablage.ausgang.alle("konto").map { it.bearbeitung })
+        assertEquals(listOf(Bearbeitung.SetMenge("10001-1", 1)), ausgang.alle("konto").map { it.bearbeitung })
 
         assertEquals(Abgleichsergebnis.SPAETER, abgleich.sende())
         s.offline = false
         assertEquals(Abgleichsergebnis.FERTIG, abgleich.sende())
         assertEquals(listOf("PUT /api/v1/sets/10001-1 {\"quantity_delta\":1}"), s.anfragen.filter { it.startsWith("PUT") })
-        assertEquals(0, ablage.ausgang.alle("konto").size)
+        assertEquals(0, ausgang.alle("konto").size)
     }
 
     @Test
@@ -182,15 +184,15 @@ class OfflineBearbeitungTest {
         s.codes["POST /api/v1/sets"] = 404 to """{"success":false,"error":"Set unbekannt"}"""
         s.offline = false
         val ereignisse = mutableListOf<Abgleichsereignis>()
-        val sammler = launch { ablage.ereignisse.collect { ereignisse += it } }
+        val sammler = launch { abgleich.ereignisse.collect { ereignisse += it } }
         yield()
         assertEquals(Abgleichsergebnis.FERTIG, abgleich.sende())
         yield()
         sammler.cancel()
         val v = ereignisse.filterIsInstance<Abgleichsereignis.Verworfen>().single()
-        assertEquals("99999-1", v.bearbeitung.ziel)
+        assertEquals("99999-1", v.ziel)
         assertEquals("Set unbekannt", v.meldung)
-        assertEquals(0, ablage.ausgang.alle("konto").size)
+        assertEquals(0, ausgang.alle("konto").size)
     }
 
     @Test
@@ -226,7 +228,7 @@ class OfflineBearbeitungTest {
         assertEquals(listOf("DELETE /api/v1/parts/3001/5", "DELETE /api/v1/minifigs/sw0001", "DELETE /api/v1/wanted/20001-1/N"),
             geloescht.map { it.first })
         assertTrue("jeder mit eigenem Schlüssel: $geloescht", geloescht.mapNotNull { it.second }.toSet().size == 3)
-        assertEquals(0, ablage.ausgang.alle("konto").size)
+        assertEquals(0, ausgang.alle("konto").size)
     }
 
     @Test
@@ -237,13 +239,13 @@ class OfflineBearbeitungTest {
         s.codes["DELETE /api/v1/parts/3001/5"] = 404 to """{"success":false,"error":"Teil nicht gefunden"}"""
         s.offline = false
         val ereignisse = mutableListOf<Abgleichsereignis>()
-        val sammler = launch { ablage.ereignisse.collect { ereignisse += it } }
+        val sammler = launch { abgleich.ereignisse.collect { ereignisse += it } }
         yield()
         assertEquals(Abgleichsergebnis.FERTIG, abgleich.sende())
         yield()
         sammler.cancel()
         assertEquals(emptyList<Abgleichsereignis>(), ereignisse.filterIsInstance<Abgleichsereignis.Verworfen>())
-        assertEquals(0, ablage.ausgang.alle("konto").size)
+        assertEquals(0, ausgang.alle("konto").size)
     }
 
     @Test

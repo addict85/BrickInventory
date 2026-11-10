@@ -12,7 +12,11 @@ import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.data.api.VerwaltungApi
 import ch.brickinventoryapp.data.cache.ResponseCache
+import ch.brickinventoryapp.offline.Ausgang
+import ch.brickinventoryapp.offline.AusgangPlaner
 import ch.brickinventoryapp.offline.Offlineablage
+import ch.brickinventoryapp.offline.SpeicherAusgang
+import ch.brickinventoryapp.offline.SpeicherBestand
 import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.data.repository.FigurenRepositoryImpl
 import ch.brickinventoryapp.data.repository.FinanzenRepository
@@ -41,28 +45,38 @@ import kotlinx.coroutines.Job
 
 // Testvorgaben gehören nicht in die @Inject-Konstruktoren: Dort bekäme, wer ohne Hilt
 // baut, still eine flüchtige Ablage. Die Fabriken heissen wie die Schnittstellen und
-// liefern die Umsetzung gegen eine Api; ein Test schreibt `SetsRepository(api, cache)`.
+// nehmen alle (api, cache), damit `mitRepo(::SetsRepository)` für jede passt — auch
+// wo das Repository den Cache nicht braucht.
 
-fun SetsRepository(api: SetsApi, cache: ResponseCache, ablage: Offlineablage = Offlineablage.fluechtig()): SetsRepository =
-    SetsRepositoryImpl(api, cache, ablage)
+/** Listen und Ausgang im Speicher, mit festem Bereich; [ausgang] behält der Test, um nachzusehen. */
+fun Testablage(bereich: String? = "test", ausgang: Ausgang = SpeicherAusgang(), planer: AusgangPlaner = AusgangPlaner {}) =
+    Offlineablage(SpeicherBestand(), ausgang, { bereich }, planer)
 
-fun TeileRepository(api: TeileApi, cache: ResponseCache, ablage: Offlineablage = Offlineablage.fluechtig()): TeileRepository =
-    TeileRepositoryImpl(api, cache, ablage)
+fun SetsRepository(api: SetsApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache, ablage: Offlineablage = Testablage()): SetsRepository =
+    SetsRepositoryImpl(api, ablage)
 
-fun FigurenRepository(api: FigurenApi, cache: ResponseCache, ablage: Offlineablage = Offlineablage.fluechtig()): FigurenRepository =
-    FigurenRepositoryImpl(api, cache, ablage)
+fun TeileRepository(api: TeileApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache, ablage: Offlineablage = Testablage()): TeileRepository =
+    TeileRepositoryImpl(api, ablage)
 
-fun GutscheineRepository(api: GutscheineApi, cache: ResponseCache): GutscheineRepository =
-    GutscheineRepositoryImpl(api, cache, Offlineablage.fluechtig())
+fun FigurenRepository(api: FigurenApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache, ablage: Offlineablage = Testablage()): FigurenRepository =
+    FigurenRepositoryImpl(api, ablage)
 
-fun KontoRepository(api: KontoApi, cache: ResponseCache, io: CoroutineDispatcher = Dispatchers.IO): KontoRepository =
-    KontoRepositoryImpl(api, cache, io)
+fun GutscheineRepository(api: GutscheineApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache): GutscheineRepository =
+    GutscheineRepositoryImpl(api, Testablage())
+
+fun KontoRepository(
+    api: KontoApi,
+    @Suppress("UNUSED_PARAMETER") cache: ResponseCache,
+    io: CoroutineDispatcher = Dispatchers.IO,
+): KontoRepository = KontoRepositoryImpl(api, io)
 
 fun FinanzenRepository(api: FinanzenApi, cache: ResponseCache): FinanzenRepository = FinanzenRepositoryImpl(api, cache)
 
-fun HaushaltRepository(api: HaushaltApi, cache: ResponseCache): HaushaltRepository = HaushaltRepositoryImpl(api, cache)
+fun HaushaltRepository(api: HaushaltApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache): HaushaltRepository =
+    HaushaltRepositoryImpl(api)
 
-fun VerwaltungRepository(api: VerwaltungApi, cache: ResponseCache): VerwaltungRepository = VerwaltungRepositoryImpl(api, cache)
+fun VerwaltungRepository(api: VerwaltungApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache): VerwaltungRepository =
+    VerwaltungRepositoryImpl(api)
 
 fun KatalogRepository(api: KatalogApi, cache: ResponseCache): KatalogRepository = KatalogRepositoryImpl(api, cache)
 

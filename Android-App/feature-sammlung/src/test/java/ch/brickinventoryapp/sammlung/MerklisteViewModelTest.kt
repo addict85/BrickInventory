@@ -2,7 +2,7 @@ package ch.brickinventoryapp.sammlung
 
 import kotlinx.coroutines.runBlocking
 import ch.brickinventoryapp.model.data.model.MerkpostenRequest
-import ch.brickinventoryapp.offline.Offlineablage
+import ch.brickinventoryapp.testing.Testablage
 import ch.brickinventoryapp.offline.Bearbeitung
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.repository.KatalogRepository
@@ -164,7 +164,7 @@ class MerklisteViewModelTest {
 
     @Test
     fun `ohne Filter folgt die Liste der Ablage, mit Suchtext nicht`() {
-        val ablage = Offlineablage.fluechtig()
+        val ablage = Testablage()
         val vm = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, SetsRepository(t.api, t.cache, ablage),
             KatalogRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), SavedStateHandle()))
         vm.ladeMerkliste()

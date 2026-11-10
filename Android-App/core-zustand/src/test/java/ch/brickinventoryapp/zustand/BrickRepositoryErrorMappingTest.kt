@@ -69,7 +69,7 @@ class BrickRepositoryErrorMappingTest {
             .create(BrickApiService::class.java)
         // KontoRepository statt BrickRepository: getMe() liegt
         // seit der Aufteilung dort. Geprueft wird hier die Fehlerumsetzung in
-        // safeCall() — die steht in RepoBasis und ist fuer alle fuenf
+        // safeCall() — die steht in Abruf.kt und ist fuer alle fuenf
         // Teil-Repositories dieselbe; getMe ist nur das Vehikel.
         return KontoRepository(api, ResponseCache { cacheDir })
     }

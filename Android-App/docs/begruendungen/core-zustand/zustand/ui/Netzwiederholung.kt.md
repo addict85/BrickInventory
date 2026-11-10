@@ -22,5 +22,5 @@ hinzuschreiben.
 
 Sie ist gedacht für Aufrufe beim App-Start, die an noch nicht verfügbarem
 Netzwerk oder DNS scheitern. `transient` setzt die Datenschicht in
-RepoBasis; hier wird nicht an der Fehlermeldung geraten.
+sicherAufrufen (Abruf.kt); hier wird nicht an der Fehlermeldung geraten.
 ```

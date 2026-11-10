@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.offline
 
+import ch.brickinventoryapp.model.lokal.Bestandsart
+import ch.brickinventoryapp.model.lokal.Lokal
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.api.SetsApi
@@ -16,7 +18,6 @@ import ch.brickinventoryapp.model.data.model.SetsResponse
 import ch.brickinventoryapp.offline.room.BestandDatenbank
 import ch.brickinventoryapp.offline.room.RoomAusgang
 import ch.brickinventoryapp.offline.room.RoomBestand
-import ch.brickinventoryapp.testing.ResponseCache
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -27,7 +28,6 @@ import org.robolectric.RobolectricTestRunner
 import retrofit2.Response
 import java.lang.reflect.Proxy
 import java.net.ConnectException
-import kotlin.io.path.createTempDirectory
 
 /**
  * Ohne Netz beantworten die Repositories Suche und Filter aus Room — mit
@@ -49,7 +49,6 @@ class OhneNetzFilterTest {
         .allowMainThreadQueries().build()
     private val bestand = Zaehlend(RoomBestand(db))
     private val ablage = Offlineablage(bestand, RoomAusgang(db), { "a" }, uhr = { STAND })
-    private val cache = ResponseCache(ordnerQuelle = { createTempDirectory("antworten").toFile() })
 
     private var offline = false
 
@@ -73,7 +72,7 @@ class OhneNetzFilterTest {
             return Response.success(SetsResponse(success = true, count = seite.size, sets = seite, total = sets.size))
         }
     }
-    private val setsRepo = SetsRepositoryImpl(setsApi, cache, ablage)
+    private val setsRepo = SetsRepositoryImpl(setsApi, ablage)
 
     private val teile = listOf(
         Part(partNumber = "3001", partName = "Brick 2 x 4", colorId = 4, colorName = "Red", categoryName = "11"),
@@ -93,7 +92,7 @@ class OhneNetzFilterTest {
             return Response.success(PartsResponse(success = true, total = teile.size, parts = seite))
         }
     }
-    private val teileRepo = TeileRepositoryImpl(teileApi, cache, ablage)
+    private val teileRepo = TeileRepositoryImpl(teileApi, ablage)
 
     private fun setsOffline(search: String? = null, theme: String? = null, storage: String? = null, sort: String? = null) =
         runBlocking { setsRepo.getSets(null, search, theme, sort, 1, 2, storage) }

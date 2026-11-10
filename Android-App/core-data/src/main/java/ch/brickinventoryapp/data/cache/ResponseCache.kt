@@ -3,8 +3,8 @@ package ch.brickinventoryapp.data.cache
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
-import ch.brickinventoryapp.data.di.BrickDispatchers
-import ch.brickinventoryapp.data.di.Dispatcher
+import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
+import ch.brickinventoryapp.model.koroutinen.Dispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock

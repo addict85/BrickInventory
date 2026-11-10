@@ -8,7 +8,7 @@ import ch.brickinventoryapp.data.repository.GALLERY_PAGE_SIZE
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.Zugangsdaten
 import ch.brickinventoryapp.data.cache.VorschauVorwaermer
-import ch.brickinventoryapp.data.di.ApplicationScope
+import ch.brickinventoryapp.model.koroutinen.ApplicationScope
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.model.util.resolveThumbUrl
 import java.util.concurrent.atomic.AtomicBoolean

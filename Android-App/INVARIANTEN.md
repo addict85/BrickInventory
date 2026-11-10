@@ -46,7 +46,7 @@ zurücksetzen, sonst bleibt der Knopf nach einem Fehler dauerhaft gesperrt.
 
 ## Abgelaufene Sitzung (HTTP 401)
 
-**Dateien:** `data/repository/RepoBasis.kt`, `app/di/AppModule.kt`,
+**Dateien:** `data/repository/Abruf.kt`, `app/di/AppModule.kt`,
 `data/SessionExpiredSignal.kt`, `zustand/ui/SitzungsDienst.kt`
 **Test:** `SessionAndLifecycleTest`
 
