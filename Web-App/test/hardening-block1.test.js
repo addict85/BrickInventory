@@ -44,6 +44,8 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const db = _req('db/database.js');
 
 const NAME = `haerte_${process.pid}`, PASS = 'Haerte-Passwort-1';
+// Die Zähler-Fälle sperren diesen Namen; das Testkonto bleibt für den Token-Fall frei.
+const ZAEHLER = `${NAME}_zaehler`;
 let uid = 0;
 
 test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async (t) => {
@@ -88,14 +90,14 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
   await t.test('Anmeldezähler: ein zweiter Prozess sieht die Sperre', async () => {
     const IP = '203.0.113.7';
     const a = _req('src/konto/loginLimiter.js');
-    assert.equal(await a.checkLoginAllowed(IP, NAME), null, 'Vorbedingung: frei');
-    for (let i = 0; i < a.MAX_ATTEMPTS; i++) await a.recordLoginFailure(IP, NAME);
+    assert.equal(await a.checkLoginAllowed(IP, ZAEHLER), null, 'Vorbedingung: frei');
+    for (let i = 0; i < a.MAX_ATTEMPTS; i++) await a.recordLoginFailure(IP, ZAEHLER);
     // Ein frisch geladenes Modul hat leeren Speicher, wie ein zweiter Arbeitsprozess.
     const datei = path.join(ROOT, 'dist', 'src', 'konto', 'loginLimiter.js');
     delete require.cache[datei];
     const b = require(datei);
     assert.notEqual(a, b, 'Vorbedingung: zwei Modulinstanzen');
-    assert.equal((await b.checkLoginAllowed(IP, NAME))?.code, 'zu_viele_fehlversuche');
+    assert.equal((await b.checkLoginAllowed(IP, ZAEHLER))?.code, 'zu_viele_fehlversuche');
   });
 
   await t.test('Anmeldezähler: ohne Datenbank bremst der Speicher', async () => {
@@ -105,9 +107,9 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
     console.warn = () => {};
     await db.run('ALTER TABLE rate_limit_attempts RENAME TO rate_limit_attempts_weg');
     try {
-      assert.equal(await l.checkLoginAllowed(IP, NAME), null, 'ein Datenbankfehler sperrt die Anmeldung');
-      for (let i = 0; i < l.MAX_ATTEMPTS; i++) await l.recordLoginFailure(IP, NAME);
-      assert.equal((await l.checkLoginAllowed(IP, NAME))?.code, 'zu_viele_fehlversuche', 'ohne Datenbank keine Bremse');
+      assert.equal(await l.checkLoginAllowed(IP, ZAEHLER), null, 'ein Datenbankfehler sperrt die Anmeldung');
+      for (let i = 0; i < l.MAX_ATTEMPTS; i++) await l.recordLoginFailure(IP, ZAEHLER);
+      assert.equal((await l.checkLoginAllowed(IP, ZAEHLER))?.code, 'zu_viele_fehlversuche', 'ohne Datenbank keine Bremse');
     } finally {
       await db.run('ALTER TABLE rate_limit_attempts_weg RENAME TO rate_limit_attempts');
       console.warn = warn;
