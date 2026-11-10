@@ -1,7 +1,6 @@
 /** Der Lagerort hängt an Sets, Teilen und Figuren; setzen, auflisten und
  * räumen stehen deshalb einmal hier statt je Route.
  * Ausführlich: docs/begruendungen/src/bestand/lagerort.ts.md#abschnitt */
-import { meldeUndLiefere } from '../infra/fehler';
 import * as db from '../../db/database';
 import * as orte from './repository/lagerort';
 import type { LagerTabelle } from './repository/lagerort';
@@ -151,8 +150,7 @@ export const VORGABE_SCHLUESSEL = 'default_storage_id';
 /** Über einen JOIN auf den Vorrat: Eine Vorgabe, deren Ort gelöscht wurde,
  * ist keine, und eine fremde ID gilt nicht. */
 export async function vorgabeVon(userId: number): Promise<Lagerort | null> {
-  const row = await orte.vorgabeOrt(userId, VORGABE_SCHLUESSEL)
-    .catch(meldeUndLiefere('lagerort:row', null));
+  const row = await orte.vorgabeOrt(userId, VORGABE_SCHLUESSEL);
   if (!row) return null;
   return { id: parseInt(String(row.id)), user_id: parseInt(String(row.user_id)),
            name: row.name };

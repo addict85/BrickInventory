@@ -3,7 +3,7 @@
  * Fehlende Preise holt der Auftrag „preise_nachladen“, nicht die Anfrage. */
 
 import { createHash } from 'node:crypto';
-import { meldeUndLiefere, logAndContinue } from '../../infra/fehler';
+import { logAndContinue } from '../../infra/fehler';
 import * as repo from '../repository/bewertung';
 import { setPreiseFrisch } from '../repository/preisCache';
 import { geschaetzteFigurenpreise } from '../repository/marktpreise';
@@ -32,8 +32,7 @@ type FigurPreis = PreisDaten & { estimated_from_parts?: true; abdeckung?: number
 async function loadManualAcquisitions(uid: Blickfeld, kind: 'part' | 'fig', waehrung: string) {
   // Ein Hauptkonto bewertet den ganzen Haushalt; die Währung ist beim
   // Verknüpfen erzwungen gleich, sonst summierte das zwei Währungen.
-  const rows = await repo.manuelleErfassungen(kind, asIds(uid), waehrung)
-    .catch(meldeUndLiefere('bewertung:rows', []));
+  const rows = await repo.manuelleErfassungen(kind, asIds(uid), waehrung);
   const out = new Map<string, repo.ManuelleErfassung[]>();
   for (const r of rows) {
     const key = kind === 'part' ? `${r.user_id}|${r.part_number}|${r.color_id ?? KEINE_FARBE}` : `${r.user_id}|${r.fig_number}`;

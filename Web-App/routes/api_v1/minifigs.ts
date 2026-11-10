@@ -15,6 +15,7 @@ import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
 import { vertragsRouter } from '../../src/vertrag/pruefen';
 import { seiteAus } from '../../src/infra/seite';
+import { Abstriche } from '../../src/infra/ergebnis';
 import type { Anfrage, Antwort } from '../../src/vertrag';
 const router = vertragsRouter();
 
@@ -55,9 +56,10 @@ router.delete('/minifigs/:figNumber', requireToken, async (req: Anfrage<'DELETE 
 });
 
 router.get('/minifigs/manual', requireToken, async (req: Anfrage<'GET /api/v1/minifigs/manual'>, res: Antwort<'GET /api/v1/minifigs/manual'>) => {
-  const alle = await getManualMinifigs(sichtVon(req), req.apiUser.user_id, { search: req.abfrage.search ?? '' });
+  const ab = new Abstriche();
+  const alle = await getManualMinifigs(sichtVon(req), req.apiUser.user_id, { search: req.abfrage.search ?? '' }, ab);
   const { eintraege: figs, ...seite } = seiteAus(alle, req.abfrage);
-  res.json({ success: true, figs, ...seite });
+  res.json({ success: true, figs, ...seite, ...ab.angabe() });
 });
 
 /** Dieselbe Gruppierung wie die Liste, damit Kennzahl und Liste übereinstimmen.

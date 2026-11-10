@@ -14,7 +14,7 @@ export const KONTO_EINSTELLUNGEN = ['currency', 'language', 'user_default_condit
 type Einstellung = (typeof GLOBALE_EINSTELLUNGEN)[number] | (typeof KONTO_EINSTELLUNGEN)[number];
 const einstellungsFelder = Object.fromEntries([...GLOBALE_EINSTELLUNGEN, ...KONTO_EINSTELLUNGEN]
   .map(k => [k, EINFACH.optional()])) as Record<Einstellung, z.ZodOptional<typeof EINFACH>>;
-import { GenericResponse } from './gemeinsam';
+import { DEGRADIERT, GenericResponse } from './gemeinsam';
 
 export const AppThemeResponse = z.looseObject({
   success: z.boolean(),
@@ -65,7 +65,7 @@ export const EinrichtungStand = z.looseObject({
   schritte: z.array(z.looseObject({ id: z.string(), ok: z.boolean(), pflicht: z.boolean() })),
   ca: z.looseObject({ vorhanden: z.boolean(), fp_hex: z.string().optional(), zert_sha256: z.string().optional(),
                       gueltig_bis: z.string().optional(), download: z.string() }),
-  basis_url: z.string().nullable(), https: z.boolean(),
+  basis_url: z.string().nullable(), https: z.boolean(), degradiert: DEGRADIERT,
 });
 /** Die Einstellungen als Text, wie sie gespeichert sind; Geheimnisse maskiert. */
 export const RoheEinstellungen = z.looseObject({ success: z.literal(true), settings: z.record(z.string(), z.string()) });

@@ -1,6 +1,5 @@
 /** /api/v1/admin — jede Route über requireApiAdmin, damit kein Handler die
  * Prüfung vergessen kann. */
-import { meldeUndLiefere } from '../../src/infra/fehler';
 import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { requireApiAdmin } from './middleware';
 import { getLimitForApi } from '../../src/katalog/apiKontingent';
@@ -71,11 +70,11 @@ router.post('/admin/forget-image-misses', requireApiAdmin, async (req: Anfrage<'
   } else {
     // Nicht die ganze Tabelle: Die Vorschau-Vermerke haben einen anderen Zweck
     // und sollen nicht nebenbei mitverschwinden.
-    const rows = await setFehlanzeigen().catch(meldeUndLiefere('verwaltung:setFehlanzeigen', []));
+    const rows = await setFehlanzeigen();
     if (rows.length) entfernt = await vergissFehlend(rows.map(r => r.cache_key));
   }
   if (req.eingabe.thumbs === true) {
-    const rows = await vorschauFehlanzeigen().catch(meldeUndLiefere('verwaltung:vorschauFehlanzeigen', []));
+    const rows = await vorschauFehlanzeigen();
     if (rows.length) entfernt += await vergissFehlend(rows.map(r => r.cache_key));
   }
   // Die anderen Prozesse frischen den Merker im Fünf-Minuten-Takt aus der Tabelle auf.
@@ -159,7 +158,7 @@ router.get('/admin/logs', requireApiAdmin, async (req: Anfrage<'GET /api/v1/admi
 });
 
 router.get('/admin/brickset-queue', requireApiAdmin, async (req: Anfrage<'GET /api/v1/admin/brickset-queue'>, res: Antwort<'GET /api/v1/admin/brickset-queue'>) => {
-  const rows = await bricksetListe().catch(meldeUndLiefere('verwaltung:bricksetWarteschlange', []));
+  const rows = await bricksetListe();
   const { eintraege, ...seite } = seiteAus(rows, req.abfrage);
   res.json({ success: true, count: rows.length, entries: eintraege, ...seite });
 });

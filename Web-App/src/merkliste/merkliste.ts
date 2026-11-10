@@ -10,7 +10,8 @@ import * as V from '../infra/validate';
 import { fachfehler } from '../infra/fehlerTexte';
 import { geldEingabe } from '../infra/geld';
 import { nutzerStandardZustand, getSetting } from '../einstellungen/settings';
-import { meldeFehler, meldeUndLiefere, oeffentlicherFehler } from '../infra/fehler';
+import { meldeFehler, oeffentlicherFehler } from '../infra/fehler';
+import { Abstriche } from '../infra/ergebnis';
 import { fuerSet } from '../katalog/preisvergleich';
 import { resolveIfExists } from '../katalog/bilder/images';
 import { toCsv, csvZeilenAusAnfrage, parseCsvDate } from '../infra/csvExport';
@@ -27,13 +28,14 @@ export async function preiseBeiderZustaende(uid: number, setNumber: string) {
   const guideType = String(await getSetting(uid, 'price_guide_type', 'sold'));
   const ttlHours  = String(await getSetting(uid, 'price_cache_ttl', '24'));
   const current: Record<string, { condition: string; avg_price: unknown; min_price: unknown; max_price: unknown }> = {};
+  // „keiner“ nach einem Abruffehler ist nicht „BrickLink kennt keinen“.
+  const ab = new Abstriche();
   for (const c of ['N', 'U']) {
-    const pd = await fetchPrice(setNumber, c, guideType, currency, ttlHours)
-      .catch(meldeUndLiefere(`merkliste:preis ${setNumber} ${c}`, null));
+    const pd = await ab.oder(`marktpreis_${c}`, fetchPrice(setNumber, c, guideType, currency, ttlHours), null);
     // Ein Ersatzpreis des anderen Zustands stünde sonst als „Marktpreis (Neuware)“ da, die Liste sagt „keiner“.
     if (pd && !pd.is_fallback) current[c] = { condition: c, avg_price: pd.avg_price, min_price: pd.min_price, max_price: pd.max_price };
   }
-  return { currency, current };
+  return { currency, current, ...ab.angabe() };
 }
 
 export interface Merkposten {

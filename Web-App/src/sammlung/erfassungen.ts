@@ -4,7 +4,7 @@ import * as repo from './repository/erfassungen';
 import type { DbSchnittstelle } from '../../db/database';
 import { writableIds, acquisitionMoveSource, resolveWriteTarget, blickfeldAus, type Sicht } from '../haushalt/haushalt';
 import { findSameDayAcquisition } from '../bestand/acquisitions';
-import { meldeUndLiefere } from '../infra/fehler';
+import { Abstriche } from '../infra/ergebnis';
 import { withInventoryLock, bestandsSchluessel } from '../../db/txLock';
 import { moveSetBetweenAccounts, moveManualAcquisition, withSetAggregate, deleteSetRows } from '../sets';
 import { getCurrentMarketPrice, getCurrentPartMarketPrice, getCurrentFigMarketPrice } from '../finanzen/marketPrice';
@@ -99,14 +99,14 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
   // Sperre und Verbindung offen.
   let priceVal: number | null = null;
   let preisGeschaetzt = false;
+  // Kam der Marktpreis nicht, bleibt der Preis leer; die Antwort sagt es in `degradiert`.
+  const ab = new Abstriche();
   if (rawPrice !== undefined) {
     let p = geldEingabe(rawPrice, preisSpalte(art) === 'purchase_price' ? 'Kaufpreis' : 'Stückpreis');
     if (p === null) {
       preisGeschaetzt = true;
-      const bisher = condition ? null : await repo.zustandDerErfassung(art, id)
-        .catch(meldeUndLiefere('erfassungen:zustand', null));
-      p = await a.resolvePrice(uid, keys, String(condition || bisher || '') || null)
-        .catch(meldeUndLiefere('erfassungen:resolvePrice', null));
+      const bisher = condition ? null : await repo.zustandDerErfassung(art, id);
+      p = await ab.oder('marktpreis', a.resolvePrice(uid, keys, String(condition || bisher || '') || null), null);
     }
     priceVal = p;
   }
@@ -143,7 +143,7 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
     if (neuesDatum)
       await repo.setzeErfassungsDatum(tx, art, id, neuesDatum, wids);
   });
-  return antwort(art, uid, keys, { success: true });
+  return antwort(art, uid, keys, { success: true, ...ab.angabe() });
 }
 
 /** Ist danach nichts mehr da, geht die Bestandszeile mit. */

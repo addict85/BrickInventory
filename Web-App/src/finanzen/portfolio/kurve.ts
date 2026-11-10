@@ -1,4 +1,3 @@
-import { meldeUndLiefere } from '../../infra/fehler';
 import * as repo from '../repository/portfolioKurve';
 
 /** Ein Punkt der Wertkurve; fullDay ist der genaue Tag eines Monatspunkts. */
@@ -71,7 +70,7 @@ export async function rekonstruiereKurve(opts: {
   if (monatsAufloesung && erster) {
     const ersterTag = (rows[0] && 'first_day' in rows[0] && rows[0].first_day) || erster.fullDay;
     erster.fullDay = ersterTag;
-    const start = await repo.letzteWerteVorBeginn(currency, condition, setNumbers, mengen, ersterTag, dateFilter.replace(/recorded_at/g, 'ph.recorded_at')).catch(meldeUndLiefere('portfolio:kurve rechnen', []));
+    const start = await repo.letzteWerteVorBeginn(currency, condition, setNumbers, mengen, ersterTag, dateFilter.replace(/recorded_at/g, 'ph.recorded_at'));
     const wert = Number(start?.[0]?.total);
     if (Number.isFinite(wert) && wert > 0) erster.total = wert;
   }

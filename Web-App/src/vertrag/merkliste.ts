@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { eingabe } from '../infra/validate';
 import { type Route, zeit, ganz, OHNE_RUMPF, KENNUNG, TEXT, ZUSTAND, abfrage, Q, SEITE, SEITEN_ANGABE } from './grund';
-import { CsvImportErgebnis, GenericResponse } from './gemeinsam';
+import { CsvImportErgebnis, DEGRADIERT, GenericResponse } from './gemeinsam';
 
 export const CurrentPrice = z.looseObject({
   condition: z.string(),
@@ -67,6 +67,7 @@ export const MerkpostenPreiseResponse = z.looseObject({
   currency: z.string(),
   current: CurrentByCondition,
   error: z.string().nullable().optional(),
+  degradiert: DEGRADIERT,
 });
 
 export const MerkpostenUebernahmeResponse = z.looseObject({

@@ -70,8 +70,8 @@ router.delete('/wanted/:setNumber/:condition', requireToken, async (req: Anfrage
  * Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#get-wanted-setnumber-preise */
 router.get('/wanted/:setNumber/preise', requireToken, async (req: Anfrage<'GET /api/v1/wanted/:setNumber/preise'>, res: Antwort<'GET /api/v1/wanted/:setNumber/preise'>) => {
   const sn = req.pfad.setNumber;
-  const { currency, current } = await preiseBeiderZustaende(req.apiUser.user_id, sn);
-  res.json({ success: true, set_number: sn, currency, current });
+  const preise = await preiseBeiderZustaende(req.apiUser.user_id, sn);
+  res.json({ success: true, set_number: sn, ...preise });
 });
 
 /** Die Regel steht in merkliste.ts:uebernimm() — über addSet(), die eine

@@ -14284,6 +14284,12 @@
           },
           "totals": {
             "$ref": "#/components/schemas/AcquisitionTotals"
+          },
+          "degradiert": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -15489,6 +15495,12 @@
               "type": "string"
             },
             "additionalProperties": {}
+          },
+          "degradiert": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -16705,6 +16717,12 @@
           },
           "https": {
             "type": "boolean"
+          },
+          "degradiert": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -17973,6 +17991,12 @@
               "string",
               "null"
             ]
+          },
+          "degradiert": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -18452,6 +18476,12 @@
               "string",
               "null"
             ]
+          },
+          "degradiert": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -19368,6 +19398,12 @@
               "string",
               "null"
             ]
+          },
+          "degradiert": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -19689,6 +19725,12 @@
               "string",
               "null"
             ]
+          },
+          "degradiert": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -20151,6 +20193,12 @@
               "string",
               "null"
             ]
+          },
+          "degradiert": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [

@@ -1,5 +1,6 @@
 // Hier allein: wessen Daten eine Anfrage sieht. Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#abschnitt
-import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
+import { logAndContinue } from '../infra/fehler';
+import { Abstriche } from '../infra/ergebnis';
 import * as db from '../../db/database';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
 import { getSetting } from '../einstellungen/settings';
@@ -145,7 +146,8 @@ export async function redeemInvite(uid: number, code: string) {
   }
   const th = hash(code);
 
-  const mainId = await repo.belegeEinladung(th, subId).catch(meldeUndLiefere('haushalt:claimed', null));
+  // Ein Lesefehler ist kein abgelaufener Code: Er geht weiter.
+  const mainId = await repo.belegeEinladung(th, subId);
   if (mainId === null) return { fehler: 'einladungscode_abgelaufen' as const };
 
   const release = async () => {
@@ -189,8 +191,10 @@ export async function redeemInvite(uid: number, code: string) {
     return { fehler: 'waehrung_ungleich' as const, vars: ungleich };
   }
   meldeHaushaltsaenderung();
-  const name = await repo.kontoName(mainId).catch(meldeUndLiefere('haushalt:get', null));
-  return { linked_to: { id: mainId, username: name || String(mainId) } };
+  // Die Verknüpfung steht schon; fehlt nur der Name, trägt die Antwort die ID und sagt es.
+  const ab = new Abstriche();
+  const name = await ab.oder('kontoname', repo.kontoName(mainId), null);
+  return { linked_to: { id: mainId, username: name || String(mainId) }, ...ab.angabe() };
 }
 
 /** Von BEIDEN Seiten erlaubt. Ohne `subUserId` und `mainUserId` löst sich das
@@ -213,9 +217,10 @@ export async function householdStatus(uid: number) {
   const id = parseInt(String(uid));
   const h = await resolveHousehold(id);
   const members = await householdMembers(id);
+  const ab = new Abstriche();
   const [eltern, openInvites, currency, getrennt] = await Promise.all([
     repo.kontoNamen(h.elternIds, 'username'),
-    repo.offeneEinladungen(id).catch(meldeUndLiefere('haushalt:einladungen', 0)),
+    ab.oder('einladungen', repo.offeneEinladungen(id), 0),
     getSetting(id, 'currency', 'EUR'),
     repo.getrennteKetten(id),
   ]);
@@ -231,6 +236,7 @@ export async function householdStatus(uid: number) {
     blickfeld: members,
     open_invites: openInvites,
     former_links: getrennt,
+    ...ab.angabe(),
   };
 }
 

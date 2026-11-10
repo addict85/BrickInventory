@@ -68,8 +68,8 @@ export async function marktpreiseAusCacheFuerFiguren(
     [f.bl_fig_number, f.fig_number].filter(Boolean).map(String)))];
   if (!schluessel.length) return treffer;
 
-  const zeilen = await repo.figurenpreiseAusCache(schluessel, String(currency), ttl)
-    .catch(meldeUndLiefere('marktpreis:zeilen', []));
+  // Ohne Fang: Die Liste fasst den Fehler als `degradiert` (Abstriche) und zeigt sie ohne Preis.
+  const zeilen = await repo.figurenpreiseAusCache(schluessel, String(currency), ttl);
 
   const cache = new Map<string, number>();
   for (const z of zeilen) {
@@ -127,8 +127,7 @@ export async function marktpreiseAusCacheFuerTeile(
 
   const nummern = [...new Set([...auflösung.values()].map(a => a.nummer))];
   if (!nummern.length) return treffer;
-  const zeilen = await repo.teilepreiseAusCache(nummern, String(currency), ttl)
-    .catch(meldeUndLiefere('marktpreis:zeilen', []));
+  const zeilen = await repo.teilepreiseAusCache(nummern, String(currency), ttl);
 
   const cache = new Map<string, number>();
   for (const z of zeilen) {

@@ -2,7 +2,7 @@ import { OHNE_RUMPF, TEXT, ZUSTAND, KENNUNG, abfrage, Q, SEITE, SEITEN_ANGABE } 
 import { z } from 'zod';
 import { eingabe } from '../infra/validate';
 import type { Route } from './grund';
-import { CsvImportErgebnis, FigValuationItem, GenericResponse, MinifigsResponse, VerwendendeSetsResponse, InDenPapierkorb } from './gemeinsam';
+import { CsvImportErgebnis, DEGRADIERT, FigValuationItem, GenericResponse, MinifigsResponse, VerwendendeSetsResponse, InDenPapierkorb } from './gemeinsam';
 
 export const AddMinifigResponse = z.looseObject({
   success: z.boolean(),
@@ -19,6 +19,7 @@ export const ManualFigsResponse = z.looseObject({
   /** Die Liste führt keine Erfassungen; die Detailansicht lädt sie über /acquisitions. */
   figs: z.array(FigValuationItem.extend({ acquisitions: FigValuationItem.shape.acquisitions.optional() })),
   error: z.string().nullable().optional(),
+  degradiert: DEGRADIERT,
 });
 
 export const MinifigStats = z.looseObject({
