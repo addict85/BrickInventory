@@ -3,6 +3,7 @@ package ch.brickinventoryapp.data.repository
 import ch.brickinventoryapp.data.api.FigurenApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.offline.Bearbeitung
+import ch.brickinventoryapp.offline.Filterspalten
 import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.offline.Lokal
 import ch.brickinventoryapp.offline.Offlineablage
@@ -24,28 +25,37 @@ class FigurenRepositoryImpl @Inject constructor(
 
     /**
      * Set-Figuren der Übersicht; Suche beim Server wie im Web, weil er vor der
-     * Gruppierung über jede fig_name-Zeile sucht. Gecacht wird nur die ungefilterte
-     * Sicht, sonst wäre ein Suchergebnis nach dem Neustart die ganze Sammlung.
+     * Gruppierung über jede fig_name-Zeile sucht. Abgelegt wird nur die
+     * ungefilterte Sicht; ohne Netz sucht dieselbe Suche in ihr.
      */
-    override suspend fun getMinifigs(accounts: String?, search: String?): Ergebnis<MinifigsResponse> =
-        if (accounts == null && search.isNullOrBlank())
-            abgeglichen(Faecher.FIGUREN, { it.figs }, { MinifigsResponse(success = true, figs = it) }) {
+    override suspend fun getMinifigs(accounts: String?, search: String?): Ergebnis<MinifigsResponse> {
+        val filter = Filterspalten(suchtext = search?.ifBlank { null })
+        val ausLokal = { l: List<Minifig> -> MinifigsResponse(success = true, figs = l) }
+        return when {
+            accounts != null -> safeCall { api.getMinifigs(source = "set", accounts = accounts, search = filter.suchtext) }
+            filter == Filterspalten() -> abgeglichen(Faecher.FIGUREN, { it.figs }, ausLokal) {
                 safeCall { api.getMinifigs(source = "set") }
             }
-        else safeCall { api.getMinifigs(source = "set", accounts = accounts,
-                                        search = search?.ifBlank { null }) }
+            else -> gefiltert(Faecher.FIGUREN, filter, ausLokal) { safeCall { api.getMinifigs(source = "set", search = filter.suchtext) } }
+        }
+    }
 
     /** Die lokalen Listen (ungefiltert), wie TeileRepository.beobachteTeile. */
     override fun beobachteFiguren(): Flow<Lokal<Minifig>> = ablage.beobachte(Faecher.FIGUREN)
     override fun beobachteManuelleFiguren(): Flow<Lokal<FigValuationItem>> = ablage.beobachte(Faecher.MANUELLE_FIGUREN)
 
     override suspend fun getManualMinifigs(accounts: String?,
-                                  search: String?): Ergebnis<ManualFigsResponse> =
-        if (accounts == null && search.isNullOrBlank())
-            abgeglichen(Faecher.MANUELLE_FIGUREN, { it.figs }, { ManualFigsResponse(success = true, figs = it) }) {
+                                  search: String?): Ergebnis<ManualFigsResponse> {
+        val filter = Filterspalten(suchtext = search?.ifBlank { null })
+        val ausLokal = { l: List<FigValuationItem> -> ManualFigsResponse(success = true, figs = l) }
+        return when {
+            accounts != null -> safeCall { api.getManualMinifigs(accounts, search) }
+            filter == Filterspalten() -> abgeglichen(Faecher.MANUELLE_FIGUREN, { it.figs }, ausLokal) {
                 safeCall { api.getManualMinifigs(accounts, search) }
             }
-        else safeCall { api.getManualMinifigs(accounts, search) }
+            else -> gefiltert(Faecher.MANUELLE_FIGUREN, filter, ausLokal) { safeCall { api.getManualMinifigs(accounts, search) } }
+        }
+    }
 
     /** Dasselbe fuer eine Minifigur — sie hat keine Farbe (Migration 0024). */
     override suspend fun setFigStorage(figNumber: String, ort: String): Ergebnis<LagerortResponse> =

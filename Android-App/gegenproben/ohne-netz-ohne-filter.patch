@@ -1,0 +1,18 @@
+Gegenprobe: gefiltert() gibt den Netzfehler zurück, statt die lokale Liste zu filtern
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.OhneNetzFilterTest
+Rot: Suche, Thema, Lagerort und Sortierung
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt
+index 48588c2..d16a024 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt
+@@ -66,7 +66,7 @@ abstract class RepoBasis<A : Any>(
+     ): Ergebnis<R> {
+         val vorher = ablage.bereich()
+         val frisch = call()
+-        if (frisch !is Ergebnis.Error || !frisch.transient) return frisch
++        if (frisch !is Ergebnis.Error || frisch.transient) return frisch
+         if (vorher == null || ablage.bereich() != vorher) return frisch
+         val lokal = ablage.filtere(fach, filter) ?: return frisch
+         val stand = lokal.stand ?: return frisch

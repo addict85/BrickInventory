@@ -1,0 +1,16 @@
+Gegenprobe: Teile hängt eine weitere Seite ohne Abgleich an die gezeigte Liste
+Modul: feature-teile
+Test: ch.brickinventoryapp.teile.TeileSeitenTest
+Rot: hängt Seite 2 keine Zeile doppelt an
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/Teile.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/Teile.kt
+index 2914736..ecb4a43 100644
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/Teile.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/Teile.kt
+@@ -282,5 +282,5 @@ internal class Teile(
+  */
+ internal fun anhaengen(bisher: List<TeilAnsicht>, neu: List<TeilAnsicht>): List<TeilAnsicht> {
+     val da = bisher.mapTo(HashSet()) { Triple(it.partNumber, it.colorId, it.isSpare) }
+-    return bisher + neu.filterNot { Triple(it.partNumber, it.colorId, it.isSpare) in da }
++    return bisher + neu.filterNot { Triple(it.partNumber, it.colorId, it.isSpare) in da && false }
+ }

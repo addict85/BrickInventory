@@ -8,6 +8,7 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.offline.room.BestandDatenbank
 import ch.brickinventoryapp.offline.room.RoomAusgang
 import ch.brickinventoryapp.offline.room.RoomBestand
+import ch.brickinventoryapp.model.data.model.SetItem
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -30,9 +31,10 @@ import java.io.File
  * Abhängigkeit. Läuft nur in der CI (Room braucht Android).
  *
  * Gegenproben misst der CI-Job `gegenproben` (Android-App/gegenproben/, er
- * verlangt Rot): bestand-migration-entfernt, -spalte-falsch, -ohne-schluessel.
- * Eine Änderung an 2.json taugt nicht als Gegenprobe: Room schreibt das Schema
- * beim Übersetzen neu.
+ * verlangt Rot): bestand-migration-entfernt, -spalte-falsch, -ohne-schluessel,
+ * -ohne-filterspalten (2 → 3 füllt die Filterspalten nicht).
+ * Eine Änderung am Schema der neuesten Fassung taugt nicht als Gegenprobe: Room
+ * schreibt es beim Übersetzen neu.
  */
 @RunWith(RobolectricTestRunner::class)
 class BestandMigrationTest {
@@ -95,7 +97,7 @@ class BestandMigrationTest {
     }
 
     @Test
-    fun `jede frühere Fassung wird ohne Verlust zur neuesten, jeder Posten hat einen eigenen Schlüssel`() {
+    fun `jede frühere Fassung wird ohne Verlust zur neuesten, jeder Posten hat einen eigenen Schlüssel, jede Zeile ihre Filter`() {
         val frueher = fassungen().dropLast(1)
         assertTrue("Mindestens Fassung 1 muss eingecheckt sein", 1 in frueher)
         for (v in frueher) {
@@ -106,7 +108,10 @@ class BestandMigrationTest {
                 for (n in 1..2) alt.execSQL(
                     "INSERT INTO ausgang (bereich, bearbeitung, erstellt, versuche) VALUES ('a', ?, $n, 0)",
                     arrayOf(AblageJson.encodeToString(Bearbeitung.serializer(), Bearbeitung.SetMenge("1000$n-1", n))))
-                alt.execSQL("INSERT INTO bestand (bereich, art, schluessel, position, inhalt) VALUES ('a', 'SETS', '1', 0, '{}')")
+                val set = SetItem(setNumber = "10002-1", name = "Polizeiwache", theme = "City", storage = "Kiste 2")
+                alt.execSQL("INSERT INTO bestand (bereich, art, schluessel, position, inhalt) VALUES ('a', 'SETS', ?, 0, ?)",
+                    arrayOf(set.setNumber, AblageJson.encodeToString(SetItem.serializer(), set)))
+                alt.execSQL("INSERT INTO bestand (bereich, art, schluessel, position, inhalt) VALUES ('a', 'SETS', 'kaputt', 1, '{}')")
             }
             val room = Room.databaseBuilder(context, BestandDatenbank::class.java, name)
                 .addMigrations(*BestandDatenbank.MIGRATIONEN).allowMainThreadQueries().build()
@@ -116,7 +121,12 @@ class BestandMigrationTest {
                     listOf(Bearbeitung.SetMenge("10001-1", 1), Bearbeitung.SetMenge("10002-1", 2)), posten.map { it.bearbeitung })
                 assertTrue("Fassung $v: jeder Posten hat einen Schlüssel", posten.all { it.schluessel.length == 36 })
                 assertEquals("Fassung $v: jeder Posten hat einen eigenen Schlüssel", 2, posten.map { it.schluessel }.toSet().size)
-                assertEquals(listOf("1"), runBlocking { RoomBestand(room).lies("a", Bestandsart.SETS) }.zeilen.map { it.schluessel })
+                val bestand = RoomBestand(room)
+                assertEquals("Fassung $v: die lesbare Liste bleibt, die unlesbare Zeile geht",
+                    listOf("10002-1"), runBlocking { bestand.lies("a", Bestandsart.SETS) }.liste.map { it.schluessel })
+                for (f in listOf(Filterspalten(thema = "City"), Filterspalten(lagerort = "Kiste 2"), Filterspalten(suchtext = "POLIZEI")))
+                    assertEquals("Fassung $v: die Filterspalten sind aus dem JSON gefüllt ($f)", listOf("10002-1"),
+                        runBlocking { bestand.filtere("a", Bestandsart.SETS, f) }.liste.map { it.schluessel })
             } finally {
                 room.close()
                 context.deleteDatabase(name)
