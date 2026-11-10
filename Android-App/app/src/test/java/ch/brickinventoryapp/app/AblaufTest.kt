@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.ressourcen.R
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Surface
@@ -201,7 +202,7 @@ class AblaufTest {
 
     /** Der Zustand der Gutscheinkarte; die Tests der Rückfrage setzen ihn um. */
     private var zustand by mutableStateOf(GutscheinUiState(gutscheine = listOf(
-        Gutschein(id = 7, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = "CHF").alsAnsicht())))
+        Gutschein(id = 7, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = Waehrung("CHF")).alsAnsicht())))
 
     /** Ein Gutschein mit PIN 4711; [schutz] steht für die Gerätesperre. */
     private fun zeigeGutschein(schutz: Schrittschutz, kopiert: MutableList<String> = mutableListOf()) {

@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.model.data.model
 
+import ch.brickinventoryapp.model.fach.Laufstatus
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -15,7 +17,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class CsvImportStatus(
     val success: Boolean = false,
-    val status: String? = null,   // "running", "done", "cancelled"
+    val status: Laufstatus? = null,
     val total: Int? = null,
     val done: Int? = null,
     val current: String? = null,
@@ -336,7 +338,7 @@ data class Preisalarm(
     /** "unter" oder "ueber". */
     val richtung: String = "unter",
     val schwelle: Double = 0.0,
-    @SerialName("currency_code") val currencyCode: String = "",
+    @SerialName("currency_code") val currencyCode: Waehrung = Waehrung.KEINE,
     /**
      * Schon gemeldet? Der Alarm meldet den Übergang, nicht den Zustand; erst wenn der
      * Preis zurückkehrt, wird der Merker gelöscht.
@@ -430,7 +432,7 @@ data class Merkposten(
      */
     val marktpreis: Double? = null,
     /** Die Waehrung, in der [marktpreis] steht. */
-    val waehrung: String = "EUR",
+    val waehrung: Waehrung = Waehrung.EUR,
     val owned: Boolean = false,
     /**
      * Der Preisalarm zu genau diesem Merkposten oder null. Er reist mit, damit ein
@@ -540,7 +542,7 @@ data class MerkpostenUebernahmeRequest(
 @Serializable
 data class MerkpostenPreiseResponse(
     val success: Boolean = false,
-    val currency: String = "",
+    val currency: Waehrung = Waehrung.KEINE,
     val current: CurrentByCondition = CurrentByCondition(),
     val error: String? = null,
 )

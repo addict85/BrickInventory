@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import android.content.Context
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -63,7 +64,7 @@ class FinanzKaufpreisZeilenTest {
              "avg_price":6.5,"wert_gesamt":6.5}],"total_value":"6.50"}"""
         val vm = welt.finanzen().also { it.loadValuation() }
         compose.setContent {
-            BrickInventoryManagerTheme(theme = "classic") {
+            BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 Surface(color = MaterialTheme.colorScheme.background) {
                     FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build())
                 }

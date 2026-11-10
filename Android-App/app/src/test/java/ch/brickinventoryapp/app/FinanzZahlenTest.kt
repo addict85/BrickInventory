@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.model.data.model.FigsValuationResponse
@@ -134,7 +135,7 @@ class FinanzZahlenTest {
     fun `Gutscheine in zwei Waehrungen ergeben keine Summe`() {
         val chf = listOf(Gutschein(id = 1, amount = 0.1), Gutschein(id = 2, amount = 0.2)).map { it.alsAnsicht() }
         assertEquals(BigDecimal("0.30") to "CHF", gutscheinSumme(chf))
-        assertNull(gutscheinSumme(chf + Gutschein(id = 3, amount = 5.0, currency = "EUR").alsAnsicht()))
+        assertNull(gutscheinSumme(chf + Gutschein(id = 3, amount = 5.0, currency = Waehrung("EUR")).alsAnsicht()))
         assertNull(gutscheinSumme(emptyList()))
     }
 

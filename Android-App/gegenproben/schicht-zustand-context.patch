@@ -10,6 +10,6 @@ diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand
  package ch.brickinventoryapp.zustand.ui
  
 +import android.content.Context
+ import ch.brickinventoryapp.model.fach.Waehrung
+ import ch.brickinventoryapp.model.ui.theme.Design
  import ch.brickinventoryapp.model.fach.Zustand
- import kotlinx.coroutines.flow.MutableStateFlow
- import kotlinx.coroutines.flow.StateFlow

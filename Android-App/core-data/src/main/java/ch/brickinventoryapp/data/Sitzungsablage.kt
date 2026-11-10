@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.theme.Design
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -10,16 +12,16 @@ import kotlinx.coroutines.flow.Flow
 interface Sitzungsablage {
     val serverUrl: Flow<String>
     val authToken: Flow<String>
-    val appTheme: Flow<String>
-    val currency: Flow<String>
+    val appTheme: Flow<Design>
+    val currency: Flow<Waehrung>
     val language: Flow<String>
     suspend fun serverUrlJetzt(): String
     suspend fun tokenJetzt(): String
 
     /** Älter, als der Server eine Anmeldung gelten lässt: dann abmelden statt laden. */
     suspend fun anmeldungAbgelaufen(jetzt: Long = System.currentTimeMillis()): Boolean
-    suspend fun saveAppTheme(theme: String)
-    suspend fun saveCurrency(cur: String)
+    suspend fun saveAppTheme(theme: Design)
+    suspend fun saveCurrency(cur: Waehrung)
 
     /** Server, an denen eine nachgeholte Abmeldung endgültig scheiterte. */
     fun gescheiterteEntwertungen(): Set<String>

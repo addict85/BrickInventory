@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.fach.Setsortierung
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.data.model.SetAggregate
@@ -109,13 +110,13 @@ class GalerieViewModelTest {
         val gemerkt = SavedStateHandle()
         val erstes = vm(gemerkt)
         erstes.setGalleryTheme("Technic")
-        erstes.setGallerySort("year_desc")
+        erstes.setGallerySort(Setsortierung.JAHR)
         erstes.setGalleryQuery("Falke")
 
         pfade.neuerProzess(io = Dispatchers.Main) { pfade, t ->
             val neu = vm(gemerkt, t)
             val g = neu.galleryState.value
-            assertEquals(Triple("Falke", "Technic", "year_desc"), Triple(g.galleryQuery, g.galleryTheme, g.gallerySort))
+            assertEquals(Triple("Falke", "Technic", Setsortierung.JAHR), Triple(g.galleryQuery, g.galleryTheme, g.gallerySort))
             neu.loadSets()
             assertTrue("Liste geladen", neu.galleryState.value.sets.isNotEmpty())
             val abruf = abrufe(pfade).single()

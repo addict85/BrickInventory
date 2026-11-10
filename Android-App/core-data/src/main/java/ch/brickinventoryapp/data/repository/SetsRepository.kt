@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Setsortierung
+import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.model.data.model.*
@@ -17,7 +19,7 @@ interface SetsRepository {
         accounts: String? = null,
         search: String? = null,
         theme: String? = null,
-        sort: String? = null,
+        sort: Setsortierung? = null,
         page: Int = 1,
         pageSize: Int = GALLERY_PAGE_SIZE,
         storage: String? = null
@@ -38,7 +40,7 @@ interface SetsRepository {
     suspend fun aendereMengeUm(setNumber: String, schritt: Int): Ergebnis<GenericResponse>
 
     suspend fun getMerkliste(search: String? = null, condition: Zustand? = null,
-                             sort: String? = null, accounts: String? = null): Ergebnis<MerklisteResponse>
+                             sort: Merksortierung? = null, accounts: String? = null): Ergebnis<MerklisteResponse>
 
     fun beobachteMerkliste(): Flow<Lokal<Merkposten>>
 

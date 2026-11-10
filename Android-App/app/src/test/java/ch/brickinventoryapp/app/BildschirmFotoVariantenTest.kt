@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.fach.Katalogsortierung
 import ch.brickinventoryapp.teile.ui.TeileListeUndDetailRoute
 import ch.brickinventoryapp.app.nav.Reiter
 import ch.brickinventoryapp.model.fach.Postenart
@@ -233,7 +235,7 @@ class BildschirmFotoVariantenTest {
         if (sprache != null) Locale.setDefault(Locale.forLanguageTag(sprache.replace("-r", "-")))
         if (warten) bereitstellen(name, bereit, zustand)
         compose.setContent {
-            BrickInventoryManagerTheme(theme = design, dunkel = dunkel) {
+            BrickInventoryManagerTheme(theme = checkNotNull(Design.aus(design)) { design }, dunkel = dunkel) {
                 val dichte = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(dichte.density, schrift)) {
                     Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
@@ -978,7 +980,7 @@ class BildschirmFotoVariantenTest {
         override fun setCatalogQuery(q: String) = Unit
         override fun setCatalogTheme(themeId: Int?) = Unit
         override fun setCatalogYear(year: Int?) = Unit
-        override fun setCatalogSort(sort: String) = Unit
+        override fun setCatalogSort(sort: Katalogsortierung) = Unit
     }
 
     private fun katalogFoto(
@@ -1118,7 +1120,7 @@ class BildschirmFotoVariantenTest {
         zeige(name, dunkel = dunkel, geraet = geraet) {
             SettingsScreen(
                 zustand = EinstellungenZustand(AppUiState(serverUrl = "https://brick.example.org"), update,
-                    "system", "classic", false, false, false, false),
+                    "system", Design.CLASSIC, false, false, false, false),
                 aktionen = vm, update = keinUpdate, darstellung = keineDarstellung, onNutzerCa = {},
                 onLogout = {}, onServerWechseln = {}, scrollState = androidx.compose.foundation.rememberScrollState(),
             )
@@ -1230,7 +1232,7 @@ class BildschirmFotoVariantenTest {
         val ereignisse = CacheEreignisse({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
         zeige("hintergrundarbeiten", dunkel = dunkel, geraet = geraet, warten = false) {
             MonitoringScreen(MonitoringZustand(MonitoringUiState(), vm.hintergrund.value, VerwaltungUiState(),
-                emptyMap(), "classic", 0L), vm, ereignisse)
+                emptyMap(), Design.CLASSIC, 0L), vm, ereignisse)
         }
         anhalten()
         foto("hintergrundarbeiten", dunkel = dunkel, geraet = geraet)

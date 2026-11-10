@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.theme.Design
 import android.content.Context
 import android.os.Looper
 import androidx.compose.material3.MaterialTheme
@@ -61,7 +63,7 @@ class ManuelleKachelAnzeigeTest {
 
     private fun zeige(inhalt: @Composable () -> Unit) {
         compose.setContent {
-            BrickInventoryManagerTheme(theme = "classic") {
+            BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
             }
         }
@@ -86,7 +88,7 @@ class ManuelleKachelAnzeigeTest {
             assertTrue("$wer zeigt „$text“ nicht",
                 compose.onAllNodesWithText(text, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
         }
-        val preis = fmtMoney(5.0, "CHF")
+        val preis = fmtMoney(5.0, Waehrung("CHF"))
         assertTrue("$wer zeigt nicht den gemittelten Kaufpreis $preis",
             compose.onAllNodesWithText(preis, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
     }

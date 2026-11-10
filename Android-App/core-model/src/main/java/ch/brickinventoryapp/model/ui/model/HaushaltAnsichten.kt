@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.model.ui.model
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.data.model.Acquisition
@@ -56,7 +57,7 @@ data class KaufAnsicht(
     val createdAt: String? = null,
     val ownerUserId: Int? = null,
     val priceEstimated: Boolean = false,
-    val currency: String? = null,
+    val currency: Waehrung? = null,
 ) {
     /** Sets tragen purchase_price, Teile und Figuren unit_price. */
     val effectivePrice: Double? get() = purchasePrice ?: unitPrice

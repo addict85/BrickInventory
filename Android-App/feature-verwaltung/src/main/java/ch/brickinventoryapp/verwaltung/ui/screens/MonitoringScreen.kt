@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.verwaltung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Laufstatus
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.data.VorwaermNetz
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.HintergrundUiState
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringUiState
@@ -46,7 +48,7 @@ data class MonitoringZustand(
     val hintergrund: HintergrundUiState,
     val verwaltung: VerwaltungUiState,
     val netze: Map<VorwaermNetz, Boolean>,
-    val appTheme: String,
+    val appTheme: Design,
     val ablageBytes: Long,
 )
 
@@ -56,7 +58,7 @@ data class MonitoringZustand(
  */
 @Composable
 internal fun MonitoringRoute(
-    appTheme: String,
+    appTheme: Design,
     /** Design oder Vorgabe-Zustand geändert: Die App lädt ihre Einstellungen nach. */
     onEinstellungenNeu: () -> Unit,
     mon: MonitoringViewModel = hiltViewModel(),
@@ -242,16 +244,16 @@ private fun JobCard(
     val syncStartedMsg   = stringResource(R.string.monitoring_sync_started_short)
     val queueShowFmt   = stringResource(R.string.monitoring_queue_show)
     val statusColor = when (job.status) {
-        "running" -> MaterialTheme.colorScheme.primary
-        "done"    -> LocalStatusFarben.current.erfolg
-        "error"   -> MaterialTheme.colorScheme.error
-        else      -> MaterialTheme.colorScheme.onSurfaceVariant
+        Laufstatus.LAEUFT -> MaterialTheme.colorScheme.primary
+        Laufstatus.FERTIG -> LocalStatusFarben.current.erfolg
+        Laufstatus.FEHLER -> MaterialTheme.colorScheme.error
+        else              -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     val statusIcon = when (job.status) {
-        "running" -> Icons.Default.HourglassTop
-        "done"    -> Icons.Default.CheckCircle
-        "error"   -> Icons.Default.Error
-        else      -> Icons.Default.PauseCircle
+        Laufstatus.LAEUFT -> Icons.Default.HourglassTop
+        Laufstatus.FERTIG -> Icons.Default.CheckCircle
+        Laufstatus.FEHLER -> Icons.Default.Error
+        else              -> Icons.Default.PauseCircle
     }
     val pct = if (job.total > 0) (job.progress.toFloat() / job.total).coerceIn(0f, 1f) else 0f
 
@@ -264,7 +266,7 @@ private fun JobCard(
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
                     Icon(statusIcon, null, Modifier.size(mitSchrift(14.dp)), tint = statusColor)
-                    Text(job.status, color = statusColor,
+                    Text(job.status.kennung, color = statusColor,
                         style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }
             }

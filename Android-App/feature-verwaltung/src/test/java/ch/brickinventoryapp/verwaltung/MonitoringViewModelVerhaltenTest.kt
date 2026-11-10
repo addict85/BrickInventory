@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.verwaltung
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.api.BrickApiService
@@ -193,7 +194,7 @@ class MonitoringViewModelVerhaltenTest {
     fun `die Auswahl zeigt die Vorgabe, nicht das eigene Design`() = runTest {
         server.enqueue(antwort("""{"success":true,"theme":"werkbank","vorgabe":"noppe","eigenes":"werkbank"}"""))
         vm.ladeDesignVorgabe()
-        assert(vm.state.value.vorgabeDesign == "noppe") { "Steht: ${vm.state.value.vorgabeDesign}" }
+        assert(vm.state.value.vorgabeDesign == Design.NOPPE) { "Steht: ${vm.state.value.vorgabeDesign}" }
         assert(server.takeRequest().path == "/api/v1/settings/theme")
     }
 
@@ -202,11 +203,11 @@ class MonitoringViewModelVerhaltenTest {
         server.enqueue(antwort("""{"success":true,"theme":"noppe","vorgabe":"noppe"}"""))
         vm.ladeDesignVorgabe()
         server.enqueue(antwort("""{"success":true}"""))
-        assert(vm.setzeDesign("brick"))
-        assert(vm.state.value.vorgabeDesign == "brick") { "Steht: ${vm.state.value.vorgabeDesign}" }
+        assert(vm.setzeDesign(Design.BRICK))
+        assert(vm.state.value.vorgabeDesign == Design.BRICK) { "Steht: ${vm.state.value.vorgabeDesign}" }
         server.enqueue(antwort("""{"error":"kaputt"}""", 500))
-        assert(!vm.setzeDesign("hochglanz"))
-        assert(vm.state.value.vorgabeDesign == "brick") { "Steht: ${vm.state.value.vorgabeDesign}" }
+        assert(!vm.setzeDesign(Design.HOCHGLANZ))
+        assert(vm.state.value.vorgabeDesign == Design.BRICK) { "Steht: ${vm.state.value.vorgabeDesign}" }
     }
 
     // ── Der Vorgabe-Zustand ──────────────────────────────────────────────────

@@ -166,7 +166,7 @@ internal fun PreisalarmeCard(
                     label = { Text(stringResource(if (a.richtung == "unter") R.string.detail_alert_chip_below
                                                   else R.string.detail_alert_chip_above)) },
                     // Vorangestellt wie jeder Betrag der App („CHF 750.00“).
-                    prefix = { Text(a.currencyCode + "\u00A0") },
+                    prefix = { Text(a.currencyCode.code + "\u00A0") },
                     // Nur „Gespeichert“: Richtung, Betrag und Zustand stehen schon in Feld und
                     // Plakette, die ganze Wiederholung darunter verdoppelte jede Zeile.
                     supportingText = {

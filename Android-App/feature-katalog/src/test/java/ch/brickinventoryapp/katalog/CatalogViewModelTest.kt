@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.katalog
 
+import ch.brickinventoryapp.model.fach.Katalogsortierung
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.model.data.model.CatalogSetDetailResponse
 import ch.brickinventoryapp.model.data.model.CatalogSetItem
@@ -143,7 +144,7 @@ class CatalogViewModelTest {
         fake.antworten["getCatalogSets"] = seite("10294-1")
         fake.antworten["getCatalogYearVerteilung"] = CatalogYearVerteilungResponse(
             success = true, years = listOf(JahrAnzahl(1999, 4), JahrAnzahl(null, 2), JahrAnzahl(2024, 7)))
-        vm.setCatalogSort("year_desc")
+        vm.setCatalogSort(Katalogsortierung.JAHR_ABSTEIGEND)
         vm.setCatalogTheme(158)
         advanceUntilIdle()
         val abrufe = synchronized(fake.argumente) { fake.argumente.filter { it.first == "getCatalogYearVerteilung" } }

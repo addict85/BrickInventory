@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.repository.KontoRepository
@@ -139,9 +140,9 @@ class EinstellungenViewModelTest {
     @Test
     fun `eine andere Waehrung gilt sofort und alle Bestandsansichten laden neu`() {
         val vm = vm()
-        val liste = t.gemeldet(3) { vm.saveSettings("CHF", Zustand.GEBRAUCHT) }
+        val liste = t.gemeldet(3) { vm.saveSettings(Waehrung.CHF, Zustand.GEBRAUCHT) }
         assertEquals(listOf(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren), liste)
-        assertEquals("CHF", t.sitzung.state.value.currency)
+        assertEquals(Waehrung.CHF, t.sitzung.state.value.currency)
         assertEquals(Zustand.GEBRAUCHT, t.sitzung.state.value.priceCondition)
     }
 

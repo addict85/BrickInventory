@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.model.ui.model
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.model.BrickLinkRef
 import ch.brickinventoryapp.model.data.model.Instruction
@@ -101,7 +102,7 @@ data class MerkpostenAnsicht(
     val imageUrl: String? = null,
     val imageLocal: String? = null,
     val marktpreis: Double? = null,
-    val waehrung: String = "EUR",
+    val waehrung: Waehrung = Waehrung.EUR,
     val owned: Boolean = false,
     val alarm: MerkpostenAlarmAnsicht? = null,
     val preisvergleichUrl: String? = null,

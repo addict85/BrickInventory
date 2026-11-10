@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.zustand.ui
 
+import ch.brickinventoryapp.model.fach.Laufstatus
 /**
  * Was folgt aus einer CSV-Statusmeldung? Getrennt von `handleCsvStatus()`
  * (AppViewModel), weil die Entscheidung weder `Context` noch `viewModelScope`
@@ -28,20 +29,19 @@ internal enum class CsvFolge {
  * schon sehen und der Dienst schon laufen — sonst wirkt die App zwischen
  * Annahme und erster Zeile eingefroren.
  */
-internal fun importLaeuft(status: String?): Boolean =
-    status == "running" || status == "pending"
+internal fun importLaeuft(status: Laufstatus?): Boolean = status?.laeuft == true
 
 /**
  * Die eigentliche Regel: Nachgeladen wird beim Übergang von „läuft“ zu „fertig“, nicht in
  * jedem Zustand „fertig“.
  */
-internal fun csvFolge(warVorherAktiv: Boolean, status: String?): CsvFolge = when {
+internal fun csvFolge(warVorherAktiv: Boolean, status: Laufstatus?): CsvFolge = when {
     // Läuft: Dienst nur beim Anlaufen starten, nicht bei jeder Fortschrittszeile.
     importLaeuft(status) -> if (warVorherAktiv) CsvFolge.NICHTS else CsvFolge.DIENST_STARTEN
 
     // Ein Fehler wird gemeldet, solange er ansteht — hier ist das Aufräumen
     // gewollt idempotent und nicht an den Übergang gebunden.
-    status == "error" -> CsvFolge.FEHLER_AUFRAEUMEN
+    status == Laufstatus.FEHLER -> CsvFolge.FEHLER_AUFRAEUMEN
 
     status == null -> CsvFolge.NICHTS
 

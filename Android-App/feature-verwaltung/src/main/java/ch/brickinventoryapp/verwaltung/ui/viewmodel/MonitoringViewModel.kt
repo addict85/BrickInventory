@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.verwaltung.ui.viewmodel
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -45,7 +46,7 @@ data class MonitoringUiState(
     val cacheTtl: String = "24",
     val vorgabeZustand: Zustand = Zustand.NEU,
     /** Das Design, das der Verwalter allen vorgibt — nicht das eigene des Kontos. */
-    val vorgabeDesign: String? = null,
+    val vorgabeDesign: Design? = null,
     /** Der Server sagte `nur_admins`: Die Abfrageschleife hört auf, statt alle 5 s erneut abgewiesen zu werden. */
     val zugriffEntzogen: Boolean = false,
 )
@@ -151,7 +152,7 @@ class MonitoringViewModel @Inject constructor(
     }
 
     fun vorgabeZustandWaehlen(zustand: Zustand) = gespeichert(einstellungen = true) { setzeVorgabeZustand(zustand) }
-    fun designWaehlen(theme: String) = gespeichert(einstellungen = true) { setzeDesign(theme) }
+    fun designWaehlen(theme: Design) = gespeichert(einstellungen = true) { setzeDesign(theme) }
     fun cacheDauerSpeichern(stunden: Int) = gespeichert { setzeCacheDauer(stunden) }
     fun cacheLeeren(alles: Boolean) = gespeichert(R.string.monitoring_cache_cleared) { leereCache(alles) }
     fun grenzwerteSpeichern(rebrickable: Int, bricklink: Int, brickset: Int) =
@@ -294,7 +295,7 @@ class MonitoringViewModel @Inject constructor(
      * Wert in den Zustand und merkt ihn, damit die Anzeige sofort wechselt und den
      * Kaltstart überlebt.
      */
-    internal suspend fun setzeDesign(theme: String): Boolean {
+    internal suspend fun setzeDesign(theme: Design): Boolean {
         val ok = verwaltung.setAppTheme(theme) is Ergebnis.Success
         if (ok) _state.update { it.copy(vorgabeDesign = theme) }
         return ok

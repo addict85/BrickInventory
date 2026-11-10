@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import android.content.Context
 import android.content.res.Configuration
 import androidx.compose.material3.MaterialTheme
@@ -92,7 +93,7 @@ class PreisalarmeAnzeigeTest {
         welt.pfade.antworten["/api/v1/sets/75192-1/alert"] = """{"success":true}"""
         val vm = einstellungen()
         compose.setContent {
-            BrickInventoryManagerTheme(theme = "classic") {
+            BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 Surface(color = MaterialTheme.colorScheme.background) {
                     PreisalarmeRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "",
                         snackbarHostState = remember { SnackbarHostState() }, onSetClick = { geoeffnet += it },

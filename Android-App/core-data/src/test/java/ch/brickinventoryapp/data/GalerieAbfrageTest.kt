@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.model.data.model.SetsResponse
-import ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
@@ -97,7 +97,7 @@ class GalerieAbfrageTest {
     fun `jeder Filter steht in der Anfrage an den Server`() = runTest {
         server.enqueue(MockResponse().setResponseCode(200).setBody(antwort("75192-1")))
         repo.getSets(accounts = "7", search = "falcon", theme = "Star Wars",
-                     sort = "price_desc", page = 3)
+                     sort = Setsortierung.PREIS_ABSTEIGEND, page = 3)
         val pfad = server.takeRequest().path ?: ""
 
         // Werte einzeln, damit die Meldung sagt, WELCHER fehlt. Ein fehlender
@@ -186,7 +186,7 @@ class GalerieAbfrageTest {
 
         // Auch mit ausgeschriebener Standardsortierung ist es dieselbe Sicht —
         // loadSets() reicht sie immer mit, die Vorgabe ist also der Normalfall.
-        assert(nummern(repo.getSets(sort = GALLERY_DEFAULT_SORT)) == listOf("10-1", "11-1")) {
+        assert(nummern(repo.getSets(sort = Setsortierung.VORGABE)) == listOf("10-1", "11-1")) {
             "Die Standardsortierung ist die volle Sicht — sonst greift der Cache nie, " +
                 "weil die Galerie den Wert immer mitschickt"
         }

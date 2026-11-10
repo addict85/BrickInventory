@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.ui.components.Rueckfrage
@@ -260,7 +261,7 @@ internal fun AcquisitionManagementScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 private fun AcquisitionManagementRow(
     acquisition: KaufAnsicht,
-    currency: String,
+    currency: Waehrung,
     onSave: (price: Double?, cond: Zustand?, qty: Int?, date: String?) -> Unit,
     onDelete: () -> Unit
 ) {
@@ -400,7 +401,7 @@ private fun AcquisitionManagementRow(
                 { Text("≈", modifier = Modifier.semantics {
                     contentDescription = geschaetztText }) }
             } else null,
-            suffix = acquisition.currency?.let { w -> { Text(w, style = MaterialTheme.typography.bodySmall) } },
+            suffix = acquisition.currency?.let { w -> { Text(w.code, style = MaterialTheme.typography.bodySmall) } },
             keyboardOptions = NumericInput.preisTastatur(),
             keyboardActions = KeyboardActions(
                 onDone = { focusManager.clearFocus(); flushPending() }

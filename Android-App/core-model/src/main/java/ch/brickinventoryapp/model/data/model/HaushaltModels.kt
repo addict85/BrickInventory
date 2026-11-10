@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.model.data.model
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -50,7 +51,7 @@ data class HouseholdStatusResponse(
     val success: Boolean = false,
     @SerialName("is_main") val isMain: Boolean = false,
     @SerialName("is_sub")  val isSub: Boolean = false,
-    val currency: String = "",
+    val currency: Waehrung = Waehrung.KEINE,
     @SerialName("linked_to") val linkedTo: KontoName? = null,
     /** Alle Elternkonten; ein älterer Server schickt nur [linkedTo]. */
     val parents: List<KontoName> = emptyList(),
@@ -121,7 +122,7 @@ data class Acquisition(
     /** Ein eingesetzter Marktpreis, kein bezahlter Betrag. */
     @SerialName("price_estimated") val priceEstimated: Boolean = false,
     /** Währung, in der der Preis erfasst wurde. */
-    val currency: String? = null,
+    val currency: Waehrung? = null,
 ) {
     // Effective price: whichever field is set (sets use purchase_price, parts/figs use unit_price)
     val effectivePrice: Double? get() = purchasePrice ?: unitPrice

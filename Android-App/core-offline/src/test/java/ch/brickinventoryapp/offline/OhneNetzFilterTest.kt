@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.offline
 
+import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.lokal.Bestandsart
 import ch.brickinventoryapp.model.lokal.Lokal
 import androidx.room.Room
@@ -94,7 +95,7 @@ class OhneNetzFilterTest {
     }
     private val teileRepo = TeileRepositoryImpl(teileApi, ablage)
 
-    private fun setsOffline(search: String? = null, theme: String? = null, storage: String? = null, sort: String? = null) =
+    private fun setsOffline(search: String? = null, theme: String? = null, storage: String? = null, sort: Setsortierung? = null) =
         runBlocking { setsRepo.getSets(null, search, theme, sort, 1, 2, storage) }
             .let { it as Ergebnis.Success }.also { assertEquals("trägt den Stand", STAND, it.stand) }
             .data.sets.map { it.setNumber }
@@ -118,7 +119,7 @@ class OhneNetzFilterTest {
         assertEquals("Lagerort", listOf("10001-1", "10003-1"), setsOffline(storage = "Kiste 1"))
         assertEquals("Thema und Lagerort zusammen", listOf("10001-1"), setsOffline(theme = "Castle", storage = "Kiste 1"))
         assertEquals("Sortierung nach Name", listOf("21000-1", "10001-1", "10002-1", "30000-1", "10003-1"),
-            setsOffline(sort = "name_asc"))
+            setsOffline(sort = Setsortierung.NAME))
     }
 
     @Test

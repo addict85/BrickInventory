@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.gemeinsam.ui
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.ui.graphics.luminance
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
@@ -53,7 +54,7 @@ import ch.brickinventoryapp.ui.components.mitSchrift
 @Composable
 fun AcquisitionSummarySection(
     acquisitions: List<KaufAnsicht>,
-    currency: String,
+    currency: Waehrung,
     onEditPrices: () -> Unit
 ) {
     // Bei grosser Schrift die Käufe UNTER die Bezeichnung: Neben ihr blieb für
@@ -110,7 +111,7 @@ fun AcquisitionSummarySection(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun KaufZeile(acq: KaufAnsicht, currency: String) {
+private fun KaufZeile(acq: KaufAnsicht, currency: Waehrung) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         val mitte = Modifier.align(Alignment.CenterVertically)
         Text(mengeManuell(acq.quantity), mitte.vorgelesenAls(stueckzahl(acq.quantity)),
@@ -224,7 +225,7 @@ fun InfoPlakette(text: String, modifier: Modifier = Modifier, icon: androidx.com
  * @param waehrung Währungscode aus den Einstellungen
  */
 @Composable
-fun ManuelleKachelFuss(preis: Double?, waehrung: String) {
+fun ManuelleKachelFuss(preis: Double?, waehrung: Waehrung) {
     Text(
         if (preis != null) fmtMoney(preis, waehrung) else "—",
         style = MaterialTheme.typography.bodySmall,
@@ -298,7 +299,7 @@ fun ManuelleKachel(
     zustand: Zustand?,
     besitzer: List<KontoAnsicht>,
     preis: Double?,
-    waehrung: String,
+    waehrung: Waehrung,
     onEdit: () -> Unit,
     farbe: Color? = null,
     farbname: String? = null,

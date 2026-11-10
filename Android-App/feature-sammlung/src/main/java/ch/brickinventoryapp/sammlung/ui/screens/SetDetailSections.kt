@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
 
@@ -77,7 +78,7 @@ import ch.brickinventoryapp.gemeinsam.ui.WertKacheln
  * Kaufpreis und G&V stehen in jedem Design in den Wert-Kacheln oben, eine Zeile hier
  * wiederholte sie mit einer Prozentangabe aus dem Gesamtvergleich über den Zeilen je Zustand.
  */
-internal fun LazyListScope.setDetailPriceSection(detailState: SetDetailUiState, price: SetPreisAnsicht?, history: PreisverlaufAnsicht?, currency: String) {
+internal fun LazyListScope.setDetailPriceSection(detailState: SetDetailUiState, price: SetPreisAnsicht?, history: PreisverlaufAnsicht?, currency: Waehrung) {
     if (price != null && !price.noPrice || detailState.setPriceLoading) {
         item {
             // „Preisverlauf“, sobald ein Verlauf da ist: Direkt über der Karte steht schon
@@ -91,7 +92,7 @@ internal fun LazyListScope.setDetailPriceSection(detailState: SetDetailUiState, 
 }
 
 @Composable
-private fun PreisKarteInhalt(detailState: SetDetailUiState, price: SetPreisAnsicht?, history: PreisverlaufAnsicht?, currency: String) {
+private fun PreisKarteInhalt(detailState: SetDetailUiState, price: SetPreisAnsicht?, history: PreisverlaufAnsicht?, currency: Waehrung) {
     if (detailState.setPriceLoading && price == null) {
         PreisLaedtZeile()
     } else if (price != null && !price.noPrice) {
@@ -114,7 +115,7 @@ private fun PreisKarteInhalt(detailState: SetDetailUiState, price: SetPreisAnsic
 }
 
 /** Stammdaten: Nummer, Menge (änderbar), Erfassungsdatum. */
-internal fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, lagerZustand: LagerUiState, aktionen: SetDetailAktionen, acquisitions: List<KaufAnsicht>, currency: String, fmtDate: (String?) -> String, onNavigateToAcqMgmt: (type: Postenart, id: String, colorId: Int, title: String) -> Unit) {
+internal fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, lagerZustand: LagerUiState, aktionen: SetDetailAktionen, acquisitions: List<KaufAnsicht>, currency: Waehrung, fmtDate: (String?) -> String, onNavigateToAcqMgmt: (type: Postenart, id: String, colorId: Int, title: String) -> Unit) {
     // ── Set details section ────────────────────────────────────────────
     item {
         SectionCard(title = stringResource(R.string.detail_section_details)) {
@@ -334,7 +335,7 @@ internal fun LazyListScope.setDetailHeroImage(
 internal fun LazyListScope.setDetailAlarmSection(
     setNumber: String,
     alarme: List<PreisalarmAnsicht>,
-    currency: String,
+    currency: Waehrung,
     onSetze: (setNumber: String, richtung: String, roh: String, zustand: Zustand) -> Unit,
     /** Aus, wo die Liste selbst schon einen Rand hat (Merkposten-Detail). */
     aussenAbstand: Boolean = true,

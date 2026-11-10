@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -46,15 +47,15 @@ import org.junit.Test
  */
 class TextKontrastTest {
 
-    private val designs = listOf("classic", "brick", "werkbank", "farbfaecher", "noppe", "hochglanz")
+    private val designs = Design.entries
 
     private data class Fassung(val name: String, val s: ColorScheme, val status: StatusFarben, val diagramm: ChartColors)
 
     private val fassungen: List<Fassung> = designs.map {
-        Fassung(it, farbschema(it), statusFarbenFuer(it), diagrammFarben(it, false, farbschema(it)))
+        Fassung(it.kennung, farbschema(it), statusFarbenFuer(it), diagrammFarben(it, false, farbschema(it)))
     } + designs.filter { hatDunkleFassung(it) }.map {
         val s = farbschema(it, dunkel = true)
-        Fassung("$it/dunkel", s, statusFarbenFuer(it, dunkel = true), diagrammFarben(it, true, s))
+        Fassung("${it.kennung}/dunkel", s, statusFarbenFuer(it, dunkel = true), diagrammFarben(it, true, s))
     }
 
     /**
@@ -112,7 +113,7 @@ class TextKontrastTest {
 
     private fun k(a: Color, b: Color) = Kontrast.verhaeltnis(a.toArgb(), b.toArgb())
 
-    private fun akzent(f: Fassung) = akzentflaechen(f.name.substringBefore('/'), f.name.endsWith("/dunkel"), f.s)
+    private fun akzent(f: Fassung) = akzentflaechen(checkNotNull(Design.aus(f.name.substringBefore('/'))), f.name.endsWith("/dunkel"), f.s)
 
     /** App-Leisten und Wert-Kacheln: Schrift auf ihrer Fläche wie jede andere Rolle. */
     @Test

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.zustand.ui.abgeleitet
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
 import ch.brickinventoryapp.model.ui.model.KennzahlenAnsicht
@@ -8,7 +9,6 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.zustand.ui.Aenderung
@@ -89,7 +89,7 @@ class GalerieViewModel @Inject constructor(
         vergissScroll = { scrollMemory.vergiss("gallery") },
         lokal = sets.beobachteSets(),
         ungefiltert = { g ->
-            g.galleryQuery.isBlank() && g.galleryTheme.isBlank() && g.gallerySort == GALLERY_DEFAULT_SORT &&
+            g.galleryQuery.isBlank() && g.galleryTheme.isBlank() && g.gallerySort == Setsortierung.VORGABE &&
                 filter.kontoFuer(ScopeFilter.View.GALLERY) == null && filter.lagerFuer(ScopeFilter.View.GALLERY).isNullOrBlank()
         },
     )
@@ -119,7 +119,7 @@ class GalerieViewModel @Inject constructor(
         galerie.stelleFilterWieder(
             suche = gemerkt[SUCHE] ?: "",
             thema = gemerkt[THEMA] ?: "",
-            sortierung = gemerkt[SORTIERUNG] ?: GALLERY_DEFAULT_SORT,
+            sortierung = Setsortierung.aus(gemerkt[SORTIERUNG]),
         )
     }
 
@@ -164,8 +164,8 @@ class GalerieViewModel @Inject constructor(
         galerie.setzeThema(theme)
     }
 
-    fun setGallerySort(sort: String) {
-        gemerkt[SORTIERUNG] = sort
+    fun setGallerySort(sort: Setsortierung) {
+        gemerkt[SORTIERUNG] = sort.kennung
         galerie.setzeSortierung(sort)
     }
 
@@ -261,7 +261,7 @@ class GalerieViewModel @Inject constructor(
         _preise.value = emptyMap()
         gemerkt[SUCHE] = ""
         gemerkt[THEMA] = ""
-        gemerkt[SORTIERUNG] = GALLERY_DEFAULT_SORT
+        gemerkt[SORTIERUNG] = Setsortierung.VORGABE.kennung
     }
 
     private companion object {

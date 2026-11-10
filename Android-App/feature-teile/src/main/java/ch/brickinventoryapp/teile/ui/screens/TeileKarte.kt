@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.teile.ui.screens
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import androidx.compose.material3.Button
 import ch.brickinventoryapp.ui.components.fokusRahmen
 import ch.brickinventoryapp.ui.theme.farbeAusHex
@@ -53,7 +54,7 @@ import ch.brickinventoryapp.gemeinsam.ui.mengeAusSet
 
 @Composable
 internal fun ManualPartTile(part: ManuellesTeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
-                   waehrung: String, onEdit: () -> Unit) {
+                   waehrung: Waehrung, onEdit: () -> Unit) {
     val farbe = remember(part.colorHex) {
         farbeAusHex(part.colorHex)
     }

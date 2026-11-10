@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import android.content.Context
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -66,7 +67,7 @@ class GalerieMeldetNachObenTest {
     private val themen = mutableListOf<String>()
 
     private val ereignisse = GalerieEreignisse(
-        suche = { gesucht += it }, thema = { themen += it }, sortierung = { sortiert += it },
+        suche = { gesucht += it }, thema = { themen += it }, sortierung = { sortiert += it.kennung },
         mehrLaden = {}, konto = {}, lagerort = {}, aktualisieren = {},
         setErfassen = {}, manuelleErfassungQuittiert = {},
     )
@@ -79,7 +80,7 @@ class GalerieMeldetNachObenTest {
         )
         val zustand = GalerieZustand(AppUiState(isLoggedIn = true), BlickfeldUiState(), galerie, emptyMap(), BarcodeUiState(), LagerUiState())
         compose.setContent {
-            BrickInventoryManagerTheme(theme = "classic") {
+            BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 Surface(color = MaterialTheme.colorScheme.background) {
                     GalleryScreen(zustand, ereignisse, coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = {}, onSetClick = {})
                 }

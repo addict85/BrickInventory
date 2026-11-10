@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.zustand.ui
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.model.*
 import ch.brickinventoryapp.model.ui.model.LagerortAnsicht
@@ -26,13 +28,13 @@ data class AppUiState(
     val isAdmin: Boolean = false,
     // Kein Token hier: Ihn liest allein der Interceptor (TokenAblage); im
     // Zustand stünde er für jede Oberfläche offen, als zweite Wahrheit.
-    val currency: String = "EUR",
+    val currency: Waehrung = Waehrung.EUR,
     val priceCondition: Zustand = Zustand.NEU,
     /** Vorgabe des Servers für neu Erfasstes. */
     val defaultPriceCondition: Zustand = Zustand.NEU,
     /** null: Das Konto übernimmt die Vorgabe des Servers. */
     val userDefaultCondition: Zustand? = null,
-    val appTheme: String = "classic", // wirksames Design: eigenes des Kontos, sonst die Vorgabe
+    val appTheme: Design = Design.VORGABE, // wirksames Design: eigenes des Kontos, sonst die Vorgabe
     /**
      * Startzustand des Servers, solange er nicht `ready` meldet; sonst null. Der erste
      * Start einer Neuinstallation dauert Minuten, und statt einer Netzmeldung zeigt

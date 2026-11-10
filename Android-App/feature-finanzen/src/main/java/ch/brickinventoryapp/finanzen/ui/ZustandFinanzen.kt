@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.finanzen.ui
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.model.KlartextAnsicht
 import ch.brickinventoryapp.model.ui.model.*
 import ch.brickinventoryapp.model.ui.Fehlerklasse
@@ -33,7 +34,7 @@ data class FinanceUiState(
     /** Der ISO-Tag jedes Punkts (chart.x) — daraus entsteht die lokale x-Achse. */
     val historyTage: List<String> = emptyList(),
     /** Währung der y-Achse; null = die der Bewertung. */
-    val historyWaehrung: String? = null,
+    val historyWaehrung: Waehrung? = null,
     val historyPeriod: String = "week",
     /**
      * Welche Zeilenarten der Reiter zeigt: "sets", "parts", "figs". Im Zustand und
@@ -117,7 +118,7 @@ data class GutscheinUiState(
  * BigDecimal, weil die App diese Summe selbst bildet und 0.1 + 0.2 als Double
  * nicht 0.3 ist.
  */
-fun gutscheinSumme(gutscheine: List<GutscheinAnsicht>): Pair<java.math.BigDecimal, String>? {
+fun gutscheinSumme(gutscheine: List<GutscheinAnsicht>): Pair<java.math.BigDecimal, Waehrung>? {
     val waehrung = gutscheine.map { it.currency }.distinct().singleOrNull() ?: return null
     return gutscheine.fold(java.math.BigDecimal.ZERO) { s, g -> s + java.math.BigDecimal.valueOf(g.amount) }
         .setScale(2, java.math.RoundingMode.HALF_UP) to waehrung

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.katalog.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Katalogsortierung
 /** Was der Katalog-Reiter auslöst; der Bildschirm kennt nur diese Schnittstelle. */
 interface KatalogAktionen {
     fun loadCatalogMeta()
@@ -11,5 +12,5 @@ interface KatalogAktionen {
     fun setCatalogQuery(q: String)
     fun setCatalogTheme(themeId: Int?)
     fun setCatalogYear(year: Int?)
-    fun setCatalogSort(sort: String)
+    fun setCatalogSort(sort: Katalogsortierung)
 }

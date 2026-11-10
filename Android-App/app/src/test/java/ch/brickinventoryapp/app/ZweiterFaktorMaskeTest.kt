@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
@@ -86,7 +87,7 @@ class ZweiterFaktorMaskeTest {
 
     private fun zeige(schrift: Float = 1f) {
         compose.setContent {
-            BrickInventoryManagerTheme(theme = "classic") {
+            BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 val d = LocalDensity.current
                 CompositionLocalProvider(
                     LocalDensity provides Density(d.density, schrift),

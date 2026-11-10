@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.finanzen.ui.screens
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.finanzen.ui.viewmodel.FinanzAktionen
@@ -119,7 +120,7 @@ internal fun FinanceScreen(
     val onPeriodChange: (String) -> Unit = { aktionen.loadPortfolioHistory(it) }
     val onRefresh: () -> Unit = { aktionen.loadValuation(); aktionen.loadPortfolioHistory(financeState.historyPeriod) }
 
-    val currencyCode = valuation?.currency ?: "EUR"
+    val currencyCode = valuation?.currency ?: Waehrung.EUR
     // Gemeinsame Fassung (util/NumberFormatUtils.kt): Die Stellung von Symbol und
     // Betrag entscheidet die Sprache, wie in der Webapp.
     fun fmtPrice(v: String?): String = fmtMoneyOrDash(v, currencyCode)

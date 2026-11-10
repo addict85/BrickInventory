@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.ui.theme.Darstellung
 import ch.brickinventoryapp.ui.theme.darstellung
 import ch.brickinventoryapp.model.ui.theme.Helligkeit
@@ -35,20 +36,20 @@ class WirksamesDesignTest {
 
     @Test
     fun `ohne Wahl gilt das Design des Servers, auch bei dunklem System`() {
-        assertEquals(Darstellung("brick", false), darstellung("brick", helligkeit = Helligkeit.HELL, systemDunkel = true))
+        assertEquals(Darstellung(Design.BRICK, false), darstellung(Design.BRICK, helligkeit = Helligkeit.HELL, systemDunkel = true))
     }
 
     @Test
     fun `mit Wahl dunkel nur bei dunklem System, im selben Design`() {
-        assertEquals(Darstellung("classic", true), darstellung("classic", helligkeit = Helligkeit.SYSTEM, systemDunkel = true))
-        assertEquals(Darstellung("noppe", true), darstellung("noppe", helligkeit = Helligkeit.SYSTEM, systemDunkel = true))
-        assertEquals(Darstellung("classic", false), darstellung("classic", helligkeit = Helligkeit.SYSTEM, systemDunkel = false))
+        assertEquals(Darstellung(Design.CLASSIC, true), darstellung(Design.CLASSIC, helligkeit = Helligkeit.SYSTEM, systemDunkel = true))
+        assertEquals(Darstellung(Design.NOPPE, true), darstellung(Design.NOPPE, helligkeit = Helligkeit.SYSTEM, systemDunkel = true))
+        assertEquals(Darstellung(Design.CLASSIC, false), darstellung(Design.CLASSIC, helligkeit = Helligkeit.SYSTEM, systemDunkel = false))
     }
 
     @Test
     fun `Dunkel gilt auch bei hellem System, Hell auch bei dunklem`() {
-        assertEquals(Darstellung("brick", true), darstellung("brick", helligkeit = Helligkeit.DUNKEL, systemDunkel = false))
-        assertEquals(Darstellung("noppe", false), darstellung("noppe", helligkeit = Helligkeit.HELL, systemDunkel = true))
+        assertEquals(Darstellung(Design.BRICK, true), darstellung(Design.BRICK, helligkeit = Helligkeit.DUNKEL, systemDunkel = false))
+        assertEquals(Darstellung(Design.NOPPE, false), darstellung(Design.NOPPE, helligkeit = Helligkeit.HELL, systemDunkel = true))
     }
 
     @Test
@@ -62,30 +63,30 @@ class WirksamesDesignTest {
 
     @Test
     fun `Werkbank bleibt, wie es ist`() {
-        assertEquals(Darstellung("werkbank", false), darstellung("werkbank", helligkeit = Helligkeit.SYSTEM, systemDunkel = true))
+        assertEquals(Darstellung(Design.WERKBANK, false), darstellung(Design.WERKBANK, helligkeit = Helligkeit.SYSTEM, systemDunkel = true))
     }
 
     // Die Einstellungen schalten Hell/Dunkel bei Werkbank ab. Gegenprobe (02.11.2026,
     // kotlinc): helligkeitWaehlbar gibt immer true zurück → rot.
     @Test
     fun `bei Werkbank ist Hell und Dunkel nicht waehlbar`() {
-        assertTrue(!helligkeitWaehlbar("werkbank"))
-        assertTrue(helligkeitWaehlbar("classic"))
-        assertTrue(helligkeitWaehlbar("werkbank", systemfarben = true, sdk = 31))
+        assertTrue(!helligkeitWaehlbar(Design.WERKBANK))
+        assertTrue(helligkeitWaehlbar(Design.CLASSIC))
+        assertTrue(helligkeitWaehlbar(Design.WERKBANK, systemfarben = true, sdk = 31))
     }
 
     // Gegenprobe: in darstellung() `sdk >= SYSTEMFARBEN_AB_SDK`
     // entfernt → rot (Android 11); `dynamisch ||` entfernt → rot (Werkbank dunkel).
     @Test
     fun `Systemfarben gelten erst ab Android 12 und haben immer eine dunkle Fassung`() {
-        assertEquals(Darstellung("classic", false, systemfarben = false),
-            darstellung("classic", helligkeit = Helligkeit.SYSTEM, systemDunkel = false, systemfarben = true, sdk = 30))
-        assertEquals(Darstellung("classic", false, systemfarben = true),
-            darstellung("classic", helligkeit = Helligkeit.SYSTEM, systemDunkel = false, systemfarben = true, sdk = 31))
-        assertEquals(Darstellung("werkbank", true, systemfarben = true),
-            darstellung("werkbank", helligkeit = Helligkeit.SYSTEM, systemDunkel = true, systemfarben = true, sdk = 34))
-        assertEquals("Ohne Wahl kein Dunkel, auch mit Systemfarben", Darstellung("brick", false, systemfarben = true),
-            darstellung("brick", helligkeit = Helligkeit.HELL, systemDunkel = true, systemfarben = true, sdk = 34))
+        assertEquals(Darstellung(Design.CLASSIC, false, systemfarben = false),
+            darstellung(Design.CLASSIC, helligkeit = Helligkeit.SYSTEM, systemDunkel = false, systemfarben = true, sdk = 30))
+        assertEquals(Darstellung(Design.CLASSIC, false, systemfarben = true),
+            darstellung(Design.CLASSIC, helligkeit = Helligkeit.SYSTEM, systemDunkel = false, systemfarben = true, sdk = 31))
+        assertEquals(Darstellung(Design.WERKBANK, true, systemfarben = true),
+            darstellung(Design.WERKBANK, helligkeit = Helligkeit.SYSTEM, systemDunkel = true, systemfarben = true, sdk = 34))
+        assertEquals("Ohne Wahl kein Dunkel, auch mit Systemfarben", Darstellung(Design.BRICK, false, systemfarben = true),
+            darstellung(Design.BRICK, helligkeit = Helligkeit.HELL, systemDunkel = true, systemfarben = true, sdk = 34))
     }
 
     @Test

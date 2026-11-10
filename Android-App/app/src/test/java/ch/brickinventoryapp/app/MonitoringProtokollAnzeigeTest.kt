@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasClickAction
@@ -76,7 +77,7 @@ class MonitoringProtokollAnzeigeTest {
     /** Zeichnet die Überwachung mit zwei Protokollzeilen und klappt das Protokoll auf. */
     private fun zeigeOffen() {
         val zustand = MonitoringZustand(MonitoringUiState(), HintergrundUiState(), VerwaltungUiState(protokoll = listOf(info, fehler)),
-            mapOf(VorwaermNetz.WLAN to true, VorwaermNetz.MOBIL to false, VorwaermNetz.ROAMING to false), "classic", 0L)
+            mapOf(VorwaermNetz.WLAN to true, VorwaermNetz.MOBIL to false, VorwaermNetz.ROAMING to false), Design.CLASSIC, 0L)
         val cache = CacheEreignisse(vorgabeZustand = {}, ablageLeeren = {}, netz = { _, _ -> }, design = {},
             cacheDauer = {}, cacheLeeren = {}, grenzwerte = { _, _, _ -> })
         compose.setContent { BrickInventoryManagerTheme { MonitoringScreen(zustand, aktionen, cache) } }

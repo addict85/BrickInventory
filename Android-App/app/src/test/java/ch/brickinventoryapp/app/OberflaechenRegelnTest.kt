@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.app.nav.Reiter
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.foundation.layout.Box
@@ -153,7 +155,7 @@ class OberflaechenRegelnTest {
 
     private fun zeige(schrift: Float = 1f, inhalt: @Composable () -> Unit) {
         compose.setContent {
-            BrickInventoryManagerTheme(theme = "classic") {
+            BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 val d = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(d.density, schrift)) {
                     Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
@@ -176,11 +178,11 @@ class OberflaechenRegelnTest {
             Box(Modifier.width(188.dp)) {
                 SetCard(SetAnsicht(setNumber = "75192-1", name = "Millennium Falcon", theme = "Star Wars"),
                     serverUrl = "", imageLoader = bilder, onClick = {},
-                    preis = KachelPreis(812.5, 16.1), waehrung = "CHF")
+                    preis = KachelPreis(812.5, 16.1), waehrung = Waehrung("CHF"))
             }
         }
         assertEquals("Prozent", 1, zeilen(compose.onNodeWithText(fmtProzent(16.1), useUnmergedTree = true)))
-        assertEquals("Betrag", 1, zeilen(compose.onNodeWithText(fmtMoney(812.5, "CHF"), useUnmergedTree = true)))
+        assertEquals("Betrag", 1, zeilen(compose.onNodeWithText(fmtMoney(812.5, Waehrung("CHF")), useUnmergedTree = true)))
     }
 
     /**
@@ -189,8 +191,8 @@ class OberflaechenRegelnTest {
      * Reihe sind gleich hoch.
      */
     private fun wertKachelnGanz(schrift: Float) {
-        val markt = fmtMoney(1712.4, "CHF")
-        val kauf = fmtMoney(1500.0, "CHF")
+        val markt = fmtMoney(1712.4, Waehrung("CHF"))
+        val kauf = fmtMoney(1500.0, Waehrung("CHF"))
         val pnl = fmtProzent(14.2)
         zeige(schrift) {
             Box(Modifier.width(360.dp).padding(horizontal = 16.dp)) {
@@ -225,10 +227,10 @@ class OberflaechenRegelnTest {
     fun `Kaufpreis bei 200 Prozent steht unter der Bezeichnung in einer Zeile`() {
         zeige(schrift = 2f) {
             Box(Modifier.width(360.dp)) {
-                AcquisitionSummarySection(listOf(KaufAnsicht(id = 1, quantity = 1, purchasePrice = 700.0)), "CHF") {}
+                AcquisitionSummarySection(listOf(KaufAnsicht(id = 1, quantity = 1, purchasePrice = 700.0)), Waehrung("CHF")) {}
             }
         }
-        val betrag = compose.onNodeWithText(fmtMoney(700.0, "CHF"), useUnmergedTree = true)
+        val betrag = compose.onNodeWithText(fmtMoney(700.0, Waehrung("CHF")), useUnmergedTree = true)
         assertEquals(1, zeilen(betrag))
         val bezeichnung = compose.onNodeWithText(ctx.getString(R.string.detail_purchase_price)).fetchSemanticsNode().boundsInRoot
         assertTrue("Der Betrag steht unter der Bezeichnung", betrag.fetchSemanticsNode().boundsInRoot.top >= bezeichnung.bottom)
@@ -360,9 +362,9 @@ class OberflaechenRegelnTest {
             compose.onNodeWithText(ctx.getString(R.string.detail_pnl_tile), useUnmergedTree = true).assertIsDisplayed()
             // Die G&V-Kachel nennt Betrag und Prozent (812.50 − 700.00); der Prozentwert allein steht
             // weiter unten in der Plakette je Zustand.
-            compose.onNodeWithText("+" + fmtMoney(112.5, "CHF") + " · " + fmtProzent(16.1), useUnmergedTree = true)
+            compose.onNodeWithText("+" + fmtMoney(112.5, Waehrung("CHF")) + " · " + fmtProzent(16.1), useUnmergedTree = true)
                 .assertIsDisplayed()
-            compose.onAllNodesWithText(fmtMoney(812.5, "CHF"), useUnmergedTree = true)[0].assertIsDisplayed()
+            compose.onAllNodesWithText(fmtMoney(812.5, Waehrung("CHF")), useUnmergedTree = true)[0].assertIsDisplayed()
         } finally {
             welt.close()
         }
@@ -800,9 +802,9 @@ class OberflaechenRegelnTest {
         zeige {
             Row(Modifier.width(380.dp)) {
                 Box(Modifier.weight(1f)) {
-                    SetCard(voll, "", bilder, {}, preis = KachelPreis(449.95, 12.5), waehrung = "CHF")
+                    SetCard(voll, "", bilder, {}, preis = KachelPreis(449.95, 12.5), waehrung = Waehrung("CHF"))
                 }
-                Box(Modifier.weight(1f)) { SetCard(karg, "", bilder, {}, waehrung = "CHF") }
+                Box(Modifier.weight(1f)) { SetCard(karg, "", bilder, {}, waehrung = Waehrung("CHF")) }
             }
         }
         val a = compose.onNode(hasText("10294-1") and hasClickAction()).fetchSemanticsNode().boundsInRoot
@@ -822,10 +824,10 @@ class OberflaechenRegelnTest {
                 .first { it.menge > 1 && it.kaufpreis != null && it.wert != null }
             // Selbst gerechnet, nicht aus kaufGesamt/gewinn: Sonst prüfte der Test die Rechnung mit sich selbst.
             val gesamt = BigDecimal.valueOf(zeile.kaufpreis!!).multiply(BigDecimal(zeile.menge)).toDouble()
-            val kauf = ctx.getString(R.string.finance_purchase_total, fmtMoney(gesamt, "CHF"))
+            val kauf = ctx.getString(R.string.finance_purchase_total, fmtMoney(gesamt, Waehrung("CHF")))
             compose.onNodeWithText(kauf, useUnmergedTree = true).fetchSemanticsNode()
             val gewinn = BigDecimal.valueOf(zeile.wert!!).subtract(BigDecimal.valueOf(gesamt)).toDouble()
-            compose.onAllNodesWithText(fmtMoney(gewinn, "CHF"), substring = true, useUnmergedTree = true)
+            compose.onAllNodesWithText(fmtMoney(gewinn, Waehrung("CHF")), substring = true, useUnmergedTree = true)
                 .fetchSemanticsNodes().let { assertTrue("Gewinn als Betrag steht da", it.isNotEmpty()) }
         } finally {
             welt.close()
@@ -852,16 +854,16 @@ class OberflaechenRegelnTest {
             val guv = BigDecimal("212.40")
             val wert = BigDecimal("1712.40")
             assertEquals(0, einstand.add(guv).compareTo(wert))
-            val einstandText = ctx.getString(R.string.finance_einstand_zeile, fmtMoney(einstand.toDouble(), "CHF"))
+            val einstandText = ctx.getString(R.string.finance_einstand_zeile, fmtMoney(einstand.toDouble(), Waehrung("CHF")))
             assertTrue(einstandText, stehtDa(einstandText))
-            val guvText = ctx.getString(R.string.finance_guv_zeile, "+" + fmtMoney(guv.toDouble(), "CHF"))
+            val guvText = ctx.getString(R.string.finance_guv_zeile, "+" + fmtMoney(guv.toDouble(), Waehrung("CHF")))
             assertTrue(guvText, stehtDa(guvText))
-            assertTrue("Marktwert", stehtDa(fmtMoney(wert.toDouble(), "CHF")))
+            assertTrue("Marktwert", stehtDa(fmtMoney(wert.toDouble(), Waehrung("CHF"))))
             // Der Einstand ALLER Positionen (mit dem Baumhaus) stünde neben einem Marktwert ohne es.
-            val alle = ctx.getString(R.string.finance_einstand_zeile, fmtMoney(1680.0, "CHF"))
+            val alle = ctx.getString(R.string.finance_einstand_zeile, fmtMoney(1680.0, Waehrung("CHF")))
             assertTrue("kein Einstand aller Positionen", !stehtDa(alle))
             val gerechnet = ctx.resources.getQuantityString(R.plurals.finance_basis_gerechnet, 3, 2, 3)
-            val ohne = ctx.resources.getQuantityString(R.plurals.finance_basis_ohne_markt, 1, 1, fmtMoney(180.0, "CHF"))
+            val ohne = ctx.resources.getQuantityString(R.plurals.finance_basis_ohne_markt, 1, 1, fmtMoney(180.0, Waehrung("CHF")))
             assertTrue(gerechnet, stehtDa(gerechnet, substring = true))
             assertTrue(ohne, stehtDa(ohne, substring = true))
         } finally {
@@ -879,17 +881,17 @@ class OberflaechenRegelnTest {
             Row(Modifier.width(380.dp)) {
                 Box(Modifier.weight(1f)) {
                     SetCard(SetAnsicht(setNumber = "21318-1", name = "Baumhaus"), "", bilder, {},
-                        preis = KachelPreis(180.0, null, "kauf"), waehrung = "CHF")
+                        preis = KachelPreis(180.0, null, "kauf"), waehrung = Waehrung("CHF"))
                 }
                 // Ältere Server ohne kachel_quelle lieferten nur Marktpreise.
                 Box(Modifier.weight(1f)) {
                     SetCard(SetAnsicht(setNumber = "75192-1", name = "Millennium Falcon"), "", bilder, {},
-                        preis = KachelPreis(812.5, 16.1), waehrung = "CHF")
+                        preis = KachelPreis(812.5, 16.1), waehrung = Waehrung("CHF"))
                 }
             }
         }
         compose.onAllNodesWithText(kauf, useUnmergedTree = true).assertCountEquals(1)
         compose.onAllNodesWithText(markt, useUnmergedTree = true).assertCountEquals(1)
-        assertTrue(stehtDa(fmtMoney(180.0, "CHF")))
+        assertTrue(stehtDa(fmtMoney(180.0, Waehrung("CHF"))))
     }
 }

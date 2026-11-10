@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui
 
+import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.data.model.SetItem
 import ch.brickinventoryapp.model.data.model.SetsResponse
 import ch.brickinventoryapp.model.data.model.StatsResponse
@@ -137,7 +138,7 @@ internal class Galerie(
         laden()
     }
 
-    fun setzeSortierung(sort: String) {
+    fun setzeSortierung(sort: Setsortierung) {
         vergissScroll()
         _state.update { it.copy(gallerySort = sort) }
         laden()
@@ -160,7 +161,7 @@ internal class Galerie(
         _state.update { st -> st.copy(sets = st.sets.map { if (it.setNumber == setNumber) aenderung(it) else it }) }
 
     /** Gemerkte Filter übernehmen, ohne zu laden — das tut der Bildschirm beim Betreten. */
-    fun stelleFilterWieder(suche: String, thema: String, sortierung: String) =
+    fun stelleFilterWieder(suche: String, thema: String, sortierung: Setsortierung) =
         _state.update { it.copy(galleryQuery = suche, galleryTheme = thema, gallerySort = sortierung) }
 
     /** Abmelden: nichts vom vorigen Konto stehen lassen, laufende Abrufe verwerfen. */

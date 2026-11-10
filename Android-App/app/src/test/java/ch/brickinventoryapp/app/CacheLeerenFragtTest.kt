@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
@@ -54,7 +55,7 @@ class CacheLeerenFragtTest {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     CacheAndLimitsSection(MonitoringUiState(),
                         mapOf(VorwaermNetz.WLAN to true, VorwaermNetz.MOBIL to false, VorwaermNetz.ROAMING to false),
-                        "classic", 0L, ereignisse)
+                        Design.CLASSIC, 0L, ereignisse)
                 }
             }
         }

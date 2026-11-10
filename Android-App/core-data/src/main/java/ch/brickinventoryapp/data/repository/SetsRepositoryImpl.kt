@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Setsortierung
+import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.api.SetsApi
@@ -36,7 +38,7 @@ class SetsRepositoryImpl @Inject constructor(
         accounts: String?,
         search: String?,
         theme: String?,
-        sort: String?,
+        sort: Setsortierung?,
         page: Int,
         pageSize: Int,
         storage: String?
@@ -47,15 +49,15 @@ class SetsRepositoryImpl @Inject constructor(
             SetsResponse(success = true, count = it.size, sets = it, total = it.size)
         } }
         val ungefiltert = search.isNullOrBlank() && theme.isNullOrBlank() && storage.isNullOrBlank() &&
-            (sort == null || sort == GALLERY_DEFAULT_SORT)
+            (sort == null || sort == Setsortierung.VORGABE)
         return when {
-            accounts != null -> sicherAufrufen { api.getSets(accounts, filter.suchtext, filter.thema, sort, page, pageSize, filter.lagerort) }
+            accounts != null -> sicherAufrufen { api.getSets(accounts, filter.suchtext, filter.thema, sort?.kennung, page, pageSize, filter.lagerort) }
             ungefiltert ->
                 ablage.abgeglichen(Faecher.SETS, { it.sets }, ausLokal, anhaengen = page > 1) {
-                    sicherAufrufen { api.getSets(null, null, null, sort, page, pageSize) }
+                    sicherAufrufen { api.getSets(null, null, null, sort?.kennung, page, pageSize) }
                 }
             else -> ablage.gefiltert(Faecher.SETS, filter, ausLokal) {
-                sicherAufrufen { api.getSets(null, filter.suchtext, filter.thema, sort, page, pageSize, filter.lagerort) }
+                sicherAufrufen { api.getSets(null, filter.suchtext, filter.thema, sort?.kennung, page, pageSize, filter.lagerort) }
             }
         }
     }
@@ -101,16 +103,16 @@ class SetsRepositoryImpl @Inject constructor(
 
     /** Wie die Galerie: ungefiltert abgelegt, gefiltert ohne Netz aus der lokalen Liste. */
     override suspend fun getMerkliste(search: String?, condition: Zustand?,
-                             sort: String?, accounts: String?): Ergebnis<MerklisteResponse> {
+                             sort: Merksortierung?, accounts: String?): Ergebnis<MerklisteResponse> {
         val filter = Filterspalten(suchtext = search?.ifBlank { null }, zustand = condition?.kennung)
         val ausLokal = { l: List<Merkposten> -> MerklisteResponse(success = true, merkposten = l.sortiert(merkOrdnung(sort))) }
         return when {
-            accounts != null -> sicherAufrufen { api.getMerkliste(search, condition?.kennung, sort, accounts) }
-            filter == Filterspalten() && (sort == null || sort == MERKLISTE_DEFAULT_SORT) ->
+            accounts != null -> sicherAufrufen { api.getMerkliste(search, condition?.kennung, sort?.kennung, accounts) }
+            filter == Filterspalten() && (sort == null || sort == Merksortierung.VORGABE) ->
                 ablage.abgeglichen(Faecher.MERKLISTE, { it.merkposten }, ausLokal) {
-                    sicherAufrufen { api.getMerkliste(search, condition?.kennung, sort, accounts) }
+                    sicherAufrufen { api.getMerkliste(search, condition?.kennung, sort?.kennung, accounts) }
                 }
-            else -> ablage.gefiltert(Faecher.MERKLISTE, filter, ausLokal) { sicherAufrufen { api.getMerkliste(search, condition?.kennung, sort, accounts) } }
+            else -> ablage.gefiltert(Faecher.MERKLISTE, filter, ausLokal) { sicherAufrufen { api.getMerkliste(search, condition?.kennung, sort?.kennung, accounts) } }
         }
     }
 

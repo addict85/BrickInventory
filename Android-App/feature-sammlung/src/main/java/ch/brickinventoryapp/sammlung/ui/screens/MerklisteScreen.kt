@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -37,7 +38,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT
 import ch.brickinventoryapp.sammlung.ui.viewmodel.MerklisteViewModel
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.model.data.ScopeFilter
@@ -197,15 +197,12 @@ internal fun MerklisteScreen(
                     platzhalter = stringResource(R.string.wanted_search),
                     modifier = Modifier.weight(1f),
                 )
-                // Dieselben Werte wie MERK_SORTS am Server und dieselbe Auswahl wie in
-                // der Webapp. qty_* fehlt in beiden: Ein Merkposten hat keine Anzahl.
                 SortierMenue(
-                    optionen = listOf("added_desc", "added_asc", "name_asc", "num_asc",
-                                      "year_desc", "price_desc", "price_asc").map { it to gallerySortLabel(it) },
+                    optionen = Merksortierung.entries.map { it to it.beschriftung() },
                     gewaehlt = zustand.sortierung,
                     onWahl = { aktionen.setzeMerklisteSortierung(it) },
                     modifier = Modifier.padding(end = Abstaende.winzig),
-                    vorgabe = MERKLISTE_DEFAULT_SORT,
+                    vorgabe = Merksortierung.VORGABE,
                 )
                 ScanKnopf({ onScan() }, Modifier.padding(end = 14.dp))
             }

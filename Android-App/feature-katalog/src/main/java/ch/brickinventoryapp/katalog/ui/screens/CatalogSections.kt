@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.katalog.ui.screens
 
+import ch.brickinventoryapp.model.fach.Katalogsortierung
 import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.semantics
@@ -76,7 +77,7 @@ internal fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?,
 
 /** Das Suchfeld über der Liste, daneben die Sortierung. */
 @Composable
-internal fun CatalogSearchField(state: CatalogUiState, onQueryChange: (String) -> Unit, onSortChange: (String) -> Unit) {
+internal fun CatalogSearchField(state: CatalogUiState, onQueryChange: (String) -> Unit, onSortChange: (Katalogsortierung) -> Unit) {
     // Suchfeld — derselbe Baustein wie in Galerie, Teilen und Minifiguren
     // (TabellenZeile.kt), damit der Leeren-Knopf überall gleich heisst.
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -87,12 +88,11 @@ internal fun CatalogSearchField(state: CatalogUiState, onQueryChange: (String) -
             modifier = Modifier.weight(1f),
         )
         SortierMenue(
-            optionen = listOf("year_desc", "year_asc", "name_asc", "num_asc", "parts_desc", "parts_asc")
-                .map { it to sortLabel(it) },
+            optionen = Katalogsortierung.entries.map { it to it.beschriftung() },
             gewaehlt = state.sort,
             onWahl = onSortChange,
             modifier = Modifier.padding(end = Abstaende.rand),
-            vorgabe = "year_desc",
+            vorgabe = Katalogsortierung.VORGABE,
         )
     }
 }

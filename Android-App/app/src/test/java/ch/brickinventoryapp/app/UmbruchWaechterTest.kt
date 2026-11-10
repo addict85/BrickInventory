@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import android.os.Looper
 import androidx.compose.material3.MaterialTheme
@@ -97,7 +98,7 @@ class UmbruchWaechterTest {
         Locale.setDefault(Locale.forLanguageTag("de-CH"))
         treiben(name, bereit)
         compose.setContent {
-            BrickInventoryManagerTheme(theme = "classic") {
+            BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 val d = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(d.density, schrift)) {
                     Surface(color = MaterialTheme.colorScheme.background) { inhalt() }

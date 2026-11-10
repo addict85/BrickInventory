@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import android.content.Context
 import ch.brickinventoryapp.testing.VerwaltungRepository
@@ -147,7 +148,7 @@ class BarrierefreiheitBefundeTest {
 
     private fun zeige(schrift: Float = 1f, inhalt: @Composable () -> Unit) {
         compose.setContent {
-            BrickInventoryManagerTheme(theme = "classic") {
+            BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 val d = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(d.density, schrift)) {
                     Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
@@ -239,7 +240,7 @@ class BarrierefreiheitBefundeTest {
                     PreisalarmCard(false) {}
                     SettingsScreen(
                         zustand = EinstellungenZustand(AppUiState(serverUrl = "https://brick.example.org"), UpdateUiState(),
-                            "system", "classic", false, false, false, false),
+                            "system", Design.CLASSIC, false, false, false, false),
                         aktionen = vm, update = update, darstellung = darstellung, onNutzerCa = { ca = it },
                         onLogout = {}, onServerWechseln = {}, scrollState = androidx.compose.foundation.rememberScrollState(),
                     )
@@ -347,7 +348,7 @@ class BarrierefreiheitBefundeTest {
         var hauptfarbe = 0
         val ablage = FocusRequester()
         compose.setContent {
-            BrickInventoryManagerTheme(theme = "classic") {
+            BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 hauptfarbe = MaterialTheme.colorScheme.primary.toArgb()
                 val modus = LocalInputModeManager.current
                 LaunchedEffect(Unit) { modus.requestInputMode(InputMode.Keyboard) }

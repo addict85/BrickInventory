@@ -172,7 +172,7 @@ class CsvImportService : Service() {
      * @return true solange der Import läuft, false wenn er fertig ist.
      */
     private fun applyStatus(s: CsvImportStatus): Boolean {
-        val running = s.status == "running" || s.status == "pending"
+        val running = s.status?.laeuft == true
         val done    = s.done  ?: 0
         val total   = s.total ?: 0
         val current = s.current ?: ""

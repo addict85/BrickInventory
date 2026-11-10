@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Merksortierung
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
 import ch.brickinventoryapp.model.lokal.Lokal
@@ -15,7 +16,6 @@ import ch.brickinventoryapp.data.alarm.Alarmeingabe
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.zustand.ui.Aenderung
@@ -85,7 +85,7 @@ class MerklisteViewModel @Inject constructor(
     private val _merklisteState = MutableStateFlow(MerklisteUiState(
         query = gemerkt[SUCHE] ?: "",
         zustandFilter = Zustand.aus(gemerkt[ZUSTAND]),
-        sortierung = gemerkt[SORTIERUNG] ?: MERKLISTE_DEFAULT_SORT,
+        sortierung = Merksortierung.aus(gemerkt[SORTIERUNG]),
     ))
     /** Ein Merkposten, der erst gelöscht wird, wenn die Snackbar ohne „Rückgängig“ endet. */
     data class VorgemerkterMerkposten(val setNumber: String, val zustand: Zustand, val besitzer: Int?, val name: String)
@@ -117,7 +117,7 @@ class MerklisteViewModel @Inject constructor(
     private var suchJob: Job? = null
 
     private fun ungefiltert(f: MerklisteUiState) = f.query.isBlank() && f.zustandFilter == null &&
-        (f.sortierung.isBlank() || f.sortierung == MERKLISTE_DEFAULT_SORT) && filter.kontoFuer(ScopeFilter.View.MERKLISTE) == null
+        f.sortierung == Merksortierung.VORGABE && filter.kontoFuer(ScopeFilter.View.MERKLISTE) == null
 
     private val alarmEingabe = Preisalarmeingabe(
         scope = viewModelScope, sets = sets,
@@ -137,7 +137,7 @@ class MerklisteViewModel @Inject constructor(
             val r = if (ungefiltert(f)) sets.aktualisiereMerkliste() else sets.getMerkliste(
                 search    = f.query.trim().ifBlank { null },
                 condition = f.zustandFilter,
-                sort      = f.sortierung.ifBlank { null },
+                sort      = f.sortierung,
                 accounts  = filter.kontoFuer(ScopeFilter.View.MERKLISTE),
             )
             when (r) {
@@ -170,8 +170,8 @@ class MerklisteViewModel @Inject constructor(
         ladeMerkliste()
     }
 
-    override fun setzeMerklisteSortierung(sortierung: String) {
-        gemerkt[SORTIERUNG] = sortierung
+    override fun setzeMerklisteSortierung(sortierung: Merksortierung) {
+        gemerkt[SORTIERUNG] = sortierung.kennung
         _merklisteState.update { it.copy(sortierung = sortierung) }
         ladeMerkliste()
     }

@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.api.KontoApi
@@ -164,12 +166,12 @@ class KontoRepositoryImpl @Inject constructor(
     /** Das wirksame Design: mit Token das des Kontos, sonst die Vorgabe. Siehe KontoApi.getAppTheme. */
     override suspend fun getAppTheme(): Ergebnis<AppThemeResponse> = sicherAufrufen { api.getAppTheme() }
 
-    /** Eigenes Design setzen; "" stellt auf die Vorgabe des Verwalters zurück. */
-    override suspend fun setzeEigenesDesign(theme: String): Ergebnis<AppThemeResponse> =
-        sicherAufrufen { api.setzeEigenesDesign(mapOf("theme" to theme)) }
+    /** Eigenes Design setzen; null stellt auf die Vorgabe des Verwalters zurück ("" auf der Leitung). */
+    override suspend fun setzeEigenesDesign(theme: Design?): Ergebnis<AppThemeResponse> =
+        sicherAufrufen { api.setzeEigenesDesign(mapOf("theme" to (theme?.kennung ?: ""))) }
 
-    override suspend fun updateSettings(currency: String, condition: Zustand): Ergebnis<GenericResponse> =
-        sicherAufrufen { api.updateSettings(mapOf("currency" to currency, "price_condition" to condition.kennung)) }
+    override suspend fun updateSettings(currency: Waehrung, condition: Zustand): Ergebnis<GenericResponse> =
+        sicherAufrufen { api.updateSettings(mapOf("currency" to currency.code, "price_condition" to condition.kennung)) }
 
     override suspend fun getDefaultCondition(): Ergebnis<DefaultConditionResponse> = sicherAufrufen { api.getDefaultCondition() }
 

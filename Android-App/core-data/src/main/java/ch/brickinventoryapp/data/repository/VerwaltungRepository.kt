@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.model.*
 
@@ -19,7 +20,7 @@ interface VerwaltungRepository {
 
     suspend fun queueCatalogImages(): Ergebnis<GenericAdminResponse>
 
-    suspend fun setAppTheme(theme: String): Ergebnis<GenericAdminResponse>
+    suspend fun setAppTheme(theme: Design): Ergebnis<GenericAdminResponse>
 
     suspend fun getStartupStatus(): Ergebnis<StartupStatus>
 

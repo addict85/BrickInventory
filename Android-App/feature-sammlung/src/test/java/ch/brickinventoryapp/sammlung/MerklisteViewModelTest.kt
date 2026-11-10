@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.coroutines.runBlocking
 import ch.brickinventoryapp.model.data.model.MerkpostenRequest
@@ -111,12 +112,12 @@ class MerklisteViewModelTest {
         val erstes = vm(gemerkt)
         erstes.setzeMerklisteSuche("Titanic")
         erstes.setzeMerklisteZustand(Zustand.GEBRAUCHT)
-        erstes.setzeMerklisteSortierung("price_desc")
+        erstes.setzeMerklisteSortierung(Merksortierung.PREIS_ABSTEIGEND)
 
         pfade.neuerProzess(io = Dispatchers.Main) { pfade, t ->
             val neu = vm(gemerkt, t)
             val f = neu.merklisteState.value
-            assertEquals(Triple("Titanic", Zustand.GEBRAUCHT, "price_desc"), Triple(f.query, f.zustandFilter, f.sortierung))
+            assertEquals(Triple("Titanic", Zustand.GEBRAUCHT, Merksortierung.PREIS_ABSTEIGEND), Triple(f.query, f.zustandFilter, f.sortierung))
             neu.ladeMerkliste()
             assertTrue("Liste geladen", neu.merklisteState.value.merkposten.isNotEmpty())
             val anfrage = pfade.anfragenAn("GET /api/v1/wanted").single()

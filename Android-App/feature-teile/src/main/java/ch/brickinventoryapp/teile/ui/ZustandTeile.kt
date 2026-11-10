@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.teile.ui
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.model.*
@@ -128,6 +129,6 @@ data class TeilelisteUiState(
  */
 data class TeileSitzungUiState(
     val serverUrl: String = "",
-    val currency: String = "EUR",
+    val currency: Waehrung = Waehrung.EUR,
     val userDefaultCondition: Zustand? = null,
 )

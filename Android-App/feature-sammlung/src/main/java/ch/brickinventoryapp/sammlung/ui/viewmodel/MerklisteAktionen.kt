@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.ScopeFilter
 
@@ -10,7 +11,7 @@ internal interface MerklisteAktionen {
     fun setzeMerklisteSuche(q: String)
     /** null: beide Zustände. */
     fun setzeMerklisteZustand(zustand: Zustand?)
-    fun setzeMerklisteSortierung(sortierung: String)
+    fun setzeMerklisteSortierung(sortierung: Merksortierung)
     fun legeMerkpostenAn(setNumber: String, zustand: Zustand, besitzer: Int? = null)
     fun verschiebeMerkposten(setNumber: String, zustand: Zustand, vonId: Int, zuId: Int)
     fun loescheMerkposten(setNumber: String, zustand: Zustand, besitzer: Int?)

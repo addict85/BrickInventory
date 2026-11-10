@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.ui.util.fmtAmount
 import ch.brickinventoryapp.ui.util.fmtEingabe
 import ch.brickinventoryapp.ui.util.fmtInt
@@ -90,7 +91,7 @@ class NumberFormatTest {
 
     @Test
     fun `Betraege enthalten Zahl und Waehrung`() {
-        val s = fmtMoney(1234.5, "CHF")
+        val s = fmtMoney(1234.5, Waehrung("CHF"))
         assert(s.contains("1") && s.contains("234")) { "Der Betrag fehlt: $s" }
         assert(s.contains("CHF") || s.contains("Fr")) { "Die Währung fehlt: $s" }
         // Zwei Nachkommastellen, wie in der Webapp (minimumFractionDigits: 2).
@@ -104,15 +105,15 @@ class NumberFormatTest {
         // Kommt vor, wenn der Server einen Code liefert, den die Plattform
         // nicht kennt. Vorher fiel das in ein catch, das eine ZWEITE
         // Schreibweise erzeugte — jetzt ist der Rückfall Teil derselben Fassung.
-        val s = fmtMoney(10.0, "XYZ123")
+        val s = fmtMoney(10.0, Waehrung("XYZ123"))
         assert(s.contains("10")) { "Der Betrag muss auch ohne bekannte Währung erscheinen: $s" }
     }
 
     @Test
     fun `fehlender Betrag ergibt einen Gedankenstrich`() {
-        assertEquals("—", fmtMoneyOrDash(null, "CHF"))
-        assertEquals("—", fmtMoneyOrDash("keine Zahl", "CHF"))
-        assert(fmtMoneyOrDash("12.5", "CHF").contains("12")) { "gültiger Wert muss durchkommen" }
+        assertEquals("—", fmtMoneyOrDash(null, Waehrung("CHF")))
+        assertEquals("—", fmtMoneyOrDash("keine Zahl", Waehrung("CHF")))
+        assert(fmtMoneyOrDash("12.5", Waehrung("CHF")).contains("12")) { "gültiger Wert muss durchkommen" }
     }
 
     @Test
@@ -166,12 +167,12 @@ class NumberFormatTest {
     @Test
     fun `Waehrungscode und Betrag stehen mit festem Leerzeichen`() {
         mitGeraet("en-GB") {
-            assertEquals("CHF\u00A0812.50", fmtMoney(812.5, "CHF"))
-            assertEquals("-CHF\u00A012.00", fmtMoney(-12.0, "CHF"))
-            assertEquals("€812.50", fmtMoney(812.5, "EUR"))
+            assertEquals("CHF\u00A0812.50", fmtMoney(812.5, Waehrung("CHF")))
+            assertEquals("-CHF\u00A012.00", fmtMoney(-12.0, Waehrung("CHF")))
+            assertEquals("€812.50", fmtMoney(812.5, Waehrung("EUR")))
         }
         mitGeraet("de-CH") {
-            val s = fmtMoney(812.5, "CHF")
+            val s = fmtMoney(812.5, Waehrung("CHF"))
             assertEquals("CHF\u00A0812.50", s.replace(' ', '\u00A0'))
             assert(!s.contains("\u00A0\u00A0") && !s.contains("  ")) { "doppelter Abstand: $s" }
         }

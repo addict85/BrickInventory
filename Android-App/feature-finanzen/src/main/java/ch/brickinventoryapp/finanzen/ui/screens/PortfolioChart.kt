@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.finanzen.ui.screens
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 import ch.brickinventoryapp.ui.theme.LocalChartColors
@@ -32,7 +33,7 @@ import ch.brickinventoryapp.ui.components.SegmentWahl
 internal fun PortfolioChart(
     points: List<DiagrammPunkt>,
     yAxis: List<DiagrammAchse>,
-    currency: String,
+    currency: Waehrung,
     isLoading: Boolean,
     selectedPeriod: String,
     periodChangePct: Double? = null,

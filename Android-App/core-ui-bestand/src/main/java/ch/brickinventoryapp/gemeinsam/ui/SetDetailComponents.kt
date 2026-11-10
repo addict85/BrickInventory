@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.gemeinsam.ui
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.ui.components.BezeichnungUndWert
 import ch.brickinventoryapp.ui.theme.Lesebreite
@@ -105,7 +106,7 @@ fun DetailRow2(label: String, value: String) {
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: String) {
+fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: Waehrung) {
     val lines  = remember(chart) { PriceChartMath.buildLines(chart) }
     val bounds = remember(lines) { PriceChartMath.bounds(lines) } ?: return
     if (lines.isEmpty()) return
@@ -281,7 +282,7 @@ private fun mitSchriftHoehe(basis: Dp): Dp = mitSchrift(basis)
 @Composable
 fun MarketPriceByCondition(
     byCondition: PreisJeZustandAnsicht,
-    currency: String,
+    currency: Waehrung,
 ) {
     val rows = byCondition.present()
     if (rows.isEmpty()) return

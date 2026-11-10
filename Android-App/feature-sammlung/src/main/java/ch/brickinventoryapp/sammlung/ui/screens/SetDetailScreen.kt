@@ -103,7 +103,7 @@ fun SetDetailScreen(
     val price     = detailState.setPrice?.takeIf { it.setNumber == setNumber }
     val history   = detailState.priceHistory
     val pnlPct    = history?.pnlProzent
-    val currency  = detailState.setPrice?.currency?.ifBlank { state.currency } ?: state.currency
+    val currency  = detailState.setPrice?.currency?.takeIf { it.bekannt } ?: state.currency
     val coroutineScope = rememberCoroutineScope()
     var showImageZoom by rememberSaveable { mutableStateOf(false) }
     var showSetDeleteConfirm by rememberSaveable { mutableStateOf(false) }

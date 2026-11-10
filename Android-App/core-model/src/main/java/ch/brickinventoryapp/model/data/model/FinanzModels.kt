@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.model.data.model
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -13,7 +14,7 @@ import kotlinx.serialization.Serializable
 data class SetPriceResponse(
     val success: Boolean,
     @SerialName("set_number") val setNumber: String = "",
-    val currency: String = "",
+    val currency: Waehrung = Waehrung.KEINE,
     @SerialName("avg_price") val avgPrice: Double? = null,
     @SerialName("min_price") val minPrice: Double? = null,
     @SerialName("max_price") val maxPrice: Double? = null,
@@ -105,7 +106,7 @@ data class CurrentByCondition(
 @Serializable
 data class PriceHistoryResponse(
     val success: Boolean,
-    val currency: String = "",
+    val currency: Waehrung = Waehrung.KEINE,
     @SerialName("history_new")  val historyNew: List<PriceHistoryPoint> = emptyList(),
     @SerialName("history_used") val historyUsed: List<PriceHistoryPoint> = emptyList(),
     @SerialName("by_condition") val byCondition: PriceByCondition = PriceByCondition(),
@@ -189,7 +190,7 @@ data class ManualFigsResponse(
 @Serializable
 data class PartsValuationResponse(
     val success: Boolean,
-    val currency: String = "EUR",
+    val currency: Waehrung = Waehrung.EUR,
     val parts: List<PartValuationItem> = emptyList(),
     @SerialName("total_value") val totalValue: String,
     /** Erfassungen mit Kaufpreis in einer anderen Währung — in keiner Summe enthalten. */
@@ -249,7 +250,7 @@ data class FigValuationItem(
 @Serializable
 data class FigsValuationResponse(
     val success: Boolean,
-    val currency: String = "EUR",
+    val currency: Waehrung = Waehrung.EUR,
     val figs: List<FigValuationItem> = emptyList(),
     @SerialName("total_value") val totalValue: String,
     @SerialName("kaufpreise_fremde_waehrung") val kaufpreiseFremdeWaehrung: Int = 0,
@@ -317,7 +318,7 @@ data class PnlSetZeile(
 @Serializable
 data class PnlResponse(
     val success: Boolean,
-    val currency: String = "EUR",
+    val currency: Waehrung = Waehrung.EUR,
     val totals: PnlTotals,
     val sets: List<PnlSetZeile> = emptyList(),
     val error: String? = null
@@ -392,7 +393,7 @@ data class Totals(
 @Serializable
 data class ValuationResponse(
     val success: Boolean,
-    val currency: String = "EUR",
+    val currency: Waehrung = Waehrung.EUR,
     val condition: Zustand = Zustand.NEU,
     /** Gültigkeit der Preise im Zwischenspeicher, in Stunden. */
     @SerialName("ttl_stunden") val ttlStunden: Int? = null,
@@ -439,7 +440,7 @@ data class ChartYAxis(
 @Serializable
 data class PortfolioHistoryResponse(
     val success: Boolean,
-    val currency: String = "EUR",
+    val currency: Waehrung = Waehrung.EUR,
     val period: String = "week",
     val points: List<ChartPoint> = emptyList(),
     @SerialName("y_axis") val yAxis: List<ChartYAxis> = emptyList(),

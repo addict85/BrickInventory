@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.app.nav.Reiter
 import android.content.Context
 import androidx.compose.material.icons.Icons
@@ -57,7 +58,7 @@ class TabOpensAtTopTest {
 
     private fun zeige() {
         compose.setContent {
-            BrickInventoryManagerTheme(theme = "classic") {
+            BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 nav = rememberNavController()
                 val reiter = remember {
                     listOf(

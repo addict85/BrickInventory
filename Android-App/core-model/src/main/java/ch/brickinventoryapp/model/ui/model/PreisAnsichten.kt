@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.model.ui.model
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.model.ConditionValuation
 import ch.brickinventoryapp.model.data.model.CurrentByCondition
@@ -76,7 +77,7 @@ fun ConditionValuation.alsAnsicht() = ZustandsBewertungAnsicht(
 )
 
 data class PreisverlaufAnsicht(
-    val currency: String = "",
+    val currency: Waehrung = Waehrung.KEINE,
     val historyNew: List<PreisverlaufPunktAnsicht> = emptyList(),
     val historyUsed: List<PreisverlaufPunktAnsicht> = emptyList(),
     val byCondition: PreisJeZustandAnsicht = PreisJeZustandAnsicht(),
@@ -109,7 +110,7 @@ fun PriceHistoryPoint.alsAnsicht() = PreisverlaufPunktAnsicht(
 
 data class SetPreisAnsicht(
     val setNumber: String = "",
-    val currency: String = "",
+    val currency: Waehrung = Waehrung.KEINE,
     val avgPrice: Double? = null,
     val qtyAvgPrice: Double? = null,
     val noPrice: Boolean = false,
@@ -144,7 +145,7 @@ fun CurrentByCondition.alsAnsicht() = AktuellJeZustandAnsicht(
 )
 
 data class MerkpostenPreiseAnsicht(
-    val currency: String = "",
+    val currency: Waehrung = Waehrung.KEINE,
     val current: AktuellJeZustandAnsicht = AktuellJeZustandAnsicht(),
 )
 

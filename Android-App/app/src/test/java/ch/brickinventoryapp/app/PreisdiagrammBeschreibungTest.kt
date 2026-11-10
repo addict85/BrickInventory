@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.theme.Design
 import android.content.Context
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -50,8 +52,8 @@ class PreisdiagrammBeschreibungTest {
         val verlauf = PreisDiagrammAnsicht(values = listOf(PreisReiheAnsicht("N",
             listOf(PreisPunktAnsicht("2026-01-01", 710.0), PreisPunktAnsicht("2026-02-01", 690.0), PreisPunktAnsicht("2026-03-01", 730.0)))))
         compose.setContent {
-            BrickInventoryManagerTheme(theme = "classic") {
-                Surface(color = MaterialTheme.colorScheme.background) { PriceChart(verlauf, "CHF") }
+            BrickInventoryManagerTheme(theme = Design.CLASSIC) {
+                Surface(color = MaterialTheme.colorScheme.background) { PriceChart(verlauf, Waehrung("CHF")) }
             }
         }
         compose.waitForIdle()

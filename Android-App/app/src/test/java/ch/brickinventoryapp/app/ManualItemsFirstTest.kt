@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import android.content.Context
 import android.os.Looper
 import androidx.compose.foundation.layout.height
@@ -78,7 +79,7 @@ class ManualItemsFirstTest {
 
     private fun zeige(inhalt: @Composable () -> Unit) {
         compose.setContent {
-            BrickInventoryManagerTheme(theme = "classic") {
+            BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
             }
         }

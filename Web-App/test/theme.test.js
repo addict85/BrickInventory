@@ -183,24 +183,26 @@ test('fuenf Listen nennen dieselben Designs', () => {
         '..',
         '..',
         'Android-App',
-        'core-data',
+        'core-model',
         'src',
         'main',
         'java',
         'ch',
         'brickinventoryapp',
-        'data',
-        'GeraeteAblage.kt',
+        'model',
+        'ui',
+        'theme',
+        'Design.kt',
       ),
       'utf8',
     ),
-    /ERLAUBTE_DESIGNS = setOf\(([^)]*)\)/,
-    'GeraeteAblage.kt',
+    /enum class Design\(val kennung: String\) \{([^;]*);/,
+    'Design.kt',
   );
 
   assert.deepEqual(boot, erwartet, 'ALLOWED im Boot-Skript weicht von den Dateien ab');
   assert.deepEqual(server, erwartet, 'Die Whitelist des Servers weicht von den Dateien ab');
-  assert.deepEqual(app, erwartet, 'ERLAUBTE_DESIGNS der App weicht von den Dateien ab');
+  assert.deepEqual(app, erwartet, 'Design (App) weicht von den Dateien ab');
 });
 
 test('jedes Theme unter public/themes/ deckt die Screens vor dem Login ab', () => {

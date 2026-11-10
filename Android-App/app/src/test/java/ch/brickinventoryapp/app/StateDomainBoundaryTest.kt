@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.zustand.ui.AppUiState
 import ch.brickinventoryapp.zustand.ui.Sitzung
@@ -43,11 +45,11 @@ class StateDomainBoundaryTest {
         "angemeldet" to { it.angemeldet(admin = true) },
         "anmeldungGeaendert" to { it.anmeldungGeaendert("https://brick.example", true) },
         "verwalterGeaendert" to { it.verwalterGeaendert(true) },
-        "einstellungenGespeichert" to { it.einstellungenGespeichert("CHF", Zustand.GEBRAUCHT) },
-        "einstellungenGeladen" to { it.einstellungenGeladen("CHF", Zustand.GEBRAUCHT, Zustand.GEBRAUCHT, Zustand.GEBRAUCHT) },
-        "waehrungUebernommen" to { it.waehrungUebernommen("CHF") },
+        "einstellungenGespeichert" to { it.einstellungenGespeichert(Waehrung.CHF, Zustand.GEBRAUCHT) },
+        "einstellungenGeladen" to { it.einstellungenGeladen(Waehrung.CHF, Zustand.GEBRAUCHT, Zustand.GEBRAUCHT, Zustand.GEBRAUCHT) },
+        "waehrungUebernommen" to { it.waehrungUebernommen(Waehrung.CHF) },
         "spracheGeaendert" to { it.spracheGeaendert("fr") },
-        "setzeDesign" to { it.setzeDesign("noppe") },
+        "setzeDesign" to { it.setzeDesign(Design.NOPPE) },
         "serverstartGeaendert" to { it.serverstartGeaendert(StartzustandAnsicht(false, "Katalog", null, 2.0, 8)) },
     )
 

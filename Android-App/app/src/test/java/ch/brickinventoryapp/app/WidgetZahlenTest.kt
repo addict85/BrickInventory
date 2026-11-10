@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.model.data.model.PnlResponse
 import ch.brickinventoryapp.model.data.model.PortfolioHistoryResponse
@@ -62,7 +63,7 @@ class WidgetZahlenTest {
         assertEquals(1250.5, z.wert!!, 1e-9)
         assertEquals(250.5, z.gesamt!!, 1e-9)
         assertEquals(25.05, z.gesamtProzent!!, 1e-9)
-        assertEquals("CHF", z.waehrung)
+        assertEquals(Waehrung.CHF, z.waehrung)
         assertEquals(7L, z.stand)
     }
 
@@ -83,10 +84,10 @@ class WidgetZahlenTest {
 
     @Test
     fun `ein Gewinn traegt ein Plus, ein Verlust sein Minus`() {
-        assertTrue(gvText(250.5, 25.05, "CHF").startsWith("+"))
-        assertTrue(gvText(250.5, 25.05, "CHF").contains("%"))
-        assertTrue(gvText(-3.0, null, "CHF").contains("3.00") || gvText(-3.0, null, "CHF").contains("3,00"))
-        assertTrue(!gvText(-3.0, null, "CHF").startsWith("+"))
+        assertTrue(gvText(250.5, 25.05, Waehrung("CHF")).startsWith("+"))
+        assertTrue(gvText(250.5, 25.05, Waehrung("CHF")).contains("%"))
+        assertTrue(gvText(-3.0, null, Waehrung("CHF")).contains("3.00") || gvText(-3.0, null, Waehrung("CHF")).contains("3,00"))
+        assertTrue(!gvText(-3.0, null, Waehrung("CHF")).startsWith("+"))
     }
 
     @Test

@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.teile.ui.TeileListeUndDetailRoute
 import ch.brickinventoryapp.app.nav.Reiter
 
@@ -94,7 +96,7 @@ class FeinschliffRegelnTest {
 
     private fun zeige(schrift: Float = 1f, inhalt: @Composable () -> Unit) {
         compose.setContent {
-            BrickInventoryManagerTheme(theme = "classic") {
+            BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 val d = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(d.density, schrift)) {
                     Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
@@ -276,14 +278,14 @@ class FeinschliffRegelnTest {
         val punkte = androidx.compose.runtime.mutableIntStateOf(2)
         zeige {
             Column {
-                PriceChart(verlauf(punkte.intValue), "CHF")
+                PriceChart(verlauf(punkte.intValue), Waehrung("CHF"))
             }
         }
         val zuWenig = ctx.getString(R.string.price_chart_too_few)
         assertTrue("Preisverlauf mit zwei Punkten sagt, warum kein Diagramm",
             compose.onAllNodes(hasText(zuWenig)).fetchSemanticsNodes().size == 1)
         val tiefHoch = ctx.getString(R.string.price_chart_low_high,
-            fmtMoney(710.0, "CHF"), fmtMoney(720.0, "CHF"))
+            fmtMoney(710.0, Waehrung("CHF")), fmtMoney(720.0, Waehrung("CHF")))
         assertTrue("Preisverlauf nennt Tief und Hoch",
             compose.onAllNodes(hasText(tiefHoch)).fetchSemanticsNodes().size == 1)
         punkte.intValue = 3

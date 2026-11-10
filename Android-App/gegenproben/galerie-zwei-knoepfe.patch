@@ -6,7 +6,7 @@ Rot: Galerie hat einen schwebenden Knopf
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
-@@ -255,6 +255,10 @@ fun GalleryScreen(
+@@ -219,6 +219,10 @@
          // Erfassen erst, wenn die Sammlung da ist: Im Fehlerzustand gehört der Blick dem
          // Grund und dem „Erneut versuchen“, nicht einem Knopf, der ins Leere ginge.
          // Leer auch nicht: Die Leermeldung bietet Erfassen und Scannen selbst an.
@@ -17,11 +17,11 @@ diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sam
          if (!gross && anzeige != GalerieAnzeige.FEHLER && anzeige != GalerieAnzeige.LEER) ErfassenFab(
              erfassenText, { showAddDialog = true },
              Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
-@@ -291,7 +295,6 @@ private fun GalerieSuche(
+@@ -255,7 +259,6 @@
          aktiveFilter = Filterzahl.galerie(zustand.blick.householdMembers, zustand.kontoWahl(), zustand.lager.orte,
              zustand.lagerWahl(), galerie.galleryTheme),
          onFilter = onFilter,
 -        onScannen = onScanBarcode,
          erfassen = erfassen,
          sortierung = {
-             // Dieselben Werte wie SET_SORTS auf dem Server (utils/handlers.ts):
+             SortierMenue(

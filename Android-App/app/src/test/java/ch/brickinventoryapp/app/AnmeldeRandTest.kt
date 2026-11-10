@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
@@ -78,7 +79,7 @@ class AnmeldeRandTest {
 
     private fun zeige(design: String = "classic", dunkel: Boolean = false, inhalt: @Composable () -> Unit) {
         compose.setContent {
-            BrickInventoryManagerTheme(theme = design, dunkel = dunkel) {
+            BrickInventoryManagerTheme(theme = checkNotNull(Design.aus(design)) { design }, dunkel = dunkel) {
                 Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
             }
         }
@@ -198,7 +199,7 @@ class AnmeldeRandTest {
         var karte = Color.Unspecified
         compose.setContent {
             val (design, dunkel, url) = fall
-            BrickInventoryManagerTheme(theme = design, dunkel = dunkel) {
+            BrickInventoryManagerTheme(theme = checkNotNull(Design.aus(design)) { design }, dunkel = dunkel) {
                 karte = MaterialTheme.colorScheme.surface
                 Surface(color = MaterialTheme.colorScheme.background) {
                     key(fall) { SetupScreen(currentUrl = url, onSave = {}, entwicklung = false) }

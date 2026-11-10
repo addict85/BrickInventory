@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.konto.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
@@ -82,7 +83,7 @@ class EinstellungenViewModel @Inject constructor(
     // ── Währung und Zustand ──────────────────────────────────────────────────
 
     /** Eine andere Währung oder ein anderer Zustand ändert jeden Preis: alle Bestandsansichten neu. */
-    override fun saveSettings(currency: String, condition: Zustand) {
+    override fun saveSettings(currency: Waehrung, condition: Zustand) {
         viewModelScope.launch {
             when (val r = konto.updateSettings(currency, condition)) {
                 is Ergebnis.Success -> {

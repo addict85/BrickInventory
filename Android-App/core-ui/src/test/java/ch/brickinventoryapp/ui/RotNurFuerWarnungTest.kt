@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import androidx.compose.ui.graphics.Color
 import ch.brickinventoryapp.ui.theme.akzentflaechen
 import ch.brickinventoryapp.ui.theme.farbschema
@@ -21,7 +22,7 @@ import org.junit.Test
  */
 class RotNurFuerWarnungTest {
 
-    private val designs = listOf("classic", "brick", "werkbank", "farbfaecher", "noppe", "hochglanz")
+    private val designs = listOf(Design.CLASSIC, Design.BRICK, Design.WERKBANK, Design.FARBFAECHER, Design.NOPPE, Design.HOCHGLANZ)
 
     /** Farbton in Grad und Buntheit (max − min der Kanäle); Grau hat keinen Ton. */
     private fun tonUndBuntheit(c: Color): Pair<Float, Float> {
@@ -47,7 +48,7 @@ class RotNurFuerWarnungTest {
         val fassungen = designs.map { it to false } + designs.filter { hatDunkleFassung(it) }.map { it to true }
         val fehler = fassungen.flatMap { (design, dunkel) ->
             val s = farbschema(design, dunkel)
-            val name = if (dunkel) "$design/dunkel" else design
+            val name = if (dunkel) "${design.kennung}/dunkel" else design.kennung
             listOf("primary" to s.primary, "primaryContainer" to s.primaryContainer,
                 "secondaryContainer" to s.secondaryContainer,
                 "markt" to akzentflaechen(design, dunkel, s).markt)

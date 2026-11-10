@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.fach.Katalogsortierung
 import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.model.fach.Zustand
 import android.content.Context
@@ -111,7 +114,7 @@ class AblaufBefundeTest {
 
     private fun zeige(inhalt: @Composable () -> Unit) {
         compose.setContent {
-            BrickInventoryManagerTheme(theme = "classic") {
+            BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
             }
         }
@@ -142,7 +145,7 @@ class AblaufBefundeTest {
             }
         }
         // fmtMoney setzt ein festes Leerzeichen zwischen Code und Betrag.
-        val alarm = ctx.getString(R.string.wanted_alert_below, fmtMoney(349.0, "CHF"))
+        val alarm = ctx.getString(R.string.wanted_alert_below, fmtMoney(349.0, Waehrung("CHF")))
         compose.onAllNodesWithText(alarm, substring = true).fetchSemanticsNodes()
             .let { assertTrue("Alarm vor dem Löschen", it.isNotEmpty()) }
         compose.onNode(hasText("Lion Knights' Castle", substring = true) and hasClickAction()).performClick()
@@ -173,7 +176,7 @@ class AblaufBefundeTest {
         override fun setCatalogQuery(q: String) = Unit
         override fun setCatalogTheme(themeId: Int?) = Unit
         override fun setCatalogYear(year: Int?) = Unit
-        override fun setCatalogSort(sort: String) = Unit
+        override fun setCatalogSort(sort: Katalogsortierung) = Unit
     }
 
     @Test
@@ -233,7 +236,7 @@ class AblaufBefundeTest {
     @Test
     fun `M6 das Katalog-Detail zeigt den Merkposten und oeffnet ihn`() {
         var geoeffnet: Pair<String, Zustand>? = null
-        val gemerkt = MerkpostenAnsicht(setNumber = "10305-1", condition = Zustand.NEU, name = "Lion Knights' Castle", waehrung = "CHF",
+        val gemerkt = MerkpostenAnsicht(setNumber = "10305-1", condition = Zustand.NEU, name = "Lion Knights' Castle", waehrung = Waehrung("CHF"),
             alarm = MerkpostenAlarmAnsicht(richtung = "unter", schwelle = 349.0))
         zeige {
             CatalogDetailScreen(setNumber = "10305-1",

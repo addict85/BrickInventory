@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.konto.ui.screens
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.ui.components.SchalterZeile
 import ch.brickinventoryapp.ui.components.AppSperreWahl
@@ -58,7 +60,7 @@ data class EinstellungenZustand(
     val appState: AppUiState,
     val updateZustand: UpdateUiState,
     val helligkeit: String,
-    val design: String,
+    val design: Design,
     val systemfarben: Boolean,
     val vorschauVerbergen: Boolean,
     val widgetWerte: Boolean,
@@ -237,7 +239,7 @@ fun SettingsScreen(
             // Währung und Preisgrundlage gehen zusammen an den Server (ein Endpunkt).
             Unterschrift(stringResource(R.string.settings_currency))
             WahlChips(
-                listOf("CHF", "EUR", "USD", "GBP").map { it to it },
+                Waehrung.WAEHLBAR.map { it to it.code },
                 gewaehlt = currency, onWahl = { aktionen.saveSettings(it, priceCondition) },
             )
 
