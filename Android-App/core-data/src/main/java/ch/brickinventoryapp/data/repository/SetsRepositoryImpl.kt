@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import kotlinx.coroutines.flow.map
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
@@ -158,8 +159,15 @@ class SetsRepositoryImpl @Inject constructor(
     override suspend fun deleteSet(setNumber: String): Ergebnis<GenericResponse> =
         sicherAufrufen { api.deleteSet(setNumber) }.also { if (it is Ergebnis.Success) ablage.entferne(Faecher.SETS, setNumber) }
 
-    /** Die lokale Liste der Galerie (ungefiltert); sie ändert sich auch durch offline Bearbeitetes. */
-    override fun beobachteSets(): Flow<Lokal<SetItem>> = ablage.beobachte(Faecher.SETS)
+    /** Die Galerie aus der Ablage, nach den Filtern der Anzeige; ändert sich auch durch offline Bearbeitetes. */
+    override fun beobachteSets(suche: String?, thema: String?, lagerort: String?, sort: Setsortierung?): Flow<Lokal<SetItem>> =
+        ablage.beobachte(Faecher.SETS, Filterspalten(suchtext = suche?.ifBlank { null }, thema = thema?.ifBlank { null },
+            lagerort = lagerort?.ifBlank { null })).map { l -> l.copy(liste = l.liste.sortiert(setOrdnung(sort))) }
+
+    override suspend fun aktualisiereSets(): Ergebnis<Unit> =
+        ablage.aktualisiereSeitenweise(Faecher.SETS, { it.sets }, { it.total }) { seite ->
+            sicherAufrufen { api.getSets(null, null, null, null, seite, GALLERY_PAGE_SIZE) }
+        }
 
     override suspend fun moveSet(setNumber: String, fromUserId: Int?, toUserId: Int,
                         acquisitionIds: List<Int>?): Ergebnis<MoveSetResponse> =

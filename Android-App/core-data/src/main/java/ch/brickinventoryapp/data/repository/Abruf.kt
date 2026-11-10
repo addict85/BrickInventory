@@ -47,6 +47,34 @@ internal suspend fun <R, T : Any> Offlineablage.abgeglichen(
 }
 
 /**
+ * Eine blätternde Liste ganz in die Ablage holen, Seite für Seite; gezeigt wird die
+ * Ablage. Geschrieben wird erst nach der letzten Seite, sonst schrumpfte die Liste
+ * zwischendurch auf Seite 1; wechselt dabei das Konto, wird nichts abgelegt.
+ */
+internal suspend fun <R, T : Any> Offlineablage.aktualisiereSeitenweise(
+    fach: Fach<T>,
+    liste: (R) -> List<T>,
+    gesamt: (R) -> Int,
+    seite: suspend (nummer: Int) -> Ergebnis<R>,
+): Ergebnis<Unit> {
+    val vorher = bereich() ?: return Ergebnis.Success(Unit)
+    val alle = LinkedHashMap<String, T>()
+    for (nummer in 1..MAX_SEITEN) {
+        val r = seite(nummer)
+        if (r is Ergebnis.Error) return r
+        val antwort = (r as Ergebnis.Success).data
+        val neu = liste(antwort)
+        neu.forEach { alle[fach.schluessel(it)] = it }
+        if (neu.isEmpty() || alle.size >= gesamt(antwort)) break
+    }
+    if (bereich() == vorher) uebernimm(fach, alle.values.toList(), bereich = vorher)
+    return Ergebnis.Success(Unit)
+}
+
+/** Obergrenze für [aktualisiereSeitenweise], falls der Server eine falsche Gesamtzahl nennt. */
+private const val MAX_SEITEN = 500
+
+/**
  * Eine gefilterte Abfrage: Online antwortet der Server, abgelegt wird nichts —
  * eine Teilmenge ersetzte sonst die Liste. Ist er nicht erreichbar, beantworten
  * dieselben Filter die lokale Liste, samt Stand für „Offline – Stand von …“.

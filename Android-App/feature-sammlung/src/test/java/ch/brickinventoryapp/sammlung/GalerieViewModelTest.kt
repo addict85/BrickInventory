@@ -117,10 +117,10 @@ class GalerieViewModelTest {
             val neu = vm(gemerkt, t)
             val g = neu.galleryState.value
             assertEquals(Triple("Falke", "Technic", Setsortierung.JAHR), Triple(g.galleryQuery, g.galleryTheme, g.gallerySort))
+            // Die Filter gelten der Ablage; der Abruf füllt sie ganz, ohne Filter.
             neu.loadSets()
-            assertTrue("Liste geladen", neu.galleryState.value.sets.isNotEmpty())
             val abruf = abrufe(pfade).single()
-            assertTrue(abruf, "search=Falke" in abruf && "theme=Technic" in abruf && "sort=year_desc" in abruf)
+            assertTrue(abruf, "search=" !in abruf && "theme=" !in abruf && "sort=" !in abruf)
         }
     }
 
@@ -286,8 +286,9 @@ class GalerieViewModelTest {
     fun `nach dem Abmelden ist die Galerie leer und ohne Filter`() {
         val gemerkt = SavedStateHandle()
         val vm = vm(gemerkt)
-        vm.setGalleryTheme("Technic")
+        vm.loadSets()
         assertTrue("Liste geladen", vm.galleryState.value.sets.isNotEmpty())
+        vm.setGalleryTheme("Technic")
         t.sitzung.abgemeldet()
         assertTrue(vm.galleryState.value.sets.isEmpty())
         assertEquals("", vm.galleryState.value.galleryTheme)

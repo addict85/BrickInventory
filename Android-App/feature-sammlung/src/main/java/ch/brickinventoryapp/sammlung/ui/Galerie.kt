@@ -38,27 +38,21 @@ internal class Galerie(
     private val vergissScroll: () -> Unit,
     private val suchPause: Long = 350,
     /**
-     * Die lokale Liste (Room). Ohne Filter ist sie die Wahrheit der Anzeige: Was
-     * offline geändert wird, erscheint sofort, ohne auf den Server zu warten.
+     * Die lokale Liste (Room) für die Filter eines Zustands. Wo sie gilt ([lokalGilt]),
+     * ist sie die einzige Quelle der Anzeige: Der Abruf schreibt nur in die Ablage, und
+     * was offline geändert wird, erscheint sofort.
      */
-    private val lokal: Flow<Lokal<SetItem>>? = null,
-    /** Gilt gerade keine Einschränkung (Suche, Thema, Sortierung, Konto, Lager)? */
-    private val ungefiltert: (GalleryUiState) -> Boolean = { false },
+    private val lokal: ((GalleryUiState) -> Flow<Lokal<SetItem>>)? = null,
+    /** Ohne Kontofilter gilt die Ablage; Menge und Preise je Konto rechnet nur der Server. */
+    private val lokalGilt: (GalleryUiState) -> Boolean = { false },
+    /** Die ungefilterte Liste in die Ablage holen, alle Seiten. */
+    private val aktualisiere: suspend () -> Ergebnis<Unit> = { Ergebnis.Success(Unit) },
 ) {
     private val _state = MutableStateFlow(GalleryUiState())
     val state: StateFlow<GalleryUiState> = _state.asStateFlow()
 
-    init {
-        // Während einer Ladung nicht: Deren Antwort setzt die Liste ohnehin, und eine
-        // ältere lokale Liste dazwischen liesse sie kurz zurückspringen.
-        if (lokal != null) scope.launch {
-            lokal.collect { l ->
-                val g = _state.value
-                if (l.stand != null && !g.galleryLoading && ungefiltert(g))
-                    _state.update { it.copy(sets = l.liste.map { s -> s.alsAnsicht() }) }
-            }
-        }
-    }
+    private var lokalJob: Job? = null
+    private var lokalStand: Long? = null
 
     // Filter-Generation: Eine späte Antwort eines alten Filters wird verworfen,
     // sonst hinge sie mit gemischtem Inhalt an der neuen Liste.
@@ -66,10 +60,13 @@ internal class Galerie(
     private var listJob: Job? = null
     private var suchJob: Job? = null
 
-    /** Erste Seite mit den eingestellten Filtern; gesucht wird auf dem Server. */
+    /** Erste Seite mit den eingestellten Filtern; ohne Kontofilter aus der Ablage. */
     fun laden() {
         val gen = ++galleryGeneration
         listJob?.cancel()
+        lokalJob?.cancel()
+        val quelle = lokal?.takeIf { lokalGilt(_state.value) }
+        if (quelle != null) return ladenLokal(gen, quelle(_state.value))
         listJob = scope.launch {
             _state.update { it.copy(galleryLoading = true, galleryLoadingMore = false, galleryPage = 1, galleryFehler = null) }
             val r = holeSeite(_state.value, 1)
@@ -92,6 +89,40 @@ internal class Galerie(
     }
 
     /**
+     * Die Anzeige folgt der Ablage mit den Filtern des Zustands; der Abruf füllt nur
+     * die Ablage. Ohne Netz bleibt die abgelegte Liste stehen, mit ihrem Stand.
+     */
+    private fun ladenLokal(gen: Int, quelle: Flow<Lokal<SetItem>>) {
+        lokalStand = null
+        lokalJob = scope.launch {
+            quelle.collect { l ->
+                if (l.stand == null || gen != galleryGeneration) return@collect
+                lokalStand = l.stand
+                _state.update {
+                    it.copy(sets = l.liste.map { s -> s.alsAnsicht() }, galleryTotal = l.liste.size, galleryPage = 1,
+                        galleryThemes = if (it.galleryQuery.isBlank() && it.galleryTheme.isBlank()) themenAus(l.liste) else it.galleryThemes)
+                }
+            }
+        }
+        listJob = scope.launch {
+            _state.update { it.copy(galleryLoading = true, galleryLoadingMore = false, galleryPage = 1, galleryFehler = null) }
+            val r = aktualisiere()
+            if (gen != galleryGeneration) return@launch
+            val stand = lokalStand
+            when {
+                r is Ergebnis.Success -> _state.update { it.copy(galleryLoading = false, offlineStand = null) }
+                r is Ergebnis.Error && r.transient && stand != null ->
+                    _state.update { it.copy(galleryLoading = false, offlineStand = stand) }
+                r is Ergebnis.Error -> {
+                    _state.update { it.copy(galleryLoading = false, galleryFehler = beschreibeFehler(r),
+                        galleryFehlerKlasse = fehlerklasse(r)) }
+                    meldeFehler(r)
+                }
+            }
+        }
+    }
+
+    /**
      * Nächste Seite anhängen (Endlos-Scroll).
      *
      * Die Sperre steht VOR dem launch: Zwei Aufrufe im selben Frame lasen sonst
@@ -101,6 +132,8 @@ internal class Galerie(
     fun mehrLaden() {
         val g = _state.value
         if (g.galleryLoading || g.galleryLoadingMore) return
+        // Aus der Ablage steht schon alles da.
+        if (lokal != null && lokalGilt(g)) return
         if (g.galleryTotal > 0 && g.sets.size >= g.galleryTotal) return
         val gen = galleryGeneration
         _state.update { it.copy(galleryLoadingMore = true) }
@@ -168,10 +201,15 @@ internal class Galerie(
     fun zuruecksetzen() {
         galleryGeneration++
         listJob?.cancel()
+        lokalJob?.cancel()
         suchJob?.cancel()
         _state.value = GalleryUiState()
     }
 }
+
+/** Die Themen der abgelegten Sets für den Filter; der Server schickt sie sonst mit Seite 1. */
+private fun themenAus(sets: List<SetItem>): List<String> =
+    sets.mapNotNull { it.theme?.takeIf(String::isNotBlank) }.distinct().sorted()
 
 /** Was die Galerie zeigt, wenn noch keine Kachel da ist — oder eben die Liste. */
 internal typealias GalerieAnzeige = Ladeanzeige

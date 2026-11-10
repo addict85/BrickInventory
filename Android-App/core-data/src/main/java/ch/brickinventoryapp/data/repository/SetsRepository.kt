@@ -69,7 +69,15 @@ interface SetsRepository {
 
     suspend fun deleteSet(setNumber: String): Ergebnis<GenericResponse>
 
-    fun beobachteSets(): Flow<Lokal<SetItem>>
+    /**
+     * Die lokale Galerie nach Suche, Thema und Lagerort, sortiert wie am Server. Ohne
+     * Kontofilter ist sie die Quelle der Anzeige; [aktualisiereSets] füllt sie.
+     */
+    fun beobachteSets(suche: String? = null, thema: String? = null, lagerort: String? = null,
+                      sort: Setsortierung? = null): Flow<Lokal<SetItem>>
+
+    /** Alle Seiten der ungefilterten Galerie in die Ablage; gezeigt wird die Ablage. */
+    suspend fun aktualisiereSets(): Ergebnis<Unit>
 
     suspend fun moveSet(setNumber: String, fromUserId: Int?, toUserId: Int,
                         acquisitionIds: List<Int>? = null): Ergebnis<MoveSetResponse>

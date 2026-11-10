@@ -87,11 +87,11 @@ class GalerieViewModel @Inject constructor(
         meldeFehler = { meldungen.zeige(meldungen.meldungFuerSnackbar(it)) },
         beschreibeFehler = { meldungen.meldung(it) },
         vergissScroll = { scrollMemory.vergiss("gallery") },
-        lokal = sets.beobachteSets(),
-        ungefiltert = { g ->
-            g.galleryQuery.isBlank() && g.galleryTheme.isBlank() && g.gallerySort == Setsortierung.VORGABE &&
-                filter.kontoFuer(ScopeFilter.View.GALLERY) == null && filter.lagerFuer(ScopeFilter.View.GALLERY).isNullOrBlank()
+        lokal = { g ->
+            sets.beobachteSets(g.galleryQuery, g.galleryTheme, filter.lagerFuer(ScopeFilter.View.GALLERY), g.gallerySort)
         },
+        lokalGilt = { filter.kontoFuer(ScopeFilter.View.GALLERY) == null },
+        aktualisiere = { retryOnNetwork { sets.aktualisiereSets() } },
     )
     /** Ein gelöschtes Set, das sich noch zurückholen lässt — die Snackbar „Rückgängig“. */
     data class VorgemerktesLoeschen(val setNumber: String, val name: String, val set: SetAnsicht? = null)

@@ -19,6 +19,7 @@ import ch.brickinventoryapp.model.data.model.SetsResponse
 import ch.brickinventoryapp.offline.room.BestandDatenbank
 import ch.brickinventoryapp.offline.room.RoomAusgang
 import ch.brickinventoryapp.offline.room.RoomBestand
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -42,6 +43,7 @@ import java.net.ConnectException
  *   seite-kodiert-ganze-liste  uebernimm liest und ersetzt beim Anhängen die ganze Liste →
  *                              rot „eine weitere Seite schreibt nur ihre Zeilen“
  *   seite-ohne-ausgang         beim Anhängen wird der Ausgang nicht angewandt → rot „die Serverzeile trägt …“
+ *   galerie-ablage-ungefiltert beobachteSets übergibt keine Filterspalten → rot „die Galerie filtert in Room …“
  */
 @RunWith(RobolectricTestRunner::class)
 class OhneNetzFilterTest {
@@ -165,6 +167,17 @@ class OhneNetzFilterTest {
         assertEquals(listOf("10001-1", "10002-1", "10003-1", "21000-1"), lokal.map { it.setNumber })
         assertEquals("die Serverzeile trägt die wartende Erfassung aus dem Ausgang", 2,
             lokal.single { it.setNumber == "10003-1" }.quantity)
+    }
+
+    @Test
+    fun `die Galerie filtert in Room, der Abruf fuellt nur die Ablage`() = runBlocking {
+        assertTrue(setsRepo.aktualisiereSets() is Ergebnis.Success)
+        assertEquals("alle Sets in der Ablage", sets.size, setsRepo.beobachteSets().first().liste.size)
+        val city = setsRepo.beobachteSets(thema = "City", sort = Setsortierung.NUMMER).first().liste.map { it.setNumber }
+        assertEquals("die Galerie filtert in Room und sortiert wie der Server", listOf("10002-1", "21000-1"), city)
+        offline = true
+        assertTrue("ohne Netz meldet der Abruf den Fehler", setsRepo.aktualisiereSets() is Ergebnis.Error)
+        assertEquals("und die Ablage bleibt", sets.size, setsRepo.beobachteSets().first().liste.size)
     }
 
     /** Zählt, was die Ablage mit dem Bestand tut — die Seitenübernahme ist so von aussen sichtbar. */
