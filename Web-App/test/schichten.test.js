@@ -100,8 +100,8 @@ test('eine v1-Route importiert keine andere Routendatei', () => {
 
 test('keine Route importiert eine andere Routendatei', () => {
   // Erlaubt sind nur der Wächter (api_v1/middleware) und der Zusammenbau in
-  // api_v1/index.ts und auth.ts (aus routes/auth/). Gegenprobe (29.10.2026): `import { requireLogin } from
-  // './auth'` zurück in routes/minifigs.ts → rot.
+  // api_v1/index.ts und auth.ts (aus routes/auth/). Gegenprobe (10.11.2026): `import { requireLogin } from
+  // '../auth'` in routes/api_v1/minifigs.ts → rot.
   const dateien = [];
   const lauf = (rel) => {
     for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
@@ -248,8 +248,8 @@ test('ins Netz geht nur clients/ über src/infra/abruf.ts', () => {
 test('startup/ importiert nichts aus routes/', () => {
   // Was der Start anstösst (Aufräumläufe), steht in src/; eine Route
   // gehört nur in server.ts.
-  // Gegenprobe (29.10.2026): startPdfJobCleanup wieder aus
-  // '../routes/api_v1/pdf' in startup/backgroundJobs.ts → rot.
+  // Gegenprobe (10.11.2026): `import { startPdfJobCleanup } from
+  // '../routes/api_v1/pdf'` in startup/jobsProzess.ts → rot.
   const treffer = [];
   for (const f of fs.readdirSync(path.join(ROOT, 'startup')).filter(f => f.endsWith('.ts')))
     for (const ziel of importe(`startup/${f}`).filter(z => /routes\//.test(z))) treffer.push(`startup/${f} -> ${ziel}`);

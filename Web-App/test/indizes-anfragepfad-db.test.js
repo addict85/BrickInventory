@@ -65,7 +65,7 @@ test('Anfragepfad: die drei Indizes gibt es und der Planer kann sie nehmen', asy
     //
     // Die BrickLink-Nachschlage zuerst, und dafuer braucht es die
     // MIGRATIONEN: bl_zuordnung wird in 0037 angelegt, nicht in
-    // db/schema.sql (eine Tabelle gehoert an genau eine Stelle,
+    // db/basis.sql (eine Tabelle gehoert an genau eine Stelle,
     // scripts/check-schema-am-start.js prueft das).
     const c0 = await db.pool.connect();
     try { await _req('db/migrate.js').runMigrations(c0); } finally { c0.release(); }

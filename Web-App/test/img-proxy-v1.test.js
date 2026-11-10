@@ -124,7 +124,7 @@ test('die Migration erfasst JEDE Tabelle mit image_url', () => {
   // Die Tabellenliste wird aus dem Schema GELESEN, nicht abgeschrieben: Eine
   // achte Tabelle mit image_url soll auffallen, nicht durchrutschen.
   // Die Tabellen mit image_url, die es VOR 0014 gab — abgelesen aus dem
-  // früheren db/schema.sql, als es durch db/basis.sql ersetzt wurde. 0014 ist …
+  // Schema vor db/basis.sql. 0014 ist …
   // Ausführlich: docs/begruendungen/test/img-proxy-v1.test.js.md#tabellen
   const tabellen = ['sets', 'set_catalog', 'set_parts_catalog', 'set_minifigs_catalog', 'parts', 'catalog_cache', 'minifigs'];
   // GEMESSEN sind es sieben.

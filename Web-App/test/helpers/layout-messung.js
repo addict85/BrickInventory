@@ -1,7 +1,7 @@
 /**
  * Messungen, die im Browser laufen (als Ausdruck für Runtime.evaluate): Layout
  * und Kontrast der sichtbaren Oberfläche, dazu axe-core. Benutzt von
- * test/oberflaeche-browser.test.js.
+ * test/helpers/oberflaeche-pruefung.js.
  */
 const fs = require('node:fs');
 const path = require('node:path');

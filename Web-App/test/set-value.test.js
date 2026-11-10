@@ -118,11 +118,6 @@ test('qty_avg_price wird für Set-Preise nirgends mehr gelesen', () => {
   assert.ok(von > 0 && bis > von, 'setPreis() nicht gefunden');
   const sets = roh.slice(0, von) + roh.slice(bis);
   assert.equal((sets.match(/qty_avg_price/g) || []).length, 0, 'Set-Kern: Set-Preise müssen über avg_price laufen');
-
-  // Der Abschnitt zu routes/finance.ts ist entfallen: Die Datei gibt es nicht
-  // mehr. Ihr Router trug NULL Routen und war trotzdem unter /api/finance
-  // eingehaengt; die Preisrechnung selbst liegt seit Etappe 5 in
-  // src/finanzen/financeCalc.ts. Die Regel „Set-Preise ueber avg_price" wird deshalb …
   // Ausführlich: docs/begruendungen/test/set-value.test.js.md#stelle
 });
 
@@ -389,9 +384,7 @@ test('die Verlaufs-Endpunkte liefern fertige Diagrammdaten', () => {
   // Ausführlich: docs/begruendungen/test/set-value.test.js.md#uses
   const uses = (ph.match(/buildChart\(/g) || []).length;
   assert.equal(uses, 2, `${uses} statt 2 buildChart-Aufrufe in src/finanzen/priceHistory.ts`);
-  // Die frueher hier geprueste routes/finance.ts gibt es nicht mehr (Router
-  // ohne eine einzige Route). Die Regel gilt weiter, nur fuer die Datei, in der
-  // die Verlaufs-Routen HEUTE stehen: Ein Adapter baut keine Diagrammdaten.
+  // Auch dort, wo die Verlaufs-Routen stehen: Ein Adapter baut keine Diagrammdaten.
   const v1fin = fs.readFileSync(path.join(ROOT, 'routes/api_v1/finance.ts'), 'utf8');
   assert.doesNotMatch(
     v1fin,

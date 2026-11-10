@@ -188,10 +188,9 @@ test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () 
 
   // Und die Aufrufer müssen das Ergebnis abwarten.
   //
-  // routes/finance.ts fällt mit Etappe 7 weg: Der manuelle Anstoss liegt nur
-  // noch unter /api/v1/admin/trigger-price-job, die Webapp ruft dieselbe
-  // Adresse auf. Vorher gab es ihn zweimal — genau die Doppelung, bei der eine
-  // Seite das `await` verlieren kann, ohne dass es auffällt.
+  // Der manuelle Anstoss liegt nur unter /api/v1/admin/trigger-price-job, die
+  // Webapp ruft dieselbe Adresse auf: Bei zwei Wegen kann einer das `await`
+  // verlieren, ohne dass es auffällt.
   const route = fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8');
   assert.match(route, /await preisJobJetzt\(\)/,
     'routes/api_v1/admin.ts: ohne await meldet die Route ein Promise als „gestartet"');

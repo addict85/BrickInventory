@@ -45,10 +45,8 @@ test('leere und unbrauchbare Eingaben ergeben null', () => {
   }
 });
 
-// Hier stand `beide Importe benutzen den Parser` — eine Prüfung über die
-// AUFGEZÄHLTE Liste ['sets.ts', 'parts.ts']. Sie war grün, während
-// routes/minifigs.ts das Datum roh weiterreichte: Der dritte Import stand
-// nicht in der Liste, also hat ihn niemand geprüft.
+// Geprüft wird jeder Import, nicht eine aufgezählte Liste: Ein Import, der in
+// keiner Liste steht, wird sonst von niemandem geprüft.
 // Ausführlich: docs/begruendungen/test/csv-date.test.js.md#stelle
 
 /**

@@ -16,8 +16,8 @@ const { haeltFigur } = require('./helpers/bestand');
 
 test('der Figuren-Preisverlauf findet die Preise unter der BrickLink-Nummer', { concurrency: 1 }, async (t) => {
   if (!await dbOderSkip(t, _req, { migrieren: false })) return;
-  // minifig_price_history steht bewusst NUR in db/migrations/0003 (siehe die
-  // Abgrenzung oben in db/schema.sql). initSchema() legt sie nicht an; ohne
+  // minifig_price_history steht bewusst NUR in db/migrations/0003.
+  // initSchema() legt sie nicht an; ohne
   // diesen Schritt liefe der Test gegen ein Schema, das es im Betrieb nicht
   // gibt. Die Migrationen sind idempotent und überspringen bereits
   // eingespielte Stände über schema_migrations.

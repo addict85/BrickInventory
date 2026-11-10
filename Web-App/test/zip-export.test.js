@@ -1,6 +1,6 @@
 /**
  * Der ZIP-Export erzeugt ein gültiges Archiv — mit genau der API, die
- * routes/settings.ts benutzt.
+ * routes/api_v1/settings.ts benutzt.
  * Ausführlich: docs/begruendungen/test/zip-export.test.js.md#kopf
  */
 const test = require('node:test');

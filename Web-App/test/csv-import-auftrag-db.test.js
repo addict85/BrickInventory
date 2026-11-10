@@ -2,9 +2,8 @@
  * Der CSV-Import als Auftrag: Er entscheidet nur für seine eigenen Aufrufe,
  * dass die Nacharbeit je Set ausfällt, und er setzt nach einem Neustart fort.
  *
- * Vorher zählte routes/sets.ts laufende Importe in `global._csvImportLaeufe`,
- * und addSet() liess die Nacharbeit für JEDES Konto im Prozess aus, solange
- * der Zähler über null stand.
+ * Kein prozessweiter Zähler laufender Importe: Mit ihm fiele die Nacharbeit
+ * für JEDES Konto im Prozess aus, solange irgendein Import läuft.
  *
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  den Zähler nachgebaut (globalThis.__importe in fuehreCsvImportAus hoch

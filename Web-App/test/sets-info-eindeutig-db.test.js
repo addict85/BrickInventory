@@ -1,12 +1,11 @@
 /**
- * Unter /api/v1/sets hängen zwei Router (routes/api_v1 und routes/sets.ts,
- * wie in server.ts). Der Namensabruf /sets/info/:setNumber stand im zweiten,
- * und eine Nummer, die wie ein Pfadwort der ersten aussieht, landete dort:
+ * Der Namensabruf /sets/info/:setNumber steht in routes/api_v1/sets.ts vor
+ * /sets/:setNumber/…: Sonst landet eine Nummer, die wie ein Pfadwort der ersten aussieht, landete dort:
  * GET /api/v1/sets/info/price-history traf /sets/:setNumber/price-history mit …
  * Ausführlich: docs/begruendungen/test/sets-info-eindeutig-db.test.js.md#kopf
  *
- * Gegenprobe (am 29.10.2026 gemessen): die Route /sets/info/:setNumber aus
- * routes/api_v1/sets.ts zurück an ihren alten Platz in routes/sets.ts → rot:
+ * Gegenprobe (am 29.10.2026 gemessen): die Route /sets/info/:setNumber hinter
+ * die Routen /sets/:setNumber/… gestellt → rot:
  * „ein Pfadwort als Setnummer“ (die Antwort kam vom Preisverlauf).
  *
  * Ein Platzhalter („Set <Nummer>“ ohne Jahr, Thema, Teile), den addSet ohne
@@ -42,7 +41,6 @@ test('der Namensabruf unter /api/v1/sets ist eindeutig', { concurrency: 1 }, asy
   await db.run(`INSERT INTO set_catalog (set_number, name) VALUES ($1, 'Pfadwort'), ($2, 'Gewöhnlich'), ($3, 'Set ' || $3), ($4, 'Set ' || $4)
                 ON CONFLICT (set_number) DO UPDATE SET name = EXCLUDED.name`, nummern);
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2), ($3, $4)', [fremdId, fremd, uid, eigen]);
-  // Dieselbe Reihenfolge wie server.ts: zuerst der v1-Router, dann routes/sets.ts.
   const { base } = testServer(_req, {
     sitzung: { userId: uid, username: NAME, isAdmin: false },
     apiNutzer: { user_id: uid, is_admin: 0 },

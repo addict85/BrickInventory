@@ -221,9 +221,8 @@ test('niemand schreibt eine BrickLink-Nummer mehr an eine Bestandszeile', () => 
   const stellen = [];
   for (const datei of dateien) {
     const rel = path.relative(ROOT, datei);
-    // db/schema.sql ist keine .ts/.js-Datei und damit gar nicht dabei — dort
-    // MUESSEN die Spalten und die alte Tabelle weiter stehen, weil Migration
-    // 0037 sie liest.
+    // Migrationen (.sql) sind nicht dabei: 0037 muss die alten Spalten und
+    // die alte Tabelle weiter lesen.
     for (const z of codeZeilen(fs.readFileSync(datei, 'utf8'))) {
       for (const [was, m] of muster) if (m.test(z)) stellen.push(`${rel} (${was}): ${z.trim().slice(0, 80)}`);
     }
@@ -238,7 +237,7 @@ test('niemand schreibt eine BrickLink-Nummer mehr an eine Bestandszeile', () => 
   // Die Muster finden jetzt nichts — das ist der Punkt, sagt aber allein noch
   // nicht, dass sie etwas finden KOENNTEN. Also an erfundenen Zeilen
   // nachgewiesen, in genau der Form, die vorher im Baum stand (die ersten drei
-  // stehen so in src/katalog/partsImport.ts und routes/minifigs.ts, Fassung vor 0037).
+  // standen vor Migration 0037 so im Teile-Import und in den Figurenrouten).
   const proben = [
     'UPDATE parts SET bl_part_number = m.bl_part_num FROM x',
     "UPDATE minifigs SET bl_fig_number=$1 WHERE id=$2",
