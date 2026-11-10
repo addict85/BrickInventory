@@ -24,7 +24,7 @@ in einem Sammelfall landen — wie bei
 ```text
 Die technische Ursache anhängen — aber nur, wo der Satz allein nichts sagt.
 
-Nur bei [Fehlerart.UNBEKANNT], dem Auffangzweig in RepoBasis für jede geworfene
+Nur bei [Fehlerart.UNBEKANNT], dem Auffangzweig in sicherAufrufen (Abruf.kt) für jede geworfene
 Ausnahme. Ursachen mit eigenem, verständlichem Satz (kein Netz,
 Zeitüberschreitung, Sitzung abgelaufen, Serverfehler mit Code) bekommen keinen
 englischen Bibliothekstext — „Socket closed“ ist kein Satz an einen Menschen.

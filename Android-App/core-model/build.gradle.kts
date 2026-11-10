@@ -9,5 +9,7 @@ plugins {
 
 dependencies {
     api(libs.kotlinx.serialization.json)
+    // Nur @Qualifier für die Dispatcher-Qualifier (model.koroutinen); kein Hilt, kein Android.
+    implementation(libs.javax.inject)
     testImplementation(libs.junit)
 }

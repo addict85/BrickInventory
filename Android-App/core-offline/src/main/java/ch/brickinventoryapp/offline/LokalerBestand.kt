@@ -1,13 +1,12 @@
 package ch.brickinventoryapp.offline
 
+import ch.brickinventoryapp.model.lokal.Bestandsart
+import ch.brickinventoryapp.model.lokal.Lokal
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
-
-/** Die Listen, die die App lokal führt. Der Name steht in der Datenbank — nicht umbenennen. */
-enum class Bestandsart { SETS, MERKLISTE, TEILE, FIGUREN, MANUELLE_TEILE, MANUELLE_FIGUREN, GUTSCHEINE }
 
 /**
  * Die Spalten, nach denen der Server filtert — an einer Zeile ihre Werte, in einer

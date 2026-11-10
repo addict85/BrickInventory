@@ -7,7 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import ch.brickinventoryapp.data.cache.CacheBesitzer
-import ch.brickinventoryapp.data.di.ApplicationScope
+import ch.brickinventoryapp.model.koroutinen.ApplicationScope
 import ch.brickinventoryapp.netz.util.NetworkPolicy
 import ch.brickinventoryapp.sicherheit.Geraetesperre
 import ch.brickinventoryapp.sicherheit.TokenVerschluesselung

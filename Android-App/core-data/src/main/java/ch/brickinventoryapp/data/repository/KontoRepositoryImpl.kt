@@ -2,12 +2,11 @@ package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.api.KontoApi
-import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.model.data.model.*
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.JsonObject
-import ch.brickinventoryapp.data.di.BrickDispatchers
-import ch.brickinventoryapp.data.di.Dispatcher
+import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
+import ch.brickinventoryapp.model.koroutinen.Dispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -22,15 +21,14 @@ import ch.brickinventoryapp.netz.util.NetworkPolicy
 import ch.brickinventoryapp.netz.util.Protokoll
 
 /**
- * Anmeldung und das eigene Konto: Profil, Passwort, zweiter Faktor, Geräte, Design und Einstellungen — über Retrofit; die gemeinsame Abruflogik steht in RepoBasis.kt.
+ * Anmeldung und das eigene Konto: Profil, Passwort, zweiter Faktor, Geräte, Design und Einstellungen — über Retrofit; die gemeinsame Abruflogik steht in Abruf.kt.
  */
 @Singleton
 class KontoRepositoryImpl @Inject constructor(
-    api: KontoApi,
-    cache: ResponseCache,
+    private val api: KontoApi,
     /** Für den blockierenden Tausch. */
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
-) : RepoBasis<KontoApi>(api, cache), KontoRepository {
+) : KontoRepository {
 
     // Kein Authorization-Header hier: Der OkHttp-Interceptor in di/ServerClient.kt
     // setzt "Bearer <token>" für alle Anfragen an unseren Server (aus dem
@@ -41,13 +39,13 @@ class KontoRepositoryImpl @Inject constructor(
      * Verlangt der Server den zweiten Faktor, antwortet er mit 401 und
      * `zweiter_faktor: true`. Das wird hier zu einer gewöhnlichen Antwort mit
      * success=false umgebogen (wie GutscheineRepository.guthaben), sonst gingen
-     * Kennzeichen und Satz in safeCall verloren. [passkey] ersetzt den Code.
+     * Kennzeichen und Satz in sicherAufrufen verloren. [passkey] ersetzt den Code.
      * Ausführlich: docs/begruendungen/core-data/data/repository/KontoRepository.kt.md#login
      */
     override suspend fun login(serverUrl: String, username: String, password: String, code: String?,
                       scope: String, passkey: JsonObject?): Ergebnis<Anmeldeantwort> {
         var wege = ZweiterFaktorWege()
-        val r = safeCall {
+        val r = sicherAufrufen {
             val https = NetworkPolicy.istHttps(serverUrl)
             val antwort = if (passkey != null)
                 api.loginMitPasskey(PasskeyLoginRequest(username, password, passkey, scope = scope, neverExpires = https))
@@ -69,60 +67,60 @@ class KontoRepositoryImpl @Inject constructor(
 
     /** Die Optionen für den Credential Manager; [zweck] wie PASSKEY_ANMELDEN. */
     override suspend fun passkeyOptionen(zweck: String): Ergebnis<PasskeyOptionen> =
-        safeCall { api.passkeyOptionen(PasskeyOptionenAnfrage(zweck)) }
+        sicherAufrufen { api.passkeyOptionen(PasskeyOptionenAnfrage(zweck)) }
 
     /** Ohne Passwort; derselbe Token wie bei [login], mit denselben Regeln für den Ablauf. */
     override suspend fun passkeyAnmelden(serverUrl: String, antwort: JsonObject, scope: String): Ergebnis<LoginResponse> =
-        safeCall { api.passkeyAnmelden(PasskeyAnmeldung(antwort, scope = scope,
+        sicherAufrufen { api.passkeyAnmelden(PasskeyAnmeldung(antwort, scope = scope,
             neverExpires = NetworkPolicy.istHttps(serverUrl))) }
 
     override suspend fun qrLogin(token: String, label: String): Ergebnis<QrMeldung> =
-        safeCall { api.qrLogin(QrLoginRequest(token, label)) }
+        sicherAufrufen { api.qrLogin(QrLoginRequest(token, label)) }
 
     override suspend fun qrAbholen(abholung: String): Ergebnis<QrAbholung> =
-        safeCall { api.qrAbholen(QrAbholRequest(abholung)) }
+        sicherAufrufen { api.qrAbholen(QrAbholRequest(abholung)) }
 
-    override suspend fun getMe(): Ergebnis<MeResponse> = safeCall { api.getMe() }
+    override suspend fun getMe(): Ergebnis<MeResponse> = sicherAufrufen { api.getMe() }
 
     // Konto anlegen und Passwort vergessen — beides ohne bestehende Anmeldung.
     override suspend fun getRegistrationStatus(): Ergebnis<RegistrationStatusResponse> =
-        safeCall { api.getRegistrationStatus() }
+        sicherAufrufen { api.getRegistrationStatus() }
 
     override suspend fun register(request: RegisterRequest): Ergebnis<RegisterResponse> =
-        safeCall { api.register(request) }
+        sicherAufrufen { api.register(request) }
 
     override suspend fun forgotPassword(email: String): Ergebnis<ForgotPasswordResponse> =
-        safeCall { api.forgotPassword(ForgotPasswordRequest(email)) }
+        sicherAufrufen { api.forgotPassword(ForgotPasswordRequest(email)) }
 
-    override suspend fun getProfil(): Ergebnis<ProfilResponse> = safeCall { api.getProfil() }
+    override suspend fun getProfil(): Ergebnis<ProfilResponse> = sicherAufrufen { api.getProfil() }
 
-    override suspend fun zweiterFaktorStand(): Ergebnis<ZweiterFaktorStand> = safeCall { api.zweiterFaktorStand() }
+    override suspend fun zweiterFaktorStand(): Ergebnis<ZweiterFaktorStand> = sicherAufrufen { api.zweiterFaktorStand() }
 
     override suspend fun zweiterFaktorEinrichten(passwort: String): Ergebnis<ZweiterFaktorEinrichtung> =
-        safeCall { api.zweiterFaktorEinrichten(ZweiterFaktorAnfrage(password = passwort)) }
+        sicherAufrufen { api.zweiterFaktorEinrichten(ZweiterFaktorAnfrage(password = passwort)) }
 
     override suspend fun zweiterFaktorBestaetigen(code: String): Ergebnis<ZweiterFaktorCodes> =
-        safeCall { api.zweiterFaktorBestaetigen(ZweiterFaktorAnfrage(code = code)) }
+        sicherAufrufen { api.zweiterFaktorBestaetigen(ZweiterFaktorAnfrage(code = code)) }
 
     override suspend fun zweiterFaktorAbschalten(passwort: String, code: String): Ergebnis<GenericResponse> =
-        safeCall { api.zweiterFaktorAbschalten(ZweiterFaktorAnfrage(password = passwort, code = code)) }
+        sicherAufrufen { api.zweiterFaktorAbschalten(ZweiterFaktorAnfrage(password = passwort, code = code)) }
 
     override suspend fun zweiterFaktorNeueCodes(code: String): Ergebnis<ZweiterFaktorCodes> =
-        safeCall { api.zweiterFaktorNeueCodes(ZweiterFaktorAnfrage(code = code)) }
+        sicherAufrufen { api.zweiterFaktorNeueCodes(ZweiterFaktorAnfrage(code = code)) }
 
     override suspend fun updateProfil(aenderung: ProfilAenderung): Ergebnis<ProfilGespeichert> =
-        safeCall { api.updateProfil(aenderung) }
+        sicherAufrufen { api.updateProfil(aenderung) }
 
     override suspend fun changePassword(aktuell: String, neu: String, code: String?): Ergebnis<GenericResponse> =
-        safeCall { api.changePassword(PasswortAenderung(aktuell, neu, code)) }
+        sicherAufrufen { api.changePassword(PasswortAenderung(aktuell, neu, code)) }
 
-    override suspend fun getTokens(): Ergebnis<TokensResponse> = safeCall { api.getTokens() }
+    override suspend fun getTokens(): Ergebnis<TokensResponse> = sicherAufrufen { api.getTokens() }
 
     override suspend fun revokeToken(tokenId: String, bestaetigung: ZweiterFaktorAnfrage): Ergebnis<TokenWiderruf> =
-        safeCall { api.revokeToken(tokenId, bestaetigung) }
+        sicherAufrufen { api.revokeToken(tokenId, bestaetigung) }
 
     override suspend fun andereBeenden(bestaetigung: ZweiterFaktorAnfrage): Ergebnis<AndereBeendet> =
-        safeCall { api.andereBeenden(AndereBeendenAnfrage(bestaetigung.password, bestaetigung.code)) }
+        sicherAufrufen { api.andereBeenden(AndereBeendenAnfrage(bestaetigung.password, bestaetigung.code)) }
 
     /**
      * Den Token tauschen; [alterToken] geht ausdrücklich mit (siehe data/TokenTausch).
@@ -131,7 +129,7 @@ class KontoRepositoryImpl @Inject constructor(
      */
     override suspend fun tokenRotieren(alterToken: String): Ergebnis<GetauschterToken> {
         var herkunft: String? = null
-        val r = safeCall {
+        val r = sicherAufrufen {
             kotlinx.coroutines.withContext(io) { api.tokenRotieren("Bearer $alterToken").execute() }
                 .also { herkunft = NetworkPolicy.herkunft(it.raw().request.url.toString()) }
         }
@@ -161,22 +159,22 @@ class KontoRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getSettings(): Ergebnis<SettingsResponse> =
-        safeCall { api.getSettings() }
+        sicherAufrufen { api.getSettings() }
 
     /** Das wirksame Design: mit Token das des Kontos, sonst die Vorgabe. Siehe KontoApi.getAppTheme. */
-    override suspend fun getAppTheme(): Ergebnis<AppThemeResponse> = safeCall { api.getAppTheme() }
+    override suspend fun getAppTheme(): Ergebnis<AppThemeResponse> = sicherAufrufen { api.getAppTheme() }
 
     /** Eigenes Design setzen; "" stellt auf die Vorgabe des Verwalters zurück. */
     override suspend fun setzeEigenesDesign(theme: String): Ergebnis<AppThemeResponse> =
-        safeCall { api.setzeEigenesDesign(mapOf("theme" to theme)) }
+        sicherAufrufen { api.setzeEigenesDesign(mapOf("theme" to theme)) }
 
     override suspend fun updateSettings(currency: String, condition: String): Ergebnis<GenericResponse> =
-        safeCall { api.updateSettings(mapOf("currency" to currency, "price_condition" to condition)) }
+        sicherAufrufen { api.updateSettings(mapOf("currency" to currency, "price_condition" to condition)) }
 
-    override suspend fun getDefaultCondition(): Ergebnis<DefaultConditionResponse> = safeCall { api.getDefaultCondition() }
+    override suspend fun getDefaultCondition(): Ergebnis<DefaultConditionResponse> = sicherAufrufen { api.getDefaultCondition() }
 
     // User-level: saves per-user default (empty string = revert to global)
-    override suspend fun setUserDefaultCondition(condition: String): Ergebnis<GenericAdminResponse> = safeCall { api.setUserDefaultCondition(mapOf("condition" to condition)) }
+    override suspend fun setUserDefaultCondition(condition: String): Ergebnis<GenericAdminResponse> = sicherAufrufen { api.setUserDefaultCondition(mapOf("condition" to condition)) }
 }
 
 /** Die Antwort auf [KontoRepository.login]; [passkeyStattCode], wenn der Server beim

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.offline
 
+import ch.brickinventoryapp.model.lokal.Bestandsart
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.lokal.Abgleich
@@ -69,7 +70,7 @@ class BestandDatenbankTest {
         val gesendet = mutableListOf<Int>()
         var netz = false
         val schluessel = mutableSetOf<String>()
-        val abgleich = Abgleich(ablage) { b, k ->
+        val abgleich = Abgleich(ablage, ausgang) { b, k ->
             schluessel += k
             if (!netz) Sendeergebnis.Spaeter else { gesendet += (b as Bearbeitung.SetMenge).schritt; Sendeergebnis.Angenommen }
         }

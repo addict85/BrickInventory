@@ -19,7 +19,7 @@ import ch.brickinventoryapp.testing.TestApi
  * Der Plattenspeicher springt NUR ein, wenn der Server nicht erreichbar ist —
  * und sagt dann, dass er es ist.
  *
- * `RepoBasis.cached()` mit echtem Server (MockWebServer) und echtem
+ * `ResponseCache.cached()` (Abruf.kt) mit echtem Server (MockWebServer) und echtem
  * Plattenspeicher; KatalogRepository.getCatalogMeta() ist nur das Vehikel.
  *
  * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen die Datenschicht):

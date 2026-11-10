@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.zustand
 
 import ch.brickinventoryapp.data.lokal.Abgleich
-import ch.brickinventoryapp.offline.Abgleichsereignis
+import ch.brickinventoryapp.data.lokal.Abgleichsereignis
 import ch.brickinventoryapp.data.lokal.Abgleichsergebnis
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.data.lokal.Bearbeitungssender
@@ -62,32 +62,39 @@ class AusgangAbgleichTest {
         }
     }
 
-    private fun ablage() = Offlineablage(SpeicherBestand(), SpeicherAusgang(), { "konto-a" })
+    /** Ablage und Ausgang getrennt in der Hand: Der Test sieht im Ausgang nach, die Ablage zeigt ihn nicht. */
+    private class Welt(bereich: suspend () -> String? = { "konto-a" }) {
+        val ausgang = SpeicherAusgang()
+        val ablage = Offlineablage(SpeicherBestand(), ausgang, bereich)
+        fun abgleich(s: Sender) = Abgleich(ablage, ausgang, s)
+    }
 
     private fun nummern(s: Sender) = s.gesendet.map { (it as Bearbeitung.SetMenge).setNumber.removePrefix("100").removeSuffix("-1").toInt() }
 
     @Test
     fun `sendet der Reihe nach und leert den Ausgang`() = runBlocking {
-        val a = ablage()
+        val w = Welt()
+        val a = w.ablage
         for (n in 1..3) a.puffere(menge(n))
         val s = Sender()
-        assertEquals(Abgleichsergebnis.FERTIG, Abgleich(a, s).sende())
+        assertEquals(Abgleichsergebnis.FERTIG, w.abgleich(s).sende())
         assertEquals(listOf(1, 2, 3), nummern(s))
-        assertEquals(0, a.ausgang.alle("konto-a").size)
+        assertEquals(0, w.ausgang.alle("konto-a").size)
     }
 
     @Test
     fun `was später geht, hält alles dahinter auf`() = runBlocking {
-        val a = ablage()
+        val w = Welt()
+        val a = w.ablage
         for (n in 1..3) a.puffere(menge(n))
         var netz = false
         val s = Sender { if (netz) Sendeergebnis.Angenommen else Sendeergebnis.Spaeter }
-        assertEquals(Abgleichsergebnis.SPAETER, Abgleich(a, s).sende())
+        assertEquals(Abgleichsergebnis.SPAETER, w.abgleich(s).sende())
         assertEquals("Nach dem ersten „später“ darf nichts weiter raus", listOf(1), nummern(s))
-        val vorn = a.ausgang.erster("konto-a")!!
+        val vorn = w.ausgang.erster("konto-a")!!
         assertEquals("Der Versuch zählt", 1, vorn.versuche)
         netz = true
-        assertEquals(Abgleichsergebnis.FERTIG, Abgleich(a, s).sende())
+        assertEquals(Abgleichsergebnis.FERTIG, w.abgleich(s).sende())
         assertEquals("Wiederholt wird derselbe Posten, dann die übrigen", listOf(1, 1, 2, 3), nummern(s))
         assertEquals("Die Wiederholung trägt denselben Schlüssel, die übrigen je einen eigenen",
             listOf(true, false, false), s.schluessel.zipWithNext { x, y -> x == y })
@@ -95,30 +102,33 @@ class AusgangAbgleichTest {
 
     @Test
     fun `eine Ablehnung verwirft und meldet, der Rest geht weiter`() = runBlocking {
-        val a = ablage()
+        val w = Welt()
+        val a = w.ablage
         for (n in 1..3) a.puffere(menge(n))
-        val ereignisse = mutableListOf<Abgleichsereignis>()
-        val sammler = launch { a.ereignisse.collect { ereignisse += it } }
-        yield()
         val s = Sender { b -> if ((b as Bearbeitung.SetMenge).setNumber == "1002-1") Sendeergebnis.Abgelehnt("gibt es nicht", 404) else Sendeergebnis.Angenommen }
-        assertEquals(Abgleichsergebnis.FERTIG, Abgleich(a, s).sende())
+        val abgleich = w.abgleich(s)
+        val ereignisse = mutableListOf<Abgleichsereignis>()
+        val sammler = launch { abgleich.ereignisse.collect { ereignisse += it } }
+        yield()
+        assertEquals(Abgleichsergebnis.FERTIG, abgleich.sende())
         yield()
         sammler.cancel()
         assertEquals(listOf(1, 2, 3), nummern(s))
         val verworfen = ereignisse.filterIsInstance<Abgleichsereignis.Verworfen>().single()
-        assertEquals("1002-1", verworfen.bearbeitung.ziel)
+        assertEquals("1002-1", verworfen.ziel)
         assertEquals("gibt es nicht", verworfen.meldung)
         assertTrue("Die Liste wird neu geladen, damit die lokale Annahme verschwindet: $ereignisse",
             ereignisse.any { it is Abgleichsereignis.Gesendet })
-        assertEquals(0, a.ausgang.alle("konto-a").size)
+        assertEquals(0, w.ausgang.alle("konto-a").size)
     }
 
     @Test
     fun `zwei Läufe zugleich senden nichts doppelt`() = runBlocking {
-        val a = ablage()
+        val w = Welt()
+        val a = w.ablage
         for (n in 1..2) a.puffere(menge(n))
         val s = Sender().apply { bremse = CompletableDeferred() }
-        val abgleich = Abgleich(a, s)
+        val abgleich = w.abgleich(s)
         val erster = async { abgleich.sende() }
         val zweiter = async { abgleich.sende() }
         // Beide Läufe sind gestartet, der erste hängt im Senden des ersten Postens.
@@ -150,37 +160,40 @@ class AusgangAbgleichTest {
 
     @Test
     fun `nach zu vielen Versuchen wird verworfen statt ewig zu warten`() = runBlocking {
-        val a = ablage()
+        val w = Welt()
+        val a = w.ablage
         a.puffere(menge(1))
         val s = Sender { Sendeergebnis.Spaeter }
-        repeat(Abgleich.MAX_VERSUCHE - 1) { assertEquals(Abgleichsergebnis.SPAETER, Abgleich(a, s).sende()) }
-        assertEquals(Abgleichsergebnis.FERTIG, Abgleich(a, s).sende())
-        assertEquals(0, a.ausgang.alle("konto-a").size)
+        repeat(Abgleich.MAX_VERSUCHE - 1) { assertEquals(Abgleichsergebnis.SPAETER, w.abgleich(s).sende()) }
+        assertEquals(Abgleichsergebnis.FERTIG, w.abgleich(s).sende())
+        assertEquals(0, w.ausgang.alle("konto-a").size)
     }
 
     @Test
     fun `ein Konto-Wechsel vor dem Senden schickt keinen Posten mit dem neuen Konto`() = runBlocking {
         var konto = "konto-a"
         var wechsleNachAbfrage = false
-        val a = Offlineablage(SpeicherBestand(), SpeicherAusgang(), {
+        val w = Welt {
             konto.also { if (wechsleNachAbfrage) { konto = "konto-b"; wechsleNachAbfrage = false } }
-        })
+        }
+        val a = w.ablage
         for (n in 1..2) a.puffere(menge(n))
         // Der Lauf beginnt unter konto-a, vor dem ersten Senden gilt schon konto-b.
         wechsleNachAbfrage = true
         val s = Sender()
-        assertEquals(Abgleichsergebnis.NICHT_ANGEMELDET, Abgleich(a, s).sende())
+        assertEquals(Abgleichsergebnis.NICHT_ANGEMELDET, w.abgleich(s).sende())
         assertEquals("Kein Posten von konto-a geht mit dem Token von konto-b raus",
             emptyList<Bearbeitung>(), s.gesendet.toList())
-        assertEquals(2, a.ausgang.alle("konto-a").size)
+        assertEquals(2, w.ausgang.alle("konto-a").size)
     }
 
     @Test
     fun `ohne Anmeldung wird nichts gesendet`() = runBlocking {
-        val a = Offlineablage(SpeicherBestand(), SpeicherAusgang(), { null })
+        val w = Welt { null }
+        val a = w.ablage
         val s = Sender()
         assertEquals(false, a.puffere(menge(1)))
-        assertEquals(Abgleichsergebnis.NICHT_ANGEMELDET, Abgleich(a, s).sende())
+        assertEquals(Abgleichsergebnis.NICHT_ANGEMELDET, w.abgleich(s).sende())
         assertEquals(emptyList<Bearbeitung>(), s.gesendet.toList())
     }
 }

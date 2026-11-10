@@ -11,8 +11,8 @@ import ch.brickinventoryapp.finanzen.ui.pdf.PdfLoadState
 import ch.brickinventoryapp.finanzen.ui.pdf.PdfSeitenQuelle
 import ch.brickinventoryapp.finanzen.ui.pdf.PdfSchreiber
 import ch.brickinventoryapp.finanzen.ui.pdf.kopiereAbbrechbar
-import ch.brickinventoryapp.data.di.BrickDispatchers
-import ch.brickinventoryapp.data.di.Dispatcher
+import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
+import ch.brickinventoryapp.model.koroutinen.Dispatcher
 import ch.brickinventoryapp.netz.util.pdfImBetrachter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher

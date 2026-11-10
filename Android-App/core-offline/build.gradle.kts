@@ -34,6 +34,8 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     testImplementation(project(":core-testing"))
+    // Abgleich und Repositories gegen die echte Room-Ablage (BestandDatenbankTest, OhneNetzFilterTest).
+    testImplementation(project(":core-data"))
     // Room-Tests laufen unter Robolectric (BestandMigrationTest).
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)

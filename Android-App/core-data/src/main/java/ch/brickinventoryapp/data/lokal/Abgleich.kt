@@ -6,14 +6,18 @@ import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.model.data.model.UpdateQuantityRequest
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.sicherAufrufen
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
-import ch.brickinventoryapp.offline.Abgleichsereignis
+import ch.brickinventoryapp.offline.Ausgang
 import ch.brickinventoryapp.offline.Ausgangsposten
 import ch.brickinventoryapp.offline.Bearbeitung
-import ch.brickinventoryapp.offline.Bestandsart
+import ch.brickinventoryapp.model.lokal.Bestandsart
 import ch.brickinventoryapp.offline.Offlineablage
 
 /** Was der Server zu einer Bearbeitung sagte. */
@@ -77,9 +81,18 @@ enum class Abgleichsergebnis {
 @Singleton
 class Abgleich @Inject constructor(
     private val ablage: Offlineablage,
+    private val ausgang: Ausgang,
     private val sender: Bearbeitungssender,
-) {
+) : Ausgangslage {
     private val sperre = Mutex()
+    private val _ereignisse = MutableSharedFlow<Abgleichsereignis>(extraBufferCapacity = 16)
+    override val ereignisse: SharedFlow<Abgleichsereignis> = _ereignisse.asSharedFlow()
+
+    override fun offene(): Flow<Int> = ablage.offene()
+
+    override suspend fun planeLiegengebliebenes() {
+        if (ablage.wartet()) ablage.planeSenden()
+    }
 
     suspend fun sende(): Abgleichsergebnis = sperre.withLock {
         val bereich = ablage.bereich() ?: return@withLock Abgleichsergebnis.NICHT_ANGEMELDET
@@ -87,40 +100,40 @@ class Abgleich @Inject constructor(
         try {
             lauf(bereich, betroffen)
         } finally {
-            if (betroffen.isNotEmpty()) ablage.melde(Abgleichsereignis.Gesendet(betroffen))
+            if (betroffen.isNotEmpty()) _ereignisse.tryEmit(Abgleichsereignis.Gesendet(betroffen))
         }
     }
 
     private suspend fun lauf(bereich: String, betroffen: MutableSet<Bestandsart>): Abgleichsergebnis {
-        var p = ablage.ausgang.erster(bereich)
+        var p = ausgang.erster(bereich)
         while (p != null) {
             // Unmittelbar vor jedem Senden: Der Wächter hängt das Token an, das JETZT
             // gilt. Nach einem Konto-Wechsel ginge der Posten sonst unter fremdem Konto raus.
             if (ablage.bereich() != bereich) return Abgleichsergebnis.NICHT_ANGEMELDET
             when (val e = sender.sende(p.bearbeitung, p.schluessel)) {
                 Sendeergebnis.Angenommen -> {
-                    ablage.ausgang.entferne(p.id)
+                    ausgang.entferne(p.id)
                     betroffen += p.bearbeitung.art
                 }
                 is Sendeergebnis.Abgelehnt -> verwirf(p, e.meldung, e.httpCode, betroffen)
                 Sendeergebnis.Spaeter -> {
                     if (p.versuche + 1 < MAX_VERSUCHE) {
-                        ablage.ausgang.versuchGescheitert(p.id)
+                        ausgang.versuchGescheitert(p.id)
                         return Abgleichsergebnis.SPAETER
                     }
                     verwirf(p, "", null, betroffen)
                 }
             }
-            p = ablage.ausgang.erster(bereich)
+            p = ausgang.erster(bereich)
         }
         return Abgleichsergebnis.FERTIG
     }
 
     private suspend fun verwirf(p: Ausgangsposten, meldung: String, code: Int?, betroffen: MutableSet<Bestandsart>) {
-        ablage.ausgang.entferne(p.id)
+        ausgang.entferne(p.id)
         // Die lokale Liste trägt die Bearbeitung noch; neu laden stellt den Serverstand her.
         betroffen += p.bearbeitung.art
-        ablage.melde(Abgleichsereignis.Verworfen(p.bearbeitung, meldung, code))
+        _ereignisse.tryEmit(Abgleichsereignis.Verworfen(p.bearbeitung.ziel, meldung, code))
     }
 
     companion object {

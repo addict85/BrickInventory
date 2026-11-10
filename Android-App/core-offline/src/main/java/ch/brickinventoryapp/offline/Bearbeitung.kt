@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.offline
 
+import ch.brickinventoryapp.model.lokal.Bestandsart
 import ch.brickinventoryapp.model.data.model.AddMinifigRequest
 import ch.brickinventoryapp.model.data.model.AddPartRequest
 import ch.brickinventoryapp.model.data.model.AddSetRequest

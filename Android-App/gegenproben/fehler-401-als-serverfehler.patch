@@ -3,11 +3,11 @@ Modul: core-zustand
 Test: ch.brickinventoryapp.zustand.BrickRepositoryErrorMappingTest
 Rot: 401 wird als abgelaufene Sitzung gemeldet
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt
-index 2cdc995..a12ddac 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt
-@@ -126,7 +126,7 @@ suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Ergebnis<T> {
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt
+index 31fb616..f6dd34b 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt
+@@ -136,7 +136,7 @@ suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Ergebnis<T> {
                  .getOrElse { Fehlerrumpf(null, null) }
              val text = rumpf.text ?: ""
              val code = Fehlercode.aus(rumpf.code)

@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.api.VerwaltungApi
-import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.model.data.model.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -9,13 +8,12 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Betrieb und Datenpflege: CSV-Import, Protokoll, Hintergrundarbeiten, Caches, Kontingente, globale Vorgaben — über Retrofit; die gemeinsame Abruflogik steht in RepoBasis.kt.
+ * Betrieb und Datenpflege: CSV-Import, Protokoll, Hintergrundarbeiten, Caches, Kontingente, globale Vorgaben — über Retrofit; die gemeinsame Abruflogik steht in Abruf.kt.
  */
 @Singleton
 class VerwaltungRepositoryImpl @Inject constructor(
-    api: VerwaltungApi,
-    cache: ResponseCache,
-) : RepoBasis<VerwaltungApi>(api, cache), VerwaltungRepository {
+    private val api: VerwaltungApi,
+) : VerwaltungRepository {
 
     /**
      * Eine CSV-Datei importieren. Die Bytes kommen fertig gelesen herein, weil ein
@@ -27,7 +25,7 @@ class VerwaltungRepositoryImpl @Inject constructor(
     ): Ergebnis<CsvImportErgebnis> {
         val koerper = inhalt.toRequestBody("text/csv".toMediaType())
         val teil = okhttp3.MultipartBody.Part.createFormData("file", dateiname, koerper)
-        return safeCall {
+        return sicherAufrufen {
             when (art) {
                 CsvArt.SETS      -> api.importSetsCsv(teil)
                 CsvArt.TEILE     -> api.importPartsCsv(teil)
@@ -41,7 +39,7 @@ class VerwaltungRepositoryImpl @Inject constructor(
     // Server-Protokoll. Die Nutzerverwaltung des Servers bleibt der Webapp vorbehalten
     // — siehe VerwaltungApi.
     override suspend fun getProtokoll(minuten: Int): Ergebnis<ProtokollResponse> =
-        safeCall { api.getProtokoll(minuten) }
+        sicherAufrufen { api.getProtokoll(minuten) }
 
     /**
      * Zeitplan eines Jobs setzen — taeglich (HH:MM) oder als Abstand (Minuten).
@@ -52,7 +50,7 @@ class VerwaltungRepositoryImpl @Inject constructor(
      * der Aufrufer sichtbar.
      */
     override suspend fun setJobSchedule(name: String, zeit: String?, minuten: Int?): Ergebnis<GenericAdminResponse> =
-        safeCall {
+        sicherAufrufen {
             api.setJobSchedule(kotlinx.serialization.json.buildJsonObject {
                 put("name", kotlinx.serialization.json.JsonPrimitive(name))
                 zeit?.let { put("time", kotlinx.serialization.json.JsonPrimitive(it)) }
@@ -61,22 +59,22 @@ class VerwaltungRepositoryImpl @Inject constructor(
         }
 
     /** Fehlende Katalogbilder einreihen — siehe VerwaltungApi.queueCatalogImages. */
-    override suspend fun queueCatalogImages(): Ergebnis<GenericAdminResponse> = safeCall { api.queueCatalogImages() }
+    override suspend fun queueCatalogImages(): Ergebnis<GenericAdminResponse> = sicherAufrufen { api.queueCatalogImages() }
 
     /** Das globale Design umstellen (nur Verwalter). */
     override suspend fun setAppTheme(theme: String): Ergebnis<GenericAdminResponse> =
-        safeCall { api.setAppTheme(mapOf("theme" to theme)) }
+        sicherAufrufen { api.setAppTheme(mapOf("theme" to theme)) }
 
     /** Startzustand des Servers — ohne Anmeldung. */
-    override suspend fun getStartupStatus(): Ergebnis<StartupStatus> = safeCall { api.getStartupStatus() }
+    override suspend fun getStartupStatus(): Ergebnis<StartupStatus> = sicherAufrufen { api.getStartupStatus() }
 
-    override suspend fun getJobs(): Ergebnis<JobsResponse> = safeCall { api.getJobs() }
+    override suspend fun getJobs(): Ergebnis<JobsResponse> = sicherAufrufen { api.getJobs() }
 
-    override suspend fun getCacheStats(): Ergebnis<CacheStatsResponse> = safeCall { api.getCacheStats() }
+    override suspend fun getCacheStats(): Ergebnis<CacheStatsResponse> = sicherAufrufen { api.getCacheStats() }
 
-    override suspend fun getCacheTtl(): Ergebnis<CacheTtlResponse> = safeCall { api.getCacheTtl() }
+    override suspend fun getCacheTtl(): Ergebnis<CacheTtlResponse> = sicherAufrufen { api.getCacheTtl() }
 
-    override suspend fun setCacheTtl(hours: Int): Ergebnis<GenericAdminResponse> = safeCall { api.setCacheTtl(mapOf("ttl" to hours.toString())) }
+    override suspend fun setCacheTtl(hours: Int): Ergebnis<GenericAdminResponse> = sicherAufrufen { api.setCacheTtl(mapOf("ttl" to hours.toString())) }
 
     /**
      * Cache leeren — nur Preise, oder alles.
@@ -87,37 +85,37 @@ class VerwaltungRepositoryImpl @Inject constructor(
      * als „alles" gelesen werden.
      */
     override suspend fun clearCache(alles: Boolean): Ergebnis<GenericAdminResponse> =
-        safeCall { api.clearCache(if (alles) mapOf("all" to true) else emptyMap()) }
+        sicherAufrufen { api.clearCache(if (alles) mapOf("all" to true) else emptyMap()) }
 
-    override suspend fun getApiLimits(): Ergebnis<ApiLimitsResponse> = safeCall { api.getApiLimits() }
+    override suspend fun getApiLimits(): Ergebnis<ApiLimitsResponse> = sicherAufrufen { api.getApiLimits() }
 
-    override suspend fun setApiLimits(rb: Int, bl: Int, bs: Int): Ergebnis<GenericAdminResponse> = safeCall { api.setApiLimits(mapOf("rebrickable" to rb, "bricklink" to bl, "brickset" to bs)) }
+    override suspend fun setApiLimits(rb: Int, bl: Int, bs: Int): Ergebnis<GenericAdminResponse> = sicherAufrufen { api.setApiLimits(mapOf("rebrickable" to rb, "bricklink" to bl, "brickset" to bs)) }
 
-    override suspend fun getBricksetQueue(): Ergebnis<BricksetQueueResponse> = safeCall { api.getBricksetQueue() }
+    override suspend fun getBricksetQueue(): Ergebnis<BricksetQueueResponse> = sicherAufrufen { api.getBricksetQueue() }
 
-    override suspend fun retryBricksetEntry(setNumber: String): Ergebnis<GenericAdminResponse> = safeCall { api.retryBricksetEntry(setNumber) }
+    override suspend fun retryBricksetEntry(setNumber: String): Ergebnis<GenericAdminResponse> = sicherAufrufen { api.retryBricksetEntry(setNumber) }
 
-    override suspend fun deleteBricksetEntry(setNumber: String): Ergebnis<GenericAdminResponse> = safeCall { api.deleteBricksetEntry(setNumber) }
+    override suspend fun deleteBricksetEntry(setNumber: String): Ergebnis<GenericAdminResponse> = sicherAufrufen { api.deleteBricksetEntry(setNumber) }
 
-    override suspend fun redownloadMissingImages(): Ergebnis<GenericAdminResponse> = safeCall { api.redownloadMissingImages() }
+    override suspend fun redownloadMissingImages(): Ergebnis<GenericAdminResponse> = sicherAufrufen { api.redownloadMissingImages() }
 
     override suspend fun getAuftraege(status: String?, art: String?): Ergebnis<AuftraegeResponse> =
-        safeCall { api.getAuftraege(status, art) }
+        sicherAufrufen { api.getAuftraege(status, art) }
 
-    override suspend fun brichAuftragAb(id: String): Ergebnis<AuftragAenderung> = safeCall { api.brichAuftragAb(id) }
+    override suspend fun brichAuftragAb(id: String): Ergebnis<AuftragAenderung> = sicherAufrufen { api.brichAuftragAb(id) }
 
-    override suspend fun wiederholeAuftrag(id: String): Ergebnis<AuftragAenderung> = safeCall { api.wiederholeAuftrag(id) }
+    override suspend fun wiederholeAuftrag(id: String): Ergebnis<AuftragAenderung> = sicherAufrufen { api.wiederholeAuftrag(id) }
 
-    override suspend fun starteAuftragsArt(art: String): Ergebnis<AuftragsArtStart> = safeCall { api.starteAuftragsArt(art) }
+    override suspend fun starteAuftragsArt(art: String): Ergebnis<AuftragsArtStart> = sicherAufrufen { api.starteAuftragsArt(art) }
 
-    override suspend fun leereAuftragsArt(art: String): Ergebnis<AuftragsArtLeerung> = safeCall { api.leereAuftragsArt(art) }
+    override suspend fun leereAuftragsArt(art: String): Ergebnis<AuftragsArtLeerung> = sicherAufrufen { api.leereAuftragsArt(art) }
 
-    override suspend fun triggerCsvSync(): Ergebnis<GenericAdminResponse> = safeCall { api.triggerCsvSync() }
+    override suspend fun triggerCsvSync(): Ergebnis<GenericAdminResponse> = sicherAufrufen { api.triggerCsvSync() }
 
-    override suspend fun reimportInstructions(): Ergebnis<GenericAdminResponse> = safeCall { api.reimportInstructions() }
+    override suspend fun reimportInstructions(): Ergebnis<GenericAdminResponse> = sicherAufrufen { api.reimportInstructions() }
 
-    override suspend fun triggerPriceJob(): Ergebnis<GenericAdminResponse> = safeCall { api.triggerPriceJob() }
+    override suspend fun triggerPriceJob(): Ergebnis<GenericAdminResponse> = sicherAufrufen { api.triggerPriceJob() }
 
     // Admin-level: saves global default (Monitoring)
-    override suspend fun setDefaultCondition(condition: String): Ergebnis<GenericAdminResponse> = safeCall { api.setDefaultCondition(mapOf("condition" to condition)) }
+    override suspend fun setDefaultCondition(condition: String): Ergebnis<GenericAdminResponse> = sicherAufrufen { api.setDefaultCondition(mapOf("condition" to condition)) }
 }

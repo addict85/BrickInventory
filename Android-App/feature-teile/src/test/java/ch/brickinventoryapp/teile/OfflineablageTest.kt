@@ -39,7 +39,8 @@ import org.junit.Test
 class OfflineablageTest {
 
     private var konto = "a"
-    private val ablage = Offlineablage(SpeicherBestand(), SpeicherAusgang(), { konto })
+    private val ausgang = SpeicherAusgang()
+    private val ablage = Offlineablage(SpeicherBestand(), ausgang, { konto })
 
     private fun set(nr: String, menge: Int) = SetItem(setNumber = nr, name = "Set $nr", quantity = menge)
 
@@ -106,7 +107,7 @@ class OfflineablageTest {
         ablage.puffere(Bearbeitung.SetMenge("10001-1", 1))
         ablage.leere()
         assertEquals(emptyList<SetItem>(), ablage.lies(Faecher.SETS)!!.liste)
-        assertNull(ablage.ausgang.erster("a"))
+        assertNull(ausgang.erster("a"))
     }
 
     @Test

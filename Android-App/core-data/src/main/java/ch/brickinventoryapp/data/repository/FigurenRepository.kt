@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.offline.Lokal
+import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.model.data.model.*
 import ch.brickinventoryapp.model.data.model.MinifigStatsResponse
 import kotlinx.coroutines.flow.Flow

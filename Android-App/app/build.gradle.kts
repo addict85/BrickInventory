@@ -203,6 +203,8 @@ dependencies {
     implementation(project(":core-model"))
     implementation(project(":core-ressourcen"))
     implementation(project(":core-data"))
+    // Protokoll und NetworkPolicy.
+    implementation(project(":core-netz"))
     implementation(project(":core-sicherheit"))
     implementation(project(":core-update"))
     implementation(project(":core-dienste"))

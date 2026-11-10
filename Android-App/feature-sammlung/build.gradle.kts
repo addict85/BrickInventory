@@ -12,6 +12,8 @@ android {
 dependencies {
     implementation(project(":core-model"))
     implementation(project(":core-data"))
+    // oeffneExtern und eigeneAdresse.
+    implementation(project(":core-netz"))
     implementation(project(":core-ui"))
     implementation(project(":core-ui-bestand"))
     implementation(project(":core-zustand"))
@@ -21,4 +23,6 @@ dependencies {
     implementation(libs.mlkit.textrec)
 
     testImplementation(project(":core-testing"))
+    // Die Tests bauen Ablage und Bearbeitungen selbst.
+    testImplementation(project(":core-offline"))
 }

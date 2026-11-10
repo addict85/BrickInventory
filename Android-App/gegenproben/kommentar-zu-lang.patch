@@ -4,11 +4,12 @@ Test: ch.brickinventoryapp.app.QuelltextRatscheTest
 Rot: kein Kommentar hat mehr als fuenf Zeilen Prosa
 
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AppViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AppViewModel.kt
+index d2ef040..fb81c34 100644
 --- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AppViewModel.kt
 +++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AppViewModel.kt
-@@ -18,6 +18,12 @@ import ch.brickinventoryapp.ui.ScrollMemory
+@@ -17,6 +17,12 @@ import ch.brickinventoryapp.model.ui.ScrollMemory
   * angetippten Meldung. Die Arbeit der Sitzung macht der [SitzungsRepository]; er
-  * lebt im Bereich der App, damit kein Bildschirm dieses ViewModel dafür braucht.
+  * lebt im Bereich der App und startet mit ihr (BrickInventoryApp), nicht mit diesem ViewModel.
   */
 +// Eins.
 +// Zwei.

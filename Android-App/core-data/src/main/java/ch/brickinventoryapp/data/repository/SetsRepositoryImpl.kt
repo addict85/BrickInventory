@@ -2,11 +2,10 @@ package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.api.SetsApi
-import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.offline.Filterspalten
 import ch.brickinventoryapp.offline.Faecher
-import ch.brickinventoryapp.offline.Lokal
+import ch.brickinventoryapp.model.lokal.Lokal
 import kotlinx.coroutines.flow.Flow
 import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.model.data.model.*
@@ -18,14 +17,13 @@ import ch.brickinventoryapp.model.data.model.CsvImportStatus
 import ch.brickinventoryapp.model.data.model.SetExistsResponse
 
 /**
- * Sets: Bestand, Details, Anlegen, Ändern, PDF-Ausgabe — über Retrofit; die gemeinsame Abruflogik steht in RepoBasis.kt.
+ * Sets: Bestand, Details, Anlegen, Ändern, PDF-Ausgabe — über Retrofit; die gemeinsame Abruflogik steht in Abruf.kt.
  */
 @Singleton
 class SetsRepositoryImpl @Inject constructor(
-    api: SetsApi,
-    cache: ResponseCache,
-    ablage: Offlineablage,
-) : RepoBasis<SetsApi>(api, cache, ablage), SetsRepository {
+    private val api: SetsApi,
+    private val ablage: Offlineablage,
+) : SetsRepository {
 
     /**
      * Galerie-Seite vom Server — gefiltert, sortiert, paginiert. Die ungefilterte
@@ -50,13 +48,13 @@ class SetsRepositoryImpl @Inject constructor(
         val ungefiltert = search.isNullOrBlank() && theme.isNullOrBlank() && storage.isNullOrBlank() &&
             (sort == null || sort == GALLERY_DEFAULT_SORT)
         return when {
-            accounts != null -> safeCall { api.getSets(accounts, filter.suchtext, filter.thema, sort, page, pageSize, filter.lagerort) }
+            accounts != null -> sicherAufrufen { api.getSets(accounts, filter.suchtext, filter.thema, sort, page, pageSize, filter.lagerort) }
             ungefiltert ->
-                abgeglichen(Faecher.SETS, { it.sets }, ausLokal, anhaengen = page > 1) {
-                    safeCall { api.getSets(null, null, null, sort, page, pageSize) }
+                ablage.abgeglichen(Faecher.SETS, { it.sets }, ausLokal, anhaengen = page > 1) {
+                    sicherAufrufen { api.getSets(null, null, null, sort, page, pageSize) }
                 }
-            else -> gefiltert(Faecher.SETS, filter, ausLokal) {
-                safeCall { api.getSets(null, filter.suchtext, filter.thema, sort, page, pageSize, filter.lagerort) }
+            else -> ablage.gefiltert(Faecher.SETS, filter, ausLokal) {
+                sicherAufrufen { api.getSets(null, filter.suchtext, filter.thema, sort, page, pageSize, filter.lagerort) }
             }
         }
     }
@@ -66,32 +64,32 @@ class SetsRepositoryImpl @Inject constructor(
      * Nummer, Haushalt) liegt auf dem Server — hier wird nur gefragt.
      */
     override suspend fun getSetExists(setNumber: String): Ergebnis<SetExistsResponse> =
-        safeCall { api.getSetExists(setNumber) }
+        sicherAufrufen { api.getSetExists(setNumber) }
 
     override suspend fun getSetDetail(setNumber: String): Ergebnis<SetDetailResponse> =
-        safeCall { api.getSetDetail(setNumber) }
+        sicherAufrufen { api.getSetDetail(setNumber) }
 
     /** Setname aus dem gemeinsamen Katalog, auch fuer fremde Sets. */
     override suspend fun getSetInfo(setNumber: String): Ergebnis<SetInfoResponse> =
-        safeCall { api.getSetInfo(setNumber) }
+        sicherAufrufen { api.getSetInfo(setNumber) }
 
     override suspend fun addSet(setNumber: String, quantity: Int, purchasePrice: Double?,
                        condition: String?, ownerUserId: Int?,
                        storage: String?): Ergebnis<AddSetResponse> {
         val anfrage = AddSetRequest(setNumber, quantity, purchasePrice, condition, ownerUserId, storage)
-        return schreibe(Bearbeitung.SetErfassen(anfrage),
+        return ablage.schreibe(Bearbeitung.SetErfassen(anfrage),
             { AddSetResponse(success = true, action = "gepuffert", setNumber = setNumber) }) { schluessel ->
-            safeCall { api.addSet(anfrage, schluessel) }
+            sicherAufrufen { api.addSet(anfrage, schluessel) }
         }
     }
 
     override suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?): Ergebnis<GenericResponse> =
-        safeCall { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantity, null, purchasePrice, condition)) }
+        sicherAufrufen { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantity, null, purchasePrice, condition)) }
 
     /** Menge um [schritt] ändern; der Server rechnet unter Bestandssperre. */
     override suspend fun aendereMengeUm(setNumber: String, schritt: Int): Ergebnis<GenericResponse> =
-        schreibe(Bearbeitung.SetMenge(setNumber, schritt), { GenericResponse(success = true) }) { schluessel ->
-            safeCall { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantityDelta = schritt), schluessel) }
+        ablage.schreibe(Bearbeitung.SetMenge(setNumber, schritt), { GenericResponse(success = true) }) { schluessel ->
+            sicherAufrufen { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantityDelta = schritt), schluessel) }
         }
 
     // ── Merkliste ─────────────────────────────────────────────────────────
@@ -106,12 +104,12 @@ class SetsRepositoryImpl @Inject constructor(
         val filter = Filterspalten(suchtext = search?.ifBlank { null }, zustand = condition?.ifBlank { null })
         val ausLokal = { l: List<Merkposten> -> MerklisteResponse(success = true, merkposten = l.sortiert(merkOrdnung(sort))) }
         return when {
-            accounts != null -> safeCall { api.getMerkliste(search, condition, sort, accounts) }
+            accounts != null -> sicherAufrufen { api.getMerkliste(search, condition, sort, accounts) }
             filter == Filterspalten() && (sort == null || sort == MERKLISTE_DEFAULT_SORT) ->
-                abgeglichen(Faecher.MERKLISTE, { it.merkposten }, ausLokal) {
-                    safeCall { api.getMerkliste(search, condition, sort, accounts) }
+                ablage.abgeglichen(Faecher.MERKLISTE, { it.merkposten }, ausLokal) {
+                    sicherAufrufen { api.getMerkliste(search, condition, sort, accounts) }
                 }
-            else -> gefiltert(Faecher.MERKLISTE, filter, ausLokal) { safeCall { api.getMerkliste(search, condition, sort, accounts) } }
+            else -> ablage.gefiltert(Faecher.MERKLISTE, filter, ausLokal) { sicherAufrufen { api.getMerkliste(search, condition, sort, accounts) } }
         }
     }
 
@@ -121,43 +119,43 @@ class SetsRepositoryImpl @Inject constructor(
     override suspend fun legeMerkpostenAn(setNumber: String, condition: String,
                              ownerUserId: Int?): Ergebnis<MerkpostenAntwort> {
         val anfrage = MerkpostenRequest(setNumber, condition, ownerUserId)
-        return schreibe(Bearbeitung.MerkpostenAnlegen(anfrage), {
+        return ablage.schreibe(Bearbeitung.MerkpostenAnlegen(anfrage), {
             MerkpostenAntwort(success = true, warNeu = true,
                 merkposten = Merkposten(setNumber = setNumber, condition = condition, userId = ownerUserId ?: 0))
-        }) { schluessel -> safeCall { api.legeMerkpostenAn(anfrage, schluessel) } }
+        }) { schluessel -> sicherAufrufen { api.legeMerkpostenAn(anfrage, schluessel) } }
     }
 
     override suspend fun verschiebeMerkposten(setNumber: String, condition: String,
                                  vonId: Int, zuId: Int): Ergebnis<MerkpostenInhaberAntwort> =
-        safeCall { api.verschiebeMerkposten(setNumber, condition, MerkpostenInhaberRequest(vonId, zuId)) }
+        sicherAufrufen { api.verschiebeMerkposten(setNumber, condition, MerkpostenInhaberRequest(vonId, zuId)) }
 
     override suspend fun loescheMerkposten(setNumber: String, condition: String,
                               ownerUserId: Int?): Ergebnis<GenericResponse> =
-        schreibe(Bearbeitung.MerkpostenLoeschen(setNumber, condition, ownerUserId), { GenericResponse(success = true) }) { schluessel ->
-            safeCall { api.loescheMerkposten(setNumber, condition, ownerUserId, schluessel) }
+        ablage.schreibe(Bearbeitung.MerkpostenLoeschen(setNumber, condition, ownerUserId), { GenericResponse(success = true) }) { schluessel ->
+            sicherAufrufen { api.loescheMerkposten(setNumber, condition, ownerUserId, schluessel) }
         }
 
     override suspend fun getMerkpostenPreise(setNumber: String): Ergebnis<MerkpostenPreiseResponse> =
-        safeCall { api.getMerkpostenPreise(setNumber) }
+        sicherAufrufen { api.getMerkpostenPreise(setNumber) }
 
     override suspend fun uebernimmMerkposten(setNumber: String, condition: String, quantity: Int,
                                 purchasePrice: Double?, erfasstAls: String?,
                                 ownerUserId: Int?,
                                 storage: String?): Ergebnis<MerkpostenUebernahmeResponse> =
-        safeCall { api.uebernimmMerkposten(setNumber, condition,
+        sicherAufrufen { api.uebernimmMerkposten(setNumber, condition,
                                        MerkpostenUebernahmeRequest(quantity, purchasePrice,
                                                                erfasstAls, ownerUserId, storage)) }
 
     /** Löschen nur online: Der Papierkorb des Servers entscheidet, was zurückkommt. */
     override suspend fun deleteSet(setNumber: String): Ergebnis<GenericResponse> =
-        safeCall { api.deleteSet(setNumber) }.also { if (it is Ergebnis.Success) ablage.entferne(Faecher.SETS, setNumber) }
+        sicherAufrufen { api.deleteSet(setNumber) }.also { if (it is Ergebnis.Success) ablage.entferne(Faecher.SETS, setNumber) }
 
     /** Die lokale Liste der Galerie (ungefiltert); sie ändert sich auch durch offline Bearbeitetes. */
     override fun beobachteSets(): Flow<Lokal<SetItem>> = ablage.beobachte(Faecher.SETS)
 
     override suspend fun moveSet(setNumber: String, fromUserId: Int?, toUserId: Int,
                         acquisitionIds: List<Int>?): Ergebnis<MoveSetResponse> =
-        safeCall { api.moveSet(setNumber, MoveSetRequest(fromUserId, toUserId, acquisitionIds)) }
+        sicherAufrufen { api.moveSet(setNumber, MoveSetRequest(fromUserId, toUserId, acquisitionIds)) }
 
     // ── Preisalarm ──────────────────────────────────────────────────────────
     //
@@ -173,51 +171,51 @@ class SetsRepositoryImpl @Inject constructor(
      * dieselbe Meldung ein zweites Mal.
      */
     override suspend fun getPendingAlerts(since: String?): Ergebnis<PendingAlertsResponse> =
-        safeCall { api.getPendingAlerts(since) }
+        sicherAufrufen { api.getPendingAlerts(since) }
 
     /** Alle Alarme des Kontos — die Uebersicht in den Einstellungen. */
     override suspend fun getAlleAlarme(): Ergebnis<PreisalarmeResponse> =
-        safeCall { api.getAlleAlarme() }
+        sicherAufrufen { api.getAlleAlarme() }
 
     override suspend fun getPreisalarme(setNumber: String): Ergebnis<PreisalarmeResponse> =
-        safeCall { api.getPreisalarme(setNumber) }
+        sicherAufrufen { api.getPreisalarme(setNumber) }
 
     override suspend fun setPreisalarm(setNumber: String, richtung: String, schwelle: Double,
                               condition: String): Ergebnis<PreisalarmResponse> =
-        safeCall { api.setPreisalarm(setNumber, PreisalarmRequest(richtung, schwelle, condition)) }
+        sicherAufrufen { api.setPreisalarm(setNumber, PreisalarmRequest(richtung, schwelle, condition)) }
 
     override suspend fun deletePreisalarm(setNumber: String, condition: String):
         Ergebnis<PreisalarmResponse> =
-        safeCall { api.deletePreisalarm(setNumber, condition) }
+        sicherAufrufen { api.deletePreisalarm(setNumber, condition) }
 
     /** Lagerort eines Sets setzen. Leerer Text loescht ihn. */
     override suspend fun setSetStorage(setNumber: String, ort: String): Ergebnis<LagerortResponse> =
-        safeCall { api.setSetStorage(setNumber, LagerortRequest(ort)) }
+        sicherAufrufen { api.setSetStorage(setNumber, LagerortRequest(ort)) }
 
     override suspend fun getSetPartsList(setNumber: String): Ergebnis<PartsResponse> =
-        safeCall { api.getSetPartsList(setNumber) }
+        sicherAufrufen { api.getSetPartsList(setNumber) }
 
     override suspend fun getSetMinifigsList(setNumber: String): Ergebnis<MinifigsResponse> =
-        safeCall { api.getSetMinifigsList(setNumber) }
+        sicherAufrufen { api.getSetMinifigsList(setNumber) }
 
     override suspend fun getMinifigsForSet(setNumber: String): Ergebnis<MinifigsResponse> =
-        safeCall { api.getMinifigs(setNumber = setNumber) }
+        sicherAufrufen { api.getMinifigs(setNumber = setNumber) }
 
     override suspend fun getPartsForSet(setNumber: String): Ergebnis<PartsResponse> =
-        safeCall { api.getParts(page = 1, pageSize = 2000, setNumber = setNumber) }
+        sicherAufrufen { api.getParts(page = 1, pageSize = 2000, setNumber = setNumber) }
 
     override suspend fun resolveBarcode(barcode: String): Ergebnis<BarcodeResponse> =
-        safeCall { api.getBarcodeSet(barcode) }
+        sicherAufrufen { api.getBarcodeSet(barcode) }
 
     override suspend fun getCsvImportStatus(serverUrl: String, token: String): Ergebnis<CsvImportStatus> {
         // Use full URL via Retrofit @Url — bypasses localhost rewrite, uses existing SSL client
         // Umgezogen nach /api/v1 — ein Adressraum (siehe server.ts).
         val url = serverUrl.trimEnd('/') + "/api/v1/sets/import/csv/status"
-        return safeCall { api.getCsvImportStatusDirect(url, "Bearer $token") }
+        return sicherAufrufen { api.getCsvImportStatusDirect(url, "Bearer $token") }
     }
 
     /** Laufenden CSV-Import abbrechen — siehe SetsApi.cancelCsvImport. */
-    override suspend fun cancelCsvImport(): Ergebnis<GenericAdminResponse> = safeCall { api.cancelCsvImport() }
+    override suspend fun cancelCsvImport(): Ergebnis<GenericAdminResponse> = sicherAufrufen { api.cancelCsvImport() }
 
     /** Download finished PDF — returns bytes */
     override suspend fun downloadPdf(jobId: String): Ergebnis<ByteArray> {
@@ -284,9 +282,9 @@ class SetsRepositoryImpl @Inject constructor(
         val koerper = inhalt.toRequestBody(typ.toMediaType())
         val teil = okhttp3.MultipartBody.Part.createFormData("file", dateiname, koerper)
         val text = beschreibung.toRequestBody("text/plain".toMediaType())
-        return safeCall { api.uploadAnleitung(setNumber, teil, text) }
+        return sicherAufrufen { api.uploadAnleitung(setNumber, teil, text) }
     }
 
     override suspend fun deleteAnleitung(setNumber: String, instrId: Int): Ergebnis<GenericResponse> =
-        safeCall { api.deleteAnleitung(setNumber, instrId) }
+        sicherAufrufen { api.deleteAnleitung(setNumber, instrId) }
 }

@@ -14,5 +14,5 @@ index ab6057e..6afa262 100644
 -        for ((bereich, art, schluessel, inhalt) in zeilen) {
 +        for ((bereich, art, schluessel, inhalt) in zeilen.take(0)) {
              val schranke = arrayOf<Any?>(bereich, art, schluessel)
-             val m = Faecher.spaltenAus(art, inhalt)
+             val m = SpaltenFassung2.aus(art, inhalt)
              if (m == null) db.execSQL("DELETE FROM `bestand` WHERE bereich = ? AND art = ? AND schluessel = ?", schranke)

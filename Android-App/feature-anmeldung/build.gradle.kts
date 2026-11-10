@@ -12,6 +12,8 @@ android {
 dependencies {
     implementation(project(":core-model"))
     implementation(project(":core-data"))
+    // NetworkPolicy: die Serveradresse prüfen.
+    implementation(project(":core-netz"))
     implementation(project(":core-sicherheit"))
     implementation(project(":core-ui"))
     implementation(project(":core-zustand"))
