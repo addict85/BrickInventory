@@ -1,65 +1,46 @@
 /**
  * Die Bilder der Tabellen stehen auch ohne Netz.
  * Ausführlich: docs/begruendungen/test/bilder-offline.test.js.md#kopf
+ *
+ * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
+ *   A  in liefereBild() `private, max-age=0` → `private, no-cache` → rot: „… duerfen offline …“
+ *   B  dasselbe → `max-age=0` (ohne private) → rot: „… duerfen offline …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { ohneKommentare } = require('./helpers/sources');
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
+const { testServer } = require('./helpers/server');
 
-const BAUM = path.join(__dirname, '..', '..');
-// Kommentare ZUERST weg. Der Kopf von server.ts erklaert die /images-Route in
-// Zeile 4 und nennt sie dabei woertlich — die erste Fassung dieser Pruefung
-// fand diese Erwaehnung statt der Route und meldete, es gebe gar kein
-// Cache-Control mehr. Dieselbe Falle, wegen der es diesen Helfer gibt.
-// Die Route steht in routes/seiten.ts, ihr Rumpf in src/katalog/http/bildAuslieferung.ts.
-const lies = (rel) => ohneKommentare(fs.readFileSync(path.join(__dirname, '..', rel), 'utf8'));
-const ROUTE = lies('routes/seiten.ts');
-const SERVER = lies('src/katalog/http/bildAuslieferung.ts');
-
-/** Die Cache-Control-Zeile der /images-Route — aus der Datei gelesen. */
-function bilderKopfzeile() {
-  // Die Route verweist auf liefereBild; dessen Rumpf setzt den Kopf.
-  const ab = SERVER.indexOf("async function liefereBild(");
-  assert.ok(/router\.get\('\/images\/\*pfad',[^)]*\bliefereBild\)/.test(ROUTE), 'Die /images-Route liefert nicht mehr über liefereBild');
-  assert.ok(ab > 0, 'Die /images-Route ist nicht mehr zu finden');
-  const abschnitt = SERVER.slice(ab, ab + 4000);
-  const m = abschnitt.match(/setHeader\('Cache-Control',\s*'([^']+)'\)/);
-  assert.ok(m, 'Die /images-Route setzt gar kein Cache-Control mehr — dann ' +
-    'entscheidet der Browser, und offline ist nichts verlässlich.');
-  return m[1];
-}
-
-test('die Bilder der Tabellen duerfen offline aus dem Zwischenspeicher kommen', () => {
-  const kopf = bilderKopfzeile();
-
-  // 1. Nicht `no-cache`: verbietet die Verwendung ohne Rueckfrage.
-  assert.ok(!/(^|,)\s*no-cache\b/.test(kopf),
-    `Die /images-Route sendet "${kopf}". "no-cache" heisst „vor jeder ` +
-    `Verwendung rückfragen" — ohne Netz geht das nie, und die Tabellen zeigen ` +
-    `wieder Platzhalter. Fuer „immer nachfragen, aber notfalls die alte Kopie" ` +
-    `ist max-age=0 die richtige Zeile.`);
-
-  // 2. Nicht `must-revalidate` und nicht `no-store`: beide verbieten
-  //    ausdruecklich, was der Offline-Rueckfall braucht.
-  assert.ok(!/must-revalidate|no-store/.test(kopf),
-    `Die /images-Route sendet "${kopf}". must-revalidate und no-store ` +
-    `verbieten die Auslieferung einer veralteten Kopie — genau das, worauf ` +
-    `der Offline-Rückfall der App baut.`);
-
-  // 3. Und trotzdem bei JEDER Verwendung nachfragen, solange es geht: Das war
-  //    Marcos frühere Anforderung, und sie gilt weiter.
-  assert.match(kopf, /max-age=0/,
-    `Die /images-Route sendet "${kopf}" — ohne max-age=0 gilt wieder eine ` +
-    `Frist ohne Rückfrage. Ein falsches oder ersetztes Bild bliebe dann stehen, ` +
-    `obwohl der Server längst ein neues hat.`);
-
-  // 4. Privat bleibt privat: Die Antwort haengt an einer Anmeldung.
-  assert.match(kopf, /private/,
-    `Die /images-Route sendet "${kopf}" — ohne "private" darf ein ` +
-    `Reverse-Proxy die Bilder fremder Konten zwischenspeichern.`);
+test('die Bilder der Tabellen duerfen offline aus dem Zwischenspeicher kommen', { concurrency: 1 }, async (t) => {
+  const db = await dbOderSkip(t, _req);
+  if (!db) return;
+  const NAME = `offline_${process.pid}`;
+  await db.run('DELETE FROM users WHERE username = $1', [NAME]);
+  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1,'x',true,true) RETURNING id`, [NAME])).id;
+  // Teilebilder sind Katalog: Jedes angemeldete Konto bekommt sie.
+  const datei = path.join(__dirname, '..', 'data', 'images', 'parts', `OFF${process.pid}_0.png`);
+  fs.mkdirSync(path.dirname(datei), { recursive: true });
+  fs.writeFileSync(datei, 'Bild');
+  t.after(async () => {
+    fs.rmSync(datei, { force: true });
+    await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
+    await db.pool.end().catch(() => {});
+  });
+  const { base } = testServer(_req, { sitzung: { userId: uid }, routen: { '/': 'routes/seiten.js' }, t });
+  const r = await fetch(`${base}/images/parts/${path.basename(datei)}`);
+  assert.equal([r.status, await r.text()].join(' '), '200 Bild');
+  const kopf = String(r.headers.get('cache-control'));
+  // no-cache, must-revalidate und no-store verbieten die alte Kopie, von der der Offline-Rückfall der App lebt.
+  assert.doesNotMatch(kopf, /no-cache|must-revalidate|no-store/, kopf);
+  // max-age=0: online wird trotzdem jedes Mal nachgefragt, ein ersetztes Bild gilt sofort.
+  assert.match(kopf, /max-age=0/, kopf);
+  // private: Ein Reverse-Proxy darf Bilder hinter einer Anmeldung nicht zwischenspeichern.
+  assert.match(kopf, /private/, kopf);
 });
 
 test('die App hat einen Offline-Rueckfall, der davon Gebrauch macht', () => {

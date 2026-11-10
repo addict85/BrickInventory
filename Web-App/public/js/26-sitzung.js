@@ -24,7 +24,6 @@ import { bindTabs, seitennameAktualisieren } from './25-navigation.js';
 import { loadHouseholdMembers } from './02-konten-orte.js';
 import { mitZweitemFaktor } from './01-rueckfrage.js';
 import { zeigeOffeneAlarme } from './02-detailfelder.js';
-import { openModal } from './07-set-detail.js';
 
 /** Startet die Anwendung. Aufruf ausschliesslich aus js/main.js, nach der Auswertung aller Module. */
 export function startApp() {
@@ -449,13 +448,11 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   // Einrichtungs-Assistent für eine frische Installation (nur Verwalter).
   if (ME?.isAdmin) pruefeEinrichtung();
   // ?set=<nummer> öffnet das Set direkt (Knopf der Preisalarm-Mail). Hier und nicht beim Laden, weil erst
-  // hier eine Sitzung besteht. Danach fällt der Parameter weg, damit F5 das Detail nicht erneut öffnet.
+  // hier eine Sitzung besteht. Geöffnet wird über die Adresse #/set/…: routeBeimStart() unten schliesst jeden
+  // Dialog, den die Adresse nicht nennt. Der Parameter fällt weg, damit F5 nicht erneut einen Link einlöst.
   // Ausführlich: docs/begruendungen/public/js/26-sitzung.js.md#setauslink
   const setAusLink = new URLSearchParams(location.search).get('set');
-  if (setAusLink) {
-    history.replaceState({}, '', location.pathname);
-    openModal(setAusLink);
-  }
+  if (setAusLink) history.replaceState({}, '', `${location.pathname}#/set/${encodeURIComponent(setAusLink)}`);
   // Apply saved language immediately (from localStorage) so static elements translate before server responds
   setLangValue(localStorage.getItem('bim_lang') || LANG);
   applyLang(LANG, false);
