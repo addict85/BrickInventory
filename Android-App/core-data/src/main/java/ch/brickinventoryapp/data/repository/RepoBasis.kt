@@ -4,6 +4,7 @@ import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.offline.Bearbeitung
+import ch.brickinventoryapp.offline.Bestandsfilter
 import ch.brickinventoryapp.offline.Fach
 import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.model.data.model.*
@@ -53,6 +54,26 @@ abstract class RepoBasis<A : Any>(
     }
 
     /**
+     * Eine gefilterte Abfrage: Online antwortet der Server, abgelegt wird nichts —
+     * eine Teilmenge ersetzte sonst die Liste. Ist er nicht erreichbar, beantworten
+     * dieselben Filter die lokale Liste, samt Stand für „Offline – Stand von …“.
+     */
+    protected suspend fun <R, T : Any> gefiltert(
+        fach: Fach<T>,
+        filter: Bestandsfilter,
+        ausLokal: (List<T>) -> R,
+        call: suspend () -> Ergebnis<R>,
+    ): Ergebnis<R> {
+        val vorher = ablage.bereich()
+        val frisch = call()
+        if (frisch !is Ergebnis.Error || !frisch.transient) return frisch
+        if (vorher == null || ablage.bereich() != vorher) return frisch
+        val lokal = ablage.filtere(fach, filter) ?: return frisch
+        val stand = lokal.stand ?: return frisch
+        return Ergebnis.Success(ausLokal(lokal.liste), stand = stand)
+    }
+
+    /**
      * Schreiben mit Ausgang: online direkt; ohne Verbindung — oder wenn schon
      * etwas wartet, damit die Reihenfolge hält — in den Ausgang und lokal
      * angewandt. Dann ist das Ergebnis [Ergebnis.Success.gepuffert] mit [ersatz].
@@ -74,10 +95,9 @@ abstract class RepoBasis<A : Any>(
     }
 
     /**
-     * Netzabruf mit Plattenspeicher als Rückfallebene. Erst Netz, dann Cache: Der
-     * Server bleibt die Wahrheit, der Cache springt nur ein, wenn er nicht erreichbar
-     * ist — Cache-First verdrängte frische Daten. So ist die App nach einem Neustart
-     * ohne Netz oder bei langsamer Verbindung gefüllt statt leer.
+     * Netzabruf mit Plattenspeicher als Rückfallebene, nur noch für einzelne
+     * Antworten ohne Liste, Filter und Bearbeitung (Kennzahlen, Katalog-Metadaten):
+     * Sie sind ein Wert je Bereich, keine Zeilen. Alle Listen gehen über die Ablage.
      */
     protected suspend fun <T : Any> cached(
         key: String,

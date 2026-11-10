@@ -12,13 +12,15 @@ import androidx.room.RoomDatabase
 import androidx.room.Transaction
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import ch.brickinventoryapp.offline.Faecher
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
 
 /**
- * Eine Zeile einer lokalen Liste. [inhalt] ist das Server-Modell als JSON:
- * Gefiltert und sortiert wird auf dem Server, lokal zählen nur Bereich, Art,
- * Schlüssel und Reihenfolge. So braucht ein neues Feld des Servers keine Migration.
+ * Eine Zeile einer lokalen Liste: das Server-Modell als JSON ([inhalt]) und
+ * daneben die Spalten, nach denen der Server filtert. Ohne Netz beantwortet
+ * dieselbe Abfrage hier die Suche; ein neues Anzeigefeld braucht weiter keine
+ * Migration, nur ein neuer Filter.
  */
 @Entity(tableName = "bestand", primaryKeys = ["bereich", "art", "schluessel"])
 internal data class BestandZeile(
@@ -27,6 +29,13 @@ internal data class BestandZeile(
     val schluessel: String,
     val position: Int,
     val inhalt: String,
+    @ColumnInfo(defaultValue = "''") val suchtext: String = "",
+    val thema: String? = null,
+    val lagerort: String? = null,
+    val farbe: String? = null,
+    val kategorie: String? = null,
+    val ersatzteil: Boolean? = null,
+    val zustand: String? = null,
 )
 
 /** Wann der Server eine Liste zuletzt geliefert hat — für „Offline – Stand von …“. */
@@ -55,6 +64,18 @@ internal abstract class BestandDao {
     @Query("SELECT * FROM bestand WHERE bereich = :bereich AND art = :art ORDER BY position")
     abstract suspend fun lies(bereich: String, art: String): List<BestandZeile>
 
+    /** Die Filter wie beim Server; ein null-Parameter schränkt nicht ein. [suche] ist ein LIKE-Muster. */
+    @Query("""SELECT * FROM bestand WHERE bereich = :bereich AND art = :art
+        AND (:suche IS NULL OR suchtext LIKE :suche ESCAPE '\')
+        AND (:thema IS NULL OR thema = :thema) AND (:lagerort IS NULL OR lagerort = :lagerort)
+        AND (:farbe IS NULL OR farbe = :farbe) AND (:kategorie IS NULL OR kategorie = :kategorie)
+        AND (:ersatzteil IS NULL OR ersatzteil = :ersatzteil) AND (:zustand IS NULL OR zustand = :zustand)
+        ORDER BY position""")
+    abstract suspend fun filtere(
+        bereich: String, art: String, suche: String?, thema: String?, lagerort: String?,
+        farbe: String?, kategorie: String?, ersatzteil: Boolean?, zustand: String?,
+    ): List<BestandZeile>
+
     @Query("SELECT stand FROM bestand_stand WHERE bereich = :bereich AND art = :art")
     abstract fun beobachteStand(bereich: String, art: String): Flow<Long?>
 
@@ -76,6 +97,24 @@ internal abstract class BestandDao {
         loescheListe(bereich, art)
         fuegeEin(zeilen)
         if (stand != null) setzeStand(BestandStand(bereich, art, stand))
+    }
+
+    @Query("SELECT MAX(position) FROM bestand WHERE bereich = :bereich AND art = :art")
+    abstract suspend fun letztePosition(bereich: String, art: String): Int?
+
+    @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
+    abstract suspend fun fuegeEinOderErsetze(zeilen: List<BestandZeile>)
+
+    @Query("DELETE FROM bestand WHERE bereich = :bereich AND art = :art AND schluessel IN (:schluessel)")
+    abstract suspend fun loescheSchluessel(bereich: String, art: String, schluessel: List<String>)
+
+    /** Eine weitere Seite hinten an: nur ihre Zeilen, die übrigen bleiben unberührt. */
+    @Transaction
+    open suspend fun haengeAn(bereich: String, art: String, zeilen: List<BestandZeile>, weg: List<String>, stand: Long) {
+        if (weg.isNotEmpty()) loescheSchluessel(bereich, art, weg)
+        val ab = (letztePosition(bereich, art) ?: -1) + 1
+        fuegeEinOderErsetze(zeilen.mapIndexed { i, z -> z.copy(position = ab + i) })
+        setzeStand(BestandStand(bereich, art, stand))
     }
 
     @Query("DELETE FROM bestand WHERE bereich != :bereich")
@@ -120,7 +159,7 @@ internal interface AusgangDao {
  * das Schema aus app/schemas ein: Der Ausgang trägt Änderungen, die es nur hier
  * gibt — ein destruktiver Neuanfang verlöre sie.
  */
-@Database(entities = [BestandZeile::class, BestandStand::class, AusgangZeile::class], version = 2, exportSchema = true)
+@Database(entities = [BestandZeile::class, BestandStand::class, AusgangZeile::class], version = 3, exportSchema = true)
 internal abstract class BestandDatenbank : RoomDatabase() {
     abstract fun bestand(): BestandDao
     abstract fun ausgang(): AusgangDao
@@ -129,7 +168,7 @@ internal abstract class BestandDatenbank : RoomDatabase() {
         const val NAME = "bestand.db"
 
         /** Alle Migrationen, in der Reihenfolge der Fassungen. */
-        val MIGRATIONEN: Array<Migration> = arrayOf(MIGRATION_1_2)
+        val MIGRATIONEN: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
     }
 }
 
@@ -144,5 +183,33 @@ internal val MIGRATION_1_2 = object : Migration(1, 2) {
         val ids = mutableListOf<Long>()
         db.query("SELECT id FROM `ausgang`").use { c -> while (c.moveToNext()) ids += c.getLong(0) }
         for (id in ids) db.execSQL("UPDATE `ausgang` SET `schluessel` = ? WHERE id = ?", arrayOf<Any>(UUID.randomUUID().toString(), id))
+    }
+}
+
+/**
+ * 2 → 3: Filterspalten. Die abgelegten Listen bleiben und bekommen ihre Werte
+ * aus dem JSON daneben — sonst fände die Suche ohne Netz bis zum nächsten
+ * Abgleich nichts. Eine Zeile, die sich nicht mehr lesen lässt, fiele beim
+ * Lesen ohnehin weg; hier geht sie gleich.
+ */
+internal val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `bestand` ADD COLUMN `suchtext` TEXT NOT NULL DEFAULT ''")
+        for (spalte in listOf("thema", "lagerort", "farbe", "kategorie")) db.execSQL("ALTER TABLE `bestand` ADD COLUMN `$spalte` TEXT")
+        db.execSQL("ALTER TABLE `bestand` ADD COLUMN `ersatzteil` INTEGER")
+        db.execSQL("ALTER TABLE `bestand` ADD COLUMN `zustand` TEXT")
+        val zeilen = mutableListOf<Array<String>>()
+        db.query("SELECT bereich, art, schluessel, inhalt FROM `bestand`").use { c ->
+            while (c.moveToNext()) zeilen += Array(4) { c.getString(it) }
+        }
+        for ((bereich, art, schluessel, inhalt) in zeilen) {
+            val schranke = arrayOf<Any?>(bereich, art, schluessel)
+            val m = Faecher.merkmaleAus(art, inhalt)
+            if (m == null) db.execSQL("DELETE FROM `bestand` WHERE bereich = ? AND art = ? AND schluessel = ?", schranke)
+            else db.execSQL("UPDATE `bestand` SET suchtext = ?, thema = ?, lagerort = ?, farbe = ?, kategorie = ?, " +
+                "ersatzteil = ?, zustand = ? WHERE bereich = ? AND art = ? AND schluessel = ?",
+                arrayOf<Any?>(m.suchtext, m.thema, m.lagerort, m.farbe, m.kategorie, m.ersatzteil?.let { if (it) 1 else 0 },
+                    m.zustand) + schranke)
+        }
     }
 }

@@ -5,9 +5,11 @@ import ch.brickinventoryapp.offline.Ausgang
 import ch.brickinventoryapp.offline.Ausgangsposten
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.offline.Bestandsart
+import ch.brickinventoryapp.offline.Bestandsfilter
 import ch.brickinventoryapp.offline.LokaleListe
 import ch.brickinventoryapp.offline.LokaleZeile
 import ch.brickinventoryapp.offline.LokalerBestand
+import ch.brickinventoryapp.offline.Merkmale
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import javax.inject.Inject
@@ -18,17 +20,28 @@ internal class RoomBestand @Inject constructor(private val db: BestandDatenbank)
 
     override fun beobachte(bereich: String, art: Bestandsart): Flow<LokaleListe> =
         combine(dao.beobachte(bereich, art.name), dao.beobachteStand(bereich, art.name)) { zeilen, stand ->
-            LokaleListe(zeilen.map { LokaleZeile(it.schluessel, it.inhalt) }, stand)
+            LokaleListe(zeilen.map { it.alsLokal() }, stand)
         }
 
     override suspend fun lies(bereich: String, art: Bestandsart) =
-        LokaleListe(dao.lies(bereich, art.name).map { LokaleZeile(it.schluessel, it.inhalt) }, dao.stand(bereich, art.name))
+        LokaleListe(dao.lies(bereich, art.name).map { it.alsLokal() }, dao.stand(bereich, art.name))
+
+    override suspend fun filtere(bereich: String, art: Bestandsart, filter: Bestandsfilter): LokaleListe {
+        val f = filter
+        val zeilen = dao.filtere(bereich, art.name, f.suche?.let(::enthaeltMuster), f.thema, f.lagerort, f.farbe,
+            f.kategorie, f.ersatzteil, f.zustand)
+        return LokaleListe(zeilen.map { it.alsLokal() }, dao.stand(bereich, art.name))
+    }
 
     override suspend fun ersetze(bereich: String, art: Bestandsart, zeilen: List<LokaleZeile>, stand: Long?) =
         dao.ersetze(bereich, art.name,
             // Doppelte Schlüssel verletzten den Primärschlüssel; die spätere Zeile gilt.
-            zeilen.associateBy { it.schluessel }.values.mapIndexed { i, z -> BestandZeile(bereich, art.name, z.schluessel, i, z.inhalt) },
+            zeilen.associateBy { it.schluessel }.values.mapIndexed { i, z -> z.alsZeile(bereich, art, i) },
             stand)
+
+    override suspend fun haengeAn(bereich: String, art: Bestandsart, zeilen: List<LokaleZeile>, weg: Set<String>, stand: Long) =
+        dao.haengeAn(bereich, art.name, zeilen.associateBy { it.schluessel }.values.map { it.alsZeile(bereich, art, 0) },
+            weg.toList(), stand)
 
     override suspend fun raeumeAndere(bereich: String) {
         dao.loescheAndereZeilen(bereich)
@@ -40,6 +53,17 @@ internal class RoomBestand @Inject constructor(private val db: BestandDatenbank)
         dao.leereStaende()
     }
 }
+
+private fun BestandZeile.alsLokal() =
+    LokaleZeile(schluessel, inhalt, Merkmale(suchtext, thema, lagerort, farbe, kategorie, ersatzteil, zustand))
+
+private fun LokaleZeile.alsZeile(bereich: String, art: Bestandsart, position: Int) = with(merkmale) {
+    BestandZeile(bereich, art.name, schluessel, position, inhalt, suchtext, thema, lagerort, farbe, kategorie, ersatzteil, zustand)
+}
+
+/** „Enthält“ als LIKE-Muster; `%`, `_` und `\` gelten wörtlich wie beim Server (likeSuche.ts). */
+internal fun enthaeltMuster(suche: String): String =
+    "%" + suche.lowercase().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
 
 /**
  * [Ausgang] über Room. Ein Posten, der sich nicht mehr lesen lässt (Format einer

@@ -15,6 +15,7 @@ import ch.brickinventoryapp.model.data.model.PartsFilterColorsResponse
 import ch.brickinventoryapp.model.data.model.PartsResponse
 import ch.brickinventoryapp.model.data.model.PartsStatsResponse
 import ch.brickinventoryapp.data.repository.Ergebnis
+import ch.brickinventoryapp.model.ui.model.TeilAnsicht
 import ch.brickinventoryapp.model.ui.model.alsAnsicht
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -147,7 +148,7 @@ internal class Teile(
                 is Ergebnis.Success -> {
                     _state.update {
                         it.copy(partsLoading = false,
-                            parts = r.data.parts.map { p -> p.alsAnsicht() }.let { neu -> if (seite == 1) neu else it.parts + neu },
+                            parts = r.data.parts.map { p -> p.alsAnsicht() }.let { neu -> if (seite == 1) neu else anhaengen(it.parts, neu) },
                             partsTotal = r.data.total, partsPage = seite,
                             teileOfflineStand = if (seite == 1) r.stand else it.teileOfflineStand)
                     }
@@ -273,4 +274,13 @@ internal class Teile(
         figurenJob?.cancel()
         _state.value = PartsUiState()
     }
+}
+
+/**
+ * Eine weitere Seite ohne Zeilen, die schon dastehen: Die lokale Liste kann mehr
+ * als Seite 1 halten (frühere Seiten, das Vorwärmen) und zeigt sie dann schon.
+ */
+internal fun anhaengen(bisher: List<TeilAnsicht>, neu: List<TeilAnsicht>): List<TeilAnsicht> {
+    val da = bisher.mapTo(HashSet()) { Triple(it.partNumber, it.colorId, it.isSpare) }
+    return bisher + neu.filterNot { Triple(it.partNumber, it.colorId, it.isSpare) in da }
 }

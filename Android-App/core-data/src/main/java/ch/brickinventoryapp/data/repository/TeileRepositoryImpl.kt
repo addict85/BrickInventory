@@ -3,6 +3,7 @@ package ch.brickinventoryapp.data.repository
 import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.offline.Bearbeitung
+import ch.brickinventoryapp.offline.Bestandsfilter
 import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.offline.Lokal
 import ch.brickinventoryapp.offline.Offlineablage
@@ -31,22 +32,29 @@ class TeileRepositoryImpl @Inject constructor(
                          /** Nur die Tabellenansicht bestellt „In Sets“ — siehe TeileApi.getParts. */
                          withSets: Boolean,
                          /** Lagerort — eigener Parameter, nicht Teil der Suche. */
-                         storage: String?): Ergebnis<PartsResponse> =
+                         storage: String?): Ergebnis<PartsResponse> {
         // Manuell erfasste Teile haben ihren eigenen Bereich — die Set-Teileliste
-        // schliesst sie aus (wie in der Webapp). Gecacht wird nur die ungefilterte erste
-        // Seite: Sie wird nach einem Neustart gebraucht, ein Suchergebnis im Cache belegte
-        // nur Platz. `storage` gehört in die Bedingung, sonst landete eine nach Lagerort
-        // gefilterte Antwort unter dem Schlüssel der vollen Liste.
-        if (page == 1 && listOf(color, category, accounts).all { it == null } &&
-            listOf(search, storage).all { it.isNullOrBlank() } && spare == Ersatzteilwahl.ALLE && !withSets)
-            abgeglichen(Faecher.TEILE, { it.parts }, { PartsResponse(success = true, total = it.size, parts = it) }) {
-                safeCall { api.getParts(null, null, null, 1, pageSize = 500, excludeManual = "1") }
-            }
-        else safeCall { api.getParts(search, color, category, page, pageSize = 500,
-                                     excludeManual = "1", accounts = accounts,
-                                     spare = spare.alsAbfrage(),
-                                     withSets = mitSetsAlsAbfrage(withSets),
-                                     storage = storage?.ifBlank { null }) }
+        // schliesst sie aus (wie in der Webapp). Ohne Netz beantwortet die lokale
+        // Liste Suche, Farbe, Kategorie und Ersatzteile; Konto und Lagerort nicht:
+        // Dort teilt der Server die Mengen auf, die lokale Zeile trägt die Summe.
+        val filter = Bestandsfilter(suche = search?.ifBlank { null }, farbe = color, kategorie = category,
+            ersatzteil = spare.alsMerkmal())
+        val ausLokal = { l: List<Part> -> PartsResponse(success = true, total = l.size, parts = l) }
+        val roh = suspend {
+            safeCall { api.getParts(search, color, category, page, pageSize = 500, excludeManual = "1",
+                accounts = accounts, spare = spare.alsAbfrage(), withSets = mitSetsAlsAbfrage(withSets),
+                storage = storage?.ifBlank { null }) }
+        }
+        return when {
+            accounts != null || !storage.isNullOrBlank() -> roh()
+            filter == Bestandsfilter() && !withSets ->
+                abgeglichen(Faecher.TEILE, { it.parts }, ausLokal, anhaengen = page > 1) {
+                    safeCall { api.getParts(null, null, null, page, pageSize = 500, excludeManual = "1") }
+                }
+            // Die Tabelle bestellt „In Sets“ mit; ohne Netz fehlt nur diese Spalte.
+            else -> gefiltert(Faecher.TEILE, filter, ausLokal) { roh() }
+        }
+    }
 
     /** Die lokalen Listen (ungefiltert); sie ändern sich auch durch offline Bearbeitetes. */
     override fun beobachteTeile(): Flow<Lokal<Part>> = ablage.beobachte(Faecher.TEILE)
@@ -71,12 +79,17 @@ class TeileRepositoryImpl @Inject constructor(
      * es für dieselbe Liste nur eine Quelle gibt; siehe ManualPartsResponse.
      */
     override suspend fun getManualParts(accounts: String?, search: String?,
-                               storage: String?): Ergebnis<ManualPartsResponse> =
-        if (accounts == null && search.isNullOrBlank() && storage.isNullOrBlank())
-            abgeglichen(Faecher.MANUELLE_TEILE, { it.parts }, { ManualPartsResponse(success = true, parts = it) }) {
+                               storage: String?): Ergebnis<ManualPartsResponse> {
+        val filter = Bestandsfilter(suche = search?.ifBlank { null }, lagerort = storage?.ifBlank { null })
+        val ausLokal = { l: List<PartValuationItem> -> ManualPartsResponse(success = true, parts = l) }
+        return when {
+            accounts != null -> safeCall { api.getManualParts(accounts, search, storage) }
+            filter == Bestandsfilter() -> abgeglichen(Faecher.MANUELLE_TEILE, { it.parts }, ausLokal) {
                 safeCall { api.getManualParts(accounts, search, storage) }
             }
-        else safeCall { api.getManualParts(accounts, search, storage) }
+            else -> gefiltert(Faecher.MANUELLE_TEILE, filter, ausLokal) { safeCall { api.getManualParts(accounts, search, storage) } }
+        }
+    }
 
     /**
      * „Kann ich das bauen?“ — welche Teile einer Liste schon da sind. Ohne

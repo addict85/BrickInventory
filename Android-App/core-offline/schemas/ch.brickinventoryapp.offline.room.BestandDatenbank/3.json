@@ -1,0 +1,197 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 3,
+    "identityHash": "d38030e645bb7f07d93dd739936b51d9",
+    "entities": [
+      {
+        "tableName": "bestand",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`bereich` TEXT NOT NULL, `art` TEXT NOT NULL, `schluessel` TEXT NOT NULL, `position` INTEGER NOT NULL, `inhalt` TEXT NOT NULL, `suchtext` TEXT NOT NULL DEFAULT '', `thema` TEXT, `lagerort` TEXT, `farbe` TEXT, `kategorie` TEXT, `ersatzteil` INTEGER, `zustand` TEXT, PRIMARY KEY(`bereich`, `art`, `schluessel`))",
+        "fields": [
+          {
+            "fieldPath": "bereich",
+            "columnName": "bereich",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "art",
+            "columnName": "art",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "schluessel",
+            "columnName": "schluessel",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "inhalt",
+            "columnName": "inhalt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "suchtext",
+            "columnName": "suchtext",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "thema",
+            "columnName": "thema",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "lagerort",
+            "columnName": "lagerort",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "farbe",
+            "columnName": "farbe",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "kategorie",
+            "columnName": "kategorie",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "ersatzteil",
+            "columnName": "ersatzteil",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "zustand",
+            "columnName": "zustand",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "bereich",
+            "art",
+            "schluessel"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "bestand_stand",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`bereich` TEXT NOT NULL, `art` TEXT NOT NULL, `stand` INTEGER NOT NULL, PRIMARY KEY(`bereich`, `art`))",
+        "fields": [
+          {
+            "fieldPath": "bereich",
+            "columnName": "bereich",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "art",
+            "columnName": "art",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stand",
+            "columnName": "stand",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "bereich",
+            "art"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "ausgang",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `bereich` TEXT NOT NULL, `bearbeitung` TEXT NOT NULL, `erstellt` INTEGER NOT NULL, `versuche` INTEGER NOT NULL, `schluessel` TEXT NOT NULL DEFAULT '')",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bereich",
+            "columnName": "bereich",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bearbeitung",
+            "columnName": "bearbeitung",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "erstellt",
+            "columnName": "erstellt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "versuche",
+            "columnName": "versuche",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "schluessel",
+            "columnName": "schluessel",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_ausgang_bereich",
+            "unique": false,
+            "columnNames": [
+              "bereich"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_ausgang_bereich` ON `${TABLE_NAME}` (`bereich`)"
+          }
+        ],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd38030e645bb7f07d93dd739936b51d9')"
+    ]
+  }
+}
