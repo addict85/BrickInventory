@@ -204,11 +204,11 @@ internal val MIGRATION_2_3 = object : Migration(2, 3) {
         }
         for ((bereich, art, schluessel, inhalt) in zeilen) {
             val schranke = arrayOf<Any?>(bereich, art, schluessel)
-            val m = Faecher.merkmaleAus(art, inhalt)
+            val m = Faecher.spaltenAus(art, inhalt)
             if (m == null) db.execSQL("DELETE FROM `bestand` WHERE bereich = ? AND art = ? AND schluessel = ?", schranke)
             else db.execSQL("UPDATE `bestand` SET suchtext = ?, thema = ?, lagerort = ?, farbe = ?, kategorie = ?, " +
                 "ersatzteil = ?, zustand = ? WHERE bereich = ? AND art = ? AND schluessel = ?",
-                arrayOf<Any?>(m.suchtext, m.thema, m.lagerort, m.farbe, m.kategorie, m.ersatzteil?.let { if (it) 1 else 0 },
+                arrayOf<Any?>(m.suchtext.orEmpty(), m.thema, m.lagerort, m.farbe, m.kategorie, m.ersatzteil?.let { if (it) 1 else 0 },
                     m.zustand) + schranke)
         }
     }

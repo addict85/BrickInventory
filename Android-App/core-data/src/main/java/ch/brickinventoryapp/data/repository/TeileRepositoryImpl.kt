@@ -3,7 +3,7 @@ package ch.brickinventoryapp.data.repository
 import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.offline.Bearbeitung
-import ch.brickinventoryapp.offline.Bestandsfilter
+import ch.brickinventoryapp.offline.Filterspalten
 import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.offline.Lokal
 import ch.brickinventoryapp.offline.Offlineablage
@@ -37,7 +37,7 @@ class TeileRepositoryImpl @Inject constructor(
         // schliesst sie aus (wie in der Webapp). Ohne Netz beantwortet die lokale
         // Liste Suche, Farbe, Kategorie und Ersatzteile; Konto und Lagerort nicht:
         // Dort teilt der Server die Mengen auf, die lokale Zeile trägt die Summe.
-        val filter = Bestandsfilter(suche = search?.ifBlank { null }, farbe = color, kategorie = category,
+        val filter = Filterspalten(suchtext = search?.ifBlank { null }, farbe = color, kategorie = category,
             ersatzteil = spare.alsMerkmal())
         val ausLokal = { l: List<Part> -> PartsResponse(success = true, total = l.size, parts = l) }
         val roh = suspend {
@@ -47,7 +47,7 @@ class TeileRepositoryImpl @Inject constructor(
         }
         return when {
             accounts != null || !storage.isNullOrBlank() -> roh()
-            filter == Bestandsfilter() && !withSets ->
+            filter == Filterspalten() && !withSets ->
                 abgeglichen(Faecher.TEILE, { it.parts }, ausLokal, anhaengen = page > 1) {
                     safeCall { api.getParts(null, null, null, page, pageSize = 500, excludeManual = "1") }
                 }
@@ -80,11 +80,11 @@ class TeileRepositoryImpl @Inject constructor(
      */
     override suspend fun getManualParts(accounts: String?, search: String?,
                                storage: String?): Ergebnis<ManualPartsResponse> {
-        val filter = Bestandsfilter(suche = search?.ifBlank { null }, lagerort = storage?.ifBlank { null })
+        val filter = Filterspalten(suchtext = search?.ifBlank { null }, lagerort = storage?.ifBlank { null })
         val ausLokal = { l: List<PartValuationItem> -> ManualPartsResponse(success = true, parts = l) }
         return when {
             accounts != null -> safeCall { api.getManualParts(accounts, search, storage) }
-            filter == Bestandsfilter() -> abgeglichen(Faecher.MANUELLE_TEILE, { it.parts }, ausLokal) {
+            filter == Filterspalten() -> abgeglichen(Faecher.MANUELLE_TEILE, { it.parts }, ausLokal) {
                 safeCall { api.getManualParts(accounts, search, storage) }
             }
             else -> gefiltert(Faecher.MANUELLE_TEILE, filter, ausLokal) { safeCall { api.getManualParts(accounts, search, storage) } }

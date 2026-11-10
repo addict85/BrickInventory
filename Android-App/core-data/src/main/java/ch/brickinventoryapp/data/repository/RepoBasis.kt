@@ -4,7 +4,7 @@ import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.offline.Bearbeitung
-import ch.brickinventoryapp.offline.Bestandsfilter
+import ch.brickinventoryapp.offline.Filterspalten
 import ch.brickinventoryapp.offline.Fach
 import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.model.data.model.*
@@ -60,7 +60,7 @@ abstract class RepoBasis<A : Any>(
      */
     protected suspend fun <R, T : Any> gefiltert(
         fach: Fach<T>,
-        filter: Bestandsfilter,
+        filter: Filterspalten,
         ausLokal: (List<T>) -> R,
         call: suspend () -> Ergebnis<R>,
     ): Ergebnis<R> {

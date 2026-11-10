@@ -32,7 +32,7 @@ import java.io.File
  *
  * Gegenproben misst der CI-Job `gegenproben` (Android-App/gegenproben/, er
  * verlangt Rot): bestand-migration-entfernt, -spalte-falsch, -ohne-schluessel,
- * -ohne-merkmale (2 → 3 füllt die Filterspalten nicht).
+ * -ohne-filterspalten (2 → 3 füllt die Filterspalten nicht).
  * Eine Änderung am Schema der neuesten Fassung taugt nicht als Gegenprobe: Room
  * schreibt es beim Übersetzen neu.
  */
@@ -123,10 +123,10 @@ class BestandMigrationTest {
                 assertEquals("Fassung $v: jeder Posten hat einen eigenen Schlüssel", 2, posten.map { it.schluessel }.toSet().size)
                 val bestand = RoomBestand(room)
                 assertEquals("Fassung $v: die lesbare Liste bleibt, die unlesbare Zeile geht",
-                    listOf("10002-1"), runBlocking { bestand.lies("a", Bestandsart.SETS) }.zeilen.map { it.schluessel })
-                for (f in listOf(Bestandsfilter(thema = "City"), Bestandsfilter(lagerort = "Kiste 2"), Bestandsfilter(suche = "POLIZEI")))
+                    listOf("10002-1"), runBlocking { bestand.lies("a", Bestandsart.SETS) }.liste.map { it.schluessel })
+                for (f in listOf(Filterspalten(thema = "City"), Filterspalten(lagerort = "Kiste 2"), Filterspalten(suchtext = "POLIZEI")))
                     assertEquals("Fassung $v: die Filterspalten sind aus dem JSON gefüllt ($f)", listOf("10002-1"),
-                        runBlocking { bestand.filtere("a", Bestandsart.SETS, f) }.zeilen.map { it.schluessel })
+                        runBlocking { bestand.filtere("a", Bestandsart.SETS, f) }.liste.map { it.schluessel })
             } finally {
                 room.close()
                 context.deleteDatabase(name)

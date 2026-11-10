@@ -173,7 +173,7 @@ class OhneNetzFilterTest {
         val angehaengt = mutableListOf<Int>()
         var gelesen = 0
 
-        override suspend fun lies(bereich: String, art: Bestandsart): LokaleListe = innen.lies(bereich, art).also { gelesen++ }
+        override suspend fun lies(bereich: String, art: Bestandsart): Lokal<LokaleZeile> = innen.lies(bereich, art).also { gelesen++ }
         override suspend fun ersetze(bereich: String, art: Bestandsart, zeilen: List<LokaleZeile>, stand: Long?) {
             if (stand != null) ersetzt += zeilen.size
             innen.ersetze(bereich, art, zeilen, stand)

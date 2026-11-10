@@ -45,10 +45,10 @@ class BestandDatenbankTest {
         bestand.ersetze("a", Bestandsart.SETS, listOf(LokaleZeile("2", "{}"), LokaleZeile("1", "{}")), 42L)
         bestand.ersetze("b", Bestandsart.SETS, listOf(LokaleZeile("9", "{}")), 7L)
         val a = bestand.beobachte("a", Bestandsart.SETS).first()
-        assertEquals(listOf("2", "1"), a.zeilen.map { it.schluessel })
+        assertEquals(listOf("2", "1"), a.liste.map { it.schluessel })
         assertEquals(42L, a.stand)
         bestand.raeumeAndere("a")
-        assertEquals(emptyList<LokaleZeile>(), bestand.lies("b", Bestandsart.SETS).zeilen)
+        assertEquals(emptyList<LokaleZeile>(), bestand.lies("b", Bestandsart.SETS).liste)
         assertNull(bestand.lies("b", Bestandsart.SETS).stand)
     }
 

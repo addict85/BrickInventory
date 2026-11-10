@@ -25,32 +25,32 @@ class Fach<T : Any>(
     val art: Bestandsart,
     val serializer: KSerializer<T>,
     val schluessel: (T) -> String,
-    val merkmale: (T) -> Merkmale = { Merkmale() },
+    val spalten: (T) -> Filterspalten = { Filterspalten() },
 )
 
 object Faecher {
     val SETS = Fach(Bestandsart.SETS, SetItem.serializer(), { it.setNumber }) {
         // Wie der Server: Nummer, Name, Thema und Jahr (ohne Jahr „0“).
-        Merkmale(suchtext(it.setNumber, it.name, it.theme.orEmpty(), (it.year ?: 0).toString()),
+        Filterspalten(suchtext(it.setNumber, it.name, it.theme.orEmpty(), (it.year ?: 0).toString()),
             thema = it.theme, lagerort = it.storage)
     }
     val MERKLISTE = Fach(Bestandsart.MERKLISTE, Merkposten.serializer(), { LokaleAnwendung.merkSchluessel(it) }) {
-        Merkmale(suchtext(it.setNumber, it.name), zustand = it.condition)
+        Filterspalten(suchtext(it.setNumber, it.name), zustand = it.condition)
     }
     val TEILE = Fach(Bestandsart.TEILE, Part.serializer(), { "${it.partNumber}|${it.colorId}|${it.isSpare}" }) {
-        Merkmale(suchtext(it.partNumber, it.partName, it.blPartNumber), farbe = it.colorName,
+        Filterspalten(suchtext(it.partNumber, it.partName, it.blPartNumber), farbe = it.colorName,
             kategorie = it.categoryName, ersatzteil = it.isSpare)
     }
     val FIGUREN = Fach(Bestandsart.FIGUREN, Minifig.serializer(), { it.figNumber }) {
-        Merkmale(suchtext(it.figNumber, it.figName))
+        Filterspalten(suchtext(it.figNumber, it.figName))
     }
     val MANUELLE_TEILE = Fach(Bestandsart.MANUELLE_TEILE, PartValuationItem.serializer(),
         { "${it.partNumber}|${it.colorId}|${it.userId}" }) {
-        Merkmale(suchtext(it.partNumber, it.partName, it.blPartNumber), lagerort = it.storage)
+        Filterspalten(suchtext(it.partNumber, it.partName, it.blPartNumber), lagerort = it.storage)
     }
     val MANUELLE_FIGUREN = Fach(Bestandsart.MANUELLE_FIGUREN, FigValuationItem.serializer(),
         { "${it.figNumber}|${it.userId}" }) {
-        Merkmale(suchtext(it.figNumber, it.figName))
+        Filterspalten(suchtext(it.figNumber, it.figName))
     }
     val GUTSCHEINE = Fach(Bestandsart.GUTSCHEINE, Gutschein.serializer(), { it.id.toString() })
 
@@ -58,10 +58,10 @@ object Faecher {
         listOf(SETS, MERKLISTE, TEILE, FIGUREN, MANUELLE_TEILE, MANUELLE_FIGUREN, GUTSCHEINE).associateBy { it.art.name }
 
     /** Die Filterspalten einer abgelegten Zeile; null, wenn sie sich nicht mehr lesen lässt. */
-    internal fun merkmaleAus(art: String, inhalt: String): Merkmale? = alle[art]?.let { merkmaleAus(it, inhalt) }
+    internal fun spaltenAus(art: String, inhalt: String): Filterspalten? = alle[art]?.let { spaltenAus(it, inhalt) }
 
-    private fun <T : Any> merkmaleAus(fach: Fach<T>, inhalt: String): Merkmale? =
-        runCatching { fach.merkmale(AblageJson.decodeFromString(fach.serializer, inhalt)) }.getOrNull()
+    private fun <T : Any> spaltenAus(fach: Fach<T>, inhalt: String): Filterspalten? =
+        runCatching { fach.spalten(AblageJson.decodeFromString(fach.serializer, inhalt)) }.getOrNull()
 
     private fun suchtext(vararg felder: String?) = felder.filterNotNull().joinToString("\n").lowercase()
 }
@@ -120,7 +120,7 @@ class Offlineablage(
     }
 
     /** Die lokale Liste, nur mit den Zeilen, die [filter] trifft; null, wenn niemand angemeldet ist. */
-    suspend fun <T : Any> filtere(fach: Fach<T>, filter: Bestandsfilter): Lokal<T>? {
+    suspend fun <T : Any> filtere(fach: Fach<T>, filter: Filterspalten): Lokal<T>? {
         val b = bereich() ?: return null
         return dekodiere(fach, bestand.filtere(b, fach.art, filter))
     }
@@ -216,11 +216,11 @@ class Offlineablage(
     }
 
     private fun <T : Any> kodiere(fach: Fach<T>, liste: List<T>) =
-        liste.map { LokaleZeile(fach.schluessel(it), AblageJson.encodeToString(fach.serializer, it), fach.merkmale(it)) }
+        liste.map { LokaleZeile(fach.schluessel(it), AblageJson.encodeToString(fach.serializer, it), fach.spalten(it)) }
 
     /** Zeilen, die sich nicht mehr lesen lassen (Modell geändert), fallen weg statt die Liste zu sperren. */
-    private fun <T : Any> dekodiere(fach: Fach<T>, l: LokaleListe) =
-        Lokal(l.zeilen.mapNotNull { runCatching { AblageJson.decodeFromString(fach.serializer, it.inhalt) }.getOrNull() }, l.stand)
+    private fun <T : Any> dekodiere(fach: Fach<T>, l: Lokal<LokaleZeile>) =
+        Lokal(l.liste.mapNotNull { runCatching { AblageJson.decodeFromString(fach.serializer, it.inhalt) }.getOrNull() }, l.stand)
 
     companion object {
         /** Im Speicher, mit festem Bereich — für Tests und Repositories ohne Hilt. */

@@ -5,11 +5,10 @@ import ch.brickinventoryapp.offline.Ausgang
 import ch.brickinventoryapp.offline.Ausgangsposten
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.offline.Bestandsart
-import ch.brickinventoryapp.offline.Bestandsfilter
-import ch.brickinventoryapp.offline.LokaleListe
+import ch.brickinventoryapp.offline.Filterspalten
+import ch.brickinventoryapp.offline.Lokal
 import ch.brickinventoryapp.offline.LokaleZeile
 import ch.brickinventoryapp.offline.LokalerBestand
-import ch.brickinventoryapp.offline.Merkmale
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import javax.inject.Inject
@@ -18,19 +17,19 @@ import javax.inject.Inject
 internal class RoomBestand @Inject constructor(private val db: BestandDatenbank) : LokalerBestand {
     private val dao get() = db.bestand()
 
-    override fun beobachte(bereich: String, art: Bestandsart): Flow<LokaleListe> =
+    override fun beobachte(bereich: String, art: Bestandsart): Flow<Lokal<LokaleZeile>> =
         combine(dao.beobachte(bereich, art.name), dao.beobachteStand(bereich, art.name)) { zeilen, stand ->
-            LokaleListe(zeilen.map { it.alsLokal() }, stand)
+            Lokal(zeilen.map { it.alsLokal() }, stand)
         }
 
     override suspend fun lies(bereich: String, art: Bestandsart) =
-        LokaleListe(dao.lies(bereich, art.name).map { it.alsLokal() }, dao.stand(bereich, art.name))
+        Lokal(dao.lies(bereich, art.name).map { it.alsLokal() }, dao.stand(bereich, art.name))
 
-    override suspend fun filtere(bereich: String, art: Bestandsart, filter: Bestandsfilter): LokaleListe {
+    override suspend fun filtere(bereich: String, art: Bestandsart, filter: Filterspalten): Lokal<LokaleZeile> {
         val f = filter
-        val zeilen = dao.filtere(bereich, art.name, f.suche?.let(::enthaeltMuster), f.thema, f.lagerort, f.farbe,
+        val zeilen = dao.filtere(bereich, art.name, f.suchtext?.let(::enthaeltMuster), f.thema, f.lagerort, f.farbe,
             f.kategorie, f.ersatzteil, f.zustand)
-        return LokaleListe(zeilen.map { it.alsLokal() }, dao.stand(bereich, art.name))
+        return Lokal(zeilen.map { it.alsLokal() }, dao.stand(bereich, art.name))
     }
 
     override suspend fun ersetze(bereich: String, art: Bestandsart, zeilen: List<LokaleZeile>, stand: Long?) =
@@ -55,10 +54,10 @@ internal class RoomBestand @Inject constructor(private val db: BestandDatenbank)
 }
 
 private fun BestandZeile.alsLokal() =
-    LokaleZeile(schluessel, inhalt, Merkmale(suchtext, thema, lagerort, farbe, kategorie, ersatzteil, zustand))
+    LokaleZeile(schluessel, inhalt, Filterspalten(suchtext, thema, lagerort, farbe, kategorie, ersatzteil, zustand))
 
-private fun LokaleZeile.alsZeile(bereich: String, art: Bestandsart, position: Int) = with(merkmale) {
-    BestandZeile(bereich, art.name, schluessel, position, inhalt, suchtext, thema, lagerort, farbe, kategorie, ersatzteil, zustand)
+private fun LokaleZeile.alsZeile(bereich: String, art: Bestandsart, position: Int) = with(spalten) {
+    BestandZeile(bereich, art.name, schluessel, position, inhalt, suchtext.orEmpty(), thema, lagerort, farbe, kategorie, ersatzteil, zustand)
 }
 
 /** „Enthält“ als LIKE-Muster; `%`, `_` und `\` gelten wörtlich wie beim Server (likeSuche.ts). */

@@ -3,7 +3,7 @@ package ch.brickinventoryapp.data.repository
 import ch.brickinventoryapp.data.api.FigurenApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.offline.Bearbeitung
-import ch.brickinventoryapp.offline.Bestandsfilter
+import ch.brickinventoryapp.offline.Filterspalten
 import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.offline.Lokal
 import ch.brickinventoryapp.offline.Offlineablage
@@ -29,14 +29,14 @@ class FigurenRepositoryImpl @Inject constructor(
      * ungefilterte Sicht; ohne Netz sucht dieselbe Suche in ihr.
      */
     override suspend fun getMinifigs(accounts: String?, search: String?): Ergebnis<MinifigsResponse> {
-        val filter = Bestandsfilter(suche = search?.ifBlank { null })
+        val filter = Filterspalten(suchtext = search?.ifBlank { null })
         val ausLokal = { l: List<Minifig> -> MinifigsResponse(success = true, figs = l) }
         return when {
-            accounts != null -> safeCall { api.getMinifigs(source = "set", accounts = accounts, search = filter.suche) }
-            filter == Bestandsfilter() -> abgeglichen(Faecher.FIGUREN, { it.figs }, ausLokal) {
+            accounts != null -> safeCall { api.getMinifigs(source = "set", accounts = accounts, search = filter.suchtext) }
+            filter == Filterspalten() -> abgeglichen(Faecher.FIGUREN, { it.figs }, ausLokal) {
                 safeCall { api.getMinifigs(source = "set") }
             }
-            else -> gefiltert(Faecher.FIGUREN, filter, ausLokal) { safeCall { api.getMinifigs(source = "set", search = filter.suche) } }
+            else -> gefiltert(Faecher.FIGUREN, filter, ausLokal) { safeCall { api.getMinifigs(source = "set", search = filter.suchtext) } }
         }
     }
 
@@ -46,11 +46,11 @@ class FigurenRepositoryImpl @Inject constructor(
 
     override suspend fun getManualMinifigs(accounts: String?,
                                   search: String?): Ergebnis<ManualFigsResponse> {
-        val filter = Bestandsfilter(suche = search?.ifBlank { null })
+        val filter = Filterspalten(suchtext = search?.ifBlank { null })
         val ausLokal = { l: List<FigValuationItem> -> ManualFigsResponse(success = true, figs = l) }
         return when {
             accounts != null -> safeCall { api.getManualMinifigs(accounts, search) }
-            filter == Bestandsfilter() -> abgeglichen(Faecher.MANUELLE_FIGUREN, { it.figs }, ausLokal) {
+            filter == Filterspalten() -> abgeglichen(Faecher.MANUELLE_FIGUREN, { it.figs }, ausLokal) {
                 safeCall { api.getManualMinifigs(accounts, search) }
             }
             else -> gefiltert(Faecher.MANUELLE_FIGUREN, filter, ausLokal) { safeCall { api.getManualMinifigs(accounts, search) } }
