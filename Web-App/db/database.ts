@@ -101,10 +101,8 @@ const TX_KONFLIKT = new Set(['40P01', '40001']);
 const TX_NEUVERSUCHE = 2;
 
 /** Was nach dem Einspielen der Basis in eine leere Datenbank geschieht (das erste
- * Konto). Die Datenbankschicht kennt keine Konten; der Prozess setzt es beim Start. */
-type Erststart = () => Promise<void>;
-let _erststart: Erststart | null = null;
-export function setzeErststart(fn: Erststart | null): void { _erststart = fn; }
+ * Konto). Die Datenbankschicht kennt keine Konten; wer den Zugang anlegt, gibt es mit. */
+export type Erststart = () => Promise<void>;
 
 export interface Db extends DbSchnittstelle {
   readonly pool: Pool;
@@ -176,7 +174,7 @@ const MINDESTSTAND = '0050-teilezaehler-nur-bestehende-konten.sql';
 
 /** Ein Zugang zur Datenbank mit eigenem Pool. Der Pool entsteht hier, nicht
  * beim Import: Wer die Adresse kennt, ruft die Fabrik. */
-export function erzeugeDb(k: DbKonfig): Db {
+export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
   const pool = new Pool({ ...k.verbindung, ...k.pool });
   // Ohne Lauscher brächte der Abriss einer ruhenden Verbindung den Prozess zu Fall.
   pool.on('error', (err) => {
@@ -273,7 +271,7 @@ export function erzeugeDb(k: DbKonfig): Db {
     } finally {
       await c.end().catch((r: Error) => console.warn('[schema] Verbindung schliessen:', r.message));
     }
-    if (_erststart) await _erststart();
+    if (o.erststart) await o.erststart();
     else console.warn('⚠️  [schema] Leere Datenbank ohne Erststart: kein erstes Konto angelegt.');
     console.log('✅ PostgreSQL schema ready');
     return true;
@@ -340,16 +338,16 @@ async function pruefeMindeststand(client: import('pg').ClientBase): Promise<void
 // ── Kompatibilitätsweg: der Zugang des Prozesses ────────────────────────────
 // Die meisten Module importieren noch die Funktionen unten statt einen Zugang
 // übergeben zu bekommen; test/ratschen.test.js zählt sie. Der Pool entsteht beim
-// ersten Gebrauch oder wenn der Prozess setzeStandardDb() ruft, nie beim Import.
+// ersten Gebrauch (auch aus einer gesetzten Bauanleitung), nie beim Import.
+let _standard: Db | (() => Db) | null = null;
 
-let _standard: Db | null = null;
-
-export function setzeStandardDb(d: Db): void {
+export function setzeStandardDb(d: Db | (() => Db)): void {
   if (_standard && _standard !== d) throw new Error('Der Datenbankzugang des Prozesses ist schon gesetzt');
   _standard = d;
 }
 
 export function standardDb(): Db {
+  if (typeof _standard === 'function') _standard = _standard();
   if (!_standard) _standard = erzeugeDb(dbKonfigAusUmgebung());
   return _standard;
 }

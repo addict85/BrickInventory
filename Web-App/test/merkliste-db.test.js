@@ -7,7 +7,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { haeltSet, mengeVon, haltZeile } = require('./helpers/bestand');
+const { haeltSet, mengeVon, haltZeile, katalogSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 const U = {};
@@ -84,8 +84,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
 
   await t.test('ohne Rebrickable-Katalog kommen Name und Bild aus set_catalog', async () => {
     // Gegenprobe (28.10.2026): rb.name statt COALESCE(rb.name, sc.name) → rot, name null.
-    await db.run(`INSERT INTO set_catalog (set_number, name, year, pieces, image_url)
-                  VALUES ('10316-1', 'Rivendell', 2023, 6167, 'http://x/10316.jpg')`);
+    await katalogSet(db, '10316-1', { name: 'Rivendell', year: 2023, pieces: 6167, image_url: 'http://x/10316.jpg' });
     await W.legeMerkpostenAn(U.opa, '10316-1', 'N');
     const w = (await W.merkpostenVon([U.opa])).find(x => x.set_number === '10316-1');
     assert.equal(w.name, 'Rivendell');

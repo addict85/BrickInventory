@@ -3,7 +3,7 @@ import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { bricklinkRequest } from './quellen';
 import { getGlobalSetting } from '../einstellungen/settings';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
-import * as cache from './repository/katalogCache';
+import { katalog } from './prozess';
 
 export type BlType = 'SET' | 'GEAR' | 'BOOK' | 'MINIFIG' | 'NONE';
 
@@ -65,7 +65,7 @@ export async function resolveMany(setNumbers: string[]): Promise<Map<string, BlL
   const keys = [...new Set((setNumbers || []).filter(Boolean).map(withVariant))];
   if (keys.length === 0) return out;
 
-  const rows = await cache.blTypenDerSets(keys).catch(meldeUndLiefere('bl-link:rows', []));
+  const rows = await katalog().katalogCache.blTypenDerSets(keys).catch(meldeUndLiefere('bl-link:rows', []));
 
   const byNumber = new Map<string, string | null>();
   for (const r of rows) byNumber.set(r.set_number, r.bl_type);
@@ -108,6 +108,6 @@ export async function resolveViaApi(setNumber: string): Promise<BlLink> {
     return toLink(n, null);
   }
 
-  await cache.merkeBlTyp(n, `Set ${n}`, found, found === 'NONE').catch(logAndContinue('bl-link:probe'));
+  await katalog().katalogCache.merkeBlTyp(n, `Set ${n}`, found, found === 'NONE').catch(logAndContinue('bl-link:probe'));
   return toLink(n, found);
 }

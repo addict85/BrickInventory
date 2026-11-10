@@ -1698,3 +1698,27 @@ docker compose exec postgres psql -U brickinventory -c "SELECT max(name) FROM sc
   diese Kennung und endet. Nichts von Hand zu tun: `docker compose up -d`
   genügt. Nach `scripts/ca-einrichten.sh` wie bisher `docker compose up -d
   caddy` (nicht `restart`), damit `caddy-rechte` den neuen Schlüssel übergibt.
+
+## 48. Set-Stammdaten nur noch aus `rb_sets` (Migration 0105)
+
+- **Was die Migration tut:** Name, Jahr, Thema und Teilezahl eines Sets stehen
+  nur noch in `rb_sets` (Thema über `theme_id` → `rb_themes`). Sets, die bisher
+  nur `set_catalog` kannte (vor dem ersten Rebrickable-Abgleich erfasst, Promo,
+  Gear …), legt sie dort mit `herkunft = 'api'` an, das Thema über seinen Namen
+  (unbekannt bleibt es leer, bis der Abgleich die Themen bringt).
+  `set_catalog` verliert die Spalten `name`, `year`, `theme`, `pieces`, hängt per
+  Fremdschlüssel an `rb_sets` und behält Bild, Brickset-ID und Figurenzahl.
+  Sammlung, Merkliste, Preisalarm und Export zeigen weiter Name, Jahr und Thema;
+  die API antwortet mit denselben Feldern, die App muss nicht aktualisiert werden.
+- **Der erste CSV-Abgleich danach** legt für jedes Set des Rebrickable-Katalogs
+  eine `set_catalog`-Zeile an. `rb_sets` wird abgeglichen statt getauscht: Neues
+  kommt hinzu, Geändertes wird übernommen, Verschwundenes entfällt – ausser ein
+  Konto hält das Set im Bestand, auf der Merkliste oder im Preisalarm; dann bleibt
+  es als `herkunft = 'api'`.
+- **Set-Bilder unter `/images/sets/`** gehen an jedes angemeldete Konto, nicht
+  mehr nur an Konten, die das Set führen. Lädt der Bild-Proxy ein Set-Bild (auch
+  aus dem Reiter Katalog), trägt er `image_local` und `image_url` ein; die
+  Katalogsuche nennt danach die lokale Datei. Anleitungen bleiben auf den eigenen
+  Bestand beschränkt.
+- `postgres/app-rolle.sh` (Leserolle) kennt die geänderten Spalten; `docker
+  compose up -d` spielt es wie gewohnt ein.

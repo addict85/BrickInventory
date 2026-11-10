@@ -1,7 +1,6 @@
 import type { DbSchnittstelle } from '../../../db/database';
-import * as db from '../../../db/database';
 
-export function figurenDesSetkatalogs(setNumber: string) {
+export function figurenDesSetkatalogs(db: DbSchnittstelle, setNumber: string) {
   return db.all<{ fig_number: string; fig_name: string | null; quantity: number | null; image_url: string | null }>(`SELECT fig_number, fig_name, quantity, image_url
        FROM set_minifigs_catalog
       WHERE set_number = $1`, [setNumber]);
@@ -26,7 +25,7 @@ export function entferneFremdeSetTeile(tx: DbSchnittstelle, userId: number, n: s
               AND (part_number, color_id) NOT IN (SELECT * FROM unnest($3::text[], $4::int[]))`, [userId, n, teile, farben]);
 }
 
-export function teileOhneBlZuordnung() {
+export function teileOhneBlZuordnung(db: DbSchnittstelle) {
   return db.all<{ part_number: string }>(`SELECT DISTINCT p.part_number FROM parts p
        LEFT JOIN bl_zuordnung m ON m.art = 'part' AND m.rb_id = p.part_number
        WHERE m.rb_id IS NULL

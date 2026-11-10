@@ -1,13 +1,13 @@
+import type { DbSchnittstelle } from '../../../db/database';
 export type Schreiber = { run: (sql: string, params?: unknown[]) => Promise<unknown> };
-import * as db from '../../../db/database';
 
-export async function inventarNachKandidaten(kandidaten: string[]): Promise<number | null> {
+export async function inventarNachKandidaten(db: DbSchnittstelle, kandidaten: string[]): Promise<number | null> {
   const row = await db.get<{ id: number }>(
     'SELECT id FROM rb_inventories WHERE set_num = ANY($1) ORDER BY version DESC LIMIT 1', [kandidaten]);
   return row ? row.id : null;
 }
 
-export async function geladeneFarben(): Promise<{ id: number; name: string; hex: string | null }[]> {
+export async function geladeneFarben(db: DbSchnittstelle): Promise<{ id: number; name: string; hex: string | null }[]> {
   return db.all(
     `SELECT id, name, NULLIF(rgb, '') AS hex FROM rb_colors
       WHERE id >= 0 AND name IS NOT NULL ORDER BY id`);
@@ -157,7 +157,7 @@ export function schreibeFigurBildLokal(dbh: Schreiber, figNumber: string, imageL
 }
 
 /** Der geprüfte Wert, sonst die eigene Angabe von `fuer`; fremde Eingaben stehen nicht im Katalog. */
-export function teilAusKatalog(partNumber: string, colorId: number | null, fuer: number | null) {
+export function teilAusKatalog(db: DbSchnittstelle, partNumber: string, colorId: number | null, fuer: number | null) {
   return db.get<{ name: string | null; kategorie: string | null; bild_allgemein: string | null; farb_url: string | null; farb_datei: string | null }>(`
     SELECT COALESCE(pc.part_name, rp.name, te.part_name)   AS name,
            COALESCE(pc.category_name, te.category_name)     AS kategorie,
@@ -172,7 +172,7 @@ export function teilAusKatalog(partNumber: string, colorId: number | null, fuer:
       LEFT JOIN teil_farbe_eigen   tfe ON tfe.user_id = $3 AND tfe.part_number = q.nr AND tfe.color_id = $2`, [partNumber, colorId, fuer]);
 }
 
-export function figurAusKatalog(figNumber: string, fuer: number | null) {
+export function figurAusKatalog(db: DbSchnittstelle, figNumber: string, fuer: number | null) {
   return db.get<{ fig_name: string | null; image_url: string | null; image_local: string | null }>(`
     SELECT COALESCE(mc.fig_name, fe.fig_name)   AS fig_name,
            COALESCE(mc.image_url, fe.image_url) AS image_url,

@@ -30,3 +30,18 @@ export const FIGUR = {
   bild:      'COALESCE(mc.image_url, fe.image_url)',
   bildDatei: 'mc.image_local',
 } as const;
+
+/** LEFT JOINs rs/rt: Name, Jahr, Thema und Teilezahl eines Sets stehen nur in
+ * rb_sets (0105); set_catalog ergänzt Bild und Figurenzahl. Jahr und Teilezahl 0
+ * heissen im Rebrickable-CSV „unbekannt“. */
+export function setStammJoin(nummer: string): string {
+  return `LEFT JOIN rb_sets rs ON rs.set_num = ${nummer}
+    LEFT JOIN rb_themes rt ON rt.id = rs.theme_id`;
+}
+
+export const SET = {
+  name:  'rs.name',
+  jahr:  'NULLIF(rs.year, 0)',
+  thema: 'rt.name',
+  teile: 'NULLIF(rs.num_parts, 0)',
+} as const;

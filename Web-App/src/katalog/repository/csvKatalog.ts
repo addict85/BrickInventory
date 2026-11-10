@@ -1,6 +1,6 @@
-import * as db from '../../../db/database';
+import type { DbSchnittstelle } from '../../../db/database';
 
-export async function katalogBildstand(setNumber: string): Promise<{ total: number; mitBild: number }> {
+export async function katalogBildstand(db: DbSchnittstelle, setNumber: string): Promise<{ total: number; mitBild: number }> {
   const r = await db.get<{ total: string; with_img: string }>(
     `SELECT COUNT(*) AS total, COUNT(image_local) AS with_img
      FROM set_parts_catalog WHERE set_number = $1`, [setNumber]);
@@ -12,7 +12,7 @@ export interface CsvTeil {
   color_name: string | null; color_hex: string | null; image_url: string | null; quantity: number; is_spare: boolean;
 }
 
-export async function inventarTeileOhneErsatz(inventarId: number): Promise<CsvTeil[]> {
+export async function inventarTeileOhneErsatz(db: DbSchnittstelle, inventarId: number): Promise<CsvTeil[]> {
   return db.all<CsvTeil>(
     `SELECT ip.part_num AS part_number,
             COALESCE(m.bl_id, ip.part_num) AS bl_part_number,
@@ -28,7 +28,7 @@ export async function inventarTeileOhneErsatz(inventarId: number): Promise<CsvTe
        AND NOT ip.is_spare`, [inventarId]);
 }
 
-export async function inventarFiguren(inventarId: number): Promise<{ fig_number: string; quantity: number; fig_name: string | null; image_url: string | null }[]> {
+export async function inventarFiguren(db: DbSchnittstelle, inventarId: number): Promise<{ fig_number: string; quantity: number; fig_name: string | null; image_url: string | null }[]> {
   return db.all(
     `SELECT ip.part_num AS fig_number, ip.quantity,
             s.name AS fig_name, s.set_img_url AS image_url
@@ -37,7 +37,7 @@ export async function inventarFiguren(inventarId: number): Promise<{ fig_number:
      WHERE ip.inventory_id = $1 AND ip.part_num LIKE 'fig-%'`, [inventarId]);
 }
 
-export async function setsOhneTeilekatalog(grenze = 50): Promise<string[]> {
+export async function setsOhneTeilekatalog(db: DbSchnittstelle, grenze = 50): Promise<string[]> {
   const rows = await db.all<{ set_num: string }>(
     `SELECT DISTINCT s.set_num FROM rb_sets s
      LEFT JOIN set_parts_catalog c ON c.set_number = s.set_num
@@ -46,12 +46,12 @@ export async function setsOhneTeilekatalog(grenze = 50): Promise<string[]> {
   return rows.map(r => r.set_num);
 }
 
-export async function manuelleFarbteile(): Promise<{ id: number; part_number: string; color_id: number }[]> {
+export async function manuelleFarbteile(db: DbSchnittstelle): Promise<{ id: number; part_number: string; color_id: number }[]> {
   return db.all("SELECT id, part_number, color_id FROM parts WHERE source='manual' AND color_id IS NOT NULL AND color_id != 0 ORDER BY id ASC");
 }
 
 /** Überschreibend — das ist der Zweck. */
-export async function ersetzeTeilfarbenbild(partNumber: string, colorId: number, url: string): Promise<void> {
+export async function ersetzeTeilfarbenbild(db: DbSchnittstelle, partNumber: string, colorId: number, url: string): Promise<void> {
   await db.run(`
     INSERT INTO part_color_catalog (part_number, color_id, image_url)
     VALUES ($1, $2, $3)

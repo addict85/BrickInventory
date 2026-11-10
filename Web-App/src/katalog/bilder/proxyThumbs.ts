@@ -1,11 +1,12 @@
+import type { Client } from 'pg';
 import { logAndContinue, fehlertext } from '../../infra/fehler';
 import fs from 'fs';
 import { merkeFehlend, istBekanntFehlend } from './imageMisses';
 import { imgProxyFailures } from './imgProxyStats';
 import { isDecodable } from './imageGuard';
-import * as db from '../../../db/database';
 import { LOCKS } from '../../infra/lockNamespaces';
 import * as sperre from '../repository/sitzungsSperre';
+import { katalog } from '../prozess';
 
 // Warteschlange, Sperre und Verkleinern gehören zusammen.
 
@@ -46,13 +47,13 @@ const _thumbInFlight = new Map<string, boolean>();
 const THUMB_LOCK_KEY = LOCKS.PROXY_THUMBS;
 
 /** EINMAL aufgebaut, dann wiederverwendet. */
-let _sperrClient: Awaited<ReturnType<typeof db.eigeneVerbindung>> | null = null;
+let _sperrClient: Client | null = null;
 
 export async function mitVorschauSperre<T>(arbeit: () => Promise<T>): Promise<T | false> {
     // NICHT aus dem Pool: Eine dort gehaltene Sperre nahm gewöhnlichen Anfragen
     // die Verbindung.
   if (!_sperrClient) {
-    try { _sperrClient = await db.eigeneVerbindung(); }
+    try { _sperrClient = await katalog().db.eigeneVerbindung(); }
     catch (_) { return false; }
     _sperrClient.on('error', () => { _sperrClient = null; });
   }

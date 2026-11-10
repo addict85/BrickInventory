@@ -1,40 +1,40 @@
-import * as db from '../../../db/database';
+import type { DbSchnittstelle } from '../../../db/database';
 
 export interface KatalogSet {
   set_number: string; name: string | null; year: number | null; theme: string | null;
   pieces: number | null; image_url: string | null; is_gear: boolean; fetched_at?: string | Date | null;
 }
 
-export async function katalogSetZu(nummer: string): Promise<KatalogSet | undefined> {
+export async function katalogSetZu(db: DbSchnittstelle, nummer: string): Promise<KatalogSet | undefined> {
   return db.get<KatalogSet>('SELECT * FROM catalog_cache WHERE set_number = $1', [nummer]);
 }
 
 /** Damit höchstens täglich nachgefragt wird. */
-export async function merkeUnbekanntesSet(nummer: string, alsGear: boolean): Promise<void> {
+export async function merkeUnbekanntesSet(db: DbSchnittstelle, nummer: string, alsGear: boolean): Promise<void> {
   await db.run(`INSERT INTO catalog_cache (set_number, name, is_gear) VALUES ($1,$2,$3)
     ON CONFLICT (set_number) DO UPDATE SET is_gear=$3, fetched_at=NOW()`, [nummer, `Set ${nummer}`, alsGear]);
 }
 
-export async function merkeSet(s: Omit<KatalogSet, 'is_gear' | 'fetched_at'>): Promise<void> {
+export async function merkeSet(db: DbSchnittstelle, s: Omit<KatalogSet, 'is_gear' | 'fetched_at'>): Promise<void> {
   await db.run(`INSERT INTO catalog_cache (set_number,name,year,theme,pieces,image_url,is_gear) VALUES ($1,$2,$3,$4,$5,$6,false)
     ON CONFLICT (set_number) DO UPDATE SET name=$2,year=$3,theme=$4,pieces=$5,image_url=$6,is_gear=false`,
     [s.set_number, s.name, s.year, s.theme, s.pieces, s.image_url]);
 }
 
-export async function teilelisteAusCache(nummer: string): Promise<string | undefined> {
+export async function teilelisteAusCache(db: DbSchnittstelle, nummer: string): Promise<string | undefined> {
   return (await db.get<{ data: string }>('SELECT data FROM subsets_cache WHERE set_number = $1', [nummer]))?.data;
 }
 
-export async function merkeTeileliste(nummer: string, json: string): Promise<void> {
+export async function merkeTeileliste(db: DbSchnittstelle, nummer: string, json: string): Promise<void> {
   await db.run(`INSERT INTO subsets_cache (set_number, data) VALUES ($1,$2)
     ON CONFLICT (set_number) DO UPDATE SET data=$2, fetched_at=NOW()`, [nummer, json]);
 }
 
-export async function figurenteileAusCache(figur: string): Promise<string | undefined> {
+export async function figurenteileAusCache(db: DbSchnittstelle, figur: string): Promise<string | undefined> {
   return (await db.get<{ data: string }>('SELECT data FROM minifig_parts_cache WHERE fig_number = $1', [figur]))?.data;
 }
 
-export async function merkeFigurenteile(figur: string, json: string): Promise<void> {
+export async function merkeFigurenteile(db: DbSchnittstelle, figur: string, json: string): Promise<void> {
   await db.run(`INSERT INTO minifig_parts_cache (fig_number, data, fetched_at) VALUES ($1,$2,NOW())
     ON CONFLICT (fig_number) DO UPDATE SET data=$2, fetched_at=NOW()`, [figur, json]);
 }
@@ -45,7 +45,7 @@ export interface InventarTeil {
   bl_part_num: string | null;
 }
 
-export async function inventarTeile(inventarId: number): Promise<InventarTeil[]> {
+export async function inventarTeile(db: DbSchnittstelle, inventarId: number): Promise<InventarTeil[]> {
   return db.all<InventarTeil>(
     `SELECT ip.part_num, ip.color_id, ip.quantity, ip.is_spare, ip.img_url,
             p.name, p.part_img_url,

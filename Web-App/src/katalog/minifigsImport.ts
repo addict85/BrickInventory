@@ -1,13 +1,13 @@
-import * as db from '../../db/database';
 import { getSetMinifigs } from './quellen';
 import { logAndContinue } from '../infra/fehler';
 import { mitVersion } from '../infra/setNummer';
 import { merkeFiguren, merkeSetFiguren } from './katalogPflege';
 import * as inhalt from './repository/setInhalt';
+import { katalog } from './prozess';
 
 // Mit und ohne Versionsanhang fragen, nicht zweimal dieselbe Schreibweise.
 export async function figurenAusKatalog(setNumber: string) {
-  return inhalt.figurenDesSetkatalogs(mitVersion(setNumber)).catch((e: unknown) => { logAndContinue('minifiguren:katalog lesen')(e); return []; });
+  return katalog().setInhalt.figurenDesSetkatalogs(mitVersion(setNumber)).catch((e: unknown) => { logAndContinue('minifiguren:katalog lesen')(e); return []; });
 }
 
 type Figur = { fig_number: string; fig_name: string; quantity: number; image_url: string | null };
@@ -16,9 +16,9 @@ type Figur = { fig_number: string; fig_name: string; quantity: number; image_url
  * die mehrfach vorkommt, ist eine Zeile mit der Summe als Katalogmenge.
  * @returns die Zahl der Figuren; wirft bei Fehlern (der Auftrag wiederholt dann) */
 export async function importiereFiguren(setNumber: string, userId: number): Promise<number> {
-  const katalog = await figurenAusKatalog(mitVersion(setNumber));
-  const roh: Figur[] = katalog.length
-    ? katalog.map(f => ({ fig_number: f.fig_number, fig_name: f.fig_name || f.fig_number,
+  const ausKatalog = await figurenAusKatalog(mitVersion(setNumber));
+  const roh: Figur[] = ausKatalog.length
+    ? ausKatalog.map(f => ({ fig_number: f.fig_number, fig_name: f.fig_name || f.fig_number,
                           quantity: f.quantity || 1, image_url: f.image_url || null }))
     : await getSetMinifigs(setNumber);
   const jeNummer = new Map<string, Figur>();
@@ -31,10 +31,10 @@ export async function importiereFiguren(setNumber: string, userId: number): Prom
   if (!figs.length) return 0;
   // Aus dem Katalog sind die Mengen schon zusammengefasst; geschrieben wird nur,
   // was von der Quelle kam.
-  const ausQuelle = !katalog.length;
+  const ausQuelle = !ausKatalog.length;
   const nummern = figs.map(f => f.fig_number);
 
-  await db.transaction(async (tx) => {
+  await katalog().db.transaction(async (tx) => {
     await inhalt.fuegeSetFigurenEin(tx, userId, setNumber, nummern);
     await inhalt.entferneFremdeSetFiguren(tx, userId, setNumber, nummern);
     await merkeFiguren(figs.map(f => ({ figNumber: f.fig_number, figName: f.fig_name, imageUrl: f.image_url })), tx);

@@ -1,7 +1,6 @@
 import path from 'path';
 import type { AuftragsLauf } from '../auftraege/auftraege';
 import fs from 'fs';
-import * as db from '../../db/database';
 import { PART_IMAGES_DIR } from '../infra/appPaths';
 import { type RbSetTeil, parseThrottleWait, rebrickableRoh } from './quellen';
 import { getAllSetParts } from './rebrickableKatalog';
@@ -14,6 +13,7 @@ import { merkeSetTeile, type SetTeilZeile } from './katalogPflege';
 import { stelleAuftragEin } from '../auftraege/dienst';
 import { rebrickableBackgroundLimiter, consumeRebrickableDaily } from './rateLimiter';
 import * as inhalt from './repository/setInhalt';
+import { katalog } from './prozess';
 
 /** Nach Teil und Farbe sortiert: eine feste Sperrreihenfolge gegen Verklemmungen. */
 function setTeilZeilen(roh: RbSetTeil[]): SetTeilZeile[] {
@@ -54,7 +54,7 @@ export async function importiereTeile(setNumber: string, userId: number): Promis
 
   for (let versuch = 1; ; versuch++) {
     try {
-      await db.transaction(async (tx) => {
+      await katalog().db.transaction(async (tx) => {
         await inhalt.fuegeSetTeileEin(tx, userId, n, teile, farben);
         await inhalt.entferneFremdeSetTeile(tx, userId, n, teile, farben);
         await merkeSetTeile(n, zeilen, tx);
@@ -94,7 +94,7 @@ export async function fetchMissingBlIds(lauf: AuftragsLauf = {}) {
   try {
     const rbKey = await getGlobalSetting('rebrickable_api_key');
     if (!rbKey) return;
-    const missing = await inhalt.teileOhneBlZuordnung();
+    const missing = await katalog().setInhalt.teileOhneBlZuordnung();
     if (!missing.length) return;
 
     const stand = (n: number) => lauf.fortschritt?.({ erledigt: n, gesamt: missing.length, schritt: 'BrickLink IDs nachladen',

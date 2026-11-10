@@ -32,7 +32,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { haeltSet } = require('./helpers/bestand');
+const { haeltSet, katalogSet } = require('./helpers/bestand');
 
 // Kein Abruf bei den Quellen: Das Neuladen findet hier nichts.
 const anlPfad = require.resolve(path.join(require('./helpers/sources').DIST, 'src/katalog/instructions.js'));
@@ -51,8 +51,7 @@ test('Anleitungen neu laden', { concurrency: 1 }, async (t) => {
   for (const n of NAMEN)
     ids.push((await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
                             VALUES ($1, 'x', true, true) RETURNING id`, [n])).id);
-  await db.run(`INSERT INTO set_catalog (set_number, name, year, theme, pieces, minifigs)
-                VALUES ($1, 'Anleitungsprobe', 2024, 'Test', 10, 0) ON CONFLICT (set_number) DO NOTHING`, [SET]);
+  await katalogSet(db, SET, { name: 'Anleitungsprobe', year: 2024, theme: 'Test', pieces: 10, minifigs: 0 });
   await haeltSet(db, ids[0], SET, 1);
   const anleitung = () => db.run(`INSERT INTO shared_instructions (set_number, url) VALUES ($1, $2)
                                   ON CONFLICT DO NOTHING`, [SET, URL_A]);

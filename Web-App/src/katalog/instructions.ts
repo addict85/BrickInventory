@@ -7,7 +7,7 @@ import { downloadFile, scrapeInstructions, httpsGetRobust, brickset } from './qu
 import { meldeFehler, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { pfadSegment } from '../infra/fremdeAdressen';
-import * as repo from './repository/anleitungen';
+import { katalog } from './prozess';
 
 const PDF_ANFANG = Buffer.from('%PDF-');
 
@@ -21,12 +21,12 @@ export function letzterAbrufWarExtern(): boolean { return _letzterAbrufWarExtern
 // Zählen, lesen, löschen an einer Stelle statt verstreut.
 
 export async function anzahlAnleitungen(setNumber: string): Promise<number> {
-  const r = await repo.zaehleAnleitungen(mitVersion(setNumber)).catch(meldeUndLiefere('anleitung:mitVersion', null));
+  const r = await katalog().anleitungen.zaehleAnleitungen(mitVersion(setNumber)).catch(meldeUndLiefere('anleitung:mitVersion', null));
   return Number(r?.c) || 0;
 }
 
 export async function anleitungenZuSet(setNumber: string) {
-  return repo.anleitungenDesSets(mitVersion(setNumber)).catch(meldeUndLiefere('anleitung:mitVersion', []));
+  return katalog().anleitungen.anleitungenDesSets(mitVersion(setNumber)).catch(meldeUndLiefere('anleitung:mitVersion', []));
 }
 
 /** Erst die automatisch importierten, dann die selbst hochgeladenen. */
@@ -40,12 +40,12 @@ export function anleitungenZusammenlegen<A extends object, B extends object>(get
 /** Einmal je Set und Tag für alle: Neuladen löscht für alle und kostet
  * Kontingent. In EINER Anweisung, damit zwei Anfragen nicht beide durchkommen. */
 export async function anleitungNeuLadenErlaubt(setNumber: string): Promise<boolean> {
-  const z = await repo.zaehleQuellenAufruf(`anleitung-neu|${mitVersion(setNumber)}`);
+  const z = await katalog().anleitungen.zaehleQuellenAufruf(`anleitung-neu|${mitVersion(setNumber)}`);
   return !!z;
 }
 
 export async function loescheAnleitungen(setNumber: string) {
-  return repo.loescheAnleitungenDesSets(mitVersion(setNumber));
+  return katalog().anleitungen.loescheAnleitungenDesSets(mitVersion(setNumber));
 }
 
 // Ein Fund für Anlegen und Suchen.
@@ -64,7 +64,7 @@ export async function scrapeInstructionsFromFallback(setNumber: string) {
   const n = mitVersion(setNumber);
   const existing = await anzahlAnleitungen(n);
   if (existing > 0) return existing;
-  const biAlreadyTried = await repo.hatBrickinstructions(n);
+  const biAlreadyTried = await katalog().anleitungen.hatBrickinstructions(n);
   if (biAlreadyTried) return 0;
   try {
     const fund = await brickinstructionsFund(n);
@@ -77,7 +77,7 @@ export async function scrapeInstructionsFromFallback(setNumber: string) {
       const pdfDest  = path.join(instrDir, pdfName);
       const relPath  = `/data/instructions/${pdfName}`;
       const desc     = `Anleitung ${n} (BrickInstructions)`;
-      await repo.merkeAnleitung(n, pageUrl, desc, null).catch(logAndContinue('anleitung:desc'));
+      await katalog().anleitungen.merkeAnleitung(n, pageUrl, desc, null).catch(logAndContinue('anleitung:desc'));
       setImmediate(() => { void collectAndBuildPDF(baseUrl, hdrs, fund.erstesBild, pdfDest, relPath, n).catch(logAndContinue('anleitung:collectAndBuildPDF')); });
       console.log(`[brickinstructions] Fallback triggered for ${n}`);
       return 1;
@@ -125,7 +125,7 @@ export async function downloadSetInstructions(setNumber: string,
       const ok = await downloadFile(bdpUrl, pdfDest, undefined, PDF_ANFANG);
       if (ok) {
         console.log(`[instr] BDP fallback downloaded: ${bdpUrl}`);
-        await repo.merkeAnleitung(n, bdpUrl, `Anleitung ${n} (BDP)`, relPath).catch(logAndContinue('anleitung:ok'));
+        await katalog().anleitungen.merkeAnleitung(n, bdpUrl, `Anleitung ${n} (BDP)`, relPath).catch(logAndContinue('anleitung:ok'));
         if (!eigenerTakt) await warte(5000);
         return 1;
       }
@@ -133,7 +133,7 @@ export async function downloadSetInstructions(setNumber: string,
     if (!eigenerTakt) await warte(5000); // throttle regardless of result
   }
 
-  const biAlreadyTried = await repo.hatBrickinstructions(n);
+  const biAlreadyTried = await katalog().anleitungen.hatBrickinstructions(n);
   if (!instrList.length && bricksetSucceededEmpty && !biAlreadyTried) {
     try {
       const fund = await brickinstructionsFund(n);
@@ -159,7 +159,7 @@ export async function downloadSetInstructions(setNumber: string,
       const pdfName = `${safeBase}_brickinstructions.pdf`;
       const pdfDest = path.join(instrDir, pdfName);
       const relPath = `/data/instructions/${pdfName}`;
-      try { await repo.merkeAnleitung(n, instr.url, instr.description, null); saved++; } catch (e) { meldeFehler('anleitungen:pdf-eintragen', e); }
+      try { await katalog().anleitungen.merkeAnleitung(n, instr.url, instr.description, null); saved++; } catch (e) { meldeFehler('anleitungen:pdf-eintragen', e); }
       setImmediate(() => { void collectAndBuildPDF(instr.brickinstructions_base, instr.brickinstructions_hdrs, instr.brickinstructions_first, pdfDest, relPath, n).catch(logAndContinue('anleitung:collectAndBuildPDF')); });
       continue;
     }
@@ -167,7 +167,7 @@ export async function downloadSetInstructions(setNumber: string,
     const dest = path.join(instrDir, safeName);
     const relPath = `/data/instructions/${safeName}`;
     const ok = await downloadFile(instr.url, dest, undefined, PDF_ANFANG);
-    try { await repo.merkeAnleitung(n, instr.url, instr.description||`Anleitung ${n}`, ok?relPath:null); saved++; } catch (e) { meldeFehler('anleitungen:datei-eintragen', e); }
+    try { await katalog().anleitungen.merkeAnleitung(n, instr.url, instr.description||`Anleitung ${n}`, ok?relPath:null); saved++; } catch (e) { meldeFehler('anleitungen:datei-eintragen', e); }
     if (i < instrList.length - 1) await warte(200);
   }
   
@@ -187,7 +187,7 @@ async function collectAndBuildPDF(baseUrl: string, hdrs: Record<string, string>,
     await warte(100);
     const ok = await buildImagePDF_fromBuffers(imageBuffers, pdfDest);
     if (ok) {
-      await repo.setzeAnleitungsdatei(relPath, setNumber);
+      await katalog().anleitungen.setzeAnleitungsdatei(relPath, setNumber);
       console.log(`  ✅ PDF ready for ${setNumber}`);
     }
   } catch (e) { console.log(`  PDF build failed for ${setNumber}: ${fehlertext(e)}`); }

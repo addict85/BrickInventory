@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import * as repo from './repository/bildlage';
 import { getSetInfo } from './quellen';
 import { downloadSetImage } from './bilder/setImages';
 import { generateThumb } from './bilder/thumbs';
@@ -8,14 +7,15 @@ import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';
 import { APP_ROOT, IMAGES_DIR } from '../infra/appPaths';
 import { fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { KEINE_FARBE } from '../infra/validate';
+import { katalog } from './prozess';
 
 export async function bilderFuerNachlauf() {
   const [sets, teile, figuren] = await Promise.all([
-    repo.setsMitFehlendenKatalogbildern(),
+    katalog().bildlage.setsMitFehlendenKatalogbildern(),
     // Der gemeinsame Katalog führt nur geprüfte Adressen: Die Datei gilt für alle Konten.
-    repo.manuelleTeileOhneBild(),
+    katalog().bildlage.manuelleTeileOhneBild(),
     // Alle Figuren, nicht nur manuelle: Sonst lief jede Kachel über den Proxy.
-    repo.figurenOhneBild(),
+    katalog().bildlage.figurenOhneBild(),
   ]);
   return { sets, teile, figuren };
 }
@@ -25,7 +25,7 @@ export async function fuelleAusBrickset(setNumber: string): Promise<boolean> {
   const info = await getSetInfo(setNumber);
   if (!info) return false;
   // Scheitert es, bleibt das Set namenlos — darum mit Protokoll.
-  await repo.fuelleSetLuecken(setNumber, info).catch(logAndContinue(`brickset-nachlauf:set ${setNumber}`));
+  await katalog().bildlage.fuelleSetLuecken(setNumber, info).catch(logAndContinue(`brickset-nachlauf:set ${setNumber}`));
   return true;
 }
 
@@ -37,7 +37,7 @@ export async function bilderAusKatalog<T extends Bildposten>(posten: T[], istFig
   for (const p of posten) { p.image_url = null; p.image_local = null; }
   const teile = posten.filter(p => !istFigur(p)), figuren = posten.filter(istFigur);
   if (teile.length) {
-    const zeilen = await repo.teilbilder([...new Set(teile.map(p => String(p.part_number)))]);
+    const zeilen = await katalog().bildlage.teilbilder([...new Set(teile.map(p => String(p.part_number)))]);
     const m = new Map(zeilen.map(r => [`${r.part_number}|${r.color_id}`, r] as const));
     for (const p of teile) {
       const z = m.get(`${p.part_number}|${p.color_id ?? KEINE_FARBE}`);
@@ -45,7 +45,7 @@ export async function bilderAusKatalog<T extends Bildposten>(posten: T[], istFig
     }
   }
   if (!figuren.length) return;
-  const zeilen = await repo.figurenbilder([...new Set(figuren.map(p => String(p.part_number)))]);
+  const zeilen = await katalog().bildlage.figurenbilder([...new Set(figuren.map(p => String(p.part_number)))]);
   const m = new Map(zeilen.map(r => [r.fig_number, r] as const));
   for (const p of figuren) {
     const z = m.get(String(p.part_number));
@@ -56,27 +56,27 @@ export async function bilderAusKatalog<T extends Bildposten>(posten: T[], istFig
 /** Nicht, wenn ein Abruf wartet oder kürzlich ohne Ergebnis lief — danach
  * wieder, sobald die erledigten Aufträge verfallen. */
 export async function anleitungenNachtragen(): Promise<void> {
-  const missing = await repo.setsOhneAnleitungsabruf();
+  const missing = await katalog().bildlage.setsOhneAnleitungsabruf();
   if (missing.length) console.log(`[instr-queue] Enqueueing ${missing.length} sets missing instructions`);
   for (const set_number of missing) await anleitungEinreihen(set_number);
 }
 
 /** Die Oberfläche lädt nur über image_local aus images/sets; ohne den Eintrag
  * ginge jedes Set-Bild weiter über den Proxy, obwohl die Datei längst da ist. */
-export async function setBildLokalEintragen(setNumber: string): Promise<void> {
+export async function setBildLokalEintragen(setNumber: string, quelle: string | null = null): Promise<void> {
   const safe = setNumber.replace(/[^a-z0-9-]/gi, '_');
-  await repo.merkeSetBildLokal(setNumber, `/images/sets/${safe}.jpg`);
+  await katalog().bildlage.merkeSetBildLokal(setNumber, `/images/sets/${safe}.jpg`, quelle);
 }
 
 export async function setBilderNachladen(): Promise<void> {
   try {
-    const missing = await repo.setBilderOhneDatei();
+    const missing = await katalog().bildlage.setBilderOhneDatei();
     if (!missing.length) return;
     console.log(`[set-img-bg] Downloading ${missing.length} missing set images…`);
     for (const { set_number, image_url } of missing) {
       const local = await downloadSetImage(image_url, set_number).catch(meldeUndLiefere('nachlauf:downloadSetImage', null));
       if (local) {
-        await repo.merkeSetBildLokal(set_number, local).catch(logAndContinue(`bilder:set ${set_number}`));
+        await katalog().bildlage.merkeSetBildLokal(set_number, local).catch(logAndContinue(`bilder:set ${set_number}`));
         generateThumb(local).catch(logAndContinue('nachlauf:generateThumb'));
       }
       await new Promise(r => setTimeout(r, 300));
@@ -88,7 +88,7 @@ export async function setBilderNachladen(): Promise<void> {
 /** Asynchron geprüft, damit der Lauf die Ereignisschleife nicht blockiert. */
 export async function vorschaubilderNachtragen(): Promise<void> {
   try {
-    const paths = await repo.lokaleKatalogbilder();
+    const paths = await katalog().bildlage.lokaleKatalogbilder();
     let generated = 0;
     const exists = (fp: string) => fs.promises.access(fp).then(() => true, () => false);
     for (const localPath of paths) {

@@ -2,6 +2,7 @@ import { mengeSummeSql, erfassungsTagSql, mengeAus, mengeJoin, inKontowaehrung, 
 import { ausTabelle } from '../../infra/validate';
 import type { DbSchnittstelle, Zeile } from '../../../db/database';
 import { LIKE_ESCAPE as E, enthaeltMuster } from '../../../db/likeSuche';
+import { setStammJoin, SET } from '../../../db/katalogSicht';
 import { LOCKS } from '../../infra/lockNamespaces';
 import { sperreBisZumEnde } from '../../../db/txLock';
 
@@ -151,8 +152,8 @@ export type SetFilter = { search?: unknown; theme?: unknown; storage?: unknown; 
 function setsQuelle(uids: number[]): string {
   return uids.length > 1
     ? `(SELECT s.set_number,
-               MIN(c.name) AS name, MIN(c.year) AS year, MIN(c.theme) AS theme,
-               MIN(c.pieces) AS pieces, MIN(c.minifigs) AS minifigs,
+               MIN(${SET.name}) AS name, MIN(${SET.jahr}) AS year, MIN(${SET.thema}) AS theme,
+               MIN(${SET.teile}) AS pieces, MIN(c.minifigs) AS minifigs,
                -- Die Menge kommt aus den ERFASSUNGEN (Migration 0036 hat
                -- sets.quantity geloescht). Die gruppierte Quelle haengt
                -- db/bestandsmenge.ts an — hier stand SUM(s.quantity).
@@ -183,6 +184,7 @@ function setsQuelle(uids: number[]): string {
           -- kommen. LEFT JOIN, weil ein Set ohne Katalogzeile sonst aus der
           -- Liste verschwaende — lieber ohne Namen als unsichtbar.
           LEFT JOIN set_catalog c ON c.set_number = s.set_number
+          ${setStammJoin('s.set_number')}
           LEFT JOIN storage_locations lo ON lo.id = s.storage_id
           ${mengeJoin('s', 'sm', '= ANY($1)')}
          WHERE s.user_id = ANY($1)
@@ -193,10 +195,11 @@ function setsQuelle(uids: number[]): string {
                ${mengeAus('sm', 0)}::int AS quantity,
                s.added_at, s.updated_at, s.storage_id,
                lo.name AS storage,
-               c.name, c.year, c.theme, c.pieces, c.minifigs,
-               c.image_url, c.image_local
+               ${SET.name} AS name, ${SET.jahr} AS year, ${SET.thema} AS theme, ${SET.teile} AS pieces,
+               c.minifigs, c.image_url, c.image_local
           FROM sets s
           LEFT JOIN set_catalog c ON c.set_number = s.set_number
+          ${setStammJoin('s.set_number')}
           LEFT JOIN storage_locations lo ON lo.id = s.storage_id
           ${mengeJoin('s', 'sm', '= ANY($1)')}) s`;
 }
@@ -271,10 +274,11 @@ export async function setListe(db: DbSchnittstelle, uids: number[], f: SetFilter
     // Aus ALLEN Sets, sonst schrumpft das Auswahlfeld beim Blättern; nur auf der
     // ersten Seite.
     f.themen
-      ? db.all<{ theme: string }>(`SELECT DISTINCT c.theme AS theme
-                  FROM sets s JOIN set_catalog c ON c.set_number = s.set_number
-                 WHERE s.user_id = ANY($1) AND c.theme IS NOT NULL AND c.theme <> ''
-                 ORDER BY c.theme`, [uids])
+      ? db.all<{ theme: string }>(`SELECT DISTINCT rt.name AS theme
+                  FROM sets s JOIN rb_sets rs ON rs.set_num = s.set_number
+                  JOIN rb_themes rt ON rt.id = rs.theme_id
+                 WHERE s.user_id = ANY($1) AND rt.name IS NOT NULL AND rt.name <> ''
+                 ORDER BY rt.name`, [uids])
       : Promise.resolve(null),
   ]);
   return { sets, countRow, themeRows };
@@ -306,8 +310,8 @@ export function setDetailZeile(db: DbSchnittstelle, uids: number[], setNumber: s
               -- ohne Migration 0033 braechte s.* ein zweites name mit, und
               -- der Zugriff darauf waere zweideutig (siehe die Begruendung
               -- bei setsFrom weiter oben).
-              c.name, c.year, c.theme, c.pieces, c.minifigs,
-              c.image_url, c.image_local,
+              ${SET.name} AS name, ${SET.jahr} AS year, ${SET.thema} AS theme, ${SET.teile} AS pieces,
+              c.minifigs, c.image_url, c.image_local,
               -- Die Gesamtmenge im Blickfeld, aus den ERFASSUNGEN. Hier
               -- stand eine Summe ueber sets.quantity; die Spalte ist mit
               -- Migration 0036 weg. Der JOIN auf sets haelt die
@@ -330,6 +334,7 @@ export function setDetailZeile(db: DbSchnittstelle, uids: number[], setNumber: s
                  FROM sets e WHERE e.user_id = ANY($1) AND e.set_number = s.set_number) AS owner_ids
          FROM sets s
          LEFT JOIN set_catalog c ON c.set_number = s.set_number
+         ${setStammJoin('s.set_number')}
         WHERE s.user_id = ANY($1) AND s.set_number = $2
         ORDER BY (s.user_id = $3) DESC, s.id ASC
         LIMIT 1`, [uids, setNumber, eigenes]);

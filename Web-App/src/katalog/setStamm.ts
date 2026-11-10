@@ -1,9 +1,4 @@
-/** Die Stammdaten eines Sets gehören dem Katalog; andere Bereiche schreiben sie
- * nur hierüber, mit ihrem eigenen Zugang oder ihrer Transaktion. */
-export {
-  merkeSetKatalog,
-  merkeKatalogPlatzhalter,
-  katalogStand,
-  setzeFigurenzahl,
-  merkeKatalogCache,
-} from './repository/setStamm';
+/** Set-Stammdaten (rb_sets), ihre Ergänzung (set_catalog) und den Abrufspeicher
+ * schreibt der Katalog; andere Bereiche rufen nur hierher, mit ihrem eigenen
+ * Zugang oder ihrer Transaktion. */
+export { merkeSetKatalog, merkeKatalogPlatzhalter, katalogStand, merkeKatalogCache } from './repository/setStamm';

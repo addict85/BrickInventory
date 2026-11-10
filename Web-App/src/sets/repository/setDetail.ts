@@ -2,15 +2,31 @@ import type { DbSchnittstelle } from '../../../db/database';
 import { mengeSkalar } from '../../../db/bestandsmenge';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import type { KatalogTeil, ListenTeil, SetStamm } from '../zeilen';
+import { setStammJoin, SET } from '../../../db/katalogSicht';
 
+/** rb_sets zuerst; eine Nummer, die nur ein Abruf kennt (catalog_cache), antwortet
+ * aus dem Zwischenspeicher. Ein Platzhalter „Set …“ zählt nicht als Name. */
 export function setStamm(db: DbSchnittstelle, setNumber: string) {
-  return db.get<SetStamm>(`SELECT name, year, theme, pieces, image_url, image_local,
-    name = 'Set ' || set_number AND year IS NULL AND theme IS NULL AND pieces IS NULL AS platzhalter
-    FROM set_stamm WHERE set_number = $1`, [setNumber]);
+  return db.get<SetStamm>(`SELECT name, year, theme, pieces, minifigs, image_url, image_local,
+           name = 'Set ' || nr AND year IS NULL AND theme IS NULL AND pieces IS NULL AS platzhalter
+      FROM (SELECT x.nr,
+                   COALESCE(NULLIF(${SET.name}, 'Set ' || x.nr), NULLIF(cc.name, 'Set ' || x.nr), ${SET.name}, cc.name) AS name,
+                   COALESCE(${SET.jahr}, cc.year) AS year, COALESCE(${SET.thema}, cc.theme) AS theme,
+                   COALESCE(${SET.teile}, cc.pieces) AS pieces, c.minifigs,
+                   COALESCE(c.image_url, NULLIF(rs.set_img_url, ''), cc.image_url) AS image_url, c.image_local
+              FROM (SELECT $1::text AS nr) x
+              ${setStammJoin('x.nr')}
+              LEFT JOIN set_catalog c ON c.set_number = x.nr
+              LEFT JOIN catalog_cache cc ON cc.set_number = x.nr
+             WHERE rs.set_num IS NOT NULL OR cc.set_number IS NOT NULL) s`, [setNumber]);
 }
 
 export function setKatalog(db: DbSchnittstelle, setNumber: string) {
-  return db.get<SetStamm>('SELECT name, image_local, image_url, year, pieces, theme, minifigs FROM set_catalog WHERE set_number=$1', [setNumber]);
+  return db.get<SetStamm>(`SELECT ${SET.name} AS name, c.image_local, c.image_url, ${SET.jahr} AS year,
+           ${SET.teile} AS pieces, ${SET.thema} AS theme, c.minifigs
+      FROM rb_sets rs LEFT JOIN rb_themes rt ON rt.id = rs.theme_id
+      LEFT JOIN set_catalog c ON c.set_number = rs.set_num
+     WHERE rs.set_num = $1`, [setNumber]);
 }
 
 export function katalogCacheEintrag(db: DbSchnittstelle, setNumber: string) {

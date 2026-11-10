@@ -3,9 +3,11 @@
  * Bereiche mit Fabrik. Jeder Prozess baut es beim Start und reicht es weiter
  * (server.ts, Skripte, Testhilfen). */
 import { verdrahteNacharbeit, type Nacharbeit } from '../src/auftraege/nacharbeit';
-import { setzeErststart, standardDb, type Db } from '../db/database';
+import { dbKonfigAusUmgebung, erzeugeDb, setzeStandardDb, standardDb, type Db } from '../db/database';
 import { erzeugeSets } from '../src/sets/bereich';
 import { verdrahteSets } from '../src/sets/prozess';
+import { erzeugeKatalog } from '../src/katalog/bereich';
+import { verdrahteKatalog } from '../src/katalog/prozess';
 import { ziehePlanVor } from '../src/auftraege/zeitplan';
 import { refreshPriceForSet } from '../src/finanzen/preisLauf';
 import { merkeGebraucht } from '../src/katalog/bilder/bildbedarf';
@@ -44,6 +46,14 @@ export function baueVerdrahtung(): Verdrahtung {
 /** Der Zugang zur Datenbank kommt vom Einstieg; ohne Angabe der des Prozesses. */
 export function verdrahte(v: Verdrahtung = baueVerdrahtung(), db: Db = standardDb()): void {
   verdrahteNacharbeit(v.nacharbeit);
-  setzeErststart(v.erststart);
+  verdrahteKatalog(() => erzeugeKatalog({ db }));
   verdrahteSets(() => erzeugeSets({ db, nacharbeit: v.nacharbeit }));
+}
+
+/** Der Zugang des Prozesses samt Erststart, als Standard gesetzt und verdrahtet. */
+export function verdrahteProzess(v: Verdrahtung = baueVerdrahtung()): Db {
+  const zugang = erzeugeDb(dbKonfigAusUmgebung(), { erststart: v.erststart });
+  setzeStandardDb(zugang);
+  verdrahte(v, zugang);
+  return zugang;
 }

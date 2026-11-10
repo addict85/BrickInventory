@@ -1,4 +1,4 @@
-import * as db from '../../../db/database';
+import type { DbSchnittstelle } from '../../../db/database';
 
 /** Die Reihenfolge ist die der Abfrage; Figurenbilder stehen nur in minifigs_catalog. */
 export const CDN_ABFRAGE = `
@@ -13,6 +13,6 @@ export const CDN_ABFRAGE = `
       WHERE image_local IS NOT NULL AND bild_stamm(image_local) = $1 AND image_url IS NOT NULL LIMIT 1)
   ) t ORDER BY r LIMIT 1`;
 
-export function cdnZuBildstamm(stamm: string) {
+export function cdnZuBildstamm(db: DbSchnittstelle, stamm: string) {
   return db.get<{ url: string }>(CDN_ABFRAGE, [stamm]);
 }

@@ -92,6 +92,8 @@ function baueDist() {
   _built = true;
 }
 
+let _zugangGesetzt = false;
+
 function buildAndRequire() {
   // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/http/vertragsRouter.ts).
   process.env.VERTRAG_PRUEFEN ??= '1';
@@ -106,8 +108,15 @@ function buildAndRequire() {
   const faul = new Proxy({}, { get: (_z, k) => (...a) => echt().nacharbeit[k](...a) });
   require(path.join(ROOT, 'dist', 'src/auftraege/nacharbeit.js')).verdrahteNacharbeit(faul);
   const dbModul = require(path.join(ROOT, 'dist', 'db/database.js'));
-  dbModul.setzeErststart(() => echt().erststart());
-  // prozess.js lädt nichts; bereich.js erst beim ersten Gebrauch der Sets-Dienste.
+  // Wie server.ts: Der Zugang des Prozesses legt in einer leeren Datenbank das erste Konto an.
+  if (!_zugangGesetzt) {
+    dbModul.setzeStandardDb(() =>
+      dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung(), { erststart: () => echt().erststart() }));
+    _zugangGesetzt = true;
+  }
+  // prozess.js lädt nichts; bereich.js erst beim ersten Gebrauch der Dienste.
+  require(path.join(ROOT, 'dist', 'src/katalog/prozess.js')).verdrahteKatalog(() =>
+    require(path.join(ROOT, 'dist', 'src/katalog/bereich.js')).erzeugeKatalog({ db: dbModul.standardDb() }));
   require(path.join(ROOT, 'dist', 'src/sets/prozess.js')).verdrahteSets(() =>
     require(path.join(ROOT, 'dist', 'src/sets/bereich.js')).erzeugeSets({ db: dbModul.standardDb(), nacharbeit: faul }));
   return rel => require(path.join(ROOT, 'dist', rel));
@@ -507,6 +516,9 @@ function dienstQuelle(rel) {
   const repos = new Set([...ohneKommentare(s).matchAll(/(?:from\s+|import\(\s*|require\(\s*)['"](\.[^'"]*repository[^'"]*)['"]/g)]
     .map(m => path.posix.normalize(path.posix.join(path.posix.dirname(rel), m[1])).replace(/\.js$/, ''))
     .map(z => fs.existsSync(path.join(ROOT, z + '.ts')) ? z + '.ts' : z + '/index.ts'));
+  // Der Katalog bindet seine Repositories in einer Fabrik (src/katalog/bereich.ts).
+  for (const m of ohneKommentare(s).matchAll(/\bkatalog\(\)\.(\w+)\./g))
+    if (fs.existsSync(path.join(ROOT, `src/katalog/repository/${m[1]}.ts`))) repos.add(`src/katalog/repository/${m[1]}.ts`);
   return [s, ...[...repos].map(r => fs.readFileSync(path.join(ROOT, r), 'utf8'))].join('\n');
 }
 module.exports.dienstQuelle = dienstQuelle;

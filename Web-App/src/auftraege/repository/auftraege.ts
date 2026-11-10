@@ -239,8 +239,8 @@ export function bricksetWiedervorlage() {
   return db.all<WiedervorlageZeile>(
     `SELECT a.nutzlast->>'set_number' AS set_number, to_char(a.faellig_ab, 'YYYY-MM-DD') AS retry_after,
             COALESCE((a.nutzlast->>'versuch')::int, 1) AS attempts, a.fehler AS last_error,
-            a.erstellt AS created_at, c.name
-       FROM auftraege a LEFT JOIN set_catalog c ON c.set_number = a.nutzlast->>'set_number'
+            a.erstellt AS created_at, rs.name
+       FROM auftraege a LEFT JOIN rb_sets rs ON rs.set_num = a.nutzlast->>'set_number'
       WHERE a.art = 'brickset' AND a.status IN ('offen', 'laeuft')
       ORDER BY a.faellig_ab, 1`);
 }

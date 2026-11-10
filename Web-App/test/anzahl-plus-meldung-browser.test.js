@@ -16,13 +16,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { starteApp } = require('./helpers/app-browser');
-const { haeltSet } = require('./helpers/bestand');
+const { haeltSet, katalogSet } = require('./helpers/bestand');
 
 test('Anzahl „+“ meldet das neue Exemplar mit Preis', { concurrency: 1, timeout: 300_000 }, async (t) => {
   const app = await starteApp(t, {
     name: `plus_${process.pid}`,
     bestand: async (db, uid) => {
-      await db.run(`INSERT INTO set_catalog (set_number, name, year) VALUES ('21318-1', 'Baumhaus', 2019) ON CONFLICT (set_number) DO NOTHING`);
+      await katalogSet(db, '21318-1', { name: 'Baumhaus', year: 2019 });
       await haeltSet(db, uid, '21318-1', 1, { preis: 224.99 });
       await db.run(`INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
                     VALUES ('21318-1', 'N', 'EUR', 300, 364.32, 400, 364.32, 10, NOW()) ON CONFLICT DO NOTHING`).catch(() => {});
