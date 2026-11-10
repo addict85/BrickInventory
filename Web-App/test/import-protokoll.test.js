@@ -2,22 +2,13 @@
  * Das Protokoll des Import-Balkens: EINE Fassung, und keine Zeile ohne Namen.
  * Ausführlich: docs/begruendungen/test/import-protokoll.test.js.md#kopf
  *
- * ── Gegenproben (am 21.10. GEMESSEN, Zahlen abgeschrieben) ──────────────────
- *
- * Ausgangslage `# pass 4 / # fail 0`.
- *
- *   A  (seit 05.11.2026 in csv-import-ergebnis-oberflaeche.test.js: Eine
- *      Zeile ohne Setnummer und ohne Zeilennummer erscheint nicht.)
- *   B  in 02-gallery.js die drei alten Zeilen wieder eingesetzt
- *      → `pass 3 / fail 1`. Rot: „keine Protokollzeile wird an
- *        protokollZeile vorbei geschrieben".
- *   C  'csv.items_progress' im Deutschen auf „{done} / {total} Sets" gesetzt
- *      → `pass 3 / fail 1`. Rot: „der Fortschrittstext spricht nicht von Sets".
- *
- * Die erste Fassung dieser Datei hat beim ersten Lauf eine DRITTE Stelle
- * gemeldet, die ich beim Zusammenlegen uebersehen hatte: den Abschlusspfad in
- * 02-gallery.js — und das ist genau der Dialog, den Marco fotografiert hat
- * („CSV Import / Fertig: 322 ok"). Der Wächter hat also zuerst mich erwischt.
+ * Gegenproben (10.11.2026 gemessen):
+ *   A  in 02-set-csv-import.js eine zweite function protokollZeile() → rot:
+ *      „nur EINE Fassung …“
+ *   B  'csv.items_progress' im Deutschen auf „{done} / {total} Sets“ → rot:
+ *      „der Fortschrittstext …“
+ * Dass keine Zeile an protokollZeile vorbei entsteht, prüft das Ergebnis in
+ * csv-import-ergebnis-oberflaeche.test.js („Ergebnisliste mit Zeilen“).
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -26,7 +17,7 @@ const path   = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const lies = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
-const { ohneKommentare } = require('./helpers/sources');
+const { ohneKommentare, loadTranslations } = require('./helpers/sources');
 
 const FORTSCHRITT = 'public/js/01-fortschritt.js';
 const GALERIE     = 'public/js/02-set-csv-import.js';
@@ -46,38 +37,12 @@ test('nur EINE Fassung baut die Zeile fürs Import-Protokoll', () => {
     'der Fall, als dieselben drei Zeilen hier und in 02-gallery.js standen.');
 });
 
-test('keine Protokollzeile wird an protokollZeile vorbei geschrieben', () => {
-  // Geprüft wird der SCHREIBWEG, nicht jedes Vorkommen von set_number: Die
-  // Konsolenmeldung in 02-gallery.js („[CSV Import] Fehler: …") liest es
-  // ebenfalls und darf das — sie landet nicht im Protokoll, das Marco liest.
-  // Eine Regel, die auch sie verbietet, wäre eine Schranke ohne Grund, und
-  // der nächste streicht sie als lästig.
-  for (const datei of [FORTSCHRITT, GALERIE]) {
-    const js = ohneKommentare(lies(datei));
-    const schreiber = [...js.matchAll(/\b(addCsvLog|gibAddLog)\s*\(([^\n]*)/g)];
-    assert.ok(schreiber.length >= 2,
-      `${datei}: nur ${schreiber.length} Aufrufe gefunden — die Suche greift nicht mehr`);
-    const eigenbau = schreiber.filter(m => /set_number/.test(m[2]));
-    assert.deepEqual(eigenbau.map(m => m[0].slice(0, 90)), [],
-      `${datei} baut eine Protokollzeile selbst aus set_number. Die Zeile ` +
-      'baut protokollZeile(); wer sie daneben nochmal baut, hat die Schranke ' +
-      'nicht — genau so entstanden Marcos „undefined – aktualisiert".');
-  }
-});
-
 test('der Fortschrittstext spricht nicht von Sets', () => {
-  const de = lies('public/locales/de.js');
-  const en = lies('public/locales/en.js');
-  assert.ok(!/'csv\.sets_progress'/.test(de + en),
-    'Der Schlüssel heisst jetzt csv.items_progress. Ein Name, der weiter ' +
-    '„sets" sagt, ist die nächste falsche Fährte — derselbe Balken trägt ' +
-    'auch Teile und Minifiguren.');
-  const deText = de.match(/'csv\.items_progress':\s*'([^']*)'/);
-  const enText = en.match(/'csv\.items_progress':\s*'([^']*)'/);
-  assert.ok(deText && enText, 'csv.items_progress fehlt in einer der Sprachen');
-  assert.ok(!/sets?/i.test(deText[1]),
-    `Der deutsche Text lautet „${deText[1]}" und nennt Sets. Marcos Befund: ` +
-    '„steht unten x/y Sets anstelle \'Elementen\'"');
-  assert.ok(!/sets?/i.test(enText[1]),
-    `Der englische Text lautet „${enText[1]}" und nennt sets`);
+  // Derselbe Balken trägt Sets, Teile und Minifiguren; geprüft an den geladenen Wörterbüchern.
+  const { de, en } = loadTranslations();
+  assert.equal(de['csv.sets_progress'] ?? en['csv.sets_progress'], undefined, 'der alte Schlüssel ist zurück');
+  for (const [sprache, text] of [['de', de['csv.items_progress']], ['en', en['csv.items_progress']]]) {
+    assert.ok(text, `csv.items_progress fehlt (${sprache})`);
+    assert.doesNotMatch(text, /sets?\b/i, `${sprache}: „${text}“ nennt Sets`);
+  }
 });

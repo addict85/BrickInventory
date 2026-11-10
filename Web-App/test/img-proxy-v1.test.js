@@ -1,6 +1,14 @@
 /**
  * Der Bild-Proxy ist nach /api/v1 gezogen — überall, auch in den Daten.
+ * Adressbau und Server laufen echt; dass nirgends die alte Adresse gebaut
+ * wird (Web, Kotlin) und die Migration jede Tabelle erfasst, bleibt Struktur.
  * Ausführlich: docs/begruendungen/test/img-proxy-v1.test.js.md#kopf
+ *
+ * Gegenproben (10.11.2026 gemessen, dist neu gebaut):
+ *   A  in routes/imgProxy.ts die Zeile app.get(IMG_PROXY_PFAD_ALT, …) entfernt
+ *      → rot: „der Server bedient beide Adressen“ (404)
+ *   B  proxyImageUrl baut IMG_PROXY_PFAD_ALT → rot: „gebaute Adressen …“ (die
+ *      Quelltextregel darunter sieht die Konstante nicht, nur Zeichenketten)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -9,6 +17,10 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const { ANDROID, quellwurzeln } = require('./helpers/android');
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
+test.after(() => _req('db/database.js').pool.end().catch(() => {}));
 const NEU = '/api/v1/img-proxy';
 const ALT = '/api/img-proxy';
 
@@ -17,22 +29,28 @@ const ohneKommentare = (src) =>
 
 const lies = (...p) => fs.readFileSync(path.join(...p), 'utf8');
 
-test('die Adresse steht an einer Stelle, und es ist die neue', () => {
-  const images = lies(ROOT, 'src/katalog/bilder/images.ts');
-  assert.match(images, new RegExp(`IMG_PROXY_PFAD = '${NEU}'`),
-    `src/katalog/bilder/images.ts führt ${NEU} nicht als IMG_PROXY_PFAD`);
-  assert.match(images, new RegExp(`IMG_PROXY_PFAD_ALT = '${ALT}'`),
-    `src/katalog/bilder/images.ts führt ${ALT} nicht als Auslauf-Adresse`);
+test('gebaute Adressen nehmen die neue Form, die alte wird weiter erkannt', () => {
+  const { proxyImageUrl, istProxyPfad } = _req('src/katalog/bilder/images.js');
+  const cdn = 'https://cdn.rebrickable.com/media/sets/10305-1.jpg';
+  assert.equal(proxyImageUrl(cdn), `${NEU}?url=${encodeURIComponent(cdn)}`);
+  assert.equal(istProxyPfad(`${ALT}?url=x`), true, 'gespeicherte alte Adressen gelten nicht mehr als Proxy');
+  assert.equal(istProxyPfad(`${NEU}?url=x`), true);
 });
 
-test('der Server bedient beide Adressen', () => {
-  const proxy = ohneKommentare(lies(ROOT, 'routes/imgProxy.ts'));
-  for (const name of ['IMG_PROXY_PFAD', 'IMG_PROXY_PFAD_ALT'])
-    assert.match(proxy, new RegExp(`app\\.get\\(${name},`),
-      `registerImgProxy meldet ${name} nicht an — ` +
-      (name.endsWith('ALT')
-        ? 'ältere App-Fassungen bauen genau diese Adresse selbst zusammen und bekämen keine Bilder mehr'
-        : 'das ist die kanonische Adresse'));
+test('der Server bedient beide Adressen', async (t) => {
+  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
+  // Ältere App-Fassungen bauen die alte Adresse selbst zusammen.
+  const app = require('express')();
+  app.use((req, _res, next) => { req.session = { userId: 1 }; next(); });
+  _req('routes/imgProxy.js').registerImgProxy(app);
+  const srv = app.listen(0);
+  t.after(() => srv.close());
+  const status = p => fetch(`http://127.0.0.1:${srv.address().port}${p}`).then(r => r.status);
+  // Beide antworten wie der Proxy (ohne gültiges Konto abgewiesen), eine unbekannte Adresse mit 404.
+  const [neu, alt, fremd] = [await status(NEU), await status(ALT), await status('/api/v2/img-proxy')];
+  assert.equal(fremd, 404);
+  assert.notEqual(neu, 404, 'die neue Adresse ist nicht angemeldet');
+  assert.equal(alt, neu, 'die alte Adresse antwortet anders als die neue');
 });
 
 test('gebaut wird nur noch die neue Adresse', () => {

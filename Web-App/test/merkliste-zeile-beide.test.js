@@ -1,140 +1,104 @@
 /**
  * Die Merklisten-Zeile: kein Übernahme-Knopf, dafür der Marktpreis — in BEIDEN
- * Oberflächen. Und der Lagerort steht im Detail der manuellen Einträge.
+ * Oberflächen. Und der Lagerort steht im Detail der manuellen Einträge. Die
+ * Webapp läuft im echten Bündel (jsdom), der Server gegen die Test-DB; die App
+ * bleibt Kotlin-Struktur (kein SDK hier).
  * Ausführlich: docs/begruendungen/test/merkliste-zeile-beide.test.js.md#kopf
  *
- * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
- *   a) Den Knopf in der Webapp-Zeile wieder eingesetzt → Schritt 1 rot.
- *   b) Denselben in der App-Zeile                      → Schritt 1 rot.
- *   c) Den Marktpreis in der Webapp entfernt           → Schritt 2 rot.
- *   d) Denselben in der App                            → Schritt 2 rot.
- *   e) Die Lagerortzeile in der Webapp entfernt        → Schritt 3 rot.
- *   f) Dieselbe in der App                             → Schritt 3 rot.
+ * Gegenproben (10.11.2026 gemessen, je einzeln, Bündel bzw. dist neu gebaut):
+ *   A  in 16-merkliste.js zeile() den Marktpreis weggelassen → rot: „die Webapp-Zeile …“
+ *   B  dort den Papierkorb entfernt → rot: ebenda
+ *   C  in 03-parts.js den Papierkorb der manuellen Kachel entfernt → rot: „manuelle
+ *      Einträge …“
+ *   D  in 13-manuell-detail.js die Lagerortzeile entfernt → rot: ebenda
+ *   E  in teileListe.ts manuelleTeile `NULL::text AS storage` → rot: „die Abfrage
+ *      der manuellen Teile …“
+ *   F  in MerklisteZeile.kt `marktpreis` umbenannt → rot: „die App: …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const path = require('node:path');
-const { ROOT, ohneKommentare } = require('./helpers/sources');
+const { ohneKommentare } = require('./helpers/sources');
 const { androidDatei } = require('./helpers/android');
+const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
-// Die App-Quellen über alle Module: androidDatei() meldet eine fehlende Datei mit Namen.
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
+const { haeltTeil } = require('./helpers/bestand');
+test.after(() => _req('db/database.js').pool.end().catch(() => {}));
 
-/** Der Rumpf einer Funktion — ab ihrem Namen bis zur nächsten auf Spaltenanfang. */
-function rumpf(quelle, kopf, ende = /\n(?:@Composable|(?:private |internal |export )?(?:async )?fun(?:ction)? )/) {
+/** Der Rumpf einer Kotlin-Funktion — ab ihrem Namen bis zur nächsten auf Spaltenanfang. */
+function rumpf(quelle, kopf, ende = /\n(?:@Composable|(?:private |internal )?fun )/) {
   const i = quelle.indexOf(kopf);
   assert.ok(i >= 0, `${kopf} nicht gefunden — umbenannt?`);
   const rest = quelle.slice(i + kopf.length);
   const m = rest.search(ende);
   return m >= 0 ? rest.slice(0, m) : rest;
 }
-
-const web = (rel) => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 const app = (rel) => ohneKommentare(fs.readFileSync(androidDatei(rel), 'utf8'));
 
-test('1. die Merklisten-ZEILE trägt keinen Übernahme-Knopf mehr', () => {
-  // Er ist nicht verschwunden, sondern umgezogen: Das Merkposten-Detail hat
-  // ihn weiterhin, und dort steht der Dialog mit Anzahl, Kaufpreis und
-  // Zustand. In der Liste stand er neben „Löschen" — zwei Knöpfe, von denen
-  // der eine ein Formular öffnet und der andere sofort fragt.
-  const zeileWeb = rumpf(web('public/js/16-merkliste.js'), 'function zeile(w) {');
-  assert.ok(!/merkpostenUebernehmen/.test(zeileWeb),
-    'Die Webapp-Zeile ruft weiterhin die Übernahme auf.');
+test('die Webapp-Zeile zeigt Marktpreis und Papierkorb, keinen Übernahme-Knopf', async () => {
+  const o = await oeffneOberflaeche({
+    '/v1/wanted': { success: true, merkposten: [{ set_number: '10305-1', condition: 'N', user_id: 1, name: 'Burg', marktpreis: 349.99, waehrung: 'EUR' }] },
+  });
+  try {
+    await reiter(o.w, 'wanted');
+    assert.ok(await warte(() => o.d.querySelector('#mk-list .mk-zeile')), 'keine Zeile');
+    const z = o.d.querySelector('#mk-list .mk-zeile');
+    assert.match(z.querySelector('.mk-preis')?.textContent ?? '', /349[.,]99/, 'kein Marktpreis');
+    assert.ok(z.querySelector('.delbtn[data-click="merkpostenLoeschenStop"]'), 'kein Papierkorb');
+    assert.equal(z.querySelector('[data-click="merkpostenUebernehmen"]'), null, 'die Zeile übernimmt wieder');
+    assert.equal(z.dataset.click, 'oeffneMerkpostenDetail', 'die Zeile öffnet nicht das Detail');
+  } finally { o.w.close(); }
+});
 
+test('manuelle Einträge: Papierkorb auf der Kachel, Lagerort und Löschen im Detail', async () => {
+  const o = await oeffneOberflaeche({
+    '/v1/parts/manual': { success: true, parts: [{ part_number: '3001', color_id: 4, quantity: 3, user_id: 1, part_name: 'Stein', storage: 'Kiste 3' }], total: 1, page: 1, page_size: 50 },
+  });
+  try {
+    await reiter(o.w, 'parts');
+    assert.ok(await warte(() => o.d.querySelector('#manual-parts-list .man-tile')), 'keine manuelle Kachel');
+    const kachel = o.d.querySelector('#manual-parts-list .man-tile');
+    assert.ok(kachel.querySelector('.delbtn[data-click="deleteManualPartStop"]'), 'kein Papierkorb auf der Kachel');
+    kachel.click();
+    assert.ok(await warte(() => o.d.getElementById('man-storage')), 'das Detail hat keine Lagerortzeile');
+    assert.ok(o.d.getElementById('man-detail-modal').classList.contains('open'));
+    for (const id of ['btn-md', 'mk-m-del', 'man-detail-del'])
+      assert.ok(o.d.getElementById(id), `der Papierkorb im Detail fehlt (${id})`);
+  } finally { o.w.close(); }
+});
+
+test('die Abfrage der manuellen Teile liefert den Lagerort', async (t) => {
+  const db = await dbOderSkip(t, _req);
+  if (!db) return;
+  const U = 990900 + (process.pid % 90);
+  const weg = async () => {
+    await db.run('DELETE FROM parts WHERE user_id=$1', [U]).catch(() => {});
+    await db.run('DELETE FROM storage_locations WHERE user_id=$1', [U]).catch(() => {});
+    await db.run('DELETE FROM users WHERE id=$1', [U]).catch(() => {});
+  };
+  await weg();
+  t.after(weg);
+  await db.run("INSERT INTO users (id,username,password_hash) VALUES ($1,$2,'x')", [U, `mz${U}`]);
+  const ort = (await db.get("INSERT INTO storage_locations (user_id,name) VALUES ($1,'Kiste 3') RETURNING id", [U])).id;
+  await haeltTeil(db, U, `mz-${U}`, { colorId: 4, menge: 2, storageId: ort });
+  const teile = await require('./helpers/sources').handlerModul(_req).getManualParts([U], U);
+  assert.deepEqual(teile.map(p => [p.part_number, p.storage]), [[`mz-${U}`, 'Kiste 3']]);
+});
+
+test('die App: Zeile ohne Übernahme und Papierkorb, mit Marktpreis; Lagerort und Löschen im Detail', () => {
   const zeileApp = rumpf(app('sammlung/ui/screens/MerklisteZeile.kt'), 'internal fun MerkpostenZeile(');
-  assert.ok(!/wanted_take/.test(zeileApp),
-    'Die App-Zeile trägt weiterhin den Knopf „In die Galerie".');
-});
-
-test('2. dafür steht der Marktpreis darin', () => {
-  const zeileWeb = rumpf(web('public/js/16-merkliste.js'), 'function zeile(w) {');
-  assert.match(zeileWeb, /marktpreis/,
-    'Die Webapp-Zeile zeigt den Marktpreis nicht.');
-
-  const zeileApp = rumpf(app('sammlung/ui/screens/MerklisteZeile.kt'), 'internal fun MerkpostenZeile(');
-  assert.match(zeileApp, /marktpreis/,
-    'Die App-Zeile zeigt den Marktpreis nicht.');
-});
-
-test('3. der Lagerort steht im Detail der MANUELLEN Einträge', () => {
-  // Bis zum 24.09. gab es die Zeile nur im Set-Detail und im Dialog der Teile
-  // AUS SETS. Bei den manuell erfassten fehlte sie in beiden Oberflächen.
-  const webDetail = rumpf(require('./helpers/sources').ansichtQuelle('13'),
-    'function manDetailZeilen(', /\nfunction |\nexport /);
-  assert.match(webDetail, /lagerortBlock\('man-storage'/,
-    'Der manuelle Detaildialog der Webapp hat keine Lagerortzeile.');
-
-  const appDetail = app('teile/ui/screens/ManualItemDetailScreen.kt');
-  assert.match(appDetail, /LagerortFeld\(/,
-    'Der manuelle Detaildialog der App hat keine Lagerortzeile.');
-  assert.match(appDetail, /setzeManuellenLagerort\(/,
-    'Die Lagerortzeile der App speichert nicht.');
-});
-
-test('5. Löschen: Papierkorb in der Webapp, nur im Detail in der App', () => {
-  // Marcos zwei Vorgaben vom 24.09., in dieser Reihenfolge
-  // Ausführlich: docs/begruendungen/test/merkliste-zeile-beide.test.js.md#stelle
-  //
-  // ── Gegenproben (durchgeführt) ───────────────────────────────────────────
-  //   a) delbtn aus 06-minifigs.js entfernt        → Schritt 5 rot.
-  //   b) Papierkorb aus der Webapp-Zeile entfernt  → Schritt 5 rot.
-  //   c) Icons.Default.Delete in ManuelleKachel()  → Schritt 5 rot.
-  //   d) Den Papierkorb im Webapp-Detail entfernt  → Schritt 5 rot.
-
-  // ── Webapp: auf den Kacheln UND in der Merklisten-Zeile ──────────────────
-  const kacheln = web('public/js/06-minifigs.js') + web('public/js/03-parts.js');
-  assert.match(kacheln, /class="delbtn" data-click="deleteManualFigStop"/,
-    'Auf den Kacheln der manuell erfassten Minifiguren fehlt der Papierkorb.');
-  assert.match(kacheln, /class="delbtn" data-click="deleteManualPartStop"/,
-    'Auf den Kacheln der manuell erfassten Teile fehlt der Papierkorb.');
-
-  const zeileWeb = rumpf(web('public/js/16-merkliste.js'), 'function zeile(w) {');
-  assert.match(zeileWeb, /class="delbtn" data-click="merkpostenLoeschenStop"/,
-    'Der Merklisten-Zeile fehlt der Papierkorb.');
-  // „oben rechts analog den Kacheln bei den Sets" ist kein Aussehen, sondern
-  // der Behälter: .ca sitzt absolut oben rechts und blendet sich beim
-  // Überfahren ein (styles.css). Ohne position:relative am Elternelement
-  // säße er an der nächsten positionierten Box — also irgendwo.
-  assert.match(zeileWeb, /class="mk-zeile"/,
-    'Die Zeile trägt die Klasse nicht, an der die Einblendung hängt.');
-  // Seit dem 29.10. steht die Gestaltung der Zeile als Klasse in styles.css.
-  assert.match(fs.readFileSync(path.join(ROOT, 'public/styles.css'), 'utf8'), /\.mk-zeile\{position:relative/,
-    'Ohne position:relative sitzt der Papierkorb nicht in der Zeile.');
-
-  // ── App: NICHT auf der Kachel und NICHT in der Zeile ─────────────────────
+  assert.ok(!/wanted_take/.test(zeileApp), 'Die App-Zeile trägt weiterhin den Knopf „In die Galerie".');
+  assert.match(zeileApp, /marktpreis/, 'Die App-Zeile zeigt den Marktpreis nicht.');
+  assert.ok(!/common_delete/.test(zeileApp), 'Die Merklisten-Zeile der App trägt den Löschen-Knopf — „nur in der webapp".');
   const kachelApp = rumpf(app('gemeinsam/ui/ManualItemComposables.kt'), 'fun ManuelleKachel(');
-  assert.ok(!/Icons\.Default\.Delete/.test(kachelApp),
-    'Die Kachel der App trägt einen Papierkorb — „nur in der webapp".');
-
-  const zeileApp = rumpf(app('sammlung/ui/screens/MerklisteZeile.kt'), 'internal fun MerkpostenZeile(');
-  assert.ok(!/common_delete/.test(zeileApp),
-    'Die Merklisten-Zeile der App trägt den Löschen-Knopf — „nur in der webapp".');
-
-  // ── Und die Detailseiten haben ihn in BEIDEN ─────────────────────────────
-  // Das ist die Hälfte von Marcos erster Vorgabe, die die zweite nicht
-  // angerührt hat: In der App ist das Detail der einzige Weg zum Löschen.
-  const html = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
-  for (const id of ['btn-md', 'mk-m-del', 'man-detail-del']) {
-    assert.match(html, new RegExp(`id="${id}"`),
-      `Der Webapp fehlt der Papierkorb im Detail (${id}).`);
-  }
-  assert.match(app('teile/ui/screens/ManualItemDetailScreen.kt'), /Icons\.Default\.Delete/,
-    'Der App fehlt der Papierkorb im Detail der manuellen Einträge.');
+  assert.ok(!/Icons\.Default\.Delete/.test(kachelApp), 'Die Kachel der App trägt einen Papierkorb — „nur in der webapp".');
+  const appDetail = app('teile/ui/screens/ManualItemDetailScreen.kt');
+  assert.match(appDetail, /LagerortFeld\(/, 'Der manuelle Detaildialog der App hat keine Lagerortzeile.');
+  assert.match(appDetail, /setzeManuellenLagerort\(/, 'Die Lagerortzeile der App speichert nicht.');
+  assert.match(appDetail, /Icons\.Default\.Delete/, 'Der App fehlt der Papierkorb im Detail der manuellen Einträge.');
   assert.match(app('sammlung/ui/screens/MerkpostenDetailScreen.kt'), /Icons\.Default\.Delete/,
     'Der App fehlt der Papierkorb im Merkposten-Detail.');
-});
-
-test('4. die Abfrage der manuellen Teile liefert den Lagerort überhaupt', () => {
-  // Die halbe Ursache von Marcos Befund: getManualParts() zählt seine Spalten
-  // auf, und storage fehlte in der Liste. Selbst mit einer Zeile in der
-  // Oberfläche wäre sie leer geblieben. Die Schwesterfunktion
-  // getManualMinifigs() macht SELECT * und hatte den Fehler nie — genau die …
-  // Ausführlich: docs/begruendungen/test/merkliste-zeile-beide.test.js.md#ohnesql
-  const ohneSql = (q) => q.split('\n')
-    .map(z => z.trim().startsWith('--') ? '' : z).join('\n');
-  const quelle = ohneSql(ohneKommentare(
-    fs.readFileSync(path.join(ROOT, 'src/teile/abfragen.ts'), 'utf8')));
-  const fn = rumpf(quelle, 'function getManualParts(', /\n(?:export )?(?:async )?function /);
-  assert.match(fn, /\bstorage\b/,
-    'getManualParts() liest die Spalte storage nicht — die Zeile im Dialog bliebe leer.');
 });

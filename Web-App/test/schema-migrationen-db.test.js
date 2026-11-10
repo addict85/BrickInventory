@@ -1,6 +1,11 @@
 /**
  * Schema-Änderungen gehören in db/migrations/ — nicht in initSchema().
  * Ausführlich: docs/begruendungen/test/schema-migrationen-db.test.js.md#kopf
+ *
+ * Gegenprobe (10.11.2026 gemessen): in 0015-api-tokens-sliding.sql die Spalte
+ * `slidingx` genannt → rot: „api_tokens.sliding gibt es …“ (die Migration legt
+ * sie nicht an). Den Teil „frisch“ prüft die Vorlage-Datenbank des Testlaufs
+ * (aus db/basis.sql); diese Gegenprobe ist nicht gemessen.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -8,7 +13,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const { ohneKommentare } = require('./helpers/sources');
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+const { ohneKommentare, buildAndRequire } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
+test.after(() => _req('db/database.js').pool.end().catch(() => {}));
 
 /** Gemessen am Tag der Behebung. Die Zahl darf nur kleiner werden. */
 const BESTAND_ALTER = 0;
@@ -28,21 +37,23 @@ test('keine neue Spalten-Änderung in db/database.ts', () => {
   assert.equal(('x ALTER TABLE foo ADD COLUMN bar'.match(/ALTER TABLE \w+ ADD COLUMN/g) || []).length, 1);
 });
 
-test('api_tokens.sliding steht in einer Migration', () => {
-  const verzeichnis = path.join(ROOT, 'db/migrations');
-  const dateien = fs.readdirSync(verzeichnis).filter(f => f.endsWith('.sql'));
-  const mitSliding = dateien.filter(f =>
-    /ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS sliding/i.test(
-      fs.readFileSync(path.join(verzeichnis, f), 'utf8')));
-
-  assert.equal(mitSliding.length, 1,
-    `Die Spalte api_tokens.sliding wird in ${mitSliding.length} Migrationen angelegt — erwartet `
-    + `genau eine. Ohne sie scheitert createToken() auf jeder gewachsenen Datenbank, und damit `
-    + `Login und QR-Login. Gefunden: ${mitSliding.join(', ') || '(keine)'}`);
-
-  // Und die Spalte muss auch in der Basis stehen, sonst fehlt sie bei einer
-  // NEUEN Installation, deren Migrationen alle als angewandt gelten.
-  const basis = fs.readFileSync(path.join(ROOT, 'db/basis.sql'), 'utf8');
-  assert.match(basis, /sliding boolean/,
-    'db/basis.sql kennt die Spalte sliding nicht — dann fehlt sie auf einer frischen Installation.');
+test('api_tokens.sliding gibt es auf einer frischen und einer migrierten Datenbank', async (t) => {
+  // Ohne die Spalte scheitert createToken() und damit Login und QR-Login.
+  const db = await dbOderSkip(t, _req);
+  if (!db) return;
+  const spalte = await db.get(`SELECT data_type FROM information_schema.columns
+    WHERE table_schema = current_schema() AND table_name = 'api_tokens' AND column_name = 'sliding'`);
+  assert.equal(spalte?.data_type, 'boolean', 'api_tokens.sliding fehlt');
+  // Eine gewachsene Datenbank bekommt sie aus der Migration: Spalte weg, deren Anweisung erneut.
+  await db.run('ALTER TABLE api_tokens DROP COLUMN sliding');
+  t.after(() => db.run('ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS sliding BOOLEAN NOT NULL DEFAULT FALSE'));
+  const dateien = fs.readdirSync(path.join(ROOT, 'db/migrations')).filter(f => f.endsWith('.sql'));
+  const mit = dateien.filter(f => /api_tokens ADD COLUMN IF NOT EXISTS sliding/i.test(fs.readFileSync(path.join(ROOT, 'db/migrations', f), 'utf8')));
+  assert.equal(mit.length, 1, `sliding in ${mit.length} Migrationen`);
+  const anweisung = /ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS sliding[^;]*;/i
+    .exec(fs.readFileSync(path.join(ROOT, 'db/migrations', mit[0]), 'utf8').replace(/^\s*--.*$/gm, ''))[0];
+  await db.exec(anweisung);
+  const wieder = await db.get(`SELECT data_type FROM information_schema.columns
+    WHERE table_schema = current_schema() AND table_name = 'api_tokens' AND column_name = 'sliding'`);
+  assert.equal(wieder?.data_type, 'boolean', `die Migration ${mit[0]} legt die Spalte nicht an`);
 });
