@@ -1,119 +1,119 @@
 /**
- * Seitenweise Listen am Server: Sortier-Whitelist, gebundene Parameter,
- * Themenliste, Zähler. Ohne page_size liefert /sets alles (Android-App).
- * Das Verhalten der Oberfläche prüft test/listen-paging-oberflaeche.test.js.
+ * Seitenweise Listen am Server, an den Routen gegen die Datenbank:
+ * Sortier-Whitelist mit Rückfall, gebundener Suchbegriff, Themenliste über
+ * den ganzen Bestand nur auf Seite 1, Zähler über Gruppen, ohne page_size
+ * alles. Das Verhalten der Oberfläche prüft test/listen-paging-oberflaeche.test.js.
+ *
+ * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
+ *   A  in SET_SORTS qty_asc auf `s.quantity DESC, …` → rot: „nach Anzahl …“
+ *   B  ausTabelle(SET_SORTS, …) durch `SET_SORTS[sort] ?? …` ersetzt → rot:
+ *      „unbekannte Sortierung …“ (constructor liefert eine Funktion → 500)
+ *   C  in getSets `themen: !!page_size && …` durch `themen: !!page_size` →
+ *      rot: „die Themenliste …“ (Seite 2 trägt Themen)
+ *   D  im Figurenzähler GROUP BY ohne m.source/LOWER(TRIM) durch
+ *      `GROUP BY m.set_number, m.fig_number` → rot: „Minifiguren zählen …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
-const H_SRC = require('./helpers/sources').handlerQuelle();
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-test('die Sortierung ist eine Whitelist, kein interpolierter Parameter', () => {
-  assert.match(H_SRC, /const SET_SORTS = \{/,
-    'Ohne Whitelist landet der Wert eines <select> ungeprüft in der ORDER BY-Klausel');
-  // Geprüft wird die AUSSAGE, nicht der Wortlaut.
-  // Ausführlich: docs/begruendungen/test/gallery-paging.test.js.md#ohnekommentare
-  const ohneKommentare = H_SRC.split('\n')
-    .filter(z => !z.trim().startsWith('//') && !z.trim().startsWith('*'))
-    .join('\n');
-  assert.ok(!/SET_SORTS\s*\[/.test(ohneKommentare),
-    'SET_SORTS darf nicht direkt indiziert werden — geerbte Eigenschaften kämen sonst durch');
-  assert.match(ohneKommentare, /ausTabelle\(\s*SET_SORTS\s*,\s*sort\s*,\s*SET_SORTS\.added_desc\s*\)/,
-    'Unbekannte Werte müssen auf die Vorgabe fallen');
-  // Der Suchbegriff gehört als Parameter gebunden, nicht in den String
-  const fn = require('./helpers/sources').funktionsRumpf(H_SRC, 'setListe');
-  assert.match(fn, /params\.push\(enthaeltMuster\(String\(search\)\.toLowerCase\(\)\)\)/,
-    'Der Suchbegriff muss als Parameter gebunden werden');
-});
+const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
+const { testServer } = require('./helpers/server');
+const { haeltSet, haeltFigur, haeltTeil } = require('./helpers/bestand');
 
-test('ohne page_size bleibt alles wie bisher', () => {
-  // Die Seite rechnet getSets aus page_size; ohne sie ist f.seite null.
-  const fn = require('./helpers/sources').funktionsRumpf(H_SRC, 'setListe');
-  assert.match(fn, /if \(f\.seite\) \{/, 'LIMIT darf nur bei gesetztem page_size greifen');
-  assert.match(fn, /f\.seite \? db\.get(?:<[^>]*>)?\(/, 'der Zähler kostet sonst unnötig Zeit');
-  assert.match(require('./helpers/sources').funktionsRumpf(H_SRC, 'getSets'), /const size = page_size \?/);
-  // Der Test pinnte hier den Wortlaut eines Kommentars („Android-App sendet
-  // kein page_size"). Der stimmt nicht mehr: Seit Marcos Vorgabe blättert auch
-  // die App seitenweise. Geprüft wird jetzt die AUSSAGE — der Endpunkt reicht
-  // alle vier Parameter durch, und ohne page_size bleibt die Liste unbegrenzt.
-  const v1 = fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8');
-  const route = v1.slice(v1.indexOf("router.get('/sets', requireToken"), v1.indexOf("router.get('/sets/:setNumber'"));
-  // Die geprüfte Abfrage als GANZES: Eine Auswahl daneben liess einst `storage` fallen.
-  assert.match(route, /await (?:sets\.)?getSets\([^;]*\breq\.abfrage\)/,
-    'Die Route muss alle Filterparameter durchreichen — sonst filtert der Client wieder selbst');
-});
+// Fünf Sets: Menge, Thema und Aufnahmezeit so, dass jede Sortierung eine andere Folge ergibt.
+const SETS = [
+  { nr: '77101-1', name: 'Alpha', theme: 'Burg', menge: 3, vor: 5 },
+  { nr: '77102-1', name: "O'Brien 100%", theme: 'Stadt', menge: 1, vor: 4 },
+  { nr: '77103-1', name: 'Gamma', theme: 'Burg', menge: 2, vor: 3 },
+  { nr: '77104-1', name: 'Delta', theme: 'Weltraum', menge: 1, vor: 2 },
+  { nr: '77105-1', name: 'Epsilon', theme: 'Stadt', menge: 3, vor: 1 },
+];
 
-test('die Themenliste kommt vom Server und nur auf Seite 1', () => {
-  // Die Abfrage las bis Migration 0033 `SELECT DISTINCT theme FROM sets`. Das
-  // Thema steht jetzt im Katalog, also braucht sie einen JOIN — geprüft wird
-  // weiterhin die AUSSAGE: über den ganzen Bestand des Kontos, nicht über die
-  // geladene Seite.
-  assert.match(H_SRC, /SELECT DISTINCT c\.theme AS theme\s*\n\s*FROM sets s JOIN set_catalog c/,
-    'Aus der geladenen Seite abgeleitet wäre das Auswahlfeld unvollständig');
-  assert.match(H_SRC, /WHERE s\.user_id = ANY\(\$1\) AND c\.theme IS NOT NULL/,
-    'Die Themenliste muss auf das Blickfeld eingeschränkt sein');
-  assert.match(H_SRC, /parseInt\(String\(page\)\) <= 1/, 'Folgeseiten brauchen die Liste nicht');
-});
-
-// ── Minifiguren und manuelle Listen ────────────────────────────────────────
-test('Minifiguren laden seitenweise', () => {
-  // Auf die Parameter geprüft, nicht auf den Wortlaut des Kopfes: Eine
-  // Typannotation an userId sagt über das Blättern nichts. Derselbe Fall wie
-  // in einer früheren Runde — dort brachen fünf solcher Muster, ohne dass sich am
-  // Verhalten etwas geändert hatte.
-  const { funktionsKopf } = require('./helpers/sources');
-  const figKopf = funktionsKopf(H_SRC, 'getMinifigs');
-  for (const p of ['userId', 'search', 'source', 'set_number', 'page', 'page_size']) {
-    // userId heisst seit dem 05.11.2026 userIdWahl (Sicht oder IDs).
-    assert.match(figKopf, new RegExp(`\\b${p}(Wahl)?\\b`),
-      `getMinifigs nimmt '${p}' nicht mehr entgegen: ${figKopf}`);
+test('seitenweise Listen am Server', { concurrency: 1 }, async (t) => {
+  const db = await dbOderSkip(t, _req);
+  if (!db) return;
+  const NAME = `paging_${process.pid}`;
+  const nummern = SETS.map(s => s.nr);
+  const aufraeumen = async () => {
+    await db.run('DELETE FROM users WHERE username = $1', [NAME]);
+    await db.run('DELETE FROM set_figuren WHERE set_number = ANY($1)', [nummern]);
+    await db.run('DELETE FROM set_catalog WHERE set_number = ANY($1)', [nummern]);
+  };
+  await aufraeumen();
+  const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
+  for (const s of SETS) {
+    await db.run('INSERT INTO set_catalog (set_number, name, theme) VALUES ($1,$2,$3)', [s.nr, s.name, s.theme]);
+    await haeltSet(db, uid, s.nr, s.menge);
+    await db.run(`UPDATE sets SET added_at = NOW() - make_interval(days => $3) WHERE user_id = $1 AND set_number = $2`, [uid, s.nr, s.vor]);
   }
-  assert.match(figKopf, /page\s*=\s*1/,   'page muss auf 1 vorbelegt sein');
-  assert.match(figKopf, /page_size\s*=\s*null/,
-    'Ohne page_size-Vorgabe null könnte ein Aufrufer ungewollt blättern');
-  assert.match(H_SRC, /SELECT 1 FROM minifigs m[\s\S]{0,220}GROUP BY LOWER\(TRIM\(m\.fig_number\)\), m\.source\) g/,
-    'Der Zähler muss über die Gruppen laufen — eine Figur aus fünf Sets zählt sonst fünfmal');
-});
+  // Dieselbe Figur in zwei Sets und eine zweite: zwei Gruppen.
+  await haeltFigur(db, uid, 'fig-0001', { setNumber: '77101-1' });
+  await haeltFigur(db, uid, 'FIG-0001 ', { setNumber: '77103-1' });
+  await haeltFigur(db, uid, 'fig-0002', { setNumber: '77104-1' });
+  for (const nr of ['91001', '91002', '91003']) await haeltTeil(db, uid, nr);
+  t.after(async () => { await aufraeumen().catch(() => {}); await db.pool.end().catch(() => {}); });
 
-test('auch die manuellen Listen können seitenweise', () => {
-  // Der Rumpf GANZ, nicht die ersten 900 Zeichen (20.10., GEMESSEN)
-  // Ausführlich: docs/begruendungen/test/gallery-paging.test.js.md#stelle
-  const { funktionsRumpf } = require('./helpers/sources');
-  for (const [f, liste] of [['getManualParts', 'manuelleTeile'], ['getManualMinifigs', 'manuelleFigurenListe']]) {
-    assert.match(funktionsRumpf(H_SRC, f), /page_size/, `${f} kennt kein page_size`);
-    const fn = funktionsRumpf(H_SRC, liste);
-    assert.match(fn, /LIMIT \$\$\{params\.length - 1\} OFFSET \$\$\{params\.length\}/,
-      `${f}: LIMIT/OFFSET müssen gebunden werden, nicht interpoliert`);
-  }
-});
+  const { base } = testServer(_req, { sitzung: { userId: uid }, apiNutzer: { user_id: uid, is_admin: 0 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
+  const hole = async (pfad) => {
+    const r = await fetch(`${base}/api/v1${pfad}`);
+    const b = await r.json();
+    assert.equal(r.status, 200, `${pfad}: ${JSON.stringify(b)}`);
+    return b;
+  };
+  const folge = async (abfrage) => (await hole(`/sets?${abfrage}`)).sets.map(s => s.name[0]);
 
-test('nach Anzahl lässt sich in beide Richtungen sortieren', () => {
-  // Warum ein zweiter Sortierschlüssel nötig ist
-  // Ausführlich: docs/begruendungen/test/gallery-paging.test.js.md#handlers
-  const handlers = require('./helpers/sources').handlerQuelle();
-  const sorts = handlers.slice(handlers.indexOf('const SET_SORTS'),
-                               handlers.indexOf('};', handlers.indexOf('const SET_SORTS')));
-  assert.match(sorts, /qty_desc:\s*'s\.quantity DESC, s\.added_at DESC'/,
-    'Absteigend nach Anzahl fehlt oder hat keinen Zweitschlüssel');
-  assert.match(sorts, /qty_asc:\s*'s\.quantity ASC, s\.added_at DESC'/,
-    'Aufsteigend nach Anzahl fehlt oder hat keinen Zweitschlüssel');
+  await t.test('nach Anzahl lässt sich in beide Richtungen sortieren, Gleichstand nach Aufnahme', async () => {
+    assert.deepEqual(await folge('sort=qty_desc'), ['E', 'A', 'G', 'D', 'O']);
+    assert.deepEqual(await folge('sort=qty_asc'), ['D', 'O', 'G', 'E', 'A']);
+  });
 
-  // Die Auswahl im Markup muss zu den Schlüsseln passen — ein Tippfehler
-  // dort fällt sonst erst auf, wenn der Server still auf added_desc zurückfällt.
-  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-  const select = html.slice(html.indexOf('id="gsort"'), html.indexOf('</select>', html.indexOf('id="gsort"')));
-  for (const key of ['qty_desc', 'qty_asc']) {
-    assert.ok(select.includes(`value="${key}"`), `Option ${key} fehlt in der Auswahl`);
-  }
+  await t.test('unbekannte Sortierung fällt auf „zuletzt aufgenommen“', async () => {
+    const vorgabe = ['E', 'D', 'G', 'O', 'A'];
+    assert.deepEqual(await folge('sort=added_desc'), vorgabe);
+    for (const s of ['constructor', '__proto__', 'toString', 'name_asc;DROP TABLE sets', 'x'])
+      assert.deepEqual(await folge(`sort=${encodeURIComponent(s)}`), vorgabe, s);
+  });
 
-  // Jede Option braucht eine Übersetzung in BEIDEN Sprachen.
-  const { loadTranslations } = require('./helpers/sources');
-  const dict = loadTranslations();
-  for (const key of ['gallery.sort.qty_desc', 'gallery.sort.qty_asc']) {
-    assert.ok(dict.de[key], `${key} fehlt in de`);
-    assert.ok(dict.en[key], `${key} fehlt in en`);
-  }
+  await t.test('der Suchbegriff ist gebunden, nicht eingesetzt', async () => {
+    assert.deepEqual(await folge(`search=${encodeURIComponent("o'brien")}`), ['O']);
+    assert.deepEqual(await folge(`search=${encodeURIComponent("' OR 1=1 --")}`), []);
+  });
+
+  await t.test('ohne page_size alles, mit page_size Seiten und Gesamtzahl', async () => {
+    const alle = await hole('/sets');
+    assert.equal(alle.sets.length, 5);
+    assert.equal(alle.themes, undefined, 'ohne page_size keine Themenliste');
+    const s1 = await hole('/sets?page=1&page_size=2&sort=num_asc');
+    const s3 = await hole('/sets?page=3&page_size=2&sort=num_asc');
+    assert.deepEqual([s1.sets.map(s => s.set_number), s1.total], [['77101-1', '77102-1'], 5]);
+    assert.deepEqual([s3.sets.map(s => s.set_number), s3.total], [['77105-1'], 5]);
+  });
+
+  await t.test('die Themenliste kommt über den ganzen Bestand und nur auf Seite 1', async () => {
+    const s1 = await hole('/sets?page=1&page_size=1&sort=num_asc');
+    assert.deepEqual([...s1.themes].sort(), ['Burg', 'Stadt', 'Weltraum'], 'Themen der übrigen Seiten fehlen');
+    const s2 = await hole('/sets?page=2&page_size=1&sort=num_asc');
+    assert.ok(!s2.themes?.length, `Folgeseite trägt Themen: ${s2.themes}`);
+  });
+
+  await t.test('Minifiguren zählen je Figur, nicht je Set, und laden seitenweise', async () => {
+    const alle = await hole('/minifigs');
+    assert.equal(alle.figs.length, 2, JSON.stringify(alle.figs.map(f => f.fig_number)));
+    const s1 = await hole('/minifigs?page=1&page_size=1');
+    const s2 = await hole('/minifigs?page=2&page_size=1');
+    assert.deepEqual([s1.figs.length, s1.total, s2.figs.length, s2.total], [1, 2, 1, 2]);
+    assert.notEqual(s1.figs[0].fig_number.toLowerCase().trim(), s2.figs[0].fig_number.toLowerCase().trim());
+  });
+
+  await t.test('auch die manuellen Teile laden seitenweise', async () => {
+    const s1 = await hole('/parts/manual?page=1&page_size=2');
+    const s2 = await hole('/parts/manual?page=2&page_size=2');
+    assert.equal(s1.parts.length, 2);
+    assert.equal(s2.parts.length, 1);
+    assert.deepEqual([...s1.parts, ...s2.parts].map(p => p.part_number).sort(), ['91001', '91002', '91003']);
+  });
 });

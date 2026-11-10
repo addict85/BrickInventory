@@ -1,6 +1,12 @@
 /**
  * Der Server antwortet in der Sprache, die der Anfragende ZEIGT.
  * Ausführlich: docs/begruendungen/test/eine-fehlersprache.test.js.md#kopf
+ *
+ * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
+ *   A  im deutschen Text von einladungen_zu_viele `{n}` durch `n` ersetzt → rot:
+ *      „jeder Eintrag der Tabelle hat beide Sprachen und dieselben Platzhalter“
+ *   B  in api() (01-api.js) den Kopf Accept-Language gestrichen (Bündel neu gebaut)
+ *      → rot: „die Webapp sagt dem Server, welche Sprache sie zeigt“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -88,45 +94,45 @@ test('keine Route verschickt einen festen Fehlersatz', () => {
 });
 
 test('jeder Eintrag der Tabelle hat beide Sprachen und dieselben Platzhalter', () => {
-  const src = fs.readFileSync(path.join(ROOT, 'src/infra/fehlerTexte.ts'), 'utf8');
-  const tabelle = src.slice(src.indexOf('export const FEHLER'), src.indexOf('} as const;'));
-
-  const eintraege = [...tabelle.matchAll(
-    /(\w+):\s*\{\s*de:\s*'((?:[^'\\]|\\.)*)',\s*\n?\s*en:\s*'((?:[^'\\]|\\.)*)'\s*\}/g)];
-
-  // Selbstbeweis: Ohne Treffer wäre die Schleife darunter leer und der Test
-  // grün, ohne einen einzigen Eintrag gesehen zu haben.
-  assert.ok(eintraege.length >= 60,
-    `Nur ${eintraege.length} Einträge erkannt — Muster veraltet? Die Tabelle hat deutlich mehr.`);
-
+  // Ein fehlender Platzhalter heisst, dass in einer Sprache „{name}" auf dem Bildschirm steht.
+  const { FEHLER, fehlerText } = require('./helpers/sources').buildAndRequire()('src/infra/fehlerTexte.js');
+  const codes = Object.keys(FEHLER);
+  assert.ok(codes.length >= 60, `Nur ${codes.length} Einträge — greift die Tabelle noch?`);
   const schief = [];
-  for (const [, code, de, en] of eintraege) {
-    if (!de.trim()) schief.push(`${code}: deutscher Text fehlt`);
-    if (!en.trim()) schief.push(`${code}: englischer Text fehlt`);
-    const pDe = (de.match(/\{\w+\}/g) || []).sort().join(',');
-    const pEn = (en.match(/\{\w+\}/g) || []).sort().join(',');
-    if (pDe !== pEn) {
-      schief.push(`${code}: Platzhalter unterschiedlich — de {${pDe}} gegen en {${pEn}}`);
+  for (const code of codes) {
+    const vars = {};
+    for (const sprache of ['de', 'en']) {
+      if (!String(FEHLER[code][sprache] || '').trim()) schief.push(`${code}: ${sprache} fehlt`);
+      for (const [, n] of String(FEHLER[code][sprache] || '').matchAll(/\{(\w+)\}/g)) vars[n] = `«${n}»`;
+    }
+    // Mit allen Platzhaltern beider Sprachen gefüllt, bleibt in keiner eine Klammer stehen.
+    for (const sprache of ['de', 'en']) {
+      const text = fehlerText(code, sprache, vars);
+      if (/\{\w+\}/.test(text)) schief.push(`${code}/${sprache}: ${text}`);
+      for (const n of Object.keys(vars)) if (!text.includes(`«${n}»`)) schief.push(`${code}/${sprache}: {${n}} fehlt`);
     }
   }
-  assert.deepEqual(schief, [],
-    'Diese Einträge sind schief:\n  ' + schief.join('\n  ') +
-    '\nEin fehlender Platzhalter bedeutet, dass in einer Sprache „{name}" auf ' +
-    'dem Bildschirm steht.');
+  assert.deepEqual(schief, []);
 });
 
-test('beide Oberflächen sagen dem Server, welche Sprache sie zeigen', () => {
-  // Ohne diesen Kopf nützt die Tabelle nichts — der Server fiele auf Deutsch
-  // zurück, und alles oben wäre wirkungslos.
-  const web = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-api.js'), 'utf8');
-  assert.match(web, /'Accept-Language'\s*:\s*LANG/,
-    'Die Webapp schickt Accept-Language nicht mit (public/js/01-api.js, api()).');
+test('die Webapp sagt dem Server, welche Sprache sie zeigt', async () => {
+  // Ohne diesen Kopf fiele der Server auf Deutsch zurück, und die Tabelle oben wäre wirkungslos.
+  const { oeffneOberflaeche } = require('./helpers/oberflaeche');
+  for (const sprache of ['en', 'de']) {
+    const { w, aufrufe } = await oeffneOberflaeche({}, { sprache });
+    try {
+      const api = aufrufe.filter(a => a.url.includes('/api/v1/'));
+      assert.ok(api.length >= 5, `nur ${api.length} Anfragen`);
+      assert.deepEqual(api.filter(a => a.headers['Accept-Language'] !== sprache).map(a => a.url), [], `ohne Sprache ${sprache}`);
+    } finally { w.close(); }
+  }
+});
 
+test('die App sagt dem Server, welche Sprache sie zeigt', () => {
   const app = fs.readFileSync(
     path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'di', 'ServerClient.kt'), 'utf8');
   assert.match(app, /header\("Accept-Language",/,
     'Die Android-App schickt Accept-Language nicht mit (data/di/ServerClient.kt, Interceptor).');
-  assert.match(app, /R\.string\.lang_code/,
-    'Die App leitet die Sprache nicht aus ihren Ressourcen ab — dann sagt sie ' +
-    'nicht, was sie wirklich zeigt.');
+  // Aus den Ressourcen abgeleitet sagt sie, was sie wirklich zeigt.
+  assert.match(app, /R\.string\.lang_code/);
 });

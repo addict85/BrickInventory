@@ -1,100 +1,62 @@
+/**
+ * Kopf- und Reiterleiste haften GEMEINSAM — in jedem Design, gemessen in Chrome
+ * nach dem Rollen. Haftet nur die Reiterleiste, steht sie auf der Höhe der
+ * weggerollten Kopfleiste und schiebt sich über den Inhalt; sitzt sie nicht
+ * genau unter der Kopfleiste, klafft eine Lücke oder beide überdecken sich.
+ *
+ * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
+ *   A  in themes/noppe.css `[data-theme="noppe"] header{position:relative}` →
+ *      rot: „noppe: Kopfleiste rollt weg, Reiterleiste haftet“
+ *   B  in styles.css `nav{… top:58px …}` auf `top:50px` → rot: alle Designs
+ *      („Reiterleiste bei 50, Kopfleiste endet bei 58“)
+ */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
+const { chrome } = require('./helpers/app-browser');
 
-const WEB = path.join(__dirname, '..');
+const PUBLIC = path.join(__dirname, '..', 'public');
+const DESIGNS = ['classic', ...fs.readdirSync(path.join(PUBLIC, 'themes')).filter(n => n.endsWith('.css')).map(n => n.slice(0, -4))];
 
-/**
- * Kopfleiste und Reiterleiste haften GEMEINSAM — oder gar nicht.
- * Ausführlich: docs/begruendungen/test/design-haftung.test.js.md#stelle
- */
-
-/**
- * Kommentare weg, bevor irgendetwas zerlegt wird.
- * Ausführlich: docs/begruendungen/test/design-haftung.test.js.md#ohnekommentare
- *
- * Nicht kosmetisch: Ohne diesen Schritt haengt der Kommentarblock VOR einer
- * Regel am ersten Selektor, und aus `[data-theme="noppe"] header` wird
- * `/* … *\/\n[data-theme="noppe"] header`. Die Gegenprobe zu dieser Datei hat
- * genau das gezeigt — sie meldete nur den ZWEITEN der beiden Selektoren einer
- * Regel. Eine Verletzung in einer einselektorigen Regel mit Kommentar darueber
- * waere still durchgerutscht.
- */
-const ohneKommentare = css => css.replace(/\/\*[\s\S]*?\*\//g, '');
-
-/** Regeln als (Selektorliste, Rumpf) — einmal fuer alle Suchen hier. */
-function regeln(css) {
-  const raus = [];
-  for (const stueck of ohneKommentare(css).split('}')) {
-    const auf = stueck.indexOf('{');
-    if (auf < 0) continue;
-    raus.push([stueck.slice(0, auf).split(',').map(s => s.trim()), stueck.slice(auf + 1)]);
-  }
-  return raus;
+function messe(bin, ordner, design) {
+  const css = ['tokens.css', 'styles.css', ...fs.readdirSync(path.join(PUBLIC, 'themes')).map(n => `themes/${n}`)]
+    .map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`).join('');
+  const datei = path.join(ordner, `${design}.html`);
+  fs.writeFileSync(datei, `<!doctype html><html lang="de" data-theme="${design}"><head><meta charset="utf-8">${css}
+<style>*{transition:none!important;animation:none!important}</style></head><body>
+<header><span>BrickInventory</span></header><nav><button class="ntab">Sammlung</button></nav>
+<main style="height:5000px"></main><pre id="ergebnis"></pre>
+<script>window.scrollTo(0, 1500); {
+  const r = (s) => document.querySelector(s).getBoundingClientRect();
+  document.getElementById('ergebnis').textContent = 'ERGE' + 'BNIS' + JSON.stringify({ kopf: [r('header').top, r('header').bottom],
+    reiter: [r('nav').top, r('nav').bottom], gerollt: window.scrollY }) + 'EN' + 'DE'; }</script></body></html>`);
+  const dom = execFileSync(bin, ['--headless', '--no-sandbox', '--disable-gpu', '--allow-file-access-from-files',
+    '--window-size=1200,800', '--virtual-time-budget=3000', '--dump-dom', `file://${datei}`],
+  { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] });
+  const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
+  assert.ok(m, `${design}: kein Ergebnis`);
+  return JSON.parse(m[1].replace(/&quot;/g, '"'));
 }
 
-/**
- * Was gilt am Ende fuer `sel` in diesem Design? Die letzte Regel gewinnt —
- * alle hier betrachteten Selektoren haben dieselbe Spezifitaet.
- */
-function haftung(css, sel) {
-  let wert = null;
-  for (const [sels, rumpf] of regeln(css)) {
-    if (!sels.some(s => s.replace(/^\[data-theme="[\w-]+"\]\s*/, '') === sel)) continue;
-    const t = rumpf.match(/(?:^|[;\s])position\s*:\s*([\w-]+)/);
-    if (t) wert = t[1];
+test('Kopf- und Reiterleiste haften in jedem Design gemeinsam und schliessen aneinander an', (t) => {
+  const bin = chrome();
+  if (!bin) { t.skip('kein Chrome gefunden'); return; }
+  assert.ok(DESIGNS.length >= 5, `nur ${DESIGNS.length} Designs gefunden`);
+  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'haftung-'));
+  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
+  const fehler = [];
+  for (const d of DESIGNS) {
+    const { kopf, reiter, gerollt } = messe(bin, ordner, d);
+    assert.ok(gerollt > 1000, `${d}: die Seite rollt nicht (${gerollt})`);
+    const kopfHaftet = Math.round(kopf[0]) === 0, reiterSichtbar = reiter[1] > 0;
+    if (kopfHaftet !== reiterSichtbar) fehler.push(`${d}: Kopfleiste ${kopfHaftet ? 'haftet' : 'rollt weg'}, Reiterleiste ${reiterSichtbar ? 'haftet' : 'rollt weg'}`);
+    else if (kopfHaftet && Math.round(reiter[0]) !== Math.round(kopf[1]))
+      fehler.push(`${d}: Reiterleiste bei ${Math.round(reiter[0])}, Kopfleiste endet bei ${Math.round(kopf[1])}`);
   }
-  return wert;
-}
-
-function designDateien() {
-  const ordner = path.join(WEB, 'public', 'themes');
-  return fs.readdirSync(ordner)
-    .filter(n => n.endsWith('.css'))
-    .map(n => [n, fs.readFileSync(path.join(ordner, n), 'utf8')]);
-}
-
-test('Kopf- und Reiterleiste haften in jedem Design gemeinsam', () => {
-  const grund = fs.readFileSync(path.join(WEB, 'public', 'styles.css'), 'utf8');
-  const grundKopf = haftung(grund, 'header');
-  const grundReiter = haftung(grund, 'nav');
-  // Selbstbeweis: Greift die Suche ueberhaupt? GEMESSEN steht in styles.css
-  // an beiden `position:sticky`. Faende sie nichts, waere der Vergleich
-  // darunter ein Vergleich von null mit null — und fuer immer still gruen.
-  assert.equal(grundKopf, 'sticky', 'Die Kopfleiste ist in styles.css nicht mehr angeheftet');
-  assert.equal(grundReiter, 'sticky', 'Die Reiterleiste ist in styles.css nicht mehr angeheftet');
-
-  const dateien = designDateien();
-  assert.ok(dateien.length >= 4, `Nur ${dateien.length} Design-Dateien — greift die Suche noch?`);
-
-  const gemischt = [];
-  for (const [name, css] of dateien) {
-    const kopf = haftung(css, 'header') || grundKopf;
-    const reiter = haftung(css, 'nav') || grundReiter;
-    const haftetKopf = kopf === 'sticky' || kopf === 'fixed';
-    const haftetReiter = reiter === 'sticky' || reiter === 'fixed';
-    if (haftetKopf !== haftetReiter) {
-      gemischt.push(`${name}: Kopfleiste "${kopf}", Reiterleiste "${reiter}"`);
-    }
-  }
-  assert.deepEqual(gemischt, [],
-    'Eine Leiste haftet, die andere nicht. Die Reiterleiste steht auf der HOEHE ' +
-    'der Kopfleiste (top:58px); scrollt die Kopfleiste weg, bleibt die ' +
-    'Reiterleiste dort stehen und schiebt sich ueber den Inhalt. Fuer ein ' +
-    '::before braucht es kein `position:relative` — `sticky` ist selbst ein ' +
-    'positionierter Vorfahre.');
-});
-
-test('die Reiterleiste sitzt auf der Hoehe der Kopfleiste', () => {
-  // Die zweite Haelfte derselben Sache: Die 58px in `nav{top:58px}` sind KEINE
-  // freie Zahl, sondern die Hoehe der Kopfleiste. Laufen die beiden
-  // auseinander, klafft eine Luecke oder die Leisten ueberdecken sich — und im
-  // Quelltext sieht beides richtig aus.
-  const css = fs.readFileSync(path.join(WEB, 'public', 'styles.css'), 'utf8');
-  const hoehe = css.match(/header\{[^}]*height:(\d+)px/);
-  const versatz = css.match(/nav\{[^}]*top:(\d+)px/);
-  assert.ok(hoehe && versatz, 'Kopf- oder Reiterleiste nicht mehr zu finden — greift die Suche noch?');
-  assert.equal(versatz[1], hoehe[1],
-    `Die Reiterleiste haftet bei ${versatz[1]}px, die Kopfleiste ist ${hoehe[1]}px hoch.`);
+  assert.deepEqual(fehler, []);
+  // Die Grundgestaltung heftet beide an; ohne das prüfte der Vergleich oben zweimal „rollt weg“.
+  assert.equal(Math.round(messe(bin, ordner, 'classic').kopf[0]), 0, 'classic: die Kopfleiste haftet nicht');
 });

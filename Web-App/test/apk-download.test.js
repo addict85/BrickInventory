@@ -2,10 +2,12 @@
  * Der Download-Knopf zeigt dorthin, wo der Workflow das APK wirklich ablegt.
  * Ausführlich: docs/begruendungen/test/apk-download.test.js.md#kopf
  *
- * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
- *   a) Etikett im Knopf auf `apk-alt` geändert  → Schritt 2 rot
- *   b) Dateiname im Knopf auf `App.apk`         → Schritt 2 rot
- *   c) Knopf aus index.html entfernt            → Schritt 1 rot
+ * Knopf in jsdom (echtes Bündel), Workflow und App als Struktur.
+ *
+ * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
+ *   a) Etikett im Knopf auf `apk-alt` geändert   → rot: Schritt 2
+ *   b) Knopf aus index.html entfernt             → rot: Schritt 1 und 2
+ *   c) Knopf hinter den QR-Code verschoben       → rot: Schritt 1 („hinter dem QR-Code“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -13,29 +15,35 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const html = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
+const { oeffneOberflaeche, sicht } = require('./helpers/oberflaeche');
 
-/** Die Adresse, die im Knopf steht. */
-function adresseImKnopf() {
-  const m = html.match(/<a class="apk-btn" href="([^"]+)"/);
-  return m ? m[1] : null;
+/** Der Knopf, wie ihn die geöffnete Sicht „App“ zeigt. */
+async function knopf() {
+  const o = await oeffneOberflaeche({ '/v1/settings/tokens': { success: true, tokens: [] } });
+  try {
+    await sicht(o.w, 'app');
+    const a = o.d.querySelector('a.apk-btn');
+    const qr = o.d.getElementById('qr-container');
+    assert.ok(a && qr, 'Download-Knopf oder QR-Code fehlt in der Sicht „App“');
+    const sichtbar = (el) => { for (let e = el; e; e = e.parentElement) if (e.style?.display === 'none' || e.hidden) return false; return true; };
+    return { href: a.getAttribute('href'), sichtbar: sichtbar(a), vorQr: !!(a.compareDocumentPosition(qr) & o.w.Node.DOCUMENT_POSITION_FOLLOWING),
+             svg: !!a.querySelector('svg'), markup: a.outerHTML };
+  } finally { o.w.close(); }
 }
 
-test('1. der Knopf steht in den Einstellungen, vor dem QR-Code', () => {
-  const adresse = adresseImKnopf();
-  assert.ok(adresse, 'Es gibt keinen Download-Knopf für die Android-App.');
-  assert.match(adresse, /^https:\/\/github\.com\//,
-    'Der Knopf zeigt nicht auf GitHub — dort liegt das APK.');
-
-  // Reihenfolge: erst die App holen, dann das Gerät verknüpfen. Andersherum
-  // steht der QR-Code vor einem Gerät, auf dem es noch nichts zu scannen gibt.
-  assert.ok(html.indexOf('class="apk-btn"') < html.indexOf('id="qr-container"'),
-    'Der Knopf steht hinter dem QR-Code — die Reihenfolge ist verkehrt herum.');
+test('1. der Knopf steht in der Sicht „App“, vor dem QR-Code, ohne fremdes Markenzeichen', async () => {
+  const k = await knopf();
+  assert.match(k.href, /^https:\/\/github\.com\//, 'Der Knopf zeigt nicht auf GitHub — dort liegt das APK.');
+  assert.ok(k.sichtbar, 'Der Knopf ist in der geöffneten Sicht nicht zu sehen');
+  // Erst die App holen, dann das Gerät verknüpfen; andersherum gibt es noch nichts zu scannen.
+  assert.ok(k.vorQr, 'Der Knopf steht hinter dem QR-Code');
+  // Googles Android-Roboter ist markenrechtlich gebunden; das Symbol ist bewusst ein eigenes.
+  assert.ok(k.svg, 'Das Symbol kommt nicht als eigenes SVG mit.');
+  assert.doesNotMatch(k.markup, /androidicons|google.*android.*logo|gstatic|play\.google\.com\/intl/i);
 });
 
-test('2. dieselbe Adresse wie im Workflow und in der App', () => {
-  const adresse = adresseImKnopf();
-
+test('2. dieselbe Adresse wie im Workflow und in der App', async () => {
+  const adresse = (await knopf()).href;
   // ── Aus dem Workflow: Etikett und Dateiname ──────────────────────────────
   const yml = fs.readFileSync(
     path.join(ROOT, '..', '.github', 'workflows', 'android.yml'), 'utf8');
@@ -58,17 +66,6 @@ test('2. dieselbe Adresse wie im Workflow und in der App', () => {
   assert.equal(adresse, `${basis}/${apkName}`,
     'Knopf und Selbst-Aktualisierung der App zeigen auf verschiedene Ablagen. ' +
     'Eine von beiden holt dann etwas anderes als die andere.');
-});
-
-test('3. der Knopf trägt kein fremdes Markenzeichen', () => {
-  // Googles Android-Roboter ist markenrechtlich gebunden. Das Symbol im Knopf
-  // ist bewusst ein eigenes; diese Regel hält fest, dass niemand es später
-  // „schöner" durch das Original ersetzt, ohne die Frage zu stellen.
-  const knopf = html.slice(html.indexOf('class="apk-btn"'),
-                           html.indexOf('</a>', html.indexOf('class="apk-btn"')));
-  assert.ok(!/androidicons|google.*android.*logo|gstatic|play\.google\.com\/intl/i.test(knopf),
-    'Im Knopf steht fremdes Markenmaterial.');
-  assert.match(knopf, /<svg /, 'Das Symbol kommt nicht als eigenes SVG mit.');
 });
 
 test('signiert und veröffentlicht wird nur aus einem Etikett auf main, und Gradle sieht den Schlüssel nie', () => {

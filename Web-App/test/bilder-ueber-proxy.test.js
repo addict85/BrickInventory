@@ -17,13 +17,8 @@ const JS = path.join(ROOT, 'public', 'js');
 /** Felder, die eine FREMDE Adresse tragen können. */
 const BILDFELD = /image_url|image_local|imageUrl|set_img_url|thumbUrl\(/;
 
-test("die Richtlinie erlaubt nur 'self' — darauf beruht die Regel unten", () => {
-  // Ohne diesen Nachweis wäre die Prüfung darunter eine Geschmacksfrage.
-  const server = fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
-  assert.match(server, /"img-src 'self' data: blob:"/,
-    'Die Bildrichtlinie sieht anders aus — dann gilt die Begründung unten nicht mehr');
-});
-
+// Dass die Richtlinie nur img-src 'self' data: blob: erlaubt, prüft sicherheit-querschnitt-db.test.js
+// an jeder Antwort des echten Servers; darauf beruht die Regel unten.
 test('kein src-Attribut setzt ein Bildfeld ohne imgUrl()/fullUrl() ein', () => {
   const dateien = fs.readdirSync(JS)
     .filter(f => f.endsWith('.js') && f !== 'app.bundle.js');

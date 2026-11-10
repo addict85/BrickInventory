@@ -1,6 +1,13 @@
 /**
  * „Kann ich das bauen?" — dieselbe Antwort in beiden Oberflächen.
  * Ausführlich: docs/begruendungen/test/bauabgleich-beide.test.js.md#kopf
+ *
+ * Die Webapp läuft in jsdom (echtes Bündel), die App wird als Struktur gelesen.
+ *
+ * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen, Bündel neu gebaut):
+ *   A  plFuelleBestand() schickt für 3001 die BrickLink-Nummer 3001b → rot: „Webapp: …“
+ *   B  `nurLose ? eintrag.lose : eintrag.gesamt` vertauscht → rot: „Webapp: …“
+ *   C  `?accounts=own` immer angehängt → rot: „Webapp: …“ (mit Unterkonten)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -24,30 +31,64 @@ const XML_DE   = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ress
 
 const ROUTE = '/parts/owned';
 
-test('beide Oberflächen fragen denselben Endpunkt', () => {
+test('Webapp: fragt den Endpunkt in Rebrickable-Schreibweise, unterscheidet lose und eigenes Blickfeld', async () => {
+  const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+  const anfragen = [];
+  const { w, d } = await oeffneOberflaeche({
+    '/v1/sets/10294-1/parts-list': { success: true, parts: [{ part_number: '3001', bl_part_number: '3001b', part_name: 'Brick 2 x 4',
+      color_id: 4, color_name: 'Red', color_hex: 'C91A09', quantity: 6 }] },
+    '/v1/sets/10294-1/minifigs-list': { success: true, figs: [] },
+    '/v1/sets/info/10294-1': { success: true, name: 'Titanic', im_katalog: true },
+    '/v1/parts/bl-color-map': { success: true, map: { 4: 5 } },
+    '/v1/parts/owned': (url, opt) => {
+      anfragen.push({ url, teile: JSON.parse(opt.body).teile });
+      return { success: true, bestand: { '3001|4': { gesamt: 5, lose: 2 } } };
+    },
+  });
+  try {
+    await reiter(w, 'partslist');
+    d.getElementById('pl-setnr').value = '10294';
+    d.querySelector('[data-click="plAddSet"]').click();
+    await warte(() => d.querySelector('#pl-sets .pl-chip-name')?.textContent.trim(), 3000);
+    d.getElementById('btn-pl-gen').click();
+    assert.ok(await warte(() => d.querySelector('.pl-have-input'), 3000), 'keine Bauliste');
+    const feld = () => d.querySelector('.pl-have-input').value;
+
+    d.getElementById('btn-pl-bestand').click();
+    assert.ok(await warte(() => anfragen.length === 1 && feld() === '5'), `alles: ${feld()}`);
+    // Mit der BrickLink-Nummer fände der Server nichts — und „nicht gefunden“ sieht aus wie „habe ich nicht“.
+    assert.deepEqual(anfragen[0].teile, [{ part_number: '3001', color_id: 4 }]);
+    assert.match(anfragen[0].url, /\/api\/v1\/parts\/owned\?accounts=own$/, 'ohne Haken zählt der Haushalt mit');
+    assert.doesNotMatch(d.getElementById('pl-status').textContent, /\bpl\./, 'Statustext ohne Übersetzung');
+
+    const lose = d.getElementById('pl-bestand-lose');
+    lose.checked = true;
+    lose.dispatchEvent(new w.Event('change', { bubbles: true }));
+    assert.ok(await warte(() => anfragen.length === 2 && feld() === '2'), `nur lose: ${feld()}`);
+
+    const subs = d.getElementById('pl-bestand-subs');
+    subs.checked = true;
+    subs.dispatchEvent(new w.Event('change', { bubbles: true }));
+    assert.ok(await warte(() => anfragen.length === 3), 'mit Unterkonten nicht neu gefragt');
+    assert.match(anfragen[2].url, /\/api\/v1\/parts\/owned$/, 'mit Unterkonten trotzdem nur das eigene Konto');
+  } finally { w.close(); }
+});
+
+test('App: fragt den Endpunkt, den der Server anbietet', () => {
   assert.match(web('routes/api_v1/parts.ts'),
     new RegExp(`router\\.post\\('${ROUTE}'`),
     'Der Endpunkt fehlt — dann fragt niemand irgendwo');
 
-  assert.match(web('public/js/08-init.js'), new RegExp(`['\`]/v1${ROUTE}['\`$]`),
-    'Die Webapp ruft den Endpunkt nicht auf');
   assert.match(KT_API,
     new RegExp(`@POST\\("api/v1${ROUTE}"\\)`),
     'Die App ruft den Endpunkt nicht auf');
 });
 
-test('beide fragen in der Rebrickable-Schreibweise', () => {
+test('App: fragt in der Rebrickable-Schreibweise', () => {
   // Der eigene Teilebestand steht unter der Rebrickable-Nummer. Die
   // BrickLink-Nummer daneben ist für den Export da; fragte eine der beiden
   // Seiten damit, fände sie nichts — und zwar lautlos, denn „nicht gefunden"
   // sieht genauso aus wie „habe ich nicht".
-  const js = web('public/js/08-init.js');
-  const fn = js.slice(js.indexOf('async function plFuelleBestand'),
-                      js.indexOf('function plRenderTable'));
-  assert.ok(fn.length > 100, 'plFuelleBestand nicht gefunden');
-  assert.doesNotMatch(fn, /bl_part_number|blPartNumber/,
-    'Die Webapp fragt mit der BrickLink-Nummer — damit findet sie nichts');
-
   const kt = KT_FEAT;
   const fk = kt.slice(kt.indexOf('suspend fun mitBestand'));
   assert.ok(fk.length > 100, 'mitBestand nicht gefunden');
@@ -57,16 +98,11 @@ test('beide fragen in der Rebrickable-Schreibweise', () => {
     'Die App fragt mit der BrickLink-Nummer — damit findet sie nichts');
 });
 
-test('beide unterscheiden „alles" von „nur lose"', () => {
+test('App: unterscheidet „alles" von „nur lose"', () => {
   // Die zwei Zahlen sind der Kern der Antwort: Ein Teil in einem aufgebauten
   // Set besitzt man zwar, müsste dafür aber ein anderes Set zerlegen. Böte
   // eine der beiden Oberflächen die Unterscheidung nicht, gäbe sie auf
   // dieselbe Frage eine andere Antwort als die andere.
-  assert.match(web('public/index.html'), /id="pl-bestand-lose"/,
-    'Der Webapp fehlt der Schalter „nur lose Teile"');
-  assert.match(web('public/js/08-init.js'), /nurLose \? eintrag\.lose : eintrag\.gesamt/,
-    'Die Webapp wertet den Schalter nicht aus');
-
   assert.match(KT_SCREEN,
     /(?:Checkbox\(checked = |KaestchenZeile\(stringResource\(R\.string\.partslist_only_loose\), )nurLose/, 'Der App fehlt der Schalter „nur lose Teile"');
   assert.match(KT_FEAT,
@@ -74,16 +110,9 @@ test('beide unterscheiden „alles" von „nur lose"', () => {
     'Die App wertet den Schalter nicht aus');
 });
 
-test('beide fragen ihr Blickfeld an DIESER Stelle', () => {
+test('App: fragt ihr Blickfeld an DIESER Stelle', () => {
   // Was sich geändert hat (Marcos Vorgabe)
   // Ausführlich: docs/begruendungen/test/bauabgleich-beide.test.js.md#js-stelle
-  const js = web('public/js/08-init.js');
-  assert.match(js, /pl-bestand-subs/, 'Der Webapp fehlt die Wahl „Unterkonten mit einbeziehen"');
-  assert.match(js, /'\?accounts=own'/,
-    'Die Webapp schickt ohne Haken kein `accounts=own` — dann zählt der Haushalt immer mit');
-  assert.doesNotMatch(js, /scopeQuery\('parts'\)/,
-    'Die Webapp hängt wieder am Kontofilter des Teile-Reiters');
-
   assert.match(KT_SCREEN, /(?:Checkbox\(checked = |KaestchenZeile\(stringResource\(R\.string\.partslist_include_subs\), )mitUnterkonten/,
     'Der App fehlt die Wahl „Unterkonten mit einbeziehen"');
   assert.match(KT_FEAT, /if \(mitUnterkonten\) null else "own"/,
