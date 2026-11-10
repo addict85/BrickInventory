@@ -44,11 +44,12 @@ export type Ausgang =
 /** Ohne lesbaren Rumpf lieber eine klare Absage als eine zweite Wirkung. */
 export async function beginne(uid: number, schluessel: string, abdruck: string): Promise<Ausgang> {
   if (await repo.belege(uid, schluessel, abdruck, VERWAIST_NACH_S)) return { art: 'neu' };
-  const e = await repo.eintrag(uid, schluessel);
+  const e = await repo.eintrag(uid, schluessel, VERWAIST_NACH_S);
   // Zwischen Belegen und Lesen freigegeben (die erste scheiterte): neu versuchen.
   if (!e) return await repo.belege(uid, schluessel, abdruck, VERWAIST_NACH_S) ? { art: 'neu' } : { art: 'laeuft' };
   if (e.anfrage !== abdruck) return { art: 'anders' };
-  if (e.status === null) return { art: 'laeuft' };
+  // Verwaist mit Wirkung: Die erste hat gewirkt, ihre Antwort ging verloren.
+  if (e.status === null) return e.wirkung && e.verwaist ? { art: 'nicht_wiederholbar' } : { art: 'laeuft' };
   const antwort = istVerschluesselt(e.antwort) ? entschluessele(e.antwort, antwortKontext(uid, schluessel)) : null;
   if (antwort === null) return { art: 'nicht_wiederholbar' };
   return { art: 'wiederholung', status: e.status, antwort };
@@ -57,13 +58,16 @@ export async function beginne(uid: number, schluessel: string, abdruck: string):
 /** Ein 5xx wird nicht gemerkt, sondern freigegeben: Die Wirkung ist unsicher,
  * eine Wiederholung soll es noch einmal versuchen dürfen. */
 export async function beende(uid: number, schluessel: string, status: number, antwort: string | null): Promise<void> {
-  if (status >= 500) await repo.loescheLaufenden(uid, schluessel);
+  if (status >= 500) await repo.loescheLaufenden(uid, schluessel, status);
   else await repo.schliesseAb(uid, schluessel, status, antwort === null ? null : verschluessele(antwort, antwortKontext(uid, schluessel)));
 }
 
-export function gibFrei(uid: number, schluessel: string): Promise<void> {
-  return repo.loescheLaufenden(uid, schluessel);
+export function gibFrei(uid: number, schluessel: string, status: number): Promise<void> {
+  return repo.loescheLaufenden(uid, schluessel, status);
 }
+
+/** Die Wirkung der Route und ihr Vermerk am Schlüssel gelten zusammen oder gar nicht. */
+export const mitWirkungsVermerk = repo.mitWirkungsVermerk;
 
 /** v1-Antworten von vor dem Kontext; der Start schlüsselt sie um. */
 export async function antwortenUmschluesseln(): Promise<number> {

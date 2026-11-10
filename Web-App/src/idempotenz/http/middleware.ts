@@ -50,7 +50,8 @@ export async function idempotenz(req: Request, res: Response, next: NextFunction
   };
   // Keine JSON-Antwort (Datei, Strom): nichts zu wiederholen, der Schlüssel wird frei.
   res.on('finish', () => {
-    if (!gemerkt) dienst.gibFrei(uid, schluessel).catch((e: unknown) => meldeFehler('idempotenz:freigeben', e));
+    if (!gemerkt) dienst.gibFrei(uid, schluessel, res.statusCode).catch((e: unknown) => meldeFehler('idempotenz:freigeben', e));
   });
-  next();
+  // Jede Transaktion der Route vermerkt ihre Wirkung am Schlüssel, im selben COMMIT.
+  dienst.mitWirkungsVermerk(uid, schluessel, next);
 }

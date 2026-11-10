@@ -136,6 +136,14 @@ function txSchnittstelle(client: PoolClient): DbSchnittstelle {
   };
 }
 
+/** Läuft vor dem COMMIT jeder äussersten Transaktion dieses Aufrufpfads mit,
+ * in ihr: Was er schreibt, gilt genau dann, wenn ihre Wirkung gilt. */
+type CommitBegleiter = (tx: DbSchnittstelle) => Promise<void>;
+const commitBegleiter = new AsyncLocalStorage<CommitBegleiter>();
+export function mitCommitBegleiter<T>(begleiter: CommitBegleiter, arbeit: () => T): T {
+  return commitBegleiter.run(begleiter, arbeit);
+}
+
 /** Innerhalb einer Transaktion ein Sicherungspunkt: Scheitert der innere Teil
  * und fängt der Aufrufer das, bleibt die äussere Transaktion benutzbar. */
 let _sicherungspunkt = 0;
@@ -224,6 +232,7 @@ export function erzeugeDb(k: DbKonfig): Db {
     try {
       await client.query('BEGIN');
       const result = await laufendeTx.run(stand, () => fn(txSchnittstelle(client)));
+      await commitBegleiter.getStore()?.(txSchnittstelle(client));
       stand.offen = false;
       await client.query('COMMIT');
       return result;
