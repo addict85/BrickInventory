@@ -1,0 +1,18 @@
+Gegenprobe: die Spalte thema der Sets bekommt den Lagerort statt des Themas
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.OhneNetzFilterTest
+Rot: Suche, Thema, Lagerort und Sortierung
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
+index ba0c070..ce1a7e6 100644
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
+@@ -32,7 +32,7 @@ object Faecher {
+     val SETS = Fach(Bestandsart.SETS, SetItem.serializer(), { it.setNumber }) {
+         // Wie der Server: Nummer, Name, Thema und Jahr (ohne Jahr „0“).
+         Merkmale(suchtext(it.setNumber, it.name, it.theme.orEmpty(), (it.year ?: 0).toString()),
+-            thema = it.theme, lagerort = it.storage)
++            thema = it.storage, lagerort = it.storage)
+     }
+     val MERKLISTE = Fach(Bestandsart.MERKLISTE, Merkposten.serializer(), { LokaleAnwendung.merkSchluessel(it) }) {
+         Merkmale(suchtext(it.setNumber, it.name), zustand = it.condition)
