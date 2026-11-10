@@ -93,8 +93,12 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
   // Der Name gehoert seit Migration 0033 in den Katalog, und zu jedem Set im
   // Bestand steht dort eine Zeile.
   await db.run(
-    `INSERT INTO set_catalog (set_number, name)
+    `INSERT INTO rb_sets (set_num, name)
      SELECT (10000+g)||'-1', 'Set '||g FROM generate_series(1,30) g
+     ON CONFLICT (set_num) DO NOTHING`);
+  await db.run(
+    `INSERT INTO set_catalog (set_number)
+     SELECT (10000+g)||'-1' FROM generate_series(1,30) g
      ON CONFLICT (set_number) DO NOTHING`);
   // Kaufpreis und Menge je Erfassung — seit Migration 0032 der einzige Ort.
   // Die Menge MUSS zur sets-Zeile passen, sonst gewichtet portfolioHistory.ts

@@ -30,6 +30,7 @@ const path   = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const BASIS = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const { testName, raeumeReste, id } = require('./helpers/testnamen');
+const { katalogSet } = require('./helpers/bestand');
 const NAME = testName('schema_frisch');
 const ziel = new URL(BASIS); ziel.pathname = '/' + NAME;
 process.env.DATABASE_URL = ziel.toString();
@@ -107,7 +108,7 @@ test('frische Datenbank', { concurrency: 1, timeout: 180_000 }, async (t) => {
     await db.run(`INSERT INTO qr_login_tokens (token, user_id, expires_at) VALUES ('frisch', $1, NOW())`, [uid]);
     // Bestand, damit die Zähltrigger auf parts und sets beim Löschen feuern.
     await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, '3001', 5, 'manual')`, [uid]);
-    await db.run(`INSERT INTO set_catalog (set_number, name) VALUES ('99073-1', 'Frisch') ON CONFLICT DO NOTHING`);
+    await katalogSet(db, '99073-1', { name: 'Frisch' });
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '99073-1')`, [uid]);
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     for (const tab of ['part_acquisitions', 'minifig_acquisitions', 'qr_login_tokens', 'parts', 'sets'])

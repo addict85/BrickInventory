@@ -7,7 +7,7 @@
  * Gegenproben (10.11.2026 gemessen, je einzeln):
  *   A  in src/sets/repository/setDetail.ts setStamm() über `standardDb().get`
  *      statt über den übergebenen Zugang → rot: „Lesen geht über den
- *      übergebenen Zugang“ (keine Abfrage auf set_stamm gezählt)
+ *      übergebenen Zugang“ (keine Abfrage auf rb_sets gezählt)
  *   B  in teilelisteFuerKonto() wieder `nacharbeit().setTeileAnreichern(sn)` →
  *      rot: „die Nacharbeit kommt aus dem Kontext“ (Prozess-Nacharbeit gerufen)
  *   C  nacharbeit() liefert ohne Verdrahtung wieder OHNE_NACHARBEIT → rot:
@@ -83,7 +83,7 @@ test('Sets mit eigenem Kontext', { concurrency: 1 }, async t => {
   await t.test('Lesen geht über den übergebenen Zugang', async () => {
     assert.equal(await sets.setInfo(SN), null);
     assert.ok(
-      sql.some(s => /FROM set_stamm/.test(s)),
+      sql.some(s => /LEFT JOIN rb_sets rs/.test(s)),
       `gezählt: ${sql.join(' | ').slice(0, 300)}`,
     );
   });

@@ -23,7 +23,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { ROOT } = require('./helpers/sources');
 const _req = require('./helpers/sources').buildAndRequire();
-const { haeltSet, haeltTeil, mengeVon, teilmengeVon } = require('./helpers/bestand');
+const { haeltSet, haeltTeil, mengeVon, teilmengeVon, katalogSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 /** pg_dump/psql finden — auf dem PATH oder in einer Distributions-Installation. */
@@ -110,9 +110,7 @@ test('Sicherung und Wiederherstellung', async (t) => {
     // Menge. Genau das ist der Fall, an dem eine unvollstaendige Sicherung
     // auffaellt: Ein Dump, der nur den Bestand nimmt, laesst jedes Set
     // namenlos zurueck.
-    await db.run(
-      `INSERT INTO set_catalog (set_number, name, year) VALUES ('10214-1','Tower Bridge',2010)
-       ON CONFLICT (set_number) DO UPDATE SET name = EXCLUDED.name, year = EXCLUDED.year`);
+    await katalogSet(db, '10214-1', { name: 'Tower Bridge', year: 2010 });
     // Der Zustand steht seit Migration 0032 in der Erfassung. Die Sicherung
     // muss ihn von DORT zurueckbringen — sonst prueft dieser Test nach dem
     // Umbau eine Spalte, die es nicht mehr gibt, und waere stillschweigend
@@ -164,8 +162,9 @@ test('Sicherung und Wiederherstellung', async (t) => {
     // darueber. Genau daran faellt eine unvollstaendige Sicherung auf: Ein
     // Dump, der nur den Bestand nimmt, laesst jedes Set namenlos zurueck.
     const k = await db.get(
-      `SELECT c.name, c.year FROM sets s
+      `SELECT r.name, r.year FROM sets s
          JOIN set_catalog c ON c.set_number = s.set_number
+         JOIN rb_sets r ON r.set_num = c.set_number
         WHERE s.set_number='10214-1'`);
     assert.equal(k?.name, 'Tower Bridge');
     assert.equal(Number(k?.year), 2010);

@@ -1,7 +1,7 @@
 import * as repo from './repository/katalogSuche';
 import { meldeUndLiefere } from '../infra/fehler';
-import { resolveIfExists } from './bilder/images';
-import { setBildSichtbar, dateiStamm } from './bilder/bildBlickfeld';
+import { resolveIfExists, resolveImageLocal } from './bilder/images';
+import { dateiStamm } from './bilder/bildBlickfeld';
 import { resolveOne, resolveViaApi } from './bricklinkLink';
 import { fuerSet } from './preisvergleich';
 import { downloadSetImage } from './bilder/setImages';
@@ -101,11 +101,6 @@ export async function jahrVerteilung(f: KatalogFilter, absteigend: boolean) {
   return repo.setsJeJahrGefiltert(await waehle({ q: f.q, themeId: f.themeId }), absteigend);
 }
 
-/** Nur im eigenen Blickfeld: Die Bildroute liefert fremde Set-Bilder nicht aus,
- * der Client nimmt dann image_url über den Proxy. */
-const lokalesBild = async (uid: number, sn: string) =>
-  await setBildSichtbar(uid, sn) ? resolveIfExists(`/images/sets/${dateiStamm(sn)}.jpg`) : null;
-
 export async function katalogSeite(userId: number, f: KatalogFilter, sortRoh: unknown, page: number, limit: number) {
   const wahl = await waehle(f);
   const [total, sets] = await Promise.all([
@@ -113,8 +108,8 @@ export async function katalogSeite(userId: number, f: KatalogFilter, sortRoh: un
   const tree = await getThemeTree();
   // Die Liste stösst keine Bildarbeit an; fehlende Bilder holt der Bild-Proxy.
   return { total, page, page_size: limit, pages: Math.max(1, Math.ceil(total / limit)),
-    sets: await Promise.all(sets.map(async s => ({ ...s, image_local: await lokalesBild(userId, s.set_number),
-      theme_name: tree.pathName.get(s.theme_id) || null }))) };
+    sets: sets.map(s => ({ ...s, image_local: resolveImageLocal(s.image_local) ?? null,
+      theme_name: tree.pathName.get(s.theme_id) || null })) };
 }
 
 export const katalogGeladen = async () => !(await repo.katalogLeer());
@@ -130,10 +125,9 @@ export async function katalogSet(userId: number, roh: string) {
   // Geprüft wird gegen BrickLink nur hier, auf einer geöffneten Seite.
   let bricklink = await resolveOne(set.set_number);
   if (!bricklink.resolved) bricklink = await resolveViaApi(set.set_number).catch(meldeUndLiefere('katalog:bricklink', bricklink));
-  const sichtbar = await setBildSichtbar(userId, set.set_number);
-  let image_local = sichtbar ? resolveIfExists(`/images/sets/${dateiStamm(set.set_number)}.jpg`) : null;
-  // Jetzt dauerhaft ablegen; die Vorschau macht der Bild-Job.
-  if (sichtbar && !image_local && set.image_url) {
+  let image_local = resolveIfExists(set.image_local ?? `/images/sets/${dateiStamm(set.set_number)}.jpg`);
+  // Jetzt dauerhaft ablegen; die Vorschau und den Eintrag in set_catalog macht der Bild-Job.
+  if (!image_local && set.image_url) {
     image_local = await downloadSetImage(set.image_url, set.set_number).catch(meldeUndLiefere('katalog:downloadSetImage', null));
     if (image_local) nacharbeit().bildVormerken(String(set.image_url || ''), set.set_number);
   }

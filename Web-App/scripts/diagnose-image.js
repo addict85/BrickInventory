@@ -64,7 +64,8 @@ function hole(url) {
 
   // ── 2. Der gemeinsame Katalog ─────────────────────────────────────────────
   const cat = await db.get(
-    `SELECT name, image_url, image_local FROM set_catalog WHERE set_number = $1`, [setNumber]);
+    `SELECT rs.name, c.image_url, c.image_local
+       FROM set_catalog c JOIN rb_sets rs ON rs.set_num = c.set_number WHERE c.set_number = $1`, [setNumber]);
   console.log('\n2. set_catalog (kontoübergreifend):');
   if (!cat) console.log('   ⚠️  Kein Katalogeintrag — dann kann auch der Rückfall nichts liefern.');
   else { zeile('name', cat.name || '∅'); zeile('image_url', cat.image_url || '∅ leer'); zeile('image_local', cat.image_local || '∅ leer'); }

@@ -77,11 +77,16 @@ async function seed() {
   USER.id = (await db.get(`SELECT id FROM users WHERE username = $1`, [USER.username])).id;
 
   // Dieser Aufbau war kaputt, und niemand hat es gemerkt
+  await db.run(`INSERT INTO rb_themes (id, name) SELECT g, 'Theme '||g FROM generate_series(1, 12) g
+                ON CONFLICT (id) DO NOTHING`);
   await db.run(
-    `INSERT INTO set_catalog (set_number, name, year, theme, pieces, minifigs)
-     SELECT (10000+g)||'-1', 'Set '||g, 1990 + (g % 35), 'Theme '||(g%12),
-            100 + (g*7)%8000, g%9
+    `INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts)
+     SELECT (10000+g)||'-1', 'Set '||g, 1990 + (g % 35), 1 + g%12, 100 + (g*7)%8000
        FROM generate_series(1, $1) g
+     ON CONFLICT (set_num) DO NOTHING`, [N_SETS]);
+  await db.run(
+    `INSERT INTO set_catalog (set_number, minifigs)
+     SELECT (10000+g)||'-1', g%9 FROM generate_series(1, $1) g
      ON CONFLICT (set_number) DO NOTHING`, [N_SETS]);
   await db.run(
     `INSERT INTO sets (user_id, set_number)

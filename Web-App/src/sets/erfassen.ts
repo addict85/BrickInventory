@@ -175,7 +175,8 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
     theme: string | null = null,
     pieces: number | null = null,
     minifigs: number | null = null,
-    imageUrl: string | null = null;
+    imageUrl: string | null = null,
+    themeId: number | null = null;
   const rbErgebnis = await versuche('set-service:getSetInfo', getSetInfo(sn));
   const rb = wertOder(rbErgebnis, null);
   if (rb) {
@@ -184,6 +185,7 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
     theme = rb.theme;
     pieces = rb.pieces;
     imageUrl = rb.image_url;
+    themeId = ('theme_id' in rb ? rb.theme_id : null) ?? null;
   }
   if (mitBrickset) {
     const bs = wertOder(await versuche('set-anlegen:brickset-info', brickset.getSetInfo(sn)), null);
@@ -202,8 +204,7 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
   const lokal = wertOder(bild, null);
   if (lokal) void versuche('set-anlegen:vorschau', generateThumb(lokal));
   // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild.
-  await katalogStamm.merkeSetKatalog(sk.db, sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal);
-  if (minifigs) await katalogStamm.setzeFigurenzahl(sk.db, minifigs, sn);
+  await katalogStamm.merkeSetKatalog(sk.db, sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
   return { name, gestoert: !rbErgebnis.ok, bild: !!lokal };
 }
 
@@ -215,7 +216,7 @@ export async function setErgaenzen(
   konto: number,
   sendProgress: Fortschritt | null = null,
 ): Promise<{ name: string | null }> {
-  const stand = await katalogStamm.katalogStand(sn, sk.db);
+  const stand = await katalogStamm.katalogStand(sk.db, sn);
   let name = stand && !stand.platzhalter ? stand.name : null;
   if (!stand || stand.platzhalter || !stand.image_local) {
     const k = await katalogHolen(sk, sn, true, sendProgress);

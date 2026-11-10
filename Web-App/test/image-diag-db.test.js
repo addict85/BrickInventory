@@ -17,7 +17,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { haeltSet } = require('./helpers/bestand');
+const { haeltSet, katalogSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 test('die Bild-Diagnose beschreibt jede Lage im Klartext',
@@ -44,10 +44,9 @@ test('die Bild-Diagnose beschreibt jede Lage im Klartext',
   // Der Bestand sagt nur „dieses Konto haelt das Set"; Name und Bildpfad
   // stehen seit Migration 0033 im Katalog.
   await haeltSet(db, uid, MIT, 1);
-  await db.run(`INSERT INTO set_catalog (set_number, name, image_local) VALUES ($1,'Mit Bild',$2)`,
-               [MIT, `/images/sets/${MIT}.jpg`]);
+  await katalogSet(db, MIT, { name: 'Mit Bild', image_local: `/images/sets/${MIT}.jpg` });
   await haeltSet(db, uid, OHNE, 1);
-  await db.run(`INSERT INTO set_catalog (set_number, name) VALUES ($1,'Ohne alles')`, [OHNE]);
+  await katalogSet(db, OHNE, { name: 'Ohne alles' });
   await new Jimp({ width: 500, height: 400, color: 0x0000ffff }).write(original);
   fs.rmSync(vorschau, { force: true });
 

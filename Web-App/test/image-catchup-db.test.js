@@ -17,7 +17,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
-const { haeltSet } = require('./helpers/bestand');
+const { haeltSet, katalogSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder',
@@ -45,8 +45,7 @@ test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder',
   await haeltSet(db, uid, name, 1);
   // Der Bildpfad steht seit Migration 0033 im Katalog — und genau von dort
   // sammelt der Nachlauf (src/katalog/teileAnreicherung.ts) die Pfade ein.
-  await db.run(`INSERT INTO set_catalog (set_number, name, image_local) VALUES ($1,'Test',$2)`,
-               [name, `/images/sets/${name}.jpg`]);
+  await katalogSet(db, name, { name: 'Test', image_local: `/images/sets/${name}.jpg` });
 
   try {
     const { redownloadMissingImages } = _req('src/katalog/teileAnreicherung.js');

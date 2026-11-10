@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
+const { haeltFigur, haeltSet, haeltTeil, katalogSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const { verwendendeSets } = _req('src/bestand/gemeinsam.js');
 
@@ -42,11 +42,8 @@ test('die Liste der verwendenden Sets folgt dem Blickfeld', async (t) => {
   await haeltSet(db, kind, '21058-1', 1);
   // Der Setname steht seit Migration 0033 im Katalog; die Liste der
   // verwendenden Sets holt ihn mit einem eigenen JOIN darauf.
-  await db.run(`INSERT INTO set_catalog (set_number, name) VALUES
-      ('75192-1','Millennium Falcon'),
-      ('10305-1','Lion Knights Castle'),
-      ('21058-1','Cheops-Pyramide')
-      ON CONFLICT (set_number) DO UPDATE SET name = EXCLUDED.name`);
+  for (const [nr, name] of [['75192-1', 'Millennium Falcon'], ['10305-1', 'Lion Knights Castle'], ['21058-1', 'Cheops-Pyramide']])
+    await katalogSet(db, nr, { name });
 
   // Name, Farbbezeichnung und Ersatzteilkennzeichen stehen seit Migration
   // 0034 in den Katalogen. Der Dialogkopf unten liest sie von dort, und

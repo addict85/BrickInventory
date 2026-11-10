@@ -29,7 +29,7 @@ const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { routerEinhaengungen } = require('./helpers/sources');
-const { haeltSet, haeltTeil, haeltFigur } = require('./helpers/bestand');
+const { haeltSet, haeltTeil, haeltFigur, katalogSet } = require('./helpers/bestand');
 const { apiRouten } = require(path.join(ROOT, 'scripts', 'kotlin-vertrag.js'));
 const { vertragZu } = require('./helpers/vertrag');
 const db = _req('db/database.js');
@@ -95,8 +95,7 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
   // ── Bestand ────────────────────────────────────────────────────────────
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')
                 ON CONFLICT (user_id, key) DO UPDATE SET value = 'EUR'`, [uid]).catch(() => {});
-  await db.run(`INSERT INTO set_catalog (set_number, name, year, theme, pieces, minifigs)
-                VALUES ($1, 'Vertragsprobe', 2024, 'Test', 100, 1) ON CONFLICT (set_number) DO NOTHING`, [SET]);
+  await katalogSet(db, SET, { name: 'Vertragsprobe', year: 2024, theme: 'Test', pieces: 100, minifigs: 1 });
   await db.run(`INSERT INTO set_teile (set_number, part_number, color_id, quantity)
                 VALUES ($1, $2, $3, 4) ON CONFLICT DO NOTHING`, [SET, TEIL, FARBE]);
   await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ($1, 'Stein 2x2') ON CONFLICT DO NOTHING`, [TEIL]);

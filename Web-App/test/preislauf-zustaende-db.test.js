@@ -13,6 +13,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { katalogSet } = require('./helpers/bestand');
 const { dbOderSkip } = require('./helpers/db');
 
 test('Zustände je Set für den Preislauf', { concurrency: 1 }, async t => {
@@ -30,8 +31,7 @@ test('Zustände je Set für den Preislauf', { concurrency: 1 }, async t => {
     await db.pool.end();
   });
   const [GEMISCHT, REIN, GEMERKT, FREMD] = ['91001-1', '91002-1', '91003-1', '91004-1'];
-  for (const sn of [GEMISCHT, REIN, GEMERKT])
-    await db.run(`INSERT INTO set_catalog (set_number, name) VALUES ($1, 'Probe') ON CONFLICT DO NOTHING`, [sn]);
+  for (const sn of [GEMISCHT, REIN, GEMERKT]) await katalogSet(db, sn, { name: 'Probe' });
   const { recordAcquisition } = _req('src/sets/index.js');
   for (const [sn, z] of [
     [GEMISCHT, 'N'],

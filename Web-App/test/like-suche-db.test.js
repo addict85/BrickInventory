@@ -17,7 +17,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
-const { haeltSet, haeltTeil, haeltFigur } = require('./helpers/bestand');
+const { haeltSet, haeltTeil, haeltFigur, katalogSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
@@ -39,8 +39,8 @@ test('Suche mit % und _ findet nur wörtliche Treffer', { concurrency: 1 }, asyn
   await haeltFigur(db, uid, 'figx9', { menge: 1 });
   await db.run(`INSERT INTO rb_sets (set_num, name, year) VALUES ('77701-1', '100% Stein', 2020), ('77702-1', 'Ganz Stein', 2020)
                 ON CONFLICT (set_num) DO NOTHING`);
-  await db.run(`INSERT INTO set_catalog (set_number, name) VALUES ('77701-1', '100% Stein'), ('77702-1', 'Ganz Stein')
-                ON CONFLICT (set_number) DO NOTHING`);
+  await katalogSet(db, '77701-1', { name: '100% Stein' });
+  await katalogSet(db, '77702-1', { name: 'Ganz Stein' });
   await haeltSet(db, uid, '77701-1', 1);
   await haeltSet(db, uid, '77702-1', 1);
 

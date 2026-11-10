@@ -31,6 +31,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { katalogSet } = require('./helpers/bestand');
 const { importWorker } = require('./helpers/auftraege');
 const { dbOderSkip } = require('./helpers/db');
 const { routerEinhaengungen } = require('./helpers/sources');
@@ -129,8 +130,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
 
   // ── Katalog, damit Anlegen ohne Netz geht ──────────────────────────────
   for (const s of [SET, SET2])
-    await db.run(`INSERT INTO set_catalog (set_number, name, year, theme, pieces, minifigs)
-                  VALUES ($1, 'Schreibprobe', 2024, 'Test', 10, 1) ON CONFLICT (set_number) DO NOTHING`, [s]);
+    await katalogSet(db, s, { name: 'Schreibprobe', year: 2024, theme: 'Test', pieces: 10, minifigs: 1 });
   await db.run(`INSERT INTO part_catalog (part_number, part_name, category_name) VALUES ($1, 'Stein 2x2', 'Steine')
                 ON CONFLICT DO NOTHING`, [TEIL]);
   for (const [f, n] of [[FARBE, 'Rot'], [FARBE2, 'Blau']])
