@@ -9,7 +9,7 @@ import type { DbSchnittstelle } from './typen';
 import fs from 'node:fs';
 import path from 'node:path';
 import { LOCKS } from '../src/infra/lockNamespaces';
-import { fehlerCode, meldeFehler, logAndContinue } from '../src/infra/fehler';
+import { fehlerCode, meldeFehler, logAndContinue, setzeTransaktionsWaechter } from '../src/infra/fehler';
 import { konfig, datenbankVerbindung } from '../src/infra/konfig';
 
 // Alle Abhängigkeiten stehen hier oben: Ein require() im Rumpf versteckt sie
@@ -148,9 +148,19 @@ async function innereTransaktion<T>(client: PoolClient, fn: (tx: DbSchnittstelle
     return r;
   } catch (e) {
     await client.query(`ROLLBACK TO SAVEPOINT ${name}`);
+    if (e !== null && typeof e === 'object') vomSicherungspunktAufgefangen.add(e);
     throw e;
   }
 }
+
+/** Nach ROLLBACK TO SAVEPOINT ist die Transaktion wieder benutzbar: Wer diesen
+ * Fehler auffängt und einen Ersatz liefert, verdeckt nichts. */
+const vomSicherungspunktAufgefangen = new WeakSet<object>();
+setzeTransaktionsWaechter({
+  verdirbt: (e) => laufendeTx.getStore()?.offen === true
+    && !(e !== null && typeof e === 'object' && vomSicherungspunktAufgefangen.has(e)),
+  streng: () => konfig().nodeEnv === 'test',
+});
 
 // SQL geht unverändert an PostgreSQL. Ausführlich: docs/begruendungen/db/database.ts.md#sql-unuebersetzt
 

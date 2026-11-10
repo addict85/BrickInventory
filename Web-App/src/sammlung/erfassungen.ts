@@ -55,12 +55,13 @@ async function besitzerDerZeile(art: ErfassungsArt, id: number, fallback: number
   return await repo.kontoDerErfassung(art, id) ?? fallback;
 }
 
-/** 0 heisst „leer", null „keine Zeile". */
-function mengeDesBestands(tx: DbSchnittstelle, art: ErfassungsArt, ownerId: number, keys: Schluessel) {
-  return art === 'set'
-    ? mengeDesSets(ownerId, String(keys[0]), tx).catch(meldeUndLiefere('erfassungen:mengeDesSets', null))
-    : mengeDerPosition(art, ownerId, keys, tx).catch(meldeUndLiefere('erfassungen:mengeDerPosition', null));
+/** 0 heisst „leer", null „keine Zeile"; beides räumt auf. Ein Lesefehler ist
+ * keins von beiden und geht weiter: In der Transaktion ist danach jeder Befehl
+ * verloren (25P02), ein Ersatz hätte die Ursache verdeckt. */
+function mengeDesBestands(tx: DbSchnittstelle, art: ErfassungsArt, ownerId: number, keys: Schluessel): Promise<number | null> {
+  return art === 'set' ? mengeDesSets(ownerId, String(keys[0]), tx) : mengeDerPosition(art, ownerId, keys, tx);
 }
+const leer = (q: number | null) => q === null || q <= 0;
 
 /** Schreib-Blickfeld: Ein Unterkonto darf nicht rückwärts schreiben. */
 async function zeileImSchreibfeld(tx: DbSchnittstelle, art: ErfassungsArt, wids: number[], id: number, keys: Schluessel): Promise<Zeile> {
@@ -133,7 +134,7 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
     if (quantity !== undefined && quantity !== null) {
       await repo.setzeErfassungsMenge(tx, art, id, bestandsMenge(quantity, 1), wids);
       const q = await mengeDesBestands(tx, art, ownerId, keys);
-      if ((q ?? 0) <= 0) await a.cleanupWhenEmpty(tx, ownerId, keys);
+      if (leer(q)) await a.cleanupWhenEmpty(tx, ownerId, keys);
     }
     if (rawPrice !== undefined)
       await repo.setzeErfassungsPreis(tx, art, id, priceVal, zielGeschaetzt, wids);
@@ -154,7 +155,7 @@ export async function erfassungLoeschen(art: ErfassungsArt, uid: number, id: num
     const ownerId = Number(acq.user_id);
     await repo.loescheErfassung(tx, art, id, ownerId);
     const q = await mengeDesBestands(tx, art, ownerId, keys);
-    if ((q ?? 0) <= 0) await a.cleanupWhenEmpty(tx, ownerId, keys);
+    if (leer(q)) await a.cleanupWhenEmpty(tx, ownerId, keys);
     return q;
   });
   return antwort(art, uid, keys, { success: true, new_quantity: menge ?? 0 });
