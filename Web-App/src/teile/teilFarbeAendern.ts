@@ -54,8 +54,7 @@ export async function aendereTeilFarbe(
 
   // rb_colors zuerst, weil der Katalog für alle Konten gilt; die Angaben des
   // Aufrufers füllen nur, was dort fehlt.
-  const katalogFarbe = await repo.rbFarbe(neu)
-    .catch(meldeUndLiefere('teilfarbe:katalogFarbe', null));
+  const katalogFarbe = await repo.rbFarbe(neu);
 
   const wechsel = await db.transaction(async (tx: DbSchnittstelle): Promise<Omit<FarbWechsel, 'bild'>> => {
     const quelle = await repo.manuelleTeilzeileSperren(tx, uid, partNumber, alt);

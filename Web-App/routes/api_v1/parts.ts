@@ -15,6 +15,7 @@ import { normalisiereLagerort, setzeLagerort } from '../../src/bestand/lagerort'
 import { loescheTeil } from '../../src/sammlung/loeschen';
 import { vertragsRouter } from '../../src/vertrag/pruefen';
 import { seiteAus } from '../../src/infra/seite';
+import { Abstriche } from '../../src/infra/ergebnis';
 import type { Anfrage, Antwort } from '../../src/vertrag';
 const router = vertragsRouter();
 
@@ -107,10 +108,11 @@ router.put('/parts/:partNumber/:colorId/storage', requireToken, async (req: Anfr
 });
 
 router.get('/parts/manual', requireToken, async (req: Anfrage<'GET /api/v1/parts/manual'>, res: Antwort<'GET /api/v1/parts/manual'>) => {
+  const ab = new Abstriche();
   const alle = await getManualParts(sichtVon(req), req.apiUser.user_id,
-    { search: req.abfrage.search ?? '', storage: req.abfrage.storage ?? '' });
+    { search: req.abfrage.search ?? '', storage: req.abfrage.storage ?? '' }, ab);
   const { eintraege: parts, ...seite } = seiteAus(alle, req.abfrage);
-  res.json({ success: true, parts, ...seite });
+  res.json({ success: true, parts, ...seite, ...ab.angabe() });
 });
 
 router.get('/parts/colors', requireToken, async (req: Anfrage<'GET /api/v1/parts/colors'>, res: Antwort<'GET /api/v1/parts/colors'>) => {

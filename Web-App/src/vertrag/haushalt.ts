@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { KontoName, type Route, bestaetigt, OHNE_RUMPF, KENNUNG } from './grund';
-import { GenericResponse } from './gemeinsam';
+import { DEGRADIERT, GenericResponse } from './gemeinsam';
 
 export const GetrenntesKonto = z.looseObject({
   id: z.number().int(),
@@ -42,6 +42,7 @@ export const HouseholdStatusResponse = z.looseObject({
   open_invites: z.number().int(),
   former_links: z.array(GetrenntesKonto),
   error: z.string().nullable().optional(),
+  degradiert: DEGRADIERT,
 });
 
 export const routen = {

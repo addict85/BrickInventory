@@ -229,6 +229,7 @@ CREATE TABLE idempotenz (
   status integer,
   antwort text,
   angelegt timestamp with time zone NOT NULL DEFAULT now(),
+  wirkung boolean NOT NULL DEFAULT false,
   CONSTRAINT idempotenz_pkey PRIMARY KEY (user_id, schluessel),
   CONSTRAINT idempotenz_schluessel_check CHECK (((length(schluessel) >= 1) AND (length(schluessel) <= 100))),
   CONSTRAINT idempotenz_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

@@ -1,6 +1,7 @@
 import * as db from '../../db/database';
+import type { DbSchnittstelle } from '../../db/database';
 
-export type Eintrag = { anfrage: string; status: number | null; antwort: string | null };
+export type Eintrag = { anfrage: string; status: number | null; antwort: string | null; wirkung: boolean; verwaist: boolean };
 
 /** Ein Eintrag, dessen erste Anfrage nach `verwaistNachS` nicht fertig ist,
  * wird neu belegt. @returns ob belegt wurde */
@@ -8,13 +9,24 @@ export async function belege(uid: number, schluessel: string, anfrage: string, v
   return !!await db.get(
     `INSERT INTO idempotenz (user_id, schluessel, anfrage) VALUES ($1, $2, $3)
      ON CONFLICT (user_id, schluessel) DO UPDATE SET anfrage = EXCLUDED.anfrage, angelegt = NOW()
-       WHERE idempotenz.status IS NULL AND idempotenz.angelegt < NOW() - make_interval(secs => $4)
+       WHERE idempotenz.status IS NULL AND NOT idempotenz.wirkung
+         AND idempotenz.angelegt < NOW() - make_interval(secs => $4)
      RETURNING 1 AS ok`, [uid, schluessel, anfrage, verwaistNachS]);
 }
 
-export function eintrag(uid: number, schluessel: string) {
-  return db.get<Eintrag>('SELECT anfrage, status, antwort FROM idempotenz WHERE user_id = $1 AND schluessel = $2',
-    [uid, schluessel]);
+export function eintrag(uid: number, schluessel: string, verwaistNachS: number) {
+  return db.get<Eintrag>(
+    `SELECT anfrage, status, antwort, wirkung, angelegt < NOW() - make_interval(secs => $3) AS verwaist
+       FROM idempotenz WHERE user_id = $1 AND schluessel = $2`,
+    [uid, schluessel, verwaistNachS]);
+}
+
+/** Jede Transaktion in `arbeit` vermerkt vor ihrem COMMIT, in ihr, die Wirkung am Schlüssel. */
+export function mitWirkungsVermerk<T>(uid: number, schluessel: string, arbeit: () => T): T {
+  return db.mitCommitBegleiter(async (tx: DbSchnittstelle) => {
+    await tx.run('UPDATE idempotenz SET wirkung = true WHERE user_id = $1 AND schluessel = $2 AND status IS NULL AND NOT wirkung',
+      [uid, schluessel]);
+  }, arbeit);
 }
 
 export async function schliesseAb(uid: number, schluessel: string, status: number, antwort: string | null): Promise<void> {
@@ -22,9 +34,13 @@ export async function schliesseAb(uid: number, schluessel: string, status: numbe
     [uid, schluessel, status, antwort]);
 }
 
-/** Eine fertige Antwort bleibt bis zum Ablauf der Frist. */
-export async function loescheLaufenden(uid: number, schluessel: string): Promise<void> {
-  await db.run('DELETE FROM idempotenz WHERE user_id = $1 AND schluessel = $2 AND status IS NULL', [uid, schluessel]);
+/** Eine fertige Antwort bleibt bis zum Ablauf der Frist; ein Eintrag mit Wirkung
+ * wird ohne Antwort abgeschlossen, statt eine zweite zuzulassen. */
+export async function loescheLaufenden(uid: number, schluessel: string, status: number): Promise<void> {
+  await db.run(
+    `WITH weg AS (DELETE FROM idempotenz WHERE user_id = $1 AND schluessel = $2 AND status IS NULL AND NOT wirkung)
+     UPDATE idempotenz SET status = $3, antwort = NULL WHERE user_id = $1 AND schluessel = $2 AND status IS NULL AND wirkung`,
+    [uid, schluessel, status]);
 }
 
 export async function loescheAndereAbdruecke(praefix: string): Promise<number> {

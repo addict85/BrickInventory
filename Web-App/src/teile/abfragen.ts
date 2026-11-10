@@ -9,7 +9,8 @@ import type { RbSetTeil } from '../katalog/quellen';
 import { getRbKey, httpsGetRobust } from '../katalog/quellen';
 import { getAllSetParts } from '../katalog/rebrickableKatalog';
 import { clampPageSize, applyManualCondition, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand/gemeinsam';
-import { meldeFehler, logAndContinue, meldeUndLiefere } from '../infra/fehler';
+import { meldeFehler, logAndContinue } from '../infra/fehler';
+import { Abstriche } from '../infra/ergebnis';
 import { farbkarte as blFarbkarte } from '../finanzen/financeCalc';
 import { getGlobalSetting } from '../einstellungen/settings';
 import { neuestesInventar } from '../katalog/rbInventar';
@@ -46,16 +47,16 @@ function teileFilter(query: Record<string, unknown>): repo.TeileFilter {
 
 // Erst der lokale CSV-Katalog (kostenlos), dann die Rebrickable-API (Kontingent).
 // Ausführlich: docs/begruendungen/src/teile/abfragen.ts.md#teileersatzquelle
-async function teileErsatzquelle(set_number: string) {
+async function teileErsatzquelle(set_number: string, ab: Abstriche) {
     // Rebrickable kennt manche Sets nur ohne Versionsanhang.
     const n = mitVersion(set_number), alt = ohneVersion(n);
-    const invId = await neuestesInventar(set_number).catch(meldeUndLiefere('teile:neuestesInventar', null));
+    const invId = await ab.oder('katalog_inventar', neuestesInventar(set_number), null);
     if (invId) {
       const csvParts = await repo.inventarAlsTeile(invId, set_number);
       if (csvParts.length > 0)
         // page_size gehört in jeden Rückgabeweg: Der Client entscheidet daran, ob er
         // weiterblättert. Hier kommt alles, also ist es die Zeilenzahl.
-        return { parts: csvParts, total: csvParts.length, source: 'csv_cache', page_size: csvParts.length };
+        return { parts: csvParts, total: csvParts.length, source: 'csv_cache', page_size: csvParts.length, ...ab.angabe() };
     }
 
     // Rückfall über getAllSetParts(), nur mit Rebrickable-Schlüssel.
@@ -63,7 +64,7 @@ async function teileErsatzquelle(set_number: string) {
     const rbKey = await getGlobalSetting('rebrickable_api_key');
     if (rbKey) {
       for (const sn of [n, alt]) {
-        const items = await getAllSetParts(sn).catch(meldeUndLiefere('teile:getAllSetParts', []));
+        const items = await ab.oder('rebrickable_teile', getAllSetParts(sn), []);
         if (!items?.length) continue;
         const rbParts = items
           .filter((it: RbSetTeil) => !it.is_spare)
@@ -83,7 +84,7 @@ async function teileErsatzquelle(set_number: string) {
             in_sets:        set_number,
           }))
           .filter((p: { part_number?: string | null }) => p.part_number);
-        if (rbParts.length) return { parts: rbParts, total: rbParts.length, source: 'rebrickable', page_size: rbParts.length };
+        if (rbParts.length) return { parts: rbParts, total: rbParts.length, source: 'rebrickable', page_size: rbParts.length, ...ab.angabe() };
       }
     }
 
@@ -152,11 +153,13 @@ export async function getParts(userIdWahl: Sicht | Blickfeld, query: Record<stri
     } catch (e) { meldeFehler('teile:bl-nummern-nachladen', e); }
   });
 
+  // Eine leere Liste nach einem Fehler der Ersatzquelle ist nicht „das Set hat keine Teile“.
+  const ab = new Abstriche();
   if (!parts.length && query.set_number) {
-    const ersatz = await teileErsatzquelle(String(query.set_number));
+    const ersatz = await teileErsatzquelle(String(query.set_number), ab);
     if (ersatz) return ersatz;
   }
-  return { parts, total, source: 'db', page_size: groesse };
+  return { parts, total, source: 'db', page_size: groesse, ...ab.angabe() };
 }
 
 /** Die Kategorie aus dem eigenen Katalog, sonst aus rb_parts: Rebrickables
@@ -187,15 +190,17 @@ export async function getBlColorMap() {
     for (const [id, blId] of karte) map[id] = blId;
     return { map, source: 'db' };
   }
-  const key = await getRbKey().catch(meldeUndLiefere('teile:getRbKey', null));
+  const key = await getRbKey();
   if (!key) return { map: {}, source: 'empty' };
+  // Bricht der Abruf ab, ist die Tabelle unvollständig; das sagt `degradiert`.
+  const ab = new Abstriche();
   // Ohne Typ wäre `{}` für TypeScript leer und `map[c.id] = …` ein Fehler.
   let page = 1, map: Record<string, any> = {}, hasNext = true;
   while (hasNext) {
-    const { status, body } = await httpsGetRobust(
+    const { status, body } = await ab.oder('rebrickable_farben', httpsGetRobust(
       `https://rebrickable.com/api/v3/lego/colors/?page_size=200&page=${page}`,
       { Authorization: `key ${key}` }, 15000
-    ).catch(meldeUndLiefere('teile:abruf', { status: 0, body: '' }));
+    ), { status: 0, body: '' });
     if (status !== 200) break;
     const data = JSON.parse(body);
     for (const c of (data.results || [])) {
@@ -208,7 +213,7 @@ export async function getBlColorMap() {
     hasNext = !!data.next;
     page++;
   }
-  return { map, source: 'api' };
+  return { map, source: 'api', ...ab.angabe() };
 }
 
 /** @param viewerId Wessen EINSTELLUNGEN gelten (Währung) — getrennt von
@@ -216,16 +221,17 @@ export async function getBlColorMap() {
  * @param search  Suchtext der Filterleiste; er wirkt auf beide Listen. */
 export async function getManualParts(userIdWahl: Sicht | Blickfeld, viewerId: number,
   { page = 1, page_size = null, search = null, storage = null }:
-    { page?: unknown; page_size?: unknown; search?: string | null; storage?: string | null } = {}) {
+    { page?: unknown; page_size?: unknown; search?: string | null; storage?: string | null } = {},
+  ab = new Abstriche()) {
   const userId = await blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const groesse = page_size ? clampPageSize(page_size, 60) : null;
   const seite = groesse ? { groesse, versatz: (Math.max(1, parseInt(String(page)) || 1) - 1) * groesse } : null;
   const rows = await repo.manuelleTeile(uids, { search, storage }, seite);
   const mitZustand = await applyManualCondition(uids, rows, 'part');
-  // Eine Abfrage für die ganze Liste; die App liest `avg_price` im Detail.
-  const preise: Map<string, number> = await marktpreiseAusCacheFuerTeile(mitZustand, viewerId)
-    .catch(meldeUndLiefere('teile:marktpreise', new Map<string, number>()));
+  // Eine Abfrage für die ganze Liste; die App liest `avg_price` im Detail. Ohne
+  // Preise bleibt die Liste brauchbar; `ab` sammelt für `degradiert`, warum sie fehlen.
+  const preise = await ab.oder('marktpreise', marktpreiseAusCacheFuerTeile(mitZustand, viewerId), new Map<string, number>());
   const mitPreis = mitZustand.map(t => ({ ...t, avg_price: preise.get(`${t.part_number}|${t.color_id}`) ?? null }));
   return withOwners(uids, mitPreis);
 }

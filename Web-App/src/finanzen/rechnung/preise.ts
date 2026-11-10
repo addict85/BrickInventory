@@ -34,8 +34,7 @@ export async function resolveSetCondition(
 ): Promise<'N' | 'U'> {
   // Blickfeld statt nackter ID: Das Set gehört oft einem Unterkonto. `dbh`:
   // Wer in einer Transaktion fragt, liest auch darin (priceForNewAcquisition).
-  const row = await repo.setZustandsZaehler(asIds(uid), setNumber, dbh)
-    .catch(meldeUndLiefere('preise:row', null));
+  const row = await repo.setZustandsZaehler(asIds(uid), setNumber, dbh);
   return effectiveCondition(row);
 }
 

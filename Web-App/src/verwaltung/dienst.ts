@@ -437,8 +437,7 @@ export async function preisProbe(uid: number, setNumber: string, live: boolean) 
 export async function katalogBilderEinreihen(alleErneut: boolean) {
     const zuVergessen = await (alleErneut
       ? verwaltung.setFehlanzeigen()
-      : verwaltung.setFehlanzeigenOhne404()
-    ).catch(meldeUndLiefere('verwaltung:zuVergessen', []));
+      : verwaltung.setFehlanzeigenOhne404());
     const verworfen = zuVergessen.length
       ? await vergissFehlend(zuVergessen.map(r => r.cache_key))
       : 0;

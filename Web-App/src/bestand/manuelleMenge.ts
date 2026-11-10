@@ -4,7 +4,7 @@
 import { withInventoryLock, bestandsSchluessel } from '../../db/txLock';
 import { bestandsMenge } from '../infra/validate';
 import { fachfehler } from '../infra/fehlerTexte';
-import { meldeUndLiefere } from '../infra/fehler';
+import { Abstriche } from '../infra/ergebnis';
 import { recordAcquisitionForDay } from './acquisitions';
 import * as repo from './repository/manuelleMengen';
 import type { ManuelleArt } from './repository/manuelleMengen';
@@ -33,10 +33,10 @@ const ziel = (w: Mengenwunsch, bisher: number) =>
  * @returns die Menge danach */
 export async function passeManuelleMengeAn(art: ManuelleArt, uid: number, schluessel: (string | number)[],
                                             wunsch: Mengenwunsch, zustand: string,
-                                            marktpreis: () => Promise<number | null>): Promise<number> {
+                                            marktpreis: () => Promise<number | null>, ab = new Abstriche()): Promise<number> {
   const vorab = await repo.summeDerErfassungen(art, uid, schluessel);
   const mp = ziel(wunsch, vorab) > vorab
-    ? await marktpreis().catch(meldeUndLiefere(`manuelle-menge:marktpreis ${art}`, null)) : null;
+    ? await ab.oder('kaufpreis', marktpreis, null) : null;
   return withInventoryLock(uid, bestandsSchluessel(art, schluessel), async (tx) => {
     const erfassungen = await repo.erfassungenNeuesteZuerst(tx, art, uid, schluessel);
     const bisher = erfassungen.reduce((s, r) => s + r.quantity, 0);

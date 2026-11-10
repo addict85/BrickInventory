@@ -1,5 +1,5 @@
 /** Unterscheidet „fehlgeschlagen“ von „leer“: Ein Ersatzwert nach einem Fehler sah aus wie eine leere Antwort. */
-import { fehlertext, meldeFehler } from './fehler';
+import { fehlertext, meldeFehler, pruefeErsatzInTransaktion } from './fehler';
 
 export interface Fehlschlag {
   kontext: string;
@@ -16,6 +16,7 @@ export async function versuche<T>(kontext: string, arbeit: Promise<T> | (() => P
   try {
     return gelungen(await (typeof arbeit === 'function' ? arbeit() : arbeit));
   } catch (e) {
+    pruefeErsatzInTransaktion(kontext, e);
     meldeFehler(kontext, e);
     return gescheitert({ kontext, grund: fehlertext(e) || 'Unbekannter Fehler' });
   }

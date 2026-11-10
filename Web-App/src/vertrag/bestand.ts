@@ -3,7 +3,7 @@ import { eingabe } from '../infra/validate';
 import { type Route, zeit, Erfolg, ganz, bestaetigt, OHNE_RUMPF, KENNUNG, TEXT, ZUSTAND, abfrage, Q } from './grund';
 /** Ein Konto oder mehrere, durch Komma getrennt (Lagerorte über den Haushalt). */
 const LAGER_KONTEN = z.string().regex(/^[0-9,]{0,200}$/);
-import { GenericResponse } from './gemeinsam';
+import { DEGRADIERT, GenericResponse } from './gemeinsam';
 
 export const Acquisition = z.looseObject({
   id: z.number().int(),
@@ -34,6 +34,7 @@ export const AcquisitionsResponse = z.looseObject({
   owner_user_id: z.number().int().optional(),
   acquisitions: z.array(Acquisition),
   totals: AcquisitionTotals,
+  degradiert: DEGRADIERT,
 });
 
 export const DeleteWithQuantityResponse = z.looseObject({

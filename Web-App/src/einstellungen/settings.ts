@@ -2,7 +2,6 @@
 import * as repo from './repository';
 import { verschluessele, entschluessele, umschluesseln, kontext } from '../infra/geheimnis';
 import { fachfehler, dateiFehler } from '../infra/fehlerTexte';
-import { meldeUndLiefere } from '../infra/fehler';
 import { GLOBALE_REGELN, DESIGNS, type GlobalerSchluessel } from '../vertrag/globaleRegeln';
 
 /** Gespeichert ist Text; mit Vorgabe ist das Ergebnis Text oder die Vorgabe, nie `any`. */
@@ -24,9 +23,10 @@ const globalerKontext = (key: string) => kontext('global_settings.value', key);
 
 export async function getGlobalSetting(key: string): Promise<string | null>;
 export async function getGlobalSetting<T>(key: string, fallback: T): Promise<string | T>;
+// Die Vorgabe gilt für „nicht gesetzt“, nicht für „nicht lesbar“: Sonst
+// sähe ein Datenbankfehler aus wie ein fehlender Schlüssel oder eine Grundeinstellung.
 export async function getGlobalSetting(key: string, fallback: unknown = null): Promise<unknown> {
-  const g = await repo.globalerWert(key).catch(meldeUndLiefere(`einstellungen:${key}`, null));
-  return klar(key, g) ?? fallback;
+  return klar(key, await repo.globalerWert(key)) ?? fallback;
 }
 
 // Was ein Konto selbst setzen darf: Die Werte landen in Seiten, PDFs und
@@ -58,7 +58,7 @@ export function nutzerWertGueltig(key: string, value: string): boolean {
 /** Eigener Wert → globaler Standard → 'N'; eine Stelle statt drei Fassungen.
  * Ausführlich: docs/begruendungen/src/einstellungen/settings.ts.md#nutzerstandardzustand */
 export async function nutzerStandardZustand(userId: number): Promise<'N' | 'U'> {
-  const eigen = await repo.nutzerWert(userId, 'user_default_condition').catch(meldeUndLiefere('einstellungen:zustand', null));
+  const eigen = await repo.nutzerWert(userId, 'user_default_condition');
   if (eigen === 'N' || eigen === 'U') return eigen;
   return globalDefaultCondition();
 }
@@ -73,11 +73,11 @@ export async function zustandFuerPreis(
 ): Promise<string> {
   if (eingabe === 'N' || eingabe === 'U') return eingabe;
   if (bisher) return bisher;
-  return await nutzerStandardZustand(userId).catch(meldeUndLiefere('einstellungen:standardzustand', 'N'));
+  return nutzerStandardZustand(userId);
 }
 
 export async function globalDefaultCondition(): Promise<'N' | 'U'> {
-  const g = await repo.globalerWert('default_price_condition').catch(meldeUndLiefere('einstellungen:standardzustand', null));
+  const g = await repo.globalerWert('default_price_condition');
   return g === 'U' ? 'U' : 'N';
 }
 
@@ -103,7 +103,7 @@ export async function setGlobalSetting(key: string, value: unknown) {
   for (const fn of _beiGlobalerAenderung) fn();
 }
 
-/** Offen nur bei genau '1'; fehlt die Zeile oder ist sie unlesbar, bleibt sie zu. */
+/** Offen nur bei genau '1'; fehlt die Zeile, bleibt sie zu. */
 export async function registrierungOffen(): Promise<boolean> {
   return await getGlobalSetting('registration_enabled') === '1';
 }

@@ -1,7 +1,7 @@
 /** Asynchron: Die Route stellt nur einen Auftrag ein; Bilder holt und zeichnet
  * der Job-Prozess in einem eigenen Faden, damit der Web-Prozess frei bleibt.
  * Ausführlich: docs/begruendungen/routes/api_v1/pdf.ts.md#abschnitt */
-import { meldeFehler, meldeUndLiefere, ohneFehlendeDatei } from '../../src/infra/fehler';
+import { meldeFehler, ohneFehlendeDatei } from '../../src/infra/fehler';
 import { fehlerAntwort, streamFileToResponse } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke } from './middleware';
 import { registerSse } from '../../src/http/sseRegistry';
@@ -19,7 +19,8 @@ type PdfJobStatus = { status?: string | undefined; error?: string | null; etaSec
 const validJobId = gueltigeAuftragsKennung;
 
 async function pdfJobRead(id: string) {
-  return liesAuftrag(id).catch(meldeUndLiefere('pdf:auftrag-lesen', null));
+  // Ein Lesefehler ist kein unbekannter Auftrag (404): Er geht weiter.
+  return liesAuftrag(id);
 }
 
 /** Der einzige Weg, auf dem die drei Abrufrouten an einen Auftrag kommen —

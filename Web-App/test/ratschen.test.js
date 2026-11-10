@@ -84,18 +84,24 @@ test('stille Faenge werden weniger, nie mehr', () => {
 });
 
 test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', () => {
-  // Ein Ersatzwert nach einem Fehler sieht für den Aufrufer aus wie „leer“; src/infra/ergebnis.ts
-  // gibt den Fehlschlag weiter. Gemessen 349 Aufrufe am 09.11.2026, 318 nach dem Umbau von src/sets,
-  // 279 mit `degradiert` (Abstriche) und Aufträgen, die sichtbar scheitern statt leer weiterzulaufen.
-  // Gegenprobe (09.11.2026): in src/sets/erfassen.ts wieder `.catch(meldeUndLiefere(…))` → rot (280).
-  const SCHRANKE = 279;
-  const muster = /\b(?:logAndContinue|meldeUndLiefere)\(/g;
-  const ist = zaehle([muster]);
-  assert.ok(ist <= SCHRANKE, `${ist}-mal logAndContinue/meldeUndLiefere, erlaubt sind ${SCHRANKE}`);
+  // Getrennt gezählt: logAndContinue ist Fire-and-forget (Protokoll, Zähler,
+  // Benachrichtigung) und liefert nichts; meldeUndLiefere gibt dem Aufrufer einen
+  // Ersatzwert, der wie „leer“ aussieht. Lesepfade nehmen versuche()/Abstriche
+  // (src/infra/ergebnis.ts) oder lassen den Fehler weiter.
+  // Gegenprobe (10.11.2026): in src/teile/abfragen.ts wieder
+  // `.catch(meldeUndLiefere('x', []))` → rot (83 Ersatzwerte, Schranke 82).
+  const SCHRANKEN = { logAndContinue: 145, meldeUndLiefere: 82 };
+  for (const [name, schranke] of Object.entries(SCHRANKEN)) {
+    const ist = zaehle([new RegExp(`\\b${name}\\(`, 'g')]);
+    assert.ok(ist > 20, `nur ${ist}-mal ${name} gefunden — greift die Suche noch?`);
+    assert.ok(ist <= schranke, `${ist}-mal ${name}, erlaubt sind ${schranke}`);
+    if (ist < schranke) console.log(`  ℹ ${name}: ${ist} (Schranke ${schranke}) — Schranke nachziehen`);
+  }
+  const muster = /\b(?:logAndContinue|meldeUndLiefere)\(/;
   const sets = quellen().filter(f => /[\\/]src[\\/]sets[\\/]/.test(f));
   assert.ok(sets.length > 10, 'src/sets nicht gefunden');
-  assert.deepEqual(sets.filter(f => new RegExp(muster.source).test(require('./helpers/sources').ohneKommentare(fs.readFileSync(f, 'utf8')))).map(f => path.relative(WEB, f)), []);
-  if (ist < SCHRANKE) console.log(`  ℹ logAndContinue/meldeUndLiefere: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+  const ohneKommentare = require('./helpers/sources').ohneKommentare;
+  assert.deepEqual(sets.filter(f => muster.test(ohneKommentare(fs.readFileSync(f, 'utf8')))).map(f => path.relative(WEB, f)), []);
 });
 
 function nimmtProzesszugang(f) {
