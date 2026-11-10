@@ -60,6 +60,8 @@ import ch.brickinventoryapp.testing.Quellen
  *      rot „core-ui/ui/screens enthält nur die Kamera-Bausteine“ (Schichtung …)
  *   O  gegenproben/fremder-paketstamm.patch: feature-teile bekommt eine Datei im Paket
  *      ch.brickinventoryapp.sammlung → rot „außerhalb des Paketstamms ihres Moduls“
+ *   V  gegenproben/daten-reicht-netz-weiter.patch: core-data bindet core-netz per api ein →
+ *      rot „Modulkanten per api nur zu core-model: [core-data → core-netz]“ (Schichtung …)
  */
 class ModulgrenzenTest {
 
@@ -153,8 +155,8 @@ class ModulgrenzenTest {
             // auf dem sich Bereiche doch kennen.
             "core-ui-bestand" to setOf("core-model", "core-ressourcen", "core-ui"),
             // Der Zustand liegt unter der Oberfläche: Bildschirme lesen ihn, er kennt kein Compose-Bauteil.
-            "core-zustand" to setOf("core-model", "core-ressourcen", "core-data", "core-sicherheit", "core-dienste"),
-            "core-testing" to setOf("core-zustand", "core-data", "core-sicherheit", "core-ui"),
+            "core-zustand" to setOf("core-model", "core-ressourcen", "core-netz", "core-data", "core-sicherheit", "core-dienste"),
+            "core-testing" to setOf("core-zustand", "core-data", "core-sicherheit", "core-offline"),
         )
         val kerne = module().filterKeys { it.startsWith("core-") }
         assertEquals("jedes Kernmodul hat eine Regel", erlaubt.keys, kerne.keys)
@@ -167,6 +169,11 @@ class ModulgrenzenTest {
             val haupt = hauptAbhaengigkeiten(bau)
             if (name != "core-testing") assertTrue("$name bindet core-testing nicht nur für Tests ein", "core-testing" !in haupt)
         }
+        // api reicht ein Modul an jeden weiter, der dieses kennt; nur die Modelle sind gemeinsame Sprache.
+        val weitergereicht = module().flatMap { (name, bau) ->
+            abhaengigkeiten(bau).filter { it.konfiguration == "api" && it.ziel != "core-model" }.map { "$name → ${it.ziel}" }
+        }
+        assertTrue("Modulkanten per api nur zu core-model: $weitergereicht", weitergereicht.isEmpty())
         // core-netz ist die untere Netz-Schicht: Ablage, Repositories und Hilt bleiben in core-data.
         val netz = kerne.getValue("core-netz")
         val bibliotheken = Regex("""\(libs\.([\w.]+)\)""").findAll(netz).map { it.groupValues[1] }.toList()

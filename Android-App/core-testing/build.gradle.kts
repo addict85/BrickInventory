@@ -9,11 +9,12 @@ android {
 }
 
 dependencies {
-    api(project(":core-zustand"))
-    // Testserver und Testdienste zeigen Typen aus beiden nach aussen.
-    api(project(":core-data"))
-    api(project(":core-sicherheit"))
-    api(project(":core-ui"))
+    // Nur implementation: Ein Test nennt die Module, deren Typen er selbst benutzt.
+    implementation(project(":core-zustand"))
+    implementation(project(":core-data"))
+    implementation(project(":core-sicherheit"))
+    // Testablage: Listen und Ausgang im Speicher.
+    implementation(project(":core-offline"))
     api(libs.bundles.unit.tests)
     api(libs.retrofit)
     api(libs.retrofit.kotlinx.serialization)

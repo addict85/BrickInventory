@@ -22,13 +22,14 @@ android {
 
 dependencies {
     api(project(":core-model"))
-    // Wächter und Netzrichtlinie: api, weil die Bereiche sie über core-data erreichen
-    // (NetworkPolicy, Zugangslage) und kein Bereich eine eigene Kante dorthin bekommt.
-    api(project(":core-netz"))
+    // Wächter und Netzrichtlinie. Wer selbst etwas daraus nennt (NetworkPolicy, Protokoll),
+    // bindet core-netz selbst ein; über core-data reicht nichts davon hinaus.
+    implementation(project(":core-netz"))
     // Tresor, Ablageschlüssel und TLS-Vertrauen; die Bereiche, die davon etwas zeigen, nennen es selbst.
     implementation(project(":core-sicherheit"))
-    // api: Die Repositories liefern lokale Listen (Lokal, Offlineablage); wer sie liest, braucht die Typen.
-    api(project(":core-offline"))
+    // Room und Offlineablage nur innen: Die Repositories liefern Lokal aus core-model,
+    // den Ausgang sieht die Oberfläche über Ausgangslage.
+    implementation(project(":core-offline"))
     implementation(project(":core-ressourcen"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
@@ -50,6 +51,8 @@ dependencies {
     implementation(libs.androidx.appcompat)
 
     testImplementation(project(":core-testing"))
+    // AbmeldenRaeumtAllesTest prüft das Abmelden samt Sitzung und Blickfeld.
+    testImplementation(project(":core-zustand"))
     // Robolectric-Tests (BestandDatenbankTest, Ablagen, Netz-Clients).
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)

@@ -12,6 +12,8 @@ android {
 dependencies {
     implementation(project(":core-model"))
     implementation(project(":core-data"))
+    // otpauthAdresse.
+    implementation(project(":core-netz"))
     implementation(project(":core-sicherheit"))
     implementation(project(":core-update"))
     implementation(project(":core-ui"))

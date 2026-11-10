@@ -18,4 +18,6 @@ dependencies {
     implementation(project(":core-ressourcen"))
 
     testImplementation(project(":core-testing"))
+    // Die Tests bauen Ablage und Bearbeitungen selbst.
+    testImplementation(project(":core-offline"))
 }
