@@ -50,7 +50,7 @@ export function setzeZahlenWaehrung(cur) {
   const neu = String(cur || 'EUR').toUpperCase();
   if (neu === _waehrung) return;
   _waehrung = neu;
-  if (typeof document !== 'undefined') document.querySelectorAll('[data-i18n-betrag]').forEach(el => schreibeI18n(/** @type {HTMLElement} */ (el)));
+  if (typeof document !== 'undefined') document.querySelectorAll('[data-i18n-betrag]').forEach(el => { schreibeI18n(/** @type {HTMLElement} */ (el)); });
 }
 
 /**

@@ -10,8 +10,6 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 
 /**
  * import-/export-Syntax aus einer Moduldatei entfernen.
@@ -32,8 +30,6 @@ function stripModuleSyntax(src) {
     'function registerActions() {}\n' + 'function tRaw(k, v) { return typeof t === "function" ? t(k, v) : k; }\n' + body
   );
 }
-
-const PUB = path.join(__dirname, '..', 'public');
 
 const { oeffneOberflaeche } = require('./helpers/oberflaeche');
 

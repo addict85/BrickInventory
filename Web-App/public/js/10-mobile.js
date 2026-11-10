@@ -18,7 +18,7 @@
     // Finanztabellen vor.
     const headRow = head.rows[head.rows.length - 1];
     // Nur sichtbarer Text: Ein Kopf, der bloss für Vorleser beschriftet ist (.vh), bleibt in der Karte leer.
-    const labels = [...headRow.cells].map(th => { const k = th.cloneNode(true); /** @type {Element} */ (k).querySelectorAll('.vh').forEach(v => v.remove()); return (k.textContent || '').trim(); });
+    const labels = [...headRow.cells].map(th => { const k = th.cloneNode(true); /** @type {Element} */ (k).querySelectorAll('.vh').forEach(v => { v.remove(); }); return (k.textContent || '').trim(); });
     if (!labels.length) return;
 
     for (const body of table.tBodies) {

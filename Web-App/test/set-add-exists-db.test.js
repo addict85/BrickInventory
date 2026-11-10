@@ -9,9 +9,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 // Der Nachzug nach dem Erfassen (src/sets/nachErfassung.ts) wird abgefangen.
@@ -31,7 +29,6 @@ const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
-const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('vorhandenes Set: Erfassen meldet exists und schreibt nichts',
   { concurrency: 1 }, async (t) => {

@@ -259,7 +259,8 @@ async function main() {
       const [name, p] = eintrag;
       try {
         const { ms, ok, status } = await miss(base, p);
-        (messung[name] ??= []).push(ms);
+        messung[name] ??= [];
+        messung[name].push(ms);
         gesamt++;
         if (!ok) fehler[`${name} → HTTP ${status}`] = (fehler[`${name} → HTTP ${status}`] || 0) + 1;
       } catch (e) {

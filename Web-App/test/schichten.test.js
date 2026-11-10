@@ -100,8 +100,8 @@ test('eine v1-Route importiert keine andere Routendatei', () => {
 
 test('keine Route importiert eine andere Routendatei', () => {
   // Erlaubt sind nur der Wächter (api_v1/middleware) und der Zusammenbau in
-  // api_v1/index.ts und auth.ts (aus routes/auth/). Gegenprobe (29.10.2026): `import { requireLogin } from
-  // './auth'` zurück in routes/minifigs.ts → rot.
+  // api_v1/index.ts und auth.ts (aus routes/auth/). Gegenprobe (10.11.2026): `import { requireLogin } from
+  // '../auth'` in routes/api_v1/minifigs.ts → rot.
   const dateien = [];
   const lauf = (rel) => {
     for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
@@ -162,7 +162,7 @@ const codeZeilen = (rel) => quelltext(rel).split('\n').filter(z => z.trim()).len
 test('jobs/ führt Aufträge aus, die Arbeit eines Auftrags steht in src/', () => {
   // jobs/ hält den Worker (Pacht, Wiederholung, Abbruch), die Bearbeitertabelle
   // und den Einstieg des Importprozesses; was ein Auftrag fachlich tut, liegt in src/<bereich>/.
-  // Gemessen am 09.11.2026: vorher 20 Dateien, 1597 Codezeilen, 4 mit Import aus db/; jetzt 4, 287, 0; 265, seit die Verdrahtung in startup/ liegt.
+  // Gemessen 265 Codezeilen am 09.11.2026.
   // Gegenproben (09.11.2026): `import * as db from '../db/database'` in jobs/auftraegeStarten.ts → rot
   // (db/); fetchAndCachePrice und zustaendeJeSet zurück nach jobs/auftraegeStarten.ts → rot (113
   // Zeilen); `import { STAPEL } from '../src/katalog/bilder/bildbedarf'` in jobs/auftragsWorker.ts → rot.
@@ -248,8 +248,8 @@ test('ins Netz geht nur clients/ über src/infra/abruf.ts', () => {
 test('startup/ importiert nichts aus routes/', () => {
   // Was der Start anstösst (Aufräumläufe), steht in src/; eine Route
   // gehört nur in server.ts.
-  // Gegenprobe (29.10.2026): startPdfJobCleanup wieder aus
-  // '../routes/api_v1/pdf' in startup/backgroundJobs.ts → rot.
+  // Gegenprobe (10.11.2026): `import { startPdfJobCleanup } from
+  // '../routes/api_v1/pdf'` in startup/jobsProzess.ts → rot.
   const treffer = [];
   for (const f of fs.readdirSync(path.join(ROOT, 'startup')).filter(f => f.endsWith('.ts')))
     for (const ziel of importe(`startup/${f}`).filter(z => /routes\//.test(z))) treffer.push(`startup/${f} -> ${ziel}`);

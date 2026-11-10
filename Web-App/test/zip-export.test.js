@@ -1,6 +1,6 @@
 /**
  * Der ZIP-Export erzeugt ein gültiges Archiv — mit genau der API, die
- * routes/settings.ts benutzt.
+ * routes/api_v1/settings.ts benutzt.
  * Ausführlich: docs/begruendungen/test/zip-export.test.js.md#kopf
  */
 const test = require('node:test');
@@ -82,7 +82,7 @@ test('kein veraltetes glob mehr im Abhängigkeitsbaum', () => {
   // Ausführlich: docs/begruendungen/test/zip-export.test.js.md#lock
   const lock = require(path.join(__dirname, '..', 'package-lock.json'));
   const alt = Object.entries(lock.packages || {})
-    .filter(([p, v]) => p.endsWith('node_modules/glob') && parseInt(v.version) < 11)
+    .filter(([p, v]) => p.endsWith('node_modules/glob') && parseInt(v.version, 10) < 11)
     .map(([p, v]) => `${p}@${v.version}`);
   assert.deepEqual(alt, [],
     'Ein glob unter Version 11 ist zurück. Es gilt als nicht mehr unterstützt. ' +

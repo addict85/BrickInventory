@@ -45,9 +45,7 @@ test('kein stiller catch auf einem Schreibvorgang mit Nutzerdaten', () => {
   let geprueft = 0;
   for (const datei of dateien) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
-    aufruf.lastIndex = 0;
-    let m;
-    while ((m = aufruf.exec(src)) !== null) {
+    for (const m of src.matchAll(aufruf)) {
       // Bis zur schliessenden Klammer des Aufrufs
       let tiefe = 1, i = m.index + m[0].length;
       while (i < src.length && tiefe > 0) {

@@ -104,7 +104,6 @@ test('Anleitungen: beide Oberflaechen haengen den Papierkorb an is_manual', () =
     'Der Loeschknopf der Webapp soll nur bei selbst hochgeladenen Anleitungen stehen');
 
   // ── Android-App ───────────────────────────────────────────────────────────
-  const kt = path.join(ROOT, '..', 'Android-App/app/src/main/java/ch/brickinventoryapp');
   const abschnitte = fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'ui', 'screens', 'SetDetailAnleitungen.kt'), 'utf8');
   const ohne = ohneKommentare(abschnitte);
 

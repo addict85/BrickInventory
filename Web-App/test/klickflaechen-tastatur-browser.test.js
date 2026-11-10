@@ -20,7 +20,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
+const { starteApp } = require('./helpers/app-browser');
 const { musterHaushalt } = require('./helpers/bestand');
 
 const klick = (sel) => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;

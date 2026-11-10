@@ -476,12 +476,12 @@ async function doAddSet(){
           // Hintergrundaufträge laufen noch: alle Reiter regelmässig auffrischen
           set_lastImportAt(Date.now());
           // Konnte der Strom nicht ergänzen, holt ein Auftrag Name und Bild nach einer Minute.
-          [3000, 8000, 15000, 25000, ...(ev.ergaenzung === 'ausstehend' ? [70000, 120000] : [])].forEach(delay => setTimeout(()=>{
+          for (const delay of [3000, 8000, 15000, 25000, ...(ev.ergaenzung === 'ausstehend' ? [70000, 120000] : [])]) setTimeout(()=>{
             loadGallery(); loadStats();
             const activeTab = aktiverReiter();
             if(activeTab==='parts')    { loadParts(); loadManualParts(); }
             if(activeTab==='minifigs') { loadMinifigs(); }
-          }, delay));
+          }, delay);
         },800);
       }
       else if(ev.step==='error'){ streamFertig(); setTimeout(()=>{hideProgress();toast(ev.error,'error');},1500); }

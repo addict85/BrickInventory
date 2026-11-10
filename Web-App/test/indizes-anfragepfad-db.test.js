@@ -4,9 +4,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const { buildAndRequire } = require('./helpers/sources');
@@ -65,7 +63,7 @@ test('Anfragepfad: die drei Indizes gibt es und der Planer kann sie nehmen', asy
     //
     // Die BrickLink-Nachschlage zuerst, und dafuer braucht es die
     // MIGRATIONEN: bl_zuordnung wird in 0037 angelegt, nicht in
-    // db/schema.sql (eine Tabelle gehoert an genau eine Stelle,
+    // db/basis.sql (eine Tabelle gehoert an genau eine Stelle,
     // scripts/check-schema-am-start.js prueft das).
     const c0 = await db.pool.connect();
     try { await _req('db/migrate.js').runMigrations(c0); } finally { c0.release(); }

@@ -13,7 +13,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte, takt } = require('./helpers/oberflaeche');
+const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
 const ROT = { part_number: '3001', part_name: 'Brick 2 x 4', color_id: 4, color_name: 'Red', color_hex: 'C91A09', quantity: 2, conditions: ['U'], category_name: '11' };
 const BLAU = { part_number: '3002', part_name: 'Brick 2 x 2', color_id: 1, color_name: 'Blue', color_hex: '0055BF', quantity: 1, conditions: ['N'], category_name: '11' };

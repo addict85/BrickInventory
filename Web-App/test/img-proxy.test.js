@@ -1,8 +1,6 @@
 /**
  * Bild-Proxy: Auslieferung, Zwischenspeicherung, Diagnose.
  *
- * Rest von test/image-repair.test.js nach dem Ausbau des Reparaturjobs.
- *
  * Gegenproben zu den nach bild-proxy-deckel.test.js (Typprüfung, Platzhalter)
  * und img-cache-serve.test.js (304) verlegten Fällen stehen dort; für 304 je
  * eine der beiden `req.fresh`-Zeilen in imgCacheServe.ts entfernt → dort rot

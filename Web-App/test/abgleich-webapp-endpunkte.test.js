@@ -40,9 +40,8 @@ function serverRouten() {
     for (const m of src.matchAll(/router\.(get|post|put|patch|delete)\(\s*'([^']+)'/g))
       alle.add(`${m[1].toUpperCase()} ${form(mount + '/' + m[2].replace(/^\//, ''))}`);
   };
-  // Einhaengepunkte aus server.ts GELESEN statt abgeschrieben. Die Liste stand
-  // hier als Literal und wurde beim Zusammenlegen der API-Oberflaechen still
-  // falsch — samt „ENOENT: routes/finance.ts". Siehe routerEinhaengungen().
+  // Einhaengepunkte aus server.ts GELESEN statt abgeschrieben: Eine
+  // abgeschriebene Liste veraltet still. Siehe routerEinhaengungen().
   for (const r of routerEinhaengungen()) sammle(r.datei, r.mount);
   const v1 = path.join(ROOT, 'routes/api_v1');
   for (const f of fs.readdirSync(v1)) {

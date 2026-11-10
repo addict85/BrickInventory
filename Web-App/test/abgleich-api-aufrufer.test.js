@@ -27,9 +27,8 @@ function routenAus(datei, mount) {
 
 function alleRouten() {
   const out = [];
-  // Einhaengepunkte aus server.ts GELESEN statt abgeschrieben. Die Liste stand
-  // hier als Literal und ist beim Zusammenlegen der API-Oberflaechen falsch
-  // geworden — samt „ENOENT: routes/finance.ts". Siehe routerEinhaengungen().
+  // Einhaengepunkte aus server.ts GELESEN statt abgeschrieben: Eine
+  // abgeschriebene Liste veraltet still. Siehe routerEinhaengungen().
   for (const r of routerEinhaengungen())
     out.push(...routenAus(r.datei, r.mount));
   const v1 = path.join(ROOT, 'routes/api_v1');

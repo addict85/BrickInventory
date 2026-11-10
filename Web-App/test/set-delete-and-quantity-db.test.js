@@ -21,8 +21,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const express = require(path.join(ROOT, 'node_modules', 'express'));
-const { haeltFigur, haeltSet, haeltTeil, mengeVon } = require('./helpers/bestand');
+const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 
 test('das Löschen fragt genau einmal', () => {
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/02-gallery.js'), 'utf8'));

@@ -8,7 +8,7 @@
  * Gegenprobe ist EINE Aenderung, danach zurueckgenommen (die drei Dateien
  * wurden gegen ihre Sicherung verglichen).
  *
- *   A  den katalogTeil()-Vorlauf in routes/parts.ts entfernt (also der Stand
+ *   A  den katalogTeil()-Vorlauf beim Erfassen eines Teils entfernt (also der Stand
  *      von Marcos Befund)
  *      → `pass 4 / fail 5`. Rot sind VIER Faelle: „Name und Farbbild im
  *        Katalog — kein Abruf", „Bild als Datei zaehlt auch", „ohne Farbe
@@ -30,7 +30,7 @@
  *        gar keine rb_parts-Zeile da, das allgemeine Bild konnte also nicht
  *        dazwischenkommen. Die Zeile steht jetzt unten — sie ist der Grund,
  *        warum dieser Fall ueberhaupt etwas prueft.
- *   D  den katalogFigur()-Vorlauf in routes/minifigs.ts entfernt
+ *   D  den katalogFigur()-Vorlauf beim Erfassen einer Figur entfernt
  *      → `pass 7 / fail 2`. Rot: „Figur mit Name und Bild — kein Abruf".
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
@@ -46,7 +46,7 @@ const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const db   = _req('db/database.js');
 
-// Rebrickable vorgeben, BEVOR routes/parts.js und routes/minifigs.js die
+// Rebrickable vorgeben, BEVOR die Teile- und Figurenmodule die
 // Funktionen herausziehen. esbuild exportiert ueber Getter, ein
 // `rb.lookupPart = …` liefe ins Leere — deshalb der Eintrag im
 // require-Zwischenspeicher (dasselbe Vorgehen wie in

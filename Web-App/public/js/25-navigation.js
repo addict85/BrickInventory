@@ -122,8 +122,8 @@ export function bindTabs(){
     // Avoid duplicate listeners
     if(t._tabBound) return; t._tabBound=true;
     t.addEventListener('click',()=>{
-      document.querySelectorAll('.ntab').forEach(x=>x.classList.remove('active'));
-      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.ntab').forEach(x=>{ x.classList.remove('active'); });
+      document.querySelectorAll('.tab').forEach(x=>{ x.classList.remove('active'); });
       // Unsichtbare Reiter (Einstellungen, Monitoring) öffnet das Kontomenü — dann markiert der Menüknopf, wo
       // man ist.
       const unter = t.classList.contains('ntab-unter');
@@ -163,7 +163,7 @@ export function bindTabs(){
   // Alle Seitentitel-Icons füllen — läuft bei jedem bindTabs()-Aufruf, also auch nach dem Login (showApp ruft
   // bindTabs erneut), wenn der Inhalt sichtbar wird. So erscheint das Icon links vom Titel auf allen Tabs,
   // nicht nur nach einem Klick.
-  alle('.ptitle[data-tab-title]').forEach(h=>syncTabTitleIcon(h.dataset.tabTitle));
+  alle('.ptitle[data-tab-title]').forEach(h=>{ syncTabTitleIcon(h.dataset.tabTitle); });
 }
 
 // Aufruf verschoben nach startApp() (js/08-init.js), das js/main.js NACH der Auswertung aller Module aufruft.
@@ -194,8 +194,8 @@ export function oeffneSicht(name){
   const flaeche = G('tab-'+name);
   if(!flaeche) return;
   const ausMenue = !!G('umenu-pop')?.contains(document.activeElement);
-  document.querySelectorAll('.ntab').forEach(x=>x.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.ntab').forEach(x=>{ x.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(x=>{ x.classList.remove('active'); });
   flaeche.classList.add('active');
   markiereGruppe(null);
   zeigeSeitenname(flaeche, true);

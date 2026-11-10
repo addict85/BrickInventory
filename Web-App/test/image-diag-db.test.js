@@ -20,7 +20,6 @@ const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
-const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('die Bild-Diagnose beschreibt jede Lage im Klartext',
   { concurrency: 1 }, async (t) => {

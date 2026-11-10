@@ -136,7 +136,7 @@ async function _renderPdfLazy(pdf, container) {
 function _pdfBeobachteAlle(container) {
   const beobachter = _pdfObserver;
   if (!beobachter || !container) return;
-  container.querySelectorAll('.pdf-page-ph').forEach((/** @type {Element} */ ph) => beobachter.observe(ph));
+  container.querySelectorAll('.pdf-page-ph').forEach((/** @type {Element} */ ph) => { beobachter.observe(ph); });
 }
 
 /** @param {PdfDokument} pdf @param {number} n @param {HTMLElement} ph */

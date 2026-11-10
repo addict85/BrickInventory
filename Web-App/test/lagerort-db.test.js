@@ -77,7 +77,7 @@ test('Lagerort gegen echte Datenbank', async (t) => {
       `SELECT t.color_id, l.name AS storage
          FROM parts t LEFT JOIN storage_locations l ON l.id = t.storage_id
         WHERE t.user_id=$1 AND t.part_number=$2 ORDER BY t.color_id`, [U.ich, '3001']);
-    assert.deepEqual(rows.map(r => [parseInt(r.color_id), r.storage]),
+    assert.deepEqual(rows.map(r => [parseInt(r.color_id, 10), r.storage]),
       [[4, 'Kiste 3'], [4, 'Kiste 3'], [5, null]],
       'Beide Zeilen der Farbe 4 müssen den Ort haben — und die Farbe 5 keinen');
   });

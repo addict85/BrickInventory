@@ -14,16 +14,17 @@ const path = require('node:path');
  *               Erfassung" — ein gültiger Zustand (etwa nach dem Löschen der
  *               letzten Erfassung über den Mengenregler), und genau der Fall,
  *               auf den die Listen mit 0 antworten müssen.
- * @param opt.preis    Kaufpreis der Erfassung (Standard: keiner)
- * @param opt.zustand  'N' oder 'U' (Standard 'N')
- * @param opt.am       Aufnahmedatum der Erfassung (Standard: jetzt).
+ * @param {object} [opt] Optionen:
+ * @param [opt.preis]    Kaufpreis der Erfassung (Standard: keiner)
+ * @param [opt.zustand]  'N' oder 'U' (Standard 'N')
+ * @param [opt.am]       Aufnahmedatum der Erfassung (Standard: jetzt).
  *                     idx_set_acq_tag_zustand erlaubt je Konto, Set, TAG und
  *                     ZUSTAND nur eine Erfassung — mehrere Käufe desselben
  *                     Sets im selben Zustand brauchen also verschiedene Tage.
  *                     (Der Zustand steht seit Migration 0040 im Schlüssel;
  *                     davor galt die Regel ohne ihn, und zwei Käufe eines
  *                     Tages wurden zu einer Zeile mit Mischpreis.)
- * @param opt.egalWennDa  true: eine schon vorhandene sets-Zeile ist in Ordnung
+ * @param [opt.egalWennDa]  true: eine schon vorhandene sets-Zeile ist in Ordnung
  */
 async function haeltSet(db, userId, setNumber, menge = 1, opt = {}) {
   await db.run(
@@ -82,15 +83,16 @@ async function haltZeile(db, userId, setNumber) {
 /**
  * „Dieses Konto hält dieses Teil."
  *
- * @param opt.setNumber  Aus welchem Set. Fehlt sie, ist es ein MANUELL
+ * @param {object} [opt] Optionen:
+ * @param [opt.setNumber]  Aus welchem Set. Fehlt sie, ist es ein MANUELL
  *                       erfasstes Teil (source='manual'), und die Menge geht
  *                       in eine Erfassung. Steht sie da, ist es ein Set-Teil
  *                       (source='set'), und die Menge ist die KATALOGZAHL.
- * @param opt.menge      Stückzahl (Standard 1)
- * @param opt.colorId    Farbe (Standard 0)
- * @param opt.preis      Kaufpreis der Erfassung — nur fuer manuelle Teile
- * @param opt.zustand    'N' oder 'U' (Standard 'N'), nur fuer manuelle Teile
- * @param opt.am         Aufnahmedatum der Erfassung. idx_part_acq_tag_zustand
+ * @param [opt.menge]      Stückzahl (Standard 1)
+ * @param [opt.colorId]    Farbe (Standard 0)
+ * @param [opt.preis]      Kaufpreis der Erfassung — nur fuer manuelle Teile
+ * @param [opt.zustand]    'N' oder 'U' (Standard 'N'), nur fuer manuelle Teile
+ * @param [opt.am]         Aufnahmedatum der Erfassung. idx_part_acq_tag_zustand
  *                       (Migration 0008, erweitert in 0040) erlaubt je Konto,
  *                       Teil, Farbe, TAG und ZUSTAND nur eine Erfassung —
  *                       genau wie bei den Sets.
@@ -98,7 +100,7 @@ async function haltZeile(db, userId, setNumber) {
  *                       GEMESSEN brachen fuenf Testdateien mit „duplicate
  *                       key value violates unique constraint
  *                       idx_part_acq_tag_zustand" ab.
- * @param opt.storageId  Lagerort
+ * @param [opt.storageId]  Lagerort
  */
 async function haeltTeil(db, userId, partNumber, opt = {}) {
   const { setNumber = null, menge = 1, colorId = 0 } = opt;

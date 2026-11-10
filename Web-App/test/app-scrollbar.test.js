@@ -47,7 +47,7 @@ test('der Balken wird erzeugt und erscheint bei rollbarer Seite', () => {
     'läuft vor dem Ende des Body, dort notiert gäbe es ihn beim Start nicht.');
   assert.equal(bar.style.display, 'block', 'Der Balken bleibt verborgen, obwohl die Seite rollbar ist');
   const thumb = w.document.getElementById('app-scrollbar-thumb');
-  assert.ok(thumb && parseInt(thumb.style.height) > 0,
+  assert.ok(thumb && parseInt(thumb.style.height, 10) > 0,
     `Der Griff hat keine Höhe: ${thumb && thumb.style.height}`);
 });
 

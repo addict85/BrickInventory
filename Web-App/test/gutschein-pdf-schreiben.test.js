@@ -209,7 +209,7 @@ test('7. ein fremdes PDF ohne Marke wird seitenweise geraten', async () => {
   for (const [betrag, nr, pin] of [['400', NR, '5225'],
                                    ['150', '5045076374450022277', '1234']]) {
     const doc = await PL.PDFDocument.load(await baueGutschein(betrag, nr, pin, null));
-    (await ziel.copyPages(doc, doc.getPageIndices())).forEach(s => ziel.addPage(s));
+    for (const s of await ziel.copyPages(doc, doc.getPageIndices())) ziel.addPage(s);
   }
   const stapel = Buffer.from(await ziel.save());
   assert.equal((await PL.PDFDocument.load(stapel)).getPageCount(), 2);
@@ -226,7 +226,7 @@ test('8. dieselbe Karte zweimal im Stapel ergibt EINEN Eintrag', async () => {
   const ziel = await PL.PDFDocument.create();
   for (let i = 0; i < 2; i++) {
     const doc = await PL.PDFDocument.load(await baueGutschein('400', NR, '5225', null));
-    (await ziel.copyPages(doc, doc.getPageIndices())).forEach(s => ziel.addPage(s));
+    for (const s of await ziel.copyPages(doc, doc.getPageIndices())) ziel.addPage(s);
   }
   const zurueck = await seitenweiseLesen(Buffer.from(await ziel.save()));
   assert.equal(zurueck.length, 1,

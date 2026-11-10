@@ -4,9 +4,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const { werteAusPdf, werteAusText, zahlLesen, pdfText } = _req('src/gutscheine/gutscheinPdf.js');
 // `require('pdfkit')` und NICHT ueber den Verzeichnispfad: pdfkit 0.20 hat

@@ -23,9 +23,8 @@ function scan(file) {
 
 function inventory() {
   const eps = new Set();
-  // Einhaengepunkte aus server.ts GELESEN statt abgeschrieben — die Liste stand
-  // hier als Literal und wurde beim Zusammenlegen der API-Oberflaechen falsch
-  // (samt „ENOENT: routes/finance.ts"). Siehe routerEinhaengungen().
+  // Einhaengepunkte aus server.ts GELESEN statt abgeschrieben: Eine
+  // abgeschriebene Liste veraltet still. Siehe routerEinhaengungen().
   for (const r of routerEinhaengungen())
     for (const [m, p] of scan(r.datei))
       eps.add(`${m} ${r.mount}${p === '/' ? '' : p}`);

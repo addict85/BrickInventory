@@ -8,7 +8,6 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 
@@ -27,7 +26,7 @@ function leseDienst(yaml, name) {
   for (let i = start + 1; i < zeilen.length; i++) {
     const l = zeilen[i];
     if (/^\s*$/.test(l) || /^\s*#/.test(l)) continue;
-    if (/^  \S/.test(l) || /^\S/.test(l)) break; // nächster Dienst / nächster Abschnitt
+    if (/^ {2}\S/.test(l) || /^\S/.test(l)) break; // nächster Dienst / nächster Abschnitt
     block.push(l);
   }
   return block.join('\n');

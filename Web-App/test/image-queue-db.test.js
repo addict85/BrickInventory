@@ -36,7 +36,6 @@ const { dbOderSkip } = require('./helpers/db');
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('die Anfrage notiert, der Job legt ab', { concurrency: 1 }, async (t) => {
   if (!await dbOderSkip(t, _req, { migrieren: false })) return;

@@ -5,10 +5,8 @@
 const test = require('node:test');
 const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 const { haeltSet, haeltTeil } = require('./helpers/bestand');
 
-const ROOT = path.join(__dirname, '..');
 const DB_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 let db, H, PS, skip = null;

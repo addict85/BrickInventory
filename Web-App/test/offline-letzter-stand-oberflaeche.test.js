@@ -15,7 +15,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { oeffneOberflaeche, reiter, warte, takt } = require('./helpers/oberflaeche');
+const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
 const STIL = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
 const mitStil = (w) => w.document.addEventListener('DOMContentLoaded', () => {

@@ -13,7 +13,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
+const { starteApp } = require('./helpers/app-browser');
 const { haeltSet, haeltTeil, haeltFigur } = require('./helpers/bestand');
 
 const N = `<img src=x onerror="window.__xss=1">"'><svg onload="window.__xss=2">`;

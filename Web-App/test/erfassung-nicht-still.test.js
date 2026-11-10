@@ -32,8 +32,7 @@ test('kein stiller catch an einer Erfassung', () => {
   let aufrufe = 0;
   for (const datei of dateien) {
     const src = fs.readFileSync(datei, 'utf8');
-    let i = 0;
-    while ((i = src.indexOf('recordAcquisitionForDay(', i)) !== -1) {
+    for (let i = src.indexOf('recordAcquisitionForDay('); i !== -1; i = src.indexOf('recordAcquisitionForDay(', i)) {
       if (!/\bfunction\s+recordAcquisitionForDay/.test(src.slice(Math.max(0, i - 40), i + 24))) {
         aufrufe++;
         // Das Fenster nach dem Aufruf: bis zum Ende der Anweisung.

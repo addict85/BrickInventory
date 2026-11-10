@@ -8,7 +8,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, takt } = require('./helpers/oberflaeche');
+const { oeffneOberflaeche, reiter } = require('./helpers/oberflaeche');
 
 test('dieselben Ansichtsknöpfe in allen drei Reitern', async () => {
   const { w, d } = await oeffneOberflaeche();

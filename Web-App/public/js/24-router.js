@@ -271,7 +271,7 @@ function wendeAn(ziel, dlg) {
 window.addEventListener('popstate', (ev) => {
   if (!_gestartet) return;
   if (_eigeneZurueck > 0) {
-    if (--_eigeneZurueck === 0) { const f = _danach; _danach = []; f.forEach(x => x()); }
+    if (--_eigeneZurueck === 0) { const f = _danach; _danach = []; for (const x of f) x(); }
     return;
   }
   const ziel = leseAdresse();

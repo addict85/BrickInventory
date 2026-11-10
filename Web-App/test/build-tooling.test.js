@@ -380,7 +380,7 @@ test('eine Pipe im Workflow verliert den Fehlschlag nicht', () => {
   let geprueft = 0;
   for (const datei of fs.readdirSync(wf).filter(f => /\.ya?ml$/.test(f))) {
     const roh = fs.readFileSync(path.join(wf, datei), 'utf8');
-    for (const block of roh.split(/^      - /m).slice(1)) {
+    for (const block of roh.split(/^ {6}- /m).slice(1)) {
       const rumpf = block.split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
       if (!/\brun:/.test(rumpf) || !DURCHREICHER.test(rumpf)) continue;
       geprueft++;

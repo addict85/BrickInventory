@@ -208,7 +208,7 @@ export function observeLazyImages(root) {
   if(!imgs.length) return;
   // Synchron, VOR dem nächsten Paint
   imgs.forEach(img => { if(img.complete && img.naturalWidth > 0) img.classList.add('loaded'); });
-  const beobachter = window._imgObserver ??= new IntersectionObserver((entries, obs) => {
+  window._imgObserver ??= new IntersectionObserver((entries, obs) => {
     entries.forEach(e => {
       if(e.isIntersecting){
         const img = /** @type {HTMLImageElement} */ (e.target);
@@ -218,5 +218,6 @@ export function observeLazyImages(root) {
       }
     });
   }, { rootMargin: '200px' });
+  const beobachter = window._imgObserver;
   imgs.forEach(img => { img.classList.add('observed'); beobachter.observe(img); });
 }

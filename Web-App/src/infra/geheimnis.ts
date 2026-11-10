@@ -43,7 +43,8 @@ export function datenSchluessel(): Buffer {
   if (env) {
     const k = Buffer.from(env, 'base64');
     if (k.length !== 32) throw new Error('DATA_KEY muss 32 Byte als base64 sein (openssl rand -base64 32)');
-    return (geladen = k);
+    geladen = k;
+    return k;
   }
   const datei = schluesselDatei(), alt = alteSchluesselDatei();
   const k = liesSchluessel(datei), altK = liesSchluessel(alt);
@@ -51,18 +52,26 @@ export function datenSchluessel(): Buffer {
     throw new Error(`Zwei verschiedene Datenschlüssel: ${datei} und ${alt}. Den gültigen behalten, den anderen entfernen (UPGRADE.md).`);
   if (k) {
     if (altK) console.warn(`⚠️  [geheimnis] ${alt} ist eine Kopie von ${datei} und liegt in jeder Sicherung von data/ — bitte löschen.`);
-    return (geladen = k);
+    geladen = k;
+    return k;
   }
-  if (altK) { warneAlterOrt(alt, datei); return (geladen = altK); }
+  if (altK) {
+    warneAlterOrt(alt, datei);
+    geladen = altK;
+    return altK;
+  }
   const neu = crypto.randomBytes(32);
   fs.mkdirSync(path.dirname(datei), { recursive: true, mode: 0o700 });
   // Erst vollständig schreiben, dann verlinken: link() scheitert, wenn ein
   // zweiter Prozess schneller war, und niemand liest eine halb geschriebene Datei.
   const tmp = `${datei}.${process.pid}`;
   fs.writeFileSync(tmp, neu.toString('base64'), { mode: 0o600 });
-  try { fs.linkSync(tmp, datei); return (geladen = neu); }
-  catch { return (geladen = liesSchluessel(datei) ?? neu); }
+  let ergebnis: Buffer = neu;
+  try { fs.linkSync(tmp, datei); }
+  catch { ergebnis = liesSchluessel(datei) ?? neu; }
   finally { fs.rmSync(tmp, { force: true }); }
+  geladen = ergebnis;
+  return ergebnis;
 }
 
 /** Der vorige Schlüssel eines Wechsels: Was nur er öffnet, bleibt lesbar, bis der Start
@@ -75,15 +84,19 @@ export function altSchluessel(): Buffer | null {
     : k.datenSchluesselAltDatei ? liesSchluessel(k.datenSchluesselAltDatei) : null;
   if (roh && roh.equals(datenSchluessel())) {
     console.warn('⚠️ [geheimnis] DATA_KEY_ALT ist derselbe Schlüssel wie der aktuelle — kein Wechsel.');
-    return (alt = null);
+    alt = null;
+    return null;
   }
-  return (alt = roh);
+  alt = roh;
+  return roh;
 }
 
 let altV2: Buffer | null = null;
 function altV2Schluessel(): Buffer | null {
   const a = altSchluessel();
-  return a ? (altV2 ??= Buffer.from(crypto.hkdfSync('sha256', a, Buffer.alloc(0), 'brickinventory/geheimnis/v2', 32))) : null;
+  if (!a) return null;
+  altV2 ??= Buffer.from(crypto.hkdfSync('sha256', a, Buffer.alloc(0), 'brickinventory/geheimnis/v2', 32));
+  return altV2;
 }
 
 /** Wofür und für welche Zeile ein Geheimtext gilt (AAD in AES-GCM): In eine andere
@@ -96,7 +109,8 @@ export function kontext(zweck: string, ...bezug: (string | number)[]): Kontext {
 /** Eigener Teilschlüssel für v2: Derselbe Rohschlüssel dient sonst auch v1 und suchwert(). */
 let v2: Buffer | null = null;
 function v2Schluessel(): Buffer {
-  return v2 ??= Buffer.from(crypto.hkdfSync('sha256', datenSchluessel(), Buffer.alloc(0), 'brickinventory/geheimnis/v2', 32));
+  v2 ??= Buffer.from(crypto.hkdfSync('sha256', datenSchluessel(), Buffer.alloc(0), 'brickinventory/geheimnis/v2', 32));
+  return v2;
 }
 
 function versiegle(schluessel: Buffer, daten: Buffer, aad: Kontext | null): Buffer {

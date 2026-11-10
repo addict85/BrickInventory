@@ -74,7 +74,7 @@ test('kein Modul wird unter einem blossen Namen geholt', () => {
   const treffer = [];
   for (const datei of quellen()) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
-    for (const m of src.matchAll(/(?:require\(|from )\s*'([^'.\/][^']*)'/g)) {
+    for (const m of src.matchAll(/(?:require\(|from )\s*'([^'./][^']*)'/g)) {
       if (eigene.has(m[1])) treffer.push(`${path.relative(ROOT, datei)}: '${m[1]}'`);
     }
   }

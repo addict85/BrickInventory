@@ -81,7 +81,7 @@ async function fuehreAuftragAus(a: AuftragsZeile, ac: AbortController, b: Bearbe
   try {
     // Mehr Versuche als erlaubt: Die früheren stürzten ab, ein weiterer vermutlich auch.
     if (!b || a.versuche > a.max_versuche) throw new Error(b ? 'ohne Rückmeldung abgebrochen' : `keine Bearbeitung für ${a.art}`);
-    const geprueft = nutzlast = pruefeNutzlast(a.art, a.nutzlast);
+    const geprueft = pruefeNutzlast(a.art, a.nutzlast); nutzlast = geprueft;
     await imNamenDesAuftrags(a, () => b.ausfuehren(geprueft, k, a));
     if (await erledigt(a)) await folgeplan(a);
   } catch (e) {

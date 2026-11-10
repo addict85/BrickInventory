@@ -35,7 +35,6 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async (t) => {
   try { await db.initSchemaOnce(); }

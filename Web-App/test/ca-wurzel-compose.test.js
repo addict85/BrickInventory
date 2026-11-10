@@ -30,7 +30,7 @@ function dienst(name) {
   for (let i = start + 1; i < zeilen.length; i++) {
     const l = zeilen[i];
     if (/^\s*#/.test(l)) continue;
-    if (/^  \S/.test(l) || /^\S/.test(l)) break;
+    if (/^ {2}\S/.test(l) || /^\S/.test(l)) break;
     block.push(l);
   }
   return block;

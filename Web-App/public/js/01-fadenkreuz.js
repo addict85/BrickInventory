@@ -98,7 +98,9 @@ export function zeigeFadenkreuz(svg, i, ansagen = false) {
   schild.setAttribute('height', String(h));
   text.setAttribute('x', String(x + 8 * f));
   text.setAttribute('y', String(y0 + 17 * f));
-  text.querySelectorAll('tspan').forEach(ts => ts.setAttribute('x', String(x + 8 * f)));
+  text.querySelectorAll('tspan').forEach(ts => {
+    ts.setAttribute('x', String(x + 8 * f));
+  });
   g.setAttribute('visibility', 'visible');
   if (ansagen) {
     let ansage = svg.parentElement?.querySelector(':scope > .diagramm-ansage');

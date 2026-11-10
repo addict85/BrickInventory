@@ -13,7 +13,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
+const { starteApp } = require('./helpers/app-browser');
 
 test('Anmeldewege: die jüngste Antwort gilt', { timeout: 120_000 }, async (t) => {
   const app = await starteApp(t, { name: `aw_${process.pid}` });

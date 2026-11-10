@@ -141,8 +141,7 @@ for (const datei of alleQuellen) {
   const rel = path.relative(ROOT, datei);
   const text = ohneKommentare(fs.readFileSync(datei, 'utf8'));
   const re = /CREATE\s+(?:TABLE|(?:UNIQUE\s+)?INDEX)(?:\s+IF\s+NOT\s+EXISTS)?\s+(\w+)/gi;
-  let m;
-  while ((m = re.exec(text)) !== null) {
+  for (const m of text.matchAll(re)) {
     // m[1] ist unter noUncheckedIndexedAccess moeglicherweise undefined —
     // die Gruppe ist im Muster zwar nicht optional, aber das weiss der
     // Typpruefer nicht. Ein leerer Name faellt hier still durch statt zu werfen.

@@ -353,11 +353,11 @@ test('der Umschalter lädt nur die betroffene Ansicht neu', () => {
   // niemand ansieht — und dabei Preisabrufe auslösen.
   const gal = require('./helpers/sources').frontendQuelle();
   assert.match(gal, /export function onScopeChange\(view\)/);
-  assert.match(gal, /if \(view === 'finance'\)  loadFinance\(\);/);
+  assert.match(gal, /if \(view === 'finance'\) {2}loadFinance\(\);/);
   // Die Reiter Teile und Minifiguren haben ZWEI Listen — die aus Sets und die
   // manuell erfassten. Der manuelle Bereich lädt über einen eigenen Endpunkt
   // und blieb sonst ungefiltert stehen.
-  assert.match(gal, /if \(view === 'parts'\)    \{ loadParts\(\); loadManualParts\(\); \}/);
+  assert.match(gal, /if \(view === 'parts'\) {4}\{ loadParts\(\); loadManualParts\(\); \}/);
   // Und er erscheint nur bei einem Hauptkonto mit Unterkonten.
   assert.match(gal, /if \(!isMain\) \{ el\.style\.display = 'none'; continue; \}/);
   assert.match(gal, /initScopeSelects\(members\);/);

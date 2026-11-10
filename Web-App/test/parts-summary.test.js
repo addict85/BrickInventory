@@ -7,7 +7,6 @@ const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { execFileSync } = require('node:child_process');
 const { haeltSet, haeltTeil } = require('./helpers/bestand');
 
 const ROOT = path.join(__dirname, '..');

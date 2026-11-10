@@ -69,7 +69,7 @@ async function werkbank(umbau) {
   w.IntersectionObserver = class {
     constructor(cb) { this.cb = cb; this.ziele = new Set(); }
     observe(el) {
-      const n = parseInt(el.dataset.page);
+      const n = parseInt(el.dataset.page, 10);
       this.ziele.add(el);
       beobachtet.push(n);
       // disconnect() hebt die Anmeldung auf, ein spaeteres observe() gilt wieder
@@ -251,9 +251,9 @@ test('Zoom im PDF-Betrachter', async (t) => {
     // Reihenfolge ist der Schadensfall: Der alte Durchlauf hat weniger zu
     // rendern und kommt bei starkem Zoom regelmaessig zuletzt. Andersherum
     // raeumt der neue hinter ihm auf, und der Fehler bliebe unsichtbar.
-    b.offeneRender.forEach(r => r.frei());
+    for (const r of b.offeneRender) r.frei();
     await b.warte(30);
-    alte.forEach(r => r.frei());
+    for (const r of alte) r.frei();
     await b.warte(40);
 
     const haengen = b.platzhalter().map(ph => {

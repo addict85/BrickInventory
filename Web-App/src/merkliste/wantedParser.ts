@@ -62,8 +62,7 @@ export function leseWantedListe(xml: string): LeseErgebnis {
   const fremdeArten: Record<string, number> = {};
   let ohneNummer = 0;
 
-  let m: { inhalt: string; ende: number } | null;
-  for (let ab = 0; (m = zwischen(xml, 'ITEM', ab)) !== null; ab = m.ende) {
+  for (let m = zwischen(xml, 'ITEM', 0); m !== null; m = zwischen(xml, 'ITEM', m.ende)) {
     const block = m.inhalt;
     const typ = (feld(block, 'ITEMTYPE') ?? '').toUpperCase();
     const art = ARTEN[typ];

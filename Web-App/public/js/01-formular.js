@@ -175,7 +175,7 @@ export function betragAusFeld(feld) {
  */
 export function formularFehler(box, text, felder = []) {
   box.textContent = text; box.style.display = text ? 'block' : 'none';
-  box.parentElement?.querySelectorAll('[aria-invalid="true"]').forEach(f => feldGueltig(f, box.id));
+  box.parentElement?.querySelectorAll('[aria-invalid="true"]').forEach(f => { feldGueltig(f, box.id); });
   const ziele = /** @type {HTMLElement[]} */ (felder.map(id => G(id)).filter(Boolean));
   for (const f of ziele) {
     f.setAttribute('aria-invalid', 'true');

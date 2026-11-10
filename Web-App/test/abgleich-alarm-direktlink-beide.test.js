@@ -40,7 +40,7 @@ test('1. die Benachrichtigung trägt ein Ziel', () => {
   // Die Klasse direkt, nicht ihr Name als Zeichenkette: Ein Name ist für R8
   // kein Aufruf. Genau daran ist am 25.09. WorkDatabase_Impl gescheitert. Der
   // Worker liegt in der Datenschicht; die App reicht ihre Activity als Klasse
-  // herein (Startziel in app/di/AppModule.kt).
+  // herein (Startziel in Android-App/app/src/main/java/ch/brickinventoryapp/app/di/AppModule.kt).
   assert.match(w, /Intent\(context, startziel\.aktivitaet\)/,
     'Die Meldung öffnet nicht das Startziel der App.');
   // Ziel ist der nicht exportierte Einstieg; die exportierte MainActivity nimmt

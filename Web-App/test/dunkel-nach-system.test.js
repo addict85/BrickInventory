@@ -35,7 +35,7 @@ function fenster({ server = 'classic', wahl = null, dunkel = false } = {}) {
   w.fetch = async () => ({ ok: false });
   if (wahl) w.localStorage.setItem('bim_dunkel', wahl);
   w.eval(BOOT);
-  const systemWechsel = (d) => { mq.matches = d; hoerer.forEach(f => f()); };
+  const systemWechsel = (d) => { mq.matches = d; for (const f of hoerer) f(); };
   const hatDunkel = () => w.document.documentElement.hasAttribute('data-dunkel');
   return { w, thema: () => w.document.documentElement.getAttribute('data-theme'), dunkel: hatDunkel, systemWechsel };
 }
