@@ -48,7 +48,7 @@ export async function fuegeBlockEin(c: PoolClient, schatten: string, spalten: st
   await c.query(`INSERT INTO ${schatten} (${spalten.join(',')}) VALUES ${platz} ${beiKonflikt(spalten, konflikt)}`, block.flat());
 }
 
-async function inTransaktion(c: PoolClient, schritte: () => Promise<void>): Promise<void> {
+async function imSchritt(c: PoolClient, schritte: () => Promise<void>): Promise<void> {
   await c.query('BEGIN');
   try {
     await schritte();
@@ -60,7 +60,7 @@ async function inTransaktion(c: PoolClient, schritte: () => Promise<void>): Prom
 }
 
 export function tausche(c: PoolClient, tabelle: string, schatten: string, spalten: string[]): Promise<void> {
-  return inTransaktion(c, async () => {
+  return imSchritt(c, async () => {
     await c.query(`DELETE FROM ${tabelle}`);
     await c.query(`INSERT INTO ${tabelle} (${spalten.join(',')}) SELECT ${spalten.join(',')} FROM ${schatten}`);
   });
@@ -75,7 +75,7 @@ export async function gleicheSetsAb(c: PoolClient, schatten: string, spalten: st
   const bezug = `(EXISTS (SELECT 1 FROM sets s WHERE s.set_number = rb_sets.set_num)
                OR EXISTS (SELECT 1 FROM wanted w WHERE w.set_number = rb_sets.set_num)
                OR EXISTS (SELECT 1 FROM price_alerts a WHERE a.set_number = rb_sets.set_num))`;
-  await inTransaktion(c, async () => {
+  await imSchritt(c, async () => {
     await c.query(`INSERT INTO rb_sets (${spalten.join(',')}, herkunft) SELECT ${spalten.join(',')}, 'csv' FROM ${schatten}
                    ON CONFLICT (set_num) DO UPDATE SET ${neu.map(s => `${s}=EXCLUDED.${s}`).join(',')}, herkunft='csv'
                    WHERE (${neu.map(s => `rb_sets.${s}`).join(',')}, rb_sets.herkunft)
