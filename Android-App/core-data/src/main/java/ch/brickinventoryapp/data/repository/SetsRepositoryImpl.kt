@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.cache.ResponseCache
@@ -76,7 +77,7 @@ class SetsRepositoryImpl @Inject constructor(
         safeCall { api.getSetInfo(setNumber) }
 
     override suspend fun addSet(setNumber: String, quantity: Int, purchasePrice: Double?,
-                       condition: String?, ownerUserId: Int?,
+                       condition: Zustand?, ownerUserId: Int?,
                        storage: String?): Ergebnis<AddSetResponse> {
         val anfrage = AddSetRequest(setNumber, quantity, purchasePrice, condition, ownerUserId, storage)
         return schreibe(Bearbeitung.SetErfassen(anfrage),
@@ -85,7 +86,7 @@ class SetsRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?): Ergebnis<GenericResponse> =
+    override suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?): Ergebnis<GenericResponse> =
         safeCall { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantity, null, purchasePrice, condition)) }
 
     /** Menge um [schritt] ändern; der Server rechnet unter Bestandssperre. */
@@ -101,24 +102,24 @@ class SetsRepositoryImpl @Inject constructor(
     // Repository fuer vier Aufrufe waere mehr Apparat als Nutzen.
 
     /** Wie die Galerie: ungefiltert abgelegt, gefiltert ohne Netz aus der lokalen Liste. */
-    override suspend fun getMerkliste(search: String?, condition: String?,
+    override suspend fun getMerkliste(search: String?, condition: Zustand?,
                              sort: String?, accounts: String?): Ergebnis<MerklisteResponse> {
-        val filter = Filterspalten(suchtext = search?.ifBlank { null }, zustand = condition?.ifBlank { null })
+        val filter = Filterspalten(suchtext = search?.ifBlank { null }, zustand = condition?.kennung)
         val ausLokal = { l: List<Merkposten> -> MerklisteResponse(success = true, merkposten = l.sortiert(merkOrdnung(sort))) }
         return when {
-            accounts != null -> safeCall { api.getMerkliste(search, condition, sort, accounts) }
+            accounts != null -> safeCall { api.getMerkliste(search, condition?.kennung, sort, accounts) }
             filter == Filterspalten() && (sort == null || sort == MERKLISTE_DEFAULT_SORT) ->
                 abgeglichen(Faecher.MERKLISTE, { it.merkposten }, ausLokal) {
-                    safeCall { api.getMerkliste(search, condition, sort, accounts) }
+                    safeCall { api.getMerkliste(search, condition?.kennung, sort, accounts) }
                 }
-            else -> gefiltert(Faecher.MERKLISTE, filter, ausLokal) { safeCall { api.getMerkliste(search, condition, sort, accounts) } }
+            else -> gefiltert(Faecher.MERKLISTE, filter, ausLokal) { safeCall { api.getMerkliste(search, condition?.kennung, sort, accounts) } }
         }
     }
 
     /** Die lokale Merkliste (ungefiltert), wie beobachteSets. */
     override fun beobachteMerkliste(): Flow<Lokal<Merkposten>> = ablage.beobachte(Faecher.MERKLISTE)
 
-    override suspend fun legeMerkpostenAn(setNumber: String, condition: String,
+    override suspend fun legeMerkpostenAn(setNumber: String, condition: Zustand,
                              ownerUserId: Int?): Ergebnis<MerkpostenAntwort> {
         val anfrage = MerkpostenRequest(setNumber, condition, ownerUserId)
         return schreibe(Bearbeitung.MerkpostenAnlegen(anfrage), {
@@ -127,24 +128,24 @@ class SetsRepositoryImpl @Inject constructor(
         }) { schluessel -> safeCall { api.legeMerkpostenAn(anfrage, schluessel) } }
     }
 
-    override suspend fun verschiebeMerkposten(setNumber: String, condition: String,
+    override suspend fun verschiebeMerkposten(setNumber: String, condition: Zustand,
                                  vonId: Int, zuId: Int): Ergebnis<MerkpostenInhaberAntwort> =
-        safeCall { api.verschiebeMerkposten(setNumber, condition, MerkpostenInhaberRequest(vonId, zuId)) }
+        safeCall { api.verschiebeMerkposten(setNumber, condition.kennung, MerkpostenInhaberRequest(vonId, zuId)) }
 
-    override suspend fun loescheMerkposten(setNumber: String, condition: String,
+    override suspend fun loescheMerkposten(setNumber: String, condition: Zustand,
                               ownerUserId: Int?): Ergebnis<GenericResponse> =
-        schreibe(Bearbeitung.MerkpostenLoeschen(setNumber, condition, ownerUserId), { GenericResponse(success = true) }) { schluessel ->
-            safeCall { api.loescheMerkposten(setNumber, condition, ownerUserId, schluessel) }
+        schreibe(Bearbeitung.MerkpostenLoeschen(setNumber, condition.kennung, ownerUserId), { GenericResponse(success = true) }) { schluessel ->
+            safeCall { api.loescheMerkposten(setNumber, condition.kennung, ownerUserId, schluessel) }
         }
 
     override suspend fun getMerkpostenPreise(setNumber: String): Ergebnis<MerkpostenPreiseResponse> =
         safeCall { api.getMerkpostenPreise(setNumber) }
 
-    override suspend fun uebernimmMerkposten(setNumber: String, condition: String, quantity: Int,
-                                purchasePrice: Double?, erfasstAls: String?,
+    override suspend fun uebernimmMerkposten(setNumber: String, condition: Zustand, quantity: Int,
+                                purchasePrice: Double?, erfasstAls: Zustand?,
                                 ownerUserId: Int?,
                                 storage: String?): Ergebnis<MerkpostenUebernahmeResponse> =
-        safeCall { api.uebernimmMerkposten(setNumber, condition,
+        safeCall { api.uebernimmMerkposten(setNumber, condition.kennung,
                                        MerkpostenUebernahmeRequest(quantity, purchasePrice,
                                                                erfasstAls, ownerUserId, storage)) }
 
@@ -183,12 +184,12 @@ class SetsRepositoryImpl @Inject constructor(
         safeCall { api.getPreisalarme(setNumber) }
 
     override suspend fun setPreisalarm(setNumber: String, richtung: String, schwelle: Double,
-                              condition: String): Ergebnis<PreisalarmResponse> =
+                              condition: Zustand): Ergebnis<PreisalarmResponse> =
         safeCall { api.setPreisalarm(setNumber, PreisalarmRequest(richtung, schwelle, condition)) }
 
-    override suspend fun deletePreisalarm(setNumber: String, condition: String):
+    override suspend fun deletePreisalarm(setNumber: String, condition: Zustand):
         Ergebnis<PreisalarmResponse> =
-        safeCall { api.deletePreisalarm(setNumber, condition) }
+        safeCall { api.deletePreisalarm(setNumber, condition.kennung) }
 
     /** Lagerort eines Sets setzen. Leerer Text loescht ihn. */
     override suspend fun setSetStorage(setNumber: String, ort: String): Ergebnis<LagerortResponse> =

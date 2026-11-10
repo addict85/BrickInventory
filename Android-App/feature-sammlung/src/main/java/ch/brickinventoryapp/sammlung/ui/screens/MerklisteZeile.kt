@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.draw.clip
@@ -79,7 +80,7 @@ internal fun MerkpostenZeile(
                         listOfNotNull(
                             w.setNumber,
                             w.year?.toString(),
-                            stringResource(if (w.condition == "U") R.string.condition_used
+                            stringResource(if (w.condition == Zustand.GEBRAUCHT) R.string.condition_used
                                            else R.string.condition_new),
                             if (preis == null) stringResource(R.string.detail_price_none_yet) else null,
                         ).joinToString(" · "),

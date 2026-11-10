@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.model.data.model
 
+import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -23,7 +24,7 @@ data class AddPartRequest(
     @SerialName("color_hex") val colorHex: String? = null,
     val quantity: Int = 1,
     @SerialName("unit_price") val unitPrice: Double? = null,
-    val condition: String? = null, // "N" = New/Neu, "U" = Used/Gebraucht
+    val condition: Zustand? = null,
     /**
      * Zielkonto im Haushalt — null = eigenes Konto (Verhalten wie bisher).
      * Ob es erlaubt ist, prüft der Server (canWriteFor), nicht die App.
@@ -49,7 +50,7 @@ data class AddPartResponse(
      * der Server nimmt dann den anderen, und die Oberfläche schreibt dazu, woher er
      * kommt (wie preisHerkunftHinweis() in der Webapp).
      */
-    @SerialName("price_from_condition") val priceFromCondition: String? = null,
+    @SerialName("price_from_condition") val priceFromCondition: Zustand? = null,
     val error: String? = null
 )
 
@@ -59,7 +60,7 @@ data class AddMinifigRequest(
     @SerialName("bl_fig_number") val blFigNumber: String? = null,
     val quantity: Int = 1,
     @SerialName("unit_price") val unitPrice: Double? = null,
-    val condition: String? = null, // "N" = New/Neu, "U" = Used/Gebraucht
+    val condition: Zustand? = null,
     /**
      * Zielkonto im Haushalt — null = eigenes Konto (Verhalten wie bisher).
      * Ob es erlaubt ist, prüft der Server (canWriteFor), nicht die App.
@@ -85,7 +86,7 @@ data class AddMinifigResponse(
      * der Server nimmt dann den anderen, und die Oberfläche schreibt dazu, woher er
      * kommt (wie preisHerkunftHinweis() in der Webapp).
      */
-    @SerialName("price_from_condition") val priceFromCondition: String? = null,
+    @SerialName("price_from_condition") val priceFromCondition: Zustand? = null,
     val error: String? = null
 )
 
@@ -136,9 +137,9 @@ data class PartsStatsResponse(val success: Boolean, val stats: PartsStats? = nul
 @Serializable
 data class Minifig(
     @SerialName("fig_number") val figNumber: String,
-    val condition: String? = null,
+    val condition: Zustand? = null,
     /** Alle erfassten Zustände — je einer eine Plakette (siehe SetItem). */
-    val conditions: List<String> = emptyList(),
+    val conditions: List<Zustand> = emptyList(),
     /** Besitzer im Haushalt — siehe SetItem.owners. */
     val owners: List<KontoName> = emptyList(),
     /** Mengengewichteter Kaufpreis über die Erfassungen. */
@@ -229,7 +230,7 @@ data class PartsCategoriesResponse(
 )
 
 @Serializable
-data class DefaultConditionResponse(val success: Boolean, val condition: String = "N")
+data class DefaultConditionResponse(val success: Boolean, val condition: Zustand = Zustand.NEU)
 
 // ── Detail-Dialog für Teile und Figuren aus Sets ──
 //

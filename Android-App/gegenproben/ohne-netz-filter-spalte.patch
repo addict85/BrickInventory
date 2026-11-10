@@ -4,7 +4,6 @@ Test: ch.brickinventoryapp.offline.OhneNetzFilterTest
 Rot: Suche, Thema, Lagerort und Sortierung
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
-index 8086341..b3a86fc 100644
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
 +++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
 @@ -32,7 +32,7 @@ object Faecher {
@@ -15,4 +14,4 @@ index 8086341..b3a86fc 100644
 +            thema = it.storage, lagerort = it.storage)
      }
      val MERKLISTE = Fach(Bestandsart.MERKLISTE, Merkposten.serializer(), { LokaleAnwendung.merkSchluessel(it) }) {
-         Filterspalten(suchtext(it.setNumber, it.name), zustand = it.condition)
+         Filterspalten(suchtext(it.setNumber, it.name), zustand = it.condition.kennung)

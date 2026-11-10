@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.Scannerherkunft
+import ch.brickinventoryapp.model.fach.Erfassungswunsch
+import ch.brickinventoryapp.model.fach.Zustand
+
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.SetAnleger
 import ch.brickinventoryapp.data.SetAnlegenSchritt
@@ -91,7 +95,7 @@ class ErfassungViewModelTest {
     private class Anleger(val schritte: List<SetAnlegenSchritt>) : SetAnleger {
         var vm: ErfassungViewModel? = null
         val gesehen = mutableListOf<Pruefphase?>()
-        override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?,
+        override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
                              ownerUserId: Int?, storage: String?): Flow<SetAnlegenSchritt> = flow {
             for (s in schritte) {
                 emit(s)
@@ -125,8 +129,7 @@ class ErfassungViewModelTest {
     @Test
     fun `ein gescanntes Set, das schon da ist, wird geoeffnet statt erfasst`() {
         val vm = vm()
-        vm.setScannerSource("gallery_search")
-        vm.resolveBarcode("5702016616316")
+        vm.resolveBarcode("5702016616316", Scannerherkunft.GALERIE_SUCHE)
         bis("gefunden") { vm.barcodeState.value.gefundenesSet == "75192-1" }
         assertNull("Kein Bestätigungsdialog", vm.barcodeState.value.result)
         bis("Prüfanzeige weg") { vm.erfassungState.value.pruefung == null }
@@ -161,7 +164,7 @@ class ErfassungViewModelTest {
         ))
         val vm = vm(anleger)
         val liste = t.gemeldet(1) {
-            vm.addSet("75192")
+            vm.addSet(Erfassungswunsch("75192"))
             bis("fertig") { vm.erfassungState.value.pruefung == null && t.meldungen.meldung.value != null }
         }
         assertEquals(listOf(Pruefphase.ANLEGEN_STAMMDATEN, Pruefphase.ANLEGEN_BILD, Pruefphase.ANLEGEN_ABSCHLUSS),
@@ -178,7 +181,7 @@ class ErfassungViewModelTest {
     fun `ohne Katalog meldet das Anlegen gespeichert, nicht hinzugefuegt`() {
         val vm = vm(Anleger(listOf(SetAnlegenSchritt.Fertig(
             AddSetResponse(action = "added", setNumber = "99999-1", katalogOffen = true)))))
-        vm.addSet("99999")
+        vm.addSet(Erfassungswunsch("99999"))
         bis("Meldung") { t.meldungen.meldung.value != null }
         assertEquals("t${R.string.vm_set_added_no_catalog}|99999-1", t.meldungen.meldung.value)
     }
@@ -187,7 +190,7 @@ class ErfassungViewModelTest {
     fun `ein vorhandenes Set beim Anlegen oeffnet die Detailansicht und meldet nichts`() {
         val vm = vm(Anleger(listOf(SetAnlegenSchritt.Fertig(AddSetResponse(action = "exists", setNumber = "75192-1")))))
         val liste = t.gemeldet(0) {
-            vm.addSet("75192-1")
+            vm.addSet(Erfassungswunsch("75192-1"))
             bis("gefunden") { vm.barcodeState.value.gefundenesSet == "75192-1" }
         }
         assertTrue(liste.isEmpty())
@@ -196,7 +199,7 @@ class ErfassungViewModelTest {
     @Test
     fun `ein abgebrochener Ereignisstrom ist ein Netzfehler, kein Satz des Servers`() {
         val vm = vm(Anleger(listOf(SetAnlegenSchritt.Fehler(""))))
-        vm.addSet("75192-1")
+        vm.addSet(Erfassungswunsch("75192-1"))
         bis("gemeldet") { t.meldungen.meldung.value != null }
         // Ein Netzfehler wird über meldung() formuliert ("fehler"); ein Satz
         // des Servers käme unverändert — hier leer — und sagte nichts.
@@ -206,9 +209,10 @@ class ErfassungViewModelTest {
     @Test
     fun `ein Scan aus der Merkliste legt einen Merkposten an und schliesst den Dialog`() {
         val vm = vm()
-        vm.setScannerSource("wanted")
+        vm.resolveBarcode("5702016616316", Scannerherkunft.MERKLISTE)
+        bis("Dialog") { vm.barcodeState.value.result == "75192-1" }
         val liste = t.gemeldet(1) {
-            vm.confirmAddBarcode("10294-1", condition = "U")
+            vm.confirmAddBarcode(Erfassungswunsch("75192-1", zustand = Zustand.GEBRAUCHT))
             bis("gemeldet") { t.meldungen.meldung.value != null }
         }
         assertEquals(listOf(Aenderung.Merkliste), liste)
@@ -231,12 +235,12 @@ class ErfassungViewModelTest {
         pfade.ausbleibend += "/api/v1/sets"
         val vm = bisZumDialog()
         val liste = t.gemeldet(1) {
-            vm.confirmAddBarcode("75192-1", ownerUserId = 2)
+            vm.confirmAddBarcode(Erfassungswunsch("75192-1", besitzer = 2))
             // Der Dialog schliesst sofort, und angelegt wird im Hintergrund — ohne Prüfanzeige.
             assertNull(vm.barcodeState.value.result)
             assertTrue(vm.barcodeState.value.adding)
             assertNull(vm.erfassungState.value.pruefung)
-            vm.confirmAddBarcode("75192-1", ownerUserId = 2)
+            vm.confirmAddBarcode(Erfassungswunsch("75192-1", besitzer = 2))
             pfade.freigeben()
             bis("fertig") { !vm.barcodeState.value.adding }
         }
@@ -250,7 +254,7 @@ class ErfassungViewModelTest {
     fun `ein Fehlschlag beim Bestaetigen nennt die Setnummer und gibt den Knopf frei`() {
         pfade.codes["/api/v1/sets"] = 500
         val vm = bisZumDialog()
-        vm.confirmAddBarcode("75192-1")
+        vm.confirmAddBarcode(Erfassungswunsch("75192-1"))
         bis("gemeldet") { t.meldungen.meldung.value?.startsWith("t${R.string.vm_add_failed}") == true }
         assertEquals("t${R.string.vm_add_failed}|75192-1|fehler", t.meldungen.meldung.value)
         bis("frei") { !vm.barcodeState.value.adding }
@@ -259,10 +263,9 @@ class ErfassungViewModelTest {
     @Test
     fun `aus der Teileliste wird nichts angelegt, nur die Nummer weitergereicht`() {
         val vm = vm()
-        vm.setScannerSource("partslist")
-        vm.resolveBarcode("5702016616316")
+        vm.resolveBarcode("5702016616316", Scannerherkunft.TEILELISTE)
         bis("Dialog") { vm.barcodeState.value.result == "75192-1" }
-        vm.confirmAddBarcode("75192-1")
+        vm.confirmAddBarcode(Erfassungswunsch("75192-1"))
         assertEquals("75192-1", vm.barcodeState.value.fuerTeileliste)
         assertNull(vm.barcodeState.value.result)
         uhr.advanceUntilIdle()

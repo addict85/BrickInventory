@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.model.AddSetResponse
 import kotlinx.coroutines.flow.Flow
 
@@ -11,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
 interface SetAnleger {
     fun anlegen(
         setNumber: String, quantity: Int, purchasePrice: Double?,
-        condition: String?, ownerUserId: Int?, storage: String? = null,
+        condition: Zustand?, ownerUserId: Int?, storage: String? = null,
     ): Flow<SetAnlegenSchritt>
 }
 

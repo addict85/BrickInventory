@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.api.HaushaltApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.model.data.model.*
@@ -55,7 +56,7 @@ class HaushaltRepositoryImpl @Inject constructor(
         safeCall { api.getAcquisitions(setNumber) }
 
     override suspend fun updateAcquisition(setNumber: String, acqId: Int, purchasePrice: Double?,
-                                  condition: String?, quantity: Int?, date: String?,
+                                  condition: Zustand?, quantity: Int?, date: String?,
                                   ownerUserId: Int?): Ergebnis<GenericResponse> =
         safeCall { api.updateAcquisition(setNumber, acqId,
             // fuerSet(): Sets tragen den Preis als `purchase_price` — Erklärung am Modell.

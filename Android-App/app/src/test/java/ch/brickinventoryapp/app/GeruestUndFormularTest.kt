@@ -507,7 +507,7 @@ class GeruestUndFormularTest {
         zeige {
             CatalogDetailScreen(setNumber = "10305-1", detail = katalogDetail,
                 isLoading = false, imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "", onLoad = {},
-                onAddToGallery = { _, _, _, _, _, _ -> }, onWish = { _, _, _, _, _ -> },
+                onAddToGallery = {}, onWish = { _, _, _, _, _ -> },
                 onOpenInGallery = {}, onBack = {})
         }
         val dichte = ctx.resources.displayMetrics.density
@@ -528,7 +528,7 @@ class GeruestUndFormularTest {
         zeige {
             CatalogDetailScreen(setNumber = "10305-1", detail = katalogDetail,
                 isLoading = false, imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "", onLoad = {},
-                onAddToGallery = { _, _, _, _, _, _ -> }, onWish = { _, _, _, _, _ -> },
+                onAddToGallery = {}, onWish = { _, _, _, _, _ -> },
                 onOpenInGallery = {}, onBack = {})
         }
         // Der Name steht einmal da, in der Leiste wie im Set-Detail; die Angaben rechts vom Bild.

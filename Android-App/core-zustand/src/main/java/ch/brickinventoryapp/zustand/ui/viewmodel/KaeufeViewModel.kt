@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.zustand.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Postenart
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.model.alsAnsicht
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.alarm.Alarmeingabe
@@ -61,15 +63,15 @@ class KaeufeViewModel @Inject constructor(
 
     // ── Laden ────────────────────────────────────────────────────────────────
 
-    override fun loadAcquisitions(setNumber: String) = lade("set", setNumber, KEINE_FARBE)
+    override fun loadAcquisitions(setNumber: String) = lade(Postenart.SET, setNumber, KEINE_FARBE)
 
-    /** Käufe und Preisverlauf eines manuellen Teils ("part") oder einer Figur ("fig"). */
-    override fun loadManualAcquisitions(type: String, id: String, colorId: Int) {
+    /** Käufe und Preisverlauf eines manuellen Teils oder einer Figur. */
+    override fun loadManualAcquisitions(type: Postenart, id: String, colorId: Int) {
         lade(type, id, colorId)
         loadManualPriceHistory(type, id, colorId)
     }
 
-    private fun lade(type: String, id: String, colorId: Int) {
+    private fun lade(type: Postenart, id: String, colorId: Int) {
         viewModelScope.launch {
             _manDetailState.update {
                 // Der Verlauf eines anderen Eintrags darf nicht stehen bleiben.
@@ -78,8 +80,8 @@ class KaeufeViewModel @Inject constructor(
                         priceHistory = if (gleich) it.priceHistory else null)
             }
             val r = when (type) {
-                "set" -> haushalt.getAcquisitions(id)
-                "fig" -> haushalt.getFigAcquisitions(id)
+                Postenart.SET -> haushalt.getAcquisitions(id)
+                Postenart.FIG -> haushalt.getFigAcquisitions(id)
                 else  -> haushalt.getPartAcquisitions(id, colorId)
             }
             when (r) {
@@ -91,10 +93,10 @@ class KaeufeViewModel @Inject constructor(
         }
     }
 
-    fun loadManualPriceHistory(type: String, id: String, colorId: Int = KEINE_FARBE) {
+    fun loadManualPriceHistory(type: Postenart, id: String, colorId: Int = KEINE_FARBE) {
         viewModelScope.launch {
             _manDetailState.update { it.copy(priceHistoryLoading = true) }
-            val r = if (type == "fig") finanzen.getFigPriceHistory(id) else finanzen.getPartPriceHistory(id, colorId)
+            val r = if (type == Postenart.FIG) finanzen.getFigPriceHistory(id) else finanzen.getPartPriceHistory(id, colorId)
             when (r) {
                 is Ergebnis.Success -> _manDetailState.update { it.copy(priceHistory = r.data.alsAnsicht(), priceHistoryLoading = false) }
                 is Ergebnis.Error -> _manDetailState.update { it.copy(priceHistoryLoading = false) }
@@ -104,13 +106,14 @@ class KaeufeViewModel @Inject constructor(
 
     private fun neuLaden() {
         val st = _manDetailState.value
+        val art = st.itemType ?: return
         if (st.itemId.isBlank()) return
-        lade(st.itemType, st.itemId, st.colorId)
+        lade(art, st.itemId, st.colorId)
     }
 
     // ── Ändern ───────────────────────────────────────────────────────────────
 
-    override fun updateAcquisition(setNumber: String, acqId: Int, purchasePrice: Double?, condition: String?,
+    override fun updateAcquisition(setNumber: String, acqId: Int, purchasePrice: Double?, condition: Zustand?,
                           quantity: Int?, date: String?) {
         viewModelScope.launch {
             when (val r = haushalt.updateAcquisition(setNumber, acqId, purchasePrice, condition, quantity, date)) {
@@ -148,13 +151,13 @@ class KaeufeViewModel @Inject constructor(
     }
 
     override fun updateManualAcquisition(
-        type: String, id: String, colorId: Int, acqId: Int,
-        unitPrice: Double?, condition: String?, quantity: Int?, date: String?,
+        type: Postenart, id: String, colorId: Int, acqId: Int,
+        unitPrice: Double?, condition: Zustand?, quantity: Int?, date: String?,
     ) {
         viewModelScope.launch {
             val req = UpdateAcquisitionRequest.fuerStueck(preis = unitPrice, condition = condition,
                                                           quantity = quantity, date = date)
-            val r = if (type == "fig") haushalt.updateFigAcquisition(id, acqId, req)
+            val r = if (type == Postenart.FIG) haushalt.updateFigAcquisition(id, acqId, req)
                     else haushalt.updatePartAcquisition(id, colorId, acqId, req)
             if (r is Ergebnis.Success && r.data.success) {
                 bestand.melde(manuelleArt(type))
@@ -165,9 +168,9 @@ class KaeufeViewModel @Inject constructor(
         }
     }
 
-    override fun deleteManualAcquisition(type: String, id: String, colorId: Int, acqId: Int) {
+    override fun deleteManualAcquisition(type: Postenart, id: String, colorId: Int, acqId: Int) {
         viewModelScope.launch {
-            val r = if (type == "fig") haushalt.deleteFigAcquisition(id, acqId)
+            val r = if (type == Postenart.FIG) haushalt.deleteFigAcquisition(id, acqId)
                     else haushalt.deletePartAcquisition(id, colorId, acqId)
             when (r) {
                 is Ergebnis.Success -> bestand.melde(manuelleArt(type))
@@ -182,14 +185,14 @@ class KaeufeViewModel @Inject constructor(
      * die vom Server gemeldeten mitgewanderten Teile und Figuren.
      */
     override fun changeAcquisitionOwner(
-        type: String, id: String, colorId: Int, acqId: Int,
+        type: Postenart, id: String, colorId: Int, acqId: Int,
         toUserId: Int, onDone: (String?, Int, Int) -> Unit,
     ) {
         viewModelScope.launch {
             val req = UpdateAcquisitionRequest.fuerStueck(ownerUserId = toUserId)
             val r = when (type) {
-                "set" -> haushalt.updateAcquisition(id, acqId, ownerUserId = toUserId)
-                "fig" -> haushalt.updateFigAcquisition(id, acqId, req)
+                Postenart.SET -> haushalt.updateAcquisition(id, acqId, ownerUserId = toUserId)
+                Postenart.FIG -> haushalt.updateFigAcquisition(id, acqId, req)
                 else  -> haushalt.updatePartAcquisition(id, colorId, acqId, req)
             }
             when (r) {
@@ -204,11 +207,11 @@ class KaeufeViewModel @Inject constructor(
     }
 
     /** Lagerort eines manuellen Eintrags, entprellt wie beim Set. */
-    override fun setzeManuellenLagerort(type: String, id: String, farbe: Int, ort: String) {
+    override fun setzeManuellenLagerort(type: Postenart, id: String, farbe: Int, ort: String) {
         lagerJob?.cancel()
         lagerJob = viewModelScope.launch {
             delay(Alarmeingabe.RUHE_MS)
-            val r = if (type == "fig") figuren.setFigStorage(id, ort) else teile.setPartStorage(id, farbe, ort)
+            val r = if (type == Postenart.FIG) figuren.setFigStorage(id, ort) else teile.setPartStorage(id, farbe, ort)
             when (r) {
                 is Ergebnis.Success -> {
                     if (!r.data.success) { meldungen.zeige(r.data.error ?: ""); return@launch }
@@ -220,14 +223,14 @@ class KaeufeViewModel @Inject constructor(
         }
     }
 
-    private fun manuelleArt(type: String) = if (type == "fig") Aenderung.Figuren else Aenderung.Teile
+    private fun manuelleArt(type: Postenart) = if (type == Postenart.FIG) Aenderung.Figuren else Aenderung.Teile
 
     private fun beiAenderung(aenderung: Aenderung) {
         val art = _manDetailState.value.itemType
         val betrifft = when (aenderung) {
-            Aenderung.Teile -> art == "part"
-            Aenderung.Figuren -> art == "fig"
-            is Aenderung.SetZusammenfassung -> art == "set" && aenderung.agg.setNumber == _manDetailState.value.itemId
+            Aenderung.Teile -> art == Postenart.PART
+            Aenderung.Figuren -> art == Postenart.FIG
+            is Aenderung.SetZusammenfassung -> art == Postenart.SET && aenderung.agg.setNumber == _manDetailState.value.itemId
             Aenderung.Sets, Aenderung.Merkliste, Aenderung.Alarme -> false
         }
         if (betrifft) neuLaden()

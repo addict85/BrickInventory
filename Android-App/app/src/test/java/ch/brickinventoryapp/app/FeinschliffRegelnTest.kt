@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ViewInAr
 import androidx.compose.material3.Icon
@@ -226,7 +227,7 @@ class FeinschliffRegelnTest {
     // 90-dp-Spalte → rot „Zustandszeile: „Zustand“ steht in 2 Zeilen“.
     @Test
     fun `Zustandszeile bricht bei 200 Prozent kein Wort um`() {
-        zeige(schrift = 2f) { Zustandszeile(zustand = "N", onZustand = {}) }
+        zeige(schrift = 2f) { Zustandszeile(zustand = Zustand.NEU, onZustand = {}) }
         ganzEineZeile(ctx.getString(R.string.common_condition), "Zustandszeile")
     }
 
@@ -246,7 +247,7 @@ class FeinschliffRegelnTest {
                 SetsRepository(welt.t.api, welt.t.cache),
                 KatalogRepository(welt.t.api, welt.t.cache),
                 object : SetAnleger {
-                    override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?,
+                    override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
                                          ownerUserId: Int?, storage: String?) =
                         kotlinx.coroutines.flow.emptyFlow<SetAnlegenSchritt>()
                 }))

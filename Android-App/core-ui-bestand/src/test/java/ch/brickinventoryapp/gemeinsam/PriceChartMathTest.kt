@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.gemeinsam
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.model.PreisDiagrammAnsicht
 import ch.brickinventoryapp.model.ui.model.PreisPunktAnsicht
 import ch.brickinventoryapp.model.ui.model.PreisReiheAnsicht
@@ -47,7 +48,7 @@ class PriceChartMathTest {
         )
         val lines = PriceChartMath.buildLines(chart)
         assertEquals(2, lines.size)
-        val used = lines.first { it.condition == "U" }
+        val used = lines.first { it.condition == Zustand.GEBRAUCHT }
         assertEquals("nur der echte Wert bleibt übrig", 1, used.points.size)
         assertEquals(80.0, used.points[0].value, 0.0001)
     }
@@ -74,7 +75,7 @@ class PriceChartMathTest {
         )
         val lines = PriceChartMath.buildLines(chart)
         assertEquals("keine Legendenzeile ohne Linie", 1, lines.size)
-        assertEquals("N", lines[0].condition)
+        assertEquals(Zustand.NEU, lines[0].condition)
     }
 
     @Test
@@ -91,8 +92,8 @@ class PriceChartMathTest {
         )
         val lines = PriceChartMath.buildLines(chart)
         val b = PriceChartMath.bounds(lines)!!
-        val newLine  = lines.first { it.condition == "N" }
-        val usedLine = lines.first { it.condition == "U" }
+        val newLine  = lines.first { it.condition == Zustand.NEU }
+        val usedLine = lines.first { it.condition == Zustand.GEBRAUCHT }
 
         assertEquals(0f, b.xFraction(newLine.points.first().day), 0.0001f)
         assertEquals(1f, b.xFraction(newLine.points.last().day), 0.0001f)
@@ -163,10 +164,10 @@ class PriceChartMathTest {
             x = listOf("2026-01-01", "2026-02-01", "2026-03-01")
         )
         val z = PriceChartMath.zusammenfassung(PriceChartMath.buildLines(chart), Locale.forLanguageTag("de-CH")).associateBy { it.zustand }
-        val neu = z.getValue("N")
+        val neu = z.getValue(Zustand.NEU)
         assertEquals(listOf("01.01.2026", "01.03.2026"), listOf(neu.von, neu.bis))
         assertEquals(listOf(100.0, 120.0, 90.0, 120.0), listOf(neu.anfang, neu.ende, neu.tief, neu.hoch))
-        val gebraucht = z.getValue("U")
+        val gebraucht = z.getValue(Zustand.GEBRAUCHT)
         assertEquals("Die aufgefüllte Null zählt nicht", "01.02.2026", gebraucht.von)
         assertEquals(70.0, gebraucht.tief, 0.0)
     }

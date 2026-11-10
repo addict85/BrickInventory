@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.model.ui.model
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.model.DashboardStats
 import ch.brickinventoryapp.model.data.model.FigsValuationResponse
 import ch.brickinventoryapp.model.data.model.PartsValuationResponse
@@ -141,7 +142,7 @@ fun PnlTotals.alsAnsicht() = GewinnSummenAnsicht(
 
 data class BewertungAnsicht(
     val currency: String = "EUR",
-    val condition: String = "N",
+    val condition: Zustand = Zustand.NEU,
     val ttlStunden: Int? = null,
     val kaufpreiseFremdeWaehrung: Int = 0,
     val sets: List<BewertungSetAnsicht> = emptyList(),

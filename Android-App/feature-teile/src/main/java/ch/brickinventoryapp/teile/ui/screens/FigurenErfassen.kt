@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile.ui.screens
 
+import ch.brickinventoryapp.model.fach.Figurenerfassung
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.gemeinsam.ui.erfassungUngueltig
 import ch.brickinventoryapp.gemeinsam.ui.erfassungsWerte
 import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
@@ -26,8 +28,8 @@ import ch.brickinventoryapp.gemeinsam.ui.OwnerPicker
 @Composable
 fun AddMinifigDialog(
     onDismiss: () -> Unit,
-    onAdd: (String, String?, Int, Double?, String?, Int?, String?) -> Unit,
-    defaultCondition: String = "N",
+    onAdd: (Figurenerfassung) -> Unit,
+    defaultCondition: Zustand = Zustand.NEU,
     /** Konten des Haushalts — ohne Unterkonten bleibt die Auswahl verborgen. */
     householdMembers: List<MitgliedAnsicht> = emptyList(),
     /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
@@ -53,12 +55,12 @@ fun AddMinifigDialog(
         if (figNumber.isNotBlank() && !erfassungUngueltig(quantity, unitPrice)) {
             // Siehe erfassungsWerte() — dieselbe Umrechnung wie im Teile-Dialog.
             val w = erfassungsWerte(quantity, unitPrice, condition, owner, householdMembers)
-            onAdd(
-                figNumber,
-                blFigNumber.trim().ifBlank { null },
-                w.anzahl, w.preis, w.zustand, w.besitzer,
-                lagerort.trim().takeIf { it.isNotEmpty() }
-            )
+            onAdd(Figurenerfassung(
+                nummer = figNumber,
+                blNummer = blFigNumber.trim().ifBlank { null },
+                menge = w.anzahl, stueckpreis = w.preis, zustand = w.zustand, besitzer = w.besitzer,
+                lagerort = lagerort.trim().takeIf { it.isNotEmpty() },
+            ))
         }
     }
 

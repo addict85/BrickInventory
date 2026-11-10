@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.verwaltung.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Zustand
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.MeldungsKanal
@@ -42,7 +43,7 @@ data class MonitoringUiState(
     val cacheStats: CacheKennzahlenAnsicht? = null,
     val apiLimits: ApiGrenzenAnsicht? = null,
     val cacheTtl: String = "24",
-    val vorgabeZustand: String = "N",
+    val vorgabeZustand: Zustand = Zustand.NEU,
     /** Das Design, das der Verwalter allen vorgibt — nicht das eigene des Kontos. */
     val vorgabeDesign: String? = null,
     /** Der Server sagte `nur_admins`: Die Abfrageschleife hört auf, statt alle 5 s erneut abgewiesen zu werden. */
@@ -150,7 +151,7 @@ class MonitoringViewModel @Inject constructor(
         viewModelScope.launch { ladeCacheUndGrenzen(); ladeDesignVorgabe() }
     }
 
-    fun vorgabeZustandWaehlen(zustand: String) = gespeichert(einstellungen = true) { setzeVorgabeZustand(zustand) }
+    fun vorgabeZustandWaehlen(zustand: Zustand) = gespeichert(einstellungen = true) { setzeVorgabeZustand(zustand) }
     fun designWaehlen(theme: String) = gespeichert(einstellungen = true) { setzeDesign(theme) }
     fun cacheDauerSpeichern(stunden: Int) = gespeichert { setzeCacheDauer(stunden) }
     fun cacheLeeren(alles: Boolean) = gespeichert(R.string.monitoring_cache_cleared) { leereCache(alles) }
@@ -315,7 +316,7 @@ class MonitoringViewModel @Inject constructor(
      * der Aufruf, wird zurückgestellt, sonst behauptete die Oberfläche etwas, das nie
      * gespeichert wurde.
      */
-    internal suspend fun setzeVorgabeZustand(zustand: String): Boolean {
+    internal suspend fun setzeVorgabeZustand(zustand: Zustand): Boolean {
         val vorher = _state.value.vorgabeZustand
         _state.update { it.copy(vorgabeZustand = zustand) }
         val ok = verwaltung.setDefaultCondition(zustand) is Ergebnis.Success

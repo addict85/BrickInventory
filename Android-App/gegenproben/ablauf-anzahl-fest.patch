@@ -6,12 +6,12 @@ Rot: ein Set erfassen nimmt Nummer und Anzahl
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieErfassen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieErfassen.kt
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieErfassen.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieErfassen.kt
-@@ -119,7 +119,7 @@
-             if (sofortFokus) setFeldFokus.fokusWennOffen()
-         } else if (!erfassungUngueltig(quantity, purchasePrice)) {
+@@ -123,7 +123,7 @@ fun AddSetDialog(
              // Bei unlesbarer Menge oder unlesbarem Preis bleibt der Dialog offen; die Felder zeigen den Fehler.
--            onAdd(setNumber, quantity.toIntOrNull() ?: 1,
-+            onAdd(setNumber, 1,
-                   NumericInput.leseBetrag(purchasePrice), condition,
-                   eigentuemerFuerErfassung(householdMembers, owner),
-                   lagerort.trim().takeIf { it.isNotEmpty() })
+             onAdd(Erfassungswunsch(
+                 setNumber = setNumber,
+-                menge = quantity.toIntOrNull() ?: 1,
++                menge = 1,
+                 kaufpreis = NumericInput.leseBetrag(purchasePrice),
+                 zustand = condition,
+                 besitzer = eigentuemerFuerErfassung(householdMembers, owner),

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
@@ -373,7 +374,7 @@ class OberflaechenRegelnTest {
             SetsRepository(welt.t.api, welt.t.cache),
             KatalogRepository(welt.t.api, welt.t.cache),
             object : SetAnleger {
-                override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?,
+                override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
                                      ownerUserId: Int?, storage: String?) =
                     kotlinx.coroutines.flow.emptyFlow<SetAnlegenSchritt>()
             }))
@@ -543,7 +544,7 @@ class OberflaechenRegelnTest {
                 SetsRepository(welt.t.api, welt.t.cache),
                 KatalogRepository(welt.t.api, welt.t.cache),
                 object : SetAnleger {
-                    override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?,
+                    override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
                                          ownerUserId: Int?, storage: String?) =
                         kotlinx.coroutines.flow.emptyFlow<SetAnlegenSchritt>()
                 }))
@@ -793,7 +794,7 @@ class OberflaechenRegelnTest {
     fun `Kacheln einer Reihe sind gleich hoch`() {
         val bilder = coil3.ImageLoader.Builder(ctx).build()
         val voll = SetAnsicht(setNumber = "10294-1", name = "Titanic mit sehr langem Namen über zwei Zeilen",
-            theme = "Icons", pieces = 9090, condition = "N")
+            theme = "Icons", pieces = 9090, condition = Zustand.NEU)
         val karg = SetAnsicht(setNumber = "1-1", name = "Box")
         zeige {
             Row(Modifier.width(380.dp)) {

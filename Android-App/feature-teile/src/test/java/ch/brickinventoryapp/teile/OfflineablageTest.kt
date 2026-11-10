@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.teile
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.repository.GutscheineRepositoryImpl
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.offline.Faecher
@@ -47,7 +48,7 @@ class OfflineablageTest {
     fun `offline Bearbeitetes steht sofort in der Liste`() = runBlocking {
         ablage.uebernimm(Faecher.SETS, listOf(set("10001-1", 1), set("10002-1", 3)))
         ablage.puffere(Bearbeitung.SetMenge("10001-1", 2))
-        ablage.puffere(Bearbeitung.SetErfassen(AddSetRequest("10003-1", quantity = 1, condition = "N")))
+        ablage.puffere(Bearbeitung.SetErfassen(AddSetRequest("10003-1", quantity = 1, condition = Zustand.NEU)))
         val l = ablage.beobachte(Faecher.SETS).first().liste
         assertEquals(listOf("10003-1" to 1, "10001-1" to 3, "10002-1" to 3), l.map { it.setNumber to it.quantity })
         assertEquals(2, ablage.offene().first())
@@ -74,8 +75,8 @@ class OfflineablageTest {
 
     @Test
     fun `Merkposten und manuelle Teile werden lokal angelegt und geändert`() = runBlocking {
-        ablage.uebernimm(Faecher.MERKLISTE, listOf(Merkposten(setNumber = "20001-1", condition = "N", userId = 7)))
-        ablage.puffere(Bearbeitung.MerkpostenAnlegen(MerkpostenRequest("20002-1", "U", 7)))
+        ablage.uebernimm(Faecher.MERKLISTE, listOf(Merkposten(setNumber = "20001-1", condition = Zustand.NEU, userId = 7)))
+        ablage.puffere(Bearbeitung.MerkpostenAnlegen(MerkpostenRequest("20002-1", Zustand.GEBRAUCHT, 7)))
         ablage.puffere(Bearbeitung.MerkpostenLoeschen("20001-1", "N", 7))
         assertEquals(listOf("20002-1|U|7"),
             ablage.lies(Faecher.MERKLISTE)!!.liste.map { "${it.setNumber}|${it.condition}|${it.userId}" })

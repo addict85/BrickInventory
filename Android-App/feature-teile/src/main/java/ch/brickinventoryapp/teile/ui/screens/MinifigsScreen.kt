@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile.ui.screens
 
+import ch.brickinventoryapp.model.fach.Postenart
+import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
@@ -83,7 +85,7 @@ fun MinifigsScreen(
     val isLoading = partsState.minifigsLoading
     val serverUrl = state.serverUrl
     val waehrung = state.currency
-    val defaultCondition = state.userDefaultCondition ?: "N"
+    val defaultCondition = state.userDefaultCondition ?: Zustand.NEU
     val householdMembers = blick.householdMembers
     val scopeMode = blick.scopeModes[ScopeFilter.View.MINIFIGS]
         ?: ScopeFilter.ALL
@@ -94,10 +96,6 @@ fun MinifigsScreen(
 
     val onRefresh: () -> Unit = { aktionen.loadMinifigs() }
     val onScopeChange: (String) -> Unit = { aktionen.setScope(ScopeFilter.View.MINIFIGS, it) }
-    val onAddMinifig: (String, String?, Int, Double?, String?, Int?, String?) -> Unit =
-        { num, blNum, qty, unitPrice, cond, owner, ort ->
-            aktionen.addMinifig(num, blNum, qty, unitPrice, cond, owner, ort)
-        }
     // Der VORRAT an Lagerorten (nicht die belegten Orte): Beim Erfassen soll
     // auch ein leeres Regal zur Wahl stehen.
     val lagerortVorrat = lagerState.eigene.map { it.name }
@@ -199,7 +197,7 @@ fun MinifigsScreen(
                         span = { _, _ -> if (ansicht == Listenansicht.TABELLE) GridItemSpan(maxLineSpan) else GridItemSpan(1) },
                     ) { _, fig ->
                         // BEIDE Ansichten oeffnen denselben Dialog.
-                        val oeffne = { aktionen.oeffneSetItem("fig", fig.figNumber) }
+                        val oeffne = { aktionen.oeffneSetItem(Postenart.FIG, fig.figNumber) }
                         Bewegt {
                             if (ansicht == Listenansicht.TABELLE) MinifigTableRow(fig, serverUrl, imageLoader, oeffne)
                             else MinifigCard(fig, serverUrl, imageLoader, oeffne,
@@ -236,9 +234,9 @@ fun MinifigsScreen(
             onDismiss = { showAddDialog = false },
             lagerorte = lagerortVorrat,
             lagerortVorgabe = lagerState.vorgabe?.name ?: "",
-            onAdd = { num, blNum, qty, unitPrice, cond, owner, ort ->
+            onAdd = { erfassung ->
                 showAddDialog = false
-                onAddMinifig(num, blNum, qty, unitPrice, cond, owner, ort)
+                aktionen.addMinifig(erfassung)
             }
         )
     }

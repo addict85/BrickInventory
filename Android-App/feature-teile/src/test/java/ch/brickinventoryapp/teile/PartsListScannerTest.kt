@@ -24,7 +24,7 @@ class PartsListScannerTest {
     @Test
     fun `Eigentuemer, Kaufpreis und Zustand haengen an der Herkunft`() {
         val c = code(src)
-        val bedingung = c.indexOf("""if (barcodeState.source != "partslist")""")
+        val bedingung = c.indexOf("""if (barcodeState.source != Scannerherkunft.TEILELISTE)""")
         assert(bedingung > 0) {
             "Die Erfassungsfelder stehen nicht mehr unter der Herkunfts-Bedingung — aus der " +
                 "Teileliste wären sie wirkungslos, würden aber wie eine echte Eingabe aussehen"
@@ -44,7 +44,7 @@ class PartsListScannerTest {
     fun `das Bild bleibt in beiden Faellen sichtbar`() {
         val c = code(src)
         val bild = c.indexOf("ProduktBild(")
-        val bedingung = c.indexOf("""if (barcodeState.source != "partslist")""")
+        val bedingung = c.indexOf("""if (barcodeState.source != Scannerherkunft.TEILELISTE)""")
         assert(bild in 1 until bedingung) {
             "Das Vorschaubild darf NICHT im Erfassungs-Zweig liegen — es ist der Grund, " +
                 "warum der Dialog überhaupt erscheint: prüfen, ob das richtige Set gescannt wurde"
@@ -54,7 +54,7 @@ class PartsListScannerTest {
     @Test
     fun `aus der Teileliste wird nur die Setnummer uebergeben`() {
         val c = code(src)
-        assert(c.contains("""aktionen.confirmAddBarcode(barcodeState.result)""")) {
+        assert(c.contains("""aktionen.confirmAddBarcode(Erfassungswunsch(barcodeState.result))""")) {
             "Der Teilelisten-Weg soll nur die Nummer übergeben — Werte mitzuschicken, die " +
                 "niemand eingeben konnte, verschleiert beim Lesen, was gemeint ist"
         }

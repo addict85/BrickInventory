@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile.ui.screens
 
+import ch.brickinventoryapp.model.fach.Teilerfassung
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.ui.theme.farbeAusHex
 import ch.brickinventoryapp.gemeinsam.ui.erfassungUngueltig
 import ch.brickinventoryapp.gemeinsam.ui.erfassungsWerte
@@ -33,8 +35,8 @@ import ch.brickinventoryapp.gemeinsam.ui.OwnerPicker
 fun AddPartDialog(
     colors: List<FarbeAnsicht> = emptyList(),
     onDismiss: () -> Unit,
-    onAdd: (String, Int, String?, String?, Int, Double?, String?, Int?, String?) -> Unit,
-    defaultCondition: String = "N",
+    onAdd: (Teilerfassung) -> Unit,
+    defaultCondition: Zustand = Zustand.NEU,
     /** Konten des Haushalts — ohne Unterkonten bleibt die Auswahl verborgen. */
     householdMembers: List<MitgliedAnsicht> = emptyList(),
     /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
@@ -63,11 +65,12 @@ fun AddPartDialog(
             // Figuren-Dialog. Was ein leeres Feld bedeutet, ist eine
             // Entscheidung und keine Formalie; sie gehoert an eine Stelle.
             val w = erfassungsWerte(quantity, unitPrice, condition, owner, householdMembers)
-            onAdd(
-                partNumber, selectedColor?.id ?: OHNE_FARBE, selectedColor?.name, selectedColor?.hex,
-                w.anzahl, w.preis, w.zustand, w.besitzer,
-                lagerort.trim().takeIf { it.isNotEmpty() }
-            )
+            onAdd(Teilerfassung(
+                nummer = partNumber,
+                farbId = selectedColor?.id ?: OHNE_FARBE, farbname = selectedColor?.name, farbHex = selectedColor?.hex,
+                menge = w.anzahl, stueckpreis = w.preis, zustand = w.zustand, besitzer = w.besitzer,
+                lagerort = lagerort.trim().takeIf { it.isNotEmpty() },
+            ))
         }
     }
 

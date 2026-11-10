@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Postenart
+import ch.brickinventoryapp.model.fach.Zustand
+
 /**
  * Die Abschnitte der Set-Detailseite. Erweiterungen auf LazyListScope und keine
  * Composables, weil sie Einträge in die LazyColumn der Seite eintragen; die
@@ -111,7 +114,7 @@ private fun PreisKarteInhalt(detailState: SetDetailUiState, price: SetPreisAnsic
 }
 
 /** Stammdaten: Nummer, Menge (änderbar), Erfassungsdatum. */
-fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, lagerZustand: LagerUiState, aktionen: SetDetailAktionen, acquisitions: List<KaufAnsicht>, currency: String, fmtDate: (String?) -> String, onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit) {
+fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, lagerZustand: LagerUiState, aktionen: SetDetailAktionen, acquisitions: List<KaufAnsicht>, currency: String, fmtDate: (String?) -> String, onNavigateToAcqMgmt: (type: Postenart, id: String, colorId: Int, title: String) -> Unit) {
     // ── Set details section ────────────────────────────────────────────
     item {
         SectionCard(title = stringResource(R.string.detail_section_details)) {
@@ -217,7 +220,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, la
                 acquisitions = acquisitions,
                 currency = currency,
                 onEditPrices = {
-                    onNavigateToAcqMgmt("set", capturedSetNumber, 0, capturedSetTitle)
+                    onNavigateToAcqMgmt(Postenart.SET, capturedSetNumber, 0, capturedSetTitle)
                 }
             )
         }
@@ -332,7 +335,7 @@ fun LazyListScope.setDetailAlarmSection(
     setNumber: String,
     alarme: List<PreisalarmAnsicht>,
     currency: String,
-    onSetze: (setNumber: String, richtung: String, roh: String, zustand: String) -> Unit,
+    onSetze: (setNumber: String, richtung: String, roh: String, zustand: Zustand) -> Unit,
     /** Aus, wo die Liste selbst schon einen Rand hat (Merkposten-Detail). */
     aussenAbstand: Boolean = true,
 ) {
@@ -351,7 +354,7 @@ fun LazyListScope.setDetailAlarmSection(
             // neuen Zustand an. Dass `alarm` oben am Zustand haengt, erledigt
             // das Laden von selbst: Die Liste traegt beide.
             SegmentWahl(
-                optionen = listOf("N" to stringResource(R.string.condition_new), "U" to stringResource(R.string.condition_used)),
+                optionen = listOf(Zustand.NEU to stringResource(R.string.condition_new), Zustand.GEBRAUCHT to stringResource(R.string.condition_used)),
                 gewaehlt = zustand,
                 onWahl = { zustand = it },
             )

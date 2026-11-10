@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Zustand
 import android.content.Context
 import ch.brickinventoryapp.testing.VerwaltungRepository
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
@@ -410,7 +411,7 @@ class BarrierefreiheitBefundeTest {
     @Test
     fun `M13 Set- und Katalogkachel lesen zuerst den Namen und sind Knoepfe mit Ziel`() {
         val set = SetAnsicht(setNumber = "75192-1", name = "Millennium Falcon", theme = "Star Wars", quantity = 2,
-            conditions = listOf("N"))
+            conditions = listOf(Zustand.NEU))
         val katalog = KatalogSetAnsicht(setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022,
             numParts = 4514, owned = true, ownedQuantity = 2)
         zeige {

@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile.ui
 
+import ch.brickinventoryapp.model.fach.Postenart
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.model.*
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
@@ -86,8 +88,8 @@ data class PartsUiState(
  * Dialog. Ein Zustand für beides, weil der Server dieselbe Form liefert.
  */
 data class SetItemUiState(
-    /** "part" oder "fig"; null heisst: der Dialog ist zu. */
-    val art: String? = null,
+    /** null heisst: der Dialog ist zu. */
+    val art: Postenart? = null,
     val nummer: String = "",
     val colorId: Int = OHNE_FARBE,
     val laedt: Boolean = false,
@@ -127,5 +129,5 @@ data class TeilelisteUiState(
 data class TeileSitzungUiState(
     val serverUrl: String = "",
     val currency: String = "EUR",
-    val userDefaultCondition: String? = null,
+    val userDefaultCondition: Zustand? = null,
 )

@@ -6,8 +6,8 @@ Rot: Tablet zeigt Teil
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/CollectionGraph.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/CollectionGraph.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/CollectionGraph.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/nav/CollectionGraph.kt
-@@ -354,7 +354,7 @@ internal fun TeileListeUndDetailRoute(
-     liste: @Composable (oeffneManuell: (String, String, Int, String) -> Unit) -> Unit,
+@@ -356,7 +356,7 @@ internal fun TeileListeUndDetailRoute(
+     liste: @Composable (oeffneManuell: (Postenart, String, Int, String) -> Unit) -> Unit,
  ) {
      BoxWithConstraints(Modifier.fillMaxSize()) {
 -        val nebeneinander = listeUndDetail(maxWidth.value)

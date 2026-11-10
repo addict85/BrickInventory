@@ -115,7 +115,7 @@ class AblaufTest {
     @Test
     fun `ein Set erfassen nimmt Nummer und Anzahl`() {
         var erfasst: Pair<String, Int>? = null
-        zeige { AddSetDialog(onDismiss = {}, onAdd = { nr, anzahl, _, _, _, _ -> erfasst = nr to anzahl }) }
+        zeige { AddSetDialog(onDismiss = {}, onAdd = { erfasst = it.setNumber to it.menge }) }
         compose.onNodeWithText(ctx.getString(R.string.gallery_set_number)).performTextInput("75192")
         compose.onNodeWithText(ctx.getString(R.string.common_quantity)).performTextReplacement("3")
         compose.onNode(hasText(ctx.getString(R.string.gallery_add)) and hasClickAction()).performClick()
@@ -126,7 +126,7 @@ class AblaufTest {
     @Test
     fun `ein Set ohne Nummer sagt beim Tippen auf Hinzufuegen, was fehlt`() {
         var erfasst = 0
-        zeige { AddSetDialog(onDismiss = {}, onAdd = { _, _, _, _, _, _ -> erfasst++ }, sofortFokus = false) }
+        zeige { AddSetDialog(onDismiss = {}, onAdd = { erfasst++ }, sofortFokus = false) }
         compose.onNode(hasText(ctx.getString(R.string.gallery_add)) and hasClickAction()).performClick()
         compose.waitForIdle()
         assertEquals("Ohne Nummer wird nichts erfasst", 0, erfasst)
@@ -141,7 +141,7 @@ class AblaufTest {
     @Test
     fun `ein Set mit unsinniger Nummer sagt beim Hinzufuegen, was erwartet wird`() {
         var erfasst = 0
-        zeige { AddSetDialog(onDismiss = {}, onAdd = { _, _, _, _, _, _ -> erfasst++ }, sofortFokus = false) }
+        zeige { AddSetDialog(onDismiss = {}, onAdd = { erfasst++ }, sofortFokus = false) }
         compose.onNodeWithText(ctx.getString(R.string.gallery_set_number)).performTextInput("--")
         compose.onNode(hasText(ctx.getString(R.string.gallery_add)) and hasClickAction()).performClick()
         compose.waitForIdle()

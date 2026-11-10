@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.model.alsAnsicht
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
@@ -154,14 +155,14 @@ class SetDetailViewModel @Inject constructor(
         }
     }
 
-    override fun setzePreisalarm(setNumber: String, richtung: String, roh: String, zustand: String) =
+    override fun setzePreisalarm(setNumber: String, richtung: String, roh: String, zustand: Zustand) =
         alarmEingabe.setze(setNumber, richtung, roh, zustand)
 
     /**
      * Die Menge ändern. Die neue Zahl steht sofort in der Ansicht, die übrigen
      * Bestandsansichten erfahren es über das Signal.
      */
-    fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: String? = null) =
+    fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: Zustand? = null) =
         mengeAendern(setNumber) { sets.updateQuantity(setNumber, quantity, purchasePrice, condition) }
 
     /** Der Regler: ein Schritt, damit gleichzeitige Klicks auf zwei Geräten zusammenzählen. */

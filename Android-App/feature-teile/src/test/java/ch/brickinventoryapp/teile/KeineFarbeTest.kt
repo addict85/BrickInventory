@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.teile
 
+import ch.brickinventoryapp.model.fach.Teilerfassung
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.api.ApiJson
@@ -12,7 +13,7 @@ import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.testing.FigurenRepository
 import ch.brickinventoryapp.testing.TeileRepository
 import ch.brickinventoryapp.zustand.ui.ManualItemDetailUiState
-import ch.brickinventoryapp.zustand.ui.Postenart
+import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.zustand.ui.Screen
 import ch.brickinventoryapp.model.ui.farbName
 import ch.brickinventoryapp.model.ui.ohneKeineFarbe
@@ -37,7 +38,7 @@ import ch.brickinventoryapp.testing.TestDienste
  * „keine Farbe“ und nimmt ein fehlendes color_id nicht als Schwarz.
  *
  * Gegenproben:
- *   A  in TeileViewModel.addPart die Vorgabe `colorId = 0` → rot „ein Teil
+ *   A  in Teilerfassung die Vorgabe `farbId = 0` → rot „ein Teil
  *      ohne Farbe geht als 9999 hinaus“ ("color_id":0)
  *   B  in TeileRepository.setPartColor den Namen auch bei KEINE_FARBE
  *      mitgeschickt → rot „keine Farbe als neue Farbe schickt keinen Namen mit“
@@ -76,12 +77,12 @@ class KeineFarbeTest {
 
     @Test
     fun `ein Teil ohne Farbe geht als 9999 hinaus`() {
-        vm().addPart("3001")
+        vm().addPart(Teilerfassung("3001"))
         assertTrue("Teil erfasst", pfade.anfragenAn("POST /api/v1/parts").isNotEmpty())
         val k = koerperZu("POST /api/v1/parts")
         assertTrue(k, k.contains("\"color_id\":9999"))
         // Auch ein mitgegebener Name gehört nicht zu „keine Farbe“.
-        vm().addPart("3002", KEINE_FARBE, "[No Color/Any Color]", "05131D")
+        vm().addPart(Teilerfassung("3002", KEINE_FARBE, "[No Color/Any Color]", "05131D"))
         assertTrue("zweites Teil", pfade.anfragenAn("POST /api/v1/parts").size == 2)
         val k2 = pfade.koerper[pfade.anfragen.indexOfLast { it == "POST /api/v1/parts" }]
         assertFalse(k2, k2.contains("No Color") || k2.contains("05131D"))

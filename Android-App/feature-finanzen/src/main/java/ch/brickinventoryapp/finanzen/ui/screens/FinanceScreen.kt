@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.finanzen.ui.screens
 
+import ch.brickinventoryapp.model.fach.Postenart
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.finanzen.ui.viewmodel.FinanzAktionen
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
@@ -58,7 +60,7 @@ fun FinanceRoute(
     vm: FinanzViewModel,
     imageLoader: ImageLoader,
     onSetClick: (String) -> Unit = {},
-    onManualClick: (type: String, id: String, colorId: Int, name: String?) -> Unit = { _, _, _, _ -> },
+    onManualClick: (type: Postenart, id: String, colorId: Int, name: String?) -> Unit = { _, _, _, _ -> },
     listState: LazyListState = rememberLazyListState(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -76,7 +78,7 @@ fun FinanceScreen(
     /** Klick auf ein Set — nur der Graph kennt den NavController. */
     onSetClick: (String) -> Unit = {},
     /** Klick auf einen manuell erfassten Eintrag, ebenso. */
-    onManualClick: (type: String, id: String, colorId: Int, name: String?) -> Unit = { _, _, _, _ -> },
+    onManualClick: (type: Postenart, id: String, colorId: Int, name: String?) -> Unit = { _, _, _, _ -> },
     /** Scroll-Zustand von aussen: Das Ziel wird beim Öffnen eines Details verworfen. */
     listState: LazyListState = rememberLazyListState(),
 ) {
@@ -249,7 +251,7 @@ fun ManualFinanceRow(
     /** [purchaseStr] gilt für alle Stück der Zeile, wie der Marktwert daneben. */
     purchaseGesamt: Boolean = false,
     /** Zustand dieser Erfassung; null = Eintrag ohne Erfassungen. */
-    condition: String? = null,
+    condition: Zustand? = null,
     /** Entwicklung gegen den Kaufpreis dieser Erfassung (vom Server, pnl_prozent). */
     pnlProzent: Double? = null,
     /** Dieselbe Entwicklung in Geld, schon formatiert mit Vorzeichen. */

@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app.nav
 
+import ch.brickinventoryapp.model.ui.Scannerherkunft
+import ch.brickinventoryapp.model.fach.Postenart
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -108,7 +110,7 @@ private fun NavGraphBuilder.galerieZiele(u: ZielUmgebung) {
                 vm = galerieVm,
                 erfassung = erfassung,
                 imageLoader = imageLoader,
-                onScanBarcode = { erfassung.setScannerSource("gallery_search"); navController.navigate(Screen.BarcodeScanner) },
+                onScanBarcode = { navController.navigate(Screen.BarcodeScanner(Scannerherkunft.GALERIE_SUCHE)) },
                 onSetClick = { navController.navigate(Screen.SetDetail(it)) },
                 gridState = galleryGridState
             )
@@ -154,7 +156,7 @@ private fun NavGraphBuilder.setDetailZiel(u: ZielUmgebung) {
             },
             rueckgaengigMoeglich = galerieUnten != null,
             onNavigateToAcqMgmt = { type, id, colorId, title ->
-                navController.navigate(Screen.AcquisitionManagement(Postenart.aus(type), id, colorId, title))
+                navController.navigate(Screen.AcquisitionManagement(type, id, colorId, title))
             },
             onOpenPdf = { url, title ->
                 navController.navigate(Screen.PdfViewer(url, title))
@@ -184,7 +186,7 @@ private fun GalerieNebenDetailRoute(u: ZielUmgebung, galerie: GalerieViewModel, 
                         vm = galerie,
                         erfassung = erfassung,
                         imageLoader = u.imageLoader,
-                        onScanBarcode = { erfassung.setScannerSource("gallery_search"); navController.navigate(Screen.BarcodeScanner) },
+                        onScanBarcode = { navController.navigate(Screen.BarcodeScanner(Scannerherkunft.GALERIE_SUCHE)) },
                         onSetClick = { sn ->
                             if (sn != setNumber) navController.navigate(Screen.SetDetail(sn)) {
                                 popUpTo<Screen.SetDetail> { inclusive = true }
@@ -237,7 +239,7 @@ private fun NavGraphBuilder.teileZiele(u: ZielUmgebung) {
                     vm = teileVm,
                     imageLoader = imageLoader,
                     onOpenDetail = { partNumber, colorId ->
-                        oeffneManuell("part", partNumber, colorId,
+                        oeffneManuell(Postenart.PART, partNumber, colorId,
                             partsState.manualParts
                                 ?.find { it.partNumber == partNumber && it.colorId == colorId }
                                 ?.partName ?: partNumber)
@@ -275,7 +277,7 @@ private fun NavGraphBuilder.figurenZiele(u: ZielUmgebung) {
                     vm = teileVm,
                     imageLoader = imageLoader,
                     onOpenDetail = { figNumber ->
-                        oeffneManuell("fig", figNumber, 0,
+                        oeffneManuell(Postenart.FIG, figNumber, 0,
                             partsState.manualFigs?.find { it.figNumber == figNumber }
                                 ?.figName ?: figNumber)
                     },
@@ -300,7 +302,7 @@ private fun NavGraphBuilder.einzelstueckZiele(
     // Ein ganzer Screen, kein Dialog mehr — Aufbau wie beim Set-Detail.
     composable<Screen.ManualItemDetail> { backStackEntry ->
         val ziel = backStackEntry.toRoute<Screen.ManualItemDetail>()
-        val itemType  = ziel.art.kennung
+        val itemType  = ziel.art
         val itemId    = ziel.id
         val colorId   = ziel.colorId
         val itemTitle = ziel.title
@@ -314,7 +316,7 @@ private fun NavGraphBuilder.einzelstueckZiele(
             imageLoader = imageLoader,
             onBack = { navController.popBackStack() },
             onNavigateToAcqMgmt = { t, i, c, title ->
-                navController.navigate(Screen.AcquisitionManagement(Postenart.aus(t), i, c, title))
+                navController.navigate(Screen.AcquisitionManagement(t, i, c, title))
             },
             // Die Farbe ist Teil der Route und der Suche im Screen; nach einer Änderung
             // wird er mit der neuen Farbe neu geöffnet. Erst zurück, dann hin: Sonst
@@ -330,7 +332,7 @@ private fun NavGraphBuilder.einzelstueckZiele(
         val ziel = backStackEntry.toRoute<Screen.AcquisitionManagement>()
         AcquisitionManagementRoute(
             vm      = hiltViewModel<KaeufeViewModel>(),
-            type    = ziel.art.kennung,
+            type    = ziel.art,
             id      = ziel.id,
             colorId = ziel.colorId,
             title   = ziel.title,
@@ -351,7 +353,7 @@ internal fun TeileListeUndDetailRoute(
     imageLoader: ImageLoader,
     serverUrl: String,
     navController: NavHostController,
-    liste: @Composable (oeffneManuell: (String, String, Int, String) -> Unit) -> Unit,
+    liste: @Composable (oeffneManuell: (Postenart, String, Int, String) -> Unit) -> Unit,
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val nebeneinander = listeUndDetail(maxWidth.value)
@@ -359,19 +361,19 @@ internal fun TeileListeUndDetailRoute(
         val lager by teileVm.lagerState.collectAsStateWithLifecycle()
         // Typ, Nummer, Farbe, Titel des offenen manuellen Eintrags; Liste, weil sie sich speichern lässt.
         var manuell by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<List<String>?>(null) }
-        val oeffneManuell: (String, String, Int, String) -> Unit = { typ, id, farbe, titel ->
+        val oeffneManuell: (Postenart, String, Int, String) -> Unit = { typ, id, farbe, titel ->
             if (nebeneinander) {
                 teileVm.schliesseSetItem()
-                manuell = listOf(typ, id, farbe.toString(), titel)
-            } else navController.navigate(Screen.ManualItemDetail(Postenart.aus(typ), id, farbe, titel))
+                manuell = listOf(typ.kennung, id, farbe.toString(), titel)
+            } else navController.navigate(Screen.ManualItemDetail(typ, id, farbe, titel))
         }
         val oeffneSet: (String) -> Unit = { navController.navigate(Screen.SetDetail(it)) }
         val offen = manuell
         if (nebeneinander && (setItem.offen || offen != null)) {
             // Die Kachel des offenen Teils ist markiert wie in Merkliste und Galerie.
             val offenesTeil = setItem.art?.let { art ->
-                detailSchluessel(art, setItem.nummer,
-                    setItem.colorId.takeIf { art == "part" })
+                detailSchluessel(art.kennung, setItem.nummer,
+                    setItem.colorId.takeIf { art == Postenart.PART })
             }
             ListeUndDetail(
                 liste = {
@@ -387,14 +389,14 @@ internal fun TeileListeUndDetailRoute(
                         ManualItemDetailRoute(
                             vm = hiltViewModel<KaeufeViewModel>(),
                             teile = teileVm,
-                            type = offen[0],
+                            type = Postenart.aus(offen[0]),
                             id = offen[1],
                             colorId = offen[2].toInt(),
                             fallbackTitle = offen[3],
                             imageLoader = imageLoader,
                             onBack = { manuell = null },
                             onNavigateToAcqMgmt = { t, i, c, title ->
-                                navController.navigate(Screen.AcquisitionManagement(Postenart.aus(t), i, c, title))
+                                navController.navigate(Screen.AcquisitionManagement(t, i, c, title))
                             },
                             onFarbeGeaendert = { neueFarbe -> manuell = listOf(offen[0], offen[1], neueFarbe.toString(), offen[3]) },
                         )

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
@@ -97,7 +98,7 @@ class EinstellungenViewModelTest {
     @Test
     fun `eine Schwelle von null geht nicht hinaus`() {
         val vm = vm()
-        vm.aendereAlarmSchwelle("75192-1", "N", "unter", 0.0)
+        vm.aendereAlarmSchwelle("75192-1", Zustand.NEU, "unter", 0.0)
         assertEquals("t${R.string.alerts_bad_value}", t.meldungen.meldung.value)
         assertTrue(pfade.anfragenAn("/alert").isEmpty())
     }
@@ -108,7 +109,7 @@ class EinstellungenViewModelTest {
         vm.ladeAlarmUebersicht()
         assertTrue("Übersicht", vm.alarmUebersicht.value.geladen)
         val liste = t.gemeldet(1) {
-            vm.aendereAlarmSchwelle("75192-1", "N", "unter", 450.0)
+            vm.aendereAlarmSchwelle("75192-1", Zustand.NEU, "unter", 450.0)
             assertTrue("neu geladen", pfade.anfragenAn("GET /api/v1/alerts").size == 2)
         }
         assertEquals(listOf(Aenderung.Alarme), liste)
@@ -138,17 +139,17 @@ class EinstellungenViewModelTest {
     @Test
     fun `eine andere Waehrung gilt sofort und alle Bestandsansichten laden neu`() {
         val vm = vm()
-        val liste = t.gemeldet(3) { vm.saveSettings("CHF", "U") }
+        val liste = t.gemeldet(3) { vm.saveSettings("CHF", Zustand.GEBRAUCHT) }
         assertEquals(listOf(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren), liste)
         assertEquals("CHF", t.sitzung.state.value.currency)
-        assertEquals("U", t.sitzung.state.value.priceCondition)
+        assertEquals(Zustand.GEBRAUCHT, t.sitzung.state.value.priceCondition)
     }
 
     @Test
     fun `der Standard-Zustand meldet das Speichern`() {
         pfade.antworten["/api/v1/settings/user/default-condition"] = """{"success":true}"""
         val vm = vm()
-        vm.saveUserDefaultCondition("U")
+        vm.saveUserDefaultCondition(Zustand.GEBRAUCHT)
         assertTrue("Meldung", t.meldungen.meldung.value != null)
         assertEquals("t${R.string.vm_settings_saved}", t.meldungen.meldung.value)
         assertTrue(pfade.koerper.any { "\"U\"" in it })

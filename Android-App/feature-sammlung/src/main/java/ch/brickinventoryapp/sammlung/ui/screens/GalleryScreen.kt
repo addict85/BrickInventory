@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import ch.brickinventoryapp.model.ui.model.KennzahlenAnsicht
@@ -74,7 +75,7 @@ class GalerieEreignisse(
     val konto: (String) -> Unit,
     val lagerort: (String) -> Unit,
     val aktualisieren: () -> Unit,
-    val setErfassen: (String, Int, Double?, String?, Int?, String?) -> Unit,
+    val setErfassen: (Erfassungswunsch) -> Unit,
     val manuelleErfassungQuittiert: () -> Unit,
 )
 
@@ -110,7 +111,7 @@ fun GalleryRoute(
             lagerort = { vm.setLagerFilter(ScopeFilter.View.GALLERY, it) },
             // Auch die Filterlisten: Sie werden sonst nur beim Start geladen.
             aktualisieren = vm::aktualisieren,
-            setErfassen = { sn, qty, price, cond, owner, ort -> erfassung.addSet(sn, qty, price, cond, owner, ort) },
+            setErfassen = erfassung::addSet,
             manuelleErfassungQuittiert = { erfassung.manuelleErfassungQuittieren() },
         )
     }

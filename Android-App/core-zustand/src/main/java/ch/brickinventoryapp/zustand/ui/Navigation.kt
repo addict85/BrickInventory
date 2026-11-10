@@ -1,7 +1,9 @@
 package ch.brickinventoryapp.zustand.ui
 
-import androidx.annotation.Keep
+import ch.brickinventoryapp.model.ui.Scannerherkunft
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.model.KEINE_FARBE
+import ch.brickinventoryapp.model.fach.Postenart
 import kotlinx.serialization.Serializable
 
 /**
@@ -18,7 +20,7 @@ sealed interface Screen {
     @Serializable data object Wanted : Screen
 
     /** Dasselbe Set kann neu und gebraucht auf der Merkliste stehen; erst der Zustand macht es eindeutig. */
-    @Serializable data class MerkpostenDetail(val setNumber: String, val condition: String) : Screen
+    @Serializable data class MerkpostenDetail(val setNumber: String, val condition: Zustand) : Screen
     @Serializable data class CatalogDetail(val setNumber: String) : Screen
     @Serializable data class SetDetail(val setNumber: String) : Screen
     @Serializable data object Parts : Screen
@@ -37,7 +39,7 @@ sealed interface Screen {
     @Serializable data object Haushalt : Screen
     @Serializable data object CsvImport : Screen
     @Serializable data object Konto : Screen
-    @Serializable data object BarcodeScanner : Screen
+    @Serializable data class BarcodeScanner(val herkunft: Scannerherkunft) : Screen
     @Serializable data object Comparison : Screen
     @Serializable data object Monitoring : Screen
 
@@ -58,22 +60,6 @@ sealed interface Screen {
     ) : Screen
 
     @Serializable data class PdfViewer(val url: String, val title: String) : Screen
-}
-
-/**
- * Welche Art Posten eine Route meint. Als Aufzählung, damit ein Tippfehler nicht
- * erst am Server auffällt; [kennung] ist der Text, den Api und Bildschirme führen.
- * Keep: Die Routen tragen sie serialisiert; R8 darf ihren Serializer nicht umbenennen.
- */
-@Keep
-@Serializable
-enum class Postenart(val kennung: String) {
-    SET("set"), PART("part"), FIG("fig");
-
-    companion object {
-        /** Wirft bei einem unbekannten Text: Die Kennungen stammen aus dem eigenen Code. */
-        fun aus(kennung: String): Postenart = entries.first { it.kennung == kennung }
-    }
 }
 
 /**

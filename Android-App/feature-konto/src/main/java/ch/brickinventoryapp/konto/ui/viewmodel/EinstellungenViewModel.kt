@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.konto.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Zustand
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.model.ui.model.CsvImportArt
@@ -81,7 +82,7 @@ class EinstellungenViewModel @Inject constructor(
     // ── Währung und Zustand ──────────────────────────────────────────────────
 
     /** Eine andere Währung oder ein anderer Zustand ändert jeden Preis: alle Bestandsansichten neu. */
-    override fun saveSettings(currency: String, condition: String) {
+    override fun saveSettings(currency: String, condition: Zustand) {
         viewModelScope.launch {
             when (val r = konto.updateSettings(currency, condition)) {
                 is Ergebnis.Success -> {
@@ -95,7 +96,7 @@ class EinstellungenViewModel @Inject constructor(
     }
 
     /** Danach die Einstellungen neu: Der Server löst die wirksame Bedingung auf. */
-    override fun saveUserDefaultCondition(condition: String) {
+    override fun saveUserDefaultCondition(condition: Zustand?) {
         viewModelScope.launch {
             when (val r = konto.setUserDefaultCondition(condition)) {
                 is Ergebnis.Success -> {
@@ -158,14 +159,14 @@ class EinstellungenViewModel @Inject constructor(
         }
     }
 
-    override fun aendereAlarmSchwelle(setNumber: String, condition: String, richtung: String, schwelle: Double) {
+    override fun aendereAlarmSchwelle(setNumber: String, condition: Zustand, richtung: String, schwelle: Double) {
         wartendeSchwellen.remove(setNumber to condition)?.cancel()
         if (schwelle <= 0.0) { meldungen.zeige(meldungen.text(R.string.alerts_bad_value)); return }
         alarmSchleuse { sets.setPreisalarm(setNumber, richtung, schwelle, condition) }
     }
 
     /** Getippte Schwellen, die auf ihre Ruhezeit warten — je (Set, Zustand) eine. */
-    private val wartendeSchwellen = mutableMapOf<Pair<String, String>, Job>()
+    private val wartendeSchwellen = mutableMapOf<Pair<String, Zustand>, Job>()
 
     /**
      * Speichert beim Tippen, entprellt wie im Set-Detail (Alarmeingabe.RUHE_MS): Die
@@ -173,7 +174,7 @@ class EinstellungenViewModel @Inject constructor(
      * erschien. Im ViewModel, damit die Eingabe das Verlassen der Seite übersteht.
      * Ein leeres Feld löscht hier nicht — dafür steht der Papierkorb daneben.
      */
-    override fun setzeAlarmSchwelle(setNumber: String, condition: String, richtung: String, roh: String) {
+    override fun setzeAlarmSchwelle(setNumber: String, condition: Zustand, richtung: String, roh: String) {
         val schluessel = setNumber to condition
         wartendeSchwellen.remove(schluessel)?.cancel()
         val schwelle = Alarmeingabe.zahl(roh) ?: return
@@ -184,11 +185,11 @@ class EinstellungenViewModel @Inject constructor(
         }
     }
 
-    override fun loescheAlarm(setNumber: String, condition: String) =
+    override fun loescheAlarm(setNumber: String, condition: Zustand) =
         alarmSchleuse { sets.deletePreisalarm(setNumber, condition) }
 
     /** Ohne Bindestrich gilt die erste Fassung („10294“ → „10294-1“), wie beim Erfassen. */
-    override fun legeAlarmAn(setNumber: String, condition: String, richtung: String, roh: String) {
+    override fun legeAlarmAn(setNumber: String, condition: Zustand, richtung: String, roh: String) {
         val nummer = setNumber.trim().let { if (it.isBlank() || it.contains('-')) it else "$it-1" }
         val schwelle = Alarmeingabe.zahl(roh)
         if (nummer.isBlank() || schwelle == null || schwelle <= 0.0) { meldungen.zeige(meldungen.text(R.string.alerts_bad_value)); return }

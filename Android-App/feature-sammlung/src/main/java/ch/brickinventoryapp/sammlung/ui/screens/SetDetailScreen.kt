@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.sammlung.ui.viewmodel.SetDetailAktionen
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
 import androidx.compose.ui.res.stringResource
@@ -49,7 +50,7 @@ fun SetDetailRoute(
     onBack: () -> Unit,
     onDelete: (String) -> Unit,
     rueckgaengigMoeglich: Boolean = false,
-    onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit = { _, _, _, _ -> },
+    onNavigateToAcqMgmt: (type: Postenart, id: String, colorId: Int, title: String) -> Unit = { _, _, _, _ -> },
     onOpenPdf: (url: String, title: String) -> Unit = { _, _ -> }
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -90,7 +91,7 @@ fun SetDetailScreen(
      * ohne Rückfrage — eine Sicherung genügt. Ohne Liste (Einstieg von aussen) fragt er.
      */
     rueckgaengigMoeglich: Boolean = false,
-    onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit = { _, _, _, _ -> },
+    onNavigateToAcqMgmt: (type: Postenart, id: String, colorId: Int, title: String) -> Unit = { _, _, _, _ -> },
     onOpenPdf: (url: String, title: String) -> Unit = { _, _ -> }
 ) {
     val state       = zustand.state

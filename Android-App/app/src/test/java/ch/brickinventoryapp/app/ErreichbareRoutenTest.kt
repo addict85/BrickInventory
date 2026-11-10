@@ -100,11 +100,8 @@ class ErreichbareRoutenTest {
         assertTrue("Die Einstellungen stehen auf „Mehr“", Screen.Settings in vonMehr)
         assertFalse("Der Serverwechsel gehört in die Einstellungen, nicht auf „Mehr“", Screen.Setup in vonMehr)
 
-        // Den Scanner öffnen Galerie, Merkliste und Teileliste mit ihrem Knopf; er hat
-        // keinen eigenen Eintrag.
-        val ueberRueckruf = listOf<Screen>(Screen.BarcodeScanner)
         val erreicht = (vonMehr + leiste.map { it.first } + SAMMLUNGS_ZIELE +
-            StartZiel.entries.map(::startRoute) + ueberRueckruf).map(::name).toSet()
+            StartZiel.entries.map(::startRoute)).map(::name).toSet()
         // Ziele mit Werten öffnet nur, wer die Werte hat (eine Kachel, eine Zeile).
         val ohneWerte = ziele.filterValues { it == StructureKind.OBJECT }.keys
         assertTrue("Nur ${ohneWerte.size} Ziele ohne Werte gefunden", ohneWerte.size >= 15)

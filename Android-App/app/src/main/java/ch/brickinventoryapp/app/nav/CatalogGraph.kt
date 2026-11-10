@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app.nav
 
+import ch.brickinventoryapp.model.ui.Scannerherkunft
+import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.runtime.remember
 import ch.brickinventoryapp.sammlung.ui.screens.MerkpostenRueckgaengigRoute
 import androidx.compose.foundation.layout.*
@@ -75,7 +77,7 @@ private fun NavGraphBuilder.merklisteZiele(u: ZielUmgebung) {
                     vm = merkliste,
                     imageLoader = imageLoader,
                     nebeneinander = nebeneinander,
-                    onScan = { erfassung.setScannerSource("wanted"); navController.navigate(Screen.BarcodeScanner) },
+                    onScan = { navController.navigate(Screen.BarcodeScanner(Scannerherkunft.MERKLISTE)) },
                     onOeffnenEinzeln = { sn, zustand ->
                         navController.navigate(Screen.MerkpostenDetail(sn, zustand))
                     },
@@ -151,19 +153,19 @@ private fun KatalogDetailZiel(u: ZielUmgebung, backStack: NavBackStackEntry) {
         isLoading = catalogState.detailLoading,
         imageLoader = imageLoader,
         serverUrl = state.serverUrl,
-        defaultCondition = state.userDefaultCondition ?: "N",
+        defaultCondition = state.userDefaultCondition ?: Zustand.NEU,
         onLoad = katalog::loadCatalogDetail,
         householdMembers = blick.householdMembers,
         // Der VORRAT an Lagerorten, nicht die belegten Orte: Beim
         // Erfassen soll auch ein leeres Regal zur Wahl stehen.
         lagerorte = lagerZustand.eigene.map { it.name },
         lagerortVorgabe = lagerZustand.vorgabe?.name ?: "",
-        onAddToGallery = { sn, qty, price, cond, owner, ort ->
+        onAddToGallery = { wunsch ->
             // Das Aufnehmen gehört der Galerie, das „besitze ich“ dem Katalog — die
             // Abhängigkeit steht hier sichtbar statt versteckt in einer gemeinsamen
             // Funktion.
-            erfassung.addSet(sn, qty, price, cond, owner, ort)
-            katalog.markiereAufgenommen(sn, qty)
+            erfassung.addSet(wunsch)
+            katalog.markiereAufgenommen(wunsch.setNumber, wunsch.menge)
         },
         // Merkposten UND Preisalarm in einem Griff — die Regel dahinter
         // steht im MerklisteViewModel, nicht hier.

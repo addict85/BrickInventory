@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.model.ui.model
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.data.model.Acquisition
 import ch.brickinventoryapp.model.data.model.AcquisitionTotals
@@ -51,7 +52,7 @@ data class KaufAnsicht(
     val quantity: Int,
     val purchasePrice: Double? = null,
     val unitPrice: Double? = null,
-    val condition: String = "N",
+    val condition: Zustand = Zustand.NEU,
     val createdAt: String? = null,
     val ownerUserId: Int? = null,
     val priceEstimated: Boolean = false,

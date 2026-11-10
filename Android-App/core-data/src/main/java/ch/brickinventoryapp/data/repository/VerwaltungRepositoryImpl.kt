@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.api.VerwaltungApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.model.data.model.*
@@ -119,5 +120,5 @@ class VerwaltungRepositoryImpl @Inject constructor(
     override suspend fun triggerPriceJob(): Ergebnis<GenericAdminResponse> = safeCall { api.triggerPriceJob() }
 
     // Admin-level: saves global default (Monitoring)
-    override suspend fun setDefaultCondition(condition: String): Ergebnis<GenericAdminResponse> = safeCall { api.setDefaultCondition(mapOf("condition" to condition)) }
+    override suspend fun setDefaultCondition(condition: Zustand): Ergebnis<GenericAdminResponse> = safeCall { api.setDefaultCondition(mapOf("condition" to condition.kennung)) }
 }

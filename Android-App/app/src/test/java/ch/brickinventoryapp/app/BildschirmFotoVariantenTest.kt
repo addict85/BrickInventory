@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Postenart
+import ch.brickinventoryapp.model.fach.Zustand
+
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -260,7 +263,7 @@ class BildschirmFotoVariantenTest {
 
     private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand, SetsRepository(welt.t.api, welt.t.cache),
         KatalogRepository(welt.t.api, welt.t.cache), object : SetAnleger {
-            override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?,
+            override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
                                  ownerUserId: Int?, storage: String?): Flow<SetAnlegenSchritt> = emptyFlow()
         }))
 
@@ -699,7 +702,7 @@ class BildschirmFotoVariantenTest {
     private fun dialogSetErfassenFoto(name: String, schrift: Float, geraet: String = "telefon") {
         zeigeDialog(name, geraet = geraet, schrift = schrift) {
             AddSetDialog(onDismiss = {},
-                onAdd = { _, _, _, _, _, _ -> }, lagerorte = listOf("Keller", "Estrich"), sofortFokus = false)
+                onAdd = {}, lagerorte = listOf("Keller", "Estrich"), sofortFokus = false)
         }
         dialogFoto(name, "classic", false, geraet, schrift)
         if (schrift == 1f && geraet == "telefon") {
@@ -767,7 +770,7 @@ class BildschirmFotoVariantenTest {
         zeige(name, dunkel = dunkel, geraet = geraet, schrift = schrift) {
             CatalogDetailScreen(setNumber = "10305-1", detail = katalogDetail,
                 isLoading = false, imageLoader = bilder, serverUrl = "", onLoad = {},
-                onAddToGallery = { _, _, _, _, _, _ -> }, onWish = { _, _, _, _, _ -> },
+                onAddToGallery = {}, onWish = { _, _, _, _, _ -> },
                 onOpenInGallery = {}, onBack = {})
         }
         anhalten()
@@ -1174,7 +1177,7 @@ class BildschirmFotoVariantenTest {
     private fun kaufpreiseFoto(dunkel: Boolean, geraet: String) {
         val vm = kaeufe()
         zeige("kaufpreise", dunkel = dunkel, geraet = geraet) {
-            AcquisitionManagementRoute(vm, type = "set", id = Beispiele.SET, title = "Millennium Falcon", onBack = {})
+            AcquisitionManagementRoute(vm, type = Postenart.SET, id = Beispiele.SET, title = "Millennium Falcon", onBack = {})
         }
         anhalten()
         foto("kaufpreise", dunkel = dunkel, geraet = geraet)
@@ -1195,7 +1198,7 @@ class BildschirmFotoVariantenTest {
         val vm = kaeufe()
         val teile = welt.teile()
         zeige("einzelteil-detail", dunkel = dunkel, geraet = geraet) {
-            ManualItemDetailRoute(vm, teile, type = "part", id = "3001", colorId = 5, fallbackTitle = "Brick 2 x 4",
+            ManualItemDetailRoute(vm, teile, type = Postenart.PART, id = "3001", colorId = 5, fallbackTitle = "Brick 2 x 4",
                 imageLoader = bilder, onBack = {}, onNavigateToAcqMgmt = { _, _, _, _ -> })
         }
         anhalten()

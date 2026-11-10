@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.offline.Lokal
 import ch.brickinventoryapp.model.data.model.*
 import ch.brickinventoryapp.model.data.model.MinifigStatsResponse
@@ -23,11 +24,11 @@ interface FigurenRepository {
     suspend fun setFigStorage(figNumber: String, ort: String): Ergebnis<LagerortResponse>
 
     suspend fun addMinifig(figNumber: String, blFigNumber: String? = null, quantity: Int = 1,
-                           unitPrice: Double? = null, condition: String? = null,
+                           unitPrice: Double? = null, condition: Zustand? = null,
                            ownerUserId: Int? = null,
                            storage: String? = null): Ergebnis<AddMinifigResponse>
 
-    suspend fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String? = null, condition: String? = null, owner: Int? = null): Ergebnis<GenericResponse>
+    suspend fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String? = null, condition: Zustand? = null, owner: Int? = null): Ergebnis<GenericResponse>
 
     suspend fun deleteMinifig(figNumber: String, owner: Int? = null): Ergebnis<GenericResponse>
 

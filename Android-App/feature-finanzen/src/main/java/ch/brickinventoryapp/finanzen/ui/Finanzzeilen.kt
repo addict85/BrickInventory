@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.finanzen.ui
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.model.BewertungAnsicht
 import ch.brickinventoryapp.model.ui.model.BewertungSetAnsicht
 import ch.brickinventoryapp.model.ui.model.BewertungsKaufAnsicht
@@ -22,7 +23,7 @@ data class FinanzZeile(
     val wert: Double?,
     val kaufpreis: Double?,
     /** Zustand der Erfassung; null bei einem Eintrag ohne Erfassungen. */
-    val zustand: String?,
+    val zustand: Zustand?,
     val pnlProzent: Double?,
 ) {
     /**

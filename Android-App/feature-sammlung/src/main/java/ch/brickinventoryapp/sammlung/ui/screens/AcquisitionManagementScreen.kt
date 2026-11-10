@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Postenart
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.ui.components.Rueckfrage
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import ch.brickinventoryapp.zustand.ui.ManualItemDetailUiState
@@ -45,14 +47,14 @@ import ch.brickinventoryapp.gemeinsam.ui.OwnerPicker
 
 /**
  * Eigener Screen für die Kaufpreis-Verwaltung — analog zum acq-modal der Webapp,
- * für Sets (type="set"), Teile (type="part") und Minifiguren (type="fig"). Die
+ * für Sets, Teile und Minifiguren. Die
  * editierbaren Zeilen stehen in dieser Datei (AcquisitionManagementRow weiter
  * unten).
  */
 @Composable
 fun AcquisitionManagementRoute(
     vm: KaeufeViewModel,
-    type: String,
+    type: Postenart,
     id: String,
     colorId: Int = OHNE_FARBE,
     title: String,
@@ -76,7 +78,7 @@ data class KaeufeZustand(
 fun AcquisitionManagementScreen(
     zustand: KaeufeZustand,
     aktionen: KaeufeAktionen,
-    type: String,           // "set" | "part" | "fig"
+    type: Postenart,
     id: String,             // setNumber / partNumber / figNumber
     colorId: Int = OHNE_FARBE,
     title: String,
@@ -104,7 +106,7 @@ fun AcquisitionManagementScreen(
 
     LaunchedEffect(type, id, colorId) {
         when (type) {
-            "set"  -> aktionen.loadAcquisitions(id)
+            Postenart.SET  -> aktionen.loadAcquisitions(id)
             else   -> aktionen.loadManualAcquisitions(type, id, colorId)
         }
     }
@@ -177,19 +179,19 @@ fun AcquisitionManagementScreen(
                     currency = currency,
                     onSave = { price, cond, qty, date ->
                         when (type) {
-                            "set"  -> aktionen.updateAcquisition(id, acq.id, price, cond, qty, date)
+                            Postenart.SET  -> aktionen.updateAcquisition(id, acq.id, price, cond, qty, date)
                             else   -> aktionen.updateManualAcquisition(type, id, colorId, acq.id, price, cond, qty, date)
                         }
                         // Reload after save to reflect server-side changes (e.g. market price fill);
                         // Datumsänderungen lädt das ViewModel bereits selbst neu.
                         if (price == null && date == null) {
-                            if (type == "set") aktionen.loadAcquisitions(id)
+                            if (type == Postenart.SET) aktionen.loadAcquisitions(id)
                             else aktionen.loadManualAcquisitions(type, id, colorId)
                         }
                     },
                     onDelete = {
                         when (type) {
-                            "set"  -> aktionen.deleteAcquisition(id, acq.id)
+                            Postenart.SET  -> aktionen.deleteAcquisition(id, acq.id)
                             else   -> aktionen.deleteManualAcquisition(type, id, colorId, acq.id)
                         }
                     }
@@ -211,7 +213,7 @@ fun AcquisitionManagementScreen(
                             ) { err, teile, figuren ->
                                 // Nach dem Wechsel stimmt die Liste nicht mehr:
                                 // Die Zeile liegt jetzt beim anderen Konto.
-                                if (type == "set") aktionen.loadAcquisitions(id)
+                                if (type == Postenart.SET) aktionen.loadAcquisitions(id)
                                 else aktionen.loadManualAcquisitions(type, id, colorId)
                                 // Die Zahlen kommen aus der Antwort, sonst sagte die Meldung „0
                                 // Teile“, auch wenn hunderte wandern. Zwei Zahlen, zwei
@@ -259,7 +261,7 @@ fun AcquisitionManagementScreen(
 private fun AcquisitionManagementRow(
     acquisition: KaufAnsicht,
     currency: String,
-    onSave: (price: Double?, cond: String?, qty: Int?, date: String?) -> Unit,
+    onSave: (price: Double?, cond: Zustand?, qty: Int?, date: String?) -> Unit,
     onDelete: () -> Unit
 ) {
     var qtyText   by remember(acquisition.id) { mutableStateOf(acquisition.quantity.toString()) }

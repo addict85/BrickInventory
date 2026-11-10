@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.fach.Zustand
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.data.model.SetAggregate
 import ch.brickinventoryapp.data.repository.FinanzenRepository
@@ -148,7 +149,7 @@ class SetDetailViewModelTest {
         geladen(vm)
         val vorher = pfade.anfragenAn("GET /api/v1/sets/75192-1/alert").size
         val liste = t.gemeldet(1) {
-            vm.setzePreisalarm("75192-1", "unter", "450", "N")
+            vm.setzePreisalarm("75192-1", "unter", "450", Zustand.NEU)
             uhr.advanceTimeBy(900)
             assertTrue("neu geladen", pfade.anfragenAn("GET /api/v1/sets/75192-1/alert").size > vorher)
         }

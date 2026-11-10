@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.model.data.model.FigsValuationResponse
 import ch.brickinventoryapp.model.data.model.Gutschein
@@ -73,7 +74,7 @@ class FinanzZahlenTest {
         assertEquals(listOf(240.67, 240.67, 812.5), zeilen.map { it.wert })
         assertEquals(listOf(140.7, 20.3, 16.1), zeilen.map { it.pnlProzent })
         assertEquals(listOf(100.0, 200.0, 700.0), zeilen.map { it.kaufpreis })
-        assertEquals(listOf("N", "U", null), zeilen.map { it.zustand })
+        assertEquals(listOf(Zustand.NEU, Zustand.GEBRAUCHT, null), zeilen.map { it.zustand })
     }
 
     @Test
@@ -145,7 +146,7 @@ class FinanzZahlenTest {
     @Test
     fun `Kauf und Gewinn stehen auf der Grundlage des Marktwerts`() {
         val zwei = FinanzZeile("t", menge = 2, wert = 899.9, kaufpreis = 400.0,
-            zustand = "N", pnlProzent = 12.5)
+            zustand = Zustand.NEU, pnlProzent = 12.5)
         assertEquals(800.0, zwei.kaufGesamt!!, 0.0)
         assertEquals(99.9, zwei.gewinn!!, 0.0)
         val eins = zwei.copy(menge = 1, wert = 0.3, kaufpreis = 0.1)

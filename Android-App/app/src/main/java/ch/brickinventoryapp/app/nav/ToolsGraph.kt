@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app.nav
 
+import ch.brickinventoryapp.model.ui.Scannerherkunft
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -76,14 +77,15 @@ private fun NavGraphBuilder.finanzZiele(u: ZielUmgebung) {
                 // Den Namen gibt die angeklickte Zeile mit, sonst stünde bis zum ersten
                 // Laden die nackte Nummer in der Leiste.
                 onManualClick = { type, id, colorId, name ->
-                    navController.navigate(Screen.ManualItemDetail(Postenart.aus(type), id, colorId, name ?: id))
+                    navController.navigate(Screen.ManualItemDetail(type, id, colorId, name ?: id))
                 },
                 listState = financeListState
             )
         }
     }
-    composable<Screen.BarcodeScanner> {
+    composable<Screen.BarcodeScanner> { eintrag ->
         val erfassung = u.aktivitaet.erfassung
+        val herkunft = eintrag.toRoute<Screen.BarcodeScanner>().herkunft
         BarcodeScannerScreen(
             // Texterkennung nur hier: Dieser Scanner bedient „Set hinzufügen“ (Galerie) und
             // „Teileliste hinzufügen“. Der Preisvergleich hat einen eigenen Aufruf und lässt
@@ -91,14 +93,13 @@ private fun NavGraphBuilder.finanzZiele(u: ZielUmgebung) {
             ocrEnabled = true,
             onResult = { scannedValue ->
                 navController.popBackStack()
-                // Look up the scanned value via barcode API then navigate to add set
-                erfassung.resolveBarcode(scannedValue)
+                erfassung.resolveBarcode(scannedValue, herkunft)
             },
             // Die Texterkennung liefert die Setnummer fertig — der Umweg über die
             // EAN-Auflösung entfällt, das spart je Scan bis zu acht Rebrickable-Aufrufe.
             onSetNumberResult = { setNumber ->
                 navController.popBackStack()
-                erfassung.useScannedSetNumber(setNumber)
+                erfassung.useScannedSetNumber(setNumber, herkunft)
             },
             onDismiss = { navController.popBackStack() }
         )
@@ -132,7 +133,7 @@ private fun NavGraphBuilder.mehrZiele(u: ZielUmgebung) {
             PartsListRoute(
                 serverUrl = state.serverUrl,
                 imageLoader = imageLoader,
-                onScanBarcode = { erfassung.setScannerSource("partslist"); navController.navigate(Screen.BarcodeScanner) },
+                onScanBarcode = { navController.navigate(Screen.BarcodeScanner(Scannerherkunft.TEILELISTE)) },
                 // Erfolgloser Scan → Cursor ins Set-Feld.
                 manuelleErfassungAnfordern = barcodeState.manuelleErfassungAnfordern,
                 onManuelleErfassungQuittiert = { erfassung.manuelleErfassungQuittieren() },

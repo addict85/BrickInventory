@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.api.KontoApi
 import ch.brickinventoryapp.data.cache.ResponseCache
@@ -170,13 +171,13 @@ class KontoRepositoryImpl @Inject constructor(
     override suspend fun setzeEigenesDesign(theme: String): Ergebnis<AppThemeResponse> =
         safeCall { api.setzeEigenesDesign(mapOf("theme" to theme)) }
 
-    override suspend fun updateSettings(currency: String, condition: String): Ergebnis<GenericResponse> =
-        safeCall { api.updateSettings(mapOf("currency" to currency, "price_condition" to condition)) }
+    override suspend fun updateSettings(currency: String, condition: Zustand): Ergebnis<GenericResponse> =
+        safeCall { api.updateSettings(mapOf("currency" to currency, "price_condition" to condition.kennung)) }
 
     override suspend fun getDefaultCondition(): Ergebnis<DefaultConditionResponse> = safeCall { api.getDefaultCondition() }
 
     // User-level: saves per-user default (empty string = revert to global)
-    override suspend fun setUserDefaultCondition(condition: String): Ergebnis<GenericAdminResponse> = safeCall { api.setUserDefaultCondition(mapOf("condition" to condition)) }
+    override suspend fun setUserDefaultCondition(condition: Zustand?): Ergebnis<GenericAdminResponse> = safeCall { api.setUserDefaultCondition(mapOf("condition" to condition?.kennung.orEmpty())) }
 }
 
 /** Die Antwort auf [KontoRepository.login]; [passkeyStattCode], wenn der Server beim
