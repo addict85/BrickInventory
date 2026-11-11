@@ -513,7 +513,7 @@ Teilen und Minifiguren hatten längst welche (`key = "manual-header"`).
 
 ## Ein Abschluss ist ein ÜBERGANG, kein Zustand
 
-**Datei:** `zustand/ui/viewmodel/CsvImportViewModel.kt` · **Test:** `CsvStatusReloadTest`
+**Datei:** `app/csv/CsvImportViewModel.kt` · **Test:** `CsvStatusReloadTest`
 
 `handleCsvStatus()` lädt die Daten nur nach, wenn vorher tatsächlich ein Import
 LIEF. Der SSE-Strom meldet den Status fortlaufend, auch lange nach dem
