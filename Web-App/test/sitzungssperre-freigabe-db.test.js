@@ -77,6 +77,7 @@ test('Sitzungssperre: Freigabefehler', { concurrency: 1 }, async t => {
   await t.test('mitSitzungsSperre: das Ergebnis des Laufs bleibt', async () => {
     const vorfall = unlockScheitertEinmal();
     const r = await mitSitzungsSperre(
+      db.standardDb(),
       SCHLUESSEL,
       async () => 'ergebnis',
       () => {
@@ -90,6 +91,7 @@ test('Sitzungssperre: Freigabefehler', { concurrency: 1 }, async t => {
   await t.test('mitSitzungsSperre: die Sperre ist nach einem Freigabefehler frei', async () => {
     const vorfall = unlockScheitertEinmal();
     await mitSitzungsSperre(
+      db.standardDb(),
       SCHLUESSEL,
       async () => 1,
       () => {
@@ -104,6 +106,7 @@ test('Sitzungssperre: Freigabefehler', { concurrency: 1 }, async t => {
     unlockScheitertEinmal();
     await assert.rejects(
       mitSitzungsSperre(
+        db.standardDb(),
         SCHLUESSEL,
         async () => {
           throw new Error('lauf kaputt');
@@ -119,7 +122,7 @@ test('Sitzungssperre: Freigabefehler', { concurrency: 1 }, async t => {
 
   await t.test('belegeSitzungsSperre: die Sperre ist nach einem Freigabefehler frei', async () => {
     const vorfall = unlockScheitertEinmal();
-    const frei = await belegeSitzungsSperre(SCHLUESSEL);
+    const frei = await belegeSitzungsSperre(db.standardDb(), SCHLUESSEL);
     assert.ok(frei, 'die Sperre war schon belegt');
     await frei();
     assert.ok(vorfall.freigabeMitFehler instanceof Error, 'die Verbindung wurde ohne Fehler zurückgegeben');

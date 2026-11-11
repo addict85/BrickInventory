@@ -10,6 +10,7 @@ import { LOCKS } from '../infra/lockNamespaces';
 import type { Nutzlast } from '../auftraege/nutzlasten';
 import { type AuftragsLauf, AuftragVerschieben } from '../auftraege/auftraege';
 import { auftraegeBereich } from '../auftraege/prozess';
+import { katalog } from './prozess';
 
 const TAKT_NACH_ABRUF_MS = 15_000;
 /** Pausen nach der ersten bis vierten Cloudflare-Sperre; danach bis morgen. */
@@ -26,7 +27,7 @@ function naechsterTag(jetzt = new Date()): Date {
 /** Zwei Job-Prozesse sollen sich den Takt nicht teilen; eigene Verbindung,
  * weil Advisory-Locks an der Sitzung hängen. */
 function mitSperre<T>(lauf: () => Promise<T>): Promise<T> {
-  return mitSitzungsSperre(LOCKS.ANLEITUNGS_QUEUE, lauf, () => {
+  return mitSitzungsSperre(katalog().db, LOCKS.ANLEITUNGS_QUEUE, lauf, () => {
     throw new AuftragVerschieben(new Date(Date.now() + TAKT_NACH_ABRUF_MS), 'Anleitungen laufen in einem anderen Prozess');
   });
 }

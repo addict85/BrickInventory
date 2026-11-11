@@ -106,7 +106,8 @@ const PROZESSZUGANG = new Set(['pool', 'all', 'get', 'run', 'exec', 'transaction
   'getPoolStats', 'datenbankAntwortet', 'alsSuperuserVerbunden', 'eigeneVerbindung', 'inTransaktion', 'standardDb', 'setzeStandardDb']);
 function nimmtProzesszugang(f) {
   if (/[\\/]db[\\/]database\.ts$/.test(f)) return false;
-  return [...fs.readFileSync(f, 'utf8').matchAll(/^import (\* as \w+|\{[^}]*\}) from '[./]+\/db\/database';/gm)]
+  // Auch innerhalb von db/ (`./database`): txLock und pgNotify gingen dort am Zähler vorbei.
+  return [...fs.readFileSync(f, 'utf8').matchAll(/^import (\* as \w+|\{[^}]*\}) from '(?:[./]+\/db\/|\.\/)database';/gm)]
     .some(m => m[1].startsWith('*') || m[1].slice(1, -1).split(',').map(n => n.trim().split(/\s+as\s+/)[0]).some(n => PROZESSZUGANG.has(n)));
 }
 
@@ -116,6 +117,7 @@ test('der Kompatibilitätsweg zur Datenbank und modulweite let werden weniger, n
   // Gemessen 0 am 11.11.2026 (server.ts und startup/ ohne Prozesszugang).
   // Gegenproben: ein `import * as db from '../../db/database'` in src/sets/zeilen.ts → rot (09.11.2026);
   // `import { get as _probe } from '../../db/database'` ebendort → rot mit 1 (11.11.2026).
+  // `import * as _probe from './database'` in db/txLock.ts → rot mit 1 (11.11.2026).
   const SCHRANKE = 0;
   const ist = quellen().filter(nimmtProzesszugang).length;
   // Selbstbeweis: Typimporte aus db/database zählen nicht, finden muss die Suche sie trotzdem.

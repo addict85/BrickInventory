@@ -5,7 +5,7 @@ import type { DbSchnittstelle } from '../../db/database';
 import type { Sicht } from '../haushalt/haushalt';
 import { findSameDayAcquisition } from '../bestand/acquisitions';
 import { Abstriche } from '../infra/ergebnis';
-import { withInventoryLock, bestandsSchluessel } from '../../db/txLock';
+import { mitInventarSperre, bestandsSchluessel } from '../../db/txLock';
 import { moveSetBetweenAccounts, moveManualAcquisition, withSetAggregate, deleteSetRows } from '../sets';
 import { getCurrentMarketPrice, getCurrentPartMarketPrice, getCurrentFigMarketPrice } from '../finanzen/marketPrice';
 import { loescheManuellesTeil, loescheManuelleFigur } from '../bestand/gemeinsam';
@@ -91,7 +91,7 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
     if (to === null) fachfehler('verboten', 'kein_schreibrecht');
     if (from === to) return { success: true, unchanged: true };
     // Wie verschiebeSet(): Gegenrichtungen sperren die Zeilen beider Konten umgekehrt.
-    const moved = await withInventoryLock(from, bestandsSchluessel(art, keys), (tx) =>
+    const moved = await mitInventarSperre(sammlungBereich().db, from, bestandsSchluessel(art, keys), (tx) =>
       art === 'set' ? moveSetBetweenAccounts(tx, String(keys[0]), from, to, [id]) : moveManualAcquisition(tx, art, keys, id, from, to),
       { wiederholeBeiKonflikt: true });
     return { success: true, from_user_id: from, to_user_id: to, ...moved };
@@ -114,7 +114,7 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
   }
 
   const besitzer = await besitzerDerZeile(art, id, uid);
-  await withInventoryLock(besitzer, bestandsSchluessel(art, keys), async (tx) => {
+  await mitInventarSperre(sammlungBereich().db, besitzer, bestandsSchluessel(art, keys), async (tx) => {
     const wids = await haushaltBereich().haushalt.writableIds(uid);
     const acq = await zeileImSchreibfeld(tx, art, wids, id, keys);
     // Ab hier zählt der Besitzer der Zeile, nicht der Betrachter.
@@ -152,7 +152,7 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
 export async function erfassungLoeschen(art: ErfassungsArt, uid: number, id: number, keys: Schluessel) {
   const a = ARTEN[art];
   const besitzer = await besitzerDerZeile(art, id, uid);
-  const menge = await withInventoryLock(besitzer, bestandsSchluessel(art, keys), async (tx) => {
+  const menge = await mitInventarSperre(sammlungBereich().db, besitzer, bestandsSchluessel(art, keys), async (tx) => {
     const acq = await zeileImSchreibfeld(tx, art, await haushaltBereich().haushalt.writableIds(uid), id, keys);
     const ownerId = Number(acq.user_id);
     await repo.loescheErfassung(tx, art, id, ownerId);

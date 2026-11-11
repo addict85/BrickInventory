@@ -115,11 +115,11 @@ test('Sperr-Namensräume gegen echte Datenbank', async (t) => {
   await t.test('die Bestandssperre eines Kontos trifft keinen Job', async () => {
     // Konto-ID = Nummer eines Jobs, Schlüssel = Setnummer: Mit der user_id als
     // erstem Wert war das genau die Sperre des Bild-Downloads für dieses Set.
-    const { withInventoryLock } = _req('db/txLock.js');
+    const { mitInventarSperre } = _req('db/txLock.js');
     const SET = '60511-1';
     const zweiter = (await db.get('SELECT hashtext($1) AS h', [SET])).h;
     const frei = {};
-    await withInventoryLock(LOCKS.BILD_DOWNLOAD, SET, async () => {
+    await mitInventarSperre(db.standardDb(), LOCKS.BILD_DOWNLOAD, SET, async () => {
       frei.bild = await nochFrei(LOCKS.BILD_DOWNLOAD, zweiter);
       // Auf eigener Verbindung: db.get liefe hier über die Transaktion, die die Sperre schon hält.
       frei.selbst = await nochFrei(LOCKS.INVENTAR, (await db.pool.query('SELECT hashtext($1) AS h', [`${LOCKS.BILD_DOWNLOAD}|${SET}`])).rows[0].h);

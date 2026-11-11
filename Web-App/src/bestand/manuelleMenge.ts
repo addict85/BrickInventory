@@ -1,7 +1,7 @@
 /** Relativ (`quantity_delta`) für Geräte, die offline sammeln: Zwei
  * gleichzeitige „+1" ergeben +2, eine absolute Menge aus altem Stand
  * überschriebe den anderen Zugang. */
-import { withInventoryLock, bestandsSchluessel } from '../../db/txLock';
+import { mitInventarSperre, bestandsSchluessel } from '../../db/txLock';
 import { bestandsMenge } from '../infra/validate';
 import { fachfehler } from '../infra/fehlerTexte';
 import { Abstriche } from '../infra/ergebnis';
@@ -38,7 +38,7 @@ export async function passeManuelleMengeAn(art: ManuelleArt, uid: number, schlue
   const vorab = await bestandBereich().manuelleMengen.summeDerErfassungen(art, uid, schluessel);
   const mp = ziel(wunsch, vorab) > vorab
     ? await ab.oder('kaufpreis', marktpreis, null) : null;
-  return withInventoryLock(uid, bestandsSchluessel(art, schluessel), async (tx) => {
+  return mitInventarSperre(bestandBereich().db, uid, bestandsSchluessel(art, schluessel), async (tx) => {
     const erfassungen = await repo.erfassungenNeuesteZuerst(tx, art, uid, schluessel);
     const bisher = erfassungen.reduce((s, r) => s + r.quantity, 0);
     const soll = ziel(wunsch, bisher);

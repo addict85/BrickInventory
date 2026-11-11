@@ -21,7 +21,7 @@ const PRICE_JOB_LOCK = LOCKS.PREIS_JOB;
  * @returns Freigabefunktion, oder null wenn anderswo bereits ein Lauf läuft */
 async function acquireRunLock(): Promise<(() => Promise<void>) | null> {
   let freigabe: (() => Promise<void>) | null;
-  try { freigabe = await belegeSitzungsSperre(PRICE_JOB_LOCK); }
+  try { freigabe = await belegeSitzungsSperre(finanzenBereich().db, PRICE_JOB_LOCK); }
   catch (e) {
     // Ohne Verbindung keine Sperre — dann lieber laufen als gar nicht aktualisieren; im eigenen Prozess
     // schützt die Exklusivität der Art.
