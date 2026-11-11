@@ -8,7 +8,7 @@
  *   A  protokolliere() in POST /settings gestrichen → rot: beide Fälle
  *   B  der Vergleich mit dem alten Wert gestrichen (jeder gesendete Schlüssel
  *      zählt) → rot: „unverändert …"
- *   C  in einstellungenSpeichern() die Schreibvorgänge ohne db.transaction()
+ *   C  in einstellungenSpeichern() die Schreibvorgänge ohne alsEinheit()
  *      (direkt nacheinander) → rot: „scheitert ein Kontowert …“ (smtp_host
  *      und Protokolleintrag blieben stehen)
  *

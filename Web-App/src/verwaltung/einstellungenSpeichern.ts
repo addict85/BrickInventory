@@ -1,6 +1,5 @@
 /** POST /settings ohne HTTP. Hier statt in src/einstellungen, weil Mail, Protokoll
  * und Brickset-Warteschlange höhere Stufen sind (test/schichten.test.js). */
-import * as db from '../../db/database';
 import {
   SECRET_KEYS,
   isMaskedValue,
@@ -9,6 +8,7 @@ import {
   deleteGlobalSetting,
   getGlobalSetting,
   meldeGlobaleAenderung,
+  alsEinheit,
 } from '../einstellungen/settings';
 import { setUserSetting } from '../konto/nutzerEinstellung';
 import { verwalterHinweisNebenher } from '../konto/kontoHinweis';
@@ -86,7 +86,7 @@ export async function einstellungenSpeichern(e: EinstellungsEingabe, o: Speicher
   if (heikel.length && !e.admin_password) fachfehler('ungueltig', 'aktuelles_passwort_erforderlich');
   if (heikel.length && !(await o.bestaetige(e.admin_password))) return false;
 
-  const bricksetAlt = await db.transaction(async () => {
+  const bricksetAlt = await alsEinheit(async () => {
     const alt =
       global && e.api_limit_brickset !== undefined
         ? parseInt((await getGlobalSetting('api_limit_brickset')) || '100', 10)

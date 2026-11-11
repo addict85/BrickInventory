@@ -83,7 +83,7 @@ function direktive(v: unknown): string | null {
 }
 
 /** Nur http(s)/ws(s) und ohne Anfrageteil: Eine Adresse kann einen Rücksetz- oder Bestätigungslink tragen. */
-function adresse(v: unknown, stichwort = false): string {
+function berichtsAdresse(v: unknown, stichwort = false): string {
   const s = String(v ?? '');
   if (stichwort && STICHWORT.test(s)) return s;
   try {
@@ -115,7 +115,7 @@ router.post('/csp-bericht', express.raw({ type: () => true, limit: '8kb' }), (re
     if (!regel) continue;
     const p = probe(regel, v.probe);
     console.warn(
-      `[csp] ${regel} blockierte ${adresse(v.blockiert, true)} auf ${adresse(v.seite)}${p ? ` (${p})` : ''}`,
+      `[csp] ${regel} blockierte ${berichtsAdresse(v.blockiert, true)} auf ${berichtsAdresse(v.seite)}${p ? ` (${p})` : ''}`,
     );
   }
 });

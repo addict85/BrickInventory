@@ -101,6 +101,8 @@ export async function setGlobalSetting(key: string, value: unknown) {
   meldeGlobaleAenderung();
 }
 
+export { alsEinheit } from './repository';
+
 /** Auch nach dem COMMIT einer Transaktion: Ein Zwischenspeicher, der dazwischen las, hielte den alten Wert. */
 export function meldeGlobaleAenderung(): void {
   for (const fn of _beiGlobalerAenderung) fn();
