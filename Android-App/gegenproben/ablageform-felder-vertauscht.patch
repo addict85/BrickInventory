@@ -1,0 +1,18 @@
+Gegenprobe: Die Ablageform vertauscht beim Lesen höchsten und mittleren Kaufpreis
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.AblageformTest
+Rot: jedes Feld von Set, Merkposten und Teil uebersteht die Ablage
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Ablagezeilen.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Ablagezeilen.kt
+index 4af1a40..69533a8 100644
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Ablagezeilen.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Ablagezeilen.kt
+@@ -123,7 +123,7 @@ internal object Ablagezeilen {
+ 
+     fun set(z: SetZeile) = SetItem(z.setNumber, z.name, z.year, z.theme, z.pieces, z.minifigs, z.quantity, z.imageUrl,
+         z.imageLocal, z.addedAt, z.condition, z.storage, z.conditions, z.owners.map { KontoName(it.id, it.username) },
+-        z.maxPurchasePrice, z.avgPurchasePrice, z.usedCount,
++        z.avgPurchasePrice, z.maxPurchasePrice, z.usedCount,
+         z.instructions.map { Instruction(it.id, it.url, it.description, it.localPath, it.isManual) },
+         z.bricklink?.let { BrickLinkRef(it.type, it.number, it.url, it.exact, it.resolved) }, z.preisvergleichUrl)
+ 

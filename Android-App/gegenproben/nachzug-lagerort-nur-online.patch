@@ -4,16 +4,15 @@ Test: ch.brickinventoryapp.data.NachzugTest
 Rot: Menge, Lagerort und Besitzer eines Sets
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
+index 3d3a510..d9662a0 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
-@@ -176,9 +176,7 @@
+@@ -80,7 +80,5 @@ class SetsRepositoryImpl @Inject constructor(
+     }
  
-     /** Lagerort eines Sets setzen. Leerer Text loescht ihn. */
      override suspend fun setSetStorage(setNumber: String, ort: String): Ergebnis<LagerortResponse> =
 -        ablage.nachgezogen({ r -> Nachzug.SetLagerort(setNumber, r.storage).takeIf { r.success } }) {
 -            sicherAufrufen { api.setSetStorage(setNumber, LagerortRequest(ort)) }
 -        }
 +        sicherAufrufen { api.setSetStorage(setNumber, LagerortRequest(ort)) }
- 
-     override suspend fun getSetPartsList(setNumber: String): Ergebnis<PartsResponse> =
-         sicherAufrufen { api.getSetPartsList(setNumber) }
+ }

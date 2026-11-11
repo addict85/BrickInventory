@@ -1,0 +1,18 @@
+Gegenprobe: Die Richtung „über“ schreibt nicht das Wort des Servers
+Modul: core-model
+Test: ch.brickinventoryapp.model.KontoauswahlTest
+Rot: die Richtung liest und schreibt die Woerter des Servers
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Alarmrichtung.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Alarmrichtung.kt
+index ef47ed5..3fbee1f 100644
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Alarmrichtung.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Alarmrichtung.kt
+@@ -18,7 +18,7 @@ import kotlinx.serialization.encoding.Encoder
+ @Serializable(with = AlarmrichtungSerializer::class)
+ enum class Alarmrichtung(val kennung: String) {
+     UNTER("unter"),
+-    UEBER("ueber");
++    UEBER("über");
+ 
+     companion object {
+         fun aus(kennung: String?): Alarmrichtung? = entries.firstOrNull { it.kennung == kennung?.trim()?.lowercase() }

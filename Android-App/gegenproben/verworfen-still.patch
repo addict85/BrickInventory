@@ -1,0 +1,18 @@
+Gegenprobe: Unlesbare Zeilen der Ablage fallen still weg
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.AblageformTest
+Rot: eine unlesbare Zeile wird gezaehlt und gemeldet statt still zu fehlen
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
+index a6f47c3..e4fe0ce 100644
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
+@@ -350,7 +350,7 @@ class Offlineablage(
+      */
+     private fun <T : Any> dekodiere(fach: Fach<T>, l: Lokal<LokaleZeile>): Lokal<T> {
+         val gelesen = l.liste.mapNotNull { z -> runCatching { fach.form.dekodiere(AblageJson, z.inhalt) }.getOrNull() }
+-        val verworfen = l.liste.size - gelesen.size
++        val verworfen = 0
+         if (verworfen > 0) protokoll("Ablage ${fach.art}: $verworfen von ${l.liste.size} Zeilen unlesbar, verworfen")
+         return Lokal(gelesen, l.stand, verworfen)
+     }
