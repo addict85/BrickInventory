@@ -18,27 +18,18 @@ import ch.brickinventoryapp.katalog.ui.screens.CatalogRoute
 import ch.brickinventoryapp.katalog.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.zustand.ui.Bereichsumgebung
 
 /**
  * Was der Katalog von anderen Bereichen braucht: Erfassen gehört der Galerie, die
- * Merkliste der Sammlung. Die App reicht beides herein, der Katalog kennt keinen
- * der beiden Bereiche.
+ * Ziele der Merkliste der Sammlung. Den Merkposten selbst liest und legt das
+ * CatalogViewModel über die Ablage an; ein ViewModel der Merkliste braucht es dafür nicht.
  */
 interface KatalogNavigation : Bereichsumgebung {
     /** Ein Set in die Galerie aufnehmen; die Erfassung hängt an [eintrag], ihre Prüfanzeige darüber. */
     @Composable
     fun erfassen(eintrag: NavBackStackEntry): (Erfassungswunsch) -> Unit
-
-    /** Der Merkposten zu [setNumber], wenn das Set auf der Merkliste steht. */
-    @Composable
-    fun gemerkt(setNumber: String): MerkpostenAnsicht?
-
-    /** Merkposten und Preisalarm in einem Griff; die Regel dahinter gehört der Merkliste. */
-    @Composable
-    fun merken(): (setNumber: String, zustand: Zustand, richtung: String, schwelleRoh: String, konto: Int?) -> Unit
 
     /** Das Set in der Galerie. */
     fun oeffneSet(setNumber: String)
@@ -66,6 +57,7 @@ fun NavGraphBuilder.katalogGraph(navigation: KatalogNavigation) {
                     katalog = katalog,
                     serverUrl = state.serverUrl,
                     imageLoader = navigation.bilder,
+                    rollgedaechtnis = vm.scrollMemory,
                     onSetClick = { navController.navigate(KatalogZiel.CatalogDetail(it)) },
                 )
             }
@@ -86,8 +78,7 @@ private fun KatalogDetailZiel(navigation: KatalogNavigation, backStack: NavBackS
     val catalogState by katalog.state.collectAsStateWithLifecycle()
     val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
     // Steht das Set schon auf der Merkliste? Dann zeigt das Detail den Posten statt „Auf die Merkliste“.
-    val gemerkt = navigation.gemerkt(catSetNumber)
-    val merken = navigation.merken()
+    val gemerkt by remember(katalog, catSetNumber) { katalog.gemerkt(catSetNumber) }.collectAsStateWithLifecycle(null)
     val erfasse = navigation.erfassen(backStack)
     // loadCatalogDetail() meldet über denselben Kanal wie alle ViewModels
     // (data/MeldungsKanal.kt), eingesammelt in AppNavigation.kt.
@@ -108,7 +99,7 @@ private fun KatalogDetailZiel(navigation: KatalogNavigation, backStack: NavBackS
             erfasse(wunsch)
             katalog.markiereAufgenommen(wunsch.setNumber, wunsch.menge)
         },
-        onWish = merken,
+        onWish = katalog::merke,
         onOpenInGallery = navigation::oeffneSet,
         onBack = { navController.popBackStack() },
         gemerkt = gemerkt,

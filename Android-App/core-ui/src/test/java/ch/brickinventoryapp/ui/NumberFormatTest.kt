@@ -78,13 +78,15 @@ class NumberFormatTest {
         }
     }
 
+    /**
+     * Die Stellung von Symbol und Betrag ist Sache der Landesform (getCurrencyInstance);
+     * von Hand zusammengesetzt stünde das Symbol überall auf derselben Seite.
+     * Gegenprobe betrag-symbol-von-hand (Symbol vor fmtAmount(); kotlinc) → rot hier.
+     */
     @Test
     fun `die Gegenrichtung bleibt Sache der Plattform`() {
-        // getCurrencyInstance macht die Stellung von Symbol und Betrag zur Sache
-        // der Locale; von Hand zusammengesetzt kämen die drei Schreibweisen zurück.
-        assert(code(read("ui/util/NumberFormatUtils.kt")).contains("getCurrencyInstance")) {
-            "fmtMoney muss die Währungs-Formatierung der Plattform benutzen"
-        }
+        mitGeraet("de-DE") { assertEquals("812,50\u00A0€", fmtMoney(812.5, Waehrung("EUR"))) }
+        mitGeraet("en-GB") { assertEquals("€812.50", fmtMoney(812.5, Waehrung("EUR"))) }
     }
 
     // ── Teil 2: das Ergebnis ─────────────────────────────────────────────────

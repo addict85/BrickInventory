@@ -16,7 +16,8 @@ import ch.brickinventoryapp.testing.Quellen
  *   schicht-bereich-api         `import ch.brickinventoryapp.data.api.SetsApi` in MerklisteViewModel
  *                               → rot „ein Bereich kennt die Retrofit-Schnittstellen nicht“
  *   schicht-zustand-api         `import ch.brickinventoryapp.data.api.ApiJson` in AppTexte → dasselbe rot
- *   schicht-zustand-context     `import android.content.Context` in Sitzung.kt → rot „core-zustand …“
+ *   schicht-zustand-context     `import android.content.Context` in Sitzung.kt (core-sitzung) → rot
+ *                               „core-zustand und core-sitzung kennen keinen Context“
  */
 class SchichtregelnTest {
 
@@ -37,7 +38,7 @@ class SchichtregelnTest {
         return geprueft.flatMap { d -> d.importe.filter(verboten).map { "${d.modul}/${d.name}: $it" } }
     }
 
-    private fun praesentation(d: Datei) = d.modul == "core-zustand" || d.modul.startsWith("feature-")
+    private fun praesentation(d: Datei) = d.modul in setOf("core-zustand", "core-sitzung") || d.modul.startsWith("feature-")
 
     @Test
     fun `ein ViewModel kennt weder Android noch Netz noch Bildschirmcode`() {
@@ -63,10 +64,10 @@ class SchichtregelnTest {
 
     /** AppTexte.kt ist die bewusste Ausnahme: Texte und Dateien gehen über Context, bis M7 sie verlegt. */
     @Test
-    fun `core-zustand kennt keinen Context`() {
-        val f = verstoesse({ it.modul == "core-zustand" && it.name != "AppTexte.kt" }) {
+    fun `core-zustand und core-sitzung kennen keinen Context`() {
+        val f = verstoesse({ it.modul in setOf("core-zustand", "core-sitzung") && it.name != "AppTexte.kt" }) {
             it == "android.content.Context" || it.endsWith(".ApplicationContext")
         }
-        assert(f.isEmpty()) { "core-zustand mit Context (M7):\n  " + f.joinToString("\n  ") }
+        assert(f.isEmpty()) { "core-zustand oder core-sitzung mit Context (M7):\n  " + f.joinToString("\n  ") }
     }
 }

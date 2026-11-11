@@ -188,7 +188,7 @@ test('App: Verwaltung in den Einstellungen (nur die eigenen Orte) und beide Spra
   assert.match(KT_EINST, /LagerorteCard\(lager, vm\)/, 'Der App fehlt die Karte');
   for (const fn of ['legeLagerortAn', 'benenneLagerortUm', 'loescheLagerort'])
     assert.match(KT_HAUS, new RegExp(`fun ${fn}\\(`), `Der App fehlt ${fn}`);
-  assert.match(KT_HAUS, /getLagerortVorrat\(null\)/, 'Die App holt für die Einstellungen nicht die eigene Liste');
+  assert.match(KT_HAUS, /aktualisiereLagerortVorrat\(\)/, 'Die App holt für die Einstellungen nicht die eigene Liste');
   for (const [datei, s] of [['res/values/strings.xml', XML_EN], ['res/values-de/strings.xml', XML_DE]])
     for (const k of ['detail_storage', 'detail_storage_ph', 'filter_storage_all'])
       assert.ok(s.includes(`name="${k}"`), `${datei}: ${k} fehlt`);

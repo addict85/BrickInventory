@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.zustand
 
+import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -9,7 +9,7 @@ import org.junit.Test
 import java.io.File
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.ResponseCache
-import ch.brickinventoryapp.testing.SetsRepository
+import ch.brickinventoryapp.testing.SetDateienRepository
 import ch.brickinventoryapp.testing.TeileRepository
 import ch.brickinventoryapp.testing.TestApi
 
@@ -49,8 +49,8 @@ class TeileFilterTest {
         // Liste darunter — genau der Fehler, den der Server dabei hatte.
         val teile = TeileRepository(TestApi.fuer(pfade.server), cache)
         runBlocking {
-            teile.getPartsFilterColors(accounts = "own")
-            teile.getPartsCategories(accounts = "own")
+            teile.getPartsFilterColors(konten = Kontoauswahl.Eigene)
+            teile.getPartsCategories(konten = Kontoauswahl.Eigene)
         }
         assertEquals(listOf("GET /api/v1/parts/colors?accounts=own", "GET /api/v1/parts/categories?accounts=own"),
             pfade.anfragen.toList())
@@ -64,7 +64,7 @@ class CsvAbbruchTest {
 
     @Test
     fun `die App ruft die Abbruch-Adresse`() = mitServer { pfade, cache ->
-        runBlocking { SetsRepository(TestApi.fuer(pfade.server), cache).cancelCsvImport() }
+        runBlocking { SetDateienRepository(TestApi.fuer(pfade.server), cache).cancelCsvImport() }
         assertEquals(listOf("POST /api/v1/sets/import/csv/cancel"), pfade.anfragen.toList())
     }
 }

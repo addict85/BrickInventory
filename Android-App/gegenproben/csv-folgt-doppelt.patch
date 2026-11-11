@@ -1,0 +1,16 @@
+Gegenprobe: Ein zweiter Folger öffnet eine zweite Verbindung zum CSV-Strom
+Modul: app
+Test: ch.brickinventoryapp.app.csv.CsvImportViewModelTest
+Rot: ein laufender Import startet den Dienst einmal
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt
+@@ -38,7 +38,6 @@
+      * Folgt schon jemand, kehrt der Aufruf sofort zurück: eine Verbindung, ein Balken.
+      */
+     suspend fun folge(angemeldet: Flow<Boolean>) {
+-        if (!folgt.compareAndSet(false, true)) return
+         try {
+             angemeldet.distinctUntilChanged().collectLatest { an ->
+                 if (!an && _zustand.value.running) dienst.stop()

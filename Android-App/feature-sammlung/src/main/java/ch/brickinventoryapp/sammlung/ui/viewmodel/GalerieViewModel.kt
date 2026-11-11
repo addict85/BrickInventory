@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.sammlung.ui.viewmodel
 
 import ch.brickinventoryapp.model.fach.Setsortierung
-import ch.brickinventoryapp.zustand.ui.abgeleitet
+import ch.brickinventoryapp.sitzung.abgeleitet
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
 import ch.brickinventoryapp.model.ui.model.KennzahlenAnsicht
 import androidx.lifecycle.SavedStateHandle
@@ -24,8 +24,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import androidx.lifecycle.ViewModel
-import ch.brickinventoryapp.zustand.ui.AppUiState
-import ch.brickinventoryapp.zustand.ui.Sitzung
+import ch.brickinventoryapp.sitzung.AppUiState
+import ch.brickinventoryapp.sitzung.Sitzung
 import ch.brickinventoryapp.model.ui.ScrollMemory
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen

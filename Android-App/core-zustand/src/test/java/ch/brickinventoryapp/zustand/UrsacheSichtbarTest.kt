@@ -5,7 +5,7 @@ import ch.brickinventoryapp.zustand.ui.mitTechnischerUrsache
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import ch.brickinventoryapp.zustand.ui.qrFehler
+import ch.brickinventoryapp.sitzung.qrFehler
 
 /**
  * „Etwas ist schiefgelaufen" muss sagen, WAS schiefgelaufen ist.

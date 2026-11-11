@@ -1,0 +1,17 @@
+Gegenprobe: Die Galerie hält ihre Rollstelle wieder selbst (rememberLazyGridState)
+Modul: app
+Test: ch.brickinventoryapp.app.ListScrollPositionTest
+Rot: die Rollstelle haelt allein der ScrollMemory
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/SammlungGraph.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/SammlungGraph.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/SammlungGraph.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/SammlungGraph.kt
+@@ -79,7 +79,7 @@
+         Erfassungsrahmen(eintrag, erfassung, navigation.bilder) { navController.navigate(SammlungZiel.SetDetail(it)) }
+         LaunchedEffect(state.serverUrl) { galerieVm.ladeWennLeer() }
+         // Ein Zustand je Besuch; die Stelle hält allein der ScrollMemory.
+-        val galleryGridState = remember { LazyGridState() }
++        val galleryGridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+         ScrollPositionKeeper(
+             SammlungZiel.Gallery.rollSchluessel, galleryGridState, galerie.sets.isNotEmpty(), vm.scrollMemory)
+         // Das Set-Detail gibt ein gelöschtes Set als Ergebnis an diesen Eintrag zurück;

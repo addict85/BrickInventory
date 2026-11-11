@@ -1,0 +1,16 @@
+Gegenprobe: Der Vordergrund lädt auch abgemeldet Einstellungen und Filterlisten nach
+Modul: core-zustand
+Test: ch.brickinventoryapp.zustand.AppViewModelTest
+Rot: abgemeldet laedt der Vordergrund nichts nach
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AppViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AppViewModel.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AppViewModel.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AppViewModel.kt
+@@ -68,7 +68,6 @@
+      * Start scheiterte, kommen nach. Abgemeldet fragt niemand.
+      */
+     fun imVordergrund() {
+-        if (!state.value.isLoggedIn) return
+         loadSettings()
+         loadHouseholdMembers()
+         loadLagerorte()

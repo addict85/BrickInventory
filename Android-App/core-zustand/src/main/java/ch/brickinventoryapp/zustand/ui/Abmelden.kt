@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.zustand.ui
 
+import ch.brickinventoryapp.sitzung.Sitzung
+import ch.brickinventoryapp.sitzung.Abmeldevorgang
 import ch.brickinventoryapp.data.Abmeldeweg
 import ch.brickinventoryapp.data.Abmeldung
 import ch.brickinventoryapp.data.SitzungsBereinigung

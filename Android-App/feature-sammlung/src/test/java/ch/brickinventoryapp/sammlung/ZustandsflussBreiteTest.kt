@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.sammlung
 
-import ch.brickinventoryapp.zustand.ui.AppUiState
+import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.sammlung.ui.GalleryUiState
 import org.junit.Assert.assertTrue
 import org.junit.Test

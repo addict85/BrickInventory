@@ -309,7 +309,10 @@ Geheimnis nur, wenn man sie dort auswählt.
 
 Abhängigkeiten nur in diese Richtung: `app → feature-* → core-*`; kein Bereich
 kennt einen anderen, ohne Ausnahme; was mehrere Bereiche zeigen, liegt im Kernmodul
-`core-ui-bestand` (`ModulgrenzenTest` prüft es an den Build-Dateien).
+`core-ui-bestand`. Die Regel steht einmal in
+`build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt`:
+Die Aufgabe `modulkantenPruefen` (an `check`, in der CI für alle Module) führt sie
+gegen die aufgelösten Kanten aus, `ModulgrenzenTest` gegen die Build-Dateien.
 
 Den gemeinsamen Android-Block setzen Konventions-Plugins aus `build-logic/`
 (ein eigener Gradle-Bau, eingebunden in `settings.gradle.kts`, Plugin-IDs im
@@ -320,7 +323,7 @@ Modulkanten und echte Zusatzabhängigkeiten:
 | --- | --- |
 | `brickinventory.android.library` | `com.android.library`, compileSdk/minSdk aus `Sdk.kt`, Java und Kotlin 17 |
 | `brickinventory.android.application` | dasselbe für `com.android.application`, dazu targetSdk |
-| `brickinventory.android.unittests` | JVM-Tests: `isReturnDefaultValues`, voller Stack im Protokoll, Gruppe `unit-tests` |
+| `brickinventory.android.unittests` | JVM-Tests ohne `isReturnDefaultValues` (Android ohne Robolectric wirft), voller Stack im Protokoll, Gruppe `unit-tests` |
 | `brickinventory.android.compose` | Compose-Übersetzer, `buildFeatures.compose`, BOM und Gruppe `compose` |
 | `brickinventory.android.hilt` | KSP, Hilt, `hilt-android` und `hilt-compiler` |
 | `brickinventory.android.feature` | die vier oben und `core-ktx` — ein Bereich |
@@ -328,7 +331,7 @@ Modulkanten und echte Zusatzabhängigkeiten:
 | `brickinventory.jvm.library` | `org.jetbrains.kotlin.jvm`, Java und Kotlin 17, Testprotokoll, detekt — für `core-model` |
 
 Modulkanten (`project(":…")`) trägt keine Konvention ein; sie stehen im Skript
-des Moduls, wo `ModulgrenzenTest` sie liest. Ein SDK-Sprung ist eine Zeile in
+des Moduls, die Konvention prüft sie nur. Ein SDK-Sprung ist eine Zeile in
 `build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Sdk.kt`.
 `core-model` bleibt reines Kotlin (`brickinventory.jvm.library`).
 
@@ -344,7 +347,8 @@ des Moduls, wo `ModulgrenzenTest` sie liest. Ein SDK-Sprung ist eine Zeile in
 | `core-dienste` | `ch.brickinventoryapp.dienste` | CSV-Import und PDF-Export als Vordergrund-Dienste, stündlicher Preisalarm (WorkManager); hängt an `core-data` |
 | `core-ui` | `ch.brickinventoryapp.ui` | Design-System: Theme und Bausteine ohne Fachwissen (Karten, Zeilen, Suchfeld, Dialoge, Kamera-Bausteine); kennt keine Ansichten und keine Servermodelle |
 | `core-ui-bestand` | `ch.brickinventoryapp.gemeinsam` | Fachliche Bausteine mehrerer Bereiche: Filterblatt, Haushalt- und Lagerortwahl, eigene Einträge, Preisdiagramm, Wertkacheln; hängt nur an `core-model`, `core-ressourcen`, `core-ui` (Paketstamm aus der Zeit als `feature-gemeinsam`) |
-| `core-zustand` | `ch.brickinventoryapp.zustand` | Sitzung, Kontowerte, Blickfeld, Texte, Basis der Bereichs-ViewModels, AppViewModel; ohne `core-ui` |
+| `core-sitzung` | `ch.brickinventoryapp.sitzung` | Sitzung samt `AppUiState`, Kontowerte und der SitzungsDienst, der Anmeldung, Abmeldung und Einstellungen über die Bildschirme hinweg folgt; kennt weder Filter noch ViewModels |
+| `core-zustand` | `ch.brickinventoryapp.zustand` | Blickfeld, Texte, Basis der Bereichs-ViewModels, AppViewModel; liest die Sitzung aus `core-sitzung`, ohne `core-ui` |
 | `core-testing` | `ch.brickinventoryapp.testing` | Testhilfen (Testserver, Testdienste, `Quellen`), nur als `testImplementation` |
 | `feature-anmeldung` | `ch.brickinventoryapp.anmeldung` | Anmelden, Server einrichten, QR |
 | `feature-katalog` | `ch.brickinventoryapp.katalog` | Katalog und Katalog-Detail |

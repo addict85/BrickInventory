@@ -1,0 +1,17 @@
+Gegenprobe: Eine angetippte Meldung öffnet jede Zeichenkette als Set
+Modul: core-zustand
+Test: ch.brickinventoryapp.zustand.AppViewModelTest
+Rot: eine angetippte Meldung oeffnet nur eine gueltige Setnummer
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AppViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AppViewModel.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AppViewModel.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AppViewModel.kt
+@@ -79,7 +79,7 @@
+     /** Der Intent kommt am Rand der App an, und dieser Rand ist die Activity. */
+     fun setAusMeldungAnfordern(setNummer: String?) {
+         // Auch hier geprüft: Die Nummer wird Teil einer Navigationsroute.
+-        val sn = setnummerAusMeldung(setNummer) ?: return
++        val sn = setNummer ?: return
+         _meldungsZiel.value = MeldungsZielUiState(sn)
+     }
+ 

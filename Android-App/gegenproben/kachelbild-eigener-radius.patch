@@ -1,0 +1,18 @@
+Gegenprobe: das Kachelbild bekommt einen eigenen Eckenradius statt des Radius der Leiste
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.KachelMasseTest
+Rot: Bildecke und Kartenform teilen sich den Radius
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Formen.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Formen.kt
+index 1f3be72..ffe6265 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Formen.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Formen.kt
+@@ -55,7 +55,7 @@ object Formen {
+     val strich = RoundedCornerShape(2.dp)
+ 
+     /** Die oberen Ecken eines Kachelbildes — passt zwingend zu [leiste]. */
+-    val kachelBildEcken = RoundedCornerShape(topStart = leisteRadius, topEnd = leisteRadius)
++    val kachelBildEcken = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
+ 
+     /**
+      * Masse einer Bestandskachel (Teile- und Minifiguren-Reiter): Beide zeigen

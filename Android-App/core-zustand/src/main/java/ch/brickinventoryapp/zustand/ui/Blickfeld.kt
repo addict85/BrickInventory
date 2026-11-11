@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.zustand.ui
 
 import ch.brickinventoryapp.model.data.ScopeFilter
+import ch.brickinventoryapp.sitzung.Filterquelle
+import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.data.ScopeFilterSpeicher
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
@@ -42,18 +44,14 @@ class ScopeFilterAblage @Inject constructor(
  * dieselben Konten und Orte zeigen. Wer einen Filter ändert, lädt danach seine
  * eigene Liste nach; der Blickfeld-Dienst selbst lädt keine Bestandsdaten.
  */
-interface Blickfeld {
+interface Blickfeld : Filterquelle {
     val konten: StateFlow<BlickfeldUiState>
     val lager: StateFlow<LagerUiState>
-    fun kontoFuer(view: ScopeFilter.View): String?
+    fun kontoFuer(view: ScopeFilter.View): Kontoauswahl?
     fun lagerFuer(view: ScopeFilter.View): String?
     suspend fun setzeKonto(view: ScopeFilter.View, wert: String)
     suspend fun setzeLager(view: ScopeFilter.View, wert: String)
-    suspend fun ladeFilter()
-    suspend fun ladeMitglieder()
-    suspend fun ladeLagerorte()
     suspend fun ladeVorrat(besitzer: List<Int>)
-    suspend fun ladeEigeneLagerorte()
     suspend fun anmeldungBeginnt()
     fun zuruecksetzen()
 }
@@ -77,8 +75,9 @@ class BlickfeldDienst @Inject constructor(
     private val _lager = MutableStateFlow(LagerUiState())
     override val lager: StateFlow<LagerUiState> = _lager.asStateFlow()
 
-    /** Der Wert für `accounts=`, oder null für „alle Konten“. */
-    override fun kontoFuer(view: ScopeFilter.View): String? = ScopeFilter.asQuery(_konten.value.scopeModes[view])
+    /** Wessen Bestand die Ansicht zeigt, oder null für „alle Konten“. */
+    override fun kontoFuer(view: ScopeFilter.View): Kontoauswahl? =
+        Kontoauswahl.aus(ScopeFilter.asQuery(_konten.value.scopeModes[view]))
 
     /** Der Wert für `storage=`, oder null für „alle Orte“. */
     override fun lagerFuer(view: ScopeFilter.View): String? = ScopeFilter.lagerAsQuery(_lager.value.modi[view])
@@ -129,16 +128,18 @@ class BlickfeldDienst @Inject constructor(
 
     /** Der Vorrat der Besitzer eines Sets — Vorschläge im Lagerortfeld. */
     override suspend fun ladeVorrat(besitzer: List<Int>) {
-        val r = teile.getLagerortVorrat(besitzer.takeIf { it.isNotEmpty() }?.joinToString(","))
+        val r = teile.getLagerortVorrat(besitzer)
         val orte = (r as? Ergebnis.Success)?.data?.takeIf { it.success }?.orte ?: return
         _lager.update { it.copy(vorrat = orte.map { o -> o.alsAnsicht() }) }
     }
 
-    /** Die eigenen Orte samt Vorgabe — für Erfassen und Verwaltung. */
+    /** Die eigenen Orte samt Vorgabe — für Erfassen und Verwaltung; gezeigt wird, was die Ablage danach hat. */
     override suspend fun ladeEigeneLagerorte() {
-        val r = teile.getLagerortVorrat(null)
-        val antwort = (r as? Ergebnis.Success)?.data?.takeIf { it.success } ?: return
-        _lager.update { it.copy(eigene = antwort.orte.map { o -> o.alsAnsicht() }, vorgabe = antwort.vorgabe?.alsAnsicht()) }
+        teile.aktualisiereLagerortVorrat()
+        val vorrat = teile.beobachteLagerortVorrat().first().liste
+        _lager.update {
+            it.copy(eigene = vorrat.map { v -> v.ort.alsAnsicht() }, vorgabe = vorrat.firstOrNull { v -> v.vorgabe }?.ort?.alsAnsicht())
+        }
     }
 
     /**

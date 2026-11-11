@@ -6,7 +6,7 @@ import ch.brickinventoryapp.data.lokal.Abgleichsereignis
 import ch.brickinventoryapp.data.lokal.Ausgangslage
 import ch.brickinventoryapp.data.repository.Bestandsabgleich
 import ch.brickinventoryapp.model.lokal.Bestandsart
-import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
+import ch.brickinventoryapp.model.ui.Meldung
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,15 +35,13 @@ fun Ausgangsmelder(
     lage: Ausgangslage,
     abgleich: Bestandsabgleich,
     meldungen: MeldungsKanal,
-    texte: Texte,
-): Ausgangsmelder = AusgangsBeobachter(lage, abgleich, meldungen, texte)
+): Ausgangsmelder = AusgangsBeobachter(lage, abgleich, meldungen)
 
 @Singleton
 class AusgangsBeobachter @Inject constructor(
     private val lage: Ausgangslage,
     private val abgleich: Bestandsabgleich,
     private val meldungen: MeldungsKanal,
-    private val texte: Texte,
 ) : Ausgangsmelder {
     private val _offene = MutableStateFlow(0)
     override val offene: StateFlow<Int> = _offene.asStateFlow()
@@ -55,7 +53,7 @@ class AusgangsBeobachter @Inject constructor(
             var vorher = 0
             lage.offene().collect { n ->
                 _offene.value = n
-                if (n > vorher) meldungen.zeige(texte.menge(R.plurals.offline_ausgang, n, n))
+                if (n > vorher) meldungen.zeige(Meldung.Menge(R.plurals.offline_ausgang, n))
                 vorher = n
             }
         }
@@ -67,8 +65,8 @@ class AusgangsBeobachter @Inject constructor(
     private suspend fun melde(e: Abgleichsereignis) {
         when (e) {
             is Abgleichsereignis.Gesendet -> e.arten.mapNotNull { listeFuer(it) }.toSet().forEach { gleicheAb(it) }
-            is Abgleichsereignis.Verworfen -> meldungen.zeige(texte.text(R.string.offline_verworfen,
-                e.ziel, e.meldung.ifBlank { texte.text(R.string.offline_verworfen_ohne_grund) }))
+            is Abgleichsereignis.Verworfen -> meldungen.zeige(Meldung.Ressource(R.string.offline_verworfen, listOf(e.ziel,
+                e.meldung.ifBlank { null } ?: Meldung.Ressource(R.string.offline_verworfen_ohne_grund))))
         }
     }
 
@@ -80,7 +78,8 @@ class AusgangsBeobachter @Inject constructor(
         Bestandsart.MERKLISTE -> Liste.MERKLISTE
         Bestandsart.TEILE, Bestandsart.MANUELLE_TEILE -> Liste.TEILE
         Bestandsart.FIGUREN, Bestandsart.MANUELLE_FIGUREN -> Liste.FIGUREN
-        Bestandsart.GUTSCHEINE -> null
+        // Ändern sich nie über den Ausgang, nur online.
+        Bestandsart.GUTSCHEINE, Bestandsart.PREISALARME, Bestandsart.LAGERORTE -> null
     }
 
     private suspend fun gleicheAb(l: Liste) {

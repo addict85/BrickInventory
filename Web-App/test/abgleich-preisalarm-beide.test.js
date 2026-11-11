@@ -162,7 +162,7 @@ test('App: dieselben drei Endpunkte und dieselbe Abholung, ohne Kontofilter', ()
 test('App: ein leeres Feld löscht, gespeichert wird beim Tippen in der Ruhezeit des ViewModels', () => {
   const ohne = ohneKommentare;
   assert.match(KT_ALARMEINGABE, /return if \(z > 0\.0\) z else null/, 'Die App löscht bei leerem Feld nicht');
-  assert.match(KT_FEAT, /if \(schwelle == null\)\s*\n?\s*sets\.deletePreisalarm/, 'Die App löscht bei leerem Feld nicht');
+  assert.match(KT_FEAT, /if \(schwelle == null\)\s*\n?\s*alarme\.deletePreisalarm/, 'Die App löscht bei leerem Feld nicht');
   assert.match(ohne(KT_SECT), /onValueChange = \{[\s\S]{0,400}?onSetze\(setNumber, richtung, (?!schwelle\b)\w+, zustand\)/,
     'Das Schwellenfeld der App hängt nicht am Tippen');
   assert.doesNotMatch(ohne(KT_SECT), /alarmFokus/, 'Die App speichert noch am Fokuswechsel');

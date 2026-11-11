@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import ch.brickinventoryapp.model.data.model.GenericResponse
 import androidx.lifecycle.ViewModel
-import ch.brickinventoryapp.zustand.ui.Sitzung
+import ch.brickinventoryapp.sitzung.Sitzung
 import ch.brickinventoryapp.model.ui.ScrollMemory
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
@@ -39,7 +39,7 @@ import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 import ch.brickinventoryapp.model.ui.Listenansicht
 import ch.brickinventoryapp.teile.ui.TeileSitzungUiState
-import ch.brickinventoryapp.zustand.ui.abgeleitet
+import ch.brickinventoryapp.sitzung.abgeleitet
 
 /**
  * Teile und Minifiguren: Listen, Filter, Erfassen und Ändern manueller

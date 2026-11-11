@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.konto.ui.screens
 
+import ch.brickinventoryapp.sitzung.*
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
@@ -434,7 +435,7 @@ private fun UpdateCard(
 
         updateZustand.fehler?.let { f ->
             Spacer(Modifier.height(Abstaende.klein))
-            Text(f, style = MaterialTheme.typography.bodySmall,
+            Text(f.satz(), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error)
         }
 

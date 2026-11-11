@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.zustand
 
+import ch.brickinventoryapp.model.ui.Meldung
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CoroutineScope
@@ -10,10 +11,8 @@ import ch.brickinventoryapp.data.AlarmPlaner
 import ch.brickinventoryapp.data.GeraeteEinstellungen
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.VorwaermNetz
-import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.zustand.ui.viewmodel.GeraeteEinstellungenViewModel
-import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -60,13 +59,6 @@ class GeraeteEinstellungenViewModelTest {
         override suspend fun einplanen(an: Boolean): Throwable? { auftraege += an; return fehler }
     }
 
-    private object Saetze : Texte {
-        override fun text(id: Int, vararg args: Any?) = "t$id(${args.joinToString()})"
-        override fun menge(id: Int, anzahl: Int, vararg args: Any?) = "m$id"
-        override fun meldung(fehler: Ergebnis.Error) = fehler.message
-        override fun angemeldet() = true
-    }
-
     private val ablage = Ablage()
     private val planer = Planer()
     private val kanal = MeldungsKanal()
@@ -79,7 +71,7 @@ class GeraeteEinstellungenViewModelTest {
     fun auf() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         vorschau.schreibe("https://brick.example/api/v1/proxy?u=x&thumb=1", ByteArray(500) { 1 })
-        vm = GeraeteEinstellungenViewModel(ablage, planer, Saetze, kanal, vorschau)
+        vm = GeraeteEinstellungenViewModel(ablage, planer, kanal, vorschau)
         sammler = CoroutineScope(Dispatchers.Main).launch {
             launch { vm.alarmMeldungenAn.collect {} }
             launch { vm.vorwaermen.collect {} }
@@ -108,7 +100,8 @@ class GeraeteEinstellungenViewModelTest {
         planer.fehler = IllegalStateException("WorkManager fehlt")
         vm.alarmMeldungen(true)
         assertEquals("Der Wunsch gilt trotzdem", true, vm.alarmMeldungenAn.value)
-        assertEquals("t${R.string.alert_schedule_failed}(IllegalStateException: WorkManager fehlt)", kanal.text)
+        assertEquals(Meldung.Ressource(R.string.alert_schedule_failed, listOf("IllegalStateException: WorkManager fehlt")),
+            kanal.meldung.value)
     }
 
     @Test
@@ -126,6 +119,6 @@ class GeraeteEinstellungenViewModelTest {
         vm.ablageLeeren()
         assertEquals(0L, vm.ablageBytes.value)
         assertEquals(0L, vorschau.belegt())
-        assertEquals("t${R.string.monitoring_cache_saved}()", kanal.text)
+        assertEquals(Meldung.Ressource(R.string.monitoring_cache_saved), kanal.meldung.value)
     }
 }

@@ -1,0 +1,18 @@
+Gegenprobe: das Protokoll schreibt auch ohne Android ins Logcat (android.util.Log ist im JVM-Test eine werfende Attrappe)
+Modul: core-netz
+Test: ch.brickinventoryapp.netz.ProtokollOhneAndroidTest
+Rot: ohne Android landet eine Warnung auf stderr
+
+diff --git a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/Protokoll.kt b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/Protokoll.kt
+index 5cd5a4b..f383674 100644
+--- a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/Protokoll.kt
++++ b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/Protokoll.kt
+@@ -22,7 +22,7 @@ object Protokoll {
+      * nicht an einer Protokollzeile. Dort geht die Zeile nach stderr.
+      */
+     internal fun vorgabe(vm: String? = System.getProperty("java.vm.name")): (Stufe, String, String, Throwable?) -> Unit =
+-        if (vm == "Dalvik") { stufe, tag, text, fehler ->
++        if (true) { stufe, tag, text, fehler ->
+             if (stufe == Stufe.WARNUNG) android.util.Log.w(tag, text, fehler) else android.util.Log.i(tag, text)
+         } else { stufe, tag, text, fehler ->
+             System.err.println("$stufe $tag: $text" + fehler?.let { " ($it)" }.orEmpty())

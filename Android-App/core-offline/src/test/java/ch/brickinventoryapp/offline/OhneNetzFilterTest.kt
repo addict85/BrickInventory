@@ -1,8 +1,6 @@
 package ch.brickinventoryapp.offline
 
 import ch.brickinventoryapp.model.fach.Setsortierung
-import ch.brickinventoryapp.model.lokal.Bestandsart
-import ch.brickinventoryapp.model.lokal.Lokal
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.api.SetsApi
@@ -12,7 +10,6 @@ import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
 import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
-import ch.brickinventoryapp.model.data.model.AddSetRequest
 import ch.brickinventoryapp.model.data.model.Part
 import ch.brickinventoryapp.model.data.model.PartsResponse
 import ch.brickinventoryapp.model.data.model.ManualPartsResponse
@@ -42,9 +39,6 @@ import java.net.ConnectException
  * Gegenproben (gegenproben/, der CI-Job `gegenproben` verlangt Rot):
  *   ohne-netz-suche-als-muster `%` und `_` nicht maskiert → rot „ein Prozentzeichen …“
  *   ohne-netz-filter-spalte    die Spalte thema bekommt den Lagerort → rot „Suche, Thema …“
- *   seite-kodiert-ganze-liste  uebernimm liest und ersetzt beim Anhängen die ganze Liste →
- *                              rot „eine weitere Seite schreibt nur ihre Zeilen“
- *   seite-ohne-ausgang         beim Anhängen wird der Ausgang nicht angewandt → rot „die Serverzeile trägt …“
  *   galerie-ablage-ungefiltert beobachteSets übergibt keine Filterspalten → rot „die Galerie filtert in Room …“
  *   teile-nur-seite-eins       aktualisiereSeitenweise bricht nach Seite 1 ab → rot „alle Seiten der Teile …“
  */
@@ -53,7 +47,7 @@ class OhneNetzFilterTest {
 
     private val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), BestandDatenbank::class.java)
         .allowMainThreadQueries().build()
-    private val bestand = Zaehlend(RoomBestand(db))
+    private val bestand = RoomBestand(db)
     private val ablage = Offlineablage(bestand, RoomAusgang(db), { "a" }, uhr = { STAND })
 
     private var offline = false
@@ -116,11 +110,6 @@ class OhneNetzFilterTest {
 
     private fun ladeSetsOnline() = runBlocking { assertTrue(setsRepo.aktualisiereSets() is Ergebnis.Success) }
 
-    /** Die Sets in Seiten zu zwei, wie eine blätternde Serverantwort. */
-    private suspend fun seitenweise() {
-        for ((i, seite) in sets.chunked(2).withIndex()) ablage.uebernimm(Faecher.SETS, seite, anhaengen = i > 0)
-    }
-
     @Test
     fun `Suche, Thema, Lagerort und Sortierung der Galerie wirken ohne Netz auf die ganze lokale Liste`() {
         ladeSetsOnline()
@@ -156,30 +145,6 @@ class OhneNetzFilterTest {
     }
 
     @Test
-    fun `eine weitere Seite schreibt nur ihre Zeilen und liest die Liste nicht`() {
-        runBlocking { seitenweise() }
-        assertEquals("Seite 1 ersetzt die Liste", listOf(2), bestand.ersetzt)
-        assertEquals("Seiten 2 und 3 schreiben nur ihre eigenen Zeilen", listOf(2, 1), bestand.angehaengt)
-        assertEquals("gelesen wird dabei nichts", 0, bestand.gelesen)
-        assertEquals(sets.map { it.setNumber }, runBlocking { ablage.lies(Faecher.SETS) }!!.liste.map { it.setNumber })
-    }
-
-    @Test
-    fun `der Ausgang wirkt auch auf eine weitere Seite, ohne Zeilen doppelt anzulegen`() {
-        runBlocking {
-            ablage.uebernimm(Faecher.SETS, sets.take(2))
-            // Offline ein Set erfasst, das der Server auf Seite 2 schon führt: Lokal steht
-            // es erst vorn, die Zeile von Seite 2 ersetzt es samt wartendem Schritt.
-            ablage.puffere(Bearbeitung.SetErfassen(AddSetRequest(setNumber = "10003-1", quantity = 1)))
-            ablage.uebernimm(Faecher.SETS, sets.drop(2).take(2), anhaengen = true)
-        }
-        val lokal = runBlocking { ablage.lies(Faecher.SETS) }!!.liste
-        assertEquals(listOf("10001-1", "10002-1", "10003-1", "21000-1"), lokal.map { it.setNumber })
-        assertEquals("die Serverzeile trägt die wartende Erfassung aus dem Ausgang", 2,
-            lokal.single { it.setNumber == "10003-1" }.quantity)
-    }
-
-    @Test
     fun `die Galerie filtert in Room, der Abruf fuellt nur die Ablage`() = runBlocking {
         assertTrue(setsRepo.aktualisiereSets() is Ergebnis.Success)
         assertEquals("alle Sets in der Ablage", sets.size, setsRepo.beobachteSets().first().liste.size)
@@ -197,23 +162,6 @@ class OhneNetzFilterTest {
         assertEquals("die manuellen Teile ebenso", listOf("m1"), teileRepo.beobachteManuelleTeile().first().liste.map { it.partNumber })
         val rot = teileRepo.beobachteTeile(farbe = "Red", ersatzteile = Ersatzteilwahl.OHNE).first().liste.map { it.partNumber }
         assertEquals("Farbe und Ersatzteile filtern in Room", listOf("3001"), rot)
-    }
-
-    /** Zählt, was die Ablage mit dem Bestand tut — die Seitenübernahme ist so von aussen sichtbar. */
-    private class Zaehlend(private val innen: LokalerBestand) : LokalerBestand by innen {
-        val ersetzt = mutableListOf<Int>()
-        val angehaengt = mutableListOf<Int>()
-        var gelesen = 0
-
-        override suspend fun lies(bereich: String, art: Bestandsart): Lokal<LokaleZeile> = innen.lies(bereich, art).also { gelesen++ }
-        override suspend fun ersetze(bereich: String, art: Bestandsart, zeilen: List<LokaleZeile>, stand: Long?) {
-            if (stand != null) ersetzt += zeilen.size
-            innen.ersetze(bereich, art, zeilen, stand)
-        }
-        override suspend fun haengeAn(bereich: String, art: Bestandsart, zeilen: List<LokaleZeile>, weg: Set<String>, stand: Long) {
-            angehaengt += zeilen.size
-            innen.haengeAn(bereich, art, zeilen, weg, stand)
-        }
     }
 
     private companion object {

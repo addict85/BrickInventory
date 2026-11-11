@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.teile
 
+import ch.brickinventoryapp.model.data.model.PdfAuftragAnfrage
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
@@ -96,8 +97,8 @@ class TeilelisteViewModelTest {
         val ergebnis: ExportErgebnis,
         override val fortschritt: Flow<PdfFortschritt?> = flowOf(null),
     ) : TeilelistenExport {
-        val ruempfe = mutableListOf<String>()
-        override suspend fun erzeuge(rumpf: String): ExportErgebnis { ruempfe += rumpf; return ergebnis }
+        val auftraege = mutableListOf<PdfAuftragAnfrage>()
+        override suspend fun erzeuge(auftrag: PdfAuftragAnfrage): ExportErgebnis { auftraege += auftrag; return ergebnis }
     }
 
     private fun vm(
@@ -191,7 +192,9 @@ class TeilelisteViewModelTest {
         vm.exportiere()
         advanceUntilIdle()
         assertEquals(datei, vm.zustand.value.pdfDatei)
-        assertTrue("Der Rumpf nennt das Set", export.ruempfe.single().contains("10294-1"))
+        val auftrag = export.auftraege.single()
+        assertEquals("Der Auftrag nennt das Set", listOf("10294-1"), auftrag.sets.map { it.setNumber })
+        assertEquals(listOf("3001" to 2), auftrag.parts.map { it.partNumber to it.quantity })
         vm.pdfGeoeffnet()
         assertNull(vm.zustand.value.pdfDatei)
 

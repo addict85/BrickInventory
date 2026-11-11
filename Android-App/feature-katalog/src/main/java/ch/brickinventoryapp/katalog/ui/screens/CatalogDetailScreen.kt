@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.katalog.ui.screens
 
+import ch.brickinventoryapp.model.fach.Alarmrichtung
+import ch.brickinventoryapp.katalog.ui.Merkwunsch
 import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.material.icons.filled.Bookmark
@@ -84,14 +86,8 @@ fun CatalogDetailScreen(
     lagerortVorgabe: String = "",
     onLoad: (String) -> Unit,
     onAddToGallery: (Erfassungswunsch) -> Unit,
-    /**
-     * Auf die Merkliste — Setnummer, Zustand, Alarmrichtung, Schwelle (roh) und
-     * Zielkonto. Die Schwelle kommt als Text: Leer heisst „kein Alarm“, nicht
-     * „Schwelle 0“, und die Umwandlung gehört an die eine Stelle, die sie kann
-     * (alarm/Alarmeingabe.kt). Das Zielkonto wie im Erfassungsdialog und in der Webapp
-     * (cat-m-owner).
-     */
-    onWish: (String, Zustand, String, String, Int?) -> Unit,
+    /** Auf die Merkliste; das Zielkonto wie im Erfassungsdialog und in der Webapp (cat-m-owner). */
+    onWish: (Merkwunsch) -> Unit,
     onOpenInGallery: (String) -> Unit,
     onBack: () -> Unit,
     /** Der Merkposten zu diesem Set, falls es schon auf der Merkliste steht. */
@@ -194,7 +190,7 @@ fun CatalogDetailScreen(
             householdMembers = householdMembers,
             onDismiss = { showWishDialog = false },
             onWish = { zustand, richtung, schwelle, konto ->
-                onWish(detail.setNumber, zustand, richtung, schwelle, konto)
+                onWish(Merkwunsch(detail.setNumber, zustand, richtung, schwelle, konto))
                 showWishDialog = false
             },
         )
@@ -321,7 +317,7 @@ private fun ColumnScope.KatalogAngaben(
 private fun merkpostenText(m: MerkpostenAnsicht): String {
     val zustand = stringResource(if (m.condition == Zustand.GEBRAUCHT) R.string.condition_used else R.string.condition_new)
     val alarm = m.alarm?.let { a ->
-        stringResource(if (a.richtung == "ueber") R.string.wanted_alert_above else R.string.wanted_alert_below,
+        stringResource(if (a.richtung == Alarmrichtung.UEBER) R.string.wanted_alert_above else R.string.wanted_alert_below,
             fmtMoney(a.schwelle, m.waehrung))
     }
     return listOfNotNull(zustand, alarm).joinToString(", ")
@@ -419,10 +415,10 @@ private fun MerkpostenDialog(
     /** Konten des Haushalts — ohne Unterkonten blendet sich die Wahl selbst aus. */
     householdMembers: List<MitgliedAnsicht>,
     onDismiss: () -> Unit,
-    onWish: (Zustand, String, String, Int?) -> Unit,
+    onWish: (Zustand, Alarmrichtung, String, Int?) -> Unit,
 ) {
     var zustand  by rememberSaveable { mutableStateOf(defaultCondition) }
-    var richtung by rememberSaveable { mutableStateOf("unter") }
+    var richtung by rememberSaveable { mutableStateOf(Alarmrichtung.UNTER) }
     var schwelle by rememberSaveable { mutableStateOf("") }
     // Vorbelegt mit dem eigenen Konto, genau wie im Erfassungsdialog daneben.
     var konto    by remember(householdMembers) {
@@ -448,8 +444,8 @@ private fun MerkpostenDialog(
                 Text(stringResource(R.string.detail_alert),
                      style = MaterialTheme.typography.labelLarge)
                 SegmentWahl(
-                    optionen = listOf("unter" to stringResource(R.string.detail_alert_chip_below),
-                                      "ueber" to stringResource(R.string.detail_alert_chip_above)),
+                    optionen = listOf(Alarmrichtung.UNTER to stringResource(R.string.detail_alert_chip_below),
+                                      Alarmrichtung.UEBER to stringResource(R.string.detail_alert_chip_above)),
                     gewaehlt = richtung,
                     onWahl = { richtung = it },
                 )

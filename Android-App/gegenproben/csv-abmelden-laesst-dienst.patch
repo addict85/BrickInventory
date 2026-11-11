@@ -1,0 +1,16 @@
+Gegenprobe: Beim Abmelden läuft der Vordergrund-Dienst des CSV-Imports weiter
+Modul: app
+Test: ch.brickinventoryapp.app.csv.CsvImportViewModelTest
+Rot: nach dem Abmelden ist der Balken leer
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt
+@@ -41,7 +41,6 @@
+         if (!folgt.compareAndSet(false, true)) return
+         try {
+             angemeldet.distinctUntilChanged().collectLatest { an ->
+-                if (!an && _zustand.value.running) dienst.stop()
+                 _zustand.value = CsvImportUiState()
+                 if (an) csvImport.beobachte().collect { verarbeite(it.alsAnsicht()) }
+             }

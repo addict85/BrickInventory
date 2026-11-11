@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.zustand.ui
+package ch.brickinventoryapp.sitzung
 
 import ch.brickinventoryapp.data.Abmeldeweg
 import ch.brickinventoryapp.data.MeldungsKanal
@@ -13,7 +13,7 @@ import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.model.koroutinen.ApplicationScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.model.ui.model.alsAnsicht
-import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
+import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.netz.util.NetworkPolicy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -66,9 +66,8 @@ class SitzungsDienst @Inject constructor(
     private val sessionExpired: SessionExpiredSignal,
     private val rechte: RechteSignal,
     private val meldungen: MeldungsKanal,
-    private val texte: Texte,
     private val sitzung: Sitzung,
-    private val blickfeld: Blickfeld,
+    private val blickfeld: Filterquelle,
     private val abgleich: Bestandsabgleich,
     private val zweiterFaktorPflicht: ZweiterFaktorPflicht,
     private val abmeldevorgang: Abmeldevorgang,
@@ -96,7 +95,7 @@ class SitzungsDienst @Inject constructor(
             sessionExpired.abgelaufen.filter { it }.collect {
                 sessionExpired.quittiere()
                 if (prefs.tokenJetzt().isNotBlank()) {
-                    meldungen.zeige(texte.text(R.string.vm_session_expired))
+                    meldungen.zeige(Meldung.Ressource(R.string.vm_session_expired))
                     abmelden()
                 }
             }
@@ -105,7 +104,7 @@ class SitzungsDienst @Inject constructor(
         bereich.launch {
             rechte.entzogen.filter { it }.collect {
                 rechte.quittiere()
-                if (sitzung.rechteNachziehen(konto)) meldungen.zeige(texte.text(R.string.vm_rechte_entzogen))
+                if (sitzung.rechteNachziehen(konto)) meldungen.zeige(Meldung.Ressource(R.string.vm_rechte_entzogen))
             }
         }
     }
@@ -114,8 +113,8 @@ class SitzungsDienst @Inject constructor(
     // Benachrichtigung kann fehlen, also hier noch einmal, einmalig.
     private fun meldeGescheiterteEntwertung() {
         prefs.gescheiterteEntwertungen().firstOrNull()?.let { server ->
-            meldungen.zeige(texte.text(R.string.abmeldung_gescheitert_text,
-                NetworkPolicy.ansicht(server)?.adresse ?: server))
+            meldungen.zeige(Meldung.Ressource(R.string.abmeldung_gescheitert_text,
+                listOf(NetworkPolicy.ansicht(server)?.adresse ?: server)))
             prefs.quittiereGescheiterteEntwertungen()
         }
     }
@@ -134,7 +133,7 @@ class SitzungsDienst @Inject constructor(
     private suspend fun anmeldung(anmeldung: CoroutineScope, url: String, token: String) {
         sitzung.anmeldungGeaendert(url, token.isNotBlank())
         if (token.isNotBlank() && prefs.anmeldungAbgelaufen()) {
-            meldungen.zeige(texte.text(R.string.vm_anmeldung_zu_alt))
+            meldungen.zeige(Meldung.Ressource(R.string.vm_anmeldung_zu_alt))
             abmelden()
             return
         }
@@ -167,7 +166,7 @@ class SitzungsDienst @Inject constructor(
     /** Die Bereichs-ViewModels leeren sich auf [Sitzung.abmeldungen]. */
     override fun abmelden(): Job = bereich.launch {
         if (abmeldevorgang.ausfuehren() == Abmeldeweg.NACHGEHOLT) {
-            meldungen.zeige(texte.text(R.string.vm_abmelden_nachgeholt))
+            meldungen.zeige(Meldung.Ressource(R.string.vm_abmelden_nachgeholt))
         }
         // Das Design des Kontos gilt nicht mehr; ohne Token liefert der Server die Vorgabe.
         bereich.launch { ladeDesign() }

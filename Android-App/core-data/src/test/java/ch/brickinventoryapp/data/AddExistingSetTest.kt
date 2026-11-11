@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.repository.SetsRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -9,7 +8,7 @@ import java.io.File
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.Quellen
 import ch.brickinventoryapp.testing.ResponseCache
-import ch.brickinventoryapp.testing.SetsRepository
+import ch.brickinventoryapp.testing.SetKatalogRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
@@ -41,7 +40,7 @@ class AddExistingSetTest {
     fun `die Existenzpruefung schickt keinen Kontofilter mit`() {
         val pfade = PfadServer("/api/v1/sets/exists/75192-1" to """{"success":true,"exists":false}""")
         try {
-            val sets = SetsRepository(TestApi.fuer(pfade.server),
+            val sets = SetKatalogRepository(TestApi.fuer(pfade.server),
                 ResponseCache { File(System.getProperty("java.io.tmpdir"), "bim-exists") })
             runBlocking { sets.getSetExists("75192-1") }
             assertEquals(listOf("GET /api/v1/sets/exists/75192-1"), pfade.anfragen.toList())

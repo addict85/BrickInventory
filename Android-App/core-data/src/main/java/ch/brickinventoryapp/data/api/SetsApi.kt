@@ -219,7 +219,7 @@ interface SetsApi : TeileAbfrageApi, FigurenAbfrageApi {
 
     @POST("api/v1/sets/partslist-pdf")
     suspend fun startPdfJob(
-        @Body body: okhttp3.RequestBody
+        @Body auftrag: PdfAuftragAnfrage
     ): Response<PdfAuftragAntwort>
 
     @GET("api/v1/sets/partslist-pdf/status/{jobId}")

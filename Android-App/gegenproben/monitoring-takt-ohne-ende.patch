@@ -1,0 +1,17 @@
+Gegenprobe: Der Monitoring-Takt fragt nach entzogenem Verwalterrecht weiter
+Modul: feature-verwaltung
+Test: ch.brickinventoryapp.verwaltung.MonitoringViewModelVerhaltenTest
+Rot: der Takt fragt Auftraege und Hintergrund ab
+
+diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt
+--- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt
++++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt
+@@ -103,7 +103,7 @@
+      * fragte jeder weitere Takt nur noch ein 403 ab.
+      */
+     suspend fun haltAktuell() {
+-        while (!_state.value.zugriffEntzogen) {
++        while (true) {
+             ladeJobs()
+             ladeHintergrund()
+             delay(TAKT_MS)

@@ -22,6 +22,17 @@ interface Darstellungsablage {
     suspend fun saveLanguage(lang: String)
 }
 
+/**
+ * Die zuletzt geholten Zahlen des Startbildschirm-Widgets, verschlüsselt in der
+ * Geräteablage; was im Text steht (JSON), weiss nur das Widget. Synchron, weil
+ * Glance ohne Koroutine des Widgets liest.
+ */
+interface Widgetablage {
+    fun widgetStand(): String?
+    fun setzeWidgetStand(text: String)
+    fun leereWidgetStand()
+}
+
 /** Wem die Clients des eigenen Servers vertrauen: gemerkte Pins und der Schalter für Nutzer-CAs. */
 interface Vertrauensablage : PinAblage {
     fun nutzerCaErlaubt(): Boolean

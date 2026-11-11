@@ -4,6 +4,7 @@ import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import android.os.Bundle
 import android.widget.Toast
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -156,6 +157,11 @@ class MainActivity : NurLauncherStart() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        vm.imVordergrund()
+    }
+
     override fun onStop() {
         super.onStop()
         schrittschutz.vergiss()
@@ -176,6 +182,10 @@ class MainActivity : NurLauncherStart() {
         enableEdgeToEdge()
         // Die App war zu: Der MeldungsEinstieg hat das Ziel vor dem Start abgelegt.
         meldungsZielUebernehmen()
+        // Den Geräteschlüssel gleich nach der Anmeldung hinterlegen: Später nimmt der Server keinen an.
+        lifecycleScope.launch {
+            vm.state.map { it.isLoggedIn }.distinctUntilChanged().filter { it }.collect { schrittschutz.bindeAnServer() }
+        }
 
         setContent {
             // Global vom Admin gewähltes Design. Bewusst NUR dieses Feld
@@ -212,8 +222,6 @@ class MainActivity : NurLauncherStart() {
                     // und StateFlow.value in der Komposition verbietet Lint.
                     val angemeldet by remember { vm.state.map { it.isLoggedIn }.distinctUntilChanged() }
                         .collectAsStateWithLifecycle(false)
-                    // Den Geräteschlüssel gleich nach der Anmeldung hinterlegen: Später nimmt der Server keinen an.
-                    LaunchedEffect(angemeldet) { if (angemeldet) schrittschutz.bindeAnServer() }
                     // Ebenso Verwalterrechte ohne zweiten Faktor; das Startpasswort kommt zuerst.
                     val faktorPflicht by vm.zweiterFaktorNoetig.collectAsStateWithLifecycle()
                     if (startpasswort && angemeldet) {

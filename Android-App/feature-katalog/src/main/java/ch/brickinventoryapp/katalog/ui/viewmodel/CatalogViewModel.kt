@@ -20,6 +20,16 @@ import javax.inject.Inject
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
+import ch.brickinventoryapp.data.alarm.Alarmeingabe
+import ch.brickinventoryapp.data.repository.AlarmRepository
+import ch.brickinventoryapp.data.repository.MerklisteRepository
+import ch.brickinventoryapp.katalog.ui.KatalogZiel
+import ch.brickinventoryapp.katalog.ui.Merkwunsch
+import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.model.ui.ScrollMemory
+import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 /**
  * Wie lange die Liste ruhig stehen muss, bevor ihre sichtbaren Seiten geholt werden:
@@ -41,6 +51,10 @@ class CatalogViewModel @Inject constructor(
     private val meldungen: MeldungsKanal,
     /** Texte in der Sprache der App und Fehlermeldungen wie überall (AppTexte). */
     private val texte: Texte,
+    /** Merkliste und Preisalarm: Das Detail zeigt den Posten und legt ihn an, ohne die Sammlung zu kennen. */
+    private val merkliste: MerklisteRepository,
+    private val alarme: AlarmRepository,
+    private val rollgedaechtnis: ScrollMemory,
 ) : ViewModel(), KatalogAktionen {
 
     private val _catalogState = MutableStateFlow(CatalogUiState())
@@ -84,12 +98,13 @@ class CatalogViewModel @Inject constructor(
         val gen = ++catalogGeneration
         catalogListJob?.cancel()
         catalogListJob = viewModelScope.launch {
+            // Auch die gemerkte Stelle vergessen: Nach einem Filterwechsel zeigte sie auf
+            // Sets, die es in der neuen Liste nicht mehr gibt.
+            rollgedaechtnis.vergiss(KatalogZiel.Catalog.rollSchluessel)
             _catalogState.update {
-                // Auch die gemerkte Position zurücksetzen: Nach einem Filterwechsel
-                // zeigte sie auf Sets, die es in der neuen Liste nicht mehr gibt.
                 it.copy(isLoading = true, error = null, fehlerKlasse = null,
                         loadedPages = emptyMap(), loadingPages = emptySet(), scrollTo = null,
-                        scrollIndex = 0, scrollOffset = 0, jahrVerteilung = emptyList())
+                        jahrVerteilung = emptyList())
             }
             ladeJahrVerteilung(gen)
             val s = _catalogState.value
@@ -181,14 +196,6 @@ class CatalogViewModel @Inject constructor(
         _catalogState.update { it.copy(scrollTo = nummer) }
     }
 
-    /**
-     * Die Ansicht meldet laufend ihre Rollposition; nur der Zustand wird gesetzt, kein
-     * Abruf. Beim Zurückkehren von der Detailseite stellt sie daraus wieder her.
-     */
-    override fun setCatalogScrollPos(index: Int, offset: Int) {
-        _catalogState.update { it.copy(scrollIndex = index, scrollOffset = offset) }
-    }
-
     /** Die Ansicht meldet, dass sie gesprungen ist. */
     override fun catalogScrollConsumed() {
         _catalogState.update { it.copy(scrollTo = null) }
@@ -219,9 +226,29 @@ class CatalogViewModel @Inject constructor(
     }
 
     // ── Detail ────────────────────────────────────────────────────────────────────
+    /** Der Merkposten zu [setNumber] aus der Ablage der Merkliste; null, solange das Set nicht darauf steht. */
+    fun gemerkt(setNumber: String): Flow<MerkpostenAnsicht?> =
+        merkliste.beobachteMerkliste().map { l -> l.liste.firstOrNull { it.setNumber == setNumber }?.alsAnsicht() }
+
+    /** Merken und, wenn eine Schwelle dasteht, den Preisalarm gleich mit. */
+    fun merke(w: Merkwunsch) {
+        viewModelScope.launch {
+            when (val r = merkliste.legeMerkpostenAn(w.setNumber, w.zustand, w.konto)) {
+                is Ergebnis.Error ->
+                    meldungen.zeige(texte.meldungFuerSnackbar(r)?.let { Meldung.Ressource(R.string.vm_error, listOf(it)) })
+                is Ergebnis.Success -> {
+                    Alarmeingabe.zahl(w.schwelleRoh)?.let { alarme.setPreisalarm(w.setNumber, w.richtung, it, w.zustand) }
+                    meldungen.zeige(Meldung.Ressource(if (r.data.warNeu) R.string.wanted_added else R.string.wanted_already))
+                }
+            }
+        }
+    }
+
     fun loadCatalogDetail(setNumber: String) {
         catalogDetailJob?.cancel()
         catalogDetailJob = viewModelScope.launch {
+            // Die Merkliste in die Ablage, damit [gemerkt] den Posten kennt; still, das Detail zählt.
+            launch { merkliste.aktualisiereMerkliste() }
             _catalogState.update { it.copy(detailLoading = true, detail = null) }
             when (val r = katalog.getCatalogSetDetail(setNumber)) {
                 is Ergebnis.Success -> {
@@ -229,7 +256,7 @@ class CatalogViewModel @Inject constructor(
                         _catalogState.update { it.copy(detailLoading = false, detail = r.data.set?.alsAnsicht()) }
                     else {
                         _catalogState.update { it.copy(detailLoading = false) }
-                        meldungen.zeige(r.data.error ?: texte.text(R.string.err_set_not_found))
+                        meldungen.zeige(r.data.error?.let(Meldung::Text) ?: Meldung.Ressource(R.string.err_set_not_found))
                     }
                 }
                 is Ergebnis.Error -> {

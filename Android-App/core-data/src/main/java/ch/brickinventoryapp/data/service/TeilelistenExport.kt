@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.service
 
+import ch.brickinventoryapp.model.data.model.PdfAuftragAnfrage
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.model.fach.PdfFortschritt
 import kotlinx.coroutines.flow.Flow
@@ -24,5 +25,5 @@ sealed interface ExportErgebnis {
 interface TeilelistenExport {
     /** Wo ein laufender Export steht, null ohne Export. */
     val fortschritt: Flow<PdfFortschritt?>
-    suspend fun erzeuge(rumpf: String): ExportErgebnis
+    suspend fun erzeuge(auftrag: PdfAuftragAnfrage): ExportErgebnis
 }

@@ -99,7 +99,6 @@ import androidx.compose.ui.semantics.SemanticsNode
 import java.util.Locale
 import org.robolectric.Shadows
 import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.testing.TeileRepository
 import ch.brickinventoryapp.sammlung.ui.SammlungZiel
 
@@ -232,7 +231,7 @@ class GeruestUndFormularTest {
                 {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF"}]}"""
             val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
                 KontoRepository(welt.t.api, welt.t.cache, welt.t.io),
-                VerwaltungRepository(welt.t.api, welt.t.cache), SetsRepository(welt.t.api, welt.t.cache),
+                VerwaltungRepository(welt.t.api, welt.t.cache), welt.t.alarme(),
                 TeileRepository(welt.t.api, welt.t.cache),
                 object : DateiLeser {
                     override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
@@ -312,7 +311,7 @@ class GeruestUndFormularTest {
                 {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF","name":"Millennium Falcon"}]}"""
             val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
                 KontoRepository(welt.t.api, welt.t.cache, welt.t.io),
-                VerwaltungRepository(welt.t.api, welt.t.cache), SetsRepository(welt.t.api, welt.t.cache),
+                VerwaltungRepository(welt.t.api, welt.t.cache), welt.t.alarme(),
                 TeileRepository(welt.t.api, welt.t.cache),
                 object : DateiLeser {
                     override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
@@ -507,7 +506,7 @@ class GeruestUndFormularTest {
         zeige {
             CatalogDetailScreen(setNumber = "10305-1", detail = katalogDetail,
                 isLoading = false, imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "", onLoad = {},
-                onAddToGallery = {}, onWish = { _, _, _, _, _ -> },
+                onAddToGallery = {}, onWish = {},
                 onOpenInGallery = {}, onBack = {})
         }
         val dichte = ctx.resources.displayMetrics.density
@@ -528,7 +527,7 @@ class GeruestUndFormularTest {
         zeige {
             CatalogDetailScreen(setNumber = "10305-1", detail = katalogDetail,
                 isLoading = false, imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "", onLoad = {},
-                onAddToGallery = {}, onWish = { _, _, _, _, _ -> },
+                onAddToGallery = {}, onWish = {},
                 onOpenInGallery = {}, onBack = {})
         }
         // Der Name steht einmal da, in der Leiste wie im Set-Detail; die Angaben rechts vom Bild.

@@ -10,7 +10,7 @@ import ch.brickinventoryapp.model.data.model.TOKEN_SCOPE_VOLL
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeUiState
-import ch.brickinventoryapp.zustand.ui.qrFehler
+import ch.brickinventoryapp.sitzung.qrFehler
 import ch.brickinventoryapp.netz.util.NetworkPolicy
 import ch.brickinventoryapp.sicherheit.bestaetigtFingerabdruck
 import ch.brickinventoryapp.sicherheit.pinSchluessel
@@ -38,10 +38,10 @@ import ch.brickinventoryapp.model.data.model.QrAbholung
 import ch.brickinventoryapp.model.data.model.QrMeldung
 import javax.inject.Inject
 import androidx.lifecycle.ViewModel
-import ch.brickinventoryapp.zustand.ui.AppUiState
+import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.anmeldung.ui.QrKonto
-import ch.brickinventoryapp.zustand.ui.Sitzung
-import ch.brickinventoryapp.zustand.ui.SitzungsRepository
+import ch.brickinventoryapp.sitzung.Sitzung
+import ch.brickinventoryapp.sitzung.SitzungsRepository
 import ch.brickinventoryapp.zustand.ui.Blickfeld
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
 import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung

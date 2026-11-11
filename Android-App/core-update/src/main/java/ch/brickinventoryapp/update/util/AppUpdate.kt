@@ -94,7 +94,7 @@ data class UpdateBeschreibung(
  * zurückgenommenen Build ein Downgrade an, das Android mit
  * INSTALL_FAILED_VERSION_DOWNGRADE ablehnt.
  */
-fun istNeuer(laufend: Int, gemeldet: Int): Boolean = gemeldet > laufend
+internal fun istNeuer(laufend: Int, gemeldet: Int): Boolean = gemeldet > laufend
 
 /**
  * Zeigt die Adresse in unsere Release-Ablage — die neuste oder das Etikett einer

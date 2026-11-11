@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.sitzung.*
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.sammlung.ui.viewmodel.SetDetailAktionen
 import ch.brickinventoryapp.model.ui.model.SetAnsicht

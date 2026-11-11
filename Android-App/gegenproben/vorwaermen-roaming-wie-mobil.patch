@@ -1,0 +1,18 @@
+Gegenprobe: im Roaming fragt das Vorwärmen die Erlaubnis für Mobilfunk statt der eigenen
+Modul: core-data
+Test: ch.brickinventoryapp.data.VorschauVorwaermerTest
+Rot: jede Netzlage folgt ihrer eigenen Erlaubnis
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt
+index 1a913f7..8b56b8e 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauVorwaermer.kt
+@@ -61,7 +61,7 @@ class VorschauVorwaermer @Inject constructor(
+         Netzlage.Art.KEIN_NETZ -> false
+         Netzlage.Art.WLAN      -> prefs.vorwaermenErlaubt(VorwaermNetz.WLAN).first()
+         Netzlage.Art.MOBIL     -> prefs.vorwaermenErlaubt(VorwaermNetz.MOBIL).first()
+-        Netzlage.Art.ROAMING   -> prefs.vorwaermenErlaubt(VorwaermNetz.ROAMING).first()
++        Netzlage.Art.ROAMING   -> prefs.vorwaermenErlaubt(VorwaermNetz.MOBIL).first()
+     }
+ 
+     /**

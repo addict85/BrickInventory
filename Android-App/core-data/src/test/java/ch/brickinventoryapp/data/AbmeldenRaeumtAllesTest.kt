@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.testing.testVertrauenschiffre
 import android.Manifest
 import android.app.Application
@@ -20,7 +21,7 @@ import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.zustand.ui.Abmeldehaken
 import ch.brickinventoryapp.zustand.ui.Abmelden
 import ch.brickinventoryapp.zustand.ui.Blickfeld
-import ch.brickinventoryapp.zustand.ui.Sitzung
+import ch.brickinventoryapp.sitzung.Sitzung
 import ch.brickinventoryapp.sicherheit.AblageChiffre
 import ch.brickinventoryapp.sicherheit.Ablageschluessel
 import ch.brickinventoryapp.sicherheit.TokenVerschluesselung
@@ -132,7 +133,7 @@ class AbmeldenRaeumtAllesTest {
         val api = TestApi.fuer(server)
         val offline = Testablage()
         offline.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "10294-1")))
-        offline.puffere(Bearbeitung.MerkpostenLoeschen("10294-1", "N", 1))
+        offline.puffere(Bearbeitung.MerkpostenLoeschen("10294-1", Zustand.NEU, 1))
         val vorschau = VorschauSpeicher({ File(ctx.filesDir, "vorschau") }, AblageChiffre { ablage.fuer("vorschau") }) { ablage.fuer("namen") }
         vorschau.schreibe("$adresse/images/sets/10294-1_thumb.jpg", "vorschaubild".toByteArray())
         val bildClient = OkHttpClient.Builder().cache(Cache(File(ctx.cacheDir, "bild-http"), 1_000_000)).build()

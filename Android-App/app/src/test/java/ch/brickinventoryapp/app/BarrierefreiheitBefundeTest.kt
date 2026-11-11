@@ -64,7 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.zustand.ui.AppUiState
+import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.teile.ui.PlPart
 import ch.brickinventoryapp.teile.ui.TeilelisteUiState
 import ch.brickinventoryapp.konto.ui.UpdateUiState
@@ -108,7 +108,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.testing.TeileRepository
 
 /**
@@ -228,7 +227,7 @@ class BarrierefreiheitBefundeTest {
         val welt = Beispiele.Welt(KontextTexte())
         try {
             val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich, KontoRepository(welt.t.api, welt.t.cache),
-                VerwaltungRepository(welt.t.api, welt.t.cache), SetsRepository(welt.t.api, welt.t.cache),
+                VerwaltungRepository(welt.t.api, welt.t.cache), welt.t.alarme(),
                 TeileRepository(welt.t.api, welt.t.cache),
                 object : DateiLeser {
                     override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
