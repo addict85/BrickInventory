@@ -3,6 +3,7 @@ export { entferneSetInhalt, kopiereSetInhalt, legeManuellAn } from './repository
 import type { DbSchnittstelle } from '../../db/database';
 import { istErsatzteil, KEINE_FARBE } from '../infra/validate';
 import { asIds, blickfeldAus, type Sicht } from '../haushalt/haushalt';
+import { bestandBereich } from './prozess';
 
 // Was Sets, Teile und Figuren gemeinsam brauchen.
 
@@ -57,7 +58,7 @@ export async function applyManualCondition<R extends Schluessel>(userId: number 
     ? `${r.part_number}|${r.color_id ?? KEINE_FARBE}`
     : String(r.fig_number);
 
-  const acq = await repo.erfassungsKennzahlen(isPart ? 'part' : 'fig', uids);
+  const acq = await bestandBereich().gemeinsam.erfassungsKennzahlen(isPart ? 'part' : 'fig', uids);
 
   const byKey = new Map(acq.map(a => [keyOf(a), a]));
 
@@ -115,7 +116,7 @@ export async function verwendendeSets(
   schluessel: Record<string, string | number>,
 ): Promise<BestandteilAntwort> {
   const uids = await blickfeldAus(uidsWahl);
-  const rows = await repo.setsMitBestandteil(uids, tabelle, schluessel);
+  const rows = await bestandBereich().gemeinsam.setsMitBestandteil(uids, tabelle, schluessel);
 
   const sets: VerwendendesSet[] = rows.map(r => ({
     set_number:    String(r.set_number),

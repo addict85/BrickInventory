@@ -1,4 +1,3 @@
-import * as db from '../../../db/database';
 import type { DbSchnittstelle } from '../../../db/database';
 import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/katalogSicht';
 
@@ -67,7 +66,7 @@ export interface PapierkorbZeile {
   geloescht_am: string; endgueltig_am: string;
 }
 
-export function eintraege(uids: number[], aufbewahrungTage: number) {
+export function eintraege(db: DbSchnittstelle, uids: number[], aufbewahrungTage: number) {
   return db.all<PapierkorbZeile>(
     `SELECT id, user_id, art, nummer, farbe_id, bezeichnung, zeilen, geloescht_am,
             geloescht_am + make_interval(days => $2) AS endgueltig_am
@@ -99,14 +98,14 @@ export async function entferneEintrag(tx: DbSchnittstelle, id: number): Promise<
   await tx.run('DELETE FROM papierkorb WHERE id = $1', [id]);
 }
 
-export async function entferneEintragDesKontos(id: number, uids: number[]): Promise<number> {
+export async function entferneEintragDesKontos(db: DbSchnittstelle, id: number, uids: number[]): Promise<number> {
   return (await db.run('DELETE FROM papierkorb WHERE id = $1 AND user_id = ANY($2)', [id, uids])).changes ?? 0;
 }
 
-export async function entferneAlle(uids: number[]): Promise<number> {
+export async function entferneAlle(db: DbSchnittstelle, uids: number[]): Promise<number> {
   return (await db.run('DELETE FROM papierkorb WHERE user_id = ANY($1)', [uids])).changes ?? 0;
 }
 
-export async function entferneAeltere(tage: number): Promise<number> {
+export async function entferneAeltere(db: DbSchnittstelle, tage: number): Promise<number> {
   return (await db.run('DELETE FROM papierkorb WHERE geloescht_am < NOW() - make_interval(days => $1)', [tage])).changes ?? 0;
 }

@@ -11,13 +11,13 @@ import { getMinifigInfo } from '../katalog/quellen';
 import { zustandFuerPreis } from '../einstellungen/settings';
 import { figMarktpreisMitHerkunft, getCurrentFigMarketPrice } from '../finanzen/marketPrice';
 import { kaufpreisAusEingabe, manuellerKaufpreis } from '../finanzen/preisRegel';
-import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
 import { merkeFigur, katalogFigur } from '../katalog/katalogPflege';
 import { merkeEigeneBlNummer } from '../katalog/blZuordnung';
 import * as V from '../infra/validate';
 import { geldEingabe } from '../infra/geld';
 import { fachfehler } from '../infra/fehlerTexte';
 import { figurenBereich } from './prozess';
+import { bestandBereich } from '../bestand/prozess';
 
 // Ohne BrickLink-Figurennummer wird der Marktpreis aus den Teilepreisen
 // geschätzt: Für Teile ist die Zuordnung RB→BL verlässlich, für Figuren nicht.
@@ -42,10 +42,10 @@ export async function resolveManualFigPurchase(uid: number, { figNumber, blFigNu
 /** Zwilling zu addManualPart — eine Umsetzung für Webapp und App. */
 export async function addManualFig(uid: number, body: Record<string, unknown>) {
   // Ohne mitgegebenen Ort gilt der Vorgabeort des Kontos.
-  const ort = await ortFuerNeuerfassung(uid, body?.storage);
+  const ort = await bestandBereich().lagerortDienst.ortFuerNeuerfassung(uid, body?.storage);
   const ergebnis = await addManualFigIntern(uid, body);
   if (ort && ergebnis?.fig_number) {
-    await setzeLagerort('fig', [uid], [String(ergebnis.fig_number)], ort);
+    await bestandBereich().lagerortDienst.setzeLagerort('fig', [uid], [String(ergebnis.fig_number)], ort);
   }
   return ergebnis;
 }

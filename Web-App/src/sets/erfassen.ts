@@ -119,7 +119,7 @@ export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfa
   if (!moeglicheSetNummer(sn)) fachfehler('ungueltig', 'setnummer_ungueltig');
   const besitzer = await schreibziel(e.anfragender, e.besitzerWunsch);
   const zustand = await zustandFuerPreis(e.zustand ?? null, null, besitzer);
-  const ort = await ortFuerNeuerfassung(besitzer, e.lagerort ?? null);
+  const ort = await ortFuerNeuerfassung(sk.db, besitzer, e.lagerort ?? null);
   const kaufpreis = e.kaufpreis ?? null;
 
   return sk.db.transaction(async tx => {
@@ -141,7 +141,7 @@ export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfa
       },
       tx,
     );
-    if (ort) await setzeLagerort('set', [besitzer], [sn], ort);
+    if (ort) await setzeLagerort(sk.db, 'set', [besitzer], [sn], ort);
     // In derselben Transaktion: Ein angelegtes Set ohne Auftrag bliebe für immer ohne Katalog.
     await stelleAuftragEin(
       'nacharbeit',
@@ -248,9 +248,9 @@ export interface SetHinzufuegen {
 /** Steht das Set schon im eigenen Konto, kommt eine Erfassung dazu (CSV, Merkliste). */
 export async function addSet(sk: SetsKontext, s: SetHinzufuegen) {
   // Ohne Ort gilt der Vorgabeort des Kontos (CSV- und Wanted-Import haben keinen).
-  const ort = await ortFuerNeuerfassung(s.konto, s.lagerort ?? null);
+  const ort = await ortFuerNeuerfassung(sk.db, s.konto, s.lagerort ?? null);
   const ergebnis = await addSetIntern(sk, s);
-  if (ort && ergebnis?.set_number) await setzeLagerort('set', [s.konto], [ergebnis.set_number], ort);
+  if (ort && ergebnis?.set_number) await setzeLagerort(sk.db, 'set', [s.konto], [ergebnis.set_number], ort);
   return ergebnis;
 }
 

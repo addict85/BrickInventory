@@ -1,9 +1,9 @@
 import { schreibbereichAus } from '../haushalt/haushalt';
 import type { Schreiber } from '../haushalt/haushalt';
 import type { DbSchnittstelle } from '../../db/database';
-import * as db from '../../db/database';
 import * as repo from './repository/papierkorb';
 import type { PapierArt } from './repository/papierkorb';
+import { bestandBereich } from './prozess';
 
 export type Art = PapierArt;
 export const AUFBEWAHRUNG_TAGE = 30;
@@ -38,7 +38,7 @@ export interface PapierkorbEintrag {
 
 export async function listePapierkorb(uidsWahl: Schreiber | number[]): Promise<PapierkorbEintrag[]> {
   const uids = await schreibbereichAus(uidsWahl);
-  const rows = await repo.eintraege(uids, AUFBEWAHRUNG_TAGE);
+  const rows = await bestandBereich().papierkorb.eintraege(uids, AUFBEWAHRUNG_TAGE);
   return rows.map((r) => {
     const erfassungen = r.zeilen?.[ERFASSUNGEN[r.art]] ?? [];
     const { zeilen: _z, ...rest } = r;
@@ -55,7 +55,7 @@ export type Wiederherstellung =
 export async function stelleWiederHer(uidsWahl: Schreiber | number[], id: number): Promise<Wiederherstellung> {
   const uids = await schreibbereichAus(uidsWahl);
   try {
-    return await db.transaction(async (tx): Promise<Wiederherstellung> => {
+    return await bestandBereich().db.transaction(async (tx): Promise<Wiederherstellung> => {
       const e = await repo.eintragSperren(tx, id, uids);
       if (!e) return { ok: false, code: 'nicht_gefunden' };
       const art = e.art as Art;
@@ -72,14 +72,14 @@ export async function stelleWiederHer(uidsWahl: Schreiber | number[], id: number
 
 export async function loescheEndgueltig(uidsWahl: Schreiber | number[], id: number): Promise<boolean> {
   const uids = await schreibbereichAus(uidsWahl);
-  return await repo.entferneEintragDesKontos(id, uids) > 0;
+  return await bestandBereich().papierkorb.entferneEintragDesKontos(id, uids) > 0;
 }
 
 export async function leerePapierkorb(uidsWahl: Schreiber | number[]): Promise<number> {
   const uids = await schreibbereichAus(uidsWahl);
-  return repo.entferneAlle(uids);
+  return bestandBereich().papierkorb.entferneAlle(uids);
 }
 
 export async function raeumePapierkorbAuf(): Promise<number> {
-  return repo.entferneAeltere(AUFBEWAHRUNG_TAGE);
+  return bestandBereich().papierkorb.entferneAeltere(AUFBEWAHRUNG_TAGE);
 }

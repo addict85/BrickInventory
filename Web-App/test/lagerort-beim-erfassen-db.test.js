@@ -74,7 +74,7 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async (t) => {
   const teile      = _req('src/teile/manuelleTeile.js');
   const figuren    = _req('src/figuren/manuelleFiguren.js');
   const merkliste  = _req('src/merkliste/merkliste.js');
-  const L          = _req('src/bestand/lagerort.js');
+  const L          = { ..._req('src/bestand/lagerort.js'), ..._req('src/bestand/prozess.js').bestandBereich().lagerortDienst };
 
   await t.test('1. Ein Set kommt mit seinem Lagerort in die Galerie', async () => {
     // Ohne Netz: getSetInfo/Brickset scheitern still und addSet legt die Zeile

@@ -1,9 +1,9 @@
 /** Pro Tag, Element, Zustand, Preis und Währung genau EINE Zeile: Gleiche
  * Käufe eines Tages werden zusammengezählt. */
-import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
 import { preisSpalte, schluesselSpalten } from '../../db/bestandsmenge';
 import * as repo from './repository/kaufErfassungen';
+import { bestandBereich } from './prozess';
 
 export type AcquisitionKind = 'set' | 'part' | 'fig';
 
@@ -34,7 +34,7 @@ export async function recordAcquisitionForDay(
   userId: number,
   keyValues: (string | number)[],
   input: AcquisitionInput,
-  dbh: DbSchnittstelle = db
+  dbh: DbSchnittstelle = bestandBereich().db
 ): Promise<{ merged: boolean }> {
   const qty   = Math.max(1, parseInt(String(input.quantity)) || 1);
   const price = num(input.price);
@@ -58,7 +58,7 @@ export async function findSameDayAcquisition(
   day: string,
   excludeId: number | null,
   condition: string | null = null,
-  dbh: DbSchnittstelle = db,
+  dbh: DbSchnittstelle = bestandBereich().db,
   merkmale: { preis?: unknown; geschaetzt?: boolean; waehrung?: string | null } = {}
 ): Promise<number | null> {
   const cond = ['N', 'U'].includes(String(condition)) ? String(condition) : 'N';
@@ -98,7 +98,7 @@ type MitPreis = { quantity?: unknown; purchase_price?: unknown; unit_price?: unk
 export async function erfassungenInKontowaehrung<T extends MitPreis>(rows: T[], betrachter: number) {
   const preise = rows.map(r => { const roh = r.purchase_price ?? r.unit_price; return roh === null || roh === undefined ? null : Number(roh); });
   const tage = rows.map(r => { const d = r.created_at ? new Date(String(r.created_at)) : null; return d && !isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : null; });
-  const umgerechnet = await repo.inWaehrungDesKontos(betrachter, preise, rows.map(r => r.currency ?? null), tage);
+  const umgerechnet = await bestandBereich().kaufErfassungen.inWaehrungDesKontos(betrachter, preise, rows.map(r => r.currency ?? null), tage);
   const acquisitions = rows.map((r, i) => ({ ...r, preis_konto: umgerechnet.betraege[i] ?? null }));
   return { acquisitions, totals: { ...acquisitionTotals(acquisitions.map(a => ({ quantity: a.quantity, purchase_price: a.preis_konto }))),
     currency: umgerechnet.waehrung, ohne_kurs: acquisitions.filter((a, i) => preise[i] != null && a.preis_konto == null).length } };
@@ -108,7 +108,7 @@ export async function erfassungenInKontowaehrung<T extends MitPreis>(rows: T[], 
  * statt am eindeutigen Index zu scheitern.
  * @returns true, wenn etwas geändert wurde */
 export async function setzeGeschaetztenPreis(kind: AcquisitionKind, id: number, preis: number): Promise<boolean> {
-  return db.transaction(async (tx) => {
+  return bestandBereich().db.transaction(async (tx) => {
     const z = await repo.erfassungSperren(tx, kind, id);
     if (!z || z[preisSpalte(kind)] != null) return false;
     const keys = schluesselSpalten(kind).map(k => z[k]);
@@ -120,4 +120,3 @@ export async function setzeGeschaetztenPreis(kind: AcquisitionKind, id: number, 
   }, { wiederholeBeiKonflikt: true }); // sperrt die Zeile, dann die Zielzeile: zwei Nachträge können sich kreuzen
 }
 
-export { setErfassungenOhnePreis, teilErfassungenOhnePreis, figurErfassungenOhnePreis } from './repository/nachtrag';

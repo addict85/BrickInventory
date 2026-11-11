@@ -1,11 +1,11 @@
 /** Hier, damit keine Route eine andere importiert. */
-import * as repo from './repository/bestandExport';
 import { toCsv } from '../infra/csvExport';
+import { bestandBereich } from './prozess';
 
 
 export async function buildPartsCsv(uid: number) {
   // Kein Rückfall: Scheitert die Abfrage, soll der Fehler sichtbar werden.
-  const rows = (await repo.teileFuerCsv(uid))
+  const rows = (await bestandBereich().bestandExport.teileFuerCsv(uid))
     .map(r => ({ ...r, unit_price: r.unit_price ?? '' }));
 
   return toCsv(
@@ -16,7 +16,7 @@ export async function buildPartsCsv(uid: number) {
 
 
 export async function buildFigsCsv(uid: number) {
-  const acqRows = (await repo.figurenFuerCsv(uid))
+  const acqRows = (await bestandBereich().bestandExport.figurenFuerCsv(uid))
     .map(r => ({ ...r, unit_price: r.unit_price ?? '' }));
 
   return toCsv(

@@ -1,6 +1,6 @@
 /** Der Lagerort hängt an Sets, Teilen und Figuren; setzen, auflisten und
  * räumen stehen deshalb einmal hier statt je Route. */
-import * as db from '../../db/database';
+import type { Db, DbSchnittstelle } from '../../db/database';
 import * as orte from './repository/lagerort';
 import type { LagerTabelle } from './repository/lagerort';
 import { asIds, scopeIds, writableIds, blickfeldAus, type Sicht, schreibbereichAus, type Schreiber } from '../haushalt/haushalt';
@@ -27,7 +27,7 @@ export function normalisiereLagerort(v: unknown): string | null {
 /** Wer schreiben darf, entscheidet src/haushalt/haushalt.ts; diese Funktion
  * bekommt die fertige Menge und fragt nicht nach.
  * @returns wie viele Zeilen betroffen waren (0 = es gibt nichts zu setzen) */
-export async function setzeLagerort(
+export async function setzeLagerort(db: Db, 
   art: LagerArt, besitzerIdsWahl: Schreiber | number[], schluessel: string[], ort: string | null,
 ): Promise<number> {
   const besitzerIds = await schreibbereichAus(besitzerIdsWahl);
@@ -68,13 +68,13 @@ export async function lagerSchreibkonto(nutzer: number, wunsch: string | number 
 }
 
 /** Der Vorrat der gewünschten Konten, soweit das Konto sie sehen darf. */
-export async function orteFuer(nutzer: number, wunsch: string | undefined): Promise<Lagerort[]> {
-  return orteVon(await lagerKonten(nutzer, wunsch, false));
+export async function orteFuer(db: DbSchnittstelle, nutzer: number, wunsch: string | undefined): Promise<Lagerort[]> {
+  return orteVon(db, await lagerKonten(nutzer, wunsch, false));
 }
 
 /** Wer wessen Liste sehen darf, entscheidet der Haushalt; die IDs kommen mit. */
-export async function orteVon(userIds: number[]): Promise<Lagerort[]> {
-  const rows = await orte.orteDerKonten(userIds);
+export async function orteVon(db: DbSchnittstelle, userIds: number[]): Promise<Lagerort[]> {
+  const rows = await orte.orteDerKonten(db, userIds);
   type Zeile = { id: string | number; user_id: string | number; name: string };
   return (rows as Zeile[] || []).map(r => ({
     id: parseInt(String(r.id)), user_id: parseInt(String(r.user_id)), name: r.name,
@@ -82,13 +82,13 @@ export async function orteVon(userIds: number[]): Promise<Lagerort[]> {
 }
 
 /** Kein Fehler, wenn es ihn gibt: Beim Setzen eines Lagerorts wäre die Absage Unfug. */
-export async function legeOrtAn(userId: number, name: unknown):
+export async function legeOrtAn(db: DbSchnittstelle, userId: number, name: unknown):
   Promise<{ ort: Lagerort; war_neu: boolean }> {
   const n = nameOderFehler(name);
-  const neu = await orte.fuegeOrtEin(userId, n);
+  const neu = await orte.fuegeOrtEin(db, userId, n);
   if (neu) return { ort: { id: parseInt(String(neu.id)), user_id: userId, name: neu.name },
                     war_neu: true };
-  const alt = await orte.ortNachName(userId, n);
+  const alt = await orte.ortNachName(db, userId, n);
   // Ohne Treffer ging etwas anderes schief als ein Duplikat — lieber eine
   // Absage als ein stilles „schon da".
   if (!alt) fachfehler('intern', 'lagerort_unbekannt');
@@ -97,36 +97,36 @@ export async function legeOrtAn(userId: number, name: unknown):
 }
 
 /** Die Zuordnung ist eine ID; der neue Name gilt damit überall sofort. */
-export async function benenneOrtUm(userId: number, id: number, name: unknown): Promise<Lagerort> {
+export async function benenneOrtUm(db: DbSchnittstelle, userId: number, id: number, name: unknown): Promise<Lagerort> {
   const neu = nameOderFehler(name);
-  const alt = await orte.ortName(id, userId);
+  const alt = await orte.ortName(db, id, userId);
   if (!alt) fachfehler('nicht_gefunden', 'lagerort_unbekannt');
   // Die Absage vorher ist verständlicher als der Fehler am Index.
-  const kollision = await orte.andererOrtGleichenNamens(userId, neu, id);
+  const kollision = await orte.andererOrtGleichenNamens(db, userId, neu, id);
   if (kollision) fachfehler('konflikt', 'lagerort_doppelt');
-  await orte.schreibeOrtNamen(id, userId, neu);
+  await orte.schreibeOrtNamen(db, id, userId, neu);
   return { id, user_id: userId, name: neu };
 }
 
 /** Absage, solange noch etwas darin liegt: Stilles Leeren verlöre Zuordnungen,
  * die der Löschende nicht im Blick hatte, ohne Weg zurück. */
-export async function loescheOrt(userId: number, id: number): Promise<void> {
-  const ort = await orte.ortName(id, userId);
+export async function loescheOrt(db: DbSchnittstelle, userId: number, id: number): Promise<void> {
+  const ort = await orte.ortName(db, id, userId);
   if (!ort) fachfehler('nicht_gefunden', 'lagerort_unbekannt');
   // Alle drei Tabellen, über die ID: Sonst liesse sich ein Ort löschen, in dem
   // nur Figuren liegen oder der anders geschrieben zugeordnet ist.
-  const belegt = await orte.ortBelegung(userId, id);
+  const belegt = await orte.ortBelegung(db, userId, id);
   if (parseInt(String(belegt?.n ?? 0)) > 0) fachfehler('konflikt', 'lagerort_in_benutzung');
-  await orte.entferneOrt(id, userId);
+  await orte.entferneOrt(db, id, userId);
 }
 
 /** EINE Abfrage über alle Tabellen, damit nicht jede Oberfläche selbst zusammenführt. */
-export async function lagerorte(blickfeldWahl: Sicht | BlickfeldEingabe) {
+export async function lagerorte(db: DbSchnittstelle, blickfeldWahl: Sicht | BlickfeldEingabe) {
   const blickfeld = await blickfeldAus(blickfeldWahl);
   const uids = asIds(blickfeld);
   // Über den NAMEN gruppiert, absichtlich: „Keller" von Grossvater und Enkel
   // sind zwei Vorratszeilen, gehören in der Übersicht aber zusammen.
-  const rows = await orte.orteMitBestand(uids);
+  const rows = await orte.orteMitBestand(db, uids);
   // SUM() kommt als Zeichenkette aus dem Treiber; deshalb parseInt darunter.
   type Zeile = { ort: string; sets: string | number; teile: string | number;
                  figuren: string | number };
@@ -143,15 +143,15 @@ export const VORGABE_SCHLUESSEL = 'default_storage_id';
 
 /** Über einen JOIN auf den Vorrat: Eine Vorgabe, deren Ort gelöscht wurde,
  * ist keine, und eine fremde ID gilt nicht. */
-export async function vorgabeVon(userId: number): Promise<Lagerort | null> {
-  const row = await orte.vorgabeOrt(userId, VORGABE_SCHLUESSEL);
+export async function vorgabeVon(db: DbSchnittstelle, userId: number): Promise<Lagerort | null> {
+  const row = await orte.vorgabeOrt(db, userId, VORGABE_SCHLUESSEL);
   if (!row) return null;
   return { id: parseInt(String(row.id)), user_id: parseInt(String(row.user_id)),
            name: row.name };
 }
 
 /** Ohne mitgegebenen Ort gilt die Vorgabe — für jeden Erfassungsweg. */
-export async function ortFuerNeuerfassung(
+export async function ortFuerNeuerfassung(db: DbSchnittstelle, 
   userId: number, mitgegeben: unknown,
 ): Promise<string | null> {
   // Die Längengrenze zuerst: Ein zu langer Ort soll absagen, bevor etwas
@@ -159,17 +159,17 @@ export async function ortFuerNeuerfassung(
   const ort = normalisiereLagerort(mitgegeben);
   if (ort) return ort;
   if (mitgegeben !== undefined && mitgegeben !== null) return null;
-  return (await vorgabeVon(userId))?.name ?? null;
+  return (await vorgabeVon(db, userId))?.name ?? null;
 }
 
 /** `null` löscht sie. Ein fremder Ort wird abgelehnt, nicht ignoriert: Der
  * Stern stünde sonst am falschen Eintrag. */
-export async function setzeVorgabe(userId: number, id: number | null): Promise<Lagerort | null> {
+export async function setzeVorgabe(db: DbSchnittstelle, userId: number, id: number | null): Promise<Lagerort | null> {
   if (id === null) {
     await deleteUserSetting(userId, VORGABE_SCHLUESSEL);
     return null;
   }
-  const ort = await orte.ortDesKontos(id, userId);
+  const ort = await orte.ortDesKontos(db, id, userId);
   if (!ort) fachfehler('nicht_gefunden', 'lagerort_unbekannt');
   // Über die Einstellungen des Kontos: user_settings gehört dorthin.
   await setUserSetting(userId, VORGABE_SCHLUESSEL, String(id));

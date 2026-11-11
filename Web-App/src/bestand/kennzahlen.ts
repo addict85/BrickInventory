@@ -1,6 +1,6 @@
 import { asIds, blickfeldAus, type Sicht } from '../haushalt/haushalt';
 import { getGlobalSetting } from '../einstellungen/settings';
-import * as repo from './repository/kennzahlen';
+import { bestandBereich } from './prozess';
 
 /** Spannen über alle drei Domänen und gehören deshalb in keine davon. */
 export async function getStats(userIdWahl: Sicht | number | number[]) {
@@ -9,15 +9,15 @@ export async function getStats(userIdWahl: Sicht | number | number[]) {
   const uids = asIds(userId);
   const [setsRow, instrRow, partsRow, minifigsRow, cur, einzelnRow] = await Promise.all([
     // COUNT(DISTINCT set_number): Im Haushalt besitzen mehrere Konten dasselbe Set.
-    repo.setZahlen(uids),
-    repo.anleitungsZahlen(uids, uids),
+    bestandBereich().kennzahlen.setZahlen(uids),
+    bestandBereich().kennzahlen.anleitungsZahlen(uids, uids),
     // `fehlt = 1` in einer Multiplikation: Ein manuelles Teil ohne Set zählt einfach.
-    repo.teileImBestand(uids),
-    repo.figurenImBestand(uids),
-    repo.waehrungImBlickfeld(uids),
-    repo.teileEinzeln(uids),
+    bestandBereich().kennzahlen.teileImBestand(uids),
+    bestandBereich().kennzahlen.figurenImBestand(uids),
+    bestandBereich().kennzahlen.waehrungImBlickfeld(uids),
+    bestandBereich().kennzahlen.teileEinzeln(uids),
   ]);
-  const userCondRow = await repo.vorgabeZustandImBlickfeld(uids);
+  const userCondRow = await bestandBereich().kennzahlen.vorgabeZustandImBlickfeld(uids);
   const globalCond = await getGlobalSetting('default_price_condition');
   const effectiveCondition = (userCondRow?.value && ['N','U'].includes(userCondRow.value))
     ? userCondRow.value : (globalCond || 'N');

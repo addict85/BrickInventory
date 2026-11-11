@@ -8,7 +8,7 @@ import { APP_ROOT, DATA_DIR } from '../infra/appPaths';
 import { stelleAuftragEin } from '../auftraege/dienst';
 import { resolveImageLocal, proxyImageUrl } from '../katalog/bilder/images';
 import { getSetting } from '../einstellungen/settings';
-import { normalisiereLagerort, setzeLagerort, orteFuer, vorgabeVon } from '../bestand/lagerort';
+import { normalisiereLagerort } from '../bestand/lagerort';
 import { alarmeFuer, loescheAlarm, setzeAlarm } from '../finanzen/preisalarm';
 import { importAlsAuftrag } from '../auftraege/importAlsAuftrag';
 import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';
@@ -41,6 +41,7 @@ import * as katalogStamm from '../katalog/setStamm';
 import type { KatalogTeil, ListenTeil, SetStamm } from './zeilen';
 import { versuche, wertOder } from '../infra/ergebnis';
 import type { SetsKontext } from './kontext';
+import { bestandBereich } from '../bestand/prozess';
 export type { KatalogTeil, ListenTeil, SetStamm } from './zeilen';
 
 
@@ -395,14 +396,14 @@ export async function waehrungVon(uid: number): Promise<string> {
  * sie für alle, die darin nachsehen. */
 export async function lagerortDesSetsSetzen(uid: number, sn: string, storage: unknown) {
   const ort = normalisiereLagerort(storage);
-  const n = await setzeLagerort('set', { schreiber: uid }, [normalizeSetNumber(sn)], ort);
+  const n = await bestandBereich().lagerortDienst.setzeLagerort('set', { schreiber: uid }, [normalizeSetNumber(sn)], ort);
   return { ort, n };
 }
 
 /** Die Liste kann über mehrere Konten spannen, die Vorgabe ist immer die des
  * Anfragenden: Ein geerbter Stern wäre eine Aussage über eine fremde Wohnung. */
 export async function lagerorteMitVorgabe(uid: number, owner: string | undefined) {
-  const [orte, vorgabe] = await Promise.all([orteFuer(uid, owner), vorgabeVon(uid)]);
+  const [orte, vorgabe] = await Promise.all([bestandBereich().lagerortDienst.orteFuer(uid, owner), bestandBereich().lagerortDienst.vorgabeVon(uid)]);
   return { orte, vorgabe };
 }
 

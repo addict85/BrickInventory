@@ -12,12 +12,12 @@ import { zustandFuerPreis } from '../einstellungen/settings';
 import { resolvePartCondition, marktpreisMitHerkunft, getCurrentPartMarketPrice } from '../finanzen/marketPrice';
 import { lookupPart } from '../katalog/quellen';
 import { farbliste, KEINE_FARBE } from '../katalog/farben';
-import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
 import { merkeTeil, merkeTeilFarbe, katalogTeil } from '../katalog/katalogPflege';
 import * as V0 from '../infra/validate';
 import { geldEingabe } from '../infra/geld';
 import { fachfehler } from '../infra/fehlerTexte';
 import { teileBereich } from './prozess';
+import { bestandBereich } from '../bestand/prozess';
 
 export const getPartColorList = farbliste;
 
@@ -43,13 +43,13 @@ export async function resolveManualPartPurchase(uid: number, { partNumber, color
  * gleich behandelt werden. */
 export async function addManualPart(uid: number, rawBody: Record<string, unknown>) {
     // Ohne mitgegebenen Ort gilt der Vorgabeort des Kontos (src/bestand/lagerort.ts).
-  const ort = await ortFuerNeuerfassung(uid, rawBody?.storage);
+  const ort = await bestandBereich().lagerortDienst.ortFuerNeuerfassung(uid, rawBody?.storage);
   // DIESELBE Umwandlung wie im Rumpf, auf derselben Eingabe — sie kann nicht
   // auseinanderlaufen.
   const farbe = V0.colorId(rawBody?.color_id);
   const ergebnis = await addManualPartIntern(uid, rawBody);
   if (ort && ergebnis?.part_number) {
-    await setzeLagerort('part', [uid], [ergebnis.part_number, String(farbe)], ort);
+    await bestandBereich().lagerortDienst.setzeLagerort('part', [uid], [ergebnis.part_number, String(farbe)], ort);
   }
   return ergebnis;
 }

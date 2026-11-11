@@ -62,7 +62,7 @@ test('Lagerort gegen echte Datenbank', async (t) => {
     return;
   }
   await seed();
-  const L = _req('src/bestand/lagerort.js');
+  const L = { ..._req('src/bestand/lagerort.js'), ..._req('src/bestand/prozess.js').bestandBereich().lagerortDienst };
   const household = _req('src/haushalt/haushalt.js');
   const schreibbar = await household.writableIds(U.ich);
 

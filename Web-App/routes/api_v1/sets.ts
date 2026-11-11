@@ -6,7 +6,7 @@ import { fehlertext, oeffentlicherFehler } from '../../src/infra/fehler';
 import { fehlerAntwort, pfadParam, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
 import { householdMembers } from '../../src/haushalt/haushalt';
-import { lagerorte, legeOrtAn, benenneOrtUm, loescheOrt, lagerSchreibkonto, setzeVorgabe } from '../../src/bestand/lagerort';
+import { lagerSchreibkonto } from '../../src/bestand/lagerort';
 import { alleAlarme, ausgeloesteSeit } from '../../src/finanzen/preisalarm';
 import { csvEmpfang, uploadKontingentBytes, privaterOrdner, privaterEmpfang, kontingentReichtFuer, pruefeEmpfangeneDatei } from '../../src/http/dateiEmpfang';
 import { sendCsv, uebersprungenHinweis } from '../../src/infra/csvExport';
@@ -16,6 +16,7 @@ import { registerSse } from '../../src/http/sseRegistry';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/http/anmeldung';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/http/vertragsRouter';
+import { bestandBereich } from '../../src/bestand/prozess';
 const router = vertragsRouter();
 
 // ── Feste Pfade VOR den Pfaden mit :setNumber ────────────────────────────────
@@ -89,12 +90,12 @@ router.put('/storage/default', requireToken, async (req: Anfrage<'PUT /api/v1/st
   // Fehlt das Feld, meint der Client dasselbe wie null.
   const roh = req.eingabe.id;
   const id = roh === null || roh === undefined ? null : Number(roh);
-  res.json({ success: true, vorgabe: await setzeVorgabe(req.apiUser.user_id, id) });
+  res.json({ success: true, vorgabe: await bestandBereich().lagerortDienst.setzeVorgabe(req.apiUser.user_id, id) });
 });
 
 router.post('/storage/locations', requireToken, async (req: Anfrage<'POST /api/v1/storage/locations'>, res: Antwort<'POST /api/v1/storage/locations'>) => {
   const konto = await lagerSchreibkonto(req.apiUser.user_id, req.abfrage.owner ?? req.eingabe.owner);
-  const { ort, war_neu } = await legeOrtAn(konto, req.eingabe.name);
+  const { ort, war_neu } = await bestandBereich().lagerortDienst.legeOrtAn(konto, req.eingabe.name);
   if (!war_neu) return sendeFehler(req, res, 409, 'lagerort_doppelt');
   res.json({ success: true, ort });
 });
@@ -102,19 +103,19 @@ router.post('/storage/locations', requireToken, async (req: Anfrage<'POST /api/v
 router.put('/storage/locations/:id', requireToken, async (req: Anfrage<'PUT /api/v1/storage/locations/:id'>, res: Antwort<'PUT /api/v1/storage/locations/:id'>) => {
   const konto = await lagerSchreibkonto(req.apiUser.user_id, req.abfrage.owner ?? req.eingabe.owner);
   res.json({ success: true,
-    ort: await benenneOrtUm(konto, req.pfad.id, req.eingabe.name) });
+    ort: await bestandBereich().lagerortDienst.benenneOrtUm(konto, req.pfad.id, req.eingabe.name) });
 });
 
 router.delete('/storage/locations/:id', requireToken, async (req: Anfrage<'DELETE /api/v1/storage/locations/:id'>, res: Antwort<'DELETE /api/v1/storage/locations/:id'>) => {
   const konto = await lagerSchreibkonto(req.apiUser.user_id, req.abfrage.owner);
-  await loescheOrt(konto, req.pfad.id);
+  await bestandBereich().lagerortDienst.loescheOrt(konto, req.pfad.id);
   res.json({ success: true });
 });
 
 // Spannt Sets und Teile, gehört keiner Familie.
 router.get('/storage', requireToken, async (req: Anfrage<'GET /api/v1/storage'>, res: Antwort<'GET /api/v1/storage'>) => {
   const ids = sichtVon(req);
-  res.json({ success: true, orte: await lagerorte(ids) });
+  res.json({ success: true, orte: await bestandBereich().lagerortDienst.lagerorte(ids) });
 });
 
 router.get('/sets/:setNumber/parts-list', requireToken, async (req: Anfrage<'GET /api/v1/sets/:setNumber/parts-list'>, res: Antwort<'GET /api/v1/sets/:setNumber/parts-list'>) => {

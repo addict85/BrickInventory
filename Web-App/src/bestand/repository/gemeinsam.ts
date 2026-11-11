@@ -1,10 +1,9 @@
 import type { DbSchnittstelle } from '../../../db/database';
-import * as db from '../../../db/database';
 import { inKontowaehrung, kontowaehrungJoin, teilmengeAus, teilmengeJoin } from '../../../db/bestandsmenge';
 import { teilSichtJoin, figurSichtJoin, setStammJoin, TEIL, FIGUR, SET } from '../../../db/katalogSicht';
 
 /** Kaufpreis mengengewichtet in Kontowährung. */
-export function erfassungsKennzahlen(art: 'part' | 'fig', uids: number[]) {
+export function erfassungsKennzahlen(db: DbSchnittstelle, art: 'part' | 'fig', uids: number[]) {
   return db.all<{ part_number?: string; color_id?: number | null; fig_number?: string;
                   acq_count: string; used_count: string; avg_purchase_price: number | null }>(art === 'part'
     ? `SELECT part_number, color_id,
@@ -65,7 +64,7 @@ export interface VerwendungsZeile {
   teil_image_local: string | null; teil_image_url: string | null; is_spare: unknown; storage: string | null;
 }
 
-export async function setsMitBestandteil(uids: number[], tabelle: 'parts' | 'minifigs', schluessel: Record<string, string | number>) {
+export async function setsMitBestandteil(db: DbSchnittstelle, uids: number[], tabelle: 'parts' | 'minifigs', schluessel: Record<string, string | number>) {
   const spalten = Object.keys(schluessel);
   // Die Namen kommen aus Literalen, die Schranke steht trotzdem: Ein Spaltenname
   // lässt sich nicht als Parameter binden.

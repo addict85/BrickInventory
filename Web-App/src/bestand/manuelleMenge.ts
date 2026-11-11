@@ -8,6 +8,7 @@ import { Abstriche } from '../infra/ergebnis';
 import { recordAcquisitionForDay } from './acquisitions';
 import * as repo from './repository/manuelleMengen';
 import type { ManuelleArt } from './repository/manuelleMengen';
+import { bestandBereich } from './prozess';
 
 /** Ein manueller Eintrag verschwindet nur über Löschen, nie über die Menge. */
 const MINDESTENS = 1;
@@ -34,7 +35,7 @@ const ziel = (w: Mengenwunsch, bisher: number) =>
 export async function passeManuelleMengeAn(art: ManuelleArt, uid: number, schluessel: (string | number)[],
                                             wunsch: Mengenwunsch, zustand: string,
                                             marktpreis: () => Promise<number | null>, ab = new Abstriche()): Promise<number> {
-  const vorab = await repo.summeDerErfassungen(art, uid, schluessel);
+  const vorab = await bestandBereich().manuelleMengen.summeDerErfassungen(art, uid, schluessel);
   const mp = ziel(wunsch, vorab) > vorab
     ? await ab.oder('kaufpreis', marktpreis, null) : null;
   return withInventoryLock(uid, bestandsSchluessel(art, schluessel), async (tx) => {

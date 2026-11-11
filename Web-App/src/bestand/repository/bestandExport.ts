@@ -1,4 +1,4 @@
-import * as db from '../../../db/database';
+import type { DbSchnittstelle } from '../../../db/database';
 import { erfassungsTagSql } from '../../../db/bestandsmenge';
 import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/katalogSicht';
 
@@ -55,10 +55,10 @@ const FIGS_CSV_SQL = `
    WHERE f.user_id = $1 AND f.source = 'manual'
    ORDER BY ${FIGUR.name} ASC, f.fig_number ASC, a.created_at ASC, a.id ASC`;
 
-export function teileFuerCsv(uid: number) {
+export function teileFuerCsv(db: DbSchnittstelle, uid: number) {
   return db.all<Record<string, unknown> & { unit_price: number | null }>(PARTS_CSV_SQL, [uid]);
 }
 
-export function figurenFuerCsv(uid: number) {
+export function figurenFuerCsv(db: DbSchnittstelle, uid: number) {
   return db.all<Record<string, unknown> & { unit_price: number | null }>(FIGS_CSV_SQL, [uid]);
 }

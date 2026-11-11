@@ -10,12 +10,13 @@ import { getSetting } from '../../src/einstellungen/settings';
 import { getPartPriceHistory } from '../../src/finanzen/priceHistory';
 import { aendereTeilFarbe } from '../../src/teile/teilFarbeAendern';
 import { verwendendeSets } from '../../src/bestand/gemeinsam';
-import { normalisiereLagerort, setzeLagerort } from '../../src/bestand/lagerort';
+import { normalisiereLagerort } from '../../src/bestand/lagerort';
 import { loescheTeil } from '../../src/sammlung/loeschen';
 import { seiteAus } from '../../src/infra/seite';
 import { Abstriche } from '../../src/infra/ergebnis';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
+import { bestandBereich } from '../../src/bestand/prozess';
 const router = vertragsRouter();
 
 router.get('/parts', requireToken, async (req: Anfrage<'GET /api/v1/parts'>, res: Antwort<'GET /api/v1/parts'>) => {
@@ -99,7 +100,7 @@ router.post('/parts/owned', requireToken, async (req: Anfrage<'POST /api/v1/part
  * Teil, nicht eine seiner Set-Zeilen. */
 router.put('/parts/:partNumber/:colorId/storage', requireToken, async (req: Anfrage<'PUT /api/v1/parts/:partNumber/:colorId/storage'>, res: Antwort<'PUT /api/v1/parts/:partNumber/:colorId/storage'>) => {
   const ort = normalisiereLagerort(req.eingabe.storage);
-  const n = await setzeLagerort('part', { schreiber: req.apiUser.user_id },
+  const n = await bestandBereich().lagerortDienst.setzeLagerort('part', { schreiber: req.apiUser.user_id },
     [req.pfad.partNumber, String(req.pfad.colorId)], ort);
   res.json({ success: true, storage: ort, changed: n });
 });

@@ -1,4 +1,3 @@
-import * as db from '../../../db/database';
 import type { DbSchnittstelle } from '../../../db/database';
 
 const TABELLEN = { set: 'sets', part: 'parts', fig: 'minifigs' } as const;
@@ -37,46 +36,46 @@ export async function nimmOrtAuf(tx: DbSchnittstelle, ids: number[], ort: string
      ON CONFLICT (user_id, lower(name)) DO NOTHING`, [ids, ort]);
 }
 
-export function orteDerKonten(userIds: number[]) {
+export function orteDerKonten(db: DbSchnittstelle, userIds: number[]) {
   return db.all<{ id: number; user_id: number; name: string }>(`SELECT id, user_id, name FROM storage_locations
       WHERE user_id = ANY($1) ORDER BY lower(name)`, [userIds]);
 }
 
 /** Ohne Gross/klein eindeutig je Konto; null, wenn es ihn schon gibt. */
-export function fuegeOrtEin(userId: number, name: string) {
+export function fuegeOrtEin(db: DbSchnittstelle, userId: number, name: string) {
   return db.get<{ id: number; user_id: number; name: string }>(`INSERT INTO storage_locations (user_id, name) VALUES ($1, $2)
      ON CONFLICT (user_id, lower(name)) DO NOTHING
      RETURNING id, user_id, name`, [userId, name]);
 }
 
-export function ortNachName(userId: number, name: string) {
+export function ortNachName(db: DbSchnittstelle, userId: number, name: string) {
   return db.get<{ id: number; user_id: number; name: string }>('SELECT id, user_id, name FROM storage_locations WHERE user_id = $1 AND lower(name) = lower($2)', [userId, name]);
 }
 
-export function ortName(id: number, userId: number) {
+export function ortName(db: DbSchnittstelle, id: number, userId: number) {
   return db.get<{ name: string }>('SELECT name FROM storage_locations WHERE id = $1 AND user_id = $2', [id, userId]);
 }
 
-export function andererOrtGleichenNamens(userId: number, name: string, id: number) {
+export function andererOrtGleichenNamens(db: DbSchnittstelle, userId: number, name: string, id: number) {
   return db.get<{ id: number }>(`SELECT id FROM storage_locations
       WHERE user_id = $1 AND lower(name) = lower($2) AND id <> $3`, [userId, name, id]);
 }
 
-export function schreibeOrtNamen(id: number, userId: number, name: string) {
+export function schreibeOrtNamen(db: DbSchnittstelle, id: number, userId: number, name: string) {
   return db.run('UPDATE storage_locations SET name = $3 WHERE id = $1 AND user_id = $2', [id, userId, name]);
 }
 
-export function ortBelegung(userId: number, id: number) {
+export function ortBelegung(db: DbSchnittstelle, userId: number, id: number) {
   return db.get<{ n: string }>(`SELECT (SELECT COUNT(*) FROM sets     WHERE user_id = $1 AND storage_id = $2)
           + (SELECT COUNT(*) FROM parts    WHERE user_id = $1 AND storage_id = $2)
           + (SELECT COUNT(*) FROM minifigs WHERE user_id = $1 AND storage_id = $2) AS n`, [userId, id]);
 }
 
-export function entferneOrt(id: number, userId: number) {
+export function entferneOrt(db: DbSchnittstelle, id: number, userId: number) {
   return db.run('DELETE FROM storage_locations WHERE id = $1 AND user_id = $2', [id, userId]);
 }
 
-export function orteMitBestand(uids: number[]) {
+export function orteMitBestand(db: DbSchnittstelle, uids: number[]) {
   return db.all<{ ort: string; sets: number; teile: number; figuren: number }>(`SELECT ort,
             SUM(sets)::int    AS sets,
             SUM(teile)::int   AS teile,
@@ -102,7 +101,7 @@ export function orteMitBestand(uids: number[]) {
 }
 
 /** Sofern es den Ort noch gibt. */
-export function vorgabeOrt(userId: number, schluessel: string) {
+export function vorgabeOrt(db: DbSchnittstelle, userId: number, schluessel: string) {
   return db.get<{ id: number; user_id: number; name: string }>(`SELECT l.id, l.user_id, l.name
        FROM user_settings e
        JOIN storage_locations l
@@ -110,6 +109,6 @@ export function vorgabeOrt(userId: number, schluessel: string) {
       WHERE e.user_id = $1 AND e.key = $2`, [userId, schluessel]);
 }
 
-export function ortDesKontos(id: number, userId: number) {
+export function ortDesKontos(db: DbSchnittstelle, id: number, userId: number) {
   return db.get<{ id: number; user_id: number; name: string }>('SELECT id, user_id, name FROM storage_locations WHERE id = $1 AND user_id = $2', [id, userId]);
 }

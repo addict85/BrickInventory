@@ -6,7 +6,7 @@ import { addManualFig, updateManualFig } from '../../src/figuren/manuelleFiguren
 import { getSetting } from '../../src/einstellungen/settings';
 import { getMinifigPriceHistory } from '../../src/finanzen/priceHistory';
 import { verwendendeSets } from '../../src/bestand/gemeinsam';
-import { normalisiereLagerort, setzeLagerort } from '../../src/bestand/lagerort';
+import { normalisiereLagerort } from '../../src/bestand/lagerort';
 import { loescheFigur } from '../../src/sammlung/loeschen';
 import { teileDerFigur } from '../../src/figuren/dienst';
 import { csvEmpfang } from '../../src/http/dateiEmpfang';
@@ -16,6 +16,7 @@ import { seiteAus } from '../../src/infra/seite';
 import { Abstriche } from '../../src/infra/ergebnis';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
+import { bestandBereich } from '../../src/bestand/prozess';
 const router = vertragsRouter();
 
 router.get('/minifigs', requireToken, async (req: Anfrage<'GET /api/v1/minifigs'>, res: Antwort<'GET /api/v1/minifigs'>) => {
@@ -40,7 +41,7 @@ router.put('/minifigs/:figNumber', requireToken, async (req: Anfrage<'PUT /api/v
 // Trifft alle Zeilen der Figur im Schreibbereich: Gemeint ist die Figur, nicht eine Zeile.
 router.put('/minifigs/:figNumber/storage', requireToken, async (req: Anfrage<'PUT /api/v1/minifigs/:figNumber/storage'>, res: Antwort<'PUT /api/v1/minifigs/:figNumber/storage'>) => {
   const ort = normalisiereLagerort(req.eingabe.storage);
-  const n = await setzeLagerort('fig', { schreiber: req.apiUser.user_id },
+  const n = await bestandBereich().lagerortDienst.setzeLagerort('fig', { schreiber: req.apiUser.user_id },
     [req.pfad.figNumber], ort);
   res.json({ success: true, storage: ort, changed: n });
 });
