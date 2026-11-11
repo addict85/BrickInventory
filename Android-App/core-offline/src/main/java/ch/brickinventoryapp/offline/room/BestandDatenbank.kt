@@ -99,24 +99,6 @@ internal abstract class BestandDao {
         if (stand != null) setzeStand(BestandStand(bereich, art, stand))
     }
 
-    @Query("SELECT MAX(position) FROM bestand WHERE bereich = :bereich AND art = :art")
-    abstract suspend fun letztePosition(bereich: String, art: String): Int?
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    abstract suspend fun fuegeEinOderErsetze(zeilen: List<BestandZeile>)
-
-    @Query("DELETE FROM bestand WHERE bereich = :bereich AND art = :art AND schluessel IN (:schluessel)")
-    abstract suspend fun loescheSchluessel(bereich: String, art: String, schluessel: List<String>)
-
-    /** Eine weitere Seite hinten an: nur ihre Zeilen, die übrigen bleiben unberührt. */
-    @Transaction
-    open suspend fun haengeAn(bereich: String, art: String, zeilen: List<BestandZeile>, weg: List<String>, stand: Long) {
-        if (weg.isNotEmpty()) loescheSchluessel(bereich, art, weg)
-        val ab = (letztePosition(bereich, art) ?: -1) + 1
-        fuegeEinOderErsetze(zeilen.mapIndexed { i, z -> z.copy(position = ab + i) })
-        setzeStand(BestandStand(bereich, art, stand))
-    }
-
     @Query("DELETE FROM bestand WHERE bereich != :bereich")
     abstract suspend fun loescheAndereZeilen(bereich: String)
 

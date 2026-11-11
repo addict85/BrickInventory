@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.testing
 
 import ch.brickinventoryapp.model.ui.Meldung
-import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
@@ -24,6 +23,10 @@ import ch.brickinventoryapp.data.repository.Bestandsabgleich
 import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.data.repository.Kontosicht
 import ch.brickinventoryapp.data.repository.SetsRepository
+import ch.brickinventoryapp.data.repository.AlarmRepository
+import ch.brickinventoryapp.data.repository.MerklisteRepository
+import ch.brickinventoryapp.data.repository.SetDateienRepository
+import ch.brickinventoryapp.data.repository.SetKatalogRepository
 import ch.brickinventoryapp.zustand.ui.Blickfeld
 import ch.brickinventoryapp.zustand.ui.FilterAblage
 import ch.brickinventoryapp.model.ui.ScrollMemory
@@ -277,6 +280,10 @@ class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, val io:
     /** Dieselbe Instanz, wo ein ViewModel nur liest, wann sich der Bestand geändert hat. */
     val aenderungen: Bestandsabgleich get() = abgleich
     fun sets(): SetsRepository = SetsRepository(api, cache, ablage)
+    fun merkliste(): MerklisteRepository = MerklisteRepository(api, cache, ablage)
+    fun alarme(): AlarmRepository = AlarmRepository(api, cache, ablage)
+    fun setKatalog(): SetKatalogRepository = SetKatalogRepository(api, cache)
+    fun setDateien(): SetDateienRepository = SetDateienRepository(api, cache)
     fun teile(): TeileRepository = TeileRepository(api, cache, ablage)
     fun figuren(): FigurenRepository = FigurenRepository(api, cache, ablage)
     val scrollMemory = ScrollMemory()

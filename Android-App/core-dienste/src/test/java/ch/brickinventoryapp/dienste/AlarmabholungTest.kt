@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.dienste
 
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.dienste.alarm.Alarmabholung
@@ -31,7 +32,7 @@ import org.junit.Test
  */
 class AlarmabholungTest {
 
-    private fun alarm(sn: String = "10179-1", richtung: String = "unter",
+    private fun alarm(sn: String = "10179-1", richtung: Alarmrichtung = Alarmrichtung.UNTER,
                       schwelle: Double = 200.0, preis: Double? = 100.0) =
         Preisalarm(setNumber = sn, condition = Zustand.NEU, richtung = richtung,
                    schwelle = schwelle, currencyCode = Waehrung("EUR"),
@@ -114,7 +115,7 @@ class AlarmabholungTest {
         // Waehrung gesetzt, und 200 CHF sind nicht 200 EUR.
         assert(Alarmabholung.text(alarm(), "faellt unter", "steigt ueber") ==
             "10179-1: EUR 100.00 (faellt unter EUR 200.00)")
-        assert(Alarmabholung.text(alarm(richtung = "ueber", schwelle = 300.0, preis = 350.5),
+        assert(Alarmabholung.text(alarm(richtung = Alarmrichtung.UEBER, schwelle = 300.0, preis = 350.5),
                                   "faellt unter", "steigt ueber") ==
             "10179-1: EUR 350.50 (steigt ueber EUR 300.00)")
         // Ohne bekannten Preis bleibt die Aussage die Schwelle — ein

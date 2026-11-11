@@ -15,12 +15,13 @@ import javax.inject.Singleton
 @Singleton
 class Bestandsabgleich @Inject constructor(
     private val sets: SetsRepository,
+    private val merkliste: MerklisteRepository,
     private val teile: TeileRepository,
     private val figuren: FigurenRepository,
     private val ablage: Offlineablage,
 ) {
     suspend fun sets(): Ergebnis<Unit> = sets.aktualisiereSets()
-    suspend fun merkliste(): Ergebnis<Unit> = sets.aktualisiereMerkliste()
+    suspend fun merkliste(): Ergebnis<Unit> = merkliste.aktualisiereMerkliste()
     suspend fun teile(): Ergebnis<Unit> = teile.aktualisiereTeile()
     suspend fun figuren(): Ergebnis<Unit> = figuren.aktualisiereFiguren()
 

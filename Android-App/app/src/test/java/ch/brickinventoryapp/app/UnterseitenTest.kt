@@ -68,7 +68,6 @@ import java.util.Locale
 import org.robolectric.Shadows
 import org.robolectric.shadows.ShadowDialog
 import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.testing.SitzungsAttrappe
 import ch.brickinventoryapp.testing.TeileRepository
 
@@ -141,7 +140,7 @@ class UnterseitenTest {
 
     private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
         KontoRepository(welt.t.api, welt.t.cache, welt.t.io), VerwaltungRepository(welt.t.api, welt.t.cache),
-        SetsRepository(welt.t.api, welt.t.cache), TeileRepository(welt.t.api, welt.t.cache),
+        welt.t.alarme(), TeileRepository(welt.t.api, welt.t.cache),
         object : DateiLeser {
             override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
         }))

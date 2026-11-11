@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.katalog.ui
 
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,7 +39,7 @@ interface KatalogNavigation : Bereichsumgebung {
 
     /** Merkposten und Preisalarm in einem Griff; die Regel dahinter gehört der Merkliste. */
     @Composable
-    fun merken(): (setNumber: String, zustand: Zustand, richtung: String, schwelleRoh: String, konto: Int?) -> Unit
+    fun merken(): (setNumber: String, zustand: Zustand, richtung: Alarmrichtung, schwelleRoh: String, konto: Int?) -> Unit
 
     /** Das Set in der Galerie. */
     fun oeffneSet(setNumber: String)

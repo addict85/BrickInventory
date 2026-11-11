@@ -31,7 +31,7 @@ import org.junit.Before
 import org.junit.Test
 import ch.brickinventoryapp.testing.FakeApi
 import ch.brickinventoryapp.testing.NummernTexte
-import ch.brickinventoryapp.testing.SetsRepository
+import ch.brickinventoryapp.testing.SetDateienRepository
 import ch.brickinventoryapp.testing.TestDienste
 import ch.brickinventoryapp.testing.text
 
@@ -87,7 +87,7 @@ class CsvImportViewModelTest {
 
     private fun mitVm(strom: Strom, dienst: Dienst, block: suspend TestScope.(CsvImportViewModel) -> Unit) = runTest(takt) {
         strom.uhr = { testScheduler.currentTime }
-        val vm = CsvImportViewModel(CsvImportBeobachter(strom, SetsRepository(fake.api, t.cache)), dienst, NummernTexte,
+        val vm = CsvImportViewModel(CsvImportBeobachter(strom, SetDateienRepository(fake.api, t.cache)), dienst, NummernTexte,
             t.abgleich, t.meldungen, t.sitzung)
         try {
             block(vm)

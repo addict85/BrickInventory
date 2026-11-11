@@ -3,7 +3,7 @@ package ch.brickinventoryapp.verwaltung
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.api.BrickApiService
+import ch.brickinventoryapp.testing.BrickApiService
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository

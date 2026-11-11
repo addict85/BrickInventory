@@ -3,7 +3,6 @@ package ch.brickinventoryapp.testing
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.data.Sitzungsablage
-import ch.brickinventoryapp.data.api.BrickApiService
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import okhttp3.MediaType.Companion.toMediaType

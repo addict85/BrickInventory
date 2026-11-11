@@ -6,6 +6,8 @@ import ch.brickinventoryapp.offline.Offlineablage.Wirkung
 import ch.brickinventoryapp.model.data.model.KontoName
 import ch.brickinventoryapp.model.data.model.Merkposten
 import ch.brickinventoryapp.model.data.model.PartValuationItem
+import ch.brickinventoryapp.model.data.model.Preisalarm
+import ch.brickinventoryapp.model.data.model.VorratsOrt
 import ch.brickinventoryapp.model.data.model.SetItem
 import ch.brickinventoryapp.model.data.model.UpdateManualItemRequest
 
@@ -30,8 +32,12 @@ internal object LokaleAnwendung {
         is Nachzug.SetEntfernt -> liste.filterNot { it.setNumber == b.setNumber }
         is Nachzug.SetVerschoben -> liste.map { if (it.setNumber == b.setNumber) verschoben(it, b) else it }
         is Nachzug.SetZusammenfassung -> liste.map { if (it.setNumber == b.agg.setNumber) zusammengefasst(it, b) else it }
-        is Nachzug.LagerortUmbenannt -> liste.map { if (it.storage == b.alt) it.copy(storage = b.neu) else it }
-        else -> liste
+        is Nachzug.LagerortUmbenannt -> liste.map { if (b.alt.isNotBlank() && it.storage == b.alt) it.copy(storage = b.neu.name) else it }
+        is Bearbeitung.MerkpostenAnlegen, is Bearbeitung.MerkpostenLoeschen, is Bearbeitung.TeilErfassen,
+        is Bearbeitung.TeilAendern, is Bearbeitung.TeilLoeschen, is Bearbeitung.FigurErfassen, is Bearbeitung.FigurAendern,
+        is Bearbeitung.FigurLoeschen, is Nachzug.MerkpostenVerschoben, is Nachzug.TeilLagerort, is Nachzug.TeilFarbe,
+        is Nachzug.FigurLagerort, is Nachzug.LagerortAngelegt, is Nachzug.LagerortGeloescht, is Nachzug.LagerortVorgabe,
+        is Nachzug.AlarmGesetzt, is Nachzug.AlarmEntfernt -> liste
     }
 
     private fun erfasst(liste: List<SetItem>, b: Bearbeitung.SetErfassen): List<SetItem> {
@@ -63,9 +69,9 @@ internal object LokaleAnwendung {
             if (liste.any { merkSchluessel(it) == merkSchluessel(neu) }) liste else listOf(neu) + liste
         }
         is Bearbeitung.MerkpostenLoeschen -> liste.filterNot {
-            it.setNumber == b.setNumber && it.condition.kennung == b.zustand && (b.besitzer == null || it.userId == b.besitzer)
+            it.setNumber == b.setNumber && it.condition == b.zustand && (b.besitzer == null || it.userId == b.besitzer)
         }
-        is Nachzug.MerkpostenUebernommen -> merkliste(liste, Bearbeitung.MerkpostenLoeschen(b.setNumber, b.zustand.kennung, b.besitzer))
+        is Nachzug.MerkpostenUebernommen -> merkliste(liste, Bearbeitung.MerkpostenLoeschen(b.setNumber, b.zustand, b.besitzer))
         is Nachzug.MerkpostenVerschoben -> {
             val ziel = merkSchluessel(Merkposten(setNumber = b.setNumber, condition = b.zustand, userId = b.zu))
             // Hatte das Ziel den Posten schon, fasst der Server zusammen: Es bleibt einer.
@@ -75,7 +81,12 @@ internal object LokaleAnwendung {
                 else if (vorhanden) null else it.copy(userId = b.zu)
             }
         }
-        else -> liste
+        is Bearbeitung.SetMenge, is Bearbeitung.SetErfassen, is Bearbeitung.TeilErfassen, is Bearbeitung.TeilAendern,
+        is Bearbeitung.TeilLoeschen, is Bearbeitung.FigurErfassen, is Bearbeitung.FigurAendern, is Bearbeitung.FigurLoeschen,
+        is Nachzug.SetMengeGesetzt, is Nachzug.SetLagerort, is Nachzug.SetEntfernt, is Nachzug.SetVerschoben,
+        is Nachzug.SetZusammenfassung, is Nachzug.TeilLagerort, is Nachzug.TeilFarbe, is Nachzug.FigurLagerort,
+        is Nachzug.LagerortUmbenannt, is Nachzug.LagerortAngelegt, is Nachzug.LagerortGeloescht, is Nachzug.LagerortVorgabe,
+        is Nachzug.AlarmGesetzt, is Nachzug.AlarmEntfernt -> liste
     }
 
     fun manuelleTeile(liste: List<PartValuationItem>, b: Wirkung): List<PartValuationItem> = when (b) {
@@ -92,8 +103,13 @@ internal object LokaleAnwendung {
             if (it.partNumber == b.partNumber && it.colorId == b.colorId) it.copy(storage = b.ort?.ifBlank { null }) else it
         }
         is Nachzug.TeilFarbe -> umgefaerbt(liste, b)
-        is Nachzug.LagerortUmbenannt -> liste.map { if (it.storage == b.alt) it.copy(storage = b.neu) else it }
-        else -> liste
+        is Nachzug.LagerortUmbenannt -> liste.map { if (b.alt.isNotBlank() && it.storage == b.alt) it.copy(storage = b.neu.name) else it }
+        is Bearbeitung.SetMenge, is Bearbeitung.SetErfassen, is Bearbeitung.MerkpostenAnlegen,
+        is Bearbeitung.MerkpostenLoeschen, is Bearbeitung.FigurErfassen, is Bearbeitung.FigurAendern,
+        is Bearbeitung.FigurLoeschen, is Nachzug.SetMengeGesetzt, is Nachzug.SetLagerort, is Nachzug.SetEntfernt,
+        is Nachzug.SetVerschoben, is Nachzug.SetZusammenfassung, is Nachzug.MerkpostenVerschoben,
+        is Nachzug.MerkpostenUebernommen, is Nachzug.FigurLagerort, is Nachzug.LagerortAngelegt,
+        is Nachzug.LagerortGeloescht, is Nachzug.LagerortVorgabe, is Nachzug.AlarmGesetzt, is Nachzug.AlarmEntfernt -> liste
     }
 
     private fun teilErfasst(liste: List<PartValuationItem>, b: Bearbeitung.TeilErfassen): List<PartValuationItem> {
@@ -132,8 +148,43 @@ internal object LokaleAnwendung {
             it.figNumber == b.figNumber && (b.besitzer == null || it.userId == b.besitzer)
         }
         is Nachzug.FigurLagerort -> liste.map { if (it.figNumber == b.figNumber) it.copy(storage = b.ort?.ifBlank { null }) else it }
-        is Nachzug.LagerortUmbenannt -> liste.map { if (it.storage == b.alt) it.copy(storage = b.neu) else it }
-        else -> liste
+        is Nachzug.LagerortUmbenannt -> liste.map { if (b.alt.isNotBlank() && it.storage == b.alt) it.copy(storage = b.neu.name) else it }
+        is Bearbeitung.SetMenge, is Bearbeitung.SetErfassen, is Bearbeitung.MerkpostenAnlegen,
+        is Bearbeitung.MerkpostenLoeschen, is Bearbeitung.TeilErfassen, is Bearbeitung.TeilAendern,
+        is Bearbeitung.TeilLoeschen, is Nachzug.SetMengeGesetzt, is Nachzug.SetLagerort, is Nachzug.SetEntfernt,
+        is Nachzug.SetVerschoben, is Nachzug.SetZusammenfassung, is Nachzug.MerkpostenVerschoben,
+        is Nachzug.MerkpostenUebernommen, is Nachzug.TeilLagerort, is Nachzug.TeilFarbe, is Nachzug.LagerortAngelegt,
+        is Nachzug.LagerortGeloescht, is Nachzug.LagerortVorgabe, is Nachzug.AlarmGesetzt, is Nachzug.AlarmEntfernt -> liste
+    }
+
+    /** Ein gesetzter Alarm ersetzt den des Sets im selben Zustand; neue stehen vorn wie am Server. */
+    fun preisalarme(liste: List<Preisalarm>, b: Wirkung): List<Preisalarm> = when (b) {
+        is Nachzug.AlarmGesetzt -> {
+            val alt = liste.firstOrNull { it.setNumber == b.alarm.setNumber && it.condition == b.alarm.condition }
+            // Die Einzelroute schickt weder Name noch Bild; die der Übersicht bleiben stehen.
+            val neu = if (alt == null) b.alarm else b.alarm.copy(name = b.alarm.name ?: alt.name,
+                imageLocal = b.alarm.imageLocal ?: alt.imageLocal, imageUrl = b.alarm.imageUrl ?: alt.imageUrl,
+                setImgUrl = b.alarm.setImgUrl ?: alt.setImgUrl)
+            if (alt == null) listOf(neu) + liste else liste.map { if (it === alt) neu else it }
+        }
+        is Nachzug.AlarmEntfernt -> liste.filterNot { it.setNumber == b.setNumber && it.condition == b.zustand }
+        is Bearbeitung, is Nachzug.SetMengeGesetzt, is Nachzug.SetLagerort, is Nachzug.SetEntfernt, is Nachzug.SetVerschoben,
+        is Nachzug.SetZusammenfassung, is Nachzug.MerkpostenVerschoben, is Nachzug.MerkpostenUebernommen,
+        is Nachzug.TeilLagerort, is Nachzug.TeilFarbe, is Nachzug.FigurLagerort, is Nachzug.LagerortUmbenannt,
+        is Nachzug.LagerortAngelegt, is Nachzug.LagerortGeloescht, is Nachzug.LagerortVorgabe -> liste
+    }
+
+    /** Der Vorrat folgt Anlegen, Umbenennen, Löschen und dem Stern; höchstens ein Ort trägt ihn. */
+    fun lagerorte(liste: List<VorratsOrt>, b: Wirkung): List<VorratsOrt> = when (b) {
+        is Nachzug.LagerortAngelegt ->
+            if (liste.any { it.ort.id == b.ort.id }) liste else liste + VorratsOrt(b.ort, vorgabe = false)
+        is Nachzug.LagerortUmbenannt -> liste.map { if (it.ort.id == b.neu.id) it.copy(ort = b.neu) else it }
+        is Nachzug.LagerortGeloescht -> liste.filterNot { it.ort.id == b.id }
+        is Nachzug.LagerortVorgabe -> liste.map { it.copy(vorgabe = it.ort.id == b.id) }
+        is Bearbeitung, is Nachzug.SetMengeGesetzt, is Nachzug.SetLagerort, is Nachzug.SetEntfernt, is Nachzug.SetVerschoben,
+        is Nachzug.SetZusammenfassung, is Nachzug.MerkpostenVerschoben, is Nachzug.MerkpostenUebernommen,
+        is Nachzug.TeilLagerort, is Nachzug.TeilFarbe, is Nachzug.FigurLagerort, is Nachzug.AlarmGesetzt,
+        is Nachzug.AlarmEntfernt -> liste
     }
 
     /**

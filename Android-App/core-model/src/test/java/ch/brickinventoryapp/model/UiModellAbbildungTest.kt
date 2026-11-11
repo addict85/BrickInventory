@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.model
 
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Laufstatus
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.data.model.ChartPoint
@@ -34,7 +35,7 @@ import java.io.File
  *      „ohne Gesamtzahl gibt es keinen Anteil“ (Infinity statt null)
  *   B  in CsvImportArt.alsDaten TEILE → CsvArt.SETS → rot „jede CSV-Art kommt
  *      unverändert an“
- *   C  in PreisalarmAnsicht.unter `== "unter"` → `== "ueber"` → rot
+ *   C  in PreisalarmAnsicht.unter `== Alarmrichtung.UNTER` → `UEBER` → rot
  *   D  Hauptklassen als Jar statt Ordner (wie unter Gradle): Die alte Suche über
  *      den Klassenordner → rot „URI is not hierarchical“; mit der Liste grün
  *   E  „TeileAnsichten“ aus Beispielfueller.ABBILDUNGSDATEIEN gestrichen → rot
@@ -61,9 +62,9 @@ class UiModellAbbildungTest {
 
     @Test
     fun `Preisalarm, Gutschein, Diagramm und Farbe tragen ihre Werte`() {
-        val alarm = Preisalarm(setNumber = "75192-1", richtung = "unter", schwelle = 500.0).alsAnsicht()
+        val alarm = Preisalarm(setNumber = "75192-1", richtung = Alarmrichtung.UNTER, schwelle = 500.0).alsAnsicht()
         assertTrue(alarm.unter)
-        assertFalse(Preisalarm(richtung = "ueber").alsAnsicht().unter)
+        assertFalse(Preisalarm(richtung = Alarmrichtung.UEBER).alsAnsicht().unter)
         assertEquals(500.0, alarm.schwelle, 0.0)
         val g = Gutschein(id = 3, number = "6061", pin = "1", amount = 20.0, currency = Waehrung("CHF")).alsAnsicht()
         assertEquals(listOf(3, 20.0, Waehrung.CHF), listOf(g.id, g.amount, g.currency))

@@ -168,7 +168,7 @@ class UmbruchWaechterTest {
 
     // ── Die Bildschirme ──
 
-    private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, SetsRepository(welt.t.api, welt.t.cache),
+    private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, SetsRepository(welt.t.api, welt.t.cache), welt.t.setKatalog(), welt.t.merkliste(),
         KatalogRepository(welt.t.api, welt.t.cache),
         object : SetAnleger {
             override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
@@ -177,7 +177,7 @@ class UmbruchWaechterTest {
 
     private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
         KontoRepository(welt.t.api, welt.t.cache, welt.t.io), VerwaltungRepository(welt.t.api, welt.t.cache),
-        SetsRepository(welt.t.api, welt.t.cache), TeileRepository(welt.t.api, welt.t.cache),
+        welt.t.alarme(), TeileRepository(welt.t.api, welt.t.cache),
         object : DateiLeser {
             override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
         }))

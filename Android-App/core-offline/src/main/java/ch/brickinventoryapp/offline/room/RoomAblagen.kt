@@ -38,10 +38,6 @@ internal class RoomBestand @Inject constructor(private val db: BestandDatenbank)
             zeilen.associateBy { it.schluessel }.values.mapIndexed { i, z -> alsZeile(z, bereich, art, i) },
             stand)
 
-    override suspend fun haengeAn(bereich: String, art: Bestandsart, zeilen: List<LokaleZeile>, weg: Set<String>, stand: Long) =
-        dao.haengeAn(bereich, art.name, zeilen.associateBy { it.schluessel }.values.map { alsZeile(it, bereich, art, 0) },
-            weg.toList(), stand)
-
     override suspend fun raeumeAndere(bereich: String) {
         dao.loescheAndereZeilen(bereich)
         dao.loescheAndereStaende(bereich)

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app.nav
 
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavBackStackEntry
@@ -69,7 +70,7 @@ class ZielUmgebung(
     override fun gemerkt(setNumber: String): MerkpostenAnsicht? = gemerkterPosten(setNumber)
 
     @Composable
-    override fun merken(): (String, Zustand, String, String, Int?) -> Unit = merkpostenMitAlarm()
+    override fun merken(): (String, Zustand, Alarmrichtung, String, Int?) -> Unit = merkpostenMitAlarm()
 
     @Composable
     override fun teilelistenScan(eintrag: NavBackStackEntry): TeilelistenScan =

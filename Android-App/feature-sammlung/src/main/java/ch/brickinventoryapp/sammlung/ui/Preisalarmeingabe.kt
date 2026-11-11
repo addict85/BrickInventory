@@ -3,7 +3,8 @@ package ch.brickinventoryapp.sammlung.ui
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.alarm.Alarmeingabe
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.data.repository.SetsRepository
+import ch.brickinventoryapp.data.repository.AlarmRepository
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -20,7 +21,7 @@ internal val ALARM_ZUSTAND_VORGABE = Zustand.NEU
  */
 internal class Preisalarmeingabe(
     private val scope: CoroutineScope,
-    private val sets: SetsRepository,
+    private val alarme: AlarmRepository,
     /** Meldung für den Meldungskanal; null heisst: nichts zu sagen. */
     private val melde: (String?) -> Unit,
     private val beschreibe: (Ergebnis.Error) -> String?,
@@ -31,13 +32,13 @@ internal class Preisalarmeingabe(
     private var job: Job? = null
 
     /** Leere oder unlesbare Eingabe löscht den Alarm dieses Zustands. */
-    fun setze(setNumber: String, richtung: String, roh: String, zustand: Zustand) {
+    fun setze(setNumber: String, richtung: Alarmrichtung, roh: String, zustand: Zustand) {
         job?.cancel()
         job = scope.launch {
             delay(ruhe)
             val schwelle = Alarmeingabe.zahl(roh)
-            val r = if (schwelle == null) sets.deletePreisalarm(setNumber, zustand)
-                    else sets.setPreisalarm(setNumber, richtung, schwelle, zustand)
+            val r = if (schwelle == null) alarme.deletePreisalarm(setNumber, zustand)
+                    else alarme.setPreisalarm(setNumber, richtung, schwelle, zustand)
             when (r) {
                 is Ergebnis.Success ->
                     if (r.data.success) gespeichert(setNumber) else melde(r.data.error ?: "")

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Katalogsortierung
@@ -237,7 +238,7 @@ class AblaufBefundeTest {
     fun `M6 das Katalog-Detail zeigt den Merkposten und oeffnet ihn`() {
         var geoeffnet: Pair<String, Zustand>? = null
         val gemerkt = MerkpostenAnsicht(setNumber = "10305-1", condition = Zustand.NEU, name = "Lion Knights' Castle", waehrung = Waehrung("CHF"),
-            alarm = MerkpostenAlarmAnsicht(richtung = "unter", schwelle = 349.0))
+            alarm = MerkpostenAlarmAnsicht(richtung = Alarmrichtung.UNTER, schwelle = 349.0))
         zeige {
             CatalogDetailScreen(setNumber = "10305-1",
                 detail = KatalogDetailAnsicht(setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022),

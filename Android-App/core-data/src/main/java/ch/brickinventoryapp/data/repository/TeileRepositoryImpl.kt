@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.api.TeileApi
@@ -9,6 +10,7 @@ import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.offline.Offlineablage.Nachzug
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.offline.Offlineablage
+import ch.brickinventoryapp.model.data.model.VorratsOrt
 import ch.brickinventoryapp.model.data.model.*
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -47,19 +49,19 @@ class TeileRepositoryImpl @Inject constructor(
             sicherAufrufen { api.getManualParts(null, null, null) }
         }
 
-    override suspend fun getPartsStats(accounts: String?): Ergebnis<PartsStatsResponse> =
-        sicherAufrufen { api.getPartsStats(accounts) }
+    override suspend fun getPartsStats(konten: Kontoauswahl?): Ergebnis<PartsStatsResponse> =
+        sicherAufrufen { api.getPartsStats(konten?.anfrage) }
 
     /**
      * Die beiden Filterlisten des Teile-Reiters — Farbe und Kategorie. Ohne
      * Zwischenspeicher: Beide tragen Zählwerte, die sich mit jedem erfassten Teil
      * ändern; ein Cache zeigte Zahlen, die nicht zur Liste passen.
      */
-    override suspend fun getPartsFilterColors(accounts: String?): Ergebnis<PartsFilterColorsResponse> =
-        sicherAufrufen { api.getPartsFilterColors(accounts) }
+    override suspend fun getPartsFilterColors(konten: Kontoauswahl?): Ergebnis<PartsFilterColorsResponse> =
+        sicherAufrufen { api.getPartsFilterColors(konten?.anfrage) }
 
-    override suspend fun getPartsCategories(accounts: String?): Ergebnis<PartsCategoriesResponse> =
-        sicherAufrufen { api.getPartsCategories(accounts) }
+    override suspend fun getPartsCategories(konten: Kontoauswahl?): Ergebnis<PartsCategoriesResponse> =
+        sicherAufrufen { api.getPartsCategories(konten?.anfrage) }
 
     /**
      * „Kann ich das bauen?“ — welche Teile einer Liste schon da sind. Ohne
@@ -68,8 +70,8 @@ class TeileRepositoryImpl @Inject constructor(
      * ungültig macht, wenn ein Teil dazukommt.
      */
     override suspend fun getOwnedParts(teile: List<BestandTeil>,
-                              accounts: String?): Ergebnis<BestandResponse> =
-        sicherAufrufen { api.getOwnedParts(BestandRequest(teile), accounts) }
+                              konten: Kontoauswahl?): Ergebnis<BestandResponse> =
+        sicherAufrufen { api.getOwnedParts(BestandRequest(teile), konten?.anfrage) }
 
     /** Lagerort eines Teils setzen. Leerer Text loescht ihn. */
     override suspend fun setPartStorage(partNumber: String, colorId: Int, ort: String):
@@ -83,8 +85,8 @@ class TeileRepositoryImpl @Inject constructor(
      * ändert sich bei jedem Eintragen — ein Speicher liesse den gerade angelegten Ort
      * im Vorschlag fehlen.
      */
-    override suspend fun getLagerorte(accounts: String?): Ergebnis<LagerorteResponse> =
-        sicherAufrufen { api.getLagerorte(accounts) }
+    override suspend fun getLagerorte(konten: Kontoauswahl?): Ergebnis<LagerorteResponse> =
+        sicherAufrufen { api.getLagerorte(konten?.anfrage) }
 
     // ── Der Vorrat an Lagerorten ──
     //
@@ -93,24 +95,34 @@ class TeileRepositoryImpl @Inject constructor(
     // nur hier. Ohne Zwischenspeicher, weil sich die Liste genau dann ändert, wenn
     // jemand hier etwas einträgt.
 
-    /** @param owner Komma-Liste von Konto-IDs; leer = das eigene Konto. */
-    override suspend fun getLagerortVorrat(owner: String?): Ergebnis<LagerortVorratResponse> =
-        sicherAufrufen { api.getLagerortVorrat(owner) }
+    override fun beobachteLagerortVorrat(): Flow<Lokal<VorratsOrt>> = ablage.beobachte(Faecher.LAGERORTE)
+
+    /** Die Vorgabe kommt neben der Liste; in der Ablage trägt sie der Ort selbst. */
+    override suspend fun aktualisiereLagerortVorrat(): Ergebnis<Unit> =
+        ablage.aktualisiereSeitenweise(Faecher.LAGERORTE, { r -> r.orte.map { VorratsOrt(it, it.id == r.vorgabe?.id) } },
+            { it.orte.size }, wiederholung) { _ -> sicherAufrufen { api.getLagerortVorrat(null) } }
+
+    override suspend fun getLagerortVorrat(besitzer: List<Int>): Ergebnis<LagerortVorratResponse> =
+        sicherAufrufen { api.getLagerortVorrat(besitzer.takeIf { it.isNotEmpty() }?.joinToString(",")) }
 
     override suspend fun legeLagerortAn(name: String): Ergebnis<LagerortEintragResponse> =
-        sicherAufrufen { api.legeLagerortAn(LagerortNameRequest(name)) }
+        ablage.nachgezogen({ r -> r.ort?.takeIf { r.success }?.let { Nachzug.LagerortAngelegt(it) } }) {
+            sicherAufrufen { api.legeLagerortAn(LagerortNameRequest(name)) }
+        }
 
     override suspend fun benenneLagerortUm(id: Int, alt: String, name: String): Ergebnis<LagerortEintragResponse> =
-        ablage.nachgezogen({ r -> r.ort?.takeIf { r.success && alt.isNotBlank() }?.let { Nachzug.LagerortUmbenannt(alt, it.name) } }) {
+        ablage.nachgezogen({ r -> r.ort?.takeIf { r.success }?.let { Nachzug.LagerortUmbenannt(alt, it) } }) {
             sicherAufrufen { api.benenneLagerortUm(id, LagerortNameRequest(name)) }
         }
 
     override suspend fun loescheLagerort(id: Int): Ergebnis<LagerortResponse> =
-        sicherAufrufen { api.loescheLagerort(id) }
+        ablage.nachgezogen({ r -> Nachzug.LagerortGeloescht(id).takeIf { r.success } }) { sicherAufrufen { api.loescheLagerort(id) } }
 
-    /** Der vorausgewählte Lagerort (Stern) — `null` schaltet die Vorgabe ab. */
+    /** Der vorausgewählte Lagerort (Stern) — `null` schaltet die Vorgabe ab; es gilt, was der Server meldet. */
     override suspend fun setzeLagerortVorgabe(id: Int?): Ergebnis<LagerortVorgabeResponse> =
-        sicherAufrufen { api.setzeLagerortVorgabe(LagerortVorgabeRequest(id)) }
+        ablage.nachgezogen({ r -> Nachzug.LagerortVorgabe(r.vorgabe?.id).takeIf { r.success } }) {
+            sicherAufrufen { api.setzeLagerortVorgabe(LagerortVorgabeRequest(id)) }
+        }
 
     // ── In welchen Sets steckt dieses Teil / diese Figur? ──
     //
@@ -118,8 +130,8 @@ class TeileRepositoryImpl @Inject constructor(
     // Teil und wird auf Tastendruck geholt — ein Eintrag je Teil-Farb-Paar würde nie
     // ungültig, wenn ein Set dazukommt oder verschwindet.
     override suspend fun getSetsMitTeil(partNumber: String, colorId: Int,
-                               accounts: String?): Ergebnis<VerwendendeSetsResponse> =
-        sicherAufrufen { api.getSetsMitTeil(partNumber, colorId, accounts) }
+                               konten: Kontoauswahl?): Ergebnis<VerwendendeSetsResponse> =
+        sicherAufrufen { api.getSetsMitTeil(partNumber, colorId, konten?.anfrage) }
 
     override suspend fun getBrickColors(): Ergebnis<BrickColorsResponse> =
         sicherAufrufen { api.getBrickColors() }

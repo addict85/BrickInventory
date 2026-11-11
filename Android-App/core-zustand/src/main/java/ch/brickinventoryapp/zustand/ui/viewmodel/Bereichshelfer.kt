@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.zustand.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Kontoauswahl
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.MeldungsKanal
@@ -45,7 +46,7 @@ interface Filterwahl {
     val lagerState: StateFlow<LagerUiState>
 
     /** Der Wert für `accounts=`, oder null für „alle Konten“. */
-    fun kontoFuer(view: ScopeFilter.View): String?
+    fun kontoFuer(view: ScopeFilter.View): Kontoauswahl?
 
     /** Der Wert für `storage=`, oder null für „alle Orte“. */
     fun lagerFuer(view: ScopeFilter.View): String?

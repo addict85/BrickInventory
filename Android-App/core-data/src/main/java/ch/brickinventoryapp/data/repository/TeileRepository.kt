@@ -1,9 +1,11 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.model.data.model.*
 import kotlinx.coroutines.flow.Flow
+import ch.brickinventoryapp.model.data.model.VorratsOrt
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 
 /**
@@ -27,20 +29,29 @@ interface TeileRepository {
     /** Nur die manuellen Teile — wo die übrigen aus der Kontosicht kommen. */
     suspend fun aktualisiereManuelleTeile(): Ergebnis<Unit>
 
-    suspend fun getPartsStats(accounts: String? = null): Ergebnis<PartsStatsResponse>
+    suspend fun getPartsStats(konten: Kontoauswahl? = null): Ergebnis<PartsStatsResponse>
 
-    suspend fun getPartsFilterColors(accounts: String? = null): Ergebnis<PartsFilterColorsResponse>
+    suspend fun getPartsFilterColors(konten: Kontoauswahl? = null): Ergebnis<PartsFilterColorsResponse>
 
-    suspend fun getPartsCategories(accounts: String? = null): Ergebnis<PartsCategoriesResponse>
+    suspend fun getPartsCategories(konten: Kontoauswahl? = null): Ergebnis<PartsCategoriesResponse>
 
     suspend fun getOwnedParts(teile: List<BestandTeil>,
-                              accounts: String? = null): Ergebnis<BestandResponse>
+                              konten: Kontoauswahl? = null): Ergebnis<BestandResponse>
 
     suspend fun setPartStorage(partNumber: String, colorId: Int, ort: String): Ergebnis<LagerortResponse>
 
-    suspend fun getLagerorte(accounts: String? = null): Ergebnis<LagerorteResponse>
+    suspend fun getLagerorte(konten: Kontoauswahl? = null): Ergebnis<LagerorteResponse>
 
-    suspend fun getLagerortVorrat(owner: String? = null): Ergebnis<LagerortVorratResponse>
+    /** Der eigene Vorrat an Lagerorten samt Vorgabe aus der Ablage; [aktualisiereLagerortVorrat] füllt ihn. */
+    fun beobachteLagerortVorrat(): Flow<Lokal<VorratsOrt>>
+
+    suspend fun aktualisiereLagerortVorrat(): Ergebnis<Unit>
+
+    /**
+     * Der Vorrat anderer Besitzer — Vorschläge für das Set eines Unterkontos. Eine
+     * Frage je Set, keine Liste des Kontos, deshalb nicht in der Ablage.
+     */
+    suspend fun getLagerortVorrat(besitzer: List<Int>): Ergebnis<LagerortVorratResponse>
 
     suspend fun legeLagerortAn(name: String): Ergebnis<LagerortEintragResponse>
 
@@ -52,7 +63,7 @@ interface TeileRepository {
     suspend fun setzeLagerortVorgabe(id: Int?): Ergebnis<LagerortVorgabeResponse>
 
     suspend fun getSetsMitTeil(partNumber: String, colorId: Int,
-                               accounts: String? = null): Ergebnis<VerwendendeSetsResponse>
+                               konten: Kontoauswahl? = null): Ergebnis<VerwendendeSetsResponse>
 
     suspend fun getBrickColors(): Ergebnis<BrickColorsResponse>
 

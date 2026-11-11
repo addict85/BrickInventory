@@ -394,6 +394,9 @@ data class LagerortEintrag(
     val name: String = "",
 )
 
+/** Ein Ort im Vorrat, wie die Ablage ihn führt: [vorgabe] ist der Stern, den der Server neben der Liste schickt. */
+data class VorratsOrt(val ort: LagerortEintrag, val vorgabe: Boolean)
+
 @Serializable
 data class LagerortVorratResponse(
     val success: Boolean = false,

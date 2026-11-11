@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui
 
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -82,7 +83,7 @@ fun gemerkterPosten(setNumber: String): MerkpostenAnsicht? {
 
 /** Merkposten und Preisalarm in einem Griff; die Regel steht im MerklisteViewModel. */
 @Composable
-fun merkpostenMitAlarm(): (String, Zustand, String, String, Int?) -> Unit {
+fun merkpostenMitAlarm(): (String, Zustand, Alarmrichtung, String, Int?) -> Unit {
     val merkliste: MerklisteViewModel = hiltViewModel()
     return merkliste::merkpostenMitAlarm
 }
