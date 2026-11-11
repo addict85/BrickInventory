@@ -82,6 +82,7 @@ export const PartsStatsResponse = z.looseObject({
 });
 
 export const TeilFarbeResponse = z.looseObject({
+  bild: z.string().nullable().optional(),
   success: z.boolean().optional(),
   zusammengelegt: z.boolean().optional(),
   verschoben: z.number().int().optional(),

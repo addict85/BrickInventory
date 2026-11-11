@@ -23,6 +23,7 @@ export const MerkpostenAlarm = z.looseObject({
 });
 
 export const Merkposten = z.looseObject({
+  theme_id: z.number().int().nullable().optional(),
   set_number: z.string(),
   condition: z.string(),
   created_at: zeit.nullable().optional(),
@@ -71,6 +72,8 @@ export const MerkpostenPreiseResponse = z.looseObject({
 });
 
 export const MerkpostenUebernahmeResponse = z.looseObject({
+  katalog_offen: z.boolean().optional(),
+  name: z.string().nullable().optional(),
   success: z.boolean().optional(),
   action: z.string().nullable().optional(),
   set_number: z.string().nullable().optional(),
@@ -80,8 +83,20 @@ export const MerkpostenUebernahmeResponse = z.looseObject({
 /** Einlesen einer BrickLink-Wanted-List; mit `vorschau` ohne zu speichern. */
 export const WantedXmlErgebnis = z.looseObject({
   success: z.literal(true), vorschau: z.boolean(), gelesen: ganz, angelegt: ganz, aufgestockt: ganz, fehler: ganz,
-  posten: z.array(z.looseObject({ art: z.string(), blId: z.string(), menge: ganz, ausgang: z.string() })),
-  offen: z.array(z.looseObject({ art: z.string(), blId: z.string() })),
+  posten: z.array(z.looseObject({ art: z.string(), blId: z.string(), menge: ganz, ausgang: z.string(),
+    blFarbe: ganz.nullable().optional(), rbId: z.string().nullable().optional(), rbFarbe: ganz.nullable().optional(),
+    farbName: z.string().nullable().optional(), farbHex: z.string().nullable().optional(),
+    sicherheit: z.string().nullable().optional(), zustand: z.string().nullable().optional(),
+    maxPreis: z.number().nullable().optional(), name: z.string().nullable().optional(),
+    nameGeraten: z.boolean().optional(), bild: z.string().nullable().optional(),
+    grund: z.string().nullable().optional(), grundCode: z.string().nullable().optional() })),
+  offen: z.array(z.looseObject({ art: z.string(), blId: z.string(), blFarbe: ganz.nullable().optional() })),
+  fremdeArten: z.record(z.string(), ganz).optional(), ohneNummer: ganz.optional(),
+  stufen: z.record(z.string(), ganz).optional(), farbeOffen: ganz.optional(), standardZustand: z.string().optional(),
+  abgebrochen: z.boolean().optional(),
+  korrekturen: z.looseObject({ angewandt: ganz, abgewiesen: z.array(z.unknown()) }).optional(),
+  rebrickable: z.looseObject({ gefragt: ganz, gefunden: ganz, filterWirkungslos: z.boolean(),
+    abgebrochen: z.enum(['kontingent', 'kein_schluessel', 'stoerung']).optional() }).optional(),
 });
 
 export const MerkpostenGeloescht = GenericResponse.extend({ geloescht: ganz });

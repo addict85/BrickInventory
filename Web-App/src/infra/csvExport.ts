@@ -167,9 +167,13 @@ export function csvZeilenAusAnfrage(text: string): {
 
 /** An einer Stelle, damit beide Oberflächen dieselben Felder bekommen. */
 /** Was jeder CSV-Import antwortet; `records` zählt nur. */
+export interface ImportZeilenErgebnis {
+  set_number?: string; action?: string; error?: string | null; isWarning?: boolean; success?: boolean;
+  [feld: string]: unknown;
+}
 export function csvImportBericht(d: {
   added: number; updated: number; errors: number;
-  records: unknown[]; results: unknown[]; uebersprungen: number[];
+  records: unknown[]; results: ImportZeilenErgebnis[]; uebersprungen: number[];
 }) {
   return {
     added: d.added, updated: d.updated, errors: d.errors,

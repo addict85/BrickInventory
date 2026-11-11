@@ -10310,7 +10310,8 @@
               }
             }
           }
-        }
+        },
+        "x-klein": true
       }
     },
     "/api/v1/sets/import/csv/stream": {
@@ -14526,6 +14527,117 @@
       "AnleitungHochgeladen": {
         "type": "object",
         "properties": {
+          "new_quantity": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "from_user_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "to_user_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "merged": {
+            "type": "boolean"
+          },
+          "unchanged": {
+            "type": "boolean"
+          },
+          "acquisitions": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "papierkorb": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "removed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "linked_to": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "username": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "username"
+                ],
+                "additionalProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "success": {
             "type": "boolean"
           },
@@ -15372,6 +15484,12 @@
                     "type": "integer",
                     "minimum": -9007199254740991,
                     "maximum": 9007199254740991
+                  },
+                  "geaendert": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   }
                 },
                 "required": [
@@ -15390,6 +15508,12 @@
                     "type": "integer",
                     "minimum": -9007199254740991,
                     "maximum": 9007199254740991
+                  },
+                  "geaendert": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   }
                 },
                 "required": [
@@ -15410,6 +15534,12 @@
             "properties": {
               "gecacht": {
                 "type": "boolean"
+              },
+              "adresse": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "required": [
@@ -15585,6 +15715,12 @@
       "BricksetQueueEntry": {
         "type": "object",
         "properties": {
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "set_number": {
             "type": "string"
           },
@@ -15664,6 +15800,13 @@
       "CacheStatsResponse": {
         "type": "object",
         "properties": {
+          "db_pool": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
           "success": {
             "type": "boolean"
           },
@@ -16213,6 +16356,55 @@
       "CsvImportStatus": {
         "type": "object",
         "properties": {
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "set_number": {
+                  "type": "string"
+                },
+                "zeile": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "success": {
+                  "type": "boolean"
+                },
+                "action": {
+                  "type": "string"
+                },
+                "isWarning": {
+                  "type": "boolean"
+                },
+                "error": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "code": {
+                  "type": "string"
+                },
+                "menge": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "katalog_offen": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": {}
+            }
+          },
           "success": {
             "type": "boolean"
           },
@@ -16368,6 +16560,24 @@
       "DashboardStats": {
         "type": "object",
         "properties": {
+          "currency": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "default_condition": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "user_default_condition": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "total_sets": {
             "type": "integer",
             "minimum": -9007199254740991,
@@ -16438,6 +16648,117 @@
       "DELETE_api_v1_minifigs_figNumber": {
         "type": "object",
         "properties": {
+          "new_quantity": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "from_user_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "to_user_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "merged": {
+            "type": "boolean"
+          },
+          "unchanged": {
+            "type": "boolean"
+          },
+          "acquisitions": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "papierkorb": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "removed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "linked_to": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "username": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "username"
+                ],
+                "additionalProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "success": {
             "type": "boolean"
           },
@@ -16555,19 +16876,11 @@
             "items": {
               "type": "string"
             }
-          },
-          "papierkorb": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "minimum": -9007199254740991,
-              "maximum": 9007199254740991
-            }
           }
         },
         "required": [
-          "success",
-          "papierkorb"
+          "papierkorb",
+          "success"
         ],
         "additionalProperties": {}
       },
@@ -16741,6 +17054,117 @@
       "EinstellungenGespeichert": {
         "type": "object",
         "properties": {
+          "new_quantity": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "from_user_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "to_user_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "merged": {
+            "type": "boolean"
+          },
+          "unchanged": {
+            "type": "boolean"
+          },
+          "acquisitions": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "papierkorb": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "removed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "linked_to": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "username": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "username"
+                ],
+                "additionalProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "success": {
             "type": "boolean"
           },
@@ -16874,6 +17298,13 @@
       "Endpunkte": {
         "type": "object",
         "properties": {
+          "auth": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
           "api": {
             "type": "string"
           },
@@ -17134,6 +17565,18 @@
       "FigsValuationResponse": {
         "type": "object",
         "properties": {
+          "kaufpreise_umgerechnet": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "success": {
             "type": "boolean"
           },
@@ -17160,6 +17603,72 @@
             "items": {
               "type": "object",
               "properties": {
+                "ausstehend": {
+                  "type": "boolean"
+                },
+                "from_cache": {
+                  "type": "boolean"
+                },
+                "max_price": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "min_price": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "set_number": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "source": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "storage_id": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "acq_count": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "used_count": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "id": {
                   "anyOf": [
                     {
@@ -17611,6 +18120,50 @@
             "items": {
               "type": "object",
               "properties": {
+                "id": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "in_sets": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "owner_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "set_number": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "storage": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "unit_price": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
                 "fig_number": {
                   "type": "string"
                 },
@@ -17879,6 +18432,12 @@
       "GET_api_v1_sets_setNumber_parts_list": {
         "type": "object",
         "properties": {
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "success": {
             "type": "boolean"
           },
@@ -17902,6 +18461,18 @@
             "items": {
               "type": "object",
               "properties": {
+                "condition": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "storage": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "part_number": {
                   "type": "string"
                 },
@@ -18267,6 +18838,10 @@
       "GutscheinStapel": {
         "type": "object",
         "properties": {
+          "results": {
+            "type": "array",
+            "items": {}
+          },
           "added": {
             "type": "integer",
             "minimum": -9007199254740991,
@@ -18357,6 +18932,18 @@
       "HouseholdMember": {
         "type": "object",
         "properties": {
+          "tiefe": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "id": {
             "type": "integer",
             "minimum": -9007199254740991,
@@ -18398,6 +18985,12 @@
       "HouseholdStatusResponse": {
         "type": "object",
         "properties": {
+          "blickfeld": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HouseholdMember"
+            }
+          },
           "success": {
             "type": "boolean"
           },
@@ -18501,6 +19094,36 @@
       "Instruction": {
         "type": "object",
         "properties": {
+          "downloaded_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fetched_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "set_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "id": {
             "anyOf": [
               {
@@ -18629,6 +19252,13 @@
       "JobsResponse": {
         "type": "object",
         "properties": {
+          "db": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
           "success": {
             "type": "boolean"
           },
@@ -18667,6 +19297,35 @@
       "JobStatus": {
         "type": "object",
         "properties": {
+          "lastRun": {
+            "type": [
+              "string",
+              "number",
+              "null"
+            ]
+          },
+          "canRedownload": {
+            "type": "boolean"
+          },
+          "queue": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "queueLastRun": {
+            "type": [
+              "string",
+              "number",
+              "null"
+            ]
+          },
           "label": {
             "type": "string"
           },
@@ -18864,6 +19523,18 @@
       "Lagerort": {
         "type": "object",
         "properties": {
+          "figuren": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "ort": {
             "type": "string"
           },
@@ -19134,6 +19805,72 @@
             "items": {
               "type": "object",
               "properties": {
+                "ausstehend": {
+                  "type": "boolean"
+                },
+                "from_cache": {
+                  "type": "boolean"
+                },
+                "max_price": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "min_price": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "set_number": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "source": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "storage_id": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "acq_count": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "used_count": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "id": {
                   "anyOf": [
                     {
@@ -19443,6 +20180,66 @@
             "items": {
               "type": "object",
               "properties": {
+                "ausstehend": {
+                  "type": "boolean"
+                },
+                "from_cache": {
+                  "type": "boolean"
+                },
+                "max_price": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "min_price": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "acq_count": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "used_count": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "category_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "created_at": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "source": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "id": {
                   "anyOf": [
                     {
@@ -19864,6 +20661,18 @@
       "Merkposten": {
         "type": "object",
         "properties": {
+          "theme_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "set_number": {
             "type": "string"
           },
@@ -20012,6 +20821,117 @@
       "MerkpostenGeloescht": {
         "type": "object",
         "properties": {
+          "new_quantity": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "from_user_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "to_user_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "merged": {
+            "type": "boolean"
+          },
+          "unchanged": {
+            "type": "boolean"
+          },
+          "acquisitions": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "papierkorb": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "removed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "linked_to": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "username": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "username"
+                ],
+                "additionalProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "success": {
             "type": "boolean"
           },
@@ -20214,6 +21134,15 @@
       "MerkpostenUebernahmeResponse": {
         "type": "object",
         "properties": {
+          "katalog_offen": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "success": {
             "type": "boolean"
           },
@@ -20241,6 +21170,18 @@
       "MinifigStats": {
         "type": "object",
         "properties": {
+          "unique_figs": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "types": {
             "type": "integer",
             "minimum": -9007199254740991,
@@ -20603,6 +21544,18 @@
       "PartsValuationResponse": {
         "type": "object",
         "properties": {
+          "kaufpreise_umgerechnet": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "success": {
             "type": "boolean"
           },
@@ -20629,6 +21582,66 @@
             "items": {
               "type": "object",
               "properties": {
+                "ausstehend": {
+                  "type": "boolean"
+                },
+                "from_cache": {
+                  "type": "boolean"
+                },
+                "max_price": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "min_price": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "acq_count": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "used_count": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "category_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "created_at": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "source": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "id": {
                   "anyOf": [
                     {
@@ -21445,6 +22458,60 @@
       "PnlSetZeile": {
         "type": "object",
         "properties": {
+          "added_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "condition": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "image_local": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "image_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pnl_abs": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "purchase_price": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "set_number": {
             "type": "string"
           },
@@ -21535,6 +22602,32 @@
       "PnlTotals": {
         "type": "object",
         "properties": {
+          "kaufpreise_umgerechnet": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pnl_current": {
+            "type": [
+              "string",
+              "number",
+              "null"
+            ]
+          },
+          "pnl_purchase": {
+            "type": [
+              "string",
+              "number",
+              "null"
+            ]
+          },
           "purchase": {
             "type": "string"
           },
@@ -21630,6 +22723,21 @@
       "PortfolioHistoryResponse": {
         "type": "object",
         "properties": {
+          "chart": {
+            "$ref": "#/components/schemas/PriceChartData"
+          },
+          "messpunkte": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "success": {
             "type": "boolean"
           },
@@ -21693,6 +22801,55 @@
       "POST_api_v1_minifigs_import_csv": {
         "type": "object",
         "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "set_number": {
+                  "type": "string"
+                },
+                "zeile": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "success": {
+                  "type": "boolean"
+                },
+                "action": {
+                  "type": "string"
+                },
+                "isWarning": {
+                  "type": "boolean"
+                },
+                "error": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "code": {
+                  "type": "string"
+                },
+                "menge": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "katalog_offen": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": {}
+            }
+          },
+          "waehrung_hinweis": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "success": {
             "type": "boolean"
           },
@@ -21758,6 +22915,66 @@
       "POST_api_v1_sets_import_csv_cancel": {
         "type": "object",
         "properties": {
+          "dauer_minuten": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "queued": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "skipped": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "verworfen": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "success": {
             "type": "boolean"
           },
@@ -21937,6 +23154,39 @@
               "log": {
                 "type": "array",
                 "items": {}
+              },
+              "lastDuration": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "lastUpdated": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "progress": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "current": {},
+                      "total": {},
+                      "set": {}
+                    },
+                    "required": [
+                      "current",
+                      "total",
+                      "set"
+                    ],
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             },
             "required": [
@@ -21965,6 +23215,12 @@
                 "type": "integer",
                 "minimum": -9007199254740991,
                 "maximum": 9007199254740991
+              },
+              "date": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "required": [
@@ -22074,6 +23330,9 @@
       "PriceHistoryPoint": {
         "type": "object",
         "properties": {
+          "is_purchase_price": {
+            "type": "boolean"
+          },
           "recorded_at": {
             "type": "string"
           },
@@ -22110,6 +23369,13 @@
       "PriceHistoryResponse": {
         "type": "object",
         "properties": {
+          "condition": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "current": {},
           "success": {
             "type": "boolean"
           },
@@ -22217,6 +23483,117 @@
       "ProfilGespeichert": {
         "type": "object",
         "properties": {
+          "new_quantity": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "from_user_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "to_user_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "merged": {
+            "type": "boolean"
+          },
+          "unchanged": {
+            "type": "boolean"
+          },
+          "acquisitions": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "papierkorb": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "removed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "linked_to": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "username": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "username"
+                ],
+                "additionalProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "success": {
             "type": "boolean"
           },
@@ -22475,6 +23852,117 @@
       "PUT_api_v1_sets_setNumber_acquisitions_acqId": {
         "type": "object",
         "properties": {
+          "new_quantity": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "from_user_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "to_user_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "merged": {
+            "type": "boolean"
+          },
+          "unchanged": {
+            "type": "boolean"
+          },
+          "acquisitions": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "papierkorb": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "removed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "linked_to": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "username": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "username"
+                ],
+                "additionalProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "success": {
             "type": "boolean"
           },
@@ -22790,6 +24278,12 @@
       "RateLimit": {
         "type": "object",
         "properties": {
+          "date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "count": {
             "type": "integer",
             "minimum": -9007199254740991,
@@ -22996,6 +24490,60 @@
       "SetInfoResponse": {
         "type": "object",
         "properties": {
+          "image_local": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "image_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "minifigs": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pieces": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "theme": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "success": {
             "type": "boolean"
           },
@@ -23021,6 +24569,74 @@
       "SetItem": {
         "type": "object",
         "properties": {
+          "acq_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "letzter_kauf": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "owner_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "storage_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updated_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "set_number": {
             "type": "string"
           },
@@ -23225,6 +24841,9 @@
       "SetPriceResponse": {
         "type": "object",
         "properties": {
+          "from_cache": {
+            "type": "boolean"
+          },
           "success": {
             "type": "boolean"
           },
@@ -23438,6 +25057,12 @@
       "SmtpProbe": {
         "type": "object",
         "properties": {
+          "mode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "success": {
             "type": "boolean"
           }
@@ -23450,6 +25075,18 @@
       "StartupStatus": {
         "type": "object",
         "properties": {
+          "fehler": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pfad": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "ready": {
             "type": "boolean"
           },
@@ -23526,6 +25163,12 @@
       "TeilFarbeResponse": {
         "type": "object",
         "properties": {
+          "bild": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "success": {
             "type": "boolean"
           },
@@ -23879,6 +25522,31 @@
       "ValuationResponse": {
         "type": "object",
         "properties": {
+          "kaufpreise_umgerechnet": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "guide_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ttl_hours": {
+            "type": [
+              "string",
+              "number",
+              "null"
+            ]
+          },
           "success": {
             "type": "boolean"
           },
@@ -23970,6 +25638,47 @@
       "ValuationSet": {
         "type": "object",
         "properties": {
+          "bl_unbekannt": {
+            "type": "boolean"
+          },
+          "condition": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "conditions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "error_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pnl_pct": {
+            "deprecated": true,
+            "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "set_number": {
             "type": "string"
           },
@@ -24223,6 +25932,66 @@
       "VerwaltungDesign": {
         "type": "object",
         "properties": {
+          "dauer_minuten": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "queued": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "skipped": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "verworfen": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "success": {
             "type": "boolean"
           },
@@ -24250,6 +26019,66 @@
       "VerwaltungGestartet": {
         "type": "object",
         "properties": {
+          "dauer_minuten": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "queued": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "skipped": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "verworfen": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "success": {
             "type": "boolean"
           },
@@ -24277,6 +26106,66 @@
       "VerwaltungMeldung": {
         "type": "object",
         "properties": {
+          "dauer_minuten": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "queued": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "skipped": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "verworfen": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "success": {
             "type": "boolean"
           },
@@ -24303,6 +26192,66 @@
       "VerwaltungSet": {
         "type": "object",
         "properties": {
+          "dauer_minuten": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "queued": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "skipped": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "verworfen": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "success": {
             "type": "boolean"
           },
@@ -24330,6 +26279,66 @@
       "VerwaltungTtl": {
         "type": "object",
         "properties": {
+          "dauer_minuten": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "queued": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "skipped": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "verworfen": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "success": {
             "type": "boolean"
           },
@@ -24366,6 +26375,66 @@
       "VerwaltungZustand": {
         "type": "object",
         "properties": {
+          "dauer_minuten": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "queued": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "skipped": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "verworfen": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "success": {
             "type": "boolean"
           },
@@ -24441,6 +26510,93 @@
                 },
                 "ausgang": {
                   "type": "string"
+                },
+                "blFarbe": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "rbId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "rbFarbe": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "farbName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "farbHex": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "sicherheit": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "zustand": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "maxPreis": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "nameGeraten": {
+                  "type": "boolean"
+                },
+                "bild": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "grund": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "grundCode": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 }
               },
               "required": [
@@ -24462,6 +26618,18 @@
                 },
                 "blId": {
                   "type": "string"
+                },
+                "blFarbe": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "required": [
@@ -24470,6 +26638,95 @@
               ],
               "additionalProperties": {}
             }
+          },
+          "fremdeArten": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "ohneNummer": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "stufen": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "farbeOffen": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "standardZustand": {
+            "type": "string"
+          },
+          "abgebrochen": {
+            "type": "boolean"
+          },
+          "korrekturen": {
+            "type": "object",
+            "properties": {
+              "angewandt": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "abgewiesen": {
+                "type": "array",
+                "items": {}
+              }
+            },
+            "required": [
+              "angewandt",
+              "abgewiesen"
+            ],
+            "additionalProperties": {}
+          },
+          "rebrickable": {
+            "type": "object",
+            "properties": {
+              "gefragt": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "gefunden": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "filterWirkungslos": {
+                "type": "boolean"
+              },
+              "abgebrochen": {
+                "type": "string",
+                "enum": [
+                  "kontingent",
+                  "kein_schluessel",
+                  "stoerung"
+                ]
+              }
+            },
+            "required": [
+              "gefragt",
+              "gefunden",
+              "filterWirkungslos"
+            ],
+            "additionalProperties": {}
           }
         },
         "required": [

@@ -5,6 +5,7 @@ import type { z } from 'zod';
 import type { Request, Response, NextFunction } from 'express';
 import { konfig } from '../infra/konfig';
 import { routeZu } from '../vertrag';
+import { unbekannteFelder } from '../vertrag/unbekannteFelder';
 import type { Schluessel, AntwortRumpf, Eingabe, Abfrage } from '../vertrag';
 import { FLACHE_EINGABE, Fehler, PFAD } from '../vertrag/grund';
 import type { PfadVon } from '../vertrag/grund';
@@ -87,7 +88,11 @@ function antwortGegenVertrag(req: Request, res: Response, next: NextFunction): v
     };
     if (route) {
       // Geprüft wird, was hinausgeht: Ein Date wird erst in res.json zum ISO-Text.
-      pruefe('Antwort', route.antwort, JSON.parse(JSON.stringify(rumpf ?? null)));
+      const gesendet = JSON.parse(JSON.stringify(rumpf ?? null));
+      pruefe('Antwort', route.antwort, gesendet);
+      // Streng nur hier: Ein Feld ausserhalb des Vertrags fehlte in OpenAPI und den Typen der Oberfläche.
+      const fremd = !fehler.length && route.antwort ? unbekannteFelder(route.antwort, gesendet) : [];
+      if (fremd.length) fehler.push(`Antwort: nicht im Vertrag: ${fremd.join(', ')}`);
       if (!route.formular) pruefe('Anfrage', route.eingabe, req.body ?? {});
     }
     // Auch der Fehlerweg hat eine Form; ohne Prüfung fiel eine 404 ohne Code nicht auf.

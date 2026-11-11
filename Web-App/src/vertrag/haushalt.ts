@@ -21,6 +21,7 @@ export const HouseholdInviteCheckResponse = z.looseObject({
 });
 
 export const HouseholdMember = z.looseObject({
+  tiefe: z.number().int().nullable().optional(),
   id: z.number().int(),
   username: z.string(),
   is_self: z.boolean(),
@@ -32,6 +33,7 @@ export const HouseholdMembersResponse = z.looseObject({
 });
 
 export const HouseholdStatusResponse = z.looseObject({
+  blickfeld: z.array(HouseholdMember).optional(),
   success: z.boolean(),
   is_main: z.boolean(),
   is_sub: z.boolean(),

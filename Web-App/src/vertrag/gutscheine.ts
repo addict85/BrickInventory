@@ -34,6 +34,7 @@ export const GuthabenAntwort = z.looseObject({
 });
 
 export const GutscheinStapel = z.looseObject({
+  results: z.array(z.unknown()).optional(),
   added: z.number().int().optional(),
   updated: z.number().int().optional(),
   errors: z.number().int().optional(),

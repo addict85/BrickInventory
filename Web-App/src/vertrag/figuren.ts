@@ -23,6 +23,7 @@ export const ManualFigsResponse = z.looseObject({
 });
 
 export const MinifigStats = z.looseObject({
+  unique_figs: z.number().int().nullable().optional(),
   types: z.number().int(),
   total_quantity: z.number().int(),
   manual: z.number().int(),

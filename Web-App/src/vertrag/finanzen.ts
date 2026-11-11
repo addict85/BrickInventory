@@ -22,6 +22,9 @@ export const ConditionValuation = z.looseObject({
 });
 
 export const DashboardStats = z.looseObject({
+  currency: z.string().nullable().optional(),
+  default_condition: z.string().nullable().optional(),
+  user_default_condition: z.string().nullable().optional(),
   total_sets: z.number().int(),
   total_quantity: z.number().int(),
   total_pieces: z.number().int(),
@@ -33,6 +36,7 @@ export const DashboardStats = z.looseObject({
 });
 
 export const FigsValuationResponse = z.looseObject({
+  kaufpreise_umgerechnet: z.number().int().nullable().optional(),
   success: z.boolean(),
   ...SEITEN_ANGABE,
   currency: z.string(),
@@ -45,6 +49,7 @@ export const FigsValuationResponse = z.looseObject({
 });
 
 export const PartsValuationResponse = z.looseObject({
+  kaufpreise_umgerechnet: z.number().int().nullable().optional(),
   success: z.boolean(),
   ...SEITEN_ANGABE,
   currency: z.string(),
@@ -57,6 +62,9 @@ export const PartsValuationResponse = z.looseObject({
 });
 
 export const PnlTotals = z.looseObject({
+  kaufpreise_umgerechnet: z.number().int().nullable().optional(),
+  pnl_current: z.union([z.string(), z.number()]).nullable().optional(),
+  pnl_purchase: z.union([z.string(), z.number()]).nullable().optional(),
   purchase: z.string(),
   current: z.string(),
   pnl_pct: PROZENT_TEXT,
@@ -78,6 +86,14 @@ export const PnlTotals = z.looseObject({
 });
 
 export const PnlSetZeile = z.looseObject({
+  added_at: zeit.nullable().optional(),
+  condition: z.string().nullable().optional(),
+  image_local: z.string().nullable().optional(),
+  image_url: z.string().nullable().optional(),
+  name: z.string().nullable().optional(),
+  pnl_abs: z.string().nullable().optional(),
+  purchase_price: z.number().nullable().optional(),
+  year: z.number().int().nullable().optional(),
   set_number: z.string(),
   quantity: z.number().int(),
   current_price: z.number().nullable().optional(),
@@ -101,15 +117,6 @@ export const PnlResponse = z.looseObject({
   error: z.string().nullable().optional(),
 });
 
-export const PortfolioHistoryResponse = z.looseObject({
-  success: z.boolean(),
-  currency: z.string(),
-  period: z.string(),
-  points: z.array(ChartPoint),
-  y_axis: z.array(ChartYAxis),
-  period_change_pct: z.number().nullable().optional(),
-  purchase_total: z.string().nullable().optional(),
-});
 
 export const PriceByCondition = z.looseObject({
   N: ConditionValuation.nullable().optional(),
@@ -132,7 +139,20 @@ export const PriceChartData = z.looseObject({
   x: z.array(z.string()),
 });
 
+export const PortfolioHistoryResponse = z.looseObject({
+  chart: PriceChartData.optional(),
+  messpunkte: z.number().int().nullable().optional(),
+  success: z.boolean(),
+  currency: z.string(),
+  period: z.string(),
+  points: z.array(ChartPoint),
+  y_axis: z.array(ChartYAxis),
+  period_change_pct: z.number().nullable().optional(),
+  purchase_total: z.string().nullable().optional(),
+});
+
 export const PriceHistoryPoint = z.looseObject({
+  is_purchase_price: z.boolean().optional(),
   recorded_at: zeit,
   qty_avg_price: z.number().nullable().optional(),
   avg_price: z.number().nullable().optional(),
@@ -141,6 +161,8 @@ export const PriceHistoryPoint = z.looseObject({
 });
 
 export const PriceHistoryResponse = z.looseObject({
+  condition: z.string().nullable().optional(),
+  current: z.unknown().optional(),
   success: z.boolean(),
   /** Nur beim Set. */
   set_number: z.string().optional(),
@@ -155,6 +177,7 @@ export const PriceHistoryResponse = z.looseObject({
 });
 
 export const SetPriceResponse = z.looseObject({
+  from_cache: z.boolean().optional(),
   success: z.boolean(),
   set_number: z.string(),
   currency: z.string(),
@@ -178,6 +201,12 @@ export const Totals = z.looseObject({
 });
 
 export const ValuationSet = z.looseObject({
+  bl_unbekannt: z.boolean().optional(),
+  condition: z.string().nullable().optional(),
+  conditions: z.array(z.string()).optional(),
+  error_code: z.string().nullable().optional(),
+  pnl_pct: PROZENT_TEXT,
+  user_id: z.number().int().nullable().optional(),
   set_number: z.string(),
   added_at: zeit.nullable().optional(),
   name: z.string().nullable().optional(),
@@ -207,6 +236,9 @@ export const ValuationSet = z.looseObject({
 });
 
 export const ValuationResponse = z.looseObject({
+  kaufpreise_umgerechnet: z.number().int().nullable().optional(),
+  guide_type: z.string().nullable().optional(),
+  ttl_hours: z.union([z.string(), z.number()]).nullable().optional(),
   success: z.boolean(),
   ...SEITEN_ANGABE,
   total_value: veraltet(z.string(), 'wert_gesamt'),
