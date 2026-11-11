@@ -32,6 +32,12 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
+ * Seitengrösse der Galerie, wie in der Webapp (public/js/02-gallery.js): Zwei
+ * Grössen ergäben zwei Scroll-Erlebnisse für denselben Bestand.
+ */
+internal const val GALLERY_PAGE_SIZE = 60
+
+/**
  * Die Sicht über gewählte Konten, Lagerorte oder mit „In Sets“: Mengen und
  * Preise je Konto teilt nur der Server auf, die lokale Zeile trägt die Summe
  * aller. Deshalb ein eigenes Lesemodell neben der Ablage, nicht ein zweiter

@@ -14,7 +14,7 @@ interface KatalogRepository {
 
     suspend fun getCatalogSets(
         q: String? = null, themeId: Int? = null, yearFrom: Int? = null, yearTo: Int? = null,
-        sort: Katalogsortierung = Katalogsortierung.VORGABE, page: Int = 1, limit: Int = 60
+        sort: Katalogsortierung = Katalogsortierung.VORGABE, page: Int = 1, limit: Int = CATALOG_PAGE_SIZE
     ): Ergebnis<CatalogSetsResponse>
 
     suspend fun getCatalogSetDetail(setNumber: String): Ergebnis<CatalogSetDetailResponse>
@@ -23,3 +23,10 @@ interface KatalogRepository {
         q: String? = null, themeId: Int? = null, sort: Katalogsortierung = Katalogsortierung.VORGABE
     ): Ergebnis<CatalogYearVerteilungResponse>
 }
+
+/**
+ * Seitengrösse des Katalogs. Muss zur Rechnung des Servers passen: Der
+ * Jahres-Sprung liefert `page` für genau diese Grösse, und aus `offset` leitet
+ * die Ansicht die Seite selbst ab.
+ */
+const val CATALOG_PAGE_SIZE = 60
