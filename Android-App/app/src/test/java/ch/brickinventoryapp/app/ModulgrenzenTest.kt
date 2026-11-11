@@ -36,7 +36,8 @@ import ch.brickinventoryapp.testing.Quellen
  *   K in bauwerkzeug-luecken.txt die Fassung auf 3.15.0
  *      → rot „jede Lücke im Bauwerkzeug …“ (steht nicht in verification-metadata.xml)
  *   H ein `PdfRenderer(` in PdfSeite.kt →
- *      rot „PdfRenderer steht nur im isolierten Render-Dienst“
+ *      rot „PdfRenderer steht nur im isolierten Render-Dienst“; ebenso
+ *      gegenproben/pdf-bitmap-aus-dem-renderer.patch (wieder `Bitmap.CREATOR.createFromParcel`)
  *   L  gegenproben/netz-haengt-an-ablage.patch: core-netz bindet Room ein →
  *      rot „core-netz hängt an Ablage oder DI“ (Schichtung der Kernmodule);
  *      erst die CI misst es, lokal gibt es kein Gradle
@@ -265,15 +266,21 @@ class ModulgrenzenTest {
         assertTrue("Konventionen tragen keine Modulkanten ein: $mitKante", mitKante.isEmpty())
     }
 
-    /** pdfium parst Dateien von Dritten; nur der Dienst im isolierten Prozess darf es. */
+    /**
+     * pdfium parst Dateien von Dritten; nur der Dienst im isolierten Prozess darf es. Zurück
+     * kommen nur Pixel in einen Speicher fester Grösse, nie ein Bitmap-Parcel zum Auspacken.
+     */
     @Test
     fun `PdfRenderer steht nur im isolierten Render-Dienst`() {
         val aufruf = Regex("""\bPdfRenderer\s*\(""")
-        val treffer = Quellen.module.flatMap { m ->
+        val auspacken = Regex("""\bBitmap\.CREATOR\b""")
+        val quellen = Quellen.module.flatMap { m ->
             File(m, "src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }
-                .filter { aufruf.containsMatchIn(Quellen.ohneKommentare(it.readText())) }.map { it.name }.toList()
+                .map { it.name to Quellen.ohneKommentare(it.readText()) }.toList()
         }
-        assertEquals(listOf("PdfRenderDienst.kt"), treffer)
+        assertEquals(listOf("PdfRenderDienst.kt"), quellen.filter { aufruf.containsMatchIn(it.second) }.map { it.first })
+        assertEquals("Ein Bitmap-Parcel wird ausgepackt", emptyList<String>(),
+            quellen.filter { auspacken.containsMatchIn(it.second) }.map { it.first })
     }
 
     /**

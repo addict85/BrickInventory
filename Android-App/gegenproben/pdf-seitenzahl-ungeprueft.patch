@@ -1,0 +1,17 @@
+Gegenprobe: Die Seitenzahl aus dem isolierten Renderer gilt ungeprüft
+Modul: feature-finanzen
+Test: ch.brickinventoryapp.finanzen.PdfGrenzenTest
+Rot: eine Seitenzahl ausserhalb von 1 bis zur Obergrenze gilt als unlesbar
+
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/pdf/PdfSeite.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/pdf/PdfSeite.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/pdf/PdfSeite.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/pdf/PdfSeite.kt
+@@ -49,7 +49,7 @@
+ }
+ 
+ /** Die Seitenzahl des Renderers, oder null, wenn sie nicht stimmen kann. */
+-internal fun pruefeSeitenzahl(n: Int): Int? = n.takeIf { it in 1..PDF_MAX_SEITEN }
++internal fun pruefeSeitenzahl(n: Int): Int? = n
+ 
+ /**
+  * Masse aus den Seitenkanten des Renderers ([breitePt], [hoehePt]); null, wenn diese
