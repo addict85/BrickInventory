@@ -76,7 +76,34 @@ die auf `main` liegen.
 - Repository-Secrets mit den Namen der Environment-Secrets: keine (löschen, falls
   noch vorhanden).
 
+## 5. Knopf „Android-Etikett setzen“ (Environment `etikett`)
+
+Ohne eigenes Repository setzt der Workflow `android-etikett.yml` das Etikett.
+Er braucht ein persönliches Token: Etiketten, die das eingebaute `GITHUB_TOKEN`
+setzt, starten keinen Bau, und das Ruleset aus Schritt 3 lässt nur Admins
+`android-v…` anlegen.
+
+1. *Profilbild → Settings → Developer settings → Personal access tokens →
+   Fine-grained tokens → Generate new token*.
+   - Name `BrickInventory Etikett`, *Expiration* z. B. 90 Tage.
+   - *Repository access*: **Only select repositories** → `addict85/BrickInventory`.
+   - *Permissions → Repository permissions → Contents*: **Read and write**
+     (sonst nichts).
+   - *Generate token* und den Wert kopieren.
+2. *Settings → Environments → New environment* → Name `etikett`.
+   - *Deployment branches and tags*: **Selected**, eine Regel: Branch `main`.
+   - *Required reviewers*: du; *Allow administrators to bypass*: **aus**.
+   - *Environment secrets → Add secret*: Name `ETIKETT_TOKEN`, Wert das Token.
+3. Läuft das Token ab, ein neues anlegen und das Secret ersetzen.
+
 ## Ablauf eines Release
+
+Im Browser: *Actions → Android-Etikett setzen → Run workflow* (Zweig `main`),
+Name eintragen, z. B. `android-v2026.11.12.1`, dann den Lauf in `etikett`
+freigeben. Nur das Etikett setzen, **keine Release von Hand anlegen**: Eine
+veröffentlichte Release ist unveränderlich und nimmt das APK nicht mehr an.
+
+Oder mit Git (z. B. im Codespace):
 
 ```
 git tag android-v2026.11.12 origin/main
