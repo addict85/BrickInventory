@@ -329,7 +329,11 @@ den Commits, nicht hier.
   mit per Digest festem Scanner; npm als CycloneDX) am Image, dazu
   `actions/attest-build-provenance` und `actions/attest-sbom` am signierten
   Digest; prüfen mit `cosign verify` und `gh attestation verify` (README) —
-  `workflow-ort`.
+  `workflow-ort`. Das Caddy-Image (`addict85/brickinventory-caddy`) läuft durch
+  dieselben Schritte (Bau ohne Cache, Trivy vor der Signatur, cosign keyless,
+  Provenance, Stückliste aus Trivy); compose.yaml nimmt es nur als geprüften
+  Digest (`CADDY_IMAGE`, `scripts/image-pruefen.sh`) — `workflow-signatur`,
+  `image-pruefen`.
 - Der Test-Schlüssel `Web-App/test/fixtures/abruf-test.key` (mit
   `abruf-test.crt`, selbstsigniert, `CN=abruf-test`, SHA-256
   `25:B4:03:BD:C0:2F:3B:87:7B:DC:7F:B6:69:4D:C3:AF:FE:79:C1:42:C9:CE:DD:1E:C1:B2:6C:EF:F7:96:B3:BC`)
@@ -349,10 +353,12 @@ den Commits, nicht hier.
   devDependency fehlt es in `npm audit --omit=dev`; web-ci.yml prüft es
   deshalb zusätzlich im vollen `npm audit`.
 - Build-Kontext ohne `.env`, `backups/`, `schluessel/`, `data/` — `dockerfile`.
-- Der Entrypoint richtet als root nur `/app/data` selbst (`chown -h`); die
-  Unterordner legt er als `brickinv` an, die Marke schreibt er als
-  `brickinv`, und der Reparaturschritt (`find -xdev … -exec chown -h`) folgt
-  keinem Symlink des Dienstes und bleibt im Datenträger — `entrypoint-start`.
+- `app` und `jobs` laufen als `brickinv` ohne Capability; `./data` richtet
+  vorher der Dienst `daten-rechte` (`daten-rechte.sh`) als root ein, ohne Netz
+  und mit nur `./data` eingehängt. Er ändert als root nur `/app/data` selbst
+  (`chown -h`), legt Unterordner und Marke als `brickinv` an, und der
+  Reparaturschritt (`find -xdev … -exec chown -h`) folgt keinem Symlink des
+  Dienstes und bleibt im Datenträger — `entrypoint-start`, `compose-haertung`.
 - `docker-publish.yml`: Ein Image entsteht nur aus einem Commit mit grüner
   CI, auch beim Handstart (nur `main`, grüner Lauf von `web-ci.yml` auf genau
   diesem Commit, sonst Abbruch); Hochladen und Signieren laufen in der
@@ -365,7 +371,7 @@ den Commits, nicht hier.
   (Abhängigkeiten, Image), ZAP-Baseline gegen den Produktionsserver. Die
   fremden Images aus `compose.yaml` (Postgres) liest der Lauf aus der Datei
   und prüft sie mit Trivy; eine behebbare Lücke ab high ist rot, ausser sie
-  steht mit Ablaufdatum in `.github/trivy-betrieb.ignore`. Caddy baut
+  steht mit Ablaufdatum in `.github/trivy-betrieb.yaml`. Caddy entsteht aus
   `Dockerfile.caddy`; der Job `trivy-eigenbau` prüft das Ergebnis ohne
   Ausnahmen. Ein Digest, der hinter seinem Tag zurückliegt, wird gemeldet —
   `workflow-ort`, `compose-betrieb`.
@@ -376,20 +382,26 @@ den Commits, nicht hier.
 
 ## Betrieb
 
-- App und Jobs verbinden sich als `brickinventory_app` ohne
+- App und Jobs verbinden sich als Laufzeitrolle `brickinventory_app` ohne
   Superuser-, CREATEROLE- oder CREATEDB-Recht und ohne Mitgliedschaft in
-  `pg_execute_server_program` & Co.; die Rolle besitzt Datenbank, Tabellen und
-  Funktionen (Migrationen). Den Superuser kennen nur Postgres und der
-  einmalige Dienst `db-rolle` (`postgres/app-rolle.sh`). Läuft die App doch als
-  Superuser, warnt der Start — `db-rolle-db`, `compose-haertung`.
-- `db-rolle` läuft als Superuser in einer Datenbank, die der App-Rolle gehört.
+  `pg_execute_server_program` & Co.; sie darf nur Zeilen lesen und schreiben,
+  Sequenzen weiterzählen und temporäre Tabellen anlegen (ab PostgreSQL 17
+  dazu MAINTAIN für VACUUM/ANALYZE), kein DROP, ALTER oder CREATE. Datenbank,
+  Tabellen und Funktionen gehören der Migrationsrolle
+  `brickinventory_migration`, deren Passwort nur der einmalige Dienst
+  `migration` kennt (Erststart, Migrationen, Restore); Default Privileges geben
+  der Laufzeitrolle die Zeilenrechte an jeder neuen Tabelle. Den Superuser
+  kennen nur Postgres und der einmalige Dienst `db-rolle`
+  (`postgres/app-rolle.sh`). Läuft die App doch als Superuser, warnt der
+  Start — `db-rolle-db`, `compose-haertung`.
+- `db-rolle` läuft als Superuser in einer Datenbank, die der Migrationsrolle gehört.
   Deshalb fester `search_path=pg_catalog,pg_temp` und `role=none` schon beim
   Verbinden (PGOPTIONS), nur `pg_catalog.`-Funktionen, zuerst
   `ALTER DATABASE … RESET ALL` und `ALTER ROLE <app> … RESET ALL`; bei aktiven
   Event-Triggern bricht es ab — `db-rolle-db` (stellt den Angriff mit eigenem
   `set_config` und Operator nach). Wer selbst als Superuser `psql` in dieser
   Datenbank öffnet, setzt `PGOPTIONS='-c search_path=pg_catalog,pg_temp'`.
-- `scripts/restore.sh` spielt den Dump als App-Rolle ein, in einer
+- `scripts/restore.sh` spielt den Dump als Migrationsrolle ein, in einer
   Transaktion; Funktionen und Prüfregeln aus dem Dump laufen nie als
   Superuser — `backup-restore-db`.
 - Sitzungsgeheimnis und alle Datenbankpasswörter nur als Docker-Secrets
@@ -403,6 +415,10 @@ den Commits, nicht hier.
   schreibt nur in Daten und Socket (`read_only`); jedes tmpfs ist `noexec`,
   `nosuid`, `nodev` und begrenzt; jeder Dienst schreibt sein Docker-Protokoll
   mit `driver: local`, höchstens 5 × 10 MB — `compose-betrieb`.
+- `migration` hängt ebenfalls nur an `db-net`, `schluessel`, `daten-rechte`
+  und `caddy-rechte` laufen ohne Netz. `app`, `jobs` und `caddy` brauchen das
+  Internet; den Weg ins Heimnetz sperrt optional eine `DOCKER-USER`-Regel auf
+  ihr festes Subnetz (UPGRADE.md, Abschnitt 52) — `compose-haertung`.
 - Ohne `NODE_ENV` gelten alle Regeln des Betriebs (Startverbote, Superuser-
   Verbot, verborgene 5xx-Texte, sicheres Cookie); nur `development` und
   `test` lockern sie — `betrieb-ohne-node-env-db`.
@@ -519,7 +535,7 @@ Einzelheiten: `Android-App/README.md`, Abschnitte „Manipulationsschutz“ und
 - **Bilder der Container** (`postgres`, die Basis von `Dockerfile.caddy`, ZAP)
   sind per Digest fest und veralten damit; Renovate schlägt neue Fassungen vor
   (ZAP und die Dienst-Container der Workflows nicht). Eine hingenommene Lücke
-  in `postgres` steht mit Ablaufdatum in `.github/trivy-betrieb.ignore`; Caddy
+  in `postgres` steht mit Ablaufdatum in `.github/trivy-betrieb.yaml`; Caddy
   prüft der Job `trivy-eigenbau` ohne Ausnahmen.
 - **Verwalter setzen jedes Konto zurück**: Ein Verwalter kann Passwort und
   zweiten Faktor jedes Kontos zurücksetzen. Gedeckelt ist das durch Passwort

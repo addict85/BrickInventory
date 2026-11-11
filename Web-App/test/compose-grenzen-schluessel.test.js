@@ -63,8 +63,9 @@ test('app und jobs sehen den Datenschlüssel nur lesend', () => {
   const s = dienst('schluessel');
   assert.match(s, /entrypoint: \["sh", "\/app\/schluessel-anlegen\.sh"\]/);
   assert.match(s, /network_mode: none/);
-  assert.match(fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8'), /^COPY .*\bschluessel-anlegen\.sh\b.* \.\/$/m,
-    'das Skript liegt nicht im Image');
+  const copy = fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8');
+  assert.match(copy, /^COPY .*\bschluessel-anlegen\.sh\b.* \.\/$/m, 'das Skript liegt nicht im Image');
+  assert.match(copy, /^COPY .*\bdaten-rechte\.sh\b.* \.\/$/m, 'daten-rechte.sh liegt nicht im Image');
 });
 
 function sandkasten() {

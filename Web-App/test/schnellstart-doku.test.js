@@ -131,6 +131,8 @@ for (const { datei, abschnitt } of DOKUS) {
     for (const d of ['app', 'jobs', 'schluessel'])
       assert.equal(j.services[d].image, `${VEROEFFENTLICHT}@${DIGEST}`, `${d} zieht das veröffentlichte Image als geprüften Digest`);
     assert.equal(new Set(['app', 'jobs', 'schluessel'].map(d => j.services[d].image)).size, 1, 'ein Image für alle drei');
+    for (const d of ['caddy', 'caddy-rechte'])
+      assert.equal(j.services[d].image, `${VEROEFFENTLICHT}-caddy@${DIGEST}`, `${d} zieht das signierte Caddy-Image als geprüften Digest`);
     const gebaut = dienste.filter(d => j.services[d].build?.dockerfile === 'Dockerfile');
     assert.deepEqual(gebaut, ['app'], 'genau ein Dienst baut das Dockerfile');
   });
