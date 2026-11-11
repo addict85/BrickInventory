@@ -157,7 +157,7 @@ test('die Diagnose-Endpunkte sind vorhanden', () => {
   assert.match(route, /router\.post\('\/admin\/img-probe', requireApiAdmin/, 'img-probe fehlt');
   assert.match(route, /router\.post\('\/admin\/price-probe', requireApiAdmin/, 'price-probe fehlt');
   // Die Abrufe selbst stehen im Dienst der Verwaltung (Routen rufen nicht ins Netz).
-  const admin = fs.readFileSync(path.join(ROOT, 'src/verwaltung/dienst.ts'), 'utf8');
+  const admin = fs.readFileSync(path.join(ROOT, 'src/verwaltung/diagnose.ts'), 'utf8');
   assert.match(
     admin,
     /content_encoding: k\['content-encoding'\]/,
@@ -244,7 +244,7 @@ test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
 
   // Und die offene Menge im Monitoring muss sie mitzählen. Die Abfrage steht
   // im Dienst der Verwaltungsrouten; die Route ruft sie für die Kachel auf.
-  const route = fs.readFileSync(path.join(ROOT, 'src/verwaltung/dienst.ts'), 'utf8');
+  const route = fs.readFileSync(path.join(ROOT, 'src/verwaltung/jobUebersicht.ts'), 'utf8');
   assert.match(
     route,
     /verwaltung\.bestandsFigurenbilderOffen\(\)/,

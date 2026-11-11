@@ -37,7 +37,7 @@ test('das Tageskontingent zählt für die Installation, nicht je Worker', () => 
     'Keine prozesslokale Instanz mehr für ein Tagesbudget');
 
   // Alle Aufrufstellen gehen über den gemeinsamen Weg.
-  for (const datei of ['clients/rebrickable.ts', 'src/katalog/partsImport.ts', 'src/sets/dienst.ts',
+  for (const datei of ['clients/rebrickable.ts', 'src/katalog/partsImport.ts', 'src/sets/barcode.ts',
                        'src/katalog/teileAnreicherung.ts',
                        'src/katalog/csvAbgleich.ts']) {
     const src = fs.readFileSync(path.join(ROOT, datei), 'utf8');

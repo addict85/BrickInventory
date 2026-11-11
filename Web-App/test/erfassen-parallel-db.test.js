@@ -178,7 +178,7 @@ test('alle drei Importwege melden übersprungene Zeilen', () => {
   // Der Set-Import liest selbst und antwortet selbst; Teile und Minifiguren
   // gehen über csvZeilenAusAnfrage() und csvImportBericht() in
   // src/infra/csvExport.ts. Je Weg zählen Route, Dienst und Auftrag zusammen.
-  for (const [rel, dienst] of [['routes/api_v1/sets.ts', 'src/sets/dienst.ts'],
+  for (const [rel, dienst] of [['routes/api_v1/sets.ts', 'src/sets/csvImport.ts'],
                                ['routes/api_v1/parts.ts', 'src/teile/manuelleTeile.ts'],
                                ['routes/api_v1/minifigs.ts', 'src/figuren/manuelleFiguren.ts']]) {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8')

@@ -305,7 +305,7 @@ test('Fehler werden gezählt und protokolliert', async () => {
 });
 
 test('die Probe zeigt, WAS ausgeliefert wird', async () => {
-  const { bildProbe } = _req('src/verwaltung/dienst.js');
+  const { bildProbe } = _req('src/verwaltung/diagnose.js');
   const adresse = 'https://cdn.rebrickable.com/media/sets/probe-1.jpg';
   try {
     cdnRumpf = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);

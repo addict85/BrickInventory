@@ -13,7 +13,7 @@
  *   C  bildFreigegeben() lässt nur sets/ durch (Teile wie Sets geprüft) → rot:
  *      „Teilebilder sind Katalog“ (404)
  *   D  scopeIds() durch [uid] ersetzt → rot: „Anleitungen nur zu eigenen Sets“
- *   E  in setInfoFuerKonto() (src/sets/dienst.ts) image_local für Sets ausserhalb
+ *   E  in setInfoFuerKonto() (src/sets/inhalt.ts) image_local für Sets ausserhalb
  *      des Blickfelds wieder auf null → rot: „die API nennt das lokale Bild jedes Sets“
  *   F  beiHaushaltsaenderung() in bildBlickfeld.ts nicht aufgerufen (60 s
  *      Treffer-Frist bleibt) → rot: „nach dem Lösen der Verknüpfung …“ (200 statt 404)

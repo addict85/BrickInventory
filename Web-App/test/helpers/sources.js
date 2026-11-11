@@ -216,6 +216,11 @@ function setKernQuelle() {
   return [
     ['routes/api_v1/sets.ts'],
     ['src/sets/dienst.ts'],
+    ['src/sets/inhalt.ts'],
+    ['src/sets/barcode.ts'],
+    ['src/sets/csvImport.ts'],
+    ['src/sets/anleitungen.ts'],
+    ['src/sets/preise.ts'],
     ['src/sets/setService.ts'],
     ['src/sets/erfassen.ts'],
     ['src/katalog/partsImport.ts'],
