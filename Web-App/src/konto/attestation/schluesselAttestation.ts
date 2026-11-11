@@ -3,7 +3,7 @@
  * unserer App gehört. Ohne sie könnte ein erbeuteter Token einen Software-Schlüssel
  * hinterlegen und den Schrittschutz ohne Sperre lösen. */
 import { X509Certificate, type KeyObject } from 'node:crypto';
-import { DerFehler, erwarte, kinder, liesGanz, type Tlv, UNIVERSAL, zahl } from './der';
+import { DerFehler, erwarte, kinder, liesGanz, type Tlv, UNIVERSAL, derZahl } from './der';
 
 /** 1.3.6.1.4.1.11129.2.1.17 als DER-Inhalt. */
 const OID_ATTESTATION = Buffer.from('2b06010401d679020111', 'hex');
@@ -53,7 +53,7 @@ function liste(t: Tlv): Map<number, Tlv> {
 }
 
 function sicherheit(t: Tlv | undefined): Sicherheit {
-  const s = SICHERHEIT[zahl(erwarte(t, UNIVERSAL.ENUMERATED))];
+  const s = SICHERHEIT[derZahl(erwarte(t, UNIVERSAL.ENUMERATED))];
   if (!s) throw new DerFehler('KeyDescription: unbekannte Sicherheitsstufe');
   return s;
 }
@@ -63,7 +63,7 @@ export function leseBeschreibung(der: Buffer): Beschreibung {
   const f = kinder(erwarte(liesGanz(der), UNIVERSAL.SEQUENCE));
   if (f.length < 8) throw new DerFehler('KeyDescription: zu wenige Felder');
   return {
-    version: zahl(erwarte(f[0], UNIVERSAL.INTEGER)),
+    version: derZahl(erwarte(f[0], UNIVERSAL.INTEGER)),
     sicherheit: sicherheit(f[1]),
     keymintSicherheit: sicherheit(f[3]),
     challenge: erwarte(f[4], UNIVERSAL.OCTET_STRING).inhalt,
@@ -138,11 +138,11 @@ function pruefeBeschreibung(b: Beschreibung, e: Erwartung): string | null {
   const hw = b.hardware;
   const z = (tag: number) => {
     const t = hw.get(tag);
-    return t ? zahl(t) : null;
+    return t ? derZahl(t) : null;
   };
   if (z(TAG.algorithmus) !== ALGORITHMUS_EC || z(TAG.kurve) !== KURVE_P256) return 'kein_ec_p256';
   const zwecke = hw.get(TAG.zweck);
-  if (!zwecke || !kinder(erwarte(zwecke, UNIVERSAL.SET)).some(t => zahl(t) === ZWECK_SIGNIEREN))
+  if (!zwecke || !kinder(erwarte(zwecke, UNIVERSAL.SET)).some(t => derZahl(t) === ZWECK_SIGNIEREN))
     return 'kein_signieren';
   if (z(TAG.herkunft) !== HERKUNFT_ERZEUGT) return 'importiert';
   // Die App verlangt die Sperre bei jeder Benutzung (Frist 0, siehe GeraeteSchluessel.kt).

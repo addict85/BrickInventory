@@ -14,7 +14,7 @@ export class DerFehler extends Error {}
 const HOECHSTE_NUMMER = 2 ** 21;
 
 /** Ein Element ab [pos]; `ende` zeigt hinter es. */
-export function lies(b: Buffer, pos = 0): { tlv: Tlv; ende: number } {
+export function liesTlv(b: Buffer, pos = 0): { tlv: Tlv; ende: number } {
   let p = pos;
   const byte = () => {
     if (p >= b.length) throw new DerFehler('DER: abgeschnitten');
@@ -45,7 +45,7 @@ export function lies(b: Buffer, pos = 0): { tlv: Tlv; ende: number } {
 
 /** Genau ein Element, nichts dahinter. */
 export function liesGanz(b: Buffer): Tlv {
-  const { tlv, ende } = lies(b);
+  const { tlv, ende } = liesTlv(b);
   if (ende !== b.length) throw new DerFehler('DER: Bytes hinter dem Element');
   return tlv;
 }
@@ -54,7 +54,7 @@ export function kinder(t: Tlv): Tlv[] {
   if (!t.zusammengesetzt) throw new DerFehler('DER: kein zusammengesetztes Element');
   const liste: Tlv[] = [];
   for (let p = 0; p < t.inhalt.length; ) {
-    const { tlv, ende } = lies(t.inhalt, p);
+    const { tlv, ende } = liesTlv(t.inhalt, p);
     liste.push(tlv);
     p = ende;
   }
@@ -78,7 +78,7 @@ export function erwarte(t: Tlv | undefined, nummer: number, klasse = 0): Tlv {
 }
 
 /** INTEGER oder ENUMERATED, nicht negativ und klein genug für eine Zahl. */
-export function zahl(t: Tlv): number {
+export function derZahl(t: Tlv): number {
   if (t.klasse !== 0 || (t.nummer !== UNIVERSAL.INTEGER && t.nummer !== UNIVERSAL.ENUMERATED))
     throw new DerFehler('DER: keine Zahl');
   if (!t.inhalt.length || (t.inhalt[0] as number) & 0x80) throw new DerFehler('DER: negative oder leere Zahl');

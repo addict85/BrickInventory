@@ -14,7 +14,7 @@
  *   E  in pruefeBeschreibung() die Prüfung auf noAuthRequired gestrichen → rot:
  *      „ein Schlüssel ohne Sperre …“
  *   F  in FINGERABDRUECKE eine Ziffer geändert → rot: „die Google-Wurzeln …“
- *   G  in lies() die Längenprüfung `p + laenge > b.length` gestrichen → rot:
+ *   G  in liesTlv() die Längenprüfung `p + laenge > b.length` gestrichen → rot:
  *      „abgeschnittene Bytes …“
  */
 const test = require('node:test');
@@ -105,8 +105,8 @@ test('abgeschnittene Bytes und unbestimmte Längen werfen statt zu raten', () =>
   ])
     assert.throws(() => A.leseBeschreibung(kaputt), der.DerFehler);
   assert.throws(() => der.liesGanz(Buffer.from([0x05, 0x00, 0x00])), /hinter dem Element/);
-  assert.throws(() => der.lies(Buffer.from([0x04, 0x05, 1, 2])), /über das Ende/);
-  assert.equal(der.lies(Buffer.from([0xbf, 0x85, 0x45, 0x02, 0x05, 0x00])).tlv.nummer, 709);
+  assert.throws(() => der.liesTlv(Buffer.from([0x04, 0x05, 1, 2])), /über das Ende/);
+  assert.equal(der.liesTlv(Buffer.from([0xbf, 0x85, 0x45, 0x02, 0x05, 0x00])).tlv.nummer, 709);
 });
 
 test('die Google-Wurzeln stimmen mit ihren Fingerabdrücken überein', () => {
