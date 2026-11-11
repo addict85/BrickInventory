@@ -89,7 +89,7 @@ export async function einstellungenSpeichern(e: EinstellungsEingabe, o: Speicher
   const bricksetAlt = await db.transaction(async () => {
     const alt =
       global && e.api_limit_brickset !== undefined
-        ? parseInt((await getGlobalSetting('api_limit_brickset')) || '100')
+        ? parseInt((await getGlobalSetting('api_limit_brickset')) || '100', 10)
         : null;
     if (global) await schreibeGlobal(o.uid, e);
     // Zentrale Stelle: Eine ECHTE Währungsänderung stösst den Preis-Job an.
@@ -101,6 +101,6 @@ export async function einstellungenSpeichern(e: EinstellungsEingabe, o: Speicher
   meldeGlobaleAenderung();
   if (heikel.some(k => !k.startsWith('smtp_')))
     verwalterHinweisNebenher('einstellungen_geaendert', { konto: heikel.join(', '), durch: o.name });
-  if (bricksetAlt !== null) await bricksetLimitGesetzt(bricksetAlt, parseInt(String(e.api_limit_brickset)));
+  if (bricksetAlt !== null) await bricksetLimitGesetzt(bricksetAlt, parseInt(String(e.api_limit_brickset), 10));
   return true;
 }

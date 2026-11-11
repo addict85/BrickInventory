@@ -157,7 +157,7 @@ test('SMTP ohne Port 465 nur mit STARTTLS', { concurrency: 1, timeout: 120_000 }
     const dns = require('node:dns');
     const echt = dns.lookup;
     const gefragt = [];
-    dns.lookup = (host, opt, rueckruf) => {
+    /** @type {any} */ (dns).lookup = (host, opt, rueckruf) => {
       if (host !== 'mail.attrappe.test') return echt(host, opt, rueckruf);
       gefragt.push(host);
       const a = { address: ziel, family: 4 };
@@ -185,7 +185,7 @@ test('SMTP ohne Port 465 nur mit STARTTLS', { concurrency: 1, timeout: 120_000 }
     const dns = require('node:dns');
     const echt = dns.lookup;
     let n = 0;
-    dns.lookup = (host, opt, rueckruf) => {
+    /** @type {any} */ (dns).lookup = (host, opt, rueckruf) => {
       if (host !== 'mail.attrappe.test') return echt(host, opt, rueckruf);
       const a = { address: n++ === 0 ? '127.0.0.1' : '127.0.0.2', family: 4 };
       setImmediate(() => (opt?.all ? rueckruf(null, [a]) : rueckruf(null, a.address, 4)));

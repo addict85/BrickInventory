@@ -25,8 +25,7 @@ const { hostErlaubt, ERLAUBTE_DOWNLOAD_HOSTS } = _req('src/infra/fremdeAdressen.
 function mitDns(t, antworten) {
   const echt = dns.lookup;
   const gefragt = [];
-  // @ts-ignore: Attrappe mit der Form von dns.lookup
-  dns.lookup = (host, opt, rueckruf) => {
+  /** @type {any} */ (dns).lookup = (host, opt, rueckruf) => {
     const liste = antworten[host];
     if (!liste) return echt(host, opt, rueckruf);
     gefragt.push(host);
