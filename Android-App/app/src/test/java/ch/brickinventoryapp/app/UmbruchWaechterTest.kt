@@ -143,27 +143,34 @@ class UmbruchWaechterTest {
             val l = layout(n)
             if (l != null && n.layoutInfo.isPlaced) {
                 texte++
-                val text = l.layoutInput.text.text
-                val wo = "„${text.take(40)}“"
-                val groesse = l.layoutInput.style.fontSize
-                val em = if (groesse.isSp) with(l.layoutInput.density) { groesse.toPx() } else 0f
-                val woerter = text.split(Regex("""\s+""")).count { it.isNotBlank() }
-                val zeichen = text.count { !it.isWhitespace() }
-                if (zeichen >= 3 && em > 0f && l.size.width < em * MINDESTBREITE_EM)
-                    befunde += "$wo nur ${l.size.width} px breit (Schrift ${em.toInt()} px)"
-                if (l.lineCount >= 3 && l.lineCount > 2 * woerter)
-                    befunde += "$wo in ${l.lineCount} Zeilen bei $woerter Wörtern"
-                // Nur die Auslassung zählt: Breite, Höhe und maxLines melden unter
-                // Robolectric auch bei ungekürzten Texten einen Überlauf (Schriftmetrik).
-                val gekuerzt = (0 until l.lineCount).any { l.isLineEllipsized(it) }
-                if ((knopf || kopf) && gekuerzt) befunde += "$wo gekürzt (${if (knopf) "Knopf" else "Überschrift"}; " +
-                    "Zeilen ${l.lineCount}, Breite ${l.size.width}/${l.multiParagraph.width.toInt()}, " +
-                    "Überlauf B ${l.didOverflowWidth} H ${l.didOverflowHeight}, maxLines ${l.multiParagraph.didExceedMaxLines})"
+                befunde += auffaelligkeiten(l, knopf, kopf)
             }
             n.children.forEach { lauf(it, knopf, kopf) }
         }
         lauf(wurzel, imKnopf = false, inUeberschrift = false)
         return texte to befunde
+    }
+
+    /** Was an einem gesetzten Text auffällt: zu schmal, Buchstabe je Zeile, gekürzt in Knopf oder Überschrift. */
+    private fun auffaelligkeiten(l: TextLayoutResult, knopf: Boolean, kopf: Boolean): List<String> {
+        val befunde = mutableListOf<String>()
+        val text = l.layoutInput.text.text
+        val wo = "„${text.take(40)}“"
+        val groesse = l.layoutInput.style.fontSize
+        val em = if (groesse.isSp) with(l.layoutInput.density) { groesse.toPx() } else 0f
+        val woerter = text.split(Regex("""\s+""")).count { it.isNotBlank() }
+        val zeichen = text.count { !it.isWhitespace() }
+        if (zeichen >= 3 && em > 0f && l.size.width < em * MINDESTBREITE_EM)
+            befunde += "$wo nur ${l.size.width} px breit (Schrift ${em.toInt()} px)"
+        if (l.lineCount >= 3 && l.lineCount > 2 * woerter)
+            befunde += "$wo in ${l.lineCount} Zeilen bei $woerter Wörtern"
+        // Nur die Auslassung zählt: Breite, Höhe und maxLines melden unter
+        // Robolectric auch bei ungekürzten Texten einen Überlauf (Schriftmetrik).
+        val gekuerzt = (0 until l.lineCount).any { l.isLineEllipsized(it) }
+        if ((knopf || kopf) && gekuerzt) befunde += "$wo gekürzt (${if (knopf) "Knopf" else "Überschrift"}; " +
+            "Zeilen ${l.lineCount}, Breite ${l.size.width}/${l.multiParagraph.width.toInt()}, " +
+            "Überlauf B ${l.didOverflowWidth} H ${l.didOverflowHeight}, maxLines ${l.multiParagraph.didExceedMaxLines})"
+        return befunde
     }
 
     // ── Die Bildschirme ──

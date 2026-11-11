@@ -220,39 +220,40 @@ class PinVertrauen(
     private fun pruefe(chain: Array<X509Certificate>, schluessel: String?, mit: (X509ExtendedTrustManager) -> Unit) {
         if (schluessel == null) return ohneHost(chain) { mit(fremdeHosts) }
         if (chain.isEmpty() || schluessel != eigenerServer()) return mit(fremdeHosts)
+        // Ohne Pin wird nie still vertraut; was die Rückfrage ist, sagt die Lage der Kette.
         val pin = pins.pin(schluessel)
-        val ausCode = pin != null && pins.ausCode(schluessel)
+            ?: throw lage(chain, mit).let { gemeldet(ZertifikatUngeklaert(schluessel, it.fingerabdruck, it.artOhnePin)) }
+        val ausCode = pins.ausCode(schluessel)
         // Ein Pin auf eine System-Wurzel gilt nur über die System-Prüfung samt Certificate
         // Transparency: Schickt der Server die Wurzel mit, umginge der Abgleich die CT-Prüfung.
-        val oeffentlicherPin = pin != null && pin in systemWurzeln
-        if (pin != null && !oeffentlicherPin && passtZumPin(chain, pin)) return
-        // Öffentlich heisst: allein mit den System-CAs, nie über eine Nutzer-CA.
+        val oeffentlicherPin = pin in systemWurzeln
+        if (!oeffentlicherPin && passtZumPin(chain, pin)) return
+        val lage = lage(chain, mit)
+        if (traegtPin(lage, pin, oeffentlicherPin, ausCode)) return
+        val art = if (ausCode) ZertifikatUngeklaert.Art.CODE_ABWEICHUNG else ZertifikatUngeklaert.Art.GEAENDERT
+        throw gemeldet(ZertifikatUngeklaert(schluessel, lage.fingerabdruck, art, erwartet = pin))
+    }
+
+    /** Wie die Kette gilt und woran sie hängt. Öffentlich heisst: allein mit den System-CAs, nie über eine Nutzer-CA. */
+    private fun lage(chain: Array<X509Certificate>, mit: (X509ExtendedTrustManager) -> Unit): Kettenlage {
         val oeffentlich = runCatching { mit(fremdeHosts) }.isSuccess
-        // Ein öffentlicher Pin bindet Host und System-Gültigkeit, nicht eine Wurzel:
-        // Wechselt die CA ihre Wurzel (Let's Encrypt X1 → X2), fragt die App nicht neu.
-        if (oeffentlicherPin && oeffentlich && !ausCode) return
         val ueberNutzerCa = !oeffentlich && runCatching { mit(kette) }.isSuccess
         val wurzel = when {
             oeffentlich -> anker(chain, fremdeHosts.acceptedIssuers)
             ueberNutzerCa -> anker(chain, kette.acceptedIssuers)
             else -> null
         }
-        val fp = spkiFingerabdruck(wurzel ?: chain.last())
-        // Der Code nennt eine System-Wurzel: Sie muss die Kette auch tragen, nicht irgendeine.
-        if (oeffentlicherPin && oeffentlich && fp == pin) return
-        if (pin != null) {
-            // Gepinnte Nutzer-CA: Die Kette hat eben bis zu ihr gegolten.
-            if (ueberNutzerCa && wurzel != null && fp == pin && !oeffentlicherPin) return
-            val art = if (ausCode) ZertifikatUngeklaert.Art.CODE_ABWEICHUNG else ZertifikatUngeklaert.Art.GEAENDERT
-            throw gemeldet(ZertifikatUngeklaert(schluessel, fp, art, erwartet = pin))
-        }
-        val art = when {
-            oeffentlich -> ZertifikatUngeklaert.Art.ERSTKONTAKT
-            ueberNutzerCa -> ZertifikatUngeklaert.Art.NUTZER_CA
-            else -> ZertifikatUngeklaert.Art.UNBEKANNTE_CA
-        }
-        throw gemeldet(ZertifikatUngeklaert(schluessel, fp, art))
+        return Kettenlage(oeffentlich, ueberNutzerCa, wurzel, spkiFingerabdruck(wurzel ?: chain.last()))
     }
+
+    /**
+     * Ein öffentlicher Pin bindet Host und System-Gültigkeit, nicht eine Wurzel: Wechselt die CA
+     * ihre Wurzel (Let's Encrypt X1 → X2), fragt die App nicht neu. Nennt der Code eine System-Wurzel,
+     * muss sie die Kette auch tragen. Eine gepinnte Nutzer-CA gilt, wenn die Kette eben bis zu ihr galt.
+     */
+    private fun traegtPin(lage: Kettenlage, pin: String, oeffentlicherPin: Boolean, ausCode: Boolean): Boolean =
+        if (oeffentlicherPin) lage.oeffentlich && (!ausCode || lage.fingerabdruck == pin)
+        else lage.ueberNutzerCa && lage.wurzel != null && lage.fingerabdruck == pin
 
     /** Fingerabdrücke der System-Wurzeln: Ein Pin auf eine davon heisst „öffentlich gültig“. */
     private val systemWurzeln: Set<String> by lazy { fremdeHosts.acceptedIssuers.map(::spkiFingerabdruck).toSet() }
@@ -369,4 +370,19 @@ fun bestaetigtFingerabdruck(eingabe: String?, fp: String): Boolean {
     val hex = fingerabdruckLesbar(fp).replace(":", "")
     val getippt = roh.uppercase().filter { it.isLetterOrDigit() }
     return getippt.length >= FINGERABDRUCK_ABTIPPEN && getippt.all { it in "0123456789ABCDEF" } && hex.endsWith(getippt)
+}
+
+/** Wie eine Kette gilt: allein mit den System-CAs, nur über eine Nutzer-CA oder gar nicht; dazu ihr Anker. */
+private class Kettenlage(
+    val oeffentlich: Boolean,
+    val ueberNutzerCa: Boolean,
+    val wurzel: X509Certificate?,
+    val fingerabdruck: String,
+) {
+    /** Ohne Pin eine Frage an den Menschen: Erstkontakt, Nutzer-CA oder unbekannte CA. */
+    val artOhnePin: ZertifikatUngeklaert.Art get() = when {
+        oeffentlich -> ZertifikatUngeklaert.Art.ERSTKONTAKT
+        ueberNutzerCa -> ZertifikatUngeklaert.Art.NUTZER_CA
+        else -> ZertifikatUngeklaert.Art.UNBEKANNTE_CA
+    }
 }

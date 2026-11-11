@@ -4,14 +4,15 @@ Test: ch.brickinventoryapp.anmeldung.ZertifikatPinTest
 Rot: ein Code mit System-Wurzel muss genau diese Wurzel treffen
 
 diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+index f097adc..d33f649 100644
 --- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 +++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
-@@ -231,7 +231,7 @@
-         val oeffentlich = runCatching { mit(fremdeHosts) }.isSuccess
-         // Ein öffentlicher Pin bindet Host und System-Gültigkeit, nicht eine Wurzel:
-         // Wechselt die CA ihre Wurzel (Let's Encrypt X1 → X2), fragt die App nicht neu.
--        if (oeffentlicherPin && oeffentlich && !ausCode) return
-+        if (oeffentlicherPin && oeffentlich) return
-         val ueberNutzerCa = !oeffentlich && runCatching { mit(kette) }.isSuccess
-         val wurzel = when {
-             oeffentlich -> anker(chain, fremdeHosts.acceptedIssuers)
+@@ -252,7 +252,7 @@ class PinVertrauen(
+      * muss sie die Kette auch tragen. Eine gepinnte Nutzer-CA gilt, wenn die Kette eben bis zu ihr galt.
+      */
+     private fun traegtPin(lage: Kettenlage, pin: String, oeffentlicherPin: Boolean, ausCode: Boolean): Boolean =
+-        if (oeffentlicherPin) lage.oeffentlich && (!ausCode || lage.fingerabdruck == pin)
++        if (oeffentlicherPin) lage.oeffentlich
+         else lage.ueberNutzerCa && lage.wurzel != null && lage.fingerabdruck == pin
+ 
+     /** Fingerabdrücke der System-Wurzeln: Ein Pin auf eine davon heisst „öffentlich gültig“. */
