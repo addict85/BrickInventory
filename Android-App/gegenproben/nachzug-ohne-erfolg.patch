@@ -4,14 +4,15 @@ Test: ch.brickinventoryapp.data.NachzugTest
 Rot: eine abgelehnte Aenderung aendert die Ablage nicht
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
+index 3d3a510..0035abc 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
-@@ -176,7 +176,7 @@
+@@ -80,7 +80,7 @@ class SetsRepositoryImpl @Inject constructor(
+     }
  
-     /** Lagerort eines Sets setzen. Leerer Text loescht ihn. */
      override suspend fun setSetStorage(setNumber: String, ort: String): Ergebnis<LagerortResponse> =
 -        ablage.nachgezogen({ r -> Nachzug.SetLagerort(setNumber, r.storage).takeIf { r.success } }) {
 +        ablage.nachgezogen({ r -> Nachzug.SetLagerort(setNumber, r.storage) }) {
              sicherAufrufen { api.setSetStorage(setNumber, LagerortRequest(ort)) }
          }
- 
+ }

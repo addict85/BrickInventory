@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.zustand
 
 import ch.brickinventoryapp.netz.util.NetworkPolicy
-import ch.brickinventoryapp.data.api.BrickApiService
+import ch.brickinventoryapp.testing.BrickApiService
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Ergebnis

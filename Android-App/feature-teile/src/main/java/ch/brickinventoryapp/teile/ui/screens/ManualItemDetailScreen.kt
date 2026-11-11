@@ -4,7 +4,7 @@ import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.zustand.ui.LagerUiState
 import ch.brickinventoryapp.zustand.ui.ManualItemDetailUiState
 import ch.brickinventoryapp.teile.ui.PartsUiState
-import ch.brickinventoryapp.zustand.ui.AppUiState
+import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileAktionen
 import ch.brickinventoryapp.zustand.ui.viewmodel.KaeufeAktionen
 import ch.brickinventoryapp.ui.theme.Formen

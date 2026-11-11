@@ -14,21 +14,16 @@ import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.Scannerherkunft
-import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
 import ch.brickinventoryapp.sammlung.ui.SammlungNavigation
-import ch.brickinventoryapp.sammlung.ui.gemerkterPosten
-import ch.brickinventoryapp.sammlung.ui.merkpostenMitAlarm
 import ch.brickinventoryapp.sammlung.ui.setErfassung
 import ch.brickinventoryapp.sammlung.ui.teilelistenErfassung
 import ch.brickinventoryapp.teile.ui.TeileNavigation
 import ch.brickinventoryapp.teile.ui.TeilelistenScan
 import ch.brickinventoryapp.verwaltung.ui.VerwaltungNavigation
 import ch.brickinventoryapp.zustand.ui.AppViewModel
-import ch.brickinventoryapp.zustand.ui.Rollzustaende
 import ch.brickinventoryapp.zustand.ui.viewmodel.DarstellungViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.VertrauenViewModel
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeZiel
-import ch.brickinventoryapp.finanzen.ui.FinanzZiel
 import ch.brickinventoryapp.sammlung.ui.SammlungZiel
 import ch.brickinventoryapp.teile.ui.TeileZiel
 import coil3.ImageLoader
@@ -39,7 +34,7 @@ data class Reiter(val ziel: Any, val symbol: @Composable () -> Unit, val beschri
 /**
  * Die Umgebung aller Bereiche: Sie erfüllt jede Navigationsschnittstelle und
  * verbindet die Bereiche, die einander nicht kennen (Katalog → Erfassung und
- * Merkliste, Teileliste → Scan). Die wenigen ViewModels der Activity kommen über
+ * Merkposten, Teileliste → Scan). Die wenigen ViewModels der Activity kommen über
  * [aktivitaet], erst beim Zeigen gelesen — so lässt sich der Graph ohne Hilt bauen.
  */
 class ZielUmgebung(
@@ -47,7 +42,6 @@ class ZielUmgebung(
     override val bilder: ImageLoader,
     val reiter: List<Reiter>,
     override val snackbar: SnackbarHostState,
-    override val rollen: Rollzustaende,
     private val zustaende: () -> AktivitaetsZustand,
 ) : AnmeldungNavigation, SammlungNavigation, KatalogNavigation, TeileNavigation, FinanzenNavigation, KontoNavigation,
     VerwaltungNavigation {
@@ -64,12 +58,6 @@ class ZielUmgebung(
     @Composable
     override fun erfassen(eintrag: NavBackStackEntry): (Erfassungswunsch) -> Unit =
         setErfassung(eintrag, bilder, ::oeffneSet)
-
-    @Composable
-    override fun gemerkt(setNumber: String): MerkpostenAnsicht? = gemerkterPosten(setNumber)
-
-    @Composable
-    override fun merken(): (String, Zustand, String, String, Int?) -> Unit = merkpostenMitAlarm()
 
     @Composable
     override fun teilelistenScan(eintrag: NavBackStackEntry): TeilelistenScan =
@@ -100,5 +88,5 @@ class ZielUmgebung(
     override fun oeffneEinzelstueck(art: Postenart, id: String, colorId: Int, titel: String) =
         navController.navigate(TeileZiel.ManualItemDetail(art, id, colorId, titel))
 
-    override fun oeffnePdf(url: String, titel: String) = navController.navigate(FinanzZiel.PdfViewer(url, titel))
+    override fun oeffnePdf(url: String, titel: String) = zeigePdf(url, titel)
 }

@@ -1,0 +1,17 @@
+Gegenprobe: Der Preisalarm aus dem Katalog geht immer als „unter“ hinaus
+Modul: feature-katalog
+Test: ch.brickinventoryapp.katalog.CatalogViewModelTest
+Rot: merken legt den Posten an
+
+diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
+--- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
++++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
+@@ -237,7 +237,7 @@
+                 is Ergebnis.Error ->
+                     meldungen.zeige(texte.meldungFuerSnackbar(r)?.let { Meldung.Ressource(R.string.vm_error, listOf(it)) })
+                 is Ergebnis.Success -> {
+-                    Alarmeingabe.zahl(w.schwelleRoh)?.let { alarme.setPreisalarm(w.setNumber, w.richtung, it, w.zustand) }
++                    Alarmeingabe.zahl(w.schwelleRoh)?.let { alarme.setPreisalarm(w.setNumber, ch.brickinventoryapp.model.fach.Alarmrichtung.UNTER, it, w.zustand) }
+                     meldungen.zeige(Meldung.Ressource(if (r.data.warNeu) R.string.wanted_added else R.string.wanted_already))
+                 }
+             }

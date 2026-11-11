@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.teile
 
+import ch.brickinventoryapp.testing.MerklisteRepository
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.cache.ResponseCache
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
@@ -32,7 +33,7 @@ import kotlinx.coroutines.flow.first
 import java.io.File
 import java.util.Collections
 import ch.brickinventoryapp.data.api.ApiJson
-import ch.brickinventoryapp.data.api.BrickApiService
+import ch.brickinventoryapp.testing.BrickApiService
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import ch.brickinventoryapp.testing.FigurenRepository
@@ -119,6 +120,7 @@ class OfflineBearbeitungTest {
         .addConverterFactory(ApiJson.asConverterFactory("application/json".toMediaType()))
         .build().create(BrickApiService::class.java)
     private val repo = SetsRepository(api, ResponseCache { cacheDir }, ablage)
+    private val merkliste = MerklisteRepository(api, ResponseCache { cacheDir }, ablage)
     private val teile = TeileRepository(api, ResponseCache { cacheDir }, ablage)
     private val figuren = FigurenRepository(api, ResponseCache { cacheDir }, ablage)
     private val abgleich = Abgleich(ablage, ausgang, ServerSender(api, api, api))
@@ -214,10 +216,10 @@ class OfflineBearbeitungTest {
 
     @Test
     fun `offline gelöschte Teile, Figuren und Merkposten verschwinden sofort und gehen später mit Schlüssel raus`() = runBlocking {
-        teile.aktualisiereTeile(); figuren.aktualisiereFiguren(); repo.aktualisiereMerkliste()
+        teile.aktualisiereTeile(); figuren.aktualisiereFiguren(); merkliste.aktualisiereMerkliste()
         s.offline = true
         for (r in listOf(teile.deletePart("3001", 5, owner = 7), figuren.deleteMinifig("sw0001", owner = 7),
-                         repo.loescheMerkposten("20001-1", Zustand.NEU, 7)))
+                         merkliste.loescheMerkposten("20001-1", Zustand.NEU, 7)))
             assertTrue("Erwartet: offline gespeichert, kam $r", r is Ergebnis.Success && r.gepuffert)
         assertEquals("das gelöschte Teil verschwindet sofort", listOf("3002"),
             ablage.lies(Faecher.MANUELLE_TEILE)!!.liste.map { it.partNumber })

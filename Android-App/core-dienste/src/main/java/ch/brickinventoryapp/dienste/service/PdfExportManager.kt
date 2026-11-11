@@ -3,7 +3,8 @@ package ch.brickinventoryapp.dienste.service
 import android.content.Context
 import ch.brickinventoryapp.data.di.Anwendungsbereiche
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.data.repository.SetsRepository
+import ch.brickinventoryapp.data.repository.SetDateienRepository
+import ch.brickinventoryapp.model.data.model.PdfAuftragAnfrage
 import ch.brickinventoryapp.data.service.PdfAuftragsStrom
 import ch.brickinventoryapp.data.service.PdfFehlschlag
 import ch.brickinventoryapp.data.util.Teilelistentresor
@@ -41,7 +42,7 @@ internal sealed interface PdfExportState {
  */
 @Singleton
 internal class PdfExportManager @Inject constructor(
-    private val sets: SetsRepository,
+    private val dateien: SetDateienRepository,
     private val strom: PdfAuftragsStrom,
     private val teilelistentresor: Teilelistentresor,
     private val bereiche: Anwendungsbereiche,
@@ -53,27 +54,27 @@ internal class PdfExportManager @Inject constructor(
     private var auftrag: Job? = null
 
     /** Ein neuer Auftrag ersetzt einen laufenden; der Zustand steht sofort auf „startet“. */
-    fun beauftrage(rumpf: String) {
+    fun beauftrage(anfrage: PdfAuftragAnfrage) {
         auftrag?.cancel()
         _state.value = PdfExportState.Running(PdfFortschritt(PdfSchritt.STARTET))
-        auftrag = bereiche.anwendung.launch(bereiche.io) { fuehreAus(rumpf) }
+        auftrag = bereiche.anwendung.launch(bereiche.io) { fuehreAus(anfrage) }
     }
 
     /** Fünf Versuche mit wachsender Pause: Das fertige PDF liegt manchmal erst kurz nach der Meldung bereit. */
     private suspend fun ladePdf(jobId: String): Ergebnis<ByteArray> {
-        var ergebnis: Ergebnis<ByteArray> = sets.downloadPdf(jobId)
+        var ergebnis: Ergebnis<ByteArray> = dateien.downloadPdf(jobId)
         var pause = 2000L
         repeat(4) {
             if (ergebnis is Ergebnis.Success) return ergebnis
             delay(pause); pause = minOf(pause * 2, 30_000L)
-            ergebnis = sets.downloadPdf(jobId)
+            ergebnis = dateien.downloadPdf(jobId)
         }
         return ergebnis
     }
 
-    suspend fun fuehreAus(rumpf: String) {
+    suspend fun fuehreAus(anfrage: PdfAuftragAnfrage) {
         fangeAusserAbbruch {
-            val jobId = when (val r = sets.startPdfJob(rumpf)) {
+            val jobId = when (val r = dateien.startPdfJob(anfrage)) {
                 is Ergebnis.Success -> r.data
                 is Ergebnis.Error -> { scheitere(PdfFehlschlag.Abruf(r)); return }
             }
@@ -146,7 +147,7 @@ internal class PdfExportManager @Inject constructor(
         var zuletzt: Ergebnis.Error = Ergebnis.Error.Zeitueberschreitung
         while (System.currentTimeMillis() < bis) {
             delay(3000)
-            when (val r = sets.getPdfJobStatus(jobId)) {
+            when (val r = dateien.getPdfJobStatus(jobId)) {
                 is Ergebnis.Success -> { fehler = 0; wendeAn(r.data, lauf)?.let { return it } }
                 is Ergebnis.Error -> { zuletzt = r; if (++fehler >= 10) return Ausgang(PdfFehlschlag.Abruf(r)) }
             }

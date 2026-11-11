@@ -1,11 +1,12 @@
 package ch.brickinventoryapp.teile.ui
 
+import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.model.data.model.BestandTeil
 import ch.brickinventoryapp.model.data.model.Minifig
 import ch.brickinventoryapp.model.data.model.Part
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.data.repository.SetsRepository
+import ch.brickinventoryapp.data.repository.SetKatalogRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.teile.ui.screens.comparePartNumbers
 import ch.brickinventoryapp.teile.ui.screens.plColorCollator
@@ -28,18 +29,18 @@ internal interface TeilelistenModul {
  * TeilelisteViewModel; hier stehen nur die Abläufe gegen die Repositories.
  */
 internal class Teileliste @Inject constructor(
-    private val sets: SetsRepository,
+    private val katalog: SetKatalogRepository,
     private val teileRepo: TeileRepository,
 ) : TeilelistenQuelle {
     /** Name und Zeilen eines Sets; gleiche Teile (Rebrickable-Nummer + Farbe) zusammengefasst. */
     override suspend fun loeseSetAuf(setNumber: String, serverUrl: String): Pair<String, List<PlPart>> {
         return fangeAusserAbbruch {
             // Die CSV-Endpunkte hängen nicht am Konto und gehen für jedes Set.
-            val partsResult = sets.getSetPartsList(setNumber)
-            val figsResult  = sets.getSetMinifigsList(setNumber)
+            val partsResult = katalog.getSetPartsList(setNumber)
+            val figsResult  = katalog.getSetMinifigsList(setNumber)
             // Der Name kommt aus dem Katalog (/sets/info), nicht aus dem eigenen
             // Bestand: In die Teileliste trägt man gerade Sets ein, die man nicht hat.
-            val setName = (sets.getSetInfo(setNumber) as? Ergebnis.Success)
+            val setName = (katalog.getSetInfo(setNumber) as? Ergebnis.Success)
                 ?.data?.name?.takeIf { it.isNotBlank() } ?: setNumber
             // Zusammengefasst wird nach der Rebrickable-Nummer, weil der Bestand
             // (mitBestand) danach gefragt wird. Mehrere Rebrickable-Teile teilen sich
@@ -123,8 +124,8 @@ internal class Teileliste @Inject constructor(
         // Export da und taugt fuer den Abgleich nicht.
         val anfrage = teile.map { BestandTeil(partNumber = it.partNumber, colorId = it.colorId) }
         // Das Blickfeld kommt aus dieser Ansicht, nicht aus dem Kontofilter des
-        // Teile-Reiters. `null` heisst „alle Konten", "own" nur das eigene.
-        val antwort = teileRepo.getOwnedParts(anfrage, if (mitUnterkonten) null else "own")
+        // Teile-Reiters. `null` heisst „alle Konten“.
+        val antwort = teileRepo.getOwnedParts(anfrage, if (mitUnterkonten) null else Kontoauswahl.Eigene)
         val bestand = (antwort as? Ergebnis.Success)?.data?.takeIf { it.success }?.bestand ?: return null
         return teile.map { p ->
             val eintrag = bestand["${p.partNumber}|${p.colorId}"]

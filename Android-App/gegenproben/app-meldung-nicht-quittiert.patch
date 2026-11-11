@@ -1,0 +1,17 @@
+Gegenprobe: Die Snackbar quittiert ihre Meldung nicht, die nächste rückt nie nach
+Modul: core-zustand
+Test: ch.brickinventoryapp.zustand.AppViewModelTest
+Rot: die Snackbar zeigt den Kanal
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AppViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AppViewModel.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AppViewModel.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AppViewModel.kt
+@@ -38,7 +38,7 @@
+ 
+     /** Offline gespeicherte Änderungen, die noch zum Server müssen — für die Leiste im Gerüst. */
+     val offeneAenderungen: StateFlow<Int> = ausgangsmelder.offene
+-    fun clearSnackbar() { meldungen.quittiere() }
++    fun clearSnackbar() = Unit
+ 
+     /** Mit Startpasswort zeigt MainActivity statt der App die Maske zum Ersetzen. */
+     val startpasswortNoetig: StateFlow<Boolean> = passwortPflicht.noetig

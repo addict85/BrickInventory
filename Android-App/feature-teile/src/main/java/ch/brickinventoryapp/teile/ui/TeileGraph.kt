@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.teile.ui
 
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -8,6 +10,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -70,9 +73,10 @@ fun NavGraphBuilder.teileGraph(navigation: TeileNavigation) {
 
 /** Teile: Reiter mit Liste und Detail daneben. */
 private fun NavGraphBuilder.teileZiel(navigation: TeileNavigation) {
-    val partsGridState = navigation.rollen.teile
     composable<TeileZiel.Parts> {
         val vm = navigation.app
+        // Ein Zustand je Besuch; die Stelle hält allein der ScrollMemory (Keeper unten).
+        val partsGridState = remember { LazyGridState() }
         val teileVm: TeileViewModel = hiltViewModel()
         val state by teileVm.state.collectAsStateWithLifecycle()
         val partsState by teileVm.partsState.collectAsStateWithLifecycle()
@@ -119,9 +123,9 @@ private fun NavGraphBuilder.teileZiel(navigation: TeileNavigation) {
 
 /** Minifiguren, wie die Teile mit Detail daneben. */
 private fun NavGraphBuilder.figurenZiel(navigation: TeileNavigation) {
-    val minifigsGridState = navigation.rollen.minifiguren
     composable<TeileZiel.Minifigs> {
         val vm = navigation.app
+        val minifigsGridState = remember { LazyGridState() }
         val teileVm: TeileViewModel = hiltViewModel()
         val state by teileVm.state.collectAsStateWithLifecycle()
         val partsState by teileVm.partsState.collectAsStateWithLifecycle()
@@ -190,6 +194,9 @@ private fun NavGraphBuilder.teilelistenZiel(navigation: TeileNavigation) {
         val state by vm.state.collectAsStateWithLifecycle()
         val blick by vm.blickfeld.collectAsStateWithLifecycle()
         val scan = navigation.teilelistenScan(eintrag)
+        // Die Liste lebt im ViewModel des Ziels und ist bei der Rückkehr vom Scanner schon da.
+        val teilelistenState = remember { LazyListState() }
+        ScrollPositionKeeper(TEILELISTE_ROLLSCHLUESSEL, teilelistenState, bereit = true, speicher = vm.scrollMemory)
         navigation.Reiter(stringResource(R.string.nav_partslist)) {
             PartsListRoute(
                 serverUrl = state.serverUrl,
@@ -203,7 +210,7 @@ private fun NavGraphBuilder.teilelistenZiel(navigation: TeileNavigation) {
                 hatUnterkonten = blick.householdMembers.size > 1,
                 barcodeSetNumber = scan.setNumber,
                 onBarcodeConsumed = scan.uebernommen,
-                listState = navigation.rollen.teileliste
+                listState = teilelistenState
             )
         }
     }
@@ -272,3 +279,6 @@ fun TeileListeUndDetailRoute(
         if (!nebeneinander) SetItemDetailDialog(setItem, lager, teileVm, imageLoader, serverUrl, oeffneSet)
     }
 }
+
+/** Schlüssel der Teileliste im ScrollMemory; sie ist kein Reiter der unteren Leiste. */
+private const val TEILELISTE_ROLLSCHLUESSEL = "partslist"

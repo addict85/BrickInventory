@@ -19,6 +19,7 @@ dependencies {
     implementation(project(":core-sicherheit"))
     implementation(project(":core-ui"))
     implementation(project(":core-zustand"))
+    implementation(project(":core-sitzung"))
     implementation(project(":core-ressourcen"))
     implementation(libs.bundles.camera)
     implementation(libs.mlkit.barcode)

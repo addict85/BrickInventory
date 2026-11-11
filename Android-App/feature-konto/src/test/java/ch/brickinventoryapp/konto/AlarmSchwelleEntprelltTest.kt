@@ -1,12 +1,11 @@
 package ch.brickinventoryapp.konto
 
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.testing.TeileRepository
 import ch.brickinventoryapp.testing.VerwaltungRepository
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
@@ -63,10 +62,10 @@ class AlarmSchwelleEntprelltTest {
     @Test
     fun `getippte Schwelle speichert nach der Ruhezeit einmal, die letzte`() {
         val vm = t.merke(EinstellungenViewModel(t.sitzung, t.filter(), t.hinweise, t.abgleich, KontoRepository(t.api, t.cache),
-            VerwaltungRepository(t.api, t.cache), SetsRepository(t.api, t.cache),
+            VerwaltungRepository(t.api, t.cache), t.alarme(),
             TeileRepository(t.api, t.cache), keinLeser))
-        vm.setzeAlarmSchwelle("75192-1", Zustand.NEU, "unter", "4")
-        vm.setzeAlarmSchwelle("75192-1", Zustand.NEU, "unter", "449,90")
+        vm.setzeAlarmSchwelle("75192-1", Zustand.NEU, Alarmrichtung.UNTER, "4")
+        vm.setzeAlarmSchwelle("75192-1", Zustand.NEU, Alarmrichtung.UNTER, "449,90")
         uhr.advanceTimeBy(500)
         assertTrue("Vor der Ruhezeit nichts gesendet", pfade.anfragenAn("PUT /api/v1/sets/75192-1/alert").isEmpty())
         uhr.advanceTimeBy(500)

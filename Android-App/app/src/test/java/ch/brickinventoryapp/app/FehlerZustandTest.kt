@@ -7,7 +7,6 @@ import ch.brickinventoryapp.testing.GutscheineRepository
 import ch.brickinventoryapp.testing.HaushaltRepository
 import ch.brickinventoryapp.testing.KatalogRepository
 import ch.brickinventoryapp.testing.ResponseCache
-import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.testing.TeileRepository
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
@@ -16,7 +15,6 @@ import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.GutscheineRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.model.ui.Fehlerklasse
@@ -93,7 +91,7 @@ class FehlerZustandTest {
 
     @Test
     fun `die Merkliste meldet den Fehler und vergisst ihn beim Neuladen`() {
-        val vm = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, SetsRepository(t.api, t.cache), t.kontosicht,
+        val vm = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, t.merkliste(), t.alarme(), t.kontosicht,
             KatalogRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), SavedStateHandle()))
         vm.ladeMerkliste()
         assertTrue("Fehler", vm.merklisteState.value.fehler != null)
@@ -134,7 +132,7 @@ class FehlerZustandTest {
     @Test
     fun `das Set-Detail meldet den Fehler statt ewig zu laden`() {
         val leser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null }
-        val vm = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(),
+        val vm = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(), t.setKatalog(), t.alarme(), t.setDateien(),
             FinanzenRepository(t.api, t.cache), HaushaltRepository(t.api, t.cache), leser,
             SavedStateHandle(mapOf("setNumber" to "75192-1"))))
         vm.loadSetDetail("75192-1")

@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.sammlung.ui
 
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -13,9 +14,7 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
-import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.Scannerherkunft
-import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.sammlung.ui.screens.AcquisitionManagementRoute
 import ch.brickinventoryapp.sammlung.ui.screens.BarcodeScannerScreen
@@ -68,29 +67,9 @@ fun NavGraphBuilder.sammlungGraph(navigation: SammlungNavigation) {
     }
 }
 
-/**
- * Der Merkposten zu [setNumber] — für Bereiche, die die Merkliste nicht kennen
- * (Katalog). Das ViewModel hängt am Ziel, das fragt.
- */
-@Composable
-fun gemerkterPosten(setNumber: String): MerkpostenAnsicht? {
-    val merkliste: MerklisteViewModel = hiltViewModel()
-    val liste by merkliste.merklisteState.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) { merkliste.ladeMerkliste() }
-    return liste.merkposten.firstOrNull { it.setNumber == setNumber }
-}
-
-/** Merkposten und Preisalarm in einem Griff; die Regel steht im MerklisteViewModel. */
-@Composable
-fun merkpostenMitAlarm(): (String, Zustand, String, String, Int?) -> Unit {
-    val merkliste: MerklisteViewModel = hiltViewModel()
-    return merkliste::merkpostenMitAlarm
-}
-
 /** Die Galerie; auf breiten Fenstern steht das Set-Detail daneben ([setDetailZiel]). */
 private fun NavGraphBuilder.galerieZiel(navigation: SammlungNavigation) {
     val navController = navigation.navController
-    val galleryGridState = navigation.rollen.galerie
     composable<SammlungZiel.Gallery> { eintrag ->
         val vm = navigation.app
         val galerieVm: GalerieViewModel = hiltViewModel()
@@ -99,10 +78,19 @@ private fun NavGraphBuilder.galerieZiel(navigation: SammlungNavigation) {
         val erfassung: ErfassungViewModel = hiltViewModel()
         Erfassungsrahmen(eintrag, erfassung, navigation.bilder) { navController.navigate(SammlungZiel.SetDetail(it)) }
         LaunchedEffect(state.serverUrl) { galerieVm.ladeWennLeer() }
-        // Rollposition ausdrücklich wiederherstellen — der hochgezogene Zustand allein
-        // landet verschoben.
+        // Ein Zustand je Besuch; die Stelle hält allein der ScrollMemory.
+        val galleryGridState = remember { LazyGridState() }
         ScrollPositionKeeper(
             SammlungZiel.Gallery.rollSchluessel, galleryGridState, galerie.sets.isNotEmpty(), vm.scrollMemory)
+        // Das Set-Detail gibt ein gelöschtes Set als Ergebnis an diesen Eintrag zurück;
+        // die Galerie merkt es mit „Rückgängig“ vor. Kein Zugriff auf ihr ViewModel von aussen.
+        val zuLoeschen by eintrag.savedStateHandle.getStateFlow<ArrayList<String>?>(LOESCHEN_VORMERKEN, null)
+            .collectAsStateWithLifecycle()
+        LaunchedEffect(zuLoeschen) {
+            val (sn, name) = zuLoeschen ?: return@LaunchedEffect
+            galerieVm.loeschenVormerken(sn, name)
+            eintrag.savedStateHandle[LOESCHEN_VORMERKEN] = null
+        }
 
         GalerieRueckgaengigRoute(galerieVm, navigation.snackbar)
         val ziel = this
@@ -128,18 +116,14 @@ private fun NavGraphBuilder.setDetailZiel(navigation: SammlungNavigation) {
         val vm = navigation.app
         val state by vm.state.collectAsStateWithLifecycle()
         val setNumber = backStack.toRoute<SammlungZiel.SetDetail>().setNumber
-        // Die Galerie liegt als Startziel immer darunter; ihre geladene
-        // Kachel zeigt das Set sofort, bis das Detail da ist.
+        // Liegt die Galerie darunter (Startziel), nimmt sie ein gelöschtes Set als Ergebnis
+        // entgegen und bietet „Rückgängig“ an.
         val galerieEintrag = remember(backStack) {
             runCatching { navController.getBackStackEntry<SammlungZiel.Gallery>() }.getOrNull()
         }
-        val galerieUnten = galerieEintrag?.let { hiltViewModel<GalerieViewModel>(it) }
-        val vorschau = galerieUnten?.let { g ->
-            val galerie by g.galleryState.collectAsStateWithLifecycle()
-            galerie.sets.find { it.setNumber == setNumber }
-        }
-        val vorschauName = vorschau?.name
         val detailVm: SetDetailViewModel = hiltViewModel()
+        // Die Kachel aus der Ablage zeigt das Set sofort, bis das Detail da ist.
+        val vorschau by detailVm.vorschau.collectAsStateWithLifecycle()
         val detail: @Composable () -> Unit = {
         SetDetailRoute(
             setNumber = setNumber,
@@ -151,11 +135,12 @@ private fun NavGraphBuilder.setDetailZiel(navigation: SammlungNavigation) {
             // Zurück in die Galerie, die das Set mit „Rückgängig“ vormerkt; ohne
             // Galerie darunter (Einstieg von aussen) wird gleich gelöscht.
             onDelete = { sn ->
-                val name = detailVm.setDetailState.value.setDetail?.name ?: vorschauName ?: sn
-                if (galerieUnten != null) galerieUnten.loeschenVormerken(sn, name) else detailVm.deleteSet(sn)
+                val name = detailVm.setDetailState.value.setDetail?.name ?: vorschau?.name ?: sn
+                if (galerieEintrag != null) galerieEintrag.savedStateHandle[LOESCHEN_VORMERKEN] = arrayListOf(sn, name)
+                else detailVm.deleteSet(sn)
                 navController.popBackStack()
             },
-            rueckgaengigMoeglich = galerieUnten != null,
+            rueckgaengigMoeglich = galerieEintrag != null,
             onNavigateToAcqMgmt = { type, id, colorId, title ->
                 navController.navigate(SammlungZiel.AcquisitionManagement(type, id, colorId, title))
             },
@@ -166,8 +151,8 @@ private fun NavGraphBuilder.setDetailZiel(navigation: SammlungNavigation) {
         // anderes Set ersetzt dieses Detail, statt sich darüber zu stapeln. Ohne
         // gemeinsames Bild: Kachel und Detail sind dann beide zu sehen.
         BoxWithConstraints {
-            if (galerieEintrag != null && galerieUnten != null && listeUndDetail(maxWidth.value))
-                GalerieNebenDetailRoute(navigation, backStack, galerieEintrag, galerieUnten, setNumber, detail)
+            if (galerieEintrag != null && listeUndDetail(maxWidth.value))
+                GalerieNebenDetailRoute(navigation, backStack, galerieEintrag, setNumber, detail)
             else MitZiel(this@composable) { detail() }
         }
     }
@@ -179,11 +164,17 @@ private fun GalerieNebenDetailRoute(
     navigation: SammlungNavigation,
     eintrag: NavBackStackEntry,
     galerieEintrag: NavBackStackEntry,
-    galerie: GalerieViewModel,
     setNumber: String,
     detail: @Composable () -> Unit,
 ) {
     val navController = navigation.navController
+    // Die Liste links ist die Galerie selbst, darum ihr ViewModel; die Rollstelle teilt
+    // sie mit dem Galerie-Ziel über den ScrollMemory.
+    val galerie: GalerieViewModel = hiltViewModel(galerieEintrag)
+    val galerieZustand by galerie.galleryState.collectAsStateWithLifecycle()
+    val gridState = remember { LazyGridState() }
+    ScrollPositionKeeper(SammlungZiel.Gallery.rollSchluessel, gridState, galerieZustand.sets.isNotEmpty(),
+        navigation.app.scrollMemory)
     // Die Erfassung der Galerie; den Scan gibt der Scanner diesem Ziel zurück.
     val erfassung: ErfassungViewModel = hiltViewModel(galerieEintrag)
     Erfassungsrahmen(eintrag, erfassung, navigation.bilder) { navController.navigate(SammlungZiel.SetDetail(it)) }
@@ -201,7 +192,7 @@ private fun GalerieNebenDetailRoute(
                                 popUpTo<SammlungZiel.SetDetail> { inclusive = true }
                             }
                         },
-                        gridState = navigation.rollen.galerie,
+                        gridState = gridState,
                     )
                 }
             },
@@ -275,3 +266,6 @@ private fun NavGraphBuilder.scannerZiel(navigation: SammlungNavigation) {
         )
     }
 }
+
+/** Schlüssel des Löschergebnisses, das das Set-Detail an die Galerie zurückgibt: Setnummer und Name. */
+private const val LOESCHEN_VORMERKEN = "loeschenVormerken"

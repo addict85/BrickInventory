@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
@@ -336,7 +337,7 @@ internal fun LazyListScope.setDetailAlarmSection(
     setNumber: String,
     alarme: List<PreisalarmAnsicht>,
     currency: Waehrung,
-    onSetze: (setNumber: String, richtung: String, roh: String, zustand: Zustand) -> Unit,
+    onSetze: (setNumber: String, richtung: Alarmrichtung, roh: String, zustand: Zustand) -> Unit,
     /** Aus, wo die Liste selbst schon einen Rand hat (Merkposten-Detail). */
     aussenAbstand: Boolean = true,
 ) {
@@ -364,7 +365,7 @@ internal fun LazyListScope.setDetailAlarmSection(
             // oder gerade gespeichert), soll das Feld ihn zeigen statt den
             // alten Text zu behalten.
             var richtung by rememberSaveable(alarm?.richtung) {
-                mutableStateOf(alarm?.richtung ?: "unter")
+                mutableStateOf(alarm?.richtung ?: Alarmrichtung.UNTER)
             }
             var schwelle by rememberSaveable(alarm?.schwelle) {
                 mutableStateOf(alarm?.let { if (it.schwelle > 0) fmtEingabe(it.schwelle) else "" } ?: "")
@@ -374,8 +375,8 @@ internal fun LazyListScope.setDetailAlarmSection(
             // Aufklappen lesbar. Die Richtung geht nur mit, wenn eine Schwelle dasteht — sonst
             // liefe der Aufruf auf ein Löschen hinaus.
             SegmentWahl(
-                optionen = listOf("unter" to stringResource(R.string.detail_alert_chip_below),
-                                  "ueber" to stringResource(R.string.detail_alert_chip_above)),
+                optionen = listOf(Alarmrichtung.UNTER to stringResource(R.string.detail_alert_chip_below),
+                                  Alarmrichtung.UEBER to stringResource(R.string.detail_alert_chip_above)),
                 gewaehlt = richtung,
                 onWahl = { neu -> richtung = neu
                     if (schwelle.isNotBlank()) onSetze(setNumber, neu, schwelle, zustand) },
@@ -397,7 +398,7 @@ internal fun LazyListScope.setDetailAlarmSection(
                         // Der Merker sagt, ob schon gemeldet wurde — sonst fragt man sich, warum keine Mail mehr kommt.
                         else stringResource(
                             R.string.detail_alert_saved,
-                            stringResource(if (alarm.richtung == "ueber") R.string.detail_alert_above else R.string.detail_alert_below),
+                            stringResource(if (alarm.richtung == Alarmrichtung.UEBER) R.string.detail_alert_above else R.string.detail_alert_below),
                             fmtMoney(alarm.schwelle, currency),
                             stringResource(if (alarm.ausgeloest) R.string.detail_alert_fired else R.string.detail_alert_armed),
                         )

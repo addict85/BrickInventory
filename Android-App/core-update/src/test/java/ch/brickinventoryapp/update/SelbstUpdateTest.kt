@@ -115,9 +115,10 @@ class SelbstUpdateTest {
     fun `die Pruefung beim Start ist still`() {
         // Beim Start pruefen, nie von allein laden: Laden ist eine Entscheidung des Nutzers.
         val nav = quelle("app/AppNavigation.kt")
-        // Der Start fragt über pruefeBeimStart(), das nur bei gesetztem Schalter still prüft.
+        // Der Start fragt über pruefeBeimStart(), das nur bei gesetztem Schalter still prüft; dass
+        // die Anmeldung es auslöst, prüft UpdateViewModelTest am ausgeführten ViewModel.
         val vm = Quellen.funktion(Quellen.ohneKommentare(Quellen.lies("konto/ui/viewmodel/UpdateViewModel.kt")), "fun pruefeBeimStart(")
-        assert(nav.contains("selbstUpdate.pruefeBeimStart()") && vm.contains("pruefeAufUpdate(still = true)")) {
+        assert(vm.contains("pruefeAufUpdate(still = true)")) {
             "Beim Start wird nicht (mehr) still nach einem Update gesehen"
         }
         // Und sie laedt nichts: ladeUpdate() hat genau einen Ausloeser, den Knopf.

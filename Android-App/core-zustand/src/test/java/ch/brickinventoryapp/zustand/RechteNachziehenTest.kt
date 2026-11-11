@@ -2,7 +2,7 @@ package ch.brickinventoryapp.zustand
 
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.zustand.ui.rechteNachziehen
+import ch.brickinventoryapp.sitzung.rechteNachziehen
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals

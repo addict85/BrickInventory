@@ -3,10 +3,10 @@ Modul: core-zustand
 Test: ch.brickinventoryapp.zustand.SitzungsDienstTest
 Rot: ein 401 vor dem Start geht nicht verloren
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/SitzungsDienst.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/SitzungsDienst.kt
+diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt
 index 9092168..bdca144 100644
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/SitzungsDienst.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/SitzungsDienst.kt
+--- a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt
++++ b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt
 @@ -22,6 +22,7 @@ import kotlinx.coroutines.delay
  import kotlinx.coroutines.flow.collectLatest
  import kotlinx.coroutines.flow.combine
@@ -23,4 +23,4 @@ index 9092168..bdca144 100644
 +            sessionExpired.abgelaufen.drop(1).filter { it }.collect {
                  sessionExpired.quittiere()
                  if (prefs.tokenJetzt().isNotBlank()) {
-                     meldungen.zeige(texte.text(R.string.vm_session_expired))
+                     meldungen.zeige(Meldung.Ressource(R.string.vm_session_expired))

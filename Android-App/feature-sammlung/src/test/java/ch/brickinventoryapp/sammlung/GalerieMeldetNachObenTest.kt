@@ -20,7 +20,7 @@ import ch.brickinventoryapp.sammlung.ui.screens.GalerieEreignisse
 import ch.brickinventoryapp.sammlung.ui.screens.GalerieZustand
 import ch.brickinventoryapp.sammlung.ui.screens.GalleryScreen
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.zustand.ui.AppUiState
+import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
 import ch.brickinventoryapp.zustand.ui.LagerUiState
 import org.junit.After

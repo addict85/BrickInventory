@@ -17,7 +17,7 @@ import ch.brickinventoryapp.data.Sprachablage
 import ch.brickinventoryapp.data.Tokenuebernahme
 import ch.brickinventoryapp.data.di.Anwendungsbereiche
 import ch.brickinventoryapp.zustand.ui.Ausgangsmelder
-import ch.brickinventoryapp.zustand.ui.SitzungsRepository
+import ch.brickinventoryapp.sitzung.SitzungsRepository
 import ch.brickinventoryapp.data.util.LanguageManager
 import ch.brickinventoryapp.netz.util.Protokoll
 import ch.brickinventoryapp.data.util.raeumeAlteTeilelisteAuf

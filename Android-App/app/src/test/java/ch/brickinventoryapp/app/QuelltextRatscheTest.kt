@@ -78,7 +78,7 @@ class QuelltextRatscheTest {
 
     @Test
     fun `Testfunktionen, die Quelltext lesen, werden weniger, nie mehr`() {
-        val FUNKTIONEN = 216
+        val FUNKTIONEN = 215
         val NUR_QUELLTEXT = 35
         val alle = Quellen.tests.walkTopDown().filter { it.isFile && it.name.endsWith("Test.kt") }
             .filter { it.name != "QuelltextRatscheTest.kt" }.toList()
@@ -460,7 +460,7 @@ class QuelltextRatscheTest {
         // alles, was aus ihm abgespalten wird; sonst sänke die Zahl beim Verschieben zum Schein.
         // Darin UPDATE_ORDNER: öffentlich, weil core-data und core-update ihn teilen.
         val GRENZE = 228
-        val andere = setOf("core-model", "core-ressourcen", "core-ui", "core-ui-bestand", "core-zustand", "core-testing")
+        val andere = setOf("core-model", "core-ressourcen", "core-ui", "core-ui-bestand", "core-zustand", "core-sitzung", "core-testing")
         val module = Quellen.module.filter { it.name.startsWith("core-") && it.name !in andere }
         assert("core-data" in module.map { it.name }) { "core-data nicht unter ${module.map { it.name }} — greift die Suche noch?" }
         ratsche("öffentliche Deklarationen in ${module.joinToString { it.name }}", GRENZE, oeffentlich(module, 100),
@@ -471,7 +471,7 @@ class QuelltextRatscheTest {
     fun `die oeffentliche Flaeche der Bereiche waechst nicht`() {
         // Ein Bereich zeigt der App Routen und Ziele; was nur er selbst braucht, ist internal.
         // Noch öffentlich ist vieles, weil Graphen und Oberflächentests in app liegen.
-        val GRENZE = 149
+        val GRENZE = 148
         val module = Quellen.module.filter { it.name.startsWith("feature-") }
         assert(module.size >= 7) { "Nur ${module.size} Bereiche — greift die Suche noch?" }
         ratsche("öffentliche Deklarationen der Bereiche", GRENZE, oeffentlich(module, 100),

@@ -1,0 +1,18 @@
+Gegenprobe: Ein gewähltes Konto geht mit falschem Wert in accounts=
+Modul: core-model
+Test: ch.brickinventoryapp.model.KontoauswahlTest
+Rot: jede gespeicherte Wahl wird wieder derselbe Wert
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Kontoauswahl.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Kontoauswahl.kt
+index d1a80d5..4fdc4b5 100644
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Kontoauswahl.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Kontoauswahl.kt
+@@ -18,7 +18,7 @@ sealed interface Kontoauswahl {
+     }
+ 
+     data class Konto(val id: Int) : Kontoauswahl {
+-        override val anfrage get() = id.toString()
++        override val anfrage get() = "konto$id"
+     }
+ 
+     companion object {

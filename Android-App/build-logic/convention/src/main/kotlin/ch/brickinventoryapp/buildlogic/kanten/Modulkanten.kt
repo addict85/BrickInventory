@@ -26,9 +26,11 @@ object Modulkanten {
         "core-ui" to setOf("core-model", "core-ressourcen"),
         // Nur Darstellung: Mit Daten oder Zustand würde es zum Umweg, auf dem sich Bereiche doch kennen.
         "core-ui-bestand" to setOf("core-model", "core-ressourcen", "core-ui"),
+        // Die Sitzung liegt unter dem Zustand: Sie kennt weder Filter noch ViewModels.
+        "core-sitzung" to setOf("core-model", "core-ressourcen", "core-netz", "core-data"),
         // Der Zustand liegt unter der Oberfläche: Bildschirme lesen ihn, er kennt kein Compose-Bauteil.
-        "core-zustand" to setOf("core-model", "core-ressourcen", "core-netz", "core-data", "core-sicherheit"),
-        "core-testing" to setOf("core-zustand", "core-data", "core-sicherheit", "core-offline"),
+        "core-zustand" to setOf("core-model", "core-ressourcen", "core-netz", "core-data", "core-sicherheit", "core-sitzung"),
+        "core-testing" to setOf("core-zustand", "core-sitzung", "core-data", "core-sicherheit", "core-offline"),
     )
 
     /** Die Verstösse unter [kanten], je einer als Satz; leer, wenn alle erlaubt sind. */

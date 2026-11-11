@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.zustand.ui.viewmodel
 
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.zustand.ui.abgeleitet
+import ch.brickinventoryapp.sitzung.abgeleitet
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.Darstellungsablage
-import ch.brickinventoryapp.zustand.ui.Sitzung
+import ch.brickinventoryapp.sitzung.Sitzung
 import ch.brickinventoryapp.zustand.ui.Widgetanstoss
 import ch.brickinventoryapp.data.util.LanguageManager
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch

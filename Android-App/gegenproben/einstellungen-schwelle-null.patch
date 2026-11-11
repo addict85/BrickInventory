@@ -4,13 +4,14 @@ Test: ch.brickinventoryapp.konto.EinstellungenViewModelTest
 Rot: eine Schwelle von null geht nicht hinaus
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt
+index ef2e72d..4ae75b8 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt
-@@ -161,7 +161,6 @@ class EinstellungenViewModel @Inject constructor(
+@@ -164,7 +164,6 @@ class EinstellungenViewModel @Inject constructor(
  
-     override fun aendereAlarmSchwelle(setNumber: String, condition: Zustand, richtung: String, schwelle: Double) {
+     override fun aendereAlarmSchwelle(setNumber: String, condition: Zustand, richtung: Alarmrichtung, schwelle: Double) {
          wartendeSchwellen.remove(setNumber to condition)?.cancel()
 -        if (schwelle <= 0.0) { meldungen.zeige(meldungen.text(R.string.alerts_bad_value)); return }
-         alarmSchleuse { sets.setPreisalarm(setNumber, richtung, schwelle, condition) }
+         alarmSchleuse { alarme.setPreisalarm(setNumber, richtung, schwelle, condition) }
      }
  

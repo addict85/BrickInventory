@@ -3,8 +3,8 @@ package ch.brickinventoryapp.app
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.zustand.ui.AppUiState
-import ch.brickinventoryapp.zustand.ui.Sitzung
+import ch.brickinventoryapp.sitzung.AppUiState
+import ch.brickinventoryapp.sitzung.Sitzung
 import ch.brickinventoryapp.model.ui.model.StartzustandAnsicht
 import org.junit.Assert.assertEquals
 import org.junit.Test

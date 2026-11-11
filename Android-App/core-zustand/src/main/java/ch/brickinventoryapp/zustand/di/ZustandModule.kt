@@ -13,20 +13,15 @@ import ch.brickinventoryapp.zustand.ui.viewmodel.AppDateiLeser
 import ch.brickinventoryapp.zustand.ui.viewmodel.AppTexte
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
-import ch.brickinventoryapp.zustand.ui.Abmeldevorgang
-import ch.brickinventoryapp.zustand.ui.Vorwaermung
+import ch.brickinventoryapp.sitzung.Abmeldevorgang
+import ch.brickinventoryapp.sitzung.Vorwaermung
+import ch.brickinventoryapp.sitzung.Filterquelle
 import ch.brickinventoryapp.zustand.ui.AusgangsBeobachter
 import ch.brickinventoryapp.zustand.ui.Ausgangsmelder
-import ch.brickinventoryapp.zustand.ui.AblageKontowerte
-import ch.brickinventoryapp.zustand.ui.Kontowerte
 import ch.brickinventoryapp.zustand.ui.Blickfeld
 import ch.brickinventoryapp.zustand.ui.BlickfeldDienst
 import ch.brickinventoryapp.model.ui.ScrollMemory
 import ch.brickinventoryapp.model.ui.ScrollSpeicher
-import ch.brickinventoryapp.zustand.ui.Sitzung
-import ch.brickinventoryapp.zustand.ui.SitzungsDienst
-import ch.brickinventoryapp.zustand.ui.SitzungsRepository
-import ch.brickinventoryapp.zustand.ui.SitzungsZustand
 import ch.brickinventoryapp.zustand.ui.viewmodel.AppMeldungen
 import ch.brickinventoryapp.zustand.ui.viewmodel.BereichsFilter
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
@@ -55,10 +50,9 @@ object ZustandModule {
     fun provideFilterAblage(a: ScopeFilterAblage): FilterAblage = a
 
     // Die ViewModels sehen nur Schnittstellen (M4); die Umsetzungen sind Singletons.
-    @Provides fun provideSitzung(s: SitzungsZustand): Sitzung = s
-    @Provides fun provideSitzungsRepository(d: SitzungsDienst): SitzungsRepository = d
     @Provides fun provideBlickfeld(b: BlickfeldDienst): Blickfeld = b
-    @Provides fun provideKontowerte(k: AblageKontowerte): Kontowerte = k
+    // Die Sitzung (core-sitzung) lädt nach der Anmeldung über diese Schritte des Blickfelds.
+    @Provides fun provideFilterquelle(b: BlickfeldDienst): Filterquelle = b
     @Provides fun provideAusgangsmelder(a: AusgangsBeobachter): Ausgangsmelder = a
     // Ein Merker für alle Reiter: Ein zweiter hätte die Stellen des ersten nicht.
     @Provides @Singleton fun provideScrollMemory(): ScrollMemory = ScrollSpeicher()

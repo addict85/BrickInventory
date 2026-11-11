@@ -23,8 +23,8 @@ import org.robolectric.RobolectricTestRunner
 
 /**
  * Hin- und Rückweg jeder Route mit Werten durch einen echten NavHost: Was ein Ziel
- * mitbringt, liest `toRoute()` im Ziel genau so zurück — auch Sonderzeichen,
- * Prozentzeichen in PDF-Adressen und die Vorgabe „keine Farbe“.
+ * mitbringt, liest `toRoute()` im Ziel genau so zurück — auch Sonderzeichen
+ * und die Vorgabe „keine Farbe“. PDF-Adressen reisen nicht in der Route (PdfAuswahl).
  *
  * Gegenprobe (gegenproben/route-feld-transient.patch, nur in der CI messbar):
  *   ManualItemDetail.title als @Transient → rot „Titel mit Sonderzeichen kommen unverändert an“
@@ -90,8 +90,6 @@ class RoutenRundwegTest {
             assertEquals("Teil „$t“", teil, hin(teil))
             val kauf = SammlungZiel.AcquisitionManagement(Postenart.FIG, "sw0001+", 0, t)
             assertEquals("Kauf „$t“", kauf, hin(kauf))
-            val pdf = FinanzZiel.PdfViewer("https://srv/a.pdf", t)
-            assertEquals("PDF „$t“", pdf, hin(pdf))
         }
     }
 
@@ -120,15 +118,11 @@ class RoutenRundwegTest {
     }
 
     @Test
-    fun `PDF-Adressen mit Prozentzeichen bleiben kodiert`() {
+    fun `der PDF-Betrachter bekommt nur seinen Schluessel`() {
+        // Adresse (samt Ticket) und Titel bleiben in der PdfAuswahl (PdfAuswahlTest).
         aufbauen()
-        for (url in listOf(
-            "https://srv/api/v1/anleitungen/Mein%20Plan%2B1.pdf",
-            "https://cdn.example/6/1/123456.pdf?ticket=a%2Fb+c&x=%25",
-            "https://srv/Bauanleitung Teil 2.pdf",
-        )) {
-            assertEquals(url, (hin(FinanzZiel.PdfViewer(url, "Anleitung")) as FinanzZiel.PdfViewer).url)
-        }
+        val pdf = FinanzZiel.PdfViewer("0f8e2c1a-7d3b-4c55-9a0e-1b2c3d4e5f60")
+        assertEquals(pdf, hin(pdf))
     }
 
     @Test

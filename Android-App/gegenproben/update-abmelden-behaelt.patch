@@ -6,12 +6,12 @@ Rot: beim Abmelden verfaellt der Zustand, Spaeter nur fuer diesen Lauf
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt
-@@ -64,7 +64,7 @@ class UpdateViewModel @Inject constructor(
+@@ -63,7 +63,7 @@
          viewModelScope.launch {
              anmeldestand.authTokenState.map { it.isNullOrBlank() }.distinctUntilChanged().drop(1)
                  .filter { abgemeldet -> abgemeldet }
 -                .collect { _state.value = UpdateUiState(startpruefung = updateStand.startpruefungAn()) }
 +                .collect { }
          }
-         // Die Installer-Sitzung antwortet an einen Empfänger, nicht hierher (util/AppUpdate.kt).
-         viewModelScope.launch {
+         // Mit jeder Anmeldung still nach einer neuen Fassung sehen (wenn der Schalter an ist):
+         // kein Ladebalken, keine Meldung ohne Netz. Hier, weil die Frage der ganzen App gilt.

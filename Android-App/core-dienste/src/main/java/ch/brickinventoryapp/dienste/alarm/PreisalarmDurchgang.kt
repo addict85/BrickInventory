@@ -12,7 +12,7 @@ import ch.brickinventoryapp.data.Alarmablage
 import ch.brickinventoryapp.data.Startziel
 import ch.brickinventoryapp.data.Zugangsdaten
 import ch.brickinventoryapp.model.data.model.Preisalarm
-import ch.brickinventoryapp.data.repository.SetsRepository
+import ch.brickinventoryapp.data.repository.AlarmRepository
 import ch.brickinventoryapp.ressourcen.R
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
@@ -27,7 +27,7 @@ interface PreisalarmRepository {
 /** Nachfragen, anzeigen, Marke setzen — mit den Ablagen aus dem Konstruktor statt aus einem EntryPoint. */
 internal class PreisalarmDurchgang @Inject constructor(
     @param:ApplicationContext private val context: Context,
-    private val sets: SetsRepository,
+    private val alarme: AlarmRepository,
     private val alarm: Alarmablage,
     private val zugang: Zugangsdaten,
     private val startziel: Startziel,
@@ -47,7 +47,7 @@ internal class PreisalarmDurchgang @Inject constructor(
         if (zugang.tokenJetzt().isBlank()) return true
 
         val marke = alarm.alarmMarke.first()
-        return when (val e = Alarmabholung.hole(marke) { seit -> sets.getPendingAlerts(seit) }) {
+        return when (val e = Alarmabholung.hole(marke) { seit -> alarme.getPendingAlerts(seit) }) {
             is Alarmabholung.Ergebnis.Fehlgeschlagen -> false
 
             is Alarmabholung.Ergebnis.Markiert -> {

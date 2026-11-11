@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.data.model.SetAggregate
@@ -52,7 +53,7 @@ class SetDetailViewModelTest {
 
     private val keinLeser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null }
 
-    private fun vm(setNumber: String = "75192-1") = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(),
+    private fun vm(setNumber: String = "75192-1") = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(), t.setKatalog(), t.alarme(), t.setDateien(),
         FinanzenRepository(t.api, t.cache), HaushaltRepository(t.api, t.cache), keinLeser,
         SavedStateHandle(mapOf("setNumber" to setNumber))))
 
@@ -150,7 +151,7 @@ class SetDetailViewModelTest {
         vm.ladeAlles()
         geladen(vm)
         val vorher = pfade.anfragenAn("GET /api/v1/sets/75192-1/alert").size
-        vm.setzePreisalarm("75192-1", "unter", "450", Zustand.NEU)
+        vm.setzePreisalarm("75192-1", Alarmrichtung.UNTER, "450", Zustand.NEU)
         uhr.advanceTimeBy(900)
         assertTrue("neu geladen", pfade.anfragenAn("GET /api/v1/sets/75192-1/alert").size > vorher)
         assertEquals(1, pfade.anfragenAn("PUT /api/v1/sets/75192-1/alert").size)

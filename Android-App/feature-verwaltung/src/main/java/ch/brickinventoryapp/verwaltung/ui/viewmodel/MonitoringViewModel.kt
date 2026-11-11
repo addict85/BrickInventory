@@ -17,6 +17,7 @@ import ch.brickinventoryapp.model.ui.model.ZeitplanAnsicht
 import ch.brickinventoryapp.model.ui.model.alsAnsicht
 import ch.brickinventoryapp.ressourcen.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -95,6 +96,19 @@ class MonitoringViewModel @Inject constructor(
 
     private val _hintergrund = MutableStateFlow(HintergrundUiState())
     val hintergrund = _hintergrund.asStateFlow()
+
+    /**
+     * Hält Aufträge und Hintergrundarbeiten aktuell, bis der Aufrufer endet (die Seite
+     * ist nicht mehr zu sehen) oder der Server das Verwalterrecht verneint; dann
+     * fragte jeder weitere Takt nur noch ein 403 ab.
+     */
+    suspend fun haltAktuell() {
+        while (!_state.value.zugriffEntzogen) {
+            ladeJobs()
+            ladeHintergrund()
+            delay(TAKT_MS)
+        }
+    }
 
     suspend fun ladeHintergrund() {
         _hintergrund.update { it.copy(laedt = true) }
@@ -324,3 +338,6 @@ class MonitoringViewModel @Inject constructor(
         return ok
     }
 }
+
+/** Abstand der Abfragen, solange das Monitoring zu sehen ist. */
+private const val TAKT_MS = 5_000L

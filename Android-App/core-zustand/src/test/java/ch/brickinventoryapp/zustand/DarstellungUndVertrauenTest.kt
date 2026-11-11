@@ -4,7 +4,7 @@ import ch.brickinventoryapp.model.ui.theme.Design
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.Darstellungsablage
 import ch.brickinventoryapp.data.Vertrauensablage
-import ch.brickinventoryapp.zustand.ui.Sitzung
+import ch.brickinventoryapp.sitzung.Sitzung
 import ch.brickinventoryapp.zustand.ui.viewmodel.DarstellungViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.VertrauenViewModel
 import ch.brickinventoryapp.sicherheit.ZertifikatUngeklaert
@@ -25,7 +25,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import ch.brickinventoryapp.testing.SpeicherSitzungsablage
-import ch.brickinventoryapp.zustand.ui.AblageKontowerte
+import ch.brickinventoryapp.sitzung.AblageKontowerte
 
 /**
  * DarstellungViewModel und VertrauenViewModel ausgeführt, mit Ablagen im Speicher

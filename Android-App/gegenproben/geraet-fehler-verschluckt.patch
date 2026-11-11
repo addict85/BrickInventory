@@ -6,14 +6,14 @@ Rot: ein Fehlschlag beim Einplanen wird gemeldet
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/GeraeteEinstellungenViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/GeraeteEinstellungenViewModel.kt
 --- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/GeraeteEinstellungenViewModel.kt
 +++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/GeraeteEinstellungenViewModel.kt
-@@ -49,8 +49,8 @@ class GeraeteEinstellungenViewModel @Inject constructor(
+@@ -49,8 +49,8 @@
          viewModelScope.launch {
              einstellungen.setzeAlarmMeldungen(an)
              val fehler = planer.einplanen(an) ?: return@launch
--            meldungen.zeige(texte.text(R.string.alert_schedule_failed,
--                "${fehler::class.java.simpleName}: ${fehler.message ?: "—"}"))
-+            texte.text(R.string.alert_schedule_failed,
-+                "${fehler::class.java.simpleName}: ${fehler.message ?: "—"}")
+-            meldungen.zeige(Meldung.Ressource(R.string.alert_schedule_failed,
+-                listOf("${fehler::class.java.simpleName}: ${fehler.message ?: "—"}")))
++            Meldung.Ressource(R.string.alert_schedule_failed,
++                listOf("${fehler::class.java.simpleName}: ${fehler.message ?: "—"}"))
          }
      }
  

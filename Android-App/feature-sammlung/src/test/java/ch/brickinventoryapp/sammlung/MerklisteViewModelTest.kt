@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.coroutines.runBlocking
@@ -57,7 +58,7 @@ class MerklisteViewModelTest {
     private lateinit var pfade: PfadServer
     private lateinit var t: TestDienste
 
-    private fun vm(gemerkt: SavedStateHandle = SavedStateHandle(), t: TestDienste = this.t) = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(), t.kontosicht,
+    private fun vm(gemerkt: SavedStateHandle = SavedStateHandle(), t: TestDienste = this.t) = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, t.merkliste(), t.alarme(), t.kontosicht,
         KatalogRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), gemerkt))
 
     @Before
@@ -158,8 +159,8 @@ class MerklisteViewModelTest {
         assertTrue("Detail geladen", !vm.merkpostenDetailState.value.laedt)
         val vorher = pfade.anfragenAn("GET /api/v1/sets/10294-1/alert").size
 
-        vm.setzePreisalarm("10294-1", "unter", "4", Zustand.NEU)
-        vm.setzePreisalarm("10294-1", "unter", "450", Zustand.NEU)
+        vm.setzePreisalarm("10294-1", Alarmrichtung.UNTER, "4", Zustand.NEU)
+        vm.setzePreisalarm("10294-1", Alarmrichtung.UNTER, "450", Zustand.NEU)
         uhr.advanceTimeBy(900)
         assertTrue("gespeichert und nachgeladen", pfade.anfragenAn("GET /api/v1/sets/10294-1/alert").size > vorher)
         assertEquals("Nur die letzte Eingabe wird gespeichert", 1, pfade.anfragenAn("PUT /api/v1/sets/10294-1/alert").size)
@@ -174,7 +175,7 @@ class MerklisteViewModelTest {
         assertTrue("Liste geladen", vm.merklisteState.value.merkposten.isNotEmpty())
         val abrufe = pfade.anfragenAn("GET /api/v1/wanted").size
 
-        runBlocking { ablage.wendeAn(Bearbeitung.MerkpostenLoeschen("10294-1", "N", 1)) }
+        runBlocking { ablage.wendeAn(Bearbeitung.MerkpostenLoeschen("10294-1", Zustand.NEU, 1)) }
         assertTrue("offline gelöscht", vm.merklisteState.value.merkposten.isEmpty())
         assertEquals("ohne neuen Abruf", abrufe, pfade.anfragenAn("GET /api/v1/wanted").size)
 

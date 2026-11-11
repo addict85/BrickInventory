@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.finanzen.ui.viewmodel
 
+import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.data.model.Fehlercode
 import androidx.lifecycle.ViewModel
@@ -426,7 +427,7 @@ class GutscheinViewModel @Inject constructor(
     fun oeffneGutscheinExport() = verlange(GutscheinSchritt.EXPORT, null)
     fun gutscheinPdfQuittieren() = _state.update { it.copy(pdfZiel = null) }
 
-    private fun melde(id: Int) { meldungen.zeige(texte.text(id)) }
+    private fun melde(id: Int) { meldungen.zeige(Meldung.Ressource(id)) }
 
     private enum class Guthabenabfrage { FERTIG, FEHLER, ABBRUCH }
 }

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.sitzung.*
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Erfassungswunsch

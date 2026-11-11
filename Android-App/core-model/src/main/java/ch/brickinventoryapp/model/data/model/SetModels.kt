@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.model.data.model
 
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Laufstatus
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
@@ -25,6 +26,37 @@ data class CsvImportStatus(
     val warn: Int? = null,
     val err: Int? = null,
     val error: String? = null     // set when success=false
+)
+
+/**
+ * Rumpf von POST /api/v1/sets/partslist-pdf: die Teileliste, aus der der Server das
+ * PDF setzt. Ein Typ statt fertigen JSON-Texts, damit der Vertrag ihn prüft.
+ */
+@Serializable
+data class PdfAuftragAnfrage(
+    val sets: List<PdfAuftragSet> = emptyList(),
+    val parts: List<PdfAuftragTeil> = emptyList(),
+)
+
+@Serializable
+data class PdfAuftragSet(
+    @SerialName("set_number") val setNumber: String,
+    val name: String? = null,
+)
+
+/** [imageUrl] ohne die eigene Serveradresse: Der Server lädt eigene Bilder von der Platte. */
+@Serializable
+data class PdfAuftragTeil(
+    @SerialName("part_number") val partNumber: String,
+    @SerialName("bl_part_number") val blPartNumber: String? = null,
+    @SerialName("part_name") val partName: String? = null,
+    @SerialName("color_name") val colorName: String? = null,
+    @SerialName("color_hex") val colorHex: String? = null,
+    @SerialName("color_id") val colorId: Int? = null,
+    val quantity: Int,
+    @SerialName("image_local") val imageLocal: String? = null,
+    @SerialName("image_url") val imageUrl: String? = null,
+    @SerialName("is_fig") val isFig: Boolean = false,
 )
 
 /** Antwort auf POST /api/v1/sets/partslist-pdf: der angenommene PDF-Auftrag. */
@@ -351,8 +383,7 @@ data class Preisalarm(
     @SerialName("set_number") val setNumber: String = "",
     /** Neu und gebraucht liegen oft um ein Vielfaches auseinander. */
     val condition: Zustand = Zustand.NEU,
-    /** "unter" oder "ueber". */
-    val richtung: String = "unter",
+    val richtung: Alarmrichtung = Alarmrichtung.UNTER,
     val schwelle: Double = 0.0,
     @SerialName("currency_code") val currencyCode: Waehrung = Waehrung.KEINE,
     /**
@@ -387,7 +418,7 @@ data class Preisalarm(
 
 @Serializable
 data class PreisalarmRequest(
-    val richtung: String,
+    val richtung: Alarmrichtung,
     val schwelle: Double,
     val condition: Zustand = Zustand.NEU,
 )
@@ -465,7 +496,7 @@ data class Merkposten(
 
 @Serializable
 data class MerkpostenAlarm(
-    val richtung: String = "unter",
+    val richtung: Alarmrichtung = Alarmrichtung.UNTER,
     val schwelle: Double = 0.0,
     val ausgeloest: Boolean = false,
 )

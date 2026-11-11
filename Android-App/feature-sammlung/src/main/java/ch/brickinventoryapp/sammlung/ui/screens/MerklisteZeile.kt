@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.text.style.TextOverflow
@@ -96,7 +97,7 @@ internal fun MerkpostenZeile(
                     verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
                 w.alarm?.let { a ->
                     InfoPlakette(
-                        stringResource(if (a.richtung == "ueber") R.string.wanted_alert_above else R.string.wanted_alert_below,
+                        stringResource(if (a.richtung == Alarmrichtung.UEBER) R.string.wanted_alert_above else R.string.wanted_alert_below,
                                        fmtMoney(a.schwelle, w.waehrung)),
                         icon = if (a.ausgeloest) Icons.Default.NotificationsActive else Icons.Default.Alarm,
                     )

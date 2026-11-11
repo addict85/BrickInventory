@@ -1,0 +1,20 @@
+Gegenprobe: Ein gesetzter Preisalarm geht nur an den Server, die Ablage bleibt alt
+Modul: core-data
+Test: ch.brickinventoryapp.data.AlarmUndVorratAblageTest
+Rot: ein gesetzter und ein geloeschter Alarm stehen sofort in der Ablage
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/AlarmRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/AlarmRepositoryImpl.kt
+index 4419ed6..d2e4d13 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/AlarmRepositoryImpl.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/AlarmRepositoryImpl.kt
+@@ -40,9 +40,7 @@ class AlarmRepositoryImpl @Inject constructor(
+ 
+     override suspend fun setPreisalarm(setNumber: String, richtung: Alarmrichtung, schwelle: Double,
+                                        condition: Zustand): Ergebnis<PreisalarmResponse> =
+-        ablage.nachgezogen({ r -> r.alert?.takeIf { r.success }?.let { Nachzug.AlarmGesetzt(it) } }) {
+-            sicherAufrufen { api.setPreisalarm(setNumber, PreisalarmRequest(richtung, schwelle, condition)) }
+-        }
++        sicherAufrufen { api.setPreisalarm(setNumber, PreisalarmRequest(richtung, schwelle, condition)) }
+ 
+     override suspend fun deletePreisalarm(setNumber: String, condition: Zustand): Ergebnis<PreisalarmResponse> =
+         ablage.nachgezogen({ r -> Nachzug.AlarmEntfernt(setNumber, condition).takeIf { r.success } }) {

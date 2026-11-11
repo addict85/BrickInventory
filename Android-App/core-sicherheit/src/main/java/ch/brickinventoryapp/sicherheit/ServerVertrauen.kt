@@ -361,7 +361,7 @@ fun anker(chain: Array<X509Certificate>, vertraut: Array<X509Certificate>): X509
  * Hat jemand den Fingerabdruck aus einer zweiten Quelle abgeschrieben (Webapp,
  * Zertifikatsanzeige des Browsers)?
  */
-const val FINGERABDRUCK_ABTIPPEN = 24
+internal const val FINGERABDRUCK_ABTIPPEN = 24
 
 fun bestaetigtFingerabdruck(eingabe: String?, fp: String): Boolean {
     val roh = eingabe?.trim().orEmpty()

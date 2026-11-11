@@ -3,9 +3,9 @@ Modul: core-zustand
 Test: ch.brickinventoryapp.zustand.DarstellungUndVertrauenTest
 Rot: der Zustand wird mit dem gemerkten Design geboren
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Kontowerte.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Kontowerte.kt
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Kontowerte.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Kontowerte.kt
+diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Kontowerte.kt b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Kontowerte.kt
+--- a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Kontowerte.kt
++++ b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Kontowerte.kt
 @@ -49,7 +49,7 @@
  ) : Kontowerte {
      override val waehrung: StateFlow<Waehrung> = ablage.currency.stateIn(bereich, SharingStarted.Eagerly, Waehrung.EUR)

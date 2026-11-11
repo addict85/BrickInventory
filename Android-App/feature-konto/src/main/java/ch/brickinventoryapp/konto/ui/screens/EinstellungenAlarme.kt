@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.konto.ui.screens
 
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Zustand
 import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
@@ -150,8 +151,8 @@ internal fun PreisalarmeCard(
                 val zahl = Alarmeingabe.zahl(wert)
                 // Die Richtung umschaltbar wie in der Web-App; gespeichert wird sofort.
                 SegmentWahl(
-                    optionen = listOf("unter" to stringResource(R.string.detail_alert_chip_below),
-                                      "ueber" to stringResource(R.string.detail_alert_chip_above)),
+                    optionen = listOf(Alarmrichtung.UNTER to stringResource(R.string.detail_alert_chip_below),
+                                      Alarmrichtung.UEBER to stringResource(R.string.detail_alert_chip_above)),
                     gewaehlt = a.richtung,
                     onWahl = { neu -> if (neu != a.richtung) aktionen.aendereAlarmSchwelle(a.setNumber, a.condition, neu, zahl ?: a.schwelle) },
                     modifier = Modifier.widthIn(max = BETRAG_BREITE),
@@ -163,7 +164,7 @@ internal fun PreisalarmeCard(
                         aktionen.setzeAlarmSchwelle(a.setNumber, a.condition, a.richtung, wert)
                     },
                     singleLine = true,
-                    label = { Text(stringResource(if (a.richtung == "unter") R.string.detail_alert_chip_below
+                    label = { Text(stringResource(if (a.richtung == Alarmrichtung.UNTER) R.string.detail_alert_chip_below
                                                   else R.string.detail_alert_chip_above)) },
                     // Vorangestellt wie jeder Betrag der App („CHF 750.00“).
                     prefix = { Text(a.currencyCode.code + "\u00A0") },
@@ -215,7 +216,7 @@ internal fun PreisalarmeCard(
 private fun AlarmAnlegen(aktionen: EinstellungenAktionen) {
     var nummer by rememberSaveable { mutableStateOf("") }
     var zustand by rememberSaveable { mutableStateOf(Zustand.NEU) }
-    var richtung by rememberSaveable { mutableStateOf("unter") }
+    var richtung by rememberSaveable { mutableStateOf(Alarmrichtung.UNTER) }
     var schwelle by rememberSaveable { mutableStateOf("") }
     HorizontalDivider()
     Text(stringResource(R.string.alerts_anlegen_titel), style = MaterialTheme.typography.titleSmall,
@@ -228,8 +229,8 @@ private fun AlarmAnlegen(aktionen: EinstellungenAktionen) {
     )
     Zustandszeile(zustand = zustand, onZustand = { zustand = it }, modifier = Modifier.widthIn(max = BETRAG_BREITE))
     SegmentWahl(
-        optionen = listOf("unter" to stringResource(R.string.detail_alert_chip_below),
-                          "ueber" to stringResource(R.string.detail_alert_chip_above)),
+        optionen = listOf(Alarmrichtung.UNTER to stringResource(R.string.detail_alert_chip_below),
+                          Alarmrichtung.UEBER to stringResource(R.string.detail_alert_chip_above)),
         gewaehlt = richtung, onWahl = { richtung = it }, modifier = Modifier.widthIn(max = BETRAG_BREITE),
     )
     OutlinedTextField(

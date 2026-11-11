@@ -3,7 +3,7 @@ package ch.brickinventoryapp.data
 import ch.brickinventoryapp.model.data.model.CsvImportStatus
 import ch.brickinventoryapp.model.data.model.GenericAdminResponse
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.data.repository.SetsRepository
+import ch.brickinventoryapp.data.repository.SetDateienRepository
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -26,7 +26,7 @@ interface CsvImportRepository {
 /** Über den SSE-Strom, mit der Statusabfrage als Rückfall. */
 class CsvImportBeobachter @Inject constructor(
     private val strom: CsvImportStrom,
-    private val sets: SetsRepository,
+    private val dateien: SetDateienRepository,
 ) : CsvImportRepository {
 
     override fun beobachte(): Flow<CsvImportStatus> = flow {
@@ -54,11 +54,11 @@ class CsvImportBeobachter @Inject constructor(
     }
 
     private suspend fun FlowCollector<CsvImportStatus>.frageAb() {
-        val stand = fangeAusserAbbruch { (sets.getCsvImportStatus() as? Ergebnis.Success)?.data }.getOrNull()
+        val stand = fangeAusserAbbruch { (dateien.getCsvImportStatus() as? Ergebnis.Success)?.data }.getOrNull()
         if (stand != null) emit(stand)
     }
 
-    override suspend fun abbrechen(): Ergebnis<GenericAdminResponse> = sets.cancelCsvImport()
+    override suspend fun abbrechen(): Ergebnis<GenericAdminResponse> = dateien.cancelCsvImport()
 
     private companion object {
         const val RUECKZUG_START_MS = 5_000L

@@ -12,7 +12,7 @@ import ch.brickinventoryapp.zustand.ui.LagerUiState
 import ch.brickinventoryapp.sammlung.ui.MerkpostenDetailUiState
 import ch.brickinventoryapp.sammlung.ui.MerklisteUiState
 import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
-import ch.brickinventoryapp.zustand.ui.AppUiState
+import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.sammlung.ui.viewmodel.MerklisteAktionen
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand

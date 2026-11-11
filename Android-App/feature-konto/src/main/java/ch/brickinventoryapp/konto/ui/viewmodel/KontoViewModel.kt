@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.konto.ui.viewmodel
 
+import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.data.model.Fehlercode
 import ch.brickinventoryapp.model.ui.model.alsAnsicht
@@ -16,8 +17,8 @@ import ch.brickinventoryapp.konto.ui.GeraeteRueckfrage
 import ch.brickinventoryapp.konto.ui.GeraeteUiState
 import ch.brickinventoryapp.model.data.model.ZweiterFaktorAnfrage
 import ch.brickinventoryapp.konto.ui.KontoUiState
-import ch.brickinventoryapp.zustand.ui.Sitzung
-import ch.brickinventoryapp.zustand.ui.SitzungsRepository
+import ch.brickinventoryapp.sitzung.Sitzung
+import ch.brickinventoryapp.sitzung.SitzungsRepository
 import ch.brickinventoryapp.konto.ui.ZweiterFaktorUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -139,7 +140,7 @@ class KontoViewModel @Inject constructor(
                 is Ergebnis.Success ->
                     if (r.data.success) {
                         sitzungsDienst.abmelden()
-                        meldungen.zeige(texte.text(R.string.konto_password_changed))
+                        meldungen.zeige(Meldung.Ressource(R.string.konto_password_changed))
                         _kontoState.value = KontoUiState()
                     } else {
                         _kontoState.update { it.copy(speichert = false,
@@ -210,7 +211,7 @@ class KontoViewModel @Inject constructor(
                 _geraeteState.update { it.copy(fehler = texte.text(R.string.tokens_self_unknown)) }
                 return
             }
-            if (liste.none { !it.aktuell }) { meldungen.zeige(texte.text(R.string.tokens_no_others)); return }
+            if (liste.none { !it.aktuell }) { meldungen.zeige(Meldung.Ressource(R.string.tokens_no_others)); return }
         }
         _geraeteState.update { it.copy(rueckfrage = GeraeteRueckfrage(tokenId), fehler = null) }
     }
@@ -228,7 +229,7 @@ class KontoViewModel @Inject constructor(
                 when (val r = konto.revokeToken(frage.tokenId, anfrage)) {
                     is Ergebnis.Success -> {
                         // deleted = 0: schon weg (anderes Gerät war schneller) — die Liste stimmt danach wieder.
-                        meldungen.zeige(texte.text(if (r.data.deleted > 0) R.string.tokens_revoked else R.string.tokens_already_gone))
+                        meldungen.zeige(Meldung.Ressource(if (r.data.deleted > 0) R.string.tokens_revoked else R.string.tokens_already_gone))
                         null
                     }
                     is Ergebnis.Error -> r
@@ -237,7 +238,7 @@ class KontoViewModel @Inject constructor(
                 when (val r = konto.andereBeenden(anfrage)) {
                     is Ergebnis.Success -> {
                         val weg = r.data.zugaenge
-                        meldungen.zeige(texte.menge(R.plurals.tokens_revoked_n, weg, weg))
+                        meldungen.zeige(Meldung.Menge(R.plurals.tokens_revoked_n, weg))
                         null
                     }
                     is Ergebnis.Error -> r
@@ -291,7 +292,7 @@ class KontoViewModel @Inject constructor(
             _zweiterFaktorState.update { it.copy(laedt = true, fehler = null) }
             when (val r = abruf()) {
                 is Ergebnis.Success -> {
-                    erfolgText?.let { meldungen.zeige(texte.text(it)) }
+                    erfolgText?.let { meldungen.zeige(Meldung.Ressource(it)) }
                     _zweiterFaktorState.update { danach(it, r.data).copy(laedt = false) }
                 }
                 is Ergebnis.Error -> _zweiterFaktorState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }

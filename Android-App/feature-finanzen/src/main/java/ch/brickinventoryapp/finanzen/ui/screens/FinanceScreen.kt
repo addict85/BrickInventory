@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.finanzen.ui.screens
 
+import ch.brickinventoryapp.sitzung.*
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
