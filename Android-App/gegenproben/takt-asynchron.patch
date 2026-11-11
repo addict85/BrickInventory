@@ -1,7 +1,7 @@
 Gegenprobe: PfadServer.imTakt stellt Abrufe wieder auf OkHttp-Fäden statt im aufrufenden Faden
 Modul: feature-teile
 Test: ch.brickinventoryapp.teile.TeileViewModelTest
-Rot: der Kontofilter der Teile reist mit, der einer anderen Ansicht nicht
+Rot: ein geaendertes Teil steht in der Ablage, ohne die Liste neu zu holen
 
 diff --git a/Android-App/core-testing/src/main/java/ch/brickinventoryapp/testing/TestApi.kt b/Android-App/core-testing/src/main/java/ch/brickinventoryapp/testing/TestApi.kt
 --- a/Android-App/core-testing/src/main/java/ch/brickinventoryapp/testing/TestApi.kt
