@@ -15,10 +15,10 @@ import { Abstriche } from '../infra/ergebnis';
 import { fuerSet } from '../katalog/preisvergleich';
 import { resolveIfExists } from '../katalog/bilder/images';
 import { toCsv, csvZeilenAusAnfrage, parseCsvDate } from '../infra/csvExport';
-import * as repo from './repository/merkliste';
 import { fetchPrice } from '../finanzen/financeCalc';
 import { setBekanntImKatalog } from '../katalog/bricklinkPreise';
 import { moeglicheSetNummer, mitVersion } from '../infra/setNummer';
+import { merklisteBereich } from './prozess';
 
 /** Jeder Zustand für sich: Kennt BrickLink einen nicht, kommt der andere
  * trotzdem, und ein fehlender Preis ist ein Strich, kein Fehler. */
@@ -76,7 +76,7 @@ export async function legeMerkpostenAn(
 ): Promise<{ merkposten: Merkposten | null; war_neu: boolean }> {
   const sn = sanitizeSetNumber(setNumber);
   const c  = await zustandOder(condition, userId);
-  const r = await repo.merkeSetVor(userId, sn, c, aufgenommenAm ?? null);
+  const r = await merklisteBereich().merkliste.merkeSetVor(userId, sn, c, aufgenommenAm ?? null);
   const liste = await merkpostenVon([userId], sn);
   return { merkposten: liste.find(w => w.condition === c) ?? null, war_neu: !!r?.war_neu };
 }
@@ -84,7 +84,7 @@ export async function legeMerkpostenAn(
 /** Kein Fehler, wenn es keinen gab — das Ziel ist erreicht. */
 export async function loescheMerkposten(userId: number, setNumber: string, condition: unknown): Promise<number> {
   const c = String(condition ?? 'N').toUpperCase();
-  const r = await repo.streicheVormerkung(userId, sanitizeSetNumber(setNumber), c);
+  const r = await merklisteBereich().merkliste.streicheVormerkung(userId, sanitizeSetNumber(setNumber), c);
   return r.changes ?? 0;
 }
 
@@ -96,7 +96,7 @@ export async function verschiebeMerkposten(
   const c  = String(condition ?? 'N').toUpperCase() === 'U' ? 'U' : 'N';
   if (vonId === zuId) return { verschoben: false, zusammengefuehrt: false };
 
-  const schon = await repo.istVorgemerkt(zuId, sn, c);
+  const schon = await merklisteBereich().merkliste.istVorgemerkt(zuId, sn, c);
 
   if (schon) {
     const weg = await loescheMerkposten(vonId, sn, c);
@@ -104,7 +104,7 @@ export async function verschiebeMerkposten(
     return { verschoben: weg > 0, zusammengefuehrt: true };
   }
 
-  const r = await repo.uebertrageVormerkung(zuId, vonId, sn, c);
+  const r = await merklisteBereich().merkliste.uebertrageVormerkung(zuId, vonId, sn, c);
   const verschoben = (r.changes ?? 0) > 0;
   // Den Alarm NUR mitnehmen, wenn der Merkposten wirklich gewandert ist.
   if (verschoben) {
@@ -131,7 +131,7 @@ export async function merkpostenVon(
   // Unbekannt heisst „beide", nicht „keine": Eine geleerte Liste sähe aus wie
   // eine leere Merkliste.
   const zustand = String(filter?.zustand ?? '').toUpperCase();
-  const rows = await repo.merklisteImBlickfeld(userIds, {
+  const rows = await merklisteBereich().merkliste.merklisteImBlickfeld(userIds, {
     nurSet: nurSet ? sanitizeSetNumber(nurSet) : null,
     suche: String(filter?.suche ?? '').trim() || null,
     zustand: zustand === 'N' || zustand === 'U' ? zustand : null,
@@ -183,7 +183,7 @@ export async function uebernimm(
   // verschwindet; `eingabe.condition` der, in dem das Set erfasst wird.
   const merkpostenZustand = await zustandOder(condition, besitzerId);
   // Übernommen wird ein Merkposten; ohne ihn wäre das ein zweiter Weg zum Erfassen.
-  if (!await repo.istVorgemerkt(besitzerId, sn, merkpostenZustand)) fachfehler('nicht_gefunden', 'nicht_gefunden');
+  if (!await merklisteBereich().merkliste.istVorgemerkt(besitzerId, sn, merkpostenZustand)) fachfehler('nicht_gefunden', 'nicht_gefunden');
   const zustand = eingabe.condition == null
     ? merkpostenZustand
     : await zustandOder(eingabe.condition, besitzerId);
@@ -205,7 +205,7 @@ export async function uebernimm(
 
 /** Nur Konto, Set, Zustand und Datum: Alles andere leitet die Ansicht ab. */
 export async function buildMerklisteCsv(uid: number): Promise<string> {
-  const rows = await repo.merklisteFuerExport(uid);
+  const rows = await merklisteBereich().merkliste.merklisteFuerExport(uid);
 
   return toCsv(['set_number', 'condition', 'created_at'], rows);
 }
