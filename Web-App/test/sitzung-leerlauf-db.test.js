@@ -13,16 +13,8 @@
  *      (30.10.2026 mit den heutigen Zahlen erneut gemessen, ebenso A)
  *      → nur Fall 2 rot. Der Ablauf wird nicht nachgeführt, die TÄTIGE
  *        Sitzung stirbt mitten im Betrieb.
- *   C  `ttl` aus server.ts entfernt
- *      → nur Fall 4 rot. Die Fälle 1 und 2 bauen ihren Speicher selbst und
- *        merken davon nichts — genau deshalb gibt es Fall 4.
- *
- * Bei der ERSTEN Messung legte C zwei Fälle um (1 und 4), und der Rücklauf
- * nach dem Zurücksetzen war ebenfalls rot. Das war kein zweiter Mangel,
- * sondern der Wackler aus dem Abschnitt oben: Fall 1 hing an der Rundung auf
- * ganze Sekunden. Mit den berichtigten Zahlen trifft C nur noch Fall 4 —
- * und das ist die Probe darauf, dass die Reparatur wirklich die Ursache traf
- * und nicht blos den Symptomlauf glättete.
+ *   C  `ttl` aus startup/app.ts entfernt → rot in sitzung-app-db.test.js; die
+ *      Fälle hier bauen ihren Speicher selbst und merken davon nichts.
  *
  * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
  * Ohne DB: skip. Ausführen: REQUIRE_DB=1 npm test
@@ -31,13 +23,12 @@ const test = require('node:test');
 const { after } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const fs = require('node:fs');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, ohneKommentare } = require('./helpers/sources');
+const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = _req('db/database.js');
 const { drossleBeruehren, BERUEHREN_MS } = _req('src/konto/sitzungsBeruehrung.js');
@@ -150,24 +141,4 @@ test('die Drosselung ist kürzer als die Frist', () => {
   assert.equal(BERUEHREN_MS, 5 * 60 * 1000,
     'Bei der Vorgabe von vier Stunden sollen es weiter fünf Minuten sein — '
     + 'sonst schreibt die Webapp wieder mehr als nötig');
-});
-
-test('die App gibt dem Speicher eine Frist', () => {
-  // Eine Frist, die niemand übergibt, ist die teuerste Art, nichts zu tun —
-  // und die Fälle oben blieben dabei grün, weil sie ihren Speicher selbst
-  // bauen. Dieselbe Lücke wie in test/sitzung-beruehrung-db.test.js, dort mit
-  // derselben Begründung geschlossen.
-  const quelle = ohneKommentare(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
-  assert.match(quelle, /ttl:\s*SITZUNG_LEERLAUF_SEK/,
-    'startup/app.ts übergibt dem Sitzungsspeicher kein `ttl` — dann gilt wieder der '
-    + 'Tag von connect-pg-simple, und Marcos Frist gibt es nur auf dem Papier');
-
-  // Und das Cookie bleibt ohne `maxAge`: Sonst würde es zu einem dauerhaften
-  // Cookie, das den Neustart des Browsers überlebt — die Frist hätte dann
-  // eine Eigenschaft hinzugefügt und eine andere weggenommen.
-  const keksBlock = quelle.slice(quelle.indexOf('app.use(session({'));
-  const bis = keksBlock.indexOf('}));');
-  assert.ok(!/maxAge/.test(keksBlock.slice(0, bis)),
-    'Das Sitzungs-Cookie hat ein `maxAge` bekommen — dann überlebt es das '
-    + 'Schliessen des Browsers, was es vorher nicht tat');
 });

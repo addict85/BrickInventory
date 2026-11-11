@@ -2,8 +2,8 @@
  * Eine Webapp-Sitzung endet nach der Höchstdauer, auch wenn sie benutzt wird.
  *
  * Gegenproben (am 28.10.2026 gemessen):
- *   A  `app.use(sitzungsHoechstdauer())` in server.ts entfernt → rot:
- *      „server.ts hängt die Höchstdauer hinter die Sitzung"
+ *   A  `app.use(sitzungsHoechstdauer())` in startup/app.ts entfernt → rot in
+ *      sitzung-app-db.test.js „nach der Höchstdauer ist niemand mehr angemeldet“
  *   B  in sitzungsHoechstdauer `s.destroy(...)` durch `next()` ersetzt → rot:
  *      „trotz Betrieb endet die Sitzung nach der Höchstdauer"
  *   C  `angemeldetAm` in establishSession nicht gesetzt → rot: „die Anmeldung
@@ -12,7 +12,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const fs = require('node:fs');
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
@@ -61,11 +60,4 @@ test('Höchstdauer der Webapp-Sitzung', async (t) => {
     assert.equal(await wer(), null, 'nach der Frist ist niemand mehr angemeldet');
     assert.equal(await wer(), null, 'und die Sitzung ist gelöscht, nicht nur übersprungen');
   });
-});
-
-test('die App hängt die Höchstdauer hinter die Sitzung', () => {
-  const quelle = fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8');
-  const sitzung = quelle.search(/app\.use\(\s*session\(/);
-  const frist = quelle.indexOf('app.use(sitzungsHoechstdauer())');
-  assert.ok(sitzung > 0 && frist > sitzung, 'die Middleware fehlt oder steht vor der Sitzung');
 });

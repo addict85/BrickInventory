@@ -613,15 +613,7 @@ test('Registrieren und Profil bleiben beim Benutzernamen-Muster', () => {
   // Spalten.
   assert.equal(USERNAME_RE.test('marco@example.com'), false);
   assert.ok(EMAIL_RE.test('marco@example.com'));
-
-  const src = require('./helpers/sources').anmeldeQuelle();
-  const register = src.slice(src.indexOf("router.post('/register'"));
-  assert.match(register, /USERNAME_RE\.test\(username\)/, 'Registrieren muss beim Benutzernamen-Muster bleiben');
-  assert.doesNotMatch(
-    register,
-    /isValidLoginIdentifier/,
-    'Beim Registrieren darf keine E-Mail als Benutzername durchgehen',
-  );
+  // Dass /register diese Regel anwendet, prüft passwort-regel-db.test.js.
 });
 
 test('beide Login-Wege prüfen gleich', async () => {

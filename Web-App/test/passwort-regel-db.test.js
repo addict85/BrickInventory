@@ -103,6 +103,13 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
     await db.run('DELETE FROM users WHERE username = $1', [`regel_vw_${process.pid}`]);
   });
 
+  // Die Anmeldung sucht in Name UND Adresse: Eine fremde Adresse als Name zöge deren Anmeldung an sich.
+  // Gegenprobe (11.11.2026 gemessen): /register lässt neben USERNAME_RE auch eine Adresse zu → rot.
+  await t.test('Registrieren nimmt keine Adresse als Benutzernamen', async () => {
+    assert.equal(await ruf(['POST', '/register', { username: `regel_${process.pid}@example.org`,
+      email: `regel_${process.pid}@example.org`, password: 'Brick-Sammlung-2026' }]), '/register 400 benutzername_ungueltig');
+  });
+
   // Gegenproben (02.11.2026 gemessen): in /change-password wieder
   // req.session?.username → rot (200 für den eigenen Namen); in
   // /users/:id/password wieder ohne Namen → rot (200 für den Namen des Ziels).

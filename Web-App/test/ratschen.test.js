@@ -283,8 +283,9 @@ function quelltextFaelle() {
   for (const name of fs.readdirSync(__dirname).filter(x => x.endsWith('.test.js'))) {
     const s = fs.readFileSync(path.join(__dirname, name), 'utf8');
     const vars = new Set();
-    for (const m of s.matchAll(/(?:const|let|var)\s+(\w+)\s*=\s*[^;\n]*(readFileSync|Quelle\(|serverOnly|serverAll|i18nAll|localeSource|ohneKommentare|Quelle\b)/g)) vars.add(m[1]);
-    for (const m of s.matchAll(/(?:const|let|var)\s+\{([^}]+)\}\s*=\s*require\(['"]\.\/helpers\/sources['"]\)/g))
+    // Nur Variablen der Datei selbst; die eines anderen Falls und Funktionen aus buildAndRequire() lesen nichts.
+    for (const m of s.matchAll(/^(?:const|let|var)\s+(\w+)\s*=\s*[^;\n]*(readFileSync|Quelle\(|serverOnly|serverAll|i18nAll|localeSource|ohneKommentare|Quelle\b)/gm)) vars.add(m[1]);
+    for (const m of s.matchAll(/(?:const|let|var)\s+\{([^}]+)\}\s*=\s*require\(['"]\.\/helpers\/sources['"]\)(?!\s*\.\s*buildAndRequire)/g))
       for (const x of m[1].split(',')) vars.add(x.trim().split(':').pop()?.trim() ?? '');
     for (const fall of s.split(/\n(?=\s{0,4}(?:test|it)\(\s*['"`])/).slice(1)) {
       alle++;
@@ -296,10 +297,11 @@ function quelltextFaelle() {
 }
 
 test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
-  // Gemessen 393 am 10.11.2026 (die Ratschen selbst zählen mit).
-  // Gegenprobe (08.11.2026): `\b_req\w*\(` aus FALL_FUEHRT_AUS entfernt → rot (574).
+  // Gemessen 335 am 11.11.2026 (die Ratschen selbst zählen mit; mit der Zählung vor
+  // dem 11.11., die auch Variablen anderer Fälle mitnahm, 387).
+  // Gegenprobe (11.11.2026): die alte Variablensuche (ohne `^`, ohne buildAndRequire-Ausnahme) → rot (387).
   // Gegenprobe (05.11.2026): parts-paging.test.js auf den Stand vor den jsdom-Tests → rot.
-  const SCHRANKE = 393;
+  const SCHRANKE = 335;
   const { n, alle } = quelltextFaelle();
   assert.ok(alle > 2000, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
   assert.ok(n <= SCHRANKE, `${n} Testfälle lesen nur Quelltext, erlaubt sind ${SCHRANKE}. ` +
@@ -623,9 +625,9 @@ test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () =
 test('Geschichte in Testkommentaren wird weniger, nie mehr', () => {
   // Ein Testkopf nennt, was geprüft wird, und seine Gegenproben (CLAUDE.md);
   // woher ein Test kam, steht im Commit. Gezählt werden Kommentarzeilen mit
-  // den typischen Erzählmarken. Gemessen 51 am 10.11.2026.
+  // den typischen Erzählmarken. Gemessen 50 am 11.11.2026.
   // Gegenprobe (05.11.2026): den alten Kopf von scope-reset.test.js zurück → rot.
-  const SCHRANKE = 51;
+  const SCHRANKE = 50;
 
   const MARKE = /(Nachtr(ag|äge) [0-9]|Hier stand|Vorher stand|NACHGEMESSEN|kam(en)? am [0-9]|Marcos (Frage|Wunsch|Bericht|Rückfrage|Konsole))/;
   const dateien = [
@@ -763,9 +765,9 @@ test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie meh
 
 test('Testdateien ohne Gegenprobe werden weniger, nie mehr', () => {
   // Jeder Test nennt im Kopf seine Gegenprobe (CLAUDE.md); die älteren ohne
-  // werden beim Anfassen nachgetragen. Gemessen 73 am 11.11.2026.
+  // werden beim Anfassen nachgetragen. Gemessen 72 am 11.11.2026.
   // Gegenprobe (05.11.2026): in lint-ratsche.test.js „Gegenproben“ umbenannt → rot (112).
-  const SCHRANKE = 73;
+  const SCHRANKE = 72;
   const ohne = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js'))
     .filter(n => !fs.readFileSync(path.join(__dirname, n), 'utf8').includes('Gegenprobe'));
   assert.ok(ohne.length <= SCHRANKE, `${ohne.length} Testdateien ohne Gegenprobe, erlaubt sind ${SCHRANKE}`);
