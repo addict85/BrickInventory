@@ -1,21 +1,15 @@
 /** Hier und nicht in einer Route, weil Sitzungsroute und v1-Fabrik beide darauf
  * zugreifen — eine Route soll keine andere importieren. */
-import { blickfeldAus } from '../haushalt/haushalt';
-import type { Sicht } from '../haushalt/haushalt';
+import { blickfeldAus, type Sicht } from '../haushalt';
 import * as db from '../../db/database';
 import { logAndContinue, oeffentlicherFehler } from '../infra/fehler';
 import { Abstriche, versuche } from '../infra/ergebnis';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
-import { recordAcquisitionForDay } from '../bestand/acquisitions';
-import { mengenwunsch, passeManuelleMengeAn } from '../bestand/manuelleMenge';
+import { recordAcquisitionForDay, mengenwunsch, passeManuelleMengeAn, setzeLagerort, ortFuerNeuerfassung } from '../bestand';
 import * as repo from './repository/manuelleFiguren';
-import { getMinifigInfo } from '../katalog/quellen';
-import { zustandFuerPreis } from '../einstellungen/settings';
-import { figMarktpreisMitHerkunft, getCurrentFigMarketPrice } from '../finanzen/marketPrice';
-import { kaufpreisAusEingabe, manuellerKaufpreis } from '../finanzen/preisRegel';
-import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
-import { merkeFigur, katalogFigur } from '../katalog/katalogPflege';
-import { merkeEigeneBlNummer } from '../katalog/blZuordnung';
+import { getMinifigInfo, merkeFigur, katalogFigur, merkeEigeneBlNummer } from '../katalog';
+import { zustandFuerPreis } from '../einstellungen';
+import { figMarktpreisMitHerkunft, getCurrentFigMarketPrice, kaufpreisAusEingabe, manuellerKaufpreis } from '../finanzen';
 import * as V from '../infra/validate';
 import { geldEingabe } from '../infra/geld';
 import { fachfehler } from '../infra/fehlerTexte';

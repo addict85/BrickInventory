@@ -5,7 +5,7 @@ import { generateThumb } from './bilder/thumbs';
 import { setzeTeilBildLokal, setzeFigurBildLokal } from './katalogPflege';
 import { KEINE_FARBE } from '../infra/validate';
 import * as enrich from './teileAnreicherung';
-import { AuftragUnterbrochen, type AuftragsKontext } from '../auftraege/auftraege';
+import { AuftragUnterbrochen, type AuftragsKontext } from '../auftraege';
 import { versuche } from '../infra/ergebnis';
 
 async function bildNachlauf(k: AuftragsKontext): Promise<void> {

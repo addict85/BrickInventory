@@ -6,7 +6,7 @@ import fs from 'fs';
 import { createHash } from 'crypto';
 import { PUBLIC_DIR } from '../infra/appPaths';
 import path from 'path';
-import { DESIGNS, designFuer, nutzerEinstellungen, getGlobalSetting } from '../einstellungen/settings';
+import { DESIGNS, designFuer, nutzerEinstellungen, getGlobalSetting } from '../einstellungen';
 import { stempleAssetsGecacht } from '../infra/assetStempel';
 import { appVersion } from '../infra/appVersion';
 import { versuche } from '../infra/ergebnis';

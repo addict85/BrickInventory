@@ -1,8 +1,7 @@
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
-import { lookupPart } from '../katalog/quellen';
+import { lookupPart, merkeTeilFarbe, katalogTeil } from '../katalog';
 import { meldeFehler } from '../infra/fehler';
-import { merkeTeilFarbe, katalogTeil } from '../katalog/katalogPflege';
 import { colorId } from '../infra/validate';
 import * as repo from './repository/teilFarbe';
 import { fachfehler } from '../infra/fehlerTexte';

@@ -1,31 +1,16 @@
 /** Fremde Dienste und Jobs erreicht die Überwachungsseite nur von hier aus,
  * damit die Routen keine Schichten überspringen. */
-import fs from 'fs';
+import fs from 'node:fs';
 import { AbrufFehler } from '../infra/abruf';
 import * as verwaltung from './repository/verwaltung';
-import { naechsteUhrzeit, taeglicheUhrzeit, DAILY_JOBS, ziehePlanVor, zeitplanGeaendert } from '../auftraege/zeitplan';
+import { naechsteUhrzeit, taeglicheUhrzeit, DAILY_JOBS, ziehePlanVor, zeitplanGeaendert, liesZustand, stelleAuftragEin, anleitungEinreihen, bricksetJetzt, bricksetTermineVorziehen } from '../auftraege';
 import { SET_IMAGES_DIR } from '../infra/appPaths';
 import { fehlertext, meldeFehler, logAndContinue, ohneFehlendeDatei } from '../infra/fehler';
 import { Abstriche, versuche } from '../infra/ergebnis';
-import { leerePreisCache } from '../finanzen/financeCalc';
-import { getRateLimitStatus, setzeKontingentZurueck } from '../katalog/apiKontingent';
-import { clearCatalogCache, clearSubsetsCache, getCacheStats } from '../katalog/bricklinkPreise';
-import { loescheAnleitungen } from '../katalog/instructions';
-import { vergissFehlend } from '../katalog/bilder/imageMisses';
-import { setGlobalSetting } from '../einstellungen/settings';
-import { liesZustand } from '../auftraege/laufzustand';
-import { stelleAuftragEin } from '../auftraege/dienst';
-import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';
-import { bricksetJetzt, bricksetTermineVorziehen } from '../auftraege/bricksetAuftrag';
-import { anfragenJeMinute, bildbedarfAnstossen, katalogBilderVormerken } from '../katalog/bilder/bildbedarf';
+import { leerePreisCache } from '../finanzen';
+import { getRateLimitStatus, setzeKontingentZurueck, clearCatalogCache, clearSubsetsCache, getCacheStats, loescheAnleitungen, vergissFehlend, anfragenJeMinute, bildbedarfAnstossen, katalogBilderVormerken, alsAbrufFehler, pruefeBricklinkZugang, ausRetryWarteschlange, pruefeBricksetZugang, pruefeRebrickableZugang } from '../katalog';
+import { setGlobalSetting } from '../einstellungen';
 import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
-import {
-  alsAbrufFehler,
-  pruefeBricklinkZugang,
-  ausRetryWarteschlange,
-  pruefeBricksetZugang,
-  pruefeRebrickableZugang,
-} from '../katalog/quellen';
 
 const QUELLEN: Record<string, () => Promise<void>> = {
   rebrickable: pruefeRebrickableZugang,
@@ -157,7 +142,7 @@ export const fehlendeBilderNachladen = () => {
 
 export const katalogAbgleichJetzt = () => ziehePlanVor('csv_sync');
 
-export { bricksetListe } from '../auftraege/bricksetAuftrag';
+export { bricksetListe } from '../auftraege';
 
 /** Auch über das Tageskontingent hinweg. */
 export async function bricksetWiederholen(sn: string) {
@@ -256,4 +241,4 @@ export {
   setFehlanzeigen,
   vorschauFehlanzeigen,
 } from './repository/verwaltung';
-export { letzteEintraege, protokolliere, raeumeProtokollAuf } from '../konto/verwalterProtokoll';
+export { letzteEintraege, protokolliere, raeumeProtokollAuf } from '../konto';

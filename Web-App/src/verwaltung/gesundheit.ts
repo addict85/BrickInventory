@@ -1,7 +1,7 @@
 /** Was compose.yaml und die Überwachung ohne Anmeldung fragen: anonym nur der
  * Status, der Verwalter sieht Startzustand und Verbindungen. */
 import * as db from '../../db/database';
-import { aktuellerStartZustand } from '../auftraege/startZustand';
+import { aktuellerStartZustand } from '../auftraege';
 
 export async function gesundheitsBericht(verwalter: boolean) {
   const start = await aktuellerStartZustand();

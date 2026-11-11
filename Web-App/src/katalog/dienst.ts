@@ -7,8 +7,8 @@ import { fuerSet } from './preisvergleich';
 import { downloadSetImage } from './bilder/setImages';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
-import { nacharbeit } from '../auftraege/nacharbeit';
-import { scopeIds } from '../haushalt/haushalt';
+import { nacharbeit } from '../auftraege';
+import { scopeIds } from '../haushalt';
 import { katalog } from './prozess';
 import { versuche } from '../infra/ergebnis';
 

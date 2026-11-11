@@ -1,21 +1,17 @@
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
-import { schreibziel } from '../../src/haushalt/haushalt';
-import { getManualMinifigs, getMinifigStats, getMinifigs } from '../../src/figuren/abfragen';
-import { addManualFig, updateManualFig } from '../../src/figuren/manuelleFiguren';
-import { getSetting } from '../../src/einstellungen/settings';
-import { getMinifigPriceHistory } from '../../src/finanzen/priceHistory';
-import { verwendendeSets } from '../../src/bestand/gemeinsam';
-import { normalisiereLagerort, setzeLagerort } from '../../src/bestand/lagerort';
-import { loescheFigur } from '../../src/sammlung/loeschen';
-import { teileDerFigur } from '../../src/figuren/dienst';
+import { schreibziel } from '../../src/haushalt';
+import { getManualMinifigs, getMinifigStats, getMinifigs, addManualFig, updateManualFig, teileDerFigur } from '../../src/figuren';
+import { getSetting } from '../../src/einstellungen';
+import { getMinifigPriceHistory } from '../../src/finanzen';
+import { verwendendeSets, normalisiereLagerort, setzeLagerort } from '../../src/bestand';
+import { loescheFigur } from '../../src/sammlung';
 import { csvEmpfang } from '../../src/http/dateiEmpfang';
-import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
+import { importAlsAuftrag } from '../../src/auftraege';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
 import { seiteAus } from '../../src/infra/seite';
 import { Abstriche } from '../../src/infra/ergebnis';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
+import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
 const router = vertragsRouter();
 
 router.get('/minifigs', requireToken, async (req: Anfrage<'GET /api/v1/minifigs'>, res: Antwort<'GET /api/v1/minifigs'>) => {

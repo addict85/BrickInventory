@@ -3,7 +3,7 @@ import { logAndContinue } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
 import * as db from '../../db/database';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
-import { getSetting } from '../einstellungen/settings';
+import { getSetting } from '../einstellungen';
 import * as repo from './repository';
 import type { ErfassungsArt } from './repository';
 import { fachfehler } from '../infra/fehlerTexte';

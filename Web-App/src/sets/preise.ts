@@ -1,14 +1,11 @@
 /** Marktpreis, Preisverlauf und Preisalarm eines Sets. */
-import { blickfeldAus } from '../haushalt/haushalt';
-import type { Sicht } from '../haushalt/haushalt';
-import { getSetting } from '../einstellungen/settings';
-import { alarmeFuer, loescheAlarm, setzeAlarm } from '../finanzen/preisalarm';
-import { importAlsAuftrag } from '../auftraege/importAlsAuftrag';
+import { blickfeldAus, type Sicht } from '../haushalt';
+import { getSetting } from '../einstellungen';
+import { alarmeFuer, loescheAlarm, setzeAlarm, fetchPrice, resolveSetCondition, getSetPriceHistory } from '../finanzen';
+import { importAlsAuftrag } from '../auftraege';
 import { normalizeSetNumber } from './erfassen';
-import { Zustand } from '../infra/validate';
-import { fetchPrice, resolveSetCondition } from '../finanzen/financeCalc';
+import type { Zustand } from '../infra/validate';
 import type { CsvImportBericht } from '../infra/csvExport';
-import { getSetPriceHistory } from '../finanzen/priceHistory';
 import * as repo from './repository/setDetail';
 import { versuche } from '../infra/ergebnis';
 import type { SetsKontext } from './kontext';

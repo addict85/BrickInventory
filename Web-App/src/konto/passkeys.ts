@@ -1,11 +1,7 @@
 /** Registrieren, anmelden ohne Passwort und als zweiter Faktor anstelle des
  * TOTP-Codes. */
 import crypto from 'crypto';
-import {
-  generateRegistrationOptions, verifyRegistrationResponse,
-  generateAuthenticationOptions, verifyAuthenticationResponse,
-} from '@simplewebauthn/server';
-import type { AuthenticationResponseJSON, RegistrationResponseJSON, WebAuthnCredential } from '@simplewebauthn/server';
+import { generateRegistrationOptions, verifyRegistrationResponse, generateAuthenticationOptions, verifyAuthenticationResponse, type AuthenticationResponseJSON, type RegistrationResponseJSON, type WebAuthnCredential } from '@simplewebauthn/server';
 import { decodeClientDataJSON } from '@simplewebauthn/server/helpers';
 import * as repo from './repository/passkeys';
 import { basisUrl } from '../infra/basisUrl';

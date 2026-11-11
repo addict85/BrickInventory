@@ -1,9 +1,7 @@
 import * as repo from './repository/sets';
-import { entferneSetInhalt } from '../bestand/gemeinsam';
+import { entferneSetInhalt, legeInPapierkorb } from '../bestand';
 import type { DbSchnittstelle } from '../../db/database';
-import { asIds, blickfeldAus, writableIds, type Sicht } from '../haushalt/haushalt';
-import { legeInPapierkorb } from '../bestand/papierkorb';
-import type { BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
+import { asIds, blickfeldAus, writableIds, type Sicht, type BlickfeldEingabe as Blickfeld } from '../haushalt';
 import type { SetsKontext } from './kontext';
 
 // Für Löschen und Wegfall; sonst verwaisen Teile.

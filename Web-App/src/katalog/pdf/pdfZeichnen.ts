@@ -4,7 +4,7 @@ import fs from 'fs';
 import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
 import PDFDocument from 'pdfkit';
 import { IMAGES_DIR, resolveWebPath } from '../../infra/appPaths';
-import type { Nutzlast } from '../../auftraege/nutzlasten';
+import type { Nutzlast } from '../../auftraege';
 
 /** Im worker_thread: pdfkit zeichnet synchron und hielte bei tausenden Zeilen
  * die Ereignisschleife an, die im Prozess „beides" auch Anfragen beantwortet. */

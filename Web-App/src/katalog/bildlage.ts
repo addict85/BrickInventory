@@ -3,7 +3,7 @@ import path from 'path';
 import { getSetInfo } from './quellen';
 import { downloadSetImage } from './bilder/setImages';
 import { generateThumb } from './bilder/thumbs';
-import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';
+import { anleitungEinreihen } from '../auftraege';
 import { APP_ROOT, IMAGES_DIR } from '../infra/appPaths';
 import { fehlertext, logAndContinue } from '../infra/fehler';
 import { KEINE_FARBE } from '../infra/validate';

@@ -1,23 +1,19 @@
 /** Die Merkliste — was man haben MÖCHTE, getrennt vom Bestand. Ein Helfer
  * statt Code in den Routen, weil beide Oberflächen und mehrere Erfassungswege
  * dieselben Regeln brauchen. */
-import { blickfeldAus } from '../haushalt/haushalt';
-import type { Sicht } from '../haushalt/haushalt';
-import { nacharbeit } from '../auftraege/nacharbeit';
+import { blickfeldAus, type Sicht } from '../haushalt';
+import { nacharbeit } from '../auftraege';
 import { addSet, sanitizeSetNumber, findSetInScope } from '../sets';
-import { loescheAlarm, alarmUebertragen } from '../finanzen/preisalarm';
+import { loescheAlarm, alarmUebertragen, fetchPrice } from '../finanzen';
 import * as V from '../infra/validate';
 import { fachfehler } from '../infra/fehlerTexte';
 import { geldEingabe } from '../infra/geld';
-import { nutzerStandardZustand, getSetting } from '../einstellungen/settings';
+import { nutzerStandardZustand, getSetting } from '../einstellungen';
 import { meldeFehler, oeffentlicherFehler } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
-import { fuerSet } from '../katalog/preisvergleich';
-import { resolveIfExists } from '../katalog/bilder/images';
+import { fuerSet, resolveIfExists, setBekanntImKatalog } from '../katalog';
 import { toCsv, csvZeilenAusAnfrage, parseCsvDate } from '../infra/csvExport';
 import * as repo from './repository/merkliste';
-import { fetchPrice } from '../finanzen/financeCalc';
-import { setBekanntImKatalog } from '../katalog/bricklinkPreise';
 import { moeglicheSetNummer, mitVersion } from '../infra/setNummer';
 
 /** Jeder Zustand für sich: Kennt BrickLink einen nicht, kommt der andere

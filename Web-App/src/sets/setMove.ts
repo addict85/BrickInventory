@@ -2,10 +2,9 @@
  * beim Lesen, hier wird keine Menge geschrieben. */
 import type { DbSchnittstelle } from '../../db/database';
 import { mitInventarSperre } from '../../db/txLock';
-import { recordAcquisitionForDay } from '../bestand/acquisitions';
+import { recordAcquisitionForDay, kopiereSetInhalt, legeManuellAn } from '../bestand';
 import { fachfehler } from '../infra/fehlerTexte';
 import * as repo from './repository/verschieben';
-import { kopiereSetInhalt, legeManuellAn } from '../bestand/gemeinsam';
 import type { SetsKontext } from './kontext';
 
 export interface MoveResult {

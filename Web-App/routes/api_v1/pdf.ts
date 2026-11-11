@@ -6,11 +6,9 @@ import { requireToken, kontoSchranke } from './middleware';
 import { registerSse } from '../../src/http/sseRegistry';
 import _pdfFs from 'fs/promises';
 import _fsSync from 'fs';
-import { liesAuftrag, loescheAuftrag, pdfSchluessel, gueltigeAuftragsKennung, pdfDateiPfad, pdfAuftragStarten } from '../../src/auftraege/pdfAuftraege';
-import { beiAuftragsStand } from '../../src/auftraege/dienst';
+import { liesAuftrag, loescheAuftrag, pdfSchluessel, gueltigeAuftragsKennung, pdfDateiPfad, pdfAuftragStarten, beiAuftragsStand } from '../../src/auftraege';
 import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
+import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
 const router = vertragsRouter();
 
 type PdfJobStatus = { status?: string | undefined; error?: string | null; etaSeconds?: number | null; missingImages?: number | null };

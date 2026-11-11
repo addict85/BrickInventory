@@ -1,6 +1,5 @@
 import { passwortPasst, BcryptUeberlast } from './bcryptSchranke';
-import { bestaetigungGesperrt, bestaetigungFehlgeschlagen, bestaetigungGelungen, meldeAnmeldeereignis } from './loginLimiter';
-import type { Bremse } from './loginLimiter';
+import { bestaetigungGesperrt, bestaetigungFehlgeschlagen, bestaetigungGelungen, meldeAnmeldeereignis, type Bremse } from './loginLimiter';
 import type { FehlerArt, FehlerCode } from '../infra/fehlerTexte';
 import * as zugaenge from './repository/zugaenge';
 import * as zf from './zweiterFaktor';

@@ -1,16 +1,12 @@
 /** Die Kacheln der Überwachungsseite: Stand je Hintergrundauftrag und Zeitplan. */
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import * as verwaltung from './repository/verwaltung';
-import { DAILY_JOBS } from '../auftraege/zeitplan';
+import { DAILY_JOBS, liesZustand, zaehleArt, bricksetZahlen, all as alleMonitore, get as monitorStand, imgDlPending, imgDlReset } from '../auftraege';
 import { PDF_JOB_DIR } from '../infra/appPaths';
 import { meldeFehler, logAndContinue } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
-import { getGlobalSetting } from '../einstellungen/settings';
-import { liesZustand } from '../auftraege/laufzustand';
-import * as monitor from '../auftraege/jobMonitor';
-import { zaehleArt } from '../auftraege/dienst';
-import { bricksetZahlen } from '../auftraege/bricksetAuftrag';
+import { getGlobalSetting } from '../einstellungen';
 
 // Eine Frist für beide Kacheln; drei Minuten bei einem Takt von zwanzig Sekunden.
 const JOB_FRISCH_MS = 3 * 60_000;
@@ -76,10 +72,10 @@ async function bildKachel(ab: Abstriche): Promise<Kachel> {
     zahl(ab, verwaltung.katalogBilderOffen(), 'bilder'),
   ]);
   const offen = teileOffen + setFiguren + bestandsFiguren;
-  const job = await ab.oder('bilder', monitor.get('imgDl'), null);
+  const job = await ab.oder('bilder', monitorStand('imgDl'), null);
   // Gedeckelt auf die wirklich offenen Bilder: Das heilt einen verwaisten Zähler nach einem Absturz.
-  let aktiv = await ab.oder('bilder', monitor.imgDlPending(), 0);
-  if (offen === 0 && aktiv > 0) { await monitor.imgDlReset().catch(logAndContinue('verwaltung:imgDlReset')); aktiv = 0; }
+  let aktiv = await ab.oder('bilder', imgDlPending(), 0);
+  if (offen === 0 && aktiv > 0) { await imgDlReset().catch(logAndContinue('verwaltung:imgDlReset')); aktiv = 0; }
   aktiv = Math.min(aktiv, offen);
   const reDl = await liesStand<{ running?: boolean; at?: number; phase?: string; done?: number; total?: number }>(ab, 'imgredl_status');
   const reDlLaeuft = reDl?.running === true && (typeof reDl.at !== 'number' || frisch(reDl.at));
@@ -138,7 +134,7 @@ async function zeitplaene(): Promise<Record<string, { type: string; time?: strin
 
 /** Ergänzt um Zahlen, die nur die Datenbank kennt; je Kachel eine Funktion. */
 export async function jobUebersicht() {
-  const jobs: Kacheln = await monitor.all(); // aus laufzustand: der Job-Prozess schreibt, hier wird gelesen
+  const jobs: Kacheln = await alleMonitore(); // aus laufzustand: der Job-Prozess schreibt, hier wird gelesen
   const ab = new Abstriche();
   const [anleitungen, gemappt, blGesamt, rbTeile, rbInventar, lastSync] = await Promise.all([
     anleitungsAuftraege(ab),

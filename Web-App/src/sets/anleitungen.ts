@@ -1,16 +1,16 @@
 /** Anleitungen eines Sets: hochgeladene und automatisch geholte. */
 import { ohneFehlendeDatei } from '../infra/fehler';
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import { APP_ROOT, DATA_DIR } from '../infra/appPaths';
-import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';
+import { anleitungEinreihen } from '../auftraege';
 import {
   anleitungenZuSet,
   anleitungenZusammenlegen,
   loescheAnleitungen,
   anleitungNeuLadenErlaubt,
   anzahlAnleitungen,
-} from '../katalog/instructions';
+} from '../katalog';
 import { findSetInScope } from './erfassen';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../infra/setNummer';
 import { fachfehler } from '../infra/fehlerTexte';

@@ -1,12 +1,17 @@
 /** Set zum Barcode: eigener Katalog, Rebrickable, Brickset und EAN-Quellen. */
-import { resolveImageLocal } from '../katalog/bilder/images';
+import {
+  resolveImageLocal,
+  istVermutung,
+  setnummerKandidaten,
+  getSetByBarcode,
+  getSetByEan,
+  rebrickableJson,
+  produktTitel,
+  merkeKatalogCache,
+} from '../katalog';
 import { normalizeSetNumber } from './erfassen';
-import { istVermutung } from '../katalog/barcodeQuelle';
-import { setnummerKandidaten } from '../katalog/produkttitel';
 import { mitVersion } from '../infra/setNummer';
-import { getSetByBarcode, getSetByEan, rebrickableJson, produktTitel } from '../katalog/quellen';
 import * as repo from './repository/setDetail';
-import * as katalogStamm from '../katalog/setStamm';
 import { versuche } from '../infra/ergebnis';
 import type { SetsKontext } from './kontext';
 
@@ -63,7 +68,7 @@ async function barcodeErgebnis(
     // Der Cache spart nur den nächsten Abruf; der Treffer gilt auch ohne ihn.
     await versuche(
       'sets:catalog_cache schreiben',
-      katalogStamm.merkeKatalogCache(
+      merkeKatalogCache(
         sk.db,
         setNumber,
         rbData.name,

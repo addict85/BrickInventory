@@ -7,9 +7,9 @@ import { logAndContinue } from '../../infra/fehler';
 import * as repo from '../repository/bewertung';
 import { setPreiseFrisch } from '../repository/preisCache';
 import { geschaetzteFigurenpreise } from '../repository/marktpreise';
-import { asIds, withOwners, blickfeldAus, type Sicht } from '../../haushalt/haushalt';
-import { getGlobalSetting, getSetting } from '../../einstellungen/settings';
-import { resolveImageLocal, proxyImageUrl } from '../../katalog/bilder/images';
+import { asIds, withOwners, blickfeldAus, type Sicht } from '../../haushalt';
+import { getGlobalSetting, getSetting } from '../../einstellungen';
+import { resolveImageLocal, proxyImageUrl } from '../../katalog';
 import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct, pnlProzent } from '../setValue';
 import { mitVersion } from '../../infra/setNummer';
 import {
@@ -20,9 +20,8 @@ import { zaehle } from './abfragen';
 import { ladeSetErfassungen } from '../repository/erfassungen';
 import { KEINE_FARBE, zustand } from '../../infra/validate';
 import { aufRappen, inZehntel4 } from '../../infra/geld';
-import { stelleAuftragEin } from '../../auftraege/dienst';
+import { stelleAuftragEin, type Nutzlast } from '../../auftraege';
 import { fehlerText } from '../../infra/fehlerTexte';
-import type { Nutzlast } from '../../auftraege/nutzlasten';
 
 type Zustand = 'N' | 'U';
 type Posten = Nutzlast<'preise_nachladen'>['posten'][number];

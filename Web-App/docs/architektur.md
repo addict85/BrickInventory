@@ -48,6 +48,10 @@ Absicht, solange es nur von unten gebraucht wird:
   Ausnahme: `kontoKontext` trägt die laufende Anfrage über
   `AsyncLocalStorage` zu Zählern, die keinen Request sehen.
 
+- Jeder Fachbereich hat eine `index.ts`; andere Bereiche, Routen, Jobs und
+  `startup/` importieren nur darüber (ausser den HTTP-Seiten unter
+  `src/<bereich>/http/`). So bleibt der Schnitt der Dateien Sache des Bereichs.
+
 - SQL steht nur in `src/<bereich>/repository*` und `db/`, auch als Klausel
   (Sortierung, Bedingung, Upsert). Dienste nehmen aus `db/database` nur die
   Arbeitseinheit (`transaction`) und den Betrieb (Pool, eigene Verbindung).

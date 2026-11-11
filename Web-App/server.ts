@@ -16,9 +16,8 @@ import { verdrahteProzess } from './startup/verdrahtung';
 import { baueApp } from './startup/app';
 import { HTTP_FRISTEN } from './src/infra/httpFristen';
 import { closeAllSse } from './src/http/sseRegistry';
-import { meldeSmtpAltlast } from './src/mail/mailer';
-import { meldeUngueltigeAdressen, meldeAusstehendeAdressen } from './src/konto/konten';
-import { horcheAufTokenWiderruf } from './src/konto/auth';
+import { meldeSmtpAltlast } from './src/mail';
+import { meldeUngueltigeAdressen, meldeAusstehendeAdressen, horcheAufTokenWiderruf } from './src/konto';
 import * as pgNotify from './db/pgNotify';
 
 // Nur loggen: Ein abgelehntes Versprechen ist meist ein Nebenläufer ohne catch;

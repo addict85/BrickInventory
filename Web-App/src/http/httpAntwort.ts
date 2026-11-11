@@ -5,10 +5,9 @@ import fs from 'fs';
 import type { Request, Response, NextFunction } from 'express';
 import type { ServerResponse } from 'http';
 import { konfig } from '../infra/konfig';
-import { FEHLER, fehlerText, antwortSprache, dateiFehler, Meldung } from '../infra/fehlerTexte';
+import { FEHLER, fehlerText, antwortSprache, dateiFehler, Meldung, type FehlerArt, type FehlerCode } from '../infra/fehlerTexte';
 import { fehlertext } from '../infra/fehler';
 import { statusVon } from './fehlerArt';
-import type { FehlerArt, FehlerCode } from '../infra/fehlerTexte';
 
 export interface FehlerZiel { headersSent: boolean; status(code: number): { json(body: unknown): unknown } }
 export interface FehlerQuelle { method?: string; originalUrl?: string; url?: string; headers?: Record<string, unknown> }

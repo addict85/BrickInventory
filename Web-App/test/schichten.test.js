@@ -160,7 +160,7 @@ const codeZeilen = (rel) => quelltext(rel).split('\n').filter(z => z.trim()).len
 test('jobs/ führt Aufträge aus, die Arbeit eines Auftrags steht in src/', () => {
   // jobs/ hält den Worker (Pacht, Wiederholung, Abbruch), die Bearbeitertabelle
   // und den Einstieg des Importprozesses; was ein Auftrag fachlich tut, liegt in src/<bereich>/.
-  // Gemessen 265 Codezeilen am 09.11.2026.
+  // Gemessen 246 Codezeilen am 11.11.2026 (Importe über index.ts zusammengefasst).
   // Gegenproben (09.11.2026): `import * as db from '../db/database'` in jobs/auftraegeStarten.ts → rot
   // (db/); fetchAndCachePrice und zustaendeJeSet zurück nach jobs/auftraegeStarten.ts → rot (113
   // Zeilen); `import { STAPEL } from '../src/katalog/bilder/bildbedarf'` in jobs/auftragsWorker.ts → rot.
@@ -169,11 +169,11 @@ test('jobs/ führt Aufträge aus, die Arbeit eines Auftrags steht in src/', () =
   assert.ok(dateien.includes(KERN) && dateien.includes('jobs/auftraegeStarten.ts'), 'Worker oder Bearbeitertabelle fehlt');
   assert.deepEqual(dateien.flatMap(d => importe(d).filter(z => /(?:^|\/)db\//.test(z)).map(z => `${d} -> ${z}`)), [],
     'jobs/ erreicht die Datenbank nur über src/auftraege und die Fachdienste');
-  const fremd = aufgeloesteImporte(KERN).filter(z => z.startsWith('src/') && !['auftraege', 'infra'].includes(bereichVon(z)));
+  const fremd = aufgeloesteImporte(KERN).filter(z => z.startsWith('src/') && !['auftraege', 'infra'].includes(bereichVon(`${z}/`)));
   assert.deepEqual(fremd, [], 'Der Worker kennt keine Fachbereiche, nur Aufträge');
   const zuLang = dateien.filter(d => d !== KERN && codeZeilen(d) > 80).map(d => `${d} (${codeZeilen(d)})`);
   assert.deepEqual(zuLang, [], 'Ein Bearbeiter ruft einen Dienst; seine Arbeit gehört nach src/<bereich>/');
-  const SCHRANKE = 265;
+  const SCHRANKE = 246;
   const summe = dateien.reduce((n, d) => n + codeZeilen(d), 0);
   assert.ok(summe <= SCHRANKE, `${summe} Codezeilen in jobs/, erlaubt sind ${SCHRANKE}`);
   if (summe < SCHRANKE) console.log(`  ℹ Codezeilen in jobs/: ${summe} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
@@ -426,7 +426,7 @@ test('Routen, Aufträge und Clients importieren keine Repositories', () => {
   assert.deepEqual(treffer, []);
 });
 
-test('ein Fachbereich greift auf einen anderen nur über dessen Dienste zu', () => {
+test('ein Fachbereich greift auf einen anderen nur über dessen Dienste und index.ts zu', () => {
   // Das Repository eines Bereichs ist sein Inneres; andere Bereiche nutzen die
   // Dienste. Gegenprobe (31.10.2026): `import { kontoKurz } from
   // '../konto/repository/konten'` in src/haushalt/haushalt.ts → rot.
@@ -437,6 +437,31 @@ test('ein Fachbereich greift auf einen anderen nur über dessen Dienste zu', () 
     for (const z of aufgeloesteImporte(d))
       if (istRepository(z) && bereichVon(z) !== bereichVon(d)) treffer.push(`${d} -> ${z}`);
   assert.deepEqual(treffer, []);
+
+  // Und auch die Dienste nur über die index.ts des Bereichs:
+  // Wie ein Bereich seine Dateien schneidet, bleibt so seine Sache. Ausgenommen
+  // sind die Helfer ohne Fachbereich (infra, vertrag, http) und die HTTP-Seiten
+  // unter src/<bereich>/http/, die nur Routen und der Zusammenbau holen.
+  // Gegenprobe (11.11.2026): `export { katalogTeil as _probe } from '../katalog/katalogPflege'`
+  // in src/teile/manuelleTeile.ts → rot.
+  const FREI = ['infra', 'vertrag', 'http'];
+  const tief = (d, z) => {
+    const b = bereichVon(`${z}/`);
+    return !!b && !FREI.includes(b) && b !== bereichVon(d) && z !== `src/${b}` && z !== `src/${b}/index`
+      && !z.startsWith(`src/${b}/http/`);
+  };
+  const tiefe = (dateien) => dateien
+    .flatMap(d => aufgeloesteImporte(d, { mitTypen: true }).filter(z => tief(d, z)).map(z => `${d} -> ${z}`));
+  assert.deepEqual(tiefe(tsUnter('src', 'jobs', 'startup').concat('server.ts')), []);
+  // Die Anmelderouten (routes/auth*) prüfen Quelltext-Tests über die Namensräume
+  // K., A. und zf.; sie folgen, wenn diese Tests auf Verhalten umgestellt sind.
+  // Gemessen 29 am 11.11.2026; Ziel 0.
+  const SCHRANKE_ROUTEN = 29;
+  const routen = tiefe(tsUnter('routes')).length;
+  assert.ok(routen <= SCHRANKE_ROUTEN, `${routen} tiefe Importe in routes/, erlaubt sind ${SCHRANKE_ROUTEN}`);
+  if (routen < SCHRANKE_ROUTEN) console.log(`  ℹ tiefe Importe in routes/: ${routen} (Schranke ${SCHRANKE_ROUTEN}) — Schranke nachziehen`);
+  const indizes = tsUnter('src').filter(d => /^src\/[^/]+\/index\.ts$/.test(d));
+  assert.ok(indizes.length >= 15, `nur ${indizes.length} index.ts gefunden`);
 });
 
 /** Ein Modul ohne relative Importe (Zeilentypen, Konstanten) hängt an nichts. */

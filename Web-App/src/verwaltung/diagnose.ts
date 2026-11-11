@@ -1,22 +1,19 @@
 /** Proben für Verwalter: Bild- und Preisabruf und die Fragen zu einer leeren Kachel. */
-import { proxyCacheSchluessel, proxyCachePathFor } from '../katalog/bilder/images';
+import { proxyCacheSchluessel, proxyCachePathFor, katalogEintrag, getPriceGuide, imgProxyFailures, oeffneBild } from '../katalog';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../infra/fremdeAdressen';
 import { urlOderNull } from '../infra/validate';
 import type { KontoBildzeile } from './repository/verwaltung';
-import fs from 'fs';
+import fs from 'node:fs';
 import { AbrufFehler, type AbrufStrom } from '../infra/abruf';
-import path from 'path';
+import path from 'node:path';
 import * as verwaltung from './repository/verwaltung';
 import { DATA_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
 import { fehlertext, ohneFehlendeDatei } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
-import { fetchPrice } from '../finanzen/financeCalc';
+import { fetchPrice } from '../finanzen';
 import { ohneBricklinkPreis } from '../infra/setNummer';
-import { katalogEintrag, getPriceGuide } from '../katalog/bricklinkPreise';
-import { imgProxyFailures } from '../katalog/bilder/imgProxyStats';
-import { getGlobalSetting, getSetting } from '../einstellungen/settings';
+import { getGlobalSetting, getSetting } from '../einstellungen';
 import { fachfehler } from '../infra/fehlerTexte';
-import { oeffneBild } from '../katalog/quellen';
 
 /** Meldet, was der Proxy davon ausliefern würde — mit und ohne Referer. */
 export async function bildProbe(url: string) {

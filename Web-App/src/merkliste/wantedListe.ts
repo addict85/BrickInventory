@@ -1,19 +1,19 @@
 /** Eine BrickLink-Wanted-Liste importieren: lesen (wantedParser), auflösen
  * (wantedAufloesung), schreiben (wantedSchreiber). Die Datei trägt BL-Nummern,
  * der Bestand führt RB-Nummern. */
-import { nutzerStandardZustand } from '../einstellungen/settings';
-import { leseWantedListe } from './wantedParser';
-import type { WantedArt, WantedPosten } from './wantedParser';
+import { nutzerStandardZustand } from '../einstellungen';
+import { leseWantedListe, type WantedArt, type WantedPosten } from './wantedParser';
 import {
   loeseLokalAuf,
   loeseUeberRebrickableAuf,
   wendeKorrekturenAn,
   farbenNachtragen,
   beschreibePosten,
+  type Aufloesung,
+  type Korrektur,
+  type WantedFortschritt,
 } from './wantedAufloesung';
-import type { Aufloesung, Korrektur, WantedFortschritt } from './wantedAufloesung';
-import { berichtsZeile, schreibePosten } from './wantedSchreiber';
-import type { PostenErgebnis, SchreibOptionen } from './wantedSchreiber';
+import { berichtsZeile, schreibePosten, type PostenErgebnis, type SchreibOptionen } from './wantedSchreiber';
 
 export interface WantedBericht {
   gelesen: number;

@@ -1,11 +1,11 @@
 import * as repo from './repository/marktpreise';
-import { nacharbeit } from '../auftraege/nacharbeit';
+import { nacharbeit } from '../auftraege';
 import { getSetValue } from './setValue';
-import { nutzerStandardZustand as userDefaultCondition, getGlobalSetting, getSetting } from '../einstellungen/settings';
+import { nutzerStandardZustand as userDefaultCondition, getGlobalSetting, getSetting } from '../einstellungen';
 import { DEFAULT_PRICE_CONDITION, fetchPartPrice, fetchMinifigPrice, ladeBlNummernVor,
          resolveBlPartNumber, resolveBlColorId } from './rechnung/preise';
 import { meldeFehler, fehlertext, logAndContinue } from '../infra/fehler';
-import { getMinifigParts } from '../katalog/rebrickableKatalog';
+import { getMinifigParts } from '../katalog';
 import { KEINE_FARBE, zustand } from '../infra/validate';
 
 // Ein Blatt ohne Rückbezug, damit die Aufrufer echt importieren statt spät mit require().

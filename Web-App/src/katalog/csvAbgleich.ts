@@ -1,17 +1,14 @@
 /** Rebrickable-CSVs täglich laden: Der lokale Katalog spart je Anzeige einen
  * API-Abruf und das Tageskontingent. */
-import { meldeStartZustand } from '../auftraege/startZustand';
+import { meldeStartZustand, liesZustand, setzeZustand, loescheZustand, type Nutzlast, type AuftragsLauf as CsvLauf } from '../auftraege';
 import { fetchMissingBlIds } from './partsImport';
 import { getRbKey, httpsGetRobust, ladeKatalogCsv } from './quellen';
 import { fehlertext, logAndContinue, ohneFehlendeDatei } from '../infra/fehler';
 import { merkeBlFarbnummer, blFarbnummerAus } from './blZuordnung';
-import { liesZustand, setzeZustand, loescheZustand } from '../auftraege/laufzustand';
 import fs from 'fs';
 import path from 'path';
 import { DATA_DIR } from '../infra/appPaths';
 import { fork as _fork } from 'child_process';
-import type { Nutzlast } from '../auftraege/nutzlasten';
-import type { AuftragsLauf as CsvLauf } from '../auftraege/auftraege';
 import { versuche } from '../infra/ergebnis';
 
 const SYNC_KEY = 'rb_csv_last_sync';

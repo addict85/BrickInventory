@@ -2,21 +2,18 @@
 import { geldEingabe } from '../infra/geld';
 import * as repo from './repository/erfassungen';
 import type { DbSchnittstelle } from '../../db/database';
-import { writableIds, acquisitionMoveSource, resolveWriteTarget, blickfeldAus, type Sicht } from '../haushalt/haushalt';
-import { findSameDayAcquisition } from '../bestand/acquisitions';
+import { writableIds, acquisitionMoveSource, resolveWriteTarget, blickfeldAus, type Sicht } from '../haushalt';
+import { findSameDayAcquisition, loescheManuellesTeil, loescheManuelleFigur } from '../bestand';
 import { Abstriche } from '../infra/ergebnis';
 import { withInventoryLock, bestandsSchluessel } from '../../db/txLock';
 import { moveSetBetweenAccounts, moveManualAcquisition, withSetAggregate, deleteSetRows } from '../sets';
-import { getCurrentMarketPrice, getCurrentPartMarketPrice, getCurrentFigMarketPrice } from '../finanzen/marketPrice';
-import { loescheManuellesTeil, loescheManuelleFigur } from '../bestand/gemeinsam';
-import { fachfehler } from '../infra/fehlerTexte';
-import type { FehlerCode } from '../infra/fehlerTexte';
-import { blAbrufNummer } from '../katalog/blZuordnung';
-import { mengeDesSets, mengeDerPosition, preisSpalte } from '../../db/bestandsmenge';
+import { getCurrentMarketPrice, getCurrentPartMarketPrice, getCurrentFigMarketPrice } from '../finanzen';
+import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
+import { blAbrufNummer } from '../katalog';
+import { mengeDesSets, mengeDerPosition, preisSpalte, type ErfassungsArt } from '../../db/bestandsmenge';
 import { bestandsMenge, zustand } from '../infra/validate';
 
 export type { ErfassungsArt } from '../../db/bestandsmenge';
-import type { ErfassungsArt } from '../../db/bestandsmenge';
 type Schluessel = Array<string | number>;
 
 interface Art {

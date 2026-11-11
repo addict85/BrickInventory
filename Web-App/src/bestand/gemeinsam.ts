@@ -2,7 +2,7 @@ import * as repo from './repository/gemeinsam';
 export { entferneSetInhalt, kopiereSetInhalt, legeManuellAn } from './repository/gemeinsam';
 import type { DbSchnittstelle } from '../../db/database';
 import { istErsatzteil, KEINE_FARBE } from '../infra/validate';
-import { asIds, blickfeldAus, type Sicht } from '../haushalt/haushalt';
+import { asIds, blickfeldAus, type Sicht } from '../haushalt';
 
 // Was Sets, Teile und Figuren gemeinsam brauchen.
 

@@ -1,6 +1,6 @@
 import type { DbSchnittstelle } from '../../db/database';
 import { aktuellesKonto } from '../infra/kontoKontext';
-import { getGlobalSetting } from '../einstellungen/settings';
+import { getGlobalSetting } from '../einstellungen';
 import * as repo from './repository/apiKontingent';
 import { katalog } from './prozess';
 

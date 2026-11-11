@@ -5,7 +5,7 @@ import nodemailer from 'nodemailer';
 import tls from 'node:tls';
 import type { PeerCertificate } from 'node:tls';
 import { konfig } from '../infra/konfig';
-import { getGlobalSetting } from '../einstellungen/settings';
+import { getGlobalSetting } from '../einstellungen';
 import addressparser from 'nodemailer/lib/addressparser';
 import { emailGueltig } from '../infra/validate';
 import { fehlertext } from '../infra/fehler';

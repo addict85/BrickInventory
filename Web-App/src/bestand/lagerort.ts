@@ -3,11 +3,10 @@
 import * as db from '../../db/database';
 import * as orte from './repository/lagerort';
 import type { LagerTabelle } from './repository/lagerort';
-import { asIds, scopeIds, writableIds, blickfeldAus, type Sicht, schreibbereichAus, type Schreiber } from '../haushalt/haushalt';
-import type { BlickfeldEingabe } from '../haushalt/haushalt';
+import { asIds, scopeIds, writableIds, blickfeldAus, type Sicht, schreibbereichAus, type Schreiber, type BlickfeldEingabe } from '../haushalt';
 import { fachfehler } from '../infra/fehlerTexte';
-import { deleteUserSetting } from '../einstellungen/settings';
-import { setUserSetting } from '../konto/nutzerEinstellung';
+import { deleteUserSetting } from '../einstellungen';
+import { setUserSetting } from '../konto';
 
 /** Fachlich, nicht technisch (die Spalte ist TEXT): Der Name muss auf eine
  * Kachel passen, und eine Absage ist besser als ein abgeschnittener Name. */

@@ -1,5 +1,5 @@
 import { logAndContinue } from '../../infra/fehler';
-import { stelleAuftragEin } from '../../auftraege/dienst';
+import { stelleAuftragEin } from '../../auftraege';
 import { katalog } from '../prozess';
 
 /** Daten, keine Warteschlange: je Adresse eine Zeile. Abgearbeitet vom EINEN

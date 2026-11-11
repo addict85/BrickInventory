@@ -1,20 +1,15 @@
 /** Jeder Schritt meldet seinen Fehler und lässt die übrigen laufen; scheitert
  * einer, wiederholt der Worker den ganzen Lauf — alle Schritte vertragen das. */
-import { purgeExpiredTokens } from '../konto/auth';
-import { raeumeAnmeldezaehlerAuf } from '../konto/loginLimiter';
-import { raeumePapierkorbAuf } from '../bestand/papierkorb';
-import { cleanOldPdfJobs } from '../auftraege/pdfAuftraege';
-import { raeumeErledigteAuf } from '../auftraege/dienst';
-import { purgeAltePreise } from '../finanzen/priceHistory';
-import { raeumeBildCacheAuf } from '../katalog/bilder/imgCacheServe';
-import { loescheVerfallene } from '../katalog/bilder/bildbedarf';
+import { purgeExpiredTokens, raeumeAnmeldezaehlerAuf, raeumeOffeneRegistrierungenAuf } from '../konto';
+import { raeumePapierkorbAuf } from '../bestand';
+import { cleanOldPdfJobs, raeumeErledigteAuf, pruefeAbbruch, type AuftragsLauf } from '../auftraege';
+import { purgeAltePreise } from '../finanzen';
+import { raeumeBildCacheAuf, loescheVerfallene } from '../katalog';
 import { fehlertext } from '../infra/fehler';
-import { raeumeIdempotenzAuf } from '../idempotenz/dienst';
-import { raeumeOffeneRegistrierungenAuf } from '../konto/konten';
+import { raeumeIdempotenzAuf } from '../idempotenz';
 import { raeumeProtokollAuf } from './dienst';
 import { raeumeAlteSicherungenAuf } from '../../db/migrate';
 import * as db from '../../db/database';
-import { pruefeAbbruch, type AuftragsLauf } from '../auftraege/auftraege';
 
 type Schritt = [name: string, lauf: () => Promise<unknown>];
 

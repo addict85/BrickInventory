@@ -1,8 +1,7 @@
 /** docs/openapi.json aus dem Vertrag. Jedes benannte Schema eines Bereichs wird
  * eine Komponente; so steht ein Set einmal in der Datei, nicht in jeder Route. */
 import { z } from 'zod';
-import type { Route } from './grund';
-import { Fehler, Fehlercode, PFAD } from './grund';
+import { type Route, Fehler, Fehlercode, PFAD } from './grund';
 import { BEREICHE } from './index';
 import { API_VERSION } from './version';
 

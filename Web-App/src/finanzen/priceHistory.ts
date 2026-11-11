@@ -1,9 +1,9 @@
 /** Die EINE Umsetzung für Webapp und Android-API, damit beide dasselbe Diagramm zeigen. */
 
 import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
-import { asIds, blickfeldAus, type Sicht } from '../haushalt/haushalt';
+import { asIds, blickfeldAus, type Sicht } from '../haushalt';
 import { buildChart } from './chartData';
-import { blNummerVon } from '../katalog/blZuordnung';
+import { blNummerVon } from '../katalog';
 import { entwicklungProzent } from './setValue';
 import { konfig } from '../infra/konfig';
 import * as repo from './repository/preisverlauf';

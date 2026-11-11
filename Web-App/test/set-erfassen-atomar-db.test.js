@@ -40,7 +40,7 @@ Module.prototype.require = function (name, ...rest) {
             }
           : t[k],
     });
-  if (/finanzen[/\\]marketPrice(\.js)?$/.test(name))
+  if (/(?:finanzen[/\\]|^\.\/)marketPrice(\.js)?$/.test(name))
     return new Proxy(m, {
       get: (t, k) =>
         k === 'getCurrentMarketPrice'
@@ -60,7 +60,7 @@ Module.prototype.require = function (name, ...rest) {
             }
           : t[k],
     });
-  if (/katalog[/\\]quellen(\.js)?$/.test(name))
+  if (/(?:katalog[/\\]|^\.\/)quellen(\.js)?$/.test(name))
     return new Proxy(m, { get: (t, k) => (k === 'brickset' ? { getSetInfo: async () => null } : t[k]) });
   return m;
 };

@@ -1,7 +1,7 @@
 // Gear und Bücher führt BrickLink anders als Rebrickable; der Link muss das wissen.
 import { logAndContinue } from '../infra/fehler';
 import { bricklinkRequest } from './quellen';
-import { getGlobalSetting } from '../einstellungen/settings';
+import { getGlobalSetting } from '../einstellungen';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { katalog } from './prozess';
 

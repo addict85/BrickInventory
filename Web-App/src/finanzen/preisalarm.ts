@@ -1,9 +1,9 @@
 /** Der Preislauf holt die Marktpreise ohnehin; hier fehlte nur der Schritt,
  * eine Schwelle damit zu vergleichen. Ein Alarm gehört EINEM Konto. */
 import { meldeFehler, fehlertext } from '../infra/fehler';
-import { scopeIds } from '../haushalt/haushalt';
+import { scopeIds } from '../haushalt';
 import { fachfehler } from '../infra/fehlerTexte';
-import * as mailer from '../mail/mailer';
+import * as mailer from '../mail';
 import { toCsv, csvZeilenAusAnfrage, uebersprungenHinweis } from '../infra/csvExport';
 import { normalisiereSetNummer } from '../infra/setNummer';
 import * as repo from './repository/preisalarme';

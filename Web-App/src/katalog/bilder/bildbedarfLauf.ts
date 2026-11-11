@@ -6,10 +6,8 @@ import { setBildLokalEintragen } from '../bildlage';
 import { grundFuer, istBekanntFehlend, merkeFehlend } from './imageMisses';
 import { generateThumb } from './thumbs';
 import { SET_IMAGES_DIR } from '../../infra/appPaths';
-import { setzeZustand } from '../../auftraege/laufzustand';
-import { pausiereArt, liesPause } from '../../auftraege/dienst';
+import { setzeZustand, pausiereArt, liesPause, AuftragUnterbrochen, AuftragVerschieben, type AuftragsKontext } from '../../auftraege';
 import { STAPEL, TAKT_MS, NOTIZ_GILT_MS, merkeGebraucht, schreibePuffer, notiereBildbedarf, loescheVerfallene, initImageQueue, anfragenJeMinute, nimmBildwuensche } from './bildbedarf';
-import { AuftragUnterbrochen, AuftragVerschieben, type AuftragsKontext } from '../../auftraege/auftraege';
 import { versuche } from '../../infra/ergebnis';
 
 /** Über den Proxy angefragte Bilder im HINTERGRUND lokal ablegen, samt

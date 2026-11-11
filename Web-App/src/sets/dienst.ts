@@ -1,6 +1,6 @@
 /** SQL, Rebrickable und Aufträge stehen nur hier und darunter, damit die Routen nur Anfrage und Antwort kennen. */
-import { schreibziel } from '../haushalt/haushalt';
-import { normalisiereLagerort, setzeLagerort, orteFuer, vorgabeVon } from '../bestand/lagerort';
+import { schreibziel } from '../haushalt';
+import { normalisiereLagerort, setzeLagerort, orteFuer, vorgabeVon } from '../bestand';
 import { normalizeSetNumber } from './erfassen';
 import { mitVersion } from '../infra/setNummer';
 import { verschiebeSet } from './setMove';

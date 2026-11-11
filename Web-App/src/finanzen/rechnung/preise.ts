@@ -5,21 +5,17 @@
 import type { DbSchnittstelle } from '../../../db/database';
 import * as repo from '../repository/preisCache';
 import type { Preiszeile, SetPreiszeile } from '../repository/preisCache';
-import type { KatalogEintrag } from '../../katalog/bricklinkPreise';
-import { asIds } from '../../haushalt/haushalt';
-import { checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus } from '../../katalog/apiKontingent';
-import { bricklinkRequest } from '../../katalog/quellen';
+import { type KatalogEintrag, checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus, bricklinkRequest, katalogEintrag, getPriceGuide, hatPreis, blAbrufNummer, blAbrufNummern } from '../../katalog';
+import { asIds } from '../../haushalt';
 import { fehlertext, logAndContinue } from '../../infra/fehler';
 import { fachfehler } from '../../infra/fehlerTexte';
 import { mitVersion, ohneBricklinkPreis } from '../../infra/setNummer';
-import { katalogEintrag, getPriceGuide, hatPreis } from '../../katalog/bricklinkPreise';
 import { effectiveCondition } from './zustand';
-import { blAbrufNummer, blAbrufNummern } from '../../katalog/blZuordnung';
 import { KEINE_FARBE } from '../../infra/validate';
 import { versuche } from '../../infra/ergebnis';
 
 /** Wessen DATEN gerechnet werden; wessen EINSTELLUNGEN gelten, sagt `viewerId`. */
-export type { Blickfeld } from '../../haushalt/haushalt';
+export type { Blickfeld } from '../../haushalt';
 
 type PreisZeile = { avg_price?: unknown; fetched_at?: string | Date | null } | null | undefined;
 

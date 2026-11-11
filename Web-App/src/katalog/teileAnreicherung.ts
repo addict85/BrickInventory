@@ -16,12 +16,10 @@ type JobHttpResult = { status: number; body: string };
 // bekommt deshalb die Art mit.
 import { bildEndung, dateiTeil, zielImOrdner, ladeBild } from './bilder/bildDatei';
 import { ERLAUBTE_BILD_HOSTS, pfadSegment, nummernListe } from '../infra/fremdeAdressen';
-import { setzeZustand } from '../auftraege/laufzustand';
+import { setzeZustand, pruefeAbbruch, type AuftragsLauf, imgDlAdd } from '../auftraege';
 import * as repo from './repository/teileAnreicherung';
 import fs from 'fs';
 import path from 'path';
-import { pruefeAbbruch, type AuftragsLauf } from '../auftraege/auftraege';
-import * as monitor from '../auftraege/jobMonitor';
 import { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
 import { generateThumb } from './bilder/thumbs';
 import { KEINE_FARBE } from '../infra/validate';
@@ -302,7 +300,7 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
     // Zum globalen Zähler ADDIEREN statt ihn zu überschreiben, sonst zeigte die
     // Überwachung nur den zuletzt gestarteten Stapel.
     _pendingAdded = needsImg.length;
-    await monitor.imgDlAdd(_pendingAdded).catch(logAndContinue('teile-enrich:imgDlAdd'));
+    await imgDlAdd(_pendingAdded).catch(logAndContinue('teile-enrich:imgDlAdd'));
 
     let done = 0;
     // Höchstens ein Schreibvorgang je Sekunde statt einer je Bild, das entlastet
@@ -313,7 +311,7 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
       if (!force && Date.now() - _lastFlush < 1000) return;
       _flushed  += delta;
       _lastFlush = Date.now();
-      await monitor.imgDlAdd(-delta).catch(logAndContinue('teile-enrich:imgDlAdd'));
+      await imgDlAdd(-delta).catch(logAndContinue('teile-enrich:imgDlAdd'));
     };
     await Promise.all(needsImg.map(async p => {
       await ladeTeilbild(p);
@@ -327,7 +325,7 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
     // Nur den noch nicht gemeldeten Rest verrechnen — deckt Abbruch ab, ohne im
     // Normalfall doppelt abzuziehen.
     const _rest = _pendingAdded - _flushed;
-    if (_rest > 0) await monitor.imgDlAdd(-_rest).catch(logAndContinue('teile-enrich:imgDlAdd'));
+    if (_rest > 0) await imgDlAdd(-_rest).catch(logAndContinue('teile-enrich:imgDlAdd'));
     if (lockClient) {
       if (haveXlock) await repo.gibBildSperreFrei(lockClient, n).catch(logAndContinue('teile-enrich:hashtext'));
       lockClient.release();

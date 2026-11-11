@@ -1,10 +1,9 @@
 /** Der Inhaber erfährt per Mail, wenn sich an seinen Zugängen etwas ändert:
  * Ein Eindringling, der Passwort oder Passkey setzt, bliebe sonst unbemerkt. */
-import { mailEingerichtet, sendKontoHinweisMail } from '../mail/mailer';
-import type { KontoHinweis } from '../mail/mailer';
+import { mailEingerichtet, sendKontoHinweisMail, type KontoHinweis } from '../mail';
 import { logAndContinue } from '../infra/fehler';
-import { householdStatus } from '../haushalt/haushalt';
-import { getSetting } from '../einstellungen/settings';
+import { householdStatus } from '../haushalt';
+import { getSetting } from '../einstellungen';
 import { aktiveVerwalter, profilZeile as profil } from './repository/konten';
 
 type Angaben = { name?: string | undefined; konto?: string | undefined; durch?: string | undefined };

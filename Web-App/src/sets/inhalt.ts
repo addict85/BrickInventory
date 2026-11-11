@@ -1,19 +1,11 @@
 /** Stammdaten, Teile- und Figurenliste eines Sets. */
-import { stelleAuftragEin } from '../auftraege/dienst';
-import { proxyImageUrl } from '../katalog/bilder/images';
-import { importPartsForSet } from '../katalog/partsImport';
-import { zaehleAnfrage } from '../konto/loginLimiter';
-import { setNummerImBlickfeld } from '../katalog/bilder/bildBlickfeld';
+import { stelleAuftragEin } from '../auftraege';
+import { proxyImageUrl, importPartsForSet, setNummerImBlickfeld, neuestesInventar, figurenAusKatalog, getMinifigInfo, getSetMinifigs, getAllSetParts, type RbSetTeil, merkeFigur, merkeSetFiguren } from '../katalog';
+import { zaehleAnfrage } from '../konto';
 import { findSetInScope } from './erfassen';
 import { istErsatzteil } from '../infra/validate';
-import { neuestesInventar } from '../katalog/rbInventar';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
-import { figurenAusKatalog } from '../katalog/minifigsImport';
-import { getMinifigInfo, getSetMinifigs } from '../katalog/quellen';
-import { getAllSetParts } from '../katalog/rebrickableKatalog';
-import type { RbSetTeil } from '../katalog/quellen';
 import { fachfehler } from '../infra/fehlerTexte';
-import { merkeFigur, merkeSetFiguren } from '../katalog/katalogPflege';
 import * as repo from './repository/setDetail';
 import type { KatalogTeil, ListenTeil, SetStamm } from './zeilen';
 import { versuche, wertOder } from '../infra/ergebnis';

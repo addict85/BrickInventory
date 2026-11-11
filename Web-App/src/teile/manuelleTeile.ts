@@ -1,21 +1,15 @@
 /** Hier und nicht in einer Route, weil Sitzungsroute und v1-Fabrik beide darauf
  * zugreifen — eine Route soll keine andere importieren. */
-import { blickfeldAus } from '../haushalt/haushalt';
-import type { Sicht } from '../haushalt/haushalt';
+import { blickfeldAus, type Sicht } from '../haushalt';
 import { oeffentlicherFehler } from '../infra/fehler';
 import { Abstriche, versuche } from '../infra/ergebnis';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
 import * as db from '../../db/database';
-import { recordAcquisitionForDay } from '../bestand/acquisitions';
-import { mengenwunsch, passeManuelleMengeAn } from '../bestand/manuelleMenge';
+import { recordAcquisitionForDay, mengenwunsch, passeManuelleMengeAn, setzeLagerort, ortFuerNeuerfassung } from '../bestand';
 import * as repo from './repository/manuelleTeile';
-import { kaufpreisAusEingabe, manuellerKaufpreis } from '../finanzen/preisRegel';
-import { zustandFuerPreis } from '../einstellungen/settings';
-import { resolvePartCondition, marktpreisMitHerkunft, getCurrentPartMarketPrice } from '../finanzen/marketPrice';
-import { lookupPart } from '../katalog/quellen';
-import { farbliste, KEINE_FARBE } from '../katalog/farben';
-import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
-import { merkeTeil, merkeTeilFarbe, katalogTeil } from '../katalog/katalogPflege';
+import { kaufpreisAusEingabe, manuellerKaufpreis, resolvePartCondition, marktpreisMitHerkunft, getCurrentPartMarketPrice } from '../finanzen';
+import { zustandFuerPreis } from '../einstellungen';
+import { lookupPart, farbliste, KEINE_FARBE, merkeTeil, merkeTeilFarbe, katalogTeil } from '../katalog';
 import * as V0 from '../infra/validate';
 import { geldEingabe } from '../infra/geld';
 import { fachfehler } from '../infra/fehlerTexte';
