@@ -5,7 +5,8 @@ import ch.brickinventoryapp.sicherheit.AblageChiffre
 import ch.brickinventoryapp.sicherheit.Ablageschluessel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
-import java.security.MessageDigest
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,9 +26,11 @@ class VorschauSpeicher(
     /** Der Ablageordner; eine Funktion, damit `context` erst beim ersten Zugriff gefragt wird. */
     private val wurzel: () -> File,
     private val chiffre: AblageChiffre,
+    /** Schlüssel der Dateinamen; ohne ihn liesse sich aus einer bekannten Adresse ihr Name rechnen. */
+    private val namen: () -> ByteArray,
 ) : Vorschauablage {
     @Inject constructor(@ApplicationContext context: Context, ablage: Ablageschluessel) :
-        this({ File(context.filesDir, "vorschau") }, AblageChiffre { ablage.fuer("vorschau") })
+        this({ File(context.filesDir, "vorschau") }, AblageChiffre { ablage.fuer("vorschau") }, { ablage.fuer("namen") })
 
     companion object {
         /**
@@ -60,14 +63,14 @@ class VorschauSpeicher(
         /** Nur Vorschaubilder. Die volle Aufloesung gehoert nicht hierher — siehe [istVorschau]. */
         private const val VORSCHAU_MERKMAL = "thumb"
 
-        /** Unterordner der verschlüsselten Ablage; was direkt daneben liegt, ist Klartext älterer Fassungen. */
-        private const val VERSCHLUESSELT = "v2"
+        /** Unterordner der Ablage mit gestreuten Namen; alles andere daneben stammt von älteren Fassungen. */
+        private const val VERSCHLUESSELT = "v3"
     }
 
     private val ordner: File by lazy {
         val basis = wurzel()
-        // Ein Zwischenspeicher: Die Klartext-Bilder werden verworfen, nicht übernommen.
-        runCatching { basis.listFiles()?.filter { it.isFile }?.forEach { it.delete() } }
+        // Ein Zwischenspeicher: Klartext (Dateien) und v2 (Namen als SHA-256 der Adresse) werden verworfen.
+        runCatching { basis.listFiles()?.filter { it.name != VERSCHLUESSELT }?.forEach { it.deleteRecursively() } }
         File(basis, VERSCHLUESSELT).also { it.mkdirs() }
     }
 
@@ -87,12 +90,12 @@ class VorschauSpeicher(
         adresse.contains("${VORSCHAU_MERKMAL}=1") || adresse.contains("_$VORSCHAU_MERKMAL.")
 
     /**
-     * Der Dateiname zu einer Adresse — SHA-256, weil die Adresse einen kodierten
-     * Fremdlink mit Schrägstrichen enthält; ein Hash hat ausserdem eine feste Länge.
+     * Der Dateiname zu einer Adresse: HMAC-SHA256 mit [namen], nicht der blosse Hash —
+     * sonst verriete ein Name, ob ein bekanntes Set-Bild hier liegt.
      */
     private fun schluessel(adresse: String): String =
-        MessageDigest.getInstance("SHA-256").digest(adresse.toByteArray())
-            .joinToString("") { "%02x".format(it) }
+        Mac.getInstance("HmacSHA256").apply { init(SecretKeySpec(namen(), "HmacSHA256")) }
+            .doFinal(adresse.toByteArray()).joinToString("") { "%02x".format(it) }
 
     private fun datei(adresse: String) = File(ordner, schluessel(adresse))
 

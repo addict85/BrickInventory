@@ -85,7 +85,7 @@ class ServerClientsTest {
         ctx = ctx, frage = ZertifikatsFrage())
 
     private fun bildClient() = NetzModule.provideImageOkHttpClient(ctx, netz, SessionExpiredSignal(),
-        VorschauSpeicher({ File(ctx.filesDir, "vorschau-clients") }, AblageChiffre { ByteArray(32) { 2 } }),
+        VorschauSpeicher({ File(ctx.filesDir, "vorschau-clients") }, AblageChiffre { ByteArray(32) { 2 } }, { ByteArray(32) { 12 } }),
         ZertifikatsFrage(), Ablageschluessel(File(ctx.noBackupFilesDir, "clients.schluessel"), Klartresor))
 
     private fun hole(client: OkHttpClient, adresse: String) =

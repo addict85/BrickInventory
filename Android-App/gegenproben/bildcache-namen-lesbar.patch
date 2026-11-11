@@ -1,0 +1,17 @@
+Gegenprobe: Der Bild-Zwischenspeicher legt Einträge unter dem MD5 der Adresse ab
+Modul: core-data
+Test: ch.brickinventoryapp.data.BildZwischenspeicherTest
+Rot: die Namen im Zwischenspeicher verraten die Adressen nicht
+
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt
+@@ -40,7 +40,7 @@
+     override fun onPathParameter(path: Path, functionName: String, parameterName: String): Path = gestreut(path)
+ 
+     private fun gestreut(path: Path): Path {
+-        val s = streuung ?: return path
++        val s = streuung?.takeIf { false } ?: return path
+         if (path.parent != s.ordner || path.name.startsWith(GESTREUT)) return path
+         val mac = Mac.getInstance("HmacSHA256").apply { init(SecretKeySpec(s.schluessel(), "HmacSHA256")) }
+         val name = mac.doFinal(path.name.toByteArray(Charsets.UTF_8)).take(NAMENSLAENGE).joinToString("") { "%02x".format(it) }
