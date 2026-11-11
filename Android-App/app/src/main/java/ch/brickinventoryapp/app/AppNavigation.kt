@@ -89,7 +89,7 @@ fun BrickInventoryRoute(
     val ctx = LocalContext.current
     LaunchedEffect(snackbarMsg) {
         snackbarMsg?.let {
-            snackbarHostState.showSnackbar(it.alsSatz(ctx))
+            snackbarHostState.showSnackbar(it.alsSatz(LanguageManager.localizedContext(ctx)))
             vm.clearSnackbar()
         }
     }
@@ -216,12 +216,6 @@ internal fun reiterDerLeiste(): List<Reiter> {
             Reiter(AppZiel.Mehr, { Icon(Icons.Default.MoreHoriz, null) }, mehr),
         )
     }
-}
-
-/** Den Satz bildet die Oberfläche, in der Sprache der App (LanguageManager). */
-internal fun Meldung.alsSatz(ctx: Context): String = when (this) {
-    is Meldung.Text -> text
-    is Meldung.Ressource -> LanguageManager.localizedContext(ctx).getString(id, *werte.toTypedArray())
 }
 
 /** Dauer eines Seitenwechsels; kurz genug, dass er nicht aufhält. */

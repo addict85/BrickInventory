@@ -3,10 +3,10 @@ Modul: core-zustand
 Test: ch.brickinventoryapp.zustand.KeinTokenImZustandTest
 Rot: kein Feld von AppUiState traegt einen Token
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/ZustandSitzung.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/ZustandSitzung.kt
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/ZustandSitzung.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/ZustandSitzung.kt
-@@ -25,6 +25,7 @@
+diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/AppUiState.kt b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/AppUiState.kt
+--- a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/AppUiState.kt
++++ b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/AppUiState.kt
+@@ -13,6 +13,7 @@
  data class AppUiState(
      val serverUrl: String = "",
      val isLoggedIn: Boolean = false,

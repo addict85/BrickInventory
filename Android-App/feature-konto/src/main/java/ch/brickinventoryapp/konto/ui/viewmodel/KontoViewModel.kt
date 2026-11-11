@@ -16,8 +16,8 @@ import ch.brickinventoryapp.konto.ui.GeraeteRueckfrage
 import ch.brickinventoryapp.konto.ui.GeraeteUiState
 import ch.brickinventoryapp.model.data.model.ZweiterFaktorAnfrage
 import ch.brickinventoryapp.konto.ui.KontoUiState
-import ch.brickinventoryapp.zustand.ui.Sitzung
-import ch.brickinventoryapp.zustand.ui.SitzungsRepository
+import ch.brickinventoryapp.sitzung.Sitzung
+import ch.brickinventoryapp.sitzung.SitzungsRepository
 import ch.brickinventoryapp.konto.ui.ZweiterFaktorUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

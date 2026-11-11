@@ -20,7 +20,7 @@ import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.zustand.ui.Abmeldehaken
 import ch.brickinventoryapp.zustand.ui.Abmelden
 import ch.brickinventoryapp.zustand.ui.Blickfeld
-import ch.brickinventoryapp.zustand.ui.Sitzung
+import ch.brickinventoryapp.sitzung.Sitzung
 import ch.brickinventoryapp.sicherheit.AblageChiffre
 import ch.brickinventoryapp.sicherheit.Ablageschluessel
 import ch.brickinventoryapp.sicherheit.TokenVerschluesselung

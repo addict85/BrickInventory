@@ -211,6 +211,7 @@ dependencies {
     implementation(project(":core-ui"))
     implementation(project(":core-ui-bestand"))
     implementation(project(":core-zustand"))
+    implementation(project(":core-sitzung"))
     implementation(project(":feature-anmeldung"))
     implementation(project(":feature-katalog"))
     implementation(project(":feature-sammlung"))

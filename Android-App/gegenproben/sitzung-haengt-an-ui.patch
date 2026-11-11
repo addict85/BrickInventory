@@ -1,0 +1,15 @@
+Gegenprobe: core-sitzung bindet core-ui ein; die Sitzung liegt unter Zustand und Oberfläche
+Modul: app
+Test: ch.brickinventoryapp.app.ModulgrenzenTest
+Rot: Schichtung der Kernmodule
+
+diff --git a/Android-App/core-sitzung/build.gradle.kts b/Android-App/core-sitzung/build.gradle.kts
+--- a/Android-App/core-sitzung/build.gradle.kts
++++ b/Android-App/core-sitzung/build.gradle.kts
+@@ -16,5 +16,6 @@
+     // NetworkPolicy: Adresse einer gescheiterten Abmeldung, Klartext-Altbestand.
+     implementation(project(":core-netz"))
+     implementation(project(":core-ressourcen"))
++    implementation(project(":core-ui"))
+     // Die Tests der Sitzung laufen in core-zustand: Sie bauen sie mit dem Blickfeld zusammen.
+ }

@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.zustand.ui
+package ch.brickinventoryapp.sitzung
 
 import kotlinx.coroutines.ExperimentalForInheritanceCoroutinesApi
 import kotlinx.coroutines.awaitCancellation

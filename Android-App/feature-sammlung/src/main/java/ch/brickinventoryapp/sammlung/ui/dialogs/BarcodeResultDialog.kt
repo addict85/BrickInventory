@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.dialogs
 
+import ch.brickinventoryapp.sitzung.*
 import ch.brickinventoryapp.model.ui.Scannerherkunft
 import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.model.fach.Zustand

@@ -27,7 +27,7 @@ import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.zustand.ui.Blickfeld
 import ch.brickinventoryapp.zustand.ui.FilterAblage
 import ch.brickinventoryapp.model.ui.ScrollMemory
-import ch.brickinventoryapp.zustand.ui.Sitzung
+import ch.brickinventoryapp.sitzung.Sitzung
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
 import androidx.lifecycle.viewModelScope
@@ -59,6 +59,7 @@ val MeldungsKanal.text: String?
         null -> null
         is Meldung.Text -> m.text
         is Meldung.Ressource -> "t${m.id}" + if (m.werte.isEmpty()) "" else m.werte.joinToString(", ", "(", ")")
+        is Meldung.Menge -> "m${m.id}:${m.anzahl}"
     }
 
 /** Gemeinsames Gerüst der ViewModel-Tests, die gegen einen Testserver laufen. */

@@ -15,7 +15,7 @@ import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.Bestandsabgleich
 import ch.brickinventoryapp.konto.ui.AlarmUebersichtUiState
 import ch.brickinventoryapp.konto.ui.CsvHochladenUiState
-import ch.brickinventoryapp.zustand.ui.ladeEinstellungen
+import ch.brickinventoryapp.sitzung.ladeEinstellungen
 import dagger.hilt.android.lifecycle.HiltViewModel
 import ch.brickinventoryapp.data.alarm.Alarmeingabe
 import kotlinx.coroutines.Job
@@ -30,8 +30,8 @@ import ch.brickinventoryapp.model.data.model.LagerortResponse
 import ch.brickinventoryapp.model.data.model.LagerortVorgabeResponse
 import ch.brickinventoryapp.model.data.model.PreisalarmResponse
 import androidx.lifecycle.ViewModel
-import ch.brickinventoryapp.zustand.ui.AppUiState
-import ch.brickinventoryapp.zustand.ui.Sitzung
+import ch.brickinventoryapp.sitzung.AppUiState
+import ch.brickinventoryapp.sitzung.Sitzung
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
 import ch.brickinventoryapp.zustand.ui.viewmodel.Gelesen
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef

@@ -47,7 +47,7 @@ zurücksetzen, sonst bleibt der Knopf nach einem Fehler dauerhaft gesperrt.
 ## Abgelaufene Sitzung (HTTP 401)
 
 **Dateien:** `data/repository/Abruf.kt`, `app/di/AppModule.kt`,
-`data/SessionExpiredSignal.kt`, `zustand/ui/SitzungsDienst.kt`
+`data/SessionExpiredSignal.kt`, `sitzung/SitzungsDienst.kt`
 **Test:** `SessionAndLifecycleTest`
 
 Ein 401 ist kein gewöhnlicher Serverfehler. Drei Regeln:
@@ -211,7 +211,7 @@ Ein `else`-Zweig verschluckte sie still; deshalb keinen nachrüsten.
 
 ## Zustand ist nach Domänen getrennt
 
-**Dateien:** `*/ui/Zustand*.kt`, `zustand/ui/AbgeleiteterZustand.kt`
+**Dateien:** `*/ui/Zustand*.kt`, `sitzung/AppUiState.kt`, `sitzung/AbgeleiteterZustand.kt`
 **Tests:** `ZustandsflussBreiteTest`, `AbgeleiteterZustandTest`, `TeileViewModelTest` u. a. („nach dem Abmelden …“)
 
 `AppUiState` hält nur die Sitzung; jeder Bereich hat seinen eigenen Fluss. Ein

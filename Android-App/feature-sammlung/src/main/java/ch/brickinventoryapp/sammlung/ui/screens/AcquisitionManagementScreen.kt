@@ -7,7 +7,7 @@ import ch.brickinventoryapp.ui.components.Rueckfrage
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import ch.brickinventoryapp.zustand.ui.ManualItemDetailUiState
 import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
-import ch.brickinventoryapp.zustand.ui.AppUiState
+import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.zustand.ui.viewmodel.KaeufeAktionen
 import ch.brickinventoryapp.model.ui.model.KaufAnsicht
 import ch.brickinventoryapp.ui.theme.Formen

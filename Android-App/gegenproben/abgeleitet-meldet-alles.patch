@@ -3,10 +3,10 @@ Modul: core-zustand
 Test: ch.brickinventoryapp.zustand.AbgeleiteterZustandTest
 Rot: ein abgeleiteter Zustand meldet nur echte Aenderungen
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AbgeleiteterZustand.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AbgeleiteterZustand.kt
+diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/AbgeleiteterZustand.kt b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/AbgeleiteterZustand.kt
 index 10de68f..4ea4a01 100644
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AbgeleiteterZustand.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/AbgeleiteterZustand.kt
+--- a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/AbgeleiteterZustand.kt
++++ b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/AbgeleiteterZustand.kt
 @@ -34,7 +34,7 @@ fun <A, R> StateFlow<A>.abgeleitet(rechne: (A) -> R): StateFlow<R> {
          override val value: R get() = rechne(a.value)
          override val replayCache: List<R> get() = listOf(value)

@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.zustand.ui
+package ch.brickinventoryapp.sitzung
 
 import ch.brickinventoryapp.data.Darstellungsablage
 import ch.brickinventoryapp.data.Sitzungsablage

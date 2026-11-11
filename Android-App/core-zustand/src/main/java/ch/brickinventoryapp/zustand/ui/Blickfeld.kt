@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.zustand.ui
 
 import ch.brickinventoryapp.model.data.ScopeFilter
+import ch.brickinventoryapp.sitzung.Filterquelle
 import ch.brickinventoryapp.data.ScopeFilterSpeicher
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
@@ -42,18 +43,14 @@ class ScopeFilterAblage @Inject constructor(
  * dieselben Konten und Orte zeigen. Wer einen Filter ändert, lädt danach seine
  * eigene Liste nach; der Blickfeld-Dienst selbst lädt keine Bestandsdaten.
  */
-interface Blickfeld {
+interface Blickfeld : Filterquelle {
     val konten: StateFlow<BlickfeldUiState>
     val lager: StateFlow<LagerUiState>
     fun kontoFuer(view: ScopeFilter.View): String?
     fun lagerFuer(view: ScopeFilter.View): String?
     suspend fun setzeKonto(view: ScopeFilter.View, wert: String)
     suspend fun setzeLager(view: ScopeFilter.View, wert: String)
-    suspend fun ladeFilter()
-    suspend fun ladeMitglieder()
-    suspend fun ladeLagerorte()
     suspend fun ladeVorrat(besitzer: List<Int>)
-    suspend fun ladeEigeneLagerorte()
     suspend fun anmeldungBeginnt()
     fun zuruecksetzen()
 }

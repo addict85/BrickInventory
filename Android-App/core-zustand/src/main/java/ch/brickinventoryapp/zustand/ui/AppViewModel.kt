@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.zustand.ui
 
+import ch.brickinventoryapp.sitzung.Sitzung
+import ch.brickinventoryapp.sitzung.SitzungsRepository
+import ch.brickinventoryapp.sitzung.AppUiState
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.PasswortPflicht

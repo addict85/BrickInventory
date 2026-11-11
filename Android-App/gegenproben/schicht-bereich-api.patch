@@ -8,7 +8,7 @@ diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sam
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
 @@ -3,6 +3,7 @@ package ch.brickinventoryapp.sammlung.ui.viewmodel
  import ch.brickinventoryapp.model.fach.Zustand
- import ch.brickinventoryapp.zustand.ui.abgeleitet
+ import ch.brickinventoryapp.sitzung.abgeleitet
  import androidx.lifecycle.SavedStateHandle
 +import ch.brickinventoryapp.data.api.SetsApi
  import ch.brickinventoryapp.model.ui.model.alsAnsicht

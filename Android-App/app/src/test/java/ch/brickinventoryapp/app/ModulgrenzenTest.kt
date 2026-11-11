@@ -65,6 +65,8 @@ import ch.brickinventoryapp.testing.Quellen
  *      rot „Modulkanten per api nur zu core-model: [core-data → core-netz]“ (Schichtung …)
  *   X  gegenproben/netz-oeffnet-intent.patch: ExterneAdresse.kt importiert android.content.Intent →
  *      rot „core-netz importiert Ablage, Repositories, DI oder Android-Oberfläche“ (Schichtung …)
+ *   Y  gegenproben/sitzung-haengt-an-ui.patch: core-sitzung bindet core-ui ein →
+ *      rot „Schichtung der Kernmodule: core-sitzung hängt an [core-ui]“
  *   W  gegenproben/route-im-kern.patch: eine Route in core-model, die Verwaltung öffnet sie →
  *      rot „feature-verwaltung nennt fremde Routentypen: [Zentralziel]“ (kein Bereich hängt …);
  *      lokal mit kotlinc gegen den Baum gemessen, in der CI über Gradle
@@ -105,6 +107,7 @@ class ModulgrenzenTest {
             "app" to "app", "core-model" to "model", "core-netz" to "netz", "core-data" to "data",
             "core-sicherheit" to "sicherheit", "core-offline" to "offline",
             "core-update" to "update", "core-dienste" to "dienste", "core-ui" to "ui", "core-zustand" to "zustand",
+            "core-sitzung" to "sitzung",
             "core-testing" to "testing", "feature-anmeldung" to "anmeldung", "feature-katalog" to "katalog",
             "feature-sammlung" to "sammlung", "feature-teile" to "teile", "feature-finanzen" to "finanzen",
             "feature-konto" to "konto", "feature-verwaltung" to "verwaltung", "core-ui-bestand" to "gemeinsam",
@@ -172,9 +175,11 @@ class ModulgrenzenTest {
             // Fachliche Bausteine, nur Darstellung: Mit Daten oder Zustand würde es zum Umweg,
             // auf dem sich Bereiche doch kennen.
             "core-ui-bestand" to setOf("core-model", "core-ressourcen", "core-ui"),
+            // Die Sitzung liegt unter dem Zustand: Sie kennt weder Filter noch ViewModels.
+            "core-sitzung" to setOf("core-model", "core-ressourcen", "core-netz", "core-data"),
             // Der Zustand liegt unter der Oberfläche: Bildschirme lesen ihn, er kennt kein Compose-Bauteil.
-            "core-zustand" to setOf("core-model", "core-ressourcen", "core-netz", "core-data", "core-sicherheit"),
-            "core-testing" to setOf("core-zustand", "core-data", "core-sicherheit", "core-offline"),
+            "core-zustand" to setOf("core-model", "core-ressourcen", "core-netz", "core-data", "core-sicherheit", "core-sitzung"),
+            "core-testing" to setOf("core-zustand", "core-sitzung", "core-data", "core-sicherheit", "core-offline"),
         )
         val kerne = module().filterKeys { it.startsWith("core-") }
         assertEquals("jedes Kernmodul hat eine Regel", erlaubt.keys, kerne.keys)

@@ -53,6 +53,7 @@ dependencies {
     testImplementation(project(":core-testing"))
     // AbmeldenRaeumtAllesTest prüft das Abmelden samt Sitzung und Blickfeld.
     testImplementation(project(":core-zustand"))
+    testImplementation(project(":core-sitzung"))
     // Robolectric-Tests (BestandDatenbankTest, Ablagen, Netz-Clients).
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)
