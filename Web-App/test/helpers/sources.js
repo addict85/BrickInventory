@@ -92,7 +92,9 @@ function baueDist() {
   _built = true;
 }
 
-let _zugangGesetzt = false;
+/** Der Zugang der Testdatei: db/database kennt keinen Zugang des Prozesses mehr;
+ *  ein Test bekommt ihn wie der Server von seinem Einstieg, hier also von hier. */
+let _testDb = null;
 
 function buildAndRequire() {
   // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/http/vertragsRouter.ts).
@@ -108,22 +110,26 @@ function buildAndRequire() {
   const faul = new Proxy({}, { get: (_z, k) => (...a) => echt().nacharbeit[k](...a) });
   require(path.join(ROOT, 'dist', 'src/auftraege/nacharbeit.js')).verdrahteNacharbeit(faul);
   const dbModul = require(path.join(ROOT, 'dist', 'db/database.js'));
-  // Wie server.ts: Der Zugang des Prozesses legt in einer leeren Datenbank das erste Konto an.
-  if (!_zugangGesetzt) {
-    dbModul.setzeStandardDb(() =>
-      dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung(), { erststart: () => echt().erststart() }));
-    _zugangGesetzt = true;
-  }
+  // Wie server.ts: Der Zugang legt in einer leeren Datenbank das erste Konto an.
+  const testDb = () => (_testDb ??= dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung(), { erststart: () => echt().erststart() }));
   // prozess.js lädt nichts; bereich.js erst beim ersten Gebrauch der Dienste.
   const BEREICHE = [['einstellungen', 'Einstellungen'], ['auftraege', 'Auftraege'], ['haushalt', 'Haushalt'], ['konto', 'Konto'], ['idempotenz', 'Idempotenz'], ['finanzen', 'Finanzen'], ['bestand', 'Bestand'], ['teile', 'Teile'], ['figuren', 'Figuren'], ['merkliste', 'Merkliste'], ['gutscheine', 'Gutscheine'], ['sammlung', 'Sammlung'], ['verwaltung', 'Verwaltung']];
   for (const [b, B] of BEREICHE)
     require(path.join(ROOT, 'dist', `src/${b}/prozess.js`))[`verdrahte${B}`](() =>
-      require(path.join(ROOT, 'dist', `src/${b}/bereich.js`))[`erzeuge${B}`]({ db: dbModul.standardDb() }));
+      require(path.join(ROOT, 'dist', `src/${b}/bereich.js`))[`erzeuge${B}`]({ db: testDb() }));
   require(path.join(ROOT, 'dist', 'src/katalog/prozess.js')).verdrahteKatalog(() =>
-    require(path.join(ROOT, 'dist', 'src/katalog/bereich.js')).erzeugeKatalog({ db: dbModul.standardDb() }));
+    require(path.join(ROOT, 'dist', 'src/katalog/bereich.js')).erzeugeKatalog({ db: testDb() }));
   require(path.join(ROOT, 'dist', 'src/sets/prozess.js')).verdrahteSets(() =>
-    require(path.join(ROOT, 'dist', 'src/sets/bereich.js')).erzeugeSets({ db: dbModul.standardDb(), nacharbeit: faul }));
-  return rel => require(path.join(ROOT, 'dist', rel));
+    require(path.join(ROOT, 'dist', 'src/sets/bereich.js')).erzeugeSets({ db: testDb(), nacharbeit: faul }));
+  // db/database.js mit den Funktionen des Testzugangs, wie es früher der Prozesszugang war.
+  const fassade = Object.create(dbModul, {
+    pool: { get: () => testDb().pool },
+    standardDb: { value: testDb },
+  });
+  for (const f of ['all', 'get', 'run', 'exec', 'transaction', 'initSchema', 'initSchemaOnce', 'getPoolStats',
+    'datenbankAntwortet', 'alsSuperuserVerbunden', 'eigeneVerbindung', 'inTransaktion'])
+    fassade[f] = (...a) => testDb()[f](...a);
+  return rel => (rel === 'db/database.js' ? fassade : require(path.join(ROOT, 'dist', rel)));
 }
 
 module.exports.buildAndRequire = buildAndRequire;

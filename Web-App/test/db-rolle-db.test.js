@@ -81,7 +81,7 @@ function rolleEinrichten(db, mehr = {}) {
 /** Schema und Migrationen in einem eigenen Prozess, wie beim Start. */
 function schemaAlsKonto(dbUrl, aufruf = 'initSchemaOnce') {
   return spawnSync(process.execPath, ['-e',
-    `const db = require('./dist/db/database.js'); db.${aufruf}().then(() => db.pool.end()).catch(e => { console.error(e.message); process.exit(1); })`],
+    `const m = require('./dist/db/database.js'); const db = m.erzeugeDb(m.dbKonfigAusUmgebung()); db.${aufruf}().then(() => db.pool.end()).catch(e => { console.error(e.message); process.exit(1); })`],
   { cwd: ROOT, encoding: 'utf8', env: { ...process.env, DATABASE_URL: dbUrl } });
 }
 
@@ -168,7 +168,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) =
     assert.equal(rolleEinrichten(alt).status, 0, 'ein zweiter Lauf scheitert');
 
     const warnung = (dbUrl, env = {}) => spawnSync(process.execPath, ['-e',
-      "require('./dist/startup/datenbank.js').warneBeiSuperuser(require('./dist/db/database.js').standardDb()).then(w => { console.log('WARNUNG=' + w); return require('./dist/db/database.js').pool.end(); })"],
+      "const m = require('./dist/db/database.js'); const db = m.erzeugeDb(m.dbKonfigAusUmgebung()); require('./dist/startup/datenbank.js').warneBeiSuperuser(db).then(w => { console.log('WARNUNG=' + w); return db.pool.end(); })"],
     { cwd: ROOT, encoding: 'utf8', env: { ...process.env, NODE_ENV: 'production', DATABASE_URL: dbUrl, ...env } });
     const verbot = warnung(url(alt));
     assert.equal(verbot.status, 1, `als Superuser startet die Produktion: ${verbot.stdout}`);
