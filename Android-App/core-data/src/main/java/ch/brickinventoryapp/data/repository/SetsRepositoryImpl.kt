@@ -4,7 +4,6 @@ import kotlinx.coroutines.flow.map
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.offline.Filterspalten
@@ -223,69 +222,38 @@ class SetsRepositoryImpl @Inject constructor(
     override suspend fun resolveBarcode(barcode: String): Ergebnis<BarcodeResponse> =
         sicherAufrufen { api.getBarcodeSet(barcode) }
 
-    override suspend fun getCsvImportStatus(serverUrl: String, token: String): Ergebnis<CsvImportStatus> {
-        // Use full URL via Retrofit @Url — bypasses localhost rewrite, uses existing SSL client
-        // Umgezogen nach /api/v1 — ein Adressraum (siehe server.ts).
-        val url = serverUrl.trimEnd('/') + "/api/v1/sets/import/csv/status"
-        return sicherAufrufen { api.getCsvImportStatusDirect(url, "Bearer $token") }
-    }
+    // Über den api-Client wie jeder Abruf: Adresse und Token setzt der Wächter.
+    override suspend fun getCsvImportStatus(): Ergebnis<CsvImportStatus> =
+        sicherAufrufen { api.getCsvImportStatus() }
 
     /** Laufenden CSV-Import abbrechen — siehe SetsApi.cancelCsvImport. */
     override suspend fun cancelCsvImport(): Ergebnis<GenericAdminResponse> = sicherAufrufen { api.cancelCsvImport() }
 
-    /** Download finished PDF — returns bytes */
     override suspend fun downloadPdf(jobId: String): Ergebnis<ByteArray> {
-        return fangeAusserAbbruch {
-            val response = api.downloadPdf(jobId)
-            if (response.isSuccessful) {
-                val bytes = response.body()?.bytes() ?: ByteArray(0)
-                if (bytes.size > 100) Ergebnis.Success(bytes)
-                // Zu kleine Antwort heisst in der Praxis: Fehlerseite statt PDF.
-                // Die Grösse gehört ins Log, nicht in die Meldung.
-                else Ergebnis.Error.LeereAntwort(technisch = "PDF ${bytes.size} bytes")
-            } else {
-                Ergebnis.Error.Server(response.code())
-            }
-        }.getOrElse { e ->
-            Ergebnis.Error.Unbekannt(technisch = e.message)
+        val r = when (val a = sicherAufrufen { api.downloadPdf(jobId) }) {
+            is Ergebnis.Success -> a
+            is Ergebnis.Error -> return a
         }
+        // Ohne @Streaming liegt der Rumpf schon im Speicher; ein Lesefehler ist trotzdem Transport.
+        val bytes = try { r.data.use { it.bytes() } } catch (e: java.io.IOException) {
+            return Ergebnis.Error.Netz(technisch = e.message)
+        }
+        return if (bytes.size > PDF_MINDESTGROESSE) Ergebnis.Success(bytes)
+        // Die Grösse gehört ins Log, nicht in die Meldung.
+        else Ergebnis.Error.LeereAntwort(technisch = "PDF ${bytes.size} bytes")
     }
 
-    /** Start async PDF job — returns jobId or error */
     override suspend fun startPdfJob(bodyJson: String): Ergebnis<String> {
-        return fangeAusserAbbruch {
-            val requestBody = bodyJson.toRequestBody("application/json; charset=utf-8".toMediaType())
-            val response = api.startPdfJob(requestBody)
-            if (response.isSuccessful) {
-                val body = response.body()?.string() ?: ""
-                val jobId = org.json.JSONObject(body).optString("jobId", "")
-                if (jobId.isNotBlank()) Ergebnis.Success(jobId)
-                else Ergebnis.Error.LeereAntwort()
-            } else {
-                Ergebnis.Error.Server(response.code())
-            }
-        }.getOrElse { e ->
-            Ergebnis.Error.Unbekannt(technisch = e.message)
+        val rumpf = bodyJson.toRequestBody("application/json; charset=utf-8".toMediaType())
+        return when (val r = sicherAufrufen { api.startPdfJob(rumpf) }) {
+            is Ergebnis.Success -> if (r.data.jobId.isNotBlank()) Ergebnis.Success(r.data.jobId) else Ergebnis.Error.LeereAntwort()
+            is Ergebnis.Error -> r
         }
     }
 
-    /** Poll PDF job status — returns "running", "done", or "error" */
-    override suspend fun getPdfJobStatus(jobId: String): Ergebnis<PdfJobStatus> {
-        return fangeAusserAbbruch {
-            val response = api.getPdfJobStatus(jobId)
-            if (response.isSuccessful) {
-                val body = response.body()?.string() ?: ""
-                val obj = org.json.JSONObject(body)
-                val status = obj.optString("status", "error")
-                val eta = if (obj.has("etaSeconds") && !obj.isNull("etaSeconds")) obj.optInt("etaSeconds") else null
-                Ergebnis.Success(PdfJobStatus(status, eta))
-            } else {
-                Ergebnis.Error.Server(response.code())
-            }
-        }.getOrElse { e ->
-            Ergebnis.Error.Unbekannt(technisch = e.message)
-        }
-    }
+    override suspend fun getPdfJobStatus(jobId: String): Ergebnis<PdfAuftragStand> =
+        sicherAufrufen { api.getPdfJobStatus(jobId) }
+
     /**
      * Eine Anleitung hochladen — PDF, JPG oder PNG. Der Typ kommt aus der Dateiauswahl
      * und wird nicht geraten: Der Server leitet die Dateiendung aus dem gemeldeten Typ
@@ -304,3 +272,6 @@ class SetsRepositoryImpl @Inject constructor(
     override suspend fun deleteAnleitung(setNumber: String, instrId: Int): Ergebnis<GenericResponse> =
         sicherAufrufen { api.deleteAnleitung(setNumber, instrId) }
 }
+
+/** Kleiner ist in der Praxis eine Fehlerseite statt eines PDFs. */
+private const val PDF_MINDESTGROESSE = 100

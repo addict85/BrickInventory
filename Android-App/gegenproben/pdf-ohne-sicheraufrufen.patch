@@ -1,0 +1,25 @@
+Gegenprobe: Der PDF-Auftrag ruft wieder selbst ab und macht aus einem Netzfehler „unbekannt“
+Modul: core-data
+Test: ch.brickinventoryapp.data.PdfUndCsvAbrufTest
+Rot: ein Netzfehler ist vorübergehend
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
+@@ -245,9 +245,13 @@
+
+     override suspend fun startPdfJob(bodyJson: String): Ergebnis<String> {
+         val rumpf = bodyJson.toRequestBody("application/json; charset=utf-8".toMediaType())
+-        return when (val r = sicherAufrufen { api.startPdfJob(rumpf) }) {
+-            is Ergebnis.Success -> if (r.data.jobId.isNotBlank()) Ergebnis.Success(r.data.jobId) else Ergebnis.Error.LeereAntwort()
+-            is Ergebnis.Error -> r
++        return try {
++            val antwort = api.startPdfJob(rumpf)
++            val jobId = antwort.body()?.jobId.orEmpty()
++            if (!antwort.isSuccessful) Ergebnis.Error.Server(antwort.code())
++            else if (jobId.isNotBlank()) Ergebnis.Success(jobId) else Ergebnis.Error.LeereAntwort()
++        } catch (e: java.io.IOException) {
++            Ergebnis.Error.Unbekannt(technisch = e.message)
+         }
+     }
+

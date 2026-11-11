@@ -5,7 +5,6 @@ import ch.brickinventoryapp.data.CsvImportBeobachter
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.CsvImportStrom
-import ch.brickinventoryapp.data.Zugangsdaten
 import ch.brickinventoryapp.model.data.model.CsvImportStatus
 import ch.brickinventoryapp.model.data.model.GenericAdminResponse
 import ch.brickinventoryapp.ressourcen.R
@@ -74,11 +73,6 @@ class CsvImportViewModelTest {
         override fun stop() { stops++ }
     }
 
-    private val zugang = object : Zugangsdaten {
-        override suspend fun serverUrlJetzt() = "https://brick.example"
-        override suspend fun tokenJetzt() = "token"
-    }
-
     @Before fun auf() {
         Dispatchers.setMain(takt)
         t = TestDienste(fake.api, io = takt)
@@ -94,7 +88,7 @@ class CsvImportViewModelTest {
 
     private fun mitVm(strom: Strom, dienst: Dienst, block: suspend TestScope.(CsvImportViewModel) -> Unit) = runTest(takt) {
         strom.uhr = { testScheduler.currentTime }
-        val vm = CsvImportViewModel(CsvImportBeobachter(strom, SetsRepository(fake.api, t.cache), zugang), dienst, NummernTexte,
+        val vm = CsvImportViewModel(CsvImportBeobachter(strom, SetsRepository(fake.api, t.cache)), dienst, NummernTexte,
             t.bestand, t.meldungen, t.sitzung)
         try {
             block(vm)
@@ -136,10 +130,10 @@ class CsvImportViewModelTest {
         val fehler = listOf(CsvImportSseClient.Event.Failed("weg"))
         val strom = Strom(fehler, fehler, fehler)
         mitVm(strom, dienst) { vm ->
-            fake.antworten["getCsvImportStatusDirect"] = CsvImportStatus(success = true, status = Laufstatus.LAEUFT, total = 5, done = 2)
+            fake.antworten["getCsvImportStatus"] = CsvImportStatus(success = true, status = Laufstatus.LAEUFT, total = 5, done = 2)
             vm.startCsvImportWatcher()
             runCurrent()
-            assertEquals("Nach dem Abriss eine Abfrage", 1, fake.aufrufeVon("getCsvImportStatusDirect"))
+            assertEquals("Nach dem Abriss eine Abfrage", 1, fake.aufrufeVon("getCsvImportStatus"))
             assertEquals("Die Abfrage füllt den Balken", 2, vm.csvImportState.value.done)
             assertTrue(vm.csvImportState.value.running)
             assertEquals(1, dienst.starts)

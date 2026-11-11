@@ -499,7 +499,6 @@
     <string name="notif_pdf_channel_desc">Shows the progress of the build-list PDF export</string>
 
     <!-- PDF-Export-Statustexte (PdfExportManager) -->
-    <string name="pdfexp_no_data">No export data available</string>
     <string name="pdfexp_starting">Starting export…</string>
     <string name="pdfexp_unknown_error">Unknown error. Please try again.</string>
     <string name="pdfexp_oeffnen_mit">Open parts list with</string>

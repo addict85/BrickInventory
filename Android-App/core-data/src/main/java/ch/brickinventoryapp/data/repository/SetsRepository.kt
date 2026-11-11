@@ -105,15 +105,17 @@ interface SetsRepository {
 
     suspend fun resolveBarcode(barcode: String): Ergebnis<BarcodeResponse>
 
-    suspend fun getCsvImportStatus(serverUrl: String, token: String): Ergebnis<CsvImportStatus>
+    suspend fun getCsvImportStatus(): Ergebnis<CsvImportStatus>
 
     suspend fun cancelCsvImport(): Ergebnis<GenericAdminResponse>
 
+    /** Das fertige PDF; eine zu kleine Antwort ist eine Fehlerseite, kein PDF. */
     suspend fun downloadPdf(jobId: String): Ergebnis<ByteArray>
 
+    /** Nimmt den Auftrag an und nennt seine Nummer. */
     suspend fun startPdfJob(bodyJson: String): Ergebnis<String>
 
-    suspend fun getPdfJobStatus(jobId: String): Ergebnis<PdfJobStatus>
+    suspend fun getPdfJobStatus(jobId: String): Ergebnis<PdfAuftragStand>
 
     suspend fun uploadAnleitung(
         setNumber: String, dateiname: String, typ: String, inhalt: ByteArray, beschreibung: String,

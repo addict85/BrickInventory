@@ -11,7 +11,6 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.data.Zugangsdaten
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import dagger.hilt.android.AndroidEntryPoint
@@ -66,7 +65,6 @@ class CsvImportService : Service() {
         }
     }
 
-    @Inject lateinit var prefs: Zugangsdaten
     @Inject lateinit var sets: SetsRepository
     @Inject lateinit var sseClient: CsvImportSseClient
 
@@ -152,16 +150,10 @@ class CsvImportService : Service() {
 
     /** Eine Status-Abfrage der Rückfallebene. */
     private suspend fun pollOnce(): PollResult = fangeAusserAbbruch {
-        val url   = prefs.serverUrlJetzt()
-        val token = prefs.tokenJetzt()
-        if (token.isBlank()) {
-            PollResult.ERROR
-        } else {
-            when (val resp = sets.getCsvImportStatus(url, token)) {
-                is Ergebnis.Success ->
-                    if (applyStatus(resp.data)) PollResult.RUNNING else PollResult.FINISHED
-                is Ergebnis.Error -> PollResult.ERROR
-            }
+        when (val resp = sets.getCsvImportStatus()) {
+            is Ergebnis.Success ->
+                if (applyStatus(resp.data)) PollResult.RUNNING else PollResult.FINISHED
+            is Ergebnis.Error -> PollResult.ERROR
         }
     }.getOrElse { PollResult.ERROR }
 

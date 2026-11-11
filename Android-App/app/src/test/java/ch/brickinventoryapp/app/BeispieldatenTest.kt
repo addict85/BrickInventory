@@ -23,8 +23,11 @@ import ch.brickinventoryapp.sammlung.ui.viewmodel.SetDetailViewModel
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileViewModel
 import ch.brickinventoryapp.teile.ui.TeilelistenQuelle
 import ch.brickinventoryapp.teile.ui.PlPart
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.service.ExportErgebnis
 import ch.brickinventoryapp.data.service.TeilelistenExport
+import ch.brickinventoryapp.data.service.PdfFehlschlag
+import ch.brickinventoryapp.model.fach.PdfFortschritt
 import ch.brickinventoryapp.teile.ui.viewmodel.TeilelisteViewModel
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.Dispatchers
@@ -325,8 +328,9 @@ object Beispiele {
                 override suspend fun mitBestand(teile: List<PlPart>, nurLose: Boolean, mitUnterkonten: Boolean) = teile
                 override fun sortiert(teile: Collection<PlPart>) = teile.toList()
             }, object : TeilelistenExport {
-                override val status = flowOf<String?>(null)
-                override suspend fun erzeuge(rumpf: String): ExportErgebnis = ExportErgebnis.Fehler(null)
+                override val fortschritt = flowOf<PdfFortschritt?>(null)
+                override suspend fun erzeuge(rumpf: String): ExportErgebnis =
+                    ExportErgebnis.Fehler(PdfFehlschlag.Abruf(Ergebnis.Error.Netz()))
             }, SavedStateHandle()))
 
         override fun close() {

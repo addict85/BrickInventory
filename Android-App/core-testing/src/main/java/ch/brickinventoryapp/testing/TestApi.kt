@@ -68,6 +68,17 @@ object TestApi {
             .create(BrickApiService::class.java)
     }
 
+    /**
+     * Ein Client, der jede Anfrage an [server] schickt — wie der Wächter der App die
+     * Platzhalter-Adresse auf den eingetragenen Server umschreibt.
+     */
+    fun umgeleitet(server: MockWebServer): OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor { kette ->
+            val alt = kette.request()
+            kette.proceed(alt.newBuilder().url(alt.url.newBuilder().scheme("http").host(server.hostName).port(server.port).build()).build())
+        }
+        .readTimeout(2, TimeUnit.SECONDS).connectTimeout(2, TimeUnit.SECONDS).build()
+
     fun antwort(rumpf: String, code: Int = 200): MockResponse =
         MockResponse().setResponseCode(code)
             .setHeader("Content-Type", "application/json").setBody(rumpf)

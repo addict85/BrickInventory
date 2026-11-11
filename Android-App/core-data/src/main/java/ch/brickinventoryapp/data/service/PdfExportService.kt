@@ -17,13 +17,15 @@ import kotlinx.coroutines.*
 import javax.inject.Inject
 import ch.brickinventoryapp.data.di.Anwendungsbereiche
 import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.data.repository.Ergebnis
+import ch.brickinventoryapp.data.repository.fehlerTextZuCode
+import ch.brickinventoryapp.model.fach.PdfFortschritt
+import ch.brickinventoryapp.model.fach.PdfSchritt
 
 /**
- * Foreground-Service für den PDF-Export der Teileliste.
- * Ersetzt den früheren WakeLock-Ansatz im ViewModel: Der Export überlebt
- * damit auch, wenn die Activity vom System beendet wird oder das Gerät
- * in Doze geht. Fortschritt/Ergebnis laufen über den PdfExportManager,
- * den die UI beobachtet.
+ * Foreground-Service für den PDF-Export der Teileliste: Er hält den Prozess wach,
+ * solange der Auftrag im PdfExportManager läuft (auch in Doze oder ohne Activity),
+ * und zeigt dessen Stand als Benachrichtigung in der Sprache der App.
  */
 @AndroidEntryPoint
 class PdfExportService : Service() {
@@ -53,12 +55,14 @@ class PdfExportService : Service() {
         LanguageManager.localizedContext(this)
     }
 
+    private val satz: Satz = { id, args -> loc.getString(id, *args.toTypedArray()) }
+
     @Inject lateinit var bereiche: Anwendungsbereiche
 
     // Lebt mit dem Dienst (onDestroy bricht ab). lazy, weil Hilt die Felder erst
     // in super.onCreate() setzt.
     private val serviceScope by lazy { CoroutineScope(SupervisorJob() + bereiche.io) }
-    private var exportJob: Job? = null
+    private var begleitung: Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -75,28 +79,23 @@ class PdfExportService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (exportJob?.isActive != true) {
-            // Notification an den Manager-Zustand koppeln
-            serviceScope.launch {
+        // Der Auftrag läuft im Manager; der Dienst zeigt nur seinen Stand und endet mit ihm.
+        if (begleitung?.isActive != true) {
+            begleitung = serviceScope.launch {
                 manager.state.collect { s ->
                     when (s) {
-                        is PdfExportState.Running -> updateNotification(s.statusText)
-                        else -> { /* Endzustände behandelt der Export-Job unten */ }
+                        is PdfExportState.Running -> updateNotification(fortschrittText(s.fortschritt, satz))
+                        is PdfExportState.Done -> {
+                            showFinalNotification(loc.getString(R.string.notif_pdf_done_tap), openPdfIntent())
+                            stopSelf()
+                        }
+                        is PdfExportState.Error -> {
+                            showFinalNotification(loc.getString(R.string.notif_pdf_failed, fehlerText(s.grund, satz)), null)
+                            stopSelf()
+                        }
+                        PdfExportState.Idle -> {}
                     }
                 }
-            }
-            exportJob = serviceScope.launch {
-                manager.run()
-                when (val s = manager.state.value) {
-                    is PdfExportState.Done -> {
-                        showFinalNotification(loc.getString(R.string.notif_pdf_done_tap), openPdfIntent())
-                    }
-                    is PdfExportState.Error -> {
-                        showFinalNotification(loc.getString(R.string.notif_pdf_failed, s.message), null)
-                    }
-                    else -> {}
-                }
-                stopSelf()
             }
         }
         return START_NOT_STICKY
@@ -154,4 +153,32 @@ class PdfExportService : Service() {
         super.onDestroy()
         serviceScope.cancel()
     }
+}
+
+/** Ein Satz aus den Ressourcen; im Dienst aus dem Context in der Sprache der App, im Test eine Nummer. */
+internal typealias Satz = (id: Int, args: List<Any>) -> String
+
+/** Der Satz zu einem Schritt, wie ihn die Benachrichtigung zeigt. */
+internal fun fortschrittText(f: PdfFortschritt, satz: Satz): String = when (f.schritt) {
+    PdfSchritt.STARTET -> satz(R.string.pdfexp_starting, emptyList())
+    PdfSchritt.BILDER_LADEN -> satz(R.string.pdfexp_loading_images, emptyList())
+    PdfSchritt.ERSTELLT -> f.restSekunden?.takeIf { it > 0 }?.let { satz(R.string.pdfexp_creating_eta, listOf(it)) }
+        ?: satz(R.string.pdfexp_almost_done, emptyList())
+    PdfSchritt.ABSCHLUSS -> satz(R.string.pdfexp_finalizing, emptyList())
+    PdfSchritt.HERUNTERLADEN -> satz(R.string.pdfexp_downloading, emptyList())
+}
+
+/** Nie leer: Ohne Satz des Servers spricht der Fehlercode, sonst die Art des Fehlers. */
+internal fun fehlerText(grund: PdfFehlschlag, satz: Satz): String = when (grund) {
+    is PdfFehlschlag.Auftrag -> grund.satz?.takeIf { it.isNotBlank() } ?: satz(R.string.pdfexp_server_error, emptyList())
+    is PdfFehlschlag.Abruf -> grund.fehler.message.takeIf { it.isNotBlank() }
+        ?: fehlerTextZuCode(grund.fehler.code)?.let { satz(it, emptyList()) }
+        ?: when (val f = grund.fehler) {
+            is Ergebnis.Error.Server -> satz(R.string.pdfexp_http_error, listOf(f.status))
+            is Ergebnis.Error.Netz, Ergebnis.Error.Abgebrochen -> satz(R.string.err_network, emptyList())
+            Ergebnis.Error.Zeitueberschreitung -> satz(R.string.err_timeout, emptyList())
+            is Ergebnis.Error.Abgewiesen -> satz(R.string.err_session_expired, emptyList())
+            Ergebnis.Error.Klartext -> satz(R.string.err_klartext, emptyList())
+            is Ergebnis.Error.LeereAntwort, is Ergebnis.Error.Unbekannt -> satz(R.string.pdfexp_unknown_error, emptyList())
+        }
 }

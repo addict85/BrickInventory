@@ -28,12 +28,6 @@ interface SetsApi : TeileAbfrageApi, FigurenAbfrageApi {
     @POST("api/v1/sets/import/csv/cancel")
     suspend fun cancelCsvImport(): Response<GenericAdminResponse>
 
-    @GET
-    suspend fun getCsvImportStatusDirect(
-        @retrofit2.http.Url url: String,
-        @Header("Authorization") token: String
-    ): Response<CsvImportStatus>
-
     // ── Anleitungen: hinzufügen und entfernen ──
     //
     // Der Server nimmt nur PDF, JPG und PNG an und leitet die Dateiendung aus dem
@@ -226,12 +220,12 @@ interface SetsApi : TeileAbfrageApi, FigurenAbfrageApi {
     @POST("api/v1/sets/partslist-pdf")
     suspend fun startPdfJob(
         @Body body: okhttp3.RequestBody
-    ): retrofit2.Response<okhttp3.ResponseBody>
+    ): Response<PdfAuftragAntwort>
 
     @GET("api/v1/sets/partslist-pdf/status/{jobId}")
     suspend fun getPdfJobStatus(
         @Path("jobId") jobId: String
-    ): retrofit2.Response<okhttp3.ResponseBody>
+    ): Response<PdfAuftragStand>
 
     @GET("api/v1/sets/partslist-pdf/download/{jobId}")
     suspend fun downloadPdf(
