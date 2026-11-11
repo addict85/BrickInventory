@@ -346,7 +346,7 @@ test('der Preisverlauf-Graph benutzt den Zustand DES SETS, nicht den globalen St
 
   assert.match(
     fs.readFileSync(path.join(ROOT, 'src/sets/dienst.ts'), 'utf8'),
-    /getSetPriceHistory\(sicht, sn, await waehrungVon\(uid\)\)/,
+    /getSetPriceHistory\(sicht, sn, await waehrungVon\((?:sk, )?uid\)\)/,
     'Der Dienst nutzt den gemeinsamen Helfer',
   );
   const helper = fs.readFileSync(path.join(ROOT, 'src/finanzen/priceHistory.ts'), 'utf8');
