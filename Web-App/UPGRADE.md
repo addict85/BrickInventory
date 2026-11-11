@@ -1840,3 +1840,56 @@ dann `docker compose up -d`. Ohne diesen Schritt bricht `docker compose` mit
   in `.env`, dann `docker compose up -d --build`. Das alte lokale Image
   `brickinventory-caddy:2.11.8` wird nicht mehr benutzt (`docker image rm`).
 
+
+## 52. Kein Weg ins Heimnetz (optional, DOCKER-USER)
+
+**Nichts zu tun, wenn alles bleiben soll, wie es ist.** Was compose.yaml
+selbst begrenzt:
+
+- `postgres`, `db-rolle` und `migration` hängen nur am Netz `db-net`
+  (`internal: true`): kein Weg nach draussen, weder ins Internet noch ins LAN.
+- `schluessel`, `daten-rechte` und `caddy-rechte` laufen ohne Netz
+  (`network_mode: none`).
+- `app` und `jobs` brauchen das Internet (Rebrickable, BrickLink, Mail,
+  Bilder), `caddy` für Let's Encrypt (`BRICK_TLS=acme`). Docker kann für sie
+  nicht „Internet ja, Heimnetz nein“ unterscheiden. Die Abrufe der App prüfen
+  ihr Ziel zwar selbst, eine Regel am Docker-Rechner fängt aber auch ab, was
+  an dieser Prüfung vorbeikäme.
+
+**Optional: Ausgang ins LAN sperren.** Docker lässt Regeln in der Kette
+`DOCKER-USER` stehen und wertet sie vor seinen eigenen aus. Das Netz von
+`app`, `jobs` und `caddy` ist fest `172.28.73.0/24` (compose.yaml). Als root
+auf dem Docker-Rechner, mit der Adresse des eigenen Routers statt
+`192.168.1.1`:
+
+```bash
+N=172.28.73.0/24 ROUTER=192.168.1.1
+iptables -N BRICK-LAN 2>/dev/null || iptables -F BRICK-LAN
+# Antworten auf Verbindungen von aussen (Caddy), Verkehr im eigenen Netz, DNS über den Router
+iptables -A BRICK-LAN -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
+iptables -A BRICK-LAN -d "$N" -j RETURN
+iptables -A BRICK-LAN -d "$ROUTER" -p udp --dport 53 -j RETURN
+iptables -A BRICK-LAN -d "$ROUTER" -p tcp --dport 53 -j RETURN
+# Alles andere in private Netze: abgewiesen
+for z in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 100.64.0.0/10; do
+  iptables -A BRICK-LAN -d "$z" -j REJECT
+done
+iptables -C DOCKER-USER -s "$N" -j BRICK-LAN 2>/dev/null || iptables -I DOCKER-USER -s "$N" -j BRICK-LAN
+```
+
+Die Befehle sind wiederholbar (eigene Kette, die bei jedem Lauf neu gefüllt
+wird). Hinweise:
+
+- **Mailserver oder anderes im LAN**, das die App erreichen soll: vor der
+  Schleife `iptables -A BRICK-LAN -d <adresse> -p tcp --dport <port> -j RETURN`.
+- **Dienste auf dem Docker-Rechner selbst** deckt `DOCKER-USER` nicht ab
+  (Kette INPUT); dafür die Firewall des Rechners.
+- **IPv6:** compose.yaml schaltet IPv6 für das Netz nicht ein. Wer es tut,
+  braucht dieselben Regeln mit `ip6tables` (`fc00::/7`, `fe80::/10`).
+- **Nach einem Neustart** sind die Regeln weg: `iptables-persistent`
+  (Debian/Ubuntu, `netfilter-persistent save`) oder ein systemd-Dienst, der
+  die Befehle nach `docker.service` ausführt. Mit der nftables-Fassung von
+  Docker gilt dasselbe sinngemäss für dessen `DOCKER-USER`-Kette.
+- **Prüfen:** `docker compose exec app node -e "require('net').connect(80, '$ROUTER').on('error', e => console.log(e.code))"`
+  meldet `ECONNREFUSED`; eine Seite im Internet lädt weiter (Katalog-Abgleich).
+- **Rücknahme:** `iptables -D DOCKER-USER -s 172.28.73.0/24 -j BRICK-LAN`.

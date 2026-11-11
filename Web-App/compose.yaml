@@ -566,6 +566,7 @@ networks:
   # Festes Netz: Ein Reverse-Proxy davor bekommt darin eine feste Adresse
   # (ipv4_address: 172.28.73.10), und TRUST_PROXY nennt genau diese. Ein
   # ganzes Docker-Netz zu vertrauen liesse jeden Container darin Adressen fälschen.
+  # Über das feste Subnetz sperrt eine DOCKER-USER-Regel den Weg ins LAN (UPGRADE.md, Abschnitt 52).
   brickinventory-net:
     driver: bridge
     ipam:

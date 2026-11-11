@@ -415,6 +415,10 @@ den Commits, nicht hier.
   schreibt nur in Daten und Socket (`read_only`); jedes tmpfs ist `noexec`,
   `nosuid`, `nodev` und begrenzt; jeder Dienst schreibt sein Docker-Protokoll
   mit `driver: local`, höchstens 5 × 10 MB — `compose-betrieb`.
+- `migration` hängt ebenfalls nur an `db-net`, `schluessel`, `daten-rechte`
+  und `caddy-rechte` laufen ohne Netz. `app`, `jobs` und `caddy` brauchen das
+  Internet; den Weg ins Heimnetz sperrt optional eine `DOCKER-USER`-Regel auf
+  ihr festes Subnetz (UPGRADE.md, Abschnitt 52) — `compose-haertung`.
 - Ohne `NODE_ENV` gelten alle Regeln des Betriebs (Startverbote, Superuser-
   Verbot, verborgene 5xx-Texte, sicheres Cookie); nur `development` und
   `test` lockern sie — `betrieb-ohne-node-env-db`.

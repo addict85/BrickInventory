@@ -191,6 +191,8 @@ test('der Datenschlüssel liegt für app und jobs ausserhalb von ./data', () => 
 // Subnetz“;
 // `sign_with_root` aus dem Caddyfile entfernt → rot „Caddy: …“; Port 3000 der
 // App wieder veröffentlicht → rot „die App ist nur über Caddy erreichbar“.
+// (11.11.2026) in UPGRADE.md Abschnitt 52 `N=172.28.0.0/16` → rot „die LAN-Sperre
+// in UPGRADE.md nennt ein anderes Netz“.
 test('TRUST_PROXY vertraut genau Caddy, das Netz hat ein festes Subnetz', () => {
   const app = leseDienst(compose, 'app');
   const caddy = leseDienst(compose, 'caddy');
@@ -205,6 +207,11 @@ test('TRUST_PROXY vertraut genau Caddy, das Netz hat ein festes Subnetz', () => 
   assert.deepEqual(proxyVertrauen(adresse), ['172.28.73.10'], 'geglaubt wird genau Caddy, kein ganzes Netz');
   const netz = compose.slice(compose.indexOf('\nnetworks:'));
   assert.match(netz, /subnet:\s*172\.28\.73\.0\/24/, 'brickinventory-net hat kein festes Subnetz');
+  // Die DOCKER-USER-Regel in UPGRADE.md (Abschnitt 52) nennt genau dieses Netz.
+  const upgrade = fs.readFileSync(path.join(ROOT, 'UPGRADE.md'), 'utf8');
+  const regel = upgrade.slice(upgrade.indexOf('## 52.'));
+  assert.match(regel, /^N=172\.28\.73\.0\/24 /m, 'die LAN-Sperre in UPGRADE.md nennt ein anderes Netz');
+  assert.match(regel, /iptables -I DOCKER-USER -s "\$N" -j BRICK-LAN/);
 });
 
 test('die App ist nur über Caddy erreichbar', () => {
