@@ -38,7 +38,7 @@ test('Abschalten während einer Belegung', async (t) => {
     await sperre.query('ROLLBACK').catch(() => {});
     sperre.release();
     await db.run(`DELETE FROM auftraege WHERE nutzlast->>'marke' = $1`, [MARKE]).catch(() => {});
-    await _req('db/pgNotify.js').close().catch(() => {});
+    await _req('db/database.js').standardDb().benachrichtigung.close().catch(() => {});
     await db.pool.end().catch(() => {});
   });
 

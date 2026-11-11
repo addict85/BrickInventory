@@ -222,7 +222,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
       await fs.unlink(path.join(PDF_JOB_DIR, f)).catch(() => {});
     }
     await db.run(`DELETE FROM auftraege WHERE art = 'pdf'`).catch(() => {});
-    await _req('db/pgNotify.js').close().catch(() => {});
+    await _req('db/database.js').standardDb().benachrichtigung.close().catch(() => {});
     await db.pool.end().catch(() => {});
   }
 });

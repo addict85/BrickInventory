@@ -5,7 +5,6 @@ import { fehlerText, antwortSprache, type FehlerCode, type Sprache } from '../in
 
 // Der Ereignisbus schiebt den Stand ohne Polling an verbundene Ströme; /status bleibt als Rückfall.
 import EventEmitter from 'events';
-import * as pgNotify from '../../db/pgNotify';
 import { auftraegeBereich } from './prozess';
 export const csvImportBus = new EventEmitter();
 csvImportBus.setMaxListeners(0); // beliebig viele gleichzeitige Streams
@@ -55,7 +54,7 @@ export async function emitJobStatus(userId: number) {
     csvImportBus.emit(`progress:${userId}`, buildJobStatus(job));
   } catch (_) { /* Fortschritt geht notfalls über den Nachzieh-Timer im Stream */ }
   // Der Bus ist prozesslokal, der Import läuft im Job-Prozess: NOTIFY trägt den Stand in den Web-Prozess.
-  pgNotify.notify('csv_import_progress', String(userId)).catch(logAndContinue('import-auftrag:notify'));
+  auftraegeBereich().db.benachrichtigung.notify('csv_import_progress', String(userId)).catch(logAndContinue('import-auftrag:notify'));
 }
 
 export const VERWAIST_MIN = 10;
@@ -162,6 +161,6 @@ export async function istAbgebrochen(userId: number): Promise<boolean> {
 
 /** Weckt, wenn ein anderer Prozess den Stand eines Kontos schrieb; gibt das Abmelden zurück. */
 export function beiImportStand(f: (konto?: string) => void): () => void {
-  pgNotify.listen('csv_import_progress', f);
-  return () => pgNotify.unlisten('csv_import_progress', f);
+  auftraegeBereich().db.benachrichtigung.listen('csv_import_progress', f);
+  return () => auftraegeBereich().db.benachrichtigung.unlisten('csv_import_progress', f);
 }

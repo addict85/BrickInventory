@@ -218,7 +218,7 @@ test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', asy
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   // Der Strom hört auf NOTIFY anderer Worker; die Verbindung dafür hielte den Prozess offen.
-  t.after(() => _req('db/pgNotify.js').close());
+  t.after(() => _req('db/database.js').standardDb().benachrichtigung.close());
   const { csvImportBus } = _req('src/auftraege/importAuftrag.js');
   const r = await fetch(`http://localhost:${srv.address().port}/api/v1/sets/import/csv/stream`, { signal: AbortSignal.timeout(10_000) });
   const text = await r.text();

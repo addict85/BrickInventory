@@ -12,6 +12,7 @@ import session from 'express-session';
 import compression from 'compression';
 import connectPgSimple from 'connect-pg-simple';
 import type { Pool } from 'pg';
+import type { Db } from './db/database';
 import { fehlertext, logAndContinue } from './src/infra/fehler';
 import { fehlerAntwort, unbekannterApiPfad } from './src/http/httpAntwort';
 import { startVerbote, startWarnungen } from './src/infra/konfig';
@@ -35,7 +36,6 @@ import { sendeStartseite, startStilHash } from './src/konto/indexHtml';
 import { meldeSmtpAltlast } from './src/mail/mailer';
 import { meldeUngueltigeAdressen, meldeAusstehendeAdressen } from './src/konto/konten';
 import { horcheAufTokenWiderruf } from './src/konto/auth';
-import * as pgNotify from './db/pgNotify';
 import { registerImgProxy } from './routes/imgProxy';
 import { anmeldungAmEingang, rumpfLesen } from './routes/api_v1/middleware';
 import { schrittschutzAmEingang } from './src/konto/http/schrittschutz';
@@ -303,7 +303,7 @@ function rueckfaelle(app: express.Express): void {
 const SHUTDOWN_TIMEOUT_MS = 8000;
 let _beendetWird = false;
 
-async function herunterfahren(signal: string, httpServer: Server | null, jobs: boolean, pool: Pool): Promise<void> {
+async function herunterfahren(signal: string, httpServer: Server | null, jobs: boolean, zugang: Db): Promise<void> {
   if (_beendetWird) return;
   _beendetWird = true;
   console.log(`[shutdown] ${signal} empfangen — Server wird geordnet beendet`);
@@ -322,8 +322,8 @@ async function herunterfahren(signal: string, httpServer: Server | null, jobs: b
     }
     // Laufende Aufträge halten sicher an und gehen zurück in die Tabelle.
     if (jobs) await stoppeJobs();
-    await pgNotify.close().catch(logAndContinue('server:close'));
-    await pool.end().catch(logAndContinue('server:end'));
+    await zugang.benachrichtigung.close().catch(logAndContinue('server:close'));
+    await zugang.pool.end().catch(logAndContinue('server:end'));
     console.log('[shutdown] Datenbankverbindungen geschlossen');
     clearTimeout(notbremse);
     process.exit(0);
@@ -368,8 +368,8 @@ async function starte(): Promise<void> {
   const httpServer = web ? http.createServer({ ...HTTP_FRISTEN }, baueApp(zugang.pool)).listen(k.port, () => {
     console.log(`🧱 BrickInventory Manager — http://localhost:${k.port}`);
   }) : null;
-  process.on('SIGTERM', () => { void herunterfahren('SIGTERM', httpServer, jobs, zugang.pool); });
-  process.on('SIGINT',  () => { void herunterfahren('SIGINT', httpServer, jobs, zugang.pool); });
+  process.on('SIGTERM', () => { void herunterfahren('SIGTERM', httpServer, jobs, zugang); });
+  process.on('SIGINT',  () => { void herunterfahren('SIGINT', httpServer, jobs, zugang); });
   if (jobs) await starteJobs(web);
 }
 

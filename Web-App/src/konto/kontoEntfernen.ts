@@ -39,7 +39,7 @@ export async function kontoEntfernen(ziel: number, durch: number | null): Promis
   if (r !== 'entfernt') return r;
   // Nach dem Festschreiben: Caches und Nachbarprozesse sollen das Konto erst vergessen, wenn es weg ist.
   leereTokenCache();
-  meldeHaushaltsaenderung();
+  meldeHaushaltsaenderung(kontoBereich().db);
   await kontoDateienEntfernen(ziel);
   return r;
 }

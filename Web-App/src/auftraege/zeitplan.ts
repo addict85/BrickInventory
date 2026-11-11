@@ -1,5 +1,4 @@
 import { getGlobalSetting } from '../einstellungen/settings';
-import { notify } from '../../db/pgNotify';
 import { type AuftragsArt } from './auftraege';
 import { AUFTRAG_KANAL, stelleAuftragEin } from './dienst';
 import { pruefeNutzlast, type NutzlastEingabe } from './nutzlasten';
@@ -71,12 +70,12 @@ export async function planeAlle(): Promise<void> {
 
 export async function zeitplanGeaendert(art: GeplanteArt): Promise<void> {
   await auftraegeBereich().auftraege.setzeFaelligkeit(planSchluessel(art), await naechsterLauf(art));
-  await notify(AUFTRAG_KANAL, art);
+  await auftraegeBereich().db.benachrichtigung.notify(AUFTRAG_KANAL, art);
 }
 
 /** @returns false, wenn er gerade läuft */
 export async function ziehePlanVor(art: GeplanteArt, sekunden = 0, nutzlast: PlanNutzlast = {}): Promise<boolean> {
-  if (await auftraegeBereich().auftraege.zieheTerminVor(planSchluessel(art), sekunden, pruefeNutzlast(art, nutzlast))) { await notify(AUFTRAG_KANAL, art); return true; }
+  if (await auftraegeBereich().auftraege.zieheTerminVor(planSchluessel(art), sekunden, pruefeNutzlast(art, nutzlast))) { await auftraegeBereich().db.benachrichtigung.notify(AUFTRAG_KANAL, art); return true; }
   if (await auftraegeBereich().auftraege.laeuftArt(art)) return false;
   await stelleAuftragEin(art, nutzlast, { schluessel: planSchluessel(art), nachSekunden: sekunden, maxVersuche: 3 });
   return true;

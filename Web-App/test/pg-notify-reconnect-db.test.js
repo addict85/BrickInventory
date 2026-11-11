@@ -27,8 +27,9 @@ const db = _req('db/database.js');
 // über den Exitcode, ob er das überlebt hat.
 const CHILD = `
 process.env.DATABASE_URL = ${JSON.stringify(process.env.DATABASE_URL)};
-const notify = require(${JSON.stringify(path.join(ROOT, 'dist/db/pgNotify.js'))});
-const db     = require(${JSON.stringify(path.join(ROOT, 'dist/db/database.js'))});
+const dbModul = require(${JSON.stringify(path.join(ROOT, 'dist/db/database.js'))});
+const db     = dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung());
+const notify = db.benachrichtigung;
 let empfangen = 0;
 process.on('uncaughtException', e => { console.log('CRASH:' + e.message); process.exit(7); });
 (async () => {
@@ -98,7 +99,9 @@ test('close() während des Verbindungsaufbaus lässt keine Verbindung offen', as
   // Kein process.exit im Kind: Es muss von selbst enden.
   const kind = `
 process.env.DATABASE_URL = ${JSON.stringify(process.env.DATABASE_URL)};
-const notify = require(${JSON.stringify(path.join(ROOT, 'dist/db/pgNotify.js'))});
+const dbModul = require(${JSON.stringify(path.join(ROOT, 'dist/db/database.js'))});
+const db = dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung());
+const notify = db.benachrichtigung;
 notify.listen('rennen_probe', () => {});
 notify.close().then(() => console.log('GESCHLOSSEN'));
 `;

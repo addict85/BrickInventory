@@ -110,3 +110,9 @@ export async function besitzerDerErfassung(db: DbSchnittstelle, art: ErfassungsA
 export function benutzerNamen(db: DbSchnittstelle, uids: number[]) {
   return db.all<{ id: number | string; username: string }>('SELECT id, username FROM users WHERE id = ANY($1)', [uids]);
 }
+
+/** NOTIFY wie db/pgNotify.ts notify(), über den Zugang des Aufrufers: In einer
+ * Transaktion geht das Signal erst mit ihrem COMMIT hinaus. */
+export async function sendeSignal(db: DbSchnittstelle, kanal: string): Promise<void> {
+  await db.run('SELECT pg_notify($1, $2)', [kanal, '']);
+}

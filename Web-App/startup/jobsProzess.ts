@@ -1,5 +1,4 @@
 import fs from 'fs';
-import * as pgNotify from '../db/pgNotify';
 import { HAUSHALT_KANAL, leereHaushaltCache } from '../src/haushalt/haushalt';
 import { meldeStartZustand } from '../src/auftraege/startZustand';
 import { logAndContinue, meldeFehler } from '../src/infra/fehler';
@@ -38,7 +37,7 @@ export function erneuereLebenszeichen(): void {
  */
 export async function starteJobs(beides: boolean): Promise<void> {
   // Nur ein getrennter Job-Prozess hält eigene Haushalt-Caches, die der Web-Prozess ändert.
-  if (!beides) pgNotify.listen(HAUSHALT_KANAL, () => leereHaushaltCache());
+  if (!beides) auftraegeBereich().db.benachrichtigung.listen(HAUSHALT_KANAL, () => leereHaushaltCache());
 
   const uebernommen = await meldeProzessAn();
   if (uebernommen) console.log(`[auftraege] ${uebernommen} Aufträge eines beendeten Prozesses übernommen`);

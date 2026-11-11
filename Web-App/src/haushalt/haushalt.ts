@@ -7,7 +7,6 @@ import { getSetting } from '../einstellungen/settings';
 import * as repo from './repository';
 import type { ErfassungsArt } from './repository';
 import { fachfehler } from '../infra/fehlerTexte';
-import * as pgNotify from '../../db/pgNotify';
 import crypto from 'crypto';
 
 /** Lang genug für „später am Abend", kurz genug, dass ein liegen gebliebener
@@ -39,9 +38,9 @@ export function leereHaushaltCache(): void {
 
 /** Fehler werden verschluckt: Das Signal ist die Beschleunigung, die Frist
  * die Zusicherung. */
-export function meldeHaushaltsaenderung(): void {
+export function meldeHaushaltsaenderung(db: DbSchnittstelle): void {
   leereHaushaltCache();
-  pgNotify.notify(HAUSHALT_KANAL).catch(logAndContinue('haushalt:notify'));
+  repo.sendeSignal(db, HAUSHALT_KANAL).catch(logAndContinue('haushalt:notify'));
 }
 
 /** Nur die direkten Unterkonten: Jedes Konto im Blickfeld hat selbst einer
@@ -190,7 +189,7 @@ export async function redeemInvite(db: Db, uid: number, code: string) {
     await release();
     return { fehler: 'waehrung_ungleich' as const, vars: ungleich };
   }
-  meldeHaushaltsaenderung();
+  meldeHaushaltsaenderung(db);
   // Die Verknüpfung steht schon; fehlt nur der Name, trägt die Antwort die ID und sagt es.
   const ab = new Abstriche();
   const name = await ab.oder('kontoname', repo.kontoName(db, mainId), null);
@@ -205,7 +204,7 @@ export async function unlink(db: DbSchnittstelle, uid: number, subUserId?: numbe
   const removed = gesetzt(subUserId) ? await repo.trenne(db, id, parseInt(String(subUserId)))
     : gesetzt(mainUserId) ? await repo.trenne(db, parseInt(String(mainUserId)), id)
     : await repo.trenne(db, null, id);
-  meldeHaushaltsaenderung();
+  meldeHaushaltsaenderung(db);
   return { removed };
 }
 

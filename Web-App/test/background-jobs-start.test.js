@@ -38,7 +38,7 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
   const db = _req('db/database.js');
   t.after(async () => {
     await _req('startup/jobsProzess.js').stoppeJobs();
-    await _req('db/pgNotify.js').close().catch(() => {});
+    await _req('db/database.js').standardDb().benachrichtigung.close().catch(() => {});
     await db.pool.end().catch(() => {});
     Module.prototype.require = echtesRequire;
   });

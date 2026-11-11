@@ -125,9 +125,9 @@ test('der Kompatibilitätsweg zur Datenbank und modulweite let werden weniger, n
   if (ist < SCHRANKE) console.log(`  ℹ Kompatibilitätsweg db/database: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 
   // Modulweite let: Zustand, den alle Aufrufer eines Prozesses teilen; ein Bereich
-  // bekommt seinen über die Fabrik. Gemessen 56 am 11.11.2026 (prozessStelle in src/infra/bereich.ts).
+  // bekommt seinen über die Fabrik. Gemessen 51 am 11.11.2026 (db/pgNotify.ts je Zugang).
   // Gegenprobe (10.11.2026): `let _probe = 0;` in src/katalog/kontext.ts → rot mit 59.
-  const LET_SCHRANKE = 56;
+  const LET_SCHRANKE = 51;
   const lets = quellen().reduce((n, f) => n + (fs.readFileSync(f, 'utf8').match(/^(?:export )?let /gm) || []).length, 0);
   assert.ok(lets > 20 && lets <= LET_SCHRANKE, `${lets} modulweite let, erlaubt sind ${LET_SCHRANKE}`);
   if (lets < LET_SCHRANKE) console.log(`  ℹ modulweite let: ${lets} (Schranke ${LET_SCHRANKE}) — Schranke nachziehen`);

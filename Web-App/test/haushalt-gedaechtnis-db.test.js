@@ -75,7 +75,7 @@ test('Blickfeld: gemerkt, und bei Änderung sofort vergessen', async (t) => {
         `kein NOTIFY auf Kanal "${hh.HAUSHALT_KANAL}" innerhalb von 3 s — die anderen Worker erfahren nichts`)), 3000);
       lauscher.on('notification', (m) => { if (m.channel === hh.HAUSHALT_KANAL) { clearTimeout(uhr); auf(m); } });
     });
-    hh.meldeHaushaltsaenderung();
+    hh.meldeHaushaltsaenderung(db.standardDb());
     const meldung = await angekommen;
     assert.equal(meldung.channel, hh.HAUSHALT_KANAL);
 

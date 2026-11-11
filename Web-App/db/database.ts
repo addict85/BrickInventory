@@ -4,6 +4,7 @@ import { Pool, types as pgTypes, Client } from 'pg';
 import type { PoolClient, PoolConfig } from 'pg';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { runMigrations } from './migrate';
+import { Benachrichtigung } from './pgNotify';
 import type { DbSchnittstelle } from './typen';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -106,6 +107,8 @@ export type Erststart = () => Promise<void>;
 
 export interface Db extends DbSchnittstelle {
   readonly pool: Pool;
+  /** LISTEN/NOTIFY dieses Zugangs (db/pgNotify.ts); horcht erst beim ersten listen(). */
+  readonly benachrichtigung: Benachrichtigung;
   transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>, o?: TxOptionen): Promise<T>;
   inTransaktion(): boolean;
   getPoolStats(): { total: number; idle: number; waiting: number; active: number };
@@ -308,6 +311,7 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
 
   return {
     pool, all, get, run, exec, transaction, initSchema, initSchemaOnce, eigeneVerbindung, mitCommitBegleiter,
+    benachrichtigung: new Benachrichtigung(k.verbindung, (sql, p) => run(sql, p)),
     inTransaktion: () => txClient() !== null,
     getPoolStats: () => ({ total: pool.totalCount, idle: pool.idleCount, waiting: pool.waitingCount,
       active: pool.totalCount - pool.idleCount }),

@@ -2,7 +2,6 @@
  * Datenbank-Rundläufe, weil die App beim Öffnen viele Anfragen parallel feuert. */
 import * as passwortRegel from '../infra/passwortRegel';
 import { konfig } from '../infra/konfig';
-import * as pgNotify from '../../db/pgNotify';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { passwortPasst, BcryptUeberlast } from './bcryptSchranke';
@@ -233,15 +232,15 @@ const WIDERRUF_KANAL = 'token_widerrufen';
 let _verteilt = false;
 export function horcheAufTokenWiderruf(): void {
   _verteilt = true;
-  pgNotify.listen(WIDERRUF_KANAL, leere);
+  kontoBereich().db.benachrichtigung.listen(WIDERRUF_KANAL, leere);
 }
 function cacheNutzbar(): boolean {
-  if (_verteilt && pgNotify.hoertZu(WIDERRUF_KANAL)) return true;
+  if (_verteilt && kontoBereich().db.benachrichtigung.hoertZu(WIDERRUF_KANAL)) return true;
   leere();
   return false;
 }
 function meldeWiderruf(): void {
-  if (_verteilt) void pgNotify.notify(WIDERRUF_KANAL);
+  if (_verteilt) void kontoBereich().db.benachrichtigung.notify(WIDERRUF_KANAL);
 }
 
 /** Für Löschungen ohne Klartext (die Token-Verwaltung kennt nur den

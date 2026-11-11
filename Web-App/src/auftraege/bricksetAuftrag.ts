@@ -1,4 +1,3 @@
-import { notify } from '../../db/pgNotify';
 import { AUFTRAG_KANAL, zieheVor, beendePause } from './dienst';
 import { naechsteUhrzeit, taeglicheUhrzeit } from './zeitplan';
 import { auftraegeBereich } from './prozess';
@@ -19,7 +18,7 @@ export async function bricksetVormerken(sn: string, fehler: string, bald = false
   const versuch = await auftraegeBereich().auftraege.hoechsterBricksetVersuch(schluessel(sn)) + 1;
   if (versuch > BRICKSET_HOECHSTENS) { await bricksetAusWiedervorlage(sn); return { versuch, vorgemerkt: false }; }
   await auftraegeBereich().auftraege.merkeBricksetVor(schluessel(sn), { set_number: sn, versuch }, await bricksetFaelligAb(bald), fehler);
-  await notify(AUFTRAG_KANAL, 'brickset');
+  await auftraegeBereich().db.benachrichtigung.notify(AUFTRAG_KANAL, 'brickset');
   return { versuch, vorgemerkt: true };
 }
 
