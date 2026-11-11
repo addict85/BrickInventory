@@ -7,7 +7,7 @@
  * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel bzw. dist neu gebaut):
  *   A  redeemHouseholdInvite wieder ohne Prüfroute (Titel „Einladung annehmen“)
  *      → rot: „Einladung nennt das Hauptkonto“
- *   B  createInvite wieder mit randomBytes(24).base64url → rot: „Einladungscode
+ *   B  einladungAnlegen wieder mit randomBytes(24).base64url → rot: „Einladungscode
  *      in Vierergruppen“ (Format) und „Einladung nennt das Hauptkonto“
  *      (kleingeschrieben ohne Striche eingegeben: abgelaufen)
  *   C  Profil wieder mit tRaw('konto.profil') ohne Erklärung → rot: „E-Mail-
@@ -63,7 +63,7 @@ test('UI-Prüfung 13: Haushalt, Dialoge, Finanzen', { timeout: 280_000 }, async 
   });
 
   await t.test('Einladung nennt das Hauptkonto', async () => {
-    const { code } = await haushalt.createInvite(andere);
+    const { code } = await haushalt.einladungAnlegen(andere);
     assert.match(code, CODE);
     assert.match(await b.auswerten(text('#household-redeem-box')), /sieht und bearbeitet danach deine Sammlung; du kannst die Verknüpfung jederzeit lösen/);
     // Wie abgetippt: klein und ohne Striche.

@@ -49,7 +49,7 @@ test('Haushalt beitreten', { concurrency: 1 }, async (t) => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[haupt, kind, haupt2]]);
     await db.pool.end().catch(() => {});
   });
-  const { createInvite } = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt };
+  const { einladungAnlegen } = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt };
   const { base } = testServer(_req, { sitzung: { userId: kind }, apiNutzer: { user_id: kind, is_admin: 0 },
     routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
   const einloesen = (body) => fetch(`${base}/api/v1/settings/household/redeem`, {
@@ -59,7 +59,7 @@ test('Haushalt beitreten', { concurrency: 1 }, async (t) => {
     'SELECT 1 FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [haupt, kind]);
 
   await t.test('die Prüfung eines Codes ist je Konto gebremst', async () => {
-    const { code } = await createInvite(haupt);
+    const { code } = await einladungAnlegen(haupt);
     const pruefe = () => fetch(`${base}/api/v1/settings/household/redeem/pruefen`, {
       method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code }) })
       .then(async r => ({ status: r.status, body: await r.json() }));
@@ -73,7 +73,7 @@ test('Haushalt beitreten', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('ohne Passwort keine Verknüpfung', async () => {
-    const { code } = await createInvite(haupt);
+    const { code } = await einladungAnlegen(haupt);
     for (const body of [{ code }, { code, password: 'falsch' }]) {
       const r = await einloesen(body);
       assert.equal(r.status, 400, JSON.stringify(r.body));
@@ -83,7 +83,7 @@ test('Haushalt beitreten', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('mit Passwort verknüpft, und der Inhaber erfährt es', async () => {
-    const { code } = await createInvite(haupt);
+    const { code } = await einladungAnlegen(haupt);
     const zeilen = [];
     const echt = console.log;
     console.log = (...a) => { zeilen.push(a.join(' ')); };
@@ -104,7 +104,7 @@ test('Haushalt beitreten', { concurrency: 1 }, async (t) => {
     const zf = _req('src/konto/zweiterFaktor.js');
     const geheim = await zf.beginneEinrichtung(kind);
     const codes = await zf.bestaetigeEinrichtung(kind, zf.hotp(zf.ausBase32(geheim), zf.zeitschritt()));
-    const { code } = await createInvite(haupt2);
+    const { code } = await einladungAnlegen(haupt2);
     const ohne = await einloesen({ code, password: PASS });
     assert.equal(ohne.status, 400, JSON.stringify(ohne.body));
     assert.equal(ohne.body.code, 'zweiter_faktor_noetig');

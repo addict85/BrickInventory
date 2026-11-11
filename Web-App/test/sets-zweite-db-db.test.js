@@ -1,17 +1,15 @@
 /**
- * Ein Sets-Bereich mit eigenem Zugang (erzeugeSets({ db: zweite, … })) liest und
- * schreibt nur dort, auch wo er andere Bereiche braucht: Haushalt (writableIds,
- * blickfeldAus), Einstellungen (Währung), Lagerort, Preisalarm, Papierkorb,
- * Katalog (Inventar), Finanzen (fetchPrice, getSetPriceHistory) und Aufträge.
- * Der Zugang des Prozesses zählt mit; er darf keine einzige Anfrage sehen. Das
- * Haushaltsgedächtnis gilt je Zugang, nicht je Konto-ID im Prozess.
+ * Ein Sets-Bereich mit eigenem Zugang (erzeugeSets({ db: zweite, … })) liest und schreibt nur
+ * dort, auch über Haushalt, Einstellungen, Lagerort, Preisalarm, Papierkorb, Katalog (Inventar),
+ * Finanzen (fetchPrice, preisverlaufSet) und Aufträge. Der Zugang des Prozesses zählt mit und
+ * darf keine Anfrage sehen. Das Haushaltsgedächtnis gilt je Zugang, nicht je Konto-ID.
  *
  * Gegenproben (11.11.2026 gemessen, je einzeln):
  *   A  waehrungVon() in src/sets/dienst.ts wieder über getSetting(uid, …) →
  *      rot: „Währung aus der zweiten Datenbank“, „Preisalarm …“ (Währung des
  *      Alarms) und „der Prozesszugang blieb unberührt“
  *   B  loescheSetFuer() in src/sets/loeschen.ts mit
- *      haushaltBereich().haushalt.writableIds(s.nutzer) → rot: „der
+ *      haushaltBereich().haushalt.schreibbereich(s.nutzer) → rot: „der
  *      Prozesszugang blieb unberührt“
  *   C  lagerortDesSetsSetzen() wieder über bestandBereich().lagerortDienst →
  *      rot: „Lagerort in der zweiten Datenbank“ und „der Prozesszugang …“
@@ -20,7 +18,7 @@
  *   D  setPreis() in src/sets/preise.ts ruft fetchPrice() ohne den Zugang der
  *      Sets → rot: „Marktpreis aus dem Cache der zweiten Datenbank“ und „der
  *      Prozesszugang …“
- *   E  setPreisVerlauf() ruft getSetPriceHistory() ohne sk.finanzen → rot:
+ *   E  setPreisVerlauf() ruft preisverlaufSet() ohne sk.finanzen → rot:
  *      „Preisverlauf aus der zweiten Datenbank“ und „der Prozesszugang …“
  *   F  teilelisteDesSets() ruft neuestesInventar(setNum) ohne sk.katalog → rot:
  *      „Teileliste aus dem Katalog …“ und „der Prozesszugang …“
@@ -209,8 +207,8 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
     await zweite.run("INSERT INTO users (id, username, password_hash) VALUES ($1, 'unter_in_zwei', 'x')", [UNTER]);
     await zweite.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [uid, UNTER]);
     H.leereHaushaltCache();
-    assert.deepEqual((await H.resolveHousehold(zweite, uid)).memberIds, [uid, UNTER]);
-    const imProzess = await H.resolveHousehold(db.standardDb(), uid);
+    assert.deepEqual((await H.haushaltVon(zweite, uid)).memberIds, [uid, UNTER]);
+    const imProzess = await H.haushaltVon(db.standardDb(), uid);
     assert.ok(
       !imProzess.memberIds.includes(UNTER),
       `Gedächtnis der zweiten Datenbank geliehen: ${imProzess.memberIds}`,

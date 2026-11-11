@@ -224,7 +224,7 @@ export async function getManualParts(userIdWahl: Sicht | Blickfeld, viewerId: nu
   // Preise bleibt die Liste brauchbar; `ab` sammelt für `degradiert`, warum sie fehlen.
   const preise = await ab.oder('marktpreise', marktpreiseAusCacheFuerTeile(mitZustand, viewerId), new Map<string, number>());
   const mitPreis = mitZustand.map(t => ({ ...t, avg_price: preise.get(`${t.part_number}|${t.color_id}`) ?? null }));
-  return haushaltBereich().haushalt.withOwners(uids, mitPreis);
+  return haushaltBereich().haushalt.besitzerAnhaengen(uids, mitPreis);
 }
 
 // Füllt die Spalte „Habe“ aus dem Bestand.

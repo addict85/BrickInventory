@@ -38,7 +38,7 @@ export async function getMinifigs(userIdWahl: Sicht | number | number[], { searc
 
   // Mit Gesamtzahl für den Endlos-Scroll, wie bei getSets.
   return {
-    figs: await haushaltBereich().haushalt.withOwners(uids, mappedFigs),
+    figs: await haushaltBereich().haushalt.besitzerAnhaengen(uids, mappedFigs),
     total: figCount ? figCount.c : mappedFigs.length,
   };
 }
@@ -76,6 +76,6 @@ export async function getManualMinifigs(userIdWahl: Sicht | number | number[], v
   const mitPreis = mitZustand.map(f =>
     ({ ...f, avg_price: preise.get(String(f.fig_number)) ?? null }));
 
-  return haushaltBereich().haushalt.withOwners(uids, mitPreis);
+  return haushaltBereich().haushalt.besitzerAnhaengen(uids, mitPreis);
 }
 

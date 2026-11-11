@@ -120,6 +120,27 @@ schreibende Route, die Eingabe. Daraus entstehen die Routentypen (tsc),
 `docs/openapi.json` (`npm run vertrag:openapi`) und der Abgleich mit dem
 Android-Client (`test/vertrag-kotlin.test.js`).
 
+### Namen
+
+Pfade und Feldnamen der API sind Vertrag: App und Webapp hängen daran, sie
+bleiben, wie sie sind, auch wo sie uneinheitlich sind. Neue Routen und Felder
+folgen der Mehrheit: Pfade englisch im Plural mit Bindestrich, Pfadparameter
+`:setNumber`, `:partNumber`, `:figNumber`, `:id`; Felder `snake_case`.
+Bestand der Abweichungen (Stand 11.11.2026):
+
+| Art | Beispiele |
+|---|---|
+| Sprache gemischt | `/admin/auftraege` neben `/admin/jobs`, `/auth/zweiter-faktor` neben `/auth/change-password`, `/papierkorb`, `/wanted/…/uebernehmen`, `/settings/einrichtung` |
+| gleiche Sache, zwei Namen | Felder `set_number`/`nummer`, `condition`/`zustand`, `currency`/`currency_code`/`waehrung`, `quantity`/`menge`, `storage`/`ort`; „Job“ und „Auftrag“ für die Hintergrundarbeit (`/admin/jobs`, `/admin/job-status` neben `/admin/auftraege`) |
+| Parameter | `:sn` (`/sets/:sn/move`) statt `:setNumber`; Abkürzungen `:acqId`, `:instrId`, `:tokenId`, `:jobId` |
+| Schreibweise | `camelCase` in einigen Antworten (`isAdmin`, `mustChangePassword`, `jobId`, `etaSeconds`) |
+| Form | `/sets/:setNumber/alert` neben `/alerts`; `parts-list`, `minifigs-list`, aber `partslist-pdf`; `/wanted-list/import/xml` neben `/wanted/import/csv`; `/finance/pnl` |
+
+Innen (Funktionen, Typen) heissen die Dinge deutsch und wie im Bereich:
+`haushaltVon`, `schreibbereich`, `blickfeldIds`, `darfSchreibenFuer`,
+`preisverlaufSet`/`…Teil`/`…Figur`. Übrig sind englische Namen in
+Finanzen und Katalog (`fetchPrice`, `resolveSetCondition`, `getCurrentMarketPrice`).
+
 ## Begründungen
 
 Im Code steht das Warum in wenigen Zeilen; lange Begründungen und die

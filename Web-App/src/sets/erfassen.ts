@@ -2,7 +2,7 @@
  * Blickfeld, Menge und Kaufpreis. Was das Netz braucht (Katalog, Bild,
  * Marktpreis), hält die Anfrage nicht auf, sondern läuft als Auftrag. */
 import type { DbSchnittstelle } from '../../db/database';
-import { scopeIds, schreibziel } from '../haushalt';
+import { blickfeldIds, schreibziel } from '../haushalt';
 import { recordAcquisitionForDay, setzeGeschaetztenPreis, setzeLagerort, ortFuerNeuerfassung } from '../bestand';
 import { mitInventarSperre } from '../../db/txLock';
 import {
@@ -76,7 +76,7 @@ export async function findSetInScope(
   setNumber: string,
 ): Promise<VorhandenesSet | null> {
   const sn = normalizeSetNumber(setNumber);
-  const row = await repo.setImBlickfeld(sk.db, await scopeIds(sk.db, viewerId), sn, viewerId);
+  const row = await repo.setImBlickfeld(sk.db, await blickfeldIds(sk.db, viewerId), sn, viewerId);
   if (!row) return null;
   return { set_number: row.set_number, owner_user_id: row.user_id, is_self: row.user_id === viewerId };
 }

@@ -265,7 +265,7 @@ test('Preisalarm gegen echte Datenbank', async (t) => {
   });
 
   await t.test('Abholen: jedes Konto sieht nur seine eigenen Alarme', async () => {
-    // Die Abfrage steht auf user_id, nicht auf scopeIds() — und das ist
+    // Die Abfrage steht auf user_id, nicht auf blickfeldIds() — und das ist
     // Absicht: Eine Meldung gehört dem, der die Schwelle gesetzt hat. Ein
     // Hauptkonto bekäme sonst die Meldungen aller Unterkonten, ohne je einen
     // Alarm gesetzt zu haben.

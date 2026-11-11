@@ -5,20 +5,20 @@
  * Datenbank hier oder in household-db.test.js.
  *
  * Gegenproben (08.11.2026 gemessen, jeweils zurückgenommen):
- *   A  createInvite speichert den Code statt seines Hashes → rot „der
+ *   A  einladungAnlegen speichert den Code statt seines Hashes → rot „der
  *      Einladungscode steht nur als Hash …“
- *   B  canWriteFor fragt resolveHousehold() statt der Verknüpfung → rot
+ *   B  darfSchreibenFuer fragt haushaltVon() statt der Verknüpfung → rot
  *      „Schreibrechte kommen nie aus dem Gedächtnis“
  * Gestrichen, weil household-db.test.js dasselbe ausführt (dort je rot):
  *   „der Code wird atomar entwertet …“ (release() bei ungleicher Währung
  *   entfernt → „Verknüpfen braucht beide Seiten …“), „beide Seiten dürfen die
  *   Verknüpfung lösen“ (trenne() je Zweig ohne Wirkung → „ein Konto kann
  *   mehreren Hauptkonten angehören“, „Entkoppeln …“, „die Umstellung trennt
- *   Ketten …“), „der Kontofilter wird am Server in IDs übersetzt“ (scopeIds
+ *   Ketten …“), „der Kontofilter wird am Server in IDs übersetzt“ (blickfeldIds
  *   'own' → alle → „Blickfeld und Kontofilter“), „ein Set erscheint nur
  *   EINMAL“ (setsQuelle ohne Gruppierung → „dasselbe Set in zwei Konten …“),
  *   „Schreiben in ein fremdes Konto verlangt die richtige Richtung“
- *   (resolveWriteTarget ohne canWriteFor → „in ein fremdes Konto schreiben …“),
+ *   (schreibzielOderNull ohne darfSchreibenFuer → „in ein fremdes Konto schreiben …“),
  *   „der Absender eines Eigentümerwechsels kommt aus der ZEILE“ (from = uid →
  *   „der Eigentümerwechsel greift die ZEILE …“).
  */
@@ -60,7 +60,7 @@ test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async
 
   await t.test('der Einladungscode steht nur als Hash in der Datenbank', async () => {
     // Wie bei API-Tokens: Wer die Datenbank liest, soll keine Einladung einlösen können.
-    const { code } = await hh.createInvite(ids[0]);
+    const { code } = await hh.einladungAnlegen(ids[0]);
     assert.ok(code, 'kein Code erzeugt');
     const zeilen = await db.all('SELECT token_hash FROM account_link_invites WHERE main_user_id = $1', [ids[0]]);
     assert.equal(zeilen.length, 1);
@@ -75,14 +75,22 @@ test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async
     // Schreibzugriff darf nur der Stand der Datenbank entscheiden.
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [ids[0], ids[1]]);
     hh.leereHaushaltCache();
-    assert.deepEqual((await hh.resolveHousehold(ids[0])).memberIds, ids, 'Vorbedingung: das Unterkonto ist gemerkt');
-    assert.equal(await hh.canWriteFor(ids[0], ids[1]), true);
+    assert.deepEqual((await hh.haushaltVon(ids[0])).memberIds, ids, 'Vorbedingung: das Unterkonto ist gemerkt');
+    assert.equal(await hh.darfSchreibenFuer(ids[0], ids[1]), true);
     // Von aussen gelöst, ohne dass dieser Prozess davon hört.
     await db.run('DELETE FROM account_links WHERE main_user_id = $1', [ids[0]]);
-    assert.deepEqual((await hh.resolveHousehold(ids[0])).memberIds, ids, 'Vorbedingung: das Gedächtnis ist noch alt');
-    assert.equal(await hh.canWriteFor(ids[0], ids[1]), false, 'canWriteFor entscheidet nach dem gemerkten Blickfeld');
-    assert.deepEqual(await hh.writableIds(ids[0]), [ids[0]], 'writableIds entscheidet nach dem gemerkten Blickfeld');
-    assert.equal(await hh.canWriteFor(ids[1], ids[1]), true, 'Eigene Daten immer');
+    assert.deepEqual((await hh.haushaltVon(ids[0])).memberIds, ids, 'Vorbedingung: das Gedächtnis ist noch alt');
+    assert.equal(
+      await hh.darfSchreibenFuer(ids[0], ids[1]),
+      false,
+      'darfSchreibenFuer entscheidet nach dem gemerkten Blickfeld',
+    );
+    assert.deepEqual(
+      await hh.schreibbereich(ids[0]),
+      [ids[0]],
+      'schreibbereich entscheidet nach dem gemerkten Blickfeld',
+    );
+    assert.equal(await hh.darfSchreibenFuer(ids[1], ids[1]), true, 'Eigene Daten immer');
   });
 });
 
@@ -92,7 +100,7 @@ test('Webapp und App bekommen dieselben Endpunkte', () => {
   // Ausweise). Vorher stand diese Prüfung über ZWEI Dateien und verlangte,
   // dass beide alles anbieten — die schwächere Fassung derselben Aussage.
   const src = read('routes/api_v1/settings.ts');
-  for (const fn of ['householdStatus', 'createInvite', 'redeemInvite', 'unlink']) {
+  for (const fn of ['haushaltsStand', 'einladungAnlegen', 'einladungEinloesen', 'kontenTrennen']) {
     assert.ok(src.includes(fn), `routes/api_v1/settings.ts: ${fn} fehlt`);
   }
   // Und die Zweitfassung darf nicht zurückkehren: jede Haushalts-Route genau einmal.
@@ -206,7 +214,7 @@ test('manuelle Teile und Minifiguren tragen den Besitzer', () => {
   // Auf die Parameter geprüft, nicht auf den Wortlaut: `rows: any[]` eines Tages
   // zu `rows: Row[]` zu schärfen ist eine Verbesserung und darf hier nicht als
   // Fehler erscheinen (siehe pruefeParameter() im Helfer).
-  pruefeParameter(h, 'withOwners', ['uids', 'rows']);
+  pruefeParameter(h, 'besitzerAnhaengen', ['uids', 'rows']);
   assert.match(
     h,
     /if \(uids\.length < 2 \|\| !rows\?\.length\) return rows;/,
@@ -223,7 +231,7 @@ test('manuelle Teile und Minifiguren tragen den Besitzer', () => {
   );
 
   const fc = require('./helpers/sources').finanzQuelle();
-  const uses = (fc.match(/await (?:haushaltBereich\(\)\.haushalt\.)?withOwners\(uids,/g) || []).length;
+  const uses = (fc.match(/await (?:haushaltBereich\(\)\.haushalt\.)?besitzerAnhaengen\(uids,/g) || []).length;
   // Seit der UI-Prüfung 12 auch die Sets: Jede Zeile ist der Bestand eines Kontos.
   assert.equal(uses, 3, 'Set-, Teile- und Minifiguren-Bewertung brauchen den Besitzer');
 });

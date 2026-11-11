@@ -51,7 +51,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
   // Ein Unterkonto im HAUSHALT. Genau daran ist die erste Fassung gescheitert:
   // Sie verband auf `s.user_id = a.user_id`, also streng das eigene Konto —
   // ein Set des Kindes galt damit als „gibt es nicht", obwohl die
-  // Detailansicht es sehr wohl öffnet (sie fragt über scopeIds()).
+  // Detailansicht es sehr wohl öffnet (sie fragt über blickfeldIds()).
   const kind = await db.get(
     "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,'x',false,true) RETURNING id", ['alarm_kind']);
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [ich.id, kind.id]);

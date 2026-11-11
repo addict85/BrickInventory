@@ -3,7 +3,7 @@ import { requireToken, kontoSchranke, sichtVon } from './middleware';
 import { haushaltBereich } from '../../src/haushalt';
 import { getManualMinifigs, getMinifigStats, getMinifigs, addManualFig, updateManualFig, teileDerFigur } from '../../src/figuren';
 import { getSetting } from '../../src/einstellungen';
-import { getMinifigPriceHistory } from '../../src/finanzen';
+import { preisverlaufFigur } from '../../src/finanzen';
 import { bestandBereich, verwendendeSets, normalisiereLagerort } from '../../src/bestand';
 import { loescheFigur } from '../../src/sammlung';
 import { csvEmpfang } from '../../src/http/dateiEmpfang';
@@ -66,8 +66,8 @@ router.get('/minifigs/stats', requireToken, async (req: Anfrage<'GET /api/v1/min
 router.get('/minifigs/:figNumber/price-history', requireToken, async (req: Anfrage<'GET /api/v1/minifigs/:figNumber/price-history'>, res: Antwort<'GET /api/v1/minifigs/:figNumber/price-history'>) => {
   const uid = req.apiUser.user_id;
   const currency = await getSetting(uid, 'currency', 'EUR');
-  // Blickfeld: Ohne scopeIds() fände sich für eine Figur des Unterkontos keine Erfassung.
-  const data = await getMinifigPriceHistory(
+  // Blickfeld: Ohne blickfeldIds() fände sich für eine Figur des Unterkontos keine Erfassung.
+  const data = await preisverlaufFigur(
     sichtVon(req), req.pfad.figNumber, currency);
   res.json({ success: true, ...data });
 });

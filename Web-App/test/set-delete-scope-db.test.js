@@ -5,7 +5,7 @@
  * ein Unterkonto aber kein Set des Hauptkontos. Beide Löschwege laufen in
  * einer Transaktion, damit kein Teil ohne Set zurückbleibt.
  *
- * Gegenprobe (durchgeführt): writableIds in beiden Routen zurück auf die
+ * Gegenprobe (durchgeführt): schreibbereich in beiden Routen zurück auf die
  * eigene ID → der erste Teilschritt endet wieder in 404.
  * Gegenprobe (09.11.2026 gemessen): in requireToken den Sitzungszweig entfernt →
  * rot: „Webapp: … 401 !== 200“. Der App-Weg kommt ohne Sitzung, mit echtem Token;
@@ -98,7 +98,7 @@ test('Löschen im Haushalt: vorwärts erlaubt, rückwärts nicht',
     }
 
     // 2. RÜCKWÄRTS: Das Unterkonto darf ein Set des HAUPTkontos NICHT löschen.
-    //    Genau dafür steht dort writableIds() und nicht scopeIds().
+    //    Genau dafür steht dort schreibbereich() und nicht blickfeldIds().
     for (const [name, pfad] of [
       ['Webapp',  `/api/v1/sets/${SN}`],
       ['Android', `/api/v1/sets/${SN}`],

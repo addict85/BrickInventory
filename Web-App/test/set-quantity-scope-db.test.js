@@ -1,7 +1,7 @@
 /**
  * Menge eines UNTERKONTO-Sets ändern — beide Routenfamilien.
  *
- * Gegenprobe (durchgeführt): writableIds in updateSet zurück auf die eigene ID
+ * Gegenprobe (durchgeführt): schreibbereich in updateSet zurück auf die eigene ID
  * → beide Teilschritte enden wieder in 404.
  * Gegenprobe (09.11.2026 gemessen): in requireToken den Sitzungszweig entfernt →
  * rot: „Webapp: … 401 !== 200“. Der App-Weg kommt ohne Sitzung, mit echtem Token;

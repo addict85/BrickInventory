@@ -362,7 +362,7 @@ module.exports.hatParameter = hatParameter;
 
 /**
  * Genau diese Parameter, der Reihe nach, ohne Rücksicht auf Typannotationen,
- * Vorgabewerte oder Zeilenumbrüche: `pruefeParameter(src, 'withOwners',
+ * Vorgabewerte oder Zeilenumbrüche: `pruefeParameter(src, 'besitzerAnhaengen',
  * ['uids', 'rows'])`. Ein Muster über den ganzen Kopf fiele um, sobald jemand
  * einen Typ schärft.
  * @param {string} [hinweis] Zusatz für die Fehlermeldung

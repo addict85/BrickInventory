@@ -8,7 +8,7 @@
  *   A  die Invite-Route entscheidet an `'code' in r` statt `'fehler' in r` →
  *      rot: „Einladen liefert den Code als Nutzlast“ (der Erfolg wird zur
  *      Absage, 500 statt 200)
- *   B  redeemInvite() meldet `konto_mit_sich_selbst` unter `code` statt
+ *   B  einladungEinloesen() meldet `konto_mit_sich_selbst` unter `code` statt
  *      `fehler` → rot: „jede Absage beim Einlösen …“ (200 statt 409)
  *   C  in fehlerText() die Prüfung `if (!eintrag)` gestrichen → rot:
  *      „fehlerText fällt bei unbekanntem Code nicht um“ (TypeError)

@@ -54,12 +54,12 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async (t) =
   await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,3.94,'U',1)`, [subId, SN]);
 
-  const { getSetPriceHistory } = _req('src/finanzen/priceHistory.js');
+  const { preisverlaufSet } = _req('src/finanzen/priceHistory.js');
   const { getSets } = require('./helpers/sources').handlerModul(_req);
 
   try {
     await t.test('das Diagramm zeigt nur die Zustände im Bestand', async () => {
-      const ph = await getSetPriceHistory([hauptId, subId], SN, 'CHF');
+      const ph = await preisverlaufSet([hauptId, subId], SN, 'CHF');
       assert.deepEqual(Object.keys(ph.by_condition), ['U'],
         'Vorbedingung: nur „gebraucht" ist erfasst');
       assert.deepEqual(ph.chart.values.map(v => v.name), ['U'],
@@ -72,7 +72,7 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async (t) =
       // überzähligen Reihe standen dort die Neupreise (3.94 / 7.99 / 7.99),
       // während die Zeile darüber CHF 3.94 auswies — zwei Antworten auf
       // dieselbe Frage, untereinander.
-      const ph = await getSetPriceHistory([hauptId, subId], SN, 'CHF');
+      const ph = await preisverlaufSet([hauptId, subId], SN, 'CHF');
       const werte = ph.chart.values.flatMap(v => v.values.map(p => p.y)).filter(y => y > 0);
       assert.ok(werte.length, 'keine Diagrammwerte');
       assert.equal(Math.max(...werte), 3.94,
@@ -85,7 +85,7 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async (t) =
       // Marktwert. Würde die Regel stur auf `by_condition` abstellen, wäre das
       // Diagramm hier leer — schlimmer als eine Reihe zu viel.
       await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
-      const ph = await getSetPriceHistory([hauptId, subId], SN, 'CHF');
+      const ph = await preisverlaufSet([hauptId, subId], SN, 'CHF');
       assert.deepEqual(Object.keys(ph.by_condition), []);
       assert.equal(ph.chart.values.length, 1,
         'Ohne Erfassung muss der Zustand des Bestandes übrig bleiben, nicht nichts');

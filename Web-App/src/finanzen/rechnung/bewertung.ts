@@ -161,7 +161,7 @@ export async function computeSetsValuation(viewerId: number, idsWahl: Sicht | Bl
     const k = `${a.user_id}|${a.set_number}`, l = jeKontoUndSet.get(k);
     if (l) l.push(a); else jeKontoUndSet.set(k, [a]);
   }
-  const results = await haushaltBereich().haushalt.withOwners(uids,
+  const results = await haushaltBereich().haushalt.besitzerAnhaengen(uids,
     sets.map(set => bewerteSet(set, jeKontoUndSet.get(`${set.user_id}|${set.set_number}`) || [], lage)));
   return {
     ...kopf,
@@ -242,7 +242,7 @@ export async function computeMinifigsValuation(viewerId: number, idsWahl: Sicht 
   ]);
   const fehlt: Posten[] = [];
 
-  const results = await haushaltBereich().haushalt.withOwners(uids, manualFigs.map(fig => {
+  const results = await haushaltBereich().haushalt.besitzerAnhaengen(uids, manualFigs.map(fig => {
     // Je vorkommendem Zustand: Ein neu gekauftes Exemplar bekommt den Neupreis,
     // auch wenn ein anderes gebraucht ist.
     const key  = fig.fig_number;
@@ -306,7 +306,7 @@ export async function computePartsValuation(viewerId: number, idsWahl: Sicht | B
     };
   });
 
-  const results = await haushaltBereich().haushalt.withOwners(uids, await parallelLimit(tasks, 5));
+  const results = await haushaltBereich().haushalt.besitzerAnhaengen(uids, await parallelLimit(tasks, 5));
   return { currency, parts: results, ...gesamt(results),
            kaufpreise_fremde_waehrung: fremdeKaufpreise(acqByPart),
            kaufpreise_umgerechnet: zaehle([...acqByPart.values()].flat(), 'kaufpreis_umgerechnet'),

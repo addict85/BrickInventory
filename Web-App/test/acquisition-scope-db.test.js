@@ -1,7 +1,7 @@
 /**
  * Kaufpreis einer Erfassung des UNTERKONTOS ändern — beide Routenfamilien.
  *
- * Gegenprobe (durchgeführt): writableIds in src/sammlung/erfassungen.ts zurück auf die
+ * Gegenprobe (durchgeführt): schreibbereich in src/sammlung/erfassungen.ts zurück auf die
  * eigene ID → der erste Teilschritt endet wieder in 404.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).
@@ -88,7 +88,7 @@ test('das Hauptkonto kann den Kaufpreis einer Unterkonto-Erfassung ändern',
 
     // 3. „Lesen weit, Schreiben eng": Das UNTERKONTO darf NICHT rückwärts in
     //    eine Erfassung des Hauptkontos schreiben. Diese Asymmetrie ist der
-    //    Grund, warum hier writableIds() steht und nicht scopeIds().
+    //    Grund, warum hier schreibbereich() steht und nicht blickfeldIds().
     await db.run(`INSERT INTO sets (user_id,set_number) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [hauptId, SET]);
     await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,99.00,'N',1)`, [hauptId, SET]);

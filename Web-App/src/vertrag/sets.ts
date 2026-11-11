@@ -115,7 +115,7 @@ export const SetItem = z.looseObject({
   condition: z.string().nullable().optional(),
   storage: z.string().nullable().optional(),
   conditions: z.array(z.string()),
-  /** Nur im Haushalt (withOwners); allein gibt es keine Besitzer zu nennen. */
+  /** Nur im Haushalt (besitzerAnhaengen); allein gibt es keine Besitzer zu nennen. */
   owners: z.array(KontoName).optional(),
   max_purchase_price: z.number().nullable().optional(),
   avg_purchase_price: z.number().nullable().optional(),

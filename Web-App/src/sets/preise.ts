@@ -1,7 +1,7 @@
 /** Marktpreis, Preisverlauf und Preisalarm eines Sets. */
 import { blickfeldAus, type Sicht } from '../haushalt';
 import { einstellungMitZugang } from '../einstellungen';
-import { alarmeFuer, loescheAlarm, setzeAlarm, fetchPrice, resolveSetCondition, getSetPriceHistory } from '../finanzen';
+import { alarmeFuer, loescheAlarm, setzeAlarm, fetchPrice, resolveSetCondition, preisverlaufSet } from '../finanzen';
 import { importAlsAuftrag } from '../auftraege';
 import { normalizeSetNumber } from './erfassen';
 import type { Zustand } from '../infra/validate';
@@ -92,5 +92,5 @@ export async function alarmCsvImportStarten(sk: SetsKontext, uid: number, text: 
 }
 
 export async function setPreisVerlauf(sk: SetsKontext, uid: number, sicht: Sicht | number[], sn: string) {
-  return getSetPriceHistory(sicht, sn, await waehrungVon(sk, uid), sk.finanzen);
+  return preisverlaufSet(sicht, sn, await waehrungVon(sk, uid), sk.finanzen);
 }

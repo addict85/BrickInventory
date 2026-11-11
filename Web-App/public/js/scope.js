@@ -5,7 +5,7 @@
  * die eigenen Zahlen. Gefiltert wird am Server (accounts=), sonst stimmten Gesamtzahl und Bewertung nicht.
  */
 // 'merkliste' steht seit dem 24.09. mit darin (Marcos Vorgabe: „In der Merkliste noch einen Filter analog den
-// Sets einbauen inkl. Inhaber"). Der Server verstand `accounts=` auf /v1/wanted schon immer — scopeIds() gilt
+// Sets einbauen inkl. Inhaber"). Der Server verstand `accounts=` auf /v1/wanted schon immer — blickfeldIds() gilt
 // dort wie ueberall —, nur schickte es keine der beiden Oberflaechen. Es fehlte also allein die Wahl.
 export const SCOPE_VIEWS = ['gallery', 'parts', 'minifigs', 'finance', 'merkliste'];
 

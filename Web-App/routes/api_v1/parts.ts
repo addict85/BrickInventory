@@ -6,7 +6,7 @@ import { csvEmpfang } from '../../src/http/dateiEmpfang';
 import { importAlsAuftrag } from '../../src/auftraege';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
 import { getSetting } from '../../src/einstellungen';
-import { getPartPriceHistory } from '../../src/finanzen';
+import { preisverlaufTeil } from '../../src/finanzen';
 import { bestandBereich, verwendendeSets, normalisiereLagerort } from '../../src/bestand';
 import { loescheTeil } from '../../src/sammlung';
 import { seiteAus } from '../../src/infra/seite';
@@ -38,7 +38,7 @@ router.get('/parts/brick-colors', requireToken, async (_req: AuthedRequest, res:
 });
 
 router.post('/parts', requireToken, async (req: Anfrage<'POST /api/v1/parts'>, res: Antwort<'POST /api/v1/parts'>) => {
-  // resolveWriteTarget prüft die RICHTUNG (Hauptkonto → eigenes Unterkonto),
+  // schreibzielOderNull prüft die RICHTUNG (Hauptkonto → eigenes Unterkonto),
   // nicht bloss die Mitgliedschaft im Blickfeld.
   const owner = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
   const result = await addManualPart(owner, req.eingabe);
@@ -122,7 +122,7 @@ router.get('/parts/stats', requireToken, async (req: Anfrage<'GET /api/v1/parts/
 router.get('/parts/:partNumber/:colorId/price-history', requireToken, async (req: Anfrage<'GET /api/v1/parts/:partNumber/:colorId/price-history'>, res: Antwort<'GET /api/v1/parts/:partNumber/:colorId/price-history'>) => {
   const uid = req.apiUser.user_id;
   const currency = await getSetting(uid, 'currency', 'EUR');
-  const data = await getPartPriceHistory(
+  const data = await preisverlaufTeil(
     sichtVon(req), req.pfad.partNumber, req.pfad.colorId, currency);
   res.json({ success: true, ...data });
 });

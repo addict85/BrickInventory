@@ -150,11 +150,11 @@ router.post('/settings/user/default-condition', requireToken, async (req: Anfrag
 // Dieselbe Umsetzung wie die Webapp (src/haushalt/haushalt.ts), damit die App
 // nicht ihre eigenen Regeln bekommt.
 router.get('/settings/household', requireToken, async (req: Anfrage<'GET /api/v1/settings/household'>, res: Antwort<'GET /api/v1/settings/household'>) => {
-  res.json({ success: true, ...(await haushaltBereich().haushalt.householdStatus(req.apiUser.user_id)) });
+  res.json({ success: true, ...(await haushaltBereich().haushalt.haushaltsStand(req.apiUser.user_id)) });
 });
 
 router.post('/settings/household/invite', requireToken, async (req: Anfrage<'POST /api/v1/settings/household/invite'>, res: Antwort<'POST /api/v1/settings/household/invite'>) => {
-  const r = await haushaltBereich().haushalt.createInvite(req.apiUser.user_id);
+  const r = await haushaltBereich().haushalt.einladungAnlegen(req.apiUser.user_id);
   if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler, 'vars' in r ? r.vars : undefined);
   res.json({ success: true, ...r });
 });
@@ -174,7 +174,7 @@ router.post('/settings/household/redeem', requireToken, async (req: Anfrage<'POS
   const uid = req.apiUser.user_id;
   // Die Verknüpfung ist ein Zugang zur Sammlung wie ein Passkey: bei aktivem zweitem Faktor nur mit Code.
   if (!await bestaetigeMitFaktor(req, res, uid, req.eingabe.password, 'faktor_code')) return;
-  const r = await haushaltBereich().haushalt.redeemInvite(uid, String(req.eingabe.code || ''));
+  const r = await haushaltBereich().haushalt.einladungEinloesen(uid, String(req.eingabe.code || ''));
   if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler, 'vars' in r ? r.vars : undefined);
   const ich = await profil(uid);
   if (ich?.email) {
@@ -190,7 +190,7 @@ const kennung = (v: string | number | null | undefined) => v == null ? null : Nu
 
 router.post('/settings/household/unlink', requireToken, async (req: Anfrage<'POST /api/v1/settings/household/unlink'>, res: Antwort<'POST /api/v1/settings/household/unlink'>) => {
   res.json({ success: true,
-    ...(await haushaltBereich().haushalt.unlink(req.apiUser.user_id, kennung(req.eingabe.sub_user_id), kennung(req.eingabe.main_user_id))) });
+    ...(await haushaltBereich().haushalt.kontenTrennen(req.apiUser.user_id, kennung(req.eingabe.sub_user_id), kennung(req.eingabe.main_user_id))) });
 });
 
 router.post('/settings/household/former/dismiss', requireToken, async (req: Anfrage<'POST /api/v1/settings/household/former/dismiss'>, res: Antwort<'POST /api/v1/settings/household/former/dismiss'>) => {

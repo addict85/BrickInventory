@@ -16,7 +16,7 @@ export async function setUserSetting(userId: number, key: string, value: unknown
 }
 
 /** Für den ganzen Haushalt: Zwei Währungen ergäben eine Summe, der man den
- * Fehler nicht ansieht. redeemInvite() prüft unter derselben Sperre. */
+ * Fehler nicht ansieht. einladungEinloesen() prüft unter derselben Sperre. */
 async function setzeHaushaltswaehrung(userId: number, waehrung: string) {
   const vorher = await kontoBereich().db.transaction(async (tx) => {
     await sperreHaushaltswaehrung(tx);

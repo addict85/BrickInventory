@@ -62,7 +62,7 @@ export function meldeHaushaltsaenderung(db: DbSchnittstelle): void {
  * der Hauptaccount ist kein gemeinsamer Topf, sondern eine Sicht. */
 const kinder = (db: DbSchnittstelle, id: number) => repo.unterkonten(db, id);
 
-export async function resolveHousehold(db: DbSchnittstelle, uid: number): Promise<Household> {
+export async function haushaltVon(db: DbSchnittstelle, uid: number): Promise<Household> {
   const id = parseInt(String(uid));
   const speicher = gedaechtnis(db);
   const treffer = speicher.hole(id);
@@ -78,22 +78,22 @@ export async function resolveHousehold(db: DbSchnittstelle, uid: number): Promis
 
 /** Frisch abgefragt, nicht aus dem Gedächtnis: Nach dem Lösen darf kein
  * früheres Elternkonto noch minutenlang schreiben. */
-export async function canWriteFor(db: DbSchnittstelle, actorId: number, ownerId: number): Promise<boolean> {
+export async function darfSchreibenFuer(db: DbSchnittstelle, actorId: number, ownerId: number): Promise<boolean> {
   const actor = parseInt(String(actorId));
   const owner = parseInt(String(ownerId));
   if (actor === owner) return true;
   return repo.istVerknuepft(db, actor, owner);
 }
 
-/** Frisch, aus demselben Grund wie canWriteFor. */
-export async function writableIds(db: DbSchnittstelle, uid: number): Promise<number[]> {
+/** Frisch, aus demselben Grund wie darfSchreibenFuer. */
+export async function schreibbereich(db: DbSchnittstelle, uid: number): Promise<number[]> {
   const id = parseInt(String(uid));
   return [id, ...(await kinder(db, id))];
 }
 
 /** `tiefe` bleibt für ältere App-Fassungen im Feld (0 = eigenes, 1 = Unterkonto). */
-export async function householdMembers(db: DbSchnittstelle, uid: number) {
-  const h = await resolveHousehold(db, uid);
+export async function haushaltsMitglieder(db: DbSchnittstelle, uid: number) {
+  const h = await haushaltVon(db, uid);
   const self = parseInt(String(uid));
   const rows = await repo.kontoNamen(db, h.memberIds);
   return h.memberIds
@@ -123,7 +123,7 @@ function hash(token: string) {
 
 /** Abgelaufene und verbrauchte Codes werden dabei entsorgt; die Tabelle bleibt
  * so von selbst klein. */
-export async function createInvite(db: DbSchnittstelle, uid: number) {
+export async function einladungAnlegen(db: DbSchnittstelle, uid: number) {
   // Absagen als CODE: Erst die Route weiss, welche Sprache der Anfragende sieht.
   const id = parseInt(String(uid));
   // Jedes Konto darf einladen, auch ein Unterkonto: Ein Zwischenkonto ist Vater
@@ -151,7 +151,7 @@ export async function pruefeEinladung(db: DbSchnittstelle, uid: number, code: st
 }
 
 // Atomar entwertet, bei Fehlschlag frei.
-export async function redeemInvite(db: Db, uid: number, code: string) {
+export async function einladungEinloesen(db: Db, uid: number, code: string) {
   const subId = parseInt(String(uid));
   if (typeof code !== 'string' || code.length < 8) {
     return { fehler: 'einladungscode_ungueltig' as const };
@@ -211,7 +211,7 @@ export async function redeemInvite(db: Db, uid: number, code: string) {
 
 /** Von BEIDEN Seiten erlaubt. Ohne `subUserId` und `mainUserId` löst sich das
  * Konto von allen — so verhält sich eine ältere App mit nur einem Elternkonto. */
-export async function unlink(db: DbSchnittstelle, uid: number, subUserId?: number | null, mainUserId?: number | null) {
+export async function kontenTrennen(db: DbSchnittstelle, uid: number, subUserId?: number | null, mainUserId?: number | null) {
   const id = parseInt(String(uid));
   const gesetzt = (v: unknown) => v != null && String(v) !== '';
   const removed = gesetzt(subUserId) ? await repo.trenne(db, id, parseInt(String(subUserId)))
@@ -225,10 +225,10 @@ export async function verwerfeGetrennt(db: DbSchnittstelle, uid: number, subUser
   return { removed: await repo.loescheGetrenntHinweis(db, parseInt(String(uid)), parseInt(String(subUserId))) };
 }
 
-export async function householdStatus(db: DbSchnittstelle, uid: number) {
+export async function haushaltsStand(db: DbSchnittstelle, uid: number) {
   const id = parseInt(String(uid));
-  const h = await resolveHousehold(db, id);
-  const members = await householdMembers(db, id);
+  const h = await haushaltVon(db, id);
+  const members = await haushaltsMitglieder(db, id);
   const ab = new Abstriche();
   const [eltern, openInvites, currency, getrennt] = await Promise.all([
     repo.kontoNamen(db, h.elternIds, 'username'),
@@ -256,15 +256,15 @@ export async function householdStatus(db: DbSchnittstelle, uid: number) {
 export type ScopeMode = 'all' | 'own' | 'subs' | number;
 
 /** Unbekanntes ergibt 'all'. Eine Zahl wird NICHT hier geprüft: Ob sie zum
- * Haushalt gehört, weiss erst scopeIds(). */
+ * Haushalt gehört, weiss erst blickfeldIds(). */
 export function parseScopeMode(v: unknown): ScopeMode {
   if (v === 'own' || v === 'subs') return v;
   const n = parseInt(String(v));
   return Number.isFinite(n) && n > 0 ? n : 'all';
 }
 
-export async function scopeIds(db: DbSchnittstelle, uid: number, mode: ScopeMode = 'all'): Promise<number[]> {
-  const h = await resolveHousehold(db, uid);
+export async function blickfeldIds(db: DbSchnittstelle, uid: number, mode: ScopeMode = 'all'): Promise<number[]> {
+  const h = await haushaltVon(db, uid);
   const id = parseInt(String(uid));
   // Ohne Unterkonten wäre 'subs' eine leere Ansicht ohne erkennbaren Grund.
   if (!h.isMain) return h.memberIds;
@@ -296,15 +296,15 @@ export interface Schreiber { readonly schreiber: number }
 
 /** IDs kommen nur von innen (Jobs, andere Dienste); von aussen kommt eine Sicht. */
 export async function blickfeldAus(db: DbSchnittstelle, v: Sicht | BlickfeldEingabe): Promise<Blickfeld> {
-  return typeof v === 'object' && !Array.isArray(v) ? scopeIds(db, v.nutzer, parseScopeMode(v.konten)) : asIds(v);
+  return typeof v === 'object' && !Array.isArray(v) ? blickfeldIds(db, v.nutzer, parseScopeMode(v.konten)) : asIds(v);
 }
 
 export async function schreibbereichAus(db: DbSchnittstelle, v: Schreiber | number[]): Promise<number[]> {
-  return Array.isArray(v) ? v : writableIds(db, v.schreiber);
+  return Array.isArray(v) ? v : schreibbereich(db, v.schreiber);
 }
 
 /** Hauptkonten sehen die Dateien ihrer Unterkonten, nicht umgekehrt. Frisch
- * gefragt wie canWriteFor: Ein gelöstes Unterkonto soll nicht bis zum Ablauf
+ * gefragt wie darfSchreibenFuer: Ein gelöstes Unterkonto soll nicht bis zum Ablauf
  * des Gedächtnisses lesbar bleiben, falls die Benachrichtigung ausbleibt. */
 export async function siehtKonto(db: DbSchnittstelle, nutzer: number, besitzer: number): Promise<boolean> {
   return besitzer === nutzer || repo.istVerknuepft(db, nutzer, besitzer);
@@ -313,36 +313,36 @@ export async function siehtKonto(db: DbSchnittstelle, nutzer: number, besitzer: 
 /** Für wen geschrieben wird; ohne Recht 403 mit dem Code der Route. */
 export async function schreibziel(db: DbSchnittstelle, nutzer: number, wunsch: unknown,
                                   absage: 'kein_schreibrecht' | 'kein_zugriff_konto' = 'kein_schreibrecht'): Promise<number> {
-  const ziel = await resolveWriteTarget(db, nutzer, wunsch);
+  const ziel = await schreibzielOderNull(db, nutzer, wunsch);
   if (ziel === null) fachfehler('verboten', absage);
   return ziel;
 }
 
 /** Prüft die RICHTUNG (Haupt- für Unterkonto), nicht nur die Mitgliedschaft.
  * @returns die Ziel-ID, oder null wenn nicht erlaubt (Aufrufer antwortet 403) */
-export async function resolveWriteTarget(db: DbSchnittstelle, 
+export async function schreibzielOderNull(db: DbSchnittstelle, 
   actorId: number, requested: unknown
 ): Promise<number | null> {
   if (requested === undefined || requested === null || requested === '') return actorId;
   const target = parseInt(String(requested));
   if (!Number.isFinite(target)) return null;
-  return (await canWriteFor(db, actorId, target)) ? target : null;
+  return (await darfSchreibenFuer(db, actorId, target)) ? target : null;
 }
 
 /** Aus der Erfassungszeile, nicht aus der Anfrage: Die Datenbank weiss besser
  * als jeder Dialog, wem die Zeile gehört. Eine fremde Zeile antwortet wie eine
  * fehlende, sonst verriete 403 neben 404, welche IDs vergeben sind.
  * @throws 404 kaufpreis_nicht_gefunden, wenn die Zeile fehlt oder nicht beschreibbar ist */
-export async function acquisitionMoveSource(db: DbSchnittstelle, 
+export async function umzugsQuelle(db: DbSchnittstelle, 
   actorId: number, kind: ErfassungsArt, acqId: number
 ): Promise<number> {
   const owner = await repo.besitzerDerErfassung(db, kind, acqId);
-  if (owner === null || !(await canWriteFor(db, actorId, owner))) fachfehler('nicht_gefunden', 'kaufpreis_nicht_gefunden');
+  if (owner === null || !(await darfSchreibenFuer(db, actorId, owner))) fachfehler('nicht_gefunden', 'kaufpreis_nicht_gefunden');
   return owner;
 }
 
 /** Beide Formen hier, damit die Namensauflösung nur einmal existiert. */
-export async function withOwners(db: DbSchnittstelle, uids: number[], rows: any[]) {
+export async function besitzerAnhaengen(db: DbSchnittstelle, uids: number[], rows: any[]) {
   if (uids.length < 2 || !rows?.length) return rows;
   const owners = await repo.benutzerNamen(db, uids);
   const nameById = new Map<number, string>(owners.map(u => [parseInt(String(u.id)), u.username]));

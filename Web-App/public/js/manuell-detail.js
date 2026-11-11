@@ -416,7 +416,7 @@ async function manAcqSave(type, id, colorId, acqId, field, value) {
     else if (field==='owner') {
       // Eigentümerwechsel = Verschieben genau dieser Kaufpreis-Zeile. Ein manuell erfasstes Teil hat keinen
       // Inhalt — es wandern nur Menge und Erfassung (src/sets/setMove.ts, moveManualAcquisition). KEIN
-      // from_user_id: Den Absender ermittelt der Server aus der Zeile selbst (acquisitionMoveSource) — hier
+      // from_user_id: Den Absender ermittelt der Server aus der Zeile selbst (umzugsQuelle) — hier
       // stand der Betrachter, siehe acqSave().
       body.owner_user_id = parseInt(value);
     }

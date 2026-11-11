@@ -86,8 +86,8 @@ test('Kaufpreis 0 ist ein Geschenk: Betrag ja, Prozent nein', { concurrency: 1 }
   });
 
   await t.test('Preisverlauf', async () => {
-    const { getSetPriceHistory } = _req('src/finanzen/priceHistory.js');
-    const v = await getSetPriceHistory([uid], SET, 'CHF');
+    const { preisverlaufSet } = _req('src/finanzen/priceHistory.js');
+    const v = await preisverlaufSet([uid], SET, 'CHF');
     assert.equal(v.purchase_price, 0);
     assert.equal(v.pnl_pct, null);
     assert.equal(v.pnl_prozent, null);
@@ -97,10 +97,10 @@ test('Kaufpreis 0 ist ein Geschenk: Betrag ja, Prozent nein', { concurrency: 1 }
   });
 
   await t.test('Teil und Figur', async () => {
-    const { getPartPriceHistory, getMinifigPriceHistory } = _req('src/finanzen/priceHistory.js');
-    const teil = await getPartPriceHistory([uid], TEIL, FARBE, 'CHF');
+    const { preisverlaufTeil, preisverlaufFigur } = _req('src/finanzen/priceHistory.js');
+    const teil = await preisverlaufTeil([uid], TEIL, FARBE, 'CHF');
     assert.deepEqual(teil.by_condition.N, { market_price: 0.4, purchase_price: 0, pnl_pct: null, pnl_prozent: null });
-    const figur = await getMinifigPriceHistory([uid], FIGUR, 'CHF');
+    const figur = await preisverlaufFigur([uid], FIGUR, 'CHF');
     assert.deepEqual(figur.by_condition.N, { market_price: 6, purchase_price: 0, pnl_pct: null, pnl_prozent: null });
     const { valueAcquisitionRows } = _req('src/finanzen/setValue.js');
     const [zeile] = valueAcquisitionRows(TEIL, [{ id: 1, condition: 'N', quantity: 10, unit_price: 0 }],

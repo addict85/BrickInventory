@@ -102,7 +102,7 @@ test('Bestandsabgleich gegen echte Datenbank', async (t) => {
     // Ohne diese Grenze wäre der Abgleich ein Weg, fremde Bestände zu zählen.
     const nurIch  = await getOwnedQuantities([U.ich], [{ part_number: '3001', color_id: 4 }]);
     const mitKind = await getOwnedQuantities(
-      await household.scopeIds(U.ich, 'all'), [{ part_number: '3001', color_id: 4 }]);
+      await household.blickfeldIds(U.ich, 'all'), [{ part_number: '3001', color_id: 4 }]);
     assert.equal(nurIch['3001|4'].gesamt, 8);
     assert.equal(mitKind['3001|4'].gesamt, 9, 'Das Unterkonto muss mitzählen');
     // 99 Stück liegen bei 'fremd' — die dürfen nirgends auftauchen.

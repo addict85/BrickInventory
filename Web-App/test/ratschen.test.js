@@ -778,7 +778,7 @@ test('Testdateien ohne Gegenprobe werden weniger, nie mehr', () => {
 test('in Testkommentaren genannte Pfade gibt es', () => {
   // Eine Gegenprobe, die eine verschwundene Datei nennt, lässt sich nicht wiederholen. Geprüft wird jede
   // Kommentarzeile in test/ und test/helpers/; ein .js-Pfad gilt auch, wenn die .ts-Quelle dazu existiert.
-  // Gegenprobe (10.11.2026): in acquisition-scope-db.test.js den Pfad bei writableIds auf den früheren der
+  // Gegenprobe (10.11.2026): in acquisition-scope-db.test.js den Pfad bei schreibbereich auf den früheren der
   // Set-Routen zurückgesetzt → rot mit dieser Zeile als Fundstelle.
   const REPO = path.join(WEB, '..');
   const ordner = [WEB, REPO]

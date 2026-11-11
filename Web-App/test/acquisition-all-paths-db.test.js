@@ -2,7 +2,7 @@
  * ALLE Erfassungs-Wege im Haushalt — Sets, Teile, Minifiguren, je Ändern und
  * Löschen.
  *
- * Gegenprobe (durchgeführt): writableIds in src/sammlung/erfassungen.ts durch die eigene ID
+ * Gegenprobe (durchgeführt): schreibbereich in src/sammlung/erfassungen.ts durch die eigene ID
  * ersetzt → „Set-Erfassung löschen" endet wieder in 404.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).

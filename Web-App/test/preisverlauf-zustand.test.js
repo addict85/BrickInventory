@@ -19,7 +19,7 @@ const { dbOderSkip } = require('./helpers/db');
 test('ohne Erfassung kein Zustand im Diagramm, die Rohdaten bleiben', { concurrency: 1 }, async (t) => {
   const db = _req('db/database.js');
   if (!await dbOderSkip(t, _req)) return;
-  const { getMinifigPriceHistory, zustaendeFuerVerlauf } = _req('src/finanzen/priceHistory.js');
+  const { preisverlaufFigur, zustaendeFuerVerlauf } = _req('src/finanzen/priceHistory.js');
   const NAME = `verlauf-${process.pid}`, FN = `fig-vl${process.pid}`;
   const weg = async () => {
     await db.run('DELETE FROM users WHERE username=$1', [NAME]);
@@ -34,7 +34,7 @@ test('ohne Erfassung kein Zustand im Diagramm, die Rohdaten bleiben', { concurre
   await db.run(`INSERT INTO minifig_price_history (fig_number, condition, currency_code, avg_price, recorded_at)
                 VALUES ($1,'N','CHF',5,'2026-10-01'), ($1,'U','CHF',4,'2026-10-01'), ($1,'U','CHF',4.5,'2026-10-02')`, [FN]);
 
-  const v = await getMinifigPriceHistory([uid], FN, 'CHF');
+  const v = await preisverlaufFigur([uid], FN, 'CHF');
   assert.deepEqual(v.chart.values.map(s => s.name), ['U'], 'nur Gebraucht wird gezeichnet');
   assert.equal(v.history_new.length, 1, 'die Rohdaten bleiben vollständig');
   assert.equal(v.history_used.length, 2);

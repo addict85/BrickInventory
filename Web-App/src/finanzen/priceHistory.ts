@@ -35,7 +35,7 @@ interface ZustandsVergleich { market_price: number | null; purchase_price: numbe
 
 /** @param uid Blickfeld: Im Haushalt gehört das Set oft einem Unterkonto, mit
  *   der nackten Betrachter-ID fände die Abfrage es nicht. */
-export async function getSetPriceHistory(uidWahl: Sicht | number | number[], setNumber: string, currency: string,
+export async function preisverlaufSet(uidWahl: Sicht | number | number[], setNumber: string, currency: string,
   f: FinanzenDienste = finanzenBereich()) {
   const uids = asIds(await blickfeldAus(f.db, uidWahl));
   const condition = await resolveSetCondition(uids, setNumber, undefined, f);
@@ -171,7 +171,7 @@ async function manualPriceHistory(
   };
 }
 
-export async function getPartPriceHistory(uidWahl: Sicht | number | number[], partNumber: string, colorId: number, currency: string) {
+export async function preisverlaufTeil(uidWahl: Sicht | number | number[], partNumber: string, colorId: number, currency: string) {
   const uid = await haushaltBereich().haushalt.blickfeldAus(uidWahl);
   // Preise liegen unter BrickLink-Nummer und -Farbe, Erfassungen unter denen
   // des Benutzers — die beiden Schlüsselräume dürfen nicht gemischt werden.
@@ -185,7 +185,7 @@ export async function getPartPriceHistory(uidWahl: Sicht | number | number[], pa
 }
 
 // Preise stehen unter der BrickLink-Nummer, Erfassungen unter der eigenen; beide Schlüssel zählen.
-export async function getMinifigPriceHistory(uidWahl: Sicht | number | number[], figNumber: string, currency: string) {
+export async function preisverlaufFigur(uidWahl: Sicht | number | number[], figNumber: string, currency: string) {
   const uid = await haushaltBereich().haushalt.blickfeldAus(uidWahl);
   const nummern = await preisNummernFuerFigur(uid, figNumber);
   return manualPriceHistory(uid, currency,

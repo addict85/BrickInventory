@@ -346,7 +346,7 @@ test('der Preisverlauf-Graph benutzt den Zustand DES SETS, nicht den globalen St
 
   assert.match(
     fs.readFileSync(path.join(ROOT, 'src/sets/preise.ts'), 'utf8'),
-    /getSetPriceHistory\(sicht, sn, await waehrungVon\((?:sk, )?uid\)\)/,
+    /preisverlaufSet\(sicht, sn, await waehrungVon\((?:sk, )?uid\)\)/,
     'Der Dienst nutzt den gemeinsamen Helfer',
   );
   const helper = fs.readFileSync(path.join(ROOT, 'src/finanzen/priceHistory.ts'), 'utf8');
@@ -375,7 +375,7 @@ test('Android-API: Marktpreis benutzt den Zustand des Sets, nicht den globalen S
     /fetchPrice\(sn, DEFAULT_PRICE_CONDITION/,
     'Der globale Standard darf nicht mehr direkt an fetchPrice gehen',
   );
-  // seit einer früheren Runde mit Blickfeld (uids aus scopeIds) — sonst 404 im Haushalt
+  // seit einer früheren Runde mit Blickfeld (uids aus blickfeldIds) — sonst 404 im Haushalt
   assert.match(
     priceRoute,
     /fetchPrice\(sn, await resolveSetCondition\(blickfeld, sn\), /,

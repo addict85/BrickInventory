@@ -10,7 +10,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { fetchPartPrice } = _req('src/finanzen/financeCalc.js');
-const { getPartPriceHistory } = _req('src/finanzen/priceHistory.js');
+const { preisverlaufTeil } = _req('src/finanzen/priceHistory.js');
 const { haeltTeil } = require('./helpers/bestand');
 
 test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async (t) => {
@@ -65,7 +65,7 @@ test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async (t) => 
       `INSERT INTO part_price_history (part_number,color_id,condition,currency_code,avg_price,qty_avg_price)
        VALUES ($1,$2,'N',$3,11.00,11.00)`, [RB, FARBE, WAEHRUNG]);
 
-    const v = await getPartPriceHistory(uid, RB, FARBE, WAEHRUNG);
+    const v = await preisverlaufTeil(uid, RB, FARBE, WAEHRUNG);
     assert.ok(v.history_new.length >= 1,
       'Der Verlauf ist leer. Punkte unter der Rebrickable-Nummer sind alter Bestand — ' +
       'sie dürfen nicht aus dem Diagramm verschwinden, bloss weil künftig unter der ' +
