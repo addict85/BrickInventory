@@ -134,7 +134,7 @@ class FinanzZahlenTest {
     @Test
     fun `Gutscheine in zwei Waehrungen ergeben keine Summe`() {
         val chf = listOf(Gutschein(id = 1, amount = 0.1), Gutschein(id = 2, amount = 0.2)).map { it.alsAnsicht() }
-        assertEquals(BigDecimal("0.30") to "CHF", gutscheinSumme(chf))
+        assertEquals(BigDecimal("0.30") to Waehrung.CHF, gutscheinSumme(chf))
         assertNull(gutscheinSumme(chf + Gutschein(id = 3, amount = 5.0, currency = Waehrung("EUR")).alsAnsicht()))
         assertNull(gutscheinSumme(emptyList()))
     }

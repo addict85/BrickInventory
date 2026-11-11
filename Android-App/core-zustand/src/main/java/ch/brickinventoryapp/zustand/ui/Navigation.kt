@@ -83,3 +83,11 @@ val Screen.rollSchluessel: String
  */
 @Serializable
 data object AnmeldungBereich
+
+/**
+ * Liste und Detail des Katalogs als Teilgraph: Beide holen ihr ViewModel an dessen
+ * Eintrag, so sieht die Liste das „besitze ich“ aus dem Detail. Steht hier, weil nur
+ * core-zustand das Serialisierungs-Plugin hat; die feature-Module haben keines.
+ */
+@Serializable
+data object KatalogBereich

@@ -207,7 +207,8 @@ class MerklisteViewModel @Inject constructor(
      */
     override fun loescheMerkposten(setNumber: String, zustand: Zustand, besitzer: Int?) {
         merkpostenLoeschenAusfuehren()
-        val name = _merklisteState.value.merkposten
+        // Die gezeigte Liste, nicht die rohe: Ohne Filter steht der Posten nur in der Ablage.
+        val name = merklisteState.value.merkposten
             .firstOrNull { it.setNumber == setNumber && it.condition == zustand }?.name ?: setNumber
         _vorgemerkt.value = VorgemerkterMerkposten(setNumber, zustand, besitzer, name)
     }
@@ -285,7 +286,7 @@ class MerklisteViewModel @Inject constructor(
     override fun ladeMerkpostenDetail(setNumber: String) {
         viewModelScope.launch {
             _merkpostenDetailState.value = MerkpostenDetailUiState(setNumber = setNumber, laedt = true)
-            if (_merklisteState.value.merkposten.isEmpty()) ladeMerkliste()
+            if (merklisteState.value.merkposten.isEmpty()) ladeMerkliste()
             loadPreisalarme(setNumber)
             val katalog = (katalogRepo.getCatalogSetDetail(setNumber) as? Ergebnis.Success)
                 ?.data?.takeIf { it.success }?.set

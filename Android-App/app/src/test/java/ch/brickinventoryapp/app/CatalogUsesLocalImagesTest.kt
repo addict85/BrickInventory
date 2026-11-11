@@ -23,6 +23,9 @@ import ch.brickinventoryapp.testing.Quellen
  *
  * Gegenprobe: in CatalogSetItem.alsAnsicht `imageLocal =
  * null` → rot „Katalog-Modelle kennen image_local“.
+ * Gegenprobe (lokal, liest nur Quelltext; als Patch nicht übersetzbar): in TeileKarte.kt
+ * `serverUrl: String` aus der Signatur von PartTableRow bzw. ManualPartTile genommen →
+ * rot „Funktion 'PartTableRow' …“ bzw. „Funktion 'ManualPartTile' …“.
  */
 class CatalogUsesLocalImagesTest {
 
@@ -133,10 +136,11 @@ class CatalogUsesLocalImagesTest {
         ).flatMap { Quellen.bildschirmDateien(it) }
         for (rel in screensToCheck) {
             val raw = read(rel)
-            // Nur Funktionsdefinitionen auf oberster Ebene (Spalte 0) zählen.
-            val funcStarts = Regex("""^fun (\w+)\(""", RegexOption.MULTILINE)
+            // Nur Funktionen auf oberster Ebene (Spalte 0), auch internal oder private:
+            // Ohne Sichtbarkeit fiele ein Aufruf der Funktion davor zu.
+            val funcStarts = Regex("""^(?:(?:public|internal|private)\s+)?fun (\w+)\(""", RegexOption.MULTILINE)
                 .findAll(raw).map { it.range.first to it.groupValues[1] }.toList()
-            val useIdxs = Regex("""(resolve(Thumb|Full)Url|rememberTileImageWithFallback)\(serverUrl""")
+            val useIdxs = Regex("""(resolve(Thumb|Full)Url|rememberTileImageWithFallback)\(\s*serverUrl""")
                 .findAll(raw).map { it.range.first }.toList()
             for (u in useIdxs) {
                 var owner: Pair<Int, String>? = null
