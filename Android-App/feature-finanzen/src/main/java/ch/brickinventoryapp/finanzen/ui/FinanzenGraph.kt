@@ -26,6 +26,9 @@ import ch.brickinventoryapp.zustand.ui.Bereichsumgebung
 interface FinanzenNavigation : Bereichsumgebung {
     fun oeffneSet(setNumber: String)
     fun oeffneEinzelstueck(art: Postenart, id: String, colorId: Int, titel: String)
+
+    /** Der PDF-Betrachter; die Route trägt nur einen Schlüssel (PdfAuswahl). */
+    fun zeigePdf(url: String, titel: String) = navController.navigate(FinanzZiel.PdfViewer(PdfAuswahl.lege(url, titel)))
 }
 
 /** Finanzen, Gutscheine und der PDF-Betrachter. */
@@ -75,19 +78,24 @@ fun NavGraphBuilder.finanzenGraph(navigation: FinanzenNavigation) {
             val ziel = gutscheine.pdfZiel ?: return@LaunchedEffect
             val titel = if (ziel.id == null) exportTitel
                 else gutscheine.gutscheine.find { it.id == ziel.id }?.number.orEmpty()
-            navController.navigate(FinanzZiel.PdfViewer(
-                gutscheinPdfAdresse(state.serverUrl, ziel), titel))
+            navigation.zeigePdf(gutscheinPdfAdresse(state.serverUrl, ziel), titel)
             gutscheinVm.gutscheinPdfQuittieren()
         }
         GutscheineRoute(gutscheinVm, navigation.snackbar) { navController.popBackStack() }
     }
     composable<FinanzZiel.PdfViewer> { backStackEntry ->
         val ziel = backStackEntry.toRoute<FinanzZiel.PdfViewer>()
-        GutscheinPdfSchutz(ziel.url)
+        val pdf = remember(ziel.schluessel) { PdfAuswahl.hole(ziel.schluessel) }
+        if (pdf == null) {
+            // Nach einem Prozess-Tod ist die Auswahl weg: zurück, statt leer zu zeigen.
+            LaunchedEffect(Unit) { navController.popBackStack() }
+            return@composable
+        }
+        GutscheinPdfSchutz(pdf.url)
         val state by navigation.app.state.collectAsStateWithLifecycle()
         PdfViewerRoute(
-            pdfUrl = ziel.url,
-            title  = ziel.title,
+            pdfUrl = pdf.url,
+            title  = pdf.titel,
             serverUrl = state.serverUrl,
             onBack = { navController.popBackStack() }
         )

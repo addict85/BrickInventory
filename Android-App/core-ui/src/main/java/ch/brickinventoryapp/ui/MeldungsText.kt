@@ -1,24 +1,20 @@
 package ch.brickinventoryapp.ui
 
-import android.content.Context
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.model.ui.Meldung
 
 /**
- * Hier, und nur hier, wird aus einer [Meldung] ein Satz: Die Oberfläche kennt die
- * Sprache, die sie gerade zeigt. Ein Wert, der selbst eine Meldung ist, wird zuerst
- * gebildet, damit ein Satz einen anderen einbetten kann.
+ * Für Bildschirme: der Satz einer [Meldung] in der Sprache, die die Komposition
+ * trägt. Ein Wert, der selbst eine Meldung ist, wird zuerst gebildet, damit ein Satz
+ * einen anderen einbetten kann. Die Snackbar bildet ihren Satz ausserhalb der
+ * Komposition (AppNavigation, über LanguageManager).
  */
-fun Meldung.alsSatz(ctx: Context): String = when (this) {
-    is Meldung.Text -> text
-    is Meldung.Ressource -> if (werte.isEmpty()) ctx.getString(id) else ctx.getString(id, *werte.gebildet(ctx))
-    is Meldung.Menge -> ctx.resources.getQuantityString(id, anzahl, *werte.gebildet(ctx))
-}
-
-private fun List<Any>.gebildet(ctx: Context): Array<Any> =
-    map { if (it is Meldung) it.alsSatz(ctx) else it }.toTypedArray()
-
-/** Für Bildschirme: der Satz im Context der Komposition, der die Sprache der App trägt. */
 @Composable
-fun Meldung.satz(): String = alsSatz(LocalContext.current)
+fun Meldung.satz(): String = when (this) {
+    is Meldung.Text -> text
+    is Meldung.Ressource ->
+        if (werte.isEmpty()) stringResource(id) else stringResource(id, *werte.map { w -> if (w is Meldung) w.satz() else w }.toTypedArray())
+    is Meldung.Menge -> pluralStringResource(id, anzahl, *werte.map { w -> if (w is Meldung) w.satz() else w }.toTypedArray())
+}

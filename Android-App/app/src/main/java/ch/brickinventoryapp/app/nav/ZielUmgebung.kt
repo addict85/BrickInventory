@@ -24,7 +24,6 @@ import ch.brickinventoryapp.zustand.ui.AppViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.DarstellungViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.VertrauenViewModel
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeZiel
-import ch.brickinventoryapp.finanzen.ui.FinanzZiel
 import ch.brickinventoryapp.sammlung.ui.SammlungZiel
 import ch.brickinventoryapp.teile.ui.TeileZiel
 import coil3.ImageLoader
@@ -89,5 +88,5 @@ class ZielUmgebung(
     override fun oeffneEinzelstueck(art: Postenart, id: String, colorId: Int, titel: String) =
         navController.navigate(TeileZiel.ManualItemDetail(art, id, colorId, titel))
 
-    override fun oeffnePdf(url: String, titel: String) = navController.navigate(FinanzZiel.PdfViewer(url, titel))
+    override fun oeffnePdf(url: String, titel: String) = zeigePdf(url, titel)
 }

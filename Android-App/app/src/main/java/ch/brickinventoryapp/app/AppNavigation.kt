@@ -75,7 +75,7 @@ fun BrickInventoryRoute(
     val ctx = LocalContext.current
     LaunchedEffect(snackbarMsg) {
         snackbarMsg?.let {
-            snackbarHostState.showSnackbar(it.alsSatz(LanguageManager.localizedContext(ctx)))
+            snackbarHostState.showSnackbar(it.alsSatz(ctx))
             vm.clearSnackbar()
         }
     }
@@ -174,6 +174,21 @@ internal fun reiterDerLeiste(): List<Reiter> {
             Reiter(KatalogZiel.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, katalog),
             Reiter(AppZiel.Mehr, { Icon(Icons.Default.MoreHoriz, null) }, mehr),
         )
+    }
+}
+
+/**
+ * Den Satz der Snackbar bildet die Oberfläche, in der Sprache der App (LanguageManager);
+ * ausserhalb der Komposition, darum nicht über [ch.brickinventoryapp.ui.satz]. Ein Wert,
+ * der selbst eine Meldung ist, wird zuerst gebildet.
+ */
+internal fun Meldung.alsSatz(ctx: Context): String {
+    val c = LanguageManager.localizedContext(ctx)
+    return when (this) {
+        is Meldung.Text -> text
+        is Meldung.Ressource ->
+            if (werte.isEmpty()) c.getString(id) else c.getString(id, *werte.map { w -> if (w is Meldung) w.alsSatz(ctx) else w }.toTypedArray())
+        is Meldung.Menge -> c.resources.getQuantityString(id, anzahl, *werte.map { w -> if (w is Meldung) w.alsSatz(ctx) else w }.toTypedArray())
     }
 }
 

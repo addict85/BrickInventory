@@ -1,0 +1,15 @@
+Gegenprobe: Die PdfAuswahl gibt abgelegte PDFs nicht zurück
+Modul: feature-finanzen
+Test: ch.brickinventoryapp.finanzen.PdfAuswahlTest
+Rot: Adresse und Titel kommen unveraendert zurueck
+
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/PdfAuswahl.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/PdfAuswahl.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/PdfAuswahl.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/PdfAuswahl.kt
+@@ -21,5 +21,5 @@
+         UUID.randomUUID().toString().also { offen[it] = Pdf(url, titel) }
+     }
+ 
+-    fun hole(schluessel: String): Pdf? = synchronized(offen) { offen[schluessel] }
++    fun hole(schluessel: String): Pdf? = synchronized(offen) { null }
+ }
