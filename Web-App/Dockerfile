@@ -25,15 +25,10 @@ RUN npm ci --ignore-scripts && npm rebuild esbuild
 
 # ── TypeScript → JavaScript ────────────────────────────────────────────────────
 # esbuild entfernt nur die Typen, Datei für Datei; geprüft wird in der CI
-# (`npx tsc --noEmit`). Jeder Quellordner braucht hier ein COPY, sonst fehlt
-# er in dist/ (dieselbe Liste wie SRC_DIRS in scripts/build-ts.js).
-COPY server.ts ./
-COPY db/     ./db/
-COPY jobs/   ./jobs/
-COPY src/    ./src/
-COPY routes/ ./routes/
-COPY clients/ ./clients/
-COPY startup/ ./startup/
+# (`npx tsc --noEmit`). Der ganze Kontext statt einer Ordnerliste: Welche
+# Ordner gebaut werden, sagt allein SRC_DIRS in scripts/build-ts.js; was nicht
+# in den Bau gehört (Daten, Geheimnisse, Tests), hält .dockerignore draussen.
+COPY . .
 # Ausgabe nach dist/: Nur das geht ins Laufzeit-Image, keine .ts-Quelle.
 # Die Version kommt als Build-Argument (docker-publish.yml), weil im Kontext
 # kein .git liegt; ohne Argument steht „unbekannt“ in dist/version.json.
@@ -43,7 +38,6 @@ RUN APP_VERSION="$APP_VERSION" node scripts/build-ts.js --outdir dist
 # Frontend: ein Bündel (scripts/build-frontend.js) statt vieler Skript-Abrufe.
 # 00-theme-boot.js, pdfjs-boot.js und logviewer.js lädt die Seite einzeln;
 # sie werden für sich minifiziert. Die Quellen im Repo bleiben lesbar.
-COPY public/ ./public/
 RUN node scripts/build-frontend.js \
  && for f in public/js/00-theme-boot.js public/js/pdfjs-boot.js public/js/logviewer.js; do \
       ./node_modules/.bin/esbuild "$f" --minify --charset=utf8 --outfile="$f.min" && mv "$f.min" "$f"; \
