@@ -20,7 +20,7 @@ const ROOT = path.join(__dirname, '..');
 function konfig() {
   const r = spawnSync('docker', ['compose', '-f', path.join(ROOT, 'compose.yaml'), '--profile', 'tools', 'config', '--format', 'json'],
     { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: process.env.HOME, BRICK_HOST: 'nas.example.lan',
-           BRICK_IMAGE: `addict85/brickinventory@sha256:${'0'.repeat(64)}` } });
+           BRICK_IMAGE: `addict85/brickinventory@sha256:${'0'.repeat(64)}`, CADDY_IMAGE: 'brickinventory-caddy:probe' } });
   if (r.error || r.status !== 0) return { fehler: r.error?.message || r.stderr };
   return { j: JSON.parse(r.stdout) };
 }

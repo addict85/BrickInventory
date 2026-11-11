@@ -134,9 +134,13 @@ cosign verify addict85/brickinventory:latest \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
+Dasselbe gilt für das Caddy-Image `addict85/brickinventory-caddy` (gleiche
+Identität, gleicher Aussteller).
+
 Dazu tragen die Images eine Herkunftsbescheinigung (SLSA-Provenance: welcher
 Workflow, welcher Commit) und eine Stückliste (SBOM; npm-Pakete als CycloneDX,
-dazu die Pakete des Basis-Images). Prüfen mit der GitHub-CLI:
+dazu die Pakete des Basis-Images; für Caddy liest Trivy die Stückliste aus dem
+Image). Prüfen mit der GitHub-CLI (für Caddy `brickinventory-caddy`):
 
 ```bash
 gh attestation verify oci://docker.io/addict85/brickinventory:latest -R addict85/BrickInventory

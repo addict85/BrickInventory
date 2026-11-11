@@ -1511,7 +1511,7 @@ eigenen Runde mit Anleitung.
 `docker compose up -d`. Der erste Lauf baut Caddy (Punkt 1) und braucht dafür
 einige Minuten, Netz zu proxy.golang.org und gut 1 GB freien Speicher.
 
-**1. Caddy entsteht auf dem Rechner (`Dockerfile.caddy`)**
+**1. Caddy entsteht auf dem Rechner (`Dockerfile.caddy`)** – **Überholt durch Abschnitt 51.**
 
 Die offizielle Fassung von Caddy brachte Go-Module mit bekannten Lücken mit
 (go-jose), und Caddy ist der einzige Dienst mit offenen Ports. `compose.yaml`
@@ -1813,3 +1813,30 @@ Wer die Trennung auch dort will, ruft `postgres/app-rolle.sh` als Superuser
 mit `DB_MIGRATION_PASSWORD` auf und startet einmal
 `node dist/startup/migrieren.js` als Migrationsrolle, den Server danach als
 `brickinventory_app`.
+
+## 51. Caddy als signiertes Image per Digest
+
+**Für jeden Docker-Betreiber einmal zu tun:** `sh scripts/image-pruefen.sh`,
+dann `docker compose up -d`. Ohne diesen Schritt bricht `docker compose` mit
+„CADDY_IMAGE fehlt in .env“ ab.
+
+- `docker-publish.yml` baut `Dockerfile.caddy` jetzt neben dem App-Image für
+  amd64 und arm64, ohne Cache, prüft den Digest mit Trivy (behebbare Lücken
+  ab high halten die Veröffentlichung auf), signiert ihn mit cosign keyless
+  und hängt Herkunft (SLSA) und Stückliste an – wie beim App-Image. Name:
+  `addict85/brickinventory-caddy`, dieselben Tags wie das App-Image.
+- `compose.yaml` nimmt für `caddy` und `caddy-rechte` `CADDY_IMAGE` aus
+  `.env` statt eines lokal gebauten `brickinventory-caddy:2.11.8`
+  (`pull_policy: build` entfällt). `scripts/image-pruefen.sh` prüft beide
+  Images gegen dieselbe Identität (`docker-publish.yml` auf `main`) und
+  denselben Aussteller, trägt erst danach beide Digests ein
+  (`BRICK_IMAGE=…`, `CADDY_IMAGE=addict85/brickinventory-caddy@sha256:…`) und
+  zieht sie. Scheitert eine Prüfung, ändert es nichts.
+- Von Hand prüfen:
+  `cosign verify addict85/brickinventory-caddy:latest --certificate-identity
+  https://github.com/addict85/BrickInventory/.github/workflows/docker-publish.yml@refs/heads/main
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com`.
+- **Selbst bauen** bleibt möglich: `CADDY_IMAGE=brickinventory-caddy:lokal`
+  in `.env`, dann `docker compose up -d --build`. Das alte lokale Image
+  `brickinventory-caddy:2.11.8` wird nicht mehr benutzt (`docker image rm`).
+

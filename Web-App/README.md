@@ -42,12 +42,14 @@ entsteht und warum:
    Signatur des Tags (`BRICK_TAG`, Vorgabe `latest`), trägt den geprüften
    Digest als `BRICK_IMAGE` in `.env` ein und zieht ihn; ohne `BRICK_IMAGE`
    startet compose nicht. cosign muss dafür installiert sein (UPGRADE.md,
-   Abschnitt 42). Wer selbst baut, setzt `BRICK_IMAGE=brickinventory:lokal`
+   Abschnitt 42). Ebenso prüft es `addict85/brickinventory-caddy` und trägt
+   es als `CADDY_IMAGE` ein (Abschnitt 51). Wer selbst baut, setzt
+   `BRICK_IMAGE=brickinventory:lokal` und `CADDY_IMAGE=brickinventory-caddy:lokal`
    und nimmt `docker compose up -d --build`.
 5. **Das Konto `admin`** bekommt beim allerersten Start ein Zufallspasswort,
    das nur in diesem Protokoll steht und bei der ersten Anmeldung geändert
-   werden muss. Den ersten Start migriert `app` oder `jobs`, je nachdem, wer
-   zuerst kommt; deshalb beide Protokolle.
+   werden muss. Den ersten Start macht der Dienst `migration`
+   (`docker compose logs migration`).
 
 **Update:** `sh scripts/image-pruefen.sh && docker compose up -d` (selbst gebaut:
 `docker compose up -d --build`). Vorher `UPGRADE.md` lesen; die Abschnitte
@@ -57,9 +59,10 @@ stehen in zeitlicher Reihenfolge.
 
 Vor der App steht Caddy (`compose.yaml`, `Caddyfile`). Er macht TLS mit einer
 eigenen, lokalen CA (`tls internal`) für `BRICK_HOST` und leitet an die App
-weiter; die App selbst veröffentlicht keinen Port mehr. Caddy entsteht beim
-ersten `docker compose up -d` auf dem Rechner selbst (`Dockerfile.caddy`:
-offizielle Basis per Digest, Go-Module nachgezogen); das dauert einige Minuten. Die CA liegt unter
+weiter; die App selbst veröffentlicht keinen Port mehr. Caddy kommt aus
+`Dockerfile.caddy` (offizielle Basis per Digest, Go-Module nachgezogen),
+gebaut und signiert wie das App-Image (`CADDY_IMAGE`, Abschnitt 51 in
+UPGRADE.md); selbst gebaut dauert es einige Minuten. Die CA liegt unter
 `./caddy/data/` — mitsichern. Der App-Container sieht davon nur das öffentliche
 Wurzelzertifikat (Volume `ca-wurzel`), nie den Schlüssel der CA.
 

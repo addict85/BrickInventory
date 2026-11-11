@@ -405,11 +405,10 @@ services:
   # `up` seine Ordner, das Volume der Wurzel und den Schlüssel der eigenen CA
   # (ca-einrichten.sh legt ihn für root an) und endet.
   caddy-rechte:
-    # Das hier gebaute Caddy-Image (siehe caddy): Das offizielle trüge ein
+    # Dasselbe Caddy-Image wie caddy (siehe dort): Das offizielle trüge ein
     # zweites, ungeprüftes Caddy-Binary in den Betrieb, obwohl hier nur chown läuft.
-    # `never`: Gebaut wird es mit caddy im selben `up`, nie aus einem Register geholt.
-    image: brickinventory-caddy:2.11.8
-    pull_policy: never
+    image: ${CADDY_IMAGE:?CADDY_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 51)}
+    pull_policy: missing
     container_name: brickinventory-caddy-rechte
     logging: *protokoll
     restart: "no"
@@ -438,10 +437,12 @@ services:
       - ca-wurzel:/ca-wurzel
 
   caddy:
-    # Hier gebaut (Dockerfile.caddy: offizielle Basis per Digest, go-jose
-    # nachgezogen); der erste `up` nach einem Update baut einige Minuten.
-    image: brickinventory-caddy:2.11.8
-    pull_policy: build
+    # Dockerfile.caddy (offizielle Basis per Digest, go-jose nachgezogen),
+    # gebaut und keyless signiert von docker-publish.yml; scripts/image-pruefen.sh
+    # prüft die Signatur und trägt CADDY_IMAGE als Digest ein. Wer selbst baut,
+    # setzt CADDY_IMAGE auf einen eigenen Namen und ruft `up -d --build`.
+    image: ${CADDY_IMAGE:?CADDY_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 51)}
+    pull_policy: missing
     build:
       context: .
       dockerfile: Dockerfile.caddy

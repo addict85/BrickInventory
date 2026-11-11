@@ -651,10 +651,10 @@ test('kein Verweis auf das frühere Begründungsarchiv', () => {
 test('der Kommentaranteil der Betriebsdateien sinkt, nie steigt', () => {
   // Workflows, Dockerfile, compose.yaml, tsconfig.json: Auch dort steht das
   // Warum in wenigen Zeilen, die Geschichte im Commit (CLAUDE.md). Gemessen
-  // 23,5 % am 06.11.2026. Das Caddyfile zählt nicht mit:
+  // 22,7 % am 11.11.2026. Das Caddyfile zählt nicht mit:
   // Kein Block darin ist länger als fünf Zeilen.
   // Gegenprobe (04.11.2026): 60 Kommentarzeilen an das Dockerfile → rot.
-  const SCHRANKE = 23.5;
+  const SCHRANKE = 22.7;
   const wf = path.join(WEB, '..', '.github', 'workflows');
   const dateien = [
     ...fs.readdirSync(wf).filter(f => /\.ya?ml$/.test(f)).map(f => path.join(wf, f)),

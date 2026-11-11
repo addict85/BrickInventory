@@ -90,6 +90,34 @@ test('die App schreibt nur in ./data und /tmp — daten-rechte auch', () => {
     [],
     'daten-rechte schreibt ausserhalb der beschreibbaren Orte',
   );
+
+  // Einmal ganz ausgeführt, /app/data im Sandkasten; id, su-exec und chown sind Ersatz.
+  // Gegenprobe (11.11.2026 gemessen): `/app/data/images/sets \` aus der mkdir-Liste
+  // gestrichen → rot „daten-rechte legt nicht an, was der Server braucht“.
+  const ort = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'daten-rechte-'));
+  try {
+    const daten = path.join(ort, 'data'),
+      bin = path.join(ort, 'bin');
+    fs.mkdirSync(daten);
+    fs.mkdirSync(bin);
+    fs.writeFileSync(path.join(bin, 'id'), '#!/bin/sh\necho 4242\n', { mode: 0o755 });
+    fs.writeFileSync(path.join(bin, 'su-exec'), '#!/bin/sh\nshift\nexec "$@"\n', { mode: 0o755 });
+    fs.writeFileSync(path.join(bin, 'chown'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+    const r = require('node:child_process').spawnSync('sh', ['-c', ep.replaceAll('/app/data', daten)], {
+      encoding: 'utf8',
+      env: { PATH: `${bin}:/usr/bin:/bin`, BRICKINV_CHOWN: 'always' },
+    });
+    assert.equal(r.status, 0, r.stderr);
+    const angelegt = fs.readdirSync(daten, { recursive: true }).sort();
+    assert.deepEqual(
+      angelegt,
+      ['.eigentuemer', 'images', 'images/minifigs', 'images/parts', 'images/sets', 'instructions', 'uploads'],
+      'daten-rechte legt nicht an, was der Server braucht',
+    );
+    assert.equal(fs.readFileSync(path.join(daten, '.eigentuemer'), 'utf8'), '4242');
+  } finally {
+    fs.rmSync(ort, { recursive: true, force: true });
+  }
 });
 
 // Gegenproben (11.11.2026 gemessen, je einzeln): bei jobs `user: brickinv`
@@ -109,6 +137,7 @@ test('root richtet ./data nur im Dienst daten-rechte ein, app und jobs laufen al
         HOME: process.env.HOME,
         BRICK_HOST: 'nas.lan',
         BRICK_IMAGE: 'brickinventory:probe',
+        CADDY_IMAGE: 'brickinventory-caddy:probe',
       },
     },
   );

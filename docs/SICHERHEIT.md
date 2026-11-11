@@ -329,7 +329,11 @@ den Commits, nicht hier.
   mit per Digest festem Scanner; npm als CycloneDX) am Image, dazu
   `actions/attest-build-provenance` und `actions/attest-sbom` am signierten
   Digest; prüfen mit `cosign verify` und `gh attestation verify` (README) —
-  `workflow-ort`.
+  `workflow-ort`. Das Caddy-Image (`addict85/brickinventory-caddy`) läuft durch
+  dieselben Schritte (Bau ohne Cache, Trivy vor der Signatur, cosign keyless,
+  Provenance, Stückliste aus Trivy); compose.yaml nimmt es nur als geprüften
+  Digest (`CADDY_IMAGE`, `scripts/image-pruefen.sh`) — `workflow-signatur`,
+  `image-pruefen`.
 - Der Test-Schlüssel `Web-App/test/fixtures/abruf-test.key` (mit
   `abruf-test.crt`, selbstsigniert, `CN=abruf-test`, SHA-256
   `25:B4:03:BD:C0:2F:3B:87:7B:DC:7F:B6:69:4D:C3:AF:FE:79:C1:42:C9:CE:DD:1E:C1:B2:6C:EF:F7:96:B3:BC`)
@@ -367,7 +371,7 @@ den Commits, nicht hier.
   (Abhängigkeiten, Image), ZAP-Baseline gegen den Produktionsserver. Die
   fremden Images aus `compose.yaml` (Postgres) liest der Lauf aus der Datei
   und prüft sie mit Trivy; eine behebbare Lücke ab high ist rot, ausser sie
-  steht mit Ablaufdatum in `.github/trivy-betrieb.yaml`. Caddy baut
+  steht mit Ablaufdatum in `.github/trivy-betrieb.yaml`. Caddy entsteht aus
   `Dockerfile.caddy`; der Job `trivy-eigenbau` prüft das Ergebnis ohne
   Ausnahmen. Ein Digest, der hinter seinem Tag zurückliegt, wird gemeldet —
   `workflow-ort`, `compose-betrieb`.
