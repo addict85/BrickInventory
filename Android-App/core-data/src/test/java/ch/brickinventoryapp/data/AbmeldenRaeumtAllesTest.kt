@@ -145,6 +145,7 @@ class AbmeldenRaeumtAllesTest {
         val meldungen = shadowOf(ctx.getSystemService(NotificationManager::class.java))
         assertEquals("Vorbedingung: eine Meldung steht da", 1, meldungen.allNotifications.size)
         assertTrue("Vorbedingung: Bildcache gefüllt", bildClient.cache!!.urls().hasNext())
+        assertTrue("Vorbedingung: Vorschau abgelegt", File(ctx.filesDir, "vorschau").walkTopDown().any { it.isFile })
         val sitzung = Sitzung().apply { angemeldet(admin = false) }
         val alterSchluessel = ablage.hole().copyOf()
 
@@ -164,7 +165,8 @@ class AbmeldenRaeumtAllesTest {
         assertTrue("Antwort-Cache", antwortOrdner.walkTopDown().none { it.isFile })
         assertNull("Bestand", offline.lies(Faecher.SETS)?.liste?.takeIf { it.isNotEmpty() })
         assertFalse("Ausgang", offline.wartet())
-        assertFalse("Vorschau", vorschau.hat("$adresse/images/sets/10294-1_thumb.jpg"))
+        // Auf die Platte gesehen: Die Namen hängen am Ablageschlüssel, und der ist danach ein anderer.
+        assertTrue("Vorschau", File(ctx.filesDir, "vorschau").walkTopDown().none { it.isFile })
         assertFalse("HTTP-Bildcache", bildClient.cache!!.urls().hasNext())
         assertNull("Coil-Bildcache", coil.openSnapshot("bild"))
         assertFalse("Teileliste", teileliste.exists())

@@ -4,9 +4,18 @@ Test: ch.brickinventoryapp.zustand.SitzungsDienstTest
 Rot: ein 401 vor dem Start geht nicht verloren
 
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/SitzungsDienst.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/SitzungsDienst.kt
+index 9092168..bdca144 100644
 --- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/SitzungsDienst.kt
 +++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/SitzungsDienst.kt
-@@ -104,7 +104,7 @@ class SitzungsDienst @Inject constructor(
+@@ -22,6 +22,7 @@ import kotlinx.coroutines.delay
+ import kotlinx.coroutines.flow.collectLatest
+ import kotlinx.coroutines.flow.combine
+ import kotlinx.coroutines.flow.distinctUntilChanged
++import kotlinx.coroutines.flow.drop
+ import kotlinx.coroutines.flow.filter
+ import kotlinx.coroutines.launch
+ import java.util.concurrent.atomic.AtomicBoolean
+@@ -93,7 +94,7 @@ class SitzungsDienst @Inject constructor(
          // Fehlversuch beim Anmelden meldet nicht ab. Die Ablage statt der Sitzung:
          // Beim Kaltstart kann der 401 vor dem ersten Abgleich der Sitzung kommen.
          bereich.launch {
