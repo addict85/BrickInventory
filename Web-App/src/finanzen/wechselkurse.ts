@@ -1,8 +1,7 @@
 /** Als Auftrag, damit ein Fehlschlag wiederholt wird und sichtbar bleibt. */
-import { stelleAuftragEin } from '../auftraege/dienst';
-import { EZB_HISTORIE, EZB_TAGESKURSE, ezbAbruf, ersteZipDatei, historieLesen, tageskurseLesen, type Abruf, type Kurs } from '../katalog/quellen';
+import { stelleAuftragEin, type AuftragsLauf } from '../auftraege';
+import { EZB_HISTORIE, EZB_TAGESKURSE, ezbAbruf, ersteZipDatei, historieLesen, tageskurseLesen, type Abruf, type Kurs } from '../katalog';
 import * as repo from './repository/wechselkurse';
-import type { AuftragsLauf } from '../auftraege/auftraege';
 
 const BLOCK = 5000;
 

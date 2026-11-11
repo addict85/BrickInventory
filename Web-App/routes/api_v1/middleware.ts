@@ -4,12 +4,11 @@ import { meldeFehler } from '../../src/infra/fehler';
 import express from 'express';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import { zuGrosseId } from '../../src/infra/validate';
-import { validateToken } from '../../src/konto/auth';
+import { validateToken, mussPasswortAendern } from '../../src/konto';
 import { resolveUserId, sendeTokenAbsage, nutzerId, zweiterFaktorPflicht } from '../../src/konto/http/anmeldung';
 import { belegeKontoPlatz, type Schranke } from '../../src/http/kontoSchranke';
-import { mussPasswortAendern } from '../../src/konto/konten';
 import { verlangeFreigabe } from '../../src/konto/http/schrittschutz';
-import type { Sicht } from '../../src/haushalt/haushalt';
+import type { Sicht } from '../../src/haushalt';
 
 /** Wer fragt und welche Konten er gewählt hat; den Bereich löst der Dienst auf. */
 export const sichtVon = (req: AuthedRequest & { abfrage: { accounts?: string | undefined } }): Sicht =>

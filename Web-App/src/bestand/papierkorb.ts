@@ -1,5 +1,4 @@
-import { schreibbereichAus } from '../haushalt/haushalt';
-import type { Schreiber } from '../haushalt/haushalt';
+import { schreibbereichAus, type Schreiber } from '../haushalt';
 import type { DbSchnittstelle } from '../../db/database';
 import * as db from '../../db/database';
 import * as repo from './repository/papierkorb';

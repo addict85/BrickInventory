@@ -1,7 +1,6 @@
 import * as db from '../../../db/database';
 import type { DbSchnittstelle } from '../../../db/database';
-import { erfassungsTagSql, ERFASSUNGS_TABELLEN as SHAPES } from '../../../db/bestandsmenge';
-import type { ErfassungsArt, ErfassungsZeile } from '../../../db/bestandsmenge';
+import { erfassungsTagSql, ERFASSUNGS_TABELLEN as SHAPES, type ErfassungsArt, type ErfassungsZeile } from '../../../db/bestandsmenge';
 
 export async function kontoDerErfassung(art: ErfassungsArt, id: number): Promise<number | null> {
   const r = await db.get<{ user_id: number }>(`SELECT user_id FROM ${SHAPES[art].table} WHERE id = $1`, [id]);

@@ -3,7 +3,7 @@
 import { Pool } from 'pg';
 import { fehlertext, logAndContinue } from '../src/infra/fehler';
 import { datenbankVerbindung } from '../src/infra/konfig';
-import { katalogImporte, parseCsvLine } from '../src/katalog/csvImport';
+import { katalogImporte, parseCsvLine } from '../src/katalog';
 
 // Ohne IPC-Kanal nach stderr statt TypeError.
 function send(msg: Record<string, unknown>) {

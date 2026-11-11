@@ -15,15 +15,20 @@ const express = require('express');
  * @param {{ after: Function }} [o.t]  Der Testkontext. Ist er da, schliesst
  *                                sich der Server im NACHLAUF — auch wenn eine
  *                                Zusicherung vorher scheitert.
+ * @param {boolean} [o.kette]     Die echte Kette vor /api/v1 aus startup/app.ts
+ *                                (Anmeldung, Drossel, Schrittschutz, Rumpflimit,
+ *                                Idempotenz) statt express.json(); die Sitzung
+ *                                bleibt die gestellte.
  */
-function testServer(_req, { sitzung = {}, apiNutzer, routen, t }) {
+function testServer(_req, { sitzung = {}, apiNutzer, routen, t, kette = false }) {
   const app = express();
-  app.use(express.json());
+  if (!kette) app.use(express.json());
   app.use((req, _res, next) => {
     req.session = sitzung;
     if (apiNutzer !== undefined) req.apiUser = apiNutzer;
     next();
   });
+  if (kette) _req('startup/app.js').apiEingang(app);
   for (const [pfad, modul] of Object.entries(routen)) app.use(pfad, _req(modul));
   const srv = app.listen(0);
   const schliessen = () => new Promise((r) => srv.close(r));

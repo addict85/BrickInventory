@@ -1,9 +1,8 @@
 /** Eine Stelle für Teil, Figur und „alles löschen", damit alle Wege dieselben
  * Zeilen in den Papierkorb nehmen. */
 import * as db from '../../db/database';
-import { legeInPapierkorb } from '../bestand/papierkorb';
-import { loescheManuellesTeil, loescheManuelleFigur } from '../bestand/gemeinsam';
-import { deleteSet } from '../sets';
+import { legeInPapierkorb, loescheManuellesTeil, loescheManuelleFigur } from '../bestand';
+import { loescheSet } from '../sets';
 import * as repo from './repository/loeschen';
 
 export async function loescheTeil(besitzer: number, pn: string, cid: number): Promise<number | null> {
@@ -36,7 +35,7 @@ export async function loescheAllesEigene(uid: number) {
   const papierkorb: number[] = [];
   const n = { sets: 0, teile: 0, figuren: 0 };
   for (const s of sets) {
-    const ids = await deleteSet([uid], s.set_number);
+    const ids = await loescheSet([uid], s.set_number);
     if (ids) { papierkorb.push(...ids); n.sets++; }
   }
   for (const t of teile) {

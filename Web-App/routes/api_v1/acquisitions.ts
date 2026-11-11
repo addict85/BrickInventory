@@ -1,15 +1,13 @@
 /** Kaufpreis-Erfassungen; die Regeln stehen in src/sammlung/erfassungen.ts. */
 import express from 'express';
-import { acquisitionTotals, erfassungenInKontowaehrung } from '../../src/bestand/acquisitions';
+import { acquisitionTotals, erfassungenInKontowaehrung } from '../../src/bestand';
 import { Abstriche } from '../../src/infra/ergebnis';
 import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { requireToken, sichtVon } from './middleware';
-import { getPartAcquisitions } from '../../src/teile/manuelleTeile';
-import { getFigAcquisitions } from '../../src/figuren/manuelleFiguren';
-import { erfassungAendern, erfassungLoeschen, setErfassungen } from '../../src/sammlung/erfassungen';
-import type { ErfassungsArt } from '../../src/sammlung/erfassungen';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
+import { getPartAcquisitions } from '../../src/teile';
+import { getFigAcquisitions } from '../../src/figuren';
+import { erfassungAendern, erfassungLoeschen, setErfassungen, type ErfassungsArt } from '../../src/sammlung';
+import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
 const router = vertragsRouter();
 
 /** Ohne bekannten Preis fehlt der Betrag, statt null zu sein: Geld hat im Vertrag einen Typ. */

@@ -1,7 +1,6 @@
-import { OHNE_RUMPF, TEXT, ZUSTAND, KENNUNG, abfrage, Q, SEITE, SEITEN_ANGABE } from './grund';
+import { OHNE_RUMPF, TEXT, ZUSTAND, KENNUNG, abfrage, Q, SEITE, SEITEN_ANGABE, type Route } from './grund';
 import { z } from 'zod';
 import { eingabe } from '../infra/validate';
-import type { Route } from './grund';
 import { CsvImportErgebnis, DEGRADIERT, FigValuationItem, GenericResponse, MinifigsResponse, VerwendendeSetsResponse, InDenPapierkorb } from './gemeinsam';
 
 export const AddMinifigResponse = z.looseObject({

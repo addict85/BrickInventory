@@ -1,6 +1,6 @@
 /** BL-Nummern der Wanted-Liste auf Rebrickable-Nummern abbilden: zuerst lokal
  * (Zuordnungen, Katalog), dann über Rebrickable, zuletzt die Korrekturen von Hand. */
-import { blTeilZuRb, blFilterWirkungslos } from '../katalog/quellen';
+import { blTeilZuRb, blFilterWirkungslos } from '../katalog';
 import * as repo from './repository/wantedListe';
 import type { WantedArt, WantedPosten } from './wantedParser';
 

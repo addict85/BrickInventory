@@ -10,8 +10,8 @@ import { erhoeheSitzungsVersion } from './sitzungsVersion';
 import { loescheSitzungenDesKontos } from './repository/zugaenge';
 import { leereTokenCache } from './auth';
 import { protokolliere } from './repository/protokoll';
-import { meldeHaushaltsaenderung } from '../haushalt/haushalt';
-import { stelleAuftragEin } from '../auftraege/dienst';
+import { meldeHaushaltsaenderung } from '../haushalt';
+import { stelleAuftragEin } from '../auftraege';
 import { meldeFehler } from '../infra/fehler';
 
 export type KontoEntfernt = 'entfernt' | 'nicht_gefunden' | typeof repo.LETZTER_VERWALTER;

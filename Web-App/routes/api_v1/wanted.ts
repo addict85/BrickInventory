@@ -3,21 +3,18 @@
 import { oeffentlicherFehler } from '../../src/infra/fehler';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
-import { schreibziel } from '../../src/haushalt/haushalt';
-import { legeMerkpostenAn, loescheMerkposten, verschiebeMerkposten, uebernimm, merkpostenVon, preiseBeiderZustaende } from '../../src/merkliste/merkliste';
-import { getSetting } from '../../src/einstellungen/settings';
+import { schreibziel } from '../../src/haushalt';
+import { legeMerkpostenAn, loescheMerkposten, verschiebeMerkposten, uebernimm, merkpostenVon, preiseBeiderZustaende, type Korrektur } from '../../src/merkliste';
+import { getSetting } from '../../src/einstellungen';
 import { csvEmpfang, xmlEmpfang } from '../../src/http/dateiEmpfang';
-import type { Korrektur } from '../../src/merkliste/wantedAufloesung';
-import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
-import { WantedKorrekturen } from '../../src/auftraege/nutzlasten';
+import { importAlsAuftrag, WantedKorrekturen } from '../../src/auftraege';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
 import type { z } from 'zod';
 import type { WantedXmlErgebnis } from '../../src/vertrag/merkliste';
 
 import { jsonOderNull } from '../../src/infra/validate';
 import { seiteAus } from '../../src/infra/seite';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
+import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
 const router = vertragsRouter();
 type WantedXmlBericht = z.infer<typeof WantedXmlErgebnis>;
 

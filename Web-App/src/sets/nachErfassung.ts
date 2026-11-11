@@ -1,14 +1,18 @@
 /** Als Auftrag im Job-Prozess: Ein Neustart verliert nichts, und ein
  * gescheiterter Import von Teilen oder Figuren wird wiederholt. Die
  * Anreicherungen danach melden ihren Fehler, ohne den Auftrag scheitern zu lassen. */
-import { importiereTeile, fetchMissingBlIds } from '../katalog/partsImport';
-import { importiereFiguren } from '../katalog/minifigsImport';
-import { downloadSetInstructions } from '../katalog/instructions';
-import { fuelleAusBrickset } from '../katalog/bildlage';
-import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';
-import { refreshPriceForSet } from '../finanzen/preisLauf';
-import { enrichSetParts, enrichSetMinifigs, downloadSetImages } from '../katalog/teileAnreicherung';
-import { pruefeAbbruch, type AuftragsLauf } from '../auftraege/auftraege';
+import {
+  importiereTeile,
+  fetchMissingBlIds,
+  importiereFiguren,
+  downloadSetInstructions,
+  fuelleAusBrickset,
+  enrichSetParts,
+  enrichSetMinifigs,
+  downloadSetImages,
+} from '../katalog';
+import { anleitungEinreihen, pruefeAbbruch, type AuftragsLauf } from '../auftraege';
+import { refreshPriceForSet } from '../finanzen';
 import { versuche } from '../infra/ergebnis';
 import { setErgaenzen } from './erfassen';
 import type { SetsKontext } from './kontext';

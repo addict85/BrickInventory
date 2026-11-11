@@ -9,6 +9,11 @@ import * as lesen from './lesen';
 import * as loeschen from './loeschen';
 import * as setMove from './setMove';
 import * as dienst from './dienst';
+import * as inhalt from './inhalt';
+import * as barcode from './barcode';
+import * as preise from './preise';
+import * as anleitungen from './anleitungen';
+import * as csvImport from './csvImport';
 import * as nachErfassung from './nachErfassung';
 import * as csvImportLauf from './csvImportLauf';
 
@@ -37,26 +42,21 @@ export function erzeugeSets(sk: SetsKontext) {
     ]),
     ...binde(sk, setService, ['updateSet', 'buildSetsCsv']),
     ...binde(sk, lesen, ['getSets', 'getSet', 'getSetConditionAggregate', 'withSetAggregate']),
-    ...binde(sk, loeschen, ['deleteSet', 'loescheSetFuer']),
+    ...binde(sk, loeschen, ['loescheSet', 'loescheSetFuer']),
     ...binde(sk, setMove, ['verschiebeSet']),
-    ...binde(sk, dienst, [
+    ...binde(sk, inhalt, [
       'setInfo',
       'setInfoFuerKonto',
-      'setZumBarcode',
-      'setZumBarcodeFuerKonto',
       'teilelisteDesSets',
       'figurenlisteDesSets',
-      'setPreis',
-      'rebrickableListe',
-      'setGehoertKonto',
-      'anleitungMerken',
-      'anleitungLoeschen',
-      'setCsvImportStarten',
       'teileDesSetsImportieren',
-      'anleitungenNeuLaden',
-      'teilelisteFuerKonto',
-      'setVerschieben',
+      'teilelisteMitNacharbeit',
     ]),
+    ...binde(sk, barcode, ['setZumBarcode']),
+    ...binde(sk, preise, ['setPreis']),
+    ...binde(sk, anleitungen, ['anleitungMerken', 'anleitungLoeschen', 'anleitungenNeuLaden']),
+    ...binde(sk, csvImport, ['setCsvImportStarten']),
+    ...binde(sk, dienst, ['rebrickableListe', 'setGehoertKonto', 'setVerschieben']),
     ...binde(sk, nachErfassung, ['zieheNach']),
     ...binde(sk, csvImportLauf, ['fuehreCsvImportAus']),
   };

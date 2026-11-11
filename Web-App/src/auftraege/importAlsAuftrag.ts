@@ -6,8 +6,7 @@ import * as repo from './repository/auftraege';
 import type { Fortschritt } from './auftraege';
 import type { z } from 'zod';
 import type { ImportNutzlast, NutzlastEingabe } from './nutzlasten';
-import { Fachfehler, fachfehler } from '../infra/fehlerTexte';
-import type { FehlerArt, FehlerCode } from '../infra/fehlerTexte';
+import { Fachfehler, fachfehler, type FehlerArt, type FehlerCode } from '../infra/fehlerTexte';
 
 export type ImportQuelle = z.input<typeof ImportNutzlast>['quelle'];
 /** Was der Import der Quelle braucht (src/auftraege/nutzlasten.ts). */

@@ -1,6 +1,6 @@
 import { logAndContinue } from '../infra/fehler';
-import { inventarFuerKandidaten } from '../katalog/rbInventar';
-import { nacharbeit } from '../auftraege/nacharbeit';
+import { inventarFuerKandidaten } from '../katalog';
+import { nacharbeit } from '../auftraege';
 import * as repo from './repository/figurTeile';
 import type { KatalogZeile } from './zeilen';
 export type { FigurTeil, KatalogZeile } from './zeilen';

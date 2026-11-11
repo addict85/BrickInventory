@@ -9,10 +9,9 @@ import {
   getGlobalSetting,
   meldeGlobaleAenderung,
   alsEinheit,
-} from '../einstellungen/settings';
-import { setUserSetting } from '../konto/nutzerEinstellung';
-import { verwalterHinweisNebenher } from '../konto/kontoHinweis';
-import { mailBereit } from '../mail/mailer';
+} from '../einstellungen';
+import { setUserSetting, verwalterHinweisNebenher } from '../konto';
+import { mailBereit } from '../mail';
 import { fachfehler } from '../infra/fehlerTexte';
 import { GLOBALE_EINSTELLUNGEN, KONTO_EINSTELLUNGEN } from '../vertrag/einstellungen';
 import type { Eingabe } from '../vertrag';
@@ -27,7 +26,7 @@ export interface Speichern {
   /** Verwalter, und ein App-Token hat die Freigabe schon (Route). */
   verwalter: boolean;
   /** Passwort und Faktor; sendet bei `false` die Absage selbst. */
-  bestaetige: (passwort: unknown) => Promise<boolean>;
+  bestaetige: (passwort: string | null | undefined) => Promise<boolean>;
 }
 
 /** Ob ein Verwalter-Teil vorliegt: Nur dann braucht ein App-Token die Freigabe. */

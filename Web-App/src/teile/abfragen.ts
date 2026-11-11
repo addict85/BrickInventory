@@ -1,26 +1,18 @@
 import * as repo from './repository/teileListe';
-import { resolveImageLocal } from '../katalog/bilder/images';
-import { asIds, withOwners, blickfeldAus, type Sicht } from '../haushalt/haushalt';
-import type { BlickfeldEingabe, BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
+import { resolveImageLocal, fetchMissingBlIds, type RbSetTeil, getRbKey, httpsGetRobust, getAllSetParts, neuestesInventar, merkeBlFarbnummer, blFarbnummerAus } from '../katalog';
+import { asIds, withOwners, blickfeldAus, type Sicht, type BlickfeldEingabe, type BlickfeldEingabe as Blickfeld } from '../haushalt';
 import { istErsatzteil, colorId } from '../infra/validate';
 import { ensureFresh } from './partsSummary';
-import { fetchMissingBlIds } from '../katalog/partsImport';
-import type { RbSetTeil } from '../katalog/quellen';
-import { getRbKey, httpsGetRobust } from '../katalog/quellen';
-import { getAllSetParts } from '../katalog/rebrickableKatalog';
-import { clampPageSize, applyManualCondition, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand/gemeinsam';
+import { clampPageSize, applyManualCondition, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand';
 import { meldeFehler, logAndContinue } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
-import { farbkarte as blFarbkarte } from '../finanzen/financeCalc';
-import { getGlobalSetting } from '../einstellungen/settings';
-import { neuestesInventar } from '../katalog/rbInventar';
+import { farbkarte as blFarbkarte, marktpreiseAusCacheFuerTeile } from '../finanzen';
+import { getGlobalSetting } from '../einstellungen';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
-import { merkeBlFarbnummer, blFarbnummerAus } from '../katalog/blZuordnung';
 
 /** Mit Ausweichebenen (CSV-Zwischenspeicher, Rebrickable), damit ein Set auch
  * ohne eigene Zeilen eine Teileliste zeigt. */
 
-import { marktpreiseAusCacheFuerTeile } from '../finanzen/marketPrice';
 
 /** Ohne manuelle Positionen — die haben eine eigene Ansicht. Hex-Rückfall aus
  * rb_colors für Teile ohne eigenen Wert. */

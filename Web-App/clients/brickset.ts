@@ -2,9 +2,10 @@
 
 import { holeHttps, auszug } from '../src/infra/abruf';
 import { zugang } from './zugang';
-import { fehlertext, meldeUndLiefere, meldeFehler } from '../src/infra/fehler';
+import { fehlertext, meldeFehler } from '../src/infra/fehler';
 import { alsAbrufFehler } from './abrufFehler';
 import { mitVersion } from '../src/infra/setNummer';
+import { versuche } from '../src/infra/ergebnis';
 
 const BASE = 'https://brickset.com/api/v3.asmx';
 
@@ -103,9 +104,12 @@ function checkStatus(status: number, body: string, label: string) {
  *        zu tun, und einen Tag zu warten ist dafür sinnlos lang.
  */
 async function enqueueRetry(setNumber: string, errorMsg: string | null = null, soon = false) {
-  const { versuch, vorgemerkt, hoechstens } = await zugang()
-    .bricksetVormerken(setNumber, errorMsg || 'Quota exceeded', soon)
-    .catch(meldeUndLiefere('brickset:vormerken', { versuch: 0, vorgemerkt: true, hoechstens: 0 }));
+  const r = await versuche(
+    'brickset:vormerken',
+    zugang().bricksetVormerken(setNumber, errorMsg || 'Quota exceeded', soon),
+  );
+  if (!r.ok) return false;
+  const { versuch, vorgemerkt, hoechstens } = r.wert;
   if (!vorgemerkt) {
     console.log(
       `[brickset] ${setNumber}: ${hoechstens} quota retries exceeded — removed from queue, using fallback`
@@ -144,7 +148,7 @@ export async function ausRetryWarteschlange(setNumber: string) {
 
 // Remove from queue when a non-quota error occurs — no point retrying
 async function removeFromQueue(setNumber: string) {
-  await ausRetryWarteschlange(setNumber).catch(meldeUndLiefere('brickset:wiedervorlage', undefined));
+  await versuche('brickset:wiedervorlage', ausRetryWarteschlange(setNumber));
   console.log(
     `[brickset] ${setNumber}: non-quota error — removed from retry queue, using fallback`
       .replace(/\r?\n/g, ' ⏎ ')
@@ -166,7 +170,7 @@ async function getSetInfo(setNumber: string) {
     const data = parseResponse(body);
     if (!data.sets?.length) return null;
     const s = data.sets[0];
-    await ausRetryWarteschlange(n).catch(meldeUndLiefere('brickset:wiedervorlage', undefined));
+    await versuche('brickset:wiedervorlage', ausRetryWarteschlange(n));
     return {
       name: s.name || null,
       year: s.year || null,

@@ -33,7 +33,7 @@ test('das Design wird beim Versand geladen, nicht fest verdrahtet', () => {
   // aenderte sich der RELATIVE Pfad auf dieselbe Datei. Geprueft ist die
   // Aussage — zentrale Fassung statt eigener Abfrage —, nicht die Anzahl der
   // Punkte davor.
-  assert.match(SRC, /import \{[^}]*getGlobalSetting[^}]*\} from '(?:\.\.\/)*(?:einstellungen\/)?settings'/,
+  assert.match(SRC, /import \{[^}]*getGlobalSetting[^}]*\} from '(?:\.\.\/)*(?:einstellungen(?:\/settings)?|settings)'/,
     'und zwar über die zentrale Fassung, nicht über eine eigene Abfrage');
   // Bei jedem Zweifel classic — eine E-Mail darf nie am Design scheitern
   assert.match(SRC, /catch \(_\) \{\s*return MAIL_THEMES\.classic;\s*\}/,

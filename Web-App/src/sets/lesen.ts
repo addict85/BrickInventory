@@ -1,16 +1,12 @@
-import { resolveOne } from '../katalog/bricklinkLink';
+import { resolveOne, fuerSet, resolveImageLocal, anleitungenZuSet, anleitungenZusammenlegen } from '../katalog';
 import { meldeFehler } from '../infra/fehler';
-import { fuerSet } from '../katalog/preisvergleich';
 import * as repo from './repository/sets';
-import { resolveImageLocal } from '../katalog/bilder/images';
-import { asIds, withOwners, blickfeldAus, type Sicht } from '../haushalt/haushalt';
-import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand/gemeinsam';
-import { anleitungenZuSet, anleitungenZusammenlegen } from '../katalog/instructions';
+import { asIds, withOwners, blickfeldAus, type Sicht, type BlickfeldEingabe as Blickfeld } from '../haushalt';
+import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand';
 
 // Leseabfragen; Zustand aus den Erfassungen.
 
 
-import type { BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
 import type { Abfrage } from '../vertrag';
 import { versuche } from '../infra/ergebnis';
 import type { SetsKontext } from './kontext';

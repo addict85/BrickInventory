@@ -1,17 +1,15 @@
 /** Rebrickable-CSVs täglich laden: Der lokale Katalog spart je Anzeige einen
  * API-Abruf und das Tageskontingent. */
-import { meldeStartZustand } from '../auftraege/startZustand';
+import { meldeStartZustand, liesZustand, setzeZustand, loescheZustand, type Nutzlast, type AuftragsLauf as CsvLauf } from '../auftraege';
 import { fetchMissingBlIds } from './partsImport';
 import { getRbKey, httpsGetRobust, ladeKatalogCsv } from './quellen';
-import { fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../infra/fehler';
+import { fehlertext, logAndContinue, ohneFehlendeDatei } from '../infra/fehler';
 import { merkeBlFarbnummer, blFarbnummerAus } from './blZuordnung';
-import { liesZustand, setzeZustand, loescheZustand } from '../auftraege/laufzustand';
 import fs from 'fs';
 import path from 'path';
 import { DATA_DIR } from '../infra/appPaths';
 import { fork as _fork } from 'child_process';
-import type { Nutzlast } from '../auftraege/nutzlasten';
-import type { AuftragsLauf as CsvLauf } from '../auftraege/auftraege';
+import { versuche } from '../infra/ergebnis';
 
 const SYNC_KEY = 'rb_csv_last_sync';
 const PART_CAT_KEY = 'rb_part_categories_last_sync';
@@ -147,16 +145,18 @@ async function ladeAlles(lauf: CsvLauf, today: string): Promise<void> {
 }
 
 async function ladeBlFarben(): Promise<void> {
-  const key = await getRbKey().catch(meldeUndLiefere('rb-csv:getRbKey', null));
+  const key = await getRbKey();
   if (!key) return;
   log('[colors] Fetching BrickLink color mapping from Rebrickable API…');
   let page = 1, count = 0, hasNext = true;
   while (hasNext) {
-    const { status, body } = await httpsGetRobust(
+    // Ohne Antwort bleibt die bisherige Zuordnung; der nächste Abgleich versucht es wieder.
+    const abruf = await versuche('csv-abgleich:abruf', httpsGetRobust(
       `https://rebrickable.com/api/v3/lego/colors/?page_size=200&page=${page}`,
       { Authorization: `key ${key}` }, 30000,
-    ).catch(meldeUndLiefere('csv-abgleich:abruf', { status: 0, body: '' }));
-    if (status !== 200) break;
+    ));
+    if (!abruf.ok || abruf.wert.status !== 200) break;
+    const { body } = abruf.wert;
     const data = JSON.parse(body) as { results?: Record<string, unknown>[]; next?: string | null };
     for (const c of (data.results || [])) {
       const blId = blFarbnummerAus(c);

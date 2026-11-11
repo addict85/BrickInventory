@@ -1,4 +1,3 @@
-import type { ServerResponse } from 'http';
 import fs from 'fs';
 import { queueThumb } from './proxyThumbs';
 import { vorDem, ohneFehlendeDatei, logAndContinue } from '../../infra/fehler';
@@ -15,45 +14,36 @@ export function bildTyp(roh: string): string {
   return BILDTYPEN.has(typ) ? typ : 'image/jpeg';
 }
 
-// Aus dem Platten-Cache, falls vorhanden; true heisst beantwortet.
-/** Was die Auslieferung von Express braucht; die Typen von Express gehören in http/. */
-type BildAntwort = ServerResponse & { status(c: number): { end(): unknown } };
-interface BildAnfrage { fresh: boolean; headers?: Record<string, unknown> }
+/** Was aus dem Platten-Cache ausgeliefert werden kann; gesendet wird in
+ * src/katalog/http/bildCacheAuslieferung.ts. */
+export interface CacheTreffer {
+  datei: string;
+  typ: string;
+  groesse: number | null;
+  etag: string | null;
+}
 
-export async function liefereAusCache(opts: {
-  res: BildAntwort;
-  req: BildAnfrage;
+/** null heisst: nicht im Cache, der Aufrufer holt beim CDN. */
+export async function cacheTreffer(opts: {
   cacheFile: string;
   thumbFile: string;
   wantThumb: boolean;
   darfErzeugen: boolean;
   notiere: () => void;
-  streamFileToResponse(res: BildAntwort, datei: string, onEnd?: () => void, req?: BildAnfrage): unknown;
-}): Promise<boolean> {
-  const { res, req, cacheFile, thumbFile, wantThumb, darfErzeugen, notiere, streamFileToResponse } = opts;
+}): Promise<CacheTreffer | null> {
+  const { cacheFile, thumbFile, wantThumb, darfErzeugen, notiere } = opts;
 
   if (wantThumb) {
     try {
       await fs.promises.access(thumbFile);
-      const tst0 = await fs.promises.stat(thumbFile).catch(ohneFehlendeDatei('bild-cache:stat', null));
+      const tst = await fs.promises.stat(thumbFile).catch(ohneFehlendeDatei('bild-cache:stat', null));
       // Eine leere oder zu kleine Vorschau ist kein Bild (Altbestand, abgebrochener
       // Lauf): aufs Original zurückfallen und neu verkleinern.
-      if (!tst0 || tst0.size < 200) {
+      if (!tst || tst.size < 200) {
         await fs.promises.unlink(thumbFile).catch(ohneFehlendeDatei('bild-cache:unlink'));
         throw new Error('unbrauchbare Vorschau verworfen');
       }
-      res.setHeader('Content-Type', 'image/jpeg');
-      const tst = tst0;
-      if (tst) {
-        res.setHeader('Content-Length', String(tst.size));
-        res.setHeader('ETag', `"t-${tst.size}-${Math.floor(tst.mtimeMs)}"`);
-      }
-      res.setHeader('Cache-Control', 'private, max-age=86400, must-revalidate');
-      // Kennt der Browser die Datei schon, reicht ein leeres 304.
-      if (req.fresh) { res.status(304).end(); return true; }
-      // Kein rohes pipe(): Die Cache-Pflege kann die Datei zwischen Prüfung und
-      // Öffnen entfernen, und ein Lesestrom-Fehler ohne Zuhörer beendet den Prozess.
-      streamFileToResponse(res, thumbFile, undefined, req); return true;
+      return { datei: thumbFile, typ: 'image/jpeg', groesse: tst.size, etag: `"t-${tst.size}-${Math.floor(tst.mtimeMs)}"` };
     } catch (_) { /* noch nicht erzeugt */ }
   }
 
@@ -71,22 +61,14 @@ export async function liefereAusCache(opts: {
     // Auch aus dem Cache nur Bilder; im Zweifel JPEG — mit nosniff die harmlose
     // Auslegung.
     const ctRaw = await fs.promises.readFile(cacheFile + '.ct', 'utf8').catch(ohneFehlendeDatei('bild-cache:typ', 'image/jpeg'));
-    res.setHeader('Content-Type', bildTyp(ctRaw));
-    // Länge mitgeben: Eine chunked-Antwort kann ein Reverse-Proxy puffern.
     const cst = await fs.promises.stat(cacheFile).catch(ohneFehlendeDatei('bild-cache:stat', null));
-    if (cst) {
-      // Der Deckel löscht nach letzter Nutzung; unter noatime merkt sich das
-      // sonst niemand. mtime bleibt, sie steckt im ETag.
-      if (Date.now() - cst.atimeMs > 86_400_000) fs.promises.utimes(cacheFile, new Date(), cst.mtime).catch(logAndContinue('bild-cache:utimes'));
-      res.setHeader('Content-Length', String(cst.size));
-      res.setHeader('ETag', `"c-${cst.size}-${Math.floor(cst.mtimeMs)}"`);
-    }
-    res.setHeader('Cache-Control', 'private, max-age=86400, must-revalidate');
-    if (req.fresh) { res.status(304).end(); return true; }
-    streamFileToResponse(res, cacheFile, undefined, req); return true;
+    // Der Deckel löscht nach letzter Nutzung; unter noatime merkt sich das
+    // sonst niemand. mtime bleibt, sie steckt im ETag.
+    if (cst && Date.now() - cst.atimeMs > 86_400_000) fs.promises.utimes(cacheFile, new Date(), cst.mtime).catch(logAndContinue('bild-cache:utimes'));
+    return { datei: cacheFile, typ: bildTyp(ctRaw), groesse: cst?.size ?? null, etag: cst ? `"c-${cst.size}-${Math.floor(cst.mtimeMs)}"` : null };
   } catch (_) { /* Cache-Miss oder Fehler — normal weiterladen */ }
 
-  return false;
+  return null;
 }
 
 const CACHE_DIR = () => path.join(APP_ROOT, 'data', 'img_proxy_cache');

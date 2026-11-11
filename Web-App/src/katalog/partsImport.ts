@@ -1,16 +1,15 @@
 import path from 'path';
-import type { AuftragsLauf } from '../auftraege/auftraege';
+import { type AuftragsLauf, stelleAuftragEin } from '../auftraege';
 import fs from 'fs';
 import { PART_IMAGES_DIR } from '../infra/appPaths';
 import { type RbSetTeil, parseThrottleWait, rebrickableRoh } from './quellen';
 import { getAllSetParts } from './rebrickableKatalog';
 import { fehlertext, logAndContinue, meldeFehler } from '../infra/fehler';
-import { getGlobalSetting } from '../einstellungen/settings';
+import { getGlobalSetting } from '../einstellungen';
 import { mitVersion } from '../infra/setNummer';
 import { nummernListe } from '../infra/fremdeAdressen';
 import { merkeBlNummer, merkeBlNummern, merkeBlNummerUnveraendert } from './blZuordnung';
 import { merkeSetTeile, type SetTeilZeile } from './katalogPflege';
-import { stelleAuftragEin } from '../auftraege/dienst';
 import { rebrickableBackgroundLimiter, consumeRebrickableDaily } from './rateLimiter';
 import * as inhalt from './repository/setInhalt';
 import { katalog } from './prozess';

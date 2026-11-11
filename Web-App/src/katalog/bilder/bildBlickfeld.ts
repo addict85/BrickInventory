@@ -1,4 +1,4 @@
-import { beiHaushaltsaenderung, scopeIds } from '../../haushalt/haushalt';
+import { beiHaushaltsaenderung, scopeIds } from '../../haushalt';
 import { katalog } from '../prozess';
 
 /** Anleitungen liegen unter der Setnummer: Ihr Vorhandensein verrät, was jemand

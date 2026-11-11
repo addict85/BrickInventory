@@ -2,6 +2,7 @@
  * einen falschen Durchschnitt bekämen. */
 import { inZehntel4, aufRappen, alsText } from '../infra/geld';
 import * as repo from './repository/setWert';
+import { zustand } from '../infra/validate';
 
 export interface SetValue {
   unit_price: number | null;
@@ -59,10 +60,10 @@ export function valueSet(
 ): SetValue {
   const rows = acquisitions?.length
     ? acquisitions.map(a => ({
-        condition: (a.condition === 'U' ? 'U' : 'N') as 'N' | 'U',
+        condition: zustand(a.condition),
         quantity: Math.max(1, parseInt(String(a.quantity)) || 1),
       }))
-    : [{ condition: (fallbackCondition === 'U' ? 'U' : 'N') as 'N' | 'U',
+    : [{ condition: zustand(fallbackCondition),
          quantity: Math.max(1, fallbackQuantity) }];
 
   const byCond = new Map<'N' | 'U', number>();

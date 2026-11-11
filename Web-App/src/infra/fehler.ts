@@ -1,7 +1,6 @@
 // Fachfrei und ohne Express: db/, clients/ und jeder Dienst melden hierüber.
 // Wie ein Fehler zur HTTP-Antwort wird, steht in httpAntwort.ts.
-import { FEHLER, fehlerText, antwortSprache } from './fehlerTexte';
-import type { FehlerCode } from './fehlerTexte';
+import { FEHLER, fehlerText, antwortSprache, type FehlerCode } from './fehlerTexte';
 
 /** Ersatz für `.catch(() => {})`: Der Schritt soll die Anfrage nicht scheitern
  * lassen, aber eine Spur hinterlassen.

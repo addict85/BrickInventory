@@ -6,7 +6,7 @@ import { resolveUserId } from '../../konto/http/anmeldung';
 import { safeDataPath } from '../../infra/datenPfad';
 import { pfadSegmente } from '../../http/httpAntwort';
 import { antwortAufDateiFehler, liefereDatei, sendeDatei } from '../../http/dateiAusliefern';
-import { logAndContinue, meldeUndLiefere } from '../../infra/fehler';
+import { logAndContinue } from '../../infra/fehler';
 import { bildFreigegeben } from '../bilder/bildBlickfeld';
 import { cdnFuerFehlendesBild } from '../bilder/bildNachschlagen';
 import { generateThumb } from '../bilder/thumbs';
@@ -42,8 +42,7 @@ export async function liefereBild(req: Request, res: Response) {
   if (!imgUserId) return res.status(401).send('Nicht angemeldet');
   const segmente = pfadSegmente(req, 'pfad');
   const filePath = safeDataPath('images', segmente);
-  if (!filePath || !(await bildFreigegeben(imgUserId, segmente).catch(meldeUndLiefere('bilder:blickfeld', false))))
-    return res.status(404).send('Datei nicht gefunden');
+  if (!filePath || !(await bildFreigegeben(imgUserId, segmente))) return res.status(404).send('Datei nicht gefunden');
   // private: Die Antwort hängt an einer Anmeldung. max-age=0, damit ein ersetztes Bild sofort gilt.
   res.setHeader('Cache-Control', 'private, max-age=0');
   sendeDatei(res, filePath, async err => {

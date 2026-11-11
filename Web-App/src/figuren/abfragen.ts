@@ -1,9 +1,9 @@
-import { resolveImageLocal } from '../katalog/bilder/images';
-import { asIds, withOwners, blickfeldAus, type Sicht } from '../haushalt/haushalt';
-import { clampPageSize, applyManualCondition, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand/gemeinsam';
+import { resolveImageLocal } from '../katalog';
+import { asIds, withOwners, blickfeldAus, type Sicht } from '../haushalt';
+import { clampPageSize, applyManualCondition, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand';
 import { mitVersion } from '../infra/setNummer';
 import { Abstriche } from '../infra/ergebnis';
-import { marktpreiseAusCacheFuerFiguren } from '../finanzen/marketPrice';
+import { marktpreiseAusCacheFuerFiguren } from '../finanzen';
 import * as repo from './repository/figurenListe';
 
 // Leseabfragen für Minifiguren.

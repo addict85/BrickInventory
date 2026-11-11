@@ -5,20 +5,17 @@
 import type { DbSchnittstelle } from '../../../db/database';
 import * as repo from '../repository/preisCache';
 import type { Preiszeile, SetPreiszeile } from '../repository/preisCache';
-import type { KatalogEintrag } from '../../katalog/bricklinkPreise';
-import { asIds } from '../../haushalt/haushalt';
-import { checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus } from '../../katalog/apiKontingent';
-import { bricklinkRequest } from '../../katalog/quellen';
-import { fehlertext, logAndContinue, meldeUndLiefere } from '../../infra/fehler';
+import { type KatalogEintrag, checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus, bricklinkRequest, katalogEintrag, getPriceGuide, hatPreis, blAbrufNummer, blAbrufNummern } from '../../katalog';
+import { asIds } from '../../haushalt';
+import { fehlertext, logAndContinue } from '../../infra/fehler';
 import { fachfehler } from '../../infra/fehlerTexte';
 import { mitVersion, ohneBricklinkPreis } from '../../infra/setNummer';
-import { katalogEintrag, getPriceGuide, hatPreis } from '../../katalog/bricklinkPreise';
 import { effectiveCondition } from './zustand';
-import { blAbrufNummer, blAbrufNummern } from '../../katalog/blZuordnung';
 import { KEINE_FARBE } from '../../infra/validate';
+import { versuche } from '../../infra/ergebnis';
 
 /** Wessen DATEN gerechnet werden; wessen EINSTELLUNGEN gelten, sagt `viewerId`. */
-export type { Blickfeld } from '../../haushalt/haushalt';
+export type { Blickfeld } from '../../haushalt';
 
 type PreisZeile = { avg_price?: unknown; fetched_at?: string | Date | null } | null | undefined;
 
@@ -40,7 +37,6 @@ export async function resolveSetCondition(
 // 'U', weil der Gebrauchtpreis dem Wiederverkaufswert der Sammlung entspricht;
 // der andere Zustand dient als Rückfall.
 export const DEFAULT_PRICE_CONDITION = 'U';
-
 
 /** Kürzer als das TTL-Fenster, damit ein Rückfall (sold → stock) überhaupt
  * wieder angefragt wird. */
@@ -268,10 +264,10 @@ export async function farbkarte(): Promise<Map<number, number>> {
  * BrickLink-Farbe hiesse, einen falschen Preis zu holen und falsch zu merken. */
 export async function resolveBlColorId(rbColorId: number): Promise<number | null> {
   if (rbColorId == null || rbColorId === KEINE_FARBE) return 0;
-  try {
-    const treffer = (await farbkarte()).get(Number(rbColorId));
-    return treffer != null ? Number(treffer) : rbColorId;
-  } catch (e) { return meldeUndLiefere('preise:farbkarte', null)(e); }
+  const karte = await versuche('preise:farbkarte', farbkarte());
+  if (!karte.ok) return null;
+  const treffer = karte.wert.get(Number(rbColorId));
+  return treffer != null ? Number(treffer) : rbColorId;
 }
 
 // Ohne Übersetzung antwortet BrickLink für RB-Nummern mit 404. Eine Quelle
@@ -283,10 +279,9 @@ const _blTeil = nachschlagwerk(async (partNumber: string) => {
 /** Mit `konto` zuerst dessen eigene Zuordnung (Migration 0094); sie geht am
  * gemeinsamen Gedächtnis vorbei, weil sie nur für dieses Konto gilt. */
 export async function resolveBlPartNumber(partNumber: string, konto: number | null = null) {
-  try {
-    if (konto !== null) return (await blAbrufNummer('part', partNumber, konto)) ?? partNumber;
-    return (await _blTeil(partNumber)) ?? partNumber;
-  } catch (e) { return meldeUndLiefere('preise:bl-nummer', partNumber)(e); }
+  // Ohne Fang: Mit der Rebrickable-Nummer käme der Preis eines anderen Teils.
+  if (konto !== null) return (await blAbrufNummer('part', partNumber, konto)) ?? partNumber;
+  return (await _blTeil(partNumber)) ?? partNumber;
 }
 
 /** In zwei Abfragen, weil das Gedächtnis innerhalb einer Bewertung nicht hilft:
@@ -372,9 +367,9 @@ export async function fetchPartPrice(partNumber: string, rbColorId: number, cond
       // Kein Verkauf in sechs Monaten → aktuelle Angebote. Bei Teilen in seltenen
       // Farben ist das der Normalfall.
       if (!hatPreis(g)) {
-        const alt = await bricklinkRequest('GET', `/items/part/${blPartNumber}/price`,
-          { ...qp, guide_type: 'stock' }).catch(meldeUndLiefere('preise:alt', null));
-        if (hatPreis(alt)) g = alt;
+        const alt = await versuche('preise:alt', bricklinkRequest('GET', `/items/part/${blPartNumber}/price`,
+          { ...qp, guide_type: 'stock' }));
+        if (alt.ok && hatPreis(alt.wert)) g = alt.wert;
       }
       const avg  = parseFloat(g?.avg_price || 0);
       const qavg = parseFloat(g?.qty_avg_price || 0);
@@ -447,9 +442,9 @@ export async function fetchMinifigPrice(figNumber: string, condition: string, cu
       const qp = { guide_type: 'sold', new_or_used: cond, currency_code: currency, vat: 'N' };
       let g = await bricklinkRequest('GET', `/items/minifig/${figNumber}/price`, qp);
       if (!hatPreis(g)) {
-        const alt = await bricklinkRequest('GET', `/items/minifig/${figNumber}/price`,
-          { ...qp, guide_type: 'stock' }).catch(meldeUndLiefere('preise:alt', null));
-        if (hatPreis(alt)) g = alt;
+        const alt = await versuche('preise:alt', bricklinkRequest('GET', `/items/minifig/${figNumber}/price`,
+          { ...qp, guide_type: 'stock' }));
+        if (alt.ok && hatPreis(alt.wert)) g = alt.wert;
       }
       const avg  = parseFloat(g?.avg_price || 0);
       const qavg = parseFloat(g?.qty_avg_price || 0);

@@ -3,11 +3,10 @@
 import * as db from '../../db/database';
 import * as orte from './repository/lagerort';
 import type { LagerTabelle } from './repository/lagerort';
-import { asIds, scopeIds, writableIds, blickfeldAus, type Sicht, schreibbereichAus, type Schreiber } from '../haushalt/haushalt';
-import type { BlickfeldEingabe } from '../haushalt/haushalt';
+import { asIds, scopeIds, writableIds, blickfeldAus, type Sicht, schreibbereichAus, type Schreiber, type BlickfeldEingabe } from '../haushalt';
 import { fachfehler } from '../infra/fehlerTexte';
-import { deleteUserSetting } from '../einstellungen/settings';
-import { setUserSetting } from '../konto/nutzerEinstellung';
+import { deleteUserSetting } from '../einstellungen';
+import { setUserSetting } from '../konto';
 
 /** Fachlich, nicht technisch (die Spalte ist TEXT): Der Name muss auf eine
  * Kachel passen, und eine Absage ist besser als ein abgeschnittener Name. */
@@ -82,7 +81,7 @@ export async function orteVon(userIds: number[]): Promise<Lagerort[]> {
 }
 
 /** Kein Fehler, wenn es ihn gibt: Beim Setzen eines Lagerorts wäre die Absage Unfug. */
-export async function legeOrtAn(userId: number, name: unknown):
+export async function legeOrtAn(userId: number, name: string | undefined):
   Promise<{ ort: Lagerort; war_neu: boolean }> {
   const n = nameOderFehler(name);
   const neu = await orte.fuegeOrtEin(userId, n);
@@ -97,7 +96,7 @@ export async function legeOrtAn(userId: number, name: unknown):
 }
 
 /** Die Zuordnung ist eine ID; der neue Name gilt damit überall sofort. */
-export async function benenneOrtUm(userId: number, id: number, name: unknown): Promise<Lagerort> {
+export async function benenneOrtUm(userId: number, id: number, name: string | undefined): Promise<Lagerort> {
   const neu = nameOderFehler(name);
   const alt = await orte.ortName(id, userId);
   if (!alt) fachfehler('nicht_gefunden', 'lagerort_unbekannt');

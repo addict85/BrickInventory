@@ -1255,6 +1255,16 @@ CREATE TABLE public.wanted (
     CONSTRAINT wanted_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
 
+CREATE SEQUENCE public.wanted_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.wanted_id_seq OWNED BY public.wanted.id;
+
 CREATE TABLE public.webauthn_challenges (
     challenge text NOT NULL,
     user_id integer,
@@ -1270,16 +1280,6 @@ CREATE TABLE public.wechselkurse (
     CONSTRAINT wechselkurse_je_eur_check CHECK ((je_eur > (0)::numeric)),
     CONSTRAINT wechselkurse_waehrung_check CHECK (((waehrung ~ '^[A-Z]{3}$'::text) AND (waehrung <> 'EUR'::bpchar)))
 );
-
-CREATE SEQUENCE public.wishlist_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-ALTER SEQUENCE public.wishlist_id_seq OWNED BY public.wanted.id;
 
 CREATE TABLE public.zweiter_faktor (
     user_id integer NOT NULL,
@@ -1356,7 +1356,7 @@ ALTER TABLE ONLY public.verwaltungsprotokoll ALTER COLUMN id SET DEFAULT nextval
 
 ALTER TABLE ONLY public.vouchers ALTER COLUMN id SET DEFAULT nextval('public.vouchers_id_seq'::regclass);
 
-ALTER TABLE ONLY public.wanted ALTER COLUMN id SET DEFAULT nextval('public.wishlist_id_seq'::regclass);
+ALTER TABLE ONLY public.wanted ALTER COLUMN id SET DEFAULT nextval('public.wanted_id_seq'::regclass);
 
 ALTER TABLE ONLY public.zweiter_faktor_codes ALTER COLUMN id SET DEFAULT nextval('public.zweiter_faktor_codes_id_seq'::regclass);
 
@@ -1612,17 +1612,17 @@ ALTER TABLE ONLY public.vouchers
 ALTER TABLE ONLY public.vouchers
     ADD CONSTRAINT vouchers_user_id_nummer_suche_key UNIQUE (user_id, nummer_suche);
 
+ALTER TABLE ONLY public.wanted
+    ADD CONSTRAINT wanted_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.wanted
+    ADD CONSTRAINT wanted_user_id_set_number_condition_key UNIQUE (user_id, set_number, condition);
+
 ALTER TABLE ONLY public.webauthn_challenges
     ADD CONSTRAINT webauthn_challenges_pkey PRIMARY KEY (challenge);
 
 ALTER TABLE ONLY public.wechselkurse
     ADD CONSTRAINT wechselkurse_pkey PRIMARY KEY (waehrung, tag);
-
-ALTER TABLE ONLY public.wanted
-    ADD CONSTRAINT wishlist_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY public.wanted
-    ADD CONSTRAINT wishlist_user_id_set_number_condition_key UNIQUE (user_id, set_number, condition);
 
 ALTER TABLE ONLY public.zweiter_faktor_codes
     ADD CONSTRAINT zweiter_faktor_codes_pkey PRIMARY KEY (id);
@@ -2044,11 +2044,11 @@ ALTER TABLE ONLY public.verwaltungsprotokoll
 ALTER TABLE ONLY public.vouchers
     ADD CONSTRAINT vouchers_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
+ALTER TABLE ONLY public.wanted
+    ADD CONSTRAINT wanted_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
 ALTER TABLE ONLY public.webauthn_challenges
     ADD CONSTRAINT webauthn_challenges_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.wanted
-    ADD CONSTRAINT wishlist_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.zweiter_faktor_codes
     ADD CONSTRAINT zweiter_faktor_codes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
@@ -2204,3 +2204,4 @@ INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('010
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0104-idempotenz-wirkung.sql', '2026-11-10 21:08:00.10884+00', '7bf61c6543da0b866aa956897a46f67bf72f2f3973cc2c3b266cd4a4e3530bc2');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0105-set-stamm-aus-rb-sets.sql', '2026-11-10 21:08:00.110321+00', '3f0bf2b06c2210990c379d46a33282283915ecc99d225db9a5654ef0eb366569');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0106-geraeteschluessel-attestation.sql', '2026-11-11 09:11:57.380702+00', 'd4ff7b3e5346bc2c663c87dd76b8ecab03d798a1f75c21a81e35118ee957508b');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0107-merkliste-schranken-namen.sql', '2026-11-11 12:59:07.448052+00', '0b7b0e4bd58feaf35fabf8243270139dad032308349153278e1a8dd9ab05d864');

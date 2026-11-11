@@ -1,21 +1,15 @@
 /** Hier und nicht in einer Route, weil Sitzungsroute und v1-Fabrik beide darauf
  * zugreifen — eine Route soll keine andere importieren. */
-import { blickfeldAus } from '../haushalt/haushalt';
-import type { Sicht } from '../haushalt/haushalt';
+import { blickfeldAus, type Sicht } from '../haushalt';
 import { oeffentlicherFehler } from '../infra/fehler';
-import { Abstriche } from '../infra/ergebnis';
+import { Abstriche, versuche } from '../infra/ergebnis';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
 import * as db from '../../db/database';
-import { recordAcquisitionForDay } from '../bestand/acquisitions';
-import { mengenwunsch, passeManuelleMengeAn } from '../bestand/manuelleMenge';
+import { recordAcquisitionForDay, mengenwunsch, passeManuelleMengeAn, setzeLagerort, ortFuerNeuerfassung } from '../bestand';
 import * as repo from './repository/manuelleTeile';
-import { kaufpreisAusEingabe, manuellerKaufpreis } from '../finanzen/preisRegel';
-import { zustandFuerPreis } from '../einstellungen/settings';
-import { resolvePartCondition, marktpreisMitHerkunft, getCurrentPartMarketPrice } from '../finanzen/marketPrice';
-import { lookupPart } from '../katalog/quellen';
-import { farbliste, KEINE_FARBE } from '../katalog/farben';
-import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
-import { merkeTeil, merkeTeilFarbe, katalogTeil } from '../katalog/katalogPflege';
+import { kaufpreisAusEingabe, manuellerKaufpreis, resolvePartCondition, marktpreisMitHerkunft, getCurrentPartMarketPrice } from '../finanzen';
+import { zustandFuerPreis } from '../einstellungen';
+import { lookupPart, farbliste, KEINE_FARBE, merkeTeil, merkeTeilFarbe, katalogTeil } from '../katalog';
 import * as V0 from '../infra/validate';
 import { geldEingabe } from '../infra/geld';
 import { fachfehler } from '../infra/fehlerTexte';
@@ -93,7 +87,9 @@ async function addManualPartIntern(uid: number, rawBody: Record<string, unknown>
     // `hatBild` statt `image_url`: Ein lokaler Pfad fiele bei der URL-Prüfung
     // durch, beweist aber, dass der Abruf nichts mehr zu holen hat.
     if (!part_name || !(image_url || lokal?.hatBild)) {
-      const info = await lookupPart(part_number, hasColor ? color_id : null);
+      // Ohne Rebrickable wird das Teil mit dem erfasst, was der Katalog schon weiss.
+      const abruf = await versuche('teile:lookupPart', lookupPart(part_number, hasColor ? color_id : null));
+      const info = abruf.ok ? abruf.wert : null;
       gefunden = info;
       // `||`: Was der Katalog schon wusste, bleibt stehen.
       if (info) {
@@ -174,7 +170,7 @@ export async function updateManualPart(uid: number, partNumber: string, colorId:
     await repo.setzeTeilpreisNeueste(uid, partNumber, colorId, unitPrice);
   }
   if (body.condition !== undefined && body.condition !== null) {
-    const cond = body.condition === 'U' ? 'U' : 'N';
+    const cond = V0.zustand(body.condition);
     await repo.setzeTeilzustandNeueste(uid, partNumber, colorId, cond);
   }
   return { ...raus, ...ab.angabe() };
@@ -210,7 +206,8 @@ export async function importiereTeileCsv(uid: number, text: string) {
       const eingetippt = !!partName;
       let imageUrl: string | null = null, categoryName: string | null = null;
       if (!partName) {
-        const info = await lookupPart(partNumber, colorId === KEINE_FARBE ? null : colorId);
+        const abruf = await versuche('teile:import-lookupPart', lookupPart(partNumber, colorId === KEINE_FARBE ? null : colorId));
+        const info = abruf.ok ? abruf.wert : null;
         if (info) { partName = info.part_name; imageUrl = info.image_url; categoryName = info.category_name; }
       }
       const { erfassungsPreis, effectiveCondition, geschaetzt } =

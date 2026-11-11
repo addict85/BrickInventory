@@ -1,8 +1,8 @@
 /** Der eine Weg zu den Fremdquellen: Hier bekommen die Klienten Schlüssel, Kontingent,
  * Drossel und Wiedervorlage, damit clients/ keinen Bereich kennen muss. */
 import { verdrahteKlienten } from '../../clients/zugang';
-import { bricksetVormerken, bricksetAusWiedervorlage, BRICKSET_HOECHSTENS } from '../auftraege/bricksetAuftrag';
-import { getGlobalSetting } from '../einstellungen/settings';
+import { bricksetVormerken, bricksetAusWiedervorlage, BRICKSET_HOECHSTENS } from '../auftraege';
+import { getGlobalSetting } from '../einstellungen';
 import { checkAndIncrementRateLimit, getRateLimitStatus } from './apiKontingent';
 import { rebrickableLimiter, rebrickableBackgroundLimiter, rebrickableDailyStatus } from './rateLimiter';
 

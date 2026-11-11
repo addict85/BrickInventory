@@ -1,6 +1,6 @@
 /** Vorberechnet, weil die Live-Abfrage über alle Set-Teile eines Haushalts
  * Sekunden braucht. */
-import { meldeUndLiefere, fehlertext } from '../infra/fehler';
+import { fehlertext } from '../infra/fehler';
 import * as db from '../../db/database';
 import * as repo from './repository/teileZusammenfassung';
 
@@ -52,7 +52,7 @@ export async function ensureFresh(userId: number | number[], opts?: { strict?: b
   try {
     const [v, state] = await Promise.all([
       currentVersion(userId as number),
-      repo.gebauterStand(userId).catch(meldeUndLiefere('teile-zsf:get', null)),
+      repo.gebauterStand(userId),
     ]);
     // Hält ein anderer Prozess die Sperre, ist der Stand nicht gesichert.
     const katalogNachgezogen = !v.katalogOffen || (await katalogEinmalNachziehen()) !== null;

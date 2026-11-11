@@ -1,4 +1,4 @@
-import { zustandFuerPreis } from '../einstellungen/settings';
+import { zustandFuerPreis } from '../einstellungen';
 import { geldEingabe } from '../infra/geld';
 
 /** Für Teile UND Figuren an einer Stelle: Die Regel musste schon zweimal

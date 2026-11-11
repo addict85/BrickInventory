@@ -1,14 +1,4 @@
-import { belegKennung } from '../src/auftraege/prozess';
-import {
-  type AuftragsArt, type AuftragsZeile, type Fortschritt, type AuftragsKontext,
-  AuftragUnterbrochen, AuftragVerloren, AuftragVerschieben,
-} from '../src/auftraege/auftraege';
-import {
-  imNamenDesAuftrags, gibZurueck, verschoben, fehlgeschlagen, erledigt, beiNeuemAuftrag, beiAuftragsStand,
-  setzeFortschritt, lebenszeichen, gehoertNoch, belegeAuftrag, merkeExklusive,
-} from '../src/auftraege/dienst';
-import { planeNaechsten, hatZeitplan } from '../src/auftraege/zeitplan';
-import { pruefeNutzlast, NutzlastUngueltig, type Nutzlast } from '../src/auftraege/nutzlasten';
+import { belegKennung, type AuftragsArt, type AuftragsZeile, type Fortschritt, type AuftragsKontext, AuftragUnterbrochen, AuftragVerloren, AuftragVerschieben, imNamenDesAuftrags, gibZurueck, verschoben, fehlgeschlagen, erledigt, beiNeuemAuftrag, beiAuftragsStand, setzeFortschritt, lebenszeichen, gehoertNoch, belegeAuftrag, merkeExklusive, planeNaechsten, hatZeitplan, pruefeNutzlast, NutzlastUngueltig, type Nutzlast } from '../src/auftraege';
 import { fehlertext, logAndContinue } from '../src/infra/fehler';
 import { konfig } from '../src/infra/konfig';
 

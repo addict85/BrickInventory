@@ -2,7 +2,7 @@ import path from 'path';
 import crypto from 'crypto';
 import fsp from 'fs/promises';
 import { PDF_JOB_DIR } from '../infra/appPaths';
-import { meldeUndLiefere, meldeFehler, ohneFehlendeDatei } from '../infra/fehler';
+import { meldeFehler, ohneFehlendeDatei } from '../infra/fehler';
 import { stelleAuftragEin } from './dienst';
 import type { NutzlastEingabe } from './nutzlasten';
 import { mitVersion } from '../infra/setNummer';
@@ -63,7 +63,7 @@ export function neueJobId(): string {
 }
 
 export async function cleanOldPdfJobs() {
-  for (const id of await raeumeAuftraegeAuf(PDF_JOB_TTL).catch(meldeUndLiefere('pdf:aufraeumen', [] as string[]))) {
+  for (const id of await raeumeAuftraegeAuf(PDF_JOB_TTL)) {
     const datei = pdfDateiPfad(id);
     if (datei) await fsp.unlink(datei).catch(ohneFehlendeDatei('pdf:datei loeschen'));
   }

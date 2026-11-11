@@ -1,9 +1,7 @@
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken } from './middleware';
-import { resolveMany } from '../../src/katalog/bricklinkLink';
-import { katalogMeta, jahrVerteilung, katalogSeite, katalogSet, katalogGeladen } from '../../src/katalog/dienst';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
+import { resolveMany, katalogMeta, jahrVerteilung, katalogSeite, katalogSet, katalogGeladen } from '../../src/katalog';
+import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
 
 const router = vertragsRouter();
 

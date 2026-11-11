@@ -1,8 +1,8 @@
 /** Aufträge plus Bildbedarf des Katalogs: Die Warteschlange kennt den Katalog nicht. */
-import * as auftraege from '../auftraege/hintergrund';
-import { leereBildbedarf, offenerBildbedarf } from '../katalog/bilder/bildbedarf';
+import * as auftraege from '../auftraege';
+import { leereBildbedarf, offenerBildbedarf } from '../katalog';
 
-export { auftragAbbrechen, auftragWiederholen, auftragsArtJetzt } from '../auftraege/hintergrund';
+export { auftragAbbrechen, auftragWiederholen, auftragsArtJetzt } from '../auftraege';
 
 export async function auftragsUebersicht(filter: { status?: string | undefined; art?: string | undefined } = {}) {
   const [uebersicht, bildbedarf] = await Promise.all([auftraege.auftraegeImUeberblick(filter), offenerBildbedarf()]);

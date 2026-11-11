@@ -357,11 +357,10 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
       'POST /sets/:setNumber/instructions': () =>
         ruf('/sets/10001-1/instructions', { method: 'POST', token: voll, body: {} }),
     };
-    const s = geraeteSchluessel();
-    assert.equal(
-      (await ruf('/geraet/schluessel', { method: 'POST', token: voll, body: { oeffentlich: s.oeffentlich } })).status,
-      200,
-    );
+    // Seit der Attestation hinterlegt die App den Schlüssel mit Kette (helpers/geraet.js).
+    const h = await hinterlege(ruf, voll);
+    assert.equal(h.antwort.status, 200, JSON.stringify(h.antwort.body));
+    const s = h.schluessel;
     for (const [weg, rufe] of Object.entries(wege)) {
       const r = await rufe();
       assert.deepEqual([r.status, r.body?.code], [403, 'schritt_freigabe_noetig'], `${weg} ohne Freigabe`);
