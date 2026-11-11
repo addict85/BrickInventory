@@ -11,6 +11,8 @@
  *   B  codePasst() gibt immer true → rot: „ein falscher Code zählt …“
  *   C  qrKopplungDesKontos() ohne `AND user_id = $2` → rot: „die Kopplung eines anderen Kontos …“
  *   D  in melde() (Repository) `used_at IS NULL` gestrichen → rot: „ein Code meldet nur ein Gerät“
+ *   E  (11.11.2026) in legeQrKopplungAn() die Zählbedingung gestrichen → rot:
+ *      „über der Obergrenze offener Kopplungen …“ (200 statt 503)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -132,5 +134,26 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
       Object.assign(sitzung, { userId: ids[0], username: NAMEN[0] });
     }
     assert.equal((await abholen(m)).body.wartet, true);
+  });
+
+  await t.test('über der Obergrenze offener Kopplungen gibt es 503, abgeholte zählen nicht', async tt => {
+    const { OFFENE_KOPPLUNGEN_HOECHSTENS } = _req('src/konto/qrKopplung.js');
+    await db.run(`DELETE FROM qr_login_tokens`);
+    tt.after(() => db.run(`DELETE FROM qr_login_tokens`));
+    await db.run(
+      `INSERT INTO qr_login_tokens (token, user_id, expires_at, abgeholt_am)
+      SELECT 'abgeholt' || g, $1, NOW() + INTERVAL '5 minutes', NOW() FROM generate_series(1, 5) g`,
+      [ids[1]],
+    );
+    await db.run(
+      `INSERT INTO qr_login_tokens (token, user_id, expires_at)
+      SELECT 'voll' || g, $1, NOW() + INTERVAL '5 minutes' FROM generate_series(1, $2::int - 1) g`,
+      [ids[1], OFFENE_KOPPLUNGEN_HOECHSTENS],
+    );
+    await neuerCode();
+    const r = await ruf('POST', '/qr-token', { password: PASS });
+    assert.deepEqual([r.status, r.body?.code], [503, 'server_ausgelastet']);
+    await db.run(`UPDATE qr_login_tokens SET expires_at = NOW() - INTERVAL '1 minute' WHERE token LIKE 'voll%'`);
+    await neuerCode();
   });
 });

@@ -14,6 +14,7 @@ import { antwortSprache } from '../../src/infra/fehlerTexte';
 import * as sets from '../../src/sets';
 import { registerSse } from '../../src/http/sseRegistry';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/http/anmeldung';
+import { freigegeben } from '../../src/konto/http/schrittschutz';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/http/vertragsRouter';
 const router = vertragsRouter();
@@ -305,8 +306,11 @@ router.post('/sets/:setNumber/parts', requireToken, async (req: Anfrage<'POST /a
 });
 
 // ── Anleitungen ─────────────────────────────────────────────────────────────
-router.post('/sets/:setNumber/instructions', requireToken, async (req: OffeneAnfrage<'POST /api/v1/sets/:setNumber/instructions'>, res: Antwort<'POST /api/v1/sets/:setNumber/instructions'>) => {
-  const { instructions, auftrag } = await sets.anleitungenNeuLaden(angemeldeteNutzerId(req), req.pfad.setNumber, istVerwalter(req));
+router.post('/sets/:setNumber/instructions', requireToken, async (req: Anfrage<'POST /api/v1/sets/:setNumber/instructions'>, res: Antwort<'POST /api/v1/sets/:setNumber/instructions'>) => {
+  // Der Verwalter löscht geteilte Anleitungen: derselbe Schrittschutz wie jede Verwalter-Route.
+  const verwalter = istVerwalter(req);
+  if (verwalter && !await freigegeben(req, res, 'verwaltung')) return;
+  const { instructions, auftrag } = await sets.anleitungenNeuLaden(req.apiUser.user_id, req.pfad.setNumber, verwalter);
   res.status(202).json({ success: true, instructions, count: instructions.length, auftrag_id: auftrag });
 });
 

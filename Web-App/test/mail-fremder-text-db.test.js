@@ -48,7 +48,7 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async (t) => {
   const setze = async (k, v) => db.run(`INSERT INTO global_settings (key, value) VALUES ($1, $2)
     ON CONFLICT (key) DO UPDATE SET value = $2`, [k, v]);
   await setze('registration_enabled', '1');
-  await setze('smtp_host', 'smtp.example.org');
+  await setze('smtp_host', '192.0.2.25'); // eine Adresse: Ein Name müsste auflösen (src/infra/zielAdresse.ts)
   await setze('smtp_user', 'versand');
   const leereZaehler = () => db.run("DELETE FROM rate_limit_attempts WHERE key ~ '^(register|forgot)'");
   await leereZaehler();

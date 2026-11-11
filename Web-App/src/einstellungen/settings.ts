@@ -98,6 +98,13 @@ export async function setGlobalSetting(key: string, value: unknown) {
   const r = regelFuer(key)?.safeParse(value);
   if (!r?.success) throw (r?.error.issues[0] as { params?: { fehler?: unknown } } | undefined)?.params?.fehler ?? dateiFehler('ungueltig', 'wert_ungueltig');
   await repo.schreibeGlobalenWert(key, SECRET_KEYS.has(key) ? verschluessele(r.data, globalerKontext(key)) : r.data);
+  meldeGlobaleAenderung();
+}
+
+export { alsEinheit } from './repository';
+
+/** Auch nach dem COMMIT einer Transaktion: Ein Zwischenspeicher, der dazwischen las, hielte den alten Wert. */
+export function meldeGlobaleAenderung(): void {
   for (const fn of _beiGlobalerAenderung) fn();
 }
 

@@ -1,6 +1,10 @@
 import path from 'path';
 import type { Response } from 'express';
 
+/** Für hochgeladene Dateien: Was nur in den ersten Bytes geprüft ist, läuft so
+ * nie als Dokument mit Skripten unter der Herkunft der App, auch inline nicht. */
+export const FREMDE_DATEI_CSP = "sandbox; default-src 'none'";
+
 // Ein Fehler beim Ausliefern bekommt seine eigene Antwort statt pauschal 404.
 
 type DateiFehler = Error & { status?: number; statusCode?: number; code?: string };

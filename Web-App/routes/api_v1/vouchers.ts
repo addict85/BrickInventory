@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
 import { FORMULAR_GRENZEN } from '../../src/http/dateiEmpfang';
+import { FREMDE_DATEI_CSP } from '../../src/http/dateiAusliefern';
 import { ohneFehlendeDatei } from '../../src/infra/fehler';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { fehlerText, antwortSprache, dateiFehler, type FehlerCode, alsDoppelt } from '../../src/infra/fehlerTexte';
@@ -318,6 +319,7 @@ router.get('/vouchers/:id/pdf', requireToken, async (req: Anfrage<'GET /api/v1/v
     `${alsDownload ? 'attachment' : 'inline'}; filename="gutschein-${zeile.id}.pdf"`);
   // Ein Gutschein gehört in keinen geteilten Zwischenspeicher.
   res.setHeader('Cache-Control', 'private, no-store');
+  res.setHeader('Content-Security-Policy', FREMDE_DATEI_CSP);
   res.end(pdf);
 });
 

@@ -11,6 +11,7 @@ import * as repo from './repository/passkeys';
 import { basisUrl } from '../infra/basisUrl';
 import { androidHerkuenfte } from './androidApp';
 import { fehlertext } from '../infra/fehler';
+import { fachfehler } from '../infra/fehlerTexte';
 
 function abgewiesen(e: unknown): null {
   console.warn('[passkey] Antwort abgewiesen:', fehlertext(e));
@@ -43,8 +44,13 @@ export function vertrauenspartei(): { rpID: string; origin: string; rpName: stri
 
 const hash = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
 
-function merkeChallenge(challenge: string, zweck: PasskeyZweck, uid: number | null): Promise<void> {
-  return repo.speichereChallenge(hash(challenge), zweck, uid, new Date(Date.now() + CHALLENGE_MS));
+/** Die Anmeldeoptionen sind öffentlich; die Drossel je Adresse hält viele Adressen
+ * nicht auf. Darüber 503 statt einer Tabelle, die ohne Grenze wächst. */
+export const OFFENE_CHALLENGES_HOECHSTENS = 5000;
+
+async function merkeChallenge(challenge: string, zweck: PasskeyZweck, uid: number | null): Promise<void> {
+  if (!await repo.speichereChallenge(hash(challenge), zweck, uid, new Date(Date.now() + CHALLENGE_MS), OFFENE_CHALLENGES_HOECHSTENS))
+    fachfehler('nicht_verfuegbar', 'server_ausgelastet');
 }
 
 /** Genau einmal: Eine wiederholte Antwort findet ihre Zeile nicht mehr. */
