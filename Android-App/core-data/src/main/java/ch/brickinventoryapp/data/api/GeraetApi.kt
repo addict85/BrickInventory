@@ -1,7 +1,9 @@
 package ch.brickinventoryapp.data.api
 
+import ch.brickinventoryapp.model.data.model.GeraeteKettenAnfrage
 import ch.brickinventoryapp.model.data.model.GeraeteSchluesselAnfrage
 import ch.brickinventoryapp.model.data.model.GeraeteSchluesselAntwort
+import ch.brickinventoryapp.model.data.model.SchluesselNonce
 import ch.brickinventoryapp.model.data.model.SchrittChallenge
 import ch.brickinventoryapp.model.data.model.SchrittChallengeAnfrage
 import ch.brickinventoryapp.model.data.model.SchrittFreigabe
@@ -15,6 +17,12 @@ internal interface GeraetApi {
 
     @POST("api/v1/geraet/schluessel")
     suspend fun hinterlegeSchluessel(@Body anfrage: GeraeteSchluesselAnfrage): Response<GeraeteSchluesselAntwort>
+
+    @POST("api/v1/geraet/schluessel")
+    suspend fun hinterlegeKette(@Body anfrage: GeraeteKettenAnfrage): Response<GeraeteSchluesselAntwort>
+
+    @POST("api/v1/geraet/schluessel/nonce")
+    suspend fun schluesselNonce(): Response<SchluesselNonce>
 
     @POST("api/v1/geraet/schritt/challenge")
     suspend fun schrittChallenge(@Body anfrage: SchrittChallengeAnfrage): Response<SchrittChallenge>

@@ -5,11 +5,19 @@ import kotlinx.serialization.Serializable
 
 /**
  * Der Schrittschutz, am Server gebunden (routes/api_v1/geraet.ts): Die App
- * hinterlegt nach der Anmeldung den öffentlichen Teil ihres Keystore-Schlüssels;
- * vor einem heiklen Schritt signiert sie eine Challenge des Servers.
+ * hinterlegt nach der Anmeldung die Attestierungskette ihres Keystore-Schlüssels
+ * (den blossen Schlüssel nur bei einem Server ohne Attestation); vor einem heiklen
+ * Schritt signiert sie eine Challenge des Servers.
  */
 @Serializable
 data class GeraeteSchluesselAnfrage(val oeffentlich: String)
+
+/** Die Zertifikate des Keystore-Schlüssels als Base64-DER, Blatt zuerst. */
+@Serializable
+data class GeraeteKettenAnfrage(val kette: List<String>)
+
+@Serializable
+data class SchluesselNonce(val success: Boolean, val nonce: String)
 
 @Serializable
 data class GeraeteSchluesselAntwort(val success: Boolean)

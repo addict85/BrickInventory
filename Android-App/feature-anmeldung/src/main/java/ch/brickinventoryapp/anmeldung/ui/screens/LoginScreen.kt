@@ -26,6 +26,7 @@ import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.zustand.ui.AnmeldeFormular
+import ch.brickinventoryapp.zustand.ui.QrKonto
 import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ui.components.ausserhalbDerSystemleisten
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -178,6 +179,29 @@ fun LoginScreen(
         }
     }
 }
+}
+
+/**
+ * Welches Konto auf welchem Server der Code anmeldet, bevor die App den Zugang
+ * übernimmt: Ein untergeschobener Code meldete sonst still ins Konto eines anderen
+ * an, und alles Erfasste landete dort. Wegtippen heisst Nein.
+ */
+@Composable
+internal fun QrKontoFrage(konto: QrKonto, onQrKonto: (uebernehmen: Boolean) -> Unit) {
+    AlertDialog(
+        onDismissRequest = { onQrKonto(false) },
+        title = { Text(stringResource(R.string.login_qr_konto_titel)) },
+        text = {
+            Ueberdeckungsschutz()
+            Text(stringResource(R.string.login_qr_konto_text, konto.benutzer, konto.server))
+        },
+        confirmButton = {
+            TextButton(onClick = { onQrKonto(true) }) { Text(stringResource(R.string.login_qr_konto_ja)) }
+        },
+        dismissButton = {
+            TextButton(onClick = { onQrKonto(false) }) { Text(stringResource(R.string.common_cancel)) }
+        },
+    )
 }
 
 /** Ab dieser Breite im Querformat stehen Marke und Formular nebeneinander (wie SetupScreen). */

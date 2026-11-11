@@ -14,6 +14,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import ch.brickinventoryapp.anmeldung.ui.screens.LoginScreen
+import ch.brickinventoryapp.anmeldung.ui.screens.QrKontoFrage
 import ch.brickinventoryapp.anmeldung.ui.screens.ServerStartAnzeige
 import ch.brickinventoryapp.anmeldung.ui.screens.SetupScreen
 import ch.brickinventoryapp.anmeldung.ui.viewmodel.AnmeldungViewModel
@@ -118,6 +119,7 @@ private fun NavGraphBuilder.anmeldeZiel(navController: NavHostController) {
                 }
             }
         )
+        anmeldeZustand.qrKonto?.let { QrKontoFrage(it, anmeldungVm::qrKontoEntscheiden) }
         // Ausserhalb des if/else: Meldet sich jemand an, waehrend der Server
         // noch startet — moeglich, weil der Wechsel jederzeit kommen kann —,
         // soll der Sprung in die Galerie trotzdem passieren.

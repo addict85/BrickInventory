@@ -21,6 +21,9 @@ interface KontoApi {
     @POST("api/v1/auth/qr-login/abholen")
     suspend fun qrAbholen(@Body request: QrAbholRequest): Response<QrAbholung>
 
+    @POST("api/v1/auth/qr-login/verwerfen")
+    suspend fun qrVerwerfen(@Body request: QrVerwerfen): Response<GenericResponse>
+
     @POST("api/v1/auth/login")
     suspend fun loginMitPasskey(@Body request: PasskeyLoginRequest): Response<LoginResponse>
 

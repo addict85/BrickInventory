@@ -234,18 +234,26 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req:
 });
 
 // Die App fragt alle paar Sekunden, bis die Web-Sitzung bestätigt oder ablehnt.
+// Mit `vorschau` steht danach nur das Konto in der Antwort; den Token holt das Ja der App.
 router.post('/qr-login/abholen', ipThrottle('qr-abholen', 600, 60 * 60 * 1000), async (req: OffeneAnfrage<'POST /api/v1/auth/qr-login/abholen'>, res: Antwort<'POST /api/v1/auth/qr-login/abholen'>) => {
   if (!req.eingabe.abholung) return sendeFehler(req, res, 400, 'token_ungueltig');
-  const a = await QR.holeQrTokenAb(req.eingabe.abholung, req.ip, darfAnmelden);
+  const a = await QR.holeQrTokenAb(req.eingabe.abholung, req.ip, darfAnmelden, req.eingabe.vorschau === true);
   if (a.stand === 'wartet') return res.json({ success: true, wartet: true });
   if (a.stand === 'abgelehnt') return sendeFehler(req, res, 403, 'qr_abgelehnt');
-  if (a.stand !== 'fertig') return sendeFehler(req, res, 401, 'token_ungueltig');
+  if (a.stand === 'ungueltig') return sendeFehler(req, res, 401, 'token_ungueltig');
   const user = await K.kontoKurz(a.uid);
   if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
+  if (a.stand === 'bereit') return res.json({ success: true, wartet: false, vorschau: true, username: user.username });
   meldeAnmeldung({ ip: req.ip, konto: user.id, zugang: 'qr' });
   // Keine Sitzung: Sie trüge die vollen Rechte des Kontos an Scope `app` vorbei.
   res.json({ success: true, wartet: false, token: a.token, username: user.username, isAdmin: false, userId: user.id,
-    user: { id: user.id, username: user.username }, token_info: await tokenAngaben(a.token) });
+    user: { id: user.id, username: user.username }, token_info: await tokenAngaben(a.token),
+    ...(a.schluesselNonce ? { schluessel_nonce: a.schluesselNonce } : {}) });
+});
+
+router.post('/qr-login/verwerfen', ipThrottle('qr-abholen', 600, 60 * 60 * 1000), async (req: OffeneAnfrage<'POST /api/v1/auth/qr-login/verwerfen'>, res: Antwort<'POST /api/v1/auth/qr-login/verwerfen'>) => {
+  if (!await QR.verwirfAbholung(req.eingabe.abholung)) return sendeFehler(req, res, 401, 'token_ungueltig');
+  res.json({ success: true });
 });
 
 router.get('/qr-kopplung/:id', requireLogin, async (req: OffeneAnfrage<'GET /api/v1/auth/qr-kopplung/:id'>, res: Antwort<'GET /api/v1/auth/qr-kopplung/:id'>) => {

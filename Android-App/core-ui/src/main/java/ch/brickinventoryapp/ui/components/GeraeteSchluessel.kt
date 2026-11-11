@@ -21,7 +21,7 @@ internal object AppSperreSchluessel : KeystoreSchluessel("app_sperre")
  * Gerätesperre signiert (Dauer 0). Ein neu eingerichteter Fingerabdruck macht ihn
  * ungültig; dann entsteht ein neuer — das Einrichten verlangte schon die Gerätesperre.
  */
-internal open class KeystoreSchluessel(private val alias: String) : Entsperrschluessel {
+internal open class KeystoreSchluessel(private val alias: String) : Entsperrschluessel, AttestierbarerSchluessel {
     private fun speicher() = KeyStore.getInstance(KEYSTORE).apply { load(null) }
 
     /** Eine zum Signieren vorbereitete Signatur; signieren kann sie erst nach der Freigabe. */
@@ -41,12 +41,20 @@ internal open class KeystoreSchluessel(private val alias: String) : Entsperrschl
     override fun verwerfe() = speicher().deleteEntry(alias)
 
     /** X.509 für den Server. Über [signatur], damit ein ungültig gewordener Schlüssel vorher ersetzt ist. */
-    fun oeffentlichFuerServer(): ByteArray {
+    override fun oeffentlichFuerServer(): ByteArray {
         signatur()
         return oeffentlich().encoded
     }
 
-    private fun erzeuge(): PrivateKey {
+    /** Immer ein neuer Schlüssel: Die Challenge steht in seinem Zertifikat, der alte trägt eine verbrauchte. */
+    override fun erzeugeMitAttestation(challenge: ByteArray): List<ByteArray> {
+        val ks = speicher()
+        ks.deleteEntry(alias)
+        erzeuge(challenge)
+        return ks.getCertificateChain(alias)?.map { it.encoded }.orEmpty()
+    }
+
+    private fun erzeuge(challenge: ByteArray? = null): PrivateKey {
         val gen = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, KEYSTORE)
         gen.initialize(
             KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_SIGN)
@@ -54,6 +62,7 @@ internal open class KeystoreSchluessel(private val alias: String) : Entsperrschl
                 .setDigests(KeyProperties.DIGEST_SHA256)
                 .setUserAuthenticationRequired(true)
                 .setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG or KeyProperties.AUTH_DEVICE_CREDENTIAL)
+                .apply { if (challenge != null) setAttestationChallenge(challenge) }
                 .build()
         )
         return gen.generateKeyPair().private

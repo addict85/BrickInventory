@@ -40,6 +40,8 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
 umgebung({ APP_BASE_URL: 'http://lego.test:3000' });
+// Der Geräteschlüssel kommt mit einer Testkette (helpers/attestation.js).
+umgebung(require('./helpers/attestation').UMGEBUNG);
 
 const { buildAndRequire } = require('./helpers/sources');
 const { qrKoppeln } = require('./helpers/qr');

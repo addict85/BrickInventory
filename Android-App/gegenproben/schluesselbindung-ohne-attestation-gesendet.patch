@@ -1,0 +1,17 @@
+Gegenprobe: Ein Gerät ohne Attestation schickt sein selbstsigniertes Zertifikat doch an den Server
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.SchluesselbindungTest
+Rot: ein Geraet ohne Attestation bekommt eine Meldung und schickt nichts
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schluesselbindung.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schluesselbindung.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schluesselbindung.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schluesselbindung.kt
+@@ -44,7 +44,7 @@
+             ?: return Ausgang.Abgelehnt(null)
+         val kette = withContext(keystore) { runCatching { schluessel.erzeugeMitAttestation(challenge) }.getOrNull() }
+         // Ohne Attestation liefert der Keystore nur das selbstsignierte Zertifikat des Schlüssels.
+-        if (kette == null || kette.size < 2) return Ausgang.OhneAttestation
++        if (kette == null) return Ausgang.OhneAttestation
+         return when (val r = bindung.hinterlegeKette(kette)) {
+             Schrittantwort.Frei -> Ausgang.Gebunden
+             is Schrittantwort.Abgelehnt -> Ausgang.Abgelehnt(r.meldung)

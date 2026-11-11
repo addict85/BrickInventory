@@ -635,6 +635,9 @@
     <string name="err_generic">Der Server hat die Anfrage ohne Begründung abgelehnt</string>
     <string name="err_login_failed">Anmeldung fehlgeschlagen</string>
     <string name="login_qr_bestaetigen_hinweis">Gib diesen Code im Browser ein, in dem du den QR-Code erzeugt hast. Erst dann bekommt dieses Gerät Zugang.</string>
+    <string name="login_qr_konto_titel">Mit diesem Konto anmelden?</string>
+    <string name="login_qr_konto_text">Der Code meldet diese App als „%1$s“ bei %2$s an. Nur weiter, wenn das dein Konto und dein Server ist.</string>
+    <string name="login_qr_konto_ja">Anmelden</string>
     <string name="err_qr_login_failed">QR-Anmeldung fehlgeschlagen</string>
     <string name="err_network">Keine Verbindung zum Server</string>
     <string name="err_timeout">Der Server hat nicht rechtzeitig geantwortet</string>
@@ -893,6 +896,7 @@
     <string name="schritt_untertitel">Mit Fingerabdruck, Gesicht oder der Sperre des Geräts bestätigen</string>
     <string name="schritt_entsperren">Bestätigen</string>
     <string name="schritt_kein_schluessel">Die Gerätesperre lässt sich gerade nicht prüfen. Bitte später erneut versuchen.</string>
+    <string name="schritt_ohne_attestation">Dieses Gerät kann nicht belegen, dass sein Schlüssel in der Sicherheitshardware liegt. Heikle Schritte (Gutschein-PIN, Verwaltung) gehen darum nur in der Web-App.</string>
     <string name="schritt_server_fehler">Der Server hat die Bestätigung nicht angenommen. Bitte erneut versuchen.</string>
     <string name="app_sperre_titel">App sperren</string>
     <string name="app_sperre_hint">Nach so vielen Minuten im Hintergrund fragt die App nach Fingerabdruck oder Gerätesperre. Gilt für dieses Gerät.</string>

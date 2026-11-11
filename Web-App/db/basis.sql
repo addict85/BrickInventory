@@ -360,11 +360,21 @@ CREATE TABLE public.figur_eigen (
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
+CREATE TABLE public.geraete_nonces (
+    nonce text NOT NULL,
+    user_id integer NOT NULL,
+    familie timestamp with time zone NOT NULL,
+    aus_qr boolean DEFAULT false NOT NULL,
+    angelegt_am timestamp with time zone DEFAULT now() NOT NULL,
+    ablauf timestamp with time zone NOT NULL
+);
+
 CREATE TABLE public.geraete_schluessel (
     user_id integer NOT NULL,
     familie timestamp with time zone NOT NULL,
     oeffentlich text NOT NULL,
-    angelegt_am timestamp with time zone DEFAULT now() NOT NULL
+    angelegt_am timestamp with time zone DEFAULT now() NOT NULL,
+    attestiert boolean DEFAULT false NOT NULL
 );
 
 CREATE TABLE public.global_settings (
@@ -1395,6 +1405,9 @@ ALTER TABLE ONLY public.import_stand
 ALTER TABLE ONLY public.figur_eigen
     ADD CONSTRAINT figur_eigen_pkey PRIMARY KEY (user_id, fig_number);
 
+ALTER TABLE ONLY public.geraete_nonces
+    ADD CONSTRAINT geraete_nonces_pkey PRIMARY KEY (nonce);
+
 ALTER TABLE ONLY public.geraete_schluessel
     ADD CONSTRAINT geraete_schluessel_pkey PRIMARY KEY (user_id, familie);
 
@@ -1646,6 +1659,8 @@ CREATE INDEX idx_auftraege_user ON public.auftraege USING btree (user_id) WHERE 
 CREATE INDEX idx_bl_zuordnung_bl ON public.bl_zuordnung USING btree (art, bl_id);
 
 CREATE INDEX idx_bl_zuordnung_eigen_bl ON public.bl_zuordnung_eigen USING btree (user_id, art, bl_id);
+
+CREATE INDEX idx_geraete_nonces_familie ON public.geraete_nonces USING btree (user_id, familie);
 
 CREATE INDEX idx_household_former_sub ON public.household_former_links USING btree (sub_user_id);
 
@@ -1921,6 +1936,9 @@ ALTER TABLE ONLY public.import_stand
 ALTER TABLE ONLY public.figur_eigen
     ADD CONSTRAINT figur_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
+ALTER TABLE ONLY public.geraete_nonces
+    ADD CONSTRAINT geraete_nonces_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
 ALTER TABLE ONLY public.geraete_schluessel
     ADD CONSTRAINT geraete_schluessel_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
@@ -2185,3 +2203,4 @@ INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('010
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0103-geraeteschluessel.sql', '2026-11-10 21:08:00.100641+00', '4d668974604c17590caccd387089dc86568253dcd848e8ca4c04baa507d1ff85');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0104-idempotenz-wirkung.sql', '2026-11-10 21:08:00.10884+00', '7bf61c6543da0b866aa956897a46f67bf72f2f3973cc2c3b266cd4a4e3530bc2');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0105-set-stamm-aus-rb-sets.sql', '2026-11-10 21:08:00.110321+00', '3f0bf2b06c2210990c379d46a33282283915ecc99d225db9a5654ef0eb366569');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0106-geraeteschluessel-attestation.sql', '2026-11-11 09:11:57.380702+00', 'd4ff7b3e5346bc2c663c87dd76b8ecab03d798a1f75c21a81e35118ee957508b');
