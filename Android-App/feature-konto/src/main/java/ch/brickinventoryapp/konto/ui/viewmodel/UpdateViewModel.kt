@@ -65,6 +65,13 @@ class UpdateViewModel @Inject constructor(
                 .filter { abgemeldet -> abgemeldet }
                 .collect { _state.value = UpdateUiState(startpruefung = updateStand.startpruefungAn()) }
         }
+        // Mit jeder Anmeldung still nach einer neuen Fassung sehen (wenn der Schalter an ist):
+        // kein Ladebalken, keine Meldung ohne Netz. Hier, weil die Frage der ganzen App gilt.
+        viewModelScope.launch {
+            anmeldestand.authTokenState.map { !it.isNullOrBlank() }.distinctUntilChanged()
+                .filter { angemeldet -> angemeldet }
+                .collect { pruefeBeimStart() }
+        }
         // Die Installer-Sitzung antwortet an einen Empfänger, nicht hierher (util/AppUpdate.kt).
         viewModelScope.launch {
             Installationsmeldung.fehler.filter { it != null }.collect { grund ->

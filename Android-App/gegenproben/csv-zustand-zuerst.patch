@@ -3,15 +3,15 @@ Modul: app
 Test: ch.brickinventoryapp.app.csv.CsvImportViewModelTest
 Rot: ein laufender Import startet den Dienst einmal
 
-diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt
---- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt
-+++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt
-@@ -74,7 +74,7 @@ class CsvImportViewModel @Inject constructor(
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt
+@@ -52,7 +52,7 @@
  
-     private suspend fun handleCsvStatus(s: CsvImportStandAnsicht) {
+     private suspend fun verarbeite(s: CsvImportStandAnsicht) {
          // Vor dem Überschreiben entscheiden — danach wäre „vorher“ schon der neue Zustand.
--        val folge = csvFolge(warVorherAktiv = _csvImportState.value.running, status = s.status)
+-        val folge = csvFolge(warVorherAktiv = _zustand.value.running, status = s.status)
 +        val folge = csvFolge(warVorherAktiv = importLaeuft(s.status), status = s.status)
          if (folge == CsvFolge.DIENST_STARTEN) dienst.start()
-         _csvImportState.value = CsvImportUiState(
+         _zustand.value = CsvImportUiState(
              running = importLaeuft(s.status),

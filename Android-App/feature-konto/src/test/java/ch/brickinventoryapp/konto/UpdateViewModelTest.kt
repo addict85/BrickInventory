@@ -61,6 +61,8 @@ import ch.brickinventoryapp.testing.NummernTexte
  *   update-start-ohne-schalter   pruefeBeimStart() fragt den Schalter nicht →
  *                                rot „ausgeschaltet fragt der Start nicht bei GitHub“
  *   update-abmelden-behaelt      kein Zurücksetzen beim Abmelden → rot „beim Abmelden verfaellt …“
+ *   update-ohne-anmeldefolge     die Prüfung beim Anmelden aus dem init gestrichen →
+ *                                rot „die Anmeldung prueft still“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class UpdateViewModelTest {
@@ -264,6 +266,27 @@ class UpdateViewModelTest {
         token.value = ""
         advanceUntilIdle()
         assertEquals("beim Abmelden verfaellt der Zustand", UpdateUiState(), zustand())
+    }
+
+    @Test
+    fun `die Anmeldung prueft still, ohne Anmeldung fragt niemand`() = runTest(takt) {
+        val anmeldung = MutableStateFlow<String?>(null)
+        val eigenes = UpdateViewModel(UpdateLader(client, AppFassung("2.10", 10), takt), NummernTexte,
+            object : Anmeldestand { override val authTokenState = anmeldung }, ablage, geraet, takt)
+        try {
+            advanceUntilIdle()
+            angefragt.clear()
+            advanceUntilIdle()
+            assertEquals("Abgemeldet fragt niemand bei GitHub", emptyList<String>(), angefragt)
+            anmeldung.value = "token"
+            advanceUntilIdle()
+            assertEquals(listOf(UPDATE_VERSION_URL), angefragt)
+            assertEquals("Die Prüfung beim Start ist still", 20, eigenes.updateState.value.neuereFassung?.versionCode)
+            assertNull(eigenes.updateState.value.fehler)
+            assertFalse("kein Ladebalken", eigenes.updateState.value.laedtPruefung)
+        } finally {
+            eigenes.viewModelScope.cancel()
+        }
     }
 
     @Test

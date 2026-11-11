@@ -2,11 +2,9 @@ package ch.brickinventoryapp.app.csv
 
 import ch.brickinventoryapp.model.fach.Laufstatus
 /**
- * Was folgt aus einer CSV-Statusmeldung? Getrennt von `handleCsvStatus()`
- * (AppViewModel), weil die Entscheidung weder `Context` noch `viewModelScope`
- * braucht — nur die Ausführung. So lässt sie sich ausführen statt nur im Quelltext
- * lesen. `handleCsvStatus()` bleibt die Stelle, die handelt; hier steht, was zu
- * tun ist.
+ * Was folgt aus einer CSV-Statusmeldung? Getrennt von CsvImportKoordinator, der
+ * handelt: Die Entscheidung braucht weder Dienst noch Zeit und lässt sich so als
+ * Tabelle prüfen (CsvStatusReloadTest).
  */
 internal enum class CsvFolge {
     /** Ein Import hat gerade begonnen — der Vordergrunddienst muss anlaufen. */

@@ -3,14 +3,14 @@ Modul: app
 Test: ch.brickinventoryapp.app.csv.CsvImportViewModelTest
 Rot: ein laufender Import startet den Dienst einmal
 
-diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt
---- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt
-+++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt
-@@ -100,7 +100,6 @@
-         if (csvFinishing) return
-         csvFinishing = true
-         try {
--            abgleich.bestand()
-             delay(BALKEN_STEHT_MS)
-             _csvImportState.value = CsvImportUiState()
-             dienst.stop()
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt
+@@ -65,7 +65,6 @@
+         )
+         when (folge) {
+             CsvFolge.NACHLADEN -> {
+-                abgleich.bestand()
+                 raeumeAb()
+             }
+             CsvFolge.FEHLER_AUFRAEUMEN -> raeumeAb()

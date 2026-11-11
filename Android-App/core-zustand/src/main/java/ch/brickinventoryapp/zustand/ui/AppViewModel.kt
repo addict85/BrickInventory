@@ -62,6 +62,18 @@ class AppViewModel @Inject constructor(
 
     fun loadSettings() = sitzungsDienst.ladeEinstellungen()
 
+    /**
+     * Zurück im Vordergrund: Ein in der Webapp geänderter Standard-Zustand greift so
+     * auch in einer laufenden Sitzung, und Filterlisten, deren einziger Abruf beim
+     * Start scheiterte, kommen nach. Abgemeldet fragt niemand.
+     */
+    fun imVordergrund() {
+        if (!state.value.isLoggedIn) return
+        loadSettings()
+        loadHouseholdMembers()
+        loadLagerorte()
+    }
+
     // ── Meldung angetippt ────────────────────────────────────────────────────
 
     /** Der Intent kommt am Rand der App an, und dieser Rand ist die Activity. */

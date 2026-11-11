@@ -35,9 +35,6 @@ import ch.brickinventoryapp.verwaltung.ui.screens.*
 import coil3.ImageLoader
 import ch.brickinventoryapp.ressourcen.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.app.nav.AktivitaetsZustand
 import ch.brickinventoryapp.netz.util.NetworkPolicy
@@ -68,7 +65,6 @@ fun BrickInventoryRoute(
     // Hintergrund ist — kein unnötiges Recomposition-/State-Processing mehr.
     val state by vm.state.collectAsStateWithLifecycle()
     val selbstUpdate = aktivitaet.update
-    val csvImport = aktivitaet.csvImport
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
     // Rollzustände oberhalb des NavHost (siehe Rollzustaende). Der Katalog merkt sich
@@ -94,36 +90,9 @@ fun BrickInventoryRoute(
         }
     }
 
-    // CSV-Import-Überwachung per persistenter SSE-Verbindung.
-    // Wird einmal beim Login gestartet; der ViewModel-Scope hält sie am Leben
-    // und reconnectet automatisch. repeatOnLifecycle ist nicht mehr nötig, weil
-    // die Verbindung im Hintergrund weiterläuft (kein Polling, minimaler Overhead).
-    LaunchedEffect(state.isLoggedIn) {
-        if (state.isLoggedIn) {
-            csvImport.startCsvImportWatcher()
-            // Beim Start still nach einem Update sehen (wenn der Schalter an ist): kein
-            // Ladebalken, keine Meldung ohne Netz. Hier, weil die Frage der ganzen App gilt.
-            selbstUpdate.pruefeBeimStart()
-        }
-    }
-
-    // Beim Zurückkehren in den Vordergrund die Einstellungen neu laden — so
-    // greift ein in der Webapp geänderter Standard-Zustand auch in einer
-    // bereits laufenden App-Sitzung (loadSettings() lief sonst nur bei Login).
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner, state.isLoggedIn) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME && state.isLoggedIn) {
-                vm.loadSettings()
-                // Die Filterlisten mit: Scheiterte ihr einziger Abruf beim Start,
-                // fehlten Konto- und Lagerortfilter sonst bis zum Neustart.
-                vm.loadHouseholdMembers()
-                vm.loadLagerorte()
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
+    // CSV-Strom, Update-Prüfung und das Nachladen im Vordergrund stossen ViewModels und
+    // Activity an (CsvImportViewModel, UpdateViewModel, MainActivity.onResume), nicht
+    // die Komposition.
 
     val startDest = startRoute(startZiel(state.serverUrl, state.isLoggedIn, NetworkPolicy.entwicklung))
     val wurzel: Any = if (startDest == SammlungZiel.Gallery) SammlungZiel.Gallery else AnmeldeZiel.Bereich

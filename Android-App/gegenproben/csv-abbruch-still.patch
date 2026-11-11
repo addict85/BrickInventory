@@ -6,10 +6,10 @@ Rot: der Abbruch meldet Erfolg und Fehler
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt
-@@ -67,7 +67,7 @@ class CsvImportViewModel @Inject constructor(
+@@ -40,7 +40,7 @@
          viewModelScope.launch {
              when (val r = csvImport.abbrechen()) {
-                 is Ergebnis.Success -> meldungen.zeige(texte.text(R.string.csv_cancel_requested))
+                 is Ergebnis.Success -> meldungen.zeige(Meldung.Ressource(R.string.csv_cancel_requested))
 -                is Ergebnis.Error -> meldungen.zeige(texte.meldungFuerSnackbar(r))
 +                is Ergebnis.Error -> Unit
              }
