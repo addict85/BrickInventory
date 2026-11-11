@@ -44,7 +44,7 @@ Absicht, solange es nur von unten gebraucht wird:
   Budget und Schranken je Konto, Sitzungskeks, Proxy-Vertrauen. Express
   importieren nur Dateien daraus; welche, hält der Test in
   `test/schichten.test.js` fest. Dienste kennen Express nicht, mit einer
-  Ausnahme: `anfrageKonto` trägt die laufende Anfrage über
+  Ausnahme: `kontoKontext` trägt die laufende Anfrage über
   `AsyncLocalStorage` zu Zählern, die keinen Request sehen.
 
 - SQL steht nur in `src/<bereich>/repository*` und `db/`, auch als Klausel

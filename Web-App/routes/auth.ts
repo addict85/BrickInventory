@@ -1,7 +1,6 @@
 /** Anmeldung, Token, Profil, QR und Passkeys; setzt die Teilrouter aus
  * routes/auth/ zusammen. Alles hängt unter /api/v1/auth. */
 import { sitzungsKeksName, sitzungsKeksOptionen } from '../src/http/sitzungsKeks';
-const router  = vertragsRouter();
 import * as K from '../src/konto/konten';
 import * as A from '../src/konto/anmeldungAblauf';
 import { kontoEntfernen } from '../src/konto/kontoEntfernen';
@@ -18,12 +17,14 @@ import { requireApiAdmin } from './api_v1/middleware';
 import { fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
 import * as zf from '../src/konto/zweiterFaktor';
 import * as P from '../src/konto/passkeys';
-import benutzerRouter = require('./auth/benutzer');
-import zweiterFaktorRouter = require('./auth/zweiterFaktor');
-import registrierungRouter = require('./auth/registrierung');
+import benutzerRouter from './auth/benutzer';
+import zweiterFaktorRouter from './auth/zweiterFaktor';
+import registrierungRouter from './auth/registrierung';
 import { STATUS_DER_ART } from '../src/http/fehlerArt';
 import { vertragsRouter } from '../src/http/vertragsRouter';
 import type { Antwort, OffeneAnfrage } from '../src/http/vertragsRouter';
+
+const router = vertragsRouter();
 
 // Ein Wächter für Sitzung UND Token: Die App hat keine Sitzung und war mit
 // einem reinen Sitzungswächter von Routen ausgesperrt.

@@ -1009,15 +1009,15 @@ CREATE TABLE vouchers (
 CREATE TRIGGER vouchers_waehrung BEFORE INSERT OR UPDATE ON vouchers FOR EACH ROW EXECUTE FUNCTION erfassung_waehrung();
 
 CREATE TABLE wanted (
-  id integer NOT NULL DEFAULT nextval('wishlist_id_seq'::regclass),
+  id integer NOT NULL DEFAULT nextval('wanted_id_seq'::regclass),
   user_id integer NOT NULL,
   set_number text NOT NULL,
   condition text NOT NULL DEFAULT 'N'::text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT wanted_pkey PRIMARY KEY (id),
   CONSTRAINT wanted_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text)),
-  CONSTRAINT wishlist_pkey PRIMARY KEY (id),
-  CONSTRAINT wishlist_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  CONSTRAINT wishlist_user_id_set_number_condition_key UNIQUE (user_id, set_number, condition)
+  CONSTRAINT wanted_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT wanted_user_id_set_number_condition_key UNIQUE (user_id, set_number, condition)
 );
 CREATE INDEX idx_wanted_user ON wanted USING btree (user_id, created_at DESC);
 CREATE TRIGGER wanted_setnummer BEFORE INSERT OR UPDATE OF set_number ON wanted FOR EACH ROW EXECUTE FUNCTION setnummer_normalisieren();

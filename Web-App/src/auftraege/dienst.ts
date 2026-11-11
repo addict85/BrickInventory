@@ -2,7 +2,7 @@
  * den Job-Prozess, Statuswechsel den Statusstrom. Geht ein NOTIFY verloren,
  * findet der Worker den Auftrag in seinem Takt. */
 import { notify, listen, unlisten } from '../../db/pgNotify';
-import { imNamenVon } from '../infra/anfrageKonto';
+import { imNamenVon } from '../infra/kontoKontext';
 import * as repo from './repository/auftraege';
 import type { AuftragsArt, AuftragsStatus, AuftragsZeile, Belegung, Einstellen, Fortschritt } from './auftraege';
 import { pruefeNutzlast, type NutzlastEingabe } from './nutzlasten';
