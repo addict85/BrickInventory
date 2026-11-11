@@ -50,14 +50,14 @@ object Quellen {
     }
 
     /**
-     * Der Android-Workflow, ohne Kommentarzeilen: Ein Kommentar, der eine alte Schreibweise
-     * erklärt, nennt sie und wäre sonst selbst ein Fund. Der Pfad gilt, weil Gradle die
-     * Tests aus dem Modulordner startet.
+     * Ein Workflow (Vorgabe: der Android-Baulauf), ohne Kommentarzeilen: Ein Kommentar, der
+     * eine alte Schreibweise erklärt, nennt sie und wäre sonst selbst ein Fund. Der Pfad gilt,
+     * weil Gradle die Tests aus dem Modulordner startet.
      */
-    fun workflow(): String {
-        val f = File("../../.github/workflows/android.yml")
+    fun workflow(datei: String = "android.yml"): String {
+        val f = File("../../.github/workflows/$datei")
         check(f.isFile) {
-            "android.yml nicht gefunden unter ${f.absolutePath}. Ohne die Datei " +
+            "$datei nicht gefunden unter ${f.absolutePath}. Ohne die Datei " +
                 "pruefen die Tests darauf nichts und waeren trotzdem gruen."
         }
         return f.readLines().filterNot { it.trimStart().startsWith("#") }.joinToString("\n")

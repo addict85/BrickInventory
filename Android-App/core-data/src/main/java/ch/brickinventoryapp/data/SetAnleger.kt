@@ -1,8 +1,13 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.model.fach.Zustand
+import ch.brickinventoryapp.model.data.model.AddSetRequest
 import ch.brickinventoryapp.model.data.model.AddSetResponse
+import ch.brickinventoryapp.offline.Bearbeitung
+import ch.brickinventoryapp.offline.Offlineablage
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import javax.inject.Inject
 
 /**
  * Ein Set anlegen und dabei die Schritte des Servers mitbekommen. Im Gerät
@@ -26,4 +31,28 @@ sealed class SetAnlegenSchritt {
     data class Fehler(val meldung: String) : SetAnlegenSchritt()
     /** Keine Verbindung zustande gekommen — die Anfrage hat den Server nie erreicht. */
     object KeineVerbindung : SetAnlegenSchritt()
+}
+
+/**
+ * Das Anlegen über den Ereignisstrom zieht die Ablage nach wie jeder andere
+ * Schreibweg: Die Galerie zeigt das Set, sobald der Server „fertig“ meldet.
+ */
+internal class AnlegenMitAblage @Inject constructor(
+    private val strom: SetAnlegenSseClient,
+    private val ablage: Offlineablage,
+) : SetAnleger {
+    override fun anlegen(
+        setNumber: String, quantity: Int, purchasePrice: Double?,
+        condition: Zustand?, ownerUserId: Int?, storage: String?,
+    ): Flow<SetAnlegenSchritt> = flow {
+        val vorher = ablage.bereich()
+        strom.anlegen(setNumber, quantity, purchasePrice, condition, ownerUserId, storage).collect { s ->
+            val e = (s as? SetAnlegenSchritt.Fertig)?.ergebnis
+            if (e != null && e.success && e.action != "exists" && vorher != null && ablage.bereich() == vorher) {
+                val nummer = e.setNumber ?: setNumber
+                ablage.wendeAn(Bearbeitung.SetErfassen(AddSetRequest(nummer, quantity, purchasePrice, condition, ownerUserId, storage)), vorher)
+            }
+            emit(s)
+        }
+    }
 }

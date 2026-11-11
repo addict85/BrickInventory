@@ -1,0 +1,17 @@
+Gegenprobe: Die Kontosicht fragt den Server ohne Suchtext
+Modul: core-data
+Test: ch.brickinventoryapp.data.KontosichtTest
+Rot: jeder Filter der Kontosicht steht in der Anfrage
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt
+@@ -93,7 +93,7 @@
+ 
+     val galerie = Serversicht<SetsAbfrage, SetItem>(ablage, arrayOf(Faecher.SETS)) { a ->
+         alleSeiten({ it.sets }, { it.setNumber }, { it.total }, wiederholung) { seite ->
+-            sicherAufrufen { sets.getSets(a.konten, a.suche, a.thema, a.sort?.kennung, seite, GALLERY_PAGE_SIZE, a.lagerort) }
++            sicherAufrufen { sets.getSets(a.konten, null, a.thema, a.sort?.kennung, seite, GALLERY_PAGE_SIZE, a.lagerort) }
+         }
+     }
+ 

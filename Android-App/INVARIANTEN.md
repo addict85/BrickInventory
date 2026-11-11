@@ -101,8 +101,8 @@ Code. Der live genutzte Pfad ist: Scanner-Screen → `vm.resolveBarcode()` →
 
 ## Services sind lokalisiert — über den richtigen Context
 
-**Dateien:** `dienste/service/CsvImportService.kt`, `data/service/PdfExportService.kt`,
-`data/service/PdfExportManager.kt`, `data/util/LanguageManager.kt`
+**Dateien:** `dienste/service/CsvImportService.kt`, `dienste/service/PdfExportService.kt`,
+`dienste/service/PdfExportManager.kt`, `data/util/LanguageManager.kt`
 **Test:** `ServicePolishTest`
 
 `setApplicationLocales()` lokalisiert nur Activities. Ein Service, der
@@ -118,7 +118,7 @@ das adaptive Launcher-Icon erscheint als graues Quadrat.
 
 ## FileProvider: nur pdf/
 
-**Dateien:** `res/xml/file_paths.xml`, `data/service/PdfExportManager.kt`
+**Dateien:** `res/xml/file_paths.xml`, `dienste/service/PdfExportManager.kt`
 **Test:** `ServicePolishTest`
 
 Über die Provider-Authority wird ausschliesslich das exportierte
@@ -513,7 +513,7 @@ Teilen und Minifiguren hatten längst welche (`key = "manual-header"`).
 
 ## Ein Abschluss ist ein ÜBERGANG, kein Zustand
 
-**Datei:** `zustand/ui/viewmodel/CsvImportViewModel.kt` · **Test:** `CsvStatusReloadTest`
+**Datei:** `app/csv/CsvImportViewModel.kt` · **Test:** `CsvStatusReloadTest`
 
 `handleCsvStatus()` lädt die Daten nur nach, wenn vorher tatsächlich ein Import
 LIEF. Der SSE-Strom meldet den Status fortlaufend, auch lange nach dem

@@ -35,3 +35,4 @@ export {
 export { jobUebersicht } from './jobUebersicht';
 export { NACHLAEUFE, nachlauf } from './startNachlaeufe';
 export type { Nachlauf } from './startNachlaeufe';
+export { einstellungenSpeichern, hatGlobaleWerte } from './einstellungenSpeichern';

@@ -185,11 +185,24 @@ CREATE TABLE figur_eigen (
   CONSTRAINT figur_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE geraete_nonces (
+  nonce text NOT NULL,
+  user_id integer NOT NULL,
+  familie timestamp with time zone NOT NULL,
+  aus_qr boolean NOT NULL DEFAULT false,
+  angelegt_am timestamp with time zone NOT NULL DEFAULT now(),
+  ablauf timestamp with time zone NOT NULL,
+  CONSTRAINT geraete_nonces_pkey PRIMARY KEY (nonce),
+  CONSTRAINT geraete_nonces_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_geraete_nonces_familie ON geraete_nonces USING btree (user_id, familie);
+
 CREATE TABLE geraete_schluessel (
   user_id integer NOT NULL,
   familie timestamp with time zone NOT NULL,
   oeffentlich text NOT NULL,
   angelegt_am timestamp with time zone NOT NULL DEFAULT now(),
+  attestiert boolean NOT NULL DEFAULT false,
   CONSTRAINT geraete_schluessel_pkey PRIMARY KEY (user_id, familie),
   CONSTRAINT geraete_schluessel_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

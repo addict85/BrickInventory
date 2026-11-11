@@ -29,6 +29,7 @@ import ch.brickinventoryapp.konto.ui.ZweiterFaktorUiState
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz
 import ch.brickinventoryapp.ui.components.Schrittschutz
 import ch.brickinventoryapp.konto.ui.screens.ZweiterFaktorPflichtMaske
+import ch.brickinventoryapp.konto.ui.screens.schluesselKopierbar
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -62,6 +63,8 @@ import org.robolectric.Shadows
  *   faktormaske-abmelden-nur-anfangs  Abmelden nur im ersten Schritt → rot „Abmelden bleibt …“
  *   faktormaske-riesentitel        Überschrift in schmaler Spalte → rot „bei 200 Prozent …“
  *   codes-teilen-ueber-ablage      „Teilen“ legt die Codes in die Zwischenablage → rot „die Notfallcodes lassen sich teilen …“
+ *   codes-wieder-kopierbar         ein Knopf kopiert die Codes in die Ablage → rot „kein Knopf der Codes …“
+ *   schluessel-kopieren-vor-33     Schlüssel kopierbar ab API 30 → rot „der Schluessel ist erst ab API 33 …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -178,6 +181,36 @@ class ZweiterFaktorMaskeTest {
         assertTrue("Teilen legt nichts in die Zwischenablage", !ablage.hasPrimaryClip())
     }
 
+    /** Jeder Knopf des Codeschritts getippt (ausser Abmelden): Die Ablage bleibt leer. */
+    @Test
+    fun `kein Knopf der Codes legt sie in die Zwischenablage`() {
+        zustand.value = codes
+        zeige()
+        val knoepfe = compose.onAllNodes(hasClickAction()).fetchSemanticsNodes()
+            .mapNotNull { it.config.getOrNull(SemanticsProperties.Text)?.joinToString() }
+            .filter { it != text(R.string.settings_logout) }
+        assertTrue("Der Codeschritt hat keine Knöpfe: $knoepfe", knoepfe.size >= 2)
+        for (k in knoepfe) {
+            compose.onNode(hasText(k) and hasClickAction()).performScrollTo().performClick()
+            compose.waitForIdle()
+        }
+        val ablage = compose.activity.getSystemService(ClipboardManager::class.java)
+        assertTrue("Ein Knopf legte die Codes in die Zwischenablage: $knoepfe", !ablage.hasPrimaryClip())
+    }
+
+    @Test
+    fun `der Schluessel ist erst ab API 33 kopierbar, und dann als vertraulich markiert`() {
+        assertTrue("Unter API 33 zeigt das System kopierte Geheimnisse an", !schluesselKopierbar(32))
+        assertTrue(schluesselKopierbar(33))
+        zustand.value = einrichtung
+        zeige()
+        knopf(R.string.zf_copy_key).performScrollTo().performClick()
+        compose.waitForIdle()
+        val clip = compose.activity.getSystemService(ClipboardManager::class.java).primaryClip
+        assertEquals(schluessel, clip?.getItemAt(0)?.text?.toString())
+        assertEquals(true, clip?.description?.extras?.getBoolean("android.content.extra.IS_SENSITIVE"))
+    }
+
     @Test
     fun `die Schrittanzeige nennt Schritt und Namen`() {
         val je = listOf(ZweiterFaktorUiState(aktiv = false) to (1 to R.string.zf_schritt_passwort),
@@ -222,7 +255,7 @@ class ZweiterFaktorMaskeTest {
                 R.string.common_learn_more, R.string.zf_pflicht_passwort, R.string.setup_continue, R.string.settings_logout),
             einrichtung to listOf(R.string.zf_pflicht_titel, R.string.zf_step_app, R.string.zf_open_app,
                 R.string.zf_copy_key, R.string.zf_confirm),
-            codes to listOf(R.string.zf_pflicht_codes_titel, R.string.zf_codes_hint, R.string.zf_copy,
+            codes to listOf(R.string.zf_pflicht_codes_titel, R.string.zf_codes_hint,
                 R.string.zf_share, R.string.zf_codes_gesichert, R.string.zf_pflicht_weiter),
         )
         zeige(schrift = 2f)

@@ -1,9 +1,9 @@
 /**
- * Betrieb laut `docker compose config` (Interpolation, Anker, Kurzschreibweisen
- * aufgelöst, nicht per Regex): Jeder Dienst hat begrenzte Protokolle, jedes
- * tmpfs ist ohne Ausführen und begrenzt, die Datenbank hängt nur in internen
- * Netzen und schreibt nur in Daten und Socket, pgweb gibt es nicht mehr, und
- * Caddy entsteht aus Dockerfile.caddy. Ohne Docker-CLI übersprungen, in CI nicht.
+ * Betrieb laut `docker compose config` (aufgelöst, nicht per Regex): Jeder
+ * Dienst hat begrenzte Protokolle, jedes tmpfs ist ohne Ausführen und begrenzt,
+ * die Datenbank hängt nur in internen Netzen und schreibt nur in Daten und
+ * Socket, pgweb gibt es nicht mehr, Caddy kommt signiert per Digest oder aus
+ * Dockerfile.caddy. Ohne Docker-CLI übersprungen, in CI nicht.
  *
  * Gegenproben (05.11.2026 gemessen, je einzeln):
  *   A  bei caddy `logging: *protokoll` gestrichen → rot: „jeder Dienst hat
@@ -13,8 +13,8 @@
  *      hängt nur in internen Netzen“
  *   D  bei db-net `internal: true` gestrichen → rot: dieselbe Prüfung
  *   E  postgres ohne `read_only: true` → rot: „… schreibt nur in Daten und Socket“
- *   F  caddy wieder `image: caddy:…@sha256:…` ohne build → rot: „Caddy wird
- *      hier gebaut …“
+ *   F  caddy wieder `image: caddy:…@sha256:…` ohne build → rot: „Caddy kommt
+ *      als signiertes Image …“ (damals: „Caddy wird hier gebaut …“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -35,6 +35,7 @@ function konfig() {
         HOME: process.env.HOME,
         BRICK_HOST: 'nas.example.lan',
         BRICK_IMAGE: `addict85/brickinventory@sha256:${'0'.repeat(64)}`,
+        CADDY_IMAGE: `addict85/brickinventory-caddy@sha256:${'0'.repeat(64)}`,
       },
     },
   );
@@ -117,12 +118,17 @@ test('pgweb gibt es nicht mehr, auch nicht im Profil tools', t => {
   assert.ok(!Object.keys(j.networks ?? {}).some(n => /pgweb/.test(n)), Object.keys(j.networks ?? {}).join(', '));
 });
 
-test('Caddy wird hier gebaut, aus Basis-Images per Digest', t => {
+// Gegenprobe (11.11.2026 gemessen): caddy-rechte wieder `brickinventory-caddy:2.11.8`
+// → rot „caddy-rechte nimmt dasselbe signierte Image“.
+test('Caddy kommt als signiertes Image per Digest, selbst gebaut aus Basis-Images per Digest', t => {
   const j = mitKonfig(t);
   if (!j) return;
   const c = j.services.caddy;
+  assert.equal(c.image, `addict85/brickinventory-caddy@sha256:${'0'.repeat(64)}`, 'caddy zieht nicht CADDY_IMAGE');
+  assert.equal(c.pull_policy, 'missing');
+  assert.equal(j.services['caddy-rechte'].image, c.image, 'caddy-rechte nimmt dasselbe signierte Image');
+  // `up -d --build` mit eigenem CADDY_IMAGE baut weiter aus Dockerfile.caddy.
   assert.equal(c.build?.dockerfile, 'Dockerfile.caddy', JSON.stringify(c.build ?? null));
-  assert.equal(c.pull_policy, 'build');
   const df = fs.readFileSync(path.join(ROOT, 'Dockerfile.caddy'), 'utf8');
   const basis = [...df.matchAll(/^FROM\s+(\S+)/gm)].map(m => m[1]);
   assert.equal(basis.length, 2);

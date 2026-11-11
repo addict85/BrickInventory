@@ -6,8 +6,8 @@ Rot: ein Bereich kennt die Retrofit-Schnittstellen nicht
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
 --- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
 +++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
-@@ -3,6 +3,7 @@
- import android.content.Context
+@@ -5,6 +5,7 @@
+ import android.provider.OpenableColumns
  import androidx.core.net.toUri
  import ch.brickinventoryapp.data.Anmeldestand
 +import ch.brickinventoryapp.data.api.ApiJson

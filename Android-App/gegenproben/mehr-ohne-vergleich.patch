@@ -6,12 +6,12 @@ Rot: Vergleich und Bauliste markieren Mehr
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
-@@ -392,7 +392,7 @@ private val SAMMLUNG: Set<KClass<out Screen>> = SAMMLUNGS_ZIELE.map { it::class
+@@ -398,7 +398,7 @@ private val SAMMLUNG: Set<KClass<out Screen>> = SAMMLUNGS_ZIELE.map { it::class
  
  /** Seiten mit unterer Leiste, die man über „Mehr“ erreicht — dort bleibt „Mehr“ gewählt. */
- private val MEHR: Set<KClass<out Screen>> = setOf(Screen.Mehr::class, Screen.PartsList::class,
--    Screen.Comparison::class, Screen.Settings::class, Screen.Monitoring::class)
-+    Screen.Settings::class, Screen.Monitoring::class)
+ private val MEHR: Set<KClass<out Any>> = setOf(AppZiel.Mehr::class, TeileZiel.PartsList::class,
+-    SammlungZiel.Comparison::class, KontoZiel.Settings::class, VerwaltungZiel.Monitoring::class)
++    KontoZiel.Settings::class, VerwaltungZiel.Monitoring::class)
  
  /** Die Ziele, bei denen ein Ziel der Leiste als gewählt gilt. */
- private fun zieleVon(screen: Screen): Set<KClass<out Screen>> = when (screen) {
+ private fun zieleVon(screen: Any): Set<KClass<out Any>> = when (screen) {

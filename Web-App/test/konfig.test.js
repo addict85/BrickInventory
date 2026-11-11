@@ -23,6 +23,8 @@
  *      src/konto/sitzungsFrist statt der Meldung)
  *   G  (30.10.) in ladeKonfig `veraltet` immer leer → rot: „ungültige Werte:
  *      alle auf einmal, mit Namen“ (WEB_WORKERS wurde nicht mehr genannt)
+ *   H  (11.11.2026) in attestationWurzeln() die Prüfung auf entwicklungsUmgebung
+ *      gestrichen → rot: „eigene Attestierungswurzeln nur in Entwicklung und Test“
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -107,6 +109,16 @@ test('ungültige Werte: alle auf einmal, mit Namen', () => {
   assert.equal(k.cookieSecure, false);
   assert.equal(k.appBaseUrl, 'https://lego.example.org');
   assert.equal(ladeKonfig({}).sitzungLeerlaufMin, 240, 'ohne Angabe die Vorgabe');
+});
+
+test('eigene Attestierungswurzeln nur in Entwicklung und Test; der Stichtag ist ein Datum', () => {
+  assert.throws(() => ladeKonfig({ ATTESTATION_WURZELN: 'PEM' }), /ATTESTATION_WURZELN gilt nur mit NODE_ENV/);
+  assert.throws(() => ladeKonfig({ NODE_ENV: 'production', ATTESTATION_WURZELN: 'PEM' }), KonfigFehler);
+  assert.equal(ladeKonfig({ NODE_ENV: 'test', ATTESTATION_WURZELN: 'PEM' }).attestationWurzeln, 'PEM');
+  assert.equal(ladeKonfig({}).attestationWurzeln, null);
+  assert.equal(ladeKonfig({}).geraeteschluesselAltBis.toISOString(), '2027-02-01T00:00:00.000Z');
+  assert.equal(ladeKonfig({ GERAETESCHLUESSEL_ALT_BIS: '2026-01-01' }).geraeteschluesselAltBis.getUTCFullYear(), 2026);
+  assert.throws(() => ladeKonfig({ GERAETESCHLUESSEL_ALT_BIS: 'bald' }), /GERAETESCHLUESSEL_ALT_BIS="bald"/);
 });
 
 test('der Server startet mit falschem Wert nicht', () => {

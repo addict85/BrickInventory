@@ -15,8 +15,7 @@ import { setUserSetting } from '../../src/konto/nutzerEinstellung';
 import { fehlerText, antwortSprache, alsDoppelt } from '../../src/infra/fehlerTexte';
 import { basisUrl, hinweisOhneBasisUrl, mailBasisUrl } from '../../src/infra/basisUrl';
 import * as P from '../../src/konto/passkeys';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Antwort, OffeneAnfrage } from '../../src/http/vertragsRouter';
+import { vertragsRouter, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
 
 const router = vertragsRouter();
 
@@ -162,8 +161,10 @@ router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000),
   // Den Namen kennt erst das Konto hinter dem Token; die Regel gilt wie auf allen anderen Wegen.
   const nameMangel = passwortMangel(password, user.username);
   if (nameMangel) return sendeFehler(req, res, 400, nameMangel);
-  await K.setzePasswortZurueck(user.id, password);
-  hinweisNebenher(user.id, 'passwort_zurueckgesetzt');
+  // Nur die Anfrage, die den Link verbraucht, setzt ihr Passwort.
+  const uid = await K.setzePasswortZurueck(hashToken(token), password);
+  if (!uid) return sendeFehler(req, res, 400, 'token_ungueltig');
+  hinweisNebenher(uid, 'passwort_zurueckgesetzt');
   res.json({ success: true, message: 'Passwort erfolgreich geändert.' });
 });
 

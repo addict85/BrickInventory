@@ -36,20 +36,21 @@ import ch.brickinventoryapp.ui.components.LocalOffenesDetail
 import ch.brickinventoryapp.ui.components.MitZiel
 import ch.brickinventoryapp.ui.listeUndDetail
 import ch.brickinventoryapp.zustand.ui.Bereichsumgebung
-import ch.brickinventoryapp.zustand.ui.Screen
-import ch.brickinventoryapp.zustand.ui.rollSchluessel
 import ch.brickinventoryapp.zustand.ui.viewmodel.KaeufeViewModel
 
 /** Was die Sammlung von der App braucht; die Erfassung hängt am Ziel, das scannt. */
-interface SammlungNavigation : Bereichsumgebung
+interface SammlungNavigation : Bereichsumgebung {
+    /** Den PDF-Betrachter hält die Finanzen-Seite. */
+    fun oeffnePdf(url: String, titel: String)
+}
 
 /** Galerie, Set-Detail, Käufe, Merkliste, Scanner und Preisvergleich. */
 fun NavGraphBuilder.sammlungGraph(navigation: SammlungNavigation) {
     galerieZiel(navigation)
     setDetailZiel(navigation)
     merklisteZiele(navigation)
-    composable<Screen.AcquisitionManagement> { backStackEntry ->
-        val ziel = backStackEntry.toRoute<Screen.AcquisitionManagement>()
+    composable<SammlungZiel.AcquisitionManagement> { backStackEntry ->
+        val ziel = backStackEntry.toRoute<SammlungZiel.AcquisitionManagement>()
         AcquisitionManagementRoute(
             vm      = hiltViewModel<KaeufeViewModel>(),
             type    = ziel.art,
@@ -60,7 +61,7 @@ fun NavGraphBuilder.sammlungGraph(navigation: SammlungNavigation) {
         )
     }
     scannerZiel(navigation)
-    composable<Screen.Comparison> {
+    composable<SammlungZiel.Comparison> {
         navigation.Reiter(stringResource(R.string.nav_comparison)) {
             ComparisonScreen()
         }
@@ -90,18 +91,18 @@ fun merkpostenMitAlarm(): (String, Zustand, String, String, Int?) -> Unit {
 private fun NavGraphBuilder.galerieZiel(navigation: SammlungNavigation) {
     val navController = navigation.navController
     val galleryGridState = navigation.rollen.galerie
-    composable<Screen.Gallery> { eintrag ->
+    composable<SammlungZiel.Gallery> { eintrag ->
         val vm = navigation.app
         val galerieVm: GalerieViewModel = hiltViewModel()
         val state by galerieVm.state.collectAsStateWithLifecycle()
         val galerie by galerieVm.galleryState.collectAsStateWithLifecycle()
         val erfassung: ErfassungViewModel = hiltViewModel()
-        Erfassungsrahmen(eintrag, erfassung, navigation.bilder) { navController.navigate(Screen.SetDetail(it)) }
+        Erfassungsrahmen(eintrag, erfassung, navigation.bilder) { navController.navigate(SammlungZiel.SetDetail(it)) }
         LaunchedEffect(state.serverUrl) { galerieVm.ladeWennLeer() }
         // Rollposition ausdrücklich wiederherstellen — der hochgezogene Zustand allein
         // landet verschoben.
         ScrollPositionKeeper(
-            Screen.Gallery.rollSchluessel, galleryGridState, galerie.sets.isNotEmpty(), vm.scrollMemory)
+            SammlungZiel.Gallery.rollSchluessel, galleryGridState, galerie.sets.isNotEmpty(), vm.scrollMemory)
 
         GalerieRueckgaengigRoute(galerieVm, navigation.snackbar)
         val ziel = this
@@ -111,8 +112,8 @@ private fun NavGraphBuilder.galerieZiel(navigation: SammlungNavigation) {
                 vm = galerieVm,
                 erfassung = erfassung,
                 imageLoader = navigation.bilder,
-                onScanBarcode = { navController.navigate(Screen.BarcodeScanner(Scannerherkunft.GALERIE_SUCHE)) },
-                onSetClick = { navController.navigate(Screen.SetDetail(it)) },
+                onScanBarcode = { navController.navigate(SammlungZiel.BarcodeScanner(Scannerherkunft.GALERIE_SUCHE)) },
+                onSetClick = { navController.navigate(SammlungZiel.SetDetail(it)) },
                 gridState = galleryGridState
             )
             }
@@ -123,14 +124,14 @@ private fun NavGraphBuilder.galerieZiel(navigation: SammlungNavigation) {
 /** Set-Detail; auf breiten Fenstern mit der Galerie links daneben. */
 private fun NavGraphBuilder.setDetailZiel(navigation: SammlungNavigation) {
     val navController = navigation.navController
-    composable<Screen.SetDetail> { backStack ->
+    composable<SammlungZiel.SetDetail> { backStack ->
         val vm = navigation.app
         val state by vm.state.collectAsStateWithLifecycle()
-        val setNumber = backStack.toRoute<Screen.SetDetail>().setNumber
+        val setNumber = backStack.toRoute<SammlungZiel.SetDetail>().setNumber
         // Die Galerie liegt als Startziel immer darunter; ihre geladene
         // Kachel zeigt das Set sofort, bis das Detail da ist.
         val galerieEintrag = remember(backStack) {
-            runCatching { navController.getBackStackEntry<Screen.Gallery>() }.getOrNull()
+            runCatching { navController.getBackStackEntry<SammlungZiel.Gallery>() }.getOrNull()
         }
         val galerieUnten = galerieEintrag?.let { hiltViewModel<GalerieViewModel>(it) }
         val vorschau = galerieUnten?.let { g ->
@@ -156,11 +157,9 @@ private fun NavGraphBuilder.setDetailZiel(navigation: SammlungNavigation) {
             },
             rueckgaengigMoeglich = galerieUnten != null,
             onNavigateToAcqMgmt = { type, id, colorId, title ->
-                navController.navigate(Screen.AcquisitionManagement(type, id, colorId, title))
+                navController.navigate(SammlungZiel.AcquisitionManagement(type, id, colorId, title))
             },
-            onOpenPdf = { url, title ->
-                navController.navigate(Screen.PdfViewer(url, title))
-            }
+            onOpenPdf = navigation::oeffnePdf
         )
         }
         // Auf breiten Fenstern steht die Galerie links daneben (Lesebreite.kt); ein
@@ -187,7 +186,7 @@ private fun GalerieNebenDetailRoute(
     val navController = navigation.navController
     // Die Erfassung der Galerie; den Scan gibt der Scanner diesem Ziel zurück.
     val erfassung: ErfassungViewModel = hiltViewModel(galerieEintrag)
-    Erfassungsrahmen(eintrag, erfassung, navigation.bilder) { navController.navigate(Screen.SetDetail(it)) }
+    Erfassungsrahmen(eintrag, erfassung, navigation.bilder) { navController.navigate(SammlungZiel.SetDetail(it)) }
     navigation.Reiter(stringResource(R.string.nav_collection)) {
         ListeUndDetail(
             liste = {
@@ -196,10 +195,10 @@ private fun GalerieNebenDetailRoute(
                         vm = galerie,
                         erfassung = erfassung,
                         imageLoader = navigation.bilder,
-                        onScanBarcode = { navController.navigate(Screen.BarcodeScanner(Scannerherkunft.GALERIE_SUCHE)) },
+                        onScanBarcode = { navController.navigate(SammlungZiel.BarcodeScanner(Scannerherkunft.GALERIE_SUCHE)) },
                         onSetClick = { sn ->
-                            if (sn != setNumber) navController.navigate(Screen.SetDetail(sn)) {
-                                popUpTo<Screen.SetDetail> { inclusive = true }
+                            if (sn != setNumber) navController.navigate(SammlungZiel.SetDetail(sn)) {
+                                popUpTo<SammlungZiel.SetDetail> { inclusive = true }
                             }
                         },
                         gridState = navigation.rollen.galerie,
@@ -217,9 +216,9 @@ private fun GalerieNebenDetailRoute(
  */
 private fun NavGraphBuilder.merklisteZiele(navigation: SammlungNavigation) {
     val navController = navigation.navController
-    composable<Screen.Wanted> { eintrag ->
+    composable<SammlungZiel.Wanted> { eintrag ->
         val erfassung: ErfassungViewModel = hiltViewModel()
-        Erfassungsrahmen(eintrag, erfassung, navigation.bilder) { navController.navigate(Screen.SetDetail(it)) }
+        Erfassungsrahmen(eintrag, erfassung, navigation.bilder) { navController.navigate(SammlungZiel.SetDetail(it)) }
         // Auf breiten Fenstern Liste und Detail nebeneinander (Lesebreite.kt).
         BoxWithConstraints {
             val nebeneinander = listeUndDetail(maxWidth.value)
@@ -230,19 +229,19 @@ private fun NavGraphBuilder.merklisteZiele(navigation: SammlungNavigation) {
                     vm = merkliste,
                     imageLoader = navigation.bilder,
                     nebeneinander = nebeneinander,
-                    onScan = { navController.navigate(Screen.BarcodeScanner(Scannerherkunft.MERKLISTE)) },
+                    onScan = { navController.navigate(SammlungZiel.BarcodeScanner(Scannerherkunft.MERKLISTE)) },
                     onOeffnenEinzeln = { sn, zustand ->
-                        navController.navigate(Screen.MerkpostenDetail(sn, zustand))
+                        navController.navigate(SammlungZiel.MerkpostenDetail(sn, zustand))
                     },
                 )
             }
         }
     }
-    composable<Screen.MerkpostenDetail> { backStack ->
-        val ziel = backStack.toRoute<Screen.MerkpostenDetail>()
+    composable<SammlungZiel.MerkpostenDetail> { backStack ->
+        val ziel = backStack.toRoute<SammlungZiel.MerkpostenDetail>()
         // Dasselbe ViewModel wie die Liste darunter: Dort läuft die Snackbar mit
         // „Rückgängig“, nachdem das Detail eines gelöschten Postens zurückgegangen ist.
-        val liste = remember(backStack) { runCatching { navController.getBackStackEntry<Screen.Wanted>() }.getOrNull() }
+        val liste = remember(backStack) { runCatching { navController.getBackStackEntry<SammlungZiel.Wanted>() }.getOrNull() }
         MerkpostenDetailRoute(
             vm = if (liste != null) hiltViewModel<MerklisteViewModel>(liste) else hiltViewModel<MerklisteViewModel>(),
             setNumber = ziel.setNumber,
@@ -256,8 +255,8 @@ private fun NavGraphBuilder.merklisteZiele(navigation: SammlungNavigation) {
 /** Der Scanner; was ein Treffer auslöst, sagt die Herkunft in der Route. */
 private fun NavGraphBuilder.scannerZiel(navigation: SammlungNavigation) {
     val navController = navigation.navController
-    composable<Screen.BarcodeScanner> { eintrag ->
-        val herkunft = eintrag.toRoute<Screen.BarcodeScanner>().herkunft
+    composable<SammlungZiel.BarcodeScanner> { eintrag ->
+        val herkunft = eintrag.toRoute<SammlungZiel.BarcodeScanner>().herkunft
         // Der Treffer geht an das Ziel darunter; dessen Erfassung löst ihn auf.
         fun zurueck(wert: String, setnummer: Boolean) {
             navController.previousBackStackEntry?.savedStateHandle?.legeScanAb(wert, setnummer, herkunft)

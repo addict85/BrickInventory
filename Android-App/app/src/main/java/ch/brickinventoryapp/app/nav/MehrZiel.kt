@@ -8,12 +8,19 @@ import androidx.navigation.compose.composable
 import ch.brickinventoryapp.app.MehrBildschirm
 import ch.brickinventoryapp.app.oeffneVonMehr
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.zustand.ui.Screen
+import kotlinx.serialization.Serializable
+
+/** Die Ziele, die keinem Bereich gehören. */
+@Serializable
+internal sealed interface AppZiel {
+    /** Alles, was kein Bestandsreiter ist — das fünfte Ziel der unteren Leiste. */
+    @Serializable data object Mehr : AppZiel
+}
 
 /** „Mehr“ gehört keinem Bereich: Es führt zu allen, die nicht in der unteren Leiste stehen. */
 internal fun NavGraphBuilder.mehrZiel(u: ZielUmgebung) {
     val navController = u.navController
-    composable<Screen.Mehr> {
+    composable<AppZiel.Mehr> {
         val vm = u.app
         val state by vm.state.collectAsStateWithLifecycle()
         val update by u.update.updateState.collectAsStateWithLifecycle()
@@ -24,7 +31,7 @@ internal fun NavGraphBuilder.mehrZiel(u: ZielUmgebung) {
                 updateVerfuegbar = update.neuereFassung != null,
                 onAbmelden = {
                     vm.logout()
-                    navController.navigate(Screen.Login) { popUpTo(0) { inclusive = true } }
+                    u.abgemeldet()
                 },
             )
         }

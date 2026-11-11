@@ -59,8 +59,7 @@ class BrickInventoryApp : Application(), Configuration.Provider {
             ausgangsmelderLazy.get().starte(bereiche.anwendung)
         })
 
-        // Ein Klartext-Token älterer Fassungen einmalig verschlüsselt ablegen, im
-        // Hintergrund: Der Lesepfad kommt auch ohne Übernahme an das alte Token.
+        // Aufräumen im Hintergrund; ein Klartext-Token älterer Fassungen gilt nie, es geht nur weg.
         bereiche.anwendung.launch {
             // Gutschein-PDFs eines abgebrochenen Laufs: Das Verlassen des Betrachters kam nie.
             fangeAusserAbbruch { raeumeVertraulichePdfsAuf(cacheDir) }

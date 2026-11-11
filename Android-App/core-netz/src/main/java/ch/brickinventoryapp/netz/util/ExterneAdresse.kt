@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.netz.util
 
-import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 /**
@@ -9,8 +8,8 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
  * `content:` darin öffnete sonst beliebige Ziele im Gerät. Den eigenen Server
  * öffnet die App selbst, dafür braucht es hier kein http.
  */
-internal fun externeAdresse(url: String?): HttpUrl? =
-    url?.trim()?.toHttpUrlOrNull()?.takeIf { it.isHttps }
+fun externeAdresse(url: String?): String? =
+    url?.trim()?.toHttpUrlOrNull()?.takeIf { it.isHttps }?.toString()
 
 /**
  * Ein Pfad des eigenen Servers als volle Adresse — aufgelöst statt verkettet, und

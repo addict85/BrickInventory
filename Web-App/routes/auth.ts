@@ -21,8 +21,7 @@ import benutzerRouter from './auth/benutzer';
 import zweiterFaktorRouter from './auth/zweiterFaktor';
 import registrierungRouter from './auth/registrierung';
 import { STATUS_DER_ART } from '../src/http/fehlerArt';
-import { vertragsRouter } from '../src/http/vertragsRouter';
-import type { Antwort, OffeneAnfrage } from '../src/http/vertragsRouter';
+import { vertragsRouter, type Antwort, type OffeneAnfrage } from '../src/http/vertragsRouter';
 
 const router = vertragsRouter();
 
@@ -114,10 +113,10 @@ router.get('/me', async (req: OffeneAnfrage<'GET /api/v1/auth/me'>, res: Antwort
     return res.json({ success: true, loggedIn: false, user: null });
   };
   await antworte().catch((e: unknown) => {
-    // Ohne Anmeldung ist die Anmeldemaske die richtige Antwort, keine Fehlerseite.
+    // Ein Lesefehler ist keine Abmeldung: Mit 401 oder „nicht angemeldet“
+    // verwürfe die App ihren Token, und der Browser zeigte die Anmeldemaske.
     meldeFehler('auth:me', e);
-    if (token) return ungueltig('token_ungueltig');
-    return res.json({ success: true, loggedIn: false, user: null });
+    if (!res.headersSent) sendeFehler(req, res, 503, 'server_ausgelastet');
   });
 });
 
@@ -235,18 +234,26 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req:
 });
 
 // Die App fragt alle paar Sekunden, bis die Web-Sitzung bestätigt oder ablehnt.
+// Mit `vorschau` steht danach nur das Konto in der Antwort; den Token holt das Ja der App.
 router.post('/qr-login/abholen', ipThrottle('qr-abholen', 600, 60 * 60 * 1000), async (req: OffeneAnfrage<'POST /api/v1/auth/qr-login/abholen'>, res: Antwort<'POST /api/v1/auth/qr-login/abholen'>) => {
   if (!req.eingabe.abholung) return sendeFehler(req, res, 400, 'token_ungueltig');
-  const a = await QR.holeQrTokenAb(req.eingabe.abholung, req.ip, darfAnmelden);
+  const a = await QR.holeQrTokenAb(req.eingabe.abholung, req.ip, darfAnmelden, req.eingabe.vorschau === true);
   if (a.stand === 'wartet') return res.json({ success: true, wartet: true });
   if (a.stand === 'abgelehnt') return sendeFehler(req, res, 403, 'qr_abgelehnt');
-  if (a.stand !== 'fertig') return sendeFehler(req, res, 401, 'token_ungueltig');
+  if (a.stand === 'ungueltig') return sendeFehler(req, res, 401, 'token_ungueltig');
   const user = await K.kontoKurz(a.uid);
   if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
+  if (a.stand === 'bereit') return res.json({ success: true, wartet: false, vorschau: true, username: user.username });
   meldeAnmeldung({ ip: req.ip, konto: user.id, zugang: 'qr' });
   // Keine Sitzung: Sie trüge die vollen Rechte des Kontos an Scope `app` vorbei.
   res.json({ success: true, wartet: false, token: a.token, username: user.username, isAdmin: false, userId: user.id,
-    user: { id: user.id, username: user.username }, token_info: await tokenAngaben(a.token) });
+    user: { id: user.id, username: user.username }, token_info: await tokenAngaben(a.token),
+    ...(a.schluesselNonce ? { schluessel_nonce: a.schluesselNonce } : {}) });
+});
+
+router.post('/qr-login/verwerfen', ipThrottle('qr-abholen', 600, 60 * 60 * 1000), async (req: OffeneAnfrage<'POST /api/v1/auth/qr-login/verwerfen'>, res: Antwort<'POST /api/v1/auth/qr-login/verwerfen'>) => {
+  if (!await QR.verwirfAbholung(req.eingabe.abholung)) return sendeFehler(req, res, 401, 'token_ungueltig');
+  res.json({ success: true });
 });
 
 router.get('/qr-kopplung/:id', requireLogin, async (req: OffeneAnfrage<'GET /api/v1/auth/qr-kopplung/:id'>, res: Antwort<'GET /api/v1/auth/qr-kopplung/:id'>) => {

@@ -21,13 +21,22 @@ export async function raeumeQrKopplungenAuf(): Promise<void> {
   await db.run(`DELETE FROM qr_login_tokens WHERE expires_at < NOW() - INTERVAL '1 hour'`);
 }
 
-export async function legeQrKopplungAn(hash: string, uid: number, bis: Date, tage: number | null): Promise<number> {
+/** @returns null, wenn schon `hoechstens` Kopplungen offen sind */
+export async function legeQrKopplungAn(
+  hash: string,
+  uid: number,
+  bis: Date,
+  tage: number | null,
+  hoechstens: number,
+): Promise<number | null> {
   const z = await db.get<{ id: number }>(
-    'INSERT INTO qr_login_tokens (token, user_id, expires_at, token_days) VALUES ($1,$2,$3,$4) RETURNING id::int AS id',
-    [hash, uid, bis, tage],
+    `INSERT INTO qr_login_tokens (token, user_id, expires_at, token_days) SELECT $1, $2, $3, $4
+      WHERE (SELECT COUNT(*) FROM qr_login_tokens
+              WHERE expires_at > NOW() AND abgeholt_am IS NULL AND abgelehnt_am IS NULL) < $5
+      RETURNING id::int AS id`,
+    [hash, uid, bis, tage, hoechstens],
   );
-  if (!z) throw new Error('qr_login_tokens: INSERT ohne Zeile');
-  return z.id;
+  return z?.id ?? null;
 }
 
 /** Atomar: Nur der erste Scan meldet sein Gerät an; die Frist beginnt neu für die Bestätigung. */

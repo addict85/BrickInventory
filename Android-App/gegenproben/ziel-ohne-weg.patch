@@ -8,9 +8,9 @@ diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschi
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt
 @@ -118,7 +118,6 @@ private fun MehrGruppeInhalt(
              MehrGruppe(R.string.nav_group_manage, trenner)
-             MehrEintrag(R.string.storage_manage, Icons.Outlined.Inventory2) { onZiel(Screen.Lagerorte) }
-             MehrEintrag(R.string.household_title, Icons.Outlined.Group) { onZiel(Screen.Haushalt) }
--            MehrEintrag(R.string.csv_upload_title, Icons.Outlined.UploadFile) { onZiel(Screen.CsvImport) }
+             MehrEintrag(R.string.storage_manage, Icons.Outlined.Inventory2) { onZiel(KontoZiel.Lagerorte) }
+             MehrEintrag(R.string.household_title, Icons.Outlined.Group) { onZiel(KontoZiel.Haushalt) }
+-            MehrEintrag(R.string.csv_upload_title, Icons.Outlined.UploadFile) { onZiel(KontoZiel.CsvImport) }
          }
          3 -> {
              MehrGruppe(R.string.nav_group_account, trenner)

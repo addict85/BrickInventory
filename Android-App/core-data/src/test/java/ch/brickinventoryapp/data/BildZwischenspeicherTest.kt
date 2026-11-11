@@ -38,6 +38,10 @@ import java.io.IOException
  *   D  im Eingang `if (!abgeschlossen) throw …`
  *      gestrichen → rot „eine hinten gekuerzte Datei gilt nicht …“;
  *      gegenproben/bildcache-ohne-endmarker.patch
+ *   E  onPathParameter() reicht den Pfad ungestreut durch → rot „die Namen im
+ *      Zwischenspeicher verraten die Adressen nicht“; gegenproben/bildcache-namen-lesbar.patch
+ *   F  raeumeKlartextBildcachesAuf() ohne das Löschen ungestreuter Namen → rot „ein
+ *      Klartext-Zwischenspeicher …“; gegenproben/bildcache-alte-namen-bleiben.patch
  */
 class BildZwischenspeicherTest {
 
@@ -53,6 +57,34 @@ class BildZwischenspeicherTest {
     }
 
     private fun client() = OkHttpClient.Builder().cache(Cache(fs, ordner.toOkioPath(), 4L * 1024 * 1024)).build()
+
+    private val gestreut = VerschluesseltesDateisystem(FileSystem.SYSTEM, chiffre, "bilder",
+        VerschluesseltesDateisystem.Streuung(ordner.toOkioPath()) { ByteArray(32) { 8 } })
+
+    @Test
+    fun `die Namen im Zwischenspeicher verraten die Adressen nicht`() {
+        val bild = "SAMMLUNG-10179".toByteArray()
+        server.enqueue(MockResponse().setBody(Buffer().write(bild)).setHeader("Cache-Control", "max-age=0"))
+        server.start()
+        val adresse = server.url("/api/v1/images/set/10179-1?thumb=1")
+        val cache = Cache(gestreut, ordner.toOkioPath(), 4L * 1024 * 1024)
+        val c = OkHttpClient.Builder().cache(cache).build()
+        c.newCall(Request.Builder().url(adresse).build()).execute().use { assertArrayEquals(bild, it.body.bytes()) }
+        cache.flush()
+
+        // OkHttp benennt nach dem MD5 der Adresse (Cache.key); kein Name darf ihn oder „journal“ tragen.
+        val md5 = Cache.key(adresse)
+        val namen = ordner.listFiles()!!.map { it.name }
+        assertTrue("Der Zwischenspeicher hat nichts abgelegt: $namen", namen.size >= 3)
+        assertTrue("Lesbare Namen: $namen", namen.all { it.startsWith(VerschluesseltesDateisystem.GESTREUT) && md5 !in it && "journal" !in it })
+
+        server.shutdown()
+        val offline = Request.Builder().url(adresse).cacheControl(CacheControl.FORCE_CACHE).build()
+        c.newCall(offline).execute().use { assertArrayEquals("Offline kommt die Kopie trotzdem", bild, it.body.bytes()) }
+        cache.evictAll()
+        // Übrig bleibt nur das Journal (samt Sicherung); ein doppelt gestreuter Name liesse die Einträge liegen.
+        assertTrue("Leeren findet die gestreuten Namen nicht: ${ordner.list()?.toList()}", ordner.listFiles()!!.size <= 2)
+    }
 
     @Test
     fun `der Zwischenspeicher liegt verschluesselt und liefert offline trotzdem`() {
@@ -94,9 +126,15 @@ class BildZwischenspeicherTest {
         assertFalse("Der Klartext-Zwischenspeicher von OkHttp bleibt liegen", http.exists())
         assertFalse("Coils Klartext-Zwischenspeicher bleibt liegen", coil.exists())
 
-        fs.sink(File(http.apply { mkdirs() }, "journal").toOkioPath()).buffer().use { it.writeUtf8("libcore.io.DiskLruCache\n") }
+        val neu = VerschluesseltesDateisystem(FileSystem.SYSTEM, chiffre, "bilder",
+            VerschluesseltesDateisystem.Streuung(http.apply { mkdirs() }.toOkioPath()) { ByteArray(32) { 8 } })
+        neu.sink(File(http, "journal").toOkioPath()).buffer().use { it.writeUtf8("libcore.io.DiskLruCache\n") }
+        // Ein verschlüsselter Eintrag älterer Fassungen unter dem MD5-Namen der Adresse.
+        fs.sink(File(http, "0f343b0931126a20f133d67c2b018a3b.1").toOkioPath()).buffer().use { it.writeUtf8("x") }
         raeumeKlartextBildcachesAuf(cacheDir)
-        assertTrue("Der verschlüsselte Zwischenspeicher gilt nicht als Klartext", File(http, "journal").exists())
+        val bleibt = http.listFiles()!!.map { it.name }
+        assertEquals("Nur der gestreute Zwischenspeicher bleibt: $bleibt", 1, bleibt.size)
+        assertTrue(bleibt.single().startsWith(VerschluesseltesDateisystem.GESTREUT))
     }
 
     /** Ohne Endmarker gälte ein um ganze Abschnitte gekürztes Bild als vollständig. */

@@ -1,0 +1,17 @@
+Gegenprobe: Ohne den alten Namen bleibt der umbenannte Ort an den Sets stehen
+Modul: feature-konto
+Test: ch.brickinventoryapp.konto.EinstellungenViewModelTest
+Rot: ein umbenannter Lagerort heisst auch an den Sets
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt
+@@ -214,7 +214,7 @@
+ 
+     /** Umbenennen ändert, was an Sets, Teilen und Figuren steht; das Repository zieht die Ablage nach. */
+     override fun benenneLagerortUm(id: Int, name: String) {
+-        val alt = filter.lagerState.value.eigene.firstOrNull { it.id == id }?.name.orEmpty()
++        val alt = ""
+         lagerortSchleuse { teile.benenneLagerortUm(id, alt, name).auswerten() }
+     }
+ 

@@ -1,0 +1,18 @@
+Gegenprobe: Ein geänderter Kauf holt den ganzen Bestand statt die Zusammenfassung zu übernehmen
+Modul: core-zustand
+Test: ch.brickinventoryapp.zustand.KaeufeViewModelTest
+Rot: ein geaenderter Kauf eines Sets schreibt seine Zusammenfassung
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt
+@@ -142,8 +142,7 @@
+      * Ablage, die Kachel folgt ohne neue Liste. Ohne sie holt die Ablage den Stand.
+      */
+     private suspend fun setGeaendert(agg: SetAggregate?) {
+-        if (agg != null && agg.setNumber.isNotBlank()) sets.uebernimmZusammenfassung(agg)
+-        else { neuLaden(); sets.aktualisiereSets() }
++        neuLaden(); sets.aktualisiereSets()
+     }
+ 
+     /** Für manuelle Einträge schickt der Server keine Zusammenfassung; die Ablage holt den Stand. */

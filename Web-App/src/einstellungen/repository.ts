@@ -51,3 +51,9 @@ export async function ersetzeGlobalenWert(key: string, alt: string, neu: string 
     [neu, key, alt]);
   return (r.changes ?? 0) > 0;
 }
+
+/** Eine Transaktion über alles, was der Rückruf schreibt; auch Repositories anderer
+ * Bereiche laufen darin mit (db/database.ts, laufendeTx). */
+export function alsEinheit<T>(arbeit: () => Promise<T>): Promise<T> {
+  return db.transaction(() => arbeit());
+}

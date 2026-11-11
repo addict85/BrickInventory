@@ -25,10 +25,12 @@ export async function gibTabelleFrei(c: PoolClient, tabelle: string): Promise<vo
 
 /** Mit Schlüsseln und Indizes: ON CONFLICT in den Blöcken braucht sie. Ohne
  * CHECKs: Die Trigger der Zieltabelle (etwa die Versionsendung der Set-Nummer)
- * kommen nicht mit; geprüft wird erst beim Tausch, nach den Triggern. */
+ * kommen nicht mit; geprüft wird erst beim Tausch, nach den Triggern. Temporär:
+ * Die Laufzeitrolle darf in public nichts anlegen, und der Schatten gehört
+ * ohnehin nur dieser einen Verbindung. */
 export async function legeSchattenAn(c: PoolClient, tabelle: string, schatten: string): Promise<void> {
-  await c.query(`DROP TABLE IF EXISTS ${schatten}`);
-  await c.query(`CREATE UNLOGGED TABLE ${schatten} (LIKE ${tabelle} INCLUDING ALL EXCLUDING CONSTRAINTS)`);
+  await c.query(`DROP TABLE IF EXISTS pg_temp.${schatten}`);
+  await c.query(`CREATE TEMP TABLE ${schatten} (LIKE ${tabelle} INCLUDING ALL EXCLUDING CONSTRAINTS)`);
 }
 
 /** Ein abgewiesener Block bricht den Import ab. */
@@ -89,7 +91,7 @@ export async function gleicheSetsAb(c: PoolClient, schatten: string, spalten: st
 }
 
 export async function entferneSchatten(c: PoolClient, schatten: string): Promise<void> {
-  await c.query(`DROP TABLE IF EXISTS ${schatten}`);
+  await c.query(`DROP TABLE IF EXISTS pg_temp.${schatten}`);
 }
 
 /** Nach einem vollständigen Tausch ist die Planer-Statistik bedeutungslos. */

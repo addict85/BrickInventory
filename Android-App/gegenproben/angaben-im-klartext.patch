@@ -1,0 +1,18 @@
+Gegenprobe: Adresse und Benutzername werden wieder im Klartext abgelegt
+Modul: core-data
+Test: ch.brickinventoryapp.data.TokenTresorTest
+Rot: Adresse und Name liegen nur verschluesselt, alte Klartexte werden beim Start uebernommen
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+@@ -81,8 +81,7 @@
+         prefs[geheim]?.let { geraet.entschluessleAngabe(it, geheim.name) } ?: prefs[klar]
+ 
+     private fun MutablePreferences.setzeAngabe(geheim: Preferences.Key<String>, klar: Preferences.Key<String>, wert: String) {
+-        this[geheim] = geraet.verschluessleAngabe(wert, geheim.name) ?: throw IOException("${geheim.name} nicht verschlüsselbar")
+-        remove(klar)
++        this[klar] = wert
+     }
+ 
+     val serverUrl: Flow<String> = dataStore.data.map { adresseAus(it) }

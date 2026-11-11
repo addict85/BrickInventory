@@ -24,13 +24,15 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import ch.brickinventoryapp.testing.SpeicherSitzungsablage
+import ch.brickinventoryapp.zustand.ui.AblageKontowerte
 
 /**
  * DarstellungViewModel und VertrauenViewModel ausgeführt, mit Ablagen im Speicher
  * statt PreferencesManager und in virtueller Zeit.
  *
  * Gegenproben:
- *   design-spaet-gesetzt        `sitzung.setzeDesign(...)` aus dem init → rot „der Zustand wird mit …“
+ *   design-spaet-gesetzt        AblageKontowerte beginnt mit der Vorgabe statt dem gemerkten Design → rot „der Zustand wird mit …“
  *   widget-nicht-angestossen    `widget.aktualisiere()` gestrichen → rot „eine Wahl wird gemerkt …“
  *   vertrauen-ohne-abwurf       nach zertifikatVertrauen() kein `abwurf.verwirf()` → rot „ein bestätigter …“
  *   unbekannte-ca-ohne-abtippen in ZertifikatsFrage.bestaetige() die Abtipp-Pflicht gestrichen → rot „ohne bekannte CA …“
@@ -75,7 +77,9 @@ class DarstellungUndVertrauenTest {
     @Test
     fun `der Zustand wird mit dem gemerkten Design geboren`() = runTest(takt) {
         val ablage = SpeicherDarstellung().apply { design = Design.NOPPE }
-        val sitzung = Sitzung()
+        val konto = SpeicherSitzungsablage().apply { design.value = Design.NOPPE }
+        // Wie im Gerät: Währung und Design aus der Ablage, das erste aus dem synchronen Spiegel.
+        val sitzung = Sitzung(AblageKontowerte(konto, ablage, backgroundScope))
         val vm = DarstellungViewModel(ablage, sitzung) {}
         // Ohne einen Schritt des Takts: Das erste Bild zeigt schon das gemerkte Design.
         assertEquals(Design.NOPPE, vm.appTheme.value)

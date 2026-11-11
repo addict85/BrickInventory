@@ -1,11 +1,11 @@
 Gegenprobe: Ein gescheiterter Abbruch des CSV-Imports bleibt still
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.CsvImportViewModelTest
+Modul: app
+Test: ch.brickinventoryapp.app.csv.CsvImportViewModelTest
 Rot: der Abbruch meldet Erfolg und Fehler
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/CsvImportViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/CsvImportViewModel.kt
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/CsvImportViewModel.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/CsvImportViewModel.kt
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportViewModel.kt
 @@ -67,7 +67,7 @@ class CsvImportViewModel @Inject constructor(
          viewModelScope.launch {
              when (val r = csvImport.abbrechen()) {

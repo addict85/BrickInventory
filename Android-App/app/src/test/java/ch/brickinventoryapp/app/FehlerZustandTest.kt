@@ -93,8 +93,8 @@ class FehlerZustandTest {
 
     @Test
     fun `die Merkliste meldet den Fehler und vergisst ihn beim Neuladen`() {
-        val vm = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, SetsRepository(t.api, t.cache), KatalogRepository(t.api, t.cache),
-            FinanzenRepository(t.api, t.cache), SavedStateHandle()))
+        val vm = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, SetsRepository(t.api, t.cache), t.kontosicht,
+            KatalogRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), SavedStateHandle()))
         vm.ladeMerkliste()
         assertTrue("Fehler", vm.merklisteState.value.fehler != null)
         assertEquals("fehler", vm.merklisteState.value.fehler)
@@ -108,7 +108,7 @@ class FehlerZustandTest {
 
     @Test
     fun `die Bewertung meldet den Fehler und vergisst ihn beim Neuladen`() {
-        val vm = t.merke(FinanzViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, FinanzenRepository(t.api, t.cache), SavedStateHandle()))
+        val vm = t.merke(FinanzViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, FinanzenRepository(t.api, t.cache), SavedStateHandle()))
         vm.loadValuation()
         assertTrue("Fehler", vm.financeState.value.valuationFehler != null)
         assertEquals(Fehlerklasse.SERVER, vm.financeState.value.valuationFehlerKlasse)
@@ -121,7 +121,7 @@ class FehlerZustandTest {
 
     @Test
     fun `Teile und Figuren melden den Fehler je fuer sich`() {
-        val vm = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
+        val vm = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), t.kontosicht, SavedStateHandle()))
         vm.loadParts()
         assertTrue("Teilefehler", vm.partsState.value.partsFehler != null)
         vm.loadMinifigs()
@@ -134,8 +134,9 @@ class FehlerZustandTest {
     @Test
     fun `das Set-Detail meldet den Fehler statt ewig zu laden`() {
         val leser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null }
-        val vm = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, SetsRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache),
-            HaushaltRepository(t.api, t.cache), leser, SavedStateHandle(mapOf("setNumber" to "75192-1"))))
+        val vm = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(),
+            FinanzenRepository(t.api, t.cache), HaushaltRepository(t.api, t.cache), leser,
+            SavedStateHandle(mapOf("setNumber" to "75192-1"))))
         vm.loadSetDetail("75192-1")
         assertTrue("Fehler", vm.setDetailState.value.setDetailFehler != null)
         assertEquals(false, vm.setDetailState.value.setDetailLoading)

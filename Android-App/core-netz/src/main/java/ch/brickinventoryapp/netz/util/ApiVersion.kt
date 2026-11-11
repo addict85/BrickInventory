@@ -11,7 +11,7 @@ const val APP_API_VERSION = 2
 enum class VersionsHinweis { APP_ZU_ALT, SERVER_ZU_ALT }
 
 /** Null heisst: passt, oder der Server sagt nichts dazu (ältere Fassung). */
-fun versionsHinweis(serverApi: Int?, minApp: Int?, appApi: Int = APP_API_VERSION): VersionsHinweis? = when {
+internal fun versionsHinweis(serverApi: Int?, minApp: Int?, appApi: Int = APP_API_VERSION): VersionsHinweis? = when {
     minApp != null && appApi < minApp -> VersionsHinweis.APP_ZU_ALT
     serverApi != null && serverApi < appApi -> VersionsHinweis.SERVER_ZU_ALT
     else -> null

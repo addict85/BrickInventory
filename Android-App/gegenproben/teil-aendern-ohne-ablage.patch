@@ -1,0 +1,17 @@
+Gegenprobe: Ein geändertes Teil ändert die Ablage nicht
+Modul: feature-teile
+Test: ch.brickinventoryapp.teile.TeileViewModelTest
+Rot: ein geaendertes Teil steht in der Ablage
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt
+@@ -82,7 +82,7 @@
+         is Bearbeitung.TeilErfassen -> teilErfasst(liste, b)
+         is Bearbeitung.TeilAendern -> liste.map {
+             if (it.partNumber == b.partNumber && it.colorId == b.colorId && (b.besitzer == null || it.userId == b.besitzer))
+-                it.copy(quantity = neueMenge(it.quantity, b.anfrage), unitPrice = b.anfrage.unitPrice ?: it.unitPrice)
++                it
+             else it
+         }
+         is Bearbeitung.TeilLoeschen -> liste.filterNot {

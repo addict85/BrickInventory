@@ -17,9 +17,9 @@
 # Dieses Skript:
 #   1. prüft die Endmarke des Dumps, BEVOR es irgendetwas anfasst
 #   2. fragt einmal nach (der Restore ÜBERSCHREIBT den aktuellen Stand)
-#   3. spielt den Dump als App-Rolle in einer Transaktion ein (ON_ERROR_STOP=1)
+#   3. spielt den Dump als Migrationsrolle in einer Transaktion ein (ON_ERROR_STOP=1)
 #   4. entpackt optional data/ (Bilder, Anleitungen — die liegen NICHT in der DB)
-#   5. startet den App-Container neu
+#   5. lässt den Dienst migration laufen und startet app und jobs neu
 #
 # Getestet wurde der Ablauf gegen Postgres 16, beide Richtungen: Restore in
 # eine bestehende Datenbank (der --clean-Dump räumt selbst auf) und in eine
@@ -28,8 +28,8 @@
 set -eu
 
 DB_SERVICE="${DB_SERVICE:-postgres}"
-APP_SERVICE="${APP_SERVICE:-app}"
-DB_APP_USER="${DB_APP_USER:-brickinventory_app}"
+APP_SERVICE="${APP_SERVICE:-app jobs}"
+DB_MIGRATION_USER="${DB_MIGRATION_USER:-brickinventory_migration}"
 DB_NAME="${PGDATABASE:-brickinventory}"
 
 DUMP="${1:-}"
@@ -91,13 +91,15 @@ printf '[restore] Datenbank %s wird mit dem Stand aus %s ÜBERSCHRIEBEN. Fortfah
 read -r antwort
 [ "$antwort" = "ja" ] || { echo "[restore] Abgebrochen."; exit 1; }
 
-# 3. Als App-Rolle einspielen: Funktionen, Prüfregeln und Trigger im Dump
-#    gehören ihr und liefen als Superuser mit dessen Rechten. Besitzerangaben
+# 3. Als Migrationsrolle einspielen: Funktionen, Prüfregeln und Trigger im
+#    Dump gehören ihr und liefen als Superuser mit dessen Rechten. Die
+#    Laufzeitrolle darf keine Tabellen anlegen; ihre Zeilenrechte an den neuen
+#    Tabellen kommen aus den Default Privileges der Migrationsrolle. Besitzerangaben
 #    und DROP/COMMENT der Erweiterung (gehört evtl. dem Superuser) fallen weg,
 #    ausserhalb der COPY-Daten. -1 mit ON_ERROR_STOP: ganz oder gar nicht.
 #    \restrict mit einem Schlüssel, den der Dump nicht kennt: psql führt dann
 #    keinen Backslash-Befehl aus, auch nicht mitten in einer Zeile.
-echo "[restore] Rolle der App wird vorbereitet …"
+echo "[restore] Rollen werden vorbereitet …"
 docker compose run --rm "${ROLLEN_SERVICE:-db-rolle}"
 echo "[restore] Datenbank wird eingespielt …"
 RESTRICT=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
@@ -110,7 +112,7 @@ gunzip -c "$DUMP" | awk -v schluessel="$RESTRICT" '
   /^DROP EXTENSION IF EXISTS [a-z_"]+;$/ { next }
   /^COMMENT ON EXTENSION [a-z_"]+ IS \047[^\047]*\047;$/ { next }
   { print }' | docker compose exec -T "$DB_SERVICE" \
-  psql -X -v ON_ERROR_STOP=1 -q -1 -U "$DB_APP_USER" "$DB_NAME"
+  psql -X -v ON_ERROR_STOP=1 -q -1 -U "$DB_MIGRATION_USER" "$DB_NAME"
 echo "[restore] Datenbank eingespielt."
 
 # 4. Laufzeitdaten (Bilder, Anleitungen) — optional, aber ohne sie zeigen
@@ -136,11 +138,15 @@ if [ ! -f schluessel/datenschluessel ] && [ ! -f data/.datenschluessel ]; then
 fi
 
 # 5. db-rolle noch einmal: Die eingespielten Tabellen bekommen die Rechte der
-#    Leserolle (brickinventory_lesen).
-echo "[restore] Rolle der App wird nachgerichtet …"
+#    Laufzeit- und der Leserolle (brickinventory_lesen).
+echo "[restore] Rollen werden nachgerichtet …"
 docker compose run --rm "${ROLLEN_SERVICE:-db-rolle}"
 
-# 6. App neu starten, damit sie sauber gegen den neuen Stand initialisiert.
-echo "[restore] App-Container wird neu gestartet …"
-docker compose restart "$APP_SERVICE"
+# 6. Ein älterer Dump braucht Migrationen; die darf nur die Migrationsrolle.
+#    Danach app und jobs neu, damit sie gegen den neuen Stand starten.
+echo "[restore] Migrationen …"
+docker compose run --rm "${MIGRATIONS_SERVICE:-migration}"
+echo "[restore] app und jobs werden neu gestartet …"
+# shellcheck disable=SC2086 # mehrere Dienste, getrennt an Leerzeichen
+docker compose restart $APP_SERVICE
 echo "[restore] fertig."

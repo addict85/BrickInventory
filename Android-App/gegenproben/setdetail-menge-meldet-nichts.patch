@@ -1,16 +1,17 @@
-Gegenprobe: Eine geänderte Menge im Set-Detail wird nicht gemeldet
+Gegenprobe: Die Ablage nimmt die gewünschte Menge statt der des Servers
 Modul: feature-sammlung
 Test: ch.brickinventoryapp.sammlung.SetDetailViewModelTest
-Rot: eine geaenderte Menge
+Rot: eine geaenderte Menge steht sofort da und in der Ablage
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt
-@@ -178,7 +178,6 @@ class SetDetailViewModel @Inject constructor(
-                                 st.copy(setDetail = st.setDetail.copy(quantity = echt)) else st
-                         }
-                     }
--                    bestand.melde(Aenderung.Sets)
-                 }
-                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
-             }
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
+@@ -58,7 +58,7 @@
+ 
+     override suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?): Ergebnis<GenericResponse> =
+         // Der Server kann deckeln (fremde Exemplare bleiben): Es gilt seine Zahl.
+-        ablage.nachgezogen({ r -> Nachzug.SetMengeGesetzt(setNumber, r.quantity ?: quantity).takeIf { r.success } }) {
++        ablage.nachgezogen({ r -> Nachzug.SetMengeGesetzt(setNumber, quantity).takeIf { r.success } }) {
+             sicherAufrufen { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantity, null, purchasePrice, condition)) }
+         }
+ 

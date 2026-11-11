@@ -97,3 +97,4 @@ export { kontoGedrosselt, zielGedrosselt } from './zielDrossel';
 export { beginneEinrichtung, erneuereCodes, istAktiv, otpauthAdresse, schalteAb, stand } from './zweiterFaktor';
 export { meldeUngueltigeAdressen, meldeAusstehendeAdressen } from './konten';
 export { horcheAufTokenWiderruf } from './auth';
+export { neueNonce } from './geraeteChallenge';

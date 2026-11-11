@@ -1,0 +1,17 @@
+Gegenprobe: Die Teileliste übernimmt beim gescheiterten PDF-Auftrag nur den Satz des Servers, auch keinen
+Modul: feature-teile
+Test: ch.brickinventoryapp.teile.TeilelisteViewModelTest
+Rot: ein Fehler hat immer einen Satz
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeilelisteViewModel.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeilelisteViewModel.kt
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeilelisteViewModel.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeilelisteViewModel.kt
+@@ -181,7 +181,7 @@
+     /** Nie leer: Ein Abruf spricht wie jeder Abruf, ein gescheiterter Auftrag mit dem Satz des Servers. */
+     private fun fehlerText(grund: PdfFehlschlag): String = when (grund) {
+         is PdfFehlschlag.Abruf -> meldungen.meldung(grund.fehler)
+-        is PdfFehlschlag.Auftrag -> grund.satz?.takeIf { it.isNotBlank() } ?: meldungen.text(R.string.pdfexp_server_error)
++        is PdfFehlschlag.Auftrag -> grund.satz.orEmpty()
+     }
+ 
+     fun pdfGeoeffnet() = _zustand.update { it.copy(pdfDatei = null) }

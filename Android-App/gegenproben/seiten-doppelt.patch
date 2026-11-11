@@ -1,0 +1,17 @@
+Gegenprobe: Eine Zeile auf zwei Seiten steht doppelt in der Liste
+Modul: core-data
+Test: ch.brickinventoryapp.data.KontosichtTest
+Rot: die Kontosicht holt alle Seiten und keine Zeile doppelt
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt
+@@ -80,7 +80,7 @@
+         if (r is Ergebnis.Error) return r
+         val antwort = (r as Ergebnis.Success).data
+         val neu = liste(antwort)
+-        neu.forEach { alle[schluessel(it)] = it }
++        neu.forEach { alle["${alle.size}"] = it }
+         if (neu.isEmpty() || alle.size >= gesamt(antwort)) break
+     }
+     return Ergebnis.Success(alle.values.toList())

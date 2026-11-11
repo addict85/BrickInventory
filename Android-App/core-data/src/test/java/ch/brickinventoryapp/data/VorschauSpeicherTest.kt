@@ -26,7 +26,7 @@ import java.io.RandomAccessFile
 class VorschauSpeicherTest {
 
     private val wurzel = File(System.getProperty("java.io.tmpdir"), "bim-vorschau-grenze-${System.nanoTime()}")
-    private val speicher = VorschauSpeicher({ wurzel }, AblageChiffre { ByteArray(32) { 5 } })
+    private val speicher = VorschauSpeicher({ wurzel }, AblageChiffre { ByteArray(32) { 5 } }) { ByteArray(32) { 15 } }
     private val basis = "https://brick.example/api/v1/images"
 
     @After

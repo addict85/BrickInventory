@@ -10,7 +10,11 @@ import androidx.navigation.toRoute
 import ch.brickinventoryapp.model.data.model.KEINE_FARBE
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.ui.Scannerherkunft
-import ch.brickinventoryapp.zustand.ui.Screen
+import ch.brickinventoryapp.anmeldung.ui.AnmeldeZiel
+import ch.brickinventoryapp.finanzen.ui.FinanzZiel
+import ch.brickinventoryapp.katalog.ui.KatalogZiel
+import ch.brickinventoryapp.sammlung.ui.SammlungZiel
+import ch.brickinventoryapp.teile.ui.TeileZiel
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -37,29 +41,29 @@ class RoutenRundwegTest {
     val compose = createComposeRule()
 
     /** Was das Ziel beim Aufbau gelesen hat, je Eintrag im Rückstapel. */
-    private val gelesen = mutableMapOf<String, Screen>()
+    private val gelesen = mutableMapOf<String, Any>()
 
     private lateinit var nav: NavHostController
 
     private fun aufbauen() {
         compose.setContent {
             nav = rememberNavController()
-            NavHost(nav, startDestination = Screen.Setup) {
-                composable<Screen.Setup> {}
-                composable<Screen.SetDetail> { gelesen[it.id] = it.toRoute<Screen.SetDetail>() }
-                composable<Screen.CatalogDetail> { gelesen[it.id] = it.toRoute<Screen.CatalogDetail>() }
-                composable<Screen.MerkpostenDetail> { gelesen[it.id] = it.toRoute<Screen.MerkpostenDetail>() }
-                composable<Screen.ManualItemDetail> { gelesen[it.id] = it.toRoute<Screen.ManualItemDetail>() }
-                composable<Screen.AcquisitionManagement> { gelesen[it.id] = it.toRoute<Screen.AcquisitionManagement>() }
-                composable<Screen.PdfViewer> { gelesen[it.id] = it.toRoute<Screen.PdfViewer>() }
-                composable<Screen.BarcodeScanner> { gelesen[it.id] = it.toRoute<Screen.BarcodeScanner>() }
+            NavHost(nav, startDestination = AnmeldeZiel.Setup) {
+                composable<AnmeldeZiel.Setup> {}
+                composable<SammlungZiel.SetDetail> { gelesen[it.id] = it.toRoute<SammlungZiel.SetDetail>() }
+                composable<KatalogZiel.CatalogDetail> { gelesen[it.id] = it.toRoute<KatalogZiel.CatalogDetail>() }
+                composable<SammlungZiel.MerkpostenDetail> { gelesen[it.id] = it.toRoute<SammlungZiel.MerkpostenDetail>() }
+                composable<TeileZiel.ManualItemDetail> { gelesen[it.id] = it.toRoute<TeileZiel.ManualItemDetail>() }
+                composable<SammlungZiel.AcquisitionManagement> { gelesen[it.id] = it.toRoute<SammlungZiel.AcquisitionManagement>() }
+                composable<FinanzZiel.PdfViewer> { gelesen[it.id] = it.toRoute<FinanzZiel.PdfViewer>() }
+                composable<SammlungZiel.BarcodeScanner> { gelesen[it.id] = it.toRoute<SammlungZiel.BarcodeScanner>() }
             }
         }
         compose.waitForIdle()
     }
 
     /** Navigiert zum Ziel und gibt zurück, was das Ziel gelesen hat. */
-    private fun hin(ziel: Screen): Screen {
+    private fun hin(ziel: Any): Any {
         compose.runOnIdle { nav.navigate(ziel) }
         compose.waitForIdle()
         return compose.runOnIdle {
@@ -82,11 +86,11 @@ class RoutenRundwegTest {
     fun `Titel mit Sonderzeichen kommen unverändert an`() {
         aufbauen()
         for (t in titel) {
-            val teil = Screen.ManualItemDetail(Postenart.PART, "3001 b", 4, t)
+            val teil = TeileZiel.ManualItemDetail(Postenart.PART, "3001 b", 4, t)
             assertEquals("Teil „$t“", teil, hin(teil))
-            val kauf = Screen.AcquisitionManagement(Postenart.FIG, "sw0001+", 0, t)
+            val kauf = SammlungZiel.AcquisitionManagement(Postenart.FIG, "sw0001+", 0, t)
             assertEquals("Kauf „$t“", kauf, hin(kauf))
-            val pdf = Screen.PdfViewer("https://srv/a.pdf", t)
+            val pdf = FinanzZiel.PdfViewer("https://srv/a.pdf", t)
             assertEquals("PDF „$t“", pdf, hin(pdf))
         }
     }
@@ -95,7 +99,7 @@ class RoutenRundwegTest {
     fun `jede Postenart kommt als dieselbe an`() {
         aufbauen()
         for (art in Postenart.entries) {
-            val kauf = Screen.AcquisitionManagement(art, "3001", 4, "Stein")
+            val kauf = SammlungZiel.AcquisitionManagement(art, "3001", 4, "Stein")
             assertEquals(kauf, hin(kauf))
             assertEquals(art, Postenart.aus(art.kennung))
         }
@@ -105,14 +109,14 @@ class RoutenRundwegTest {
     fun `der Scanner weiss, von wo er geoeffnet wurde`() {
         aufbauen()
         for (herkunft in Scannerherkunft.entries) {
-            assertEquals(Screen.BarcodeScanner(herkunft), hin(Screen.BarcodeScanner(herkunft)))
+            assertEquals(SammlungZiel.BarcodeScanner(herkunft), hin(SammlungZiel.BarcodeScanner(herkunft)))
         }
     }
 
     @Test
     fun `ohne Farbe kommt keine Farbe an, nicht Schwarz`() {
         aufbauen()
-        assertEquals(KEINE_FARBE, (hin(Screen.ManualItemDetail(Postenart.FIG, "sw0001", title = "Luke")) as Screen.ManualItemDetail).colorId)
+        assertEquals(KEINE_FARBE, (hin(TeileZiel.ManualItemDetail(Postenart.FIG, "sw0001", title = "Luke")) as TeileZiel.ManualItemDetail).colorId)
     }
 
     @Test
@@ -123,7 +127,7 @@ class RoutenRundwegTest {
             "https://cdn.example/6/1/123456.pdf?ticket=a%2Fb+c&x=%25",
             "https://srv/Bauanleitung Teil 2.pdf",
         )) {
-            assertEquals(url, (hin(Screen.PdfViewer(url, "Anleitung")) as Screen.PdfViewer).url)
+            assertEquals(url, (hin(FinanzZiel.PdfViewer(url, "Anleitung")) as FinanzZiel.PdfViewer).url)
         }
     }
 
@@ -131,9 +135,9 @@ class RoutenRundwegTest {
     fun `Setnummern und Merkposten kommen unverändert an`() {
         aufbauen()
         for (sn in listOf("75192-1", "col23-1", "a b/c%", "10 % +1")) {
-            assertEquals(Screen.SetDetail(sn), hin(Screen.SetDetail(sn)))
-            assertEquals(Screen.CatalogDetail(sn), hin(Screen.CatalogDetail(sn)))
-            assertEquals(Screen.MerkpostenDetail(sn, Zustand.GEBRAUCHT), hin(Screen.MerkpostenDetail(sn, Zustand.GEBRAUCHT)))
+            assertEquals(SammlungZiel.SetDetail(sn), hin(SammlungZiel.SetDetail(sn)))
+            assertEquals(KatalogZiel.CatalogDetail(sn), hin(KatalogZiel.CatalogDetail(sn)))
+            assertEquals(SammlungZiel.MerkpostenDetail(sn, Zustand.GEBRAUCHT), hin(SammlungZiel.MerkpostenDetail(sn, Zustand.GEBRAUCHT)))
         }
     }
 }

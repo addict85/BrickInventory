@@ -26,6 +26,8 @@
  *   I  setzePasswortZurueck() ohne loescheAlleDesKontos → rot: „Zurücksetzen per Mail …“
  *   J  hinweisNebenher() in /reset-password entfernt → rot: „kein Hinweis verschickt“
  *   K  passkeys_widerrufen überhört → rot: „ein Passwortwechsel widerruft Passkeys nur auf Wunsch“
+ *   L  (11.11.2026) in speichereChallenge() die Zählbedingung gestrichen → rot:
+ *      „über der Obergrenze offener Challenges …“ (200 statt 503)
  *
  * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
  */
@@ -289,5 +291,20 @@ test('Passkeys', { concurrency: 1 }, async (t) => {
     assert.equal(await anzahl(ids.pk_anna), 0, 'ein untergeschobener Passkey überlebt das Zurücksetzen');
     assert.equal((await ruf('/passkey/anmelden', { antwort: anna.anmelden(await optionen()) })).status, 401);
     assert.ok(zeilen.some(z => z.includes('SMTP') && z.includes('example.org')), `kein Hinweis verschickt: ${zeilen.join('\n')}`);
+  });
+
+  await t.test('über der Obergrenze offener Challenges gibt es 503', async (tt) => {
+    const { OFFENE_CHALLENGES_HOECHSTENS } = _req('src/konto/passkeys.js');
+    await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'passkey-optionen|%'");
+    await db.run('DELETE FROM webauthn_challenges');
+    tt.after(() => db.run("DELETE FROM webauthn_challenges WHERE challenge LIKE 'voll%'"));
+    await db.run(`INSERT INTO webauthn_challenges (challenge, user_id, zweck, expires_at)
+      SELECT 'voll' || g, NULL, 'anmelden', NOW() + INTERVAL '5 minutes' FROM generate_series(1, $1::int - 1) g`,
+      [OFFENE_CHALLENGES_HOECHSTENS]);
+    assert.equal((await ruf('/passkey/anmelden/optionen', {})).status, 200, 'die letzte freie Stelle');
+    const r = await ruf('/passkey/anmelden/optionen', {});
+    assert.deepEqual([r.status, r.body?.code], [503, 'server_ausgelastet']);
+    await db.run(`UPDATE webauthn_challenges SET expires_at = NOW() - INTERVAL '1 minute' WHERE challenge LIKE 'voll%'`);
+    assert.equal((await ruf('/passkey/anmelden/optionen', {})).status, 200, 'abgelaufene räumt der nächste Aufruf ab');
   });
 });

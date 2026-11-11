@@ -227,10 +227,8 @@ class BarrierefreiheitBefundeTest {
         }
         val welt = Beispiele.Welt(KontextTexte())
         try {
-            val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
-                KontoRepository(welt.t.api, welt.t.cache),
-                VerwaltungRepository(welt.t.api, welt.t.cache),
-                SetsRepository(welt.t.api, welt.t.cache),
+            val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich, KontoRepository(welt.t.api, welt.t.cache),
+                VerwaltungRepository(welt.t.api, welt.t.cache), SetsRepository(welt.t.api, welt.t.cache),
                 TeileRepository(welt.t.api, welt.t.cache),
                 object : DateiLeser {
                     override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null

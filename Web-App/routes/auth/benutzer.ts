@@ -11,8 +11,7 @@ import { passwortMangel } from '../../src/infra/passwortRegel';
 import { requireApiAdmin } from '../api_v1/middleware';
 import { alsDoppelt } from '../../src/infra/fehlerTexte';
 import * as zf from '../../src/konto/zweiterFaktor';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Antwort, OffeneAnfrage } from '../../src/http/vertragsRouter';
+import { vertragsRouter, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
 
 const router = vertragsRouter();
 const requireAdmin = requireApiAdmin;

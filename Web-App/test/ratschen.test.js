@@ -149,9 +149,9 @@ test('any in allen Formen und unknown-Parameter in Diensten werden weniger, nie 
   if (ist < SCHRANKE) console.log(`  ℹ any (alle Formen): ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
   // Routen reichen req.eingabe/req.pfad mit Vertragstyp durch, Dienste nehmen
   // Fachtypen (Zustand, string). Ausgenommen sind die Prüfer für Rohwerte
-  // (src/vertrag, src/infra, src/http) und Fehlerparameter. Gemessen 75 am 11.11.2026.
-  // Gegenprobe (11.11.2026): `condition: unknown` zurück in alarmDesSetsLoeschen → rot (76).
-  const SCHRANKE_UNKNOWN = 75;
+  // (src/vertrag, src/infra, src/http) und Fehlerparameter. Gemessen 74 am 11.11.2026.
+  // Gegenprobe (11.11.2026): `condition: unknown` zurück in alarmDesSetsLoeschen → rot (75).
+  const SCHRANKE_UNKNOWN = 74;
   const MUSTER = /(?<!catch\s*)[(,]\s*\.{0,3}(?!(?:e|err|error|fehler|grund)\b)\w+\??\s*:\s*unknown\s*(?=[,)=])/g;
   assert.equal(('f(a: unknown, b?: unknown = 1)'.match(MUSTER) || []).length + ('catch (e: unknown)'.match(MUSTER) || []).length, 2);
   const ohneKommentare = require('./helpers/sources').ohneKommentare;
@@ -577,7 +577,7 @@ test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie meh
 test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () => {
   // Je Ordner eine Schranke, gemessen am 10.11.2026.
   // Gegenprobe: 40 Kommentarzeilen an clients/ezb.ts gehängt → rot (clients).
-  const SCHRANKE = { db: 24.4, clients: 15.6, scripts: 24.9 };
+  const SCHRANKE = { db: 24.4, clients: 15.0, scripts: 24.9 };
   const zuViel = [];
   for (const [ordner, schranke] of Object.entries(SCHRANKE)) {
     let zeilen = 0, kommentar = 0;
@@ -665,10 +665,10 @@ test('kein Verweis auf das frühere Begründungsarchiv', () => {
 test('der Kommentaranteil der Betriebsdateien sinkt, nie steigt', () => {
   // Workflows, Dockerfile, compose.yaml, tsconfig.json: Auch dort steht das
   // Warum in wenigen Zeilen, die Geschichte im Commit (CLAUDE.md). Gemessen
-  // 23,5 % am 06.11.2026. Das Caddyfile zählt nicht mit:
+  // 20,9 % am 11.11.2026. Das Caddyfile zählt nicht mit:
   // Kein Block darin ist länger als fünf Zeilen.
   // Gegenprobe (04.11.2026): 60 Kommentarzeilen an das Dockerfile → rot.
-  const SCHRANKE = 23.5;
+  const SCHRANKE = 20.9;
   const wf = path.join(WEB, '..', '.github', 'workflows');
   const dateien = [
     ...fs.readdirSync(wf).filter(f => /\.ya?ml$/.test(f)).map(f => path.join(wf, f)),
@@ -746,9 +746,9 @@ test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie meh
 
 test('Testdateien ohne Gegenprobe werden weniger, nie mehr', () => {
   // Jeder Test nennt im Kopf seine Gegenprobe (CLAUDE.md); die älteren ohne
-  // werden beim Anfassen nachgetragen. Gemessen 74 am 10.11.2026.
+  // werden beim Anfassen nachgetragen. Gemessen 73 am 11.11.2026.
   // Gegenprobe (05.11.2026): in lint-ratsche.test.js „Gegenproben“ umbenannt → rot (112).
-  const SCHRANKE = 74;
+  const SCHRANKE = 73;
   const ohne = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js'))
     .filter(n => !fs.readFileSync(path.join(__dirname, n), 'utf8').includes('Gegenprobe'));
   assert.ok(ohne.length <= SCHRANKE, `${ohne.length} Testdateien ohne Gegenprobe, erlaubt sind ${SCHRANKE}`);

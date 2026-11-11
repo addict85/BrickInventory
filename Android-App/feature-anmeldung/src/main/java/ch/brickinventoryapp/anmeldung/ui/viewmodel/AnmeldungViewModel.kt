@@ -8,8 +8,8 @@ import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.model.data.model.TOKEN_SCOPE_APP
 import ch.brickinventoryapp.model.data.model.TOKEN_SCOPE_VOLL
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.zustand.ui.AnmeldeFormular
-import ch.brickinventoryapp.zustand.ui.AnmeldeUiState
+import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
+import ch.brickinventoryapp.anmeldung.ui.AnmeldeUiState
 import ch.brickinventoryapp.zustand.ui.qrFehler
 import ch.brickinventoryapp.netz.util.NetworkPolicy
 import ch.brickinventoryapp.sicherheit.bestaetigtFingerabdruck
@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.model.data.model.QrAbholung
@@ -38,6 +39,7 @@ import ch.brickinventoryapp.model.data.model.QrMeldung
 import javax.inject.Inject
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.zustand.ui.AppUiState
+import ch.brickinventoryapp.anmeldung.ui.QrKonto
 import ch.brickinventoryapp.zustand.ui.Sitzung
 import ch.brickinventoryapp.zustand.ui.SitzungsRepository
 import ch.brickinventoryapp.zustand.ui.Blickfeld
@@ -70,7 +72,7 @@ class AnmeldungViewModel @Inject constructor(
     }
 
     private val _anmeldeState = MutableStateFlow(AnmeldeUiState())
-    val anmeldeState: StateFlow<AnmeldeUiState> = _anmeldeState.asStateFlow()
+    internal val anmeldeState: StateFlow<AnmeldeUiState> = _anmeldeState.asStateFlow()
 
     /**
      * Nur eine https-Adresse wird gespeichert; false heisst abgelehnt, die
@@ -96,14 +98,14 @@ class AnmeldungViewModel @Inject constructor(
     }
 
     /** Der Passkey ersetzt den Code des zweiten Faktors; Name und Passwort gehen mit. */
-    fun passkeyStattCode(username: String, password: String, abfrage: PasskeyAbfrage) {
+    internal fun passkeyStattCode(username: String, password: String, abfrage: PasskeyAbfrage) {
         viewModelScope.launch {
             mitPasswort(username, password, null) { holePasskey(PASSKEY_ZWEITER_FAKTOR, abfrage) }
         }
     }
 
     /** Ohne Passwort: Der Credential Manager bietet die Passkeys dieses Servers an. */
-    fun passkeyAnmelden(abfrage: PasskeyAbfrage) {
+    internal fun passkeyAnmelden(abfrage: PasskeyAbfrage) {
         viewModelScope.launch {
             _anmeldeState.update { it.copy(loginLaeuft = true, loginError = null) }
             val antwort = holePasskey(PASSKEY_ANMELDEN, abfrage) ?: return@launch
@@ -220,9 +222,19 @@ class AnmeldungViewModel @Inject constructor(
         }
     }
 
+    /** Wartet die Kopplung auf das Ja oder Nein zum gezeigten Konto ([AnmeldeUiState.qrKonto]). */
+    private var qrEntscheidung: CompletableDeferred<Boolean>? = null
+
+    /** Das Ja oder Nein zum Konto, das der Server nach der Bestätigung im Browser nennt. */
+    fun qrKontoEntscheiden(uebernehmen: Boolean) {
+        qrEntscheidung?.complete(uebernehmen)
+    }
+
     /**
-     * Der Pin wird erst gemerkt, wenn der Browser die Kopplung bestätigt hat: Ein
-     * abgelehnter oder verfallener Code darf keinen Schlüssel zurücklassen.
+     * Der Pin wird erst gemerkt, wenn der Browser die Kopplung bestätigt und man das
+     * gezeigte Konto angenommen hat: Ein abgelehnter, verfallener oder untergeschobener
+     * Code darf keinen Schlüssel und keinen Token zurücklassen. Das Warten auf das Ja
+     * bleibt in dieser Koroutine, damit der vorgehaltene Pin bis zur Abholung gilt.
      */
     private suspend fun koppleQr(antwort: QrMeldung, schluessel: String?, fingerabdruck: String?) {
         val abholung = antwort.abholung
@@ -232,11 +244,41 @@ class AnmeldungViewModel @Inject constructor(
             return
         }
         _anmeldeState.update { it.copy(qrBestaetigung = code) }
-        val fertig = warteAufBestaetigung(abholung, antwort.expiresIn) ?: return
-        val neuesToken = fertig.token ?: return
+        val vorschau = warteAufBestaetigung(abholung, antwort.expiresIn) ?: return
+        val benutzer = vorschau.username ?: vorschau.user?.username
+        if (benutzer.isNullOrBlank()) {
+            qrGescheitert(meldungen.text(R.string.err_qr_login_failed))
+            return
+        }
+        if (!frageNachKonto(QrKonto(benutzer, ablage.serverUrlJetzt()))) {
+            konto.qrVerwerfen(abholung)
+            _anmeldeState.update { it.copy(loginLaeuft = false) }
+            return
+        }
+        val neuesToken = vorschau.token ?: holeQrToken(abholung) ?: return
         if (schluessel != null && fingerabdruck != null) ablage.merkePin(schluessel, fingerabdruck)
-        angemeldet(neuesToken, fertig.user?.username ?: "", false)
-        _anmeldeState.update { it.copy(loginLaeuft = false, qrBestaetigung = null) }
+        angemeldet(neuesToken, benutzer, false)
+        _anmeldeState.update { it.copy(loginLaeuft = false) }
+    }
+
+    private suspend fun frageNachKonto(gezeigt: QrKonto): Boolean {
+        val entscheidung = CompletableDeferred<Boolean>().also { qrEntscheidung = it }
+        _anmeldeState.update { it.copy(qrBestaetigung = null, qrKonto = gezeigt) }
+        return try {
+            entscheidung.await()
+        } finally {
+            qrEntscheidung = null
+            _anmeldeState.update { it.copy(qrKonto = null) }
+        }
+    }
+
+    private suspend fun holeQrToken(abholung: String): String? {
+        val satz = when (val r = konto.qrAbholen(abholung)) {
+            is Ergebnis.Success -> r.data.token?.let { return it } ?: r.data.error ?: meldungen.text(R.string.err_qr_login_failed)
+            is Ergebnis.Error -> meldungen.meldung(r)
+        }
+        qrGescheitert(satz)
+        return null
     }
 
     /**
@@ -285,8 +327,8 @@ class AnmeldungViewModel @Inject constructor(
     private suspend fun warteAufBestaetigung(abholung: String, sekunden: Int): QrAbholung? {
         val ende = System.currentTimeMillis() + sekunden * 1000L
         while (System.currentTimeMillis() < ende) {
-            when (val r = konto.qrAbholen(abholung)) {
-                is Ergebnis.Success -> if (r.data.token != null) return r.data
+            when (val r = konto.qrAbholen(abholung, vorschau = true)) {
+                is Ergebnis.Success -> if (r.data.vorschau || r.data.token != null) return r.data
                     else if (!r.data.wartet) return qrGescheitert(r.data.error ?: meldungen.text(R.string.err_qr_login_failed))
                 is Ergebnis.Error -> return qrGescheitert(meldungen.meldung(r))
             }
@@ -298,7 +340,8 @@ class AnmeldungViewModel @Inject constructor(
     /** Ein zweiter QR-Anlauf nach einer gelungenen Anmeldung ist kein Fehler (siehe qrFehler). */
     private fun qrGescheitert(satz: String): QrAbholung? {
         val schonAngemeldet = sitzung.state.value.isLoggedIn
-        _anmeldeState.update { it.copy(loginLaeuft = false, qrBestaetigung = null, loginError = qrFehler(schonAngemeldet, satz)) }
+        _anmeldeState.update { it.copy(loginLaeuft = false, qrBestaetigung = null, qrKonto = null,
+            loginError = qrFehler(schonAngemeldet, satz)) }
         return null
     }
 

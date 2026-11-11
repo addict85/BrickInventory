@@ -6,7 +6,7 @@ Rot: nur Vorschaubilder
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt
-@@ -83,8 +83,7 @@
+@@ -86,8 +86,7 @@
       * Die volle Auflösung bleibt draussen: Sie wird einzeln im Detail angesehen, nicht
       * in Tabellen.
       */
@@ -15,4 +15,4 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache
 +    fun istVorschau(adresse: String): Boolean = adresse.isNotEmpty()
  
      /**
-      * Der Dateiname zu einer Adresse — SHA-256, weil die Adresse einen kodierten
+      * Der Dateiname zu einer Adresse: HMAC-SHA256 mit [namen], nicht der blosse Hash —

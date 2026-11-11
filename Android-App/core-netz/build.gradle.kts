@@ -20,6 +20,4 @@ dependencies {
     api(project(":core-model"))
     // OkHttp nur als implementation: Kein Modul darüber soll es sehen (wie in core-data).
     implementation(libs.okhttp)
-    // oeffneExtern: Uri-Erweiterung.
-    implementation(libs.androidx.core.ktx)
 }

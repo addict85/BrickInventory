@@ -89,11 +89,11 @@ test('es gibt keine Abwärtskompatibilität für die alten Pfade mehr', () => {
     'resolveWebPath darf keine Alt-Präfixe mehr kennen');
 });
 
-test('der Entrypoint legt die neuen Verzeichnisse an', () => {
+test('daten-rechte legt die neuen Verzeichnisse an', () => {
   // Kommentare weg: Der Erklärtext im Entrypoint nennt die alten Verzeichnisse
   // ("instructions/shared und part_images sind entfallen") und hätte die
   // Negativprüfung unten selbst ausgelöst.
-  const ep = read('docker-entrypoint.sh').replace(/^\s*#[^\n]*$/gm, '');
+  const ep = read('daten-rechte.sh').replace(/^\s*#[^\n]*$/gm, '');
   for (const d of ['images/sets', 'images/parts', 'images/minifigs', 'instructions']) {
     assert.match(ep, new RegExp(`/app/data/${d.replace('/', '\\/')}`), `${d} fehlt`);
   }
