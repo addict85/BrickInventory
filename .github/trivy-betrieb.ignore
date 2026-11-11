@@ -39,3 +39,25 @@ CVE-2026-111943 exp:2026-12-01
 CVE-2026-78667 exp:2026-12-01
 CVE-2026-78669 exp:2026-12-01
 CVE-2026-97031 exp:2026-12-01
+
+# postgres:18-alpine (neuester Digest am 11.11.2026): krb5 trifft fast nur KDC und kadmind, die
+# im Container nicht laufen; GSSAPI ist nicht eingerichtet. libxslt braucht nur die Erweiterung
+# xml2, die nicht geladen wird. Behoben mit dem nächsten Bau des Images.
+CVE-2026-107364 exp:2026-11-25
+CVE-2026-112315 exp:2026-11-25
+CVE-2026-112316 exp:2026-11-25
+CVE-2026-112317 exp:2026-11-25
+CVE-2026-112318 exp:2026-11-25
+CVE-2026-112319 exp:2026-11-25
+CVE-2026-112320 exp:2026-11-25
+CVE-2026-112321 exp:2026-11-25
+CVE-2026-112322 exp:2026-11-25
+CVE-2026-112323 exp:2026-11-25
+CVE-2026-118380 exp:2026-11-25
+CVE-2026-119079 exp:2026-11-25
+CVE-2026-40355 exp:2026-11-25
+CVE-2026-40356 exp:2026-11-25
+CVE-2026-71199 exp:2026-11-25
+CVE-2026-71200 exp:2026-11-25
+CVE-2026-87636 exp:2026-11-25
+CVE-2026-9947 exp:2026-11-25
