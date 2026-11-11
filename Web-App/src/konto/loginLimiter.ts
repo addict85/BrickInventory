@@ -2,12 +2,12 @@
  * hat, entscheidet die HTTP-Schicht. */
 import { createHash } from 'node:crypto';
 import { isIPv4, isIPv6 } from 'node:net';
-import * as db from '../../db/database';
 import { einzelwert } from '../infra/validate';
 import { fehlertext, meldeUndLiefere } from '../infra/fehler';
 import { suchwert } from '../infra/geheimnis';
 import type { FehlerCode } from '../infra/fehlerTexte';
 import * as repo from './repository/anmeldezaehler';
+import { kontoBereich } from './prozess';
 
 /** Typisiert, weil ein vertippter Feldname `undefined >= MAX_ATTEMPTS` ergäbe
  * — `false`, also keine Sperre. */
@@ -60,9 +60,9 @@ export function drosselAdresse(ip: string): string {
 }
 
 // einzelwert(): Kommt der Name doppelt an, liefert Express ein Array.
-const _key = (ip: string, name: unknown) => `login|${drosselAdresse(ip)}|${einzelwert(name).toLowerCase()}`;
+const _key = (ip: string, name: string) => `login|${drosselAdresse(ip)}|${einzelwert(name).toLowerCase()}`;
 const _adressKey = (ip: string) => `login-adresse|${drosselAdresse(ip)}`;
-const _nameKey = (name: unknown) => `login-name|${einzelwert(name).toLowerCase()}`;
+const _nameKey = (name: string) => `login-name|${einzelwert(name).toLowerCase()}`;
 /** Die Bekannt-Zeile lebt 30 Tage und die Tabelle liest die Leserolle: Dort steht
  * nur der HMAC der Adresse; er bleibt für dieselbe Adresse gleich und zählt weiter. */
 function adressAbdruck(ip: string): string {
@@ -70,7 +70,7 @@ function adressAbdruck(ip: string): string {
   try { return suchwert('anmeldeadresse', a); }
   catch { return createHash('sha256').update(`brickinventory/anmeldeadresse/${a}`).digest('hex'); }
 }
-const _bekanntKey = (ip: string, name: unknown) => `login-bekannt|${adressAbdruck(ip)}|${einzelwert(name).toLowerCase()}`;
+const _bekanntKey = (ip: string, name: string) => `login-bekannt|${adressAbdruck(ip)}|${einzelwert(name).toLowerCase()}`;
 const _erfolgKey = (ip: string, kennung: string) => `login-erfolg|${adressAbdruck(ip)}|${kennung}`;
 
 function _prune() {
@@ -84,7 +84,7 @@ const _restMin = (firstAt: number, windowMin: number, now = Date.now()) =>
 
 async function _read(key: string, windowMin: number): Promise<Zaehlerstand | null> {
   try {
-    const row = await repo.lies(key, windowMin);
+    const row = await kontoBereich().anmeldezaehler.lies(key, windowMin);
     if (!row) return null;
     return { count: parseInt(row.count) || 0, waitMin: Math.max(1, Math.ceil(parseFloat(row.wait_min) || 1)),
              seitLetztem: Math.max(0, parseFloat(row.seit) || 0) };
@@ -98,7 +98,7 @@ async function _read(key: string, windowMin: number): Promise<Zaehlerstand | nul
 
 async function _bump(key: string, windowMin: number): Promise<number> {
   try {
-    return await repo.erhoehe(key, windowMin);
+    return await kontoBereich().anmeldezaehler.erhoehe(key, windowMin);
   } catch (fehler) {
     imSpeicher('zählen', fehler);
     const now = Date.now();
@@ -116,7 +116,7 @@ type Stand = Zaehlerstand & { laufend: number };
  * einander sehen. */
 async function _reserviere(key: string, windowMin: number, erlaubt: (s: Stand) => boolean): Promise<{ ok: boolean; stand: Stand }> {
   try {
-    return await db.transaction(async (tx) => {
+    return await kontoBereich().db.transaction(async (tx) => {
       const r = await repo.sperre(tx, key, windowMin, LAUFEND_VERFALL_S);
       const neu = !!r.abgelaufen;
       const stand: Stand = {
@@ -145,7 +145,7 @@ async function _reserviere(key: string, windowMin: number, erlaubt: (s: Stand) =
 }
 
 async function _freigeben(key: string): Promise<void> {
-  try { await repo.gibLaufplatzFrei(key); }
+  try { await kontoBereich().anmeldezaehler.gibLaufplatzFrei(key); }
   catch (fehler) {
     imSpeicher('freigeben', fehler);
     const e = _attempts.get(key); if (e) e.laufend = Math.max(0, (e.laufend || 0) - 1);
@@ -153,15 +153,17 @@ async function _freigeben(key: string): Promise<void> {
 }
 
 async function _clear(key: string): Promise<void> {
-  try { await repo.loescheZaehler(key); }
+  try { await kontoBereich().anmeldezaehler.loescheZaehler(key); }
   catch (e) { imSpeicher('löschen', e); _attempts.delete(key); }
 }
 
 /** Name und E-Mail desselben Kontos zählen gemeinsam, sonst gälte jede Grenze
  * doppelt. Kleinschreibung in PostgreSQL wie beim Login: JS macht aus „İ"
  * zwei Zeichen. */
-async function kontoKennung(username: unknown): Promise<string> {
-  const z = await repo.kontoZumNamen(einzelwert(username)).catch(meldeUndLiefere('anmeldung:konto-kennung', null));
+async function kontoKennung(username: string): Promise<string> {
+  // Ausnahme: Bei gestörter Datenbank zählt die Drossel im Speicher weiter
+  // (imSpeicher); ohne Konto dann nach dem Namen, statt die Anmeldung zu sperren.
+  const z = await kontoBereich().anmeldezaehler.kontoZumNamen(einzelwert(username)).catch(meldeUndLiefere('anmeldung:konto-kennung', null));
   if (z?.id) return `konto:${z.id}`;
   return `name:${namensAbdruck(z?.kennung ?? einzelwert(username).toLowerCase())}`;
 }
@@ -178,7 +180,7 @@ export type Sperre = { code: FehlerCode; vars: { minuten: number } };
 
 /** Belegt den Versuch; recordLoginFailure, recordLoginSuccess oder
  * gibAnmeldeplatzFrei geben ihn frei. */
-export async function checkLoginAllowed(ip: string, username: unknown): Promise<Sperre | null> {
+export async function checkLoginAllowed(ip: string, username: string): Promise<Sperre | null> {
   const kennung = await kontoKennung(username);
   const gesamt = await _reserviere(_adressKey(ip), WINDOW_MIN, s => s.count + s.laufend < MAX_JE_ADRESSE);
   if (!gesamt.ok)
@@ -205,7 +207,7 @@ export async function checkLoginAllowed(ip: string, username: unknown): Promise<
   return null;
 }
 
-export async function gibAnmeldeplatzFrei(ip: string, username: unknown): Promise<void> {
+export async function gibAnmeldeplatzFrei(ip: string, username: string): Promise<void> {
   const kennung = await kontoKennung(username);
   await _freigeben(_key(ip, kennung));
   await _freigeben(_nameKey(kennung));
@@ -213,7 +215,7 @@ export async function gibAnmeldeplatzFrei(ip: string, username: unknown): Promis
 }
 
 /** @returns die Fehlversuche des Kontos im Fenster */
-export async function recordLoginFailure(ip: string, username: unknown): Promise<number> {
+export async function recordLoginFailure(ip: string, username: string): Promise<number> {
   const kennung = await kontoKennung(username);
   await _bump(_key(ip, kennung), WINDOW_MIN);
   const n = await _bump(_nameKey(kennung), WINDOW_MIN);
@@ -239,7 +241,7 @@ export function meldeAnmeldung(angaben: { ip?: string | undefined; konto: number
     ...(ip ? { adresse: drosselAdresse(ip) } : {}), konto, zugang });
 }
 
-export async function recordLoginSuccess(ip: string, username: unknown): Promise<void> {
+export async function recordLoginSuccess(ip: string, username: string): Promise<void> {
   const kennung = await kontoKennung(username);
   await _clear(_key(ip, kennung));
   await _clear(_nameKey(kennung));
@@ -255,7 +257,7 @@ export async function recordLoginSuccess(ip: string, username: unknown): Promise
 export const ERFOLGE_MIT_VORRANG = 30;
 
 /** Diese Adresse hat sich mit diesem Namen zuletzt angemeldet, und nicht zu oft. */
-export async function bekannteAnmeldung(ip: string, username: unknown): Promise<boolean> {
+export async function bekannteAnmeldung(ip: string, username: string): Promise<boolean> {
   const kennung = await kontoKennung(username);
   if (!await _read(_bekanntKey(ip, kennung), BEKANNT_MIN)) return false;
   return ((await _read(_erfolgKey(ip, kennung), WINDOW_MIN))?.count ?? 0) < ERFOLGE_MIT_VORRANG;
@@ -263,7 +265,7 @@ export async function bekannteAnmeldung(ip: string, username: unknown): Promise<
 
 /** Jeder unbekannte Name legt eine Zeile an; ohne Aufräumen wüchse die Tabelle mit jedem Rateversuch. */
 export async function raeumeAnmeldezaehlerAuf(): Promise<number> {
-  return repo.raeumeAuf(BEKANNT_MIN);
+  return kontoBereich().anmeldezaehler.raeumeAuf(BEKANNT_MIN);
 }
 
 /** In einem Schritt: Getrennt gelesen und gezählt kamen gleichzeitige Anfragen
@@ -272,7 +274,7 @@ export async function zaehleAnfrage(bucket: string, ip: string, windowMs: number
   const key = `${bucket}|${drosselAdresse(ip)}`;
   const windowMin = windowMs / 60000;
   try {
-    const r = await repo.zaehleHoch(key, windowMin);
+    const r = await kontoBereich().anmeldezaehler.zaehleHoch(key, windowMin);
     return { count: parseInt(r.count) || 0, waitMin: Math.max(1, Math.ceil(parseFloat(r.wait_min) || 1)) };
   } catch (fehler) {
     imSpeicher('anfrage', fehler);

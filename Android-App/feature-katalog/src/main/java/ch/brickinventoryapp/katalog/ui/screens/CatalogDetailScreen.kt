@@ -56,7 +56,8 @@ import ch.brickinventoryapp.ui.components.bewegungReduziert
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.ui.theme.Lesebreite
 import ch.brickinventoryapp.ui.util.fmtInt
-import ch.brickinventoryapp.netz.util.oeffneExtern
+import ch.brickinventoryapp.netz.util.externeAdresse
+import ch.brickinventoryapp.ui.util.oeffneExtern
 import ch.brickinventoryapp.ui.components.CatalogDetailRow
 import ch.brickinventoryapp.gemeinsam.ui.LagerortErfassung
 import ch.brickinventoryapp.gemeinsam.ui.OwnerPicker
@@ -154,7 +155,7 @@ fun CatalogDetailScreen(
                         onOpenInGallery = onOpenInGallery,
                         onBrickLink = { url ->
                             // Nicht still schlucken: Ist kein Browser da, passierte sonst nichts.
-                            if (!oeffneExtern(ctx, url)) {
+                            if (!oeffneExtern(ctx, externeAdresse(url))) {
                                 bereich.launch { meldungen.showSnackbar(keineAppText) }
                             }
                         },

@@ -24,7 +24,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const k = _req('src/katalog/apiKontingent.js');
-const { imNamenVon } = _req('src/infra/anfrageKonto.js');
+const { imNamenVon } = _req('src/infra/kontoKontext.js');
 
 test('Tageskontingent je Konto', { concurrency: 1 }, async (t) => {
   if (!await dbOderSkip(t, _req)) return;
@@ -70,7 +70,7 @@ test('Tageskontingent je Konto', { concurrency: 1 }, async (t) => {
     await db.run("INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ('kontingent_kind','x',false,true,true)");
     const uid = (await db.get("SELECT id FROM users WHERE username = 'kontingent_kind'")).id;
     const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
-    const { stelleAuftragEin } = Object.assign({}, _req('src/auftraege/auftraege.js'), _req('src/auftraege/dienst.js'));
+    const { stelleAuftragEin } = Object.assign({}, _req('src/auftraege/auftraege.js'), { ..._req('src/auftraege/dienst.js'), ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege });
     const ergebnisse = [];
     const w = erzeugeWorker({ wechselkurse: { ausfuehren: async () => {
       for (let i = 0; i < 3; i++) ergebnisse.push((await k.checkAndIncrementRateLimit('brickset')).allowed);

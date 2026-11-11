@@ -4,12 +4,11 @@ import { meldeFehler } from '../../src/infra/fehler';
 import express from 'express';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import { zuGrosseId } from '../../src/infra/validate';
-import { validateToken } from '../../src/konto/auth';
+import { kontoBereich, validateToken } from '../../src/konto';
 import { resolveUserId, sendeTokenAbsage, nutzerId, zweiterFaktorPflicht } from '../../src/konto/http/anmeldung';
 import { belegeKontoPlatz, type Schranke } from '../../src/http/kontoSchranke';
-import { mussPasswortAendern } from '../../src/konto/konten';
 import { verlangeFreigabe } from '../../src/konto/http/schrittschutz';
-import type { Sicht } from '../../src/haushalt/haushalt';
+import type { Sicht } from '../../src/haushalt';
 
 /** Wer fragt und welche Konten er gewählt hat; den Bereich löst der Dienst auf. */
 export const sichtVon = (req: AuthedRequest & { abfrage: { accounts?: string | undefined } }): Sicht =>
@@ -49,7 +48,7 @@ const ZUR_EINRICHTUNG: ReadonlyArray<readonly [string, RegExp]> = [
 /** Sitzungen von vor dem Feld fragen einmal die Datenbank und merken es sich. */
 async function mussWechseln(req: Request): Promise<boolean> {
   if (!req.session?.userId) return req.apiUser?.muss_passwort_aendern === true;
-  req.session.mussPasswortAendern ??= await mussPasswortAendern(req.session.userId);
+  req.session.mussPasswortAendern ??= await kontoBereich().konten.mussPasswortAendern(req.session.userId);
   return req.session.mussPasswortAendern;
 }
 
@@ -57,7 +56,7 @@ export async function anmeldungAmEingang(req: Request, res: Response, next: Next
   const methode = req.method === 'HEAD' ? 'GET' : req.method;
   if (OEFFENTLICH.some(([m, re]) => m === methode && re.test(req.path))) return next();
   if (req.session?.userId) {
-    req.apiUser = { user_id: req.session.userId, is_admin: req.session.isAdmin ? 1 : 0,
+    req.apiUser = { user_id: req.session.userId, is_admin: !!req.session.isAdmin,
                     ...(req.session.username ? { username: req.session.username } : {}) };
   } else {
     // Ein Lesefehler ist keine ungültige Anmeldung: Ein 401 meldete die App ab.
@@ -84,14 +83,14 @@ export const requireToken = waechter<AuthedRequest>((req, res, next) => {
   // Schon am Eingang geprüft: kein zweiter Datenbankzugriff.
   if (req.apiUser) return next();
   if (req.session?.userId) {
-    req.apiUser = { user_id: req.session.userId, is_admin: req.session.isAdmin ? 1 : 0,
+    req.apiUser = { user_id: req.session.userId, is_admin: !!req.session.isAdmin,
       ...(req.session.username ? { username: req.session.username } : {}) };
     return next();
   }
   const token = bearerToken(req);
   validateToken(token, { ip: req.ip }).then(user => {
     if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
-    req.apiUser = { ...user, is_admin: user.is_admin ?? 0 };
+    req.apiUser = { ...user, is_admin: user.is_admin === true };
     next();
   }).catch((e: unknown) => { meldeFehler('eingang:token', e); sendeFehler(req, res, 401, 'auth_fehler'); });
 });

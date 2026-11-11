@@ -46,7 +46,7 @@ test('2. dieselbe Adresse wie im Workflow und in der App', async () => {
   const adresse = (await knopf()).href;
   // ── Aus dem Workflow: Etikett und Dateiname ──────────────────────────────
   const yml = fs.readFileSync(
-    path.join(ROOT, '..', '.github', 'workflows', 'android.yml'), 'utf8');
+    path.join(ROOT, '..', '.github', 'workflows', 'android-release.yml'), 'utf8');
   const etikett = yml.match(/^\s*ETIKETT=(\S+)/m)?.[1];
   assert.ok(etikett, 'Im Workflow ist kein ETIKETT mehr zu finden — Muster veraltet?');
   const apkName = yml.match(/^\s*APK=.*\/([^/\s]+\.apk)/m)?.[1];
@@ -68,103 +68,117 @@ test('2. dieselbe Adresse wie im Workflow und in der App', async () => {
     'Eine von beiden holt dann etwas anderes als die andere.');
 });
 
-test('signiert und veröffentlicht wird nur aus einem Etikett auf main, und Gradle sieht den Schlüssel nie', () => {
-  // Ein signiertes APK im Kanal apk-neuste ist ein Update für jede installierte
-  // App. Von einem Zweig aus wäre das ungeprüfter Code an Review und Merge vorbei;
-  // seit pruef6 (N4) auch nicht mehr jeder Push auf main, sondern nur ein
-  // Etikett android-v…, dessen Commit auf main liegt.
-  // Gegenproben (28.10.2026): die main-Bedingung am Release-Schritt entfernt → rot;
-  // BRICK_KEYSTORE_PASSWORT wieder im Schritt „Release bauen“ → rot;
-  // (02.11.2026) am Schritt „Release-Schlüssel bereitstellen“ die `if:`-Zeile
-  // entfernt → rot „… nur in der Environment release“; `KEY_PASS: ${{
-  // secrets.KEY_PASSWORT }}` in den Schritt „Signieren“ → rot „Secrets
-  // ausserhalb …“; im Fehlertext „Repository-Secrets gleichen Namens löschen“
-  // entfernt → rot „… sagt, dass Repository-Secrets wegmüssen“.
-  // (03.11.2026) Der Schritt „Etikett liegt auf main“ prüft `ahead` statt
-  // `behind` → rot „… nur ein Commit, der auf main liegt“; das Etikett-Muster
-  // unter `push:` entfernt → rot „… Etiketten lösen den Lauf aus“.
-  const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android.yml'), 'utf8');
-  const schritt = (name) => {
-    const i = yml.indexOf(`- name: ${name}`);
-    assert.ok(i >= 0, `Schritt „${name}“ nicht gefunden`);
-    const rest = yml.slice(i + 1);
-    const ende = rest.search(/\n {6}- name: /);
-    return ende < 0 ? rest : rest.slice(0, ende);
-  };
-  // Die Secrets stehen in genau einem Schritt, und der läuft nur unter derselben
-  // Bedingung, unter der der Job in der Environment release steht.
-  const bedingung = "github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')";
-  assert.ok(schritt('BrickInventory.apk als Release bereitstellen').includes(`if: success() && ${bedingung}\n`),
-    'Release läuft auch ohne Etikett');
-  assert.match(yml, /\n {2}push:\n {4}branches: \['\*\*'\]\n(?: {4}#.*\n)* {4}tags: \['android-v\*'\]\n/, 'Etiketten lösen den Lauf aus');
-  const aufMain = schritt('Etikett liegt auf main');
-  assert.ok(aufMain.includes(`\n        if: ${bedingung}\n`));
-  assert.match(aufMain, /compare\/main\.\.\.\$GITHUB_SHA/);
+const WF = path.join(ROOT, '..', '.github', 'workflows');
+const ohneKommentar = (t) => t.split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
+const lies = (datei) => fs.readFileSync(path.join(WF, datei), 'utf8');
+/** Ein Job ohne Kommentarzeilen, von seiner Kopfzeile bis zum nächsten Job. */
+const jobIn = (datei, name) => {
+  const teil = ohneKommentar(lies(datei)).split(new RegExp(`\\n  ${name}:\\n`))[1];
+  assert.ok(teil, `Job ${name} fehlt in ${datei}`);
+  return '\n' + teil.split(/\n {2}[\w-]+:\n/)[0] + '\n';
+};
+/** Ein Schritt (Name bis zum nächsten Schritt) eines Jobs. */
+const schrittIn = (job, name) => {
+  const i = job.indexOf(`- name: ${name}\n`);
+  assert.ok(i >= 0, `Schritt „${name}“ nicht gefunden`);
+  const rest = job.slice(i + 1);
+  const ende = rest.search(/\n {6}- (name|uses): /);
+  return ende < 0 ? rest : rest.slice(0, ende);
+};
+
+// Ein signiertes APK in apk-neuste ist ein Update für jede installierte App. Signiert
+// wird nur aus android-release.yml in der Fassung von main; das Etikett liefert Daten.
+// Gegenproben (11.11.2026 gemessen, je einzeln): in android-release.yml ein `push:`-Auslöser
+// → rot „signiert wird nur aus main“; „Etikett liegt auf main“ prüft `ahead` statt `behind`
+// → rot „signiert wird nur ein Commit, der auf main liegt“; `environment:` des Jobs signatur fest
+// auf `release` → rot „Schlüssel nur im echten Lauf“; `KEY_PASS: ${{ secrets.KEY_PASSWORT }}`
+// in den Schritt „Signieren“ → rot „Secrets ausserhalb …“; in android.yml `echt: true` → rot
+// „der Baulauf signiert nur zur Probe“.
+test('signiert und veröffentlicht wird nur aus main, und Gradle sieht den Schlüssel nie', () => {
+  const android = lies('android.yml');
+  assert.match(android, /\n {2}push:\n {4}branches: \['\*\*'\]\n(?: {4}#.*\n)* {4}tags: \['android-v\*'\]\n/, 'Etiketten lösen den Baulauf aus');
+  const probe = jobIn('android.yml', 'signieren');
+  assert.match(probe, /uses: \.\/\.github\/workflows\/android-signieren\.yml/);
+  assert.match(probe, /\n {6}echt: false\n/, 'der Baulauf signiert nur zur Probe');
+  assert.doesNotMatch(ohneKommentar(android), /secrets\.|environment:/, 'der Baulauf aus dem Etikett sieht weder Secret noch Environment');
+
+  const release = ohneKommentar(lies('android-release.yml'));
+  const an = release.slice(release.indexOf('\non:\n'), release.indexOf('\npermissions:'));
+  assert.doesNotMatch(an, /\n {2}(push|pull_request|pull_request_target):/, 'signiert wird nur aus main');
+  assert.match(an, /workflow_run:\n {4}workflows: \[Android-App\]\n {4}types: \[completed\]/);
+  const etikett = jobIn('android-release.yml', 'etikett');
+  for (const b of ["github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'",
+    "github.event.workflow_run.conclusion == 'success'", "github.event.workflow_run.event == 'push'",
+    'github.event.workflow_run.head_repository.full_name == github.repository'])
+    assert.ok(etikett.includes(b), `Bedingung fehlt: ${b}`);
+  const aufMain = schrittIn(etikett, 'Etikett liegt auf main');
+  assert.match(aufMain, /compare\/main\.\.\.\$COMMIT/);
   assert.match(aufMain, /identical\|behind\) echo/, 'signiert wird nur ein Commit, der auf main liegt');
-  assert.ok(yml.indexOf('- name: Etikett liegt auf main') < yml.indexOf('- name: Release-Schlüssel bereitstellen'),
-    'die Prüfung kommt vor dem Schlüssel');
-  const schluessel = schritt('Release-Schlüssel bereitstellen');
-  assert.ok(schluessel.includes(`\n        if: ${bedingung}\n`), 'Secrets nur in der Environment release');
+  const signieren = jobIn('android-release.yml', 'signieren');
+  assert.match(signieren, /\n {4}needs: etikett\n/, 'erst das Etikett prüfen, dann signieren');
+  assert.match(signieren, /\n {6}echt: true\n/);
+
+  const sig = lies('android-signieren.yml');
+  assert.match(sig, /\non:\n {2}workflow_call:\n/);
+  assert.doesNotMatch(ohneKommentar(sig), /\n {2}(push|pull_request|workflow_dispatch|workflow_run):/, 'nur als wiederverwendbarer Workflow');
+  const apk = jobIn('android-signieren.yml', 'signatur');
+  const beschreibung = jobIn('android-signieren.yml', 'beschreibung');
+  assert.match(apk, /\n {4}environment: \$\{\{ inputs\.echt && 'release' \|\| '' \}\}\n/, 'Schlüssel nur im echten Lauf');
+  assert.match(beschreibung, /\n {4}environment: \$\{\{ inputs\.echt && 'release-beschreibung' \|\| '' \}\}\n/,
+    'der Beschreibungsschlüssel in eigener Environment');
+  const schluessel = schrittIn(apk, 'Release-Schlüssel bereitstellen');
+  assert.ok(schluessel.includes('\n        if: inputs.echt\n'), 'Secrets nur im echten Lauf');
   for (const geheim of ['KEYSTORE_BASE64', 'KEYSTORE_PASSWORT', 'KEY_ALIAS', 'KEY_PASSWORT'])
     assert.match(schluessel, new RegExp(`: \\$\\{\\{ secrets\\.${geheim} \\}\\}`), `${geheim} fehlt`);
   assert.match(schluessel, /Repository-Secrets gleichen Namens löschen/, 'der Fehlertext sagt, dass Repository-Secrets wegmüssen');
-  assert.ok(yml.includes(`environment: \${{ ${bedingung} && 'release' || '' }}`));
-  assert.ok(schritt('Signieren').includes(`ECHT: \${{ ${bedingung} }}`));
-  // Nur dieser Schritt nennt Secrets; der Bau mit allen Gradle-Plugins nicht.
-  const andere = yml.split(/\n {6}- name: /).filter(t => !t.startsWith('Release-Schlüssel bereitstellen'))
-    .join('\n').split('\n').filter(z => !z.trimStart().startsWith('#') && /secrets\./.test(z));
-  assert.deepEqual(andere, [], 'Secrets ausserhalb des Schritts „Release-Schlüssel bereitstellen“');
+  const bschluessel = schrittIn(beschreibung, 'Beschreibungsschlüssel bereitstellen');
+  assert.ok(bschluessel.includes('\n        if: inputs.echt\n'));
+  for (const geheim of ['BESCHREIBUNG_SCHLUESSEL', 'BESCHREIBUNG_PASS'])
+    assert.match(bschluessel, new RegExp(`: \\$\\{\\{ secrets\\.${geheim} \\}\\}`), `${geheim} fehlt`);
+  assert.match(schrittIn(apk, 'Signieren'), /ECHT: \$\{\{ inputs\.echt \}\}/);
+  // Nur diese beiden Schritte nennen Secrets; kein anderer Schritt eines Android-Workflows.
+  const andere = ['android.yml', 'android-signieren.yml', 'android-release.yml', 'android-bescheinigung.yml']
+    .flatMap(d => lies(d).split(/\n {6}- name: /).filter(t => !/^(Release-Schlüssel|Beschreibungsschlüssel) bereitstellen\n/.test(t))
+      .join('\n').split('\n').filter(z => !z.trimStart().startsWith('#') && /secrets\./.test(z)).map(z => `${d}: ${z.trim()}`));
+  assert.deepEqual(andere, [], 'Secrets ausserhalb der Schritte, die Schlüssel bereitstellen');
 });
 
-// Gegenproben (01.11.2026 gemessen): ein `- uses: actions/checkout@…` in den
-// Job `signieren` → rot „… führt keinen Projektcode aus“; die Zeile
-// `environment:` entfernt → rot „… Environment release“; `needs: [signieren,
-// apk-pruefen]` am Release-Job → `needs: build` → rot „… veröffentlicht nur
-// das geprüfte, signierte APK“.
-// Gegenproben (01.11.2026, zweite Runde): `environment: release` am Release-Job
-// entfernt → rot „… erst nach Freigabe“; die Fehlermeldung wieder mit „oder
-// als Repository-Secret“ → rot „… nur aus der Environment“.
-// Gegenprobe (03.11.2026): den Schritt „Herkunft des APK bescheinigen“ entfernt
-// → rot „… die Herkunft des APK wird bescheinigt“. Seit sec17 B-N7 bescheinigt der Job
-// `bescheinigen` über android-bescheinigung.yml; Gegenprobe (05.11.2026): `uses:` dort
-// entfernt → rot, derselbe Satz.
-test('signiert wird in einem eigenen Job ohne Projektcode, geprüft und veröffentlicht danach', () => {
-  const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android.yml'), 'utf8')
-    .split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
-  const job = (name) => {
-    const teil = yml.split(new RegExp(`\\n  ${name}:\\n`))[1];
-    assert.ok(teil, `Job ${name} fehlt`);
-    return '\n' + teil.split(/\n {2}[\w-]+:\n/)[0] + '\n';
-  };
-  const signieren = job('signieren');
-  assert.match(signieren, /\n {4}needs: build\n/);
-  assert.ok(signieren.includes("\n    environment: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v') && 'release' || '' }}\n"),
-    'die Secrets nur für ein Etikett und nur über die Environment release');
-  for (const verboten of [/actions\/checkout/, /gradlew/, /tools\/[\w-]+\.py/, /python/, /setup-gradle/])
-    assert.doesNotMatch(signieren, verboten, `der Signierjob führt keinen Projektcode aus (${verboten})`);
-  assert.match(signieren, /name: apk-unsigniert/);
-  assert.match(signieren, /name: apk-signiert/);
-  assert.doesNotMatch(job('build'), /secrets\./, 'der Bau-Job sieht kein Secret');
+// Gegenproben (11.11.2026 gemessen, je einzeln): ein `- uses: actions/checkout@…` in den
+// Job signatur → rot „… führt keinen Projektcode aus“; am Release-Job `needs: [etikett, signieren]`
+// → rot „veröffentlicht nur das geprüfte, signierte APK“; `environment: release` am
+// Release-Job entfernt → rot „… erst nach Freigabe …“; `uses:` des Jobs bescheinigen
+// entfernt → rot „die Herkunft des APK wird bescheinigt“.
+test('signiert wird in eigenen Jobs ohne Projektcode, geprüft und veröffentlicht danach', () => {
+  for (const name of ['signatur', 'beschreibung']) {
+    const job = jobIn('android-signieren.yml', name);
+    for (const verboten of [/actions\/checkout/, /gradlew/, /tools\/[\w-]+\.py/, /python/, /setup-gradle/])
+      assert.doesNotMatch(job, verboten, `der Signierjob ${name} führt keinen Projektcode aus (${verboten})`);
+  }
+  const apk = jobIn('android-signieren.yml', 'signatur');
+  assert.match(apk, /name: apk-unsigniert/);
+  assert.match(apk, /run-id: \$\{\{ inputs\.lauf \|\| github\.run_id \}\}/, 'das Artefakt kommt aus dem Baulauf');
+  assert.match(jobIn('android-signieren.yml', 'beschreibung'), /name: apk-signiert\n/);
+  assert.doesNotMatch(jobIn('android.yml', 'build'), /secrets\./, 'der Bau-Job sieht kein Secret');
 
-  const pruefen = job('apk-pruefen');
-  assert.match(pruefen, /\n {4}needs: signieren\n/);
-  assert.match(pruefen, /name: apk-signiert/);
+  const pruefen = jobIn('android-signieren.yml', 'apk-pruefen');
+  assert.match(pruefen, /\n {4}needs: beschreibung\n/);
+  assert.match(pruefen, /ref: \$\{\{ inputs\.commit \}\}/, 'geprüft wird mit den Werkzeugen des gebauten Commits');
   assert.match(pruefen, /python3 tools\/apk-pruefen\.py\s*\\?\s*\n?\s*app\/build\/outputs\/apk\/release\/BrickInventory\.apk/);
   assert.match(pruefen, /python3 tools\/apk-ausrichtung\.py\s*\\?\s*\n?\s*app\/build\/outputs\/apk\/release\/BrickInventory\.apk/);
   assert.doesNotMatch(pruefen, /secrets\./);
 
-  const release = job('release');
-  assert.match(release, /\n {4}needs: \[signieren, apk-pruefen, bescheinigen\]\n/, 'veröffentlicht nur das geprüfte, signierte APK');
+  const release = jobIn('android-release.yml', 'release');
+  assert.match(release, /\n {4}needs: \[etikett, signieren, bescheinigen\]\n/, 'veröffentlicht nur das geprüfte, signierte APK');
   assert.match(release, /name: apk-signiert/);
   assert.match(release, /\n {4}environment: release\n/, 'das Release mit Schreibrecht läuft erst nach Freigabe in der Environment release');
   assert.match(release, /\n {4}permissions:\n {6}contents: write\n {4}defaults:/, 'der Release-Job schreibt nur, er bescheinigt nicht');
-  const bescheinigen = job('bescheinigen');
-  assert.match(bescheinigen, /\n {4}needs: \[signieren, apk-pruefen\]\n/);
+  const bescheinigen = jobIn('android-release.yml', 'bescheinigen');
+  assert.match(bescheinigen, /\n {4}needs: signieren\n/);
   assert.match(bescheinigen, /uses: \.\/\.github\/workflows\/android-bescheinigung\.yml/, 'die Herkunft des APK wird bescheinigt');
-  const aussteller = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android-bescheinigung.yml'), 'utf8');
+  const aussteller = lies('android-bescheinigung.yml');
   assert.match(aussteller, /uses: actions\/attest-build-provenance@[0-9a-f]{40}/, 'die Herkunft des APK wird bescheinigt');
   assert.match(aussteller, /subject-path: \|\n\s+\$\{\{ runner\.temp \}\}\/signiert\/apk\/release\/BrickInventory\.apk/);
-  assert.doesNotMatch(signieren, /oder als Repository-Secret/, 'die Signier-Secrets kommen nur aus der Environment');
+  assert.doesNotMatch(apk, /oder als Repository-Secret/, 'die Signier-Secrets kommen nur aus der Environment');
 });
 
 // Neue Prüfsummen entscheiden, welche Bytes der Bau annimmt: Sie kommen als
@@ -192,7 +206,7 @@ test('Prüfsummen kommen als Pull-Request, Bildschirmfotos nur als PNG', () => {
   // Seit sec17 B-N2 ohne Schreibrecht UND ohne Gradle, in einem eigenen Job.
   assert.match(job('pruefsummen-zusammenfassen'), /tools\/pruefsummen-vergleich\.py/, 'die Zusammenfassung entsteht ohne Schreibrecht');
   assert.match(job('pruefsummen-zusammenfassen'), /\n {4}permissions:\n {6}contents: read\n/);
-  for (const name of ['build', 'signieren', 'apk-pruefen', 'release', 'gegenproben', 'pruefsummen', 'pruefsummen-zusammenfassen',
+  for (const name of ['build', 'uebergabe', 'signieren', 'gegenproben', 'pruefsummen', 'pruefsummen-zusammenfassen',
     'bildschirmfotos', 'bildschirmfotos-einchecken'])
     assert.doesNotMatch(job(name), /pull-requests: write/, `${name}: nur der vorschlagende Job legt Pull-Requests an`);
   const bilder = job('bildschirmfotos-einchecken');

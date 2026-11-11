@@ -3,9 +3,9 @@
 import { verschluessele, entschluessele, kontext, suchwert, suchwertAlt } from '../infra/geheimnis';
 import crypto from 'crypto';
 import { konfig } from '../infra/konfig';
-import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
 import * as repo from './repository/zweiterFaktor';
+import { kontoBereich } from './prozess';
 
 const SCHRITT_S = 30;
 /** Ein Schritt vor und zurück: Uhren von Telefon und Server gehen nie gleich. */
@@ -96,22 +96,22 @@ async function codesErsetzen(tx: DbSchnittstelle, uid: number): Promise<string[]
 }
 
 export function istAktiv(uid: number): Promise<boolean> {
-  return repo.aktiv(uid);
+  return kontoBereich().zweiterFaktor.aktiv(uid);
 }
 
 export async function stand(uid: number): Promise<{ aktiv: boolean; codes_uebrig: number }> {
-  const r = await repo.faktorStand(uid);
+  const r = await kontoBereich().zweiterFaktor.faktorStand(uid);
   return { aktiv: r.aktiv, codes_uebrig: r.uebrig };
 }
 
 /** Noch nicht aktiv. @returns null, wenn der Faktor schon aktiv ist */
 export async function beginneEinrichtung(uid: number): Promise<string | null> {
   const geheimnis = base32(crypto.randomBytes(20));
-  return await repo.legeGeheimnisAn(uid, verschluessele(geheimnis, faktorKontext(uid))) ? geheimnis : null;
+  return await kontoBereich().zweiterFaktor.legeGeheimnisAn(uid, verschluessele(geheimnis, faktorKontext(uid))) ? geheimnis : null;
 }
 
 export async function bestaetigeEinrichtung(uid: number, code: string): Promise<string[] | null> {
-  return db.transaction(async (tx) => {
+  return kontoBereich().db.transaction(async (tx) => {
     const z = await repo.unbestaetigtesGeheimnisSperren(tx, uid);
     if (!z) return null;
     const schritt = passenderSchritt(entschluessele(z.geheimnis, faktorKontext(uid)) ?? '', String(code ?? '').trim());
@@ -122,27 +122,27 @@ export async function bestaetigeEinrichtung(uid: number, code: string): Promise<
 }
 
 /** Einmalcode und Wiederherstellungscode gelten genau einmal. */
-export async function pruefeCode(uid: number, code: unknown): Promise<'totp' | 'wiederherstellung' | null> {
+export async function pruefeCode(uid: number, code: string | number | null | undefined): Promise<'totp' | 'wiederherstellung' | null> {
   const eingabe = String(code ?? '').trim();
   if (!eingabe) return null;
   if (/^\d{6}$/.test(eingabe)) {
-    const z = await repo.aktivesGeheimnis(uid);
+    const z = await kontoBereich().zweiterFaktor.aktivesGeheimnis(uid);
     const schritt = z ? passenderSchritt(entschluessele(z.geheimnis, faktorKontext(uid)) ?? '', eingabe) : null;
     if (schritt === null) return null;
-    return await repo.verbraucheSchritt(uid, schritt) ? 'totp' : null;
+    return await kontoBereich().zweiterFaktor.verbraucheSchritt(uid, schritt) ? 'totp' : null;
   }
-  if (await repo.verbraucheCode(uid, hashCode(uid, eingabe))) return 'wiederherstellung';
+  if (await kontoBereich().zweiterFaktor.verbraucheCode(uid, hashCode(uid, eingabe))) return 'wiederherstellung';
   // Codes aus der Zeit vor einem Schlüsselwechsel: Ihr Klartext ist nicht gespeichert, neu hashen geht nicht.
   const vorWechsel = suchwertAlt('zweiter-faktor-code', `${uid}:${normiereCode(eingabe)}`);
-  if (vorWechsel && await repo.verbraucheCode(uid, vorWechsel)) return 'wiederherstellung';
+  if (vorWechsel && await kontoBereich().zweiterFaktor.verbraucheCode(uid, vorWechsel)) return 'wiederherstellung';
   if (normiereCode(eingabe).length !== ALT_LAENGE) return null;
-  return await repo.verbraucheCode(uid, alterHash(eingabe)) ? 'wiederherstellung' : null;
+  return await kontoBereich().zweiterFaktor.verbraucheCode(uid, alterHash(eingabe)) ? 'wiederherstellung' : null;
 }
 
 export function schalteAb(uid: number): Promise<void> {
-  return repo.entferne(uid);
+  return kontoBereich().zweiterFaktor.entferne(uid);
 }
 
 export async function erneuereCodes(uid: number): Promise<string[]> {
-  return db.transaction(tx => codesErsetzen(tx, uid));
+  return kontoBereich().db.transaction(tx => codesErsetzen(tx, uid));
 }

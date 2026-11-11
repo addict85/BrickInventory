@@ -333,8 +333,8 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
   // ── Warum das Kind die Adresse NICHT selbst setzt ────────────────────────
   // Hier stand als erste Zeile des Kind-Skripts …
   execFileSync(process.execPath, ['-e', `
-    const db = require(${JSON.stringify(path.join(ROOT, 'dist', 'db', 'database.js'))});
-    require(${JSON.stringify(path.join(ROOT, 'dist', 'startup', 'verdrahtung.js'))}).verdrahte();
+    const V = require(${JSON.stringify(path.join(ROOT, 'dist', 'startup', 'verdrahtung.js'))});
+    const db = V.verdrahteProzess({ ...V.baueVerdrahtung(), erststart: async () => {} });
     const IQ = require(${JSON.stringify(path.join(ROOT, 'dist', 'src/katalog/bilder/bildbedarfLauf.js'))});
     (async () => {
       await db.initSchemaOnce();

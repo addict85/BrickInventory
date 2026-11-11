@@ -64,7 +64,7 @@ test('Teile-Kennzahlen mit einzeln erfassten Teilen', { concurrency: 1 }, async 
     await t.test('gemischt: Zusammenfassung und Live gleich', async () => {
       const live = await H.getPartsStats(UB);
       await PS.rebuildNow(UB);
-      const repo = _req('src/teile/repository/teileListe.js');
+      const repo = { ..._req('src/teile/repository/teileListe.js'), ..._req('src/teile/prozess.js').teileBereich().teileListe };
       const zsf = await repo.kennzahlen([UB], true);
       assert.deepEqual(zsf, live);
       assert.deepEqual(await H.getPartsStats(UB), live);

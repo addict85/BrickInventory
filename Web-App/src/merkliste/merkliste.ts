@@ -1,24 +1,21 @@
 /** Die Merkliste — was man haben MÖCHTE, getrennt vom Bestand. Ein Helfer
  * statt Code in den Routen, weil beide Oberflächen und mehrere Erfassungswege
  * dieselben Regeln brauchen. */
-import { blickfeldAus } from '../haushalt/haushalt';
-import type { Sicht } from '../haushalt/haushalt';
-import { nacharbeit } from '../auftraege/nacharbeit';
-import { addSet, sanitizeSetNumber, findSetInScope } from '../sets';
-import { loescheAlarm, alarmUebertragen } from '../finanzen/preisalarm';
+import { haushaltBereich, type Sicht } from '../haushalt';
+import { nacharbeit } from '../auftraege';
+import { setErfassen, sanitizeSetNumber } from '../sets';
+import { finanzenBereich, fetchPrice } from '../finanzen';
 import * as V from '../infra/validate';
 import { fachfehler } from '../infra/fehlerTexte';
 import { geldEingabe } from '../infra/geld';
-import { nutzerStandardZustand, getSetting } from '../einstellungen/settings';
-import { meldeFehler, oeffentlicherFehler } from '../infra/fehler';
+import { nutzerStandardZustand, getSetting } from '../einstellungen';
+import { oeffentlicherFehler } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
-import { fuerSet } from '../katalog/preisvergleich';
-import { resolveIfExists } from '../katalog/bilder/images';
+import { fuerSet, resolveIfExists, setBekanntImKatalog } from '../katalog';
 import { toCsv, csvZeilenAusAnfrage, parseCsvDate } from '../infra/csvExport';
-import * as repo from './repository/merkliste';
-import { fetchPrice } from '../finanzen/financeCalc';
-import { setBekanntImKatalog } from '../katalog/bricklinkPreise';
+import { mitInventarSperren } from '../../db/txLock';
 import { moeglicheSetNummer, mitVersion } from '../infra/setNummer';
+import { merklisteBereich } from './prozess';
 
 /** Jeder Zustand für sich: Kennt BrickLink einen nicht, kommt der andere
  * trotzdem, und ein fehlender Preis ist ein Strich, kein Fehler. */
@@ -64,53 +61,52 @@ export interface Merkposten {
 
 /** Ohne Angabe gilt die Einstellung des Nutzers, nicht hart 'N' — die
  * Verwechslung verbuchte einmal eine Erfassung mit falschem Preis. */
-export async function zustandOder(condition: unknown, userId: number): Promise<string> {
-  const c = String(condition ?? '').trim().toUpperCase();
-  if (c === 'N' || c === 'U') return c;
-  return await nutzerStandardZustand(userId);
+export async function zustandOder(roh: string | null | undefined, userId: number): Promise<V.Zustand> {
+  return V.optionalCondition(String(roh ?? '').trim().toUpperCase()) ?? V.zustand(await nutzerStandardZustand(userId));
 }
 
 /** ON CONFLICT statt vorher fragen: Zwei Geräte gleichzeitig sollen keinen Fehler sehen. */
 export async function legeMerkpostenAn(
-  userId: number, setNumber: string, condition: unknown, aufgenommenAm?: string | null,
+  userId: number, setNumber: string, condition: string | null | undefined, aufgenommenAm?: string | null,
 ): Promise<{ merkposten: Merkposten | null; war_neu: boolean }> {
   const sn = sanitizeSetNumber(setNumber);
   const c  = await zustandOder(condition, userId);
-  const r = await repo.merkeSetVor(userId, sn, c, aufgenommenAm ?? null);
+  const r = await merklisteBereich().merkliste.merkeSetVor(userId, sn, c, aufgenommenAm ?? null);
   const liste = await merkpostenVon([userId], sn);
   return { merkposten: liste.find(w => w.condition === c) ?? null, war_neu: !!r?.war_neu };
 }
 
 /** Kein Fehler, wenn es keinen gab — das Ziel ist erreicht. */
-export async function loescheMerkposten(userId: number, setNumber: string, condition: unknown): Promise<number> {
-  const c = String(condition ?? 'N').toUpperCase();
-  const r = await repo.streicheVormerkung(userId, sanitizeSetNumber(setNumber), c);
+export async function loescheMerkposten(userId: number, setNumber: string, c: V.Zustand): Promise<number> {
+  const r = await merklisteBereich().merkliste.streicheVormerkung(userId, sanitizeSetNumber(setNumber), c);
   return r.changes ?? 0;
+}
+
+/** Merkposten-Änderungen lesen erst und schreiben dann mehrfach (Merkposten,
+ * Alarm, Bestand): alles in einer Transaktion, gesperrt je Konto auf den Merkposten. */
+function mitMerkpostenSperre<T>(konten: number[], sn: string, c: string, fn: () => Promise<T>): Promise<T> {
+  return mitInventarSperren(merklisteBereich().db, konten, `merk:${sn}:${c}`, () => fn(), { wiederholeBeiKonflikt: true });
 }
 
 // UPDATE statt löschen und neu anlegen: Aufnahmedatum und Preisalarm bleiben.
 export async function verschiebeMerkposten(
-  vonId: number, setNumber: string, condition: unknown, zuId: number,
+  vonId: number, setNumber: string, c: V.Zustand, zuId: number,
 ): Promise<{ verschoben: boolean; zusammengefuehrt: boolean }> {
   const sn = sanitizeSetNumber(setNumber);
-  const c  = String(condition ?? 'N').toUpperCase() === 'U' ? 'U' : 'N';
   if (vonId === zuId) return { verschoben: false, zusammengefuehrt: false };
 
-  const schon = await repo.istVorgemerkt(zuId, sn, c);
-
-  if (schon) {
-    const weg = await loescheMerkposten(vonId, sn, c);
-    await loescheAlarm(vonId, sn, c);
-    return { verschoben: weg > 0, zusammengefuehrt: true };
-  }
-
-  const r = await repo.uebertrageVormerkung(zuId, vonId, sn, c);
-  const verschoben = (r.changes ?? 0) > 0;
-  // Den Alarm NUR mitnehmen, wenn der Merkposten wirklich gewandert ist.
-  if (verschoben) {
-    await alarmUebertragen(zuId, vonId, sn, c).catch((e: unknown) => meldeFehler('merkliste:alarm-umhaengen', e));
-  }
-  return { verschoben, zusammengefuehrt: false };
+  return mitMerkpostenSperre([vonId, zuId], sn, c, async () => {
+    if (await merklisteBereich().merkliste.istVorgemerkt(zuId, sn, c)) {
+      const weg = await loescheMerkposten(vonId, sn, c);
+      await finanzenBereich().preisalarm.loescheAlarm(vonId, sn, c);
+      return { verschoben: weg > 0, zusammengefuehrt: true };
+    }
+    const r = await merklisteBereich().merkliste.uebertrageVormerkung(zuId, vonId, sn, c);
+    const verschoben = (r.changes ?? 0) > 0;
+    // Den Alarm NUR mitnehmen, wenn der Merkposten wirklich gewandert ist.
+    if (verschoben) await finanzenBereich().preisalarm.alarmUebertragen(zuId, vonId, sn, c);
+    return { verschoben, zusammengefuehrt: false };
+  });
 }
 
 export interface MerkFilter {
@@ -126,12 +122,12 @@ export interface MerkFilter {
 export async function merkpostenVon(
   userIdsWahl: Sicht | number[], nurSet?: string, waehrung = 'EUR', filter?: MerkFilter,
 ): Promise<Merkposten[]> {
-  const userIds = await blickfeldAus(userIdsWahl);
+  const userIds = await haushaltBereich().haushalt.blickfeldAus(userIdsWahl);
   if (!userIds?.length) return [];
   // Unbekannt heisst „beide", nicht „keine": Eine geleerte Liste sähe aus wie
   // eine leere Merkliste.
   const zustand = String(filter?.zustand ?? '').toUpperCase();
-  const rows = await repo.merklisteImBlickfeld(userIds, {
+  const rows = await merklisteBereich().merkliste.merklisteImBlickfeld(userIds, {
     nurSet: nurSet ? sanitizeSetNumber(nurSet) : null,
     suche: String(filter?.suche ?? '').trim() || null,
     zustand: zustand === 'N' || zustand === 'U' ? zustand : null,
@@ -171,10 +167,12 @@ export async function merkpostenVon(
   });
 }
 
-/** Über addSet(), die eine Wahrheit fürs Erfassen, statt eines eigenen INSERT. */
+/** Über setErfassen(), die eine Wahrheit fürs Erfassen: ohne Netz, deshalb
+ * passt sie mit dem Streichen des Merkpostens in eine Transaktion. Katalog
+ * und geschätzten Preis ergänzt der Auftrag wie bei jeder Erfassung. */
 export async function uebernimm(
-  leserId: number, besitzerId: number, setNumber: string, condition: unknown,
-  eingabe: { quantity?: unknown; purchase_price?: unknown; condition?: unknown;
+  leserId: number, besitzerId: number, setNumber: string, condition: V.Zustand,
+  eingabe: { quantity?: unknown; purchase_price?: unknown; condition?: string | null | undefined;
              storage?: unknown } = {},
 ): Promise<{ action: string; set_number: string }> {
   const sn = sanitizeSetNumber(setNumber);
@@ -182,30 +180,32 @@ export async function uebernimm(
   // Zwei Zustände: `condition` ist der Schlüssel des Merkpostens, der
   // verschwindet; `eingabe.condition` der, in dem das Set erfasst wird.
   const merkpostenZustand = await zustandOder(condition, besitzerId);
-  // Übernommen wird ein Merkposten; ohne ihn wäre das ein zweiter Weg zum Erfassen.
-  if (!await repo.istVorgemerkt(besitzerId, sn, merkpostenZustand)) fachfehler('nicht_gefunden', 'nicht_gefunden');
   const zustand = eingabe.condition == null
     ? merkpostenZustand
     : await zustandOder(eingabe.condition, besitzerId);
+  const menge = V.acquisitionQuantity(eingabe.quantity ?? 1);
+  const kaufpreis = geldEingabe(eingabe.purchase_price, 'Kaufpreis');
 
-  // Schon im Blickfeld? Dann NICHT die Menge erhöhen (src/sets/erfassen.ts). Der
-  // Merkposten ist trotzdem erledigt und verschwindet.
-  const vorhanden = await findSetInScope(leserId, sn);
-  const ergebnis = vorhanden
-    ? { action: 'exists', set_number: sn }
-    : await addSet({ setNumber: sn, menge: V.acquisitionQuantity(eingabe.quantity ?? 1), konto: besitzerId,
-                     kaufpreis: geldEingabe(eingabe.purchase_price, 'Kaufpreis'), zustand,
-                     lagerort: eingabe.storage == null ? null : String(eingabe.storage) });
-
-  // Nach dem MERKPOSTEN-Zustand: Es geht um die Zeile, die man erfüllt hat.
-  await loescheMerkposten(besitzerId, sn, merkpostenZustand);
-  await loescheAlarm(besitzerId, sn, merkpostenZustand);
-  return ergebnis as { action: string; set_number: string };
+  // Erfassen und Streichen zusammen: Sonst stünde das Set im Bestand und
+  // zugleich noch auf der Merkliste.
+  return mitMerkpostenSperre([besitzerId], sn, merkpostenZustand, async () => {
+    // Übernommen wird ein Merkposten; ohne ihn wäre das ein zweiter Weg zum Erfassen.
+    if (!await merklisteBereich().merkliste.istVorgemerkt(besitzerId, sn, merkpostenZustand)) fachfehler('nicht_gefunden', 'nicht_gefunden');
+    // Schon im Blickfeld heisst „exists“, nicht aufstocken; der Merkposten ist trotzdem erledigt.
+    const r = await setErfassen({ anfragender: leserId, besitzerWunsch: besitzerId, setNumber: sn, menge, kaufpreis,
+                                  zustand, lagerort: eingabe.storage == null ? null : String(eingabe.storage) });
+    // Nach dem MERKPOSTEN-Zustand: Es geht um die Zeile, die man erfüllt hat.
+    await loescheMerkposten(besitzerId, sn, merkpostenZustand);
+    await finanzenBereich().preisalarm.loescheAlarm(besitzerId, sn, merkpostenZustand);
+    return r.action === 'added'
+      ? { action: 'added', set_number: r.set_number, name: r.name, katalog_offen: r.katalog_offen }
+      : { action: 'exists', set_number: r.set_number };
+  });
 }
 
 /** Nur Konto, Set, Zustand und Datum: Alles andere leitet die Ansicht ab. */
 export async function buildMerklisteCsv(uid: number): Promise<string> {
-  const rows = await repo.merklisteFuerExport(uid);
+  const rows = await merklisteBereich().merkliste.merklisteFuerExport(uid);
 
   return toCsv(['set_number', 'condition', 'created_at'], rows);
 }

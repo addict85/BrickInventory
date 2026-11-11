@@ -39,7 +39,8 @@ services:
       POSTGRES_PASSWORD_FILE: /run/secrets/db_password
       # Für postgres/app-rolle.sh beim Anlegen einer neuen Datenbank.
       DB_APP_PASSWORD_FILE: /run/secrets/db_app_password
-    secrets: [db_password, db_app_password]
+      DB_MIGRATION_PASSWORD_FILE: /run/secrets/db_migration_password
+    secrets: [db_password, db_app_password, db_migration_password]
     command: postgres -c max_connections=200 -c shared_buffers=128MB
     # Ein Prozess je Verbindung: 200 Verbindungen plus Hintergrundprozesse.
     mem_limit: ${DB_MEM_LIMIT:-1g}
@@ -70,11 +71,12 @@ services:
     networks:
       - db-net
 
-  # ── Datenbankrolle der App ───────────────────────────────────────────────────
-  # `brickinventory` ist der Superuser der Datenbank. App und Jobs
-  # verbinden sich als `brickinventory_app` ohne Superuser-Rechte, der Datenbank
-  # und Tabellen gehören. Dieser Dienst legt die Rolle bei jedem `up` an bzw.
-  # richtet sie nach und endet dann (UPGRADE.md, Abschnitt 29).
+  # ── Datenbankrollen ──────────────────────────────────────────────────────────
+  # `brickinventory` ist der Superuser der Datenbank. Datenbank und Tabellen
+  # gehören `brickinventory_migration` (Dienst migration); app und jobs
+  # verbinden sich als `brickinventory_app` und dürfen nur Zeilen lesen und
+  # schreiben. Dieser Dienst legt die Rollen bei jedem `up` an bzw. richtet sie
+  # nach und endet dann (UPGRADE.md, Abschnitte 29 und 51).
   db-rolle:
     image: postgres:18-alpine@sha256:123b17998ccaf47e53b502e8c6a1e79afd8f579c6f3eec83c563da026f957395
     container_name: brickinventory-db-rolle
@@ -98,9 +100,10 @@ services:
       PGDATABASE: brickinventory
       PGPASSWORD_FILE: /run/secrets/db_password
       DB_APP_PASSWORD_FILE: /run/secrets/db_app_password
+      DB_MIGRATION_PASSWORD_FILE: /run/secrets/db_migration_password
       # Leserolle brickinventory_lesen (psql, README „Datenbank ansehen“); leere Datei = Rolle ohne Anmeldung.
       PGWEB_DB_PASSWORD_FILE: /run/secrets/pgweb_db_password
-    secrets: [db_password, db_app_password, pgweb_db_password]
+    secrets: [db_password, db_app_password, db_migration_password, pgweb_db_password]
     volumes:
       - ./postgres/app-rolle.sh:/rolle/app-rolle.sh:ro
     networks:
@@ -133,10 +136,80 @@ services:
       - ./schluessel:/app/schluessel
       - ./data:/app/data:ro
 
+  # ── Rechte an ./data ─────────────────────────────────────────────────────────
+  # Übergibt ./data bei jedem `up` an brickinv (Eigentümer reparieren, Marke,
+  # Unterordner) und endet; app und jobs laufen danach nie als root. Root sieht
+  # hier nur ./data und kein Netz: Ein Symlink, den der Dienst dort ablegt,
+  # führt chown höchstens ins schreibgeschützte Image. BRICKINV_CHOWN gilt hier.
+  daten-rechte:
+    # Dasselbe Image wie app (siehe dort).
+    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 42)}
+    pull_policy: missing
+    container_name: brickinventory-daten-rechte
+    logging: *protokoll
+    restart: "no"
+    user: root
+    network_mode: none
+    # chown und das Lesen fremder Ordner (CHOWN, DAC_OVERRIDE); Marke und
+    # Unterordner schreibt su-exec als brickinv (SETUID, SETGID).
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, SETUID, SETGID]
+    read_only: true
+    mem_limit: 64m
+    pids_limit: 16
+    cpus: 0.5
+    entrypoint: ["sh", "/app/daten-rechte.sh"]
+    environment:
+      BRICKINV_CHOWN: ${BRICKINV_CHOWN:-auto}
+    volumes:
+      - ./data:/app/data
+
+  # ── Schema und Migrationen ───────────────────────────────────────────────────
+  # Spielt beim ersten Start das Grundschema samt erstem Verwalter ein, danach
+  # bei jedem `up` offene Migrationen, und endet. Nur dieser Dienst kennt das
+  # Passwort der Migrationsrolle; app und jobs warten auf ihn. Das
+  # Startpasswort des ersten Verwalters liegt danach in ./data (Protokoll:
+  # `docker compose logs migration`). Kein Weg nach draussen: nur db-net.
+  migration:
+    # Dasselbe Image wie app (siehe dort).
+    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 42)}
+    pull_policy: missing
+    container_name: brickinventory-migration
+    logging: *protokoll
+    restart: "no"
+    user: brickinv
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    # Eine Migration auf einer grossen Tabelle braucht Zeit und Speicher, aber keine Bilder.
+    mem_limit: ${MIGRATION_MEM_LIMIT:-512m}
+    pids_limit: 64
+    cpus: 1
+    entrypoint: ["node", "dist/startup/migrieren.js"]
+    depends_on:
+      db-rolle:
+        condition: service_completed_successfully
+      daten-rechte:
+        condition: service_completed_successfully
+    volumes:
+      - ./data:/app/data
+    environment:
+      PGUSER: brickinventory_migration
+      PGPASSWORD_FILE: /run/secrets/db_migration_password
+      # Wer bei `app` ERFASSUNG_ZEITZONE setzt, setzt sie hier gleich (Erfassungstag, Migration 0078).
+    secrets: [db_migration_password]
+    networks:
+      - db-net
+
   # ── BrickInventory Manager App ───────────────────────────────────────────────
   app:
-    # Ein Image für schluessel, app und jobs, als Digest: Ein Tag lässt sich
-    # umhängen. scripts/image-pruefen.sh prüft die Signatur und trägt
+    # Ein Image für schluessel, daten-rechte, migration, app und jobs, als Digest: Ein Tag
+    # lässt sich umhängen. scripts/image-pruefen.sh prüft die Signatur und trägt
     # BRICK_IMAGE in .env ein. Wer selbst baut, setzt BRICK_IMAGE auf einen
     # eigenen Namen; nur `app` hat `build:`, damit `--build` einmal baut.
     image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 42)}
@@ -154,14 +227,12 @@ services:
     mem_limit: ${APP_MEM_LIMIT:-1g}
     pids_limit: 256
     cpus: ${APP_CPUS:-2}
-    # docker-entrypoint.sh läuft als root und braucht genau vier Rechte:
-    # mkdir/Marke im Datenordner, der brickinv gehört (DAC_OVERRIDE), chown
-    # (CHOWN) und den Wechsel zu brickinv per su-exec (SETUID, SETGID). Der
-    # Server danach läuft ohne. Schreiben darf er nur in ./data und /tmp.
+    # Als brickinv ohne jede Capability: ./data hat daten-rechte schon
+    # übergeben. Schreiben darf der Server nur in ./data und /tmp.
+    user: brickinv
     security_opt:
       - no-new-privileges:true
     cap_drop: [ALL]
-    cap_add: [CHOWN, DAC_OVERRIDE, SETUID, SETGID]
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=256m
@@ -169,6 +240,10 @@ services:
       db-rolle:
         condition: service_completed_successfully
       schluessel:
+        condition: service_completed_successfully
+      daten-rechte:
+        condition: service_completed_successfully
+      migration:
         condition: service_completed_successfully
     # Kein veröffentlichter Port: Von aussen geht es nur über Caddy (HTTPS).
     # Bewusste Klartext-Ausnahme zum Ausprobieren: die zwei Zeilen
@@ -210,9 +285,10 @@ services:
       DATA_KEY_FILE: /app/schluessel/datenschluessel
       # Nur während eines Wechsels vorhanden (scripts/datenschluessel-wechseln.sh).
       DATA_KEY_ALT_FILE: /app/schluessel/datenschluessel.alt
-      # Passkeys der Android-App und /.well-known/assetlinks.json (.env.example).
+      # Passkeys und Geräteschlüssel der Android-App, /.well-known/assetlinks.json (.env.example).
       PASSKEY_ANDROID_ZERTIFIKATE: ${PASSKEY_ANDROID_ZERTIFIKATE:-}
       PASSKEY_ANDROID_PAKET: ${PASSKEY_ANDROID_PAKET:-}
+      GERAETESCHLUESSEL_ALT_BIS: ${GERAETESCHLUESSEL_ALT_BIS:-}
       # PORT: 3000
       # NODE_ENV: production
       # NODE_OPTIONS: "--max-old-space-size=384"
@@ -223,8 +299,9 @@ services:
       ROLLE: web
 
       # ── Datenbank-Verbindung ─────────────────────────────────────────────────
-      # Die eigene Rolle ohne Superuser-Rechte (Dienst db-rolle oben); das
-      # Passwort des Superusers bekommt die App nicht.
+      # Die Laufzeitrolle (Dienst db-rolle oben): nur Zeilen lesen und
+      # schreiben. Die Passwörter von Superuser und Migrationsrolle bekommt die
+      # App nicht.
       # PGHOST:     postgres
       # PGPORT:     5432
       PGUSER:     brickinventory_app
@@ -257,7 +334,7 @@ services:
   # Derselbe Bau wie `app`, aber ROLLE=jobs: arbeitet die Auftragstabelle ab
   # (Preise, Bilder, Anleitungen, Importe, Zeitpläne) und nimmt keine Anfragen
   # an. Beim Beenden gibt er laufende Aufträge zurück; der nächste Start setzt
-  # sie fort. Die Migrationen macht, wer zuerst startet — der andere wartet.
+  # sie fort. Die Migrationen hat vorher der Dienst migration eingespielt.
   jobs:
     # Dasselbe Image wie app (siehe dort).
     image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 42)}
@@ -269,11 +346,11 @@ services:
     mem_limit: ${JOBS_MEM_LIMIT:-1g}
     pids_limit: 256
     cpus: ${JOBS_CPUS:-1.5}
-    # Dieselben Rechte wie `app` (siehe dort): der Entrypoint richtet ./data ein.
+    # Dieselben Rechte wie `app` (siehe dort).
+    user: brickinv
     security_opt:
       - no-new-privileges:true
     cap_drop: [ALL]
-    cap_add: [CHOWN, DAC_OVERRIDE, SETUID, SETGID]
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=256m
@@ -281,6 +358,10 @@ services:
       db-rolle:
         condition: service_completed_successfully
       schluessel:
+        condition: service_completed_successfully
+      daten-rechte:
+        condition: service_completed_successfully
+      migration:
         condition: service_completed_successfully
     # Bilder, Anleitungen, PDFs und der Datenschlüssel liegen dort, wo auch
     # `app` sie sucht.
@@ -325,11 +406,10 @@ services:
   # `up` seine Ordner, das Volume der Wurzel und den Schlüssel der eigenen CA
   # (ca-einrichten.sh legt ihn für root an) und endet.
   caddy-rechte:
-    # Das hier gebaute Caddy-Image (siehe caddy): Das offizielle trüge ein
+    # Dasselbe Caddy-Image wie caddy (siehe dort): Das offizielle trüge ein
     # zweites, ungeprüftes Caddy-Binary in den Betrieb, obwohl hier nur chown läuft.
-    # `never`: Gebaut wird es mit caddy im selben `up`, nie aus einem Register geholt.
-    image: brickinventory-caddy:2.11.8
-    pull_policy: never
+    image: ${CADDY_IMAGE:?CADDY_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 52)}
+    pull_policy: missing
     container_name: brickinventory-caddy-rechte
     logging: *protokoll
     restart: "no"
@@ -358,10 +438,12 @@ services:
       - ca-wurzel:/ca-wurzel
 
   caddy:
-    # Hier gebaut (Dockerfile.caddy: offizielle Basis per Digest, go-jose
-    # nachgezogen); der erste `up` nach einem Update baut einige Minuten.
-    image: brickinventory-caddy:2.11.8
-    pull_policy: build
+    # Dockerfile.caddy (offizielle Basis per Digest, go-jose nachgezogen),
+    # gebaut und keyless signiert von docker-publish.yml; scripts/image-pruefen.sh
+    # prüft die Signatur und trägt CADDY_IMAGE als Digest ein. Wer selbst baut,
+    # setzt CADDY_IMAGE auf einen eigenen Namen und ruft `up -d --build`.
+    image: ${CADDY_IMAGE:?CADDY_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 52)}
+    pull_policy: missing
     build:
       context: .
       dockerfile: Dockerfile.caddy
@@ -476,6 +558,8 @@ secrets:
     file: ./geheimnisse/db_password
   db_app_password:
     file: ./geheimnisse/db_app_password
+  db_migration_password:
+    file: ./geheimnisse/db_migration_password
   pgweb_db_password:
     file: ./geheimnisse/pgweb_db_password
 
@@ -483,12 +567,13 @@ networks:
   # Festes Netz: Ein Reverse-Proxy davor bekommt darin eine feste Adresse
   # (ipv4_address: 172.28.73.10), und TRUST_PROXY nennt genau diese. Ein
   # ganzes Docker-Netz zu vertrauen liesse jeden Container darin Adressen fälschen.
+  # Über das feste Subnetz sperrt eine DOCKER-USER-Regel den Weg ins LAN (UPGRADE.md, Abschnitt 53).
   brickinventory-net:
     driver: bridge
     ipam:
       config:
         - subnet: 172.28.73.0/24
-  # Nur postgres, db-rolle, app und jobs, ohne Weg nach draussen: Die Datenbank
+  # Nur postgres, db-rolle, migration, app und jobs, ohne Weg nach draussen: Die Datenbank
   # braucht keinen, und ein Fehler in ihr erreicht so kein fremdes Ziel.
   db-net:
     driver: bridge

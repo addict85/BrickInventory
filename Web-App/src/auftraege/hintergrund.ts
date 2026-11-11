@@ -1,10 +1,9 @@
 /** Web-Oberfläche und App lesen dieselbe Antwort. */
-import { liesZustand } from './repository/laufzustand';
 import { AUFTRAGS_ARTEN, type AuftragsArt } from './auftraege';
-import { zieheVor, leereArt, wiederhole, brichAb, beendePause } from './dienst';
-import * as repo from './repository/auftraege';
+import { zieheVor, wiederhole, brichAb, beendePause } from './dienst';
 import { hatZeitplan, planeNaechsten, ziehePlanVor } from './zeitplan';
 import { fachfehler } from '../infra/fehlerTexte';
+import { auftraegeBereich } from './prozess';
 
 const LEBENSZEICHEN_GILT_SEK = 120;
 const STATUS = ['offen', 'laeuft', 'fehler', 'abgebrochen', 'erledigt'] as const;
@@ -20,14 +19,13 @@ export async function auftraegeImUeberblick(filter: { status?: string | undefine
     .filter(s => (STATUS as readonly string[]).includes(s));
   const art = filter.art ? pruefeArt(filter.art) : null;
   const [auftraege, zusammenfassung, pausen, lebenszeichen] = await Promise.all([
-    repo.auftragsListe(status, art),
-    repo.zahlenJeArtUndStatus(),
-    repo.laufendePausen(),
-    liesZustand('jobs_lebenszeichen'),
+    auftraegeBereich().auftraege.auftragsListe(status, art),
+    auftraegeBereich().auftraege.zahlenJeArtUndStatus(),
+    auftraegeBereich().auftraege.laufendePausen(),
+    auftraegeBereich().laufzustand.liesZustand('jobs_lebenszeichen'),
   ]);
   const alterSek = lebenszeichen ? Math.round((Date.now() - new Date(lebenszeichen).getTime()) / 1000) : null;
   return {
-    success: true,
     auftraege, zusammenfassung, pausen,
     job_prozess: { lebenszeichen, alter_sekunden: alterSek, laeuft: alterSek !== null && alterSek < LEBENSZEICHEN_GILT_SEK },
   };
@@ -38,23 +36,23 @@ export async function auftragAbbrechen(id: string) {
   const a = await brichAb(id);
   if (!a) fachfehler('konflikt', 'auftrag_nicht_aenderbar');
   if (hatZeitplan(a.art)) await planeNaechsten(a.art);
-  return { success: true, id, status: 'abgebrochen' };
+  return { id, status: 'abgebrochen' };
 }
 
 export async function auftragWiederholen(id: string) {
   if (!await wiederhole(id)) fachfehler('konflikt', 'auftrag_nicht_aenderbar');
-  return { success: true, id, status: 'offen' };
+  return { id, status: 'offen' };
 }
 
 /** Geplante Termine bleiben. */
 export async function leereAuftragsArt(artRoh: string) {
   const art = pruefeArt(artRoh);
-  return { success: true, art, entfernt: await leereArt(art) };
+  return { art, entfernt: await auftraegeBereich().auftraege.leereArt(art) };
 }
 
 export async function auftragsArtJetzt(artRoh: string) {
   const art = pruefeArt(artRoh);
   await beendePause(art);
   const gestartet = hatZeitplan(art) ? await ziehePlanVor(art) : (await zieheVor(art)) > 0;
-  return { success: true, art, gestartet };
+  return { art, gestartet };
 }

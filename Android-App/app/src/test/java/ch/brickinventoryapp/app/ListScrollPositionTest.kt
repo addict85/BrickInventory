@@ -172,12 +172,12 @@ class ListScrollPositionTest {
         // umgesetzt in ScrollMemory.kt statt dreimal abgeschrieben.
         val col = code(read("sammlung/ui/SammlungGraph.kt") + read("teile/ui/TeileGraph.kt"))
         val tools = code(read("finanzen/ui/FinanzenGraph.kt"))
-        for (schluessel in listOf("Screen.Gallery.rollSchluessel", "Screen.Parts.rollSchluessel", "Screen.Minifigs.rollSchluessel")) {
+        for (schluessel in listOf("SammlungZiel.Gallery.rollSchluessel", "TeileZiel.Parts.rollSchluessel", "TeileZiel.Minifigs.rollSchluessel")) {
             assert(col.contains("ScrollPositionKeeper(") && col.contains(schluessel)) {
                 "Für $schluessel wird die Position nicht ausdrücklich wiederhergestellt"
             }
         }
-        assert(tools.contains("ScrollPositionKeeper(") && tools.contains("Screen.Finance.rollSchluessel")) {
+        assert(tools.contains("ScrollPositionKeeper(") && tools.contains("FinanzZiel.Finance.rollSchluessel")) {
             "Die Finanz-Liste stellt ihre Position nicht ausdrücklich wieder her"
         }
 

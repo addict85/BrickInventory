@@ -9,9 +9,9 @@ export const LOCKS = {
   AUFTRAG_EXKLUSIV:   59,
   /** Haushaltswährung und Verknüpfung prüfen dieselbe Regel; zweiter Wert 0. */
   HAUSHALT_WAEHRUNG:  62,
-  /** Läuft Minuten, deshalb Sitzungs- und keine Transaktionssperre. */
   /** Zweiter Wert: hashtext(Prozesskennung); hält jeder Job-Prozess, solange er lebt. */
   JOB_PROZESS:        63,
+  /** Läuft Minuten, deshalb Sitzungs- und keine Transaktionssperre. */
   PREIS_JOB:          55,
   ANLEITUNGS_QUEUE:   56,
   BILDER_NACHLAUF:    57,

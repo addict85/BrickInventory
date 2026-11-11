@@ -1,7 +1,8 @@
 /** Je Erfassung mit dem Preis ihres Zustands, weil gemischte Bestände sonst
  * einen falschen Durchschnitt bekämen. */
 import { inZehntel4, aufRappen, alsText } from '../infra/geld';
-import * as repo from './repository/setWert';
+import { zustand } from '../infra/validate';
+import { finanzenBereich } from './prozess';
 
 export interface SetValue {
   unit_price: number | null;
@@ -32,7 +33,7 @@ export async function loadConditionPrices(
   if (ttlHours) params.push(ttlHours);
 
   // avg_price, NICHT qty_avg_price: BrickLinks angezeigter Preis.
-  const rows = await repo.cachePreiseFuerSets(params, ttlClause);
+  const rows = await finanzenBereich().setWert.cachePreiseFuerSets(params, ttlClause);
 
   for (const r of rows) {
     const p = num(r.avg_price);
@@ -59,10 +60,10 @@ export function valueSet(
 ): SetValue {
   const rows = acquisitions?.length
     ? acquisitions.map(a => ({
-        condition: (a.condition === 'U' ? 'U' : 'N') as 'N' | 'U',
+        condition: zustand(a.condition),
         quantity: Math.max(1, parseInt(String(a.quantity)) || 1),
       }))
-    : [{ condition: (fallbackCondition === 'U' ? 'U' : 'N') as 'N' | 'U',
+    : [{ condition: zustand(fallbackCondition),
          quantity: Math.max(1, fallbackQuantity) }];
 
   const byCond = new Map<'N' | 'U', number>();
@@ -92,7 +93,7 @@ export function valueSet(
 export async function getSetValue(
   userId: number, setNumber: string, currency: string
 ): Promise<SetValue> {
-  const acqs = await repo.setErfassungenZumWert(userId, setNumber);
+  const acqs = await finanzenBereich().setWert.setErfassungenZumWert(userId, setNumber);
   const prices = await loadConditionPrices([setNumber], currency);
   return valueSet(setNumber, acqs, prices, 'N', 1);
 }

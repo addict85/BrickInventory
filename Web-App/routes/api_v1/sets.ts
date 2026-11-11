@@ -5,24 +5,26 @@ import path from 'path';
 import { fehlertext, oeffentlicherFehler } from '../../src/infra/fehler';
 import { fehlerAntwort, pfadParam, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
-import { householdMembers } from '../../src/haushalt/haushalt';
-import { lagerorte, legeOrtAn, benenneOrtUm, loescheOrt, lagerSchreibkonto, setzeVorgabe } from '../../src/bestand/lagerort';
-import { alleAlarme, ausgeloesteSeit } from '../../src/finanzen/preisalarm';
+import { haushaltBereich } from '../../src/haushalt';
+import { bestandBereich, lagerSchreibkonto } from '../../src/bestand';
+import { finanzenBereich } from '../../src/finanzen';
 import { csvEmpfang, uploadKontingentBytes, privaterOrdner, privaterEmpfang, kontingentReichtFuer, pruefeEmpfangeneDatei } from '../../src/http/dateiEmpfang';
-import { sendCsv, uebersprungenHinweis } from '../../src/infra/csvExport';
+import { uebersprungenHinweis } from '../../src/infra/csvExport';
+import { sendeCsv } from '../../src/http/csvAntwort';
 import { antwortSprache } from '../../src/infra/fehlerTexte';
 import * as sets from '../../src/sets';
 import { registerSse } from '../../src/http/sseRegistry';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/http/anmeldung';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/http/vertragsRouter';
+import { freigegeben } from '../../src/konto/http/schrittschutz';
+import { vertragsRouter, type Anfrage, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
+import { zustand } from '../../src/infra/validate';
 const router = vertragsRouter();
 
 // ── Feste Pfade VOR den Pfaden mit :setNumber ────────────────────────────────
 // Sonst liest Express „info" oder „exists" als Setnummer.
 
 router.get('/sets/info/:setNumber', requireToken, async (req: Anfrage<'GET /api/v1/sets/info/:setNumber'>, res: Antwort<'GET /api/v1/sets/info/:setNumber'>) => {
-  res.json(await sets.setInfoFuerKonto(req.apiUser.user_id, req.pfad.setNumber));
+  res.json({ success: true, ...(await sets.setInfoFuerKonto(req.apiUser.user_id, req.pfad.setNumber)) });
 });
 
 /** Nur das Blickfeld des fragenden Kontos (eigenes Konto oder Haushalt). */
@@ -34,8 +36,8 @@ router.get('/sets/exists/:setNumber', requireToken, async (req: Anfrage<'GET /ap
 
 router.get('/sets/barcode/:barcode', requireToken, async (req: Anfrage<'GET /api/v1/sets/barcode/:barcode'>, res: Antwort<'GET /api/v1/sets/barcode/:barcode'>) => {
   const barcode = req.pfad.barcode.trim();
-  const treffer = await sets.setZumBarcodeFuerKonto(req.apiUser.user_id, barcode);
-  if (treffer) return res.json(treffer);
+  const treffer = await sets.setZumBarcode(barcode);
+  if (treffer) return res.json({ success: true, ...treffer });
   sendeFehler(req, res, 404, 'barcode_kein_set', { barcode });
 });
 
@@ -58,25 +60,26 @@ router.put('/sets/:setNumber/alert', requireToken, async (req: Anfrage<'PUT /api
 });
 
 router.delete('/sets/:setNumber/alert', requireToken, async (req: Anfrage<'DELETE /api/v1/sets/:setNumber/alert'>, res: Antwort<'DELETE /api/v1/sets/:setNumber/alert'>) => {
-  const n = await sets.alarmDesSetsLoeschen(req.apiUser.user_id, req.pfad.setNumber, req.abfrage.condition);
+  const n = await sets.alarmDesSetsLoeschen(req.apiUser.user_id, req.pfad.setNumber,
+    req.abfrage.condition ? zustand(req.abfrage.condition) : undefined);
   res.json({ success: true, removed: n });
 });
 
 // Abholen statt Schieben; ohne Kontofilter, ein Alarm gehört einem Konto.
 router.get('/alerts/pending', requireToken, async (req: Anfrage<'GET /api/v1/alerts/pending'>, res: Antwort<'GET /api/v1/alerts/pending'>) => {
-  const r = await ausgeloesteSeit(req.apiUser.user_id, req.abfrage.since);
+  const r = await finanzenBereich().preisalarm.ausgeloesteSeit(req.apiUser.user_id, req.abfrage.since);
   res.json({ success: true, alerts: r.alerts, now: r.now });
 });
 
 // Was gesetzt ist; ausgelöst: /alerts/pending.
 router.get('/alerts', requireToken, async (req: Anfrage<'GET /api/v1/alerts'>, res: Antwort<'GET /api/v1/alerts'>) => {
-  res.json({ success: true, alerts: await alleAlarme(req.apiUser.user_id) });
+  res.json({ success: true, alerts: await finanzenBereich().preisalarm.alleAlarme(req.apiUser.user_id) });
 });
 
 router.post('/alerts/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'),
   async (req: Anfrage<'POST /api/v1/alerts/import/csv'>, res: Antwort<'POST /api/v1/alerts/import/csv'>) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-    res.json(await sets.alarmCsvImportStarten(req.apiUser.user_id, req.file.buffer.toString('utf-8')));
+    res.json({ success: true, ...(await sets.alarmCsvImportStarten(req.apiUser.user_id, req.file.buffer.toString('utf-8'))) });
   });
 
 router.get('/storage/locations', requireToken, async (req: Anfrage<'GET /api/v1/storage/locations'>, res: Antwort<'GET /api/v1/storage/locations'>) => {
@@ -89,12 +92,12 @@ router.put('/storage/default', requireToken, async (req: Anfrage<'PUT /api/v1/st
   // Fehlt das Feld, meint der Client dasselbe wie null.
   const roh = req.eingabe.id;
   const id = roh === null || roh === undefined ? null : Number(roh);
-  res.json({ success: true, vorgabe: await setzeVorgabe(req.apiUser.user_id, id) });
+  res.json({ success: true, vorgabe: await bestandBereich().lagerortDienst.setzeVorgabe(req.apiUser.user_id, id) });
 });
 
 router.post('/storage/locations', requireToken, async (req: Anfrage<'POST /api/v1/storage/locations'>, res: Antwort<'POST /api/v1/storage/locations'>) => {
   const konto = await lagerSchreibkonto(req.apiUser.user_id, req.abfrage.owner ?? req.eingabe.owner);
-  const { ort, war_neu } = await legeOrtAn(konto, req.eingabe.name);
+  const { ort, war_neu } = await bestandBereich().lagerortDienst.legeOrtAn(konto, req.eingabe.name);
   if (!war_neu) return sendeFehler(req, res, 409, 'lagerort_doppelt');
   res.json({ success: true, ort });
 });
@@ -102,23 +105,23 @@ router.post('/storage/locations', requireToken, async (req: Anfrage<'POST /api/v
 router.put('/storage/locations/:id', requireToken, async (req: Anfrage<'PUT /api/v1/storage/locations/:id'>, res: Antwort<'PUT /api/v1/storage/locations/:id'>) => {
   const konto = await lagerSchreibkonto(req.apiUser.user_id, req.abfrage.owner ?? req.eingabe.owner);
   res.json({ success: true,
-    ort: await benenneOrtUm(konto, req.pfad.id, req.eingabe.name) });
+    ort: await bestandBereich().lagerortDienst.benenneOrtUm(konto, req.pfad.id, req.eingabe.name) });
 });
 
 router.delete('/storage/locations/:id', requireToken, async (req: Anfrage<'DELETE /api/v1/storage/locations/:id'>, res: Antwort<'DELETE /api/v1/storage/locations/:id'>) => {
   const konto = await lagerSchreibkonto(req.apiUser.user_id, req.abfrage.owner);
-  await loescheOrt(konto, req.pfad.id);
+  await bestandBereich().lagerortDienst.loescheOrt(konto, req.pfad.id);
   res.json({ success: true });
 });
 
 // Spannt Sets und Teile, gehört keiner Familie.
 router.get('/storage', requireToken, async (req: Anfrage<'GET /api/v1/storage'>, res: Antwort<'GET /api/v1/storage'>) => {
   const ids = sichtVon(req);
-  res.json({ success: true, orte: await lagerorte(ids) });
+  res.json({ success: true, orte: await bestandBereich().lagerortDienst.lagerorte(ids) });
 });
 
 router.get('/sets/:setNumber/parts-list', requireToken, async (req: Anfrage<'GET /api/v1/sets/:setNumber/parts-list'>, res: Antwort<'GET /api/v1/sets/:setNumber/parts-list'>) => {
-  res.json({ success: true, ...await sets.teilelisteFuerKonto(req.pfad.setNumber) });
+  res.json({ success: true, ...await sets.teilelisteMitNacharbeit(req.pfad.setNumber) });
 });
 
 router.get('/sets/:setNumber/minifigs-list', requireToken, async (req: Anfrage<'GET /api/v1/sets/:setNumber/minifigs-list'>, res: Antwort<'GET /api/v1/sets/:setNumber/minifigs-list'>) => {
@@ -150,7 +153,7 @@ router.get('/sets/:setNumber/price-history', requireToken, async (req: Anfrage<'
 /** MUSS vor /sets/:setNumber stehen: Express liest „household-members" sonst
  * als Setnummer. */
 router.get('/sets/household-members', requireToken, async (req: Anfrage<'GET /api/v1/sets/household-members'>, res: Antwort<'GET /api/v1/sets/household-members'>) => {
-  res.json({ success: true, members: await householdMembers(req.apiUser.user_id) }); 
+  res.json({ success: true, members: await haushaltBereich().haushalt.householdMembers(req.apiUser.user_id) }); 
 });
 
 router.get('/sets/:setNumber', requireToken, async (req: Anfrage<'GET /api/v1/sets/:setNumber'>, res: Antwort<'GET /api/v1/sets/:setNumber'>) => {
@@ -267,7 +270,7 @@ router.post('/sets/import/csv/cancel', requireToken, async (req: OffeneAnfrage<'
 });
 
 router.get('/sets/export/rebrickable', requireToken, async (req, res) => {
-  sendCsv(res, `rebrickable-sets-${new Date().toISOString().substring(0, 10)}.csv`,
+  sendeCsv(res, `rebrickable-sets-${new Date().toISOString().substring(0, 10)}.csv`,
     ['Set Number', 'Quantity'], await sets.rebrickableListe(angemeldeteNutzerId(req)));
 });
 
@@ -305,8 +308,11 @@ router.post('/sets/:setNumber/parts', requireToken, async (req: Anfrage<'POST /a
 });
 
 // ── Anleitungen ─────────────────────────────────────────────────────────────
-router.post('/sets/:setNumber/instructions', requireToken, async (req: OffeneAnfrage<'POST /api/v1/sets/:setNumber/instructions'>, res: Antwort<'POST /api/v1/sets/:setNumber/instructions'>) => {
-  const { instructions, auftrag } = await sets.anleitungenNeuLaden(angemeldeteNutzerId(req), req.pfad.setNumber, istVerwalter(req));
+router.post('/sets/:setNumber/instructions', requireToken, async (req: Anfrage<'POST /api/v1/sets/:setNumber/instructions'>, res: Antwort<'POST /api/v1/sets/:setNumber/instructions'>) => {
+  // Der Verwalter löscht geteilte Anleitungen: derselbe Schrittschutz wie jede Verwalter-Route.
+  const verwalter = istVerwalter(req);
+  if (verwalter && !await freigegeben(req, res, 'verwaltung')) return;
+  const { instructions, auftrag } = await sets.anleitungenNeuLaden(req.apiUser.user_id, req.pfad.setNumber, verwalter);
   res.status(202).json({ success: true, instructions, count: instructions.length, auftrag_id: auftrag });
 });
 

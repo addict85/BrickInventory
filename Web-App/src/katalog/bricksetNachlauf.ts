@@ -2,10 +2,7 @@ import { fuelleAusBrickset } from './bildlage';
 import { downloadSetInstructions, anzahlAnleitungen } from './instructions';
 import { getLimitForApi, getRateLimitStatus } from './apiKontingent';
 import { logAndContinue, meldeFehler } from '../infra/fehler';
-import { pausiereArt } from '../auftraege/dienst';
-import { bricksetFaelligAb } from '../auftraege/bricksetAuftrag';
-import type { Nutzlast } from '../auftraege/nutzlasten';
-import { pruefeAbbruch, type AuftragsLauf, AuftragVerschieben } from '../auftraege/auftraege';
+import { auftraegeBereich, bricksetFaelligAb, type Nutzlast, pruefeAbbruch, type AuftragsLauf, AuftragVerschieben } from '../auftraege';
 
 /** Ist das Tageskontingent aufgebraucht, wartet die ganze Art bis zur
  * eingestellten Uhrzeit; der Versuch zählt dann nicht. */
@@ -15,7 +12,7 @@ async function bricksetNachlauf(n: Nutzlast<'brickset'>, lauf?: AuftragsLauf): P
     const [limit, status] = await Promise.all([getLimitForApi('brickset'), getRateLimitStatus('brickset')]);
     if (Math.max(0, limit - (status.count || 0)) <= 0) {
       const bis = await bricksetFaelligAb(false);
-      await pausiereArt('brickset', bis, 'Brickset-Tageskontingent erschöpft');
+      await auftraegeBereich().auftraege.pausiereArt('brickset', bis, 'Brickset-Tageskontingent erschöpft');
       throw new AuftragVerschieben(bis, 'Brickset-Tageskontingent erschöpft');
     }
   } catch (e) {
@@ -30,7 +27,7 @@ async function bricksetNachlauf(n: Nutzlast<'brickset'>, lauf?: AuftragsLauf): P
   if (await anzahlAnleitungen(sn) === 0) {
     await downloadSetInstructions(sn).catch(logAndContinue('brickset-retry:downloadSetInstructions'));
   }
-  await pausiereArt('brickset', new Date(Date.now() + 1000), 'Abstand zwischen zwei Abrufen');
+  await auftraegeBereich().auftraege.pausiereArt('brickset', new Date(Date.now() + 1000), 'Abstand zwischen zwei Abrufen');
 }
 
 export { bricksetNachlauf };

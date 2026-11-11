@@ -1,36 +1,29 @@
 import * as repo from './repository/teileListe';
-import { resolveImageLocal } from '../katalog/bilder/images';
-import { asIds, withOwners, blickfeldAus, type Sicht } from '../haushalt/haushalt';
-import type { BlickfeldEingabe, BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
+import { resolveImageLocal, fetchMissingBlIds, type RbSetTeil, ersteBlNummer, getRbKey, httpsGetRobust, getAllSetParts, neuestesInventar, merkeBlFarbnummer, blFarbnummerAus } from '../katalog';
+import { haushaltBereich, asIds, type Sicht, type BlickfeldEingabe, type BlickfeldEingabe as Blickfeld } from '../haushalt';
 import { istErsatzteil, colorId } from '../infra/validate';
 import { ensureFresh } from './partsSummary';
-import { fetchMissingBlIds } from '../katalog/partsImport';
-import type { RbSetTeil } from '../katalog/quellen';
-import { getRbKey, httpsGetRobust } from '../katalog/quellen';
-import { getAllSetParts } from '../katalog/rebrickableKatalog';
-import { clampPageSize, applyManualCondition, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand/gemeinsam';
+import { clampPageSize, applyManualCondition, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand';
 import { meldeFehler, logAndContinue } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
-import { farbkarte as blFarbkarte } from '../finanzen/financeCalc';
-import { getGlobalSetting } from '../einstellungen/settings';
-import { neuestesInventar } from '../katalog/rbInventar';
+import { farbkarte as blFarbkarte, marktpreiseAusCacheFuerTeile } from '../finanzen';
+import { getGlobalSetting } from '../einstellungen';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
-import { merkeBlFarbnummer, blFarbnummerAus } from '../katalog/blZuordnung';
+import { teileBereich } from './prozess';
 
 /** Mit Ausweichebenen (CSV-Zwischenspeicher, Rebrickable), damit ein Set auch
  * ohne eigene Zeilen eine Teileliste zeigt. */
 
-import { marktpreiseAusCacheFuerTeile } from '../finanzen/marketPrice';
 
 /** Ohne manuelle Positionen — die haben eine eigene Ansicht. Hex-Rückfall aus
  * rb_colors für Teile ohne eigenen Wert. */
 export async function getPartsColors(userIdWahl: Sicht | Blickfeld) {
-  const userId = await blickfeldAus(userIdWahl);
+  const userId = await haushaltBereich().haushalt.blickfeldAus(userIdWahl);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   // Aus der Zusammenfassung (die Mengen sind dort schon mit der Set-Anzahl
   // multipliziert); strict, damit Webapp und App dieselben Zahlen zeigen.
-  return repo.farbenDesBestands(uids, await ensureFresh(uids, { strict: true }));
+  return teileBereich().teileListe.farbenDesBestands(uids, await ensureFresh(uids, { strict: true }));
 }
 
 function teileFilter(query: Record<string, unknown>): repo.TeileFilter {
@@ -51,7 +44,7 @@ async function teileErsatzquelle(set_number: string, ab: Abstriche) {
     const n = mitVersion(set_number), alt = ohneVersion(n);
     const invId = await ab.oder('katalog_inventar', neuestesInventar(set_number), null);
     if (invId) {
-      const csvParts = await repo.inventarAlsTeile(invId, set_number);
+      const csvParts = await teileBereich().teileListe.inventarAlsTeile(invId, set_number);
       if (csvParts.length > 0)
         // page_size gehört in jeden Rückgabeweg: Der Client entscheidet daran, ob er
         // weiterblättert. Hier kommt alles, also ist es die Zeilenzahl.
@@ -68,7 +61,7 @@ async function teileErsatzquelle(set_number: string, ab: Abstriche) {
           .filter((it: RbSetTeil) => !it.is_spare)
           .map((it: RbSetTeil) => ({
             part_number:    it.part?.part_num,
-            bl_part_number: it.part?.external_ids?.BrickLink?.[0] || it.part?.part_num,
+            bl_part_number: ersteBlNummer(it.part?.external_ids) || it.part?.part_num,
             part_name:      it.part?.name || it.part?.part_num,
             color_id:       it.color?.id ?? 0,
             color_name:     it.color?.name || '',
@@ -110,7 +103,7 @@ export async function tryPartsSummary(userId: Blickfeld, o: Record<string, unkno
   const size = seitengroesse(o.page_size, !!o.set_number);
   const pg   = Math.max(1, parseInt(String(o.page)) || 1);
   try {
-    const { total, zeilen } = await repo.seiteAusZusammenfassung(uids, teileFilter(o),
+    const { total, zeilen } = await teileBereich().teileListe.seiteAusZusammenfassung(uids, teileFilter(o),
       { groesse: size, versatz: (pg - 1) * size, mitSets: !!o.withSets, ordnung: repo.teileOrdnung(o.ordnung) });
     return { parts: zeilen.map(teilAlsAntwort), total, source: 'summary', page_size: size };
   } catch (e) {
@@ -121,7 +114,7 @@ export async function tryPartsSummary(userId: Blickfeld, o: Record<string, unkno
 }
 
 export async function getParts(userIdWahl: Sicht | Blickfeld, query: Record<string, unknown> = {}) {
-  const userId = await blickfeldAus(userIdWahl);
+  const userId = await haushaltBereich().haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const filter = teileFilter(query);
   const page = query.page ?? 1;
@@ -136,8 +129,8 @@ export async function getParts(userIdWahl: Sicht | Blickfeld, query: Record<stri
   const groesse = seitengroesse(query.page_size, !!filter.set_number);
   const versatz = (Math.max(1, parseInt(String(page)) || 1) - 1) * groesse;
   const [{ total, zeilen }, gebraucht] = await Promise.all([
-    repo.seiteLive(uids, filter, { groesse, versatz, mitSets: withSets, ordnung: repo.teileOrdnung(query.ordnung) }),
-    filter.ohneManuelle ? Promise.resolve([]) : repo.gebrauchteManuelle(uids),
+    teileBereich().teileListe.seiteLive(uids, filter, { groesse, versatz, mitSets: withSets, ordnung: repo.teileOrdnung(query.ordnung) }),
+    filter.ohneManuelle ? Promise.resolve([]) : teileBereich().teileListe.gebrauchteManuelle(uids),
   ]);
   // Eine „Gebraucht"-Erfassung macht das Teil gebraucht; ohne Erfassung 'N'.
   const gebrauchtJe = new Set(gebraucht.filter(r => Number(r.any_used) > 0).map(r => `${r.pid}|${r.color_id}`));
@@ -147,7 +140,7 @@ export async function getParts(userIdWahl: Sicht | Blickfeld, query: Record<stri
   // Im Hintergrund fehlende BrickLink-Nummern nachladen; eine leere bl_id heisst „nachgesehen".
   setImmediate(async () => {
     try {
-      if (await repo.hatUngeseheneBlNummer(uids)) fetchMissingBlIds().catch(logAndContinue('teile:fetchMissingBlIds'));
+      if (await teileBereich().teileListe.hatUngeseheneBlNummer(uids)) fetchMissingBlIds().catch(logAndContinue('teile:fetchMissingBlIds'));
     } catch (e) { meldeFehler('teile:bl-nummern-nachladen', e); }
   });
 
@@ -163,21 +156,21 @@ export async function getParts(userIdWahl: Sicht | Blickfeld, query: Record<stri
 /** Die Kategorie aus dem eigenen Katalog, sonst aus rb_parts: Rebrickables
  * Set-Teile-Antwort liefert meist keine, die Liste bestünde sonst aus „Unbekannt". */
 export async function getPartsCategories(userIdWahl: Sicht | Blickfeld) {
-  const userId = await blickfeldAus(userIdWahl);
+  const userId = await haushaltBereich().haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
-  return repo.kategorien(uids, await ensureFresh(uids, { strict: true }));
+  return teileBereich().teileListe.kategorien(uids, await ensureFresh(uids, { strict: true }));
 }
 
 export async function getPartsStats(userIdWahl: Sicht | Blickfeld) {
-  const userId = await blickfeldAus(userIdWahl);
+  const userId = await haushaltBereich().haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   // Aus der Zusammenfassung nur, wenn sie frisch ist: Webapp und App zeigen
   // dieselben Zahlen.
   if (await ensureFresh(uids, { strict: true })) {
-    const r = await repo.kennzahlen(uids, true);
+    const r = await teileBereich().teileListe.kennzahlen(uids, true);
     if (r) return r;
   }
-  return (await repo.kennzahlen(uids, false)) ?? { unique_parts: 0, unique_colors: 0, total_parts: 0, manual_parts: 0 };
+  return (await teileBereich().teileListe.kennzahlen(uids, false)) ?? { unique_parts: 0, unique_colors: 0, total_parts: 0, manual_parts: 0 };
 }
 
 export async function getBlColorMap() {
@@ -221,17 +214,17 @@ export async function getManualParts(userIdWahl: Sicht | Blickfeld, viewerId: nu
   { page = 1, page_size = null, search = null, storage = null }:
     { page?: unknown; page_size?: unknown; search?: string | null; storage?: string | null } = {},
   ab = new Abstriche()) {
-  const userId = await blickfeldAus(userIdWahl);
+  const userId = await haushaltBereich().haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const groesse = page_size ? clampPageSize(page_size, 60) : null;
   const seite = groesse ? { groesse, versatz: (Math.max(1, parseInt(String(page)) || 1) - 1) * groesse } : null;
-  const rows = await repo.manuelleTeile(uids, { search, storage }, seite);
+  const rows = await teileBereich().teileListe.manuelleTeile(uids, { search, storage }, seite);
   const mitZustand = await applyManualCondition(uids, rows, 'part');
   // Eine Abfrage für die ganze Liste; die App liest `avg_price` im Detail. Ohne
   // Preise bleibt die Liste brauchbar; `ab` sammelt für `degradiert`, warum sie fehlen.
   const preise = await ab.oder('marktpreise', marktpreiseAusCacheFuerTeile(mitZustand, viewerId), new Map<string, number>());
   const mitPreis = mitZustand.map(t => ({ ...t, avg_price: preise.get(`${t.part_number}|${t.color_id}`) ?? null }));
-  return withOwners(uids, mitPreis);
+  return haushaltBereich().haushalt.withOwners(uids, mitPreis);
 }
 
 // Füllt die Spalte „Habe“ aus dem Bestand.
@@ -241,7 +234,7 @@ export async function getOwnedQuantities(
   blickfeldWahl: Sicht | BlickfeldEingabe,
   teile: Array<{ part_number?: string | number | undefined; color_id?: number | string | null | undefined }>,
 ): Promise<Record<string, { gesamt: number; lose: number }>> {
-  const uids = await blickfeldAus(blickfeldWahl);
+  const uids = await haushaltBereich().haushalt.blickfeldAus(blickfeldWahl);
   // Doppelte Schlüssel fallen weg: Eine Liste über mehrere Sets fragt dasselbe
   // Teil sonst mehrfach.
   const gesehen = new Set<string>();
@@ -263,10 +256,10 @@ export async function getOwnedQuantities(
   // Ersatzteile zählen MIT: Sie liegen in der Schachtel und lassen sich verbauen
   // — „hat man", nicht „braucht man" wie auf der Bedarfsseite.
   const out: Record<string, { gesamt: number; lose: number }> = {};
-  for (const r of await repo.besitzteTeile(uids, nums, farben))
+  for (const r of await teileBereich().teileListe.besitzteTeile(uids, nums, farben))
     out[`${r.part_number}|${r.color_id}`] = { gesamt: Number(r.gesamt) || 0, lose: Number(r.lose) || 0 };
   // Minifiguren zählen mit: Eine Teileliste nennt auch die Figuren eines Sets.
-  for (const r of await repo.besitzteFiguren(uids, nums)) {
+  for (const r of await teileBereich().teileListe.besitzteFiguren(uids, nums)) {
     const key = `${r.part_number}|0`;
     if (out[key]) continue;
     out[key] = { gesamt: Number(r.gesamt) || 0, lose: Number(r.lose) || 0 };

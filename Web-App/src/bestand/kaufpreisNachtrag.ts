@@ -1,9 +1,9 @@
-import { getCurrentMarketPrice, getCurrentFigMarketPrice, getCurrentPartMarketPrice } from '../finanzen/marketPrice';
-import { setzeGeschaetztenPreis, setErfassungenOhnePreis, teilErfassungenOhnePreis, figurErfassungenOhnePreis } from './acquisitions';
-import { teilfarbenbilderNachtragen } from '../katalog/katalogAbgleich';
-import { blAbrufNummer } from '../katalog/blZuordnung';
+import { getCurrentMarketPrice, getCurrentFigMarketPrice, getCurrentPartMarketPrice } from '../finanzen';
+import { setzeGeschaetztenPreis } from './acquisitions';
+import { teilfarbenbilderNachtragen, blAbrufNummer } from '../katalog';
 import { fehlertext, meldeFehler } from '../infra/fehler';
 import { setTimeout as warte } from 'node:timers/promises';
+import { bestandBereich } from './prozess';
 
 // Idempotent: Erfassungen ohne Kaufpreis bekommen den Marktpreis, wie beim
 // Erfassen ohne Kaufpreis.
@@ -16,7 +16,7 @@ function log(msg: string) {
 
 // Scheitert BrickLink beim CSV-Import am Tageslimit, bleibt die Erfassung ohne Preis; hier wird nachgetragen.
 async function backfillAcquisitions() {
-  const rows = await setErfassungenOhnePreis();
+  const rows = await bestandBereich().nachtrag.setErfassungenOhnePreis();
   if (!rows.length) return;
   log(`Erfassungen ohne Kaufpreis: ${rows.length}`);
 
@@ -38,7 +38,7 @@ async function backfillAcquisitions() {
 
 // Dieselbe Lücke wie bei den Sets, für Teile- und Figuren-Erfassungen.
 async function backfillTeileErfassungen() {
-  const rows = await teilErfassungenOhnePreis();
+  const rows = await bestandBereich().nachtrag.teilErfassungenOhnePreis();
   if (!rows.length) return;
   log(`Teile-Erfassungen ohne Kaufpreis: ${rows.length}`);
   let done = 0;
@@ -56,7 +56,7 @@ async function backfillTeileErfassungen() {
 }
 
 async function backfillFigurenErfassungen() {
-  const rows = await figurErfassungenOhnePreis();
+  const rows = await bestandBereich().nachtrag.figurErfassungenOhnePreis();
   if (!rows.length) return;
   log(`Figuren-Erfassungen ohne Kaufpreis: ${rows.length}`);
   let done = 0;

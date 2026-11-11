@@ -47,7 +47,7 @@ test('UI-Prüfung 13: Haushalt, Dialoge, Finanzen', { timeout: 280_000 }, async 
   const { b, bis, db, port, ruhig } = app;
   // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
   await ruhig();
-  const haushalt = buildAndRequire()('src/haushalt/haushalt.js');
+  const haushalt = buildAndRequire()('src/haushalt/prozess.js').haushaltBereich().haushalt;
   const geh = async (pfad) => { await b.auswerten(`location.hash = '#/${pfad}'; true`); await warte(300); };
   const zu = async () => { await b.auswerten(klick('#cd-cancel')); await bis(`!(${offen})`, 'Dialog zu'); };
   const andere = (await db.get(`INSERT INTO users (username, email, password_hash, is_active, email_verified) VALUES ($1, $2, 'x', true, true) RETURNING id`,

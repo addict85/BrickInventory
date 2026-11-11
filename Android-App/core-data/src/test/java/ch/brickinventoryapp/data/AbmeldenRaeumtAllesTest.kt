@@ -133,7 +133,7 @@ class AbmeldenRaeumtAllesTest {
         val offline = Testablage()
         offline.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "10294-1")))
         offline.puffere(Bearbeitung.MerkpostenLoeschen("10294-1", "N", 1))
-        val vorschau = VorschauSpeicher({ File(ctx.filesDir, "vorschau") }, AblageChiffre { ablage.fuer("vorschau") })
+        val vorschau = VorschauSpeicher({ File(ctx.filesDir, "vorschau") }, AblageChiffre { ablage.fuer("vorschau") }) { ablage.fuer("namen") }
         vorschau.schreibe("$adresse/images/sets/10294-1_thumb.jpg", "vorschaubild".toByteArray())
         val bildClient = OkHttpClient.Builder().cache(Cache(File(ctx.cacheDir, "bild-http"), 1_000_000)).build()
         bildClient.newCall(Request.Builder().url("$adresse/bild.png").build()).execute().close()
@@ -145,6 +145,7 @@ class AbmeldenRaeumtAllesTest {
         val meldungen = shadowOf(ctx.getSystemService(NotificationManager::class.java))
         assertEquals("Vorbedingung: eine Meldung steht da", 1, meldungen.allNotifications.size)
         assertTrue("Vorbedingung: Bildcache gefüllt", bildClient.cache!!.urls().hasNext())
+        assertTrue("Vorbedingung: Vorschau abgelegt", File(ctx.filesDir, "vorschau").walkTopDown().any { it.isFile })
         val sitzung = Sitzung().apply { angemeldet(admin = false) }
         val alterSchluessel = ablage.hole().copyOf()
 
@@ -159,12 +160,13 @@ class AbmeldenRaeumtAllesTest {
 
         val platte = store.data.first()
         assertEquals("Token", "", prefs.tokenJetzt())
-        assertFalse("Benutzername", TokenAblage.USERNAME in platte.asMap())
+        assertFalse("Benutzername", TokenAblage.USERNAME in platte.asMap() || TokenAblage.USERNAME_ENC in platte.asMap())
         assertFalse("Marke des Preisalarms", GeraeteAblage.ALARM_MARKE in platte.asMap())
         assertTrue("Antwort-Cache", antwortOrdner.walkTopDown().none { it.isFile })
         assertNull("Bestand", offline.lies(Faecher.SETS)?.liste?.takeIf { it.isNotEmpty() })
         assertFalse("Ausgang", offline.wartet())
-        assertFalse("Vorschau", vorschau.hat("$adresse/images/sets/10294-1_thumb.jpg"))
+        // Auf die Platte gesehen: Die Namen hängen am Ablageschlüssel, und der ist danach ein anderer.
+        assertTrue("Vorschau", File(ctx.filesDir, "vorschau").walkTopDown().none { it.isFile })
         assertFalse("HTTP-Bildcache", bildClient.cache!!.urls().hasNext())
         assertNull("Coil-Bildcache", coil.openSnapshot("bild"))
         assertFalse("Teileliste", teileliste.exists())

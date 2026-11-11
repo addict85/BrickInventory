@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app.nav
 
 import ch.brickinventoryapp.zustand.ui.AppViewModel
-import ch.brickinventoryapp.zustand.ui.viewmodel.CsvImportViewModel
+import ch.brickinventoryapp.app.csv.CsvImportViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.DarstellungViewModel
 import ch.brickinventoryapp.konto.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.VertrauenViewModel

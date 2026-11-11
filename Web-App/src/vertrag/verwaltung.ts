@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { type Route, zeit, ganz, OHNE_RUMPF, TEXT, JA_NEIN, abfrage, Q, SEITE, SEITEN_ANGABE } from './grund';
-import { GenericAdminResponse } from './gemeinsam';
+import { GenericAdminResponse, ImportZeile } from './gemeinsam';
 import { GLOBALE_REGELN } from './globaleRegeln';
 
 export const ApiLimits = z.looseObject({
@@ -83,6 +83,7 @@ export const AuftragsArtStart = z.looseObject({
 });
 
 export const BricksetQueueEntry = z.looseObject({
+  created_at: zeit.nullable().optional(),
   set_number: z.string(),
   name: z.string().nullable().optional(),
   attempts: z.number().int(),
@@ -98,6 +99,7 @@ export const BricksetQueueResponse = z.looseObject({
 });
 
 export const RateLimit = z.looseObject({
+  date: z.string().nullable().optional(),
   count: z.number().int(),
   limit: z.number().int(),
   remaining: z.number().int(),
@@ -110,6 +112,7 @@ export const RateLimits = z.looseObject({
 });
 
 export const CacheStatsResponse = z.looseObject({
+  db_pool: z.record(z.string(), z.unknown()).optional(),
   success: z.boolean(),
   prices: z.number().int(),
   subsets: z.number().int(),
@@ -126,6 +129,8 @@ export const CacheTtlResponse = z.looseObject({
 });
 
 export const CsvImportStatus = z.looseObject({
+  code: z.string().nullable().optional(),
+  results: z.array(ImportZeile).optional(),
   success: z.boolean(),
   status: z.string().nullable().optional(),
   total: z.number().int().nullable().optional(),
@@ -145,6 +150,10 @@ export const JobSchedule = z.looseObject({
 });
 
 export const JobStatus = z.looseObject({
+  lastRun: z.union([z.string(), z.number()]).nullable().optional(),
+  canRedownload: z.boolean().optional(),
+  queue: z.number().int().nullable().optional(),
+  queueLastRun: z.union([z.string(), z.number()]).nullable().optional(),
   label: z.string(),
   status: z.string(),
   progress: z.number().int(),
@@ -155,6 +164,7 @@ export const JobStatus = z.looseObject({
 });
 
 export const JobsResponse = z.looseObject({
+  db: z.record(z.string(), z.unknown()).optional(),
   success: z.boolean(),
   jobs: z.record(z.string(), JobStatus),
   schedules: z.record(z.string(), JobSchedule),
@@ -179,8 +189,9 @@ export const ProtokollResponse = z.looseObject({
 export const PreisJobStand = z.looseObject({
   success: z.boolean(),
   job: z.looseObject({ running: z.boolean(), lastRun: zeit.nullable(), nextRun: zeit.nullable(), lastErrors: ganz,
-    log: z.array(z.unknown()) }),
-  rate_limit: z.looseObject({ count: ganz, limit: ganz, remaining: ganz }),
+    log: z.array(z.unknown()), lastDuration: z.number().nullable().optional(), lastUpdated: z.number().nullable().optional(),
+    progress: z.looseObject({ current: z.unknown(), total: z.unknown(), set: z.unknown() }).nullable().optional() }),
+  rate_limit: z.looseObject({ count: ganz, limit: ganz, remaining: ganz, date: z.string().nullable().optional() }),
 });
 /** Die Einträge zeigt die Verwaltung roh an; ihre Felder sind die Spalten von app_logs. */
 export const ProtokollEintraege = z.looseObject({ success: z.literal(true), eintraege: z.array(z.record(z.string(), z.unknown())) });
@@ -188,16 +199,18 @@ export const BildDiagnose = z.looseObject({
   success: z.literal(true), set_number: z.string(), hinweise: z.array(z.string()),
   datenbank: z.looseObject({ anzahl_konten: ganz, image_local: z.string().nullable(), image_url: z.string().nullable(),
     katalog_bild: z.string().nullable() }),
-  lokal: z.looseObject({ original: z.looseObject({ vorhanden: z.boolean(), bytes: ganz }),
-    vorschau: z.looseObject({ vorhanden: z.boolean(), bytes: ganz }) }),
-  proxy: z.looseObject({ gecacht: z.boolean() }),
+  lokal: z.looseObject({ original: z.looseObject({ vorhanden: z.boolean(), bytes: ganz, geaendert: zeit.nullable().optional() }),
+    vorschau: z.looseObject({ vorhanden: z.boolean(), bytes: ganz, geaendert: zeit.nullable().optional() }) }),
+  proxy: z.looseObject({ gecacht: z.boolean(), adresse: z.string().nullable().optional() }),
   merker: z.looseObject({ seit: zeit.nullable(), grund: z.string().nullable() }).nullable(),
 });
 export const BildMerkerVergessen = z.looseObject({ success: z.literal(true), entfernt: ganz, hinweis: z.string() });
 
 /** Diagnosen für die Verwaltung: Ihre Felder zeigt die Oberfläche roh an. */
 export const Diagnose = z.record(z.string(), z.unknown());
-export const Endpunkte = z.looseObject({ api: z.string(), version: z.string(), endpoints: z.record(z.string(), z.unknown()) });
+export const Endpunkte = z.looseObject({ 
+  auth: z.record(z.string(), z.unknown()).optional(),
+  api: z.string(), version: z.string(), endpoints: z.record(z.string(), z.unknown()) });
 
 /** Sammelantworten der Verwaltung mit dem, was die einzelne Route dazu sagt. */
 export const VerwaltungMeldung = GenericAdminResponse.extend({ message: z.string().optional() });
@@ -208,7 +221,8 @@ export const VerwaltungZustand = GenericAdminResponse.extend({ condition: z.stri
 export const VerwaltungDesign = GenericAdminResponse.extend({ theme: z.string() });
 
 export const routen = {
-  'GET /api/v1/sets/import/csv/status': { antwort: CsvImportStatus },
+  // Die Zeilen eines laufenden Imports: so viele, wie die eine Datei hat.
+  'GET /api/v1/sets/import/csv/status': { klein: true, antwort: CsvImportStatus },
   'GET /api/v1/admin/logs': { klein: true, antwort: ProtokollResponse, abfrage: abfrage({ minutes: Q.zahl() }) },
   'GET /api/v1/admin/jobs': { antwort: JobsResponse, klein: true },
   'GET /api/v1/admin/brickset-queue': { antwort: BricksetQueueResponse, abfrage: abfrage(SEITE) },

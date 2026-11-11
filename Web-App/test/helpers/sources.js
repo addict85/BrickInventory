@@ -8,9 +8,10 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..', '..');
 
-/** Nur server.ts: für Prüfungen, bei denen die REIHENFOLGE in der Datei zählt.
- *  Wer den Start meint, nimmt startQuelle(). */
-const serverOnly = () => fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
+/** Die App (startup/app.ts, Middleware in ihrer Reihenfolge) und server.ts:
+ *  für Prüfungen, bei denen die REIHENFOLGE zählt. Wer den Start meint, nimmt startQuelle(). */
+const serverOnly = () => fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8')
+  + '\n' + fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
 
 const imgProxy = () => fs.readFileSync(path.join(ROOT, 'src/katalog/http/bildProxy.ts'), 'utf8')
   + '\n' + fs.readFileSync(path.join(ROOT, 'routes/imgProxy.ts'), 'utf8');
@@ -92,7 +93,9 @@ function baueDist() {
   _built = true;
 }
 
-let _zugangGesetzt = false;
+/** Der Zugang der Testdatei: db/database kennt keinen Zugang des Prozesses mehr;
+ *  ein Test bekommt ihn wie der Server von seinem Einstieg, hier also von hier. */
+let _testDb = null;
 
 function buildAndRequire() {
   // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/http/vertragsRouter.ts).
@@ -108,18 +111,32 @@ function buildAndRequire() {
   const faul = new Proxy({}, { get: (_z, k) => (...a) => echt().nacharbeit[k](...a) });
   require(path.join(ROOT, 'dist', 'src/auftraege/nacharbeit.js')).verdrahteNacharbeit(faul);
   const dbModul = require(path.join(ROOT, 'dist', 'db/database.js'));
-  // Wie server.ts: Der Zugang des Prozesses legt in einer leeren Datenbank das erste Konto an.
-  if (!_zugangGesetzt) {
-    dbModul.setzeStandardDb(() =>
-      dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung(), { erststart: () => echt().erststart() }));
-    _zugangGesetzt = true;
-  }
+  // Wie server.ts: Der Zugang legt in einer leeren Datenbank das erste Konto an.
+  const testDb = () => (_testDb ??= dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung(), { erststart: () => echt().erststart() }));
+  // Wie verdrahte(): Ohne Zugang wirft jeder Abruf eines Klienten. Die Bauteile erst beim ersten Gebrauch.
+  let klienten = null;
+  const klientenEcht = () =>
+    (klienten ??= require(path.join(ROOT, 'dist', 'startup/verdrahtung.js')).baueKlientenZugang());
+  require(path.join(ROOT, 'dist', 'clients/zugang.js')).verdrahteKlienten(
+    new Proxy({}, { get: (_z, k) => klientenEcht()[k] }));
   // prozess.js lädt nichts; bereich.js erst beim ersten Gebrauch der Dienste.
+  const BEREICHE = [['einstellungen', 'Einstellungen'], ['auftraege', 'Auftraege'], ['haushalt', 'Haushalt'], ['konto', 'Konto'], ['idempotenz', 'Idempotenz'], ['finanzen', 'Finanzen'], ['bestand', 'Bestand'], ['teile', 'Teile'], ['figuren', 'Figuren'], ['merkliste', 'Merkliste'], ['gutscheine', 'Gutscheine'], ['sammlung', 'Sammlung'], ['verwaltung', 'Verwaltung']];
+  for (const [b, B] of BEREICHE)
+    require(path.join(ROOT, 'dist', `src/${b}/prozess.js`))[`verdrahte${B}`](() =>
+      require(path.join(ROOT, 'dist', `src/${b}/bereich.js`))[`erzeuge${B}`]({ db: testDb() }));
   require(path.join(ROOT, 'dist', 'src/katalog/prozess.js')).verdrahteKatalog(() =>
-    require(path.join(ROOT, 'dist', 'src/katalog/bereich.js')).erzeugeKatalog({ db: dbModul.standardDb() }));
+    require(path.join(ROOT, 'dist', 'src/katalog/bereich.js')).erzeugeKatalog({ db: testDb() }));
   require(path.join(ROOT, 'dist', 'src/sets/prozess.js')).verdrahteSets(() =>
-    require(path.join(ROOT, 'dist', 'src/sets/bereich.js')).erzeugeSets({ db: dbModul.standardDb(), nacharbeit: faul }));
-  return rel => require(path.join(ROOT, 'dist', rel));
+    require(path.join(ROOT, 'dist', 'src/sets/bereich.js')).erzeugeSets({ db: testDb(), nacharbeit: faul }));
+  // db/database.js mit den Funktionen des Testzugangs, wie es früher der Prozesszugang war.
+  const fassade = Object.create(dbModul, {
+    pool: { get: () => testDb().pool },
+    standardDb: { value: testDb },
+  });
+  for (const f of ['all', 'get', 'run', 'exec', 'transaction', 'initSchema', 'initSchemaOnce', 'getPoolStats',
+    'datenbankAntwortet', 'alsSuperuserVerbunden', 'eigeneVerbindung', 'inTransaktion'])
+    fassade[f] = (...a) => testDb()[f](...a);
+  return rel => (rel === 'db/database.js' ? fassade : require(path.join(ROOT, 'dist', rel)));
 }
 
 module.exports.buildAndRequire = buildAndRequire;
@@ -193,7 +210,7 @@ module.exports.regexWoertlich = regexWoertlich;
 
 /** Der Vorschau-Weg des Bild-Proxys (src/katalog/bilder/proxyThumbs.ts). */
 function proxyThumbQuelle() {
-  return ['src/katalog/http/bildProxy.ts', 'routes/imgProxy.ts', 'src/katalog/bilder/proxyThumbs.ts', 'src/katalog/bilder/imgCacheServe.ts']
+  return ['src/katalog/http/bildProxy.ts', 'routes/imgProxy.ts', 'src/katalog/bilder/proxyThumbs.ts', 'src/katalog/bilder/imgCacheServe.ts', 'src/katalog/http/bildCacheAuslieferung.ts']
     .map(dienstQuelle).join('\n');
 }
 module.exports.proxyThumbQuelle = proxyThumbQuelle;
@@ -215,6 +232,11 @@ function setKernQuelle() {
   return [
     ['routes/api_v1/sets.ts'],
     ['src/sets/dienst.ts'],
+    ['src/sets/inhalt.ts'],
+    ['src/sets/barcode.ts'],
+    ['src/sets/csvImport.ts'],
+    ['src/sets/anleitungen.ts'],
+    ['src/sets/preise.ts'],
     ['src/sets/setService.ts'],
     ['src/sets/erfassen.ts'],
     ['src/katalog/partsImport.ts'],
@@ -362,9 +384,9 @@ module.exports.pruefeParameter = pruefeParameter;
  */
 /** @param {{ ohneTeile?: boolean }} [o] ohneTeile: nur die eingehängten Module, nicht die Dateien eines Zusammenbaus */
 function routerEinhaengungen(o = {}) {
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
-  // `import xRouter = require('./routes/x')` oben, `app.use('/api/…', xRouter)` unten.
-  const dateiJeName = new Map([...src.matchAll(/import\s+(\w+)\s*=\s*require\(\s*['"]\.\/(routes\/[^'"]+)['"]\s*\)/g)]
+  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
+  // `import xRouter from '../routes/x'` oben, `app.use('/api/…', xRouter)` unten.
+  const dateiJeName = new Map([...src.matchAll(/import\s+(\w+)\s+from\s+['"](?:\.\.?\/)+(routes\/[^'"]+)['"]/g)]
     .map(m => [m[1], m[2]]));
   const out = [];
   for (const m of src.matchAll(/app\.use\(\s*['"](\/api[^'"]*)['"]\s*,\s*(\w+)\s*\)/g)) {
@@ -384,14 +406,14 @@ function routerEinhaengungen(o = {}) {
 module.exports.routerEinhaengungen = routerEinhaengungen;
 
 /**
- * Die Adresse an EINER Stelle (server.ts): Ein Prüfstand, der Router von Hand
+ * Die Adresse an EINER Stelle (startup/app.ts): Ein Prüfstand, der Router von Hand
  * einhängt, bliebe nach einem Umzug grün.
  * @param {string} name Dateiname ohne routes/ und ohne .ts, z. B. 'auth'.
  */
 function einhaengung(name) {
   const treffer = routerEinhaengungen().filter(r => r.name === name);
   if (treffer.length !== 1)
-    throw new Error(`routes/${name}.ts haengt ${treffer.length}-mal in server.ts — erwartet: genau einmal`);
+    throw new Error(`routes/${name}.ts haengt ${treffer.length}-mal in startup/app.ts — erwartet: genau einmal`);
   return treffer[0].mount;
 }
 module.exports.einhaengung = einhaengung;
@@ -519,6 +541,13 @@ function dienstQuelle(rel) {
   // Der Katalog bindet seine Repositories in einer Fabrik (src/katalog/bereich.ts).
   for (const m of ohneKommentare(s).matchAll(/\bkatalog\(\)\.(\w+)\./g))
     if (fs.existsSync(path.join(ROOT, `src/katalog/repository/${m[1]}.ts`))) repos.add(`src/katalog/repository/${m[1]}.ts`);
+  // Die übrigen Bereiche ebenso (src/<b>/bereich.ts, Zugriff über <b>Bereich()).
+  for (const m of ohneKommentare(s).matchAll(/\b(\w+)Bereich\(\)\.(\w+)\./g)) {
+    const fabrik = path.join(ROOT, `src/${m[1]}/bereich.ts`);
+    if (!fs.existsSync(fabrik)) continue;
+    const ziel = fs.readFileSync(fabrik, 'utf8').match(new RegExp(`import \\* as ${m[2]} from '\\./([^']+)'`));
+    if (ziel && /repository/.test(ziel[1])) repos.add(`src/${m[1]}/${ziel[1]}.ts`);
+  }
   return [s, ...[...repos].map(r => fs.readFileSync(path.join(ROOT, r), 'utf8'))].join('\n');
 }
 module.exports.dienstQuelle = dienstQuelle;

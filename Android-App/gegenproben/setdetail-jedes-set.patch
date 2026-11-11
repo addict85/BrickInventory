@@ -1,0 +1,17 @@
+Gegenprobe: Das Set-Detail lädt bei jeder Änderung irgendeines Sets neu
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.sammlung.SetDetailViewModelTest
+Rot: ein geaenderter Kauf eines anderen Sets laedt hier nichts
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt
+@@ -73,7 +73,7 @@
+         folgeAbmeldung(sitzung) { zuruecksetzen() }
+         // Ändert sich dieses Set in der Ablage — hier oder anderswo —, gelten Detail und Käufe nicht mehr.
+         viewModelScope.launch {
+-            sets.beobachteSets().map { l -> l.liste.firstOrNull { it.setNumber == setNumber } }
++            sets.beobachteSets().map { l -> l.liste }
+                 .distinctUntilChanged().drop(1).collect {
+                     if (_setDetailState.value.setDetail != null) { loadSetDetail(setNumber); loadAcquisitions(setNumber) }
+                 }

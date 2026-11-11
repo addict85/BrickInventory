@@ -64,6 +64,9 @@ fi
 richte_ein session_secret SESSION_SECRET 48
 richte_ein db_password DB_PASSWORD 24
 richte_ein db_app_password DB_APP_PASSWORD 24
+# Die Migrationsrolle bekommt ihr Passwort bei jedem Lauf von db-rolle neu; ein
+# neu erzeugtes passt also auch zu einer bestehenden Datenbank (UPGRADE.md, Abschnitt 51).
+richte_ein db_migration_password "" 24
 # Die Leserolle bekommt ihr Passwort bei jedem Lauf von db-rolle neu; leer
 # heisst: sie meldet sich gar nicht an. Der Dateiname stammt aus der Zeit von pgweb.
 if [ "${PGWEB:-nein}" = ja ]; then
@@ -77,6 +80,12 @@ if [ "$(cat "$ORDNER/db_password")" = "$(cat "$ORDNER/db_app_password")" ]; then
   echo "[geheimnisse] FEHLER: db_password und db_app_password sind gleich; db_app_password löschen und erneut aufrufen." >&2
   exit 1
 fi
+for anderes in db_password db_app_password; do
+  if [ "$(cat "$ORDNER/db_migration_password")" = "$(cat "$ORDNER/$anderes")" ]; then
+    echo "[geheimnisse] FEHLER: db_migration_password und $anderes sind gleich; db_migration_password löschen und erneut aufrufen." >&2
+    exit 1
+  fi
+done
 
 alt=""
 for v in SESSION_SECRET DB_PASSWORD DB_APP_PASSWORD PGWEB_PASSWORD PGWEB_DB_PASSWORD; do

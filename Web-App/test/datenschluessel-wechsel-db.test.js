@@ -37,7 +37,10 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const G = _req('src/infra/geheimnis.js');
 const zf = _req('src/konto/zweiterFaktor.js');
-const gut = _req('src/gutscheine/repository/gutscheine.js');
+const gut = {
+  ..._req('src/gutscheine/repository/gutscheine.js'),
+  ..._req('src/gutscheine/prozess.js').gutscheineBereich().gutscheine,
+};
 const dateien = _req('src/gutscheine/gutscheinDateien.js');
 const { schluesselWechsel } = _req('startup/datenbank.js');
 

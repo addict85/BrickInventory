@@ -2,7 +2,8 @@
  * Parameter; erzeugeKatalog bindet ihn einmal für alle, und die Dienste lesen und
  * schreiben nur über das Ergebnis (katalog(), prozess.ts). Wer eine eigene
  * Transaktion oder Sperrverbindung hält, ruft das Repository direkt damit auf. */
-import type { Db } from '../../db/database';
+import { bindeZugang } from '../infra/bereich';
+import { Faecher } from '../infra/zwischenspeicher';
 import type { KatalogKontext } from './kontext';
 import * as anleitungen from './repository/anleitungen';
 import * as apiKontingent from './repository/apiKontingent';
@@ -21,28 +22,11 @@ import * as rebrickableCache from './repository/rebrickableCache';
 import * as setInhalt from './repository/setInhalt';
 import * as teileAnreicherung from './repository/teileAnreicherung';
 
-/** Nur Funktionen, deren erster Parameter den Zugang nimmt, und zwar ohne ihn. */
-type Gebunden<M> = {
-  [K in keyof M as M[K] extends (db: Db, ...a: never[]) => unknown ? K : never]: M[K] extends (
-    db: Db,
-    ...a: infer A
-  ) => infer R
-    ? (...a: A) => R
-    : never;
-};
-
-function bindeZugang<M extends object>(db: Db, modul: M): Gebunden<M> {
-  const gebunden: Record<string, unknown> = {};
-  for (const [name, f] of Object.entries(modul))
-    if (typeof f === 'function')
-      gebunden[name] = (...a: unknown[]) => (f as (db: Db, ...x: unknown[]) => unknown)(db, ...a);
-  return gebunden as Gebunden<M>;
-}
-
 export function erzeugeKatalog(kk: KatalogKontext) {
   const { db } = kk;
   return {
     db,
+    faecher: new Faecher(),
     anleitungen: bindeZugang(db, anleitungen),
     apiKontingent: bindeZugang(db, apiKontingent),
     apiTakt: bindeZugang(db, apiTakt),

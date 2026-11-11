@@ -4,22 +4,23 @@
 import path from 'path';
 import { APP_ROOT, PUBLIC_DIR, SET_IMAGES_DIR } from '../../infra/appPaths';
 import fs from 'fs';
+import { zaehleAnfrage } from '../../konto';
 import { resolveUserId } from '../../konto/http/anmeldung';
 import { vorDem, ohneFehlendeDatei, fehlertext, logAndContinue } from '../../infra/fehler';
 import { streamFileToResponse } from '../../http/httpAntwort';
 import { queueThumb } from '../bilder/proxyThumbs';
-import { liefereAusCache, merkeCacheZuwachs, bildTyp } from '../bilder/imgCacheServe';
+import { merkeCacheZuwachs, bildTyp } from '../bilder/imgCacheServe';
+import { liefereAusCache } from './bildCacheAuslieferung';
 import { imgProxyFailures } from '../bilder/imgProxyStats';
 import { istBekanntFehlend, merkeFehlend } from '../bilder/imageMisses';
 import { proxyAdresse, proxyCacheSchluessel } from '../bilder/images';
-import { zaehleAnfrage } from '../../konto/loginLimiter';
 import { konfig } from '../../infra/konfig';
 import type { Request, Response } from 'express';
 import type { Readable } from 'stream';
 import { AbrufFehler, type AbrufStrom } from '../../infra/abruf';
 import { oeffneBild, BILD_KOPFZEILEN, BILD_KOPFZEILEN_OHNE_REFERER } from '../quellen';
 import zlib from 'zlib';
-import { nacharbeit } from '../../auftraege/nacharbeit';
+import { nacharbeit } from '../../auftraege';
 import { setBildVollstaendig } from '../bilder/setImages';
 import { setBildLokalEintragen } from '../bildlage';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../../infra/fremdeAdressen';
@@ -28,8 +29,6 @@ import { einmalDekodiert, urlOderNull } from '../../infra/validate';
 /** 20 MB, weil grosse Set-Bilder sonst nie vollständig im Speicher landeten. */
 const PROXY_CACHE_MAX_BYTES = 20 * 1024 * 1024;
 
-/** URLs, die das CDN mit 404 beantwortet hat → cacheKey → Zeitpunkt. */
-const _imgNegCache = new Map();
 let _tmpSeq = 0;
 
 // Fehlschläge zählt src/katalog/bilder/imgProxyStats.ts, sonst nicht einzugrenzen.
@@ -104,11 +103,6 @@ async function vomCdn(
     // NUR 404 merken: 403 ist bei einer Kachelwand oft nur Drosselung.
     if (r.status === 404) {
       merkeFehlend(cacheKey);
-      _imgNegCache.set(cacheKey, Date.now());
-      if (_imgNegCache.size > 5000) {
-        const cutoff = Date.now() - 900_000;
-        for (const [k, t] of _imgNegCache) if (t < cutoff) _imgNegCache.delete(k);
-      }
     }
     if (r.status === 404) imgProxyFailures.notFound++;
     else imgProxyFailures.other++;

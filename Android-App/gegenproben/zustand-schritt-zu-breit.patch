@@ -6,11 +6,15 @@ Rot: jeder Schritt der Sitzung setzt nur seine Felder
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Sitzung.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Sitzung.kt
 --- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Sitzung.kt
 +++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Sitzung.kt
-@@ -94,6 +94,6 @@
-             defaultPriceCondition = defaultPriceCondition, userDefaultCondition = userDefaultCondition)
+@@ -102,7 +102,10 @@
+         }
      }
-
--    override fun waehrungUebernommen(currency: Waehrung) = _state.update { it.copy(currency = currency) }
-+    override fun waehrungUebernommen(currency: Waehrung) = _state.update { it.copy(currency = currency, priceCondition = Zustand.GEBRAUCHT) }
-
+ 
+-    override fun waehrungUebernommen(currency: Waehrung) = werte.setzeWaehrung(currency)
++    override fun waehrungUebernommen(currency: Waehrung) {
++        werte.setzeWaehrung(currency)
++        _state.update { it.copy(priceCondition = Zustand.GEBRAUCHT) }
++    }
+ 
      override fun spracheGeaendert(language: String) = _state.update { it.copy(language = language) }
+ 

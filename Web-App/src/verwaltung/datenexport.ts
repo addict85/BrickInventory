@@ -9,14 +9,14 @@ import {
   setGlobalSetting,
   globalerWertGueltig,
   getGlobalSetting,
-} from '../einstellungen/settings';
-import { setUserSetting } from '../konto/nutzerEinstellung';
+} from '../einstellungen';
+import { kontoBereich, setUserSetting } from '../konto';
 import { buildSetsCsv } from '../sets';
-import { buildPartsCsv, buildFigsCsv } from '../bestand/bestandExport';
-import { buildMerklisteCsv } from '../merkliste/merkliste';
-import { buildPreisalarmeCsv } from '../finanzen/preisalarm';
-import { DAILY_JOBS } from '../auftraege/zeitplan';
-import { zeitplanNeuPlanen, protokolliere } from './dienst';
+import { buildPartsCsv, buildFigsCsv } from '../bestand';
+import { buildMerklisteCsv } from '../merkliste';
+import { finanzenBereich } from '../finanzen';
+import { DAILY_JOBS } from '../auftraege';
+import { zeitplanNeuPlanen } from './dienst';
 import { jsonOderNull } from '../infra/validate';
 import { fachfehler } from '../infra/fehlerTexte';
 import { KonfigExport } from '../vertrag/einstellungen';
@@ -46,7 +46,7 @@ export async function datenZip(uid: number, ziel: Writable, beiFehler: (e: Error
     buildPartsCsv(uid),
     buildFigsCsv(uid),
     buildMerklisteCsv(uid),
-    buildPreisalarmeCsv(uid),
+    finanzenBereich().preisalarm.buildPreisalarmeCsv(uid),
   ]);
   const archiv = new ZipArchive({ zlib: { level: 9 } });
   archiv.on('error', beiFehler);
@@ -107,7 +107,13 @@ export async function konfigImport(uid: number, verwalter: boolean, datei: Buffe
       await setGlobalSetting(key, global[key]);
       imported++;
     }
-    if (geaendert.length) await protokolliere(uid, uid, 'einstellungen_geaendert', `Import: ${geaendert.join(', ')}`);
+    if (geaendert.length)
+      await kontoBereich().protokoll.protokolliere(
+        uid,
+        uid,
+        'einstellungen_geaendert',
+        `Import: ${geaendert.join(', ')}`,
+      );
   }
   // Zentrale Stelle: Eine importierte Währungsänderung stösst den Preis-Job an.
   for (const key of KONTO_IMPORT.filter(k => konto?.[k] !== undefined)) {
@@ -121,5 +127,5 @@ export async function konfigImport(uid: number, verwalter: boolean, datei: Buffe
     (verwalter && smtpUebergangen.length
       ? '; Mailserver, Registrierung und API-Schlüssel nicht übernommen — bitte im Formular setzen'
       : '');
-  return { success: true as const, imported, note, smtp_uebergangen: verwalter ? smtpUebergangen : [] };
+  return { imported, note, smtp_uebergangen: verwalter ? smtpUebergangen : [] };
 }

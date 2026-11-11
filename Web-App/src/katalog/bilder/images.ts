@@ -4,19 +4,12 @@ import fs from 'fs';
 import crypto from 'crypto';
 import { APP_ROOT, IMAGES_DIR } from '../../infra/appPaths';
 import path from 'path';
+import { Zwischenspeicher } from '../../infra/zwischenspeicher';
 
 // Positive Treffer bleiben gültig (Vorschauen werden nie gelöscht); negative
 // nach 10 Min neu prüfen, damit frisch erzeugte erscheinen.
-const _thumbCache = new Map();
-
-/** Map hält die Einfügereihenfolge: Der erste Schlüssel ist der älteste. */
-function _evictOldest(map: Map<unknown, unknown>, n: number) {
-  let removed = 0;
-  for (const k of map.keys()) {
-    map.delete(k);
-    if (++removed >= n) break;
-  }
-}
+const NEGATIV_MS = 10 * 60 * 1000;
+const _thumbCache = new Zwischenspeicher<string, boolean>(20000);
 
 export function resolveImageLocal(localPath: string | null | undefined) {
   if (!localPath) return localPath;
@@ -27,15 +20,11 @@ export function resolveImageLocal(localPath: string | null | undefined) {
   else if (thumbPath.startsWith('/images/')) thumbFs = path.join(IMAGES_DIR, thumbPath.slice('/images/'.length));
   else return localPath;
 
-  const hit = _thumbCache.get(thumbFs);
-  if (hit && (hit.exists || Date.now() - hit.checkedAt < 10 * 60 * 1000))
-    return hit.exists ? thumbPath : localPath;
+  const hit = _thumbCache.hole(thumbFs);
+  if (hit !== undefined) return hit ? thumbPath : localPath;
 
   const exists = fs.existsSync(thumbFs);
-  // Das älteste Viertel verdrängen statt alles zu leeren: Danach käme die volle
-  // Ladung existsSync ausgerechnet im Moment der höchsten Last.
-  if (_thumbCache.size > 20000) _evictOldest(_thumbCache, 5000);
-  _thumbCache.set(thumbFs, { exists, checkedAt: Date.now() });
+  _thumbCache.setze(thumbFs, exists, exists ? undefined : NEGATIV_MS);
   return exists ? thumbPath : localPath;
 }
 
@@ -65,21 +54,19 @@ export function proxyImageUrl(url: string | null | undefined) {
 
 // Für Aufrufer ohne gespeicherte image_local-Spalte (Katalog), die die
 // Existenz sonst bei jeder Anfrage neu prüften.
-const _existsCache = new Map();
+const _existsCache = new Zwischenspeicher<string, boolean>(20000);
 
 /** Liefert bei Treffer den Vorschau-bevorzugten Pfad, sonst null.
  * @param publicRelPath z. B. "/images/sets/10283-1.jpg" */
 export function resolveIfExists(publicRelPath: string) {
-  const hit = _existsCache.get(publicRelPath);
-  if (hit && (hit.exists || Date.now() - hit.checkedAt < 10 * 60 * 1000))
-    return hit.exists ? resolveImageLocal(publicRelPath) : null;
+  const hit = _existsCache.hole(publicRelPath);
+  if (hit !== undefined) return hit ? resolveImageLocal(publicRelPath) : null;
 
   const fsPath = publicRelPath.startsWith('/images/')
     ? path.join(IMAGES_DIR, publicRelPath.slice('/images/'.length))
     : path.join(APP_ROOT, publicRelPath.replace(/^\//, ''));
   const exists = fs.existsSync(fsPath);
-  if (_existsCache.size > 20000) _evictOldest(_existsCache, 5000);  // siehe _thumbCache oben
-  _existsCache.set(publicRelPath, { exists, checkedAt: Date.now() });
+  _existsCache.setze(publicRelPath, exists, exists ? undefined : NEGATIV_MS);
   return exists ? resolveImageLocal(publicRelPath) : null;
 }
 

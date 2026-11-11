@@ -11,6 +11,12 @@
  *   B  codePasst() gibt immer true → rot: „ein falscher Code zählt …“
  *   C  qrKopplungDesKontos() ohne `AND user_id = $2` → rot: „die Kopplung eines anderen Kontos …“
  *   D  in melde() (Repository) `used_at IS NULL` gestrichen → rot: „ein Code meldet nur ein Gerät“
+ *   E  (11.11.2026) in /qr-login/abholen `vorschau` nicht weitergegeben → rot: „die Vorschau
+ *      nennt das Konto …“ (Token schon in der Vorschau)
+ *   F  (11.11.2026) in verwirfAbholung() markiereAbgelehnt() gestrichen → rot: „ein Nein
+ *      der App …“ (Abholen gibt danach doch einen Token)
+ *   G  (11.11.2026) in legeQrKopplungAn() die Zählbedingung gestrichen → rot:
+ *      „über der Obergrenze offener Kopplungen …“ (200 statt 503)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -97,6 +103,45 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
     assert.equal((await abholen(m)).status, 401, 'Ein zweites Abholen gibt keinen zweiten Token');
   });
 
+  await t.test('die Vorschau nennt das Konto, der Token kommt erst mit dem Ja', async () => {
+    const qr = await neuerCode();
+    const m = await melde(qr);
+    const vorschau = { abholung: m.abholung, vorschau: true };
+    assert.equal((await ruf('POST', '/qr-login/abholen', vorschau)).body.wartet, true);
+    assert.equal((await bestaetige(qr, m.code)).status, 200);
+    for (let i = 0; i < 2; i++) {
+      const v = await ruf('POST', '/qr-login/abholen', vorschau);
+      assert.equal(v.status, 200, JSON.stringify(v.body));
+      assert.deepEqual([v.body.username, v.body.vorschau, v.body.token], [NAMEN[0], true, undefined]);
+    }
+    const ja = await abholen(m);
+    assert.equal(ja.status, 200, JSON.stringify(ja.body));
+    assert.equal(ja.body.username, NAMEN[0]);
+    // Die Nonce für den Geräteschlüssel gehört der Familie des neuen Tokens.
+    const n = await db.get(
+      `SELECT n.aus_qr FROM geraete_nonces n JOIN api_tokens t ON t.user_id = n.user_id
+         AND date_trunc('milliseconds', t.created_at) = n.familie WHERE n.nonce = $1 AND t.token = $2`,
+      [ja.body.schluessel_nonce, _req('src/konto/auth.js').hashToken(ja.body.token)],
+    );
+    assert.equal(n?.aus_qr, true);
+  });
+
+  await t.test('ein Nein der App verwirft die Kopplung, es entsteht kein Token', async () => {
+    const qr = await neuerCode();
+    const m = await melde(qr);
+    assert.equal((await bestaetige(qr, m.code)).status, 200);
+    const tokens = async () =>
+      (await db.get('SELECT count(*)::int AS n FROM api_tokens WHERE user_id = $1', [ids[0]])).n;
+    const vorher = await tokens();
+    assert.equal((await ruf('POST', '/qr-login/abholen', { abholung: m.abholung, vorschau: true })).status, 200);
+    assert.equal((await ruf('POST', '/qr-login/verwerfen', { abholung: m.abholung })).status, 200);
+    const r = await abholen(m);
+    assert.deepEqual([r.status, r.body.code], [403, 'qr_abgelehnt']);
+    assert.equal(await tokens(), vorher);
+    assert.equal((await ruf('GET', `/qr-kopplung/${qr.kopplung}`)).body.stand, 'abgelehnt');
+    assert.equal((await ruf('POST', '/qr-login/verwerfen', { abholung: 'unbekannt' })).status, 401);
+  });
+
   await t.test('ein Code meldet nur ein Gerät', async () => {
     const qr = await neuerCode();
     await melde(qr);
@@ -132,5 +177,26 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
       Object.assign(sitzung, { userId: ids[0], username: NAMEN[0] });
     }
     assert.equal((await abholen(m)).body.wartet, true);
+  });
+
+  await t.test('über der Obergrenze offener Kopplungen gibt es 503, abgeholte zählen nicht', async tt => {
+    const { OFFENE_KOPPLUNGEN_HOECHSTENS } = _req('src/konto/qrKopplung.js');
+    await db.run(`DELETE FROM qr_login_tokens`);
+    tt.after(() => db.run(`DELETE FROM qr_login_tokens`));
+    await db.run(
+      `INSERT INTO qr_login_tokens (token, user_id, expires_at, abgeholt_am)
+      SELECT 'abgeholt' || g, $1, NOW() + INTERVAL '5 minutes', NOW() FROM generate_series(1, 5) g`,
+      [ids[1]],
+    );
+    await db.run(
+      `INSERT INTO qr_login_tokens (token, user_id, expires_at)
+      SELECT 'voll' || g, $1, NOW() + INTERVAL '5 minutes' FROM generate_series(1, $2::int - 1) g`,
+      [ids[1], OFFENE_KOPPLUNGEN_HOECHSTENS],
+    );
+    await neuerCode();
+    const r = await ruf('POST', '/qr-token', { password: PASS });
+    assert.deepEqual([r.status, r.body?.code], [503, 'server_ausgelastet']);
+    await db.run(`UPDATE qr_login_tokens SET expires_at = NOW() - INTERVAL '1 minute' WHERE token LIKE 'voll%'`);
+    await neuerCode();
   });
 });

@@ -26,9 +26,10 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * Das Token liegt nur verschlüsselt, ein Klartext älterer Fassungen wird einmal
- * übernommen, und Abmelden räumt beide Einträge weg — ausgeführt an der echten
- * TokenAblage; ein Neustart ist eine neue Instanz auf derselben Platte.
+ * Das Token liegt nur verschlüsselt, ein Klartext älterer Fassungen gilt nie und wird
+ * entfernt, Adresse und Name liegen verschlüsselt, und Abmelden räumt beide Einträge
+ * weg — ausgeführt an der echten TokenAblage; ein Neustart ist eine neue Instanz auf
+ * derselben Platte.
  *
  * Gegenproben (Robolectric, misst die CI; Job `gegenproben`):
  *   klartext-bleibt-nach-speichern  saveAuthToken() ohne remove(AUTH_TOKEN) → rot
@@ -37,6 +38,11 @@ import java.io.File
  *                                   „Abmelden entfernt beide Eintraege“
  *   altbestand-nicht-umgeschluesselt  uebernehmeAltesToken() ohne umschluesseln(prefs) → rot
  *                                   „ein Token unter dem alten Schluessel kommt beim Start …“
+ *   klartext-token-gilt-wieder      der Spiegel liest AUTH_TOKEN wieder als Token → rot
+ *                                   „ein Klartext-Token aelterer Fassungen gilt nie …“
+ *   angaben-im-klartext             setzeAngabe() schreibt den Klartext → rot
+ *                                   „Adresse und Name liegen nur verschluesselt …“
+ *   angaben-ohne-uebernahme         uebernimmAngaben() lässt den Klartext stehen → rot, derselbe Test
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -76,15 +82,37 @@ class TokenTresorTest {
     fun zu() = bereiche.forEach { it.cancel() }
 
     @Test
-    fun `ein bestehendes Klartext-Token bleibt nach dem Update lesbar und wird einmal uebernommen`() {
+    fun `ein Klartext-Token aelterer Fassungen gilt nie und wird beim Start entfernt`() {
         lege(klartext = "altes-token-123")
         val prefs = start()
-        assertEquals("altes-token-123", runBlocking { prefs.tokenJetzt() })
-        assertTrue("Es gab etwas zu übernehmen", runBlocking { prefs.uebernehmeAltesToken() })
+        assertEquals("Ein Klartext-Token gilt nicht als Anmeldung", "", runBlocking { prefs.tokenJetzt() })
+        assertEquals("", runBlocking { prefs.authToken.first() })
+        assertTrue("Es gab etwas zu entfernen", runBlocking { prefs.uebernehmeAltesToken() })
         assertNull("Der Klartext muss weg sein", platte()[TokenAblage.AUTH_TOKEN])
-        assertEquals("ENC(321-nekot-setla)", platte()[TokenAblage.AUTH_TOKEN_ENC])
+        assertNull("Nichts wird aus dem Klartext übernommen", platte()[TokenAblage.AUTH_TOKEN_ENC])
         assertFalse("Beim zweiten Start gibt es nichts mehr zu tun", runBlocking { prefs.uebernehmeAltesToken() })
-        assertEquals("altes-token-123", runBlocking { start().tokenJetzt() })
+    }
+
+    @Test
+    fun `Adresse und Name liegen nur verschluesselt, alte Klartexte werden beim Start uebernommen`() {
+        lege()
+        runBlocking { store.edit { it[TokenAblage.USERNAME] = "marco" } }
+        val prefs = start()
+        val p = platte()
+        assertNull("Die Adresse liegt nach dem Start noch im Klartext", p[TokenAblage.SERVER_URL])
+        assertNull("Der Name liegt nach dem Start noch im Klartext", p[TokenAblage.USERNAME])
+        for (geheim in listOf(p[TokenAblage.SERVER_URL_ENC], p[TokenAblage.USERNAME_ENC]))
+            assertTrue("Geheimtext fehlt oder verrät den Wert: $geheim",
+                geheim != null && "brick" !in geheim && "marco" !in geheim)
+        assertEquals("https://brick.example", runBlocking { prefs.serverUrlJetzt() })
+        assertEquals("marco", runBlocking { prefs.username.first() })
+
+        runBlocking { prefs.saveServerUrl("https://brick.example/neu"); prefs.saveUsername("anna") }
+        val danach = platte()
+        assertFalse(TokenAblage.SERVER_URL in danach.asMap() || TokenAblage.USERNAME in danach.asMap())
+        val neu = start()
+        assertEquals("https://brick.example/neu", runBlocking { neu.serverUrlJetzt() })
+        assertEquals("anna", runBlocking { neu.username.first() })
     }
 
     @Test

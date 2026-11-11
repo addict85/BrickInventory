@@ -67,7 +67,7 @@ async function schemaText(db) {
 
 const BASIS = path.join(__dirname, '..', 'db/basis.sql');
 /** Startdaten, die eine neue Installation braucht; alles andere bleibt leer. */
-const BASIS_DATEN = ['auftrag_exklusiv', 'global_settings', 'gutschein_guthaben_schranke', 'schema_migrations'];
+const BASIS_DATEN = ['auftrag_exklusiv', 'auftrags_arten', 'global_settings', 'gutschein_guthaben_schranke', 'schema_migrations'];
 
 /** Hauptversion des pg_dump im Pfad; das Abbild unterscheidet sich zwischen Versionen. */
 function pgDumpVersion() {
@@ -122,7 +122,8 @@ async function main() {
   await admin.query(`CREATE DATABASE ${name}`);
   const ziel = new URL(basis); ziel.pathname = '/' + name;
   process.env.DATABASE_URL = ziel.toString();
-  const db = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
+  const dbModul = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
+  const db = dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung());
   try {
     await db.initSchemaOnce();
     fs.writeFileSync(DATEI, await schemaText(db));

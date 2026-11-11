@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.testing
 
+import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
@@ -19,7 +20,10 @@ import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
-import ch.brickinventoryapp.zustand.ui.Bestandssignal
+import ch.brickinventoryapp.data.repository.Bestandsabgleich
+import ch.brickinventoryapp.data.repository.FigurenRepository
+import ch.brickinventoryapp.data.repository.Kontosicht
+import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.zustand.ui.Blickfeld
 import ch.brickinventoryapp.zustand.ui.FilterAblage
 import ch.brickinventoryapp.model.ui.ScrollMemory
@@ -30,7 +34,6 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -40,7 +43,6 @@ import java.io.File
 import java.util.Collections
 import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.data.api.ApiJson
-import ch.brickinventoryapp.zustand.ui.Aenderung
 import kotlinx.serialization.serializer
 import okhttp3.ResponseBody
 import retrofit2.Invocation
@@ -50,6 +52,14 @@ import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.lang.reflect.WildcardType
 import java.util.WeakHashMap
+
+/** Die angezeigte Meldung als Satz, wie NummernTexte ihn bildet; null ohne Meldung. */
+val MeldungsKanal.text: String?
+    get() = when (val m = meldung.value) {
+        null -> null
+        is Meldung.Text -> m.text
+        is Meldung.Ressource -> "t${m.id}" + if (m.werte.isEmpty()) "" else m.werte.joinToString(", ", "(", ")")
+    }
 
 /** Gemeinsames Gerüst der ViewModel-Tests, die gegen einen Testserver laufen. */
 object TestApi {
@@ -67,6 +77,17 @@ object TestApi {
             .build()
             .create(BrickApiService::class.java)
     }
+
+    /**
+     * Ein Client, der jede Anfrage an [server] schickt — wie der Wächter der App die
+     * Platzhalter-Adresse auf den eingetragenen Server umschreibt.
+     */
+    fun umgeleitet(server: MockWebServer): OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor { kette ->
+            val alt = kette.request()
+            kette.proceed(alt.newBuilder().url(alt.url.newBuilder().scheme("http").host(server.hostName).port(server.port).build()).build())
+        }
+        .readTimeout(2, TimeUnit.SECONDS).connectTimeout(2, TimeUnit.SECONDS).build()
 
     fun antwort(rumpf: String, code: Int = 200): MockResponse =
         MockResponse().setResponseCode(code)
@@ -239,8 +260,6 @@ class SpeicherAblage : FilterAblage {
  * eine [FakeApi]. Mit [io] = Test-Dispatcher läuft auch die Ablage in virtueller Zeit.
  */
 class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, val io: CoroutineDispatcher = Dispatchers.IO) {
-    /** Mit einem Test-Dispatcher ist alles schon gelaufen, wenn ein Aufruf zurückkehrt. */
-    private val imTakt = io != Dispatchers.IO
 
     constructor(server: MockWebServer, texte: Texte = NummernTexte) : this(TestApi.fuer(server), texte)
 
@@ -249,7 +268,17 @@ class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, val io:
     val sitzung = Sitzung()
     val blickfeld = Blickfeld(SpeicherAblage(), HaushaltRepository(api, cache), TeileRepository(api, cache))
     val meldungen = MeldungsKanal()
-    val bestand = Bestandssignal()
+
+    /** Eine Ablage für alle Repositories dieses Tests: Was eines schreibt, sehen die Listen der anderen. */
+    val ablage = Testablage()
+    val kontosicht: Kontosicht = Kontosicht(api, ablage)
+    val abgleich: Bestandsabgleich = Bestandsabgleich(api, ablage)
+
+    /** Dieselbe Instanz, wo ein ViewModel nur liest, wann sich der Bestand geändert hat. */
+    val aenderungen: Bestandsabgleich get() = abgleich
+    fun sets(): SetsRepository = SetsRepository(api, cache, ablage)
+    fun teile(): TeileRepository = TeileRepository(api, cache, ablage)
+    fun figuren(): FigurenRepository = FigurenRepository(api, cache, ablage)
     val scrollMemory = ScrollMemory()
     val hinweise = Meldungen(meldungen, texte)
 
@@ -263,25 +292,6 @@ class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, val io:
     private val filterBereich by filterBereichLazy
     fun filter(): Filterwahl = Filterwahl(blickfeld, filterBereich)
 
-    /**
-     * Sammelt die Meldungen ans Bestandssignal, während [block] läuft, und
-     * wartet auf [erwartet] Stück, ehe es aufhört — eine Meldung kommt oft erst
-     * nach dem Zustand, auf den der Test wartet. Bei 0 kurz warten: Es soll
-     * nichts kommen.
-     */
-    fun gemeldet(erwartet: Int, block: () -> Unit): List<Aenderung> {
-        val liste = Collections.synchronizedList(mutableListOf<Aenderung>())
-        val sammler = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-            bestand.aenderungen.collect { liste += it }
-        }
-        block()
-        if (!imTakt) {
-            if (erwartet > 0) TestApi.warteBis("$erwartet Meldungen") { liste.size >= erwartet } else Thread.sleep(200)
-        }
-        sammler.cancel()
-        return liste.toList()
-    }
-
     private val erzeugt = mutableListOf<androidx.lifecycle.ViewModel>()
 
     /** Merkt sich das ViewModel, damit [aufraeumen] seine Koroutinen beendet. */
@@ -289,7 +299,7 @@ class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, val io:
 
     /**
      * Vor Dispatchers.resetMain() rufen: Die Sammler auf Abmeldung und
-     * Bestandssignal laufen sonst weiter und stossen auf ein fehlendes Main.
+     * Ablage laufen sonst weiter und stossen auf ein fehlendes Main.
      */
     fun aufraeumen() {
         val jobs = erzeugt.mapNotNull { it.viewModelScope.coroutineContext[kotlinx.coroutines.Job] }

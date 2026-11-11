@@ -1,17 +1,16 @@
 /**
  * Der Datenbankzugang entsteht durch erzeugeDb(konfig), nicht beim Import:
  * Wer db/database lädt, öffnet keinen Pool; jeder Zugang hat seinen eigenen
- * Pool und seine eigene Transaktion. Der Prozess setzt seinen Zugang selbst
- * (server.ts, setzeStandardDb); der Kompatibilitätsweg legt ihn erst beim
- * ersten Gebrauch an.
+ * Pool und seine eigene Transaktion. Einen Zugang des Prozesses gibt es nicht:
+ * Der Einstieg (server.ts, Skripte, Testhilfe) hält den seinen.
  *
  * Gegenproben (09.11.2026 gemessen, je einzeln):
  *   A  in db/database.ts wieder `const pool = new Pool(...)` auf oberster Ebene →
  *      rot: „der Import öffnet keinen Pool“ (1 statt 0)
  *   B  in erzeugeDb() txClient ohne Vergleich `t.db === ich` → rot: „zwei Zugänge,
  *      zwei Transaktionen“ (b.inTransaktion() wahr in der Transaktion von a)
- *   C  setzeStandardDb() ohne die Prüfung auf einen schon gesetzten Zugang → rot:
- *      „der Zugang des Prozesses wird einmal gesetzt“
+ *   C  (11.11.2026) `export const get = …` mit einem Zugang des Prozesses zurück
+ *      in db/database.ts → rot: „db/database führt keinen Zugang des Prozesses“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -34,15 +33,14 @@ test('der Import öffnet keinen Pool', () => {
     const nachImport = n;
     const eigener = db.erzeugeDb(db.dbKonfigAusUmgebung());
     const nachFabrik = n;
-    void db.pool.totalCount;
-    console.log(JSON.stringify([nachImport, nachFabrik, n]));
-    Promise.all([eigener.pool.end(), db.pool.end()]).then(() => process.exit(0));`;
+    console.log(JSON.stringify([nachImport, nachFabrik]));
+    eigener.pool.end().then(() => process.exit(0));`;
   const aus = execFileSync(process.execPath, ['-e', skript], {
     cwd: path.join(__dirname, '..'),
     encoding: 'utf8',
     env: { ...process.env, DATABASE_URL: 'postgres://niemand:x@127.0.0.1:1/keine' },
   });
-  assert.deepEqual(JSON.parse(aus.trim().split('\n').pop()), [0, 1, 2], 'Import, Fabrik, erster Gebrauch');
+  assert.deepEqual(JSON.parse(aus.trim().split('\n').pop()), [0, 1], 'Import, Fabrik');
 });
 
 test('zwei Zugänge, zwei Transaktionen', async t => {
@@ -78,14 +76,22 @@ test('zwei Zugänge, zwei Transaktionen', async t => {
   await a.run('DELETE FROM global_settings WHERE key = $1', [SCHL]);
 });
 
-test('der Zugang des Prozesses wird einmal gesetzt', async () => {
-  const db = _req('db/database.js');
-  const standard = db.standardDb();
-  assert.doesNotThrow(() => db.setzeStandardDb(standard), 'derselbe Zugang noch einmal ist kein Fehler');
-  const anderer = db.erzeugeDb(db.dbKonfigAusUmgebung());
-  try {
-    assert.throws(() => db.setzeStandardDb(anderer), /schon gesetzt/);
-  } finally {
-    await anderer.pool.end();
-  }
+test('db/database führt keinen Zugang des Prozesses', () => {
+  const modul = require(path.join(DIST, 'db', 'database.js'));
+  const prozess = [
+    'pool',
+    'all',
+    'get',
+    'run',
+    'exec',
+    'transaction',
+    'initSchema',
+    'initSchemaOnce',
+    'standardDb',
+    'setzeStandardDb',
+    'inTransaktion',
+    'getPoolStats',
+  ].filter(n => n in modul);
+  assert.deepEqual(prozess, []);
+  assert.equal(typeof modul.erzeugeDb, 'function', 'die Fabrik bleibt');
 });

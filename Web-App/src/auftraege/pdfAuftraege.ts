@@ -2,11 +2,11 @@ import path from 'path';
 import crypto from 'crypto';
 import fsp from 'fs/promises';
 import { PDF_JOB_DIR } from '../infra/appPaths';
-import { meldeUndLiefere, meldeFehler, ohneFehlendeDatei } from '../infra/fehler';
+import { meldeFehler, ohneFehlendeDatei } from '../infra/fehler';
 import { stelleAuftragEin } from './dienst';
 import type { NutzlastEingabe } from './nutzlasten';
 import { mitVersion } from '../infra/setNummer';
-import * as repo from './repository/pdfAuftraege';
+import { auftraegeBereich } from './prozess';
 
 /** Jeder Statuswechsel weckt die Statusströme über AUFTRAG_STAND_KANAL. */
 export const pdfSchluessel = (id: string) => `pdf:${id}`;
@@ -31,7 +31,7 @@ export type PdfAuftrag = {
 const STATUS: Record<string, PdfAuftrag['status']> = { offen: 'running', laeuft: 'running', erledigt: 'done' };
 
 export async function liesAuftrag(id: string): Promise<PdfAuftrag | null> {
-  const z = await repo.pdfAuftragZeile(pdfSchluessel(id));
+  const z = await auftraegeBereich().pdfAuftraege.pdfAuftragZeile(pdfSchluessel(id));
   return z ? { status: STATUS[z.status] ?? 'error', error: z.status === 'erledigt' ? null : z.fehler ?? null,
                user_id: Number(z.user_id), missingImages: z.fortschritt?.fehlendeBilder ?? null,
                etaSeconds: z.fortschritt?.etaSekunden ?? null } : null;
@@ -39,17 +39,17 @@ export async function liesAuftrag(id: string): Promise<PdfAuftrag | null> {
 
 /** Ein hängengebliebener zählt nach `ttlMs` nicht mehr. */
 export async function laufendeAuftraege(uid: number, ttlMs: number): Promise<number> {
-  const z = await repo.zaehleLaufendePdf(uid, ttlMs / 1000);
+  const z = await auftraegeBereich().pdfAuftraege.zaehleLaufendePdf(uid, ttlMs / 1000);
   return z?.n ?? 0;
 }
 
 export async function loescheAuftrag(id: string): Promise<void> {
-  await repo.loeschePdfAuftrag(pdfSchluessel(id));
+  await auftraegeBereich().pdfAuftraege.loeschePdfAuftrag(pdfSchluessel(id));
 }
 
 /** @returns die Kennungen, damit die PDF-Dateien mitgehen */
 export async function raeumeAuftraegeAuf(ttlMs: number): Promise<string[]> {
-  const rows = await repo.loescheAltePdfAuftraege(ttlMs / 1000);
+  const rows = await auftraegeBereich().pdfAuftraege.loescheAltePdfAuftraege(ttlMs / 1000);
   return rows.map((r: { id: string }) => r.id);
 }
 
@@ -63,7 +63,7 @@ export function neueJobId(): string {
 }
 
 export async function cleanOldPdfJobs() {
-  for (const id of await raeumeAuftraegeAuf(PDF_JOB_TTL).catch(meldeUndLiefere('pdf:aufraeumen', [] as string[]))) {
+  for (const id of await raeumeAuftraegeAuf(PDF_JOB_TTL)) {
     const datei = pdfDateiPfad(id);
     if (datei) await fsp.unlink(datei).catch(ohneFehlendeDatei('pdf:datei loeschen'));
   }
@@ -86,7 +86,7 @@ async function fehlendeBilder(sets: Array<{ set_number?: unknown }>, parts: Arra
   }
   if (!nummern.size) return fehlend;
   try {
-    const r = await repo.fehlendeKatalogbilder([...nummern]);
+    const r = await auftraegeBereich().pdfAuftraege.fehlendeKatalogbilder([...nummern]);
     const c = Number(r?.c);
     if (Number.isFinite(c)) fehlend = c;
   } catch (e) { meldeFehler('pdf:wartezeit schaetzen', e); }

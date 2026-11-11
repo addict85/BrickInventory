@@ -24,6 +24,7 @@ import java.io.File
 import ch.brickinventoryapp.testing.NummernTexte
 import ch.brickinventoryapp.testing.ReihenServer
 import ch.brickinventoryapp.testing.TestApi
+import ch.brickinventoryapp.testing.text
 
 /**
  * Das Gutschein-ViewModel, im Takt gegen Antworten in fester Reihenfolge.
@@ -108,22 +109,22 @@ class GutscheinViewModelTest {
         server.enqueue(antwort("""{"success":false,"error":"Betrag fehlt",
             "gelesen":{"number":"6000999988887777","pin":"4321","currency":"EUR"}}""", 422))
         vm.speichere { "application/pdf" to byteArrayOf(37, 80, 68, 70) }
-        bis("Formular") { !vm.state.value.speichert && server.requestCount == 1 && kanal.meldung.value != null }
+        bis("Formular") { !vm.state.value.speichert && server.requestCount == 1 && kanal.text != null }
 
         val s = vm.state.value
         assertEquals("6000999988887777", s.nummer)
         assertEquals("4321", s.pin)
         assertEquals("EUR", s.waehrung)
         assertEquals("", s.betrag)
-        assertEquals("t${R.string.vouchers_pdf_incomplete}", kanal.meldung.value)
+        assertEquals("t${R.string.vouchers_pdf_incomplete}", kanal.text)
         assertTrue(server.takeRequest().path.endsWith("/api/v1/vouchers/pdf"))
     }
 
     @Test
     fun `eine Nicht-PDF-Datei geht nicht zum Server`() {
         vm.speichere { "image/png" to byteArrayOf(1, 2, 3) }
-        bis("Meldung") { kanal.meldung.value != null && !vm.state.value.speichert }
-        assertEquals("t${R.string.vouchers_only_pdf}", kanal.meldung.value)
+        bis("Meldung") { kanal.text != null && !vm.state.value.speichert }
+        assertEquals("t${R.string.vouchers_only_pdf}", kanal.text)
         assertEquals(0, server.requestCount)
     }
 
@@ -144,7 +145,7 @@ class GutscheinViewModelTest {
         bis("neu geladen") { server.requestCount == 3 }
         assertNull(vm.state.value.guthabenLauf)
         assertNull(vm.state.value.guthabenLaeuft)
-        assertEquals("t${R.string.vouchers_balance_alle_fertig}", kanal.meldung.value)
+        assertEquals("t${R.string.vouchers_balance_alle_fertig}", kanal.text)
     }
 
     // Gegenprobe (02.11.2026 gemessen): `|| d.grund == "konto"` im ViewModel

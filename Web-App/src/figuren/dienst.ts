@@ -1,13 +1,13 @@
 import { logAndContinue } from '../infra/fehler';
-import { inventarFuerKandidaten } from '../katalog/rbInventar';
-import { nacharbeit } from '../auftraege/nacharbeit';
-import * as repo from './repository/figurTeile';
+import { inventarFuerKandidaten } from '../katalog';
+import { nacharbeit } from '../auftraege';
 import type { KatalogZeile } from './zeilen';
+import { figurenBereich } from './prozess';
 export type { FigurTeil, KatalogZeile } from './zeilen';
 
 
 function katalogTeile(figNumber: string): Promise<KatalogZeile[]> {
-  return repo.katalogTeileDerFigur(figNumber);
+  return figurenBereich().figurTeile.katalogTeileDerFigur(figNumber);
 }
 
 /** Fehlen BrickLink-Nummern, wird vor der Antwort angereichert; die Bilder
@@ -18,11 +18,11 @@ export async function teileDerFigur(figNumber: string) {
   const invId = await inventarFuerKandidaten([figNumber, figNumber.replace('fig-', '')]);
   if (!invId) return { parts: [], source: 'not_found' };
 
-  const teile = await repo.inventarTeileDerFigur(invId);
+  const teile = await figurenBereich().figurTeile.inventarTeileDerFigur(invId);
 
   let kat = await katalogTeile(figNumber);
   if (!kat.length || kat.some(r => !r.bl_part_number || r.bl_part_number === r.part_number)) {
-    const elternSet = await repo.setMitFigur(figNumber);
+    const elternSet = await figurenBereich().figurTeile.setMitFigur(figNumber);
     if (elternSet) await nacharbeit().figurenAnreichern(elternSet.set_number).catch(logAndContinue('figuren:enrichSetMinifigs'));
     else await nacharbeit().setTeileAnreichern(figNumber).catch(logAndContinue('figuren:enrichSetParts'));
     kat = await katalogTeile(figNumber);

@@ -2,21 +2,25 @@
  * Blickfeld, Menge und Kaufpreis. Was das Netz braucht (Katalog, Bild,
  * Marktpreis), hält die Anfrage nicht auf, sondern läuft als Auftrag. */
 import type { DbSchnittstelle } from '../../db/database';
-import { scopeIds, schreibziel } from '../haushalt/haushalt';
-import { recordAcquisitionForDay, setzeGeschaetztenPreis } from '../bestand/acquisitions';
+import { scopeIds, schreibziel } from '../haushalt';
+import { recordAcquisitionForDay, setzeGeschaetztenPreis, setzeLagerort, ortFuerNeuerfassung } from '../bestand';
 import { mitInventarSperre } from '../../db/txLock';
-import { downloadSetImage, rebrickableSetBild } from '../katalog/bilder/setImages';
-import { getCurrentMarketPrice } from '../finanzen/marketPrice';
-import { zustandFuerPreis } from '../einstellungen/settings';
-import { getSetInfo } from '../katalog/rebrickableKatalog';
-import { brickset } from '../katalog/quellen';
-import { generateThumb } from '../katalog/bilder/thumbs';
-import { stelleAuftragEin } from '../auftraege/dienst';
+import {
+  downloadSetImage,
+  rebrickableSetBild,
+  getSetInfo,
+  brickset,
+  generateThumb,
+  katalogStand,
+  merkeKatalogPlatzhalter,
+  merkeSetKatalog,
+} from '../katalog';
+import { getCurrentMarketPrice } from '../finanzen';
+import { zustandFuerPreis } from '../einstellungen';
+import { stelleAuftragEin } from '../auftraege';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../infra/setNummer';
 import { fachfehler } from '../infra/fehlerTexte';
-import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
 import * as repo from './repository/sets';
-import * as katalogStamm from '../katalog/setStamm';
 import { versuche, wertOder } from '../infra/ergebnis';
 import type { SetsKontext } from './kontext';
 
@@ -72,7 +76,7 @@ export async function findSetInScope(
   setNumber: string,
 ): Promise<VorhandenesSet | null> {
   const sn = normalizeSetNumber(setNumber);
-  const row = await repo.setImBlickfeld(sk.db, await scopeIds(viewerId), sn, viewerId);
+  const row = await repo.setImBlickfeld(sk.db, await scopeIds(sk.db, viewerId), sn, viewerId);
   if (!row) return null;
   return { set_number: row.set_number, owner_user_id: row.user_id, is_self: row.user_id === viewerId };
 }
@@ -117,16 +121,16 @@ export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfa
   if (e.streng && !GETIPPTE_NUMMER.test(roh)) fachfehler('ungueltig', 'setnummer_ungueltig');
   const sn = normalizeSetNumber(roh);
   if (!moeglicheSetNummer(sn)) fachfehler('ungueltig', 'setnummer_ungueltig');
-  const besitzer = await schreibziel(e.anfragender, e.besitzerWunsch);
+  const besitzer = await schreibziel(sk.db, e.anfragender, e.besitzerWunsch);
   const zustand = await zustandFuerPreis(e.zustand ?? null, null, besitzer);
-  const ort = await ortFuerNeuerfassung(besitzer, e.lagerort ?? null);
+  const ort = await ortFuerNeuerfassung(sk.db, besitzer, e.lagerort ?? null);
   const kaufpreis = e.kaufpreis ?? null;
 
   return sk.db.transaction(async tx => {
     await repo.sperreSetErfassen(tx, sn, besitzer);
     const vorhanden = await findSetInScope(sk, e.anfragender, sn);
     if (vorhanden) return { action: 'exists' as const, ...vorhanden };
-    const katalog = await katalogStamm.merkeKatalogPlatzhalter(tx, sn);
+    const katalog = await merkeKatalogPlatzhalter(tx, sn);
     await repo.legeSetZeileAn(tx, besitzer, sn);
     await recordAcquisition(
       sk,
@@ -141,7 +145,7 @@ export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfa
       },
       tx,
     );
-    if (ort) await setzeLagerort('set', [besitzer], [sn], ort);
+    if (ort) await setzeLagerort(sk.db, 'set', [besitzer], [sn], ort);
     // In derselben Transaktion: Ein angelegtes Set ohne Auftrag bliebe für immer ohne Katalog.
     await stelleAuftragEin(
       'nacharbeit',
@@ -204,7 +208,7 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
   const lokal = wertOder(bild, null);
   if (lokal) void versuche('set-anlegen:vorschau', generateThumb(lokal));
   // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild.
-  await katalogStamm.merkeSetKatalog(sk.db, sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
+  await merkeSetKatalog(sk.db, sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
   return { name, gestoert: !rbErgebnis.ok, bild: !!lokal };
 }
 
@@ -216,7 +220,7 @@ export async function setErgaenzen(
   konto: number,
   sendProgress: Fortschritt | null = null,
 ): Promise<{ name: string | null }> {
-  const stand = await katalogStamm.katalogStand(sk.db, sn);
+  const stand = await katalogStand(sk.db, sn);
   let name = stand && !stand.platzhalter ? stand.name : null;
   if (!stand || stand.platzhalter || !stand.image_local) {
     const k = await katalogHolen(sk, sn, true, sendProgress);
@@ -248,9 +252,9 @@ export interface SetHinzufuegen {
 /** Steht das Set schon im eigenen Konto, kommt eine Erfassung dazu (CSV, Merkliste). */
 export async function addSet(sk: SetsKontext, s: SetHinzufuegen) {
   // Ohne Ort gilt der Vorgabeort des Kontos (CSV- und Wanted-Import haben keinen).
-  const ort = await ortFuerNeuerfassung(s.konto, s.lagerort ?? null);
+  const ort = await ortFuerNeuerfassung(sk.db, s.konto, s.lagerort ?? null);
   const ergebnis = await addSetIntern(sk, s);
-  if (ort && ergebnis?.set_number) await setzeLagerort('set', [s.konto], [ergebnis.set_number], ort);
+  if (ort && ergebnis?.set_number) await setzeLagerort(sk.db, 'set', [s.konto], [ergebnis.set_number], ort);
   return ergebnis;
 }
 

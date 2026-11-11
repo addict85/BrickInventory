@@ -117,9 +117,9 @@ test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
 });
 
 test('die Barcode-Suche zählt ihre Rebrickable-Aufrufe', () => {
-  // Die Barcode-Suche (src/sets/dienst.ts) fragt Rebrickable nur über
+  // Die Barcode-Suche (src/sets/barcode.ts) fragt Rebrickable nur über
   // rebrickableJson() — und das zählt und drosselt.
-  const dienst = quelle('src/sets/dienst.ts');
+  const dienst = quelle('src/sets/barcode.ts');
   assert.match(dienst, /rebrickableJson\(/, 'die Barcode-Suche fragt Rebrickable nicht über den Client');
   assert.doesNotMatch(dienst, /https\.get\(/, 'eigener Abrufweg am Tageskontingent vorbei');
   const client = quelle('clients/rebrickable.ts');
@@ -187,7 +187,7 @@ test('alle drei CSV-Importwege entschärfen zurück', () => {
   // Importe ihn benutzen, zeigt test/csv-rundlauf-db.test.js.
   // Gegenprobe (29.10.2026): entschaerfungRueckgaengig in setCsvZeilen
   // weggelassen → rot („Sets: …“).
-  const { setCsvZeilen } = _reqCsv('src/sets/dienst.js');
+  const { setCsvZeilen } = _reqCsv('src/sets/csvImport.js');
   const { csvZeilenAusAnfrage } = _reqCsv('src/infra/csvExport.js');
   assert.equal(setCsvZeilen("set_number,quantity\n'-10001-1,1\n").rows[0].sn, '-10001-1',
     'Sets: ein hier erzeugter Export käme mit Hochkomma zurück');
@@ -218,7 +218,7 @@ test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', asy
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   // Der Strom hört auf NOTIFY anderer Worker; die Verbindung dafür hielte den Prozess offen.
-  t.after(() => _req('db/pgNotify.js').close());
+  t.after(() => _req('db/database.js').standardDb().benachrichtigung.close());
   const { csvImportBus } = _req('src/auftraege/importAuftrag.js');
   const r = await fetch(`http://localhost:${srv.address().port}/api/v1/sets/import/csv/stream`, { signal: AbortSignal.timeout(10_000) });
   const text = await r.text();

@@ -1,6 +1,6 @@
-import * as db from '../../../db/database';
+import type { DbSchnittstelle } from '../../../db/database';
 
-export function tageswerteAusVerlauf(currency: string, condition: string, setNumbers: string[], mengen: number[], datumsFilter: string, bExpr: string) {
+export function tageswerteAusVerlauf(db: DbSchnittstelle, currency: string, condition: string, setNumbers: string[], mengen: number[], datumsFilter: string, bExpr: string) {
   return db.all<{ day: string; full_day?: string; first_day?: string; month: string; total: number | string }>(`WITH mengen AS MATERIALIZED (
        SELECT * FROM unnest($3::text[], $4::int[]) AS m(set_number, qty)
      ),
@@ -59,7 +59,7 @@ export function tageswerteAusVerlauf(currency: string, condition: string, setNum
       ORDER BY t.bucket`.replace('@BUCKET@', bExpr), [currency, condition, setNumbers, mengen]);
 }
 
-export function cachePreiseDerSets(currency: string, condition: string, setNumbers: string[], placeholders: string) {
+export function cachePreiseDerSets(db: DbSchnittstelle, currency: string, condition: string, setNumbers: string[], placeholders: string) {
   return db.all<{ set_number: string; qty_avg_price: number | null; avg_price: number | null; day: string; month: string }>(`SELECT set_number, qty_avg_price, avg_price,
               to_char(fetched_at,'YYYY-MM-DD') AS day,
               to_char(fetched_at,'YYYY-MM')    AS month
@@ -69,7 +69,7 @@ export function cachePreiseDerSets(currency: string, condition: string, setNumbe
        ORDER BY fetched_at ASC, (condition = $2) ASC`, [currency, condition, ...setNumbers]);
 }
 
-export function letzteWerteVorBeginn(currency: string, condition: string, setNumbers: string[], mengen: number[], ersterTag: string, datumsFilter: string) {
+export function letzteWerteVorBeginn(db: DbSchnittstelle, currency: string, condition: string, setNumbers: string[], mengen: number[], ersterTag: string, datumsFilter: string) {
   return db.all<{ total: number }>(`WITH mengen AS MATERIALIZED (
          SELECT * FROM unnest($3::text[], $4::int[]) AS m(set_number, qty)
        ),
@@ -99,7 +99,7 @@ export function letzteWerteVorBeginn(currency: string, condition: string, setNum
          FROM letzte l JOIN mengen m ON m.set_number = l.set_number`, [currency, condition, setNumbers, mengen, ersterTag]);
 }
 
-export function setsMitKaufsumme(uids: number[]) {
+export function setsMitKaufsumme(db: DbSchnittstelle, uids: number[]) {
   return db.all<{ set_number: string; quantity: number; purchase_price: number | null }>(`SELECT s.set_number, COALESCE(SUM(a.total_qty), 0)::int AS quantity,
             SUM(COALESCE(a.total_price, 0))
               / NULLIF(SUM(a.total_qty), 0) AS purchase_price

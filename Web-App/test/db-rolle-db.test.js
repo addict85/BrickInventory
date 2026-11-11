@@ -1,8 +1,9 @@
 /**
- * postgres/app-rolle.sh: App und Jobs verbinden sich mit einer Rolle ohne
- * Superuser-Rechte, die Datenbank, Tabellen und Funktionen besitzt. Geprüft an
- * einer bestehenden Installation (alles gehört dem Superuser, die Rolle hat
- * zu viele Rechte) und an einer neuen; danach laufen die Migrationen als App.
+ * postgres/app-rolle.sh: Die Migrationsrolle besitzt alles, die Laufzeitrolle
+ * von App und Jobs liest und schreibt nur Zeilen; beide ohne Superuser-Rechte.
+ * Geprüft an einer bestehenden Installation (Objekte gehören dem Superuser oder
+ * noch der Laufzeitrolle mit zu vielen Rechten) und an einer neuen; migriert
+ * wird als Migrationsrolle, die Laufzeitrolle prüft nur den Stand.
  *
  * Gegenproben (am 02.11.2026 gemessen):
  *   A  im Skript die Schleife über pg_class entfernt → rot: „bestehende
@@ -19,13 +20,13 @@
  *   O  (04.11.2026) in warneBeiSuperuser() das Startverbot ohne
  *      DB_SUPERUSER_ERLAUBT gestrichen → rot: „bestehende Installation“
  *      (als Superuser startet die Produktion)
- *   F  PGOPTIONS und `SET search_path` entfernt → rot: „die App-Rolle schiebt
- *      dem Superuser nichts unter“ (Operator der App-Rolle legt eine
+ *   F  PGOPTIONS und `SET search_path` entfernt → rot: „die Migrationsrolle
+ *      schiebt dem Superuser nichts unter“ (Operator der Rolle legt eine
  *      Superuser-Rolle an)
  *   G  `ALTER DATABASE … RESET ALL` entfernt → rot: dieselbe Prüfung
  *      (search_path der Datenbank bleibt für spätere Superuser-Sitzungen)
  *   H  `-c role=none` und `SET ROLE NONE` entfernt → rot: dieselbe Prüfung
- *      („untergeschobenes SET role“: die Sitzung läuft als App-Rolle)
+ *      („untergeschobenes SET role“: die Sitzung läuft als Migrationsrolle)
  *   I  `password_hash` aus der Sperrliste der Leserolle gestrichen → rot:
  *      „die Leserolle sieht keine Geheimnisse“
  *   J  (03.11.2026) `REVOKE TEMPORARY … FROM PUBLIC` gestrichen → rot:
@@ -42,6 +43,27 @@
  *      „Passwörter aus Dateien“ (DB_APP_PASSWORD fehlt)
  *   P  (06.11.2026) die Schleife über vor_migration_* entfernt → rot:
  *      „bestehende Installation“ (permission denied for schema vor_migration_…)
+ *   Getrennte Migrationsrolle (11.11.2026, je einzeln; F–H am selben Tag
+ *   gegen die Migrationsrolle wiederholt, die jetzt Funktionen anlegen kann):
+ *   Q  die Default Privileges für Tabellen gestrichen → rot: „neue Installation“
+ *      (permission denied for table schema_migrations) und „was die
+ *      Migrationsrolle später anlegt …“ (permission denied for table spaeter)
+ *   R  `GRANT CONNECT, TEMPORARY` → nur CONNECT → rot: „… darf kein DROP …“,
+ *      „der Katalog-Import tauscht als Laufzeitrolle“ (temporary tables)
+ *   S  csvTausch.ts wieder `CREATE UNLOGGED TABLE` → rot: „der Katalog-Import
+ *      tauscht als Laufzeitrolle“ (permission denied for schema public)
+ *   T  die Datenbank wieder der Laufzeitrolle übergeben → rot: „bestehende
+ *      Installation“, „neue Installation“, „… darf kein DROP …“
+ *   U  in initSchemaOnce den Zweig für Rollen ohne CREATE gestrichen → rot:
+ *      „neue Installation“ (keine Meldung „Die Datenbank ist leer …“)
+ *   V  in startup/migrieren.ts die Prüfung darfSchemaAendern() gestrichen →
+ *      rot: „… offenen Migrationen“ (der Dienst meldet als Laufzeitrolle Erfolg)
+ *   W  in scripts/rollen-trennen.sh `docker compose run --rm db-rolle`
+ *      gestrichen → rot: „scripts/rollen-trennen.sh stellt … um“
+ *   X  der Laufzeitrolle TRUNCATE dazugegeben → rot: „… darf kein DROP …“
+ *      (Missing expected rejection: TRUNCATE wanted)
+ *   Y  in raeumeAlteSicherungenAuf das Leeren für fremde Kopien gestrichen →
+ *      rot: „was die Migrationsrolle später anlegt …“ (0 statt 1 geleert)
  *
  * Voraussetzung: TEST_DATABASE_URL mit Superuser (legt Datenbanken und eine
  * Rolle an) und psql ab Version 15 (\getenv).
@@ -60,10 +82,12 @@ require('./helpers/sources').buildAndRequire();
 const { testName, raeumeReste } = require('./helpers/testnamen');
 const praefix = testName('rolle');
 const ROLLE = `${praefix}_app`.toLowerCase();
+const MIG = `${praefix}_mig`.toLowerCase();
 const LESEN = `${praefix}_lesen`.toLowerCase();
 const BOESE = `${praefix}_boese`.toLowerCase();
 const LESEN_PW = `lesen-${process.pid}-geheim`;
 const PASSWORT = `app-${process.pid}-geheim`;
+const MIG_PW = `mig-${process.pid}-geheim`;
 const id = (s) => `"${s.replace(/"/g, '""')}"`;
 const url = (db, nutzer, pw) => {
   const u = new URL(BASIS); u.pathname = '/' + db;
@@ -75,13 +99,14 @@ function rolleEinrichten(db, mehr = {}) {
   return spawnSync('sh', [SKRIPT], { encoding: 'utf8', env: { ...process.env,
     PGHOST: BASIS.hostname, PGPORT: BASIS.port || '5432', PGUSER: decodeURIComponent(BASIS.username),
     PGPASSWORD: decodeURIComponent(BASIS.password), PGDATABASE: db,
-    DB_APP_USER: ROLLE, DB_APP_PASSWORD: PASSWORT, DB_LESEN_USER: LESEN, PGWEB_DB_PASSWORD: LESEN_PW, ...mehr } });
+    DB_APP_USER: ROLLE, DB_APP_PASSWORD: PASSWORT, DB_MIGRATION_USER: MIG, DB_MIGRATION_PASSWORD: MIG_PW,
+    DB_LESEN_USER: LESEN, PGWEB_DB_PASSWORD: LESEN_PW, ...mehr } });
 }
 
 /** Schema und Migrationen in einem eigenen Prozess, wie beim Start. */
 function schemaAlsKonto(dbUrl, aufruf = 'initSchemaOnce') {
   return spawnSync(process.execPath, ['-e',
-    `const db = require('./dist/db/database.js'); db.${aufruf}().then(() => db.pool.end()).catch(e => { console.error(e.message); process.exit(1); })`],
+    `const m = require('./dist/db/database.js'); const db = m.erzeugeDb(m.dbKonfigAusUmgebung()); db.${aufruf}().then(() => db.pool.end()).catch(e => { console.error(e.message); process.exit(1); })`],
   { cwd: ROOT, encoding: 'utf8', env: { ...process.env, DATABASE_URL: dbUrl } });
 }
 
@@ -93,14 +118,21 @@ async function fremdBesessen(c) {
     UNION ALL
     SELECT 'funktion ' || oid::regprocedure FROM pg_proc p
      WHERE pronamespace = 'public'::regnamespace AND proowner <> $1::regrole
-       AND NOT EXISTS (SELECT FROM pg_depend d WHERE d.objid = p.oid AND d.deptype = 'e')`, [ROLLE])).rows.map(z => z.was);
+       AND NOT EXISTS (SELECT FROM pg_depend d WHERE d.objid = p.oid AND d.deptype = 'e')`, [MIG])).rows.map(z => z.was);
 }
 
-async function rechteDerRolle(c) {
+async function rechteDerRolle(c, rolle = ROLLE) {
   const z = (await c.query(`SELECT rolsuper, rolcreaterole, rolcreatedb, rolbypassrls,
       (SELECT count(*)::int FROM pg_auth_members WHERE member = r.oid) AS mitglied
-      FROM pg_roles r WHERE rolname = $1`, [ROLLE])).rows[0];
+      FROM pg_roles r WHERE rolname = $1`, [rolle])).rows[0];
   return z;
+}
+
+/** Eine Verbindung als `nutzer`, für einen Block. */
+async function als(db, nutzer, pw, fn) {
+  const c = new Client({ connectionString: url(db, nutzer, pw) });
+  await c.connect();
+  try { return await fn(c); } finally { await c.end(); }
 }
 
 test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) => {
@@ -118,10 +150,10 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) =
     t.skip('kein Superuser oder psql unter 15'); return;
   }
   await raeumeReste(admin, 'rolle');
-  const alt = `${praefix}_alt`, neu = `${praefix}_neu`;
+  const alt = `${praefix}_alt`, neu = `${praefix}_neu`, umstieg = `${praefix}_umstieg`;
   t.after(async () => {
-    for (const db of [alt, neu]) await admin.query(`DROP DATABASE IF EXISTS ${id(db)} WITH (FORCE)`).catch(() => {});
-    for (const r of [ROLLE, LESEN, BOESE]) await admin.query(`DROP ROLE IF EXISTS ${id(r)}`).catch(() => {});
+    for (const db of [alt, neu, umstieg]) await admin.query(`DROP DATABASE IF EXISTS ${id(db)} WITH (FORCE)`).catch(() => {});
+    for (const r of [ROLLE, MIG, LESEN, BOESE]) await admin.query(`DROP ROLE IF EXISTS ${id(r)}`).catch(() => {});
     await admin.end();
   });
 
@@ -133,6 +165,9 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) =
     // einem Abbruch ist so kein anmeldbarer Superuser.
     await admin.query(`CREATE ROLE ${id(ROLLE)} NOLOGIN SUPERUSER CREATEROLE`);
     await admin.query(`GRANT pg_execute_server_program TO ${id(ROLLE)}`);
+    // Stand bis Runde 17: Datenbank und Tabellen gehörten der Laufzeitrolle.
+    await admin.query(`ALTER DATABASE ${id(alt)} OWNER TO ${id(ROLLE)}`);
+    await als(alt, null, null, c => c.query(`ALTER TABLE users OWNER TO ${id(ROLLE)}; ALTER TABLE sets OWNER TO ${id(ROLLE)}`));
     // Eine Kopie vor Migrationen, die noch der Superuser angelegt hat.
     const kopie = new Client({ connectionString: url(alt) });
     await kopie.connect();
@@ -143,46 +178,57 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) =
 
     const r = rolleEinrichten(alt);
     assert.equal(r.status, 0, r.stderr);
-    assert.deepEqual(await rechteDerRolle(admin),
-      { rolsuper: false, rolcreaterole: false, rolcreatedb: false, rolbypassrls: false, mitglied: 0 });
+    const ohneRechte = { rolsuper: false, rolcreaterole: false, rolcreatedb: false, rolbypassrls: false, mitglied: 0 };
+    assert.deepEqual(await rechteDerRolle(admin), ohneRechte);
+    assert.deepEqual(await rechteDerRolle(admin, MIG), ohneRechte);
     const c = new Client({ connectionString: url(alt) });
     await c.connect();
     try {
       assert.deepEqual(await fremdBesessen(c), []);
       assert.ok((await c.query("SELECT count(*)::int AS n FROM pg_class WHERE relnamespace = 'public'::regnamespace AND relkind = 'r'")).rows[0].n > 50);
-      assert.equal((await c.query('SELECT pg_get_userbyid(datdba) AS e FROM pg_database WHERE datname = current_database()')).rows[0].e, ROLLE);
+      assert.equal((await c.query('SELECT pg_get_userbyid(datdba) AS e FROM pg_database WHERE datname = current_database()')).rows[0].e, MIG);
+      assert.equal((await c.query(`SELECT pg_get_userbyid(nspowner) AS e FROM pg_namespace WHERE nspname = 'vor_migration_20261029195422666'`)).rows[0].e, MIG);
     } finally { await c.end(); }
 
-    const app = new Client({ connectionString: url(alt, ROLLE, PASSWORT) });
-    await app.connect();
-    try {
-      await app.query('ALTER TABLE users ADD COLUMN rollenprobe int');
-      await app.query('ALTER TABLE users DROP COLUMN rollenprobe');
+    await als(alt, MIG, MIG_PW, async (mig) => {
+      await mig.query('ALTER TABLE users ADD COLUMN rollenprobe int');
+      await mig.query('ALTER TABLE users DROP COLUMN rollenprobe');
+      await assert.rejects(mig.query("COPY (SELECT 1) TO PROGRAM 'true'"), /permission denied|must be superuser/);
+    });
+    await als(alt, ROLLE, PASSWORT, async (app) => {
+      await assert.rejects(app.query('ALTER TABLE users ADD COLUMN rollenprobe int'), /must be owner/, 'die frühere Eigentümerin ändert noch Tabellen');
       await assert.rejects(app.query("COPY (SELECT 1) TO PROGRAM 'true'"), /permission denied|must be superuser/);
-      // Die App räumt alte Kopien selbst weg und löscht Konten auch daraus.
+      // Gelöschte Konten verschwinden auch aus den Kopien; wegräumen darf sie nur die Migrationsrolle.
       await app.query('DELETE FROM vor_migration_20261029195422666.users WHERE id = -1');
-      await app.query('DROP SCHEMA vor_migration_20261029195422666 CASCADE');
-    } finally { await app.end(); }
-    const m = schemaAlsKonto(url(alt, ROLLE, PASSWORT), 'initSchema');
-    assert.equal(m.status, 0, `Schema und Migrationen als App: ${m.stderr}`);
+      await assert.rejects(app.query('DROP SCHEMA vor_migration_20261029195422666 CASCADE'), /must be owner/);
+    });
+    await als(alt, MIG, MIG_PW, mig => mig.query('DROP SCHEMA vor_migration_20261029195422666 CASCADE'));
+    const m = schemaAlsKonto(url(alt, MIG, MIG_PW), 'initSchema');
+    assert.equal(m.status, 0, `Schema und Migrationen als Migrationsrolle: ${m.stderr}`);
     assert.equal(rolleEinrichten(alt).status, 0, 'ein zweiter Lauf scheitert');
 
     const warnung = (dbUrl, env = {}) => spawnSync(process.execPath, ['-e',
-      "require('./dist/startup/datenbank.js').warneBeiSuperuser().then(w => { console.log('WARNUNG=' + w); return require('./dist/db/database.js').pool.end(); })"],
+      "const m = require('./dist/db/database.js'); const db = m.erzeugeDb(m.dbKonfigAusUmgebung()); require('./dist/startup/datenbank.js').warneBeiSuperuser(db).then(w => { console.log('WARNUNG=' + w); return db.pool.end(); })"],
     { cwd: ROOT, encoding: 'utf8', env: { ...process.env, NODE_ENV: 'production', DATABASE_URL: dbUrl, ...env } });
     const verbot = warnung(url(alt));
     assert.equal(verbot.status, 1, `als Superuser startet die Produktion: ${verbot.stdout}`);
     assert.match(verbot.stderr, /Superuser — Start verweigert.*DB_SUPERUSER_ERLAUBT=1/);
     assert.match(warnung(url(alt), { DB_SUPERUSER_ERLAUBT: '1' }).stdout, /WARNUNG=true/, 'mit Ausweg warnt der Start nicht');
     assert.match(warnung(url(alt, ROLLE, PASSWORT)).stdout, /WARNUNG=false/);
+    assert.match(warnung(url(alt, MIG, MIG_PW)).stdout, /WARNUNG=false/);
   });
 
   await t.test('neue Installation', async () => {
     await admin.query(`CREATE DATABASE ${id(neu)}`);
     const r = rolleEinrichten(neu);
     assert.equal(r.status, 0, r.stderr);
-    const s = schemaAlsKonto(url(neu, ROLLE, PASSWORT));
-    assert.equal(s.status, 0, `das erste Schema als App: ${s.stderr}`);
+    const vorher = schemaAlsKonto(url(neu, ROLLE, PASSWORT));
+    assert.notEqual(vorher.status, 0, 'die Laufzeitrolle startet auf einer leeren Datenbank');
+    assert.match(vorher.stderr, /Die Datenbank ist leer\. Diese Rolle darf das Schema nicht ändern/);
+    const s = schemaAlsKonto(url(neu, MIG, MIG_PW));
+    assert.equal(s.status, 0, `das erste Schema als Migrationsrolle: ${s.stderr}`);
+    const app = schemaAlsKonto(url(neu, ROLLE, PASSWORT));
+    assert.equal(app.status, 0, `die Laufzeitrolle startet auf dem migrierten Schema: ${app.stderr}`);
     const c = new Client({ connectionString: url(neu) });
     await c.connect();
     try {
@@ -192,8 +238,8 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) =
     assert.equal((await rechteDerRolle(admin)).rolsuper, false);
   });
 
-  await t.test('die App-Rolle schiebt dem Superuser nichts unter', async () => {
-    const app = new Client({ connectionString: url(neu, ROLLE, PASSWORT) });
+  await t.test('die Migrationsrolle schiebt dem Superuser nichts unter', async () => {
+    const app = new Client({ connectionString: url(neu, MIG, MIG_PW) });
     await app.connect();
     try {
       // Jede Funktion legt eine Superuser-Rolle an, sobald ein Superuser sie ausführt.
@@ -208,22 +254,103 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) =
         $f$ BEGIN ${nutzlast} RETURN $1 OPERATOR(pg_catalog.=) $2; END $f$`);
       await app.query(`CREATE OPERATOR boese.= (LEFTARG = text, RIGHTARG = name, FUNCTION = boese.gleich)`);
       await app.query(`ALTER DATABASE ${id(neu)} SET search_path = boese, pg_catalog, public`);
-      await app.query(`ALTER ROLE ${id(ROLLE)} IN DATABASE ${id(neu)} SET search_path = boese, pg_catalog`);
+      await app.query(`ALTER ROLE ${id(MIG)} IN DATABASE ${id(neu)} SET search_path = boese, pg_catalog`);
     } finally { await app.end(); }
     const r = rolleEinrichten(neu);
     assert.deepEqual((await admin.query('SELECT rolname FROM pg_roles WHERE rolname = $1', [BOESE])).rows, [],
-      'Code der App-Rolle lief als Superuser');
+      'Code der Migrationsrolle lief als Superuser');
     assert.equal(r.status, 0, r.stderr);
     assert.deepEqual((await admin.query(
       'SELECT setconfig FROM pg_db_role_setting s JOIN pg_database d ON d.oid = s.setdatabase WHERE d.datname = $1', [neu])).rows, [],
-      'Einstellungen der App-Rolle an der Datenbank bleiben stehen');
+      'Einstellungen der Migrationsrolle an der Datenbank bleiben stehen');
 
-    const app2 = new Client({ connectionString: url(neu, ROLLE, PASSWORT) });
+    const app2 = new Client({ connectionString: url(neu, MIG, MIG_PW) });
     await app2.connect();
-    try { await app2.query(`ALTER DATABASE ${id(neu)} SET role = ${id(ROLLE)}`); } finally { await app2.end(); }
+    try { await app2.query(`ALTER DATABASE ${id(neu)} SET role = ${id(MIG)}`); } finally { await app2.end(); }
     const r2 = rolleEinrichten(neu);
     assert.equal(r2.status, 0, `untergeschobenes SET role: ${r2.stderr}`);
-    assert.equal((await rechteDerRolle(admin)).rolsuper, false);
+    assert.equal((await rechteDerRolle(admin, MIG)).rolsuper, false);
+  });
+
+  await t.test('die Laufzeitrolle darf kein DROP, ALTER oder CREATE, nur Zeilen', async () => {
+    assert.equal(rolleEinrichten(neu).status, 0);
+    await als(neu, ROLLE, PASSWORT, async (app) => {
+      for (const sql of ['DROP TABLE wanted', 'ALTER TABLE users ADD COLUMN probe int', 'ALTER TABLE users RENAME TO users2',
+        'CREATE TABLE public.probe (x int)', 'CREATE SCHEMA probe', 'CREATE INDEX probe ON users (email)',
+        'TRUNCATE wanted', "COMMENT ON TABLE users IS 'x'", 'CREATE VIEW public.probe AS SELECT 1 AS x',
+        'CREATE FUNCTION public.probe() RETURNS int LANGUAGE sql AS $$ SELECT 1 $$',
+        `ALTER DATABASE ${id(neu)} SET search_path = public`, 'DROP FUNCTION IF EXISTS public.erfassung_tag() CASCADE',
+        'ALTER TABLE users DISABLE TRIGGER ALL', 'CREATE TRIGGER probe BEFORE INSERT ON users FOR EACH ROW EXECUTE FUNCTION suppress_redundant_updates_trigger()'])
+        await assert.rejects(app.query(sql), /permission denied|must be owner/, `Laufzeitrolle darf: ${sql}`);
+      // Zeilen schreiben, Sequenzen weiterzählen, temporär anlegen: alles, was die App braucht.
+      const { id: uid } = (await app.query(`INSERT INTO users (username, password_hash) VALUES ('laufzeitprobe', 'x') RETURNING id`)).rows[0];
+      await app.query(`UPDATE users SET first_name = 'L' WHERE id = $1`, [uid]);
+      assert.equal((await app.query('SELECT first_name FROM users WHERE id = $1', [uid])).rows[0].first_name, 'L');
+      await app.query('DELETE FROM users WHERE id = $1', [uid]);
+      await app.query('CREATE TEMP TABLE probe (x int)');
+    });
+  });
+
+  await t.test('der Katalog-Import tauscht als Laufzeitrolle', async () => {
+    const tausch = require(path.join(ROOT, 'dist', 'src', 'katalog', 'repository', 'csvTausch.js'));
+    await als(neu, ROLLE, PASSWORT, async (app) => {
+      await tausch.sperreTabelle(app, 'rb_colors');
+      try {
+        await tausch.legeSchattenAn(app, 'rb_colors', 'rb_colors_import');
+        await tausch.fuegeBlockEin(app, 'rb_colors_import', ['id', 'name', 'rgb', 'is_trans'],
+          [[9001, 'Probe-Rot', 'C91A09', false], [9002, 'Probe-Blau', '0055BF', false]], ['id']);
+        await tausch.tausche(app, 'rb_colors', 'rb_colors_import', ['id', 'name', 'rgb', 'is_trans']);
+        await tausch.entferneSchatten(app, 'rb_colors_import');
+        assert.equal(await tausch.pflege(app, 'rb_colors'), true, 'VACUUM (ANALYZE) bricht ab');
+      } finally { await tausch.gibTabelleFrei(app, 'rb_colors'); }
+      assert.deepEqual((await app.query('SELECT id, name FROM rb_colors ORDER BY id')).rows,
+        [{ id: 9001, name: 'Probe-Rot' }, { id: 9002, name: 'Probe-Blau' }]);
+    });
+    await als(neu, null, null, c => c.query('DELETE FROM rb_colors'));
+  });
+
+  await t.test('was die Migrationsrolle später anlegt, erreicht die Laufzeitrolle ohne neuen Lauf', async () => {
+    await als(neu, MIG, MIG_PW, async (mig) => {
+      await mig.query('CREATE TABLE spaeter (id serial PRIMARY KEY, x int)');
+      await mig.query('CREATE SCHEMA vor_migration_20261111000000000');
+      await mig.query('CREATE TABLE vor_migration_20261111000000000.users AS SELECT 7 AS id');
+    });
+    await als(neu, ROLLE, PASSWORT, async (app) => {
+      assert.deepEqual((await app.query('INSERT INTO spaeter (x) VALUES (1) RETURNING id, x')).rows, [{ id: 1, x: 1 }]);
+      assert.equal((await app.query('DELETE FROM vor_migration_20261111000000000.users WHERE id = 7')).rowCount, 1);
+      await assert.rejects(app.query('DROP TABLE spaeter'), /must be owner/);
+    });
+    await als(neu, MIG, MIG_PW, mig => mig.query('DROP TABLE spaeter; DROP SCHEMA vor_migration_20261111000000000 CASCADE'));
+
+    // Eine abgelaufene Kopie: Die Laufzeitrolle leert sie, wegräumen kann sie erst die Migrationsrolle.
+    const { raeumeAlteSicherungenAuf } = require(path.join(ROOT, 'dist', 'db', 'migrate.js'));
+    const abfrager = c => ({ all: async (q, p) => (await c.query(q, p)).rows, run: async (q, p) => ({ changes: (await c.query(q, p)).rowCount }) });
+    const ALT = 'vor_migration_20200101000000000';
+    await als(neu, MIG, MIG_PW, mig => mig.query(`CREATE SCHEMA ${ALT}; CREATE TABLE ${ALT}.users AS SELECT 7 AS id`));
+    assert.equal(await als(neu, ROLLE, PASSWORT, app => raeumeAlteSicherungenAuf(abfrager(app))), 1);
+    assert.deepEqual((await als(neu, null, null, c => c.query(`SELECT count(*)::int AS n FROM ${ALT}.users`))).rows, [{ n: 0 }],
+      'ein gelöschtes Konto lebt in der abgelaufenen Kopie weiter');
+    assert.equal(await als(neu, MIG, MIG_PW, mig => raeumeAlteSicherungenAuf(abfrager(mig))), 1);
+    assert.equal((await als(neu, null, null, c => c.query(`SELECT 1 FROM pg_namespace WHERE nspname = '${ALT}'`))).rowCount, 0);
+  });
+
+  await t.test('die Laufzeitrolle startet nicht auf einem Schema mit offenen Migrationen', async () => {
+    const letzte = (await als(neu, MIG, MIG_PW, mig => mig.query('SELECT max(name) AS n FROM schema_migrations'))).rows[0].n;
+    await als(neu, MIG, MIG_PW, mig => mig.query(`UPDATE schema_migrations SET name = name || '.weg' WHERE name = $1`, [letzte]));
+    try {
+      const r = schemaAlsKonto(url(neu, ROLLE, PASSWORT));
+      assert.notEqual(r.status, 0, 'gestartet trotz offener Migration');
+      assert.match(r.stderr, new RegExp(`Migrationen offen: ${letzte.replace(/\./g, '\\.')}\\..*Dienst migration`));
+    } finally {
+      await als(neu, MIG, MIG_PW, mig => mig.query(`UPDATE schema_migrations SET name = $1 WHERE name = $1 || '.weg'`, [letzte]));
+    }
+    const m = spawnSync(process.execPath, [path.join(ROOT, 'dist', 'startup', 'migrieren.js')], { cwd: ROOT, encoding: 'utf8',
+      env: { ...process.env, DATABASE_URL: url(neu, ROLLE, PASSWORT) } });
+    assert.notEqual(m.status, 0, 'der Dienst migration meldet als Laufzeitrolle Erfolg');
+    assert.match(m.stderr, /PGUSER muss die Migrationsrolle sein/);
+    const ok = spawnSync(process.execPath, [path.join(ROOT, 'dist', 'startup', 'migrieren.js')], { cwd: ROOT, encoding: 'utf8',
+      env: { ...process.env, DATABASE_URL: url(neu, MIG, MIG_PW) } });
+    assert.equal(ok.status, 0, ok.stderr);
   });
 
   await t.test('die Leserolle sieht keine Geheimnisse', async () => {
@@ -309,7 +436,8 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) =
     const mit = spawnSync('sh', [kopie], { encoding: 'utf8', env: { ...process.env,
       PGHOST: BASIS.hostname, PGPORT: BASIS.port || '5432', PGUSER: decodeURIComponent(BASIS.username),
       PGPASSWORD: decodeURIComponent(BASIS.password), PGDATABASE: neu,
-      DB_APP_USER: ROLLE, DB_APP_PASSWORD: PASSWORT, DB_LESEN_USER: LESEN, PGWEB_DB_PASSWORD: LESEN_PW } });
+      DB_APP_USER: ROLLE, DB_APP_PASSWORD: PASSWORT, DB_MIGRATION_USER: MIG, DB_MIGRATION_PASSWORD: MIG_PW,
+      DB_LESEN_USER: LESEN, PGWEB_DB_PASSWORD: LESEN_PW } });
     fsm.rmSync(path.dirname(kopie), { recursive: true, force: true });
     assert.equal(mit.status, 0, mit.stderr);
     const l2 = new Client({ connectionString: url(neu, LESEN, LESEN_PW) });
@@ -330,11 +458,11 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) =
     tt.after(() => fsm.rmSync(ordner, { recursive: true, force: true }));
     const datei = (name, wert) => { const f = path.join(ordner, name); fsm.writeFileSync(f, wert + '\n'); return f; };
     const umgebung = { DB_APP_PASSWORD_FILE: datei('app', PASSWORT), PGWEB_DB_PASSWORD_FILE: datei('lesen', LESEN_PW),
-      PGPASSWORD_FILE: datei('su', decodeURIComponent(BASIS.password)) };
+      DB_MIGRATION_PASSWORD_FILE: datei('mig', MIG_PW), PGPASSWORD_FILE: datei('su', decodeURIComponent(BASIS.password)) };
     const ohneWerte = (mehr) => {
       const env = { ...process.env, PGHOST: BASIS.hostname, PGPORT: BASIS.port || '5432', PGUSER: decodeURIComponent(BASIS.username),
-        PGDATABASE: neu, DB_APP_USER: ROLLE, DB_LESEN_USER: LESEN, ...umgebung, ...mehr };
-      for (const k of ['PGPASSWORD', 'DB_APP_PASSWORD', 'PGWEB_DB_PASSWORD']) if (!(k in mehr)) delete env[k];
+        PGDATABASE: neu, DB_APP_USER: ROLLE, DB_MIGRATION_USER: MIG, DB_LESEN_USER: LESEN, ...umgebung, ...mehr };
+      for (const k of ['PGPASSWORD', 'DB_APP_PASSWORD', 'DB_MIGRATION_PASSWORD', 'PGWEB_DB_PASSWORD']) if (!(k in mehr)) delete env[k];
       return spawnSync('sh', [SKRIPT], { encoding: 'utf8', env });
     };
     const r = ohneWerte({});
@@ -345,6 +473,10 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) =
     const app = new Client({ connectionString: url(neu, ROLLE, PASSWORT) });
     await app.connect();
     await app.end();
+    await als(neu, MIG, MIG_PW, () => {});
+    const ohneMig = ohneWerte({ DB_MIGRATION_PASSWORD_FILE: '' });
+    assert.notEqual(ohneMig.status, 0);
+    assert.match(ohneMig.stderr, /DB_MIGRATION_PASSWORD fehlt/);
     const beide = ohneWerte({ DB_APP_PASSWORD: PASSWORT });
     assert.notEqual(beide.status, 0);
     assert.match(beide.stderr, /DB_APP_PASSWORD und DB_APP_PASSWORD_FILE sind beide gesetzt/);
@@ -357,5 +489,55 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) =
     const r = rolleEinrichten(neu, { DB_APP_PASSWORD: decodeURIComponent(BASIS.password) });
     assert.notEqual(r.status, 0);
     assert.match(r.stderr, /DB_APP_PASSWORD muss sich von DB_PASSWORD unterscheiden/);
+    const m = rolleEinrichten(neu, { DB_MIGRATION_PASSWORD: PASSWORT });
+    assert.notEqual(m.status, 0);
+    assert.match(m.stderr, /DB_MIGRATION_PASSWORD muss sich von DB_PASSWORD und DB_APP_PASSWORD unterscheiden/);
+  });
+
+  // `docker` ist ein Stellvertreter: db-rolle und migration laufen wirklich gegen die Test-DB.
+  await t.test('scripts/rollen-trennen.sh stellt eine Installation mit App-Rolle als Eigentümerin um, wiederholbar', async (tt) => {
+    const fsm = require('node:fs'), osm = require('node:os');
+    const ort = fsm.mkdtempSync(path.join(osm.tmpdir(), 'rollen-trennen-'));
+    tt.after(() => fsm.rmSync(ort, { recursive: true, force: true }));
+    await admin.query(`CREATE DATABASE ${id(umstieg)}`);
+    const s = schemaAlsKonto(url(umstieg));
+    assert.equal(s.status, 0, s.stderr);
+    // Stand bis Runde 17: Datenbank und Tabellen gehören der Laufzeitrolle.
+    await admin.query(`ALTER DATABASE ${id(umstieg)} OWNER TO ${id(ROLLE)}`);
+    await als(umstieg, null, null, c => c.query(`ALTER TABLE users OWNER TO ${id(ROLLE)}; ALTER TABLE sets OWNER TO ${id(ROLLE)}`));
+
+    fsm.mkdirSync(path.join(ort, 'geheimnisse'), { mode: 0o700 });
+    for (const [n, w] of [['db_password', decodeURIComponent(BASIS.password)], ['db_app_password', PASSWORT],
+      ['session_secret', 'x'.repeat(48)], ['pgweb_db_password', LESEN_PW]]) fsm.writeFileSync(path.join(ort, 'geheimnisse', n), w);
+    fsm.copyFileSync(path.join(ROOT, 'compose.yaml'), path.join(ort, 'compose.yaml'));
+    const bin = path.join(ort, 'bin'), log = path.join(ort, 'docker.log'), g = path.join(ort, 'geheimnisse');
+    fsm.mkdirSync(bin);
+    fsm.writeFileSync(path.join(bin, 'docker'), `#!/bin/sh
+echo "$*" >> '${log}'
+case "$2 $4" in
+  up*) exit 0 ;;
+  'run db-rolle') DB_APP_PASSWORD_FILE='${g}/db_app_password' DB_MIGRATION_PASSWORD_FILE='${g}/db_migration_password' \
+       PGWEB_DB_PASSWORD_FILE='${g}/pgweb_db_password' exec sh '${SKRIPT}' ;;
+  'run migration') cd '${ROOT}' && DATABASE_URL="postgres://${MIG}:$(cat '${g}/db_migration_password')@${BASIS.host}/${umstieg}" \
+       exec '${process.execPath}' dist/startup/migrieren.js ;;
+  exec*) shift 6; PGPASSWORD="$(cat '${g}/db_password')" PGOPTIONS='-c search_path=pg_catalog,pg_temp' exec psql -h '${BASIS.hostname}' -p '${BASIS.port || 5432}' "$@" ;;
+  *) echo "unbekannt: $*" >&2; exit 9 ;;
+esac
+`, { mode: 0o755 });
+    const lauf = () => spawnSync('sh', [path.join(ROOT, 'scripts', 'rollen-trennen.sh')], { cwd: ort, encoding: 'utf8',
+      env: { PATH: `${bin}:${process.env.PATH}`, HOME: process.env.HOME, NODE_ENV: 'test', PGHOST: BASIS.hostname,
+        PGPORT: BASIS.port || '5432', PGUSER: decodeURIComponent(BASIS.username), PGDATABASE: umstieg,
+        DB_SUPERUSER: decodeURIComponent(BASIS.username), DB_APP_USER: ROLLE, DB_MIGRATION_USER: MIG, DB_LESEN_USER: LESEN,
+        PGPASSWORD_FILE: path.join(g, 'db_password') } });
+    const r = lauf();
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.match(r.stdout, new RegExp(`${MIG} besitzt alles, ${ROLLE} schreibt nur Zeilen`));
+    assert.deepEqual(fsm.readFileSync(log, 'utf8').trim().split('\n').map(z => z.split(' ').slice(1, 4).join(' ')),
+      ['up -d postgres', 'run --rm db-rolle', 'run --rm migration', 'exec -T -e', 'up -d']);
+    await als(umstieg, ROLLE, PASSWORT, app => assert.rejects(app.query('ALTER TABLE users ADD COLUMN probe int'), /must be owner/));
+    const pw = fsm.readFileSync(path.join(g, 'db_migration_password'), 'utf8');
+    const zweiter = lauf();
+    assert.equal(zweiter.status, 0, zweiter.stdout + zweiter.stderr);
+    assert.equal(fsm.readFileSync(path.join(g, 'db_migration_password'), 'utf8'), pw, 'ein zweiter Lauf erzeugt ein neues Passwort');
   });
 });

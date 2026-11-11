@@ -40,13 +40,17 @@ const { warte } = require('./helpers/zeit');
 
 test('Auftragstabelle', { concurrency: 1 }, async (t) => {
   if (!await dbOderSkip(t, _req)) return;
-  const A = Object.assign({}, _req('src/auftraege/auftraege.js'), _req('src/auftraege/dienst.js'));
+  const A = Object.assign({}, _req('src/auftraege/auftraege.js'), { ..._req('src/auftraege/dienst.js'), ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege });
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   // Nur Zeilen dieses Tests: eine eigene Art, die kein anderer Worker kennt.
   const ART = `test-${process.pid}`;
   const MARKE = `test-${process.pid}`;
   // Eine Testart braucht wie jede andere ein Schema für ihre Nutzlast.
-  for (const art of [ART, `${ART}-ex`]) _req('src/auftraege/nutzlasten.js').NUTZLASTEN[art] = require('zod').looseObject({});
+  // … und eine Zeile in auftrags_arten (0109).
+  for (const art of [ART, `${ART}-ex`]) {
+    _req('src/auftraege/nutzlasten.js').NUTZLASTEN[art] = require('zod').looseObject({});
+    await db.run('INSERT INTO auftrags_arten (art) VALUES ($1) ON CONFLICT DO NOTHING', [art]);
+  }
   const leeren = () => db.run(`DELETE FROM auftraege WHERE nutzlast->>'marke' = $1`, [MARKE]);
   const zeile = (id) => db.get('SELECT status, versuche, fehler, faellig_ab > NOW() AS spaeter FROM auftraege WHERE id=$1', [id]);
   await leeren();
@@ -223,7 +227,7 @@ test('Auftragstabelle', { concurrency: 1 }, async (t) => {
     });
   } finally {
     await leeren();
-    await _req('db/pgNotify.js').close();
+    await _req('db/database.js').standardDb().benachrichtigung.close();
     await db.pool.end().catch(() => {});
   }
 });

@@ -12,7 +12,6 @@ import ch.brickinventoryapp.model.data.model.AddSetResponse
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
-import ch.brickinventoryapp.zustand.ui.Aenderung
 import ch.brickinventoryapp.sammlung.ui.BarcodeUiState
 import ch.brickinventoryapp.sammlung.ui.Erfassung
 import ch.brickinventoryapp.sammlung.ui.ErfassungUiState
@@ -29,7 +28,6 @@ import javax.inject.Inject
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.zustand.ui.AppUiState
 import ch.brickinventoryapp.zustand.ui.Sitzung
-import ch.brickinventoryapp.zustand.ui.Bestandssignal
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
 import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
@@ -47,7 +45,6 @@ class ErfassungViewModel @Inject constructor(
     private val sitzung: Sitzung,
     private val filter: Filterwahl,
     private val meldungen: Meldungen,
-    private val bestand: Bestandssignal,
     private val sets: SetsRepository,
     private val katalog: KatalogRepository,
     private val anleger: SetAnleger,
@@ -204,7 +201,6 @@ class ErfassungViewModel @Inject constructor(
                 viewModelScope.launch {
                     meldungen.zeige(merkpostenAnlegen(sets, meldungen, setNum,
                                                         wunsch.zustand ?: Zustand.NEU, wunsch.besitzer))
-                    bestand.melde(Aenderung.Merkliste)
                 }
                 cancelBarcode()
                 return
@@ -224,8 +220,7 @@ class ErfassungViewModel @Inject constructor(
                     if (!r.gepuffert) meldungen.zeige(meldungen.text(
                         if (r.data.katalogOffen) R.string.vm_set_added_no_catalog else R.string.vm_set_added,
                         if (r.data.katalogOffen) setNum else r.data.name ?: setNum))
-                    bestand.melde(Aenderung.Sets)
-                    meldeNachErgaenzung(r.data)
+                    if (!r.gepuffert) ergaenzeAblage(r.data)
                 }
                 is Ergebnis.Error -> meldeFehlgeschlageneErfassung(setNum, meldungen.meldung(r))
             }
@@ -291,7 +286,7 @@ class ErfassungViewModel @Inject constructor(
             else gestreamt
             when (r) {
                 is Ergebnis.Success -> when {
-                    r.gepuffert -> bestand.melde(Aenderung.Sets)
+                    r.gepuffert -> Unit
                     r.data.success && r.data.action == "exists" ->
                         _barcodeState.update { it.copy(gefundenesSet = r.data.setNumber ?: sn) }
                     r.data.success -> {
@@ -300,8 +295,7 @@ class ErfassungViewModel @Inject constructor(
                             r.data.action == "added" -> R.string.vm_added
                             else -> R.string.vm_updated
                         }, if (r.data.katalogOffen) r.data.setNumber else r.data.name ?: r.data.setNumber))
-                        bestand.melde(Aenderung.Sets)
-                        meldeNachErgaenzung(r.data)
+                        ergaenzeAblage(r.data)
                     }
                     else -> meldeFehlgeschlageneErfassung(sn, r.data.error)
                 }
@@ -310,10 +304,15 @@ class ErfassungViewModel @Inject constructor(
         }
     }
 
-    /** Name, Bild und Marktpreis holt der Server als Auftrag nach; danach die Galerie neu laden. */
-    private fun meldeNachErgaenzung(antwort: AddSetResponse) {
-        if (antwort.ergaenzung != "ausstehend") return
-        viewModelScope.launch { delay(ERGAENZUNG_NACH_MS); bestand.melde(Aenderung.Sets) }
+    /**
+     * In der Ablage steht das Set schon mit Nummer und Menge; Name, Bild und Preise
+     * kennt erst der Server. Steht dort noch eine Ergänzung aus, erst nach ihr holen.
+     */
+    private fun ergaenzeAblage(antwort: AddSetResponse) {
+        viewModelScope.launch {
+            if (antwort.ergaenzung == "ausstehend") delay(ERGAENZUNG_NACH_MS)
+            sets.aktualisiereSets()
+        }
     }
 
     /** Ein Fehlschlag beim Erfassen nennt Setnummer und Grund — sonst sieht man nur, dass nichts geschah. */

@@ -8,7 +8,7 @@
  *   A  in src/sets/repository/setDetail.ts setStamm() über `standardDb().get`
  *      statt über den übergebenen Zugang → rot: „Lesen geht über den
  *      übergebenen Zugang“ (keine Abfrage auf rb_sets gezählt)
- *   B  in teilelisteFuerKonto() wieder `nacharbeit().setTeileAnreichern(sn)` →
+ *   B  in teilelisteMitNacharbeit() wieder `nacharbeit().setTeileAnreichern(sn)` →
  *      rot: „die Nacharbeit kommt aus dem Kontext“ (Prozess-Nacharbeit gerufen)
  *   C  nacharbeit() liefert ohne Verdrahtung wieder OHNE_NACHARBEIT → rot:
  *      „ohne Verdrahtung werfen nacharbeit() und sets()“
@@ -89,7 +89,7 @@ test('Sets mit eigenem Kontext', { concurrency: 1 }, async t => {
   });
 
   await t.test('die Nacharbeit kommt aus dem Kontext', async () => {
-    const r = await sets.teilelisteFuerKonto(SN);
+    const r = await sets.teilelisteMitNacharbeit(SN);
     assert.equal(r.parts.length, 1);
     assert.ok(sql.some(s => /FROM rb_inventory_parts/.test(s)));
     assert.deepEqual(notiz, [['setTeileAnreichern', SN]]);

@@ -40,9 +40,11 @@ const USERS    = arg('users', 20);   // gleichzeitige virtuelle Nutzer
 const DAUER_S  = arg('dauer', 10);   // Messdauer je Durchgang
 const N_SETS   = arg('sets', 800);   // Sammlungsgrösse (wie in Durchgang 119)
 
-const db = require(path.join(ROOT, 'dist/db/database.js'));
+const dbModul = require(path.join(ROOT, 'dist/db/database.js'));
+const db = dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung());
 // Die Routen rufen die Bereiche über ihre Verdrahtung, wie im Server.
-require(path.join(ROOT, 'dist/startup/verdrahtung.js')).verdrahte();
+const verdrahtung = require(path.join(ROOT, 'dist/startup/verdrahtung.js'));
+verdrahtung.verdrahte(verdrahtung.baueVerdrahtung(), db);
 
 /**
  * Lesbarer Text eines gefangenen Fehlers.

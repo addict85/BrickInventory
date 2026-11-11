@@ -6,12 +6,12 @@ Rot: Testfunktionen, die Quelltext lesen
 diff --git a/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRatscheTest.kt b/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRatscheTest.kt
 --- a/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRatscheTest.kt
 +++ b/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRatscheTest.kt
-@@ -76,7 +76,7 @@
+@@ -78,7 +78,7 @@
  
      @Test
      fun `Testfunktionen, die Quelltext lesen, werden weniger, nie mehr`() {
--        val FUNKTIONEN = 222
-+        val FUNKTIONEN = 223
+-        val FUNKTIONEN = 221
++        val FUNKTIONEN = 222
          val NUR_QUELLTEXT = 37
          val alle = Quellen.tests.walkTopDown().filter { it.isFile && it.name.endsWith("Test.kt") }
              .filter { it.name != "QuelltextRatscheTest.kt" }.toList()

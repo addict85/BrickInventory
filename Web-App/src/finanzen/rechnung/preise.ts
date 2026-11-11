@@ -3,22 +3,19 @@
  * stehen, nicht umgekehrt. */
 
 import type { DbSchnittstelle } from '../../../db/database';
-import * as repo from '../repository/preisCache';
 import type { Preiszeile, SetPreiszeile } from '../repository/preisCache';
-import type { KatalogEintrag } from '../../katalog/bricklinkPreise';
-import { asIds } from '../../haushalt/haushalt';
-import { checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus } from '../../katalog/apiKontingent';
-import { bricklinkRequest } from '../../katalog/quellen';
-import { fehlertext, logAndContinue, meldeUndLiefere } from '../../infra/fehler';
+import { type KatalogEintrag, checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus, bricklinkRequest, katalogEintrag, getPriceGuide, hatPreis, blAbrufNummer, blAbrufNummern } from '../../katalog';
+import { asIds } from '../../haushalt';
+import { fehlertext, logAndContinue } from '../../infra/fehler';
 import { fachfehler } from '../../infra/fehlerTexte';
 import { mitVersion, ohneBricklinkPreis } from '../../infra/setNummer';
-import { katalogEintrag, getPriceGuide, hatPreis } from '../../katalog/bricklinkPreise';
 import { effectiveCondition } from './zustand';
-import { blAbrufNummer, blAbrufNummern } from '../../katalog/blZuordnung';
 import { KEINE_FARBE } from '../../infra/validate';
+import { versuche } from '../../infra/ergebnis';
+import { finanzenBereich } from '../prozess';
 
 /** Wessen DATEN gerechnet werden; wessen EINSTELLUNGEN gelten, sagt `viewerId`. */
-export type { Blickfeld } from '../../haushalt/haushalt';
+export type { Blickfeld } from '../../haushalt';
 
 type PreisZeile = { avg_price?: unknown; fetched_at?: string | Date | null } | null | undefined;
 
@@ -33,7 +30,7 @@ export async function resolveSetCondition(
 ): Promise<'N' | 'U'> {
   // Blickfeld statt nackter ID: Das Set gehört oft einem Unterkonto. `dbh`:
   // Wer in einer Transaktion fragt, liest auch darin (priceForNewAcquisition).
-  const row = await repo.setZustandsZaehler(asIds(uid), setNumber, dbh);
+  const row = await finanzenBereich().preisCache.setZustandsZaehler(asIds(uid), setNumber, dbh);
   return effectiveCondition(row);
 }
 
@@ -41,18 +38,17 @@ export async function resolveSetCondition(
 // der andere Zustand dient als Rückfall.
 export const DEFAULT_PRICE_CONDITION = 'U';
 
-
 /** Kürzer als das TTL-Fenster, damit ein Rückfall (sold → stock) überhaupt
  * wieder angefragt wird. */
 const ZERO_PRICE_TTL_HOURS = 6;
 
 /** Die eine Stelle, die „frisch" festlegt. */
 export function leerePreisCache(): Promise<void> {
-  return repo.loescheAlleSetPreise();
+  return finanzenBereich().preisCache.loescheAlleSetPreise();
 }
 
 export async function preisAusCache(setNumber: string, condition: string, currency: string, ttlStunden: number) {
-  return repo.setPreisFrisch(setNumber, condition, currency, ttlStunden);
+  return finanzenBereich().preisCache.setPreisFrisch(setNumber, condition, currency, ttlStunden);
 }
 
 export function cacheUsable(row: PreisZeile, ttlHours: number) {
@@ -80,12 +76,12 @@ export async function speicherePreis(setNumber: string, condition: string, curre
   // Auch eine Null wird geschrieben: Sie ist die Auskunft „kein Preis" und hält
   // den nächsten Abruf zurück; wie lange, entscheidet cacheUsable().
   const preis = { min, avg, max, qavg, qty };
-  await repo.merkeSetPreis(setNumber, condition, currency, preis);
+  await finanzenBereich().preisCache.merkeSetPreis(setNumber, condition, currency, preis);
 
   // Weiter als hatPreis(), absichtlich dieselbe Regel wie der Tages-Schnappschuss
   // des Jobs: Ein Verlauf mit zwei Aufnahmeregeln hätte Lücken.
   if (avg > 0 || qavg > 0) {
-    await repo.merkeSetVerlauf(setNumber, condition, currency, preis).catch(logAndContinue('preise:setverlauf schreiben'));
+    await finanzenBereich().preisCache.merkeSetVerlauf(setNumber, condition, currency, preis).catch(logAndContinue('preise:setverlauf schreiben'));
   }
   return preis;
 }
@@ -241,25 +237,25 @@ function nachschlagwerk<S, W>(hole: (schluessel: S) => Promise<W | null>) {
 
 /** Die ganze Tabelle (rund 200 Zeilen): Je Schlüssel bliebe eine unbekannte
  * Farbe je Teil eine eigene Abfrage, weil Fehlschläge nicht gemerkt werden. */
-let _farbkarte: { karte: Map<number, number>; zeit: number } | null = null;
 // Der Ladevorgang wird geteilt, nicht nur sein Ergebnis: Parallele Bewerter
-// lüden sonst je selbst.
-let _farbladung: Promise<Map<number, number>> | null = null;
+// lüden sonst je selbst. Je Zugang, weil die Karte aus seiner Datenbank kommt.
+type Farbstand = { karte: Map<number, number> | null; zeit: number; ladung: Promise<Map<number, number>> | null };
 export async function farbkarte(): Promise<Map<number, number>> {
+  const st = finanzenBereich().faecher.fach<Farbstand>('farbkarte', () => ({ karte: null, zeit: 0, ladung: null }));
   const jetzt = Date.now();
-  if (_farbkarte && jetzt - _farbkarte.zeit < NACHSCHLAG_TTL_MS) return _farbkarte.karte;
-  if (_farbladung) return _farbladung;
-  _farbladung = (async () => {
-    const rows = await repo.blFarben();
+  if (st.karte && jetzt - st.zeit < NACHSCHLAG_TTL_MS) return st.karte;
+  if (st.ladung) return st.ladung;
+  st.ladung = (async () => {
+    const rows = await finanzenBereich().preisCache.blFarben();
     const karte = new Map<number, number>();
     for (const r of rows) karte.set(Number(r.id), r.bl_color_id);
     // Eine LEERE Tabelle wird NICHT gemerkt: Vor dem ersten Abgleich ist sie leer,
     // und zehn Minuten jede Übersetzung zu verweigern hiesse, den Abgleich zu ignorieren.
-    if (karte.size) _farbkarte = { karte, zeit: jetzt };
+    if (karte.size) Object.assign(st, { karte, zeit: jetzt });
     return karte;
   })();
-  try { return await _farbladung; }
-  finally { _farbladung = null; }
+  try { return await st.ladung; }
+  finally { st.ladung = null; }
 }
 
 /** KEINE_FARBE ist bei BrickLink 0 („(Not Applicable)"); Rebrickables 0 ist
@@ -268,10 +264,10 @@ export async function farbkarte(): Promise<Map<number, number>> {
  * BrickLink-Farbe hiesse, einen falschen Preis zu holen und falsch zu merken. */
 export async function resolveBlColorId(rbColorId: number): Promise<number | null> {
   if (rbColorId == null || rbColorId === KEINE_FARBE) return 0;
-  try {
-    const treffer = (await farbkarte()).get(Number(rbColorId));
-    return treffer != null ? Number(treffer) : rbColorId;
-  } catch (e) { return meldeUndLiefere('preise:farbkarte', null)(e); }
+  const karte = await versuche('preise:farbkarte', farbkarte());
+  if (!karte.ok) return null;
+  const treffer = karte.wert.get(Number(rbColorId));
+  return treffer != null ? Number(treffer) : rbColorId;
 }
 
 // Ohne Übersetzung antwortet BrickLink für RB-Nummern mit 404. Eine Quelle
@@ -283,10 +279,9 @@ const _blTeil = nachschlagwerk(async (partNumber: string) => {
 /** Mit `konto` zuerst dessen eigene Zuordnung (Migration 0094); sie geht am
  * gemeinsamen Gedächtnis vorbei, weil sie nur für dieses Konto gilt. */
 export async function resolveBlPartNumber(partNumber: string, konto: number | null = null) {
-  try {
-    if (konto !== null) return (await blAbrufNummer('part', partNumber, konto)) ?? partNumber;
-    return (await _blTeil(partNumber)) ?? partNumber;
-  } catch (e) { return meldeUndLiefere('preise:bl-nummer', partNumber)(e); }
+  // Ohne Fang: Mit der Rebrickable-Nummer käme der Preis eines anderen Teils.
+  if (konto !== null) return (await blAbrufNummer('part', partNumber, konto)) ?? partNumber;
+  return (await _blTeil(partNumber)) ?? partNumber;
 }
 
 /** In zwei Abfragen, weil das Gedächtnis innerhalb einer Bewertung nicht hilft:
@@ -312,7 +307,7 @@ export async function ladeTeilepreiseVor(teile: { partNumber: string; rbColorId:
   }
   const vorrat = new Map<string, Preiszeile>();
   if (!nummern.length) return vorrat;
-  const zeilen = await repo.teilepreiseFrisch(nummern, farben, currency, ttl);
+  const zeilen = await finanzenBereich().preisCache.teilepreiseFrisch(nummern, farben, currency, ttl);
   for (const z of zeilen) vorrat.set(`${z.part_number}|${z.color_id}|${z.condition}`, z);
   return vorrat;
 }
@@ -322,7 +317,7 @@ export async function ladeFigurenpreiseVor(figuren: string[], currency: string, 
   const ttl = Math.max(1, parseInt(String(ttlHours)));
   const vorrat = new Map<string, Preiszeile>();
   if (!figuren.length) return vorrat;
-  const zeilen = await repo.figurenpreiseFrisch([...new Set(figuren)], currency, ttl);
+  const zeilen = await finanzenBereich().preisCache.figurenpreiseFrisch([...new Set(figuren)], currency, ttl);
   for (const z of zeilen) vorrat.set(`${z.fig_number}|${z.condition}`, z);
   return vorrat;
 }
@@ -347,7 +342,7 @@ export async function fetchPartPrice(partNumber: string, rbColorId: number, cond
 
   const readCache = async (cond: string) => vorrat
     ? (vorrat.get(`${blPartNumber}|${Number(colorId) || 0}|${cond}`) ?? null)
-    : repo.teilpreisFrisch(blPartNumber, Number(colorId) || 0, cond, currency, ttl);
+    : finanzenBereich().preisCache.teilpreisFrisch(blPartNumber, Number(colorId) || 0, cond, currency, ttl);
 
   const cached = await readCache(condition);
   if (cached && hatPreis(cached))
@@ -372,16 +367,16 @@ export async function fetchPartPrice(partNumber: string, rbColorId: number, cond
       // Kein Verkauf in sechs Monaten → aktuelle Angebote. Bei Teilen in seltenen
       // Farben ist das der Normalfall.
       if (!hatPreis(g)) {
-        const alt = await bricklinkRequest('GET', `/items/part/${blPartNumber}/price`,
-          { ...qp, guide_type: 'stock' }).catch(meldeUndLiefere('preise:alt', null));
-        if (hatPreis(alt)) g = alt;
+        const alt = await versuche('preise:alt', bricklinkRequest('GET', `/items/part/${blPartNumber}/price`,
+          { ...qp, guide_type: 'stock' }));
+        if (alt.ok && hatPreis(alt.wert)) g = alt.wert;
       }
       const avg  = parseFloat(g?.avg_price || 0);
       const qavg = parseFloat(g?.qty_avg_price || 0);
-      await repo.merkeTeilpreis(blPartNumber, Number(colorId) || 0, cond, currency, avg, qavg);
+      await finanzenBereich().preisCache.merkeTeilpreis(blPartNumber, Number(colorId) || 0, cond, currency, avg, qavg);
       // Der Cache hält nur den letzten Wert; ohne Verlaufspunkt gäbe es keine Kurve.
       if (avg > 0 || qavg > 0) {
-        await repo.merkeTeilVerlauf(blPartNumber, Number(colorId) || 0, cond, currency, avg, qavg)
+        await finanzenBereich().preisCache.merkeTeilVerlauf(blPartNumber, Number(colorId) || 0, cond, currency, avg, qavg)
           .catch(logAndContinue('preise:teileverlauf schreiben'));
       }
       return { avg_price: avg, qty_avg_price: qavg, from_cache: false };
@@ -427,7 +422,7 @@ export async function fetchMinifigPrice(figNumber: string, condition: string, cu
 
   const readCache = async (cond: string) => vorrat
     ? (vorrat.get(`${figNumber}|${cond}`) ?? null)
-    : repo.figurpreisFrisch(figNumber, cond, currency, ttl);
+    : finanzenBereich().preisCache.figurpreisFrisch(figNumber, cond, currency, ttl);
 
   const cached = await readCache(condition);
   if (cached && hatPreis(cached))
@@ -447,16 +442,16 @@ export async function fetchMinifigPrice(figNumber: string, condition: string, cu
       const qp = { guide_type: 'sold', new_or_used: cond, currency_code: currency, vat: 'N' };
       let g = await bricklinkRequest('GET', `/items/minifig/${figNumber}/price`, qp);
       if (!hatPreis(g)) {
-        const alt = await bricklinkRequest('GET', `/items/minifig/${figNumber}/price`,
-          { ...qp, guide_type: 'stock' }).catch(meldeUndLiefere('preise:alt', null));
-        if (hatPreis(alt)) g = alt;
+        const alt = await versuche('preise:alt', bricklinkRequest('GET', `/items/minifig/${figNumber}/price`,
+          { ...qp, guide_type: 'stock' }));
+        if (alt.ok && hatPreis(alt.wert)) g = alt.wert;
       }
       const avg  = parseFloat(g?.avg_price || 0);
       const qavg = parseFloat(g?.qty_avg_price || 0);
-      await repo.merkeFigurpreis(figNumber, cond, currency, avg, qavg);
+      await finanzenBereich().preisCache.merkeFigurpreis(figNumber, cond, currency, avg, qavg);
       // Der Cache hält nur den letzten Wert; ohne Verlaufspunkt gäbe es keine Kurve.
       if (avg > 0 || qavg > 0) {
-        await repo.merkeFigurVerlauf(figNumber, cond, currency, avg, qavg)
+        await finanzenBereich().preisCache.merkeFigurVerlauf(figNumber, cond, currency, avg, qavg)
           .catch(logAndContinue('preise:figurverlauf schreiben'));
       }
       return { avg_price: avg, qty_avg_price: qavg, from_cache: false };

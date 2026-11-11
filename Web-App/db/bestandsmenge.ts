@@ -46,7 +46,6 @@ export function mengeSummeSql(konten: 'eines' | 'blickfeld'): string {
 }
 
 import type { DbSchnittstelle } from './database';
-import * as db from './database';
 import { colorId } from '../src/infra/validate';
 
 /** Was ein Leser hier können muss, und nicht mehr: `db` oder eine Transaktion. */
@@ -58,7 +57,7 @@ type Schreiber = Pick<DbSchnittstelle, 'get'>;
 export async function mengeDesSets(
   userId: number,
   setNumber: string,
-  dbh: Schreiber = db,
+  dbh: Schreiber,
 ): Promise<number | null> {
   const zeile = await dbh.get<{ menge: unknown }>(
     `SELECT ${mengeSkalar('s')} AS menge
@@ -137,7 +136,7 @@ export async function mengeDerPosition(
   art: Bestandsart,
   userId: number,
   keys: (string | number | null)[],
-  dbh: Pick<DbSchnittstelle, 'get'> = db,
+  dbh: Pick<DbSchnittstelle, 'get'>,
 ): Promise<number | null> {
   const a = ART[art];
   const farbe = a.farbe ? ' AND b.color_id = $3' : '';

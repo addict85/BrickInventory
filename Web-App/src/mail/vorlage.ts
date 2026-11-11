@@ -1,7 +1,7 @@
 // Das Gerüst jeder Mail: Paletten, Kopf und Fuss, Knopf, Hinweiskasten.
 // Die Texte stehen in mailer.ts, der Versand in transport.ts.
 
-import { getGlobalSetting } from '../einstellungen/settings';
+import { getGlobalSetting } from '../einstellungen';
 import { ausTabelle } from '../infra/validate';
 
 /** `unknown`: Hier laufen Werte aus Datenbank und Formularen hinein. */

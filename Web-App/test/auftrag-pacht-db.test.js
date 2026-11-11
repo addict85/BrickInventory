@@ -51,10 +51,13 @@ const { dbOderSkip } = require('./helpers/db');
 test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t => {
   const db = await dbOderSkip(t, _req);
   if (!db) return;
-  const A = Object.assign({}, _req('src/auftraege/dienst.js'));
+  const A = Object.assign(
+    {},
+    { ..._req('src/auftraege/dienst.js'), ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege },
+  );
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   t.after(async () => {
-    await _req('db/pgNotify.js').close();
+    await _req('db/database.js').standardDb().benachrichtigung.close();
     await db.pool.end().catch(() => {});
   });
 

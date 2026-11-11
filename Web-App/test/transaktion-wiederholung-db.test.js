@@ -14,9 +14,9 @@
  *      wiederholt bei Konflikt“; aus setzeGeschaetztenPreis() → rot:
  *      „setzeGeschaetztenPreis wiederholt bei Konflikt“
  *      (Der Verschiebeweg in erfassungAendern() braucht ein Haushaltskonto und
- *      ist hier nicht abgedeckt; er teilt withInventoryLock mit verschiebeSet.)
- *   D  withInventoryLock() reicht die Option nicht an transaction() → rot:
- *      „withInventoryLock reicht die Option weiter“, „verschiebeSet …“
+ *      ist hier nicht abgedeckt; er teilt mitInventarSperre mit verschiebeSet.)
+ *   D  mitInventarSperre() reicht die Option nicht an transaction() → rot:
+ *      „mitInventarSperre reicht die Option weiter“, „verschiebeSet …“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -180,10 +180,11 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
     await db.run('DELETE FROM users WHERE id = ANY($1)', [konten]).catch(() => {});
   });
 
-  await t.test('withInventoryLock reicht die Option weiter', async () => {
-    const { withInventoryLock } = _req('db/txLock.js');
+  await t.test('mitInventarSperre reicht die Option weiter', async () => {
+    const { mitInventarSperre } = _req('db/txLock.js');
     let n = 0;
-    const r = await withInventoryLock(
+    const r = await mitInventarSperre(
+      db.standardDb(),
       1,
       'x',
       async () => {
@@ -195,7 +196,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
     assert.deepEqual([r, n], ['fertig', 2]);
     let m = 0;
     await assert.rejects(
-      withInventoryLock(1, 'x', async () => {
+      mitInventarSperre(db.standardDb(), 1, 'x', async () => {
         m++;
         throw pgFehler('40P01');
       }),

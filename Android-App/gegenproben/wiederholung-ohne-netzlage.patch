@@ -1,0 +1,17 @@
+Gegenprobe: Ohne Netz wartet die Wiederholung trotzdem
+Modul: core-data
+Test: ch.brickinventoryapp.data.WiederholungTest
+Rot: ohne Netz wird nicht gewartet
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzlage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzlage.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzlage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzlage.kt
+@@ -46,7 +46,7 @@
+             var pause = erstePause
+             repeat(versuche - 1) {
+                 val r = call()
+-                if (r !is Ergebnis.Error || !r.transient || netz() == Art.KEIN_NETZ) return r
++                if (r !is Ergebnis.Error || !r.transient) return r
+                 warte(pause)
+                 pause = (pause * 2).coerceAtMost(HOECHSTE_PAUSE_MS)
+             }

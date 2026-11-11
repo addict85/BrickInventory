@@ -1,7 +1,7 @@
 name: Web-App
 
-# Baut das Image aus Web-App/ und veröffentlicht es als docker.io/addict85/brickinventory
-# (compose.yaml zieht es für app, jobs und schluessel).
+# Baut die Images aus Web-App/ und veröffentlicht sie als docker.io/addict85/brickinventory
+# (app, jobs, schluessel, …) und docker.io/addict85/brickinventory-caddy (Dockerfile.caddy).
 #
 # Je Architektur ein Job auf einem nativen Runner (arm64 unter QEMU dauerte ein
 # Vielfaches und stürzte ab); der merge-Job fasst die Digests zu einem
@@ -23,6 +23,8 @@ on:
 
 env:
   IMAGE: addict85/brickinventory
+  # Caddy ist der einzige Dienst mit offenen Ports: signiert und bescheinigt wie das App-Image.
+  CADDY_IMAGE: addict85/brickinventory-caddy
   CONTEXT: Web-App
   # Muss im Manifest stehen; der letzte Schritt prüft das. Passt zur Matrix
   # unten. Kein linux/arm/v7: Für Alpine (musl) auf armv7 gibt es kein sharp,
@@ -203,6 +205,33 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+      # Caddy wie das App-Image: ohne Cache, mit Herkunft und Stückliste je Plattform.
+      - name: Caddy bauen und als Digest hochladen
+        id: caddy
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: ${{ env.CONTEXT }}
+          file: ${{ env.CONTEXT }}/Dockerfile.caddy
+          platforms: ${{ matrix.plattform }}
+          outputs: type=image,name=${{ env.CADDY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          no-cache: true
+          provenance: mode=max
+          sbom: generator=docker/buildkit-syft-scanner:1.12.1@sha256:873a7458c3c8ac8e32c7b796c10e1600b07b963d2aa000a72a2d97aaaa2d6315
+
+      - name: Caddy-Digest ablegen
+        env:
+          DIGEST: ${{ steps.caddy.outputs.digest }}
+        run: |
+          mkdir -p /tmp/digests-caddy
+          touch "/tmp/digests-caddy/${DIGEST#sha256:}"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: caddy-digest-${{ env.PAAR }}
+          path: /tmp/digests-caddy/*
+          if-no-files-found: error
+          retention-days: 1
+
   merge:
     name: Manifest zusammenfuehren
     runs-on: ubuntu-latest
@@ -226,6 +255,12 @@ jobs:
         with:
           path: /tmp/digests
           pattern: digest-*
+          merge-multiple: true
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          path: /tmp/digests-caddy
+          pattern: caddy-digest-*
           merge-multiple: true
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
@@ -342,4 +377,92 @@ jobs:
           subject-name: index.docker.io/${{ env.IMAGE }}
           subject-digest: ${{ steps.signatur.outputs.digest }}
           sbom-path: ${{ runner.temp }}/sbom.cdx.json
+          push-to-registry: true
+
+      # ── Caddy: dieselben Schritte für das zweite Image ─────────────────────
+      - name: Caddy-Tags festlegen
+        id: meta-caddy
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
+        with:
+          images: ${{ env.CADDY_IMAGE }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=sha-${{ needs.pruefen.outputs.kurz }}
+            type=raw,value=${{ needs.pruefen.outputs.tag }},enable=${{ needs.pruefen.outputs.tag != '' }}
+
+      - name: Caddy-Manifest erzeugen und pushen
+        id: manifest-caddy
+        working-directory: /tmp/digests-caddy
+        env:
+          META: ${{ steps.meta-caddy.outputs.json }}
+        run: |
+          set -eu
+          docker buildx imagetools create --metadata-file "$RUNNER_TEMP/caddy-meta.json" \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$META") \
+            $(printf "${{ env.CADDY_IMAGE }}@sha256:%s " *)
+          DIGEST="$(jq -r '.["containerimage.descriptor"].digest // .["containerimage.digest"] // empty' "$RUNNER_TEMP/caddy-meta.json")"
+          case "$DIGEST" in (sha256:*) ;; (*) echo "::error::Kein Digest in der Ausgabe des Caddy-Pushs"; exit 1 ;; esac
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+
+      - name: Caddy-Manifest pruefen — sind alle Plattformen drin?
+        env:
+          TAG: ${{ env.CADDY_IMAGE }}@${{ steps.manifest-caddy.outputs.digest }}
+        run: |
+          set -eu
+          GEFUNDEN="$(docker buildx imagetools inspect "$TAG" --raw | jq -r '
+            [ .manifests[] | select(.platform.os == "linux" and .platform.architecture != "unknown")
+              | "linux/" + .platform.architecture ] | unique | join(" ")')"
+          for p in $ERWARTETE_PLATTFORMEN; do
+            case " $GEFUNDEN " in (*" $p "*) ;; (*) echo "::error::Im Caddy-Manifest fehlt $p (enthalten: $GEFUNDEN)"; exit 1 ;; esac
+          done
+
+      - name: Lücken im veröffentlichten Caddy-Digest
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.CADDY_IMAGE }}@${{ steps.manifest-caddy.outputs.digest }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          skip-setup-trivy: true
+
+      - name: Caddy signieren
+        id: signatur-caddy
+        run: |
+          set -eu
+          DIGEST="${{ steps.manifest-caddy.outputs.digest }}"
+          case "$DIGEST" in (sha256:*) ;; (*) echo "::error::Kein Digest aus dem Caddy-Push ($DIGEST)"; exit 1 ;; esac
+          cosign sign --yes --recursive "${{ env.CADDY_IMAGE }}@$DIGEST"
+          echo "Signiert: ${{ env.CADDY_IMAGE }}@$DIGEST" >> "$GITHUB_STEP_SUMMARY"
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+
+      # Kein npm im Caddy-Image: Die Stückliste liest Trivy aus dem signierten Digest.
+      - name: Caddy-Stückliste (CycloneDX) erzeugen
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.CADDY_IMAGE }}@${{ steps.signatur-caddy.outputs.digest }}
+          format: cyclonedx
+          output: ${{ runner.temp }}/caddy.cdx.json
+          exit-code: '0'
+          skip-setup-trivy: true
+
+      - name: Caddy-Stückliste pruefen
+        run: |
+          node -e 'const s = require(process.argv[1]); if (s.bomFormat !== "CycloneDX" || !(s.components || []).length) process.exit(1); console.log(s.components.length + " Pakete")' "$RUNNER_TEMP/caddy.cdx.json"
+
+      - name: Caddy-Herkunft bescheinigen
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: index.docker.io/${{ env.CADDY_IMAGE }}
+          subject-digest: ${{ steps.signatur-caddy.outputs.digest }}
+          push-to-registry: true
+
+      - name: Caddy-Stückliste bescheinigen
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-name: index.docker.io/${{ env.CADDY_IMAGE }}
+          subject-digest: ${{ steps.signatur-caddy.outputs.digest }}
+          sbom-path: ${{ runner.temp }}/caddy.cdx.json
           push-to-registry: true

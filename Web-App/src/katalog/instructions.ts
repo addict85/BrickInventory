@@ -4,10 +4,11 @@ import PDFDocument from 'pdfkit';
 import { INSTRUCTIONS_DIR } from '../infra/appPaths';
 import { setTimeout as warte } from 'node:timers/promises';
 import { downloadFile, scrapeInstructions, httpsGetRobust, brickset } from './quellen';
-import { meldeFehler, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
+import { meldeFehler, fehlertext, logAndContinue } from '../infra/fehler';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { pfadSegment } from '../infra/fremdeAdressen';
 import { katalog } from './prozess';
+import { versuche } from '../infra/ergebnis';
 
 const PDF_ANFANG = Buffer.from('%PDF-');
 
@@ -21,12 +22,12 @@ export function letzterAbrufWarExtern(): boolean { return _letzterAbrufWarExtern
 // Zählen, lesen, löschen an einer Stelle statt verstreut.
 
 export async function anzahlAnleitungen(setNumber: string): Promise<number> {
-  const r = await katalog().anleitungen.zaehleAnleitungen(mitVersion(setNumber)).catch(meldeUndLiefere('anleitung:mitVersion', null));
+  const r = await katalog().anleitungen.zaehleAnleitungen(mitVersion(setNumber));
   return Number(r?.c) || 0;
 }
 
 export async function anleitungenZuSet(setNumber: string) {
-  return katalog().anleitungen.anleitungenDesSets(mitVersion(setNumber)).catch(meldeUndLiefere('anleitung:mitVersion', []));
+  return katalog().anleitungen.anleitungenDesSets(mitVersion(setNumber));
 }
 
 /** Erst die automatisch importierten, dann die selbst hochgeladenen. */
@@ -99,16 +100,17 @@ export async function downloadSetInstructions(setNumber: string,
   const existing = await anzahlAnleitungen(n);
   if (existing > 0) { return existing; }
 
-  let instrList: Awaited<ReturnType<typeof scrapeInstructions>> = [];
+  let instrList: { url: string; description?: string | null | undefined; brickinstructions_base?: string;
+                   brickinstructions_hdrs?: Record<string, string>; brickinstructions_first?: Buffer }[] = [];
   let bricksetSucceededEmpty = false;
   _letzterAbrufWarExtern = true;   // ab hier wird wirklich gefragt
   try { instrList = await scrapeInstructions(n); } catch (e) { meldeFehler('anleitungen:auslesen', e); }
   if (!instrList.length) {
-    const bsResult = await brickset.getInstructions(n).catch(meldeUndLiefere('anleitungen:brickset', { instructions: [], usesFallback: true }));
-    instrList = bsResult.instructions || [];
+    const bs = await versuche('anleitungen:brickset', brickset.getInstructions(n));
+    instrList = bs.ok ? bs.wert.instructions || [] : [];
     // usesFallback: Brickset hat geantwortet, ohne Anleitung; false heisst
-    // Kontingent erschöpft — dann in der Warteschlange bleiben.
-    bricksetSucceededEmpty = bsResult.usesFallback && instrList.length === 0;
+    // Kontingent erschöpft. Ein Fehler ist keine Antwort — beides bleibt in der Warteschlange.
+    bricksetSucceededEmpty = bs.ok && bs.wert.usesFallback && instrList.length === 0;
   }
 
   // downloadFile schreibt direkt auf die Platte — kein Puffer für grosse PDFs.
@@ -153,14 +155,15 @@ export async function downloadSetInstructions(setNumber: string,
   let saved = 0;
   for (let i = 0; i < instrList.length; i++) {
     const instr = instrList[i];
-    if (!instr.url) continue;
+    if (!instr?.url) continue;
     const safeBase = n.replace(/[^a-z0-9-]/gi, '_');
-    if (instr.brickinstructions_base) {
+    if (instr.brickinstructions_base && instr.brickinstructions_hdrs && instr.brickinstructions_first) {
       const pdfName = `${safeBase}_brickinstructions.pdf`;
       const pdfDest = path.join(instrDir, pdfName);
       const relPath = `/data/instructions/${pdfName}`;
-      try { await katalog().anleitungen.merkeAnleitung(n, instr.url, instr.description, null); saved++; } catch (e) { meldeFehler('anleitungen:pdf-eintragen', e); }
-      setImmediate(() => { void collectAndBuildPDF(instr.brickinstructions_base, instr.brickinstructions_hdrs, instr.brickinstructions_first, pdfDest, relPath, n).catch(logAndContinue('anleitung:collectAndBuildPDF')); });
+      try { await katalog().anleitungen.merkeAnleitung(n, instr.url, instr.description ?? null, null); saved++; } catch (e) { meldeFehler('anleitungen:pdf-eintragen', e); }
+      const { brickinstructions_base: basis, brickinstructions_hdrs: kopf, brickinstructions_first: erstes } = instr;
+      setImmediate(() => { void collectAndBuildPDF(basis, kopf, erstes, pdfDest, relPath, n).catch(logAndContinue('anleitung:collectAndBuildPDF')); });
       continue;
     }
     const safeName = `${safeBase}_${i + 1}.pdf`;

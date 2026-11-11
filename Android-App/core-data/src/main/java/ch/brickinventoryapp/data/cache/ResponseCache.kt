@@ -6,6 +6,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
 import ch.brickinventoryapp.model.koroutinen.Dispatcher
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -183,4 +185,7 @@ fun interface CacheBesitzer {
      * Room-Ablage samt Ausgang müssen das überleben. Null wie [cacheBereich].
      */
     suspend fun kontoBereich(): String? = cacheBereich()
+
+    /** [kontoBereich] als Fluss, für wer ihn beobachtet; ohne eigenen Spiegel einmal gefragt. */
+    fun kontoBereichFluss(): Flow<String?> = flow { emit(kontoBereich()) }
 }

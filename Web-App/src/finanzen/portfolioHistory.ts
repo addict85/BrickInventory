@@ -1,11 +1,9 @@
-import { blickfeldAus } from '../haushalt/haushalt';
-import type { Sicht } from '../haushalt/haushalt';
-import * as dbStandard from '../../db/database';
-import { getSetting as getSettingStandard } from '../einstellungen/settings';
+import { haushaltBereich, type Sicht } from '../haushalt';
+import { getSetting as getSettingStandard } from '../einstellungen';
 import { baueDiagrammdaten } from './portfolio/diagrammdaten';
 import { rekonstruiereKurve, type KurvenPunkt } from './portfolio/kurve';
 import { DEFAULT_PRICE_CONDITION } from './financeCalc';
-import * as repo from './repository/portfolioKurve';
+import { finanzenBereich } from './prozess';
 /** Je Monat der letzte Punkt; der erste bleibt exakt, damit alle Zeiträume beim selben Start beginnen. */
 function aufMonate(rawPoints: KurvenPunkt[]): KurvenPunkt[] {
   const byMonth = new Map<string, KurvenPunkt>();
@@ -37,10 +35,10 @@ function mitStartpunkt(rawPoints: KurvenPunkt[], period: string, purchaseTotal: 
  * Datenbank prüfbar bleibt. */
 export async function getPortfolioHistory(
   viewerId: number, idsWahl: Sicht | number[], period: string,
-  db: unknown = dbStandard,
+  db: unknown = finanzenBereich().db,
   getSetting: (userId: number, key: string, fallback: string) => Promise<string> = getSettingStandard,
 ) {
-  const ids = await blickfeldAus(idsWahl);
+  const ids = await haushaltBereich().haushalt.blickfeldAus(idsWahl);
   // Mit dem Filter „Unterkonten" enthält ids das fragende Konto nicht; die
   // Währung darf dann nicht aus ids[0] kommen.
   const uids = Array.isArray(ids) ? ids.map(n => parseInt(String(n))) : [parseInt(String(ids))];
@@ -48,9 +46,9 @@ export async function getPortfolioHistory(
   const condition = DEFAULT_PRICE_CONDITION;
 
   // Ein Set, EINE Zeile, auch bei zwei Besitzern — sonst käme es zweimal in die Summe.
-  const sets = await repo.setsMitKaufsumme(uids);
+  const sets = await finanzenBereich().portfolioKurve.setsMitKaufsumme(uids);
   if (!sets.length) {
-    return { success:true, currency, period, points:[], y_axis:[], period_change_pct:null, messpunkte:0 };
+    return { currency, period, points:[], y_axis:[], period_change_pct:null, messpunkte:0 };
   }
 
   const setNumbers    = sets.map((s: { set_number: string }) => s.set_number);
@@ -87,13 +85,12 @@ export async function getPortfolioHistory(
   if (rawPoints.length <= 1) rawPoints = mitStartpunkt(rawPoints, period, purchaseTotal);
 
   if (!rawPoints.length) {
-    return { success:true, currency, period, points:[], y_axis:[], period_change_pct:null, messpunkte:0 };
+    return { currency, period, points:[], y_axis:[], period_change_pct:null, messpunkte:0 };
   }
 
   const { points, y_axis, period_change_pct, chart } = baueDiagrammdaten(rawPoints, currency, downsampled);
 
   return {
-    success:           true,
     currency,
     period,
     points,

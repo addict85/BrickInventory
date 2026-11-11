@@ -1,6 +1,6 @@
 // Mailversand ist Werkzeug, keine Route.
 
-import { getGlobalSetting } from '../einstellungen/settings';
+import { getGlobalSetting } from '../einstellungen';
 import { basisUrl, hinweisOhneBasisUrl } from '../infra/basisUrl';
 import { esc, emailTemplate, emailBtn, infoBox, DIVIDER, getMailTheme } from './vorlage';
 import { sendMail } from './transport';

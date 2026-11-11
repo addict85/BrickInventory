@@ -12,7 +12,7 @@ import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
-import ch.brickinventoryapp.zustand.ui.Aenderung
+import ch.brickinventoryapp.data.repository.Bestandsabgleich
 import ch.brickinventoryapp.konto.ui.AlarmUebersichtUiState
 import ch.brickinventoryapp.konto.ui.CsvHochladenUiState
 import ch.brickinventoryapp.zustand.ui.ladeEinstellungen
@@ -32,13 +32,12 @@ import ch.brickinventoryapp.model.data.model.PreisalarmResponse
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.zustand.ui.AppUiState
 import ch.brickinventoryapp.zustand.ui.Sitzung
-import ch.brickinventoryapp.zustand.ui.Bestandssignal
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
+import ch.brickinventoryapp.zustand.ui.viewmodel.Gelesen
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
 import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
-import ch.brickinventoryapp.zustand.ui.viewmodel.folgeBestand
 
 /**
  * Wie gross eine CSV-Datei sein darf — derselbe Wert wie CSV_MAX_BYTES in
@@ -59,7 +58,7 @@ class EinstellungenViewModel @Inject constructor(
     private val sitzung: Sitzung,
     private val filter: Filterwahl,
     private val meldungen: Meldungen,
-    private val bestand: Bestandssignal,
+    private val abgleich: Bestandsabgleich,
     private val konto: KontoRepository,
     private val verwaltung: VerwaltungRepository,
     private val sets: SetsRepository,
@@ -71,7 +70,6 @@ class EinstellungenViewModel @Inject constructor(
 
     init {
         folgeAbmeldung(sitzung) { zuruecksetzen() }
-        folgeBestand(bestand) { beiAenderung(it) }
     }
 
     private val _csvHochladenState = MutableStateFlow(CsvHochladenUiState())
@@ -82,14 +80,14 @@ class EinstellungenViewModel @Inject constructor(
 
     // ── Währung und Zustand ──────────────────────────────────────────────────
 
-    /** Eine andere Währung oder ein anderer Zustand ändert jeden Preis: alle Bestandsansichten neu. */
+    /** Eine andere Währung oder ein anderer Zustand ändert jeden Preis: Die Ablage holt sie neu. */
     override fun saveSettings(currency: Waehrung, condition: Zustand) {
         viewModelScope.launch {
             when (val r = konto.updateSettings(currency, condition)) {
                 is Ergebnis.Success -> {
                     meldungen.zeige(meldungen.text(R.string.vm_settings_saved))
                     sitzung.einstellungenGespeichert(currency, condition)
-                    bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
+                    abgleich.bestand()
                 }
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
@@ -115,28 +113,30 @@ class EinstellungenViewModel @Inject constructor(
     fun ladeCsvHoch(art: CsvImportArt, datei: DateiRef) {
         viewModelScope.launch {
             _csvHochladenState.value = CsvHochladenUiState(laeuft = true, art = art)
-            val bytes = leser.lies(datei)?.second
-            if (bytes == null) {
-                _csvHochladenState.value = CsvHochladenUiState(fehler = meldungen.text(R.string.csv_upload_unreadable))
-                return@launch
-            }
-            if (bytes.size > CSV_MAX_BYTES) {
-                _csvHochladenState.value = CsvHochladenUiState(
-                    fehler = meldungen.text(R.string.csv_upload_too_big, CSV_MAX_BYTES / 1024 / 1024))
-                return@launch
+            val bytes = when (val g = leser.liesHoechstens(datei, CSV_MAX_BYTES)) {
+                null -> {
+                    _csvHochladenState.value = CsvHochladenUiState(fehler = meldungen.text(R.string.csv_upload_unreadable))
+                    return@launch
+                }
+                Gelesen.ZuGross -> {
+                    _csvHochladenState.value = CsvHochladenUiState(
+                        fehler = meldungen.text(R.string.csv_upload_too_big, CSV_MAX_BYTES / 1024 / 1024))
+                    return@launch
+                }
+                is Gelesen.Inhalt -> g.bytes
             }
             val name = leser.name(datei) ?: "import.csv"
             when (val r = verwaltung.importiereCsv(art.alsDaten(), name, bytes)) {
                 is Ergebnis.Success ->
                     if (r.data.success) {
                         _csvHochladenState.value = CsvHochladenUiState(ergebnis = r.data.alsAnsicht())
-                        bestand.melde(when (art) {
-                            CsvImportArt.MERKLISTE -> Aenderung.Merkliste
-                            CsvImportArt.PREISALARME -> Aenderung.Alarme
-                            CsvImportArt.TEILE -> Aenderung.Teile
-                            CsvImportArt.MINIFIGUREN -> Aenderung.Figuren
-                            CsvImportArt.SETS -> Aenderung.Sets
-                        })
+                        when (art) {
+                            CsvImportArt.MERKLISTE -> abgleich.merkliste()
+                            CsvImportArt.PREISALARME -> alarmeNeu()
+                            CsvImportArt.TEILE -> abgleich.teile()
+                            CsvImportArt.MINIFIGUREN -> abgleich.figuren()
+                            CsvImportArt.SETS -> abgleich.sets()
+                        }
                     } else _csvHochladenState.value = CsvHochladenUiState(fehler = r.data.error ?: meldungen.text(R.string.err_generic))
                 is Ergebnis.Error -> _csvHochladenState.value = CsvHochladenUiState(fehler = meldungen.meldung(r))
             }
@@ -197,36 +197,41 @@ class EinstellungenViewModel @Inject constructor(
         alarmSchleuse { sets.setPreisalarm(nummer, richtung, schwelle, condition) }
     }
 
-    /** Ändern und Löschen: rufen, melden, die Übersicht lädt auf das Signal nach. */
+    /** Ändern und Löschen: rufen, melden, die Übersicht neu, wenn sie schon dasteht. */
     private fun alarmSchleuse(tun: suspend () -> Ergebnis<PreisalarmResponse>) {
         viewModelScope.launch {
             when (val r = tun()) {
                 is Ergebnis.Success -> if (!r.data.success) meldungen.zeige(r.data.error)
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
-            bestand.melde(Aenderung.Alarme)
+            alarmeNeu()
         }
     }
 
+    /** Alarme liegen nicht in der Ablage: Ihren Auslöser setzt der Preislauf des Servers. */
+    private fun alarmeNeu(): Unit = if (_alarmUebersicht.value.geladen) ladeAlarmUebersicht() else Unit
+
     // ── Lagerorte ────────────────────────────────────────────────────────────
 
-    override fun legeLagerortAn(name: String) = lagerortSchleuse(false) { teile.legeLagerortAn(name).auswerten() }
+    override fun legeLagerortAn(name: String) = lagerortSchleuse { teile.legeLagerortAn(name).auswerten() }
 
-    /** Umbenennen ändert, was in der Galerie an den Sets steht — die lädt deshalb nach. */
-    override fun benenneLagerortUm(id: Int, name: String) = lagerortSchleuse(true) { teile.benenneLagerortUm(id, name).auswerten() }
+    /** Umbenennen ändert, was an Sets, Teilen und Figuren steht; das Repository zieht die Ablage nach. */
+    override fun benenneLagerortUm(id: Int, name: String) {
+        val alt = filter.lagerState.value.eigene.firstOrNull { it.id == id }?.name.orEmpty()
+        lagerortSchleuse { teile.benenneLagerortUm(id, alt, name).auswerten() }
+    }
 
     /** Der Stern: Ist der Ort schon Vorgabe, nimmt der zweite Tipp sie wieder weg. */
     override fun schalteLagerortVorgabe(id: Int, istVorgabe: Boolean) =
-        lagerortSchleuse(false) { teile.setzeLagerortVorgabe(if (istVorgabe) null else id).auswerten() }
+        lagerortSchleuse { teile.setzeLagerortVorgabe(if (istVorgabe) null else id).auswerten() }
 
-    override fun loescheLagerort(id: Int) = lagerortSchleuse(false) { teile.loescheLagerort(id).auswerten() }
+    override fun loescheLagerort(id: Int) = lagerortSchleuse { teile.loescheLagerort(id).auswerten() }
 
-    private fun lagerortSchleuse(galerieNeu: Boolean, tun: suspend () -> Pair<Boolean, String?>) {
+    private fun lagerortSchleuse(tun: suspend () -> Pair<Boolean, String?>) {
         viewModelScope.launch {
             val (gelungen, fehler) = tun()
             if (!gelungen) { meldungen.zeige(fehler); return@launch }
             filter.eigeneLagerorteNeu()
-            if (galerieNeu) bestand.melde(Aenderung.Sets)
         }
     }
 
@@ -241,10 +246,6 @@ class EinstellungenViewModel @Inject constructor(
         is LagerortVorgabeResponse -> antwort.success to antwort.error
         is LagerortResponse -> antwort.success to antwort.error
         else -> true to null
-    }
-
-    private fun beiAenderung(aenderung: Aenderung) {
-        if (aenderung == Aenderung.Alarme && _alarmUebersicht.value.geladen) ladeAlarmUebersicht()
     }
 
     private fun zuruecksetzen() {

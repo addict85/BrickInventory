@@ -1,21 +1,17 @@
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
-import { schreibziel } from '../../src/haushalt/haushalt';
-import { getBlColorMap, getManualParts, getOwnedQuantities, getParts, getPartsColors, getPartsStats, getPartsCategories } from '../../src/teile/abfragen';
+import { haushaltBereich } from '../../src/haushalt';
+import { getBlColorMap, getManualParts, getOwnedQuantities, getParts, getPartsColors, getPartsStats, getPartsCategories, addManualPart, getPartColorList, updateManualPart, aendereTeilFarbe } from '../../src/teile';
 import { csvEmpfang } from '../../src/http/dateiEmpfang';
-import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
+import { importAlsAuftrag } from '../../src/auftraege';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
-import { addManualPart, getPartColorList, updateManualPart } from '../../src/teile/manuelleTeile';
-import { getSetting } from '../../src/einstellungen/settings';
-import { getPartPriceHistory } from '../../src/finanzen/priceHistory';
-import { aendereTeilFarbe } from '../../src/teile/teilFarbeAendern';
-import { verwendendeSets } from '../../src/bestand/gemeinsam';
-import { normalisiereLagerort, setzeLagerort } from '../../src/bestand/lagerort';
-import { loescheTeil } from '../../src/sammlung/loeschen';
+import { getSetting } from '../../src/einstellungen';
+import { getPartPriceHistory } from '../../src/finanzen';
+import { bestandBereich, verwendendeSets, normalisiereLagerort } from '../../src/bestand';
+import { loescheTeil } from '../../src/sammlung';
 import { seiteAus } from '../../src/infra/seite';
 import { Abstriche } from '../../src/infra/ergebnis';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
+import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
 const router = vertragsRouter();
 
 router.get('/parts', requireToken, async (req: Anfrage<'GET /api/v1/parts'>, res: Antwort<'GET /api/v1/parts'>) => {
@@ -33,7 +29,7 @@ router.get('/parts/categories', requireToken, async (req: Anfrage<'GET /api/v1/p
 
 router.post('/parts/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'), async (req: Anfrage<'POST /api/v1/parts/import/csv'>, res: Antwort<'POST /api/v1/parts/import/csv'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-  res.json(await importAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'teile_csv', { text: req.file.buffer.toString('utf-8') }));
+  res.json({ success: true, ...(await importAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'teile_csv', { text: req.file.buffer.toString('utf-8') })) });
 });
 
 router.get('/parts/brick-colors', requireToken, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/parts/brick-colors'>) => {
@@ -44,7 +40,7 @@ router.get('/parts/brick-colors', requireToken, async (_req: AuthedRequest, res:
 router.post('/parts', requireToken, async (req: Anfrage<'POST /api/v1/parts'>, res: Antwort<'POST /api/v1/parts'>) => {
   // resolveWriteTarget prüft die RICHTUNG (Hauptkonto → eigenes Unterkonto),
   // nicht bloss die Mitgliedschaft im Blickfeld.
-  const owner = await schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+  const owner = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
   const result = await addManualPart(owner, req.eingabe);
   res.json({ success: true, ...result });
 });
@@ -52,7 +48,7 @@ router.post('/parts', requireToken, async (req: Anfrage<'POST /api/v1/parts'>, r
 router.put('/parts/:partNumber/:colorId', requireToken, async (req: Anfrage<'PUT /api/v1/parts/:partNumber/:colorId'>, res: Antwort<'PUT /api/v1/parts/:partNumber/:colorId'>) => {
   // Die Ansicht sagt, wessen Karte gemeint ist; ohne Parameter änderte das
   // Hauptkonto auf der Karte des Kindes die eigene Zeile.
-  const besitzer = await schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
+  const besitzer = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
   // Mit Mengenänderung trägt die Antwort die Menge danach (bei quantity_delta
   // weiss der Client sie sonst nicht).
   const r = await updateManualPart(besitzer, req.pfad.partNumber, req.pfad.colorId, req.eingabe);
@@ -61,7 +57,7 @@ router.put('/parts/:partNumber/:colorId', requireToken, async (req: Anfrage<'PUT
 
 // Eigene Adresse: Die Farbe ist schon Teil der Adresse von PUT /parts/:nr/:farbe.
 router.put('/parts/:partNumber/:colorId/color', requireToken, async (req: Anfrage<'PUT /api/v1/parts/:partNumber/:colorId/color'>, res: Antwort<'PUT /api/v1/parts/:partNumber/:colorId/color'>) => {
-  const besitzer = await schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
+  const besitzer = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
   // Die neue Farbe muss dastehen: V.colorId() machte aus fehlend „keine Farbe",
   // ein stilles Leeren mit Erfolgsmeldung.
   const roh = req.eingabe.color_id;
@@ -77,7 +73,7 @@ router.put('/parts/:partNumber/:colorId/color', requireToken, async (req: Anfrag
 
 router.delete('/parts/:partNumber/:colorId', requireToken, async (req: Anfrage<'DELETE /api/v1/parts/:partNumber/:colorId'>, res: Antwort<'DELETE /api/v1/parts/:partNumber/:colorId'>) => {
   // Ohne Parameter das eigene Konto — unverändert für Clients, die ihn nicht kennen.
-  const besitzer = await schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
+  const besitzer = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
   const geloescht = await loescheTeil(besitzer, req.pfad.partNumber, req.pfad.colorId);
   if (geloescht === null) return sendeFehler(req, res, 404, 'teil_nicht_manuell');
   res.json({ success: true, papierkorb: [geloescht] });
@@ -99,7 +95,7 @@ router.post('/parts/owned', requireToken, async (req: Anfrage<'POST /api/v1/part
  * Teil, nicht eine seiner Set-Zeilen. */
 router.put('/parts/:partNumber/:colorId/storage', requireToken, async (req: Anfrage<'PUT /api/v1/parts/:partNumber/:colorId/storage'>, res: Antwort<'PUT /api/v1/parts/:partNumber/:colorId/storage'>) => {
   const ort = normalisiereLagerort(req.eingabe.storage);
-  const n = await setzeLagerort('part', { schreiber: req.apiUser.user_id },
+  const n = await bestandBereich().lagerortDienst.setzeLagerort('part', { schreiber: req.apiUser.user_id },
     [req.pfad.partNumber, String(req.pfad.colorId)], ort);
   res.json({ success: true, storage: ort, changed: n });
 });

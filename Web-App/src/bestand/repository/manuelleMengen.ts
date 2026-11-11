@@ -1,4 +1,3 @@
-import * as db from '../../../db/database';
 import type { DbSchnittstelle } from '../../../db/database';
 
 /** Die Stückzahl eines manuellen Eintrags ist die Summe seiner Erfassungen. */
@@ -6,7 +5,7 @@ export type ManuelleArt = 'part' | 'fig';
 const ERF = { part: 'part_acquisitions', fig: 'minifig_acquisitions' } as const;
 const SCHLUESSEL = { part: 'part_number=$2 AND color_id=$3', fig: 'fig_number=$2' } as const;
 
-export async function summeDerErfassungen(art: ManuelleArt, uid: number, schluessel: (string | number)[]): Promise<number> {
+export async function summeDerErfassungen(db: DbSchnittstelle, art: ManuelleArt, uid: number, schluessel: (string | number)[]): Promise<number> {
   const r = await db.get<{ q: number }>(
     `SELECT COALESCE(SUM(quantity), 0)::int AS q FROM ${ERF[art]} WHERE user_id=$1 AND ${SCHLUESSEL[art]}`,
     [uid, ...schluessel]);

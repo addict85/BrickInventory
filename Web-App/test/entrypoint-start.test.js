@@ -3,7 +3,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const ep = fs.readFileSync(path.join(__dirname, '..', 'docker-entrypoint.sh'), 'utf8');
+// Was root an ./data tut, steht in daten-rechte.sh (eigener Dienst vor app und jobs).
+const ep = fs.readFileSync(path.join(__dirname, '..', 'daten-rechte.sh'), 'utf8');
+const einstieg = fs.readFileSync(path.join(__dirname, '..', 'docker-entrypoint.sh'), 'utf8');
 
 /**
  * Der Start des Containers schweigt nicht, und er arbeitet nicht umsonst.
@@ -12,11 +14,11 @@ const ep = fs.readFileSync(path.join(__dirname, '..', 'docker-entrypoint.sh'), '
 test('der Start sagt, was er tut', () => {
   // Der eigentliche Schaden war nicht die Wartezeit, sondern die Stille: Man
   // kann nicht unterscheiden, ob etwas arbeitet oder haengt.
-  const zeilen = [...ep.matchAll(/^echo "\[entrypoint\]/gm)].length;
+  const zeilen = [...ep.matchAll(/^echo "\[daten-rechte\]/gm)].length;
   assert.ok(zeilen >= 2,
     `Nur ${zeilen} Ausgabe(n) im Entrypoint. Ohne sie beginnt jeder Start mit ` +
     'einer unbestimmten Zeit Schweigen.');
-  const ersteAusgabe = ep.indexOf('echo "[entrypoint]');
+  const ersteAusgabe = ep.indexOf('echo "[daten-rechte]');
   const ersteArbeit = ep.indexOf('mkdir -p');
   assert.ok(ersteAusgabe > 0 && ersteAusgabe < ersteArbeit,
     'Die erste Ausgabe steht hinter der ersten Arbeit — dann schweigt der Start ' +
@@ -103,9 +105,8 @@ test('die Marke bricht keinen Start ab', () => {
 test('chown als root folgt keinem Symlink', () => {
   // /app/data gehört dem Dienst. Ohne -h schriebe root das ZIEL eines dort
   // abgelegten Symlinks um — eine Datei ausserhalb, etwa /etc/passwd.
-  const ep = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'docker-entrypoint.sh'), 'utf8')
-    .split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
-  const aufrufe = [...ep.matchAll(/\bchown\b[^\n]*/g)].map(m => m[0]);
+  const code = `${ep}\n${einstieg}`.split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
+  const aufrufe = [...code.matchAll(/\bchown\b[^\n]*/g)].map(m => m[0]);
   assert.ok(aufrufe.length >= 3, `nur ${aufrufe.length} chown gefunden`);
   assert.deepEqual(aufrufe.filter(z => !/\bchown (-R )?-h\b/.test(z)), []);
 });
@@ -174,10 +175,31 @@ test('was der Dienst anlegt und hochgeladen hat, liest nur er', (t) => {
   fs.chmodSync(alt, 0o644);
   fs.mkdirSync(path.join(ordner, 'bin'));
   fs.writeFileSync(path.join(ordner, 'bin', 'su-exec'), '#!/bin/sh\nshift\nexec "$@"\n', { mode: 0o755 });
-  const teil = ep.slice(ep.indexOf('umask 077'), ep.indexOf('echo "[entrypoint] Server wird gestartet')).replaceAll('/app/data', daten);
+  const teil = ep.slice(ep.indexOf('umask 077'), ep.indexOf('echo "[daten-rechte] fertig')).replaceAll('/app/data', daten);
   const r = spawnSync('sh', ['-c', `umask 022\n${teil}`],
     { env: { PATH: `${path.join(ordner, 'bin')}:${process.env.PATH}` }, encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
   const rechte = (p) => (fs.statSync(p).mode & 0o777).toString(8);
   assert.deepEqual([rechte(path.join(daten, 'images', 'sets')), rechte(alt), rechte(path.dirname(alt))], ['700', '600', '700']);
+});
+
+// Gegenproben (11.11.2026 gemessen, je einzeln): im Entrypoint `umask 077`
+// gestrichen → rot „der Server legt Dateien für andere lesbar an“; die Abfrage
+// `[ "$(id -u)" = 0 ]` durch `true` ersetzt → rot „ohne root kein Weg über
+// daten-rechte und su-exec“ (der root-Zweig sucht /app/daten-rechte.sh).
+test('als brickinv gestartet geht der Entrypoint ohne root-Schritt direkt zum Server', (t) => {
+  const os = require('node:os');
+  const { spawnSync } = require('node:child_process');
+  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-einstieg-'));
+  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
+  const bin = path.join(ordner, 'bin');
+  fs.mkdirSync(bin);
+  // compose.yaml startet app und jobs mit `user: brickinv`; `id` und `node` stehen hier dafür.
+  fs.writeFileSync(path.join(bin, 'id'), '#!/bin/sh\necho 100\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(bin, 'node'), '#!/bin/sh\necho "umask=$(umask) node $*"\n', { mode: 0o755 });
+  const r = spawnSync('sh', [path.join(__dirname, '..', 'docker-entrypoint.sh')], { cwd: ordner, encoding: 'utf8',
+    env: { PATH: `${bin}:/usr/bin:/bin`, ROLLE: 'web' } });
+  assert.equal(r.status, 0, `ohne root kein Weg über daten-rechte und su-exec: ${r.stderr}`);
+  assert.match(r.stdout, /^umask=0077 node dist\/server\.js$/m, `der Server legt Dateien für andere lesbar an: ${r.stdout}`);
+  assert.doesNotMatch(r.stdout + r.stderr, /daten-rechte|Datenverzeichnisse/, 'als brickinv läuft kein root-Schritt');
 });

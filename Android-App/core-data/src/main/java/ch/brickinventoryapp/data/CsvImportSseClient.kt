@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.di.SseClient
+import ch.brickinventoryapp.netz.di.PLATZHALTER_BASIS
 import ch.brickinventoryapp.model.data.model.CsvImportStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
@@ -28,7 +29,6 @@ class CsvImportSseClient @Inject constructor(
     // val-Konstruktorparametern (künftig Parameter UND Property). Für Dagger/Hilt
     // zählt der Parameter; der Use-Site-Target macht das eindeutig.
     @param:SseClient private val client: OkHttpClient,
-    private val prefs: Zugangsdaten,
     private val json: Json
 ) : CsvImportStrom {
     sealed class Event {
@@ -49,18 +49,10 @@ class CsvImportSseClient @Inject constructor(
      * cold Flow — Verbindung wird beim Collect aufgebaut, beim Cancel geschlossen.
      */
     override fun stream(): Flow<Event> = flow {
-        val baseUrl = prefs.serverUrlJetzt().trim().trimEnd('/')
-        val token   = prefs.tokenJetzt()
-
-        if (baseUrl.isBlank() || token.isBlank()) {
-            emit(Event.Failed("no server url or token"))
-            return@flow
-        }
-
+        // Adresse und Token setzt der Wächter des Clients wie bei jedem Abruf; ohne
+        // Anmeldung antwortet der Server 401, und der Aufrufer fragt später wieder.
         val request = Request.Builder()
-            // Umgezogen nach /api/v1 — ein Adressraum (siehe server.ts).
-            .url("$baseUrl/api/v1/sets/import/csv/stream")
-            .header("Authorization", "Bearer $token")
+            .url("${PLATZHALTER_BASIS}api/v1/sets/import/csv/stream")
             .header("Accept", "text/event-stream")
             .build()
 

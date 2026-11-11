@@ -1,21 +1,12 @@
 import path from 'node:path';
 import { erzeugeWorker, type Bearbeitertabelle, type WorkerOptionen } from './auftragsWorker';
 import { zieheNach, ladeSetBilder, fuehreCsvImportAus, csvImportAufgegeben } from '../src/sets';
-import { erzeugePdf, pdfAufgegeben } from '../src/katalog/pdf/pdfErzeugung';
-import { fuehreImportAus } from '../src/sammlung/importAuftraege';
-import { anleitungLaden } from '../src/katalog/anleitungLaden';
-import { bricksetNachlauf } from '../src/katalog/bricksetNachlauf';
-import { bildbedarfAbarbeiten } from '../src/katalog/bilder/bildbedarfLauf';
-import { redownloadMissingImages, downloadSetImages } from '../src/katalog/teileAnreicherung';
-import { nachlauf } from '../src/verwaltung/startNachlaeufe';
-import { csvAbgleich, setzeImportProzess } from '../src/katalog/csvAbgleich';
-import { runPriceRefresh } from '../src/finanzen/preisLauf';
-import { bildNachlauf } from '../src/katalog/bildNachlauf';
-import { aufraeumen, aufraeumenTaeglich } from '../src/verwaltung/aufraeumen';
-import type { AuftragsArt } from '../src/auftraege/auftraege';
-import { kursauftrag } from '../src/finanzen/wechselkurse';
-import { preiseNachladen } from '../src/finanzen/preiseNachladen';
-import { loescheKontoDateien } from '../src/konto/kontoEntfernen';
+import { erzeugePdf, pdfAufgegeben, anleitungLaden, bricksetNachlauf, bildbedarfAbarbeiten, redownloadMissingImages, downloadSetImages, csvAbgleich, setzeImportProzess, bildNachlauf } from '../src/katalog';
+import { fuehreImportAus } from '../src/sammlung';
+import { nachlauf, aufraeumen, aufraeumenTaeglich } from '../src/verwaltung';
+import { runPriceRefresh, kursauftrag, preiseNachladen } from '../src/finanzen';
+import type { AuftragsArt } from '../src/auftraege';
+import { loescheKontoDateien } from '../src/konto';
 
 /** Exklusiv sind Arten, die eine Gegenseite schonen oder Tabellen tauschen. */
 const BEARBEITER: Bearbeitertabelle = {

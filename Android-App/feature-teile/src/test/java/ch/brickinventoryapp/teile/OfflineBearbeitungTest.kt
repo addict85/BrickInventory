@@ -28,6 +28,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlinx.coroutines.flow.first
 import java.io.File
 import java.util.Collections
 import ch.brickinventoryapp.data.api.ApiJson
@@ -51,8 +52,8 @@ import ch.brickinventoryapp.testing.TestApi
  *      „wartet etwas, geht Neues dahinter“ (die zweite Änderung ging direkt raus)
  *   C  in ServerSender für SetMenge `quantity = schritt` statt `quantityDelta` →
  *      rot „gesendet wird der Schritt“
- *   D  in Offlineablage.abgeglichen (Abruf.kt) den Rückfall auf die Ablage entfernt → rot
- *      „ohne Verbindung kommt die Liste aus der Ablage“
+ *   D  in Offlineablage.aktualisiereSeitenweise (Abruf.kt) auch bei einem Fehler die leere
+ *      Liste übernommen → rot „ohne Verbindung bleibt die Liste in der Ablage“
  *   (E–I gemessen)
  *   E  in Offlineablage.schreibe (Abruf.kt) beim Puffern nach dem direkten Versuch einen neuen
  *      Schlüssel nehmen (`puffere(bearbeitung)`) → rot „… denselben Schlüssel“
@@ -130,7 +131,7 @@ class OfflineBearbeitungTest {
 
     @Test
     fun `ohne Verbindung geht die Menge in den Ausgang und gesendet wird der Schritt`() = runBlocking {
-        assertTrue(repo.getSets() is Ergebnis.Success)
+        assertTrue(repo.aktualisiereSets() is Ergebnis.Success)
         s.offline = true
         val r = repo.aendereMengeUm("10001-1", 1)
         assertTrue("Erwartet: offline gespeichert, kam $r", r is Ergebnis.Success && r.gepuffert)
@@ -145,18 +146,20 @@ class OfflineBearbeitungTest {
     }
 
     @Test
-    fun `ohne Verbindung kommt die Liste aus der Ablage, samt Stand`() = runBlocking {
-        repo.getSets()
+    fun `ohne Verbindung bleibt die Liste in der Ablage, samt Stand`() = runBlocking {
+        repo.aktualisiereSets()
         s.offline = true
         repo.aendereMengeUm("10001-1", 1)
-        val r = repo.getSets()
-        assertTrue("Erwartet: Erfolg aus der Ablage, kam $r", r is Ergebnis.Success && r.veraltet)
-        assertEquals(2, (r as Ergebnis.Success).data.sets.single().quantity)
+        val r = repo.aktualisiereSets()
+        assertTrue("Erwartet: ein vorübergehender Fehler, kam $r", r is Ergebnis.Error && r.transient)
+        val l = repo.beobachteSets().first()
+        assertTrue("mit dem Stand der letzten Serverantwort", l.stand != null)
+        assertEquals(2, l.liste.single().quantity)
     }
 
     @Test
     fun `wartet etwas, geht Neues dahinter`() = runBlocking {
-        repo.getSets()
+        repo.aktualisiereSets()
         s.offline = true
         repo.aendereMengeUm("10001-1", 1)
         s.offline = false
@@ -171,7 +174,7 @@ class OfflineBearbeitungTest {
 
     @Test
     fun `online geht eine Änderung direkt und steht auch lokal`() = runBlocking {
-        repo.getSets()
+        repo.aktualisiereSets()
         val r = repo.aendereMengeUm("10001-1", 2)
         assertTrue(r is Ergebnis.Success && !r.gepuffert)
         assertEquals(1, s.anfragen.count { it.startsWith("PUT") })
@@ -198,7 +201,7 @@ class OfflineBearbeitungTest {
 
     @Test
     fun `ein direkter Versuch, dessen Antwort verloren geht, und seine Wiederholung tragen denselben Schlüssel`() = runBlocking {
-        repo.getSets()
+        repo.aktualisiereSets()
         s.antwortVerlieren = true
         val r = repo.aendereMengeUm("10001-1", 1)
         assertTrue("Erwartet: gepuffert nach verlorener Antwort, kam $r", r is Ergebnis.Success && r.gepuffert)
@@ -211,7 +214,7 @@ class OfflineBearbeitungTest {
 
     @Test
     fun `offline gelöschte Teile, Figuren und Merkposten verschwinden sofort und gehen später mit Schlüssel raus`() = runBlocking {
-        teile.getManualParts(); figuren.getManualMinifigs(); repo.getMerkliste()
+        teile.aktualisiereTeile(); figuren.aktualisiereFiguren(); repo.aktualisiereMerkliste()
         s.offline = true
         for (r in listOf(teile.deletePart("3001", 5, owner = 7), figuren.deleteMinifig("sw0001", owner = 7),
                          repo.loescheMerkposten("20001-1", Zustand.NEU, 7)))
@@ -220,8 +223,7 @@ class OfflineBearbeitungTest {
             ablage.lies(Faecher.MANUELLE_TEILE)!!.liste.map { it.partNumber })
         assertEquals(emptyList<String>(), ablage.lies(Faecher.MANUELLE_FIGUREN)!!.liste.map { it.figNumber })
         assertEquals(emptyList<String>(), ablage.lies(Faecher.MERKLISTE)!!.liste.map { it.setNumber })
-        val offline = teile.getManualParts()
-        assertTrue(offline is Ergebnis.Success && offline.data.parts.map { it.partNumber } == listOf("3002"))
+        assertEquals(listOf("3002"), teile.beobachteManuelleTeile().first().liste.map { it.partNumber })
 
         s.offline = false
         assertEquals(Abgleichsergebnis.FERTIG, abgleich.sende())
@@ -234,7 +236,7 @@ class OfflineBearbeitungTest {
 
     @Test
     fun `ein schon gelöschtes Teil gilt beim Senden als gelöscht und wird nicht als verworfen gemeldet`() = runBlocking {
-        teile.getManualParts()
+        teile.aktualisiereTeile()
         s.offline = true
         teile.deletePart("3001", 5)
         s.codes["DELETE /api/v1/parts/3001/5"] = 404 to """{"success":false,"error":"Teil nicht gefunden"}"""
@@ -251,7 +253,7 @@ class OfflineBearbeitungTest {
 
     @Test
     fun `eine Mengenänderung an Teil und Figur reist als Menge und Schritt`() = runBlocking {
-        teile.getManualParts(); figuren.getManualMinifigs()
+        teile.aktualisiereTeile(); figuren.aktualisiereFiguren()
         assertTrue(teile.updatePart("3001", 5, quantity = 7, unitPrice = null) is Ergebnis.Success)
         assertTrue(figuren.updateMinifig("sw0001", quantity = 1, unitPrice = null) is Ergebnis.Success)
         val teil = s.anfragen.single { it.startsWith("PUT /api/v1/parts/3001/5") }

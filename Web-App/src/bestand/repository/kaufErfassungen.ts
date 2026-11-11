@@ -1,7 +1,5 @@
 import type { DbSchnittstelle, Zeile } from '../../../db/database';
-import * as db from '../../../db/database';
-import { erfassungsTagSql, ERFASSUNGS_TABELLEN as SHAPES } from '../../../db/bestandsmenge';
-import type { ErfassungsArt } from '../../../db/bestandsmenge';
+import { erfassungsTagSql, ERFASSUNGS_TABELLEN as SHAPES, type ErfassungsArt } from '../../../db/bestandsmenge';
 
 /** Gleiche Käufe eines Tages sind eine Zeile (eindeutiger Index, Migration 0070). */
 
@@ -61,7 +59,7 @@ export async function setzePreisGeschaetzt(tx: DbSchnittstelle, art: ErfassungsA
 }
 
 /** Beträge in die Währung des Kontos, zum Kurs des Tages (in_waehrung, 0077); ohne Kurs null. */
-export async function inWaehrungDesKontos(uid: number, betraege: (number | null)[], waehrungen: (string | null)[], tage: (string | null)[]) {
+export async function inWaehrungDesKontos(db: DbSchnittstelle, uid: number, betraege: (number | null)[], waehrungen: (string | null)[], tage: (string | null)[]) {
   const zeilen = await db.all<{ i: string; k: number | null }>(
     `SELECT t.i, in_waehrung(t.b, COALESCE(t.c, konto_waehrung($1)), konto_waehrung($1), COALESCE(t.d, CURRENT_DATE))::float8 AS k
        FROM unnest($2::numeric[], $3::text[], $4::date[]) WITH ORDINALITY AS t(b, c, d, i)`,

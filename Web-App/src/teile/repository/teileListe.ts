@@ -1,4 +1,4 @@
-import * as db from '../../../db/database';
+import type { DbSchnittstelle } from '../../../db/database';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../../db/bestandsmenge';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import { teilSichtJoin, TEIL } from '../../../db/katalogSicht';
@@ -38,7 +38,7 @@ export interface TeilZeile {
 
 export interface Seite { groesse: number; versatz: number; mitSets: boolean; ordnung: TeileOrdnung }
 
-export function farbenDesBestands(uids: number[], ausZusammenfassung: boolean) {
+export function farbenDesBestands(db: DbSchnittstelle, uids: number[], ausZusammenfassung: boolean) {
   type Farbe = { color_name: string | null; color_hex: string | null; unique_parts: number; total_quantity: number };
   if (ausZusammenfassung) return db.all<Farbe>(`
       SELECT ps.color_name, COALESCE(ps.color_hex, rc.rgb) AS color_hex,
@@ -63,7 +63,7 @@ export function farbenDesBestands(uids: number[], ausZusammenfassung: boolean) {
     GROUP BY 1, 2 ORDER BY total_quantity DESC`, [uids]);
 }
 
-export async function seiteAusZusammenfassung(uids: number[], f: TeileFilter, s: Seite) {
+export async function seiteAusZusammenfassung(db: DbSchnittstelle, uids: number[], f: TeileFilter, s: Seite) {
   const cond: string[] = ['user_id = ANY($1)'];
   const params: unknown[] = [uids];
   // Der Filter schickt den Farbnamen, nicht die ID — wie im Live-Pfad.
@@ -143,7 +143,7 @@ function teileWo(uids: number[], f: TeileFilter) {
 }
 
 /** Mit Setfilter ohne Set-Menge, denn dort geht es um die Teile EINES Sets. */
-export async function seiteLive(uids: number[], f: TeileFilter, s: Seite) {
+export async function seiteLive(db: DbSchnittstelle, uids: number[], f: TeileFilter, s: Seite) {
   const { where, params, pi } = teileWo(uids, f);
   // ::int: Der JSON-Typ von total_quantity darf nicht vom Zweig abhängen.
   const qtyExpr = f.set_number
@@ -188,7 +188,7 @@ export async function seiteLive(uids: number[], f: TeileFilter, s: Seite) {
   return { total: anzahl?.c ?? 0, zeilen };
 }
 
-export function gebrauchteManuelle(uids: number[]) {
+export function gebrauchteManuelle(db: DbSchnittstelle, uids: number[]) {
   return db.all<{ pid: string; color_id: number; any_used: number }>(
     `SELECT ${blNummerSql('p.part_number')} AS pid, p.color_id,
             MAX(CASE WHEN pa.condition='U' THEN 1 ELSE 0 END) AS any_used
@@ -199,14 +199,14 @@ export function gebrauchteManuelle(uids: number[]) {
      GROUP BY ${blNummerSql('p.part_number')}, p.color_id`, [uids]);
 }
 
-export async function hatUngeseheneBlNummer(uids: number[]): Promise<boolean> {
+export async function hatUngeseheneBlNummer(db: DbSchnittstelle, uids: number[]): Promise<boolean> {
   return !!(await db.get(
     `SELECT 1 FROM parts p
      LEFT JOIN bl_zuordnung m ON m.art = 'part' AND m.rb_id = p.part_number
      WHERE p.user_id = ANY($1) AND m.rb_id IS NULL LIMIT 1`, [uids]));
 }
 
-export function inventarAlsTeile(inventarId: number, setNumber: string) {
+export function inventarAlsTeile(db: DbSchnittstelle, inventarId: number, setNumber: string) {
   return db.all<TeilZeile>(`
         SELECT ip.part_num AS part_number,
                COALESCE(m.bl_id, ip.part_num) AS bl_part_number,
@@ -224,7 +224,7 @@ export function inventarAlsTeile(inventarId: number, setNumber: string) {
         WHERE ip.inventory_id = $1`, [inventarId, setNumber]);
 }
 
-export function kategorien(uids: number[], ausZusammenfassung: boolean) {
+export function kategorien(db: DbSchnittstelle, uids: number[], ausZusammenfassung: boolean) {
   type Kategorie = { category_name: string | null; label: string | null; unique_parts: number; total_quantity: number };
   const kategorie = (spalte: string, nummer: string) => `
       LEFT JOIN rb_part_categories rc
@@ -258,7 +258,7 @@ export function kategorien(uids: number[], ausZusammenfassung: boolean) {
     ${gruppe}`, [uids]);
 }
 
-export async function kennzahlen(uids: number[], ausZusammenfassung: boolean) {
+export async function kennzahlen(db: DbSchnittstelle, uids: number[], ausZusammenfassung: boolean) {
   type Roh = { unique_parts: string | number | null; unique_colors: string | number | null; total_parts: string | number | null };
   // Sorten und Farben zählen Set-Teile UND einzeln erfasste Teile, denn die
   // Liste darunter zeigt beide. Die Gesamtzahl bleibt ohne einzelne Teile;
@@ -302,7 +302,7 @@ export interface ManuellesTeil {
   purchase_price: string; source: string; condition: string; storage: string | null; created_at: Date;
 }
 
-export function manuelleTeile(uids: number[], f: { search?: string | null; storage?: string | null },
+export function manuelleTeile(db: DbSchnittstelle, uids: number[], f: { search?: string | null; storage?: string | null },
                               seite: { groesse: number; versatz: number } | null) {
   const params: unknown[] = [uids];
   let filter = '';
@@ -355,7 +355,7 @@ export function manuelleTeile(uids: number[], f: { search?: string | null; stora
 type Bestand = { gesamt: number; lose: number };
 
 /** gesamt samt Set-Faktor, lose nur aus manuellen Erfassungen. */
-export function besitzteTeile(uids: number[], nummern: string[], farbIds: number[]) {
+export function besitzteTeile(db: DbSchnittstelle, uids: number[], nummern: string[], farbIds: number[]) {
   return db.all<Bestand & { part_number: string; color_id: number }>(
     `SELECT p.part_number,
             p.color_id,
@@ -374,7 +374,7 @@ export function besitzteTeile(uids: number[], nummern: string[], farbIds: number
       GROUP BY p.part_number, p.color_id`, [uids, nummern, farbIds]);
 }
 
-export function besitzteFiguren(uids: number[], nummern: string[]) {
+export function besitzteFiguren(db: DbSchnittstelle, uids: number[], nummern: string[]) {
   return db.all<Bestand & { part_number: string }>(
     `SELECT m.fig_number                                                AS part_number,
             COALESCE(SUM(CASE WHEN COALESCE(m.source,'set') = 'manual'

@@ -1,6 +1,5 @@
 /** Benutzerverwaltung für Verwalter: Jede Änderung verlangt Passwort und
  * zweiten Faktor des Verwalters und steht im Protokoll. */
-import { protokolliere } from '../../src/verwaltung/dienst';
 import * as K from '../../src/konto/konten';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { USERNAME_RE } from '../../src/konto/auth';
@@ -11,8 +10,8 @@ import { passwortMangel } from '../../src/infra/passwortRegel';
 import { requireApiAdmin } from '../api_v1/middleware';
 import { alsDoppelt } from '../../src/infra/fehlerTexte';
 import * as zf from '../../src/konto/zweiterFaktor';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Antwort, OffeneAnfrage } from '../../src/http/vertragsRouter';
+import { vertragsRouter, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
+import { kontoBereich } from '../../src/konto';
 
 const router = vertragsRouter();
 const requireAdmin = requireApiAdmin;
@@ -37,11 +36,11 @@ router.post('/users', requireAdmin, async (req: OffeneAnfrage<'POST /api/v1/auth
   const verwalter = angemeldeteNutzerId(req);
   if (!await bestaetigeMitFaktor(req, res, verwalter, req.eingabe.admin_password)) return;
   // Wie bei der Registrierung auch gegen die Adressen: Die Anmeldung sucht in beiden Spalten.
-  if (await K.nameVergeben(username, 0)) return sendeFehler(req, res, 409, 'benutzername_vergeben');
+  if (await kontoBereich().konten.nameVergeben(username, 0)) return sendeFehler(req, res, 409, 'benutzername_vergeben');
   const neu = await K.legeKontoAn(username, password, alsVerwalter).catch(alsDoppelt('benutzername_vergeben'));
   if (neu === null) return sendeFehler(req, res, 409, 'benutzername_vergeben');
-  await protokolliere(verwalter, neu, 'konto_angelegt');
-  if (alsVerwalter) await protokolliere(verwalter, neu, 'verwalter_ernannt');
+  await kontoBereich().protokoll.protokolliere(verwalter, neu, 'konto_angelegt');
+  if (alsVerwalter) await kontoBereich().protokoll.protokolliere(verwalter, neu, 'verwalter_ernannt');
   if (alsVerwalter) verwalterHinweisNebenher('verwalter_ernannt', { konto: String(username), durch: nutzerName(req) ?? '' });
   res.json({ success: true });
 });
@@ -52,14 +51,14 @@ router.put('/users/:id/admin', requireAdmin, async (req: OffeneAnfrage<'PUT /api
   const soll = req.eingabe.is_admin;
   if (targetId === nutzerId(req) && !soll)
     return sendeFehler(req, res, 400, 'eigene_adminrolle');
-  if (!await K.kontoExistiert(targetId)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+  if (!await kontoBereich().konten.kontoExistiert(targetId)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
   if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password)) return;
   const r = await K.setzeVerwalterRolle(targetId, soll);
   if (!r) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
   if (r === K.LETZTER_VERWALTER) return sendeFehler(req, res, 409, 'verwalter_muss_bleiben');
-  if (r.geaendert) await protokolliere(angemeldeteNutzerId(req), targetId, soll ? 'verwalter_ernannt' : 'verwalter_entzogen');
+  if (r.geaendert) await kontoBereich().protokoll.protokolliere(angemeldeteNutzerId(req), targetId, soll ? 'verwalter_ernannt' : 'verwalter_entzogen');
   if (r.geaendert && soll) verwalterHinweisNebenher('verwalter_ernannt',
-    { konto: (await K.kontoKurz(targetId))?.username ?? String(targetId), durch: nutzerName(req) ?? '' });
+    { konto: (await kontoBereich().konten.kontoKurz(targetId))?.username ?? String(targetId), durch: nutzerName(req) ?? '' });
 
   // Sitzungen enden, weil istVerwalter() zuerst das nie nachgeführte
   // `req.session.isAdmin` fragt; ein Entzug wirkte sonst im offenen Fenster nicht.
@@ -71,23 +70,23 @@ router.put('/users/:id/aktiv', requireAdmin, async (req: OffeneAnfrage<'PUT /api
   const soll = req.eingabe.is_active;
   if (!Number.isInteger(targetId)) return sendeFehler(req, res, 400, 'id_ungueltig');
   if (targetId === nutzerId(req)) return sendeFehler(req, res, 400, 'eigenes_konto_deaktivieren');
-  if (!await K.kontoExistiert(targetId)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+  if (!await kontoBereich().konten.kontoExistiert(targetId)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
   if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password)) return;
   const r = await K.setzeAktiv(targetId, soll);
   if (!r) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
   if (r === K.LETZTER_VERWALTER) return sendeFehler(req, res, 409, 'verwalter_muss_bleiben');
-  if (r.geaendert) await protokolliere(angemeldeteNutzerId(req), targetId, soll ? 'konto_reaktiviert' : 'konto_deaktiviert');
+  if (r.geaendert) await kontoBereich().protokoll.protokolliere(angemeldeteNutzerId(req), targetId, soll ? 'konto_reaktiviert' : 'konto_deaktiviert');
   res.json({ success: true, is_active: soll });
 });
 
 // Für Registrierungen, deren Bestätigungsmail nie ankam: Der Verwalter bürgt für die Adresse.
 router.put('/users/:id/freischalten', requireAdmin, async (req: OffeneAnfrage<'PUT /api/v1/auth/users/:id/freischalten'>, res: Antwort<'PUT /api/v1/auth/users/:id/freischalten'>) => {
   const targetId = req.pfad.id;
-  if (!Number.isInteger(targetId) || !await K.kontoExistiert(targetId)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+  if (!Number.isInteger(targetId) || !await kontoBereich().konten.kontoExistiert(targetId)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
   if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password)) return;
-  const r = await K.schalteRegistrierungFrei(targetId);
+  const r = await kontoBereich().konten.schalteRegistrierungFrei(targetId);
   if (r !== 'ok') return sendeFehler(req, res, 409, r === 'vergeben' ? 'email_vergeben' : 'konto_nicht_wartend');
-  await protokolliere(angemeldeteNutzerId(req), targetId, 'konto_freigeschaltet');
+  await kontoBereich().protokoll.protokolliere(angemeldeteNutzerId(req), targetId, 'konto_freigeschaltet');
   res.json({ success: true });
 });
 
@@ -97,18 +96,18 @@ router.put('/users/:id/password', requireAdmin, async (req: OffeneAnfrage<'PUT /
   const targetId = req.pfad.id;
   if (!targetId || targetId === nutzerId(req))
     return sendeFehler(req, res, 400, 'eigenes_konto_passwort');
-  const mangel = passwortMangel(password, (await K.kontoKurz(targetId))?.username);
+  const mangel = passwortMangel(password, (await kontoBereich().konten.kontoKurz(targetId))?.username);
   if (mangel) return sendeFehler(req, res, 400, mangel);
 
   // Mit dem Passwort eines anderen Kontos lässt sich dieses übernehmen —
   // eine offene Verwaltersitzung allein genügt dafür nicht.
   if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password)) return;
-  if (!await K.setzeFremdesPasswort(targetId, password)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
-  await protokolliere(angemeldeteNutzerId(req), targetId, 'passwort_gesetzt');
+  if (!await K.setzeFremdesPasswort(targetId, password ?? '')) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+  await kontoBereich().protokoll.protokolliere(angemeldeteNutzerId(req), targetId, 'passwort_gesetzt');
   // Wie beim entfernten Faktor: Eine Übernahme durch eine erbeutete Verwaltersitzung bliebe sonst unbemerkt.
   const durch = nutzerName(req) ?? '';
   hinweisNebenher(targetId, 'passwort_durch_verwalter', undefined, { durch });
-  verwalterHinweisNebenher('verwaltung_passwort_gesetzt', { konto: (await K.kontoKurz(targetId))?.username ?? String(targetId), durch });
+  verwalterHinweisNebenher('verwaltung_passwort_gesetzt', { konto: (await kontoBereich().konten.kontoKurz(targetId))?.username ?? String(targetId), durch });
 
   res.json({ success: true });
 });
@@ -128,10 +127,10 @@ router.delete('/users/:id/zweiter-faktor', requireAdmin, async (req: OffeneAnfra
   if (id === nutzerId(req)) return sendeFehler(req, res, 400, 'eigener_zweiter_faktor');
   if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password)) return;
   await zf.schalteAb(id);
-  await protokolliere(angemeldeteNutzerId(req), id, 'zweiter_faktor_entfernt');
+  await kontoBereich().protokoll.protokolliere(angemeldeteNutzerId(req), id, 'zweiter_faktor_entfernt');
   const durch = nutzerName(req) ?? '';
   hinweisNebenher(id, 'zweiter_faktor_entfernt', undefined, { durch });
-  verwalterHinweisNebenher('verwaltung_faktor_entfernt', { konto: (await K.kontoKurz(id))?.username ?? String(id), durch });
+  verwalterHinweisNebenher('verwaltung_faktor_entfernt', { konto: (await kontoBereich().konten.kontoKurz(id))?.username ?? String(id), durch });
   res.json({ success: true });
 });
 

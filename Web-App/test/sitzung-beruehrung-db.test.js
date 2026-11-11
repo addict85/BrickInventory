@@ -98,13 +98,13 @@ test('Sitzung: gelesen wird immer, geschrieben nur alle paar Minuten', async (t)
     assert.equal(wieOft(SCHREIBEN), N,
       `Gegenprobe: ohne Frist müssten es ${N} Schreibvorgänge sein, gezählt ${wieOft(SCHREIBEN)}`);
 
-    // ── 4. Und server.ts benutzt die Drosselung überhaupt ──────────────────
+    // ── 4. Und startup/app.ts benutzt die Drosselung überhaupt ──────────────────
     // Ein Helfer, den niemand aufruft, ist die teuerste Art, nichts zu tun —
     // und die Zusicherungen oben blieben dabei grün, weil sie ihren Speicher
     // selbst bauen.
-    const quelle = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
+    const quelle = ohneKommentare(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
     assert.match(quelle, /drossleBeruehren\(sitzungsSpeicher\)/,
-      'server.ts drosselt seinen Sitzungsspeicher nicht — dann zahlt die Webapp weiter zwei Abfragen je Anfrage');
+      'startup/app.ts drosselt seinen Sitzungsspeicher nicht — dann zahlt die Webapp weiter zwei Abfragen je Anfrage');
   } finally {
     db.pool.query = altQuery;
     for (const s of server) await new Promise(r => s.close(r));

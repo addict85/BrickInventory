@@ -1,4 +1,4 @@
-import { beiHaushaltsaenderung, scopeIds } from '../../haushalt/haushalt';
+import { haushaltBereich, beiHaushaltsaenderung } from '../../haushalt';
 import { katalog } from '../prozess';
 
 /** Anleitungen liegen unter der Setnummer: Ihr Vorhandensein verrät, was jemand
@@ -14,7 +14,7 @@ beiHaushaltsaenderung(() => _cache.clear());
 const TREFFER_MS = 60_000, ABSAGE_MS = 2_000, KONTEN_HOECHSTENS = 1000;
 
 async function lade(uid: number): Promise<Stand> {
-  const zeilen = await katalog().bildBlickfeld.setsImBlickfeld(await scopeIds(uid));
+  const zeilen = await katalog().bildBlickfeld.setsImBlickfeld(await haushaltBereich().haushalt.scopeIds(uid));
   const s: Stand = { nummern: new Set(), anleitungen: new Set(), am: Date.now() };
   for (const z of zeilen) {
     s.nummern.add(dateiStamm(z.set_number));

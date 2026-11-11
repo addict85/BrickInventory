@@ -3,11 +3,12 @@ import path from 'path';
 import { getSetInfo } from './quellen';
 import { downloadSetImage } from './bilder/setImages';
 import { generateThumb } from './bilder/thumbs';
-import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';
+import { anleitungEinreihen } from '../auftraege';
 import { APP_ROOT, IMAGES_DIR } from '../infra/appPaths';
-import { fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
+import { fehlertext, logAndContinue } from '../infra/fehler';
 import { KEINE_FARBE } from '../infra/validate';
 import { katalog } from './prozess';
+import { versuche } from '../infra/ergebnis';
 
 export async function bilderFuerNachlauf() {
   const [sets, teile, figuren] = await Promise.all([
@@ -74,7 +75,9 @@ export async function setBilderNachladen(): Promise<void> {
     if (!missing.length) return;
     console.log(`[set-img-bg] Downloading ${missing.length} missing set images…`);
     for (const { set_number, image_url } of missing) {
-      const local = await downloadSetImage(image_url, set_number).catch(meldeUndLiefere('nachlauf:downloadSetImage', null));
+      // Ein Fehler lässt das Set ohne Datei; der nächste Nachlauf versucht es wieder.
+      const r = await versuche('nachlauf:downloadSetImage', downloadSetImage(image_url, set_number));
+      const local = r.ok ? r.wert : null;
       if (local) {
         await katalog().bildlage.merkeSetBildLokal(set_number, local).catch(logAndContinue(`bilder:set ${set_number}`));
         generateThumb(local).catch(logAndContinue('nachlauf:generateThumb'));

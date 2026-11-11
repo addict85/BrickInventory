@@ -1,8 +1,7 @@
 /** Als Auftrag, damit ein Fehlschlag wiederholt wird und sichtbar bleibt. */
-import { stelleAuftragEin } from '../auftraege/dienst';
-import { EZB_HISTORIE, EZB_TAGESKURSE, ezbAbruf, ersteZipDatei, historieLesen, tageskurseLesen, type Abruf, type Kurs } from '../katalog/quellen';
-import * as repo from './repository/wechselkurse';
-import type { AuftragsLauf } from '../auftraege/auftraege';
+import { stelleAuftragEin, type AuftragsLauf } from '../auftraege';
+import { EZB_HISTORIE, EZB_TAGESKURSE, ezbAbruf, ersteZipDatei, historieLesen, tageskurseLesen, type Abruf, type Kurs } from '../katalog';
+import { finanzenBereich } from './prozess';
 
 const BLOCK = 5000;
 
@@ -11,14 +10,14 @@ export async function speichereKurse(kurse: Kurs[]): Promise<number> {
   let n = 0;
   for (let i = 0; i < kurse.length; i += BLOCK) {
     const teil = kurse.slice(i, i + BLOCK);
-    const r = await repo.schreibeKurse(teil.map(k => k.tag), teil.map(k => k.waehrung), teil.map(k => String(k.je_eur)));
+    const r = await finanzenBereich().wechselkurse.schreibeKurse(teil.map(k => k.tag), teil.map(k => k.waehrung), teil.map(k => String(k.je_eur)));
     n += r?.changes ?? 0;
   }
   return n;
 }
 
 export async function kurseNachladen(abruf: Abruf = ezbAbruf, signal?: AbortSignal): Promise<{ quelle: 'historie' | 'tag'; kurse: number }> {
-  const leer = !(await repo.gibtEsKurse());
+  const leer = !(await finanzenBereich().wechselkurse.gibtEsKurse());
   const kurse = leer
     ? historieLesen(ersteZipDatei(await abruf(EZB_HISTORIE, signal)).toString('utf8'))
     : tageskurseLesen((await abruf(EZB_TAGESKURSE, signal)).toString('utf8'));

@@ -1,0 +1,36 @@
+Gegenprobe: Eine Route liegt wieder in einem Kernmodul, und ein Bereich öffnet sie direkt
+Modul: app
+Test: ch.brickinventoryapp.app.ModulgrenzenTest
+Rot: keiner nennt fremde Routentypen
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Zentralziel.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Zentralziel.kt
+new file mode 100644
+--- /dev/null
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Zentralziel.kt
+@@ -0,0 +1,6 @@
++package ch.brickinventoryapp.model.ui
++
++import kotlinx.serialization.Serializable
++
++@Serializable
++data object Zentralziel
+diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/VerwaltungGraph.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/VerwaltungGraph.kt
+--- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/VerwaltungGraph.kt
++++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/VerwaltungGraph.kt
+@@ -12,6 +12,7 @@ import ch.brickinventoryapp.ui.components.Schrittsperre
+ import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
+ import ch.brickinventoryapp.verwaltung.ui.screens.MonitoringRoute
+ import ch.brickinventoryapp.zustand.ui.Bereichsumgebung
++import ch.brickinventoryapp.model.ui.Zentralziel
+ 
+ /** Die Verwaltung braucht nur, was jeder Bereich bekommt. */
+ interface VerwaltungNavigation : Bereichsumgebung
+@@ -22,6 +23,6 @@ fun NavGraphBuilder.verwaltungGraph(navigation: VerwaltungNavigation) {
+         // Fällt das Verwalterrecht weg, verlässt die Seite sich selbst, statt weiter 403 zu sammeln.
+         val vm = navigation.app
+         val stand by vm.state.collectAsStateWithLifecycle()
+-        LaunchedEffect(stand.isAdmin) { if (!stand.isAdmin) navigation.navController.popBackStack() }
++        LaunchedEffect(stand.isAdmin) { if (!stand.isAdmin) navigation.navController.navigate(Zentralziel) }
+         navigation.Reiter(stringResource(R.string.nav_monitoring)) {
+             // Verwalteraktionen nur nach der Gerätesperre; kein Tipp durch eine Überlagerung.
+             Ueberdeckungsschutz()

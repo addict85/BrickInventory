@@ -38,7 +38,7 @@ process.env.APP_ROOT = SANDKASTEN;
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const gr = _req('src/gutscheine/repository/gutscheine.js');
+const gr = { ..._req('src/gutscheine/repository/gutscheine.js'), ..._req('src/gutscheine/prozess.js').gutscheineBereich().gutscheine };
 /** Das Format vor dem Kontext: v1, AES-GCM mit dem Rohschlüssel, ohne AAD. */
 function alsV1(klar) {
   const iv = crypto.randomBytes(12), c = crypto.createCipheriv('aes-256-gcm', Buffer.from(process.env.DATA_KEY, 'base64'), iv);
@@ -192,7 +192,7 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async (t) => {
     for (const [uid, nr, pin] of alt) ids.push((await db.get(`INSERT INTO vouchers (user_id, number, pin, amount, currency)
       VALUES ($1, $2, $3, 10, 'CHF') RETURNING id`, [uid, nr, pin])).id);
 
-    await _req('startup/datenbank.js').bereiteDatenbankVor();
+    await _req('startup/datenbank.js').bereiteDatenbankVor(_req('db/database.js').standardDb());
 
     assert.ok(await db.get(`SELECT 1 FROM schema_migrations WHERE name = '0087-gutscheinnummer-verschluesselt.sql'`));
     const zeilen = await db.all('SELECT id, user_id, number, nummer_suche FROM vouchers WHERE id = ANY($1) ORDER BY id', [ids]);
@@ -220,7 +220,7 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async (t) => {
     assert.deepEqual(gesichert.map(z => g.entschluessele(z.number, gr.nummerKontext(z.user_id, z.id))), [NR1, NR1, NR3],
       'mit dem Schlüssel bleibt die Kopie lesbar');
 
-    const gs = _req('src/gutscheine/dienst.js');
+    const gs = _req('src/gutscheine/prozess.js').gutscheineBereich().gutscheine;
     assert.equal(await gs.nummernNachverschluesseln() + await gs.kopienVerschluesseln(), 0, 'ein zweiter Start ändert nichts');
   });
 });

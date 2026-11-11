@@ -7,6 +7,11 @@
  *   A  in cspMeldungFrei() immer true → rot: „eine Adresse meldet höchstens zehn je Minute“
  *   B  kurz() ohne das Abschneiden von ?/# → rot: „report-uri: Regel, Ziel und Seite …“
  *   C  verstoesse() ohne den Zweig für report-to → rot: „report-to …“
+ *   D  die frühere gemeinsame Quote (`&& ++insgesamt <= 60`) zurück → rot:
+ *      „viele Absender …“ (60 statt 70 Zeilen)
+ *   E  in cspMeldungFrei() die Sammelzeile gestrichen → rot: „was gedrosselt …“
+ *   F  adresse() durch das frühere ohneAnfrageteil() ersetzt (Freitext bis
+ *      160 Zeichen) → rot: „nur Direktiven und Adressen …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -93,5 +98,47 @@ test('CSP-Berichte', async t => {
     assert.equal((await melde('x'.repeat(9000), 'application/csp-report')).status, 413);
     assert.equal((await melde('{kaputt', 'application/csp-report')).status, 204);
     assert.deepEqual(log, []);
+  });
+
+  await t.test('viele Absender verdrängen einander nicht', async () => {
+    const bericht = { 'csp-report': { 'effective-directive': 'img-src' } };
+    const zeilen = [];
+    for (let i = 0; i < 70; i++) {
+      await melde(bericht, 'application/csp-report', `10.7.${Math.floor(i / 200)}.${i % 200}`);
+      zeilen.push(...log);
+    }
+    assert.equal(zeilen.length, 70);
+  });
+
+  await t.test('was gedrosselt wurde, steht als eine Sammelzeile im Protokoll', () => {
+    const { cspMeldungFrei } = _req('src/http/cspBericht.js');
+    const morgen = Date.now() + 86_400_000;
+    // Ein neues Fenster, frei von den Meldungen der Teiltests davor.
+    cspMeldungFrei('10.1.1.2', morgen);
+    log.length = 0;
+    const frei = Array.from({ length: 12 }, () => cspMeldungFrei('2001:db8:1:2::7', morgen));
+    // Dasselbe /64 zählt als ein Absender.
+    frei.push(cspMeldungFrei('2001:db8:1:2::8', morgen));
+    assert.equal(frei.filter(Boolean).length, 10);
+    assert.equal(cspMeldungFrei('10.1.1.1', morgen + 60_000), true);
+    assert.deepEqual(log, ['[csp] 3 gedrosselt']);
+  });
+
+  await t.test('nur Direktiven und Adressen kommen ins Protokoll, kein Freitext', async () => {
+    await melde(
+      {
+        'csp-report': {
+          'violated-directive': "script-src 'self'",
+          'blocked-uri': 'javascript:alert(1)',
+          'document-uri': 'nicht eine Adresse [csp] gefälscht',
+          'script-sample': 'nur bei Trusted Types',
+        },
+      },
+      'application/csp-report',
+    );
+    assert.deepEqual(log, ['[csp] script-src blockierte ? auf ?']);
+    await melde({ 'csp-report': { 'effective-directive': 'Freitext mit Leerzeichen!' } }, 'application/csp-report');
+    await melde({ 'csp-report': { 'effective-directive': 'X'.repeat(30) } }, 'application/csp-report');
+    assert.deepEqual(log, [], 'keine Direktive, keine Zeile');
   });
 });

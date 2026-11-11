@@ -2,7 +2,7 @@
  * Der Rückfall auf die Startseite bleibt als letzte Route in server.ts. */
 import express from 'express';
 import { fehlerAntwort } from '../src/http/httpAntwort';
-import { sendeStartseite } from '../src/konto/indexHtml';
+import { sendeStartseite } from '../src/konto/http/startseite';
 import { liefereBild } from '../src/katalog/http/bildAuslieferung';
 import { requireLoginOrToken } from '../src/konto/http/anmeldung';
 import { eingangsSperre } from './api_v1/middleware';

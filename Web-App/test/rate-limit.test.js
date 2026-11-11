@@ -37,7 +37,7 @@ test('das Tageskontingent zählt für die Installation, nicht je Worker', () => 
     'Keine prozesslokale Instanz mehr für ein Tagesbudget');
 
   // Alle Aufrufstellen gehen über den gemeinsamen Weg.
-  for (const datei of ['clients/rebrickable.ts', 'src/katalog/partsImport.ts', 'src/sets/dienst.ts',
+  for (const datei of ['clients/rebrickable.ts', 'src/katalog/partsImport.ts', 'src/sets/barcode.ts',
                        'src/katalog/teileAnreicherung.ts',
                        'src/katalog/csvAbgleich.ts']) {
     const src = fs.readFileSync(path.join(ROOT, datei), 'utf8');
@@ -165,7 +165,7 @@ test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () 
   assert.match(job, /pg_try_advisory_lock/,
     'Ohne prozessübergreifende Sperre schützt state.running nur den eigenen Worker');
   // Eigene Verbindung, nicht transaktionsgebunden: Der Lauf dauert Minuten.
-  assert.match(job, /db\.pool\.connect\(\)/,
+  assert.match(job, /(?:db|zugang)\.pool\.connect\(\)/,
     'Die Sperre muss über die ganze Laufzeit gehalten werden — eigene Verbindung');
   assert.doesNotMatch(job, /pg_try_advisory_xact_lock/,
     'Eine Transaktion minutenlang offen zu halten wäre der falsche Weg');

@@ -1,0 +1,16 @@
+Gegenprobe: Nach dem Anlegen holt die Ablage Name und Bild nicht nach
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.sammlung.ErfassungViewModelTest
+Rot: das Anlegen zeigt die Schritte des Servers
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/ErfassungViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/ErfassungViewModel.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/ErfassungViewModel.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/ErfassungViewModel.kt
+@@ -311,7 +311,6 @@
+     private fun ergaenzeAblage(antwort: AddSetResponse) {
+         viewModelScope.launch {
+             if (antwort.ergaenzung == "ausstehend") delay(ERGAENZUNG_NACH_MS)
+-            sets.aktualisiereSets()
+         }
+     }
+ 

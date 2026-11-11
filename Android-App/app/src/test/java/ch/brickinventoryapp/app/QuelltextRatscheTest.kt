@@ -78,7 +78,7 @@ class QuelltextRatscheTest {
 
     @Test
     fun `Testfunktionen, die Quelltext lesen, werden weniger, nie mehr`() {
-        val FUNKTIONEN = 222
+        val FUNKTIONEN = 221
         val NUR_QUELLTEXT = 37
         val alle = Quellen.tests.walkTopDown().filter { it.isFile && it.name.endsWith("Test.kt") }
             .filter { it.name != "QuelltextRatscheTest.kt" }.toList()
@@ -217,8 +217,8 @@ class QuelltextRatscheTest {
 
     @Test
     fun `lange Kommentare im Workflow und in Tests werden weniger`() {
-        val WORKFLOW = 3
-        val TESTS = 52
+        val WORKFLOW = 1
+        val TESTS = 51
         val DATUM_UND_KENNUNG = 0
         val GESCHICHTE = 0
         val wf = File(Quellen.projekt, "../.github/workflows/android.yml").readLines()
@@ -346,7 +346,8 @@ class QuelltextRatscheTest {
     private fun inKoroutine(c: String, ab: Int): Boolean {
         val davor = c.substring(maxOf(0, ab - 300), ab)
         val anweisung = davor.substring(maxOf(davor.lastIndexOf('{'), davor.lastIndexOf('}')) + 1)
-        if (Regex("""\bsuspend\s+fun\b[^=]*=\s*$""").containsMatchIn(anweisung)) return true
+        // Auch `= gueltig(runCatching {`: Der Ausdruck einer suspend fun läuft ganz in ihr.
+        if (Regex("""\bsuspend\s+fun\b[^=]*=[^{};]*$""").containsMatchIn(anweisung)) return true
         var tiefe = 0
         for (j in ab - 1 downTo 0) {
             when (c[j]) {
@@ -426,8 +427,8 @@ class QuelltextRatscheTest {
     fun `Echtzeit-Warten in Tests wird weniger, nie mehr`() {
         // Ein Test, der schläft, ist langsam und auf einem vollen Runner brüchig. ViewModel-Tests
         // laufen im Takt (PfadServer.imTakt, Test-Dispatcher); gezählt wird, was noch wartet.
-        val SCHLAFEN = 4
-        val WARTEN = 17
+        val SCHLAFEN = 2
+        val WARTEN = 13
         val dateien = (Quellen.tests.walkTopDown() + File(Quellen.projekt, "core-testing/src/main").walkTopDown())
             .filter { it.isFile && it.extension == "kt" }.toList()
         val texte = dateien.map { code(it.readText()) }
@@ -470,7 +471,7 @@ class QuelltextRatscheTest {
     fun `die oeffentliche Flaeche der Bereiche waechst nicht`() {
         // Ein Bereich zeigt der App Routen und Ziele; was nur er selbst braucht, ist internal.
         // Noch öffentlich ist vieles, weil Graphen und Oberflächentests in app liegen.
-        val GRENZE = 155
+        val GRENZE = 149
         val module = Quellen.module.filter { it.name.startsWith("feature-") }
         assert(module.size >= 7) { "Nur ${module.size} Bereiche — greift die Suche noch?" }
         ratsche("öffentliche Deklarationen der Bereiche", GRENZE, oeffentlich(module, 100),
@@ -507,7 +508,7 @@ class QuelltextRatscheTest {
     @Test
     fun `voll qualifizierte Namen fremder Pakete werden weniger`() {
         // Ausgeschrieben nur bei echter Namensgleichheit, und dann besser mit `import … as`.
-        val HAUPT = 224
+        val HAUPT = 221
         val TESTS = 0
         val voll = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
         fun zaehle(dateien: Sequence<File>) = dateien.sumOf { f ->

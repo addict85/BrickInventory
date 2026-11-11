@@ -10,7 +10,7 @@
  *      „jede Route antwortet“ (/api/v1/sets: 500 vertrag_verletzt, Text statt
  *      Zahl) und „so viele Routen geprüft“
  *   B  MIN_GEPRUEFT auf 59 gesetzt → rot: „so viele Routen geprüft“
- *   C  in src/sets/dienst.ts `...eineSeite(…)` aus der Teileliste entfernt →
+ *   C  in src/sets/inhalt.ts `...eineSeite(…)` aus der Teileliste entfernt →
  *      rot: „jede Route antwortet“ (parts-list: 500 vertrag_verletzt)
  *   D  in src/infra/seite.ts slice() durch die ganze Liste ersetzt → rot:
  *      „lange Listen blättern“ (05.11.2026)
@@ -142,7 +142,7 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
   await _req('src/konto/auth.js').createToken(uid, 'Vertragsprobe');
   // Hintergrundarbeiten: ein Auftrag mit Fortschritt und eine Pause, damit
   // /admin/auftraege keine leeren Listen liefert.
-  const auftrag = await _req('src/auftraege/dienst.js').stelleAuftragEin('anleitung', { set_number: SET },
+  const auftrag = await { ..._req('src/auftraege/dienst.js'), ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege }.stelleAuftragEin('anleitung', { set_number: SET },
     { schluessel: `vertrag-get:${process.pid}` });
   await db.run(`UPDATE auftraege SET fortschritt = '{"erledigt":1,"gesamt":3,"text":"Seiten"}'::jsonb WHERE id = $1`, [auftrag]);
   await db.run(`INSERT INTO auftrag_pausen (art, bis, grund) VALUES ('wechselkurse', NOW() + INTERVAL '1 hour', 'Vertrag')
@@ -156,7 +156,7 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
   await db.run(`INSERT INTO wanted (user_id, set_number) VALUES ($1, $2)`, [uid, SET]);
   const ort = (await db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Regal A') RETURNING id`, [uid])).id;
   await db.run('UPDATE sets SET storage_id = $2 WHERE user_id = $1 AND set_number = $3', [uid, ort, SET]);
-  await _req('src/gutscheine/dienst.js').gutscheinAnlegen(uid, { number: '50451230', pin: null, amount: 25, currency: 'CHF' });
+  await _req('src/gutscheine/prozess.js').gutscheineBereich().gutscheine.gutscheinAnlegen(uid, { number: '50451230', pin: null, amount: 25, currency: 'CHF' });
   await db.run(`INSERT INTO price_alerts (user_id, set_number, condition, richtung, schwelle, currency_code, ausgeloest, zuletzt_am, zuletzt_preis)
                 VALUES ($1, $2, 'N', 'unter', 55, 'EUR', true, NOW(), 50)`, [uid, SET]);
 

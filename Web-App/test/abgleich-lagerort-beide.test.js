@@ -127,7 +127,7 @@ test('Webapp: der Filter steht neben dem Kontofilter und geht an den Server', as
 });
 
 test('die Längengrenze steht in Server, Fehlertext, Webapp und App gleich', async () => {
-  const { LAGERORT_MAX_ZEICHEN: max, normalisiereLagerort } = _req('src/bestand/lagerort.js');
+  const { LAGERORT_MAX_ZEICHEN: max, normalisiereLagerort } = { ..._req('src/bestand/lagerort.js'), ..._req('src/bestand/prozess.js').bestandBereich().lagerortDienst };
   assert.ok(max > 0);
   assert.equal(normalisiereLagerort('x'.repeat(max)), 'x'.repeat(max));
   assert.throws(() => normalisiereLagerort('x'.repeat(max + 1)), e => e instanceof Error && e.message.includes(`höchstens ${max} Zeichen`));
@@ -174,10 +174,12 @@ test('App: Filter neben dem Kontofilter, beim Anmelden zurückgesetzt, nicht im 
   const i = KT_SCOPE.indexOf('suspend fun resetAll');
   assert.ok(i > 0, 'resetAll nicht gefunden');
   assert.match(KT_SCOPE.slice(i, KT_SCOPE.indexOf('\n    /**', i)), /remove\(lagerKey\(view\)\)/, 'Die App setzt den Lagerortfilter beim Anmelden nicht zurück');
-  for (const [datei, s] of [
-    ['SetsRepositoryImpl.kt', lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'repository', 'SetsRepositoryImpl.kt'))],
-    ['TeileRepositoryImpl.kt', lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'repository', 'TeileRepositoryImpl.kt'))],
-  ]) assert.match(s, /storage\.isNullOrBlank\(\)/, `${datei}: der Lagerort fehlt in der Bedingung für „ungefiltert"`);
+  // Sets filtert die Ablage selbst; Teile mit Lagerort gehen über die Serversicht (Kontosicht).
+  const KT_SETS_REPO = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'repository', 'SetsRepositoryImpl.kt'));
+  const KT_TEILE_VM = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'teile', 'ui', 'viewmodel', 'TeileViewModel.kt'));
+  assert.match(KT_SETS_REPO, /Filterspalten\([^)]*lagerort = lagerort/, 'SetsRepositoryImpl.kt: der Lagerort fehlt im Filter der Ablage');
+  assert.match(KT_TEILE_VM, /teileKonto == null && teileLager == null/, 'TeileViewModel.kt: ein Lagerort führt nicht zur Serversicht');
+  assert.match(KT_TEILE_VM, /TeileAbfrage\([^;]*?teileLager\)/s, 'TeileViewModel.kt: der Lagerort fehlt in der Abfrage der Serversicht');
   assert.match(KT_CHIPS, /LagerortFilterChip\(orte = lagerorte/, 'Der App fehlt der Lagerortfilter in der Filterzeile');
   assert.match(KT_HAUS, /fun setLagerFilter\(/, 'Der App fehlt das Umschalten');
 });

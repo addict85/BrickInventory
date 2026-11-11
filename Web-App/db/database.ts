@@ -3,7 +3,8 @@
 import { Pool, types as pgTypes, Client } from 'pg';
 import type { PoolClient, PoolConfig } from 'pg';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { runMigrations } from './migrate';
+import { runMigrations, offeneMigrationen } from './migrate';
+import { Benachrichtigung } from './pgNotify';
 import type { DbSchnittstelle } from './typen';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -106,14 +107,20 @@ export type Erststart = () => Promise<void>;
 
 export interface Db extends DbSchnittstelle {
   readonly pool: Pool;
+  /** LISTEN/NOTIFY dieses Zugangs (db/pgNotify.ts); horcht erst beim ersten listen(). */
+  readonly benachrichtigung: Benachrichtigung;
   transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>, o?: TxOptionen): Promise<T>;
   inTransaktion(): boolean;
   getPoolStats(): { total: number; idle: number; waiting: number; active: number };
   datenbankAntwortet(): Promise<boolean>;
   alsSuperuserVerbunden(): Promise<boolean>;
   eigeneVerbindung(): Promise<Client>;
+  /** Siehe mitCommitBegleiter unten: gilt für die Transaktionen dieses Aufrufpfads. */
+  mitCommitBegleiter<T>(begleiter: (tx: DbSchnittstelle) => Promise<void>, arbeit: () => T): T;
   initSchema(): Promise<boolean>;
   initSchemaOnce(): Promise<void>;
+  /** Ob die Verbindung Schema-Objekte anlegen darf: Eigentümerin oder Superuser, nicht die Laufzeitrolle. */
+  darfSchemaAendern(): Promise<boolean>;
 }
 
 /** Die laufende Transaktion dieses Aufrufpfads: all/get/run/exec gehen dann
@@ -279,6 +286,8 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
 
   // Erststart und Migrationen unter einem Advisory-Lock (LOCKS.SCHEMA_INIT):
   // Starten web und jobs zugleich, migriert genau einer; der andere wartet.
+  // Die Laufzeitrolle (compose.yaml) darf kein Schema ändern: Sie prüft nur,
+  // ob der Dienst migration fertig ist, statt an CREATE zu scheitern.
   async function initSchemaOnce() {
     const client = await pool.connect();
     try {
@@ -288,6 +297,7 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
       await client.query('SET statement_timeout = 0');
       await client.query(`SELECT pg_advisory_lock(${LOCKS.SCHEMA_INIT})`);
       await client.query('RESET statement_timeout');
+      if (!(await darfSchemaAendernAuf(client))) return await nurStandPruefen(client);
       const neu = await initSchema();
       if (!neu) await pruefeMindeststand(client);
       // Vor offenen Migrationen eine Kopie der Nutzerdaten — nicht bei einer
@@ -305,7 +315,9 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
   }
 
   return {
-    pool, all, get, run, exec, transaction, initSchema, initSchemaOnce, eigeneVerbindung,
+    pool, all, get, run, exec, transaction, initSchema, initSchemaOnce, eigeneVerbindung, mitCommitBegleiter,
+    benachrichtigung: new Benachrichtigung(k.verbindung, (sql, p) => run(sql, p)),
+    darfSchemaAendern: async () => (await get<{ d: boolean }>(DARF_SCHEMA_AENDERN))?.d === true,
     inTransaktion: () => txClient() !== null,
     getPoolStats: () => ({ total: pool.totalCount, idle: pool.idleCount, waiting: pool.waitingCount,
       active: pool.totalCount - pool.idleCount }),
@@ -323,6 +335,23 @@ async function schreibeErfassungsZeitzone(client: import('pg').ClientBase): Prom
      WHERE global_settings.value IS DISTINCT FROM EXCLUDED.value`, [konfig().erfassungZeitzone]);
 }
 
+const DARF_SCHEMA_AENDERN = `SELECT has_schema_privilege('public', 'CREATE') AS d`;
+async function darfSchemaAendernAuf(client: import('pg').ClientBase): Promise<boolean> {
+  return (await client.query<{ d: boolean }>(DARF_SCHEMA_AENDERN)).rows[0]?.d === true;
+}
+
+/** Für die Laufzeitrolle: Ein leeres oder nicht migriertes Schema hält den Start
+ * an, statt dass Anfragen auf fehlende Spalten treffen. */
+async function nurStandPruefen(client: import('pg').ClientBase): Promise<void> {
+  const leer = !(await client.query("SELECT to_regclass('public.users') AS t")).rows[0].t;
+  const offen = leer ? [] : await offeneMigrationen(client);
+  if (leer || offen.length) throw new Error(
+    `${leer ? 'Die Datenbank ist leer' : `Migrationen offen: ${offen.join(', ')}`}. Diese Rolle darf das Schema nicht ändern; `
+    + 'Grundschema und Migrationen spielt der Dienst migration als Migrationsrolle ein (UPGRADE.md, Abschnitt 51).');
+  await schreibeErfassungsZeitzone(client);
+  console.log('✅ Schema aktuell (eingespielt vom Dienst migration)');
+}
+
 /** Eine bestehende Datenbank ohne Migration ab MINDESTSTAND hält den Start an,
  * bevor eine Migration sie anfasst: Die jüngeren setzen Tabellen voraus, die
  * dort fehlen, und schrieben sonst ein halbes Schema. */
@@ -334,48 +363,3 @@ async function pruefeMindeststand(client: import('pg').ClientBase): Promise<void
     `Die Datenbank ist älter als Migration ${MINDESTSTAND}. Zuerst auf eine Fassung vor dem `
     + 'Entfernen der früheren Startstufen aktualisieren, dann auf diese (UPGRADE.md, Abschnitt 45).');
 }
-
-// ── Kompatibilitätsweg: der Zugang des Prozesses ────────────────────────────
-// Die meisten Module importieren noch die Funktionen unten statt einen Zugang
-// übergeben zu bekommen; test/ratschen.test.js zählt sie. Der Pool entsteht beim
-// ersten Gebrauch (auch aus einer gesetzten Bauanleitung), nie beim Import.
-let _standard: Db | (() => Db) | null = null;
-
-export function setzeStandardDb(d: Db | (() => Db)): void {
-  if (_standard && _standard !== d) throw new Error('Der Datenbankzugang des Prozesses ist schon gesetzt');
-  _standard = d;
-}
-
-export function standardDb(): Db {
-  if (typeof _standard === 'function') _standard = _standard();
-  if (!_standard) _standard = erzeugeDb(dbKonfigAusUmgebung());
-  return _standard;
-}
-
-/** Der Pool des Prozesses; erst beim ersten Zugriff angelegt. */
-const pool: Pool = new Proxy({} as Pool, {
-  get(_ziel, k) {
-    const p = standardDb().pool;
-    const v: unknown = Reflect.get(p, k, p);
-    return typeof v === 'function' ? (v as (...a: unknown[]) => unknown).bind(p) : v;
-  },
-  // Wer eine Methode ersetzt (Messung, Probe), meint den echten Pool.
-  set: (_ziel, k, v) => Reflect.set(standardDb().pool, k, v),
-});
-
-const all = <T>(sql: string, params?: unknown[]): Promise<T[]> => standardDb().all<T>(sql, params);
-const get = <T>(sql: string, params?: unknown[]): Promise<T | undefined> => standardDb().get<T>(sql, params);
-const run = (sql: string, params?: unknown[]) => standardDb().run(sql, params);
-const exec = (sql: string) => standardDb().exec(sql);
-const transaction = <T>(fn: (tx: DbSchnittstelle) => Promise<T>, o?: TxOptionen) => standardDb().transaction(fn, o);
-const initSchema = () => standardDb().initSchema();
-const initSchemaOnce = () => standardDb().initSchemaOnce();
-const getPoolStats = () => standardDb().getPoolStats();
-const datenbankAntwortet = () => standardDb().datenbankAntwortet();
-const alsSuperuserVerbunden = () => standardDb().alsSuperuserVerbunden();
-const eigeneVerbindung = () => standardDb().eigeneVerbindung();
-
-/** Ob dieser Aufrufpfad in einer Transaktion läuft (für Tests und Wächter). */
-export function inTransaktion(): boolean { return standardDb().inTransaktion(); }
-
-export { pool, all, get, run, exec, transaction, initSchema, initSchemaOnce, getPoolStats, datenbankAntwortet, alsSuperuserVerbunden, eigeneVerbindung };

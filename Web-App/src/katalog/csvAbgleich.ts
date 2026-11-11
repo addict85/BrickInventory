@@ -1,17 +1,15 @@
 /** Rebrickable-CSVs täglich laden: Der lokale Katalog spart je Anzeige einen
  * API-Abruf und das Tageskontingent. */
-import { meldeStartZustand } from '../auftraege/startZustand';
+import { auftraegeBereich, meldeStartZustand, type Nutzlast, type AuftragsLauf as CsvLauf } from '../auftraege';
 import { fetchMissingBlIds } from './partsImport';
 import { getRbKey, httpsGetRobust, ladeKatalogCsv } from './quellen';
-import { fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../infra/fehler';
+import { fehlertext, logAndContinue, ohneFehlendeDatei } from '../infra/fehler';
 import { merkeBlFarbnummer, blFarbnummerAus } from './blZuordnung';
-import { liesZustand, setzeZustand, loescheZustand } from '../auftraege/laufzustand';
 import fs from 'fs';
 import path from 'path';
 import { DATA_DIR } from '../infra/appPaths';
 import { fork as _fork } from 'child_process';
-import type { Nutzlast } from '../auftraege/nutzlasten';
-import type { AuftragsLauf as CsvLauf } from '../auftraege/auftraege';
+import { versuche } from '../infra/ergebnis';
 
 const SYNC_KEY = 'rb_csv_last_sync';
 const PART_CAT_KEY = 'rb_part_categories_last_sync';
@@ -94,11 +92,11 @@ function importInWorker(lauf: CsvLauf, task: string, stepNum: number, stepLabel:
 
 // Nachziehen, wenn der Haupt-Sync heute schon lief, diese Dateien aber fehlen.
 async function syncCatalogExtrasDaily(lauf: CsvLauf, today: string) {
-  if (await liesZustand(CATALOG_EXTRAS_KEY) === today) return;
+  if (await auftraegeBereich().laufzustand.liesZustand(CATALOG_EXTRAS_KEY) === today) return;
   try {
     await runWorker(lauf, 'themes',             TOTAL_STEPS, 'Themen laden...',           'themes.csv.gz');
     await runWorker(lauf, 'inventory_minifigs', TOTAL_STEPS, 'Inventar-Figuren laden...', 'inventory_minifigs.csv.gz');
-    await setzeZustand(CATALOG_EXTRAS_KEY, today);
+    await auftraegeBereich().laufzustand.setzeZustand(CATALOG_EXTRAS_KEY, today);
     log('catalog extras (themes + inventory_minifigs): Tagesimport erledigt');
   } catch (e) {
     if (lauf.signal?.aborted) throw e;
@@ -108,10 +106,10 @@ async function syncCatalogExtrasDaily(lauf: CsvLauf, today: string) {
 
 // Auch ohne Haupt-Sync täglich, falls die Datei nachträglich dazukam.
 async function syncPartCategoriesDaily(lauf: CsvLauf, today: string) {
-  if (await liesZustand(PART_CAT_KEY) === today) return;
+  if (await auftraegeBereich().laufzustand.liesZustand(PART_CAT_KEY) === today) return;
   try {
     await runWorker(lauf, 'part_categories', TOTAL_STEPS, 'Kategorien laden...', 'part_categories.csv.gz');
-    await setzeZustand(PART_CAT_KEY, today);
+    await auftraegeBereich().laufzustand.setzeZustand(PART_CAT_KEY, today);
     log('part_categories: Tagesimport erledigt');
   } catch (e) {
     if (lauf.signal?.aborted) throw e;
@@ -135,7 +133,7 @@ async function ladeAlles(lauf: CsvLauf, today: string): Promise<void> {
   try {
     for (const [i, [task, label, datei]] of DATEIEN.entries()) await runWorker(lauf, task, i + 1, label, datei);
     // Erst geschrieben, dann „heute erledigt“: Sonst gälte ein Lauf als fertig, dessen Marke fehlt.
-    for (const k of [SYNC_KEY, PART_CAT_KEY, CATALOG_EXTRAS_KEY]) await setzeZustand(k, today);
+    for (const k of [SYNC_KEY, PART_CAT_KEY, CATALOG_EXTRAS_KEY]) await auftraegeBereich().laufzustand.setzeZustand(k, today);
     log(`CSV sync complete for ${today}`);
   } catch (e) {
     log(`CSV sync failed: ${fehlertext(e)}`);
@@ -147,16 +145,18 @@ async function ladeAlles(lauf: CsvLauf, today: string): Promise<void> {
 }
 
 async function ladeBlFarben(): Promise<void> {
-  const key = await getRbKey().catch(meldeUndLiefere('rb-csv:getRbKey', null));
+  const key = await getRbKey();
   if (!key) return;
   log('[colors] Fetching BrickLink color mapping from Rebrickable API…');
   let page = 1, count = 0, hasNext = true;
   while (hasNext) {
-    const { status, body } = await httpsGetRobust(
+    // Ohne Antwort bleibt die bisherige Zuordnung; der nächste Abgleich versucht es wieder.
+    const abruf = await versuche('csv-abgleich:abruf', httpsGetRobust(
       `https://rebrickable.com/api/v3/lego/colors/?page_size=200&page=${page}`,
       { Authorization: `key ${key}` }, 30000,
-    ).catch(meldeUndLiefere('csv-abgleich:abruf', { status: 0, body: '' }));
-    if (status !== 200) break;
+    ));
+    if (!abruf.ok || abruf.wert.status !== 200) break;
+    const { body } = abruf.wert;
     const data = JSON.parse(body) as { results?: Record<string, unknown>[]; next?: string | null };
     for (const c of (data.results || [])) {
       const blId = blFarbnummerAus(c);
@@ -174,7 +174,7 @@ async function ladeBlFarben(): Promise<void> {
 async function run(lauf: CsvLauf = {}) {
   await fs.promises.mkdir(DATA_DIR, { recursive: true });
   const today = new Date().toISOString().slice(0, 10);
-  if (await liesZustand(SYNC_KEY) === today) {
+  if (await auftraegeBereich().laufzustand.liesZustand(SYNC_KEY) === today) {
     log(`Already synced today (${today}) — skipping CSV download`);
     await syncPartCategoriesDaily(lauf, today);
     await syncCatalogExtrasDaily(lauf, today);
@@ -190,7 +190,7 @@ async function run(lauf: CsvLauf = {}) {
 
 /** Beim Start nur, wenn heute noch nicht geladen; der tägliche und der von Hand angestossene Lauf laden immer. */
 async function csvAbgleich(n: Nutzlast<'csv_sync'>, lauf: CsvLauf): Promise<void> {
-  if (!n.beimStart) await loescheZustand(SYNC_KEY);
+  if (!n.beimStart) await auftraegeBereich().laufzustand.loescheZustand(SYNC_KEY);
   await run(lauf);
 }
 

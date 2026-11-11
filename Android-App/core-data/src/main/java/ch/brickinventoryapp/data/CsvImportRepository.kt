@@ -27,7 +27,6 @@ interface CsvImportRepository {
 class CsvImportBeobachter @Inject constructor(
     private val strom: CsvImportStrom,
     private val sets: SetsRepository,
-    private val zugang: Zugangsdaten,
 ) : CsvImportRepository {
 
     override fun beobachte(): Flow<CsvImportStatus> = flow {
@@ -55,12 +54,7 @@ class CsvImportBeobachter @Inject constructor(
     }
 
     private suspend fun FlowCollector<CsvImportStatus>.frageAb() {
-        val stand = fangeAusserAbbruch {
-            val url = zugang.serverUrlJetzt()
-            val token = zugang.tokenJetzt()
-            if (token.isBlank() || url.isBlank()) null
-            else (sets.getCsvImportStatus(url, token) as? Ergebnis.Success)?.data
-        }.getOrNull()
+        val stand = fangeAusserAbbruch { (sets.getCsvImportStatus() as? Ergebnis.Success)?.data }.getOrNull()
         if (stand != null) emit(stand)
     }
 

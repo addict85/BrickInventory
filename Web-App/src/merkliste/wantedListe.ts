@@ -1,19 +1,20 @@
 /** Eine BrickLink-Wanted-Liste importieren: lesen (wantedParser), auflösen
  * (wantedAufloesung), schreiben (wantedSchreiber). Die Datei trägt BL-Nummern,
  * der Bestand führt RB-Nummern. */
-import { nutzerStandardZustand } from '../einstellungen/settings';
-import { leseWantedListe } from './wantedParser';
-import type { WantedArt, WantedPosten } from './wantedParser';
+import { nutzerStandardZustand } from '../einstellungen';
+import { leseWantedListe, type WantedArt, type WantedPosten } from './wantedParser';
 import {
   loeseLokalAuf,
   loeseUeberRebrickableAuf,
   wendeKorrekturenAn,
   farbenNachtragen,
   beschreibePosten,
+  type Aufloesung,
+  type Korrektur,
+  type WantedFortschritt,
 } from './wantedAufloesung';
-import type { Aufloesung, Korrektur, WantedFortschritt } from './wantedAufloesung';
-import { berichtsZeile, schreibePosten } from './wantedSchreiber';
-import type { PostenErgebnis, SchreibOptionen } from './wantedSchreiber';
+import type { RebrickableAbbruch } from './wantedAufloesung';
+import { berichtsZeile, schreibePosten, type PostenErgebnis, type SchreibOptionen } from './wantedSchreiber';
 
 export interface WantedBericht {
   gelesen: number;
@@ -23,7 +24,7 @@ export interface WantedBericht {
   farbeOffen: number;
   /** Mit BL-Nummern, damit man sie nachsehen kann. */
   offen: { blId: string; art: WantedArt; blFarbe: number | null }[];
-  rebrickable?: { gefragt: number; gefunden: number; filterWirkungslos: boolean };
+  rebrickable?: { gefragt: number; gefunden: number; filterWirkungslos: boolean; abgebrochen?: RebrickableAbbruch };
   /** `abgewiesen`: Korrekturen, deren Posten nicht passte — dann wurde eine andere
    * Datei gewählt. Sie werden GENANNT, nicht übergangen. */
   korrekturen?: { angewandt: number; abgewiesen: Korrektur[] };
@@ -54,7 +55,12 @@ async function loeseVollstaendigAuf(posten: WantedPosten[], uid: number, opt: Wa
   if (opt.ueberRebrickable) {
     const r = await loeseUeberRebrickableAuf(auf, 250, opt.fortschritt);
     auf = r.auf;
-    rebrickable = { gefragt: r.gefragt, gefunden: r.gefunden, filterWirkungslos: r.filterWirkungslos };
+    rebrickable = {
+      gefragt: r.gefragt,
+      gefunden: r.gefunden,
+      filterWirkungslos: r.filterWirkungslos,
+      ...(r.abgebrochen ? { abgebrochen: r.abgebrochen } : {}),
+    };
   }
   let korrekturen: WantedBericht['korrekturen'];
   if (opt.korrekturen?.length) {

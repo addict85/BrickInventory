@@ -3,11 +3,11 @@
  * Einrichtung abgeschlossen ist, sind das nur Schalter — keine Namen, keine
  * Adressen, keine Schlüssel. Danach antwortet die Seite nur noch „erledigt"
  * und nennt das Zertifikat, das ohnehin unter /ca.crt öffentlich ist. */
-import { kontenStand, datenbankErreichbar } from './repository/einrichtung';
 import { konfig } from '../infra/konfig';
 import { Abstriche, versuche } from '../infra/ergebnis';
 import { tlsStand } from '../infra/tlsWurzel';
-import { getGlobalSetting, beiGlobalerAenderung } from '../einstellungen/settings';
+import { getGlobalSetting, beiGlobalerAenderung } from '../einstellungen';
+import { kontoBereich } from './prozess';
 
 export type SchrittId = 'datenbank' | 'basis_url' | 'https' | 'ca' | 'konto' | 'quelle';
 export interface Schrittzustand {
@@ -17,7 +17,6 @@ export interface Schrittzustand {
 }
 
 export interface EinrichtungStandAntwort {
-  success: true;
   erledigt: boolean;
   konfiguriert: boolean;
   schritte: Schrittzustand[];
@@ -58,7 +57,6 @@ async function berechne(verwalter: boolean): Promise<EinrichtungStandAntwort> {
   const ca = await tlsStand();
   const k = konfig();
   const grund = {
-    success: true as const,
     ca: {
       vorhanden: !!ca,
       ...(ca ? { fp_hex: ca.fp_hex, zert_sha256: ca.zert_sha256, gueltig_bis: ca.gueltig_bis } : {}),
@@ -85,12 +83,15 @@ async function berechne(verwalter: boolean): Promise<EinrichtungStandAntwort> {
   ).every(Boolean);
 
   const schritte: Schrittzustand[] = [];
-  const datenbank = (await versuche('einrichtung:datenbank', datenbankErreichbar())).ok;
+  const datenbank = (await versuche('einrichtung:datenbank', kontoBereich().einrichtung.datenbankErreichbar())).ok;
   schritte.push({ id: 'datenbank', ok: datenbank, pflicht: true });
   schritte.push({ id: 'basis_url', ok: !!k.appBaseUrl, pflicht: true });
   schritte.push({ id: 'https', ok: k.hinterTls, pflicht: false });
   schritte.push({ id: 'ca', ok: !!ca, pflicht: !!k.hinterTls });
-  const konten = await ab.oder('konten', kontenStand(), { vorhanden: false, startpasswort: false });
+  const konten = await ab.oder('konten', kontoBereich().einrichtung.kontenStand(), {
+    vorhanden: false,
+    startpasswort: false,
+  });
   schritte.push({ id: 'konto', ok: konten.vorhanden && (!verwalter || !konten.startpasswort), pflicht: true });
   schritte.push({ id: 'quelle', ok: rebrickable, pflicht: true });
 

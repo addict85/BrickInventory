@@ -1,10 +1,10 @@
-import * as db from '../../db/database';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
-import { nacharbeit } from '../auftraege/nacharbeit';
-import { schreibeNutzerEinstellung, nutzerWertGueltig, deleteUserSetting } from '../einstellungen/settings';
+import { nacharbeit } from '../auftraege';
+import { schreibeNutzerEinstellung, nutzerWertGueltig, deleteUserSetting } from '../einstellungen';
 import { fachfehler } from '../infra/fehlerTexte';
 import { zaehleAnfrage } from './loginLimiter';
 import * as repo from './repository/waehrung';
+import { kontoBereich } from './prozess';
 
 /** Die eine Schreibstelle: Ein Währungswechsel muss den Preis-Job anstossen,
  * weil der Preis-Cache je Währung verschlüsselt ist. */
@@ -18,7 +18,7 @@ export async function setUserSetting(userId: number, key: string, value: unknown
 /** Für den ganzen Haushalt: Zwei Währungen ergäben eine Summe, der man den
  * Fehler nicht ansieht. redeemInvite() prüft unter derselben Sperre. */
 async function setzeHaushaltswaehrung(userId: number, waehrung: string) {
-  const vorher = await db.transaction(async (tx) => {
+  const vorher = await kontoBereich().db.transaction(async (tx) => {
     await sperreHaushaltswaehrung(tx);
     const alt = await repo.waehrungIn(tx, userId);
     const unterkonto = await repo.hatHauptkonto(tx, userId);

@@ -2,35 +2,33 @@
  * Prüfung vergessen kann. */
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireApiAdmin } from './middleware';
-import { getLimitForApi } from '../../src/katalog/apiKontingent';
-import { vergissFehlend } from '../../src/katalog/bilder/imageMisses';
-import { setGlobalSetting, getGlobalSetting } from '../../src/einstellungen/settings';
-import { cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinreihen, preisJobStand, preisJobJetzt, fehlendeBilderNachladen, bricksetWiederholen, bricksetEntfernen, jobZeitplanSetzen, jobUebersicht, bildProbe, preisProbe, katalogBilderEinreihen, katalogAbgleichJetzt, bricksetListe, letzteEintraege, bildDiagnose, protokollSeit, setFehlanzeigen, vorschauFehlanzeigen } from '../../src/verwaltung/dienst';
-import { auftragsUebersicht, auftragAbbrechen, auftragWiederholen, auftragsArtJetzt, auftragsArtLeeren } from '../../src/verwaltung/hintergrund';
+import { getLimitForApi, vergissFehlend } from '../../src/katalog';
+import { setGlobalSetting, getGlobalSetting } from '../../src/einstellungen';
+import { verwaltungBereich, cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinreihen, preisJobStand, preisJobJetzt, fehlendeBilderNachladen, bricksetWiederholen, bricksetEntfernen, jobZeitplanSetzen, katalogBilderEinreihen, katalogAbgleichJetzt, bricksetListe, jobUebersicht, bildProbe, preisProbe, bildDiagnose, auftragsUebersicht, auftragAbbrechen, auftragWiederholen, auftragsArtJetzt, auftragsArtLeeren } from '../../src/verwaltung';
 import { seiteAus } from '../../src/infra/seite';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
+import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
+import { kontoBereich } from '../../src/konto';
 const router = vertragsRouter({ grosseIds: true });
 
 
 router.get('/admin/auftraege', requireApiAdmin, async (req: Anfrage<'GET /api/v1/admin/auftraege'>, res: Antwort<'GET /api/v1/admin/auftraege'>) => {
-  res.json(await auftragsUebersicht({ status: req.abfrage.status, art: req.abfrage.art }));
+  res.json({ success: true, ...(await auftragsUebersicht({ status: req.abfrage.status, art: req.abfrage.art })) });
 });
 
 router.post('/admin/auftraege/:id/abbrechen', requireApiAdmin, async (req: Anfrage<'POST /api/v1/admin/auftraege/:id/abbrechen'>, res: Antwort<'POST /api/v1/admin/auftraege/:id/abbrechen'>) => {
-  res.json(await auftragAbbrechen(String(req.pfad.id))); 
+  res.json({ success: true, ...(await auftragAbbrechen(String(req.pfad.id))) }); 
 });
 
 router.post('/admin/auftraege/:id/wiederholen', requireApiAdmin, async (req: Anfrage<'POST /api/v1/admin/auftraege/:id/wiederholen'>, res: Antwort<'POST /api/v1/admin/auftraege/:id/wiederholen'>) => {
-  res.json(await auftragWiederholen(String(req.pfad.id))); 
+  res.json({ success: true, ...(await auftragWiederholen(String(req.pfad.id))) }); 
 });
 
 router.post('/admin/auftraege/art/:art/jetzt', requireApiAdmin, async (req: Anfrage<'POST /api/v1/admin/auftraege/art/:art/jetzt'>, res: Antwort<'POST /api/v1/admin/auftraege/art/:art/jetzt'>) => {
-  res.json(await auftragsArtJetzt(req.pfad.art)); 
+  res.json({ success: true, ...(await auftragsArtJetzt(req.pfad.art)) }); 
 });
 
 router.delete('/admin/auftraege/art/:art', requireApiAdmin, async (req: Anfrage<'DELETE /api/v1/admin/auftraege/art/:art'>, res: Antwort<'DELETE /api/v1/admin/auftraege/art/:art'>) => {
-  res.json(await auftragsArtLeeren(req.pfad.art)); 
+  res.json({ success: true, ...(await auftragsArtLeeren(req.pfad.art)) }); 
 });
 
 router.post('/admin/trigger-csv-sync', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'POST /api/v1/admin/trigger-csv-sync'>) => {
@@ -40,11 +38,11 @@ router.post('/admin/trigger-csv-sync', requireApiAdmin, async (_req: AuthedReque
 });
 
 router.get('/admin/protokoll', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/admin/protokoll'>) => {
-  res.json({ success: true, eintraege: await letzteEintraege() });
+  res.json({ success: true, eintraege: await kontoBereich().protokoll.letzteEintraege() });
 });
 
 router.get('/admin/cache-stats', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/admin/cache-stats'>) => {
-  res.json(await cacheStatistik()); 
+  res.json({ success: true, ...(await cacheStatistik()) }); 
 });
 
 // Beantwortet die wiederkehrenden Fragen zu einer leeren Kachel in einer
@@ -52,7 +50,7 @@ router.get('/admin/cache-stats', requireApiAdmin, async (_req: AuthedRequest, re
 router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: Anfrage<'GET /api/v1/admin/image-diag/:setNumber'>, res: Antwort<'GET /api/v1/admin/image-diag/:setNumber'>) => {
   const sn = req.pfad.setNumber;
 
-  res.json(await bildDiagnose(sn));
+  res.json({ success: true, ...(await bildDiagnose(sn)) });
 });
 
 // Eine Fehlanzeige sperrte ein Bild sieben Tage, ohne Weg zurück.
@@ -64,11 +62,11 @@ router.post('/admin/forget-image-misses', requireApiAdmin, async (req: Anfrage<'
   } else {
     // Nicht die ganze Tabelle: Die Vorschau-Vermerke haben einen anderen Zweck
     // und sollen nicht nebenbei mitverschwinden.
-    const rows = await setFehlanzeigen();
+    const rows = await verwaltungBereich().verwaltung.setFehlanzeigen();
     if (rows.length) entfernt = await vergissFehlend(rows.map(r => r.cache_key));
   }
   if (req.eingabe.thumbs === true) {
-    const rows = await vorschauFehlanzeigen();
+    const rows = await verwaltungBereich().verwaltung.vorschauFehlanzeigen();
     if (rows.length) entfernt += await vergissFehlend(rows.map(r => r.cache_key));
   }
   // Die anderen Prozesse frischen den Merker im Fünf-Minuten-Takt aus der Tabelle auf.
@@ -123,7 +121,7 @@ router.post('/admin/reimport-instructions', requireApiAdmin, async (_req: Authed
 
 // Eine Adresse für Webapp und App; requireApiAdmin nimmt beide Ausweise.
 router.get('/admin/job-status', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/admin/job-status'>) => {
-  res.json(await preisJobStand()); 
+  res.json({ success: true, ...(await preisJobStand()) }); 
 });
 
 router.post('/admin/trigger-price-job', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'POST /api/v1/admin/trigger-price-job'>) => {
@@ -132,7 +130,7 @@ router.post('/admin/trigger-price-job', requireApiAdmin, async (_req: AuthedRequ
 
 // Füllt den Bildbestand vorab, statt nur beim Blättern.
 router.post('/admin/catalog-images', requireApiAdmin, async (req: Anfrage<'POST /api/v1/admin/catalog-images'>, res: Antwort<'POST /api/v1/admin/catalog-images'>) => {
-  res.json(await katalogBilderEinreihen(req.eingabe.alle_erneut === true));
+  res.json({ success: true, ...(await katalogBilderEinreihen(req.eingabe.alle_erneut === true)) });
 });
 
 // Bilder, die laut image_local da sind, deren Datei aber fehlt.
@@ -144,7 +142,7 @@ router.post('/admin/redownload-missing-images', requireApiAdmin, async (_req: Au
 
 router.get('/admin/logs', requireApiAdmin, async (req: Anfrage<'GET /api/v1/admin/logs'>, res: Antwort<'GET /api/v1/admin/logs'>) => {
   const minutes = Math.min(2880, Math.max(1, req.abfrage.minutes || 15));
-  const rows = await protokollSeit(minutes);
+  const rows = await verwaltungBereich().verwaltung.protokollSeit(minutes);
   res.json({ success: true, minutes, count: rows.length, logs: rows });
 });
 
@@ -167,7 +165,7 @@ router.delete('/admin/brickset-queue/:setNumber', requireApiAdmin, async (req: A
 });
 
 router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/admin/jobs'>) => {
-  res.json(await jobUebersicht()); 
+  res.json({ success: true, ...(await jobUebersicht()) }); 
 });
 
 // Body: { name, time: "HH:MM" } für tägliche Jobs oder { name: 'priceJob',
@@ -182,14 +180,14 @@ router.post('/admin/job-schedule', requireApiAdmin, async (req: Anfrage<'POST /a
  * um „fehlt", „Hotlink-Schutz" und „nicht erreichbar" zu unterscheiden. POST,
  * weil eine fremde Seite ein GET samt Lax-Cookie per Link auslösen könnte. */
 router.post('/admin/img-probe', requireApiAdmin, async (req: Anfrage<'POST /api/v1/admin/img-probe'>, res: Antwort<'POST /api/v1/admin/img-probe'>) => {
-  res.json(await bildProbe(req.eingabe.url ?? ''));
+  res.json({ success: true, ...(await bildProbe(req.eingabe.url ?? '')) });
 });
 /** Alles, was in die Marktpreis-Anzeige eines Sets einfliesst, auf Wunsch mit
  * der aktuellen BrickLink-Antwort; POST aus demselben Grund wie oben. */
 router.post('/admin/price-probe', requireApiAdmin, async (req: Anfrage<'POST /api/v1/admin/price-probe'>, res: Antwort<'POST /api/v1/admin/price-probe'>) => {
   const setNumber = (req.eingabe.set ?? '').trim();
   if (!setNumber) return sendeFehler(req, res, 400, 'parameter_set_fehlt');
-  res.json(await preisProbe(req.apiUser.user_id, setNumber, req.eingabe.live ?? false));
+  res.json({ success: true, ...(await preisProbe(req.apiUser.user_id, setNumber, req.eingabe.live ?? false)) });
 });
 
 router.use(fehlerAntwort);

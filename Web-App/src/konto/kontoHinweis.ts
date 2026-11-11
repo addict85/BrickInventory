@@ -1,20 +1,19 @@
 /** Der Inhaber erfährt per Mail, wenn sich an seinen Zugängen etwas ändert:
  * Ein Eindringling, der Passwort oder Passkey setzt, bliebe sonst unbemerkt. */
-import { mailEingerichtet, sendKontoHinweisMail } from '../mail/mailer';
-import type { KontoHinweis } from '../mail/mailer';
+import { mailEingerichtet, sendKontoHinweisMail, type KontoHinweis } from '../mail';
 import { logAndContinue } from '../infra/fehler';
-import { householdStatus } from '../haushalt/haushalt';
-import { getSetting } from '../einstellungen/settings';
-import { aktiveVerwalter, profilZeile as profil } from './repository/konten';
+import { haushaltBereich } from '../haushalt';
+import { getSetting } from '../einstellungen';
+import { kontoBereich } from './prozess';
 
 type Angaben = { name?: string | undefined; konto?: string | undefined; durch?: string | undefined };
 
 export async function meldeKontoaenderung(uid: number, art: KontoHinweis, angaben: Angaben = {}): Promise<boolean> {
   if (!await mailEingerichtet()) return false;
-  const k = await profil(uid);
+  const k = await kontoBereich().konten.profilZeile(uid);
   if (!k?.email) return false;
   const lang = String(await getSetting(uid, 'language', 'de'));
-  const haushalt = (await householdStatus(uid)).parents.map(p => p.username);
+  const haushalt = (await haushaltBereich().haushalt.householdStatus(uid)).parents.map(p => p.username);
   const r = await sendKontoHinweisMail(k.email, k.username, art, { lang, haushalt,
     ...(angaben.name ? { passkey: angaben.name } : {}), konto: angaben.konto, durch: angaben.durch });
   return r.success;
@@ -29,7 +28,7 @@ export function hinweisNebenher(uid: number, art: KontoHinweis, name?: string, a
 
 /** An alle Verwalter: Keiner soll unbemerkt einen Verwalter ernennen oder Schutz abbauen. */
 export function verwalterHinweisNebenher(art: KontoHinweis, angaben: Angaben): void {
-  aktiveVerwalter()
+  kontoBereich().konten.aktiveVerwalter()
     .then(ids => Promise.all(ids.map(id => meldeKontoaenderung(id, art, angaben))))
     .catch(logAndContinue(`konto:verwalterhinweis ${art}`));
 }

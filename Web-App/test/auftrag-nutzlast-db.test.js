@@ -26,7 +26,7 @@ test('Nutzlasten der Aufträge', { concurrency: 1 }, async (t) => {
   const db = await dbOderSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
-  const A = _req('src/auftraege/dienst.js');
+  const A = { ..._req('src/auftraege/dienst.js'), ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege };
   const { NutzlastUngueltig } = _req('src/auftraege/nutzlasten.js');
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   await db.run(`DELETE FROM auftraege WHERE art = 'brickset'`);

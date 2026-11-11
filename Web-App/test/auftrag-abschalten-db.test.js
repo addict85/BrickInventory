@@ -24,12 +24,13 @@ const { warte } = require('./helpers/zeit');
 
 test('Abschalten während einer Belegung', async (t) => {
   if (!await dbOderSkip(t, _req)) return;
-  const A = _req('src/auftraege/dienst.js');
+  const A = { ..._req('src/auftraege/dienst.js'), ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege };
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   const ART = `abschalten-${process.pid}`;
   const MARKE = `abschalten-${process.pid}`;
   // Eine Testart braucht wie jede andere ein Schema für ihre Nutzlast.
   _req('src/auftraege/nutzlasten.js').NUTZLASTEN[ART] = require('zod').looseObject({});
+  await db.run('INSERT INTO auftrags_arten (art) VALUES ($1) ON CONFLICT DO NOTHING', [ART]);
   const sperre = await db.pool.connect();
   let loslassen = () => {};
   const haengt = new Promise(r => { loslassen = r; });
@@ -38,7 +39,7 @@ test('Abschalten während einer Belegung', async (t) => {
     await sperre.query('ROLLBACK').catch(() => {});
     sperre.release();
     await db.run(`DELETE FROM auftraege WHERE nutzlast->>'marke' = $1`, [MARKE]).catch(() => {});
-    await _req('db/pgNotify.js').close().catch(() => {});
+    await _req('db/database.js').standardDb().benachrichtigung.close().catch(() => {});
     await db.pool.end().catch(() => {});
   });
 

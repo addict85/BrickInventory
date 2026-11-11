@@ -62,6 +62,8 @@ const AUSGELASSEN = new Map([
   ['POST /api/v1/vouchers/{id}/pdf-freigabe',       'verlangt Passwort und zweiten Faktor; Ticket geprüft in gutscheine-db'],
   ['POST /api/v1/vouchers/export/pdf-freigabe',     'verlangt Passwort und zweiten Faktor; Ticket geprüft in gutscheine-db'],
   ['POST /api/v1/geraet/schluessel',                'nur mit App-Token, dieser Lauf hat eine Sitzung; geprüft in schrittschutz-db'],
+  ['POST /api/v1/geraet/schluessel/nonce',          'nur mit App-Token in seinen ersten Minuten; geprüft in schrittschutz-db'],
+  ['POST /api/v1/auth/qr-login/verwerfen',          'braucht eine bestätigte, nicht abgeholte Kopplung; geprüft in qr-kopplung-db'],
   ['POST /api/v1/geraet/schritt/challenge',         'nur mit App-Token und Schlüssel; geprüft in schrittschutz-db'],
   ['POST /api/v1/geraet/schritt/freigabe',          'braucht eine Signatur des Geräteschlüssels; geprüft in schrittschutz-db'],
 ]);
@@ -330,7 +332,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
 
     // ── Hintergrundarbeiten (Auftragstabelle) ─────────────────────────────
     { m: 'POST', p: '/api/v1/admin/auftraege/{id}/abbrechen', davor: async () => {
-        w.id = String(await _req('src/auftraege/dienst.js').stelleAuftragEin('anleitung', { set_number: SET },
+        w.id = String(await { ..._req('src/auftraege/dienst.js'), ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege }.stelleAuftragEin('anleitung', { set_number: SET },
           { schluessel: `vertrag:${process.pid}:${Date.now()}` }));
       } },
     { m: 'POST', p: '/api/v1/admin/auftraege/{id}/wiederholen' },

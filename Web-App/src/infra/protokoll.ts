@@ -73,6 +73,7 @@ interface Zustand {
   letzterFehler: string;
   zuletztGemeldet: number;
   meldeTimer: NodeJS.Timeout | null;
+  aufraeumTakt: NodeJS.Timeout | null;
 }
 let Z: Zustand | null = null;
 const pidTag = String(process.pid).slice(-4);
@@ -117,16 +118,31 @@ export function protokollInDieDatenbank(pool: Abfrager): void {
   if (!Z) return;
   Z.pool = pool;
   void leereProtokoll();
-  setInterval(() => {
+  if (Z.aufraeumTakt) clearInterval(Z.aufraeumTakt);
+  Z.aufraeumTakt = setInterval(() => {
     logs.loescheAlteLogZeilen(pool)
       .catch((e: unknown) => schreibfehler(0, e));
-  }, 6 * 60 * 60 * 1000).unref();
+  }, 6 * 60 * 60 * 1000);
+  Z.aufraeumTakt.unref();
+}
+
+/** Als Letztes vor dem Schliessen des Pools, damit die Meldungen der übrigen
+ * Abschlüsse noch in app_logs landen; danach geht nur noch stdout. */
+export async function stoppeProtokoll(): Promise<void> {
+  if (!Z) return;
+  if (Z.timer) clearTimeout(Z.timer);
+  if (Z.aufraeumTakt) clearInterval(Z.aufraeumTakt);
+  Z.timer = Z.aufraeumTakt = null;
+  await leereProtokoll();
+  meldeSchreibfehler();
+  Z.pool = null;
 }
 
 /** Gibt eine Funktion zurück, die den alten Zustand wiederherstellt (Tests). */
 export function installiereProtokoll(ausgabe: Ausgabe = PROZESS): () => void {
   const alt = { log: console.log, debug: console.debug, info: console.info, warn: console.warn, error: console.error };
-  Z = { ausgabe, pool: null, puffer: [], timer: null, fehlgeschlagen: 0, letzterFehler: '', zuletztGemeldet: -Infinity, meldeTimer: null };
+  Z = { ausgabe, pool: null, puffer: [], timer: null, fehlgeschlagen: 0, letzterFehler: '', zuletztGemeldet: -Infinity,
+        meldeTimer: null, aufraeumTakt: null };
   for (const name of ['log', ...STUFEN] as const) {
     const stufe = LOG_STUFE[name];
     console[name] = (...args: unknown[]) => {
@@ -147,6 +163,7 @@ export function installiereProtokoll(ausgabe: Ausgabe = PROZESS): () => void {
   return () => {
     if (Z?.timer) clearTimeout(Z.timer);
     if (Z?.meldeTimer) clearTimeout(Z.meldeTimer);
+    if (Z?.aufraeumTakt) clearInterval(Z.aufraeumTakt);
     Z = null;
     Object.assign(console, alt);
   };

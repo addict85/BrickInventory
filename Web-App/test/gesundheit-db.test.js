@@ -39,7 +39,7 @@ test('Gesundheitsprüfung und Startzustand', { concurrency: 1, timeout: 180_000 
   const uid = (await db.get(`INSERT INTO users (username, password_hash, is_admin, is_active, email_verified)
     VALUES ($1, 'x', true, true, true) RETURNING id`, [NAME])).id;
   const token = await _req('src/konto/auth.js').createToken(uid, 'Gesundheit', false, null, { scope: 'voll' });
-  const { setzeZustand, loescheZustand } = _req('src/auftraege/laufzustand.js');
+  const { setzeZustand, loescheZustand } = _req('src/auftraege/prozess.js').auftraegeBereich().laufzustand;
   await setzeZustand('startup_status', JSON.stringify({ ready: false, step: 'Teile laden...', progress: 2.37, total: 8,
     sub: '40%', pfad: '/app/data/geheim.csv', fehler: 'Error: ECONNREFUSED at /app/dist/jobs/x.js:12' }));
   t.after(async () => {

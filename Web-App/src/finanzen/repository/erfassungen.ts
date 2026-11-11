@@ -1,4 +1,4 @@
-import * as db from '../../../db/database';
+import type { DbSchnittstelle } from '../../../db/database';
 import { kaufpreisSpalten } from '../../../db/geldSql';
 
 /** `id` als zweites Sortierkriterium: Zwei Erfassungen können denselben
@@ -10,7 +10,7 @@ export interface SetErfassungsZeile {
   condition: string; created_at: Date | null;
 }
 
-export function ladeSetErfassungen(uids: number[], waehrung: string) {
+export function ladeSetErfassungen(db: DbSchnittstelle, uids: number[], waehrung: string) {
   return db.all<SetErfassungsZeile>(
     `SELECT id, user_id, set_number, quantity,
             ${kaufpreisSpalten('purchase_price', '$2')},

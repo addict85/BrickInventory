@@ -2,7 +2,7 @@
  * Sets Namen und Bilder hat. Bilder werden im Hintergrund geladen; bis dahin
  * gilt die CDN-Adresse. */
 import { cdnImageLimiter, rebrickableBackgroundLimiter as rebrickableLimiter, consumeRebrickableDaily } from './rateLimiter';
-import { meldeFehler, fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../infra/fehler';
+import { meldeFehler, fehlertext, logAndContinue, ohneFehlendeDatei } from '../infra/fehler';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
 import { merkeBlNummer } from './blZuordnung';
@@ -16,17 +16,15 @@ type JobHttpResult = { status: number; body: string };
 // bekommt deshalb die Art mit.
 import { bildEndung, dateiTeil, zielImOrdner, ladeBild } from './bilder/bildDatei';
 import { ERLAUBTE_BILD_HOSTS, pfadSegment, nummernListe } from '../infra/fremdeAdressen';
-import { setzeZustand } from '../auftraege/laufzustand';
+import { auftraegeBereich, pruefeAbbruch, type AuftragsLauf, imgDlAdd } from '../auftraege';
 import * as repo from './repository/teileAnreicherung';
 import fs from 'fs';
 import path from 'path';
-import { pruefeAbbruch, type AuftragsLauf } from '../auftraege/auftraege';
-import * as monitor from '../auftraege/jobMonitor';
 import { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
 import { generateThumb } from './bilder/thumbs';
 import { KEINE_FARBE } from '../infra/validate';
 import { katalog } from './prozess';
-
+import { versuche } from '../infra/ergebnis';
 
 
 async function apiGet(url: string, rbKey: string) {
@@ -302,7 +300,7 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
     // Zum globalen Zähler ADDIEREN statt ihn zu überschreiben, sonst zeigte die
     // Überwachung nur den zuletzt gestarteten Stapel.
     _pendingAdded = needsImg.length;
-    await monitor.imgDlAdd(_pendingAdded).catch(logAndContinue('teile-enrich:imgDlAdd'));
+    await imgDlAdd(_pendingAdded).catch(logAndContinue('teile-enrich:imgDlAdd'));
 
     let done = 0;
     // Höchstens ein Schreibvorgang je Sekunde statt einer je Bild, das entlastet
@@ -313,7 +311,7 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
       if (!force && Date.now() - _lastFlush < 1000) return;
       _flushed  += delta;
       _lastFlush = Date.now();
-      await monitor.imgDlAdd(-delta).catch(logAndContinue('teile-enrich:imgDlAdd'));
+      await imgDlAdd(-delta).catch(logAndContinue('teile-enrich:imgDlAdd'));
     };
     await Promise.all(needsImg.map(async p => {
       await ladeTeilbild(p);
@@ -327,7 +325,7 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
     // Nur den noch nicht gemeldeten Rest verrechnen — deckt Abbruch ab, ohne im
     // Normalfall doppelt abzuziehen.
     const _rest = _pendingAdded - _flushed;
-    if (_rest > 0) await monitor.imgDlAdd(-_rest).catch(logAndContinue('teile-enrich:imgDlAdd'));
+    if (_rest > 0) await imgDlAdd(-_rest).catch(logAndContinue('teile-enrich:imgDlAdd'));
     if (lockClient) {
       if (haveXlock) await repo.gibBildSperreFrei(lockClient, n).catch(logAndContinue('teile-enrich:hashtext'));
       lockClient.release();
@@ -361,7 +359,7 @@ async function enrichSetMinifigs(setNumber: string) {
     const invId = invMap[fig.fig_number];
     if (!invId) continue;
 
-    const parts = await katalog().teileAnreicherung.teileDesInventars(invId).catch(meldeUndLiefere('teile-enrich:parts', []));
+    const parts = await katalog().teileAnreicherung.teileDesInventars(invId);
 
     figPartsMap[fig.fig_number] = { parts, figQty: fig.quantity };
     parts.forEach((p: { part_num: string }) => allPartNums.add(p.part_num));
@@ -436,7 +434,7 @@ function _fsPathFromLocal(imageLocal: string) {
 
 // Mit await, sonst ginge der Endstand bei einem Neustart verloren.
 async function _redlSetStatus(obj: Record<string, unknown>) {
-  await setzeZustand('imgredl_status', JSON.stringify({ ...obj, at: Date.now() }))
+  await auftraegeBereich().laufzustand.setzeZustand('imgredl_status', JSON.stringify({ ...obj, at: Date.now() }))
     .catch(logAndContinue('teile-enrich:setzeZustand'));
 }
 
@@ -483,7 +481,8 @@ async function _redownloadMissingImages(lauf?: AuftragsLauf) {
     if (ohneVorschau.length) {
       await _redlSetStatus({ running: true, phase: 'thumbs', total: ohneVorschau.length, done: 0, redownloaded: 0, cleared: 0 });
       for (const web of ohneVorschau) {
-        if (await generateThumb(web).catch(meldeUndLiefere('teile-enrich:vorschau', null))) thumbsErzeugt++;
+        const r = await versuche('teile-enrich:vorschau', () => generateThumb(web));
+        if (r.ok && r.wert) thumbsErzeugt++;
       }
       console.log(`[img-redl] ${thumbsErzeugt} fehlende Vorschauen erzeugt (von ${ohneVorschau.length})`);
     }
@@ -511,7 +510,9 @@ async function _redownloadMissingImages(lauf?: AuftragsLauf) {
         if (m.image_url) {
           await cdnImageLimiter.acquire().catch(logAndContinue('teile-enrich:acquire'));
           try {
-            ok = (await downloadFile(m.image_url, m.fp).catch(meldeUndLiefere('teile-enrich:downloadFile', false))) === true;
+            // Ein Fehler zählt wie ein vergeblicher Abruf; der Zähler unten nennt beide.
+            const r = await versuche('teile-enrich:downloadFile', downloadFile(m.image_url, m.fp));
+            ok = r.ok && r.wert === true;
           } finally {
             cdnImageLimiter.release();
           }

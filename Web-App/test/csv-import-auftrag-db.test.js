@@ -58,7 +58,7 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async (t) => {
   };
   const a = await konto(`csvauftrag-a-${process.pid}`);
   const b = await konto(`csvauftrag-b-${process.pid}`);
-  const { stelleAuftragEin } = Object.assign({}, _req('src/auftraege/auftraege.js'), _req('src/auftraege/dienst.js'));
+  const { stelleAuftragEin } = Object.assign({}, _req('src/auftraege/auftraege.js'), { ..._req('src/auftraege/dienst.js'), ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege });
   const { jobSet } = _req('src/auftraege/importAuftrag.js');
   const worker = _req('jobs/auftraegeStarten.js').starteAuftragsWorker({ arten: ['csv_import'], taktMs: 50 });
   const nacharbeit = (uid) => db.all(
@@ -112,7 +112,7 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async (t) => {
   } finally {
     loslassen();
     await worker.stoppe(0);
-    await _req('db/pgNotify.js').close();
+    await _req('db/database.js').standardDb().benachrichtigung.close();
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[a, b]]);
     for (const z of vorher) await db.run('INSERT INTO global_settings (key, value) VALUES ($1,$2) ON CONFLICT (key) DO UPDATE SET value=$2', [z.key, z.value]);
     await db.pool.end().catch(() => {});

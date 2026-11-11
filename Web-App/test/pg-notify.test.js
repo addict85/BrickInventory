@@ -39,7 +39,7 @@ test('verpasste Signale werden beim Verbinden nachgeholt', { concurrency: 1 }, a
       throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
     t.skip('Test-DB nicht erreichbar'); return;
   }
-  const pgNotify = _req('db/pgNotify.js');
+  const pgNotify = _req('db/database.js').standardDb().benachrichtigung;
   t.after(async () => { await pgNotify.close(); await db.pool.end().catch(() => {}); });
   const KANAL = `ae_probe_${process.pid}`;
   const bekommen = [];
@@ -72,6 +72,6 @@ test('beim Senden wird der Kanal gebunden, nicht eingesetzt', () => {
 test('eigene Verbindung, mit gedeckeltem Reconnect', () => {
   assert.match(NOTIFY, /new Client\(/,
     'Ein dauerhaft lauschender Client wäre im Pool blockiert');
-  assert.match(NOTIFY, /Math\.min\(30_000, _retryMs \* 2\)/,
+  assert.match(NOTIFY, /Math\.min\(30_000, (?:this\.)?_retryMs \* 2\)/,
     'Reconnect ohne Deckelung und Backoff hämmert bei DB-Ausfall dagegen');
 });

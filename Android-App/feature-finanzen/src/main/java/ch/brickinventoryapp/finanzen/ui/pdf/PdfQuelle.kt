@@ -63,6 +63,7 @@ class PdfHalter : Closeable {
  * Ein Bereich ohne Namen auf der Platte. PdfRenderer braucht einen Deskriptor, in dem er
  * springen kann; der Klartext soll aber nirgends liegen, wo ihn ein Dateizugriff findet.
  * Der Bereich vergeht mit [close] oder spätestens mit dem Prozess, auch nach einem Absturz.
+ * Hinüber in den Renderer geht er nur unveränderlich: versiegelt bzw. nur lesend geöffnet.
  */
 internal class PdfBereich(private val bereich: ParcelFileDescriptor, private val eingangOeffnen: () -> InputStream) : PdfQuelle {
     // Ein eigener Deskriptor je Zugriff (PdfRenderer schliesst ihn mit); alle Duplikate
@@ -79,6 +80,7 @@ internal class PdfBereich(private val bereich: ParcelFileDescriptor, private val
             val bereich = memfd()
             fangeAusserAbbruch {
                 schreibeAlles(bereich.fileDescriptor, inhalt, inhalt.size)
+                versiegle(bereich.fileDescriptor)
             }.onFailure { e ->
                 bereich.close()
                 throw e
@@ -88,17 +90,20 @@ internal class PdfBereich(private val bereich: ParcelFileDescriptor, private val
 
         /** Eine Anleitung aus der verschlüsselten Ablage; grosse nicht in den Arbeitsspeicher ([ANLEITUNG_IM_SPEICHER_BIS]). */
         fun anleitung(ablage: AnleitungsAblage, datei: File, anzeige: File): PdfBereich {
-            val bereich = if (datei.length() <= ANLEITUNG_IM_SPEICHER_BIS) memfd() else namenlos(anzeige)
+            val imSpeicher = datei.length() <= ANLEITUNG_IM_SPEICHER_BIS
+            val (schreiber, bereich) = if (imSpeicher) memfd().let { it to it } else namenlos(anzeige)
             fangeAusserAbbruch {
                 ablage.lies(datei).use { ein ->
                     val puffer = ByteArray(64 * 1024)
                     while (true) {
                         val n = ein.read(puffer)
                         if (n < 0) break
-                        schreibeAlles(bereich.fileDescriptor, puffer, n)
+                        schreibeAlles(schreiber.fileDescriptor, puffer, n)
                     }
                 }
+                if (imSpeicher) versiegle(bereich.fileDescriptor) else schreiber.close()
             }.onFailure { e ->
+                if (schreiber !== bereich) schreiber.close()
                 bereich.close()
                 throw e
             }
@@ -106,7 +111,7 @@ internal class PdfBereich(private val bereich: ParcelFileDescriptor, private val
         }
 
         private fun memfd(): ParcelFileDescriptor {
-            val fd = Os.memfd_create("pdf", 0)
+            val fd = Os.memfd_create("pdf", MFD_ALLOW_SEALING)
             try {
                 return ParcelFileDescriptor.dup(fd)
             } finally {
@@ -114,13 +119,30 @@ internal class PdfBereich(private val bereich: ParcelFileDescriptor, private val
             }
         }
 
-        // Der Name ist gelöscht, bevor ein Byte Klartext hineinkommt; was bleibt, erreicht
-        // nur der offene Deskriptor. Ein Absturz dazwischen hinterlässt eine leere Datei.
-        private fun namenlos(ordner: File): ParcelFileDescriptor {
+        // Linux-Konstanten (uapi/linux/fcntl.h, memfd.h); OsConstants führt sie nicht öffentlich.
+        private const val MFD_ALLOW_SEALING = 2
+        private const val F_ADD_SEALS = 1033
+        private const val F_SEAL_SEAL = 1
+        private const val F_SEAL_SHRINK = 2
+        private const val F_SEAL_GROW = 4
+        private const val F_SEAL_WRITE = 8
+
+        /** Nach dem Füllen: Niemand, auch nicht der Renderer mit seinem Duplikat, ändert den Inhalt noch. */
+        private fun versiegle(fd: FileDescriptor) {
+            Os.fcntlInt(fd, F_ADD_SEALS, F_SEAL_WRITE or F_SEAL_SHRINK or F_SEAL_GROW or F_SEAL_SEAL)
+        }
+
+        // Der Name ist gelöscht, bevor ein Byte Klartext hineinkommt; was bleibt, erreichen
+        // nur die offenen Deskriptoren. Ein Absturz dazwischen hinterlässt eine leere Datei.
+        // Zum Schreiben einer, der gleich wieder zugeht; an den Renderer geht nur der lesende.
+        private fun namenlos(ordner: File): Pair<ParcelFileDescriptor, ParcelFileDescriptor> {
             ordner.mkdirs()
             val datei = File.createTempFile("anzeige", ".pdf", ordner)
             try {
-                return ParcelFileDescriptor.open(datei, ParcelFileDescriptor.MODE_READ_WRITE)
+                val schreiber = ParcelFileDescriptor.open(datei, ParcelFileDescriptor.MODE_WRITE_ONLY)
+                val leser = fangeAusserAbbruch { ParcelFileDescriptor.open(datei, ParcelFileDescriptor.MODE_READ_ONLY) }
+                    .getOrElse { schreiber.close(); throw it }
+                return schreiber to leser
             } finally {
                 datei.delete()
             }

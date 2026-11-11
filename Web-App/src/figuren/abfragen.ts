@@ -1,10 +1,10 @@
-import { resolveImageLocal } from '../katalog/bilder/images';
-import { asIds, withOwners, blickfeldAus, type Sicht } from '../haushalt/haushalt';
-import { clampPageSize, applyManualCondition, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand/gemeinsam';
+import { resolveImageLocal } from '../katalog';
+import { haushaltBereich, asIds, type Sicht } from '../haushalt';
+import { clampPageSize, applyManualCondition, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand';
 import { mitVersion } from '../infra/setNummer';
 import { Abstriche } from '../infra/ergebnis';
-import { marktpreiseAusCacheFuerFiguren } from '../finanzen/marketPrice';
-import * as repo from './repository/figurenListe';
+import { marktpreiseAusCacheFuerFiguren } from '../finanzen';
+import { figurenBereich } from './prozess';
 
 // Leseabfragen für Minifiguren.
 
@@ -12,16 +12,16 @@ import * as repo from './repository/figurenListe';
 type FigurenWunsch = { search?: string | undefined; source?: string | undefined; set_number?: string | undefined;
   page?: number | undefined; page_size?: number | null | undefined };
 export async function getMinifigs(userIdWahl: Sicht | number | number[], { search, source, set_number, page = 1, page_size = null }: FigurenWunsch = {}) {
-  const userId = await blickfeldAus(userIdWahl);
+  const userId = await haushaltBereich().haushalt.blickfeldAus(userIdWahl);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   const size = page_size ? clampPageSize(page_size, 60) : null;
-  const { figCount, figs } = await repo.figurenGruppiert(uids, { search: search ?? null, source: source ?? null,
+  const { figCount, figs } = await figurenBereich().figurenListe.figurenGruppiert(uids, { search: search ?? null, source: source ?? null,
     setNumber: set_number ? mitVersion(set_number) : null,
     seite: size ? { groesse: size, versatz: (Math.max(1, page || 1) - 1) * size } : null });
 
   // Eine „Gebraucht"-Erfassung genügt, damit die Figur als gebraucht gilt.
-  const usedFigRows = await repo.zustandszahlenManuellerFiguren(uids);
+  const usedFigRows = await figurenBereich().figurenListe.zustandszahlenManuellerFiguren(uids);
   const zustandJeFigur = new Map<string, { acq_count: number; used_count: number }>(
     usedFigRows.map(r => [r.fkey, r] as [string, { acq_count: number; used_count: number }]));
 
@@ -38,16 +38,16 @@ export async function getMinifigs(userIdWahl: Sicht | number | number[], { searc
 
   // Mit Gesamtzahl für den Endlos-Scroll, wie bei getSets.
   return {
-    figs: await withOwners(uids, mappedFigs),
+    figs: await haushaltBereich().haushalt.withOwners(uids, mappedFigs),
     total: figCount ? figCount.c : mappedFigs.length,
   };
 }
 
 // Eine Zählung für Webapp und App; die App zählte vorher selbst und anders.
 export async function getMinifigStats(userIdWahl: Sicht | number | number[]) {
-  const userId = await blickfeldAus(userIdWahl);
+  const userId = await haushaltBereich().haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
-  const row = await repo.figurenKennzahlen(uids);
+  const row = await figurenBereich().figurenListe.figurenKennzahlen(uids);
   return {
     types: row?.types ?? 0,
     total_quantity: row?.total_quantity ?? 0,
@@ -62,10 +62,10 @@ export async function getManualMinifigs(userIdWahl: Sicht | number | number[], v
                                  { page = 1, page_size = null, search = null }:
                                  { page?: number; page_size?: number | null; search?: string | null } = {},
                                  ab = new Abstriche()) {
-  const userId = await blickfeldAus(userIdWahl);
+  const userId = await haushaltBereich().haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const size = page_size ? clampPageSize(page_size, 60) : null;
-  const figs = await repo.manuelleFigurenListe(uids, search,
+  const figs = await figurenBereich().figurenListe.manuelleFigurenListe(uids, search,
     size ? { groesse: size, versatz: (Math.max(1, page || 1) - 1) * size } : null);
   const mapped = figs.map(f => ({ ...f, image_local: resolveImageLocal(f.image_local) }));
   const mitZustand = await applyManualCondition(uids, mapped, 'fig');
@@ -76,6 +76,6 @@ export async function getManualMinifigs(userIdWahl: Sicht | number | number[], v
   const mitPreis = mitZustand.map(f =>
     ({ ...f, avg_price: preise.get(String(f.fig_number)) ?? null }));
 
-  return withOwners(uids, mitPreis);
+  return haushaltBereich().haushalt.withOwners(uids, mitPreis);
 }
 

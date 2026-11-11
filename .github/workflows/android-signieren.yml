@@ -1,0 +1,525 @@
+name: Android-Signieren
+
+# Signiert das unsignierte APK eines Baulaufs, signiert die Fassungsbeschreibung und
+# prüft beides. Nur als wiederverwendbarer Workflow: android.yml ruft ihn mit
+# Probeschlüsseln, android-release.yml (läuft aus main) mit den echten. Die
+# Environments erlauben nur main; ein Etikett mit eigenem Workflow kommt nie heran.
+on:
+  workflow_call:
+    inputs:
+      echt:
+        description: 'true: Schlüssel aus den Environments release und release-beschreibung'
+        type: boolean
+        required: true
+      lauf:
+        description: 'Der Baulauf mit dem Artefakt apk-unsigniert; leer heisst dieser Lauf'
+        type: string
+        default: ''
+      etikett:
+        type: string
+        required: true
+      commit:
+        type: string
+        required: true
+      sha256_apk:
+        type: string
+        required: true
+      sha256_aab:
+        type: string
+        required: true
+    outputs:
+      sha256_apk:
+        value: ${{ jobs.beschreibung.outputs.summe_paket }}
+      sha256_beschreibung:
+        value: ${{ jobs.beschreibung.outputs.summe_beschreibung }}
+      sha256_aab:
+        value: ${{ jobs.beschreibung.outputs.summe_bundle }}
+
+permissions:
+  contents: read
+
+jobs:
+  # ── APK signieren: Secrets ohne Projektcode ─────────────────────────────
+  #
+  # Kein Checkout, kein Gradle; apksigner/zipalign aus dem SDK des Runners mit
+  # festen Prüfsummen. Signiert wird nur, was der Baujob gleich nach dem Bau mass.
+  signatur:
+    name: APK signieren
+    runs-on: ubuntu-24.04
+    environment: ${{ inputs.echt && 'release' || '' }}
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      summe_paket: ${{ steps.signiert.outputs.summe_paket }}
+      summe_bundle: ${{ steps.signiert.outputs.summe_bundle }}
+      summe_daten: ${{ steps.signiert.outputs.summe_daten }}
+      summe_signatur: ${{ steps.signiert.outputs.summe_signatur }}
+      summe_zertifikat: ${{ steps.signiert.outputs.summe_zertifikat }}
+    steps:
+      - name: Unsigniertes APK holen
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: apk-unsigniert
+          path: ${{ runner.temp }}/eingang
+          run-id: ${{ inputs.lauf || github.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Artefakt gegen die Prüfsummen des Baujobs
+        env:
+          APK_SOLL: ${{ inputs.sha256_apk }}
+          AAB_SOLL: ${{ inputs.sha256_aab }}
+        run: |
+          set -euo pipefail
+          EIN="$RUNNER_TEMP/eingang"
+          if ! printf '%s' "$APK_SOLL" | grep -Eq '^[0-9a-f]{64}$' || ! printf '%s' "$AAB_SOLL" | grep -Eq '^[0-9a-f]{64}$'; then
+            echo "::error::Der Baujob hat keine Prüfsummen gemeldet. Nichts wird signiert."
+            exit 1
+          fi
+          printf '%s  %s\n' "$APK_SOLL" "$EIN/apk/release/app-release-unsigned.apk" | sha256sum -c -
+          printf '%s  %s\n' "$AAB_SOLL" "$EIN/bundle/release/app-release.aab" | sha256sum -c -
+
+      # Die Regeln der Environment stehen nicht im Repository; ohne sie genügte ein
+      # Lauf auf irgendeinem Zweig, um zu signieren. Darum hier erzwungen.
+      - name: Environment ist geschützt
+        if: inputs.echt
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UMGEBUNG: release
+        run: |
+          set -euo pipefail
+          if ! U=$(gh api "repos/$GITHUB_REPOSITORY/environments/$UMGEBUNG"); then
+            echo "::error::Die Schutzregeln der Environment $UMGEBUNG liessen sich nicht lesen (actions: read). Nichts wird signiert."
+            exit 1
+          fi
+          PRUEFER=$(printf '%s' "$U" | jq '[.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length')
+          EIGENE=$(printf '%s' "$U" | jq -r '.deployment_branch_policy.custom_branch_policies // false')
+          UMGEHEN=$(printf '%s' "$U" | jq -r '.can_admins_bypass')
+          SELBST=$(printf '%s' "$U" | jq -r '[.protection_rules[]? | select(.type == "required_reviewers") | .prevent_self_review] | any')
+          if [ "$PRUEFER" -lt 1 ]; then
+            echo "::error::Die Environment $UMGEBUNG hat keinen Pflichtprüfer (Settings → Environments → $UMGEBUNG → Required reviewers). Nichts wird signiert."
+            exit 1
+          fi
+          # Sonst gäbe ein Administrator die Freigabe an den Pflichtprüfern vorbei.
+          if [ "$UMGEHEN" != false ]; then
+            echo "::error::Die Environment $UMGEBUNG lässt Administratoren die Regeln umgehen (Allow administrators to bypass: aus). Nichts wird signiert."
+            exit 1
+          fi
+          if [ "$SELBST" != true ]; then
+            echo "::warning title=Selbstfreigabe::Die Environment $UMGEBUNG erlaubt, eigene Läufe selbst freizugeben (Prevent self-review). Einschalten, sobald zwei Personen prüfen."
+          fi
+          if [ "$EIGENE" != true ]; then
+            echo "::error::Die Environment $UMGEBUNG lässt jeden Zweig zu (Deployment branches and tags: Selected, nur der Zweig main). Nichts wird signiert."
+            exit 1
+          fi
+          REGELN=$(gh api "repos/$GITHUB_REPOSITORY/environments/$UMGEBUNG/deployment-branch-policies" \
+            --jq '[.branch_policies[] | "\(.type // "branch"):\(.name)"] | sort | join(",")')
+          if [ "$REGELN" != "branch:main" ]; then
+            echo "::error::Die Environment $UMGEBUNG erlaubt „$REGELN“ statt nur des Zweigs main (docs/ANDROID-RELEASE.md). Nichts wird signiert."
+            exit 1
+          fi
+          echo "Environment $UMGEBUNG: $PRUEFER Pflichtprüfer, nur der Zweig main."
+
+      # Die Secrets nennt nur dieser Schritt, und er läuft nur in der Environment
+      # release. Gleichnamige Repository-Secrets gehören gelöscht.
+      - name: Release-Schlüssel bereitstellen
+        if: inputs.echt
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.KEYSTORE_PASSWORT }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.KEY_PASSWORT }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KS_PASS" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASS" ]; then
+            echo "::error::Es fehlen Signier-Secrets (KEYSTORE_BASE64, KEYSTORE_PASSWORT, KEY_ALIAS, KEY_PASSWORT) — sie gehören in die Environment release; Repository-Secrets gleichen Namens löschen. Ohne Signatur wird nichts veröffentlicht."
+            exit 1
+          fi
+          S="$RUNNER_TEMP/schluessel"; (umask 077; mkdir -p "$S")
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$S/signatur.jks"
+          printf '%s' "$KS_PASS" > "$S/ks_pass"; printf '%s' "$KEY_PASS" > "$S/key_pass"; printf '%s' "$KEY_ALIAS" > "$S/alias"
+
+      - name: Probe-Schlüssel erzeugen
+        if: ${{ !inputs.echt }}
+        run: |
+          set -euo pipefail
+          S="$RUNNER_TEMP/schluessel"; (umask 077; mkdir -p "$S")
+          P=probe-$RANDOM$RANDOM
+          keytool -genkeypair -keystore "$S/signatur.jks" -storepass "$P" -keypass "$P" \
+            -alias probe -keyalg RSA -keysize 2048 -validity 1 -dname CN=Probe >/dev/null
+          printf '%s' "$P" > "$S/ks_pass"; printf '%s' "$P" > "$S/key_pass"; printf probe > "$S/alias"
+
+      - name: Signieren
+        id: signiert
+        env:
+          ECHT: ${{ inputs.echt }}
+          ETIKETT: ${{ inputs.etikett }}
+          COMMIT: ${{ inputs.commit }}
+        run: |
+          set -euo pipefail
+          # Festgelegt statt „das neueste des Images“; eine andere Fassung oder andere
+          # Bytes brechen hier ab. Heben: Prüfsummen aus dem Protokoll übernehmen.
+          WERKZEUGE="$ANDROID_HOME/build-tools/37.0.0"
+          printf '%s  %s\n' \
+            0859ed6e59d3ded7519cd6e6409c0d9ce914af0e09dadc2dce7965ee2e991852 "$WERKZEUGE/zipalign" \
+            2defad215d7ff52968a409cde528cdaef7918b115e276b8e3378ca7a178e4180 "$WERKZEUGE/lib/apksigner.jar" \
+            | sha256sum -c -
+          APKSIGNER=(java -jar "$WERKZEUGE/lib/apksigner.jar")
+          EIN="$RUNNER_TEMP/eingang"
+          AUS="$RUNNER_TEMP/ausgang"
+          mkdir -p "$AUS/apk/release" "$AUS/bundle/release"
+          S="$RUNNER_TEMP/schluessel"
+          trap 'rm -rf "$S"' EXIT
+          KS="$S/signatur.jks"
+          KS_PASS=$(cat "$S/ks_pass"); KEY_PASS=$(cat "$S/key_pass"); KEY_ALIAS=$(cat "$S/alias")
+          export KS_PASS KEY_PASS
+          # Ausrichten VOR dem Signieren; -P 16 hält native Bibliotheken auf
+          # 16-KB-Seiten (geprüft im Job `apk-pruefen`).
+          "$WERKZEUGE/zipalign" -f -P 16 4 "$EIN/apk/release/app-release-unsigned.apk" "$RUNNER_TEMP/ausgerichtet.apk"
+          # v1 (JAR) braucht kein Gerät ab minSdk 30; v3 trägt eine spätere Schlüsselrotation.
+          "${APKSIGNER[@]}" sign --ks "$KS" --ks-pass env:KS_PASS --ks-key-alias "$KEY_ALIAS" \
+            --key-pass env:KEY_PASS --v1-signing-enabled false --v2-signing-enabled true --v3-signing-enabled true \
+            --out "$AUS/apk/release/BrickInventory.apk" "$RUNNER_TEMP/ausgerichtet.apk"
+          "${APKSIGNER[@]}" verify --print-certs "$AUS/apk/release/BrickInventory.apk" > "$RUNNER_TEMP/zertifikat.txt"
+          head -3 "$RUNNER_TEMP/zertifikat.txt"
+          install -m 644 "$EIN/apk/release/output-metadata.json" "$AUS/apk/release/output-metadata.json"
+          install -m 644 "$EIN/bundle/release/app-release.aab" "$RUNNER_TEMP/bundle.aab"
+          jarsigner -keystore "$KS" -storepass:env KS_PASS -keypass:env KEY_PASS "$RUNNER_TEMP/bundle.aab" "$KEY_ALIAS" >/dev/null
+          jarsigner -verify "$RUNNER_TEMP/bundle.aab" >/dev/null
+
+          # Die Fassungsbeschreibung: Die App prüft `beschreibungssignatur` (Job
+          # beschreibung) oder `signatur` und die Frist `gueltigBis`.
+          META="$EIN/apk/release/output-metadata.json"
+          APK_AUS="$AUS/apk/release/BrickInventory.apk"
+          V_CODE=$(jq -r '.elements[0].versionCode' "$META")
+          AUSGESTELLT=$(date -u +%s)
+          jq -n --argjson code "$V_CODE" --arg name "$(jq -r '.elements[0].versionName' "$META")" \
+                --arg commit "$COMMIT" \
+                --arg url "https://github.com/$GITHUB_REPOSITORY/releases/download/$ETIKETT/BrickInventory-${V_CODE}.apk" \
+                --argjson size "$(stat -c%s "$APK_AUS")" --arg pruefsumme "$(sha256sum "$APK_AUS" | cut -d' ' -f1)" \
+                --argjson ausgestellt "$AUSGESTELLT" --argjson gueltig "$((AUSGESTELLT + 30 * 86400))" \
+                '{versionCode:$code, versionName:$name, commit:$commit, apkUrl:$url, apkSize:$size, apkSha256:$pruefsumme,
+                  ausgestellt:$ausgestellt, gueltigBis:$gueltig}' \
+                > "$AUS/version-daten.json"
+          keytool -importkeystore -noprompt -srckeystore "$KS" -srcstorepass:env KS_PASS -srcalias "$KEY_ALIAS" \
+            -srckeypass:env KEY_PASS -destkeystore "$S/schluessel.p12" -deststoretype PKCS12 \
+            -deststorepass:env KS_PASS -destkeypass:env KS_PASS >/dev/null
+          # Der Schlüssel bleibt auch als PEM verschlüsselt: kein Klartext auf der Platte.
+          openssl pkcs12 -in "$S/schluessel.p12" -nocerts -passin env:KS_PASS -passout env:KS_PASS -out "$S/schluessel.pem"
+          openssl dgst -sha256 -sign "$S/schluessel.pem" -passin env:KS_PASS -out "$AUS/version.sig" "$AUS/version-daten.json"
+          keytool -exportcert -rfc -keystore "$KS" -storepass:env KS_PASS -alias "$KEY_ALIAS" > "$AUS/signierzertifikat.pem"
+
+          if [ "$ECHT" = "true" ]; then
+            install -m 644 "$RUNNER_TEMP/bundle.aab" "$AUS/bundle/release/app-release.aab"
+            echo "signiert mit dem Release-Schlüssel"
+          else
+            install -m 644 "$EIN/bundle/release/app-release.aab" "$AUS/bundle/release/app-release.aab"
+            echo "Probe-Signatur gelungen; geprüft wird das probe-signierte APK, veröffentlicht wird nichts."
+          fi
+          {
+            echo "summe_paket=$(sha256sum "$APK_AUS" | cut -d' ' -f1)"
+            echo "summe_bundle=$(sha256sum "$AUS/bundle/release/app-release.aab" | cut -d' ' -f1)"
+            echo "summe_daten=$(sha256sum "$AUS/version-daten.json" | cut -d' ' -f1)"
+            echo "summe_signatur=$(sha256sum "$AUS/version.sig" | cut -d' ' -f1)"
+            echo "summe_zertifikat=$(sha256sum "$AUS/signierzertifikat.pem" | cut -d' ' -f1)"
+          } >> "$GITHUB_OUTPUT"
+          # Ein probe-signiertes APK (jeder Lauf ausser dem Release) liegt nicht installierbar
+          # im Artefakt: Ein Link darauf verteilte fremden Code unter dem Namen des Projekts.
+          if [ "$ECHT" != "true" ]; then
+            mv "$APK_AUS" "$AUS/apk/release/BrickInventory.apk.probe-nicht-installieren"
+          fi
+
+      # Nur das Ergebnis geht weiter, nicht der Schlüssel.
+      - name: Signiertes APK übergeben
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: apk-signiert-teil
+          path: ${{ runner.temp }}/ausgang/
+          if-no-files-found: error
+          retention-days: 1
+
+  # ── Beschreibung signieren: eigener Schlüssel in eigener Environment ────
+  #
+  # Ein Schlüssel signiert nur einen Zweck. Der Beschreibungsschlüssel liegt
+  # verschlüsselt in release-beschreibung, mit eigener Passphrase; der Job sieht
+  # weder APK-Schlüssel noch Projektcode.
+  beschreibung:
+    name: Beschreibung signieren
+    needs: signatur
+    runs-on: ubuntu-24.04
+    environment: ${{ inputs.echt && 'release-beschreibung' || '' }}
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      summe_paket: ${{ needs.signatur.outputs.summe_paket }}
+      summe_bundle: ${{ needs.signatur.outputs.summe_bundle }}
+      summe_beschreibung: ${{ steps.beschrieben.outputs.summe_beschreibung }}
+    steps:
+      - name: Signiertes APK holen
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: apk-signiert-teil
+          path: ${{ runner.temp }}/ausgang
+
+      # Jeder Job eines Laufs kann Artefakte ersetzen: weiter geht nur, was der Job signatur ausgab.
+      - name: Artefakt gegen die Prüfsummen des Signierjobs
+        env:
+          ECHT: ${{ inputs.echt }}
+          PAKET: ${{ needs.signatur.outputs.summe_paket }}
+          BUNDLE: ${{ needs.signatur.outputs.summe_bundle }}
+          DATEN: ${{ needs.signatur.outputs.summe_daten }}
+          SIGNATUR: ${{ needs.signatur.outputs.summe_signatur }}
+          ZERTIFIKAT: ${{ needs.signatur.outputs.summe_zertifikat }}
+        run: |
+          set -euo pipefail
+          A="$RUNNER_TEMP/ausgang"
+          APK="$A/apk/release/BrickInventory.apk"
+          if [ "$ECHT" != "true" ]; then APK="$APK.probe-nicht-installieren"; fi
+          printf '%s  %s\n' "$PAKET" "$APK" "$BUNDLE" "$A/bundle/release/app-release.aab" "$DATEN" "$A/version-daten.json" \
+            "$SIGNATUR" "$A/version.sig" "$ZERTIFIKAT" "$A/signierzertifikat.pem" | sha256sum -c -
+
+      - name: Environment ist geschützt
+        if: inputs.echt
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UMGEBUNG: release-beschreibung
+        run: |
+          set -euo pipefail
+          if ! U=$(gh api "repos/$GITHUB_REPOSITORY/environments/$UMGEBUNG"); then
+            echo "::error::Die Schutzregeln der Environment $UMGEBUNG liessen sich nicht lesen (actions: read). Nichts wird signiert."
+            exit 1
+          fi
+          PRUEFER=$(printf '%s' "$U" | jq '[.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length')
+          EIGENE=$(printf '%s' "$U" | jq -r '.deployment_branch_policy.custom_branch_policies // false')
+          UMGEHEN=$(printf '%s' "$U" | jq -r '.can_admins_bypass')
+          if [ "$PRUEFER" -lt 1 ] || [ "$UMGEHEN" != false ] || [ "$EIGENE" != true ]; then
+            echo "::error::Die Environment $UMGEBUNG braucht Pflichtprüfer, keine Umgehung durch Administratoren und nur den Zweig main (docs/ANDROID-RELEASE.md). Nichts wird signiert."
+            exit 1
+          fi
+          REGELN=$(gh api "repos/$GITHUB_REPOSITORY/environments/$UMGEBUNG/deployment-branch-policies" \
+            --jq '[.branch_policies[] | "\(.type // "branch"):\(.name)"] | sort | join(",")')
+          if [ "$REGELN" != "branch:main" ]; then
+            echo "::error::Die Environment $UMGEBUNG erlaubt „$REGELN“ statt nur des Zweigs main. Nichts wird signiert."
+            exit 1
+          fi
+          echo "Environment $UMGEBUNG: $PRUEFER Pflichtprüfer, nur der Zweig main."
+
+      # Das Secret liegt verschlüsselt (PEM mit Passphrase); fehlt eines der beiden,
+      # trägt die Beschreibung nur die Signatur des APK-Schlüssels (apk-pruefen entscheidet).
+      - name: Beschreibungsschlüssel bereitstellen
+        if: inputs.echt
+        env:
+          BESCHREIBUNG_SCHLUESSEL: ${{ secrets.BESCHREIBUNG_SCHLUESSEL }}
+          BESCHREIBUNG_PASS: ${{ secrets.BESCHREIBUNG_PASS }}
+        run: |
+          set -euo pipefail
+          S="$RUNNER_TEMP/schluessel"; (umask 077; mkdir -p "$S")
+          if [ -z "$BESCHREIBUNG_SCHLUESSEL" ] || [ -z "$BESCHREIBUNG_PASS" ]; then
+            echo "::warning title=Beschreibungsschlüssel fehlt::BESCHREIBUNG_SCHLUESSEL oder BESCHREIBUNG_PASS fehlt in der Environment release-beschreibung (docs/ANDROID-RELEASE.md). Die Beschreibung trägt nur die Signatur des APK-Schlüssels."
+            exit 0
+          fi
+          printf '%s\n' "$BESCHREIBUNG_SCHLUESSEL" > "$S/beschreibung.pem"
+          printf '%s' "$BESCHREIBUNG_PASS" > "$S/pass"
+          if ! grep -q -- '-----BEGIN ENCRYPTED PRIVATE KEY-----' "$S/beschreibung.pem"; then
+            echo "::error::BESCHREIBUNG_SCHLUESSEL liegt nicht verschlüsselt im Secret; mit eigener Passphrase ablegen (docs/ANDROID-RELEASE.md). Nichts wird veröffentlicht."
+            exit 1
+          fi
+          if ! openssl pkey -in "$S/beschreibung.pem" -passin "file:$S/pass" -noout 2>/dev/null; then
+            echo "::error::BESCHREIBUNG_SCHLUESSEL lässt sich mit BESCHREIBUNG_PASS nicht öffnen. Nichts wird veröffentlicht."
+            exit 1
+          fi
+
+      - name: Probe-Beschreibungsschlüssel erzeugen
+        if: ${{ !inputs.echt }}
+        run: |
+          set -euo pipefail
+          S="$RUNNER_TEMP/schluessel"; (umask 077; mkdir -p "$S")
+          printf 'probe-%s' "$RANDOM$RANDOM" > "$S/pass"
+          openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -aes256 -pass "file:$S/pass" -out "$S/beschreibung.pem"
+
+      - name: Beschreibung signieren
+        id: beschrieben
+        run: |
+          set -euo pipefail
+          A="$RUNNER_TEMP/ausgang"
+          S="$RUNNER_TEMP/schluessel"
+          trap 'rm -rf "$S"' EXIT
+          BSIG=""
+          if [ -f "$S/beschreibung.pem" ]; then
+            openssl dgst -sha256 -sign "$S/beschreibung.pem" -passin "file:$S/pass" -out "$S/beschreibung.sig" "$A/version-daten.json"
+            openssl pkey -in "$S/beschreibung.pem" -passin "file:$S/pass" -pubout -out "$A/beschreibungsschluessel.pem"
+            BSIG=$(base64 -w0 "$S/beschreibung.sig")
+          fi
+          jq -n --arg daten "$(base64 -w0 "$A/version-daten.json")" --arg signatur "$(base64 -w0 "$A/version.sig")" --arg bsig "$BSIG" \
+                '{daten:$daten, signatur:$signatur} + (if $bsig == "" then {} else {beschreibungssignatur:$bsig} end)' \
+                > "$A/version-signiert.json"
+          rm "$A/version.sig"
+          echo "summe_beschreibung=$(sha256sum "$A/version-signiert.json" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Signiertes Ergebnis übergeben
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: apk-signiert
+          path: ${{ runner.temp }}/ausgang/
+          if-no-files-found: error
+          retention-days: 1
+
+      # Das Bundle wird nur gesichert, nicht veröffentlicht; es fällt auf, wenn nur
+      # das Bundle bricht (R8 und Ressourcen-Aufteilung arbeiten je Format anders).
+      - name: App-Bundle (.aab) sichern
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: BrickInventory-bundle
+          path: ${{ runner.temp }}/ausgang/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 90
+
+  # ── Das signierte Ergebnis prüfen: Projektcode ohne Secrets ──────────────
+  #
+  # Werkzeuge und Daten (Zertifikat, Beschreibungsschlüssel der App) aus dem
+  # gebauten Commit; geprüft wird genau das, was veröffentlicht würde.
+  apk-pruefen:
+    name: APK prüfen
+    needs: beschreibung
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: Android-App
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.commit }}
+          persist-credentials: false
+
+      - name: Signiertes APK holen
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: apk-signiert
+          path: Android-App/app/build/outputs
+
+      # Ausserhalb des Release liegt das APK unter einem Namen, der nicht installiert.
+      - name: Probe-APK für die Prüfung benennen
+        run: |
+          set -euo pipefail
+          P=app/build/outputs/apk/release/BrickInventory.apk.probe-nicht-installieren
+          if [ -f "$P" ]; then mv "$P" app/build/outputs/apk/release/BrickInventory.apk; fi
+
+      # Das Release-Zertifikat steht fest in tools/release-zertifikat.sha256. Ein
+      # probe-signiertes APK muss genau daran scheitern (Rückgabe 1); so läuft die
+      # Prüfung bei jedem Bau gegen eine echte Ausgabe von apksigner.
+      - name: APK prüfen
+        env:
+          ECHT: ${{ inputs.echt }}
+        run: |
+          set -euo pipefail
+          cd app/build/outputs/apk/release
+          ls -la
+          java -jar "$ANDROID_HOME/build-tools/37.0.0/lib/apksigner.jar" verify --print-certs BrickInventory.apk > "$RUNNER_TEMP/zertifikat.txt"
+          head -3 "$RUNNER_TEMP/zertifikat.txt"
+          cd "$GITHUB_WORKSPACE/Android-App"
+          ERGEBNIS=0
+          python3 tools/release-pruefen.py zertifikat "$RUNNER_TEMP/zertifikat.txt" tools/release-zertifikat.sha256 || ERGEBNIS=$?
+          if [ "$ECHT" = "true" ] && [ "$ERGEBNIS" != 0 ]; then
+            echo "::error::Das APK ist nicht mit dem hinterlegten Release-Zertifikat signiert (tools/release-zertifikat.sha256). Nichts wird veröffentlicht."
+            exit 1
+          fi
+          if [ "$ECHT" != "true" ] && [ "$ERGEBNIS" != 1 ]; then
+            echo "::error::Das Probe-signierte APK muss am Release-Zertifikat scheitern, die Prüfung gab $ERGEBNIS zurück."
+            exit 1
+          fi
+
+      # Bibliotheken bringen eigene Komponenten und Berechtigungen mit: Jede exportierte
+      # Komponente und jede Berechtigung steht in tools/manifest-*.txt.
+      - name: Manifest des APK prüfen
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/build-tools/37.0.0/aapt2" dump xmltree --file AndroidManifest.xml \
+            app/build/outputs/apk/release/BrickInventory.apk > "$RUNNER_TEMP/manifest.txt"
+          python3 tools/manifest-pruefen.py "$RUNNER_TEMP/manifest.txt" tools/manifest-exportiert.txt \
+            tools/manifest-berechtigungen.txt
+
+      # Die Beschreibung ist vom selben Zertifikat wie das APK signiert und beschreibt
+      # genau dieses APK. Nennt die App Beschreibungsschlüssel, muss das Release mit
+      # einem davon signiert sein; sonst fiele das erst auf den Geräten auf.
+      - name: Signierte Beschreibung prüfen
+        env:
+          ECHT: ${{ inputs.echt }}
+          ETIKETT: ${{ inputs.etikett }}
+          COMMIT: ${{ inputs.commit }}
+        run: |
+          set -euo pipefail
+          A=app/build/outputs
+          T="$RUNNER_TEMP/beschreibung"; mkdir -p "$T"
+          ZERT=$(openssl x509 -in "$A/signierzertifikat.pem" -outform DER | sha256sum | cut -d' ' -f1)
+          if ! grep -qi "certificate SHA-256 digest: $ZERT" "$RUNNER_TEMP/zertifikat.txt"; then
+            echo "::error::Die Beschreibung ist mit einem anderen Zertifikat signiert als das APK."
+            exit 1
+          fi
+          openssl x509 -in "$A/signierzertifikat.pem" -pubkey -noout > "$T/schluessel.pem"
+          jq -r .daten "$A/version-signiert.json" | base64 -d > "$T/daten.json"
+          jq -r .signatur "$A/version-signiert.json" | base64 -d > "$T/daten.sig"
+          openssl dgst -sha256 -verify "$T/schluessel.pem" -signature "$T/daten.sig" "$T/daten.json"
+          if jq -e .beschreibungssignatur "$A/version-signiert.json" >/dev/null; then
+            jq -r .beschreibungssignatur "$A/version-signiert.json" | base64 -d > "$T/beschreibung.sig"
+            openssl dgst -sha256 -verify "$A/beschreibungsschluessel.pem" -signature "$T/beschreibung.sig" "$T/daten.json"
+          fi
+          # Rückgabe 3: Die App nennt keinen Beschreibungsschlüssel (Übergangsweg über den
+          # APK-Schlüssel). Sichtbar in jedem Lauf; ein Release veröffentlicht so nicht.
+          SCHLUESSEL=0
+          python3 tools/release-pruefen.py schluessel "$A/beschreibungsschluessel.pem" \
+            core-ressourcen/src/main/res/raw/beschreibungs_schluessel.pem || SCHLUESSEL=$?
+          if [ "$SCHLUESSEL" = 3 ]; then
+            if [ "$ECHT" = "true" ]; then
+              echo "::error title=Beschreibungsschlüssel fehlt::beschreibungs_schluessel.pem ist leer; die Beschreibung gälte mit dem APK-Schlüssel. Erst einrichten (README, „Beschreibungsschlüssel“). Nichts wird veröffentlicht."
+              exit 1
+            fi
+            echo "::warning title=Beschreibungsschlüssel fehlt::Die App nennt keinen Beschreibungsschlüssel (README, „Beschreibungsschlüssel“); ein Release veröffentlicht so nicht."
+          elif [ "$ECHT" = "true" ] && [ "$SCHLUESSEL" != 0 ]; then
+            echo "::error::Die App verlangt einen Beschreibungsschlüssel, die Beschreibung trägt keinen davon (Environment release-beschreibung). Nichts wird veröffentlicht."
+            exit 1
+          fi
+          python3 tools/release-pruefen.py beschreibung "$T/daten.json" "$A/apk/release/BrickInventory.apk" \
+            "$A/apk/release/output-metadata.json" "$COMMIT" \
+            "https://github.com/$GITHUB_REPOSITORY/releases/download/$ETIKETT"
+
+      # Ein Etikett auf einem älteren Commit von main brächte einen älteren Stand
+      # als „neustes APK“ zu jeder Neuinstallation. versionCode zählt die Commits.
+      - name: versionCode über dem veröffentlichten
+        if: inputs.echt
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT: ${{ inputs.commit }}
+        run: |
+          set -euo pipefail
+          V_CODE=$(jq -r '.elements[0].versionCode' app/build/outputs/apk/release/output-metadata.json)
+          ALT=-
+          # Verglichen wird mit der signierten Beschreibung; version.json nur, solange
+          # apk-neuste noch keine trägt (sie fällt nach dem Stichtag weg).
+          if gh release view apk-neuste --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            ALT="$RUNNER_TEMP/version-alt.json"
+            if gh release download apk-neuste --repo "$GITHUB_REPOSITORY" -p version-signiert.json -O "$RUNNER_TEMP/alt-signiert.json"; then
+              jq -r .daten "$RUNNER_TEMP/alt-signiert.json" | base64 -d > "$ALT"
+            else
+              gh release download apk-neuste --repo "$GITHUB_REPOSITORY" -p version.json -O "$ALT"
+            fi
+          fi
+          if ! python3 tools/release-pruefen.py fassung "$ALT" "$V_CODE" "$COMMIT"; then
+            echo "::error::versionCode $V_CODE liegt nicht über dem veröffentlichten APK. Nichts wird veröffentlicht."
+            exit 1
+          fi
+
+      # Das fertige APK lesen, nicht den Quelltext: Was R8 entfernt, steht nur im Ergebnis.
+      - name: APK gegen R8-Verluste prüfen
+        run: |
+          python3 tools/apk-pruefen.py \
+            app/build/outputs/apk/release/BrickInventory.apk \
+            */src/main/java
+
+      # 16-KB-Speicherseiten am gebauten APK messen statt an einer Versionsnummer.
+      - name: Native Bibliotheken auf 16 KB ausgerichtet?
+        run: |
+          python3 tools/apk-ausrichtung.py \
+            app/build/outputs/apk/release/BrickInventory.apk

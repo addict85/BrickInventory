@@ -27,6 +27,7 @@ import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import java.nio.file.Files
+import ch.brickinventoryapp.testing.text
 
 /**
  * Der Alarmschalter und die Vorwärm-Netze schreiben über das ViewModel: Der Wunsch
@@ -70,7 +71,7 @@ class GeraeteEinstellungenViewModelTest {
     private val planer = Planer()
     private val kanal = MeldungsKanal()
     private val wurzel = Files.createTempDirectory("vorschau").toFile()
-    private val vorschau = VorschauSpeicher({ wurzel }, AblageChiffre { ByteArray(32) { 4 } })
+    private val vorschau = VorschauSpeicher({ wurzel }, AblageChiffre { ByteArray(32) { 4 } }) { ByteArray(32) { 14 } }
     private lateinit var vm: GeraeteEinstellungenViewModel
     private lateinit var sammler: Job
 
@@ -99,7 +100,7 @@ class GeraeteEinstellungenViewModelTest {
         vm.alarmMeldungen(false)
         assertEquals(false, vm.alarmMeldungenAn.value)
         assertEquals(listOf(true, false), planer.auftraege)
-        assertNull("Ohne Fehlschlag keine Meldung", kanal.meldung.value)
+        assertNull("Ohne Fehlschlag keine Meldung", kanal.text)
     }
 
     @Test
@@ -107,7 +108,7 @@ class GeraeteEinstellungenViewModelTest {
         planer.fehler = IllegalStateException("WorkManager fehlt")
         vm.alarmMeldungen(true)
         assertEquals("Der Wunsch gilt trotzdem", true, vm.alarmMeldungenAn.value)
-        assertEquals("t${R.string.alert_schedule_failed}(IllegalStateException: WorkManager fehlt)", kanal.meldung.value)
+        assertEquals("t${R.string.alert_schedule_failed}(IllegalStateException: WorkManager fehlt)", kanal.text)
     }
 
     @Test
@@ -125,6 +126,6 @@ class GeraeteEinstellungenViewModelTest {
         vm.ablageLeeren()
         assertEquals(0L, vm.ablageBytes.value)
         assertEquals(0L, vorschau.belegt())
-        assertEquals("t${R.string.monitoring_cache_saved}()", kanal.meldung.value)
+        assertEquals("t${R.string.monitoring_cache_saved}()", kanal.text)
     }
 }

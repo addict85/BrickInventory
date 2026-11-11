@@ -26,7 +26,11 @@ export function rebrickableSetBild(setNumber: string): string {
 /** Liegen Bild und Vorschau schon in images/sets, braucht der Bild-Job nichts mehr. */
 export async function setBildVollstaendig(setNumber: string): Promise<boolean> {
   const safe = setNumber.replace(/[^a-z0-9-]/gi, '_');
-  const da = (datei: string) => fs.promises.access(path.join(SET_IMAGES_DIR, datei)).then(() => true, () => false);
+  const da = (datei: string) =>
+    fs.promises.access(path.join(SET_IMAGES_DIR, datei)).then(
+      () => true,
+      () => false,
+    );
   return (await da(`${safe}.jpg`)) && (await da(`${safe}_thumb.jpg`));
 }
 
@@ -36,25 +40,44 @@ export async function downloadSetImage(url: string, setNumber: string, info?: { 
     const safe = setNumber.replace(/[^a-z0-9-]/gi, '_');
     const localPath = path.join(SET_IMAGES_DIR, `${safe}.jpg`);
     const relPath = `/images/sets/${safe}.jpg`;
-    if (await fs.promises.access(localPath).then(() => true, () => false)) return relPath;
+    if (
+      await fs.promises.access(localPath).then(
+        () => true,
+        () => false,
+      )
+    )
+      return relPath;
     const buf = await holeBild(url, {
-      maxBytes: SET_IMG_MAX_BYTES, zeitlimitMs: 30_000,
+      maxBytes: SET_IMG_MAX_BYTES,
+      zeitlimitMs: 30_000,
       kopfzeilen: { ...BILD_KOPFZEILEN, 'User-Agent': bildUserAgent() },
-    }).then(r => {
-      if (r.status === 200) return r.koerper;
-      // „404" und „403 Bot-Erkennung" verlangen verschiedene Massnahmen; ohne
-      // echten Code gilt es in src/katalog/bilder/bildbedarfLauf.ts als vorübergehend.
-      const nichtVorhanden = r.status === 404 || r.status === 410;
-      (nichtVorhanden ? console.warn : console.error)(`[set-img] ${setNumber}: HTTP ${r.status} vom Bildserver: ${url}`);
-      if (info && r.status) info.status = r.status;
-      return null;
-    }, (e: unknown) => {
-      if (e instanceof AbrufFehler && e.grund === 'zu-gross')
-        console.error(`[set-img] ${setNumber}: Bild grösser als ${Math.round(SET_IMG_MAX_BYTES / 1024 / 1024)} MB — nicht lokal gespeichert: ${url}`);
-      else console.error(`[set-img] ${setNumber}: Abruf fehlgeschlagen (${e instanceof Error ? e.message : e}): ${url}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
-      return null;
-    });
-    if (!buf) return null;   // Grund wurde oben bereits genannt
+    }).then(
+      r => {
+        if (r.status === 200) return r.koerper;
+        // „404" und „403 Bot-Erkennung" verlangen verschiedene Massnahmen; ohne
+        // echten Code gilt es in src/katalog/bilder/bildbedarfLauf.ts als vorübergehend.
+        const nichtVorhanden = r.status === 404 || r.status === 410;
+        (nichtVorhanden ? console.warn : console.error)(
+          `[set-img] ${setNumber}: HTTP ${r.status} vom Bildserver: ${url}`,
+        );
+        if (info && r.status) info.status = r.status;
+        return null;
+      },
+      (e: unknown) => {
+        if (e instanceof AbrufFehler && e.grund === 'zu-gross')
+          console.error(
+            `[set-img] ${setNumber}: Bild grösser als ${Math.round(SET_IMG_MAX_BYTES / 1024 / 1024)} MB — nicht lokal gespeichert: ${url}`,
+          );
+        else
+          console.error(
+            `[set-img] ${setNumber}: Abruf fehlgeschlagen (${e instanceof Error ? e.message : e}): ${url}`
+              .replace(/\r?\n/g, ' ⏎ ')
+              .replace(/\n|\r/g, ''),
+          );
+        return null;
+      },
+    );
+    if (!buf) return null; // Grund wurde oben bereits genannt
     if (buf.length < 100) {
       // Zu klein für ein Bild — fast immer eine Fehlerseite.
       console.error(`[set-img] ${setNumber}: Antwort zu klein (${buf.length} Bytes) — kein Bild: ${url}`);
@@ -62,6 +85,8 @@ export async function downloadSetImage(url: string, setNumber: string, info?: { 
     }
     // Erst fertig, dann sichtbar: Der Bild-Proxy liefert sonst eine halbe Datei aus.
     const teil = `${localPath}.${process.pid}.teil`;
+    // Auf einer frischen Installation fehlt der Ordner noch.
+    await fs.promises.mkdir(SET_IMAGES_DIR, { recursive: true });
     await fs.promises.writeFile(teil, buf);
     await fs.promises.rename(teil, localPath);
     return relPath;
@@ -72,4 +97,3 @@ export async function downloadSetImage(url: string, setNumber: string, info?: { 
     return null;
   }
 }
-

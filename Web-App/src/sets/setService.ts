@@ -1,17 +1,16 @@
 import type { DbSchnittstelle } from '../../db/database';
 import { fehlertext } from '../infra/fehler';
-import { scopeIds, writableIds } from '../haushalt/haushalt';
+import { scopeIds, writableIds } from '../haushalt';
 import { mitInventarSperre } from '../../db/txLock';
-import { getCurrentMarketPrice } from '../finanzen/marketPrice';
-import { getSetting } from '../einstellungen/settings';
+import { getCurrentMarketPrice, resolveSetCondition } from '../finanzen';
+import { getSetting } from '../einstellungen';
 import { deleteSetRows } from './loeschen';
-import { legeInPapierkorb } from '../bestand/papierkorb';
+import { legeInPapierkorb } from '../bestand';
 import { toCsv } from '../infra/csvExport';
 import { normalisiereSetNummer } from '../infra/setNummer';
 import { recordAcquisition } from './erfassen';
 import { fachfehler } from '../infra/fehlerTexte';
-import { bestandsMenge } from '../infra/validate';
-import { resolveSetCondition } from '../finanzen/financeCalc';
+import { bestandsMenge, zustand } from '../infra/validate';
 import * as repo from './repository/sets';
 import type { Eingabe } from '../vertrag';
 import { versuche, wertOder, Abstriche } from '../infra/ergebnis';
@@ -29,7 +28,7 @@ export function sanitizeSetNumber(input: unknown) {
  * src/bestand/kaufpreisNachtrag.ts nach. */
 async function priceForNewAcquisition(sk: SetsKontext, userId: number, setNumber: string, dbh: DbSchnittstelle = sk.db) {
   // Über das Blickfeld: Mit einer nackten ID fände der Hauptaccount das Set des Unterkontos nicht.
-  const blickfeld = wertOder(await versuche('sets:kaufpreis-blickfeld', scopeIds(userId)), [userId]);
+  const blickfeld = wertOder(await versuche('sets:kaufpreis-blickfeld', scopeIds(sk.db, userId)), [userId]);
   const cond = await resolveSetCondition(blickfeld, setNumber, dbh);
   // Die Währung DES KONTOS: Der Preis wird in ihr gesucht und gespeichert.
   const currency = String(await getSetting(userId, 'currency', 'EUR'));
@@ -89,7 +88,7 @@ async function schreibeInLetzteErfassung(sk: SetsKontext,
 
 export async function updateSet(sk: SetsKontext, uid: number, sn: string, body: Eingabe<'PUT /api/v1/sets/:setNumber'>) {
   // SCHREIB-Blickfeld statt eigener ID, sonst fände ein Set des Unterkontos keine Zeile.
-  const _wids = await writableIds(uid);
+  const _wids = await writableIds(sk.db, uid);
   // Die EIGENE Zeile gewinnt, sonst entschiede die Tabellenreihenfolge.
   const existing = await repo.setZeileImSchreibfeld(sk.db, _wids, sn, uid);
   if (!existing) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
@@ -107,7 +106,7 @@ export async function updateSet(sk: SetsKontext, uid: number, sn: string, body: 
     const delta = hatDelta ? Number(body.quantity_delta) : null;
     if (delta !== null && (!Number.isInteger(delta) || Math.abs(delta) > 9999)) fachfehler('ungueltig', 'wert_ungueltig');
     const gewuenschtGesamt = delta === null ? bestandsMenge(body.quantity) : null;
-    const leseFeld = await scopeIds(uid);
+    const leseFeld = await scopeIds(sk.db, uid);
     // Angezeigt wird der Haushalt, geändert nur das eigene Konto.
     const eigenesZiel = async (dbh: Pick<DbSchnittstelle, 'get'>) => {
       const gesamtVorher = await repo.setMenge(dbh, 'blickfeld', leseFeld, sn);
@@ -151,7 +150,7 @@ export async function updateSet(sk: SetsKontext, uid: number, sn: string, body: 
   }
   // null heisst „nicht gesetzt", nicht 'N'.
   if (body.condition !== undefined && body.condition !== null && !hasQuantity) {
-    const cond = ['N','U'].includes(body.condition) ? body.condition : 'N';
+    const cond = zustand(body.condition);
     try {
       // ownerId: Mit dem Aufrufer träfe das UPDATE beim Unterkonto keine Zeile.
       await schreibeInLetzteErfassung(sk, 'condition', cond, ownerId, sn);
@@ -160,7 +159,7 @@ export async function updateSet(sk: SetsKontext, uid: number, sn: string, body: 
     }
   }
   // Geschrieben ist schon; scheitert nur das Nachlesen, sagt die Antwort „unbekannt“ statt 0.
-  const nachher = await ab.oder('menge', async () => (await repo.setMenge(sk.db, 'blickfeld', await scopeIds(uid), sn)) ?? 0, null);
+  const nachher = await ab.oder('menge', async () => (await repo.setMenge(sk.db, 'blickfeld', await scopeIds(sk.db, uid), sn)) ?? 0, null);
   return { quantity: nachher, ...(papierkorb ? { papierkorb } : {}), ...ab.angabe() };
 }
 

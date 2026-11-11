@@ -27,6 +27,22 @@ data class CsvImportStatus(
     val error: String? = null     // set when success=false
 )
 
+/** Antwort auf POST /api/v1/sets/partslist-pdf: der angenommene PDF-Auftrag. */
+@Serializable
+data class PdfAuftragAntwort(val success: Boolean = false, val jobId: String = "")
+
+/**
+ * Stand eines PDF-Auftrags, aus der Statusabfrage und aus jedem Ereignis seines Stroms.
+ * [etaSeconds] schätzt der Server aus den fehlenden Bildern; [error] ist sein Satz.
+ */
+@Serializable
+data class PdfAuftragStand(
+    val success: Boolean = false,
+    val status: Laufstatus = Laufstatus.UNBEKANNT,
+    val etaSeconds: Double? = null,
+    val error: String? = null,
+)
+
 @Serializable
 data class SetItem(
     @SerialName("set_number") val setNumber: String,

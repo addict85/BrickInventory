@@ -11,12 +11,12 @@ import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
-import ch.brickinventoryapp.zustand.ui.Aenderung
+import ch.brickinventoryapp.data.repository.Bestandsabgleich
+import ch.brickinventoryapp.data.repository.Kontosicht
 import ch.brickinventoryapp.sammlung.ui.Galerie
 import ch.brickinventoryapp.sammlung.ui.GalleryUiState
 import ch.brickinventoryapp.sammlung.ui.KachelPreis
 import ch.brickinventoryapp.sammlung.ui.kachelPreise
-import ch.brickinventoryapp.zustand.ui.retryOnNetwork
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,29 +26,28 @@ import javax.inject.Inject
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.zustand.ui.AppUiState
 import ch.brickinventoryapp.zustand.ui.Sitzung
-import ch.brickinventoryapp.zustand.ui.Bestandssignal
 import ch.brickinventoryapp.model.ui.ScrollMemory
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
-import ch.brickinventoryapp.zustand.ui.viewmodel.folgeBestand
 
 /**
  * Die Sammlung der Sets: Liste, Filter, Kennzahlen.
  *
- * Die Abläufe (Blättern, Entprellen, Generationen) stehen in [Galerie]; dieses
- * ViewModel verbindet sie mit Server, Blickfeld und Bestandssignal. Suche,
- * Thema und Sortierung stehen im [SavedStateHandle].
+ * Die Abläufe (Entprellen, Quelle wechseln) stehen in [Galerie]; dieses
+ * ViewModel wählt die Quelle: die Ablage, über gewählte Konten die Kontosicht.
+ * Suche, Thema und Sortierung stehen im [SavedStateHandle].
  */
 @HiltViewModel
 class GalerieViewModel @Inject constructor(
     private val sitzung: Sitzung,
     private val filter: Filterwahl,
     private val meldungen: Meldungen,
-    private val bestand: Bestandssignal,
+    private val aenderungen: Bestandsabgleich,
     private val scrollMemory: ScrollMemory,
     private val sets: SetsRepository,
+    private val kontosicht: Kontosicht,
     private val finanzen: FinanzenRepository,
     private val gemerkt: SavedStateHandle,
 ) : ViewModel(), Filterwahl by filter {
@@ -57,7 +56,8 @@ class GalerieViewModel @Inject constructor(
 
     init {
         folgeAbmeldung(sitzung) { zuruecksetzen() }
-        folgeBestand(bestand) { beiAenderung(it) }
+        // Die Kennzahlen rechnet der Server über den Bestand; ändert er sich in der Ablage, stimmen sie nicht mehr.
+        viewModelScope.launch { aenderungen.bestandGeaendert().collect { loadStats() } }
     }
 
     override fun setScope(view: ScopeFilter.View, value: String) {
@@ -74,24 +74,24 @@ class GalerieViewModel @Inject constructor(
         }
     }
 
+    /** Über gewählte Konten rechnet nur der Server die Mengen; sonst gilt die Ablage. */
+    private fun kontoAbfrage(g: GalleryUiState): Kontosicht.SetsAbfrage? =
+        filter.kontoFuer(ScopeFilter.View.GALLERY)?.let {
+            Kontosicht.SetsAbfrage(it, g.galleryQuery.ifBlank { null }, g.galleryTheme.ifBlank { null }, g.gallerySort,
+                filter.lagerFuer(ScopeFilter.View.GALLERY)?.ifBlank { null })
+        }
+
     private val galerie = Galerie(
         scope = viewModelScope,
-        holeSeite = { g, seite ->
-            retryOnNetwork {
-                sets.getSets(filter.kontoFuer(ScopeFilter.View.GALLERY),
-                    search = g.galleryQuery, theme = g.galleryTheme, sort = g.gallerySort, page = seite,
-                    storage = filter.lagerFuer(ScopeFilter.View.GALLERY))
-            }
+        quelle = { g ->
+            kontoAbfrage(g)?.let { kontosicht.galerie.beobachte(it) }
+                ?: sets.beobachteSets(g.galleryQuery, g.galleryTheme, filter.lagerFuer(ScopeFilter.View.GALLERY), g.gallerySort)
         },
+        aktualisiere = { g -> kontoAbfrage(g)?.let { kontosicht.galerie.aktualisiere(it) } ?: sets.aktualisiereSets() },
         holeKennzahlen = { finanzen.getStats(filter.kontoFuer(ScopeFilter.View.GALLERY)) },
         meldeFehler = { meldungen.zeige(meldungen.meldungFuerSnackbar(it)) },
         beschreibeFehler = { meldungen.meldung(it) },
         vergissScroll = { scrollMemory.vergiss("gallery") },
-        lokal = { g ->
-            sets.beobachteSets(g.galleryQuery, g.galleryTheme, filter.lagerFuer(ScopeFilter.View.GALLERY), g.gallerySort)
-        },
-        lokalGilt = { filter.kontoFuer(ScopeFilter.View.GALLERY) == null },
-        aktualisiere = { retryOnNetwork { sets.aktualisiereSets() } },
     )
     /** Ein gelöschtes Set, das sich noch zurückholen lässt — die Snackbar „Rückgängig“. */
     data class VorgemerktesLoeschen(val setNumber: String, val name: String, val set: SetAnsicht? = null)
@@ -100,9 +100,8 @@ class GalerieViewModel @Inject constructor(
     val vorgemerkt: StateFlow<VorgemerktesLoeschen?> = _vorgemerkt.asStateFlow()
 
     /**
-     * Die Galerie ohne das vorgemerkte Set: Kommt die Liste während der Snackbar neu
-     * (Signal, Ziehen zum Neuladen), stünde es sonst wieder da, obwohl es gleich
-     * gelöscht wird.
+     * Die Galerie ohne das vorgemerkte Set: Die Ablage führt es bis zum Löschen beim
+     * Server, und „Rückgängig“ zeigt es so ohne Neuladen wieder.
      */
     val galleryState: StateFlow<GalleryUiState> = galerie.state
         .abgeleitet(_vorgemerkt) { st, v ->
@@ -136,7 +135,6 @@ class GalerieViewModel @Inject constructor(
         loadSets()
         loadStats()
     }
-    fun loadMoreSets() = galerie.mehrLaden()
     fun loadStats() {
         galerie.ladeKennzahlen()
         ladePreise()
@@ -191,19 +189,17 @@ class GalerieViewModel @Inject constructor(
     fun loeschenVormerken(setNumber: String, name: String) {
         loeschenAusfuehren()
         val set = galerie.state.value.sets.firstOrNull { it.setNumber == setNumber }
-        galerie.entferne(setNumber)
         _vorgemerkt.value = VorgemerktesLoeschen(setNumber, name, set)
     }
 
     /**
-     * Das vorgemerkte Set bleibt; die Liste kommt neu vom Server, auf dem es nie fehlte.
+     * Das vorgemerkte Set bleibt; es stand die ganze Zeit in der Ablage.
      * [nur]: nur dieses — die Snackbar eines abgelösten Löschens holt nicht das nächste zurück.
      */
     fun rueckgaengig(nur: VorgemerktesLoeschen? = null) {
         val v = _vorgemerkt.value ?: return
         if (nur != null && v != nur) return
         _vorgemerkt.value = null
-        loadSets()
     }
 
     /**
@@ -221,9 +217,7 @@ class GalerieViewModel @Inject constructor(
     fun deleteSet(setNumber: String, erfolgMelden: Boolean = true) {
         viewModelScope.launch {
             val (geloescht, satz) = setLoeschen(sets, meldungen, setNumber)
-            if (geloescht) galerie.entferne(setNumber)
             if (!geloescht || erfolgMelden) meldungen.zeige(satz)
-            if (geloescht) bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
         }
     }
 
@@ -231,29 +225,6 @@ class GalerieViewModel @Inject constructor(
         if (view != ScopeFilter.View.GALLERY) return
         loadSets()
         loadStats()
-    }
-
-    private fun beiAenderung(aenderung: Aenderung) {
-        when (aenderung) {
-            Aenderung.Sets -> { loadSets(); loadStats() }
-            Aenderung.Teile, Aenderung.Figuren -> loadStats()
-            // Ein geänderter Kauf ändert die Kachel, nicht die Liste — kein
-            // Neuladen, das die Rollposition verschiebt.
-            is Aenderung.SetZusammenfassung -> {
-                val agg = aenderung.agg
-                galerie.aendereSet(agg.setNumber) { s ->
-                    s.copy(
-                        condition        = agg.condition ?: s.condition,
-                        conditions       = agg.conditions.ifEmpty { s.conditions },
-                        usedCount        = agg.usedCount ?: s.usedCount,
-                        maxPurchasePrice = agg.maxPurchasePrice ?: s.maxPurchasePrice,
-                        avgPurchasePrice = agg.avgPurchasePrice ?: s.avgPurchasePrice,
-                    )
-                }
-                loadStats()
-            }
-            Aenderung.Merkliste, Aenderung.Alarme -> Unit
-        }
     }
 
     private fun zuruecksetzen() {

@@ -334,9 +334,58 @@ test('der signierte Bau ohne Cache, Trivy vor der Signatur, Paketsignaturen in d
   assert.match(eigen, /docker build -f Web-App\/Dockerfile\.caddy /);
   assert.match(eigen, /exit-code: '1'/);
   assert.doesNotMatch(eigen, /trivyignores/, 'Caddy wird ohne Ausnahmen geprüft');
-  const ausnahmen = fs.readFileSync(path.join(WURZEL, '.github', 'trivy-betrieb.ignore'), 'utf8');
-  assert.doesNotMatch(ausnahmen.split('\n').filter(l => !l.startsWith('#   ')).join('\n'), /^# (caddy|pgweb)/m,
-    'Caddy oder pgweb mit hingenommenen Lücken');
+  const ausnahmen = fs.readFileSync(path.join(WURZEL, '.github', 'trivy-betrieb.yaml'), 'utf8');
+  assert.doesNotMatch(ausnahmen, /^\s*# (caddy|pgweb)/m, 'Caddy oder pgweb mit hingenommenen Lücken');
+});
+
+/** Die Einträge von .github/trivy-betrieb.yaml (nur die Form, die die Datei benutzt). */
+function trivyAusnahmen(roh) {
+  assert.match(roh, /^vulnerabilities:\s*$/m, 'kein Abschnitt vulnerabilities');
+  return roh.split(/\n {2}- id: /).slice(1).map(block => {
+    const zeilen = block.split('\n').filter(z => !/^\s*#/.test(z));
+    const e = { id: zeilen[0].trim(), paths: [], purls: [], expired_at: null, statement: null };
+    let liste = null;
+    for (const z of zeilen.slice(1)) {
+      const k = z.match(/^ {4}(\w+):\s*(.*)$/);
+      if (k) {
+        liste = k[2] === '' ? k[1] : null;
+        if (k[2] !== '') e[k[1]] = k[2].replace(/^"(.*)"$/, '$1');
+        continue;
+      }
+      const w = z.match(/^ {6}- "([^"]+)"$/);
+      if (w && liste) e[liste].push(w[1]);
+    }
+    return e;
+  });
+}
+
+// Gegenproben (11.11.2026 gemessen, je einzeln): bei CVE-2026-9947 `purls:` samt
+// Einträgen gestrichen → rot „… an keine Datei und kein Paket gebunden“; in
+// sicherheit.yml wieder `trivyignores: .github/trivy-betrieb.ignore` → rot
+// „trivy-compose liest die YAML-Ausnahmen“; bei CVE-2025-61726 `expired_at`
+// gestrichen → rot „… ohne Ablaufdatum“.
+test('Trivy-Ausnahmen der Betriebs-Images: an Datei oder Paket gebunden, mit Frist und Grund', () => {
+  const roh = fs.readFileSync(path.join(WURZEL, '.github', 'trivy-betrieb.yaml'), 'utf8');
+  const liste = trivyAusnahmen(roh);
+  assert.ok(liste.length >= 40, `nur ${liste.length} Ausnahmen gelesen — greift der Leser noch?`);
+  const ids = liste.map(e => e.id);
+  assert.deepEqual(ids.filter((x, i) => ids.indexOf(x) !== i), [], 'doppelte Ausnahme');
+  for (const e of liste) {
+    assert.match(e.id, /^CVE-\d{4}-\d+$/);
+    assert.match(e.expired_at ?? '', /^\d{4}-\d{2}-\d{2}$/, `${e.id} ohne Ablaufdatum`);
+    assert.ok((e.statement ?? '').length > 20, `${e.id} ohne Grund`);
+    assert.ok(e.paths.length + e.purls.length > 0, `${e.id} ist an keine Datei und kein Paket gebunden`);
+    for (const p of e.purls) assert.match(p, /^pkg:apk\/alpine\/[a-z0-9.+-]+$/, `${e.id}: ${p} ist kein Alpine-Paket ohne Fassung`);
+    for (const p of e.paths) assert.doesNotMatch(p, /^\/|\*/, `${e.id}: ${p} ist kein fester Pfad im Image`);
+  }
+  // gosu ist das einzige Go-Programm im Postgres-Image; seine Ausnahmen gelten nur dort.
+  assert.ok(liste.some(e => e.paths.includes('usr/local/bin/gosu')), 'keine Ausnahme für gosu');
+
+  // trivy-action reicht genau EINE .yaml-Datei als TRIVY_IGNOREFILE durch; mehrere oder gemischt brechen ab.
+  const sich = fs.readFileSync(path.join(ECHTER_ORT, 'sicherheit.yml'), 'utf8');
+  assert.match(jobVon(sich, 'trivy-compose'), /^\s+trivyignores: \.github\/trivy-betrieb\.yaml\s*$/m,
+    'trivy-compose liest die YAML-Ausnahmen');
+  assert.ok(!fs.existsSync(path.join(WURZEL, '.github', 'trivy-betrieb.ignore')), 'die alte Liste ohne Paketbindung liegt noch da');
 });
 
 // ── Android-Release (sec17) ──────────────────────────────────────────────────
@@ -391,8 +440,8 @@ test('Etiketten bauen ohne Gradle-Cache, und nur der Baujob schreibt ihn (sec17 
 });
 
 // Gegenproben (05.11.2026 gemessen): `exit-code: '1'` der Android-Prüfung auf '0' → rot
-// „… sperrt nicht“; den Schritt „Abhängigkeiten ohne bekannte Lücke“ im Signierjob gestrichen
-// → rot „… ohne grüne Lückenprüfung“; im gh-Ersatz ein roter Job → rot „ein roter …“.
+// „… sperrt nicht“; den Schritt „Abhängigkeiten ohne bekannte Lücke“ gestrichen → rot
+// „… ohne grüne Lückenprüfung“; im gh-Ersatz ein roter Job → rot „ein roter …“.
 test('die Lückenprüfung der App sperrt, und ohne sie wird kein Etikett signiert (sec17 M2)', (t) => {
   const sicherheit = fs.readFileSync(path.join(ECHTER_ORT, 'sicherheit.yml'), 'utf8');
   const job = jobVon(sicherheit, 'android-abhaengigkeiten');
@@ -412,49 +461,96 @@ test('die Lückenprüfung der App sperrt, und ohne sie wird kein Etikett signier
     assert.match(zeilen[i - 1] ?? '', /^# \S.{10,}/, `Ausnahme ohne Grund darüber: ${z}`);
   });
   const name = sicherheit.match(/\n {2}android-abhaengigkeiten:\n {4}name: ([^\n]+)/)[1];
-  const android = fs.readFileSync(path.join(ECHTER_ORT, 'android.yml'), 'utf8');
-  const skript = schrittNach(android, 'Abhängigkeiten ohne bekannte Lücke');
-  assert.match(skript, /workflows\/sicherheit\.yml\/runs\?head_sha=\$GITHUB_SHA/, 'Etikett ohne grüne Lückenprüfung');
+  const release = fs.readFileSync(path.join(ECHTER_ORT, 'android-release.yml'), 'utf8');
+  const skript = schrittNach(release, 'Abhängigkeiten ohne bekannte Lücke');
+  assert.match(skript, /workflows\/sicherheit\.yml\/runs\?head_sha=\$COMMIT/, 'Etikett ohne grüne Lückenprüfung');
   assert.ok(name.startsWith('Trivy (Android-Abhängigkeiten'), `Jobname „${name}“ passt nicht zur Abfrage`);
   const lauf = (fazit) => mitGh(t, skript, {
     'workflows/sicherheit.yml/runs': '17',
     'actions/runs/17/jobs': fazit,
-  });
+  }, { COMMIT: 'a'.repeat(40) });
   assert.equal(lauf('success').status, 0, 'ein grüner Lauf gibt frei');
   assert.notEqual(lauf('failure').status, 0, 'ein roter Lauf sperrt');
   assert.notEqual(lauf('fehlt').status, 0, 'ohne den Job sperrt es');
 });
 
-// Gegenproben (05.11.2026 gemessen): im Schritt „main ist geschützt“ die Schleife gestrichen →
-// rot „ohne PR-Pflicht …“; die Prüfung von can_admins_bypass gestrichen → rot „… umgehen …“.
-test('signiert wird nur bei geschütztem main und ohne Umgehung durch Administratoren (sec17 B1, B3)', (t) => {
-  const android = fs.readFileSync(path.join(ECHTER_ORT, 'android.yml'), 'utf8');
-  const main = schrittNach(android, 'main ist geschützt');
+// Gegenproben (11.11.2026 gemessen, je einzeln): im Schritt „main ist geschützt“ die Schleife
+// gestrichen → rot „ohne PR-Pflicht …“; die Prüfung von can_admins_bypass gestrichen → rot
+// „… umgehen …“; als erlaubte Regel wieder `tag:android-v*` → rot „… nur der Zweig main“; den
+// Vergleich `$COMMIT != $LAUF_COMMIT` gestrichen → rot „ein Etikett auf einem anderen Commit …“;
+// die Namensprüfung `^android-v…$` gestrichen → rot „ein Name mit Sonderzeichen …“; in
+// „Prüfsummen aus der Übergabe“ die Auswahl des Übergabejobs durch `true` ersetzt → rot „die
+// Anmerkung eines anderen Jobs …“. Der gh-Ersatz wertet kein --jq aus: Die Zählung der
+// Anmerkungen (`if length == 1`) prüft dieser Test nicht.
+test('signiert wird nur bei geschütztem main, aus main, für ein echtes Etikett und ohne Umgehung durch Administratoren (sec17 B1, B3)', (t) => {
+  const release = fs.readFileSync(path.join(ECHTER_ORT, 'android-release.yml'), 'utf8');
+  const main = schrittNach(release, 'main ist geschützt');
   const regeln = (arten) => mitGh(t, main, { 'rules/branches/main': arten }).status;
   assert.equal(regeln('non_fast_forward,pull_request,required_status_checks'), 0);
   assert.notEqual(regeln('non_fast_forward,required_status_checks'), 0, 'ohne PR-Pflicht wird nicht signiert');
   assert.notEqual(regeln('pull_request'), 0, 'ohne Pflicht-Checks wird nicht signiert');
-  const umgebung = schrittNach(android, 'Environment release ist geschützt');
-  const env = (bypass) => mitGh(t, umgebung, {
-    'environments/release/deployment-branch-policies': 'tag:android-v*',
+  const signieren = fs.readFileSync(path.join(ECHTER_ORT, 'android-signieren.yml'), 'utf8');
+  const umgebung = schrittNach(signieren, 'Environment ist geschützt');
+  const env = (bypass, regel = 'branch:main') => mitGh(t, umgebung, {
+    'environments/release/deployment-branch-policies': regel,
     'environments/release': JSON.stringify({ can_admins_bypass: bypass,
       deployment_branch_policy: { custom_branch_policies: true },
       protection_rules: [{ type: 'required_reviewers', prevent_self_review: false, reviewers: [{}] }] }),
-  }).status;
+  }, { UMGEBUNG: 'release' }).status;
   assert.equal(env(false), 0);
   assert.notEqual(env(true), 0, 'Administratoren dürfen die Freigabe nicht umgehen');
+  assert.notEqual(env(false, 'tag:android-v*'), 0, 'ein Etikett mit eigenem Workflow käme an die Schlüssel: nur der Zweig main');
+  assert.notEqual(env(false, 'branch:main,tag:android-v*'), 0, 'nur der Zweig main');
+
+  const etikett = schrittNach(release, 'Etikett zeigt auf den gebauten Commit');
+  const c = 'c'.repeat(40);
+  const ausgabe = (t2) => { const f = path.join(fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'aus-')), 'o');
+    fs.writeFileSync(f, ''); t2.after(() => fs.rmSync(path.dirname(f), { recursive: true, force: true })); return f; };
+  const pruefe = (name, ziel, extra = {}) => {
+    const o = ausgabe(t);
+    const r = mitGh(t, etikett, { [`git/ref/tags/${name}`]: `commit ${ziel}` },
+      { GITHUB_OUTPUT: o, EINGABE: '', AUS_LAUF: name, LAUF_COMMIT: c, LAUF_ID: '99', ...extra });
+    return { status: r.status, aus: fs.readFileSync(o, 'utf8') };
+  };
+  const gut = pruefe('android-v2026.11.12', c);
+  assert.equal(gut.status, 0, 'ein Etikett auf dem gebauten Commit gilt');
+  assert.match(gut.aus, new RegExp(`^commit=${c}$`, 'm'));
+  assert.match(gut.aus, /^lauf=99$/m);
+  assert.notEqual(pruefe('android-v2026.11.12', 'd'.repeat(40)).status, 0, 'ein Etikett auf einem anderen Commit gilt nicht');
+  assert.notEqual(pruefe('android-v1;x', c).status, 0, 'ein Name mit Sonderzeichen gilt nicht');
+  assert.notEqual(mitGh(t, etikett, {}, { GITHUB_OUTPUT: ausgabe(t), EINGABE: '', AUS_LAUF: 'android-v9', LAUF_COMMIT: c, LAUF_ID: '99' }).status, 0,
+    'ohne Etikett (etwa nur ein Zweig des Namens) gilt nichts');
+
+  const summen = schrittNach(release, 'Prüfsummen aus der Übergabe');
+  assert.match(summen, /select\(\.name == "Übergabe an das Signieren" and \.conclusion == "success"\)/,
+    'die Anmerkung eines anderen Jobs zählt nicht');
+  const android = fs.readFileSync(path.join(ECHTER_ORT, 'android.yml'), 'utf8');
+  assert.match(jobVon(android, 'uebergabe'), /^ {4}name: Übergabe an das Signieren$/m, 'der Name des Übergabejobs passt nicht zur Abfrage');
+  assert.match(schrittNach(android, 'Prüfsummen des Baujobs bezeugen'), /::notice title=Prüfsummen zum Signieren::apk=\$APK_SOLL aab=\$AAB_SOLL/);
+  const a = 'a'.repeat(64), b = 'b'.repeat(64);
+  const lies = (jobs, notiz) => {
+    const o = ausgabe(t);
+    const r = mitGh(t, summen, { 'actions/runs/99/jobs': jobs, 'check-runs/55/annotations': notiz }, { GITHUB_OUTPUT: o, LAUF: '99' });
+    return { status: r.status, aus: fs.readFileSync(o, 'utf8') };
+  };
+  const ok = lies('55', `apk=${a} aab=${b}`);
+  assert.equal(ok.status, 0);
+  assert.match(ok.aus, new RegExp(`^sha256_apk=${a}\\nsha256_aab=${b}$`, 'm'));
+  assert.notEqual(lies('55 56', `apk=${a} aab=${b}`).status, 0, 'zwei Übergaben gelten nicht');
+  assert.notEqual(lies('55', '').status, 0, 'ohne Anmerkung gilt nichts');
+  assert.notEqual(lies('55', `apk=${a} aab=${b}; rm`).status, 0, 'eine verunstaltete Anmerkung gilt nicht');
 });
 
 // Gegenproben (05.11.2026 gemessen): im Release-Job den Prüfsummen-Schritt gestrichen → rot
 // „vor dem Veröffentlichen …“; in android-bescheinigung.yml `sha256sum -c -` durch
 // `cat > /dev/null` ersetzt → rot „ein verändertes Byte …“.
 test('veröffentlicht und bescheinigt wird nur, was der Signierjob ausgab (sec17 B-N1, B-N7)', (t) => {
-  const android = fs.readFileSync(path.join(ECHTER_ORT, 'android.yml'), 'utf8');
+  const android = fs.readFileSync(path.join(ECHTER_ORT, 'android-release.yml'), 'utf8');
   const bescheinigung = fs.readFileSync(path.join(ECHTER_ORT, 'android-bescheinigung.yml'), 'utf8');
   const release = jobVon(android, 'release');
   assert.match(release, /- name: Artefakt gegen die Prüfsummen des Signierjobs/, 'vor dem Veröffentlichen fehlt der Vergleich');
   assert.doesNotMatch(release, /attest-build-provenance|id-token: write/, 'der Release-Job bescheinigt nicht selbst');
-  assert.match(release, /needs: \[signieren, apk-pruefen, bescheinigen\]/);
+  assert.match(release, /needs: \[etikett, signieren, bescheinigen\]/);
   assert.match(jobVon(android, 'bescheinigen'), /uses: \.\/\.github\/workflows\/android-bescheinigung\.yml/);
   assert.match(bescheinigung, /\non:\n {2}workflow_call:\n/);
   assert.doesNotMatch(bescheinigung, /\n {2}(push|pull_request|workflow_dispatch):/, 'nur als wiederverwendbarer Workflow');

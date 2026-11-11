@@ -1,5 +1,5 @@
-// Hintergrunddienste mit eigenem Android-Einstieg: der CSV-Import als
-// Vordergrund-Dienst und der stündliche Preisalarm (WorkManager). Hängt an
+// Hintergrunddienste mit eigenem Android-Einstieg: CSV-Import und PDF-Export als
+// Vordergrund-Dienste und der stündliche Preisalarm (WorkManager). Hängt an
 // core-data (Repositories, Ablagen); core-data kennt dieses Modul nicht.
 plugins {
     alias(libs.plugins.brickinventory.android.library)

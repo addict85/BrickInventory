@@ -25,7 +25,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const db   = _req('db/database.js');
 const auth = _req('src/konto/auth.js');
-const pgNotify = _req('db/pgNotify.js');
+const pgNotify = _req('db/database.js').standardDb().benachrichtigung;
 const { bis } = require('./helpers/zeit');
 
 test('Token-Widerruf wirkt sofort', { concurrency: 1 }, async (t) => {

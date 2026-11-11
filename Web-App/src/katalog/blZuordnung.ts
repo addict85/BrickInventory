@@ -1,5 +1,5 @@
 // BrickLink-Nummern stehen nur in bl_zuordnung.
-import { meldeUndLiefere } from '../infra/fehler';
+
 import type { BlArt } from '../../db/blZuordnungSql';
 import { katalog } from './prozess';
 import { schreibeBlNummern } from './repository/blZuordnung';
@@ -39,20 +39,20 @@ export function merkeBlNummerUnveraendert(art: BlArt, rbId: string): Promise<voi
 /** null für „keine abweichende bekannt" — ohne Zeile und Zeile ohne Wert
  * zusammen. Wer beides trennen muss, fragt blAbrufNummer. */
 export function blNummerVon(art: BlArt, rbId: string, konto?: number | number[] | null): Promise<string | null> {
-  return katalog().blZuordnung.abweichendeNummer(art, rbId, konten(konto)).catch(meldeUndLiefere('bl-zuordnung:nummer lesen', null));
+  return katalog().blZuordnung.abweichendeNummer(art, rbId, konten(konto));
 }
 
 /** null nur, wenn noch nie nachgesehen wurde: Das Vorladen der Preise merkt
  * sich keine Fehlschläge und braucht diesen Unterschied. */
 export function blAbrufNummer(art: BlArt, rbId: string, konto?: number | number[] | null): Promise<string | null> {
-  return katalog().blZuordnung.wirksameNummer(art, rbId, konten(konto)).catch(meldeUndLiefere('bl-zuordnung:abrufnummer lesen', null));
+  return katalog().blZuordnung.wirksameNummer(art, rbId, konten(konto));
 }
 
 // Eine Abfrage für viele Nummern; jede Zeile kommt zurück, damit nichts zweimal gefragt wird.
 export async function blAbrufNummern(art: BlArt, rbIds: string[], konto?: number | number[] | null): Promise<Map<string, string>> {
   const raus = new Map<string, string>();
   if (!rbIds.length) return raus;
-  const zeilen = await katalog().blZuordnung.wirksameNummern(art, rbIds, konten(konto)).catch(meldeUndLiefere('bl-zuordnung:zeilen', []));
+  const zeilen = await katalog().blZuordnung.wirksameNummern(art, rbIds, konten(konto));
   for (const z of zeilen) raus.set(String(z.rb_id), String(z.nr));
   return raus;
 }

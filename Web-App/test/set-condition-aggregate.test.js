@@ -345,8 +345,8 @@ test('der Preisverlauf-Graph benutzt den Zustand DES SETS, nicht den globalen St
   );
 
   assert.match(
-    fs.readFileSync(path.join(ROOT, 'src/sets/dienst.ts'), 'utf8'),
-    /getSetPriceHistory\(sicht, sn, await waehrungVon\(uid\)\)/,
+    fs.readFileSync(path.join(ROOT, 'src/sets/preise.ts'), 'utf8'),
+    /getSetPriceHistory\(sicht, sn, await waehrungVon\((?:sk, )?uid\)\)/,
     'Der Dienst nutzt den gemeinsamen Helfer',
   );
   const helper = fs.readFileSync(path.join(ROOT, 'src/finanzen/priceHistory.ts'), 'utf8');
@@ -364,10 +364,10 @@ test('Android-API: Marktpreis benutzt den Zustand des Sets, nicht den globalen S
   // Webapp-Route: `fetchPrice(sn, DEFAULT_PRICE_CONDITION, …)` — fest 'U'.
   const src = fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8');
   // Die Route ruft setPreis() im Dienst; dort wird der Zustand aufgelöst.
-  const dienst = fs.readFileSync(path.join(ROOT, 'src/sets/dienst.ts'), 'utf8');
+  const dienst = fs.readFileSync(path.join(ROOT, 'src/sets/preise.ts'), 'utf8');
   const priceRoute = dienst.slice(
     dienst.indexOf('export async function setPreis'),
-    dienst.indexOf('export async function rebrickableListe'),
+    dienst.indexOf('export async function waehrungVon'),
   );
   assert.ok(priceRoute.length > 0, 'setPreis() nicht gefunden');
   assert.doesNotMatch(
@@ -433,7 +433,7 @@ test('genau EINE Zustandsauflösung für Einzelsets — resolveSetCondition', ()
 
   // Die Preis-Route der Android-API löst weiterhin selbst auf (sie holt einen
   // Preis, keinen Verlauf) — genau ein Vorkommen.
-  const apiV1 = fs.readFileSync(path.join(ROOT, 'src/sets/dienst.ts'), 'utf8');
+  const apiV1 = fs.readFileSync(path.join(ROOT, 'src/sets/preise.ts'), 'utf8');
   const uses = (apiV1.match(/resolveSetCondition\(blickfeld, sn\)/g) || []).length;
   assert.equal(uses, 1, 'Die /price-Route muss ihn benutzen; der Verlauf geht über priceHistory.ts');
 });

@@ -1,7 +1,6 @@
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import { mengeAus, mengeJoin, teilmengeAus, teilmengeJoin } from '../../../db/bestandsmenge';
-import * as db from '../../../db/database';
-import type { Zeile } from '../../../db/database';
+import type { Zeile, DbSchnittstelle } from '../../../db/database';
 import { figurSichtJoin, FIGUR } from '../../../db/katalogSicht';
 import { LIKE_ESCAPE as E, enthaeltMuster } from '../../../db/likeSuche';
 
@@ -11,7 +10,7 @@ function figurenSuche(nummer: string, name: string, pi: number) {
 }
 
 /** Gezählt werden die Gruppen, sonst zählte eine Figur aus fünf Sets fünfmal. */
-export async function figurenGruppiert(uids: number[], f: { search?: string | null; source?: string | null; setNumber: string | null;
+export async function figurenGruppiert(db: DbSchnittstelle, uids: number[], f: { search?: string | null; source?: string | null; setNumber: string | null;
   seite: { groesse: number; versatz: number } | null }) {
   const { search, source } = f;
   const params: unknown[] = [uids]; let pi = 2;
@@ -94,7 +93,7 @@ export async function figurenGruppiert(uids: number[], f: { search?: string | nu
   return { figCount, figs };
 }
 
-export async function manuelleFigurenListe(uids: number[], search: string | null | undefined, seite: { groesse: number; versatz: number } | null) {
+export async function manuelleFigurenListe(db: DbSchnittstelle, uids: number[], search: string | null | undefined, seite: { groesse: number; versatz: number } | null) {
   const params: unknown[] = [uids];
   // Platzhalter vor LIMIT/OFFSET.
   let suche = '';
@@ -146,7 +145,7 @@ export async function manuelleFigurenListe(uids: number[], search: string | null
   return figs;
 }
 
-export function zustandszahlenManuellerFiguren(uids: number[]) {
+export function zustandszahlenManuellerFiguren(db: DbSchnittstelle, uids: number[]) {
   return db.all<{ fkey: string; acq_count: number; used_count: number }>(`SELECT LOWER(TRIM(a.fig_number)) AS fkey,
             COUNT(*)::int AS acq_count,
             COUNT(*) FILTER (WHERE a.condition = 'U')::int AS used_count
@@ -155,7 +154,7 @@ export function zustandszahlenManuellerFiguren(uids: number[]) {
      GROUP BY LOWER(TRIM(a.fig_number))`, [uids]);
 }
 
-export function figurenKennzahlen(uids: number[]) {
+export function figurenKennzahlen(db: DbSchnittstelle, uids: number[]) {
   return db.get<{ types: number; total_quantity: number; manual: number }>(`
     SELECT COUNT(*)::int AS types,
            COALESCE(SUM(g.menge), 0)::int AS total_quantity,

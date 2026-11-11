@@ -6,16 +6,16 @@ Rot: Token und Adresse gelten
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
-@@ -206,7 +206,6 @@
+@@ -225,7 +225,6 @@
                  verwaistesToken(platte, alteAdresse)?.let { runCatching { entwertung.get().plane(it) } }
                  _authTokenState.value = ""; _tokenHerkunftState.value = null
              }
 -            _serverUrlState.value = normalized
              dataStore.edit {
-                 it[SERVER_URL] = normalized
+                 it.setzeAngabe(SERVER_URL_ENC, SERVER_URL, normalized)
                  if (anderer) {
-@@ -214,6 +213,7 @@
-                     it.remove(ANGEMELDET_AM)
+@@ -233,6 +232,7 @@
+                     it.remove(USERNAME_ENC); it.remove(ANGEMELDET_AM)
                  }
              }
 +            _serverUrlState.value = normalized

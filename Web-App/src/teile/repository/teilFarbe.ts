@@ -1,8 +1,7 @@
 import { erfassungsTagSql } from '../../../db/bestandsmenge';
 import type { DbSchnittstelle } from '../../../db/database';
-import * as db from '../../../db/database';
 
-export function rbFarbe(colorId: number) {
+export function rbFarbe(db: DbSchnittstelle, colorId: number) {
   return db.get<{ name: string; rgb: string | null }>('SELECT name, rgb FROM rb_colors WHERE id = $1', [colorId]);
 }
 

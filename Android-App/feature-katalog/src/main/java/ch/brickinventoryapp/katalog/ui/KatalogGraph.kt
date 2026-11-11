@@ -21,8 +21,6 @@ import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.zustand.ui.Bereichsumgebung
-import ch.brickinventoryapp.zustand.ui.KatalogBereich
-import ch.brickinventoryapp.zustand.ui.Screen
 
 /**
  * Was der Katalog von anderen Bereichen braucht: Erfassen gehört der Galerie, die
@@ -41,13 +39,19 @@ interface KatalogNavigation : Bereichsumgebung {
     /** Merkposten und Preisalarm in einem Griff; die Regel dahinter gehört der Merkliste. */
     @Composable
     fun merken(): (setNumber: String, zustand: Zustand, richtung: String, schwelleRoh: String, konto: Int?) -> Unit
+
+    /** Das Set in der Galerie. */
+    fun oeffneSet(setNumber: String)
+
+    /** Der Merkposten über der Merkliste: Dort läuft die Snackbar, wenn er gelöscht wird. */
+    fun oeffneMerkposten(setNumber: String, zustand: Zustand)
 }
 
 /** Die Ziele des Katalogs. */
 fun NavGraphBuilder.katalogGraph(navigation: KatalogNavigation) {
     val navController = navigation.navController
-    navigation<KatalogBereich>(startDestination = Screen.Catalog) {
-        composable<Screen.Catalog> { eintrag ->
+    navigation<KatalogZiel.Bereich>(startDestination = KatalogZiel.Catalog) {
+        composable<KatalogZiel.Catalog> { eintrag ->
             val vm = navigation.app
             val katalog = katalogViewModel(navController, eintrag)
             val state by vm.state.collectAsStateWithLifecycle()
@@ -62,11 +66,11 @@ fun NavGraphBuilder.katalogGraph(navigation: KatalogNavigation) {
                     katalog = katalog,
                     serverUrl = state.serverUrl,
                     imageLoader = navigation.bilder,
-                    onSetClick = { navController.navigate(Screen.CatalogDetail(it)) },
+                    onSetClick = { navController.navigate(KatalogZiel.CatalogDetail(it)) },
                 )
             }
         }
-        composable<Screen.CatalogDetail> { backStack -> KatalogDetailZiel(navigation, backStack) }
+        composable<KatalogZiel.CatalogDetail> { backStack -> KatalogDetailZiel(navigation, backStack) }
     }
 }
 
@@ -78,7 +82,7 @@ private fun KatalogDetailZiel(navigation: KatalogNavigation, backStack: NavBackS
     val katalog = katalogViewModel(navController, backStack)
     val state by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
-    val catSetNumber = backStack.toRoute<Screen.CatalogDetail>().setNumber
+    val catSetNumber = backStack.toRoute<KatalogZiel.CatalogDetail>().setNumber
     val catalogState by katalog.state.collectAsStateWithLifecycle()
     val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
     // Steht das Set schon auf der Merkliste? Dann zeigt das Detail den Posten statt „Auf die Merkliste“.
@@ -105,20 +109,16 @@ private fun KatalogDetailZiel(navigation: KatalogNavigation, backStack: NavBackS
             katalog.markiereAufgenommen(wunsch.setNumber, wunsch.menge)
         },
         onWish = merken,
-        onOpenInGallery = { sn -> navController.navigate(Screen.SetDetail(sn)) },
+        onOpenInGallery = navigation::oeffneSet,
         onBack = { navController.popBackStack() },
         gemerkt = gemerkt,
-        // Über die Liste: Dort läuft die Snackbar, wenn der Posten gelöscht wird.
-        onOeffneMerkposten = { sn, zustand ->
-            navController.navigate(Screen.Wanted)
-            navController.navigate(Screen.MerkpostenDetail(sn, zustand))
-        },
+        onOeffneMerkposten = navigation::oeffneMerkposten,
     )
 }
 
 /** Das ViewModel des Teilgraphen, an dessen Eintrag gebunden. */
 @Composable
 private fun katalogViewModel(navController: NavHostController, eintrag: NavBackStackEntry): CatalogViewModel {
-    val bereich = remember(eintrag) { navController.getBackStackEntry<KatalogBereich>() }
+    val bereich = remember(eintrag) { navController.getBackStackEntry<KatalogZiel.Bereich>() }
     return hiltViewModel(bereich)
 }

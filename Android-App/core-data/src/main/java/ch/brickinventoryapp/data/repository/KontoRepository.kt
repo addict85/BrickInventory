@@ -22,7 +22,10 @@ interface KontoRepository {
     suspend fun passkeyAnmelden(serverUrl: String, antwort: JsonObject, scope: String = TOKEN_SCOPE_APP): Ergebnis<LoginResponse>
 
     suspend fun qrLogin(token: String, label: String): Ergebnis<QrMeldung>
-    suspend fun qrAbholen(abholung: String): Ergebnis<QrAbholung>
+    /** [vorschau]: nach der Bestätigung im Browser nur das Konto, noch kein Token. */
+    suspend fun qrAbholen(abholung: String, vorschau: Boolean = false): Ergebnis<QrAbholung>
+    /** Das Nein nach der Vorschau: Die Kopplung ist danach abgelehnt. */
+    suspend fun qrVerwerfen(abholung: String): Ergebnis<GenericResponse>
 
     suspend fun getMe(): Ergebnis<MeResponse>
 

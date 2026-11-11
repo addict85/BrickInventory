@@ -74,7 +74,7 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
   const A = await neu(`schranke_a_${process.pid}`), B = await neu(`schranke_b_${process.pid}`);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[A, B]]);
-    await _req('db/pgNotify.js').close().catch(() => {});   // der CSV-Strom hört auf NOTIFY
+    await _req('db/database.js').standardDb().benachrichtigung.close().catch(() => {});   // der CSV-Strom hört auf NOTIFY
     await db.pool.end().catch(() => {});
   });
   const server = (uid) => testServer(_req, { sitzung: { userId: uid }, apiNutzer: { user_id: uid, is_admin: 0 },

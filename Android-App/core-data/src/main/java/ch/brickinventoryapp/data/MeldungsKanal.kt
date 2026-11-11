@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.ui.Meldung
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,8 +14,11 @@ import javax.inject.Singleton
  * fehlt er, verschwinden die Meldungen lautlos.
  */
 interface MeldungsKanal {
-    val meldung: StateFlow<String?>
-    fun zeige(text: String?)
+    val meldung: StateFlow<Meldung?>
+    fun zeige(meldung: Meldung?)
+
+    /** Ein fertiger Satz; null zeigt nichts. */
+    fun zeige(text: String?) = zeige(text?.let(Meldung::Text))
     fun quittiere()
 
     /** Für Tests ohne Hilt. */
@@ -26,24 +30,24 @@ interface MeldungsKanal {
 @Singleton
 internal class MeldungsWarteschlange @Inject constructor() : MeldungsKanal {
 
-    private val _meldung = MutableStateFlow<String?>(null)
-    private val warteschlange = ArrayDeque<String>()
+    private val _meldung = MutableStateFlow<Meldung?>(null)
+    private val warteschlange = ArrayDeque<Meldung>()
 
     /** Die Meldung, die gerade dran ist; null heisst: nichts anzuzeigen. */
-    override val meldung: StateFlow<String?> = _meldung.asStateFlow()
+    override val meldung: StateFlow<Meldung?> = _meldung.asStateFlow()
 
     /**
-     * Reiht [text] ein; null zeigt nichts. Eine zweite Meldung wartet, bis die
+     * Reiht [meldung] ein; null zeigt nichts. Eine zweite Meldung wartet, bis die
      * erste quittiert ist, statt sie zu ersetzen. Dieselbe Meldung doppelt
      * hintereinander kommt nur einmal, und mehr als [PLAETZE] warten nicht.
      */
-    override fun zeige(text: String?) {
-        if (text == null) return
+    override fun zeige(meldung: Meldung?) {
+        if (meldung == null) return
         synchronized(warteschlange) {
             when {
-                _meldung.value == null -> _meldung.value = text
-                text == (warteschlange.lastOrNull() ?: _meldung.value) -> Unit
-                warteschlange.size < PLAETZE -> warteschlange.addLast(text)
+                _meldung.value == null -> _meldung.value = meldung
+                meldung == (warteschlange.lastOrNull() ?: _meldung.value) -> Unit
+                warteschlange.size < PLAETZE -> warteschlange.addLast(meldung)
             }
         }
     }

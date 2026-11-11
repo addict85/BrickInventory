@@ -1,11 +1,9 @@
 /** Hier wird nur aus dem Request gelesen und in die Antwort geschrieben; die
  * Regeln stehen in src/konto/auth.ts und loginLimiter.ts. */
 import type { Request, Response, NextFunction } from 'express';
-import { pruefeToken, rotationFaellig, pruefeAnmeldedaten, begrenzeSitzungen } from '../auth';
-import type { TokenPruefung, AnmeldeErgebnis } from '../auth';
+import { pruefeToken, rotationFaellig, pruefeAnmeldedaten, begrenzeSitzungen, type TokenPruefung, type AnmeldeErgebnis } from '../auth';
 import { zaehleAnfrage } from '../loginLimiter';
-import { pruefeBestaetigung, pruefeCodeBestaetigung } from '../passwortBestaetigung';
-import type { BestaetigungsAbsage, Faktor } from '../passwortBestaetigung';
+import { pruefeBestaetigung, pruefeCodeBestaetigung, type BestaetigungsAbsage, type Faktor } from '../passwortBestaetigung';
 import { createHash } from 'crypto';
 import { konfig } from '../../infra/konfig';
 import { routeZu } from '../../vertrag';
@@ -16,13 +14,14 @@ import { istAktiv } from '../zweiterFaktor';
 import { nutzerId, angemeldeteNutzerId } from '../../http/nutzerId';
 import { sendeFehler } from '../../http/httpAntwort';
 import { STATUS_DER_ART } from '../../http/fehlerArt';
+import { versuche } from '../../infra/ergebnis';
 
 /** Verwalterrechte ohne TOTP: Das Passwort allein soll sie nicht tragen, bis zur
  * Einrichtung geht nur diese (anmeldungAmEingang). Ein Passkey zählt nicht, denn
  * die Anmeldung mit Passwort verlangt nur bei aktivem TOTP einen zweiten Faktor. */
 export async function zweiterFaktorPflicht(req: Request): Promise<boolean> {
   const uid = nutzerId(req);
-  const verwalter = req.session?.userId ? !!req.session.isAdmin : Number(req.apiUser?.is_admin) === 1;
+  const verwalter = req.session?.userId ? !!req.session.isAdmin : !!req.apiUser?.is_admin;
   return uid !== null && verwalter && !await istAktiv(uid);
 }
 
@@ -32,7 +31,7 @@ export function adresse(req: Request): string {
   return req.ip || req.socket?.remoteAddress || '?';
 }
 
-export function anmelden(req: Request, username: unknown, password: unknown, code?: unknown,
+export function anmelden(req: Request, username: string | null | undefined, password: string | null | undefined, code?: string | number | null | undefined,
                          passkeyAntwort?: unknown): Promise<AnmeldeErgebnis> {
   return pruefeAnmeldedaten({ ip: adresse(req) }, username, password, code, passkeyAntwort);
 }
@@ -54,7 +53,7 @@ export async function establishSession(req: Request, data: { userId: number; use
       if (err) return reject(err);
       Object.assign(req.session, data, { angemeldetAm: Date.now(), sitzungsVersion });
       req.session.save((e2?: Error) => (e2 ? reject(e2)
-        : begrenzeSitzungen(data.userId, req.sessionID).catch(meldeUndLiefere('anmeldung:sitzungen-begrenzen', 0))
+        : versuche('anmeldung:sitzungen-begrenzen', begrenzeSitzungen(data.userId, req.sessionID))
           .then(() => resolve(undefined))));
     });
   });
@@ -86,7 +85,7 @@ export async function resolveUserId(req: Request): Promise<number | null> {
   if (pruefung.grund) req.tokenAbsage = pruefung.grund;
   // Der Hinweis reist mit jeder Antwort; die App tauscht dann von selbst.
   if (user && rotationFaellig(user)) req.res?.setHeader('X-Token-Rotation', 'faellig');
-  if (user) req.apiUser = { ...user, is_admin: user.is_admin ? 1 : 0 };
+  if (user) req.apiUser = { ...user, is_admin: !!user.is_admin };
   return user ? user.user_id : null;
 }
 
@@ -162,7 +161,7 @@ function absagen(req: Request, res: Response, absage: BestaetigungsAbsage): void
 
 /** Passwort, bei aktivem zweitem Faktor auch Code oder Passkey; nur für Routen
  * mit `bestaetigung` im Vertrag, die der Wächtertest einzeln prüft. */
-export async function bestaetigeMitFaktor(req: Request, res: Response, uid: number, passwort: unknown,
+export async function bestaetigeMitFaktor(req: Request, res: Response, uid: number, passwort: string | null | undefined,
                                           codeFeld = 'code'): Promise<boolean> {
   const schluessel = req.route ? `${req.method} ${req.baseUrl}${req.route.path}` : '';
   if (konfig().vertragPruefen && routeZu(schluessel) && !routeZu(schluessel)?.bestaetigung)
@@ -175,7 +174,7 @@ export async function bestaetigeMitFaktor(req: Request, res: Response, uid: numb
   return !absage;
 }
 
-export async function bestaetigeCode(req: Request, res: Response, uid: number, code: unknown): Promise<boolean> {
+export async function bestaetigeCode(req: Request, res: Response, uid: number, code: string | number | null | undefined): Promise<boolean> {
   const absage = await pruefeCodeBestaetigung(uid, zugangVon(req), code);
   if (absage) absagen(req, res, absage);
   return !absage;

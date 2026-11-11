@@ -177,9 +177,11 @@ export const AndereBeendet = Geloescht.extend({ zugaenge: ganz.optional() });
 /** Der Scan meldet das Gerät an; den Code zeigt die App, eingetippt wird er im Browser. */
 export const QrMeldung = z.looseObject({ success: z.literal(true), wartet: z.literal(true), abholung: z.string(),
   code: z.string(), expires_in: ganz });
-/** Bis zur Bestätigung nur `wartet`; danach wie eine Anmeldung, Name und Konto zusätzlich flach. */
+/** Bis zur Bestätigung nur `wartet`; mit `vorschau` dann nur `username`, sonst wie eine Anmeldung,
+ * Name und Konto zusätzlich flach, dazu die Nonce für die Attestation des Geräteschlüssels. */
 export const QrAbholung = LoginResponse.extend({ wartet: z.boolean(), username: z.string().optional(),
-  isAdmin: z.literal(false).optional(), userId: ganz.optional() });
+  isAdmin: z.literal(false).optional(), userId: ganz.optional(), vorschau: z.literal(true).optional(),
+  schluessel_nonce: z.string().optional() });
 export const QrKopplungStand = z.looseObject({ success: z.literal(true),
   stand: z.enum(['offen', 'wartet', 'bestaetigt', 'abgeholt', 'abgelehnt', 'abgelaufen']),
   geraet: z.string().nullable(), ip_bereich: z.string().nullable() });
@@ -213,7 +215,9 @@ export const routen = {
   'GET /api/v1/settings/tokens': { klein: true, antwort: TokensResponse },
   'POST /api/v1/auth/login': { antwort: LoginResponse, eingabe: Anmeldedaten, geheim: true },
   'POST /api/v1/auth/qr-login': { antwort: QrMeldung, eingabe: z.strictObject({ token: txt(200), label: z.unknown().optional() }), geheim: true },
-  'POST /api/v1/auth/qr-login/abholen': { antwort: QrAbholung, eingabe: z.strictObject({ abholung: txt(100) }), geheim: true },
+  'POST /api/v1/auth/qr-login/abholen': { antwort: QrAbholung, eingabe: z.strictObject({ abholung: txt(100),
+    vorschau: z.boolean().optional() }), geheim: true },
+  'POST /api/v1/auth/qr-login/verwerfen': { antwort: Erfolg, eingabe: z.strictObject({ abholung: txt(100) }), geheim: true },
   'GET /api/v1/auth/qr-kopplung/:id': { antwort: QrKopplungStand },
   'POST /api/v1/auth/qr-kopplung/:id/bestaetigen': { antwort: Erfolg, eingabe: z.strictObject({ code: txt(20) }) },
   'POST /api/v1/auth/qr-kopplung/:id/ablehnen': { antwort: Erfolg, eingabe: OHNE_RUMPF },

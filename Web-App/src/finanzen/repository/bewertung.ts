@@ -1,4 +1,4 @@
-import * as db from '../../../db/database';
+import type { DbSchnittstelle } from '../../../db/database';
 import { kaufpreisSpalten } from '../../../db/geldSql';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../../db/bestandsmenge';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
@@ -11,7 +11,7 @@ export interface ManuelleErfassung {
   price_estimated: boolean; condition: string; created_at: Date;
 }
 
-export function manuelleErfassungen(art: 'part' | 'fig', uids: number[], waehrung: string) {
+export function manuelleErfassungen(db: DbSchnittstelle, art: 'part' | 'fig', uids: number[], waehrung: string) {
   return db.all<ManuelleErfassung>(art === 'part'
     ? `SELECT id, user_id, part_number, color_id, quantity,
               ${kaufpreisSpalten('unit_price', '$2')}, currency, price_estimated,
@@ -30,7 +30,7 @@ export interface BewertetesSet {
 }
 
 /** Kaufpreis und Zustand stehen in den Erfassungen. */
-export function setsZurBewertung(uids: number[]) {
+export function setsZurBewertung(db: DbSchnittstelle, uids: number[]) {
   return db.all<BewertetesSet>(`SELECT s.user_id, s.set_number, ${SET.name} AS name, ${SET.jahr} AS year,
             ${mengeAus('sm', 0)}::int AS quantity,
             c.image_local, c.image_url, s.added_at
@@ -42,7 +42,7 @@ export function setsZurBewertung(uids: number[]) {
 }
 
 /** Die Nummern tragen den Versionsanhang. */
-export function katalogMerkmale(setNumbers: string[]) {
+export function katalogMerkmale(db: DbSchnittstelle, setNumbers: string[]) {
   return db.all<{ set_number: string; is_gear: boolean; bl_type: string | null; fetched_at: Date | null }>(
     'SELECT set_number, is_gear, bl_type, fetched_at FROM catalog_cache WHERE set_number = ANY($1)', [setNumbers]);
 }
@@ -53,7 +53,7 @@ export interface ManuelleFigur {
   fig_name: string | null; image_url: string | null; image_local: string | null;
 }
 
-export function manuelleFigurenZurBewertung(uids: number[]) {
+export function manuelleFigurenZurBewertung(db: DbSchnittstelle, uids: number[]) {
   return db.all<ManuelleFigur>(`
     SELECT m.id, m.user_id, m.set_number, m.fig_number,
            ${blNummerSql('m.fig_number', 'blzf')} AS bl_fig_number,
@@ -74,7 +74,7 @@ export interface ManuellesTeil {
   image_url: string | null; image_local: string | null;
 }
 
-export function manuelleTeileZurBewertung(uids: number[]) {
+export function manuelleTeileZurBewertung(db: DbSchnittstelle, uids: number[]) {
   return db.all<ManuellesTeil>(`
     SELECT p.id, p.user_id, p.set_number, p.part_number,
            ${blNummerSql('p.part_number')} AS bl_part_number,

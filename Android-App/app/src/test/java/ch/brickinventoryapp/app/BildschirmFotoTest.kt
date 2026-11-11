@@ -17,7 +17,7 @@ import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.testing.KatalogRepository
 import ch.brickinventoryapp.testing.SetsRepository
-import ch.brickinventoryapp.zustand.ui.AnmeldeFormular
+import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
 import ch.brickinventoryapp.finanzen.ui.GutscheinUiState
 import ch.brickinventoryapp.konto.ui.KontoUiState
 import ch.brickinventoryapp.konto.ui.ZweiterFaktorUiState
@@ -121,8 +121,9 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
         compose.onRoot().captureRoboImage("src/test/bildschirmfotos/${name}_${design}_${hell}_$geraet.png")
     }
 
-    private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand, SetsRepository(welt.t.api, welt.t.cache),
-        KatalogRepository(welt.t.api, welt.t.cache), object : SetAnleger {
+    private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, SetsRepository(welt.t.api, welt.t.cache),
+        KatalogRepository(welt.t.api, welt.t.cache),
+        object : SetAnleger {
             override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
                                  ownerUserId: Int?, storage: String?): Flow<SetAnlegenSchritt> = emptyFlow()
         }))

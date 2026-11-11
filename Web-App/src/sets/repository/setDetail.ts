@@ -4,21 +4,17 @@ import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import type { KatalogTeil, ListenTeil, SetStamm } from '../zeilen';
 import { setStammJoin, SET } from '../../../db/katalogSicht';
 
-/** rb_sets zuerst; eine Nummer, die nur ein Abruf kennt (catalog_cache), antwortet
- * aus dem Zwischenspeicher. Ein Platzhalter „Set …“ zählt nicht als Name. */
+/** Angaben aus rb_sets, Bild und Figuren aus set_catalog (0108). Ein Platzhalter
+ * „Set …“ sagt nur, dass irgendein Konto die Nummer erfasst hat. */
 export function setStamm(db: DbSchnittstelle, setNumber: string) {
-  return db.get<SetStamm>(`SELECT name, year, theme, pieces, minifigs, image_url, image_local,
-           name = 'Set ' || nr AND year IS NULL AND theme IS NULL AND pieces IS NULL AS platzhalter
-      FROM (SELECT x.nr,
-                   COALESCE(NULLIF(${SET.name}, 'Set ' || x.nr), NULLIF(cc.name, 'Set ' || x.nr), ${SET.name}, cc.name) AS name,
-                   COALESCE(${SET.jahr}, cc.year) AS year, COALESCE(${SET.thema}, cc.theme) AS theme,
-                   COALESCE(${SET.teile}, cc.pieces) AS pieces, c.minifigs,
-                   COALESCE(c.image_url, NULLIF(rs.set_img_url, ''), cc.image_url) AS image_url, c.image_local
-              FROM (SELECT $1::text AS nr) x
-              ${setStammJoin('x.nr')}
-              LEFT JOIN set_catalog c ON c.set_number = x.nr
-              LEFT JOIN catalog_cache cc ON cc.set_number = x.nr
-             WHERE rs.set_num IS NOT NULL OR cc.set_number IS NOT NULL) s`, [setNumber]);
+  return db.get<SetStamm>(`SELECT ${SET.name} AS name, ${SET.jahr} AS year, ${SET.thema} AS theme,
+           ${SET.teile} AS pieces, c.minifigs, c.image_url, c.image_local,
+           ${SET.name} = 'Set ' || rs.set_num AND ${SET.jahr} IS NULL AND ${SET.thema} IS NULL
+             AND ${SET.teile} IS NULL AS platzhalter
+      FROM (SELECT $1::text AS nr) x
+      ${setStammJoin('x.nr')}
+      LEFT JOIN set_catalog c ON c.set_number = x.nr
+     WHERE rs.set_num IS NOT NULL`, [setNumber]);
 }
 
 export function setKatalog(db: DbSchnittstelle, setNumber: string) {
@@ -29,16 +25,14 @@ export function setKatalog(db: DbSchnittstelle, setNumber: string) {
      WHERE rs.set_num = $1`, [setNumber]);
 }
 
-export function katalogCacheEintrag(db: DbSchnittstelle, setNumber: string) {
-  return db.get<SetStamm>('SELECT name, image_url, year, pieces, theme FROM catalog_cache WHERE set_number=$1', [setNumber]);
-}
-
+/** Nummern, nach denen schon gefragt wurde (catalog_cache); der Name steht in rb_sets. */
 export function ersterKatalogTreffer(db: DbSchnittstelle, nummern: string[]) {
-  return db.get<{ set_number: string; name: string | null }>('SELECT set_number, name FROM catalog_cache WHERE set_number = ANY($1) LIMIT 1', [nummern]);
+  return db.get<{ set_number: string; name: string | null }>(`SELECT cc.set_number, rs.name FROM catalog_cache cc
+      LEFT JOIN rb_sets rs ON rs.set_num = cc.set_number WHERE cc.set_number = ANY($1) LIMIT 1`, [nummern]);
 }
 
 export function katalogCacheNachNummer(db: DbSchnittstelle, setNumber: string) {
-  return db.get<{ set_number: string; name: string | null }>('SELECT set_number, name FROM catalog_cache WHERE set_number = $1', [setNumber]);
+  return ersterKatalogTreffer(db, [setNumber]);
 }
 
 export function katalogTeileDesSets(db: DbSchnittstelle, setNumber: string) {

@@ -1,4 +1,3 @@
-import * as stand from './repository/importStand';
 import { meldeFehler, logAndContinue } from '../infra/fehler';
 import { fehlerText, antwortSprache, type FehlerCode, type Sprache } from '../infra/fehlerTexte';
 
@@ -6,7 +5,7 @@ import { fehlerText, antwortSprache, type FehlerCode, type Sprache } from '../in
 
 // Der Ereignisbus schiebt den Stand ohne Polling an verbundene Ströme; /status bleibt als Rückfall.
 import EventEmitter from 'events';
-import * as pgNotify from '../../db/pgNotify';
+import { auftraegeBereich } from './prozess';
 export const csvImportBus = new EventEmitter();
 csvImportBus.setMaxListeners(0); // beliebig viele gleichzeitige Streams
 
@@ -55,27 +54,27 @@ export async function emitJobStatus(userId: number) {
     csvImportBus.emit(`progress:${userId}`, buildJobStatus(job));
   } catch (_) { /* Fortschritt geht notfalls über den Nachzieh-Timer im Stream */ }
   // Der Bus ist prozesslokal, der Import läuft im Job-Prozess: NOTIFY trägt den Stand in den Web-Prozess.
-  pgNotify.notify('csv_import_progress', String(userId)).catch(logAndContinue('import-auftrag:notify'));
+  auftraegeBereich().db.benachrichtigung.notify('csv_import_progress', String(userId)).catch(logAndContinue('import-auftrag:notify'));
 }
 
 export const VERWAIST_MIN = 10;
 
 export async function jobGet(userId: number) {
-  await stand.markiereVerwaist(userId, fehlerText('import_unterbrochen', 'de'), VERWAIST_MIN);
-  const row = await stand.importStand(userId);
+  await auftraegeBereich().importStand.markiereVerwaist(userId, fehlerText('import_unterbrochen', 'de'), VERWAIST_MIN);
+  const row = await auftraegeBereich().importStand.importStand(userId);
   if (!row) return null;
   return { ...row, results: row.results || [] };
 }
 
 export async function jobSet(userId: number, fields: Record<string, unknown>) {
-  await stand.schreibeImportStand(userId, fields);
+  await auftraegeBereich().importStand.schreibeImportStand(userId, fields);
 }
 
 /** Mit `lauf` schreibt nur der Import, dessen Kennung noch eingetragen ist;
  * ein abgelöster Lauf hört an der Rückgabe auf. */
 export async function jobUpdate(userId: number, fields: Record<string, unknown>, lauf?: string): Promise<boolean> {
   if (!fields || !Object.keys(fields).length) return true;
-  const n = await stand.aendereImportStand(userId, fields, lauf);
+  const n = await auftraegeBereich().importStand.aendereImportStand(userId, fields, lauf);
   return !lauf || n > 0;
 }
 
@@ -83,7 +82,7 @@ export async function jobUpdate(userId: number, fields: Record<string, unknown>,
  * abgebrochen oder abgelöst bleibt sie (dann: null). */
 export async function setzeImportFort(userId: number, lauf: string):
     Promise<{ results: ImportErgebnis[]; current: string | null } | null> {
-  const z = await stand.setzeLaufFort(userId, lauf);
+  const z = await auftraegeBereich().importStand.setzeLaufFort(userId, lauf);
   return z ? { results: Array.isArray(z.results) ? z.results : [], current: z.current ?? null } : null;
 }
 
@@ -162,6 +161,6 @@ export async function istAbgebrochen(userId: number): Promise<boolean> {
 
 /** Weckt, wenn ein anderer Prozess den Stand eines Kontos schrieb; gibt das Abmelden zurück. */
 export function beiImportStand(f: (konto?: string) => void): () => void {
-  pgNotify.listen('csv_import_progress', f);
-  return () => pgNotify.unlisten('csv_import_progress', f);
+  auftraegeBereich().db.benachrichtigung.listen('csv_import_progress', f);
+  return () => auftraegeBereich().db.benachrichtigung.unlisten('csv_import_progress', f);
 }

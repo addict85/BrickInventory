@@ -1,7 +1,7 @@
 /**
  * Protokoll der Verwalteraktionen an fremden Konten (Migration 0049).
  */
-import * as db from '../../../db/database';
+import type { DbSchnittstelle } from '../../../db/database';
 
 export type VerwalterAktion =
   | 'konto_angelegt'
@@ -20,6 +20,7 @@ export type VerwalterAktion =
 
 /** Vor dem Löschen aufrufen — danach ist der Name nicht mehr zu ermitteln. */
 export async function protokolliere(
+  db: DbSchnittstelle,
   verwalterId: number,
   zielId: number,
   aktion: VerwalterAktion,
@@ -33,7 +34,7 @@ export async function protokolliere(
   console.log(`[verwaltung] Konto ${verwalterId}: ${aktion} für Konto ${zielId}`);
 }
 
-export async function letzteEintraege(anzahl = 200) {
+export async function letzteEintraege(db: DbSchnittstelle, anzahl = 200) {
   return db.all<Record<string, unknown>>(
     `SELECT p.id, p.zeit, p.aktion, p.einzelheiten, p.ziel_id, p.ziel_name, p.verwalter_id, u.username AS verwalter_name
        FROM verwaltungsprotokoll p LEFT JOIN users u ON u.id = p.verwalter_id
@@ -45,7 +46,7 @@ export async function letzteEintraege(anzahl = 200) {
 /** Ein Jahr genügt zum Nachvollziehen; der Name eines gelöschten Kontos bleibt bis zum
  * nächsten Lauf lesbar (wer wurde gelöscht?), danach nur die Kennung. */
 export const PROTOKOLL_FRIST_TAGE = 365;
-export async function raeumeProtokollAuf(tage = PROTOKOLL_FRIST_TAGE): Promise<number> {
+export async function raeumeProtokollAuf(db: DbSchnittstelle, tage = PROTOKOLL_FRIST_TAGE): Promise<number> {
   const alt =
     (await db.run('DELETE FROM verwaltungsprotokoll WHERE zeit < NOW() - make_interval(days => $1::int)', [tage]))
       .changes ?? 0;

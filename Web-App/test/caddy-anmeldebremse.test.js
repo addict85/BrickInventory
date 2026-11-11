@@ -25,6 +25,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const http = require('node:http');
+const net = require('node:net');
 const https = require('node:https');
 const tls = require('node:tls');
 const { spawn, spawnSync } = require('node:child_process');
@@ -34,70 +35,140 @@ const CADDY = process.env.CADDY_BIN || (spawnSync('caddy', ['version']).status =
 // REQUIRE_CADDY=1 (CI): ein fehlender Caddy ist ein Fehler, kein stilles Überspringen.
 if (!CADDY && process.env.REQUIRE_CADDY === '1') throw new Error('REQUIRE_CADDY=1, aber kein Caddy (CADDY_BIN)');
 
-test('Caddy reicht die Anmeldewege ungebremst, aber nur mit ganzem Rumpf weiter', { skip: !CADDY && 'kein Caddy (CADDY_BIN)', timeout: 120_000 }, async (t) => {
+test('Caddy reicht die Anmeldewege ungebremst, aber nur mit ganzem Rumpf weiter', {
+  skip: !CADDY && 'kein Caddy (CADDY_BIN)',
+  timeout: 120_000,
+}, async t => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'caddy-bremse-'));
-  let jetzt = 0, hoechst = 0, halten = 300;
+  let jetzt = 0,
+    hoechst = 0,
+    halten = 300;
   const laengen = [];
   const app = http.createServer((req, res) => {
-    jetzt++; hoechst = Math.max(hoechst, jetzt); laengen.push(req.headers['content-length']);
+    jetzt++;
+    hoechst = Math.max(hoechst, jetzt);
+    laengen.push(req.headers['content-length']);
     req.resume();
-    req.on('end', () => setTimeout(() => { jetzt--; res.end('ok'); }, halten));
+    req.on('end', () =>
+      setTimeout(() => {
+        jetzt--;
+        res.end('ok');
+      }, halten),
+    );
   });
   await new Promise(r => app.listen(0, '127.0.0.1', r));
   let caddy = null;
   const offen = [];
-  t.after(() => { for (const s of offen) s.destroy(); caddy?.kill('SIGKILL'); app.close(); fs.rmSync(tmp, { recursive: true, force: true }); });
-  const port = 30000 + (process.pid % 15000);
-  const datei = fs.readFileSync(path.join(ROOT, 'Caddyfile'), 'utf8')
-    .replace('https://{$BRICK_HOST} {', `https://{$BRICK_HOST}:${port} {`).replace('http:// {', `http://:${port + 1} {`)
-    .replaceAll('app:3000', `127.0.0.1:${app.address().port}`);
-  assert.ok(datei.includes('import anmeldung'), 'der Block (anmeldung) ist nicht eingebunden');
-  fs.writeFileSync(path.join(tmp, 'Caddyfile'), datei);
-  caddy = spawn(CADDY, ['run', '--config', path.join(tmp, 'Caddyfile'), '--adapter', 'caddyfile'], {
-    stdio: ['ignore', 'ignore', 'pipe'], env: { PATH: process.env.PATH, XDG_DATA_HOME: path.join(tmp, 'd'), XDG_CONFIG_HOME: path.join(tmp, 'c'),
-      BRICK_HOST: 'nas.example.lan', BRICK_BASE_URL: 'https://nas.example.lan',
-      BRICK_TLS_AUSSTELLER: 'internal', BRICK_TLS_OPTIONEN: 'sign_with_root' } });
-  let fehler = '';
-  caddy.stderr.on('data', d => { fehler = (fehler + d).slice(-4000); });
-
-  const agent = new https.Agent({ keepAlive: false, maxSockets: Infinity });
-  const anfrage = (methode, pfad, rumpf = '{}') => new Promise((fertig) => {
-    const r = https.request({ host: '127.0.0.1', port, servername: 'nas.example.lan', rejectUnauthorized: false, agent,
-      method: methode, path: pfad, headers: { host: 'nas.example.lan', 'content-type': 'application/json' } }, (res) => {
-      res.resume(); res.on('end', () => fertig(res.statusCode));
-    });
-    r.on('error', () => fertig(null));
-    if (methode === 'POST') r.end(rumpf); else r.end();
+  t.after(() => {
+    for (const s of offen) s.destroy();
+    caddy?.kill('SIGKILL');
+    app.close();
+    fs.rmSync(tmp, { recursive: true, force: true });
   });
-  // Unter Last startet Caddy mit eigener CA langsam; endet er vorher (Port belegt), steht sein stderr in der Meldung.
+  // Ports vom System statt aus der pid: Die lagen im Bereich, aus dem auch listen(0) der
+  // parallelen Testdateien schöpft. Ein belegter Port bleibt möglich; dann ein neuer Versuch.
+  const freierPort = () =>
+    new Promise(r => {
+      const s = net.createServer().listen(0, '127.0.0.1', () => {
+        const p = /** @type {import('node:net').AddressInfo} */ (s.address()).port;
+        s.close(() => r(p));
+      });
+    });
+  let port = 0;
+  let fehler = '';
+  const agent = new https.Agent({ keepAlive: false, maxSockets: Infinity });
+  const anfrage = (methode, pfad, rumpf = '{}') =>
+    new Promise(fertig => {
+      const r = https.request(
+        {
+          host: '127.0.0.1',
+          port,
+          servername: 'nas.example.lan',
+          rejectUnauthorized: false,
+          agent,
+          method: methode,
+          path: pfad,
+          headers: { host: 'nas.example.lan', 'content-type': 'application/json' },
+        },
+        res => {
+          res.resume();
+          res.on('end', () => fertig(res.statusCode));
+        },
+      );
+      r.on('error', () => fertig(null));
+      if (methode === 'POST') r.end(rumpf);
+      else r.end();
+    });
   let bereit = null;
-  const bis = Date.now() + 30_000;
-  while (bereit !== 200 && caddy.exitCode === null && Date.now() < bis) {
-    bereit = await anfrage('GET', '/api/v1/health');
-    if (bereit !== 200) await new Promise(r => setTimeout(r, 200));
+  for (let versuch = 1; bereit !== 200; versuch++) {
+    port = await freierPort();
+    const umleitung = await freierPort();
+    const datei = fs
+      .readFileSync(path.join(ROOT, 'Caddyfile'), 'utf8')
+      .replace('https://{$BRICK_HOST} {', `https://{$BRICK_HOST}:${port} {`)
+      .replace('http:// {', `http://:${umleitung} {`)
+      .replaceAll('app:3000', `127.0.0.1:${app.address().port}`);
+    assert.ok(datei.includes('import anmeldung'), 'der Block (anmeldung) ist nicht eingebunden');
+    fs.writeFileSync(path.join(tmp, 'Caddyfile'), datei);
+    fehler = '';
+    caddy = spawn(CADDY, ['run', '--config', path.join(tmp, 'Caddyfile'), '--adapter', 'caddyfile'], {
+      stdio: ['ignore', 'ignore', 'pipe'],
+      env: {
+        PATH: process.env.PATH,
+        XDG_DATA_HOME: path.join(tmp, 'd'),
+        XDG_CONFIG_HOME: path.join(tmp, 'c'),
+        BRICK_HOST: 'nas.example.lan',
+        BRICK_BASE_URL: 'https://nas.example.lan',
+        BRICK_TLS_AUSSTELLER: 'internal',
+        BRICK_TLS_OPTIONEN: 'sign_with_root',
+      },
+    });
+    caddy.stderr.on('data', d => {
+      fehler = (fehler + d).slice(-4000);
+    });
+    // Unter Last startet Caddy mit eigener CA langsam; endet er vorher, steht sein stderr in der Meldung.
+    const bis = Date.now() + 30_000;
+    while (bereit !== 200 && caddy.exitCode === null && Date.now() < bis) {
+      bereit = await anfrage('GET', '/api/v1/health');
+      if (bereit !== 200) await new Promise(r => setTimeout(r, 200));
+    }
+    if (bereit === 200 || versuch >= 3 || !fehler.includes('address already in use')) break;
+    caddy.kill('SIGKILL');
   }
   assert.equal(bereit, 200, `Caddy antwortet nicht (Exit ${caddy.exitCode}): ${fehler.slice(-600)}`);
 
   // Lange gehalten, damit auch ein langsamer Lauf alle 16 zugleich offen hat.
-  jetzt = 0; hoechst = 0; halten = 1500;
+  jetzt = 0;
+  hoechst = 0;
+  halten = 1500;
   const anmeldungen = await Promise.all(Array.from({ length: 16 }, () => anfrage('POST', '/api/v1/auth/login')));
   halten = 300;
   assert.deepEqual(anmeldungen, Array(16).fill(200), 'Anmeldungen gehen verloren');
   assert.ok(hoechst > 8, `Caddy lässt die Anmeldungen ungebremst zur App (${hoechst} zugleich)`);
 
-  assert.equal(await anfrage('POST', '/api/v1/auth/login', JSON.stringify({ username: 'x'.repeat(20_000) })), 413,
-    'ein Rumpf über 16 KB erreicht die Anmeldung');
+  assert.equal(
+    await anfrage('POST', '/api/v1/auth/login', JSON.stringify({ username: 'x'.repeat(20_000) })),
+    413,
+    'ein Rumpf über 16 KB erreicht die Anmeldung',
+  );
 
   // Kopf sofort, vom Rumpf nur ein Teil, dann Stille: vier knapp angefangene
   // und vier, die genau bis zur Grenze von max_size gehen.
-  const langsam = (laenge, vorab) => new Promise((bereit) => {
-    const s = tls.connect({ host: '127.0.0.1', port, servername: 'nas.example.lan', rejectUnauthorized: false }, () => {
-      s.write(`POST /api/v1/auth/login HTTP/1.1\r\nHost: nas.example.lan\r\nContent-Type: application/json\r\n`
-        + `Content-Length: ${laenge}\r\n\r\n${'x'.repeat(vorab)}`, bereit);
+  const langsam = (laenge, vorab) =>
+    new Promise(bereit => {
+      const s = tls.connect(
+        { host: '127.0.0.1', port, servername: 'nas.example.lan', rejectUnauthorized: false },
+        () => {
+          s.write(
+            `POST /api/v1/auth/login HTTP/1.1\r\nHost: nas.example.lan\r\nContent-Type: application/json\r\n` +
+              `Content-Length: ${laenge}\r\n\r\n${'x'.repeat(vorab)}`,
+            bereit,
+          );
+        },
+      );
+      s.on('error', () => {});
+      offen.push(s);
     });
-    s.on('error', () => {});
-    offen.push(s);
-  });
   await Promise.all([...Array(4)].map(() => langsam(200, 1)).concat([...Array(4)].map(() => langsam(17_000, 16_000))));
   await new Promise(r => setTimeout(r, 500));
   assert.equal(await anfrage('POST', '/api/v1/auth/login'), 200, 'Vorbedingung: Caddy nimmt Anmeldungen an');
@@ -105,13 +176,17 @@ test('Caddy reicht die Anmeldewege ungebremst, aber nur mit ganzem Rumpf weiter'
   assert.deepEqual(langsame, [], 'kein angefangener Rumpf erreicht die App');
 
   const kopfBeginn = Date.now();
-  const kopfZu = await new Promise((fertig) => {
-    const s = tls.connect({ host: '127.0.0.1', port, servername: 'nas.example.lan', rejectUnauthorized: false },
-      () => s.write('POST /api/v1/auth/login HTTP/1.1\r\nHost: nas.example.lan\r\n'));
+  const kopfZu = await new Promise(fertig => {
+    const s = tls.connect({ host: '127.0.0.1', port, servername: 'nas.example.lan', rejectUnauthorized: false }, () =>
+      s.write('POST /api/v1/auth/login HTTP/1.1\r\nHost: nas.example.lan\r\n'),
+    );
     s.on('error', () => {});
     s.once('close', () => fertig(Date.now() - kopfBeginn));
     offen.push(s);
     setTimeout(() => fertig(null), 15_000);
   });
-  assert.ok(kopfZu !== null && kopfZu < 13_000, `Caddy schliesst eine Verbindung, deren Kopf stockt (nach ${kopfZu} ms)`);
+  assert.ok(
+    kopfZu !== null && kopfZu < 13_000,
+    `Caddy schliesst eine Verbindung, deren Kopf stockt (nach ${kopfZu} ms)`,
+  );
 });

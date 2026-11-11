@@ -14,24 +14,27 @@ import java.io.File
  *
  * Gegenproben (Patches unter gegenproben/):
  *   gegenproben-job-weich     continue-on-error im Job `gegenproben` → rot „der Gegenproben-Job …“
- *   release-image-wechselnd   `signieren` auf ubuntu-latest → rot „der Release-Weg …“
+ *   release-image-wechselnd   Job `signatur` (android-signieren.yml) auf ubuntu-latest → rot „der Release-Weg …“
+ *   workflow-image-wechselnd  Job `gegenproben` auf ubuntu-latest → rot „der Release-Weg …“
  *   (lokal) im Kopf von teile-ablage-trotz-konto wieder `Rot: mit Kontofilter gilt die
  *   Antwort des Servers` (eine Meldung, kein Testname) → rot „der Gegenproben-Job …“
  */
 class AndroidWorkflowTest {
 
     private val workflow = Quellen.workflow()
+    private val signierweg = Quellen.workflow("android-signieren.yml")
+    private val freigabe = Quellen.workflow("android-release.yml")
 
     /** Der Rumpf eines Jobs bis zum nächsten Job. */
-    private fun job(name: String): String {
-        val teil = workflow.split(Regex("""\n  ${Regex.escape(name)}:\n""")).getOrNull(1)
+    private fun job(name: String, text: String = workflow): String {
+        val teil = text.split(Regex("""\n  ${Regex.escape(name)}:\n""")).getOrNull(1)
         assertTrue("Job $name fehlt", teil != null)
         return teil!!.split(Regex("""\n  [\w-]+:\n""")).first()
     }
 
     /** Der run-Block des Schritts mit diesem Namen. */
-    private fun schritt(name: String): String {
-        val z = workflow.lines()
+    private fun schritt(name: String, text: String = workflow): String {
+        val z = text.lines()
         val i = z.indexOfFirst { it.trim() == "- name: $name" }
         assertTrue("Schritt „$name“ fehlt", i >= 0)
         val r = (i + 1 until z.size).first { Regex("""^\s+run: \|\s*$""").matches(z[it]) }
@@ -67,10 +70,13 @@ class AndroidWorkflowTest {
 
     @Test
     fun `der Release-Weg hat festes Werkzeug, ein genanntes Zertifikat und kein Probe-APK zum Installieren`() {
-        for (j in listOf("build", "signieren", "apk-pruefen", "release"))
-            assertTrue("$j läuft auf einem wechselnden Image", "runs-on: ubuntu-24.04" in job(j))
-        assertFalse("Werkzeuge „das neueste des Images“", "build-tools/*/" in workflow)
-        val signieren = schritt("Signieren")
+        val jobs = listOf("build" to workflow, "uebergabe" to workflow, "signatur" to signierweg, "beschreibung" to signierweg,
+            "apk-pruefen" to signierweg, "etikett" to freigabe, "release" to freigabe)
+        for ((j, text) in jobs) assertTrue("$j läuft auf einem wechselnden Image", "runs-on: ubuntu-24.04" in job(j, text))
+        val alle = listOf(workflow, signierweg, freigabe, Quellen.workflow("android-bescheinigung.yml"))
+        assertTrue("Ein Android-Job läuft auf ubuntu-latest", alle.none { "ubuntu-latest" in it })
+        assertFalse("Werkzeuge „das neueste des Images“", alle.any { "build-tools/*/" in it })
+        val signieren = schritt("Signieren", signierweg)
         assertTrue(Regex("""WERKZEUGE="\${'$'}ANDROID_HOME/build-tools/\d+\.\d+\.\d+"""").containsMatchIn(signieren))
         assertTrue("die Signierwerkzeuge werden nicht gegen feste Prüfsummen geprüft",
             Regex("""[0-9a-f]{64} "\${'$'}WERKZEUGE/zipalign"[\s\\]+[0-9a-f]{64} "\${'$'}WERKZEUGE/lib/apksigner\.jar"[\s\\]+\| sha256sum -c -""")
@@ -79,15 +85,15 @@ class AndroidWorkflowTest {
             .map { it.substringBefore('#').trim() }.firstOrNull { Regex("^[0-9a-f]{64}$").matches(it) }
         assertTrue("Die README nennt nicht das hinterlegte Zertifikat",
             soll != null && "SHA-256 $soll" in File(Quellen.projekt, "README.md").readText())
-        val bereitstellen = schritt("BrickInventory.apk als Release bereitstellen")
+        val bereitstellen = schritt("BrickInventory.apk als Release bereitstellen", freigabe)
         for (s in listOf("tools/release-zertifikat.sha256", "Signierzertifikat SHA-256: \\`\$ZERT\\`", "apksigner verify --print-certs"))
             assertTrue("Release-Schritt ohne „$s“", s in bereitstellen)
         val pr = workflow.substringAfter("\n  pull_request:\n").substringBefore("\n  workflow_dispatch:")
-        assertTrue("pull_request ohne Workflow-Pfad", "- '.github/workflows/android.yml'" in pr)
+        assertTrue("pull_request ohne Workflow-Pfad", "- '.github/workflows/android.yml'" in pr && "- '.github/workflows/android-signieren.yml'" in pr)
         assertTrue("ausserhalb eines Etiketts ein installierbares APK",
             Regex("""if \[ "\${'$'}ECHT" != "true" \]; then\n\s+mv "\${'$'}APK_AUS" "\${'$'}AUS/apk/release/BrickInventory\.apk\.probe-nicht-installieren"""")
                 .containsMatchIn(signieren))
-        assertTrue("BrickInventory.apk.probe-nicht-installieren" in schritt("Probe-APK für die Prüfung benennen"))
+        assertTrue("BrickInventory.apk.probe-nicht-installieren" in schritt("Probe-APK für die Prüfung benennen", signierweg))
         assertFalse("pruefsummen-vergleich" in job("pruefsummen"))
         val zusammen = job("pruefsummen-zusammenfassen")
         assertTrue("pruefsummen-vergleich.py" in zusammen)

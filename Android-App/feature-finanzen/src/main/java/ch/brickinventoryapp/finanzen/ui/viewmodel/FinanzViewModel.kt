@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.zustand.ui.Aenderung
+import ch.brickinventoryapp.data.repository.Bestandsabgleich
 import ch.brickinventoryapp.finanzen.ui.FinanceUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,11 +19,9 @@ import ch.brickinventoryapp.zustand.ui.fehlerklasse
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.zustand.ui.AppUiState
 import ch.brickinventoryapp.zustand.ui.Sitzung
-import ch.brickinventoryapp.zustand.ui.Bestandssignal
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
 import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
-import ch.brickinventoryapp.zustand.ui.viewmodel.folgeBestand
 
 /**
  * Der Finanz-Reiter: Bewertung von Sets, Teilen und Figuren, Gewinn und
@@ -38,7 +36,7 @@ class FinanzViewModel @Inject constructor(
     private val sitzung: Sitzung,
     private val filter: Filterwahl,
     private val meldungen: Meldungen,
-    private val bestand: Bestandssignal,
+    private val aenderungen: Bestandsabgleich,
     private val finanzen: FinanzenRepository,
     private val gemerkt: SavedStateHandle,
 ) : ViewModel(), Filterwahl by filter, FinanzAktionen {
@@ -47,7 +45,8 @@ class FinanzViewModel @Inject constructor(
 
     init {
         folgeAbmeldung(sitzung) { zuruecksetzen() }
-        folgeBestand(bestand) { beiAenderung(it) }
+        // Die Bewertung rechnet der Server über den Bestand der Ablage; ändert der sich, gilt sie nicht mehr.
+        viewModelScope.launch { aenderungen.bestandGeaendert().collect { loadValuation() } }
     }
 
     override fun setScope(view: ScopeFilter.View, value: String) {
@@ -134,14 +133,6 @@ class FinanzViewModel @Inject constructor(
         if (view != ScopeFilter.View.FINANCE) return
         loadValuation()
         loadPortfolioHistory()
-    }
-
-    private fun beiAenderung(aenderung: Aenderung) {
-        when (aenderung) {
-            Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren,
-            is Aenderung.SetZusammenfassung -> loadValuation()
-            Aenderung.Merkliste, Aenderung.Alarme -> Unit
-        }
     }
 
     private fun zuruecksetzen() {

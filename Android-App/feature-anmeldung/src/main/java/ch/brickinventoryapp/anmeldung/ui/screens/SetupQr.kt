@@ -154,7 +154,7 @@ internal fun QrVorschlagDialog(
 
 /** QR scanner for setup — reuses the proven CameraPreviewBarcode with QR_CODE format */
 @Composable
-fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
+internal fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
     val cameraPermission = rememberKameraErlaubnis()
     var frozen by rememberSaveable { mutableStateOf(false) }
 

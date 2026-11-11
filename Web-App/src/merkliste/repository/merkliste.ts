@@ -1,8 +1,8 @@
-import * as db from '../../../db/database';
+import type { DbSchnittstelle } from '../../../db/database';
 import { LIKE_ESCAPE, enthaeltMuster } from '../../../db/likeSuche';
 import { ausTabelle } from '../../infra/validate';
 
-export function merkeSetVor(userId: number, sn: string, c: string, seit: Date | string | null) {
+export function merkeSetVor(db: DbSchnittstelle, userId: number, sn: string, c: string, seit: Date | string | null) {
   return db.get<{ war_neu: boolean }>(`INSERT INTO wanted (user_id, set_number, condition, created_at)
      VALUES ($1,$2,$3, COALESCE($4::timestamptz, NOW()))
      ON CONFLICT (user_id, set_number, condition) DO UPDATE
@@ -10,15 +10,15 @@ export function merkeSetVor(userId: number, sn: string, c: string, seit: Date | 
      RETURNING (xmax = 0) AS war_neu`, [userId, sn, c, seit]);
 }
 
-export function streicheVormerkung(userId: number, setNumber: string, c: string) {
+export function streicheVormerkung(db: DbSchnittstelle, userId: number, setNumber: string, c: string) {
   return db.run('DELETE FROM wanted WHERE user_id=$1 AND set_number=$2 AND condition=$3', [userId, setNumber, c]);
 }
 
-export function istVorgemerkt(zuId: number, sn: string, c: string) {
+export function istVorgemerkt(db: DbSchnittstelle, zuId: number, sn: string, c: string) {
   return db.get('SELECT 1 FROM wanted WHERE user_id=$1 AND set_number=$2 AND condition=$3', [zuId, sn, c]);
 }
 
-export function uebertrageVormerkung(zuId: number, vonId: number, sn: string, c: string) {
+export function uebertrageVormerkung(db: DbSchnittstelle, zuId: number, vonId: number, sn: string, c: string) {
   return db.run('UPDATE wanted SET user_id=$1 WHERE user_id=$2 AND set_number=$3 AND condition=$4', [zuId, vonId, sn, c]);
 }
 
@@ -35,7 +35,7 @@ const MERK_SORTS = {
 
 export interface MerkAuswahl { nurSet: string | null; suche: string | null; zustand: 'N' | 'U' | null; sortierung: unknown }
 
-export function merklisteImBlickfeld(userIds: number[], f: MerkAuswahl, waehrung: string) {
+export function merklisteImBlickfeld(db: DbSchnittstelle, userIds: number[], f: MerkAuswahl, waehrung: string) {
   const werte: unknown[] = [userIds];
   let wo = '';
   if (f.nurSet) { werte.push(f.nurSet); wo += ` AND w.set_number = $${werte.length}`; }
@@ -52,7 +52,7 @@ export function merklisteImBlickfeld(userIds: number[], f: MerkAuswahl, waehrung
   const pWaehrung = `$${werte.length}`;
   return db.all(`SELECT w.set_number, w.condition, w.created_at, w.user_id,
             rb.name, rb.year, rb.theme_id, rb.num_parts,
-            COALESCE(rb.set_img_url, sc.image_url) AS image_url,
+            sc.image_url,
             pa.richtung AS alarm_richtung, pa.schwelle AS alarm_schwelle,
             pa.ausgeloest AS alarm_ausgeloest,
             pc.avg_price AS marktpreis,
@@ -60,7 +60,7 @@ export function merklisteImBlickfeld(userIds: number[], f: MerkAuswahl, waehrung
                      WHERE s.user_id = ANY($1) AND s.set_number = w.set_number) AS owned
        FROM wanted w
        LEFT JOIN rb_sets rb ON rb.set_num = w.set_number
-       -- set_catalog ergänzt das Bild, wenn rb_sets keines kennt.
+       -- Das Bild steht nur in set_catalog (0108).
        LEFT JOIN set_catalog sc ON sc.set_number = w.set_number
        LEFT JOIN price_alerts pa ON pa.user_id = w.user_id
                                 AND pa.set_number = w.set_number
@@ -76,7 +76,7 @@ export function merklisteImBlickfeld(userIds: number[], f: MerkAuswahl, waehrung
       ORDER BY ${ordnung}, w.set_number, w.condition`, werte);
 }
 
-export function merklisteFuerExport(uid: number) {
+export function merklisteFuerExport(db: DbSchnittstelle, uid: number) {
   return db.all<Record<string, unknown>>(`SELECT w.set_number,
             w.condition,
             TO_CHAR(w.created_at AT TIME ZONE 'UTC','YYYY-MM-DD') AS created_at
