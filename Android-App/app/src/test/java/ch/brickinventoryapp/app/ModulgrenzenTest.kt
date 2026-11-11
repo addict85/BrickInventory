@@ -62,6 +62,9 @@ import ch.brickinventoryapp.testing.Quellen
  *      ch.brickinventoryapp.sammlung → rot „außerhalb des Paketstamms ihres Moduls“
  *   V  gegenproben/daten-reicht-netz-weiter.patch: core-data bindet core-netz per api ein →
  *      rot „Modulkanten per api nur zu core-model: [core-data → core-netz]“ (Schichtung …)
+ *   W  gegenproben/route-im-kern.patch: eine Route in core-model, die Verwaltung öffnet sie →
+ *      rot „feature-verwaltung nennt fremde Routentypen: [Zentralziel]“ (kein Bereich hängt …);
+ *      lokal mit kotlinc gegen den Baum gemessen, in der CI über Gradle
  */
 class ModulgrenzenTest {
 
@@ -126,7 +129,7 @@ class ModulgrenzenTest {
     }
 
     @Test
-    fun `kein Bereich hängt an einem anderen Bereich oder an der App`() {
+    fun `kein Bereich hängt an einem anderen Bereich oder an der App, keiner nennt fremde Routentypen`() {
         val bereiche = module().filterKeys { it.startsWith("feature-") }
         assertTrue("Nur ${bereiche.size} Bereichsmodule", bereiche.size >= 5)
         for ((name, bau) in bereiche) {
@@ -134,6 +137,18 @@ class ModulgrenzenTest {
             val falsch = hauptAbhaengigkeiten(bau).filter { it.startsWith("feature-") || it == "app" }
             assertTrue("$name hängt an ${falsch.joinToString()}", falsch.isEmpty())
             assertTrue("$name kennt keine Kernmodule — Muster veraltet?", hauptAbhaengigkeiten(bau).any { it.startsWith("core-") })
+        }
+        // Routen: Ein Bereich registriert und öffnet nur eigene Ziele, fremde über die Rückrufe
+        // seiner Navigationsschnittstelle. Eine Route in einem Kernmodul wäre wieder die zentrale Liste.
+        val routenAufruf = Regex("""\b(?:composable|navigation|popUpTo|getBackStackEntry|toRoute|hasRoute)<([A-Z]\w*)|\bnavigate\(\s*([A-Z]\w*)""")
+        val deklaration = Regex("""\b(?:class|interface|object)\s+(\w+)""")
+        for (name in bereiche.keys) {
+            val quellen = File(projekt, "$name/src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }
+                .map { Quellen.ohneKommentare(it.readText()) }.toList()
+            val eigene = quellen.flatMap { q -> deklaration.findAll(q).map { it.groupValues[1] } }.toSet()
+            val genannt = quellen.flatMap { q -> routenAufruf.findAll(q).map { it.groupValues[1].ifEmpty { it.groupValues[2] } } }.toSet()
+            assertTrue("$name nennt keine Route — Muster veraltet?", genannt.isNotEmpty())
+            assertTrue("$name nennt fremde Routentypen: ${genannt - eigene}", (genannt - eigene).isEmpty())
         }
     }
 

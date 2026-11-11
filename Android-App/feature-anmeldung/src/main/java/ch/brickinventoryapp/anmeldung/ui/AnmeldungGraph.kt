@@ -17,32 +17,38 @@ import ch.brickinventoryapp.anmeldung.ui.screens.LoginScreen
 import ch.brickinventoryapp.anmeldung.ui.screens.ServerStartAnzeige
 import ch.brickinventoryapp.anmeldung.ui.screens.SetupScreen
 import ch.brickinventoryapp.anmeldung.ui.viewmodel.AnmeldungViewModel
-import ch.brickinventoryapp.zustand.ui.AnmeldungBereich
-import ch.brickinventoryapp.zustand.ui.Screen
+
+/** Was die Anmeldung von der App braucht: wohin es nach dem Anmelden geht, weiss nur sie. */
+interface AnmeldungNavigation {
+    val navController: NavHostController
+
+    /** Die Anmeldung ist gelungen; die Anmeldeziele verlassen den Stapel. */
+    fun angemeldet()
+}
 
 /**
- * Einrichtung und Anmeldung als eigener Teilgraph ([AnmeldungBereich]): Eine
+ * Einrichtung und Anmeldung als eigener Teilgraph ([AnmeldeZiel.Bereich]): Eine
  * QR-Anmeldung beginnt in der Einrichtung und läuft nach dem Wechsel zur Anmeldung
  * weiter. Das ViewModel hängt deshalb am Eintrag des Teilgraphen und endet mit ihm.
  * [beginn] ist Einrichtung oder Anmeldung.
  */
-fun NavGraphBuilder.anmeldungGraph(navController: NavHostController, beginn: Screen) {
-    navigation<AnmeldungBereich>(startDestination = beginn) {
-        einrichtungsZiel(navController)
-        anmeldeZiel(navController)
+fun NavGraphBuilder.anmeldungGraph(navigation: AnmeldungNavigation, beginn: AnmeldeZiel) {
+    navigation<AnmeldeZiel.Bereich>(startDestination = beginn) {
+        einrichtungsZiel(navigation.navController)
+        anmeldeZiel(navigation)
     }
 }
 
 /** Das ViewModel des Teilgraphen, an dessen Eintrag gebunden. */
 @Composable
 private fun anmeldungViewModel(navController: NavHostController, eintrag: NavBackStackEntry): AnmeldungViewModel {
-    val bereich = remember(eintrag) { navController.getBackStackEntry<AnmeldungBereich>() }
+    val bereich = remember(eintrag) { navController.getBackStackEntry<AnmeldeZiel.Bereich>() }
     return hiltViewModel(bereich)
 }
 
 /** Serveradresse eintragen oder per QR-Code übernehmen. */
 private fun NavGraphBuilder.einrichtungsZiel(navController: NavHostController) {
-    composable<Screen.Setup> { eintrag ->
+    composable<AnmeldeZiel.Setup> { eintrag ->
         val anmeldungVm = anmeldungViewModel(navController, eintrag)
         val state by anmeldungVm.state.collectAsStateWithLifecycle()
         SetupScreen(
@@ -51,8 +57,8 @@ private fun NavGraphBuilder.einrichtungsZiel(navController: NavHostController) {
             // neue Adresse gilt (AnmeldungViewModel.saveServerUrl).
             onSave = { url ->
                 if (anmeldungVm.saveServerUrl(url)) {
-                    navController.navigate(Screen.Login) {
-                        popUpTo<Screen.Setup> { inclusive = true }
+                    navController.navigate(AnmeldeZiel.Login) {
+                        popUpTo<AnmeldeZiel.Setup> { inclusive = true }
                     }
                 }
             },
@@ -62,8 +68,8 @@ private fun NavGraphBuilder.einrichtungsZiel(navController: NavHostController) {
                 // Der Gerätename steht im Browser bei der Frage „Gerät koppeln?“.
                 anmeldungVm.loginWithQrToken(qr.url, qr.token, fingerabdruck = qr.fingerabdruck,
                     pinWechselEingabe = pinEingabe, geraet = Build.MODEL.orEmpty().ifBlank { "Android App" })
-                navController.navigate(Screen.Login) {
-                    popUpTo<Screen.Setup> { inclusive = true }
+                navController.navigate(AnmeldeZiel.Login) {
+                    popUpTo<AnmeldeZiel.Setup> { inclusive = true }
                 }
             },
             bisherigerPin = anmeldungVm::bisherigerPin,
@@ -73,8 +79,9 @@ private fun NavGraphBuilder.einrichtungsZiel(navController: NavHostController) {
 }
 
 /** Anmelden, Registrieren und Passkey; während der Server startet, sein Fortschritt. */
-private fun NavGraphBuilder.anmeldeZiel(navController: NavHostController) {
-    composable<Screen.Login> { eintrag ->
+private fun NavGraphBuilder.anmeldeZiel(navigation: AnmeldungNavigation) {
+    val navController = navigation.navController
+    composable<AnmeldeZiel.Login> { eintrag ->
         val anmeldungVm = anmeldungViewModel(navController, eintrag)
         val state by anmeldungVm.state.collectAsStateWithLifecycle()
         val anmeldeZustand by anmeldungVm.anmeldeState.collectAsStateWithLifecycle()
@@ -113,8 +120,8 @@ private fun NavGraphBuilder.anmeldeZiel(navController: NavHostController) {
             onRegistrieren = { u, e, v, n, pw -> anmeldungVm.registriere(u, e, v, n, pw) },
             onPasswortVergessen = { anmeldungVm.passwortVergessen(it) },
             onChangeServer = {
-                navController.navigate(Screen.Setup) {
-                    popUpTo<Screen.Login> { inclusive = true }
+                navController.navigate(AnmeldeZiel.Setup) {
+                    popUpTo<AnmeldeZiel.Login> { inclusive = true }
                 }
             }
         )
@@ -122,11 +129,7 @@ private fun NavGraphBuilder.anmeldeZiel(navController: NavHostController) {
         // noch startet — moeglich, weil der Wechsel jederzeit kommen kann —,
         // soll der Sprung in die Galerie trotzdem passieren.
         LaunchedEffect(state.isLoggedIn) {
-            if (state.isLoggedIn) {
-                navController.navigate(Screen.Gallery) {
-                    popUpTo<Screen.Login> { inclusive = true }
-                }
-            }
+            if (state.isLoggedIn) navigation.angemeldet()
         }
     }
 }

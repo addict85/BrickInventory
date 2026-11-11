@@ -52,7 +52,7 @@ class CacheEreignisse(
 // Seit es vier Designs gibt, passen die Chips nicht mehr in eine Zeile.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun CacheAndLimitsSection(
+internal fun CacheAndLimitsSection(
     monState: MonitoringUiState,
     /** Die Netzerlaubnisse fürs Vorwärmen (WLAN, mobil, Roaming), Geräte-Einstellungen. */
     netze: Map<VorwaermNetz, Boolean>,

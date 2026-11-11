@@ -12,7 +12,7 @@ import java.math.RoundingMode
 data class KachelPreis(val betrag: Double?, val pnlPct: Double?, val quelle: String? = null)
 
 /** Was der Betrag der Kachel ist — die Beschriftung darüber nennt es wie im Web. */
-enum class KachelQuelle { MARKT, KAUF }
+internal enum class KachelQuelle { MARKT, KAUF }
 
 /**
  * Je Set eine Angabe aus /finance/pnl. Betrag und G&V rechnet der Server
@@ -58,7 +58,7 @@ internal fun kachelBetrag(set: SetAnsicht, preis: KachelPreis?): Double? =
  * sagt "kauf"; ältere Server ohne kachel_quelle lieferten nur Marktpreise. Ohne
  * ihn steht der eigene Kaufpreis da, ohne beides nichts.
  */
-fun kachelQuelle(set: SetAnsicht, preis: KachelPreis?): KachelQuelle? {
+internal fun kachelQuelle(set: SetAnsicht, preis: KachelPreis?): KachelQuelle? {
     val betrag = preis?.betrag
     if (preis != null && betrag != null && betrag > 0)
         return if (preis.quelle == "kauf") KachelQuelle.KAUF else KachelQuelle.MARKT

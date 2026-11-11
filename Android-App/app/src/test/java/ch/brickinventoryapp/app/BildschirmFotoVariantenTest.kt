@@ -55,7 +55,6 @@ import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.testing.VerwaltungRepository
 import ch.brickinventoryapp.zustand.ui.AnmeldeFormular
 import ch.brickinventoryapp.zustand.ui.CsvImportUiState
-import ch.brickinventoryapp.zustand.ui.Screen
 import ch.brickinventoryapp.finanzen.ui.screens.FinanceRoute
 import ch.brickinventoryapp.sammlung.ui.screens.GalleryRoute
 import ch.brickinventoryapp.anmeldung.ui.screens.LoginScreen
@@ -163,6 +162,10 @@ import ch.brickinventoryapp.testing.GutscheineRepository
 import ch.brickinventoryapp.testing.KontoRepository
 import ch.brickinventoryapp.testing.SitzungsAttrappe
 import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.app.nav.AppZiel
+import ch.brickinventoryapp.finanzen.ui.FinanzZiel
+import ch.brickinventoryapp.katalog.ui.KatalogZiel
+import ch.brickinventoryapp.sammlung.ui.SammlungZiel
 
 /**
  * Was BildschirmFotoTest nicht abdeckt, je einmal statt im vollen Raster (die
@@ -426,17 +429,17 @@ class BildschirmFotoVariantenTest {
         val nav = rememberNavController()
         val reiter = remember {
             listOf(
-                Reiter(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
-                Reiter(Screen.Finance, { Icon(Icons.AutoMirrored.Filled.ShowChart, null) }, "Finanzen"),
-                Reiter(Screen.Wanted, { Icon(Icons.Default.BookmarkBorder, null) }, "Merkliste"),
-                Reiter(Screen.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, "Katalog"),
-                Reiter(Screen.Mehr, { Icon(Icons.Default.MoreHoriz, null) }, "Mehr"),
+                Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                Reiter(FinanzZiel.Finance, { Icon(Icons.AutoMirrored.Filled.ShowChart, null) }, "Finanzen"),
+                Reiter(SammlungZiel.Wanted, { Icon(Icons.Default.BookmarkBorder, null) }, "Merkliste"),
+                Reiter(KatalogZiel.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, "Katalog"),
+                Reiter(AppZiel.Mehr, { Icon(Icons.Default.MoreHoriz, null) }, "Mehr"),
             )
         }
         // Der Titel folgt dem Ziel wie in der App (ToolsGraph setzt nav_more): Fest
         // „Sammlung“ zeigte das Foto von „Mehr“ mit dem falschen Titel.
         val ziel by nav.currentBackStackEntryAsState()
-        val titel = if (ziel?.destination?.hasRoute<Screen.Mehr>() == true) "Mehr" else "Sammlung"
+        val titel = if (ziel?.destination?.hasRoute<AppZiel.Mehr>() == true) "Mehr" else "Sammlung"
         MainScaffold(
             title = titel, navController = nav, bottomNavItems = reiter,
             snackbarHostState = snackbar,
@@ -444,14 +447,14 @@ class BildschirmFotoVariantenTest {
             onCsvAbbrechen = {}, updateVerfuegbar = true, onTabAngetippt = {},
             offeneAenderungen = offeneAenderungen,
         ) {
-            NavHost(nav, startDestination = Screen.Gallery) {
-                composable<Screen.Gallery> {
+            NavHost(nav, startDestination = SammlungZiel.Gallery) {
+                composable<SammlungZiel.Gallery> {
                     Column {
                         OfflineHinweis(offlineStand)
                         Galerie(galerie)
                     }
                 }
-                composable<Screen.Mehr> {
+                composable<AppZiel.Mehr> {
                     MehrBildschirm(onZiel = nav::oeffneVonMehr, isAdmin = true, updateVerfuegbar = true, onAbmelden = {})
                 }
             }
@@ -850,7 +853,7 @@ class BildschirmFotoVariantenTest {
         val vm = welt.teile().also { it.loadParts() }
         zeige("teil-detail", dunkel = dunkel, geraet = geraet, bereit = { vm.partsState.value.parts.isNotEmpty() },
             zustand = { vm.partsState.value }) {
-            TeileListeUndDetailRoute(vm, bilder, "", rememberNavController()) { _ ->
+            TeileListeUndDetailRoute(vm, bilder, "", { _, _, _, _ -> }, {}, { _, _, _, _ -> }) { _ ->
                 PartsRoute(vm = vm, imageLoader = bilder)
             }
         }

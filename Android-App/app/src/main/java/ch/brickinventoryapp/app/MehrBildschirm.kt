@@ -42,11 +42,15 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.zustand.ui.Screen
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Lesebreite
 import ch.brickinventoryapp.ui.theme.mittigBis
 import ch.brickinventoryapp.ui.components.Gruppentitel
+import ch.brickinventoryapp.finanzen.ui.FinanzZiel
+import ch.brickinventoryapp.konto.ui.KontoZiel
+import ch.brickinventoryapp.sammlung.ui.SammlungZiel
+import ch.brickinventoryapp.teile.ui.TeileZiel
+import ch.brickinventoryapp.verwaltung.ui.VerwaltungZiel
 
 /**
  * Das Ziel „Mehr“ der unteren Leiste: alle Seiten, die kein Bestandsreiter sind, in
@@ -57,7 +61,7 @@ import ch.brickinventoryapp.ui.components.Gruppentitel
  */
 @Composable
 fun MehrBildschirm(
-    onZiel: (Screen) -> Unit,
+    onZiel: (Any) -> Unit,
     isAdmin: Boolean,
     updateVerfuegbar: Boolean,
     onAbmelden: () -> Unit,
@@ -100,36 +104,36 @@ fun MehrBildschirm(
  */
 @Composable
 private fun MehrGruppeInhalt(
-    nummer: Int, trenner: Boolean, updateVerfuegbar: Boolean, onZiel: (Screen) -> Unit, onAbmelden: () -> Unit,
+    nummer: Int, trenner: Boolean, updateVerfuegbar: Boolean, onZiel: (Any) -> Unit, onAbmelden: () -> Unit,
 ) {
     when (nummer) {
         0 -> {
             MehrGruppe(R.string.nav_group_prices, trenner)
             // Gutscheine zuerst: Die braucht man im Laden.
-            MehrEintrag(R.string.vouchers_title, Icons.Outlined.Redeem) { onZiel(Screen.Gutscheine) }
-            MehrEintrag(R.string.alerts_group, Icons.Outlined.NotificationsActive) { onZiel(Screen.Preisalarme) }
+            MehrEintrag(R.string.vouchers_title, Icons.Outlined.Redeem) { onZiel(FinanzZiel.Gutscheine) }
+            MehrEintrag(R.string.alerts_group, Icons.Outlined.NotificationsActive) { onZiel(KontoZiel.Preisalarme) }
         }
         1 -> {
             MehrGruppe(R.string.nav_group_tools, trenner)
-            MehrEintrag(R.string.nav_comparison, Icons.AutoMirrored.Outlined.CompareArrows) { onZiel(Screen.Comparison) }
-            MehrEintrag(R.string.nav_partslist, Icons.AutoMirrored.Outlined.ListAlt) { onZiel(Screen.PartsList) }
+            MehrEintrag(R.string.nav_comparison, Icons.AutoMirrored.Outlined.CompareArrows) { onZiel(SammlungZiel.Comparison) }
+            MehrEintrag(R.string.nav_partslist, Icons.AutoMirrored.Outlined.ListAlt) { onZiel(TeileZiel.PartsList) }
         }
         2 -> {
             MehrGruppe(R.string.nav_group_manage, trenner)
-            MehrEintrag(R.string.storage_manage, Icons.Outlined.Inventory2) { onZiel(Screen.Lagerorte) }
-            MehrEintrag(R.string.household_title, Icons.Outlined.Group) { onZiel(Screen.Haushalt) }
-            MehrEintrag(R.string.csv_upload_title, Icons.Outlined.UploadFile) { onZiel(Screen.CsvImport) }
+            MehrEintrag(R.string.storage_manage, Icons.Outlined.Inventory2) { onZiel(KontoZiel.Lagerorte) }
+            MehrEintrag(R.string.household_title, Icons.Outlined.Group) { onZiel(KontoZiel.Haushalt) }
+            MehrEintrag(R.string.csv_upload_title, Icons.Outlined.UploadFile) { onZiel(KontoZiel.CsvImport) }
         }
         3 -> {
             MehrGruppe(R.string.nav_group_account, trenner)
-            MehrEintrag(R.string.konto_title, Icons.Outlined.AccountCircle) { onZiel(Screen.Konto) }
+            MehrEintrag(R.string.konto_title, Icons.Outlined.AccountCircle) { onZiel(KontoZiel.Konto) }
             // Der Punkt allein sagte nicht, wofür er steht: Darunter steht es in Worten.
-            MehrEintrag(R.string.nav_settings, Icons.Outlined.Settings, punkt = updateVerfuegbar) { onZiel(Screen.Settings) }
+            MehrEintrag(R.string.nav_settings, Icons.Outlined.Settings, punkt = updateVerfuegbar) { onZiel(KontoZiel.Settings) }
             MehrEintrag(R.string.main_menu_logout, Icons.AutoMirrored.Outlined.Logout, onKlick = onAbmelden)
         }
         else -> {
             MehrGruppe(R.string.nav_group_server, trenner)
-            MehrEintrag(R.string.main_menu_monitoring, Icons.Outlined.Assessment) { onZiel(Screen.Monitoring) }
+            MehrEintrag(R.string.main_menu_monitoring, Icons.Outlined.Assessment) { onZiel(VerwaltungZiel.Monitoring) }
         }
     }
 }
@@ -139,9 +143,9 @@ private fun MehrGruppeInhalt(
  * Monitoring steht wie ein Reiter direkt über dem Start, damit „Zurück“ nicht durch
  * die Verwalterseiten führt.
  */
-internal fun NavController.oeffneVonMehr(ziel: Screen) = when (ziel) {
-    Screen.Settings -> navigate(ziel) { launchSingleTop = true }
-    Screen.Monitoring -> navigate(ziel) {
+internal fun NavController.oeffneVonMehr(ziel: Any) = when (ziel) {
+    KontoZiel.Settings -> navigate(ziel) { launchSingleTop = true }
+    VerwaltungZiel.Monitoring -> navigate(ziel) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true
         restoreState = false

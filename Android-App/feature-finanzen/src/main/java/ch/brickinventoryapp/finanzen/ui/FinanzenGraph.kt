@@ -15,20 +15,22 @@ import ch.brickinventoryapp.finanzen.ui.screens.PdfViewerRoute
 import ch.brickinventoryapp.finanzen.ui.viewmodel.FinanzViewModel
 import ch.brickinventoryapp.finanzen.ui.viewmodel.GutscheinViewModel
 import ch.brickinventoryapp.finanzen.ui.viewmodel.gutscheinPdfAdresse
+import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
 import ch.brickinventoryapp.zustand.ui.Bereichsumgebung
-import ch.brickinventoryapp.zustand.ui.Screen
-import ch.brickinventoryapp.zustand.ui.rollSchluessel
 
-/** Was die Finanzen von der App brauchen. */
-interface FinanzenNavigation : Bereichsumgebung
+/** Was die Finanzen von der App brauchen: Set und Einzelstück gehören anderen Bereichen. */
+interface FinanzenNavigation : Bereichsumgebung {
+    fun oeffneSet(setNumber: String)
+    fun oeffneEinzelstueck(art: Postenart, id: String, colorId: Int, titel: String)
+}
 
 /** Finanzen, Gutscheine und der PDF-Betrachter. */
 fun NavGraphBuilder.finanzenGraph(navigation: FinanzenNavigation) {
     val navController = navigation.navController
     val financeListState = navigation.rollen.finanzen
-    composable<Screen.Finance> {
+    composable<FinanzZiel.Finance> {
         val vm = navigation.app
         val finanzen: FinanzViewModel = hiltViewModel()
         val state by finanzen.state.collectAsStateWithLifecycle()
@@ -39,7 +41,7 @@ fun NavGraphBuilder.finanzenGraph(navigation: FinanzenNavigation) {
                 if (state.serverUrl.isNotBlank() && financeState.historyPoints.isEmpty()) finanzen.loadPortfolioHistory()
             }
             ScrollPositionKeeper(
-                Screen.Finance.rollSchluessel, financeListState,
+                FinanzZiel.Finance.rollSchluessel, financeListState,
                 financeState.valuation != null, vm.scrollMemory)
             FinanceRoute(
                 vm = finanzen,
@@ -47,17 +49,17 @@ fun NavGraphBuilder.finanzenGraph(navigation: FinanzenNavigation) {
                 // Klick auf eine Zeile öffnet dieselbe Detailansicht wie in der Galerie. Der
                 // Scroll-Zustand liegt ausserhalb (financeListState), damit die Rückkehr an
                 // derselben Stelle landet.
-                onSetClick = { navController.navigate(Screen.SetDetail(it)) },
+                onSetClick = navigation::oeffneSet,
                 // Den Namen gibt die angeklickte Zeile mit, sonst stünde bis zum ersten
                 // Laden die nackte Nummer in der Leiste.
                 onManualClick = { type, id, colorId, name ->
-                    navController.navigate(Screen.ManualItemDetail(type, id, colorId, name ?: id))
+                    navigation.oeffneEinzelstueck(type, id, colorId, name ?: id)
                 },
                 listState = financeListState
             )
         }
     }
-    composable<Screen.Gutscheine> {
+    composable<FinanzZiel.Gutscheine> {
         val vm = navigation.app
         // Am Ziel: Klartext und PIN enden mit der Seite. Der PDF-Betrachter liegt
         // darüber, die Seite bleibt also bestehen, solange er offen ist.
@@ -72,14 +74,14 @@ fun NavGraphBuilder.finanzenGraph(navigation: FinanzenNavigation) {
             val ziel = gutscheine.pdfZiel ?: return@LaunchedEffect
             val titel = if (ziel.id == null) exportTitel
                 else gutscheine.gutscheine.find { it.id == ziel.id }?.number.orEmpty()
-            navController.navigate(Screen.PdfViewer(
+            navController.navigate(FinanzZiel.PdfViewer(
                 gutscheinPdfAdresse(state.serverUrl, ziel), titel))
             gutscheinVm.gutscheinPdfQuittieren()
         }
         GutscheineRoute(gutscheinVm, navigation.snackbar) { navController.popBackStack() }
     }
-    composable<Screen.PdfViewer> { backStackEntry ->
-        val ziel = backStackEntry.toRoute<Screen.PdfViewer>()
+    composable<FinanzZiel.PdfViewer> { backStackEntry ->
+        val ziel = backStackEntry.toRoute<FinanzZiel.PdfViewer>()
         GutscheinPdfSchutz(ziel.url)
         val state by navigation.app.state.collectAsStateWithLifecycle()
         PdfViewerRoute(

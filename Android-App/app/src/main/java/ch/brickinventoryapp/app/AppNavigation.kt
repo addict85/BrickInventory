@@ -14,7 +14,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.navigation.compose.*
 import ch.brickinventoryapp.anmeldung.ui.anmeldungGraph
-import ch.brickinventoryapp.app.nav.mehrZiel
 import ch.brickinventoryapp.anmeldung.ui.*
 import ch.brickinventoryapp.finanzen.ui.*
 import ch.brickinventoryapp.katalog.ui.*
@@ -47,6 +46,8 @@ import ch.brickinventoryapp.app.nav.ZielUmgebung
 import ch.brickinventoryapp.ui.components.UebergangsRahmen
 import ch.brickinventoryapp.konto.ui.dialogs.UpdateRoute
 import ch.brickinventoryapp.zustand.ui.Rollzustaende
+import ch.brickinventoryapp.app.nav.AppZiel
+import ch.brickinventoryapp.app.nav.mehrZiel
 
 /**
  * App-Navigation und Haupt-Gerüst: der NavHost mit allen Routen, die Dialoge, die
@@ -121,10 +122,10 @@ fun BrickInventoryRoute(
     }
 
     val startDest = startRoute(startZiel(state.serverUrl, state.isLoggedIn, NetworkPolicy.entwicklung))
-    val wurzel: Any = if (startDest == Screen.Gallery) Screen.Gallery else AnmeldungBereich
+    val wurzel: Any = if (startDest == SammlungZiel.Gallery) SammlungZiel.Gallery else AnmeldeZiel.Bereich
     // Der Beginn der Anmeldung bleibt, solange sie läuft: Ein anderer baute den Graphen
     // neu und beendete ihr ViewModel mitten in der QR-Anmeldung.
-    val anmeldeBeginn = remember(wurzel) { startDest }
+    val anmeldeBeginn = remember(wurzel) { startDest as? AnmeldeZiel ?: AnmeldeZiel.Setup }
     val bottomNavItems = reiterDerLeiste()
 
     // ── „Es gibt eine neue Fassung“ — ebenfalls über allem ──
@@ -140,8 +141,8 @@ fun BrickInventoryRoute(
     val meldungsZiel by vm.meldungsZiel.collectAsStateWithLifecycle()
     LaunchedEffect(meldungsZiel.setNummer, startDest) {
         val sn = meldungsZiel.setNummer
-        if (sn != null && startDest == Screen.Gallery) {
-            navController.navigate(Screen.SetDetail(sn))
+        if (sn != null && startDest == SammlungZiel.Gallery) {
+            navController.navigate(SammlungZiel.SetDetail(sn))
             // Sofort quittieren, sonst springt die App bei der naechsten
             // Rekomposition erneut — dieselbe Regel wie bei der manuellen
             // Erfassung nach einem erfolglosen Scan.
@@ -172,8 +173,8 @@ fun BrickInventoryRoute(
  * Alle Ziele der App; der NavHost und ErreichbareRoutenTest bauen denselben Graphen.
  * Jeder Bereich bringt seine Ziele mit, die App setzt sie nur zusammen.
  */
-internal fun androidx.navigation.NavGraphBuilder.alleZiele(u: ZielUmgebung, anmeldeBeginn: Screen = Screen.Setup) {
-    anmeldungGraph(u.navController, anmeldeBeginn)
+internal fun androidx.navigation.NavGraphBuilder.alleZiele(u: ZielUmgebung, anmeldeBeginn: AnmeldeZiel = AnmeldeZiel.Setup) {
+    anmeldungGraph(u, anmeldeBeginn)
     sammlungGraph(u)
     katalogGraph(u)
     teileGraph(u)
@@ -184,10 +185,10 @@ internal fun androidx.navigation.NavGraphBuilder.alleZiele(u: ZielUmgebung, anme
 }
 
 /** Wo die App beginnt, je nachdem, ob Server und Anmeldung schon da sind. */
-internal fun startRoute(ziel: StartZiel): Screen = when (ziel) {
-    StartZiel.EINRICHTUNG -> Screen.Setup
-    StartZiel.ANMELDUNG   -> Screen.Login
-    StartZiel.SAMMLUNG    -> Screen.Gallery
+internal fun startRoute(ziel: StartZiel): Any = when (ziel) {
+    StartZiel.EINRICHTUNG -> AnmeldeZiel.Setup
+    StartZiel.ANMELDUNG   -> AnmeldeZiel.Login
+    StartZiel.SAMMLUNG    -> SammlungZiel.Gallery
 }
 
 /**
@@ -204,11 +205,11 @@ internal fun reiterDerLeiste(): List<Reiter> {
     val mehr = stringResource(R.string.nav_more)
     return remember(sammlung, finanzen, merkliste, katalog, mehr) {
         listOf(
-            Reiter(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, sammlung),
-            Reiter(Screen.Finance, { Icon(Icons.AutoMirrored.Filled.ShowChart, null) }, finanzen),
-            Reiter(Screen.Wanted, { Icon(Icons.Default.BookmarkBorder, null) }, merkliste),
-            Reiter(Screen.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, katalog),
-            Reiter(Screen.Mehr, { Icon(Icons.Default.MoreHoriz, null) }, mehr),
+            Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, sammlung),
+            Reiter(FinanzZiel.Finance, { Icon(Icons.AutoMirrored.Filled.ShowChart, null) }, finanzen),
+            Reiter(SammlungZiel.Wanted, { Icon(Icons.Default.BookmarkBorder, null) }, merkliste),
+            Reiter(KatalogZiel.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, katalog),
+            Reiter(AppZiel.Mehr, { Icon(Icons.Default.MoreHoriz, null) }, mehr),
         )
     }
 }

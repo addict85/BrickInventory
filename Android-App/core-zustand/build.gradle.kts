@@ -6,8 +6,6 @@ plugins {
     alias(libs.plugins.brickinventory.android.unittests)
     alias(libs.plugins.brickinventory.android.compose)
     alias(libs.plugins.brickinventory.android.hilt)
-    // Die Navigationsziele (ui/Navigation.kt) sind @Serializable-Routen.
-    alias(libs.plugins.kotlin.serialization)
 }
 
 android {

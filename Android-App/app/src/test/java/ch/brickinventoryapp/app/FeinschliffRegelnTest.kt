@@ -32,7 +32,6 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.testing.KatalogRepository
 import ch.brickinventoryapp.zustand.ui.CsvImportUiState
-import ch.brickinventoryapp.zustand.ui.Screen
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.After
@@ -61,6 +60,10 @@ import androidx.compose.ui.test.SemanticsMatcher
 import java.util.Locale
 import org.robolectric.RuntimeEnvironment
 import ch.brickinventoryapp.testing.SetsRepository
+import ch.brickinventoryapp.app.nav.AppZiel
+import ch.brickinventoryapp.finanzen.ui.FinanzZiel
+import ch.brickinventoryapp.katalog.ui.KatalogZiel
+import ch.brickinventoryapp.sammlung.ui.SammlungZiel
 
 /**
  * Regeln aus der achten UI-Prüfung, als Verhalten ausgeführt: Navigationsziele stehen
@@ -126,13 +129,13 @@ class FeinschliffRegelnTest {
     }
 
     private val fuenfZiele by lazy {
-        listOf(Screen.Gallery to R.string.nav_collection, Screen.Finance to R.string.nav_finance,
-            Screen.Wanted to R.string.nav_wanted, Screen.Catalog to R.string.nav_catalog, Screen.Mehr to R.string.nav_more)
+        listOf(SammlungZiel.Gallery to R.string.nav_collection, FinanzZiel.Finance to R.string.nav_finance,
+            SammlungZiel.Wanted to R.string.nav_wanted, KatalogZiel.Catalog to R.string.nav_catalog, AppZiel.Mehr to R.string.nav_more)
             .map { (ziel, text) -> ziel to ctx.getString(text) }
     }
 
     /** Die sichtbaren Beschriftungen der Leiste; ein Ziel ohne trägt seinen Namen und ist antippbar. */
-    private fun sichtbareBeschriftungen(ziele: List<Pair<Screen, String>>): List<String> = ziele.map { it.second }.filter { text ->
+    private fun sichtbareBeschriftungen(ziele: List<Pair<Any, String>>): List<String> = ziele.map { it.second }.filter { text ->
         val sichtbar = compose.onAllNodes(hasText(text), useUnmergedTree = true).fetchSemanticsNodes()
             .any { it.config.getOrNull(SemanticsActions.GetTextLayoutResult) != null }
         if (!sichtbar) compose.onNode(androidx.compose.ui.test.hasContentDescription(text) and androidx.compose.ui.test.hasClickAction())
@@ -154,7 +157,7 @@ class FeinschliffRegelnTest {
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
                 onCsvAbbrechen = {}, onTabAngetippt = {},
             ) {
-                NavHost(nav, startDestination = Screen.Finance) { composable<Screen.Finance> { } }
+                NavHost(nav, startDestination = FinanzZiel.Finance) { composable<FinanzZiel.Finance> { } }
             }
         }
         val sichtbar = sichtbareBeschriftungen(ziele)
@@ -181,7 +184,7 @@ class FeinschliffRegelnTest {
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
                 onCsvAbbrechen = {}, onTabAngetippt = {},
             ) {
-                NavHost(nav, startDestination = Screen.Wanted) { composable<Screen.Wanted> { } }
+                NavHost(nav, startDestination = SammlungZiel.Wanted) { composable<SammlungZiel.Wanted> { } }
             }
         }
         val sichtbar = sichtbareBeschriftungen(ziele)
@@ -201,8 +204,8 @@ class FeinschliffRegelnTest {
      */
     @Test
     fun `Reiterleiste schrumpft nie unter die normale Schriftgroesse`() {
-        val ziele = listOf(Screen.Gallery to R.string.nav_collection, Screen.Finance to R.string.nav_monitoring,
-            Screen.Wanted to R.string.nav_wanted, Screen.Catalog to R.string.nav_catalog, Screen.Mehr to R.string.nav_more)
+        val ziele = listOf(SammlungZiel.Gallery to R.string.nav_collection, FinanzZiel.Finance to R.string.nav_monitoring,
+            SammlungZiel.Wanted to R.string.nav_wanted, KatalogZiel.Catalog to R.string.nav_catalog, AppZiel.Mehr to R.string.nav_more)
             .map { (ziel, text) -> ziel to ctx.getString(text) }
         val schrift = 1.3f
         var normal = 0f
@@ -218,7 +221,7 @@ class FeinschliffRegelnTest {
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
                 onCsvAbbrechen = {}, onTabAngetippt = {},
             ) {
-                NavHost(nav, startDestination = Screen.Gallery) { composable<Screen.Gallery> { } }
+                NavHost(nav, startDestination = SammlungZiel.Gallery) { composable<SammlungZiel.Gallery> { } }
             }
         }
         sichtbareBeschriftungen(ziele).forEach { text ->
@@ -312,7 +315,7 @@ class FeinschliffRegelnTest {
             val vm = welt.teile().also { it.loadParts() }
             val bilder = coil3.ImageLoader.Builder(ctx).build()
             zeige {
-                TeileListeUndDetailRoute(vm, bilder, "", rememberNavController()) { _ ->
+                TeileListeUndDetailRoute(vm, bilder, "", { _, _, _, _ -> }, {}, { _, _, _, _ -> }) { _ ->
                     PartsRoute(vm = vm, imageLoader = bilder)
                 }
             }

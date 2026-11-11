@@ -48,7 +48,6 @@ import ch.brickinventoryapp.testing.KatalogRepository
 import ch.brickinventoryapp.zustand.ui.CsvImportUiState
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.sammlung.ui.KachelPreis
-import ch.brickinventoryapp.zustand.ui.Screen
 import ch.brickinventoryapp.ui.components.FehlerHinweis
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
 import ch.brickinventoryapp.sammlung.ui.screens.MerklisteRoute
@@ -94,6 +93,10 @@ import coil3.request.ErrorResult
 import java.math.BigDecimal
 import java.util.Locale
 import ch.brickinventoryapp.testing.SetsRepository
+import ch.brickinventoryapp.app.nav.AppZiel
+import ch.brickinventoryapp.finanzen.ui.FinanzZiel
+import ch.brickinventoryapp.sammlung.ui.SammlungZiel
+import ch.brickinventoryapp.teile.ui.TeileZiel
 
 /**
  * Was die Bildschirmfotos zeigen, hier als Regel ausgeführt: Auf dem Tablet liegt der
@@ -164,7 +167,7 @@ class OberflaechenRegelnTest {
             val nav = rememberNavController()
             val reiter = remember {
                 listOf(
-                    Reiter(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"))
+                    Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"))
             }
             MainScaffold(
                 title = "Sammlung", navController = nav, bottomNavItems = reiter,
@@ -172,7 +175,7 @@ class OberflaechenRegelnTest {
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
                 onCsvAbbrechen = {}, onTabAngetippt = {},
             ) {
-                NavHost(nav, startDestination = Screen.Gallery) { composable<Screen.Gallery> { } }
+                NavHost(nav, startDestination = SammlungZiel.Gallery) { composable<SammlungZiel.Gallery> { } }
             }
         }
         val teile = ctx.getString(R.string.nav_parts)
@@ -190,7 +193,7 @@ class OberflaechenRegelnTest {
             val nav = rememberNavController()
             val reiter = remember {
                 listOf(
-                    Reiter(Screen.Finance, { Icon(Icons.Default.ViewInAr, null) }, "Finanzen"))
+                    Reiter(FinanzZiel.Finance, { Icon(Icons.Default.ViewInAr, null) }, "Finanzen"))
             }
             MainScaffold(
                 title = "Finanzen", navController = nav, bottomNavItems = reiter,
@@ -198,8 +201,8 @@ class OberflaechenRegelnTest {
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
                 onCsvAbbrechen = {}, onTabAngetippt = {},
             ) {
-                NavHost(nav, startDestination = Screen.Finance) {
-                    composable<Screen.Finance> {
+                NavHost(nav, startDestination = FinanzZiel.Finance) {
+                    composable<FinanzZiel.Finance> {
                         LazyColumn(Modifier.testTag("liste")) {
                             items(80) { i -> Text("Zeile $i", Modifier.padding(16.dp)) }
                         }
@@ -225,8 +228,8 @@ class OberflaechenRegelnTest {
             val nav = rememberNavController()
             val reiter = remember {
                 listOf(
-                    Reiter(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
-                    Reiter(Screen.Mehr, { Icon(Icons.Default.ViewInAr, null) }, ctx.getString(R.string.nav_more)))
+                    Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                    Reiter(AppZiel.Mehr, { Icon(Icons.Default.ViewInAr, null) }, ctx.getString(R.string.nav_more)))
             }
             MainScaffold(
                 title = "Sammlung", navController = nav, bottomNavItems = reiter,
@@ -234,9 +237,9 @@ class OberflaechenRegelnTest {
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
                 onCsvAbbrechen = {}, onTabAngetippt = {},
             ) {
-                NavHost(nav, startDestination = Screen.Gallery) {
-                    composable<Screen.Gallery> { }
-                    composable<Screen.Mehr> { MehrBildschirm(nav::oeffneVonMehr, isAdmin = false, updateVerfuegbar = false, onAbmelden = {}) }
+                NavHost(nav, startDestination = SammlungZiel.Gallery) {
+                    composable<SammlungZiel.Gallery> { }
+                    composable<AppZiel.Mehr> { MehrBildschirm(nav::oeffneVonMehr, isAdmin = false, updateVerfuegbar = false, onAbmelden = {}) }
                 }
             }
         }
@@ -386,8 +389,8 @@ class OberflaechenRegelnTest {
             val nav = rememberNavController()
             val reiter = remember {
                 listOf(
-                    Reiter(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
-                    Reiter(Screen.Mehr, { Icon(Icons.Default.ViewInAr, null) }, mehr))
+                    Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                    Reiter(AppZiel.Mehr, { Icon(Icons.Default.ViewInAr, null) }, mehr))
             }
             MainScaffold(
                 title = "Seite", navController = nav, bottomNavItems = reiter,
@@ -395,11 +398,11 @@ class OberflaechenRegelnTest {
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
                 onCsvAbbrechen = {}, onTabAngetippt = {},
             ) {
-                NavHost(nav, startDestination = Screen.Gallery) {
-                    composable<Screen.Gallery> { }
-                    composable<Screen.Mehr> { MehrBildschirm(nav::oeffneVonMehr, isAdmin = false, updateVerfuegbar = false, onAbmelden = {}) }
-                    composable<Screen.Comparison> { Text("Vergleichsseite") }
-                    composable<Screen.PartsList> { Text("Baulistenseite") }
+                NavHost(nav, startDestination = SammlungZiel.Gallery) {
+                    composable<SammlungZiel.Gallery> { }
+                    composable<AppZiel.Mehr> { MehrBildschirm(nav::oeffneVonMehr, isAdmin = false, updateVerfuegbar = false, onAbmelden = {}) }
+                    composable<SammlungZiel.Comparison> { Text("Vergleichsseite") }
+                    composable<TeileZiel.PartsList> { Text("Baulistenseite") }
                 }
             }
         }
