@@ -31,7 +31,7 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { dbOderSkip, keineDb } = require('./helpers/db');
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
@@ -101,8 +101,7 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange',
   // Marcos Wunsch
   try { await db.initSchemaOnce(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung

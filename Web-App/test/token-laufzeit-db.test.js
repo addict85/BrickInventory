@@ -25,6 +25,7 @@ process.env.APP_BASE_URL = 'https://lego.example.org';
 const { buildAndRequire, einhaengung, ohneKommentare } = require('./helpers/sources');
 const { qrKoppeln } = require('./helpers/qr');
 const _req = buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const AUTH = einhaengung('auth');
 const db = _req('db/database.js');
 const auth = _req('src/konto/geraeteToken.js');
@@ -42,14 +43,7 @@ const tageVoraus = (wert) => (new Date(wert).getTime() - Date.now()) / 86400_000
 test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   await db.run(

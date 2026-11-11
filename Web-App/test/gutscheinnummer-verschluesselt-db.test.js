@@ -36,6 +36,7 @@ fs.writeFileSync(path.join(SANDKASTEN, 'package.json'), '{"name":"sandkasten"}')
 process.env.APP_ROOT = SANDKASTEN;
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const gr = { ..._req('src/gutscheine/repository/gutscheine.js'), ..._req('src/gutscheine/prozess.js').gutscheineBereich().gutscheine };
@@ -67,9 +68,7 @@ const zeileAlsText = async (id) => (await db.get('SELECT v::text AS t FROM vouch
 test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async (t) => {
   try { await db.get('SELECT 1'); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');

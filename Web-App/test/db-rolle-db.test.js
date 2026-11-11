@@ -70,6 +70,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { keineDb, fehltVoraussetzung } = require('./helpers/db');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
@@ -138,16 +139,14 @@ async function als(db, nutzer, pw, fn) {
 test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) => {
   const admin = new Client({ connectionString: BASIS.toString() });
   try { await admin.connect(); } catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   const su = (await admin.query('SELECT rolsuper FROM pg_roles WHERE rolname = current_user')).rows[0]?.rolsuper;
   const psql = spawnSync('psql', ['--version'], { encoding: 'utf8' });
   const fassung = Number(psql.stdout?.match(/(\d+)\./)?.[1] ?? 0);
   if (!su || fassung < 15) {
     await admin.end();
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber Superuser=${su} und psql ${fassung || 'fehlt'}`);
-    t.skip('kein Superuser oder psql unter 15'); return;
+    fehltVoraussetzung(t, 'kein Superuser oder psql unter 15'); return;
   }
   await raeumeReste(admin, 'rolle');
   const alt = `${praefix}_alt`, neu = `${praefix}_neu`, umstieg = `${praefix}_umstieg`;

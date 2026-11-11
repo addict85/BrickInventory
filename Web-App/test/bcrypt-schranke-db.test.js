@@ -32,6 +32,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const { neueSchranke, bcryptSchranke, BcryptUeberlast } = _req('src/konto/bcryptSchranke.js');
@@ -75,8 +76,7 @@ test('Vorrang: vorne in die Schlange, auch wenn sie voll ist', async () => {
 test('bei voller Schranke antwortet die Anmeldung 503 und die Passwortbestätigung', { concurrency: 1 }, async (t) => {
   try { await db.get('SELECT 1'); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   { const c = await db.pool.connect(); try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); } }
   const NAME = `schranke_${process.pid}`, PASS = 'Schranken-Passwort-1';

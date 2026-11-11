@@ -84,6 +84,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const path = require('node:path');
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 
 // Rebrickable vorgeben, BEVOR wantedListe die Funktionen herauszieht. esbuild
@@ -121,9 +122,7 @@ const liste = (...items) => `<INVENTORY>\n${items.join('\n')}\n</INVENTORY>\n`;
 test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async (t) => {
   try { await db.get('SELECT 1'); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
 
   await db.run('DROP SCHEMA public CASCADE');

@@ -46,6 +46,7 @@ umgebung(require('./helpers/attestation').UMGEBUNG);
 const { buildAndRequire } = require('./helpers/sources');
 const { qrKoppeln } = require('./helpers/qr');
 const _req = buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db   = _req('db/database.js');
 const auth = _req('src/konto/geraeteToken.js');
 const tokenCache = _req('src/konto/tokenCache.js');
@@ -59,14 +60,7 @@ const TAG = 86400_000;
 const tageBis = (d) => (new Date(d).getTime() - Date.now()) / TAG;
 
 test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   await db.run('INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,true,true,true)',

@@ -25,6 +25,7 @@ process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
 const { buildAndRequire, v1Routen } = require('./helpers/sources');
 const _req = buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { warte } = require('./helpers/zeit');
 
@@ -53,14 +54,7 @@ const ERWARTET_OFFEN = new Map([
 const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
 
 test('Eingang zu /api/v1', { concurrency: 1, timeout: 180_000 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   t.after(() => db.pool.end().catch(() => {}));
 
   const port = await freierPort();

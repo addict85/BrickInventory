@@ -21,6 +21,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
 // Vor dem Laden der Route: Import und Rebrickable-Abruf mitschreiben statt ausführen.
@@ -39,14 +40,7 @@ const db = _req('db/database.js');
 const P = process.pid;
 
 test('Teile-Import nur im Blickfeld', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const namen = [`ti_haupt_${P}`, `ti_unter_${P}`, `ti_fremd_${P}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);

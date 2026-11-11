@@ -25,6 +25,7 @@ process.env.APP_ROOT = SANDKASTEN;
 const DATEN_DIR = path.join(SANDKASTEN, 'data');
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
 const PL = require('@cantoo/pdf-lib');
@@ -82,9 +83,7 @@ async function aufbau() {
 test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1 }, async (t) => {
   try { await db.get('SELECT 1'); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   await aufbau();
 

@@ -26,6 +26,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const zf = _req('src/konto/zweiterFaktor.js');
 const { createToken } = _req('src/konto/geraeteToken.js');
@@ -41,13 +42,7 @@ async function konto(name) {
 }
 
 test('Bremsen der Bestätigung', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber keine Test-DB: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   const NAME = `bb_${process.pid}`, KARL = `bb_karl_${process.pid}`;
   const uid = await konto(NAME), karl = await konto(KARL);
   const leeren = () => db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2',

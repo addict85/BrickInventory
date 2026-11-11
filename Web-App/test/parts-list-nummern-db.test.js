@@ -12,6 +12,7 @@ const express = require('express');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 
 async function seed() {
@@ -44,8 +45,7 @@ async function dbErreichbar() {
 test('die Teileliste benennt die Teile mit beiden Nummern', { concurrency: 1 }, async (t) => {
   if (!(await dbErreichbar())) {
     await db.pool.end().catch(() => {});
-    if (process.env.REQUIRE_DB === '1') throw new Error('REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar.');
-    t.skip('Test-DB nicht erreichbar');
+    keineDb(t);
     return;
   }
   await seed();

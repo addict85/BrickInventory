@@ -88,6 +88,25 @@ export interface Herkunft {
   ip?: string | null;
 }
 
+function absage(
+  art: FehlerArt,
+  code: FehlerCode,
+  vars?: Record<string, string | number>,
+  unverified?: boolean,
+  zweiterFaktor?: boolean,
+): AnmeldeErgebnis {
+  return {
+    ok: false,
+    absage: {
+      art,
+      code,
+      ...(vars ? { vars } : {}),
+      ...(unverified ? { unverified: true } : {}),
+      ...(zweiterFaktor ? { zweiterFaktor: true } : {}),
+    },
+  };
+}
+
 /** Die einzige Stelle, an der Anmeldedaten geprüft werden: Zwei Fassungen für
  * Webapp und App waren schon einmal auseinandergelaufen.
  * @param username Benutzername ODER E-Mail-Adresse. */
@@ -98,23 +117,6 @@ export async function pruefeAnmeldedaten(
   code?: string | number | null | undefined,
   passkeyAntwort?: unknown,
 ): Promise<AnmeldeErgebnis> {
-  const absage = (
-    art: FehlerArt,
-    code: FehlerCode,
-    vars?: Record<string, string | number>,
-    unverified?: boolean,
-    zweiterFaktor?: boolean,
-  ): AnmeldeErgebnis => ({
-    ok: false,
-    absage: {
-      art,
-      code,
-      ...(vars ? { vars } : {}),
-      ...(unverified ? { unverified: true } : {}),
-      ...(zweiterFaktor ? { zweiterFaktor: true } : {}),
-    },
-  });
-
   if (!username || !password) return absage('ungueltig', 'benutzername_passwort');
   if (!isValidLoginIdentifier(username)) return absage('ungueltig', 'name_oder_email_eingeben');
 

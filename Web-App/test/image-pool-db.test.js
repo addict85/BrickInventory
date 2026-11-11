@@ -10,7 +10,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { dbOderSkip, keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 
 test('eine Kachelwand kostet keine einzige Abfrage', { concurrency: 1 }, async (t) => {
@@ -117,8 +117,7 @@ test('die Vorschau-Sperre belegt KEINE Pool-Verbindung', { concurrency: 1 }, asy
   // Marcos Log
   try { await db.initSchemaOnce(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   const vorher = db.getPoolStats();
   const c = await db.eigeneVerbindung();

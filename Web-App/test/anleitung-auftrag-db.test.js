@@ -39,13 +39,13 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 
 test('Anleitungen als Auftrag', { concurrency: 1 }, async (t) => {
   try { await db.initSchemaOnce(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   const Q = _req('src/katalog/anleitungLaden.js');
   const A = Object.assign({}, _req('src/auftraege/auftraege.js'), { ..._req('src/auftraege/dienst.js'), ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege });

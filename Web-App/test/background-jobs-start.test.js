@@ -32,6 +32,7 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { warte } = require('./helpers/zeit');
 
 test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 1 }, async (t) => {
@@ -44,8 +45,7 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
   });
   try { await db.initSchemaOnce(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   await db.run('DELETE FROM auftraege');
   await _req('startup/jobsProzess.js').starteJobs(true);

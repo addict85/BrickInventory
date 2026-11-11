@@ -28,6 +28,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 const ROOT = path.join(__dirname, '..');
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
 // Keine echten Mails: vor dem Laden von routes/auth ersetzen.
@@ -61,13 +62,7 @@ async function mitFaktor(uid) {
 }
 
 test('heikle Kontoänderungen mit zweitem Faktor', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber keine Test-DB: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const NAME = `zfh_${process.pid}`, OHNE = `zfh_ohne_${process.pid}`, CHEF = `zfh_chef_${process.pid}`;
   const uid = await konto(NAME), ohne = await konto(OHNE), chef = await konto(CHEF, { admin: true });

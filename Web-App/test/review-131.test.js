@@ -19,6 +19,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { ROOT, buildAndRequire, ohneKommentare } = require('./helpers/sources');
 const _reqCsv = buildAndRequire();
 const _req = buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db   = _req('db/database.js');
 
 /** Datei ohne Kommentare lesen (siehe ohneKommentare() in helpers/sources.js). */
@@ -34,10 +35,7 @@ async function dbReachable() {
 
 test('Teile-Rückfallebene für fremde Sets', async (t) => {
   if (!(await dbReachable())) {
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error('REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.');
-    }
-    t.skip('Test-DB nicht erreichbar — Suite übersprungen');
+    keineDb(t);
     return;
   }
 
@@ -197,8 +195,8 @@ test('alle drei CSV-Importwege entschärfen zurück', () => {
 
 test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', async (t) => {
   if (!(await dbReachable())) {
-    if (process.env.REQUIRE_DB === '1') throw new Error('REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.');
-    return t.skip('Test-DB nicht erreichbar');
+    keineDb(t);
+    return;
   }
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [`strom_${process.pid}`])).id;
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {}));

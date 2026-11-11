@@ -12,6 +12,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 const { leseWantedListe } = _req('src/merkliste/wantedParser.js');
 const { loeseLokalAuf } = _req('src/merkliste/wantedAufloesung.js');
@@ -103,9 +104,7 @@ test('6. Entitäten werden aufgelöst, und & zuletzt', () => {
 test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 }, async (t) => {
   try { await db.get('SELECT 1'); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
@@ -222,9 +221,7 @@ test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 },
 test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 1 }, async (t) => {
   try { await db.get('SELECT 1'); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   // Derselbe Unterbau wie oben — der Fall läuft eigenständig.
   await db.run('DROP SCHEMA public CASCADE');

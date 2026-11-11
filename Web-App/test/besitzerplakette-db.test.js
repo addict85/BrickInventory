@@ -8,6 +8,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
@@ -19,8 +20,7 @@ after(() => db.pool.end());
 
 test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async (t) => {
   if (!await erreichbar()) {
-    if (process.env.REQUIRE_DB === '1') assert.fail('Test-DB nicht erreichbar, REQUIRE_DB=1');
-    t.skip('keine Test-DB'); return;
+    keineDb(t); return;
   }
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
@@ -87,8 +87,7 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async (
 
 test('im Einzelkonto steht keine Plakette', async (t) => {
   if (!await erreichbar()) {
-    if (process.env.REQUIRE_DB === '1') assert.fail('Test-DB nicht erreichbar, REQUIRE_DB=1');
-    t.skip('keine Test-DB'); return;
+    keineDb(t); return;
   }
   // Kein zweites DROP SCHEMA — eigene Kontonamen genügen (siehe
   // manuell-loeschen-besitzer-db.test.js).

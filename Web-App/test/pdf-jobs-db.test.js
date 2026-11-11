@@ -19,6 +19,7 @@
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
+const { keineDb } = require('./helpers/db');
 const fs     = require('node:fs/promises');
 const path   = require('node:path');
 
@@ -33,9 +34,7 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
 
   {

@@ -27,6 +27,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 const zf = _req('src/konto/zweiterFaktor.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
@@ -57,8 +58,7 @@ function server(t, sitzung, token) {
 test('zweiter Faktor für Verwalter', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber keine Test-DB: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   { const c = await db.pool.connect(); try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); } }
   const P = process.pid, NAMEN = [`zfp_chef_${P}`, `zfp_nutzer_${P}`, `zfp_pk_${P}`];

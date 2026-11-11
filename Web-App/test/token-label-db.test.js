@@ -21,6 +21,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const { buildAndRequire, einhaengung } = require('./helpers/sources');
 const _req = buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const AUTH = einhaengung('auth');
 const db = _req('db/database.js');
 const express   = require(path.join(ROOT, 'node_modules', 'express'));
@@ -31,14 +32,7 @@ const bcrypt    = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const NAME = `label_${process.pid}`, PASS = 'label-Passwort-1';
 
 test('Token-Label beim Anmelden', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash, is_admin, is_active, email_verified)
     VALUES ($1, $2, false, true, true) RETURNING id`, [NAME, await bcrypt.hash(PASS, 4)])).id;

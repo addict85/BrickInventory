@@ -18,6 +18,7 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 const { ipThrottle } = _req('src/konto/http/anmeldung.js');
 const L = _req('src/konto/loginLimiter.js');
@@ -28,8 +29,7 @@ test.after(() => db.pool.end().catch(() => {}));
 async function dbDa(t) {
   try { await db.initSchema(); return true; }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber keine Test-DB: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return false;
+    keineDb(t, e); return false;
   }
 }
 

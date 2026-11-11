@@ -21,6 +21,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 
 // Der Kindprozess: horcht, lässt sich die Verbindung abschiessen und meldet
@@ -56,9 +57,7 @@ test('ein Abriss der LISTEN-Verbindung beendet den Prozess NICHT und verbindet n
 
   try { await db.pool.query('SELECT 1'); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
 
   const file = path.join(os.tmpdir(), `notify-reconnect-${process.pid}.js`);
@@ -92,9 +91,7 @@ test('close() während des Verbindungsaufbaus lässt keine Verbindung offen', as
   const probe = new (require(path.join(ROOT, 'node_modules', 'pg')).Client)({ connectionString: process.env.DATABASE_URL });
   try { await probe.connect(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   } finally { await probe.end().catch(() => {}); }
   // Kein process.exit im Kind: Es muss von selbst enden.
   const kind = `

@@ -30,6 +30,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
 const { PDFDocument } = require(path.join(ROOT, 'node_modules', '@cantoo/pdf-lib'));
@@ -62,8 +63,7 @@ function haengenderUpload(base) {
 test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, async (t) => {
   try { await db.get('SELECT 1'); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   await db.initSchema();
   { const c = await db.pool.connect(); try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); } }

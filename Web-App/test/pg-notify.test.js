@@ -19,6 +19,7 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { bis } = require('./helpers/zeit');
 const ROOT = path.join(__dirname, '..');
 const NOTIFY = fs.readFileSync(path.join(ROOT, 'db/pgNotify.ts'), 'utf8');
@@ -35,9 +36,7 @@ test('verpasste Signale werden beim Verbinden nachgeholt', { concurrency: 1 }, a
   const db = _req('db/database.js');
   try { await db.get('SELECT 1'); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   const pgNotify = _req('db/database.js').standardDb().benachrichtigung;
   t.after(async () => { await pgNotify.close(); await db.pool.end().catch(() => {}); });

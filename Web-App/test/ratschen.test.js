@@ -182,16 +182,14 @@ test('any in allen Formen, unknown-Parameter und success in Diensten werden weni
   if (unbekannt < SCHRANKE_UNKNOWN) console.log(`  ℹ unknown-Parameter: ${unbekannt} (Schranke ${SCHRANKE_UNKNOWN}) — Schranke nachziehen`);
 });
 
-test('eigene REQUIRE_DB-Blöcke in Tests werden weniger, nie mehr', () => {
-  // Die Form steht in test/helpers/db.js (dbOderSkip); was davon abweicht,
-  // prüft die Erreichbarkeit anders (Rollen, zweite Datenbank, Server).
-  // Gemessen 115 am 10.11.2026.
-  // Gegenprobe (05.11.2026): den Block zurück in acquisition-all-paths-db → rot.
-  const SCHRANKE = 115;
-  const ist = fs.readdirSync(__dirname).filter(n => n.endsWith('.js') && n !== path.basename(__filename))
-    .filter(n => fs.readFileSync(path.join(__dirname, n), 'utf8').includes('REQUIRE_DB=1, aber')).length;
-  assert.ok(ist <= SCHRANKE, `${ist} Testdateien mit eigener REQUIRE_DB-Prüfung, erlaubt sind ${SCHRANKE}`);
-  if (ist < SCHRANKE) console.log(`  ℹ eigene REQUIRE_DB-Prüfungen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+test('keine Testdatei prüft REQUIRE_DB selbst', () => {
+  // Die Regel steht in test/helpers/db.js (dbOderSkip, keineDb,
+  // fehltVoraussetzung); eine eigene Fassung war 115-mal kopiert.
+  // Gegenprobe (11.11.2026): `if (process.env.REQUIRE_DB === '1') throw e;`
+  // zurück in anleitung-auftrag-db.test.js → rot.
+  const eigene = fs.readdirSync(__dirname).filter(n => n.endsWith('.js') && n !== path.basename(__filename))
+    .filter(n => /process\.env\.REQUIRE_DB|REQUIRE_DB=1, aber/.test(fs.readFileSync(path.join(__dirname, n), 'utf8')));
+  assert.deepEqual(eigene, [], 'test/helpers/db.js benutzen');
 });
 
 test('Datenbankzeilen sind ohne Typargument unknown', () => {

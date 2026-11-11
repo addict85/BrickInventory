@@ -30,6 +30,7 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
@@ -47,8 +48,7 @@ const merker = async (sn) => db.get(
 test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async (t) => {
   try { await db.initSchemaOnce(); await db.runMigrations?.(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
@@ -174,8 +174,7 @@ test('Fehlanzeigen lassen sich zurücknehmen und sind erklärbar',
   { concurrency: 1 }, async (t) => {
   try { await db.initSchemaOnce(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung

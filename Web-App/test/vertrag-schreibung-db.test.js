@@ -27,6 +27,7 @@ const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhos
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { VERTRAG, routeFuerAnfrage } = _req('src/vertrag/index.js');
 const { antwortIstGeheim } = _req('src/idempotenz/http/middleware.js');
@@ -40,13 +41,7 @@ const ROUTEN = Object.keys(VERTRAG).map(k => {
 });
 
 test('Vertragsrouten in anderer Schreibung', { concurrency: 1, timeout: 300_000 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   const name = `schreibung_${process.pid}`;
   const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
                              VALUES ($1, 'x', true, true) RETURNING id`, [name])).id;

@@ -68,6 +68,7 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const db = _req('db/database.js');
 const IQ = _req('src/katalog/bilder/bildbedarfLauf.js');
@@ -104,8 +105,7 @@ test('ein Takt räumt fertige Notizen ab, statt je zwanzig Sekunden zehn',
   { concurrency: 1 }, async (t) => {
   try { await db.initSchemaOnce(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
@@ -147,8 +147,7 @@ test('das Kontingent gilt für echte Arbeit, nicht für Notizen',
   { concurrency: 1 }, async (t) => {
   try { await db.initSchemaOnce(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
@@ -207,8 +206,7 @@ test('Übersprünge verbrauchen kein Kontingent — Marcos gemischte Warteschlan
   { concurrency: 1 }, async (t) => {
   try { await db.initSchemaOnce(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
@@ -245,8 +243,7 @@ test('ein Takt sieht höchstens DURCHGANG_MAX_NOTIZEN Notizen durch',
   // den Event-Loop des Arbeitsprozesses in Schüben auf.
   try { await db.initSchemaOnce(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
@@ -274,8 +271,7 @@ test('verfallene Notizen werden wirklich gelöscht', { concurrency: 1 }, async (
   // Was der Kommentar behauptete und der Code nicht tat
   try { await db.initSchemaOnce(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
@@ -315,8 +311,7 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
   // Deshalb läuft der Job hier im Kindprozess und gefragt wird im Elternteil.
   try { await db.initSchemaOnce(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
@@ -391,8 +386,7 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
 test('jeder Ausgang der Schleife hat einen Zähler', { concurrency: 1 }, async (t) => {
   try { await db.initSchemaOnce(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung

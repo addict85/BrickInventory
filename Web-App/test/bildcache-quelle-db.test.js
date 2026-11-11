@@ -24,6 +24,7 @@ const { EventEmitter } = require('node:events');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 
 const T = `bq${process.pid}`;
@@ -49,8 +50,7 @@ function abfangen(t) {
 test('Bildquellen kommen aus dem Katalog, nicht vom Client', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   { const c = await db.pool.connect(); try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); } }
   const { neueJobId, pdfDateiPfad } = _req('src/auftraege/pdfAuftraege.js');

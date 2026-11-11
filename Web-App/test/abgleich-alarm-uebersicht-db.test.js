@@ -26,19 +26,13 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, loadTranslations, ohneKommentare } = require('./helpers/sources');
 const { katalogSet } = require('./helpers/bestand');
 const _req = buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
 test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const { alleAlarme, setzeAlarm, loescheAlarm } = { ..._req('src/finanzen/preisalarm.js'), ..._req('src/finanzen/prozess.js').finanzenBereich().preisalarm };
 

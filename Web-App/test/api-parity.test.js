@@ -14,6 +14,7 @@ process.env.DATABASE_URL = DB_URL;
 
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { routerEinhaengungen } = require('./helpers/sources');
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 
@@ -123,10 +124,7 @@ function core(body) {
 test('API-Parität Webapp ↔ Android', async (t) => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error(`REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar: ${DB_URL}`);
-    }
-    t.skip(`Test-DB nicht erreichbar (${DB_URL}) — Suite übersprungen`);
+    keineDb(t, DB_URL);
     return;
   }
   await seed();

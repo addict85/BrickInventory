@@ -40,6 +40,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const mails = [];
 const echterMailer = _req('src/mail/mailer.js');
 require.cache[require.resolve(path.join(S.DIST, 'src/mail/mailer.js'))].exports = Object.assign({}, echterMailer, {
@@ -53,14 +54,7 @@ const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 const NAME = `smtp_chef_${process.pid}`, PASS = 'chef-Passwort-1';
 
 test('SMTP nur mit Passwort', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)
     VALUES ($1, $3, $2, true, true, true) RETURNING id`, [NAME, bcrypt.hashSync(PASS, 4), `${NAME}@example.org`])).id;
