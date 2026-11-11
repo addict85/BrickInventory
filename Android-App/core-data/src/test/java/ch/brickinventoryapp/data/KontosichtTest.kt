@@ -14,6 +14,7 @@ import ch.brickinventoryapp.testing.PfadServer
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.yield
@@ -92,8 +93,11 @@ class KontosichtTest {
     fun `ein Schreibvorgang zeigt sich auch in der Kontosicht`() = runBlocking {
         sicht.galerie.aktualisiere(abfrage())
         val vorher = pfade.anfragenAn("GET /api/v1/sets?").size
-        val beobachter = launch { sicht.galerie.beobachte(abfrage()).collect {} }
-        repeat(5) { yield() }
+        val gesehen = CompletableDeferred<Unit>()
+        val beobachter = launch { sicht.galerie.beobachte(abfrage()).collect { gesehen.complete(Unit) } }
+        // Erst wenn die Sicht beobachtet, zählt die Änderung: veraendert() lässt den ersten Stand weg.
+        gesehen.await()
+        repeat(50) { yield() }
         // Was ein Repository anwendet, ändert die Ablage — die Kontosicht fragt neu.
         ablage.wendeAn(Bearbeitung.SetErfassen(AddSetRequest("12-1")))
         // Die neue Anfrage läuft über den Testserver, also auf einem fremden Faden.
