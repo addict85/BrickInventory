@@ -308,7 +308,7 @@ private fun KategorieChip(
 
 /** Die Kennzahl-Karten über der Liste. */
 @OptIn(ExperimentalLayoutApi::class)
-fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuation: TeileBewertungAnsicht?, figsValuation: FigurenBewertungAnsicht?, pnl: GewinnAnsicht?, fmtPrice: (String?) -> String) {
+internal fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuation: TeileBewertungAnsicht?, figsValuation: FigurenBewertungAnsicht?, pnl: GewinnAnsicht?, fmtPrice: (String?) -> String) {
     item {
         // Im Dunkeln primaryContainer statt primary: Das helle primary der dunklen
         // Fassungen (Stein: Hellblau) war als ganze Kachel grell.

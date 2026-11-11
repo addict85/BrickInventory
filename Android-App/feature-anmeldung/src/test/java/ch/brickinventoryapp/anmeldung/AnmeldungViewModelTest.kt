@@ -23,7 +23,7 @@ import ch.brickinventoryapp.testing.HaushaltRepository
 import ch.brickinventoryapp.testing.KontoRepository
 import ch.brickinventoryapp.zustand.ui.Blickfeld
 import ch.brickinventoryapp.zustand.ui.FilterAblage
-import ch.brickinventoryapp.zustand.ui.QrKonto
+import ch.brickinventoryapp.anmeldung.ui.QrKonto
 import java.util.Base64
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap

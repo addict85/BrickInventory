@@ -9,7 +9,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.zustand.ui.AnmeldeFormular
+import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
 import ch.brickinventoryapp.ui.components.Sichtschutz
 import ch.brickinventoryapp.anmeldung.ui.screens.LoginScreen
 import ch.brickinventoryapp.anmeldung.ui.screens.QrSetupScannerScreen

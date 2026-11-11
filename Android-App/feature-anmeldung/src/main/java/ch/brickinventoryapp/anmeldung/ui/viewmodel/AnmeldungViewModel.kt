@@ -8,8 +8,8 @@ import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.model.data.model.TOKEN_SCOPE_APP
 import ch.brickinventoryapp.model.data.model.TOKEN_SCOPE_VOLL
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.zustand.ui.AnmeldeFormular
-import ch.brickinventoryapp.zustand.ui.AnmeldeUiState
+import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
+import ch.brickinventoryapp.anmeldung.ui.AnmeldeUiState
 import ch.brickinventoryapp.zustand.ui.qrFehler
 import ch.brickinventoryapp.netz.util.NetworkPolicy
 import ch.brickinventoryapp.sicherheit.bestaetigtFingerabdruck
@@ -39,7 +39,7 @@ import ch.brickinventoryapp.model.data.model.QrMeldung
 import javax.inject.Inject
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.zustand.ui.AppUiState
-import ch.brickinventoryapp.zustand.ui.QrKonto
+import ch.brickinventoryapp.anmeldung.ui.QrKonto
 import ch.brickinventoryapp.zustand.ui.Sitzung
 import ch.brickinventoryapp.zustand.ui.SitzungsRepository
 import ch.brickinventoryapp.zustand.ui.Blickfeld
@@ -72,7 +72,7 @@ class AnmeldungViewModel @Inject constructor(
     }
 
     private val _anmeldeState = MutableStateFlow(AnmeldeUiState())
-    val anmeldeState: StateFlow<AnmeldeUiState> = _anmeldeState.asStateFlow()
+    internal val anmeldeState: StateFlow<AnmeldeUiState> = _anmeldeState.asStateFlow()
 
     /**
      * Nur eine https-Adresse wird gespeichert; false heisst abgelehnt, die
@@ -98,14 +98,14 @@ class AnmeldungViewModel @Inject constructor(
     }
 
     /** Der Passkey ersetzt den Code des zweiten Faktors; Name und Passwort gehen mit. */
-    fun passkeyStattCode(username: String, password: String, abfrage: PasskeyAbfrage) {
+    internal fun passkeyStattCode(username: String, password: String, abfrage: PasskeyAbfrage) {
         viewModelScope.launch {
             mitPasswort(username, password, null) { holePasskey(PASSKEY_ZWEITER_FAKTOR, abfrage) }
         }
     }
 
     /** Ohne Passwort: Der Credential Manager bietet die Passkeys dieses Servers an. */
-    fun passkeyAnmelden(abfrage: PasskeyAbfrage) {
+    internal fun passkeyAnmelden(abfrage: PasskeyAbfrage) {
         viewModelScope.launch {
             _anmeldeState.update { it.copy(loginLaeuft = true, loginError = null) }
             val antwort = holePasskey(PASSKEY_ANMELDEN, abfrage) ?: return@launch

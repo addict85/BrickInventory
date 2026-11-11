@@ -58,7 +58,7 @@ import ch.brickinventoryapp.gemeinsam.ui.teileAufschluesselung
 import ch.brickinventoryapp.sammlung.ui.KachelPreis
 
 /** Was die Galerie zeigt; die Route sammelt es aus den Flüssen der ViewModels. */
-data class GalerieZustand(
+internal data class GalerieZustand(
     val app: AppUiState,
     val blick: BlickfeldUiState,
     val galerie: GalleryUiState,
@@ -68,7 +68,7 @@ data class GalerieZustand(
 )
 
 /** Was die Galerie auslöst; die Route verdrahtet es mit GalerieViewModel und ErfassungViewModel. */
-class GalerieEreignisse(
+internal class GalerieEreignisse(
     val suche: (String) -> Unit,
     val thema: (String) -> Unit,
     val sortierung: (Setsortierung) -> Unit,
@@ -148,7 +148,7 @@ fun GalleryRoute(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GalleryScreen(
+internal fun GalleryScreen(
     zustand: GalerieZustand,
     ereignisse: GalerieEreignisse,
     imageLoader: ImageLoader,

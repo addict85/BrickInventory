@@ -7,11 +7,11 @@ diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold
 index b274d3e..b405d33 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
-@@ -259,7 +259,7 @@ fun ReiterGeruest(
+@@ -261,7 +261,7 @@ fun ReiterGeruest(
          csvImportState = csvImport.csvImportState,
          onCsvAbbrechen = { csvImport.cancelCsvImport() },
          // Reiter angetippt → oben anfangen.
--        onTabAngetippt = { ziel -> vm.scrollMemory.vergissReiter(ziel.rollSchluessel) },
+-        onTabAngetippt = { ziel -> vm.scrollMemory.vergissReiter(rollSchluessel(ziel)) },
 +        onTabAngetippt = { _ -> },
          // Der stille Start-Test hat ein Ergebnis — hier bekommt es einen Ort.
          updateVerfuegbar = updateZustand.neuereFassung != null,

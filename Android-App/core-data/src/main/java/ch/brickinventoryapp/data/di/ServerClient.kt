@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.di
 
+import ch.brickinventoryapp.model.ui.Meldung
 import javax.inject.Inject
 import ch.brickinventoryapp.core.data.BuildConfig
 import ch.brickinventoryapp.data.Netzvertrauen
@@ -116,7 +117,7 @@ internal fun buildInterceptorClient(
 ): OkHttpClient {
     val versionsMeldung: ((VersionsHinweis) -> Unit)? = meldungen?.let { kanal ->
         { hinweis: VersionsHinweis ->
-            kanal.zeige(LanguageManager.localizedContext(ctx).getString(
+            kanal.zeige(Meldung.Ressource(
                 if (hinweis == VersionsHinweis.APP_ZU_ALT) R.string.api_app_zu_alt
                 else R.string.api_server_zu_alt))
         }

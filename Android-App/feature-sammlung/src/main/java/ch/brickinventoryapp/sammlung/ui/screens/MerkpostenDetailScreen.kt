@@ -37,7 +37,8 @@ import ch.brickinventoryapp.ui.theme.Lesebreite
 import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtTag
-import ch.brickinventoryapp.netz.util.oeffneExtern
+import ch.brickinventoryapp.netz.util.externeAdresse
+import ch.brickinventoryapp.ui.util.oeffneExtern
 import ch.brickinventoryapp.ui.components.CatalogDetailRow
 import ch.brickinventoryapp.gemeinsam.ui.OwnerPicker
 import ch.brickinventoryapp.gemeinsam.ui.PreisLaedtZeile
@@ -243,7 +244,7 @@ internal fun MerkpostenDetailScreen(
                             for ((beschriftung, url) in adressen) {
                                 OutlinedButton(
                                     onClick = {
-                                        if (!oeffneExtern(ctx, url)) {
+                                        if (!oeffneExtern(ctx, externeAdresse(url))) {
                                             bereich.launch { meldungen.showSnackbar(keineAppText) }
                                         }
                                     },

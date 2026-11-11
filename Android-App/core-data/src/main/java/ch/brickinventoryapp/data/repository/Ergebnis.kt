@@ -80,6 +80,3 @@ internal const val GALLERY_PAGE_SIZE = 60
  * die Ansicht die Seite selbst ab.
  */
 const val CATALOG_PAGE_SIZE = 60
-
-/** Status eines PDF-Export-Jobs inkl. geschätzter Restdauer (aus fehlenden Bildern). */
-data class PdfJobStatus(val status: String, val etaSeconds: Int?)

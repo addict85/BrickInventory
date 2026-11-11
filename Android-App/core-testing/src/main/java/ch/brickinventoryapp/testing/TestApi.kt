@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.testing
 
+import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
@@ -52,6 +53,14 @@ import java.lang.reflect.Type
 import java.lang.reflect.WildcardType
 import java.util.WeakHashMap
 
+/** Die angezeigte Meldung als Satz, wie NummernTexte ihn bildet; null ohne Meldung. */
+val MeldungsKanal.text: String?
+    get() = when (val m = meldung.value) {
+        null -> null
+        is Meldung.Text -> m.text
+        is Meldung.Ressource -> "t${m.id}" + if (m.werte.isEmpty()) "" else m.werte.joinToString(", ", "(", ")")
+    }
+
 /** Gemeinsames Gerüst der ViewModel-Tests, die gegen einen Testserver laufen. */
 object TestApi {
 
@@ -68,6 +77,17 @@ object TestApi {
             .build()
             .create(BrickApiService::class.java)
     }
+
+    /**
+     * Ein Client, der jede Anfrage an [server] schickt — wie der Wächter der App die
+     * Platzhalter-Adresse auf den eingetragenen Server umschreibt.
+     */
+    fun umgeleitet(server: MockWebServer): OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor { kette ->
+            val alt = kette.request()
+            kette.proceed(alt.newBuilder().url(alt.url.newBuilder().scheme("http").host(server.hostName).port(server.port).build()).build())
+        }
+        .readTimeout(2, TimeUnit.SECONDS).connectTimeout(2, TimeUnit.SECONDS).build()
 
     fun antwort(rumpf: String, code: Int = 200): MockResponse =
         MockResponse().setResponseCode(code)

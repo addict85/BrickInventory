@@ -26,7 +26,7 @@ import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.zustand.ui.AnmeldeFormular
+import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
 import ch.brickinventoryapp.ui.components.PasswortFeld
 import androidx.compose.ui.semantics.collapse
 import androidx.compose.ui.semantics.expand

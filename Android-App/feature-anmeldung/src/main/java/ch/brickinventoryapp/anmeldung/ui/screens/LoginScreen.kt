@@ -25,8 +25,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.zustand.ui.AnmeldeFormular
-import ch.brickinventoryapp.zustand.ui.QrKonto
+import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
+import ch.brickinventoryapp.anmeldung.ui.QrKonto
 import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ui.components.ausserhalbDerSystemleisten
 import ch.brickinventoryapp.ui.theme.Abstaende

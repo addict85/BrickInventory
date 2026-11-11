@@ -115,7 +115,7 @@ class AlarmUebersichtTest {
             "Die Einstellungen halten ihren Rollzustand noch selbst — nach der " +
                 "Rueckkehr aus der Detailansicht stuende man wieder ganz oben."
         }
-        assert(Regex("""Screen\.Settings\.rollSchluessel,\s*settingsScrollState""").containsMatchIn(graph)) {
+        assert(Regex("""KontoZiel\.Settings\.rollSchluessel,\s*settingsScrollState""").containsMatchIn(graph)) {
             "Der Rollzustand wird nicht gemerkt — er ueberlebt zwar, aber niemand " +
                 "springt zurueck."
         }

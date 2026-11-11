@@ -2,6 +2,7 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.di.SseClient
+import ch.brickinventoryapp.netz.di.PLATZHALTER_BASIS
 import ch.brickinventoryapp.model.data.model.AddSetResponse
 import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
 import ch.brickinventoryapp.model.koroutinen.Dispatcher
@@ -30,7 +31,6 @@ import javax.inject.Singleton
 @Singleton
 internal class SetAnlegenSseClient @Inject constructor(
     @SseClient private val client: OkHttpClient,
-    private val prefs: Zugangsdaten,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
 ) : SetAnleger {
     private val json = Json { ignoreUnknownKeys = true }
@@ -49,15 +49,10 @@ internal class SetAnlegenSseClient @Inject constructor(
         setNumber: String, quantity: Int, purchasePrice: Double?,
         condition: Zustand?, ownerUserId: Int?, storage: String?,
     ): Flow<SetAnlegenSchritt> = callbackFlow {
-        val baseUrl = prefs.serverUrlJetzt().trim().trimEnd('/')
-        val token = prefs.tokenJetzt()
-        if (baseUrl.isBlank() || token.isBlank()) {
-            trySend(SetAnlegenSchritt.Fehler("")); close(); return@callbackFlow
-        }
-
+        // Adresse und Token setzt der Wächter des Clients, wie bei jedem Abruf.
         val rumpf = anlegeRumpf(setNumber, quantity, purchasePrice, condition, ownerUserId, storage)
         val anfrage = Request.Builder()
-            .url("$baseUrl/api/v1/sets/add-stream")
+            .url("${PLATZHALTER_BASIS}api/v1/sets/add-stream")
             .header("Accept", "text/event-stream")
             .post(rumpf)
             .build()

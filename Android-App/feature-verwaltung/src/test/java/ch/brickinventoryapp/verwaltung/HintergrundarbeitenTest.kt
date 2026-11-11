@@ -31,6 +31,7 @@ import org.junit.Test
 import java.io.File
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.TestApi
+import ch.brickinventoryapp.testing.text
 
 /**
  * Die Hintergrundarbeiten im Monitoring: laden, abbrechen, wiederholen — das
@@ -112,8 +113,8 @@ class HintergrundarbeitenTest {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         try {
             vm.auftragAbbrechen("17")
-            val satz = withTimeout(5_000) { kanal.meldung.first { it != null } }
-            assertEquals("t${R.string.hintergrund_abgebrochen_ok}()", satz)
+            withTimeout(5_000) { kanal.meldung.first { it != null } }
+            assertEquals("t${R.string.hintergrund_abgebrochen_ok}()", kanal.text)
         } finally {
             vm.viewModelScope.cancel()
             Dispatchers.resetMain()

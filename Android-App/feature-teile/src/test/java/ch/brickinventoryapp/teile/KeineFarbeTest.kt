@@ -14,7 +14,7 @@ import ch.brickinventoryapp.testing.FigurenRepository
 import ch.brickinventoryapp.testing.TeileRepository
 import ch.brickinventoryapp.zustand.ui.ManualItemDetailUiState
 import ch.brickinventoryapp.model.fach.Postenart
-import ch.brickinventoryapp.zustand.ui.Screen
+import ch.brickinventoryapp.teile.ui.TeileZiel
 import ch.brickinventoryapp.model.ui.farbName
 import ch.brickinventoryapp.model.ui.ohneKeineFarbe
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileViewModel
@@ -116,6 +116,6 @@ class KeineFarbeTest {
         assertEquals(KEINE_FARBE, ApiJson.decodeFromString(PartValuationItem.serializer(), """{"part_number":"3001"}""").colorId)
         assertEquals(0, ApiJson.decodeFromString(Part.serializer(), """{"part_number":"3001","color_id":0}""").colorId)
         assertEquals(KEINE_FARBE, ManualItemDetailUiState().colorId)
-        assertEquals(KEINE_FARBE, Screen.ManualItemDetail(Postenart.FIG, "sw0001", title = "Luke").colorId)
+        assertEquals(KEINE_FARBE, TeileZiel.ManualItemDetail(Postenart.FIG, "sw0001", title = "Luke").colorId)
     }
 }

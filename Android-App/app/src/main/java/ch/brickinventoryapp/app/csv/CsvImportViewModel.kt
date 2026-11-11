@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.zustand.ui.viewmodel
+package ch.brickinventoryapp.app.csv
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,11 +8,9 @@ import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.dienste.service.CsvImportDienst
 import ch.brickinventoryapp.data.repository.Bestandsabgleich
-import ch.brickinventoryapp.zustand.ui.CsvFolge
-import ch.brickinventoryapp.zustand.ui.CsvImportUiState
 import ch.brickinventoryapp.zustand.ui.Sitzung
-import ch.brickinventoryapp.zustand.ui.csvFolge
-import ch.brickinventoryapp.zustand.ui.importLaeuft
+import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
+import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
 import ch.brickinventoryapp.model.ui.model.CsvImportStandAnsicht
 import ch.brickinventoryapp.model.ui.model.alsAnsicht
 import dagger.hilt.android.lifecycle.HiltViewModel

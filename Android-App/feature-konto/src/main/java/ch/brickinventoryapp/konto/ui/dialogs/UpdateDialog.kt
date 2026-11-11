@@ -31,7 +31,7 @@ fun UpdateRoute(selbstUpdate: UpdateViewModel) {
 }
 
 @Composable
-fun UpdateDialog(zustand: UpdateUiState, selbstUpdate: UpdateAktionen) {
+internal fun UpdateDialog(zustand: UpdateUiState, selbstUpdate: UpdateAktionen) {
     val neuere = zustand.neuereFassung ?: return
     if (zustand.dialogAbgelehnt) return
     val ctx = LocalContext.current

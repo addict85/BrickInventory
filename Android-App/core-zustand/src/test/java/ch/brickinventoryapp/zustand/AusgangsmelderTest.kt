@@ -18,6 +18,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import ch.brickinventoryapp.testing.text
 
 /**
  * Der Ausgang ist sichtbar: Zahl und Hinweis, sobald etwas offline gespeichert
@@ -71,7 +72,7 @@ class AusgangsmelderTest {
         lage.zahl.value = 1
         runCurrent()
         assertEquals(1, melder.offene.value)
-        assertEquals("offline Gespeichertes wird gemeldet", "m${R.plurals.offline_ausgang}:1", kanal.meldung.value)
+        assertEquals("offline Gespeichertes wird gemeldet", "m${R.plurals.offline_ausgang}:1", kanal.text)
 
         lage.gemeldet.emit(Abgleichsereignis.Gesendet(setOf(Bestandsart.SETS, Bestandsart.MANUELLE_TEILE)))
         runCurrent()
@@ -82,7 +83,7 @@ class AusgangsmelderTest {
         lage.gemeldet.emit(Abgleichsereignis.Verworfen("10001-1", "", 404))
         runCurrent()
         assertEquals("ohne Grund vom Server steht ein eigener Satz da",
-            "t${R.string.offline_verworfen}(10001-1, t${R.string.offline_verworfen_ohne_grund}())", kanal.meldung.value)
+            "t${R.string.offline_verworfen}(10001-1, t${R.string.offline_verworfen_ohne_grund}())", kanal.text)
     }
 
     @Test

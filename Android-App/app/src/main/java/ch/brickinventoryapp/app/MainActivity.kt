@@ -68,7 +68,7 @@ import ch.brickinventoryapp.konto.ui.screens.ZweiterFaktorPflichtMaske
 import ch.brickinventoryapp.zustand.ui.viewmodel.DarstellungViewModel
 import ch.brickinventoryapp.konto.ui.viewmodel.KontoViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.VertrauenViewModel
-import ch.brickinventoryapp.zustand.ui.viewmodel.CsvImportViewModel
+import ch.brickinventoryapp.app.csv.CsvImportViewModel
 import ch.brickinventoryapp.konto.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.app.nav.AktivitaetsZustand
 import ch.brickinventoryapp.sicherheit.GeheimeZwischenablage

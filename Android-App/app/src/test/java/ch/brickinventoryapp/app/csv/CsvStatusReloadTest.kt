@@ -1,9 +1,6 @@
-package ch.brickinventoryapp.zustand
+package ch.brickinventoryapp.app.csv
 
 import ch.brickinventoryapp.model.fach.Laufstatus
-import ch.brickinventoryapp.zustand.ui.CsvFolge
-import ch.brickinventoryapp.zustand.ui.csvFolge
-import ch.brickinventoryapp.zustand.ui.importLaeuft
 import org.junit.Test
 
 /**

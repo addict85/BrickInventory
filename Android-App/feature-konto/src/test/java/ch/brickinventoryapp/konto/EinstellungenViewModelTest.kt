@@ -29,6 +29,7 @@ import org.junit.Before
 import org.junit.Test
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.TestDienste
+import ch.brickinventoryapp.testing.text
 
 /**
  * Einstellungen und Haushalt, ausgeführt gegen einen PfadServer ohne Netz.
@@ -98,7 +99,7 @@ class EinstellungenViewModelTest {
     fun `eine Schwelle von null geht nicht hinaus`() {
         val vm = vm()
         vm.aendereAlarmSchwelle("75192-1", Zustand.NEU, "unter", 0.0)
-        assertEquals("t${R.string.alerts_bad_value}", t.meldungen.meldung.value)
+        assertEquals("t${R.string.alerts_bad_value}", t.meldungen.text)
         assertTrue(pfade.anfragenAn("/alert").isEmpty())
     }
 
@@ -134,7 +135,7 @@ class EinstellungenViewModelTest {
         val vm = vm()
         vm.loescheLagerort(3)
         assertTrue("Antwort", pfade.anfragenAn("DELETE /api/v1/storage/locations/3").isNotEmpty())
-        assertNull(t.meldungen.meldung.value)
+        assertNull(t.meldungen.text)
     }
 
     @Test
@@ -154,8 +155,8 @@ class EinstellungenViewModelTest {
         pfade.antworten["/api/v1/settings/user/default-condition"] = """{"success":true}"""
         val vm = vm()
         vm.saveUserDefaultCondition(Zustand.GEBRAUCHT)
-        assertTrue("Meldung", t.meldungen.meldung.value != null)
-        assertEquals("t${R.string.vm_settings_saved}", t.meldungen.meldung.value)
+        assertTrue("Meldung", t.meldungen.text != null)
+        assertEquals("t${R.string.vm_settings_saved}", t.meldungen.text)
         assertTrue(pfade.koerper.any { "\"U\"" in it })
     }
 

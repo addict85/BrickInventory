@@ -19,8 +19,6 @@ import ch.brickinventoryapp.konto.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
 import ch.brickinventoryapp.zustand.ui.Bereichsumgebung
-import ch.brickinventoryapp.zustand.ui.Screen
-import ch.brickinventoryapp.zustand.ui.rollSchluessel
 import ch.brickinventoryapp.zustand.ui.viewmodel.DarstellungViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.VertrauenViewModel
 
@@ -33,6 +31,14 @@ interface KontoNavigation : Bereichsumgebung {
     val update: UpdateViewModel
     val darstellung: DarstellungViewModel
     val vertrauen: VertrauenViewModel
+
+    /** Abgemeldet: zurück zur Anmeldung, ohne Weg zurück in die App. */
+    fun abgemeldet()
+
+    /** Einen anderen Server eintragen; das gehört der Anmeldung. */
+    fun oeffneEinrichtung()
+
+    fun oeffneSet(setNumber: String)
 }
 
 /** Die Einstellungen und ihre Unterseiten. */
@@ -42,9 +48,8 @@ fun NavGraphBuilder.kontoGraph(navigation: KontoNavigation) {
 }
 
 private fun NavGraphBuilder.einstellungenZiel(navigation: KontoNavigation) {
-    val navController = navigation.navController
     val settingsScrollState = navigation.rollen.einstellungen
-    composable<Screen.Settings> {
+    composable<KontoZiel.Settings> {
         val vm = navigation.app
         val state by vm.state.collectAsStateWithLifecycle()
         // Beim Öffnen der Einstellungen laden: Der Zustand ändert sich ausserhalb kaum,
@@ -54,11 +59,11 @@ private fun NavGraphBuilder.einstellungenZiel(navigation: KontoNavigation) {
         LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) vm.loadSettings() }
         navigation.Reiter(stringResource(R.string.nav_settings)) {
             ScrollPositionKeeper(
-                Screen.Settings.rollSchluessel, settingsScrollState, vm.scrollMemory)
+                KontoZiel.Settings.rollSchluessel, settingsScrollState, vm.scrollMemory)
             SettingsRoute(
                 vm = hiltViewModel<EinstellungenViewModel>(),
-                onLogout = { vm.logout(); navController.navigate(Screen.Login) { popUpTo(0) { inclusive = true } } },
-                onServerWechseln = { navController.navigate(Screen.Setup) },
+                onLogout = { vm.logout(); navigation.abgemeldet() },
+                onServerWechseln = navigation::oeffneEinrichtung,
                 // Die Rubriken führen nicht von hier weiter, sondern stehen auf „Mehr“
                 // (MehrBildschirm.kt).
                 scrollState = settingsScrollState,
@@ -77,7 +82,7 @@ private fun NavGraphBuilder.einstellungenZiel(navigation: KontoNavigation) {
 private fun NavGraphBuilder.unterseiten(navigation: KontoNavigation) {
     val navController = navigation.navController
     val snackbarHostState = navigation.snackbar
-    composable<Screen.Preisalarme> {
+    composable<KontoZiel.Preisalarme> {
         val state by navigation.app.state.collectAsStateWithLifecycle()
         PreisalarmeRoute(
             vm = hiltViewModel<EinstellungenViewModel>(),
@@ -87,24 +92,24 @@ private fun NavGraphBuilder.unterseiten(navigation: KontoNavigation) {
             // Dieselbe Detailansicht wie aus Galerie und Finanzen — ein
             // zweiter Weg dorthin waere ein zweiter Ort fuer dieselben
             // Regeln.
-            onSetClick = { navController.navigate(Screen.SetDetail(it)) },
+            onSetClick = navigation::oeffneSet,
             onZurueck = { navController.popBackStack() },
         )
     }
 
-    composable<Screen.Lagerorte> {
+    composable<KontoZiel.Lagerorte> {
         LagerorteRoute(hiltViewModel<EinstellungenViewModel>(), snackbarHostState) { navController.popBackStack() }
     }
 
-    composable<Screen.Haushalt> {
+    composable<KontoZiel.Haushalt> {
         HaushaltRoute(hiltViewModel<HaushaltViewModel>(), snackbarHostState) { navController.popBackStack() }
     }
 
-    composable<Screen.CsvImport> {
+    composable<KontoZiel.CsvImport> {
         CsvImportRoute(hiltViewModel<EinstellungenViewModel>(), snackbarHostState) { navController.popBackStack() }
     }
 
-    composable<Screen.Konto> {
+    composable<KontoZiel.Konto> {
         KontoRoute(snackbarHostState) { navController.popBackStack() }
     }
 }

@@ -28,6 +28,7 @@ import org.junit.Before
 import org.junit.Test
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.TestDienste
+import ch.brickinventoryapp.testing.text
 
 /**
  * Das Käufe-ViewModel (Sets, manuelle Teile und Figuren), ausgeführt gegen
@@ -109,7 +110,7 @@ class KaeufeViewModelTest {
         val vorher = pfade.anfragenAn("GET /api/v1/parts/3001/5/acquisitions").size
         vm.updateManualAcquisition(Postenart.PART, "3001", 5, 9, date = "2020-01-01")
         assertTrue("neu geladen", pfade.anfragenAn("GET /api/v1/parts/3001/5/acquisitions").size > vorher)
-        assertEquals("fehler", t.meldungen.meldung.value)
+        assertEquals("fehler", t.meldungen.text)
     }
 
     @Test

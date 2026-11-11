@@ -27,7 +27,8 @@ import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.ScanKnopf
 import ch.brickinventoryapp.ui.components.ZustandsHinweis
 import ch.brickinventoryapp.ui.components.mitSchrift
-import ch.brickinventoryapp.netz.util.oeffneExtern
+import ch.brickinventoryapp.netz.util.externeAdresse
+import ch.brickinventoryapp.ui.util.oeffneExtern
 
 @Composable
 fun ComparisonScreen() {
@@ -53,7 +54,7 @@ fun ComparisonScreen() {
     val meldungen = remember { SnackbarHostState() }
     suspend fun openInBrowser(query: String) {
         val url = "https://www.toppreise.ch/produktsuche".toUri().buildUpon().appendQueryParameter("q", query).build()
-        if (!oeffneExtern(context, url.toString())) meldungen.showSnackbar(keineAppText)
+        if (!oeffneExtern(context, externeAdresse(url.toString()))) meldungen.showSnackbar(keineAppText)
     }
 
     LaunchedEffect(activeQuery) {

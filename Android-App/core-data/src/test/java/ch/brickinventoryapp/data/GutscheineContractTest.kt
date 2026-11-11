@@ -266,8 +266,8 @@ class GutscheineContractTest {
     @Test
     fun `die Einstellungen fuehren nicht mehr selbst zu den Rubriken`() {
         val einst = code(lies("konto/ui/screens/SettingsScreen.kt"))
-        for (route in listOf("Screen.Gutscheine", "Screen.Preisalarme", "Screen.Lagerorte",
-                             "Screen.Haushalt", "Screen.CsvImport", "Screen.Konto")) {
+        for (route in listOf("FinanzZiel.Gutscheine", "KontoZiel.Preisalarme", "KontoZiel.Lagerorte",
+                             "KontoZiel.Haushalt", "KontoZiel.CsvImport", "KontoZiel.Konto")) {
             assert(!einst.contains(route)) {
                 "SettingsScreen.kt fuehrt noch selbst zu $route — dann gibt es die " +
                     "Rubrik zweimal, auf „Mehr“ und in den Einstellungen."
