@@ -1,16 +1,16 @@
 
-import * as repo from './repository';
 import { verschluessele, entschluessele, umschluesseln, kontext } from '../infra/geheimnis';
 import { fachfehler, dateiFehler } from '../infra/fehlerTexte';
 import { GLOBALE_REGELN, DESIGNS, type GlobalerSchluessel } from '../vertrag/globaleRegeln';
+import { einstellungenBereich } from './prozess';
 
 /** Gespeichert ist Text; mit Vorgabe ist das Ergebnis Text oder die Vorgabe, nie `any`. */
 export async function getSetting(userId: number, key: string): Promise<string | null | undefined>;
 export async function getSetting<T>(userId: number, key: string, fallback: T): Promise<string | T>;
 export async function getSetting(userId: number, key: string, fallback?: unknown): Promise<unknown> {
-  const eigen = await repo.nutzerWert(userId, key);
+  const eigen = await einstellungenBereich().repository.nutzerWert(userId, key);
   if (eigen) return eigen;
-  return klar(key, await repo.globalerWert(key)) || fallback;
+  return klar(key, await einstellungenBereich().repository.globalerWert(key)) || fallback;
 }
 
 /** Geheime Werte liegen verschlüsselt (src/infra/geheimnis.ts). */
@@ -26,7 +26,7 @@ export async function getGlobalSetting<T>(key: string, fallback: T): Promise<str
 // Die Vorgabe gilt für „nicht gesetzt“, nicht für „nicht lesbar“: Sonst
 // sähe ein Datenbankfehler aus wie ein fehlender Schlüssel oder eine Grundeinstellung.
 export async function getGlobalSetting(key: string, fallback: unknown = null): Promise<unknown> {
-  return klar(key, await repo.globalerWert(key)) ?? fallback;
+  return klar(key, await einstellungenBereich().repository.globalerWert(key)) ?? fallback;
 }
 
 // Was ein Konto selbst setzen darf: Die Werte landen in Seiten, PDFs und
@@ -48,7 +48,7 @@ export async function schreibeNutzerEinstellung(userId: number, key: string, val
   if (key === 'currency') throw new Error('Währung nur über setUserSetting');
   const regel = NUTZER_REGELN[key];
   if (regel && !regel(v)) fachfehler('ungueltig', 'wert_ungueltig');
-  await repo.schreibeNutzerWert(userId, key, v);
+  await einstellungenBereich().repository.schreibeNutzerWert(userId, key, v);
 }
 
 export function nutzerWertGueltig(key: string, value: string): boolean {
@@ -57,7 +57,7 @@ export function nutzerWertGueltig(key: string, value: string): boolean {
 
 /** Eigener Wert → globaler Standard → 'N'; eine Stelle statt drei Fassungen. */
 export async function nutzerStandardZustand(userId: number): Promise<'N' | 'U'> {
-  const eigen = await repo.nutzerWert(userId, 'user_default_condition');
+  const eigen = await einstellungenBereich().repository.nutzerWert(userId, 'user_default_condition');
   if (eigen === 'N' || eigen === 'U') return eigen;
   return globalDefaultCondition();
 }
@@ -76,7 +76,7 @@ export async function zustandFuerPreis(
 }
 
 export async function globalDefaultCondition(): Promise<'N' | 'U'> {
-  const g = await repo.globalerWert('default_price_condition');
+  const g = await einstellungenBereich().repository.globalerWert('default_price_condition');
   return g === 'U' ? 'U' : 'N';
 }
 
@@ -97,7 +97,7 @@ export function beiGlobalerAenderung(fn: () => void): void {
 export async function setGlobalSetting(key: string, value: unknown) {
   const r = regelFuer(key)?.safeParse(value);
   if (!r?.success) throw (r?.error.issues[0] as { params?: { fehler?: unknown } } | undefined)?.params?.fehler ?? dateiFehler('ungueltig', 'wert_ungueltig');
-  await repo.schreibeGlobalenWert(key, SECRET_KEYS.has(key) ? verschluessele(r.data, globalerKontext(key)) : r.data);
+  await einstellungenBereich().repository.schreibeGlobalenWert(key, SECRET_KEYS.has(key) ? verschluessele(r.data, globalerKontext(key)) : r.data);
   for (const fn of _beiGlobalerAenderung) fn();
 }
 
@@ -110,9 +110,9 @@ export async function registrierungOffen(): Promise<boolean> {
  * geschrieben, bleibt sie, wie sie ist. */
 export async function verschluesseleGlobaleAltwerte(): Promise<number> {
   let n = 0;
-  for (const z of await repo.globaleWerte([...SECRET_KEYS])) {
+  for (const z of await einstellungenBereich().repository.globaleWerte([...SECRET_KEYS])) {
     const neu = umschluesseln(z.value, globalerKontext(z.key));
-    if (neu && await repo.ersetzeGlobalenWert(z.key, z.value, neu)) n++;
+    if (neu && await einstellungenBereich().repository.ersetzeGlobalenWert(z.key, z.value, neu)) n++;
   }
   return n;
 }
@@ -120,12 +120,12 @@ export async function verschluesseleGlobaleAltwerte(): Promise<number> {
 /** „Fehlt" ist etwas anderes als „leer". */
 export async function deleteGlobalSetting(...keys: string[]) {
   if (keys.length === 0) return;
-  await repo.loescheGlobaleWerte(keys);
+  await einstellungenBereich().repository.loescheGlobaleWerte(keys);
 }
 
 /** Danach gilt die Vorgabe der Installation. */
 export async function deleteUserSetting(userId: number, key: string) {
-  await repo.loescheNutzerWert(userId, key);
+  await einstellungenBereich().repository.loescheNutzerWert(userId, key);
 }
 
 // Einstellungen LESEN — eine Fassung für beide Oberflächen, damit die Apps
@@ -171,11 +171,11 @@ export function sanitizeGlobal(global: Record<string, unknown>, isAdmin: boolean
 }
 
 export async function nutzerEinstellungen(userId: number) {
-  return Object.fromEntries((await repo.nutzerWerte(userId)).map(r => [r.key, r.value]));
+  return Object.fromEntries((await einstellungenBereich().repository.nutzerWerte(userId)).map(r => [r.key, r.value]));
 }
 
 export async function readSettings(userId: number, isAdmin: boolean) {
-  const raw = Object.fromEntries((await repo.globaleWerte()).map(r => [r.key, klar(r.key, r.value)]));
+  const raw = Object.fromEntries((await einstellungenBereich().repository.globaleWerte()).map(r => [r.key, klar(r.key, r.value)]));
   return { ...sanitizeGlobal(raw, !!isAdmin), ...await nutzerEinstellungen(userId) };
 }
 
@@ -183,7 +183,7 @@ export async function readSettings(userId: number, isAdmin: boolean) {
  * Wiederherstellen neu ein. */
 export async function globaleWerteOhneGeheimnisse(): Promise<Record<string, string>> {
   const aus: Record<string, string> = {};
-  for (const r of await repo.globaleWerte())
+  for (const r of await einstellungenBereich().repository.globaleWerte())
     if (!SECRET_KEYS.has(r.key)) aus[r.key] = r.value;
   return aus;
 }
@@ -194,7 +194,7 @@ export async function globaleWerteOhneGeheimnisse(): Promise<Record<string, stri
 export async function designFuer(userId?: number | null): Promise<{ theme: string; vorgabe: string; eigenes: string | null }> {
   const g = await getGlobalSetting('app_theme');
   const vorgabe = g && DESIGNS.includes(g) ? g : 'classic';
-  const u = userId ? await repo.nutzerWert(userId, 'app_theme') : null;
+  const u = userId ? await einstellungenBereich().repository.nutzerWert(userId, 'app_theme') : null;
   const eigenes = u && DESIGNS.includes(u) ? u : null;
   return { theme: eigenes ?? vorgabe, vorgabe, eigenes };
 }

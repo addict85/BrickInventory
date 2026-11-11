@@ -8,6 +8,8 @@ import { erzeugeSets } from '../src/sets/bereich';
 import { verdrahteSets } from '../src/sets/prozess';
 import { erzeugeKatalog } from '../src/katalog/bereich';
 import { verdrahteKatalog } from '../src/katalog/prozess';
+import { erzeugeEinstellungen } from '../src/einstellungen/bereich';
+import { verdrahteEinstellungen } from '../src/einstellungen/prozess';
 import { erzeugeAuftraege } from '../src/auftraege/bereich';
 import { verdrahteAuftraege } from '../src/auftraege/prozess';
 import { erzeugeHaushalt } from '../src/haushalt/bereich';
@@ -82,6 +84,7 @@ export function verdrahte(v: Verdrahtung = baueVerdrahtung(), db: Db = standardD
   verdrahteKonto(() => erzeugeKonto({ db }));
   verdrahteHaushalt(() => erzeugeHaushalt({ db }));
   verdrahteAuftraege(() => erzeugeAuftraege({ db }));
+  verdrahteEinstellungen(() => erzeugeEinstellungen({ db }));
   verdrahteKatalog(() => erzeugeKatalog({ db }));
   verdrahteSets(() => erzeugeSets({ db, nacharbeit: v.nacharbeit }));
 }
