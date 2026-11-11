@@ -113,10 +113,10 @@ router.get('/me', async (req: OffeneAnfrage<'GET /api/v1/auth/me'>, res: Antwort
     return res.json({ success: true, loggedIn: false, user: null });
   };
   await antworte().catch((e: unknown) => {
-    // Ohne Anmeldung ist die Anmeldemaske die richtige Antwort, keine Fehlerseite.
+    // Ein Lesefehler ist keine Abmeldung: Mit 401 oder „nicht angemeldet“
+    // verwürfe die App ihren Token, und der Browser zeigte die Anmeldemaske.
     meldeFehler('auth:me', e);
-    if (token) return ungueltig('token_ungueltig');
-    return res.json({ success: true, loggedIn: false, user: null });
+    if (!res.headersSent) sendeFehler(req, res, 503, 'server_ausgelastet');
   });
 });
 
