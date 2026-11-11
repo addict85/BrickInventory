@@ -3,7 +3,9 @@
  * APP_BASE_URL). Für Tests, die registrieren: ein eingetragener Mailserver,
  * dessen Transport nichts verschickt; die Mails sammelt `gesendet`.
  * Der Mailer baut den Transport erst beim Versand, deshalb greift das auch
- * nach buildAndRequire — nur nicht in einem eigenen Serverprozess.
+ * nach buildAndRequire — nur nicht in einem eigenen Serverprozess. Der
+ * Mailserver ist eine Adresse (TEST-NET-1), weil der Transport einen Namen
+ * vorher auflöst (src/infra/zielAdresse.ts).
  */
 const path = require('node:path');
 
@@ -19,7 +21,7 @@ function mailAttrappe() {
 /** Trägt den Mailserver ein; zurück kommt das Aufräumen auf den Stand davor. */
 async function mailserverEintragen(db) {
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
-  for (const [k, v] of [['smtp_host', 'smtp.attrappe.example'], ['smtp_user', 'versand']])
+  for (const [k, v] of [['smtp_host', '192.0.2.25'], ['smtp_user', 'versand']])
     await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2', [k, v]);
   return async () => {
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);

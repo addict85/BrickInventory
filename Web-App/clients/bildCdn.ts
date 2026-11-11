@@ -3,6 +3,7 @@
 import https from 'https';
 import { oeffneHttps, holeHttps, type AbrufStrom, type AbrufAntwort } from '../src/infra/abruf';
 import { ERLAUBTE_BILD_HOSTS } from '../src/infra/fremdeAdressen';
+import { oeffentlicherLookup } from '../src/infra/zielAdresse';
 
 const BROWSER =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -22,7 +23,14 @@ export const BILD_KOPFZEILEN_OHNE_REFERER: Readonly<Record<string, string>> = {
 
 /** Begrenzt, damit eine Kachelwand nicht beliebig viele TLS-Verbindungen öffnet;
  * IPv4, weil Abrufe ohne IPv6-Route sonst stumm bis zur Frist liefen. */
-const POOL = new https.Agent({ keepAlive: true, maxSockets: 32, maxFreeSockets: 16, timeout: 30_000, family: 4 });
+const POOL = new https.Agent({
+  keepAlive: true,
+  maxSockets: 32,
+  maxFreeSockets: 16,
+  timeout: 30_000,
+  family: 4,
+  lookup: oeffentlicherLookup,
+});
 
 export interface BildAbruf {
   maxBytes: number;

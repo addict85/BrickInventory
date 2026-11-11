@@ -9,6 +9,11 @@
  *      Passwort und die Mail stehen im Klartext-Mitschnitt)
  *   B  `minVersion: 'TLSv1.2'` entfernt → rot: „TLS 1.1 wird abgelehnt …"
  *      (Zustellung über TLSv1.1, wenn der Prozess ältere Fassungen zulässt)
+ *   C  in getTransporter() `mailserverAdresse(ip)` durch `true` ersetzt → rot:
+ *      „ein Name, der auf eine gesperrte Adresse auflöst …“ (11.11.2026)
+ *   D  in getTransporter() wieder `host` statt der geprüften Adresse an
+ *      nodemailer → rot: „… verbunden wird mit der geprüften Adresse“
+ *      (nodemailer löste selbst auf und erreichte 127.0.0.2 statt 127.0.0.1)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL, openssl im Pfad.
  */
@@ -145,5 +150,49 @@ test('SMTP ohne Port 465 nur mit STARTTLS', { concurrency: 1, timeout: 120_000 }
       assert.equal(alt.post.length, 0);
       assert.deepEqual(alt.mitschnitt.filter(z => /^AUTH/i.test(z.zeile)), []);
     } finally { tls.DEFAULT_MIN_VERSION = vorherMin; tls.DEFAULT_CIPHERS = vorherChiffren; }
+  });
+
+  /** Das DNS des Tests: `mail.attrappe.test` löst auf `ziel` auf, alles andere wie gewohnt. */
+  const mitDns = async (ziel, arbeit) => {
+    const dns = require('node:dns');
+    const echt = dns.lookup;
+    const gefragt = [];
+    dns.lookup = (host, opt, rueckruf) => {
+      if (host !== 'mail.attrappe.test') return echt(host, opt, rueckruf);
+      gefragt.push(host);
+      const a = { address: ziel, family: 4 };
+      setImmediate(() => (opt?.all ? rueckruf(null, [a]) : rueckruf(null, a.address, 4)));
+    };
+    try { await arbeit(); } finally { dns.lookup = echt; }
+    return gefragt;
+  };
+
+  await t.test('ein Name, der auf eine gesperrte Adresse auflöst, wird nicht verbunden', async () => {
+    await setze({ smtp_port: ohne.port, smtp_host: 'mail.attrappe.test' });
+    const vorherZeilen = ohne.mitschnitt.length;
+    let r;
+    const gefragt = await mitDns('169.254.169.254', async () => { r = await mailer.testSmtp(); });
+    assert.deepEqual(gefragt, ['mail.attrappe.test']);
+    assert.equal(r.code, 'smtp_fehler');
+    assert.match(r.vars.grund, /keine erlaubte Adresse/);
+    assert.equal(ohne.mitschnitt.length, vorherZeilen, 'kein Verbindungsversuch');
+  });
+
+  await t.test('ein Name, der auf eine erlaubte Adresse auflöst: verbunden wird mit der geprüften Adresse', async () => {
+    await setze({ smtp_port: ohne.port, smtp_host: 'mail.attrappe.test' });
+    const vorherZeilen = ohne.mitschnitt.length;
+    // Nur der erste Aufruf bekommt 127.0.0.1; ein zweites Nachschlagen landete auf 127.0.0.2.
+    const dns = require('node:dns');
+    const echt = dns.lookup;
+    let n = 0;
+    dns.lookup = (host, opt, rueckruf) => {
+      if (host !== 'mail.attrappe.test') return echt(host, opt, rueckruf);
+      const a = { address: n++ === 0 ? '127.0.0.1' : '127.0.0.2', family: 4 };
+      setImmediate(() => (opt?.all ? rueckruf(null, [a]) : rueckruf(null, a.address, 4)));
+    };
+    let r;
+    try { r = await mailer.testSmtp(); } finally { dns.lookup = echt; }
+    assert.match(r.vars.grund, /kein STARTTLS/, JSON.stringify(r));
+    assert.ok(ohne.mitschnitt.slice(vorherZeilen).some(z => /^EHLO/i.test(z.zeile)));
   });
 });
