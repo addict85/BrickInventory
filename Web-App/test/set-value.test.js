@@ -173,7 +173,7 @@ test('die Finanz-Ansicht zeigt avg_price als Marktpreis', () => {
   // Der Detail-Dialog war nach dem letzten Fix richtig, der Finanzen-Reiter
   // nicht: Dort zeigte die als „Marktpreis" beschriftete Spalte qty_avg_price,
   // und die Total-Spalte rechnete damit.
-  const fin = fs.readFileSync(path.join(ROOT, 'public', 'js', '04-finance.js'), 'utf8');
+  const fin = fs.readFileSync(path.join(ROOT, 'public', 'js', 'finance.js'), 'utf8');
   assert.match(
     fin,
     /const total\s*=\s*acq \? acq\.wert_gesamt : s\.wert_gesamt;/,
@@ -199,7 +199,7 @@ test('die Finanz-Ansicht zeigt avg_price als Marktpreis', () => {
 });
 
 test('Finanzen: Kaufpreis statt zweiter Marktpreis-Spalte', () => {
-  const fin = fs.readFileSync(path.join(ROOT, 'public', 'js', '04-finance.js'), 'utf8');
+  const fin = fs.readFileSync(path.join(ROOT, 'public', 'js', 'finance.js'), 'utf8');
   // Die Sets-Tabelle hatte zwei Preisspalten für dasselbe Konzept.
   assert.doesNotMatch(fin, /t\('finance\.qty_avg'\)/, 'Die mengengewichtete Spalte ist entfallen');
   // Einstand (Menge × Kaufpreis) vor Marktpreis, für alle drei Tabellen gleich.
@@ -298,10 +298,10 @@ test('die Vorschau-Erzeugung ist gedeckelt', () => {
     /const darfErzeugen = req\.query\.gen !== '0'/,
     'Der Proxy kennt kein „Vorschau nutzen, aber keine erzeugen"',
   );
-  const kat = fs.readFileSync(path.join(ROOT, 'public', 'js', '09-catalog.js'), 'utf8');
+  const kat = fs.readFileSync(path.join(ROOT, 'public', 'js', 'catalog.js'), 'utf8');
   assert.match(kat, /imgUrl\(thumbUrl\(src\), 'nur'\)/, 'Die Katalog-Kachel lässt weiter Verkleinerungen erzeugen');
   // Die Galerie NICHT — dort lohnt es sich.
-  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', '02-gallery.js'), 'utf8');
+  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'gallery.js'), 'utf8');
   assert.match(
     gal,
     /imgUrl\(thumbUrl\(src\)\|\|src, true\)/,

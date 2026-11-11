@@ -28,7 +28,7 @@ import ch.brickinventoryapp.testing.Quellen
  * Gegenprobe (gegenproben/setnummer-nur-ziffern.patch): der Filter wieder nur
  * Ziffern und „-" → rot „die Setnummer laesst Buchstaben und Ziffern durch …".
  *
- * Betrag und Menge: leseBetrag folgt leseBetrag der Web-App (01-format.js).
+ * Betrag und Menge: leseBetrag folgt leseBetrag der Web-App (format.js).
  * Gegenprobe (gegenproben/betrag-tausenderpunkt.patch): price() schneidet wieder am
  * zweiten Trenner ab → rot „eine eingefuegte Zahl mit Tausendertrennung bleibt ihr Wert".
  */

@@ -2,7 +2,7 @@
  * Blickfeld, Menge und Kaufpreis. Was das Netz braucht (Katalog, Bild,
  * Marktpreis), hält die Anfrage nicht auf, sondern läuft als Auftrag. */
 import type { DbSchnittstelle } from '../../db/database';
-import { scopeIds, schreibziel } from '../haushalt';
+import { blickfeldIds, schreibziel } from '../haushalt';
 import { recordAcquisitionForDay, setzeGeschaetztenPreis, setzeLagerort, ortFuerNeuerfassung } from '../bestand';
 import { mitInventarSperre } from '../../db/txLock';
 import {
@@ -76,7 +76,7 @@ export async function findSetInScope(
   setNumber: string,
 ): Promise<VorhandenesSet | null> {
   const sn = normalizeSetNumber(setNumber);
-  const row = await repo.setImBlickfeld(sk.db, await scopeIds(sk.db, viewerId), sn, viewerId);
+  const row = await repo.setImBlickfeld(sk.db, await blickfeldIds(sk.db, viewerId), sn, viewerId);
   if (!row) return null;
   return { set_number: row.set_number, owner_user_id: row.user_id, is_self: row.user_id === viewerId };
 }
@@ -156,6 +156,7 @@ export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfa
         maxVersuche: 5,
         nachSekunden: e.ergaenzenNachSekunden ?? 0,
       },
+      sk.auftraege,
     );
     const offen = !katalog || katalog.platzhalter;
     return {
@@ -273,13 +274,19 @@ export async function addSetWithDate(
 
 /** Nie Voraussetzung für die Antwort: Scheitert das Einstellen, ist das Set
  * trotzdem erfasst, und der Fehler steht im Protokoll. */
-export async function nacharbeitEinstellen(setNumber: string, userId: number, art: 'zweit' | 'neu' | 'csv') {
+export async function nacharbeitEinstellen(
+  sk: SetsKontext,
+  setNumber: string,
+  userId: number,
+  art: 'zweit' | 'neu' | 'csv',
+) {
   await versuche(
     `set-anlegen:nacharbeit ${setNumber}`,
     stelleAuftragEin(
       'nacharbeit',
       { set_number: setNumber, user_id: userId, art },
       { userId, schluessel: `nacharbeit:${userId}:${setNumber}`, maxVersuche: 3 },
+      sk.auftraege,
     ),
   );
 }
@@ -323,7 +330,7 @@ async function addSetIntern(sk: SetsKontext, s: SetHinzufuegen) {
         tx,
       );
     });
-    if (!massenimport) await nacharbeitEinstellen(normalized, userId, 'zweit');
+    if (!massenimport) await nacharbeitEinstellen(sk, normalized, userId, 'zweit');
     return { action: 'updated', set_number: normalized };
   }
 
@@ -349,7 +356,7 @@ async function addSetIntern(sk: SetsKontext, s: SetHinzufuegen) {
     );
   });
   fortschritt?.({ step: 'done_meta', set: normalized });
-  if (!massenimport) await nacharbeitEinstellen(normalized, userId, 'neu');
+  if (!massenimport) await nacharbeitEinstellen(sk, normalized, userId, 'neu');
   // katalog_offen: Keine Quelle hat geantwortet; die Oberfläche soll das sagen statt eines schlichten „hinzugefügt“.
   return { action: 'added', set_number: normalized, name: name ?? `Set ${normalized}`, katalog_offen: !name };
 }

@@ -69,7 +69,7 @@ fun CatalogSetCard(
     val istNoppe = LocalIsNoppeTheme.current
     val istGlanz = LocalIstGlanz.current
     // Der Thementon des Designs "farbfaecher" — dieselbe Rechnung wie
-    // --faecher-ton in js/09-catalog.js. Ohne Thema-Nummer gibt es keinen
+    // --faecher-ton in js/catalog.js. Ohne Thema-Nummer gibt es keinen
     // Streifen, statt eines falschen.
     val ton = if (LocalIsFarbfaecherTheme.current) faecherTon(set.themeId) else null
     val besitz = set.ownedQuantity.coerceAtLeast(1)

@@ -6,7 +6,7 @@
  * einen Namen und ein falscher Code steht am Feld statt als Toast.
  *
  * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in 11-actions.js den Enter-Hörer für Formulare mit `data-submit`
+ *   A  in actions.js den Enter-Hörer für Formulare mit `data-submit`
  *      entfernt → rot: „Enter im Passwortfeld bestätigt“
  *   B  in zeigePflichtwechsel das Übernehmen aus #lp entfernt → rot:
  *      „das Startpasswort reist mit“

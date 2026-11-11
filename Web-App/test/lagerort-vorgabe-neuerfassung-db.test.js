@@ -127,7 +127,7 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
     await addManualPart(UID, { part_number: '3003', color_id: 4, quantity: 1, storage: '' });
     assert.equal(await ortVonTeil('3003'), null,
       'Das sendet ein Formular, in dem die vorbefuellte Vorgabe weggeraeumt ' +
-      'wurde (selectedStorage in 02-gallery.js). Sie wieder einzusetzen waere ' +
+      'wurde (selectedStorage in gallery.js). Sie wieder einzusetzen waere ' +
       'ein Ort, den niemand wegbekommt');
   });
 

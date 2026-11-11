@@ -1,5 +1,5 @@
 /** Hier wird nur aus dem Request gelesen und in die Antwort geschrieben; die
- * Regeln stehen in src/konto/auth.ts und loginLimiter.ts. */
+ * Regeln stehen in src/konto/anmeldepruefung.ts und loginLimiter.ts. */
 import type { Request, Response, NextFunction } from 'express';
 import { pruefeToken, rotationFaellig, type TokenPruefung } from '../geraeteToken';
 import { pruefeAnmeldedaten, type AnmeldeErgebnis } from '../anmeldepruefung';

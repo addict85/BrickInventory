@@ -17,8 +17,8 @@ import ch.brickinventoryapp.gemeinsam.ui.mengeManuell
  *     man-tile   → <span class="qbadge">×N</span>    manuell erfasst
  *     part-card  → <div class="part-qty">N×</div>    aus einem Set
  *
- * (public/js/06-minifigs.js Zeilen 327 und 486 fuer die manuellen Kacheln,
- * public/js/03-parts.js Zeile 300 und 06-minifigs.js Zeile 272 fuer die aus
+ * (public/js/minifigs.js Zeilen 327 und 486 fuer die manuellen Kacheln,
+ * public/js/parts.js Zeile 300 und minifigs.js Zeile 272 fuer die aus
  * Sets.) Von den vier Stellen der App entsprach genau EINE dieser Regel.
  *
  * Die Textressource `minifigs_qty_badge` ist ersatzlos weg: „%1$d×" stand in

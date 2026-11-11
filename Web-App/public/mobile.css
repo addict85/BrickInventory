@@ -254,7 +254,7 @@
   }
 
   /* ─ Tabellen → Karten ───────────────────────────────────────────────── */
-  /* Die data-label-Attribute stammen aus 10-mobile.js: Ein MutationObserver
+  /* Die data-label-Attribute stammen aus mobile.js: Ein MutationObserver
      stempelt jede <td> mit der Beschriftung ihrer Spalte. Dadurch musste
      keines der zehn Tabellen-Templates angefasst werden, und künftige
      Tabellen bekommen das Verhalten automatisch. */
@@ -550,7 +550,7 @@
 /* ── Geringe Höhe: 200 % Zoom, Telefon quer ──────────────────────────────
    Kopf (52 px), Hinweisband und untere Leiste nahmen bei 640 × 450 fast die
    Hälfte der Höhe. Der Kopf weicht beim Rollen nach unten (Klasse aus
-   10-mobile.js), die untere Leiste wird schmaler und zeigt nur Symbole; der
+   mobile.js), die untere Leiste wird schmaler und zeigt nur Symbole; der
    Name bleibt für Vorleser erhalten. Breiter als 640 px steht die Leiste
    oben unter dem Kopf und rückt mit ihm nach oben. */
 @media (max-height: 500px) {

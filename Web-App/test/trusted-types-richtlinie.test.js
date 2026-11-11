@@ -1,5 +1,5 @@
 /**
- * Die Richtlinie `app` (public/js/00-escapen.js) prägt TrustedHTML nur für den Text, den alsHtml()
+ * Die Richtlinie `app` (public/js/escapen.js) prägt TrustedHTML nur für den Text, den alsHtml()
  * gerade aus html`` gebaut hat: Direkt aufgerufen scheitert sie, eine Zeichenkette und ein nachgebautes
  * SicheresHtml kommen maskiert an. Ausgeführt wird das echte Modul mit einer Attrappe von trustedTypes.
  *
@@ -23,7 +23,7 @@ globalThis.trustedTypes = {
   },
 };
 
-const laden = () => import(pathToFileURL(path.join(__dirname, '..', 'public', 'js', '00-escapen.js')).href);
+const laden = () => import(pathToFileURL(path.join(__dirname, '..', 'public', 'js', 'escapen.js')).href);
 
 test('Markup aus html`` wird TrustedHTML, der Wert darin maskiert', async () => {
   const { alsHtml, html } = await laden();

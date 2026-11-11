@@ -3,7 +3,7 @@
  * gültiger Weg in den Haushalt (24 h); beliebig viele brauchte niemand, und
  * die Tabelle wuchs mit jedem Klick.
  *
- * Gegenprobe (01.11.2026 gemessen): die Prüfung in createInvite() gestrichen
+ * Gegenprobe (01.11.2026 gemessen): die Prüfung in einladungAnlegen() gestrichen
  * → rot: „die sechste …" (200 statt 409).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.

@@ -75,7 +75,7 @@ class GeraeteAblage @Inject constructor(
         /**
          * Das zuletzt bekannte Design des Servers. Gemerkt, weil /settings erst nach der
          * Anmeldung kommt und Anmelde- und Einrichtungsbildschirm sonst im Standard-Design
-         * erschienen und umsprangen — Stufe eins wie in public/js/00-theme-boot.js.
+         * erschienen und umsprangen — Stufe eins wie in public/js/theme-boot.js.
          * Global, deshalb überlebt es das Abmelden.
          */
         val APP_THEME    = stringPreferencesKey("app_theme")

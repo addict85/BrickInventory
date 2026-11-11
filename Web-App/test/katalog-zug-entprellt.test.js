@@ -28,8 +28,8 @@ const SCHRITT_MS = 15;     // Abstand zwischen zwei Punkten — schneller als di
  * @param {boolean} entprellt false = Gegenprobe, die Ruhe wird herausgenommen
  */
 async function zugMessen(entprellt) {
-  let code = ohneModulhuelle(fs.readFileSync(path.join(JS, '01-bausteine.js'), 'utf8'))
-    + '\n' + ohneModulhuelle(fs.readFileSync(path.join(JS, '09-catalog.js'), 'utf8'));
+  let code = ohneModulhuelle(fs.readFileSync(path.join(JS, 'bausteine.js'), 'utf8'))
+    + '\n' + ohneModulhuelle(fs.readFileSync(path.join(JS, 'catalog.js'), 'utf8'));
   if (!entprellt) {
     const vorher = code;
     code = code.replace(/_catLadeTimer = setTimeout\(tun, \d+\)/, 'tun()');

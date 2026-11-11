@@ -5,13 +5,13 @@
  * Passkey) und wiederholt die Anfrage. Echtes Bündel in jsdom.
  *
  * Gegenproben (03.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in 05-settings.js „Alles löschen" wieder api() direkt → rot: „Alles
+ *   A  in settings.js „Alles löschen" wieder api() direkt → rot: „Alles
  *      löschen fragt den Code nach" und „der Passkey ersetzt den Code"
- *   B  in 05-settings.js das Anlegen eines Kontos wieder api() direkt → rot:
+ *   B  in settings.js das Anlegen eines Kontos wieder api() direkt → rot:
  *      „ein Konto anlegen fragt den Code nach"
- *   C  in 23-passkeys.js setzePasskeyHolen() nicht aufgerufen → rot: „der
+ *   C  in passkeys.js setzePasskeyHolen() nicht aufgerufen → rot: „der
  *      Passkey ersetzt den Code"
- *   D  in 20-papierkorb.js bzw. 17-gutscheine.js wieder confirmDelete() und
+ *   D  in papierkorb.js bzw. gutscheine.js wieder confirmDelete() und
  *      api() ohne Passwort → rot: „den Papierkorb leeren …" bzw. „einen
  *      Gutschein löschen …" (der Passwortdialog erscheint nicht)
  *   E  in gutscheinPinUmschalten() holeKlartext() übergangen → rot: „die

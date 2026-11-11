@@ -55,7 +55,7 @@ function nameOderFehler(v: unknown): string {
 export async function lagerKonten(nutzer: number, wunsch: string | number | undefined, schreiben: boolean): Promise<number[]> {
   const gewuenscht = String(wunsch ?? '').split(',').map(x => parseInt(x.trim(), 10)).filter(Number.isFinite);
   if (!gewuenscht.length) return [nutzer];
-  const erlaubt = schreiben ? await haushaltBereich().haushalt.writableIds(nutzer) : await haushaltBereich().haushalt.scopeIds(nutzer);
+  const erlaubt = schreiben ? await haushaltBereich().haushalt.schreibbereich(nutzer) : await haushaltBereich().haushalt.blickfeldIds(nutzer);
   return gewuenscht.filter(id => erlaubt.includes(id));
 }
 

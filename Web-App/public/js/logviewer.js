@@ -1,4 +1,4 @@
-// Protokollfenster (01-monitor.js öffnet es per window.open). Externe Datei, weil das Fenster die CSP des
+// Protokollfenster (monitor.js öffnet es per window.open). Externe Datei, weil das Fenster die CSP des
 // Öffners erbt und die Inline-Skripte sperrt. Übersetzungen kommen als data-Attribute am <body>, die
 // Anmeldung im Sitzungscookie. Eigene Funktion: Nichts davon soll global werden.
 (function () {
@@ -19,7 +19,7 @@
   /** @param {string} k */
   const tx = (k) => L[k] || k;
   // Das Fenster erbt die CSP samt Trusted Types: eigene Richtlinie für das hier maskierte Markup. Wie in
-  // 00-escapen.js nimmt sie nur den Text an, den alsHtml() ihr gerade freigibt.
+  // escapen.js nimmt sie nur den Text an, den alsHtml() ihr gerade freigibt.
   const tt = /** @type {{ trustedTypes?: { createPolicy(n: string, r: object): { createHTML(s: string): string } } }} */ (
     /** @type {unknown} */ (window)).trustedTypes;
   /** @type {string | null} */
@@ -95,7 +95,7 @@
     }
   }
 
-  // Wie 00-registry.js in der Anwendung: nur diese Namen sind aus dem Markup erreichbar, nicht jede Funktion
+  // Wie registry.js in der Anwendung: nur diese Namen sind aus dem Markup erreichbar, nicht jede Funktion
   // auf window.
   /** @type {Record<string, (arg?: string) => unknown>} */
   const HANDLER = { loadLogs, renderLogs, toggleAuto, toggleLevel };

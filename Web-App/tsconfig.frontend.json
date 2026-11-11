@@ -20,5 +20,5 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["public/js/*.js", "public/i18n.js", "frontend-typen/*.d.ts"],
-  "exclude": ["public/js/app.bundle.js", "public/js/00-theme-boot.js", "public/js/logviewer.js"]
+  "exclude": ["public/js/app.bundle.js", "public/js/theme-boot.js", "public/js/logviewer.js"]
 }

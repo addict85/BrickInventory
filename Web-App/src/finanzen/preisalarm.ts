@@ -1,7 +1,7 @@
 /** Der Preislauf holt die Marktpreise ohnehin; hier fehlte nur der Schritt,
  * eine Schwelle damit zu vergleichen. Ein Alarm gehört EINEM Konto. */
 import { meldeFehler, fehlertext } from '../infra/fehler';
-import { scopeIds } from '../haushalt';
+import { blickfeldIds } from '../haushalt';
 import { fachfehler } from '../infra/fehlerTexte';
 import * as mailer from '../mail';
 import { toCsv, csvZeilenAusAnfrage, uebersprungenHinweis } from '../infra/csvExport';
@@ -79,7 +79,7 @@ export async function loescheAlarm(db: DbSchnittstelle, userId: number, setNumbe
 }
 
 export async function alarmeFuer(db: DbSchnittstelle, userId: number, setNumber: string): Promise<Preisalarm[]> {
-  const rows = await repo.alarmeDesSets(db, userId, setNumber, await scopeIds(db, userId))
+  const rows = await repo.alarmeDesSets(db, userId, setNumber, await blickfeldIds(db, userId))
     .catch(e => { meldeFehler('preisalarm:lesen', e); return []; });
   type Zeile = Omit<Preisalarm, 'schwelle' | 'zuletzt_preis'> &
                { schwelle: string | number; zuletzt_preis: string | number | null };
@@ -106,7 +106,7 @@ export interface AlarmMitName extends Preisalarm {
 export async function alleAlarme(db: DbSchnittstelle, userId: number): Promise<AlarmMitName[]> {
   // Das Blickfeld fragt nur, ob das Set sichtbar ist; der Alarm bleibt beim
   // eigenen Konto.
-  const blickfeld = await scopeIds(db, userId);
+  const blickfeld = await blickfeldIds(db, userId);
   const rows = await repo.alarmeImBlickfeld(db, userId, blickfeld)
     .catch(e => { meldeFehler('preisalarm:alle', e); return []; });
   type Zeile = Omit<AlarmMitName, 'schwelle' | 'zuletzt_preis'> &
@@ -134,7 +134,7 @@ export async function ausgeloesteSeit(db: DbSchnittstelle, userId: number, seit:
   // Unlesbar wie fehlend, NICHT „seit Anbeginn": Ein Tippfehler darf keine Flut auslösen.
   if (!marke || Number.isNaN(marke.getTime())) return { alerts: [], now: jetzt };
 
-  const rows = await repo.alarmeDesKontos(db, userId, marke, await scopeIds(db, userId))
+  const rows = await repo.alarmeDesKontos(db, userId, marke, await blickfeldIds(db, userId))
     .catch(e => { meldeFehler('preisalarm:abholen', e); return []; });
 
   type Zeile = { set_number: string; condition: string; richtung: Richtung;

@@ -1,16 +1,17 @@
 /**
  * Statischer XSS-Regressionstest für public/js/.
  */
+const { istAppModul } = require('../scripts/build-frontend');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
 const JS_DIR = path.join(__dirname, '..', 'public', 'js');
-const FILES = fs.readdirSync(JS_DIR).filter(f => /^\d\d-.*\.js$/.test(f)).sort();
+const FILES = fs.readdirSync(JS_DIR).filter(f => istAppModul(f)).sort();
 
-// Die Helfer selbst, nicht nachgebaut: 00-escapen.js ist DOM-frei und lädt in Node.
-const helfer = import(require('node:url').pathToFileURL(path.join(JS_DIR, '00-escapen.js')).href);
+// Die Helfer selbst, nicht nachgebaut: escapen.js ist DOM-frei und lädt in Node.
+const helfer = import(require('node:url').pathToFileURL(path.join(JS_DIR, 'escapen.js')).href);
 const loadHelpers = () => helfer;
 
 test('esc() neutralisiert alle HTML-Metazeichen inkl. Apostroph', async () => {
@@ -99,10 +100,10 @@ test('kein onXxx-Handler mit ungeprüftem Datenfeld', () => {
 });
 
 test('esc/escJs/escUrl/escHex sind genau einmal definiert', () => {
-  // Alle Maskierer liegen in 00-escapen.js (DOM-frei, auch der BrickLink-Export
+  // Alle Maskierer liegen in escapen.js (DOM-frei, auch der BrickLink-Export
   // lädt es). Zwei Fassungen desselben Maskierers liefen schon einmal auseinander.
-  const zuhause = { esc: '00-escapen.js', escJs: '00-escapen.js',
-                    escUrl: '00-escapen.js', escHex: '00-escapen.js' };
+  const zuhause = { esc: 'escapen.js', escJs: 'escapen.js',
+                    escUrl: 'escapen.js', escHex: 'escapen.js' };
   for (const [name, datei] of Object.entries(zuhause)) {
     const defs = FILES.filter(f =>
       new RegExp(`function\\s+${name}\\s*\\(`).test(fs.readFileSync(path.join(JS_DIR, f), 'utf8')));

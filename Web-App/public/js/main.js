@@ -1,71 +1,77 @@
-// Einstiegspunkt des Bündels. Jede Datei unter js/ steht hier, weil scripts/build-frontend.js die
-// Vollständigkeit am Einstieg prüft. Die Reihenfolge der Auswertung bestimmt der Importgraph; er ist
-// kreisfrei (test/frontend-architektur.test.js), Rückwege laufen über Ereignisse.
-import './00-stile.js';
-import './00-escapen.js';
-import './00-ereignisse.js';
-import './00-ziele.js';
-import './00-zustand.js';
+// Einstiegspunkt des Bündels und die explizite Ladereihenfolge: Kern, Bausteine, Ansichten (Schichten in
+// scripts/build-frontend.js). Jede Datei unter js/ steht hier, weil das Bündel-Skript die Vollständigkeit am
+// Einstieg prüft. Der Importgraph ist kreisfrei (test/frontend-architektur.test.js).
+
+// Kern
+import './stile.js';
+import './escapen.js';
+import './ereignisse.js';
+import './ziele.js';
+import './zustand.js';
 import '../i18n.js';
-import './01-dom.js';
-import './01-format.js';
-import './01-meldungen.js';
-import './01-verbindung.js';
-import './01-api.js';
-import './01-bilder.js';
-import './01-formular.js';
-import './01-konto.js';
-import './01-dialoge.js';
-import './01-fortschritt.js';
-import './01-monitor.js';
-import './01-bausteine.js';
-import './01-rueckfrage.js';
-import './01-fadenkreuz.js';
-import './01-diagramme.js';
-import './02-detailfelder.js';
-import './02-konten-orte.js';
-import './02-gallery.js';
-import './02-set-csv-import.js';
-import './03-parts.js';
-import './03-teil-erfassen.js';
-import './04-wertkurve.js';
-import './04-finance.js';
-import './05-settings.js';
-import './05-zugaenge.js';
-import './05-haushalt.js';
-import './05-nutzerverwaltung.js';
-import './05-alarme.js';
-import './05-lagerorte.js';
-import './06-minifigs.js';
-import './07-admin.js';
-import './07-set-detail.js';
-import './08-fehlerfang.js';
-import './08-init.js';
-import './09-catalog.js';
-import './10-mobile.js';
-import './11-actions.js';
-import './12-pdfviewer.js';
-import './13-kaufpreis-anzeige.js';
-import './13-erfassung-zustand.js';
-import './13-acquisition-modals.js';
-import './13-manuell-detail.js';
-import './13-set-teile.js';
-import './14-scope.js';
-import './15-scrollbar.js';
-import './16-merkliste.js';
-import './17-gutscheine.js';
-import './17-guthaben.js';
-import './18-wanted-xml.js';
-import './19-bricklink-xml.js';
-import './20-papierkorb.js';
-import './21-zweiter-faktor.js';
-import './22-einrichtung.js';
-import './23-passkeys.js';
-import './24-router.js';
-import './25-navigation.js';
-import './26-sitzung.js';
-import './27-einrichtung-stand.js';
+
+// Bausteine
+import './dom.js';
+import './format.js';
+import './meldungen.js';
+import './verbindung.js';
+import './api.js';
+import './bilder.js';
+import './formular.js';
+import './konto.js';
+import './dialoge.js';
+import './fortschritt.js';
+import './monitor.js';
+import './bausteine.js';
+import './rueckfrage.js';
+import './fadenkreuz.js';
+import './diagramme.js';
+
+// Ansichten
+import './detailfelder.js';
+import './konten-orte.js';
+import './gallery.js';
+import './set-csv-import.js';
+import './parts.js';
+import './teil-erfassen.js';
+import './wertkurve.js';
+import './finance.js';
+import './settings.js';
+import './zugaenge.js';
+import './haushalt.js';
+import './nutzerverwaltung.js';
+import './alarme.js';
+import './lagerorte.js';
+import './minifigs.js';
+import './admin.js';
+import './set-detail.js';
+import './fehlerfang.js';
+import './init.js';
+import './catalog.js';
+import './mobile.js';
+import './actions.js';
+import './pdfviewer.js';
+import './kaufpreis-anzeige.js';
+import './erfassung-zustand.js';
+import './acquisition-modals.js';
+import './manuell-detail.js';
+import './set-teile.js';
+import './scope.js';
+import './scrollbar.js';
+import './merkliste.js';
+import './gutscheine.js';
+import './guthaben.js';
+import './wanted-xml.js';
+import './bricklink-xml.js';
+import './papierkorb.js';
+import './zweiter-faktor.js';
+import './einrichtung.js';
+import './passkeys.js';
+import './router.js';
+import './navigation.js';
+import './sitzung.js';
+import './einrichtung-stand.js';
 
 // Gestartet wird erst nach der Auswertung aller Module.
-import { startApp } from './26-sitzung.js';
+import { startApp } from './sitzung.js';
 startApp();

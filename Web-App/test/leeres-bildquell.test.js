@@ -6,7 +6,7 @@
  *
  * Gegenproben (05.11.2026, je einzeln, Bündel neu gebaut):
  *   A  closeImageLightbox() mit `G('lightbox-img').src = ''` → „Zoom schliessen …“ rot
- *   B  11-actions.js Wiederholversuch mit `el.src = ''` statt removeAttribute
+ *   B  actions.js Wiederholversuch mit `el.src = ''` statt removeAttribute
  *      → „ein Ladefehler …“ rot
  *   C  `<img id="lightbox-img" src="">` in index.html → „beim Start …“ rot
  */

@@ -3,9 +3,9 @@
  * durch die Hauptansichten gerendert, im echten Chrome.
  *
  * Gegenproben (gemessen):
- *   A  im Kachelnamen der Sammlung (02-gallery.js) den Namen in ungeprueft()
+ *   A  im Kachelnamen der Sammlung (gallery.js) den Namen in ungeprueft()
  *      gesetzt (vor dem Umbau: esc() entfernt) → rot: „Sammlung“ mit img[onerror]
- *   B  im Lagerortfeld (05-lagerorte.js) esc() entfernt (vor dem Umbau) → rot:
+ *   B  im Lagerortfeld (lagerorte.js) esc() entfernt (vor dem Umbau) → rot:
  *      „Lagerorte“
  *
  * Ohne Chrome (CHROME_BIN) wird übersprungen; Voraussetzung: Test-DB.

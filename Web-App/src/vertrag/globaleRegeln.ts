@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { eingabe } from '../infra/validate';
 import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
 
-/** Dieselbe Liste wie ALLOWED in public/js/00-theme-boot.js (theme.test.js). */
+/** Dieselbe Liste wie ALLOWED in public/js/theme-boot.js (theme.test.js). */
 export const DESIGNS: readonly string[] = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 
 /** Ein globaler Wert wird als Text gespeichert, auch wenn er als Zahl kommt. */

@@ -4,7 +4,7 @@
  * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
  *   A  im deutschen Text von einladungen_zu_viele `{n}` durch `n` ersetzt → rot:
  *      „jeder Eintrag der Tabelle hat beide Sprachen und dieselben Platzhalter“
- *   B  in api() (01-api.js) den Kopf Accept-Language gestrichen (Bündel neu gebaut)
+ *   B  in api() (api.js) den Kopf Accept-Language gestrichen (Bündel neu gebaut)
  *      → rot: „die Webapp sagt dem Server, welche Sprache sie zeigt“
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).

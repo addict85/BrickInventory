@@ -293,7 +293,7 @@
    Beide Screens laufen VOR dem Login und wurden vom Design bisher gar nicht
    erfasst: applyTheme() lief erst in showApp(), und #login-screen hatte in
    styles.css ein hartkodiertes background:#fff. Beides ist gefixt (siehe
-   js/00-theme-boot.js und --screen-bg), hier folgt der eigentliche Stein-Look.
+   js/theme-boot.js und --screen-bg), hier folgt der eigentliche Stein-Look.
 
    Die Karte wird zur schwebenden Kachel mit Noppenreihe — dasselbe Motiv wie
    .sc und .bstat im eingeloggten Zustand, damit der Übergang nach dem Login

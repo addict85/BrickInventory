@@ -49,7 +49,7 @@ router.put('/sets/:setNumber/storage', requireToken, async (req: Anfrage<'PUT /a
 });
 
 /** Ein Alarm gehört genau EINEM Konto: Wer eine Schwelle setzt, will selbst
- * benachrichtigt werden. Deshalb `user_id` statt scopeIds() — hier die Regel. */
+ * benachrichtigt werden. Deshalb `user_id` statt blickfeldIds() — hier die Regel. */
 router.get('/sets/:setNumber/alert', requireToken, async (req: Anfrage<'GET /api/v1/sets/:setNumber/alert'>, res: Antwort<'GET /api/v1/sets/:setNumber/alert'>) => {
   res.json({ success: true, alerts: await sets.setAlarmeLesen(req.apiUser.user_id, req.pfad.setNumber) });
 });
@@ -153,7 +153,7 @@ router.get('/sets/:setNumber/price-history', requireToken, async (req: Anfrage<'
 /** MUSS vor /sets/:setNumber stehen: Express liest „household-members" sonst
  * als Setnummer. */
 router.get('/sets/household-members', requireToken, async (req: Anfrage<'GET /api/v1/sets/household-members'>, res: Antwort<'GET /api/v1/sets/household-members'>) => {
-  res.json({ success: true, members: await haushaltBereich().haushalt.householdMembers(req.apiUser.user_id) }); 
+  res.json({ success: true, members: await haushaltBereich().haushalt.haushaltsMitglieder(req.apiUser.user_id) }); 
 });
 
 router.get('/sets/:setNumber', requireToken, async (req: Anfrage<'GET /api/v1/sets/:setNumber'>, res: Antwort<'GET /api/v1/sets/:setNumber'>) => {

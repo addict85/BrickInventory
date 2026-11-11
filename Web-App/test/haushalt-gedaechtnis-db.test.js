@@ -40,9 +40,9 @@ test('Blickfeld: gemerkt, und bei Änderung sofort vergessen', async (t) => {
 
     // ── 1. Gemerkt: der zweite und jeder weitere Aufruf fragt nicht mehr ────
     gesehen.length = 0; zaehlen = true;
-    const erst = await hh.resolveHousehold(HAUPT);
+    const erst = await hh.haushaltVon(HAUPT);
     const nachErstem = linkAbfragen();
-    for (let i = 0; i < 20; i++) await hh.resolveHousehold(HAUPT);
+    for (let i = 0; i < 20; i++) await hh.haushaltVon(HAUPT);
     zaehlen = false;
     assert.equal(nachErstem, 2, 'der erste Aufruf soll die beiden Abfragen machen');
     assert.equal(linkAbfragen(), 2,
@@ -50,19 +50,19 @@ test('Blickfeld: gemerkt, und bei Änderung sofort vergessen', async (t) => {
     assert.deepEqual(erst.memberIds, [HAUPT, UNTER], 'das Unterkonto gehört ins Blickfeld');
 
     // ── 2. Die Mitgliederliste ist eine frische Liste ──────────────────────
-    const a = await hh.resolveHousehold(HAUPT);
+    const a = await hh.haushaltVon(HAUPT);
     a.memberIds.push(999999);
-    const b = await hh.resolveHousehold(HAUPT);
+    const b = await hh.haushaltVon(HAUPT);
     assert.deepEqual(b.memberIds, [HAUPT, UNTER],
       'wer die Mitgliederliste anfasst, darf den gemerkten Stand nicht verändern');
 
     // ── 3. Nach dem Lösen ist das Blickfeld sofort wieder klein ────────────
-    // Über unlink(), nicht über ein DELETE von Hand: Genau dieser Weg muss
+    // Über kontenTrennen(), nicht über ein DELETE von Hand: Genau dieser Weg muss
     // das Gedächtnis leeren, und nur so ist das geprüft.
-    await hh.unlink(HAUPT, UNTER);
-    const nachher = await hh.resolveHousehold(HAUPT);
+    await hh.kontenTrennen(HAUPT, UNTER);
+    const nachher = await hh.haushaltVon(HAUPT);
     assert.deepEqual(nachher.memberIds, [HAUPT],
-      'nach unlink() steht das gelöste Unterkonto noch im gemerkten Blickfeld');
+      'nach kontenTrennen() steht das gelöste Unterkonto noch im gemerkten Blickfeld');
 
     // ── 4. Das Signal geht an die anderen Cluster-Worker raus ──────────────
     // Ohne dieses NOTIFY säße jeder andere Worker bis zum Ablauf der Frist auf
@@ -87,7 +87,7 @@ test('Blickfeld: gemerkt, und bei Änderung sofort vergessen', async (t) => {
     // nächste Aufruf wieder beide machen — sonst prüft Zusicherung 1 nichts.
     hh.leereHaushaltCache();
     gesehen.length = 0; zaehlen = true;
-    await hh.resolveHousehold(HAUPT);
+    await hh.haushaltVon(HAUPT);
     zaehlen = false;
     assert.equal(linkAbfragen(), 2,
       'Gegenprobe: nach leereHaushaltCache() wurde nicht neu gelesen (oder der Zähler zählt nicht mit)');

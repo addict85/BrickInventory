@@ -5,7 +5,7 @@
  *   - Set-Ansicht: „Teile neu importieren“ (unter „Weitere Aktionen“) ist ein …
  *
  * Gegenproben (02.11.2026 gemessen, je einzeln):
- *   A  rueckziel() in 01-dialoge.js gibt nur `el` zurück → rot:
+ *   A  rueckziel() in dialoge.js gibt nur `el` zurück → rot:
  *      „Escape bei zugeklapptem Menü: Fokus auf Weitere Aktionen“
  *   B  Knopf wieder mit data-stil="padding:1px 6px;…" und ohne Text → rot:
  *      „Teile neu importieren: beschriftet, 24 px, ohne Inline-Stil“

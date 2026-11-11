@@ -1,5 +1,5 @@
 /**
- * Der eigene Scrollbalken (js/15-scrollbar.js) für Maus-Nutzer und im Kontrastmodus, gemessen in Chrome.
+ * Der eigene Scrollbalken (js/scrollbar.js) für Maus-Nutzer und im Kontrastmodus, gemessen in Chrome.
  * Er bleibt, weil Marco einen eigenen Balken verlangt hat und er die Seite rollt (kein Scrollkasten); die
  * Prüfung hält fest, dass er dabei sichtbar und bedienbar ist.
  *
@@ -9,7 +9,7 @@
  *   B  die forced-colors-Regeln in styles.css entfernt (Verstecken der Browser-Leiste wieder
  *      unbedingt) → rot: „Kontrastmodus: die Leiste des Browsers bleibt“ (Eigenbau sichtbar,
  *      Browser-Leiste 0 px)
- *   C  in 15-scrollbar.js das `mousedown`-Hören entfernt → rot: „Ziehen am Griff rollt die Seite“
+ *   C  in scrollbar.js das `mousedown`-Hören entfernt → rot: „Ziehen am Griff rollt die Seite“
  *
  * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.

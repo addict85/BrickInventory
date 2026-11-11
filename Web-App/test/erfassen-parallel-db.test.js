@@ -196,7 +196,7 @@ test('alle drei Importwege melden übersprungene Zeilen', () => {
     'csvImportBericht() meldet die übersprungenen Zeilen nicht mehr');
   // Und die Oberfläche zeigt den Hinweis auch an.
   // Sets in der Galerie, Teile/Figuren/Merkliste/Alarme über csvHochladen().
-  for (const rel of ['public/js/02-set-csv-import.js', 'public/js/01-bausteine.js']) {
+  for (const rel of ['public/js/set-csv-import.js', 'public/js/bausteine.js']) {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
     assert.match(src, /skipped_hint/, `${rel}: Hinweis kommt an, wird aber nicht gezeigt`);
   }

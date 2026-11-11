@@ -1,5 +1,5 @@
 /**
- * Die echten Markup-Helfer (00-escapen.js, setzeHtml/fuegeHtmlEin aus 01-dom.js)
+ * Die echten Markup-Helfer (escapen.js, setzeHtml/fuegeHtmlEin aus dom.js)
  * für Tests, die ein Modul ohne Bündel in einer Sandbox laufen lassen. Nachbauen
  * hiesse: Die Sandbox prüfte eine andere Maskierung als die Seite.
  */
@@ -17,8 +17,8 @@ function funktion(src, name) {
 }
 
 function markupHelfer() {
-  const escapen = fs.readFileSync(path.join(JS, '00-escapen.js'), 'utf8').replace(/^export /gm, '');
-  const dom = fs.readFileSync(path.join(JS, '01-dom.js'), 'utf8');
+  const escapen = fs.readFileSync(path.join(JS, 'escapen.js'), 'utf8').replace(/^export /gm, '');
+  const dom = fs.readFileSync(path.join(JS, 'dom.js'), 'utf8');
   const namen = ['esc', 'escJs', 'escUrl', 'sichereUrl', 'escHex', 'hexZiffern', 'escHtmlAttr',
     'SicheresHtml', 'einsetzen', 'html', 'ungeprueft', 'setzeHtml', 'fuegeHtmlEin'];
   // eslint-disable-next-line no-new-func

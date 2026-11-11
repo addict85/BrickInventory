@@ -15,6 +15,7 @@
  *   oberflaeche (Gegenproben A–H dort); der Platzhalter-Modus →
  *   bilder-platzhalter.test.js.
  */
+const { istAppModul } = require('../scripts/build-frontend');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -22,20 +23,20 @@ const path = require('node:path');
 
 const PUB  = path.join(__dirname, '..', 'public');
 const HTML = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
-const ACT  = fs.readFileSync(path.join(PUB, 'js', '11-actions.js'), 'utf8');
-const JS_FILES = fs.readdirSync(path.join(PUB, 'js')).filter(f => /^\d\d-.*\.js$/.test(f));
+const ACT  = fs.readFileSync(path.join(PUB, 'js', 'actions.js'), 'utf8');
+const JS_FILES = fs.readdirSync(path.join(PUB, 'js')).filter(f => istAppModul(f));
 
 
 test('nirgends mehr Inline-Handler — weder in index.html noch in den Templates', () => {
   // Wichtig: (?<!data-) schliesst data-onerror aus, und das Muster verlangt ="
   // — el.onclick = fn in JavaScript ist CSP-konform und darf bleiben.
   const RE = /(?<!data-)\bon(click|change|input|blur|keydown|error|load|submit|mouseenter|mouseleave)=\\?"/g;
-  // Kommentare entfernen: Die Dokumentation in 11-actions.js zitiert die alten
+  // Kommentare entfernen: Die Dokumentation in actions.js zitiert die alten
   // Handler ("War: onclick=…") und würde die Prüfung sonst selbst auslösen.
   const strip = t => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
   const found = [];
   for (const [name, src] of [['index.html', HTML],
-       ...JS_FILES.concat(['11-actions.js']).map(f => [f, fs.readFileSync(path.join(PUB, 'js', f), 'utf8')])]) {
+       ...JS_FILES.concat(['actions.js']).map(f => [f, fs.readFileSync(path.join(PUB, 'js', f), 'utf8')])]) {
     for (const m of strip(src).matchAll(RE)) found.push(`${name}: ${m[0]}`);
   }
   assert.deepEqual(found, [],
@@ -63,9 +64,9 @@ test('der Dispatcher kommt ohne eval aus', () => {
   const code = ACT.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
   assert.doesNotMatch(code, /\beval\s*\(|new Function/,
     "Ein eval() würde 'unsafe-eval' verlangen und damit dasselbe Problem erzeugen");
-  // Die typeof-Prüfung ist mit der Registry nach js/00-registry.js gewandert
+  // Die typeof-Prüfung ist mit der Registry nach js/registry.js gewandert
   // (resolveAction) — der Dispatcher ruft sie nur noch auf.
-  const REG = fs.readFileSync(path.join(PUB, 'js', '00-registry.js'), 'utf8');
+  const REG = fs.readFileSync(path.join(PUB, 'js', 'registry.js'), 'utf8');
   assert.match(REG, /typeof fn === 'function'/, 'Der Name muss aufgelöst und geprüft werden');
   assert.match(ACT, /console\.warn\('\[actions\] unbekannter Handler:'/,
     'Ein Tippfehler im Handlernamen muss auffallen, nicht stumm nichts tun');
@@ -90,7 +91,7 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
 
   // Der Selbstbeweis zählt über ALLE Dateien, nicht je Datei
   let knoepfeGesamt = 0;
-  for (const file of ['02-gallery.js', '03-parts.js', '06-minifigs.js', '07-set-detail.js']) {
+  for (const file of ['gallery.js', 'parts.js', 'minifigs.js', 'set-detail.js']) {
     const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');
     // `del\w*` und nicht `delete\w*`: Die Galerie-Kachel ruft `delSetStop`.
     // Mit dem engeren Muster fand die Suche dort NICHTS — und der Selbstbeweis
@@ -117,21 +118,21 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
     'beschreibt keinen Knopf mehr und gehoert gestrichen.');
 
   // Die betroffenen Knöpfe dürfen kein ✕ mehr enthalten
-  const gallery = fs.readFileSync(path.join(PUB, 'js', '02-gallery.js'), 'utf8');
+  const gallery = fs.readFileSync(path.join(PUB, 'js', 'gallery.js'), 'utf8');
   assert.doesNotMatch(gallery, /class="delbtn"[^>]*>✕/, 'Set-Kachel zeigt noch ✕');
 
   // Der Papierkorb auf der Kachel ist ein Mausweg und für Hilfstechnik
   // verborgen (sonst steckte ein Knopf im Knopf); Löschen per Tastatur geht
   // über den Detail-Dialog. Ein title sagt der Maus, was er tut.
   assert.match(gallery, /<span class="delbtn" data-click="delSetStop"(?:\$\{echt\(\)\})? aria-hidden="true"[^>]*title=/, 'Set-Kachel: Papierkorb nicht verborgen');
-  const figs = fs.readFileSync(path.join(PUB, 'js', '06-minifigs.js'), 'utf8');
+  const figs = fs.readFileSync(path.join(PUB, 'js', 'minifigs.js'), 'utf8');
   assert.match(figs, /<span class="delbtn" data-click="deleteManualFigStop"(?:\$\{echt\(\)\})? aria-hidden="true"[^>]*title=/,
     'Minifiguren-Kachel: Papierkorb nicht verborgen');
 
   // Einheitliches Muster über alle drei Tabellen: .ca als Hover-Behälter mit
   // .delbtn darin. Vorher war der Minifiguren-Knopf ein "btn bd" mit eigenem
   // Inline-Style und dauerhaft sichtbar, Teile hatten gar keinen.
-  for (const [file, expected] of [['02-gallery.js', 1], ['03-parts.js', 1], ['06-minifigs.js', 2]]) {
+  for (const [file, expected] of [['gallery.js', 1], ['parts.js', 1], ['minifigs.js', 2]]) {
     const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');
     const n = (src.match(/<div class="ca"><(?:button|span) class="delbtn"/g) || []).length;
     assert.equal(n, expected, `${file}: ${n} statt ${expected} Kachel-Löschknöpfe im .ca/.delbtn-Muster`);

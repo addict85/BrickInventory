@@ -794,7 +794,7 @@
     <string name="instr_upload_done">Anleitung hinzugefügt</string>
     <string name="instr_delete">Anleitung entfernen</string>
     <!-- Neu einlesen: dieselben zwei Aktionen, die die Web-App im Set-Detail hat
-         (02-gallery.js: redownloadInstr, reimportParts). -->
+         (gallery.js: redownloadInstr, reimportParts). -->
 
     <!-- ══════════════ Server-Protokoll ══════════════ -->
     <string name="admin_log_title">Server-Protokoll</string>

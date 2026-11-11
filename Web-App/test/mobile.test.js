@@ -1,5 +1,5 @@
 /**
- * Frontend-Tests für public/js/10-mobile.js in jsdom.
+ * Frontend-Tests für public/js/mobile.js in jsdom.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -8,9 +8,9 @@ const path = require('node:path');
 const { JSDOM } = require('jsdom');
 
 const SRC = fs.readFileSync(
-  path.join(__dirname, '..', 'public', 'js', '10-mobile.js'), 'utf8');
+  path.join(__dirname, '..', 'public', 'js', 'mobile.js'), 'utf8');
 
-/** Frisches Dokument mit geladenem 10-mobile.js. */
+/** Frisches Dokument mit geladenem mobile.js. */
 function boot(bodyHtml) {
   const dom = new JSDOM(`<!doctype html><html><body>${bodyHtml || ''}</body></html>`,
     { runScripts: 'outside-only' });
@@ -142,13 +142,13 @@ test('index.html lädt mobile.css nach beiden Designs', () => {
   assert.ok(iMobile > 0, 'mobile.css wird nicht eingebunden');
   assert.ok(iMobile > iTheme && iMobile > iBase,
     'mobile.css muss NACH styles.css und dem Theme kommen, sonst gewinnt das Theme');
-  // 10-mobile.js steht seit der Bündelung nicht mehr als eigenes <script>-Tag
+  // mobile.js steht seit der Bündelung nicht mehr als eigenes <script>-Tag
   // in index.html, sondern in js/app.bundle.js. Geprüft wird deshalb, dass es
   // Teil des Bündels ist — inhaltlich dieselbe Zusicherung.
   // Seit der Umstellung auf ES-Module gibt es keine Dateiliste mehr, sondern
   // einen Modulgraphen: js/main.js importiert die Teile, esbuild bündelt sie.
   const entry = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'main.js'), 'utf8');
-  assert.match(entry, /'\.\/10-mobile\.js'/,
-    '10-mobile.js wird von js/main.js nicht importiert und würde nicht ausgeliefert');
+  assert.match(entry, /'\.\/mobile\.js'/,
+    'mobile.js wird von js/main.js nicht importiert und würde nicht ausgeliefert');
   assert.match(html, /app\.bundle\.js/, 'Das Frontend-Bündel wird nicht eingebunden');
 });

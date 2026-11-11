@@ -1,7 +1,7 @@
 /**
  * Marktpreis und Preisverlauf für HAUSHALTS-Sets — gegen echte Routen.
  *
- * Gegenprobe (durchgeführt): scopeIds in der Preisroute wieder durch die
+ * Gegenprobe (durchgeführt): blickfeldIds in der Preisroute wieder durch die
  * nackte ID ersetzt → der 404-Schritt hier wird rot.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für

@@ -5,7 +5,7 @@
  *
  *   a) archive.append für merkliste.csv entfernt → 1, 2, 3 rot; 4, 5, 6 grün
  *   b) created_at im Import weggelassen          → 3 rot (Datum wird heute)
- *   c) resolveWriteTarget im Import entfernt     → 5 rot
+ *   c) schreibzielOderNull im Import entfernt     → 5 rot
  *   d) condition im Export weggelassen           → 2 UND 3 rot
  *
  * Zwei Dinge daran sind nicht so ausgegangen, wie ich sie vorher aufgeschrieben
@@ -225,7 +225,7 @@ test('Merkliste: Rundlauf über die echten Adressen', { concurrency: 1 }, async 
   });
 
   await t.test('5. in ein FREMDES Konto lässt sich nichts importieren', async () => {
-    // resolveWriteTarget prueft die RICHTUNG, nicht bloss die Mitgliedschaft.
+    // schreibzielOderNull prueft die RICHTUNG, nicht bloss die Mitgliedschaft.
     // „fremd" ist kein Unterkonto von „haupt" — ohne diese Pruefung schriebe
     // eine hochgeladene Datei in jedes Konto der Installation.
     const fd = new FormData();

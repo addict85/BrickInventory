@@ -71,7 +71,7 @@ test('Alles-Loeschen fasst die verknuepften Konten nicht an', async (t) => {
   assert.equal(ohne.code, 'aktuelles_passwort_falsch', JSON.stringify(ohne));
   assert.equal((await db.all('SELECT 1 FROM sets WHERE user_id = $1', [haupt])).length, 1, 'ohne Passwort gelöscht');
 
-  // Genau der Aufruf aus public/js/05-settings.js (btn-dall).
+  // Genau der Aufruf aus public/js/settings.js (btn-dall).
   const r = await hole('/api/v1/bestand', 'DELETE', { password: PASS });
   assert.equal(r.success, true, JSON.stringify(r));
   assert.deepEqual([r.sets, r.teile, r.figuren], [1, 1, 0], 'Gezählt wird nur das eigene Konto');
@@ -92,7 +92,7 @@ test('Alles-Loeschen fasst die verknuepften Konten nicht an', async (t) => {
 
 test('accounts kann das Loesch-Blickfeld nur einschraenken, nie erweitern', () => {
   // Ein Blickfeld-Parameter, der etwas ÖFFNEN kann, wäre ein Zugriffsweg statt
-  // einer Sicherung. Der Dienst schneidet deshalb gegen writableIds(); die
+  // einer Sicherung. Der Dienst schneidet deshalb gegen schreibbereich(); die
   // Route gibt nur die Sicht weiter (Verhalten: blickfeld-dienste-db.test.js).
   const src = fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8');
   const i = src.indexOf("router.delete('/sets/:setNumber'");
@@ -101,14 +101,14 @@ test('accounts kann das Loesch-Blickfeld nur einschraenken, nie erweitern', () =
   const dienst = require('./helpers/sources').funktionsRumpf(
     fs.readFileSync(path.join(ROOT, 'src/sets/loeschen.ts'), 'utf8'), 'loescheSetFuer');
   assert.match(dienst, /schreibbar\.includes\(/,
-    'Die gewählte Menge muss gegen writableIds() geschnitten werden');
+    'Die gewählte Menge muss gegen schreibbereich() geschnitten werden');
 });
 
 test('der Knopf überlässt die Auswahl dem Server', () => {
   // Früher listete der Knopf selbst und löschte Nummer für Nummer — mit der
   // Falle, dass ein fehlendes accounts=own den Haushalt mitlöschte. Jetzt
   // entscheidet der Server, und zwar nur über das eigene Konto.
-  const src = fs.readFileSync(path.join(ROOT, 'public', 'js', '05-settings.js'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'public', 'js', 'settings.js'), 'utf8');
   const i = src.indexOf("G('btn-dall')");
   assert.ok(i > 0, 'Knopf btn-dall nicht gefunden');
   const block = src.slice(i, src.indexOf('\n};', i));

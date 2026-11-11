@@ -1,13 +1,13 @@
 /**
  * Späte Antworten einer verworfenen Filterkombination landen nicht in der
- * Liste: Galerie (02-gallery.js) und Teileliste (03-parts.js) zählen eine
+ * Liste: Galerie (gallery.js) und Teileliste (parts.js) zählen eine
  * Generation hoch und verwerfen, was zu einer älteren gehört. In jsdom mit
  * zurückgehaltener erster Antwort, die erst nach der zweiten eintrifft.
  *
  * Gegenproben (05.11.2026, je einzeln, Mutationen des Prüfberichts):
- *   A  03-parts.js `if (gen !== _partsGen) { _partsLoading = false; return; }`
+ *   A  parts.js `if (gen !== _partsGen) { _partsLoading = false; return; }`
  *      ohne `return` → „Teileliste: späte Antwort …“ rot (ALT erscheint)
- *   B  02-gallery.js nach galleryParams(1, holen) `if (gen !== _galGen && false)`
+ *   B  gallery.js nach galleryParams(1, holen) `if (gen !== _galGen && false)`
  *      → „Galerie: späte Antwort …“ rot (ALT ersetzt NEU)
  *   C  loadGalleryMore ohne Generationsprüfung → „Galerie: späte Folgeseite …“ rot
  */

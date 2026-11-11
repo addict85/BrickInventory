@@ -11,7 +11,7 @@ object ScopeFilter {
 
     /**
      * Die Ansichten mit eigenem Filter. Die Schlüssel heissen wie in der Webapp
-     * (js/14-scope.js), damit beide dieselbe Wahl unter demselben Namen speichern.
+     * (js/scope.js), damit beide dieselbe Wahl unter demselben Namen speichern.
      */
     enum class View(val key: String) {
         GALLERY("gallery"), PARTS("parts"), MINIFIGS("minifigs"), FINANCE("finance"),

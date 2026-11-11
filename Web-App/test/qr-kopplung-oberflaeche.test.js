@@ -4,7 +4,7 @@
  * Ablehnen schickt die Ablehnung und räumt den QR-Code weg.
  *
  * Gegenproben (09.11.2026 gemessen, je einzeln):
- *   A  in generateQrCode() (05-settings.js) die Zeile `_kopplung = { … }`
+ *   A  in generateQrCode() (settings.js) die Zeile `_kopplung = { … }`
  *      gestrichen → rot: beide Fälle (die Frage erscheint nie)
  *   B  in qrKopplungBestaetigen() `{ code: '' }` statt des Felds → rot:
  *      „die Frage nennt das Gerät …“ (falscher Code an den Server)

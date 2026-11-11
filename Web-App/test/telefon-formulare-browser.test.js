@@ -11,7 +11,7 @@
  *   C  in styles.css die Pfeil-Regeln der Abschnittsleiste (`.einst-nav[data-mehr*="r"]::after`)
  *      auf das alte Zeichen ohne Knopf (width:2rem, border:0) zurückgesetzt
  *      → rot: „Einstellungen: Pfeil als Knopf, solange rechts Abschnitte liegen“
- *   D  in 10-mobile.js die Zeile `nav.dataset.mehr = …` entfernt → rot: „Einstellungen: Pfeil als
+ *   D  in mobile.js die Zeile `nav.dataset.mehr = …` entfernt → rot: „Einstellungen: Pfeil als
  *      Knopf …“ und „… wechselt am Ende die Seite“ (kein data-mehr)
  *
  * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.

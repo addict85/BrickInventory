@@ -3,7 +3,7 @@
    eine Holzkante unter der Kopfleiste und Messing als zweite Farbe.
    ---------------------------------------------------------------------------
    Aktiv, sobald <html data-theme="werkbank"> gesetzt ist (siehe applyTheme()
-   in js/00-theme-boot.js). Alle Regeln sind unter [data-theme="werkbank"]
+   in js/theme-boot.js). Alle Regeln sind unter [data-theme="werkbank"]
    gescoped; die Datei wird immer geladen, greift aber nur beim aktiven Design.
 
    Die PALETTE steht nicht hier, sondern in /tokens.css — erzeugt aus

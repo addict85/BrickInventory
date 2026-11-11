@@ -476,9 +476,9 @@ test('ein Repository kennt keine Dienste, auch nicht deren Typen', () => {
 test('Routen lösen keine Konten auf — das tun die Dienste', () => {
   // Eine Route gibt die Sicht (sichtVon) oder den Wunsch weiter; die Regeln des
   // Haushalts stehen in src/haushalt und den Diensten, die sie anwenden.
-  // Gegenprobe (05.11.2026): `await scopeIds(req.apiUser.user_id)` zurück in
+  // Gegenprobe (05.11.2026): `await blickfeldIds(req.apiUser.user_id)` zurück in
   // routes/api_v1/misc.ts → rot.
-  const AUFLOESUNG = /\b(?:scopeIds|writableIds|resolveWriteTarget|parseScopeMode|canWriteFor|asIds|lagerKonten|blickfeldAus|schreibbereichAus)\s*\(/;
+  const AUFLOESUNG = /\b(?:blickfeldIds|schreibbereich|schreibzielOderNull|parseScopeMode|darfSchreibenFuer|asIds|lagerKonten|blickfeldAus|schreibbereichAus)\s*\(/;
   const dateien = tsUnter('routes');
   assert.ok(dateien.length > 15, 'zu wenige Routendateien gefunden');
   assert.deepEqual(dateien.filter(d => AUFLOESUNG.test(quelltext(d))), []);

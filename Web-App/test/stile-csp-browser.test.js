@@ -2,14 +2,14 @@
  * Die App läuft unter `style-src 'self'` ohne einen einzigen CSP-Verstoss, und
  * die Stile aus data-stil kommen trotzdem an. Gemessen in Chrome am echten
  * Server: anmelden, jeden Reiter öffnen, dabei jede `securitypolicyviolation`
- * und jede Meldung „nicht freigegeben“ aus js/00-stile.js mitschreiben.
+ * und jede Meldung „nicht freigegeben“ aus js/stile.js mitschreiben.
  *
  * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
  *
  * Gegenproben (am 28.10.2026 gemessen):
  *   A  in index.html ein data-stil wieder als style= → rot: „keine
  *      CSP-Verstösse“ (style-src-attr)
- *   B  in js/00-stile.js die Hülle um innerHTML entfernt → rot: „jedes
+ *   B  in js/stile.js die Hülle um innerHTML entfernt → rot: „jedes
  *      data-stil ist angewendet“
  *   C  im Build eine leere Freigabeliste → rot: „nur freigegebene Werte“
  * Gegenprobe (am 29.10.2026 gemessen):

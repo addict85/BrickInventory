@@ -220,7 +220,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async (t)
     assert.equal(mit.standardZustand, 'U', 'Die Einstellung des Kontos gewinnt');
     assert.deepEqual(mit.posten.map(x => x.zustand), ['N', 'U', null, null],
       'N und U bleiben, X bleibt null — der Standard ersetzt sie NICHT im Posten. ' +
-      'Die Vorschau setzt beides zusammen (zeile() in public/js/18-wanted-xml.js)');
+      'Die Vorschau setzt beides zusammen (zeile() in public/js/wanted-xml.js)');
     await db.run(`DELETE FROM user_settings WHERE user_id=1 AND key='user_default_condition'`);
   });
 

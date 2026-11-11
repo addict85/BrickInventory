@@ -41,7 +41,7 @@ test('Preise stehen unter der BrickLink-Nummer, Erfassungen unter der Rebrickabl
      VALUES ('bl31000',7,'U','CHF',0.13,0.13)
      ON CONFLICT (part_number,color_id,condition,currency_code) DO UPDATE SET avg_price = 0.13`);
 
-  const r = await ph.getPartPriceHistory([u.id], '31000', 1, 'CHF');
+  const r = await ph.preisverlaufTeil([u.id], '31000', 1, 'CHF');
 
   assert.ok(r.by_condition.U, 'Für den erfassten Zustand fehlt die Zeile ganz');
   assert.equal(r.by_condition.U.market_price, 0.13,

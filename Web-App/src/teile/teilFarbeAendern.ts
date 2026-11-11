@@ -41,7 +41,7 @@ async function bildNachtragen(partNumber: string, farbe: number): Promise<BildQu
 }
 
 /** @param uid        Besitzer der Zeile — NICHT der Betrachter; das Schreibrecht
- *                   prüft die Route mit resolveWriteTarget().
+ *                   prüft die Route mit schreibzielOderNull().
  * @param neueFarbe  KEINE_FARBE (9999) heisst „ohne Angabe". */
 export async function aendereTeilFarbe(
   uid: number,

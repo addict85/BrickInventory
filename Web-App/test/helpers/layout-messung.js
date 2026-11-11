@@ -8,7 +8,7 @@ const path = require('node:path');
 
 const AXE = fs.readFileSync(require.resolve('axe-core/axe.min.js', { paths: [path.join(__dirname, '..', '..')] }), 'utf8');
 
-/** Der oberste offene Dialog (wie obersterDialog in 01-dialoge.js), sonst null. */
+/** Der oberste offene Dialog (wie obersterDialog in dialoge.js), sonst null. */
 const OBERSTER = `(() => { let d = null, z = -Infinity;
   for (const el of document.querySelectorAll('.ovl[role=dialog]')) {
     const offen = el.style.display ? el.style.display !== 'none' : el.classList.contains('open');

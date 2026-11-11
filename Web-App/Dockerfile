@@ -36,10 +36,10 @@ ARG APP_VERSION=
 RUN APP_VERSION="$APP_VERSION" node scripts/build-ts.js --outdir dist
 
 # Frontend: ein Bündel (scripts/build-frontend.js) statt vieler Skript-Abrufe.
-# 00-theme-boot.js, pdfjs-boot.js und logviewer.js lädt die Seite einzeln;
+# theme-boot.js, pdfjs-boot.js und logviewer.js lädt die Seite einzeln;
 # sie werden für sich minifiziert. Die Quellen im Repo bleiben lesbar.
 RUN node scripts/build-frontend.js \
- && for f in public/js/00-theme-boot.js public/js/pdfjs-boot.js public/js/logviewer.js; do \
+ && for f in public/js/theme-boot.js public/js/pdfjs-boot.js public/js/logviewer.js; do \
       ./node_modules/.bin/esbuild "$f" --minify --charset=utf8 --outfile="$f.min" && mv "$f.min" "$f"; \
     done \
  && ./node_modules/.bin/esbuild public/styles.css --minify --charset=utf8 --outfile=public/styles.min.css \

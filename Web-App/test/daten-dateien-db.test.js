@@ -10,14 +10,14 @@
  *   A  die alte Prüfung (parseInt auf segments[0], NaN = keine Prüfung, Segmente
  *      nur auf '..' geprüft) → rot: „%2F im Segment" (200 statt 404) und
  *      „kein Benutzerordner" (200 statt 404)
- *   B  scopeIds-Abfrage entfernt (nur eigene ID) → rot: „Hauptkonto liest Unterkonto"
+ *   B  blickfeldIds-Abfrage entfernt (nur eigene ID) → rot: „Hauptkonto liest Unterkonto"
  *   C  (28.10.) die Verwalter-Ausnahme wieder eingebaut → rot: „auch ein
  *      Verwalter liest fremde Uploads nicht"
  *   D  (03.11.) für fremde Konten wieder 403 „Kein Zugriff“ → rot: „fremd und
  *      fehlend antworten gleich“ und die drei Teiltests davor
  *   E  (05.11.) alsAnhang() in beiden Routen entfernt → rot: „als Anhang in
  *      einer Sandbox“ (beide Wege, Kopf fehlt)
- *   F  (08.11.) siehtKonto liest wieder über scopeIds (Gedächtnis) → rot:
+ *   F  (08.11.) siehtKonto liest wieder über blickfeldIds (Gedächtnis) → rot:
  *      „gelöstes Unterkonto ist sofort nicht mehr lesbar“ (200 statt 404)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.

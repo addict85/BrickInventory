@@ -160,7 +160,7 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async (t) => {
   });
 
   await t.test('6. Der Inhaber ist das Blickfeld, kein eigener Parameter', async () => {
-    // Genau so steht es in der Route: `accounts=` geht durch scopeIds() und
+    // Genau so steht es in der Route: `accounts=` geht durch blickfeldIds() und
     // kommt als userIds herein. Eine zweite Stelle, die Konten auswählt, wäre
     // die Doppelung, vor der src/haushalt/haushalt.ts warnt.
     const nurEnkel = await M.merkpostenVon([U.enkel], undefined, 'EUR');

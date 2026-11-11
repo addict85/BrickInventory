@@ -51,11 +51,11 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async (t) => {
   const L = { ..._req('src/bestand/lagerort.js'), ..._req('src/bestand/prozess.js').bestandBereich().lagerortDienst };
   const S = _req('src/sets/index.js');
   const household = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt };
-  const schreibbar = await household.writableIds(HAUPT);
+  const schreibbar = await household.schreibbereich(HAUPT);
   // Vorbedingung: Das Blickfeld umfasst wirklich BEIDE Konten, sonst prüft
   // Befund 2 unten nichts.
   assert.ok(schreibbar.includes(HAUPT) && schreibbar.includes(KIND),
-    `writableIds lieferte ${schreibbar} — der Haushalt steht nicht`);
+    `schreibbereich lieferte ${schreibbar} — der Haushalt steht nicht`);
 
   assert.equal(await L.setzeLagerort('set', schreibbar, [SN], 'Estrich'), 1,
     'Das Setzen muss genau die eine Zeile des Hauptkontos treffen');

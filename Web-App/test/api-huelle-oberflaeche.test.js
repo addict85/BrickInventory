@@ -1,6 +1,6 @@
 /**
  * Auch Uploads, Downloads und Ströme laufen über die API-Hülle (api/apiRoh in
- * js/01-api.js) — am echten Bündel in jsdom. Dann gelten für sie dieselben
+ * js/api.js) — am echten Bündel in jsdom. Dann gelten für sie dieselben
  * Regeln wie für jeden anderen Aufruf: die Sprache der Oberfläche geht mit,
  * ein 401 beendet die Sitzung sichtbar, ein Netzfehler zeigt das Band.
  *
@@ -10,7 +10,7 @@
  *      „401 beim Upload“ (die Anmeldemaske blieb verborgen)
  *   B  in apiRoh die Zeile `if (res.status === 401) melde('sitzungBeendet', path)`
  *      entfernt → rot: „401 beim Upload“
- *   C  in csvHochladen (01-bausteine.js) `d.skipped_hint` aus der Meldung
+ *   C  in csvHochladen (bausteine.js) `d.skipped_hint` aus der Meldung
  *      genommen → rot: „übersprungene Zeilen“
  */
 const test = require('node:test');

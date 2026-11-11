@@ -81,9 +81,9 @@ test('die Striche überleben den Benutzernamen', () => {
   const { document } = kopfleiste().window;
   const knopf = menueKnopf(document);
   const name = document.getElementById('ubadge');
-  assert.ok(name, 'Kein #ubadge — 01-konto.js schreibt den Namen genau dorthin');
+  assert.ok(name, 'Kein #ubadge — konto.js schreibt den Namen genau dorthin');
 
-  // Genau was 01-konto.js in showApp() tut.
+  // Genau was konto.js in showApp() tut.
   name.textContent = 'marco';
 
   assert.ok(striche(knopf),
@@ -98,9 +98,9 @@ test('der Knopf sagt einem Bildschirmleser, dass er ein Menü ist', () => {
   const knopf = menueKnopf(document);
 
   // Die ID bleibt gefordert: menueSchliessen() und benutzerMenue() in
-  // js/02-gallery.js führen `aria-expanded` über G('btn-umenu') mit.
+  // js/gallery.js führen `aria-expanded` über G('btn-umenu') mit.
   assert.equal(knopf.id, 'btn-umenu',
-    'Der Menüknopf heißt nicht mehr `btn-umenu` — 02-gallery.js führt `aria-expanded` darüber mit');
+    'Der Menüknopf heißt nicht mehr `btn-umenu` — gallery.js führt `aria-expanded` darüber mit');
 
   assert.equal(knopf.getAttribute('aria-haspopup'), 'true');
   assert.equal(knopf.getAttribute('aria-expanded'), 'false',

@@ -1,7 +1,7 @@
 import { resolveOne, fuerSet, resolveImageLocal, anleitungenZuSet, anleitungenZusammenlegen } from '../katalog';
 import { meldeFehler } from '../infra/fehler';
 import * as repo from './repository/sets';
-import { asIds, withOwners, blickfeldAus, type Sicht, type BlickfeldEingabe as Blickfeld } from '../haushalt';
+import { asIds, besitzerAnhaengen, blickfeldAus, type Sicht, type BlickfeldEingabe as Blickfeld } from '../haushalt';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand';
 
 // Leseabfragen; Zustand aus den Erfassungen.
@@ -63,7 +63,7 @@ export async function getSets(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, qu
   }));
 
   // Eine Abfrage für die ganze Seite statt einer je Zeile.
-  const mitBesitzern = await withOwners(sk.db, uids, mapped);
+  const mitBesitzern = await besitzerAnhaengen(sk.db, uids, mapped);
 
   // Mit Gesamtzahl für den Endlos-Scroll; ohne Paginierung ist total die Länge.
   return {
@@ -105,7 +105,7 @@ export async function getSet(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, set
     // Die eigene Zeile gewinnt für Zustand und Kaufpreis; die MENGE ist die Summe
     // über das Blickfeld.
     repo.setDetailZeile(sk.db, uids, setNumber, uids[0]),
-    anleitungenZuSet(setNumber),
+    anleitungenZuSet(setNumber, sk.katalog),
     repo.eigeneAnleitungenDesSets(sk.db, uids, setNumber),
   ]);
   if (!set) return null;
@@ -121,7 +121,7 @@ export async function getSet(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, set
     Promise.resolve(fuerSet(setNumber, set.name)),
   ]);
   const { owner_ids, ...ohneIds } = set;
-  const [mitBesitzern] = await withOwners(sk.db, uids, [uids.length > 1 ? { ...ohneIds, owner_ids } : ohneIds]);
+  const [mitBesitzern] = await besitzerAnhaengen(sk.db, uids, [uids.length > 1 ? { ...ohneIds, owner_ids } : ohneIds]);
   return { ...mitBesitzern, ...agg,
     bricklink,
     preisvergleich_url: preisvergleich,

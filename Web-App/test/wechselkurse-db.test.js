@@ -124,8 +124,8 @@ test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async (t)
   });
 
   await t.test('Preisverlauf', async () => {
-    const { getSetPriceHistory } = _req('src/finanzen/priceHistory.js');
-    const v = await getSetPriceHistory([uid], SET, 'CHF');
+    const { preisverlaufSet } = _req('src/finanzen/priceHistory.js');
+    const v = await preisverlaufSet([uid], SET, 'CHF');
     assert.equal(v.purchase_price, 92.5, 'die erste Erfassung, umgerechnet');
     assert.equal(v.by_condition.N.purchase_price, (92.5 + 38) / 2);
   });
@@ -133,8 +133,8 @@ test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async (t)
   await t.test('Teil', async () => {
     await haeltTeil(db, uid, TEIL, { colorId: FARBE, menge: 10, preis: 2, am: '2026-01-07T09:00:00Z' });
     await db.run(`UPDATE part_acquisitions SET currency = 'USD' WHERE user_id = $1`, [uid]);
-    const { getPartPriceHistory } = _req('src/finanzen/priceHistory.js');
-    const v = await getPartPriceHistory([uid], TEIL, FARBE, 'CHF');
+    const { preisverlaufTeil } = _req('src/finanzen/priceHistory.js');
+    const v = await preisverlaufTeil([uid], TEIL, FARBE, 'CHF');
     // 2 USD / 1,26 × 0,96 = 1,5238
     assert.equal(v.by_condition.N.purchase_price, 1.5238);
   });

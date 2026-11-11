@@ -5,7 +5,7 @@
  *
  * Gegenproben (02.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  doLogin ruft formularFehler ohne Felder auf → rot: „falsches Passwort“
- *   B  input-Hörer in 01-formular.js entfernt → rot: „Tippen nimmt die Markierung“
+ *   B  input-Hörer in formular.js entfernt → rot: „Tippen nimmt die Markierung“
  *   C  Registrierung: Feldliste bei fehlenden Pflichtfeldern leer → rot:
  *      „Registrierung: leere Pflichtfelder“
  */

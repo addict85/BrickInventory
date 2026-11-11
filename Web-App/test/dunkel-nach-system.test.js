@@ -1,5 +1,5 @@
 /**
- * „Dunkel, wenn das System dunkel ist" — je Gerät, über 00-theme-boot.js.
+ * „Dunkel, wenn das System dunkel ist" — je Gerät, über theme-boot.js.
  * Seit dem 29.10. heisst das: dasselbe Design in seiner dunklen Variante
  * (data-dunkel am <html>, Farben aus tokens.css), nicht mehr „werkbank".
  * Ohne gespeicherte Wahl folgt das Gerät dem System (Vorgabe „system“).
@@ -21,7 +21,7 @@ const path   = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
-const BOOT = fs.readFileSync(path.join(ROOT, 'public', 'js', '00-theme-boot.js'), 'utf8');
+const BOOT = fs.readFileSync(path.join(ROOT, 'public', 'js', 'theme-boot.js'), 'utf8');
 
 /** Ein Fenster mit Server-Design, Gerätewahl und Systemfarbe. */
 function fenster({ server = 'classic', wahl = null, dunkel = false } = {}) {

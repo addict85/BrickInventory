@@ -27,7 +27,7 @@ const STILE = ['vendor/fonts/fonts.css', 'tokens.css', 'styles.css', 'themes/bri
   'themes/farbfaecher.css', 'themes/noppe.css', 'themes/hochglanz.css'];
 const DESIGNS = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 
-/** Die Kopfleiste wie im Betrieb: data-stil als Stil (00-stile.js), Klappe offen, Name gesetzt. */
+/** Die Kopfleiste wie im Betrieb: data-stil als Stil (stile.js), Klappe offen, Name gesetzt. */
 function kopfleiste() {
   const html = require('./helpers/sources').ohneHtmlKommentare(fs.readFileSync(P('public', 'index.html'), 'utf8'));
   const kopf = html.slice(html.indexOf('<header'), html.indexOf('</header>') + 9)

@@ -110,7 +110,7 @@ export const FigValuationItem = z.looseObject({
   condition: z.string().nullable().optional(),
   conditions: z.array(z.string()),
   user_id: z.number().int().nullable().optional(),
-  /** Nur im Haushalt (withOwners); allein gibt es keine Besitzer zu nennen. */
+  /** Nur im Haushalt (besitzerAnhaengen); allein gibt es keine Besitzer zu nennen. */
   owners: z.array(KontoName).optional(),
   acquisitions: z.array(ValuationAcquisition),
   storage: z.string().nullable().optional(),
@@ -172,7 +172,7 @@ export const Minifig = z.looseObject({
   fig_number: z.string(),
   condition: z.string().nullable().optional(),
   conditions: z.array(z.string()),
-  /** Nur im Haushalt (withOwners); allein gibt es keine Besitzer zu nennen. */
+  /** Nur im Haushalt (besitzerAnhaengen); allein gibt es keine Besitzer zu nennen. */
   owners: z.array(KontoName).optional(),
   avg_purchase_price: z.number().nullable().optional(),
   fig_name: z.string().nullable().optional(),
@@ -244,7 +244,7 @@ export const PartValuationItem = z.looseObject({
   condition: z.string().nullable().optional(),
   conditions: z.array(z.string()),
   user_id: z.number().int().nullable().optional(),
-  /** Nur im Haushalt (withOwners); allein gibt es keine Besitzer zu nennen. */
+  /** Nur im Haushalt (besitzerAnhaengen); allein gibt es keine Besitzer zu nennen. */
   owners: z.array(KontoName).optional(),
   acquisitions: z.array(ValuationAcquisition),
   storage: z.string().nullable().optional(),

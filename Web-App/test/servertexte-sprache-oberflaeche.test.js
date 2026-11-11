@@ -3,7 +3,7 @@
  * des Servers (`sub_teile`, UI-Prüfung 17 M17); der deutsche Satz in `sub`
  * erscheint in der englischen Oberfläche nicht mehr. Echtes Bündel in jsdom.
  *
- * Gegenprobe (05.11.2026 gemessen): in 01-monitor.js wieder nur
+ * Gegenprobe (05.11.2026 gemessen): in monitor.js wieder nur
  * translateJobSub(j.sub) → rot (die Kachel zeigt „Keine ausstehenden Einträge“).
  */
 const test = require('node:test');
