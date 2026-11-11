@@ -49,7 +49,7 @@ test('Geld und Währung in der Datenbank geprüft', { concurrency: 1 }, async (t
 
   await t.test('ein negativer Betrag wird abgelehnt', async () => {
     assert.equal(await abgelehnt(erfasse(-1, 'CHF')), '23514');
-    assert.equal(await abgelehnt(_req('src/gutscheine/dienst.js').gutscheinAnlegen(uid,
+    assert.equal(await abgelehnt(_req('src/gutscheine/prozess.js').gutscheineBereich().gutscheine.gutscheinAnlegen(uid,
       { number: '5045076374450019999', pin: null, amount: -5, currency: 'CHF' })), '23514');
   });
 

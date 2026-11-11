@@ -8,6 +8,8 @@ import { erzeugeSets } from '../src/sets/bereich';
 import { verdrahteSets } from '../src/sets/prozess';
 import { erzeugeKatalog } from '../src/katalog/bereich';
 import { verdrahteKatalog } from '../src/katalog/prozess';
+import { erzeugeGutscheine } from '../src/gutscheine/bereich';
+import { verdrahteGutscheine } from '../src/gutscheine/prozess';
 import { erzeugeSammlung } from '../src/sammlung/bereich';
 import { verdrahteSammlung } from '../src/sammlung/prozess';
 import { erzeugeVerwaltung } from '../src/verwaltung/bereich';
@@ -52,6 +54,7 @@ export function verdrahte(v: Verdrahtung = baueVerdrahtung(), db: Db = standardD
   verdrahteNacharbeit(v.nacharbeit);
   verdrahteVerwaltung(() => erzeugeVerwaltung({ db }));
   verdrahteSammlung(() => erzeugeSammlung({ db }));
+  verdrahteGutscheine(() => erzeugeGutscheine({ db }));
   verdrahteKatalog(() => erzeugeKatalog({ db }));
   verdrahteSets(() => erzeugeSets({ db, nacharbeit: v.nacharbeit }));
 }

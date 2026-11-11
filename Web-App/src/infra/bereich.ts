@@ -10,15 +10,23 @@ export type Gebunden<M, Z = DbSchnittstelle> = {
     : never;
 };
 
-/** Bindet den Zugang an jede Funktion des Moduls. Gesucht wird beim Aufruf,
- * damit ein Test eine Funktion des Moduls ersetzen kann. */
-export function bindeZugang<Z, M extends object>(zugang: Z, modul: M): Gebunden<M, Z> {
+/** Bindet den Zugang an jede Funktion des Moduls, oder nur an die genannten,
+ * wenn das Modul auch Funktionen ohne Zugang ausführt (die zur Laufzeit nicht
+ * zu unterscheiden sind). Gesucht wird beim Aufruf, damit ein Test eine
+ * Funktion des Moduls ersetzen kann. */
+export function bindeZugang<Z, M extends object>(zugang: Z, modul: M): Gebunden<M, Z>;
+export function bindeZugang<Z, M extends object, N extends keyof Gebunden<M, Z> & keyof M & string>(
+  zugang: Z,
+  modul: M,
+  namen: readonly N[],
+): Gebunden<Pick<M, N>, Z>;
+export function bindeZugang<Z, M extends object>(zugang: Z, modul: M, namen?: readonly string[]): unknown {
   const gebunden: Record<string, unknown> = {};
   for (const [name, f] of Object.entries(modul))
-    if (typeof f === 'function')
+    if (typeof f === 'function' && (!namen || namen.includes(name)))
       gebunden[name] = (...a: unknown[]) =>
         ((modul as Record<string, unknown>)[name] as (z: Z, ...x: unknown[]) => unknown)(zugang, ...a);
-  return gebunden as Gebunden<M, Z>;
+  return gebunden;
 }
 
 /** Die Dienste eines Bereichs im Prozess, gebaut beim ersten Gebrauch aus dem,
