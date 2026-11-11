@@ -160,7 +160,7 @@ export async function updateManualFig(uid: number, figNumber: string, body: Reco
     await repo.setzeFigurpreisNeueste(uid, figNumber, unitPrice);
   }
   if (body.condition !== undefined && body.condition !== null) {
-    const cond = body.condition === 'U' ? 'U' : 'N';
+    const cond = V.zustand(body.condition);
     await repo.setzeFigurzustandNeueste(uid, figNumber, cond);
   }
   return { ...raus, ...ab.angabe() };

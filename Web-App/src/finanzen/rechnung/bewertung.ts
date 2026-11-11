@@ -18,7 +18,7 @@ import {
 } from './preise';
 import { zaehle } from './abfragen';
 import { ladeSetErfassungen } from '../repository/erfassungen';
-import { KEINE_FARBE } from '../../infra/validate';
+import { KEINE_FARBE, zustand } from '../../infra/validate';
 import { aufRappen, inZehntel4 } from '../../infra/geld';
 import { stelleAuftragEin } from '../../auftraege/dienst';
 import { fehlerText } from '../../infra/fehlerTexte';
@@ -69,7 +69,7 @@ function bewerteSet(set: BewertungsSet, acqs: SetErfassung[], l: Bewertungslage)
   // Ohne Erfassung gilt das Set als neu (effectiveCondition ohne Zähler).
   const fallbackCond: Zustand = 'N';
   const needed: Zustand[] = acqs.length
-    ? [...new Set(acqs.map(a => (a.condition === 'U' ? 'U' : 'N') as Zustand))] : [fallbackCond];
+    ? [...new Set(acqs.map(a => zustand(a.condition)))] : [fallbackCond];
   const preise = new Map<Zustand, PreisDaten>(needed.map(c => [c, setPreisAusVorrat(set.set_number, c, l.ttl, l.pre)]));
   const preisMap = new Map<string, number>();
   for (const [cond, p] of preise) {
@@ -178,7 +178,7 @@ export async function computeSetsValuation(viewerId: number, idsWahl: Sicht | Bl
 
 function conditionsOf(acqs: { condition?: string | null }[]): Zustand[] {
   if (!acqs?.length) return ['N'];
-  const set = new Set(acqs.map(a => (a.condition === 'U' ? 'U' : 'N')));
+  const set = new Set(acqs.map(a => zustand(a.condition)));
   return (['N', 'U'] as const).filter(c => set.has(c));
 }
 

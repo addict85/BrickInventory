@@ -176,7 +176,7 @@ export async function updateManualPart(uid: number, partNumber: string, colorId:
     await repo.setzeTeilpreisNeueste(uid, partNumber, colorId, unitPrice);
   }
   if (body.condition !== undefined && body.condition !== null) {
-    const cond = body.condition === 'U' ? 'U' : 'N';
+    const cond = V0.zustand(body.condition);
     await repo.setzeTeilzustandNeueste(uid, partNumber, colorId, cond);
   }
   return { ...raus, ...ab.angabe() };

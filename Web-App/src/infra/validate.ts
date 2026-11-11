@@ -111,6 +111,16 @@ export function optionalHex(value: unknown): string | null {
   return /^[0-9A-Fa-f]{6}$/.test(v) ? v.toUpperCase() : null;
 }
 
+/** Zustand eines Bestands, einer Erfassung oder eines Preises: neu oder gebraucht. */
+export type Zustand = 'N' | 'U';
+
+/** Die eine Regel für Zustände aus Datenbank, CSV und Eingabe: 'U' (auch klein)
+ * ist gebraucht, 'N' neu, alles andere die Vorgabe. */
+export function zustand(roh: unknown, vorgabe: Zustand = 'N'): Zustand {
+  const v = String(roh ?? '').trim().toUpperCase();
+  return v === 'U' || v === 'N' ? v : vorgabe;
+}
+
 /** null = keine Angabe. */
 export function optionalCondition(value: unknown): 'N' | 'U' | null {
   return value === 'N' || value === 'U' ? value : null;

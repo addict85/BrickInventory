@@ -11,6 +11,7 @@ import { LOCKS } from '../infra/lockNamespaces';
 import { pruefeSet } from './preisalarm';
 import { AuftragVerschieben, type AuftragsKontext } from '../auftraege/auftraege';
 import { versuche } from '../infra/ergebnis';
+import { zustand } from '../infra/validate';
 
 /** Der Job läuft im Job-Prozess, gelesen wird im Web-Prozess — darum in laufzustand. */
 export const PREIS_STAND = 'preis_job_stand';
@@ -193,7 +194,7 @@ async function zustaendeJeSet(userId: number, setNumbers: string[],
     const m = new Map<string, Set<string>>();
     for (const r of zeilen) {
       if (!m.has(r.set_number)) m.set(r.set_number, new Set<string>());
-      m.get(r.set_number)!.add(r.c === 'U' ? 'U' : 'N');
+      m.get(r.set_number)!.add(zustand(r.c));
     }
     return m;
   };

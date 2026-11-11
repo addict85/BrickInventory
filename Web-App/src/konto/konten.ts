@@ -40,7 +40,7 @@ export async function profil(id: number) {
   return repo.profilZeile(id);
 }
 
-const hashe = (passwort: unknown) => hashePasswort(passwort, BCRYPT_ROUNDS);
+const hashe = (passwort: string) => hashePasswort(passwort, BCRYPT_ROUNDS);
 
 async function zugaengeBeenden(uid: number): Promise<void> {
   await revokeAllTokens(uid);
@@ -51,7 +51,7 @@ async function startpasswortErledigt(uid: number): Promise<void> {
   if ((await repo.kontoKurz(uid))?.is_admin) entferneStartpasswort();
 }
 
-export async function setzeFremdesPasswort(uid: number, passwort: unknown): Promise<boolean> {
+export async function setzeFremdesPasswort(uid: number, passwort: string): Promise<boolean> {
   if (!await repo.setzePasswortHash(uid, await hashe(passwort))) return false;
   await zugaengeBeenden(uid);
   return true;
@@ -59,7 +59,7 @@ export async function setzeFremdesPasswort(uid: number, passwort: unknown): Prom
 
 /** Auch der gerade benutzte Token fällt. Passkeys nur auf Wunsch: Wer sein
  * Passwort bloss erneuert, soll seine Geräte nicht neu einrichten müssen. */
-export async function aendereEigenesPasswort(uid: number, passwort: unknown,
+export async function aendereEigenesPasswort(uid: number, passwort: string,
                                              o: { passkeysWiderrufen?: boolean } = {}): Promise<void> {
   await repo.setzeEigenesPasswort(uid, await hashe(passwort));
   await zugaengeBeenden(uid);
@@ -68,7 +68,7 @@ export async function aendereEigenesPasswort(uid: number, passwort: unknown,
 }
 
 /** Hier will man einen fremden Zugang loswerden; deshalb fallen auch alle Passkeys. */
-export async function setzePasswortZurueck(uid: number, passwort: unknown): Promise<void> {
+export async function setzePasswortZurueck(uid: number, passwort: string): Promise<void> {
   await repo.setzePasswortNachRuecksetzen(uid, await hashe(passwort));
   await zugaengeBeenden(uid);
   await startpasswortErledigt(uid);
@@ -76,7 +76,7 @@ export async function setzePasswortZurueck(uid: number, passwort: unknown): Prom
 }
 
 /** Dieselbe Rechenzeit wie registriere(): Die Antwortzeit verriete sonst eine vergebene Adresse. */
-export async function rechneWieRegistrierung(passwort: unknown): Promise<void> {
+export async function rechneWieRegistrierung(passwort: string): Promise<void> {
   await hashe(passwort);
 }
 
@@ -86,12 +86,12 @@ export function raeumeOffeneRegistrierungenAuf(): Promise<number> {
   return repo.loescheOffeneRegistrierungen(REGISTRIERUNG_FRIST_TAGE);
 }
 
-export async function legeKontoAn(username: string, passwort: unknown, verwalter: boolean): Promise<number | null> {
+export async function legeKontoAn(username: string, passwort: string, verwalter: boolean): Promise<number | null> {
   return repo.fuegeKontoEin(username, await hashe(passwort), verwalter);
 }
 
 export async function registriere(d: { username: string; email: string; first_name?: string | null | undefined;
-  last_name?: string | null | undefined; passwort: unknown; tokenHash: string; bis: Date }): Promise<number | null> {
+  last_name?: string | null | undefined; passwort: string; tokenHash: string; bis: Date }): Promise<number | null> {
   return repo.registriereKonto({ username: d.username, email: d.email, first_name: d.first_name,
     last_name: d.last_name, hash: await hashe(d.passwort), tokenHash: d.tokenHash, bis: d.bis });
 }

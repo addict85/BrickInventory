@@ -17,7 +17,7 @@ import { importPartsForSet } from '../katalog/partsImport';
 import { zaehleAnfrage } from '../konto/loginLimiter';
 import { setNummerImBlickfeld } from '../katalog/bilder/bildBlickfeld';
 import { normalizeSetNumber, findSetInScope } from './erfassen';
-import { istErsatzteil } from '../infra/validate';
+import { istErsatzteil, Zustand } from '../infra/validate';
 import { istVermutung } from '../katalog/barcodeQuelle';
 import { setnummerKandidaten } from '../katalog/produkttitel';
 import { fetchPrice, resolveSetCondition } from '../finanzen/financeCalc';
@@ -388,7 +388,7 @@ export async function waehrungVon(uid: number): Promise<string> {
 
 /** Trifft alle Zeilen des Sets im Schreibbereich: Wer die Kiste packt, packt
  * sie für alle, die darin nachsehen. */
-export async function lagerortDesSetsSetzen(uid: number, sn: string, storage: unknown) {
+export async function lagerortDesSetsSetzen(uid: number, sn: string, storage: string | null | undefined) {
   const ort = normalisiereLagerort(storage);
   const n = await setzeLagerort('set', { schreiber: uid }, [normalizeSetNumber(sn)], ort);
   return { ort, n };
@@ -411,8 +411,8 @@ export async function alarmDesSetsSetzen(uid: number, sn: string, eingabe: Param
   return setzeAlarm(uid, normalizeSetNumber(sn), await waehrungVon(uid), eingabe);
 }
 
-export function alarmDesSetsLoeschen(uid: number, sn: string, condition: unknown) {
-  return loescheAlarm(uid, normalizeSetNumber(sn), String(condition || 'N'));
+export function alarmDesSetsLoeschen(uid: number, sn: string, condition: Zustand | undefined) {
+  return loescheAlarm(uid, normalizeSetNumber(sn), condition ?? 'N');
 }
 
 export async function alarmCsvImportStarten(uid: number, text: string) {
@@ -475,9 +475,12 @@ export function csvImportStandAbonnieren(uid: number, melde: () => void): () => 
   return () => { csvImportBus.off(`progress:${uid}`, lokal); abmelden(); };
 }
 
+/** Konto als Kennung aus der Eingabe; schreibziel() prüft es. */
+type KontoWunsch = string | number | null | undefined;
+
 /** Drei Erfassungen sind drei Käufe und können im Haushalt verschiedenen Kindern
  * gehören; wer alles will, wählt alle Zeilen. */
-export async function setVerschieben(sk: SetsKontext, uid: number, roh: string, von: unknown, nach: unknown, erfassungen: number[]) {
+export async function setVerschieben(sk: SetsKontext, uid: number, roh: string, von: KontoWunsch, nach: KontoWunsch, erfassungen: number[]) {
   if (!erfassungen.length) fachfehler('ungueltig', 'kaufpreise_angeben');
   const sn = mitVersion(roh);
   const fromId = await schreibziel(uid, von ?? uid);

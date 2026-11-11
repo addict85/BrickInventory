@@ -103,7 +103,7 @@ router.put('/users/:id/password', requireAdmin, async (req: OffeneAnfrage<'PUT /
   // Mit dem Passwort eines anderen Kontos lässt sich dieses übernehmen —
   // eine offene Verwaltersitzung allein genügt dafür nicht.
   if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password)) return;
-  if (!await K.setzeFremdesPasswort(targetId, password)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+  if (!await K.setzeFremdesPasswort(targetId, password ?? '')) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
   await protokolliere(angemeldeteNutzerId(req), targetId, 'passwort_gesetzt');
   // Wie beim entfernten Faktor: Eine Übernahme durch eine erbeutete Verwaltersitzung bliebe sonst unbemerkt.
   const durch = nutzerName(req) ?? '';

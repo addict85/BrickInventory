@@ -139,7 +139,7 @@ test('any wird weniger, nie mehr', () => {
   }
 });
 
-test('any in allen Formen wird weniger, nie mehr', () => {
+test('any in allen Formen und unknown-Parameter in Diensten werden weniger, nie mehr', () => {
   // Auch Promise<any>, any[] und Record<string, any>: Die enge Zählung oben sah
   // nur `as any` und `: any`. Gemessen 35 am 10.11.2026.
   // Gegenprobe (05.11.2026): getSetting wieder `fallback?: any` ohne Überladungen → rot.
@@ -147,6 +147,20 @@ test('any in allen Formen wird weniger, nie mehr', () => {
   const ist = zaehle([/\bany\b/g]);
   assert.ok(ist <= SCHRANKE, `${ist}-mal any, erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ any (alle Formen): ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+  // Routen reichen req.eingabe/req.pfad mit Vertragstyp durch, Dienste nehmen
+  // Fachtypen (Zustand, string). Ausgenommen sind die Prüfer für Rohwerte
+  // (src/vertrag, src/infra, src/http) und Fehlerparameter. Gemessen 75 am 11.11.2026.
+  // Gegenprobe (11.11.2026): `condition: unknown` zurück in alarmDesSetsLoeschen → rot (76).
+  const SCHRANKE_UNKNOWN = 75;
+  const MUSTER = /(?<!catch\s*)[(,]\s*\.{0,3}(?!(?:e|err|error|fehler|grund)\b)\w+\??\s*:\s*unknown\s*(?=[,)=])/g;
+  assert.equal(('f(a: unknown, b?: unknown = 1)'.match(MUSTER) || []).length + ('catch (e: unknown)'.match(MUSTER) || []).length, 2);
+  const ohneKommentare = require('./helpers/sources').ohneKommentare;
+  const ROH = /[\\/]src[\\/](?:vertrag|infra|http)[\\/]/;
+  const unbekannt = quellen().filter(f => /[\\/]src[\\/]/.test(f) && !ROH.test(f))
+    .reduce((n, f) => n + (ohneKommentare(fs.readFileSync(f, 'utf8')).match(MUSTER) || []).length, 0);
+  assert.ok(unbekannt > 20, `nur ${unbekannt} unknown-Parameter gefunden — greift die Suche noch?`);
+  assert.ok(unbekannt <= SCHRANKE_UNKNOWN, `${unbekannt} Parameter vom Typ unknown in Diensten, erlaubt sind ${SCHRANKE_UNKNOWN}`);
+  if (unbekannt < SCHRANKE_UNKNOWN) console.log(`  ℹ unknown-Parameter: ${unbekannt} (Schranke ${SCHRANKE_UNKNOWN}) — Schranke nachziehen`);
 });
 
 test('eigene REQUIRE_DB-Blöcke in Tests werden weniger, nie mehr', () => {

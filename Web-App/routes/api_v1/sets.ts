@@ -17,6 +17,7 @@ import { registerSse } from '../../src/http/sseRegistry';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/http/anmeldung';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/http/vertragsRouter';
+import { zustand } from '../../src/infra/validate';
 const router = vertragsRouter();
 
 // ── Feste Pfade VOR den Pfaden mit :setNumber ────────────────────────────────
@@ -59,7 +60,8 @@ router.put('/sets/:setNumber/alert', requireToken, async (req: Anfrage<'PUT /api
 });
 
 router.delete('/sets/:setNumber/alert', requireToken, async (req: Anfrage<'DELETE /api/v1/sets/:setNumber/alert'>, res: Antwort<'DELETE /api/v1/sets/:setNumber/alert'>) => {
-  const n = await sets.alarmDesSetsLoeschen(req.apiUser.user_id, req.pfad.setNumber, req.abfrage.condition);
+  const n = await sets.alarmDesSetsLoeschen(req.apiUser.user_id, req.pfad.setNumber,
+    req.abfrage.condition ? zustand(req.abfrage.condition) : undefined);
   res.json({ success: true, removed: n });
 });
 

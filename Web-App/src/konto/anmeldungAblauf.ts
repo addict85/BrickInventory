@@ -164,7 +164,7 @@ async function adressMails(user: Konto, email: string, token: string): Promise<b
 }
 
 /** Der Name aus der Tabelle: Mit App-Token gibt es keine Sitzung, die ihn trägt. */
-export async function eigenesPasswortAendern(uid: number, neu: unknown, passkeysWiderrufen: boolean) {
+export async function eigenesPasswortAendern(uid: number, neu: string, passkeysWiderrufen: boolean) {
   const konto = await K.kontoKurz(uid);
   const mangel = passwortMangel(neu, konto?.username);
   if (mangel) fachfehler('ungueltig', mangel);

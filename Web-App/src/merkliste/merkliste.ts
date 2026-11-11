@@ -64,15 +64,13 @@ export interface Merkposten {
 
 /** Ohne Angabe gilt die Einstellung des Nutzers, nicht hart 'N' — die
  * Verwechslung verbuchte einmal eine Erfassung mit falschem Preis. */
-export async function zustandOder(condition: unknown, userId: number): Promise<string> {
-  const c = String(condition ?? '').trim().toUpperCase();
-  if (c === 'N' || c === 'U') return c;
-  return await nutzerStandardZustand(userId);
+export async function zustandOder(roh: string | null | undefined, userId: number): Promise<V.Zustand> {
+  return V.optionalCondition(String(roh ?? '').trim().toUpperCase()) ?? V.zustand(await nutzerStandardZustand(userId));
 }
 
 /** ON CONFLICT statt vorher fragen: Zwei Geräte gleichzeitig sollen keinen Fehler sehen. */
 export async function legeMerkpostenAn(
-  userId: number, setNumber: string, condition: unknown, aufgenommenAm?: string | null,
+  userId: number, setNumber: string, condition: string | null | undefined, aufgenommenAm?: string | null,
 ): Promise<{ merkposten: Merkposten | null; war_neu: boolean }> {
   const sn = sanitizeSetNumber(setNumber);
   const c  = await zustandOder(condition, userId);
@@ -82,18 +80,16 @@ export async function legeMerkpostenAn(
 }
 
 /** Kein Fehler, wenn es keinen gab — das Ziel ist erreicht. */
-export async function loescheMerkposten(userId: number, setNumber: string, condition: unknown): Promise<number> {
-  const c = String(condition ?? 'N').toUpperCase();
+export async function loescheMerkposten(userId: number, setNumber: string, c: V.Zustand): Promise<number> {
   const r = await repo.streicheVormerkung(userId, sanitizeSetNumber(setNumber), c);
   return r.changes ?? 0;
 }
 
 // UPDATE statt löschen und neu anlegen: Aufnahmedatum und Preisalarm bleiben.
 export async function verschiebeMerkposten(
-  vonId: number, setNumber: string, condition: unknown, zuId: number,
+  vonId: number, setNumber: string, c: V.Zustand, zuId: number,
 ): Promise<{ verschoben: boolean; zusammengefuehrt: boolean }> {
   const sn = sanitizeSetNumber(setNumber);
-  const c  = String(condition ?? 'N').toUpperCase() === 'U' ? 'U' : 'N';
   if (vonId === zuId) return { verschoben: false, zusammengefuehrt: false };
 
   const schon = await repo.istVorgemerkt(zuId, sn, c);
@@ -173,8 +169,8 @@ export async function merkpostenVon(
 
 /** Über addSet(), die eine Wahrheit fürs Erfassen, statt eines eigenen INSERT. */
 export async function uebernimm(
-  leserId: number, besitzerId: number, setNumber: string, condition: unknown,
-  eingabe: { quantity?: unknown; purchase_price?: unknown; condition?: unknown;
+  leserId: number, besitzerId: number, setNumber: string, condition: V.Zustand,
+  eingabe: { quantity?: unknown; purchase_price?: unknown; condition?: string | null | undefined;
              storage?: unknown } = {},
 ): Promise<{ action: string; set_number: string }> {
   const sn = sanitizeSetNumber(setNumber);

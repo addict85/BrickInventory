@@ -6,7 +6,7 @@ import { DEFAULT_PRICE_CONDITION, fetchPartPrice, fetchMinifigPrice, ladeBlNumme
          resolveBlPartNumber, resolveBlColorId } from './rechnung/preise';
 import { meldeFehler, fehlertext, logAndContinue } from '../infra/fehler';
 import { getMinifigParts } from '../katalog/rebrickableKatalog';
-import { KEINE_FARBE } from '../infra/validate';
+import { KEINE_FARBE, zustand } from '../infra/validate';
 
 // Ein Blatt ohne Rückbezug, damit die Aufrufer echt importieren statt spät mit require().
 export async function getCurrentMarketPrice(setNumber: string, userId: number, condition: string | null = null) {
@@ -75,12 +75,12 @@ export async function marktpreiseAusCacheFuerFiguren(
   for (const f of figuren) {
     const nummer = String(f.fig_number ?? '');
     if (!nummer) continue;
-    const zustand = f.condition === 'U' ? 'U' : 'N';
-    const anders  = zustand === 'N' ? 'U' : 'N';
+    const zst = zustand(f.condition);
+    const anders  = zst === 'N' ? 'U' : 'N';
     // Reihenfolge wie in der Bewertung; BrickLink führt zu vielen älteren Figuren
     // nur einen der beiden Zustände.
     for (const k of [f.bl_fig_number, f.fig_number].filter(Boolean).map(String))
-      for (const c of [zustand, anders]) {
+      for (const c of [zst, anders]) {
         const wert = cache.get(`${k}|${c}`);
         if (wert != null) { treffer.set(nummer, wert); break; }
       }
@@ -133,8 +133,8 @@ export async function marktpreiseAusCacheFuerTeile(
     const schluessel = `${t.part_number}|${t.color_id ?? KEINE_FARBE}`;
     const a = auflösung.get(schluessel);
     if (!a) continue;
-    const zustand = t.condition === 'U' ? 'U' : 'N';
-    for (const c of [zustand, zustand === 'N' ? 'U' : 'N']) {
+    const zst = zustand(t.condition);
+    for (const c of [zst, zst === 'N' ? 'U' : 'N']) {
       const wert = cache.get(`${a.nummer}|${a.farbe}|${c}`);
       if (wert != null) { treffer.set(schluessel, wert); break; }
     }
@@ -171,7 +171,7 @@ export async function estimateFigPriceFromParts(figNumber: string, userId: numbe
 export async function schaetzeFigurenpreis(figNumber: string, userId: number, condition = DEFAULT_PRICE_CONDITION): Promise<{ preis: number; abdeckung: number | null } | null> {
   try {
     const currency = await getSetting(userId, 'currency', 'EUR');
-    const cond0 = ['N','U'].includes(condition) ? condition : DEFAULT_PRICE_CONDITION;
+    const cond0 = zustand(condition, DEFAULT_PRICE_CONDITION);
 
     // Erst im Cache nachsehen: Sonst kostete jede Figur je Teil einen Abruf.
     const ttl = Math.max(1, parseInt(await getGlobalSetting('price_cache_ttl', '24')));

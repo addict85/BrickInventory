@@ -33,7 +33,7 @@ export function adresse(req: Request): string {
   return req.ip || req.socket?.remoteAddress || '?';
 }
 
-export function anmelden(req: Request, username: unknown, password: unknown, code?: unknown,
+export function anmelden(req: Request, username: string | null | undefined, password: string | null | undefined, code?: string | number | null | undefined,
                          passkeyAntwort?: unknown): Promise<AnmeldeErgebnis> {
   return pruefeAnmeldedaten({ ip: adresse(req) }, username, password, code, passkeyAntwort);
 }
@@ -163,7 +163,7 @@ function absagen(req: Request, res: Response, absage: BestaetigungsAbsage): void
 
 /** Passwort, bei aktivem zweitem Faktor auch Code oder Passkey; nur für Routen
  * mit `bestaetigung` im Vertrag, die der Wächtertest einzeln prüft. */
-export async function bestaetigeMitFaktor(req: Request, res: Response, uid: number, passwort: unknown,
+export async function bestaetigeMitFaktor(req: Request, res: Response, uid: number, passwort: string | null | undefined,
                                           codeFeld = 'code'): Promise<boolean> {
   const schluessel = req.route ? `${req.method} ${req.baseUrl}${req.route.path}` : '';
   if (konfig().vertragPruefen && routeZu(schluessel) && !routeZu(schluessel)?.bestaetigung)
@@ -176,7 +176,7 @@ export async function bestaetigeMitFaktor(req: Request, res: Response, uid: numb
   return !absage;
 }
 
-export async function bestaetigeCode(req: Request, res: Response, uid: number, code: unknown): Promise<boolean> {
+export async function bestaetigeCode(req: Request, res: Response, uid: number, code: string | number | null | undefined): Promise<boolean> {
   const absage = await pruefeCodeBestaetigung(uid, zugangVon(req), code);
   if (absage) absagen(req, res, absage);
   return !absage;

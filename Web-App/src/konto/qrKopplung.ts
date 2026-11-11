@@ -19,7 +19,7 @@ export async function erzeuge(uid: number, tage: number | null): Promise<{ token
 }
 
 export async function meldeGeraet(
-  token: unknown,
+  token: string | null | undefined,
   geraet: unknown,
   ip: string | null | undefined,
 ): Promise<{ abholung: string; code: string; uid: number } | null> {
@@ -61,7 +61,7 @@ export async function kopplungsStand(kopplung: number, uid: number) {
   return z ? { stand: z.stand, geraet: z.geraet, ip_bereich: z.ip_bereich } : null;
 }
 
-function codePasst(gespeichert: string | null, eingabe: unknown): boolean {
+function codePasst(gespeichert: string | null, eingabe: string | number | null | undefined): boolean {
   const ziffern = String(eingabe ?? '').replace(/\s+/g, '');
   if (!gespeichert || !/^\d{6}$/.test(ziffern)) return false;
   return crypto.timingSafeEqual(Buffer.from(hashToken(ziffern)), Buffer.from(gespeichert));
@@ -70,7 +70,11 @@ function codePasst(gespeichert: string | null, eingabe: unknown): boolean {
 export type Bestaetigung = 'ok' | 'code_falsch' | 'abgelehnt' | 'nicht_wartend' | 'unbekannt';
 
 /** Nach QR_FEHLVERSUCHE falschen Codes ist die Kopplung abgelehnt: Sechs Ziffern hält das lange genug. */
-export async function bestaetigeKopplung(kopplung: number, uid: number, code: unknown): Promise<Bestaetigung> {
+export async function bestaetigeKopplung(
+  kopplung: number,
+  uid: number,
+  code: string | number | null | undefined,
+): Promise<Bestaetigung> {
   const z = await repo.qrKopplungDesKontos(kopplung, uid);
   if (!z) return 'unbekannt';
   if (z.stand !== 'wartet') return 'nicht_wartend';

@@ -13,7 +13,7 @@ import { fachfehler } from '../infra/fehlerTexte';
 import type { FehlerCode } from '../infra/fehlerTexte';
 import { blAbrufNummer } from '../katalog/blZuordnung';
 import { mengeDesSets, mengeDerPosition, preisSpalte } from '../../db/bestandsmenge';
-import { bestandsMenge } from '../infra/validate';
+import { bestandsMenge, zustand } from '../infra/validate';
 
 export type { ErfassungsArt } from '../../db/bestandsmenge';
 import type { ErfassungsArt } from '../../db/bestandsmenge';
@@ -123,7 +123,7 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
       neuesDatum = String(date);
     }
     const hatZustand = condition !== undefined && condition !== null;
-    const zielZustand = hatZustand ? (['N', 'U'].includes(String(condition)) ? String(condition) : 'N') : (acq.condition || 'N');
+    const zielZustand = hatZustand ? zustand(condition) : (acq.condition || 'N');
     const zielGeschaetzt = rawPrice !== undefined ? (preisGeschaetzt && priceVal != null) : !!acq.price_estimated;
     // Geprüft gegen die Werte NACH dieser Änderung.
     if (neuesDatum || rawPrice !== undefined || hatZustand) {
