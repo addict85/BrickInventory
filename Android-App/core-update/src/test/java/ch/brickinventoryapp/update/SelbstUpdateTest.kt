@@ -172,7 +172,7 @@ class SelbstUpdateTest {
     fun `der Workflow legt die Beschreibung neben das APK`() {
         // Ueber Quellen.workflow(), nicht mit eigener Pfadangabe: Gradle-Tests laufen
         // aus dem Modulordner, und ein eigener relativer Pfad verzählt sich leicht.
-        val text = Quellen.workflow()
+        val text = Quellen.workflow("android-release.yml")
         assert(text.contains("""gh release upload "${'$'}ETIKETT" version.json --clobber""")) {
             "Der Workflow laedt keine version.json mehr hoch — ohne sie findet die App " +
                 "kein Update, ohne dass irgendwo etwas scheitert"
@@ -204,7 +204,7 @@ class SelbstUpdateTest {
         // und das Datenmodell, das es liest. Nur eine Seite zu pruefen laesst
         // genau die Sorte Auseinanderlaufen zu, gegen die dieser Baum sonst
         // ueberall angeht.
-        val workflow = Quellen.workflow()
+        val workflow = Quellen.workflow("android-release.yml")
         assert(workflow.contains("commit:${'$'}commit")) {
             "version.json traegt das Herkunftsfeld nicht mehr als `commit`"
         }

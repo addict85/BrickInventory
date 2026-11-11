@@ -14,6 +14,8 @@ import ch.brickinventoryapp.testing.PfadServer
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.yield
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -94,7 +96,8 @@ class KontosichtTest {
         repeat(5) { yield() }
         // Was ein Repository anwendet, ändert die Ablage — die Kontosicht fragt neu.
         ablage.wendeAn(Bearbeitung.SetErfassen(AddSetRequest("12-1")))
-        repeat(5) { yield() }
+        // Die neue Anfrage läuft über den Testserver, also auf einem fremden Faden.
+        withTimeoutOrNull(5_000) { while (pfade.anfragenAn("GET /api/v1/sets?").size <= vorher) delay(10) }
         beobachter.cancel()
         assertEquals("neu gefragt", vorher + 1, pfade.anfragenAn("GET /api/v1/sets?").size)
     }

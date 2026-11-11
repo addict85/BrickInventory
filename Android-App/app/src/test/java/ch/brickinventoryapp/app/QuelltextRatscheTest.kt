@@ -346,7 +346,8 @@ class QuelltextRatscheTest {
     private fun inKoroutine(c: String, ab: Int): Boolean {
         val davor = c.substring(maxOf(0, ab - 300), ab)
         val anweisung = davor.substring(maxOf(davor.lastIndexOf('{'), davor.lastIndexOf('}')) + 1)
-        if (Regex("""\bsuspend\s+fun\b[^=]*=\s*$""").containsMatchIn(anweisung)) return true
+        // Auch `= gueltig(runCatching {`: Der Ausdruck einer suspend fun läuft ganz in ihr.
+        if (Regex("""\bsuspend\s+fun\b[^=]*=[^{};]*$""").containsMatchIn(anweisung)) return true
         var tiefe = 0
         for (j in ab - 1 downTo 0) {
             when (c[j]) {
