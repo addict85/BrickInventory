@@ -19,7 +19,8 @@ arbeiten. Prozesse sprechen über PostgreSQL miteinander (Tabellen,
 ## Schichten
 
 ```
-server.ts, startup/     hängt alles ein
+server.ts               startet nur: Konfiguration, Datenbank, Jobs, Herunterfahren
+startup/                baut ein (app.ts: Express-App mit baueApp({ pool, konfig, sitzungsGeheimnis }))
 routes/                 HTTP: Eingabe prüfen (Vertrag), Dienst rufen, antworten
 jobs/                   Auftrags-Worker, Bearbeitertabelle, Verdrahtung (keine Fachlogik)
 src/<bereich>/          Dienste (Fachlogik) und repository (SQL)

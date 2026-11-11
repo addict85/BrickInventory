@@ -245,11 +245,11 @@ test('ins Netz geht nur clients/ über src/infra/abruf.ts', () => {
 
 test('startup/ importiert nichts aus routes/', () => {
   // Was der Start anstösst (Aufräumläufe), steht in src/; eine Route
-  // gehört nur in server.ts.
+  // gehört nur in den Zusammenbau der App (startup/app.ts).
   // Gegenprobe (10.11.2026): `import { startPdfJobCleanup } from
   // '../routes/api_v1/pdf'` in startup/jobsProzess.ts → rot.
   const treffer = [];
-  for (const f of fs.readdirSync(path.join(ROOT, 'startup')).filter(f => f.endsWith('.ts')))
+  for (const f of fs.readdirSync(path.join(ROOT, 'startup')).filter(f => f.endsWith('.ts') && f !== 'app.ts'))
     for (const ziel of importe(`startup/${f}`).filter(z => /routes\//.test(z))) treffer.push(`startup/${f} -> ${ziel}`);
   assert.deepEqual(treffer, []);
 });
@@ -474,8 +474,9 @@ test('Express kennen nur src/http, die HTTP-Seiten der Bereiche und die Routen',
   // (10.11.2026): dasselbe in src/infra/geld.ts, src/vertrag/grund.ts und
   // db/txLock.ts → rot.
   const nutztExpress = d => /from\s+['"]express['"]|import\(\s*['"]express['"]\s*\)|require\(\s*['"]express['"]\s*\)/.test(quelltext(d));
+  // startup/app.ts baut die App zusammen, wie zuvor server.ts.
   const treffer = tsUnter('src', 'db', 'clients', 'jobs', 'startup')
-    .filter(d => bereichVon(d) !== 'http' && !istHttp(d))
+    .filter(d => bereichVon(d) !== 'http' && !istHttp(d) && d !== 'startup/app.ts')
     .filter(nutztExpress);
   assert.deepEqual(treffer, []);
   assert.ok(tsUnter('src/http').filter(nutztExpress).length >= 8, 'die Suche findet Express in src/http nicht mehr');
