@@ -1,0 +1,15 @@
+Gegenprobe: core-netz kennt wieder einen Android-Intent (Oberfläche statt Netzregel)
+Modul: app
+Test: ch.brickinventoryapp.app.ModulgrenzenTest
+Rot: Schichtung der Kernmodule
+
+diff --git a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/ExterneAdresse.kt b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/ExterneAdresse.kt
+--- a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/ExterneAdresse.kt
++++ b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/ExterneAdresse.kt
+@@ -1,5 +1,6 @@
+ package ch.brickinventoryapp.netz.util
+
++import android.content.Intent
+ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+
+ /**

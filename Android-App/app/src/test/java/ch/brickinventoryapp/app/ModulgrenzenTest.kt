@@ -62,6 +62,8 @@ import ch.brickinventoryapp.testing.Quellen
  *      ch.brickinventoryapp.sammlung → rot „außerhalb des Paketstamms ihres Moduls“
  *   V  gegenproben/daten-reicht-netz-weiter.patch: core-data bindet core-netz per api ein →
  *      rot „Modulkanten per api nur zu core-model: [core-data → core-netz]“ (Schichtung …)
+ *   X  gegenproben/netz-oeffnet-intent.patch: ExterneAdresse.kt importiert android.content.Intent →
+ *      rot „core-netz importiert Ablage, Repositories, DI oder Android-Oberfläche“ (Schichtung …)
  *   W  gegenproben/route-im-kern.patch: eine Route in core-model, die Verwaltung öffnet sie →
  *      rot „feature-verwaltung nennt fremde Routentypen: [Zentralziel]“ (kein Bereich hängt …);
  *      lokal mit kotlinc gegen den Baum gemessen, in der CI über Gradle
@@ -198,8 +200,9 @@ class ModulgrenzenTest {
             Regex("""^import\s+([\w.]+)""", RegexOption.MULTILINE).findAll(f.readText()).map { "${f.name}: ${it.groupValues[1]}" }
         }.toList()
         assertTrue("Nur ${importe.size} Importe in core-netz — Pfad veraltet?", importe.size > 20)
-        val fremd = importe.filter { Regex(""": (androidx\.room|dagger|javax\.inject|retrofit2|ch\.brickinventoryapp\.data\.(repository|lokal|cache))\b""").containsMatchIn(it) }
-        assertTrue("core-netz importiert Ablage, Repositories oder DI: $fremd", fremd.isEmpty())
+        // Ein Intent ist Oberfläche (core-ui), keine Netzregel.
+        val fremd = importe.filter { Regex(""": (androidx\.room|dagger|javax\.inject|retrofit2|android\.content|ch\.brickinventoryapp\.data\.(repository|lokal|cache))\b""").containsMatchIn(it) }
+        assertTrue("core-netz importiert Ablage, Repositories, DI oder Android-Oberfläche: $fremd", fremd.isEmpty())
         pruefeUiOhneFachwissen()
     }
 
