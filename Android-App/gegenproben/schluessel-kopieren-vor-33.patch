@@ -1,0 +1,17 @@
+Gegenprobe: Der TOTP-Schlüssel lässt sich schon ab API 30 kopieren, wo das System ihn anzeigt
+Modul: feature-konto
+Test: ch.brickinventoryapp.konto.ZweiterFaktorMaskeTest
+Rot: der Schluessel ist erst ab API 33 kopierbar, und dann als vertraulich markiert
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenZweiterFaktor.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenZweiterFaktor.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenZweiterFaktor.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenZweiterFaktor.kt
+@@ -63,7 +63,7 @@
+  * (EXTRA_IS_SENSITIVE ab API 33): Darunter zeigen Vorschau und Tastaturverlauf ihn an.
+  * Die Codes gehen nie über die Ablage, nur über [teileCodes].
+  */
+-internal fun schluesselKopierbar(sdk: Int = Build.VERSION.SDK_INT): Boolean = sdk >= Build.VERSION_CODES.TIRAMISU
++internal fun schluesselKopierbar(sdk: Int = Build.VERSION.SDK_INT): Boolean = sdk >= Build.VERSION_CODES.R
+ 
+ /** false, wenn keine App den Link nimmt (Manifest: <queries> für otpauth). */
+ internal fun oeffneMitAuswahl(ctx: Context, uri: String, titel: String): Boolean {
