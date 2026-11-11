@@ -35,6 +35,7 @@ import ch.brickinventoryapp.testing.FakeApi
 import ch.brickinventoryapp.testing.NummernTexte
 import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.testing.TestDienste
+import ch.brickinventoryapp.testing.text
 
 /**
  * Der Balken des CSV-Imports ausgeführt: Strom, Vordergrund-Dienst und Ablage im
@@ -165,12 +166,12 @@ class CsvImportViewModelTest {
         mitVm(Strom(), Dienst()) { vm ->
             vm.cancelCsvImport()
             advanceUntilIdle()
-            assertEquals("Scheitert der Abbruch, sagt es die Meldung", "fehler", t.meldungen.meldung.value)
+            assertEquals("Scheitert der Abbruch, sagt es die Meldung", "fehler", t.meldungen.text)
             t.meldungen.quittiere()
             fake.antworten["cancelCsvImport"] = GenericAdminResponse(success = true)
             vm.cancelCsvImport()
             advanceUntilIdle()
-            assertEquals("t${R.string.csv_cancel_requested}", t.meldungen.meldung.value)
+            assertEquals("t${R.string.csv_cancel_requested}", t.meldungen.text)
         }
     }
 }

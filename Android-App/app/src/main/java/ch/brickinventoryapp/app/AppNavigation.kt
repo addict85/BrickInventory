@@ -41,6 +41,9 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.app.nav.AktivitaetsZustand
 import ch.brickinventoryapp.netz.util.NetworkPolicy
+import ch.brickinventoryapp.data.util.LanguageManager
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
 import ch.brickinventoryapp.app.nav.Reiter
 import ch.brickinventoryapp.app.nav.ZielUmgebung
 import ch.brickinventoryapp.ui.components.UebergangsRahmen
@@ -83,9 +86,10 @@ fun BrickInventoryRoute(
     // Snackbar aus eigenem Flow — Meldungen rekomponieren so nicht mehr den
     // gesamten Tree über AppUiState.
     val snackbarMsg by vm.snackbar.collectAsStateWithLifecycle()
+    val ctx = LocalContext.current
     LaunchedEffect(snackbarMsg) {
         snackbarMsg?.let {
-            snackbarHostState.showSnackbar(it)
+            snackbarHostState.showSnackbar(it.alsSatz(ctx))
             vm.clearSnackbar()
         }
     }
@@ -212,6 +216,12 @@ internal fun reiterDerLeiste(): List<Reiter> {
             Reiter(AppZiel.Mehr, { Icon(Icons.Default.MoreHoriz, null) }, mehr),
         )
     }
+}
+
+/** Den Satz bildet die Oberfläche, in der Sprache der App (LanguageManager). */
+internal fun Meldung.alsSatz(ctx: Context): String = when (this) {
+    is Meldung.Text -> text
+    is Meldung.Ressource -> LanguageManager.localizedContext(ctx).getString(id, *werte.toTypedArray())
 }
 
 /** Dauer eines Seitenwechsels; kurz genug, dass er nicht aufhält. */

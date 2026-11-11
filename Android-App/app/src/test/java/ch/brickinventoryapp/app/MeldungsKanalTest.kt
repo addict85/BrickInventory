@@ -24,6 +24,7 @@ import ch.brickinventoryapp.testing.Quellen
 import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.testing.TeileRepository
 import ch.brickinventoryapp.testing.TestDienste
+import ch.brickinventoryapp.testing.text
 
 /**
  * Es gibt genau EINEN Weg zur Snackbar.
@@ -112,9 +113,9 @@ class MeldungsKanalTest {
         // versucht, baut sich wieder einen eigenen.
         val kanal = MeldungsKanal()
         kanal.zeige("gespeichert")
-        assertEquals("AppNavigation.kt sammelt die Nur-Lese-Sicht ein", "gespeichert", kanal.meldung.value)
+        assertEquals("AppNavigation.kt sammelt die Nur-Lese-Sicht ein", "gespeichert", kanal.text)
         kanal.quittiere()
-        assertEquals(null, kanal.meldung.value)
+        assertEquals(null, kanal.text)
         assertTrue("Ohne @Singleton bekäme jedes ViewModel eine eigene Instanz — dann gibt es " +
             "wieder so viele Kanäle wie ViewModels, nur unsichtbar",
             kanal::class.java.isAnnotationPresent(Singleton::class.java))
@@ -155,11 +156,11 @@ class MeldungsKanalTest {
             val galerie = t.merke(GalerieViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, SetsRepository(t.api, t.cache),
                 FinanzenRepository(t.api, t.cache), SavedStateHandle()))
             galerie.deleteSet("75192-1")
-            assertTrue("Meldung der Galerie", t.meldungen.meldung.value != null)
+            assertTrue("Meldung der Galerie", t.meldungen.text != null)
             t.meldungen.quittiere()
             val teile = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
             teile.setzeTeilFarbe("3001", 5, 11)
-            assertTrue("Meldung der Teile", t.meldungen.meldung.value != null)
+            assertTrue("Meldung der Teile", t.meldungen.text != null)
         } finally {
             t.aufraeumen()
             Dispatchers.resetMain()

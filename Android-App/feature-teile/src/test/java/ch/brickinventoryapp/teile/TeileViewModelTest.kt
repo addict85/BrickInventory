@@ -26,6 +26,7 @@ import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.TestDienste
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 import ch.brickinventoryapp.model.ui.Listenansicht
+import ch.brickinventoryapp.testing.text
 
 /**
  * Das Teile-ViewModel, ausgeführt gegen die Regeln eines PfadServers ohne Netz
@@ -150,7 +151,7 @@ class TeileViewModelTest {
             assertTrue("Liste nachgeladen", vm.partsState.value.parts.isNotEmpty())
         }
         assertEquals(listOf(Aenderung.Teile), liste)
-        assertEquals("t${R.string.vm_saved}", t.meldungen.meldung.value)
+        assertEquals("t${R.string.vm_saved}", t.meldungen.text)
         assertTrue(pfade.anfragenAn("PUT /api/v1/parts/3001/5").isNotEmpty())
     }
 
@@ -163,7 +164,7 @@ class TeileViewModelTest {
             assertTrue("Antwort da", pfade.anfragenAn("DELETE /api/v1/parts/3001/5").isNotEmpty())
         }
         assertTrue(liste.isEmpty())
-        assertNull("Ein 401 ist schon gemeldet — hier kein zweiter, leerer Satz", t.meldungen.meldung.value)
+        assertNull("Ein 401 ist schon gemeldet — hier kein zweiter, leerer Satz", t.meldungen.text)
     }
 
     @Test

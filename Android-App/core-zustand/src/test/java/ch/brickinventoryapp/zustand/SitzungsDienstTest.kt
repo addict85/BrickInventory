@@ -39,6 +39,7 @@ import ch.brickinventoryapp.testing.NummernTexte
 import ch.brickinventoryapp.testing.SpeicherSitzungsablage
 import ch.brickinventoryapp.testing.TestDienste
 import ch.brickinventoryapp.testing.VerwaltungRepository
+import ch.brickinventoryapp.testing.text
 
 /**
  * Der SitzungsDienst ausgeführt: Abmelden bei 401 und zu alter Anmeldung,
@@ -114,13 +115,13 @@ class SitzungsDienstTest {
         advanceUntilIdle()
         assertEquals(1, abmeldungen)
         assertFalse(t.sitzung.state.value.isLoggedIn)
-        assertEquals("t${R.string.vm_session_expired}", t.meldungen.meldung.value)
+        assertEquals("t${R.string.vm_session_expired}", t.meldungen.text)
 
         t.meldungen.quittiere()
         abgelaufenSignal.notifyExpired()
         advanceUntilIdle()
         assertEquals("Abgemeldet meldet ein 401 nicht noch einmal ab", 1, abmeldungen)
-        assertNull(t.meldungen.meldung.value)
+        assertNull(t.meldungen.text)
     }
 
     @Test
@@ -129,7 +130,7 @@ class SitzungsDienstTest {
         angemeldet()
         advanceUntilIdle()
         assertEquals(1, abmeldungen)
-        assertEquals("t${R.string.vm_anmeldung_zu_alt}", t.meldungen.meldung.value)
+        assertEquals("t${R.string.vm_anmeldung_zu_alt}", t.meldungen.text)
         assertEquals(0, fake.aufrufeVon("getMe"))
         assertEquals(0, vorgewaermt)
     }
@@ -145,14 +146,14 @@ class SitzungsDienstTest {
         rechte.melde()
         advanceUntilIdle()
         assertFalse(t.sitzung.state.value.isAdmin)
-        assertEquals("t${R.string.vm_rechte_entzogen}", t.meldungen.meldung.value)
+        assertEquals("t${R.string.vm_rechte_entzogen}", t.meldungen.text)
 
         t.meldungen.quittiere()
         val abrufe = fake.aufrufeVon("getMe")
         rechte.melde()
         advanceUntilIdle()
         assertEquals("Ohne Verwalterrecht kein weiterer Abruf", abrufe, fake.aufrufeVon("getMe"))
-        assertNull(t.meldungen.meldung.value)
+        assertNull(t.meldungen.text)
     }
 
     @Test
@@ -204,7 +205,7 @@ class SitzungsDienstTest {
     fun `eine endgueltig gescheiterte Abmeldung am Server wird einmal gemeldet`() {
         ablage.gescheitert += "https://alt.example"
         mitVm {
-            assertEquals("t${R.string.abmeldung_gescheitert_text}", t.meldungen.meldung.value)
+            assertEquals("t${R.string.abmeldung_gescheitert_text}", t.meldungen.text)
             assertTrue(ablage.gescheitert.isEmpty())
         }
     }

@@ -33,6 +33,7 @@ import org.junit.Test
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.TestDienste
+import ch.brickinventoryapp.testing.text
 
 /**
  * Das Erfassungs-ViewModel: Scan, Erfassen über die Setnummer, Prüfanzeige.
@@ -142,7 +143,7 @@ class ErfassungViewModelTest {
         val vm = vm()
         vm.resolveBarcode("0000")
         bis("manuell") { vm.barcodeState.value.manuelleErfassungAnfordern }
-        assertEquals("t${R.string.vm_barcode_not_found}|0000", t.meldungen.meldung.value)
+        assertEquals("t${R.string.vm_barcode_not_found}|0000", t.meldungen.text)
         bis("Prüfanzeige weg") { vm.erfassungState.value.pruefung == null }
     }
 
@@ -153,7 +154,7 @@ class ErfassungViewModelTest {
         val vm = vm()
         vm.resolveBarcode("0001")
         bis("manuell") { vm.barcodeState.value.manuelleErfassungAnfordern }
-        assertEquals("fehler", t.meldungen.meldung.value)
+        assertEquals("fehler", t.meldungen.text)
     }
 
     @Test
@@ -165,11 +166,11 @@ class ErfassungViewModelTest {
         val vm = vm(anleger)
         val liste = t.gemeldet(1) {
             vm.addSet(Erfassungswunsch("75192"))
-            bis("fertig") { vm.erfassungState.value.pruefung == null && t.meldungen.meldung.value != null }
+            bis("fertig") { vm.erfassungState.value.pruefung == null && t.meldungen.text != null }
         }
         assertEquals(listOf(Pruefphase.ANLEGEN_STAMMDATEN, Pruefphase.ANLEGEN_BILD, Pruefphase.ANLEGEN_ABSCHLUSS),
             anleger.gesehen.take(3))
-        assertEquals("t${R.string.vm_added}|75192-1", t.meldungen.meldung.value)
+        assertEquals("t${R.string.vm_added}|75192-1", t.meldungen.text)
         assertEquals(listOf(Aenderung.Sets), liste)
     }
 
@@ -182,8 +183,8 @@ class ErfassungViewModelTest {
         val vm = vm(Anleger(listOf(SetAnlegenSchritt.Fertig(
             AddSetResponse(action = "added", setNumber = "99999-1", katalogOffen = true)))))
         vm.addSet(Erfassungswunsch("99999"))
-        bis("Meldung") { t.meldungen.meldung.value != null }
-        assertEquals("t${R.string.vm_set_added_no_catalog}|99999-1", t.meldungen.meldung.value)
+        bis("Meldung") { t.meldungen.text != null }
+        assertEquals("t${R.string.vm_set_added_no_catalog}|99999-1", t.meldungen.text)
     }
 
     @Test
@@ -200,10 +201,10 @@ class ErfassungViewModelTest {
     fun `ein abgebrochener Ereignisstrom ist ein Netzfehler, kein Satz des Servers`() {
         val vm = vm(Anleger(listOf(SetAnlegenSchritt.Fehler(""))))
         vm.addSet(Erfassungswunsch("75192-1"))
-        bis("gemeldet") { t.meldungen.meldung.value != null }
+        bis("gemeldet") { t.meldungen.text != null }
         // Ein Netzfehler wird über meldung() formuliert ("fehler"); ein Satz
         // des Servers käme unverändert — hier leer — und sagte nichts.
-        assertEquals("t${R.string.vm_add_failed}|75192-1|fehler", t.meldungen.meldung.value)
+        assertEquals("t${R.string.vm_add_failed}|75192-1|fehler", t.meldungen.text)
     }
 
     @Test
@@ -213,10 +214,10 @@ class ErfassungViewModelTest {
         bis("Dialog") { vm.barcodeState.value.result == "75192-1" }
         val liste = t.gemeldet(1) {
             vm.confirmAddBarcode(Erfassungswunsch("75192-1", zustand = Zustand.GEBRAUCHT))
-            bis("gemeldet") { t.meldungen.meldung.value != null }
+            bis("gemeldet") { t.meldungen.text != null }
         }
         assertEquals(listOf(Aenderung.Merkliste), liste)
-        assertEquals("t${R.string.wanted_added}", t.meldungen.meldung.value)
+        assertEquals("t${R.string.wanted_added}", t.meldungen.text)
         assertTrue(pfade.anfragenAn("POST /api/v1/wanted").isNotEmpty())
         assertNull(vm.barcodeState.value.result)
     }
@@ -255,8 +256,8 @@ class ErfassungViewModelTest {
         pfade.codes["/api/v1/sets"] = 500
         val vm = bisZumDialog()
         vm.confirmAddBarcode(Erfassungswunsch("75192-1"))
-        bis("gemeldet") { t.meldungen.meldung.value?.startsWith("t${R.string.vm_add_failed}") == true }
-        assertEquals("t${R.string.vm_add_failed}|75192-1|fehler", t.meldungen.meldung.value)
+        bis("gemeldet") { t.meldungen.text?.startsWith("t${R.string.vm_add_failed}") == true }
+        assertEquals("t${R.string.vm_add_failed}|75192-1|fehler", t.meldungen.text)
         bis("frei") { !vm.barcodeState.value.adding }
     }
 
@@ -289,7 +290,7 @@ class ErfassungViewModelTest {
         pfade.codes["/api/v1/sets/exists/10294-1"] = 500
         val vm = vm()
         vm.useScannedSetNumber("10294")
-        bis("gemeldet") { t.meldungen.meldung.value == "fehler" }
+        bis("gemeldet") { t.meldungen.text == "fehler" }
         bis("Prüfanzeige weg") { vm.erfassungState.value.pruefung == null }
         assertNull(vm.barcodeState.value.result)
         assertTrue("Nach einem Fehler wird nicht auf gut Glück weitergefragt", pfade.anfragenAn("/catalog/").isEmpty())

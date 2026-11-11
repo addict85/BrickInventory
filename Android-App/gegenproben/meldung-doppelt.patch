@@ -6,11 +6,11 @@ Rot: dieselbe Meldung hintereinander kommt einmal
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MeldungsKanal.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MeldungsKanal.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MeldungsKanal.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MeldungsKanal.kt
-@@ -43,7 +43,6 @@ internal class MeldungsWarteschlange @Inject constructor() : MeldungsKanal {
+@@ -46,7 +46,6 @@ internal class MeldungsWarteschlange @Inject constructor() : MeldungsKanal {
          synchronized(warteschlange) {
              when {
-                 _meldung.value == null -> _meldung.value = text
--                text == (warteschlange.lastOrNull() ?: _meldung.value) -> Unit
-                 warteschlange.size < PLAETZE -> warteschlange.addLast(text)
+                 _meldung.value == null -> _meldung.value = meldung
+-                meldung == (warteschlange.lastOrNull() ?: _meldung.value) -> Unit
+                 warteschlange.size < PLAETZE -> warteschlange.addLast(meldung)
              }
          }

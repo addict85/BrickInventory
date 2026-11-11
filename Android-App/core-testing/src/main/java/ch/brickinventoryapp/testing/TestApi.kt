@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.testing
 
+import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
@@ -50,6 +51,14 @@ import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.lang.reflect.WildcardType
 import java.util.WeakHashMap
+
+/** Die angezeigte Meldung als Satz, wie NummernTexte ihn bildet; null ohne Meldung. */
+val MeldungsKanal.text: String?
+    get() = when (val m = meldung.value) {
+        null -> null
+        is Meldung.Text -> m.text
+        is Meldung.Ressource -> "t${m.id}" + if (m.werte.isEmpty()) "" else m.werte.joinToString(", ", "(", ")")
+    }
 
 /** Gemeinsames Gerüst der ViewModel-Tests, die gegen einen Testserver laufen. */
 object TestApi {
