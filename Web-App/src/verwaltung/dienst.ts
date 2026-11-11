@@ -10,8 +10,8 @@ import path from 'path';
 import * as verwaltung from './repository/verwaltung';
 import { naechsteUhrzeit, taeglicheUhrzeit, DAILY_JOBS, ziehePlanVor, zeitplanGeaendert } from '../auftraege/zeitplan';
 import { DATA_DIR, PDF_JOB_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
-import { fehlertext, meldeFehler, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../infra/fehler';
-import { Abstriche } from '../infra/ergebnis';
+import { fehlertext, meldeFehler, logAndContinue, ohneFehlendeDatei } from '../infra/fehler';
+import { Abstriche, versuche } from '../infra/ergebnis';
 import { fetchPrice, leerePreisCache } from '../finanzen/financeCalc';
 import { getRateLimitStatus, setzeKontingentZurueck } from '../katalog/apiKontingent';
 import { ohneBricklinkPreis } from '../infra/setNummer';
@@ -78,8 +78,10 @@ export async function cachesLeeren(alle: boolean) {
 /** Ist heute noch Kontingent da, gleich abarbeiten statt bis morgen zu warten. */
 export async function bricksetLimitGesetzt(alt: number, neu: number) {
   if (!(neu > alt)) return;
-  const rl = await getRateLimitStatus('brickset').catch(meldeUndLiefere('verwaltung:getRateLimitStatus', null));
-  const rest = rl ? Math.max(0, neu - (rl.count || 0)) : 0;
+  // Das neue Limit ist gespeichert; ohne Zählerstand wartet die Schlange auf den nächsten Lauf.
+  const rl = await versuche('verwaltung:getRateLimitStatus', getRateLimitStatus('brickset'));
+  if (!rl.ok) return;
+  const rest = Math.max(0, neu - (rl.wert.count || 0));
   if (rest <= 0) return;
   console.log(`[brickset] Limit erhöht ${alt}→${neu}, ${rest} Abrufe frei — Warteschlange wird abgearbeitet`);
   await bricksetJetzt();

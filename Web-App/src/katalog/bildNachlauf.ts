@@ -1,11 +1,12 @@
 /** Stündlich, der erste 30 s nach dem Start (src/auftraege/zeitplan.ts). */
 import { bilderFuerNachlauf } from './bildlage';
-import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
+import { logAndContinue } from '../infra/fehler';
 import { generateThumb } from './bilder/thumbs';
 import { setzeTeilBildLokal, setzeFigurBildLokal } from './katalogPflege';
 import { KEINE_FARBE } from '../infra/validate';
 import * as enrich from './teileAnreicherung';
 import { AuftragUnterbrochen, type AuftragsKontext } from '../auftraege/auftraege';
+import { versuche } from '../infra/ergebnis';
 
 async function bildNachlauf(k: AuftragsKontext): Promise<void> {
   const { sets, teile: manualParts, figuren: figsToFetch } = await bilderFuerNachlauf();
@@ -30,7 +31,9 @@ async function bildNachlauf(k: AuftragsKontext): Promise<void> {
     await tick();
   }
   for (const p of manualParts) {
-    const local = await enrich.downloadImage(p.image_url, p.part_number, p.color_id ?? KEINE_FARBE, 'part').catch(meldeUndLiefere('bild-nachlauf:downloadImage', null));
+    // Ein Fehler lässt das Teil ohne Bild; der nächste Nachlauf versucht es wieder.
+    const r = await versuche('bild-nachlauf:downloadImage', enrich.downloadImage(p.image_url, p.part_number, p.color_id ?? KEINE_FARBE, 'part'));
+    const local = r.ok ? r.wert : null;
     if (local) {
       // Einmal für alle Konten in den Katalog; scheitert es, liegt das Bild zwar
       // auf der Platte, die Oberfläche zeigt es aber nicht — darum mit Protokoll.
@@ -43,7 +46,8 @@ async function bildNachlauf(k: AuftragsKontext): Promise<void> {
     await tick();
   }
   for (const f of figsToFetch) {
-    const local = await enrich.downloadImage(f.image_url, f.fig_number, 0, 'minifig').catch(meldeUndLiefere('bild-nachlauf:downloadImage', null));
+    const r = await versuche('bild-nachlauf:downloadImage', enrich.downloadImage(f.image_url, f.fig_number, 0, 'minifig'));
+    const local = r.ok ? r.wert : null;
     if (local) {
       // Eine Zeile: Der Katalog führt die Figur seit Migration 0034 genau einmal.
       await setzeFigurBildLokal(f.fig_number, local)

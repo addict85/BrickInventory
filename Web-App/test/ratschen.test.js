@@ -81,16 +81,16 @@ test('stille Faenge werden weniger, nie mehr', () => {
 });
 
 test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', () => {
-  // Getrennt gezählt: logAndContinue ist Fire-and-forget (Protokoll, Zähler,
-  // Benachrichtigung) und liefert nichts; meldeUndLiefere gibt dem Aufrufer einen
-  // Ersatzwert, der wie „leer“ aussieht. Lesepfade nehmen versuche()/Abstriche
-  // (src/infra/ergebnis.ts) oder lassen den Fehler weiter.
-  // Gegenprobe (10.11.2026): in src/teile/abfragen.ts wieder
-  // `.catch(meldeUndLiefere('x', []))` → rot (83 Ersatzwerte, Schranke 82).
-  const SCHRANKEN = { logAndContinue: 145, meldeUndLiefere: 82 };
+  // logAndContinue liefert nichts; meldeUndLiefere einen Ersatzwert, der wie „leer“
+  // aussieht. Lesepfade nehmen versuche()/Abstriche oder lassen den Fehler weiter;
+  // die übrigen Ersatzwerte begründen sich als „Ausnahme:“ im Code. Gemessen 7 am 11.11.2026.
+  // Gegenprobe (11.11.2026): in src/katalog/farben.ts wieder
+  // `.catch(meldeUndLiefere('x', []))` → rot (8 Ersatzwerte, Schranke 7).
+  const SCHRANKEN = { logAndContinue: 145, meldeUndLiefere: 7 };
+  const MINDESTENS = { logAndContinue: 20, meldeUndLiefere: 3 };
   for (const [name, schranke] of Object.entries(SCHRANKEN)) {
     const ist = zaehle([new RegExp(`\\b${name}\\(`, 'g')]);
-    assert.ok(ist > 20, `nur ${ist}-mal ${name} gefunden — greift die Suche noch?`);
+    assert.ok(ist > MINDESTENS[name], `nur ${ist}-mal ${name} gefunden — greift die Suche noch?`);
     assert.ok(ist <= schranke, `${ist}-mal ${name}, erlaubt sind ${schranke}`);
     if (ist < schranke) console.log(`  ℹ ${name}: ${ist} (Schranke ${schranke}) — Schranke nachziehen`);
   }

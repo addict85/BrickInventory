@@ -7,7 +7,9 @@ import { renderIndexHtml } from '../indexHtml';
  * das Rendern aus, geht die Datei unverändert; js/00-theme-boot.js übernimmt. */
 export async function sendeStartseite(res: Pick<Response, 'type' | 'sendFile'>, userId?: number): Promise<void> {
   await renderIndexHtml(userId).then(
-    html => { res.type('html').send(html); },
+    html => {
+      res.type('html').send(html);
+    },
     (e: unknown) => {
       meldeFehler('startseite:rendern', e);
       res.sendFile('index.html', { root: PUBLIC_DIR });

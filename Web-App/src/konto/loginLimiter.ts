@@ -161,6 +161,8 @@ async function _clear(key: string): Promise<void> {
  * doppelt. Kleinschreibung in PostgreSQL wie beim Login: JS macht aus „İ"
  * zwei Zeichen. */
 async function kontoKennung(username: unknown): Promise<string> {
+  // Ausnahme: Bei gestörter Datenbank zählt die Drossel im Speicher weiter
+  // (imSpeicher); ohne Konto dann nach dem Namen, statt die Anmeldung zu sperren.
   const z = await repo.kontoZumNamen(einzelwert(username)).catch(meldeUndLiefere('anmeldung:konto-kennung', null));
   if (z?.id) return `konto:${z.id}`;
   return `name:${namensAbdruck(z?.kennung ?? einzelwert(username).toLowerCase())}`;

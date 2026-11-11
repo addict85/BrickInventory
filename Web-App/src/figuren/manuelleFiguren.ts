@@ -4,7 +4,7 @@ import { blickfeldAus } from '../haushalt/haushalt';
 import type { Sicht } from '../haushalt/haushalt';
 import * as db from '../../db/database';
 import { logAndContinue, oeffentlicherFehler } from '../infra/fehler';
-import { Abstriche } from '../infra/ergebnis';
+import { Abstriche, versuche } from '../infra/ergebnis';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
 import { recordAcquisitionForDay } from '../bestand/acquisitions';
 import { mengenwunsch, passeManuelleMengeAn } from '../bestand/manuelleMenge';
@@ -77,7 +77,9 @@ async function addManualFigIntern(uid: number, body: Record<string, unknown>) {
     // `hatBild` statt `image_url`: Ein lokaler Pfad fiele bei der URL-Prüfung
     // durch, beweist aber, dass der Abruf nichts mehr zu holen hat.
     if (!fig_name || !(image_url || lokal?.hatBild)) {
-      const info = await getMinifigInfo(num);
+      // Ohne Rebrickable wird die Figur mit dem erfasst, was der Katalog schon weiss.
+      const abruf = await versuche('figuren:getMinifigInfo', getMinifigInfo(num));
+      const info = abruf.ok ? abruf.wert : null;
       gefunden = info;
       // `||`: Was der Katalog schon wusste, bleibt stehen.
       if (info) {
@@ -191,7 +193,9 @@ export async function importiereFigurenCsv(uid: number, text: string) {
       const eingetippt = !!figName;
       let imageUrl: string | null = null;
       if (!figName) {
-        const info = await getMinifigInfo(figNumber);
+        // Ohne Rebrickable wird die Figur ohne Namen erfasst; der Bildnachlauf holt ihn nicht nach.
+        const abruf = await versuche('figuren:import-info', getMinifigInfo(figNumber));
+        const info = abruf.ok ? abruf.wert : null;
         if (info) { figName = info.fig_name; imageUrl = info.image_url; }
       }
       const { erfassungsPreis, effectiveCondition, geschaetzt } =

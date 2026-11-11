@@ -228,6 +228,7 @@ async function frageAb(
 
   if (res.status === 401) throw new NichtAngemeldet('Nicht angemeldet');
   if (!res.ok) {
+    // Ausnahme: Der Text dient nur der Meldung; geworfen wird darunter ohnehin.
     const text = await res.text().catch(meldeUndLiefere('guthaben:antworttext', ''));
     // verdecke() auch auf den FREMDEN Text: Eine Fehlermeldung, die die Eingabe
     // zurückwirft, brächte die PIN sonst ins Protokoll.

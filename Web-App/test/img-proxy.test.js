@@ -200,11 +200,7 @@ test('kaputte Antworten werden nicht für einen Tag im Browser festgenagelt', ()
 
   // Die Cache-Wege liefern geprüften Inhalt und dürfen länger — aber mit ETag,
   // damit der Browser billig rückfragen kann.
-  assert.match(
-    SERVER,
-    /`"c-\$\{cst\.size\}-\$\{Math\.floor\(cst\.mtimeMs\)\}"`/,
-    'ETag für den Plattencache fehlt',
-  );
+  assert.match(SERVER, /`"c-\$\{cst\.size\}-\$\{Math\.floor\(cst\.mtimeMs\)\}"`/, 'ETag für den Plattencache fehlt');
   assert.match(SERVER, /`"t-\$\{tst\.size\}-\$\{Math\.floor\(tst\.mtimeMs\)\}"`/, 'ETag für die Vorschau fehlt');
 });
 

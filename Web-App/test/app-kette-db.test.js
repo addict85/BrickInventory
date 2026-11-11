@@ -23,11 +23,11 @@ const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
 const ROUTEN = { '/api/v1': 'routes/api_v1/index.js', '/api/v1/auth': 'routes/auth.js' };
-const json = (n) => JSON.stringify({ username: 'x', password: 'y', fuell: 'a'.repeat(n) });
+const json = n => JSON.stringify({ username: 'x', password: 'y', fuell: 'a'.repeat(n) });
 const post = (base, pfad, rumpf) =>
   fetch(base + pfad, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: rumpf });
 
-test('Anmeldung und Rumpflimit in der echten Kette', { concurrency: 1 }, async (t) => {
+test('Anmeldung und Rumpflimit in der echten Kette', { concurrency: 1 }, async t => {
   const db = await dbOderSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
@@ -46,8 +46,11 @@ test('Anmeldung und Rumpflimit in der echten Kette', { concurrency: 1 }, async (
 
   await t.test('unangemeldet: mehr als 16 KB sind zu viel', async () => {
     assert.equal((await post(ohne.base, '/api/v1/auth/login', json(20 * 1024))).status, 413);
-    assert.notEqual((await post(ohne.base, '/api/v1/auth/login', json(1024))).status, 413,
-      'ein kleiner Rumpf muss durchkommen, sonst bewiese die 413 oben nichts');
+    assert.notEqual(
+      (await post(ohne.base, '/api/v1/auth/login', json(1024))).status,
+      413,
+      'ein kleiner Rumpf muss durchkommen, sonst bewiese die 413 oben nichts',
+    );
   });
 
   await t.test('angemeldet: 20 KB gehen durch, 300 KB nicht', async () => {

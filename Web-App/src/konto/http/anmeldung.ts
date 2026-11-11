@@ -16,6 +16,7 @@ import { istAktiv } from '../zweiterFaktor';
 import { nutzerId, angemeldeteNutzerId } from '../../http/nutzerId';
 import { sendeFehler } from '../../http/httpAntwort';
 import { STATUS_DER_ART } from '../../http/fehlerArt';
+import { versuche } from '../../infra/ergebnis';
 
 /** Verwalterrechte ohne TOTP: Das Passwort allein soll sie nicht tragen, bis zur
  * Einrichtung geht nur diese (anmeldungAmEingang). Ein Passkey zählt nicht, denn
@@ -54,7 +55,7 @@ export async function establishSession(req: Request, data: { userId: number; use
       if (err) return reject(err);
       Object.assign(req.session, data, { angemeldetAm: Date.now(), sitzungsVersion });
       req.session.save((e2?: Error) => (e2 ? reject(e2)
-        : begrenzeSitzungen(data.userId, req.sessionID).catch(meldeUndLiefere('anmeldung:sitzungen-begrenzen', 0))
+        : versuche('anmeldung:sitzungen-begrenzen', begrenzeSitzungen(data.userId, req.sessionID))
           .then(() => resolve(undefined))));
     });
   });

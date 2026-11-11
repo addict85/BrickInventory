@@ -2,7 +2,10 @@ import type { ServerResponse } from 'http';
 import { cacheTreffer } from '../bilder/imgCacheServe';
 
 type BildAntwort = ServerResponse & { status(c: number): { end(): unknown } };
-interface BildAnfrage { fresh: boolean; headers?: Record<string, unknown> }
+interface BildAnfrage {
+  fresh: boolean;
+  headers?: Record<string, unknown>;
+}
 
 /** Aus dem Platten-Cache, falls vorhanden; true heisst beantwortet. */
 export async function liefereAusCache(opts: {
@@ -24,7 +27,10 @@ export async function liefereAusCache(opts: {
   if (treffer.etag) res.setHeader('ETag', treffer.etag);
   res.setHeader('Cache-Control', 'private, max-age=86400, must-revalidate');
   // Kennt der Browser die Datei schon, reicht ein leeres 304.
-  if (req.fresh) { res.status(304).end(); return true; }
+  if (req.fresh) {
+    res.status(304).end();
+    return true;
+  }
   // Kein rohes pipe(): Die Cache-Pflege kann die Datei zwischen Prüfung und
   // Öffnen entfernen, und ein Lesestrom-Fehler ohne Zuhörer beendet den Prozess.
   streamFileToResponse(res, treffer.datei, undefined, req);

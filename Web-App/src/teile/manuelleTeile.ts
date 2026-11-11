@@ -3,7 +3,7 @@
 import { blickfeldAus } from '../haushalt/haushalt';
 import type { Sicht } from '../haushalt/haushalt';
 import { oeffentlicherFehler } from '../infra/fehler';
-import { Abstriche } from '../infra/ergebnis';
+import { Abstriche, versuche } from '../infra/ergebnis';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
 import * as db from '../../db/database';
 import { recordAcquisitionForDay } from '../bestand/acquisitions';
@@ -93,7 +93,9 @@ async function addManualPartIntern(uid: number, rawBody: Record<string, unknown>
     // `hatBild` statt `image_url`: Ein lokaler Pfad fiele bei der URL-Prüfung
     // durch, beweist aber, dass der Abruf nichts mehr zu holen hat.
     if (!part_name || !(image_url || lokal?.hatBild)) {
-      const info = await lookupPart(part_number, hasColor ? color_id : null);
+      // Ohne Rebrickable wird das Teil mit dem erfasst, was der Katalog schon weiss.
+      const abruf = await versuche('teile:lookupPart', lookupPart(part_number, hasColor ? color_id : null));
+      const info = abruf.ok ? abruf.wert : null;
       gefunden = info;
       // `||`: Was der Katalog schon wusste, bleibt stehen.
       if (info) {
@@ -210,7 +212,8 @@ export async function importiereTeileCsv(uid: number, text: string) {
       const eingetippt = !!partName;
       let imageUrl: string | null = null, categoryName: string | null = null;
       if (!partName) {
-        const info = await lookupPart(partNumber, colorId === KEINE_FARBE ? null : colorId);
+        const abruf = await versuche('teile:import-lookupPart', lookupPart(partNumber, colorId === KEINE_FARBE ? null : colorId));
+        const info = abruf.ok ? abruf.wert : null;
         if (info) { partName = info.part_name; imageUrl = info.image_url; categoryName = info.category_name; }
       }
       const { erfassungsPreis, effectiveCondition, geschaetzt } =

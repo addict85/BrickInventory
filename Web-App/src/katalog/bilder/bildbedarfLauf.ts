@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { logAndContinue, meldeUndLiefere } from '../../infra/fehler';
+import { logAndContinue } from '../../infra/fehler';
 import { downloadSetImage } from './setImages';
 import { setBildLokalEintragen } from '../bildlage';
 import { grundFuer, istBekanntFehlend, merkeFehlend } from './imageMisses';
@@ -10,6 +10,7 @@ import { setzeZustand } from '../../auftraege/laufzustand';
 import { pausiereArt, liesPause } from '../../auftraege/dienst';
 import { STAPEL, TAKT_MS, NOTIZ_GILT_MS, merkeGebraucht, schreibePuffer, notiereBildbedarf, loescheVerfallene, initImageQueue, anfragenJeMinute, nimmBildwuensche } from './bildbedarf';
 import { AuftragUnterbrochen, AuftragVerschieben, type AuftragsKontext } from '../../auftraege/auftraege';
+import { versuche } from '../../infra/ergebnis';
 
 /** Über den Proxy angefragte Bilder im HINTERGRUND lokal ablegen, samt
  * Vorschau — damit die Anfrage selbst nie auf das CDN wartet. */
@@ -55,9 +56,11 @@ async function pauseVorArbeit(): Promise<void> {
  * jedem Durchgang einen vergeblichen Lauf. */
 async function vorschauErzeugen(relPfad: string, schluessel: string): Promise<boolean> {
   if (istBekanntFehlend('thumb:' + schluessel)) return false;
-  const ok = await generateThumb(relPfad).catch(meldeUndLiefere('bild-job:generateThumb', false));
+  // Auch ein Fehler wird gemerkt: Die Datei käme sonst bei jedem Durchgang wieder.
+  const r = await versuche('bild-job:generateThumb', () => generateThumb(relPfad));
+  const ok = r.ok && !!r.wert;
   if (!ok) merkeFehlend('thumb:' + schluessel, 'Vorschau konnte nicht erzeugt werden');
-  return !!ok;
+  return ok;
 }
 
 /** Mehrere Zähler statt einer Zahl, damit das Log zeigt, welcher Ausgang
@@ -158,7 +161,6 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
   const rows = await nimmBildwuensche(NOTIZ_GILT_MS, STAPEL);
   if (!rows.length) { merkeLauf(erg); return erg; }
 
-
   const st: StapelStand = { erg, gruende: [], etwasZuTun: false, arbeit: 0 };
   for (let idx = 0; idx < rows.length; idx++) {
     const r = rows[idx]!;
@@ -189,7 +191,9 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
     st.arbeit++;
 
     const info: { status?: number } = {};
-    const lokal = await downloadSetImage(r.url, r.set_number, info).catch(meldeUndLiefere('bild-job:downloadSetImage', null));
+    // Ein Fehler zählt wie ein vergeblicher Abruf; über die Wiederholung entscheidet nachFehlschlag().
+    const abruf = await versuche('bild-job:downloadSetImage', downloadSetImage(r.url, r.set_number, info));
+    const lokal = abruf.ok ? abruf.wert : null;
     if (!lokal) {
       if (await nachFehlschlag(r.set_number, info, st)) {
         // ALLE unbearbeiteten Notizen zurücklegen: Der Stapel kam per DELETE … RETURNING, der Rest wäre sonst

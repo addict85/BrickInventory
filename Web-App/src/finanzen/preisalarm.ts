@@ -1,12 +1,13 @@
 /** Der Preislauf holt die Marktpreise ohnehin; hier fehlte nur der Schritt,
  * eine Schwelle damit zu vergleichen. Ein Alarm gehört EINEM Konto. */
-import { meldeUndLiefere, meldeFehler, fehlertext } from '../infra/fehler';
+import { meldeFehler, fehlertext } from '../infra/fehler';
 import { scopeIds } from '../haushalt/haushalt';
 import { fachfehler } from '../infra/fehlerTexte';
 import * as mailer from '../mail/mailer';
 import { toCsv, csvZeilenAusAnfrage, uebersprungenHinweis } from '../infra/csvExport';
 import { normalisiereSetNummer } from '../infra/setNummer';
 import * as repo from './repository/preisalarme';
+import { versuche } from '../infra/ergebnis';
 
 /** Ausgeschrieben statt `any`: Betrag, Richtung und Mailadresse stehen
  * nebeneinander, ein Vertauschen wäre sonst nirgends sichtbar. */
@@ -75,7 +76,6 @@ export async function loescheAlarm(userId: number, setNumber: string, condition:
   const r = await repo.entferneAlarm(userId, setNumber, c);
   return r.changes ?? 0;
 }
-
 
 export async function alarmeFuer(userId: number, setNumber: string): Promise<Preisalarm[]> {
   const rows = await repo.alarmeDesSets(userId, setNumber, await scopeIds(userId))
@@ -211,8 +211,9 @@ export async function pruefeSet(setNumber: string,
 
 /** Getrennt, damit pruefeSet() über das WANN entscheidet, nicht über das WIE. */
 async function verschicke(versende: Versender, a: AlarmZeile, preis: number, schwelle: number) {
-  const name = await repo.setNameAusStamm(a.set_number)
-    .catch(meldeUndLiefere('preisalarm:name', null));
+  // Der Alarm geht auch ohne Namen hinaus; die Mail nennt dann nur die Setnummer.
+  const gelesen = await versuche('preisalarm:name', repo.setNameAusStamm(a.set_number));
+  const name = gelesen.ok ? gelesen.wert : null;
   const mail = await mailer.baueAlarmMail({
     username:  a.username,
     lang:      String(a.sprache),

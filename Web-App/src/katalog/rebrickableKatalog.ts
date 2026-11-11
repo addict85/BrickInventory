@@ -4,8 +4,9 @@ import { getRbKey, holeSet, getThemeName, holeSetTeile, holeFigurTeile } from '.
 import { istErsatzteil } from '../infra/validate';
 import { mitVersion } from '../infra/setNummer';
 import { neuestesInventar } from './rbInventar';
-import { meldeUndLiefere } from '../infra/fehler';
+
 import { katalog } from './prozess';
+import { versuche } from '../infra/ergebnis';
 
 /** Ein kaputter Eintrag zählt als keiner. */
 function ausCache<T>(json: string | undefined): T | undefined {
@@ -25,7 +26,9 @@ export async function getSetInfo(setNumber: string) {
     await katalog().rebrickableCache.merkeUnbekanntesSet(n, !!(await getRbKey()));
     return null;
   }
-  const theme = await getThemeName(data.theme_id);
+  // Das Thema ist Beiwerk: Ohne es wird das Set trotzdem gemerkt, die Zeile nennt keins.
+  const thema = await versuche('rebrickable:thema', getThemeName(data.theme_id));
+  const theme = thema.ok ? thema.wert : null;
   const row = { set_number: n, name: data.name || null, year: data.year || null, theme: theme || null,
                 pieces: data.num_parts || null, image_url: data.set_img_url || null, is_gear: false };
   await katalog().rebrickableCache.merkeSet(row);
@@ -33,9 +36,9 @@ export async function getSetInfo(setNumber: string) {
 }
 
 async function setTeileAusCsv(setNumber: string) {
-  const invId = await neuestesInventar(setNumber).catch(meldeUndLiefere('rebrickable:inventar', null));
+  const invId = await neuestesInventar(setNumber);
   if (!invId) return null;
-  const parts = await katalog().rebrickableCache.inventarTeile(invId).catch(meldeUndLiefere('rebrickable:inventarteile', []));
+  const parts = await katalog().rebrickableCache.inventarTeile(invId);
   if (!parts.length) return null;
   return parts.map(p => ({
     part: {
@@ -71,10 +74,11 @@ export async function getAllSetParts(setNumber: string) {
 
 /** Geteilter Zwischenspeicher: Die Daten ändern sich selten, das Kontingent ist knapp. */
 export async function getMinifigParts(figNumber: string) {
-  const gemerkt = ausCache<NonNullable<Awaited<ReturnType<typeof holeFigurTeile>>>>(await katalog().rebrickableCache.figurenteileAusCache(figNumber).catch(meldeUndLiefere('rebrickable:figurenteile', undefined)));
+  const gemerkt = ausCache<NonNullable<Awaited<ReturnType<typeof holeFigurTeile>>>>(await katalog().rebrickableCache.figurenteileAusCache(figNumber));
   if (gemerkt) return gemerkt;
   const parts = await holeFigurTeile(figNumber);
   if (!parts) return [];
-  await katalog().rebrickableCache.merkeFigurenteile(figNumber, JSON.stringify(parts)).catch(meldeUndLiefere('rebrickable:figurenteile-merken', undefined));
+  // Der Zwischenspeicher spart nur den nächsten Abruf; die Teile gelten auch ohne ihn.
+  await versuche('rebrickable:figurenteile-merken', katalog().rebrickableCache.merkeFigurenteile(figNumber, JSON.stringify(parts)));
   return parts;
 }

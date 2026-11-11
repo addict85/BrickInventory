@@ -1,5 +1,5 @@
 // Gear und Bücher führt BrickLink anders als Rebrickable; der Link muss das wissen.
-import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
+import { logAndContinue } from '../infra/fehler';
 import { bricklinkRequest } from './quellen';
 import { getGlobalSetting } from '../einstellungen/settings';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
@@ -65,7 +65,7 @@ export async function resolveMany(setNumbers: string[]): Promise<Map<string, BlL
   const keys = [...new Set((setNumbers || []).filter(Boolean).map(withVariant))];
   if (keys.length === 0) return out;
 
-  const rows = await katalog().katalogCache.blTypenDerSets(keys).catch(meldeUndLiefere('bl-link:rows', []));
+  const rows = await katalog().katalogCache.blTypenDerSets(keys);
 
   const byNumber = new Map<string, string | null>();
   for (const r of rows) byNumber.set(r.set_number, r.bl_type);

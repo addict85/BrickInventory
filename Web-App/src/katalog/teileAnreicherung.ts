@@ -2,7 +2,7 @@
  * Sets Namen und Bilder hat. Bilder werden im Hintergrund geladen; bis dahin
  * gilt die CDN-Adresse. */
 import { cdnImageLimiter, rebrickableBackgroundLimiter as rebrickableLimiter, consumeRebrickableDaily } from './rateLimiter';
-import { meldeFehler, fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../infra/fehler';
+import { meldeFehler, fehlertext, logAndContinue, ohneFehlendeDatei } from '../infra/fehler';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
 import { merkeBlNummer } from './blZuordnung';
@@ -26,7 +26,7 @@ import { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, SET_IMAGES_DIR } from '../infra/ap
 import { generateThumb } from './bilder/thumbs';
 import { KEINE_FARBE } from '../infra/validate';
 import { katalog } from './prozess';
-
+import { versuche } from '../infra/ergebnis';
 
 
 async function apiGet(url: string, rbKey: string) {
@@ -361,7 +361,7 @@ async function enrichSetMinifigs(setNumber: string) {
     const invId = invMap[fig.fig_number];
     if (!invId) continue;
 
-    const parts = await katalog().teileAnreicherung.teileDesInventars(invId).catch(meldeUndLiefere('teile-enrich:parts', []));
+    const parts = await katalog().teileAnreicherung.teileDesInventars(invId);
 
     figPartsMap[fig.fig_number] = { parts, figQty: fig.quantity };
     parts.forEach((p: { part_num: string }) => allPartNums.add(p.part_num));
@@ -483,7 +483,8 @@ async function _redownloadMissingImages(lauf?: AuftragsLauf) {
     if (ohneVorschau.length) {
       await _redlSetStatus({ running: true, phase: 'thumbs', total: ohneVorschau.length, done: 0, redownloaded: 0, cleared: 0 });
       for (const web of ohneVorschau) {
-        if (await generateThumb(web).catch(meldeUndLiefere('teile-enrich:vorschau', null))) thumbsErzeugt++;
+        const r = await versuche('teile-enrich:vorschau', () => generateThumb(web));
+        if (r.ok && r.wert) thumbsErzeugt++;
       }
       console.log(`[img-redl] ${thumbsErzeugt} fehlende Vorschauen erzeugt (von ${ohneVorschau.length})`);
     }
@@ -511,7 +512,9 @@ async function _redownloadMissingImages(lauf?: AuftragsLauf) {
         if (m.image_url) {
           await cdnImageLimiter.acquire().catch(logAndContinue('teile-enrich:acquire'));
           try {
-            ok = (await downloadFile(m.image_url, m.fp).catch(meldeUndLiefere('teile-enrich:downloadFile', false))) === true;
+            // Ein Fehler zählt wie ein vergeblicher Abruf; der Zähler unten nennt beide.
+            const r = await versuche('teile-enrich:downloadFile', downloadFile(m.image_url, m.fp));
+            ok = r.ok && r.wert === true;
           } finally {
             cdnImageLimiter.release();
           }

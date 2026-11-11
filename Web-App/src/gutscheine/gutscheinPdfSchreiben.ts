@@ -262,7 +262,8 @@ export async function verbindeGutscheine(gutscheine: ExportGutschein[]):
   return { daten: Buffer.from(await ziel.save()), befunde };
 }
 
-/** Ein PDF, das sich nicht seitenweise lesen lässt, ist ein einzelner Gutschein. */
+/** Ausnahme: Ein PDF, das sich nicht seitenweise lesen lässt, ist ein einzelner
+ * Gutschein — die leere Liste heisst hier „nicht teilbar“, nicht „nichts gefunden“. */
 export function seitenOderKeine(daten: Buffer): Promise<GutscheinWerte[]> {
   return seitenweiseLesen(daten).catch(meldeUndLiefere('gutschein:seitenweise', []));
 }

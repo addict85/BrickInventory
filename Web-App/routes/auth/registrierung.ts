@@ -20,6 +20,12 @@ import type { Antwort, OffeneAnfrage } from '../../src/http/vertragsRouter';
 
 const router = vertragsRouter();
 
+/** Ausnahme: Die Mail geht auch ohne lesbare Einstellung hinaus, dann deutsch.
+ * Sie fragt niemand ab, der auf eine Antwort wartet. */
+async function mailSprache(uid: number): Promise<string> {
+  return String(await getSetting(uid, 'language', 'de').catch(meldeUndLiefere('registrierung:sprache', 'de')));
+}
+
 // Die Anmeldemaske zeigt nur Wege, die dieser Server auch kann; ohne Mail endete die Registrierung in einem Konto, das niemand bestätigen kann.
 router.get('/registration-status', async (_req, res: Antwort<'GET /api/v1/auth/registration-status'>) => {
   const mail = await mailBereit();
@@ -54,7 +60,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req: 
   let result: { success: boolean; mode: string };
   if (inhaber) {
     await K.rechneWieRegistrierung(password);
-    const sprache = String(await getSetting(inhaber.id, 'language', 'de').catch(meldeUndLiefere('registrierung:sprache', 'de')));
+    const sprache = await mailSprache(inhaber.id);
     result = basis ? await sendRegistrierungsVersuchMail(inhaber.email, sprache)
       : { success: false, mode: 'ohne_basis' };
   } else if (nameVergeben) {
@@ -98,9 +104,8 @@ router.post('/bestaetigung-erneut', ipThrottle('bestaetigung-erneut', 5, 60 * 60
   const token = crypto.randomBytes(32).toString('hex');
   const konto = gedrosselt ? null : await K.erneuereEmailTokenWennFrei(String(email), hashToken(token), 24, RUECKSETZ_PAUSE_MIN);
   if (konto) {
-    getSetting(konto.id, 'language', 'de')
-      .catch(meldeUndLiefere('registrierung:sprache', 'de'))
-      .then((lang: unknown) => sendVerificationMail(konto.email, token, mailBasisUrl()!, String(lang ?? 'de')))
+    mailSprache(konto.id)
+      .then(lang => sendVerificationMail(konto.email, token, mailBasisUrl()!, lang))
       .catch(logAndContinue('bestaetigung-erneut:mailversand'));
   }
   await new Promise(r => setTimeout(r, Math.max(0, RUECKSETZ_MINDESTDAUER_MS - (Date.now() - beginn))));
@@ -138,11 +143,9 @@ router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000)
   // Höchstens ein Link je Konto und RUECKSETZ_PAUSE_MIN: Sonst flutet ein Fremder das Postfach.
   if (user && await K.setzeRuecksetzTokenWennFrei(user.id, hashToken(token), RUECKSETZ_GUELTIG_MIN, RUECKSETZ_PAUSE_MIN)) {
     // Nicht awaiten, sonst verriete die Dauer des SMTP-Versands die Adresse.
-    getSetting(user.id, 'language', 'de')
-      .catch(meldeUndLiefere('registrierung:sprache', 'de'))
+    mailSprache(user.id)
       // An die GESPEICHERTE Adresse: Die eingegebene passt per LOWER() auch als Unicode-Variante.
-      .then((lang: unknown) => sendPasswordResetMail(
-        user.email ?? '', token, mailBasisUrl()!, String(lang ?? 'de')))
+      .then(lang => sendPasswordResetMail(user.email ?? '', token, mailBasisUrl()!, lang))
       .catch(logAndContinue('forgot-password:mailversand'));
   }
   await new Promise(r => setTimeout(r, Math.max(0, RUECKSETZ_MINDESTDAUER_MS - (Date.now() - beginn))));

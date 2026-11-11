@@ -1,5 +1,5 @@
 import type * as repo from './repository/katalogSuche';
-import { meldeUndLiefere } from '../infra/fehler';
+
 import { resolveIfExists, resolveImageLocal } from './bilder/images';
 import { dateiStamm } from './bilder/bildBlickfeld';
 import { resolveOne, resolveViaApi } from './bricklinkLink';
@@ -10,6 +10,7 @@ import { mitVersion } from '../infra/setNummer';
 import { nacharbeit } from '../auftraege/nacharbeit';
 import { scopeIds } from '../haushalt/haushalt';
 import { katalog } from './prozess';
+import { versuche } from '../infra/ergebnis';
 
 // rb_themes ändert sich höchstens täglich; der Baum wird je Prozess eine
 // Stunde gemerkt, weil jeder Filter ihn braucht.
@@ -119,17 +120,22 @@ export async function katalogSet(userId: number, roh: string) {
   const n = mitVersion(roh.trim());
   const set = await katalog().katalogSuche.katalogZeile(await scopeIds(userId), n);
   if (!set) return null;
-  const invId = await neuestesInventar(n).catch(meldeUndLiefere('katalog:neuestesInventar', null));
-  const m = invId ? await katalog().katalogSuche.figurenImInventar(invId)
-    .catch(meldeUndLiefere('katalog:figuren', undefined)) : undefined;
+  const invId = await neuestesInventar(n);
+  const m = invId ? await katalog().katalogSuche.figurenImInventar(invId) : undefined;
   const tree = await getThemeTree();
   // Geprüft wird gegen BrickLink nur hier, auf einer geöffneten Seite.
   let bricklink = await resolveOne(set.set_number);
-  if (!bricklink.resolved) bricklink = await resolveViaApi(set.set_number).catch(meldeUndLiefere('katalog:bricklink', bricklink));
+  // Scheitert die Prüfung, bleibt der Link als ungeprüft (resolved: false) gekennzeichnet.
+  if (!bricklink.resolved) {
+    const r = await versuche('katalog:bricklink', resolveViaApi(set.set_number));
+    if (r.ok) bricklink = r.wert;
+  }
   let image_local = resolveIfExists(set.image_local ?? `/images/sets/${dateiStamm(set.set_number)}.jpg`);
   // Jetzt dauerhaft ablegen; die Vorschau und den Eintrag in set_catalog macht der Bild-Job.
   if (!image_local && set.image_url) {
-    image_local = await downloadSetImage(set.image_url, set.set_number).catch(meldeUndLiefere('katalog:downloadSetImage', null));
+    // Ohne Datei zeigt die Seite image_url; der Bild-Job holt sie nach.
+    const r = await versuche('katalog:downloadSetImage', downloadSetImage(set.image_url, set.set_number));
+    image_local = r.ok ? r.wert : null;
     if (image_local) nacharbeit().bildVormerken(String(set.image_url || ''), set.set_number);
   }
   return { ...set, image_local, theme_name: tree.pathName.get(set.theme_id) || null,

@@ -61,17 +61,19 @@ export function baueApp({ pool, konfig, sitzungsGeheimnis }: AppZutaten): expres
 
 function grundschutz(app: express.Express, k: Konfig): void {
   // Gzip/Brotli für alles ab 1 KB; index.html schrumpft um rund 80 %.
-  app.use(compression({
-    level: 6,
-    threshold: 1024,
-    filter: (req, res) => {
-      // SSE-Ströme NICHT komprimieren — sie müssen sofort hinaus. includes() statt
-      // Gleichheit, weil OkHttp `text/event-stream, */*` schickt.
-      if (String(req.headers.accept || '').includes('text/event-stream')) return false;
-      if (String(res.getHeader('Content-Type') || '').includes('text/event-stream')) return false;
-      return compression.filter(req, res);
-    }
-  }));
+  app.use(
+    compression({
+      level: 6,
+      threshold: 1024,
+      filter: (req, res) => {
+        // SSE-Ströme NICHT komprimieren — sie müssen sofort hinaus. includes() statt
+        // Gleichheit, weil OkHttp `text/event-stream, */*` schickt.
+        if (String(req.headers.accept || '').includes('text/event-stream')) return false;
+        if (String(res.getHeader('Content-Type') || '').includes('text/event-stream')) return false;
+        return compression.filter(req, res);
+      },
+    }),
+  );
 
   // Handgerollt statt helmet: keine zusätzliche Abhängigkeit, und die CSP muss
   // ohnehin auf die App zugeschnitten sein.
@@ -104,12 +106,16 @@ function grundschutz(app: express.Express, k: Konfig): void {
   app.use(nurEigeneHerkunft);
   // no-store als Vorgabe: Antworten tragen Konten, Gutscheine und Tokens. Was bewusst
   // gecacht wird (img-proxy, Design), setzt seinen Kopf selbst und überschreibt ihn.
-  app.use('/api', (_req, res, next) => {
-    res.setHeader('Cache-Control', 'no-store');
-    res.setHeader('X-Api-Version', String(API_VERSION));
-    res.setHeader('X-Api-Min-App', String(API_MIN_APP));
-    next();
-  }, appFassungPruefen);
+  app.use(
+    '/api',
+    (_req, res, next) => {
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('X-Api-Version', String(API_VERSION));
+      res.setHeader('X-Api-Min-App', String(API_MIN_APP));
+      next();
+    },
+    appFassungPruefen,
+  );
 
   // Eine Kennung je Anfrage für ihre Logzeilen; die des Proxys nur, wenn sie src/infra/protokoll.ts besteht.
   app.use((req, res, next) => {
@@ -117,53 +123,57 @@ function grundschutz(app: express.Express, k: Konfig): void {
     res.setHeader('X-Request-Id', rid);
     anfrageKontext.run({ rid }, () => next());
   });
-
 }
 
-const sicherheitsKoepfe = (hstsAlter: number) => (req: Request, res: Response, next: NextFunction): void => {
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('Referrer-Policy', 'same-origin');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
-  // Kein fremdes Fenster hält einen Griff auf die App, keine fremde Seite bettet ihre Antworten ein.
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+const sicherheitsKoepfe =
+  (hstsAlter: number) =>
+  (req: Request, res: Response, next: NextFunction): void => {
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'same-origin');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
+    // Kein fremdes Fenster hält einen Griff auf die App, keine fremde Seite bettet ihre Antworten ein.
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
 
-  // HSTS nur über TLS. req.secure, weil Express X-Forwarded-Proto nur von einem
-  // vertrauten Proxy übernimmt; den rohen Kopf kann jeder Client schicken.
-  const ueberTls = req.secure;
-  // hstsAlter: Vorgabe ein Jahr, 0 schaltet ab.
-  if (ueberTls && hstsAlter !== 0) {
-    res.setHeader('Strict-Transport-Security', `max-age=${hstsAlter}; includeSubDomains`);
-  }
+    // HSTS nur über TLS. req.secure, weil Express X-Forwarded-Proto nur von einem
+    // vertrauten Proxy übernimmt; den rohen Kopf kann jeder Client schicken.
+    const ueberTls = req.secure;
+    // hstsAlter: Vorgabe ein Jahr, 0 schaltet ab.
+    if (ueberTls && hstsAlter !== 0) {
+      res.setHeader('Strict-Transport-Security', `max-age=${hstsAlter}; includeSubDomains`);
+    }
 
-  res.setHeader('Content-Security-Policy', [
-    "default-src 'self'",
-    // Ohne 'unsafe-inline': Alle Handler laufen über js/11-actions.js.
-    "script-src 'self'",
-    // Stile setzt js/00-stile.js per CSSOM; inline nur das Startgerüst, per Hash.
-    `style-src 'self'${startStilHash() ? ' ' + startStilHash() : ''}`,
-    "font-src 'self'",
-    // Ohne https:: Fremde Bilder gehen durch den Bild-Proxy, und ein eingeschleustes
-    // <img src="https://fremd/?daten"> wäre sonst ein Kanal nach draussen.
-    "img-src 'self' data: blob:",
-    "connect-src 'self'",
-    "worker-src 'self' blob:",  // PDF.js-Worker (lokal /vendor/pdfjs, ggf. blob:)
-    "frame-ancestors 'self'",  // eigener PDF-Viewer bettet same-origin PDFs per <iframe> ein
-    // default-src deckt diese drei nicht ab: Formular nach draussen, <base> zum
-    // Umlenken, <object>/<embed> für Plugins.
-    "form-action 'self'",
-    "base-uri 'none'",
-    "object-src 'none'",
-    // Markup nur über setzeHtml() (Richtlinie app); `default` lässt nur eigene Skript-Adressen durch.
-    "require-trusted-types-for 'script'",
-    "trusted-types app default",
-    'report-uri /csp-bericht',
-    'report-to csp',
-  ].join('; '));
-  res.setHeader('Reporting-Endpoints', 'csp="/csp-bericht"');
-  next();
-};
+    res.setHeader(
+      'Content-Security-Policy',
+      [
+        "default-src 'self'",
+        // Ohne 'unsafe-inline': Alle Handler laufen über js/11-actions.js.
+        "script-src 'self'",
+        // Stile setzt js/00-stile.js per CSSOM; inline nur das Startgerüst, per Hash.
+        `style-src 'self'${startStilHash() ? ' ' + startStilHash() : ''}`,
+        "font-src 'self'",
+        // Ohne https:: Fremde Bilder gehen durch den Bild-Proxy, und ein eingeschleustes
+        // <img src="https://fremd/?daten"> wäre sonst ein Kanal nach draussen.
+        "img-src 'self' data: blob:",
+        "connect-src 'self'",
+        "worker-src 'self' blob:", // PDF.js-Worker (lokal /vendor/pdfjs, ggf. blob:)
+        "frame-ancestors 'self'", // eigener PDF-Viewer bettet same-origin PDFs per <iframe> ein
+        // default-src deckt diese drei nicht ab: Formular nach draussen, <base> zum
+        // Umlenken, <object>/<embed> für Plugins.
+        "form-action 'self'",
+        "base-uri 'none'",
+        "object-src 'none'",
+        // Markup nur über setzeHtml() (Richtlinie app); `default` lässt nur eigene Skript-Adressen durch.
+        "require-trusted-types-for 'script'",
+        'trusted-types app default',
+        'report-uri /csp-bericht',
+        'report-to csp',
+      ].join('; '),
+    );
+    res.setHeader('Reporting-Endpoints', 'csp="/csp-bericht"');
+    next();
+  };
 
 function sitzung(app: express.Express, pool: Pool, geheimnis: string): void {
   // In PostgreSQL, damit Sitzungen einen Neustart überleben; die Tabelle legt das Schema an.
@@ -175,7 +185,7 @@ function sitzung(app: express.Express, pool: Pool, geheimnis: string): void {
     pruneSessionInterval: 60 * 15,
     // Nach Stunden Leerlauf endet eine Webapp-Sitzung.
     ttl: SITZUNG_LEERLAUF_SEK,
-    errorLog: (err) => {
+    errorLog: err => {
       if (!err.message?.includes('timeout') && !err.message?.includes('terminated')) {
         console.error('[session-store]', err.message);
       }
@@ -185,14 +195,16 @@ function sitzung(app: express.Express, pool: Pool, geheimnis: string): void {
   // Gedrosselt geschrieben (src/konto/sitzungsBeruehrung.ts).
   drossleBeruehren(sitzungsSpeicher);
 
-  app.use(session({
-    store: sitzungsSpeicher,
-    secret: geheimnis,
-    resave: false,
-    saveUninitialized: false,
-    name: sitzungsKeksName(),
-    cookie: sitzungsKeksOptionen(),
-  }));
+  app.use(
+    session({
+      store: sitzungsSpeicher,
+      secret: geheimnis,
+      resave: false,
+      saveUninitialized: false,
+      name: sitzungsKeksName(),
+      cookie: sitzungsKeksOptionen(),
+    }),
+  );
   app.use(sitzungsVersionPruefen());
   app.use(sitzungsHoechstdauer());
 }
@@ -204,28 +216,29 @@ function dateienUndBilder(app: express.Express): void {
   registerImgProxy(app);
 
   app.use(seitenRouter);
-  app.use(express.static(PUBLIC_DIR, {
-    // `/` geht über den Renderer (src/konto/indexHtml.ts), nicht als Datei.
-    index: false,
-    // Gestempelte Assets (?v=) lange cachen; index.html no-cache, damit Deploys sofort gelten.
-    maxAge: '7d',
-    setHeaders: (res, filePath) => {
-      if (filePath.endsWith('index.html')) {
-        res.setHeader('Cache-Control', 'no-cache');
-      }
-    },
-  }));
-
+  app.use(
+    express.static(PUBLIC_DIR, {
+      // `/` geht über den Renderer (src/konto/indexHtml.ts), nicht als Datei.
+      index: false,
+      // Gestempelte Assets (?v=) lange cachen; index.html no-cache, damit Deploys sofort gelten.
+      maxAge: '7d',
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('index.html')) {
+          res.setHeader('Cache-Control', 'no-cache');
+        }
+      },
+    }),
+  );
 }
 
 function apiRouten(app: express.Express): void {
   const pruefung = vertragPruefen();
   if (pruefung) app.use('/api/v1', pruefung);
   // Vor dem Eingang: Gefragt wird, bevor Schema, Migrationen und /api/v1-Router stehen.
-  app.use('/api/v1',          gesundheitRouter);
+  app.use('/api/v1', gesundheitRouter);
   apiEingang(app);
-  app.use('/api/v1',          apiV1Router);
-  app.use('/api/v1/auth',     authRouter);
+  app.use('/api/v1', apiV1Router);
+  app.use('/api/v1/auth', authRouter);
 }
 
 /** Der Eingang vor allen /api/v1-Routern; auch testServer({ kette: true }) baut ihn so. */
@@ -233,21 +246,21 @@ export function apiEingang(app: express.Express): void {
   // EIN Eingang: anmeldungAmEingang verlangt Sitzung oder Token für alles unter
   // /api/v1 ausser den ausdrücklich öffentlichen Pfaden. Der Schutz je Route
   // bleibt als zweite Linie.
-  app.use('/api/v1',          anmeldungAmEingang);
+  app.use('/api/v1', anmeldungAmEingang);
   // Danach das Budget je Konto, VOR dem Rumpf: Eine abgewiesene Anfrage soll
   // ihren Rumpf nicht mehr lesen (src/http/apiDrossel.ts).
-  app.use('/api/v1',          apiDrossel);
+  app.use('/api/v1', apiDrossel);
   // Heikle Schritte eines App-Tokens erst nach der Gerätesperre (src/konto/http/schrittschutz.ts).
-  app.use('/api/v1',          schrittschutzAmEingang);
+  app.use('/api/v1', schrittschutzAmEingang);
   // Rümpfe erst nach der Anmeldung lesen: Unangemeldet gibt es nur 16 KB (rumpfLesen).
-  app.use('/api/v1',          rumpfLesen);
-  app.use('/api/v1',          idempotenz);
+  app.use('/api/v1', rumpfLesen);
+  app.use('/api/v1', idempotenz);
 }
 
 function rueckfaelle(app: express.Express): void {
   // VOR dem SPA-Catch-all: Sonst bekäme ein Tippfehler im API-Pfad die
   // index.html mit 200. Ohne Rücksicht auf die Schreibung, die Routen davor achten darauf.
-  app.use((req, res, next) => /^\/api(\/|$)/i.test(req.path) ? unbekannterApiPfad(req, res) : next());
+  app.use((req, res, next) => (/^\/api(\/|$)/i.test(req.path) ? unbekannterApiPfad(req, res) : next()));
 
   // '{*splat}' statt '/*splat': Express 5 verlangt einen Namen, und die
   // naheliegende Form träfe die Startseite `/` nicht.
