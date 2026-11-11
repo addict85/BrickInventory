@@ -1,0 +1,18 @@
+Gegenprobe: die Kantenregel nimmt Testkonfigurationen nicht mehr aus
+Modul: app
+Test: ch.brickinventoryapp.app.ModulgrenzenTest
+Rot: die Kantenregel verbietet Bereich an Bereich
+
+diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt
+index 5facea3..e5f666b 100644
+--- a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt
++++ b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt
+@@ -37,7 +37,7 @@ object Modulkanten {
+             // api reicht ein Modul an jeden weiter, der dieses kennt; nur die Modelle sind gemeinsame Sprache.
+             k.konfiguration == "api" && k.nach != "core-model" ->
+                 "Modulkanten per api nur zu core-model: ${k.von} → ${k.nach}"
+-            k.nurTest -> null
++            false -> null
+             k.nach == "core-testing" -> "${k.von} bindet core-testing nicht nur für Tests ein"
+             k.von.startsWith("feature-") && !k.nach.startsWith("core-") -> "${k.von} hängt an ${k.nach}"
+             k.von.startsWith("core-") && k.nach !in kerne[k.von].orEmpty() ->

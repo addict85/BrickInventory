@@ -50,6 +50,8 @@ ksp {
 android {
     // Robolectric liest Ressourcen, Schriften und Manifest der App.
     testOptions.unitTests.isIncludeAndroidResources = true
+    // ModulgrenzenTest führt dieselbe Kantenregel aus wie die Aufgabe modulkantenPruefen.
+    sourceSets.getByName("test").kotlin.srcDir("../build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten")
 
     namespace  = "ch.brickinventoryapp"
 

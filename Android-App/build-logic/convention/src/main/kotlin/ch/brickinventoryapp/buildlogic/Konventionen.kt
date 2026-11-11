@@ -14,14 +14,15 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 // Die Konventionen setzen nur, was in mehreren Modulen gleich war. Modulkanten
-// (`project(":…")`) bleiben im Skript des Moduls: Dort liest sie
-// ModulgrenzenTest, und eine neue Kante steht im Diff des Moduls, nicht hier.
+// (`project(":…")`) trägt das Skript des Moduls ein, damit eine neue Kante in seinem
+// Diff steht; ob sie erlaubt ist, prüft die Aufgabe modulkantenPruefen (kanten/Modulkanten.kt).
 
 /** com.android.library mit den SDK-Ständen, Java/Kotlin 17 und detekt. */
 class AndroidLibraryKonvention : Plugin<Project> {
     override fun apply(target: Project) {
         target.pluginAusKatalog("android.library")
         target.pluginManager.apply(DetektKonvention::class.java)
+        target.modulkantenPruefen()
         val android = target.extensions.getByType(LibraryExtension::class.java)
         android.compileSdk = Sdk.compileSdk
         android.defaultConfig.minSdk = Sdk.minSdk
@@ -36,6 +37,7 @@ class AndroidApplicationKonvention : Plugin<Project> {
     override fun apply(target: Project) {
         target.pluginAusKatalog("android.application")
         target.pluginManager.apply(DetektKonvention::class.java)
+        target.modulkantenPruefen()
         val android = target.extensions.getByType(ApplicationExtension::class.java)
         android.compileSdk = Sdk.compileSdk
         android.defaultConfig.minSdk = Sdk.minSdk
@@ -73,6 +75,7 @@ class JvmLibraryKonvention : Plugin<Project> {
     override fun apply(target: Project) {
         target.pluginAusKatalog("kotlin.jvm")
         target.pluginManager.apply(DetektKonvention::class.java)
+        target.modulkantenPruefen()
         val java = target.extensions.getByType(JavaPluginExtension::class.java)
         java.sourceCompatibility = JavaVersion.VERSION_17
         java.targetCompatibility = JavaVersion.VERSION_17

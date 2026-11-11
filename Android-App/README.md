@@ -309,7 +309,10 @@ Geheimnis nur, wenn man sie dort auswählt.
 
 Abhängigkeiten nur in diese Richtung: `app → feature-* → core-*`; kein Bereich
 kennt einen anderen, ohne Ausnahme; was mehrere Bereiche zeigen, liegt im Kernmodul
-`core-ui-bestand` (`ModulgrenzenTest` prüft es an den Build-Dateien).
+`core-ui-bestand`. Die Regel steht einmal in
+`build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt`:
+Die Aufgabe `modulkantenPruefen` (an `check`, in der CI für alle Module) führt sie
+gegen die aufgelösten Kanten aus, `ModulgrenzenTest` gegen die Build-Dateien.
 
 Den gemeinsamen Android-Block setzen Konventions-Plugins aus `build-logic/`
 (ein eigener Gradle-Bau, eingebunden in `settings.gradle.kts`, Plugin-IDs im
@@ -328,7 +331,7 @@ Modulkanten und echte Zusatzabhängigkeiten:
 | `brickinventory.jvm.library` | `org.jetbrains.kotlin.jvm`, Java und Kotlin 17, Testprotokoll, detekt — für `core-model` |
 
 Modulkanten (`project(":…")`) trägt keine Konvention ein; sie stehen im Skript
-des Moduls, wo `ModulgrenzenTest` sie liest. Ein SDK-Sprung ist eine Zeile in
+des Moduls, die Konvention prüft sie nur. Ein SDK-Sprung ist eine Zeile in
 `build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Sdk.kt`.
 `core-model` bleibt reines Kotlin (`brickinventory.jvm.library`).
 
