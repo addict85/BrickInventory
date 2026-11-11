@@ -11,7 +11,7 @@ diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sam
      val merklisteState: StateFlow<MerklisteUiState> = _merklisteState
          .abgeleitet(lokal) { st, l ->
 -            if (l?.stand != null && ungefiltert(st)) st.copy(merkposten = l.liste.map { m -> m.alsAnsicht() }) else st
-+            if (false && l?.stand != null && ungefiltert(st)) st.copy(merkposten = l.liste.map { m -> m.alsAnsicht() }) else st
++            if (l?.stand != null && false && ungefiltert(st)) st.copy(merkposten = l.liste.map { m -> m.alsAnsicht() }) else st
          }
          .abgeleitet(_vorgemerkt) { st, v ->
              if (v == null) st else st.copy(merkposten = st.merkposten.filterNot { it.setNumber == v.setNumber && it.condition == v.zustand })
