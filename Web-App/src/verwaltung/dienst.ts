@@ -64,7 +64,6 @@ export async function cacheStatistik() {
     ab.oder('kontingent_brickset', getRateLimitStatus('brickset'), leer),
   ]);
   return {
-    success: true,
     ...stats,
     price_stale: stale,
     rate_limits: { bricklink: rlBL, rebrickable: rlRB, brickset: rlBS },
@@ -129,7 +128,7 @@ export async function preisJobStand() {
         : null,
     log: Array.isArray(letzter.log) ? letzter.log : [],
   };
-  return { success: true, job, rate_limit: await getRateLimitStatus('bricklink') };
+  return { job, rate_limit: await getRateLimitStatus('bricklink') };
 }
 
 /** false, wenn er schon läuft. */
@@ -222,7 +221,6 @@ export async function katalogBilderEinreihen(alleErneut: boolean) {
   // „Stunden oder Tage?" ist die erste Frage; die Rate kommt aus dem Job selbst.
   const proMinute = anfragenJeMinute();
   return {
-    success: true,
     queued: neuEingereiht,
     pending: offen?.n ?? 0,
     skipped: kandidaten.length - offenUrls.length,

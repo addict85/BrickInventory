@@ -56,7 +56,7 @@ test('Import als Auftrag', { concurrency: 1 }, async (t) => {
   await t.test('mit Worker kommt das Ergebnis', async (tt) => {
     importWorker(tt, _req);
     const r = await importAlsAuftrag(uid, 'teile_csv', { text: csv('mit1') });
-    assert.equal(r.success, true);
+    assert.equal(r.success, undefined, 'die Hülle der Antwort setzt die Route, nicht der Dienst');
     assert.equal(r.total, 1);
     assert.equal(r.added + r.updated, 1, JSON.stringify(r));
     assert.ok(await db.get("SELECT 1 FROM parts WHERE user_id = $1 AND part_number = 'mit1'", [uid]));

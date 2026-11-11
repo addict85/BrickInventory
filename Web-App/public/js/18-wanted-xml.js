@@ -22,9 +22,16 @@ import { loadBrickColors } from './03-teil-erfassen.js';
  *   nameGeraten?: boolean, rbId?: string | null, set?: string | null, zustand?: string | null }} Posten
  * @typedef {import('../../frontend-typen/vertrag').WantedXmlErgebnis & { posten: Posten[],
  *   abgebrochen?: boolean, farbeOffen?: number, fremdeArten?: Record<string, number>,
- *   korrekturen?: { abgewiesen?: unknown[] }, rebrickable?: { gefragt: number, gefunden: number } | null,
+ *   korrekturen?: { abgewiesen?: unknown[] },
+ *   rebrickable?: { gefragt: number, gefunden: number, abgebrochen?: 'kontingent' | 'kein_schluessel' | 'stoerung' } | null,
  *   stufen?: Record<string, number>, standardZustand?: string | null }} Bericht
  */
+/** Warum die Rebrickable-Stufe vorzeitig endete; die übrigen Posten blieben offen. */
+const RB_ABBRUCH = /** @type {const} */ ({
+  kontingent: 'wanted.rb_stopped_quota',
+  kein_schluessel: 'wanted.rb_stopped_key',
+  stoerung: 'wanted.rb_stopped_error',
+});
 /**
  * Die gewählte Datei bleibt bis zum Import im Speicher: Der zweite Schritt schickt sie mit den Korrekturen
  * erneut. Sonst müsste der Server fremde Dateien halten, bis jemand bestätigt — oder nie.
@@ -252,6 +259,7 @@ function zeichneBericht(d) {
       ${d.farbeOffen ? html`<div>${ico('warnung')} <strong>${d.farbeOffen}</strong> ${tRaw('settings.wanted_color_open')}</div>` : ''}
       ${Object.keys(d.fremdeArten || {}).length ? html`<div>${ico('warnung')} ${tRaw('settings.wanted_other_kinds')}: ${Object.entries(d.fremdeArten ?? {}).map(([k, n]) => `${k}=${n}`).join(', ')}</div>` : ''}
       ${d.rebrickable ? html`<div>${tRaw('settings.wanted_rb_asked')}: ${d.rebrickable.gefragt} → ${d.rebrickable.gefunden}</div>` : ''}
+      ${d.rebrickable?.abgebrochen ? html`<div>${ico('warnung')} ${tRaw(RB_ABBRUCH[d.rebrickable.abgebrochen])}</div>` : ''}
       ${d.korrekturen?.abgewiesen?.length ? html`<div>${ico('warnung')} <strong>${d.korrekturen.abgewiesen.length}</strong> ${tRaw('wanted.corrections_rejected')}</div>` : ''}
       ${d.abgebrochen ? html`<div>${ico('warnung')} ${tRaw('wanted.cancelled')}</div>` : ''}
       ${!d.vorschau ? html`<div data-stil="margin-top:.4rem"><strong>${d.angelegt}</strong> ${tRaw('settings.wanted_written')}${d.aufgestockt ? html`, ${d.aufgestockt} ${tRaw('wanted.topped_up')}` : ''}${d.fehler ? html`, ${d.fehler} ${tRaw('settings.wanted_errors')}` : ''}</div>` : ''}

@@ -1,5 +1,5 @@
 import * as repo from './repository/teileListe';
-import { resolveImageLocal, fetchMissingBlIds, type RbSetTeil, getRbKey, httpsGetRobust, getAllSetParts, neuestesInventar, merkeBlFarbnummer, blFarbnummerAus } from '../katalog';
+import { resolveImageLocal, fetchMissingBlIds, type RbSetTeil, ersteBlNummer, getRbKey, httpsGetRobust, getAllSetParts, neuestesInventar, merkeBlFarbnummer, blFarbnummerAus } from '../katalog';
 import { asIds, withOwners, blickfeldAus, type Sicht, type BlickfeldEingabe, type BlickfeldEingabe as Blickfeld } from '../haushalt';
 import { istErsatzteil, colorId } from '../infra/validate';
 import { ensureFresh } from './partsSummary';
@@ -60,7 +60,7 @@ async function teileErsatzquelle(set_number: string, ab: Abstriche) {
           .filter((it: RbSetTeil) => !it.is_spare)
           .map((it: RbSetTeil) => ({
             part_number:    it.part?.part_num,
-            bl_part_number: it.part?.external_ids?.BrickLink?.[0] || it.part?.part_num,
+            bl_part_number: ersteBlNummer(it.part?.external_ids) || it.part?.part_num,
             part_name:      it.part?.name || it.part?.part_num,
             color_id:       it.color?.id ?? 0,
             color_name:     it.color?.name || '',

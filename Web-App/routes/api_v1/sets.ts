@@ -24,7 +24,7 @@ const router = vertragsRouter();
 // Sonst liest Express „info" oder „exists" als Setnummer.
 
 router.get('/sets/info/:setNumber', requireToken, async (req: Anfrage<'GET /api/v1/sets/info/:setNumber'>, res: Antwort<'GET /api/v1/sets/info/:setNumber'>) => {
-  res.json(await sets.setInfoFuerKonto(req.apiUser.user_id, req.pfad.setNumber));
+  res.json({ success: true, ...(await sets.setInfoFuerKonto(req.apiUser.user_id, req.pfad.setNumber)) });
 });
 
 /** Nur das Blickfeld des fragenden Kontos (eigenes Konto oder Haushalt). */
@@ -37,7 +37,7 @@ router.get('/sets/exists/:setNumber', requireToken, async (req: Anfrage<'GET /ap
 router.get('/sets/barcode/:barcode', requireToken, async (req: Anfrage<'GET /api/v1/sets/barcode/:barcode'>, res: Antwort<'GET /api/v1/sets/barcode/:barcode'>) => {
   const barcode = req.pfad.barcode.trim();
   const treffer = await sets.setZumBarcode(barcode);
-  if (treffer) return res.json(treffer);
+  if (treffer) return res.json({ success: true, ...treffer });
   sendeFehler(req, res, 404, 'barcode_kein_set', { barcode });
 });
 
@@ -79,7 +79,7 @@ router.get('/alerts', requireToken, async (req: Anfrage<'GET /api/v1/alerts'>, r
 router.post('/alerts/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'),
   async (req: Anfrage<'POST /api/v1/alerts/import/csv'>, res: Antwort<'POST /api/v1/alerts/import/csv'>) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-    res.json(await sets.alarmCsvImportStarten(req.apiUser.user_id, req.file.buffer.toString('utf-8')));
+    res.json({ success: true, ...(await sets.alarmCsvImportStarten(req.apiUser.user_id, req.file.buffer.toString('utf-8'))) });
   });
 
 router.get('/storage/locations', requireToken, async (req: Anfrage<'GET /api/v1/storage/locations'>, res: Antwort<'GET /api/v1/storage/locations'>) => {

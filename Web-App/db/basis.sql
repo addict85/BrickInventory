@@ -322,6 +322,10 @@ CREATE TABLE public.auftrag_pausen (
     stufe integer DEFAULT 0 NOT NULL
 );
 
+CREATE TABLE public.auftrags_arten (
+    art text NOT NULL
+);
+
 CREATE TABLE public.bl_zuordnung (
     art text NOT NULL,
     rb_id text NOT NULL,
@@ -341,11 +345,6 @@ CREATE TABLE public.bl_zuordnung_eigen (
 
 CREATE TABLE public.catalog_cache (
     set_number text NOT NULL,
-    name text,
-    year integer,
-    theme text,
-    pieces integer,
-    image_url text,
     is_gear boolean DEFAULT false NOT NULL,
     bl_type text,
     fetched_at timestamp with time zone DEFAULT now(),
@@ -506,7 +505,8 @@ CREATE TABLE public.minifig_price_cache (
     abdeckung numeric(4,3),
     CONSTRAINT minifig_price_cache_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
     CONSTRAINT minifig_price_cache_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
-    CONSTRAINT minifig_price_cache_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
+    CONSTRAINT minifig_price_cache_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric)),
+    CONSTRAINT minifig_price_cache_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 
 CREATE SEQUENCE public.minifig_price_cache_id_seq
@@ -531,7 +531,8 @@ CREATE TABLE public.minifig_price_history (
     abdeckung numeric(4,3),
     CONSTRAINT minifig_price_history_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
     CONSTRAINT minifig_price_history_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
-    CONSTRAINT minifig_price_history_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
+    CONSTRAINT minifig_price_history_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric)),
+    CONSTRAINT minifig_price_history_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 
 CREATE SEQUENCE public.minifig_price_history_id_seq
@@ -651,7 +652,8 @@ CREATE TABLE public.part_price_cache (
     fetched_at timestamp with time zone DEFAULT now(),
     CONSTRAINT part_price_cache_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
     CONSTRAINT part_price_cache_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
-    CONSTRAINT part_price_cache_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
+    CONSTRAINT part_price_cache_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric)),
+    CONSTRAINT part_price_cache_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 
 CREATE SEQUENCE public.part_price_cache_id_seq
@@ -675,7 +677,8 @@ CREATE TABLE public.part_price_history (
     recorded_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT part_price_history_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
     CONSTRAINT part_price_history_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
-    CONSTRAINT part_price_history_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
+    CONSTRAINT part_price_history_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric)),
+    CONSTRAINT part_price_history_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 
 CREATE SEQUENCE public.part_price_history_id_seq
@@ -790,7 +793,8 @@ CREATE TABLE public.price_alerts (
     CONSTRAINT price_alerts_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
     CONSTRAINT price_alerts_richtung CHECK ((richtung = ANY (ARRAY['unter'::text, 'ueber'::text]))),
     CONSTRAINT price_alerts_schwelle CHECK ((schwelle > (0)::numeric)),
-    CONSTRAINT price_alerts_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
+    CONSTRAINT price_alerts_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text)),
+    CONSTRAINT price_alerts_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 
 CREATE TABLE public.price_cache (
@@ -808,7 +812,8 @@ CREATE TABLE public.price_cache (
     CONSTRAINT price_cache_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
     CONSTRAINT price_cache_max_price_nicht_negativ CHECK ((max_price >= (0)::numeric)),
     CONSTRAINT price_cache_min_price_nicht_negativ CHECK ((min_price >= (0)::numeric)),
-    CONSTRAINT price_cache_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
+    CONSTRAINT price_cache_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric)),
+    CONSTRAINT price_cache_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 
 CREATE SEQUENCE public.price_cache_id_seq
@@ -835,7 +840,8 @@ CREATE TABLE public.price_history (
     CONSTRAINT price_history_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
     CONSTRAINT price_history_max_price_nicht_negativ CHECK ((max_price >= (0)::numeric)),
     CONSTRAINT price_history_min_price_nicht_negativ CHECK ((min_price >= (0)::numeric)),
-    CONSTRAINT price_history_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric))
+    CONSTRAINT price_history_qty_avg_price_nicht_negativ CHECK ((qty_avg_price >= (0)::numeric)),
+    CONSTRAINT price_history_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 
 CREATE SEQUENCE public.price_history_id_seq
@@ -1252,7 +1258,8 @@ CREATE TABLE public.wanted (
     set_number text NOT NULL,
     condition text DEFAULT 'N'::text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT wanted_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
+    CONSTRAINT wanted_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text)),
+    CONSTRAINT wanted_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
 
 CREATE SEQUENCE public.wanted_id_seq
@@ -1389,6 +1396,9 @@ ALTER TABLE ONLY public.auftrag_exklusiv
 
 ALTER TABLE ONLY public.auftrag_pausen
     ADD CONSTRAINT auftrag_pausen_pkey PRIMARY KEY (art);
+
+ALTER TABLE ONLY public.auftrags_arten
+    ADD CONSTRAINT auftrags_arten_pkey PRIMARY KEY (art);
 
 ALTER TABLE ONLY public.bl_zuordnung_eigen
     ADD CONSTRAINT bl_zuordnung_eigen_pkey PRIMARY KEY (user_id, art, rb_id);
@@ -1925,7 +1935,13 @@ ALTER TABLE ONLY public.api_tokens_verbraucht
     ADD CONSTRAINT api_tokens_verbraucht_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.auftraege
+    ADD CONSTRAINT auftraege_art_fkey FOREIGN KEY (art) REFERENCES public.auftrags_arten(art);
+
+ALTER TABLE ONLY public.auftraege
     ADD CONSTRAINT auftraege_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.auftrag_pausen
+    ADD CONSTRAINT auftrag_pausen_art_fkey FOREIGN KEY (art) REFERENCES public.auftrags_arten(art);
 
 ALTER TABLE ONLY public.bl_zuordnung_eigen
     ADD CONSTRAINT bl_zuordnung_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
@@ -2077,6 +2093,24 @@ INSERT INTO public.auftrag_exklusiv (art) VALUES ('aufraeumen');
 INSERT INTO public.auftrag_exklusiv (art) VALUES ('aufraeumen_taeglich');
 INSERT INTO public.auftrag_exklusiv (art) VALUES ('preise_nachladen');
 
+INSERT INTO public.auftrags_arten (art) VALUES ('nacharbeit');
+INSERT INTO public.auftrags_arten (art) VALUES ('bilder');
+INSERT INTO public.auftrags_arten (art) VALUES ('pdf');
+INSERT INTO public.auftrags_arten (art) VALUES ('csv_import');
+INSERT INTO public.auftrags_arten (art) VALUES ('wechselkurse');
+INSERT INTO public.auftrags_arten (art) VALUES ('anleitung');
+INSERT INTO public.auftrags_arten (art) VALUES ('brickset');
+INSERT INTO public.auftrags_arten (art) VALUES ('bildbedarf');
+INSERT INTO public.auftrags_arten (art) VALUES ('bilder_neu_laden');
+INSERT INTO public.auftrags_arten (art) VALUES ('nachlauf');
+INSERT INTO public.auftrags_arten (art) VALUES ('csv_sync');
+INSERT INTO public.auftrags_arten (art) VALUES ('preise');
+INSERT INTO public.auftrags_arten (art) VALUES ('bild_nachlauf');
+INSERT INTO public.auftrags_arten (art) VALUES ('aufraeumen');
+INSERT INTO public.auftrags_arten (art) VALUES ('aufraeumen_taeglich');
+INSERT INTO public.auftrags_arten (art) VALUES ('preise_nachladen');
+INSERT INTO public.auftrags_arten (art) VALUES ('konto_dateien');
+
 INSERT INTO public.global_settings (key, value, updated_at) VALUES ('bricklink_consumer_key', '', '2026-10-28 17:10:03.355398+00');
 INSERT INTO public.global_settings (key, value, updated_at) VALUES ('bricklink_consumer_secret', '', '2026-10-28 17:10:03.355398+00');
 INSERT INTO public.global_settings (key, value, updated_at) VALUES ('bricklink_token', '', '2026-10-28 17:10:03.355398+00');
@@ -2205,3 +2239,5 @@ INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('010
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0105-set-stamm-aus-rb-sets.sql', '2026-11-10 21:08:00.110321+00', '3f0bf2b06c2210990c379d46a33282283915ecc99d225db9a5654ef0eb366569');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0106-geraeteschluessel-attestation.sql', '2026-11-11 09:11:57.380702+00', 'd4ff7b3e5346bc2c663c87dd76b8ecab03d798a1f75c21a81e35118ee957508b');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0107-merkliste-schranken-namen.sql', '2026-11-11 12:59:07.448052+00', '0b7b0e4bd58feaf35fabf8243270139dad032308349153278e1a8dd9ab05d864');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0108-catalog-cache-nur-abrufstand.sql', '2026-11-11 13:56:56.199275+00', 'a91b69538855e6934c5b120ed2d011c6b7c73e3f0b9feac1a45d648ee4d74fc8');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0109-zustand-und-auftragsart-pruefen.sql', '2026-11-11 13:56:56.205616+00', 'c16ce444add67b79f46521d52f6a3ad81a9cb104a1380593f1592ff55c572a28');

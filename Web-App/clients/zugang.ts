@@ -1,7 +1,7 @@
 // Was ein Klient von der Anwendung braucht, ohne sie zu kennen: Schlüssel,
-// Kontingent, Drossel und die Brickset-Wiedervorlage. src/katalog/quellen.ts
-// setzt es ein; ohne das gilt kein Schlüssel als eingetragen, und nichts geht
-// hinaus.
+// Kontingent, Drossel und die Brickset-Wiedervorlage. startup/verdrahtung.ts
+// setzt es beim Start ein; fehlt das, wirft jeder Abruf, statt still ohne
+// Schlüssel und ohne Kontingent zu laufen.
 
 export type ApiName = 'bricklink' | 'rebrickable' | 'brickset';
 export type SchluesselName = 'rebrickable_api_key' | 'brickset_api_key'
@@ -20,18 +20,11 @@ export interface KlientenZugang {
   bricksetVergessen(setNumber: string): Promise<void>;
 }
 
-const FREI: Drossel = { async waitForSlot() {}, throttle() {} };
-const OHNE: KlientenZugang = {
-  async schluessel() { return ''; },
-  async zaehle() { return { allowed: true, count: 0, limit: 0 }; },
-  async kontingentStand() { return { count: 0, limit: 0, remaining: 0 }; },
-  drossel: { vordergrund: FREI, hintergrund: FREI },
-  async bricksetVormerken() { return { versuch: 0, vorgemerkt: false, hoechstens: 0 }; },
-  async bricksetVergessen() {},
-};
-
-let _zugang: KlientenZugang = OHNE;
+let _zugang: KlientenZugang | null = null;
 
 export function verdrahteKlienten(z: KlientenZugang): void { _zugang = z; }
 
-export function zugang(): KlientenZugang { return _zugang; }
+export function zugang(): KlientenZugang {
+  if (!_zugang) throw new Error('Klienten nicht verdrahtet: startup/verdrahtung.ts verdrahte() fehlt beim Start');
+  return _zugang;
+}

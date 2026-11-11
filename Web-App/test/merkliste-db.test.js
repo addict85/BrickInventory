@@ -28,6 +28,8 @@ async function seed() {
   await db.run(
     `INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, set_img_url)
      VALUES ('75192-1', 'Millennium Falcon', 2017, 158, 7541, 'http://x/75192.jpg')`);
+  // Das Bild liest die Merkliste nur aus set_catalog (0108).
+  await db.run(`INSERT INTO set_catalog (set_number, image_url) VALUES ('75192-1', 'http://x/75192.jpg')`);
 }
 
 async function dbReachable() {
@@ -149,7 +151,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     assert.equal(await W.loescheMerkposten(U.opa, '75192-1', 'U'), 0);
   });
 
-  await t.test('die Übernahme legt das Set über addSet() an — mit Erfassungszeile', async () => {
+  await t.test('die Übernahme legt das Set über setErfassen() an — mit Erfassungszeile', async () => {
     // „Direkt in die Galerie übernehmen" muss dasselbe sein wie eine
     // Setnummer erfassen. Ein eigenes INSERT INTO sets hätte weder die
     // Erfassungszeile noch den Zustand noch die Anreicherung — und genau
@@ -166,7 +168,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     const erf = await db.get(
       `SELECT COUNT(*)::int AS n FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`,
       [U.opa, '75192-1']);
-    assert.equal(erf.n, 1, 'Keine Erfassungszeile — die Übernahme ruft addSet() nicht');
+    assert.equal(erf.n, 1, 'Keine Erfassungszeile — die Übernahme ruft setErfassen() nicht');
   });
 
   await t.test('nach der Übernahme sind Merkposten UND Alarm weg', async () => {
@@ -301,6 +303,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
         `INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, set_img_url)
          VALUES ($1,'Testset',2024,158,100,$2)`,
         [sn, `http://cdn.example/media/sets/${sn}.jpg`]);
+      await db.run('INSERT INTO set_catalog (set_number, image_url) VALUES ($1,$2)', [sn, `http://cdn.example/media/sets/${sn}.jpg`]);
       await W.legeMerkpostenAn(U.opa, sn, 'N');
     }
 

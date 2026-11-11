@@ -7,7 +7,10 @@ import {
   getSetByEan,
   rebrickableJson,
   produktTitel,
-  merkeKatalogCache,
+  merkeSetKatalog,
+  RbSet,
+  RbSetFigur,
+  rbSeite,
 } from '../katalog';
 import { normalizeSetNumber } from './erfassen';
 import { mitVersion } from '../infra/setNummer';
@@ -16,7 +19,6 @@ import { versuche } from '../infra/ergebnis';
 import type { SetsKontext } from './kontext';
 
 export interface BarcodeTreffer {
-  success: true;
   unsicher: boolean;
   set_number: string;
   name: string | null;
@@ -37,9 +39,9 @@ async function barcodeErgebnis(
   name: string | null,
   source: string,
 ): Promise<BarcodeTreffer> {
-  const rbData = await rebrickableJson(`/lego/sets/${encodeURIComponent(setNumber)}/`);
+  const rbData = await rebrickableJson(`/lego/sets/${encodeURIComponent(setNumber)}/`, RbSet);
   const mfData = rbData
-    ? await rebrickableJson(`/lego/sets/${encodeURIComponent(setNumber)}/minifigs/?page_size=1`)
+    ? await rebrickableJson(`/lego/sets/${encodeURIComponent(setNumber)}/minifigs/?page_size=1`, rbSeite(RbSetFigur))
     : null;
   // Ohne Fang: Eine gestörte Datenbank ist kein „nicht im Katalog“.
   const local = await repo.setKatalog(sk.db, setNumber);
@@ -51,13 +53,12 @@ async function barcodeErgebnis(
 
   if (local) {
     return {
-      success: true,
       unsicher,
       set_number: setNumber,
       name: local.name || rbData?.name || name,
-      year: local.year || rbData?.year,
-      pieces: local.pieces || rbData?.num_parts,
-      theme: local.theme || rbData?.theme_name,
+      year: local.year || rbData?.year || null,
+      pieces: local.pieces || rbData?.num_parts || null,
+      theme: local.theme,
       minifigs,
       image_local,
       image_url,
@@ -65,48 +66,35 @@ async function barcodeErgebnis(
     };
   }
   if (rbData?.set_num) {
-    // Der Cache spart nur den nächsten Abruf; der Treffer gilt auch ohne ihn.
+    // In den Katalog wie jeder Abruf; der Treffer gilt auch, wenn das Ablegen scheitert.
     await versuche(
-      'sets:catalog_cache schreiben',
-      merkeKatalogCache(
+      'sets:katalog schreiben',
+      merkeSetKatalog(
         sk.db,
         setNumber,
-        rbData.name,
-        rbData.year,
-        rbData.theme_name,
-        rbData.num_parts,
-        rbData.set_img_url,
+        rbData.name ?? null,
+        rbData.year ?? null,
+        null,
+        rbData.num_parts ?? null,
+        minifigs,
+        rbData.set_img_url ?? null,
+        null,
+        Number(rbData.theme_id) || null,
       ),
     );
     return {
-      success: true,
       unsicher,
       set_number: setNumber,
       name: rbData.name || name,
-      year: rbData.year,
-      pieces: rbData.num_parts,
-      theme: rbData.theme_name,
+      year: rbData.year ?? null,
+      pieces: rbData.num_parts ?? null,
+      theme: null,
       minifigs,
       image_url,
       source,
     };
   }
-  const cat = await repo.katalogCacheEintrag(sk.db, setNumber);
-  if (cat) {
-    return {
-      success: true,
-      unsicher,
-      set_number: setNumber,
-      name: cat.name || name,
-      year: cat.year,
-      pieces: cat.pieces,
-      theme: cat.theme,
-      minifigs,
-      image_url: cat.image_url || image_url,
-      source,
-    };
-  }
-  return { success: true, unsicher, set_number: setNumber, name, minifigs, image_url, source };
+  return { unsicher, set_number: setNumber, name, minifigs, image_url, source };
 }
 
 async function imKatalog(
@@ -125,17 +113,17 @@ export async function setZumBarcode(sk: SetsKontext, rohBarcode: string): Promis
 
   if (/^\d{12,13}$/.test(barcode)) {
     const ean13 = barcode.length === 12 ? '0' + barcode : barcode;
-    const rb = await rebrickableJson(`/lego/sets/?search=${encodeURIComponent(ean13)}&page_size=5`);
+    const rb = await rebrickableJson(`/lego/sets/?search=${encodeURIComponent(ean13)}&page_size=5`, rbSeite(RbSet));
     for (const set of rb?.results || []) {
-      const detail = await rebrickableJson(`/lego/sets/${encodeURIComponent(set.set_num)}/`);
+      const detail = await rebrickableJson(`/lego/sets/${encodeURIComponent(set.set_num)}/`, RbSet);
       const extIds = Object.values(detail?.external_ids || {})
         .flat()
         .map(String);
       if (extIds.includes(ean13) || extIds.includes(barcode))
-        return barcodeErgebnis(sk, set.set_num, set.name, 'rebrickable-ean');
+        return barcodeErgebnis(sk, set.set_num, set.name ?? null, 'rebrickable-ean');
     }
-    const plausibel = rb?.results?.find((s: { year: number; num_parts: number }) => s.year > 2010 && s.num_parts > 0);
-    if (plausibel) return barcodeErgebnis(sk, plausibel.set_num, plausibel.name, 'rebrickable-search');
+    const plausibel = rb?.results.find(s => (s.year ?? 0) > 2010 && (s.num_parts ?? 0) > 0);
+    if (plausibel) return barcodeErgebnis(sk, plausibel.set_num, plausibel.name ?? null, 'rebrickable-search');
 
     const bsEan = await getSetByEan(ean13);
     if (bsEan) {
@@ -159,8 +147,8 @@ export async function setZumBarcode(sk: SetsKontext, rohBarcode: string): Promis
   if (/^\d{5,8}$/.test(barcode)) {
     const bs = await getSetByBarcode(barcode);
     if (bs) return barcodeErgebnis(sk, bs.set_number, bs.name, 'brickset-item');
-    const rb = await rebrickableJson(`/lego/sets/${barcode}-1/`);
-    if (rb?.set_num) return barcodeErgebnis(sk, rb.set_num, rb.name, 'rebrickable-direct');
+    const rb = await rebrickableJson(`/lego/sets/${barcode}-1/`, RbSet);
+    if (rb?.set_num) return barcodeErgebnis(sk, rb.set_num, rb.name ?? null, 'rebrickable-direct');
   }
   return null;
 }

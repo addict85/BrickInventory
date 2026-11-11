@@ -16,7 +16,7 @@ import type { FehlerArt, FehlerCode } from '../infra/fehlerTexte';
 import * as repo from './repository/zugaenge';
 import * as kontenRepo from './repository/konten';
 import type { TokenScope } from './repository/zugaenge';
-import { erhoeheSitzungsVersion } from './sitzungsVersion';
+import { erhoeheSitzungsVersion, vergissSitzungsVersion } from './sitzungsVersion';
 import { hinweisNebenher } from './kontoHinweis';
 import { zaehleFehlversuch, zuVieleFehlversuche } from './tokenFehlversuche';
 
@@ -27,7 +27,7 @@ export type { TokenScope };
 export interface TokenBenutzer {
   user_id: number;
   username: string;
-  is_admin?: number;
+  is_admin?: boolean;
   /** Die GLEITENDE Frist: „so lange ungenutzt" (siehe _touchLastUsed). */
   expires_at?: string | Date | null;
   /** Die FESTE Frist, falls beim QR-Code eine gewählt wurde. `null` = keine. */
@@ -166,7 +166,7 @@ export async function pruefeToken(token: string | null | undefined,
   }
   // Verwalterrecht nur mit Scope `voll`, an dieser einen Stelle entschieden,
   // damit alle Wächter es gleich sehen.
-  row.is_admin = row.konto_is_admin && row.scope === 'voll' ? 1 : 0;
+  row.is_admin = row.konto_is_admin === true && row.scope === 'voll';
   if (row.vorgaenger) {
     await repo.beendeUeberlappung(row.vorgaenger, hashed);
     row.vorgaenger = null;
@@ -512,12 +512,25 @@ export async function revokeAllSessions(userId: number): Promise<void> {
 
 /** Nach dem Einschalten des zweiten Faktors: Wer schon drin war, soll nicht
  * mit einem alten Token oder einer alten Sitzung drinbleiben. */
-export async function beendeAndereZugaenge(userId: number, aktuellerToken: string | null, sitzungsId: string | null): Promise<number> {
-  await repo.loescheTokensDesKontos(userId, aktuellerToken ? hashToken(aktuellerToken) : null);
+/** Passwort, Zugänge und Passkeys zusammen: Sonst gälte nach einem Fehler das
+ * neue Passwort, während die alten Zugänge weiterleben. Die Zwischenspeicher
+ * leeren sich nach dem COMMIT noch einmal, weil eine Anfrage dazwischen den
+ * alten Stand wieder aufgenommen haben kann. */
+export async function mitZugangsende<T>(konto: number | ((r: T) => number | null), fn: () => Promise<T>): Promise<T> {
+  const r = await db.transaction(fn, { wiederholeBeiKonflikt: true });
   leereTokenCache();
-  const version = await erhoeheSitzungsVersion(userId);
-  await repo.loescheSitzungenDesKontos(userId, sitzungsId);
-  return version;
+  const uid = typeof konto === 'function' ? konto(r) : konto;
+  if (uid) vergissSitzungsVersion(uid);
+  return r;
+}
+
+export async function beendeAndereZugaenge(userId: number, aktuellerToken: string | null, sitzungsId: string | null): Promise<number> {
+  return mitZugangsende(userId, async () => {
+    await repo.loescheTokensDesKontos(userId, aktuellerToken ? hashToken(aktuellerToken) : null);
+    const v = await erhoeheSitzungsVersion(userId);
+    await repo.loescheSitzungenDesKontos(userId, sitzungsId);
+    return v;
+  });
 }
 
 /** Ohne Fang: ein Sicherheitsschritt. Scheitert er still, meldet der Aufrufer

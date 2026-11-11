@@ -1,6 +1,7 @@
 /** BL-Nummern der Wanted-Liste auf Rebrickable-Nummern abbilden: zuerst lokal
  * (Zuordnungen, Katalog), dann über Rebrickable, zuletzt die Korrekturen von Hand. */
-import { blTeilZuRb, blFilterWirkungslos } from '../katalog';
+import { blTeilZuRb, blFilterWirkungslos, RebrickableGesperrt } from '../katalog';
+import { meldeFehler } from '../infra/fehler';
 import * as repo from './repository/wantedListe';
 import type { WantedArt, WantedPosten } from './wantedParser';
 
@@ -89,6 +90,7 @@ export async function loeseLokalAuf(posten: WantedPosten[], uid: number | null =
 }
 
 /** Rebrickable ist der einzige direkte Weg von BL- zu RB-Nummern. */
+export type RebrickableAbbruch = 'kontingent' | 'kein_schluessel' | 'stoerung';
 /** Zwei Phasen, weil die Rebrickable-Abrufe ungleich länger dauern. */
 export type WantedFortschritt = {
   phase: 'rebrickable' | 'schreiben';
@@ -100,7 +102,13 @@ export async function loeseUeberRebrickableAuf(
   auf: Aufloesung[],
   grenze = 250,
   fortschritt?: (stand: WantedFortschritt) => void,
-): Promise<{ auf: Aufloesung[]; gefragt: number; gefunden: number; filterWirkungslos: boolean }> {
+): Promise<{
+  auf: Aufloesung[];
+  gefragt: number;
+  gefunden: number;
+  filterWirkungslos: boolean;
+  abgebrochen?: RebrickableAbbruch;
+}> {
   let gefragt = 0,
     gefunden = 0;
 
@@ -115,13 +123,15 @@ export async function loeseUeberRebrickableAuf(
     if (gefragt >= grenze) break;
 
     gefragt++;
-    let rbId: string | null = null;
-    // Ein gescheiterter Abruf beendet nicht den Lauf: Die übrigen Posten sind
-    // davon unberührt.
+    let rbId: string | null;
+    // Ein Fehler ausser „unbekannt“ trifft auch alle folgenden Posten; der Bericht
+    // nennt den Grund, statt sie still als „nicht gefunden“ zu zählen.
     try {
       rbId = await blTeilZuRb(a.posten.blId);
-    } catch {
-      rbId = null;
+    } catch (e) {
+      if (!(e instanceof RebrickableGesperrt)) meldeFehler('wanted:rebrickable', e);
+      const abgebrochen = e instanceof RebrickableGesperrt ? e.grund : 'stoerung';
+      return { auf: ergebnis, gefragt, gefunden, filterWirkungslos: blFilterWirkungslos(), abgebrochen };
     }
     if (rbId) {
       gefunden++;

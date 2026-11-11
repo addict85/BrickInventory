@@ -46,6 +46,8 @@ export const SettingsResponse = z.looseObject({
 });
 
 export const StartupStatus = z.looseObject({
+  fehler: z.string().nullable().optional(),
+  pfad: z.string().nullable().optional(),
   ready: z.boolean(),
   step: z.string().nullable().optional(),
   // Erledigte Schritte mit Anteil des laufenden (2.37 = Schritt 3 zu 37 %).
@@ -97,7 +99,9 @@ export const Gesundheit = z.looseObject({
 export const Lebenszeichen = z.strictObject({ status: z.literal('ok') });
 
 /** Ergebnis des Versands; bei Erfolg ohne Fehlertext. */
-export const SmtpProbe = z.looseObject({ success: z.boolean() });
+export const SmtpProbe = z.looseObject({ 
+  mode: z.string().nullable().optional(),
+  success: z.boolean() });
 
 export const EinstellungenGespeichert = GenericResponse.extend({ updated: ganz });
 

@@ -85,8 +85,11 @@ export async function gleicheSetsAb(c: PoolClient, schatten: string, spalten: st
     await c.query(`UPDATE rb_sets SET herkunft = 'api' WHERE herkunft = 'csv' AND ${verschwunden} AND ${bezug}`);
     // set_catalog geht per ON DELETE CASCADE mit.
     await c.query(`DELETE FROM rb_sets WHERE ${verschwunden} AND NOT ${bezug}`);
-    await c.query(`INSERT INTO set_catalog (set_number) SELECT set_num FROM rb_sets WHERE set_num ~ '-[0-9]+$'
-                   ON CONFLICT (set_number) DO NOTHING`);
+    // Die Bildadresse des CSV gilt erst in set_catalog, der einzigen Bildquelle (0108).
+    await c.query(`INSERT INTO set_catalog (set_number, image_url)
+                   SELECT set_num, NULLIF(set_img_url, '') FROM rb_sets WHERE set_num ~ '-[0-9]+$'
+                   ON CONFLICT (set_number) DO UPDATE SET image_url = EXCLUDED.image_url, updated_at = NOW()
+                   WHERE set_catalog.image_url IS NULL AND EXCLUDED.image_url IS NOT NULL`);
   });
 }
 

@@ -1,8 +1,13 @@
 import * as db from '../../../db/database';
 
 /** Die App macht daran die Zeile anklickbar; $3 ist das Blickfeld. */
-export function uebertrageAlarm(zuId: number, vonId: number, sn: string, c: string) {
-  return db.run('UPDATE price_alerts SET user_id=$1 WHERE user_id=$2 AND set_number=$3 AND condition=$4', [zuId, vonId, sn, c]);
+/** Hat das Ziel schon einen Alarm (etwa an einem besessenen Set), gilt seiner;
+ * sonst bräche der Primärschlüssel das Umhängen samt Merkposten ab. */
+export async function uebertrageAlarm(zuId: number, vonId: number, sn: string, c: string) {
+  await db.run(`UPDATE price_alerts SET user_id=$1 WHERE user_id=$2 AND set_number=$3 AND condition=$4
+                   AND NOT EXISTS (SELECT 1 FROM price_alerts z WHERE z.user_id=$1 AND z.set_number=$3 AND z.condition=$4)`,
+               [zuId, vonId, sn, c]);
+  return db.run('DELETE FROM price_alerts WHERE user_id=$1 AND set_number=$2 AND condition=$3', [vonId, sn, c]);
 }
 
 const BESITZT = 'EXISTS (SELECT 1 FROM sets s WHERE s.user_id = ANY($3) AND s.set_number = a.set_number) AS besitzt';

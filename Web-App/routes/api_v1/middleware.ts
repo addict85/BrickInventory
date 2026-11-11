@@ -56,7 +56,7 @@ export async function anmeldungAmEingang(req: Request, res: Response, next: Next
   const methode = req.method === 'HEAD' ? 'GET' : req.method;
   if (OEFFENTLICH.some(([m, re]) => m === methode && re.test(req.path))) return next();
   if (req.session?.userId) {
-    req.apiUser = { user_id: req.session.userId, is_admin: req.session.isAdmin ? 1 : 0,
+    req.apiUser = { user_id: req.session.userId, is_admin: !!req.session.isAdmin,
                     ...(req.session.username ? { username: req.session.username } : {}) };
   } else {
     // Ein Lesefehler ist keine ungültige Anmeldung: Ein 401 meldete die App ab.
@@ -83,14 +83,14 @@ export const requireToken = waechter<AuthedRequest>((req, res, next) => {
   // Schon am Eingang geprüft: kein zweiter Datenbankzugriff.
   if (req.apiUser) return next();
   if (req.session?.userId) {
-    req.apiUser = { user_id: req.session.userId, is_admin: req.session.isAdmin ? 1 : 0,
+    req.apiUser = { user_id: req.session.userId, is_admin: !!req.session.isAdmin,
       ...(req.session.username ? { username: req.session.username } : {}) };
     return next();
   }
   const token = bearerToken(req);
   validateToken(token, { ip: req.ip }).then(user => {
     if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
-    req.apiUser = { ...user, is_admin: user.is_admin ?? 0 };
+    req.apiUser = { ...user, is_admin: user.is_admin === true };
     next();
   }).catch((e: unknown) => { meldeFehler('eingang:token', e); sendeFehler(req, res, 401, 'auth_fehler'); });
 });

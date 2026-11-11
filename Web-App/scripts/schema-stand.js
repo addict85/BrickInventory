@@ -67,7 +67,7 @@ async function schemaText(db) {
 
 const BASIS = path.join(__dirname, '..', 'db/basis.sql');
 /** Startdaten, die eine neue Installation braucht; alles andere bleibt leer. */
-const BASIS_DATEN = ['auftrag_exklusiv', 'global_settings', 'gutschein_guthaben_schranke', 'schema_migrations'];
+const BASIS_DATEN = ['auftrag_exklusiv', 'auftrags_arten', 'global_settings', 'gutschein_guthaben_schranke', 'schema_migrations'];
 
 /** Hauptversion des pg_dump im Pfad; das Abbild unterscheidet sich zwischen Versionen. */
 function pgDumpVersion() {

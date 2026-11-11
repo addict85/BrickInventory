@@ -1,6 +1,6 @@
 /** Stammdaten, Teile- und Figurenliste eines Sets. */
 import { stelleAuftragEin } from '../auftraege';
-import { proxyImageUrl, importPartsForSet, setNummerImBlickfeld, neuestesInventar, figurenAusKatalog, getMinifigInfo, getSetMinifigs, getAllSetParts, type RbSetTeil, merkeFigur, merkeSetFiguren } from '../katalog';
+import { proxyImageUrl, importPartsForSet, setNummerImBlickfeld, neuestesInventar, figurenAusKatalog, getMinifigInfo, getSetMinifigs, getAllSetParts, type RbSetTeil, ersteBlNummer, merkeFigur, merkeSetFiguren } from '../katalog';
 import { zaehleAnfrage } from '../konto';
 import { findSetInScope } from './erfassen';
 import { istErsatzteil } from '../infra/validate';
@@ -22,9 +22,9 @@ export async function setInfoFuerKonto(sk: SetsKontext, uid: number, setNumber: 
   const n = mitVersion(setNumber);
   const stamm = await setInfo(sk, n);
   const fremderPlatzhalter = !!stamm?.platzhalter && !(await setNummerImBlickfeld(uid, n));
-  if (!stamm || fremderPlatzhalter) return { success: true as const, set_number: n, name: n, im_katalog: false as const };
+  if (!stamm || fremderPlatzhalter) return { set_number: n, name: n, im_katalog: false as const };
   const { platzhalter: _platzhalter, ...row } = stamm;
-  return { success: true as const, set_number: n, ...row, name: row.name || n, im_katalog: true as const };
+  return { set_number: n, ...row, name: row.name || n, im_katalog: true as const };
 }
 
 function katalogDesSets(sk: SetsKontext, setNumber: string): Promise<KatalogTeil[]> {
@@ -51,7 +51,7 @@ export async function teilelisteDesSets(sk: SetsKontext, setNum: string, anreich
     const rb = mit.ok && mit.wert ? mit : await versuche('sets:getAllSetParts', getAllSetParts(bare));
     if (!rb.ok) return { parts: [], source: QUELLE_GESTOERT, error: rb.fehler.grund, ...eineSeite(0) };
     teile = (rb.wert || []).map((r: RbSetTeil) => ({
-      part_number: r.part.part_num, bl_part_number: r.part.external_ids?.BrickLink?.[0] || r.part.part_num,
+      part_number: r.part.part_num, bl_part_number: ersteBlNummer(r.part.external_ids) || r.part.part_num,
       part_name: r.part.name || r.part.part_num, color_id: r.color.id, color_name: r.color.name || '',
       color_hex: r.color.rgb || null, rb_image_url: r.part.part_img_url || null,
       total_quantity: r.quantity, is_spare: !!r.is_spare }));

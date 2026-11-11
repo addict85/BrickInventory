@@ -3,7 +3,7 @@
 import { hashePasswort } from './bcryptSchranke';
 import * as repo from './repository/konten';
 import * as passkeyRepo from './repository/passkeys';
-import { BCRYPT_ROUNDS, leereTokenCache, revokeAllSessions, revokeAllTokens } from './auth';
+import { BCRYPT_ROUNDS, leereTokenCache, mitZugangsende, revokeAllSessions, revokeAllTokens } from './auth';
 import { erhoeheSitzungsVersion } from './sitzungsVersion';
 import { emailGueltig } from '../infra/validate';
 import { entferneStartpasswort } from '../infra/startpasswort';
@@ -52,30 +52,40 @@ async function startpasswortErledigt(uid: number): Promise<void> {
 }
 
 export async function setzeFremdesPasswort(uid: number, passwort: string): Promise<boolean> {
-  if (!await repo.setzePasswortHash(uid, await hashe(passwort))) return false;
-  await zugaengeBeenden(uid);
-  return true;
+  const hash = await hashe(passwort);
+  return mitZugangsende(uid, async () => {
+    if (!await repo.setzePasswortHash(uid, hash)) return false;
+    await zugaengeBeenden(uid);
+    return true;
+  });
 }
 
 /** Auch der gerade benutzte Token fällt. Passkeys nur auf Wunsch: Wer sein
  * Passwort bloss erneuert, soll seine Geräte nicht neu einrichten müssen. */
 export async function aendereEigenesPasswort(uid: number, passwort: string,
                                              o: { passkeysWiderrufen?: boolean } = {}): Promise<void> {
-  await repo.setzeEigenesPasswort(uid, await hashe(passwort));
-  await zugaengeBeenden(uid);
+  const hash = await hashe(passwort);
+  await mitZugangsende(uid, async () => {
+    await repo.setzeEigenesPasswort(uid, hash);
+    await zugaengeBeenden(uid);
+    if (o.passkeysWiderrufen) await passkeyRepo.loescheAlleDesKontos(uid);
+  });
   await startpasswortErledigt(uid);
-  if (o.passkeysWiderrufen) await passkeyRepo.loescheAlleDesKontos(uid);
 }
 
 /** Hier will man einen fremden Zugang loswerden; deshalb fallen auch alle Passkeys.
  * @returns das Konto, oder null, wenn der Link schon verbraucht oder abgelaufen ist */
 export async function setzePasswortZurueck(tokenHash: string, passwort: string): Promise<number | null> {
-  const uid = (await repo.setzePasswortNachRuecksetzen(tokenHash, await hashe(passwort)))?.id;
-  if (!uid) return null;
-  await zugaengeBeenden(uid);
-  await startpasswortErledigt(uid);
-  await passkeyRepo.loescheAlleDesKontos(uid);
-  return uid;
+  const hash = await hashe(passwort);
+  const konto = await mitZugangsende((id: number | null) => id, async () => {
+    const uid = (await repo.setzePasswortNachRuecksetzen(tokenHash, hash))?.id;
+    if (!uid) return null;
+    await zugaengeBeenden(uid);
+    await passkeyRepo.loescheAlleDesKontos(uid);
+    return uid;
+  });
+  if (konto) await startpasswortErledigt(konto);
+  return konto;
 }
 
 /** Dieselbe Rechenzeit wie registriere(): Die Antwortzeit verriete sonst eine vergebene Adresse. */

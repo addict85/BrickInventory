@@ -17,7 +17,7 @@ export {
   loescheVerfallene,
   offenerBildbedarf,
 } from './bilder/bildbedarf';
-export { vergissFehlend } from './bilder/imageMisses';
+export { stoppeFehlanzeige, vergissFehlend } from './bilder/imageMisses';
 export {
   proxyCachePathFor,
   proxyCacheSchluessel,
@@ -94,18 +94,23 @@ export {
   pruefeRebrickableZugang,
   rebrickableJson,
   tageskurseLesen,
+  RebrickableGesperrt,
+  ersteBlNummer,
+  RbSet,
+  RbSetFigur,
+  rbSeite,
 } from './quellen';
 export type { Abruf, Kurs, LegoAbruf, RbSetTeil } from './quellen';
 export { inventarFuerKandidaten, neuestesInventar } from './rbInventar';
 export { getAllSetParts, getMinifigParts, getSetInfo } from './rebrickableKatalog';
-export { katalogStand, merkeKatalogCache, merkeKatalogPlatzhalter, merkeSetKatalog } from './setStamm';
+export { katalogStand, merkeKatalogPlatzhalter, merkeSetKatalog } from './setStamm';
 export { downloadSetImages, enrichSetMinifigs, enrichSetParts } from './teileAnreicherung';
 export { anleitungLaden } from './anleitungLaden';
 export { erzeugeKatalog } from './bereich';
 export { bildNachlauf } from './bildNachlauf';
 export { anleitungFreigegeben } from './bilder/bildBlickfeld';
 export { merkeGebraucht } from './bilder/bildbedarf';
-export { bildbedarfAbarbeiten, initImageQueue } from './bilder/bildbedarfLauf';
+export { bildbedarfAbarbeiten, initImageQueue, stoppeBildbedarf } from './bilder/bildbedarfLauf';
 export { initImageMisses } from './bilder/imageMisses';
 export { IMG_PROXY_PFAD, IMG_PROXY_PFAD_ALT } from './bilder/images';
 export { resolveMany } from './bricklinkLink';
@@ -115,4 +120,5 @@ export { katalogImporte, parseCsvLine } from './csvImport';
 export { jahrVerteilung, katalogGeladen, katalogMeta, katalogSeite, katalogSet } from './dienst';
 export { erzeugePdf, pdfAufgegeben } from './pdf/pdfErzeugung';
 export { verdrahteKatalog } from './prozess';
+export { rebrickableLimiter, rebrickableBackgroundLimiter, rebrickableDailyStatus } from './rateLimiter';
 export { redownloadMissingImages } from './teileAnreicherung';

@@ -32,6 +32,10 @@ export const BarcodeResponse = z.looseObject({
 });
 
 export const Instruction = z.looseObject({
+  downloaded_at: zeit.nullable().optional(),
+  fetched_at: zeit.nullable().optional(),
+  set_number: z.string().nullable().optional(),
+  user_id: z.number().int().nullable().optional(),
   id: z.number().int().nullable().optional(),
   url: z.string(),
   description: z.string().nullable().optional(),
@@ -91,6 +95,13 @@ export const PreisalarmeResponse = z.looseObject({
 });
 
 export const SetItem = z.looseObject({
+  acq_count: z.number().int().nullable().optional(),
+  letzter_kauf: zeit.nullable().optional(),
+  owner_ids: z.array(z.number().int()).optional(),
+  id: z.number().int().nullable().optional(),
+  storage_id: z.number().int().nullable().optional(),
+  updated_at: zeit.nullable().optional(),
+  user_id: z.number().int().nullable().optional(),
   set_number: z.string(),
   name: z.string().nullable().optional(),
   year: z.number().int().nullable().optional(),
@@ -125,6 +136,12 @@ export const SetExistsResponse = z.looseObject({
 });
 
 export const SetInfoResponse = z.looseObject({
+  image_local: z.string().nullable().optional(),
+  image_url: z.string().nullable().optional(),
+  minifigs: z.number().int().nullable().optional(),
+  pieces: z.number().int().nullable().optional(),
+  theme: z.string().nullable().optional(),
+  year: z.number().int().nullable().optional(),
   success: z.boolean(),
   set_number: z.string(),
   name: z.string().nullable().optional(),

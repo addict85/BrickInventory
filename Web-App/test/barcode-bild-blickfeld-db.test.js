@@ -34,7 +34,7 @@ test('Barcode-Treffer und lokales Bild', { concurrency: 1 }, async t => {
   const fremd = (await db.get("INSERT INTO users (username, password_hash) VALUES ('bcb_fremd','x') RETURNING id")).id;
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [eigen, SN]);
   await katalogSet(db, SN, { name: SN, image_local: `/images/sets/${SN}.jpg` });
-  await db.run('INSERT INTO catalog_cache (set_number, name) VALUES ($1,$1)', [SN]);
+  await db.run('INSERT INTO catalog_cache (set_number) VALUES ($1)', [SN]);
   t.after(async () => {
     await db.run('DELETE FROM rb_sets WHERE set_num = $1', [SN]);
     await db.run('DELETE FROM catalog_cache WHERE set_number = $1', [SN]);

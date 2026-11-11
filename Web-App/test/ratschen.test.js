@@ -40,10 +40,10 @@ const STILLE_FAENGE = [
 /**
  * Treffer zaehlen — im CODE, nicht in den Erklaerungen darueber.
  */
-function zaehle(muster) {
+function zaehle(muster, nur = (/** @type {string} */ _f) => true) {
   const { ohneKommentare } = require('./helpers/sources');
   let n = 0;
-  for (const f of quellen()) {
+  for (const f of quellen().filter(nur)) {
     const s = ohneKommentare(fs.readFileSync(f, 'utf8'));
     for (const m of muster) n += (s.match(m) || []).length;
   }
@@ -61,9 +61,9 @@ test('die Suche findet die Quellen ueberhaupt', () => {
 });
 
 test('stille Faenge werden weniger, nie mehr', () => {
-  // Die beiden übrigen sind Rebrickable-Vermutungen, deren 404 die Antwort ist.
-  // Gemessen 2 am 08.11.2026.
-  const SCHRANKE = 2;
+  // Gemessen 0 am 11.11.2026: Die beiden letzten (Rebrickable-Teilezuordnung)
+  // fangen nur noch 404, das rbGet() selbst als null liefert.
+  const SCHRANKE = 0;
   // Selbstbeweis des letzten Musters: Es muss einen Ersatzwert ohne Meldung finden, die Meldung nicht.
   const ersatz = STILLE_FAENGE[STILLE_FAENGE.length - 1];
   const trifft = (s) => (s.match(ersatz) || []).length;
@@ -118,17 +118,17 @@ test('der Kompatibilitätsweg zur Datenbank und modulweite let werden weniger, n
   if (ist < SCHRANKE) console.log(`  ℹ Kompatibilitätsweg db/database: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 
   // Modulweite let: Zustand, den alle Aufrufer eines Prozesses teilen; ein Bereich
-  // bekommt seinen über die Fabrik. Gemessen 58 am 10.11.2026.
+  // bekommt seinen über die Fabrik. Gemessen 57 am 11.11.2026.
   // Gegenprobe (10.11.2026): `let _probe = 0;` in src/katalog/kontext.ts → rot mit 59.
-  const LET_SCHRANKE = 58;
+  const LET_SCHRANKE = 57;
   const lets = quellen().reduce((n, f) => n + (fs.readFileSync(f, 'utf8').match(/^(?:export )?let /gm) || []).length, 0);
   assert.ok(lets > 20 && lets <= LET_SCHRANKE, `${lets} modulweite let, erlaubt sind ${LET_SCHRANKE}`);
   if (lets < LET_SCHRANKE) console.log(`  ℹ modulweite let: ${lets} (Schranke ${LET_SCHRANKE}) — Schranke nachziehen`);
 });
 
 test('any wird weniger, nie mehr', () => {
-  // Gemessen 22 am 09.11.2026.
-  const SCHRANKE = 22;
+  // Gemessen 18 am 11.11.2026 (Antworten von Rebrickable und Brickset über zod).
+  const SCHRANKE = 18;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +
@@ -139,14 +139,24 @@ test('any wird weniger, nie mehr', () => {
   }
 });
 
-test('any in allen Formen und unknown-Parameter in Diensten werden weniger, nie mehr', () => {
+test('any in allen Formen, unknown-Parameter und success in Diensten werden weniger, nie mehr', () => {
   // Auch Promise<any>, any[] und Record<string, any>: Die enge Zählung oben sah
-  // nur `as any` und `: any`. Gemessen 35 am 10.11.2026.
+  // nur `as any` und `: any`. Gemessen 28 am 11.11.2026.
   // Gegenprobe (05.11.2026): getSetting wieder `fallback?: any` ohne Überladungen → rot.
-  const SCHRANKE = 35;
+  const SCHRANKE = 28;
   const ist = zaehle([/\bany\b/g]);
   assert.ok(ist <= SCHRANKE, `${ist}-mal any, erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ any (alle Formen): ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+
+  // Dieselbe Art Zählung: Die Hülle der Antwort setzt die Route, ein Dienst
+  // liefert das Fachobjekt. Gemessen 7 am 11.11.2026 (vorher 35): Zeilenstatus in
+  // Importberichten, Mailversand und der Import-Fortschritt (ein Strom-Format) bleiben.
+  // Gegenprobe (11.11.2026): in auftragAbbrechen() wieder `success: true` → rot.
+  const SUCCESS_SCHRANKE = 7;
+  const success = zaehle([/\bsuccess:\s*true\b/g],
+    f => /^src[\\/](?!vertrag[\\/]|http[\\/])/.test(path.relative(WEB, f)));
+  assert.ok(success <= SUCCESS_SCHRANKE, `${success}-mal success: true in src/ (ohne vertrag/, http/), erlaubt sind ${SUCCESS_SCHRANKE}`);
+  if (success < SUCCESS_SCHRANKE) console.log(`  ℹ success in Diensten: ${success} (Schranke ${SUCCESS_SCHRANKE}) — Schranke nachziehen`);
   // Routen reichen req.eingabe/req.pfad mit Vertragstyp durch, Dienste nehmen
   // Fachtypen (Zustand, string). Ausgenommen sind die Prüfer für Rohwerte
   // (src/vertrag, src/infra, src/http) und Fehlerparameter. Gemessen 74 am 11.11.2026.

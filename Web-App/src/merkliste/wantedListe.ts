@@ -13,6 +13,7 @@ import {
   type Korrektur,
   type WantedFortschritt,
 } from './wantedAufloesung';
+import type { RebrickableAbbruch } from './wantedAufloesung';
 import { berichtsZeile, schreibePosten, type PostenErgebnis, type SchreibOptionen } from './wantedSchreiber';
 
 export interface WantedBericht {
@@ -23,7 +24,7 @@ export interface WantedBericht {
   farbeOffen: number;
   /** Mit BL-Nummern, damit man sie nachsehen kann. */
   offen: { blId: string; art: WantedArt; blFarbe: number | null }[];
-  rebrickable?: { gefragt: number; gefunden: number; filterWirkungslos: boolean };
+  rebrickable?: { gefragt: number; gefunden: number; filterWirkungslos: boolean; abgebrochen?: RebrickableAbbruch };
   /** `abgewiesen`: Korrekturen, deren Posten nicht passte — dann wurde eine andere
    * Datei gewählt. Sie werden GENANNT, nicht übergangen. */
   korrekturen?: { angewandt: number; abgewiesen: Korrektur[] };
@@ -54,7 +55,12 @@ async function loeseVollstaendigAuf(posten: WantedPosten[], uid: number, opt: Wa
   if (opt.ueberRebrickable) {
     const r = await loeseUeberRebrickableAuf(auf, 250, opt.fortschritt);
     auf = r.auf;
-    rebrickable = { gefragt: r.gefragt, gefunden: r.gefunden, filterWirkungslos: r.filterWirkungslos };
+    rebrickable = {
+      gefragt: r.gefragt,
+      gefunden: r.gefunden,
+      filterWirkungslos: r.filterWirkungslos,
+      ...(r.abgebrochen ? { abgebrochen: r.abgebrochen } : {}),
+    };
   }
   let korrekturen: WantedBericht['korrekturen'];
   if (opt.korrekturen?.length) {

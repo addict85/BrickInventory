@@ -21,7 +21,7 @@ import { versuche } from '../../infra/ergebnis';
  * die Anmeldung mit Passwort verlangt nur bei aktivem TOTP einen zweiten Faktor. */
 export async function zweiterFaktorPflicht(req: Request): Promise<boolean> {
   const uid = nutzerId(req);
-  const verwalter = req.session?.userId ? !!req.session.isAdmin : Number(req.apiUser?.is_admin) === 1;
+  const verwalter = req.session?.userId ? !!req.session.isAdmin : !!req.apiUser?.is_admin;
   return uid !== null && verwalter && !await istAktiv(uid);
 }
 
@@ -85,7 +85,7 @@ export async function resolveUserId(req: Request): Promise<number | null> {
   if (pruefung.grund) req.tokenAbsage = pruefung.grund;
   // Der Hinweis reist mit jeder Antwort; die App tauscht dann von selbst.
   if (user && rotationFaellig(user)) req.res?.setHeader('X-Token-Rotation', 'faellig');
-  if (user) req.apiUser = { ...user, is_admin: user.is_admin ? 1 : 0 };
+  if (user) req.apiUser = { ...user, is_admin: !!user.is_admin };
   return user ? user.user_id : null;
 }
 

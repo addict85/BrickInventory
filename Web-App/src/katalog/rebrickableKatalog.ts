@@ -20,19 +20,20 @@ export async function getSetInfo(setNumber: string) {
   // "Set <Nummer>" ist ein Platzhalter, kein Name; als Treffer überschrieb er
   // beim nächsten Erfassen den echten Namen. Nachgefragt wird höchstens täglich.
   if (cached?.name && cached.name !== `Set ${n}`) return cached;
-  if (cached?.name && cached.fetched_at && Date.now() - new Date(cached.fetched_at).getTime() < 86_400_000) return null;
+  if (cached?.fetched_at && Date.now() - new Date(cached.fetched_at).getTime() < 86_400_000) return null;
   const data = await holeSet(n);
   if (!data) {
     await katalog().rebrickableCache.merkeUnbekanntesSet(n, !!(await getRbKey()));
     return null;
   }
   // Das Thema ist Beiwerk: Ohne es wird das Set trotzdem gemerkt, die Zeile nennt keins.
-  const thema = await versuche('rebrickable:thema', getThemeName(data.theme_id));
+  const thema = await versuche('rebrickable:thema', getThemeName(data.theme_id ?? 0));
   const theme = thema.ok ? thema.wert : null;
   const row = { set_number: n, name: data.name || null, year: data.year || null, theme: theme || null,
-                pieces: data.num_parts || null, image_url: data.set_img_url || null, is_gear: false };
+                pieces: data.num_parts || null, image_url: data.set_img_url || null, is_gear: false,
+                theme_id: Number(data.theme_id) || null };
   await katalog().rebrickableCache.merkeSet(row);
-  return { ...row, theme_id: Number(data.theme_id) || null };
+  return row;
 }
 
 async function setTeileAusCsv(setNumber: string) {

@@ -84,12 +84,12 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
     const from = await acquisitionMoveSource(uid, art, id);
     const to = await resolveWriteTarget(uid, ownerReq);
     if (to === null) fachfehler('verboten', 'kein_schreibrecht');
-    if (from === to) return { success: true, unchanged: true };
+    if (from === to) return { unchanged: true };
     // Wie verschiebeSet(): Gegenrichtungen sperren die Zeilen beider Konten umgekehrt.
     const moved = await withInventoryLock(from, bestandsSchluessel(art, keys), (tx) =>
       art === 'set' ? moveSetBetweenAccounts(tx, String(keys[0]), from, to, [id]) : moveManualAcquisition(tx, art, keys, id, from, to),
       { wiederholeBeiKonflikt: true });
-    return { success: true, from_user_id: from, to_user_id: to, ...moved };
+    return { from_user_id: from, to_user_id: to, ...moved };
   }
 
   // Der Marktpreis-Rückfall vor der Transaktion, sonst hielte ein Netzaufruf
@@ -140,7 +140,7 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
     if (neuesDatum)
       await repo.setzeErfassungsDatum(tx, art, id, neuesDatum, wids);
   });
-  return antwort(art, uid, keys, { success: true, ...ab.angabe() });
+  return antwort(art, uid, keys, { ...ab.angabe() });
 }
 
 /** Ist danach nichts mehr da, geht die Bestandszeile mit. */
@@ -155,7 +155,7 @@ export async function erfassungLoeschen(art: ErfassungsArt, uid: number, id: num
     if (leer(q)) await a.cleanupWhenEmpty(tx, ownerId, keys);
     return q;
   });
-  return antwort(art, uid, keys, { success: true, new_quantity: menge ?? 0 });
+  return antwort(art, uid, keys, { new_quantity: menge ?? 0 });
 }
 
 export async function setErfassungen(sicht: Sicht | number[], setNumber: string) {

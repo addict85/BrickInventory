@@ -108,6 +108,6 @@ export async function resolveViaApi(setNumber: string): Promise<BlLink> {
     return toLink(n, null);
   }
 
-  await katalog().katalogCache.merkeBlTyp(n, `Set ${n}`, found, found === 'NONE').catch(logAndContinue('bl-link:probe'));
+  await katalog().katalogCache.merkeBlTyp(n, found, found === 'NONE').catch(logAndContinue('bl-link:probe'));
   return toLink(n, found);
 }

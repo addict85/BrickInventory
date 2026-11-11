@@ -7,7 +7,7 @@ import { grundFuer, istBekanntFehlend, merkeFehlend } from './imageMisses';
 import { generateThumb } from './thumbs';
 import { SET_IMAGES_DIR } from '../../infra/appPaths';
 import { setzeZustand, pausiereArt, liesPause, AuftragUnterbrochen, AuftragVerschieben, type AuftragsKontext } from '../../auftraege';
-import { STAPEL, TAKT_MS, NOTIZ_GILT_MS, merkeGebraucht, schreibePuffer, notiereBildbedarf, loescheVerfallene, initImageQueue, anfragenJeMinute, nimmBildwuensche } from './bildbedarf';
+import { STAPEL, TAKT_MS, NOTIZ_GILT_MS, merkeGebraucht, schreibePuffer, notiereBildbedarf, loescheVerfallene, initImageQueue, stoppeBildbedarf, anfragenJeMinute, nimmBildwuensche } from './bildbedarf';
 import { versuche } from '../../infra/ergebnis';
 
 /** Über den Proxy angefragte Bilder im HINTERGRUND lokal ablegen, samt
@@ -263,7 +263,7 @@ export async function bildbedarfAbarbeiten(k: AuftragsKontext): Promise<void> {
   }
 }
 
-export { merkeGebraucht, initImageQueue, anfragenJeMinute, STAPEL, TAKT_MS, DURCHGANG_MAX_NOTIZEN };
+export { merkeGebraucht, initImageQueue, stoppeBildbedarf, anfragenJeMinute, STAPEL, TAKT_MS, DURCHGANG_MAX_NOTIZEN };
 
 export {
   arbeiteStapel as _arbeiteStapel,

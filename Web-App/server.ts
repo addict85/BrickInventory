@@ -18,7 +18,7 @@ import { HTTP_FRISTEN } from './src/infra/httpFristen';
 import { closeAllSse } from './src/http/sseRegistry';
 import { meldeSmtpAltlast } from './src/mail';
 import { meldeUngueltigeAdressen, meldeAusstehendeAdressen, horcheAufTokenWiderruf } from './src/konto';
-import * as pgNotify from './db/pgNotify';
+import { schliessePufferUndTakte } from './startup/abschluss';
 
 // Nur loggen: Ein abgelehntes Versprechen ist meist ein Nebenläufer ohne catch;
 // Anfragen und Jobs halten ihren Zustand in der Datenbank. Ein Neustart risse
@@ -79,7 +79,7 @@ async function herunterfahren(signal: string, httpServer: Server | null, jobs: b
     }
     // Laufende Aufträge halten sicher an und gehen zurück in die Tabelle.
     if (jobs) await stoppeJobs();
-    await pgNotify.close().catch(logAndContinue('server:close'));
+    await schliessePufferUndTakte();
     await db.pool.end().catch(logAndContinue('server:end'));
     console.log('[shutdown] Datenbankverbindungen geschlossen');
     clearTimeout(notbremse);

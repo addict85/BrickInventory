@@ -49,7 +49,7 @@ export async function getPortfolioHistory(
   // Ein Set, EINE Zeile, auch bei zwei Besitzern — sonst käme es zweimal in die Summe.
   const sets = await repo.setsMitKaufsumme(uids);
   if (!sets.length) {
-    return { success:true, currency, period, points:[], y_axis:[], period_change_pct:null, messpunkte:0 };
+    return { currency, period, points:[], y_axis:[], period_change_pct:null, messpunkte:0 };
   }
 
   const setNumbers    = sets.map((s: { set_number: string }) => s.set_number);
@@ -86,13 +86,12 @@ export async function getPortfolioHistory(
   if (rawPoints.length <= 1) rawPoints = mitStartpunkt(rawPoints, period, purchaseTotal);
 
   if (!rawPoints.length) {
-    return { success:true, currency, period, points:[], y_axis:[], period_change_pct:null, messpunkte:0 };
+    return { currency, period, points:[], y_axis:[], period_change_pct:null, messpunkte:0 };
   }
 
   const { points, y_axis, period_change_pct, chart } = baueDiagrammdaten(rawPoints, currency, downsampled);
 
   return {
-    success:           true,
     currency,
     period,
     points,

@@ -625,7 +625,10 @@ test('Klienten erreicht man nur über src/katalog/quellen.ts', () => {
   // Gegenprobe (05.11.2026): `import { lookupPart } from '../../clients/rebrickable'`
   // in src/teile/manuelleTeile.ts → rot.
   const kanten = bereichsKanten();
-  const treffer = kanten.filter(k => k.nach === 'clients' && k.von !== 'clients' && k.d !== 'src/katalog/quellen.ts')
+  // Einzige Ausnahme: startup/verdrahtung.ts setzt beim Start den Zugang der Klienten.
+  // Gegenprobe (11.11.2026): derselbe Import in src/sets/dienst.ts → rot.
+  const verdrahtung = (k) => k.d === 'startup/verdrahtung.ts' && /clients\/zugang(\.ts)?$/.test(k.ziel);
+  const treffer = kanten.filter(k => k.nach === 'clients' && k.von !== 'clients' && k.d !== 'src/katalog/quellen.ts' && !verdrahtung(k))
     .map(k => `${k.d} -> ${k.ziel}`);
   assert.deepEqual(treffer, []);
   assert.ok(kanten.some(k => k.d === 'src/katalog/quellen.ts' && k.nach === 'clients'), 'quellen.ts holt keinen Klienten mehr?');

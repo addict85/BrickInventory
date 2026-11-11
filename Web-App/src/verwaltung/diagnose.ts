@@ -83,7 +83,7 @@ export async function bildProbe(url: string) {
       };
     }, (e: unknown) => ({ error: fehlertext(e) }));
 
-  return { success: true, url, cache: { original: cached, thumb }, probes: results,
+  return { url, cache: { original: cached, thumb }, probes: results,
            proxy_failures: failures, body_check: head };
 }
 
@@ -104,7 +104,7 @@ export async function preisProbe(uid: number, setNumber: string, live: boolean) 
   const chosen = anyUsed ? 'U' : 'N';
 
   const out: any = {
-    success: true, ...ab.angabe(),
+    ...ab.angabe(),
     set: setRow || null,
     acquisitions: acqs,
     condition_logic: {
@@ -192,7 +192,7 @@ export async function bildDiagnose(sn: string) {
     'Für die Vorschau ist ein Fehlschlag vermerkt — sie wird nicht erneut versucht.');
   if (!hinweise.length) hinweise.push('Alles vorhanden: Original und Vorschau liegen bereit.');
 
-  return { success: true as const, set_number: sn,
+  return { set_number: sn,
     datenbank: { ...konten, katalog_bild: katalog?.image_url || null },
     lokal: { original, vorschau },
     merker: merker ? { seit: merker.checked_at, grund: merker.reason || null } : null,

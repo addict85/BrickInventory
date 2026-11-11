@@ -28,9 +28,9 @@ declare global {
     interface Request {
       /**
        * Von der API-v1-Key-Middleware gesetzt: entweder der Session-Benutzer
-       * oder der per X-Api-Key aufgelöste Benutzer (DB-Row: is_admin als 0/1).
+       * oder der per X-Api-Key aufgelöste Benutzer (is_admin: Verwalterrecht dieses Zugangs).
        */
-      apiUser?: { user_id: number; is_admin: number; username?: string; created_at?: string | Date; muss_passwort_aendern?: boolean };
+      apiUser?: { user_id: number; is_admin: boolean; username?: string; created_at?: string | Date; muss_passwort_aendern?: boolean };
       /** Von requireLoginOrToken gesetzt, wenn per Bearer-/Query-Token authentifiziert. */
       tokenUserId?: number;
       /** Warum ein vorgelegter Token nicht galt, wenn es mehr zu sagen gibt als „ungültig“. */
@@ -53,6 +53,6 @@ export {};
  */
 declare global {
   type AuthedRequest = import('express').Request & {
-    apiUser: { user_id: number; is_admin: number; username?: string; created_at?: string | Date; muss_passwort_aendern?: boolean };
+    apiUser: { user_id: number; is_admin: boolean; username?: string; created_at?: string | Date; muss_passwort_aendern?: boolean };
   };
 }

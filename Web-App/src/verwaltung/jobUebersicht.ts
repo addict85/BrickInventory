@@ -149,7 +149,7 @@ export async function jobUebersicht() {
   [jobs.bricksetRetry, jobs.imgDl] = await Promise.all([bricksetKachel(ab), bildKachel(ab)]);
   jobs.pdfJobs = pdfKachel();
   return {
-    success: true, jobs, schedules: await zeitplaene(),
+    jobs, schedules: await zeitplaene(),
     db: {
       instrQueue: { pending: anleitungen.offen, done: anleitungen.erledigt, failed: anleitungen.fehler },
       blMapping:  { mapped: gemappt, total: blGesamt },

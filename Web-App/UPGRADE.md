@@ -1929,3 +1929,32 @@ wird). Hinweise:
 - **Prüfen:** `docker compose exec app node -e "require('net').connect(80, '$ROUTER').on('error', e => console.log(e.code))"`
   meldet `ECONNREFUSED`; eine Seite im Internet lädt weiter (Katalog-Abgleich).
 - **Rücknahme:** `iptables -D DOCKER-USER -s 172.28.73.0/24 -j BRICK-LAN`.
+
+## 54. `catalog_cache` nur noch Abrufstand, Bild nur aus `set_catalog` (Migration 0108)
+
+- **Was die Migration tut:** `catalog_cache` verliert `name`, `year`, `theme`,
+  `pieces` und `image_url` und behält nur `is_gear`, `bl_type` und `fetched_at`
+  (was BrickLink über eine Nummer sagt und wann gefragt wurde). Vorher zieht um,
+  was nur dort stand: Sets mit echten Angaben kommen als `herkunft = 'api'` nach
+  `rb_sets` (bestehende `api`-Zeilen bekommen nur ihre leeren Felder ergänzt,
+  CSV-Zeilen bleiben unberührt); fehlt in `set_catalog` die Bildadresse, kommt
+  sie aus `rb_sets.set_img_url`, sonst aus dem alten Abrufspeicher.
+- **Danach** schreibt jeder Einzelabruf bei Rebrickable (Erfassen, Barcode) nach
+  `rb_sets`/`set_catalog`; der CSV-Abgleich trägt die Bildadresse des CSV in
+  `set_catalog` ein, wo dort keine steht. Sammlung, Merkliste, Katalogsuche und
+  Set-Detail lesen das Bild nur noch aus `set_catalog`.
+- Nichts von Hand zu tun; die API antwortet mit denselben Feldern.
+
+## 55. Zustand und Auftragsart von der Datenbank geprüft (Migration 0109)
+
+- **Zustand:** Merkliste, Preisalarme und alle Preisspeicher und -verläufe
+  (Sets, Teile, Figuren) nehmen nur noch `N` oder `U`. Vorher berichtigt die
+  Migration andere Schreibweisen derselben Angabe (`n`, `u `) in Merkliste und
+  Preisalarm, wenn es den richtigen Eintrag nicht schon gibt; was danach nicht
+  passt, entfällt (Preisspeicher füllt der nächste Abruf).
+- **Auftragsarten** stehen in der neuen Tabelle `auftrags_arten`; `auftraege`
+  und `auftrag_pausen` verweisen per Fremdschlüssel darauf. Aufträge und Pausen
+  einer unbekannten Art (keine Anwendung hätte sie bearbeitet) entfallen. Eine
+  neue Art braucht künftig eine Migration.
+- Die Leserolle (`postgres/app-rolle.sh`) darf `auftrags_arten` lesen; `docker
+  compose up -d` spielt das wie gewohnt ein. Sonst nichts von Hand zu tun.

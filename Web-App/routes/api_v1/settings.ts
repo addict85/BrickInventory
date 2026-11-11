@@ -241,7 +241,7 @@ router.post('/settings/import', requireToken, kontoSchranke('upload'), importUpl
   // Als Verwalter schreibt der Import globale Werte und plant die Aufträge neu.
   const verwalter = istVerwalter(req);
   if (verwalter && !await freigegeben(req, res, 'verwaltung')) return;
-  res.json(await konfigImport(req.apiUser.user_id, verwalter, req.file.buffer));
+  res.json({ success: true, ...(await konfigImport(req.apiUser.user_id, verwalter, req.file.buffer)) });
 });
 
 router.post('/settings/smtp-test', requireAdmin, async (req: Anfrage<'POST /api/v1/settings/smtp-test'>, res: Antwort<'POST /api/v1/settings/smtp-test'>) => {

@@ -66,7 +66,7 @@ test('Merkposten-Preise rufen BrickLink nur für Sets des Katalogs', { concurren
     [BEKANNT],
   );
   await db.run(
-    `INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,'Set '||$1,'NONE',true)
+    `INSERT INTO catalog_cache (set_number, bl_type, is_gear) VALUES ($1,'NONE',true)
                 ON CONFLICT (set_number) DO UPDATE SET bl_type='NONE', is_gear=true`,
     [MARKIERT],
   );
