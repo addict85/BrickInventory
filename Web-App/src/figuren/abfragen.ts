@@ -4,7 +4,7 @@ import { clampPageSize, applyManualCondition, conditionFromAcquisitions, conditi
 import { mitVersion } from '../infra/setNummer';
 import { Abstriche } from '../infra/ergebnis';
 import { marktpreiseAusCacheFuerFiguren } from '../finanzen/marketPrice';
-import * as repo from './repository/figurenListe';
+import { figurenBereich } from './prozess';
 
 // Leseabfragen für Minifiguren.
 
@@ -16,12 +16,12 @@ export async function getMinifigs(userIdWahl: Sicht | number | number[], { searc
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   const size = page_size ? clampPageSize(page_size, 60) : null;
-  const { figCount, figs } = await repo.figurenGruppiert(uids, { search: search ?? null, source: source ?? null,
+  const { figCount, figs } = await figurenBereich().figurenListe.figurenGruppiert(uids, { search: search ?? null, source: source ?? null,
     setNumber: set_number ? mitVersion(set_number) : null,
     seite: size ? { groesse: size, versatz: (Math.max(1, page || 1) - 1) * size } : null });
 
   // Eine „Gebraucht"-Erfassung genügt, damit die Figur als gebraucht gilt.
-  const usedFigRows = await repo.zustandszahlenManuellerFiguren(uids);
+  const usedFigRows = await figurenBereich().figurenListe.zustandszahlenManuellerFiguren(uids);
   const zustandJeFigur = new Map<string, { acq_count: number; used_count: number }>(
     usedFigRows.map(r => [r.fkey, r] as [string, { acq_count: number; used_count: number }]));
 
@@ -47,7 +47,7 @@ export async function getMinifigs(userIdWahl: Sicht | number | number[], { searc
 export async function getMinifigStats(userIdWahl: Sicht | number | number[]) {
   const userId = await blickfeldAus(userIdWahl);
   const uids = asIds(userId);
-  const row = await repo.figurenKennzahlen(uids);
+  const row = await figurenBereich().figurenListe.figurenKennzahlen(uids);
   return {
     types: row?.types ?? 0,
     total_quantity: row?.total_quantity ?? 0,
@@ -65,7 +65,7 @@ export async function getManualMinifigs(userIdWahl: Sicht | number | number[], v
   const userId = await blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const size = page_size ? clampPageSize(page_size, 60) : null;
-  const figs = await repo.manuelleFigurenListe(uids, search,
+  const figs = await figurenBereich().figurenListe.manuelleFigurenListe(uids, search,
     size ? { groesse: size, versatz: (Math.max(1, page || 1) - 1) * size } : null);
   const mapped = figs.map(f => ({ ...f, image_local: resolveImageLocal(f.image_local) }));
   const mitZustand = await applyManualCondition(uids, mapped, 'fig');

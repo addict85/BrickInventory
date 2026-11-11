@@ -3,7 +3,6 @@ import { LIKE_ESCAPE, likeWoertlich } from '../../../db/likeSuche';
 import { mengeSkalar } from '../../../db/bestandsmenge';
 
 /** Die Route spricht db/ nicht selbst an. */
-export { getPoolStats } from '../../../db/database';
 
 type Bildzeile = { image_url: string | null; image_local: string | null };
 export type KontoBildzeile = { anzahl_konten: number } & Bildzeile;

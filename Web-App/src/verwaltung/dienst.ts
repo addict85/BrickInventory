@@ -7,7 +7,6 @@ import type { KontoBildzeile } from './repository/verwaltung';
 import fs from 'fs';
 import { AbrufFehler, type AbrufStrom } from '../infra/abruf';
 import path from 'path';
-import * as verwaltung from './repository/verwaltung';
 import { naechsteUhrzeit, taeglicheUhrzeit, DAILY_JOBS, ziehePlanVor, zeitplanGeaendert } from '../auftraege/zeitplan';
 import { DATA_DIR, PDF_JOB_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
 import { fehlertext, meldeFehler, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../infra/fehler';
@@ -68,7 +67,7 @@ export async function cacheStatistik() {
     ab.oder('kontingent_brickset', getRateLimitStatus('brickset'), leer),
   ]);
   return { success: true, ...stats, price_stale: stale,
-    rate_limits: { bricklink: rlBL, rebrickable: rlRB, brickset: rlBS }, db_pool: verwaltung.getPoolStats(), ...ab.angabe() };
+    rate_limits: { bricklink: rlBL, rebrickable: rlRB, brickset: rlBS }, db_pool: verwaltungBereich().db.getPoolStats(), ...ab.angabe() };
 }
 
 export async function cachesLeeren(alle: boolean) {

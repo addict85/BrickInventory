@@ -25,7 +25,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
-const erf = _req('src/sammlung/prozess.js').sammlungBereich().erfassungen;
+const erf = _req('src/sammlung/repository/erfassungen.js');
 const manuell = _req('src/bestand/repository/manuelleMengen.js');
 const versch = _req('src/sets/repository/verschieben.js');
 
