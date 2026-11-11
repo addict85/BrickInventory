@@ -254,7 +254,7 @@ class CatalogViewModel @Inject constructor(
                         _catalogState.update { it.copy(detailLoading = false, detail = r.data.set?.alsAnsicht()) }
                     else {
                         _catalogState.update { it.copy(detailLoading = false) }
-                        meldungen.zeige(r.data.error ?: texte.text(R.string.err_set_not_found))
+                        meldungen.zeige(r.data.error?.let(Meldung::Text) ?: Meldung.Ressource(R.string.err_set_not_found))
                     }
                 }
                 is Ergebnis.Error -> {

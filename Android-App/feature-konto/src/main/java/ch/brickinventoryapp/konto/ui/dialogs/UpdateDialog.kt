@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.konto.ui.dialogs
 
+import ch.brickinventoryapp.ui.satz
 // Sammel-Importe wie in den Nachbardialogen (BarcodeResultDialog.kt,
 // SetPruefungDialog.kt) — siehe die Begruendung dort.
 import ch.brickinventoryapp.konto.ui.UpdateUiState
@@ -66,7 +67,7 @@ internal fun UpdateDialog(zustand: UpdateUiState, selbstUpdate: UpdateAktionen) 
                 }
                 zustand.fehler?.let { f ->
                     Spacer(Modifier.height(Abstaende.mittel))
-                    Text(f, style = MaterialTheme.typography.bodySmall,
+                    Text(f.satz(), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error)
                 }
             }

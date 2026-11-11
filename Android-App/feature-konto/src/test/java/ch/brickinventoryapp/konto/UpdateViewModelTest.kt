@@ -40,7 +40,7 @@ import java.security.KeyPairGenerator
 import java.security.MessageDigest
 import java.security.Signature
 import java.util.Base64
-import ch.brickinventoryapp.testing.NummernTexte
+import ch.brickinventoryapp.model.ui.Meldung
 
 /**
  * Die Selbstaktualisierung ausgeführt: signierte Beschreibung, Download, Prüfsumme,
@@ -130,7 +130,7 @@ class UpdateViewModelTest {
         Dispatchers.setMain(takt)
         antworten[UPDATE_VERSION_URL] = 200 to beschreibung()
         antworten[apkAdresse] = 200 to apk
-        vm = UpdateViewModel(UpdateLader(client, AppFassung("2.10", 10), takt), NummernTexte,
+        vm = UpdateViewModel(UpdateLader(client, AppFassung("2.10", 10), takt),
             object : Anmeldestand { override val authTokenState = token }, ablage, geraet, takt)
     }
 
@@ -163,7 +163,7 @@ class UpdateViewModelTest {
         assertNull(zustand().neuereFassung)
         vm.pruefeAufUpdate(still = false)
         advanceUntilIdle()
-        assertEquals("t${R.string.update_beschreibung_unsigniert}", zustand().fehler)
+        assertEquals(Meldung.Ressource(R.string.update_beschreibung_unsigniert), zustand().fehler)
     }
 
     @Test
@@ -196,7 +196,7 @@ class UpdateViewModelTest {
         advanceUntilIdle()
         vm.ladeUpdate()
         advanceUntilIdle()
-        assertEquals("t${R.string.update_signatur_falsch}", zustand().fehler)
+        assertEquals(Meldung.Ressource(R.string.update_signatur_falsch), zustand().fehler)
         assertFalse(zustand().bereitZurInstallation)
         assertFalse("Ein APK unbekannter Herkunft bleibt nicht liegen", geraet.datei.exists())
         assertTrue(geraet.installiert.isEmpty())
@@ -209,14 +209,14 @@ class UpdateViewModelTest {
         advanceUntilIdle()
         vm.ladeUpdate()
         advanceUntilIdle()
-        assertEquals("t${R.string.update_pruefsumme_falsch}", zustand().fehler)
+        assertEquals(Meldung.Ressource(R.string.update_pruefsumme_falsch), zustand().fehler)
         antworten[UPDATE_VERSION_URL] = 200 to beschreibung()
         geraet.fassungImApk = 19
         vm.pruefeAufUpdate(still = false)
         advanceUntilIdle()
         vm.ladeUpdate()
         advanceUntilIdle()
-        assertEquals("t${R.string.update_fassung_falsch}", zustand().fehler)
+        assertEquals(Meldung.Ressource(R.string.update_fassung_falsch), zustand().fehler)
         assertFalse(geraet.datei.exists())
         assertTrue(geraet.installiert.isEmpty())
     }
@@ -231,7 +231,7 @@ class UpdateViewModelTest {
         advanceUntilIdle()
         vm.ladeUpdate()
         advanceUntilIdle()
-        assertEquals("t${R.string.update_laden_fehlgeschlagen}", zustand().fehler)
+        assertEquals(Meldung.Ressource(R.string.update_laden_fehlgeschlagen), zustand().fehler)
         assertFalse(geraet.datei.exists())
         assertTrue(geraet.installiert.isEmpty())
     }
@@ -251,7 +251,7 @@ class UpdateViewModelTest {
         geraet.signaturGut = false
         vm.starteInstallation()
         advanceUntilIdle()
-        assertEquals("t${R.string.update_signatur_falsch}", zustand().fehler)
+        assertEquals(Meldung.Ressource(R.string.update_signatur_falsch), zustand().fehler)
         assertFalse(geraet.datei.exists())
         assertTrue(geraet.installiert.isEmpty())
     }
@@ -271,7 +271,7 @@ class UpdateViewModelTest {
     @Test
     fun `die Anmeldung prueft still, ohne Anmeldung fragt niemand`() = runTest(takt) {
         val anmeldung = MutableStateFlow<String?>(null)
-        val eigenes = UpdateViewModel(UpdateLader(client, AppFassung("2.10", 10), takt), NummernTexte,
+        val eigenes = UpdateViewModel(UpdateLader(client, AppFassung("2.10", 10), takt),
             object : Anmeldestand { override val authTokenState = anmeldung }, ablage, geraet, takt)
         try {
             advanceUntilIdle()

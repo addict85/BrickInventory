@@ -33,7 +33,7 @@ import ch.brickinventoryapp.update.data.UpdateRepository
 import kotlinx.coroutines.Job
 import ch.brickinventoryapp.update.util.UpdateGeraet
 import ch.brickinventoryapp.update.util.UpdateStandAblage
-import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
+import ch.brickinventoryapp.model.ui.Meldung
 
 /**
  * Selbstaktualisierung: nachsehen, laden, installieren lassen. Beim Start still
@@ -44,7 +44,6 @@ import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 @HiltViewModel
 class UpdateViewModel @Inject constructor(
     private val repo: UpdateRepository,
-    private val texte: Texte,
     private val anmeldestand: Anmeldestand,
     private val updateStand: UpdateStandAblage,
     private val geraet: UpdateGeraet,
@@ -76,7 +75,7 @@ class UpdateViewModel @Inject constructor(
         viewModelScope.launch {
             Installationsmeldung.fehler.filter { it != null }.collect { grund ->
                 Installationsmeldung.fehler.value = null
-                _state.update { it.copy(fehler = texte.text(R.string.update_installation_fehlgeschlagen, grund)) }
+                _state.update { it.copy(fehler = Meldung.Ressource(R.string.update_installation_fehlgeschlagen, listOfNotNull(grund))) }
             }
         }
     }
@@ -110,7 +109,7 @@ class UpdateViewModel @Inject constructor(
                 if (beschreibung == null || !istErlaubteApkAdresse(beschreibung.apkUrl)) {
                     _state.update {
                         it.copy(laedtPruefung = false, geprueft = true, neuereFassung = null,
-                            fehler = if (still) null else texte.text(
+                            fehler = if (still) null else Meldung.Ressource(
                                 if (beschreibung == null) R.string.update_beschreibung_unsigniert else R.string.update_fremde_adresse))
                     }
                     return@launch
@@ -125,7 +124,7 @@ class UpdateViewModel @Inject constructor(
             }.onFailure { _ ->
                 _state.update {
                     it.copy(laedtPruefung = false, geprueft = true,
-                        fehler = if (still) null else texte.text(R.string.update_pruefung_fehlgeschlagen))
+                        fehler = if (still) null else Meldung.Ressource(R.string.update_pruefung_fehlgeschlagen))
                 }
             }
         }
@@ -151,7 +150,7 @@ class UpdateViewModel @Inject constructor(
         if (ladeJob?.isActive == true) return
         ladeJob = viewModelScope.launch {
             if (!istErlaubteApkAdresse(fassung.apkUrl)) {
-                _state.update { it.copy(fehler = texte.text(R.string.update_fremde_adresse)) }
+                _state.update { it.copy(fehler = Meldung.Ressource(R.string.update_fremde_adresse)) }
                 return@launch
             }
             _state.update { it.copy(fortschritt = 0, fehler = null, bereitZurInstallation = false) }
@@ -161,7 +160,7 @@ class UpdateViewModel @Inject constructor(
                 val falsch = withContext(io) { ungueltigesApk(fassung, ziel) }
                 if (falsch != null) {
                     ziel.delete()
-                    _state.update { it.copy(fortschritt = null, fehler = texte.text(falsch)) }
+                    _state.update { it.copy(fortschritt = null, fehler = Meldung.Ressource(falsch)) }
                     return@launch
                 }
                 val erlaubt = geraet.darfInstallieren()
@@ -170,7 +169,7 @@ class UpdateViewModel @Inject constructor(
             }.onFailure { _ ->
                 ziel.delete()
                 _state.update {
-                    it.copy(fortschritt = null, fehler = texte.text(R.string.update_laden_fehlgeschlagen))
+                    it.copy(fortschritt = null, fehler = Meldung.Ressource(R.string.update_laden_fehlgeschlagen))
                 }
             }
         }
@@ -216,7 +215,7 @@ class UpdateViewModel @Inject constructor(
             }
             if (geprueft == null) {
                 _state.update {
-                    it.copy(bereitZurInstallation = false, fehler = texte.text(R.string.update_signatur_falsch))
+                    it.copy(bereitZurInstallation = false, fehler = Meldung.Ressource(R.string.update_signatur_falsch))
                 }
                 return@launch
             }
@@ -226,7 +225,7 @@ class UpdateViewModel @Inject constructor(
             }
             withContext(io) { runCatching { geraet.installiere(geprueft) } }
                 .onFailure {
-                    _state.update { s -> s.copy(fehler = texte.text(R.string.update_installer_fehlt)) }
+                    _state.update { s -> s.copy(fehler = Meldung.Ressource(R.string.update_installer_fehlt)) }
                 }
         }
     }

@@ -52,8 +52,10 @@ import ch.brickinventoryapp.testing.NummernTexte
  * MockWebServer liefert der Reihe nach, unabhängig vom Pfad; die Tests legen
  * deshalb genau so viele Antworten hin, wie das ViewModel Abrufe macht.
  *
- * Gegenprobe: in ladeJobs() `zugriffEntzogen` nicht
- * gesetzt → rot „ein 403 nur_admins beendet die Abfrage …“.
+ * Gegenproben: in ladeJobs() `zugriffEntzogen` nicht
+ * gesetzt → rot „ein 403 nur_admins beendet die Abfrage …“;
+ * gegenproben/monitoring-takt-ohne-ende.patch (haltAktuell() mit `while (true)`)
+ * → rot „der Takt fragt Auftraege und Hintergrund ab …“ (läuft bis zur Zeitgrenze).
  */
 class MonitoringViewModelVerhaltenTest {
 
@@ -115,6 +117,17 @@ class MonitoringViewModelVerhaltenTest {
         server.enqueue(antwort("""{"success":true,"jobs":{}}"""))
         vm.ladeJobs()
         assert(vm.state.value.zugriffEntzogen) { "Der Entzug bleibt, bis die Seite verlassen wird" }
+    }
+
+    @Test
+    fun `der Takt fragt Auftraege und Hintergrund ab, bis der Zugriff entzogen ist`() = runTest {
+        server.enqueue(antwort("""{"success":true,"jobs":{}}"""))
+        server.enqueue(antwort("""{"success":false,"error":"weg"}""", 404))
+        server.enqueue(antwort("""{"success":false,"code":"nur_admins","error":"Nur für Admins"}""", 403))
+        server.enqueue(antwort("""{"success":false,"code":"nur_admins","error":"Nur für Admins"}""", 403))
+        vm.haltAktuell()
+        assert(vm.state.value.zugriffEntzogen) { "Die Schleife endet erst mit dem Entzug" }
+        assert(server.requestCount == 4) { "Zwei Takte zu je zwei Abrufen erwartet, waren ${server.requestCount}" }
     }
 
     // ── Die Warteschlange ────────────────────────────────────────────────────

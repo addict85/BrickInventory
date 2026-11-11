@@ -6,12 +6,12 @@ Rot: der Schalter speichert und plant ein
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/GeraeteEinstellungenViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/GeraeteEinstellungenViewModel.kt
 --- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/GeraeteEinstellungenViewModel.kt
 +++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/GeraeteEinstellungenViewModel.kt
-@@ -48,7 +48,7 @@ class GeraeteEinstellungenViewModel @Inject constructor(
+@@ -48,7 +48,7 @@
      fun alarmMeldungen(an: Boolean) {
          viewModelScope.launch {
              einstellungen.setzeAlarmMeldungen(an)
 -            val fehler = planer.einplanen(an) ?: return@launch
 +            val fehler: Throwable = return@launch
-             meldungen.zeige(texte.text(R.string.alert_schedule_failed,
-                 "${fehler::class.java.simpleName}: ${fehler.message ?: "—"}"))
+             meldungen.zeige(Meldung.Ressource(R.string.alert_schedule_failed,
+                 listOf("${fehler::class.java.simpleName}: ${fehler.message ?: "—"}")))
          }

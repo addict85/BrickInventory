@@ -10,6 +10,7 @@ import ch.brickinventoryapp.data.GeraeteEinstellungen
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.VorwaermNetz
 import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.model.ui.Meldung
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,7 +28,6 @@ import javax.inject.Inject
 class GeraeteEinstellungenViewModel @Inject constructor(
     private val einstellungen: GeraeteEinstellungen,
     private val planer: AlarmPlaner,
-    private val texte: Texte,
     private val meldungen: MeldungsKanal,
     private val vorschau: Vorschauablage,
 ) : ViewModel() {
@@ -49,8 +49,8 @@ class GeraeteEinstellungenViewModel @Inject constructor(
         viewModelScope.launch {
             einstellungen.setzeAlarmMeldungen(an)
             val fehler = planer.einplanen(an) ?: return@launch
-            meldungen.zeige(texte.text(R.string.alert_schedule_failed,
-                "${fehler::class.java.simpleName}: ${fehler.message ?: "—"}"))
+            meldungen.zeige(Meldung.Ressource(R.string.alert_schedule_failed,
+                listOf("${fehler::class.java.simpleName}: ${fehler.message ?: "—"}")))
         }
     }
 
@@ -67,7 +67,7 @@ class GeraeteEinstellungenViewModel @Inject constructor(
     fun ablageLeeren() {
         vorschau.leeren()
         _ablageBytes.value = vorschau.belegt()
-        meldungen.zeige(texte.text(R.string.monitoring_cache_saved))
+        meldungen.zeige(Meldung.Ressource(R.string.monitoring_cache_saved))
     }
 
     companion object {

@@ -73,7 +73,7 @@ internal fun MonitoringRoute(
     val lebenszyklus = androidx.lifecycle.compose.LocalLifecycleOwner.current
     LaunchedEffect(Unit) {
         lebenszyklus.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
-            while (!mon.state.value.zugriffEntzogen) { mon.ladeJobs(); mon.ladeHintergrund(); delay(5000) }
+            mon.haltAktuell()
         }
     }
     LaunchedEffect(Unit) { mon.ladeCacheAbschnitt() }
