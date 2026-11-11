@@ -323,7 +323,7 @@ Modulkanten und echte Zusatzabhängigkeiten:
 | --- | --- |
 | `brickinventory.android.library` | `com.android.library`, compileSdk/minSdk aus `Sdk.kt`, Java und Kotlin 17 |
 | `brickinventory.android.application` | dasselbe für `com.android.application`, dazu targetSdk |
-| `brickinventory.android.unittests` | JVM-Tests: `isReturnDefaultValues`, voller Stack im Protokoll, Gruppe `unit-tests` |
+| `brickinventory.android.unittests` | JVM-Tests ohne `isReturnDefaultValues` (Android ohne Robolectric wirft), voller Stack im Protokoll, Gruppe `unit-tests` |
 | `brickinventory.android.compose` | Compose-Übersetzer, `buildFeatures.compose`, BOM und Gruppe `compose` |
 | `brickinventory.android.hilt` | KSP, Hilt, `hilt-android` und `hilt-compiler` |
 | `brickinventory.android.feature` | die vier oben und `core-ktx` — ein Bereich |

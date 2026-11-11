@@ -49,16 +49,15 @@ class AndroidApplicationKonvention : Plugin<Project> {
 }
 
 /**
- * JVM-Unit-Tests: android.util.Log & Co. laufen still ins Leere statt zu werfen,
- * damit ein Test an seiner Regel scheitert und nicht an einer Protokollzeile.
- * Der volle Stack steht im CI-Protokoll, weil der Testbericht nur als Artefakt
- * vorliegt. Wer Robolectric-Ressourcen braucht, schaltet sie im Modul ein.
+ * JVM-Unit-Tests ohne isReturnDefaultValues: Eine Android-Methode ohne Robolectric wirft,
+ * statt still null oder 0 zu liefern, mit dem ein Test sonst Falsches bestätigt. Der volle
+ * Stack steht im CI-Protokoll, weil der Testbericht nur als Artefakt vorliegt. Wer
+ * Robolectric-Ressourcen braucht, schaltet sie im Modul ein.
  */
 class AndroidUnittestKonvention : Plugin<Project> {
     override fun apply(target: Project) {
         target.beiAndroid { android ->
             val unitTests = android.testOptions.unitTests
-            unitTests.isReturnDefaultValues = true
             unitTests.isIncludeAndroidResources = false
             unitTests.all { test ->
                 testprotokoll(test)

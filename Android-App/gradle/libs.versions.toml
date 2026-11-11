@@ -56,8 +56,8 @@ room                        = "2.8.5"
 # (verification-keyring.keys), .so auf 16 KB ausgerichtet.
 sqlcipher                   = "4.19.1"
 junit                       = "4.13.2"
-# org.json steckt in android.jar nur als Attrappe; mit isReturnDefaultValues gäbe
-# optString("error") still "". Die echte Fassung liegt im Testklassenpfad davor.
+# org.json steckt in android.jar nur als Attrappe, die im JVM-Test wirft. Die echte
+# Fassung liegt im Testklassenpfad davor.
 orgJson                     = "20260814"
 robolectric                 = "4.17"
 roborazzi                   = "1.77.0"
