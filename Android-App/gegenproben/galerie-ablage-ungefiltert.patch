@@ -6,13 +6,13 @@ Rot: die Galerie filtert in Room
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
-@@ -161,8 +161,7 @@
-
+@@ -125,8 +125,7 @@
+ 
      /** Die Galerie aus der Ablage, nach den Filtern der Anzeige; ändert sich auch durch offline Bearbeitetes. */
      override fun beobachteSets(suche: String?, thema: String?, lagerort: String?, sort: Setsortierung?): Flow<Lokal<SetItem>> =
 -        ablage.beobachte(Faecher.SETS, Filterspalten(suchtext = suche?.ifBlank { null }, thema = thema?.ifBlank { null },
 -            lagerort = lagerort?.ifBlank { null })).map { l -> l.copy(liste = l.liste.sortiert(setOrdnung(sort))) }
 +        ablage.beobachte(Faecher.SETS, Filterspalten()).map { l -> l.copy(liste = l.liste.sortiert(setOrdnung(sort))) }
-
+ 
      override suspend fun aktualisiereSets(): Ergebnis<Unit> =
-         ablage.aktualisiereSeitenweise(Faecher.SETS, { it.sets }, { it.total }) { seite ->
+         ablage.aktualisiereSeitenweise(Faecher.SETS, { it.sets }, { it.total }, wiederholung) { seite ->

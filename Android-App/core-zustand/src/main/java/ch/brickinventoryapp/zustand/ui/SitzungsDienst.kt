@@ -6,6 +6,7 @@ import ch.brickinventoryapp.data.RechteSignal
 import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.Sitzungsablage
 import ch.brickinventoryapp.data.ZweiterFaktorPflicht
+import ch.brickinventoryapp.data.repository.Bestandsabgleich
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
@@ -16,13 +17,12 @@ import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 import ch.brickinventoryapp.netz.util.NetworkPolicy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
@@ -69,7 +69,7 @@ class SitzungsDienst @Inject constructor(
     private val texte: Texte,
     private val sitzung: Sitzung,
     private val blickfeld: Blickfeld,
-    private val bestand: Bestandssignal,
+    private val abgleich: Bestandsabgleich,
     private val zweiterFaktorPflicht: ZweiterFaktorPflicht,
     private val abmeldevorgang: Abmeldevorgang,
     private val vorwaermen: Vorwaermung,
@@ -81,24 +81,13 @@ class SitzungsDienst @Inject constructor(
     override fun starte() {
         if (!gestartet.compareAndSet(false, true)) return
         meldeGescheiterteEntwertung()
+        // Währung und Design liest die Sitzung aus der Ablage (Kontowerte); hier
+        // fragt nur der Server, ob sich das Design geändert hat.
         bereich.launch {
-            // Bei Installationen vor dem synchronen Spiegel steht das Design
-            // nur im DataStore; danach fragt der Server, ob es sich geändert hat.
-            sitzung.setzeDesign(prefs.appTheme.first())
             launch { ladeDesign() }
             verfolgeServerstart()
         }
         bereich.launch { folgeAnmeldung() }
-        bereich.launch { prefs.currency.collect { sitzung.waehrungUebernommen(it) } }
-        // Jede Änderung des Designs landet im Spiegel des Geräts, ob vom Server oder
-        // aus der Wahl im Konto; nach dem Abmelden ist es die Vorgabe.
-        bereich.launch {
-            sitzung.state.map { it.appTheme }.distinctUntilChanged().collect { prefs.saveAppTheme(it) }
-        }
-        // drop(1) lässt den gemerkten Startwert aus: Nur eine Währung des Servers wird gemerkt.
-        bereich.launch {
-            sitzung.state.map { it.currency }.distinctUntilChanged().drop(1).collect { prefs.saveCurrency(it) }
-        }
         bereich.launch { prefs.language.collect { sitzung.spracheGeaendert(it) } }
         // Ein 401 auf einen Token, der an einen ausgewiesenen Server ging; ein
         // Fehlversuch beim Anmelden meldet nicht ab. Die Ablage statt der Sitzung:
@@ -131,42 +120,48 @@ class SitzungsDienst @Inject constructor(
         }
     }
 
-    /** Nur eine echte Änderung von Adresse oder Token lädt neu. */
+    /**
+     * Nur eine echte Änderung von Adresse oder Token lädt neu. Je Anmeldung ein
+     * eigener Bereich, den der nächste Wechsel abbricht: Eine späte Antwort des
+     * alten Kontos schriebe sonst in die neue Sitzung.
+     */
     private suspend fun folgeAnmeldung() {
         combine(prefs.serverUrl, prefs.authToken) { url, token -> url to token }
             .distinctUntilChanged()
-            .collect { (url, token) ->
-                sitzung.anmeldungGeaendert(url, token.isNotBlank())
-                if (token.isNotBlank() && prefs.anmeldungAbgelaufen()) {
-                    meldungen.zeige(texte.text(R.string.vm_anmeldung_zu_alt))
-                    abmelden()
-                    return@collect
-                }
-                // Eine alte http-Adresse führt in die Einrichtung (startZiel); Abrufe
-                // dorthin scheiterten nur und füllten die Leiste mit Netzfehlern.
-                if (token.isNotBlank() && url.isNotBlank() &&
-                    !NetworkPolicy.klartextAltbestand(url, NetworkPolicy.entwicklung)) {
-                    bereich.launch { sitzung.kontoUebernehmen(konto, zweiterFaktorPflicht) }
-                    nachAnmeldung()
-                    ladeEinstellungen()
-                    vorwaermen.anstossen()
-                }
-            }
+            .collectLatest { (url, token) -> coroutineScope { anmeldung(this, url, token) } }
+    }
+
+    private suspend fun anmeldung(anmeldung: CoroutineScope, url: String, token: String) {
+        sitzung.anmeldungGeaendert(url, token.isNotBlank())
+        if (token.isNotBlank() && prefs.anmeldungAbgelaufen()) {
+            meldungen.zeige(texte.text(R.string.vm_anmeldung_zu_alt))
+            abmelden()
+            return
+        }
+        // Eine alte http-Adresse führt in die Einrichtung (startZiel); Abrufe
+        // dorthin scheiterten nur und füllten die Leiste mit Netzfehlern.
+        if (token.isNotBlank() && url.isNotBlank() &&
+            !NetworkPolicy.klartextAltbestand(url, NetworkPolicy.entwicklung)) {
+            anmeldung.launch { sitzung.kontoUebernehmen(konto, zweiterFaktorPflicht) }
+            nachAnmeldung(anmeldung)
+            ladeEinstellungen(anmeldung)
+            vorwaermen.anstossen()
+        }
     }
 
     override fun zweiterFaktorEingerichtet() {
         zweiterFaktorPflicht.erledigt()
-        nachAnmeldung()
+        nachAnmeldung(bereich)
         ladeEinstellungen()
     }
 
-    /** Nach dem Anmelden: Filter, Konten und Orte; die Bereiche laden ihre Listen selbst. */
-    private fun nachAnmeldung() {
-        bereich.launch { blickfeld.ladeFilter() }
-        ladeMitglieder()
-        ladeLagerorte()
-        bereich.launch { blickfeld.ladeEigeneLagerorte() }
-        bestand.melde(Aenderung.Sets)
+    /** Nach dem Anmelden: Filter, Konten, Orte und die Galerie in die Ablage; die Bereiche zeigen sie. */
+    private fun nachAnmeldung(anmeldung: CoroutineScope) {
+        anmeldung.launch { blickfeld.ladeFilter() }
+        anmeldung.launch { blickfeld.ladeMitglieder() }
+        anmeldung.launch { blickfeld.ladeLagerorte() }
+        anmeldung.launch { blickfeld.ladeEigeneLagerorte() }
+        anmeldung.launch { abgleich.sets() }
     }
 
     /** Die Bereichs-ViewModels leeren sich auf [Sitzung.abmeldungen]. */
@@ -186,9 +181,11 @@ class SitzungsDienst @Inject constructor(
         bereich.launch { blickfeld.ladeLagerorte() }
     }
 
-    override fun ladeEinstellungen() {
-        bereich.launch { sitzung.ladeEinstellungen(konto) }
-        bereich.launch { ladeDesign() }
+    override fun ladeEinstellungen() = ladeEinstellungen(bereich)
+
+    private fun ladeEinstellungen(anmeldung: CoroutineScope) {
+        anmeldung.launch { sitzung.ladeEinstellungen(konto) }
+        anmeldung.launch { ladeDesign() }
     }
 
     /** Angemeldet das Design des Kontos, sonst die Vorgabe; im Fehlerfall bleibt das gemerkte. */

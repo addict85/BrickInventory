@@ -1,10 +1,12 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.offline.Filterspalten
 import ch.brickinventoryapp.offline.Faecher
+import ch.brickinventoryapp.offline.Offlineablage.Nachzug
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.model.data.model.*
@@ -12,8 +14,6 @@ import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
-import ch.brickinventoryapp.data.api.alsAbfrage
-import ch.brickinventoryapp.data.api.mitSetsAlsAbfrage
 
 /**
  * Teile, Minifiguren und Farben — über Retrofit; die gemeinsame Abruflogik steht in Abruf.kt.
@@ -22,38 +22,8 @@ import ch.brickinventoryapp.data.api.mitSetsAlsAbfrage
 class TeileRepositoryImpl @Inject constructor(
     private val api: TeileApi,
     private val ablage: Offlineablage,
+    private val wiederholung: Wiederholung,
 ) : TeileRepository {
-
-    override suspend fun getParts(search: String?, color: String?,
-                         category: String?, page: Int,
-                         accounts: String?,
-                         spare: Ersatzteilwahl,
-                         /** Nur die Tabellenansicht bestellt „In Sets“ — siehe TeileApi.getParts. */
-                         withSets: Boolean,
-                         /** Lagerort — eigener Parameter, nicht Teil der Suche. */
-                         storage: String?): Ergebnis<PartsResponse> {
-        // Manuell erfasste Teile haben ihren eigenen Bereich — die Set-Teileliste
-        // schliesst sie aus (wie in der Webapp). Ohne Netz beantwortet die lokale
-        // Liste Suche, Farbe, Kategorie und Ersatzteile; Konto und Lagerort nicht:
-        // Dort teilt der Server die Mengen auf, die lokale Zeile trägt die Summe.
-        val filter = Filterspalten(suchtext = search?.ifBlank { null }, farbe = color, kategorie = category,
-            ersatzteil = spare.alsMerkmal())
-        val ausLokal = { l: List<Part> -> PartsResponse(success = true, total = l.size, parts = l) }
-        val roh = suspend {
-            sicherAufrufen { api.getParts(search, color, category, page, pageSize = 500, excludeManual = "1",
-                accounts = accounts, spare = spare.alsAbfrage(), withSets = mitSetsAlsAbfrage(withSets),
-                storage = storage?.ifBlank { null }) }
-        }
-        return when {
-            accounts != null || !storage.isNullOrBlank() -> roh()
-            filter == Filterspalten() && !withSets ->
-                ablage.abgeglichen(Faecher.TEILE, { it.parts }, ausLokal, anhaengen = page > 1) {
-                    sicherAufrufen { api.getParts(null, null, null, page, pageSize = 500, excludeManual = "1") }
-                }
-            // Die Tabelle bestellt „In Sets“ mit; ohne Netz fehlt nur diese Spalte.
-            else -> ablage.gefiltert(Faecher.TEILE, filter, ausLokal) { roh() }
-        }
-    }
 
     /** Die lokalen Listen nach den Filtern der Anzeige; sie ändern sich auch durch offline Bearbeitetes. */
     override fun beobachteTeile(suche: String?, farbe: String?, kategorie: String?, ersatzteile: Ersatzteilwahl): Flow<Lokal<Part>> =
@@ -64,15 +34,18 @@ class TeileRepositoryImpl @Inject constructor(
         ablage.beobachte(Faecher.MANUELLE_TEILE, Filterspalten(suchtext = suche?.ifBlank { null }))
 
     override suspend fun aktualisiereTeile(): Ergebnis<Unit> {
-        val teile = ablage.aktualisiereSeitenweise(Faecher.TEILE, { it.parts }, { it.total }) { seite ->
+        val teile = ablage.aktualisiereSeitenweise(Faecher.TEILE, { it.parts }, { it.total }, wiederholung) { seite ->
             sicherAufrufen { api.getParts(null, null, null, seite, pageSize = 500, excludeManual = "1") }
         }
         if (teile is Ergebnis.Error) return teile
-        // Eine Liste ohne Seiten: Die Gesamtzahl ist die Länge der Antwort.
-        return ablage.aktualisiereSeitenweise(Faecher.MANUELLE_TEILE, { it.parts }, { it.parts.size }) { _ ->
+        return aktualisiereManuelleTeile()
+    }
+
+    /** Eine Liste ohne Seiten: Die Gesamtzahl ist die Länge der Antwort. */
+    override suspend fun aktualisiereManuelleTeile(): Ergebnis<Unit> =
+        ablage.aktualisiereSeitenweise(Faecher.MANUELLE_TEILE, { it.parts }, { it.parts.size }, wiederholung) { _ ->
             sicherAufrufen { api.getManualParts(null, null, null) }
         }
-    }
 
     override suspend fun getPartsStats(accounts: String?): Ergebnis<PartsStatsResponse> =
         sicherAufrufen { api.getPartsStats(accounts) }
@@ -89,23 +62,6 @@ class TeileRepositoryImpl @Inject constructor(
         sicherAufrufen { api.getPartsCategories(accounts) }
 
     /**
-     * Die manuell erfassten Teile bzw. Figuren — dieselbe Quelle wie die Webapp, damit
-     * es für dieselbe Liste nur eine Quelle gibt; siehe ManualPartsResponse.
-     */
-    override suspend fun getManualParts(accounts: String?, search: String?,
-                               storage: String?): Ergebnis<ManualPartsResponse> {
-        val filter = Filterspalten(suchtext = search?.ifBlank { null }, lagerort = storage?.ifBlank { null })
-        val ausLokal = { l: List<PartValuationItem> -> ManualPartsResponse(success = true, parts = l) }
-        return when {
-            accounts != null -> sicherAufrufen { api.getManualParts(accounts, search, storage) }
-            filter == Filterspalten() -> ablage.abgeglichen(Faecher.MANUELLE_TEILE, { it.parts }, ausLokal) {
-                sicherAufrufen { api.getManualParts(accounts, search, storage) }
-            }
-            else -> ablage.gefiltert(Faecher.MANUELLE_TEILE, filter, ausLokal) { sicherAufrufen { api.getManualParts(accounts, search, storage) } }
-        }
-    }
-
-    /**
      * „Kann ich das bauen?“ — welche Teile einer Liste schon da sind. Ohne
      * Zwischenspeicher wie getSetsMitTeil(): Die Antwort hängt an einer frei
      * zusammengestellten Liste; ein Eintrag je Liste wäre ein Speicher, den niemand
@@ -118,7 +74,9 @@ class TeileRepositoryImpl @Inject constructor(
     /** Lagerort eines Teils setzen. Leerer Text loescht ihn. */
     override suspend fun setPartStorage(partNumber: String, colorId: Int, ort: String):
         Ergebnis<LagerortResponse> =
-        sicherAufrufen { api.setPartStorage(partNumber, colorId, LagerortRequest(ort)) }
+        ablage.nachgezogen({ r -> Nachzug.TeilLagerort(partNumber, colorId, r.storage).takeIf { r.success } }) {
+            sicherAufrufen { api.setPartStorage(partNumber, colorId, LagerortRequest(ort)) }
+        }
 
     /**
      * Welche Lagerorte belegt sind. Ohne Zwischenspeicher: Die Liste ist klein und
@@ -142,8 +100,10 @@ class TeileRepositoryImpl @Inject constructor(
     override suspend fun legeLagerortAn(name: String): Ergebnis<LagerortEintragResponse> =
         sicherAufrufen { api.legeLagerortAn(LagerortNameRequest(name)) }
 
-    override suspend fun benenneLagerortUm(id: Int, name: String): Ergebnis<LagerortEintragResponse> =
-        sicherAufrufen { api.benenneLagerortUm(id, LagerortNameRequest(name)) }
+    override suspend fun benenneLagerortUm(id: Int, alt: String, name: String): Ergebnis<LagerortEintragResponse> =
+        ablage.nachgezogen({ r -> r.ort?.takeIf { r.success && alt.isNotBlank() }?.let { Nachzug.LagerortUmbenannt(alt, it.name) } }) {
+            sicherAufrufen { api.benenneLagerortUm(id, LagerortNameRequest(name)) }
+        }
 
     override suspend fun loescheLagerort(id: Int): Ergebnis<LagerortResponse> =
         sicherAufrufen { api.loescheLagerort(id) }
@@ -208,7 +168,11 @@ class TeileRepositoryImpl @Inject constructor(
      */
     override suspend fun setPartColor(partNumber: String, colorId: Int, neueFarbe: Int,
                              farbName: String?, farbHex: String?,
-                             owner: Int?): Ergebnis<TeilFarbeResponse> =
-        sicherAufrufen { api.setPartColor(partNumber, colorId, TeilFarbeRequest(neueFarbe,
-            farbName.takeUnless { neueFarbe == KEINE_FARBE }, farbHex.takeUnless { neueFarbe == KEINE_FARBE }), owner) }
+                             owner: Int?): Ergebnis<TeilFarbeResponse> {
+        val name = farbName.takeUnless { neueFarbe == KEINE_FARBE }
+        val hex = farbHex.takeUnless { neueFarbe == KEINE_FARBE }
+        return ablage.nachgezogen({ r -> Nachzug.TeilFarbe(partNumber, colorId, neueFarbe, name, hex, owner).takeIf { r.success } }) {
+            sicherAufrufen { api.setPartColor(partNumber, colorId, TeilFarbeRequest(neueFarbe, name, hex), owner) }
+        }
+    }
 }

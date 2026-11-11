@@ -9,10 +9,9 @@ import ch.brickinventoryapp.data.SetAnleger
 import ch.brickinventoryapp.data.SetAnlegenSchritt
 import ch.brickinventoryapp.model.data.model.AddSetResponse
 import ch.brickinventoryapp.data.repository.KatalogRepository
-import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.testing.KatalogRepository
-import ch.brickinventoryapp.testing.SetsRepository
-import ch.brickinventoryapp.zustand.ui.Aenderung
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import ch.brickinventoryapp.sammlung.ui.Pruefphase
 import ch.brickinventoryapp.sammlung.ui.viewmodel.ErfassungViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
@@ -105,7 +104,7 @@ class ErfassungViewModelTest {
     }
 
     private fun vm(anleger: Anleger = Anleger(emptyList())) = t.merke(
-        ErfassungViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, SetsRepository(t.api, t.cache), KatalogRepository(t.api, t.cache), anleger)
+        ErfassungViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(), KatalogRepository(t.api, t.cache), anleger)
     ).also { anleger.vm = it }
 
     @Before
@@ -163,14 +162,13 @@ class ErfassungViewModelTest {
             SetAnlegenSchritt.Fertig(AddSetResponse(action = "added", setNumber = "75192-1")),
         ))
         val vm = vm(anleger)
-        val liste = t.gemeldet(1) {
-            vm.addSet(Erfassungswunsch("75192"))
-            bis("fertig") { vm.erfassungState.value.pruefung == null && t.meldungen.meldung.value != null }
-        }
+        vm.addSet(Erfassungswunsch("75192"))
+        bis("fertig") { vm.erfassungState.value.pruefung == null && t.meldungen.meldung.value != null }
         assertEquals(listOf(Pruefphase.ANLEGEN_STAMMDATEN, Pruefphase.ANLEGEN_BILD, Pruefphase.ANLEGEN_ABSCHLUSS),
             anleger.gesehen.take(3))
         assertEquals("t${R.string.vm_added}|75192-1", t.meldungen.meldung.value)
-        assertEquals(listOf(Aenderung.Sets), liste)
+        // Name und Bild kennt erst der Server: Die Ablage holt die Galerie nach.
+        bis("nachgezogen") { pfade.anfragenAn("GET /api/v1/sets?").isNotEmpty() }
     }
 
     /**
@@ -189,11 +187,9 @@ class ErfassungViewModelTest {
     @Test
     fun `ein vorhandenes Set beim Anlegen oeffnet die Detailansicht und meldet nichts`() {
         val vm = vm(Anleger(listOf(SetAnlegenSchritt.Fertig(AddSetResponse(action = "exists", setNumber = "75192-1")))))
-        val liste = t.gemeldet(0) {
-            vm.addSet(Erfassungswunsch("75192-1"))
-            bis("gefunden") { vm.barcodeState.value.gefundenesSet == "75192-1" }
-        }
-        assertTrue(liste.isEmpty())
+        vm.addSet(Erfassungswunsch("75192-1"))
+        bis("gefunden") { vm.barcodeState.value.gefundenesSet == "75192-1" }
+        assertTrue("nichts angelegt, nichts nachzuziehen", pfade.anfragenAn("GET /api/v1/sets?").isEmpty())
     }
 
     @Test
@@ -211,11 +207,10 @@ class ErfassungViewModelTest {
         val vm = vm()
         vm.resolveBarcode("5702016616316", Scannerherkunft.MERKLISTE)
         bis("Dialog") { vm.barcodeState.value.result == "75192-1" }
-        val liste = t.gemeldet(1) {
-            vm.confirmAddBarcode(Erfassungswunsch("75192-1", zustand = Zustand.GEBRAUCHT))
-            bis("gemeldet") { t.meldungen.meldung.value != null }
-        }
-        assertEquals(listOf(Aenderung.Merkliste), liste)
+        vm.confirmAddBarcode(Erfassungswunsch("75192-1", zustand = Zustand.GEBRAUCHT))
+        bis("gemeldet") { t.meldungen.meldung.value != null }
+        val merkliste = runBlocking { t.sets().beobachteMerkliste().first().liste }
+        assertEquals("der Merkposten steht in der Ablage", listOf("75192-1"), merkliste.map { it.setNumber })
         assertEquals("t${R.string.wanted_added}", t.meldungen.meldung.value)
         assertTrue(pfade.anfragenAn("POST /api/v1/wanted").isNotEmpty())
         assertNull(vm.barcodeState.value.result)
@@ -234,17 +229,14 @@ class ErfassungViewModelTest {
         pfade.antworten["/api/v1/sets"] = """{"success":true,"action":"added","set_number":"75192-1"}"""
         pfade.ausbleibend += "/api/v1/sets"
         val vm = bisZumDialog()
-        val liste = t.gemeldet(1) {
-            vm.confirmAddBarcode(Erfassungswunsch("75192-1", besitzer = 2))
-            // Der Dialog schliesst sofort, und angelegt wird im Hintergrund — ohne Prüfanzeige.
-            assertNull(vm.barcodeState.value.result)
-            assertTrue(vm.barcodeState.value.adding)
-            assertNull(vm.erfassungState.value.pruefung)
-            vm.confirmAddBarcode(Erfassungswunsch("75192-1", besitzer = 2))
-            pfade.freigeben()
-            bis("fertig") { !vm.barcodeState.value.adding }
-        }
-        assertEquals(listOf(Aenderung.Sets), liste)
+        vm.confirmAddBarcode(Erfassungswunsch("75192-1", besitzer = 2))
+        // Der Dialog schliesst sofort, und angelegt wird im Hintergrund — ohne Prüfanzeige.
+        assertNull(vm.barcodeState.value.result)
+        assertTrue(vm.barcodeState.value.adding)
+        assertNull(vm.erfassungState.value.pruefung)
+        vm.confirmAddBarcode(Erfassungswunsch("75192-1", besitzer = 2))
+        pfade.freigeben()
+        bis("fertig") { !vm.barcodeState.value.adding }
         assertEquals(1, pfade.anfragenAn("POST /api/v1/sets").size)
         val rumpf = pfade.koerper[pfade.anfragen.indexOf("POST /api/v1/sets")]
         assertTrue(rumpf, "\"owner_user_id\":2" in rumpf)

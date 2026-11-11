@@ -12,16 +12,10 @@ import ch.brickinventoryapp.model.data.Ersatzteilwahl
  * Retrofit und Ablage hängen (TeileRepositoryImpl).
  */
 interface TeileRepository {
-    suspend fun getParts(search: String? = null, color: String? = null,
-                         category: String? = null, page: Int = 1,
-                         accounts: String? = null,
-                         spare: Ersatzteilwahl = Ersatzteilwahl.ALLE,
-                         /** Nur die Tabellenansicht bestellt „In Sets“ — siehe TeileApi.getParts. */
-                         withSets: Boolean = false,
-                         /** Lagerort — eigener Parameter, nicht Teil der Suche. */
-                         storage: String? = null): Ergebnis<PartsResponse>
-
-    /** Die Teile aus der Ablage nach Suche, Farbe, Kategorie und Ersatzteilen; [aktualisiereTeile] füllt sie. */
+    /**
+     * Die Teile aus der Ablage nach Suche, Farbe, Kategorie und Ersatzteilen; [aktualisiereTeile]
+     * füllt sie. Konto, Lagerort und „In Sets“ rechnet nur der Server: Kontosicht.
+     */
     fun beobachteTeile(suche: String? = null, farbe: String? = null, kategorie: String? = null,
                        ersatzteile: Ersatzteilwahl = Ersatzteilwahl.ALLE): Flow<Lokal<Part>>
 
@@ -30,14 +24,14 @@ interface TeileRepository {
     /** Alle Seiten der Teile und die manuellen Teile in die Ablage; gezeigt wird die Ablage. */
     suspend fun aktualisiereTeile(): Ergebnis<Unit>
 
+    /** Nur die manuellen Teile — wo die übrigen aus der Kontosicht kommen. */
+    suspend fun aktualisiereManuelleTeile(): Ergebnis<Unit>
+
     suspend fun getPartsStats(accounts: String? = null): Ergebnis<PartsStatsResponse>
 
     suspend fun getPartsFilterColors(accounts: String? = null): Ergebnis<PartsFilterColorsResponse>
 
     suspend fun getPartsCategories(accounts: String? = null): Ergebnis<PartsCategoriesResponse>
-
-    suspend fun getManualParts(accounts: String? = null, search: String? = null,
-                               storage: String? = null): Ergebnis<ManualPartsResponse>
 
     suspend fun getOwnedParts(teile: List<BestandTeil>,
                               accounts: String? = null): Ergebnis<BestandResponse>
@@ -50,7 +44,8 @@ interface TeileRepository {
 
     suspend fun legeLagerortAn(name: String): Ergebnis<LagerortEintragResponse>
 
-    suspend fun benenneLagerortUm(id: Int, name: String): Ergebnis<LagerortEintragResponse>
+    /** [alt]: der bisherige Name — er steht an Sets, Teilen und Figuren und heisst dort danach neu. */
+    suspend fun benenneLagerortUm(id: Int, alt: String, name: String): Ergebnis<LagerortEintragResponse>
 
     suspend fun loescheLagerort(id: Int): Ergebnis<LagerortResponse>
 

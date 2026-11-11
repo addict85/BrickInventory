@@ -1,16 +1,17 @@
-Gegenprobe: Die Galerie meldet ein gelöschtes Set nicht ans Bestandssignal
+Gegenprobe: Ein gelöschtes Set bleibt in der Ablage stehen
 Modul: feature-sammlung
 Test: ch.brickinventoryapp.sammlung.GalerieViewModelTest
-Rot: ein geloeschtes Set verschwindet
+Rot: ein geloeschtes Set verschwindet aus der Ablage
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalerieViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalerieViewModel.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalerieViewModel.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalerieViewModel.kt
-@@ -202,7 +202,6 @@ class GalerieViewModel @Inject constructor(
-             val (geloescht, satz) = setLoeschen(sets, meldungen, setNumber)
-             if (geloescht) galerie.entferne(setNumber)
-             if (!geloescht || erfolgMelden) meldungen.zeige(satz)
--            if (geloescht) bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
-         }
-     }
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
+@@ -121,7 +121,7 @@
  
+     /** Löschen nur online: Der Papierkorb des Servers entscheidet, was zurückkommt. */
+     override suspend fun deleteSet(setNumber: String): Ergebnis<GenericResponse> =
+-        ablage.nachgezogen({ r -> Nachzug.SetEntfernt(setNumber).takeIf { r.success } }) { sicherAufrufen { api.deleteSet(setNumber) } }
++        sicherAufrufen { api.deleteSet(setNumber) }
+ 
+     /** Die Galerie aus der Ablage, nach den Filtern der Anzeige; ändert sich auch durch offline Bearbeitetes. */
+     override fun beobachteSets(suche: String?, thema: String?, lagerort: String?, sort: Setsortierung?): Flow<Lokal<SetItem>> =

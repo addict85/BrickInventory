@@ -1,5 +1,5 @@
-// Was die Bereiche teilen, ohne einander zu kennen: Sitzung, Blickfeld,
-// Bestandssignal, Texte, die Grundlage der Bereichs-ViewModels und der
+// Was die Bereiche teilen, ohne einander zu kennen: Sitzung, Kontowerte, Blickfeld,
+// Texte, die Grundlage der Bereichs-ViewModels und der
 // AppViewModel. Was nur die App kennt (Widget), kommt als Schnittstelle herein.
 plugins {
     alias(libs.plugins.brickinventory.android.library)

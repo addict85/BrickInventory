@@ -9,16 +9,12 @@ import ch.brickinventoryapp.model.data.model.UpdateManualItemRequest
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/**
- * Eine Änderung, die ohne Verbindung im Ausgang wartet. Sie trägt genau die
- * Anfrage, die online gegangen wäre — beim Senden entsteht nichts Neues, und
- * der Server entscheidet wie sonst auch. Mengen von Sets gehen als Schritt,
- * damit zwei Geräte, die offline je +1 tippen, zusammen +2 ergeben.
- */
 @Serializable
-sealed class Bearbeitung {
+sealed class Bearbeitung : Offlineablage.Wirkung {
     /** Welche lokale Liste die Änderung betrifft. */
     abstract val art: Bestandsart
+
+    override val arten: Set<Bestandsart> get() = setOf(art)
 
     /** Wofür die Änderung gilt (Set-, Teile- oder Figurennummer) — für den Hinweis. */
     abstract val ziel: String

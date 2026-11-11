@@ -10,7 +10,6 @@ import ch.brickinventoryapp.model.data.model.CsvImportStatus
 import ch.brickinventoryapp.model.data.model.GenericAdminResponse
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.dienste.service.CsvImportDienst
-import ch.brickinventoryapp.zustand.ui.Aenderung
 import ch.brickinventoryapp.zustand.ui.viewmodel.CsvImportViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -18,7 +17,6 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -96,7 +94,7 @@ class CsvImportViewModelTest {
     private fun mitVm(strom: Strom, dienst: Dienst, block: suspend TestScope.(CsvImportViewModel) -> Unit) = runTest(takt) {
         strom.uhr = { testScheduler.currentTime }
         val vm = CsvImportViewModel(CsvImportBeobachter(strom, SetsRepository(fake.api, t.cache), zugang), dienst, NummernTexte,
-            t.bestand, t.meldungen, t.sitzung)
+            t.abgleich, t.meldungen, t.sitzung)
         try {
             block(vm)
         } finally {
@@ -109,9 +107,7 @@ class CsvImportViewModelTest {
         val dienst = Dienst()
         val strom = Strom(listOf(status("running", 1), status("running", 2), status("done", 3)))
         mitVm(strom, dienst) { vm ->
-            val gemeldet = mutableListOf<Aenderung>()
-            val sammler = backgroundScope.launch { t.bestand.aenderungen.collect { gemeldet += it } }
-            runCurrent()
+            val vorher = fake.aufrufeVon("getSets")
             vm.startCsvImportWatcher()
             vm.startCsvImportWatcher()
             runCurrent()
@@ -126,8 +122,7 @@ class CsvImportViewModelTest {
             advanceTimeBy(2)
             assertEquals(0, vm.csvImportState.value.done)
             assertEquals(1, dienst.stops)
-            assertTrue("Nach dem Import lädt die Galerie nach", Aenderung.Sets in gemeldet)
-            sammler.cancel()
+            assertTrue("Nach dem Import holt die Ablage den Bestand", fake.aufrufeVon("getSets") > vorher)
         }
     }
 

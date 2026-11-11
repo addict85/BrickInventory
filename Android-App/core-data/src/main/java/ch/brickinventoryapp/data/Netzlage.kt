@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.data
 
 import android.content.Context
+import ch.brickinventoryapp.data.repository.Ergebnis
+import kotlinx.coroutines.delay
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -25,6 +27,48 @@ class Netzlage internal constructor(private val messen: () -> Art) {
     enum class Art { KEIN_NETZ, WLAN, MOBIL, ROAMING }
 
     fun aktuell(): Art = messen()
+
+    /**
+     * Wann ein vorübergehend gescheiterter Abruf noch einmal geht: mit wachsender
+     * Pause, und ohne Netz gar nicht — dann zeigt die Ablage ihren Stand, und ein
+     * Warten in festen Schritten hielte nur die Ladeanzeige offen.
+     */
+    @Singleton
+    class Wiederholung internal constructor(
+        private val netz: () -> Art,
+        private val versuche: Int,
+        private val erstePause: Long,
+        private val warte: suspend (Long) -> Unit,
+    ) {
+        @Inject constructor(netzlage: Netzlage) : this(netzlage::aktuell, VERSUCHE, ERSTE_PAUSE_MS, { delay(it) })
+
+        suspend fun <T> wiederhole(call: suspend () -> Ergebnis<T>): Ergebnis<T> {
+            var pause = erstePause
+            repeat(versuche - 1) {
+                val r = call()
+                if (r !is Ergebnis.Error || !r.transient || netz() == Art.KEIN_NETZ) return r
+                warte(pause)
+                pause = (pause * 2).coerceAtMost(HOECHSTE_PAUSE_MS)
+            }
+            return call()
+        }
+
+        /** Dieselbe Regel mit weniger Versuchen — wo jemand auf die Antwort wartet und weiterblättern will. */
+        fun hoechstens(n: Int): Wiederholung = Wiederholung(netz, n.coerceIn(1, versuche), erstePause, warte)
+
+        companion object {
+            const val VERSUCHE = 5
+            const val ERSTE_PAUSE_MS = 1_000L
+            const val HOECHSTE_PAUSE_MS = 16_000L
+
+            /** Für Tests und Abrufe, die selbst nicht wiederholen sollen: genau ein Versuch. */
+            val EINMAL = Wiederholung({ Art.WLAN }, 1, 0L, {})
+
+            /** Für Tests: feste Lage, Pausen werden nur mitgeschrieben. */
+            fun fuerTest(versuche: Int = VERSUCHE, netz: () -> Art = { Art.WLAN },
+                         warte: suspend (Long) -> Unit = {}) = Wiederholung(netz, versuche, ERSTE_PAUSE_MS, warte)
+        }
+    }
 
     private companion object {
         fun miss(context: Context): Art {

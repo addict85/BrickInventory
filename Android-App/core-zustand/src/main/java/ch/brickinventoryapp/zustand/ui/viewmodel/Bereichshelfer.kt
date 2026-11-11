@@ -5,8 +5,6 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.koroutinen.ApplicationScope
-import ch.brickinventoryapp.zustand.ui.Aenderung
-import ch.brickinventoryapp.zustand.ui.Bestandssignal
 import ch.brickinventoryapp.zustand.ui.Blickfeld
 import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
 import ch.brickinventoryapp.zustand.ui.LagerUiState
@@ -105,9 +103,4 @@ class BereichsFilter @Inject constructor(
  */
 fun ViewModel.folgeAbmeldung(sitzung: Sitzung, zuruecksetzen: () -> Unit) {
     viewModelScope.launch { sitzung.abmeldungen.drop(1).collect { zuruecksetzen() } }
-}
-
-/** Ein anderer Bereich hat den Bestand geändert; [beiAenderung] entscheidet, ob nachgeladen wird. */
-fun ViewModel.folgeBestand(bestand: Bestandssignal, beiAenderung: (Aenderung) -> Unit) {
-    viewModelScope.launch { bestand.aenderungen.collect { beiAenderung(it) } }
 }

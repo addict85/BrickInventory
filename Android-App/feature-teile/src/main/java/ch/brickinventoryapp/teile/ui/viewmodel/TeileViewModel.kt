@@ -12,15 +12,14 @@ import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.FigurenRepository
-import ch.brickinventoryapp.zustand.ui.Aenderung
+import ch.brickinventoryapp.data.repository.Bestandsabgleich
+import ch.brickinventoryapp.data.repository.Kontosicht
 import ch.brickinventoryapp.teile.ui.PartsUiState
 import ch.brickinventoryapp.teile.ui.SetItemUiState
 import ch.brickinventoryapp.teile.ui.Teile
-import ch.brickinventoryapp.teile.ui.TeileAbfrage
 import ch.brickinventoryapp.teile.ui.TeileLokal
 import ch.brickinventoryapp.teile.ui.TeileQuelle
 import ch.brickinventoryapp.model.ui.model.alsAnsicht
-import ch.brickinventoryapp.zustand.ui.retryOnNetwork
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -33,12 +32,10 @@ import javax.inject.Inject
 import ch.brickinventoryapp.model.data.model.GenericResponse
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.zustand.ui.Sitzung
-import ch.brickinventoryapp.zustand.ui.Bestandssignal
 import ch.brickinventoryapp.model.ui.ScrollMemory
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
 import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
-import ch.brickinventoryapp.zustand.ui.viewmodel.folgeBestand
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 import ch.brickinventoryapp.model.ui.Listenansicht
 import ch.brickinventoryapp.teile.ui.TeileSitzungUiState
@@ -57,10 +54,11 @@ class TeileViewModel @Inject constructor(
     private val sitzung: Sitzung,
     private val filter: Filterwahl,
     private val meldungen: Meldungen,
-    private val bestand: Bestandssignal,
+    private val aenderungen: Bestandsabgleich,
     private val scrollMemory: ScrollMemory,
     private val repo: TeileRepository,
     private val figuren: FigurenRepository,
+    private val kontosicht: Kontosicht,
     private val gemerkt: SavedStateHandle,
 ) : ViewModel(), Filterwahl by filter, TeileAktionen {
 
@@ -69,7 +67,6 @@ class TeileViewModel @Inject constructor(
 
     init {
         folgeAbmeldung(sitzung) { zuruecksetzen() }
-        folgeBestand(bestand) { beiAenderung(it) }
     }
 
     override fun setScope(view: ScopeFilter.View, value: String) {
@@ -86,42 +83,66 @@ class TeileViewModel @Inject constructor(
         }
     }
 
+    private val teileKonto get() = filter.kontoFuer(ScopeFilter.View.PARTS)
+    private val teileLager get() = filter.lagerFuer(ScopeFilter.View.PARTS)?.ifBlank { null }
+    private val figurenKonto get() = filter.kontoFuer(ScopeFilter.View.MINIFIGS)
+
+    /**
+     * Konto und Lagerort teilen die Mengen auf, „In Sets“ zählt die Tabelle: Das
+     * rechnet nur der Server (Kontosicht). Sonst gilt die Ablage.
+     */
+    private fun teileAbfrage(st: PartsUiState): Kontosicht.TeileAbfrage? =
+        if (teileKonto == null && teileLager == null && st.partsView != Listenansicht.TABELLE) null
+        else Kontosicht.TeileAbfrage(teileKonto, st.partsQuery.ifBlank { null }, st.partsColorFilter.ifBlank { null },
+            st.partsCategoryFilter.ifBlank { null }, st.partsSpare, st.partsView == Listenansicht.TABELLE, teileLager)
+
+    private fun manuelleAbfrage(st: PartsUiState): Kontosicht.ManuelleAbfrage? =
+        if (teileKonto == null && teileLager == null) null
+        else Kontosicht.ManuelleAbfrage(teileKonto, st.partsQuery.ifBlank { null }, teileLager)
+
+    private fun figurenAbfrage(st: PartsUiState): Kontosicht.FigurenAbfrage? =
+        figurenKonto?.let { Kontosicht.FigurenAbfrage(it, st.minifigsQuery.ifBlank { null }) }
+
     private val teile = Teile(
         scope = viewModelScope,
         quelle = object : TeileQuelle {
-            private val teileSicht get() = filter.kontoFuer(ScopeFilter.View.PARTS)
-            private val teileLager get() = filter.lagerFuer(ScopeFilter.View.PARTS)
-            private val figurenSicht get() = filter.kontoFuer(ScopeFilter.View.MINIFIGS)
-            override suspend fun seite(abfrage: TeileAbfrage) = retryOnNetwork {
-                repo.getParts(search = abfrage.suche, color = abfrage.farbe,
-                    category = abfrage.kategorie, page = abfrage.seite, accounts = teileSicht,
-                    spare = abfrage.ersatzteile, withSets = abfrage.mitSets, storage = teileLager)
-            }
-            override suspend fun manuelleTeile(suche: String?) = repo.getManualParts(teileSicht, suche, teileLager)
-            override suspend fun teileKennzahlen() = repo.getPartsStats(teileSicht)
-            override suspend fun filterFarben() = repo.getPartsFilterColors(teileSicht)
-            override suspend fun kategorien() = repo.getPartsCategories(teileSicht)
+            override suspend fun teileKennzahlen() = repo.getPartsStats(teileKonto)
+            override suspend fun filterFarben() = repo.getPartsFilterColors(teileKonto)
+            override suspend fun kategorien() = repo.getPartsCategories(teileKonto)
             override suspend fun alleFarben() = repo.getBrickColors()
-            override suspend fun figurKennzahlen() = figuren.getMinifigStats(figurenSicht)
-            override suspend fun figuren(suche: String?) = figuren.getMinifigs(figurenSicht, suche)
-            override suspend fun manuelleFiguren(suche: String?) = figuren.getManualMinifigs(figurenSicht, suche)
+            override suspend fun figurKennzahlen() = figuren.getMinifigStats(figurenKonto)
         },
         meldeFehler = { meldungen.zeige(meldungen.meldungFuerSnackbar(it)) },
         vergissScroll = { scrollMemory.vergiss("parts") },
         beschreibeFehler = { meldungen.meldung(it) },
-        lokal = TeileLokal(
-            teile = { st -> repo.beobachteTeile(st.partsQuery, st.partsColorFilter, st.partsCategoryFilter, st.partsSpare) },
-            manuelleTeile = { st -> repo.beobachteManuelleTeile(st.partsQuery) },
-            figuren = { st -> figuren.beobachteFiguren(st.minifigsQuery) },
-            manuelleFiguren = { st -> figuren.beobachteManuelleFiguren(st.minifigsQuery) },
-            aktualisiereTeile = { retryOnNetwork { repo.aktualisiereTeile() } },
-            aktualisiereFiguren = { retryOnNetwork { figuren.aktualisiereFiguren() } },
+        listen = TeileLokal(
+            teile = { st -> teileAbfrage(st)?.let { kontosicht.teileliste.beobachte(it) }
+                ?: repo.beobachteTeile(st.partsQuery, st.partsColorFilter, st.partsCategoryFilter, st.partsSpare) },
+            manuelleTeile = { st -> manuelleAbfrage(st)?.let { kontosicht.manuelleTeile.beobachte(it) }
+                ?: repo.beobachteManuelleTeile(st.partsQuery) },
+            figuren = { st -> figurenAbfrage(st)?.let { kontosicht.figurenliste.beobachte(it) }
+                ?: figuren.beobachteFiguren(st.minifigsQuery) },
+            manuelleFiguren = { st -> figurenAbfrage(st)?.let { kontosicht.manuelleFiguren.beobachte(it) }
+                ?: figuren.beobachteManuelleFiguren(st.minifigsQuery) },
+            aktualisiereTeile = { st -> aktualisiereTeile(st) },
+            aktualisiereFiguren = { st -> aktualisiereFiguren(st) },
         ),
-        teileEingeschraenkt = {
-            filter.kontoFuer(ScopeFilter.View.PARTS) != null || !filter.lagerFuer(ScopeFilter.View.PARTS).isNullOrBlank()
-        },
-        figurenEingeschraenkt = { filter.kontoFuer(ScopeFilter.View.MINIFIGS) != null },
     )
+
+    /** Jede Quelle füllen, die der Zustand zeigt; die Tabelle allein lässt die manuellen in der Ablage. */
+    private suspend fun aktualisiereTeile(st: PartsUiState): Ergebnis<Unit> {
+        val liste = teileAbfrage(st) ?: return repo.aktualisiereTeile()
+        val r = kontosicht.teileliste.aktualisiere(liste)
+        if (r is Ergebnis.Error) return r
+        return manuelleAbfrage(st)?.let { kontosicht.manuelleTeile.aktualisiere(it) } ?: repo.aktualisiereManuelleTeile()
+    }
+
+    private suspend fun aktualisiereFiguren(st: PartsUiState): Ergebnis<Unit> {
+        val a = figurenAbfrage(st) ?: return figuren.aktualisiereFiguren()
+        val r = kontosicht.figurenliste.aktualisiere(a)
+        return if (r is Ergebnis.Error) r else kontosicht.manuelleFiguren.aktualisiere(a)
+    }
+
     val partsState: StateFlow<PartsUiState> = teile.state
 
     private val _setItemState = MutableStateFlow(SetItemUiState())
@@ -132,6 +153,9 @@ class TeileViewModel @Inject constructor(
     private var lagerJob: Job? = null
 
     init {
+        // Die Listen folgen der Ablage selbst; die Kennzahlen rechnet der Server darüber.
+        viewModelScope.launch { aenderungen.teileGeaendert().collect { teile.ladeKennzahlen() } }
+        viewModelScope.launch { aenderungen.figurenGeaendert().collect { teile.ladeFigurKennzahlen() } }
         teile.stelleFilterWieder { st ->
             st.copy(
                 partsQuery = gemerkt[F_SUCHE] ?: st.partsQuery,
@@ -187,7 +211,6 @@ class TeileViewModel @Inject constructor(
                     if (r.data.success) {
                         meldungen.zeige(erfassungsMeldung(
                             r.data.action == "added", r.data.partNumber, r.data.priceFromCondition))
-                        bestand.melde(Aenderung.Teile)
                     } else meldungen.zeige(r.data.error ?: meldungen.text(R.string.err_unknown))
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
@@ -204,7 +227,6 @@ class TeileViewModel @Inject constructor(
                     if (r.data.success) {
                         meldungen.zeige(erfassungsMeldung(
                             r.data.action == "added", r.data.figNumber, r.data.priceFromCondition))
-                        bestand.melde(Aenderung.Figuren)
                     } else meldungen.zeige(r.data.error ?: meldungen.text(R.string.err_unknown))
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
@@ -213,23 +235,23 @@ class TeileViewModel @Inject constructor(
 
     override fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?,
                    condition: Zustand?, owner: Int?) =
-        aendere(Aenderung.Teile, meldungen.text(R.string.vm_saved)) {
+        aendere(meldungen.text(R.string.vm_saved)) {
             repo.updatePart(partNumber, colorId, quantity, unitPrice, condition, owner).erfolg()
         }
 
     override fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String?,
                       condition: Zustand?, owner: Int?) =
-        aendere(Aenderung.Figuren, meldungen.text(R.string.vm_saved)) {
+        aendere(meldungen.text(R.string.vm_saved)) {
             figuren.updateMinifig(figNumber, quantity, unitPrice, blFigNumber, condition, owner).erfolg()
         }
 
     override fun deletePart(partNumber: String, colorId: Int, owner: Int?) =
-        aendere(Aenderung.Teile, meldungen.text(R.string.vm_part_deleted)) {
+        aendere(meldungen.text(R.string.vm_part_deleted)) {
             repo.deletePart(partNumber, colorId, owner).erfolg()
         }
 
     override fun deleteMinifig(figNumber: String, owner: Int?) =
-        aendere(Aenderung.Figuren, meldungen.text(R.string.vm_minifig_deleted)) {
+        aendere(meldungen.text(R.string.vm_minifig_deleted)) {
             figuren.deleteMinifig(figNumber, owner).erfolg()
         }
 
@@ -241,7 +263,7 @@ class TeileViewModel @Inject constructor(
                        farbName: String?, farbHex: String?,
                        owner: Int?, onFertig: (Int) -> Unit) {
         if (neueFarbe == colorId) return
-        aendere(Aenderung.Teile, meldungen.text(R.string.vm_saved), danach = { onFertig(neueFarbe) }) {
+        aendere(meldungen.text(R.string.vm_saved), danach = { onFertig(neueFarbe) }) {
             when (val r = repo.setPartColor(partNumber, colorId, neueFarbe, farbName, farbHex, owner)) {
                 is Ergebnis.Success -> r.data.success to (r.data.error ?: meldungen.text(R.string.err_unknown))
                 is Ergebnis.Error -> false to meldungen.meldungFuerSnackbar(r)
@@ -250,19 +272,18 @@ class TeileViewModel @Inject constructor(
     }
 
     /**
-     * Die ändernden Wege: rufen, melden, die Bestandsansichten benachrichtigen.
-     * Ein Fehlschlag ohne Satz (null) bleibt still — dann hat ihn die
+     * Die ändernden Wege: rufen und melden; die Listen ändert das Repository in der
+     * Ablage. Ein Fehlschlag ohne Satz (null) bleibt still — dann hat ihn die
      * Sitzungsschicht schon gemeldet.
      */
     private fun aendere(
-        was: Aenderung, erfolgsSatz: String, danach: () -> Unit = {},
+        erfolgsSatz: String, danach: () -> Unit = {},
         tun: suspend () -> Pair<Boolean, String?>,
     ) {
         viewModelScope.launch {
             val (gelungen, fehler) = tun()
             if (gelungen) {
                 meldungen.zeige(erfolgsSatz)
-                bestand.melde(was)
                 danach()
             } else meldungen.zeige(fehler)
         }
@@ -307,7 +328,6 @@ class TeileViewModel @Inject constructor(
                 is Ergebnis.Success -> {
                     if (!r.data.success) { meldungen.zeige(r.data.error ?: ""); return@launch }
                     _setItemState.update { z -> z.copy(kopf = z.kopf?.copy(storage = r.data.storage)) }
-                    bestand.melde(Aenderung.Teile)
                 }
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
@@ -321,14 +341,6 @@ class TeileViewModel @Inject constructor(
             ScopeFilter.View.PARTS -> loadParts()
             ScopeFilter.View.MINIFIGS -> loadMinifigs()
             else -> Unit
-        }
-    }
-
-    private fun beiAenderung(aenderung: Aenderung) {
-        when (aenderung) {
-            Aenderung.Teile -> loadParts()
-            Aenderung.Figuren -> loadMinifigs()
-            Aenderung.Sets, Aenderung.Merkliste, Aenderung.Alarme, is Aenderung.SetZusammenfassung -> Unit
         }
     }
 

@@ -58,7 +58,7 @@ class TeilFarbeAendernTest {
         pfade.server.shutdown()
     }
 
-    private fun vm() = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
+    private fun vm() = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), t.kontosicht, SavedStateHandle()))
     private val screen by lazy {
         Quellen.ohneKommentare(Quellen.lies("teile/ui/screens/ManualItemDetailScreen.kt"))
     }
@@ -80,7 +80,7 @@ class TeilFarbeAendernTest {
         var geoeffnet: Int? = null
         vm().setzeTeilFarbe("3001", 5, 11, owner = 7) { geoeffnet = it }
         assertTrue("neu geöffnet", geoeffnet != null)
-        // Danach lädt der Bereich die Teile neu (Bestandssignal) — gezählt wird nur die Farbe.
+        // Die Ablage zieht die Farbe selbst nach; gezählt wird nur der Aufruf.
         assertEquals(listOf("PUT /api/v1/parts/3001/5/color?owner=7"), pfade.anfragenAn("/color"))
         val koerper = pfade.koerper[pfade.anfragen.indexOfFirst { "/color" in it }]
         assertTrue(koerper, koerper.contains("\"color_id\":11"))

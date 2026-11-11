@@ -17,8 +17,8 @@ import ch.brickinventoryapp.zustand.ui.Abmeldevorgang
 import ch.brickinventoryapp.zustand.ui.Vorwaermung
 import ch.brickinventoryapp.zustand.ui.AusgangsBeobachter
 import ch.brickinventoryapp.zustand.ui.Ausgangsmelder
-import ch.brickinventoryapp.zustand.ui.BestandsVerteiler
-import ch.brickinventoryapp.zustand.ui.Bestandssignal
+import ch.brickinventoryapp.zustand.ui.AblageKontowerte
+import ch.brickinventoryapp.zustand.ui.Kontowerte
 import ch.brickinventoryapp.zustand.ui.Blickfeld
 import ch.brickinventoryapp.zustand.ui.BlickfeldDienst
 import ch.brickinventoryapp.model.ui.ScrollMemory
@@ -58,7 +58,7 @@ object ZustandModule {
     @Provides fun provideSitzung(s: SitzungsZustand): Sitzung = s
     @Provides fun provideSitzungsRepository(d: SitzungsDienst): SitzungsRepository = d
     @Provides fun provideBlickfeld(b: BlickfeldDienst): Blickfeld = b
-    @Provides fun provideBestandssignal(b: BestandsVerteiler): Bestandssignal = b
+    @Provides fun provideKontowerte(k: AblageKontowerte): Kontowerte = k
     @Provides fun provideAusgangsmelder(a: AusgangsBeobachter): Ausgangsmelder = a
     // Ein Merker für alle Reiter: Ein zweiter hätte die Stellen des ersten nicht.
     @Provides @Singleton fun provideScrollMemory(): ScrollMemory = ScrollSpeicher()

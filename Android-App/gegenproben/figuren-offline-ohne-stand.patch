@@ -1,14 +1,16 @@
-Gegenprobe: Ohne Netz melden Teile und Figuren einen Fehler, obwohl die Ablage einen Stand hat
+Gegenprobe: Ohne Netz melden die Figuren einen Fehler, obwohl die Quelle einen Stand hat
 Modul: feature-teile
-Test: ch.brickinventoryapp.teile.TeileLokalTest
+Test: ch.brickinventoryapp.teile.TeileTest
 Rot: ohne Netz bleiben die Figuren stehen
 
 diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/Teile.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/Teile.kt
 --- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/Teile.kt
 +++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/Teile.kt
-@@ -108,5 +108,4 @@
+@@ -83,7 +83,6 @@
                          fehler: (PartsUiState, Ergebnis.Error) -> PartsUiState) {
          when {
              r is Ergebnis.Success -> _state.update { fertig(it, null) }
 -            r is Ergebnis.Error && r.transient && stand != null -> _state.update { fertig(it, stand) }
              r is Ergebnis.Error -> {
+                 _state.update { fehler(it, r) }
+                 meldeFehler(r)

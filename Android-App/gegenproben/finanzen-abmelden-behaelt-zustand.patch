@@ -6,7 +6,7 @@ Rot: nach dem Abmelden ist nichts mehr da
 diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanzViewModel.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanzViewModel.kt
 --- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanzViewModel.kt
 +++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanzViewModel.kt
-@@ -145,7 +145,6 @@ class FinanzViewModel @Inject constructor(
+@@ -136,7 +136,6 @@
      }
  
      private fun zuruecksetzen() {

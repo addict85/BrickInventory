@@ -1,0 +1,17 @@
+Gegenprobe: Ein verschobener Merkposten bleibt in der Ablage beim alten Besitzer
+Modul: core-data
+Test: ch.brickinventoryapp.data.NachzugTest
+Rot: ein verschobener und ein uebernommener Merkposten
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt
+@@ -69,7 +69,7 @@
+             val vorhanden = liste.any { merkSchluessel(it) == ziel }
+             liste.mapNotNull {
+                 if (it.setNumber != b.setNumber || it.condition != b.zustand || it.userId != b.von) it
+-                else if (vorhanden) null else it.copy(userId = b.zu)
++                else it
+             }
+         }
+         else -> liste

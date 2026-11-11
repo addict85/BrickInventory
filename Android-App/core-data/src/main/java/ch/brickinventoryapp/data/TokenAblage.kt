@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -157,6 +158,13 @@ class TokenAblage @Inject constructor(
         val name = username.first()
         return "$server\n" + name.ifBlank { token }
     }
+
+    /** Aus denselben Spiegeln wie [kontoBereich]; bis der Kaltstart gelesen ist, null. */
+    override fun kontoBereichFluss(): Flow<String?> =
+        combine(_serverUrlState, _authTokenState, username) { s, t, name ->
+            val server = s?.trim()?.trimEnd('/').orEmpty()
+            if (server.isBlank() || t.isNullOrBlank()) null else "$server\n" + name.ifBlank { t }
+        }.distinctUntilChanged()
 
     override suspend fun cacheBereich(): String? {
         val server = serverUrlJetzt().trim().trimEnd('/')
