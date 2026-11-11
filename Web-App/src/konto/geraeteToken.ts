@@ -9,7 +9,7 @@ import { zaehleFehlversuch, zuVieleFehlversuche } from './tokenFehlversuche';
 import { kontoBereich } from './prozess';
 import {
   cacheStand,
-  cacheTreffer,
+  tokenAusCache,
   merkeEintrag,
   vergissEintrag,
   invalidateToken,
@@ -93,7 +93,7 @@ export async function pruefeToken(
       : { nutzer: u };
 
   const stand = cacheStand();
-  const hit = cacheTreffer(token, stand, now);
+  const hit = tokenAusCache(token, stand, now);
   if (hit) {
     // Beide Fristen auch hier: Dieser Zweig fragt die Datenbank nicht.
     if (fristErreicht(hit.user.expires_at, now) || fristErreicht(hit.user.hard_expires_at, now)) {

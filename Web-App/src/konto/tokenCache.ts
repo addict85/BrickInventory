@@ -55,7 +55,7 @@ export function cacheStand(): number | null {
   return cacheNutzbar() ? _stand : null;
 }
 
-export function cacheTreffer(token: string, stand: number | null, jetzt: number): CacheEintrag | undefined {
+export function tokenAusCache(token: string, stand: number | null, jetzt: number): CacheEintrag | undefined {
   if (stand === null) return undefined;
   const hit = _tokenCache.get(token);
   return hit && jetzt - hit.cachedAt < TOKEN_TTL_MS ? hit : undefined;
