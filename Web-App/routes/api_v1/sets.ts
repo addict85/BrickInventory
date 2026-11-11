@@ -34,7 +34,7 @@ router.get('/sets/exists/:setNumber', requireToken, async (req: Anfrage<'GET /ap
 
 router.get('/sets/barcode/:barcode', requireToken, async (req: Anfrage<'GET /api/v1/sets/barcode/:barcode'>, res: Antwort<'GET /api/v1/sets/barcode/:barcode'>) => {
   const barcode = req.pfad.barcode.trim();
-  const treffer = await sets.setZumBarcodeFuerKonto(req.apiUser.user_id, barcode);
+  const treffer = await sets.setZumBarcode(barcode);
   if (treffer) return res.json(treffer);
   sendeFehler(req, res, 404, 'barcode_kein_set', { barcode });
 });
@@ -118,7 +118,7 @@ router.get('/storage', requireToken, async (req: Anfrage<'GET /api/v1/storage'>,
 });
 
 router.get('/sets/:setNumber/parts-list', requireToken, async (req: Anfrage<'GET /api/v1/sets/:setNumber/parts-list'>, res: Antwort<'GET /api/v1/sets/:setNumber/parts-list'>) => {
-  res.json({ success: true, ...await sets.teilelisteFuerKonto(req.pfad.setNumber) });
+  res.json({ success: true, ...await sets.teilelisteMitNacharbeit(req.pfad.setNumber) });
 });
 
 router.get('/sets/:setNumber/minifigs-list', requireToken, async (req: Anfrage<'GET /api/v1/sets/:setNumber/minifigs-list'>, res: Antwort<'GET /api/v1/sets/:setNumber/minifigs-list'>) => {

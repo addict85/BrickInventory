@@ -5,7 +5,7 @@
  * dem Wiederherstellen — samt id, Kaufpreis und Erfassungsdatum.
  *
  * Gegenproben (25.10., gemessen):
- *   A  legeInPapierkorb() in deleteSet() entfernt      → rot: „Set fehlt im Papierkorb"
+ *   A  legeInPapierkorb() in loescheSet() entfernt      → rot: „Set fehlt im Papierkorb"
  *   B  Spaltenabgleich in stelleWiederHer() entfernt   → rot: „unbekannte Spalte"
  *   C  `user_id = ANY($2)` in stelleWiederHer() weg    → rot: „fremdes Konto"
  *   D  (03.11.2026) bestaetigeMitFaktor() in DELETE /papierkorb/:id bzw.

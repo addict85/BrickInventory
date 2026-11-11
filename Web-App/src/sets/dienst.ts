@@ -60,11 +60,6 @@ export async function setInfoFuerKonto(sk: SetsKontext, uid: number, setNumber: 
   return { success: true as const, set_number: n, ...row, name: row.name || n, im_katalog: true as const };
 }
 
-/** Set-Bilder gehen an jedes Konto (bildBlickfeld.ts); der Treffer nennt sein Bild. */
-export async function setZumBarcodeFuerKonto(sk: SetsKontext, _uid: number, rohBarcode: string): Promise<BarcodeTreffer | null> {
-  return setZumBarcode(sk, rohBarcode);
-}
-
 export interface BarcodeTreffer {
   success: true; unsicher: boolean; set_number: string; name: string | null;
   year?: number | null; pieces?: number | null; theme?: string | null; minifigs: number | null;
@@ -464,7 +459,7 @@ export async function csvImportStandFuerStrom(uid: number, req: Kopf, sprache: S
 }
 
 /** Die Route kennt den Auftragsweg der Teile nicht; ohne Inventar reichert der Job-Prozess an. */
-export function teilelisteFuerKonto(sk: SetsKontext, setNum: string) {
+export function teilelisteMitNacharbeit(sk: SetsKontext, setNum: string) {
   return teilelisteDesSets(sk, setNum, sn => sk.nacharbeit.setTeileAnreichern(sn));
 }
 
