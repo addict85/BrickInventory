@@ -1737,3 +1737,17 @@ docker compose exec postgres psql -U brickinventory -c "SELECT max(name) FROM sc
   `set_catalog` ein, wo dort keine steht. Sammlung, Merkliste, Katalogsuche und
   Set-Detail lesen das Bild nur noch aus `set_catalog`.
 - Nichts von Hand zu tun; die API antwortet mit denselben Feldern.
+
+## 50. Zustand und Auftragsart von der Datenbank geprüft (Migration 0107)
+
+- **Zustand:** Merkliste, Preisalarme und alle Preisspeicher und -verläufe
+  (Sets, Teile, Figuren) nehmen nur noch `N` oder `U`. Vorher berichtigt die
+  Migration andere Schreibweisen derselben Angabe (`n`, `u `) in Merkliste und
+  Preisalarm, wenn es den richtigen Eintrag nicht schon gibt; was danach nicht
+  passt, entfällt (Preisspeicher füllt der nächste Abruf).
+- **Auftragsarten** stehen in der neuen Tabelle `auftrags_arten`; `auftraege`
+  und `auftrag_pausen` verweisen per Fremdschlüssel darauf. Aufträge und Pausen
+  einer unbekannten Art (keine Anwendung hätte sie bearbeitet) entfallen. Eine
+  neue Art braucht künftig eine Migration.
+- Die Leserolle (`postgres/app-rolle.sh`) darf `auftrags_arten` lesen; `docker
+  compose up -d` spielt das wie gewohnt ein. Sonst nichts von Hand zu tun.
