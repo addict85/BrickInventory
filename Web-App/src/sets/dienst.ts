@@ -7,9 +7,9 @@ import path from 'path';
 import { APP_ROOT, DATA_DIR } from '../infra/appPaths';
 import { stelleAuftragEin } from '../auftraege/dienst';
 import { resolveImageLocal, proxyImageUrl } from '../katalog/bilder/images';
-import { getSetting } from '../einstellungen/settings';
-import { normalisiereLagerort } from '../bestand/lagerort';
-import type { setzeAlarm } from '../finanzen/preisalarm';
+import { einstellungMitZugang } from '../einstellungen/settings';
+import { normalisiereLagerort, setzeLagerort, orteFuer, vorgabeVon } from '../bestand/lagerort';
+import { alarmeFuer, loescheAlarm, setzeAlarm } from '../finanzen/preisalarm';
 import { importAlsAuftrag } from '../auftraege/importAlsAuftrag';
 import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';
 import { anleitungenZuSet, anleitungenZusammenlegen, loescheAnleitungen, anleitungNeuLadenErlaubt, anzahlAnleitungen } from '../katalog/instructions';
@@ -41,8 +41,6 @@ import * as katalogStamm from '../katalog/setStamm';
 import type { KatalogTeil, ListenTeil, SetStamm } from './zeilen';
 import { versuche, wertOder } from '../infra/ergebnis';
 import type { SetsKontext } from './kontext';
-import { bestandBereich } from '../bestand/prozess';
-import { finanzenBereich } from '../finanzen/prozess';
 export type { KatalogTeil, ListenTeil, SetStamm } from './zeilen';
 
 
@@ -266,9 +264,9 @@ export async function setPreis(sk: SetsKontext, uid: number, blickfeldWahl: Sich
   if (!set) return null;
   // Die Währung aus der Einstellung: Die App schickte ihren lokalen Startwert mit, bevor sie die Einstellung
   // kannte.
-  const currency  = await getSetting(uid, 'currency', 'EUR');
-  const guideType = await getSetting(uid, 'price_guide_type', 'sold');
-  const ttlHours  = await getSetting(uid, 'price_cache_ttl', '24');
+  const currency  = await waehrungVon(sk, uid);
+  const guideType = String(await einstellungMitZugang(sk.db, uid, 'price_guide_type', 'sold'));
+  const ttlHours  = String(await einstellungMitZugang(sk.db, uid, 'price_cache_ttl', '24'));
   const preis = await versuche('sets:preis', async () =>
     fetchPrice(sn, await resolveSetCondition(blickfeld, sn), guideType, currency, ttlHours));
   if (!preis.ok) return { set_number: sn, currency, min_price: null, avg_price: null, max_price: null, qty_avg_price: null,
@@ -389,41 +387,41 @@ export async function setCsvImportAbbrechen(userId: number) {
 
 /** Die Währung aus den Einstellungen, nicht aus der Anfrage: Zwei Quellen
  * liefen beim nächsten Wechsel auseinander. */
-export async function waehrungVon(uid: number): Promise<string> {
-  return String(await getSetting(uid, 'currency', 'EUR'));
+export async function waehrungVon(sk: SetsKontext, uid: number): Promise<string> {
+  return String(await einstellungMitZugang(sk.db, uid, 'currency', 'EUR'));
 }
 
 /** Trifft alle Zeilen des Sets im Schreibbereich: Wer die Kiste packt, packt
  * sie für alle, die darin nachsehen. */
-export async function lagerortDesSetsSetzen(uid: number, sn: string, storage: unknown) {
+export async function lagerortDesSetsSetzen(sk: SetsKontext, uid: number, sn: string, storage: unknown) {
   const ort = normalisiereLagerort(storage);
-  const n = await bestandBereich().lagerortDienst.setzeLagerort('set', { schreiber: uid }, [normalizeSetNumber(sn)], ort);
+  const n = await setzeLagerort(sk.db, 'set', { schreiber: uid }, [normalizeSetNumber(sn)], ort);
   return { ort, n };
 }
 
 /** Die Liste kann über mehrere Konten spannen, die Vorgabe ist immer die des
  * Anfragenden: Ein geerbter Stern wäre eine Aussage über eine fremde Wohnung. */
-export async function lagerorteMitVorgabe(uid: number, owner: string | undefined) {
-  const [orte, vorgabe] = await Promise.all([bestandBereich().lagerortDienst.orteFuer(uid, owner), bestandBereich().lagerortDienst.vorgabeVon(uid)]);
+export async function lagerorteMitVorgabe(sk: SetsKontext, uid: number, owner: string | undefined) {
+  const [orte, vorgabe] = await Promise.all([orteFuer(sk.db, uid, owner), vorgabeVon(sk.db, uid)]);
   return { orte, vorgabe };
 }
 
 // ── Preisalarm: gehört genau EINEM Konto, deshalb uid statt Blickfeld ────────
 
-export function setAlarmeLesen(uid: number, sn: string) {
-  return finanzenBereich().preisalarm.alarmeFuer(uid, normalizeSetNumber(sn));
+export function setAlarmeLesen(sk: SetsKontext, uid: number, sn: string) {
+  return alarmeFuer(sk.db, uid, normalizeSetNumber(sn));
 }
 
-export async function alarmDesSetsSetzen(uid: number, sn: string, eingabe: Parameters<typeof setzeAlarm>[4]) {
-  return finanzenBereich().preisalarm.setzeAlarm(uid, normalizeSetNumber(sn), await waehrungVon(uid), eingabe);
+export async function alarmDesSetsSetzen(sk: SetsKontext, uid: number, sn: string, eingabe: Parameters<typeof setzeAlarm>[4]) {
+  return setzeAlarm(sk.db, uid, normalizeSetNumber(sn), await waehrungVon(sk, uid), eingabe);
 }
 
-export function alarmDesSetsLoeschen(uid: number, sn: string, condition: unknown) {
-  return finanzenBereich().preisalarm.loescheAlarm(uid, normalizeSetNumber(sn), String(condition || 'N'));
+export function alarmDesSetsLoeschen(sk: SetsKontext, uid: number, sn: string, condition: unknown) {
+  return loescheAlarm(sk.db, uid, normalizeSetNumber(sn), String(condition || 'N'));
 }
 
-export async function alarmCsvImportStarten(uid: number, text: string) {
-  return importAlsAuftrag<CsvImportBericht>(uid, 'alarme_csv', { waehrung: await waehrungVon(uid), text });
+export async function alarmCsvImportStarten(sk: SetsKontext, uid: number, text: string) {
+  return importAlsAuftrag<CsvImportBericht>(uid, 'alarme_csv', { waehrung: await waehrungVon(sk, uid), text });
 }
 
 /** Nur zu Sets im Blickfeld und gedrosselt: Jeder Import kann Rebrickable-Kontingent kosten. */
@@ -470,8 +468,8 @@ export function teilelisteFuerKonto(sk: SetsKontext, setNum: string) {
   return teilelisteDesSets(sk, setNum, sn => sk.nacharbeit.setTeileAnreichern(sn));
 }
 
-export async function setPreisVerlauf(uid: number, sicht: Sicht | number[], sn: string) {
-  return getSetPriceHistory(sicht, sn, await waehrungVon(uid));
+export async function setPreisVerlauf(sk: SetsKontext, uid: number, sicht: Sicht | number[], sn: string) {
+  return getSetPriceHistory(sicht, sn, await waehrungVon(sk, uid));
 }
 
 /** Meldet jeden Stand des CSV-Imports dieses Kontos, aus diesem und aus anderen Prozessen. */

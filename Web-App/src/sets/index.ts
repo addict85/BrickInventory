@@ -17,17 +17,9 @@ export {
   QUELLE_GESTOERT,
   setCsvZeilen,
   setCsvImportAbbrechen,
-  waehrungVon,
-  lagerortDesSetsSetzen,
-  lagerorteMitVorgabe,
-  setAlarmeLesen,
-  alarmDesSetsSetzen,
-  alarmDesSetsLoeschen,
-  alarmCsvImportStarten,
   ANLEITUNGS_WURZEL,
   csvImportStand,
   csvImportStandFuerStrom,
-  setPreisVerlauf,
   csvImportStandAbonnieren,
 } from './dienst';
 export { ladeSetBilder } from './nachErfassung';
@@ -72,3 +64,11 @@ export const teilelisteFuerKonto = dienst('teilelisteFuerKonto');
 export const setVerschieben = dienst('setVerschieben');
 export const zieheNach = dienst('zieheNach');
 export const fuehreCsvImportAus = dienst('fuehreCsvImportAus');
+export const waehrungVon = dienst('waehrungVon');
+export const lagerortDesSetsSetzen = dienst('lagerortDesSetsSetzen');
+export const lagerorteMitVorgabe = dienst('lagerorteMitVorgabe');
+export const setAlarmeLesen = dienst('setAlarmeLesen');
+export const alarmDesSetsSetzen = dienst('alarmDesSetsSetzen');
+export const alarmDesSetsLoeschen = dienst('alarmDesSetsLoeschen');
+export const alarmCsvImportStarten = dienst('alarmCsvImportStarten');
+export const setPreisVerlauf = dienst('setPreisVerlauf');

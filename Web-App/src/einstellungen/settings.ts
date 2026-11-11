@@ -3,14 +3,21 @@ import { verschluessele, entschluessele, umschluesseln, kontext } from '../infra
 import { fachfehler, dateiFehler } from '../infra/fehlerTexte';
 import { GLOBALE_REGELN, DESIGNS, type GlobalerSchluessel } from '../vertrag/globaleRegeln';
 import { einstellungenBereich } from './prozess';
+import * as repo from './repository';
+import type { DbSchnittstelle } from '../../db/database';
 
 /** Gespeichert ist Text; mit Vorgabe ist das Ergebnis Text oder die Vorgabe, nie `any`. */
 export async function getSetting(userId: number, key: string): Promise<string | null | undefined>;
 export async function getSetting<T>(userId: number, key: string, fallback: T): Promise<string | T>;
 export async function getSetting(userId: number, key: string, fallback?: unknown): Promise<unknown> {
-  const eigen = await einstellungenBereich().repository.nutzerWert(userId, key);
+  return einstellungMitZugang(einstellungenBereich().db, userId, key, fallback);
+}
+
+/** getSetting über einen übergebenen Zugang, für Bereiche mit eigenem Kontext (src/sets). */
+export async function einstellungMitZugang(db: DbSchnittstelle, userId: number, key: string, fallback?: unknown): Promise<unknown> {
+  const eigen = await repo.nutzerWert(db, userId, key);
   if (eigen) return eigen;
-  return klar(key, await einstellungenBereich().repository.globalerWert(key)) || fallback;
+  return klar(key, await repo.globalerWert(db, key)) || fallback;
 }
 
 /** Geheime Werte liegen verschlüsselt (src/infra/geheimnis.ts). */
