@@ -48,6 +48,7 @@ api_takt: api, naechster
 app_logs: id, level, message, logged_at
 auftraege: id, art, user_id, schluessel, status, versuche, max_versuche, faellig_ab, belegt_von, fehler, erstellt, aktualisiert, frist_bis, gestartet, fortschritt
 auftrag_pausen: art, bis, grund, stufe
+auftrags_arten: art
 bl_zuordnung: art, rb_id, bl_id, fetched_at
 catalog_cache: set_number, is_gear, bl_type, fetched_at
 global_settings: key, updated_at

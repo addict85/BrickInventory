@@ -86,6 +86,7 @@ const GEMEINSAM = {
   api_takt:              { art: BETRIEB, eingabe: false },
   auftrag_pausen:        { art: BETRIEB, eingabe: false },
   auftrag_exklusiv:      { art: BETRIEB, eingabe: false },
+  auftrags_arten:        { art: BETRIEB, eingabe: false },
   laufzustand:           { art: BETRIEB, eingabe: false },
   schema_migrations:     { art: BETRIEB, eingabe: false },
   global_settings:       { art: BETRIEB, eingabe: 'nur Verwalter (requireAdmin)' },
@@ -118,7 +119,7 @@ const DYNAMISCH = {
 /** Je Bereich die Tabellen, in die nur er schreibt (INSERT, UPDATE, DELETE). */
 const BESITZER = {
   'db': ['schema_migrations'],
-  'src/auftraege': ['auftraege', 'auftrag_exklusiv', 'auftrag_pausen', 'import_stand', 'laufzustand'],
+  'src/auftraege': ['auftraege', 'auftrag_exklusiv', 'auftrag_pausen', 'auftrags_arten', 'import_stand', 'laufzustand'],
   'src/bestand': ['minifigs', 'papierkorb', 'parts', 'storage_locations'],
   'src/einstellungen': ['global_settings', 'user_settings'],
   'src/figuren': ['minifig_acquisitions'],
