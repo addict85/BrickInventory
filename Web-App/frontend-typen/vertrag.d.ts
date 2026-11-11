@@ -81,7 +81,7 @@ export type AnleitungHochgeladen = {
   unchanged?: boolean;
   acquisitions?: number | null;
   instructions?: number | null;
-  papierkorb?: number[];
+  papierkorb?: number | number[];
   removed?: number | null;
   linked_to?: {
     id: number;
@@ -602,7 +602,7 @@ export type EinstellungenGespeichert = {
   unchanged?: boolean;
   acquisitions?: number | null;
   instructions?: number | null;
-  papierkorb?: number[];
+  papierkorb?: number | number[];
   removed?: number | null;
   linked_to?: {
     id: number;
@@ -1279,7 +1279,7 @@ export type MerkpostenGeloescht = {
   unchanged?: boolean;
   acquisitions?: number | null;
   instructions?: number | null;
-  papierkorb?: number[];
+  papierkorb?: number | number[];
   removed?: number | null;
   linked_to?: {
     id: number;
@@ -1819,7 +1819,7 @@ export type ProfilGespeichert = {
   unchanged?: boolean;
   acquisitions?: number | null;
   instructions?: number | null;
-  papierkorb?: number[];
+  papierkorb?: number | number[];
   removed?: number | null;
   linked_to?: {
     id: number;
@@ -1881,7 +1881,7 @@ export type PUT_api_v1_sets_setNumber_acquisitions_acqId = {
   unchanged?: boolean;
   acquisitions?: number | null;
   instructions?: number | null;
-  papierkorb?: number[];
+  papierkorb?: number | number[];
   removed?: number | null;
   linked_to?: {
     id: number;

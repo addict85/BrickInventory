@@ -148,7 +148,7 @@ export const GenericResponse = z.looseObject({
   unchanged: z.boolean().optional(),
   acquisitions: z.number().int().nullable().optional(),
   instructions: z.number().int().nullable().optional(),
-  papierkorb: z.array(z.number().int()).optional(),
+  papierkorb: z.union([z.number().int(), z.array(z.number().int())]).optional(),
   removed: z.number().int().nullable().optional(),
   linked_to: KontoName.nullable().optional(),
   success: z.boolean(),

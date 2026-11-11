@@ -14,10 +14,13 @@ const { quellwurzeln } = require('../test/helpers/android');
  */
 const ERLAUBT = new Map([
   // Diagnose-Endpunkte: für Betreiber und curl, nicht für die Oberfläche.
-  ['body_check', 'Selbstprüfung /v1/admin'], ['datenbank', 'Selbstprüfung'],
-  ['db_pool', 'Verbindungspool im Gesundheitsbericht'], ['probes', 'Selbstprüfung'],
+  ['body_check', 'Selbstprüfung /v1/admin'],
+  ['datenbank', 'Selbstprüfung'],
+  ['db_pool', 'Verbindungspool im Gesundheitsbericht'],
+  ['probes', 'Selbstprüfung'],
   ['proxy_failures', 'Selbstprüfung'],
-  ['merker', 'Selbstprüfung'], ['hinweis', 'Selbstprüfung'],
+  ['merker', 'Selbstprüfung'],
+  ['hinweis', 'Selbstprüfung'],
   ['rate_limit', 'nur noch im Admin-Bericht, nicht mehr in der Bewertung'],
   // Export-Datei: gelesen wird sie vom Import DIESES Servers, nicht von einem Client.
   ['tokens', 'Einstellungs-Export'],
@@ -25,7 +28,8 @@ const ERLAUBT = new Map([
   ['email_sent', 'Registrierung: Ablauf hängt nicht daran'],
   ['userId', 'Anmeldeantwort; die Oberfläche liest die Sitzung, nicht das Feld'],
   ['never_expires', 'API-Token-Verwaltung, nur Webapp-Formular'],
-  ['token_expires', 'API-Token-Verwaltung'], ['token_last_used', 'API-Token-Verwaltung'],
+  ['token_expires', 'API-Token-Verwaltung'],
+  ['token_last_used', 'API-Token-Verwaltung'],
   ['instruction', 'Einzelanleitung; die Liste kommt über instructions'],
   ['missingImages', 'PDF-Job: die Oberfläche zeigt etaSeconds, nicht die Zahl'],
 ]);
@@ -38,9 +42,13 @@ function dateien(wurzel, endungen, aus) {
   /** @type {string[]} */
   const out = [];
   /** @param {string} d */
-  const lauf = (d) => {
+  const lauf = d => {
     let e;
-    try { e = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    try {
+      e = fs.readdirSync(d, { withFileTypes: true });
+    } catch {
+      return;
+    }
     for (const x of e) {
       const p = path.join(d, x.name);
       if (aus.some(a => p.includes(a))) continue;
@@ -57,12 +65,12 @@ function dateien(wurzel, endungen, aus) {
  * `return { success: true, … }`: So geben die Dienste in utils/dienste/ die
  * Antwort zurück, die eine Route unverändert weiterreicht.
  */
-/** @param {string} s */
-function antwortSchluessel(s) {
+/** @param {string} s @param {RegExp} [re] */
+function antwortSchluessel(s, re = /res\.json\(\s*\{|return\s*\{(?=\s*success:\s*true)/g) {
   const gefunden = new Set();
-  const re = /res\.json\(\s*\{|return\s*\{(?=\s*success:\s*true)/g;
   while (re.exec(s) !== null) {
-    let tiefe = 1, i = re.lastIndex;
+    let tiefe = 1,
+      i = re.lastIndex;
     while (i < s.length && tiefe > 0) {
       const c = s[i];
       if (c === '(' || c === '{' || c === '[') tiefe++;
@@ -75,7 +83,7 @@ function antwortSchluessel(s) {
     for (const c of s.slice(re.lastIndex, i - 1)) {
       if (c === '(' || c === '{' || c === '[') ebene++;
       else if (c === ')' || c === '}' || c === ']') ebene--;
-      oben += (ebene === 0 ? c : ' ');
+      oben += ebene === 0 ? c : ' ';
     }
     for (const k of oben.matchAll(/(?:^|,)\s*([A-Za-z_]\w*)\s*:/g)) gefunden.add(k[1]);
   }
@@ -84,27 +92,52 @@ function antwortSchluessel(s) {
 
 const quellen = dateien(ROOT, ['.ts'], ['node_modules', `${path.sep}dist`, `${path.sep}test`, `${path.sep}scripts`]);
 if (quellen.length < 40) {
-  console.error(`❌ Nur ${quellen.length} TypeScript-Quellen gefunden — Pfad veraltet? ` +
-    'Eine leere Suche wäre still grün.');
+  console.error(
+    `❌ Nur ${quellen.length} TypeScript-Quellen gefunden — Pfad veraltet? ` + 'Eine leere Suche wäre still grün.',
+  );
   process.exit(1);
 }
 
 /** @type {Map<string, string[]>} */
 const woher = new Map();
-for (const p of quellen) {
-  for (const k of antwortSchluessel(fs.readFileSync(p, 'utf8'))) {
-    const rel = path.relative(ROOT, p);
+/** @type {[string, string][]} */
+const texte = quellen.map(p => [path.relative(ROOT, p), fs.readFileSync(p, 'utf8')]);
+// Routen antworten mit `{ success: true, ...(await dienst(…)) }`: Die Felder stehen im return des Dienstes.
+const gespreizt = new Set(texte.flatMap(([, s]) => [...s.matchAll(/\.\.\.\(await (?:\w+\.)?(\w+)\(/g)].map(m => m[1])));
+for (const [rel, s] of texte) {
+  const rumpfe = [...s.matchAll(/function (\w+)\s*[(<]/g)]
+    .filter(m => gespreizt.has(m[1]))
+    .map(m => {
+      let i = s.indexOf('{', s.indexOf(')', m.index));
+      const anfang = i;
+      for (let tiefe = 0; i < s.length; i++) {
+        if (s[i] === '{') tiefe++;
+        else if (s[i] === '}' && --tiefe === 0) break;
+      }
+      // Nur die return-Anweisungen des Rumpfs selbst, nicht innerer Funktionen.
+      const rumpf = s.slice(anfang, i);
+      let tiefe = 0,
+        oben = '';
+      for (let j = 0; j < rumpf.length; j++) {
+        if (rumpf[j] === '{') tiefe++;
+        else if (rumpf[j] === '}') tiefe--;
+        oben += tiefe === 1 && rumpf.startsWith('return', j) ? '§' : rumpf[j];
+      }
+      return oben;
+    });
+  for (const k of [antwortSchluessel(s), ...rumpfe.map(r => antwortSchluessel(r, /§eturn\s*\{/g))].flatMap(m => [...m]))
     woher.set(k, (woher.get(k) || []).concat(rel));
-  }
 }
 
 const verbraucher = [
   ...dateien(path.join(ROOT, 'public'), ['.js', '.html'], ['app.bundle.js']),
-  ...quellwurzeln().flatMap((w) => dateien(w, ['.kt'], [])),
+  ...quellwurzeln().flatMap(w => dateien(w, ['.kt'], [])),
 ];
 if (verbraucher.length < 50) {
-  console.error(`❌ Nur ${verbraucher.length} Verbraucherdateien gefunden — ohne sie ` +
-    'gälte JEDES Feld als ungelesen, und die Prüfung wäre wertlos.');
+  console.error(
+    `❌ Nur ${verbraucher.length} Verbraucherdateien gefunden — ohne sie ` +
+      'gälte JEDES Feld als ungelesen, und die Prüfung wäre wertlos.',
+  );
   process.exit(1);
 }
 const kunde = verbraucher.map(p => fs.readFileSync(p, 'utf8')).join('\n');
@@ -122,12 +155,16 @@ const tot = [...ERLAUBT.keys()].filter(k => !woher.has(k));
 if (fehler.length || tot.length) {
   console.error('❌ Antwortfelder:');
   for (const f of fehler) {
-    console.error(`  OHNE VERBRAUCHER: ${f} — weder public/js noch die Android-App ` +
-      'nennen den Namen. Entweder fehlt die Anzeige, oder das Feld (und die ' +
-      'Rechnung dahinter) gehört aus der Antwort.');
+    console.error(
+      `  OHNE VERBRAUCHER: ${f} — weder public/js noch die Android-App ` +
+        'nennen den Namen. Entweder fehlt die Anzeige, oder das Feld (und die ' +
+        'Rechnung dahinter) gehört aus der Antwort.',
+    );
   }
   for (const t of tot) console.error(`  TOTE AUSNAHME: ${t} — gibt es in keiner Antwort mehr, Zeile streichen.`);
   process.exit(1);
 }
-console.log(`✅ Antwortfelder: ${woher.size} Schlüssel aus ${quellen.length} Quellen, ` +
-  `${verbraucher.length} Verbraucherdateien, ${ERLAUBT.size} begründete Ausnahmen.`);
+console.log(
+  `✅ Antwortfelder: ${woher.size} Schlüssel aus ${quellen.length} Quellen, ` +
+    `${verbraucher.length} Verbraucherdateien, ${ERLAUBT.size} begründete Ausnahmen.`,
+);
