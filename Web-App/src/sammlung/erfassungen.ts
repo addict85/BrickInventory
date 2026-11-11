@@ -17,6 +17,7 @@ import { bestandsMenge } from '../infra/validate';
 
 export type { ErfassungsArt } from '../../db/bestandsmenge';
 import type { ErfassungsArt } from '../../db/bestandsmenge';
+import { sammlungBereich } from './prozess';
 type Schluessel = Array<string | number>;
 
 interface Art {
@@ -52,7 +53,7 @@ interface Zeile { id: number; user_id: number; condition: string | null; preis: 
 
 /** Nur für den Sperrschlüssel; die Rechte prüft danach die Abfrage im Schreib-Blickfeld. */
 async function besitzerDerZeile(art: ErfassungsArt, id: number, fallback: number): Promise<number> {
-  return await repo.kontoDerErfassung(art, id) ?? fallback;
+  return await sammlungBereich().erfassungen.kontoDerErfassung(art, id) ?? fallback;
 }
 
 /** 0 heisst „leer", null „keine Zeile"; beides räumt auf. Ein Lesefehler ist
@@ -105,7 +106,7 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
     let p = geldEingabe(rawPrice, preisSpalte(art) === 'purchase_price' ? 'Kaufpreis' : 'Stückpreis');
     if (p === null) {
       preisGeschaetzt = true;
-      const bisher = condition ? null : await repo.zustandDerErfassung(art, id);
+      const bisher = condition ? null : await sammlungBereich().erfassungen.zustandDerErfassung(art, id);
       p = await ab.oder('marktpreis', a.resolvePrice(uid, keys, String(condition || bisher || '') || null), null);
     }
     priceVal = p;
@@ -162,5 +163,5 @@ export async function erfassungLoeschen(art: ErfassungsArt, uid: number, id: num
 }
 
 export async function setErfassungen(sicht: Sicht | number[], setNumber: string) {
-  return repo.setErfassungenImBlickfeld(await blickfeldAus(sicht), setNumber);
+  return sammlungBereich().erfassungen.setErfassungenImBlickfeld(await blickfeldAus(sicht), setNumber);
 }

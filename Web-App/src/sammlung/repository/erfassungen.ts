@@ -1,14 +1,13 @@
-import * as db from '../../../db/database';
 import type { DbSchnittstelle } from '../../../db/database';
 import { erfassungsTagSql, ERFASSUNGS_TABELLEN as SHAPES } from '../../../db/bestandsmenge';
 import type { ErfassungsArt, ErfassungsZeile } from '../../../db/bestandsmenge';
 
-export async function kontoDerErfassung(art: ErfassungsArt, id: number): Promise<number | null> {
+export async function kontoDerErfassung(db: DbSchnittstelle, art: ErfassungsArt, id: number): Promise<number | null> {
   const r = await db.get<{ user_id: number }>(`SELECT user_id FROM ${SHAPES[art].table} WHERE id = $1`, [id]);
   return r ? Number(r.user_id) : null;
 }
 
-export async function zustandDerErfassung(art: ErfassungsArt, id: number): Promise<string | null> {
+export async function zustandDerErfassung(db: DbSchnittstelle, art: ErfassungsArt, id: number): Promise<string | null> {
   return (await db.get<{ condition: string }>(`SELECT condition FROM ${SHAPES[art].table} WHERE id=$1`, [id]))?.condition ?? null;
 }
 
@@ -51,7 +50,7 @@ export async function loescheErfassung(tx: DbSchnittstelle, art: ErfassungsArt, 
   await tx.run(`DELETE FROM ${SHAPES[art].table} WHERE id=$1 AND user_id=$2`, [id, besitzer]);
 }
 
-export function setErfassungenImBlickfeld(blickfeld: number[], setNumber: string) {
+export function setErfassungenImBlickfeld(db: DbSchnittstelle, blickfeld: number[], setNumber: string) {
   return db.all<ErfassungsZeile>(
     `SELECT id, quantity, purchase_price, COALESCE(condition, 'N') AS condition, price_estimated, currency,
             created_at, user_id AS owner_user_id FROM set_acquisitions
