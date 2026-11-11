@@ -267,7 +267,7 @@ export async function alarmeAusCsv(uid: number, waehrung: string, text: string) 
     }
   }
   return {
-    success: true, added, updated, errors, total: records.length, results,
+    added, updated, errors, total: records.length, results,
     skipped: uebersprungen.length || undefined,
     skipped_hint: uebersprungenHinweis(uebersprungen) || undefined,
     ...(fremdeWaehrung ? { waehrung_hinweis:

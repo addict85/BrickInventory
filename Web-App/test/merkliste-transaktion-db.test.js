@@ -19,6 +19,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
 const U = {};
@@ -63,15 +64,7 @@ async function mitBremse(fn) {
 }
 
 test('Merkliste schreibt ganz oder gar nicht', { concurrency: 1 }, async t => {
-  try {
-    await db.get('SELECT 1');
-  } catch (e) {
-    await db.pool.end().catch(() => {});
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar');
-    return;
-  }
+  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
   t.after(() => db.pool.end().catch(() => {}));
   await seed();
   const W = _req('src/merkliste/merkliste.js');

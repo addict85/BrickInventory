@@ -8,8 +8,9 @@ import { stoppeProtokoll } from '../src/infra/protokoll';
 import { logAndContinue } from '../src/infra/fehler';
 
 export async function schliessePufferUndTakte(): Promise<void> {
-  await stoppeBildbedarf().catch(logAndContinue('shutdown:bildbedarf'));
-  await stoppeFehlanzeige().catch(logAndContinue('shutdown:bild-fehlanzeige'));
+  // Beide fangen ihre Schreibfehler selbst.
+  await stoppeBildbedarf();
+  await stoppeFehlanzeige();
   await pgNotify.close().catch(logAndContinue('server:close'));
   await stoppeProtokoll();
 }

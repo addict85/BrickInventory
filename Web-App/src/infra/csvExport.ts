@@ -172,7 +172,7 @@ export function csvImportBericht(d: {
   records: unknown[]; results: unknown[]; uebersprungen: number[];
 }) {
   return {
-    success: true as const, added: d.added, updated: d.updated, errors: d.errors,
+    added: d.added, updated: d.updated, errors: d.errors,
     total: d.records.length, results: d.results,
     skipped: d.uebersprungen.length || undefined,
     skipped_hint: uebersprungenHinweis(d.uebersprungen) || undefined,

@@ -156,8 +156,7 @@ export async function rebrickableRoh(url: string, rbKey: string): Promise<{ stat
   );
 }
 
-/** Ein Grund, aus dem kein weiterer Abruf gelingen kann: Schleifen über viele
- * Nummern brechen daran ab, statt jede einzeln scheitern zu lassen. */
+/** Kein weiterer Abruf kann gelingen; Schleifen über viele Nummern brechen ab. */
 export class RebrickableGesperrt extends Error {
   constructor(
     readonly grund: 'kontingent' | 'kein_schluessel',
@@ -551,7 +550,6 @@ async function blTeilZuRb(blId: string): Promise<string | null> {
   // Bei den meisten Teilen benutzen beide Dienste dieselbe Nummer. Dann
   // liefert /lego/parts/{nr}/ den Treffer, und external_ids bestaetigt ihn —
   // aus einer VERMUTUNG („die Nummern sind wohl gleich") wird eine Abbildung.
-  // Nur 404 heisst „unbekannt“ (rbGet liefert dann null); jeder andere Fehler geht weiter.
   const direkt = await rbGet(`/lego/parts/${pfadSegment(blId)}/`);
   if (direkt && traegtBlNummer(direkt, blId)) return String(direkt.part_num);
 

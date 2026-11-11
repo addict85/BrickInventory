@@ -3,9 +3,8 @@
 import { hashePasswort } from './bcryptSchranke';
 import * as repo from './repository/konten';
 import * as passkeyRepo from './repository/passkeys';
-import { BCRYPT_ROUNDS, leereTokenCache, revokeAllSessions, revokeAllTokens } from './auth';
-import { erhoeheSitzungsVersion, vergissSitzungsVersion } from './sitzungsVersion';
-import * as db from '../../db/database';
+import { BCRYPT_ROUNDS, leereTokenCache, mitZugangsende, revokeAllSessions, revokeAllTokens } from './auth';
+import { erhoeheSitzungsVersion } from './sitzungsVersion';
 import { emailGueltig } from '../infra/validate';
 import { entferneStartpasswort } from '../infra/startpasswort';
 
@@ -50,17 +49,6 @@ async function zugaengeBeenden(uid: number): Promise<void> {
 
 async function startpasswortErledigt(uid: number): Promise<void> {
   if ((await repo.kontoKurz(uid))?.is_admin) entferneStartpasswort();
-}
-
-/** Passwort, Zugänge und Passkeys zusammen: Sonst gälte nach einem Fehler das
- * neue Passwort, während die alten Zugänge weiterleben. Die Zwischenspeicher
- * leeren sich nach dem COMMIT noch einmal, weil eine Anfrage dazwischen den
- * alten Stand wieder aufgenommen haben kann. */
-async function mitZugangsende<T>(uid: number, fn: () => Promise<T>): Promise<T> {
-  const r = await db.transaction(fn, { wiederholeBeiKonflikt: true });
-  leereTokenCache();
-  vergissSitzungsVersion(uid);
-  return r;
 }
 
 export async function setzeFremdesPasswort(uid: number, passwort: unknown): Promise<boolean> {

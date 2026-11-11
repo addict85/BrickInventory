@@ -290,7 +290,7 @@ router.get('/settings/export/data', async (req: Request, res) => {
 const importUpload = multer({ storage: multer.memoryStorage(), limits: { ...FORMULAR_GRENZEN, fileSize: 1024 * 1024 } });
 router.post('/settings/import', kontoSchranke('upload'), importUpload.single('file'), async (req: OffeneAnfrage<'POST /api/v1/settings/import'>, res: Antwort<'POST /api/v1/settings/import'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-  res.json(await konfigImport(angemeldeteNutzerId(req), istVerwalter(req), req.file.buffer));
+  res.json({ success: true, ...(await konfigImport(angemeldeteNutzerId(req), istVerwalter(req), req.file.buffer)) });
 });
 
 router.post('/settings/smtp-test', async (req: OffeneAnfrage<'POST /api/v1/settings/smtp-test'>, res: Antwort<'POST /api/v1/settings/smtp-test'>) => {

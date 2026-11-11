@@ -17,7 +17,6 @@ export interface Schrittzustand {
 }
 
 export interface EinrichtungStandAntwort {
-  success: true;
   erledigt: boolean;
   konfiguriert: boolean;
   schritte: Schrittzustand[];
@@ -58,7 +57,6 @@ async function berechne(verwalter: boolean): Promise<EinrichtungStandAntwort> {
   const ca = await tlsStand();
   const k = konfig();
   const grund = {
-    success: true as const,
     ca: {
       vorhanden: !!ca,
       ...(ca ? { fp_hex: ca.fp_hex, zert_sha256: ca.zert_sha256, gueltig_bis: ca.gueltig_bis } : {}),

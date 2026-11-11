@@ -121,5 +121,5 @@ export async function konfigImport(uid: number, verwalter: boolean, datei: Buffe
     (verwalter && smtpUebergangen.length
       ? '; Mailserver, Registrierung und API-Schlüssel nicht übernommen — bitte im Formular setzen'
       : '');
-  return { success: true as const, imported, note, smtp_uebergangen: verwalter ? smtpUebergangen : [] };
+  return { imported, note, smtp_uebergangen: verwalter ? smtpUebergangen : [] };
 }

@@ -19,6 +19,16 @@ async function withInventoryLock<T>(userId: number, scopeKey: string | number, f
   return mitInventarSperre(db, userId, scopeKey, fn, o);
 }
 
+/** Dasselbe für mehrere Konten (etwas wandert zwischen ihnen); aufsteigend
+ * gesperrt, damit zwei Gegenrichtungen nicht verklemmen. */
+async function withInventoryLocks<T>(userIds: number[], scopeKey: string, fn: (tx: DbSchnittstelle) => Promise<T>,
+                                     o: db.TxOptionen = {}): Promise<T> {
+  return db.transaction(async (tx) => {
+    for (const u of [...new Set(userIds)].sort((a, b) => a - b)) await sperreBisZumEnde(tx, LOCKS.INVENTAR, `${u}|${scopeKey}`);
+    return fn(tx);
+  }, o);
+}
+
 /** Dasselbe über einen übergebenen Zugang (Bereiche mit Fabrik, src/sets/bereich.ts). */
 async function mitInventarSperre<T>(zugang: Pick<db.Db, 'transaction'>, userId: number, scopeKey: string | number,
                                     fn: (tx: DbSchnittstelle) => Promise<T>, o: db.TxOptionen = {}): Promise<T> {
@@ -96,5 +106,5 @@ async function gibSchluesselSperreFrei(c: Abfrager, namensraum: number, schluess
   await c.query('SELECT pg_advisory_unlock($1, hashtext($2))', [namensraum, schluessel]);
 }
 
-export { withInventoryLock, mitInventarSperre, bestandsSchluessel, sperreHaushaltswaehrung, mitSitzungsSperre, belegeSitzungsSperre,
+export { withInventoryLock, withInventoryLocks, mitInventarSperre, bestandsSchluessel, sperreHaushaltswaehrung, mitSitzungsSperre, belegeSitzungsSperre,
   versucheSchluesselSperre, gibSchluesselSperreFrei, sperreBisZumEnde };

@@ -55,9 +55,9 @@ export async function setInfoFuerKonto(sk: SetsKontext, uid: number, setNumber: 
   const n = mitVersion(setNumber);
   const stamm = await setInfo(sk, n);
   const fremderPlatzhalter = !!stamm?.platzhalter && !(await setNummerImBlickfeld(uid, n));
-  if (!stamm || fremderPlatzhalter) return { success: true as const, set_number: n, name: n, im_katalog: false as const };
+  if (!stamm || fremderPlatzhalter) return { set_number: n, name: n, im_katalog: false as const };
   const { platzhalter: _platzhalter, ...row } = stamm;
-  return { success: true as const, set_number: n, ...row, name: row.name || n, im_katalog: true as const };
+  return { set_number: n, ...row, name: row.name || n, im_katalog: true as const };
 }
 
 /** Set-Bilder gehen an jedes Konto (bildBlickfeld.ts); der Treffer nennt sein Bild. */
@@ -66,7 +66,7 @@ export async function setZumBarcodeFuerKonto(sk: SetsKontext, _uid: number, rohB
 }
 
 export interface BarcodeTreffer {
-  success: true; unsicher: boolean; set_number: string; name: string | null;
+  unsicher: boolean; set_number: string; name: string | null;
   year?: number | null; pieces?: number | null; theme?: string | null; minifigs: number | null;
   image_url: string | null; image_local?: string | null | undefined; source: string;
 }
@@ -85,7 +85,7 @@ async function barcodeErgebnis(sk: SetsKontext, setNumber: string, name: string 
   const unsicher = istVermutung(source);
 
   if (local) {
-    return { success: true, unsicher, set_number: setNumber,
+    return { unsicher, set_number: setNumber,
       name: local.name || rbData?.name || name, year: local.year || rbData?.year,
       pieces: local.pieces || rbData?.num_parts, theme: local.theme || rbData?.theme_name,
       minifigs, image_local, image_url, source };
@@ -95,10 +95,10 @@ async function barcodeErgebnis(sk: SetsKontext, setNumber: string, name: string 
     await versuche('sets:katalog schreiben', katalogStamm.merkeSetKatalog(sk.db, setNumber, rbData.name ?? null,
       rbData.year ?? null, rbData.theme_name ?? null, rbData.num_parts ?? null, minifigs, rbData.set_img_url ?? null, null,
       Number(rbData.theme_id) || null));
-    return { success: true, unsicher, set_number: setNumber, name: rbData.name || name, year: rbData.year,
+    return { unsicher, set_number: setNumber, name: rbData.name || name, year: rbData.year,
       pieces: rbData.num_parts, theme: rbData.theme_name, minifigs, image_url, source };
   }
-  return { success: true, unsicher, set_number: setNumber, name, minifigs, image_url, source };
+  return { unsicher, set_number: setNumber, name, minifigs, image_url, source };
 }
 
 async function imKatalog(sk: SetsKontext, ...nummern: string[]): Promise<{ set_number: string; name: string | null } | undefined> {

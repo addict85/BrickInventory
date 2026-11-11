@@ -31,12 +31,12 @@ type Loeschung = Anfrage<'DELETE /api/v1/sets/:setNumber/acquisitions/:acqId'>;
 /** Drei Routen, ein Vertragsschema (Erfassungsaenderung): Der Typ der Set-Route gilt für alle. */
 const aendern = (art: ErfassungsArt, schluessel: Schluessel) =>
   async (req: Aenderung, res: express.Response) => {
-    res.json(await erfassungAendern(art, req.apiUser.user_id, req.pfad.acqId, schluessel(req.pfad), req.eingabe));
+    res.json({ success: true, ...(await erfassungAendern(art, req.apiUser.user_id, req.pfad.acqId, schluessel(req.pfad), req.eingabe)) });
   };
 
 const loeschen = (art: ErfassungsArt, schluessel: Schluessel) =>
   async (req: Loeschung, res: express.Response) => {
-    res.json(await erfassungLoeschen(art, req.apiUser.user_id, req.pfad.acqId, schluessel(req.pfad)));
+    res.json({ success: true, ...(await erfassungLoeschen(art, req.apiUser.user_id, req.pfad.acqId, schluessel(req.pfad))) });
   };
 
 router.get('/sets/:setNumber/acquisitions', requireToken, async (req: Anfrage<'GET /api/v1/sets/:setNumber/acquisitions'>, res: Antwort<'GET /api/v1/sets/:setNumber/acquisitions'>) => {

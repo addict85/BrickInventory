@@ -513,18 +513,24 @@ export async function revokeAllSessions(userId: number): Promise<void> {
 
 /** Nach dem Einschalten des zweiten Faktors: Wer schon drin war, soll nicht
  * mit einem alten Token oder einer alten Sitzung drinbleiben. */
+/** Passwort, Zugänge und Passkeys zusammen: Sonst gälte nach einem Fehler das
+ * neue Passwort, während die alten Zugänge weiterleben. Die Zwischenspeicher
+ * leeren sich nach dem COMMIT noch einmal, weil eine Anfrage dazwischen den
+ * alten Stand wieder aufgenommen haben kann. */
+export async function mitZugangsende<T>(uid: number, fn: () => Promise<T>): Promise<T> {
+  const r = await db.transaction(fn, { wiederholeBeiKonflikt: true });
+  leereTokenCache();
+  vergissSitzungsVersion(uid);
+  return r;
+}
+
 export async function beendeAndereZugaenge(userId: number, aktuellerToken: string | null, sitzungsId: string | null): Promise<number> {
-  // Zusammen, damit nicht nur Tokens oder nur Sitzungen fallen; die Speicher
-  // nach dem COMMIT leeren, sonst merkte eine Anfrage dazwischen den alten Stand.
-  const version = await db.transaction(async () => {
+  return mitZugangsende(userId, async () => {
     await repo.loescheTokensDesKontos(userId, aktuellerToken ? hashToken(aktuellerToken) : null);
     const v = await erhoeheSitzungsVersion(userId);
     await repo.loescheSitzungenDesKontos(userId, sitzungsId);
     return v;
-  }, { wiederholeBeiKonflikt: true });
-  leereTokenCache();
-  vergissSitzungsVersion(userId);
-  return version;
+  });
 }
 
 /** Ohne Fang: ein Sicherheitsschritt. Scheitert er still, meldet der Aufrufer

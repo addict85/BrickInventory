@@ -76,7 +76,7 @@ async function importiereWantedXml(uid: number, e: WantedXmlEingabe, k: Auftrags
         : { success: false, isWarning: p.ausgang === 'offen', set_number: p.blId, error: p.grund || '' }))
         .catch(logAndContinue('wanted-import:auftrag-ende'));
     }
-    return { success: true, ...bericht };
+    return { ...bericht };
   } catch (f) {
     // Der Balken MUSS zu sein, auch nach einem Fehler, sonst zeigte er überall
     // einen Import, den es nicht mehr gibt.

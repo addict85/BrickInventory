@@ -16,9 +16,7 @@ import { fuerSet } from '../katalog/preisvergleich';
 import { resolveIfExists } from '../katalog/bilder/images';
 import { toCsv, csvZeilenAusAnfrage, parseCsvDate } from '../infra/csvExport';
 import * as repo from './repository/merkliste';
-import * as db from '../../db/database';
-import { sperreBisZumEnde } from '../../db/txLock';
-import { LOCKS } from '../infra/lockNamespaces';
+import { withInventoryLocks } from '../../db/txLock';
 import { fetchPrice } from '../finanzen/financeCalc';
 import { setBekanntImKatalog } from '../katalog/bricklinkPreise';
 import { moeglicheSetNummer, mitVersion } from '../infra/setNummer';
@@ -92,14 +90,9 @@ export async function loescheMerkposten(userId: number, setNumber: string, condi
 }
 
 /** Merkposten-Änderungen lesen erst und schreiben dann mehrfach (Merkposten,
- * Alarm, Bestand): alles in einer Transaktion, gesperrt je Konto auf den
- * Merkposten. Konten aufsteigend, damit zwei Gegenrichtungen nicht verklemmen. */
+ * Alarm, Bestand): alles in einer Transaktion, gesperrt je Konto auf den Merkposten. */
 function mitMerkpostenSperre<T>(konten: number[], sn: string, c: string, fn: () => Promise<T>): Promise<T> {
-  return db.transaction(async (tx) => {
-    for (const k of [...new Set(konten)].sort((a, b) => a - b))
-      await sperreBisZumEnde(tx, LOCKS.INVENTAR, `${k}|merk:${sn}:${c}`);
-    return fn();
-  }, { wiederholeBeiKonflikt: true });
+  return withInventoryLocks(konten, `merk:${sn}:${c}`, () => fn(), { wiederholeBeiKonflikt: true });
 }
 
 // UPDATE statt löschen und neu anlegen: Aufnahmedatum und Preisalarm bleiben.

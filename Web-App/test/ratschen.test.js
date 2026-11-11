@@ -61,9 +61,9 @@ test('die Suche findet die Quellen ueberhaupt', () => {
 });
 
 test('stille Faenge werden weniger, nie mehr', () => {
-  // Die beiden übrigen sind Rebrickable-Vermutungen, deren 404 die Antwort ist.
-  // Gemessen 2 am 08.11.2026.
-  const SCHRANKE = 2;
+  // Gemessen 0 am 11.11.2026: Die beiden letzten (Rebrickable-Teilezuordnung)
+  // fangen nur noch 404, das rbGet() selbst als null liefert.
+  const SCHRANKE = 0;
   // Selbstbeweis des letzten Musters: Es muss einen Ersatzwert ohne Meldung finden, die Meldung nicht.
   const ersatz = STILLE_FAENGE[STILLE_FAENGE.length - 1];
   const trifft = (s) => (s.match(ersatz) || []).length;
@@ -118,9 +118,9 @@ test('der Kompatibilitätsweg zur Datenbank und modulweite let werden weniger, n
   if (ist < SCHRANKE) console.log(`  ℹ Kompatibilitätsweg db/database: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 
   // Modulweite let: Zustand, den alle Aufrufer eines Prozesses teilen; ein Bereich
-  // bekommt seinen über die Fabrik. Gemessen 58 am 10.11.2026.
+  // bekommt seinen über die Fabrik. Gemessen 57 am 11.11.2026.
   // Gegenprobe (10.11.2026): `let _probe = 0;` in src/katalog/kontext.ts → rot mit 59.
-  const LET_SCHRANKE = 58;
+  const LET_SCHRANKE = 57;
   const lets = quellen().reduce((n, f) => n + (fs.readFileSync(f, 'utf8').match(/^(?:export )?let /gm) || []).length, 0);
   assert.ok(lets > 20 && lets <= LET_SCHRANKE, `${lets} modulweite let, erlaubt sind ${LET_SCHRANKE}`);
   if (lets < LET_SCHRANKE) console.log(`  ℹ modulweite let: ${lets} (Schranke ${LET_SCHRANKE}) — Schranke nachziehen`);
@@ -139,7 +139,7 @@ test('any wird weniger, nie mehr', () => {
   }
 });
 
-test('any in allen Formen wird weniger, nie mehr', () => {
+test('any in allen Formen und success in Diensten werden weniger, nie mehr', () => {
   // Auch Promise<any>, any[] und Record<string, any>: Die enge Zählung oben sah
   // nur `as any` und `: any`. Gemessen 35 am 10.11.2026.
   // Gegenprobe (05.11.2026): getSetting wieder `fallback?: any` ohne Überladungen → rot.
@@ -147,6 +147,18 @@ test('any in allen Formen wird weniger, nie mehr', () => {
   const ist = zaehle([/\bany\b/g]);
   assert.ok(ist <= SCHRANKE, `${ist}-mal any, erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ any (alle Formen): ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+
+  // Dieselbe Art Zählung: Die Hülle der Antwort setzt die Route, ein Dienst
+  // liefert das Fachobjekt. Gemessen 7 am 11.11.2026 (vorher 35): Zeilenstatus in
+  // Importberichten, Mailversand und der Import-Fortschritt (ein Strom-Format) bleiben.
+  // Gegenprobe (11.11.2026): in auftragAbbrechen() wieder `success: true` → rot.
+  const SUCCESS_SCHRANKE = 7;
+  const { ohneKommentare } = require('./helpers/sources');
+  const dienste = quellen().filter(f => /^src[\\/](?!vertrag[\\/]|http[\\/])/.test(path.relative(WEB, f)));
+  const success = dienste.reduce((n, f) =>
+    n + (ohneKommentare(fs.readFileSync(f, 'utf8')).match(/\bsuccess:\s*true\b/g) || []).length, 0);
+  assert.ok(success <= SUCCESS_SCHRANKE, `${success}-mal success: true in src/ (ohne vertrag/, http/), erlaubt sind ${SUCCESS_SCHRANKE}`);
+  if (success < SUCCESS_SCHRANKE) console.log(`  ℹ success in Diensten: ${success} (Schranke ${SUCCESS_SCHRANKE}) — Schranke nachziehen`);
 });
 
 test('eigene REQUIRE_DB-Blöcke in Tests werden weniger, nie mehr', () => {

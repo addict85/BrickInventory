@@ -47,8 +47,7 @@ router.get('/finance/portfolio-history', requireToken, async (req: Anfrage<'GET 
   // einzelwert(): ?period=a&period=b kommt als Array an und ginge sonst
   // unverändert in die Antwort zurück.
   const period = einzelwert(req.abfrage.period, 'week');
-  const result = await getPortfolioHistory(uid, sichtVon(req), period);
-  res.json(result);
+  res.json({ success: true, ...(await getPortfolioHistory(uid, sichtVon(req), period)) });
 });
 
 

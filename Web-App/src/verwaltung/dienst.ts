@@ -66,7 +66,7 @@ export async function cacheStatistik() {
     ab.oder('kontingent_rebrickable', getRateLimitStatus('rebrickable'), leer),
     ab.oder('kontingent_brickset', getRateLimitStatus('brickset'), leer),
   ]);
-  return { success: true, ...stats, price_stale: stale,
+  return { ...stats, price_stale: stale,
     rate_limits: { bricklink: rlBL, rebrickable: rlRB, brickset: rlBS }, db_pool: verwaltung.getPoolStats(), ...ab.angabe() };
 }
 
@@ -108,7 +108,7 @@ export async function preisJobStand() {
                                               set: plan.fortschritt.text ?? null } : null,
     log: Array.isArray(letzter.log) ? letzter.log : [],
   };
-  return { success: true, job, rate_limit: await getRateLimitStatus('bricklink') };
+  return { job, rate_limit: await getRateLimitStatus('bricklink') };
 }
 
 /** false, wenn er schon läuft. */
@@ -289,7 +289,7 @@ export async function jobUebersicht() {
   [jobs.bricksetRetry, jobs.imgDl] = await Promise.all([bricksetKachel(ab), bildKachel(ab)]);
   jobs.pdfJobs = pdfKachel();
   return {
-    success: true, jobs, schedules: await zeitplaene(),
+    jobs, schedules: await zeitplaene(),
     db: {
       instrQueue: { pending: anleitungen.offen, done: anleitungen.erledigt, failed: anleitungen.fehler },
       blMapping:  { mapped: gemappt, total: blGesamt },
@@ -367,7 +367,7 @@ export async function bildProbe(url: string) {
       };
     }, (e: unknown) => ({ error: fehlertext(e) }));
 
-  return { success: true, url, cache: { original: cached, thumb }, probes: results,
+  return { url, cache: { original: cached, thumb }, probes: results,
            proxy_failures: failures, body_check: head };
 }
 
@@ -388,7 +388,7 @@ export async function preisProbe(uid: number, setNumber: string, live: boolean) 
   const chosen = anyUsed ? 'U' : 'N';
 
   const out: any = {
-    success: true, ...ab.angabe(),
+    ...ab.angabe(),
     set: setRow || null,
     acquisitions: acqs,
     condition_logic: {
@@ -472,7 +472,6 @@ export async function katalogBilderEinreihen(alleErneut: boolean) {
     // „Stunden oder Tage?" ist die erste Frage; die Rate kommt aus dem Job selbst.
     const proMinute = anfragenJeMinute();
     return {
-      success: true,
       queued:  neuEingereiht,
       pending: offen?.n ?? 0,
       skipped: kandidaten.length - offenUrls.length,
@@ -531,7 +530,7 @@ export async function bildDiagnose(sn: string) {
     'Für die Vorschau ist ein Fehlschlag vermerkt — sie wird nicht erneut versucht.');
   if (!hinweise.length) hinweise.push('Alles vorhanden: Original und Vorschau liegen bereit.');
 
-  return { success: true as const, set_number: sn,
+  return { set_number: sn,
     datenbank: { ...konten, katalog_bild: katalog?.image_url || null },
     lokal: { original, vorschau },
     merker: merker ? { seit: merker.checked_at, grund: merker.reason || null } : null,

@@ -82,7 +82,7 @@ test('Abschluss: Puffer geschrieben, Takte beendet', { concurrency: 1 }, async t
 
   await t.test('danach schreibt das Protokoll nicht mehr in die Datenbank', async () => {
     console.log(`nach dem Abschluss ${kennung}`);
-    await new Promise(r => setTimeout(r, 1700));
+    await P.leereProtokoll();
     const z = await db.get('SELECT 1 AS ja FROM app_logs WHERE message LIKE $1', [`%nach dem Abschluss ${kennung}%`]);
     assert.equal(z, undefined);
   });

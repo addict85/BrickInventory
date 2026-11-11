@@ -12,23 +12,22 @@ const _vorne = new Map<string, number>();
 /** Getrennt von `_vorne`: istBekanntFehlend() ist der heisseste synchrone Pfad,
  * der Grund interessiert nur die Diagnose. */
 const _gruende = new Map<string, string>();
-let _takte: NodeJS.Timeout[] = [];
+const _takte: NodeJS.Timeout[] = [];
 
 export async function initImageMisses(): Promise<void> {
   if (_takte.length) return;
   // Prozesslokal: Muss deshalb in JEDEM Arbeitsprozess laufen.
-  _takte = [
+  _takte.push(
     setInterval(() => { auffrischen().catch(logAndContinue('bild-fehlanzeige:auffrischen')); }, AUFFRISCHEN_MS),
     setInterval(() => { schreibePuffer().catch(logAndContinue('bild-fehlanzeige:schreibePuffer')); }, 10_000),
-  ];
+  );
   for (const t of _takte) t.unref();
   await auffrischen();
 }
 
 /** Vor dem Schliessen des Pools: Takte beenden, gemerkte Fehlschläge noch schreiben. */
 export async function stoppeFehlanzeige(): Promise<void> {
-  for (const t of _takte) clearInterval(t);
-  _takte = [];
+  for (const t of _takte.splice(0)) clearInterval(t);
   await schreibePuffer();
 }
 
