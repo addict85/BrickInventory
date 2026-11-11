@@ -17,7 +17,7 @@ import type { FehlerArt, FehlerCode } from '../infra/fehlerTexte';
 import * as repo from './repository/zugaenge';
 import * as kontenRepo from './repository/konten';
 import type { TokenScope } from './repository/zugaenge';
-import { erhoeheSitzungsVersion } from './sitzungsVersion';
+import { erhoeheSitzungsVersion, vergissSitzungsVersion } from './sitzungsVersion';
 import { hinweisNebenher } from './kontoHinweis';
 import { zaehleFehlversuch, zuVieleFehlversuche } from './tokenFehlversuche';
 
@@ -514,10 +514,16 @@ export async function revokeAllSessions(userId: number): Promise<void> {
 /** Nach dem Einschalten des zweiten Faktors: Wer schon drin war, soll nicht
  * mit einem alten Token oder einer alten Sitzung drinbleiben. */
 export async function beendeAndereZugaenge(userId: number, aktuellerToken: string | null, sitzungsId: string | null): Promise<number> {
-  await repo.loescheTokensDesKontos(userId, aktuellerToken ? hashToken(aktuellerToken) : null);
+  // Zusammen, damit nicht nur Tokens oder nur Sitzungen fallen; die Speicher
+  // nach dem COMMIT leeren, sonst merkte eine Anfrage dazwischen den alten Stand.
+  const version = await db.transaction(async () => {
+    await repo.loescheTokensDesKontos(userId, aktuellerToken ? hashToken(aktuellerToken) : null);
+    const v = await erhoeheSitzungsVersion(userId);
+    await repo.loescheSitzungenDesKontos(userId, sitzungsId);
+    return v;
+  }, { wiederholeBeiKonflikt: true });
   leereTokenCache();
-  const version = await erhoeheSitzungsVersion(userId);
-  await repo.loescheSitzungenDesKontos(userId, sitzungsId);
+  vergissSitzungsVersion(userId);
   return version;
 }
 

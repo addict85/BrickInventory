@@ -70,8 +70,7 @@ router.get('/wanted/:setNumber/preise', requireToken, async (req: Anfrage<'GET /
   res.json({ success: true, set_number: sn, ...preise });
 });
 
-/** Die Regel steht in merkliste.ts:uebernimm() — über addSet(), die eine
- * Wahrheit fürs Erfassen. Hier bleibt nur, wer schreiben darf. */
+/** Die Regel steht in merkliste.ts:uebernimm(); hier bleibt nur, wer schreiben darf. */
 router.post('/wanted/:setNumber/:condition/uebernehmen', requireToken, async (req: Anfrage<'POST /api/v1/wanted/:setNumber/:condition/uebernehmen'>, res: Antwort<'POST /api/v1/wanted/:setNumber/:condition/uebernehmen'>) => {
   const owner = await schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
   const r = await uebernimm(req.apiUser.user_id, owner,

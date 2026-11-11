@@ -149,7 +149,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     assert.equal(await W.loescheMerkposten(U.opa, '75192-1', 'U'), 0);
   });
 
-  await t.test('die Übernahme legt das Set über addSet() an — mit Erfassungszeile', async () => {
+  await t.test('die Übernahme legt das Set über setErfassen() an — mit Erfassungszeile', async () => {
     // „Direkt in die Galerie übernehmen" muss dasselbe sein wie eine
     // Setnummer erfassen. Ein eigenes INSERT INTO sets hätte weder die
     // Erfassungszeile noch den Zustand noch die Anreicherung — und genau
@@ -166,7 +166,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     const erf = await db.get(
       `SELECT COUNT(*)::int AS n FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`,
       [U.opa, '75192-1']);
-    assert.equal(erf.n, 1, 'Keine Erfassungszeile — die Übernahme ruft addSet() nicht');
+    assert.equal(erf.n, 1, 'Keine Erfassungszeile — die Übernahme ruft setErfassen() nicht');
   });
 
   await t.test('nach der Übernahme sind Merkposten UND Alarm weg', async () => {

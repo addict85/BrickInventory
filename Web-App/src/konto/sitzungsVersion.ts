@@ -25,3 +25,9 @@ export async function erhoeheSitzungsVersion(uid: number): Promise<number> {
   gemerkt.delete(uid);
   return version;
 }
+
+/** Nach dem COMMIT einer Transaktion, die die Version erhöht hat: Eine Anfrage
+ * dazwischen hätte sonst den alten Stand wieder gemerkt. */
+export function vergissSitzungsVersion(uid: number): void {
+  gemerkt.delete(uid);
+}

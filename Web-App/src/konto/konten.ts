@@ -4,7 +4,8 @@ import { hashePasswort } from './bcryptSchranke';
 import * as repo from './repository/konten';
 import * as passkeyRepo from './repository/passkeys';
 import { BCRYPT_ROUNDS, leereTokenCache, revokeAllSessions, revokeAllTokens } from './auth';
-import { erhoeheSitzungsVersion } from './sitzungsVersion';
+import { erhoeheSitzungsVersion, vergissSitzungsVersion } from './sitzungsVersion';
+import * as db from '../../db/database';
 import { emailGueltig } from '../infra/validate';
 import { entferneStartpasswort } from '../infra/startpasswort';
 
@@ -51,28 +52,48 @@ async function startpasswortErledigt(uid: number): Promise<void> {
   if ((await repo.kontoKurz(uid))?.is_admin) entferneStartpasswort();
 }
 
+/** Passwort, Zugänge und Passkeys zusammen: Sonst gälte nach einem Fehler das
+ * neue Passwort, während die alten Zugänge weiterleben. Die Zwischenspeicher
+ * leeren sich nach dem COMMIT noch einmal, weil eine Anfrage dazwischen den
+ * alten Stand wieder aufgenommen haben kann. */
+async function mitZugangsende<T>(uid: number, fn: () => Promise<T>): Promise<T> {
+  const r = await db.transaction(fn, { wiederholeBeiKonflikt: true });
+  leereTokenCache();
+  vergissSitzungsVersion(uid);
+  return r;
+}
+
 export async function setzeFremdesPasswort(uid: number, passwort: unknown): Promise<boolean> {
-  if (!await repo.setzePasswortHash(uid, await hashe(passwort))) return false;
-  await zugaengeBeenden(uid);
-  return true;
+  const hash = await hashe(passwort);
+  return mitZugangsende(uid, async () => {
+    if (!await repo.setzePasswortHash(uid, hash)) return false;
+    await zugaengeBeenden(uid);
+    return true;
+  });
 }
 
 /** Auch der gerade benutzte Token fällt. Passkeys nur auf Wunsch: Wer sein
  * Passwort bloss erneuert, soll seine Geräte nicht neu einrichten müssen. */
 export async function aendereEigenesPasswort(uid: number, passwort: unknown,
                                              o: { passkeysWiderrufen?: boolean } = {}): Promise<void> {
-  await repo.setzeEigenesPasswort(uid, await hashe(passwort));
-  await zugaengeBeenden(uid);
+  const hash = await hashe(passwort);
+  await mitZugangsende(uid, async () => {
+    await repo.setzeEigenesPasswort(uid, hash);
+    await zugaengeBeenden(uid);
+    if (o.passkeysWiderrufen) await passkeyRepo.loescheAlleDesKontos(uid);
+  });
   await startpasswortErledigt(uid);
-  if (o.passkeysWiderrufen) await passkeyRepo.loescheAlleDesKontos(uid);
 }
 
 /** Hier will man einen fremden Zugang loswerden; deshalb fallen auch alle Passkeys. */
 export async function setzePasswortZurueck(uid: number, passwort: unknown): Promise<void> {
-  await repo.setzePasswortNachRuecksetzen(uid, await hashe(passwort));
-  await zugaengeBeenden(uid);
+  const hash = await hashe(passwort);
+  await mitZugangsende(uid, async () => {
+    await repo.setzePasswortNachRuecksetzen(uid, hash);
+    await zugaengeBeenden(uid);
+    await passkeyRepo.loescheAlleDesKontos(uid);
+  });
   await startpasswortErledigt(uid);
-  await passkeyRepo.loescheAlleDesKontos(uid);
 }
 
 /** Dieselbe Rechenzeit wie registriere(): Die Antwortzeit verriete sonst eine vergebene Adresse. */
