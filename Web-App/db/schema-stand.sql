@@ -162,11 +162,6 @@ CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON bl_zuordnung_eigen REFERENCI
 
 CREATE TABLE catalog_cache (
   set_number text NOT NULL,
-  name text,
-  year integer,
-  theme text,
-  pieces integer,
-  image_url text,
   is_gear boolean NOT NULL DEFAULT false,
   bl_type text,
   fetched_at timestamp with time zone DEFAULT now(),

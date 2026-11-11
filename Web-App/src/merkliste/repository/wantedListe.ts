@@ -64,7 +64,7 @@ export function setsBeschreibung(nummern: string[]) {
   return db.all<{ set_number: string; name: string | null; bild: string | null }>(`
       SELECT s.set_number,
              rs.name                                                   AS name,
-             COALESCE(sc.image_local, sc.image_url, rs.set_img_url)     AS bild
+             COALESCE(sc.image_local, sc.image_url)                     AS bild
         FROM (SELECT UNNEST($1::text[]) AS set_number) s
         LEFT JOIN set_catalog sc ON sc.set_number = s.set_number
         LEFT JOIN rb_sets     rs ON rs.set_num    = s.set_number`, [nummern]);

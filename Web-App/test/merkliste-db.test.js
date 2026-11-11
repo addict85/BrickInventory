@@ -28,6 +28,8 @@ async function seed() {
   await db.run(
     `INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, set_img_url)
      VALUES ('75192-1', 'Millennium Falcon', 2017, 158, 7541, 'http://x/75192.jpg')`);
+  // Das Bild liest die Merkliste nur aus set_catalog (0106).
+  await db.run(`INSERT INTO set_catalog (set_number, image_url) VALUES ('75192-1', 'http://x/75192.jpg')`);
 }
 
 async function dbReachable() {
@@ -301,6 +303,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
         `INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, set_img_url)
          VALUES ($1,'Testset',2024,158,100,$2)`,
         [sn, `http://cdn.example/media/sets/${sn}.jpg`]);
+      await db.run('INSERT INTO set_catalog (set_number, image_url) VALUES ($1,$2)', [sn, `http://cdn.example/media/sets/${sn}.jpg`]);
       await W.legeMerkpostenAn(U.opa, sn, 'N');
     }
 

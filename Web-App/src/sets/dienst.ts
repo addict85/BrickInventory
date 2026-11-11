@@ -91,15 +91,12 @@ async function barcodeErgebnis(sk: SetsKontext, setNumber: string, name: string 
       minifigs, image_local, image_url, source };
   }
   if (rbData?.set_num) {
-    // Der Cache spart nur den nächsten Abruf; der Treffer gilt auch ohne ihn.
-    await versuche('sets:catalog_cache schreiben', katalogStamm.merkeKatalogCache(sk.db, setNumber, rbData.name, rbData.year, rbData.theme_name, rbData.num_parts, rbData.set_img_url));
+    // In den Katalog wie jeder Abruf; der Treffer gilt auch, wenn das Ablegen scheitert.
+    await versuche('sets:katalog schreiben', katalogStamm.merkeSetKatalog(sk.db, setNumber, rbData.name ?? null,
+      rbData.year ?? null, rbData.theme_name ?? null, rbData.num_parts ?? null, minifigs, rbData.set_img_url ?? null, null,
+      Number(rbData.theme_id) || null));
     return { success: true, unsicher, set_number: setNumber, name: rbData.name || name, year: rbData.year,
       pieces: rbData.num_parts, theme: rbData.theme_name, minifigs, image_url, source };
-  }
-  const cat = await repo.katalogCacheEintrag(sk.db, setNumber);
-  if (cat) {
-    return { success: true, unsicher, set_number: setNumber, name: cat.name || name, year: cat.year,
-      pieces: cat.pieces, theme: cat.theme, minifigs, image_url: cat.image_url || image_url, source };
   }
   return { success: true, unsicher, set_number: setNumber, name, minifigs, image_url, source };
 }

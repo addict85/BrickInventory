@@ -3,13 +3,12 @@
  * Eingabe, die keine Setnummer sein kann, wird nicht angelegt.
  *
  * Fehlerbild: „Titanic" hiess nach erneutem Erfassen „Set 10294-1". Die
- * BrickLink-Typprüfung legt in catalog_cache „Set <Nummer>" an; getSetInfo()
- * gab das als Treffer zurück, und addSet() schrieb es über den Katalognamen.
+ * BrickLink-Typprüfung legt eine catalog_cache-Zeile an; getSetInfo() muss den
+ * Namen trotzdem aus dem Katalog (rb_sets) nennen.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  in getSetInfo die Platzhalter-Bedingung entfernt (wieder
- *      `if (cached?.name) return cached`) → rot: „getSetInfo gibt den
- *      Platzhalter nicht als Treffer zurück"
+ * Gegenproben (A am 11.11.2026, B und C am 28.10.2026 gemessen):
+ *   A  in katalogSetZu() `rs.name` durch `NULL::text AS name` ersetzt → rot:
+ *      „getSetInfo nennt den Katalognamen, keinen Platzhalter“
  *   B  in addSetIntern wieder `name = EXCLUDED.name` → rot: „erneutes
  *      Erfassen ohne Quellen lässt den Katalognamen stehen"
  *   C  die Prüfung moeglicheSetNummer() in addSetIntern entfernt → rot:
@@ -50,13 +49,14 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async (t) =
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   await katalogSet(db, SN, { name: 'Titanic', year: 2021 });
-  await db.run(`INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1, $2, 'NONE', false)
-                ON CONFLICT (set_number) DO UPDATE SET name=$2, fetched_at=NOW()`, [SN, `Set ${SN}`]);
+  await db.run(`INSERT INTO catalog_cache (set_number, bl_type, is_gear) VALUES ($1, 'NONE', false)
+                ON CONFLICT (set_number) DO UPDATE SET fetched_at=NOW()`, [SN]);
 
   try {
-    await t.test('getSetInfo gibt den Platzhalter nicht als Treffer zurück', async () => {
+    await t.test('getSetInfo nennt den Katalognamen, keinen Platzhalter', async () => {
+      // Der Abrufstand in catalog_cache trägt seit 0106 keinen Namen mehr, der den Katalog verdecken könnte.
       const info = await _req('src/katalog/rebrickableKatalog.js').getSetInfo(SN);
-      assert.equal(info, null);
+      assert.equal(info?.name, 'Titanic');
     });
 
     await t.test('erneutes Erfassen ohne Quellen lässt den Katalognamen stehen', async () => {

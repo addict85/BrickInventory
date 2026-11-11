@@ -49,7 +49,7 @@ app_logs: id, level, message, logged_at
 auftraege: id, art, user_id, schluessel, status, versuche, max_versuche, faellig_ab, belegt_von, fehler, erstellt, aktualisiert, frist_bis, gestartet, fortschritt
 auftrag_pausen: art, bis, grund, stufe
 bl_zuordnung: art, rb_id, bl_id, fetched_at
-catalog_cache: set_number, name, year, theme, pieces, image_url, is_gear, bl_type, fetched_at
+catalog_cache: set_number, is_gear, bl_type, fetched_at
 global_settings: key, updated_at
 gutschein_guthaben_schranke: id, letzter_abruf, sperre_bis
 household_former_links: main_user_id, sub_user_id, via_user_id, created_at

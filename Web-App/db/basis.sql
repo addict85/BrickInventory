@@ -341,11 +341,6 @@ CREATE TABLE public.bl_zuordnung_eigen (
 
 CREATE TABLE public.catalog_cache (
     set_number text NOT NULL,
-    name text,
-    year integer,
-    theme text,
-    pieces integer,
-    image_url text,
     is_gear boolean DEFAULT false NOT NULL,
     bl_type text,
     fetched_at timestamp with time zone DEFAULT now(),
@@ -2185,3 +2180,4 @@ INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('010
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0103-geraeteschluessel.sql', '2026-11-10 21:08:00.100641+00', '4d668974604c17590caccd387089dc86568253dcd848e8ca4c04baa507d1ff85');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0104-idempotenz-wirkung.sql', '2026-11-10 21:08:00.10884+00', '7bf61c6543da0b866aa956897a46f67bf72f2f3973cc2c3b266cd4a4e3530bc2');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0105-set-stamm-aus-rb-sets.sql', '2026-11-10 21:08:00.110321+00', '3f0bf2b06c2210990c379d46a33282283915ecc99d225db9a5654ef0eb366569');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0106-catalog-cache-nur-abrufstand.sql', '2026-11-11 09:10:13.280535+00', 'a91b69538855e6934c5b120ed2d011c6b7c73e3f0b9feac1a45d648ee4d74fc8');

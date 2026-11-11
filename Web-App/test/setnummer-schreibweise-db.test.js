@@ -51,8 +51,8 @@ test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { conc
   try {
     // Die Markierung genau so schreiben, wie clients/bricklink.ts sie schreibt.
     await db.run(
-      `INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,$2,'NONE',true)
-       ON CONFLICT (set_number) DO UPDATE SET bl_type='NONE', is_gear=true`, [MITV, `Set ${MITV}`]);
+      `INSERT INTO catalog_cache (set_number, bl_type, is_gear) VALUES ($1,'NONE',true)
+       ON CONFLICT (set_number) DO UPDATE SET bl_type='NONE', is_gear=true`, [MITV]);
 
     const { fetchAndCachePrice } = _req('src/finanzen/preisLauf.js');
     const { fetchPrice } = _req('src/finanzen/financeCalc.js');

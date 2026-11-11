@@ -28,8 +28,11 @@ async function seed() {
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); }
-  finally { client.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(client);
+  } finally {
+    client.release();
+  }
   for (const name of ['von', 'zu']) {
     await db.run(`INSERT INTO users (username, password_hash) VALUES ($1,'x')`, [name]);
     U[name] = (await db.get('SELECT id FROM users WHERE username=$1', [name])).id;
@@ -48,28 +51,42 @@ async function seed() {
       FOR EACH ROW EXECUTE FUNCTION alarm_bremse();`);
 }
 
-const schalte = (an) => db.exec(`CREATE OR REPLACE FUNCTION bremse_an() RETURNS boolean LANGUAGE sql AS $$ SELECT ${an} $$`);
+const schalte = an =>
+  db.exec(`CREATE OR REPLACE FUNCTION bremse_an() RETURNS boolean LANGUAGE sql AS $$ SELECT ${an} $$`);
 async function mitBremse(fn) {
   await schalte(true);
-  try { return await fn(); } finally { await schalte(false); }
+  try {
+    return await fn();
+  } finally {
+    await schalte(false);
+  }
 }
 
-test('Merkliste schreibt ganz oder gar nicht', { concurrency: 1 }, async (t) => {
-  try { await db.get('SELECT 1'); }
-  catch (e) {
+test('Merkliste schreibt ganz oder gar nicht', { concurrency: 1 }, async t => {
+  try {
+    await db.get('SELECT 1');
+  } catch (e) {
     await db.pool.end().catch(() => {});
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    if (process.env.REQUIRE_DB === '1')
+      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
+    t.skip('Test-DB nicht erreichbar');
+    return;
   }
   t.after(() => db.pool.end().catch(() => {}));
   await seed();
   const W = _req('src/merkliste/merkliste.js');
-  const alarm = (uid) => db.run(`INSERT INTO price_alerts (user_id, set_number, condition, richtung, schwelle, currency_code)
-                                  VALUES ($1, '75192-1', 'N', 'unter', 500, 'EUR')`, [uid]);
-  const merk = async (uid) => (await db.all(
-    `SELECT user_id FROM wanted WHERE set_number='75192-1' AND condition='N' AND user_id=$1`, [uid])).length;
-  const alarme = async (uid) => (await db.all(
-    `SELECT 1 FROM price_alerts WHERE set_number='75192-1' AND condition='N' AND user_id=$1`, [uid])).length;
+  const alarm = uid =>
+    db.run(
+      `INSERT INTO price_alerts (user_id, set_number, condition, richtung, schwelle, currency_code)
+                                  VALUES ($1, '75192-1', 'N', 'unter', 500, 'EUR')`,
+      [uid],
+    );
+  const merk = async uid =>
+    (await db.all(`SELECT user_id FROM wanted WHERE set_number='75192-1' AND condition='N' AND user_id=$1`, [uid]))
+      .length;
+  const alarme = async uid =>
+    (await db.all(`SELECT 1 FROM price_alerts WHERE set_number='75192-1' AND condition='N' AND user_id=$1`, [uid]))
+      .length;
 
   await t.test('verschieben: der Fehler kommt an', async () => {
     await W.legeMerkpostenAn(U.von, '75192-1', 'N');
@@ -105,8 +122,11 @@ test('Merkliste schreibt ganz oder gar nicht', { concurrency: 1 }, async (t) => 
 
   await t.test('übernehmen: kein Set im Bestand, der Merkposten steht noch', async () => {
     await mitBremse(() => assert.rejects(W.uebernimm(U.zu, U.zu, '75192-1', 'N', { quantity: 1 }), /erzwungen/));
-    assert.equal((await db.all(`SELECT 1 FROM sets WHERE user_id=$1`, [U.zu])).length, 0,
-      'Das Set ist erfasst, obwohl das Streichen scheiterte');
+    assert.equal(
+      (await db.all(`SELECT 1 FROM sets WHERE user_id=$1`, [U.zu])).length,
+      0,
+      'Das Set ist erfasst, obwohl das Streichen scheiterte',
+    );
     assert.equal(await merk(U.zu), 1);
   });
 

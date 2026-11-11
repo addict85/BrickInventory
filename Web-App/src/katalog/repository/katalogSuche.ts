@@ -59,7 +59,7 @@ export interface KatalogSet {
   image_url: string | null; image_local: string | null; owned: boolean; owned_quantity: number;
 }
 const SET_SPALTEN = `rb.set_num AS set_number, rb.name, rb.year, rb.theme_id, rb.num_parts,
-            COALESCE(NULLIF(rb.set_img_url, ''), c.image_url) AS image_url, c.image_local,
+            c.image_url, c.image_local,
             (b.set_number IS NOT NULL) AS owned, COALESCE(b.menge, 0)::int AS owned_quantity`;
 const BILD_JOIN = 'LEFT JOIN set_catalog c ON c.set_number = rb.set_num';
 /** Besitz über das Blickfeld ($1) wie in Merkliste und Sammlung; eine Zeile je Set, Mengen summiert. */

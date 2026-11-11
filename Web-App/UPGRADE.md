@@ -1722,3 +1722,18 @@ docker compose exec postgres psql -U brickinventory -c "SELECT max(name) FROM sc
   Bestand beschränkt.
 - `postgres/app-rolle.sh` (Leserolle) kennt die geänderten Spalten; `docker
   compose up -d` spielt es wie gewohnt ein.
+
+## 49. `catalog_cache` nur noch Abrufstand, Bild nur aus `set_catalog` (Migration 0106)
+
+- **Was die Migration tut:** `catalog_cache` verliert `name`, `year`, `theme`,
+  `pieces` und `image_url` und behält nur `is_gear`, `bl_type` und `fetched_at`
+  (was BrickLink über eine Nummer sagt und wann gefragt wurde). Vorher zieht um,
+  was nur dort stand: Sets mit echten Angaben kommen als `herkunft = 'api'` nach
+  `rb_sets` (bestehende `api`-Zeilen bekommen nur ihre leeren Felder ergänzt,
+  CSV-Zeilen bleiben unberührt); fehlt in `set_catalog` die Bildadresse, kommt
+  sie aus `rb_sets.set_img_url`, sonst aus dem alten Abrufspeicher.
+- **Danach** schreibt jeder Einzelabruf bei Rebrickable (Erfassen, Barcode) nach
+  `rb_sets`/`set_catalog`; der CSV-Abgleich trägt die Bildadresse des CSV in
+  `set_catalog` ein, wo dort keine steht. Sammlung, Merkliste, Katalogsuche und
+  Set-Detail lesen das Bild nur noch aus `set_catalog`.
+- Nichts von Hand zu tun; die API antwortet mit denselben Feldern.

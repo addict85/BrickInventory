@@ -55,7 +55,7 @@ const KONTO   = 'konto';     // gehört einem Konto über einen anderen Schlüss
 /** art, eingabe (false oder warum Eingaben hinein dürfen), schreiber (nur Katalog). */
 const GEMEINSAM = {
   bl_zuordnung:          { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/blZuordnung.ts'] },
-  catalog_cache:         { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogCache.ts', 'src/katalog/repository/rebrickableCache.ts', 'src/katalog/repository/setStamm.ts'] },
+  catalog_cache:         { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogCache.ts', 'src/katalog/repository/rebrickableCache.ts'] },
   set_catalog:           { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/bildlage.ts', 'src/katalog/repository/csvTausch.ts', 'src/katalog/repository/setStamm.ts'] },
   part_catalog:          { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogStamm.ts'] },
   part_color_catalog:    { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvKatalog.ts', 'src/katalog/repository/katalogStamm.ts'] },

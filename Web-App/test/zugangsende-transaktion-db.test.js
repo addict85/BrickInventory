@@ -22,8 +22,11 @@ async function seed() {
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); }
-  finally { client.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(client);
+  } finally {
+    client.release();
+  }
   const { id } = await db.get(`INSERT INTO users (username, password_hash) VALUES ('kim', 'alt') RETURNING id`);
   await db.exec(`CREATE FUNCTION bremse_an() RETURNS boolean LANGUAGE sql AS $$ SELECT false $$;
     CREATE FUNCTION bremse() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -36,31 +39,44 @@ async function seed() {
   return id;
 }
 
-const schalte = (an) => db.exec(`CREATE OR REPLACE FUNCTION bremse_an() RETURNS boolean LANGUAGE sql AS $$ SELECT ${an} $$`);
+const schalte = an =>
+  db.exec(`CREATE OR REPLACE FUNCTION bremse_an() RETURNS boolean LANGUAGE sql AS $$ SELECT ${an} $$`);
 async function mitBremse(fn) {
   await schalte(true);
-  try { return await fn(); } finally { await schalte(false); }
+  try {
+    return await fn();
+  } finally {
+    await schalte(false);
+  }
 }
 
-test('Zugänge enden ganz oder gar nicht', { concurrency: 1 }, async (t) => {
-  try { await db.get('SELECT 1'); }
-  catch (e) {
+test('Zugänge enden ganz oder gar nicht', { concurrency: 1 }, async t => {
+  try {
+    await db.get('SELECT 1');
+  } catch (e) {
     await db.pool.end().catch(() => {});
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    if (process.env.REQUIRE_DB === '1')
+      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
+    t.skip('Test-DB nicht erreichbar');
+    return;
   }
   t.after(() => db.pool.end().catch(() => {}));
   const uid = await seed();
   const K = _req('src/konto/konten.js');
   const A = _req('src/konto/auth.js');
-  const tokens = async () => (await db.all('SELECT token FROM api_tokens WHERE user_id=$1 ORDER BY token', [uid])).map(z => z.token);
+  const tokens = async () =>
+    (await db.all('SELECT token FROM api_tokens WHERE user_id=$1 ORDER BY token', [uid])).map(z => z.token);
   const stand = () => db.get('SELECT password_hash, sitzungs_version FROM users WHERE id=$1', [uid]);
   await db.run(`INSERT INTO api_tokens (token, user_id) VALUES ('t1', $1), ('t2', $1)`, [uid]);
 
   await t.test('Rücksetzen: Passwort und Token bleiben', async () => {
     const vorher = await stand();
     await mitBremse(() => assert.rejects(K.setzePasswortZurueck(uid, 'ein-neues-langes-Passwort'), /erzwungen/));
-    assert.deepEqual(await stand(), vorher, 'Passwort oder Sitzungsversion geändert, obwohl der letzte Schritt scheiterte');
+    assert.deepEqual(
+      await stand(),
+      vorher,
+      'Passwort oder Sitzungsversion geändert, obwohl der letzte Schritt scheiterte',
+    );
     assert.deepEqual(await tokens(), ['t1', 't2']);
   });
 
