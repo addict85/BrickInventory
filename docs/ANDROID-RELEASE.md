@@ -92,15 +92,17 @@ setzt, starten keinen Bau, und das Ruleset aus Schritt 3 lässt nur Admins
    - *Generate token* und den Wert kopieren.
 2. *Settings → Environments → New environment* → Name `etikett`.
    - *Deployment branches and tags*: **Selected**, eine Regel: Branch `main`.
-   - *Required reviewers*: du; *Allow administrators to bypass*: **aus**.
+   - *Required reviewers*: **keine**. Der Knopf setzt nur das Etikett; die
+     Freigaben mit den Signierschlüsseln (`release`, `release-beschreibung`)
+     bleiben bei dir.
    - *Environment secrets → Add secret*: Name `ETIKETT_TOKEN`, Wert das Token.
 3. Läuft das Token ab, ein neues anlegen und das Secret ersetzen.
 
 ## Ablauf eines Release
 
 Im Browser: *Actions → Android-Etikett setzen → Run workflow* (Zweig `main`),
-Name eintragen, z. B. `android-v2026.11.12.1`, dann den Lauf in `etikett`
-freigeben. Nur das Etikett setzen, **keine Release von Hand anlegen**: Eine
+Name eintragen, z. B. `android-v2026.11.12.1`. Danach die Läufe in `release`
+und `release-beschreibung` freigeben. Nur das Etikett setzen, **keine Release von Hand anlegen**: Eine
 veröffentlichte Release ist unveränderlich und nimmt das APK nicht mehr an.
 
 Oder mit Git (z. B. im Codespace):
