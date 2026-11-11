@@ -123,12 +123,14 @@ object NetzModule {
             // HTTP-Zwischenspeicher für Bilder: Für bedingte Anfragen und den Offline-Rückfall
             // braucht es ETag und Ablaufdatum. Verschlüsselt wie Bestand und Antworten, denn die
             // Bilder zeigen, welche Sets jemand besitzt.
-            .cache(okhttp3.Cache(
-                VerschluesseltesDateisystem(
-                    okio.FileSystem.SYSTEM, AblageChiffre { ablage.fuer("bilder") }, "bilder"),
-                context.cacheDir.resolve("image_http_cache").toOkioPath(),
-                50L * 1024 * 1024,
-            ))
+            .cache(context.cacheDir.resolve("image_http_cache").toOkioPath().let { ordner ->
+                okhttp3.Cache(
+                    VerschluesseltesDateisystem(okio.FileSystem.SYSTEM, AblageChiffre { ablage.fuer("bilder") }, "bilder",
+                        VerschluesseltesDateisystem.Streuung(ordner) { ablage.fuer("namen") }),
+                    ordner,
+                    50L * 1024 * 1024,
+                )
+            })
             // Offline-Rückfall: Ist der Server nicht erreichbar, kommen die Bilder aus dem
             // Cache. Am Fehler festgemacht, nicht am Verbindungsstatus — im WLAN kann der
             // Heimserver trotzdem schweigen. FORCE_CACHE liefert die Kopie ohne Rücksicht auf

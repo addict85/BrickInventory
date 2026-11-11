@@ -24,7 +24,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const k = _req('src/katalog/apiKontingent.js');
-const { imNamenVon } = _req('src/infra/anfrageKonto.js');
+const { imNamenVon } = _req('src/infra/kontoKontext.js');
 
 test('Tageskontingent je Konto', { concurrency: 1 }, async (t) => {
   if (!await dbOderSkip(t, _req)) return;

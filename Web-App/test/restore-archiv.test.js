@@ -66,10 +66,10 @@ const BOESE = {
   }, ['data', 'schluessel']),
 };
 
-// db-rolle vorher (Rolle und Besitz für das Einspielen als App) und danach.
+// db-rolle vorher (Rollen und Besitz für das Einspielen als Migrationsrolle) und danach.
 // Gegenprobe (02.11.2026 gemessen): einen der beiden Aufrufe von db-rolle
-// entfernt → rot.
-test('nach dem Einspielen richtet db-rolle die Rolle der App nach, dann startet die App', () => {
+// entfernt → rot. (11.11.2026) den Lauf von migration entfernt → rot.
+test('nach dem Einspielen richtet db-rolle die Rollen nach, migration läuft, dann starten app und jobs', () => {
   const lauf = path.join(tmp, 'lauf-rolle');
   fs.mkdirSync(path.join(lauf, 'schluessel'), { recursive: true });
   fs.writeFileSync(path.join(lauf, 'schluessel', 'datenschluessel'), 'k');
@@ -81,7 +81,8 @@ test('nach dem Einspielen richtet db-rolle die Rolle der App nach, dann startet 
     env: { ...process.env, PATH: `${bin}:/usr/bin:/bin` } });
   assert.equal(r.status, 0, r.stdout + r.stderr);
   const aufrufe = fs.readFileSync(protokoll, 'utf8').trim().split('\n').map(z => z.split(' ').slice(0, 4).join(' '));
-  assert.deepEqual(aufrufe, ['compose run --rm db-rolle', 'compose exec -T postgres', 'compose run --rm db-rolle', 'compose restart app']);
+  assert.deepEqual(aufrufe, ['compose run --rm db-rolle', 'compose exec -T postgres', 'compose run --rm db-rolle',
+    'compose run --rm migration', 'compose restart app jobs']);
 });
 
 for (const [fall, bauen] of Object.entries(BOESE)) {

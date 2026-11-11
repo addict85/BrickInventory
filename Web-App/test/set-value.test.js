@@ -113,7 +113,7 @@ test('qty_avg_price wird für Set-Preise nirgends mehr gelesen', () => {
   // App führt das Feld qty_avg_price und reicht es nur durch.
   const roh = require('./helpers/sources').setKernQuelle();
   const von = roh.indexOf('export async function setPreis');
-  const bis = roh.indexOf('export async function rebrickableListe');
+  const bis = roh.indexOf('export async function waehrungVon', von);
   assert.ok(von > 0 && bis > von, 'setPreis() nicht gefunden');
   const sets = roh.slice(0, von) + roh.slice(bis);
   assert.equal((sets.match(/qty_avg_price/g) || []).length, 0, 'Set-Kern: Set-Preise müssen über avg_price laufen');

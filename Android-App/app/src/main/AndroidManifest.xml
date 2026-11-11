@@ -116,7 +116,7 @@
             android:exported="false" />
 
         <service
-            android:name=".data.service.PdfExportService"
+            android:name=".dienste.service.PdfExportService"
             android:foregroundServiceType="dataSync"
             android:exported="false" />
 

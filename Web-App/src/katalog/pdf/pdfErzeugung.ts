@@ -4,14 +4,12 @@ import { bilderAusKatalog as katalogbilder } from '../bildlage';
 import { MINIFIG_IMAGES_DIR } from '../../infra/appPaths';
 import { getMinifigInfo } from '../quellen';
 import { logAndContinue, meldeFehler } from '../../infra/fehler';
-import { pdfDateiPfad } from '../../auftraege/pdfAuftraege';
+import { pdfDateiPfad, type Nutzlast, pruefeAbbruch, type AuftragsLauf } from '../../auftraege';
 import { downloadImage, downloadSetImages } from '../teileAnreicherung';
 import { zeichnePdfImFaden, type PdfTeil } from './pdfZeichnen';
-import type { Nutzlast } from '../../auftraege/nutzlasten';
 import { KEINE_FARBE } from '../../infra/validate';
 import { merkeFigurBildAdresse, setzeFigurBildLokal, setzeTeilBildLokal } from '../katalogPflege';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../../infra/setNummer';
-import { pruefeAbbruch, type AuftragsLauf } from '../../auftraege/auftraege';
 
 /** Erst fehlende Bilder holen, dann im eigenen Faden zeichnen. */
 export type PdfNutzlast = Nutzlast<'pdf'>;

@@ -6,13 +6,12 @@ Rot: vorgewaermt wird jeder Reiter
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
 --- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
 +++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
-@@ -51,9 +51,6 @@
-     }
+@@ -44,8 +44,6 @@
+         .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
  
-     val figurenAntwort = figuren.getMinifigs(blickfeld.kontoFuer(ScopeFilter.View.MINIFIGS))
--    if (figurenAntwort is Ergebnis.Success) {
--        figurenAntwort.data.figs.mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
--    }
-     val mTeile = teile.getManualParts(blickfeld.kontoFuer(ScopeFilter.View.PARTS))
-     if (mTeile is Ergebnis.Success) {
-         mTeile.data.parts.mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
+     val figurenAbfrage = blickfeld.kontoFuer(ScopeFilter.View.MINIFIGS)?.let { Kontosicht.FigurenAbfrage(it, null) }
+-    liste(figurenAbfrage, kontosicht.figurenliste, figuren::aktualisiereFiguren, figuren.beobachteFiguren())
+-        .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
+     // Die manuellen Listen hat aktualisiereTeile bzw. aktualisiereFiguren schon mitgeholt.
+     liste(teileKonto?.let { Kontosicht.ManuelleAbfrage(it, null, null) }, kontosicht.manuelleTeile,
+         { Ergebnis.Success(Unit) }, teile.beobachteManuelleTeile())

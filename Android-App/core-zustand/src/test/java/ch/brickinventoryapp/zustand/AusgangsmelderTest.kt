@@ -7,28 +7,29 @@ import ch.brickinventoryapp.data.lokal.Abgleichsereignis
 import ch.brickinventoryapp.data.lokal.Ausgangslage
 import ch.brickinventoryapp.model.lokal.Bestandsart
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.zustand.ui.Aenderung
 import ch.brickinventoryapp.zustand.ui.Ausgangsmelder
-import ch.brickinventoryapp.zustand.ui.Bestandssignal
+import ch.brickinventoryapp.testing.Bestandsabgleich
+import ch.brickinventoryapp.testing.FakeApi
+import ch.brickinventoryapp.testing.Testablage
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import ch.brickinventoryapp.testing.text
 
 /**
  * Der Ausgang ist sichtbar: Zahl und Hinweis, sobald etwas offline gespeichert
- * wurde; Nachladen, wenn gesendet wurde; ein Satz mit Grund, wenn der Server
- * ablehnte.
+ * wurde; der Serverstand der betroffenen Listen in die Ablage, wenn gesendet
+ * wurde; ein Satz mit Grund, wenn der Server ablehnte.
  *
  * Gegenproben:
  *   A  in Ausgangsmelder.starte den Hinweis bei steigender Zahl entfernt → rot
  *      „offline Gespeichertes wird gemeldet“
- *   B  für MANUELLE_TEILE `null` statt Aenderung.Teile → rot „gesendet lädt die
- *      betroffenen Listen nach“
+ *   B  für MANUELLE_TEILE `null` statt Liste.TEILE → rot „gesendet holt die
+ *      betroffenen Listen in die Ablage“
  *   C  `e.meldung` statt `e.meldung.ifBlank { … }` → rot „ohne Grund vom Server
  *      steht ein eigener Satz da“
  *   D  `lage.planeLiegengebliebenes()` beim Start weggelassen → rot „was vom letzten
@@ -61,11 +62,9 @@ class AusgangsmelderTest {
     @Test
     fun `offline Gespeichertes wird gemeldet, gesendet lädt nach, abgelehnt sagt warum`() = runTest {
         val lage = Lage()
-        val signal = Bestandssignal()
+        val fake = FakeApi()
         val kanal = MeldungsKanal()
-        val gesehen = mutableListOf<Aenderung>()
-        backgroundScope.launch { signal.aenderungen.collect { gesehen += it } }
-        val melder = Ausgangsmelder(lage, signal, kanal, Aufschreiber)
+        val melder = Ausgangsmelder(lage, Bestandsabgleich(fake.api, Testablage()), kanal, Aufschreiber)
         melder.starte(backgroundScope)
         runCurrent()
         assertEquals("was vom letzten Mal wartet, wird beim Start eingeplant", 1, lage.geplant)
@@ -73,24 +72,25 @@ class AusgangsmelderTest {
         lage.zahl.value = 1
         runCurrent()
         assertEquals(1, melder.offene.value)
-        assertEquals("offline Gespeichertes wird gemeldet", "m${R.plurals.offline_ausgang}:1", kanal.meldung.value)
+        assertEquals("offline Gespeichertes wird gemeldet", "m${R.plurals.offline_ausgang}:1", kanal.text)
 
         lage.gemeldet.emit(Abgleichsereignis.Gesendet(setOf(Bestandsart.SETS, Bestandsart.MANUELLE_TEILE)))
         runCurrent()
-        assertEquals("gesendet lädt die betroffenen Listen nach", setOf(Aenderung.Sets, Aenderung.Teile), gesehen.toSet())
+        assertEquals("gesendet holt die betroffenen Listen in die Ablage", listOf(1, 1, 0, 0),
+            listOf("getSets", "getParts", "getMinifigs", "getMerkliste").map { fake.aufrufeVon(it) })
 
         kanal.quittiere()
         lage.gemeldet.emit(Abgleichsereignis.Verworfen("10001-1", "", 404))
         runCurrent()
         assertEquals("ohne Grund vom Server steht ein eigener Satz da",
-            "t${R.string.offline_verworfen}(10001-1, t${R.string.offline_verworfen_ohne_grund}())", kanal.meldung.value)
+            "t${R.string.offline_verworfen}(10001-1, t${R.string.offline_verworfen_ohne_grund}())", kanal.text)
     }
 
     @Test
     fun `ein zweiter Start folgt dem Ausgang nicht doppelt`() = runTest {
         val lage = Lage()
         val kanal = MeldungsKanal()
-        val melder = Ausgangsmelder(lage, Bestandssignal(), kanal, Aufschreiber)
+        val melder = Ausgangsmelder(lage, Bestandsabgleich(FakeApi().api, Testablage()), kanal, Aufschreiber)
         melder.starte(backgroundScope)
         melder.starte(backgroundScope)
         runCurrent()

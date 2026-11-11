@@ -6,11 +6,11 @@ Rot: ein Token aelterer Fassungen
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
-@@ -167,7 +167,6 @@ class TokenAblage @Inject constructor(
+@@ -185,7 +185,6 @@
          prefsScope.launch {
              try {
                  geraet.bereiteVor()
 -                fangeAusserAbbruch { bindeAltbestand() }
+                 fangeAusserAbbruch { dataStore.edit { uebernimmAngaben(it) } }
                  // Aufräumen ist Nebensache: Scheitert es, startet die App trotzdem.
                  fangeAusserAbbruch { dataStore.edit { KlartextReste.entferne(it) } }
-             } finally {

@@ -7,6 +7,13 @@ import ch.brickinventoryapp.teile.ui.TeilelistenQuelle
 import ch.brickinventoryapp.teile.ui.PlPart
 import ch.brickinventoryapp.data.service.ExportErgebnis
 import ch.brickinventoryapp.data.service.TeilelistenExport
+import ch.brickinventoryapp.data.service.PdfFehlschlag
+import ch.brickinventoryapp.data.repository.Ergebnis
+import ch.brickinventoryapp.model.fach.PdfFortschritt
+import ch.brickinventoryapp.model.fach.PdfSchritt
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import ch.brickinventoryapp.teile.ui.viewmodel.TeilelisteViewModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -44,6 +51,9 @@ import ch.brickinventoryapp.testing.TestDienste
  *   C  zuruecksetzen() nicht überschrieben → rot „eine Abmeldung leert die Bauliste“
  *   D  in exportiere() die Datei nicht in den Zustand übernommen → rot „ein fertiges
  *      PDF wird einmal angeboten …“
+ *   E  gegenproben/pdf-fehler-leer.patch: fehlerText() gibt für einen gescheiterten
+ *      Auftrag wieder nur den Satz des Servers (auch leer) → rot „ein Fehler hat immer
+ *      einen Satz …“ (nur in der CI messbar)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class TeilelisteViewModelTest {
@@ -82,15 +92,17 @@ class TeilelisteViewModelTest {
         override fun sortiert(teile: Collection<PlPart>) = teile.sortedBy { it.partNumber }
     }
 
-    private class Export(val ergebnis: ExportErgebnis) : TeilelistenExport {
+    private class Export(
+        val ergebnis: ExportErgebnis,
+        override val fortschritt: Flow<PdfFortschritt?> = flowOf(null),
+    ) : TeilelistenExport {
         val ruempfe = mutableListOf<String>()
-        override val status = flowOf<String?>(null)
         override suspend fun erzeuge(rumpf: String): ExportErgebnis { ruempfe += rumpf; return ergebnis }
     }
 
     private fun vm(
         quelle: Quelle = Quelle(),
-        export: Export = Export(ExportErgebnis.Fehler(null)),
+        export: Export = Export(ExportErgebnis.Fehler(PdfFehlschlag.Abruf(Ergebnis.Error.Netz()))),
         gemerkt: SavedStateHandle = SavedStateHandle(),
     ) = TeilelisteViewModel(t.sitzung, t.hinweise, quelle, export, gemerkt).also { erzeugt += it }
 
@@ -188,8 +200,41 @@ class TeilelisteViewModelTest {
         advanceUntilIdle()
         ohne.exportiere()
         advanceUntilIdle()
-        assertEquals("t${R.string.pdfexp_unknown_error}", ohne.zustand.value.pdfError)
+        // Der Abruf spricht wie jeder Abruf (NummernTexte.meldung), nicht leer.
+        assertEquals("fehler", ohne.zustand.value.pdfError)
         assertFalse(ohne.zustand.value.isExporting)
+    }
+
+    @Test
+    fun `ein Fehler hat immer einen Satz, auch ohne Satz des Servers`() = runTest(takt) {
+        for ((grund, erwartet) in listOf(
+            PdfFehlschlag.Auftrag(null) to "t${R.string.pdfexp_server_error}",
+            PdfFehlschlag.Auftrag("") to "t${R.string.pdfexp_server_error}",
+            PdfFehlschlag.Auftrag("Bild fehlt") to "Bild fehlt",
+            PdfFehlschlag.Abruf(Ergebnis.Error.Abgewiesen()) to "fehler",
+        )) {
+            val vm = vm(Quelle(mapOf("10294-1" to listOf(teil("3001", 2)))), Export(ExportErgebnis.Fehler(grund)))
+            vm.erstelle("10294")
+            advanceUntilIdle()
+            vm.exportiere()
+            advanceUntilIdle()
+            assertEquals("$grund", erwartet, vm.zustand.value.pdfError)
+        }
+    }
+
+    @Test
+    fun `der Stand des Exports wird ein Satz, die Restzeit nur solange sie bleibt`() = runTest(takt) {
+        val stand = MutableStateFlow<PdfFortschritt?>(PdfFortschritt(PdfSchritt.ERSTELLT, 12))
+        val vm = vm(export = Export(ExportErgebnis.Datei(File("x.pdf")), stand))
+        backgroundScope.launch { vm.pdfExportStatus.collect {} }
+        advanceUntilIdle()
+        assertEquals("t${R.string.pdfexp_creating_eta}", vm.pdfExportStatus.value)
+        stand.value = PdfFortschritt(PdfSchritt.ERSTELLT, 0)
+        advanceUntilIdle()
+        assertEquals("t${R.string.pdfexp_almost_done}", vm.pdfExportStatus.value)
+        stand.value = null
+        advanceUntilIdle()
+        assertNull(vm.pdfExportStatus.value)
     }
 
     @Test

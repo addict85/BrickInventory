@@ -12,7 +12,8 @@ import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.FigurenRepository
-import ch.brickinventoryapp.zustand.ui.Aenderung
+import ch.brickinventoryapp.data.repository.Bestandsabgleich
+import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.zustand.ui.ManualItemDetailUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -28,7 +29,6 @@ import ch.brickinventoryapp.ressourcen.R
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.zustand.ui.AppUiState
 import ch.brickinventoryapp.zustand.ui.Sitzung
-import ch.brickinventoryapp.zustand.ui.Bestandssignal
 
 /**
  * Die Käufe eines Eintrags — Set, manuelles Teil oder manuelle Figur:
@@ -41,8 +41,9 @@ class KaeufeViewModel @Inject constructor(
     private val sitzung: Sitzung,
     private val filter: Filterwahl,
     private val meldungen: Meldungen,
-    private val bestand: Bestandssignal,
+    private val aenderungen: Bestandsabgleich,
     private val haushalt: HaushaltRepository,
+    private val sets: SetsRepository,
     private val finanzen: FinanzenRepository,
     private val teile: TeileRepository,
     private val figuren: FigurenRepository,
@@ -52,7 +53,8 @@ class KaeufeViewModel @Inject constructor(
 
     init {
         folgeAbmeldung(sitzung) { zuruecksetzen() }
-        folgeBestand(bestand) { beiAenderung(it) }
+        // Ändert sich der Bestand in der Ablage, stimmen Käufe und Summen des Eintrags vielleicht nicht mehr.
+        viewModelScope.launch { aenderungen.bestandGeaendert().collect { neuLaden() } }
     }
 
     private val _manDetailState = MutableStateFlow(ManualItemDetailUiState())
@@ -136,17 +138,17 @@ class KaeufeViewModel @Inject constructor(
     }
 
     /**
-     * Der Server schickt die neue Zusammenfassung des Sets mit; die Galerie
-     * passt damit die Kachel an, ohne die Liste neu zu holen. Diese Liste lädt
-     * auf dasselbe Signal nach (beiAenderung).
+     * Der Server schickt die neue Zusammenfassung des Sets mit; sie geht in die
+     * Ablage, die Kachel folgt ohne neue Liste. Ohne sie holt die Ablage den Stand.
      */
-    private fun setGeaendert(agg: SetAggregate?) {
-        if (agg != null && agg.setNumber.isNotBlank()) {
-            bestand.melde(Aenderung.SetZusammenfassung(agg))
-        } else {
-            neuLaden()
-            bestand.melde(Aenderung.Sets)
-        }
+    private suspend fun setGeaendert(agg: SetAggregate?) {
+        if (agg != null && agg.setNumber.isNotBlank()) sets.uebernimmZusammenfassung(agg)
+        else { neuLaden(); sets.aktualisiereSets() }
+    }
+
+    /** Für manuelle Einträge schickt der Server keine Zusammenfassung; die Ablage holt den Stand. */
+    private suspend fun manuelleNeu(type: Postenart) {
+        if (type == Postenart.FIG) figuren.aktualisiereFiguren() else teile.aktualisiereTeile()
     }
 
     override fun updateManualAcquisition(
@@ -159,7 +161,7 @@ class KaeufeViewModel @Inject constructor(
             val r = if (type == Postenart.FIG) haushalt.updateFigAcquisition(id, acqId, req)
                     else haushalt.updatePartAcquisition(id, colorId, acqId, req)
             if (r is Ergebnis.Success && r.data.success) {
-                bestand.melde(manuelleArt(type))
+                manuelleNeu(type)
             } else if (r is Ergebnis.Error) {
                 meldungen.zeige(meldungen.meldungFuerSnackbar(r))
                 if (date != null) neuLaden()
@@ -172,7 +174,7 @@ class KaeufeViewModel @Inject constructor(
             val r = if (type == Postenart.FIG) haushalt.deleteFigAcquisition(id, acqId)
                     else haushalt.deletePartAcquisition(id, colorId, acqId)
             when (r) {
-                is Ergebnis.Success -> bestand.melde(manuelleArt(type))
+                is Ergebnis.Success -> manuelleNeu(type)
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
@@ -197,8 +199,9 @@ class KaeufeViewModel @Inject constructor(
             when (r) {
                 is Ergebnis.Success ->
                     if (r.data.success) {
-                        bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
                         onDone(null, r.data.parts ?: 0, r.data.minifigs ?: 0)
+                        // Mitgewanderte Teile und Figuren: Den Stand aller drei Listen kennt nur der Server.
+                        sets.aktualisiereSets(); teile.aktualisiereTeile(); figuren.aktualisiereFiguren()
                     } else onDone(r.data.error ?: "", 0, 0)
                 is Ergebnis.Error -> onDone(meldungen.meldung(r), 0, 0)
             }
@@ -214,25 +217,11 @@ class KaeufeViewModel @Inject constructor(
             when (r) {
                 is Ergebnis.Success -> {
                     if (!r.data.success) { meldungen.zeige(r.data.error ?: ""); return@launch }
-                    bestand.melde(manuelleArt(type))
                     filter.eigeneLagerorteNeu()
                 }
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
-    }
-
-    private fun manuelleArt(type: Postenart) = if (type == Postenart.FIG) Aenderung.Figuren else Aenderung.Teile
-
-    private fun beiAenderung(aenderung: Aenderung) {
-        val art = _manDetailState.value.itemType
-        val betrifft = when (aenderung) {
-            Aenderung.Teile -> art == Postenart.PART
-            Aenderung.Figuren -> art == Postenart.FIG
-            is Aenderung.SetZusammenfassung -> art == Postenart.SET && aenderung.agg.setNumber == _manDetailState.value.itemId
-            Aenderung.Sets, Aenderung.Merkliste, Aenderung.Alarme -> false
-        }
-        if (betrifft) neuLaden()
     }
 
     private fun zuruecksetzen() {

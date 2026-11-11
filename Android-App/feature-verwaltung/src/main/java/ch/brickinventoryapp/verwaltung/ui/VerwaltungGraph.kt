@@ -12,14 +12,13 @@ import ch.brickinventoryapp.ui.components.Schrittsperre
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import ch.brickinventoryapp.verwaltung.ui.screens.MonitoringRoute
 import ch.brickinventoryapp.zustand.ui.Bereichsumgebung
-import ch.brickinventoryapp.zustand.ui.Screen
 
 /** Die Verwaltung braucht nur, was jeder Bereich bekommt. */
 interface VerwaltungNavigation : Bereichsumgebung
 
 /** Die Verwalterseite. */
 fun NavGraphBuilder.verwaltungGraph(navigation: VerwaltungNavigation) {
-    composable<Screen.Monitoring> {
+    composable<VerwaltungZiel.Monitoring> {
         // Fällt das Verwalterrecht weg, verlässt die Seite sich selbst, statt weiter 403 zu sammeln.
         val vm = navigation.app
         val stand by vm.state.collectAsStateWithLifecycle()

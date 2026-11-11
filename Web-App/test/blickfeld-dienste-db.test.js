@@ -49,9 +49,9 @@ test('Dienste lösen die Sicht auf', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('Löschen folgt der Kontenwahl, im Schreibbereich', async () => {
-    assert.equal(await loescheSetFuer({ nutzer: sub, konten: String(haupt) }, '10179-1'), false,
+    assert.equal(await loescheSetFuer({ nutzer: sub, konten: String(haupt) }, '10179-1'), null,
       'das Unterkonto löschte ein Set des Hauptkontos');
-    assert.equal(await loescheSetFuer({ nutzer: haupt, konten: 'subs' }, '10179-1'), false,
+    assert.equal(await loescheSetFuer({ nutzer: haupt, konten: 'subs' }, '10179-1'), null,
       'mit „Unterkonten“ gewählt traf das Löschen das eigene Set');
     assert.deepEqual(await nummern({ nutzer: haupt, konten: 'own' }), ['10179-1']);
     assert.ok(await loescheSetFuer({ nutzer: haupt, konten: 'subs' }, '75192-1'));

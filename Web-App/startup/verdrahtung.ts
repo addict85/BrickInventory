@@ -2,46 +2,46 @@
  * nach dem Erfassen, das erste Konto einer leeren Datenbank und die Dienste der
  * Bereiche mit Fabrik. Jeder Prozess baut es beim Start und reicht es weiter
  * (server.ts, Skripte, Testhilfen). */
-import { verdrahteNacharbeit, type Nacharbeit } from '../src/auftraege/nacharbeit';
+import {
+  verdrahteNacharbeit,
+  type Nacharbeit,
+  ziehePlanVor,
+  stelleAuftragEin,
+  bricksetVormerken,
+  bricksetAusWiedervorlage,
+  BRICKSET_HOECHSTENS,
+  erzeugeAuftraege,
+  verdrahteAuftraege,
+} from '../src/auftraege';
 import { dbKonfigAusUmgebung, erzeugeDb, type Db } from '../db/database';
-import { erzeugeSets } from '../src/sets/bereich';
-import { verdrahteSets } from '../src/sets/prozess';
-import { erzeugeKatalog } from '../src/katalog/bereich';
-import { verdrahteKatalog } from '../src/katalog/prozess';
-import { erzeugeEinstellungen } from '../src/einstellungen/bereich';
-import { verdrahteEinstellungen } from '../src/einstellungen/prozess';
-import { erzeugeAuftraege } from '../src/auftraege/bereich';
-import { verdrahteAuftraege } from '../src/auftraege/prozess';
-import { erzeugeHaushalt } from '../src/haushalt/bereich';
-import { verdrahteHaushalt } from '../src/haushalt/prozess';
-import { erzeugeKonto } from '../src/konto/bereich';
-import { verdrahteKonto } from '../src/konto/prozess';
-import { erzeugeIdempotenz } from '../src/idempotenz/bereich';
-import { verdrahteIdempotenz } from '../src/idempotenz/prozess';
-import { erzeugeFinanzen } from '../src/finanzen/bereich';
-import { verdrahteFinanzen } from '../src/finanzen/prozess';
-import { erzeugeBestand } from '../src/bestand/bereich';
-import { verdrahteBestand } from '../src/bestand/prozess';
-import { erzeugeTeile } from '../src/teile/bereich';
-import { verdrahteTeile } from '../src/teile/prozess';
-import { erzeugeFiguren } from '../src/figuren/bereich';
-import { verdrahteFiguren } from '../src/figuren/prozess';
-import { erzeugeMerkliste } from '../src/merkliste/bereich';
-import { verdrahteMerkliste } from '../src/merkliste/prozess';
-import { erzeugeGutscheine } from '../src/gutscheine/bereich';
-import { verdrahteGutscheine } from '../src/gutscheine/prozess';
-import { erzeugeSammlung } from '../src/sammlung/bereich';
-import { verdrahteSammlung } from '../src/sammlung/prozess';
-import { erzeugeVerwaltung } from '../src/verwaltung/bereich';
-import { verdrahteVerwaltung } from '../src/verwaltung/prozess';
-import { ziehePlanVor } from '../src/auftraege/zeitplan';
-import { refreshPriceForSet } from '../src/finanzen/preisLauf';
-import { merkeGebraucht } from '../src/katalog/bilder/bildbedarf';
-import { enrichSetParts, enrichSetMinifigs } from '../src/katalog/teileAnreicherung';
-import { stelleAuftragEin } from '../src/auftraege/dienst';
+import { erzeugeSets, verdrahteSets } from '../src/sets';
+import { erzeugeHaushalt, verdrahteHaushalt } from '../src/haushalt';
+import { erzeugeIdempotenz, verdrahteIdempotenz } from '../src/idempotenz';
+import { erzeugeBestand, verdrahteBestand } from '../src/bestand';
+import { erzeugeTeile, verdrahteTeile } from '../src/teile';
+import { erzeugeFiguren, verdrahteFiguren } from '../src/figuren';
+import { erzeugeMerkliste, verdrahteMerkliste } from '../src/merkliste';
+import { erzeugeGutscheine, verdrahteGutscheine } from '../src/gutscheine';
+import { erzeugeSammlung, verdrahteSammlung } from '../src/sammlung';
+import { erzeugeVerwaltung, verdrahteVerwaltung } from '../src/verwaltung';
+import {
+  erzeugeKatalog,
+  verdrahteKatalog,
+  merkeGebraucht,
+  enrichSetParts,
+  enrichSetMinifigs,
+  checkAndIncrementRateLimit,
+  getRateLimitStatus,
+  rebrickableLimiter,
+  rebrickableBackgroundLimiter,
+  rebrickableDailyStatus,
+} from '../src/katalog';
+import { erzeugeFinanzen, verdrahteFinanzen, refreshPriceForSet } from '../src/finanzen';
 import { mitVersion } from '../src/infra/setNummer';
-import { legeStartVerwalterAn } from '../src/konto/startVerwalter';
+import { erzeugeKonto, verdrahteKonto, legeStartVerwalterAn } from '../src/konto';
 import { meldeFehler } from '../src/infra/fehler';
+import { verdrahteKlienten, type KlientenZugang } from '../clients/zugang';
+import { erzeugeEinstellungen, verdrahteEinstellungen, getGlobalSetting } from '../src/einstellungen';
 
 export interface Verdrahtung {
   nacharbeit: Nacharbeit;
@@ -69,9 +69,26 @@ export function baueVerdrahtung(): Verdrahtung {
   };
 }
 
+/** Was die Klienten (clients/) von der Anwendung brauchen: Schlüssel, Kontingent,
+ * Drossel und die Brickset-Wiedervorlage. */
+export function baueKlientenZugang(): KlientenZugang {
+  return {
+    schluessel: async name => (await getGlobalSetting(name)) || '',
+    zaehle: api => checkAndIncrementRateLimit(api),
+    kontingentStand: api => (api === 'rebrickable' ? rebrickableDailyStatus() : getRateLimitStatus(api)),
+    drossel: { vordergrund: rebrickableLimiter, hintergrund: rebrickableBackgroundLimiter },
+    bricksetVormerken: async (sn, fehler, bald) => ({
+      ...(await bricksetVormerken(sn, fehler, bald)),
+      hoechstens: BRICKSET_HOECHSTENS,
+    }),
+    bricksetVergessen: bricksetAusWiedervorlage,
+  };
+}
+
 /** Der Zugang zur Datenbank kommt immer vom Einstieg; einen Rückfall gibt es nicht. */
 export function verdrahte(v: Verdrahtung, db: Db): void {
   verdrahteNacharbeit(v.nacharbeit);
+  verdrahteKlienten(baueKlientenZugang());
   verdrahteVerwaltung(() => erzeugeVerwaltung({ db }));
   verdrahteSammlung(() => erzeugeSammlung({ db }));
   verdrahteGutscheine(() => erzeugeGutscheine({ db }));

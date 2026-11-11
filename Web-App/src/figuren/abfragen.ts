@@ -1,11 +1,10 @@
-import { resolveImageLocal } from '../katalog/bilder/images';
-import { asIds, type Sicht } from '../haushalt/haushalt';
-import { clampPageSize, applyManualCondition, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand/gemeinsam';
+import { resolveImageLocal } from '../katalog';
+import { haushaltBereich, asIds, type Sicht } from '../haushalt';
+import { clampPageSize, applyManualCondition, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand';
 import { mitVersion } from '../infra/setNummer';
 import { Abstriche } from '../infra/ergebnis';
-import { marktpreiseAusCacheFuerFiguren } from '../finanzen/marketPrice';
+import { marktpreiseAusCacheFuerFiguren } from '../finanzen';
 import { figurenBereich } from './prozess';
-import { haushaltBereich } from '../haushalt/prozess';
 
 // Leseabfragen für Minifiguren.
 

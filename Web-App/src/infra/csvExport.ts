@@ -10,12 +10,6 @@ const FORMEL_START = /^[\s\u3000]*[=+\-@\uFF1D\uFF0B\uFF0D\uFF20]|^[\t\r\n]/;
 /** Komma, Semikolon (deutsches Excel) und Tabulator trennen Felder, CR und LF Zeilen. */
 const MUSS_IN_ANFUEHRUNG = /[",;\t\r\n]/;
 
-/** Ein Ausschnitt statt @types/express: Er sagt genauer, was diese Datei tut. */
-type ExpressAntwort = {
-  setHeader(name: string, value: string): void;
-  send(body: string | Buffer): unknown;
-};
-
 // Ein Feld mit = führte Excel beim Öffnen aus.
 export function entschaerfe(s: string): string {
   if (!FORMEL_START.test(s)) return s;
@@ -53,13 +47,6 @@ export function toCsv(headers: string[], rows: Record<string, unknown>[]) {
     lines.push(headers.map((h: string) => csvField(row[h])).join(','));
   }
   return lines.join('\r\n') + '\r\n';
-}
-
-export function sendCsv(res: ExpressAntwort, filename: string, headers: string[], rows: Record<string, unknown>[]) {
-  const csv = toCsv(headers, rows);
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-  res.send('\uFEFF' + csv); // BOM so Excel opens UTF-8 correctly
 }
 
 /** @returns ISO-Datum oder null, wenn nichts Brauchbares drinsteht */
@@ -167,12 +154,16 @@ export function csvZeilenAusAnfrage(text: string): {
 
 /** An einer Stelle, damit beide Oberflächen dieselben Felder bekommen. */
 /** Was jeder CSV-Import antwortet; `records` zählt nur. */
+export interface ImportZeilenErgebnis {
+  set_number?: string; action?: string; error?: string | null; isWarning?: boolean; success?: boolean;
+  [feld: string]: unknown;
+}
 export function csvImportBericht(d: {
   added: number; updated: number; errors: number;
-  records: unknown[]; results: unknown[]; uebersprungen: number[];
+  records: unknown[]; results: ImportZeilenErgebnis[]; uebersprungen: number[];
 }) {
   return {
-    success: true as const, added: d.added, updated: d.updated, errors: d.errors,
+    added: d.added, updated: d.updated, errors: d.errors,
     total: d.records.length, results: d.results,
     skipped: d.uebersprungen.length || undefined,
     skipped_hint: uebersprungenHinweis(d.uebersprungen) || undefined,

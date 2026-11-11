@@ -1,9 +1,8 @@
-import type { Schreiber } from '../haushalt/haushalt';
+import { haushaltBereich, type Schreiber } from '../haushalt';
 import type { DbSchnittstelle } from '../../db/database';
 import * as repo from './repository/papierkorb';
 import type { PapierArt } from './repository/papierkorb';
 import { bestandBereich } from './prozess';
-import { haushaltBereich } from '../haushalt/prozess';
 
 export type Art = PapierArt;
 export const AUFBEWAHRUNG_TAGE = 30;

@@ -1,9 +1,10 @@
 /** Bei Rebrickable ist 0 Schwarz; eine fehlende Farbe ist deshalb KEINE_FARBE
  * (9999), nie 0, sonst wird aus „keine Angabe" ein schwarzes Teil. */
 import { getBrickColors } from './quellen';
-import { meldeUndLiefere } from '../infra/fehler';
+
 import { KEINE_FARBE } from '../infra/validate';
 import { katalog } from './prozess';
+import { versuche } from '../infra/ergebnis';
 
 export { KEINE_FARBE };
 
@@ -27,9 +28,10 @@ const NOTLISTE: Farbe[] = [
 ];
 
 export async function farbliste(): Promise<Farbe[]> {
-  const geladen = await katalog().katalogStamm.geladeneFarben().catch(meldeUndLiefere('farben:rb_colors', [] as Farbe[]));
+  const geladen = await katalog().katalogStamm.geladeneFarben();
   if (geladen.length) return geladen;
-  const abgerufen = await getBrickColors();
-  if (abgerufen.length) return abgerufen;
+  // Ohne Rebrickable bleibt die eingebaute Notliste; sie ist als solche kurz.
+  const abgerufen = await versuche('farben:rebrickable', getBrickColors());
+  if (abgerufen.ok && abgerufen.wert.length) return abgerufen.wert;
   return NOTLISTE;
 }

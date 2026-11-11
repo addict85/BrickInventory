@@ -2,23 +2,19 @@
 import { geldEingabe } from '../infra/geld';
 import * as repo from './repository/erfassungen';
 import type { DbSchnittstelle } from '../../db/database';
-import type { Sicht } from '../haushalt/haushalt';
-import { findSameDayAcquisition } from '../bestand/acquisitions';
+import { haushaltBereich, type Sicht } from '../haushalt';
+import { findSameDayAcquisition, loescheManuellesTeil, loescheManuelleFigur } from '../bestand';
 import { Abstriche } from '../infra/ergebnis';
 import { mitInventarSperre, bestandsSchluessel } from '../../db/txLock';
 import { moveSetBetweenAccounts, moveManualAcquisition, withSetAggregate, deleteSetRows } from '../sets';
-import { getCurrentMarketPrice, getCurrentPartMarketPrice, getCurrentFigMarketPrice } from '../finanzen/marketPrice';
-import { loescheManuellesTeil, loescheManuelleFigur } from '../bestand/gemeinsam';
-import { fachfehler } from '../infra/fehlerTexte';
-import type { FehlerCode } from '../infra/fehlerTexte';
-import { blAbrufNummer } from '../katalog/blZuordnung';
-import { mengeDesSets, mengeDerPosition, preisSpalte } from '../../db/bestandsmenge';
-import { bestandsMenge } from '../infra/validate';
+import { getCurrentMarketPrice, getCurrentPartMarketPrice, getCurrentFigMarketPrice } from '../finanzen';
+import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
+import { blAbrufNummer } from '../katalog';
+import { mengeDesSets, mengeDerPosition, preisSpalte, type ErfassungsArt } from '../../db/bestandsmenge';
+import { bestandsMenge, zustand } from '../infra/validate';
+import { sammlungBereich } from './prozess';
 
 export type { ErfassungsArt } from '../../db/bestandsmenge';
-import type { ErfassungsArt } from '../../db/bestandsmenge';
-import { sammlungBereich } from './prozess';
-import { haushaltBereich } from '../haushalt/prozess';
 type Schluessel = Array<string | number>;
 
 interface Art {
@@ -89,12 +85,12 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
     const from = await haushaltBereich().haushalt.acquisitionMoveSource(uid, art, id);
     const to = await haushaltBereich().haushalt.resolveWriteTarget(uid, ownerReq);
     if (to === null) fachfehler('verboten', 'kein_schreibrecht');
-    if (from === to) return { success: true, unchanged: true };
+    if (from === to) return { unchanged: true };
     // Wie verschiebeSet(): Gegenrichtungen sperren die Zeilen beider Konten umgekehrt.
     const moved = await mitInventarSperre(sammlungBereich().db, from, bestandsSchluessel(art, keys), (tx) =>
       art === 'set' ? moveSetBetweenAccounts(tx, String(keys[0]), from, to, [id]) : moveManualAcquisition(tx, art, keys, id, from, to),
       { wiederholeBeiKonflikt: true });
-    return { success: true, from_user_id: from, to_user_id: to, ...moved };
+    return { from_user_id: from, to_user_id: to, ...moved };
   }
 
   // Der Marktpreis-Rückfall vor der Transaktion, sonst hielte ein Netzaufruf
@@ -125,7 +121,7 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
       neuesDatum = String(date);
     }
     const hatZustand = condition !== undefined && condition !== null;
-    const zielZustand = hatZustand ? (['N', 'U'].includes(String(condition)) ? String(condition) : 'N') : (acq.condition || 'N');
+    const zielZustand = hatZustand ? zustand(condition) : (acq.condition || 'N');
     const zielGeschaetzt = rawPrice !== undefined ? (preisGeschaetzt && priceVal != null) : !!acq.price_estimated;
     // Geprüft gegen die Werte NACH dieser Änderung.
     if (neuesDatum || rawPrice !== undefined || hatZustand) {
@@ -145,7 +141,7 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
     if (neuesDatum)
       await repo.setzeErfassungsDatum(tx, art, id, neuesDatum, wids);
   });
-  return antwort(art, uid, keys, { success: true, ...ab.angabe() });
+  return antwort(art, uid, keys, { ...ab.angabe() });
 }
 
 /** Ist danach nichts mehr da, geht die Bestandszeile mit. */
@@ -160,7 +156,7 @@ export async function erfassungLoeschen(art: ErfassungsArt, uid: number, id: num
     if (leer(q)) await a.cleanupWhenEmpty(tx, ownerId, keys);
     return q;
   });
-  return antwort(art, uid, keys, { success: true, new_quantity: menge ?? 0 });
+  return antwort(art, uid, keys, { new_quantity: menge ?? 0 });
 }
 
 export async function setErfassungen(sicht: Sicht | number[], setNumber: string) {

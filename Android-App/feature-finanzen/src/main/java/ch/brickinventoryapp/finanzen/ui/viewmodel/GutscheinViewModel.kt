@@ -30,6 +30,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
+import ch.brickinventoryapp.zustand.ui.viewmodel.Gelesen
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 
@@ -221,7 +222,9 @@ class GutscheinViewModel @Inject constructor(
      * Mit Datei liest der Server daraus, was die Felder nicht hergeben; man
      * kann also ein PDF schicken UND den Betrag selbst eintragen.
      */
-    fun speichereGutschein(datei: DateiRef?) = speichere(datei?.let { d -> suspend { leser.lies(d) } })
+    fun speichereGutschein(datei: DateiRef?) = speichere(datei?.let { d ->
+        suspend { (leser.liesHoechstens(d, GUTSCHEIN_MAX_BYTES) as? Gelesen.Inhalt)?.let { it.typ to it.bytes } }
+    })
 
     /** Die Datei als Lesefunktion — so prüft der Test den PDF-Weg ohne Leser. */
     internal fun speichere(datei: (suspend () -> Pair<String?, ByteArray>?)?) {
@@ -459,3 +462,6 @@ private fun istTeilfolge(teil: String, ganz: String): Boolean {
     for (c in ganz) if (i < teil.length && teil[i] == c) i++
     return i == teil.length
 }
+
+/** Ein Gutschein-PDF hat ein, zwei Seiten; grösser liest die App es nicht erst ein. */
+internal const val GUTSCHEIN_MAX_BYTES = 20L * 1024 * 1024

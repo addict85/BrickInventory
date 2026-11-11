@@ -3,6 +3,7 @@ package ch.brickinventoryapp.zustand
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.testing.FigurenRepository
 import ch.brickinventoryapp.testing.HaushaltRepository
+import ch.brickinventoryapp.testing.Kontosicht
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.testing.SetsRepository
@@ -20,8 +21,8 @@ import java.io.File
 /**
  * Welche Bilder vorgewärmt werden, gegen einen Testserver: die Kacheln aller Reiter der
  * eigenen Sammlung (Sets, Teile, Figuren, manuell erfasste Teile und Figuren), jeweils
- * mit dem Kontofilter des Blickfelds — und nichts aus dem Katalog, dessen rund 25'000
- * Sets die Grenze um ein Vielfaches sprengten.
+ * aus der Quelle des Reiters — mit Kontofilter die Kontosicht — und nichts aus dem
+ * Katalog, dessen rund 25'000 Sets die Grenze um ein Vielfaches sprengten.
  *
  * Gegenproben (Patches unter gegenproben/):
  *   vorwaermen-ohne-blickfeld  die Teile ohne Kontofilter geholt → rot „vorgewärmt wird …“
@@ -48,7 +49,8 @@ class SammlungVorwaermenTest {
             val blickfeld = Blickfeld(SpeicherAblage(), HaushaltRepository(api, cache), teile)
             val adressen = runBlocking {
                 for (v in listOf(ScopeFilter.View.GALLERY, ScopeFilter.View.PARTS, ScopeFilter.View.MINIFIGS)) blickfeld.setzeKonto(v, "own")
-                bildAdressenDerSammlung(SetsRepository(api, cache), teile, FigurenRepository(api, cache), blickfeld, "https://brick.example")
+                bildAdressenDerSammlung(SetsRepository(api, cache), teile, FigurenRepository(api, cache), Kontosicht(api), blickfeld,
+                    "https://brick.example")
             }
             assertEquals(listOf("set", "teil", "figur", "mteil", "mfigur").map { "https://brick.example/b/${it}_thumb.jpg" },
                 adressen)

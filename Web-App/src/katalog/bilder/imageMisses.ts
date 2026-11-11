@@ -1,5 +1,6 @@
-import { logAndContinue, meldeUndLiefere } from '../../infra/fehler';
+import { logAndContinue } from '../../infra/fehler';
 import { katalog } from '../prozess';
+import { versuche } from '../../infra/ergebnis';
 
 /** EINMAL gemerkt, für alle Prozesse; nach einer Woche wird erneut gefragt. */
 const ERNEUT_PRUEFEN_MS = 7 * 24 * 60 * 60 * 1000;
@@ -12,15 +13,23 @@ const _vorne = new Map<string, number>();
 /** Getrennt von `_vorne`: istBekanntFehlend() ist der heisseste synchrone Pfad,
  * der Grund interessiert nur die Diagnose. */
 const _gruende = new Map<string, string>();
-let _bereit = false;
+const _takte: NodeJS.Timeout[] = [];
 
 export async function initImageMisses(): Promise<void> {
-  if (_bereit) return;
-  _bereit = true;
+  if (_takte.length) return;
   // Prozesslokal: Muss deshalb in JEDEM Arbeitsprozess laufen.
+  _takte.push(
+    setInterval(() => { auffrischen().catch(logAndContinue('bild-fehlanzeige:auffrischen')); }, AUFFRISCHEN_MS),
+    setInterval(() => { schreibePuffer().catch(logAndContinue('bild-fehlanzeige:schreibePuffer')); }, 10_000),
+  );
+  for (const t of _takte) t.unref();
   await auffrischen();
-  setInterval(() => { auffrischen().catch(logAndContinue('bild-fehlanzeige:auffrischen')); }, AUFFRISCHEN_MS).unref();
-  setInterval(() => { schreibePuffer().catch(logAndContinue('bild-fehlanzeige:schreibePuffer')); }, 10_000).unref();
+}
+
+/** Vor dem Schliessen des Pools: Takte beenden, gemerkte Fehlschläge noch schreiben. */
+export async function stoppeFehlanzeige(): Promise<void> {
+  for (const t of _takte.splice(0)) clearInterval(t);
+  await schreibePuffer();
 }
 
 /** Synchron und ohne Datenbank; höchstens ein Auffrisch-Intervall alt. */
@@ -33,8 +42,10 @@ export function istBekanntFehlend(key: string): boolean {
 }
 
 async function auffrischen(): Promise<void> {
-  const rows = await katalog().bildFehlschlaege.frischeFehlschlaege(String(ERNEUT_PRUEFEN_MS)).catch(meldeUndLiefere('bild-fehlanzeige:rows', null));
-  if (!rows) return;
+  // Nicht lesbar: Der bisherige Stand im Speicher bleibt, bis der nächste Abgleich gelingt.
+  const r = await versuche('bild-fehlanzeige:rows', katalog().bildFehlschlaege.frischeFehlschlaege(String(ERNEUT_PRUEFEN_MS)));
+  if (!r.ok) return;
+  const rows = r.wert;
   _vorne.clear(); _gruende.clear();
   for (const r of rows) {
     _vorne.set(r.cache_key, new Date(r.checked_at).getTime());

@@ -25,10 +25,12 @@ export async function gibTabelleFrei(c: PoolClient, tabelle: string): Promise<vo
 
 /** Mit Schlüsseln und Indizes: ON CONFLICT in den Blöcken braucht sie. Ohne
  * CHECKs: Die Trigger der Zieltabelle (etwa die Versionsendung der Set-Nummer)
- * kommen nicht mit; geprüft wird erst beim Tausch, nach den Triggern. */
+ * kommen nicht mit; geprüft wird erst beim Tausch, nach den Triggern. Temporär:
+ * Die Laufzeitrolle darf in public nichts anlegen, und der Schatten gehört
+ * ohnehin nur dieser einen Verbindung. */
 export async function legeSchattenAn(c: PoolClient, tabelle: string, schatten: string): Promise<void> {
-  await c.query(`DROP TABLE IF EXISTS ${schatten}`);
-  await c.query(`CREATE UNLOGGED TABLE ${schatten} (LIKE ${tabelle} INCLUDING ALL EXCLUDING CONSTRAINTS)`);
+  await c.query(`DROP TABLE IF EXISTS pg_temp.${schatten}`);
+  await c.query(`CREATE TEMP TABLE ${schatten} (LIKE ${tabelle} INCLUDING ALL EXCLUDING CONSTRAINTS)`);
 }
 
 /** Ein abgewiesener Block bricht den Import ab. */
@@ -83,13 +85,16 @@ export async function gleicheSetsAb(c: PoolClient, schatten: string, spalten: st
     await c.query(`UPDATE rb_sets SET herkunft = 'api' WHERE herkunft = 'csv' AND ${verschwunden} AND ${bezug}`);
     // set_catalog geht per ON DELETE CASCADE mit.
     await c.query(`DELETE FROM rb_sets WHERE ${verschwunden} AND NOT ${bezug}`);
-    await c.query(`INSERT INTO set_catalog (set_number) SELECT set_num FROM rb_sets WHERE set_num ~ '-[0-9]+$'
-                   ON CONFLICT (set_number) DO NOTHING`);
+    // Die Bildadresse des CSV gilt erst in set_catalog, der einzigen Bildquelle (0108).
+    await c.query(`INSERT INTO set_catalog (set_number, image_url)
+                   SELECT set_num, NULLIF(set_img_url, '') FROM rb_sets WHERE set_num ~ '-[0-9]+$'
+                   ON CONFLICT (set_number) DO UPDATE SET image_url = EXCLUDED.image_url, updated_at = NOW()
+                   WHERE set_catalog.image_url IS NULL AND EXCLUDED.image_url IS NOT NULL`);
   });
 }
 
 export async function entferneSchatten(c: PoolClient, schatten: string): Promise<void> {
-  await c.query(`DROP TABLE IF EXISTS ${schatten}`);
+  await c.query(`DROP TABLE IF EXISTS pg_temp.${schatten}`);
 }
 
 /** Nach einem vollständigen Tausch ist die Planer-Statistik bedeutungslos. */

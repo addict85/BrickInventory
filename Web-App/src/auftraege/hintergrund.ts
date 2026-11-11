@@ -26,7 +26,6 @@ export async function auftraegeImUeberblick(filter: { status?: string | undefine
   ]);
   const alterSek = lebenszeichen ? Math.round((Date.now() - new Date(lebenszeichen).getTime()) / 1000) : null;
   return {
-    success: true,
     auftraege, zusammenfassung, pausen,
     job_prozess: { lebenszeichen, alter_sekunden: alterSek, laeuft: alterSek !== null && alterSek < LEBENSZEICHEN_GILT_SEK },
   };
@@ -37,23 +36,23 @@ export async function auftragAbbrechen(id: string) {
   const a = await brichAb(id);
   if (!a) fachfehler('konflikt', 'auftrag_nicht_aenderbar');
   if (hatZeitplan(a.art)) await planeNaechsten(a.art);
-  return { success: true, id, status: 'abgebrochen' };
+  return { id, status: 'abgebrochen' };
 }
 
 export async function auftragWiederholen(id: string) {
   if (!await wiederhole(id)) fachfehler('konflikt', 'auftrag_nicht_aenderbar');
-  return { success: true, id, status: 'offen' };
+  return { id, status: 'offen' };
 }
 
 /** Geplante Termine bleiben. */
 export async function leereAuftragsArt(artRoh: string) {
   const art = pruefeArt(artRoh);
-  return { success: true, art, entfernt: await auftraegeBereich().auftraege.leereArt(art) };
+  return { art, entfernt: await auftraegeBereich().auftraege.leereArt(art) };
 }
 
 export async function auftragsArtJetzt(artRoh: string) {
   const art = pruefeArt(artRoh);
   await beendePause(art);
   const gestartet = hatZeitplan(art) ? await ziehePlanVor(art) : (await zieheVor(art)) > 0;
-  return { success: true, art, gestartet };
+  return { art, gestartet };
 }

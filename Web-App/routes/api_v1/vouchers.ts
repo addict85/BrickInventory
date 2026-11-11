@@ -1,30 +1,21 @@
 // Für beide Apps: Cookie und Token.
-import express from 'express';
+import type express from 'express';
 import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
 import { FORMULAR_GRENZEN } from '../../src/http/dateiEmpfang';
+import { FREMDE_DATEI_CSP } from '../../src/http/dateiAusliefern';
 import { ohneFehlendeDatei } from '../../src/infra/fehler';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { fehlerText, antwortSprache, dateiFehler, type FehlerCode, alsDoppelt } from '../../src/infra/fehlerTexte';
-import { getGlobalSetting, getSetting } from '../../src/einstellungen/settings';
-import { landErlaubt, landFuerWaehrung } from '../../src/gutscheine/gutscheinGuthaben';
-import { frageGuthabenAb, ABSTAND_SEK } from '../../src/gutscheine/gutscheinGuthabenSchranke';
-import { VOUCHER_DIR, gutscheinDatei, schreibeGutscheinPdf, liesGutscheinPdf, liesGutscheinPdfOderNichts } from '../../src/gutscheine/gutscheinDateien';
+import { getGlobalSetting, getSetting } from '../../src/einstellungen';
+import { gutscheineBereich, landErlaubt, landFuerWaehrung, frageGuthabenAb, ABSTAND_SEK, VOUCHER_DIR, gutscheinDatei, schreibeGutscheinPdf, liesGutscheinPdf, liesGutscheinPdfOderNichts, stelleTicketAus, loeseTicketEin, TICKET_SEK, type GutscheinWerte, verbindeGutscheine, liesImHintergrund, HOECHSTENS_SEITEN, type ExportGutschein, type GutscheinZeile } from '../../src/gutscheine';
 import { requireToken, kontoSchranke } from './middleware';
 import { bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
-import { stelleTicketAus, loeseTicketEin, TICKET_SEK } from '../../src/gutscheine/pdfTicket';
-import type { GutscheinWerte } from '../../src/gutscheine/gutscheinPdf';
-import { verbindeGutscheine } from '../../src/gutscheine/gutscheinPdfSchreiben';
-import { liesImHintergrund, HOECHSTENS_SEITEN } from '../../src/gutscheine/pdfLesen';
-import type { ExportGutschein } from '../../src/gutscheine/gutscheinPdfSchreiben';
 
-import type { GutscheinZeile } from '../../src/gutscheine/dienst';
 import { seiteAus } from '../../src/infra/seite';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
-import { gutscheineBereich } from '../../src/gutscheine/prozess';
-import { kontoBereich } from '../../src/konto/prozess';
+import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
+import { kontoBereich } from '../../src/konto';
 
 const router = vertragsRouter();
 
@@ -318,6 +309,7 @@ router.get('/vouchers/:id/pdf', requireToken, async (req: Anfrage<'GET /api/v1/v
     `${alsDownload ? 'attachment' : 'inline'}; filename="gutschein-${zeile.id}.pdf"`);
   // Ein Gutschein gehört in keinen geteilten Zwischenspeicher.
   res.setHeader('Cache-Control', 'private, no-store');
+  res.setHeader('Content-Security-Policy', FREMDE_DATEI_CSP);
   res.end(pdf);
 });
 

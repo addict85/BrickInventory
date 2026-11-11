@@ -1,7 +1,6 @@
 /** Anmeldung, Token, Profil, QR und Passkeys; setzt die Teilrouter aus
  * routes/auth/ zusammen. Alles hängt unter /api/v1/auth. */
 import { sitzungsKeksName, sitzungsKeksOptionen } from '../src/http/sitzungsKeks';
-const router  = vertragsRouter();
 import * as K from '../src/konto/konten';
 import * as A from '../src/konto/anmeldungAblauf';
 import { kontoEntfernen } from '../src/konto/kontoEntfernen';
@@ -18,13 +17,14 @@ import { requireApiAdmin } from './api_v1/middleware';
 import { fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
 import * as zf from '../src/konto/zweiterFaktor';
 import * as P from '../src/konto/passkeys';
-import benutzerRouter = require('./auth/benutzer');
-import zweiterFaktorRouter = require('./auth/zweiterFaktor');
-import registrierungRouter = require('./auth/registrierung');
+import benutzerRouter from './auth/benutzer';
+import zweiterFaktorRouter from './auth/zweiterFaktor';
+import registrierungRouter from './auth/registrierung';
 import { STATUS_DER_ART } from '../src/http/fehlerArt';
-import { vertragsRouter } from '../src/http/vertragsRouter';
-import type { Antwort, OffeneAnfrage } from '../src/http/vertragsRouter';
-import { kontoBereich } from '../src/konto/prozess';
+import { vertragsRouter, type Antwort, type OffeneAnfrage } from '../src/http/vertragsRouter';
+import { kontoBereich } from '../src/konto';
+
+const router = vertragsRouter();
 
 // Ein Wächter für Sitzung UND Token: Die App hat keine Sitzung und war mit
 // einem reinen Sitzungswächter von Routen ausgesperrt.
@@ -103,8 +103,8 @@ router.get('/me', async (req: OffeneAnfrage<'GET /api/v1/auth/me'>, res: Antwort
       if (faellig) res.setHeader('X-Token-Rotation', 'faellig');
       // is_admin ist das Recht DIESES Tokens: bei Scope `app` immer false.
       return res.json({ success: true, loggedIn: true,
-        user: { id: u.user_id, username: u.username, is_admin: u.is_admin === 1, mustChangePassword: u.muss_passwort_aendern === true,
-                zweiterFaktorPflicht: u.is_admin === 1 && !await zf.istAktiv(u.user_id) },
+        user: { id: u.user_id, username: u.username, is_admin: u.is_admin === true, mustChangePassword: u.muss_passwort_aendern === true,
+                zweiterFaktorPflicht: u.is_admin === true && !await zf.istAktiv(u.user_id) },
         token_expires: u.expires_at, token_last_used: u.last_used,
         token_info: { scope: u.scope, expires_at: u.expires_at, hard_expires_at: u.hard_expires_at ?? null,
                       never_expires: u.never_expires === true, rotiert_am: u.rotiert_am,
@@ -114,10 +114,10 @@ router.get('/me', async (req: OffeneAnfrage<'GET /api/v1/auth/me'>, res: Antwort
     return res.json({ success: true, loggedIn: false, user: null });
   };
   await antworte().catch((e: unknown) => {
-    // Ohne Anmeldung ist die Anmeldemaske die richtige Antwort, keine Fehlerseite.
+    // Ein Lesefehler ist keine Abmeldung: Mit 401 oder „nicht angemeldet“
+    // verwürfe die App ihren Token, und der Browser zeigte die Anmeldemaske.
     meldeFehler('auth:me', e);
-    if (token) return ungueltig('token_ungueltig');
-    return res.json({ success: true, loggedIn: false, user: null });
+    if (!res.headersSent) sendeFehler(req, res, 503, 'server_ausgelastet');
   });
 });
 
@@ -235,18 +235,26 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req:
 });
 
 // Die App fragt alle paar Sekunden, bis die Web-Sitzung bestätigt oder ablehnt.
+// Mit `vorschau` steht danach nur das Konto in der Antwort; den Token holt das Ja der App.
 router.post('/qr-login/abholen', ipThrottle('qr-abholen', 600, 60 * 60 * 1000), async (req: OffeneAnfrage<'POST /api/v1/auth/qr-login/abholen'>, res: Antwort<'POST /api/v1/auth/qr-login/abholen'>) => {
   if (!req.eingabe.abholung) return sendeFehler(req, res, 400, 'token_ungueltig');
-  const a = await QR.holeQrTokenAb(req.eingabe.abholung, req.ip, darfAnmelden);
+  const a = await QR.holeQrTokenAb(req.eingabe.abholung, req.ip, darfAnmelden, req.eingabe.vorschau === true);
   if (a.stand === 'wartet') return res.json({ success: true, wartet: true });
   if (a.stand === 'abgelehnt') return sendeFehler(req, res, 403, 'qr_abgelehnt');
-  if (a.stand !== 'fertig') return sendeFehler(req, res, 401, 'token_ungueltig');
+  if (a.stand === 'ungueltig') return sendeFehler(req, res, 401, 'token_ungueltig');
   const user = await kontoBereich().konten.kontoKurz(a.uid);
   if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
+  if (a.stand === 'bereit') return res.json({ success: true, wartet: false, vorschau: true, username: user.username });
   meldeAnmeldung({ ip: req.ip, konto: user.id, zugang: 'qr' });
   // Keine Sitzung: Sie trüge die vollen Rechte des Kontos an Scope `app` vorbei.
   res.json({ success: true, wartet: false, token: a.token, username: user.username, isAdmin: false, userId: user.id,
-    user: { id: user.id, username: user.username }, token_info: await tokenAngaben(a.token) });
+    user: { id: user.id, username: user.username }, token_info: await tokenAngaben(a.token),
+    ...(a.schluesselNonce ? { schluessel_nonce: a.schluesselNonce } : {}) });
+});
+
+router.post('/qr-login/verwerfen', ipThrottle('qr-abholen', 600, 60 * 60 * 1000), async (req: OffeneAnfrage<'POST /api/v1/auth/qr-login/verwerfen'>, res: Antwort<'POST /api/v1/auth/qr-login/verwerfen'>) => {
+  if (!await QR.verwirfAbholung(req.eingabe.abholung)) return sendeFehler(req, res, 401, 'token_ungueltig');
+  res.json({ success: true });
 });
 
 router.get('/qr-kopplung/:id', requireLogin, async (req: OffeneAnfrage<'GET /api/v1/auth/qr-kopplung/:id'>, res: Antwort<'GET /api/v1/auth/qr-kopplung/:id'>) => {

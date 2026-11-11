@@ -72,7 +72,7 @@ sealed class Ergebnis<out T> {
  * Seitengrösse der Galerie, wie in der Webapp (public/js/02-gallery.js): Zwei
  * Grössen ergäben zwei Scroll-Erlebnisse für denselben Bestand.
  */
-const val GALLERY_PAGE_SIZE = 60
+internal const val GALLERY_PAGE_SIZE = 60
 
 /**
  * Seitengrösse des Katalogs. Muss zur Rechnung des Servers passen: Der
@@ -80,6 +80,3 @@ const val GALLERY_PAGE_SIZE = 60
  * die Ansicht die Seite selbst ab.
  */
 const val CATALOG_PAGE_SIZE = 60
-
-/** Status eines PDF-Export-Jobs inkl. geschätzter Restdauer (aus fehlenden Bildern). */
-data class PdfJobStatus(val status: String, val etaSeconds: Int?)

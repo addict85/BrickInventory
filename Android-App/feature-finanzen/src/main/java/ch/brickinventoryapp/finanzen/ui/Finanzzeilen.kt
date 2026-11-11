@@ -116,7 +116,7 @@ internal fun fremdeKaufpreise(valuation: BewertungAnsicht?, parts: TeileBewertun
  * Basis, damit Einstand + G/V = Marktwert gilt (wie im Web, basisAus).
  * [basisBekannt] ist false bei älteren Servern ohne diese Felder.
  */
-data class FinanzKopf(
+internal data class FinanzKopf(
     val basisBekannt: Boolean,
     val mitBasis: Boolean,
     /** null = nicht bekannt (älterer Server). */

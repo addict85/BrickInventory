@@ -7,8 +7,8 @@ import { DATA_DIR } from '../infra/appPaths';
 import * as repo from './repository/konten';
 import { erhoeheSitzungsVersion } from './sitzungsVersion';
 import { leereTokenCache } from './auth';
-import { meldeHaushaltsaenderung } from '../haushalt/haushalt';
-import { stelleAuftragEin } from '../auftraege/dienst';
+import { meldeHaushaltsaenderung } from '../haushalt';
+import { stelleAuftragEin } from '../auftraege';
 import { meldeFehler } from '../infra/fehler';
 import { kontoBereich } from './prozess';
 

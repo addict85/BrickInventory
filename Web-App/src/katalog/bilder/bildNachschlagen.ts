@@ -1,4 +1,3 @@
-import { meldeUndLiefere } from '../../infra/fehler';
 import { katalog } from '../prozess';
 import { Zwischenspeicher } from '../../infra/zwischenspeicher';
 
@@ -8,7 +7,6 @@ import { Zwischenspeicher } from '../../infra/zwischenspeicher';
 const CACHE_MS = 10 * 60 * 1000;
 const cdnSpeicher = () =>
   katalog().faecher.fach('cdnZuPfad', () => new Zwischenspeicher<string, { url: string | null }>(5000, CACHE_MS));
-
 
 export function bildStammAusPfad(webPfad: string): string {
   const datei = webPfad.split('/').pop() || '';
@@ -21,7 +19,7 @@ export async function cdnFuerFehlendesBild(webPfad: string): Promise<string | nu
   const stamm = bildStammAusPfad(webPfad);
   let url: string | null = null;
   if (stamm) {
-    const z = await katalog().bildStammCdn.cdnZuBildstamm(stamm).catch(meldeUndLiefere('bilder:cdn nachschlagen', null));
+    const z = await katalog().bildStammCdn.cdnZuBildstamm(stamm);
     url = z?.url ?? null;
   }
   cdnSpeicher().setze(webPfad, { url });

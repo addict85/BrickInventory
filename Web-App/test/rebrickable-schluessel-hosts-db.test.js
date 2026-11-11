@@ -69,7 +69,10 @@ test('der Rebrickable-Schlüssel bleibt bei rebrickable.com', { concurrency: 1 }
       url.includes('/lego/sets/')
         ? {
             status: 200,
-            body: JSON.stringify({ results: [{ part: { part_num: 'x' } }], next: 'https://api.upcitemdb.com/prod/x' }),
+            body: JSON.stringify({
+              results: [{ part: { part_num: 'x' }, color: { id: 1 }, quantity: 1 }],
+              next: 'https://api.upcitemdb.com/prod/x',
+            }),
           }
         : { status: 200, body: '{}' };
     await holeSetTeile('10294-1');
@@ -85,11 +88,14 @@ test('der Rebrickable-Schlüssel bleibt bei rebrickable.com', { concurrency: 1 }
     abrufe.length = 0;
     antwortFuer = url =>
       url.includes('page=2')
-        ? { status: 200, body: JSON.stringify({ results: [{ part: { part_num: 'b' } }], next: null }) }
+        ? {
+            status: 200,
+            body: JSON.stringify({ results: [{ part: { part_num: 'b' }, color: { id: 1 }, quantity: 1 }], next: null }),
+          }
         : {
             status: 200,
             body: JSON.stringify({
-              results: [{ part: { part_num: 'a' } }],
+              results: [{ part: { part_num: 'a' }, color: { id: 1 }, quantity: 1 }],
               next: 'https://rebrickable.com/api/v3/lego/sets/10294-1/parts/?page=2',
             }),
           };

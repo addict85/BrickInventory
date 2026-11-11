@@ -78,11 +78,9 @@ class PreisalarmeAnzeigeTest {
         {"set_number":"10179-1","condition":"N","richtung":"unter","schwelle":900.0,"currency_code":"CHF",
          "name":"Ultimate Falcon","besitzt":false,"ausgeloest":true}]}"""
 
-    private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
-        KontoRepository(welt.t.api, welt.t.cache, welt.t.io),
-        VerwaltungRepository(welt.t.api, welt.t.cache),
-        SetsRepository(welt.t.api, welt.t.cache),
-        TeileRepository(welt.t.api, welt.t.cache),
+    private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
+        KontoRepository(welt.t.api, welt.t.cache, welt.t.io), VerwaltungRepository(welt.t.api, welt.t.cache),
+        SetsRepository(welt.t.api, welt.t.cache), TeileRepository(welt.t.api, welt.t.cache),
         object : DateiLeser {
             override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
         }))

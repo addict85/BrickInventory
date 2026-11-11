@@ -2,10 +2,13 @@ import type { DbSchnittstelle } from '../../../db/database';
 
 /** Challenges liegen nur als Hash vor. */
 
-export async function speichereChallenge(db: DbSchnittstelle, hash: string, zweck: string, uid: number | null, bis: Date): Promise<void> {
+/** @returns false, wenn schon `hoechstens` Challenges offen sind */
+export async function speichereChallenge(db: DbSchnittstelle, hash: string, zweck: string, uid: number | null, bis: Date,
+                                         hoechstens: number): Promise<boolean> {
   await db.run('DELETE FROM webauthn_challenges WHERE expires_at < NOW()');
-  await db.run('INSERT INTO webauthn_challenges (challenge, user_id, zweck, expires_at) VALUES ($1, $2, $3, $4)',
-    [hash, uid, zweck, bis]);
+  return (await db.run(`INSERT INTO webauthn_challenges (challenge, user_id, zweck, expires_at)
+    SELECT $1, $2, $3, $4 WHERE (SELECT COUNT(*) FROM webauthn_challenges) < $5`,
+    [hash, uid, zweck, bis, hoechstens])).changes > 0;
 }
 
 /** Löschen und Prüfen in einem Schritt: Eine Challenge gilt genau einmal. */

@@ -1,0 +1,26 @@
+Gegenprobe: Serverantwort und Puffern ohne Sperre: Ein Schritt zwischen Lesen und Schreiben geht verloren
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.OfflineablageSperreTest
+Rot: ein puffere waehrend einer Serverantwort geht nicht verloren
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
+@@ -237,7 +237,7 @@
+         bestand.raeumeAndere(b)
+         // Unter der Sperre: Ein puffere() zwischen dem Lesen des Ausgangs und dem
+         // Schreiben ginge sonst mit der Serverliste verloren.
+-        sperre(b, fach.art).withLock { uebernimmGesperrt(fach, liste, anhaengen, b) }
++        uebernimmGesperrt(fach, liste, anhaengen, b)
+     }
+ 
+     private suspend fun <T : Any> uebernimmGesperrt(fach: Fach<T>, liste: List<T>, anhaengen: Boolean, b: String) {
+@@ -274,7 +274,7 @@
+     suspend fun puffere(bearbeitung: Bearbeitung, schluessel: String = neuerSchluessel()): Boolean {
+         val b = bereich() ?: return false
+         // Einreihen und Anwenden in einem Zug: uebernimm() sieht beides oder keines.
+-        sperre(b, bearbeitung.art).withLock {
++        run {
+             ausgang.einreihen(b, bearbeitung, uhr(), schluessel)
+             wendeAnGesperrt(bearbeitung.art, bearbeitung, b)
+         }

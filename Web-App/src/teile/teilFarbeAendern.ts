@@ -1,10 +1,10 @@
 import type { DbSchnittstelle } from '../../db/database';
-import { lookupPart } from '../katalog/quellen';
-import { meldeFehler, meldeUndLiefere } from '../infra/fehler';
-import { merkeTeilFarbe, katalogTeil } from '../katalog/katalogPflege';
+import { lookupPart, merkeTeilFarbe, katalogTeil } from '../katalog';
+import { meldeFehler } from '../infra/fehler';
 import { colorId } from '../infra/validate';
 import * as repo from './repository/teilFarbe';
 import { fachfehler } from '../infra/fehlerTexte';
+import { versuche } from '../infra/ergebnis';
 import { teileBereich } from './prozess';
 
 // Falsche Farben ohne Neuerfassen ändern.
@@ -28,10 +28,11 @@ async function bildNachtragen(partNumber: string, farbe: number): Promise<BildQu
   const lokal = await katalogTeil(partNumber, farbe);
   if (lokal?.bildQuelle === 'farbe') return 'vorhanden';
 
-  const info = await lookupPart(partNumber, farbe).catch(meldeUndLiefere('teilfarbe:lookupPart', null));
-  if (!info?.image_url) return null;
+  // Die Änderung steht schon; ein gescheiterter Abruf lässt nur das Bild weg.
+  const info = await versuche('teilfarbe:lookupPart', () => lookupPart(partNumber, farbe));
+  if (!info.ok || !info.wert?.image_url) return null;
   try {
-    await merkeTeilFarbe(partNumber, farbe, null, null, info.image_url, null);
+    await merkeTeilFarbe(partNumber, farbe, null, null, info.wert.image_url, null);
     return 'rebrickable';
   } catch (e) {
     meldeFehler('farbwechsel:bild von Rebrickable', e);

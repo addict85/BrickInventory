@@ -1,0 +1,17 @@
+Gegenprobe: Die Benachrichtigung nimmt bei einem gescheiterten Abruf nur den Satz des Servers, auch keinen
+Modul: core-dienste
+Test: ch.brickinventoryapp.dienste.PdfDienstTexteTest
+Rot: jeder Fehler hat einen Satz
+
+diff --git a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/service/PdfExportService.kt b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/service/PdfExportService.kt
+--- a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/service/PdfExportService.kt
++++ b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/service/PdfExportService.kt
+@@ -173,7 +173,7 @@
+ /** Nie leer: Ohne Satz des Servers spricht der Fehlercode, sonst die Art des Fehlers. */
+ internal fun fehlerText(grund: PdfFehlschlag, satz: Satz): String = when (grund) {
+     is PdfFehlschlag.Auftrag -> grund.satz?.takeIf { it.isNotBlank() } ?: satz(R.string.pdfexp_server_error, emptyList())
+-    is PdfFehlschlag.Abruf -> grund.fehler.message.takeIf { it.isNotBlank() }
++    is PdfFehlschlag.Abruf -> grund.fehler.message.takeIf { true }
+         ?: fehlerTextZuCode(grund.fehler.code)?.let { satz(it, emptyList()) }
+         ?: when (val f = grund.fehler) {
+             is Ergebnis.Error.Server -> satz(R.string.pdfexp_http_error, listOf(f.status))

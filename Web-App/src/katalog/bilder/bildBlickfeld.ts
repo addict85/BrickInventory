@@ -1,6 +1,5 @@
-import { beiHaushaltsaenderung } from '../../haushalt/haushalt';
+import { haushaltBereich, beiHaushaltsaenderung } from '../../haushalt';
 import { katalog } from '../prozess';
-import { haushaltBereich } from '../../haushalt/prozess';
 
 /** Anleitungen liegen unter der Setnummer: Ihr Vorhandensein verrät, was jemand
  * besitzt. Set-, Teile- und Figurenbilder sind Katalog und gehen an jedes

@@ -2,21 +2,25 @@
  * Blickfeld, Menge und Kaufpreis. Was das Netz braucht (Katalog, Bild,
  * Marktpreis), hält die Anfrage nicht auf, sondern läuft als Auftrag. */
 import type { DbSchnittstelle } from '../../db/database';
-import { scopeIds, schreibziel } from '../haushalt/haushalt';
-import { recordAcquisitionForDay, setzeGeschaetztenPreis } from '../bestand/acquisitions';
+import { scopeIds, schreibziel } from '../haushalt';
+import { recordAcquisitionForDay, setzeGeschaetztenPreis, setzeLagerort, ortFuerNeuerfassung } from '../bestand';
 import { mitInventarSperre } from '../../db/txLock';
-import { downloadSetImage, rebrickableSetBild } from '../katalog/bilder/setImages';
-import { getCurrentMarketPrice } from '../finanzen/marketPrice';
-import { zustandFuerPreis } from '../einstellungen/settings';
-import { getSetInfo } from '../katalog/rebrickableKatalog';
-import { brickset } from '../katalog/quellen';
-import { generateThumb } from '../katalog/bilder/thumbs';
-import { stelleAuftragEin } from '../auftraege/dienst';
+import {
+  downloadSetImage,
+  rebrickableSetBild,
+  getSetInfo,
+  brickset,
+  generateThumb,
+  katalogStand,
+  merkeKatalogPlatzhalter,
+  merkeSetKatalog,
+} from '../katalog';
+import { getCurrentMarketPrice } from '../finanzen';
+import { zustandFuerPreis } from '../einstellungen';
+import { stelleAuftragEin } from '../auftraege';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../infra/setNummer';
 import { fachfehler } from '../infra/fehlerTexte';
-import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
 import * as repo from './repository/sets';
-import * as katalogStamm from '../katalog/setStamm';
 import { versuche, wertOder } from '../infra/ergebnis';
 import type { SetsKontext } from './kontext';
 
@@ -126,7 +130,7 @@ export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfa
     await repo.sperreSetErfassen(tx, sn, besitzer);
     const vorhanden = await findSetInScope(sk, e.anfragender, sn);
     if (vorhanden) return { action: 'exists' as const, ...vorhanden };
-    const katalog = await katalogStamm.merkeKatalogPlatzhalter(tx, sn);
+    const katalog = await merkeKatalogPlatzhalter(tx, sn);
     await repo.legeSetZeileAn(tx, besitzer, sn);
     await recordAcquisition(
       sk,
@@ -204,7 +208,7 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
   const lokal = wertOder(bild, null);
   if (lokal) void versuche('set-anlegen:vorschau', generateThumb(lokal));
   // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild.
-  await katalogStamm.merkeSetKatalog(sk.db, sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
+  await merkeSetKatalog(sk.db, sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
   return { name, gestoert: !rbErgebnis.ok, bild: !!lokal };
 }
 
@@ -216,7 +220,7 @@ export async function setErgaenzen(
   konto: number,
   sendProgress: Fortschritt | null = null,
 ): Promise<{ name: string | null }> {
-  const stand = await katalogStamm.katalogStand(sk.db, sn);
+  const stand = await katalogStand(sk.db, sn);
   let name = stand && !stand.platzhalter ? stand.name : null;
   if (!stand || stand.platzhalter || !stand.image_local) {
     const k = await katalogHolen(sk, sn, true, sendProgress);

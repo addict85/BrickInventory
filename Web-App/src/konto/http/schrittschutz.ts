@@ -5,6 +5,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { familieAus, pruefeFreigabe, type Schrittaktion } from '../geraeteChallenge';
 import { meldeFehler } from '../../infra/fehler';
 import { sendeFehler } from '../../http/httpAntwort';
+import { istVerwalter } from './anmeldung';
 
 /** Die Schritte, vor denen die App ihren Schrittschutz zeigt. Die Verwaltung
  * prüft requireApiAdmin selbst, damit keine Verwalter-Route an der Liste vorbeigeht. */
@@ -21,21 +22,35 @@ export function istAppToken(req: Request): boolean {
 }
 
 export function verlangeFreigabe(req: Request, res: Response, next: NextFunction, aktion: Schrittaktion): void {
-  if (!istAppToken(req)) {
-    next();
-    return;
-  }
+  void freigegeben(req, res, aktion).then(ok => {
+    if (ok) next();
+  });
+}
+
+/** Wie verlangeFreigabe, als Wert: für Routen, die nur für Verwalter mehr tun.
+ * Bei `false` ist die Absage schon gesendet. */
+export async function freigegeben(req: Request, res: Response, aktion: Schrittaktion): Promise<boolean> {
+  if (!istAppToken(req)) return true;
   const f = familieAus(req.apiUser);
-  // Ohne Familie (kein created_at) gibt es keinen Schlüssel: zu, nicht offen.
-  (f ? pruefeFreigabe(f, aktion) : Promise.resolve('kein_schluessel' as const))
-    .then(p => {
-      if (p === 'frei') next();
-      else sendeFehler(req, res, 403, p === 'kein_schluessel' ? 'geraeteschluessel_fehlt' : 'schritt_freigabe_noetig');
-    })
-    .catch((e: unknown) => {
-      meldeFehler('schrittschutz', e);
-      sendeFehler(req, res, 503, 'server_ausgelastet');
-    });
+  try {
+    // Ohne Familie (kein created_at) gibt es keinen Schlüssel: zu, nicht offen.
+    const p = f ? await pruefeFreigabe(f, aktion) : 'kein_schluessel';
+    if (p === 'frei') return true;
+    sendeFehler(req, res, 403, p === 'kein_schluessel' ? 'geraeteschluessel_fehlt' : 'schritt_freigabe_noetig');
+  } catch (e) {
+    meldeFehler('schrittschutz', e);
+    sendeFehler(req, res, 503, 'server_ausgelastet');
+  }
+  return false;
+}
+
+/** Für Lesewege, die Verwaltern mehr zeigen: Ein App-Token ohne Freigabe
+ * sieht dort, was jedes Konto sieht, statt eine Absage zu bekommen. */
+export async function alsVerwalter(req: Request): Promise<boolean> {
+  if (!istVerwalter(req)) return false;
+  if (!istAppToken(req)) return true;
+  const f = familieAus(req.apiUser);
+  return !!f && (await pruefeFreigabe(f, 'verwaltung')) === 'frei';
 }
 
 /** Hinter anmeldungAmEingang, vor dem Lesen des Rumpfs. */

@@ -9,7 +9,7 @@ export type TokenZeile = {
   last_used: string | Date | null; sliding: boolean; never_expires: boolean; scope: TokenScope;
   rotiert_am: string | Date | null; vorgaenger: string | null; label: string | null; ip_bereich: string | null;
   created_at: string | Date;
-  username: string; konto_is_admin: boolean; is_admin?: number; muss_passwort_aendern: boolean;
+  username: string; konto_is_admin: boolean; is_admin?: boolean; muss_passwort_aendern: boolean;
 };
 
 /** Fristen und Kontozustand in der Abfrage: Ein abgelaufener Token oder einer

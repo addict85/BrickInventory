@@ -50,10 +50,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.testing.VerwaltungRepository
-import ch.brickinventoryapp.zustand.ui.AnmeldeFormular
-import ch.brickinventoryapp.zustand.ui.CsvImportUiState
+import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
+import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.konto.ui.KontoUiState
-import ch.brickinventoryapp.zustand.ui.Screen
 import ch.brickinventoryapp.konto.ui.ZweiterFaktorUiState
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
@@ -102,6 +101,7 @@ import org.robolectric.Shadows
 import ch.brickinventoryapp.testing.KontoRepository
 import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.sammlung.ui.SammlungZiel
 
 /**
  * Befunde der zehnten und elften UI-Prüfung (Android), als Verhalten ausgeführt: Der
@@ -173,7 +173,7 @@ class GeruestUndFormularTest {
         val nav = rememberNavController()
         val reiter = remember {
             listOf(
-                Reiter(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"))
+                Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"))
         }
         MainScaffold(
             title = "Sammlung", navController = nav, bottomNavItems = reiter,
@@ -181,7 +181,7 @@ class GeruestUndFormularTest {
             csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
             onCsvAbbrechen = {}, onTabAngetippt = {}, offeneAenderungen = offen,
         ) {
-            NavHost(nav, startDestination = Screen.Gallery) { composable<Screen.Gallery> { inhalt() } }
+            NavHost(nav, startDestination = SammlungZiel.Gallery) { composable<SammlungZiel.Gallery> { inhalt() } }
         }
     }
 
@@ -230,10 +230,9 @@ class GeruestUndFormularTest {
         try {
             welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
                 {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF"}]}"""
-            val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
+            val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
                 KontoRepository(welt.t.api, welt.t.cache, welt.t.io),
-                VerwaltungRepository(welt.t.api, welt.t.cache),
-                SetsRepository(welt.t.api, welt.t.cache),
+                VerwaltungRepository(welt.t.api, welt.t.cache), SetsRepository(welt.t.api, welt.t.cache),
                 TeileRepository(welt.t.api, welt.t.cache),
                 object : DateiLeser {
                     override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
@@ -311,10 +310,9 @@ class GeruestUndFormularTest {
         try {
             welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
                 {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF","name":"Millennium Falcon"}]}"""
-            val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
+            val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
                 KontoRepository(welt.t.api, welt.t.cache, welt.t.io),
-                VerwaltungRepository(welt.t.api, welt.t.cache),
-                SetsRepository(welt.t.api, welt.t.cache),
+                VerwaltungRepository(welt.t.api, welt.t.cache), SetsRepository(welt.t.api, welt.t.cache),
                 TeileRepository(welt.t.api, welt.t.cache),
                 object : DateiLeser {
                     override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null

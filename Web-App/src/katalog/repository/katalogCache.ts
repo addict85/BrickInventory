@@ -24,11 +24,11 @@ export type BricklinkArt = 'GEAR' | 'BOOK' | 'NONE';
 /** NONE heisst „kein Preis", mit Zeitstempel. */
 export async function merkeBricklinkArt(db: DbSchnittstelle, nummer: string, art: BricklinkArt): Promise<void> {
   if (art === 'NONE') {
-    await db.run(`INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,$2,$3,true)
-      ON CONFLICT (set_number) DO UPDATE SET bl_type=$3, is_gear=true, fetched_at=NOW()`, [nummer, `Set ${nummer}`, art]);
+    await db.run(`INSERT INTO catalog_cache (set_number, bl_type, is_gear) VALUES ($1,$2,true)
+      ON CONFLICT (set_number) DO UPDATE SET bl_type=$2, is_gear=true, fetched_at=NOW()`, [nummer, art]);
   } else {
-    await db.run(`INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,$2,$3,false)
-      ON CONFLICT (set_number) DO UPDATE SET bl_type=$3, is_gear=false`, [nummer, `Set ${nummer}`, art]);
+    await db.run(`INSERT INTO catalog_cache (set_number, bl_type, is_gear) VALUES ($1,$2,false)
+      ON CONFLICT (set_number) DO UPDATE SET bl_type=$2, is_gear=false`, [nummer, art]);
   }
 }
 
@@ -53,7 +53,7 @@ export function blTypenDerSets(db: DbSchnittstelle, setNummern: string[]) {
   return db.all<{ set_number: string; bl_type: string | null }>('SELECT set_number, bl_type FROM catalog_cache WHERE set_number = ANY($1::text[])', [setNummern]);
 }
 
-export function merkeBlTyp(db: DbSchnittstelle, n: string, name: string, found: string, isGear: boolean) {
-  return db.run(`INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1,$2,$3,$4)
-     ON CONFLICT (set_number) DO UPDATE SET bl_type = $3, fetched_at = NOW()`, [n, name, found, isGear]);
+export function merkeBlTyp(db: DbSchnittstelle, n: string, found: string, isGear: boolean) {
+  return db.run(`INSERT INTO catalog_cache (set_number, bl_type, is_gear) VALUES ($1,$2,$3)
+     ON CONFLICT (set_number) DO UPDATE SET bl_type = $2, fetched_at = NOW()`, [n, found, isGear]);
 }

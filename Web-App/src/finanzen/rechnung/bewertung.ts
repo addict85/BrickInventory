@@ -5,9 +5,9 @@
 import { createHash } from 'node:crypto';
 import { logAndContinue } from '../../infra/fehler';
 import type * as repo from '../repository/bewertung';
-import { asIds, type Sicht } from '../../haushalt/haushalt';
-import { getGlobalSetting, getSetting } from '../../einstellungen/settings';
-import { resolveImageLocal, proxyImageUrl } from '../../katalog/bilder/images';
+import { haushaltBereich, asIds, type Sicht } from '../../haushalt';
+import { getGlobalSetting, getSetting } from '../../einstellungen';
+import { resolveImageLocal, proxyImageUrl } from '../../katalog';
 import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct, pnlProzent } from '../setValue';
 import { mitVersion } from '../../infra/setNummer';
 import {
@@ -16,13 +16,11 @@ import {
 } from './preise';
 import { zaehle } from './abfragen';
 import type { ladeSetErfassungen } from '../repository/erfassungen';
-import { KEINE_FARBE } from '../../infra/validate';
+import { KEINE_FARBE, zustand } from '../../infra/validate';
 import { aufRappen, inZehntel4 } from '../../infra/geld';
-import { stelleAuftragEin } from '../../auftraege/dienst';
+import { stelleAuftragEin, type Nutzlast } from '../../auftraege';
 import { fehlerText } from '../../infra/fehlerTexte';
-import type { Nutzlast } from '../../auftraege/nutzlasten';
 import { finanzenBereich } from '../prozess';
-import { haushaltBereich } from '../../haushalt/prozess';
 
 type Zustand = 'N' | 'U';
 type Posten = Nutzlast<'preise_nachladen'>['posten'][number];
@@ -69,7 +67,7 @@ function bewerteSet(set: BewertungsSet, acqs: SetErfassung[], l: Bewertungslage)
   // Ohne Erfassung gilt das Set als neu (effectiveCondition ohne Zähler).
   const fallbackCond: Zustand = 'N';
   const needed: Zustand[] = acqs.length
-    ? [...new Set(acqs.map(a => (a.condition === 'U' ? 'U' : 'N') as Zustand))] : [fallbackCond];
+    ? [...new Set(acqs.map(a => zustand(a.condition)))] : [fallbackCond];
   const preise = new Map<Zustand, PreisDaten>(needed.map(c => [c, setPreisAusVorrat(set.set_number, c, l.ttl, l.pre)]));
   const preisMap = new Map<string, number>();
   for (const [cond, p] of preise) {
@@ -178,7 +176,7 @@ export async function computeSetsValuation(viewerId: number, idsWahl: Sicht | Bl
 
 function conditionsOf(acqs: { condition?: string | null }[]): Zustand[] {
   if (!acqs?.length) return ['N'];
-  const set = new Set(acqs.map(a => (a.condition === 'U' ? 'U' : 'N')));
+  const set = new Set(acqs.map(a => zustand(a.condition)));
   return (['N', 'U'] as const).filter(c => set.has(c));
 }
 

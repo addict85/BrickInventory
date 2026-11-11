@@ -9,8 +9,8 @@ import { hinweisNebenher } from './kontoHinweis';
 import { kontoGedrosselt } from './zielDrossel';
 import * as zf from './zweiterFaktor';
 import * as QR from './qrKopplung';
-import { getSetting } from '../einstellungen/settings';
-import { sendEmailGeaendertMail, sendRegistrierungsVersuchMail, sendVerificationMail } from '../mail/mailer';
+import { getSetting } from '../einstellungen';
+import { sendEmailGeaendertMail, sendRegistrierungsVersuchMail, sendVerificationMail } from '../mail';
 import { basisUrl, hinweisOhneBasisUrl, mailBasisUrl, ueberTls, unbegrenztNurMitTls } from '../infra/basisUrl';
 import { tlsStand } from '../infra/tlsWurzel';
 import { fachfehler } from '../infra/fehlerTexte';
@@ -171,7 +171,7 @@ async function adressMails(user: Konto, email: string, token: string): Promise<b
 }
 
 /** Der Name aus der Tabelle: Mit App-Token gibt es keine Sitzung, die ihn trägt. */
-export async function eigenesPasswortAendern(uid: number, neu: unknown, passkeysWiderrufen: boolean) {
+export async function eigenesPasswortAendern(uid: number, neu: string, passkeysWiderrufen: boolean) {
   const konto = await kontoBereich().konten.kontoKurz(uid);
   const mangel = passwortMangel(neu, konto?.username);
   if (mangel) fachfehler('ungueltig', mangel);

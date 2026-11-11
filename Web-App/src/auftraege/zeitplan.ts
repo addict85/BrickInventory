@@ -1,5 +1,5 @@
-import { getGlobalSetting } from '../einstellungen/settings';
-import { type AuftragsArt } from './auftraege';
+import { getGlobalSetting } from '../einstellungen';
+import type { AuftragsArt } from './auftraege';
 import { AUFTRAG_KANAL, stelleAuftragEin } from './dienst';
 import { pruefeNutzlast, type NutzlastEingabe } from './nutzlasten';
 import { auftraegeBereich } from './prozess';

@@ -40,10 +40,10 @@ const STILLE_FAENGE = [
 /**
  * Treffer zaehlen — im CODE, nicht in den Erklaerungen darueber.
  */
-function zaehle(muster) {
+function zaehle(muster, nur = (/** @type {string} */ _f) => true) {
   const { ohneKommentare } = require('./helpers/sources');
   let n = 0;
-  for (const f of quellen()) {
+  for (const f of quellen().filter(nur)) {
     const s = ohneKommentare(fs.readFileSync(f, 'utf8'));
     for (const m of muster) n += (s.match(m) || []).length;
   }
@@ -61,9 +61,9 @@ test('die Suche findet die Quellen ueberhaupt', () => {
 });
 
 test('stille Faenge werden weniger, nie mehr', () => {
-  // Die beiden übrigen sind Rebrickable-Vermutungen, deren 404 die Antwort ist.
-  // Gemessen 2 am 08.11.2026.
-  const SCHRANKE = 2;
+  // Gemessen 0 am 11.11.2026: Die beiden letzten (Rebrickable-Teilezuordnung)
+  // fangen nur noch 404, das rbGet() selbst als null liefert.
+  const SCHRANKE = 0;
   // Selbstbeweis des letzten Musters: Es muss einen Ersatzwert ohne Meldung finden, die Meldung nicht.
   const ersatz = STILLE_FAENGE[STILLE_FAENGE.length - 1];
   const trifft = (s) => (s.match(ersatz) || []).length;
@@ -81,16 +81,16 @@ test('stille Faenge werden weniger, nie mehr', () => {
 });
 
 test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', () => {
-  // Getrennt gezählt: logAndContinue ist Fire-and-forget (Protokoll, Zähler,
-  // Benachrichtigung) und liefert nichts; meldeUndLiefere gibt dem Aufrufer einen
-  // Ersatzwert, der wie „leer“ aussieht. Lesepfade nehmen versuche()/Abstriche
-  // (src/infra/ergebnis.ts) oder lassen den Fehler weiter.
-  // Gegenprobe (10.11.2026): in src/teile/abfragen.ts wieder
-  // `.catch(meldeUndLiefere('x', []))` → rot (83 Ersatzwerte, Schranke 82).
-  const SCHRANKEN = { logAndContinue: 145, meldeUndLiefere: 82 };
+  // logAndContinue liefert nichts; meldeUndLiefere einen Ersatzwert, der wie „leer“
+  // aussieht. Lesepfade nehmen versuche()/Abstriche oder lassen den Fehler weiter;
+  // die übrigen Ersatzwerte begründen sich als „Ausnahme:“ im Code. Gemessen 7 am 11.11.2026.
+  // Gegenprobe (11.11.2026): in src/katalog/farben.ts wieder
+  // `.catch(meldeUndLiefere('x', []))` → rot (8 Ersatzwerte, Schranke 7).
+  const SCHRANKEN = { logAndContinue: 145, meldeUndLiefere: 7 };
+  const MINDESTENS = { logAndContinue: 20, meldeUndLiefere: 3 };
   for (const [name, schranke] of Object.entries(SCHRANKEN)) {
     const ist = zaehle([new RegExp(`\\b${name}\\(`, 'g')]);
-    assert.ok(ist > 20, `nur ${ist}-mal ${name} gefunden — greift die Suche noch?`);
+    assert.ok(ist > MINDESTENS[name], `nur ${ist}-mal ${name} gefunden — greift die Suche noch?`);
     assert.ok(ist <= schranke, `${ist}-mal ${name}, erlaubt sind ${schranke}`);
     if (ist < schranke) console.log(`  ℹ ${name}: ${ist} (Schranke ${schranke}) — Schranke nachziehen`);
   }
@@ -127,17 +127,17 @@ test('der Kompatibilitätsweg zur Datenbank und modulweite let werden weniger, n
   if (ist < SCHRANKE) console.log(`  ℹ Kompatibilitätsweg db/database: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 
   // Modulweite let: Zustand, den alle Aufrufer eines Prozesses teilen; ein Bereich
-  // bekommt seinen über die Fabrik. Gemessen 47 am 11.11.2026 (Fächer je Bereich, src/infra/zwischenspeicher.ts).
+  // bekommt seinen über die Fabrik. Gemessen 45 am 11.11.2026 (Fächer je Bereich, src/infra/zwischenspeicher.ts).
   // Gegenprobe (10.11.2026): `let _probe = 0;` in src/katalog/kontext.ts → rot mit 59.
-  const LET_SCHRANKE = 47;
+  const LET_SCHRANKE = 45;
   const lets = quellen().reduce((n, f) => n + (fs.readFileSync(f, 'utf8').match(/^(?:export )?let /gm) || []).length, 0);
   assert.ok(lets > 20 && lets <= LET_SCHRANKE, `${lets} modulweite let, erlaubt sind ${LET_SCHRANKE}`);
   if (lets < LET_SCHRANKE) console.log(`  ℹ modulweite let: ${lets} (Schranke ${LET_SCHRANKE}) — Schranke nachziehen`);
 });
 
 test('any wird weniger, nie mehr', () => {
-  // Gemessen 22 am 09.11.2026.
-  const SCHRANKE = 22;
+  // Gemessen 18 am 11.11.2026 (Antworten von Rebrickable und Brickset über zod).
+  const SCHRANKE = 18;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +
@@ -148,14 +148,38 @@ test('any wird weniger, nie mehr', () => {
   }
 });
 
-test('any in allen Formen wird weniger, nie mehr', () => {
+test('any in allen Formen, unknown-Parameter und success in Diensten werden weniger, nie mehr', () => {
   // Auch Promise<any>, any[] und Record<string, any>: Die enge Zählung oben sah
-  // nur `as any` und `: any`. Gemessen 35 am 10.11.2026.
+  // nur `as any` und `: any`. Gemessen 28 am 11.11.2026.
   // Gegenprobe (05.11.2026): getSetting wieder `fallback?: any` ohne Überladungen → rot.
-  const SCHRANKE = 35;
+  const SCHRANKE = 28;
   const ist = zaehle([/\bany\b/g]);
   assert.ok(ist <= SCHRANKE, `${ist}-mal any, erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ any (alle Formen): ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+
+  // Dieselbe Art Zählung: Die Hülle der Antwort setzt die Route, ein Dienst
+  // liefert das Fachobjekt. Gemessen 7 am 11.11.2026 (vorher 35): Zeilenstatus in
+  // Importberichten, Mailversand und der Import-Fortschritt (ein Strom-Format) bleiben.
+  // Gegenprobe (11.11.2026): in auftragAbbrechen() wieder `success: true` → rot.
+  const SUCCESS_SCHRANKE = 7;
+  const success = zaehle([/\bsuccess:\s*true\b/g],
+    f => /^src[\\/](?!vertrag[\\/]|http[\\/])/.test(path.relative(WEB, f)));
+  assert.ok(success <= SUCCESS_SCHRANKE, `${success}-mal success: true in src/ (ohne vertrag/, http/), erlaubt sind ${SUCCESS_SCHRANKE}`);
+  if (success < SUCCESS_SCHRANKE) console.log(`  ℹ success in Diensten: ${success} (Schranke ${SUCCESS_SCHRANKE}) — Schranke nachziehen`);
+  // Routen reichen req.eingabe/req.pfad mit Vertragstyp durch, Dienste nehmen
+  // Fachtypen (Zustand, string). Ausgenommen sind die Prüfer für Rohwerte
+  // (src/vertrag, src/infra, src/http) und Fehlerparameter. Gemessen 74 am 11.11.2026.
+  // Gegenprobe (11.11.2026): `condition: unknown` zurück in alarmDesSetsLoeschen → rot (75).
+  const SCHRANKE_UNKNOWN = 74;
+  const MUSTER = /(?<!catch\s*)[(,]\s*\.{0,3}(?!(?:e|err|error|fehler|grund)\b)\w+\??\s*:\s*unknown\s*(?=[,)=])/g;
+  assert.equal(('f(a: unknown, b?: unknown = 1)'.match(MUSTER) || []).length + ('catch (e: unknown)'.match(MUSTER) || []).length, 2);
+  const ohneKommentare = require('./helpers/sources').ohneKommentare;
+  const ROH = /[\\/]src[\\/](?:vertrag|infra|http)[\\/]/;
+  const unbekannt = quellen().filter(f => /[\\/]src[\\/]/.test(f) && !ROH.test(f))
+    .reduce((n, f) => n + (ohneKommentare(fs.readFileSync(f, 'utf8')).match(MUSTER) || []).length, 0);
+  assert.ok(unbekannt > 20, `nur ${unbekannt} unknown-Parameter gefunden — greift die Suche noch?`);
+  assert.ok(unbekannt <= SCHRANKE_UNKNOWN, `${unbekannt} Parameter vom Typ unknown in Diensten, erlaubt sind ${SCHRANKE_UNKNOWN}`);
+  if (unbekannt < SCHRANKE_UNKNOWN) console.log(`  ℹ unknown-Parameter: ${unbekannt} (Schranke ${SCHRANKE_UNKNOWN}) — Schranke nachziehen`);
 });
 
 test('eigene REQUIRE_DB-Blöcke in Tests werden weniger, nie mehr', () => {
@@ -572,7 +596,7 @@ test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie meh
 test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () => {
   // Je Ordner eine Schranke, gemessen am 10.11.2026.
   // Gegenprobe: 40 Kommentarzeilen an clients/ezb.ts gehängt → rot (clients).
-  const SCHRANKE = { db: 24.4, clients: 15.6, scripts: 24.9 };
+  const SCHRANKE = { db: 24.4, clients: 15.0, scripts: 24.9 };
   const zuViel = [];
   for (const [ordner, schranke] of Object.entries(SCHRANKE)) {
     let zeilen = 0, kommentar = 0;
@@ -660,10 +684,10 @@ test('kein Verweis auf das frühere Begründungsarchiv', () => {
 test('der Kommentaranteil der Betriebsdateien sinkt, nie steigt', () => {
   // Workflows, Dockerfile, compose.yaml, tsconfig.json: Auch dort steht das
   // Warum in wenigen Zeilen, die Geschichte im Commit (CLAUDE.md). Gemessen
-  // 23,5 % am 06.11.2026. Das Caddyfile zählt nicht mit:
+  // 20,9 % am 11.11.2026. Das Caddyfile zählt nicht mit:
   // Kein Block darin ist länger als fünf Zeilen.
   // Gegenprobe (04.11.2026): 60 Kommentarzeilen an das Dockerfile → rot.
-  const SCHRANKE = 23.5;
+  const SCHRANKE = 20.9;
   const wf = path.join(WEB, '..', '.github', 'workflows');
   const dateien = [
     ...fs.readdirSync(wf).filter(f => /\.ya?ml$/.test(f)).map(f => path.join(wf, f)),
@@ -741,9 +765,9 @@ test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie meh
 
 test('Testdateien ohne Gegenprobe werden weniger, nie mehr', () => {
   // Jeder Test nennt im Kopf seine Gegenprobe (CLAUDE.md); die älteren ohne
-  // werden beim Anfassen nachgetragen. Gemessen 74 am 10.11.2026.
+  // werden beim Anfassen nachgetragen. Gemessen 73 am 11.11.2026.
   // Gegenprobe (05.11.2026): in lint-ratsche.test.js „Gegenproben“ umbenannt → rot (112).
-  const SCHRANKE = 74;
+  const SCHRANKE = 73;
   const ohne = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js'))
     .filter(n => !fs.readFileSync(path.join(__dirname, n), 'utf8').includes('Gegenprobe'));
   assert.ok(ohne.length <= SCHRANKE, `${ohne.length} Testdateien ohne Gegenprobe, erlaubt sind ${SCHRANKE}`);

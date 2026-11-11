@@ -1,12 +1,13 @@
 /** Der Preislauf holt die Marktpreise ohnehin; hier fehlte nur der Schritt,
  * eine Schwelle damit zu vergleichen. Ein Alarm gehört EINEM Konto. */
-import { meldeUndLiefere, meldeFehler, fehlertext } from '../infra/fehler';
-import { scopeIds } from '../haushalt/haushalt';
+import { meldeFehler, fehlertext } from '../infra/fehler';
+import { scopeIds } from '../haushalt';
 import { fachfehler } from '../infra/fehlerTexte';
-import * as mailer from '../mail/mailer';
+import * as mailer from '../mail';
 import { toCsv, csvZeilenAusAnfrage, uebersprungenHinweis } from '../infra/csvExport';
 import { normalisiereSetNummer } from '../infra/setNummer';
 import * as repo from './repository/preisalarme';
+import { versuche } from '../infra/ergebnis';
 import type { DbSchnittstelle } from '../../db/database';
 
 /** Ausgeschrieben statt `any`: Betrag, Richtung und Mailadresse stehen
@@ -76,7 +77,6 @@ export async function loescheAlarm(db: DbSchnittstelle, userId: number, setNumbe
   const r = await repo.entferneAlarm(db, userId, setNumber, c);
   return r.changes ?? 0;
 }
-
 
 export async function alarmeFuer(db: DbSchnittstelle, userId: number, setNumber: string): Promise<Preisalarm[]> {
   const rows = await repo.alarmeDesSets(db, userId, setNumber, await scopeIds(db, userId))
@@ -212,8 +212,9 @@ export async function pruefeSet(db: DbSchnittstelle, setNumber: string,
 
 /** Getrennt, damit pruefeSet() über das WANN entscheidet, nicht über das WIE. */
 async function verschicke(db: DbSchnittstelle, versende: Versender, a: AlarmZeile, preis: number, schwelle: number) {
-  const name = await repo.setNameAusStamm(db, a.set_number)
-    .catch(meldeUndLiefere('preisalarm:name', null));
+  // Der Alarm geht auch ohne Namen hinaus; die Mail nennt dann nur die Setnummer.
+  const gelesen = await versuche('preisalarm:name', repo.setNameAusStamm(db, a.set_number));
+  const name = gelesen.ok ? gelesen.wert : null;
   const mail = await mailer.baueAlarmMail({
     username:  a.username,
     lang:      String(a.sprache),
@@ -268,7 +269,7 @@ export async function alarmeAusCsv(db: DbSchnittstelle, uid: number, waehrung: s
     }
   }
   return {
-    success: true, added, updated, errors, total: records.length, results,
+    added, updated, errors, total: records.length, results,
     skipped: uebersprungen.length || undefined,
     skipped_hint: uebersprungenHinweis(uebersprungen) || undefined,
     ...(fremdeWaehrung ? { waehrung_hinweis:

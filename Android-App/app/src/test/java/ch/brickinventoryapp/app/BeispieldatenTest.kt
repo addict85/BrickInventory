@@ -23,8 +23,11 @@ import ch.brickinventoryapp.sammlung.ui.viewmodel.SetDetailViewModel
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileViewModel
 import ch.brickinventoryapp.teile.ui.TeilelistenQuelle
 import ch.brickinventoryapp.teile.ui.PlPart
+import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.service.ExportErgebnis
 import ch.brickinventoryapp.data.service.TeilelistenExport
+import ch.brickinventoryapp.data.service.PdfFehlschlag
+import ch.brickinventoryapp.model.fach.PdfFortschritt
 import ch.brickinventoryapp.teile.ui.viewmodel.TeilelisteViewModel
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.Dispatchers
@@ -307,13 +310,13 @@ object Beispiele {
         val pfade = PfadServer(*ANTWORTEN)
         val t = TestDienste(pfade.imTakt(), texte, io = Dispatchers.Main).also { d -> d.sitzung.waehrungUebernommen(Waehrung.CHF) }
 
-        fun galerie() = t.merke(GalerieViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, SetsRepository(t.api, t.cache),
-            FinanzenRepository(t.api, t.cache), SavedStateHandle()))
-        fun teile() = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
-        fun finanzen() = t.merke(FinanzViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, FinanzenRepository(t.api, t.cache), SavedStateHandle()))
-        fun merkliste() = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, SetsRepository(t.api, t.cache),
+        fun galerie() = t.merke(GalerieViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, SetsRepository(t.api, t.cache),
+            t.kontosicht, FinanzenRepository(t.api, t.cache), SavedStateHandle()))
+        fun teile() = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), t.kontosicht, SavedStateHandle()))
+        fun finanzen() = t.merke(FinanzViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, FinanzenRepository(t.api, t.cache), SavedStateHandle()))
+        fun merkliste() = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, SetsRepository(t.api, t.cache), t.kontosicht,
             KatalogRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), SavedStateHandle()))
-        fun setDetail() = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, SetsRepository(t.api, t.cache),
+        fun setDetail() = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(),
             FinanzenRepository(t.api, t.cache), HaushaltRepository(t.api, t.cache),
             object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null },
             SavedStateHandle(mapOf("setNumber" to SET))))
@@ -325,8 +328,9 @@ object Beispiele {
                 override suspend fun mitBestand(teile: List<PlPart>, nurLose: Boolean, mitUnterkonten: Boolean) = teile
                 override fun sortiert(teile: Collection<PlPart>) = teile.toList()
             }, object : TeilelistenExport {
-                override val status = flowOf<String?>(null)
-                override suspend fun erzeuge(rumpf: String): ExportErgebnis = ExportErgebnis.Fehler(null)
+                override val fortschritt = flowOf<PdfFortschritt?>(null)
+                override suspend fun erzeuge(rumpf: String): ExportErgebnis =
+                    ExportErgebnis.Fehler(PdfFehlschlag.Abruf(Ergebnis.Error.Netz()))
             }, SavedStateHandle()))
 
         override fun close() {

@@ -5,11 +5,8 @@ import { mitSitzungsSperre } from '../../db/txLock';
 import { downloadSetInstructions, letzterAbrufWarExtern, anzahlAnleitungen, scrapeInstructionsFromFallback } from './instructions';
 import { fehlertext } from '../infra/fehler';
 import { alsAbrufFehler } from './quellen';
-import { zaehleArt, beendePause } from '../auftraege/dienst';
+import { auftraegeBereich, zaehleArt, beendePause, type Nutzlast, type AuftragsLauf, AuftragVerschieben } from '../auftraege';
 import { LOCKS } from '../infra/lockNamespaces';
-import type { Nutzlast } from '../auftraege/nutzlasten';
-import { type AuftragsLauf, AuftragVerschieben } from '../auftraege/auftraege';
-import { auftraegeBereich } from '../auftraege/prozess';
 import { katalog } from './prozess';
 
 const TAKT_NACH_ABRUF_MS = 15_000;

@@ -43,7 +43,7 @@ import java.util.Collections
 class VorschauVorwaermerTest {
 
     private val wurzel = File(System.getProperty("java.io.tmpdir"), "bim-vorwaermen-${System.nanoTime()}")
-    private val speicher = VorschauSpeicher({ wurzel }, AblageChiffre { ByteArray(32) { 9 } })
+    private val speicher = VorschauSpeicher({ wurzel }, AblageChiffre { ByteArray(32) { 9 } }) { ByteArray(32) { 19 } }
     private var lage = Netzlage.Art.WLAN
     private val erlaubt = mutableMapOf(VorwaermNetz.WLAN to true, VorwaermNetz.MOBIL to false, VorwaermNetz.ROAMING to false)
     private val gestellt: MutableList<Request> = Collections.synchronizedList(mutableListOf())

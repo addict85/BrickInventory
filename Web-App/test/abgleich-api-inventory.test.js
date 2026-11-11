@@ -118,11 +118,13 @@ const C = {
   'POST /api/v1/auth/token-create': 'nur-v1',
   'POST /api/v1/auth/qr-login': 'nur-v1',
   'POST /api/v1/auth/qr-login/abholen': 'nur-v1',
+  'POST /api/v1/auth/qr-login/verwerfen': 'nur-v1',
   // Die App fragt vor einem Klartext-Zugang, ob der Server ihren Token kennt.
   // Tausch des eigenen Tokens: ein Weg der App (Rotation).
   'POST /api/v1/auth/token-rotieren': 'nur-v1',
   // Schrittschutz der App: Keystore-Schlüssel und Freigabe; der Browser bestätigt mit Passwort.
   'POST /api/v1/geraet/schluessel': 'nur-v1',
+  'POST /api/v1/geraet/schluessel/nonce': 'nur-v1',
   'POST /api/v1/geraet/schritt/challenge': 'nur-v1',
   'POST /api/v1/geraet/schritt/freigabe': 'nur-v1',
   // Passkeys sind WebAuthn im Browser; die Anmeldung legt eine Sitzung an.

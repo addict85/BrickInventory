@@ -5,26 +5,17 @@ import { FORMULAR_GRENZEN } from '../../src/http/dateiEmpfang';
 import { logAndContinue, meldeUndLiefere } from '../../src/infra/fehler';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireApiAdmin as requireAdmin, requireToken, bearerToken, kontoSchranke } from './middleware';
-import { SECRET_KEYS, isMaskedValue, readSettings, designFuer, deleteUserSetting, setGlobalSetting, globalerWertGueltig, deleteGlobalSetting, globalDefaultCondition, nutzerStandardZustand, getGlobalSetting, getSetting } from '../../src/einstellungen/settings';
-import { setzeEigenesDesign, setUserSetting } from '../../src/konto/nutzerEinstellung';
-import { quellePruefen, bricksetLimitGesetzt } from '../../src/verwaltung/dienst';
-import { andereSitzungenBeenden, profil } from '../../src/konto/konten';
-import { hashToken, leereTokenCache } from '../../src/konto/auth';
-import { kontoGedrosselt } from '../../src/konto/zielDrossel';
-import { resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, bestaetigeMitFaktor, perSitzung } from '../../src/konto/http/anmeldung';
-import { hinweisNebenher, verwalterHinweisNebenher } from '../../src/konto/kontoHinweis';
-import { sendMail, testSmtp, sendHaushaltVerknuepftMail, mailBereit } from '../../src/mail/mailer';
+import { readSettings, designFuer, deleteUserSetting, setGlobalSetting, globalDefaultCondition, nutzerStandardZustand, getGlobalSetting, getSetting } from '../../src/einstellungen';
+import { kontoBereich, setzeEigenesDesign, setUserSetting, andereSitzungenBeenden, profil, hashToken, leereTokenCache, kontoGedrosselt, hinweisNebenher, invalidateTheme } from '../../src/konto';
+import { quellePruefen, einstellungenSpeichern, hatGlobaleWerte, konfigExport, datenZip, konfigImport } from '../../src/verwaltung';
+import { resolveUserId, requireLoginOrToken, istVerwalter, nutzerName, bestaetigeMitFaktor, perSitzung } from '../../src/konto/http/anmeldung';
+import { freigegeben, alsVerwalter } from '../../src/konto/http/schrittschutz';
+import { haushaltBereich } from '../../src/haushalt';
+import { sendMail, testSmtp, sendHaushaltVerknuepftMail } from '../../src/mail';
 import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import { tlsAuskunft } from '../../src/infra/tlsWurzel';
-import { invalidateTheme } from '../../src/konto/indexHtml';
 import { emailGueltig } from '../../src/infra/validate';
-import { konfigExport, datenZip, konfigImport, istHeikel } from '../../src/verwaltung/datenexport';
-import { GLOBALE_EINSTELLUNGEN, KONTO_EINSTELLUNGEN } from '../../src/vertrag/einstellungen';
-import type { Request } from 'express';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/http/vertragsRouter';
-import { kontoBereich } from '../../src/konto/prozess';
-import { haushaltBereich } from '../../src/haushalt/prozess';
+import { vertragsRouter, type Anfrage, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
 const router = vertragsRouter();
 
 const requireLogin = requireLoginOrToken;
@@ -40,12 +31,12 @@ router.get('/settings/theme', async (req: OffeneAnfrage<'GET /api/v1/settings/th
 
 // Vor router.use(requireLogin), weil requireLogin nur die Sitzung kennt und
 // die App ihre Zugänge mit Token verwaltet.
-router.get('/settings/tokens', requireLoginOrToken, async (req: OffeneAnfrage<'GET /api/v1/settings/tokens'>, res: Antwort<'GET /api/v1/settings/tokens'>) => {
+router.get('/settings/tokens', requireToken, async (req: Anfrage<'GET /api/v1/settings/tokens'>, res: Antwort<'GET /api/v1/settings/tokens'>) => {
   const eigener = bearerToken(req);
   const eigenerHash = eigener ? hashToken(eigener) : null;
   // LEAST über beide Fristen: Den Nutzer interessiert der Tag, an dem dieses
   // Gerät ausgesperrt wird.
-  const tokens = await kontoBereich().konten.zugaengeDesKontos(angemeldeteNutzerId(req));
+  const tokens = await kontoBereich().konten.zugaengeDesKontos(req.apiUser.user_id);
   res.json({ success: true, tokens: tokens.map(t => ({
     token_prefix: t.token.substring(0, 8),
     token_id:     t.token.substring(0, 16),
@@ -65,8 +56,8 @@ router.get('/settings/tokens', requireLoginOrToken, async (req: OffeneAnfrage<'G
 /** Die Zeile ist sofort weg, der Token-Cache gilt aber noch kurz nach.
  * Einen FREMDEN Zugang widerruft nur, wer Passwort und Faktor kennt: Ein
  * erbeuteter Token soll den Inhaber nicht von seinen Geräten aussperren. */
-router.delete('/settings/tokens/:tokenId', requireLoginOrToken, async (req: OffeneAnfrage<'DELETE /api/v1/settings/tokens/:tokenId'>, res: Antwort<'DELETE /api/v1/settings/tokens/:tokenId'>) => {
-  const uid = angemeldeteNutzerId(req);
+router.delete('/settings/tokens/:tokenId', requireToken, async (req: Anfrage<'DELETE /api/v1/settings/tokens/:tokenId'>, res: Antwort<'DELETE /api/v1/settings/tokens/:tokenId'>) => {
+  const uid = req.apiUser.user_id;
   const eigener = bearerToken(req);
   const eigenesGeraet = !!eigener && hashToken(eigener).startsWith(req.pfad.tokenId);
   if (!eigenesGeraet && !await bestaetigeMitFaktor(req, res, uid, req.eingabe.password)) return;
@@ -80,8 +71,8 @@ router.delete('/settings/tokens/:tokenId', requireLoginOrToken, async (req: Offe
 
 // Mit Passwort: Eine erbeutete Sitzung soll den Inhaber nicht aussperren können.
 // `zugaenge` nimmt die App-Zugänge mit, damit ein Code für alles reicht.
-router.post('/settings/sessions/andere-beenden', requireLogin, async (req: OffeneAnfrage<'POST /api/v1/settings/sessions/andere-beenden'>, res: Antwort<'POST /api/v1/settings/sessions/andere-beenden'>) => {
-  const uid = angemeldeteNutzerId(req);
+router.post('/settings/sessions/andere-beenden', requireToken, async (req: Anfrage<'POST /api/v1/settings/sessions/andere-beenden'>, res: Antwort<'POST /api/v1/settings/sessions/andere-beenden'>) => {
+  const uid = req.apiUser.user_id;
   if (!await bestaetigeMitFaktor(req, res, uid, req.eingabe.password)) return;
   const { beendet, version } = await andereSitzungenBeenden(uid, req.sessionID);
   // Nur eine echte Sitzung merkt sich die Version; sonst bekäme die App eine.
@@ -211,92 +202,50 @@ router.post('/settings/household/former/dismiss', requireToken, async (req: Anfr
 router.use('/settings', requireLogin);
 
 /** Zum Abgleich von Hand; derselbe Wert steht als `fp` im QR-Code der App. */
-router.get('/settings/tls', async (_req, res: Antwort<'GET /api/v1/settings/tls'>) => {
+router.get('/settings/tls', requireToken, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/settings/tls'>) => {
   res.json({ success: true, ...await tlsAuskunft() });
 });
 
 
-router.post('/settings', async (req: OffeneAnfrage<'POST /api/v1/settings'>, res: Antwort<'POST /api/v1/settings'>) => {
-  const uid = angemeldeteNutzerId(req);
-  const globalKeys = GLOBALE_EINSTELLUNGEN, userKeys = KONTO_EINSTELLUNGEN;
-
-  if (istVerwalter(req)) {
-    if (globalKeys.some(k => req.eingabe[k] !== undefined && !globalerWertGueltig(k, req.eingabe[k])))
-      return sendeFehler(req, res, 400, 'wert_ungueltig');
-    if (String(req.eingabe.registration_enabled) === '1' && await getGlobalSetting('registration_enabled') !== '1' && !await mailBereit(req.eingabe))
-      return sendeFehler(req, res, 400, 'registrierung_braucht_mail');
-    // Mailserver, Registrierung und API-Schlüssel nur mit Passwort: Eine erbeutete
-    // Verwaltersitzung läse sonst Rücksetz-Mails mit oder öffnete still die Registrierung.
-    // Ein erster API-Schlüssel lenkt nichts um; nur der Einrichtungsassistent fragt dafür nicht nach.
-    const heikel: string[] = [];
-    const einrichtung = !await getGlobalSetting('einrichtung_erledigt');
-    for (const key of globalKeys.filter(istHeikel)) {
-      const neu = req.eingabe[key];
-      if (neu === undefined || (SECRET_KEYS.has(key) && isMaskedValue(neu))) continue;
-      const alt = String(await getGlobalSetting(key) ?? '');
-      if (String(neu) === alt || (einrichtung && alt === '' && !key.startsWith('smtp_') && key !== 'registration_enabled')) continue;
-      heikel.push(key);
-    }
-    if (heikel.length && !req.eingabe.admin_password) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
-    if (heikel.length && !await bestaetigeMitFaktor(req, res, uid, req.eingabe.admin_password)) return;
-    if (heikel.some(k => !k.startsWith('smtp_')))
-      verwalterHinweisNebenher('einstellungen_geaendert', { konto: heikel.join(', '), durch: nutzerName(req) ?? '' });
-
-    const oldBricksetLimit = req.eingabe.api_limit_brickset !== undefined
-      ? parseInt(await getGlobalSetting('api_limit_brickset') || '100')
-      : null;
-
-    const geaendert: string[] = [];
-    for (const key of globalKeys) {
-      if (req.eingabe[key] !== undefined) {
-        // Eine unverändert zurückgeschickte Maske ist kein neuer Wert, sonst
-        // überschriebe jedes Speichern die echten Schlüssel mit Punkten.
-        if (SECRET_KEYS.has(key) && isMaskedValue(req.eingabe[key])) continue;
-        if (String(req.eingabe[key]) !== String(await getGlobalSetting(key) ?? '')) geaendert.push(key);
-        await setGlobalSetting(key, req.eingabe[key]);
-      }
-    }
-    if (geaendert.length) await kontoBereich().protokoll.protokolliere(uid, uid, 'einstellungen_geaendert', geaendert.join(', '));
-    // Wer das Mailformular gespeichert hat, hat den Hinweis auf die alte Ausnahme gesehen.
-    if (globalKeys.some(k => k.startsWith('smtp_') && req.eingabe[k] !== undefined)) await deleteGlobalSetting('smtp_insecure_tls');
-
-    if (oldBricksetLimit !== null) await bricksetLimitGesetzt(oldBricksetLimit, parseInt(String(req.eingabe.api_limit_brickset)));
-  }
-  for (const key of userKeys) {
-    if (req.eingabe[key] !== undefined) {
-      // Zentrale Stelle: Eine ECHTE Währungsänderung stösst den Preis-Job an.
-      await setUserSetting(uid, key, req.eingabe[key]);
-    }
-  }
-  res.json({ success: true });
+router.post('/settings', requireToken, async (req: Anfrage<'POST /api/v1/settings'>, res: Antwort<'POST /api/v1/settings'>) => {
+  const uid = req.apiUser.user_id;
+  // Globale Werte eines Verwalters gehen wie jede Verwalter-Route über den Schrittschutz.
+  const verwalter = istVerwalter(req) && hatGlobaleWerte(req.eingabe);
+  if (verwalter && !await freigegeben(req, res, 'verwaltung')) return;
+  const fertig = await einstellungenSpeichern(req.eingabe, { uid, verwalter, name: nutzerName(req) ?? '',
+    bestaetige: passwort => bestaetigeMitFaktor(req, res, uid, passwort) });
+  if (fertig) res.json({ success: true });
 });
 
 // Über readSettings(), damit die Maskierung nicht an der Verpackung vorbeigeht.
-router.get('/settings/raw', async (req: OffeneAnfrage<'GET /api/v1/settings/raw'>, res: Antwort<'GET /api/v1/settings/raw'>) => {
-  res.json({ success: true, settings: await readSettings(angemeldeteNutzerId(req), istVerwalter(req)) });
+router.get('/settings/raw', requireToken, async (req: Anfrage<'GET /api/v1/settings/raw'>, res: Antwort<'GET /api/v1/settings/raw'>) => {
+  res.json({ success: true, settings: await readSettings(req.apiUser.user_id, await alsVerwalter(req)) });
 });
 
-router.get('/settings/export', async (req: OffeneAnfrage<'GET /api/v1/settings/export'>, res: Antwort<'GET /api/v1/settings/export'>) => {
+router.get('/settings/export', requireToken, async (req: Anfrage<'GET /api/v1/settings/export'>, res: Antwort<'GET /api/v1/settings/export'>) => {
+  const verwalter = await alsVerwalter(req);
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Content-Disposition', `attachment; filename="brickinventory-config-${new Date().toISOString().substring(0,10)}.json"`);
-  res.json(await konfigExport(nutzerId(req)!, istVerwalter(req), nutzerName(req) ?? null));
+  res.json(await konfigExport(req.apiUser.user_id, verwalter, nutzerName(req) ?? null));
 });
 
-router.get('/settings/export/data', async (req: Request, res) => {
+router.get('/settings/export/data', requireToken, async (req: AuthedRequest, res) => {
   res.setHeader('Content-Type', 'application/zip');
   res.setHeader('Content-Disposition', `attachment; filename="brickinventory-export-${new Date().toISOString().substring(0, 10)}.zip"`);
-  await datenZip(angemeldeteNutzerId(req), res, (e) => { console.error('[export-zip]', e.message); res.status(500).end(); });
+  await datenZip(req.apiUser.user_id, res, (e) => { console.error('[export-zip]', e.message); res.status(500).end(); });
 });
 
 const importUpload = multer({ storage: multer.memoryStorage(), limits: { ...FORMULAR_GRENZEN, fileSize: 1024 * 1024 } });
-router.post('/settings/import', kontoSchranke('upload'), importUpload.single('file'), async (req: OffeneAnfrage<'POST /api/v1/settings/import'>, res: Antwort<'POST /api/v1/settings/import'>) => {
+router.post('/settings/import', requireToken, kontoSchranke('upload'), importUpload.single('file'), async (req: Anfrage<'POST /api/v1/settings/import'>, res: Antwort<'POST /api/v1/settings/import'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-  res.json(await konfigImport(angemeldeteNutzerId(req), istVerwalter(req), req.file.buffer));
+  // Als Verwalter schreibt der Import globale Werte und plant die Aufträge neu.
+  const verwalter = istVerwalter(req);
+  if (verwalter && !await freigegeben(req, res, 'verwaltung')) return;
+  res.json({ success: true, ...(await konfigImport(req.apiUser.user_id, verwalter, req.file.buffer)) });
 });
 
-router.post('/settings/smtp-test', async (req: OffeneAnfrage<'POST /api/v1/settings/smtp-test'>, res: Antwort<'POST /api/v1/settings/smtp-test'>) => {
-  if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
-  const uid = angemeldeteNutzerId(req);
+router.post('/settings/smtp-test', requireAdmin, async (req: Anfrage<'POST /api/v1/settings/smtp-test'>, res: Antwort<'POST /api/v1/settings/smtp-test'>) => {
+  const uid = req.apiUser.user_id;
   // Sonst wäre der Mailserver für eine erbeutete Verwaltersitzung ein Relais an jede Adresse.
   const zuOft = await kontoGedrosselt('smtp-test', uid, 10, 60 * 60 * 1000);
   if (zuOft) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: zuOft.waitMin });
@@ -322,10 +271,9 @@ router.post('/settings/smtp-test', async (req: OffeneAnfrage<'POST /api/v1/setti
 
 // Offen, solange der Verwalter sie nicht abgeschlossen hat UND noch etwas
 // fehlt — eine eingerichtete Installation sieht den Assistenten nie.
-router.get('/settings/einrichtung', async (req: OffeneAnfrage<'GET /api/v1/settings/einrichtung'>, res: Antwort<'GET /api/v1/settings/einrichtung'>) => {
-  if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
+router.get('/settings/einrichtung', requireAdmin, async (req: Anfrage<'GET /api/v1/settings/einrichtung'>, res: Antwort<'GET /api/v1/settings/einrichtung'>) => {
   const wert = async (k: string) => !!(await getGlobalSetting(k));
-  const passwort = await kontoBereich().konten.mussPasswortAendern(angemeldeteNutzerId(req));
+  const passwort = await kontoBereich().konten.mussPasswortAendern(req.apiUser.user_id);
   const quellen = {
     rebrickable: await wert('rebrickable_api_key'),
     brickset:    await wert('brickset_api_key'),
@@ -337,15 +285,13 @@ router.get('/settings/einrichtung', async (req: OffeneAnfrage<'GET /api/v1/setti
              passwort_aendern: passwort, quellen });
 });
 
-router.post('/settings/einrichtung/fertig', async (req: OffeneAnfrage<'POST /api/v1/settings/einrichtung/fertig'>, res: Antwort<'POST /api/v1/settings/einrichtung/fertig'>) => {
-  if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
+router.post('/settings/einrichtung/fertig', requireAdmin, async (_req: AuthedRequest, res: Antwort<'POST /api/v1/settings/einrichtung/fertig'>) => {
   await setGlobalSetting('einrichtung_erledigt', '1');
   res.json({ success: true });
 });
 
 // Prüft den GESPEICHERTEN Zugang mit einem kleinen Abruf.
-router.post('/settings/quelle-testen', async (req: OffeneAnfrage<'POST /api/v1/settings/quelle-testen'>, res: Antwort<'POST /api/v1/settings/quelle-testen'>) => {
-  if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
+router.post('/settings/quelle-testen', requireAdmin, async (req: Anfrage<'POST /api/v1/settings/quelle-testen'>, res: Antwort<'POST /api/v1/settings/quelle-testen'>) => {
   const absage = await quellePruefen(String(req.eingabe.quelle ?? ''));
   if (!absage) return res.json({ success: true });
   res.status(400).json({ success: false, code: absage.code, details: absage.grund,
@@ -353,13 +299,13 @@ router.post('/settings/quelle-testen', async (req: OffeneAnfrage<'POST /api/v1/s
 });
 
 // Leer heisst „Vorgabe des Verwalters".
-router.post('/settings/user/theme', async (req: OffeneAnfrage<'POST /api/v1/settings/user/theme'>, res: Antwort<'POST /api/v1/settings/user/theme'>) => {
-  const uid = angemeldeteNutzerId(req);
+router.post('/settings/user/theme', requireToken, async (req: Anfrage<'POST /api/v1/settings/user/theme'>, res: Antwort<'POST /api/v1/settings/user/theme'>) => {
+  const uid = req.apiUser.user_id;
   await setzeEigenesDesign(uid, req.eingabe.theme);
   res.json({ success: true, ...await designFuer(uid) });
 });
 
-router.post('/settings/admin/theme', requireAdmin, async (req: OffeneAnfrage<'POST /api/v1/settings/admin/theme'>, res: Antwort<'POST /api/v1/settings/admin/theme'>) => {
+router.post('/settings/admin/theme', requireAdmin, async (req: Anfrage<'POST /api/v1/settings/admin/theme'>, res: Antwort<'POST /api/v1/settings/admin/theme'>) => {
   const theme = req.eingabe.theme;
   await setGlobalSetting('app_theme', theme);
   // Das Design steckt im serverseitig gerenderten <html data-theme>; ohne

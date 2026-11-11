@@ -89,6 +89,8 @@ export const FEHLER = {
                                  en: 'This access token is already bound to another device key. Please sign in again.' },
   geraeteschluessel_frist:     { de: 'Ein Geräteschlüssel lässt sich nur gleich nach der Anmeldung hinterlegen. Bitte neu anmelden.',
                                  en: 'A device key can only be registered right after signing in. Please sign in again.' },
+  geraeteschluessel_attestation: { de: 'Der Server nimmt nur einen Geräteschlüssel aus der Sicherheitshardware dieser App an, und diesen konnte er nicht bestätigen. Bitte die App aktualisieren – oder den Schritt in der Webapp ausführen.',
+                                 en: 'The server only accepts a device key from this app\'s security hardware and could not verify this one. Please update the app – or do this step in the web app.' },
   schritt_freigabe_noetig:     { de: 'Bitte diesen Schritt zuerst mit der Gerätesperre bestätigen.',
                                  en: 'Please confirm this step with the device lock first.' },
   schritt_signatur_ungueltig:  { de: 'Die Bestätigung mit der Gerätesperre wurde nicht angenommen. Wurde ein Fingerabdruck neu eingerichtet, bitte neu anmelden.',

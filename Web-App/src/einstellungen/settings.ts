@@ -10,14 +10,19 @@ import type { DbSchnittstelle } from '../../db/database';
 export async function getSetting(userId: number, key: string): Promise<string | null | undefined>;
 export async function getSetting<T>(userId: number, key: string, fallback: T): Promise<string | T>;
 export async function getSetting(userId: number, key: string, fallback?: unknown): Promise<unknown> {
-  return einstellungMitZugang(einstellungenBereich().db, userId, key, fallback);
+  return (await einstellungMitZugang(einstellungenBereich().db, userId, key)) || fallback;
 }
 
 /** getSetting über einen übergebenen Zugang, für Bereiche mit eigenem Kontext (src/sets). */
-export async function einstellungMitZugang(db: DbSchnittstelle, userId: number, key: string, fallback?: unknown): Promise<unknown> {
+export async function einstellungMitZugang(db: DbSchnittstelle, userId: number, key: string, fallback?: string): Promise<string | null | undefined> {
   const eigen = await repo.nutzerWert(db, userId, key);
   if (eigen) return eigen;
   return klar(key, await repo.globalerWert(db, key)) || fallback;
+}
+
+/** Mehrere Schreibvorgänge als eine Einheit, über den Zugang des Prozesses. */
+export function einstellungenAlsEinheit<T>(arbeit: () => Promise<T>): Promise<T> {
+  return repo.alsEinheit(einstellungenBereich().db, arbeit);
 }
 
 /** Geheime Werte liegen verschlüsselt (src/infra/geheimnis.ts). */
@@ -105,6 +110,12 @@ export async function setGlobalSetting(key: string, value: unknown) {
   const r = regelFuer(key)?.safeParse(value);
   if (!r?.success) throw (r?.error.issues[0] as { params?: { fehler?: unknown } } | undefined)?.params?.fehler ?? dateiFehler('ungueltig', 'wert_ungueltig');
   await einstellungenBereich().repository.schreibeGlobalenWert(key, SECRET_KEYS.has(key) ? verschluessele(r.data, globalerKontext(key)) : r.data);
+  meldeGlobaleAenderung();
+}
+
+
+/** Auch nach dem COMMIT einer Transaktion: Ein Zwischenspeicher, der dazwischen las, hielte den alten Wert. */
+export function meldeGlobaleAenderung(): void {
   for (const fn of _beiGlobalerAenderung) fn();
 }
 

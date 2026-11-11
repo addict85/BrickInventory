@@ -4,7 +4,6 @@ import ch.brickinventoryapp.model.fach.Merksortierung
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
 import ch.brickinventoryapp.model.lokal.Lokal
-import ch.brickinventoryapp.model.data.model.MerklisteResponse
 import ch.brickinventoryapp.model.data.model.Merkposten
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.zustand.ui.abgeleitet
@@ -18,12 +17,16 @@ import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
-import ch.brickinventoryapp.zustand.ui.Aenderung
+import ch.brickinventoryapp.data.repository.Kontosicht
 import ch.brickinventoryapp.sammlung.ui.MerklisteUiState
 import ch.brickinventoryapp.sammlung.ui.MerkpostenDetailUiState
 import ch.brickinventoryapp.sammlung.ui.Preisalarmeingabe
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,12 +38,10 @@ import ch.brickinventoryapp.zustand.ui.fehlerklasse
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.zustand.ui.AppUiState
 import ch.brickinventoryapp.zustand.ui.Sitzung
-import ch.brickinventoryapp.zustand.ui.Bestandssignal
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
-import ch.brickinventoryapp.zustand.ui.viewmodel.folgeBestand
 
 /**
  * Merkliste und Merkposten-Detail — was man haben möchte, getrennt vom Besitz.
@@ -54,8 +55,8 @@ class MerklisteViewModel @Inject constructor(
     private val sitzung: Sitzung,
     private val filter: Filterwahl,
     private val meldungen: Meldungen,
-    private val bestand: Bestandssignal,
     private val sets: SetsRepository,
+    private val kontosicht: Kontosicht,
     private val katalogRepo: KatalogRepository,
     private val finanzen: FinanzenRepository,
     private val gemerkt: SavedStateHandle,
@@ -65,7 +66,6 @@ class MerklisteViewModel @Inject constructor(
 
     init {
         folgeAbmeldung(sitzung) { zuruecksetzen() }
-        folgeBestand(bestand) { beiAenderung(it) }
     }
 
     override fun setScope(view: ScopeFilter.View, value: String) {
@@ -93,17 +93,20 @@ class MerklisteViewModel @Inject constructor(
     private val _vorgemerkt = MutableStateFlow<VorgemerkterMerkposten?>(null)
     val vorgemerkt: StateFlow<VorgemerkterMerkposten?> = _vorgemerkt.asStateFlow()
 
-    /** Die lokale Ablage; ohne Filter ist sie die einzige Quelle der Liste. */
-    private val lokal: StateFlow<Lokal<Merkposten>?> =
-        sets.beobachteMerkliste().stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    /** Die Quelle der Liste für die eingestellten Filter; [ladeMerkliste] wählt sie. */
+    private val quelle = MutableStateFlow<Flow<Lokal<Merkposten>>>(flowOf(Lokal(emptyList(), null)))
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val liste: StateFlow<Lokal<Merkposten>?> =
+        quelle.flatMapLatest { it }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /**
-     * Ohne Filter zeigt die Liste die Ablage — auch offline Angelegtes oder Gelöschtes
-     * sofort; mit Filter die Antwort des Servers. Der vorgemerkte Posten fehlt in beiden.
+     * Die Liste zeigt nur die Quelle — die Ablage, über gewählte Konten die Kontosicht —,
+     * auch offline Angelegtes oder Gelöschtes sofort. Der vorgemerkte Posten fehlt darin.
      */
     val merklisteState: StateFlow<MerklisteUiState> = _merklisteState
-        .abgeleitet(lokal) { st, l ->
-            if (l?.stand != null && ungefiltert(st)) st.copy(merkposten = l.liste.map { m -> m.alsAnsicht() }) else st
+        .abgeleitet(liste) { st, l ->
+            if (l?.stand != null) st.copy(merkposten = l.liste.map { m -> m.alsAnsicht() }) else st
         }
         .abgeleitet(_vorgemerkt) { st, v ->
             if (v == null) st else st.copy(merkposten = st.merkposten.filterNot { it.setNumber == v.setNumber && it.condition == v.zustand })
@@ -116,35 +119,29 @@ class MerklisteViewModel @Inject constructor(
     // wartenden Abruf ab, geladen wird erst nach der Pause.
     private var suchJob: Job? = null
 
-    private fun ungefiltert(f: MerklisteUiState) = f.query.isBlank() && f.zustandFilter == null &&
-        f.sortierung == Merksortierung.VORGABE && filter.kontoFuer(ScopeFilter.View.MERKLISTE) == null
+    private fun kontoAbfrage(f: MerklisteUiState): Kontosicht.MerkAbfrage? =
+        filter.kontoFuer(ScopeFilter.View.MERKLISTE)?.let {
+            Kontosicht.MerkAbfrage(it, f.query.trim().ifBlank { null }, f.zustandFilter, f.sortierung)
+        }
 
     private val alarmEingabe = Preisalarmeingabe(
         scope = viewModelScope, sets = sets,
         melde = { meldungen.zeige(it) },
         beschreibe = { meldungen.meldungFuerSnackbar(it) },
-        gespeichert = { sn ->
-            if (_merkpostenDetailState.value.setNumber == sn) loadPreisalarme(sn)
-            bestand.melde(Aenderung.Alarme)
-        },
+        gespeichert = { sn -> if (_merkpostenDetailState.value.setNumber == sn) loadPreisalarme(sn) },
     )
 
     override fun ladeMerkliste() {
         viewModelScope.launch {
             val f = _merklisteState.value
             _merklisteState.update { it.copy(laedt = true, fehler = null) }
-            // Ohne Filter schreibt der Abruf nur in die Ablage; gezeigt wird sie (merklisteState).
-            val r = if (ungefiltert(f)) sets.aktualisiereMerkliste() else sets.getMerkliste(
-                search    = f.query.trim().ifBlank { null },
-                condition = f.zustandFilter,
-                sort      = f.sortierung,
-                accounts  = filter.kontoFuer(ScopeFilter.View.MERKLISTE),
-            )
+            val konto = kontoAbfrage(f)
+            quelle.value = konto?.let { kontosicht.merkliste.beobachte(it) }
+                ?: sets.beobachteMerkliste(f.query.trim().ifBlank { null }, f.zustandFilter, f.sortierung)
+            // Der Abruf füllt nur die Quelle; gezeigt wird sie (merklisteState).
+            val r = konto?.let { kontosicht.merkliste.aktualisiere(it) } ?: sets.aktualisiereMerkliste()
             when (r) {
-                is Ergebnis.Success -> _merklisteState.update {
-                    val vomServer = (r.data as? MerklisteResponse)?.merkposten?.map { m -> m.alsAnsicht() }
-                    it.copy(merkposten = vomServer ?: it.merkposten, laedt = false)
-                }
+                is Ergebnis.Success -> _merklisteState.update { it.copy(laedt = false) }
                 is Ergebnis.Error -> {
                     _merklisteState.update { it.copy(laedt = false, fehler = meldungen.meldung(r),
                         fehlerKlasse = fehlerklasse(r)) }
@@ -181,7 +178,6 @@ class MerklisteViewModel @Inject constructor(
         if (nummer.isBlank()) { meldungen.zeige(meldungen.text(R.string.wanted_need_number)); return }
         viewModelScope.launch {
             meldungen.zeige(merkpostenAnlegen(sets, meldungen, nummer, zustand, besitzer))
-            bestand.melde(Aenderung.Merkliste)
         }
     }
 
@@ -193,7 +189,6 @@ class MerklisteViewModel @Inject constructor(
                     if (!r.data.success) { meldungen.zeige(r.data.error ?: meldungen.text(R.string.err_unknown)); return@launch }
                     meldungen.zeige(meldungen.text(
                         if (r.data.zusammengefuehrt) R.string.wanted_already else R.string.vm_saved))
-                    bestand.melde(Aenderung.Merkliste)
                 }
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
@@ -213,11 +208,10 @@ class MerklisteViewModel @Inject constructor(
         _vorgemerkt.value = VorgemerkterMerkposten(setNumber, zustand, besitzer, name)
     }
 
-    /** Der vorgemerkte Posten bleibt; die Liste kommt neu vom Server, wo er nie fehlte. */
+    /** Der vorgemerkte Posten bleibt; er stand die ganze Zeit in der Quelle. */
     fun merkpostenRueckgaengig(nur: VorgemerkterMerkposten? = null) {
         if (_vorgemerkt.value == null || (nur != null && _vorgemerkt.value != nur)) return
         _vorgemerkt.value = null
-        ladeMerkliste()
     }
 
     /** [nur]: nur diesen Posten — eine abgelöste Snackbar führt nicht den nächsten aus. */
@@ -227,12 +221,8 @@ class MerklisteViewModel @Inject constructor(
         _vorgemerkt.value = null
         viewModelScope.launch {
             when (val r = sets.loescheMerkposten(v.setNumber, v.zustand, v.besitzer)) {
-                // „genommen“ stand schon in der Snackbar mit „Rückgängig“.
-                is Ergebnis.Success -> {
-                    _merklisteState.update { st -> st.copy(merkposten = st.merkposten
-                        .filterNot { it.setNumber == v.setNumber && it.condition == v.zustand }) }
-                    bestand.melde(Aenderung.Merkliste)
-                }
+                // „genommen“ stand schon in der Snackbar mit „Rückgängig“; die Ablage hat ihn nicht mehr.
+                is Ergebnis.Success -> Unit
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
         }
@@ -253,7 +243,6 @@ class MerklisteViewModel @Inject constructor(
                     meldungen.zeige(meldungen.text(
                         if (r.data.action == "exists") R.string.wanted_taken_existing
                         else R.string.wanted_taken))
-                    bestand.melde(Aenderung.Merkliste, Aenderung.Sets)
                 }
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
@@ -276,7 +265,6 @@ class MerklisteViewModel @Inject constructor(
                     if (schwelle != null) sets.setPreisalarm(setNumber, richtung, schwelle, zustand)
                     meldungen.zeige(meldungen.text(
                         if (r.data.warNeu) R.string.wanted_added else R.string.wanted_already))
-                    bestand.melde(Aenderung.Merkliste, Aenderung.Alarme)
                 }
             }
         }
@@ -315,12 +303,9 @@ class MerklisteViewModel @Inject constructor(
         if (view == ScopeFilter.View.MERKLISTE) ladeMerkliste()
     }
 
-    private fun beiAenderung(aenderung: Aenderung) {
-        if (aenderung == Aenderung.Merkliste) ladeMerkliste()
-    }
-
     private fun zuruecksetzen() {
         suchJob?.cancel()
+        quelle.value = flowOf(Lokal(emptyList(), null))
         _merklisteState.value = MerklisteUiState()
         _merkpostenDetailState.value = MerkpostenDetailUiState()
     }

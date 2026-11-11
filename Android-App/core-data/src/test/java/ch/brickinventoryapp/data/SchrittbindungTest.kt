@@ -3,6 +3,7 @@ package ch.brickinventoryapp.data
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.api.GeraetApi
 import ch.brickinventoryapp.data.repository.SchrittbindungImpl
+import ch.brickinventoryapp.model.schritt.Schluesselnonce
 import ch.brickinventoryapp.model.schritt.Schrittaktion
 import ch.brickinventoryapp.model.schritt.Schrittantwort
 import ch.brickinventoryapp.testing.TestApi
@@ -26,6 +27,9 @@ import java.util.Base64
  *   A  in challenge() jede Absage und jeden Netzfehler als NichtGebunden → erwartet
  *      rot „eine Absage des Servers haelt an“ und „ohne Netz kein Rueckfall …“;
  *      gegenproben/schrittbindung-absage-als-ungebunden.patch
+ *   B  in hinterlegeKette() die Zertifikate mit dem URL-Alphabet kodiert →
+ *      erwartet rot „die Kette geht als Base64 je Zertifikat …“;
+ *      gegenproben/schrittbindung-kette-base64url.patch
  */
 class SchrittbindungTest {
 
@@ -76,5 +80,30 @@ class SchrittbindungTest {
         assertEquals("""{"challenge":"c1","signatur":"${Base64.getEncoder().encodeToString(byteArrayOf(1, 2, 3))}"}""", rumpf)
         server.enqueue(TestApi.antwort("""{"success":false,"code":"schritt_signatur_ungueltig","error":"abgelehnt"}""", 400))
         assertEquals(Schrittantwort.Abgelehnt("abgelehnt"), bindung.freigeben("c2", byteArrayOf(4)))
+    }
+
+    @Test
+    fun `die Nonce kommt an, ein Server ohne Attestation sagt 404, eine Absage bringt ihren Satz`() = runBlocking {
+        server.enqueue(TestApi.antwort("""{"success":true,"nonce":"ab_-"}"""))
+        assertEquals(Schluesselnonce.Nonce("ab_-"), bindung.schluesselNonce())
+        assertEquals("/api/v1/geraet/schluessel/nonce", server.takeRequest().path)
+        server.enqueue(TestApi.antwort("""{"success":false,"code":"api_pfad_unbekannt","error":"x"}""", 404))
+        assertEquals(Schluesselnonce.NichtGebunden, bindung.schluesselNonce())
+        server.enqueue(TestApi.antwort("""{"success":false,"code":"geraeteschluessel_frist","error":"Bitte neu anmelden."}""", 403))
+        assertEquals(Schluesselnonce.Abgelehnt("Bitte neu anmelden."), bindung.schluesselNonce())
+    }
+
+    @Test
+    fun `die Kette geht als Base64 je Zertifikat zum Server`() = runBlocking {
+        server.enqueue(TestApi.antwort("""{"success":true}"""))
+        val kette = listOf(byteArrayOf(-5, -1), byteArrayOf(3))
+        assertEquals(Schrittantwort.Frei, bindung.hinterlegeKette(kette))
+        val anfrage = server.takeRequest()
+        assertEquals("/api/v1/geraet/schluessel", anfrage.path)
+        assertEquals("""{"kette":["+/8=","Aw=="]}""", anfrage.body.readUtf8())
+        server.enqueue(TestApi.antwort("""{"success":false,"code":"geraeteschluessel_attestation","error":"nicht bestätigt"}""", 400))
+        assertEquals(Schrittantwort.Abgelehnt("nicht bestätigt"), bindung.hinterlegeKette(kette))
+        server.shutdown()
+        assertEquals("Ein Netzfehler ist keine Meldung", Schrittantwort.Abgelehnt(null), bindung.hinterlegeKette(kette))
     }
 }

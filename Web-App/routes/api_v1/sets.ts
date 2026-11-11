@@ -5,25 +5,26 @@ import path from 'path';
 import { fehlertext, oeffentlicherFehler } from '../../src/infra/fehler';
 import { fehlerAntwort, pfadParam, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
-import { lagerSchreibkonto } from '../../src/bestand/lagerort';
+import { haushaltBereich } from '../../src/haushalt';
+import { bestandBereich, lagerSchreibkonto } from '../../src/bestand';
+import { finanzenBereich } from '../../src/finanzen';
 import { csvEmpfang, uploadKontingentBytes, privaterOrdner, privaterEmpfang, kontingentReichtFuer, pruefeEmpfangeneDatei } from '../../src/http/dateiEmpfang';
-import { sendCsv, uebersprungenHinweis } from '../../src/infra/csvExport';
+import { uebersprungenHinweis } from '../../src/infra/csvExport';
+import { sendeCsv } from '../../src/http/csvAntwort';
 import { antwortSprache } from '../../src/infra/fehlerTexte';
 import * as sets from '../../src/sets';
 import { registerSse } from '../../src/http/sseRegistry';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/http/anmeldung';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/http/vertragsRouter';
-import { bestandBereich } from '../../src/bestand/prozess';
-import { finanzenBereich } from '../../src/finanzen/prozess';
-import { haushaltBereich } from '../../src/haushalt/prozess';
+import { freigegeben } from '../../src/konto/http/schrittschutz';
+import { vertragsRouter, type Anfrage, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
+import { zustand } from '../../src/infra/validate';
 const router = vertragsRouter();
 
 // ── Feste Pfade VOR den Pfaden mit :setNumber ────────────────────────────────
 // Sonst liest Express „info" oder „exists" als Setnummer.
 
 router.get('/sets/info/:setNumber', requireToken, async (req: Anfrage<'GET /api/v1/sets/info/:setNumber'>, res: Antwort<'GET /api/v1/sets/info/:setNumber'>) => {
-  res.json(await sets.setInfoFuerKonto(req.apiUser.user_id, req.pfad.setNumber));
+  res.json({ success: true, ...(await sets.setInfoFuerKonto(req.apiUser.user_id, req.pfad.setNumber)) });
 });
 
 /** Nur das Blickfeld des fragenden Kontos (eigenes Konto oder Haushalt). */
@@ -35,8 +36,8 @@ router.get('/sets/exists/:setNumber', requireToken, async (req: Anfrage<'GET /ap
 
 router.get('/sets/barcode/:barcode', requireToken, async (req: Anfrage<'GET /api/v1/sets/barcode/:barcode'>, res: Antwort<'GET /api/v1/sets/barcode/:barcode'>) => {
   const barcode = req.pfad.barcode.trim();
-  const treffer = await sets.setZumBarcodeFuerKonto(req.apiUser.user_id, barcode);
-  if (treffer) return res.json(treffer);
+  const treffer = await sets.setZumBarcode(barcode);
+  if (treffer) return res.json({ success: true, ...treffer });
   sendeFehler(req, res, 404, 'barcode_kein_set', { barcode });
 });
 
@@ -59,7 +60,8 @@ router.put('/sets/:setNumber/alert', requireToken, async (req: Anfrage<'PUT /api
 });
 
 router.delete('/sets/:setNumber/alert', requireToken, async (req: Anfrage<'DELETE /api/v1/sets/:setNumber/alert'>, res: Antwort<'DELETE /api/v1/sets/:setNumber/alert'>) => {
-  const n = await sets.alarmDesSetsLoeschen(req.apiUser.user_id, req.pfad.setNumber, req.abfrage.condition);
+  const n = await sets.alarmDesSetsLoeschen(req.apiUser.user_id, req.pfad.setNumber,
+    req.abfrage.condition ? zustand(req.abfrage.condition) : undefined);
   res.json({ success: true, removed: n });
 });
 
@@ -77,7 +79,7 @@ router.get('/alerts', requireToken, async (req: Anfrage<'GET /api/v1/alerts'>, r
 router.post('/alerts/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'),
   async (req: Anfrage<'POST /api/v1/alerts/import/csv'>, res: Antwort<'POST /api/v1/alerts/import/csv'>) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-    res.json(await sets.alarmCsvImportStarten(req.apiUser.user_id, req.file.buffer.toString('utf-8')));
+    res.json({ success: true, ...(await sets.alarmCsvImportStarten(req.apiUser.user_id, req.file.buffer.toString('utf-8'))) });
   });
 
 router.get('/storage/locations', requireToken, async (req: Anfrage<'GET /api/v1/storage/locations'>, res: Antwort<'GET /api/v1/storage/locations'>) => {
@@ -119,7 +121,7 @@ router.get('/storage', requireToken, async (req: Anfrage<'GET /api/v1/storage'>,
 });
 
 router.get('/sets/:setNumber/parts-list', requireToken, async (req: Anfrage<'GET /api/v1/sets/:setNumber/parts-list'>, res: Antwort<'GET /api/v1/sets/:setNumber/parts-list'>) => {
-  res.json({ success: true, ...await sets.teilelisteFuerKonto(req.pfad.setNumber) });
+  res.json({ success: true, ...await sets.teilelisteMitNacharbeit(req.pfad.setNumber) });
 });
 
 router.get('/sets/:setNumber/minifigs-list', requireToken, async (req: Anfrage<'GET /api/v1/sets/:setNumber/minifigs-list'>, res: Antwort<'GET /api/v1/sets/:setNumber/minifigs-list'>) => {
@@ -268,7 +270,7 @@ router.post('/sets/import/csv/cancel', requireToken, async (req: OffeneAnfrage<'
 });
 
 router.get('/sets/export/rebrickable', requireToken, async (req, res) => {
-  sendCsv(res, `rebrickable-sets-${new Date().toISOString().substring(0, 10)}.csv`,
+  sendeCsv(res, `rebrickable-sets-${new Date().toISOString().substring(0, 10)}.csv`,
     ['Set Number', 'Quantity'], await sets.rebrickableListe(angemeldeteNutzerId(req)));
 });
 
@@ -306,8 +308,11 @@ router.post('/sets/:setNumber/parts', requireToken, async (req: Anfrage<'POST /a
 });
 
 // ── Anleitungen ─────────────────────────────────────────────────────────────
-router.post('/sets/:setNumber/instructions', requireToken, async (req: OffeneAnfrage<'POST /api/v1/sets/:setNumber/instructions'>, res: Antwort<'POST /api/v1/sets/:setNumber/instructions'>) => {
-  const { instructions, auftrag } = await sets.anleitungenNeuLaden(angemeldeteNutzerId(req), req.pfad.setNumber, istVerwalter(req));
+router.post('/sets/:setNumber/instructions', requireToken, async (req: Anfrage<'POST /api/v1/sets/:setNumber/instructions'>, res: Antwort<'POST /api/v1/sets/:setNumber/instructions'>) => {
+  // Der Verwalter löscht geteilte Anleitungen: derselbe Schrittschutz wie jede Verwalter-Route.
+  const verwalter = istVerwalter(req);
+  if (verwalter && !await freigegeben(req, res, 'verwaltung')) return;
+  const { instructions, auftrag } = await sets.anleitungenNeuLaden(req.apiUser.user_id, req.pfad.setNumber, verwalter);
   res.status(202).json({ success: true, instructions, count: instructions.length, auftrag_id: auftrag });
 });
 

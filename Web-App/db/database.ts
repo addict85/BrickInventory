@@ -3,7 +3,7 @@
 import { Pool, types as pgTypes, Client } from 'pg';
 import type { PoolClient, PoolConfig } from 'pg';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { runMigrations } from './migrate';
+import { runMigrations, offeneMigrationen } from './migrate';
 import { Benachrichtigung } from './pgNotify';
 import type { DbSchnittstelle } from './typen';
 import fs from 'node:fs';
@@ -119,6 +119,8 @@ export interface Db extends DbSchnittstelle {
   mitCommitBegleiter<T>(begleiter: (tx: DbSchnittstelle) => Promise<void>, arbeit: () => T): T;
   initSchema(): Promise<boolean>;
   initSchemaOnce(): Promise<void>;
+  /** Ob die Verbindung Schema-Objekte anlegen darf: Eigentümerin oder Superuser, nicht die Laufzeitrolle. */
+  darfSchemaAendern(): Promise<boolean>;
 }
 
 /** Die laufende Transaktion dieses Aufrufpfads: all/get/run/exec gehen dann
@@ -284,6 +286,8 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
 
   // Erststart und Migrationen unter einem Advisory-Lock (LOCKS.SCHEMA_INIT):
   // Starten web und jobs zugleich, migriert genau einer; der andere wartet.
+  // Die Laufzeitrolle (compose.yaml) darf kein Schema ändern: Sie prüft nur,
+  // ob der Dienst migration fertig ist, statt an CREATE zu scheitern.
   async function initSchemaOnce() {
     const client = await pool.connect();
     try {
@@ -293,6 +297,7 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
       await client.query('SET statement_timeout = 0');
       await client.query(`SELECT pg_advisory_lock(${LOCKS.SCHEMA_INIT})`);
       await client.query('RESET statement_timeout');
+      if (!(await darfSchemaAendernAuf(client))) return await nurStandPruefen(client);
       const neu = await initSchema();
       if (!neu) await pruefeMindeststand(client);
       // Vor offenen Migrationen eine Kopie der Nutzerdaten — nicht bei einer
@@ -312,6 +317,7 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
   return {
     pool, all, get, run, exec, transaction, initSchema, initSchemaOnce, eigeneVerbindung, mitCommitBegleiter,
     benachrichtigung: new Benachrichtigung(k.verbindung, (sql, p) => run(sql, p)),
+    darfSchemaAendern: async () => (await get<{ d: boolean }>(DARF_SCHEMA_AENDERN))?.d === true,
     inTransaktion: () => txClient() !== null,
     getPoolStats: () => ({ total: pool.totalCount, idle: pool.idleCount, waiting: pool.waitingCount,
       active: pool.totalCount - pool.idleCount }),
@@ -327,6 +333,23 @@ async function schreibeErfassungsZeitzone(client: import('pg').ClientBase): Prom
     `INSERT INTO global_settings (key, value) VALUES ('erfassung_zeitzone', $1)
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
      WHERE global_settings.value IS DISTINCT FROM EXCLUDED.value`, [konfig().erfassungZeitzone]);
+}
+
+const DARF_SCHEMA_AENDERN = `SELECT has_schema_privilege('public', 'CREATE') AS d`;
+async function darfSchemaAendernAuf(client: import('pg').ClientBase): Promise<boolean> {
+  return (await client.query<{ d: boolean }>(DARF_SCHEMA_AENDERN)).rows[0]?.d === true;
+}
+
+/** Für die Laufzeitrolle: Ein leeres oder nicht migriertes Schema hält den Start
+ * an, statt dass Anfragen auf fehlende Spalten treffen. */
+async function nurStandPruefen(client: import('pg').ClientBase): Promise<void> {
+  const leer = !(await client.query("SELECT to_regclass('public.users') AS t")).rows[0].t;
+  const offen = leer ? [] : await offeneMigrationen(client);
+  if (leer || offen.length) throw new Error(
+    `${leer ? 'Die Datenbank ist leer' : `Migrationen offen: ${offen.join(', ')}`}. Diese Rolle darf das Schema nicht ändern; `
+    + 'Grundschema und Migrationen spielt der Dienst migration als Migrationsrolle ein (UPGRADE.md, Abschnitt 51).');
+  await schreibeErfassungsZeitzone(client);
+  console.log('✅ Schema aktuell (eingespielt vom Dienst migration)');
 }
 
 /** Eine bestehende Datenbank ohne Migration ab MINDESTSTAND hält den Start an,

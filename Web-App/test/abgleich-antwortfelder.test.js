@@ -12,6 +12,9 @@
  *      das seit /health nur für Verwalter nicht mehr oben in einer Antwort steht).
  *   c) Eine Ausnahme für einen Schlüssel eingetragen, den es nicht gibt → rot
  *      ("tote Ausnahme").
+ *   e) (11.11.2026) Seit Dienste ohne `success` antworten (die Route spreizt
+ *      ihr Ergebnis), liest die Prüfung auch deren return: `feld_ohne_leser`
+ *      im return von cacheStatistik() → rot.
  *   d) Den Pfad zu den Verbrauchern verbogen → rot mit eigener Meldung. Das ist
  *      der wichtigste der vier: Ohne Verbraucherdateien gälte JEDES Feld als
  *      ungelesen, und eine Prüfung, die aus Versehen nichts findet, ist

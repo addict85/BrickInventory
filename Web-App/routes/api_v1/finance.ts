@@ -1,12 +1,10 @@
 import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { FEHLER, antwortSprache, fehlerText, type FehlerCode } from '../../src/infra/fehlerTexte';
 import { requireToken, sichtVon } from './middleware';
-import { getPortfolioHistory } from '../../src/finanzen/portfolioHistory';
-import { computeMinifigsValuation, computePartsValuation, computePnl, computeSetsValuation } from '../../src/finanzen/financeCalc';
+import { getPortfolioHistory, computeMinifigsValuation, computePartsValuation, computePnl, computeSetsValuation } from '../../src/finanzen';
 import { einzelwert } from '../../src/infra/validate';
 import { seiteAus } from '../../src/infra/seite';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
+import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
 const router = vertragsRouter();
 
 /** Preisfehler kommen mit Code aus der Bewertung; der Text folgt der Sprache der Anfrage, nicht dem Server. */
@@ -47,8 +45,7 @@ router.get('/finance/portfolio-history', requireToken, async (req: Anfrage<'GET 
   // einzelwert(): ?period=a&period=b kommt als Array an und ginge sonst
   // unverändert in die Antwort zurück.
   const period = einzelwert(req.abfrage.period, 'week');
-  const result = await getPortfolioHistory(uid, sichtVon(req), period);
-  res.json(result);
+  res.json({ success: true, ...(await getPortfolioHistory(uid, sichtVon(req), period)) });
 });
 
 

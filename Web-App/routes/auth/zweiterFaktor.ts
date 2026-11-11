@@ -8,9 +8,8 @@ import { bestaetigeEinrichtungGebremst } from '../../src/konto/passwortBestaetig
 import { hinweisNebenher } from '../../src/konto/kontoHinweis';
 import * as zf from '../../src/konto/zweiterFaktor';
 import { STATUS_DER_ART } from '../../src/http/fehlerArt';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Antwort, OffeneAnfrage } from '../../src/http/vertragsRouter';
-import { kontoBereich } from '../../src/konto/prozess';
+import { vertragsRouter, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
+import { kontoBereich } from '../../src/konto';
 
 const router = vertragsRouter();
 const requireLogin = requireLoginOrToken;

@@ -1,9 +1,7 @@
 import * as repo from './repository/sets';
-import { entferneSetInhalt } from '../bestand/gemeinsam';
+import { entferneSetInhalt, legeInPapierkorb } from '../bestand';
 import type { DbSchnittstelle } from '../../db/database';
-import { asIds, blickfeldAus, writableIds, type Sicht } from '../haushalt/haushalt';
-import { legeInPapierkorb } from '../bestand/papierkorb';
-import type { BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
+import { asIds, blickfeldAus, writableIds, type Sicht, type BlickfeldEingabe as Blickfeld } from '../haushalt';
 import type { SetsKontext } from './kontext';
 
 // Für Löschen und Wegfall; sonst verwaisen Teile.
@@ -16,20 +14,21 @@ export async function deleteSetRows(tx: DbSchnittstelle, uids: number[], setNumb
 export async function loescheSetFuer(sk: SetsKontext, s: Sicht, setNumber: string) {
   const schreibbar = await writableIds(sk.db, s.nutzer);
   const gewaehlt = s.konten === undefined ? schreibbar : await blickfeldAus(sk.db, s);
-  return deleteSet(
+  return loescheSet(
     sk,
     gewaehlt.filter(id => schreibbar.includes(id)),
     setNumber,
   );
 }
 
-export async function deleteSet(sk: SetsKontext, userId: Blickfeld, setNumber: string) {
+/** null: Im Blickfeld gibt es das Set nicht; sonst die neuen Papierkorb-Einträge. */
+export async function loescheSet(sk: SetsKontext, userId: Blickfeld, setNumber: string): Promise<number[] | null> {
   const uids = asIds(userId);
   // Atomar: Ein abgebrochenes DELETE liesse sonst Teile und Figuren ohne Set in
   // Teileliste und Finanzsummen zurück.
   return sk.db.transaction(async tx => {
     const besitzer = await repo.besitzerDesSets(tx, uids, setNumber);
-    if (!besitzer.length) return false;
+    if (!besitzer.length) return null;
     // Ein Eintrag je Konto: Wiederhergestellt wird in das Konto, dem es gehörte.
     const papierkorb: number[] = [];
     for (const b of besitzer) {

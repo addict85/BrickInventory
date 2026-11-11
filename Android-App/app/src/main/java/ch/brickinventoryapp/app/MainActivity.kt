@@ -68,7 +68,7 @@ import ch.brickinventoryapp.konto.ui.screens.ZweiterFaktorPflichtMaske
 import ch.brickinventoryapp.zustand.ui.viewmodel.DarstellungViewModel
 import ch.brickinventoryapp.konto.ui.viewmodel.KontoViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.VertrauenViewModel
-import ch.brickinventoryapp.zustand.ui.viewmodel.CsvImportViewModel
+import ch.brickinventoryapp.app.csv.CsvImportViewModel
 import ch.brickinventoryapp.konto.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.app.nav.AktivitaetsZustand
 import ch.brickinventoryapp.sicherheit.GeheimeZwischenablage
@@ -106,6 +106,9 @@ class MainActivity : NurLauncherStart() {
             // Der Satz des Servers sagt, was zu tun ist (neu anmelden, Displaysperre einrichten).
             Toast.makeText(this, meldung ?: LanguageManager.localizedContext(this).getString(R.string.schritt_server_fehler),
                 Toast.LENGTH_LONG).show()
+        }, ohneAttestation = {
+            Toast.makeText(this, LanguageManager.localizedContext(this).getString(R.string.schritt_ohne_attestation),
+                Toast.LENGTH_LONG).show()
         }) {
             LanguageManager.localizedContext(this)
                 .getString(R.string.schritt_untertitel)
@@ -113,7 +116,7 @@ class MainActivity : NurLauncherStart() {
     }
 
     /** Optional, Vorgabe aus: nach N Minuten im Hintergrund erst nach der Gerätesperre weiter. */
-    private val appSperre by lazy { AppSperre(SystemClock::elapsedRealtime, AppSperreAblage(this)) }
+    private val appSperre by lazy { AppSperre(SystemClock::elapsedRealtime, AppSperreAblage(this)) { geraeteStarts(this) } }
 
     /** Bindet den Schrittschutz an den Server (routes/api_v1/geraet.ts). */
     @Inject lateinit var schrittbindung: Schrittbindung

@@ -20,8 +20,10 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.testing.Quellen
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.zustand.ui.CsvImportUiState
-import ch.brickinventoryapp.zustand.ui.Screen
+import ch.brickinventoryapp.app.csv.CsvImportUiState
+import ch.brickinventoryapp.finanzen.ui.FinanzZiel
+import ch.brickinventoryapp.sammlung.ui.SammlungZiel
+import ch.brickinventoryapp.teile.ui.TeileZiel
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -53,7 +55,7 @@ class TabOpensAtTopTest {
     private val ctx: Context = ApplicationProvider.getApplicationContext()
 
     /** Gemeldetes Ziel und ob beim Melden noch die Galerie offen war. */
-    private val gemeldet = mutableListOf<Pair<Screen, Boolean>>()
+    private val gemeldet = mutableListOf<Pair<Any, Boolean>>()
     private lateinit var nav: NavHostController
 
     private fun zeige() {
@@ -62,20 +64,20 @@ class TabOpensAtTopTest {
                 nav = rememberNavController()
                 val reiter = remember {
                     listOf(
-                        Reiter(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
-                        Reiter(Screen.Finance, { Icon(Icons.Default.ViewInAr, null) }, "Finanzen"))
+                        Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                        Reiter(FinanzZiel.Finance, { Icon(Icons.Default.ViewInAr, null) }, "Finanzen"))
                 }
                 MainScaffold(
                     title = "Sammlung", navController = nav, bottomNavItems = reiter,
                     snackbarHostState = remember { SnackbarHostState() },
                     csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
                     onCsvAbbrechen = {},
-                    onTabAngetippt = { ziel -> gemeldet += ziel to (nav.currentDestination?.hasRoute<Screen.Gallery>() == true) },
+                    onTabAngetippt = { ziel -> gemeldet += ziel to (nav.currentDestination?.hasRoute<SammlungZiel.Gallery>() == true) },
                 ) {
-                    NavHost(nav, startDestination = Screen.Gallery) {
-                        composable<Screen.Gallery> { }
-                        composable<Screen.Parts> { }
-                        composable<Screen.Finance> { }
+                    NavHost(nav, startDestination = SammlungZiel.Gallery) {
+                        composable<SammlungZiel.Gallery> { }
+                        composable<TeileZiel.Parts> { }
+                        composable<FinanzZiel.Finance> { }
                     }
                 }
             }
@@ -88,8 +90,8 @@ class TabOpensAtTopTest {
         zeige()
         compose.onNodeWithText("Finanzen").performClick()
         compose.waitForIdle()
-        assertEquals(listOf(Screen.Finance to true), gemeldet)
-        assertTrue("Die Leiste navigiert nicht mehr", nav.currentDestination?.hasRoute<Screen.Finance>() == true)
+        assertEquals(listOf(FinanzZiel.Finance to true), gemeldet)
+        assertTrue("Die Leiste navigiert nicht mehr", nav.currentDestination?.hasRoute<FinanzZiel.Finance>() == true)
     }
 
     @Test
@@ -97,8 +99,8 @@ class TabOpensAtTopTest {
         zeige()
         compose.onNodeWithText(ctx.getString(R.string.nav_parts)).performClick()
         compose.waitForIdle()
-        assertEquals(listOf(Screen.Parts to true), gemeldet)
-        assertTrue("Der Umschalter navigiert nicht mehr", nav.currentDestination?.hasRoute<Screen.Parts>() == true)
+        assertEquals(listOf(TeileZiel.Parts to true), gemeldet)
+        assertTrue("Der Umschalter navigiert nicht mehr", nav.currentDestination?.hasRoute<TeileZiel.Parts>() == true)
     }
 
     @Test

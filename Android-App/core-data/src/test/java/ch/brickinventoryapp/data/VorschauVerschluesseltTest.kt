@@ -9,6 +9,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
+import java.security.MessageDigest
 
 /**
  * Die Vorschau-Ablage liegt verschlüsselt: Die Bilder der eigenen
@@ -22,6 +23,8 @@ import java.io.File
  *      gegenproben/vorschau-klartext.patch
  *   B  im Ordner-Aufbau das Löschen der Klartext-Dateien entfernt → rot „Klartext
  *      aelterer Fassungen verschwindet …“
+ *   C  schluessel() wieder als SHA-256 der Adresse → rot „der Dateiname verraet die Adresse
+ *      nicht …“; gegenproben/vorschau-namen-ungestreut.patch
  */
 class VorschauVerschluesseltTest {
 
@@ -29,7 +32,7 @@ class VorschauVerschluesseltTest {
     private val adresse = "https://brick.example/api/v1/images/set/75192-1?thumb=1"
     private val bild = "JPEG-75192-Millennium-Falcon".toByteArray()
 
-    private fun speicher() = VorschauSpeicher({ wurzel }, AblageChiffre { ByteArray(32) { 3 } })
+    private fun speicher() = VorschauSpeicher({ wurzel }, AblageChiffre { ByteArray(32) { 3 } }) { ByteArray(32) { 13 } }
 
     @After
     fun zu() { wurzel.deleteRecursively() }
@@ -54,6 +57,23 @@ class VorschauVerschluesseltTest {
         assertNull(s.lies(adresse))
         assertFalse("Das Klartext-Bild der Vorfassung bleibt liegen", alt.exists())
         assertFalse(klartextIrgendwo())
+    }
+
+    @Test
+    fun `der Dateiname verraet die Adresse nicht, und die Ablage mit SHA-256-Namen verschwindet`() {
+        val alt = File(wurzel, "v2/" + "b".repeat(64)).apply { parentFile!!.mkdirs(); writeBytes(byteArrayOf(1)) }
+        speicher().schreibe(adresse, bild)
+        assertFalse("Die v2-Ablage bleibt liegen", alt.exists())
+        val sha = MessageDigest.getInstance("SHA-256").digest(adresse.toByteArray()).joinToString("") { "%02x".format(it) }
+        val name = wurzel.walkTopDown().single { it.isFile }.name
+        assertFalse("Der Name ist der SHA-256 der Adresse", name == sha)
+        val anders = File(wurzel.parentFile, wurzel.name + "-b")
+        try {
+            VorschauSpeicher({ anders }, AblageChiffre { ByteArray(32) { 3 } }) { ByteArray(32) { 14 } }.schreibe(adresse, bild)
+            assertFalse("Der Name hängt nicht am Schlüssel", anders.walkTopDown().single { it.isFile }.name == name)
+        } finally {
+            anders.deleteRecursively()
+        }
     }
 
     @Test

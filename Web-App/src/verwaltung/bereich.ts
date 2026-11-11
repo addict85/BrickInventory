@@ -13,7 +13,35 @@ export function erzeugeVerwaltung(k: VerwaltungKontext) {
   const { db } = k;
   return {
     db,
-    verwaltung: bindeZugang(db, verwaltung),
+    verwaltung: bindeZugang(db, verwaltung, [
+      'bestandsFigurenbilderOffen',
+      'bildZeilenDerKonten',
+      'bricklinkTeile',
+      'fehlanzeigeDerVorschau',
+      'fehlanzeigeDesSets',
+      'katalogBild',
+      'katalogBildKandidaten',
+      'katalogBilderOffen',
+      'letzterLaufDerArt',
+      'offeneBildauftraege',
+      'probeErfassungen',
+      'probePreisCache',
+      'probePreisVerlauf',
+      'probeSet',
+      'probeWaehrung',
+      'protokollSeit',
+      'rbInventarTeile',
+      'rbTeile',
+      'setFehlanzeigen',
+      'setFehlanzeigenOhne404',
+      'setFigurenbilderOffen',
+      'setsOhneAnleitung',
+      'teilbilderFertig',
+      'teilbilderOffen',
+      'veraltetePreise',
+      'vorschauFehlanzeigen',
+      'zugeordneteTeile',
+    ]),
   };
 }
 

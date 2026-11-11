@@ -1,16 +1,15 @@
 import path from 'path';
-import type { AuftragsLauf } from '../auftraege/auftraege';
+import { type AuftragsLauf, stelleAuftragEin } from '../auftraege';
 import fs from 'fs';
 import { PART_IMAGES_DIR } from '../infra/appPaths';
-import { type RbSetTeil, parseThrottleWait, rebrickableRoh } from './quellen';
+import { type RbSetTeil, ersteBlNummer, parseThrottleWait, rebrickableRoh } from './quellen';
 import { getAllSetParts } from './rebrickableKatalog';
 import { fehlertext, logAndContinue, meldeFehler } from '../infra/fehler';
-import { getGlobalSetting } from '../einstellungen/settings';
+import { getGlobalSetting } from '../einstellungen';
 import { mitVersion } from '../infra/setNummer';
 import { nummernListe } from '../infra/fremdeAdressen';
 import { merkeBlNummer, merkeBlNummern, merkeBlNummerUnveraendert } from './blZuordnung';
 import { merkeSetTeile, type SetTeilZeile } from './katalogPflege';
-import { stelleAuftragEin } from '../auftraege/dienst';
 import { rebrickableBackgroundLimiter, consumeRebrickableDaily } from './rateLimiter';
 import * as inhalt from './repository/setInhalt';
 import { katalog } from './prozess';
@@ -35,7 +34,7 @@ function setTeilZeilen(roh: RbSetTeil[]): SetTeilZeile[] {
       kategorie: p.part_cat_id ? String(p.part_cat_id) : null,
       colorId, colorName: color.name || 'Unknown', colorHex: color.rgb || null,
       imageUrl, imageLocal, quantity: t.quantity || 1, isSpare: !!t.is_spare,
-      blNummer: p.external_ids?.BrickLink?.[0] ?? null,
+      blNummer: ersteBlNummer(p.external_ids),
     });
   }
   return zeilen.sort((a, b) => a.partNumber < b.partNumber ? -1 : a.partNumber > b.partNumber ? 1 : a.colorId - b.colorId);

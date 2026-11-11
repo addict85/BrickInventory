@@ -1,7 +1,6 @@
-import { getCurrentMarketPrice, getCurrentFigMarketPrice, getCurrentPartMarketPrice } from '../finanzen/marketPrice';
+import { getCurrentMarketPrice, getCurrentFigMarketPrice, getCurrentPartMarketPrice } from '../finanzen';
 import { setzeGeschaetztenPreis } from './acquisitions';
-import { teilfarbenbilderNachtragen } from '../katalog/katalogAbgleich';
-import { blAbrufNummer } from '../katalog/blZuordnung';
+import { teilfarbenbilderNachtragen, blAbrufNummer } from '../katalog';
 import { fehlertext, meldeFehler } from '../infra/fehler';
 import { setTimeout as warte } from 'node:timers/promises';
 import { bestandBereich } from './prozess';

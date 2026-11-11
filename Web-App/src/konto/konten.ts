@@ -2,7 +2,7 @@
  * Stelle, damit kein Weg den Schritt vergisst. */
 import { hashePasswort } from './bcryptSchranke';
 import * as repo from './repository/konten';
-import { BCRYPT_ROUNDS, leereTokenCache, revokeAllSessions, revokeAllTokens } from './auth';
+import { BCRYPT_ROUNDS, leereTokenCache, mitZugangsende, revokeAllSessions, revokeAllTokens } from './auth';
 import { erhoeheSitzungsVersion } from './sitzungsVersion';
 import { emailGueltig } from '../infra/validate';
 import { entferneStartpasswort } from '../infra/startpasswort';
@@ -40,7 +40,7 @@ export async function profil(id: number) {
   return kontoBereich().konten.profilZeile(id);
 }
 
-const hashe = (passwort: unknown) => hashePasswort(passwort, BCRYPT_ROUNDS);
+const hashe = (passwort: string) => hashePasswort(passwort, BCRYPT_ROUNDS);
 
 async function zugaengeBeenden(uid: number): Promise<void> {
   await revokeAllTokens(uid);
@@ -51,32 +51,45 @@ async function startpasswortErledigt(uid: number): Promise<void> {
   if ((await kontoBereich().konten.kontoKurz(uid))?.is_admin) entferneStartpasswort();
 }
 
-export async function setzeFremdesPasswort(uid: number, passwort: unknown): Promise<boolean> {
-  if (!await kontoBereich().konten.setzePasswortHash(uid, await hashe(passwort))) return false;
-  await zugaengeBeenden(uid);
-  return true;
+export async function setzeFremdesPasswort(uid: number, passwort: string): Promise<boolean> {
+  const hash = await hashe(passwort);
+  return mitZugangsende(uid, async () => {
+    if (!await kontoBereich().konten.setzePasswortHash(uid, hash)) return false;
+    await zugaengeBeenden(uid);
+    return true;
+  });
 }
 
 /** Auch der gerade benutzte Token fällt. Passkeys nur auf Wunsch: Wer sein
  * Passwort bloss erneuert, soll seine Geräte nicht neu einrichten müssen. */
-export async function aendereEigenesPasswort(uid: number, passwort: unknown,
+export async function aendereEigenesPasswort(uid: number, passwort: string,
                                              o: { passkeysWiderrufen?: boolean } = {}): Promise<void> {
-  await kontoBereich().konten.setzeEigenesPasswort(uid, await hashe(passwort));
-  await zugaengeBeenden(uid);
+  const hash = await hashe(passwort);
+  await mitZugangsende(uid, async () => {
+    await kontoBereich().konten.setzeEigenesPasswort(uid, hash);
+    await zugaengeBeenden(uid);
+    if (o.passkeysWiderrufen) await kontoBereich().passkeys.loescheAlleDesKontos(uid);
+  });
   await startpasswortErledigt(uid);
-  if (o.passkeysWiderrufen) await kontoBereich().passkeys.loescheAlleDesKontos(uid);
 }
 
-/** Hier will man einen fremden Zugang loswerden; deshalb fallen auch alle Passkeys. */
-export async function setzePasswortZurueck(uid: number, passwort: unknown): Promise<void> {
-  await kontoBereich().konten.setzePasswortNachRuecksetzen(uid, await hashe(passwort));
-  await zugaengeBeenden(uid);
-  await startpasswortErledigt(uid);
-  await kontoBereich().passkeys.loescheAlleDesKontos(uid);
+/** Hier will man einen fremden Zugang loswerden; deshalb fallen auch alle Passkeys.
+ * @returns das Konto, oder null, wenn der Link schon verbraucht oder abgelaufen ist */
+export async function setzePasswortZurueck(tokenHash: string, passwort: string): Promise<number | null> {
+  const hash = await hashe(passwort);
+  const konto = await mitZugangsende((id: number | null) => id, async () => {
+    const uid = (await kontoBereich().konten.setzePasswortNachRuecksetzen(tokenHash, hash))?.id;
+    if (!uid) return null;
+    await zugaengeBeenden(uid);
+    await kontoBereich().passkeys.loescheAlleDesKontos(uid);
+    return uid;
+  });
+  if (konto) await startpasswortErledigt(konto);
+  return konto;
 }
 
 /** Dieselbe Rechenzeit wie registriere(): Die Antwortzeit verriete sonst eine vergebene Adresse. */
-export async function rechneWieRegistrierung(passwort: unknown): Promise<void> {
+export async function rechneWieRegistrierung(passwort: string): Promise<void> {
   await hashe(passwort);
 }
 
@@ -86,12 +99,12 @@ export function raeumeOffeneRegistrierungenAuf(): Promise<number> {
   return kontoBereich().konten.loescheOffeneRegistrierungen(REGISTRIERUNG_FRIST_TAGE);
 }
 
-export async function legeKontoAn(username: string, passwort: unknown, verwalter: boolean): Promise<number | null> {
+export async function legeKontoAn(username: string, passwort: string, verwalter: boolean): Promise<number | null> {
   return kontoBereich().konten.fuegeKontoEin(username, await hashe(passwort), verwalter);
 }
 
 export async function registriere(d: { username: string; email: string; first_name?: string | null | undefined;
-  last_name?: string | null | undefined; passwort: unknown; tokenHash: string; bis: Date }): Promise<number | null> {
+  last_name?: string | null | undefined; passwort: string; tokenHash: string; bis: Date }): Promise<number | null> {
   return kontoBereich().konten.registriereKonto({ username: d.username, email: d.email, first_name: d.first_name,
     last_name: d.last_name, hash: await hashe(d.passwort), tokenHash: d.tokenHash, bis: d.bis });
 }

@@ -265,8 +265,11 @@ export function kontoNachRuecksetzToken(db: DbSchnittstelle, hash: string): Prom
   return db.get('SELECT id, username FROM users WHERE reset_token = $1 AND reset_token_expires > NOW()', [hash]);
 }
 
-export async function setzePasswortNachRuecksetzen(db: DbSchnittstelle, id: number, hash: string): Promise<void> {
-  await db.run('UPDATE users SET password_hash=$1, reset_token=NULL, reset_token_expires=NULL WHERE id=$2', [hash, id]);
+/** Prüfen und Verbrauchen in einer Anweisung: Zwei gleichzeitige Anfragen mit
+ * demselben Link setzen sonst beide ein Passwort. */
+export function setzePasswortNachRuecksetzen(db: DbSchnittstelle, tokenHash: string, hash: string): Promise<{ id: number } | undefined> {
+  return db.get<{ id: number }>(`UPDATE users SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL
+    WHERE reset_token = $2 AND reset_token_expires > NOW() RETURNING id`, [hash, tokenHash]);
 }
 
 export interface Zugang {

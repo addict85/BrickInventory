@@ -5,10 +5,11 @@ import nodemailer from 'nodemailer';
 import tls from 'node:tls';
 import type { PeerCertificate } from 'node:tls';
 import { konfig } from '../infra/konfig';
-import { getGlobalSetting } from '../einstellungen/settings';
+import { getGlobalSetting } from '../einstellungen';
 import addressparser from 'nodemailer/lib/addressparser';
 import { emailGueltig } from '../infra/validate';
 import { fehlertext } from '../infra/fehler';
+import { loeseAuf, mailserverAdresse } from '../infra/zielAdresse';
 const getSetting = (key: string) => getGlobalSetting(key, '');
 
 function normiereFingerabdruck(wert: unknown): string {
@@ -28,6 +29,8 @@ async function getTransporter() {
   const ca = (await getSetting('smtp_tls_ca')).trim();
   const fp = normiereFingerabdruck(await getSetting('smtp_tls_fingerprint'));
   if (!host || !user) return null;
+  // Aufgelöst und geprüft wird hier, verbunden mit genau dieser Adresse; der Name bleibt für SNI und Zertifikat.
+  const adresse = await loeseAuf(host, ip => mailserverAdresse(ip));
   const pruefeGegenstelle = (name: string, zert: PeerCertificate) => {
     if (!fp) return tls.checkServerIdentity(name, zert);
     if (normiereFingerabdruck(zert.fingerprint256) === fp) return undefined;
@@ -38,7 +41,8 @@ async function getTransporter() {
   // requireTLS: Ohne STARTTLS in der EHLO-Antwort fiele nodemailer sonst auf
   // Klartext zurück und schickte Passwort und Rücksetzlinks lesbar durchs Netz.
   return nodemailer.createTransport({
-    host,
+    host: adresse,
+    ...(adresse !== host ? { servername: host } : {}),
     port,
     secure,
     requireTLS: !secure,
@@ -142,7 +146,13 @@ export async function sendMail({
     console.warn(`📧 Empfänger abgelehnt (${maskiereAdresse(to)}): keine einzelne reine Adresse`);
     return { success: false, error: 'empfaenger_ungueltig', mode: 'smtp' };
   }
-  const transporter = await getTransporter();
+  let transporter: Awaited<ReturnType<typeof getTransporter>>;
+  try {
+    transporter = await getTransporter();
+  } catch (e) {
+    console.error(`📧 SMTP Fehler (${maskiereAdresse(to)}):`, smtpFehlertext(e).text);
+    return { success: false, error: smtpFehlertext(e).text, mode: 'smtp' };
+  }
   const from = await getFrom();
   if (!transporter) {
     const link = linkFuerKonsole(echterLink);
@@ -174,10 +184,10 @@ export async function sendMail({
 }
 
 export async function testSmtp() {
-  const transporter = await getTransporter();
-  // Code statt Satz: testSmtp() kennt den Anfragenden nicht.
-  if (!transporter) return { success: false as const, code: 'smtp_nicht_konfiguriert' as const };
   try {
+    const transporter = await getTransporter();
+    // Code statt Satz: testSmtp() kennt den Anfragenden nicht.
+    if (!transporter) return { success: false as const, code: 'smtp_nicht_konfiguriert' as const };
     await transporter.verify();
     return { success: true as const, message: 'SMTP-Verbindung erfolgreich' };
   } catch (e) {

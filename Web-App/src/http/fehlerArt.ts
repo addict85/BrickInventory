@@ -1,6 +1,5 @@
 /** Die einzige Stelle, an der eine fachliche Fehlerart zum HTTP-Status wird. */
-import { Fachfehler } from '../infra/fehlerTexte';
-import type { FehlerArt } from '../infra/fehlerTexte';
+import { Fachfehler, type FehlerArt } from '../infra/fehlerTexte';
 
 export const STATUS_DER_ART: Readonly<Record<FehlerArt, number>> = {
   ungueltig: 400,

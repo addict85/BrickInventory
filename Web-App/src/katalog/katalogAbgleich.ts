@@ -5,7 +5,7 @@ import { generateThumb } from './bilder/thumbs';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
 import { merkeTeil, merkeTeilFarbe, merkeSetTeil, setzeTeilBildLokal, merkeFiguren, merkeSetFiguren } from './katalogPflege';
-import { logAndContinue, meldeUndLiefere, meldeFehler } from '../infra/fehler';
+import { logAndContinue, meldeFehler } from '../infra/fehler';
 import path from 'path';
 import fs from 'fs';
 import { PART_IMAGES_DIR as IMG_DIR } from '../infra/appPaths';
@@ -17,24 +17,23 @@ async function syncSetCatalog(setNumber: string) {
   // Nummer würde nie geprüft.
   const n = mitVersion(setNumber);
 
-  const stand = await katalog().csvKatalog.katalogBildstand(n).catch(meldeUndLiefere('katalog-sync:existing', { total: 0, mitBild: 0 }));
+  const stand = await katalog().csvKatalog.katalogBildstand(n);
   const total = stand.total, withImg = stand.mitBild;
   if (total > 0 && withImg >= total) {
     return;
   }
-  const invId = await neuestesInventar(n).catch(meldeUndLiefere('katalog-sync:neuestesInventar', null));
+  const invId = await neuestesInventar(n);
   if (!invId) {
     return;
   }
 
-  const parts = await katalog().csvKatalog.inventarTeileOhneErsatz(invId).catch(meldeUndLiefere('katalog-sync:inventar lesen', []));
+  const parts = await katalog().csvKatalog.inventarTeileOhneErsatz(invId);
 
   if (!parts.length) {
     // Noch keine Teile im CSV-Zwischenspeicher — still überspringen.
     return;
   }
   fs.mkdirSync(IMG_DIR, { recursive: true });
-
 
   let downloaded = 0;
   for (const p of parts) {
@@ -68,7 +67,7 @@ async function syncSetCatalog(setNumber: string) {
     }
   }
 
-  const figs = await katalog().csvKatalog.inventarFiguren(invId).catch(meldeUndLiefere('katalog-sync:figs', []));
+  const figs = await katalog().csvKatalog.inventarFiguren(invId);
 
   await merkeFiguren(figs.map(f => ({ figNumber: f.fig_number, figName: f.fig_name, imageUrl: f.image_url })))
     .catch(logAndContinue('katalog-sync:figur merken'));

@@ -5,8 +5,8 @@ import { fehlerAntwort } from '../src/http/httpAntwort';
 import { logAndContinue } from '../src/infra/fehler';
 import { fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
 import { resolveUserId, istVerwalter } from '../src/konto/http/anmeldung';
-import { aktuellerStartZustand, oeffentlicherStartZustand } from '../src/auftraege/startZustand';
-import { gesundheitsBericht, datenbankBereit } from '../src/verwaltung/gesundheit';
+import { aktuellerStartZustand, oeffentlicherStartZustand } from '../src/auftraege';
+import { gesundheitsBericht, datenbankBereit } from '../src/verwaltung';
 
 // Wie der Vertrag: eine andere Schreibung ist eine andere Route (404).
 const router = express.Router({ caseSensitive: true });
@@ -33,6 +33,8 @@ router.get('/health/ready', async (req, res) => {
   });
 });
 // Klemmt die Datenbank, bleibt der Bericht erreichbar — nur ohne Details.
+// Bewusst ohne Schrittschutz: Die Details tragen nichts Geheimes, und eine
+// Überwachung fragt mit einem Token ohne Geräteschlüssel.
 router.get('/health', async (req, res) => {
   const verwalter = !!(await resolveUserId(req).catch(logAndContinue('health:anmeldung'))) && istVerwalter(req);
   res.json(await gesundheitsBericht(verwalter));

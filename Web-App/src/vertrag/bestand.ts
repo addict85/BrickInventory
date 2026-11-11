@@ -43,6 +43,7 @@ export const DeleteWithQuantityResponse = z.looseObject({
 });
 
 export const Lagerort = z.looseObject({
+  figuren: z.number().int().nullable().optional(),
   ort: z.string(),
   sets: z.number().int(),
   teile: z.number().int(),

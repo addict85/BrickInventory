@@ -5,6 +5,7 @@ import https from 'https';
 import { PassThrough, type Readable } from 'stream';
 import type { IncomingHttpHeaders, IncomingMessage, ClientRequest } from 'http';
 import { hostErlaubt, naechsteUmleitung, UMLEITUNGS_GRENZE } from './fremdeAdressen';
+import { oeffentlicherLookup } from './zielAdresse';
 
 export type AbrufGrund = 'adresse' | 'umleitung' | 'zu-gross' | 'zeitlimit' | 'netz' | 'abgebrochen';
 
@@ -28,6 +29,7 @@ export interface AbrufOptionen {
   zeitlimitMs: number;
   kopfzeilen?: Record<string, string>;
   umleitungen?: number;
+  /** Bringt seine eigene Namensauflösung mit; ohne ihn prüft oeffentlicherLookup das Ziel. */
   agent?: https.Agent;
   /** POST folgt keiner Umleitung: Ein 303 hiesse GET, ein 307 sendete den Rumpf weiter. */
   methode?: 'GET' | 'POST';
@@ -106,11 +108,15 @@ function laufe(start: string, o: AbrufOptionen): Promise<Lauf> {
           erledigt = true;
           fertig({ antwort: r, url: u, frist, abbrechen });
         };
+        const verbindung = o.agent ? { agent: o.agent } : { lookup: oeffentlicherLookup };
         req = o.methode === 'POST'
-          ? https.request(u, { method: 'POST', family: 4, headers: kopf, ...(o.agent ? { agent: o.agent } : {}) }, beiAntwort)
-          : https.get(u, { family: 4, headers: kopf, ...(o.agent ? { agent: o.agent } : {}) }, beiAntwort);
-        req.on('error', (e: Error) => abbrechen(e instanceof AbrufFehler ? e
-          : new AbrufFehler('netz', `${(e as NodeJS.ErrnoException).code || e.message}: ${adresseKurz(u)}`, e)));
+          ? https.request(u, { method: 'POST', family: 4, headers: kopf, ...verbindung }, beiAntwort)
+          : https.get(u, { family: 4, headers: kopf, ...verbindung }, beiAntwort);
+        req.on('error', (e: Error) => {
+          const code = (e as NodeJS.ErrnoException).code;
+          abbrechen(e instanceof AbrufFehler ? e
+            : new AbrufFehler(code === 'EZIELGESPERRT' ? 'adresse' : 'netz', `${code || e.message}: ${adresseKurz(u)}`, e));
+        });
         if (o.methode === 'POST') req.end(o.rumpf);
       } catch (e) {
         abbrechen(new AbrufFehler('adresse', `Abruf nicht möglich: ${adresseKurz(u)}`, e));

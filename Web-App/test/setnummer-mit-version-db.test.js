@@ -1,6 +1,6 @@
 /**
  * Set-Nummern tragen in der Datenbank immer ihre Version (Migration 0074),
- * der Set-Stamm liest rb_sets und füllt Lücken aus catalog_cache (0105), und Ersatzteil ist
+ * der Set-Stamm liest nur rb_sets (0105, 0108), und Ersatzteil ist
  * überall 0 oder 1 (0075). Geprüft werden die Migrationen auf Altdaten, das
  * Schreiben ohne Versionsanhang und die Leser, die früher zwei Schreibweisen
  * per OR abfragten.
@@ -116,7 +116,7 @@ test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 
     }
   });
 
-  await t.test('Set-Stamm: rb_sets führt, catalog_cache füllt Lücken', async () => {
+  await t.test('Set-Stamm: nur rb_sets, ein Platzhalter bleibt Platzhalter', async () => {
     const S = `S${PID}`;
     const weg = () => Promise.all([
       db.run('DELETE FROM rb_sets WHERE set_num LIKE $1', [`${S}%`]),
@@ -124,14 +124,15 @@ test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 
     await weg();
     try {
       await db.run(`INSERT INTO rb_sets (set_num, name, year, num_parts) VALUES ($1,'Aus Rebrickable',2020,100)`, [`${S}a-1`]);
-      await db.run(`INSERT INTO rb_sets (set_num, name, herkunft) VALUES ($1,$2,'api')`, [`${S}b-1`, `Set ${S}b-1`]);
-      await db.run(`INSERT INTO catalog_cache (set_number, name, year) VALUES ($1,'Aus dem Abruf',2018), ($2,'Nur Cache',2019)`,
-        [`${S}b-1`, `${S}c-1`]);
+      await db.run(`INSERT INTO rb_sets (set_num, name, herkunft) VALUES ($1,$2,'api'), ($3,'Aus dem Abruf','api')`,
+        [`${S}b-1`, `Set ${S}b-1`, `${S}c-1`]);
+      await db.run(`INSERT INTO catalog_cache (set_number) VALUES ($1)`, [`${S}d-1`]);
       const { setInfo } = _req('src/sets/index.js');
-      const stamm = async (n) => { const r = await setInfo(n); return r && { name: r.name, year: r.year }; };
-      assert.deepEqual(await stamm(`${S}a-1`), { name: 'Aus Rebrickable', year: 2020 });
-      assert.deepEqual(await stamm(`${S}b-1`), { name: 'Aus dem Abruf', year: 2018 }, 'ein Platzhalter ist kein Name');
-      assert.deepEqual(await stamm(`${S}c`), { name: 'Nur Cache', year: 2019 }, 'setInfo liest den Cache, auch ohne Versionsanhang');
+      const stamm = async (n) => { const r = await setInfo(n); return r && { name: r.name, year: r.year, platzhalter: r.platzhalter }; };
+      assert.deepEqual(await stamm(`${S}a-1`), { name: 'Aus Rebrickable', year: 2020, platzhalter: false });
+      assert.deepEqual(await stamm(`${S}b-1`), { name: `Set ${S}b-1`, year: null, platzhalter: true });
+      assert.deepEqual(await stamm(`${S}c`), { name: 'Aus dem Abruf', year: null, platzhalter: false }, 'setInfo ergänzt den Versionsanhang');
+      assert.equal(await setInfo(`${S}d-1`), null, 'ein blosser Abrufstand ist kein Set-Stamm');
     } finally { await weg(); }
   });
 

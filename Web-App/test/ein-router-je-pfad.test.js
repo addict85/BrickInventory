@@ -35,7 +35,7 @@ function routen(router, praefix = '') {
   return raus;
 }
 
-/** Router-Einhängungen in server.ts: Pfad → Router-Modul. */
+/** Router-Einhängungen in startup/app.ts: Pfad → Router-Modul. */
 function einhaengungen() {
   const v1 = { mount: '/api/v1', datei: path.join(ROOT, 'routes/api_v1/index.ts'), name: 'api_v1/index' };
   // Die Teile von routes/auth.ts stecken schon in dessen Stapel.
@@ -43,12 +43,12 @@ function einhaengungen() {
 }
 
 test('ein Router je Einhängepunkt', () => {
-  const server = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
-  // Router heissen in server.ts `…Router`; Middleware (anmeldungAmEingang) darf daneben stehen.
+  const server = ohneKommentare(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
+  // Router heissen in startup/app.ts `…Router`; Middleware (anmeldungAmEingang) darf daneben stehen.
   const je = new Map();
   for (const m of server.matchAll(/app\.use\(\s*'(\/api[^']*)'\s*,\s*(\w+Router)\s*\)/g))
     je.set(m[1], [...(je.get(m[1]) || []), m[2]]);
-  assert.ok(je.size >= 2, `nur ${je.size} Router-Einhängungen in server.ts gefunden`);
+  assert.ok(je.size >= 2, `nur ${je.size} Router-Einhängungen in startup/app.ts gefunden`);
   // Gesundheit und Startstatus antworten VOR dem Eingang (anmeldungAmEingang),
   // der Router der API dahinter: zwei Stellen im Stapel, deshalb zwei Router.
   const VOR_DEM_EINGANG = new Set(['gesundheitRouter']);

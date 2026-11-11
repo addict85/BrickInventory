@@ -1,24 +1,33 @@
 import type { DbSchnittstelle } from '../../../db/database';
+import { merkeSetKatalog } from './setStamm';
 
 export interface KatalogSet {
   set_number: string; name: string | null; year: number | null; theme: string | null;
   pieces: number | null; image_url: string | null; is_gear: boolean; fetched_at?: string | Date | null;
 }
 
+/** Der Abrufstand aus catalog_cache, die Angaben aus rb_sets und set_catalog (0108). */
 export async function katalogSetZu(db: DbSchnittstelle, nummer: string): Promise<KatalogSet | undefined> {
-  return db.get<KatalogSet>('SELECT * FROM catalog_cache WHERE set_number = $1', [nummer]);
+  return db.get<KatalogSet>(`SELECT cc.set_number, rs.name, NULLIF(rs.year, 0) AS year, rt.name AS theme,
+           NULLIF(rs.num_parts, 0) AS pieces, sc.image_url, cc.is_gear, cc.fetched_at
+      FROM catalog_cache cc
+      LEFT JOIN rb_sets rs ON rs.set_num = cc.set_number
+      LEFT JOIN rb_themes rt ON rt.id = rs.theme_id
+      LEFT JOIN set_catalog sc ON sc.set_number = cc.set_number
+     WHERE cc.set_number = $1`, [nummer]);
 }
 
 /** Damit höchstens täglich nachgefragt wird. */
 export async function merkeUnbekanntesSet(db: DbSchnittstelle, nummer: string, alsGear: boolean): Promise<void> {
-  await db.run(`INSERT INTO catalog_cache (set_number, name, is_gear) VALUES ($1,$2,$3)
-    ON CONFLICT (set_number) DO UPDATE SET is_gear=$3, fetched_at=NOW()`, [nummer, `Set ${nummer}`, alsGear]);
+  await db.run(`INSERT INTO catalog_cache (set_number, is_gear) VALUES ($1,$2)
+    ON CONFLICT (set_number) DO UPDATE SET is_gear=$2, fetched_at=NOW()`, [nummer, alsGear]);
 }
 
-export async function merkeSet(db: DbSchnittstelle, s: Omit<KatalogSet, 'is_gear' | 'fetched_at'>): Promise<void> {
-  await db.run(`INSERT INTO catalog_cache (set_number,name,year,theme,pieces,image_url,is_gear) VALUES ($1,$2,$3,$4,$5,$6,false)
-    ON CONFLICT (set_number) DO UPDATE SET name=$2,year=$3,theme=$4,pieces=$5,image_url=$6,is_gear=false`,
-    [s.set_number, s.name, s.year, s.theme, s.pieces, s.image_url]);
+/** Angaben in den Katalog, der Abrufstand in catalog_cache. */
+export async function merkeSet(db: DbSchnittstelle, s: Omit<KatalogSet, 'is_gear' | 'fetched_at'> & { theme_id: number | null }): Promise<void> {
+  await merkeSetKatalog(db, s.set_number, s.name, s.year, s.theme, s.pieces, null, s.image_url, null, s.theme_id);
+  await db.run(`INSERT INTO catalog_cache (set_number, is_gear) VALUES ($1,false)
+    ON CONFLICT (set_number) DO UPDATE SET is_gear=false, fetched_at=NOW()`, [s.set_number]);
 }
 
 export async function teilelisteAusCache(db: DbSchnittstelle, nummer: string): Promise<string | undefined> {

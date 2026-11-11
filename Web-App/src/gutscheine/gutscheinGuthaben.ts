@@ -1,7 +1,7 @@
 // Guthaben einer LEGO-Geschenkkarte; greift der Bot-Schutz, folgt kein weiterer Aufruf.
 import { meldeUndLiefere } from '../infra/fehler';
 import { hostErlaubt } from '../infra/fremdeAdressen';
-import { legoAbruf, ERLAUBTE_GUTHABEN_HOSTS, type LegoAbruf } from '../katalog/quellen';
+import { legoAbruf, ERLAUBTE_GUTHABEN_HOSTS, type LegoAbruf } from '../katalog';
 
 /** Aus dem Prototyp übernommen, nicht geraten — der Teil, den niemand herleiten kann. */
 const ENDPUNKT = 'https://www.lego.com/api/graphql/giftCardBalanceQuery';
@@ -228,6 +228,7 @@ async function frageAb(
 
   if (res.status === 401) throw new NichtAngemeldet('Nicht angemeldet');
   if (!res.ok) {
+    // Ausnahme: Der Text dient nur der Meldung; geworfen wird darunter ohnehin.
     const text = await res.text().catch(meldeUndLiefere('guthaben:antworttext', ''));
     // verdecke() auch auf den FREMDEN Text: Eine Fehlermeldung, die die Eingabe
     // zurückwirft, brächte die PIN sonst ins Protokoll.

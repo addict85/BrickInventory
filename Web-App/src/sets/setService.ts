@@ -1,17 +1,16 @@
 import type { DbSchnittstelle } from '../../db/database';
 import { fehlertext } from '../infra/fehler';
-import { scopeIds, writableIds } from '../haushalt/haushalt';
+import { scopeIds, writableIds } from '../haushalt';
 import { mitInventarSperre } from '../../db/txLock';
-import { getCurrentMarketPrice } from '../finanzen/marketPrice';
-import { getSetting } from '../einstellungen/settings';
+import { getCurrentMarketPrice, resolveSetCondition } from '../finanzen';
+import { getSetting } from '../einstellungen';
 import { deleteSetRows } from './loeschen';
-import { legeInPapierkorb } from '../bestand/papierkorb';
+import { legeInPapierkorb } from '../bestand';
 import { toCsv } from '../infra/csvExport';
 import { normalisiereSetNummer } from '../infra/setNummer';
 import { recordAcquisition } from './erfassen';
 import { fachfehler } from '../infra/fehlerTexte';
-import { bestandsMenge } from '../infra/validate';
-import { resolveSetCondition } from '../finanzen/financeCalc';
+import { bestandsMenge, zustand } from '../infra/validate';
 import * as repo from './repository/sets';
 import type { Eingabe } from '../vertrag';
 import { versuche, wertOder, Abstriche } from '../infra/ergebnis';
@@ -151,7 +150,7 @@ export async function updateSet(sk: SetsKontext, uid: number, sn: string, body: 
   }
   // null heisst „nicht gesetzt", nicht 'N'.
   if (body.condition !== undefined && body.condition !== null && !hasQuantity) {
-    const cond = ['N','U'].includes(body.condition) ? body.condition : 'N';
+    const cond = zustand(body.condition);
     try {
       // ownerId: Mit dem Aufrufer träfe das UPDATE beim Unterkonto keine Zeile.
       await schreibeInLetzteErfassung(sk, 'condition', cond, ownerId, sn);

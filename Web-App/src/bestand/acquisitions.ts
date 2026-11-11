@@ -3,6 +3,7 @@
 import type { DbSchnittstelle } from '../../db/database';
 import { preisSpalte, schluesselSpalten } from '../../db/bestandsmenge';
 import * as repo from './repository/kaufErfassungen';
+import { zustand } from '../infra/validate';
 import { bestandBereich } from './prozess';
 
 export type AcquisitionKind = 'set' | 'part' | 'fig';
@@ -38,7 +39,7 @@ export async function recordAcquisitionForDay(
 ): Promise<{ merged: boolean }> {
   const qty   = Math.max(1, parseInt(String(input.quantity)) || 1);
   const price = num(input.price);
-  const cond  = ['N', 'U'].includes(String(input.condition)) ? String(input.condition) : 'N';
+  const cond  = zustand(input.condition);
   const geschaetzt = price != null && !!input.geschaetzt;
 
   // Eine Anweisung statt Lesen-Rechnen-Schreiben: Gleichzeitige Erfassungen
@@ -61,7 +62,7 @@ export async function findSameDayAcquisition(
   dbh: DbSchnittstelle = bestandBereich().db,
   merkmale: { preis?: unknown; geschaetzt?: boolean; waehrung?: string | null } = {}
 ): Promise<number | null> {
-  const cond = ['N', 'U'].includes(String(condition)) ? String(condition) : 'N';
+  const cond = zustand(condition);
   return repo.gleicheErfassungAmTag(dbh, kind, userId, keyValues, day, excludeId ?? -1,
     { zustand: cond, preis: num(merkmale.preis), geschaetzt: !!merkmale.geschaetzt, waehrung: merkmale.waehrung ?? null });
 }

@@ -1,0 +1,17 @@
+Gegenprobe: wendeAn ohne Sperre: Zwei gleichzeitige Änderungen verlieren eine
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.OfflineablageSperreTest
+Rot: zwei gleichzeitige wendeAn zaehlen beide
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
+@@ -286,7 +286,7 @@
+     suspend fun wendeAn(wirkung: Wirkung, bereich: String? = null) {
+         val b = bereich ?: bereich() ?: return
+         // Je Liste nacheinander, nie zwei Sperren zugleich: So kann sich nichts verklemmen.
+-        for (art in wirkung.arten) sperre(b, art).withLock { wendeAnGesperrt(art, wirkung, b) }
++        for (art in wirkung.arten) wendeAnGesperrt(art, wirkung, b)
+     }
+ 
+     private suspend fun wendeAnGesperrt(art: Bestandsart, w: Wirkung, b: String) = when (art) {

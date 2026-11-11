@@ -1,15 +1,12 @@
 /** Registrieren, anmelden ohne Passwort und als zweiter Faktor anstelle des
  * TOTP-Codes. */
 import crypto from 'crypto';
-import {
-  generateRegistrationOptions, verifyRegistrationResponse,
-  generateAuthenticationOptions, verifyAuthenticationResponse,
-} from '@simplewebauthn/server';
-import type { AuthenticationResponseJSON, RegistrationResponseJSON, WebAuthnCredential } from '@simplewebauthn/server';
+import { generateRegistrationOptions, verifyRegistrationResponse, generateAuthenticationOptions, verifyAuthenticationResponse, type AuthenticationResponseJSON, type RegistrationResponseJSON, type WebAuthnCredential } from '@simplewebauthn/server';
 import { decodeClientDataJSON } from '@simplewebauthn/server/helpers';
 import { basisUrl } from '../infra/basisUrl';
 import { androidHerkuenfte } from './androidApp';
 import { fehlertext } from '../infra/fehler';
+import { fachfehler } from '../infra/fehlerTexte';
 import { kontoBereich } from './prozess';
 
 function abgewiesen(e: unknown): null {
@@ -43,8 +40,13 @@ export function vertrauenspartei(): { rpID: string; origin: string; rpName: stri
 
 const hash = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
 
-function merkeChallenge(challenge: string, zweck: PasskeyZweck, uid: number | null): Promise<void> {
-  return kontoBereich().passkeys.speichereChallenge(hash(challenge), zweck, uid, new Date(Date.now() + CHALLENGE_MS));
+/** Die Anmeldeoptionen sind öffentlich; die Drossel je Adresse hält viele Adressen
+ * nicht auf. Darüber 503 statt einer Tabelle, die ohne Grenze wächst. */
+export const OFFENE_CHALLENGES_HOECHSTENS = 5000;
+
+async function merkeChallenge(challenge: string, zweck: PasskeyZweck, uid: number | null): Promise<void> {
+  if (!await kontoBereich().passkeys.speichereChallenge(hash(challenge), zweck, uid, new Date(Date.now() + CHALLENGE_MS), OFFENE_CHALLENGES_HOECHSTENS))
+    fachfehler('nicht_verfuegbar', 'server_ausgelastet');
 }
 
 /** Genau einmal: Eine wiederholte Antwort findet ihre Zeile nicht mehr. */

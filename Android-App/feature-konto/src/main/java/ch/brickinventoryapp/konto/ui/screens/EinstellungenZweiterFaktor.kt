@@ -2,6 +2,7 @@ package ch.brickinventoryapp.konto.ui.screens
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import ch.brickinventoryapp.ui.components.zeichenweise
@@ -57,6 +58,13 @@ internal fun teileCodes(ctx: Context, titel: String, codes: List<String>) {
     runCatching { ctx.startActivity(Intent.createChooser(senden, titel)) }
 }
 
+/**
+ * Den TOTP-Schlüssel kopieren nur dort, wo das System ihn als vertraulich behandelt
+ * (EXTRA_IS_SENSITIVE ab API 33): Darunter zeigen Vorschau und Tastaturverlauf ihn an.
+ * Die Codes gehen nie über die Ablage, nur über [teileCodes].
+ */
+internal fun schluesselKopierbar(sdk: Int = Build.VERSION.SDK_INT): Boolean = sdk >= Build.VERSION_CODES.TIRAMISU
+
 /** false, wenn keine App den Link nimmt (Manifest: <queries> für otpauth). */
 internal fun oeffneMitAuswahl(ctx: Context, uri: String, titel: String): Boolean {
     val ansicht = Intent(Intent.ACTION_VIEW, uri.toUri())
@@ -70,7 +78,7 @@ internal fun oeffneMitAuswahl(ctx: Context, uri: String, titel: String): Boolean
  * Auf dem Telefon braucht es keinen QR-Code: Der otpauth-Link oeffnet die
  * Authenticator-App. Immer über die Auswahl des Systems: Der Link trägt das
  * Geheimnis, und eine App, die sich als Standard dafür eingetragen hat, bekäme es
- * sonst unbemerkt. Fehlt eine, bleibt der Schluessel zum Kopieren.
+ * sonst unbemerkt. Fehlt eine, bleibt der Schluessel zum Abtippen (ab API 33 auch zum Kopieren).
  */
 @Composable
 internal fun ZweiterFaktorCard(
@@ -130,7 +138,6 @@ internal fun ZweiterFaktorCard(
                 Text(zfZustand.codes.joinToString("\n"),
                     fontFamily = FontFamily.Monospace,
                     modifier = Modifier.vorgelesenAls(zfZustand.codes.joinToString(", ") { zeichenweise(it) }))
-                OutlinedButton(onClick = { kopieren(zfZustand.codes.joinToString("\n")) }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) { Text(stringResource(R.string.zf_copy)) }
                 OutlinedButton(onClick = { teileCodes(kontext, teilenTitel, zfZustand.codes) }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) { Text(stringResource(R.string.zf_share)) }
                 CodesGesichert(gesichert) { gesichert = it }
                 Button(onClick = onZurueck, enabled = gesichert) { Text(stringResource(R.string.zf_codes_done)) }
@@ -152,8 +159,10 @@ internal fun ZweiterFaktorCard(
                 }
                 Text(zfZustand.geheimnis.chunked(4).joinToString(" "),
                     fontFamily = FontFamily.Monospace)
-                OutlinedButton(onClick = { kopieren(zfZustand.geheimnis) }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
-                    Text(stringResource(R.string.zf_copy_key))
+                if (schluesselKopierbar()) {
+                    OutlinedButton(onClick = { kopieren(zfZustand.geheimnis) }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+                        Text(stringResource(R.string.zf_copy_key))
+                    }
                 }
                 codeFeld(stringResource(R.string.zf_confirm_code))
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {

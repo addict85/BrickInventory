@@ -1,14 +1,15 @@
 /** data-theme schon im ausgelieferten HTML, damit die Seite nicht erst im
  * Standarddesign aufblitzt. */
 import { konfig } from '../infra/konfig';
-import { meldeUndLiefere, meldeFehler } from '../infra/fehler';
+
 import fs from 'fs';
 import { createHash } from 'crypto';
 import { PUBLIC_DIR } from '../infra/appPaths';
 import path from 'path';
-import { DESIGNS, designFuer, nutzerEinstellungen, getGlobalSetting } from '../einstellungen/settings';
+import { DESIGNS, designFuer, nutzerEinstellungen, getGlobalSetting } from '../einstellungen';
 import { stempleAssetsGecacht } from '../infra/assetStempel';
 import { appVersion } from '../infra/appVersion';
+import { versuche } from '../infra/ergebnis';
 
 const INDEX_PATH = path.join(PUBLIC_DIR, 'index.html');
 
@@ -87,7 +88,10 @@ async function currentTheme(userId?: number): Promise<string> {
     if (eigenes) return eigenes;
   }
   if (_theme !== null && Date.now() - _themeAt < THEME_TTL_MS) return _theme;
-  const gespeichert = await getGlobalSetting('app_theme').catch(meldeUndLiefere('index-html:getGlobalSetting', null));
+  // Die Startseite kommt auch bei gestörter Datenbank, dann klassisch und ohne Zwischenspeicher.
+  const gelesen = await versuche('index-html:design', getGlobalSetting('app_theme'));
+  if (!gelesen.ok) return 'classic';
+  const gespeichert = gelesen.wert;
   const gewaehlt: string = gespeichert && DESIGNS.includes(gespeichert) ? gespeichert : 'classic';
   _theme = gewaehlt;
   _themeAt = Date.now();
@@ -100,10 +104,8 @@ const LANGS = ['de', 'en'];
 async function currentLang(userId?: number): Promise<string> {
   if (!userId) return 'de';
   // Nur die eigene Einstellung: Ohne sie gilt Deutsch, nicht eine globale Vorgabe.
-  const sprache = String(
-    (await nutzerEinstellungen(userId).catch(meldeUndLiefere<Record<string, string>>('index-html:row', {}))).language ??
-      'de',
-  );
+  // Ein Lesefehler geht an renderIndexHtml(), das dann die Datei unverändert liefert.
+  const sprache = String((await nutzerEinstellungen(userId)).language ?? 'de');
   return LANGS.includes(sprache) ? sprache : 'de';
 }
 
@@ -134,21 +136,4 @@ export async function renderIndexHtml(userId?: number): Promise<string> {
   } catch (_) {
     return html;
   }
-}
-
-/** Renderer statt sendFile, sonst gingen die Assets ohne Stempel hinaus. Fällt
- * das Rendern aus, geht die Datei unverändert; js/00-theme-boot.js übernimmt. */
-export async function sendeStartseite(
-  res: { type(t: string): { send(b: string): unknown }; sendFile(f: string, o: { root: string }): void },
-  userId?: number,
-): Promise<void> {
-  await renderIndexHtml(userId).then(
-    html => {
-      res.type('html').send(html);
-    },
-    (e: unknown) => {
-      meldeFehler('startseite:rendern', e);
-      res.sendFile('index.html', { root: PUBLIC_DIR });
-    },
-  );
 }

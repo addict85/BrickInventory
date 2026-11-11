@@ -1,6 +1,5 @@
 import type { DbSchnittstelle, Zeile } from '../../../db/database';
-import { erfassungsTagSql, ERFASSUNGS_TABELLEN as SHAPES } from '../../../db/bestandsmenge';
-import type { ErfassungsArt } from '../../../db/bestandsmenge';
+import { erfassungsTagSql, ERFASSUNGS_TABELLEN as SHAPES, type ErfassungsArt } from '../../../db/bestandsmenge';
 
 /** Gleiche Käufe eines Tages sind eine Zeile (eindeutiger Index, Migration 0070). */
 

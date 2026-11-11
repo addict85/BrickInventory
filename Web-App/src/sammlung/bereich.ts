@@ -14,8 +14,12 @@ export function erzeugeSammlung(k: SammlungKontext) {
   const { db } = k;
   return {
     db,
-    erfassungen: bindeZugang(db, erfassungen),
-    loeschen: bindeZugang(db, loeschen),
+    erfassungen: bindeZugang(db, erfassungen, [
+      'kontoDerErfassung',
+      'setErfassungenImBlickfeld',
+      'zustandDerErfassung',
+    ]),
+    loeschen: bindeZugang(db, loeschen, ['manuelleFigurenDesKontos', 'manuelleTeileDesKontos', 'setsDesKontos']),
   };
 }
 

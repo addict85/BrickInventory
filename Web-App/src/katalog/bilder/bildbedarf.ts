@@ -1,5 +1,5 @@
-import { logAndContinue, meldeUndLiefere } from '../../infra/fehler';
-import { stelleAuftragEin } from '../../auftraege/dienst';
+import { logAndContinue } from '../../infra/fehler';
+import { stelleAuftragEin } from '../../auftraege';
 import { katalog } from '../prozess';
 
 /** Daten, keine Warteschlange: je Adresse eine Zeile. Abgearbeitet vom EINEN
@@ -44,13 +44,23 @@ export async function schreibePuffer(): Promise<void> {
   await bildbedarfAnstossen().catch(logAndContinue('bild-job:anstossen'));
 }
 
+const _takte: NodeJS.Timeout[] = [];
+
 export async function initImageQueue(): Promise<void> {
-  setInterval(() => { schreibePuffer().catch(logAndContinue('bild-job:schreibePuffer')); }, 10_000).unref();
+  if (_takte.length) return;
+  _takte.push(setInterval(() => { schreibePuffer().catch(logAndContinue('bild-job:schreibePuffer')); }, 10_000));
+  _takte[0]?.unref();
+}
+
+/** Vor dem Schliessen des Pools: Was im Puffer liegt, braucht noch eine Verbindung. */
+export async function stoppeBildbedarf(): Promise<void> {
+  for (const t of _takte.splice(0)) clearInterval(t);
+  await schreibePuffer();
 }
 
 // Sonst bleiben alte Notizen.
 export async function loescheVerfallene(): Promise<number> {
-  const r = await katalog().bildbedarf.loescheAlteBildwuensche(String(NOTIZ_GILT_MS)).catch(meldeUndLiefere('bild-job:r', null));
+  const r = await katalog().bildbedarf.loescheAlteBildwuensche(String(NOTIZ_GILT_MS));
   return r?.changes || 0;
 }
 

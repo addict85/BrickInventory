@@ -52,7 +52,7 @@ export function merklisteImBlickfeld(db: DbSchnittstelle, userIds: number[], f: 
   const pWaehrung = `$${werte.length}`;
   return db.all(`SELECT w.set_number, w.condition, w.created_at, w.user_id,
             rb.name, rb.year, rb.theme_id, rb.num_parts,
-            COALESCE(rb.set_img_url, sc.image_url) AS image_url,
+            sc.image_url,
             pa.richtung AS alarm_richtung, pa.schwelle AS alarm_schwelle,
             pa.ausgeloest AS alarm_ausgeloest,
             pc.avg_price AS marktpreis,
@@ -60,7 +60,7 @@ export function merklisteImBlickfeld(db: DbSchnittstelle, userIds: number[], f: 
                      WHERE s.user_id = ANY($1) AND s.set_number = w.set_number) AS owned
        FROM wanted w
        LEFT JOIN rb_sets rb ON rb.set_num = w.set_number
-       -- set_catalog ergänzt das Bild, wenn rb_sets keines kennt.
+       -- Das Bild steht nur in set_catalog (0108).
        LEFT JOIN set_catalog sc ON sc.set_number = w.set_number
        LEFT JOIN price_alerts pa ON pa.user_id = w.user_id
                                 AND pa.set_number = w.set_number

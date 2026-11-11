@@ -55,7 +55,7 @@ const KONTO   = 'konto';     // gehört einem Konto über einen anderen Schlüss
 /** art, eingabe (false oder warum Eingaben hinein dürfen), schreiber (nur Katalog). */
 const GEMEINSAM = {
   bl_zuordnung:          { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/blZuordnung.ts'] },
-  catalog_cache:         { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogCache.ts', 'src/katalog/repository/rebrickableCache.ts', 'src/katalog/repository/setStamm.ts'] },
+  catalog_cache:         { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogCache.ts', 'src/katalog/repository/rebrickableCache.ts'] },
   set_catalog:           { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/bildlage.ts', 'src/katalog/repository/csvTausch.ts', 'src/katalog/repository/setStamm.ts'] },
   part_catalog:          { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogStamm.ts'] },
   part_color_catalog:    { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvKatalog.ts', 'src/katalog/repository/katalogStamm.ts'] },
@@ -86,6 +86,7 @@ const GEMEINSAM = {
   api_takt:              { art: BETRIEB, eingabe: false },
   auftrag_pausen:        { art: BETRIEB, eingabe: false },
   auftrag_exklusiv:      { art: BETRIEB, eingabe: false },
+  auftrags_arten:        { art: BETRIEB, eingabe: false },
   laufzustand:           { art: BETRIEB, eingabe: false },
   schema_migrations:     { art: BETRIEB, eingabe: false },
   global_settings:       { art: BETRIEB, eingabe: 'nur Verwalter (requireAdmin)' },
@@ -118,7 +119,7 @@ const DYNAMISCH = {
 /** Je Bereich die Tabellen, in die nur er schreibt (INSERT, UPDATE, DELETE). */
 const BESITZER = {
   'db': ['schema_migrations'],
-  'src/auftraege': ['auftraege', 'auftrag_exklusiv', 'auftrag_pausen', 'import_stand', 'laufzustand'],
+  'src/auftraege': ['auftraege', 'auftrag_exklusiv', 'auftrag_pausen', 'auftrags_arten', 'import_stand', 'laufzustand'],
   'src/bestand': ['minifigs', 'papierkorb', 'parts', 'storage_locations'],
   'src/einstellungen': ['global_settings', 'user_settings'],
   'src/figuren': ['minifig_acquisitions'],
@@ -133,7 +134,7 @@ const BESITZER = {
     'part_color_catalog', 'rb_colors', 'rb_inventories', 'rb_inventory_minifigs', 'rb_inventory_parts',
     'rb_part_categories', 'rb_parts', 'rb_sets', 'rb_themes', 'set_catalog', 'set_figuren', 'set_teile',
     'shared_instructions', 'subsets_cache', 'teil_eigen', 'teil_farbe_eigen'],
-  'src/konto': ['api_tokens', 'api_tokens_verbraucht', 'geraete_schluessel', 'passkeys', 'qr_login_tokens',
+  'src/konto': ['api_tokens', 'api_tokens_verbraucht', 'geraete_nonces', 'geraete_schluessel', 'passkeys', 'qr_login_tokens',
     'rate_limit_attempts', 'schritt_challenges', 'schritt_freigaben', 'user_sessions', 'users',
     'verwaltungsprotokoll', 'webauthn_challenges', 'zweiter_faktor', 'zweiter_faktor_codes'],
   'src/merkliste': ['wanted'],

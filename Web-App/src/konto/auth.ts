@@ -5,8 +5,7 @@ import { konfig } from '../infra/konfig';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { passwortPasst, BcryptUeberlast } from './bcryptSchranke';
-import { checkLoginAllowed, bekannteAnmeldung, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess, meldeAnmeldeereignis, meldeAnmeldung, MAX_ATTEMPTS } from './loginLimiter';
-import type { Anmeldeereignis, Anmeldeweg } from './loginLimiter';
+import { checkLoginAllowed, bekannteAnmeldung, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess, meldeAnmeldeereignis, meldeAnmeldung, MAX_ATTEMPTS, type Anmeldeereignis, type Anmeldeweg } from './loginLimiter';
 import { kontoGedrosselt } from './zielDrossel';
 import * as zf from './zweiterFaktor';
 import * as passkeys from './passkeys';
@@ -14,7 +13,7 @@ import * as V from '../infra/validate';
 import type { FehlerArt, FehlerCode } from '../infra/fehlerTexte';
 import * as repo from './repository/zugaenge';
 import type { TokenScope } from './repository/zugaenge';
-import { erhoeheSitzungsVersion } from './sitzungsVersion';
+import { erhoeheSitzungsVersion, vergissSitzungsVersion } from './sitzungsVersion';
 import { hinweisNebenher } from './kontoHinweis';
 import { zaehleFehlversuch, zuVieleFehlversuche } from './tokenFehlversuche';
 import { kontoBereich } from './prozess';
@@ -26,7 +25,7 @@ export type { TokenScope };
 export interface TokenBenutzer {
   user_id: number;
   username: string;
-  is_admin?: number;
+  is_admin?: boolean;
   /** Die GLEITENDE Frist: „so lange ungenutzt" (siehe _touchLastUsed). */
   expires_at?: string | Date | null;
   /** Die FESTE Frist, falls beim QR-Code eine gewählt wurde. `null` = keine. */
@@ -63,7 +62,7 @@ export function hashToken(token: string): string {
 
 /** Leer zählt wie „nicht da": Der Hash eines leeren Strings ist ein gültiger
  * SHA-256-Wert. */
-export async function verifiziereEmailToken(token: unknown): Promise<{ ok: boolean; grund?: string; userId?: number }> {
+export async function verifiziereEmailToken(token: string | null | undefined): Promise<{ ok: boolean; grund?: string; userId?: number }> {
   if (token === undefined || token === null || String(token).trim() === '') {
     return { ok: false, grund: 'fehlt' };
   }
@@ -165,7 +164,7 @@ export async function pruefeToken(token: string | null | undefined,
   }
   // Verwalterrecht nur mit Scope `voll`, an dieser einen Stelle entschieden,
   // damit alle Wächter es gleich sehen.
-  row.is_admin = row.konto_is_admin && row.scope === 'voll' ? 1 : 0;
+  row.is_admin = row.konto_is_admin === true && row.scope === 'voll';
   if (row.vorgaenger) {
     await kontoBereich().zugaenge.beendeUeberlappung(row.vorgaenger, hashed);
     row.vorgaenger = null;
@@ -325,7 +324,7 @@ export interface Herkunft { ip?: string | null }
 /** Die einzige Stelle, an der Anmeldedaten geprüft werden: Zwei Fassungen für
  * Webapp und App waren schon einmal auseinandergelaufen.
  * @param username Benutzername ODER E-Mail-Adresse. */
-export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, password: unknown, code?: unknown,
+export async function pruefeAnmeldedaten(herkunft: Herkunft, username: string | null | undefined, password: string | null | undefined, code?: string | number | null | undefined,
                                   passkeyAntwort?: unknown): Promise<AnmeldeErgebnis> {
   const absage = (art: FehlerArt, code: FehlerCode,
                   vars?: Record<string, string | number>, unverified?: boolean,
@@ -511,12 +510,25 @@ export async function revokeAllSessions(userId: number): Promise<void> {
 
 /** Nach dem Einschalten des zweiten Faktors: Wer schon drin war, soll nicht
  * mit einem alten Token oder einer alten Sitzung drinbleiben. */
-export async function beendeAndereZugaenge(userId: number, aktuellerToken: string | null, sitzungsId: string | null): Promise<number> {
-  await kontoBereich().zugaenge.loescheTokensDesKontos(userId, aktuellerToken ? hashToken(aktuellerToken) : null);
+/** Passwort, Zugänge und Passkeys zusammen: Sonst gälte nach einem Fehler das
+ * neue Passwort, während die alten Zugänge weiterleben. Die Zwischenspeicher
+ * leeren sich nach dem COMMIT noch einmal, weil eine Anfrage dazwischen den
+ * alten Stand wieder aufgenommen haben kann. */
+export async function mitZugangsende<T>(konto: number | ((r: T) => number | null), fn: () => Promise<T>): Promise<T> {
+  const r = await kontoBereich().db.transaction(fn, { wiederholeBeiKonflikt: true });
   leereTokenCache();
-  const version = await erhoeheSitzungsVersion(userId);
-  await kontoBereich().zugaenge.loescheSitzungenDesKontos(userId, sitzungsId);
-  return version;
+  const uid = typeof konto === 'function' ? konto(r) : konto;
+  if (uid) vergissSitzungsVersion(uid);
+  return r;
+}
+
+export async function beendeAndereZugaenge(userId: number, aktuellerToken: string | null, sitzungsId: string | null): Promise<number> {
+  return mitZugangsende(userId, async () => {
+    await kontoBereich().zugaenge.loescheTokensDesKontos(userId, aktuellerToken ? hashToken(aktuellerToken) : null);
+    const v = await erhoeheSitzungsVersion(userId);
+    await kontoBereich().zugaenge.loescheSitzungenDesKontos(userId, sitzungsId);
+    return v;
+  });
 }
 
 /** Ohne Fang: ein Sicherheitsschritt. Scheitert er still, meldet der Aufrufer

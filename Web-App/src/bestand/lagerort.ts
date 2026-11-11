@@ -3,12 +3,10 @@
 import type { Db, DbSchnittstelle } from '../../db/database';
 import * as orte from './repository/lagerort';
 import type { LagerTabelle } from './repository/lagerort';
-import { asIds, blickfeldAus, type Sicht, schreibbereichAus, type Schreiber } from '../haushalt/haushalt';
-import type { BlickfeldEingabe } from '../haushalt/haushalt';
+import { haushaltBereich, asIds, blickfeldAus, type Sicht, schreibbereichAus, type Schreiber, type BlickfeldEingabe } from '../haushalt';
 import { fachfehler } from '../infra/fehlerTexte';
-import { deleteUserSetting } from '../einstellungen/settings';
-import { setUserSetting } from '../konto/nutzerEinstellung';
-import { haushaltBereich } from '../haushalt/prozess';
+import { deleteUserSetting } from '../einstellungen';
+import { setUserSetting } from '../konto';
 
 /** Fachlich, nicht technisch (die Spalte ist TEXT): Der Name muss auf eine
  * Kachel passen, und eine Absage ist besser als ein abgeschnittener Name. */
@@ -83,7 +81,7 @@ export async function orteVon(db: DbSchnittstelle, userIds: number[]): Promise<L
 }
 
 /** Kein Fehler, wenn es ihn gibt: Beim Setzen eines Lagerorts wäre die Absage Unfug. */
-export async function legeOrtAn(db: DbSchnittstelle, userId: number, name: unknown):
+export async function legeOrtAn(db: DbSchnittstelle, userId: number, name: string | undefined):
   Promise<{ ort: Lagerort; war_neu: boolean }> {
   const n = nameOderFehler(name);
   const neu = await orte.fuegeOrtEin(db, userId, n);
@@ -98,7 +96,7 @@ export async function legeOrtAn(db: DbSchnittstelle, userId: number, name: unkno
 }
 
 /** Die Zuordnung ist eine ID; der neue Name gilt damit überall sofort. */
-export async function benenneOrtUm(db: DbSchnittstelle, userId: number, id: number, name: unknown): Promise<Lagerort> {
+export async function benenneOrtUm(db: DbSchnittstelle, userId: number, id: number, name: string | undefined): Promise<Lagerort> {
   const neu = nameOderFehler(name);
   const alt = await orte.ortName(db, id, userId);
   if (!alt) fachfehler('nicht_gefunden', 'lagerort_unbekannt');

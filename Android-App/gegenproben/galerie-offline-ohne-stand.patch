@@ -1,13 +1,13 @@
-Gegenprobe: Ohne Netz meldet die Galerie einen Fehler, obwohl die Ablage eine Liste mit Stand hat
+Gegenprobe: Ohne Netz meldet die Galerie einen Fehler, obwohl die Quelle eine Liste mit Stand hat
 Modul: feature-sammlung
-Test: ch.brickinventoryapp.sammlung.GalerieLokalTest
-Rot: ohne Netz bleibt die Ablage stehen
+Test: ch.brickinventoryapp.sammlung.GalerieTest
+Rot: ohne Netz bleibt die Quelle stehen
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/Galerie.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/Galerie.kt
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/Galerie.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/Galerie.kt
-@@ -110,8 +110,6 @@
-             val stand = if (r is Ergebnis.Error && r.transient) quelle.first().stand else null
+@@ -77,8 +77,6 @@
+             val stand = if (r is Ergebnis.Error && r.transient) liste.first().stand else null
              when {
                  r is Ergebnis.Success -> _state.update { it.copy(galleryLoading = false, offlineStand = null) }
 -                r is Ergebnis.Error && r.transient && stand != null ->

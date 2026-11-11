@@ -4,7 +4,7 @@ import { Abstriche } from '../infra/ergebnis';
 import { Zwischenspeicher } from '../infra/zwischenspeicher';
 import type { Db, DbSchnittstelle } from '../../db/database';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
-import { getSetting } from '../einstellungen/settings';
+import { getSetting } from '../einstellungen';
 import * as repo from './repository';
 import type { ErfassungsArt } from './repository';
 import { fachfehler } from '../infra/fehlerTexte';

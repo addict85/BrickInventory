@@ -25,6 +25,7 @@ import ch.brickinventoryapp.testing.NummernTexte
 import ch.brickinventoryapp.testing.ReihenServer
 import ch.brickinventoryapp.testing.SitzungsAttrappe
 import ch.brickinventoryapp.testing.TestApi
+import ch.brickinventoryapp.testing.text
 
 /**
  * Das Konto-ViewModel, ausgeführt gegen einen Testserver.
@@ -121,7 +122,7 @@ class KontoViewModelTest {
         val rumpf = r.body.readUtf8()
         assertTrue(rumpf, rumpf.contains("\"password\":\"geheim\"") && rumpf.contains("\"zugaenge\":true"))
         assertNull(vm.geraeteState.value.rueckfrage)
-        assertEquals("m${R.plurals.tokens_revoked_n}:2", kanal.meldung.value)
+        assertEquals("m${R.plurals.tokens_revoked_n}:2", kanal.text)
     }
 
     @Test
@@ -145,7 +146,7 @@ class KontoViewModelTest {
         vm.bestaetigeEntwerten("geheim", "123456")
         bis("erledigt") { server.requestCount == 4 && vm.geraeteState.value.rueckfrage == null }
         assertTrue(server.takeRequest().body.readUtf8().contains("\"code\":\"123456\""))
-        assertEquals("t${R.string.tokens_revoked}", kanal.meldung.value)
+        assertEquals("t${R.string.tokens_revoked}", kanal.text)
     }
 
     @Test
@@ -178,7 +179,7 @@ class KontoViewModelTest {
         server.enqueue(antwort(geraete(aktuellDabei = true)))
         vm.bestaetigeEntwerten("geheim", null)
         bis("neu geladen") { server.requestCount == 3 && !vm.geraeteState.value.laedt }
-        assertEquals("m${R.plurals.tokens_revoked_n}:0", kanal.meldung.value)
+        assertEquals("m${R.plurals.tokens_revoked_n}:0", kanal.text)
     }
 
     @Test
@@ -198,10 +199,10 @@ class KontoViewModelTest {
     fun `nach dem Passwortwechsel wird abgemeldet`() {
         server.enqueue(antwort("""{"success":true}"""))
         vm.aenderePasswort("alt", "neuNeuNeu123!")
-        bis("Meldung") { kanal.meldung.value != null }
+        bis("Meldung") { kanal.text != null }
 
         assertTrue(abgemeldet)
-        assertEquals("t${R.string.konto_password_changed}", kanal.meldung.value)
+        assertEquals("t${R.string.konto_password_changed}", kanal.text)
         assertFalse(vm.kontoState.value.speichert)
     }
 
@@ -213,7 +214,7 @@ class KontoViewModelTest {
 
         assertFalse(abgemeldet)
         assertEquals("Aktuelles Passwort falsch", vm.kontoState.value.fehler)
-        assertNull(kanal.meldung.value)
+        assertNull(kanal.text)
     }
 
     @Test
@@ -227,7 +228,7 @@ class KontoViewModelTest {
         assertEquals(2, z.codesUebrig)
         assertNull(z.geheimnis)
         assertFalse(z.laedt)
-        assertEquals("t${R.string.zf_enabled}", kanal.meldung.value)
+        assertEquals("t${R.string.zf_enabled}", kanal.text)
         // Der Code geht ohne Leerzeichen hinaus.
         assertTrue(server.takeRequest().body.readUtf8().contains("\"123456\""))
     }

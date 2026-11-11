@@ -1,14 +1,12 @@
 import type { Db } from '../db/database';
 import { logAndContinue } from '../src/infra/fehler';
-import { initImageMisses } from '../src/katalog/bilder/imageMisses';
-import { initImageQueue } from '../src/katalog/bilder/bildbedarfLauf';
-import { verschluesseleGutscheinAltbestand } from '../src/gutscheine/gutscheinDateien';
-import { verschluesseleAltbestand } from '../src/konto/geheimnisAltbestand';
-import { antwortenUmschluesseln, alteAbdrueckeLoeschen, alleVergessen } from '../src/idempotenz/dienst';
+import { initImageMisses, initImageQueue } from '../src/katalog';
+import { gutscheineBereich, verschluesseleGutscheinAltbestand } from '../src/gutscheine';
+import { verschluesseleAltbestand } from '../src/konto';
+import { antwortenUmschluesseln, alteAbdrueckeLoeschen, alleVergessen } from '../src/idempotenz';
 import { altSchluessel, datenSchluessel } from '../src/infra/geheimnis';
 import { konfig } from '../src/infra/konfig';
-import { gutscheineBereich } from '../src/gutscheine/prozess';
-import { auftraegeBereich } from '../src/auftraege/prozess';
+import { auftraegeBereich } from '../src/auftraege';
 
 /** Ein Superuser erreicht COPY … PROGRAM und jede Datenbank des Servers: In
  * Betrieb (auch ohne NODE_ENV) ein Startverbot, ausser DB_SUPERUSER_ERLAUBT=1 (UPGRADE.md). */

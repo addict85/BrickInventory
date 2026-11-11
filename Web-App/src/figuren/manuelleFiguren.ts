@@ -1,23 +1,17 @@
 /** Hier und nicht in einer Route, weil Sitzungsroute und v1-Fabrik beide darauf
  * zugreifen — eine Route soll keine andere importieren. */
-import type { Sicht } from '../haushalt/haushalt';
+import { haushaltBereich, type Sicht } from '../haushalt';
 import { logAndContinue, oeffentlicherFehler } from '../infra/fehler';
-import { Abstriche } from '../infra/ergebnis';
+import { Abstriche, versuche } from '../infra/ergebnis';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
-import { recordAcquisitionForDay } from '../bestand/acquisitions';
-import { mengenwunsch, passeManuelleMengeAn } from '../bestand/manuelleMenge';
-import { getMinifigInfo } from '../katalog/quellen';
-import { zustandFuerPreis } from '../einstellungen/settings';
-import { figMarktpreisMitHerkunft, getCurrentFigMarketPrice } from '../finanzen/marketPrice';
-import { kaufpreisAusEingabe, manuellerKaufpreis } from '../finanzen/preisRegel';
-import { merkeFigur, katalogFigur } from '../katalog/katalogPflege';
-import { merkeEigeneBlNummer } from '../katalog/blZuordnung';
+import { bestandBereich, recordAcquisitionForDay, mengenwunsch, passeManuelleMengeAn } from '../bestand';
+import { getMinifigInfo, merkeFigur, katalogFigur, merkeEigeneBlNummer } from '../katalog';
+import { zustandFuerPreis } from '../einstellungen';
+import { figMarktpreisMitHerkunft, getCurrentFigMarketPrice, kaufpreisAusEingabe, manuellerKaufpreis } from '../finanzen';
 import * as V from '../infra/validate';
 import { geldEingabe } from '../infra/geld';
 import { fachfehler } from '../infra/fehlerTexte';
 import { figurenBereich } from './prozess';
-import { bestandBereich } from '../bestand/prozess';
-import { haushaltBereich } from '../haushalt/prozess';
 
 // Ohne BrickLink-Figurennummer wird der Marktpreis aus den Teilepreisen
 // geschätzt: Für Teile ist die Zuordnung RB→BL verlässlich, für Figuren nicht.
@@ -76,7 +70,9 @@ async function addManualFigIntern(uid: number, body: Record<string, unknown>) {
     // `hatBild` statt `image_url`: Ein lokaler Pfad fiele bei der URL-Prüfung
     // durch, beweist aber, dass der Abruf nichts mehr zu holen hat.
     if (!fig_name || !(image_url || lokal?.hatBild)) {
-      const info = await getMinifigInfo(num);
+      // Ohne Rebrickable wird die Figur mit dem erfasst, was der Katalog schon weiss.
+      const abruf = await versuche('figuren:getMinifigInfo', getMinifigInfo(num));
+      const info = abruf.ok ? abruf.wert : null;
       gefunden = info;
       // `||`: Was der Katalog schon wusste, bleibt stehen.
       if (info) {
@@ -157,7 +153,7 @@ export async function updateManualFig(uid: number, figNumber: string, body: Reco
     await figurenBereich().manuelleFiguren.setzeFigurpreisNeueste(uid, figNumber, unitPrice);
   }
   if (body.condition !== undefined && body.condition !== null) {
-    const cond = body.condition === 'U' ? 'U' : 'N';
+    const cond = V.zustand(body.condition);
     await figurenBereich().manuelleFiguren.setzeFigurzustandNeueste(uid, figNumber, cond);
   }
   return { ...raus, ...ab.angabe() };
@@ -190,7 +186,9 @@ export async function importiereFigurenCsv(uid: number, text: string) {
       const eingetippt = !!figName;
       let imageUrl: string | null = null;
       if (!figName) {
-        const info = await getMinifigInfo(figNumber);
+        // Ohne Rebrickable wird die Figur ohne Namen erfasst; der Bildnachlauf holt ihn nicht nach.
+        const abruf = await versuche('figuren:import-info', getMinifigInfo(figNumber));
+        const info = abruf.ok ? abruf.wert : null;
         if (info) { figName = info.fig_name; imageUrl = info.image_url; }
       }
       const { erfassungsPreis, effectiveCondition, geschaetzt } =

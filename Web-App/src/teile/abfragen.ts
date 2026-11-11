@@ -1,28 +1,19 @@
 import * as repo from './repository/teileListe';
-import { resolveImageLocal } from '../katalog/bilder/images';
-import { asIds, type Sicht } from '../haushalt/haushalt';
-import type { BlickfeldEingabe, BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
+import { resolveImageLocal, fetchMissingBlIds, type RbSetTeil, ersteBlNummer, getRbKey, httpsGetRobust, getAllSetParts, neuestesInventar, merkeBlFarbnummer, blFarbnummerAus } from '../katalog';
+import { haushaltBereich, asIds, type Sicht, type BlickfeldEingabe, type BlickfeldEingabe as Blickfeld } from '../haushalt';
 import { istErsatzteil, colorId } from '../infra/validate';
 import { ensureFresh } from './partsSummary';
-import { fetchMissingBlIds } from '../katalog/partsImport';
-import type { RbSetTeil } from '../katalog/quellen';
-import { getRbKey, httpsGetRobust } from '../katalog/quellen';
-import { getAllSetParts } from '../katalog/rebrickableKatalog';
-import { clampPageSize, applyManualCondition, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand/gemeinsam';
+import { clampPageSize, applyManualCondition, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand';
 import { meldeFehler, logAndContinue } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
-import { farbkarte as blFarbkarte } from '../finanzen/financeCalc';
-import { getGlobalSetting } from '../einstellungen/settings';
-import { neuestesInventar } from '../katalog/rbInventar';
+import { farbkarte as blFarbkarte, marktpreiseAusCacheFuerTeile } from '../finanzen';
+import { getGlobalSetting } from '../einstellungen';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
-import { merkeBlFarbnummer, blFarbnummerAus } from '../katalog/blZuordnung';
+import { teileBereich } from './prozess';
 
 /** Mit Ausweichebenen (CSV-Zwischenspeicher, Rebrickable), damit ein Set auch
  * ohne eigene Zeilen eine Teileliste zeigt. */
 
-import { marktpreiseAusCacheFuerTeile } from '../finanzen/marketPrice';
-import { teileBereich } from './prozess';
-import { haushaltBereich } from '../haushalt/prozess';
 
 /** Ohne manuelle Positionen — die haben eine eigene Ansicht. Hex-Rückfall aus
  * rb_colors für Teile ohne eigenen Wert. */
@@ -70,7 +61,7 @@ async function teileErsatzquelle(set_number: string, ab: Abstriche) {
           .filter((it: RbSetTeil) => !it.is_spare)
           .map((it: RbSetTeil) => ({
             part_number:    it.part?.part_num,
-            bl_part_number: it.part?.external_ids?.BrickLink?.[0] || it.part?.part_num,
+            bl_part_number: ersteBlNummer(it.part?.external_ids) || it.part?.part_num,
             part_name:      it.part?.name || it.part?.part_num,
             color_id:       it.color?.id ?? 0,
             color_name:     it.color?.name || '',

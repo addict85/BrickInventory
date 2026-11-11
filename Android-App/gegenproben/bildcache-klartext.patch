@@ -6,21 +6,22 @@ Rot: der Zwischenspeicher liegt verschluesselt
 diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt
 --- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt
 +++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt
-@@ -26,14 +26,11 @@ internal class VerschluesseltesDateisystem(
-     private val zweck: String,
- ) : ForwardingFileSystem(delegate) {
+@@ -47,15 +47,11 @@
+         return s.ordner / (GESTREUT + name)
+     }
  
--    override fun source(file: Path): Source = Eingang(delegate.source(file).buffer(), bindung(file))
-+    override fun source(file: Path): Source = delegate.source(file)
+-    override fun source(file: Path): Source = Eingang(delegate.source(gestreut(file)).buffer(), bindung(file))
++    override fun source(file: Path): Source = delegate.source(gestreut(file))
  
--    override fun sink(file: Path, mustCreate: Boolean): Sink = Ausgang(delegate.sink(file, mustCreate), bindung(file), 0L)
-+    override fun sink(file: Path, mustCreate: Boolean): Sink = delegate.sink(file, mustCreate)
+-    override fun sink(file: Path, mustCreate: Boolean): Sink =
+-        Ausgang(delegate.sink(gestreut(file), mustCreate), bindung(file), 0L)
++    override fun sink(file: Path, mustCreate: Boolean): Sink = delegate.sink(gestreut(file), mustCreate)
  
 -    override fun appendingSink(file: Path, mustExist: Boolean): Sink {
--        val ab = delegate.metadataOrNull(file)?.size ?: 0L
--        return Ausgang(delegate.appendingSink(file, mustExist), bindung(file), ab)
+-        val ab = delegate.metadataOrNull(gestreut(file))?.size ?: 0L
+-        return Ausgang(delegate.appendingSink(gestreut(file), mustExist), bindung(file), ab)
 -    }
-+    override fun appendingSink(file: Path, mustExist: Boolean): Sink = delegate.appendingSink(file, mustExist)
++    override fun appendingSink(file: Path, mustExist: Boolean): Sink = delegate.appendingSink(gestreut(file), mustExist)
  
      // Wahlfreier Zugriff läse Geheimtext als Inhalt; OkHttp braucht ihn nicht.
      override fun openReadOnly(file: Path): FileHandle = throw IOException("kein wahlfreier Zugriff: $file")

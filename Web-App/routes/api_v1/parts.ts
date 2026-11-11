@@ -1,22 +1,17 @@
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
-import { getBlColorMap, getManualParts, getOwnedQuantities, getParts, getPartsColors, getPartsStats, getPartsCategories } from '../../src/teile/abfragen';
+import { haushaltBereich } from '../../src/haushalt';
+import { getBlColorMap, getManualParts, getOwnedQuantities, getParts, getPartsColors, getPartsStats, getPartsCategories, addManualPart, getPartColorList, updateManualPart, aendereTeilFarbe } from '../../src/teile';
 import { csvEmpfang } from '../../src/http/dateiEmpfang';
-import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
+import { importAlsAuftrag } from '../../src/auftraege';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
-import { addManualPart, getPartColorList, updateManualPart } from '../../src/teile/manuelleTeile';
-import { getSetting } from '../../src/einstellungen/settings';
-import { getPartPriceHistory } from '../../src/finanzen/priceHistory';
-import { aendereTeilFarbe } from '../../src/teile/teilFarbeAendern';
-import { verwendendeSets } from '../../src/bestand/gemeinsam';
-import { normalisiereLagerort } from '../../src/bestand/lagerort';
-import { loescheTeil } from '../../src/sammlung/loeschen';
+import { getSetting } from '../../src/einstellungen';
+import { getPartPriceHistory } from '../../src/finanzen';
+import { bestandBereich, verwendendeSets, normalisiereLagerort } from '../../src/bestand';
+import { loescheTeil } from '../../src/sammlung';
 import { seiteAus } from '../../src/infra/seite';
 import { Abstriche } from '../../src/infra/ergebnis';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
-import { bestandBereich } from '../../src/bestand/prozess';
-import { haushaltBereich } from '../../src/haushalt/prozess';
+import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
 const router = vertragsRouter();
 
 router.get('/parts', requireToken, async (req: Anfrage<'GET /api/v1/parts'>, res: Antwort<'GET /api/v1/parts'>) => {
@@ -34,7 +29,7 @@ router.get('/parts/categories', requireToken, async (req: Anfrage<'GET /api/v1/p
 
 router.post('/parts/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'), async (req: Anfrage<'POST /api/v1/parts/import/csv'>, res: Antwort<'POST /api/v1/parts/import/csv'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-  res.json(await importAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'teile_csv', { text: req.file.buffer.toString('utf-8') }));
+  res.json({ success: true, ...(await importAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'teile_csv', { text: req.file.buffer.toString('utf-8') })) });
 });
 
 router.get('/parts/brick-colors', requireToken, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/parts/brick-colors'>) => {

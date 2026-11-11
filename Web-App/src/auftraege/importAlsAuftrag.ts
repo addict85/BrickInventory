@@ -5,8 +5,7 @@ import { stelleAuftragEin } from './dienst';
 import type { Fortschritt } from './auftraege';
 import type { z } from 'zod';
 import type { ImportNutzlast, NutzlastEingabe } from './nutzlasten';
-import { Fachfehler, fachfehler } from '../infra/fehlerTexte';
-import type { FehlerArt, FehlerCode } from '../infra/fehlerTexte';
+import { Fachfehler, fachfehler, type FehlerArt, type FehlerCode } from '../infra/fehlerTexte';
 import { auftraegeBereich } from './prozess';
 
 export type ImportQuelle = z.input<typeof ImportNutzlast>['quelle'];

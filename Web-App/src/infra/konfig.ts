@@ -84,6 +84,10 @@ export interface Konfig {
   /** SHA-256 der Signaturzertifikate der App, 64 Hex-Zeichen in Grossbuchstaben. */
   androidZertifikate: string[];
   androidPaket: string;
+  /** PEM statt der Google-Wurzeln; nur in Entwicklung und Test (src/konto/attestation). */
+  attestationWurzeln: string | null;
+  /** Bis dahin gelten Geräteschlüssel, die vor der Attestation hinterlegt wurden (UPGRADE.md). */
+  geraeteschluesselAltBis: Date;
 }
 
 export type Rolle = 'web' | 'jobs' | 'beides';
@@ -110,7 +114,8 @@ export const VARIABLEN = [
   'PRICE_HISTORY_KEEP_DAYS', 'UPLOAD_KONTINGENT_MB', 'MAIL_KONSOLE_MIT_TOKEN', 'IMG_USER_AGENT',
   'BILD_CACHE_MAX_MB', 'BILD_ABRUFE_JE_MINUTE',
   'CSV_ZEILE_FRIST_MS', 'AUFTRAG_PARALLEL', 'BCRYPT_ARBEITER', 'AUFTRAG_FRIST_SEK', 'CA_ZERTIFIKAT', 'VERTRAG_PRUEFEN',
-  'PASSKEY_ANDROID_ZERTIFIKATE', 'PASSKEY_ANDROID_PAKET', 'DB_SUPERUSER_ERLAUBT', ...DATEI_VARIABLEN.map(n => `${n}_FILE` as const),
+  'PASSKEY_ANDROID_ZERTIFIKATE', 'PASSKEY_ANDROID_PAKET', 'DB_SUPERUSER_ERLAUBT',
+  'ATTESTATION_WURZELN', 'GERAETESCHLUESSEL_ALT_BIS', ...DATEI_VARIABLEN.map(n => `${n}_FILE` as const),
 ] as const;
 
 /** Steht sie noch in einer alten compose.yaml, sagt der Start es. */
@@ -169,6 +174,24 @@ function androidPaket(env: Umgebung, fehler: string[]): string {
   if (/^[a-zA-Z]\w*(\.[a-zA-Z]\w*)+$/.test(paket)) return paket;
   fehler.push(`PASSKEY_ANDROID_PAKET="${paket}" ist kein Paketname`);
   return 'ch.brickinventoryapp';
+}
+
+/** Eine eigene Wurzel öffnete den Schrittschutz jedem Schlüssel, den sie signiert:
+ * darum nur, wo NODE_ENV ausdrücklich development oder test sagt. */
+function attestationWurzeln(env: Umgebung, fehler: string[]): string | null {
+  const pem = env.ATTESTATION_WURZELN?.trim() || null;
+  if (pem && !entwicklungsUmgebung(env)) fehler.push('ATTESTATION_WURZELN gilt nur mit NODE_ENV=development oder test');
+  return pem;
+}
+
+export const ALTSCHLUESSEL_STICHTAG = '2027-02-01';
+
+function altschluesselBis(env: Umgebung, fehler: string[]): Date {
+  const roh = env.GERAETESCHLUESSEL_ALT_BIS?.trim() || ALTSCHLUESSEL_STICHTAG;
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(roh) ? new Date(`${roh}T00:00:00Z`) : new Date(Number.NaN);
+  if (!Number.isNaN(d.getTime())) return d;
+  fehler.push(`GERAETESCHLUESSEL_ALT_BIS="${roh}" ist kein Datum JJJJ-MM-TT`);
+  return new Date(`${ALTSCHLUESSEL_STICHTAG}T00:00:00Z`);
 }
 
 /** Sicher genug, um in eine Verbindungsoption eingesetzt zu werden. */
@@ -256,6 +279,8 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     vertragPruefen: env.VERTRAG_PRUEFEN?.trim() === '1',
     androidZertifikate: androidZertifikate(env, f),
     androidPaket: androidPaket(env, f),
+    attestationWurzeln: attestationWurzeln(env, f),
+    geraeteschluesselAltBis: altschluesselBis(env, f),
   };
   if (f.length) throw new KonfigFehler(f);
   return k;

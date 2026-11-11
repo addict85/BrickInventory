@@ -1,11 +1,9 @@
 /** Je Schritt ein Auftrag 'nachlauf', damit ein Fehler wiederholt wird und in der Verwaltung zu sehen ist. */
-import { anleitungenNachtragen, setBilderNachladen, vorschaubilderNachtragen } from '../katalog/bildlage';
-import { verschluesseleAltbestand } from '../konto/geheimnisAltbestand';
-import { verschluesseleGutscheinAltbestand } from '../gutscheine/gutscheinDateien';
-import * as catalogSync from '../katalog/katalogAbgleich';
-import * as purchasePriceBackfill from '../bestand/kaufpreisNachtrag';
-import type { Nutzlast } from '../auftraege/nutzlasten';
-import { pruefeAbbruch, type AuftragsLauf } from '../auftraege/auftraege';
+import { anleitungenNachtragen, setBilderNachladen, vorschaubilderNachtragen, syncAllMissing } from '../katalog';
+import { verschluesseleAltbestand } from '../konto';
+import { verschluesseleGutscheinAltbestand } from '../gutscheine';
+import * as purchasePriceBackfill from '../bestand';
+import { type Nutzlast, pruefeAbbruch, type AuftragsLauf } from '../auftraege';
 
 /** Geheimnisse aus der Zeit vor der Verschlüsselung (src/infra/geheimnis.ts). */
 async function geheimnisseVerschluesseln(): Promise<void> {
@@ -17,7 +15,7 @@ async function geheimnisseVerschluesseln(): Promise<void> {
 const NACHLAEUFE = {
   geheimnisse:  { nachSekunden: 0,  lauf: geheimnisseVerschluesseln },
   vorschauen:   { nachSekunden: 0,  lauf: vorschaubilderNachtragen },
-  katalog:      { nachSekunden: 10, lauf: () => catalogSync.syncAllMissing() },
+  katalog:      { nachSekunden: 10, lauf: () => syncAllMissing() },
   anleitungen:  { nachSekunden: 15, lauf: anleitungenNachtragen },
   set_bilder:   { nachSekunden: 45, lauf: setBilderNachladen },
   kaufpreise:   { nachSekunden: 45, lauf: () => purchasePriceBackfill.run() },

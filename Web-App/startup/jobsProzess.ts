@@ -1,14 +1,11 @@
 import fs from 'fs';
-import { HAUSHALT_KANAL, leereHaushaltCache } from '../src/haushalt/haushalt';
-import { meldeStartZustand } from '../src/auftraege/startZustand';
+import { HAUSHALT_KANAL, leereHaushaltCache } from '../src/haushalt';
+import { auftraegeBereich, meldeStartZustand, stelleAuftragEin, planeAlle, ziehePlanVor, meldeProzessAn, meldeProzessAb } from '../src/auftraege';
 import { logAndContinue, meldeFehler } from '../src/infra/fehler';
-import { stelleAuftragEin } from '../src/auftraege/dienst';
-import { planeAlle, ziehePlanVor } from '../src/auftraege/zeitplan';
-import { bildbedarfAnstossen, offenerBildbedarf } from '../src/katalog/bilder/bildbedarf';
-import { planeKursabruf } from '../src/finanzen/wechselkurse';
+import { bildbedarfAnstossen, offenerBildbedarf } from '../src/katalog';
+import { planeKursabruf } from '../src/finanzen';
 import { starteAuftragsWorker, stoppeAuftragsWorker } from '../jobs/auftraegeStarten';
-import { auftraegeBereich, meldeProzessAn, meldeProzessAb } from '../src/auftraege/prozess';
-import { NACHLAEUFE, type Nachlauf } from '../src/verwaltung/startNachlaeufe';
+import { NACHLAEUFE, type Nachlauf } from '../src/verwaltung';
 
 /** Der Healthcheck des Dienstes `jobs` (compose.yaml) sieht auf das Alter dieser Datei. */
 export const LEBENSZEICHEN_DATEI = '/tmp/brickinventory-jobs.lebt';

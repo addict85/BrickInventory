@@ -53,6 +53,7 @@ class GeraeteAblage @Inject constructor(
         /** Gesetzt nach der Übernahme: Klartext, der danach auftaucht, wird nur noch gelöscht. */
         const val VERTRAUEN_UEBERNOMMEN = "vertrauen_uebernommen"
         private const val AN = "an"
+        private const val ANGABE = "angabe:"
         const val SYSTEMFARBEN = "systemfarben"
         const val VORSCHAU_VERBERGEN = "vorschau_verbergen"
         const val ENTWERTUNG_GESCHEITERT = "entwertung_gescheitert"
@@ -279,6 +280,14 @@ class GeraeteAblage @Inject constructor(
         }
         return neu
     }
+
+    /**
+     * Server-Adresse und Benutzername der TokenAblage: unter dem Schlüssel der Pins, weil er
+     * das Abmelden überlebt (die Adresse bleibt) und auch bei gesperrtem Gerät arbeitet.
+     * null heisst: nicht verschlüsselbar bzw. nicht lesbar; nie ein Rückfall auf Klartext.
+     */
+    internal fun verschluessleAngabe(wert: String, name: String): String? = vertrauenschiffre.verschluessle(wert, ANGABE + name)
+    internal fun entschluessleAngabe(geheim: String, name: String): String? = vertrauenschiffre.entschluessle(geheim, ANGABE + name)
 
     // Pins je Host und Port (util/ServerVertrauen.kt); der vorgehaltene (halteVor) geht vor.
     // Ein unlesbarer Geheimtext ist kein Pin: Die Verbindung gilt als Erstkontakt, der

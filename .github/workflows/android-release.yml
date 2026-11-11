@@ -1,0 +1,372 @@
+name: Android-Release
+
+# Signiert und veröffentlicht ein Etikett android-v…. Läuft immer in der Fassung
+# auf main: nach einem grünen Lauf von Android-App zum Etikett oder von Hand mit
+# dem Etikett als Eingabe. Das Etikett ist nur Datenquelle (Artefakte nach
+# Prüfsumme); sein eigener Workflow kommt an keine Environment (docs/ANDROID-RELEASE.md).
+on:
+  workflow_run:
+    workflows: [Android-App]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      etikett:
+        description: 'Etikett android-v…, dessen grüner Baulauf signiert und veröffentlicht wird'
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ── Etikett prüfen: welches, welcher Commit, welcher Baulauf ─────────────
+  #
+  # Kein Checkout, keine Secrets. Ein Zweig namens android-v… zählt nicht: Das
+  # Etikett muss es geben und auf genau den gebauten Commit zeigen.
+  etikett:
+    name: Etikett prüfen
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository &&
+       startsWith(github.event.workflow_run.head_branch, 'android-v'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      checks: read
+      contents: read
+    outputs:
+      etikett: ${{ steps.etikett.outputs.etikett }}
+      commit: ${{ steps.etikett.outputs.commit }}
+      lauf: ${{ steps.etikett.outputs.lauf }}
+      sha256_apk: ${{ steps.summen.outputs.sha256_apk }}
+      sha256_aab: ${{ steps.summen.outputs.sha256_aab }}
+    steps:
+      - name: Etikett zeigt auf den gebauten Commit
+        id: etikett
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EINGABE: ${{ inputs.etikett }}
+          AUS_LAUF: ${{ github.event.workflow_run.head_branch }}
+          LAUF_COMMIT: ${{ github.event.workflow_run.head_sha }}
+          LAUF_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          NAME="${EINGABE:-$AUS_LAUF}"
+          if ! printf '%s' "$NAME" | grep -Eq '^android-v[0-9A-Za-z._-]{1,64}$'; then
+            echo "::error::„$NAME“ ist kein Etikett android-v…. Nichts wird signiert."
+            exit 1
+          fi
+          if ! REF=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$NAME" --jq '"\(.object.type) \(.object.sha)"'); then
+            echo "::error::Es gibt kein Etikett $NAME (ein Zweig dieses Namens zählt nicht). Nichts wird signiert."
+            exit 1
+          fi
+          ART=${REF% *}; COMMIT=${REF#* }
+          # Ein annotiertes Etikett zeigt erst auf sein Etikett-Objekt.
+          if [ "$ART" = tag ]; then COMMIT=$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$COMMIT" --jq .object.sha); fi
+          if [ -n "$LAUF_ID" ]; then
+            LAUF="$LAUF_ID"
+            if [ "$COMMIT" != "$LAUF_COMMIT" ]; then
+              echo "::error::$NAME zeigt auf $COMMIT, gebaut wurde $LAUF_COMMIT. Nichts wird signiert."
+              exit 1
+            fi
+          else
+            LAUF=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/android.yml/runs?event=push&branch=$NAME&head_sha=$COMMIT&status=success&per_page=20" \
+              --jq '.workflow_runs | sort_by(.created_at) | last | .id // empty')
+          fi
+          if ! printf '%s' "$COMMIT" | grep -Eq '^[0-9a-f]{40}$' || ! printf '%s' "$LAUF" | grep -Eq '^[0-9]+$'; then
+            echo "::error::Für $NAME gibt es keinen grünen Baulauf. Nichts wird signiert."
+            exit 1
+          fi
+          { echo "etikett=$NAME"; echo "commit=$COMMIT"; echo "lauf=$LAUF"; } >> "$GITHUB_OUTPUT"
+          echo "$NAME → $COMMIT, Baulauf $LAUF"
+
+      # Ein Etikett kann jeder mit Schreibrecht auf jeden Commit setzen; signiert
+      # wird nur, was schon auf main liegt, also durch Review und CI ging.
+      - name: Etikett liegt auf main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ETIKETT: ${{ steps.etikett.outputs.etikett }}
+          COMMIT: ${{ steps.etikett.outputs.commit }}
+        run: |
+          set -euo pipefail
+          STAND=$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$COMMIT" --jq .status)
+          case "$STAND" in
+            identical|behind) echo "$ETIKETT ($COMMIT) liegt auf main." ;;
+            *) echo "::error::$ETIKETT zeigt auf $COMMIT, der nicht auf main liegt ($STAND). Nichts wird signiert."; exit 1 ;;
+          esac
+
+      # „Liegt auf main“ heisst nur dann „ging durch Review und CI“, wenn main das
+      # erzwingt. Gelesen werden die Regeln des Zweigs (Ruleset).
+      - name: main ist geschützt
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! ARTEN=$(gh api "repos/$GITHUB_REPOSITORY/rules/branches/main" --jq '[.[].type] | unique | join(",")'); then
+            echo "::error::Die Regeln von main liessen sich nicht lesen. Nichts wird signiert."
+            exit 1
+          fi
+          for regel in pull_request required_status_checks non_fast_forward; do
+            case ",$ARTEN," in
+              *",$regel,"*) ;;
+              *) echo "::error::main hat keine Regel $regel (Settings → Rules → Rulesets, docs/ANDROID-RELEASE.md). Nichts wird signiert."; exit 1 ;;
+            esac
+          done
+          echo "main: $ARTEN"
+
+      # Die Lückenprüfung der Laufzeit-Abhängigkeiten (sicherheit.yml, Job
+      # android-abhaengigkeiten) muss für genau diesen Commit grün sein.
+      - name: Abhängigkeiten ohne bekannte Lücke
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT: ${{ steps.etikett.outputs.commit }}
+        run: |
+          set -euo pipefail
+          LAUF=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/sicherheit.yml/runs?head_sha=$COMMIT&status=completed&per_page=20" \
+            --jq '.workflow_runs | sort_by(.created_at) | last | .id // empty')
+          if [ -z "$LAUF" ]; then
+            echo "::error::Für $COMMIT gibt es noch keinen abgeschlossenen Sicherheitslauf. Abwarten, dann diesen Lauf neu starten."
+            exit 1
+          fi
+          ERGEBNIS=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$LAUF/jobs?per_page=100" \
+            --jq '[.jobs[] | select(.name | startswith("Trivy (Android-Abhängigkeiten")) | .conclusion] | first // "fehlt"')
+          if [ "$ERGEBNIS" != success ]; then
+            echo "::error::Die Lückenprüfung der Android-Abhängigkeiten war für $COMMIT nicht grün ($ERGEBNIS, Lauf $LAUF). Nichts wird signiert."
+            exit 1
+          fi
+          echo "Android-Abhängigkeiten ohne bekannte Lücke (Sicherheitslauf $LAUF)."
+
+      # Die Prüfsummen, die der Baujob gleich nach dem Bau mass, bezeugt der Job
+      # „Übergabe an das Signieren“ (ohne Projektcode) als Anmerkung. Nur seine zählt.
+      - name: Prüfsummen aus der Übergabe
+        id: summen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LAUF: ${{ steps.etikett.outputs.lauf }}
+        run: |
+          set -euo pipefail
+          JOBS=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$LAUF/jobs?per_page=100" \
+            --jq '[.jobs[] | select(.name == "Übergabe an das Signieren" and .conclusion == "success") | .id] | join(" ")')
+          set -- $JOBS
+          if [ "$#" -ne 1 ]; then
+            echo "::error::Im Baulauf $LAUF gibt es nicht genau eine grüne Übergabe ($#). Nichts wird signiert."
+            exit 1
+          fi
+          NOTIZ=$(gh api "repos/$GITHUB_REPOSITORY/check-runs/$1/annotations" \
+            --jq '[.[] | select(.title == "Prüfsummen zum Signieren") | .message] | if length == 1 then .[0] else "" end')
+          APK=$(printf '%s' "$NOTIZ" | sed -nE 's/^apk=([0-9a-f]{64}) aab=([0-9a-f]{64})$/\1/p')
+          AAB=$(printf '%s' "$NOTIZ" | sed -nE 's/^apk=([0-9a-f]{64}) aab=([0-9a-f]{64})$/\2/p')
+          if [ -z "$APK" ] || [ -z "$AAB" ]; then
+            echo "::error::Die Übergabe im Baulauf $LAUF nennt keine eindeutigen Prüfsummen. Nichts wird signiert."
+            exit 1
+          fi
+          { echo "sha256_apk=$APK"; echo "sha256_aab=$AAB"; } >> "$GITHUB_OUTPUT"
+
+  # ── Signieren und prüfen: aus main, Schlüssel nur in den Environments ────
+  signieren:
+    needs: etikett
+    permissions:
+      actions: read
+      contents: read
+    uses: ./.github/workflows/android-signieren.yml
+    secrets: inherit
+    with:
+      echt: true
+      lauf: ${{ needs.etikett.outputs.lauf }}
+      etikett: ${{ needs.etikett.outputs.etikett }}
+      commit: ${{ needs.etikett.outputs.commit }}
+      sha256_apk: ${{ needs.etikett.outputs.sha256_apk }}
+      sha256_aab: ${{ needs.etikett.outputs.sha256_aab }}
+
+  # ── Herkunft bescheinigen: in einem eigenen, wiederverwendbaren Workflow ──
+  #
+  # Aussteller ist android-bescheinigung.yml; bescheinigt wird, was der Signierjob ausgab.
+  bescheinigen:
+    needs: signieren
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/android-bescheinigung.yml
+    with:
+      sha256_apk: ${{ needs.signieren.outputs.sha256_apk }}
+      sha256_beschreibung: ${{ needs.signieren.outputs.sha256_beschreibung }}
+      sha256_aab: ${{ needs.signieren.outputs.sha256_aab }}
+
+  # ── Veröffentlichen: der einzige Job mit Schreibrecht ─────────────────────
+  #
+  # Was hier landet, holt sich jede installierte App als Update; darum auch hier
+  # die Environment release und ihre Pflichtprüfer.
+  release:
+    needs: [etikett, signieren, bescheinigen]
+    environment: release
+    runs-on: ubuntu-24.04
+    # Zwei Etiketten zugleich: Sonst prüften beide gegen dieselbe alte Fassung,
+    # und das ältere könnte nach dem neueren hochladen.
+    concurrency:
+      group: apk-neuste
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: Android-App
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Signiertes APK holen
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: apk-signiert
+          path: Android-App/app/build/outputs
+
+      # Jeder Job eines Laufs kann Artefakte ersetzen; veröffentlicht wird nur, was
+      # der Signierjob ausgegeben hat.
+      - name: Artefakt gegen die Prüfsummen des Signierjobs
+        env:
+          APK_SOLL: ${{ needs.signieren.outputs.sha256_apk }}
+          BESCHREIBUNG_SOLL: ${{ needs.signieren.outputs.sha256_beschreibung }}
+          AAB_SOLL: ${{ needs.signieren.outputs.sha256_aab }}
+        run: |
+          set -euo pipefail
+          A=app/build/outputs
+          printf '%s  %s\n' "$APK_SOLL" "$A/apk/release/BrickInventory.apk" \
+            "$BESCHREIBUNG_SOLL" "$A/version-signiert.json" "$AAB_SOLL" "$A/bundle/release/app-release.aab" | sha256sum -c -
+
+      # Ein Release-Anhang statt eines Artefakts: Artefakte liefert GitHub nur als
+      # Zip, ein Anhang kommt roh, ohne Konto und ohne Verfall. Die Datei hinter dem
+      # festen Etikett wird ersetzt, damit der Link bleibt.
+      - name: BrickInventory.apk als Release bereitstellen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QUELLE: ${{ needs.etikett.outputs.etikett }}
+          COMMIT: ${{ needs.etikett.outputs.commit }}
+        run: |
+          set -euo pipefail
+          ETIKETT=apk-neuste
+          APK=app/build/outputs/apk/release/BrickInventory.apk
+          LINK="https://github.com/$GITHUB_REPOSITORY/releases/download/$ETIKETT/BrickInventory.apk"
+          # Neuinstallationen prüfen gegen den festgenagelten Wert (sec17 B-N9), nicht gegen GitHub.
+          ZERT=$(grep -Eo '^[0-9a-f]{64}' tools/release-zertifikat.sha256 | head -1)
+          TEXT="Gebaut aus dem Etikett \`$QUELLE\` ($COMMIT) am $(date -u '+%d.%m.%Y %H:%M UTC').
+
+          Signierzertifikat SHA-256: \`$ZERT\`
+          Vor einer Neuinstallation prüfen: apksigner verify --print-certs BrickInventory.apk
+          (die Zeile „certificate SHA-256 digest“ muss genau diesen Wert zeigen).
+          Herkunft prüfen: gh attestation verify BrickInventory.apk --repo $GITHUB_REPOSITORY --signer-workflow $GITHUB_REPOSITORY/.github/workflows/android-bescheinigung.yml
+
+          Direkter Download (immer die neuste Fassung, kein Zip):
+          $LINK"
+
+          # Vor dem Hochladen, nicht danach: Die Werte bestimmen, ob überhaupt
+          # hochgeladen wird.
+          META=app/build/outputs/apk/release/output-metadata.json
+          if [ ! -f "$META" ]; then
+            echo "::error::$META fehlt — ohne die Werte von AGP koennte hier nur geraten werden."
+            exit 1
+          fi
+          V_CODE=$(jq -r '.elements[0].versionCode' "$META")
+          V_NAME=$(jq -r '.elements[0].versionName' "$META")
+          if ! printf '%s' "$V_CODE" | grep -Eq '^[0-9]+$'; then
+            echo "::error::versionCode aus $META ist \"$V_CODE\" — keine Zahl."
+            exit 1
+          fi
+          if [ -z "$V_NAME" ] || [ "$V_NAME" = null ]; then
+            echo "::error::versionName aus $META ist leer."
+            exit 1
+          fi
+
+          # Dieselbe Regel wie im Job apk-pruefen (tools/release-pruefen.py fassung),
+          # hier unter der concurrency-Gruppe unmittelbar vor dem Hochladen. Ohne
+          # Werkzeug aus dem Repository: Dieser Job hat Schreibrecht.
+          if gh release view "$ETIKETT" >/dev/null 2>&1; then
+            if gh release download "$ETIKETT" -p version-signiert.json -O "$RUNNER_TEMP/alt-signiert.json"; then
+              jq -r .daten "$RUNNER_TEMP/alt-signiert.json" | base64 -d > "$RUNNER_TEMP/version-alt.json"
+            else
+              gh release download "$ETIKETT" -p version.json -O "$RUNNER_TEMP/version-alt.json"
+            fi
+            ALT_CODE=$(jq -r '.versionCode' "$RUNNER_TEMP/version-alt.json")
+            ALT_COMMIT=$(jq -r '.commit' "$RUNNER_TEMP/version-alt.json")
+            if ! printf '%s' "$ALT_CODE" | grep -Eq '^[0-9]+$' || [ "$V_CODE" -lt "$ALT_CODE" ] ||
+               { [ "$V_CODE" -eq "$ALT_CODE" ] && [ "$ALT_COMMIT" != "$COMMIT" ]; }; then
+              echo "::error::versionCode $V_CODE folgt nicht auf das veröffentlichte $ALT_CODE ($ALT_COMMIT). Nichts wird veröffentlicht."
+              exit 1
+            fi
+            gh release edit "$ETIKETT" --notes "$TEXT"
+          else
+            gh release create "$ETIKETT" --title "BrickInventory — neustes APK" --notes "$TEXT"
+          fi
+          # Unveränderlich je Fassung: Die signierte Beschreibung zeigt auf
+          # BrickInventory-<versionCode>.apk im Release des Etiketts. Der Anhang wird
+          # nie ersetzt; ein erneuter Lauf vergleicht nur („Immutable releases“, README).
+          FASSUNG="BrickInventory-${V_CODE}.apk"
+          cp "$APK" "$RUNNER_TEMP/$FASSUNG"
+          if ! gh release view "$QUELLE" >/dev/null 2>&1; then
+            gh release create "$QUELLE" --verify-tag --latest=false \
+              --title "BrickInventory $V_NAME" --notes "Fassung $V_CODE aus $COMMIT. $LINK zeigt immer auf die neuste."
+          fi
+          if gh release view "$QUELLE" --json assets --jq '.assets[].name' | grep -qxF "$FASSUNG"; then
+            gh release download "$QUELLE" -p "$FASSUNG" -O "$RUNNER_TEMP/vorhanden.apk"
+            if ! cmp -s "$RUNNER_TEMP/vorhanden.apk" "$APK"; then
+              echo "::error::$QUELLE trägt schon ein anderes $FASSUNG; ein Fassungsanhang wird nie ersetzt."
+              exit 1
+            fi
+          else
+            gh release upload "$QUELLE" "$RUNNER_TEMP/$FASSUNG"
+          fi
+
+          # Der stabile Link für Neuinstallationen: Hier darf ersetzt werden, die App
+          # lädt ihre Updates vom Fassungsanhang oben.
+          gh release upload "$ETIKETT" "$APK" --clobber
+          # Signiert im Job signieren; ersetzt wird nur der Zeiger auf die neuste.
+          gh release upload "$ETIKETT" app/build/outputs/version-signiert.json --clobber
+
+          # version.json nur bis zum Stichtag: unsigniert und ohne Frist, sie hält
+          # alte Fassungen still fest. Sie bleibt, damit Geräte vor der signierten
+          # Beschreibung das nächste Update noch finden; `commit` ist nur Herkunft.
+          if [ "$(date -u +%Y%m%d)" -lt 20270201 ]; then
+            jq -n --argjson code "$V_CODE" --arg name "$V_NAME" \
+                  --arg commit "$COMMIT" --arg url "$LINK" \
+                  --argjson size "$(stat -c%s "$APK")" \
+                  '{versionCode:$code, versionName:$name, commit:$commit, apkUrl:$url, apkSize:$size}' \
+                  > version.json
+            gh release upload "$ETIKETT" version.json --clobber
+            # Zurückfragen statt `gh` zu glauben: Halbes JSON meldete auf alten Geräten einen Fehler.
+            ZURUECK=$(gh release view "$ETIKETT" --json assets \
+              --jq '.assets[] | select(.name=="version.json") | .size')
+            if [ "$ZURUECK" != "$(stat -c%s version.json)" ]; then
+              echo "::error::version.json unvollstaendig hochgeladen ($ZURUECK Bytes draussen)."
+              exit 1
+            fi
+          elif gh release view "$ETIKETT" --json assets --jq '.assets[].name' | grep -xF version.json >/dev/null; then
+            gh release delete-asset "$ETIKETT" version.json --yes
+          fi
+
+          # Nicht der Ausgabe von `gh` glauben, sondern den Anhang zurückfragen: Ein
+          # abgebrochener Upload liefert sonst einen Link auf ein halbes APK.
+          LOKAL=$(stat -c%s "$APK")
+          DRAUSSEN=$(gh release view "$ETIKETT" --json assets \
+            --jq '.assets[] | select(.name=="BrickInventory.apk") | .size')
+          if [ "$DRAUSSEN" != "$LOKAL" ]; then
+            echo "::error::Das Release meldet $DRAUSSEN Bytes, lokal sind es $LOKAL. Anhang unvollstaendig."
+            exit 1
+          fi
+
+          {
+            echo "## APK zum direkten Herunterladen"
+            echo ""
+            echo "**$LINK**"
+            echo ""
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| Groesse | $LOKAL Bytes |"
+            echo "| Gebaut aus | \`$QUELLE\` ($COMMIT) |"
+            echo ""
+            echo "> Kein Zip: Ein Release-Anhang wird roh ausgeliefert. Der Link"
+            echo "> bleibt ueber alle Builds derselbe und braucht kein GitHub-Konto."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -9,18 +9,17 @@ import {
   setGlobalSetting,
   globalerWertGueltig,
   getGlobalSetting,
-} from '../einstellungen/settings';
-import { setUserSetting } from '../konto/nutzerEinstellung';
+} from '../einstellungen';
+import { kontoBereich, setUserSetting } from '../konto';
 import { buildSetsCsv } from '../sets';
-import { buildPartsCsv, buildFigsCsv } from '../bestand/bestandExport';
-import { buildMerklisteCsv } from '../merkliste/merkliste';
-import { DAILY_JOBS } from '../auftraege/zeitplan';
+import { buildPartsCsv, buildFigsCsv } from '../bestand';
+import { buildMerklisteCsv } from '../merkliste';
+import { finanzenBereich } from '../finanzen';
+import { DAILY_JOBS } from '../auftraege';
 import { zeitplanNeuPlanen } from './dienst';
 import { jsonOderNull } from '../infra/validate';
 import { fachfehler } from '../infra/fehlerTexte';
 import { KonfigExport } from '../vertrag/einstellungen';
-import { finanzenBereich } from '../finanzen/prozess';
-import { kontoBereich } from '../konto/prozess';
 
 /** Mailserver, Registrierung und API-Schlüssel nimmt nur das Formular, mit Passwort. */
 export const istHeikel = (k: string) =>
@@ -128,5 +127,5 @@ export async function konfigImport(uid: number, verwalter: boolean, datei: Buffe
     (verwalter && smtpUebergangen.length
       ? '; Mailserver, Registrierung und API-Schlüssel nicht übernommen — bitte im Formular setzen'
       : '');
-  return { success: true as const, imported, note, smtp_uebergangen: verwalter ? smtpUebergangen : [] };
+  return { imported, note, smtp_uebergangen: verwalter ? smtpUebergangen : [] };
 }

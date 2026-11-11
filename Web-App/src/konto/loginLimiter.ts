@@ -60,9 +60,9 @@ export function drosselAdresse(ip: string): string {
 }
 
 // einzelwert(): Kommt der Name doppelt an, liefert Express ein Array.
-const _key = (ip: string, name: unknown) => `login|${drosselAdresse(ip)}|${einzelwert(name).toLowerCase()}`;
+const _key = (ip: string, name: string) => `login|${drosselAdresse(ip)}|${einzelwert(name).toLowerCase()}`;
 const _adressKey = (ip: string) => `login-adresse|${drosselAdresse(ip)}`;
-const _nameKey = (name: unknown) => `login-name|${einzelwert(name).toLowerCase()}`;
+const _nameKey = (name: string) => `login-name|${einzelwert(name).toLowerCase()}`;
 /** Die Bekannt-Zeile lebt 30 Tage und die Tabelle liest die Leserolle: Dort steht
  * nur der HMAC der Adresse; er bleibt für dieselbe Adresse gleich und zählt weiter. */
 function adressAbdruck(ip: string): string {
@@ -70,7 +70,7 @@ function adressAbdruck(ip: string): string {
   try { return suchwert('anmeldeadresse', a); }
   catch { return createHash('sha256').update(`brickinventory/anmeldeadresse/${a}`).digest('hex'); }
 }
-const _bekanntKey = (ip: string, name: unknown) => `login-bekannt|${adressAbdruck(ip)}|${einzelwert(name).toLowerCase()}`;
+const _bekanntKey = (ip: string, name: string) => `login-bekannt|${adressAbdruck(ip)}|${einzelwert(name).toLowerCase()}`;
 const _erfolgKey = (ip: string, kennung: string) => `login-erfolg|${adressAbdruck(ip)}|${kennung}`;
 
 function _prune() {
@@ -160,7 +160,9 @@ async function _clear(key: string): Promise<void> {
 /** Name und E-Mail desselben Kontos zählen gemeinsam, sonst gälte jede Grenze
  * doppelt. Kleinschreibung in PostgreSQL wie beim Login: JS macht aus „İ"
  * zwei Zeichen. */
-async function kontoKennung(username: unknown): Promise<string> {
+async function kontoKennung(username: string): Promise<string> {
+  // Ausnahme: Bei gestörter Datenbank zählt die Drossel im Speicher weiter
+  // (imSpeicher); ohne Konto dann nach dem Namen, statt die Anmeldung zu sperren.
   const z = await kontoBereich().anmeldezaehler.kontoZumNamen(einzelwert(username)).catch(meldeUndLiefere('anmeldung:konto-kennung', null));
   if (z?.id) return `konto:${z.id}`;
   return `name:${namensAbdruck(z?.kennung ?? einzelwert(username).toLowerCase())}`;
@@ -178,7 +180,7 @@ export type Sperre = { code: FehlerCode; vars: { minuten: number } };
 
 /** Belegt den Versuch; recordLoginFailure, recordLoginSuccess oder
  * gibAnmeldeplatzFrei geben ihn frei. */
-export async function checkLoginAllowed(ip: string, username: unknown): Promise<Sperre | null> {
+export async function checkLoginAllowed(ip: string, username: string): Promise<Sperre | null> {
   const kennung = await kontoKennung(username);
   const gesamt = await _reserviere(_adressKey(ip), WINDOW_MIN, s => s.count + s.laufend < MAX_JE_ADRESSE);
   if (!gesamt.ok)
@@ -205,7 +207,7 @@ export async function checkLoginAllowed(ip: string, username: unknown): Promise<
   return null;
 }
 
-export async function gibAnmeldeplatzFrei(ip: string, username: unknown): Promise<void> {
+export async function gibAnmeldeplatzFrei(ip: string, username: string): Promise<void> {
   const kennung = await kontoKennung(username);
   await _freigeben(_key(ip, kennung));
   await _freigeben(_nameKey(kennung));
@@ -213,7 +215,7 @@ export async function gibAnmeldeplatzFrei(ip: string, username: unknown): Promis
 }
 
 /** @returns die Fehlversuche des Kontos im Fenster */
-export async function recordLoginFailure(ip: string, username: unknown): Promise<number> {
+export async function recordLoginFailure(ip: string, username: string): Promise<number> {
   const kennung = await kontoKennung(username);
   await _bump(_key(ip, kennung), WINDOW_MIN);
   const n = await _bump(_nameKey(kennung), WINDOW_MIN);
@@ -239,7 +241,7 @@ export function meldeAnmeldung(angaben: { ip?: string | undefined; konto: number
     ...(ip ? { adresse: drosselAdresse(ip) } : {}), konto, zugang });
 }
 
-export async function recordLoginSuccess(ip: string, username: unknown): Promise<void> {
+export async function recordLoginSuccess(ip: string, username: string): Promise<void> {
   const kennung = await kontoKennung(username);
   await _clear(_key(ip, kennung));
   await _clear(_nameKey(kennung));
@@ -255,7 +257,7 @@ export async function recordLoginSuccess(ip: string, username: unknown): Promise
 export const ERFOLGE_MIT_VORRANG = 30;
 
 /** Diese Adresse hat sich mit diesem Namen zuletzt angemeldet, und nicht zu oft. */
-export async function bekannteAnmeldung(ip: string, username: unknown): Promise<boolean> {
+export async function bekannteAnmeldung(ip: string, username: string): Promise<boolean> {
   const kennung = await kontoKennung(username);
   if (!await _read(_bekanntKey(ip, kennung), BEKANNT_MIN)) return false;
   return ((await _read(_erfolgKey(ip, kennung), WINDOW_MIN))?.count ?? 0) < ERFOLGE_MIT_VORRANG;

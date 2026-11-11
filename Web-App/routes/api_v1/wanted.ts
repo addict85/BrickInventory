@@ -3,23 +3,20 @@
 import { oeffentlicherFehler } from '../../src/infra/fehler';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
-import { legeMerkpostenAn, loescheMerkposten, verschiebeMerkposten, uebernimm, merkpostenVon, preiseBeiderZustaende } from '../../src/merkliste/merkliste';
-import { getSetting } from '../../src/einstellungen/settings';
+import { haushaltBereich } from '../../src/haushalt';
+import { legeMerkpostenAn, loescheMerkposten, verschiebeMerkposten, uebernimm, merkpostenVon, preiseBeiderZustaende, type Korrektur } from '../../src/merkliste';
+import { getSetting } from '../../src/einstellungen';
 import { csvEmpfang, xmlEmpfang } from '../../src/http/dateiEmpfang';
-import type { Korrektur } from '../../src/merkliste/wantedAufloesung';
-import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
-import { WantedKorrekturen } from '../../src/auftraege/nutzlasten';
+import { importAlsAuftrag, WantedKorrekturen } from '../../src/auftraege';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
 import type { z } from 'zod';
 import type { WantedXmlErgebnis } from '../../src/vertrag/merkliste';
 
 import { jsonOderNull } from '../../src/infra/validate';
 import { seiteAus } from '../../src/infra/seite';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
-import { haushaltBereich } from '../../src/haushalt/prozess';
+import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
 const router = vertragsRouter();
-type WantedXmlBericht = z.infer<typeof WantedXmlErgebnis>;
+type WantedXmlBericht = Pick<z.infer<typeof WantedXmlErgebnis>, 'vorschau' | 'gelesen' | 'angelegt' | 'aufgestockt' | 'fehler' | 'posten' | 'offen'>;
 
 // Blickfeld wie überall: Wer ein Geschenk sucht, sieht die Merkposten der Enkel.
 router.get('/wanted', requireToken, async (req: Anfrage<'GET /api/v1/wanted'>, res: Antwort<'GET /api/v1/wanted'>) => {
@@ -70,8 +67,7 @@ router.get('/wanted/:setNumber/preise', requireToken, async (req: Anfrage<'GET /
   res.json({ success: true, set_number: sn, ...preise });
 });
 
-/** Die Regel steht in merkliste.ts:uebernimm() — über addSet(), die eine
- * Wahrheit fürs Erfassen. Hier bleibt nur, wer schreiben darf. */
+/** Die Regel steht in merkliste.ts:uebernimm(); hier bleibt nur, wer schreiben darf. */
 router.post('/wanted/:setNumber/:condition/uebernehmen', requireToken, async (req: Anfrage<'POST /api/v1/wanted/:setNumber/:condition/uebernehmen'>, res: Antwort<'POST /api/v1/wanted/:setNumber/:condition/uebernehmen'>) => {
   const owner = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
   const r = await uebernimm(req.apiUser.user_id, owner,
@@ -85,8 +81,8 @@ router.post('/wanted/import/csv', requireToken, kontoSchranke('upload'), csvEmpf
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
     const owner = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
 
-    res.json(await importAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'merkliste_csv',
-      { owner, text: req.file.buffer.toString('utf-8') }));
+    res.json({ success: true, ...(await importAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'merkliste_csv',
+      { owner, text: req.file.buffer.toString('utf-8') })) });
   });
 
 /** Die Vorschau ist die VORGABE: Ohne `schreiben=1` wird nichts angelegt, weil
@@ -115,7 +111,7 @@ router.post('/wanted-list/import/xml', requireToken, kontoSchranke('upload'), xm
       ...(korrekturen ? { korrekturen } : {}),
     };
     const uid = req.apiUser.user_id;
-    if (!req.abfrage.strom) return res.json(await importAlsAuftrag<WantedXmlBericht>(uid, 'wanted_xml', eingabe));
+    if (!req.abfrage.strom) return res.json({ success: true, ...(await importAlsAuftrag<WantedXmlBericht>(uid, 'wanted_xml', eingabe)) });
 
     res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
     res.setHeader('Cache-Control', 'no-store');
@@ -130,7 +126,7 @@ router.post('/wanted-list/import/xml', requireToken, kontoSchranke('upload'), xm
     // Die Kopfzeilen sind hinaus: Ein Fehler kommt als letzte ZEILE, sonst
     // wartet der Client auf einen Bericht, der nie kommt.
     await importAlsAuftrag(uid, 'wanted_xml', eingabe, { fortschritt: (f) => zeile({ fortschritt: f }) })
-      .then(zeile, (e: unknown) => zeile({ success: false, ...oeffentlicherFehler(e, 'wanted-import:strom', req) }));
+      .then(r => zeile({ success: true, ...r }), (e: unknown) => zeile({ success: false, ...oeffentlicherFehler(e, 'wanted-import:strom', req) }));
     res.end();
   });
 

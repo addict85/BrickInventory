@@ -1,6 +1,6 @@
 
-import type { Sicht } from '../../haushalt/haushalt';
-import { getGlobalSetting, getSetting } from '../../einstellungen/settings';
+import { haushaltBereich, type Sicht } from '../../haushalt';
+import { getGlobalSetting, getSetting } from '../../einstellungen';
 import { valueSet, valueAcquisitionRows, weightedPurchase, entwicklungProzent, kachelWerte } from '../setValue';
 import { effectiveCondition } from './zustand';
 import { computeMinifigsValuation, computePartsValuation } from './bewertung';
@@ -10,7 +10,6 @@ import type { ladeSetErfassungen } from '../repository/erfassungen';
 import { aufRappen, inZehntel4, summeAus } from '../../infra/geld';
 import type * as repo from '../repository/gewinnVerlust';
 import { finanzenBereich } from '../prozess';
-import { haushaltBereich } from '../../haushalt/prozess';
 
 type PnlSet = Awaited<ReturnType<typeof repo.setsMitErfassungen>>[number];
 type Erfassung = Awaited<ReturnType<typeof ladeSetErfassungen>>[number];

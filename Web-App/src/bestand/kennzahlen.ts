@@ -1,7 +1,6 @@
-import { asIds, type Sicht } from '../haushalt/haushalt';
-import { getGlobalSetting } from '../einstellungen/settings';
+import { haushaltBereich, asIds, type Sicht } from '../haushalt';
+import { getGlobalSetting } from '../einstellungen';
 import { bestandBereich } from './prozess';
-import { haushaltBereich } from '../haushalt/prozess';
 
 /** Spannen über alle drei Domänen und gehören deshalb in keine davon. */
 export async function getStats(userIdWahl: Sicht | number | number[]) {

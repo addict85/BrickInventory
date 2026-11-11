@@ -7,7 +7,7 @@ import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.model.data.model.Fehlercode
-import ch.brickinventoryapp.zustand.ui.Aenderung
+import ch.brickinventoryapp.data.repository.Bestandsabgleich
 import ch.brickinventoryapp.konto.ui.HouseholdUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +19,6 @@ import javax.inject.Inject
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.zustand.ui.AppUiState
 import ch.brickinventoryapp.zustand.ui.Sitzung
-import ch.brickinventoryapp.zustand.ui.Bestandssignal
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
 import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
@@ -36,7 +35,7 @@ class HaushaltViewModel @Inject constructor(
     private val sitzung: Sitzung,
     private val filter: Filterwahl,
     private val meldungen: Meldungen,
-    private val bestand: Bestandssignal,
+    private val abgleich: Bestandsabgleich,
     private val haushalt: HaushaltRepository,
     private val konto: KontoRepository,
 ) : ViewModel(), Filterwahl by filter {
@@ -145,7 +144,7 @@ class HaushaltViewModel @Inject constructor(
     private suspend fun kontenGeaendert(bestandGeaendert: Boolean) {
         loadHouseholdStatus()
         filter.ladeMitglieder()
-        if (bestandGeaendert) bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
+        if (bestandGeaendert) abgleich.bestand()
     }
 
     private fun zuruecksetzen() {

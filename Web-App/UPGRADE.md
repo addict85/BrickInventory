@@ -725,7 +725,7 @@ Was der Betrieb tun muss, steht zuerst; danach, was sich für Clients ändert.
    *CI* und *Sicherheit*, kein Force-Push.
 3. Der Trivy-Lauf für Caddy, PostgreSQL und pgweb ist jetzt scharf: Meldet
    er behebbare Lücken, den Dependabot-PR mit dem neuen Digest übernehmen
-   oder die Lücke mit Grund und Ablaufdatum in `.github/trivy-betrieb.ignore`
+   oder die Lücke mit Grund und Ablaufdatum in `.github/trivy-betrieb.yaml`
    eintragen.
 
 ## 32. Runde 8 – Sicherheit
@@ -1424,7 +1424,8 @@ Telefon die Webseite.
   `docker image rm` weg.
 - Das Passwort des ersten Verwalters steht beim allerersten Start im
   Protokoll von `app` oder `jobs` (wer zuerst migriert):
-  `docker compose logs app jobs | grep -A2 Standard-Admin`. `ADMIN_PASSWORD`
+  `docker compose logs app jobs | grep -A2 Standard-Admin`. **Überholt durch
+  Abschnitt 51:** jetzt im Protokoll von `migration`. `ADMIN_PASSWORD`
   reicht `compose.yaml` nicht durch.
 
 ## 42. Runde 16 – Image nur als geprüfter Digest, Startverbot für Mail-Tokens
@@ -1496,7 +1497,7 @@ am Tag eine Mail.
 (`imagetools create --metadata-file`), nicht mehr den, auf den der Tag kurz
 danach zeigt.
 
-**5. Datenbankrolle (unverändert, zur Kenntnis)**
+**5. Datenbankrolle (unverändert, zur Kenntnis)** – **Überholt durch Abschnitt 51.**
 
 `brickinventory_app` bleibt Eigentümerin von Datenbank und Schema. Die App
 migriert beim Start, und der Katalog-Import arbeitet mit Schattentabellen;
@@ -1510,7 +1511,7 @@ eigenen Runde mit Anleitung.
 `docker compose up -d`. Der erste Lauf baut Caddy (Punkt 1) und braucht dafür
 einige Minuten, Netz zu proxy.golang.org und gut 1 GB freien Speicher.
 
-**1. Caddy entsteht auf dem Rechner (`Dockerfile.caddy`)**
+**1. Caddy entsteht auf dem Rechner (`Dockerfile.caddy`)** – **Überholt durch Abschnitt 52.**
 
 Die offizielle Fassung von Caddy brachte Go-Module mit bekannten Lücken mit
 (go-jose), und Caddy ist der einzige Dienst mit offenen Ports. `compose.yaml`
@@ -1722,3 +1723,238 @@ docker compose exec postgres psql -U brickinventory -c "SELECT max(name) FROM sc
   Bestand beschränkt.
 - `postgres/app-rolle.sh` (Leserolle) kennt die geänderten Spalten; `docker
   compose up -d` spielt es wie gewohnt ein.
+
+## 49. Geräteschlüssel nur mit Android Key Attestation (Migration 0106)
+
+- **Was sich ändert:** Die App hinterlegt ihren Geräteschlüssel für den
+  Schrittschutz (Gutschein-PIN, Verwaltung, zweiter Faktor) nur noch mit seiner
+  Attestierungskette. Der Server prüft, dass die Kette bis zu einer Google-Wurzel
+  reicht (`src/konto/attestation/googleWurzeln.ts`, Quelle und SHA-256 dort),
+  dass sie die Nonce des Servers trägt (`POST /api/v1/geraet/schluessel/nonce`,
+  einmalig, nur in den ersten 10 Minuten eines Zugangs), dass der Schlüssel im
+  TEE oder StrongBox entstand und bei jeder Benutzung nur nach Gerätesperre oder
+  starker Biometrie signiert, und dass er der App mit `PASSKEY_ANDROID_PAKET`
+  und einem Fingerabdruck aus `PASSKEY_ANDROID_ZERTIFIKATE` gehört. Ein Zugang
+  aus der QR-Kopplung bekommt seine Nonce schon bei der Abholung und keine
+  weitere.
+- **Zu tun:** `PASSKEY_ANDROID_ZERTIFIKATE` setzen (wie für Passkeys,
+  `.env.example`), falls noch nicht geschehen. **Ohne Fingerabdruck nimmt der
+  Server keinen Geräteschlüssel mehr an**; heikle Schritte gehen dann in der App
+  nicht, in der Webapp weiter. Das Protokoll nennt den Grund jeder Abweisung
+  (`[geraet] Attestation von Konto … abgewiesen: fremde_signatur`).
+- **Übergang:** Bereits hinterlegte Schlüssel (ohne Attestation) gelten bis
+  zum **1. Februar 2027** (`GERAETESCHLUESSEL_ALT_BIS`; ein früheres Datum
+  schaltet sie früher ab). Danach meldet sich in der App neu an, wer es bis dahin
+  nicht getan hat; die neue Anmeldung hinterlegt einen attestierten Schlüssel.
+  Eine ältere App ohne Attestation kann nach dem Update des Servers keinen neuen
+  Schlüssel mehr hinterlegen: zuerst die App aktualisieren.
+- **Geräte ohne Attestation** (sehr alte oder veränderte Geräte, Emulatoren)
+  bekommen in der App eine Meldung und führen heikle Schritte in der Webapp aus.
+- **Widerrufsliste:** Die Liste widerrufener Attestierungsschlüssel
+  (`https://android.googleapis.com/attestation/status`) prüft der Server nicht,
+  er bräuchte dafür Zugang ins Internet. Ein widerrufener Schlüssel eines
+  kompromittierten Geräts käme durch, bräuchte aber weiterhin einen Token in
+  seinen ersten 10 Minuten.
+- **QR-Anmeldung:** Die App zeigt nach der Bestätigung im Browser Benutzername
+  und Server und übernimmt den Zugang erst nach einem Ja
+  (`POST /api/v1/auth/qr-login/abholen` mit `vorschau: true`; ein Nein geht an
+  `/qr-login/verwerfen` und lehnt die Kopplung ab). Ältere Apps holen den Token
+  wie bisher direkt ab.
+## 50. `./data` richtet ein eigener Dienst ein, `app` und `jobs` ohne root
+
+**Nichts von Hand zu tun:** `sh scripts/image-pruefen.sh && docker compose up -d`.
+
+- Der neue Dienst `daten-rechte` (dasselbe Image wie `app`) übergibt `./data`
+  bei jedem `up` an `brickinv` – Eigentümer reparieren, Marke, Unterordner –
+  und endet. Er läuft als root, aber ohne Netz und mit nur `./data`
+  eingehängt. `app` und `jobs` warten auf ihn und laufen danach als
+  `brickinv` ohne jede Capability; ihr Entrypoint hat keinen root-Schritt mehr.
+  Vorher richtete der Entrypoint von `app` und `jobs` als root ein, während
+  der jeweils andere Container schon in `./data` schreiben konnte.
+- **`BRICKINV_CHOWN`** (`auto`, `always`, `never`) gilt jetzt für
+  `daten-rechte`: in `.env` setzen, nicht mehr unter `environment:` von
+  `app`. Wer es dort eingetragen hatte, verschiebt die Zeile.
+- `docker compose logs daten-rechte` zeigt, was er getan hat.
+- Ein einzelnes `docker run` ohne compose startet weiter als root, richtet
+  `/app/data` selbst ein und gibt die Rechte dann an `brickinv` ab.
+
+## 51. Migrationsrolle getrennt von der Laufzeitrolle
+
+**Für jeden Docker-Betreiber einmal zu tun.** Ohne die Schritte bricht
+`docker compose up` bei `db-rolle` mit „DB_MIGRATION_PASSWORD fehlt“ ab;
+`app` und `jobs` starten dann nicht.
+
+Bisher besaß `brickinventory_app` Datenbank, Schema und Tabellen: Ein
+Einbruch in die App hätte Tabellen ändern oder löschen können. Jetzt:
+
+- **`brickinventory_migration`** (neu) besitzt Datenbank, Schema `public`,
+  alle Tabellen, Funktionen und die Kopien vor Migrationen. Ihr Passwort
+  (`./geheimnisse/db_migration_password`) kennt nur der neue einmalige Dienst
+  **`migration`**: Er spielt beim ersten Start das Grundschema samt erstem
+  Verwalter ein, danach bei jedem `up` offene Migrationen, räumt abgelaufene
+  Kopien weg und endet. Er hängt nur am internen Netz der Datenbank.
+- **`brickinventory_app`** (Laufzeitrolle von `app` und `jobs`) darf nur
+  noch Zeilen lesen, schreiben und löschen, Sequenzen weiterzählen und
+  temporäre Tabellen anlegen (der Katalog-Import tauscht über eine temporäre
+  Schattentabelle); ab PostgreSQL 17 dazu `MAINTAIN` für VACUUM/ANALYZE.
+  Kein `CREATE`, `ALTER`, `DROP`, `TRUNCATE`. Was die Migrationsrolle künftig
+  anlegt, bekommt diese Rechte über Default Privileges ohne erneuten Lauf.
+- `app` und `jobs` warten auf `migration`. Finden sie offene Migrationen
+  oder eine leere Datenbank, starten sie nicht und nennen den Dienst.
+- Das Startpasswort des ersten Verwalters schreibt jetzt `migration`:
+  `docker compose logs migration`, die Datei liegt wie bisher in
+  `data/admin-startpasswort.txt`.
+
+**Schritt für Schritt** (im Ordner mit `compose.yaml`, nach dem Update der
+Dateien):
+
+```bash
+sh scripts/image-pruefen.sh        # neues Image (Abschnitt 42)
+sh scripts/rollen-trennen.sh       # Schritte 1–4 unten, wiederholbar
+```
+
+`scripts/rollen-trennen.sh` tut der Reihe nach, und jeder Schritt lässt
+stehen, was schon passt:
+
+1. `scripts/geheimnisse-einrichten.sh`: legt `geheimnisse/db_migration_password`
+   an, falls es fehlt (zufällig; `db-rolle` setzt es bei jedem Lauf, ein
+   neues passt also auch zu einer bestehenden Datenbank).
+2. `docker compose up -d postgres` und `docker compose run --rm db-rolle`:
+   legt die Migrationsrolle an und übergibt ihr Datenbank, Schema und alle
+   Objekte, auch die bisher der App-Rolle gehörenden. Die Rechte der
+   Laufzeitrolle werden in einer Transaktion neu gesetzt.
+3. `docker compose run --rm migration`: spielt offene Migrationen als
+   Migrationsrolle ein.
+4. Prüft als Superuser: kein Objekt in `public` gehört jemand anderem als der
+   Migrationsrolle, die Laufzeitrolle hat kein `CREATE` auf `public`, darf
+   aber in `users` schreiben. Danach `docker compose up -d`.
+
+Von Hand geht dasselbe mit genau diesen Befehlen. Prüfen lässt es sich
+jederzeit:
+
+```bash
+docker compose exec postgres psql -U brickinventory -d brickinventory -c \
+  "SELECT pg_get_userbyid(relowner), count(*) FROM pg_class WHERE relnamespace = 'public'::regnamespace GROUP BY 1"
+```
+
+**Sicherung und Wiederherstellung:** `scripts/backup.sh` bleibt, wie es
+war. `scripts/restore.sh` spielt den Dump jetzt als Migrationsrolle ein (wie
+bisher mit `\restrict` und ohne Besitzerzeilen), richtet danach mit
+`db-rolle` die Rechte nach, lässt `migration` laufen und startet `app` und
+`jobs` neu. Ein Dump von vor dieser Umstellung lässt sich ebenso einspielen.
+
+**Ohne Docker** (`npm start` mit eigener Datenbank) ändert sich nichts: Eine
+Rolle, die das Schema ändern darf, migriert beim Start wie bisher selbst.
+Wer die Trennung auch dort will, ruft `postgres/app-rolle.sh` als Superuser
+mit `DB_MIGRATION_PASSWORD` auf und startet einmal
+`node dist/startup/migrieren.js` als Migrationsrolle, den Server danach als
+`brickinventory_app`.
+
+## 52. Caddy als signiertes Image per Digest
+
+**Für jeden Docker-Betreiber einmal zu tun:** `sh scripts/image-pruefen.sh`,
+dann `docker compose up -d`. Ohne diesen Schritt bricht `docker compose` mit
+„CADDY_IMAGE fehlt in .env“ ab.
+
+- `docker-publish.yml` baut `Dockerfile.caddy` jetzt neben dem App-Image für
+  amd64 und arm64, ohne Cache, prüft den Digest mit Trivy (behebbare Lücken
+  ab high halten die Veröffentlichung auf), signiert ihn mit cosign keyless
+  und hängt Herkunft (SLSA) und Stückliste an – wie beim App-Image. Name:
+  `addict85/brickinventory-caddy`, dieselben Tags wie das App-Image.
+- `compose.yaml` nimmt für `caddy` und `caddy-rechte` `CADDY_IMAGE` aus
+  `.env` statt eines lokal gebauten `brickinventory-caddy:2.11.8`
+  (`pull_policy: build` entfällt). `scripts/image-pruefen.sh` prüft beide
+  Images gegen dieselbe Identität (`docker-publish.yml` auf `main`) und
+  denselben Aussteller, trägt erst danach beide Digests ein
+  (`BRICK_IMAGE=…`, `CADDY_IMAGE=addict85/brickinventory-caddy@sha256:…`) und
+  zieht sie. Scheitert eine Prüfung, ändert es nichts.
+- Von Hand prüfen:
+  `cosign verify addict85/brickinventory-caddy:latest --certificate-identity
+  https://github.com/addict85/BrickInventory/.github/workflows/docker-publish.yml@refs/heads/main
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com`.
+- **Selbst bauen** bleibt möglich: `CADDY_IMAGE=brickinventory-caddy:lokal`
+  in `.env`, dann `docker compose up -d --build`. Das alte lokale Image
+  `brickinventory-caddy:2.11.8` wird nicht mehr benutzt (`docker image rm`).
+
+
+## 53. Kein Weg ins Heimnetz (optional, DOCKER-USER)
+
+**Nichts zu tun, wenn alles bleiben soll, wie es ist.** Was compose.yaml
+selbst begrenzt:
+
+- `postgres`, `db-rolle` und `migration` hängen nur am Netz `db-net`
+  (`internal: true`): kein Weg nach draussen, weder ins Internet noch ins LAN.
+- `schluessel`, `daten-rechte` und `caddy-rechte` laufen ohne Netz
+  (`network_mode: none`).
+- `app` und `jobs` brauchen das Internet (Rebrickable, BrickLink, Mail,
+  Bilder), `caddy` für Let's Encrypt (`BRICK_TLS=acme`). Docker kann für sie
+  nicht „Internet ja, Heimnetz nein“ unterscheiden. Die Abrufe der App prüfen
+  ihr Ziel zwar selbst, eine Regel am Docker-Rechner fängt aber auch ab, was
+  an dieser Prüfung vorbeikäme.
+
+**Optional: Ausgang ins LAN sperren.** Docker lässt Regeln in der Kette
+`DOCKER-USER` stehen und wertet sie vor seinen eigenen aus. Das Netz von
+`app`, `jobs` und `caddy` ist fest `172.28.73.0/24` (compose.yaml). Als root
+auf dem Docker-Rechner, mit der Adresse des eigenen Routers statt
+`192.168.1.1`:
+
+```bash
+N=172.28.73.0/24 ROUTER=192.168.1.1
+iptables -N BRICK-LAN 2>/dev/null || iptables -F BRICK-LAN
+# Antworten auf Verbindungen von aussen (Caddy), Verkehr im eigenen Netz, DNS über den Router
+iptables -A BRICK-LAN -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
+iptables -A BRICK-LAN -d "$N" -j RETURN
+iptables -A BRICK-LAN -d "$ROUTER" -p udp --dport 53 -j RETURN
+iptables -A BRICK-LAN -d "$ROUTER" -p tcp --dport 53 -j RETURN
+# Alles andere in private Netze: abgewiesen
+for z in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 100.64.0.0/10; do
+  iptables -A BRICK-LAN -d "$z" -j REJECT
+done
+iptables -C DOCKER-USER -s "$N" -j BRICK-LAN 2>/dev/null || iptables -I DOCKER-USER -s "$N" -j BRICK-LAN
+```
+
+Die Befehle sind wiederholbar (eigene Kette, die bei jedem Lauf neu gefüllt
+wird). Hinweise:
+
+- **Mailserver oder anderes im LAN**, das die App erreichen soll: vor der
+  Schleife `iptables -A BRICK-LAN -d <adresse> -p tcp --dport <port> -j RETURN`.
+- **Dienste auf dem Docker-Rechner selbst** deckt `DOCKER-USER` nicht ab
+  (Kette INPUT); dafür die Firewall des Rechners.
+- **IPv6:** compose.yaml schaltet IPv6 für das Netz nicht ein. Wer es tut,
+  braucht dieselben Regeln mit `ip6tables` (`fc00::/7`, `fe80::/10`).
+- **Nach einem Neustart** sind die Regeln weg: `iptables-persistent`
+  (Debian/Ubuntu, `netfilter-persistent save`) oder ein systemd-Dienst, der
+  die Befehle nach `docker.service` ausführt. Mit der nftables-Fassung von
+  Docker gilt dasselbe sinngemäss für dessen `DOCKER-USER`-Kette.
+- **Prüfen:** `docker compose exec app node -e "require('net').connect(80, '$ROUTER').on('error', e => console.log(e.code))"`
+  meldet `ECONNREFUSED`; eine Seite im Internet lädt weiter (Katalog-Abgleich).
+- **Rücknahme:** `iptables -D DOCKER-USER -s 172.28.73.0/24 -j BRICK-LAN`.
+
+## 54. `catalog_cache` nur noch Abrufstand, Bild nur aus `set_catalog` (Migration 0108)
+
+- **Was die Migration tut:** `catalog_cache` verliert `name`, `year`, `theme`,
+  `pieces` und `image_url` und behält nur `is_gear`, `bl_type` und `fetched_at`
+  (was BrickLink über eine Nummer sagt und wann gefragt wurde). Vorher zieht um,
+  was nur dort stand: Sets mit echten Angaben kommen als `herkunft = 'api'` nach
+  `rb_sets` (bestehende `api`-Zeilen bekommen nur ihre leeren Felder ergänzt,
+  CSV-Zeilen bleiben unberührt); fehlt in `set_catalog` die Bildadresse, kommt
+  sie aus `rb_sets.set_img_url`, sonst aus dem alten Abrufspeicher.
+- **Danach** schreibt jeder Einzelabruf bei Rebrickable (Erfassen, Barcode) nach
+  `rb_sets`/`set_catalog`; der CSV-Abgleich trägt die Bildadresse des CSV in
+  `set_catalog` ein, wo dort keine steht. Sammlung, Merkliste, Katalogsuche und
+  Set-Detail lesen das Bild nur noch aus `set_catalog`.
+- Nichts von Hand zu tun; die API antwortet mit denselben Feldern.
+
+## 55. Zustand und Auftragsart von der Datenbank geprüft (Migration 0109)
+
+- **Zustand:** Merkliste, Preisalarme und alle Preisspeicher und -verläufe
+  (Sets, Teile, Figuren) nehmen nur noch `N` oder `U`. Vorher berichtigt die
+  Migration andere Schreibweisen derselben Angabe (`n`, `u `) in Merkliste und
+  Preisalarm, wenn es den richtigen Eintrag nicht schon gibt; was danach nicht
+  passt, entfällt (Preisspeicher füllt der nächste Abruf).
+- **Auftragsarten** stehen in der neuen Tabelle `auftrags_arten`; `auftraege`
+  und `auftrag_pausen` verweisen per Fremdschlüssel darauf. Aufträge und Pausen
+  einer unbekannten Art (keine Anwendung hätte sie bearbeitet) entfallen. Eine
+  neue Art braucht künftig eine Migration.
+- Die Leserolle (`postgres/app-rolle.sh`) darf `auftrags_arten` lesen; `docker
+  compose up -d` spielt das wie gewohnt ein. Sonst nichts von Hand zu tun.

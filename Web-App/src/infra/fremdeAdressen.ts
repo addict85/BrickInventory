@@ -8,9 +8,10 @@ export const ERLAUBTE_BILD_HOSTS = [
   'www.bricklink.com', 'img.bricklink.com',
 ];
 
-// Nur diese Hosts dürfen Dateien auf die Platte liefern; Subdomains prüft hostErlaubt().
+// Nur diese Hosts dürfen Dateien auf die Platte liefern. Bei LEGO die, auf denen
+// Anleitungen liegen: Unter *.lego.com stünde jede Unterdomäne, die jemand dort einrichtet.
 export const ERLAUBTE_DOWNLOAD_HOSTS = [
-  ...ERLAUBTE_BILD_HOSTS, 'lego.com', '*.lego.com', 'bdpinstructions.s3.amazonaws.com',
+  ...ERLAUBTE_BILD_HOSTS, 'lego.com', 'www.lego.com', 'assets.lego.com', 'bdpinstructions.s3.amazonaws.com',
 ];
 
 /** JSON- und Seitenabrufe: Rebrickable, Anleitungsbilder, EAN-Suche. */

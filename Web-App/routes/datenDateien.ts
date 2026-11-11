@@ -1,14 +1,14 @@
 /** Eigene Datei, damit ein Test die echten Handler einhängen kann. */
 import { fehlerAntwort, pfadSegmente } from '../src/http/httpAntwort';
-import express, { Request, Response } from 'express';
+import express, { type Request, type Response } from 'express';
 import path from 'path';
-import { liefereDatei } from '../src/http/dateiAusliefern';
+import { liefereDatei, FREMDE_DATEI_CSP } from '../src/http/dateiAusliefern';
 import { safeDataPath } from '../src/infra/datenPfad';
 
 import { requireLoginOrToken, angemeldeteNutzerId } from '../src/konto/http/anmeldung';
 import { eingangsSperre } from './api_v1/middleware';
-import { anleitungFreigegeben } from '../src/katalog/bilder/bildBlickfeld';
-import { haushaltBereich } from '../src/haushalt/prozess';
+import { haushaltBereich } from '../src/haushalt';
+import { anleitungFreigegeben } from '../src/katalog';
 
 type WildcardRequest = Request<{ pfad: string[] }>;
 const router = express.Router();
@@ -16,7 +16,7 @@ const router = express.Router();
 /** Fremd Hochgeladenes (nur die ersten Bytes geprüft) läuft so nie unter der Herkunft
  * der App; der eigene Betrachter lädt per fetch und braucht keine Inline-Anzeige. */
 function alsAnhang(res: Response, datei: string): void {
-  res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'");
+  res.setHeader('Content-Security-Policy', FREMDE_DATEI_CSP);
   res.attachment(path.basename(datei));
 }
 

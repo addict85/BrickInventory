@@ -130,7 +130,7 @@ test('„BrickLink kennt das Set nicht" gilt nur eine Weile', { concurrency: 1 }
   const bewerte = async () => (await computeSetsValuation(uid, [uid])).sets.find(s => s.set_number === SET);
 
   // Frisch markiert: kein Abruf, kein Preis, und der Grund steht dabei.
-  await db.run(`INSERT INTO catalog_cache (set_number, name, bl_type, is_gear, fetched_at) VALUES ($1, 'x', 'NONE', true, NOW())`, [SET]);
+  await db.run(`INSERT INTO catalog_cache (set_number, bl_type, is_gear, fetched_at) VALUES ($1, 'NONE', true, NOW())`, [SET]);
   abrufe = [];
   const frisch = await bewerte();
   assert.deepEqual(abrufe, [], 'frische Markierung: es wird trotzdem abgerufen');

@@ -23,7 +23,7 @@ const _echt = Module.prototype.require;
 Module.prototype.require = function (name, ...rest) {
   const m = _echt.call(this, name, ...rest);
   if (typeof name !== 'string') return m;
-  if (/katalog[/\\]bricklinkPreise(\.js)?$/.test(name))
+  if (/(?:katalog[/\\]|^\.\/)bricklinkPreise(\.js)?$/.test(name))
     return new Proxy(m, {
       get: (t, k) =>
         k === 'getCacheStats'
@@ -33,7 +33,7 @@ Module.prototype.require = function (name, ...rest) {
             }
           : t[k],
     });
-  if (/finanzen[/\\]financeCalc(\.js)?$/.test(name))
+  if (/(?:finanzen[/\\]|^\.\/)financeCalc(\.js)?$/.test(name))
     return new Proxy(m, {
       get: (t, k) =>
         k === 'resolveSetCondition'

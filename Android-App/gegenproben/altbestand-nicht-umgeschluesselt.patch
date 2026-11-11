@@ -6,11 +6,11 @@ Rot: ein Token unter dem alten Schluessel kommt beim Start
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
-@@ -324,7 +324,6 @@
-                 // Leerer Alteintrag: nichts zu verschlüsseln, aber weg damit.
-                 prefs.remove(AUTH_TOKEN)
-             }
+@@ -328,7 +328,6 @@
+         dataStore.edit { prefs ->
+             entfernt = !prefs[AUTH_TOKEN].isNullOrEmpty()
+             prefs.remove(AUTH_TOKEN)
 -            umschluesseln(prefs)
          }
-         return uebernommen
+         return entfernt
      }
