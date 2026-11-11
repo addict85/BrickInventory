@@ -30,6 +30,7 @@ import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.zustand.ui.AppUiState
 import ch.brickinventoryapp.zustand.ui.Sitzung
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
+import ch.brickinventoryapp.zustand.ui.viewmodel.Gelesen
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
@@ -211,15 +212,15 @@ class SetDetailViewModel @Inject constructor(
 
     override fun ladeAnleitungHoch(setNumber: String, datei: DateiRef) {
         viewModelScope.launch {
-            val gelesen = leser.lies(datei)
-            val typ = gelesen?.first
-            if (gelesen == null || typ == null) { meldungen.zeige(meldungen.text(R.string.csv_upload_unreadable)); return@launch }
-            if (typ !in ANLEITUNG_TYPEN) { meldungen.zeige(meldungen.text(R.string.instr_upload_wrong_type)); return@launch }
-            val bytes = gelesen.second
-            if (bytes.size > ANLEITUNG_MAX_BYTES) {
+            val gelesen = leser.liesHoechstens(datei, ANLEITUNG_MAX_BYTES)
+            if (gelesen == Gelesen.ZuGross) {
                 meldungen.zeige(meldungen.text(R.string.csv_upload_too_big, ANLEITUNG_MAX_BYTES / 1024 / 1024))
                 return@launch
             }
+            val typ = (gelesen as? Gelesen.Inhalt)?.typ
+            if (gelesen !is Gelesen.Inhalt || typ == null) { meldungen.zeige(meldungen.text(R.string.csv_upload_unreadable)); return@launch }
+            if (typ !in ANLEITUNG_TYPEN) { meldungen.zeige(meldungen.text(R.string.instr_upload_wrong_type)); return@launch }
+            val bytes = gelesen.bytes
             val name = leser.name(datei) ?: "anleitung"
             when (val r = sets.uploadAnleitung(setNumber, name, typ, bytes, name)) {
                 is Ergebnis.Success ->

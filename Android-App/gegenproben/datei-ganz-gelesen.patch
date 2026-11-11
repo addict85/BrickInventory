@@ -1,0 +1,27 @@
+Gegenprobe: Eine gewählte Datei wird ganz gelesen und erst danach an der Grenze gemessen
+Modul: core-zustand
+Test: ch.brickinventoryapp.zustand.DateiGrenzeTest
+Rot: ein endloser Strom wird nach der Grenze nicht weiter gelesen
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
+@@ -84,15 +84,6 @@
+ internal const val DATEI_HOECHSTENS = 50L * 1024 * 1024
+ 
+ /** Bis [grenze] Bytes und eines mehr zur Probe; null, wenn der Strom länger ist. Der Rest bleibt ungelesen. */
+-internal fun liesBegrenzt(ein: InputStream, grenze: Long): ByteArray? {
+-    val aus = ByteArrayOutputStream()
+-    val puffer = ByteArray(64 * 1024)
+-    var gelesen = 0L
+-    while (true) {
+-        val n = ein.read(puffer, 0, minOf(puffer.size.toLong(), grenze + 1 - gelesen).toInt())
+-        if (n < 0) return aus.toByteArray()
+-        gelesen += n
+-        if (gelesen > grenze) return null
+-        aus.write(puffer, 0, n)
+-    }
+-}
++internal fun liesBegrenzt(ein: InputStream, grenze: Long): ByteArray? =
++    ein.readBytes().takeIf { it.size <= grenze }
++

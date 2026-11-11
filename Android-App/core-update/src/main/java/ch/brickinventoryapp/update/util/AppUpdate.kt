@@ -36,7 +36,7 @@ const val UPDATE_RELEASE_BASIS = "$UPDATE_RELEASE_WURZEL/apk-neuste"
 /**
  * Die signierte Beschreibung der neusten Fassung; geschrieben vom Signierjob. Die
  * unsignierte version.json daneben liest diese App nie; sie bleibt bis zu einem
- * Stichtag nur für ältere installierte Fassungen (android.yml, Job `release`).
+ * Stichtag nur für ältere installierte Fassungen (android-release.yml, Job `release`).
  */
 const val UPDATE_VERSION_URL = "$UPDATE_RELEASE_BASIS/version-signiert.json"
 

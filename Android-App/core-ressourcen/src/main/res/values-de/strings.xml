@@ -949,7 +949,6 @@
     <string name="zf_confirm">Bestätigen</string>
     <string name="zf_codes_title">Deine Wiederherstellungscodes</string>
     <string name="zf_codes_hint">Jeder gilt einmal, falls das Telefon fehlt. Jetzt sicher ablegen — sie werden nicht noch einmal angezeigt.</string>
-    <string name="zf_copy">Kopieren</string>
     <string name="zf_codes_done">Gespeichert</string>
     <string name="zf_new_codes">Neue Wiederherstellungscodes</string>
     <string name="zf_disable">Abschalten</string>

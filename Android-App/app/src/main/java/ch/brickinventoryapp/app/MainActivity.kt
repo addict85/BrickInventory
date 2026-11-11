@@ -116,7 +116,7 @@ class MainActivity : NurLauncherStart() {
     }
 
     /** Optional, Vorgabe aus: nach N Minuten im Hintergrund erst nach der Gerätesperre weiter. */
-    private val appSperre by lazy { AppSperre(SystemClock::elapsedRealtime, AppSperreAblage(this)) }
+    private val appSperre by lazy { AppSperre(SystemClock::elapsedRealtime, AppSperreAblage(this)) { geraeteStarts(this) } }
 
     /** Bindet den Schrittschutz an den Server (routes/api_v1/geraet.ts). */
     @Inject lateinit var schrittbindung: Schrittbindung

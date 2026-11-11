@@ -16,6 +16,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import javax.inject.Inject
 import ch.brickinventoryapp.data.di.Anwendungsbereiche
+import ch.brickinventoryapp.data.nurEntsperrt
 import ch.brickinventoryapp.data.util.LanguageManager
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.fehlerTextZuCode
@@ -119,6 +120,7 @@ class PdfExportService : Service() {
             .setOngoing(true)
             .setSilent(true)
             .setProgress(0, 0, true)
+            .nurEntsperrt(this, CHANNEL_ID, loc.getString(R.string.notif_pdf_title), R.drawable.ic_stat_brick)
             .build()
 
     private fun updateNotification(text: String) {
@@ -133,6 +135,7 @@ class PdfExportService : Service() {
             .setSmallIcon(R.drawable.ic_stat_brick)
             .setAutoCancel(true)
             .apply { tapIntent?.let { setContentIntent(it) } }
+            .nurEntsperrt(this, CHANNEL_ID, loc.getString(R.string.notif_pdf_title), R.drawable.ic_stat_brick)
             .build()
         // Andere ID, damit die Abschluss-Notification das Foreground-Ende überlebt
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)

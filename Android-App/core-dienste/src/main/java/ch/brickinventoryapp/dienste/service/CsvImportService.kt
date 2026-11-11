@@ -202,6 +202,10 @@ class CsvImportService : Service() {
                 if (max > 0) setProgress(max, progress, false)
                 else         setProgress(0, 0, true)
             }
+            // Gesperrt nur der Titel, wie die Meldungen in core-data (Sperrbildschirm.kt).
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(NotificationCompat.Builder(this, CHANNEL_ID).setSmallIcon(R.drawable.ic_stat_brick)
+                .setContentTitle(loc.getString(R.string.notif_csv_title)).build())
             .build()
 
     private fun updateNotification(text: String, progress: Int, max: Int) {

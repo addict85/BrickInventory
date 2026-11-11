@@ -1,0 +1,18 @@
+Gegenprobe: Die Vorschau-Ablage benennt Dateien wieder nach dem SHA-256 der Adresse
+Modul: core-data
+Test: ch.brickinventoryapp.data.VorschauVerschluesseltTest
+Rot: der Dateiname verraet die Adresse nicht, und die Ablage mit SHA-256-Namen verschwindet
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt
+@@ -94,8 +94,7 @@
+      * sonst verriete ein Name, ob ein bekanntes Set-Bild hier liegt.
+      */
+     private fun schluessel(adresse: String): String =
+-        Mac.getInstance("HmacSHA256").apply { init(SecretKeySpec(namen(), "HmacSHA256")) }
+-            .doFinal(adresse.toByteArray()).joinToString("") { "%02x".format(it) }
++        java.security.MessageDigest.getInstance("SHA-256").digest(adresse.toByteArray()).joinToString("") { "%02x".format(it) }
+ 
+     private fun datei(adresse: String) = File(ordner, schluessel(adresse))
+ 

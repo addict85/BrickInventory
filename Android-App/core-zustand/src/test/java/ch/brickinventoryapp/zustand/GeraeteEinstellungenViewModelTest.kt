@@ -71,7 +71,7 @@ class GeraeteEinstellungenViewModelTest {
     private val planer = Planer()
     private val kanal = MeldungsKanal()
     private val wurzel = Files.createTempDirectory("vorschau").toFile()
-    private val vorschau = VorschauSpeicher({ wurzel }, AblageChiffre { ByteArray(32) { 4 } })
+    private val vorschau = VorschauSpeicher({ wurzel }, AblageChiffre { ByteArray(32) { 4 } }) { ByteArray(32) { 14 } }
     private lateinit var vm: GeraeteEinstellungenViewModel
     private lateinit var sammler: Job
 

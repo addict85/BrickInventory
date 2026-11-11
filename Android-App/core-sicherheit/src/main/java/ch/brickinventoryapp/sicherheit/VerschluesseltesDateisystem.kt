@@ -12,6 +12,8 @@ import okio.Timeout
 import okio.buffer
 import java.io.File
 import java.io.IOException
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 
 /**
@@ -25,15 +27,34 @@ class VerschluesseltesDateisystem(
     delegate: FileSystem,
     private val chiffre: AblageChiffre,
     private val zweck: String,
+    private val streuung: Streuung? = null,
 ) : ForwardingFileSystem(delegate) {
 
-    override fun source(file: Path): Source = Eingang(delegate.source(file).buffer(), bindung(file))
+    /**
+     * Dateinamen direkt unter [ordner] liegen nur als HMAC mit [schluessel] auf der Platte:
+     * OkHttp benennt Einträge nach dem MD5 der Adresse, und bekannte Adressen liessen sich
+     * so nachrechnen. Gelistete Namen tragen [GESTREUT] und werden nicht noch einmal gestreut.
+     */
+    class Streuung(val ordner: Path, val schluessel: () -> ByteArray)
 
-    override fun sink(file: Path, mustCreate: Boolean): Sink = Ausgang(delegate.sink(file, mustCreate), bindung(file), 0L)
+    override fun onPathParameter(path: Path, functionName: String, parameterName: String): Path = gestreut(path)
+
+    private fun gestreut(path: Path): Path {
+        val s = streuung ?: return path
+        if (path.parent != s.ordner || path.name.startsWith(GESTREUT)) return path
+        val mac = Mac.getInstance("HmacSHA256").apply { init(SecretKeySpec(s.schluessel(), "HmacSHA256")) }
+        val name = mac.doFinal(path.name.toByteArray(Charsets.UTF_8)).take(NAMENSLAENGE).joinToString("") { "%02x".format(it) }
+        return s.ordner / (GESTREUT + name)
+    }
+
+    override fun source(file: Path): Source = Eingang(delegate.source(gestreut(file)).buffer(), bindung(file))
+
+    override fun sink(file: Path, mustCreate: Boolean): Sink =
+        Ausgang(delegate.sink(gestreut(file), mustCreate), bindung(file), 0L)
 
     override fun appendingSink(file: Path, mustExist: Boolean): Sink {
-        val ab = delegate.metadataOrNull(file)?.size ?: 0L
-        return Ausgang(delegate.appendingSink(file, mustExist), bindung(file), ab)
+        val ab = delegate.metadataOrNull(gestreut(file))?.size ?: 0L
+        return Ausgang(delegate.appendingSink(gestreut(file), mustExist), bindung(file), ab)
     }
 
     // Wahlfreier Zugriff läse Geheimtext als Inhalt; OkHttp braucht ihn nicht.
@@ -136,10 +157,13 @@ class VerschluesseltesDateisystem(
         fangeAusserAbbruch { chiffre.verschluessle(klar, bindung) }
             .getOrElse { throw it as? IOException ?: IOException("nicht verschlüsselt: $bindung", it) }
 
-    private companion object {
-        const val ABSCHNITT = 64L * 1024
-        const val ENDE = "#ende"
-        val ZWISCHENSTAENDE = listOf(".tmp", ".bkp", ".part")
+    companion object {
+        /** Vorsilbe gestreuter Namen; was im gestreuten Ordner ohne sie liegt, stammt von früher. */
+        const val GESTREUT = "h-"
+        private const val NAMENSLAENGE = 16
+        private const val ABSCHNITT = 64L * 1024
+        private const val ENDE = "#ende"
+        private val ZWISCHENSTAENDE = listOf(".tmp", ".bkp", ".part")
     }
 }
 
@@ -155,4 +179,6 @@ fun raeumeKlartextBildcachesAuf(cacheDir: File) {
         runCatching { File(http, name).bufferedReader().use { it.readLine() } == "libcore.io.DiskLruCache" }.getOrDefault(false)
     }
     if (klartext) http.deleteRecursively()
+    // Einträge unter lesbaren Namen (MD5 der Adresse) älterer Fassungen: Der Cache darf sie verlieren.
+    http.listFiles()?.filter { !it.name.startsWith(VerschluesseltesDateisystem.GESTREUT) }?.forEach { it.deleteRecursively() }
 }

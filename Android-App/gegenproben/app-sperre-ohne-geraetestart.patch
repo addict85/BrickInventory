@@ -1,0 +1,17 @@
+Gegenprobe: Ein Neustart des Geräts sperrt nur noch, wenn die neue Uhr unter dem gemerkten Zeitpunkt steht
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.AppSperreTest
+Rot: nach einem Neustart gesperrt, auch wenn die Uhr schon weiter ist
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt
+@@ -53,7 +53,7 @@
+         val jetzt = uhr()
+         // Nach einem Neustart des Geräts beginnt die Uhr bei null: Ob die Frist ablief, ist offen.
+         // Ein unlesbarer Zähler gilt als anderer Start; ohne gemerkten (ältere Ablage) zählt nur die Uhr.
+-        val neugestartet = start != null && geraeteStart() != start
++        val neugestartet = false
+         if (frist > 0 && (neugestartet || jetzt < seit || jetzt - seit >= frist)) setze(true)
+     }
+ 

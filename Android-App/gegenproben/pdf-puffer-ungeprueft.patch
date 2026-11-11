@@ -1,0 +1,16 @@
+Gegenprobe: Die Seite entsteht aus einem Speicher beliebiger Grösse
+Modul: feature-finanzen
+Test: ch.brickinventoryapp.finanzen.PdfSeitenPufferTest
+Rot: ein Speicher anderer Groesse ergibt keine Seite
+
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/pdf/PdfRenderDienst.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/pdf/PdfRenderDienst.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/pdf/PdfRenderDienst.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/pdf/PdfRenderDienst.kt
+@@ -101,7 +101,6 @@
+  * von hier, aus dem Renderer kommen nur Pixel. Null, wenn der Puffer nicht genau passt.
+  */
+ internal fun bitmapAusPuffer(puffer: ByteBuffer, masse: SeitenMasse): Bitmap? {
+-    if (puffer.capacity() != masse.bytes) return null
+     return createBitmap(masse.breite, masse.hoehe).also { it.copyPixelsFromBuffer(puffer) }
+ }
+ 

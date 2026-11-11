@@ -968,7 +968,6 @@
     <string name="zf_confirm">Confirm</string>
     <string name="zf_codes_title">Your recovery codes</string>
     <string name="zf_codes_hint">Each works once if your phone is missing. Store them safely now — they will not be shown again.</string>
-    <string name="zf_copy">Copy</string>
     <string name="zf_codes_done">Saved</string>
     <string name="zf_new_codes">New recovery codes</string>
     <string name="zf_disable">Turn off</string>

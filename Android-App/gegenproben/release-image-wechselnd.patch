@@ -3,15 +3,15 @@ Modul: app
 Test: ch.brickinventoryapp.app.AndroidWorkflowTest
 Rot: der Release-Weg hat festes Werkzeug
 
-diff --git a/.github/workflows/android.yml b/.github/workflows/android.yml
---- a/.github/workflows/android.yml
-+++ b/.github/workflows/android.yml
-@@ -382,7 +382,7 @@
-   signieren:
-     needs: build
-     # Festes Image, festgelegte Werkzeuge mit Prüfsumme (Schritt „Signieren“, sec17 B-N6).
+diff --git a/.github/workflows/android-signieren.yml b/.github/workflows/android-signieren.yml
+--- a/.github/workflows/android-signieren.yml
++++ b/.github/workflows/android-signieren.yml
+@@ -45,7 +45,7 @@
+   # festen Prüfsummen. Signiert wird nur, was der Baujob gleich nach dem Bau mass.
+   signatur:
+     name: APK signieren
 -    runs-on: ubuntu-24.04
 +    runs-on: ubuntu-latest
-     environment: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v') && 'release' || '' }}
+     environment: ${{ inputs.echt && 'release' || '' }}
      permissions:
        actions: read
