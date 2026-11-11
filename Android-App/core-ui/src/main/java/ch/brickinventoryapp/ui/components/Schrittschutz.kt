@@ -73,6 +73,8 @@ class GeraeteSchrittschutz(
     private val bindung: Schrittbindung = Schrittbindung.OHNE,
     /** Der Server lehnte ab; null: keine Antwort. */
     private val abgelehnt: (meldung: String?) -> Unit = {},
+    /** Das Gerät kann keinen Schlüssel mit Attestation erzeugen; heikle Schritte gehen dann nur in der Webapp. */
+    private val ohneAttestation: () -> Unit = {},
     private val untertitel: () -> String,
 ) : Schrittschutz {
     // Je Aktion: Die Freigabe am Server gilt auch nur für eine.
@@ -85,11 +87,16 @@ class GeraeteSchrittschutz(
     /** Beim Verlassen der App (MainActivity.onStop): Danach wird wieder gefragt. */
     fun vergiss() = fristen.values.forEach(Bestaetigungsfrist::vergiss)
 
-    /** Nach der Anmeldung: Nur dann nimmt der Server den öffentlichen Schlüssel an. */
+    /** Nach der Anmeldung: Nur dann nimmt der Server den Schlüssel an ([Schluesselbindung]). */
     fun bindeAnServer() {
         if (activity.getSystemService<KeyguardManager>()?.isDeviceSecure != true) return
-        val oeffentlich = runCatching { GeraeteSchluessel.oeffentlichFuerServer() }.getOrNull() ?: return
-        activity.lifecycleScope.launch { bindung.hinterlege(oeffentlich) }
+        activity.lifecycleScope.launch {
+            when (val a = Schluesselbindung(bindung, GeraeteSchluessel).binde()) {
+                Schluesselbindung.Ausgang.Gebunden -> Unit
+                Schluesselbindung.Ausgang.OhneAttestation -> ohneAttestation()
+                is Schluesselbindung.Ausgang.Abgelehnt -> a.meldung?.let(abgelehnt)
+            }
+        }
     }
 
     override fun bestaetige(grund: String, weiter: () -> Unit) = bestaetige(grund, Schrittaktion.LOKAL, weiter)

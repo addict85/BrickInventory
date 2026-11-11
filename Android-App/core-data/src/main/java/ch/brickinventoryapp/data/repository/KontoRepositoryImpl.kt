@@ -79,8 +79,11 @@ class KontoRepositoryImpl @Inject constructor(
     override suspend fun qrLogin(token: String, label: String): Ergebnis<QrMeldung> =
         sicherAufrufen { api.qrLogin(QrLoginRequest(token, label)) }
 
-    override suspend fun qrAbholen(abholung: String): Ergebnis<QrAbholung> =
-        sicherAufrufen { api.qrAbholen(QrAbholRequest(abholung)) }
+    override suspend fun qrAbholen(abholung: String, vorschau: Boolean): Ergebnis<QrAbholung> =
+        sicherAufrufen { api.qrAbholen(QrAbholRequest(abholung, vorschau)) }
+
+    override suspend fun qrVerwerfen(abholung: String): Ergebnis<GenericResponse> =
+        sicherAufrufen { api.qrVerwerfen(QrVerwerfen(abholung)) }
 
     override suspend fun getMe(): Ergebnis<MeResponse> = sicherAufrufen { api.getMe() }
 

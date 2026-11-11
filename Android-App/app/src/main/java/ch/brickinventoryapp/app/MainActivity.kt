@@ -106,6 +106,9 @@ class MainActivity : NurLauncherStart() {
             // Der Satz des Servers sagt, was zu tun ist (neu anmelden, Displaysperre einrichten).
             Toast.makeText(this, meldung ?: LanguageManager.localizedContext(this).getString(R.string.schritt_server_fehler),
                 Toast.LENGTH_LONG).show()
+        }, ohneAttestation = {
+            Toast.makeText(this, LanguageManager.localizedContext(this).getString(R.string.schritt_ohne_attestation),
+                Toast.LENGTH_LONG).show()
         }) {
             LanguageManager.localizedContext(this)
                 .getString(R.string.schritt_untertitel)

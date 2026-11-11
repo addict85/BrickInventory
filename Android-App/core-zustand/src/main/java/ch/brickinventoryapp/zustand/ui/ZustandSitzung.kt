@@ -148,4 +148,9 @@ data class AnmeldeUiState(
     val loginError: String? = null,
     /** Der Code, den man nach einem QR-Scan im Browser eintippt; null ohne laufende Kopplung. */
     val qrBestaetigung: String? = null,
+    /** Nach der Bestätigung im Browser: welches Konto auf welchem Server; der Token erst nach dem Ja. */
+    val qrKonto: QrKonto? = null,
 )
+
+/** Was die App vor der Übernahme eines QR-Zugangs zeigt: Ein untergeschobener Code meldete sonst still ein fremdes Konto an. */
+data class QrKonto(val benutzer: String, val server: String)

@@ -23,6 +23,7 @@ import ch.brickinventoryapp.testing.HaushaltRepository
 import ch.brickinventoryapp.testing.KontoRepository
 import ch.brickinventoryapp.zustand.ui.Blickfeld
 import ch.brickinventoryapp.zustand.ui.FilterAblage
+import ch.brickinventoryapp.zustand.ui.QrKonto
 import java.util.Base64
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
@@ -90,6 +91,10 @@ import ch.brickinventoryapp.testing.TestDienste
  *      genügte beim ersten Einrichten) → rot „ein eigener Schluessel aus dem
  *      QR-Code gilt beim ersten Einrichten nur abgetippt“;
  *      gegenproben/qr-pin-ohne-abtippen.patch
+ *   Y  in koppleQr() die Frage nach dem Konto übergangen (immer Ja) →
+ *      rot „eine QR-Anmeldung zeigt Konto und Server …“; gegenproben/qr-ohne-kontofrage.patch
+ *   Z  beim Nein qrVerwerfen() nicht gerufen → rot „ein Nein zum gezeigten
+ *      Konto …“; gegenproben/qr-nein-ohne-verwerfen.patch
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AnmeldungViewModelTest {
@@ -209,6 +214,7 @@ class AnmeldungViewModelTest {
         pfade.antworten["/api/v1/auth/qr-login/abholen"] = """{"success":true,"wartet":false,"token":"abc","user":{"id":1,"username":"marco"}}"""
         val vm = vm(wurzeln = setOf(fp))
         vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp)
+        vm.qrKontoEntscheiden(true)
         assertTrue("angemeldet", t.sitzung.state.value.isLoggedIn && ablage.protokoll.any { it.startsWith("vergiss:") })
         val p = ablage.protokoll.toList()
         assertEquals("vor:brick.example.org:443=$fp", p.first())
@@ -259,6 +265,7 @@ class AnmeldungViewModelTest {
         // Die letzten 24 Hex-Zeichen des neuen Fingerabdrucks, wie aus der Webapp abgeschrieben.
         vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp,
             pinWechselEingabe = "07:07:07:07:07:07:07:07:07:07:07:07")
+        vm.qrKontoEntscheiden(true)
         assertTrue("angemeldet", t.sitzung.state.value.isLoggedIn)
         assertEquals("Nach Bestätigung und Anmeldung gilt der neue", fp, ablage.pins["brick.example.org:443"])
     }
@@ -283,6 +290,7 @@ class AnmeldungViewModelTest {
 
         vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp,
             pinWechselEingabe = "07:07:07:07:07:07:07:07:07:07:07:07")
+        vm.qrKontoEntscheiden(true)
         assertTrue("angemeldet", t.sitzung.state.value.isLoggedIn)
         assertEquals(fp, ablage.pins["brick.example.org:443"])
         assertFalse("Der bestätigte Pin gilt beim nächsten Code ohne Abtippen", vm.mussAbtippen("https://brick.example.org/", fp))
@@ -360,10 +368,54 @@ class AnmeldungViewModelTest {
         t.sitzung.angemeldet(admin = false)
         val vm = vm()
         vm.loginWithQrToken("https://neu.example", "einmalig")
+        vm.qrKontoEntscheiden(true)
         assertTrue("angemeldet", ablage.protokoll.contains("token:neu"))
         val p = ablage.protokoll.toList()
         assertTrue("Abmelden vor der Adresse: $p", p.indexOf("abmelden") in 0 until p.indexOf("url:https://neu.example"))
         assertTrue("Die Adresse vor dem neuen Token: $p", p.indexOf("url:https://neu.example") < p.indexOf("token:neu"))
+    }
+
+    private val vorschauAntwort = """{"success":true,"wartet":false,"vorschau":true,"username":"marco"}"""
+
+    @Test
+    fun `eine QR-Anmeldung zeigt Konto und Server und uebernimmt den Token erst nach dem Ja`() {
+        pfade.antworten["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
+        pfade.antworten["/api/v1/auth/qr-login/abholen"] = vorschauAntwort
+        val vm = vm()
+        vm.loginWithQrToken("https://brick.example.org/", "bim:x")
+        assertEquals(QrKonto("marco", "https://brick.example.org"), vm.anmeldeState.value.qrKonto)
+        assertTrue("Vor dem Ja kein Token: ${ablage.protokoll}", ablage.protokoll.none { it.startsWith("token:") })
+        assertFalse(t.sitzung.state.value.isLoggedIn)
+        assertTrue(pfade.koerper.last(), "\"vorschau\":true" in pfade.koerper.last())
+
+        pfade.antworten["/api/v1/auth/qr-login/abholen"] =
+            """{"success":true,"wartet":false,"token":"abc","username":"marco","user":{"id":1,"username":"marco"}}"""
+        vm.qrKontoEntscheiden(true)
+        assertTrue(pfade.koerper.last(), "\"vorschau\":false" in pfade.koerper.last())
+        assertTrue("angemeldet", t.sitzung.state.value.isLoggedIn)
+        assertTrue(ablage.protokoll.toString(), ablage.protokoll.containsAll(listOf("token:abc", "name:marco")))
+        assertNull(vm.anmeldeState.value.qrKonto)
+        assertFalse(vm.anmeldeState.value.loginLaeuft)
+    }
+
+    @Test
+    fun `ein Nein zum gezeigten Konto verwirft die Kopplung und laesst nichts zurueck`() {
+        pfade.antworten["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
+        pfade.antworten["/api/v1/auth/qr-login/abholen"] = vorschauAntwort
+        pfade.antworten["/api/v1/auth/qr-login/verwerfen"] = """{"success":true}"""
+        val vm = vm(wurzeln = setOf(fp))
+        vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp)
+        assertEquals("marco", vm.anmeldeState.value.qrKonto?.benutzer)
+        vm.qrKontoEntscheiden(false)
+        assertEquals(1, pfade.anfragenAn("qr-login/verwerfen").size)
+        assertEquals("""{"abholung":"h"}""", pfade.koerper.last())
+        assertEquals("Nur die Vorschau wurde abgeholt", 1, pfade.anfragenAn("qr-login/abholen").size)
+        assertTrue("Kein Token, kein Pin: ${ablage.protokoll}",
+            ablage.protokoll.none { it.startsWith("token:") || it.startsWith("pin:") })
+        assertEquals("vergiss:brick.example.org:443", ablage.protokoll.last())
+        assertFalse(t.sitzung.state.value.isLoggedIn)
+        assertNull(vm.anmeldeState.value.qrKonto)
+        assertFalse(vm.anmeldeState.value.loginLaeuft)
     }
 
     /** Schreibt mit, welche Optionen ankamen, und antwortet mit [ergebnis]. */

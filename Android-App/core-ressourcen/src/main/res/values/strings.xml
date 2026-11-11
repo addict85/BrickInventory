@@ -649,6 +649,9 @@
     <string name="err_generic">The server rejected the request without giving a reason</string>
     <string name="err_login_failed">Sign-in failed</string>
     <string name="login_qr_bestaetigen_hinweis">Enter this code in the browser where you created the QR code. Only then does this device get access.</string>
+    <string name="login_qr_konto_titel">Sign in with this account?</string>
+    <string name="login_qr_konto_text">The code signs this app in as “%1$s” on %2$s. Continue only if this is your account and your server.</string>
+    <string name="login_qr_konto_ja">Sign in</string>
     <string name="err_qr_login_failed">QR sign-in failed</string>
     <string name="err_network">No connection to the server</string>
     <string name="err_timeout">The server did not respond in time</string>
@@ -907,6 +910,7 @@
     <string name="schritt_untertitel">Confirm with fingerprint, face or your device lock</string>
     <string name="schritt_entsperren">Confirm</string>
     <string name="schritt_kein_schluessel">The device lock cannot be checked right now. Please try again later.</string>
+    <string name="schritt_ohne_attestation">This device cannot prove that its key lives in its security hardware. Sensitive steps (voucher PIN, administration) are therefore only available in the web app.</string>
     <string name="schritt_server_fehler">The server did not accept the confirmation. Please try again.</string>
     <string name="app_sperre_titel">Lock the app</string>
     <string name="app_sperre_hint">After this many minutes in the background the app asks for your fingerprint or device lock. Applies to this device.</string>

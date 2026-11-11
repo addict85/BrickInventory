@@ -1,0 +1,16 @@
+Gegenprobe: Ein Nein zum gezeigten Konto lässt die Kopplung am Server bestätigt stehen
+Modul: feature-anmeldung
+Test: ch.brickinventoryapp.anmeldung.AnmeldungViewModelTest
+Rot: ein Nein zum gezeigten Konto verwirft die Kopplung und laesst nichts zurueck
+
+diff --git a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/viewmodel/AnmeldungViewModel.kt b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/viewmodel/AnmeldungViewModel.kt
+--- a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/viewmodel/AnmeldungViewModel.kt
++++ b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/viewmodel/AnmeldungViewModel.kt
+@@ -251,7 +251,6 @@
+             return
+         }
+         if (!frageNachKonto(QrKonto(benutzer, ablage.serverUrlJetzt()))) {
+-            konto.qrVerwerfen(abholung)
+             _anmeldeState.update { it.copy(loginLaeuft = false) }
+             return
+         }
