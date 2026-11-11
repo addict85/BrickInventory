@@ -15,6 +15,8 @@ import java.io.File
  * Gegenproben (Patches unter gegenproben/):
  *   gegenproben-job-weich     continue-on-error im Job `gegenproben` → rot „der Gegenproben-Job …“
  *   release-image-wechselnd   `signieren` auf ubuntu-latest → rot „der Release-Weg …“
+ *   (lokal) im Kopf von teile-ablage-trotz-konto wieder `Rot: mit Kontofilter gilt die
+ *   Antwort des Servers` (eine Meldung, kein Testname) → rot „der Gegenproben-Job …“
  */
 class AndroidWorkflowTest {
 
@@ -53,6 +55,11 @@ class AndroidWorkflowTest {
             val voll = kopf(p, "Test").orEmpty()
             val datei = File(Quellen.projekt, "${kopf(p, "Modul")}/src/test/java/${voll.replace('.', '/')}.kt")
             assertTrue("${p.name}: $voll liegt nicht in ${kopf(p, "Modul")}", datei.isFile)
+            // gegenproben.py sucht `Rot` in den Namen der gescheiterten Tests, nicht in deren
+            // Meldungen; ein Meldungstext hiesse „blieb grün“, obwohl der Test rot war.
+            val namen = Regex("""fun `([^`]+)`|fun (\w+)\(""").findAll(datei.readText()).map { it.value }.toList()
+            assertTrue("${p.name}: Rot „${kopf(p, "Rot")}“ ist kein Testname in $voll",
+                namen.any { kopf(p, "Rot").orEmpty() in it })
             voll.substringAfterLast('.')
         }.toSet()
         for (k in listOf("AblaufTest", "BestandMigrationTest")) assertTrue("$k braucht eine Gegenprobe", k in klassen)

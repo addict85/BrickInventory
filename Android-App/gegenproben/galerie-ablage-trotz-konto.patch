@@ -1,7 +1,7 @@
 Gegenprobe: Die Galerie liest auch mit Kontofilter die Ablage, deren Mengen alle Konten summieren
 Modul: feature-sammlung
 Test: ch.brickinventoryapp.sammlung.GalerieLokalTest
-Rot: mit Kontofilter gilt die Antwort des Servers
+Rot: ohne Kontofilter folgt die Galerie der Ablage, mit Kontofilter dem Server
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/Galerie.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/Galerie.kt
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/Galerie.kt
