@@ -54,6 +54,9 @@ import ch.brickinventoryapp.testing.TestDienste
  *   G  loescheMerkposten() löscht wieder sofort am Server
  *      (gegenproben/merkposten-loeschen-sofort.patch) → rot „ein geloeschter Merkposten …“
  *      („Noch kein DELETE“)
+ *   H  loescheMerkposten() liest den Namen aus der rohen Liste statt aus der gezeigten
+ *      (gegenproben/merkposten-name-ohne-ablage.patch) → rot „ein geloeschter Merkposten …“
+ *      (Titanic erwartet, 10294-1 bekommen; nur in der CI messbar)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MerklisteViewModelTest {

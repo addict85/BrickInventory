@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.finanzen
 
 import androidx.lifecycle.SavedStateHandle
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.testing.FinanzenRepository
@@ -83,7 +84,7 @@ class FinanzViewModelTest {
         t.bestand.melde(Aenderung.Sets)
         assertTrue("Bewertung geladen", vm.financeState.value.valuation != null)
         assertEquals("75192-1", vm.financeState.value.valuation?.sets?.single()?.setNumber)
-        assertEquals("Die Währung des Kontos gilt für die ganze App", "CHF", t.sitzung.state.value.currency)
+        assertEquals("Die Währung des Kontos gilt für die ganze App", Waehrung.CHF, t.sitzung.state.value.currency)
     }
 
     @Test

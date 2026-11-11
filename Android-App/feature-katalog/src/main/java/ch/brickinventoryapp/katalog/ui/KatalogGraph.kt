@@ -21,8 +21,8 @@ import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.zustand.ui.Bereichsumgebung
+import ch.brickinventoryapp.zustand.ui.KatalogBereich
 import ch.brickinventoryapp.zustand.ui.Screen
-import kotlinx.serialization.Serializable
 
 /**
  * Was der Katalog von anderen Bereichen braucht: Erfassen gehört der Galerie, die
@@ -42,14 +42,6 @@ interface KatalogNavigation : Bereichsumgebung {
     @Composable
     fun merken(): (setNumber: String, zustand: Zustand, richtung: String, schwelleRoh: String, konto: Int?) -> Unit
 }
-
-/**
- * Liste und Detail des Katalogs als eigener Teilgraph: Beide holen ihr ViewModel
- * an dessen Eintrag, so sieht die Liste das „besitze ich“ aus dem Detail, und das
- * ViewModel endet mit dem Katalog statt mit der Activity.
- */
-@Serializable
-internal data object KatalogBereich
 
 /** Die Ziele des Katalogs. */
 fun NavGraphBuilder.katalogGraph(navigation: KatalogNavigation) {

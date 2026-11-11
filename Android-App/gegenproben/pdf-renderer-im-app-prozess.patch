@@ -1,6 +1,6 @@
 Gegenprobe: Der PDF-Render-Dienst läuft ohne isolatedProcess
-Modul: feature-finanzen
-Test: ch.brickinventoryapp.finanzen.BibliotheksKomponentenTest
+Modul: app
+Test: ch.brickinventoryapp.app.BibliotheksKomponentenTest
 Rot: der PDF-Renderer laeuft isoliert
 
 diff --git a/Android-App/app/src/main/AndroidManifest.xml b/Android-App/app/src/main/AndroidManifest.xml

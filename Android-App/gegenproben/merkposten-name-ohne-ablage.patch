@@ -1,0 +1,18 @@
+Gegenprobe: Der Name des gelöschten Merkpostens kommt aus der rohen Liste statt aus der gezeigten
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.sammlung.MerklisteViewModelTest
+Rot: ein geloeschter Merkposten laesst sich zurueckholen, geloescht wird erst danach
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
+@@ -207,8 +207,7 @@
+      */
+     override fun loescheMerkposten(setNumber: String, zustand: Zustand, besitzer: Int?) {
+         merkpostenLoeschenAusfuehren()
+-        // Die gezeigte Liste, nicht die rohe: Ohne Filter steht der Posten nur in der Ablage.
+-        val name = merklisteState.value.merkposten
++        val name = _merklisteState.value.merkposten
+             .firstOrNull { it.setNumber == setNumber && it.condition == zustand }?.name ?: setNumber
+         _vorgemerkt.value = VorgemerkterMerkposten(setNumber, zustand, besitzer, name)
+     }

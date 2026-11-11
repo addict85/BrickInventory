@@ -6,8 +6,8 @@ Rot: ein geloeschter Merkposten laesst sich zurueckholen, geloescht wird erst da
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
-@@ -204,6 +204,7 @@ class MerklisteViewModel @Inject constructor(
-         val name = _merklisteState.value.merkposten
+@@ -211,6 +211,7 @@
+         val name = merklisteState.value.merkposten
              .firstOrNull { it.setNumber == setNumber && it.condition == zustand }?.name ?: setNumber
          _vorgemerkt.value = VorgemerkterMerkposten(setNumber, zustand, besitzer, name)
 +        merkpostenLoeschenAusfuehren()
