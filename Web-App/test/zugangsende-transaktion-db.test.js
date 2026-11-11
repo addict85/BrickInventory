@@ -61,16 +61,23 @@ test('Zugänge enden ganz oder gar nicht', { concurrency: 1 }, async t => {
     (await db.all('SELECT token FROM api_tokens WHERE user_id=$1 ORDER BY token', [uid])).map(z => z.token);
   const stand = () => db.get('SELECT password_hash, sitzungs_version FROM users WHERE id=$1', [uid]);
   await db.run(`INSERT INTO api_tokens (token, user_id) VALUES ('t1', $1), ('t2', $1)`, [uid]);
+  const link = A.hashToken('ruecksetz-link');
+  await db.run(`UPDATE users SET reset_token = $1, reset_token_expires = NOW() + interval '1 hour' WHERE id = $2`, [
+    link,
+    uid,
+  ]);
 
   await t.test('Rücksetzen: Passwort und Token bleiben', async () => {
     const vorher = await stand();
-    await mitBremse(() => assert.rejects(K.setzePasswortZurueck(uid, 'ein-neues-langes-Passwort'), /erzwungen/));
+    await mitBremse(() => assert.rejects(K.setzePasswortZurueck(link, 'ein-neues-langes-Passwort'), /erzwungen/));
     assert.deepEqual(
       await stand(),
       vorher,
       'Passwort oder Sitzungsversion geändert, obwohl der letzte Schritt scheiterte',
     );
     assert.deepEqual(await tokens(), ['t1', 't2']);
+    const z = await db.get('SELECT reset_token FROM users WHERE id=$1', [uid]);
+    assert.equal(z.reset_token, link, 'der Link ist verbraucht, obwohl nichts galt');
   });
 
   await t.test('andere Zugänge: der Token bleibt', async () => {
@@ -80,7 +87,7 @@ test('Zugänge enden ganz oder gar nicht', { concurrency: 1 }, async t => {
 
   await t.test('ohne Fehler: alles gilt', async () => {
     const vorher = await stand();
-    await K.setzePasswortZurueck(uid, 'ein-neues-langes-Passwort');
+    assert.equal(await K.setzePasswortZurueck(link, 'ein-neues-langes-Passwort'), uid);
     const nachher = await stand();
     assert.notEqual(nachher.password_hash, 'alt');
     assert.ok(nachher.sitzungs_version > vorher.sitzungs_version);

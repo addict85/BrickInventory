@@ -42,12 +42,14 @@ entsteht und warum:
    Signatur des Tags (`BRICK_TAG`, Vorgabe `latest`), trägt den geprüften
    Digest als `BRICK_IMAGE` in `.env` ein und zieht ihn; ohne `BRICK_IMAGE`
    startet compose nicht. cosign muss dafür installiert sein (UPGRADE.md,
-   Abschnitt 42). Wer selbst baut, setzt `BRICK_IMAGE=brickinventory:lokal`
+   Abschnitt 42). Ebenso prüft es `addict85/brickinventory-caddy` und trägt
+   es als `CADDY_IMAGE` ein (Abschnitt 52). Wer selbst baut, setzt
+   `BRICK_IMAGE=brickinventory:lokal` und `CADDY_IMAGE=brickinventory-caddy:lokal`
    und nimmt `docker compose up -d --build`.
 5. **Das Konto `admin`** bekommt beim allerersten Start ein Zufallspasswort,
    das nur in diesem Protokoll steht und bei der ersten Anmeldung geändert
-   werden muss. Den ersten Start migriert `app` oder `jobs`, je nachdem, wer
-   zuerst kommt; deshalb beide Protokolle.
+   werden muss. Den ersten Start macht der Dienst `migration`
+   (`docker compose logs migration`).
 
 **Update:** `sh scripts/image-pruefen.sh && docker compose up -d` (selbst gebaut:
 `docker compose up -d --build`). Vorher `UPGRADE.md` lesen; die Abschnitte
@@ -57,9 +59,10 @@ stehen in zeitlicher Reihenfolge.
 
 Vor der App steht Caddy (`compose.yaml`, `Caddyfile`). Er macht TLS mit einer
 eigenen, lokalen CA (`tls internal`) für `BRICK_HOST` und leitet an die App
-weiter; die App selbst veröffentlicht keinen Port mehr. Caddy entsteht beim
-ersten `docker compose up -d` auf dem Rechner selbst (`Dockerfile.caddy`:
-offizielle Basis per Digest, Go-Module nachgezogen); das dauert einige Minuten. Die CA liegt unter
+weiter; die App selbst veröffentlicht keinen Port mehr. Caddy kommt aus
+`Dockerfile.caddy` (offizielle Basis per Digest, Go-Module nachgezogen),
+gebaut und signiert wie das App-Image (`CADDY_IMAGE`, Abschnitt 52 in
+UPGRADE.md); selbst gebaut dauert es einige Minuten. Die CA liegt unter
 `./caddy/data/` — mitsichern. Der App-Container sieht davon nur das öffentliche
 Wurzelzertifikat (Volume `ca-wurzel`), nie den Schlüssel der CA.
 
@@ -118,15 +121,17 @@ alles.
 ### Datenbankpasswörter
 `scripts/geheimnisse-einrichten.sh` legt in `./geheimnisse/` je eine Datei an:
 `db_password` (Superuser `brickinventory`, nur `postgres` und `db-rolle`),
-`db_app_password` (Rolle `brickinventory_app` ohne Superuser-Rechte, mit der
-sich App und Jobs verbinden), `session_secret` und das der Leserolle.
+`db_app_password` (Laufzeitrolle `brickinventory_app`, mit der sich App und
+Jobs verbinden: nur Zeilen lesen und schreiben), `db_migration_password`
+(Migrationsrolle `brickinventory_migration`, Eigentümerin von Datenbank und
+Tabellen, nur im Dienst `migration`), `session_secret` und das der Leserolle.
 Vorhandene Dateien bleiben; fehlende übernimmt es aus einer alten `.env`
 (`DB_PASSWORD`, `DB_APP_PASSWORD`, `SESSION_SECRET`) oder
 erzeugt sie zufällig. Eine **bestehende** Datenbank behält ihr Passwort aus dem
 ersten Start: Liegt `./pgdata18` schon da und steht kein `DB_PASSWORD` in
 `.env`, bricht das Skript ab, statt ein unpassendes zu erzeugen. `db-rolle`
-setzt das Passwort der App-Rolle bei jedem `docker compose up` neu; zum
-Wechseln genügt es, `geheimnisse/db_app_password` zu ersetzen.
+setzt die Passwörter von Laufzeit- und Migrationsrolle bei jedem
+`docker compose up` neu; zum Wechseln genügt es, die Datei zu ersetzen.
 
 Läuft die Datenbank noch mit dem alten Beispielpasswort `brickinventory_secret`,
 verweigert der Server in Produktion den Start. Ändern: `docker compose exec
@@ -341,8 +346,8 @@ docker compose exec postgres psql -h 127.0.0.1 -U brickinventory_lesen -d bricki
 
 Das Passwort steht in `./geheimnisse/pgweb_db_password` (der Name stammt aus
 der Zeit von pgweb). Was die Leserolle sieht, steht als Allowlist je Tabelle in
-`postgres/app-rolle.sh` (`LESEN_SPALTEN`). Reparaturen gehen nicht über die
-Leserolle, sondern mit `psql` als App-Rolle.
+`postgres/app-rolle.sh` (`LESEN_SPALTEN`). Reparaturen an Zeilen gehen mit
+`psql` als `brickinventory_app`, am Schema nur als `brickinventory_migration`.
 
 ## Empfohlene Umgebungsvariablen
 

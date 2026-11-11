@@ -54,7 +54,7 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async (t) =
 
   try {
     await t.test('getSetInfo nennt den Katalognamen, keinen Platzhalter', async () => {
-      // Der Abrufstand in catalog_cache trägt seit 0106 keinen Namen mehr, der den Katalog verdecken könnte.
+      // Der Abrufstand in catalog_cache trägt seit 0108 keinen Namen mehr, der den Katalog verdecken könnte.
       const info = await _req('src/katalog/rebrickableKatalog.js').getSetInfo(SN);
       assert.equal(info?.name, 'Titanic');
     });

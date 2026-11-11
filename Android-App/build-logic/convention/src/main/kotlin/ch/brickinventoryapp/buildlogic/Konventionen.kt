@@ -131,10 +131,15 @@ class AndroidHiltKonvention : Plugin<Project> {
 /** Platzhalter für den Dienst, der KSP-Aufgaben einzeln laufen lässt. */
 abstract class KspNacheinander : BuildService<BuildServiceParameters.None>
 
-/** Ein Bereich: Bibliothek mit Tests, Compose und Hilt. Namespace und Kanten setzt das Modul. */
+/**
+ * Ein Bereich: Bibliothek mit Tests, Compose und Hilt. Namespace und Kanten setzt das Modul.
+ * Die Serialisierung, weil jeder Bereich seine Navigationsziele als @Serializable-Routen selbst
+ * hält; ohne sie stünden sie wieder gesammelt in einem Kernmodul.
+ */
 class AndroidFeatureKonvention : Plugin<Project> {
     override fun apply(target: Project) {
         target.pluginManager.apply(AndroidLibraryKonvention::class.java)
+        target.pluginAusKatalog("kotlin.serialization")
         target.pluginManager.apply(AndroidComposeKonvention::class.java)
         target.pluginManager.apply(AndroidHiltKonvention::class.java)
         target.pluginManager.apply(AndroidUnittestKonvention::class.java)

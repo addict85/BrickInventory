@@ -1,0 +1,17 @@
+Gegenprobe: Die Zertifikate der Kette gehen im URL-Alphabet statt in Base64 zum Server
+Modul: core-data
+Test: ch.brickinventoryapp.data.SchrittbindungTest
+Rot: die Kette geht als Base64 je Zertifikat zum Server
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SchrittbindungImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SchrittbindungImpl.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SchrittbindungImpl.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SchrittbindungImpl.kt
+@@ -51,7 +51,7 @@
+ 
+     /** Den Satz des Servers nur bei seiner Absage: Ein Netzfehler nach der Anmeldung ist keine Meldung wert. */
+     override suspend fun hinterlegeKette(kette: List<ByteArray>): Schrittantwort {
+-        val anfrage = GeraeteKettenAnfrage(kette.map { Base64.getEncoder().encodeToString(it) })
++        val anfrage = GeraeteKettenAnfrage(kette.map { Base64.getUrlEncoder().encodeToString(it) })
+         return when (val r = sicherAufrufen { api.hinterlegeKette(anfrage) }) {
+             is Ergebnis.Success -> Schrittantwort.Frei
+             is Ergebnis.Error -> Schrittantwort.Abgelehnt(if (r is Ergebnis.Error.Server) r.message.ifBlank { null } else null)

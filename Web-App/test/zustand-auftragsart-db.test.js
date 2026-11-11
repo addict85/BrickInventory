@@ -1,5 +1,5 @@
 /**
- * Migration 0107: Zustand ist in Merkliste, Preisalarm und Preisspeichern
+ * Migration 0109: Zustand ist in Merkliste, Preisalarm und Preisspeichern
  * 'N' oder 'U', Auftragsarten stehen in auftrags_arten. Die Migration läuft auf
  * einem Altbestand in einem eigenen Schema (search_path); danach prüft der Test
  * die Regeln an der echten Datenbank.
@@ -25,10 +25,10 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const MIGRATION = fs.readFileSync(
-  path.join(__dirname, '..', 'db/migrations/0107-zustand-und-auftragsart-pruefen.sql'),
+  path.join(__dirname, '..', 'db/migrations/0109-zustand-und-auftragsart-pruefen.sql'),
   'utf8',
 );
-const SCHEMA = `probe0107_${process.pid}`;
+const SCHEMA = `probe0109_${process.pid}`;
 const TABELLEN = [
   'wanted',
   'price_alerts',
@@ -42,7 +42,7 @@ const TABELLEN = [
   'auftrag_pausen',
 ];
 
-test('Migration 0107: Zustand und Auftragsart', { concurrency: 1 }, async t => {
+test('Migration 0109: Zustand und Auftragsart', { concurrency: 1 }, async t => {
   if (!(await dbOderSkip(t, _req))) return;
   const c = await db.pool.connect();
   t.after(async () => {

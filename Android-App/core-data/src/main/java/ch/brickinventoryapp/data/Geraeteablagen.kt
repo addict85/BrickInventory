@@ -73,7 +73,7 @@ interface Tokenspiegel {
     suspend fun ersetzeGetauschtenToken(vorher: TokenStand, neu: String, anfrageHerkunft: String?): Boolean
 }
 
-/** Einmal beim Start: ein Klartext-Token älterer Fassungen verschlüsselt ablegen. */
+/** Einmal beim Start: ein Klartext-Token älterer Fassungen entfernen, einen alten Geheimtext umschlüsseln. */
 fun interface Tokenuebernahme {
     suspend fun uebernehmeAltesToken(): Boolean
 }

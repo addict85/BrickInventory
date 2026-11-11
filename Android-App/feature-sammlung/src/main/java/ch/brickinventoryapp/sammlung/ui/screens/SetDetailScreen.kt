@@ -64,7 +64,7 @@ fun SetDetailRoute(
 }
 
 /** Was das Set-Detail zeigt. */
-data class SetDetailZustand(
+internal data class SetDetailZustand(
     val state: AppUiState,
     val detailState: SetDetailUiState,
     val lagerZustand: LagerUiState,
@@ -72,7 +72,7 @@ data class SetDetailZustand(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SetDetailScreen(
+internal fun SetDetailScreen(
     setNumber: String,
     zustand: SetDetailZustand,
     aktionen: SetDetailAktionen,

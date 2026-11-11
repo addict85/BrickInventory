@@ -60,7 +60,7 @@ export function merklisteImBlickfeld(userIds: number[], f: MerkAuswahl, waehrung
                      WHERE s.user_id = ANY($1) AND s.set_number = w.set_number) AS owned
        FROM wanted w
        LEFT JOIN rb_sets rb ON rb.set_num = w.set_number
-       -- Das Bild steht nur in set_catalog (0106).
+       -- Das Bild steht nur in set_catalog (0108).
        LEFT JOIN set_catalog sc ON sc.set_number = w.set_number
        LEFT JOIN price_alerts pa ON pa.user_id = w.user_id
                                 AND pa.set_number = w.set_number

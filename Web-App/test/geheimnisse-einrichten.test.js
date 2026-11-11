@@ -23,7 +23,7 @@ const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 const SKRIPT = path.join(ROOT, 'scripts', 'geheimnisse-einrichten.sh');
-const NAMEN = ['db_app_password', 'db_password', 'pgweb_db_password', 'session_secret'];
+const NAMEN = ['db_app_password', 'db_migration_password', 'db_password', 'pgweb_db_password', 'session_secret'];
 
 function sandkasten(t) {
   const ort = fs.mkdtempSync(path.join(os.tmpdir(), 'geheimnisse-'));
@@ -46,6 +46,7 @@ test('eine neue Installation bekommt zufällige Geheimnisse, nur für den Besitz
   assert.match(s.lies('db_password'), /^[0-9a-f]{48}$/);
   assert.match(s.lies('db_app_password'), /^[0-9a-f]{48}$/);
   assert.notEqual(s.lies('db_password'), s.lies('db_app_password'));
+  assert.match(s.lies('db_migration_password'), /^[0-9a-f]{48}$/);
   // Leer heisst: Die Leserolle meldet sich nicht an.
   assert.equal(s.lies('pgweb_db_password'), '');
 });
@@ -61,6 +62,8 @@ test('eine bestehende Installation übernimmt die Werte aus .env', (t) => {
   assert.equal(s.lies('session_secret'), 'alt-sitzung-mindestens-zweiunddreissig-zeichen');
   assert.equal(s.lies('db_password'), 'su+/=pw');
   assert.equal(s.lies('db_app_password'), 'app pw');
+  // Die Migrationsrolle kam später dazu; db-rolle setzt ihr Passwort, ein neues passt also.
+  assert.match(s.lies('db_migration_password'), /^[0-9a-f]{48}$/);
   assert.match(s.lies('pgweb_db_password'), /^[0-9a-f]{48}$/);
   assert.match(r.stderr, /aus \.env löschen.*SESSION_SECRET DB_PASSWORD DB_APP_PASSWORD PGWEB_PASSWORD/);
 });
@@ -81,7 +84,7 @@ test('ein zweiter Lauf ändert nichts, PGWEB=ja füllt nur die leeren', (t) => {
   fs.chmodSync(path.join(s.ort, 'geheimnisse'), 0o755);
   const r = s.lauf({ PGWEB: 'ja' });
   assert.equal(r.status, 0, r.stderr);
-  for (const n of ['session_secret', 'db_password', 'db_app_password']) assert.equal(s.lies(n), vorher[n], `${n} neu erzeugt`);
+  for (const n of ['session_secret', 'db_password', 'db_app_password', 'db_migration_password']) assert.equal(s.lies(n), vorher[n], `${n} neu erzeugt`);
   assert.match(s.lies('pgweb_db_password'), /^[0-9a-f]{48}$/);
   assert.equal(fs.statSync(path.join(s.ort, 'geheimnisse')).mode & 0o777, 0o700, 'ein offener Ordner bleibt offen');
   const pw = s.lies('pgweb_db_password');

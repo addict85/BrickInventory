@@ -1,0 +1,17 @@
+Gegenprobe: Die Merkliste liest die Ablage ohne den Suchtext
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.sammlung.MerklisteViewModelTest
+Rot: die Liste folgt der Ablage, auch gefiltert
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
+@@ -137,7 +137,7 @@
+             _merklisteState.update { it.copy(laedt = true, fehler = null) }
+             val konto = kontoAbfrage(f)
+             quelle.value = konto?.let { kontosicht.merkliste.beobachte(it) }
+-                ?: sets.beobachteMerkliste(f.query.trim().ifBlank { null }, f.zustandFilter, f.sortierung)
++                ?: sets.beobachteMerkliste(null, f.zustandFilter, f.sortierung)
+             // Der Abruf füllt nur die Quelle; gezeigt wird sie (merklisteState).
+             val r = konto?.let { kontosicht.merkliste.aktualisiere(it) } ?: sets.aktualisiereMerkliste()
+             when (r) {

@@ -134,7 +134,7 @@ const BESITZER = {
     'part_color_catalog', 'rb_colors', 'rb_inventories', 'rb_inventory_minifigs', 'rb_inventory_parts',
     'rb_part_categories', 'rb_parts', 'rb_sets', 'rb_themes', 'set_catalog', 'set_figuren', 'set_teile',
     'shared_instructions', 'subsets_cache', 'teil_eigen', 'teil_farbe_eigen'],
-  'src/konto': ['api_tokens', 'api_tokens_verbraucht', 'geraete_schluessel', 'passkeys', 'qr_login_tokens',
+  'src/konto': ['api_tokens', 'api_tokens_verbraucht', 'geraete_nonces', 'geraete_schluessel', 'passkeys', 'qr_login_tokens',
     'rate_limit_attempts', 'schritt_challenges', 'schritt_freigaben', 'user_sessions', 'users',
     'verwaltungsprotokoll', 'webauthn_challenges', 'zweiter_faktor', 'zweiter_faktor_codes'],
   'src/merkliste': ['wanted'],

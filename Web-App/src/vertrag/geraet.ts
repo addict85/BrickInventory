@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { type Route, zeit, Erfolg } from './grund';
+import { type Route, zeit, Erfolg, OHNE_RUMPF } from './grund';
 
 /** Die Schritte, die die App hinter ihren Schrittschutz stellt (src/konto/geraeteChallenge.ts). */
 export const AKTIONEN = ['gutschein', 'verwaltung', 'zweiter_faktor'] as const;
@@ -18,10 +18,19 @@ export const SchrittFreigabe = z.looseObject({
   gueltig_bis: zeit,
 });
 
+/** Base64 der Nonce; die App setzt ihre Bytes als Attestation-Challenge ein. */
+export const SchluesselNonce = z.looseObject({ success: z.literal(true), nonce: z.string() });
+
 export const routen = {
+  'POST /api/v1/geraet/schluessel/nonce': { antwort: SchluesselNonce, geheim: true, eingabe: OHNE_RUMPF },
   'POST /api/v1/geraet/schluessel': {
     antwort: Erfolg,
-    eingabe: z.strictObject({ oeffentlich: z.string().min(1).max(512) }),
+    /** `kette`: die Zertifikate des Keystore-Schlüssels (Base64-DER, Blatt zuerst). `oeffentlich`
+     * schicken ältere Apps; ohne Kette weist der Server sie mit `geraeteschluessel_attestation` ab. */
+    eingabe: z.strictObject({
+      oeffentlich: z.string().min(1).max(512).optional(),
+      kette: z.array(z.string().min(1).max(8192)).min(1).max(8).optional(),
+    }),
   },
   'POST /api/v1/geraet/schritt/challenge': {
     antwort: SchrittChallenge,

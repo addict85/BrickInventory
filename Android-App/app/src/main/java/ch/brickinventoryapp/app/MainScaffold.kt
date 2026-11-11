@@ -71,6 +71,8 @@ import ch.brickinventoryapp.ui.components.UpdatePunkt
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.LocalAkzentflaechen
 import ch.brickinventoryapp.app.ui.components.CsvImportBanner
+import ch.brickinventoryapp.app.csv.CsvImportUiState
+import ch.brickinventoryapp.app.nav.AppZiel
 
 /**
  * Gemeinsames Gerüst aller eingeloggten Screens: obere Leiste mit Titel und
@@ -104,7 +106,7 @@ fun MainScaffold(
      * hier. Ohne Vorgabewert, damit eine Einbindung, die ihn vergisst, nicht
      * übersetzt.
      */
-    onTabAngetippt: (Screen) -> Unit,
+    onTabAngetippt: (Any) -> Unit,
     /** Offline gespeicherte Änderungen, die noch zum Server müssen; 0 blendet die Leiste aus. */
     offeneAenderungen: Int = 0,
     content: @Composable () -> Unit
@@ -118,21 +120,21 @@ fun MainScaffold(
     val einklappen = TopAppBarDefaults.enterAlwaysScrollBehavior()
     LaunchedEffect(currentDest?.id) { einklappen.state.heightOffset = 0f }
 
-    fun istGewaehlt(screen: Screen) =
+    fun istGewaehlt(screen: Any) =
         currentDest?.hierarchy?.any { d -> d.istEinesVon(zieleVon(screen)) } == true
 
     // Unterseiten von „Mehr“ mit unterer Leiste tragen den Zurück-Pfeil wie die übrigen
     // Mehr-Unterseiten; er führt auf „Mehr“, auch wenn die Seite nicht von dort kam.
-    val mehrUnterseite = currentDest != null && currentDest.istEinesVon(MEHR) && !currentDest.hasRoute<Screen.Mehr>()
+    val mehrUnterseite = currentDest != null && currentDest.istEinesVon(MEHR) && !currentDest.hasRoute<AppZiel.Mehr>()
     fun zurueckZuMehr() {
-        if (!navController.popBackStack(Screen.Mehr, inclusive = false)) navController.zuReiter(Screen.Mehr)
+        if (!navController.popBackStack(AppZiel.Mehr, inclusive = false)) navController.zuReiter(AppZiel.Mehr)
     }
 
     // Leiste unten und Seitenleiste teilen sich diesen Weg, damit beide die
     // Rollposition gleich behandeln.
-    fun reiterWaehlen(screen: Screen) {
+    fun reiterWaehlen(screen: Any) {
         onTabAngetippt(screen)
-        if (navController.currentBackStackEntry?.destination?.hasRoute<Screen.Monitoring>() == true) {
+        if (navController.currentBackStackEntry?.destination?.hasRoute<VerwaltungZiel.Monitoring>() == true) {
             navController.popBackStack()
         }
         navController.zuReiter(screen)
@@ -140,8 +142,8 @@ fun MainScaffold(
 
     // Das Symbol eines Ziels, an „Mehr“ mit dem Punkt für eine neue Version.
     @Composable
-    fun Symbol(screen: Screen, icon: @Composable () -> Unit) {
-        if (screen == Screen.Mehr && updateVerfuegbar) BadgedBox(badge = { UpdatePunkt() }) { icon() } else icon()
+    fun Symbol(screen: Any, icon: @Composable () -> Unit) {
+        if (screen == AppZiel.Mehr && updateVerfuegbar) BadgedBox(badge = { UpdatePunkt() }) { icon() } else icon()
     }
 
     // Die Fensterbreite entscheidet, nicht das Gerät: Ein Tablet im geteilten
@@ -204,7 +206,7 @@ fun MainScaffold(
                 Column(Modifier.weight(1f).fillMaxHeight()) {
                     // Auf dem Tablet gehört der Umschalter zum Inhalt, so breit wie Suchfeld
                     // und Raster darunter. Neben einem offenen Set-Detail bleibt „Sets“ gewählt.
-                    if (art == Navigationsart.SEITENLEISTE && currentDest?.istEinesVon(SAMMLUNG + Screen.SetDetail::class) == true) {
+                    if (art == Navigationsart.SEITENLEISTE && currentDest?.istEinesVon(SAMMLUNG + SammlungZiel.SetDetail::class) == true) {
                         SammlungUmschalter(sammlungsZiel(currentDest),
                             onWahl = { ziel ->
                                 onTabAngetippt(ziel)
@@ -260,7 +262,7 @@ fun ReiterGeruest(
         csvImportState = csvImport.csvImportState,
         onCsvAbbrechen = { csvImport.cancelCsvImport() },
         // Reiter angetippt → oben anfangen.
-        onTabAngetippt = { ziel -> vm.scrollMemory.vergissReiter(ziel.rollSchluessel) },
+        onTabAngetippt = { ziel -> vm.scrollMemory.vergissReiter(rollSchluessel(ziel)) },
         // Der stille Start-Test hat ein Ergebnis — hier bekommt es einen Ort.
         updateVerfuegbar = updateZustand.neuereFassung != null,
         offeneAenderungen = offen,
@@ -307,8 +309,8 @@ private fun ReiterZiel(
 @Composable
 private fun ReiterLeiste(
     ziele: List<Reiter>,
-    gewaehlt: (Screen) -> Boolean, onWahl: (Screen) -> Unit,
-    symbol: @Composable (Screen, @Composable () -> Unit) -> Unit,
+    gewaehlt: (Any) -> Boolean, onWahl: (Any) -> Unit,
+    symbol: @Composable (Any, @Composable () -> Unit) -> Unit,
 ) {
     val farben = reiterFarben(MaterialTheme.colorScheme)
     val stil = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
@@ -340,8 +342,8 @@ private fun ReiterLeiste(
 @Composable
 private fun ReiterSeitenleiste(
     ziele: List<Reiter>,
-    gewaehlt: (Screen) -> Boolean, onWahl: (Screen) -> Unit,
-    symbol: @Composable (Screen, @Composable () -> Unit) -> Unit,
+    gewaehlt: (Any) -> Boolean, onWahl: (Any) -> Unit,
+    symbol: @Composable (Any, @Composable () -> Unit) -> Unit,
 ) {
     val farben = reiterFarben(MaterialTheme.colorScheme)
     val groesse = MaterialTheme.typography.labelMedium.fontSize
@@ -386,31 +388,34 @@ private val ANZEIGE_MIN = 64.dp
 private val LEISTE_HOEHE = 80.dp
 private val SEITENLEISTE_BREITE = 80.dp
 
+/** Der Schlüssel der gemerkten Rollposition; Ziele ohne Liste haben keinen eigenen. */
+internal fun rollSchluessel(ziel: Any): String = (ziel as? Reiterziel)?.rollSchluessel ?: ziel.toString()
+
 /** Die Ziele des Umschalters Sets | Teile | Minifiguren, in seiner Reihenfolge. */
-internal val SAMMLUNGS_ZIELE: List<Screen> = listOf(Screen.Gallery, Screen.Parts, Screen.Minifigs)
+internal val SAMMLUNGS_ZIELE: List<Any> = listOf(SammlungZiel.Gallery, TeileZiel.Parts, TeileZiel.Minifigs)
 
 /** Sets, Teile und Minifiguren teilen sich in der Leiste EIN Ziel. */
-private val SAMMLUNG: Set<KClass<out Screen>> = SAMMLUNGS_ZIELE.map { it::class }.toSet()
+private val SAMMLUNG: Set<KClass<out Any>> = SAMMLUNGS_ZIELE.map { it::class }.toSet()
 
 /** Seiten mit unterer Leiste, die man über „Mehr“ erreicht — dort bleibt „Mehr“ gewählt. */
-private val MEHR: Set<KClass<out Screen>> = setOf(Screen.Mehr::class, Screen.PartsList::class,
-    Screen.Comparison::class, Screen.Settings::class, Screen.Monitoring::class)
+private val MEHR: Set<KClass<out Any>> = setOf(AppZiel.Mehr::class, TeileZiel.PartsList::class,
+    SammlungZiel.Comparison::class, KontoZiel.Settings::class, VerwaltungZiel.Monitoring::class)
 
 /** Die Ziele, bei denen ein Ziel der Leiste als gewählt gilt. */
-private fun zieleVon(screen: Screen): Set<KClass<out Screen>> = when (screen) {
-    Screen.Gallery -> SAMMLUNG + Screen.SetDetail::class
-    Screen.Mehr -> MEHR
+private fun zieleVon(screen: Any): Set<KClass<out Any>> = when (screen) {
+    SammlungZiel.Gallery -> SAMMLUNG + SammlungZiel.SetDetail::class
+    AppZiel.Mehr -> MEHR
     else -> setOf(screen::class)
 }
 
-private fun NavDestination.istEinesVon(ziele: Set<KClass<out Screen>>) = ziele.any { hasRoute(it) }
+private fun NavDestination.istEinesVon(ziele: Set<KClass<out Any>>) = ziele.any { hasRoute(it) }
 
 /** Welcher Teil der Sammlung offen ist; neben einem Set-Detail bleibt „Sets“ gewählt. */
-private fun sammlungsZiel(ziel: NavDestination): Screen =
-    SAMMLUNGS_ZIELE.firstOrNull { ziel.hasRoute(it::class) } ?: Screen.Gallery
+private fun sammlungsZiel(ziel: NavDestination): Any =
+    SAMMLUNGS_ZIELE.firstOrNull { ziel.hasRoute(it::class) } ?: SammlungZiel.Gallery
 
 /** Wie ein Reiter: Zustand der anderen sichern, nicht doppelt stapeln. */
-private fun androidx.navigation.NavController.zuReiter(ziel: Screen) =
+private fun androidx.navigation.NavController.zuReiter(ziel: Any) =
     navigate(ziel) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true
@@ -422,10 +427,10 @@ private fun androidx.navigation.NavController.zuReiter(ziel: Screen) =
  * SegmentWahl, damit er bei grosser Schrift wie jede Einfachwahl zu Chips wird.
  */
 @Composable
-private fun SammlungUmschalter(aktuell: Screen, onWahl: (Screen) -> Unit, modifier: Modifier = Modifier) {
+private fun SammlungUmschalter(aktuell: Any, onWahl: (Any) -> Unit, modifier: Modifier = Modifier) {
     val texte = listOf(R.string.nav_sets, R.string.nav_parts, R.string.nav_minifigs)
     val ziele = SAMMLUNGS_ZIELE.zip(texte).map { (ziel, text) -> ziel to stringResource(text) }
-    SegmentWahl<Screen?>(
+    SegmentWahl<Any?>(
         optionen = ziele,
         gewaehlt = aktuell,
         onWahl = { if (it != null) onWahl(it) },

@@ -6,7 +6,6 @@ import ch.brickinventoryapp.teile.ui.TeileListeUndDetailRoute
 import ch.brickinventoryapp.app.nav.Reiter
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
-
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -53,9 +52,8 @@ import ch.brickinventoryapp.testing.HaushaltRepository
 import ch.brickinventoryapp.testing.KatalogRepository
 import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.testing.VerwaltungRepository
-import ch.brickinventoryapp.zustand.ui.AnmeldeFormular
-import ch.brickinventoryapp.zustand.ui.CsvImportUiState
-import ch.brickinventoryapp.zustand.ui.Screen
+import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
+import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.finanzen.ui.screens.FinanceRoute
 import ch.brickinventoryapp.sammlung.ui.screens.GalleryRoute
 import ch.brickinventoryapp.anmeldung.ui.screens.LoginScreen
@@ -163,6 +161,10 @@ import ch.brickinventoryapp.testing.GutscheineRepository
 import ch.brickinventoryapp.testing.KontoRepository
 import ch.brickinventoryapp.testing.SitzungsAttrappe
 import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.app.nav.AppZiel
+import ch.brickinventoryapp.finanzen.ui.FinanzZiel
+import ch.brickinventoryapp.katalog.ui.KatalogZiel
+import ch.brickinventoryapp.sammlung.ui.SammlungZiel
 
 /**
  * Was BildschirmFotoTest nicht abdeckt, je einmal statt im vollen Raster (die
@@ -264,8 +266,9 @@ class BildschirmFotoVariantenTest {
     private fun foto(name: String, design: String = "classic", dunkel: Boolean = false, geraet: String = "telefon") =
         compose.onRoot().captureRoboImage(pfad(name, design, dunkel, geraet))
 
-    private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand, SetsRepository(welt.t.api, welt.t.cache),
-        KatalogRepository(welt.t.api, welt.t.cache), object : SetAnleger {
+    private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, SetsRepository(welt.t.api, welt.t.cache),
+        KatalogRepository(welt.t.api, welt.t.cache),
+        object : SetAnleger {
             override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
                                  ownerUserId: Int?, storage: String?): Flow<SetAnlegenSchritt> = emptyFlow()
         }))
@@ -426,17 +429,17 @@ class BildschirmFotoVariantenTest {
         val nav = rememberNavController()
         val reiter = remember {
             listOf(
-                Reiter(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
-                Reiter(Screen.Finance, { Icon(Icons.AutoMirrored.Filled.ShowChart, null) }, "Finanzen"),
-                Reiter(Screen.Wanted, { Icon(Icons.Default.BookmarkBorder, null) }, "Merkliste"),
-                Reiter(Screen.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, "Katalog"),
-                Reiter(Screen.Mehr, { Icon(Icons.Default.MoreHoriz, null) }, "Mehr"),
+                Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                Reiter(FinanzZiel.Finance, { Icon(Icons.AutoMirrored.Filled.ShowChart, null) }, "Finanzen"),
+                Reiter(SammlungZiel.Wanted, { Icon(Icons.Default.BookmarkBorder, null) }, "Merkliste"),
+                Reiter(KatalogZiel.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, "Katalog"),
+                Reiter(AppZiel.Mehr, { Icon(Icons.Default.MoreHoriz, null) }, "Mehr"),
             )
         }
         // Der Titel folgt dem Ziel wie in der App (ToolsGraph setzt nav_more): Fest
         // „Sammlung“ zeigte das Foto von „Mehr“ mit dem falschen Titel.
         val ziel by nav.currentBackStackEntryAsState()
-        val titel = if (ziel?.destination?.hasRoute<Screen.Mehr>() == true) "Mehr" else "Sammlung"
+        val titel = if (ziel?.destination?.hasRoute<AppZiel.Mehr>() == true) "Mehr" else "Sammlung"
         MainScaffold(
             title = titel, navController = nav, bottomNavItems = reiter,
             snackbarHostState = snackbar,
@@ -444,14 +447,14 @@ class BildschirmFotoVariantenTest {
             onCsvAbbrechen = {}, updateVerfuegbar = true, onTabAngetippt = {},
             offeneAenderungen = offeneAenderungen,
         ) {
-            NavHost(nav, startDestination = Screen.Gallery) {
-                composable<Screen.Gallery> {
+            NavHost(nav, startDestination = SammlungZiel.Gallery) {
+                composable<SammlungZiel.Gallery> {
                     Column {
                         OfflineHinweis(offlineStand)
                         Galerie(galerie)
                     }
                 }
-                composable<Screen.Mehr> {
+                composable<AppZiel.Mehr> {
                     MehrBildschirm(onZiel = nav::oeffneVonMehr, isAdmin = true, updateVerfuegbar = true, onAbmelden = {})
                 }
             }
@@ -636,11 +639,9 @@ class BildschirmFotoVariantenTest {
 
     // ── Unterseiten und Erfassen, die sonst kein Foto hatten (I2) ──
 
-    private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
-        KontoRepository(welt.t.api, welt.t.cache, welt.t.io),
-        VerwaltungRepository(welt.t.api, welt.t.cache),
-        SetsRepository(welt.t.api, welt.t.cache),
-        TeileRepository(welt.t.api, welt.t.cache),
+    private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
+        KontoRepository(welt.t.api, welt.t.cache, welt.t.io), VerwaltungRepository(welt.t.api, welt.t.cache),
+        SetsRepository(welt.t.api, welt.t.cache), TeileRepository(welt.t.api, welt.t.cache),
         object : DateiLeser {
             override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
         }))
@@ -673,9 +674,8 @@ class BildschirmFotoVariantenTest {
     fun haushalt() {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
-        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
-            HaushaltRepository(welt.t.api, welt.t.cache),
-            KontoRepository(welt.t.api, welt.t.cache, welt.t.io))).also { it.loadHouseholdStatus() }
+        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
+            HaushaltRepository(welt.t.api, welt.t.cache), KontoRepository(welt.t.api, welt.t.cache, welt.t.io))).also { it.loadHouseholdStatus() }
         zeige("haushalt", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {
             HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
         }
@@ -850,7 +850,7 @@ class BildschirmFotoVariantenTest {
         val vm = welt.teile().also { it.loadParts() }
         zeige("teil-detail", dunkel = dunkel, geraet = geraet, bereit = { vm.partsState.value.parts.isNotEmpty() },
             zustand = { vm.partsState.value }) {
-            TeileListeUndDetailRoute(vm, bilder, "", rememberNavController()) { _ ->
+            TeileListeUndDetailRoute(vm, bilder, "", { _, _, _, _ -> }, {}, { _, _, _, _ -> }) { _ ->
                 PartsRoute(vm = vm, imageLoader = bilder)
             }
         }
@@ -1173,7 +1173,8 @@ class BildschirmFotoVariantenTest {
     @Test fun dialogBarcodeErgebnis() = barcodeFoto(false)
     @Test fun dialogBarcodeErgebnisDunkel() = barcodeFoto(true)
 
-    private fun kaeufe() = welt.t.merke(KaeufeViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand, HaushaltRepository(welt.t.api, welt.t.cache),
+    private fun kaeufe() = welt.t.merke(KaeufeViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.aenderungen,
+        HaushaltRepository(welt.t.api, welt.t.cache), welt.t.sets(),
         FinanzenRepository(welt.t.api, welt.t.cache), TeileRepository(welt.t.api, welt.t.cache),
         FigurenRepository(welt.t.api, welt.t.cache)))
 
@@ -1265,9 +1266,8 @@ class BildschirmFotoVariantenTest {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"}],"open_invites":0}"""
         welt.pfade.antworten["/api/v1/settings/household/invite"] = """{"success":true,"code":"K7QF-2M9X","expires_in":86400}"""
-        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand,
-            HaushaltRepository(welt.t.api, welt.t.cache),
-            KontoRepository(welt.t.api, welt.t.cache))).also { it.jetzt = { FESTE_ZEIT }; it.loadHouseholdStatus() }
+        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
+            HaushaltRepository(welt.t.api, welt.t.cache), KontoRepository(welt.t.api, welt.t.cache))).also { it.jetzt = { FESTE_ZEIT }; it.loadHouseholdStatus() }
         zeige("haushalt-code", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {
             HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
         }

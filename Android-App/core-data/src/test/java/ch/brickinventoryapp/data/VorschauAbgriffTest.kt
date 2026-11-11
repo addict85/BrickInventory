@@ -33,7 +33,7 @@ import java.io.File
 class VorschauAbgriffTest {
 
     private val wurzel = File(System.getProperty("java.io.tmpdir"), "bim-abgriff-${System.nanoTime()}")
-    private val speicher = VorschauSpeicher({ wurzel }, AblageChiffre { ByteArray(32) { 4 } })
+    private val speicher = VorschauSpeicher({ wurzel }, AblageChiffre { ByteArray(32) { 4 } }) { ByteArray(32) { 14 } }
     private val server = MockWebServer().apply { start() }
     private val client = OkHttpClient.Builder().addInterceptor(vorschauAbgriff(speicher)).build()
     private val bild = "JPEG-75192".toByteArray()

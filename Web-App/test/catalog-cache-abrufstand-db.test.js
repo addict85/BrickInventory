@@ -1,5 +1,5 @@
 /**
- * Migration 0106 und die Leser danach: catalog_cache führt nur noch den
+ * Migration 0108 und die Leser danach: catalog_cache führt nur noch den
  * Abrufstand; Angaben stehen in rb_sets, das Bild in set_catalog. Die Migration
  * läuft auf einem Altbestand in einem eigenen Schema (search_path).
  *
@@ -28,10 +28,10 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const MIGRATION = fs.readFileSync(
-  path.join(__dirname, '..', 'db/migrations/0106-catalog-cache-nur-abrufstand.sql'),
+  path.join(__dirname, '..', 'db/migrations/0108-catalog-cache-nur-abrufstand.sql'),
   'utf8',
 );
-const SCHEMA = `probe0106_${process.pid}`;
+const SCHEMA = `probe0108_${process.pid}`;
 
 test('catalog_cache nur noch Abrufstand', { concurrency: 1 }, async t => {
   if (!(await dbOderSkip(t, _req))) return;

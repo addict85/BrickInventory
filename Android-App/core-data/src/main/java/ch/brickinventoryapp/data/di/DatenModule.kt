@@ -14,8 +14,8 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
 import javax.inject.Singleton
 import ch.brickinventoryapp.data.Anmeldeablage
-import ch.brickinventoryapp.data.SetAnlegenSseClient
 import ch.brickinventoryapp.data.SetAnleger
+import ch.brickinventoryapp.data.AnlegenMitAblage
 import ch.brickinventoryapp.data.TokenTausch
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.repository.KontoRepository
@@ -67,5 +67,5 @@ internal object DatenModule {
     )
 
     @Provides
-    fun provideSetAnleger(c: SetAnlegenSseClient): SetAnleger = c
+    fun provideSetAnleger(c: AnlegenMitAblage): SetAnleger = c
 }

@@ -1,0 +1,16 @@
+Gegenprobe: Die Kontosicht fragt nach einem Schreibvorgang nicht neu
+Modul: core-data
+Test: ch.brickinventoryapp.data.KontosichtTest
+Rot: ein Schreibvorgang zeigt sich auch in der Kontosicht
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt
+@@ -62,7 +62,6 @@
+ 
+         /** Nie geladen heisst Stand null, wie in der Ablage; eine Antwort für ein anderes Konto zählt nicht. */
+         fun beobachte(abfrage: A): Flow<Lokal<T>> = channelFlow {
+-            launch { ablage.veraendert(*ausloeser).collectLatest { aktualisiere(abfrage) } }
+             launch {
+                 zuletzt.map { e ->
+                     if (e == null || e.abfrage != abfrage || e.bereich != ablage.bereich()) Lokal(emptyList(), null) else e.liste

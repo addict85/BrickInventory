@@ -30,6 +30,7 @@ import ch.brickinventoryapp.testing.FakeApi
 import ch.brickinventoryapp.testing.KatalogRepository
 import ch.brickinventoryapp.testing.NummernTexte
 import ch.brickinventoryapp.testing.TestDienste
+import ch.brickinventoryapp.testing.text
 
 /**
  * Das CatalogViewModel ausgeführt: Api ohne Netz, Texte als Ressourcennummern,
@@ -129,12 +130,12 @@ class CatalogViewModelTest {
         vm.loadCatalogSets()
         advanceUntilIdle()
         assertEquals("fehler", vm.state.value.error)
-        assertNull("Ohne geladene Liste keine zweite Meldung", t.meldungen.meldung.value)
+        assertNull("Ohne geladene Liste keine zweite Meldung", t.meldungen.text)
 
         fake.antworten["getCatalogSetDetail"] = CatalogSetDetailResponse(success = false)
         vm.loadCatalogDetail("99999-1")
         advanceUntilIdle()
-        assertEquals("t${R.string.err_set_not_found}", t.meldungen.meldung.value)
+        assertEquals("t${R.string.err_set_not_found}", t.meldungen.text)
         assertNull(vm.state.value.detail)
     }
 

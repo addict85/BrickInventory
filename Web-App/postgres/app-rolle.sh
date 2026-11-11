@@ -1,14 +1,15 @@
 #!/bin/sh
-# Die App verbindet sich mit einer eigenen Rolle ohne Superuser-Rechte, die
-# Datenbank, Tabellen und Funktionen besitzt (Migrationen brauchen das). Ein
-# Einbruch in die App erreicht so weder COPY … PROGRAM noch andere Datenbanken.
+# Zwei Rollen ohne Superuser-Rechte: Die Migrationsrolle besitzt Datenbank,
+# Schema und alle Objekte (Erststart, Migrationen, Restore); die Laufzeitrolle
+# von app und jobs darf nur Zeilen lesen und schreiben. Ein Einbruch in die App
+# kann so weder Tabellen ändern oder löschen noch COPY … PROGRAM erreichen.
 # Läuft mit dem Superuser bei jedem `docker compose up` (Dienst db-rolle) und
 # beim Anlegen einer neuen Datenbank (docker-entrypoint-initdb.d); wiederholbar.
 #
-# Die Datenbank gehört der App-Rolle: Sie kann Schemas, Funktionen und
-# Datenbank-Einstellungen anlegen. Nichts davon darf in dieser Superuser-Sitzung
-# wirken – daher fester search_path schon beim Verbinden, RESET ALL vor allem
-# anderen und nur Funktionen aus pg_catalog.
+# Die Migrationsrolle kann Schemas, Funktionen und Datenbank-Einstellungen
+# anlegen. Nichts davon darf in dieser Superuser-Sitzung wirken – daher fester
+# search_path schon beim Verbinden, RESET ALL vor allem anderen und nur
+# Funktionen aus pg_catalog.
 set -eu
 
 # Docker-Secrets: X_FILE statt X, damit kein Passwort in `docker inspect` steht.
@@ -22,19 +23,30 @@ aus_datei() {
 }
 aus_datei PGPASSWORD
 aus_datei DB_APP_PASSWORD
+aus_datei DB_MIGRATION_PASSWORD
 aus_datei PGWEB_DB_PASSWORD
 : "${DB_APP_PASSWORD:?DB_APP_PASSWORD fehlt - sh scripts/geheimnisse-einrichten.sh, siehe UPGRADE.md}"
+: "${DB_MIGRATION_PASSWORD:?DB_MIGRATION_PASSWORD fehlt - sh scripts/geheimnisse-einrichten.sh, siehe UPGRADE.md Abschnitt 51}"
 SU_PASSWORT="${PGPASSWORD:-${POSTGRES_PASSWORD:-}}"
 if [ "$DB_APP_PASSWORD" = "$SU_PASSWORT" ]; then
   echo "[db-rolle] DB_APP_PASSWORD muss sich von DB_PASSWORD unterscheiden." >&2
   exit 1
 fi
-export PGWEB_DB_PASSWORD="${PGWEB_DB_PASSWORD:-}"
-if [ -n "$PGWEB_DB_PASSWORD" ] && { [ "$PGWEB_DB_PASSWORD" = "$SU_PASSWORT" ] || [ "$PGWEB_DB_PASSWORD" = "$DB_APP_PASSWORD" ]; }; then
-  echo "[db-rolle] PGWEB_DB_PASSWORD muss sich von DB_PASSWORD und DB_APP_PASSWORD unterscheiden." >&2
+if [ "$DB_MIGRATION_PASSWORD" = "$SU_PASSWORT" ] || [ "$DB_MIGRATION_PASSWORD" = "$DB_APP_PASSWORD" ]; then
+  echo "[db-rolle] DB_MIGRATION_PASSWORD muss sich von DB_PASSWORD und DB_APP_PASSWORD unterscheiden." >&2
   exit 1
 fi
+export PGWEB_DB_PASSWORD="${PGWEB_DB_PASSWORD:-}"
+if [ -n "$PGWEB_DB_PASSWORD" ]; then
+  for anderes in "$SU_PASSWORT" "$DB_APP_PASSWORD" "$DB_MIGRATION_PASSWORD"; do
+    if [ "$PGWEB_DB_PASSWORD" = "$anderes" ]; then
+      echo "[db-rolle] PGWEB_DB_PASSWORD muss sich von DB_PASSWORD, DB_APP_PASSWORD und DB_MIGRATION_PASSWORD unterscheiden." >&2
+      exit 1
+    fi
+  done
+fi
 export DB_APP_USER="${DB_APP_USER:-brickinventory_app}"
+export DB_MIGRATION_USER="${DB_MIGRATION_USER:-brickinventory_migration}"
 export DB_LESEN_USER="${DB_LESEN_USER:-brickinventory_lesen}"
 
 # Was die Leserolle (pgweb) lesen darf, je Tabelle: eine Allowlist. Eine neue
@@ -110,7 +122,7 @@ zweiter_faktor: user_id, aktiv, eingerichtet_am
 '
 
 # Kommandozeilen-Optionen schlagen ALTER DATABASE … SET; role=none hebt ein
-# untergeschobenes `SET role` auf, das die Sitzung zur App-Rolle machte.
+# untergeschobenes `SET role` auf, das die Sitzung zur Migrationsrolle machte.
 PGOPTIONS='-c search_path=pg_catalog,pg_temp -c role=none -c default_transaction_read_only=off' \
 psql -v ON_ERROR_STOP=1 -q -X \
   --username "${PGUSER:-${POSTGRES_USER:-brickinventory}}" \
@@ -119,17 +131,22 @@ SET search_path = pg_catalog, pg_temp;
 SET ROLE NONE;
 \getenv app_rolle DB_APP_USER
 \getenv app_passwort DB_APP_PASSWORD
+\getenv migration_rolle DB_MIGRATION_USER
+\getenv migration_passwort DB_MIGRATION_PASSWORD
 \getenv lesen_rolle DB_LESEN_USER
 \getenv lesen_passwort PGWEB_DB_PASSWORD
 \getenv lesen_spalten LESEN_SPALTEN
 SELECT pg_catalog.set_config('brickinventory.app_rolle', :'app_rolle', false) AS r,
        pg_catalog.set_config('brickinventory.app_passwort', :'app_passwort', false) AS p,
+       pg_catalog.set_config('brickinventory.migration_rolle', :'migration_rolle', false) AS mr,
+       pg_catalog.set_config('brickinventory.migration_passwort', :'migration_passwort', false) AS mp,
        pg_catalog.set_config('brickinventory.lesen_rolle', :'lesen_rolle', false) AS lr,
        pg_catalog.set_config('brickinventory.lesen_passwort', :'lesen_passwort', false) AS lp,
        pg_catalog.set_config('brickinventory.lesen_spalten', :'lesen_spalten', false) AS ls \gset
 DO $$
 DECLARE
   rolle text := pg_catalog.current_setting('brickinventory.app_rolle');
+  migration text := pg_catalog.current_setting('brickinventory.migration_rolle');
   lesen text := pg_catalog.current_setting('brickinventory.lesen_rolle');
   lesen_pw text := pg_catalog.current_setting('brickinventory.lesen_passwort');
   liste text := pg_catalog.current_setting('brickinventory.lesen_spalten');
@@ -139,12 +156,17 @@ DECLARE
   ziel  oid;
   r     record;
   kopie record;
+  konto record;
+  -- MAINTAIN (VACUUM/ANALYZE nach dem Katalog-Import ohne Eigentum) gibt es erst ab 17.
+  pflege text := CASE WHEN pg_catalog.current_setting('server_version_num')::int >= 170000 THEN ', MAINTAIN' ELSE '' END;
 BEGIN
   IF NOT (SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = current_user) THEN
     RAISE EXCEPTION 'db-rolle muss als Superuser laufen, nicht als %', current_user;
   END IF;
-  IF rolle = current_user OR lesen = current_user OR rolle = lesen THEN
-    RAISE EXCEPTION 'App-Rolle %, Leserolle % und Superuser % müssen verschieden sein', rolle, lesen, current_user;
+  IF rolle = current_user OR lesen = current_user OR migration = current_user
+     OR rolle = lesen OR rolle = migration OR lesen = migration THEN
+    RAISE EXCEPTION 'Laufzeitrolle %, Migrationsrolle %, Leserolle % und Superuser % müssen verschieden sein',
+      rolle, migration, lesen, current_user;
   END IF;
   -- Event-Trigger feuern bei jedem ALTER … OWNER unten mit Superuser-Rechten.
   IF EXISTS (SELECT FROM pg_catalog.pg_event_trigger WHERE evtenabled <> 'D') THEN
@@ -152,21 +174,30 @@ BEGIN
   END IF;
   EXECUTE pg_catalog.format('ALTER DATABASE %I RESET ALL', db);
 
-  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = rolle) THEN
-    EXECUTE pg_catalog.format('CREATE ROLE %I LOGIN', rolle);
-    RAISE NOTICE '[db-rolle] Rolle % angelegt', rolle;
-  END IF;
-  EXECUTE pg_catalog.format('ALTER ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS',
-                 rolle, pg_catalog.current_setting('brickinventory.app_passwort'));
-  EXECUTE pg_catalog.format('ALTER ROLE %I RESET ALL', rolle);
-  EXECUTE pg_catalog.format('ALTER ROLE %I IN DATABASE %I RESET ALL', rolle, db);
-  SELECT oid INTO ziel FROM pg_catalog.pg_roles WHERE rolname = rolle;
-  FOR r IN SELECT g.rolname FROM pg_catalog.pg_auth_members m JOIN pg_catalog.pg_roles g ON g.oid = m.roleid WHERE m.member = ziel LOOP
-    EXECUTE pg_catalog.format('REVOKE %I FROM %I', r.rolname, rolle);
+  -- Beide Rollen ohne Sonderrechte, ohne eigene Einstellungen und in keiner
+  -- anderen Rolle Mitglied (auch nicht die Laufzeit- in der Migrationsrolle).
+  FOR konto IN SELECT * FROM (VALUES (migration, pg_catalog.current_setting('brickinventory.migration_passwort')),
+                                     (rolle, pg_catalog.current_setting('brickinventory.app_passwort'))) AS k(name, pw) LOOP
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = konto.name) THEN
+      EXECUTE pg_catalog.format('CREATE ROLE %I LOGIN', konto.name);
+      RAISE NOTICE '[db-rolle] Rolle % angelegt', konto.name;
+    END IF;
+    EXECUTE pg_catalog.format('ALTER ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS',
+                   konto.name, konto.pw);
+    EXECUTE pg_catalog.format('ALTER ROLE %I RESET ALL', konto.name);
+    EXECUTE pg_catalog.format('ALTER ROLE %I IN DATABASE %I RESET ALL', konto.name, db);
+    FOR r IN SELECT g.rolname FROM pg_catalog.pg_auth_members m JOIN pg_catalog.pg_roles g ON g.oid = m.roleid
+              WHERE m.member = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = konto.name) LOOP
+      EXECUTE pg_catalog.format('REVOKE %I FROM %I', r.rolname, konto.name);
+    END LOOP;
   END LOOP;
-  EXECUTE pg_catalog.format('ALTER DATABASE %I OWNER TO %I', db, rolle);
+
+  -- Eigentümerin von allem ist die Migrationsrolle; was bisher der
+  -- Laufzeitrolle oder dem Superuser gehörte, geht an sie.
+  SELECT oid INTO ziel FROM pg_catalog.pg_roles WHERE rolname = migration;
+  EXECUTE pg_catalog.format('ALTER DATABASE %I OWNER TO %I', db, migration);
   IF (SELECT nspowner FROM pg_catalog.pg_namespace WHERE nspname = 'public') NOT IN (ziel, 'pg_database_owner'::pg_catalog.regrole) THEN
-    EXECUTE pg_catalog.format('ALTER SCHEMA public OWNER TO %I', rolle);
+    EXECUTE pg_catalog.format('ALTER SCHEMA public OWNER TO %I', migration);
   END IF;
 
   -- Was eine Erweiterung mitbringt (pg_trgm), bleibt bei ihr; Sequenzen einer
@@ -177,14 +208,14 @@ BEGIN
               AND NOT EXISTS (SELECT FROM pg_catalog.pg_depend d WHERE d.classid = 'pg_catalog.pg_class'::pg_catalog.regclass
                                 AND d.objid = c.oid AND d.deptype IN ('e', 'a', 'i')) LOOP
     EXECUTE pg_catalog.format('ALTER %s %s OWNER TO %I', CASE r.relkind WHEN 'S' THEN 'SEQUENCE' WHEN 'v' THEN 'VIEW'
-                   WHEN 'm' THEN 'MATERIALIZED VIEW' WHEN 'f' THEN 'FOREIGN TABLE' ELSE 'TABLE' END, r.name, rolle);
+                   WHEN 'm' THEN 'MATERIALIZED VIEW' WHEN 'f' THEN 'FOREIGN TABLE' ELSE 'TABLE' END, r.name, migration);
   END LOOP;
   FOR r IN SELECT p.oid::pg_catalog.regprocedure AS name, p.prokind FROM pg_catalog.pg_proc p
             WHERE p.pronamespace = 'public'::pg_catalog.regnamespace AND p.proowner <> ziel
               AND NOT EXISTS (SELECT FROM pg_catalog.pg_depend d WHERE d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
                                 AND d.objid = p.oid AND d.deptype = 'e') LOOP
     EXECUTE pg_catalog.format('ALTER %s %s OWNER TO %I', CASE r.prokind WHEN 'p' THEN 'PROCEDURE' WHEN 'a' THEN 'AGGREGATE'
-                   ELSE 'FUNCTION' END, r.name, rolle);
+                   ELSE 'FUNCTION' END, r.name, migration);
   END LOOP;
   FOR r IN SELECT t.oid::pg_catalog.regtype AS name, t.typtype FROM pg_catalog.pg_type t
             WHERE t.typnamespace = 'public'::pg_catalog.regnamespace AND t.typowner <> ziel
@@ -192,18 +223,41 @@ BEGIN
                    OR (t.typtype = 'c' AND (SELECT relkind FROM pg_catalog.pg_class WHERE oid = t.typrelid) = 'c'))
               AND NOT EXISTS (SELECT FROM pg_catalog.pg_depend d WHERE d.classid = 'pg_catalog.pg_type'::pg_catalog.regclass
                                 AND d.objid = t.oid AND d.deptype = 'e') LOOP
-    EXECUTE pg_catalog.format('ALTER %s %s OWNER TO %I', CASE r.typtype WHEN 'd' THEN 'DOMAIN' ELSE 'TYPE' END, r.name, rolle);
+    EXECUTE pg_catalog.format('ALTER %s %s OWNER TO %I', CASE r.typtype WHEN 'd' THEN 'DOMAIN' ELSE 'TYPE' END, r.name, migration);
   END LOOP;
-  -- Die Kopien vor Migrationen räumt die App selbst weg (DROP SCHEMA) und löscht
-  -- daraus gelöschte Konten; sie muss ihnen also auch gehören.
+  -- Die Kopien vor Migrationen legt der Dienst migration an und räumt sie weg;
+  -- die Laufzeitrolle verschlüsselt sie nach und löscht daraus gelöschte Konten.
   FOR r IN SELECT n.oid, n.nspname FROM pg_catalog.pg_namespace n
             WHERE n.nspname OPERATOR(pg_catalog.~) '^vor_migration_[0-9]+$' LOOP
-    EXECUTE pg_catalog.format('ALTER SCHEMA %I OWNER TO %I', r.nspname, rolle);
+    EXECUTE pg_catalog.format('ALTER SCHEMA %I OWNER TO %I', r.nspname, migration);
     FOR kopie IN SELECT c.oid::pg_catalog.regclass AS name FROM pg_catalog.pg_class c
               WHERE c.relnamespace = r.oid AND c.relkind = 'r' AND c.relowner <> ziel LOOP
-      EXECUTE pg_catalog.format('ALTER TABLE %s OWNER TO %I', kopie.name, rolle);
+      EXECUTE pg_catalog.format('ALTER TABLE %s OWNER TO %I', kopie.name, migration);
     END LOOP;
+    EXECUTE pg_catalog.format('GRANT USAGE ON SCHEMA %I TO %I', r.nspname, rolle);
+    EXECUTE pg_catalog.format('REVOKE ALL ON ALL TABLES IN SCHEMA %I FROM %I', r.nspname, rolle);
+    EXECUTE pg_catalog.format('GRANT SELECT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO %I', r.nspname, rolle);
   END LOOP;
+
+  -- Laufzeitrolle: Zeilen lesen und schreiben, Sequenzen weiterzählen, temporäre
+  -- Tabellen (Schatten des Katalog-Imports); kein CREATE in Datenbank und Schema.
+  -- Erst alles weg, dann genau das: Aus der Zeit als Eigentümerin bleibt nichts.
+  EXECUTE pg_catalog.format('REVOKE ALL ON DATABASE %I FROM %I', db, rolle);
+  EXECUTE pg_catalog.format('GRANT CONNECT, TEMPORARY ON DATABASE %I TO %I', db, rolle);
+  EXECUTE pg_catalog.format('REVOKE ALL ON SCHEMA public FROM %I', rolle);
+  EXECUTE pg_catalog.format('GRANT USAGE ON SCHEMA public TO %I', rolle);
+  EXECUTE pg_catalog.format('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM %I', rolle);
+  EXECUTE pg_catalog.format('GRANT SELECT, INSERT, UPDATE, DELETE%s ON ALL TABLES IN SCHEMA public TO %I', pflege, rolle);
+  EXECUTE pg_catalog.format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM %I', rolle);
+  EXECUTE pg_catalog.format('GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO %I', rolle);
+  -- Für alles, was die Migrationsrolle künftig anlegt (Migrationen, Kopien,
+  -- Restore), gilt dasselbe ohne erneuten Lauf; ohne IN SCHEMA, damit auch neue
+  -- vor_migration_*-Schemas erfasst sind.
+  EXECUTE pg_catalog.format('ALTER DEFAULT PRIVILEGES FOR ROLE %I REVOKE ALL ON TABLES FROM %I', migration, rolle);
+  EXECUTE pg_catalog.format('ALTER DEFAULT PRIVILEGES FOR ROLE %I GRANT SELECT, INSERT, UPDATE, DELETE%s ON TABLES TO %I',
+                 migration, pflege, rolle);
+  EXECUTE pg_catalog.format('ALTER DEFAULT PRIVILEGES FOR ROLE %I GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO %I', migration, rolle);
+  EXECUTE pg_catalog.format('ALTER DEFAULT PRIVILEGES FOR ROLE %I GRANT USAGE ON SCHEMAS TO %I', migration, rolle);
 
   -- Leserolle für pgweb: nur SELECT auf die Allowlist oben.
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = lesen) THEN
@@ -218,7 +272,7 @@ BEGIN
     EXECUTE pg_catalog.format('REVOKE %I FROM %I', r.rolname, lesen);
   END LOOP;
   EXECUTE 'REVOKE CREATE ON SCHEMA public FROM PUBLIC';
-  -- Auch keine temporären Tabellen; die App behält TEMP als Eigentümerin.
+  -- Auch keine temporären Tabellen; die Laufzeitrolle hat TEMP oben ausdrücklich.
   EXECUTE pg_catalog.format('REVOKE TEMPORARY ON DATABASE %I FROM PUBLIC', db);
   EXECUTE pg_catalog.format('GRANT CONNECT ON DATABASE %I TO %I', db, lesen);
   EXECUTE pg_catalog.format('GRANT USAGE ON SCHEMA public TO %I', lesen);
@@ -245,4 +299,4 @@ BEGIN
   END LOOP;
 END $$;
 SQL
-echo "[db-rolle] Rolle ${DB_APP_USER} ohne Superuser-Rechte besitzt die Datenbank; ${DB_LESEN_USER} liest nur die Allowlist."
+echo "[db-rolle] ${DB_MIGRATION_USER} besitzt die Datenbank, ${DB_APP_USER} liest und schreibt nur Zeilen, ${DB_LESEN_USER} liest nur die Allowlist."

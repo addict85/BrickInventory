@@ -1,7 +1,9 @@
 package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.api.GeraetApi
+import ch.brickinventoryapp.model.data.model.GeraeteKettenAnfrage
 import ch.brickinventoryapp.model.data.model.GeraeteSchluesselAnfrage
+import ch.brickinventoryapp.model.schritt.Schluesselnonce
 import ch.brickinventoryapp.model.schritt.Schrittaktion
 import ch.brickinventoryapp.model.schritt.Schrittantwort
 import ch.brickinventoryapp.model.schritt.Schrittbindung
@@ -40,4 +42,19 @@ internal class SchrittbindungImpl @Inject constructor(
 
     override suspend fun hinterlege(oeffentlich: ByteArray): Boolean =
         sicherAufrufen { api.hinterlegeSchluessel(GeraeteSchluesselAnfrage(Base64.getEncoder().encodeToString(oeffentlich))) } is Ergebnis.Success
+
+    override suspend fun schluesselNonce(): Schluesselnonce = when (val r = sicherAufrufen { api.schluesselNonce() }) {
+        is Ergebnis.Success -> Schluesselnonce.Nonce(r.data.nonce)
+        is Ergebnis.Error -> if (r is Ergebnis.Error.Server && r.status == 404) Schluesselnonce.NichtGebunden
+            else Schluesselnonce.Abgelehnt(r.message.ifBlank { null })
+    }
+
+    /** Den Satz des Servers nur bei seiner Absage: Ein Netzfehler nach der Anmeldung ist keine Meldung wert. */
+    override suspend fun hinterlegeKette(kette: List<ByteArray>): Schrittantwort {
+        val anfrage = GeraeteKettenAnfrage(kette.map { Base64.getEncoder().encodeToString(it) })
+        return when (val r = sicherAufrufen { api.hinterlegeKette(anfrage) }) {
+            is Ergebnis.Success -> Schrittantwort.Frei
+            is Ergebnis.Error -> Schrittantwort.Abgelehnt(if (r is Ergebnis.Error.Server) r.message.ifBlank { null } else null)
+        }
+    }
 }

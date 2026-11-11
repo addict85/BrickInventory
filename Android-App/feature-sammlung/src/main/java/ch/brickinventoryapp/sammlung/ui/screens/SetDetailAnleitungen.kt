@@ -35,7 +35,8 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.netz.util.eigeneAdresse
-import ch.brickinventoryapp.netz.util.oeffneExtern
+import ch.brickinventoryapp.netz.util.externeAdresse
+import ch.brickinventoryapp.ui.util.oeffneExtern
 import ch.brickinventoryapp.gemeinsam.ui.SectionCard
 
 /**
@@ -118,7 +119,7 @@ private fun AnleitungZeile(
     val oeffneAnleitung: () -> Unit = {
         if (eigene != null) {
             onOpenPdf(eigene, instr.description ?: "")
-        } else if (!oeffneExtern(ctx, instr.url)) {
+        } else if (!oeffneExtern(ctx, externeAdresse(instr.url))) {
             // Rückmeldung statt Stille, siehe CatalogDetailScreen.
             onKeineApp()
         }

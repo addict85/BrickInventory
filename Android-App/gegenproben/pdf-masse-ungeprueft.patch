@@ -1,0 +1,16 @@
+Gegenprobe: Die Seitenkanten aus dem isolierten Renderer gelten ungeprüft
+Modul: feature-finanzen
+Test: ch.brickinventoryapp.finanzen.PdfGrenzenTest
+Rot: Seitenkanten ausserhalb des Formats ergeben keine Masse
+
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/pdf/PdfSeite.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/pdf/PdfSeite.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/pdf/PdfSeite.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/pdf/PdfSeite.kt
+@@ -56,7 +56,6 @@
+  * ausserhalb des Formats liegen. Die Fläche begrenzt [bitmapMasse], hier zur Sicherheit noch einmal.
+  */
+ internal fun seitenMasse(breitePx: Int, breitePt: Int, hoehePt: Int): SeitenMasse? {
+-    if (breitePt !in 1..PDF_SEITE_MAX_PT || hoehePt !in 1..PDF_SEITE_MAX_PT) return null
+     val ratio = hoehePt.toFloat() / breitePt
+     var (w, h) = bitmapMasse(breitePx.coerceIn(1, PDF_KANTE_MAX_PX), ratio)
+     // Eine sehr hohe Seite wird schmaler gerendert, bis auch die Höhe passt.

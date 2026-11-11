@@ -36,7 +36,7 @@ const val UPDATE_RELEASE_BASIS = "$UPDATE_RELEASE_WURZEL/apk-neuste"
 /**
  * Die signierte Beschreibung der neusten Fassung; geschrieben vom Signierjob. Die
  * unsignierte version.json daneben liest diese App nie; sie bleibt bis zu einem
- * Stichtag nur für ältere installierte Fassungen (android.yml, Job `release`).
+ * Stichtag nur für ältere installierte Fassungen (android-release.yml, Job `release`).
  */
 const val UPDATE_VERSION_URL = "$UPDATE_RELEASE_BASIS/version-signiert.json"
 
@@ -243,7 +243,7 @@ internal fun installerZiel(pm: PackageManager, bestaetigung: Intent): ComponentN
  * es dafür seinen eigenen Dialog (EXTRA_INTENT), aber nur, wenn er zum
  * System-Installer führt ([installerZiel]).
  */
-class InstallationsEmpfaenger : BroadcastReceiver() {
+internal class InstallationsEmpfaenger : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         when (val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {

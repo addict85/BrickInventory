@@ -3,14 +3,15 @@ Modul: core-zustand
 Test: ch.brickinventoryapp.zustand.DarstellungUndVertrauenTest
 Rot: der Zustand wird mit dem gemerkten Design geboren
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/DarstellungViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/DarstellungViewModel.kt
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/DarstellungViewModel.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/DarstellungViewModel.kt
-@@ -30,7 +30,6 @@ class DarstellungViewModel @Inject constructor(
-     // Der Zustand wird mit dem gemerkten Design geboren; ein späterer Wert käme
-     // nach der ersten Komposition, und das falsche Design blitzte auf.
-     init {
--        sitzung.setzeDesign(prefs.gemerktesDesign())
-     }
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Kontowerte.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Kontowerte.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Kontowerte.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Kontowerte.kt
+@@ -49,7 +49,7 @@
+ ) : Kontowerte {
+     override val waehrung: StateFlow<Waehrung> = ablage.currency.stateIn(bereich, SharingStarted.Eagerly, Waehrung.EUR)
+     override val design: StateFlow<Design> =
+-        ablage.appTheme.stateIn(bereich, SharingStarted.Eagerly, darstellung.gemerktesDesign())
++        ablage.appTheme.stateIn(bereich, SharingStarted.Eagerly, Design.VORGABE)
  
-     /** Nur das Design, damit MainActivity nicht bei jeder Zustandsänderung neu komponiert. */
+     override fun setzeWaehrung(w: Waehrung) { bereich.launch { ablage.saveCurrency(w) } }
+     override fun setzeDesign(d: Design) { bereich.launch { ablage.saveAppTheme(d) } }

@@ -1,0 +1,272 @@
+# Bewusst hingenommene Lücken in den fremden Betriebs-Images aus
+# Web-App/compose.yaml (PostgreSQL). Gelesen vom Job trivy-compose in
+# .github/workflows/sicherheit.yml; jede Lücke, die hier nicht steht, macht
+# den Lauf rot. Caddy wird hier gebaut und ohne Ausnahmen geprüft (trivy-eigenbau).
+#
+# Jede Ausnahme gilt nur für die genannte Datei (paths) bzw. die genannten
+# Pakete (purls, ohne Fassung: jede Fassung): Taucht dieselbe Lücke in einem
+# anderen Paket auf, ist der Lauf rot. Nach expired_at gilt sie nicht mehr.
+# Eine Ausnahme ersetzt nie den neuen Digest, sie überbrückt nur die Zeit bis
+# dahin. Format: Trivy „.trivyignore.yaml“; trivy-action erkennt es an der
+# Endung .yaml und reicht es als TRIVY_IGNOREFILE weiter.
+vulnerabilities:
+
+  # postgres:18-alpine (neuester Digest am 06.11.2026): Go-stdlib in gosu
+  - id: CVE-2025-61726
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2025-61729
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2025-68121
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2026-25679
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2026-27145
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2026-32280
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2026-32281
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2026-32283
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2026-33811
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2026-33814
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2026-33818
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2026-39820
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2026-39821
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2026-39822
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2026-39836
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2026-42499
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2026-42504
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2026-56853
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2026-56858
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2026-56859
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2026-56860
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2026-56862
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2026-111943
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2026-78667
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2026-78669
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+  - id: CVE-2026-97031
+    paths:
+      - "usr/local/bin/gosu"
+    expired_at: 2026-12-01
+    statement: "gosu gibt nur beim Start die Rechte ab und spricht kein Netz; behoben erst mit einem neuen Bau des Images."
+
+  # postgres:18-alpine (neuester Digest am 11.11.2026): krb5 und libxslt
+  - id: CVE-2026-107364
+    purls:
+      - "pkg:apk/alpine/krb5-libs"
+      - "pkg:apk/alpine/krb5-conf"
+      - "pkg:apk/alpine/libxslt"
+    expired_at: 2026-11-25
+    statement: "krb5 trifft fast nur KDC und kadmind, die im Container nicht laufen; GSSAPI ist nicht eingerichtet. libxslt braucht nur die Erweiterung xml2, die nicht geladen wird. Behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-112315
+    purls:
+      - "pkg:apk/alpine/krb5-libs"
+      - "pkg:apk/alpine/krb5-conf"
+      - "pkg:apk/alpine/libxslt"
+    expired_at: 2026-11-25
+    statement: "krb5 trifft fast nur KDC und kadmind, die im Container nicht laufen; GSSAPI ist nicht eingerichtet. libxslt braucht nur die Erweiterung xml2, die nicht geladen wird. Behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-112316
+    purls:
+      - "pkg:apk/alpine/krb5-libs"
+      - "pkg:apk/alpine/krb5-conf"
+      - "pkg:apk/alpine/libxslt"
+    expired_at: 2026-11-25
+    statement: "krb5 trifft fast nur KDC und kadmind, die im Container nicht laufen; GSSAPI ist nicht eingerichtet. libxslt braucht nur die Erweiterung xml2, die nicht geladen wird. Behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-112317
+    purls:
+      - "pkg:apk/alpine/krb5-libs"
+      - "pkg:apk/alpine/krb5-conf"
+      - "pkg:apk/alpine/libxslt"
+    expired_at: 2026-11-25
+    statement: "krb5 trifft fast nur KDC und kadmind, die im Container nicht laufen; GSSAPI ist nicht eingerichtet. libxslt braucht nur die Erweiterung xml2, die nicht geladen wird. Behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-112318
+    purls:
+      - "pkg:apk/alpine/krb5-libs"
+      - "pkg:apk/alpine/krb5-conf"
+      - "pkg:apk/alpine/libxslt"
+    expired_at: 2026-11-25
+    statement: "krb5 trifft fast nur KDC und kadmind, die im Container nicht laufen; GSSAPI ist nicht eingerichtet. libxslt braucht nur die Erweiterung xml2, die nicht geladen wird. Behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-112319
+    purls:
+      - "pkg:apk/alpine/krb5-libs"
+      - "pkg:apk/alpine/krb5-conf"
+      - "pkg:apk/alpine/libxslt"
+    expired_at: 2026-11-25
+    statement: "krb5 trifft fast nur KDC und kadmind, die im Container nicht laufen; GSSAPI ist nicht eingerichtet. libxslt braucht nur die Erweiterung xml2, die nicht geladen wird. Behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-112320
+    purls:
+      - "pkg:apk/alpine/krb5-libs"
+      - "pkg:apk/alpine/krb5-conf"
+      - "pkg:apk/alpine/libxslt"
+    expired_at: 2026-11-25
+    statement: "krb5 trifft fast nur KDC und kadmind, die im Container nicht laufen; GSSAPI ist nicht eingerichtet. libxslt braucht nur die Erweiterung xml2, die nicht geladen wird. Behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-112321
+    purls:
+      - "pkg:apk/alpine/krb5-libs"
+      - "pkg:apk/alpine/krb5-conf"
+      - "pkg:apk/alpine/libxslt"
+    expired_at: 2026-11-25
+    statement: "krb5 trifft fast nur KDC und kadmind, die im Container nicht laufen; GSSAPI ist nicht eingerichtet. libxslt braucht nur die Erweiterung xml2, die nicht geladen wird. Behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-112322
+    purls:
+      - "pkg:apk/alpine/krb5-libs"
+      - "pkg:apk/alpine/krb5-conf"
+      - "pkg:apk/alpine/libxslt"
+    expired_at: 2026-11-25
+    statement: "krb5 trifft fast nur KDC und kadmind, die im Container nicht laufen; GSSAPI ist nicht eingerichtet. libxslt braucht nur die Erweiterung xml2, die nicht geladen wird. Behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-112323
+    purls:
+      - "pkg:apk/alpine/krb5-libs"
+      - "pkg:apk/alpine/krb5-conf"
+      - "pkg:apk/alpine/libxslt"
+    expired_at: 2026-11-25
+    statement: "krb5 trifft fast nur KDC und kadmind, die im Container nicht laufen; GSSAPI ist nicht eingerichtet. libxslt braucht nur die Erweiterung xml2, die nicht geladen wird. Behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-118380
+    purls:
+      - "pkg:apk/alpine/krb5-libs"
+      - "pkg:apk/alpine/krb5-conf"
+      - "pkg:apk/alpine/libxslt"
+    expired_at: 2026-11-25
+    statement: "krb5 trifft fast nur KDC und kadmind, die im Container nicht laufen; GSSAPI ist nicht eingerichtet. libxslt braucht nur die Erweiterung xml2, die nicht geladen wird. Behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-119079
+    purls:
+      - "pkg:apk/alpine/krb5-libs"
+      - "pkg:apk/alpine/krb5-conf"
+      - "pkg:apk/alpine/libxslt"
+    expired_at: 2026-11-25
+    statement: "krb5 trifft fast nur KDC und kadmind, die im Container nicht laufen; GSSAPI ist nicht eingerichtet. libxslt braucht nur die Erweiterung xml2, die nicht geladen wird. Behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-40355
+    purls:
+      - "pkg:apk/alpine/krb5-libs"
+      - "pkg:apk/alpine/krb5-conf"
+      - "pkg:apk/alpine/libxslt"
+    expired_at: 2026-11-25
+    statement: "krb5 trifft fast nur KDC und kadmind, die im Container nicht laufen; GSSAPI ist nicht eingerichtet. libxslt braucht nur die Erweiterung xml2, die nicht geladen wird. Behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-40356
+    purls:
+      - "pkg:apk/alpine/krb5-libs"
+      - "pkg:apk/alpine/krb5-conf"
+      - "pkg:apk/alpine/libxslt"
+    expired_at: 2026-11-25
+    statement: "krb5 trifft fast nur KDC und kadmind, die im Container nicht laufen; GSSAPI ist nicht eingerichtet. libxslt braucht nur die Erweiterung xml2, die nicht geladen wird. Behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-71199
+    purls:
+      - "pkg:apk/alpine/krb5-libs"
+      - "pkg:apk/alpine/krb5-conf"
+      - "pkg:apk/alpine/libxslt"
+    expired_at: 2026-11-25
+    statement: "krb5 trifft fast nur KDC und kadmind, die im Container nicht laufen; GSSAPI ist nicht eingerichtet. libxslt braucht nur die Erweiterung xml2, die nicht geladen wird. Behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-71200
+    purls:
+      - "pkg:apk/alpine/krb5-libs"
+      - "pkg:apk/alpine/krb5-conf"
+      - "pkg:apk/alpine/libxslt"
+    expired_at: 2026-11-25
+    statement: "krb5 trifft fast nur KDC und kadmind, die im Container nicht laufen; GSSAPI ist nicht eingerichtet. libxslt braucht nur die Erweiterung xml2, die nicht geladen wird. Behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-87636
+    purls:
+      - "pkg:apk/alpine/krb5-libs"
+      - "pkg:apk/alpine/krb5-conf"
+      - "pkg:apk/alpine/libxslt"
+    expired_at: 2026-11-25
+    statement: "krb5 trifft fast nur KDC und kadmind, die im Container nicht laufen; GSSAPI ist nicht eingerichtet. libxslt braucht nur die Erweiterung xml2, die nicht geladen wird. Behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-9947
+    purls:
+      - "pkg:apk/alpine/krb5-libs"
+      - "pkg:apk/alpine/krb5-conf"
+      - "pkg:apk/alpine/libxslt"
+    expired_at: 2026-11-25
+    statement: "krb5 trifft fast nur KDC und kadmind, die im Container nicht laufen; GSSAPI ist nicht eingerichtet. libxslt braucht nur die Erweiterung xml2, die nicht geladen wird. Behoben mit dem nächsten Bau des Images."

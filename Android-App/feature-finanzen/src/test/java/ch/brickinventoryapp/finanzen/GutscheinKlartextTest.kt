@@ -32,6 +32,7 @@ import org.junit.Test
 import java.io.File
 import ch.brickinventoryapp.testing.NummernTexte
 import ch.brickinventoryapp.testing.TestApi
+import ch.brickinventoryapp.testing.text
 
 /**
  * Gutscheine mit maskierter Liste: Nummer und PIN, PDF und Löschen erst nach
@@ -145,7 +146,7 @@ class GutscheinKlartextTest {
         assertEquals("geheim", rumpf.getString("password"))
         assertEquals("654321", rumpf.getString("code"))
         assertNull(vm.state.value.bestaetigung)
-        assertEquals("t${R.string.vouchers_deleted}", kanal.meldung.value)
+        assertEquals("t${R.string.vouchers_deleted}", kanal.text)
     }
 
     @Test

@@ -51,7 +51,7 @@ test('nur reine E-Mail-Adressen', { concurrency: 1 }, async (t) => {
   const setze = (k, v) => db.run(`INSERT INTO global_settings (key, value) VALUES ($1, $2)
     ON CONFLICT (key) DO UPDATE SET value = $2`, [k, v]);
   await setze('registration_enabled', '1');
-  await setze('smtp_host', 'smtp.example.org');
+  await setze('smtp_host', '192.0.2.25'); // eine Adresse: Ein Name müsste auflösen (src/infra/zielAdresse.ts)
   await setze('smtp_user', 'versand');
   await setze('smtp_from', 'BrickInventory <absender@example.org>');
   const NAME = `rein_${P}`;

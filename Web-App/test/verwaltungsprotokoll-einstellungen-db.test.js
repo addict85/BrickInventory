@@ -8,6 +8,9 @@
  *   A  protokolliere() in POST /settings gestrichen → rot: beide Fälle
  *   B  der Vergleich mit dem alten Wert gestrichen (jeder gesendete Schlüssel
  *      zählt) → rot: „unverändert …"
+ *   C  in einstellungenSpeichern() die Schreibvorgänge ohne alsEinheit()
+ *      (direkt nacheinander) → rot: „scheitert ein Kontowert …“ (smtp_host
+ *      und Protokolleintrag blieben stehen)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -61,5 +64,12 @@ test('Servereinstellungen im Verwaltungsprotokoll', { concurrency: 1 }, async (t
     const [status] = await speichere({ smtp_host: 'mail.neu.example', rebrickable_api_key: GEHEIM, registration_enabled: '0' });
     assert.equal(status, 200);
     assert.equal((await eigene()).length, 1);
+  });
+
+  await t.test('scheitert ein Kontowert, bleiben globale Werte und Protokoll wie vorher', async () => {
+    const [status, b] = await speichere({ smtp_host: 'mail.halb.example', currency: 'XYZ' });
+    assert.deepEqual([status, b.code], [400, 'wert_ungueltig']);
+    assert.equal((await db.get(`SELECT value FROM global_settings WHERE key = 'smtp_host'`))?.value, 'mail.neu.example');
+    assert.equal((await eigene()).length, 1, 'kein Eintrag für eine Änderung, die nicht gilt');
   });
 });

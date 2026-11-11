@@ -126,24 +126,27 @@ git tag android-v2026.11.03 origin/main
 git push origin android-v2026.11.03
 ```
 
-Der Lauf zum Etikett baut, signiert (nach Freigabe in der Environment
-`release`), prüft, bescheinigt die Herkunft des APK und ersetzt den Anhang.
+Der Lauf zum Etikett baut und probesigniert; danach startet
+`android-release.yml` **aus `main`**, signiert (nach Freigabe in den Environments
+`release` und `release-beschreibung`), prüft, bescheinigt die Herkunft des APK
+und ersetzt den Anhang. Was dafür in GitHub eingestellt sein muss, steht in
+`docs/ANDROID-RELEASE.md`.
 Prüfen lässt sich die Herkunft mit
 `gh attestation verify BrickInventory.apk --repo addict85/BrickInventory`.
 
-Signiert wird in einem eigenen Job `signieren`, der nur das unsignierte APK aus
-dem Bau-Job bekommt und keinen Projektcode ausführt (kein Checkout, kein
-Gradle; `zipalign`/`apksigner` aus dem SDK des Runners). Für ein Etikett
-`android-v…` prüft er zuerst, dass dessen Commit auf `main` liegt, und läuft in
-der Environment `release`; nur dort gehören die vier Secrets `KEYSTORE_BASE64`,
-`KEYSTORE_PASSWORT`, `KEY_ALIAS` und `KEY_PASSWORT` hin (GitHub → Settings →
-Environments → `release`: nur Etiketten `android-v*`, Pflichtprüfer). Nur der
-Schritt *Release-Schlüssel bereitstellen* nennt sie, und er läuft nur dort;
-gleichnamige Repository-Secrets fände GitHub trotzdem, sie gehören gelöscht.
-Fehlen sie, wird der Lauf rot und nichts veröffentlicht. Danach prüft der
-Job `apk-pruefen` das signierte APK (R8, 16-KB-Ausrichtung), erst dann
-veröffentlicht `release` — ebenfalls in der Environment `release`, also erst
-nach der Freigabe eines Prüfers. Siehe *Release signieren*.
+Signiert wird in `android-signieren.yml` (Job *APK signieren*), der nur das
+unsignierte APK aus dem Baulauf bekommt, geprüft gegen dessen Prüfsummen, und
+keinen Projektcode ausführt (kein Checkout, kein Gradle; `zipalign`/`apksigner`
+aus dem SDK des Runners). Echt signiert nur `android-release.yml`, das immer in
+der Fassung von `main` läuft: Die Environments `release` und
+`release-beschreibung` lassen nur den Zweig `main` zu, ein Etikett mit eigenem
+Workflow bekommt keinen Schlüssel. Vorher prüft `android-release.yml`, dass das
+Etikett auf `main` liegt. Die vier Secrets `KEYSTORE_BASE64`,
+`KEYSTORE_PASSWORT`, `KEY_ALIAS` und `KEY_PASSWORT` liegen in `release`, der
+Beschreibungsschlüssel (verschlüsselt, mit `BESCHREIBUNG_PASS`) in
+`release-beschreibung`. Danach prüft *APK prüfen* das signierte APK (R8,
+16-KB-Ausrichtung), erst dann veröffentlicht `release` — erneut nach Freigabe.
+Siehe *Release signieren* und `docs/ANDROID-RELEASE.md`.
 
 ## Erster Start
 1. In der Webapp unter Einstellungen den QR-Code für die Android App erzeugen
@@ -286,8 +289,12 @@ mehr unter seinem Namen steht.
 **PDFs im isolierten Prozess:** `PdfRenderer` (pdfium) läuft nur in
 `ui/pdf/PdfRenderDienst`, einem Dienst mit `isolatedProcess`: ohne
 Berechtigungen, Dateien, Token und Ablageschlüssel. Er bekommt den Deskriptor
-und gibt Bitmaps zurück. Anleitungen stammen inhaltlich von Dritten; eine
-pdfium-Lücke träfe so nur den leeren Render-Prozess.
+nur lesend (memfd versiegelt, Datei `O_RDONLY`) und schreibt Pixel in einen
+`SharedMemory`, dessen Grösse der Hauptprozess aus eigenen Massen festlegt;
+das Bitmap baut der Hauptprozess selbst. Seitenzahl und Seitenkanten aus dem
+Renderer gelten als fremd und werden begrenzt (`PdfSeite.kt`). Anleitungen
+stammen inhaltlich von Dritten; eine pdfium-Lücke träfe so nur den leeren
+Render-Prozess und reichte nicht über ein Bitmap-Parcel zurück.
 
 **TOTP-Geheimnis an die Authenticator-App:** immer über die Systemauswahl
 (`oeffneMitAuswahl`), nur `otpauth://totp|hotp`. Eine fremde App bekommt das
@@ -332,12 +339,12 @@ des Moduls, wo `ModulgrenzenTest` sie liest. Ein SDK-Sprung ist eine Zeile in
 | `core-netz` | `ch.brickinventoryapp.netz` | Wächter-Interceptor (`ServerWaechter`), Netzrichtlinie, Adress- und Bild-Host-Prüfung, `Protokoll` (Logcat nur im Debug-Build); kennt weder Room noch Hilt |
 | `core-sicherheit` | `ch.brickinventoryapp.sicherheit` | Token-Tresor im Keystore, Ablageschlüssel und verschlüsselte Ablagen, TLS-Vertrauen zum eigenen Server (Pins), geheime Zwischenablage, Passwort- und Passkey-Regeln; kennt weder Room noch Repositories |
 | `core-offline` | `ch.brickinventoryapp.offline` | Room samt Schema (`core-offline/schemas`, SQLCipher), Offlineablage, Ausgang und lokale Anwendung von Bearbeitungen; kennt weder Netz noch Repositories |
-| `core-data` | `ch.brickinventoryapp.data` | Retrofit, OkHttp, Repositories, DataStore, Senden des Ausgangs (Abgleich, Worker), Abmelde-Arbeiter, PDF-Export |
+| `core-data` | `ch.brickinventoryapp.data` | Retrofit, OkHttp, Repositories, DataStore, Senden des Ausgangs (Abgleich, Worker), Abmelde-Arbeiter, Vertrag und Strom des PDF-Auftrags |
 | `core-update` | `ch.brickinventoryapp.update` | Selbstaktualisierung: signierte Beschreibung, Frische, APK-Download, Signaturvergleich, Installation; hängt an `core-data` |
-| `core-dienste` | `ch.brickinventoryapp.dienste` | CSV-Import als Vordergrund-Dienst, stündlicher Preisalarm (WorkManager); hängt an `core-data` |
+| `core-dienste` | `ch.brickinventoryapp.dienste` | CSV-Import und PDF-Export als Vordergrund-Dienste, stündlicher Preisalarm (WorkManager); hängt an `core-data` |
 | `core-ui` | `ch.brickinventoryapp.ui` | Design-System: Theme und Bausteine ohne Fachwissen (Karten, Zeilen, Suchfeld, Dialoge, Kamera-Bausteine); kennt keine Ansichten und keine Servermodelle |
 | `core-ui-bestand` | `ch.brickinventoryapp.gemeinsam` | Fachliche Bausteine mehrerer Bereiche: Filterblatt, Haushalt- und Lagerortwahl, eigene Einträge, Preisdiagramm, Wertkacheln; hängt nur an `core-model`, `core-ressourcen`, `core-ui` (Paketstamm aus der Zeit als `feature-gemeinsam`) |
-| `core-zustand` | `ch.brickinventoryapp.zustand` | Sitzung, Blickfeld, Bestandssignal, Texte, Basis der Bereichs-ViewModels, AppViewModel; ohne `core-ui` |
+| `core-zustand` | `ch.brickinventoryapp.zustand` | Sitzung, Kontowerte, Blickfeld, Texte, Basis der Bereichs-ViewModels, AppViewModel; ohne `core-ui` |
 | `core-testing` | `ch.brickinventoryapp.testing` | Testhilfen (Testserver, Testdienste, `Quellen`), nur als `testImplementation` |
 | `feature-anmeldung` | `ch.brickinventoryapp.anmeldung` | Anmelden, Server einrichten, QR |
 | `feature-katalog` | `ch.brickinventoryapp.katalog` | Katalog und Katalog-Detail |
@@ -346,7 +353,7 @@ des Moduls, wo `ModulgrenzenTest` sie liest. Ein SDK-Sprung ist eine Zeile in
 | `feature-finanzen` | `ch.brickinventoryapp.finanzen` | Finanzen, Gutscheine, PDF-Betrachter |
 | `feature-konto` | `ch.brickinventoryapp.konto` | Einstellungen |
 | `feature-verwaltung` | `ch.brickinventoryapp.verwaltung` | Monitoring für Verwalter |
-| `app` | `ch.brickinventoryapp.app` | Navigation, Hilt-Einstieg, Activity, Widget |
+| `app` | `ch.brickinventoryapp.app` | Setzt die Navigation zusammen (jeder Bereich hält seine Routen, fremde Ziele öffnet er über Rückrufe, die nur `ZielUmgebung` erfüllt), Hilt-Einstieg, Activity, CSV-Import-Balken, Widget |
 
 Jedes Modul hat seinen eigenen Paketstamm: Paket = Stamm + bisheriger
 Unterpfad (`ui.screens` in `feature-sammlung` heisst
@@ -570,14 +577,12 @@ werden:
 [Convert]::ToBase64String([IO.File]::ReadAllBytes("brick.jks")) | Set-Clipboard
 ```
 
-Unter **Settings → Environments → New environment** die Environment `release`
-anlegen: *Deployment branches and tags* auf *Selected branches and tags* mit
-der **Etikett-Regel** `android-v*` (keine Zweig-Regel, auch nicht `main`) und
-*Required reviewers* setzen, *Prevent self-review* an. Die Jobs `signieren` und
-`release` warten dann je auf ein Ja. Dort unter *Environment secrets* die
-Secrets der Tabelle unten anlegen. Der Job `signieren` liest diese Regeln über die API und
-signiert nicht, wenn kein Pflichtprüfer eingetragen ist oder die Environment
-mehr als das Etikett `android-v*` zulässt.
+Die Environments `release` und `release-beschreibung` lassen **nur den Zweig
+`main`** zu (keine Etikett-Regel), mit Pflichtprüfern; Schritt für Schritt in
+`docs/ANDROID-RELEASE.md`. Signiert wird aus `android-release.yml` in der
+Fassung von `main`; die Jobs *APK signieren*, *Beschreibung signieren* und
+`release` warten je auf ein Ja. Die Signierjobs lesen die Regeln über die API
+und signieren nicht, wenn ein Pflichtprüfer fehlt oder mehr als `main` zugelassen ist.
 
 Unter **Settings → General → Releases** *Immutable releases* einschalten: Der
 Anhang `BrickInventory-<versionCode>.apk` im Release jedes Etiketts ist das,
@@ -607,11 +612,14 @@ lesen, auch ohne Freigabe.
 
 ### Was ein Etikett vor dem Signieren erfüllen muss (sec17)
 
-Der Job `signieren` bricht ab, statt zu signieren, wenn eine dieser Bedingungen fehlt;
+`android-release.yml` bricht ab, statt zu signieren, wenn eine dieser Bedingungen fehlt;
 die Meldung nennt jeweils die Einstellung:
 
-- **Environment `release`:** mindestens ein Pflichtprüfer, nur das Etikett `android-v*`
-  und *Allow administrators to bypass* **aus** (`can_admins_bypass: false`).
+- **Etikett:** Es gibt `refs/tags/android-v…`, es zeigt auf den gebauten Commit, und
+  dieser liegt auf `main`; die Prüfsummen bezeugt der Job *Übergabe an das Signieren*
+  des Baulaufs (ohne Projektcode).
+- **Environments `release` und `release-beschreibung`:** mindestens ein Pflichtprüfer,
+  nur der Zweig `main` und *Allow administrators to bypass* **aus** (`can_admins_bypass: false`).
   *Prevent self-review* ergibt nur eine Warnung, solange nur eine Person prüft.
 - **`main` geschützt per Ruleset** (Settings → Rules → Rulesets → New branch ruleset,
   Ziel `main`): *Require a pull request before merging*, *Require status checks to
@@ -620,7 +628,7 @@ die Meldung nennt jeweils die Einstellung:
   dort nicht.
 - **Sicherheitslauf grün:** Der Job `Trivy (Android-Abhängigkeiten)` in `sicherheit.yml`
   muss für genau den Commit des Etiketts grün sein (läuft bei jedem Push auf `main`).
-  Ist er noch nicht fertig, den Android-Lauf danach neu starten. Ausnahmen nur mit
+  Ist er noch nicht fertig, `Android-Release` danach von Hand mit dem Etikett starten. Ausnahmen nur mit
   Grund und Frist in `.github/trivy-android.ignore`.
 - **Werkzeuge:** `zipalign` und `apksigner.jar` aus `build-tools/37.0.0` des Images
   `ubuntu-24.04`, gegen feste Prüfsummen. Verschwindet die Fassung aus dem Image,
@@ -632,7 +640,7 @@ Gradle-Benutzerverzeichnis; den Cache schreibt sonst nur der Baujob. Ausserhalb 
 Etiketten liegt das probe-signierte APK als `BrickInventory.apk.probe-nicht-installieren`
 im Artefakt. Die Herkunft bescheinigt `.github/workflows/android-bescheinigung.yml`
 (APK, Beschreibung, Bundle); `release` veröffentlicht nur Dateien mit den Prüfsummen,
-die `signieren` ausgab.
+die der Signierweg ausgab.
 
 ### Release-Zertifikat und Fassung
 
@@ -667,7 +675,7 @@ Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
 
 ### Signierte Beschreibung, Prüfsumme des Baus
 
-- **`version-signiert.json`** (im Release `apk-neuste`): Der Job `signieren`
+- **`version-signiert.json`** (im Release `apk-neuste`): Der Job *APK signieren*
   schreibt versionCode, versionName, Commit, die Adresse des
   Fassungsanhangs, Grösse und SHA-256 des APK und signiert das zweimal
   (`openssl dgst -sha256`): mit dem eigenen **Beschreibungsschlüssel**
@@ -692,7 +700,7 @@ Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
   ab dann die signierte.
 - **Prüfsumme des Baus:** Der Baujob misst das unsignierte APK und Bundle gleich
   nach `assembleRelease`, bevor Lint und weitere Gradle-Läufe Projektcode
-  ausführen; `signieren` signiert nur genau diese Bytes.
+  ausführen; signiert werden nur genau diese Bytes (bezeugt vom Job *Übergabe an das Signieren*).
 - **Schlüsselrotation:** Mit Beschreibungsschlüssel hängt das Finden von Updates
   nicht mehr am APK-Schlüssel; eine v3-Rotation betrifft nur noch Fassungen ohne
   ihn. Für die muss eine Fassung lang auch die Beschreibung mit dem alten
@@ -707,17 +715,20 @@ nimmt sie nur noch dessen Signatur an; solange die Datei leer ist, gilt der
 Übergangsweg über die Signierer der App.
 
 **Stand:** Eingerichtet (10.11.2026): ein Schlüssel in
-`beschreibungs_schluessel.pem`, das Secret `BESCHREIBUNG_SCHLUESSEL` in der
-Environment `release`. Ab dieser Fassung gilt für die App nur noch die
-Beschreibungssignatur; ein Etikett ohne das Secret bricht in `apk-pruefen` ab.
+`beschreibungs_schluessel.pem`. Das Secret `BESCHREIBUNG_SCHLUESSEL` gehört
+verschlüsselt, mit eigener Passphrase `BESCHREIBUNG_PASS`, in die Environment
+`release-beschreibung` (Umzug: `docs/ANDROID-RELEASE.md`). Ein Release ohne die
+Secrets bricht in *APK prüfen* ab.
 
 Einrichten (einmalig, in dieser Reihenfolge):
 
 1. Schlüssel erzeugen, ausserhalb des Repositorys:
    `openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out beschreibung.pem`
-2. Den Inhalt von `beschreibung.pem` als Secret `BESCHREIBUNG_SCHLUESSEL` in die
-   Environment `release` legen. Ab dem nächsten Etikett trägt die Beschreibung
-   beide Signaturen.
+2. Den Schlüssel mit eigener Passphrase verschlüsseln
+   (`openssl pkey -in beschreibung.pem -aes256 -out beschreibung-verschluesselt.pem`)
+   und als `BESCHREIBUNG_SCHLUESSEL`, die Passphrase als `BESCHREIBUNG_PASS` in die
+   Environment `release-beschreibung` legen. Ab dem nächsten Etikett trägt die
+   Beschreibung beide Signaturen.
 3. Den öffentlichen Teil (`openssl pkey -in beschreibung.pem -pubout`) an
    `beschreibungs_schluessel.pem` anhängen und veröffentlichen. Ab dieser
    Fassung gilt für die App nur noch die Beschreibungssignatur. Fehlt das Secret
@@ -729,7 +740,7 @@ erst danach das Secret tauschen, den alten Eintrag später entfernen. Die App
 nimmt jeden Schlüssel der Datei an.
 
 Die Signatur mit dem APK-Schlüssel (`signatur`) bleibt, bis keine Fassung ohne
-Beschreibungsschlüssel mehr verbreitet ist; danach im Job `signieren` diese
+Beschreibungsschlüssel mehr verbreitet ist; danach in `android-signieren.yml` diese
 Signatur und in `apk-pruefen` ihre Prüfung entfernen.
 
 Dazu gehört eine Branch-Protection (oder ein Ruleset) auf `main`: Merge nur
@@ -742,9 +753,10 @@ Push, um Code bis vor die Freigabe zu bringen.
 | `KEYSTORE_PASSWORT` | Passwort des Schlüsselspeichers |
 | `KEY_ALIAS`         | `brickinventory`              |
 | `KEY_PASSWORT`      | Passwort des Schlüssels       |
-| `BESCHREIBUNG_SCHLUESSEL` | privater Beschreibungsschlüssel (PEM, oben) |
+| `BESCHREIBUNG_SCHLUESSEL` | Beschreibungsschlüssel, verschlüsselt (PEM, oben; Environment `release-beschreibung`) |
+| `BESCHREIBUNG_PASS` | dessen Passphrase (Environment `release-beschreibung`) |
 
-Der Job `signieren` schreibt den Schlüsselspeicher nach `$RUNNER_TEMP`, signiert
+Der Job *APK signieren* schreibt den Schlüsselspeicher nach `$RUNNER_TEMP`, signiert
 das unsignierte APK aus dem Bau-Job mit `apksigner` aus dem SDK des Runners und
 gibt nur das Ergebnis weiter; Gradle und Werkzeuge aus dem Repository sieht der
 Schlüssel nie. Fehlt für ein Etikett eines der Secrets, wird der Lauf rot, statt

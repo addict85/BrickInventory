@@ -1,0 +1,14 @@
+Gegenprobe: Einträge älterer Fassungen unter dem MD5 der Adresse bleiben liegen
+Modul: core-data
+Test: ch.brickinventoryapp.data.BildZwischenspeicherTest
+Rot: ein Klartext-Zwischenspeicher aelterer Fassungen verschwindet, der verschluesselte bleibt
+
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt
+@@ -180,5 +180,4 @@
+     }
+     if (klartext) http.deleteRecursively()
+     // Einträge unter lesbaren Namen (MD5 der Adresse) älterer Fassungen: Der Cache darf sie verlieren.
+-    http.listFiles()?.filter { !it.name.startsWith(VerschluesseltesDateisystem.GESTREUT) }?.forEach { it.deleteRecursively() }
+ }

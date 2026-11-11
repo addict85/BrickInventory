@@ -146,11 +146,24 @@ test('keine Zyklen über echte import-Anweisungen', () => {
     [...new Set(gefunden)].join('\n  '));
 });
 
+// Gegenproben (11.11.2026 gemessen, je einzeln): im Dockerfile `COPY . .` durch
+// die frühere Liste ohne startup/ ersetzt → rot „Das Bau-Stage kopiert den
+// Kontext nicht ganz …“; `startup` in .dockerignore ergänzt → rot „startup wird
+// von .dockerignore ausgeschlossen“; `*.ts` dort → rot „server.ts wird …“.
 test('jeder Quellordner kommt auch im Container an', () => {
-  // Zwei Beinahe-Ausfälle in Folge
-  const build = fs.readFileSync(path.join(ROOT, 'scripts', 'build-ts.js'), 'utf8');
-  const dockerfile = fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8');
-  const srcDirs = [...build.match(/const SRC_DIRS = \[([^\]]*)\]/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
+  // Eine Liste: SRC_DIRS. Das Dockerfile kopiert den ganzen Kontext, .dockerignore darf keinen Quellordner treffen.
+  const dockerfile = fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8').split('\n').filter(z => !/^\s*#/.test(z)).join('\n');
+  const dirs = srcDirs();
+  const bau = dockerfile.slice(0, dockerfile.lastIndexOf('\nFROM '));
+  const kopie = bau.search(/^COPY \. \.\s*$/m), uebersetzen = bau.indexOf('scripts/build-ts.js');
+  assert.ok(kopie > 0 && kopie < uebersetzen, 'Das Bau-Stage kopiert den Kontext nicht ganz vor dem Übersetzen');
+  const ausgeschlossen = fs.readFileSync(path.join(ROOT, '.dockerignore'), 'utf8')
+    .split('\n').map(z => z.trim()).filter(z => z && !z.startsWith('#')).map(z => z.replace(/^\/|\/$/g, ''));
+  assert.ok(ausgeschlossen.includes('node_modules') && ausgeschlossen.length >= 5, '.dockerignore nicht gelesen');
+  for (const ziel of [...dirs, 'server.ts', 'package.json', 'scripts', 'public']) {
+    const treffer = ausgeschlossen.filter(m => !m.startsWith('!') && (path.matchesGlob(ziel, m) || path.matchesGlob(`${ziel}/x.ts`, m)));
+    assert.deepEqual(treffer, [], `${ziel} wird von .dockerignore ausgeschlossen — im Container fehlt es`);
+  }
 
   // Alle Ordner mit .ts-Dateien auf oberster Ebene müssen in SRC_DIRS stehen.
   for (const e of fs.readdirSync(ROOT, { withFileTypes: true })) {
@@ -158,15 +171,13 @@ test('jeder Quellordner kommt auch im Container an', () => {
     if (['node_modules', 'dist', 'data', 'test', 'public', 'scripts', '.git', 'pgdata'].includes(e.name)) continue;
     // Nur Dateien, aus denen ein Laufzeitmodul entsteht. Reine
     // Typdeklarationen (.d.ts, z.B. types/augmentations.d.ts) erzeugen kein
-    // .js und brauchen deshalb weder SRC_DIRS noch ein COPY.
+    // .js und brauchen deshalb kein SRC_DIRS.
     const hatTs = fs.readdirSync(path.join(ROOT, e.name))
       .some(f => f.endsWith('.ts') && !f.endsWith('.d.ts'));
     if (!hatTs) continue;
-    assert.ok(srcDirs.includes(e.name),
+    assert.ok(dirs.includes(e.name),
       `${e.name}/ enthält TypeScript, steht aber nicht in SRC_DIRS — es entsteht ` +
       `kein dist/${e.name}/ und jeder Import darauf läuft beim Start ins Leere`);
-    assert.match(dockerfile, new RegExp(`^COPY ${e.name}/`, 'm'),
-      `${e.name}/ wird im Dockerfile nicht kopiert — im Container fehlt der Ordner`);
   }
 });
 

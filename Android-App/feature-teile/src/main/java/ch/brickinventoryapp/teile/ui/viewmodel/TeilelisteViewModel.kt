@@ -4,6 +4,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.service.ExportErgebnis
+import ch.brickinventoryapp.data.service.PdfFehlschlag
+import ch.brickinventoryapp.model.fach.PdfFortschritt
+import ch.brickinventoryapp.model.fach.PdfSchritt
 import ch.brickinventoryapp.data.service.TeilelistenExport
 import ch.brickinventoryapp.teile.ui.TeilelisteUiState
 import ch.brickinventoryapp.teile.ui.TeilelistenQuelle
@@ -16,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -56,7 +60,8 @@ class TeilelisteViewModel @Inject constructor(
     val zustand: StateFlow<TeilelisteUiState> = _zustand.asStateFlow()
 
     val pdfExportStatus: StateFlow<String?> =
-        export.status.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+        export.fortschritt.map { it?.let(::fortschrittText) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     private fun setzeListe(neu: (TeilelisteUiState) -> TeilelisteUiState) {
         _zustand.update(neu)
@@ -158,11 +163,25 @@ class TeilelisteViewModel @Inject constructor(
             _zustand.update {
                 when (ergebnis) {
                     is ExportErgebnis.Datei -> it.copy(isExporting = false, pdfDatei = ergebnis.datei)
-                    is ExportErgebnis.Fehler -> it.copy(isExporting = false,
-                        pdfError = ergebnis.meldung ?: meldungen.text(R.string.pdfexp_unknown_error))
+                    is ExportErgebnis.Fehler -> it.copy(isExporting = false, pdfError = fehlerText(ergebnis.grund))
                 }
             }
         }
+    }
+
+    private fun fortschrittText(f: PdfFortschritt): String = when (f.schritt) {
+        PdfSchritt.STARTET -> meldungen.text(R.string.pdfexp_starting)
+        PdfSchritt.BILDER_LADEN -> meldungen.text(R.string.pdfexp_loading_images)
+        PdfSchritt.ERSTELLT -> f.restSekunden?.takeIf { it > 0 }?.let { meldungen.text(R.string.pdfexp_creating_eta, it) }
+            ?: meldungen.text(R.string.pdfexp_almost_done)
+        PdfSchritt.ABSCHLUSS -> meldungen.text(R.string.pdfexp_finalizing)
+        PdfSchritt.HERUNTERLADEN -> meldungen.text(R.string.pdfexp_downloading)
+    }
+
+    /** Nie leer: Ein Abruf spricht wie jeder Abruf, ein gescheiterter Auftrag mit dem Satz des Servers. */
+    private fun fehlerText(grund: PdfFehlschlag): String = when (grund) {
+        is PdfFehlschlag.Abruf -> meldungen.meldung(grund.fehler)
+        is PdfFehlschlag.Auftrag -> grund.satz?.takeIf { it.isNotBlank() } ?: meldungen.text(R.string.pdfexp_server_error)
     }
 
     fun pdfGeoeffnet() = _zustand.update { it.copy(pdfDatei = null) }

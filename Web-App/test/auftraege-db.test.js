@@ -46,7 +46,7 @@ test('Auftragstabelle', { concurrency: 1 }, async (t) => {
   const ART = `test-${process.pid}`;
   const MARKE = `test-${process.pid}`;
   // Eine Testart braucht wie jede andere ein Schema für ihre Nutzlast.
-  // … und eine Zeile in auftrags_arten (0107).
+  // … und eine Zeile in auftrags_arten (0109).
   for (const art of [ART, `${ART}-ex`]) {
     _req('src/auftraege/nutzlasten.js').NUTZLASTEN[art] = require('zod').looseObject({});
     await db.run('INSERT INTO auftrags_arten (art) VALUES ($1) ON CONFLICT DO NOTHING', [art]);

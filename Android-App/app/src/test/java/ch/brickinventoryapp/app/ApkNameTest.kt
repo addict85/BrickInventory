@@ -59,9 +59,11 @@ class ApkNameTest {
      * Dateilauf, der nichts findet.
      *
      * Er steht in Quellen.workflow() statt hier: Eine Pfadangabe in zwei
-     * Schreibweisen ist dieselbe Fehlerart wie eine Regel in zwei Kopien.
+     * Schreibweisen ist dieselbe Fehlerart wie eine Regel in zwei Kopien. Gelesen werden
+     * Baulauf, Signierweg und Release zusammen: Der Name muss in allen derselbe sein.
      */
-    private fun workflow(): String = Quellen.workflow()
+    private fun workflow(): String =
+        listOf("android.yml", "android-signieren.yml", "android-release.yml").joinToString("\n") { Quellen.workflow(it) }
 
     /**
      * Der Zielname, den `build.gradle.kts` vergibt.
@@ -173,12 +175,13 @@ class ApkNameTest {
                 "${roh.size}-mal im Workflow. Ohne ihn gibt es keinen direkten " +
                 "Download; zweimal waere dieselbe Regel an zwei Stellen."
         }
-        // Ein Pull-Request darf die Datei hinter dem stabilen Link NICHT
-        // ersetzen — sonst zeigt er auf einen ungeprueften Zweig.
-        // Seit der Tag-Bindung genügt auch: nur bei einem gepushten android-v*-Tag.
-        assert(roh[0].contains("github.event_name != 'pull_request'") ||
-            (roh[0].contains("github.event_name == 'push'") && roh[0].contains("refs/tags/android-v"))) {
-            "Der Release-Schritt laeuft auch bei Pull-Requests und ueberschreibt " +
+        // Ein Pull-Request darf die Datei hinter dem stabilen Link NICHT ersetzen —
+        // sonst zeigt er auf einen ungeprueften Zweig. Hochgeladen wird nur aus
+        // android-release.yml, und das startet nie aus einem Pull-Request.
+        val release = Quellen.workflow("android-release.yml")
+        val ausloeser = release.substringAfter("\non:\n").substringBefore("\npermissions:")
+        assert(roh[0] in release && !Regex("""\n  (pull_request|pull_request_target|push):""").containsMatchIn("\n" + ausloeser)) {
+            "Der Release-Schritt laeuft auch bei Pull-Requests oder Pushes und ueberschreibt " +
                 "damit das APK hinter dem stabilen Link."
         }
     }

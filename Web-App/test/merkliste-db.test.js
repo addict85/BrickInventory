@@ -28,7 +28,7 @@ async function seed() {
   await db.run(
     `INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, set_img_url)
      VALUES ('75192-1', 'Millennium Falcon', 2017, 158, 7541, 'http://x/75192.jpg')`);
-  // Das Bild liest die Merkliste nur aus set_catalog (0106).
+  // Das Bild liest die Merkliste nur aus set_catalog (0108).
   await db.run(`INSERT INTO set_catalog (set_number, image_url) VALUES ('75192-1', 'http://x/75192.jpg')`);
 }
 

@@ -1,0 +1,19 @@
+Gegenprobe: Der Lagerort eines Sets geht nur an den Server, die Ablage bleibt alt
+Modul: core-data
+Test: ch.brickinventoryapp.data.NachzugTest
+Rot: Menge, Lagerort und Besitzer eines Sets
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
+@@ -176,9 +176,7 @@
+ 
+     /** Lagerort eines Sets setzen. Leerer Text loescht ihn. */
+     override suspend fun setSetStorage(setNumber: String, ort: String): Ergebnis<LagerortResponse> =
+-        ablage.nachgezogen({ r -> Nachzug.SetLagerort(setNumber, r.storage).takeIf { r.success } }) {
+-            sicherAufrufen { api.setSetStorage(setNumber, LagerortRequest(ort)) }
+-        }
++        sicherAufrufen { api.setSetStorage(setNumber, LagerortRequest(ort)) }
+ 
+     override suspend fun getSetPartsList(setNumber: String): Ergebnis<PartsResponse> =
+         sicherAufrufen { api.getSetPartsList(setNumber) }

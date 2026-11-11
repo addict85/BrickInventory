@@ -1,10 +1,12 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.ui.Meldung
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
+import ch.brickinventoryapp.testing.text
 
 /**
  * Zwei Meldungen kurz nacheinander: Die zweite wartet, bis die erste quittiert
@@ -12,7 +14,9 @@ import java.util.concurrent.Executors
  *
  * Gegenproben:
  *   meldung-ueberschreibt   zeige() setzt den Wert direkt → rot „die zweite …“
- *   meldung-doppelt         ohne Vergleich mit der letzten → rot „dieselbe …“
+ *   meldung-doppelt         ohne Vergleich mit der letzten → rot „dieselbe …“ und
+ *                           „eine Ressource bleibt …“ (mit kotlinc gemessen: dieselbe
+ *                           Ressource kommt zweimal)
  */
 class MeldungsWarteschlangeTest {
 
@@ -21,9 +25,22 @@ class MeldungsWarteschlangeTest {
         val kanal = MeldungsKanal()
         kanal.zeige("gespeichert")
         kanal.zeige("offline gemerkt")
-        assertEquals("gespeichert", kanal.meldung.value)
+        assertEquals("gespeichert", kanal.text)
         kanal.quittiere()
-        assertEquals("offline gemerkt", kanal.meldung.value)
+        assertEquals("offline gemerkt", kanal.text)
+        kanal.quittiere()
+        assertNull(kanal.text)
+    }
+
+    @Test
+    fun `eine Ressource bleibt ein Fachwert, bis die Oberfläche sie zeigt`() {
+        val kanal = MeldungsKanal()
+        kanal.zeige(Meldung.Ressource(7, listOf(3)))
+        kanal.zeige(Meldung.Ressource(7, listOf(3)))
+        kanal.zeige(Meldung.Ressource(7, listOf(4)))
+        assertEquals(Meldung.Ressource(7, listOf(3)), kanal.meldung.value)
+        kanal.quittiere()
+        assertEquals("andere Werte sind eine andere Meldung", Meldung.Ressource(7, listOf(4)), kanal.meldung.value)
         kanal.quittiere()
         assertNull(kanal.meldung.value)
     }
@@ -31,16 +48,16 @@ class MeldungsWarteschlangeTest {
     @Test
     fun `dieselbe Meldung hintereinander kommt einmal, null zeigt nichts`() {
         val kanal = MeldungsKanal()
-        kanal.zeige(null)
-        assertNull(kanal.meldung.value)
+        kanal.zeige(null as String?)
+        assertNull(kanal.text)
         repeat(3) { kanal.zeige("Netzfehler") }
         kanal.zeige("gespeichert")
         kanal.zeige("gespeichert")
-        assertEquals("Netzfehler", kanal.meldung.value)
+        assertEquals("Netzfehler", kanal.text)
         kanal.quittiere()
-        assertEquals("gespeichert", kanal.meldung.value)
+        assertEquals("gespeichert", kanal.text)
         kanal.quittiere()
-        assertNull(kanal.meldung.value)
+        assertNull(kanal.text)
     }
 
     @Test
@@ -49,7 +66,7 @@ class MeldungsWarteschlangeTest {
         (1..10).forEach { kanal.zeige("m$it") }
         val gesehen = mutableListOf<String>()
         while (true) {
-            gesehen += kanal.meldung.value ?: break
+            gesehen += kanal.text ?: break
             kanal.quittiere()
         }
         assertEquals((1..6).map { "m$it" }, gesehen)
@@ -67,7 +84,7 @@ class MeldungsWarteschlangeTest {
         pool.shutdown()
         val gesehen = mutableSetOf<String>()
         while (true) {
-            gesehen += kanal.meldung.value ?: break
+            gesehen += kanal.text ?: break
             kanal.quittiere()
         }
         assertEquals(setOf("t0", "t1", "t2", "t3"), gesehen)

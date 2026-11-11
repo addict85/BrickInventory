@@ -4,7 +4,7 @@ import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import type { KatalogTeil, ListenTeil, SetStamm } from '../zeilen';
 import { setStammJoin, SET } from '../../../db/katalogSicht';
 
-/** Angaben aus rb_sets, Bild und Figuren aus set_catalog (0106). Ein Platzhalter
+/** Angaben aus rb_sets, Bild und Figuren aus set_catalog (0108). Ein Platzhalter
  * „Set …“ sagt nur, dass irgendein Konto die Nummer erfasst hat. */
 export function setStamm(db: DbSchnittstelle, setNumber: string) {
   return db.get<SetStamm>(`SELECT ${SET.name} AS name, ${SET.jahr} AS year, ${SET.thema} AS theme,

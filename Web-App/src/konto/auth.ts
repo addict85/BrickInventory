@@ -517,10 +517,11 @@ export async function revokeAllSessions(userId: number): Promise<void> {
  * neue Passwort, während die alten Zugänge weiterleben. Die Zwischenspeicher
  * leeren sich nach dem COMMIT noch einmal, weil eine Anfrage dazwischen den
  * alten Stand wieder aufgenommen haben kann. */
-export async function mitZugangsende<T>(uid: number, fn: () => Promise<T>): Promise<T> {
+export async function mitZugangsende<T>(konto: number | ((r: T) => number | null), fn: () => Promise<T>): Promise<T> {
   const r = await db.transaction(fn, { wiederholeBeiKonflikt: true });
   leereTokenCache();
-  vergissSitzungsVersion(uid);
+  const uid = typeof konto === 'function' ? konto(r) : konto;
+  if (uid) vergissSitzungsVersion(uid);
   return r;
 }
 

@@ -7,12 +7,12 @@ diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold
 index b274d3e..206c007 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
-@@ -130,11 +130,11 @@ fun MainScaffold(
+@@ -132,11 +132,11 @@ fun MainScaffold(
      // Leiste unten und Seitenleiste teilen sich diesen Weg, damit beide die
      // Rollposition gleich behandeln.
-     fun reiterWaehlen(screen: Screen) {
+     fun reiterWaehlen(screen: Any) {
 -        onTabAngetippt(screen)
-         if (navController.currentBackStackEntry?.destination?.hasRoute<Screen.Monitoring>() == true) {
+         if (navController.currentBackStackEntry?.destination?.hasRoute<VerwaltungZiel.Monitoring>() == true) {
              navController.popBackStack()
          }
          navController.zuReiter(screen)

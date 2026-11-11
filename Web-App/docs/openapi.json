@@ -2812,6 +2812,55 @@
                   "abholung": {
                     "type": "string",
                     "maxLength": 100
+                  },
+                  "vorschau": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "x-geheim": true
+      }
+    },
+    "/api/v1/auth/qr-login/verwerfen": {
+      "post": {
+        "tags": [
+          "konto"
+        ],
+        "responses": {
+          "200": {
+            "description": "Erfolg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DELETE_api_v1_papierkorb_id"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Fehler",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "abholung": {
+                    "type": "string",
+                    "maxLength": 100
                   }
                 },
                 "additionalProperties": false
@@ -5133,16 +5182,64 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 512
+                  },
+                  "kette": {
+                    "minItems": 1,
+                    "maxItems": 8,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 8192
+                    }
                   }
                 },
-                "required": [
-                  "oeffentlich"
-                ],
                 "additionalProperties": false
               }
             }
           }
         }
+      }
+    },
+    "/api/v1/geraet/schluessel/nonce": {
+      "post": {
+        "tags": [
+          "geraet"
+        ],
+        "responses": {
+          "200": {
+            "description": "Erfolg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchluesselNonce"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Fehler",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/geraet/schritt/challenge": {
@@ -17446,6 +17543,7 @@
           "geraeteschluessel_ungueltig",
           "geraeteschluessel_vorhanden",
           "geraeteschluessel_frist",
+          "geraeteschluessel_attestation",
           "schritt_freigabe_noetig",
           "schritt_signatur_ungueltig",
           "import_unterbrochen",
@@ -24252,6 +24350,13 @@
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
+          },
+          "vorschau": {
+            "type": "boolean",
+            "const": true
+          },
+          "schluessel_nonce": {
+            "type": "string"
           }
         },
         "required": [
@@ -24505,6 +24610,23 @@
         "required": [
           "success",
           "settings"
+        ],
+        "additionalProperties": {}
+      },
+      "SchluesselNonce": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "nonce": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "nonce"
         ],
         "additionalProperties": {}
       },

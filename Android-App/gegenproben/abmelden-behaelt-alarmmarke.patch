@@ -6,8 +6,8 @@ Rot: nach dem Abmelden ist jede Ablage leer
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
-@@ -349,7 +349,6 @@ class TokenAblage @Inject constructor(
-             it.remove(USERNAME)
+@@ -380,7 +380,6 @@
+             it.remove(USERNAME_ENC)
              it.remove(ANGEMELDET_AM)
              // Die Marke des Preisalarms gehört dem Konto; das nächste bekäme sonst dessen Stand.
 -            it.remove(GeraeteAblage.ALARM_MARKE)

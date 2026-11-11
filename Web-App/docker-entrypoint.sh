@@ -1,79 +1,22 @@
 #!/bin/sh
 set -e
 
-# Jeder Schritt sagt, was er tut: Minuten ohne Ausgabe vor dem Server liessen
-# sich sonst nicht von einem hängenden Start unterscheiden.
-echo "[entrypoint] Datenverzeichnisse werden vorbereitet …"
+# compose.yaml startet app und jobs als brickinv; ./data hat der Dienst
+# daten-rechte vorher eingerichtet, ohne dass dieser Container je root war.
+# Als root (ein einzelnes `docker run` ohne compose) richtet der Start es
+# selbst ein und gibt die Rechte danach ab.
+if [ "$(id -u)" = 0 ]; then
+  echo "[entrypoint] Als root gestartet: Datenverzeichnisse werden vorbereitet …"
+  # Der Datenschlüssel liegt ausserhalb von /app/data; Docker legt den Ordner
+  # root gehörend an, der Server muss die Datei anlegen und lesen.
+  for f in /app/schluessel /app/schluessel/datenschluessel; do
+    [ -e "$f" ] && chown -h brickinv:brickinv "$f" 2>/dev/null || true
+  done
+  sh /app/daten-rechte.sh
+  exec su-exec brickinv "$0" "$@"
+fi
 
-ZIEL_UID=$(id -u brickinv)
-
-# Als root nur die Einhängepunkte selbst, mit -h (ein Symlink an ihrer Stelle
-# wird nicht verfolgt). Alles darunter gehört dem Dienst, und der kann dort
-# Symlinks ablegen.
-chown -h brickinv:brickinv /app/data 2>/dev/null || true
-# Der Datenschlüssel liegt ausserhalb von /app/data (compose.yaml); Docker legt
-# den Ordner root gehörend an, der Server muss die Datei anlegen und lesen.
-for f in /app/schluessel /app/schluessel/datenschluessel; do
-  [ -e "$f" ] && chown -h brickinv:brickinv "$f" 2>/dev/null || true
-done
-
-# Der Eigentümerwechsel unter /app/data ist ein Reparaturschritt (neuer
-# Datenträger, andere UID), kein Startschritt: Bei zehntausenden Bildern kostet
-# er Minuten. BRICKINV_CHOWN=auto sucht erst (bis zum ersten Treffer), always
-# erzwingt ihn, never lässt ihn weg (SMB/CIFS mit festem uid). Die Marke spart
-# danach auch die Suche.
-MARKE=/app/data/.eigentuemer
-
-# Root folgt dabei keinem Symlink des Dienstes: find ohne -L verfolgt keine,
-# -xdev bleibt im Datenträger, chown -h ändert nur den Eintrag selbst.
-berichtige() {
-  echo "[entrypoint] Eigentuemer wird gesetzt — das kann bei vielen Bildern einige Minuten dauern."
-  find /app/data -xdev ! -uid "$ZIEL_UID" -exec chown -h brickinv:brickinv {} +
-  echo "[entrypoint] Eigentuemer berichtigt."
-}
-
-# Nicht als root: rm entfernt einen Symlink selbst, und geschrieben wird als
-# brickinv. `|| true`: Auf einem nur lesbaren Datenträger ist die Marke kein Muss.
-setzeMarke() {
-  { rm -f "$MARKE" && su-exec brickinv sh -c 'printf "%s" "$1" > "$2"' marke "$ZIEL_UID" "$MARKE"; } 2>/dev/null || true
-}
-
-case "${BRICKINV_CHOWN:-auto}" in
-  never)
-    echo "[entrypoint] Eigentuemerpruefung uebersprungen (BRICKINV_CHOWN=never)"
-    ;;
-  always)
-    echo "[entrypoint] Vollstaendiger Lauf erzwungen (BRICKINV_CHOWN=always)."
-    berichtige
-    setzeMarke
-    ;;
-  *)
-    if [ "$(cat "$MARKE" 2>/dev/null)" = "$ZIEL_UID" ]; then
-      :
-    elif [ -n "$(find /app/data -xdev ! -uid "$ZIEL_UID" -print -quit 2>/dev/null)" ]; then
-      echo "[entrypoint] Fremde Eigentuemer gefunden."
-      berichtige
-      setzeMarke
-    else
-      setzeMarke
-    fi
-    ;;
-esac
-
-# Was der Dienst anlegt, liest auf dem Host nur sein Konto (Uploads können
-# Rechnungen sein). Ältere Uploads zieht jeder Start nach, als brickinv.
+# Was der Server anlegt (Uploads können Rechnungen sein), liest auf dem Host nur sein Konto.
 umask 077
-su-exec brickinv chmod -R go-rwx /app/data/uploads 2>/dev/null || true
-
-# Als brickinv, nicht als root: Ein Symlink des Dienstes (etwa images → /etc)
-# führte ein mkdir von root ausserhalb des Datenordners.
-su-exec brickinv mkdir -p \
-  /app/data/instructions \
-  /app/data/uploads \
-  /app/data/images/sets \
-  /app/data/images/parts \
-  /app/data/images/minifigs \
-  || echo "[entrypoint] WARNUNG: Datenverzeichnisse liessen sich als brickinv nicht anlegen (Eigentuemer des Datenordners?)." >&2
-
 echo "[entrypoint] Server wird gestartet (Rolle ${ROLLE:-beides})."
-exec su-exec brickinv node dist/server.js
+exec node dist/server.js

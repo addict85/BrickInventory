@@ -6,9 +6,8 @@ Rot: Schichtung der Kernmodule
 diff --git a/Android-App/core-netz/build.gradle.kts b/Android-App/core-netz/build.gradle.kts
 --- a/Android-App/core-netz/build.gradle.kts
 +++ b/Android-App/core-netz/build.gradle.kts
-@@ -22,4 +22,5 @@ dependencies {
+@@ -21,3 +21,4 @@ dependencies {
+     // OkHttp nur als implementation: Kein Modul darüber soll es sehen (wie in core-data).
      implementation(libs.okhttp)
-     // oeffneExtern: Uri-Erweiterung.
-     implementation(libs.androidx.core.ktx)
 +    implementation(libs.androidx.room.runtime)
  }

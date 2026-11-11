@@ -1,6 +1,6 @@
 /**
  * Set-Nummern tragen in der Datenbank immer ihre Version (Migration 0074),
- * der Set-Stamm liest nur rb_sets (0105, 0106), und Ersatzteil ist
+ * der Set-Stamm liest nur rb_sets (0105, 0108), und Ersatzteil ist
  * überall 0 oder 1 (0075). Geprüft werden die Migrationen auf Altdaten, das
  * Schreiben ohne Versionsanhang und die Leser, die früher zwei Schreibweisen
  * per OR abfragten.

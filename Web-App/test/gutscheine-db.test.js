@@ -1,5 +1,8 @@
 /**
  * Gutscheine (LEGO-Geschenkkarten) — gegen eine echte Datenbank.
+ *
+ * Gegenprobe (11.11.2026 gemessen): in GET /vouchers/:id/pdf den Kopf
+ *   Content-Security-Policy gestrichen → rot: „das PDF kommt wieder heraus …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -230,6 +233,8 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
       assert.match(anzeigen.headers.get('content-type') || '', /application\/pdf/);
       assert.match(anzeigen.headers.get('content-disposition') || '', /^inline/,
         'ohne ?download=1 soll das PDF im Fenster erscheinen, nicht im Download-Ordner');
+      assert.equal(anzeigen.headers.get('content-security-policy'), "sandbox; default-src 'none'",
+        'ein hochgeladenes PDF läuft auch inline nicht unter der Herkunft der App');
       const bytes = Buffer.from(await anzeigen.arrayBuffer());
       assert.equal(bytes.subarray(0, 5).toString(), '%PDF-', 'es muss wirklich ein PDF zurueckkommen');
 

@@ -6,7 +6,7 @@ export interface KatalogSet {
   pieces: number | null; image_url: string | null; is_gear: boolean; fetched_at?: string | Date | null;
 }
 
-/** Der Abrufstand aus catalog_cache, die Angaben aus rb_sets und set_catalog (0106). */
+/** Der Abrufstand aus catalog_cache, die Angaben aus rb_sets und set_catalog (0108). */
 export async function katalogSetZu(db: DbSchnittstelle, nummer: string): Promise<KatalogSet | undefined> {
   return db.get<KatalogSet>(`SELECT cc.set_number, rs.name, NULLIF(rs.year, 0) AS year, rt.name AS theme,
            NULLIF(rs.num_parts, 0) AS pieces, sc.image_url, cc.is_gear, cc.fetched_at

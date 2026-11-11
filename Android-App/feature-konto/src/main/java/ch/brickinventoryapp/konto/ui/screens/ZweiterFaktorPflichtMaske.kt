@@ -122,12 +122,6 @@ fun ZweiterFaktorPflichtMaske(
                         Text(zustand.codes.joinToString("\n"), fontFamily = FontFamily.Monospace,
                             modifier = Modifier.vorgelesenAls(zustand.codes.joinToString(", ") { zeichenweise(it) }))
                         OutlinedButton(
-                            onClick = { GeheimeZwischenablage.kopiere(kontext, etikett, zustand.codes.joinToString("\n")) },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = nebenKnopfFarben(),
-                            border = nebenKnopfRand(),
-                        ) { Text(stringResource(R.string.zf_copy)) }
-                        OutlinedButton(
                             onClick = { teileCodes(kontext, teilenTitel, zustand.codes) },
                             modifier = Modifier.fillMaxWidth(),
                             colors = nebenKnopfFarben(),
@@ -157,12 +151,14 @@ fun ZweiterFaktorPflichtMaske(
                         }
                         Text(geheimnis.chunked(4).joinToString(" "), fontFamily = FontFamily.Monospace,
                             style = MaterialTheme.typography.bodyLarge)
-                        OutlinedButton(
-                            onClick = { GeheimeZwischenablage.kopiere(kontext, etikett, geheimnis) },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = nebenKnopfFarben(),
-                            border = nebenKnopfRand(),
-                        ) { Text(stringResource(R.string.zf_copy_key)) }
+                        if (schluesselKopierbar()) {
+                            OutlinedButton(
+                                onClick = { GeheimeZwischenablage.kopiere(kontext, etikett, geheimnis) },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = nebenKnopfFarben(),
+                                border = nebenKnopfRand(),
+                            ) { Text(stringResource(R.string.zf_copy_key)) }
+                        }
                         OutlinedTextField(
                             value = faktorCode, onValueChange = { faktorCode = NumericInput.quantity(it).take(8) },
                             label = { Text(stringResource(R.string.zf_confirm_code)) },

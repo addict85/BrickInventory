@@ -15,6 +15,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import ch.brickinventoryapp.testing.TestApi
 
 /**
  * Der gemeinsame SSE-Baustein (sseStrom) gegen einen echten Testserver, und der
@@ -87,12 +88,7 @@ class SseStromTest {
     fun `der CSV-Client meldet ein unlesbares Ereignis als Failed`() {
         server.enqueue(antwort(
             "data: {\"success\":true,\"status\":\"running\",\"total\":3,\"done\":1}\n\ndata: [kaputt\n\n"))
-        val zugang = object : Zugangsdaten {
-            override suspend fun serverUrlJetzt() = server.url("/").toString()
-            override suspend fun tokenJetzt() = "token"
-        }
-
-        val ereignisse = sammle(CsvImportSseClient(client, zugang, json).stream())
+        val ereignisse = sammle(CsvImportSseClient(TestApi.umgeleitet(server), json).stream())
 
         assertEquals(1, (ereignisse[0] as CsvImportSseClient.Event.Status).status.done)
         val fehler = ereignisse[1] as CsvImportSseClient.Event.Failed

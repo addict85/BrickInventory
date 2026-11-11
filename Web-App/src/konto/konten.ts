@@ -73,15 +73,19 @@ export async function aendereEigenesPasswort(uid: number, passwort: unknown,
   await startpasswortErledigt(uid);
 }
 
-/** Hier will man einen fremden Zugang loswerden; deshalb fallen auch alle Passkeys. */
-export async function setzePasswortZurueck(uid: number, passwort: unknown): Promise<void> {
+/** Hier will man einen fremden Zugang loswerden; deshalb fallen auch alle Passkeys.
+ * @returns das Konto, oder null, wenn der Link schon verbraucht oder abgelaufen ist */
+export async function setzePasswortZurueck(tokenHash: string, passwort: unknown): Promise<number | null> {
   const hash = await hashe(passwort);
-  await mitZugangsende(uid, async () => {
-    await repo.setzePasswortNachRuecksetzen(uid, hash);
+  const konto = await mitZugangsende((id: number | null) => id, async () => {
+    const uid = (await repo.setzePasswortNachRuecksetzen(tokenHash, hash))?.id;
+    if (!uid) return null;
     await zugaengeBeenden(uid);
     await passkeyRepo.loescheAlleDesKontos(uid);
+    return uid;
   });
-  await startpasswortErledigt(uid);
+  if (konto) await startpasswortErledigt(konto);
+  return konto;
 }
 
 /** Dieselbe Rechenzeit wie registriere(): Die Antwortzeit verriete sonst eine vergebene Adresse. */

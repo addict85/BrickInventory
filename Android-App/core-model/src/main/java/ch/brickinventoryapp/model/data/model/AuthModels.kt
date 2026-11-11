@@ -75,18 +75,28 @@ data class QrMeldung(
     val error: String? = null,
 )
 
+/** [vorschau]: nach der Bestätigung im Browser erst nur das Konto, den Token holt das Ja der App. */
 @Serializable
-data class QrAbholRequest(val abholung: String)
+data class QrAbholRequest(val abholung: String, val vorschau: Boolean = false)
 
-/** Bis zur Bestätigung im Browser nur [wartet]; danach wie eine Anmeldung, immer mit Scope "app". */
+@Serializable
+data class QrVerwerfen(val abholung: String)
+
+/**
+ * Bis zur Bestätigung im Browser nur [wartet]; mit [vorschau] dann nur [username],
+ * sonst wie eine Anmeldung, immer mit Scope "app".
+ */
 @Serializable
 data class QrAbholung(
     val success: Boolean,
     val wartet: Boolean = false,
+    val vorschau: Boolean = false,
+    val username: String? = null,
     val token: String? = null,
     val user: User? = null,
     val error: String? = null,
     @SerialName("token_info") val tokenInfo: TokenInfo? = null,
+    @SerialName("schluessel_nonce") val schluesselNonce: String? = null,
 )
 
 @Serializable

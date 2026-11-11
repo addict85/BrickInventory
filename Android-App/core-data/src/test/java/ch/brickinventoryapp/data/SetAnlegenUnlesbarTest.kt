@@ -4,7 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import okhttp3.OkHttpClient
+import ch.brickinventoryapp.testing.TestApi
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
@@ -31,14 +31,9 @@ class SetAnlegenUnlesbarTest {
     fun `ein unlesbares Ereignis endet als Fehler`() {
         server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream")
             .setBody("data: {\"step\":\"meta\",\"set\":\"Falke\"}\n\ndata: {kaputt\n\n"))
-        val zugang = object : Zugangsdaten {
-            override suspend fun serverUrlJetzt() = server.url("/").toString()
-            override suspend fun tokenJetzt() = "token"
-        }
-
         val schritte = runBlocking {
             withTimeout(5_000) {
-                SetAnlegenSseClient(OkHttpClient(), zugang, Dispatchers.IO).anlegen("10305", 1, null, null, null, null).toList()
+                SetAnlegenSseClient(TestApi.umgeleitet(server), Dispatchers.IO).anlegen("10305", 1, null, null, null, null).toList()
             }
         }
 
