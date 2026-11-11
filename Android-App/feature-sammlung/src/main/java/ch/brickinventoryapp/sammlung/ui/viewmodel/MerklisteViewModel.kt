@@ -249,27 +249,6 @@ class MerklisteViewModel @Inject constructor(
         }
     }
 
-    /** Aus dem Katalog: merken und, wenn eine Schwelle dasteht, den Alarm gleich mit. */
-    fun merkpostenMitAlarm(
-        setNumber: String, zustand: Zustand, richtung: String, schwelleRoh: String,
-        besitzer: Int? = null,
-    ) {
-        viewModelScope.launch {
-            when (val r = sets.legeMerkpostenAn(setNumber, zustand, besitzer)) {
-                is Ergebnis.Error -> {
-                    meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
-                    return@launch
-                }
-                is Ergebnis.Success -> {
-                    val schwelle = Alarmeingabe.zahl(schwelleRoh)
-                    if (schwelle != null) sets.setPreisalarm(setNumber, richtung, schwelle, zustand)
-                    meldungen.zeige(meldungen.text(
-                        if (r.data.warNeu) R.string.wanted_added else R.string.wanted_already))
-                }
-            }
-        }
-    }
-
     /** Katalogdaten, Preise und Verlauf eines Merkpostens — je für sich, was fehlt, bleibt leer. */
     override fun ladeMerkpostenDetail(setNumber: String) {
         viewModelScope.launch {

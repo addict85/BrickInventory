@@ -773,7 +773,7 @@ class BildschirmFotoVariantenTest {
         zeige(name, dunkel = dunkel, geraet = geraet, schrift = schrift) {
             CatalogDetailScreen(setNumber = "10305-1", detail = katalogDetail,
                 isLoading = false, imageLoader = bilder, serverUrl = "", onLoad = {},
-                onAddToGallery = {}, onWish = { _, _, _, _, _ -> },
+                onAddToGallery = {}, onWish = {},
                 onOpenInGallery = {}, onBack = {})
         }
         anhalten()
@@ -975,7 +975,6 @@ class BildschirmFotoVariantenTest {
         override fun loadCatalogSets() = Unit
         override fun catalogSichtbar(ersteSeite: Int, letzteSeite: Int) = Unit
         override fun scrollCatalogTo(nummer: Int) = Unit
-        override fun setCatalogScrollPos(index: Int, offset: Int) = Unit
         override fun catalogScrollConsumed() = Unit
         override fun setCatalogQuery(q: String) = Unit
         override fun setCatalogTheme(themeId: Int?) = Unit

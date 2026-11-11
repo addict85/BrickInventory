@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.finanzen.ui
 
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -29,9 +31,10 @@ interface FinanzenNavigation : Bereichsumgebung {
 /** Finanzen, Gutscheine und der PDF-Betrachter. */
 fun NavGraphBuilder.finanzenGraph(navigation: FinanzenNavigation) {
     val navController = navigation.navController
-    val financeListState = navigation.rollen.finanzen
     composable<FinanzZiel.Finance> {
         val vm = navigation.app
+        // Ein Zustand je Besuch; die Stelle hält allein der ScrollMemory (Keeper unten).
+        val financeListState = remember { LazyListState() }
         val finanzen: FinanzViewModel = hiltViewModel()
         val state by finanzen.state.collectAsStateWithLifecycle()
         val financeState by finanzen.financeState.collectAsStateWithLifecycle()
@@ -46,9 +49,7 @@ fun NavGraphBuilder.finanzenGraph(navigation: FinanzenNavigation) {
             FinanceRoute(
                 vm = finanzen,
                 imageLoader = navigation.bilder,
-                // Klick auf eine Zeile öffnet dieselbe Detailansicht wie in der Galerie. Der
-                // Scroll-Zustand liegt ausserhalb (financeListState), damit die Rückkehr an
-                // derselben Stelle landet.
+                // Klick auf eine Zeile öffnet dieselbe Detailansicht wie in der Galerie.
                 onSetClick = navigation::oeffneSet,
                 // Den Namen gibt die angeklickte Zeile mit, sonst stünde bis zum ersten
                 // Laden die nackte Nummer in der Leiste.

@@ -45,7 +45,6 @@ import ch.brickinventoryapp.app.nav.Reiter
 import ch.brickinventoryapp.app.nav.ZielUmgebung
 import ch.brickinventoryapp.ui.components.UebergangsRahmen
 import ch.brickinventoryapp.konto.ui.dialogs.UpdateRoute
-import ch.brickinventoryapp.zustand.ui.Rollzustaende
 import ch.brickinventoryapp.app.nav.AppZiel
 import ch.brickinventoryapp.app.nav.mehrZiel
 
@@ -67,17 +66,8 @@ fun BrickInventoryRoute(
     val selbstUpdate = aktivitaet.update
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
-    // Rollzustände oberhalb des NavHost (siehe Rollzustaende). Der Katalog merkt sich
-    // seine Position im ViewModel, weil seine Plätze beim Zurückkommen noch nicht
-    // geladen sind.
-    val rollen = Rollzustaende(
-        galerie = androidx.compose.foundation.lazy.grid.rememberLazyGridState(),
-        teile = androidx.compose.foundation.lazy.grid.rememberLazyGridState(),
-        minifiguren = androidx.compose.foundation.lazy.grid.rememberLazyGridState(),
-        finanzen = androidx.compose.foundation.lazy.rememberLazyListState(),
-        teileliste = androidx.compose.foundation.lazy.rememberLazyListState(),
-        einstellungen = androidx.compose.foundation.rememberScrollState(),
-    )
+    // Rollpositionen hält allein der ScrollMemory: Jedes Ziel legt seinen Listenzustand
+    // selbst an und stellt die Stelle mit ScrollPositionKeeper wieder her.
 
     // Snackbar aus eigenem Flow — Meldungen rekomponieren so nicht mehr den
     // gesamten Tree über AppUiState.
@@ -137,7 +127,7 @@ fun BrickInventoryRoute(
         // Kein Zustand hinein: Der NavHost-Builder läuft nur einmal, ein durchgereichter
         // Wert bliebe die Momentaufnahme des ersten Frames. Die Ziele lesen selbst.
         alleZiele(ZielUmgebung(navController, imageLoader, bottomNavItems,
-            snackbarHostState, rollen) { aktivitaet }, anmeldeBeginn)
+            snackbarHostState) { aktivitaet }, anmeldeBeginn)
     }
     }
 }

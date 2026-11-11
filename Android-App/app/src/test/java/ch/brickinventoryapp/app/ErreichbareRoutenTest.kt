@@ -1,8 +1,5 @@
 package ch.brickinventoryapp.app
 
-import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
@@ -16,7 +13,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.createGraph
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.app.nav.Reiter
-import ch.brickinventoryapp.zustand.ui.Rollzustaende
 import ch.brickinventoryapp.app.nav.ZielUmgebung
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeZiel
@@ -79,8 +75,7 @@ class ErreichbareRoutenTest {
         lateinit var nav: NavHostController
         compose.setContent { nav = rememberNavController() }
         val graph = compose.runOnIdle {
-            val umgebung = ZielUmgebung(nav, coil3.ImageLoader.Builder(ctx).build(), emptyList(), SnackbarHostState(),
-                Rollzustaende(LazyGridState(), LazyGridState(), LazyGridState(), LazyListState(), LazyListState(), ScrollState(0))) {
+            val umgebung = ZielUmgebung(nav, coil3.ImageLoader.Builder(ctx).build(), emptyList(), SnackbarHostState()) {
                 // Den Zustand holen erst die Ziele beim Zeichnen; der Graph allein braucht ihn nicht.
                 error("Ziele werden hier nicht gezeichnet")
             }

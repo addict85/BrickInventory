@@ -2,6 +2,7 @@ package ch.brickinventoryapp.katalog
 
 import ch.brickinventoryapp.model.fach.Katalogsortierung
 import androidx.lifecycle.viewModelScope
+import ch.brickinventoryapp.model.data.model.CatalogSetDetail
 import ch.brickinventoryapp.model.data.model.CatalogSetDetailResponse
 import ch.brickinventoryapp.model.data.model.CatalogSetItem
 import ch.brickinventoryapp.model.data.model.CatalogSetsResponse
@@ -10,6 +11,17 @@ import ch.brickinventoryapp.model.data.model.JahrAnzahl
 import ch.brickinventoryapp.model.ui.model.JahrAnzahlAnsicht
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.katalog.ui.viewmodel.CatalogViewModel
+import ch.brickinventoryapp.katalog.ui.Alarmrichtung
+import ch.brickinventoryapp.katalog.ui.KatalogZiel
+import ch.brickinventoryapp.katalog.ui.Merkwunsch
+import ch.brickinventoryapp.model.data.model.Merkposten
+import ch.brickinventoryapp.model.data.model.MerklisteResponse
+import ch.brickinventoryapp.model.data.model.MerkpostenAntwort
+import ch.brickinventoryapp.model.data.model.PreisalarmRequest
+import ch.brickinventoryapp.model.data.model.PreisalarmResponse
+import ch.brickinventoryapp.model.fach.Zustand
+import ch.brickinventoryapp.model.ui.Meldung
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
@@ -39,7 +51,10 @@ import ch.brickinventoryapp.testing.text
  * Gegenproben:
  *   katalog-suche-ohne-entprellen  setCatalogQuery() lädt sofort → rot „die Suche wartet …“
  *   katalog-seite-doppelt          ensureCatalogPage() ohne Prüfung „lädt schon“ → rot „eine Seite …“
- *   katalog-filter-behaelt-rolle   loadCatalogSets() ohne `scrollIndex = 0` → rot „ein Filterwechsel …“
+ *   katalog-filter-behaelt-rolle   loadCatalogSets() ohne `rollgedaechtnis.vergiss` → rot „ein Filterwechsel …“
+ *   katalog-merkt-ohne-alarm       merke() ohne setPreisalarm → rot „merken legt den Posten an …“
+ *   katalog-alarm-falsche-richtung merke() schickt immer „unter“ → rot „merken legt den Posten an …“
+ *   katalog-merkposten-unbekannt   gemerkt() vergleicht die Setnummer nicht → rot „das Detail kennt …“
  *   katalog-verteilung-ohne-filter ladeJahrVerteilung() ohne `themeId` → rot „die Jahresverteilung …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -63,7 +78,7 @@ class CatalogViewModelTest {
         CatalogSetsResponse(success = true, total = 120, sets = nummern.map { CatalogSetItem(setNumber = it, name = "Set $it") })
 
     private fun mitVm(block: suspend TestScope.(CatalogViewModel) -> Unit) = runTest(takt) {
-        val vm = CatalogViewModel(KatalogRepository(fake.api, t.cache), t.meldungen, NummernTexte)
+        val vm = CatalogViewModel(KatalogRepository(fake.api, t.cache), t.meldungen, NummernTexte, t.sets(), t.scrollMemory)
         try {
             block(vm)
         } finally {
@@ -112,14 +127,14 @@ class CatalogViewModelTest {
         advanceUntilIdle()
         vm.ensureCatalogPage(2)
         advanceUntilIdle()
-        vm.setCatalogScrollPos(40, 12)
+        // Die Ansicht schreibt ihre Stelle in den ScrollMemory, die eine Quelle aller Reiter.
+        t.scrollMemory.merke(KatalogZiel.Catalog.rollSchluessel, 40, 12)
         assertEquals(setOf(1, 2), vm.state.value.loadedPages.keys)
 
         fake.antworten["getCatalogSets"] = seite("2-1")
         vm.setCatalogTheme(158)
         advanceUntilIdle()
-        assertEquals(0, vm.state.value.scrollIndex)
-        assertEquals(0, vm.state.value.scrollOffset)
+        assertEquals(0 to 0, t.scrollMemory.lies(KatalogZiel.Catalog.rollSchluessel))
         assertEquals(setOf(1), vm.state.value.loadedPages.keys)
         assertEquals(listOf("2-1"), vm.state.value.loadedPages[1]?.map { it.setNumber })
     }
@@ -152,5 +167,39 @@ class CatalogViewModelTest {
         assertEquals(listOf<Any?>(null, 158, "year_desc"), abrufe.last().second)
         assertEquals("Jahrgänge ohne Jahr fallen weg, wie in der Webapp",
             listOf(JahrAnzahlAnsicht(1999, 4), JahrAnzahlAnsicht(2024, 7)), vm.state.value.jahrVerteilung)
+    }
+
+    @Test
+    fun `merken legt den Posten an, setzt den Alarm in der gewaehlten Richtung und meldet`() = mitVm { vm ->
+        fake.antworten["legeMerkpostenAn"] = MerkpostenAntwort(success = true, warNeu = true,
+            merkposten = Merkposten(setNumber = "10305-1", condition = Zustand.GEBRAUCHT))
+        fake.antworten["setPreisalarm"] = PreisalarmResponse(success = true)
+        vm.merke(Merkwunsch("10305-1", Zustand.GEBRAUCHT, Alarmrichtung.UEBER, "120", konto = null))
+        advanceUntilIdle()
+        val alarm = synchronized(fake.argumente) { fake.argumente.single { it.first == "setPreisalarm" }.second }
+        assertEquals("10305-1", alarm[0])
+        assertEquals(PreisalarmRequest("ueber", 120.0, Zustand.GEBRAUCHT), alarm[1])
+        assertEquals(Meldung.Ressource(R.string.wanted_added), t.meldungen.meldung.value)
+    }
+
+    @Test
+    fun `merken ohne Schwelle setzt keinen Alarm`() = mitVm { vm ->
+        fake.antworten["legeMerkpostenAn"] = MerkpostenAntwort(success = true, warNeu = false)
+        vm.merke(Merkwunsch("10305-1", Zustand.NEU, Alarmrichtung.UNTER, "", konto = null))
+        advanceUntilIdle()
+        assertEquals(0, fake.aufrufeVon("setPreisalarm"))
+        assertEquals(Meldung.Ressource(R.string.wanted_already), t.meldungen.meldung.value)
+    }
+
+    @Test
+    fun `das Detail kennt den Merkposten aus der Ablage, ein anderes Set nicht`() = mitVm { vm ->
+        fake.antworten["getMerkliste"] = MerklisteResponse(success = true,
+            merkposten = listOf(Merkposten(setNumber = "10305-1", condition = Zustand.NEU)))
+        fake.antworten["getCatalogSetDetail"] = CatalogSetDetailResponse(success = true, set = CatalogSetDetail(setNumber = "10305-1"))
+        vm.loadCatalogDetail("10305-1")
+        advanceUntilIdle()
+        assertEquals("Das Detail holt die Merkliste in die Ablage", 1, fake.aufrufeVon("getMerkliste"))
+        assertEquals("10305-1", vm.gemerkt("10305-1").first()?.setNumber)
+        assertNull(vm.gemerkt("75192-1").first())
     }
 }

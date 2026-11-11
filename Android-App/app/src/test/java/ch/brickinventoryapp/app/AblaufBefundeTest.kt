@@ -171,7 +171,6 @@ class AblaufBefundeTest {
         override fun loadCatalogSets() = Unit
         override fun catalogSichtbar(ersteSeite: Int, letzteSeite: Int) = Unit
         override fun scrollCatalogTo(nummer: Int) = Unit
-        override fun setCatalogScrollPos(index: Int, offset: Int) = Unit
         override fun catalogScrollConsumed() = Unit
         override fun setCatalogQuery(q: String) = Unit
         override fun setCatalogTheme(themeId: Int?) = Unit
@@ -242,7 +241,7 @@ class AblaufBefundeTest {
             CatalogDetailScreen(setNumber = "10305-1",
                 detail = KatalogDetailAnsicht(setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022),
                 isLoading = false, imageLoader = bilder, serverUrl = "", onLoad = {},
-                onAddToGallery = {}, onWish = { _, _, _, _, _ -> }, onOpenInGallery = {}, onBack = {},
+                onAddToGallery = {}, onWish = {}, onOpenInGallery = {}, onBack = {},
                 gemerkt = gemerkt, onOeffneMerkposten = { sn, z -> geoeffnet = sn to z })
         }
         compose.onNodeWithText(ctx.getString(R.string.catalog_auf_merkliste)).fetchSemanticsNode("Merkliste nicht genannt")

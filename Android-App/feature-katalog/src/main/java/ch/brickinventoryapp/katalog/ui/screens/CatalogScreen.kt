@@ -50,10 +50,11 @@ internal fun CatalogRoute(
     katalog: CatalogViewModel,
     serverUrl: String,
     imageLoader: ImageLoader,
+    rollgedaechtnis: ScrollMemory,
     onSetClick: (String) -> Unit,
 ) {
     val state by katalog.state.collectAsStateWithLifecycle()
-    CatalogScreen(state, serverUrl, katalog, imageLoader, onSetClick)
+    CatalogScreen(state, serverUrl, katalog, imageLoader, onSetClick, rollgedaechtnis)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,6 +66,8 @@ fun CatalogScreen(
     imageLoader: ImageLoader,
     /** Klick auf ein Set — nur der Graph kennt den NavController. */
     onSetClick: (String) -> Unit,
+    /** Die eine Quelle der Rollstelle, dieselbe wie bei den anderen Reitern. */
+    rollgedaechtnis: ScrollMemory = remember { ScrollMemory() },
 ) {
     val onQueryChange: (String) -> Unit = { q -> katalog.setCatalogQuery(q) }
     val onThemeChange: (Int?) -> Unit = { t -> katalog.setCatalogTheme(t) }
@@ -76,8 +79,6 @@ fun CatalogScreen(
     val onScrollTo: (Int) -> Unit = { nummer -> katalog.scrollCatalogTo(nummer) }
     /** Meldet, dass der Sprung ausgeführt wurde. */
     val onScrollConsumed: () -> Unit = { katalog.catalogScrollConsumed() }
-    /** Meldet die Rollposition, damit sie den Wechsel zur Detailseite überlebt. */
-    val onScrollPos: (Int, Int) -> Unit = { index, offset -> katalog.setCatalogScrollPos(index, offset) }
     val onRefresh: () -> Unit = { katalog.loadCatalogMeta(); katalog.loadCatalogSets() }
 
     // Als State-Objekte statt per `by`: CatalogFilterRow() setzt sie und braucht
@@ -85,7 +86,10 @@ fun CatalogScreen(
     val showThemeSheet = remember { mutableStateOf(false) }
     val showYearSheet  = remember { mutableStateOf(false) }
 
-    val gridState = rememberLazyGridState()
+    // Ein Zustand je Besuch; die Stelle hält der ScrollMemory. Die Plätze zählen über
+    // `total`, deshalb ist die Liste bereit, sobald die Länge da ist.
+    val gridState = remember { LazyGridState() }
+    ScrollPositionKeeper(KatalogZiel.Catalog.rollSchluessel, gridState, bereit = state.total > 0, speicher = rollgedaechtnis)
 
     // Die Liste führt alle `total` Plätze; geladen wird die Seite eines sichtbar gewordenen
     // Platzes, mit einer Seite Vorlauf — so kann die Leiste rechts überallhin springen.
@@ -101,25 +105,6 @@ fun CatalogScreen(
     // Kein eigener Sprung-Abruf daneben: Beide Wege — Rollen und Leiste — enden im
     // Sichtfenster-Lader oben, und dessen Ruhe deckt beide ab. Zwei Fassungen
     // derselben Regel liefen auseinander.
-
-    // Die Liste verlässt beim Wechsel die Komposition und ihre Länge trifft erst später ein,
-    // deshalb hilft Compose' Wiederherstellung nicht.
-    var wiederhergestellt by remember { mutableStateOf(false) }
-    LaunchedEffect(state.total) {
-        if (wiederhergestellt || state.total == 0) return@LaunchedEffect
-        if (state.scrollIndex > 0) {
-            gridState.scrollToItem(
-                state.scrollIndex.coerceIn(0, (state.total - 1).coerceAtLeast(0)),
-                state.scrollOffset
-            )
-        }
-        wiederhergestellt = true
-    }
-    LaunchedEffect(gridState, wiederhergestellt) {
-        if (!wiederhergestellt) return@LaunchedEffect
-        snapshotFlow { gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset }
-            .collect { (index, offset) -> onScrollPos(index, offset) }
-    }
 
     // Der Griff der Leiste hängt an der Stelle in der Liste wie ein Scrollbalken, wie
     // in der Webapp: gridState.firstVisibleItemIndex ist die Stelle, das Jahr dazu

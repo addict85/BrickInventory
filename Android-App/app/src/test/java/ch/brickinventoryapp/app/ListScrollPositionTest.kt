@@ -25,7 +25,9 @@ import ch.brickinventoryapp.testing.Quellen
  *
  * Gegenproben (durchgeführt): `gridState`-Parameter aus GalleryScreen entfernt
  * und wieder lokal angelegt → erster Teilschritt rot; die Übergabe in
- * CollectionGraph gestrichen → zweiter Teilschritt rot.
+ * CollectionGraph gestrichen → zweiter Teilschritt rot;
+ * gegenproben/rolle-zweite-quelle.patch (die Galerie wieder mit
+ * rememberLazyGridState()) → rot „die Rollstelle haelt allein der ScrollMemory“.
  */
 class ListScrollPositionTest {
 
@@ -133,29 +135,33 @@ class ListScrollPositionTest {
     }
 
     @Test
-    fun `die Zustaende liegen oberhalb des NavHost und werden durchgereicht`() {
+    fun `die Rollstelle haelt allein der ScrollMemory`() {
+        // Früher drei Quellen: Zustände oberhalb des NavHost, der ScrollMemory und im
+        // Katalog das ViewModel. Jetzt legt jedes Ziel seinen Zustand je Besuch an
+        // (`remember`, nicht `rememberSaveable`), und nur der ScrollMemory trägt die Stelle
+        // über den Ausflug; RollstelleTest prüft das ausgeführt.
         val nav = code(read("app/AppNavigation.kt"))
-        for (name in listOf("galerie", "teile", "minifiguren")) {
-            assert(nav.contains("$name = androidx.compose.foundation.lazy.grid.rememberLazyGridState()")) {
-                "$name wird nicht oberhalb des NavHost angelegt — dort ist die einzige " +
-                    "Ebene, die beim Navigieren nicht verlassen wird"
-            }
+        for (alt in listOf("Rollzustaende", "rememberLazyGridState", "rememberLazyListState", "rememberScrollState")) {
+            assert(!nav.contains(alt)) { "AppNavigation hält wieder Rollzustände ($alt) — eine zweite Quelle" }
         }
-        val graph = code(read("sammlung/ui/SammlungGraph.kt") + read("teile/ui/TeileGraph.kt"))
+        val graphen = listOf("sammlung/ui/SammlungGraph.kt", "teile/ui/TeileGraph.kt", "finanzen/ui/FinanzenGraph.kt",
+            "konto/ui/KontoGraph.kt")
+        val graph = graphen.joinToString("\n") { code(read(it)) }
+        for (zweite in listOf("rememberLazyGridState(", "rememberLazyListState(", "rememberScrollState(", "navigation.rollen")) {
+            assert(!graph.contains(zweite)) { "Ein Graph hält die Stelle wieder selbst ($zweite)" }
+        }
         for (paar in listOf(
-            "gridState = galleryGridState",
-            "gridState = partsGridState",
-            "gridState = minifigsGridState",
+            "val galleryGridState = remember { LazyGridState() }" to "gridState = galleryGridState",
+            "val partsGridState = remember { LazyGridState() }" to "gridState = partsGridState",
+            "val minifigsGridState = remember { LazyGridState() }" to "gridState = minifigsGridState",
+            "val financeListState = remember { LazyListState() }" to "listState = financeListState",
+            "val teilelistenState = remember { LazyListState() }" to "listState = teilelistenState",
         )) {
-            assert(graph.contains(paar)) { "Der Graph übergibt `$paar` nicht" }
+            assert(graph.contains(paar.first) && graph.contains(paar.second)) { "Der Graph legt `${paar.first}` nicht an oder übergibt ihn nicht" }
         }
-
-        for (name in listOf("finanzen", "teileliste")) {
-            assert(nav.contains("$name = androidx.compose.foundation.lazy.rememberLazyListState()")) { "$name wird nicht oberhalb des NavHost angelegt" }
-        }
-        val tools = code(read("finanzen/ui/FinanzenGraph.kt") + read("teile/ui/TeileGraph.kt"))
-        for (paar in listOf("listState = financeListState", "listState = navigation.rollen.teileliste")) {
-            assert(tools.contains(paar)) { "Der Graph übergibt `$paar` nicht" }
+        val katalog = code(read("katalog/ui/screens/CatalogScreen.kt")) + code(read("katalog/ui/ZustandKatalog.kt"))
+        for (alt in listOf("scrollIndex", "onScrollPos", "rememberLazyGridState()")) {
+            assert(!katalog.contains(alt)) { "Der Katalog merkt sich die Stelle wieder selbst ($alt)" }
         }
     }
 
@@ -179,6 +185,16 @@ class ListScrollPositionTest {
         }
         assert(tools.contains("ScrollPositionKeeper(") && tools.contains("FinanzZiel.Finance.rollSchluessel")) {
             "Die Finanz-Liste stellt ihre Position nicht ausdrücklich wieder her"
+        }
+        assert(code(read("katalog/ui/screens/CatalogScreen.kt")).contains(
+                "ScrollPositionKeeper(KatalogZiel.Catalog.rollSchluessel, gridState, bereit = state.total > 0")) {
+            "Der Katalog stellt seine Position nicht über den ScrollMemory wieder her, sobald die Länge da ist"
+        }
+        assert(code(read("konto/ui/KontoGraph.kt")).contains("ScrollPositionKeeper(")) {
+            "Die Einstellungen stellen ihre Position nicht ausdrücklich wieder her"
+        }
+        assert(Regex("""ScrollPositionKeeper\(TEILELISTE_ROLLSCHLUESSEL, teilelistenState""").containsMatchIn(col)) {
+            "Die Teileliste stellt ihre Position nicht ausdrücklich wieder her"
         }
 
         // Und die beiden Fallen von oben dürfen im gemeinsamen Helfer nicht
@@ -271,55 +287,6 @@ class ListScrollPositionTest {
         assert(unmittelbar || abgeleitet) {
             "`listenNummer = $ausdruck` geht nicht auf gridState.firstVisibleItemIndex " +
                 "zurück — die Jahresleiste zeigt dann nicht, wo die Liste steht"
-        }
-    }
-
-    @Test
-    fun `der Katalog springt nach der Rueckkehr wirklich zurueck`() {
-        // ── Warum diese Prüfung schärfer ist als die alte ─────
-        //
-        // Dass `onScrollPos` und `scrollToItem` VORKOMMEN, reicht nicht: Die Mechanik
-        // kann trotzdem abgeschaltet sein. Geprüft wird die Regel, nicht die Bauteile.
-        //
-        // Die Regel heisst: erst zurückspringen, DANN wieder melden.
-        val katalog = code(read("katalog/ui/screens/CatalogScreen.kt"))
-
-        assert(katalog.contains("onScrollPos") && katalog.contains("scrollToItem")) {
-            "Der Katalog merkt sich die Rollposition gar nicht mehr"
-        }
-
-        // 1. Der Merker darf den Ausflug in die Detailseite NICHT überleben.
-        //    Als `rememberSaveable` tat er es — und schaltete die
-        //    Wiederherstellung nach dem allerersten Betreten für immer ab.
-        assert(!Regex("""wiederhergestellt by rememberSaveable""").containsMatchIn(katalog)) {
-            "Der Merker ist wieder `rememberSaveable`. Dann gilt die Liste nach dem " +
-                "ersten Betreten für immer als wiederhergestellt, und die Rückkehr " +
-                "aus der Detailseite springt nie mehr zurück."
-        }
-        assert(Regex("""wiederhergestellt by remember \{""").containsMatchIn(katalog)) {
-            "Ohne Merker je Komposition würde bei jeder Änderung von total erneut " +
-                "gesprungen — auch mitten im Scrollen"
-        }
-
-        // 2. Der Melder darf nicht loslaufen, bevor zurückgesprungen wurde.
-        //    Ein frischer LazyGridState steht auf null; snapshotFlow gibt diesen
-        //    Wert sofort heraus und überschrieb damit die gemerkte Position.
-        assert(katalog.contains("LaunchedEffect(gridState, wiederhergestellt)")) {
-            "Der Melder hängt nicht am Merker — dann meldet er die Null des frischen " +
-                "Zustands und löscht die gemerkte Position, bevor sie jemand liest"
-        }
-        assert(katalog.contains("if (!wiederhergestellt) return@LaunchedEffect")) {
-            "Der Melder läuft ungebremst los"
-        }
-
-        // 3. Und der Merker wird erst NACH dem Sprung gesetzt: scrollToItem
-        //    unterbricht, ein vorher gesetzter Merker liesse den Melder
-        //    mitten im Sprung anlaufen.
-        val block = katalog.substring(katalog.indexOf("LaunchedEffect(state.total)"))
-        val sprung  = block.indexOf("scrollToItem")
-        val merker  = block.indexOf("wiederhergestellt = true")
-        assert(sprung in 0 until merker) {
-            "Der Merker steht vor dem Sprung statt danach"
         }
     }
 }

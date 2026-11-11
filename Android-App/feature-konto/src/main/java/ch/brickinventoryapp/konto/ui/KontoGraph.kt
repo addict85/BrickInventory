@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.konto.ui
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -48,9 +50,10 @@ fun NavGraphBuilder.kontoGraph(navigation: KontoNavigation) {
 }
 
 private fun NavGraphBuilder.einstellungenZiel(navigation: KontoNavigation) {
-    val settingsScrollState = navigation.rollen.einstellungen
     composable<KontoZiel.Settings> {
         val vm = navigation.app
+        // Ein Zustand je Besuch; die Stelle hält allein der ScrollMemory (Keeper unten).
+        val settingsScrollState = remember { ScrollState(0) }
         val state by vm.state.collectAsStateWithLifecycle()
         // Beim Öffnen der Einstellungen laden: Der Zustand ändert sich ausserhalb kaum,
         // ein Dauerabo wäre Aufwand ohne Nutzen. Haushalt, Gutscheine, Profil und Geräte

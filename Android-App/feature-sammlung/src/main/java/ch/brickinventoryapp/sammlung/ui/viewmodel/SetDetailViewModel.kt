@@ -24,6 +24,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
+import ch.brickinventoryapp.model.ui.model.SetAnsicht
 import javax.inject.Inject
 import ch.brickinventoryapp.zustand.ui.fehlerklasse
 import androidx.lifecycle.ViewModel
@@ -75,6 +78,14 @@ class SetDetailViewModel @Inject constructor(
 
     private val _setDetailState = MutableStateFlow(SetDetailUiState())
     val setDetailState: StateFlow<SetDetailUiState> = _setDetailState.asStateFlow()
+
+    /**
+     * Dieses Set, wie die Galerie es aus der Ablage zeigt: Die Kachel steht da, bis das
+     * Detail geladen ist. Aus derselben Quelle statt aus dem ViewModel der Galerie.
+     */
+    val vorschau: StateFlow<SetAnsicht?> = sets.beobachteSets()
+        .map { l -> l.liste.firstOrNull { it.setNumber == setNumber }?.alsAnsicht() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(VORSCHAU_HALTEN_MS), null)
 
     // Nach setNumber und dem Zustand: Ein init davor sähe beide noch nicht belegt.
     init {
@@ -254,3 +265,6 @@ class SetDetailViewModel @Inject constructor(
         const val ARG_SET = "setNumber"
     }
 }
+
+/** So lange bleibt die Vorschau nach dem letzten Beobachter abonniert (Drehen des Geräts). */
+private const val VORSCHAU_HALTEN_MS = 5_000L

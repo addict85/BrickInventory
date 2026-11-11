@@ -220,7 +220,7 @@ class UmbruchWaechterTest {
                 url = "https://www.bricklink.com/v2/catalog/catalogitem.page?S=10305-1"))
         pruefe("Katalog-Detail $schrift", schrift) {
             CatalogDetailScreen(setNumber = "10305-1", detail = detail, isLoading = false, imageLoader = bilder,
-                serverUrl = "", onLoad = {}, onAddToGallery = {}, onWish = { _, _, _, _, _ -> },
+                serverUrl = "", onLoad = {}, onAddToGallery = {}, onWish = {},
                 onOpenInGallery = {}, onBack = {})
         }
     }
