@@ -156,14 +156,28 @@ export async function rebrickableRoh(url: string, rbKey: string): Promise<{ stat
   );
 }
 
+/** Ein Grund, aus dem kein weiterer Abruf gelingen kann: Schleifen über viele
+ * Nummern brechen daran ab, statt jede einzeln scheitern zu lassen. */
+export class RebrickableGesperrt extends Error {
+  constructor(
+    readonly grund: 'kontingent' | 'kein_schluessel',
+    text: string,
+  ) {
+    super(text);
+  }
+}
+
 async function rbGet(apiPath: string, params: Record<string, string | number> = {}) {
   const key = await getRbKey();
-  if (!key) throw new Error('Rebrickable API Key nicht konfiguriert.');
+  if (!key) throw new RebrickableGesperrt('kein_schluessel', 'Rebrickable API Key nicht konfiguriert.');
   await rebrickableLimiter.waitForSlot();
   if (!(await tagesKontingentFrei())) {
     // Die Zahl aus dem gemeinsamen Zähler, damit der Text dem Limit folgt.
     const { limit } = await rebrickableDailyStatus();
-    throw new Error(`Rebrickable Tageslimit erreicht (${limit}/Tag). Versuche es morgen wieder.`);
+    throw new RebrickableGesperrt(
+      'kontingent',
+      `Rebrickable Tageslimit erreicht (${limit}/Tag). Versuche es morgen wieder.`,
+    );
   }
   const qs = new URLSearchParams({ page_size: '500', ...params }).toString();
   const { status, body } = await httpsGetRobust(`${BASE}${apiPath}?${qs}`, { Authorization: `key ${key}` }, 45000);
@@ -537,12 +551,13 @@ async function blTeilZuRb(blId: string): Promise<string | null> {
   // Bei den meisten Teilen benutzen beide Dienste dieselbe Nummer. Dann
   // liefert /lego/parts/{nr}/ den Treffer, und external_ids bestaetigt ihn —
   // aus einer VERMUTUNG („die Nummern sind wohl gleich") wird eine Abbildung.
-  const direkt = await rbGet(`/lego/parts/${pfadSegment(blId)}/`).catch(() => null);
+  // Nur 404 heisst „unbekannt“ (rbGet liefert dann null); jeder andere Fehler geht weiter.
+  const direkt = await rbGet(`/lego/parts/${pfadSegment(blId)}/`);
   if (direkt && traegtBlNummer(direkt, blId)) return String(direkt.part_num);
 
   // ── Weg 2: der Filter, mit Gegenpruefung ────────────────────────────────
   if (filterWirkungslos) return null;
-  const gefiltert = await rbGet('/lego/parts/', { bricklink_id: blId, page_size: 20 }).catch(() => null);
+  const gefiltert = await rbGet('/lego/parts/', { bricklink_id: blId, page_size: 20 });
   if (!gefiltert) return null;
   // Mehr als tausend Treffer fuer EINE Nummer kann der Filter nicht gemeint
   // haben — dann wurde er ignoriert.
