@@ -21,6 +21,7 @@ import { merkeBlFarbnummer, blFarbnummerAus } from '../katalog/blZuordnung';
  * ohne eigene Zeilen eine Teileliste zeigt. */
 
 import { marktpreiseAusCacheFuerTeile } from '../finanzen/marketPrice';
+import { teileBereich } from './prozess';
 
 /** Ohne manuelle Positionen — die haben eine eigene Ansicht. Hex-Rückfall aus
  * rb_colors für Teile ohne eigenen Wert. */
@@ -30,7 +31,7 @@ export async function getPartsColors(userIdWahl: Sicht | Blickfeld) {
   const uids = asIds(userId);
   // Aus der Zusammenfassung (die Mengen sind dort schon mit der Set-Anzahl
   // multipliziert); strict, damit Webapp und App dieselben Zahlen zeigen.
-  return repo.farbenDesBestands(uids, await ensureFresh(uids, { strict: true }));
+  return teileBereich().teileListe.farbenDesBestands(uids, await ensureFresh(uids, { strict: true }));
 }
 
 function teileFilter(query: Record<string, unknown>): repo.TeileFilter {
@@ -51,7 +52,7 @@ async function teileErsatzquelle(set_number: string, ab: Abstriche) {
     const n = mitVersion(set_number), alt = ohneVersion(n);
     const invId = await ab.oder('katalog_inventar', neuestesInventar(set_number), null);
     if (invId) {
-      const csvParts = await repo.inventarAlsTeile(invId, set_number);
+      const csvParts = await teileBereich().teileListe.inventarAlsTeile(invId, set_number);
       if (csvParts.length > 0)
         // page_size gehört in jeden Rückgabeweg: Der Client entscheidet daran, ob er
         // weiterblättert. Hier kommt alles, also ist es die Zeilenzahl.
@@ -110,7 +111,7 @@ export async function tryPartsSummary(userId: Blickfeld, o: Record<string, unkno
   const size = seitengroesse(o.page_size, !!o.set_number);
   const pg   = Math.max(1, parseInt(String(o.page)) || 1);
   try {
-    const { total, zeilen } = await repo.seiteAusZusammenfassung(uids, teileFilter(o),
+    const { total, zeilen } = await teileBereich().teileListe.seiteAusZusammenfassung(uids, teileFilter(o),
       { groesse: size, versatz: (pg - 1) * size, mitSets: !!o.withSets, ordnung: repo.teileOrdnung(o.ordnung) });
     return { parts: zeilen.map(teilAlsAntwort), total, source: 'summary', page_size: size };
   } catch (e) {
@@ -136,8 +137,8 @@ export async function getParts(userIdWahl: Sicht | Blickfeld, query: Record<stri
   const groesse = seitengroesse(query.page_size, !!filter.set_number);
   const versatz = (Math.max(1, parseInt(String(page)) || 1) - 1) * groesse;
   const [{ total, zeilen }, gebraucht] = await Promise.all([
-    repo.seiteLive(uids, filter, { groesse, versatz, mitSets: withSets, ordnung: repo.teileOrdnung(query.ordnung) }),
-    filter.ohneManuelle ? Promise.resolve([]) : repo.gebrauchteManuelle(uids),
+    teileBereich().teileListe.seiteLive(uids, filter, { groesse, versatz, mitSets: withSets, ordnung: repo.teileOrdnung(query.ordnung) }),
+    filter.ohneManuelle ? Promise.resolve([]) : teileBereich().teileListe.gebrauchteManuelle(uids),
   ]);
   // Eine „Gebraucht"-Erfassung macht das Teil gebraucht; ohne Erfassung 'N'.
   const gebrauchtJe = new Set(gebraucht.filter(r => Number(r.any_used) > 0).map(r => `${r.pid}|${r.color_id}`));
@@ -147,7 +148,7 @@ export async function getParts(userIdWahl: Sicht | Blickfeld, query: Record<stri
   // Im Hintergrund fehlende BrickLink-Nummern nachladen; eine leere bl_id heisst „nachgesehen".
   setImmediate(async () => {
     try {
-      if (await repo.hatUngeseheneBlNummer(uids)) fetchMissingBlIds().catch(logAndContinue('teile:fetchMissingBlIds'));
+      if (await teileBereich().teileListe.hatUngeseheneBlNummer(uids)) fetchMissingBlIds().catch(logAndContinue('teile:fetchMissingBlIds'));
     } catch (e) { meldeFehler('teile:bl-nummern-nachladen', e); }
   });
 
@@ -165,7 +166,7 @@ export async function getParts(userIdWahl: Sicht | Blickfeld, query: Record<stri
 export async function getPartsCategories(userIdWahl: Sicht | Blickfeld) {
   const userId = await blickfeldAus(userIdWahl);
   const uids = asIds(userId);
-  return repo.kategorien(uids, await ensureFresh(uids, { strict: true }));
+  return teileBereich().teileListe.kategorien(uids, await ensureFresh(uids, { strict: true }));
 }
 
 export async function getPartsStats(userIdWahl: Sicht | Blickfeld) {
@@ -174,10 +175,10 @@ export async function getPartsStats(userIdWahl: Sicht | Blickfeld) {
   // Aus der Zusammenfassung nur, wenn sie frisch ist: Webapp und App zeigen
   // dieselben Zahlen.
   if (await ensureFresh(uids, { strict: true })) {
-    const r = await repo.kennzahlen(uids, true);
+    const r = await teileBereich().teileListe.kennzahlen(uids, true);
     if (r) return r;
   }
-  return (await repo.kennzahlen(uids, false)) ?? { unique_parts: 0, unique_colors: 0, total_parts: 0, manual_parts: 0 };
+  return (await teileBereich().teileListe.kennzahlen(uids, false)) ?? { unique_parts: 0, unique_colors: 0, total_parts: 0, manual_parts: 0 };
 }
 
 export async function getBlColorMap() {
@@ -225,7 +226,7 @@ export async function getManualParts(userIdWahl: Sicht | Blickfeld, viewerId: nu
   const uids = asIds(userId);
   const groesse = page_size ? clampPageSize(page_size, 60) : null;
   const seite = groesse ? { groesse, versatz: (Math.max(1, parseInt(String(page)) || 1) - 1) * groesse } : null;
-  const rows = await repo.manuelleTeile(uids, { search, storage }, seite);
+  const rows = await teileBereich().teileListe.manuelleTeile(uids, { search, storage }, seite);
   const mitZustand = await applyManualCondition(uids, rows, 'part');
   // Eine Abfrage für die ganze Liste; die App liest `avg_price` im Detail. Ohne
   // Preise bleibt die Liste brauchbar; `ab` sammelt für `degradiert`, warum sie fehlen.
@@ -263,10 +264,10 @@ export async function getOwnedQuantities(
   // Ersatzteile zählen MIT: Sie liegen in der Schachtel und lassen sich verbauen
   // — „hat man", nicht „braucht man" wie auf der Bedarfsseite.
   const out: Record<string, { gesamt: number; lose: number }> = {};
-  for (const r of await repo.besitzteTeile(uids, nums, farben))
+  for (const r of await teileBereich().teileListe.besitzteTeile(uids, nums, farben))
     out[`${r.part_number}|${r.color_id}`] = { gesamt: Number(r.gesamt) || 0, lose: Number(r.lose) || 0 };
   // Minifiguren zählen mit: Eine Teileliste nennt auch die Figuren eines Sets.
-  for (const r of await repo.besitzteFiguren(uids, nums)) {
+  for (const r of await teileBereich().teileListe.besitzteFiguren(uids, nums)) {
     const key = `${r.part_number}|0`;
     if (out[key]) continue;
     out[key] = { gesamt: Number(r.gesamt) || 0, lose: Number(r.lose) || 0 };

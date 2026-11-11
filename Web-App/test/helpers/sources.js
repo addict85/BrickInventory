@@ -115,7 +115,7 @@ function buildAndRequire() {
     _zugangGesetzt = true;
   }
   // prozess.js lädt nichts; bereich.js erst beim ersten Gebrauch der Dienste.
-  const BEREICHE = [['figuren', 'Figuren'], ['merkliste', 'Merkliste'], ['gutscheine', 'Gutscheine'], ['sammlung', 'Sammlung'], ['verwaltung', 'Verwaltung']];
+  const BEREICHE = [['teile', 'Teile'], ['figuren', 'Figuren'], ['merkliste', 'Merkliste'], ['gutscheine', 'Gutscheine'], ['sammlung', 'Sammlung'], ['verwaltung', 'Verwaltung']];
   for (const [b, B] of BEREICHE)
     require(path.join(ROOT, 'dist', `src/${b}/prozess.js`))[`verdrahte${B}`](() =>
       require(path.join(ROOT, 'dist', `src/${b}/bereich.js`))[`erzeuge${B}`]({ db: dbModul.standardDb() }));
