@@ -38,8 +38,9 @@ import org.junit.Test
  * Tabelle (sie zählt „In Sets“) gilt die Antwort des Servers.
  *
  * Gegenproben (gemessen mit kotlinc und JUnit, ohne Gradle):
- *   teile-ablage-trotz-konto     Teile.teileLokal übergeht teileEingeschraenkt() → rot „mit
- *                                Kontofilter gilt die Antwort des Servers“
+ *   teile-ablage-trotz-konto     Teile.teileLokal übergeht teileEingeschraenkt() → rot „ohne
+ *                                Kontofilter folgen die Teile …“ („mit Kontofilter gilt die
+ *                                Antwort des Servers“)
  *   teile-tabelle-aus-ablage     Teile.teileLokal übergeht die Tabelle → rot „die Tabelle …“
  *   figuren-offline-ohne-stand   ausgang() ohne den Zweig „ohne Netz mit Stand“ → rot
  *                                „ohne Netz bleiben die Figuren stehen“
