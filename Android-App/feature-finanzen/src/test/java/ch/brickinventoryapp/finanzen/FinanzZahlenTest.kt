@@ -175,7 +175,7 @@ class FinanzZahlenTest {
         assertEquals(0, BigDecimal("1500.00").compareTo(k.einstand!!))
         assertEquals(0, BigDecimal("1712.40").compareTo(k.wert))
         assertEquals(0, BigDecimal("212.40").compareTo(k.guvBetrag!!))
-        assertEquals(0, k.einstand!!.add(k.guvBetrag!!).compareTo(k.wert))
+        assertEquals(0, k.einstand.add(k.guvBetrag).compareTo(k.wert))
         assertEquals(14.2, k.guvProzent!!, 0.0)
         assertEquals(listOf(3, 2, 1, 0), listOf(k.gesamt, k.bewertet, k.ohneMarkt, k.ohneKauf))
         assertEquals(0, BigDecimal("180.00").compareTo(k.ohneMarktEinstand))

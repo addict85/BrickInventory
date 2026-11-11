@@ -4,6 +4,7 @@ import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.zustand.ui.AppUiState
 import ch.brickinventoryapp.zustand.ui.abgeleitet
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -21,6 +22,7 @@ import org.junit.Test
  * Gegenprobe: abgeleitet() ohne distinctUntilChanged (gegenproben/abgeleitet-meldet-alles.patch)
  * → rot „ein abgeleiteter Zustand meldet nur echte Aenderungen“ ([classic, classic, classic, noppe]).
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class AbgeleiteterZustandTest {
 
     @Test
