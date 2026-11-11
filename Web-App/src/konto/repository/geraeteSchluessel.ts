@@ -1,4 +1,4 @@
-import * as db from '../../../db/database';
+import type { DbSchnittstelle } from '../../../db/database';
 
 /** Eine Token-Familie: Konto und created_at (auf Millisekunden, wie es über JavaScript reist). */
 export interface Familie {
@@ -9,7 +9,7 @@ export interface Familie {
 const FAMILIE_LEBT = `EXISTS (SELECT 1 FROM api_tokens t WHERE t.user_id = $1
   AND date_trunc('milliseconds', t.created_at) = $2::timestamptz)`;
 
-export async function schluesselDer(f: Familie): Promise<string | null> {
+export async function schluesselDer(db: DbSchnittstelle, f: Familie): Promise<string | null> {
   const z = await db.get<{ oeffentlich: string }>(
     'SELECT oeffentlich FROM geraete_schluessel WHERE user_id = $1 AND familie = $2::timestamptz',
     [f.uid, f.seit],
@@ -19,7 +19,12 @@ export async function schluesselDer(f: Familie): Promise<string | null> {
 
 /** Nur für eine lebende, junge Familie ohne Schlüssel; Reste widerrufener Familien fallen dabei weg.
  * @returns ob er jetzt gilt */
-export async function legeSchluesselAn(f: Familie, oeffentlich: string, fristS: number): Promise<boolean> {
+export async function legeSchluesselAn(
+  db: DbSchnittstelle,
+  f: Familie,
+  oeffentlich: string,
+  fristS: number,
+): Promise<boolean> {
   await db.run(
     `DELETE FROM geraete_schluessel g WHERE g.user_id = $1 AND NOT EXISTS (SELECT 1 FROM api_tokens t
     WHERE t.user_id = g.user_id AND date_trunc('milliseconds', t.created_at) = g.familie)`,
@@ -35,6 +40,7 @@ export async function legeSchluesselAn(f: Familie, oeffentlich: string, fristS: 
 
 /** Höchstens [offen] gleichzeitig je Familie: Abholen ohne Einlösen füllt die Tabelle nicht. */
 export async function legeChallengeAn(
+  db: DbSchnittstelle,
   f: Familie,
   challenge: string,
   aktion: string,
@@ -57,7 +63,7 @@ export async function legeChallengeAn(
 }
 
 /** Löschen und Lesen in einem Schritt: Eine Challenge gilt genau einmal, und nur für ihre Familie. */
-export async function nimmChallenge(f: Familie, challenge: string): Promise<string | null> {
+export async function nimmChallenge(db: DbSchnittstelle, f: Familie, challenge: string): Promise<string | null> {
   const z = await db.get<{ aktion: string }>(
     `DELETE FROM schritt_challenges WHERE challenge = $1 AND user_id = $2 AND familie = $3::timestamptz
        AND ablauf > NOW() RETURNING aktion`,
@@ -67,6 +73,7 @@ export async function nimmChallenge(f: Familie, challenge: string): Promise<stri
 }
 
 export async function oeffneFreigabe(
+  db: DbSchnittstelle,
   f: Familie,
   aktion: string,
   leerlaufS: number,
@@ -84,7 +91,12 @@ export async function oeffneFreigabe(
 }
 
 /** Prüfen und Verlängern in einem Schritt, nie über `hoechstens` hinaus. */
-export async function nutzeFreigabe(f: Familie, aktion: string, leerlaufS: number): Promise<boolean> {
+export async function nutzeFreigabe(
+  db: DbSchnittstelle,
+  f: Familie,
+  aktion: string,
+  leerlaufS: number,
+): Promise<boolean> {
   return !!(
     await db.run(
       `UPDATE schritt_freigaben SET bis = LEAST(NOW() + make_interval(secs => $4), hoechstens)

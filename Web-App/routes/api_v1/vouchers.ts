@@ -13,7 +13,6 @@ import { frageGuthabenAb, ABSTAND_SEK } from '../../src/gutscheine/gutscheinGuth
 import { VOUCHER_DIR, gutscheinDatei, schreibeGutscheinPdf, liesGutscheinPdf, liesGutscheinPdfOderNichts } from '../../src/gutscheine/gutscheinDateien';
 import { requireToken, kontoSchranke } from './middleware';
 import { bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
-import { protokolliere } from '../../src/verwaltung/dienst';
 import { stelleTicketAus, loeseTicketEin, TICKET_SEK } from '../../src/gutscheine/pdfTicket';
 import type { GutscheinWerte } from '../../src/gutscheine/gutscheinPdf';
 import { verbindeGutscheine } from '../../src/gutscheine/gutscheinPdfSchreiben';
@@ -25,6 +24,7 @@ import { seiteAus } from '../../src/infra/seite';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
 import { gutscheineBereich } from '../../src/gutscheine/prozess';
+import { kontoBereich } from '../../src/konto/prozess';
 
 const router = vertragsRouter();
 
@@ -201,7 +201,7 @@ router.post('/vouchers/pdf', requireToken, kontoSchranke('gutscheinPdf'), upload
 
 // Die PDFs tragen Nummer und PIN: erst bestätigen und protokollieren, dann ein Ticket für genau einen Abruf.
 async function pdfFreigabe(req: AuthedRequest, res: express.Response, ziel: string, aktion: 'gutschein_pdf' | 'gutschein_export', was: string) {
-  await protokolliere(req.apiUser.user_id, req.apiUser.user_id, aktion, was);
+  await kontoBereich().protokoll.protokolliere(req.apiUser.user_id, req.apiUser.user_id, aktion, was);
   res.json({ success: true, ticket: stelleTicketAus(req.apiUser.user_id, ziel), gueltig_sek: TICKET_SEK });
 }
 
@@ -288,7 +288,7 @@ router.post('/vouchers/:id/klartext', requireToken, async (req: Anfrage<'POST /a
   if (!await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.eingabe.password)) return;
   const z = await gutscheineBereich().gutscheine.gutschein(req.apiUser.user_id, id);
   if (!z) return sendeFehler(req, res, 404, 'nicht_gefunden');
-  await protokolliere(req.apiUser.user_id, req.apiUser.user_id, 'gutschein_klartext', maskiert(z).number);
+  await kontoBereich().protokoll.protokolliere(req.apiUser.user_id, req.apiUser.user_id, 'gutschein_klartext', maskiert(z).number);
   res.json({ success: true, id: z.id, number: z.number, pin: z.pin });
 });
 

@@ -3,18 +3,23 @@
  * Erst dann holt die App ihren Token ab: Ein abfotografierter QR-Code allein
  * öffnet kein Konto, der Inhaber sieht jedes Gerät, bevor es Zugang bekommt. */
 import crypto from 'node:crypto';
-import * as repo from './repository/qrKopplung';
 import { createToken, hashToken, ipBereich } from './auth';
 import { APP_HOECHSTDAUER_TAGE, tokenLabel } from './tokenWunsch';
+import { kontoBereich } from './prozess';
 
 export type { QrStand } from './repository/qrKopplung';
 export const QR_TTL_MS = 5 * 60 * 1000;
 export const QR_FEHLVERSUCHE = 3;
 
 export async function erzeuge(uid: number, tage: number | null): Promise<{ token: string; kopplung: number }> {
-  await repo.raeumeQrKopplungenAuf();
+  await kontoBereich().qrKopplung.raeumeQrKopplungenAuf();
   const nonce = crypto.randomBytes(32).toString('base64url');
-  const kopplung = await repo.legeQrKopplungAn(hashToken(nonce), uid, new Date(Date.now() + QR_TTL_MS), tage);
+  const kopplung = await kontoBereich().qrKopplung.legeQrKopplungAn(
+    hashToken(nonce),
+    uid,
+    new Date(Date.now() + QR_TTL_MS),
+    tage,
+  );
   return { token: `bim:${nonce}`, kopplung };
 }
 
@@ -26,7 +31,7 @@ export async function meldeGeraet(
   if (typeof token !== 'string' || !token.startsWith('bim:')) return null;
   const abholung = crypto.randomBytes(32).toString('base64url');
   const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
-  const z = await repo.melde(hashToken(token.slice(4)), {
+  const z = await kontoBereich().qrKopplung.melde(hashToken(token.slice(4)), {
     abholung: hashToken(abholung),
     codeHash: hashToken(code),
     geraet: tokenLabel(geraet, 'Android App'),
@@ -45,9 +50,16 @@ export async function holeQrTokenAb(
   ip: string | null | undefined,
   darf: (uid: number) => Promise<boolean>,
 ): Promise<Abholung> {
-  const z = typeof abholung === 'string' && abholung ? await repo.nachAbholung(hashToken(abholung)) : undefined;
+  const z =
+    typeof abholung === 'string' && abholung
+      ? await kontoBereich().qrKopplung.nachAbholung(hashToken(abholung))
+      : undefined;
   if (z?.stand === 'wartet' || z?.stand === 'abgelehnt') return { stand: z.stand };
-  if (z?.stand !== 'bestaetigt' || !(await darf(z.user_id)) || !(await repo.markiereAbgeholt(z.id)))
+  if (
+    z?.stand !== 'bestaetigt' ||
+    !(await darf(z.user_id)) ||
+    !(await kontoBereich().qrKopplung.markiereAbgeholt(z.id))
+  )
     return { stand: 'ungueltig' };
   const token = await createToken(z.user_id, z.geraet ?? 'qr-login', true, z.token_days ?? APP_HOECHSTDAUER_TAGE, {
     scope: 'app',
@@ -57,7 +69,7 @@ export async function holeQrTokenAb(
 }
 
 export async function kopplungsStand(kopplung: number, uid: number) {
-  const z = await repo.qrKopplungDesKontos(kopplung, uid);
+  const z = await kontoBereich().qrKopplung.qrKopplungDesKontos(kopplung, uid);
   return z ? { stand: z.stand, geraet: z.geraet, ip_bereich: z.ip_bereich } : null;
 }
 
@@ -71,19 +83,19 @@ export type Bestaetigung = 'ok' | 'code_falsch' | 'abgelehnt' | 'nicht_wartend' 
 
 /** Nach QR_FEHLVERSUCHE falschen Codes ist die Kopplung abgelehnt: Sechs Ziffern hält das lange genug. */
 export async function bestaetigeKopplung(kopplung: number, uid: number, code: unknown): Promise<Bestaetigung> {
-  const z = await repo.qrKopplungDesKontos(kopplung, uid);
+  const z = await kontoBereich().qrKopplung.qrKopplungDesKontos(kopplung, uid);
   if (!z) return 'unbekannt';
   if (z.stand !== 'wartet') return 'nicht_wartend';
   if (!codePasst(z.code_hash, code)) {
-    if ((await repo.zaehleQrFehlversuch(z.id)) < QR_FEHLVERSUCHE) return 'code_falsch';
-    await repo.markiereAbgelehnt(z.id);
+    if ((await kontoBereich().qrKopplung.zaehleQrFehlversuch(z.id)) < QR_FEHLVERSUCHE) return 'code_falsch';
+    await kontoBereich().qrKopplung.markiereAbgelehnt(z.id);
     return 'abgelehnt';
   }
-  return (await repo.markiereBestaetigt(z.id)) ? 'ok' : 'nicht_wartend';
+  return (await kontoBereich().qrKopplung.markiereBestaetigt(z.id)) ? 'ok' : 'nicht_wartend';
 }
 
 export async function lehneKopplungAb(kopplung: number, uid: number): Promise<boolean> {
-  const z = await repo.qrKopplungDesKontos(kopplung, uid);
-  if (z) await repo.markiereAbgelehnt(z.id);
+  const z = await kontoBereich().qrKopplung.qrKopplungDesKontos(kopplung, uid);
+  if (z) await kontoBereich().qrKopplung.markiereAbgelehnt(z.id);
   return !!z;
 }

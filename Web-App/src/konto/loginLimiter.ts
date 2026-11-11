@@ -2,12 +2,12 @@
  * hat, entscheidet die HTTP-Schicht. */
 import { createHash } from 'node:crypto';
 import { isIPv4, isIPv6 } from 'node:net';
-import * as db from '../../db/database';
 import { einzelwert } from '../infra/validate';
 import { fehlertext, meldeUndLiefere } from '../infra/fehler';
 import { suchwert } from '../infra/geheimnis';
 import type { FehlerCode } from '../infra/fehlerTexte';
 import * as repo from './repository/anmeldezaehler';
+import { kontoBereich } from './prozess';
 
 /** Typisiert, weil ein vertippter Feldname `undefined >= MAX_ATTEMPTS` ergäbe
  * — `false`, also keine Sperre. */
@@ -84,7 +84,7 @@ const _restMin = (firstAt: number, windowMin: number, now = Date.now()) =>
 
 async function _read(key: string, windowMin: number): Promise<Zaehlerstand | null> {
   try {
-    const row = await repo.lies(key, windowMin);
+    const row = await kontoBereich().anmeldezaehler.lies(key, windowMin);
     if (!row) return null;
     return { count: parseInt(row.count) || 0, waitMin: Math.max(1, Math.ceil(parseFloat(row.wait_min) || 1)),
              seitLetztem: Math.max(0, parseFloat(row.seit) || 0) };
@@ -98,7 +98,7 @@ async function _read(key: string, windowMin: number): Promise<Zaehlerstand | nul
 
 async function _bump(key: string, windowMin: number): Promise<number> {
   try {
-    return await repo.erhoehe(key, windowMin);
+    return await kontoBereich().anmeldezaehler.erhoehe(key, windowMin);
   } catch (fehler) {
     imSpeicher('zählen', fehler);
     const now = Date.now();
@@ -116,7 +116,7 @@ type Stand = Zaehlerstand & { laufend: number };
  * einander sehen. */
 async function _reserviere(key: string, windowMin: number, erlaubt: (s: Stand) => boolean): Promise<{ ok: boolean; stand: Stand }> {
   try {
-    return await db.transaction(async (tx) => {
+    return await kontoBereich().db.transaction(async (tx) => {
       const r = await repo.sperre(tx, key, windowMin, LAUFEND_VERFALL_S);
       const neu = !!r.abgelaufen;
       const stand: Stand = {
@@ -145,7 +145,7 @@ async function _reserviere(key: string, windowMin: number, erlaubt: (s: Stand) =
 }
 
 async function _freigeben(key: string): Promise<void> {
-  try { await repo.gibLaufplatzFrei(key); }
+  try { await kontoBereich().anmeldezaehler.gibLaufplatzFrei(key); }
   catch (fehler) {
     imSpeicher('freigeben', fehler);
     const e = _attempts.get(key); if (e) e.laufend = Math.max(0, (e.laufend || 0) - 1);
@@ -153,7 +153,7 @@ async function _freigeben(key: string): Promise<void> {
 }
 
 async function _clear(key: string): Promise<void> {
-  try { await repo.loescheZaehler(key); }
+  try { await kontoBereich().anmeldezaehler.loescheZaehler(key); }
   catch (e) { imSpeicher('löschen', e); _attempts.delete(key); }
 }
 
@@ -161,7 +161,7 @@ async function _clear(key: string): Promise<void> {
  * doppelt. Kleinschreibung in PostgreSQL wie beim Login: JS macht aus „İ"
  * zwei Zeichen. */
 async function kontoKennung(username: unknown): Promise<string> {
-  const z = await repo.kontoZumNamen(einzelwert(username)).catch(meldeUndLiefere('anmeldung:konto-kennung', null));
+  const z = await kontoBereich().anmeldezaehler.kontoZumNamen(einzelwert(username)).catch(meldeUndLiefere('anmeldung:konto-kennung', null));
   if (z?.id) return `konto:${z.id}`;
   return `name:${namensAbdruck(z?.kennung ?? einzelwert(username).toLowerCase())}`;
 }
@@ -263,7 +263,7 @@ export async function bekannteAnmeldung(ip: string, username: unknown): Promise<
 
 /** Jeder unbekannte Name legt eine Zeile an; ohne Aufräumen wüchse die Tabelle mit jedem Rateversuch. */
 export async function raeumeAnmeldezaehlerAuf(): Promise<number> {
-  return repo.raeumeAuf(BEKANNT_MIN);
+  return kontoBereich().anmeldezaehler.raeumeAuf(BEKANNT_MIN);
 }
 
 /** In einem Schritt: Getrennt gelesen und gezählt kamen gleichzeitige Anfragen
@@ -272,7 +272,7 @@ export async function zaehleAnfrage(bucket: string, ip: string, windowMs: number
   const key = `${bucket}|${drosselAdresse(ip)}`;
   const windowMin = windowMs / 60000;
   try {
-    const r = await repo.zaehleHoch(key, windowMin);
+    const r = await kontoBereich().anmeldezaehler.zaehleHoch(key, windowMin);
     return { count: parseInt(r.count) || 0, waitMin: Math.max(1, Math.ceil(parseFloat(r.wait_min) || 1)) };
   } catch (fehler) {
     imSpeicher('anfrage', fehler);

@@ -15,11 +15,12 @@ import { buildSetsCsv } from '../sets';
 import { buildPartsCsv, buildFigsCsv } from '../bestand/bestandExport';
 import { buildMerklisteCsv } from '../merkliste/merkliste';
 import { DAILY_JOBS } from '../auftraege/zeitplan';
-import { zeitplanNeuPlanen, protokolliere } from './dienst';
+import { zeitplanNeuPlanen } from './dienst';
 import { jsonOderNull } from '../infra/validate';
 import { fachfehler } from '../infra/fehlerTexte';
 import { KonfigExport } from '../vertrag/einstellungen';
 import { finanzenBereich } from '../finanzen/prozess';
+import { kontoBereich } from '../konto/prozess';
 
 /** Mailserver, Registrierung und API-Schlüssel nimmt nur das Formular, mit Passwort. */
 export const istHeikel = (k: string) =>
@@ -107,7 +108,13 @@ export async function konfigImport(uid: number, verwalter: boolean, datei: Buffe
       await setGlobalSetting(key, global[key]);
       imported++;
     }
-    if (geaendert.length) await protokolliere(uid, uid, 'einstellungen_geaendert', `Import: ${geaendert.join(', ')}`);
+    if (geaendert.length)
+      await kontoBereich().protokoll.protokolliere(
+        uid,
+        uid,
+        'einstellungen_geaendert',
+        `Import: ${geaendert.join(', ')}`,
+      );
   }
   // Zentrale Stelle: Eine importierte Währungsänderung stösst den Preis-Job an.
   for (const key of KONTO_IMPORT.filter(k => konto?.[k] !== undefined)) {

@@ -24,6 +24,7 @@ import registrierungRouter = require('./auth/registrierung');
 import { STATUS_DER_ART } from '../src/http/fehlerArt';
 import { vertragsRouter } from '../src/http/vertragsRouter';
 import type { Antwort, OffeneAnfrage } from '../src/http/vertragsRouter';
+import { kontoBereich } from '../src/konto/prozess';
 
 // Ein Wächter für Sitzung UND Token: Die App hat keine Sitzung und war mit
 // einem reinen Sitzungswächter von Routen ausgesperrt.
@@ -90,7 +91,7 @@ router.get('/me', async (req: OffeneAnfrage<'GET /api/v1/auth/me'>, res: Antwort
       code, error: fehlerText(code, antwortSprache(req), code === 'zu_viele_anfragen' ? { minuten: 1 } : undefined) });
   const antworte = async () => {
     if (req.session?.userId) {
-      const user = await K.kontoKurz(req.session.userId);
+      const user = await kontoBereich().konten.kontoKurz(req.session.userId);
       if (user) return res.json({ success: true, loggedIn: true,
         user: { id: user.id, username: user.username, is_admin: user.is_admin, mustChangePassword: user.must_change_password,
                 zweiterFaktorPflicht: await zweiterFaktorPflicht(req) } });
@@ -155,7 +156,7 @@ router.get('/profile', requireLogin, async (req: OffeneAnfrage<'GET /api/v1/auth
 
 router.put('/profile', requireLogin, async (req: OffeneAnfrage<'PUT /api/v1/auth/profile'>, res: Antwort<'PUT /api/v1/auth/profile'>) => {
   const { username, email, first_name, last_name, password, password_current } = req.eingabe;
-  const user = await K.kontoVoll(nutzerId(req)!);
+  const user = await kontoBereich().konten.kontoVoll(nutzerId(req)!);
   if (!user) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
 
   // Das Passwort nur über /change-password: Nur dort werden danach alle
@@ -219,7 +220,7 @@ router.post('/qr-token', requireLogin, async (req: OffeneAnfrage<'POST /api/v1/a
 
 /** Das Konto muss bei der Meldung und bei der Abholung noch anmelden dürfen. */
 async function darfAnmelden(uid: number): Promise<boolean> {
-  const user = await K.kontoVoll(uid);
+  const user = await kontoBereich().konten.kontoVoll(uid);
   return !!user && !assertLoginAllowed(user);
 }
 
@@ -240,7 +241,7 @@ router.post('/qr-login/abholen', ipThrottle('qr-abholen', 600, 60 * 60 * 1000), 
   if (a.stand === 'wartet') return res.json({ success: true, wartet: true });
   if (a.stand === 'abgelehnt') return sendeFehler(req, res, 403, 'qr_abgelehnt');
   if (a.stand !== 'fertig') return sendeFehler(req, res, 401, 'token_ungueltig');
-  const user = await K.kontoKurz(a.uid);
+  const user = await kontoBereich().konten.kontoKurz(a.uid);
   if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
   meldeAnmeldung({ ip: req.ip, konto: user.id, zugang: 'qr' });
   // Keine Sitzung: Sie trüge die vollen Rechte des Kontos an Scope `app` vorbei.
@@ -293,7 +294,7 @@ router.post('/passkey/registrieren/optionen', requireLoginOrToken, async (req: O
   if (!perSitzung(req)) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
   const uid = angemeldeteNutzerId(req);
   if (!await bestaetigeMitFaktor(req, res, uid, req.eingabe.password)) return;
-  const konto = await K.kontoKurz(uid);
+  const konto = await kontoBereich().konten.kontoKurz(uid);
   const optionen = await P.registrierungsOptionen(uid, konto?.username ?? String(uid));
   if (!optionen) return sendeFehler(req, res, 503, 'passkey_ohne_domain');
   res.json({ success: true, optionen });
@@ -329,7 +330,7 @@ router.post('/passkey/anmelden', ipThrottle('passkey-anmelden', 30, 60 * 60 * 10
   if (!geraeteNameInhaltGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
   const uid = await P.anmeldungPruefen(req.eingabe.antwort, 'anmelden');
   if (!uid) return sendeFehler(req, res, 401, 'passkey_ungueltig');
-  const user = await K.kontoVoll(uid);
+  const user = await kontoBereich().konten.kontoVoll(uid);
   if (!user) return sendeFehler(req, res, 401, 'passkey_ungueltig');
   const gesperrt = assertLoginAllowed(user);
   if (gesperrt) return sendeFehler(req, res, STATUS_DER_ART[gesperrt.art], gesperrt.code);

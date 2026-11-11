@@ -482,7 +482,6 @@ export async function katalogBilderEinreihen(alleErneut: boolean) {
     };
 }
 export { KontoBildzeile } from './repository/verwaltung';
-export { letzteEintraege, protokolliere, raeumeProtokollAuf } from '../konto/verwalterProtokoll';
 
 /** Die wiederkehrenden Fragen zu einer leeren Kachel in einer Antwort: Datenbank, Platte, Proxy, Fehlanzeige. */
 export async function bildDiagnose(sn: string) {

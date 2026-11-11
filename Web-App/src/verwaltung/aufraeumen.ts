@@ -11,10 +11,10 @@ import { loescheVerfallene } from '../katalog/bilder/bildbedarf';
 import { fehlertext } from '../infra/fehler';
 import { raeumeIdempotenzAuf } from '../idempotenz/dienst';
 import { raeumeOffeneRegistrierungenAuf } from '../konto/konten';
-import { raeumeProtokollAuf } from './dienst';
 import { raeumeAlteSicherungenAuf } from '../../db/migrate';
 import { pruefeAbbruch, type AuftragsLauf } from '../auftraege/auftraege';
 import { verwaltungBereich } from './prozess';
+import { kontoBereich } from '../konto/prozess';
 
 type Schritt = [name: string, lauf: () => Promise<unknown>];
 
@@ -47,7 +47,7 @@ function aufraeumenTaeglich(lauf?: AuftragsLauf): Promise<void> {
     ['Preisverlauf', purgeAltePreise],
     ['unbestätigte Registrierungen', raeumeOffeneRegistrierungenAuf],
     ['Bild-Cache', raeumeBildCacheAuf],
-    ['Verwaltungsprotokoll', () => raeumeProtokollAuf()],
+    ['Verwaltungsprotokoll', () => kontoBereich().protokoll.raeumeProtokollAuf()],
     ['Kopien vor Migrationen', () => raeumeAlteSicherungenAuf(verwaltungBereich().db)],
   ], lauf);
 }

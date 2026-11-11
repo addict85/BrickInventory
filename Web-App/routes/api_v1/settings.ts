@@ -7,8 +7,8 @@ import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireApiAdmin as requireAdmin, requireToken, bearerToken, kontoSchranke } from './middleware';
 import { SECRET_KEYS, isMaskedValue, readSettings, designFuer, deleteUserSetting, setGlobalSetting, globalerWertGueltig, deleteGlobalSetting, globalDefaultCondition, nutzerStandardZustand, getGlobalSetting, getSetting } from '../../src/einstellungen/settings';
 import { setzeEigenesDesign, setUserSetting } from '../../src/konto/nutzerEinstellung';
-import { quellePruefen, bricksetLimitGesetzt, protokolliere } from '../../src/verwaltung/dienst';
-import { zugaengeDesKontos, zugangLoeschen, andereZugaengeLoeschen, andereSitzungenBeenden, mussPasswortAendern, profil } from '../../src/konto/konten';
+import { quellePruefen, bricksetLimitGesetzt } from '../../src/verwaltung/dienst';
+import { andereSitzungenBeenden, profil } from '../../src/konto/konten';
 import { hashToken, leereTokenCache } from '../../src/konto/auth';
 import { kontoGedrosselt } from '../../src/konto/zielDrossel';
 import { resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, bestaetigeMitFaktor, perSitzung } from '../../src/konto/http/anmeldung';
@@ -24,6 +24,7 @@ import { GLOBALE_EINSTELLUNGEN, KONTO_EINSTELLUNGEN } from '../../src/vertrag/ei
 import type { Request } from 'express';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/http/vertragsRouter';
+import { kontoBereich } from '../../src/konto/prozess';
 const router = vertragsRouter();
 
 const requireLogin = requireLoginOrToken;
@@ -44,7 +45,7 @@ router.get('/settings/tokens', requireLoginOrToken, async (req: OffeneAnfrage<'G
   const eigenerHash = eigener ? hashToken(eigener) : null;
   // LEAST über beide Fristen: Den Nutzer interessiert der Tag, an dem dieses
   // Gerät ausgesperrt wird.
-  const tokens = await zugaengeDesKontos(angemeldeteNutzerId(req));
+  const tokens = await kontoBereich().konten.zugaengeDesKontos(angemeldeteNutzerId(req));
   res.json({ success: true, tokens: tokens.map(t => ({
     token_prefix: t.token.substring(0, 8),
     token_id:     t.token.substring(0, 16),
@@ -69,7 +70,7 @@ router.delete('/settings/tokens/:tokenId', requireLoginOrToken, async (req: Offe
   const eigener = bearerToken(req);
   const eigenesGeraet = !!eigener && hashToken(eigener).startsWith(req.pfad.tokenId);
   if (!eigenesGeraet && !await bestaetigeMitFaktor(req, res, uid, req.eingabe.password)) return;
-  const { anzahl, label } = await zugangLoeschen(uid, req.pfad.tokenId);
+  const { anzahl, label } = await kontoBereich().konten.zugangLoeschen(uid, req.pfad.tokenId);
   if (anzahl) {
     leereTokenCache();
     if (!eigenesGeraet) hinweisNebenher(uid, 'zugang_beendet', label ?? undefined);
@@ -86,7 +87,7 @@ router.post('/settings/sessions/andere-beenden', requireLogin, async (req: Offen
   // Nur eine echte Sitzung merkt sich die Version; sonst bekäme die App eine.
   if (perSitzung(req)) req.session.sitzungsVersion = version;
   const eigener = bearerToken(req);
-  const zugaenge = req.eingabe.zugaenge ? await andereZugaengeLoeschen(uid, eigener ? hashToken(eigener) : null) : 0;
+  const zugaenge = req.eingabe.zugaenge ? await kontoBereich().konten.andereZugaengeLoeschen(uid, eigener ? hashToken(eigener) : null) : 0;
   if (zugaenge) leereTokenCache();
   if (beendet || zugaenge) hinweisNebenher(uid, 'zugaenge_beendet');
   res.json({ success: true, deleted: beendet, zugaenge });
@@ -255,7 +256,7 @@ router.post('/settings', async (req: OffeneAnfrage<'POST /api/v1/settings'>, res
         await setGlobalSetting(key, req.eingabe[key]);
       }
     }
-    if (geaendert.length) await protokolliere(uid, uid, 'einstellungen_geaendert', geaendert.join(', '));
+    if (geaendert.length) await kontoBereich().protokoll.protokolliere(uid, uid, 'einstellungen_geaendert', geaendert.join(', '));
     // Wer das Mailformular gespeichert hat, hat den Hinweis auf die alte Ausnahme gesehen.
     if (globalKeys.some(k => k.startsWith('smtp_') && req.eingabe[k] !== undefined)) await deleteGlobalSetting('smtp_insecure_tls');
 
@@ -324,7 +325,7 @@ router.post('/settings/smtp-test', async (req: OffeneAnfrage<'POST /api/v1/setti
 router.get('/settings/einrichtung', async (req: OffeneAnfrage<'GET /api/v1/settings/einrichtung'>, res: Antwort<'GET /api/v1/settings/einrichtung'>) => {
   if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
   const wert = async (k: string) => !!(await getGlobalSetting(k));
-  const passwort = await mussPasswortAendern(angemeldeteNutzerId(req));
+  const passwort = await kontoBereich().konten.mussPasswortAendern(angemeldeteNutzerId(req));
   const quellen = {
     rebrickable: await wert('rebrickable_api_key'),
     brickset:    await wert('brickset_api_key'),

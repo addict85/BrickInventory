@@ -7,7 +7,6 @@ import { zuGrosseId } from '../../src/infra/validate';
 import { validateToken } from '../../src/konto/auth';
 import { resolveUserId, sendeTokenAbsage, nutzerId, zweiterFaktorPflicht } from '../../src/konto/http/anmeldung';
 import { belegeKontoPlatz, type Schranke } from '../../src/http/kontoSchranke';
-import { mussPasswortAendern } from '../../src/konto/konten';
 import { verlangeFreigabe } from '../../src/konto/http/schrittschutz';
 import type { Sicht } from '../../src/haushalt/haushalt';
 
@@ -16,6 +15,7 @@ export const sichtVon = (req: AuthedRequest & { abfrage: { accounts?: string | u
   ({ nutzer: req.apiUser.user_id, konten: req.abfrage.accounts });
 import { sendeFehler } from '../../src/http/httpAntwort';
 import { waechter } from '../../src/http/vertragsRouter';
+import { kontoBereich } from '../../src/konto/prozess';
 
 export function bearerToken(req: { headers: { authorization?: string | undefined } }): string | null {
   const auth = req.headers.authorization || '';
@@ -49,7 +49,7 @@ const ZUR_EINRICHTUNG: ReadonlyArray<readonly [string, RegExp]> = [
 /** Sitzungen von vor dem Feld fragen einmal die Datenbank und merken es sich. */
 async function mussWechseln(req: Request): Promise<boolean> {
   if (!req.session?.userId) return req.apiUser?.muss_passwort_aendern === true;
-  req.session.mussPasswortAendern ??= await mussPasswortAendern(req.session.userId);
+  req.session.mussPasswortAendern ??= await kontoBereich().konten.mussPasswortAendern(req.session.userId);
   return req.session.mussPasswortAendern;
 }
 

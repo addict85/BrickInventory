@@ -1,7 +1,6 @@
 /** Der eigene zweite Faktor (src/konto/zweiterFaktor.ts). Einrichten und
  * Abschalten verlangen das Passwort: Wer nur eine offene Sitzung erbeutet,
  * soll das Konto weder aussperren noch den Schutz abbauen. */
-import * as K from '../../src/konto/konten';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { beendeAndereZugaenge } from '../../src/konto/auth';
 import { requireLoginOrToken, angemeldeteNutzerId, bestaetigeCode, bestaetigeMitFaktor, zugangVon, zweiterFaktorPflicht, gnadenfristVerbrauchen } from '../../src/konto/http/anmeldung';
@@ -11,6 +10,7 @@ import * as zf from '../../src/konto/zweiterFaktor';
 import { STATUS_DER_ART } from '../../src/http/fehlerArt';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Antwort, OffeneAnfrage } from '../../src/http/vertragsRouter';
+import { kontoBereich } from '../../src/konto/prozess';
 
 const router = vertragsRouter();
 const requireLogin = requireLoginOrToken;
@@ -29,7 +29,7 @@ router.post('/zweiter-faktor/einrichten', requireLogin, async (req: OffeneAnfrag
   } else if (!await bestaetigeMitFaktor(req, res, uid, req.eingabe.password)) return;
   const geheimnis = await zf.beginneEinrichtung(uid);
   if (!geheimnis) return sendeFehler(req, res, 409, 'zweiter_faktor_schon_aktiv');
-  const u = await K.kontoKurz(uid);
+  const u = await kontoBereich().konten.kontoKurz(uid);
   res.json({ success: true, geheimnis, otpauth: zf.otpauthAdresse(geheimnis, u?.username ?? String(uid)) });
 });
 

@@ -3,9 +3,9 @@
  * heiklen Schritte eines App-Tokens. Ein gerootetes Gerät mit Token allein
  * kommt ohne die Sperre nicht weiter. */
 import { createPublicKey, randomBytes, verify, type KeyObject } from 'node:crypto';
-import * as repo from './repository/geraeteSchluessel';
 import type { Familie } from './repository/geraeteSchluessel';
 import type { AKTIONEN } from '../vertrag/geraet';
+import { kontoBereich } from './prozess';
 
 export type { Familie };
 
@@ -50,18 +50,24 @@ export async function hinterlegeSchluessel(f: Familie, oeffentlich: string): Pro
   const k = leseSchluessel(oeffentlich);
   if (!k) return 'ungueltig';
   const kanonisch = (k.export({ format: 'der', type: 'spki' }) as Buffer).toString('base64');
-  const da = await repo.schluesselDer(f);
+  const da = await kontoBereich().geraeteSchluessel.schluesselDer(f);
   if (da) return da === kanonisch ? 'gleich' : 'anderer';
-  if (await repo.legeSchluesselAn(f, kanonisch, SCHLUESSEL_FRIST_S)) return 'neu';
-  return (await repo.schluesselDer(f)) === kanonisch ? 'gleich' : 'frist_vorbei';
+  if (await kontoBereich().geraeteSchluessel.legeSchluesselAn(f, kanonisch, SCHLUESSEL_FRIST_S)) return 'neu';
+  return (await kontoBereich().geraeteSchluessel.schluesselDer(f)) === kanonisch ? 'gleich' : 'frist_vorbei';
 }
 
 export type Challenge = { challenge: string; nachricht: string; gueltig_bis: Date } | 'kein_schluessel';
 
 export async function neueChallenge(f: Familie, aktion: Schrittaktion): Promise<Challenge> {
-  if (!(await repo.schluesselDer(f))) return 'kein_schluessel';
+  if (!(await kontoBereich().geraeteSchluessel.schluesselDer(f))) return 'kein_schluessel';
   const challenge = randomBytes(32).toString('base64url');
-  const bis = await repo.legeChallengeAn(f, challenge, aktion, CHALLENGE_FRIST_S, CHALLENGES_OFFEN);
+  const bis = await kontoBereich().geraeteSchluessel.legeChallengeAn(
+    f,
+    challenge,
+    aktion,
+    CHALLENGE_FRIST_S,
+    CHALLENGES_OFFEN,
+  );
   return { challenge, nachricht: nachricht(aktion, challenge), gueltig_bis: bis };
 }
 
@@ -71,9 +77,9 @@ export async function loeseEin(
   challenge: string,
   signaturB64: string,
 ): Promise<{ aktion: Schrittaktion; bis: Date } | null> {
-  const aktion = (await repo.nimmChallenge(f, challenge)) as Schrittaktion | null;
+  const aktion = (await kontoBereich().geraeteSchluessel.nimmChallenge(f, challenge)) as Schrittaktion | null;
   if (!aktion) return null;
-  const k = leseSchluessel((await repo.schluesselDer(f)) ?? '');
+  const k = leseSchluessel((await kontoBereich().geraeteSchluessel.schluesselDer(f)) ?? '');
   let passt = false;
   try {
     passt =
@@ -88,12 +94,15 @@ export async function loeseEin(
     passt = false;
   }
   if (!passt) return null;
-  return { aktion, bis: await repo.oeffneFreigabe(f, aktion, FREIGABE_LEERLAUF_S, FREIGABE_HOECHSTENS_S) };
+  return {
+    aktion,
+    bis: await kontoBereich().geraeteSchluessel.oeffneFreigabe(f, aktion, FREIGABE_LEERLAUF_S, FREIGABE_HOECHSTENS_S),
+  };
 }
 
 export type Pruefung = 'frei' | 'kein_schluessel' | 'freigabe_noetig';
 
 export async function pruefeFreigabe(f: Familie, aktion: Schrittaktion): Promise<Pruefung> {
-  if (await repo.nutzeFreigabe(f, aktion, FREIGABE_LEERLAUF_S)) return 'frei';
-  return (await repo.schluesselDer(f)) ? 'freigabe_noetig' : 'kein_schluessel';
+  if (await kontoBereich().geraeteSchluessel.nutzeFreigabe(f, aktion, FREIGABE_LEERLAUF_S)) return 'frei';
+  return (await kontoBereich().geraeteSchluessel.schluesselDer(f)) ? 'freigabe_noetig' : 'kein_schluessel';
 }

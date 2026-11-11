@@ -5,12 +5,13 @@ import { requireApiAdmin } from './middleware';
 import { getLimitForApi } from '../../src/katalog/apiKontingent';
 import { vergissFehlend } from '../../src/katalog/bilder/imageMisses';
 import { setGlobalSetting, getGlobalSetting } from '../../src/einstellungen/settings';
-import { cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinreihen, preisJobStand, preisJobJetzt, fehlendeBilderNachladen, bricksetWiederholen, bricksetEntfernen, jobZeitplanSetzen, jobUebersicht, bildProbe, preisProbe, katalogBilderEinreihen, katalogAbgleichJetzt, bricksetListe, letzteEintraege, bildDiagnose } from '../../src/verwaltung/dienst';
+import { cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinreihen, preisJobStand, preisJobJetzt, fehlendeBilderNachladen, bricksetWiederholen, bricksetEntfernen, jobZeitplanSetzen, jobUebersicht, bildProbe, preisProbe, katalogBilderEinreihen, katalogAbgleichJetzt, bricksetListe, bildDiagnose } from '../../src/verwaltung/dienst';
 import { auftragsUebersicht, auftragAbbrechen, auftragWiederholen, auftragsArtJetzt, auftragsArtLeeren } from '../../src/verwaltung/hintergrund';
 import { seiteAus } from '../../src/infra/seite';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
 import { verwaltungBereich } from '../../src/verwaltung/prozess';
+import { kontoBereich } from '../../src/konto/prozess';
 const router = vertragsRouter({ grosseIds: true });
 
 
@@ -41,7 +42,7 @@ router.post('/admin/trigger-csv-sync', requireApiAdmin, async (_req: AuthedReque
 });
 
 router.get('/admin/protokoll', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/admin/protokoll'>) => {
-  res.json({ success: true, eintraege: await letzteEintraege() });
+  res.json({ success: true, eintraege: await kontoBereich().protokoll.letzteEintraege() });
 });
 
 router.get('/admin/cache-stats', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/admin/cache-stats'>) => {
