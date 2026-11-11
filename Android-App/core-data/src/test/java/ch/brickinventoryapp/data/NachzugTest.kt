@@ -118,15 +118,14 @@ class NachzugTest {
 
     @Test
     fun `eine Antwort, waehrend das Konto wechselt, aendert die neue Ablage nicht`() = runBlocking {
-        // Dasselbe Set auch im neuen Konto: Sonst fände die falsche Antwort dort nichts zu ändern.
-        bereich = "b"
-        ablage.uebernimm(Faecher.SETS, listOf(SetItem("10001-1", quantity = 1)))
-        bereich = "a"
-        pfade.vorrang = { _, _ -> bereich = "b"; null }
+        // Das Gerät hält nur ein Konto; das neue lädt sein Set, während die alte Antwort unterwegs ist.
+        pfade.vorrang = { _, _ ->
+            bereich = "b"
+            runBlocking { ablage.uebernimm(Faecher.SETS, listOf(SetItem("10001-1", quantity = 1))) }
+            null
+        }
         sets.updateQuantity("10001-1", 5)
         assertEquals("die Ablage des neuen Kontos", 1, set().quantity)
-        bereich = "a"
-        assertEquals("die Ablage des alten Kontos", 1, set().quantity)
     }
 
     @Test
