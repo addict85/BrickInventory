@@ -80,7 +80,7 @@ class OfflineablageTest {
         ablage.puffere(Bearbeitung.MerkpostenAnlegen(MerkpostenRequest("20002-1", Zustand.GEBRAUCHT, 7)))
         ablage.puffere(Bearbeitung.MerkpostenLoeschen("20001-1", "N", 7))
         assertEquals(listOf("20002-1|U|7"),
-            ablage.lies(Faecher.MERKLISTE)!!.liste.map { "${it.setNumber}|${it.condition}|${it.userId}" })
+            ablage.lies(Faecher.MERKLISTE)!!.liste.map { "${it.setNumber}|${it.condition.kennung}|${it.userId}" })
 
         ablage.uebernimm(Faecher.MANUELLE_TEILE, listOf(PartValuationItem(partNumber = "3001", colorId = 5, quantity = 4, userId = 7)))
         ablage.puffere(Bearbeitung.TeilAendern("3001", 5, UpdateManualItemRequest(quantity = 9), 7))

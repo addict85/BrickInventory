@@ -63,7 +63,7 @@ class TeileViewModelTest {
     fun auf() {
         Dispatchers.setMain(takt)
         pfade = PfadServer(
-            "/api/v1/parts" to """{"success":true,"total":1,"parts":[{"part_number":"3001","color_id":5}]}""",
+            "/api/v1/parts" to """{"success":true,"total":1,"parts":[{"part_number":"3001","color_id":5,"color_name":"Red"}]}""",
             "/api/v1/parts/manual" to """{"success":true,"parts":[]}""",
             "/api/v1/minifigs" to """{"success":true,"figs":[{"fig_number":"sw0001"}]}""",
             "/api/v1/parts/stats" to """{"success":true}""",
@@ -186,7 +186,7 @@ class TeileViewModelTest {
     fun `nach dem Abmelden ist nichts mehr da`() {
         val gemerkt = SavedStateHandle()
         val vm = vm(gemerkt)
-        vm.setPartsColorFilter("5")
+        vm.setPartsColorFilter("Red")
         vm.oeffneSetItem(Postenart.PART, "3001", 5)
         assertTrue("geladen", vm.partsState.value.parts.isNotEmpty() && !vm.setItemState.value.laedt)
         t.sitzung.abgemeldet()
