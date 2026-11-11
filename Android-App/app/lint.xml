@@ -10,6 +10,8 @@
     <!-- Postenart, Zustand und Scannerherkunft hält app/proguard-rules.pro: core-model ist
          reines Kotlin und kennt kein @Keep. -->
     <issue id="MissingKeepAnnotation">
-        <ignore regexp="Postenart|Zustand|Scannerherkunft" />
+        <ignore path="**/Postenart.class" />
+        <ignore path="**/Zustand.class" />
+        <ignore path="**/Scannerherkunft.class" />
     </issue>
 </lint>
