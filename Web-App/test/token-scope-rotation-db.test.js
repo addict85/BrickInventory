@@ -47,7 +47,8 @@ const { buildAndRequire } = require('./helpers/sources');
 const { qrKoppeln } = require('./helpers/qr');
 const _req = buildAndRequire();
 const db   = _req('db/database.js');
-const auth = _req('src/konto/auth.js');
+const auth = _req('src/konto/geraeteToken.js');
+const tokenCache = _req('src/konto/tokenCache.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -153,7 +154,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
     // Zwei Tage nicht benutzt: Die nächste Anfrage schiebt Frist und letzte Nutzung.
     await db.run(`UPDATE api_tokens SET last_used = NOW() - INTERVAL '2 days', expires_at = NOW() + INTERVAL '88 days',
                   ip_bereich = NULL WHERE token = $1`, [auth.hashToken(tok)]);
-    auth.leereTokenCache();
+    tokenCache.leereTokenCache();
     assert.equal((await ruf('/auth/me', { token: tok })).status, 200);
     let z;
     for (let i = 0; i < 100; i++) {
@@ -168,7 +169,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
     await db.run(`UPDATE api_tokens SET last_used = NOW() - INTERVAL '23 hours',
                   expires_at = NOW() + INTERVAL '89 days 1 hour' WHERE token = $1`, [auth.hashToken(tok)]);
     const vorher = await zeile(tok);
-    auth.leereTokenCache();
+    tokenCache.leereTokenCache();
     for (let i = 0; i < 3; i++) assert.equal((await ruf('/auth/me', { token: tok })).status, 200);
     await new Promise(r => setTimeout(r, 300));
     const nachher = await zeile(tok);
@@ -195,12 +196,12 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
     const r2 = await ruf('/auth/token-rotieren', { method: 'POST', token: a });
     assert.equal(r2.status, 200);
     const c = r2.body.token;
-    auth.leereTokenCache();
+    tokenCache.leereTokenCache();
     assert.equal((await ruf('/auth/me', { token: b })).status, 401, 'Der ersetzte Nachfolger gilt nicht mehr');
 
     // Die erste Nutzung von C beendet die Überlappung.
     assert.equal((await ruf('/auth/me', { token: c })).status, 200);
-    auth.leereTokenCache();
+    tokenCache.leereTokenCache();
     assert.equal((await ruf('/auth/me', { token: a })).status, 401, 'Nach Nutzung des neuen ist der alte weg');
     assert.equal((await ruf('/auth/token-rotieren', { method: 'POST', token: a })).status, 401);
     assert.equal((await ruf('/auth/token-rotieren', { method: 'POST', token: 'f'.repeat(64) })).status, 401);
@@ -214,7 +215,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
     assert.ok(Math.abs(tageBis(z.expires_at) - 90) < 0.01, 'die Gleitfrist bleibt daneben');
     // 170 Tage nach der Anmeldung: Ein Tausch erbt die zehn restlichen Tage.
     await db.run(`UPDATE api_tokens SET hard_expires_at = NOW() + INTERVAL '10 days' WHERE token = $1`, [auth.hashToken(a)]);
-    auth.leereTokenCache();
+    tokenCache.leereTokenCache();
     const r = await ruf('/auth/token-rotieren', { method: 'POST', token: a });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     const n = await zeile(r.body.token);
@@ -235,7 +236,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
       assert.equal(qr.body.token_info.expires_at, null);
 
       await db.run(`UPDATE api_tokens SET rotiert_am = NOW() - INTERVAL '31 days' WHERE token = $1`, [auth.hashToken(u)]);
-      auth.leereTokenCache();
+      tokenCache.leereTokenCache();
       const faellig = await ruf('/auth/me', { token: u });
       assert.equal(faellig.status, 200);
       assert.equal(faellig.kopf.get('x-token-rotation'), 'faellig');
@@ -243,7 +244,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
       assert.equal((await ruf('/settings/tokens', { token: u })).kopf.get('x-token-rotation'), 'faellig');
 
       await db.run(`UPDATE api_tokens SET rotiert_am = NOW() - INTERVAL '61 days' WHERE token = $1`, [auth.hashToken(u)]);
-      auth.leereTokenCache();
+      tokenCache.leereTokenCache();
       const gesperrt = await ruf('/settings/tokens', { token: u });
       assert.equal(gesperrt.status, 401);
       assert.equal(gesperrt.body.code, 'token_rotation_noetig');

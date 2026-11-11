@@ -1,7 +1,9 @@
 /** Hier wird nur aus dem Request gelesen und in die Antwort geschrieben; die
  * Regeln stehen in src/konto/auth.ts und loginLimiter.ts. */
 import type { Request, Response, NextFunction } from 'express';
-import { pruefeToken, rotationFaellig, pruefeAnmeldedaten, begrenzeSitzungen, type TokenPruefung, type AnmeldeErgebnis } from '../auth';
+import { pruefeToken, rotationFaellig, type TokenPruefung } from '../geraeteToken';
+import { pruefeAnmeldedaten, type AnmeldeErgebnis } from '../anmeldepruefung';
+import { begrenzeSitzungen } from '../zugangsende';
 import { zaehleAnfrage } from '../loginLimiter';
 import { pruefeBestaetigung, pruefeCodeBestaetigung, type BestaetigungsAbsage, type Faktor } from '../passwortBestaetigung';
 import { createHash } from 'crypto';

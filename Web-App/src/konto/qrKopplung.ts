@@ -3,7 +3,7 @@
  * Erst dann holt die App ihren Token ab: Ein abfotografierter QR-Code allein
  * öffnet kein Konto, der Inhaber sieht jedes Gerät, bevor es Zugang bekommt. */
 import crypto from 'node:crypto';
-import { createToken, hashToken, ipBereich } from './auth';
+import { createToken, hashToken, ipBereich } from './geraeteToken';
 import { APP_HOECHSTDAUER_TAGE, tokenLabel } from './tokenWunsch';
 import { fachfehler } from '../infra/fehlerTexte';
 import { neueNonce } from './geraeteChallenge';

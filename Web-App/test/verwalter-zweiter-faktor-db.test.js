@@ -89,7 +89,7 @@ test('zweiter Faktor für Verwalter', { concurrency: 1 }, async (t) => {
 
   await t.test('ein gewöhnliches Konto und ein App-Token sind nicht betroffen', async () => {
     assert.equal((await server(t, { userId: nutzer, username: NAMEN[1], isAdmin: false })('GET', '/settings')).status, 200);
-    const { createToken } = _req('src/konto/auth.js');
+    const { createToken } = _req('src/konto/geraeteToken.js');
     const app = server(t, {}, await createToken(chef, 'app', false, null, { scope: 'app' }));
     assert.equal((await app('GET', '/settings')).status, 200);
     const voll = server(t, {}, await createToken(chef, 'voll', false, null, { scope: 'voll' }));

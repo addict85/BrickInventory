@@ -3,7 +3,7 @@
  * Sitzung und Keks bleiben dort, weil sie an der Anfrage hängen. */
 import crypto from 'node:crypto';
 import * as K from './konten';
-import { createToken, hashToken, laufzeitTage, UNBEGRENZT } from './auth';
+import { createToken, hashToken, laufzeitTage, UNBEGRENZT } from './geraeteToken';
 import { APP_HOECHSTDAUER_TAGE, tokenAngaben, tokenLabel, tokenScope } from './tokenWunsch';
 import { hinweisNebenher } from './kontoHinweis';
 import { kontoGedrosselt } from './zielDrossel';

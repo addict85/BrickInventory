@@ -22,7 +22,8 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db   = _req('db/database.js');
-const { verifiziereEmailToken, hashToken } = _req('src/konto/auth.js');
+const { verifiziereEmailToken } = _req('src/konto/anmeldepruefung.js');
+const { hashToken } = _req('src/konto/geraeteToken.js');
 
 async function dbReachable() {
   try { await db.get('SELECT 1 AS ok'); return true; } catch { return false; }

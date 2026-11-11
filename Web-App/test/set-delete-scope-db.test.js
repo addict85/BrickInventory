@@ -41,7 +41,7 @@ test('Löschen im Haushalt: vorwärts erlaubt, rückwärts nicht',
                [hauptId, subId]);
 
   // Die Webapp kommt mit der Sitzung, die App mit einem echten Token und ohne Sitzung.
-  const { createToken } = _req('src/konto/auth.js');
+  const { createToken } = _req('src/konto/geraeteToken.js');
   const token = { [hauptId]: await createToken(hauptId, 'test-app', false, null, { scope: 'app' }),
                   [subId]: await createToken(subId, 'test-app', false, null, { scope: 'app' }) };
   const appFuer = (userId) => {

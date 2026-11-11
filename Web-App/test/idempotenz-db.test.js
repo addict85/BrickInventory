@@ -37,7 +37,7 @@ test('Idempotency-Key', { concurrency: 1, timeout: 180_000 }, async (t) => {
                               VALUES ($1, 'x', true, true) RETURNING id`, [name])).id;
     await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, '3001id', 5, 'manual')`, [id]);
     await db.run(`INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity) VALUES ($1, '3001id', 5, 2)`, [id]);
-    return { id, token: await _req('src/konto/auth.js').createToken(id, 'Idempotenz-Probe') };
+    return { id, token: await _req('src/konto/geraeteToken.js').createToken(id, 'Idempotenz-Probe') };
   };
   const a = await konto(`idem_a_${process.pid}`), b = await konto(`idem_b_${process.pid}`);
   t.after(async () => {

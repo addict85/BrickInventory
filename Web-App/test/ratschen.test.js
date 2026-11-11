@@ -376,7 +376,7 @@ test('kein Verweis auf „Nachtrag N" unter Web-App/', () => {
   // Die Geschichte einer Stelle steht im Commit (CLAUDE.md); eine Nummer im
   // Kommentar verweist auf eine Liste, die es im Baum nicht gibt. Ausgenommen:
   // docs/, CHANGELOG* und db/ (angewandte Migrationen dürfen sich nicht ändern).
-  // Gegenproben: eine Nachtragsnummer in src/konto/auth.ts → rot; dasselbe in
+  // Gegenproben: eine Nachtragsnummer in src/konto/geraeteToken.ts → rot; dasselbe in
   // test/abgleich-tab-layout.test.js und in public/index.html → rot (05.11.2026).
   const RAUS = new Set(['node_modules', 'dist', 'coverage', 'data', 'docs', 'CHANGELOG', 'db', '.git']);
   const treffer = [];

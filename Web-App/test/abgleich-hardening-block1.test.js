@@ -223,7 +223,7 @@ test('keine Oberfläche hängt einen Token an eine Adresse', () => {
     if (anhaengen.some(re => re.test(src))) treffer.push(path.basename(voll));
   }
   assert.deepEqual(treffer, []);
-  // Eine zweite Fassung des Wächters umginge die eine Regel in src/konto/auth.ts.
+  // Eine zweite Fassung des Wächters umginge die eine Regel in src/konto/http/anmeldung.ts.
   assert.doesNotMatch(setKernQuelle(), /function requireLoginOrToken/);
   // Während eines Imports ist 503 nach 3 s besser als eine hängende Verbindung.
   assert.match(setKernQuelle(), /loginOrTokenGuard\(\{ timeoutMs: 3000 \}\)/);

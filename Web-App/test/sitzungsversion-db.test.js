@@ -8,7 +8,7 @@
  * Gegenproben (01.11.2026 gemessen, je einzeln):
  *   A  sitzungsVersionPruefen() ruft immer next() → rot: „die zurückgeschriebene
  *      Verwaltersitzung gilt nicht mehr" und „das andere Fenster bleibt draussen"
- *   B  erhoeheSitzungsVersion() in revokeAllSessions (src/konto/auth.ts) entfernt → rot:
+ *   B  erhoeheSitzungsVersion() in revokeAllSessions (src/konto/zugangsende.ts) entfernt → rot:
  *      „die zurückgeschriebene Verwaltersitzung gilt nicht mehr"
  *   C  in routes/api_v1/settings.ts die neue Version nicht in die eigene
  *      Sitzung geschrieben → rot: „das eigene Fenster bleibt angemeldet"

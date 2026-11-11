@@ -40,7 +40,8 @@ require.cache[require.resolve(path.join(S.DIST, 'src/mail/mailer.js'))].exports 
 });
 
 const db = _req('db/database.js');
-const auth = _req('src/konto/auth.js');
+const auth = _req('src/konto/geraeteToken.js');
+const tokenCache = _req('src/konto/tokenCache.js');
 const { testServer } = require('./helpers/server');
 const { dbOderSkip } = require('./helpers/db');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
@@ -81,7 +82,7 @@ test('Widerruf von App-Zugängen', { concurrency: 1 }, async t => {
   };
   const kennung = token => auth.hashToken(token).slice(0, 16);
   const gilt = async token => {
-    auth.leereTokenCache();
+    tokenCache.leereTokenCache();
     return (await ruf('GET', '/settings/tokens', token)).status === 200;
   };
   const hinweise = async (art, anzahl) => {

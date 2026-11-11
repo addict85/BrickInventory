@@ -141,11 +141,12 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('die Token-Abfrage prüft is_active', async () => {
-    const auth = _req('src/konto/auth.js');
+    const auth = _req('src/konto/geraeteToken.js');
+    const tokenCache = _req('src/konto/tokenCache.js');
     const token = await auth.createToken(nutzer, 'Probe');
     assert.ok(await auth.validateToken(token));
     await db.run('UPDATE users SET is_active = false WHERE id = $1', [nutzer]);
-    auth.leereTokenCache();
+    tokenCache.leereTokenCache();
     assert.equal(await auth.validateToken(token), null);
   });
 });

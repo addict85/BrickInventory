@@ -37,7 +37,8 @@ require.cache[require.resolve(path.join(S.DIST, 'src/mail/mailer.js'))].exports 
 });
 
 const db = _req('db/database.js');
-const auth = _req('src/konto/auth.js');
+const auth = _req('src/konto/geraeteToken.js');
+const tokenCache = _req('src/konto/tokenCache.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const NAME = `familie_${process.pid}`, PASS = 'Familien-Passwort-1';
@@ -76,7 +77,7 @@ test('Token-Familie mit Wiederverwendungserkennung', { concurrency: 1 }, async (
     assert.equal(r.status, 200, JSON.stringify(r.body));
     return r.body.token;
   };
-  const gilt = async (token) => { auth.leereTokenCache(); return (await ruf('/me', token)).status === 200; };
+  const gilt = async (token) => { tokenCache.leereTokenCache(); return (await ruf('/me', token)).status === 200; };
   const verbraucht = async () => (await db.all('SELECT token FROM api_tokens_verbraucht WHERE user_id = $1', [uid])).map(z => z.token);
   // Jede Anmeldung meldet ihren neuen Zugang (token_neu); gezählt wird hier die Warnung.
   const warnungen = () => gesendet.filter(m => m.an === `${NAME}@example.org` && m.art !== 'token_neu');

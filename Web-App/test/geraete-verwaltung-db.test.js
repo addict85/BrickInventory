@@ -129,7 +129,7 @@ test('Zugänge auflisten und aussperren — über Sitzung UND über Token',
 
     // Und zwar WIRKLICH: Der Token des Tablets gilt nicht mehr. Das ist der
     // Punkt der ganzen Übung — die Zeile zu löschen ist nur die halbe Miete,
-    // wenn der Cache in src/konto/auth.ts sie noch bedient.
+    // wenn der Cache in src/konto/tokenCache.ts sie noch bedient.
     const tabletVersucht = await ruf(AUTH + '/me',
       { headers: { authorization: `Bearer ${tablet.body.token}` } });
     assert.equal(tabletVersucht.status, 401,

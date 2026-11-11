@@ -577,7 +577,7 @@ test('der Kaufpreis auf der Kachel ist mengengewichtet, nicht das Maximum', () =
 // ═══════════════════════════════════════════════════════════════════════════
 // Anmelden mit E-Mail (hardened-100)
 // ═══════════════════════════════════════════════════════════════════════════
-const authModul = buildAndRequire()('src/konto/auth.js');
+const authModul = buildAndRequire()('src/konto/namensRegeln.js');
 const { isValidLoginIdentifier, USERNAME_RE, EMAIL_RE } = authModul;
 
 test('der Anmeldename darf eine E-Mail-Adresse sein', () => {
@@ -624,16 +624,17 @@ test('Registrieren und Profil bleiben beim Benutzernamen-Muster', () => {
   );
 });
 
-test('beide Login-Wege prüfen gleich', () => {
-  // Webapp und Android-API müssen dieselbe Regel haben — sonst funktioniert
-  // die Anmeldung per E-Mail nur auf einem der beiden Wege.
-  const zentral = fs.readFileSync(path.join(ROOT, 'src/konto/auth.ts'), 'utf8');
-  const rumpf = zentral.slice(zentral.indexOf('async function pruefeAnmeldedaten'));
-  assert.match(
-    rumpf.slice(0, rumpf.indexOf('\n}\n')),
-    /isValidLoginIdentifier\(username\)/,
-    'pruefeAnmeldedaten() prüft die Form des Anmeldenamens nicht',
-  );
+test('beide Login-Wege prüfen gleich', async () => {
+  // Webapp und Android-API gehen durch pruefeAnmeldedaten(); dort fällt ein
+  // unbrauchbarer Name ab, bevor Zähler oder Datenbank ihn sehen.
+  // Gegenprobe (11.11.2026): die Formprüfung in pruefeAnmeldedaten() gestrichen → rot hier.
+  const { pruefeAnmeldedaten } = buildAndRequire()('src/konto/anmeldepruefung.js');
+  for (const name of ['a b', "' OR 1=1 --", '@example.com'])
+    assert.deepEqual(
+      await pruefeAnmeldedaten({ ip: '192.0.2.1' }, name, 'irgendein-Passwort'),
+      { ok: false, absage: { art: 'ungueltig', code: 'name_oder_email_eingeben' } },
+      name,
+    );
 
   const dateien = dir =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {

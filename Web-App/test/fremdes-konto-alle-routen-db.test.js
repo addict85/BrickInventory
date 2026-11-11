@@ -32,7 +32,7 @@ const { dbOderSkip } = require('./helpers/db');
 const { mailAttrappe } = require('./helpers/mail-attrappe');
 mailAttrappe();
 const db = _req('db/database.js');
-const auth = _req('src/konto/auth.js');
+const auth = _req('src/konto/geraeteToken.js');
 const { VERTRAG } = _req('src/vertrag/index.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));

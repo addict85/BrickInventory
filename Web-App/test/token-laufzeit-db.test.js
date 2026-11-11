@@ -27,7 +27,8 @@ const { qrKoppeln } = require('./helpers/qr');
 const _req = buildAndRequire();
 const AUTH = einhaengung('auth');
 const db = _req('db/database.js');
-const auth = _req('src/konto/auth.js');
+const auth = _req('src/konto/geraeteToken.js');
+const tokenCache = _req('src/konto/tokenCache.js');
 const express   = require(path.join(ROOT, 'node_modules', 'express'));
 const session   = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -156,7 +157,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
     assert.ok(nachher, 'Der unbegrenzte Zugang darf vom Aufraeumjob nicht geloescht werden');
     assert.equal(nachher.expires_at, null,
       'Der Aufraeumjob darf ihm auch kein Ablaufdatum verpassen — sonst waere die Wahl still weg');
-    auth.invalidateToken(rohEwig);
+    tokenCache.invalidateToken(rohEwig);
     assert.ok(await auth.validateToken(rohEwig),
       'Und er muss nach dem Aufraeumen noch gelten');
 
@@ -184,7 +185,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
     await db.run(
       `UPDATE api_tokens SET hard_expires_at = NOW() - INTERVAL '1 day' WHERE token = $1`,
       [auth.hashToken(roh)]);
-    auth.invalidateToken(roh);   // sonst antwortet bis zu eine Minute der Cache
+    tokenCache.invalidateToken(roh);   // sonst antwortet bis zu eine Minute der Cache
     assert.equal(await auth.validateToken(roh), null,
       'Ist der feste Termin erreicht, gilt der Zugang nicht mehr — auch wenn die Gleitfrist noch laeuft');
   } finally {
@@ -210,13 +211,12 @@ test('QR-Zugang: die Oberflaeche waehlt beim ERZEUGEN, nicht beim Einloesen', ()
   assert.ok(/id="qr-validity"/.test(html), 'Das Auswahlfeld fehlt in der Oberflaeche');
 
   // Und die Auswahl deckt sich mit der Liste des Servers
-  const serverListe = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/konto/auth.ts'), 'utf8'))
-    .split('const TOKEN_LAUFZEITEN')[1].split('};')[0]
-    .match(/'(\w+)':/g).map(x => x.replace(/'|:/g, ''));
+  const serverListe = [...auth.LAUFZEIT_WAHLEN];
+  for (const w of serverListe) assert.notEqual(auth.laufzeitTage(w), null, `${w} kennt der Server nicht`);
   const markupListe = [...html.matchAll(/<option value="(\w+)" data-i18n="qr\.validity_/g)]
     .map(m => m[1]);
   assert.deepEqual(markupListe, serverListe,
     'Die Auswahl im Markup und die Liste in TOKEN_LAUFZEITEN laufen auseinander');
-  assert.ok(serverListe.length >= 5, 'Die Liste wurde nicht gefunden — Muster veraltet?');
+  assert.ok(serverListe.length >= 5, 'Die Liste des Servers ist zu kurz');
   assert.ok(serverListe.includes('unbegrenzt'), 'Die Wahl „unbegrenzt" fehlt auf der Serverseite');
 });

@@ -50,7 +50,7 @@ test('Vertragsrouten in anderer Schreibung', { concurrency: 1, timeout: 300_000 
   const name = `schreibung_${process.pid}`;
   const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
                              VALUES ($1, 'x', true, true) RETURNING id`, [name])).id;
-  const token = await _req('src/konto/auth.js').createToken(uid, 'Schreibung');
+  const token = await _req('src/konto/geraeteToken.js').createToken(uid, 'Schreibung');
   t.after(async () => { await db.run('DELETE FROM users WHERE id = $1', [uid]); await db.pool.end().catch(() => {}); });
 
   const port = await freierPort();

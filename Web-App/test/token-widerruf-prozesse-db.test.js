@@ -19,7 +19,8 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const auth = _req('src/konto/auth.js');
+const auth = _req('src/konto/geraeteToken.js');
+const tokenCache = _req('src/konto/tokenCache.js');
 const pgNotify = _req('db/database.js').standardDb().benachrichtigung;
 const { Client } = require(path.join(__dirname, '..', 'node_modules', 'pg'));
 
@@ -44,7 +45,7 @@ test('Token-Widerruf über alle Prozesse', { concurrency: 1 }, async (t) => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  auth.horcheAufTokenWiderruf();
+  tokenCache.horcheAufTokenWiderruf();
   // Steht die Horch-Verbindung, leert sie einmal den Speicher; das darf nicht
   // mitten in den ersten Fall fallen. Ein eigener Horcher meldet, wann es so weit ist.
   let bereit = false;

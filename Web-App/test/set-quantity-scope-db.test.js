@@ -37,7 +37,7 @@ test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto',
   // Die Webapp kommt mit der Sitzung, die App mit einem echten Token und ohne Sitzung.
   const web = testServer(_req, { sitzung: { userId: hauptId }, routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
   const app = testServer(_req, { sitzung: {}, routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
-  const token = await _req('src/konto/auth.js').createToken(hauptId, 'test-app', false, null, { scope: 'app' });
+  const token = await _req('src/konto/geraeteToken.js').createToken(hauptId, 'test-app', false, null, { scope: 'app' });
   const srv = web.srv;
 
   const aufbauen = async () => {

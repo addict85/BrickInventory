@@ -184,7 +184,7 @@ test('UI-Prüfung 14: Registrierung, Kategorien, Telefon, Begriffe', { timeout: 
   });
 
   await t.test('Bestätigung angemeldet', async () => {
-    const { hashToken } = buildAndRequire()('src/konto/auth.js');
+    const { hashToken } = buildAndRequire()('src/konto/geraeteToken.js');
     const NEU = `${NAME}-neu@example.org`, TOKEN = `r14-${process.pid}-${Date.now()}`;
     await db.run(`UPDATE users SET email_neu = $2, email_neu_token = $3, email_neu_bis = NOW() + INTERVAL '1 hour' WHERE id = $1`, [uid, NEU, hashToken(TOKEN)]);
     await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/verify?token=${TOKEN}` });
