@@ -1,5 +1,4 @@
-import * as db from '../../../db/database';
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbSchnittstelle, Db } from '../../../db/database';
 
 /** Das Geheimnis liegt verschlüsselt. */
 
@@ -9,12 +8,12 @@ export async function ersetzeCodes(tx: DbSchnittstelle, uid: number, hashes: str
     await tx.run('INSERT INTO zweiter_faktor_codes (user_id, code_hash) VALUES ($1, $2)', [uid, h]);
 }
 
-export async function aktiv(uid: number): Promise<boolean> {
+export async function aktiv(db: DbSchnittstelle, uid: number): Promise<boolean> {
   const r = await db.get<{ aktiv: boolean }>('SELECT aktiv FROM zweiter_faktor WHERE user_id = $1', [uid]);
   return r?.aktiv === true;
 }
 
-export async function faktorStand(uid: number): Promise<{ aktiv: boolean; uebrig: number }> {
+export async function faktorStand(db: DbSchnittstelle, uid: number): Promise<{ aktiv: boolean; uebrig: number }> {
   const r = await db.get<{ aktiv: boolean; uebrig: number }>(
     `SELECT COALESCE((SELECT aktiv FROM zweiter_faktor WHERE user_id = $1), FALSE) AS aktiv,
             (SELECT COUNT(*)::int FROM zweiter_faktor_codes WHERE user_id = $1 AND verbraucht_am IS NULL) AS uebrig`, [uid]);
@@ -22,7 +21,7 @@ export async function faktorStand(uid: number): Promise<{ aktiv: boolean; uebrig
 }
 
 /** Ein aktiver Faktor wird nicht überschrieben. */
-export async function legeGeheimnisAn(uid: number, verschluesselt: string | null): Promise<boolean> {
+export async function legeGeheimnisAn(db: DbSchnittstelle, uid: number, verschluesselt: string | null): Promise<boolean> {
   const r = await db.run(
     `INSERT INTO zweiter_faktor (user_id, geheimnis) VALUES ($1, $2)
      ON CONFLICT (user_id) DO UPDATE SET geheimnis = EXCLUDED.geheimnis, letzter_schritt = 0, eingerichtet_am = NOW()
@@ -38,18 +37,18 @@ export async function aktiviere(tx: DbSchnittstelle, uid: number, schritt: numbe
   await tx.run('UPDATE zweiter_faktor SET aktiv = TRUE, letzter_schritt = $2 WHERE user_id = $1', [uid, schritt]);
 }
 
-export function aktivesGeheimnis(uid: number) {
+export function aktivesGeheimnis(db: DbSchnittstelle, uid: number) {
   return db.get<{ geheimnis: string }>('SELECT geheimnis FROM zweiter_faktor WHERE user_id = $1 AND aktiv', [uid]);
 }
 
 /** Die Bedingung steht im UPDATE: Zwei gleichzeitige Anmeldungen kommen nicht beide durch. */
-export async function verbraucheSchritt(uid: number, schritt: number): Promise<boolean> {
+export async function verbraucheSchritt(db: DbSchnittstelle, uid: number, schritt: number): Promise<boolean> {
   const r = await db.run(
     'UPDATE zweiter_faktor SET letzter_schritt = $2 WHERE user_id = $1 AND aktiv AND letzter_schritt < $2', [uid, schritt]);
   return (r.changes ?? 0) > 0;
 }
 
-export async function verbraucheCode(uid: number, hash: string): Promise<boolean> {
+export async function verbraucheCode(db: DbSchnittstelle, uid: number, hash: string): Promise<boolean> {
   const r = await db.run(
     `UPDATE zweiter_faktor_codes SET verbraucht_am = NOW()
       WHERE user_id = $1 AND code_hash = $2 AND verbraucht_am IS NULL
@@ -57,7 +56,7 @@ export async function verbraucheCode(uid: number, hash: string): Promise<boolean
   return (r.changes ?? 0) > 0;
 }
 
-export async function entferne(uid: number): Promise<void> {
+export async function entferne(db: Db, uid: number): Promise<void> {
   await db.transaction(async (tx) => {
     await tx.run('DELETE FROM zweiter_faktor_codes WHERE user_id = $1', [uid]);
     await tx.run('DELETE FROM zweiter_faktor WHERE user_id = $1', [uid]);

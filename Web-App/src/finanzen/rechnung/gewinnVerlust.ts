@@ -1,14 +1,15 @@
 
-import { blickfeldAus, type Sicht } from '../../haushalt';
+import { haushaltBereich, type Sicht } from '../../haushalt';
 import { getGlobalSetting, getSetting } from '../../einstellungen';
 import { valueSet, valueAcquisitionRows, weightedPurchase, entwicklungProzent, kachelWerte } from '../setValue';
 import { effectiveCondition } from './zustand';
 import { computeMinifigsValuation, computePartsValuation } from './bewertung';
 import type { Blickfeld } from './preise';
 import { zaehle } from './abfragen';
-import { ladeSetErfassungen } from '../repository/erfassungen';
+import type { ladeSetErfassungen } from '../repository/erfassungen';
 import { aufRappen, inZehntel4, summeAus } from '../../infra/geld';
-import * as repo from '../repository/gewinnVerlust';
+import type * as repo from '../repository/gewinnVerlust';
+import { finanzenBereich } from '../prozess';
 
 type PnlSet = Awaited<ReturnType<typeof repo.setsMitErfassungen>>[number];
 type Erfassung = Awaited<ReturnType<typeof ladeSetErfassungen>>[number];
@@ -36,7 +37,7 @@ async function setMarktwerte(sets: PnlSet[], jeSet: Map<string, Erfassung[]>, cu
   const nummern = sets.map(s => s.set_number);
   if (!nummern.length) return w;
   const [aktuell, verlauf] = await Promise.all([
-    repo.frischeMarktpreise(nummern, currency, ttl), repo.letzteMarktpreiseAusVerlauf(nummern, currency)]);
+    finanzenBereich().gewinnVerlust.frischeMarktpreise(nummern, currency, ttl), finanzenBereich().gewinnVerlust.letzteMarktpreiseAusVerlauf(nummern, currency)]);
   type Preiszeile = { set_number: string; condition: string; avg_price?: unknown; qty_avg_price?: unknown };
   const nachSchluessel = (rows: Preiszeile[]) => new Map(rows.map(r => [`${r.set_number}|${r.condition}`, r]));
   const jetzt = nachSchluessel(aktuell), zuerst = nachSchluessel(verlauf);
@@ -98,12 +99,12 @@ const kaufsumme = (rs: Array<{ purchase_price: number | null; quantity: number }
 export async function computePnl(viewerId: number, idsWahl: Sicht | Blickfeld) {
   // Zwei Grössen: viewerId — wessen EINSTELLUNGEN gelten; ids — WESSEN DATEN
   // gerechnet werden. Mit dem Filter „Unterkonten" fehlt viewerId in ids.
-  const uids = await blickfeldAus(idsWahl);
+  const uids = await haushaltBereich().haushalt.blickfeldAus(idsWahl);
   const [currency, ttlHours] = await Promise.all([
     getSetting(viewerId, 'currency', 'EUR'), getGlobalSetting('price_cache_ttl', '24')]);
-  const sets = await repo.setsMitErfassungen(uids);
+  const sets = await finanzenBereich().gewinnVerlust.setsMitErfassungen(uids);
   // Aus den Erfassungen, damit Galerie, Detail und Finanzen dieselben Zahlen zeigen.
-  const acqRows = sets.length ? await ladeSetErfassungen(uids, currency) : [];
+  const acqRows = sets.length ? await finanzenBereich().erfassungen.ladeSetErfassungen(uids, currency) : [];
   const jeSet = new Map<string, Erfassung[]>();
   for (const a of acqRows) { const l = jeSet.get(a.set_number); if (l) l.push(a); else jeSet.set(a.set_number, [a]); }
   const werte = await setMarktwerte(sets, jeSet, currency, Math.max(1, parseInt(ttlHours)));

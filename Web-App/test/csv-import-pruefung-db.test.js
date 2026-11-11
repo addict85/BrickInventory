@@ -59,7 +59,7 @@ test('CSV-Import: Prüfung, Zeilen und Summen', { concurrency: 1 }, async t => {
   const worker = _req('jobs/auftraegeStarten.js').starteAuftragsWorker({ arten: ['csv_import'], taktMs: 50 });
   t.after(async () => {
     await worker.stoppe(0);
-    await _req('db/pgNotify.js').close();
+    await _req('db/database.js').standardDb().benachrichtigung.close();
     await db.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });

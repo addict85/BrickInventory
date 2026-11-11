@@ -27,7 +27,7 @@ test('Dienste lösen die Sicht auf', { concurrency: 1 }, async (t) => {
   const db = await dbOderSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
-  const H = _req('src/haushalt/haushalt.js');
+  const H = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt };
   const { getSets } = _req('src/sets/index.js');
   const { loescheSetFuer } = _req('src/sets/index.js');
   const [HAUPT, SUB] = [`haupt_${process.pid}`, `sub_${process.pid}`];

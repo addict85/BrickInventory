@@ -1,4 +1,3 @@
-import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
 import { lookupPart, merkeTeilFarbe, katalogTeil } from '../katalog';
 import { meldeFehler } from '../infra/fehler';
@@ -6,6 +5,7 @@ import { colorId } from '../infra/validate';
 import * as repo from './repository/teilFarbe';
 import { fachfehler } from '../infra/fehlerTexte';
 import { versuche } from '../infra/ergebnis';
+import { teileBereich } from './prozess';
 
 // Falsche Farben ohne Neuerfassen ändern.
 export type FarbWechsel = {
@@ -55,49 +55,51 @@ export async function aendereTeilFarbe(
 
   // rb_colors zuerst, weil der Katalog für alle Konten gilt; die Angaben des
   // Aufrufers füllen nur, was dort fehlt.
-  const katalogFarbe = await repo.rbFarbe(neu);
+  const katalogFarbe = await teileBereich().teilFarbe.rbFarbe(neu);
 
-  const wechsel = await db.transaction(async (tx: DbSchnittstelle): Promise<Omit<FarbWechsel, 'bild'>> => {
-    const quelle = await repo.manuelleTeilzeileSperren(tx, uid, partNumber, alt);
-    if (!quelle) {
-      fachfehler('nicht_gefunden', 'teil_nicht_manuell');
-    }
-    // Gleiche Farbe wird GESAGT statt als Erfolg gemeldet: Ein Verklicken sähe
-    // sonst aus wie eine echte Änderung.
-    if (alt === neu) return { zusammengelegt: false, verschoben: 0, vereint: 0 };
-
-    // Der Katalogeintrag der ZIELFARBE muss vor dem Umzug stehen: Die Teileliste
-    // liest Name und Farbcode von dort, sonst ein Farbpunkt ohne Beschriftung.
-    await merkeTeilFarbe(partNumber, neu, katalogFarbe?.name, katalogFarbe?.rgb, null, null, tx);
-    await merkeTeilFarbe(partNumber, neu, angaben.color_name, angaben.color_hex, null, null, tx, uid);
-
-    const ziel = await repo.manuelleTeilzeileSperren(tx, uid, partNumber, neu);
-
-    // Erst addieren, dann umziehen: Sonst liefe das UPDATE in
-    // `idx_part_acq_erfassungstag` — nur wenn beide Farben am gleichen Tag erfasst
-    // wurden, ein Fehler, der von der Uhr abhängt.
-    const vereint = await repo.stockeGleicheErfassungenAuf(tx, uid, partNumber, alt, neu);
-    // Die addierten Quellzeilen müssen weg, sonst stünde die Stückzahl doppelt da.
-    await repo.loescheAufgestockteErfassungen(tx, uid, partNumber, alt, neu);
-    const verschoben = await repo.faerbeErfassungenUm(tx, uid, partNumber, alt, neu);
-
-    if (ziel) {
-      // Die Zielzeile bleibt. Ihren Lagerort übernimmt sie nur, wenn sie keinen hat:
-      // „Kiste 3" soll durch eine Farbkorrektur nicht verschwinden.
-      if (quelle.storage_id && !ziel.storage_id) {
-        await repo.setzeTeilLagerort(tx, quelle.storage_id, ziel.id);
+  const wechsel = await teileBereich().db.transaction(
+    async (tx: DbSchnittstelle): Promise<Omit<FarbWechsel, 'bild'>> => {
+      const quelle = await repo.manuelleTeilzeileSperren(tx, uid, partNumber, alt);
+      if (!quelle) {
+        fachfehler('nicht_gefunden', 'teil_nicht_manuell');
       }
-      await repo.loescheTeilzeile(tx, quelle.id);
-    } else {
-      await repo.faerbeTeilzeileUm(tx, neu, quelle.id);
-    }
+      // Gleiche Farbe wird GESAGT statt als Erfolg gemeldet: Ein Verklicken sähe
+      // sonst aus wie eine echte Änderung.
+      if (alt === neu) return { zusammengelegt: false, verschoben: 0, vereint: 0 };
 
-    return {
-      zusammengelegt: !!ziel,
-      verschoben: verschoben.changes ?? 0,
-      vereint: vereint.changes ?? 0,
-    };
-  });
+      // Der Katalogeintrag der ZIELFARBE muss vor dem Umzug stehen: Die Teileliste
+      // liest Name und Farbcode von dort, sonst ein Farbpunkt ohne Beschriftung.
+      await merkeTeilFarbe(partNumber, neu, katalogFarbe?.name, katalogFarbe?.rgb, null, null, tx);
+      await merkeTeilFarbe(partNumber, neu, angaben.color_name, angaben.color_hex, null, null, tx, uid);
+
+      const ziel = await repo.manuelleTeilzeileSperren(tx, uid, partNumber, neu);
+
+      // Erst addieren, dann umziehen: Sonst liefe das UPDATE in
+      // `idx_part_acq_erfassungstag` — nur wenn beide Farben am gleichen Tag erfasst
+      // wurden, ein Fehler, der von der Uhr abhängt.
+      const vereint = await repo.stockeGleicheErfassungenAuf(tx, uid, partNumber, alt, neu);
+      // Die addierten Quellzeilen müssen weg, sonst stünde die Stückzahl doppelt da.
+      await repo.loescheAufgestockteErfassungen(tx, uid, partNumber, alt, neu);
+      const verschoben = await repo.faerbeErfassungenUm(tx, uid, partNumber, alt, neu);
+
+      if (ziel) {
+        // Die Zielzeile bleibt. Ihren Lagerort übernimmt sie nur, wenn sie keinen hat:
+        // „Kiste 3" soll durch eine Farbkorrektur nicht verschwinden.
+        if (quelle.storage_id && !ziel.storage_id) {
+          await repo.setzeTeilLagerort(tx, quelle.storage_id, ziel.id);
+        }
+        await repo.loescheTeilzeile(tx, quelle.id);
+      } else {
+        await repo.faerbeTeilzeileUm(tx, neu, quelle.id);
+      }
+
+      return {
+        zusammengelegt: !!ziel,
+        verschoben: verschoben.changes ?? 0,
+        vereint: vereint.changes ?? 0,
+      };
+    },
+  );
 
   // Auch bei alt === neu: Eine Ausnahme wäre ein zweiter Weg, der nur manchmal
   // ein Bild nachträgt.

@@ -332,7 +332,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
 
     // ── Hintergrundarbeiten (Auftragstabelle) ─────────────────────────────
     { m: 'POST', p: '/api/v1/admin/auftraege/{id}/abbrechen', davor: async () => {
-        w.id = String(await _req('src/auftraege/dienst.js').stelleAuftragEin('anleitung', { set_number: SET },
+        w.id = String(await { ..._req('src/auftraege/dienst.js'), ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege }.stelleAuftragEin('anleitung', { set_number: SET },
           { schluessel: `vertrag:${process.pid}:${Date.now()}` }));
       } },
     { m: 'POST', p: '/api/v1/admin/auftraege/{id}/wiederholen' },

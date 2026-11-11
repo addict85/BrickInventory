@@ -4,9 +4,10 @@ import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireApiAdmin } from './middleware';
 import { getLimitForApi, vergissFehlend } from '../../src/katalog';
 import { setGlobalSetting, getGlobalSetting } from '../../src/einstellungen';
-import { cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinreihen, preisJobStand, preisJobJetzt, fehlendeBilderNachladen, bricksetWiederholen, bricksetEntfernen, jobZeitplanSetzen, katalogBilderEinreihen, katalogAbgleichJetzt, bricksetListe, letzteEintraege, protokollSeit, setFehlanzeigen, vorschauFehlanzeigen, jobUebersicht, bildProbe, preisProbe, bildDiagnose, auftragsUebersicht, auftragAbbrechen, auftragWiederholen, auftragsArtJetzt, auftragsArtLeeren } from '../../src/verwaltung';
+import { verwaltungBereich, cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinreihen, preisJobStand, preisJobJetzt, fehlendeBilderNachladen, bricksetWiederholen, bricksetEntfernen, jobZeitplanSetzen, katalogBilderEinreihen, katalogAbgleichJetzt, bricksetListe, jobUebersicht, bildProbe, preisProbe, bildDiagnose, auftragsUebersicht, auftragAbbrechen, auftragWiederholen, auftragsArtJetzt, auftragsArtLeeren } from '../../src/verwaltung';
 import { seiteAus } from '../../src/infra/seite';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
+import { kontoBereich } from '../../src/konto';
 const router = vertragsRouter({ grosseIds: true });
 
 
@@ -37,7 +38,7 @@ router.post('/admin/trigger-csv-sync', requireApiAdmin, async (_req: AuthedReque
 });
 
 router.get('/admin/protokoll', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/admin/protokoll'>) => {
-  res.json({ success: true, eintraege: await letzteEintraege() });
+  res.json({ success: true, eintraege: await kontoBereich().protokoll.letzteEintraege() });
 });
 
 router.get('/admin/cache-stats', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/admin/cache-stats'>) => {
@@ -61,11 +62,11 @@ router.post('/admin/forget-image-misses', requireApiAdmin, async (req: Anfrage<'
   } else {
     // Nicht die ganze Tabelle: Die Vorschau-Vermerke haben einen anderen Zweck
     // und sollen nicht nebenbei mitverschwinden.
-    const rows = await setFehlanzeigen();
+    const rows = await verwaltungBereich().verwaltung.setFehlanzeigen();
     if (rows.length) entfernt = await vergissFehlend(rows.map(r => r.cache_key));
   }
   if (req.eingabe.thumbs === true) {
-    const rows = await vorschauFehlanzeigen();
+    const rows = await verwaltungBereich().verwaltung.vorschauFehlanzeigen();
     if (rows.length) entfernt += await vergissFehlend(rows.map(r => r.cache_key));
   }
   // Die anderen Prozesse frischen den Merker im Fünf-Minuten-Takt aus der Tabelle auf.
@@ -141,7 +142,7 @@ router.post('/admin/redownload-missing-images', requireApiAdmin, async (_req: Au
 
 router.get('/admin/logs', requireApiAdmin, async (req: Anfrage<'GET /api/v1/admin/logs'>, res: Antwort<'GET /api/v1/admin/logs'>) => {
   const minutes = Math.min(2880, Math.max(1, req.abfrage.minutes || 15));
-  const rows = await protokollSeit(minutes);
+  const rows = await verwaltungBereich().verwaltung.protokollSeit(minutes);
   res.json({ success: true, minutes, count: rows.length, logs: rows });
 });
 

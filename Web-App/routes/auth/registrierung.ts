@@ -16,6 +16,7 @@ import { fehlerText, antwortSprache, alsDoppelt } from '../../src/infra/fehlerTe
 import { basisUrl, hinweisOhneBasisUrl, mailBasisUrl } from '../../src/infra/basisUrl';
 import * as P from '../../src/konto/passkeys';
 import { vertragsRouter, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
+import { kontoBereich } from '../../src/konto';
 
 const router = vertragsRouter();
 
@@ -53,8 +54,8 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req: 
 
   // Vergebene Adresse oder vergebener Name: dieselbe Antwort wie bei Erfolg, sonst liesse
   // sich abfragen, wer ein Konto hat. Die Rückmeldung geht per Mail an die Adresse.
-  const inhaber = await K.kontoMitEmail(email);
-  const nameVergeben = !inhaber && await K.nameVergeben(username, 0);
+  const inhaber = await kontoBereich().konten.kontoMitEmail(email);
+  const nameVergeben = !inhaber && await kontoBereich().konten.nameVergeben(username, 0);
   const basis = mailBasisUrl();
   let result: { success: boolean; mode: string };
   if (inhaber) {
@@ -75,7 +76,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req: 
     // Ohne Protokoll bliebe unklar, warum ein frisches Konto in der falschen
     // Sprache startet.
     if (neuId) await setUserSetting(neuId, 'language', lang).catch(logAndContinue(`registrierung:sprache ${neuId}`));
-    const mehrere = (await K.offeneRegistrierungen(email)) > 1;
+    const mehrere = (await kontoBereich().konten.offeneRegistrierungen(email)) > 1;
     result = basis ? await sendVerificationMail(email, token, basis, lang, 'registrierung', mehrere)
       : { success: false, mode: 'ohne_basis' };
   }
@@ -101,7 +102,7 @@ router.post('/bestaetigung-erneut', ipThrottle('bestaetigung-erneut', 5, 60 * 60
   const beginn = Date.now();
   const gedrosselt = await zielGedrosselt('bestaetigung-ziel', String(email), 3, 60 * 60 * 1000);
   const token = crypto.randomBytes(32).toString('hex');
-  const konto = gedrosselt ? null : await K.erneuereEmailTokenWennFrei(String(email), hashToken(token), 24, RUECKSETZ_PAUSE_MIN);
+  const konto = gedrosselt ? null : await kontoBereich().konten.erneuereEmailTokenWennFrei(String(email), hashToken(token), 24, RUECKSETZ_PAUSE_MIN);
   if (konto) {
     mailSprache(konto.id)
       .then(lang => sendVerificationMail(konto.email, token, mailBasisUrl()!, lang))
@@ -113,7 +114,7 @@ router.post('/bestaetigung-erneut', ipThrottle('bestaetigung-erneut', 5, 60 * 60
 
 router.post('/email-bestaetigen/vorschau', ipThrottle('email-vorschau', 30, 60 * 60 * 1000), async (req: OffeneAnfrage<'POST /api/v1/auth/email-bestaetigen/vorschau'>, res: Antwort<'POST /api/v1/auth/email-bestaetigen/vorschau'>) => {
   const token = req.eingabe.token;
-  const username = token ? await K.nameZuEmailToken(hashToken(String(token))) : null;
+  const username = token ? await kontoBereich().konten.nameZuEmailToken(hashToken(String(token))) : null;
   if (!username) return sendeFehler(req, res, 400, 'bestaetigungslink_ungueltig');
   res.json({ success: true, username });
 });
@@ -137,10 +138,10 @@ router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000)
   const beginn = Date.now();
   // Über der Grenze still keine Mail: Eine Absage verriete, dass jemand die Adresse bedrängt.
   const gedrosselt = await zielGedrosselt('forgot-ziel', String(email), 3, 60 * 60 * 1000);
-  const user = gedrosselt ? null : await K.aktivesKontoNachEmail(email);
+  const user = gedrosselt ? null : await kontoBereich().konten.aktivesKontoNachEmail(email);
   const token = crypto.randomBytes(32).toString('hex');
   // Höchstens ein Link je Konto und RUECKSETZ_PAUSE_MIN: Sonst flutet ein Fremder das Postfach.
-  if (user && await K.setzeRuecksetzTokenWennFrei(user.id, hashToken(token), RUECKSETZ_GUELTIG_MIN, RUECKSETZ_PAUSE_MIN)) {
+  if (user && await kontoBereich().konten.setzeRuecksetzTokenWennFrei(user.id, hashToken(token), RUECKSETZ_GUELTIG_MIN, RUECKSETZ_PAUSE_MIN)) {
     // Nicht awaiten, sonst verriete die Dauer des SMTP-Versands die Adresse.
     mailSprache(user.id)
       // An die GESPEICHERTE Adresse: Die eingegebene passt per LOWER() auch als Unicode-Variante.
@@ -156,7 +157,7 @@ router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000),
   if (!token || !password) return sendeFehler(req, res, 400, 'token_passwort_erforderlich');
   const mangel = passwortMangel(password);
   if (mangel) return sendeFehler(req, res, 400, mangel);
-  const user = await K.kontoNachRuecksetzToken(hashToken(token));
+  const user = await kontoBereich().konten.kontoNachRuecksetzToken(hashToken(token));
   if (!user) return sendeFehler(req, res, 400, 'token_ungueltig');
   // Den Namen kennt erst das Konto hinter dem Token; die Regel gilt wie auf allen anderen Wegen.
   const nameMangel = passwortMangel(password, user.username);

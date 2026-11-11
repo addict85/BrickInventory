@@ -21,16 +21,21 @@ export async function setGehoertKonto(sk: SetsKontext, uid: number, sn: string):
 
 /** Trifft alle Zeilen des Sets im Schreibbereich: Wer die Kiste packt, packt
  * sie für alle, die darin nachsehen. */
-export async function lagerortDesSetsSetzen(uid: number, sn: string, storage: string | null | undefined) {
+export async function lagerortDesSetsSetzen(
+  sk: SetsKontext,
+  uid: number,
+  sn: string,
+  storage: string | null | undefined,
+) {
   const ort = normalisiereLagerort(storage);
-  const n = await setzeLagerort('set', { schreiber: uid }, [normalizeSetNumber(sn)], ort);
+  const n = await setzeLagerort(sk.db, 'set', { schreiber: uid }, [normalizeSetNumber(sn)], ort);
   return { ort, n };
 }
 
 /** Die Liste kann über mehrere Konten spannen, die Vorgabe ist immer die des
  * Anfragenden: Ein geerbter Stern wäre eine Aussage über eine fremde Wohnung. */
-export async function lagerorteMitVorgabe(uid: number, owner: string | undefined) {
-  const [orte, vorgabe] = await Promise.all([orteFuer(uid, owner), vorgabeVon(uid)]);
+export async function lagerorteMitVorgabe(sk: SetsKontext, uid: number, owner: string | undefined) {
+  const [orte, vorgabe] = await Promise.all([orteFuer(sk.db, uid, owner), vorgabeVon(sk.db, uid)]);
   return { orte, vorgabe };
 }
 
@@ -49,8 +54,8 @@ export async function setVerschieben(
 ) {
   if (!erfassungen.length) fachfehler('ungueltig', 'kaufpreise_angeben');
   const sn = mitVersion(roh);
-  const fromId = await schreibziel(uid, von ?? uid);
-  const toId = await schreibziel(uid, nach);
+  const fromId = await schreibziel(sk.db, uid, von ?? uid);
+  const toId = await schreibziel(sk.db, uid, nach);
   if (fromId === toId) fachfehler('ungueltig', 'quelle_ziel_identisch');
   return {
     set_number: sn,

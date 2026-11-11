@@ -2,8 +2,7 @@
  * damit die Routen keine Schichten überspringen. */
 import fs from 'node:fs';
 import { AbrufFehler } from '../infra/abruf';
-import * as verwaltung from './repository/verwaltung';
-import { naechsteUhrzeit, taeglicheUhrzeit, DAILY_JOBS, ziehePlanVor, zeitplanGeaendert, liesZustand, stelleAuftragEin, anleitungEinreihen, bricksetJetzt, bricksetTermineVorziehen } from '../auftraege';
+import { auftraegeBereich, naechsteUhrzeit, taeglicheUhrzeit, DAILY_JOBS, ziehePlanVor, zeitplanGeaendert, stelleAuftragEin, anleitungEinreihen, bricksetJetzt, bricksetTermineVorziehen } from '../auftraege';
 import { SET_IMAGES_DIR } from '../infra/appPaths';
 import { fehlertext, meldeFehler, logAndContinue, ohneFehlendeDatei } from '../infra/fehler';
 import { Abstriche, versuche } from '../infra/ergebnis';
@@ -11,6 +10,7 @@ import { leerePreisCache } from '../finanzen';
 import { getRateLimitStatus, setzeKontingentZurueck, clearCatalogCache, clearSubsetsCache, getCacheStats, loescheAnleitungen, vergissFehlend, anfragenJeMinute, bildbedarfAnstossen, katalogBilderVormerken, alsAbrufFehler, pruefeBricklinkZugang, ausRetryWarteschlange, pruefeBricksetZugang, pruefeRebrickableZugang } from '../katalog';
 import { setGlobalSetting } from '../einstellungen';
 import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
+import { verwaltungBereich } from './prozess';
 
 const QUELLEN: Record<string, () => Promise<void>> = {
   rebrickable: pruefeRebrickableZugang,
@@ -58,7 +58,7 @@ export async function cacheStatistik() {
   const ab = new Abstriche();
   const [stats, stale, rlBL, rlRB, rlBS] = await Promise.all([
     ab.oder('cache', getCacheStats(), { prices: 0, subsets: 0, catalog: 0 }),
-    ab.oder('veraltete_preise', verwaltung.veraltetePreise(), 0),
+    ab.oder('veraltete_preise', verwaltungBereich().verwaltung.veraltetePreise(), 0),
     ab.oder('kontingent_bricklink', getRateLimitStatus('bricklink'), leer),
     ab.oder('kontingent_rebrickable', getRateLimitStatus('rebrickable'), leer),
     ab.oder('kontingent_brickset', getRateLimitStatus('brickset'), leer),
@@ -67,7 +67,7 @@ export async function cacheStatistik() {
     ...stats,
     price_stale: stale,
     rate_limits: { bricklink: rlBL, rebrickable: rlRB, brickset: rlBS },
-    db_pool: verwaltung.getPoolStats(),
+    db_pool: verwaltungBereich().db.getPoolStats(),
     ...ab.angabe(),
   };
 }
@@ -93,7 +93,7 @@ export async function bricksetLimitGesetzt(alt: number, neu: number) {
 }
 
 export async function anleitungenNeuEinreihen() {
-  const fehlend = await verwaltung.setsOhneAnleitung();
+  const fehlend = await verwaltungBereich().verwaltung.setsOhneAnleitung();
   for (const { set_number } of fehlend) {
     await loescheAnleitungen(set_number).catch(logAndContinue('verwaltung:loescheAnleitungen'));
     await anleitungEinreihen(set_number);
@@ -103,10 +103,10 @@ export async function anleitungenNeuEinreihen() {
 
 /** Im Format von früher, damit die Oberfläche unverändert bleibt. */
 export async function preisJobStand() {
-  const plan = await verwaltung.letzterLaufDerArt();
+  const plan = await verwaltungBereich().verwaltung.letzterLaufDerArt();
   let letzter: Record<string, any> = {};
   try {
-    letzter = JSON.parse((await liesZustand('preis_job_stand')) ?? '{}');
+    letzter = JSON.parse((await auftraegeBereich().laufzustand.liesZustand('preis_job_stand')) ?? '{}');
   } catch (e) {
     meldeFehler('verwaltung:preis-stand', e);
   }
@@ -182,7 +182,7 @@ export async function zeitplanNeuPlanen() {
 /** Fertig ist ein Set mit Original UND Vorschau; zurückgenommene Fehlanzeigen
  * werden mitgezählt. */
 export async function katalogBilderEinreihen(alleErneut: boolean) {
-  const zuVergessen = await (alleErneut ? verwaltung.setFehlanzeigen() : verwaltung.setFehlanzeigenOhne404());
+  const zuVergessen = await (alleErneut ? verwaltungBereich().verwaltung.setFehlanzeigen() : verwaltungBereich().verwaltung.setFehlanzeigenOhne404());
   const verworfen = zuVergessen.length ? await vergissFehlend(zuVergessen.map(r => r.cache_key)) : 0;
   // Was schon fertig ist, wird nicht wieder eingereiht.
   let vorhanden: Set<string> = new Set();
@@ -200,7 +200,7 @@ export async function katalogBilderEinreihen(alleErneut: boolean) {
     ohneFehlendeDatei('verwaltung:vorschauen lesen')(e);
   }
 
-  const kandidaten = await verwaltung.katalogBildKandidaten();
+  const kandidaten = await verwaltungBereich().verwaltung.katalogBildKandidaten();
 
   // Dieselbe Namensregel wie downloadSetImage(), sonst fände der Vergleich nichts.
   const dateiname = (sn: string) => String(sn).replace(/[^a-z0-9-]/gi, '_');
@@ -217,7 +217,7 @@ export async function katalogBilderEinreihen(alleErneut: boolean) {
     neuEingereiht = await katalogBilderVormerken(offenUrls, offenSets);
     await bildbedarfAnstossen();
   }
-  const offen = await verwaltung.offeneBildauftraege();
+  const offen = await verwaltungBereich().verwaltung.offeneBildauftraege();
   // „Stunden oder Tage?" ist die erste Frage; die Rate kommt aus dem Job selbst.
   const proMinute = anfragenJeMinute();
   return {
@@ -229,14 +229,4 @@ export async function katalogBilderEinreihen(alleErneut: boolean) {
     dauer_minuten: Math.ceil((offen?.n ?? 0) / proMinute),
   };
 }
-export {
-  KontoBildzeile,
-  bildZeilenDerKonten,
-  fehlanzeigeDerVorschau,
-  fehlanzeigeDesSets,
-  katalogBild,
-  protokollSeit,
-  setFehlanzeigen,
-  vorschauFehlanzeigen,
-} from './repository/verwaltung';
-export { letzteEintraege, protokolliere, raeumeProtokollAuf } from '../konto';
+export { KontoBildzeile } from './repository/verwaltung';

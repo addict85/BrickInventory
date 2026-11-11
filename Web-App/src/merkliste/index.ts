@@ -11,3 +11,6 @@ export {
   verschiebeMerkposten,
 } from './merkliste';
 export type { Korrektur } from './wantedAufloesung';
+export { erzeugeMerkliste } from './bereich';
+export type { MerklisteDienste, MerklisteKontext } from './bereich';
+export { merklisteBereich, verdrahteMerkliste } from './prozess';

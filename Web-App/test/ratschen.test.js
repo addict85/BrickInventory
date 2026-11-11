@@ -101,26 +101,35 @@ test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', 
   assert.deepEqual(sets.filter(f => muster.test(ohneKommentare(fs.readFileSync(f, 'utf8')))).map(f => path.relative(WEB, f)), []);
 });
 
+/** Die Fabrik (erzeugeDb, dbKonfigAusUmgebung) und Typen sind kein Prozesszugang. */
+const PROZESSZUGANG = new Set(['pool', 'all', 'get', 'run', 'exec', 'transaction', 'initSchema', 'initSchemaOnce',
+  'getPoolStats', 'datenbankAntwortet', 'alsSuperuserVerbunden', 'eigeneVerbindung', 'inTransaktion', 'standardDb', 'setzeStandardDb']);
 function nimmtProzesszugang(f) {
   if (/[\\/]db[\\/]database\.ts$/.test(f)) return false;
-  return /^import (?:\* as \w+|\{[^}]*\}) from '[./]+\/db\/database';/m.test(fs.readFileSync(f, 'utf8'));
+  // Auch innerhalb von db/ (`./database`): txLock und pgNotify gingen dort am Zähler vorbei.
+  return [...fs.readFileSync(f, 'utf8').matchAll(/^import (\* as \w+|\{[^}]*\}) from '(?:[./]+\/db\/|\.\/)database';/gm)]
+    .some(m => m[1].startsWith('*') || m[1].slice(1, -1).split(',').map(n => n.trim().split(/\s+as\s+/)[0]).some(n => PROZESSZUGANG.has(n)));
 }
 
 test('der Kompatibilitätsweg zur Datenbank und modulweite let werden weniger, nie mehr', () => {
   // db/database.ts hat eine Fabrik (erzeugeDb); wer noch die Funktionen des
   // Prozesszugangs importiert, statt einen Zugang übergeben zu bekommen, zählt hier.
-  // Gemessen 73 am 10.11.2026 (src/katalog über erzeugeKatalog).
-  // Gegenprobe (09.11.2026): ein `import * as db from '../../db/database'` in src/sets/zeilen.ts → rot.
-  const SCHRANKE = 73;
+  // Gemessen 0 am 11.11.2026 (server.ts und startup/ ohne Prozesszugang).
+  // Gegenproben: ein `import * as db from '../../db/database'` in src/sets/zeilen.ts → rot (09.11.2026);
+  // `import { get as _probe } from '../../db/database'` ebendort → rot mit 1 (11.11.2026).
+  // `import * as _probe from './database'` in db/txLock.ts → rot mit 1 (11.11.2026).
+  const SCHRANKE = 0;
   const ist = quellen().filter(nimmtProzesszugang).length;
-  assert.ok(ist > 50, `nur ${ist} Importe gefunden — greift die Suche noch?`);
+  // Selbstbeweis: Typimporte aus db/database zählen nicht, finden muss die Suche sie trotzdem.
+  const mitTypen = quellen().filter(f => /^import type \{[^}]*\} from '[./]+\/db\/database';/m.test(fs.readFileSync(f, 'utf8'))).length;
+  assert.ok(mitTypen > 20, `nur ${mitTypen} Typimporte aus db/database gefunden — greift die Suche noch?`);
   assert.ok(ist <= SCHRANKE, `${ist} Dateien nehmen den Prozesszugang aus db/database, erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ Kompatibilitätsweg db/database: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 
   // Modulweite let: Zustand, den alle Aufrufer eines Prozesses teilen; ein Bereich
-  // bekommt seinen über die Fabrik. Gemessen 57 am 11.11.2026.
+  // bekommt seinen über die Fabrik. Gemessen 45 am 11.11.2026 (Fächer je Bereich, src/infra/zwischenspeicher.ts).
   // Gegenprobe (10.11.2026): `let _probe = 0;` in src/katalog/kontext.ts → rot mit 59.
-  const LET_SCHRANKE = 57;
+  const LET_SCHRANKE = 45;
   const lets = quellen().reduce((n, f) => n + (fs.readFileSync(f, 'utf8').match(/^(?:export )?let /gm) || []).length, 0);
   assert.ok(lets > 20 && lets <= LET_SCHRANKE, `${lets} modulweite let, erlaubt sind ${LET_SCHRANKE}`);
   if (lets < LET_SCHRANKE) console.log(`  ℹ modulweite let: ${lets} (Schranke ${LET_SCHRANKE}) — Schranke nachziehen`);

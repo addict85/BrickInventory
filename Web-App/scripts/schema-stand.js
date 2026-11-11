@@ -122,7 +122,8 @@ async function main() {
   await admin.query(`CREATE DATABASE ${name}`);
   const ziel = new URL(basis); ziel.pathname = '/' + name;
   process.env.DATABASE_URL = ziel.toString();
-  const db = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
+  const dbModul = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
+  const db = dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung());
   try {
     await db.initSchemaOnce();
     fs.writeFileSync(DATEI, await schemaText(db));

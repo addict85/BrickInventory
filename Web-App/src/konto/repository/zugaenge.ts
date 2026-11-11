@@ -1,4 +1,3 @@
-import * as db from '../../../db/database';
 import type { Zeile, DbSchnittstelle } from '../../../db/database';
 /** Tokens stehen nur als SHA-256 in der Tabelle; jede Funktion nimmt den Hash,
  * nie den Klartext. */
@@ -15,7 +14,7 @@ export type TokenZeile = {
 
 /** Fristen und Kontozustand in der Abfrage: Ein abgelaufener Token oder einer
  * eines deaktivierten Kontos wird nie geliefert. */
-export function gueltigerToken(hash: string) {
+export function gueltigerToken(db: DbSchnittstelle, hash: string) {
   return db.get<TokenZeile>(`
     SELECT t.user_id, t.expires_at, t.hard_expires_at, t.last_used, t.sliding, t.never_expires,
            t.scope, t.rotiert_am, t.vorgaenger, t.label, t.ip_bereich, t.created_at,
@@ -29,7 +28,7 @@ export function gueltigerToken(hash: string) {
 /** created_at reist beim Tausch über JavaScript und verliert dabei die Mikrosekunden. */
 const familie = (spalte: string) => `date_trunc('milliseconds', ${spalte})`;
 
-export async function beendeUeberlappung(vorgaenger: string, hash: string): Promise<void> {
+export async function beendeUeberlappung(db: DbSchnittstelle, vorgaenger: string, hash: string): Promise<void> {
   await db.run(`WITH weg AS (DELETE FROM api_tokens WHERE token = $1 AND ersetzt_durch = $2 RETURNING token, user_id, created_at)
     INSERT INTO api_tokens_verbraucht (token, user_id, familie)
     SELECT token, user_id, ${familie('created_at')} FROM weg WHERE created_at IS NOT NULL ON CONFLICT DO NOTHING`, [vorgaenger, hash]);
@@ -38,7 +37,7 @@ export async function beendeUeberlappung(vorgaenger: string, hash: string): Prom
 
 /** Die WHERE-Klausel lässt höchstens einen Schreibvorgang je Tag durch, auch
  * über mehrere Prozesse. */
-export async function beruehreToken(hash: string, leerlaufTage: number, bereich: string | null): Promise<void> {
+export async function beruehreToken(db: DbSchnittstelle, hash: string, leerlaufTage: number, bereich: string | null): Promise<void> {
   await db.run(
     `UPDATE api_tokens
         SET last_used = NOW(),
@@ -57,7 +56,7 @@ export type NeuerToken = {
   art: 'unbegrenzt' | 'gleitend' | 'kurz'; leerlaufTage: number; festeTage: number | null;
 };
 
-export async function legeTokenAn(t: NeuerToken): Promise<void> {
+export async function legeTokenAn(db: DbSchnittstelle, t: NeuerToken): Promise<void> {
   if (t.art === 'unbegrenzt') {
     await db.run(
       `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, hard_expires_at, never_expires, scope, ip_bereich)
@@ -135,7 +134,7 @@ export function befristeVorgaenger(tx: DbSchnittstelle, alt: string, neu: string
 
 /** Ein verbrauchter Token kam wieder: Seine Familie endet samt Nachfolger. Erst nach
  * der Schonfrist, sonst träfe es Anfragen, die noch mit dem alten unterwegs waren. */
-export function sperreFamilie(hash: string, schonfristSek: number) {
+export function sperreFamilie(db: DbSchnittstelle, hash: string, schonfristSek: number) {
   return db.get<{ user_id: number; label: string | null }>(`
     WITH v AS (DELETE FROM api_tokens_verbraucht WHERE token = $1 AND verbraucht_am < NOW() - make_interval(secs => $2)
                RETURNING user_id, familie),
@@ -144,53 +143,53 @@ export function sperreFamilie(hash: string, schonfristSek: number) {
     SELECT v.user_id, (SELECT label FROM t LIMIT 1) AS label FROM v`, [hash, schonfristSek]);
 }
 
-export async function loescheVerwaisteVerbrauchte(): Promise<number> {
+export async function loescheVerwaisteVerbrauchte(db: DbSchnittstelle): Promise<number> {
   return (await db.run(`DELETE FROM api_tokens_verbraucht v WHERE NOT EXISTS
     (SELECT 1 FROM api_tokens t WHERE t.user_id = v.user_id AND ${familie('t.created_at')} = v.familie)`)).changes || 0;
 }
 
-export async function loescheToken(hash: string): Promise<void> {
+export async function loescheToken(db: DbSchnittstelle, hash: string): Promise<void> {
   await db.run('DELETE FROM api_tokens WHERE token = $1', [hash]);
 }
 
-export async function loescheTokensDesKontos(userId: number, ausser: string | null = null): Promise<void> {
+export async function loescheTokensDesKontos(db: DbSchnittstelle, userId: number, ausser: string | null = null): Promise<void> {
   if (ausser) await db.run('DELETE FROM api_tokens WHERE user_id = $1 AND token <> $2', [userId, ausser]);
   else await db.run('DELETE FROM api_tokens WHERE user_id = $1', [userId]);
 }
 
 /** Behält die `behalten` zuletzt benutzten neben `eigene`; die übrigen fallen. */
-export async function kappeSitzungen(userId: number, eigene: string, behalten: number): Promise<number> {
+export async function kappeSitzungen(db: DbSchnittstelle, userId: number, eigene: string, behalten: number): Promise<number> {
   return (await db.run(`DELETE FROM user_sessions WHERE sid IN (SELECT sid FROM user_sessions
     WHERE sess::jsonb->>'userId' = $1 AND sid <> $2 ORDER BY expire DESC OFFSET $3)`, [String(userId), eigene, behalten])).changes || 0;
 }
 
 /** Zählt nur Tokens ohne Nachfolger: Ein getauschter in seiner Überlappung ist dasselbe Gerät. */
-export async function kappeTokens(userId: number, eigener: string, behalten: number): Promise<number> {
+export async function kappeTokens(db: DbSchnittstelle, userId: number, eigener: string, behalten: number): Promise<number> {
   return (await db.run(`DELETE FROM api_tokens WHERE token IN (SELECT token FROM api_tokens
     WHERE user_id = $1 AND token <> $2 AND ersetzt_durch IS NULL
     ORDER BY COALESCE(last_used, created_at) DESC OFFSET $3)`, [userId, eigener, behalten])).changes || 0;
 }
 
-export async function loescheSitzungenDesKontos(userId: number, ausser: string | null = null): Promise<void> {
+export async function loescheSitzungenDesKontos(db: DbSchnittstelle, userId: number, ausser: string | null = null): Promise<void> {
   if (ausser === null) await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(userId)]);
   else await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1 AND sid IS DISTINCT FROM $2",
     [String(userId), ausser]);
 }
 
 /** null: Konto fehlt oder ist gesperrt. */
-export async function sitzungsVersion(uid: number): Promise<number | null> {
+export async function sitzungsVersion(db: DbSchnittstelle, uid: number): Promise<number | null> {
   const r = await db.get<{ v: number | null }>(
     'SELECT CASE WHEN is_active THEN sitzungs_version END AS v FROM users WHERE id = $1', [uid]);
   return r?.v ?? null;
 }
 
-export async function zaehleSitzungsVersionHoch(uid: number): Promise<number> {
+export async function zaehleSitzungsVersionHoch(db: DbSchnittstelle, uid: number): Promise<number> {
   const r = await db.get<{ v: number }>(
     'UPDATE users SET sitzungs_version = sitzungs_version + 1 WHERE id = $1 RETURNING sitzungs_version AS v', [uid]);
   return r?.v ?? 0;
 }
 
-export async function ziehAltzeilenNach(leerlaufTage: number): Promise<number> {
+export async function ziehAltzeilenNach(db: DbSchnittstelle, leerlaufTage: number): Promise<number> {
   return (await db.run(
     `UPDATE api_tokens
         SET sliding = TRUE,
@@ -199,7 +198,7 @@ export async function ziehAltzeilenNach(leerlaufTage: number): Promise<number> {
 }
 
 /** Beide Fristen in einer Anweisung — eine zweite wäre die Stelle, an der eine Regel fehlt. */
-export async function loescheAbgelaufene(): Promise<number> {
+export async function loescheAbgelaufene(db: DbSchnittstelle): Promise<number> {
   return (await db.run(
     `DELETE FROM api_tokens
       WHERE (expires_at      IS NOT NULL AND expires_at      < NOW())
@@ -207,7 +206,7 @@ export async function loescheAbgelaufene(): Promise<number> {
 }
 
 /** NOT never_expires: Eine Zeile ohne Datum ist Altbestand oder die ausdrückliche Wahl „unbegrenzt". */
-export async function loescheUngenutzte(leerlaufTage: number): Promise<number> {
+export async function loescheUngenutzte(db: DbSchnittstelle, leerlaufTage: number): Promise<number> {
   return (await db.run(
     `DELETE FROM api_tokens
       WHERE expires_at IS NULL AND NOT never_expires
@@ -216,12 +215,12 @@ export async function loescheUngenutzte(leerlaufTage: number): Promise<number> {
 
 /** Zwei Treffer (ein Name gleich der Adresse eines anderen Kontos, nur im
  * Altbestand möglich) heissen „kein Konto": Welches gemeint war, ist nicht zu entscheiden. */
-export async function kontoZurAnmeldung(name: string) {
+export async function kontoZurAnmeldung(db: DbSchnittstelle, name: string) {
   const treffer = await db.all<Zeile<{ id: number; password_hash: string; is_active: boolean; email_verified: boolean; is_admin: boolean; email: string | null; registrierung_offen: boolean }>>('SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1) LIMIT 2', [name]);
   if (treffer.length > 1) console.warn('[anmeldung] Name passt auf zwei Konten (Benutzername und Adresse) — Anmeldung abgewiesen');
   return treffer.length === 1 ? treffer[0] : undefined;
 }
 
-export function passwortHash(id: number) {
+export function passwortHash(db: DbSchnittstelle, id: number) {
   return db.get<{ password_hash: string }>('SELECT password_hash FROM users WHERE id = $1', [id]);
 }

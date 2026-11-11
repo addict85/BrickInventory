@@ -10,9 +10,20 @@ import {
   bricksetVormerken,
   bricksetAusWiedervorlage,
   BRICKSET_HOECHSTENS,
+  erzeugeAuftraege,
+  verdrahteAuftraege,
 } from '../src/auftraege';
-import { dbKonfigAusUmgebung, erzeugeDb, setzeStandardDb, standardDb, type Db } from '../db/database';
+import { dbKonfigAusUmgebung, erzeugeDb, type Db } from '../db/database';
 import { erzeugeSets, verdrahteSets } from '../src/sets';
+import { erzeugeHaushalt, verdrahteHaushalt } from '../src/haushalt';
+import { erzeugeIdempotenz, verdrahteIdempotenz } from '../src/idempotenz';
+import { erzeugeBestand, verdrahteBestand } from '../src/bestand';
+import { erzeugeTeile, verdrahteTeile } from '../src/teile';
+import { erzeugeFiguren, verdrahteFiguren } from '../src/figuren';
+import { erzeugeMerkliste, verdrahteMerkliste } from '../src/merkliste';
+import { erzeugeGutscheine, verdrahteGutscheine } from '../src/gutscheine';
+import { erzeugeSammlung, verdrahteSammlung } from '../src/sammlung';
+import { erzeugeVerwaltung, verdrahteVerwaltung } from '../src/verwaltung';
 import {
   erzeugeKatalog,
   verdrahteKatalog,
@@ -25,12 +36,12 @@ import {
   rebrickableBackgroundLimiter,
   rebrickableDailyStatus,
 } from '../src/katalog';
-import { refreshPriceForSet } from '../src/finanzen';
+import { erzeugeFinanzen, verdrahteFinanzen, refreshPriceForSet } from '../src/finanzen';
 import { mitVersion } from '../src/infra/setNummer';
-import { legeStartVerwalterAn } from '../src/konto';
+import { erzeugeKonto, verdrahteKonto, legeStartVerwalterAn } from '../src/konto';
 import { meldeFehler } from '../src/infra/fehler';
 import { verdrahteKlienten, type KlientenZugang } from '../clients/zugang';
-import { getGlobalSetting } from '../src/einstellungen';
+import { erzeugeEinstellungen, verdrahteEinstellungen, getGlobalSetting } from '../src/einstellungen';
 
 export interface Verdrahtung {
   nacharbeit: Nacharbeit;
@@ -74,18 +85,30 @@ export function baueKlientenZugang(): KlientenZugang {
   };
 }
 
-/** Der Zugang zur Datenbank kommt vom Einstieg; ohne Angabe der des Prozesses. */
-export function verdrahte(v: Verdrahtung = baueVerdrahtung(), db: Db = standardDb()): void {
+/** Der Zugang zur Datenbank kommt immer vom Einstieg; einen Rückfall gibt es nicht. */
+export function verdrahte(v: Verdrahtung, db: Db): void {
   verdrahteNacharbeit(v.nacharbeit);
   verdrahteKlienten(baueKlientenZugang());
+  verdrahteVerwaltung(() => erzeugeVerwaltung({ db }));
+  verdrahteSammlung(() => erzeugeSammlung({ db }));
+  verdrahteGutscheine(() => erzeugeGutscheine({ db }));
+  verdrahteMerkliste(() => erzeugeMerkliste({ db }));
+  verdrahteFiguren(() => erzeugeFiguren({ db }));
+  verdrahteTeile(() => erzeugeTeile({ db }));
+  verdrahteBestand(() => erzeugeBestand({ db }));
+  verdrahteFinanzen(() => erzeugeFinanzen({ db }));
+  verdrahteIdempotenz(() => erzeugeIdempotenz({ db }));
+  verdrahteKonto(() => erzeugeKonto({ db }));
+  verdrahteHaushalt(() => erzeugeHaushalt({ db }));
+  verdrahteAuftraege(() => erzeugeAuftraege({ db }));
+  verdrahteEinstellungen(() => erzeugeEinstellungen({ db }));
   verdrahteKatalog(() => erzeugeKatalog({ db }));
   verdrahteSets(() => erzeugeSets({ db, nacharbeit: v.nacharbeit }));
 }
 
-/** Der Zugang des Prozesses samt Erststart, als Standard gesetzt und verdrahtet. */
+/** Der Zugang des Prozesses samt Erststart, verdrahtet; der Einstieg hält ihn. */
 export function verdrahteProzess(v: Verdrahtung = baueVerdrahtung()): Db {
   const zugang = erzeugeDb(dbKonfigAusUmgebung(), { erststart: v.erststart });
-  setzeStandardDb(zugang);
   verdrahte(v, zugang);
   return zugang;
 }

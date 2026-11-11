@@ -21,16 +21,7 @@ export {
   csvImportStandFuerStrom,
   csvImportStandAbonnieren,
 } from './csvImport';
-export {
-  waehrungVon,
-  setAlarmeLesen,
-  alarmDesSetsSetzen,
-  alarmDesSetsLoeschen,
-  alarmCsvImportStarten,
-  setPreisVerlauf,
-} from './preise';
 export { ANLEITUNGS_WURZEL } from './anleitungen';
-export { lagerortDesSetsSetzen, lagerorteMitVorgabe } from './dienst';
 export { ladeSetBilder } from './nachErfassung';
 export { csvImportAufgegeben } from './csvImportLauf';
 export type { Erfassung, NeuesSet, SetErfasst, SetHinzufuegen, VorhandenesSet, Fortschritt } from './erfassen';
@@ -74,3 +65,11 @@ export const teilelisteMitNacharbeit = dienst('teilelisteMitNacharbeit');
 export const setVerschieben = dienst('setVerschieben');
 export const zieheNach = dienst('zieheNach');
 export const fuehreCsvImportAus = dienst('fuehreCsvImportAus');
+export const waehrungVon = dienst('waehrungVon');
+export const lagerortDesSetsSetzen = dienst('lagerortDesSetsSetzen');
+export const lagerorteMitVorgabe = dienst('lagerorteMitVorgabe');
+export const setAlarmeLesen = dienst('setAlarmeLesen');
+export const alarmDesSetsSetzen = dienst('alarmDesSetsSetzen');
+export const alarmDesSetsLoeschen = dienst('alarmDesSetsLoeschen');
+export const alarmCsvImportStarten = dienst('alarmCsvImportStarten');
+export const setPreisVerlauf = dienst('setPreisVerlauf');

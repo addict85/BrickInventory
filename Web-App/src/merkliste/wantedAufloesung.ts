@@ -2,8 +2,8 @@
  * (Zuordnungen, Katalog), dann über Rebrickable, zuletzt die Korrekturen von Hand. */
 import { blTeilZuRb, blFilterWirkungslos, RebrickableGesperrt } from '../katalog';
 import { meldeFehler } from '../infra/fehler';
-import * as repo from './repository/wantedListe';
 import type { WantedArt, WantedPosten } from './wantedParser';
+import { merklisteBereich } from './prozess';
 
 export type Sicherheit =
   | 'zuordnung'
@@ -39,7 +39,7 @@ export async function loeseLokalAuf(posten: WantedPosten[], uid: number | null =
 
   const zuordnung = new Map<string, { rbId: string; sicherheit: Sicherheit }>();
   const eigene = new Set<string>();
-  for (const z of await repo.zuordnungen(nummern, uid)) {
+  for (const z of await merklisteBereich().wantedListe.zuordnungen(nummern, uid)) {
     const schluessel = `${z.art}:${z.bl_id ?? z.rb_id}`;
     const stufe: Sicherheit = z.bl_id ? 'zuordnung' : 'gleich_vermerkt';
     const schon = zuordnung.get(schluessel);
@@ -52,11 +52,11 @@ export async function loeseLokalAuf(posten: WantedPosten[], uid: number | null =
 
   const katalog = new Set<string>();
   for (const art of ['part', 'fig', 'set'] as const) {
-    for (const n of await repo.nummernImKatalog(art, nummern)) katalog.add(`${art}:${n}`);
+    for (const n of await merklisteBereich().wantedListe.nummernImKatalog(art, nummern)) katalog.add(`${art}:${n}`);
   }
 
   const farbMap = new Map<number, { id: number; name: string | null; hex: string | null }>();
-  for (const z of await repo.farbenZuBlFarben(farben)) {
+  for (const z of await merklisteBereich().wantedListe.farbenZuBlFarben(farben)) {
     farbMap.set(Number(z.bl_color_id), {
       id: Number(z.id),
       name: z.name ?? null,
@@ -181,12 +181,12 @@ export async function beschreibePosten(
 
   if (teile.length) {
     const nummern = [...new Set(teile.map(t => t.nr))];
-    const zeilen = await repo.teileBeschreibung(nummern);
+    const zeilen = await merklisteBereich().wantedListe.teileBeschreibung(nummern);
     const nachNummer = new Map(zeilen.map(z => [z.part_number, z]));
     const paare = teile.filter(t => t.farbe !== null);
     const bilder = new Map<string, string>();
     if (paare.length) {
-      const farbZeilen = await repo.teilFarbbilder(
+      const farbZeilen = await merklisteBereich().wantedListe.teilFarbbilder(
         paare.map(t => t.nr),
         paare.map(t => t.farbe as number),
       );
@@ -203,7 +203,7 @@ export async function beschreibePosten(
   }
 
   if (figuren.length) {
-    const zeilen = await repo.figurenBeschreibung([...new Set(figuren.map(f => f.nr))]);
+    const zeilen = await merklisteBereich().wantedListe.figurenBeschreibung([...new Set(figuren.map(f => f.nr))]);
     const nach = new Map(zeilen.map(z => [z.fig_number, z]));
     for (const f of figuren) {
       const z = nach.get(f.nr);
@@ -215,7 +215,7 @@ export async function beschreibePosten(
 
   if (sets.length) {
     const nummern = [...new Set(sets.map(x => x.nr))];
-    const zeilen = await repo.setsBeschreibung(nummern);
+    const zeilen = await merklisteBereich().wantedListe.setsBeschreibung(nummern);
     const nach = new Map(zeilen.map(z => [z.set_number, z]));
     for (const x of sets) {
       const z = nach.get(x.nr);
@@ -311,7 +311,7 @@ export function wendeKorrekturenAn(
 export async function farbenNachtragen(auf: Aufloesung[]): Promise<Aufloesung[]> {
   const offen = auf.filter(a => a.rbFarbe !== null && a.rbFarbName === null).map(a => a.rbFarbe as number);
   if (!offen.length) return auf;
-  const zeilen = await repo.farbenZuIds([...new Set(offen)]);
+  const zeilen = await merklisteBereich().wantedListe.farbenZuIds([...new Set(offen)]);
   const nach = new Map(zeilen.map(z => [Number(z.id), z]));
   return auf.map(a => {
     if (a.rbFarbe === null || a.rbFarbName !== null) return a;

@@ -1,5 +1,5 @@
 /** Nummer und PIN ver- und entschlüsselt nur dieses Repository: Schon die Nummer löst ein. */
-import * as db from '../../../db/database';
+import type { DbSchnittstelle } from '../../../db/database';
 import { verschluessele, entschluessele, suchwert, kontext, umschluesseln, altwertLesen } from '../../infra/geheimnis';
 
 export interface GutscheinZeile {
@@ -28,23 +28,23 @@ function lesbar(uid: number, z: GutscheinZeile): GutscheinZeile {
 }
 
 /** Die ID vor dem INSERT: Sie steht im Kontext der Verschlüsselung. */
-async function neueId(): Promise<number> {
+async function neueId(db: DbSchnittstelle): Promise<number> {
   return (await db.get<{ id: number }>("SELECT nextval(pg_get_serial_sequence('vouchers', 'id'))::int AS id"))!.id;
 }
 
-export async function gutscheineDesKontos(uid: number, ordnung: 'neueste' | 'aelteste' = 'neueste'): Promise<GutscheinZeile[]> {
+export async function gutscheineDesKontos(db: DbSchnittstelle, uid: number, ordnung: 'neueste' | 'aelteste' = 'neueste'): Promise<GutscheinZeile[]> {
   const reihe = ordnung === 'neueste' ? 'created_at DESC, id DESC' : 'created_at, id';
   return (await db.all<GutscheinZeile>(`SELECT ${SPALTEN} FROM vouchers WHERE user_id = $1 ORDER BY ${reihe}`, [uid])).map(z => lesbar(uid, z));
 }
 
-export async function gutschein(uid: number, id: number): Promise<GutscheinZeile | undefined> {
+export async function gutschein(db: DbSchnittstelle, uid: number, id: number): Promise<GutscheinZeile | undefined> {
   const z = await db.get<GutscheinZeile>(`SELECT ${SPALTEN} FROM vouchers WHERE id = $1 AND user_id = $2`, [id, uid]);
   return z && lesbar(uid, z);
 }
 
 /** undefined, wenn es die Nummer schon gibt — kein stilles Überschreiben. */
-export async function gutscheinAnlegen(uid: number, w: GutscheinWerte): Promise<GutscheinZeile | undefined> {
-  const id = await neueId();
+export async function gutscheinAnlegen(db: DbSchnittstelle, uid: number, w: GutscheinWerte): Promise<GutscheinZeile | undefined> {
+  const id = await neueId(db);
   const n = nummerSpalten(uid, id, w.number);
   const z = await db.get<GutscheinZeile>(
     `INSERT INTO vouchers (id, user_id, number, nummer_suche, pin, amount, currency) VALUES ($7,$1,$2,$3,$4,$5,$6)
@@ -55,10 +55,10 @@ export async function gutscheinAnlegen(uid: number, w: GutscheinWerte): Promise<
 
 /** Erst die vorhandene Zeile suchen: Die PIN braucht deren ID im Kontext.
  * @returns ob der Gutschein neu angelegt wurde */
-export async function gutscheinErsetzen(uid: number, w: GutscheinWerte): Promise<boolean> {
+export async function gutscheinErsetzen(db: DbSchnittstelle, uid: number, w: GutscheinWerte): Promise<boolean> {
   for (let versuch = 0; versuch < 3; versuch++) {
     const da = await db.get<{ id: number }>('SELECT id FROM vouchers WHERE user_id = $1 AND nummer_suche = $2', [uid, nummerSuche(uid, w.number)]);
-    if (!da) { if (await gutscheinAnlegen(uid, w)) return true; continue; }
+    if (!da) { if (await gutscheinAnlegen(db, uid, w)) return true; continue; }
     const r = await db.run(`UPDATE vouchers SET pin = COALESCE($1, pin), amount = $2, currency = $3, updated_at = NOW()
       WHERE id = $4 AND user_id = $5`, [verschluessele(w.pin, pinKontext(uid, da.id)), w.amount, w.currency, da.id, uid]);
     if (r.changes) return false;
@@ -66,7 +66,7 @@ export async function gutscheinErsetzen(uid: number, w: GutscheinWerte): Promise
   throw new Error('Gutschein ändert sich gleichzeitig an anderer Stelle');
 }
 
-export async function gutscheinAendern(uid: number, id: number, w: GutscheinWerte): Promise<GutscheinZeile | undefined> {
+export async function gutscheinAendern(db: DbSchnittstelle, uid: number, id: number, w: GutscheinWerte): Promise<GutscheinZeile | undefined> {
   const n = nummerSpalten(uid, id, w.number);
   const z = await db.get<GutscheinZeile>(
     `UPDATE vouchers SET number=$1, nummer_suche=$2, pin=$3, amount=$4, currency=$5, updated_at=NOW()
@@ -75,17 +75,17 @@ export async function gutscheinAendern(uid: number, id: number, w: GutscheinWert
   return z && lesbar(uid, z);
 }
 
-export async function gutscheinPdfMerken(uid: number, id: number, relPfad: string) {
+export async function gutscheinPdfMerken(db: DbSchnittstelle, uid: number, id: number, relPfad: string) {
   await db.run('UPDATE vouchers SET pdf_path = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3', [relPfad, id, uid]);
 }
 
 /** undefined, wenn es die Zeile nicht gab. */
-export async function gutscheinLoeschen(uid: number, id: number): Promise<string | null | undefined> {
+export async function gutscheinLoeschen(db: DbSchnittstelle, uid: number, id: number): Promise<string | null | undefined> {
   const z = await db.get<{ pdf_path: string | null }>('DELETE FROM vouchers WHERE id = $1 AND user_id = $2 RETURNING pdf_path', [id, uid]);
   return z ? z.pdf_path : undefined;
 }
 
-export async function guthabenMerken(uid: number, id: number, betrag: number, waehrung: string): Promise<GutscheinZeile | undefined> {
+export async function guthabenMerken(db: DbSchnittstelle, uid: number, id: number, betrag: number, waehrung: string): Promise<GutscheinZeile | undefined> {
   const z = await db.get<GutscheinZeile>(
     `UPDATE vouchers SET amount = $1, currency = $2, guthaben_geprueft_am = NOW(), updated_at = NOW()
       WHERE id = $3 AND user_id = $4 RETURNING ${SPALTEN}`, [betrag, waehrung, id, uid]);
@@ -94,7 +94,7 @@ export async function guthabenMerken(uid: number, id: number, betrag: number, wa
 
 /** Klartext (vor 0087) und v1 auf v2, vor der ersten Anfrage. `AND number = $…` lässt
  * eine inzwischen geänderte Zeile stehen, ein falscher Schlüssel die Zeile, wie sie ist. */
-export async function nummernNachverschluesseln(): Promise<number> {
+export async function nummernNachverschluesseln(db: DbSchnittstelle): Promise<number> {
   let n = 0;
   for (const z of await db.all<{ id: number; user_id: number; number: string; pin: string | null; nummer_suche: string | null }>(
     "SELECT id, user_id, number, pin, nummer_suche FROM vouchers WHERE number NOT LIKE 'v2:%' OR pin NOT LIKE 'v2:%' OR nummer_suche IS NULL")) {
@@ -111,7 +111,7 @@ export async function nummernNachverschluesseln(): Promise<number> {
 
 /** Nach einem Schlüsselwechsel, samt Suchwert (er hängt am Schlüssel). Dieselbe
  * Bedingung wie oben lässt eine inzwischen geänderte Zeile stehen. */
-export async function gutscheineNeuVerschluesseln(): Promise<number> {
+export async function gutscheineNeuVerschluesseln(db: DbSchnittstelle): Promise<number> {
   let n = 0;
   for (const z of await db.all<{ id: number; user_id: number; number: string; pin: string | null; nummer_suche: string | null }>(
     "SELECT id, user_id, number, pin, nummer_suche FROM vouchers WHERE number LIKE 'v2:%'")) {
@@ -128,7 +128,7 @@ export async function gutscheineNeuVerschluesseln(): Promise<number> {
 }
 
 /** Kopien vor einer Migration (Schemaname durch das Muster geprüft); `alle` nach einem Schlüsselwechsel. */
-export async function kopienVerschluesseln(alle = false): Promise<number> {
+export async function kopienVerschluesseln(db: DbSchnittstelle, alle = false): Promise<number> {
   let n = 0;
   for (const { schema } of await db.all<{ schema: string }>(
     `SELECT table_schema AS schema FROM information_schema.tables

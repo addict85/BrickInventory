@@ -1,5 +1,4 @@
 import type { DbSchnittstelle } from '../../../db/database';
-import * as db from '../../../db/database';
 
 export function legeSchrankeAn(tx: DbSchnittstelle) {
   return tx.run(`INSERT INTO gutschein_guthaben_schranke (id) VALUES (1)
@@ -37,12 +36,12 @@ export function merkeAbruf(tx: DbSchnittstelle) {
   return tx.run('UPDATE gutschein_guthaben_schranke SET letzter_abruf = NOW() WHERE id = 1');
 }
 
-export function sperreSchranke(BOTSCHUTZ_PAUSE_MIN: number) {
+export function sperreSchranke(db: DbSchnittstelle, BOTSCHUTZ_PAUSE_MIN: number) {
   return db.run(`INSERT INTO gutschein_guthaben_schranke (id, sperre_bis)
      VALUES (1, NOW() + make_interval(mins => $1))
      ON CONFLICT (id) DO UPDATE SET sperre_bis = EXCLUDED.sperre_bis`, [BOTSCHUTZ_PAUSE_MIN]);
 }
 
-export function oeffneSchranke() {
+export function oeffneSchranke(db: DbSchnittstelle) {
   return db.run('UPDATE gutschein_guthaben_schranke SET letzter_abruf = NULL, sperre_bis = NULL WHERE id = 1');
 }

@@ -13,7 +13,7 @@ export {
   bricksetVormerken,
   bricksetZahlen,
 } from './bricksetAuftrag';
-export { beendePause, liesPause, pausiereArt, raeumeErledigteAuf, stelleAuftragEin, zaehleArt } from './dienst';
+export { beendePause, stelleAuftragEin, zaehleArt } from './dienst';
 export {
   auftraegeImUeberblick,
   auftragAbbrechen,
@@ -38,7 +38,6 @@ export {
 } from './importAuftrag';
 export type { ImportErgebnis } from './importAuftrag';
 export { all, get, imgDlAdd, imgDlPending, imgDlReset } from './jobMonitor';
-export { liesZustand, loescheZustand, setzeZustand } from './laufzustand';
 export { nacharbeit } from './nacharbeit';
 export type { Nacharbeit } from './nacharbeit';
 export type { ImportNutzlast, Nutzlast, SetCsvNutzlast } from './nutzlasten';
@@ -50,14 +49,9 @@ export type { AuftragsArt, Fortschritt } from './auftraege';
 export {
   beiAuftragsStand,
   beiNeuemAuftrag,
-  belegeAuftrag,
   erledigt,
   fehlgeschlagen,
-  gehoertNoch,
-  gibZurueck,
   imNamenDesAuftrags,
-  lebenszeichen,
-  merkeExklusive,
   setzeFortschritt,
   verschoben,
 } from './dienst';
@@ -67,3 +61,6 @@ export { gueltigeAuftragsKennung, liesAuftrag, loescheAuftrag, pdfAuftragStarten
 export { belegKennung, meldeProzessAb, meldeProzessAn } from './prozess';
 export { oeffentlicherStartZustand } from './startZustand';
 export { hatZeitplan, planeAlle, planeNaechsten } from './zeitplan';
+export { erzeugeAuftraege } from './bereich';
+export type { AuftraegeDienste, AuftraegeKontext } from './bereich';
+export { auftraegeBereich, verdrahteAuftraege } from './prozess';

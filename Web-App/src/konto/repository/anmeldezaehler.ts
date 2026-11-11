@@ -1,4 +1,3 @@
-import * as db from '../../../db/database';
 import type { DbSchnittstelle } from '../../../db/database';
 
 /** `laufend` zählt Prüfungen, die gerade laufen, damit gleichzeitige Versuche
@@ -6,7 +5,7 @@ import type { DbSchnittstelle } from '../../../db/database';
 
 export type ZaehlerZeile = { count: string; wait_min: string; seit: string };
 
-export function lies(key: string, fensterMin: number) {
+export function lies(db: DbSchnittstelle, key: string, fensterMin: number) {
   return db.get<ZaehlerZeile>(
     `SELECT count, EXTRACT(EPOCH FROM (first_at + make_interval(mins => $2) - NOW()))/60 AS wait_min,
             EXTRACT(EPOCH FROM (NOW() - COALESCE(last_at, first_at))) AS seit
@@ -14,7 +13,7 @@ export function lies(key: string, fensterMin: number) {
       WHERE key = $1 AND first_at > NOW() - make_interval(mins => $2)`, [key, fensterMin]);
 }
 
-export async function erhoehe(key: string, fensterMin: number): Promise<number> {
+export async function erhoehe(db: DbSchnittstelle, key: string, fensterMin: number): Promise<number> {
   return Number((await db.get<{ count: string }>(
     `INSERT INTO rate_limit_attempts (key, count, first_at, last_at) VALUES ($1, 1, NOW(), NOW())
      ON CONFLICT (key) DO UPDATE SET
@@ -52,26 +51,26 @@ export async function belegeLaufplatz(tx: DbSchnittstelle, key: string, laufend:
       WHERE key = $1`, [key, laufend, neu]);
 }
 
-export async function gibLaufplatzFrei(key: string): Promise<void> {
+export async function gibLaufplatzFrei(db: DbSchnittstelle, key: string): Promise<void> {
   await db.run('UPDATE rate_limit_attempts SET laufend = GREATEST(laufend - 1, 0) WHERE key = $1', [key]);
 }
 
-export async function loescheZaehler(key: string): Promise<void> {
+export async function loescheZaehler(db: DbSchnittstelle, key: string): Promise<void> {
   await db.run('DELETE FROM rate_limit_attempts WHERE key = $1', [key]);
 }
 
-export async function loescheZaehlerMitPraefix(praefix: string): Promise<void> {
+export async function loescheZaehlerMitPraefix(db: DbSchnittstelle, praefix: string): Promise<void> {
   await db.run('DELETE FROM rate_limit_attempts WHERE left(key, length($1)) = $1', [praefix]);
 }
 
-export function kontoZumNamen(name: string) {
+export function kontoZumNamen(db: DbSchnittstelle, name: string) {
   return db.get<{ kennung: string; id: number | null }>(`
     SELECT lower($1::text) AS kennung,
            (SELECT id FROM users WHERE lower(username) = lower($1::text) OR lower(email) = lower($1::text)
              ORDER BY id LIMIT 1) AS id`, [name]);
 }
 
-export async function raeumeAuf(bekanntMin: number): Promise<number> {
+export async function raeumeAuf(db: DbSchnittstelle, bekanntMin: number): Promise<number> {
   return (await db.run(`
     DELETE FROM rate_limit_attempts
      WHERE COALESCE(last_at, first_at) < NOW() - CASE WHEN key LIKE 'login-bekannt|%'
@@ -79,7 +78,7 @@ export async function raeumeAuf(bekanntMin: number): Promise<number> {
     [bekanntMin])).changes || 0;
 }
 
-export async function zaehleHoch(key: string, fensterMin: number): Promise<{ count: string; wait_min: string }> {
+export async function zaehleHoch(db: DbSchnittstelle, key: string, fensterMin: number): Promise<{ count: string; wait_min: string }> {
   return (await db.get<{ count: string; wait_min: string }>(
     `INSERT INTO rate_limit_attempts (key, count, first_at, last_at) VALUES ($1, 1, NOW(), NOW())
      ON CONFLICT (key) DO UPDATE SET

@@ -2,11 +2,11 @@
  * wartet auf das Ergebnis. Bricht der Web-Prozess ab, läuft der Import weiter,
  * und Fremdabrufe belasten nicht den Prozess, der die Seiten ausliefert. */
 import { stelleAuftragEin } from './dienst';
-import * as repo from './repository/auftraege';
 import type { Fortschritt } from './auftraege';
 import type { z } from 'zod';
 import type { ImportNutzlast, NutzlastEingabe } from './nutzlasten';
 import { Fachfehler, fachfehler, type FehlerArt, type FehlerCode } from '../infra/fehlerTexte';
+import { auftraegeBereich } from './prozess';
 
 export type ImportQuelle = z.input<typeof ImportNutzlast>['quelle'];
 /** Was der Import der Quelle braucht (src/auftraege/nutzlasten.ts). */
@@ -20,12 +20,12 @@ const TAKT_MS = 150;
 type Abgelegt = { ergebnis?: Record<string, unknown>; fachfehler?: { code: FehlerCode; art: FehlerArt; vars?: Record<string, string | number> } };
 
 export async function setzeErgebnis(id: string, ergebnis: Record<string, unknown>): Promise<void> {
-  await repo.schreibeErgebnis(id, { ergebnis } satisfies Abgelegt);
+  await auftraegeBereich().auftraege.schreibeErgebnis(id, { ergebnis } satisfies Abgelegt);
 }
 
 /** Ein Fachfehler (falsche Datei, fehlendes Recht) kommt bei der Anfrage mit Code an. */
 export async function setzeFachfehler(id: string, e: Fachfehler): Promise<void> {
-  await repo.schreibeErgebnis(id, { fachfehler: { code: e.code, art: e.art, ...(e.vars ? { vars: e.vars } : {}) } } satisfies Abgelegt);
+  await auftraegeBereich().auftraege.schreibeErgebnis(id, { fachfehler: { code: e.code, art: e.art, ...(e.vars ? { vars: e.vars } : {}) } } satisfies Abgelegt);
 }
 
 /** @typeParam T die Antwort, die der Job ablegt; der Vertrag prüft sie im Testlauf. */
@@ -39,7 +39,7 @@ export async function importAlsAuftrag<T = Record<string, unknown>, Q extends Im
   const bis = Date.now() + (o.wartenMs ?? IMPORT_WARTEN_MS);
   let zuletzt = '';
   for (;;) {
-    const s = await repo.auftragsStand(id);
+    const s = await auftraegeBereich().auftraege.auftragsStand(id);
     if (s?.fortschritt && o.fortschritt) {
       const j = JSON.stringify(s.fortschritt);
       if (j !== zuletzt) { zuletzt = j; o.fortschritt(s.fortschritt); }
@@ -48,7 +48,7 @@ export async function importAlsAuftrag<T = Record<string, unknown>, Q extends Im
     if (abgelegt.fachfehler) throw new Fachfehler(abgelegt.fachfehler.art ?? 'ungueltig', abgelegt.fachfehler.code, abgelegt.fachfehler.vars);
     if (s?.status === 'erledigt') {
       // Gelesen ist gelesen: Das Ergebnis trägt Namen und Nummern aus der Datei.
-      await repo.schreibeErgebnis(id, null);
+      await auftraegeBereich().auftraege.schreibeErgebnis(id, null);
       return (abgelegt.ergebnis ?? {}) as T;
     }
     if (!s || s.status === 'abgebrochen') fachfehler('konflikt', 'import_abgebrochen');

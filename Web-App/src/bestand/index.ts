@@ -25,3 +25,6 @@ export { verwendendeSets } from './gemeinsam';
 export { getStats } from './kennzahlen';
 export { benenneOrtUm, lagerSchreibkonto, lagerorte, legeOrtAn, loescheOrt, setzeVorgabe } from './lagerort';
 export { leerePapierkorb, listePapierkorb, loescheEndgueltig, stelleWiederHer } from './papierkorb';
+export { erzeugeBestand } from './bereich';
+export type { BestandDienste, BestandKontext } from './bereich';
+export { bestandBereich, verdrahteBestand } from './prozess';

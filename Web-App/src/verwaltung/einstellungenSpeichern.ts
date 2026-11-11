@@ -1,6 +1,7 @@
 /** POST /settings ohne HTTP. Hier statt in src/einstellungen, weil Mail, Protokoll
  * und Brickset-Warteschlange höhere Stufen sind (test/schichten.test.js). */
 import {
+  einstellungenAlsEinheit,
   SECRET_KEYS,
   isMaskedValue,
   setGlobalSetting,
@@ -8,15 +9,14 @@ import {
   deleteGlobalSetting,
   getGlobalSetting,
   meldeGlobaleAenderung,
-  alsEinheit,
 } from '../einstellungen';
-import { setUserSetting, verwalterHinweisNebenher } from '../konto';
+import { kontoBereich, setUserSetting, verwalterHinweisNebenher } from '../konto';
 import { mailBereit } from '../mail';
 import { fachfehler } from '../infra/fehlerTexte';
 import { GLOBALE_EINSTELLUNGEN, KONTO_EINSTELLUNGEN } from '../vertrag/einstellungen';
 import type { Eingabe } from '../vertrag';
 import { istHeikel } from './datenexport';
-import { bricksetLimitGesetzt, protokolliere } from './dienst';
+import { bricksetLimitGesetzt } from './dienst';
 
 type EinstellungsEingabe = Eingabe<'POST /api/v1/settings'>;
 
@@ -61,7 +61,8 @@ async function schreibeGlobal(uid: number, e: EinstellungsEingabe): Promise<void
     if (String(e[key]) !== String((await getGlobalSetting(key)) ?? '')) geaendert.push(key);
     await setGlobalSetting(key, e[key]);
   }
-  if (geaendert.length) await protokolliere(uid, uid, 'einstellungen_geaendert', geaendert.join(', '));
+  if (geaendert.length)
+    await kontoBereich().protokoll.protokolliere(uid, uid, 'einstellungen_geaendert', geaendert.join(', '));
   // Wer das Mailformular gespeichert hat, hat den Hinweis auf die alte Ausnahme gesehen.
   if (GLOBALE_EINSTELLUNGEN.some(k => k.startsWith('smtp_') && e[k] !== undefined))
     await deleteGlobalSetting('smtp_insecure_tls');
@@ -85,7 +86,7 @@ export async function einstellungenSpeichern(e: EinstellungsEingabe, o: Speicher
   if (heikel.length && !e.admin_password) fachfehler('ungueltig', 'aktuelles_passwort_erforderlich');
   if (heikel.length && !(await o.bestaetige(e.admin_password))) return false;
 
-  const bricksetAlt = await alsEinheit(async () => {
+  const bricksetAlt = await einstellungenAlsEinheit(async () => {
     const alt =
       global && e.api_limit_brickset !== undefined
         ? parseInt((await getGlobalSetting('api_limit_brickset')) || '100', 10)

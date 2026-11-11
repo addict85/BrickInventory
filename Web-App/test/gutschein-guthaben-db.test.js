@@ -71,7 +71,7 @@ async function aufbau() {
   HAUPT = (await db.get(`SELECT id FROM users WHERE username='haupt'`)).id;
   FREMD = (await db.get(`SELECT id FROM users WHERE username='fremd'`)).id;
 
-  const { gutscheinAnlegen } = _req('src/gutscheine/dienst.js');
+  const { gutscheinAnlegen } = _req('src/gutscheine/prozess.js').gutscheineBereich().gutscheine;
   MIT_PIN = (await gutscheinAnlegen(HAUPT, { number: NUMMER, pin: PIN, amount: 100, currency: 'CHF' })).id;
   OHNE_PIN = (await gutscheinAnlegen(HAUPT, { number: '5045076374450022277', pin: null, amount: 50, currency: 'CHF' })).id;
   FREMDER = (await gutscheinAnlegen(FREMD, { number: '9999999999999999999', pin: '0000', amount: 99, currency: 'CHF' })).id;

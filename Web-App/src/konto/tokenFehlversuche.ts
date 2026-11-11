@@ -4,8 +4,8 @@
  * jeder Prozess, damit ein gültiger Token keine zusätzliche Abfrage kostet.
  * Ersetzte Token einer Familie zählen nicht mit (Wiederverwendungserkennung). */
 import { drosselAdresse, zaehleAnfrage } from './loginLimiter';
-import { loescheZaehlerMitPraefix } from './repository/anmeldezaehler';
 import { meldeFehler } from '../infra/fehler';
+import { kontoBereich } from './prozess';
 
 export const FEHLVERSUCH_FENSTER_MS = 60_000;
 export const FEHLVERSUCH_MAX = 60;
@@ -35,5 +35,7 @@ export function vergissSperrenImProzess(): void {
 
 export async function vergissFehlversuche(): Promise<void> {
   gesperrtBis.clear();
-  await loescheZaehlerMitPraefix(`${BUCKET}|`).catch((e: unknown) => meldeFehler('token-fehlversuch:vergessen', e));
+  await kontoBereich()
+    .anmeldezaehler.loescheZaehlerMitPraefix(`${BUCKET}|`)
+    .catch((e: unknown) => meldeFehler('token-fehlversuch:vergessen', e));
 }

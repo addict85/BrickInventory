@@ -24,7 +24,7 @@ const { warte } = require('./helpers/zeit');
 
 test('Abschalten während einer Belegung', async (t) => {
   if (!await dbOderSkip(t, _req)) return;
-  const A = _req('src/auftraege/dienst.js');
+  const A = { ..._req('src/auftraege/dienst.js'), ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege };
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   const ART = `abschalten-${process.pid}`;
   const MARKE = `abschalten-${process.pid}`;
@@ -39,7 +39,7 @@ test('Abschalten während einer Belegung', async (t) => {
     await sperre.query('ROLLBACK').catch(() => {});
     sperre.release();
     await db.run(`DELETE FROM auftraege WHERE nutzlast->>'marke' = $1`, [MARKE]).catch(() => {});
-    await _req('db/pgNotify.js').close().catch(() => {});
+    await _req('db/database.js').standardDb().benachrichtigung.close().catch(() => {});
     await db.pool.end().catch(() => {});
   });
 

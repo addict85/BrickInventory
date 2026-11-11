@@ -1,8 +1,7 @@
 /**
  * Serialisierung nebenläufiger Mutationen an derselben Bestandszeile.
  */
-import * as db from './database';
-import type { DbSchnittstelle } from './database';
+import type { Db, DbSchnittstelle, TxOptionen } from './database';
 import { LOCKS } from '../src/infra/lockNamespaces';
 import { meldeFehler } from '../src/infra/fehler';
 
@@ -11,27 +10,20 @@ async function sperreBisZumEnde(tx: DbSchnittstelle, klasse: number, schluessel:
   await tx.run('SELECT pg_advisory_xact_lock($1, hashtext($2))', [klasse, schluessel]);
 }
 
-/** Führt fn in einer Transaktion aus, die exklusiven Zugriff auf den
- * angegebenen Bestandsschlüssel hat.
- * @param scopeKey Bestandsschlüssel, z. B. die Set- oder Teilenummer */
-async function withInventoryLock<T>(userId: number, scopeKey: string | number, fn: (tx: DbSchnittstelle) => Promise<T>,
-                                    o: db.TxOptionen = {}): Promise<T> {
-  return mitInventarSperre(db, userId, scopeKey, fn, o);
-}
-
 /** Dasselbe für mehrere Konten (etwas wandert zwischen ihnen); aufsteigend
  * gesperrt, damit zwei Gegenrichtungen nicht verklemmen. */
-async function withInventoryLocks<T>(userIds: number[], scopeKey: string, fn: (tx: DbSchnittstelle) => Promise<T>,
-                                     o: db.TxOptionen = {}): Promise<T> {
-  return db.transaction(async (tx) => {
+async function mitInventarSperren<T>(zugang: Pick<Db, 'transaction'>, userIds: number[], scopeKey: string,
+                                     fn: (tx: DbSchnittstelle) => Promise<T>, o: TxOptionen = {}): Promise<T> {
+  return zugang.transaction(async (tx) => {
     for (const u of [...new Set(userIds)].sort((a, b) => a - b)) await sperreBisZumEnde(tx, LOCKS.INVENTAR, `${u}|${scopeKey}`);
     return fn(tx);
   }, o);
 }
 
-/** Dasselbe über einen übergebenen Zugang (Bereiche mit Fabrik, src/sets/bereich.ts). */
-async function mitInventarSperre<T>(zugang: Pick<db.Db, 'transaction'>, userId: number, scopeKey: string | number,
-                                    fn: (tx: DbSchnittstelle) => Promise<T>, o: db.TxOptionen = {}): Promise<T> {
+/** Führt fn in einer Transaktion des Zugangs aus, die exklusiven Zugriff auf den
+ * Bestandsschlüssel (z. B. Set- oder Teilenummer) hat. */
+async function mitInventarSperre<T>(zugang: Pick<Db, 'transaction'>, userId: number, scopeKey: string | number,
+                                    fn: (tx: DbSchnittstelle) => Promise<T>, o: TxOptionen = {}): Promise<T> {
   return zugang.transaction(async (tx) => {
     // Eine eigene Klasse statt der user_id als erstem Wert: Sonst sperrte
     // Konto 42 beim Verschieben eines Sets den Bild-Download desselben Sets
@@ -60,8 +52,8 @@ async function sperreHaushaltswaehrung(tx: DbSchnittstelle): Promise<void> {
  * Eine Sitzungssperre auf eigener Verbindung (Advisory-Locks hängen an der
  * Sitzung); ist sie belegt, entscheidet `belegt`, was geschieht.
  */
-async function mitSitzungsSperre<T>(schluessel: number, lauf: () => Promise<T>, belegt: () => never): Promise<T> {
-  const client = await db.pool.connect();
+async function mitSitzungsSperre<T>(zugang: Pick<Db, 'pool'>, schluessel: number, lauf: () => Promise<T>, belegt: () => never): Promise<T> {
+  const client = await zugang.pool.connect();
   // Schlägt das Freigeben fehl, darf die Verbindung nicht mit gehaltener Sperre in den
   // Pool zurück; sie wird verworfen (die Sperre endet mit der Sitzung).
   let defekt: Error | undefined;
@@ -80,8 +72,8 @@ async function mitSitzungsSperre<T>(schluessel: number, lauf: () => Promise<T>, 
  * Eine Sitzungssperre für eine ganze Laufzeit belegen.
  * @returns Freigabe, oder null wenn ein anderer Prozess sie hält
  */
-async function belegeSitzungsSperre(schluessel: number): Promise<(() => Promise<void>) | null> {
-  const client = await db.pool.connect();
+async function belegeSitzungsSperre(zugang: Pick<Db, 'pool'>, schluessel: number): Promise<(() => Promise<void>) | null> {
+  const client = await zugang.pool.connect();
   try {
     const { rows } = await client.query('SELECT pg_try_advisory_lock($1, 0) AS ok', [schluessel]);
     if (!rows[0]?.ok) { client.release(); return null; }
@@ -106,5 +98,5 @@ async function gibSchluesselSperreFrei(c: Abfrager, namensraum: number, schluess
   await c.query('SELECT pg_advisory_unlock($1, hashtext($2))', [namensraum, schluessel]);
 }
 
-export { withInventoryLock, withInventoryLocks, mitInventarSperre, bestandsSchluessel, sperreHaushaltswaehrung, mitSitzungsSperre, belegeSitzungsSperre,
+export { mitInventarSperren, mitInventarSperre, bestandsSchluessel, sperreHaushaltswaehrung, mitSitzungsSperre, belegeSitzungsSperre,
   versucheSchluesselSperre, gibSchluesselSperreFrei, sperreBisZumEnde };

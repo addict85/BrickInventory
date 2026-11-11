@@ -1,12 +1,12 @@
 /** Die Kacheln der Überwachungsseite: Stand je Hintergrundauftrag und Zeitplan. */
 import fs from 'node:fs';
 import path from 'node:path';
-import * as verwaltung from './repository/verwaltung';
-import { DAILY_JOBS, liesZustand, zaehleArt, bricksetZahlen, all as alleMonitore, get as monitorStand, imgDlPending, imgDlReset } from '../auftraege';
+import { auftraegeBereich, DAILY_JOBS, zaehleArt, bricksetZahlen, all as alleMonitore, get as monitorStand, imgDlPending, imgDlReset } from '../auftraege';
 import { PDF_JOB_DIR } from '../infra/appPaths';
 import { meldeFehler, logAndContinue } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
 import { getGlobalSetting } from '../einstellungen';
+import { verwaltungBereich } from './prozess';
 
 // Eine Frist für beide Kacheln; drei Minuten bei einem Takt von zwanzig Sekunden.
 const JOB_FRISCH_MS = 3 * 60_000;
@@ -24,7 +24,7 @@ const zahl = (ab: Abstriche, p: Promise<number>, ort: string) => ab.oder(ort, p,
 
 /** Ein JSON-Stand aus laufzustand; ein beschädigter zählt wie keiner. */
 async function liesStand<T>(ab: Abstriche, schluessel: string): Promise<T | null> {
-  const roh = await ab.oder(schluessel, liesZustand(schluessel), null);
+  const roh = await ab.oder(schluessel, auftraegeBereich().laufzustand.liesZustand(schluessel), null);
   try { return roh ? JSON.parse(roh) as T : null; } catch { return null; }
 }
 
@@ -65,11 +65,11 @@ const frisch = (zeit: unknown) => typeof zeit === 'number' && Date.now() - zeit 
  * während der Hintergrund-Job nachlädt. */
 async function bildKachel(ab: Abstriche): Promise<Kachel> {
   const [teileOffen, fertig, setFiguren, bestandsFiguren, katalogOffen] = await Promise.all([
-    zahl(ab, verwaltung.teilbilderOffen(), 'bilder'), zahl(ab, verwaltung.teilbilderFertig(), 'bilder'),
-    zahl(ab, verwaltung.setFigurenbilderOffen(), 'bilder'),
+    zahl(ab, verwaltungBereich().verwaltung.teilbilderOffen(), 'bilder'), zahl(ab, verwaltungBereich().verwaltung.teilbilderFertig(), 'bilder'),
+    zahl(ab, verwaltungBereich().verwaltung.setFigurenbilderOffen(), 'bilder'),
     // Figuren des Bestands legt derselbe Lauf lokal ab; sie gehören in die offene Menge.
-    zahl(ab, verwaltung.bestandsFigurenbilderOffen(), 'bilder'),
-    zahl(ab, verwaltung.katalogBilderOffen(), 'bilder'),
+    zahl(ab, verwaltungBereich().verwaltung.bestandsFigurenbilderOffen(), 'bilder'),
+    zahl(ab, verwaltungBereich().verwaltung.katalogBilderOffen(), 'bilder'),
   ]);
   const offen = teileOffen + setFiguren + bestandsFiguren;
   const job = await ab.oder('bilder', monitorStand('imgDl'), null);
@@ -138,9 +138,9 @@ export async function jobUebersicht() {
   const ab = new Abstriche();
   const [anleitungen, gemappt, blGesamt, rbTeile, rbInventar, lastSync] = await Promise.all([
     anleitungsAuftraege(ab),
-    zahl(ab, verwaltung.zugeordneteTeile(), 'bl_zuordnung'), zahl(ab, verwaltung.bricklinkTeile(), 'bl_zuordnung'),
-    zahl(ab, verwaltung.rbTeile(), 'katalog'), zahl(ab, verwaltung.rbInventarTeile(), 'katalog'),
-    liesZustand('rb_csv_last_sync'),
+    zahl(ab, verwaltungBereich().verwaltung.zugeordneteTeile(), 'bl_zuordnung'), zahl(ab, verwaltungBereich().verwaltung.bricklinkTeile(), 'bl_zuordnung'),
+    zahl(ab, verwaltungBereich().verwaltung.rbTeile(), 'katalog'), zahl(ab, verwaltungBereich().verwaltung.rbInventarTeile(), 'katalog'),
+    auftraegeBereich().laufzustand.liesZustand('rb_csv_last_sync'),
   ]);
   const blIds = blIdsKachel(jobs.blIds ?? {}, gemappt, blGesamt);
   if (blIds) jobs.blIds = blIds;

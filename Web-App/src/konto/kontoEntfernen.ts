@@ -3,31 +3,33 @@
  * Bliebe eine Sitzung übrig, wäre das gelöschte Konto noch angemeldet. */
 import fs from 'node:fs';
 import path from 'node:path';
-import * as db from '../../db/database';
 import { DATA_DIR } from '../infra/appPaths';
 import * as repo from './repository/konten';
 import { erhoeheSitzungsVersion } from './sitzungsVersion';
-import { loescheSitzungenDesKontos } from './repository/zugaenge';
 import { leereTokenCache } from './auth';
-import { protokolliere } from './repository/protokoll';
 import { meldeHaushaltsaenderung } from '../haushalt';
 import { stelleAuftragEin } from '../auftraege';
 import { meldeFehler } from '../infra/fehler';
+import { kontoBereich } from './prozess';
 
 export type KontoEntfernt = 'entfernt' | 'nicht_gefunden' | typeof repo.LETZTER_VERWALTER;
 
 /** @param durch der Verwalter, der löscht; null, wenn das Konto sich selbst löscht */
 export async function kontoEntfernen(ziel: number, durch: number | null): Promise<KontoEntfernt> {
-  const r = await db
-    .transaction(async () => {
+  const r = await kontoBereich()
+    .db.transaction(async () => {
       // Vor dem Löschen: Danach ist der Name für das Protokoll nicht mehr zu ermitteln.
-      if (durch !== null && durch !== ziel) await protokolliere(durch, ziel, 'konto_geloescht');
-      const weg = durch === null ? await repo.loescheEigenesKonto(ziel) : await repo.loescheKonto(ziel, durch);
+      if (durch !== null && durch !== ziel)
+        await kontoBereich().protokoll.protokolliere(durch, ziel, 'konto_geloescht');
+      const weg =
+        durch === null
+          ? await kontoBereich().konten.loescheEigenesKonto(ziel)
+          : await kontoBereich().konten.loescheKonto(ziel, durch);
       if (weg === repo.LETZTER_VERWALTER) throw new Abbruch(weg);
       if (!weg) throw new Abbruch(durch === null ? repo.LETZTER_VERWALTER : 'nicht_gefunden');
       // user_sessions hat keinen Fremdschlüssel auf users.
       await erhoeheSitzungsVersion(ziel);
-      await loescheSitzungenDesKontos(ziel);
+      await kontoBereich().zugaenge.loescheSitzungenDesKontos(ziel);
       return 'entfernt' as const;
     })
     .catch((e: unknown) => {
@@ -37,7 +39,7 @@ export async function kontoEntfernen(ziel: number, durch: number | null): Promis
   if (r !== 'entfernt') return r;
   // Nach dem Festschreiben: Caches und Nachbarprozesse sollen das Konto erst vergessen, wenn es weg ist.
   leereTokenCache();
-  meldeHaushaltsaenderung();
+  meldeHaushaltsaenderung(kontoBereich().db);
   await kontoDateienEntfernen(ziel);
   return r;
 }

@@ -445,7 +445,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     await t.test('mit dem Konto verschwinden auch seine Gutscheine', async () => {
       // ON DELETE CASCADE. Ohne das blieben Nummer und PIN eines geloeschten
       // Kontos in der Datenbank stehen — Zahlen, die weiter einloesbar sind.
-      await _req('src/gutscheine/dienst.js').gutscheinAnlegen(U.enkel,
+      await _req('src/gutscheine/prozess.js').gutscheineBereich().gutscheine.gutscheinAnlegen(U.enkel,
         { number: '5045076374450013333', pin: null, amount: 60, currency: null });
       assert.equal((await db.get('SELECT COUNT(*)::int AS n FROM vouchers WHERE user_id=$1', [U.enkel])).n, 1);
       await db.run('DELETE FROM users WHERE id = $1', [U.enkel]);

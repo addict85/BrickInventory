@@ -76,7 +76,7 @@ export async function findSetInScope(
   setNumber: string,
 ): Promise<VorhandenesSet | null> {
   const sn = normalizeSetNumber(setNumber);
-  const row = await repo.setImBlickfeld(sk.db, await scopeIds(viewerId), sn, viewerId);
+  const row = await repo.setImBlickfeld(sk.db, await scopeIds(sk.db, viewerId), sn, viewerId);
   if (!row) return null;
   return { set_number: row.set_number, owner_user_id: row.user_id, is_self: row.user_id === viewerId };
 }
@@ -121,9 +121,9 @@ export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfa
   if (e.streng && !GETIPPTE_NUMMER.test(roh)) fachfehler('ungueltig', 'setnummer_ungueltig');
   const sn = normalizeSetNumber(roh);
   if (!moeglicheSetNummer(sn)) fachfehler('ungueltig', 'setnummer_ungueltig');
-  const besitzer = await schreibziel(e.anfragender, e.besitzerWunsch);
+  const besitzer = await schreibziel(sk.db, e.anfragender, e.besitzerWunsch);
   const zustand = await zustandFuerPreis(e.zustand ?? null, null, besitzer);
-  const ort = await ortFuerNeuerfassung(besitzer, e.lagerort ?? null);
+  const ort = await ortFuerNeuerfassung(sk.db, besitzer, e.lagerort ?? null);
   const kaufpreis = e.kaufpreis ?? null;
 
   return sk.db.transaction(async tx => {
@@ -145,7 +145,7 @@ export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfa
       },
       tx,
     );
-    if (ort) await setzeLagerort('set', [besitzer], [sn], ort);
+    if (ort) await setzeLagerort(sk.db, 'set', [besitzer], [sn], ort);
     // In derselben Transaktion: Ein angelegtes Set ohne Auftrag bliebe für immer ohne Katalog.
     await stelleAuftragEin(
       'nacharbeit',
@@ -252,9 +252,9 @@ export interface SetHinzufuegen {
 /** Steht das Set schon im eigenen Konto, kommt eine Erfassung dazu (CSV, Merkliste). */
 export async function addSet(sk: SetsKontext, s: SetHinzufuegen) {
   // Ohne Ort gilt der Vorgabeort des Kontos (CSV- und Wanted-Import haben keinen).
-  const ort = await ortFuerNeuerfassung(s.konto, s.lagerort ?? null);
+  const ort = await ortFuerNeuerfassung(sk.db, s.konto, s.lagerort ?? null);
   const ergebnis = await addSetIntern(sk, s);
-  if (ort && ergebnis?.set_number) await setzeLagerort('set', [s.konto], [ergebnis.set_number], ort);
+  if (ort && ergebnis?.set_number) await setzeLagerort(sk.db, 'set', [s.konto], [ergebnis.set_number], ort);
   return ergebnis;
 }
 

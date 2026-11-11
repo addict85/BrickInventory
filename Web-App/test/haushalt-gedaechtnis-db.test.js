@@ -9,7 +9,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = _req('db/database.js');
-const hh = _req('src/haushalt/haushalt.js');
+const hh = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt };
 
 const HAUPT = 990501, UNTER = 990502;
 
@@ -75,7 +75,7 @@ test('Blickfeld: gemerkt, und bei Änderung sofort vergessen', async (t) => {
         `kein NOTIFY auf Kanal "${hh.HAUSHALT_KANAL}" innerhalb von 3 s — die anderen Worker erfahren nichts`)), 3000);
       lauscher.on('notification', (m) => { if (m.channel === hh.HAUSHALT_KANAL) { clearTimeout(uhr); auf(m); } });
     });
-    hh.meldeHaushaltsaenderung();
+    hh.meldeHaushaltsaenderung(db.standardDb());
     const meldung = await angekommen;
     assert.equal(meldung.channel, hh.HAUSHALT_KANAL);
 

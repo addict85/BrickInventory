@@ -1,95 +1,13 @@
 /**
- * PostgreSQL LISTEN/NOTIFY statt Datenbank-Polling.
+ * PostgreSQL LISTEN/NOTIFY statt Datenbank-Polling. Jeder Zugang (Db) hat seine
+ * eigene Benachrichtigung: Horch-Verbindung und Handler gehören ihm, nicht dem Prozess.
  */
 import { logAndContinue } from '../src/infra/fehler';
-import { Client } from 'pg';
-import * as db from './database';
-import * as konfig from '../src/infra/konfig';
+import { Client, type ClientConfig } from 'pg';
 
 /** Ohne Payload ruft der (Wieder-)Verbindungsaufbau: Dann zieht der Handler
  * seinen Zustand aus der Datenbank nach, statt einem Signal zu folgen. */
 type Handler = (payload?: string) => void | Promise<void>;
-
-const _handlers = new Map<string, Handler[]>();
-let _client: Client | null = null;
-let _connecting = false;
-let _retryMs = 1000;
-/** Läuft ein Reconnect-Timer? Verhindert mehrere Timer für EINEN Abriss. */
-let _reconnectTimer: NodeJS.Timeout | null = null;
-/** Nach close() wird nicht wieder verbunden — bis ein neues listen() kommt. */
-let _closed = false;
-/** Kanäle, deren LISTEN auf der lebenden Verbindung steht; leer, solange sie fehlt. */
-const _lauscht = new Set<string>();
-
-
-async function connect() {
-  if (_connecting || _client || _closed) return;
-  _connecting = true;
-  try {
-    const c = new Client({ ...konfig.datenbankVerbindung(), keepAlive: true });
-    c.on('error', () => { retire(c); });
-    c.on('end',   () => { retire(c); });
-    c.on('notification', (msg: import('pg').Notification) => {
-      for (const h of _handlers.get(msg.channel) || []) {
-        Promise.resolve(h(msg.payload)).catch(e => console.error(`[notify:${msg.channel}]`, e.message));
-      }
-    });
-    await c.connect();
-    // close() kam während des Aufbaus: Diese Verbindung will niemand mehr, und
-    // offen gelassen hielte sie den Prozess für immer am Leben.
-    if (_closed) {
-      c.removeAllListeners();
-      c.on('error', () => {});
-      await c.end().catch((e: Error) => console.warn('[pg-notify] Verbindung schliessen:', e.message));
-      return;
-    }
-    _client = c;
-    _retryMs = 1000;
-
-    for (const channel of _handlers.keys()) {
-      await c.query(`LISTEN ${quoteIdent(channel)}`);
-    }
-    // Aufholen: Ein Signal, das während der Trennung kam, ist verloren — die
-    // Handler prüfen ihren Datenbankeintrag deshalb einmal beim Verbinden.
-    for (const [channel, hs] of _handlers) {
-      for (const h of hs) Promise.resolve(h()).catch(logAndContinue('notify:h'));
-      if (_client === c) _lauscht.add(channel);
-    }
-  } catch (e) {
-    console.error('[notify] Verbindung fehlgeschlagen:', (e as Error).message);
-    _client = null;
-    scheduleReconnect();
-  } finally {
-    _connecting = false;
-  }
-}
-
-/**
- * Eine tote Verbindung aus dem Verkehr ziehen.
- */
-function retire(c: Client) {
-  c.removeAllListeners();
-  // Ersatz-Zuhörer BEVOR irgendetwas anderes passiert: Ohne ihn wirft der
-  // nächste 'error' des toten Clients und beendet den Prozess.
-  c.on('error', () => {});
-  if (_client !== c) return;   // Nachzügler desselben Abrisses
-  _client = null;
-  _lauscht.clear();
-  scheduleReconnect();
-}
-
-function scheduleReconnect() {
-  if (_closed) return;             // nach close() wird nicht wieder verbunden
-  if (_reconnectTimer) return;     // es läuft bereits einer
-  const wait = _retryMs;
-  _retryMs = Math.min(30_000, _retryMs * 2);   // exponentiell, gedeckelt
-  _reconnectTimer = setTimeout(() => {
-    _reconnectTimer = null;
-    connect().catch(logAndContinue('notify:connect'));
-  }, wait);
-  // Ein wartender Reconnect darf den Prozess nicht am Beenden hindern.
-  _reconnectTimer.unref?.();
-}
 
 /** Kanalnamen sind Bezeichner und können nicht als Parameter gebunden werden. */
 function quoteIdent(name: string) {
@@ -97,74 +15,139 @@ function quoteIdent(name: string) {
   return `"${name}"`;
 }
 
-/**
- * Handler für einen Kanal registrieren. Wird zusätzlich einmal beim
- * (Wieder-)Verbinden aufgerufen, damit verpasste Signale nachgeholt werden.
- */
-export function listen(channel: string, handler: Handler) {
-  quoteIdent(channel);
-  // Ein neues listen() ist die ausdrückliche Absicht zu horchen — es hebt ein
-  // vorheriges close() auf (sonst bliebe das Modul nach einem Testlauf oder
-  // einem abgebrochenen Shutdown für immer stumm).
-  _closed = false;
-  if (!_handlers.has(channel)) _handlers.set(channel, []);
-  _handlers.get(channel)!.push(handler);
-  const c = _client;
-  if (c) {
-    c.query(`LISTEN ${quoteIdent(channel)}`).then(() => {
-      Promise.resolve(handler()).catch(logAndContinue('notify:handler'));
-      if (_client === c) _lauscht.add(channel);
-    }, logAndContinue('notify:quoteIdent'));
-  } else {
-    connect().catch(logAndContinue('notify:connect'));
+/** Gesendet wird über den Zugang (senden), gehorcht auf einer eigenen Verbindung. */
+export class Benachrichtigung {
+  private readonly _handlers = new Map<string, Handler[]>();
+  private _client: Client | null = null;
+  private _connecting = false;
+  private _retryMs = 1000;
+  /** Verhindert mehrere Timer für EINEN Abriss. */
+  private _reconnectTimer: NodeJS.Timeout | null = null;
+  /** Nach close() wird nicht wieder verbunden — bis ein neues listen() kommt. */
+  private _closed = false;
+  /** Kanäle, deren LISTEN auf der lebenden Verbindung steht; leer, solange sie fehlt. */
+  private readonly _lauscht = new Set<string>();
+
+  constructor(
+    private readonly verbindung: ClientConfig,
+    private readonly senden: (sql: string, p: unknown[]) => Promise<unknown>,
+  ) {}
+
+  private async connect() {
+    if (this._connecting || this._client || this._closed) return;
+    this._connecting = true;
+    try {
+      const c = new Client({ ...this.verbindung, keepAlive: true });
+      c.on('error', () => { this.retire(c); });
+      c.on('end',   () => { this.retire(c); });
+      c.on('notification', (msg: import('pg').Notification) => {
+        for (const h of this._handlers.get(msg.channel) || []) {
+          Promise.resolve(h(msg.payload)).catch(e => console.error(`[notify:${msg.channel}]`, e.message));
+        }
+      });
+      await c.connect();
+      // close() kam während des Aufbaus: offen gelassen hielte sie den Prozess am Leben.
+      if (this._closed) {
+        c.removeAllListeners();
+        c.on('error', () => {});
+        await c.end().catch((e: Error) => console.warn('[pg-notify] Verbindung schliessen:', e.message));
+        return;
+      }
+      this._client = c;
+      this._retryMs = 1000;
+      for (const channel of this._handlers.keys()) await c.query(`LISTEN ${quoteIdent(channel)}`);
+      // Ein Signal aus der Trennung ist verloren: Die Handler holen einmal nach.
+      for (const [channel, hs] of this._handlers) {
+        for (const h of hs) Promise.resolve(h()).catch(logAndContinue('notify:h'));
+        if (this._client === c) this._lauscht.add(channel);
+      }
+    } catch (e) {
+      console.error('[notify] Verbindung fehlgeschlagen:', (e as Error).message);
+      this._client = null;
+      this.scheduleReconnect();
+    } finally {
+      this._connecting = false;
+    }
   }
-}
 
-/** Kommt ein Signal auf diesem Kanal gerade an? Wer darauf einen Zwischenspeicher baut, fragt hier. */
-export function hoertZu(channel: string): boolean {
-  return _lauscht.has(channel);
-}
-
-/**
- * Signal senden. Läuft über den normalen Pool — NOTIFY braucht keine eigene
- * Verbindung. Fehler werden geschluckt: Der Datenbankeintrag ist die
- * belastbare Quelle, das Signal nur die Beschleunigung.
- */
-export async function notify(channel: string, payload = '') {
-  try {
-        await db.run(`SELECT pg_notify($1, $2)`, [channel, payload]);
-  } catch (e) {
-    console.error(`[notify:${channel}]`, (e as Error).message);
-  }
-}
-
-/**
- * Handler wieder abmelden.
- */
-export function unlisten(channel: string, handler: Handler) {
-  const hs = _handlers.get(channel);
-  if (!hs) return;
-  const i = hs.indexOf(handler);
-  if (i !== -1) hs.splice(i, 1);
-  if (!hs.length) { _handlers.delete(channel); _lauscht.delete(channel); }
-}
-
-/** Für Tests und den geordneten Herunterfahren-Pfad. */
-export async function close() {
-  // Reihenfolge zählt: erst die Absicht setzen, dann abräumen. Sonst stellt
-  // das 'end'-Ereignis von c.end() unten sofort einen neuen Reconnect-Timer,
-  // und das Modul verbindet sich NACH dem Herunterfahren wieder — im Test
-  // hängt der Prozess dann an einer Verbindung, die niemand mehr will.
-  _closed = true;
-  if (_reconnectTimer) { clearTimeout(_reconnectTimer); _reconnectTimer = null; }
-  const c = _client;
-  _client = null;
-  _lauscht.clear();
-  _handlers.clear();
-  _retryMs = 1000;
-  if (c) {
+  /** Eine tote Verbindung aus dem Verkehr ziehen. */
+  private retire(c: Client) {
     c.removeAllListeners();
+    // Ersatz-Zuhörer zuerst: Sonst wirft der nächste 'error' und beendet den Prozess.
     c.on('error', () => {});
-    await c.end().catch((e: Error) => console.warn('[pg-notify] Verbindung schliessen:', e.message));
+    if (this._client !== c) return;   // Nachzügler desselben Abrisses
+    this._client = null;
+    this._lauscht.clear();
+    this.scheduleReconnect();
+  }
+
+  private scheduleReconnect() {
+    if (this._closed || this._reconnectTimer) return;
+    const wait = this._retryMs;
+    this._retryMs = Math.min(30_000, this._retryMs * 2);   // exponentiell, gedeckelt
+    this._reconnectTimer = setTimeout(() => {
+      this._reconnectTimer = null;
+      this.connect().catch(logAndContinue('notify:connect'));
+    }, wait);
+    // Ein wartender Reconnect darf den Prozess nicht am Beenden hindern.
+    this._reconnectTimer.unref?.();
+  }
+
+  /** Wird zusätzlich einmal beim (Wieder-)Verbinden aufgerufen, damit
+   * verpasste Signale nachgeholt werden. Hebt ein vorheriges close() auf. */
+  listen(channel: string, handler: Handler) {
+    quoteIdent(channel);
+    this._closed = false;
+    if (!this._handlers.has(channel)) this._handlers.set(channel, []);
+    this._handlers.get(channel)!.push(handler);
+    const c = this._client;
+    if (c) {
+      c.query(`LISTEN ${quoteIdent(channel)}`).then(() => {
+        Promise.resolve(handler()).catch(logAndContinue('notify:handler'));
+        if (this._client === c) this._lauscht.add(channel);
+      }, logAndContinue('notify:quoteIdent'));
+    } else {
+      this.connect().catch(logAndContinue('notify:connect'));
+    }
+  }
+
+  /** Kommt ein Signal auf diesem Kanal gerade an? Wer darauf einen Zwischenspeicher baut, fragt hier. */
+  hoertZu(channel: string): boolean {
+    return this._lauscht.has(channel);
+  }
+
+  /** Fehler werden geschluckt: Der Datenbankeintrag ist die belastbare Quelle,
+   * das Signal nur die Beschleunigung. */
+  async notify(channel: string, payload = '') {
+    try {
+      await this.senden(`SELECT pg_notify($1, $2)`, [channel, payload]);
+    } catch (e) {
+      console.error(`[notify:${channel}]`, (e as Error).message);
+    }
+  }
+
+  unlisten(channel: string, handler: Handler) {
+    const hs = this._handlers.get(channel);
+    if (!hs) return;
+    const i = hs.indexOf(handler);
+    if (i !== -1) hs.splice(i, 1);
+    if (!hs.length) { this._handlers.delete(channel); this._lauscht.delete(channel); }
+  }
+
+  /** Erst die Absicht setzen, dann abräumen: Sonst stellt das 'end' von c.end()
+   * einen neuen Reconnect-Timer, und es verbindet sich nach dem Herunterfahren wieder. */
+  async close() {
+    this._closed = true;
+    if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null; }
+    const c = this._client;
+    this._client = null;
+    this._lauscht.clear();
+    this._handlers.clear();
+    this._retryMs = 1000;
+    if (c) {
+      c.removeAllListeners();
+      c.on('error', () => {});
+      await c.end().catch((e: Error) => console.warn('[pg-notify] Verbindung schliessen:', e.message));
+    }
   }
 }

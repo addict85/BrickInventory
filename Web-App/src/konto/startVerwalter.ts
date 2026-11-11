@@ -3,15 +3,15 @@
  * ersetzt, das beim ersten Login zu ändern ist. */
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
-import * as repo from './repository/startVerwalter';
 import { konfig } from '../infra/konfig';
 import { passwortMangel } from '../infra/passwortRegel';
 import { entferneStartpasswort, schreibeStartpasswort } from '../infra/startpasswort';
 import { BCRYPT_ROUNDS } from './auth';
+import { kontoBereich } from './prozess';
 
 export async function legeStartVerwalterAn(): Promise<void> {
-  if (await repo.kontenVorhanden()) {
-    if (!(await repo.startpasswortOffen())) entferneStartpasswort();
+  if (await kontoBereich().startVerwalter.kontenVorhanden()) {
+    if (!(await kontoBereich().startVerwalter.startpasswortOffen())) entferneStartpasswort();
     return;
   }
   const envPasswort = konfig().adminPasswort;
@@ -25,7 +25,7 @@ export async function legeStartVerwalterAn(): Promise<void> {
   const datei = ausUmgebung ? null : schreibeStartpasswort('admin', passwort);
   // Dieselben Runden wie jedes Konto: Mit weniger antwortete ein Fehlversuch gegen „admin“ messbar schneller.
   const hash = bcrypt.hashSync(passwort, BCRYPT_ROUNDS);
-  await repo.legeVerwalterAn(hash, !ausUmgebung);
+  await kontoBereich().startVerwalter.legeVerwalterAn(hash, !ausUmgebung);
   if (!datei) console.log('✅ Standard-Admin erstellt (Passwort aus ADMIN_PASSWORD).');
   else
     console.log(

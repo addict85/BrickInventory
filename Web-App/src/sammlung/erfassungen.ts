@@ -2,16 +2,17 @@
 import { geldEingabe } from '../infra/geld';
 import * as repo from './repository/erfassungen';
 import type { DbSchnittstelle } from '../../db/database';
-import { writableIds, acquisitionMoveSource, resolveWriteTarget, blickfeldAus, type Sicht } from '../haushalt';
+import { haushaltBereich, type Sicht } from '../haushalt';
 import { findSameDayAcquisition, loescheManuellesTeil, loescheManuelleFigur } from '../bestand';
 import { Abstriche } from '../infra/ergebnis';
-import { withInventoryLock, bestandsSchluessel } from '../../db/txLock';
+import { mitInventarSperre, bestandsSchluessel } from '../../db/txLock';
 import { moveSetBetweenAccounts, moveManualAcquisition, withSetAggregate, deleteSetRows } from '../sets';
 import { getCurrentMarketPrice, getCurrentPartMarketPrice, getCurrentFigMarketPrice } from '../finanzen';
 import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
 import { blAbrufNummer } from '../katalog';
 import { mengeDesSets, mengeDerPosition, preisSpalte, type ErfassungsArt } from '../../db/bestandsmenge';
 import { bestandsMenge, zustand } from '../infra/validate';
+import { sammlungBereich } from './prozess';
 
 export type { ErfassungsArt } from '../../db/bestandsmenge';
 type Schluessel = Array<string | number>;
@@ -49,7 +50,7 @@ interface Zeile { id: number; user_id: number; condition: string | null; preis: 
 
 /** Nur für den Sperrschlüssel; die Rechte prüft danach die Abfrage im Schreib-Blickfeld. */
 async function besitzerDerZeile(art: ErfassungsArt, id: number, fallback: number): Promise<number> {
-  return await repo.kontoDerErfassung(art, id) ?? fallback;
+  return await sammlungBereich().erfassungen.kontoDerErfassung(art, id) ?? fallback;
 }
 
 /** 0 heisst „leer", null „keine Zeile"; beides räumt auf. Ein Lesefehler ist
@@ -81,12 +82,12 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
 
   const ownerReq = body.owner_user_id;
   if (ownerReq !== undefined && ownerReq !== null && ownerReq !== '') {
-    const from = await acquisitionMoveSource(uid, art, id);
-    const to = await resolveWriteTarget(uid, ownerReq);
+    const from = await haushaltBereich().haushalt.acquisitionMoveSource(uid, art, id);
+    const to = await haushaltBereich().haushalt.resolveWriteTarget(uid, ownerReq);
     if (to === null) fachfehler('verboten', 'kein_schreibrecht');
     if (from === to) return { unchanged: true };
     // Wie verschiebeSet(): Gegenrichtungen sperren die Zeilen beider Konten umgekehrt.
-    const moved = await withInventoryLock(from, bestandsSchluessel(art, keys), (tx) =>
+    const moved = await mitInventarSperre(sammlungBereich().db, from, bestandsSchluessel(art, keys), (tx) =>
       art === 'set' ? moveSetBetweenAccounts(tx, String(keys[0]), from, to, [id]) : moveManualAcquisition(tx, art, keys, id, from, to),
       { wiederholeBeiKonflikt: true });
     return { from_user_id: from, to_user_id: to, ...moved };
@@ -102,15 +103,15 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
     let p = geldEingabe(rawPrice, preisSpalte(art) === 'purchase_price' ? 'Kaufpreis' : 'Stückpreis');
     if (p === null) {
       preisGeschaetzt = true;
-      const bisher = condition ? null : await repo.zustandDerErfassung(art, id);
+      const bisher = condition ? null : await sammlungBereich().erfassungen.zustandDerErfassung(art, id);
       p = await ab.oder('marktpreis', a.resolvePrice(uid, keys, String(condition || bisher || '') || null), null);
     }
     priceVal = p;
   }
 
   const besitzer = await besitzerDerZeile(art, id, uid);
-  await withInventoryLock(besitzer, bestandsSchluessel(art, keys), async (tx) => {
-    const wids = await writableIds(uid);
+  await mitInventarSperre(sammlungBereich().db, besitzer, bestandsSchluessel(art, keys), async (tx) => {
+    const wids = await haushaltBereich().haushalt.writableIds(uid);
     const acq = await zeileImSchreibfeld(tx, art, wids, id, keys);
     // Ab hier zählt der Besitzer der Zeile, nicht der Betrachter.
     const ownerId = Number(acq.user_id);
@@ -147,8 +148,8 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
 export async function erfassungLoeschen(art: ErfassungsArt, uid: number, id: number, keys: Schluessel) {
   const a = ARTEN[art];
   const besitzer = await besitzerDerZeile(art, id, uid);
-  const menge = await withInventoryLock(besitzer, bestandsSchluessel(art, keys), async (tx) => {
-    const acq = await zeileImSchreibfeld(tx, art, await writableIds(uid), id, keys);
+  const menge = await mitInventarSperre(sammlungBereich().db, besitzer, bestandsSchluessel(art, keys), async (tx) => {
+    const acq = await zeileImSchreibfeld(tx, art, await haushaltBereich().haushalt.writableIds(uid), id, keys);
     const ownerId = Number(acq.user_id);
     await repo.loescheErfassung(tx, art, id, ownerId);
     const q = await mengeDesBestands(tx, art, ownerId, keys);
@@ -159,5 +160,5 @@ export async function erfassungLoeschen(art: ErfassungsArt, uid: number, id: num
 }
 
 export async function setErfassungen(sicht: Sicht | number[], setNumber: string) {
-  return repo.setErfassungenImBlickfeld(await blickfeldAus(sicht), setNumber);
+  return sammlungBereich().erfassungen.setErfassungenImBlickfeld(await haushaltBereich().haushalt.blickfeldAus(sicht), setNumber);
 }

@@ -58,7 +58,7 @@ test('Abschluss: Puffer geschrieben, Takte beendet', { concurrency: 1 }, async t
   F.merkeFehlend(`fehlt:${kennung}`, '404');
   console.log(`letzte Zeile ${kennung}`);
 
-  await schliessePufferUndTakte();
+  await schliessePufferUndTakte(_req('db/database.js').standardDb());
 
   await t.test('der Bildbedarf steht danach in image_wanted', async () => {
     const z = await db.get('SELECT set_number FROM image_wanted WHERE url = $1', [

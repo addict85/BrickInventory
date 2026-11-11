@@ -4,7 +4,7 @@ import { meldeFehler } from '../../src/infra/fehler';
 import express from 'express';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import { zuGrosseId } from '../../src/infra/validate';
-import { validateToken, mussPasswortAendern } from '../../src/konto';
+import { kontoBereich, validateToken } from '../../src/konto';
 import { resolveUserId, sendeTokenAbsage, nutzerId, zweiterFaktorPflicht } from '../../src/konto/http/anmeldung';
 import { belegeKontoPlatz, type Schranke } from '../../src/http/kontoSchranke';
 import { verlangeFreigabe } from '../../src/konto/http/schrittschutz';
@@ -48,7 +48,7 @@ const ZUR_EINRICHTUNG: ReadonlyArray<readonly [string, RegExp]> = [
 /** Sitzungen von vor dem Feld fragen einmal die Datenbank und merken es sich. */
 async function mussWechseln(req: Request): Promise<boolean> {
   if (!req.session?.userId) return req.apiUser?.muss_passwort_aendern === true;
-  req.session.mussPasswortAendern ??= await mussPasswortAendern(req.session.userId);
+  req.session.mussPasswortAendern ??= await kontoBereich().konten.mussPasswortAendern(req.session.userId);
   return req.session.mussPasswortAendern;
 }
 

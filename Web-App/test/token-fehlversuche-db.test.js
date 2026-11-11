@@ -33,7 +33,7 @@ const db = _req('db/database.js');
 const auth = _req('src/konto/auth.js');
 const bremse = _req('src/konto/tokenFehlversuche.js');
 const { anmeldungAmEingang } = _req('routes/api_v1/middleware.js');
-const pgNotify = _req('db/pgNotify.js');
+const pgNotify = _req('db/database.js').standardDb().benachrichtigung;
 const { bis } = require('./helpers/zeit');
 
 const NAME = `fehlversuch_${process.pid}`;

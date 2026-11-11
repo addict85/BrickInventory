@@ -1,9 +1,9 @@
 /** Ein Aufruf je 30 Sekunden über alle Konten, und Ruhe, wenn der Bot-Schutz
  * anspricht — sonst sperrt LEGO die Adresse. */
-import * as db from '../../db/database';
 import { holeGuthaben, BotSchutz, LAND_STANDARD, verdecke, type Abruf, type Guthaben } from './gutscheinGuthaben';
 import { Fachfehler } from '../infra/fehlerTexte';
 import * as repo from './repository/guthabenSchranke';
+import { gutscheineBereich } from './prozess';
 
 export const ABSTAND_SEK = 30;
 
@@ -24,7 +24,7 @@ export type Abfrage =
 
 /** In der Datenbank, damit die Grenze über alle Prozesse gilt. */
 export async function belegePlatz(uid: number): Promise<{ frei: true } | ({ frei: false } & Gesperrt)> {
-  return db.transaction(async (tx) => {
+  return gutscheineBereich().db.transaction(async (tx) => {
     // Falls eine ältere Sicherung die Zeile nicht hat. NULL heisst „noch nie" —
     // ein Datum wäre eine Behauptung.
     await repo.legeSchrankeAn(tx);
@@ -55,12 +55,12 @@ export async function belegePlatz(uid: number): Promise<{ frei: true } | ({ frei
 
 /** @returns die Pause in Sekunden, wie sie der Oberfläche gemeldet wird */
 export async function sperreWegenBotschutz(): Promise<number> {
-  await repo.sperreSchranke(BOTSCHUTZ_PAUSE_MIN);
+  await gutscheineBereich().guthabenSchranke.sperreSchranke(BOTSCHUTZ_PAUSE_MIN);
   return BOTSCHUTZ_PAUSE_MIN * 60;
 }
 
 export async function vergesseSchranke(): Promise<void> {
-  await repo.oeffneSchranke();
+  await gutscheineBereich().guthabenSchranke.oeffneSchranke();
 }
 
 // Der einzige Weg zur Abfrage, damit niemand die Schranke umgeht.

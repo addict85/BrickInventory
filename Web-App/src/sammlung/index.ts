@@ -4,3 +4,6 @@ export { erfassungAendern, erfassungLoeschen, setErfassungen } from './erfassung
 export type { ErfassungsArt } from './erfassungen';
 export { fuehreImportAus } from './importAuftraege';
 export { loescheAllesEigene, loescheFigur, loescheTeil } from './loeschen';
+export { erzeugeSammlung } from './bereich';
+export type { SammlungDienste, SammlungKontext } from './bereich';
+export { sammlungBereich, verdrahteSammlung } from './prozess';

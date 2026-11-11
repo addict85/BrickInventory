@@ -49,7 +49,7 @@ test('Haushalt beitreten', { concurrency: 1 }, async (t) => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[haupt, kind, haupt2]]);
     await db.pool.end().catch(() => {});
   });
-  const { createInvite } = _req('src/haushalt/haushalt.js');
+  const { createInvite } = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt };
   const { base } = testServer(_req, { sitzung: { userId: kind }, apiNutzer: { user_id: kind, is_admin: 0 },
     routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
   const einloesen = (body) => fetch(`${base}/api/v1/settings/household/redeem`, {

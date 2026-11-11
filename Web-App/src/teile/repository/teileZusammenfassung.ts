@@ -1,4 +1,3 @@
-import * as db from '../../../db/database';
 import type { DbSchnittstelle } from '../../../db/database';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../../db/bestandsmenge';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
@@ -6,14 +5,14 @@ import { teilSichtJoin, TEIL } from '../../../db/katalogSicht';
 import { LOCKS } from '../../infra/lockNamespaces';
 
 /** Stand der Rohdaten eines Kontos und ob Katalogänderungen offen sind (Migration 0079). */
-export async function rohstand(userId: number): Promise<{ v: number; katalogOffen: boolean }> {
+export async function rohstand(db: DbSchnittstelle, userId: number): Promise<{ v: number; katalogOffen: boolean }> {
   const r = await db.get<{ v: number | null; katalog_offen: boolean }>(
     `SELECT (SELECT v FROM parts_version_user WHERE user_id = $1) AS v,
             EXISTS (SELECT 1 FROM parts_katalog_offen) AS katalog_offen`, [userId]);
   return { v: Number(r?.v) || 0, katalogOffen: !!r?.katalog_offen };
 }
 
-export async function gebauterStand(userId: number): Promise<number | null> {
+export async function gebauterStand(db: DbSchnittstelle, userId: number): Promise<number | null> {
   const r = await db.get<{ built_version: number }>('SELECT built_version FROM parts_summary_state WHERE user_id = $1', [userId]);
   return r ? Number(r.built_version) : null;
 }
@@ -73,7 +72,7 @@ export async function baueGruppenNeu(tx: DbSchnittstelle, userId: number, gruppe
   await tx.run(zusammenfassungEinfuegen(true), [userId, gruppen]);
 }
 
-export function analysiere() {
+export function analysiere(db: DbSchnittstelle) {
   return db.exec('ANALYZE parts_summary');
 }
 

@@ -1,18 +1,17 @@
 /** Hier und nicht in einer Route, weil Sitzungsroute und v1-Fabrik beide darauf
  * zugreifen — eine Route soll keine andere importieren. */
-import { blickfeldAus, type Sicht } from '../haushalt';
-import * as db from '../../db/database';
+import { haushaltBereich, type Sicht } from '../haushalt';
 import { logAndContinue, oeffentlicherFehler } from '../infra/fehler';
 import { Abstriche, versuche } from '../infra/ergebnis';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
-import { recordAcquisitionForDay, mengenwunsch, passeManuelleMengeAn, setzeLagerort, ortFuerNeuerfassung } from '../bestand';
-import * as repo from './repository/manuelleFiguren';
+import { bestandBereich, recordAcquisitionForDay, mengenwunsch, passeManuelleMengeAn } from '../bestand';
 import { getMinifigInfo, merkeFigur, katalogFigur, merkeEigeneBlNummer } from '../katalog';
 import { zustandFuerPreis } from '../einstellungen';
 import { figMarktpreisMitHerkunft, getCurrentFigMarketPrice, kaufpreisAusEingabe, manuellerKaufpreis } from '../finanzen';
 import * as V from '../infra/validate';
 import { geldEingabe } from '../infra/geld';
 import { fachfehler } from '../infra/fehlerTexte';
+import { figurenBereich } from './prozess';
 
 // Ohne BrickLink-Figurennummer wird der Marktpreis aus den Teilepreisen
 // geschätzt: Für Teile ist die Zuordnung RB→BL verlässlich, für Figuren nicht.
@@ -37,10 +36,10 @@ export async function resolveManualFigPurchase(uid: number, { figNumber, blFigNu
 /** Zwilling zu addManualPart — eine Umsetzung für Webapp und App. */
 export async function addManualFig(uid: number, body: Record<string, unknown>) {
   // Ohne mitgegebenen Ort gilt der Vorgabeort des Kontos.
-  const ort = await ortFuerNeuerfassung(uid, body?.storage);
+  const ort = await bestandBereich().lagerortDienst.ortFuerNeuerfassung(uid, body?.storage);
   const ergebnis = await addManualFigIntern(uid, body);
   if (ort && ergebnis?.fig_number) {
-    await setzeLagerort('fig', [uid], [String(ergebnis.fig_number)], ort);
+    await bestandBereich().lagerortDienst.setzeLagerort('fig', [uid], [String(ergebnis.fig_number)], ort);
   }
   return ergebnis;
 }
@@ -108,9 +107,9 @@ async function addManualFigIntern(uid: number, body: Record<string, unknown>) {
   // Der Katalog zuerst: Fällt die Anfrage dazwischen aus, ist eine Beschreibung
   // ohne Bestand unsichtbar, ein Bestand ohne Namen nicht.
   await merkeFigur(num, gefunden?.fig_name, gefunden?.image_url);
-  await merkeFigur(num, eingabe.name, eingabe.bild, null, db, uid);
+  await merkeFigur(num, eingabe.name, eingabe.bild, null, figurenBereich().db, uid);
   // Ohne Menge, Preis und Zustand: Sie stehen in der Erfassung darunter.
-  await repo.legeFigurManuellAn(uid, num);
+  await figurenBereich().manuelleFiguren.legeFigurManuellAn(uid, num);
   if (blNum) await merkeEigeneBlNummer(uid, 'fig', num, blNum).catch(
     logAndContinue(`minifiguren:bl-nummer ${num}`));
   // Mit dem tatsächlich verwendeten Kaufpreis (Marktpreis oder Schätzung), damit
@@ -126,7 +125,7 @@ async function addManualFigIntern(uid: number, body: Record<string, unknown>) {
 /** Zwilling zu updateManualPart.
  * @returns die Menge danach, wenn sie Teil der Anfrage war */
 export async function updateManualFig(uid: number, figNumber: string, body: Record<string, unknown>): Promise<{ quantity?: number; degradiert?: string[] }> {
-  const existing = await repo.figurZeileMitZustand(uid, figNumber);
+  const existing = await figurenBereich().manuelleFiguren.figurZeileMitZustand(uid, figNumber);
   if (!existing) fachfehler('nicht_gefunden', 'minifig_nicht_manuell');
 
   const raus: { quantity?: number } = {};
@@ -151,23 +150,23 @@ export async function updateManualFig(uid: number, figNumber: string, body: Reco
       (zustand) => getCurrentFigMarketPrice(figNumber, uid, newBlNum, zustand),
     );
     // In die NEUESTE Erfassung, wie bei den Teilen.
-    await repo.setzeFigurpreisNeueste(uid, figNumber, unitPrice);
+    await figurenBereich().manuelleFiguren.setzeFigurpreisNeueste(uid, figNumber, unitPrice);
   }
   if (body.condition !== undefined && body.condition !== null) {
     const cond = V.zustand(body.condition);
-    await repo.setzeFigurzustandNeueste(uid, figNumber, cond);
+    await figurenBereich().manuelleFiguren.setzeFigurzustandNeueste(uid, figNumber, cond);
   }
   return { ...raus, ...ab.angabe() };
 }
 
 /** `uid` ist das Blickfeld (Liste). */
 export async function getFigAcquisitions(uidWahl: Sicht | number[], figNumber: string) {
-  const uid = await blickfeldAus(uidWahl);
-  return repo.figurErfassungen(uid, figNumber);
+  const uid = await haushaltBereich().haushalt.blickfeldAus(uidWahl);
+  return figurenBereich().manuelleFiguren.figurErfassungen(uid, figNumber);
 }
 
 export function manuelleFigur(uid: number, figNumber: string): Promise<{ id: number } | undefined> {
-  return repo.figurZeileManuell(uid, figNumber);
+  return figurenBereich().manuelleFiguren.figurZeileManuell(uid, figNumber);
 }
 
 /** Dieselbe Preisregel wie beim Anlegen von Hand, samt Schätzung aus den Teilen. */
@@ -204,8 +203,8 @@ export async function importiereFigurenCsv(uid: number, text: string) {
         continue;
       }
       // Ein Name aus der Datei ist eine Eingabe dieses Kontos (katalogPflege.ts).
-      await merkeFigur(figNumber, figName, imageUrl, null, db, eingetippt ? uid : null);
-      await repo.legeFigurManuellAn(uid, figNumber);
+      await merkeFigur(figNumber, figName, imageUrl, null, figurenBereich().db, eingetippt ? uid : null);
+      await figurenBereich().manuelleFiguren.legeFigurManuellAn(uid, figNumber);
       if (blFigNumber) await merkeEigeneBlNummer(uid, 'fig', figNumber, blFigNumber)
         .catch(logAndContinue(`minifigs:import ${figNumber} (bl-nummer)`));
       await recordAcquisitionForDay('fig', uid, [figNumber], erfassung);

@@ -1,10 +1,10 @@
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
-import { schreibziel } from '../../src/haushalt';
+import { haushaltBereich } from '../../src/haushalt';
 import { getManualMinifigs, getMinifigStats, getMinifigs, addManualFig, updateManualFig, teileDerFigur } from '../../src/figuren';
 import { getSetting } from '../../src/einstellungen';
 import { getMinifigPriceHistory } from '../../src/finanzen';
-import { verwendendeSets, normalisiereLagerort, setzeLagerort } from '../../src/bestand';
+import { bestandBereich, verwendendeSets, normalisiereLagerort } from '../../src/bestand';
 import { loescheFigur } from '../../src/sammlung';
 import { csvEmpfang } from '../../src/http/dateiEmpfang';
 import { importAlsAuftrag } from '../../src/auftraege';
@@ -21,14 +21,14 @@ router.get('/minifigs', requireToken, async (req: Anfrage<'GET /api/v1/minifigs'
 });
 
 router.post('/minifigs', requireToken, async (req: Anfrage<'POST /api/v1/minifigs'>, res: Antwort<'POST /api/v1/minifigs'>) => {
-  const owner = await schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+  const owner = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
   const result = await addManualFig(owner, req.eingabe);
   res.json({ success: true, ...result });
 });
 
 router.put('/minifigs/:figNumber', requireToken, async (req: Anfrage<'PUT /api/v1/minifigs/:figNumber'>, res: Antwort<'PUT /api/v1/minifigs/:figNumber'>) => {
   // Ohne den Parameter das eigene Konto.
-  const besitzer = await schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
+  const besitzer = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
   const r = await updateManualFig(besitzer, req.pfad.figNumber, req.eingabe);
   res.json({ success: true, ...r });
 });
@@ -36,14 +36,14 @@ router.put('/minifigs/:figNumber', requireToken, async (req: Anfrage<'PUT /api/v
 // Trifft alle Zeilen der Figur im Schreibbereich: Gemeint ist die Figur, nicht eine Zeile.
 router.put('/minifigs/:figNumber/storage', requireToken, async (req: Anfrage<'PUT /api/v1/minifigs/:figNumber/storage'>, res: Antwort<'PUT /api/v1/minifigs/:figNumber/storage'>) => {
   const ort = normalisiereLagerort(req.eingabe.storage);
-  const n = await setzeLagerort('fig', { schreiber: req.apiUser.user_id },
+  const n = await bestandBereich().lagerortDienst.setzeLagerort('fig', { schreiber: req.apiUser.user_id },
     [req.pfad.figNumber], ort);
   res.json({ success: true, storage: ort, changed: n });
 });
 
 router.delete('/minifigs/:figNumber', requireToken, async (req: Anfrage<'DELETE /api/v1/minifigs/:figNumber'>, res: Antwort<'DELETE /api/v1/minifigs/:figNumber'>) => {
   // Ohne den Parameter das eigene Konto.
-  const besitzer = await schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
+  const besitzer = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
   const geloescht = await loescheFigur(besitzer, req.pfad.figNumber);
   if (geloescht === null) return sendeFehler(req, res, 404, 'minifig_nicht_manuell');
   res.json({ success: true, papierkorb: [geloescht] });

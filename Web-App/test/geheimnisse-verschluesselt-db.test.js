@@ -65,7 +65,7 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async (t) => {
     assert.equal(b.voucher.pin, '•••', 'nach aussen nur die Maske');
     const roh = (await db.get('SELECT pin FROM vouchers WHERE id = $1', [b.voucher.id])).pin;
     assert.ok(roh.startsWith('v2:') && !roh.includes('8642'), roh);
-    assert.equal((await _req('src/gutscheine/dienst.js').gutschein(uid, b.voucher.id)).pin, '8642', 'entschlüsselt lesbar');
+    assert.equal((await _req('src/gutscheine/prozess.js').gutscheineBereich().gutscheine.gutschein(uid, b.voucher.id)).pin, '8642', 'entschlüsselt lesbar');
   });
 
   await t.test('TOTP-Geheimnis', async () => {
@@ -77,7 +77,7 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('Altbestand wird nachverschlüsselt', async () => {
-    const gs = _req('src/gutscheine/repository/gutscheine.js');
+    const gs = { ..._req('src/gutscheine/repository/gutscheine.js'), ..._req('src/gutscheine/prozess.js').gutscheineBereich().gutscheine };
     const { id } = await gs.gutscheinAnlegen(uid, { number: '5045076374450013131', pin: null, amount: 10, currency: 'CHF' });
     await db.run("UPDATE vouchers SET pin = '9753' WHERE id = $1", [id]);
     await gs.nummernNachverschluesseln();

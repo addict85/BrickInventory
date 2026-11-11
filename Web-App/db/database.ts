@@ -4,6 +4,7 @@ import { Pool, types as pgTypes, Client } from 'pg';
 import type { PoolClient, PoolConfig } from 'pg';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { runMigrations, offeneMigrationen } from './migrate';
+import { Benachrichtigung } from './pgNotify';
 import type { DbSchnittstelle } from './typen';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -106,12 +107,16 @@ export type Erststart = () => Promise<void>;
 
 export interface Db extends DbSchnittstelle {
   readonly pool: Pool;
+  /** LISTEN/NOTIFY dieses Zugangs (db/pgNotify.ts); horcht erst beim ersten listen(). */
+  readonly benachrichtigung: Benachrichtigung;
   transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>, o?: TxOptionen): Promise<T>;
   inTransaktion(): boolean;
   getPoolStats(): { total: number; idle: number; waiting: number; active: number };
   datenbankAntwortet(): Promise<boolean>;
   alsSuperuserVerbunden(): Promise<boolean>;
   eigeneVerbindung(): Promise<Client>;
+  /** Siehe mitCommitBegleiter unten: gilt für die Transaktionen dieses Aufrufpfads. */
+  mitCommitBegleiter<T>(begleiter: (tx: DbSchnittstelle) => Promise<void>, arbeit: () => T): T;
   initSchema(): Promise<boolean>;
   initSchemaOnce(): Promise<void>;
   /** Ob die Verbindung Schema-Objekte anlegen darf: Eigentümerin oder Superuser, nicht die Laufzeitrolle. */
@@ -310,7 +315,8 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
   }
 
   return {
-    pool, all, get, run, exec, transaction, initSchema, initSchemaOnce, eigeneVerbindung,
+    pool, all, get, run, exec, transaction, initSchema, initSchemaOnce, eigeneVerbindung, mitCommitBegleiter,
+    benachrichtigung: new Benachrichtigung(k.verbindung, (sql, p) => run(sql, p)),
     darfSchemaAendern: async () => (await get<{ d: boolean }>(DARF_SCHEMA_AENDERN))?.d === true,
     inTransaktion: () => txClient() !== null,
     getPoolStats: () => ({ total: pool.totalCount, idle: pool.idleCount, waiting: pool.waitingCount,
@@ -357,48 +363,3 @@ async function pruefeMindeststand(client: import('pg').ClientBase): Promise<void
     `Die Datenbank ist älter als Migration ${MINDESTSTAND}. Zuerst auf eine Fassung vor dem `
     + 'Entfernen der früheren Startstufen aktualisieren, dann auf diese (UPGRADE.md, Abschnitt 45).');
 }
-
-// ── Kompatibilitätsweg: der Zugang des Prozesses ────────────────────────────
-// Die meisten Module importieren noch die Funktionen unten statt einen Zugang
-// übergeben zu bekommen; test/ratschen.test.js zählt sie. Der Pool entsteht beim
-// ersten Gebrauch (auch aus einer gesetzten Bauanleitung), nie beim Import.
-let _standard: Db | (() => Db) | null = null;
-
-export function setzeStandardDb(d: Db | (() => Db)): void {
-  if (_standard && _standard !== d) throw new Error('Der Datenbankzugang des Prozesses ist schon gesetzt');
-  _standard = d;
-}
-
-export function standardDb(): Db {
-  if (typeof _standard === 'function') _standard = _standard();
-  if (!_standard) _standard = erzeugeDb(dbKonfigAusUmgebung());
-  return _standard;
-}
-
-/** Der Pool des Prozesses; erst beim ersten Zugriff angelegt. */
-const pool: Pool = new Proxy({} as Pool, {
-  get(_ziel, k) {
-    const p = standardDb().pool;
-    const v: unknown = Reflect.get(p, k, p);
-    return typeof v === 'function' ? (v as (...a: unknown[]) => unknown).bind(p) : v;
-  },
-  // Wer eine Methode ersetzt (Messung, Probe), meint den echten Pool.
-  set: (_ziel, k, v) => Reflect.set(standardDb().pool, k, v),
-});
-
-const all = <T>(sql: string, params?: unknown[]): Promise<T[]> => standardDb().all<T>(sql, params);
-const get = <T>(sql: string, params?: unknown[]): Promise<T | undefined> => standardDb().get<T>(sql, params);
-const run = (sql: string, params?: unknown[]) => standardDb().run(sql, params);
-const exec = (sql: string) => standardDb().exec(sql);
-const transaction = <T>(fn: (tx: DbSchnittstelle) => Promise<T>, o?: TxOptionen) => standardDb().transaction(fn, o);
-const initSchema = () => standardDb().initSchema();
-const initSchemaOnce = () => standardDb().initSchemaOnce();
-const getPoolStats = () => standardDb().getPoolStats();
-const datenbankAntwortet = () => standardDb().datenbankAntwortet();
-const alsSuperuserVerbunden = () => standardDb().alsSuperuserVerbunden();
-const eigeneVerbindung = () => standardDb().eigeneVerbindung();
-
-/** Ob dieser Aufrufpfad in einer Transaktion läuft (für Tests und Wächter). */
-export function inTransaktion(): boolean { return standardDb().inTransaktion(); }
-
-export { pool, all, get, run, exec, transaction, initSchema, initSchemaOnce, getPoolStats, datenbankAntwortet, alsSuperuserVerbunden, eigeneVerbindung };

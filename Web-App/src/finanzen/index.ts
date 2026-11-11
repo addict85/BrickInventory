@@ -29,3 +29,6 @@ export { alleAlarme, ausgeloesteSeit } from './preisalarm';
 export { preiseNachladen } from './preiseNachladen';
 export { getMinifigPriceHistory, getPartPriceHistory } from './priceHistory';
 export { kursauftrag, planeKursabruf } from './wechselkurse';
+export { erzeugeFinanzen } from './bereich';
+export type { FinanzenDienste, FinanzenKontext } from './bereich';
+export { finanzenBereich, verdrahteFinanzen } from './prozess';

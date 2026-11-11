@@ -29,7 +29,7 @@ test('Erfassen unter Last', { concurrency: 1 }, async (t) => {
   try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
 
   const { recordAcquisitionForDay } = _req('src/bestand/acquisitions.js');
-  const { withInventoryLock } = _req('db/txLock.js');
+  const { mitInventarSperre } = _req('db/txLock.js');
 
   await db.run("INSERT INTO users (username,password_hash) VALUES ('last','x')");
   const uid = (await db.get("SELECT id FROM users WHERE username='last'")).id;
@@ -41,7 +41,7 @@ test('Erfassen unter Last', { concurrency: 1 }, async (t) => {
   await t.test('zehn gleichzeitige Erfassungen ergeben EINE Tageszeile mit Menge 10', async () => {
     await haeltSet(db, uid, '70001-1', 0);
     await Promise.all(Array.from({ length: 10 }, () =>
-      withInventoryLock(uid, '70001-1', (tx) =>
+      mitInventarSperre(db.standardDb(), uid, '70001-1', (tx) =>
         recordAcquisitionForDay('set', uid, ['70001-1'], { quantity: 1, price: 10, condition: 'N' }, tx))
     ));
 

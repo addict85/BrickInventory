@@ -6,7 +6,7 @@ import { setBildLokalEintragen } from '../bildlage';
 import { grundFuer, istBekanntFehlend, merkeFehlend } from './imageMisses';
 import { generateThumb } from './thumbs';
 import { SET_IMAGES_DIR } from '../../infra/appPaths';
-import { setzeZustand, pausiereArt, liesPause, AuftragUnterbrochen, AuftragVerschieben, type AuftragsKontext } from '../../auftraege';
+import { auftraegeBereich, AuftragUnterbrochen, AuftragVerschieben, type AuftragsKontext } from '../../auftraege';
 import { STAPEL, TAKT_MS, NOTIZ_GILT_MS, merkeGebraucht, schreibePuffer, notiereBildbedarf, loescheVerfallene, initImageQueue, stoppeBildbedarf, anfragenJeMinute, nimmBildwuensche } from './bildbedarf';
 import { versuche } from '../../infra/ergebnis';
 
@@ -110,7 +110,7 @@ function merkeLauf(erg: StapelErgebnis): void {
 async function speichereLauf(erg: StapelErgebnis): Promise<void> {
   // await: Der nächste Takt liest den Stand über einen ANDEREN Prozess; ohne await meldete die Kachel „noch
   // nicht gelaufen".
-  await setzeZustand(LAUF_SCHLUESSEL, JSON.stringify({ zeit: Date.now(), ergebnis: erg }))
+  await auftraegeBereich().laufzustand.setzeZustand(LAUF_SCHLUESSEL, JSON.stringify({ zeit: Date.now(), ergebnis: erg }))
     .catch(logAndContinue('bild-job:setzeZustand'));
 }
 
@@ -136,7 +136,7 @@ async function nachFehlschlag(setNummer: string, info: { status?: number }, st: 
   // Eine Drosselung ist KEINE Fehlanzeige: Die Bilder gibt es, und stures Weiterfragen verlängert die Sperre.
   if (status === 403 || status === 429) {
     const bis = new Date(Date.now() + DROSSEL_PAUSE_MS);
-    await pausiereArt('bildbedarf', bis, `CDN drosselt (HTTP ${status})`);
+    await auftraegeBereich().auftraege.pausiereArt('bildbedarf', bis, `CDN drosselt (HTTP ${status})`);
     console.error(`[image-queue] CDN drosselt (HTTP ${status}) — Pause bis ${bis.toLocaleTimeString()}`);
     return true;
   }
@@ -154,7 +154,7 @@ async function nachFehlschlag(setNummer: string, info: { status?: number }, st: 
 
 async function arbeiteStapel(): Promise<StapelErgebnis> {
   const erg = leeresErgebnis();
-  const pause = await liesPause('bildbedarf');
+  const pause = await auftraegeBereich().auftraege.liesPause('bildbedarf');
   if (pause && new Date(pause.bis).getTime() > Date.now()) return erg;   // CDN hat gedrosselt, siehe unten
   const rows = await nimmBildwuensche(NOTIZ_GILT_MS, STAPEL);
   if (!rows.length) { merkeLauf(erg); return erg; }
@@ -255,7 +255,7 @@ export async function bildbedarfAbarbeiten(k: AuftragsKontext): Promise<void> {
     if (k.beendet) throw new AuftragUnterbrochen();
     const e = await taktDurchgang();
     if (e.gesamt || e.zurueckgelegt) console.log(`[image-queue] ${meldung(e)}`);
-    const pause = await liesPause('bildbedarf');
+    const pause = await auftraegeBereich().auftraege.liesPause('bildbedarf');
     if (pause && new Date(pause.bis).getTime() > Date.now()) throw new AuftragVerschieben(new Date(pause.bis), pause.grund ?? 'CDN drosselt');
     if (!e.gesamt) return;
     if (!await k.fortschritt({ text: meldung(e) })) return;   // abgebrochen

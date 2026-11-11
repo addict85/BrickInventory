@@ -9,7 +9,7 @@ import { fehlertext } from '../src/infra/fehler';
 async function migriere(): Promise<void> {
   const db = verdrahteProzess();
   try {
-    await warneBeiSuperuser();
+    await warneBeiSuperuser(db);
     // Ohne CREATE prüfte initSchemaOnce nur und meldete Erfolg, ohne migriert zu haben.
     if (!(await db.darfSchemaAendern()))
       throw new Error(

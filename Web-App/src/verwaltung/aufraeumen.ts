@@ -1,15 +1,14 @@
 /** Jeder Schritt meldet seinen Fehler und lässt die übrigen laufen; scheitert
  * einer, wiederholt der Worker den ganzen Lauf — alle Schritte vertragen das. */
-import { purgeExpiredTokens, raeumeAnmeldezaehlerAuf, raeumeOffeneRegistrierungenAuf } from '../konto';
+import { kontoBereich, purgeExpiredTokens, raeumeAnmeldezaehlerAuf, raeumeOffeneRegistrierungenAuf } from '../konto';
 import { raeumePapierkorbAuf } from '../bestand';
-import { cleanOldPdfJobs, raeumeErledigteAuf, pruefeAbbruch, type AuftragsLauf } from '../auftraege';
+import { auftraegeBereich, cleanOldPdfJobs, pruefeAbbruch, type AuftragsLauf } from '../auftraege';
 import { purgeAltePreise } from '../finanzen';
 import { raeumeBildCacheAuf, loescheVerfallene } from '../katalog';
 import { fehlertext } from '../infra/fehler';
 import { raeumeIdempotenzAuf } from '../idempotenz';
-import { raeumeProtokollAuf } from './dienst';
 import { raeumeAlteSicherungenAuf } from '../../db/migrate';
-import * as db from '../../db/database';
+import { verwaltungBereich } from './prozess';
 
 type Schritt = [name: string, lauf: () => Promise<unknown>];
 
@@ -31,7 +30,7 @@ function aufraeumen(lauf?: AuftragsLauf): Promise<void> {
     ['Anmeldezähler', raeumeAnmeldezaehlerAuf],
     ['Papierkorb', raeumePapierkorbAuf],
     ['PDF-Aufträge', cleanOldPdfJobs],
-    ['alte Aufträge', raeumeErledigteAuf],
+    ['alte Aufträge', auftraegeBereich().auftraege.raeumeErledigteAuf],
     ['verfallene Bildwünsche', loescheVerfallene],
     ['Idempotenzschlüssel', raeumeIdempotenzAuf],
   ], lauf);
@@ -42,8 +41,8 @@ function aufraeumenTaeglich(lauf?: AuftragsLauf): Promise<void> {
     ['Preisverlauf', purgeAltePreise],
     ['unbestätigte Registrierungen', raeumeOffeneRegistrierungenAuf],
     ['Bild-Cache', raeumeBildCacheAuf],
-    ['Verwaltungsprotokoll', () => raeumeProtokollAuf()],
-    ['Kopien vor Migrationen', () => raeumeAlteSicherungenAuf(db)],
+    ['Verwaltungsprotokoll', () => kontoBereich().protokoll.raeumeProtokollAuf()],
+    ['Kopien vor Migrationen', () => raeumeAlteSicherungenAuf(verwaltungBereich().db)],
   ], lauf);
 }
 

@@ -5,7 +5,6 @@ export { verschluesseleAltbestand } from './geheimnisAltbestand';
 export { raeumeOffeneRegistrierungenAuf } from './konten';
 export { raeumeAnmeldezaehlerAuf, zaehleAnfrage } from './loginLimiter';
 export { setUserSetting } from './nutzerEinstellung';
-export { letzteEintraege, protokolliere, raeumeProtokollAuf } from './verwalterProtokoll';
 export { assetlinks } from './androidApp';
 export {
   Angemeldet,
@@ -40,32 +39,16 @@ export { familieAus, hinterlegeSchluessel, loeseEin, neueChallenge } from './ger
 export { invalidateTheme, startStilHash } from './indexHtml';
 export {
   LETZTER_VERWALTER,
-  aktivesKontoNachEmail,
   andereSitzungenBeenden,
-  andereZugaengeLoeschen,
-  erneuereEmailTokenWennFrei,
   kontenListe,
-  kontoExistiert,
-  kontoKurz,
-  kontoMitEmail,
-  kontoNachRuecksetzToken,
-  kontoVoll,
   legeKontoAn,
-  mussPasswortAendern,
-  nameVergeben,
-  nameZuEmailToken,
-  offeneRegistrierungen,
   profil,
   rechneWieRegistrierung,
   registriere,
-  schalteRegistrierungFrei,
   setzeAktiv,
   setzeFremdesPasswort,
   setzePasswortZurueck,
-  setzeRuecksetzTokenWennFrei,
   setzeVerwalterRolle,
-  zugaengeDesKontos,
-  zugangLoeschen,
 } from './konten';
 export { kontoEntfernen, loescheKontoDateien } from './kontoEntfernen';
 export { hinweisNebenher, verwalterHinweisNebenher } from './kontoHinweis';
@@ -98,3 +81,6 @@ export { beginneEinrichtung, erneuereCodes, istAktiv, otpauthAdresse, schalteAb,
 export { meldeUngueltigeAdressen, meldeAusstehendeAdressen } from './konten';
 export { horcheAufTokenWiderruf } from './auth';
 export { neueNonce } from './geraeteChallenge';
+export { erzeugeKonto } from './bereich';
+export type { KontoDienste, KontoKontext } from './bereich';
+export { kontoBereich, verdrahteKonto } from './prozess';

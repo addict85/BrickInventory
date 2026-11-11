@@ -16,6 +16,8 @@ import { tlsStand } from '../infra/tlsWurzel';
 import { fachfehler } from '../infra/fehlerTexte';
 import { passwortMangel } from '../infra/passwortRegel';
 import { versuche, wertOder } from '../infra/ergebnis';
+import { kontoBereich } from './prozess';
+import type { Konto as KontoZeile } from './repository/konten';
 
 export type Angemeldet = { id: number | string; username: string; is_admin: boolean; must_change_password?: boolean };
 /** Wie der Token heissen und gelten soll; beide Anmeldewege prüft der Vertrag. */
@@ -91,7 +93,7 @@ export async function qrZugangErzeugen(uid: number, gueltigkeit: unknown) {
   };
 }
 
-type Konto = NonNullable<Awaited<ReturnType<typeof K.kontoVoll>>>;
+type Konto = KontoZeile;
 export interface ProfilEingabe {
   username?: string | undefined;
   email?: string | null | undefined;
@@ -115,7 +117,7 @@ export async function profilAendern(
     // Jede Vergabeprüfung verrät, ob es ein Konto gibt; die Registrierung verbirgt das.
     const zuOft = await kontoGedrosselt('profil-vergabe', user.id, 10, 60 * 60 * 1000);
     if (zuOft) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: zuOft.waitMin });
-    if (nameNeu && e.username && (await K.nameVergeben(e.username, user.id)))
+    if (nameNeu && e.username && (await kontoBereich().konten.nameVergeben(e.username, user.id)))
       fachfehler('ungueltig', 'benutzername_vergeben');
   }
   const felder: Record<string, unknown> = {};
@@ -123,13 +125,18 @@ export async function profilAendern(
   if (e.first_name !== undefined) felder.first_name = e.first_name || null;
   if (e.last_name !== undefined) felder.last_name = e.last_name || null;
   if (!emailNeu) {
-    await K.aendereProfil(user.id, felder);
+    await kontoBereich().konten.aendereProfil(user.id, felder);
     return { emailChanged: false };
   }
   const email = String(e.email);
   const token = crypto.randomBytes(32).toString('hex');
-  await K.merkeEmailNeu(user.id, email, hashToken(token), new Date(Date.now() + 24 * 60 * 60 * 1000));
-  await K.aendereProfil(user.id, felder);
+  await kontoBereich().konten.merkeEmailNeu(
+    user.id,
+    email,
+    hashToken(token),
+    new Date(Date.now() + 24 * 60 * 60 * 1000),
+  );
+  await kontoBereich().konten.aendereProfil(user.id, felder);
   return { emailChanged: true, emailSent: await adressMails(user, email, token) };
 }
 
@@ -141,7 +148,7 @@ async function adressMails(user: Konto, email: string, token: string): Promise<b
   const lang = await sprache(user.id);
   const basis = mailBasisUrl();
   let gesendet = false;
-  const inhaber = await K.kontoMitEmail(email);
+  const inhaber = await kontoBereich().konten.kontoMitEmail(email);
   if (inhaber && inhaber.id !== user.id) {
     if (basis)
       gesendet = wertOder(
@@ -165,7 +172,7 @@ async function adressMails(user: Konto, email: string, token: string): Promise<b
 
 /** Der Name aus der Tabelle: Mit App-Token gibt es keine Sitzung, die ihn trägt. */
 export async function eigenesPasswortAendern(uid: number, neu: string, passkeysWiderrufen: boolean) {
-  const konto = await K.kontoKurz(uid);
+  const konto = await kontoBereich().konten.kontoKurz(uid);
   const mangel = passwortMangel(neu, konto?.username);
   if (mangel) fachfehler('ungueltig', mangel);
   await K.aendereEigenesPasswort(uid, neu, { passkeysWiderrufen });

@@ -3,12 +3,12 @@
  * heiklen Schritte eines App-Tokens. Das belegt seine Attestation; ohne sie
  * hinterlegte ein erbeuteter Token einen Schlüssel ohne Sperre. */
 import { createPublicKey, randomBytes, verify, X509Certificate, type KeyObject } from 'node:crypto';
-import * as repo from './repository/geraeteSchluessel';
 import type { Familie } from './repository/geraeteSchluessel';
 import type { AKTIONEN } from '../vertrag/geraet';
 import { konfig } from '../infra/konfig';
 import { GOOGLE_WURZELN } from './attestation/googleWurzeln';
 import { pruefeKette } from './attestation/schluesselAttestation';
+import { kontoBereich } from './prozess';
 
 export type { Familie };
 
@@ -52,11 +52,15 @@ export function leseSchluessel(b64: string): KeyObject | null {
  * Eine Familie aus der QR-Kopplung bekommt nur die Nonce ihrer Abholung. */
 export async function neueNonce(f: Familie, ausQr = false): Promise<string | null> {
   if (!ausQr) {
-    const qr = await repo.qrNonceDer(f);
+    const qr = await kontoBereich().geraeteSchluessel.qrNonceDer(f);
     if (qr) return qr.nonce;
   }
   const nonce = randomBytes(32).toString('base64url');
-  const ok = await repo.legeNonceAn(f, nonce, { fristS: SCHLUESSEL_FRIST_S, offen: NONCES_OFFEN, ausQr });
+  const ok = await kontoBereich().geraeteSchluessel.legeNonceAn(f, nonce, {
+    fristS: SCHLUESSEL_FRIST_S,
+    offen: NONCES_OFFEN,
+    ausQr,
+  });
   return ok ? nonce : null;
 }
 
@@ -84,19 +88,27 @@ export async function hinterlegeSchluessel(f: Familie, kette: readonly string[])
   if (!p.ok) return { abgewiesen: p.grund };
   const kanonisch = (p.oeffentlich.export({ format: 'der', type: 'spki' }) as Buffer).toString('base64');
   if (!leseSchluessel(kanonisch)) return 'ungueltig';
-  const da = await repo.eintragDer(f);
+  const da = await kontoBereich().geraeteSchluessel.eintragDer(f);
   if (da?.attestiert) return da.oeffentlich === kanonisch ? 'gleich' : 'anderer';
-  if (!(await repo.nimmNonce(f, p.challenge.toString('base64url')))) return { abgewiesen: 'challenge' };
-  if (await repo.legeSchluesselAn(f, kanonisch, SCHLUESSEL_FRIST_S)) return 'neu';
-  return (await repo.eintragDer(f))?.oeffentlich === kanonisch ? 'gleich' : 'frist_vorbei';
+  if (!(await kontoBereich().geraeteSchluessel.nimmNonce(f, p.challenge.toString('base64url'))))
+    return { abgewiesen: 'challenge' };
+  if (await kontoBereich().geraeteSchluessel.legeSchluesselAn(f, kanonisch, SCHLUESSEL_FRIST_S)) return 'neu';
+  return (await kontoBereich().geraeteSchluessel.eintragDer(f))?.oeffentlich === kanonisch ? 'gleich' : 'frist_vorbei';
 }
 
 export type Challenge = { challenge: string; nachricht: string; gueltig_bis: Date } | 'kein_schluessel';
 
 export async function neueChallenge(f: Familie, aktion: Schrittaktion): Promise<Challenge> {
-  if (!(await repo.schluesselDer(f, konfig().geraeteschluesselAltBis))) return 'kein_schluessel';
+  if (!(await kontoBereich().geraeteSchluessel.schluesselDer(f, konfig().geraeteschluesselAltBis)))
+    return 'kein_schluessel';
   const challenge = randomBytes(32).toString('base64url');
-  const bis = await repo.legeChallengeAn(f, challenge, aktion, CHALLENGE_FRIST_S, CHALLENGES_OFFEN);
+  const bis = await kontoBereich().geraeteSchluessel.legeChallengeAn(
+    f,
+    challenge,
+    aktion,
+    CHALLENGE_FRIST_S,
+    CHALLENGES_OFFEN,
+  );
   return { challenge, nachricht: nachricht(aktion, challenge), gueltig_bis: bis };
 }
 
@@ -106,9 +118,11 @@ export async function loeseEin(
   challenge: string,
   signaturB64: string,
 ): Promise<{ aktion: Schrittaktion; bis: Date } | null> {
-  const aktion = (await repo.nimmChallenge(f, challenge)) as Schrittaktion | null;
+  const aktion = (await kontoBereich().geraeteSchluessel.nimmChallenge(f, challenge)) as Schrittaktion | null;
   if (!aktion) return null;
-  const k = leseSchluessel((await repo.schluesselDer(f, konfig().geraeteschluesselAltBis)) ?? '');
+  const k = leseSchluessel(
+    (await kontoBereich().geraeteSchluessel.schluesselDer(f, konfig().geraeteschluesselAltBis)) ?? '',
+  );
   let passt = false;
   try {
     passt =
@@ -123,12 +137,17 @@ export async function loeseEin(
     passt = false;
   }
   if (!passt) return null;
-  return { aktion, bis: await repo.oeffneFreigabe(f, aktion, FREIGABE_LEERLAUF_S, FREIGABE_HOECHSTENS_S) };
+  return {
+    aktion,
+    bis: await kontoBereich().geraeteSchluessel.oeffneFreigabe(f, aktion, FREIGABE_LEERLAUF_S, FREIGABE_HOECHSTENS_S),
+  };
 }
 
 export type Pruefung = 'frei' | 'kein_schluessel' | 'freigabe_noetig';
 
 export async function pruefeFreigabe(f: Familie, aktion: Schrittaktion): Promise<Pruefung> {
-  if (await repo.nutzeFreigabe(f, aktion, FREIGABE_LEERLAUF_S)) return 'frei';
-  return (await repo.schluesselDer(f, konfig().geraeteschluesselAltBis)) ? 'freigabe_noetig' : 'kein_schluessel';
+  if (await kontoBereich().geraeteSchluessel.nutzeFreigabe(f, aktion, FREIGABE_LEERLAUF_S)) return 'frei';
+  return (await kontoBereich().geraeteSchluessel.schluesselDer(f, konfig().geraeteschluesselAltBis))
+    ? 'freigabe_noetig'
+    : 'kein_schluessel';
 }

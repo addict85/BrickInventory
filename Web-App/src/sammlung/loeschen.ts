@@ -1,12 +1,12 @@
 /** Eine Stelle für Teil, Figur und „alles löschen", damit alle Wege dieselben
  * Zeilen in den Papierkorb nehmen. */
-import * as db from '../../db/database';
 import { legeInPapierkorb, loescheManuellesTeil, loescheManuelleFigur } from '../bestand';
 import { loescheSet } from '../sets';
 import * as repo from './repository/loeschen';
+import { sammlungBereich } from './prozess';
 
 export async function loescheTeil(besitzer: number, pn: string, cid: number): Promise<number | null> {
-  return db.transaction(async (tx) => {
+  return sammlungBereich().db.transaction(async (tx) => {
     const id = await legeInPapierkorb(tx, 'teil', besitzer, pn, cid);
     const r = await loescheManuellesTeil(tx, besitzer, pn, cid);
     if (r.changes === 0) return null;
@@ -17,7 +17,7 @@ export async function loescheTeil(besitzer: number, pn: string, cid: number): Pr
 }
 
 export async function loescheFigur(besitzer: number, fn: string): Promise<number | null> {
-  return db.transaction(async (tx) => {
+  return sammlungBereich().db.transaction(async (tx) => {
     const id = await legeInPapierkorb(tx, 'figur', besitzer, fn);
     const r = await loescheManuelleFigur(tx, besitzer, fn);
     if (r.changes === 0) return null;
@@ -29,9 +29,9 @@ export async function loescheFigur(besitzer: number, fn: string): Promise<number
 /** Nur das EIGENE Konto, nie das Blickfeld. Jedes Element einzeln, damit jedes
  * einzeln wiederherstellbar ist. */
 export async function loescheAllesEigene(uid: number) {
-  const sets = await repo.setsDesKontos(uid);
-  const teile = await repo.manuelleTeileDesKontos(uid);
-  const figuren = await repo.manuelleFigurenDesKontos(uid);
+  const sets = await sammlungBereich().loeschen.setsDesKontos(uid);
+  const teile = await sammlungBereich().loeschen.manuelleTeileDesKontos(uid);
+  const figuren = await sammlungBereich().loeschen.manuelleFigurenDesKontos(uid);
   const papierkorb: number[] = [];
   const n = { sets: 0, teile: 0, figuren: 0 };
   for (const s of sets) {

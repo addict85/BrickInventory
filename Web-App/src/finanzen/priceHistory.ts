@@ -1,12 +1,12 @@
 /** Die EINE Umsetzung für Webapp und Android-API, damit beide dasselbe Diagramm zeigen. */
 
 import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
-import { asIds, blickfeldAus, type Sicht } from '../haushalt';
+import { haushaltBereich, asIds, type Sicht } from '../haushalt';
 import { buildChart } from './chartData';
 import { blNummerVon } from '../katalog';
 import { entwicklungProzent } from './setValue';
 import { konfig } from '../infra/konfig';
-import * as repo from './repository/preisverlauf';
+import { finanzenBereich } from './prozess';
 
 /** Nur Zustände mit Erfassung: Sonst stünde eine Kurve ohne Bezugsgrösse da.
  * @param rueckfall Was gilt, wenn es GAR KEINE Erfassung gibt. */
@@ -26,7 +26,7 @@ export interface PricePoint {
 /** DISTINCT ON je Tag: Mehrere Abrufe am selben Tag ergäben sonst Punkte
  * übereinander. Genommen wird der jüngste des Tages. */
 async function seriesFor(setNumber: string, currency: string, cond: 'N' | 'U'): Promise<PricePoint[]> {
-  return repo.tagespreiseDesSets(setNumber, currency, cond);
+  return finanzenBereich().preisverlauf.tagespreiseDesSets(setNumber, currency, cond);
 }
 
 /** Markt- gegen Kaufpreis in einem Zustand; pnl_pct ist die alte Textform. */
@@ -35,7 +35,7 @@ interface ZustandsVergleich { market_price: number | null; purchase_price: numbe
 /** @param uid Blickfeld: Im Haushalt gehört das Set oft einem Unterkonto, mit
  *   der nackten Betrachter-ID fände die Abfrage es nicht. */
 export async function getSetPriceHistory(uidWahl: Sicht | number | number[], setNumber: string, currency: string) {
-  const uid = await blickfeldAus(uidWahl);
+  const uid = await haushaltBereich().haushalt.blickfeldAus(uidWahl);
   const uids = asIds(uid);
   const condition = await resolveSetCondition(uids, setNumber);
 
@@ -44,14 +44,14 @@ export async function getSetPriceHistory(uidWahl: Sicht | number | number[], set
     seriesFor(setNumber, currency, 'U'),
   ]);
 
-  const currentRows = await repo.cachePreiseDesSets(setNumber, currency);
+  const currentRows = await finanzenBereich().preisverlauf.cachePreiseDesSets(setNumber, currency);
   const current = {
     N: currentRows.find(r => r.condition === 'N') || null,
     U: currentRows.find(r => r.condition === 'U') || null,
   };
 
   // Kaufpreis aus der ERSTEN Erfassung; jede Set-Zeile hat mindestens eine.
-  const set = await repo.ersterKaufDesSets(uids, setNumber, currency);
+  const set = await finanzenBereich().preisverlauf.ersterKaufDesSets(uids, setNumber, currency);
 
   const hasCost = set?.purchase_price != null;   // 0 zählt als erfasst
   const purchasePrice = Number(set?.purchase_price ?? 0);
@@ -81,7 +81,7 @@ export async function getSetPriceHistory(uidWahl: Sicht | number | number[], set
   const pnlPct = baselineHas ? entwicklungProzent(baselinePrice, currentPrice)?.toFixed(1) ?? null : null;
 
   // Nur Zustände mit Erfassung, sonst stünde eine Prozentangabe gegen nichts da.
-  const acqByCond = await repo.kaufschnittDesSets(uids, setNumber, currency);
+  const acqByCond = await finanzenBereich().preisverlauf.kaufschnittDesSets(uids, setNumber, currency);
 
   const byCondition: Record<string, ZustandsVergleich> = {};
   for (const cond of ['N', 'U'] as const) {
@@ -128,8 +128,8 @@ export async function conditionRows(
   const uids = asIds(uid);
   // DESC: Seit der Figuren-Verlauf beide Nummern abfragt, kann es zwei Zeilen
   // je Zustand geben, und `.find()` soll die neueste nehmen.
-  const cacheRows = await repo.cachePreiseNachSchluessel(cacheTable, keySql, keyVals, currency);
-  const acqRows = await repo.kaufschnitteNachSchluessel(acqTable, acqKeySql, acqKeyVals, uids, currency);
+  const cacheRows = await finanzenBereich().preisverlauf.cachePreiseNachSchluessel(cacheTable, keySql, keyVals, currency);
+  const acqRows = await finanzenBereich().preisverlauf.kaufschnitteNachSchluessel(acqTable, acqKeySql, acqKeyVals, uids, currency);
 
   const out: Record<string, ZustandsVergleich> = {};
   for (const cond of ['N', 'U'] as const) {
@@ -157,8 +157,8 @@ async function manualPriceHistory(
   acqKeySql: string = keySql, acqKeyVals: unknown[] = keyVals
 ) {
   const [historyNew, historyUsed, by_condition] = await Promise.all([
-    repo.manualSeries(historyTable, keySql, keyVals, currency, 'N'),
-    repo.manualSeries(historyTable, keySql, keyVals, currency, 'U'),
+    finanzenBereich().preisverlauf.manualSeries(historyTable, keySql, keyVals, currency, 'N'),
+    finanzenBereich().preisverlauf.manualSeries(historyTable, keySql, keyVals, currency, 'U'),
     conditionRows(cacheTable, acqTable, keySql, keyVals, uid, currency, acqKeySql, acqKeyVals),
   ]);
   // Gezeichnet werden nur Zustände mit Erfassung; die Rohreihen bleiben vollständig.
@@ -171,7 +171,7 @@ async function manualPriceHistory(
 }
 
 export async function getPartPriceHistory(uidWahl: Sicht | number | number[], partNumber: string, colorId: number, currency: string) {
-  const uid = await blickfeldAus(uidWahl);
+  const uid = await haushaltBereich().haushalt.blickfeldAus(uidWahl);
   // Preise liegen unter BrickLink-Nummer und -Farbe, Erfassungen unter denen
   // des Benutzers — die beiden Schlüsselräume dürfen nicht gemischt werden.
   const blNummer = await resolveBlPartNumber(partNumber, Array.isArray(uid) ? uid[0] ?? null : uid);
@@ -185,7 +185,7 @@ export async function getPartPriceHistory(uidWahl: Sicht | number | number[], pa
 
 // Preise stehen unter der BrickLink-Nummer, Erfassungen unter der eigenen; beide Schlüssel zählen.
 export async function getMinifigPriceHistory(uidWahl: Sicht | number | number[], figNumber: string, currency: string) {
-  const uid = await blickfeldAus(uidWahl);
+  const uid = await haushaltBereich().haushalt.blickfeldAus(uidWahl);
   const nummern = await preisNummernFuerFigur(uid, figNumber);
   return manualPriceHistory(uid, currency,
     'minifig_price_history', 'minifig_price_cache', 'minifig_acquisitions',
@@ -204,7 +204,7 @@ async function preisNummernFuerFigur(uid: number | number[], figNumber: string):
 export async function purgeAltePreise(): Promise<number> {
   const tage = konfig().preisverlaufTage;
   if (tage <= 0) return 0;
-  const r = await repo.loescheAltenVerlauf(String(tage));
+  const r = await finanzenBereich().preisverlauf.loescheAltenVerlauf(String(tage));
   return r?.changes || 0;
 }
 

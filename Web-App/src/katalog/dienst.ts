@@ -8,23 +8,22 @@ import { downloadSetImage } from './bilder/setImages';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
 import { nacharbeit } from '../auftraege';
-import { scopeIds } from '../haushalt';
+import { haushaltBereich } from '../haushalt';
 import { katalog } from './prozess';
+import { Zwischenspeicher } from '../infra/zwischenspeicher';
 import { versuche } from '../infra/ergebnis';
 
-// rb_themes ändert sich höchstens täglich; der Baum wird je Prozess eine
+// rb_themes ändert sich höchstens täglich; der Baum wird je Zugang eine
 // Stunde gemerkt, weil jeder Filter ihn braucht.
 type ThemeNode = repo.Thema;
-let _themeCache: {
-  at: number;
-  byId: Map<number, ThemeNode>;
-  children: Map<number, number[]>;
-  pathName: Map<number, string>;
-} | null = null;
+type ThemeBaum = { byId: Map<number, ThemeNode>; children: Map<number, number[]>; pathName: Map<number, string> };
 const THEME_CACHE_TTL = 60 * 60 * 1000;
+const themenSpeicher = () =>
+  katalog().faecher.fach('themenbaum', () => new Zwischenspeicher<0, ThemeBaum>(1, THEME_CACHE_TTL));
 
-async function getThemeTree() {
-  if (_themeCache && Date.now() - _themeCache.at < THEME_CACHE_TTL) return _themeCache;
+async function getThemeTree(): Promise<ThemeBaum> {
+  const gemerkt = themenSpeicher().hole(0);
+  if (gemerkt) return gemerkt;
   const rows = await katalog().katalogSuche.themen();
   const byId = new Map<number, ThemeNode>();
   const children = new Map<number, number[]>();
@@ -52,8 +51,9 @@ async function getThemeTree() {
     return name;
   };
   for (const id of byId.keys()) resolvePath(id, new Set([id]));
-  _themeCache = { at: Date.now(), byId, children, pathName };
-  return _themeCache;
+  const baum = { byId, children, pathName };
+  themenSpeicher().setze(0, baum);
+  return baum;
 }
 
 function descendantIds(tree: Awaited<ReturnType<typeof getThemeTree>>, rootId: number): number[] {
@@ -106,7 +106,7 @@ export async function jahrVerteilung(f: KatalogFilter, absteigend: boolean) {
 export async function katalogSeite(userId: number, f: KatalogFilter, sortRoh: unknown, page: number, limit: number) {
   const wahl = await waehle(f);
   const [total, sets] = await Promise.all([
-    katalog().katalogSuche.katalogAnzahl(wahl), katalog().katalogSuche.katalogZeilen(await scopeIds(userId), wahl, sortRoh, limit, (page - 1) * limit)]);
+    katalog().katalogSuche.katalogAnzahl(wahl), katalog().katalogSuche.katalogZeilen(await haushaltBereich().haushalt.scopeIds(userId), wahl, sortRoh, limit, (page - 1) * limit)]);
   const tree = await getThemeTree();
   // Die Liste stösst keine Bildarbeit an; fehlende Bilder holt der Bild-Proxy.
   return { total, page, page_size: limit, pages: Math.max(1, Math.ceil(total / limit)),
@@ -118,7 +118,7 @@ export const katalogGeladen = async () => !(await katalog().katalogSuche.katalog
 
 export async function katalogSet(userId: number, roh: string) {
   const n = mitVersion(roh.trim());
-  const set = await katalog().katalogSuche.katalogZeile(await scopeIds(userId), n);
+  const set = await katalog().katalogSuche.katalogZeile(await haushaltBereich().haushalt.scopeIds(userId), n);
   if (!set) return null;
   const invId = await neuestesInventar(n);
   const m = invId ? await katalog().katalogSuche.figurenImInventar(invId) : undefined;

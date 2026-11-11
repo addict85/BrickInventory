@@ -16,4 +16,3 @@ export {
 export { computePnl } from './rechnung/gewinnVerlust';
 export { effectiveCondition } from './rechnung/zustand';
 
-export { bestandsPlaetze, merklistenPlaetze, erfassteZustaende, gewuenschteZustaende, schreibeTagesstand, setsMitAlarm } from './repository/preisLauf';

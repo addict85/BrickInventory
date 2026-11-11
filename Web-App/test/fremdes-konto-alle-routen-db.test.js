@@ -196,8 +196,9 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
     srv.closeAllConnections?.();
     await new Promise(r => srv.close(r));
     // LISTEN-Verbindung und Zeitgeber, die Routen nebenher anstossen, hielten den Prozess sonst offen.
-    await _req('db/pgNotify.js')
-      .close()
+    await _req('db/database.js')
+      .standardDb()
+      .benachrichtigung.close()
       .catch(() => {});
   });
   const basis = `http://127.0.0.1:${srv.address().port}`;

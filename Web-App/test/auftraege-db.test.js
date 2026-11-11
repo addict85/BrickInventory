@@ -40,7 +40,7 @@ const { warte } = require('./helpers/zeit');
 
 test('Auftragstabelle', { concurrency: 1 }, async (t) => {
   if (!await dbOderSkip(t, _req)) return;
-  const A = Object.assign({}, _req('src/auftraege/auftraege.js'), _req('src/auftraege/dienst.js'));
+  const A = Object.assign({}, _req('src/auftraege/auftraege.js'), { ..._req('src/auftraege/dienst.js'), ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege });
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   // Nur Zeilen dieses Tests: eine eigene Art, die kein anderer Worker kennt.
   const ART = `test-${process.pid}`;
@@ -227,7 +227,7 @@ test('Auftragstabelle', { concurrency: 1 }, async (t) => {
     });
   } finally {
     await leeren();
-    await _req('db/pgNotify.js').close();
+    await _req('db/database.js').standardDb().benachrichtigung.close();
     await db.pool.end().catch(() => {});
   }
 });

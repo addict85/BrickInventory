@@ -1,4 +1,4 @@
-import * as db from '../../../db/database';
+import type { DbSchnittstelle } from '../../../db/database';
 
 export type QrStand = 'offen' | 'wartet' | 'bestaetigt' | 'abgeholt' | 'abgelehnt' | 'abgelaufen';
 
@@ -17,12 +17,13 @@ const STAND = `CASE WHEN abgelehnt_am IS NOT NULL THEN 'abgelehnt' WHEN abgeholt
   WHEN used_at IS NOT NULL THEN 'wartet' ELSE 'offen' END`;
 const SPALTEN = `id::int AS id, user_id, token_days, geraet, ip_bereich, code_hash, ${STAND} AS stand`;
 
-export async function raeumeQrKopplungenAuf(): Promise<void> {
+export async function raeumeQrKopplungenAuf(db: DbSchnittstelle): Promise<void> {
   await db.run(`DELETE FROM qr_login_tokens WHERE expires_at < NOW() - INTERVAL '1 hour'`);
 }
 
 /** @returns null, wenn schon `hoechstens` Kopplungen offen sind */
 export async function legeQrKopplungAn(
+  db: DbSchnittstelle,
   hash: string,
   uid: number,
   bis: Date,
@@ -41,6 +42,7 @@ export async function legeQrKopplungAn(
 
 /** Atomar: Nur der erste Scan meldet sein Gerät an; die Frist beginnt neu für die Bestätigung. */
 export function melde(
+  db: DbSchnittstelle,
   hash: string,
   a: { abholung: string; codeHash: string; geraet: string; ipBereich: string | null; fristS: number },
 ): Promise<QrZeile | undefined> {
@@ -52,16 +54,16 @@ export function melde(
   );
 }
 
-export function nachAbholung(abholung: string): Promise<QrZeile | undefined> {
+export function nachAbholung(db: DbSchnittstelle, abholung: string): Promise<QrZeile | undefined> {
   return db.get<QrZeile>(`SELECT ${SPALTEN} FROM qr_login_tokens WHERE abholung = $1`, [abholung]);
 }
 
-export function qrKopplungDesKontos(id: number, uid: number): Promise<QrZeile | undefined> {
+export function qrKopplungDesKontos(db: DbSchnittstelle, id: number, uid: number): Promise<QrZeile | undefined> {
   return db.get<QrZeile>(`SELECT ${SPALTEN} FROM qr_login_tokens WHERE id = $1 AND user_id = $2`, [id, uid]);
 }
 
 /** Nur aus „bestätigt": Zwei gleichzeitige Abholungen bekommen nicht zwei Tokens. */
-export async function markiereAbgeholt(id: number): Promise<boolean> {
+export async function markiereAbgeholt(db: DbSchnittstelle, id: number): Promise<boolean> {
   return !!(
     await db.run(
       `UPDATE qr_login_tokens SET abgeholt_am = NOW()
@@ -71,7 +73,7 @@ export async function markiereAbgeholt(id: number): Promise<boolean> {
   ).changes;
 }
 
-export async function markiereBestaetigt(id: number): Promise<boolean> {
+export async function markiereBestaetigt(db: DbSchnittstelle, id: number): Promise<boolean> {
   return !!(
     await db.run(
       `UPDATE qr_login_tokens SET bestaetigt_am = NOW()
@@ -82,7 +84,7 @@ export async function markiereBestaetigt(id: number): Promise<boolean> {
 }
 
 /** @returns die Zahl der Fehlversuche danach */
-export async function zaehleQrFehlversuch(id: number): Promise<number> {
+export async function zaehleQrFehlversuch(db: DbSchnittstelle, id: number): Promise<number> {
   const z = await db.get<{ n: number }>(
     'UPDATE qr_login_tokens SET fehlversuche = fehlversuche + 1 WHERE id = $1 RETURNING fehlversuche AS n',
     [id],
@@ -90,7 +92,7 @@ export async function zaehleQrFehlversuch(id: number): Promise<number> {
   return z?.n ?? 0;
 }
 
-export async function markiereAbgelehnt(id: number): Promise<void> {
+export async function markiereAbgelehnt(db: DbSchnittstelle, id: number): Promise<void> {
   await db.run(
     'UPDATE qr_login_tokens SET abgelehnt_am = COALESCE(abgelehnt_am, NOW()) WHERE id = $1 AND abgeholt_am IS NULL',
     [id],

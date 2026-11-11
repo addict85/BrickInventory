@@ -1,11 +1,11 @@
 import { passwortPasst, BcryptUeberlast } from './bcryptSchranke';
 import { bestaetigungGesperrt, bestaetigungFehlgeschlagen, bestaetigungGelungen, meldeAnmeldeereignis, type Bremse } from './loginLimiter';
 import type { FehlerArt, FehlerCode } from '../infra/fehlerTexte';
-import * as zugaenge from './repository/zugaenge';
 import * as zf from './zweiterFaktor';
 import * as P from './passkeys';
 import { kontoGedrosselt } from './zielDrossel';
 import { hinweisNebenher } from './kontoHinweis';
+import { kontoBereich } from './prozess';
 
 /** Fachlich, nicht HTTP: Den Status wählt die HTTP-Seite (src/http/fehlerArt.ts). */
 export type BestaetigungsAbsage = { art: FehlerArt; code: FehlerCode; vars?: Record<string, string | number>; passkey?: boolean };
@@ -43,7 +43,7 @@ export async function pruefeBestaetigung(uid: number, zugang: string, passwort: 
   if (mitFaktor && leer(faktor.code) && leer(faktor.passkey))
     return { art: 'ungueltig', code: 'zweiter_faktor_noetig', ...(await P.hatPasskeys(uid) ? { passkey: true } : {}) };
   const pw = await gebremst('passwort', uid, zugang, async () => {
-    const u = await zugaenge.passwortHash(uid);
+    const u = await kontoBereich().zugaenge.passwortHash(uid);
     return !!u && typeof passwort === 'string' && passwort !== ''
       && passwortPasst(passwort, u.password_hash);
   }, 'aktuelles_passwort_falsch').catch((e: unknown) => {

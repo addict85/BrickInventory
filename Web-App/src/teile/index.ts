@@ -12,3 +12,6 @@ export {
 } from './abfragen';
 export { getPartAcquisitions, getPartColorList, updateManualPart } from './manuelleTeile';
 export { aendereTeilFarbe } from './teilFarbeAendern';
+export { erzeugeTeile } from './bereich';
+export type { TeileDienste, TeileKontext } from './bereich';
+export { teileBereich, verdrahteTeile } from './prozess';

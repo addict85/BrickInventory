@@ -1,7 +1,6 @@
-import { notify } from '../../db/pgNotify';
 import { AUFTRAG_KANAL, zieheVor, beendePause } from './dienst';
-import * as repo from './repository/auftraege';
 import { naechsteUhrzeit, taeglicheUhrzeit } from './zeitplan';
+import { auftraegeBereich } from './prozess';
 
 /** Einer je Set, fällig zur eingestellten Uhrzeit. `versuch` zählt über
  * Aufträge hinweg: Nach 30 Tagen ohne Kontingent gibt Brickset auf. */
@@ -16,15 +15,15 @@ export async function bricksetFaelligAb(bald: boolean): Promise<Date> {
 
 /** @returns false, wenn es schon BRICKSET_HOECHSTENS Mal vorgemerkt war. */
 export async function bricksetVormerken(sn: string, fehler: string, bald = false): Promise<{ versuch: number; vorgemerkt: boolean }> {
-  const versuch = await repo.hoechsterBricksetVersuch(schluessel(sn)) + 1;
+  const versuch = await auftraegeBereich().auftraege.hoechsterBricksetVersuch(schluessel(sn)) + 1;
   if (versuch > BRICKSET_HOECHSTENS) { await bricksetAusWiedervorlage(sn); return { versuch, vorgemerkt: false }; }
-  await repo.merkeBricksetVor(schluessel(sn), { set_number: sn, versuch }, await bricksetFaelligAb(bald), fehler);
-  await notify(AUFTRAG_KANAL, 'brickset');
+  await auftraegeBereich().auftraege.merkeBricksetVor(schluessel(sn), { set_number: sn, versuch }, await bricksetFaelligAb(bald), fehler);
+  await auftraegeBereich().db.benachrichtigung.notify(AUFTRAG_KANAL, 'brickset');
   return { versuch, vorgemerkt: true };
 }
 
 export async function bricksetAusWiedervorlage(sn: string): Promise<void> {
-  await repo.loescheOffenen(schluessel(sn));
+  await auftraegeBereich().auftraege.loescheOffenen(schluessel(sn));
 }
 
 export async function bricksetJetzt(sn?: string): Promise<void> {
@@ -34,14 +33,14 @@ export async function bricksetJetzt(sn?: string): Promise<void> {
 
 /** Nach einer Änderung des Zeitplans: Was später fällig war, kommt bis `bis` dran. */
 export async function bricksetTermineVorziehen(bis: Date): Promise<void> {
-  await repo.zieheBricksetTermineVor(bis);
+  await auftraegeBereich().auftraege.zieheBricksetTermineVor(bis);
 }
 
 export function bricksetListe() {
-  return repo.bricksetWiedervorlage();
+  return auftraegeBereich().auftraege.bricksetWiedervorlage();
 }
 
 export async function bricksetZahlen(): Promise<{ wartend: number; faellig: number }> {
-  const z = await repo.bricksetWartende();
+  const z = await auftraegeBereich().auftraege.bricksetWartende();
   return { wartend: z?.wartend ?? 0, faellig: z?.faellig ?? 0 };
 }

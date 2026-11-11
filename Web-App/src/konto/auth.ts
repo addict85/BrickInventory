@@ -2,8 +2,6 @@
  * Datenbank-Rundläufe, weil die App beim Öffnen viele Anfragen parallel feuert. */
 import * as passwortRegel from '../infra/passwortRegel';
 import { konfig } from '../infra/konfig';
-import * as db from '../../db/database';
-import * as pgNotify from '../../db/pgNotify';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { passwortPasst, BcryptUeberlast } from './bcryptSchranke';
@@ -14,11 +12,11 @@ import * as passkeys from './passkeys';
 import * as V from '../infra/validate';
 import type { FehlerArt, FehlerCode } from '../infra/fehlerTexte';
 import * as repo from './repository/zugaenge';
-import * as kontenRepo from './repository/konten';
 import type { TokenScope } from './repository/zugaenge';
 import { erhoeheSitzungsVersion, vergissSitzungsVersion } from './sitzungsVersion';
 import { hinweisNebenher } from './kontoHinweis';
 import { zaehleFehlversuch, zuVieleFehlversuche } from './tokenFehlversuche';
+import { kontoBereich } from './prozess';
 
 export type { TokenScope };
 
@@ -68,7 +66,7 @@ export async function verifiziereEmailToken(token: string | null | undefined): P
   if (token === undefined || token === null || String(token).trim() === '') {
     return { ok: false, grund: 'fehlt' };
   }
-  const neu = await kontenRepo.uebernimmEmailNeu(hashToken(String(token)));
+  const neu = await kontoBereich().konten.uebernimmEmailNeu(hashToken(String(token)));
   if (!neu) return { ok: false, grund: 'ungueltig' };
   return neu.ok ? { ok: true, userId: neu.id } : { ok: false, grund: 'vergeben', userId: neu.id };
 }
@@ -158,7 +156,7 @@ export async function pruefeToken(token: string | null | undefined,
   // Erst nach dem Cache: Wer einen gültigen Token im Cache hat, wird nie gebremst.
   if (zuVieleFehlversuche(o.ip)) return { nutzer: null, grund: 'zu_viele_anfragen' };
   const hashed = hashToken(token);
-  const row: TokenBenutzer | undefined = await repo.gueltigerToken(hashed);
+  const row: TokenBenutzer | undefined = await kontoBereich().zugaenge.gueltigerToken(hashed);
   if (!row) {
     _tokenCache.delete(token);
     if (!await meldeWiederverwendung(hashed)) await zaehleFehlversuch(o.ip);
@@ -168,7 +166,7 @@ export async function pruefeToken(token: string | null | undefined,
   // damit alle Wächter es gleich sehen.
   row.is_admin = row.konto_is_admin === true && row.scope === 'voll';
   if (row.vorgaenger) {
-    await repo.beendeUeberlappung(row.vorgaenger, hashed);
+    await kontoBereich().zugaenge.beendeUeberlappung(row.vorgaenger, hashed);
     row.vorgaenger = null;
     leereTokenCache();
   }
@@ -182,7 +180,7 @@ export async function pruefeToken(token: string | null | undefined,
 
 /** Ein ersetzter Token kam nach der Schonfrist wieder: Familie sperren, Inhaber benachrichtigen. */
 async function meldeWiederverwendung(hash: string): Promise<boolean> {
-  const z = await repo.sperreFamilie(hash, WIEDERVERWENDUNG_SCHONFRIST_S);
+  const z = await kontoBereich().zugaenge.sperreFamilie(hash, WIEDERVERWENDUNG_SCHONFRIST_S);
   if (!z) return false;
   leereTokenCache();
   console.warn(`[tokens] ersetzter Token erneut benutzt — Familie von Konto ${z.user_id} gesperrt`);
@@ -207,7 +205,7 @@ function _touchLastUsed(entry: CacheEintrag, ip?: string | null): void {
     && new Date(u.expires_at).getTime() < ziel - TAG_MS;
   if ((jetzt - zuletzt < TAG_MS && !fristHinkt) || entry.schreibt) return;
   entry.schreibt = true;
-  void repo.beruehreToken(entry.dbKey, TOKEN_IDLE_DAYS, ipBereich(ip))
+  void kontoBereich().zugaenge.beruehreToken(entry.dbKey, TOKEN_IDLE_DAYS, ipBereich(ip))
     .then(() => {
       // Den Cache mitziehen, sonst wiese der Treffer-Zweig einen gerade
       // erneuerten Token am alten Fristende einmal ab.
@@ -233,15 +231,15 @@ const WIDERRUF_KANAL = 'token_widerrufen';
 let _verteilt = false;
 export function horcheAufTokenWiderruf(): void {
   _verteilt = true;
-  pgNotify.listen(WIDERRUF_KANAL, leere);
+  kontoBereich().db.benachrichtigung.listen(WIDERRUF_KANAL, leere);
 }
 function cacheNutzbar(): boolean {
-  if (_verteilt && pgNotify.hoertZu(WIDERRUF_KANAL)) return true;
+  if (_verteilt && kontoBereich().db.benachrichtigung.hoertZu(WIDERRUF_KANAL)) return true;
   leere();
   return false;
 }
 function meldeWiderruf(): void {
-  if (_verteilt) void pgNotify.notify(WIDERRUF_KANAL);
+  if (_verteilt) void kontoBereich().db.benachrichtigung.notify(WIDERRUF_KANAL);
 }
 
 /** Für Löschungen ohne Klartext (die Token-Verwaltung kennt nur den
@@ -344,11 +342,11 @@ export async function pruefeAnmeldedaten(herkunft: Herkunft, username: string | 
   const name = String(username);
   const gesperrt = await checkLoginAllowed(ip, name);
   if (gesperrt) {
-    meldeAnmeldeereignis('anmeldung_gesperrt', { ip, konto: (await repo.kontoZurAnmeldung(name))?.id ?? null });
+    meldeAnmeldeereignis('anmeldung_gesperrt', { ip, konto: (await kontoBereich().zugaenge.kontoZurAnmeldung(name))?.id ?? null });
     return absage('zu_viele', gesperrt.code, gesperrt.vars);
   }
 
-  const user = await repo.kontoZurAnmeldung(name);
+  const user = await kontoBereich().zugaenge.kontoZurAnmeldung(name);
   // Auch ohne Treffer, gegen DUMMY_HASH: gleiche Zeit für unbekannte Namen. Wer sich von
   // hier zuletzt angemeldet hat, wartet unter Last vorne: Eine Flut fremder Adressen sperrt ihn nicht aus.
   const vorrang = await bekannteAnmeldung(ip, name);
@@ -435,12 +433,12 @@ export async function createToken(userId: number, label = 'Android App', dauerha
                            festeTage: number | null = null, o: TokenOptionen = {}): Promise<string> {
   const token = crypto.randomBytes(32).toString('hex');
   const hash = hashToken(token);
-  await repo.legeTokenAn({
+  await kontoBereich().zugaenge.legeTokenAn({
     hash, userId, label, scope: o.scope === 'voll' ? 'voll' : 'app', bereich: ipBereich(o.ip),
     art: !dauerhaft ? 'kurz' : festeTage === UNBEGRENZT ? 'unbegrenzt' : 'gleitend',
     leerlaufTage: TOKEN_IDLE_DAYS, festeTage: festeTage && festeTage > 0 ? festeTage : null,
   });
-  if (await repo.kappeTokens(userId, hash, ZUGAENGE_HOECHSTENS - 1)) leereTokenCache();
+  if (await kontoBereich().zugaenge.kappeTokens(userId, hash, ZUGAENGE_HOECHSTENS - 1)) leereTokenCache();
   return token;
 }
 
@@ -448,7 +446,7 @@ export async function createToken(userId: number, label = 'Android App', dauerha
  * Es fällt der am längsten unbenutzte Zugang. */
 export const ZUGAENGE_HOECHSTENS = 50;
 export function begrenzeSitzungen(userId: number, eigene: string): Promise<number> {
-  return repo.kappeSitzungen(userId, eigene, ZUGAENGE_HOECHSTENS - 1);
+  return kontoBereich().zugaenge.kappeSitzungen(userId, eigene, ZUGAENGE_HOECHSTENS - 1);
 }
 
 export interface Tausch {
@@ -471,7 +469,7 @@ export async function rotiereToken(alt: string, ip?: string | null): Promise<Tau
   const neu = crypto.randomBytes(32).toString('hex');
   const neuHash = hashToken(neu);
   let kopie: { user_id: number; label: string | null } | null = null;
-  const ergebnis = await db.transaction(async (tx) => {
+  const ergebnis = await kontoBereich().db.transaction(async (tx) => {
     const z = await repo.tauschQuelleSperren(tx, altHash);
     if (!z) return null;
     const offen = z.ersetzt_durch ? await repo.unbenutzterNachfolger(tx, z.ersetzt_durch, altHash) : undefined;
@@ -500,14 +498,14 @@ export async function rotiereToken(alt: string, ip?: string | null): Promise<Tau
 
 export async function deleteToken(token: string): Promise<void> {
   if (!token) return;
-  await repo.loescheToken(hashToken(token));
+  await kontoBereich().zugaenge.loescheToken(hashToken(token));
   invalidateToken(token);
 }
 
 /** In user_sessions, wo der Session-Store wirklich liegt. */
 export async function revokeAllSessions(userId: number): Promise<void> {
   await erhoeheSitzungsVersion(userId);
-  await repo.loescheSitzungenDesKontos(userId);
+  await kontoBereich().zugaenge.loescheSitzungenDesKontos(userId);
 }
 
 /** Nach dem Einschalten des zweiten Faktors: Wer schon drin war, soll nicht
@@ -517,7 +515,7 @@ export async function revokeAllSessions(userId: number): Promise<void> {
  * leeren sich nach dem COMMIT noch einmal, weil eine Anfrage dazwischen den
  * alten Stand wieder aufgenommen haben kann. */
 export async function mitZugangsende<T>(konto: number | ((r: T) => number | null), fn: () => Promise<T>): Promise<T> {
-  const r = await db.transaction(fn, { wiederholeBeiKonflikt: true });
+  const r = await kontoBereich().db.transaction(fn, { wiederholeBeiKonflikt: true });
   leereTokenCache();
   const uid = typeof konto === 'function' ? konto(r) : konto;
   if (uid) vergissSitzungsVersion(uid);
@@ -526,9 +524,9 @@ export async function mitZugangsende<T>(konto: number | ((r: T) => number | null
 
 export async function beendeAndereZugaenge(userId: number, aktuellerToken: string | null, sitzungsId: string | null): Promise<number> {
   return mitZugangsende(userId, async () => {
-    await repo.loescheTokensDesKontos(userId, aktuellerToken ? hashToken(aktuellerToken) : null);
+    await kontoBereich().zugaenge.loescheTokensDesKontos(userId, aktuellerToken ? hashToken(aktuellerToken) : null);
     const v = await erhoeheSitzungsVersion(userId);
-    await repo.loescheSitzungenDesKontos(userId, sitzungsId);
+    await kontoBereich().zugaenge.loescheSitzungenDesKontos(userId, sitzungsId);
     return v;
   });
 }
@@ -536,7 +534,7 @@ export async function beendeAndereZugaenge(userId: number, aktuellerToken: strin
 /** Ohne Fang: ein Sicherheitsschritt. Scheitert er still, meldet der Aufrufer
  * Erfolg, während die alten Tokens weitergelten. */
 export async function revokeAllTokens(userId: number): Promise<void> {
-  await repo.loescheTokensDesKontos(userId);
+  await kontoBereich().zugaenge.loescheTokensDesKontos(userId);
   leereTokenCache();
 }
 
@@ -548,11 +546,11 @@ export const TOKEN_IDLE_DAYS = konfig().tokenLeerlaufTage;
  * derselben Regel fallen wie neue. */
 export async function purgeExpiredTokens() {
   const warn = (was: string) => (e: Error) => { console.warn(`[tokens] ${was}:`, e?.message || e); return 0; };
-  const m = await repo.ziehAltzeilenNach(TOKEN_IDLE_DAYS).catch(warn('Altzeilen nachziehen'));
+  const m = await kontoBereich().zugaenge.ziehAltzeilenNach(TOKEN_IDLE_DAYS).catch(warn('Altzeilen nachziehen'));
   if (m) console.log(`[tokens] ${m} Token ohne Ablaufdatum auf die Gleitfrist von ${TOKEN_IDLE_DAYS} Tagen gesetzt`);
-  const abgelaufen = await repo.loescheAbgelaufene().catch(warn('Aufräumen abgelaufener Tokens'));
-  const n = await repo.loescheUngenutzte(TOKEN_IDLE_DAYS).catch(warn('Aufräumen ungenutzter Tokens'));
-  await repo.loescheVerwaisteVerbrauchte().catch(warn('Aufräumen verbrauchter Tokens'));
+  const abgelaufen = await kontoBereich().zugaenge.loescheAbgelaufene().catch(warn('Aufräumen abgelaufener Tokens'));
+  const n = await kontoBereich().zugaenge.loescheUngenutzte(TOKEN_IDLE_DAYS).catch(warn('Aufräumen ungenutzter Tokens'));
+  await kontoBereich().zugaenge.loescheVerwaisteVerbrauchte().catch(warn('Aufräumen verbrauchter Tokens'));
   if (n) console.log(`[tokens] ${n} Token seit über ${TOKEN_IDLE_DAYS} Tagen ungenutzt — entfernt`);
   return abgelaufen + n;
 }

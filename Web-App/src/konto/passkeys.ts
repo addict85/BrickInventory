@@ -3,11 +3,11 @@
 import crypto from 'crypto';
 import { generateRegistrationOptions, verifyRegistrationResponse, generateAuthenticationOptions, verifyAuthenticationResponse, type AuthenticationResponseJSON, type RegistrationResponseJSON, type WebAuthnCredential } from '@simplewebauthn/server';
 import { decodeClientDataJSON } from '@simplewebauthn/server/helpers';
-import * as repo from './repository/passkeys';
 import { basisUrl } from '../infra/basisUrl';
 import { androidHerkuenfte } from './androidApp';
 import { fehlertext } from '../infra/fehler';
 import { fachfehler } from '../infra/fehlerTexte';
+import { kontoBereich } from './prozess';
 
 function abgewiesen(e: unknown): null {
   console.warn('[passkey] Antwort abgewiesen:', fehlertext(e));
@@ -45,7 +45,7 @@ const hash = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
 export const OFFENE_CHALLENGES_HOECHSTENS = 5000;
 
 async function merkeChallenge(challenge: string, zweck: PasskeyZweck, uid: number | null): Promise<void> {
-  if (!await repo.speichereChallenge(hash(challenge), zweck, uid, new Date(Date.now() + CHALLENGE_MS), OFFENE_CHALLENGES_HOECHSTENS))
+  if (!await kontoBereich().passkeys.speichereChallenge(hash(challenge), zweck, uid, new Date(Date.now() + CHALLENGE_MS), OFFENE_CHALLENGES_HOECHSTENS))
     fachfehler('nicht_verfuegbar', 'server_ausgelastet');
 }
 
@@ -54,7 +54,7 @@ async function loeseChallengeEin(clientDataJSON: unknown, zweck: PasskeyZweck, u
   if (typeof clientDataJSON !== 'string') return null;
   let challenge: string;
   try { challenge = decodeClientDataJSON(clientDataJSON).challenge; } catch (e) { return abgewiesen(e); }
-  return await repo.verbraucheChallenge(hash(challenge), zweck, uid) ? challenge : null;
+  return await kontoBereich().passkeys.verbraucheChallenge(hash(challenge), zweck, uid) ? challenge : null;
 }
 
 /** Nicht sprechend: Der Authenticator soll keine Konto-ID speichern. */
@@ -63,7 +63,7 @@ const nutzerKennung = (uid: number) => new Uint8Array(crypto.createHash('sha256'
 export async function registrierungsOptionen(uid: number, name: string) {
   const rp = vertrauenspartei();
   if (!rp) return null;
-  const vorhanden = await repo.kennungenDesKontos(uid);
+  const vorhanden = await kontoBereich().passkeys.kennungenDesKontos(uid);
   const optionen = await generateRegistrationOptions({
     rpName: rp.rpName, rpID: rp.rpID, userName: name, userID: nutzerKennung(uid),
     attestationType: 'none',
@@ -87,7 +87,7 @@ export async function registrierungPruefen(uid: number, roh: unknown, name: stri
   }).catch(abgewiesen);
   if (!v?.verified) return null;
   const c = v.registrationInfo.credential;
-  return repo.legeAn(uid, c.id, Buffer.from(c.publicKey), c.counter, (c.transports ?? []).join(',') || null, name);
+  return kontoBereich().passkeys.legeAn(uid, c.id, Buffer.from(c.publicKey), c.counter, (c.transports ?? []).join(',') || null, name);
 }
 
 export async function anmeldeOptionen(zweck: 'anmelden' | 'zweiter_faktor') {
@@ -111,7 +111,7 @@ export async function anmeldungPruefen(roh: unknown, zweck: 'anmelden' | 'zweite
   if (!rp || !antwort) return null;
   const challenge = await loeseChallengeEin(antwort.response.clientDataJSON, zweck, null);
   if (!challenge) return null;
-  const k = await repo.schluessel(antwort.id, uid);
+  const k = await kontoBereich().passkeys.schluessel(antwort.id, uid);
   if (!k) return null;
   const v = await verifyAuthenticationResponse({
     // Registriert wird nur im Browser; anmelden darf auch die eingetragene App.
@@ -121,9 +121,9 @@ export async function anmeldungPruefen(roh: unknown, zweck: 'anmelden' | 'zweite
     requireUserVerification: zweck === 'anmelden',
   }).catch(abgewiesen);
   if (!v?.verified) return null;
-  return await repo.zaehlerWeiter(k.id, v.authenticationInfo.newCounter, k.sign_count) ? k.user_id : null;
+  return await kontoBereich().passkeys.zaehlerWeiter(k.id, v.authenticationInfo.newCounter, k.sign_count) ? k.user_id : null;
 }
 
-export const passkeysDesKontos = repo.desKontos;
-export const hatPasskeys = repo.hatWelche;
-export const loeschePasskey = repo.loeschePasskeyZeile;
+export const passkeysDesKontos = (uid: number) => kontoBereich().passkeys.desKontos(uid);
+export const hatPasskeys = (uid: number) => kontoBereich().passkeys.hatWelche(uid);
+export const loeschePasskey = (uid: number, id: number) => kontoBereich().passkeys.loeschePasskeyZeile(uid, id);

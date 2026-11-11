@@ -15,14 +15,9 @@ export {
   jobZeitplanSetzen,
   katalogAbgleichJetzt,
   katalogBilderEinreihen,
-  letzteEintraege,
   preisJobJetzt,
   preisJobStand,
-  protokollSeit,
-  protokolliere,
   quellePruefen,
-  setFehlanzeigen,
-  vorschauFehlanzeigen,
 } from './dienst';
 export { datenbankBereit, gesundheitsBericht } from './gesundheit';
 export {
@@ -36,3 +31,6 @@ export { jobUebersicht } from './jobUebersicht';
 export { NACHLAEUFE, nachlauf } from './startNachlaeufe';
 export type { Nachlauf } from './startNachlaeufe';
 export { einstellungenSpeichern, hatGlobaleWerte } from './einstellungenSpeichern';
+export { erzeugeVerwaltung } from './bereich';
+export type { VerwaltungDienste, VerwaltungKontext } from './bereich';
+export { verwaltungBereich, verdrahteVerwaltung } from './prozess';

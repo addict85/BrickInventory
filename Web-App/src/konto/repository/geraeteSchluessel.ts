@@ -1,4 +1,4 @@
-import * as db from '../../../db/database';
+import type { DbSchnittstelle } from '../../../db/database';
 
 /** Eine Token-Familie: Konto und created_at (auf Millisekunden, wie es über JavaScript reist). */
 export interface Familie {
@@ -11,7 +11,7 @@ const FAMILIE_LEBT = `EXISTS (SELECT 1 FROM api_tokens t WHERE t.user_id = $1
 
 /** Ein unbestätigter Schlüssel (vor der Attestation hinterlegt) gilt nur bis [altBis]. */
 /** Die Familie eines eben ausgestellten Tokens, auf Millisekunden wie FAMILIE_LEBT. */
-export async function familieDesTokens(hash: string): Promise<Familie | null> {
+export async function familieDesTokens(db: DbSchnittstelle, hash: string): Promise<Familie | null> {
   const z = await db.get<{ uid: number; seit: Date }>(
     `SELECT user_id AS uid, date_trunc('milliseconds', created_at) AS seit FROM api_tokens WHERE token = $1`,
     [hash],
@@ -19,7 +19,7 @@ export async function familieDesTokens(hash: string): Promise<Familie | null> {
   return z ? { uid: z.uid, seit: new Date(z.seit).toISOString() } : null;
 }
 
-export async function schluesselDer(f: Familie, altBis: Date): Promise<string | null> {
+export async function schluesselDer(db: DbSchnittstelle, f: Familie, altBis: Date): Promise<string | null> {
   const z = await db.get<{ oeffentlich: string }>(
     `SELECT oeffentlich FROM geraete_schluessel WHERE user_id = $1 AND familie = $2::timestamptz
        AND (attestiert OR NOW() < $3)`,
@@ -28,7 +28,10 @@ export async function schluesselDer(f: Familie, altBis: Date): Promise<string | 
   return z?.oeffentlich ?? null;
 }
 
-export async function eintragDer(f: Familie): Promise<{ oeffentlich: string; attestiert: boolean } | null> {
+export async function eintragDer(
+  db: DbSchnittstelle,
+  f: Familie,
+): Promise<{ oeffentlich: string; attestiert: boolean } | null> {
   return (
     (await db.get<{ oeffentlich: string; attestiert: boolean }>(
       'SELECT oeffentlich, attestiert FROM geraete_schluessel WHERE user_id = $1 AND familie = $2::timestamptz',
@@ -40,7 +43,12 @@ export async function eintragDer(f: Familie): Promise<{ oeffentlich: string; att
 /** Nur für eine lebende, junge Familie; ein unbestätigter Schlüssel darf dabei einem
  * attestierten weichen. Reste widerrufener Familien fallen weg.
  * @returns ob er jetzt gilt */
-export async function legeSchluesselAn(f: Familie, oeffentlich: string, fristS: number): Promise<boolean> {
+export async function legeSchluesselAn(
+  db: DbSchnittstelle,
+  f: Familie,
+  oeffentlich: string,
+  fristS: number,
+): Promise<boolean> {
   await db.run(
     `DELETE FROM geraete_schluessel g WHERE g.user_id = $1 AND NOT EXISTS (SELECT 1 FROM api_tokens t
     WHERE t.user_id = g.user_id AND date_trunc('milliseconds', t.created_at) = g.familie)`,
@@ -58,6 +66,7 @@ export async function legeSchluesselAn(f: Familie, oeffentlich: string, fristS: 
 
 /** Eine Nonce für die Attestation-Challenge; höchstens [offen] je Familie, nur für eine junge Familie. */
 export async function legeNonceAn(
+  db: DbSchnittstelle,
   f: Familie,
   nonce: string,
   o: { fristS: number; offen: number; ausQr: boolean },
@@ -77,7 +86,7 @@ export async function legeNonceAn(
 }
 
 /** Die bei der QR-Abholung ausgegebene Nonce, solange sie gilt. */
-export async function qrNonceDer(f: Familie): Promise<{ nonce: string; ablauf: Date } | null> {
+export async function qrNonceDer(db: DbSchnittstelle, f: Familie): Promise<{ nonce: string; ablauf: Date } | null> {
   return (
     (await db.get<{ nonce: string; ablauf: Date }>(
       `SELECT nonce, ablauf FROM geraete_nonces WHERE user_id = $1 AND familie = $2::timestamptz AND aus_qr
@@ -88,7 +97,7 @@ export async function qrNonceDer(f: Familie): Promise<{ nonce: string; ablauf: D
 }
 
 /** Löschen und Lesen in einem Schritt: Eine Nonce gilt genau einmal und nur für ihre Familie. */
-export async function nimmNonce(f: Familie, nonce: string): Promise<boolean> {
+export async function nimmNonce(db: DbSchnittstelle, f: Familie, nonce: string): Promise<boolean> {
   return !!(await db.get<{ nonce: string }>(
     `DELETE FROM geraete_nonces WHERE nonce = $1 AND user_id = $2 AND familie = $3::timestamptz AND ablauf > NOW()
      RETURNING nonce`,
@@ -98,6 +107,7 @@ export async function nimmNonce(f: Familie, nonce: string): Promise<boolean> {
 
 /** Höchstens [offen] gleichzeitig je Familie: Abholen ohne Einlösen füllt die Tabelle nicht. */
 export async function legeChallengeAn(
+  db: DbSchnittstelle,
   f: Familie,
   challenge: string,
   aktion: string,
@@ -120,7 +130,7 @@ export async function legeChallengeAn(
 }
 
 /** Löschen und Lesen in einem Schritt: Eine Challenge gilt genau einmal, und nur für ihre Familie. */
-export async function nimmChallenge(f: Familie, challenge: string): Promise<string | null> {
+export async function nimmChallenge(db: DbSchnittstelle, f: Familie, challenge: string): Promise<string | null> {
   const z = await db.get<{ aktion: string }>(
     `DELETE FROM schritt_challenges WHERE challenge = $1 AND user_id = $2 AND familie = $3::timestamptz
        AND ablauf > NOW() RETURNING aktion`,
@@ -130,6 +140,7 @@ export async function nimmChallenge(f: Familie, challenge: string): Promise<stri
 }
 
 export async function oeffneFreigabe(
+  db: DbSchnittstelle,
   f: Familie,
   aktion: string,
   leerlaufS: number,
@@ -147,7 +158,12 @@ export async function oeffneFreigabe(
 }
 
 /** Prüfen und Verlängern in einem Schritt, nie über `hoechstens` hinaus. */
-export async function nutzeFreigabe(f: Familie, aktion: string, leerlaufS: number): Promise<boolean> {
+export async function nutzeFreigabe(
+  db: DbSchnittstelle,
+  f: Familie,
+  aktion: string,
+  leerlaufS: number,
+): Promise<boolean> {
   return !!(
     await db.run(
       `UPDATE schritt_freigaben SET bis = LEAST(NOW() + make_interval(secs => $4), hoechstens)

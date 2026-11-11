@@ -6,7 +6,6 @@ import type { KontoBildzeile } from './repository/verwaltung';
 import fs from 'node:fs';
 import { AbrufFehler, type AbrufStrom } from '../infra/abruf';
 import path from 'node:path';
-import * as verwaltung from './repository/verwaltung';
 import { DATA_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
 import { fehlertext, ohneFehlendeDatei } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
@@ -14,6 +13,7 @@ import { fetchPrice } from '../finanzen';
 import { ohneBricklinkPreis } from '../infra/setNummer';
 import { getGlobalSetting, getSetting } from '../einstellungen';
 import { fachfehler } from '../infra/fehlerTexte';
+import { verwaltungBereich } from './prozess';
 
 /** Meldet, was der Proxy davon ausliefern würde — mit und ohne Referer. */
 export async function bildProbe(url: string) {
@@ -91,11 +91,11 @@ export async function bildProbe(url: string) {
 export async function preisProbe(uid: number, setNumber: string, live: boolean) {
   const ab = new Abstriche();
   const [setRow, acqs, cacheRows, histRows, currRow, ttlRow] = await Promise.all([
-    verwaltung.probeSet(uid, setNumber),
-    verwaltung.probeErfassungen(uid, setNumber),
-    verwaltung.probePreisCache(setNumber),
-    verwaltung.probePreisVerlauf(setNumber),
-    ab.oder('waehrung', verwaltung.probeWaehrung(uid), null),
+    verwaltungBereich().verwaltung.probeSet(uid, setNumber),
+    verwaltungBereich().verwaltung.probeErfassungen(uid, setNumber),
+    verwaltungBereich().verwaltung.probePreisCache(setNumber),
+    verwaltungBereich().verwaltung.probePreisVerlauf(setNumber),
+    ab.oder('waehrung', verwaltungBereich().verwaltung.probeWaehrung(uid), null),
     getGlobalSetting('price_cache_ttl'),
   ]);
 
@@ -148,8 +148,8 @@ export async function preisProbe(uid: number, setNumber: string, live: boolean) 
 /** Die wiederkehrenden Fragen zu einer leeren Kachel in einer Antwort: Datenbank, Platte, Proxy, Fehlanzeige. */
 export async function bildDiagnose(sn: string) {
   const ab = new Abstriche();
-  const konten: KontoBildzeile = await ab.oder('konten', verwaltung.bildZeilenDerKonten(sn), { anzahl_konten: 0, image_local: null, image_url: null });
-  const katalog = await ab.oder('katalog', verwaltung.katalogBild(sn), null);
+  const konten: KontoBildzeile = await ab.oder('konten', verwaltungBereich().verwaltung.bildZeilenDerKonten(sn), { anzahl_konten: 0, image_local: null, image_url: null });
+  const katalog = await ab.oder('katalog', verwaltungBereich().verwaltung.katalogBild(sn), null);
 
   const safe = sn.replace(/[^a-z0-9-]/gi, '_');
   const datei = async (p: string) => {
@@ -169,8 +169,8 @@ export async function bildDiagnose(sn: string) {
     }
   }
 
-  const merker = await ab.oder('fehlanzeige', verwaltung.fehlanzeigeDesSets(sn), null);
-  const vorschauMerker = await ab.oder('fehlanzeige', verwaltung.fehlanzeigeDerVorschau(safe), null);
+  const merker = await ab.oder('fehlanzeige', verwaltungBereich().verwaltung.fehlanzeigeDesSets(sn), null);
+  const vorschauMerker = await ab.oder('fehlanzeige', verwaltungBereich().verwaltung.fehlanzeigeDerVorschau(safe), null);
 
   // Eine Diagnose aus Ersatzwerten führte in die Irre: zuerst sagen, was nicht lesbar war.
   const hinweise: string[] = ab.teile.length ? [`Nicht lesbar, dort stehen Ersatzwerte: ${ab.teile.join(', ')}.`] : [];

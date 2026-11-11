@@ -6,7 +6,7 @@ import { installiereProtokoll, protokollInDieDatenbank, leereProtokoll } from '.
 installiereProtokoll();
 
 import http, { type Server } from 'http';
-import * as db from './db/database';
+import type { Db } from './db/database';
 import { fehlertext, logAndContinue } from './src/infra/fehler';
 import { startVerbote, startWarnungen } from './src/infra/konfig';
 import { hinweisOhneBasisUrl } from './src/infra/basisUrl';
@@ -60,7 +60,7 @@ function sitzungsGeheimnis(): string {
 const SHUTDOWN_TIMEOUT_MS = 8000;
 let _beendetWird = false;
 
-async function herunterfahren(signal: string, httpServer: Server | null, jobs: boolean): Promise<void> {
+async function herunterfahren(signal: string, httpServer: Server | null, jobs: boolean, zugang: Db): Promise<void> {
   if (_beendetWird) return;
   _beendetWird = true;
   console.log(`[shutdown] ${signal} empfangen — Server wird geordnet beendet`);
@@ -79,8 +79,8 @@ async function herunterfahren(signal: string, httpServer: Server | null, jobs: b
     }
     // Laufende Aufträge halten sicher an und gehen zurück in die Tabelle.
     if (jobs) await stoppeJobs();
-    await schliessePufferUndTakte();
-    await db.pool.end().catch(logAndContinue('server:end'));
+    await schliessePufferUndTakte(zugang);
+    await zugang.pool.end().catch(logAndContinue('server:end'));
     console.log('[shutdown] Datenbankverbindungen geschlossen');
     clearTimeout(notbremse);
     process.exit(0);
@@ -107,26 +107,26 @@ async function starte(): Promise<void> {
   console.log(`[start] Prozess ${process.pid}, Rolle ${k.rolle}`);
   // Datenbankzugang und Verdrahtung entstehen hier, nicht beim Import eines Moduls;
   // Erfassungen und Einstellungen stossen ihre Nacharbeit in jedem Prozess an.
-  verdrahteProzess();
+  const zugang = verdrahteProzess();
 
-  try { await bereiteDatenbankVor(); }
+  try { await bereiteDatenbankVor(zugang); }
   catch (e) {
     console.error('❌ Database initialisation failed:', fehlertext(e));
     console.error('   Check PostgreSQL connection settings (PGHOST, PGUSER, PGPASSWORD, PGDATABASE)');
     process.exit(1);
   }
-  protokollInDieDatenbank(db.pool);
+  protokollInDieDatenbank(zugang.pool);
   if (web) await meldeSmtpAltlast().catch(logAndContinue('start:smtp-altlast'));
   if (web) await meldeUngueltigeAdressen().catch(logAndContinue('start:adressen'));
   if (web) await meldeAusstehendeAdressen().catch(logAndContinue('start:ausstehende-adressen'));
   if (web) horcheAufTokenWiderruf();
 
   // Erst nach dem Schema Anfragen annehmen: Der Sitzungsspeicher braucht user_sessions.
-  const httpServer = web ? http.createServer({ ...HTTP_FRISTEN }, baueApp({ pool: db.pool, konfig: k, sitzungsGeheimnis: geheimnis })).listen(k.port, () => {
+  const httpServer = web ? http.createServer({ ...HTTP_FRISTEN }, baueApp({ pool: zugang.pool, konfig: k, sitzungsGeheimnis: geheimnis })).listen(k.port, () => {
     console.log(`🧱 BrickInventory Manager — http://localhost:${k.port}`);
   }) : null;
-  process.on('SIGTERM', () => { void herunterfahren('SIGTERM', httpServer, jobs); });
-  process.on('SIGINT',  () => { void herunterfahren('SIGINT', httpServer, jobs); });
+  process.on('SIGTERM', () => { void herunterfahren('SIGTERM', httpServer, jobs, zugang); });
+  process.on('SIGINT',  () => { void herunterfahren('SIGINT', httpServer, jobs, zugang); });
   if (jobs) await starteJobs(web);
 }
 

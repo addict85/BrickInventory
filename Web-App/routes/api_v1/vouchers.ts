@@ -1,5 +1,5 @@
 // Für beide Apps: Cookie und Token.
-import express from 'express';
+import type express from 'express';
 import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
@@ -9,13 +9,13 @@ import { ohneFehlendeDatei } from '../../src/infra/fehler';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { fehlerText, antwortSprache, dateiFehler, type FehlerCode, alsDoppelt } from '../../src/infra/fehlerTexte';
 import { getGlobalSetting, getSetting } from '../../src/einstellungen';
-import { landErlaubt, landFuerWaehrung, frageGuthabenAb, ABSTAND_SEK, VOUCHER_DIR, gutscheinDatei, schreibeGutscheinPdf, liesGutscheinPdf, liesGutscheinPdfOderNichts, stelleTicketAus, loeseTicketEin, TICKET_SEK, type GutscheinWerte, verbindeGutscheine, liesImHintergrund, HOECHSTENS_SEITEN, type ExportGutschein, gutscheineDesKontos, gutschein, gutscheinAnlegen, gutscheinErsetzen, gutscheinAendern, gutscheinPdfMerken, gutscheinLoeschen, guthabenMerken, type GutscheinZeile } from '../../src/gutscheine';
+import { gutscheineBereich, landErlaubt, landFuerWaehrung, frageGuthabenAb, ABSTAND_SEK, VOUCHER_DIR, gutscheinDatei, schreibeGutscheinPdf, liesGutscheinPdf, liesGutscheinPdfOderNichts, stelleTicketAus, loeseTicketEin, TICKET_SEK, type GutscheinWerte, verbindeGutscheine, liesImHintergrund, HOECHSTENS_SEITEN, type ExportGutschein, type GutscheinZeile } from '../../src/gutscheine';
 import { requireToken, kontoSchranke } from './middleware';
 import { bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
-import { protokolliere } from '../../src/verwaltung';
 
 import { seiteAus } from '../../src/infra/seite';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
+import { kontoBereich } from '../../src/konto';
 
 const router = vertragsRouter();
 
@@ -81,7 +81,7 @@ function pruefeWerte(roh: { number?: unknown; pin?: unknown; amount?: unknown; c
 }
 
 router.get('/vouchers', requireToken, async (req: Anfrage<'GET /api/v1/vouchers'>, res: Antwort<'GET /api/v1/vouchers'>) => {
-  const { eintraege, ...seite } = seiteAus(await gutscheineDesKontos(req.apiUser.user_id), req.abfrage);
+  const { eintraege, ...seite } = seiteAus(await gutscheineBereich().gutscheine.gutscheineDesKontos(req.apiUser.user_id), req.abfrage);
   res.json({ success: true, vouchers: eintraege.map(fuerAussen), ...seite });
 });
 
@@ -89,7 +89,7 @@ router.post('/vouchers', requireToken, async (req: Anfrage<'POST /api/v1/voucher
   const w = pruefeWerte(req.eingabe || {});
   if (!w.ok) return sendeFehler(req, res, 400, w.code);
   // Keine Zeile heisst „war schon da" — als Erfolg sähe der Nutzer nichts passieren.
-  const zeile = await gutscheinAnlegen(req.apiUser.user_id, w);
+  const zeile = await gutscheineBereich().gutscheine.gutscheinAnlegen(req.apiUser.user_id, w);
   if (!zeile) return sendeFehler(req, res, 409, 'gutschein_existiert');
   res.json({ success: true, voucher: fuerAussen(zeile) });
 });
@@ -112,7 +112,7 @@ async function stapelAnlegen(
       results.push({ number: String(w.nummer ?? ''), action: 'error', error: geprueft.code });
       continue;
     }
-    const warNeu = await gutscheinErsetzen(uid, geprueft);
+    const warNeu = await gutscheineBereich().gutscheine.gutscheinErsetzen(uid, geprueft);
     if (warNeu) added++; else updated++;
     results.push({ number: geprueft.number, action: warNeu ? 'added' : 'updated' });
   }
@@ -169,7 +169,7 @@ router.post('/vouchers/pdf', requireToken, kontoSchranke('gutscheinPdf'), upload
     });
   }
 
-  const z = await gutscheinAnlegen(req.apiUser.user_id, w);
+  const z = await gutscheineBereich().gutscheine.gutscheinAnlegen(req.apiUser.user_id, w);
   if (!z) return sendeFehler(req, res, 409, 'gutschein_existiert');
 
   const dir = path.join(VOUCHER_DIR, String(req.apiUser.user_id));
@@ -178,7 +178,7 @@ router.post('/vouchers/pdf', requireToken, kontoSchranke('gutscheinPdf'), upload
   const datei = `${z.id}.pdf`;
   await schreibeGutscheinPdf(path.join(dir, datei), req.file.buffer);
   const relPfad = `${req.apiUser.user_id}/${datei}`;
-  await gutscheinPdfMerken(req.apiUser.user_id, z.id, relPfad);
+  await gutscheineBereich().gutscheine.gutscheinPdfMerken(req.apiUser.user_id, z.id, relPfad);
 
   res.json({
     success: true,
@@ -192,13 +192,13 @@ router.post('/vouchers/pdf', requireToken, kontoSchranke('gutscheinPdf'), upload
 
 // Die PDFs tragen Nummer und PIN: erst bestätigen und protokollieren, dann ein Ticket für genau einen Abruf.
 async function pdfFreigabe(req: AuthedRequest, res: express.Response, ziel: string, aktion: 'gutschein_pdf' | 'gutschein_export', was: string) {
-  await protokolliere(req.apiUser.user_id, req.apiUser.user_id, aktion, was);
+  await kontoBereich().protokoll.protokolliere(req.apiUser.user_id, req.apiUser.user_id, aktion, was);
   res.json({ success: true, ticket: stelleTicketAus(req.apiUser.user_id, ziel), gueltig_sek: TICKET_SEK });
 }
 
 router.post('/vouchers/export/pdf-freigabe', requireToken, async (req: Anfrage<'POST /api/v1/vouchers/export/pdf-freigabe'>, res: Antwort<'POST /api/v1/vouchers/export/pdf-freigabe'>) => {
   if (!await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.eingabe.password)) return;
-  const zeilen = await gutscheineDesKontos(req.apiUser.user_id, 'aelteste');
+  const zeilen = await gutscheineBereich().gutscheine.gutscheineDesKontos(req.apiUser.user_id, 'aelteste');
   if (!zeilen.length) return sendeFehler(req, res, 404, 'keine_gutscheine');
   await pdfFreigabe(req, res, 'export', 'gutschein_export', `${zeilen.length}`);
 });
@@ -206,7 +206,7 @@ router.post('/vouchers/export/pdf-freigabe', requireToken, async (req: Anfrage<'
 router.get('/vouchers/export/pdf', requireToken, async (req: Anfrage<'GET /api/v1/vouchers/export/pdf'>, res: express.Response) => {
   const uid = req.apiUser.user_id;
   if (!loeseTicketEin(req.abfrage.ticket, uid, 'export')) return sendeFehler(req, res, 403, 'pdf_freigabe_noetig');
-  const zeilen = await gutscheineDesKontos(uid, 'aelteste');
+  const zeilen = await gutscheineBereich().gutscheine.gutscheineDesKontos(uid, 'aelteste');
   if (!zeilen.length) return sendeFehler(req, res, 404, 'keine_gutscheine');
 
   const gutscheine: ExportGutschein[] = [];
@@ -236,7 +236,7 @@ router.get('/vouchers/export/pdf', requireToken, async (req: Anfrage<'GET /api/v
 router.put('/vouchers/:id', requireToken, async (req: Anfrage<'PUT /api/v1/vouchers/:id'>, res: Antwort<'PUT /api/v1/vouchers/:id'>) => {
     const id = req.pfad.id;
     if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
-    const alt = await gutschein(req.apiUser.user_id, id);
+    const alt = await gutscheineBereich().gutscheine.gutschein(req.apiUser.user_id, id);
     if (!alt) return sendeFehler(req, res, 404, 'nicht_gefunden');
 
     // Was nicht mitkommt oder maskiert zurückkommt, bleibt stehen: Das Formular
@@ -252,7 +252,7 @@ router.put('/vouchers/:id', requireToken, async (req: Anfrage<'PUT /api/v1/vouch
 
     // UNIQUE greift beim Umschreiben auf eine fremde Nummer: Nutzereingabe, kein
     // Serverfehler.
-    const zeile = await gutscheinAendern(req.apiUser.user_id, id, w).catch(alsDoppelt('gutschein_existiert'));
+    const zeile = await gutscheineBereich().gutscheine.gutscheinAendern(req.apiUser.user_id, id, w).catch(alsDoppelt('gutschein_existiert'));
     if (!zeile) return sendeFehler(req, res, 404, 'nicht_gefunden');
     res.json({ success: true, voucher: fuerAussen(zeile) });
 });
@@ -262,7 +262,7 @@ router.delete('/vouchers/:id', requireToken, async (req: Anfrage<'DELETE /api/v1
   const id = req.pfad.id;
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
   if (!await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.eingabe.password)) return;
-  const pdfPfad = await gutscheinLoeschen(req.apiUser.user_id, id);
+  const pdfPfad = await gutscheineBereich().gutscheine.gutscheinLoeschen(req.apiUser.user_id, id);
   if (pdfPfad === undefined) return sendeFehler(req, res, 404, 'nicht_gefunden');
 
   // Erst die Zeile, dann die Datei: lieber eine verwaiste Datei als eine Zeile ins Leere.
@@ -277,9 +277,9 @@ router.post('/vouchers/:id/klartext', requireToken, async (req: Anfrage<'POST /a
   const id = req.pfad.id;
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
   if (!await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.eingabe.password)) return;
-  const z = await gutschein(req.apiUser.user_id, id);
+  const z = await gutscheineBereich().gutscheine.gutschein(req.apiUser.user_id, id);
   if (!z) return sendeFehler(req, res, 404, 'nicht_gefunden');
-  await protokolliere(req.apiUser.user_id, req.apiUser.user_id, 'gutschein_klartext', maskiert(z).number);
+  await kontoBereich().protokoll.protokolliere(req.apiUser.user_id, req.apiUser.user_id, 'gutschein_klartext', maskiert(z).number);
   res.json({ success: true, id: z.id, number: z.number, pin: z.pin });
 });
 
@@ -287,7 +287,7 @@ router.post('/vouchers/:id/pdf-freigabe', requireToken, async (req: Anfrage<'POS
   const id = req.pfad.id;
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
   if (!await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.eingabe.password)) return;
-  const z = await gutschein(req.apiUser.user_id, id);
+  const z = await gutscheineBereich().gutscheine.gutschein(req.apiUser.user_id, id);
   if (!z?.pdf_path) return sendeFehler(req, res, 404, 'nicht_gefunden');
   await pdfFreigabe(req, res, String(id), 'gutschein_pdf', maskiert(z).number);
 });
@@ -296,7 +296,7 @@ router.get('/vouchers/:id/pdf', requireToken, async (req: Anfrage<'GET /api/v1/v
   const id = req.pfad.id;
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
   if (!loeseTicketEin(req.abfrage.ticket, req.apiUser.user_id, String(id))) return sendeFehler(req, res, 403, 'pdf_freigabe_noetig');
-  const zeile = await gutschein(req.apiUser.user_id, id);
+  const zeile = await gutscheineBereich().gutscheine.gutschein(req.apiUser.user_id, id);
   if (!zeile?.pdf_path) return sendeFehler(req, res, 404, 'nicht_gefunden');
   const datei = gutscheinDatei(req.apiUser.user_id, zeile.pdf_path);
   const pdf = datei ? await liesGutscheinPdf(datei).catch(ohneFehlendeDatei('gutschein:pdf lesen', null)) : null;
@@ -318,7 +318,7 @@ router.get('/vouchers/:id/pdf', requireToken, async (req: Anfrage<'GET /api/v1/v
 router.post('/vouchers/:id/guthaben', requireToken, async (req: Anfrage<'POST /api/v1/vouchers/:id/guthaben'>, res: Antwort<'POST /api/v1/vouchers/:id/guthaben'>) => {
   const id = req.pfad.id;
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
-  const alt = await gutschein(req.apiUser.user_id, id);
+  const alt = await gutscheineBereich().gutscheine.gutschein(req.apiUser.user_id, id);
   if (!alt) return sendeFehler(req, res, 404, 'nicht_gefunden');
 
   // VOR der Schranke: Ein Aufruf, der nicht stattfinden kann, soll den einen
@@ -349,7 +349,7 @@ router.post('/vouchers/:id/guthaben', requireToken, async (req: Anfrage<'POST /a
   // Die Währung der Gegenseite gewinnt; eine unbrauchbare Angabe zerstörte sonst
   // `currency` und damit die Summe der Liste.
   const waehrung = /^[A-Z]{3}$/.test(g.waehrung) ? g.waehrung : alt.currency;
-  const zeile = await guthabenMerken(req.apiUser.user_id, id, g.betrag, waehrung);
+  const zeile = await gutscheineBereich().gutscheine.guthabenMerken(req.apiUser.user_id, id, g.betrag, waehrung);
   if (!zeile) return sendeFehler(req, res, 404, 'nicht_gefunden');
   res.json({
     success: true, voucher: fuerAussen(zeile),

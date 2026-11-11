@@ -29,8 +29,6 @@ import { einmalDekodiert, urlOderNull } from '../../infra/validate';
 /** 20 MB, weil grosse Set-Bilder sonst nie vollständig im Speicher landeten. */
 const PROXY_CACHE_MAX_BYTES = 20 * 1024 * 1024;
 
-/** URLs, die das CDN mit 404 beantwortet hat → cacheKey → Zeitpunkt. */
-const _imgNegCache = new Map();
 let _tmpSeq = 0;
 
 // Fehlschläge zählt src/katalog/bilder/imgProxyStats.ts, sonst nicht einzugrenzen.
@@ -105,11 +103,6 @@ async function vomCdn(
     // NUR 404 merken: 403 ist bei einer Kachelwand oft nur Drosselung.
     if (r.status === 404) {
       merkeFehlend(cacheKey);
-      _imgNegCache.set(cacheKey, Date.now());
-      if (_imgNegCache.size > 5000) {
-        const cutoff = Date.now() - 900_000;
-        for (const [k, t] of _imgNegCache) if (t < cutoff) _imgNegCache.delete(k);
-      }
     }
     if (r.status === 404) imgProxyFailures.notFound++;
     else imgProxyFailures.other++;

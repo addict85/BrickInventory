@@ -26,3 +26,6 @@ export {
   unlink,
   verwerfeGetrennt,
 } from './haushalt';
+export { erzeugeHaushalt } from './bereich';
+export type { HaushaltDienste, HaushaltKontext } from './bereich';
+export { haushaltBereich, verdrahteHaushalt } from './prozess';
