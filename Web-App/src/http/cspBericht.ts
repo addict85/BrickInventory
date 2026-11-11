@@ -114,8 +114,12 @@ router.post('/csp-bericht', express.raw({ type: () => true, limit: '8kb' }), (re
     const regel = direktive(v.regel);
     if (!regel) continue;
     const p = probe(regel, v.probe);
+    // Die Teile sind schon gefiltert; das Ersetzen ist die Form, die CodeQL als Schutz erkennt.
     console.warn(
-      `[csp] ${regel} blockierte ${berichtsAdresse(v.blockiert, true)} auf ${berichtsAdresse(v.seite)}${p ? ` (${p})` : ''}`,
+      `[csp] ${regel} blockierte ${berichtsAdresse(v.blockiert, true)} auf ${berichtsAdresse(v.seite)}${p ? ` (${p})` : ''}`.replace(
+        /\n|\r/g,
+        '',
+      ),
     );
   }
 });
