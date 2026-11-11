@@ -112,6 +112,8 @@ export interface Db extends DbSchnittstelle {
   datenbankAntwortet(): Promise<boolean>;
   alsSuperuserVerbunden(): Promise<boolean>;
   eigeneVerbindung(): Promise<Client>;
+  /** Siehe mitCommitBegleiter unten: gilt für die Transaktionen dieses Aufrufpfads. */
+  mitCommitBegleiter<T>(begleiter: (tx: DbSchnittstelle) => Promise<void>, arbeit: () => T): T;
   initSchema(): Promise<boolean>;
   initSchemaOnce(): Promise<void>;
 }
@@ -305,7 +307,7 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
   }
 
   return {
-    pool, all, get, run, exec, transaction, initSchema, initSchemaOnce, eigeneVerbindung,
+    pool, all, get, run, exec, transaction, initSchema, initSchemaOnce, eigeneVerbindung, mitCommitBegleiter,
     inTransaktion: () => txClient() !== null,
     getPoolStats: () => ({ total: pool.totalCount, idle: pool.idleCount, waiting: pool.waitingCount,
       active: pool.totalCount - pool.idleCount }),
