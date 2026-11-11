@@ -12,6 +12,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.Zugangsdaten
+import ch.brickinventoryapp.data.nurEntsperrt
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import dagger.hilt.android.AndroidEntryPoint
@@ -210,6 +211,7 @@ class CsvImportService : Service() {
                 if (max > 0) setProgress(max, progress, false)
                 else         setProgress(0, 0, true)
             }
+            .nurEntsperrt(this, CHANNEL_ID, loc.getString(R.string.notif_csv_title), R.drawable.ic_stat_brick)
             .build()
 
     private fun updateNotification(text: String, progress: Int, max: Int) {

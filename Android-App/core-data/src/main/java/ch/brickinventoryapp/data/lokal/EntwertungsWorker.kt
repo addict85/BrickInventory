@@ -23,6 +23,7 @@ import ch.brickinventoryapp.data.Entwertungsauftrag
 import ch.brickinventoryapp.data.EntwertungsPlaner
 import ch.brickinventoryapp.data.Entwertungsschritt
 import ch.brickinventoryapp.data.entwertungsSchritt
+import ch.brickinventoryapp.data.nurEntsperrt
 import ch.brickinventoryapp.data.di.Anwendungsbereiche
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.util.LanguageManager
@@ -95,15 +96,21 @@ class EntwertungsWorker @AssistedInject constructor(
             mgr.createNotificationChannel(NotificationChannel(KANAL,
                 texte.getString(R.string.abmeldung_kanal), NotificationManager.IMPORTANCE_DEFAULT))
             val adresse = NetworkPolicy.ansicht(server)?.adresse ?: server
+            NotificationManagerCompat.from(context).notify(KANAL, adresse.hashCode(), meldung(texte, adresse))
+        }
+
+        /** Die Adresse des Servers nur entsperrt; gesperrt steht allein der Titel da. */
+        fun meldung(texte: Context, adresse: String): android.app.Notification {
+            val titel = texte.getString(R.string.abmeldung_gescheitert_titel)
             val text = texte.getString(R.string.abmeldung_gescheitert_text, adresse)
-            val meldung = NotificationCompat.Builder(context, KANAL)
+            return NotificationCompat.Builder(texte, KANAL)
                 .setSmallIcon(android.R.drawable.ic_dialog_alert)
-                .setContentTitle(texte.getString(R.string.abmeldung_gescheitert_titel))
+                .setContentTitle(titel)
                 .setContentText(text)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                .nurEntsperrt(texte, KANAL, titel, android.R.drawable.ic_dialog_alert)
                 .setAutoCancel(true)
                 .build()
-            NotificationManagerCompat.from(context).notify(KANAL, adresse.hashCode(), meldung)
         }
     }
 }

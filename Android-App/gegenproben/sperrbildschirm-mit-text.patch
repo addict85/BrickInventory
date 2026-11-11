@@ -1,0 +1,16 @@
+Gegenprobe: Die Ersatzfassung für den Sperrbildschirm übernimmt den ganzen Text
+Modul: core-data
+Test: ch.brickinventoryapp.data.SperrbildschirmMeldungTest
+Rot: die Ersatzfassung traegt nur den Titel
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Sperrbildschirm.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Sperrbildschirm.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Sperrbildschirm.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Sperrbildschirm.kt
+@@ -10,6 +10,4 @@
+  */
+ fun NotificationCompat.Builder.nurEntsperrt(context: Context, kanal: String, titel: String, symbol: Int): NotificationCompat.Builder =
+     setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+-        .setPublicVersion(
+-            NotificationCompat.Builder(context, kanal).setSmallIcon(symbol).setContentTitle(titel).build(),
+-        )
++        .setPublicVersion(build())
