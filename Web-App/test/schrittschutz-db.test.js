@@ -14,6 +14,12 @@
  *   D  in nachricht() die Aktion weggelassen → rot: „eine Challenge taugt
  *      nur für ihre Aktion“
  *   E  in legeSchluesselAn() die Frist gestrichen → rot: „ein alter Zugang …“
+ *   F  in routes/api_v1/settings.ts POST /settings ohne freigegeben() → rot:
+ *      „jeder Verwalterweg …“ (POST /settings ohne Freigabe 200); dasselbe je
+ *      Weg für smtp-test, einrichtung und quelle-testen mit `requireToken`
+ *      statt `requireAdmin`, für Import und Anleitungen ohne freigegeben()
+ *   G  in /settings/raw `istVerwalter(req)` statt alsVerwalter() → rot:
+ *      „ohne Freigabe zeigt /settings/raw nur Kontowerte“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -244,5 +250,71 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
     await geraetFreigeben(ruf, voll, 'verwaltung', s);
     assert.equal((await ruf('/admin/cache-ttl', { token: voll })).status, 200);
     assert.equal((await ruf('/auth/users', { token: voll })).status, 200);
+  });
+
+  await t.test('jeder Verwalterweg in Einstellungen und Anleitungen verlangt die Freigabe „verwaltung“', async () => {
+    const voll = (await anmelden(CHEF, { scope: 'voll', code: codes.shift() })).body.token;
+    await db.run(`INSERT INTO global_settings (key, value) VALUES ('smtp_host', 'mail.schritt.example')
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);
+    await db.run(`DELETE FROM global_settings WHERE key IN ('einrichtung_erledigt', 'default_price_condition')`);
+    const einspielen = async () => {
+      const form = new FormData();
+      const datei = JSON.stringify({ version: '3.0', global: { default_price_condition: 'U' }, user_settings: {} });
+      form.append('file', new Blob([datei], { type: 'application/json' }), 'k.json');
+      const r = await fetch(`${basis}/api/v1/settings/import`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${voll}` },
+        body: form,
+      });
+      return { status: r.status, body: await r.json().catch(() => null) };
+    };
+    const wege = {
+      'POST /settings': () => ruf('/settings', { method: 'POST', token: voll, body: { default_price_condition: 'N' } }),
+      'POST /settings/import': einspielen,
+      'POST /settings/smtp-test': () => ruf('/settings/smtp-test', { method: 'POST', token: voll, body: {} }),
+      'GET /settings/einrichtung': () => ruf('/settings/einrichtung', { token: voll }),
+      'POST /settings/einrichtung/fertig': () =>
+        ruf('/settings/einrichtung/fertig', { method: 'POST', token: voll, body: {} }),
+      'POST /settings/quelle-testen': () =>
+        ruf('/settings/quelle-testen', { method: 'POST', token: voll, body: { quelle: 'keine' } }),
+      'POST /sets/:setNumber/instructions': () =>
+        ruf('/sets/10001-1/instructions', { method: 'POST', token: voll, body: {} }),
+    };
+    const s = geraeteSchluessel();
+    assert.equal(
+      (await ruf('/geraet/schluessel', { method: 'POST', token: voll, body: { oeffentlich: s.oeffentlich } })).status,
+      200,
+    );
+    for (const [weg, rufe] of Object.entries(wege)) {
+      const r = await rufe();
+      assert.deepEqual([r.status, r.body?.code], [403, 'schritt_freigabe_noetig'], `${weg} ohne Freigabe`);
+    }
+    assert.equal(
+      (await db.get(`SELECT value FROM global_settings WHERE key = 'default_price_condition'`))?.value,
+      undefined,
+      'ohne Freigabe ist nichts geschrieben',
+    );
+    const ohne = await ruf('/settings/raw', { token: voll });
+    assert.equal(ohne.status, 200);
+    assert.equal(ohne.body.settings.smtp_host, undefined, 'ohne Freigabe zeigt /settings/raw nur Kontowerte');
+    const eigene = await ruf('/settings', { method: 'POST', token: voll, body: { language: 'de' } });
+    assert.equal(eigene.status, 200, 'die eigenen Werte braucht keine Freigabe');
+
+    await geraetFreigeben(ruf, voll, 'verwaltung', s);
+    const erwartet = {
+      'POST /settings': [200, undefined],
+      'POST /settings/import': [200, undefined],
+      'POST /settings/smtp-test': [400, 'smtp_nicht_konfiguriert'],
+      'GET /settings/einrichtung': [200, undefined],
+      'POST /settings/einrichtung/fertig': [200, undefined],
+      'POST /settings/quelle-testen': [400, 'quelle_unbekannt'],
+      'POST /sets/:setNumber/instructions': [202, undefined],
+    };
+    for (const [weg, rufe] of Object.entries(wege)) {
+      const r = await rufe();
+      assert.deepEqual([r.status, r.body?.code], erwartet[weg], `${weg} mit Freigabe: ${JSON.stringify(r.body)}`);
+    }
+    assert.equal((await db.get(`SELECT value FROM global_settings WHERE key = 'einrichtung_erledigt'`))?.value, '1');
+    assert.equal((await ruf('/settings/raw', { token: voll })).body.settings.smtp_host, 'mail.schritt.example');
   });
 });

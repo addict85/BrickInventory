@@ -33,6 +33,8 @@ router.get('/health/ready', async (req, res) => {
   });
 });
 // Klemmt die Datenbank, bleibt der Bericht erreichbar — nur ohne Details.
+// Bewusst ohne Schrittschutz: Die Details tragen nichts Geheimes, und eine
+// Überwachung fragt mit einem Token ohne Geräteschlüssel.
 router.get('/health', async (req, res) => {
   const verwalter = !!(await resolveUserId(req).catch(logAndContinue('health:anmeldung'))) && istVerwalter(req);
   res.json(await gesundheitsBericht(verwalter));
