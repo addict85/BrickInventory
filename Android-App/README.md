@@ -346,7 +346,7 @@ des Moduls, wo `ModulgrenzenTest` sie liest. Ein SDK-Sprung ist eine Zeile in
 | `feature-finanzen` | `ch.brickinventoryapp.finanzen` | Finanzen, Gutscheine, PDF-Betrachter |
 | `feature-konto` | `ch.brickinventoryapp.konto` | Einstellungen |
 | `feature-verwaltung` | `ch.brickinventoryapp.verwaltung` | Monitoring für Verwalter |
-| `app` | `ch.brickinventoryapp.app` | Navigation, Hilt-Einstieg, Activity, Widget |
+| `app` | `ch.brickinventoryapp.app` | Setzt die Navigation zusammen (jeder Bereich hält seine Routen, fremde Ziele öffnet er über Rückrufe, die nur `ZielUmgebung` erfüllt), Hilt-Einstieg, Activity, CSV-Import-Balken, Widget |
 
 Jedes Modul hat seinen eigenen Paketstamm: Paket = Stamm + bisheriger
 Unterpfad (`ui.screens` in `feature-sammlung` heisst

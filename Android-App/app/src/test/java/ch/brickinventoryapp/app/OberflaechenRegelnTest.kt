@@ -45,7 +45,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.testing.KatalogRepository
-import ch.brickinventoryapp.zustand.ui.CsvImportUiState
+import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.sammlung.ui.KachelPreis
 import ch.brickinventoryapp.ui.components.FehlerHinweis

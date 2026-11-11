@@ -9,7 +9,7 @@ diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainActivity
 @@ -69,6 +69,7 @@
  import ch.brickinventoryapp.konto.ui.viewmodel.KontoViewModel
  import ch.brickinventoryapp.zustand.ui.viewmodel.VertrauenViewModel
- import ch.brickinventoryapp.zustand.ui.viewmodel.CsvImportViewModel
+ import ch.brickinventoryapp.app.csv.CsvImportViewModel
 +import ch.brickinventoryapp.sammlung.ui.viewmodel.ErfassungViewModel
  import ch.brickinventoryapp.konto.ui.viewmodel.UpdateViewModel
  import ch.brickinventoryapp.app.nav.AktivitaetsZustand

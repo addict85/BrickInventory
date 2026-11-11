@@ -4,7 +4,6 @@ import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.teile.ui.TeileListeUndDetailRoute
 import ch.brickinventoryapp.app.nav.Reiter
-
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ViewInAr
@@ -31,7 +30,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.testing.KatalogRepository
-import ch.brickinventoryapp.zustand.ui.CsvImportUiState
+import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.After

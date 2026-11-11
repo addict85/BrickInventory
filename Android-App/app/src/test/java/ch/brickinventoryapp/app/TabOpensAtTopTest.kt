@@ -20,7 +20,7 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.testing.Quellen
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.zustand.ui.CsvImportUiState
+import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.finanzen.ui.FinanzZiel
 import ch.brickinventoryapp.sammlung.ui.SammlungZiel
 import ch.brickinventoryapp.teile.ui.TeileZiel

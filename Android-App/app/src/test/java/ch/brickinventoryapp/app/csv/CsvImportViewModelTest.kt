@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.zustand
+package ch.brickinventoryapp.app.csv
 
 import ch.brickinventoryapp.model.fach.Laufstatus
 import ch.brickinventoryapp.data.CsvImportBeobachter
@@ -11,7 +11,6 @@ import ch.brickinventoryapp.model.data.model.GenericAdminResponse
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.dienste.service.CsvImportDienst
 import ch.brickinventoryapp.zustand.ui.Aenderung
-import ch.brickinventoryapp.zustand.ui.viewmodel.CsvImportViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation

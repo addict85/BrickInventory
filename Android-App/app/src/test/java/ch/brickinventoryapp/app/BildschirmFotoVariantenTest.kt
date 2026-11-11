@@ -6,7 +6,6 @@ import ch.brickinventoryapp.teile.ui.TeileListeUndDetailRoute
 import ch.brickinventoryapp.app.nav.Reiter
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
-
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -54,7 +53,7 @@ import ch.brickinventoryapp.testing.KatalogRepository
 import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.testing.VerwaltungRepository
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
-import ch.brickinventoryapp.zustand.ui.CsvImportUiState
+import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.finanzen.ui.screens.FinanceRoute
 import ch.brickinventoryapp.sammlung.ui.screens.GalleryRoute
 import ch.brickinventoryapp.anmeldung.ui.screens.LoginScreen

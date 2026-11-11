@@ -19,8 +19,6 @@ dependencies {
     implementation(project(":core-sicherheit"))
     // NetworkPolicy und die Regel, wer einen 401 meldet.
     implementation(project(":core-netz"))
-    // CsvImportDienst: Der CSV-Import startet und beendet seinen Vordergrund-Dienst.
-    implementation(project(":core-dienste"))
     implementation(project(":core-ressourcen"))
     implementation(libs.androidx.core.ktx)
     api(libs.androidx.lifecycle.runtime.ktx)

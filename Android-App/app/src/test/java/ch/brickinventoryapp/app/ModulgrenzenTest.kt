@@ -170,7 +170,7 @@ class ModulgrenzenTest {
             // auf dem sich Bereiche doch kennen.
             "core-ui-bestand" to setOf("core-model", "core-ressourcen", "core-ui"),
             // Der Zustand liegt unter der Oberfläche: Bildschirme lesen ihn, er kennt kein Compose-Bauteil.
-            "core-zustand" to setOf("core-model", "core-ressourcen", "core-netz", "core-data", "core-sicherheit", "core-dienste"),
+            "core-zustand" to setOf("core-model", "core-ressourcen", "core-netz", "core-data", "core-sicherheit"),
             "core-testing" to setOf("core-zustand", "core-data", "core-sicherheit", "core-offline"),
         )
         val kerne = module().filterKeys { it.startsWith("core-") }

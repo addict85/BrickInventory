@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.zustand.ui
+package ch.brickinventoryapp.app.csv
 
 import ch.brickinventoryapp.model.fach.Laufstatus
 /**
