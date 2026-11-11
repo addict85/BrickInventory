@@ -6,15 +6,21 @@ import crypto from 'node:crypto';
 import * as repo from './repository/qrKopplung';
 import { createToken, hashToken, ipBereich } from './auth';
 import { APP_HOECHSTDAUER_TAGE, tokenLabel } from './tokenWunsch';
+import { fachfehler } from '../infra/fehlerTexte';
 
 export type { QrStand } from './repository/qrKopplung';
 export const QR_TTL_MS = 5 * 60 * 1000;
 export const QR_FEHLVERSUCHE = 3;
 
+/** Über alle Konten: Jede offene Kopplung ist ein Ziel für das öffentliche /qr-login. */
+export const OFFENE_KOPPLUNGEN_HOECHSTENS = 500;
+
 export async function erzeuge(uid: number, tage: number | null): Promise<{ token: string; kopplung: number }> {
   await repo.raeumeQrKopplungenAuf();
   const nonce = crypto.randomBytes(32).toString('base64url');
-  const kopplung = await repo.legeQrKopplungAn(hashToken(nonce), uid, new Date(Date.now() + QR_TTL_MS), tage);
+  const bis = new Date(Date.now() + QR_TTL_MS);
+  const kopplung = await repo.legeQrKopplungAn(hashToken(nonce), uid, bis, tage, OFFENE_KOPPLUNGEN_HOECHSTENS);
+  if (kopplung === null) fachfehler('nicht_verfuegbar', 'server_ausgelastet');
   return { token: `bim:${nonce}`, kopplung };
 }
 
