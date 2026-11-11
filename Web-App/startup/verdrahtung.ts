@@ -16,6 +16,11 @@ import { stelleAuftragEin } from '../src/auftraege/dienst';
 import { mitVersion } from '../src/infra/setNummer';
 import { legeStartVerwalterAn } from '../src/konto/startVerwalter';
 import { meldeFehler } from '../src/infra/fehler';
+import { verdrahteKlienten, type KlientenZugang } from '../clients/zugang';
+import { bricksetVormerken, bricksetAusWiedervorlage, BRICKSET_HOECHSTENS } from '../src/auftraege/bricksetAuftrag';
+import { getGlobalSetting } from '../src/einstellungen/settings';
+import { checkAndIncrementRateLimit, getRateLimitStatus } from '../src/katalog/apiKontingent';
+import { rebrickableLimiter, rebrickableBackgroundLimiter, rebrickableDailyStatus } from '../src/katalog/rateLimiter';
 
 export interface Verdrahtung {
   nacharbeit: Nacharbeit;
@@ -43,9 +48,26 @@ export function baueVerdrahtung(): Verdrahtung {
   };
 }
 
+/** Was die Klienten (clients/) von der Anwendung brauchen: Schlüssel, Kontingent,
+ * Drossel und die Brickset-Wiedervorlage. */
+export function baueKlientenZugang(): KlientenZugang {
+  return {
+    schluessel: async name => (await getGlobalSetting(name)) || '',
+    zaehle: api => checkAndIncrementRateLimit(api),
+    kontingentStand: api => (api === 'rebrickable' ? rebrickableDailyStatus() : getRateLimitStatus(api)),
+    drossel: { vordergrund: rebrickableLimiter, hintergrund: rebrickableBackgroundLimiter },
+    bricksetVormerken: async (sn, fehler, bald) => ({
+      ...(await bricksetVormerken(sn, fehler, bald)),
+      hoechstens: BRICKSET_HOECHSTENS,
+    }),
+    bricksetVergessen: bricksetAusWiedervorlage,
+  };
+}
+
 /** Der Zugang zur Datenbank kommt vom Einstieg; ohne Angabe der des Prozesses. */
 export function verdrahte(v: Verdrahtung = baueVerdrahtung(), db: Db = standardDb()): void {
   verdrahteNacharbeit(v.nacharbeit);
+  verdrahteKlienten(baueKlientenZugang());
   verdrahteKatalog(() => erzeugeKatalog({ db }));
   verdrahteSets(() => erzeugeSets({ db, nacharbeit: v.nacharbeit }));
 }

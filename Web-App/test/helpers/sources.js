@@ -114,6 +114,12 @@ function buildAndRequire() {
       dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung(), { erststart: () => echt().erststart() }));
     _zugangGesetzt = true;
   }
+  // Wie verdrahte(): Ohne Zugang wirft jeder Abruf eines Klienten. Die Bauteile erst beim ersten Gebrauch.
+  let klienten = null;
+  const klientenEcht = () =>
+    (klienten ??= require(path.join(ROOT, 'dist', 'startup/verdrahtung.js')).baueKlientenZugang());
+  require(path.join(ROOT, 'dist', 'clients/zugang.js')).verdrahteKlienten(
+    new Proxy({}, { get: (_z, k) => klientenEcht()[k] }));
   // prozess.js lädt nichts; bereich.js erst beim ersten Gebrauch der Dienste.
   require(path.join(ROOT, 'dist', 'src/katalog/prozess.js')).verdrahteKatalog(() =>
     require(path.join(ROOT, 'dist', 'src/katalog/bereich.js')).erzeugeKatalog({ db: dbModul.standardDb() }));

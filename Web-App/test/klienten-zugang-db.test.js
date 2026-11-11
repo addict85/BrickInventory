@@ -1,13 +1,13 @@
 /**
  * Klienten kennen keinen Fachbereich: Schlüssel, Kontingent und Drossel kommen
- * über clients/zugang.ts, eingesetzt von src/katalog/quellen.ts.
+ * über clients/zugang.ts, eingesetzt von startup/verdrahtung.ts.
  *
- * Gegenproben (05.11.2026 gemessen):
- *   A  in clients/zugang.ts liefert OHNE.schluessel 'x' statt '' → rot:
- *      „ohne Verdrahtung geht nichts hinaus“ (ein Abruf mit `key x`)
- *   B  in src/katalog/quellen.ts `schluessel: async () => ''` → rot: „über
- *      quellen.ts tragen Abrufe den eingetragenen Schlüssel und zählen“
- *   C  in src/katalog/quellen.ts `zaehle: async () => ({ allowed: true, count: 0,
+ * Gegenproben (am 11.11.2026 gemessen):
+ *   A  in clients/zugang.ts liefert zugang() ohne Verdrahtung wieder einen
+ *      Zugang mit leerem Schlüssel → rot: „ohne Verdrahtung wirft jeder Abruf …“
+ *   B  in baueKlientenZugang() `schluessel: async () => ''` → rot: „über
+ *      die Verdrahtung tragen Abrufe den eingetragenen Schlüssel und zählen“
+ *   C  in baueKlientenZugang() `zaehle: async () => ({ allowed: true, count: 0,
  *      limit: 0 })` → rot: derselbe Test (der Zähler bleibt stehen)
  *
  * Rebrickable selbst wird nicht gefragt: https.get ist eine Attrappe.
@@ -20,6 +20,8 @@ const { EventEmitter } = require('node:events');
 const { Readable } = require('node:stream');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+const path = require('node:path');
+const { DIST } = require('./helpers/sources');
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 
@@ -34,13 +36,24 @@ https.get = (url, opts, cb) => {
   return req;
 };
 
-test('ohne Verdrahtung geht nichts hinaus', async () => {
-  const rb = _req('clients/rebrickable.js');
-  assert.equal(await rb.rebrickableJson('/lego/sets/10001-1/'), null);
-  assert.deepEqual(abrufe, []);
+test('ohne Verdrahtung wirft jeder Abruf, statt ohne Schlüssel zu laufen', async () => {
+  // Frische Module: buildAndRequire() hat die geladenen schon verdrahtet.
+  const pfade = ['clients/zugang.js', 'clients/rebrickable.js'].map(p => path.join(DIST, p));
+  const alt = pfade.map(p => require.cache[p]);
+  for (const p of pfade) delete require.cache[p];
+  try {
+    const rb = require(pfade[1]);
+    await assert.rejects(rb.rebrickableJson('/lego/sets/10001-1/'), /nicht verdrahtet/);
+    assert.deepEqual(abrufe, []);
+  } finally {
+    pfade.forEach((p, i) => {
+      if (alt[i]) require.cache[p] = alt[i];
+      else delete require.cache[p];
+    });
+  }
 });
 
-test('über quellen.ts tragen Abrufe den eingetragenen Schlüssel und zählen', { concurrency: 1 }, async (t) => {
+test('über die Verdrahtung tragen Abrufe den eingetragenen Schlüssel und zählen', { concurrency: 1 }, async (t) => {
   const db = _req('db/database.js');
   if (!await dbOderSkip(t, _req)) return;
   const { setGlobalSetting, deleteGlobalSetting } = _req('src/einstellungen/settings.js');

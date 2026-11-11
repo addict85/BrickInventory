@@ -1,19 +1,5 @@
-/** Der eine Weg zu den Fremdquellen: Hier bekommen die Klienten Schlüssel, Kontingent,
- * Drossel und Wiedervorlage, damit clients/ keinen Bereich kennen muss. */
-import { verdrahteKlienten } from '../../clients/zugang';
-import { bricksetVormerken, bricksetAusWiedervorlage, BRICKSET_HOECHSTENS } from '../auftraege/bricksetAuftrag';
-import { getGlobalSetting } from '../einstellungen/settings';
-import { checkAndIncrementRateLimit, getRateLimitStatus } from './apiKontingent';
-import { rebrickableLimiter, rebrickableBackgroundLimiter, rebrickableDailyStatus } from './rateLimiter';
-
-verdrahteKlienten({
-  schluessel: async (name) => (await getGlobalSetting(name)) || '',
-  zaehle: (api) => checkAndIncrementRateLimit(api),
-  kontingentStand: (api) => api === 'rebrickable' ? rebrickableDailyStatus() : getRateLimitStatus(api),
-  drossel: { vordergrund: rebrickableLimiter, hintergrund: rebrickableBackgroundLimiter },
-  bricksetVormerken: async (sn, fehler, bald) => ({ ...await bricksetVormerken(sn, fehler, bald), hoechstens: BRICKSET_HOECHSTENS }),
-  bricksetVergessen: bricksetAusWiedervorlage,
-});
+/** Der eine Weg zu den Fremdquellen, damit Bereiche clients/ nicht direkt kennen.
+ * Schlüssel, Kontingent und Drossel setzt startup/verdrahtung.ts ein. */
 
 export { alsAbrufFehler } from '../../clients/abrufFehler';
 export { bricklinkRequest, pruefeBricklinkZugang, BricklinkNichtErreichbar } from '../../clients/bricklink';
