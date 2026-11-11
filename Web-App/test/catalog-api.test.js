@@ -23,6 +23,7 @@ process.env.DATABASE_URL = DB_URL;
 // .ts -> .js bauen (esbuild, in-place) — idempotent und schnell
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 
 // requireToken stubben, BEVOR der Router geladen wird
 // Der Pfad muss auf das GEBAUTE Modul in dist/ zeigen — dort lädt der Router
@@ -95,23 +96,7 @@ async function seed() {
 test('Katalog-API (Postgres-Integration)', async (t) => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    // REQUIRE_DB=1 (CI): Ein Überspringen ist hier KEIN akzeptabler Ausgang.
-    // Vorher war die Suite in jeder Umgebung ohne Datenbank grün — also
-    // ausgerechnet dort, wo niemand hinschaut. Wer die Datenbank erwartet,
-    // bekommt jetzt einen Fehlschlag statt eines stillen Skips.
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error(`REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar: ${DB_URL}`);
-    }
-    // REQUIRE_DB=1 (in CI gesetzt) verbietet das Überspringen.
-    //
-    // Ohne diese Sperre war die Suite in jeder Umgebung ohne Postgres GRÜN —
-    // inklusive CI, falls der Service-Container mal nicht hochkommt. Genau
-    // die Tests, die am meisten absichern, hätten dann stillschweigend nichts
-    // geprüft. Lieber ein lauter Fehlschlag.
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error(`REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.`);
-    }
-    t.skip(`Test-DB nicht erreichbar (${DB_URL}) — Suite übersprungen`);
+    keineDb(t, DB_URL);
     return;
   }
   await seed();

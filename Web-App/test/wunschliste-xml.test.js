@@ -4,7 +4,7 @@
  * Die Maskierung der BrickLink-Wunschliste selbst läuft am Modul in
  * bricklink-wanted-xml.test.js.
  *
- * Gegenprobe (10.11.2026 gemessen, Bündel neu gebaut): in 01-monitor.js
+ * Gegenprobe (10.11.2026 gemessen, Bündel neu gebaut): in monitor.js
  * schedInput `value="${sc.time}"` per ungeprueft() eingesetzt → rot (ein
  * fremdes <img> steht in der Tabelle, der Wert ist abgeschnitten).
  */

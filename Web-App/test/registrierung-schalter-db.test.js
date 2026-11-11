@@ -118,7 +118,7 @@ test('Registrierung und Ja/Nein-Einstellungen', { concurrency: 1 }, async (t) =>
   });
 
   await t.test('der Verwalter schaltet eine offene Registrierung frei', async () => {
-    const { assertLoginAllowed } = _req('src/konto/auth.js');
+    const { assertLoginAllowed } = _req('src/konto/anmeldepruefung.js');
     const neu = (await db.get('SELECT id FROM users WHERE username = $1', [NEU])).id;
     const zeile = () => db.get('SELECT * FROM users WHERE id = $1', [neu]);
     const inListe = async () => (await rufe('GET', '/auth/users')).body.users.find(u => u.id === neu);

@@ -9,7 +9,7 @@
  *   a) qty_desc in die Auswahl der Webapp aufgenommen → Schritt 3 rot.
  *   b) price_asc aus Merksortierung (App) entfernt     → Schritt 3 rot.
  *   c) accounts aus der App-Abfrage entfernt          → Schritt 2 rot.
- *   d) (10.11.2026) addScopeParam aus 16-merkliste.js entfernt → Schritt 1 rot.
+ *   d) (10.11.2026) addScopeParam aus merkliste.js entfernt → Schritt 1 rot.
  *   e) Das Suchfeld aus MerklisteScreen entfernt      → Schritt 2 rot.
  *   f) (10.11.2026) in merklisteParams die Sortierung nicht gesetzt → Schritt 1 rot.
  */

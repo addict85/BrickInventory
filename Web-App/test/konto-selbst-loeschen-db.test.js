@@ -28,6 +28,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
@@ -36,8 +37,7 @@ const PASS = 'Loeschen-Passwort-1';
 test('Konto selbst löschen und offene Registrierungen', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber keine Test-DB: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   { const c = await db.pool.connect(); try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); } }
   const P = process.pid, NAMEN = ['weg', 'zf', 'chef', 'offen_alt', 'offen_neu', 'adresse', 'bestaetigt'].map(n => `ksl_${n}_${P}`);
@@ -85,7 +85,8 @@ test('Konto selbst löschen und offene Registrierungen', { concurrency: 1 }, asy
   });
 
   const K = { ..._req('src/konto/konten.js'), ..._req('src/konto/prozess.js').kontoBereich().konten };
-  const { verifiziereEmailToken, hashToken } = _req('src/konto/auth.js');
+  const { verifiziereEmailToken } = _req('src/konto/anmeldepruefung.js');
+const { hashToken } = _req('src/konto/geraeteToken.js');
   const registriert = async (name, tageAlt) => {
     const roh = crypto.randomBytes(16).toString('hex');
     const id = await K.registriere({ username: name, email: `${name}@example.org`, passwort: PASS,

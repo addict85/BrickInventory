@@ -22,15 +22,14 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 const { haeltSet, haeltTeil } = require('./helpers/bestand');
 
 test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, async (t) => {
   try { await db.initSchemaOnce(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   const PS = _req('src/teile/partsSummary.js');
   const p = process.pid;

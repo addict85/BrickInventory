@@ -7,6 +7,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
@@ -55,16 +56,13 @@ async function dbReachable() {
 test('Lagerort gegen echte Datenbank', async (t) => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error('REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.');
-    }
-    t.skip('Test-DB nicht erreichbar — Suite übersprungen');
+    keineDb(t);
     return;
   }
   await seed();
   const L = { ..._req('src/bestand/lagerort.js'), ..._req('src/bestand/prozess.js').bestandBereich().lagerortDienst };
   const household = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt };
-  const schreibbar = await household.writableIds(U.ich);
+  const schreibbar = await household.schreibbereich(U.ich);
 
   await t.test('ein Teil liegt an EINEM Ort, nicht je Set an einem', async () => {
     // Dasselbe Teil steckt in zwei Sets und damit in zwei Zeilen. Träfe das
@@ -132,7 +130,7 @@ test('Lagerort gegen echte Datenbank', async (t) => {
     await L.setzeLagerort('set', schreibbar, ['10179-1'], 'Kiste 3');
     await L.setzeLagerort('set', schreibbar, ['75192-1'], 'Regal B');
 
-    const orte = await L.lagerorte(await household.scopeIds(U.ich, 'all'));
+    const orte = await L.lagerorte(await household.blickfeldIds(U.ich, 'all'));
     const karte = Object.fromEntries(orte.map(o => [o.ort, o]));
     // „Kiste 3" hat ein Set UND zwei Teilezeilen — ein Ort, nicht zwei
     // Einträge. Zwei getrennte Listen zu liefern hiesse, dass jede Oberfläche
@@ -147,9 +145,9 @@ test('Lagerort gegen echte Datenbank', async (t) => {
   });
 
   await t.test('die Übersicht folgt dem Blickfeld', async () => {
-    await L.setzeLagerort('set', await household.writableIds(U.kind), ['21318-1'], 'Kinderzimmer');
-    const oben  = (await L.lagerorte(await household.scopeIds(U.ich,  'all'))).map(o => o.ort);
-    const unten = (await L.lagerorte(await household.scopeIds(U.kind, 'all'))).map(o => o.ort);
+    await L.setzeLagerort('set', await household.schreibbereich(U.kind), ['21318-1'], 'Kinderzimmer');
+    const oben  = (await L.lagerorte(await household.blickfeldIds(U.ich,  'all'))).map(o => o.ort);
+    const unten = (await L.lagerorte(await household.blickfeldIds(U.kind, 'all'))).map(o => o.ort);
     assert.ok(oben.includes('Kinderzimmer'), 'Das Hauptkonto sieht den Ort des Kindes nicht');
     assert.ok(!unten.includes('Kiste 3'),
       'Das Unterkonto sieht einen Ort des Hauptkontos — das Blickfeld geht nur nach unten');

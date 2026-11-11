@@ -36,6 +36,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const db = _req('db/database.js');
 const { proxyVertrauen } = _req('src/infra/proxyVertrauen.js');
@@ -61,9 +62,7 @@ test.after(async () => {
 async function vorbereiten(t) {
   try { await db.initSchema(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return false;
+    keineDb(t, e); return false;
   }
   const c = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }

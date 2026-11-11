@@ -8,6 +8,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const { haeltFigur, haeltTeil, teilmengeVon } = require('./helpers/bestand');
@@ -24,8 +25,7 @@ after(() => db.pool.end());
 
 test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async (t) => {
   if (!await erreichbar()) {
-    if (process.env.REQUIRE_DB === '1') assert.fail('Test-DB nicht erreichbar, REQUIRE_DB=1');
-    t.skip('keine Test-DB'); return;
+    keineDb(t); return;
   }
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
@@ -133,8 +133,7 @@ test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async (t) =>
  */
 test('beide Bewertungen fuehren den Besitzer mit', async (t) => {
   if (!await erreichbar()) {
-    if (process.env.REQUIRE_DB === '1') assert.fail('Test-DB nicht erreichbar, REQUIRE_DB=1');
-    t.skip('keine Test-DB'); return;
+    keineDb(t); return;
   }
   // KEIN zweites DROP SCHEMA: Der erste Test in dieser Datei hat das Schema
   // schon frisch aufgebaut, und jedes weitere Fallenlassen ist eine Sperre

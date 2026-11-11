@@ -5,9 +5,9 @@
  * vorgegebenen Serverantworten (test/helpers/oberflaeche.js).
  *
  * Gegenproben (am 28.10. gemessen):
- *   A  in 03-parts.js den alten Leerzustand der Set-Teile wieder unbedingt
+ *   A  in parts.js den alten Leerzustand der Set-Teile wieder unbedingt
  *      gezeichnet → rot: „Teile: manuelle da, aus Sets leer" und „beide leer"
- *   B  in figurenLeerAbgleichen() (06-minifigs.js) die Ausnahme für vorhandene
+ *   B  in figurenLeerAbgleichen() (minifigs.js) die Ausnahme für vorhandene
  *      manuelle Figuren entfernt → rot: „Figuren: manuelle da, aus Sets leer"
  *   C  teilPasstZumFilter() immer wahr → rot: „Farbfilter … wirkt auf beide Listen"
  */

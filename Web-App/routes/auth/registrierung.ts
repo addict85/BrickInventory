@@ -1,22 +1,16 @@
 /** Ohne Anmeldung: Registrierung, E-Mail-Bestätigung und Passwort vergessen.
  * Jede Antwort verrät gleich wenig darüber, ob es ein Konto gibt. */
-import * as K from '../../src/konto/konten';
 import { logAndContinue, meldeUndLiefere } from '../../src/infra/fehler';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
-import { hashToken, USERNAME_RE, emailGueltig, nameGueltig, verifiziereEmailToken } from '../../src/konto/auth';
-import { zielGedrosselt } from '../../src/konto/zielDrossel';
 import { ipThrottle } from '../../src/konto/http/anmeldung';
-import { hinweisNebenher } from '../../src/konto/kontoHinweis';
 import crypto from 'crypto';
 import { passwortMangel } from '../../src/infra/passwortRegel';
-import { sendPasswordResetMail, sendVerificationMail, sendRegistrierungsVersuchMail, sendBenutzernameVergebenMail, mailBereit } from '../../src/mail/mailer';
-import { registrierungOffen, getSetting } from '../../src/einstellungen/settings';
-import { setUserSetting } from '../../src/konto/nutzerEinstellung';
 import { fehlerText, antwortSprache, alsDoppelt } from '../../src/infra/fehlerTexte';
 import { basisUrl, hinweisOhneBasisUrl, mailBasisUrl } from '../../src/infra/basisUrl';
-import * as P from '../../src/konto/passkeys';
 import { vertragsRouter, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
-import { kontoBereich } from '../../src/konto';
+import { hashToken, USERNAME_RE, emailGueltig, nameGueltig, verifiziereEmailToken, zielGedrosselt, hinweisNebenher, setUserSetting, kontoBereich, vertrauenspartei, rechneWieRegistrierung, registriere, setzePasswortZurueck } from '../../src/konto';
+import { sendPasswordResetMail, sendVerificationMail, sendRegistrierungsVersuchMail, sendBenutzernameVergebenMail, mailBereit } from '../../src/mail';
+import { registrierungOffen, getSetting } from '../../src/einstellungen';
 
 const router = vertragsRouter();
 
@@ -29,7 +23,7 @@ async function mailSprache(uid: number): Promise<string> {
 // Die Anmeldemaske zeigt nur Wege, die dieser Server auch kann; ohne Mail endete die Registrierung in einem Konto, das niemand bestätigen kann.
 router.get('/registration-status', async (_req, res: Antwort<'GET /api/v1/auth/registration-status'>) => {
   const mail = await mailBereit();
-  res.json({ enabled: mail && await registrierungOffen(), passkey: !!P.vertrauenspartei(),
+  res.json({ enabled: mail && await registrierungOffen(), passkey: !!vertrauenspartei(),
              passwort_vergessen: mail, mail_versand: mail });
 });
 
@@ -59,19 +53,19 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req: 
   const basis = mailBasisUrl();
   let result: { success: boolean; mode: string };
   if (inhaber) {
-    await K.rechneWieRegistrierung(password);
+    await rechneWieRegistrierung(password);
     const sprache = await mailSprache(inhaber.id);
     result = basis ? await sendRegistrierungsVersuchMail(inhaber.email, sprache)
       : { success: false, mode: 'ohne_basis' };
   } else if (nameVergeben) {
-    await K.rechneWieRegistrierung(password);
+    await rechneWieRegistrierung(password);
     result = basis ? await sendBenutzernameVergebenMail(email, lang, basis) : { success: false, mode: 'ohne_basis' };
   } else {
     const token  = crypto.randomBytes(32).toString('hex');
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
     // Nur als SHA-256: Bei einem Datenbank-Leak wäre ein ausstehender
     // Bestätigungslink sonst einlösbar.
-    const neuId = await K.registriere({ username, email, first_name, last_name, passwort: password,
+    const neuId = await registriere({ username, email, first_name, last_name, passwort: password,
       tokenHash: hashToken(token), bis: expires }).catch(alsDoppelt('benutzername_oder_email_vergeben'));
     // Ohne Protokoll bliebe unklar, warum ein frisches Konto in der falschen
     // Sprache startet.
@@ -163,7 +157,7 @@ router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000),
   const nameMangel = passwortMangel(password, user.username);
   if (nameMangel) return sendeFehler(req, res, 400, nameMangel);
   // Nur die Anfrage, die den Link verbraucht, setzt ihr Passwort.
-  const uid = await K.setzePasswortZurueck(hashToken(token), password);
+  const uid = await setzePasswortZurueck(hashToken(token), password);
   if (!uid) return sendeFehler(req, res, 400, 'token_ungueltig');
   hinweisNebenher(uid, 'passwort_zurueckgesetzt');
   res.json({ success: true, message: 'Passwort erfolgreich geändert.' });

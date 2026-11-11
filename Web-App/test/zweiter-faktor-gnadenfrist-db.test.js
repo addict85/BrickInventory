@@ -28,19 +28,14 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Gnaden-Passwort-1';
 
 test('Gnadenfrist beim Einrichten des zweiten Faktors', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber keine Test-DB: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   const NAME = `gnade_${process.pid}`, NUTZER = `gnade_n_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, NUTZER]]);
   const konto = async (n, verwalter) => (await db.get(`INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)

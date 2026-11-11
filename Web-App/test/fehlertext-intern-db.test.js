@@ -23,6 +23,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { importWorker } = require('./helpers/auftraege');
 const { testServer } = require('./helpers/server');
 
@@ -52,14 +53,7 @@ setsProzess.verdrahteSets(() => ({
 const db = _req('db/database.js');
 
 test('kein interner Fehlertext an den Client', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   const NAME = `fehlertext_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active) VALUES ($1, 'x', true) RETURNING id`, [NAME])).id;

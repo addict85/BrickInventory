@@ -110,7 +110,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store',
     });
 
     await t.test('Bearer-Token des Kontos verfallen mit', async () => {
-      const { hashToken, validateToken } = _req('src/konto/auth.js');
+      const { hashToken, validateToken } = _req('src/konto/geraeteToken.js');
       const crypto = require('node:crypto');
       const tok = crypto.randomBytes(16).toString('hex');
       await db.run(
@@ -129,6 +129,46 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store',
       assert.equal(r.status, 200, await r.text());
       assert.equal(await validateToken(tok), null,
         'Ein Token auf einem fremden Gerät darf den Passwortwechsel nicht überleben');
+    });
+
+    // Gegenprobe (11.11.2026 gemessen): in setzePasswortZurueck (src/konto/konten.ts)
+    // `await zugaengeBeenden(uid)` gestrichen → rot hier (Sitzung und Token bleiben).
+    await t.test('das Zurücksetzen per Link beendet Sitzungen und Token', async () => {
+      const { hashToken, createToken, validateToken } = _req('src/konto/geraeteToken.js');
+      const fenster = await anmelden('pw_opfer', 'wiederNeu123');
+      const tok = await createToken(opferId, 'Fremdgerät', true);
+      const roh = 'd'.repeat(64);
+      await db.run(`UPDATE users SET reset_token = $2, reset_token_expires = NOW() + interval '1 hour' WHERE id = $1`,
+        [opferId, hashToken(roh)]);
+      await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'reset-password|%'");
+      const r = await fetch(`${basis}${AUTH}/reset-password`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ token: roh, password: 'perLinkGesetzt12' }),
+      });
+      assert.equal(r.status, 200, await r.text());
+      assert.equal(await sitzungen(opferId), 0, 'Sitzungen des Kontos müssen enden');
+      assert.equal(await angemeldet(fenster.cookie), false);
+      assert.equal(await validateToken(tok), null, 'Der Token darf das Zurücksetzen nicht überleben');
+    });
+
+    // Gegenprobe (11.11.2026 gemessen): in PUT /users/:id/password die Prüfung
+    // `targetId === nutzerId(req)` gestrichen → rot „… nicht für das eigene Konto“ (200).
+    await t.test('der Verwalterweg gilt nicht für das eigene Konto und nicht für Unbekannte', async () => {
+      const chef = await anmelden('pw_chef', 'nochNeuer1234');
+      const chefId = (await db.get("SELECT id FROM users WHERE username='pw_chef'")).id;
+      const setze = async (cookie, id) => {
+        const r = await fetch(`${basis}${AUTH}/users/${id}/password`, {
+          method: 'PUT', headers: { 'content-type': 'application/json', cookie },
+          body: JSON.stringify({ password: 'Verwalter-Setzt-99', admin_password: 'nochNeuer1234' }),
+        });
+        return `${r.status} ${(await r.json()).code ?? ''}`;
+      };
+      assert.equal(await setze(chef.cookie, chefId), '400 eigenes_konto_passwort', 'nicht für das eigene Konto');
+      assert.equal(await setze(chef.cookie, 2_000_000_000), '404 benutzer_nicht_gefunden', 'ein Unbekannter ist kein stiller Erfolg');
+      const opfer = await anmelden('pw_opfer', 'perLinkGesetzt12');
+      assert.match(await setze(opfer.cookie, chefId), /^403 /, 'nur für Verwalter');
+      assert.ok(await bcrypt.compare('nochNeuer1234',
+        (await db.get('SELECT password_hash FROM users WHERE id = $1', [chefId])).password_hash));
     });
   } finally {
     srv.close();

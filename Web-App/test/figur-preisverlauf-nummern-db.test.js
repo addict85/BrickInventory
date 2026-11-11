@@ -10,7 +10,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
-const { getMinifigPriceHistory } = _req('src/finanzen/priceHistory.js');
+const { preisverlaufFigur } = _req('src/finanzen/priceHistory.js');
 const { haeltFigur } = require('./helpers/bestand');
 
 test('der Figuren-Preisverlauf findet die Preise unter der BrickLink-Nummer', { concurrency: 1 }, async (t) => {
@@ -61,7 +61,7 @@ test('der Figuren-Preisverlauf findet die Preise unter der BrickLink-Nummer', { 
       `INSERT INTO minifig_price_history (fig_number,condition,currency_code,avg_price,qty_avg_price)
        VALUES ($1,'N',$2,9.00,9.00)`, [BL, WAEHRUNG]);
 
-    const v = await getMinifigPriceHistory(uid, EIGENE, WAEHRUNG);
+    const v = await preisverlaufFigur(uid, EIGENE, WAEHRUNG);
 
     assert.ok(v.by_condition?.N,
       'Für den Zustand „N" kam gar keine Zeile zurück, obwohl eine Erfassung existiert');
@@ -88,7 +88,7 @@ test('der Figuren-Preisverlauf findet die Preise unter der BrickLink-Nummer', { 
       `INSERT INTO minifig_price_history (fig_number,condition,currency_code,avg_price,qty_avg_price)
        VALUES ($1,'N',$2,7.00,7.00)`, [OHNE_BL, WAEHRUNG]);
 
-    const w = await getMinifigPriceHistory(uid, OHNE_BL, WAEHRUNG);
+    const w = await preisverlaufFigur(uid, OHNE_BL, WAEHRUNG);
     assert.ok(w.by_condition?.N, 'Ohne BrickLink-Nummer kam gar keine Zeile zurück');
     assert.equal(Number(w.by_condition.N.market_price), 7,
       `Der Marktpreis kam als ${w.by_condition.N.market_price} statt 7 zurück. Bei einer ` +

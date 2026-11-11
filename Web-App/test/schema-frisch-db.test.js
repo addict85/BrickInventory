@@ -37,6 +37,7 @@ process.env.DATABASE_URL = ziel.toString();
 
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 
 const KONTOSPALTEN = ['user_id', 'main_user_id', 'sub_user_id'];
 /** Bewusst ohne Schlüssel — mit Grund. */
@@ -59,9 +60,7 @@ test('frische Datenbank', { concurrency: 1, timeout: 180_000 }, async (t) => {
   const admin = new Client({ connectionString: BASIS });
   try { await admin.connect(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   await raeumeReste(admin, 'schema_frisch');
   await admin.query(`DROP DATABASE IF EXISTS ${id(NAME)}`);

@@ -37,6 +37,7 @@ fs.writeFileSync(path.join(SANDKASTEN, 'package.json'), '{"name":"sandkasten"}')
 process.env.APP_ROOT = SANDKASTEN;
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 const { pdfText, werteAusPdf, PdfZuGross, STROM_MAX_BYTES, ENTPACKT_MAX_BYTES, STROEME_MAX } =
   _req('src/gutscheine/gutscheinPdf.js');
@@ -151,9 +152,7 @@ test('6. beim Ersetzen zählt die letzte Schrift VOR dem Operator', async () => 
 test('Gutschein-Upload: Bombe und Übergrösse kommen nicht in die Ablage', { concurrency: 1 }, async (t) => {
   try { await db.get('SELECT 1'); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');

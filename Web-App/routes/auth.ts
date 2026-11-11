@@ -1,28 +1,18 @@
 /** Anmeldung, Token, Profil, QR und Passkeys; setzt die Teilrouter aus
  * routes/auth/ zusammen. Alles hängt unter /api/v1/auth. */
 import { sitzungsKeksName, sitzungsKeksOptionen } from '../src/http/sitzungsKeks';
-import * as K from '../src/konto/konten';
-import * as A from '../src/konto/anmeldungAblauf';
-import { kontoEntfernen } from '../src/konto/kontoEntfernen';
 import { logAndContinue, meldeFehler } from '../src/infra/fehler';
 import { fehlerAntwort, sendeFehler } from '../src/http/httpAntwort';
-import { pruefeToken, assertLoginAllowed, deleteToken, USERNAME_RE, emailGueltig, rotiereToken, rotationFaellig, UEBERLAPPUNG_MS, nameGueltig, geraeteNameGueltig, geraeteNameInhaltGueltig } from '../src/konto/auth';
-import { tokenAngaben } from '../src/konto/tokenWunsch';
-import * as QR from '../src/konto/qrKopplung';
-import { meldeAnmeldung } from '../src/konto/loginLimiter';
 import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigeMitFaktor, zweiterFaktorPflicht } from '../src/konto/http/anmeldung';
-import { hinweisNebenher } from '../src/konto/kontoHinweis';
 import type { Request, Response } from 'express';
 import { requireApiAdmin } from './api_v1/middleware';
 import { fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
-import * as zf from '../src/konto/zweiterFaktor';
-import * as P from '../src/konto/passkeys';
 import benutzerRouter from './auth/benutzer';
 import zweiterFaktorRouter from './auth/zweiterFaktor';
 import registrierungRouter from './auth/registrierung';
 import { STATUS_DER_ART } from '../src/http/fehlerArt';
 import { vertragsRouter, type Antwort, type OffeneAnfrage } from '../src/http/vertragsRouter';
-import { kontoBereich } from '../src/konto';
+import { kontoEntfernen, pruefeToken, assertLoginAllowed, deleteToken, USERNAME_RE, emailGueltig, rotiereToken, rotationFaellig, UEBERLAPPUNG_MS, nameGueltig, geraeteNameGueltig, geraeteNameInhaltGueltig, tokenAngaben, meldeAnmeldung, hinweisNebenher, kontoBereich, type Angemeldet, type TokenWunsch, anmeldeAntwort, istAktiv, geraeteTokenAusstellen, profil, emailWirdGeaendert, profilAendern, eigenesPasswortAendern, qrZugangErzeugen, meldeGeraet, QR_TTL_MS, holeQrTokenAb, verwirfAbholung, kopplungsStand, bestaetigeKopplung, lehneKopplungAb, vertrauenspartei, passkeysDesKontos, registrierungsOptionen, registrierungPruefen, loeschePasskey, anmeldeOptionen, anmeldungPruefen } from '../src/konto';
 
 const router = vertragsRouter();
 
@@ -32,14 +22,14 @@ const requireLogin = requireLoginOrToken;
 const requireAdmin = requireApiAdmin;
 /** Sitzung, Token und Antwort — derselbe Weg nach Passwort und Passkey. Token
  * ODER Sitzung: Die Sitzung trüge die vollen Rechte am Scope des Tokens vorbei. */
-async function angemeldetAntworten(req: Request, res: Response, user: A.Angemeldet, wunsch: A.TokenWunsch, mitToken: boolean, mitPasswort = false) {
+async function angemeldetAntworten(req: Request, res: Response, user: Angemeldet, wunsch: TokenWunsch, mitToken: boolean, mitPasswort = false) {
   if (!mitToken) await establishSession(req, {
     userId: Number(user.id), username: user.username, isAdmin: user.is_admin,
     mussPasswortAendern: user.must_change_password === true,
     // Nur nach einem Passwort, nicht nach einem Passkey allein: Grundlage der Gnadenfrist.
     ...(mitPasswort ? { passwortBestaetigtAm: Date.now() } : {}),
   });
-  res.json({ success: true, ...await A.anmeldeAntwort(user, wunsch, mitToken, req.ip) });
+  res.json({ success: true, ...await anmeldeAntwort(user, wunsch, mitToken, req.ip) });
 }
 
 /** Die EINE Anmeldung für Webapp und App, damit beide dieselben Regeln erfüllen. */
@@ -66,7 +56,7 @@ router.post('/login', async (req: OffeneAnfrage<'POST /api/v1/auth/login'>, res:
     }
     return sendeFehler(req, res, status, code, vars);
   }
-  await angemeldetAntworten(req, res, pruefung.user as A.Angemeldet, req.eingabe, ohne_token !== true, true);
+  await angemeldetAntworten(req, res, pruefung.user as Angemeldet, req.eingabe, ohne_token !== true, true);
 });
 
 /** Sitzung beenden UND Token entwerten, damit ein Aufruf beides wegräumt. */
@@ -104,7 +94,7 @@ router.get('/me', async (req: OffeneAnfrage<'GET /api/v1/auth/me'>, res: Antwort
       // is_admin ist das Recht DIESES Tokens: bei Scope `app` immer false.
       return res.json({ success: true, loggedIn: true,
         user: { id: u.user_id, username: u.username, is_admin: u.is_admin === true, mustChangePassword: u.muss_passwort_aendern === true,
-                zweiterFaktorPflicht: u.is_admin === true && !await zf.istAktiv(u.user_id) },
+                zweiterFaktorPflicht: u.is_admin === true && !await istAktiv(u.user_id) },
         token_expires: u.expires_at, token_last_used: u.last_used,
         token_info: { scope: u.scope, expires_at: u.expires_at, hard_expires_at: u.hard_expires_at ?? null,
                       never_expires: u.never_expires === true, rotiert_am: u.rotiert_am,
@@ -144,12 +134,12 @@ router.post('/token-create', requireLogin, async (req: OffeneAnfrage<'POST /api/
   if (!geraeteNameInhaltGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
   const userId = angemeldeteNutzerId(req);
   if (!await bestaetigeMitFaktor(req, res, userId, req.eingabe.password)) return;
-  const t = await A.geraeteTokenAusstellen(userId, req.eingabe.label, req.eingabe.scope, req.ip);
+  const t = await geraeteTokenAusstellen(userId, req.eingabe.label, req.eingabe.scope, req.ip);
   res.json({ success: true, token: t.token, label: t.label, never_expires: false, token_info: t.token_info });
 });
 
 router.get('/profile', requireLogin, async (req: OffeneAnfrage<'GET /api/v1/auth/profile'>, res: Antwort<'GET /api/v1/auth/profile'>) => {
-  const user = await K.profil(nutzerId(req)!);
+  const user = await profil(nutzerId(req)!);
   if (!user) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
   res.json({ success: true, user });
 });
@@ -169,14 +159,14 @@ router.put('/profile', requireLogin, async (req: OffeneAnfrage<'PUT /api/v1/auth
     return sendeFehler(req, res, 400, 'benutzername_ungueltig');
   if (!nameGueltig(first_name) || !nameGueltig(last_name)) return sendeFehler(req, res, 400, 'name_ungueltig');
 
-  if (A.emailWirdGeaendert(user, email) && !emailGueltig(email))
+  if (emailWirdGeaendert(user, email) && !emailGueltig(email))
     return sendeFehler(req, res, 400, 'email_ungueltig');
   // Jede Änderung mit Passwort (und zweitem Faktor): Über eine neue Adresse liesse
   // sich das Passwort zurücksetzen, und erst danach verrät die Vergabeprüfung, ob
   // es einen Namen oder eine Adresse schon gibt.
   if (!password_current) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
   if (!await bestaetigeMitFaktor(req, res, user.id, String(password_current))) return;
-  const r = await A.profilAendern(user, { username, email, first_name, last_name });
+  const r = await profilAendern(user, { username, email, first_name, last_name });
   if (r.emailChanged) return res.json({ success: true, emailChanged: true, emailSent: r.emailSent ?? false });
   res.json({ success: true });
 });
@@ -198,7 +188,7 @@ router.post('/change-password', requireLogin, async (req: OffeneAnfrage<'POST /a
   if (!await bestaetigeMitFaktor(req, res, uid, String(current))) return;
   // NACH der Prüfung des alten Passworts: Ein Fremder erfährt über das neue nichts.
   // Beendet alle Zugänge, auch den eigenen; die Sitzung wird danach neu aufgebaut.
-  const konto = await A.eigenesPasswortAendern(uid, newPassword, req.eingabe.passkeys_widerrufen === true);
+  const konto = await eigenesPasswortAendern(uid, newPassword, req.eingabe.passkeys_widerrufen === true);
   if (req.session?.userId && konto) {
     await establishSession(req, { userId: uid, username: konto.username, isAdmin: req.session.isAdmin === true,
                                   mussPasswortAendern: false, passwortBestaetigtAm: Date.now() });
@@ -215,7 +205,7 @@ router.post('/qr-token', requireLogin, async (req: OffeneAnfrage<'POST /api/v1/a
   if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
   if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.password)) return;
   // Die Laufzeit wählt die angemeldete Sitzung, nicht das unangemeldete /qr-login.
-  res.json({ success: true, ...await A.qrZugangErzeugen(angemeldeteNutzerId(req), req.eingabe.gueltigkeit) });
+  res.json({ success: true, ...await qrZugangErzeugen(angemeldeteNutzerId(req), req.eingabe.gueltigkeit) });
 });
 
 /** Das Konto muss bei der Meldung und bei der Abholung noch anmelden dürfen. */
@@ -229,16 +219,16 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req:
   const { token, label } = req.eingabe;
   if (!token?.startsWith('bim:')) return sendeFehler(req, res, 400, 'token_ungueltig');
   if (!geraeteNameInhaltGueltig(label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
-  const m = await QR.meldeGeraet(token, label, req.ip);
+  const m = await meldeGeraet(token, label, req.ip);
   if (!m || !await darfAnmelden(m.uid)) return sendeFehler(req, res, 401, 'token_ungueltig');
-  res.json({ success: true, wartet: true, abholung: m.abholung, code: m.code, expires_in: QR.QR_TTL_MS / 1000 });
+  res.json({ success: true, wartet: true, abholung: m.abholung, code: m.code, expires_in: QR_TTL_MS / 1000 });
 });
 
 // Die App fragt alle paar Sekunden, bis die Web-Sitzung bestätigt oder ablehnt.
 // Mit `vorschau` steht danach nur das Konto in der Antwort; den Token holt das Ja der App.
 router.post('/qr-login/abholen', ipThrottle('qr-abholen', 600, 60 * 60 * 1000), async (req: OffeneAnfrage<'POST /api/v1/auth/qr-login/abholen'>, res: Antwort<'POST /api/v1/auth/qr-login/abholen'>) => {
   if (!req.eingabe.abholung) return sendeFehler(req, res, 400, 'token_ungueltig');
-  const a = await QR.holeQrTokenAb(req.eingabe.abholung, req.ip, darfAnmelden, req.eingabe.vorschau === true);
+  const a = await holeQrTokenAb(req.eingabe.abholung, req.ip, darfAnmelden, req.eingabe.vorschau === true);
   if (a.stand === 'wartet') return res.json({ success: true, wartet: true });
   if (a.stand === 'abgelehnt') return sendeFehler(req, res, 403, 'qr_abgelehnt');
   if (a.stand === 'ungueltig') return sendeFehler(req, res, 401, 'token_ungueltig');
@@ -253,13 +243,13 @@ router.post('/qr-login/abholen', ipThrottle('qr-abholen', 600, 60 * 60 * 1000), 
 });
 
 router.post('/qr-login/verwerfen', ipThrottle('qr-abholen', 600, 60 * 60 * 1000), async (req: OffeneAnfrage<'POST /api/v1/auth/qr-login/verwerfen'>, res: Antwort<'POST /api/v1/auth/qr-login/verwerfen'>) => {
-  if (!await QR.verwirfAbholung(req.eingabe.abholung)) return sendeFehler(req, res, 401, 'token_ungueltig');
+  if (!await verwirfAbholung(req.eingabe.abholung)) return sendeFehler(req, res, 401, 'token_ungueltig');
   res.json({ success: true });
 });
 
 router.get('/qr-kopplung/:id', requireLogin, async (req: OffeneAnfrage<'GET /api/v1/auth/qr-kopplung/:id'>, res: Antwort<'GET /api/v1/auth/qr-kopplung/:id'>) => {
   if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
-  const s = await QR.kopplungsStand(req.pfad.id, angemeldeteNutzerId(req));
+  const s = await kopplungsStand(req.pfad.id, angemeldeteNutzerId(req));
   if (!s) return sendeFehler(req, res, 404, 'nicht_gefunden');
   res.json({ success: true, ...s });
 });
@@ -270,19 +260,19 @@ const BESTAETIGUNG_FEHLER = { code_falsch: [400, 'qr_code_falsch'], abgelehnt: [
 router.post('/qr-kopplung/:id/bestaetigen', requireLogin, async (req: OffeneAnfrage<'POST /api/v1/auth/qr-kopplung/:id/bestaetigen'>, res: Antwort<'POST /api/v1/auth/qr-kopplung/:id/bestaetigen'>) => {
   if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
   const uid = angemeldeteNutzerId(req);
-  const ergebnis = await QR.bestaetigeKopplung(req.pfad.id, uid, req.eingabe.code);
+  const ergebnis = await bestaetigeKopplung(req.pfad.id, uid, req.eingabe.code);
   if (ergebnis !== 'ok') {
     const [status, code] = BESTAETIGUNG_FEHLER[ergebnis];
     return sendeFehler(req, res, status, code);
   }
-  const s = await QR.kopplungsStand(req.pfad.id, uid);
+  const s = await kopplungsStand(req.pfad.id, uid);
   hinweisNebenher(uid, 'token_neu', s?.geraet ?? 'qr-login');
   res.json({ success: true });
 });
 
 router.post('/qr-kopplung/:id/ablehnen', requireLogin, async (req: OffeneAnfrage<'POST /api/v1/auth/qr-kopplung/:id/ablehnen'>, res: Antwort<'POST /api/v1/auth/qr-kopplung/:id/ablehnen'>) => {
   if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
-  if (!await QR.lehneKopplungAb(req.pfad.id, angemeldeteNutzerId(req))) return sendeFehler(req, res, 404, 'nicht_gefunden');
+  if (!await lehneKopplungAb(req.pfad.id, angemeldeteNutzerId(req))) return sendeFehler(req, res, 404, 'nicht_gefunden');
   res.json({ success: true });
 });
 
@@ -292,8 +282,8 @@ const passkeyName = (roh: unknown) =>
   (typeof roh === 'string' && roh.trim() ? Array.from(roh.trim()).slice(0, NAME_MAX).join('') : 'Passkey');
 
 router.get('/passkeys', requireLoginOrToken, async (req: OffeneAnfrage<'GET /api/v1/auth/passkeys'>, res: Antwort<'GET /api/v1/auth/passkeys'>) => {
-  res.json({ success: true, verfuegbar: !!P.vertrauenspartei(),
-    passkeys: await P.passkeysDesKontos(angemeldeteNutzerId(req)) });
+  res.json({ success: true, verfuegbar: !!vertrauenspartei(),
+    passkeys: await passkeysDesKontos(angemeldeteNutzerId(req)) });
 });
 
 // Ein neuer Anmeldeweg verlangt Passwort und Browser-Sitzung: Eine erbeutete
@@ -303,7 +293,7 @@ router.post('/passkey/registrieren/optionen', requireLoginOrToken, async (req: O
   const uid = angemeldeteNutzerId(req);
   if (!await bestaetigeMitFaktor(req, res, uid, req.eingabe.password)) return;
   const konto = await kontoBereich().konten.kontoKurz(uid);
-  const optionen = await P.registrierungsOptionen(uid, konto?.username ?? String(uid));
+  const optionen = await registrierungsOptionen(uid, konto?.username ?? String(uid));
   if (!optionen) return sendeFehler(req, res, 503, 'passkey_ohne_domain');
   res.json({ success: true, optionen });
 });
@@ -311,7 +301,7 @@ router.post('/passkey/registrieren/optionen', requireLoginOrToken, async (req: O
 router.post('/passkey/registrieren', requireLoginOrToken, async (req: OffeneAnfrage<'POST /api/v1/auth/passkey/registrieren'>, res: Antwort<'POST /api/v1/auth/passkey/registrieren'>) => {
   if (!perSitzung(req)) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
   if (!geraeteNameGueltig(req.eingabe.name)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
-  const neu = await P.registrierungPruefen(angemeldeteNutzerId(req), req.eingabe.antwort, passkeyName(req.eingabe.name));
+  const neu = await registrierungPruefen(angemeldeteNutzerId(req), req.eingabe.antwort, passkeyName(req.eingabe.name));
   if (!neu) return sendeFehler(req, res, 400, 'passkey_ungueltig');
   hinweisNebenher(angemeldeteNutzerId(req), 'passkey_neu', neu.name);
   res.json({ success: true, passkey: neu });
@@ -322,13 +312,13 @@ router.delete('/passkeys/:id', requireLoginOrToken, async (req: OffeneAnfrage<'D
   const id = req.pfad.id;
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
   if (!await bestaetigeMitFaktor(req, res, uid, req.eingabe.password)) return;
-  res.json({ success: true, deleted: await P.loeschePasskey(uid, id) ? 1 : 0 });
+  res.json({ success: true, deleted: await loeschePasskey(uid, id) ? 1 : 0 });
 });
 
 // Öffentlich; die Drossel begrenzt, wie viele Challenges eine Adresse anlegt.
 router.post('/passkey/anmelden/optionen', ipThrottle('passkey-optionen', 60, 60 * 60 * 1000), async (req: OffeneAnfrage<'POST /api/v1/auth/passkey/anmelden/optionen'>, res: Antwort<'POST /api/v1/auth/passkey/anmelden/optionen'>) => {
   const zweck = req.eingabe.zweck === 'zweiter_faktor' ? 'zweiter_faktor' : 'anmelden';
-  const optionen = await P.anmeldeOptionen(zweck);
+  const optionen = await anmeldeOptionen(zweck);
   if (!optionen) return sendeFehler(req, res, 503, 'passkey_ohne_domain');
   res.json({ success: true, optionen });
 });
@@ -336,7 +326,7 @@ router.post('/passkey/anmelden/optionen', ipThrottle('passkey-optionen', 60, 60 
 /** Die Sitzung für den Browser; einen Token nur auf `mit_token`, wie ihn die App braucht. */
 router.post('/passkey/anmelden', ipThrottle('passkey-anmelden', 30, 60 * 60 * 1000), async (req: OffeneAnfrage<'POST /api/v1/auth/passkey/anmelden'>, res: Antwort<'POST /api/v1/auth/passkey/anmelden'>) => {
   if (!geraeteNameInhaltGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
-  const uid = await P.anmeldungPruefen(req.eingabe.antwort, 'anmelden');
+  const uid = await anmeldungPruefen(req.eingabe.antwort, 'anmelden');
   if (!uid) return sendeFehler(req, res, 401, 'passkey_ungueltig');
   const user = await kontoBereich().konten.kontoVoll(uid);
   if (!user) return sendeFehler(req, res, 401, 'passkey_ungueltig');

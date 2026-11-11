@@ -107,6 +107,7 @@ export { katalogStand, merkeKatalogPlatzhalter, merkeSetKatalog } from './setSta
 export { downloadSetImages, enrichSetMinifigs, enrichSetParts } from './teileAnreicherung';
 export { anleitungLaden } from './anleitungLaden';
 export { erzeugeKatalog } from './bereich';
+export type { KatalogDienste } from './bereich';
 export { bildNachlauf } from './bildNachlauf';
 export { anleitungFreigegeben } from './bilder/bildBlickfeld';
 export { merkeGebraucht } from './bilder/bildbedarf';
@@ -119,6 +120,6 @@ export { csvAbgleich, setzeImportProzess } from './csvAbgleich';
 export { katalogImporte, parseCsvLine } from './csvImport';
 export { jahrVerteilung, katalogGeladen, katalogMeta, katalogSeite, katalogSet } from './dienst';
 export { erzeugePdf, pdfAufgegeben } from './pdf/pdfErzeugung';
-export { verdrahteKatalog } from './prozess';
+export { katalog, verdrahteKatalog } from './prozess';
 export { rebrickableLimiter, rebrickableBackgroundLimiter, rebrickableDailyStatus } from './rateLimiter';
 export { redownloadMissingImages } from './teileAnreicherung';

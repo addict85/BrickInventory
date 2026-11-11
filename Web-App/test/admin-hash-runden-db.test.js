@@ -16,15 +16,14 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 delete process.env.ADMIN_PASSWORD;
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 test('Verwalterkonto mit derselben Rundenzahl', async (t) => {
   try { await db.get('SELECT 1'); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   t.after(() => db.pool.end().catch(() => {}));
   await db.run('DROP SCHEMA public CASCADE');
@@ -34,5 +33,5 @@ test('Verwalterkonto mit derselben Rundenzahl', async (t) => {
   try { await db.initSchema(); } finally { console.log = echt; }
   const admin = await db.get("SELECT password_hash FROM users WHERE username = 'admin'");
   assert.ok(admin, 'kein Verwalterkonto angelegt');
-  assert.equal(bcrypt.getRounds(admin.password_hash), _req('src/konto/auth.js').BCRYPT_ROUNDS);
+  assert.equal(bcrypt.getRounds(admin.password_hash), _req('src/konto/anmeldepruefung.js').BCRYPT_ROUNDS);
 });

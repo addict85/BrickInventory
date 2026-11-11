@@ -100,7 +100,7 @@ test('api() liefert bei jedem Fehlschlag ein Objekt statt zu werfen', async () =
   });
 
   try {
-    const core = await import(`file://${path.join(ROOT, 'public', 'js', '01-api.js')}`);
+    const core = await import(`file://${path.join(ROOT, 'public', 'js', 'api.js')}`);
 
     const ok = await core.api('GET', '/ok');
     assert.equal(ok.success, true, 'Der Normalfall muss unverändert durchgehen');
@@ -137,11 +137,11 @@ test('unbehandelte Fehler landen nicht nur in der Konsole', () => {
   // Fehler in einem Rückruf oder eine Zusage, die niemand einsammelt. Ohne
   // Auffangnetz sieht der Benutzer davon nichts — er klickt, und es passiert
   // einfach nichts.
-  const init = fs.readFileSync(path.join(ROOT, 'public', 'js', '08-fehlerfang.js'), 'utf8');
+  const init = fs.readFileSync(path.join(ROOT, 'public', 'js', 'fehlerfang.js'), 'utf8');
   assert.match(init, /addEventListener\('unhandledrejection'/,
     'Abgewiesene Zusagen brauchen ein Auffangnetz');
   assert.match(init, /addEventListener\('error'/, 'Skriptfehler ebenso');
-  const sitzung = fs.readFileSync(path.join(ROOT, 'public', 'js', '26-sitzung.js'), 'utf8');
+  const sitzung = fs.readFileSync(path.join(ROOT, 'public', 'js', 'sitzung.js'), 'utf8');
   assert.match(sitzung, /startApp\(\)\s*\{\s*\n\s*bindGlobalErrorHandlers\(\);/,
     'Die Handler müssen VOR allem anderen hängen, sonst fehlt gerade der Startfehler');
 });
@@ -151,7 +151,7 @@ test('ein 401 führt zurück zur Anmeldung, nicht in eine tote Oberfläche', () 
   const core = require('./helpers/sources').coreQuelle();
   assert.match(core, /if \(res\.status === 401\) melde\('sitzungBeendet', path\);/,
     'Der 401 muss zentral behandelt werden, nicht an 88 Aufrufstellen');
-  const sitzung = fs.readFileSync(path.join(ROOT, 'public', 'js', '26-sitzung.js'), 'utf8');
+  const sitzung = fs.readFileSync(path.join(ROOT, 'public', 'js', 'sitzung.js'), 'utf8');
   const von = sitzung.indexOf("abonniere('sitzungBeendet'");
   assert.ok(von > 0, 'Niemand reagiert auf das Sitzungsende');
   const fn = sitzung.slice(von, sitzung.indexOf('\n});\n', von));

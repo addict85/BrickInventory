@@ -25,9 +25,11 @@ process.env.APP_BASE_URL = 'https://lego.example.org';
 const { buildAndRequire, einhaengung, ohneKommentare } = require('./helpers/sources');
 const { qrKoppeln } = require('./helpers/qr');
 const _req = buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const AUTH = einhaengung('auth');
 const db = _req('db/database.js');
-const auth = _req('src/konto/auth.js');
+const auth = _req('src/konto/geraeteToken.js');
+const tokenCache = _req('src/konto/tokenCache.js');
 const express   = require(path.join(ROOT, 'node_modules', 'express'));
 const session   = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -41,14 +43,7 @@ const tageVoraus = (wert) => (new Date(wert).getTime() - Date.now()) / 86400_000
 test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   await db.run(
@@ -156,7 +151,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
     assert.ok(nachher, 'Der unbegrenzte Zugang darf vom Aufraeumjob nicht geloescht werden');
     assert.equal(nachher.expires_at, null,
       'Der Aufraeumjob darf ihm auch kein Ablaufdatum verpassen — sonst waere die Wahl still weg');
-    auth.invalidateToken(rohEwig);
+    tokenCache.invalidateToken(rohEwig);
     assert.ok(await auth.validateToken(rohEwig),
       'Und er muss nach dem Aufraeumen noch gelten');
 
@@ -184,7 +179,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
     await db.run(
       `UPDATE api_tokens SET hard_expires_at = NOW() - INTERVAL '1 day' WHERE token = $1`,
       [auth.hashToken(roh)]);
-    auth.invalidateToken(roh);   // sonst antwortet bis zu eine Minute der Cache
+    tokenCache.invalidateToken(roh);   // sonst antwortet bis zu eine Minute der Cache
     assert.equal(await auth.validateToken(roh), null,
       'Ist der feste Termin erreicht, gilt der Zugang nicht mehr — auch wenn die Gleitfrist noch laeuft');
   } finally {
@@ -196,7 +191,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
 
 test('QR-Zugang: die Oberflaeche waehlt beim ERZEUGEN, nicht beim Einloesen', () => {
   const einst = ohneKommentare(
-    require('./helpers/sources').ansichtQuelle('05'));
+    require('./helpers/sources').ansichtQuelle('einstellungen'));
 
   assert.ok(/api\('POST', '\/v1\/auth\/qr-token', \{ gueltigkeit, password\b/.test(einst),
     'Die Webapp soll die gewaehlte Laufzeit beim Erzeugen des Codes mitschicken');
@@ -205,18 +200,17 @@ test('QR-Zugang: die Oberflaeche waehlt beim ERZEUGEN, nicht beim Einloesen', ()
     'an der eine Laufzeit gewaehlt werden koennte');
 
   // Und die Auswahl muss es im Markup ueberhaupt geben — ein Feld, das
-  // 05-settings.js liest, aber niemand fuellt, waere still wirkungslos.
+  // settings.js liest, aber niemand fuellt, waere still wirkungslos.
   const html = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
   assert.ok(/id="qr-validity"/.test(html), 'Das Auswahlfeld fehlt in der Oberflaeche');
 
   // Und die Auswahl deckt sich mit der Liste des Servers
-  const serverListe = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/konto/auth.ts'), 'utf8'))
-    .split('const TOKEN_LAUFZEITEN')[1].split('};')[0]
-    .match(/'(\w+)':/g).map(x => x.replace(/'|:/g, ''));
+  const serverListe = [...auth.LAUFZEIT_WAHLEN];
+  for (const w of serverListe) assert.notEqual(auth.laufzeitTage(w), null, `${w} kennt der Server nicht`);
   const markupListe = [...html.matchAll(/<option value="(\w+)" data-i18n="qr\.validity_/g)]
     .map(m => m[1]);
   assert.deepEqual(markupListe, serverListe,
     'Die Auswahl im Markup und die Liste in TOKEN_LAUFZEITEN laufen auseinander');
-  assert.ok(serverListe.length >= 5, 'Die Liste wurde nicht gefunden — Muster veraltet?');
+  assert.ok(serverListe.length >= 5, 'Die Liste des Servers ist zu kurz');
   assert.ok(serverListe.includes('unbegrenzt'), 'Die Wahl „unbegrenzt" fehlt auf der Serverseite');
 });

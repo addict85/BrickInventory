@@ -14,6 +14,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const { buildAndRequire, einhaengung } = require('./helpers/sources');
 const _req = buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const AUTH     = einhaengung('auth');
 const SETTINGS = '/api/v1/settings';
 const db = _req('db/database.js');
@@ -27,14 +28,7 @@ const NAME = 'geraete_test', PASS = 'richtigesPasswort1';
 test('Zugänge auflisten und aussperren — über Sitzung UND über Token',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   await db.run(
@@ -129,7 +123,7 @@ test('Zugänge auflisten und aussperren — über Sitzung UND über Token',
 
     // Und zwar WIRKLICH: Der Token des Tablets gilt nicht mehr. Das ist der
     // Punkt der ganzen Übung — die Zeile zu löschen ist nur die halbe Miete,
-    // wenn der Cache in src/konto/auth.ts sie noch bedient.
+    // wenn der Cache in src/konto/tokenCache.ts sie noch bedient.
     const tabletVersucht = await ruf(AUTH + '/me',
       { headers: { authorization: `Bearer ${tablet.body.token}` } });
     assert.equal(tabletVersucht.status, 401,

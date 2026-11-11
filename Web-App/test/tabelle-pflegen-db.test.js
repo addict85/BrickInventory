@@ -20,6 +20,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { pflegeTabelle } = _req('db/tabellePflegen.js');
 
@@ -46,14 +47,7 @@ async function wartenAufStand(tabelle, vorher, ms = 5000) {
 }
 
 test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   // Ein echtes Konto: parts_summary hat seit Migration 0043 einen Schlüssel auf users.
   const NAME = `pflege_${process.pid}`;

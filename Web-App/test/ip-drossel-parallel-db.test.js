@@ -24,6 +24,7 @@ process.env.APP_BASE_URL = 'http://localhost';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const db = _req('db/database.js');
 const { ipThrottle } = _req('src/konto/http/anmeldung.js');
@@ -34,9 +35,7 @@ test.after(() => db.pool.end().catch(() => {}));
 async function dbDa(t) {
   try { await db.initSchema(); return true; }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return false;
+    keineDb(t, e); return false;
   }
 }
 

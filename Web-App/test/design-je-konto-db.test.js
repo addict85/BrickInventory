@@ -22,17 +22,12 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 
 test('Design je Konto', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const namen = [`design_a_${process.pid}`, `design_b_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
@@ -73,7 +68,7 @@ test('Design je Konto', { concurrency: 1 }, async (t) => {
 
   await t.test('App mit Token: dasselbe Design wie im Browser', async () => {
     als(null);
-    const token = await _req('src/konto/auth.js').createToken(ids[0], 'Prüfung', true);
+    const token = await _req('src/konto/geraeteToken.js').createToken(ids[0], 'Prüfung', true);
     const mitToken = { headers: { Authorization: `Bearer ${token}` } };
     assert.equal((await hole('/theme', mitToken)).theme, 'werkbank');
     assert.equal((await hole('', mitToken)).settings?.app_theme, 'werkbank', 'GET /api/v1/settings nennt die Vorgabe');

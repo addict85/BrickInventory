@@ -1,5 +1,5 @@
 /** Wie ein neuer Gerätezugang heisst, gilt und was die Antwort über ihn sagt. */
-import { hashToken, type TokenScope } from './auth';
+import { hashToken, type TokenScope } from './geraeteToken';
 import { kontoBereich } from './prozess';
 
 /** Feste Obergrenze ab Anmeldung; der Tausch erbt sie (legeNachfolgerAn), die App meldet dann ab. */

@@ -2,22 +2,25 @@
  * Aufbau des Frontends: kein Importkreis, kein API-Aufruf an der Hülle vorbei.
  *
  * Gegenproben (am 05.11.2026 gemessen):
- *   A  in 01-api.js `import { loadGallery } from './02-gallery.js'` samt
- *      Aufruf ergänzt → rot: „kein Importkreis“, der Kreis nennt 01-api.js
- *   B  in 02-konten-orte.js `import('./05-settings.js')` ergänzt → rot: die
+ *   A  in api.js `import { loadGallery } from './gallery.js'` samt
+ *      Aufruf ergänzt → rot: „kein Importkreis“, der Kreis nennt api.js
+ *   B  in konten-orte.js `import('./settings.js')` ergänzt → rot: die
  *      dynamische Kante schliesst einen Kreis und zählt mit
- *   C  in 05-settings.js den Alarm-Import wieder per
+ *   C  in settings.js den Alarm-Import wieder per
  *      `fetch('/api/v1/alerts/import/csv', …)` → rot: „kein fetch an der
  *      Hülle vorbei“ mit Datei und Zeile
- *   D  in 01-monitor.js wieder `export let _monitorTimer` → rot: „geteilter
- *      Zustand nur in 00-zustand.js“
- *   E  in 01-bausteine.js `import { loadGallery } from './02-gallery.js'` → rot:
+ *   D  in monitor.js wieder `export let _monitorTimer` → rot: „geteilter
+ *      Zustand nur in zustand.js“
+ *   E  in bausteine.js `import { loadGallery } from './gallery.js'` → rot:
  *      „Kern importiert keine Ansicht“ (und der Kreis-Test)
- *   G  (08.11.2026) in 06-minifigs.js wieder `import('./03-parts.js').ManuellesTeil` als JSDoc-Typ
- *      (03-parts.js importiert 06-minifigs.js) → rot: „kein Importkreis“, der Kreis nennt beide Dateien
- *   F  im Kapitel „Oberfläche“ von docs/architektur.md `00-zustand.js` in
+ *   G  (08.11.2026) in minifigs.js wieder `import('./parts.js').ManuellesTeil` als JSDoc-Typ
+ *      (parts.js importiert minifigs.js) → rot: „kein Importkreis“, der Kreis nennt beide Dateien
+ *   F  im Kapitel „Oberfläche“ von docs/architektur.md `zustand.js` in
  *      `00-staat.js` umbenannt → rot; das Kapitel gestrichen → rot
+ *   H  (11.11.2026) in registry.js (KERN) `import './gallery.js'` ergänzt → rot: „Kern und
+ *      Bausteine … importieren keine Ansicht“ nennt js/registry.js → js/gallery.js
  */
+const { istAppModul, KERN, BAUSTEINE } = require('../scripts/build-frontend');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -87,37 +90,38 @@ test('das Frontend-Bündel hat keinen Importkreis', () => {
   assert.ok([...g.values()].flat().length >= 150, 'kaum Kanten im Graphen — greift die Auswertung noch?');
   assert.ok(g.has('i18n.js'), 'i18n.js fehlt im Graphen — es ist Teil des Bündels');
   assert.deepEqual(kreise(g), [],
-    'Importkreis im Frontend. Rückwege nach oben über 00-ereignisse.js (melde/abonniere) ' +
-    'oder 00-ziele.js (springe), geteilter Zustand in 00-zustand.js.');
+    'Importkreis im Frontend. Rückwege nach oben über ereignisse.js (melde/abonniere) ' +
+    'oder ziele.js (springe), geteilter Zustand in zustand.js.');
 });
 
-test('Kern und Bausteine (00-*, 01-*, i18n.js) importieren keine Ansicht', () => {
+test('Kern und Bausteine (KERN, BAUSTEINE, i18n.js) importieren keine Ansicht', () => {
   const g = graph();
-  const unten = (/** @type {string} */ k) => k === 'i18n.js' || /^js\/0[01]-/.test(k);
+  const schicht = new Set([...KERN, ...BAUSTEINE].map(f => `js/${f}`));
+  const unten = (/** @type {string} */ k) => k === 'i18n.js' || schicht.has(k);
   const kern = [...g.keys()].filter(unten);
-  assert.ok(kern.length >= 12, `nur ${kern.length} Kernmodule gefunden`);
+  assert.equal(kern.length, KERN.length + BAUSTEINE.length, `nur ${kern.length} Kernmodule gefunden`);
   const aufwaerts = kern.flatMap(k => (g.get(k) ?? []).filter(z => !unten(z)).map(z => `${k} → ${z}`));
   assert.deepEqual(aufwaerts, [], 'Der Kern ruft Ansichten über Ereignisse oder Sprungziele, nicht per Import');
 });
 
-test('geteilter veränderlicher Zustand nur in 00-zustand.js', () => {
+test('geteilter veränderlicher Zustand nur in zustand.js', () => {
   // Ein `export let` ist eine Variable, die jedes Modul lesen kann, deren
   // Besitzer aber nicht feststeht. Ausserhalb des Zustandsmoduls gibt es
   // stattdessen Lese- oder Stoppfunktionen (manuelleTeile(), stoppeMonitor()).
   const treffer = [];
-  for (const f of fs.readdirSync(JS).filter(x => /^\d\d-.*\.js$/.test(x) && x !== '00-zustand.js')) {
+  for (const f of fs.readdirSync(JS).filter(x => istAppModul(x) && x !== 'zustand.js')) {
     fs.readFileSync(path.join(JS, f), 'utf8').split('\n').forEach((z, i) => {
       if (/^export\s+let\b/.test(z)) treffer.push(`${f}:${i + 1}: ${z.trim()}`);
     });
   }
-  assert.ok(/^export let /m.test(fs.readFileSync(path.join(JS, '00-zustand.js'), 'utf8')), 'Zustandsmodul ohne Zustand?');
+  assert.ok(/^export let /m.test(fs.readFileSync(path.join(JS, 'zustand.js'), 'utf8')), 'Zustandsmodul ohne Zustand?');
   assert.deepEqual(treffer, []);
 });
 
 test('kein fetch an der API-Hülle vorbei', () => {
-  // Ausnahmen: 00-theme-boot.js läuft vor dem Bündel, logviewer.js in einem
+  // Ausnahmen: theme-boot.js läuft vor dem Bündel, logviewer.js in einem
   // eigenen Fenster mit Bearer-Token; beide können die Hülle nicht laden.
-  const AUSNAHMEN = new Set(['00-theme-boot.js', 'logviewer.js', 'app.bundle.js']);
+  const AUSNAHMEN = new Set(['theme-boot.js', 'logviewer.js', 'app.bundle.js']);
   const treffer = [];
   let gesehen = 0;
   for (const f of [...fs.readdirSync(JS).filter(x => x.endsWith('.js') && !AUSNAHMEN.has(x)).map(x => path.join(JS, x)),
@@ -126,12 +130,12 @@ test('kein fetch an der API-Hülle vorbei', () => {
     zeilen.forEach((z, i) => {
       if (/^\s*(\/\/|\*)/.test(z) || !/\bfetch\(/.test(z)) return;
       gesehen++;
-      if (path.basename(f) === '01-api.js' && /res = await fetch\('\/api' \+ path, init\)/.test(z)) return;
+      if (path.basename(f) === 'api.js' && /res = await fetch\('\/api' \+ path, init\)/.test(z)) return;
       treffer.push(`${path.relative(ROOT, f)}:${i + 1}: ${z.trim()}`);
     });
   }
   assert.ok(gesehen >= 1, 'Nicht einmal der Aufruf in apiRoh() gefunden — greift die Suche noch?');
-  assert.deepEqual(treffer, [], 'Aufrufe der eigenen API gehen über api() oder apiRoh() (js/01-api.js)');
+  assert.deepEqual(treffer, [], 'Aufrufe der eigenen API gehen über api() oder apiRoh() (js/api.js)');
 });
 
 test('docs/architektur.md beschreibt die Oberfläche mit Dateien, die es gibt', () => {

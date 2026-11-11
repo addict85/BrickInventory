@@ -1,7 +1,7 @@
 import * as repo from './repository/sets';
 import { entferneSetInhalt, legeInPapierkorb } from '../bestand';
 import type { DbSchnittstelle } from '../../db/database';
-import { asIds, blickfeldAus, writableIds, type Sicht, type BlickfeldEingabe as Blickfeld } from '../haushalt';
+import { asIds, blickfeldAus, schreibbereich, type Sicht, type BlickfeldEingabe as Blickfeld } from '../haushalt';
 import type { SetsKontext } from './kontext';
 
 // Für Löschen und Wegfall; sonst verwaisen Teile.
@@ -12,7 +12,7 @@ export async function deleteSetRows(tx: DbSchnittstelle, uids: number[], setNumb
 
 /** Standardmässig im ganzen Schreibbereich; eine Kontenwahl schränkt ihn ein, erweitert ihn nie. */
 export async function loescheSetFuer(sk: SetsKontext, s: Sicht, setNumber: string) {
-  const schreibbar = await writableIds(sk.db, s.nutzer);
+  const schreibbar = await schreibbereich(sk.db, s.nutzer);
   const gewaehlt = s.konten === undefined ? schreibbar : await blickfeldAus(sk.db, s);
   return loescheSet(
     sk,

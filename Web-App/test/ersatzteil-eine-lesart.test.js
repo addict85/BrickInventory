@@ -11,6 +11,7 @@ const { ohneKommentare } = require('./helpers/sources');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
@@ -72,8 +73,7 @@ test('die Schreibweisen werden nur an einer Stelle aufgezaehlt', () => {
 test('die Antwort traegt einen echten Wahrheitswert', async (t) => {
   try { await db.get('SELECT 1'); }
   catch {
-    if (process.env.REQUIRE_DB === '1') assert.fail('Test-DB nicht erreichbar, REQUIRE_DB=1');
-    t.skip('keine Test-DB'); return;
+    keineDb(t); return;
   }
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');

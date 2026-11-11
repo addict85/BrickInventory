@@ -175,13 +175,13 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
     { m: 'POST', p: '/api/v1/auth/qr-login', davor: async () => {
         const nonce = 'vertrag' + process.pid + Date.now();
         await db.run(`INSERT INTO qr_login_tokens (token, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '5 minutes')`,
-          [_req('src/konto/auth.js').hashToken(nonce), uid]);
+          [_req('src/konto/geraeteToken.js').hashToken(nonce), uid]);
         w.qr = 'bim:' + nonce;
       }, body: () => ({ token: w.qr, label: 'Vertrag' }), danach: (j) => { w.abholung = j.abholung; } },
     // Bestätigt wird im Browser (qr-kopplung/:id/bestaetigen); hier zählt die Antwort an die App.
     { m: 'POST', p: '/api/v1/auth/qr-login/abholen', davor: async () => {
         await db.run('UPDATE qr_login_tokens SET bestaetigt_am = NOW() WHERE token = $1',
-          [_req('src/konto/auth.js').hashToken(w.qr.slice(4))]);
+          [_req('src/konto/geraeteToken.js').hashToken(w.qr.slice(4))]);
       }, body: () => ({ abholung: w.abholung }) },
     { m: 'POST', p: '/api/v1/auth/register', davor: async () => {
         await db.run(`INSERT INTO global_settings (key, value) VALUES ('registration_enabled', '1') ON CONFLICT (key) DO UPDATE SET value = '1'`);
@@ -208,11 +208,11 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
     { m: 'POST', p: '/api/v1/settings/user/theme', body: { theme: '' },
       danach: (j) => { assert.deepEqual([j.theme, j.eigenes], ['classic', null]); } },
     { m: 'DELETE', p: '/api/v1/settings/tokens/{tokenId}', davor: async () => {
-        await _req('src/konto/auth.js').createToken(uid, 'Zum Entwerten');
+        await _req('src/konto/geraeteToken.js').createToken(uid, 'Zum Entwerten');
         w.tokenId = (await erst(`SELECT substring(token, 1, 16) AS t FROM api_tokens WHERE user_id = $1 AND label = 'Zum Entwerten'`, [uid])).t;
       }, body: { password: PASS } },
     { m: 'POST', p: '/api/v1/settings/sessions/andere-beenden', body: { password: PASS, zugaenge: true },
-      davor: async () => { await _req('src/konto/auth.js').createToken(uid, 'Anderes Gerät'); },
+      davor: async () => { await _req('src/konto/geraeteToken.js').createToken(uid, 'Anderes Gerät'); },
       danach: (j) => { assert.equal(j.zugaenge, 1); } },
 
     // ── Lagerorte ─────────────────────────────────────────────────────────

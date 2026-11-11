@@ -18,7 +18,7 @@ const db = _req('db/database.js');
 
 test('Verwalterrecht als boolean', { concurrency: 1 }, async t => {
   if (!(await dbOderSkip(t, _req))) return;
-  const A = _req('src/konto/auth.js');
+  const A = _req('src/konto/geraeteToken.js');
   const name = `vb_${process.pid}`;
   const { id } = await db.get(
     `INSERT INTO users (username, password_hash, is_admin) VALUES ($1, 'x', true) RETURNING id`,

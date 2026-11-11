@@ -3,9 +3,9 @@
  *
  * Gegenproben (am 05.11.2026 gemessen; A–C seitdem im CI-Schritt
  * „Typprüfung Oberfläche“, nicht mehr in npm test):
- *   A  an G() in 01-dom.js die Typangabe {Feld} entfernt → rot: Hauptlauf
+ *   A  an G() in dom.js die Typangabe {Feld} entfernt → rot: Hauptlauf
  *      mit 357 Meldungen
- *   B  in 01-fortschritt.js den Import von apiRoh entfernt → rot, TS2304
+ *   B  in fortschritt.js den Import von apiRoh entfernt → rot, TS2304
  *      „Cannot find name 'apiRoh'“ mit beiden Fundstellen
  *   C  in logviewer.js die Typangabe an getElementById("period") entfernt →
  *      rot im Lauf der klassischen Skripte

@@ -8,6 +8,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
@@ -19,8 +20,7 @@ after(() => db.pool.end());
 
 test('Kopfzeile und Galerie zaehlen dieselben Sets', async (t) => {
   if (!await erreichbar()) {
-    if (process.env.REQUIRE_DB === '1') assert.fail('Test-DB nicht erreichbar, REQUIRE_DB=1');
-    t.skip('keine Test-DB'); return;
+    keineDb(t); return;
   }
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
@@ -42,12 +42,12 @@ test('Kopfzeile und Galerie zaehlen dieselben Sets', async (t) => {
   await haeltSet(db, kind, '75192-1', 1);
   await haeltSet(db, kind, '21318-1', 1);
 
-  const { scopeIds } = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt };
+  const { blickfeldIds } = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt };
   const { getStats } = _req('src/bestand/kennzahlen.js');
   const { getSets } = _req('src/sets/index.js');
 
   for (const modus of ['all', 'own']) {
-    const uids = await scopeIds(haupt, modus);
+    const uids = await blickfeldIds(haupt, modus);
     const kopf = await getStats(uids);
     const liste = await getSets(uids, { page_size: 60 });
     assert.equal(kopf.total_sets, liste.total,
@@ -62,7 +62,7 @@ test('Kopfzeile und Galerie zaehlen dieselben Sets', async (t) => {
   // Die andere Lesart bleibt erhalten und steht in der App als eigene Kachel
   // daneben („Einheiten"). Ohne diese Zusicherung wäre die naheliegende
   // „Korrektur" — beide auf DISTINCT — unbemerkt geblieben.
-  const alle = await getStats(await scopeIds(haupt, 'all'));
+  const alle = await getStats(await blickfeldIds(haupt, 'all'));
   assert.equal(alle.total_quantity, 3,
     'Exemplare zählen weiterhin einzeln: zwei Konten mit demselben Set plus eines');
   assert.equal(alle.total_sets, 2, 'verschiedene Sets im Haushalt');

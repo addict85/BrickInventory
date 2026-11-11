@@ -15,6 +15,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
@@ -67,8 +68,7 @@ async function dbErreichbar() {
 test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
   if (!(await dbErreichbar())) {
     await db.pool.end().catch(() => {});
-    if (process.env.REQUIRE_DB === '1') throw new Error('REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.');
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t); return;
   }
   await seed();
 
@@ -475,7 +475,7 @@ testOberflaeche('Gutscheine in der Webapp: Marcos Nachbesserungen', async (t) =>
   // Sicht darauf, ob ein Test eine Datei liest, die es gar nicht gibt — und
   // genau dieser Waechter ist hier prompt rot geworden. …
   const { ohneKommentare } = require('./helpers/sources');
-  const js = ohneKommentare(fsO.readFileSync(path.join(ROOT, 'public', 'js', '17-gutscheine.js'), 'utf8'));
+  const js = ohneKommentare(fsO.readFileSync(path.join(ROOT, 'public', 'js', 'gutscheine.js'), 'utf8'));
   const html = fsO.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
   const css = fsO.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
 
@@ -505,7 +505,7 @@ testOberflaeche('Gutscheine in der Webapp: Marcos Nachbesserungen', async (t) =>
   });
 
   await t.test('die Notiz ist auch aus der Oberflaeche verschwunden', () => {
-    for (const [name, inhalt] of [['17-gutscheine.js', js], ['index.html', html], ['styles.css', css]]) {
+    for (const [name, inhalt] of [['gutscheine.js', js], ['index.html', html], ['styles.css', css]]) {
       assert.ok(!/v-note|vouchers\.note|voucher-note/.test(inhalt),
         `${name} nennt die Notiz noch`);
     }

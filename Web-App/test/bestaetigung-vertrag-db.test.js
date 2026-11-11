@@ -33,6 +33,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const zf = _req('src/konto/zweiterFaktor.js');
@@ -81,13 +82,7 @@ async function mitFaktor(uid) {
 }
 
 test('ein einziger Bestätigungsweg', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber keine Test-DB: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   const CHEF = `bv_chef_${process.pid}`, ZIEL = `bv_ziel_${process.pid}`, OHNE = `bv_ohne_${process.pid}`;
   const chef = await konto(CHEF, true), ziel = await konto(ZIEL, false), ohne = await konto(OHNE, false);
   t.after(async () => {

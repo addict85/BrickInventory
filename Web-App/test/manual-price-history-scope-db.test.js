@@ -1,7 +1,7 @@
 /**
  * Preisverlauf im Haushalt — Set, manuelles Teil UND manuelle Minifigur.
  *
- * Gegenprobe (durchgeführt): scopeIds() in den beiden Minifiguren-Routen
+ * Gegenprobe (durchgeführt): blickfeldIds() in den beiden Minifiguren-Routen
  * zurück auf `uid` → beide Minifiguren-Teilschritte werden rot, Set und Teil
  * bleiben grün.
  *

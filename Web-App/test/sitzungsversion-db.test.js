@@ -8,7 +8,7 @@
  * Gegenproben (01.11.2026 gemessen, je einzeln):
  *   A  sitzungsVersionPruefen() ruft immer next() → rot: „die zurückgeschriebene
  *      Verwaltersitzung gilt nicht mehr" und „das andere Fenster bleibt draussen"
- *   B  erhoeheSitzungsVersion() in revokeAllSessions (src/konto/auth.ts) entfernt → rot:
+ *   B  erhoeheSitzungsVersion() in revokeAllSessions (src/konto/zugangsende.ts) entfernt → rot:
  *      „die zurückgeschriebene Verwaltersitzung gilt nicht mehr"
  *   C  in routes/api_v1/settings.ts die neue Version nicht in die eigene
  *      Sitzung geschrieben → rot: „das eigene Fenster bleibt angemeldet"
@@ -24,6 +24,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const express   = require(path.join(ROOT, 'node_modules', 'express'));
 const session   = require(path.join(ROOT, 'node_modules', 'express-session'));
@@ -34,13 +35,7 @@ const NAMEN = ['sv_chef', 'sv_zweiter', 'sv_nutzer'];
 const PW = 'sitzungsVersion-1';
 
 test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber keine Test-DB: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   for (const n of NAMEN) await db.run('DELETE FROM users WHERE username = $1', [n]);
   const hash = await bcrypt.hash(PW, 4);

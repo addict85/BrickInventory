@@ -11,7 +11,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
+const { starteApp } = require('./helpers/app-browser');
 const { musterSammlung } = require('./helpers/bestand');
 
 const messen = `(() => {
@@ -36,7 +36,7 @@ test('Sammlung am Telefon: Karte über der Falz, Preise ohne Überlappung', { ti
   if (app.grund) { t.skip(app.grund); return; }
   for (const [breite, hoehe] of [[320, 640], [360, 740], [390, 844]]) {
     await app.b.tab('Emulation.setDeviceMetricsOverride', { width: breite, height: hoehe, deviceScaleFactor: 2, mobile: true });
-    await warte(600);
+    await app.ruhig();
     await app.bis(`document.querySelectorAll('#gallery .price-badge:not([hidden])').length > 0`, 'Marktpreise auf den Karten');
     const m = await app.b.auswerten(messen);
     assert.ok(m.oben !== null && m.oben + 60 < m.leiste, `${breite}: erste Karte über der Falz (oben ${m.oben}, Leiste ${m.leiste})`);

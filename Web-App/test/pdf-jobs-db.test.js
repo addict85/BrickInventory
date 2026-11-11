@@ -19,6 +19,7 @@
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
+const { keineDb } = require('./helpers/db');
 const fs     = require('node:fs/promises');
 const path   = require('node:path');
 
@@ -33,9 +34,7 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
 
   {
@@ -52,10 +51,10 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
   const idA = (await db.get("SELECT id FROM users WHERE username='pdf_a'")).id;
   const idB = (await db.get("SELECT id FROM users WHERE username='pdf_b'")).id;
 
-  // Tokens liegen GEHASHT in der Tabelle (src/konto/auth.ts) — der Klartextpfad
+  // Tokens liegen GEHASHT in der Tabelle (src/konto/geraeteToken.ts) — der Klartextpfad
   // wurde bewusst entfernt. Der Test legt deshalb den Hash ab und schickt den
   // Klartext, genau wie ein echter Client.
-  const { hashToken } = _req('src/konto/auth.js');
+  const { hashToken } = _req('src/konto/geraeteToken.js');
   const tokenFuer = async (uid, label) => {
     const t = require('node:crypto').randomBytes(24).toString('hex');
     await db.run(

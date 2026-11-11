@@ -205,7 +205,7 @@ const FEHLEN_ERLAUBT = new Map([
   ['/api/v1/minifigs/manual FigValuationItem.acquisitions',
    'die Liste führt keine Erfassungen; die Detailansicht lädt sie über /acquisitions'],
   ['/api/v1/sets/exists/{setNumber} SetExistsResponse.is_self', 'nur, wenn es das Set im Blickfeld gibt'],
-  // Besitzer nennt der Server nur im Haushalt (withOwners); allein gibt es keine.
+  // Besitzer nennt der Server nur im Haushalt (besitzerAnhaengen); allein gibt es keine.
   ...[['/api/v1/sets', 'SetItem'], ['/api/v1/sets/{setNumber}', 'SetItem'], ['/api/v1/minifigs', 'Minifig'],
     ['/api/v1/sets/{setNumber}/minifigs-list', 'Minifig'], ['/api/v1/parts/manual', 'PartValuationItem'],
     ['/api/v1/minifigs/manual', 'FigValuationItem'], ['/api/v1/finance/parts-valuation', 'PartValuationItem'],

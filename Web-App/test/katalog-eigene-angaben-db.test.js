@@ -24,6 +24,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db   = _req('db/database.js');
 
@@ -42,8 +43,7 @@ test.after(async () => { await db.pool.end().catch(() => {}); });
 test('eigene Katalogangaben bleiben beim Konto und seinem Haushalt', { concurrency: 1 }, async (t) => {
   try { await db.get('SELECT 1'); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   {
     const c = await db.pool.connect();

@@ -329,7 +329,7 @@ export function setDetailZeile(db: DbSchnittstelle, uids: number[], setNumber: s
                  FROM sets d
                  JOIN storage_locations lo ON lo.id = d.storage_id
                 WHERE d.user_id = ANY($1) AND d.set_number = s.set_number) AS storage,
-              -- Besitzer wie in getSets(); withOwners() macht daraus Plaketten.
+              -- Besitzer wie in getSets(); besitzerAnhaengen() macht daraus Plaketten.
               (SELECT array_agg(DISTINCT e.user_id ORDER BY e.user_id)
                  FROM sets e WHERE e.user_id = ANY($1) AND e.set_number = s.set_number) AS owner_ids
          FROM sets s

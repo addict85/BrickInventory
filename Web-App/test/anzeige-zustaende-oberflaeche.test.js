@@ -149,7 +149,7 @@ test('Konto: eigenes Design oder Vorgabe des Verwalters', async () => {
   });
   try {
     // Das Boot-Skript steht im <head>, das der Helfer nicht ausführt; es stellt applyTheme bereit.
-    w.eval(require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public', 'js', '00-theme-boot.js'), 'utf8'));
+    w.eval(require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public', 'js', 'theme-boot.js'), 'utf8'));
     await sicht(w, 'profil');
     const sel = d.getElementById('design-wahl');
     await warte(() => /Noppe/.test(sel.options[0].textContent));

@@ -139,7 +139,7 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [oben, uid]);
   await db.run('INSERT INTO household_former_links (main_user_id, sub_user_id, via_user_id) VALUES ($1, $2, $3)',
     [uid, getrennt, sub]);
-  await _req('src/konto/auth.js').createToken(uid, 'Vertragsprobe');
+  await _req('src/konto/geraeteToken.js').createToken(uid, 'Vertragsprobe');
   // Hintergrundarbeiten: ein Auftrag mit Fortschritt und eine Pause, damit
   // /admin/auftraege keine leeren Listen liefert.
   const auftrag = await { ..._req('src/auftraege/dienst.js'), ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege }.stelleAuftragEin('anleitung', { set_number: SET },

@@ -39,13 +39,13 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 
 test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async (t) => {
   try { await db.initSchemaOnce(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
@@ -105,8 +105,7 @@ test('auch reine Vorschau-Arbeit wird gebremst', { concurrency: 1 }, async (t) =
   // Marcos Log
   try { await db.initSchemaOnce(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung

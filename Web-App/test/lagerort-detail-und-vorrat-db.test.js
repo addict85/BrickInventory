@@ -7,6 +7,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 // Ein Bestand ist seit Migration 0036 ZWEI Zeilen: eine in `sets` („dieses
 // Konto haelt dieses Set") und eine je Kauf in `set_acquisitions`. haeltSet()
@@ -43,20 +44,18 @@ async function seed() {
 test('Lagerort: Detail und Vorrat gegen echte Datenbank', async (t) => {
   try { await db.get('SELECT 1 AS ok'); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   await seed();
 
   const L = { ..._req('src/bestand/lagerort.js'), ..._req('src/bestand/prozess.js').bestandBereich().lagerortDienst };
   const S = _req('src/sets/index.js');
   const household = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt };
-  const schreibbar = await household.writableIds(HAUPT);
+  const schreibbar = await household.schreibbereich(HAUPT);
   // Vorbedingung: Das Blickfeld umfasst wirklich BEIDE Konten, sonst prüft
   // Befund 2 unten nichts.
   assert.ok(schreibbar.includes(HAUPT) && schreibbar.includes(KIND),
-    `writableIds lieferte ${schreibbar} — der Haushalt steht nicht`);
+    `schreibbereich lieferte ${schreibbar} — der Haushalt steht nicht`);
 
   assert.equal(await L.setzeLagerort('set', schreibbar, [SN], 'Estrich'), 1,
     'Das Setzen muss genau die eine Zeile des Hauptkontos treffen');
@@ -163,9 +162,7 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async (t) => {
 test('der Lagerortfilter der Listen wirkt über die Route', async (t) => {
   try { await db.get('SELECT 1 AS ok'); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   await seed();
 

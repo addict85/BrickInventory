@@ -32,7 +32,7 @@ async function bucheZeile(sk: SetsKontext, z: CsvZeile, userId: number): Promise
         addSetWithDate(sk, z.sn, z.qty, userId, z.purchasePrice, z.condition, z.acquiredAt),
         new Promise<never>((_, rej) => { wecker = setTimeout(() => rej(new Error('Timeout')), zeilenFrist()); }),
       ]).finally(() => clearTimeout(wecker));
-      await nacharbeitEinstellen(r.set_number ?? z.sn, userId, 'csv');
+      await nacharbeitEinstellen(sk, r.set_number ?? z.sn, userId, 'csv');
       return { set_number: z.sn, success: true, action: r.action, menge: z.qty,
                ...('katalog_offen' in r && r.katalog_offen ? { katalog_offen: true } : {}) };
     } catch (e) {

@@ -6,6 +6,7 @@ import { mitVersion, ohneBricklinkPreis, ohneVersion } from '../infra/setNummer'
 import { fachfehler } from '../infra/fehlerTexte';
 import type { KatalogEintrag } from './repository/katalogCache';
 import { katalog } from './prozess';
+import type { KatalogDienste } from './bereich';
 
 // Ob ein Datensatz einen Preis hat, an einer Stelle statt in drei Fassungen.
 export type PreisDatensatz = { avg_price?: unknown; qty_avg_price?: unknown } | null | undefined;
@@ -23,8 +24,8 @@ export function setBekanntImKatalog(setNumber: string): Promise<boolean> {
 }
 
 /** Unter der Schreibweise, unter der er abgelegt wird. */
-export function katalogEintrag(setNumber: string): Promise<KatalogEintrag | null> {
-  return katalog().katalogCache.katalogEintragZu(mitVersion(setNumber));
+export function katalogEintrag(setNumber: string, k: KatalogDienste = katalog()): Promise<KatalogEintrag | null> {
+  return k.katalogCache.katalogEintragZu(mitVersion(setNumber));
 }
 
 /** Nicht gefunden oder ungültig: dann die nächste Art. */

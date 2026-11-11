@@ -11,7 +11,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 /**
- * Die Designs — dieselbe Liste wie ALLOWED in js/00-theme-boot.js und die Whitelist
+ * Die Designs — dieselbe Liste wie ALLOWED in js/theme-boot.js und die Whitelist
  * in routes/settings.ts (theme.test.js hält sie zusammen). Auf der Leitung und in
  * der Ablage steht die [kennung].
  */

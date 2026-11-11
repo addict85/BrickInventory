@@ -103,6 +103,13 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
     await db.run('DELETE FROM users WHERE username = $1', [`regel_vw_${process.pid}`]);
   });
 
+  // Die Anmeldung sucht in Name UND Adresse: Eine fremde Adresse als Name zöge deren Anmeldung an sich.
+  // Gegenprobe (11.11.2026 gemessen): /register lässt neben USERNAME_RE auch eine Adresse zu → rot.
+  await t.test('Registrieren nimmt keine Adresse als Benutzernamen', async () => {
+    assert.equal(await ruf(['POST', '/register', { username: `regel_${process.pid}@example.org`,
+      email: `regel_${process.pid}@example.org`, password: 'Brick-Sammlung-2026' }]), '/register 400 benutzername_ungueltig');
+  });
+
   // Gegenproben (02.11.2026 gemessen): in /change-password wieder
   // req.session?.username → rot (200 für den eigenen Namen); in
   // /users/:id/password wieder ohne Namen → rot (200 für den Namen des Ziels).
@@ -128,6 +135,44 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
       [ziel, require('node:crypto').createHash('sha256').update(roh).digest('hex')]);
     assert.equal(await ruf(['POST', '/reset-password', { token: roh, password: ZIEL.toUpperCase() }]), '/reset-password 400 passwort_zu_haeufig');
     assert.ok(!bcrypt.compareSync(ZIEL.toUpperCase(), (await db.get('SELECT password_hash FROM users WHERE id = $1', [ziel])).password_hash));
+  });
+
+  // Gegenprobe (11.11.2026 gemessen): eigenesPasswortAendern() (src/konto/anmeldungAblauf.ts)
+  // lässt passwort_zu_kurz durch → rot (/change-password 200 statt 400).
+  await t.test('zu kurze Passwörter werden auf allen fünf Wegen abgewiesen', async () => {
+    const ist = [];
+    for (const w of wege('Kurz-12345')) ist.push(await ruf(w));
+    assert.deepEqual(ist, wege('').map(([, p]) => `${p} 400 passwort_zu_kurz`));
+  });
+
+  // Gegenprobe (11.11.2026 gemessen): in setzeFremdesPasswort (src/konto/konten.ts)
+  // mit 4 statt BCRYPT_ROUNDS gehasht → rot (PUT /users/:id/password: 4).
+  await t.test('jeder Weg hasht mit denselben Kosten', async () => {
+    const { BCRYPT_ROUNDS } = _req('src/konto/anmeldepruefung.js');
+    const NEU = `regel_neu_${process.pid}`, VW = `regel_vw_${process.pid}`;
+    t.after(() => db.run('DELETE FROM users WHERE username = ANY($1)', [[NEU, VW]]));
+    const roh = 'c'.repeat(64);
+    await db.run(`UPDATE users SET reset_token = $2, reset_token_expires = NOW() + interval '1 hour' WHERE id = $1`,
+      [ziel, require('node:crypto').createHash('sha256').update(roh).digest('hex')]);
+    const runden = async (name) =>
+      bcrypt.getRounds((await db.get('SELECT password_hash FROM users WHERE username = $1', [name])).password_hash);
+    const gut = 'Brick-Sammlung-2026';
+    // Das eigene Passwort zuletzt: Die Wege davor bestätigen mit PASS.
+    /** @type {[string, string, object, string][]} */
+    const schritte = [
+      ['POST', '/register', { username: NEU, email: `regel_${process.pid}@example.org`, password: gut }, NEU],
+      ['POST', '/reset-password', { token: roh, password: gut }, ZIEL],
+      ['POST', '/users', { username: VW, password: gut, admin_password: PASS }, VW],
+      ['PUT', `/users/${ziel}/password`, { password: gut, admin_password: PASS }, ZIEL],
+      ['POST', '/change-password', { current: PASS, newPassword: gut }, CHEF],
+    ];
+    const ist = [];
+    for (const [methode, pfad, rumpf, name] of schritte) {
+      const antwort = await ruf([methode, pfad, rumpf]);
+      ist.push(`${antwort.split(' ')[0]} ${antwort.split(' ')[1]} ${await runden(name)}`);
+    }
+    assert.deepEqual(ist, ['/register', '/reset-password', '/users', `/users/${ziel}/password`, '/change-password']
+      .map(p => `${p} 200 ${BCRYPT_ROUNDS}`));
   });
 
   await t.test('ein schwaches ADMIN_PASSWORD wird nicht übernommen', async () => {

@@ -4,10 +4,11 @@ import { mitVersion } from '../infra/setNummer';
 import { merkeFiguren, merkeSetFiguren } from './katalogPflege';
 import * as inhalt from './repository/setInhalt';
 import { katalog } from './prozess';
+import type { KatalogDienste } from './bereich';
 
 // Mit und ohne Versionsanhang fragen, nicht zweimal dieselbe Schreibweise.
-export async function figurenAusKatalog(setNumber: string) {
-  return katalog().setInhalt.figurenDesSetkatalogs(mitVersion(setNumber)).catch((e: unknown) => { logAndContinue('minifiguren:katalog lesen')(e); return []; });
+export async function figurenAusKatalog(setNumber: string, k: KatalogDienste = katalog()) {
+  return k.setInhalt.figurenDesSetkatalogs(mitVersion(setNumber)).catch((e: unknown) => { logAndContinue('minifiguren:katalog lesen')(e); return []; });
 }
 
 type Figur = { fig_number: string; fig_name: string; quantity: number; image_url: string | null };

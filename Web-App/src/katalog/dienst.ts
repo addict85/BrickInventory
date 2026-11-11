@@ -106,7 +106,7 @@ export async function jahrVerteilung(f: KatalogFilter, absteigend: boolean) {
 export async function katalogSeite(userId: number, f: KatalogFilter, sortRoh: unknown, page: number, limit: number) {
   const wahl = await waehle(f);
   const [total, sets] = await Promise.all([
-    katalog().katalogSuche.katalogAnzahl(wahl), katalog().katalogSuche.katalogZeilen(await haushaltBereich().haushalt.scopeIds(userId), wahl, sortRoh, limit, (page - 1) * limit)]);
+    katalog().katalogSuche.katalogAnzahl(wahl), katalog().katalogSuche.katalogZeilen(await haushaltBereich().haushalt.blickfeldIds(userId), wahl, sortRoh, limit, (page - 1) * limit)]);
   const tree = await getThemeTree();
   // Die Liste stösst keine Bildarbeit an; fehlende Bilder holt der Bild-Proxy.
   return { total, page, page_size: limit, pages: Math.max(1, Math.ceil(total / limit)),
@@ -118,7 +118,7 @@ export const katalogGeladen = async () => !(await katalog().katalogSuche.katalog
 
 export async function katalogSet(userId: number, roh: string) {
   const n = mitVersion(roh.trim());
-  const set = await katalog().katalogSuche.katalogZeile(await haushaltBereich().haushalt.scopeIds(userId), n);
+  const set = await katalog().katalogSuche.katalogZeile(await haushaltBereich().haushalt.blickfeldIds(userId), n);
   if (!set) return null;
   const invId = await neuestesInventar(n);
   const m = invId ? await katalog().katalogSuche.figurenImInventar(invId) : undefined;

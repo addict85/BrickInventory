@@ -22,6 +22,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 
 const U = {};
@@ -91,10 +92,7 @@ const nummern = (liste) => liste.map(w => `${w.set_number}/${w.condition}`);
 test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async (t) => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error('REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.');
-    }
-    t.skip('Test-DB nicht erreichbar — Suite übersprungen');
+    keineDb(t);
     return;
   }
   await seed();
@@ -162,7 +160,7 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async (t) => {
   });
 
   await t.test('6. Der Inhaber ist das Blickfeld, kein eigener Parameter', async () => {
-    // Genau so steht es in der Route: `accounts=` geht durch scopeIds() und
+    // Genau so steht es in der Route: `accounts=` geht durch blickfeldIds() und
     // kommt als userIds herein. Eine zweite Stelle, die Konten auswählt, wäre
     // die Doppelung, vor der src/haushalt/haushalt.ts warnt.
     const nurEnkel = await M.merkpostenVon([U.enkel], undefined, 'EUR');

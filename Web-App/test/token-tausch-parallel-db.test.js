@@ -22,7 +22,8 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
-const auth = _req('src/konto/auth.js');
+const auth = _req('src/konto/geraeteToken.js');
+const tokenCache = _req('src/konto/tokenCache.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('Tausch desselben Tokens', { concurrency: 1 }, async t => {
@@ -64,7 +65,7 @@ test('Tausch desselben Tokens', { concurrency: 1 }, async t => {
       antworten.filter(a => a.status !== 200).every(a => a.status === 409 && a.body.code === 'tausch_laeuft'),
       stand,
     );
-    auth.leereTokenCache();
+    tokenCache.leereTokenCache();
     assert.equal((await ruf('/stats', neu[0].body.token)).status, 200, 'der ausgegebene Token gilt');
   });
 
@@ -76,7 +77,7 @@ test('Tausch desselben Tokens', { concurrency: 1 }, async t => {
       auth.hashToken(erster.token),
     ]);
     assert.equal(await auth.rotiereToken(alt, '192.0.2.5'), null);
-    auth.leereTokenCache();
+    tokenCache.leereTokenCache();
     assert.equal(await auth.validateToken(erster.token), null, 'der Nachfolger ist weg');
     assert.equal(await auth.validateToken(alt), null, 'der alte ist weg');
   });

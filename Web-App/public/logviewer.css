@@ -1,4 +1,4 @@
-/* Log-Betrachter im Popup (js/01-monitor.js). Eine Datei statt <style>: Das
+/* Log-Betrachter im Popup (js/monitor.js). Eine Datei statt <style>: Das
    Popup erbt die CSP der App, und die erlaubt keine Inline-Stile. */
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:monospace;background:#0d1117;color:#e6edf3;display:flex;flex-direction:column;height:100vh;overflow:hidden}

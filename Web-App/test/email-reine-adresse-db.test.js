@@ -29,6 +29,7 @@ const gesendet = [];
 nodemailer.createTransport = () => ({ sendMail: async (m) => { gesendet.push(m); return { messageId: 'x' }; } });
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const mailer = _req('src/mail/mailer.js');
@@ -39,13 +40,7 @@ const UNREIN = ['x1<opfer@example.org>', '"Opfer" <opfer@example.org>', 'opfer@e
   'opfer@example.org;x', 'op fer@example.org', 'opfer@example.org\u0007', '(k)opfer@example.org'];
 
 test('nur reine E-Mail-Adressen', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber keine Test-DB: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  if (!await dbOderSkip(t, _req)) return;
   const SCHLUESSEL = ['registration_enabled', 'smtp_host', 'smtp_user', 'smtp_from'];
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
   const setze = (k, v) => db.run(`INSERT INTO global_settings (key, value) VALUES ($1, $2)

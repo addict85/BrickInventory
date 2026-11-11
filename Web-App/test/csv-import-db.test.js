@@ -35,6 +35,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { ROOT, buildAndRequire, ohneKommentare } = require('./helpers/sources');
 const _req = buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db   = _req('db/database.js');
 
 async function dbReachable() {
@@ -44,10 +45,7 @@ async function dbReachable() {
 test('Katalog-Import tauscht, statt zu leeren', async (t) => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error('REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.');
-    }
-    t.skip('Test-DB nicht erreichbar — Suite übersprungen');
+    keineDb(t);
     return;
   }
 

@@ -12,7 +12,7 @@
  *      „Anleitungen nur zu eigenen Sets“ (200 statt 404)
  *   C  bildFreigegeben() lässt nur sets/ durch (Teile wie Sets geprüft) → rot:
  *      „Teilebilder sind Katalog“ (404)
- *   D  scopeIds() durch [uid] ersetzt → rot: „Anleitungen nur zu eigenen Sets“
+ *   D  blickfeldIds() durch [uid] ersetzt → rot: „Anleitungen nur zu eigenen Sets“
  *   E  in setInfoFuerKonto() (src/sets/inhalt.ts) image_local für Sets ausserhalb
  *      des Blickfelds wieder auf null → rot: „die API nennt das lokale Bild jedes Sets“
  *   F  beiHaushaltsaenderung() in bildBlickfeld.ts nicht aufgerufen (60 s
@@ -63,7 +63,7 @@ test('Bilder und Anleitungen im Blickfeld', { concurrency: 1, timeout: 180_000 }
   for (const sn of [SN.unter, SN.fremd])
     await katalogSet(db, sn, { name: sn, image_local: `/images/sets/${sn}.jpg` });
   for (const f of DATEIEN) { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, `Inhalt ${path.basename(f)}`); }
-  const auth = _req('src/konto/auth.js');
+  const auth = _req('src/konto/geraeteToken.js');
   const token = {};
   for (const [k, id] of [['haupt', ids[0]], ['unter', ids[1]], ['fremd', ids[2]]]) token[k] = await auth.createToken(id, 'Prüfung', true);
   t.after(async () => {

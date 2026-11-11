@@ -451,14 +451,9 @@ test('ein Fachbereich greift auf einen anderen nur über dessen Dienste und inde
   };
   const tiefe = (dateien) => dateien
     .flatMap(d => aufgeloesteImporte(d, { mitTypen: true }).filter(z => tief(d, z)).map(z => `${d} -> ${z}`));
-  assert.deepEqual(tiefe(tsUnter('src', 'jobs', 'startup').concat('server.ts')), []);
-  // Die Anmelderouten (routes/auth*) prüfen Quelltext-Tests über die Namensräume
-  // K., A. und zf.; sie folgen, wenn diese Tests auf Verhalten umgestellt sind.
-  // Gemessen 29 am 11.11.2026; Ziel 0.
-  const SCHRANKE_ROUTEN = 29;
-  const routen = tiefe(tsUnter('routes')).length;
-  assert.ok(routen <= SCHRANKE_ROUTEN, `${routen} tiefe Importe in routes/, erlaubt sind ${SCHRANKE_ROUTEN}`);
-  if (routen < SCHRANKE_ROUTEN) console.log(`  ℹ tiefe Importe in routes/: ${routen} (Schranke ${SCHRANKE_ROUTEN}) — Schranke nachziehen`);
+  // Gegenprobe (11.11.2026): `import { USERNAME_RE } from '../../src/konto/namensRegeln'`
+  // in routes/auth/benutzer.ts → rot.
+  assert.deepEqual(tiefe(tsUnter('src', 'jobs', 'startup', 'routes').concat('server.ts')), []);
   const indizes = tsUnter('src').filter(d => /^src\/[^/]+\/index\.ts$/.test(d));
   assert.ok(indizes.length >= 15, `nur ${indizes.length} index.ts gefunden`);
 });
@@ -481,9 +476,9 @@ test('ein Repository kennt keine Dienste, auch nicht deren Typen', () => {
 test('Routen lösen keine Konten auf — das tun die Dienste', () => {
   // Eine Route gibt die Sicht (sichtVon) oder den Wunsch weiter; die Regeln des
   // Haushalts stehen in src/haushalt und den Diensten, die sie anwenden.
-  // Gegenprobe (05.11.2026): `await scopeIds(req.apiUser.user_id)` zurück in
+  // Gegenprobe (05.11.2026): `await blickfeldIds(req.apiUser.user_id)` zurück in
   // routes/api_v1/misc.ts → rot.
-  const AUFLOESUNG = /\b(?:scopeIds|writableIds|resolveWriteTarget|parseScopeMode|canWriteFor|asIds|lagerKonten|blickfeldAus|schreibbereichAus)\s*\(/;
+  const AUFLOESUNG = /\b(?:blickfeldIds|schreibbereich|schreibzielOderNull|parseScopeMode|darfSchreibenFuer|asIds|lagerKonten|blickfeldAus|schreibbereichAus)\s*\(/;
   const dateien = tsUnter('routes');
   assert.ok(dateien.length > 15, 'zu wenige Routendateien gefunden');
   assert.deepEqual(dateien.filter(d => AUFLOESUNG.test(quelltext(d))), []);
@@ -520,7 +515,7 @@ test('Express kennen nur src/http, die HTTP-Seiten der Bereiche und die Routen',
 test('nur Routen, Server und HTTP-Seiten importieren eine HTTP-Seite oder src/http', () => {
   // Ein Dienst, der die HTTP-Seite importiert, hängt wieder am Request.
   // Gegenprobe (31.10.2026): `import { adresse } from './http/anmeldung'` in
-  // src/konto/auth.ts → rot.
+  // src/konto/geraeteToken.ts → rot.
   const treffer = [];
   for (const d of tsUnter('src', 'jobs', 'clients').filter(d => !istHttp(d)))
     for (const z of aufgeloesteImporte(d)) if (istHttp(z)) treffer.push(`${d} -> ${z}`);
@@ -529,7 +524,7 @@ test('nur Routen, Server und HTTP-Seiten importieren eine HTTP-Seite oder src/ht
   // Dasselbe für src/http/: Die gemeinsamen Helfer hängen am Request, ein Dienst,
   // der sie holt, hinge es auch; umgekehrt kennt src/http nur src/infra.
   // Gegenproben (08.11.2026): `import { fehlerAntwort } from '../http/httpAntwort'`
-  // in src/konto/auth.ts → rot; `import { setKey } from '../sets/setService'` in
+  // in src/konto/geraeteToken.ts → rot; `import { setKey } from '../sets/setService'` in
   // src/http/httpAntwort.ts → rot.
   const http = tsUnter('src').filter(d => bereichVon(d) === 'http');
   assert.ok(http.length >= 8, `nur ${http.length} Dateien unter src/http`);

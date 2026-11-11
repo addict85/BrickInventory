@@ -14,7 +14,7 @@
  *      „ohne Datenbank bremst der Speicher“
  *   D  in /admin/cache-clear requireApiAdmin durch `(_q, _s, n) => n()` →
  *      rot: „den Preis-Cache leert nur …“ (200 statt 403)
- *   E  in 06-minifigs.js die Kachel mit imgUrl(…, false) (Bündel neu gebaut)
+ *   E  in minifigs.js die Kachel mit imgUrl(…, false) (Bündel neu gebaut)
  *      → rot: „Minifiguren und Finanzen fordern Vorschaubilder an“
  *   F  in herunterfahren() `closeAllSse()` gestrichen → rot: „offene
  *      Ereignis-Ströme …“ (Ende erst nach der Frist von 8 s)
@@ -206,9 +206,9 @@ test('keine Oberfläche hängt einen Token an eine Adresse', () => {
   const { ohneKommentare, setKernQuelle } = require('./helpers/sources');
   const anhaengen = [/'\?token='\s*\+/, /\?token=\$/];
   const dateien = [
-    path.join(ROOT, 'public', 'js', '01-api.js'), path.join(ROOT, 'public', 'js', '01-bilder.js'),
-    path.join(ROOT, 'public', 'js', '01-fortschritt.js'), path.join(ROOT, 'public', 'js', '01-monitor.js'),
-    path.join(ROOT, 'public', 'js', '02-gallery.js'), path.join(ROOT, 'public', 'js', '05-settings.js'),
+    path.join(ROOT, 'public', 'js', 'api.js'), path.join(ROOT, 'public', 'js', 'bilder.js'),
+    path.join(ROOT, 'public', 'js', 'fortschritt.js'), path.join(ROOT, 'public', 'js', 'monitor.js'),
+    path.join(ROOT, 'public', 'js', 'gallery.js'), path.join(ROOT, 'public', 'js', 'settings.js'),
     path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'ui', 'screens', 'SetDetailSections.kt'),
     path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'ui', 'screens', 'SetDetailAnleitungen.kt'),
     path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'ui', 'screens', 'SetDetailScreen.kt'),
@@ -223,7 +223,7 @@ test('keine Oberfläche hängt einen Token an eine Adresse', () => {
     if (anhaengen.some(re => re.test(src))) treffer.push(path.basename(voll));
   }
   assert.deepEqual(treffer, []);
-  // Eine zweite Fassung des Wächters umginge die eine Regel in src/konto/auth.ts.
+  // Eine zweite Fassung des Wächters umginge die eine Regel in src/konto/http/anmeldung.ts.
   assert.doesNotMatch(setKernQuelle(), /function requireLoginOrToken/);
   // Während eines Imports ist 503 nach 3 s besser als eine hängende Verbindung.
   assert.match(setKernQuelle(), /loginOrTokenGuard\(\{ timeoutMs: 3000 \}\)/);

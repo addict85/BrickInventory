@@ -3,7 +3,7 @@
  * Die Webapp im echten Bündel (jsdom); die App liest Kotlin (Struktur, kein SDK hier).
  *
  * Gegenproben (10.11.2026 gemessen, je einzeln, Bündel neu gebaut), alle in
- * 13-set-teile.js → rot „die Webapp zeigt die Sets als Tabelle …“:
+ * set-teile.js → rot „die Webapp zeigt die Sets als Tabelle …“:
  *   A  die Bildzelle `${setBild(s)}` geleert
  *   B  zeilenStil 'flex-direction:column…' entfernt (Tabelle neben der Beschriftung)
  *   C  `orig:` aus bildTag entfernt (kein Rückfall auf das CDN-Bild)

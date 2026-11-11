@@ -23,7 +23,7 @@ const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const K = { ..._req('src/konto/konten.js'), ..._req('src/konto/prozess.js').kontoBereich().konten };
-const { hashToken } = _req('src/konto/auth.js');
+const { hashToken } = _req('src/konto/geraeteToken.js');
 
 test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }, async (t) => {
   if (!await dbOderSkip(t, _req)) return;

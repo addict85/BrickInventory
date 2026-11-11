@@ -82,8 +82,8 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
 
   const ownerReq = body.owner_user_id;
   if (ownerReq !== undefined && ownerReq !== null && ownerReq !== '') {
-    const from = await haushaltBereich().haushalt.acquisitionMoveSource(uid, art, id);
-    const to = await haushaltBereich().haushalt.resolveWriteTarget(uid, ownerReq);
+    const from = await haushaltBereich().haushalt.umzugsQuelle(uid, art, id);
+    const to = await haushaltBereich().haushalt.schreibzielOderNull(uid, ownerReq);
     if (to === null) fachfehler('verboten', 'kein_schreibrecht');
     if (from === to) return { unchanged: true };
     // Wie verschiebeSet(): Gegenrichtungen sperren die Zeilen beider Konten umgekehrt.
@@ -111,7 +111,7 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
 
   const besitzer = await besitzerDerZeile(art, id, uid);
   await mitInventarSperre(sammlungBereich().db, besitzer, bestandsSchluessel(art, keys), async (tx) => {
-    const wids = await haushaltBereich().haushalt.writableIds(uid);
+    const wids = await haushaltBereich().haushalt.schreibbereich(uid);
     const acq = await zeileImSchreibfeld(tx, art, wids, id, keys);
     // Ab hier zählt der Besitzer der Zeile, nicht der Betrachter.
     const ownerId = Number(acq.user_id);
@@ -149,7 +149,7 @@ export async function erfassungLoeschen(art: ErfassungsArt, uid: number, id: num
   const a = ARTEN[art];
   const besitzer = await besitzerDerZeile(art, id, uid);
   const menge = await mitInventarSperre(sammlungBereich().db, besitzer, bestandsSchluessel(art, keys), async (tx) => {
-    const acq = await zeileImSchreibfeld(tx, art, await haushaltBereich().haushalt.writableIds(uid), id, keys);
+    const acq = await zeileImSchreibfeld(tx, art, await haushaltBereich().haushalt.schreibbereich(uid), id, keys);
     const ownerId = Number(acq.user_id);
     await repo.loescheErfassung(tx, art, id, ownerId);
     const q = await mengeDesBestands(tx, art, ownerId, keys);

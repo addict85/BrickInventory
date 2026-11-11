@@ -6,7 +6,7 @@ import path from 'node:path';
 import { DATA_DIR } from '../infra/appPaths';
 import * as repo from './repository/konten';
 import { erhoeheSitzungsVersion } from './sitzungsVersion';
-import { leereTokenCache } from './auth';
+import { leereTokenCache } from './tokenCache';
 import { meldeHaushaltsaenderung } from '../haushalt';
 import { stelleAuftragEin } from '../auftraege';
 import { meldeFehler } from '../infra/fehler';

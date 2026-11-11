@@ -37,6 +37,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db   = _req('db/database.js');
 
 // Rebrickable vorgeben: Ohne Namen im Rumpf fragt addManualPart/addManualFig
@@ -57,9 +58,7 @@ test.after(async () => { await db.pool.end().catch(() => {}); });
 test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, async (t) => {
   try { await db.get('SELECT 1'); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
 
   await db.run('DROP SCHEMA public CASCADE');
@@ -128,7 +127,7 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
     await addManualPart(UID, { part_number: '3003', color_id: 4, quantity: 1, storage: '' });
     assert.equal(await ortVonTeil('3003'), null,
       'Das sendet ein Formular, in dem die vorbefuellte Vorgabe weggeraeumt ' +
-      'wurde (selectedStorage in 02-gallery.js). Sie wieder einzusetzen waere ' +
+      'wurde (selectedStorage in gallery.js). Sie wieder einzusetzen waere ' +
       'ein Ort, den niemand wegbekommt');
   });
 

@@ -7,6 +7,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
 const { haeltSet, katalogSet } = require('./helpers/bestand');
@@ -59,9 +60,7 @@ test('eine Erfassung wechselt das Konto — alle drei Arten über ihre Route',
   { concurrency: 1 }, async (t) => {
   try { await db.get('SELECT 1'); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   await aufbau();
 
@@ -121,7 +120,7 @@ test('eine Erfassung wechselt das Konto — alle drei Arten über ihre Route',
   await t.test('ein Konto AUSSERHALB des Haushalts wird mit 403 abgewiesen', async () => {
     // Bisher ein Muster: /if \(to === null\)\s*\n\s*return sendeFehler\(req, res, 403/.
     // Das faengt eine geloeschte Zeile — nicht eine Bedingung, die nie
-    // zutrifft, oder ein resolveWriteTarget(), das zu viel erlaubt.
+    // zutrifft, oder ein schreibzielOderNull(), das zu viel erlaubt.
     await aufbau();
     const id = await erfassungId('part_acquisitions', 'part_number', '3001');
     const a = await setze(`/api/v1/parts/3001/4/acquisitions/${id}`, { owner_user_id: FREMD });

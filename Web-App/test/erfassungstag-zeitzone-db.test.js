@@ -25,15 +25,14 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.ERFASSUNG_ZEITZONE = 'Europe/Zurich';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 
 test('Erfassungstag in der Zeitzone der Installation', { concurrency: 1 }, async (t) => {
   // initSchemaOnce wie beim Start: Schema, Migrationen, Zone in die Datenbank.
   try { await db.initSchemaOnce(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   const { recordAcquisitionForDay } = _req('src/bestand/acquisitions.js');
   const NAME = `tagzone-${process.pid}`;

@@ -8,7 +8,7 @@
  *      „http:// …“
  *   B  (01.11.2026) qr.klartext_hinweis und tls.ohne_https auf dem alten Text
  *      („… geht unverschlüsselt mit“) → rot: „http:// …“ und „ohne HTTPS …“
- *   C  (08.11.2026) in 05-settings.js wieder `let secs = 1800` → rot: „der
+ *   C  (08.11.2026) in settings.js wieder `let secs = 1800` → rot: „der
  *      Countdown zählt von der Dauer des Servers“; settings.qr.hint in de.js
  *      wieder mit „30 Minuten“ → rot: dort (Hinweis nennt nicht 5 Minuten).
  *      Dass der Server 300 Sekunden nennt, prüft anmeldung-regeln-db.test.js.

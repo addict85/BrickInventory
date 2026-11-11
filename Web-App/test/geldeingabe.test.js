@@ -5,7 +5,7 @@
  * Anfragen, die die Oberfläche schickt.
  *
  * Gegenproben (02.11.2026 gemessen, je einzeln):
- *   A  leseBetrag() in 01-format.js durch parseFloat(roh) ersetzt → alle fünf
+ *   A  leseBetrag() in format.js durch parseFloat(roh) ersetzt → alle fünf
  *      rot (149,95 → 149; 1,299 en → 1; „12,3,4“ gesendet; Gutschein 50)
  *   B  in betragAusFeld() die Meldung bei NaN entfernt (ok: true, wert: null)
  *      → rot: „Unsinn wird am Feld gemeldet“ (abc ging als null hinaus)

@@ -14,5 +14,5 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetAn
 -            return true
 +            return false
          }
-         // Dieselben Schrittnamen wie in der Webapp (public/js/02-gallery.js →
+         // Dieselben Schrittnamen wie in der Webapp (public/js/gallery.js →
          // handleSseEvent). Sie stehen hier ein zweites Mal, weil es ein

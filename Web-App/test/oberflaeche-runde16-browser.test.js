@@ -17,7 +17,7 @@
  *      „Fremdwährung und Kachel …“
  *   E  ladeLagerorte() füllt die Auswahl wieder aus /v1/storage → rot:
  *      „neuer Lagerort …“
- *   F  der Hörer auf spracheGewechselt in 02-konten-orte.js gestrichen → rot:
+ *   F  der Hörer auf spracheGewechselt in konten-orte.js gestrichen → rot:
  *      „Sprachwechsel …“ (danach auch die zwei folgenden, die Seite bleibt
  *      englisch)
  *   G  data-i18n-aria nicht ausgewertet → rot: dieselben drei

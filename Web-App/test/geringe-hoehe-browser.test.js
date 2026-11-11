@@ -5,7 +5,7 @@
  * bleibt auch in einer neuen Sitzung weg.
  *
  * Gegenproben (am 03.11.2026 gemessen):
- *   A  in 10-mobile.js die Klasse kopf-weg nie gesetzt → rot: „Kopf weicht
+ *   A  in mobile.js die Klasse kopf-weg nie gesetzt → rot: „Kopf weicht
  *      beim Rollen“
  *   B  die Regel `.ntab .tab-label { position:absolute … }` für geringe Höhe
  *      entfernt → rot: „untere Leiste schmal, Namen bleiben“ (59 px)

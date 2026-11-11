@@ -56,7 +56,8 @@ test('Zugänge enden ganz oder gar nicht', { concurrency: 1 }, async t => {
   t.after(() => db.pool.end().catch(() => {}));
   const uid = await seed();
   const K = _req('src/konto/konten.js');
-  const A = _req('src/konto/auth.js');
+  const A = _req('src/konto/geraeteToken.js');
+  const zugangsende = _req('src/konto/zugangsende.js');
   const tokens = async () =>
     (await db.all('SELECT token FROM api_tokens WHERE user_id=$1 ORDER BY token', [uid])).map(z => z.token);
   const stand = () => db.get('SELECT password_hash, sitzungs_version FROM users WHERE id=$1', [uid]);
@@ -81,7 +82,7 @@ test('Zugänge enden ganz oder gar nicht', { concurrency: 1 }, async t => {
   });
 
   await t.test('andere Zugänge: der Token bleibt', async () => {
-    await mitBremse(() => assert.rejects(A.beendeAndereZugaenge(uid, null, null), /erzwungen/));
+    await mitBremse(() => assert.rejects(zugangsende.beendeAndereZugaenge(uid, null, null), /erzwungen/));
     assert.deepEqual(await tokens(), ['t1', 't2']);
   });
 

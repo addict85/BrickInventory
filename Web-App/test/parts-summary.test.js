@@ -64,6 +64,7 @@ let db, H, PS, S, skip = null;
 try {
   // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
   process.env.DATABASE_URL = DB_URL;
   umgebung({ SESSION_SECRET: 'test' });
   db = _req('db/database.js');
@@ -75,21 +76,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht',
   { skip: skip || undefined }, async (t) => {
   try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error(`REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar: ${DB_URL}`);
-    }
-    // REQUIRE_DB=1 (in CI gesetzt) verbietet das Überspringen.
-    //
-    // Ohne diese Sperre war die Suite in jeder Umgebung ohne Postgres GRÜN —
-    // inklusive CI, falls der Service-Container mal nicht hochkommt. Genau
-    // die Tests, die am meisten absichern, hätten dann stillschweigend nichts
-    // geprüft. Lieber ein lauter Fehlschlag.
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error(`REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.`);
-    }
-    t.skip(`Test-DB nicht erreichbar (${DB_URL})`); return;
-  }
+  catch (e) { keineDb(t, e); return; }
 
   const U = 990501;
   const clean = async () => {
@@ -254,12 +241,7 @@ test('beide Pfade der Kennzahlen zählen DASSELBE — auch mit manuellen Teilen'
   { skip: skip || undefined }, async (t) => {
   // Der Befund
   try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error('REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.');
-    }
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
+  catch (e) { keineDb(t, e); return; }
 
   const U = 990502;
   await db.run('DELETE FROM parts WHERE user_id=$1', [U]);

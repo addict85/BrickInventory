@@ -27,6 +27,7 @@ umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
 const { buildAndRequire, einhaengung, ohneKommentare } = require('./helpers/sources');
 const { testServer } = require('./helpers/server');
 const _req = buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 // Die Einhaengung aus server.ts LESEN, nicht abschreiben: Ein Pruefstand mit
 // fester Adresse bleibt gruen, waehrend der Router laengst woanders haengt.
 const AUTH = einhaengung('auth');
@@ -35,14 +36,7 @@ const db = _req('db/database.js');
 const lies = (rel) => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 
 test('1. ohne APP_BASE_URL kommt kein Code — und keine Nonce', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   await db.run("DELETE FROM users WHERE username = 'qr_pruefling'");
   const nutzer = await db.get(
@@ -105,7 +99,7 @@ test('1. ohne APP_BASE_URL kommt kein Code — und keine Nonce', { concurrency: 
 });
 
 test('2. die Webapp hat keine eigene Meinung mehr zur Adresse', () => {
-  const js = require('./helpers/sources').ansichtQuelle('05');
+  const js = require('./helpers/sources').ansichtQuelle('einstellungen');
   assert.match(js, /const serverUrl = d\.url;/,
     'Die Webapp nimmt nicht schlicht die Adresse des Servers.');
   // Der Rueckfall ist weg — das war Marcos zweiter Satz. `ohneKommentare`

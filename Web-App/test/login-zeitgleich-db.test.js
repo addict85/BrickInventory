@@ -18,7 +18,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
-const { pruefeAnmeldedaten, BCRYPT_ROUNDS } = _req('src/konto/auth.js');
+const { pruefeAnmeldedaten, BCRYPT_ROUNDS } = _req('src/konto/anmeldepruefung.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 /** Minimaler Request: pruefeAnmeldedaten braucht davon nur die IP (Zähler). */
@@ -80,7 +80,7 @@ test('unbekannter Anmeldename kostet dieselbe Zeit wie ein falsches Passwort',
       `Ein unbekannter Name ist messbar schneller: bekannt ${bekannt.ms.toFixed(1)} ms, ` +
       `unbekannt ${unbekannt.ms.toFixed(1)} ms. Damit lässt sich von aussen abfragen, ` +
       `welche Konten es gibt. Der Vergleich muss auch ohne Treffer gegen den ` +
-      `Dummy-Hash laufen (siehe pruefeAnmeldedaten in src/konto/auth.ts).`);
+      `Dummy-Hash laufen (siehe pruefeAnmeldedaten in src/konto/anmeldepruefung.ts).`);
   } finally {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]).catch(() => {});
     // Ohne das bleibt der Pool offen und der Testprozess endet nie — der Lauf

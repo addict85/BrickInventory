@@ -53,7 +53,7 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
   for (const datei of dateien) {
     const src = ohneKommentare(fs.readFileSync(path.join(__dirname, datei), 'utf8'));
 
-    // ── Form 1: 'src/konto/auth.ts' als eine Zeichenkette ──────────────────────
+    // ── Form 1: 'src/konto/geraeteToken.ts' als eine Zeichenkette ──────────────────────
     for (const m of src.matchAll(/['"]((?:[\w.-]+\/)+[\w.-]+)['"]/g)) {
       const p = m[1];
       if (!QUELLE.test(p)) continue;
@@ -62,7 +62,7 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
       if (!existiertQuelle(p)) kaputt.push(`${datei}: ${p}`);
     }
 
-    // ── Form 2: path.join(ROOT, 'src/konto/auth.ts') ────────────────────────
+    // ── Form 2: path.join(ROOT, 'src/konto/geraeteToken.ts') ────────────────────────
     for (const m of src.matchAll(/path\.join\(\s*ROOT\s*,([^)]*)\)/g)) {
       const roh = m[1].split(',').map(s => s.trim()).filter(Boolean);
       const segmente = roh.map(s => /^['"]([^'"]*)['"]$/.exec(s)?.[1]);

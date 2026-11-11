@@ -38,7 +38,7 @@ export const QUELLE_GESTOERT = 'quelle_gestoert';
 
 export async function teilelisteDesSets(sk: SetsKontext, setNum: string, anreichern: (sn: string) => Promise<unknown>) {
   const n = mitVersion(setNum), bare = ohneVersion(n);
-  const invId = await neuestesInventar(setNum);
+  const invId = await neuestesInventar(setNum, sk.katalog);
   let teile: ListenTeil[] = [];
   let source = 'db';
   if (invId) {
@@ -87,7 +87,7 @@ export async function teilelisteDesSets(sk: SetsKontext, setNum: string, anreich
       is_spare: istErsatzteil(p.is_spare) });
   }
   await versuche(`sets:bilder einstellen ${setNum}`,
-    stelleAuftragEin('bilder', { set_number: setNum }, { schluessel: `bilder:${n}`, maxVersuche: 3 }));
+    stelleAuftragEin('bilder', { set_number: setNum }, { schluessel: `bilder:${n}`, maxVersuche: 3 }, sk.auftraege));
   return { parts: [...zeilen.values()], source, ...eineSeite(zeilen.size) };
 }
 
@@ -100,12 +100,12 @@ export async function figurenlisteDesSets(sk: SetsKontext, setNum: string) {
     // Dieselbe Form wie eine Figur des Bestands, ohne Zustände und Besitzer.
     source: 'set', conditions: [] as string[], owners: [] as { id: number; username: string }[] });
 
-  const katalog = await figurenAusKatalog(setNum);
+  const katalog = await figurenAusKatalog(setNum, sk.katalog);
   if (katalog.length) return { figs: katalog.map(ausgabe), source: 'catalog' };
 
   type Fig = { fig_number: string; fig_name: string | null; quantity: number; image_url: string | null };
   let figs: Fig[] = [];
-  const invId = await neuestesInventar(setNum);
+  const invId = await neuestesInventar(setNum, sk.katalog);
   if (invId) {
     figs = await repo.inventarFigurenDesSets(sk.db, invId);
   }

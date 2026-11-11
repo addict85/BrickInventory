@@ -41,6 +41,7 @@ process.env.APP_BASE_URL = 'http://localhost';
 const ROOT = path.join(__dirname, '..');
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { mailserverEintragen } = require('./helpers/mail-attrappe');
 
@@ -62,8 +63,7 @@ const ZAEHLER = ['register|%', 'register-ziel|%', 'forgot%', 'profil-vergabe%', 
 test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   { const c = await db.pool.connect(); try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); } }
   const raeumen = async () => {

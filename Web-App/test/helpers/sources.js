@@ -3,6 +3,7 @@
  * den GEGENSTAND einer Prüfung, nicht den Ablageort: Wandert Code um, ändert
  * sich eine Stelle hier statt zwanzig Prüfungen.
  */
+const { istAppModul } = require('../../scripts/build-frontend');
 const fs   = require('node:fs');
 const path = require('node:path');
 
@@ -127,7 +128,12 @@ function buildAndRequire() {
   require(path.join(ROOT, 'dist', 'src/katalog/prozess.js')).verdrahteKatalog(() =>
     require(path.join(ROOT, 'dist', 'src/katalog/bereich.js')).erzeugeKatalog({ db: testDb() }));
   require(path.join(ROOT, 'dist', 'src/sets/prozess.js')).verdrahteSets(() =>
-    require(path.join(ROOT, 'dist', 'src/sets/bereich.js')).erzeugeSets({ db: testDb(), nacharbeit: faul }));
+    require(path.join(ROOT, 'dist', 'src/sets/bereich.js')).erzeugeSets({
+      db: testDb(), nacharbeit: faul,
+      katalog: require(path.join(ROOT, 'dist', 'src/katalog/prozess.js')).katalog(),
+      finanzen: require(path.join(ROOT, 'dist', 'src/finanzen/prozess.js')).finanzenBereich(),
+      auftraege: require(path.join(ROOT, 'dist', 'src/auftraege/prozess.js')).auftraegeBereich(),
+    }));
   // db/database.js mit den Funktionen des Testzugangs, wie es früher der Prozesszugang war.
   const fassade = Object.create(dbModul, {
     pool: { get: () => testDb().pool },
@@ -220,8 +226,8 @@ module.exports.proxyThumbQuelle = proxyThumbQuelle;
 function adminQuelle() {
   const path = require('path'), fs = require('fs');
   const ROOT = path.join(__dirname, '..', '..');
-  return ['07-admin.js', '07-set-detail.js', '02-detailfelder.js', '01-diagramme.js', '01-fadenkreuz.js', '01-rueckfrage.js',
-          '13-acquisition-modals.js', '13-manuell-detail.js', '13-erfassung-zustand.js', '13-kaufpreis-anzeige.js']
+  return ['admin.js', 'set-detail.js', 'detailfelder.js', 'diagramme.js', 'fadenkreuz.js', 'rueckfrage.js',
+          'acquisition-modals.js', 'manuell-detail.js', 'erfassung-zustand.js', 'kaufpreis-anzeige.js']
     .map(f => fs.readFileSync(path.join(ROOT, 'public', 'js', f), 'utf8'))
     .join('\n');
 }
@@ -298,11 +304,11 @@ module.exports.portfolioQuelle = portfolioQuelle;
 function coreQuelle() {
   const path = require('path'), fs = require('fs');
   const dir = path.join(__dirname, '..', '..', 'public', 'js');
-  // 00-escapen.js VORNE: esc() gehört zur Grundausstattung, und
+  // escapen.js VORNE: esc() gehört zur Grundausstattung, und
   // test/frontend-escaping.test.js schneidet seinen Sandkasten ab `function esc(s)`.
-  return ['00-escapen.js', '00-zustand.js', '00-ereignisse.js', '01-dom.js', '01-format.js', '01-meldungen.js',
-          '01-verbindung.js', '01-api.js', '01-bilder.js', '01-formular.js', '01-konto.js', '01-fortschritt.js',
-          '01-monitor.js', '14-scope.js', '15-scrollbar.js', '26-sitzung.js']
+  return ['escapen.js', 'zustand.js', 'ereignisse.js', 'dom.js', 'format.js', 'meldungen.js',
+          'verbindung.js', 'api.js', 'bilder.js', 'formular.js', 'konto.js', 'fortschritt.js',
+          'monitor.js', 'scope.js', 'scrollbar.js', 'sitzung.js']
     .map(f => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
 }
 module.exports.coreQuelle = coreQuelle;
@@ -356,7 +362,7 @@ module.exports.hatParameter = hatParameter;
 
 /**
  * Genau diese Parameter, der Reihe nach, ohne Rücksicht auf Typannotationen,
- * Vorgabewerte oder Zeilenumbrüche: `pruefeParameter(src, 'withOwners',
+ * Vorgabewerte oder Zeilenumbrüche: `pruefeParameter(src, 'besitzerAnhaengen',
  * ['uids', 'rows'])`. Ein Muster über den ganzen Kopf fiele um, sobald jemand
  * einen Typ schärft.
  * @param {string} [hinweis] Zusatz für die Fehlermeldung
@@ -558,7 +564,7 @@ module.exports.dienstQuelle = dienstQuelle;
 function frontendQuelle() {
   const path = require('path'), fs = require('fs');
   const pub = path.join(__dirname, '..', '..', 'public');
-  return [...fs.readdirSync(path.join(pub, 'js')).filter(f => /^\d\d-.*\.js$/.test(f)).sort().map(f => path.join(pub, 'js', f)),
+  return [...fs.readdirSync(path.join(pub, 'js')).filter(f => istAppModul(f)).sort().map(f => path.join(pub, 'js', f)),
           path.join(pub, 'i18n.js')].map(f => fs.readFileSync(f, 'utf8')).join('\n');
 }
 module.exports.frontendQuelle = frontendQuelle;
@@ -572,11 +578,14 @@ function anmeldeQuelle() {
 }
 module.exports.anmeldeQuelle = anmeldeQuelle;
 
-/** Alle Dateien einer Ansicht (z. B. '05' für 05-*.js) als EIN Text: Wird eine Ansicht geteilt, bleibt die Prüfung gleich. */
-function ansichtQuelle(/** @type {string} */ nummer) {
+/** Die Dateien je Ansicht; eine geteilte Ansicht bleibt so unter einem Namen prüfbar. */
+const ANSICHTEN = {
+  einstellungen: ['settings.js', 'zugaenge.js', 'haushalt.js', 'nutzerverwaltung.js', 'alarme.js', 'lagerorte.js'],
+};
+
+/** Alle Dateien einer Ansicht (Schlüssel aus ANSICHTEN) als EIN Text. */
+function ansichtQuelle(/** @type {keyof typeof ANSICHTEN} */ name) {
   const js = path.join(ROOT, 'public', 'js');
-  const teile = fs.readdirSync(js).filter(f => f.startsWith(nummer + '-') && f.endsWith('.js')).sort();
-  if (!teile.length) throw new Error(`ansichtQuelle(${nummer}): keine Datei gefunden`);
-  return teile.map(f => fs.readFileSync(path.join(js, f), 'utf8')).join('\n');
+  return ANSICHTEN[name].map(f => fs.readFileSync(path.join(js, f), 'utf8')).join('\n');
 }
 module.exports.ansichtQuelle = ansichtQuelle;

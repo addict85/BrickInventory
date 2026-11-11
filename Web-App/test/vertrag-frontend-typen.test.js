@@ -12,9 +12,10 @@
  *      und „/v1/sets/:nr/parts-list trifft nur seine Route“
  *   C  in api.d.ts FehlerZu durch ApiFehler ersetzt → rot: „ohne Prüfung auf
  *      success ist ein Feld undefined, nicht unbekannt“
- *   D  in 13-acquisition-modals.js einen Pfad als Variable statt Vorlage → rot:
+ *   D  in acquisition-modals.js einen Pfad als Variable statt Vorlage → rot:
  *      „api()-Pfade stehen als Literal oder Vorlage da“ (13 statt 12)
  */
+const { istAppModul } = require('../scripts/build-frontend');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -99,7 +100,7 @@ test('api()-Pfade stehen als Literal oder Vorlage da', () => {
   const SCHRANKE = 12;
   const js = path.join(ROOT, 'public', 'js');
   const offen = [];
-  for (const f of fs.readdirSync(js).filter(n => /^\d\d-.*\.js$/.test(n))) {
+  for (const f of fs.readdirSync(js).filter(n => istAppModul(n))) {
     const src = fs.readFileSync(path.join(js, f), 'utf8');
     for (const m of src.matchAll(/\bapi\(\s*(['"])[A-Z]+\1\s*,\s*([^'"`\s])/g)) offen.push(`${f}: ${src.slice(m.index, m.index + 50)}`);
     for (const m of src.matchAll(/\bapi\(\s*(['"])[A-Z]+\1\s*,\s*(['"])[^'"]*\2\s*\+/g)) offen.push(`${f}: ${src.slice(m.index, m.index + 50)}`);

@@ -25,11 +25,13 @@ const assert = require('node:assert/strict');
 const http   = require('node:http');
 const path   = require('node:path');
 const wt     = require('node:worker_threads');
+const { bis } = require('./helpers/zeit');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
 const { PDFDocument } = require(path.join(ROOT, 'node_modules', '@cantoo/pdf-lib'));
@@ -62,8 +64,7 @@ function haengenderUpload(base) {
 test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, async (t) => {
   try { await db.get('SELECT 1'); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   await db.initSchema();
   { const c = await db.pool.connect(); try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); } }
@@ -133,8 +134,7 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
       for (let i = 0; i < 7; i++) stati.push(await strom());
       assert.deepEqual(stati, [200, 200, 200, 200, 200, 200, 429]);
       for (const r of offen) r.destroy();
-      await new Promise(r => setTimeout(r, 200));
-      assert.equal(await strom(), 200, 'geschlossene Ströme geben ihren Platz frei');
+      assert.ok(await bis(async () => await strom() === 200, 3000), 'geschlossene Ströme geben ihren Platz frei');
     } finally { for (const r of offen) r.destroy(); }
   });
 });

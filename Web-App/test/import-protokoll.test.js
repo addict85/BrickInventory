@@ -2,7 +2,7 @@
  * Das Protokoll des Import-Balkens: EINE Fassung, und keine Zeile ohne Namen.
  *
  * Gegenproben (10.11.2026 gemessen):
- *   A  in 02-set-csv-import.js eine zweite function protokollZeile() → rot:
+ *   A  in set-csv-import.js eine zweite function protokollZeile() → rot:
  *      „nur EINE Fassung …“
  *   B  'csv.items_progress' im Deutschen auf „{done} / {total} Sets“ → rot:
  *      „der Fortschrittstext …“
@@ -18,7 +18,7 @@ const ROOT = path.join(__dirname, '..');
 const lies = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 const ohneKommentare = (/** @type {string} */ s) => require('./helpers/sources').ohneKommentare(s);
 
-const FORTSCHRITT = 'public/js/01-fortschritt.js';
+const FORTSCHRITT = 'public/js/fortschritt.js';
 
 test('nur EINE Fassung baut die Zeile fürs Import-Protokoll', () => {
   const quellen = fs.readdirSync(path.join(ROOT, 'public', 'js'))
@@ -32,7 +32,7 @@ test('nur EINE Fassung baut die Zeile fürs Import-Protokoll', () => {
   assert.deepEqual(definiert.map(([n]) => n), [FORTSCHRITT],
     'protokollZeile() gehört genau einmal in den Baum. Zwei Fassungen heissen ' +
     'zwei Stellen, an denen die nächste Schranke fehlt — und genau das war ' +
-    'der Fall, als dieselben drei Zeilen hier und in 02-gallery.js standen.');
+    'der Fall, als dieselben drei Zeilen hier und in gallery.js standen.');
 });
 
 test('der Fortschrittstext spricht nicht von Sets', () => {

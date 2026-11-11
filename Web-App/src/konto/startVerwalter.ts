@@ -6,7 +6,7 @@ import bcrypt from 'bcryptjs';
 import { konfig } from '../infra/konfig';
 import { passwortMangel } from '../infra/passwortRegel';
 import { entferneStartpasswort, schreibeStartpasswort } from '../infra/startpasswort';
-import { BCRYPT_ROUNDS } from './auth';
+import { BCRYPT_ROUNDS } from './anmeldepruefung';
 import { kontoBereich } from './prozess';
 
 export async function legeStartVerwalterAn(): Promise<void> {

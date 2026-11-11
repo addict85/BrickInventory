@@ -11,7 +11,7 @@
  *      „Abmelden wirkt sofort“
  *   C  (08.11.) TOKEN_TTL_MS wieder 60 s → rot: „ohne Benachrichtigung gilt
  *      ein widerrufener Token höchstens die Cache-Frist“ (Token gilt nach 6 s noch)
- *   D  (09.11.) in cacheNutzbar() (src/konto/auth.ts) nur `return true` → rot:
+ *   D  (09.11.) in cacheNutzbar() (src/konto/tokenCache.ts) nur `return true` → rot:
  *      „ohne Horch-Verbindung gilt der Cache nicht“ (Token gilt nach dem Abriss weiter)
  *   E  (09.11.) in pgNotify.retire() `_lauscht.clear()` entfernt → rot: dieselbe Stelle
  *
@@ -23,16 +23,17 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db   = _req('db/database.js');
-const auth = _req('src/konto/auth.js');
+const auth = _req('src/konto/geraeteToken.js');
+const tokenCache = _req('src/konto/tokenCache.js');
 const pgNotify = _req('db/database.js').standardDb().benachrichtigung;
 const { bis } = require('./helpers/zeit');
 
 test('Token-Widerruf wirkt sofort', { concurrency: 1 }, async (t) => {
   try { await db.initSchemaOnce(); }
   catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   const name = `tw_${process.pid}`;
   const uid = (await db.get(
@@ -44,7 +45,7 @@ test('Token-Widerruf wirkt sofort', { concurrency: 1 }, async (t) => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  auth.horcheAufTokenWiderruf();
+  tokenCache.horcheAufTokenWiderruf();
   assert.ok(await bis(() => pgNotify.hoertZu('token_widerrufen')), 'die Horch-Verbindung kam nicht zustande');
   /** Ein Token, der im Cache steht; danach ist seine Zeile still gelöscht. */
   const imCacheOhneZeile = async () => {
@@ -57,13 +58,13 @@ test('Token-Widerruf wirkt sofort', { concurrency: 1 }, async (t) => {
 
   await t.test('Abmelden wirkt sofort', async () => {
     const token = await imCacheOhneZeile();
-    auth.invalidateToken(token);
+    tokenCache.invalidateToken(token);
     assert.equal(await auth.validateToken(token), null);
   });
 
   await t.test('die Token-Verwaltung leert den Cache', async () => {
     const token = await imCacheOhneZeile();
-    auth.leereTokenCache();
+    tokenCache.leereTokenCache();
     assert.equal(await auth.validateToken(token), null);
   });
 
@@ -75,10 +76,10 @@ test('Token-Widerruf wirkt sofort', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('ohne Benachrichtigung gilt ein widerrufener Token höchstens die Cache-Frist', async (t2) => {
-    assert.ok(auth.TOKEN_TTL_MS < 10_000, 'die Frist ist unter 10 s');
+    assert.ok(tokenCache.TOKEN_TTL_MS < 10_000, 'die Frist ist unter 10 s');
     const token = await imCacheOhneZeile();
     t2.mock.timers.enable({ apis: ['Date'], now: Date.now() });
-    t2.mock.timers.tick(auth.TOKEN_TTL_MS + 1000);
+    t2.mock.timers.tick(tokenCache.TOKEN_TTL_MS + 1000);
     assert.equal(await auth.validateToken(token), null);
   });
 

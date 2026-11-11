@@ -7,6 +7,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 const { haeltTeil } = require('./helpers/bestand');
 
@@ -57,10 +58,7 @@ async function dbReachable() {
 test('Bestandsabgleich gegen echte Datenbank', async (t) => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error('REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.');
-    }
-    t.skip('Test-DB nicht erreichbar — Suite übersprungen');
+    keineDb(t);
     return;
   }
   await seed();
@@ -102,7 +100,7 @@ test('Bestandsabgleich gegen echte Datenbank', async (t) => {
     // Ohne diese Grenze wäre der Abgleich ein Weg, fremde Bestände zu zählen.
     const nurIch  = await getOwnedQuantities([U.ich], [{ part_number: '3001', color_id: 4 }]);
     const mitKind = await getOwnedQuantities(
-      await household.scopeIds(U.ich, 'all'), [{ part_number: '3001', color_id: 4 }]);
+      await household.blickfeldIds(U.ich, 'all'), [{ part_number: '3001', color_id: 4 }]);
     assert.equal(nurIch['3001|4'].gesamt, 8);
     assert.equal(mitKind['3001|4'].gesamt, 9, 'Das Unterkonto muss mitzählen');
     // 99 Stück liegen bei 'fremd' — die dürfen nirgends auftauchen.

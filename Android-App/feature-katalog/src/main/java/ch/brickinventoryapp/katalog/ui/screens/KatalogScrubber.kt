@@ -58,7 +58,7 @@ internal fun YearScrubber(
     val thumbOffsetY = CatalogYearMath.daumenOffset(anteil, heightPx, thumbHeightPx)
     val etikett = CatalogYearMath.jahrFuer(anteil, total, verteilung, jahrGeladen)
 
-    /** Beruehrung -> Anteil -> rollen. Wie js/15-scrollbar.js -> rollen(). */
+    /** Beruehrung -> Anteil -> rollen. Wie js/scrollbar.js -> rollen(). */
     fun rollen(y: Float) {
         ziehAnteil = CatalogYearMath.anteilAus(y, heightPx, thumbHeightPx)
         onScrollTo(CatalogYearMath.nummerAus(ziehAnteil, total))

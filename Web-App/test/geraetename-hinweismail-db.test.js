@@ -28,7 +28,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const AUTH = require('./helpers/sources').einhaengung('auth');
-const { geraeteNameGueltig } = _req('src/konto/auth.js');
+const { geraeteNameGueltig } = _req('src/konto/namensRegeln.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 const BOESE = [

@@ -12,7 +12,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const JS = path.join(ROOT, 'public', 'js');
 const { baueTestbuendel } = require('./helpers/buendel');
-process.env.TEST_BUENDEL = baueTestbuendel('geldformat', "import { fmtN } from './01-format.js';\nwindow.__fmtN = fmtN;\n");
+process.env.TEST_BUENDEL = baueTestbuendel('geldformat', "import { fmtN } from './format.js';\nwindow.__fmtN = fmtN;\n");
 const { oeffneOberflaeche, ANMELDUNG, warte } = require('./helpers/oberflaeche');
 
 /**

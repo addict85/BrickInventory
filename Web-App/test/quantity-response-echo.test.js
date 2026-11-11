@@ -1,7 +1,7 @@
 /**
  * Beide Oberflächen übernehmen die Menge aus der SERVERANTWORT.
  *
- * Gegenprobe (durchgeführt): in 02-gallery.js `const echt = qty` gesetzt →
+ * Gegenprobe (durchgeführt): in gallery.js `const echt = qty` gesetzt →
  * der Webapp-Teilschritt wird rot. Am 30.10.2026 gemessen: in
  * routes/api_v1/sets.ts `...(r || {})` aus der PUT-Antwort entfernt → rot:
  * „die Route liefert die Menge“ (undefined statt 3). Am 08.11.2026

@@ -6,6 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const { fehltVoraussetzung } = require('./helpers/db');
 
 const ROOT = path.join(__dirname, '..');
 
@@ -88,8 +89,7 @@ test('Geheimnisse und Sicherungen bleiben aus Image und Repository', (t) => {
   const baum = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: ROOT, encoding: 'utf8' });
   if (baum.error || baum.status !== 0) {
     const grund = `kein Git-Arbeitsbaum unter ${ROOT} (${baum.error?.message || baum.stderr.trim()})`;
-    if (process.env.REQUIRE_DB === '1') assert.fail(`REQUIRE_DB=1: .gitignore lässt sich nicht prüfen, ${grund}`);
-    t.skip(grund); return;
+    fehltVoraussetzung(t, grund, `.gitignore lässt sich nicht prüfen, ${grund}`); return;
   }
   const git = spawnSync('git', ['check-ignore', '--no-index', 'backups/x.sql.gz', 'schluessel/datenschluessel', '.env',
     'geheimnisse/db_password'], { cwd: ROOT, encoding: 'utf8' });

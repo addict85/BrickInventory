@@ -1,7 +1,7 @@
 /**
  * Dialoge lassen sich mit der Tastatur bedienen: Escape schliesst den
  * obersten, der Fokus springt hinein, Tab bleibt darin, und beim Schliessen
- * kehrt der Fokus zurück (public/js/01-dialoge.js).
+ * kehrt der Fokus zurück (public/js/dialoge.js).
  *
  * Geprüft am echten Bündel und am echten Markup in jsdom.
  *

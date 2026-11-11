@@ -10,7 +10,7 @@
  *   C  role="dialog" an #confirm-modal entfernt → rot: „modale Overlays …“
  *   D  in i18n.js `document.documentElement.lang = lang;` gestrichen → rot:
  *      „die Sprache steht am <html>-Element“
- *   E  in priceStatusBadge() (04-finance.js) aria-label der Fehler-Plakette
+ *   E  in priceStatusBadge() (finance.js) aria-label der Fehler-Plakette
  *      entfernt → rot: „bedeutungstragende Zeichen …“
  *   F  #btn-sav-pw ohne Text und data-i18n, mit aria-label="btn-sav-pw" →
  *      rot: „kein aria-label, das nur der Bezeichner ist“

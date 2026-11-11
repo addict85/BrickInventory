@@ -26,19 +26,13 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, loadTranslations, ohneKommentare } = require('./helpers/sources');
 const { katalogSet } = require('./helpers/bestand');
 const _req = buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
 test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
   { concurrency: 1 }, async (t) => {
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  if (!await dbOderSkip(t, _req)) return;
 
   const { alleAlarme, setzeAlarm, loescheAlarm } = { ..._req('src/finanzen/preisalarm.js'), ..._req('src/finanzen/prozess.js').finanzenBereich().preisalarm };
 
@@ -51,7 +45,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
   // Ein Unterkonto im HAUSHALT. Genau daran ist die erste Fassung gescheitert:
   // Sie verband auf `s.user_id = a.user_id`, also streng das eigene Konto —
   // ein Set des Kindes galt damit als „gibt es nicht", obwohl die
-  // Detailansicht es sehr wohl öffnet (sie fragt über scopeIds()).
+  // Detailansicht es sehr wohl öffnet (sie fragt über blickfeldIds()).
   const kind = await db.get(
     "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,'x',false,true) RETURNING id", ['alarm_kind']);
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [ich.id, kind.id]);
@@ -131,10 +125,10 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
     const html = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
     assert.match(html, /id="alerts-list"/, 'Die Rubrik fehlt im Markup.');
     assert.match(html, /data-i18n="alerts\.group"/, 'Die Rubrik hat keine Überschrift.');
-    const galerie = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/25-navigation.js'), 'utf8'));
+    const galerie = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/navigation.js'), 'utf8'));
     assert.match(galerie, /ladeAlarmUebersicht\(\)/,
       'Beim Öffnen der Einstellungen wird die Übersicht nicht geladen — die Rubrik bliebe leer.');
-    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('05'));
+    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
     // Ändern und Löschen gehen über die BESTEHENDE Route zum Set: zwei
     // Schreibwege zum selben Zustand wären zwei Stellen, an denen die Regeln
     // auseinanderlaufen.
@@ -169,10 +163,10 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
   });
 
   await t.test('6. die Zeile öffnet den Detaildialog, das Zahlenfeld nicht', () => {
-    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('05'));
+    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
     assert.match(js, /data-click="openModal"/,
       'Die Zeile öffnet den Detaildialog nicht — genau das hat Marco verlangt.');
-    // Der Verteiler in 11-actions.js nimmt das NÄCHSTGELEGENE Element mit
+    // Der Verteiler in actions.js nimmt das NÄCHSTGELEGENE Element mit
     // data-click. Ohne `stopEvent` am Eingabefeld öffnete jeder Klick ins Feld
     // den Dialog über dem Feld, in das man gerade tippen wollte.
     assert.match(js, /data-click="stopEvent"/,
@@ -204,7 +198,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
 
   await t.test('8. scharf/unscharf ist ohne Farbe zu erkennen', () => {
     // Marcos Befund vom 26.09.
-    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('05'));
+    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
     const css = fs.readFileSync(path.join(ROOT, 'public/styles.css'), 'utf8');
 
     // 1. Die Marke kommt aus einer Klasse, nicht aus einer Farbe im Markup.

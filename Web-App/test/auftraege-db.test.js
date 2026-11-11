@@ -36,7 +36,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
-const { warte } = require('./helpers/zeit');
+const { warte, bis } = require('./helpers/zeit');
 
 test('Auftragstabelle', { concurrency: 1 }, async (t) => {
   if (!await dbOderSkip(t, _req)) return;
@@ -64,8 +64,8 @@ test('Auftragstabelle', { concurrency: 1 }, async (t) => {
       const erledigt = [];
       const w = erzeugeWorker({ [ART]: { ausfuehren: async (n) => { erledigt.push(n.n); } } }, { fristSek: 60 });
       assert.equal(await w.verarbeiteEinen(), false, 'vor Ablauf der Frist gehört er noch dem anderen');
-      await warte(1200);
-      assert.equal(await w.verarbeiteEinen(), true);
+      // Die Frist des toten Prozesses läuft ab; dann nimmt ihn der zweite.
+      assert.ok(await bis(() => w.verarbeiteEinen(), 5000), 'nach Ablauf der Frist übernimmt der Worker');
       assert.deepEqual(erledigt, [1]);
       assert.equal((await zeile(id)).status, 'erledigt');
       assert.equal((await zeile(id)).versuche, 2);

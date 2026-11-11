@@ -6,6 +6,7 @@ import * as repo from './repository/auftraege';
 import type { AuftragsArt, AuftragsStatus, AuftragsZeile, Belegung, Einstellen, Fortschritt } from './auftraege';
 import { pruefeNutzlast, type NutzlastEingabe } from './nutzlasten';
 import { auftraegeBereich } from './prozess';
+import type { AuftraegeDienste } from './bereich';
 
 export { AUFTRAG_KANAL, AUFTRAG_STAND_KANAL } from './repository/auftraege';
 
@@ -18,9 +19,15 @@ export function wartezeitSek(versuch: number): number {
   return Math.min(3600, 30 * 2 ** Math.max(0, versuch - 1));
 }
 
-export async function stelleAuftragEin<A extends AuftragsArt>(art: A, nutzlast: NutzlastEingabe<A>, o: Einstellen = {}): Promise<string | null> {
-  const id = await auftraegeBereich().auftraege.fuegeAuftragEin(art, pruefeNutzlast(art, nutzlast), o);
-  await auftraegeBereich().db.benachrichtigung.notify(repo.AUFTRAG_KANAL, art);
+/** `ad`: Ein Bereich mit eigenem Zugang (Sets) stellt in dessen Datenbank ein, sonst der Prozess. */
+export async function stelleAuftragEin<A extends AuftragsArt>(
+  art: A,
+  nutzlast: NutzlastEingabe<A>,
+  o: Einstellen = {},
+  ad: AuftraegeDienste = auftraegeBereich(),
+): Promise<string | null> {
+  const id = await ad.auftraege.fuegeAuftragEin(art, pruefeNutzlast(art, nutzlast), o);
+  await ad.db.benachrichtigung.notify(repo.AUFTRAG_KANAL, art);
   return id;
 }
 

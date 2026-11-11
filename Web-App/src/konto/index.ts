@@ -1,6 +1,6 @@
 /** Die öffentliche Seite des Bereichs: Andere Bereiche importieren nur von hier,
  * damit die Aufteilung der Dateien darunter frei bleibt. */
-export { purgeExpiredTokens } from './auth';
+export { purgeExpiredTokens } from './geraeteToken';
 export { verschluesseleAltbestand } from './geheimnisAltbestand';
 export { raeumeOffeneRegistrierungenAuf } from './konten';
 export { raeumeAnmeldezaehlerAuf, zaehleAnfrage } from './loginLimiter';
@@ -18,22 +18,17 @@ export {
 } from './anmeldungAblauf';
 export {
   UEBERLAPPUNG_MS,
-  USERNAME_RE,
-  assertLoginAllowed,
-  beendeAndereZugaenge,
   deleteToken,
-  emailGueltig,
-  geraeteNameGueltig,
-  geraeteNameInhaltGueltig,
   hashToken,
-  leereTokenCache,
-  nameGueltig,
   pruefeToken,
   rotationFaellig,
   rotiereToken,
   validateToken,
-  verifiziereEmailToken,
-} from './auth';
+} from './geraeteToken';
+export { leereTokenCache } from './tokenCache';
+export { assertLoginAllowed, verifiziereEmailToken } from './anmeldepruefung';
+export { USERNAME_RE, emailGueltig, geraeteNameGueltig, geraeteNameInhaltGueltig, nameGueltig } from './namensRegeln';
+export { beendeAndereZugaenge } from './zugangsende';
 export { einrichtungStand } from './einrichtungStand';
 export { familieAus, hinterlegeSchluessel, loeseEin, neueChallenge } from './geraeteChallenge';
 export { invalidateTheme, startStilHash } from './indexHtml';
@@ -71,6 +66,7 @@ export {
   kopplungsStand,
   lehneKopplungAb,
   meldeGeraet,
+  verwirfAbholung,
 } from './qrKopplung';
 export { drossleBeruehren } from './sitzungsBeruehrung';
 export { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './sitzungsFrist';
@@ -79,7 +75,7 @@ export { tokenAngaben } from './tokenWunsch';
 export { kontoGedrosselt, zielGedrosselt } from './zielDrossel';
 export { beginneEinrichtung, erneuereCodes, istAktiv, otpauthAdresse, schalteAb, stand } from './zweiterFaktor';
 export { meldeUngueltigeAdressen, meldeAusstehendeAdressen } from './konten';
-export { horcheAufTokenWiderruf } from './auth';
+export { horcheAufTokenWiderruf } from './tokenCache';
 export { neueNonce } from './geraeteChallenge';
 export { erzeugeKonto } from './bereich';
 export type { KontoDienste, KontoKontext } from './bereich';

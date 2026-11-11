@@ -13,7 +13,7 @@
  *   H1  in handleRouteError den Zweig für 4xx ohne Code gestrichen → rot:
  *       „GET /% …“ (Antwort „Failed to decode param '%'“); `fail()` in
  *       validate.ts wieder mit `new Error` → rot: „ein eigener Satz …“
- *   H2  in acquisitionMoveSource wieder 403 kein_schreibrecht für fremde
+ *   H2  in umzugsQuelle wieder 403 kein_schreibrecht für fremde
  *       Zeilen → rot: „eine fremde Erfassung antwortet wie eine fehlende“
  *   H4  `app.use(nurEigenerHost)` in server.ts gestrichen → rot: „ein fremder
  *       Host-Kopf …“; die Ausnahme für IP-Adressen gestrichen → rot: „IP-Host“; Bearer wieder

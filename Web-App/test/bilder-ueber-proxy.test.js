@@ -2,7 +2,7 @@
  * Jedes Bild geht über den eigenen Server — sonst blockt die Richtlinie es.
  *
  * ── Gegenprobe (durchgeführt, Ergebnis im Commit) ──────────────────────────
- *   Die alte Zeile in 16-merkliste.js wiederhergestellt → rot.
+ *   Die alte Zeile in merkliste.js wiederhergestellt → rot.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

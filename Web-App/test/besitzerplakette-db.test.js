@@ -8,6 +8,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
@@ -19,8 +20,7 @@ after(() => db.pool.end());
 
 test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async (t) => {
   if (!await erreichbar()) {
-    if (process.env.REQUIRE_DB === '1') assert.fail('Test-DB nicht erreichbar, REQUIRE_DB=1');
-    t.skip('keine Test-DB'); return;
+    keineDb(t); return;
   }
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
@@ -45,8 +45,8 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async (
   await haeltFigur(db, kind, 'sw0001', { setNumber: '75192-1', menge: 1 });
   await haeltFigur(db, kind, 'sw0002', { menge: 2 });
 
-  const { scopeIds } = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt };
-  const uids = await scopeIds(haupt, 'all');
+  const { blickfeldIds } = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt };
+  const uids = await blickfeldIds(haupt, 'all');
   const S = _req('src/sets/index.js');
   const P = _req('src/teile/abfragen.js');
   const M = _req('src/figuren/abfragen.js');
@@ -87,8 +87,7 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async (
 
 test('im Einzelkonto steht keine Plakette', async (t) => {
   if (!await erreichbar()) {
-    if (process.env.REQUIRE_DB === '1') assert.fail('Test-DB nicht erreichbar, REQUIRE_DB=1');
-    t.skip('keine Test-DB'); return;
+    keineDb(t); return;
   }
   // Kein zweites DROP SCHEMA — eigene Kontonamen genügen (siehe
   // manuell-loeschen-besitzer-db.test.js).
@@ -103,8 +102,8 @@ test('im Einzelkonto steht keine Plakette', async (t) => {
   await haeltSet(db, allein, '21318-1', 1);
   await haeltFigur(db, allein, 'sw0003', { setNumber: '21318-1', menge: 1 });
 
-  const { scopeIds } = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt };
-  const uids = await scopeIds(allein, 'all');
+  const { blickfeldIds } = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt };
+  const uids = await blickfeldIds(allein, 'all');
   const S = _req('src/sets/index.js');
   const M = _req('src/figuren/abfragen.js');
 

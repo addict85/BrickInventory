@@ -2,7 +2,7 @@
  * Fehlermeldung am Preisfeld mit Währungswahl (Dialog „Set hinzufügen“), gemessen in Chrome bei 390 und
  * 1280 px: Das Preisfeld behält seine Breite, die Meldung steht unter der ganzen Zeile.
  *
- * Gegenprobe (08.11.2026 gemessen): in feldFehler (01-formular.js) die Meldung wieder direkt hinter das
+ * Gegenprobe (08.11.2026 gemessen): in feldFehler (formular.js) die Meldung wieder direkt hinter das
  * Eingabefeld statt hinter den Wrapper `.preis-mit-waehrung` gesetzt
  *   → rot in beiden Breiten: Preisfeld nur noch ~25 px breit, Meldung neben der Währung.
  *

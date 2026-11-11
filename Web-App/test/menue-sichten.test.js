@@ -5,13 +5,13 @@
  * Gegenproben (10.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  in index.html data-arg="gutscheine" → "gutschein" → rot: „jeder
  *      Menüeintrag öffnet …“ und „jede Sicht ohne Reiter …“
- *   B  in 25-navigation.js den SICHTEN-Eintrag `daten` entfernt → rot: „jeder
+ *   B  in navigation.js den SICHTEN-Eintrag `daten` entfernt → rot: „jeder
  *      Menüeintrag öffnet …“ (daten öffnet nichts)
- *   C  in 26-sitzung.js die Zeile, die #ntab-settings für Verwalter einblendet,
+ *   C  in sitzung.js die Zeile, die #ntab-settings für Verwalter einblendet,
  *      entfernt → rot: „Einstellungen und Hintergrundarbeiten …“
  *   D  am Konto-Eintrag data-i18n vom <span> an den <button> verschoben → rot:
  *      „jeder Menüeintrag behält sein Symbol …“
- *   E  in 26-sitzung.js den onclick an btn-logout entfernt → rot: „Abmelden …“
+ *   E  in sitzung.js den onclick an btn-logout entfernt → rot: „Abmelden …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

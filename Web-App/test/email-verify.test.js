@@ -18,7 +18,7 @@ const lies = (rel) => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8
 // ihn seit Runde 13 beide in email_neu_token (verification_token ist leer).
 const ABFRAGE = /email_neu_token\s*=\s*\$1\s+AND\s+email_neu_bis\s*>\s*NOW\(\)/;
 const EINLOESEN = /email_verified\s*=\s*true/i;
-const KANDIDATEN = ['src/konto/auth.ts', 'src/konto/repository/zugaenge.ts', 'src/konto/repository/konten.ts', 'server.ts', 'routes/auth.ts', 'routes/auth/registrierung.ts'];
+const KANDIDATEN = ['src/konto/anmeldepruefung.ts', 'src/konto/repository/zugaenge.ts', 'src/konto/repository/konten.ts', 'server.ts', 'routes/auth.ts', 'routes/auth/registrierung.ts'];
 
 test('E-Mail-Verifikation steht nur an einer Stelle', async (t) => {
 
@@ -26,7 +26,7 @@ test('E-Mail-Verifikation steht nur an einer Stelle', async (t) => {
     // pruefeParameter statt eines Musters über den ganzen Kopf: Eine
     // Typannotation zu ergänzen ist eine Verbesserung und darf keinen Test
     // umwerfen.
-    pruefeParameter(lies('src/konto/auth.ts'), 'verifiziereEmailToken', ['token'],
+    pruefeParameter(lies('src/konto/anmeldepruefung.ts'), 'verifiziereEmailToken', ['token'],
       'die gemeinsame Verifikationslogik');
   });
 

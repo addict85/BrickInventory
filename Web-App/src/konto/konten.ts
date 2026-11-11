@@ -2,7 +2,10 @@
  * Stelle, damit kein Weg den Schritt vergisst. */
 import { hashePasswort } from './bcryptSchranke';
 import * as repo from './repository/konten';
-import { BCRYPT_ROUNDS, leereTokenCache, mitZugangsende, revokeAllSessions, revokeAllTokens } from './auth';
+import { BCRYPT_ROUNDS } from './anmeldepruefung';
+import { leereTokenCache } from './tokenCache';
+import { mitZugangsende, revokeAllSessions } from './zugangsende';
+import { revokeAllTokens } from './geraeteToken';
 import { erhoeheSitzungsVersion } from './sitzungsVersion';
 import { emailGueltig } from '../infra/validate';
 import { entferneStartpasswort } from '../infra/startpasswort';

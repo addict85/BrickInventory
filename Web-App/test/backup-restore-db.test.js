@@ -23,6 +23,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { ROOT } = require('./helpers/sources');
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb, fehltVoraussetzung } = require('./helpers/db');
 const { haeltSet, haeltTeil, mengeVon, teilmengeVon, katalogSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
@@ -46,10 +47,7 @@ async function dbReachable() {
 test('Sicherung und Wiederherstellung', async (t) => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error('REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.');
-    }
-    t.skip('Test-DB nicht erreichbar — Suite übersprungen');
+    keineDb(t);
     return;
   }
 
@@ -65,11 +63,7 @@ test('Sicherung und Wiederherstellung', async (t) => {
   };
   if (!pgDump || !psql) {
     await db.pool.end().catch(() => {});
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error('REQUIRE_DB=1, aber pg_dump/psql sind nicht installiert. ' +
-                      'Ohne sie ist der Sicherungsweg ungeprüft.');
-    }
-    t.skip('pg_dump/psql nicht gefunden — Suite übersprungen');
+    fehltVoraussetzung(t, 'pg_dump/psql nicht gefunden — Suite übersprungen');
     return;
   }
 
@@ -342,14 +336,12 @@ test('restore.sh spielt als Migrationsrolle ein', { timeout: 240_000 }, async (t
   const basis = new URL(process.env.TEST_DB_BASIS || process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest');
   const admin = new Client({ connectionString: basis.toString() });
   try { await admin.connect(); } catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e); return;
   }
   const su = (await admin.query('SELECT rolsuper FROM pg_roles WHERE rolname = current_user')).rows[0]?.rolsuper;
   if (!su || !klient('pg_dump')) {
     await admin.end();
-    if (process.env.REQUIRE_DB === '1') throw new Error('REQUIRE_DB=1, aber kein Superuser oder kein pg_dump');
-    t.skip('kein Superuser oder pg_dump'); return;
+    fehltVoraussetzung(t, 'kein Superuser oder pg_dump'); return;
   }
   const name = testName('rst');
   await raeumeReste(admin, 'rst');

@@ -5,11 +5,11 @@
  * bleibt Kotlin-Struktur (kein SDK hier).
  *
  * Gegenproben (10.11.2026 gemessen, je einzeln, Bündel bzw. dist neu gebaut):
- *   A  in 16-merkliste.js zeile() den Marktpreis weggelassen → rot: „die Webapp-Zeile …“
+ *   A  in merkliste.js zeile() den Marktpreis weggelassen → rot: „die Webapp-Zeile …“
  *   B  dort den Papierkorb entfernt → rot: ebenda
- *   C  in 03-parts.js den Papierkorb der manuellen Kachel entfernt → rot: „manuelle
+ *   C  in parts.js den Papierkorb der manuellen Kachel entfernt → rot: „manuelle
  *      Einträge …“
- *   D  in 13-manuell-detail.js die Lagerortzeile entfernt → rot: ebenda
+ *   D  in manuell-detail.js die Lagerortzeile entfernt → rot: ebenda
  *   E  in teileListe.ts manuelleTeile `NULL::text AS storage` → rot: „die Abfrage
  *      der manuellen Teile …“
  *   F  in MerklisteZeile.kt `marktpreis` umbenannt → rot: „die App: …“

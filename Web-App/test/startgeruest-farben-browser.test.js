@@ -1,6 +1,6 @@
 /**
  * Das Startgerüst malt in den Farben, die die Seite danach hat: Es folgt dem Attribut data-dunkel
- * (gesetzt von 00-theme-boot.js nach der Geräte-Einstellung „bim_dunkel“), nicht dem System allein.
+ * (gesetzt von theme-boot.js nach der Geräte-Einstellung „bim_dunkel“), nicht dem System allein.
  * Dasselbe gilt für <meta name="theme-color"> (Browserleiste). Gemessen in Chrome mit dem Design
  * „Stein (Blau)“; alle Skripte und Stile außer dem Boot-Skript werden festgehalten, damit nur das Gerüst malt.
  *
@@ -10,7 +10,7 @@
  *   B  die Regel `[data-theme=brick][data-dunkel] .sg-kopf` entfernt
  *      → rot: „Stein dunkel: Kopf im dunklen Blau“
  *   C  die Regel `[data-theme=brick] .sg-kopf` entfernt → rot: „Stein hell: Kopf im Stein-Blau“
- *   D  in 00-theme-boot.js die Zeilen zu `theme-color` entfernt
+ *   D  in theme-boot.js die Zeilen zu `theme-color` entfernt
  *      → rot: alle vier Fälle (Farbe der Browserleiste)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL, Chrome.
@@ -40,7 +40,7 @@ test('Startgerüst folgt der Geräte-Einstellung und dem Design', async t => {
   b.hoerer.push(d => {
     if (d.method !== 'Fetch.requestPaused') return;
     const u = d.params.request.url;
-    if (d.params.resourceType === 'Document' || u.includes('00-theme-boot.js'))
+    if (d.params.resourceType === 'Document' || u.includes('theme-boot.js'))
       b.tab('Fetch.continueRequest', { requestId: d.params.requestId }).catch(() => {});
   });
   const messen = `(() => { const sg = document.getElementById('startgeruest'); if (!sg) return null;

@@ -2,7 +2,7 @@
    APP-DESIGN "noppe" (poppig) — der Klemmbaustein als Bauteil der Oberflaeche.
    ---------------------------------------------------------------------------
    Aktiv, sobald <html data-theme="noppe"> gesetzt ist (siehe applyTheme() in
-   js/00-theme-boot.js); die Datei wird immer geladen, greift aber nur beim
+   js/theme-boot.js); die Datei wird immer geladen, greift aber nur beim
    aktiven Design.
 
    ── Warum jede Regel ZWEI Designs nennt ────────────────────────────────────

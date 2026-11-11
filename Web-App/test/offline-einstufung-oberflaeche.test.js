@@ -1,6 +1,6 @@
 /**
  * Offline sperrt die Oberfläche genau die Knöpfe, deren Aktion Serverzustand
- * ändert (SCHREIBENDE_AKTIONEN in 01-verbindung.js); Lesendes bleibt frei.
+ * ändert (SCHREIBENDE_AKTIONEN in verbindung.js); Lesendes bleibt frei.
  * Jede angemeldete Aktion ist genau einmal eingestuft, sonst rot. In jsdom am
  * Bündel aus main.js, das zusätzlich Registry und Einstufung zeigt.
  *
@@ -36,8 +36,8 @@ function baueBuendel() {
   esbuild.buildSync({
     stdin: {
       contents:
-        "import './main.js';\nimport { actionNames } from './00-registry.js';\n" +
-        "import { SCHREIBENDE_AKTIONEN, LESENDE_AKTIONEN } from './01-verbindung.js';\n" +
+        "import './main.js';\nimport { actionNames } from './registry.js';\n" +
+        "import { SCHREIBENDE_AKTIONEN, LESENDE_AKTIONEN } from './verbindung.js';\n" +
         'window.__einstufung = { actionNames, SCHREIBENDE_AKTIONEN, LESENDE_AKTIONEN };\n',
       resolveDir: JS,
       loader: 'js',
@@ -138,7 +138,7 @@ test('jede angemeldete Aktion ist genau einmal eingestuft', async () => {
     assert.deepEqual(
       namen.filter(n => !s.has(n) && !l.has(n)),
       [],
-      'nicht eingestuft: in 01-verbindung.js eintragen',
+      'nicht eingestuft: in verbindung.js eintragen',
     );
     assert.deepEqual(
       [...s, ...l].filter(n => !namen.includes(n)),

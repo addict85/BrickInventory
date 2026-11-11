@@ -27,7 +27,7 @@ const assert = require('node:assert/strict');
 const path   = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const modul = () => import(`file://${path.join(ROOT, 'public', 'js', '19-bricklink-xml.js')}`);
+const modul = () => import(`file://${path.join(ROOT, 'public', 'js', 'bricklink-xml.js')}`);
 
 test('1. keine XML-Deklaration — BrickLink lehnt eine Datei mit ihr ab', async () => {
   const { baueWantedXml } = await modul();
@@ -94,7 +94,7 @@ test('5. Sonderzeichen werden maskiert, und & zuerst', async () => {
 });
 
 test('5b. esc() kennt alle fünf XML-Entitäten — die Wunschliste hat keinen eigenen Maskierer', async () => {
-  const { esc } = await import(`file://${path.join(ROOT, 'public', 'js', '00-escapen.js')}`);
+  const { esc } = await import(`file://${path.join(ROOT, 'public', 'js', 'escapen.js')}`);
   assert.equal(esc(`&<>"'`), '&amp;&lt;&gt;&quot;&#39;');
 });
 
