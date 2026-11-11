@@ -346,13 +346,13 @@ test('der Preisverlauf-Graph benutzt den Zustand DES SETS, nicht den globalen St
 
   assert.match(
     fs.readFileSync(path.join(ROOT, 'src/sets/preise.ts'), 'utf8'),
-    /preisverlaufSet\(sicht, sn, await waehrungVon\((?:sk, )?uid\)\)/,
+    /preisverlaufSet\(sicht, sn, await waehrungVon\((?:sk, )?uid\), sk\.finanzen\)/,
     'Der Dienst nutzt den gemeinsamen Helfer',
   );
   const helper = fs.readFileSync(path.join(ROOT, 'src/finanzen/priceHistory.ts'), 'utf8');
   assert.match(
     helper,
-    /const condition = await resolveSetCondition\(uids, setNumber\);/,
+    /const condition = await resolveSetCondition\(uids, setNumber, undefined, f\);/,
     'Der Helfer muss den Zustand über resolveSetCondition() auflösen',
   );
 });
@@ -378,7 +378,7 @@ test('Android-API: Marktpreis benutzt den Zustand des Sets, nicht den globalen S
   // seit einer früheren Runde mit Blickfeld (uids aus blickfeldIds) — sonst 404 im Haushalt
   assert.match(
     priceRoute,
-    /fetchPrice\(sn, await resolveSetCondition\(blickfeld, sn\), /,
+    /fetchPrice\(\s*sn,\s*await resolveSetCondition\(blickfeld, sn, undefined, sk\.finanzen\),/,
     'Der Zustand muss über den gemeinsamen Helfer aufgelöst werden',
   );
 
@@ -434,7 +434,7 @@ test('genau EINE Zustandsauflösung für Einzelsets — resolveSetCondition', ()
   // Die Preis-Route der Android-API löst weiterhin selbst auf (sie holt einen
   // Preis, keinen Verlauf) — genau ein Vorkommen.
   const apiV1 = fs.readFileSync(path.join(ROOT, 'src/sets/preise.ts'), 'utf8');
-  const uses = (apiV1.match(/resolveSetCondition\(blickfeld, sn\)/g) || []).length;
+  const uses = (apiV1.match(/resolveSetCondition\(blickfeld, sn, undefined, sk\.finanzen\)/g) || []).length;
   assert.equal(uses, 1, 'Die /price-Route muss ihn benutzen; der Verlauf geht über priceHistory.ts');
 });
 
