@@ -133,9 +133,39 @@ services:
       - ./schluessel:/app/schluessel
       - ./data:/app/data:ro
 
+  # ── Rechte an ./data ─────────────────────────────────────────────────────────
+  # Übergibt ./data bei jedem `up` an brickinv (Eigentümer reparieren, Marke,
+  # Unterordner) und endet; app und jobs laufen danach nie als root. Root sieht
+  # hier nur ./data und kein Netz: Ein Symlink, den der Dienst dort ablegt,
+  # führt chown höchstens ins schreibgeschützte Image. BRICKINV_CHOWN gilt hier.
+  daten-rechte:
+    # Dasselbe Image wie app (siehe dort).
+    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 42)}
+    pull_policy: missing
+    container_name: brickinventory-daten-rechte
+    logging: *protokoll
+    restart: "no"
+    user: root
+    network_mode: none
+    # chown und das Lesen fremder Ordner (CHOWN, DAC_OVERRIDE); Marke und
+    # Unterordner schreibt su-exec als brickinv (SETUID, SETGID).
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, SETUID, SETGID]
+    read_only: true
+    mem_limit: 64m
+    pids_limit: 16
+    cpus: 0.5
+    entrypoint: ["sh", "/app/daten-rechte.sh"]
+    environment:
+      BRICKINV_CHOWN: ${BRICKINV_CHOWN:-auto}
+    volumes:
+      - ./data:/app/data
+
   # ── BrickInventory Manager App ───────────────────────────────────────────────
   app:
-    # Ein Image für schluessel, app und jobs, als Digest: Ein Tag lässt sich
+    # Ein Image für schluessel, daten-rechte, app und jobs, als Digest: Ein Tag lässt sich
     # umhängen. scripts/image-pruefen.sh prüft die Signatur und trägt
     # BRICK_IMAGE in .env ein. Wer selbst baut, setzt BRICK_IMAGE auf einen
     # eigenen Namen; nur `app` hat `build:`, damit `--build` einmal baut.
@@ -154,14 +184,12 @@ services:
     mem_limit: ${APP_MEM_LIMIT:-1g}
     pids_limit: 256
     cpus: ${APP_CPUS:-2}
-    # docker-entrypoint.sh läuft als root und braucht genau vier Rechte:
-    # mkdir/Marke im Datenordner, der brickinv gehört (DAC_OVERRIDE), chown
-    # (CHOWN) und den Wechsel zu brickinv per su-exec (SETUID, SETGID). Der
-    # Server danach läuft ohne. Schreiben darf er nur in ./data und /tmp.
+    # Als brickinv ohne jede Capability: ./data hat daten-rechte schon
+    # übergeben. Schreiben darf der Server nur in ./data und /tmp.
+    user: brickinv
     security_opt:
       - no-new-privileges:true
     cap_drop: [ALL]
-    cap_add: [CHOWN, DAC_OVERRIDE, SETUID, SETGID]
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=256m
@@ -169,6 +197,8 @@ services:
       db-rolle:
         condition: service_completed_successfully
       schluessel:
+        condition: service_completed_successfully
+      daten-rechte:
         condition: service_completed_successfully
     # Kein veröffentlichter Port: Von aussen geht es nur über Caddy (HTTPS).
     # Bewusste Klartext-Ausnahme zum Ausprobieren: die zwei Zeilen
@@ -269,11 +299,11 @@ services:
     mem_limit: ${JOBS_MEM_LIMIT:-1g}
     pids_limit: 256
     cpus: ${JOBS_CPUS:-1.5}
-    # Dieselben Rechte wie `app` (siehe dort): der Entrypoint richtet ./data ein.
+    # Dieselben Rechte wie `app` (siehe dort).
+    user: brickinv
     security_opt:
       - no-new-privileges:true
     cap_drop: [ALL]
-    cap_add: [CHOWN, DAC_OVERRIDE, SETUID, SETGID]
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=256m
@@ -281,6 +311,8 @@ services:
       db-rolle:
         condition: service_completed_successfully
       schluessel:
+        condition: service_completed_successfully
+      daten-rechte:
         condition: service_completed_successfully
     # Bilder, Anleitungen, PDFs und der Datenschlüssel liegen dort, wo auch
     # `app` sie sucht.

@@ -72,7 +72,7 @@ COPY --from=builder /app/dist ./dist/
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/public ./public/
 
-COPY docker-entrypoint.sh schluessel-anlegen.sh ./
+COPY docker-entrypoint.sh schluessel-anlegen.sh daten-rechte.sh ./
 RUN chmod +x docker-entrypoint.sh
 
 # ── App ───────────────────────────────────────────────────────────────────────

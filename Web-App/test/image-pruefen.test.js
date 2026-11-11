@@ -47,7 +47,7 @@ test('geprüft wird gegen docker-publish.yml auf main, der Digest landet in .env
     + '--certificate-oidc-issuer https://token.actions.githubusercontent.com');
   assert.equal(r.env, `BRICK_HOST=nas.lan\nBRICK_TAG=sha-1a2b3c4\nBRICK_IMAGE=addict85/brickinventory@${D1}\n`);
   assert.equal(r.rechte, 0o600, '.env behält ihre Rechte');
-  assert.match(r.docker, /^docker compose pull schluessel app jobs$/m);
+  assert.match(r.docker, /^docker compose pull schluessel daten-rechte app jobs$/m);
 });
 
 test('eine gescheiterte Prüfung ändert nichts', (t) => {
@@ -97,5 +97,5 @@ test('ohne BRICK_IMAGE startet compose nicht, mit Digest zieht jeder Dienst ihn'
   const ziehen = Object.entries(mit.services).filter(([, d]) => /brickinventory/.test(d.image) && !/postgres/.test(d.image)
     && !d.build?.dockerfile?.endsWith('.caddy') && d.pull_policy !== 'never');
   assert.deepEqual(ziehen.map(([n, d]) => `${n} ${d.image}`).sort(),
-    ['app', 'jobs', 'schluessel'].map(n => `${n} addict85/brickinventory@${D1}`));
+    ['app', 'daten-rechte', 'jobs', 'schluessel'].map(n => `${n} addict85/brickinventory@${D1}`));
 });

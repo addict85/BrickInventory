@@ -53,7 +53,9 @@ const liste = (block, schluessel) =>
 test('kein Dienst gewinnt Rechte, jeder hat nur die nötigen Capabilities', () => {
   const erwartet = {
     postgres: ['CHOWN', 'DAC_OVERRIDE', 'FOWNER', 'SETGID', 'SETUID'],
-    app: ['CHOWN', 'DAC_OVERRIDE', 'SETGID', 'SETUID'],
+    app: [],
+    jobs: [],
+    'daten-rechte': ['CHOWN', 'DAC_OVERRIDE', 'SETGID', 'SETUID'],
     'db-rolle': [],
     caddy: [],
     'caddy-rechte': ['CHOWN', 'DAC_OVERRIDE'],
@@ -66,14 +68,14 @@ test('kein Dienst gewinnt Rechte, jeder hat nur die nötigen Capabilities', () =
   }
 });
 
-test('die App schreibt nur in ./data und /tmp — der Entrypoint auch', () => {
+test('die App schreibt nur in ./data und /tmp — daten-rechte auch', () => {
   const block = leseDienst(compose, 'app');
   assert.match(block, /^\s*read_only:\s*true\s*$/m, 'app: read_only fehlt');
   assert.match(block, /^\s*tmpfs:\s*\n\s*-\s*\/tmp:rw,noexec,nosuid,nodev,size=\d+m\s*$/m, 'app: /tmp als tmpfs fehlt');
   assert.match(block, /^\s*-\s*\.\/data:\/app\/data\s*$/m, 'app: ./data ist nicht nach /app/data eingehängt');
 
   const ep = fs
-    .readFileSync(path.join(ROOT, 'docker-entrypoint.sh'), 'utf8')
+    .readFileSync(path.join(ROOT, 'daten-rechte.sh'), 'utf8')
     .split('\n')
     .filter(z => !/^\s*#/.test(z))
     .join('\n');
@@ -85,9 +87,35 @@ test('die App schreibt nur in ./data und /tmp — der Entrypoint auch', () => {
   assert.deepEqual(
     ziele.filter(z => !z.startsWith('/app/data')),
     [],
-    'Der Entrypoint schreibt ausserhalb der beschreibbaren Orte',
+    'daten-rechte schreibt ausserhalb der beschreibbaren Orte',
   );
-  assert.match(ep, /exec su-exec brickinv /, 'Der Wechsel zu brickinv (SETUID/SETGID) ist nicht mehr su-exec');
+});
+
+// Gegenproben (11.11.2026 gemessen, je einzeln): bei jobs `user: brickinv`
+// gestrichen → rot „jobs läuft als root“; bei daten-rechte `- ./schluessel:/app/schluessel`
+// ergänzt → rot „daten-rechte sieht mehr als ./data“; `network_mode: none` dort
+// gestrichen → rot „daten-rechte braucht kein Netz“; bei app die Abhängigkeit
+// auf daten-rechte gestrichen → rot „app wartet nicht auf daten-rechte“.
+test('root richtet ./data nur im Dienst daten-rechte ein, app und jobs laufen als brickinv', () => {
+  const rechte = leseDienst(compose, 'daten-rechte');
+  assert.ok(rechte, 'Dienst daten-rechte fehlt');
+  assert.match(rechte, /^\s*user:\s*root\s*$/m);
+  assert.match(rechte, /^\s*network_mode:\s*none\s*$/m, 'daten-rechte braucht kein Netz');
+  assert.match(rechte, /^\s*read_only:\s*true\s*$/m);
+  assert.match(rechte, /^\s*entrypoint: \["sh", "\/app\/daten-rechte\.sh"\]\s*$/m);
+  // Nur ./data: Ein Symlink des Dienstes darf root zu nichts anderem führen.
+  const einh = [...rechte.matchAll(/^\s*-\s*([^\s:]+:\/[^\s]*)\s*$/gm)].map(m => m[1]);
+  assert.deepEqual(einh, ['./data:/app/data'], 'daten-rechte sieht mehr als ./data');
+  assert.doesNotMatch(rechte, /^\s*secrets:/m, 'daten-rechte sieht mehr als ./data');
+  const image = d => leseDienst(compose, d).match(/^\s*image:\s*(\S+)\s*$/m)?.[1];
+  assert.equal(image('daten-rechte'), image('app'), 'daten-rechte.sh kommt aus dem App-Image');
+  assert.match(fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8'), /^COPY .*\bdaten-rechte\.sh\b.* \.\/$/m);
+  for (const d of ['app', 'jobs']) {
+    const block = leseDienst(compose, d);
+    assert.match(block, /^\s*user:\s*brickinv\s*$/m, `${d} läuft als root`);
+    assert.match(block, /depends_on:[\s\S]*?\n\s+daten-rechte:\s*\n\s*condition: service_completed_successfully/,
+      `${d} wartet nicht auf daten-rechte`);
+  }
 });
 
 // Gegenproben (01.11.2026 gemessen): DATA_KEY_FILE bei jobs gestrichen → rot

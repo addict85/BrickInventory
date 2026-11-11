@@ -349,10 +349,12 @@ den Commits, nicht hier.
   devDependency fehlt es in `npm audit --omit=dev`; web-ci.yml prüft es
   deshalb zusätzlich im vollen `npm audit`.
 - Build-Kontext ohne `.env`, `backups/`, `schluessel/`, `data/` — `dockerfile`.
-- Der Entrypoint richtet als root nur `/app/data` selbst (`chown -h`); die
-  Unterordner legt er als `brickinv` an, die Marke schreibt er als
-  `brickinv`, und der Reparaturschritt (`find -xdev … -exec chown -h`) folgt
-  keinem Symlink des Dienstes und bleibt im Datenträger — `entrypoint-start`.
+- `app` und `jobs` laufen als `brickinv` ohne Capability; `./data` richtet
+  vorher der Dienst `daten-rechte` (`daten-rechte.sh`) als root ein, ohne Netz
+  und mit nur `./data` eingehängt. Er ändert als root nur `/app/data` selbst
+  (`chown -h`), legt Unterordner und Marke als `brickinv` an, und der
+  Reparaturschritt (`find -xdev … -exec chown -h`) folgt keinem Symlink des
+  Dienstes und bleibt im Datenträger — `entrypoint-start`, `compose-haertung`.
 - `docker-publish.yml`: Ein Image entsteht nur aus einem Commit mit grüner
   CI, auch beim Handstart (nur `main`, grüner Lauf von `web-ci.yml` auf genau
   diesem Commit, sonst Abbruch); Hochladen und Signieren laufen in der

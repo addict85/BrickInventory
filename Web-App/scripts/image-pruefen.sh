@@ -46,5 +46,5 @@ zeile="BRICK_IMAGE=$REPO@$digest"
 cat "$ENV_DATEI.neu" > "$ENV_DATEI"
 rm -f "$ENV_DATEI.neu"
 echo "[image] geprüft und in $ENV_DATEI eingetragen: $zeile"
-docker compose pull schluessel app jobs
+docker compose pull schluessel daten-rechte app jobs
 echo "[image] fertig. Starten oder aktualisieren: docker compose up -d"

@@ -1722,3 +1722,21 @@ docker compose exec postgres psql -U brickinventory -c "SELECT max(name) FROM sc
   Bestand beschränkt.
 - `postgres/app-rolle.sh` (Leserolle) kennt die geänderten Spalten; `docker
   compose up -d` spielt es wie gewohnt ein.
+
+## 49. `./data` richtet ein eigener Dienst ein, `app` und `jobs` ohne root
+
+**Nichts von Hand zu tun:** `sh scripts/image-pruefen.sh && docker compose up -d`.
+
+- Der neue Dienst `daten-rechte` (dasselbe Image wie `app`) übergibt `./data`
+  bei jedem `up` an `brickinv` – Eigentümer reparieren, Marke, Unterordner –
+  und endet. Er läuft als root, aber ohne Netz und mit nur `./data`
+  eingehängt. `app` und `jobs` warten auf ihn und laufen danach als
+  `brickinv` ohne jede Capability; ihr Entrypoint hat keinen root-Schritt mehr.
+  Vorher richtete der Entrypoint von `app` und `jobs` als root ein, während
+  der jeweils andere Container schon in `./data` schreiben konnte.
+- **`BRICKINV_CHOWN`** (`auto`, `always`, `never`) gilt jetzt für
+  `daten-rechte`: in `.env` setzen, nicht mehr unter `environment:` von
+  `app`. Wer es dort eingetragen hatte, verschiebt die Zeile.
+- `docker compose logs daten-rechte` zeigt, was er getan hat.
+- Ein einzelnes `docker run` ohne compose startet weiter als root, richtet
+  `/app/data` selbst ein und gibt die Rechte dann an `brickinv` ab.
