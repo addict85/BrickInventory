@@ -5,7 +5,6 @@ import ch.brickinventoryapp.data.api.GeraetApi
 import ch.brickinventoryapp.data.repository.SchrittbindungImpl
 import ch.brickinventoryapp.model.schritt.Schrittaktion
 import ch.brickinventoryapp.model.schritt.Schrittantwort
-import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.testing.TestApi
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.runBlocking
@@ -16,7 +15,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.Retrofit
-import java.io.File
 import java.util.Base64
 
 /**
@@ -32,16 +30,14 @@ import java.util.Base64
 class SchrittbindungTest {
 
     private val server = MockWebServer().apply { start() }
-    private val ordner = File(System.getProperty("java.io.tmpdir"), "bim-schritt-${System.nanoTime()}").apply { mkdirs() }
     private val api = Retrofit.Builder().baseUrl(server.url("/"))
         .addConverterFactory(ApiJson.asConverterFactory("application/json".toMediaType()))
         .build().create(GeraetApi::class.java)
-    private val bindung = SchrittbindungImpl(api, ResponseCache { ordner })
+    private val bindung = SchrittbindungImpl(api)
 
     @After
     fun zu() {
         server.shutdown()
-        ordner.deleteRecursively()
     }
 
     @Test

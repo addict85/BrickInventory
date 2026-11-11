@@ -11,7 +11,6 @@ import javax.inject.Singleton
  * Bildschirm, also gibt es genau einen Kanal dorthin. Mit einem Kanal je ViewModel
  * bräuchte jede Stelle, die ein ViewModel benutzt, einen Weiterleitungsblock;
  * fehlt er, verschwinden die Meldungen lautlos.
- * Ausführlich: docs/begruendungen/core-data/data/MeldungsKanal.kt.md#constructor
  */
 interface MeldungsKanal {
     val meldung: StateFlow<String?>

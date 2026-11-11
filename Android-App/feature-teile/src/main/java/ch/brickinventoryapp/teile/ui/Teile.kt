@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.teile.ui
 
-import ch.brickinventoryapp.offline.Lokal
+import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.model.data.model.BrickColorsResponse
 import ch.brickinventoryapp.model.data.model.FigValuationItem
 import ch.brickinventoryapp.model.data.model.ManualFigsResponse
@@ -21,6 +21,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -53,15 +54,17 @@ internal interface TeileQuelle {
 }
 
 /**
- * Die lokalen Listen (Room) der vier ungefilterten Abrufe. Ohne Filter sind sie
- * die Wahrheit der Anzeige wie in der Galerie: Was offline erfasst, geändert
- * oder gelöscht wird, erscheint sofort.
+ * Die lokalen Listen (Room) für die Filter eines Zustands, und wie sie gefüllt
+ * werden. Wo sie gelten, sind sie die einzige Quelle der Anzeige wie in der
+ * Galerie: Der Abruf schreibt nur in die Ablage, offline Erfasstes steht sofort da.
  */
 internal class TeileLokal(
-    val teile: Flow<Lokal<Part>>,
-    val manuelleTeile: Flow<Lokal<PartValuationItem>>,
-    val figuren: Flow<Lokal<Minifig>>,
-    val manuelleFiguren: Flow<Lokal<FigValuationItem>>,
+    val teile: (PartsUiState) -> Flow<Lokal<Part>>,
+    val manuelleTeile: (PartsUiState) -> Flow<Lokal<PartValuationItem>>,
+    val figuren: (PartsUiState) -> Flow<Lokal<Minifig>>,
+    val manuelleFiguren: (PartsUiState) -> Flow<Lokal<FigValuationItem>>,
+    val aktualisiereTeile: suspend () -> Ergebnis<Unit>,
+    val aktualisiereFiguren: suspend () -> Ergebnis<Unit>,
 )
 
 /**
@@ -80,46 +83,38 @@ internal class Teile(
     /** Der Satz zum Fehler, der in der leeren Liste stehen bleibt (wie in der Galerie). */
     private val beschreibeFehler: (Ergebnis.Error) -> String = { it.message },
     private val lokal: TeileLokal? = null,
-    /** Schränken Konto oder Lagerort die Teile bzw. Figuren ein? Dann gilt nur der Server. */
+    /** Schränken Konto oder Lagerort die Teile bzw. Figuren ein? Dann rechnet nur der Server die Mengen. */
     private val teileEingeschraenkt: () -> Boolean = { true },
     private val figurenEingeschraenkt: () -> Boolean = { true },
 ) {
     private val _state = MutableStateFlow(PartsUiState())
     val state: StateFlow<PartsUiState> = _state.asStateFlow()
 
-    init {
-        // Nur was Room für genau diese Ansicht hält, und nicht während einer
-        // Ladung: deren Antwort setzt die Liste ohnehin (wie Galerie.init).
-        if (lokal != null) {
-            folge(lokal.teile) { st, l ->
-                if (st.partsLoading || st.partsPage != 1 || !teileUngefiltert(st)) null
-                else st.copy(parts = l.map { it.alsAnsicht() })
-            }
-            folge(lokal.manuelleTeile) { st, l ->
-                if (st.partsQuery.isNotBlank() || teileEingeschraenkt()) null
-                else st.copy(manualParts = l.map { it.alsAnsicht() })
-            }
-            folge(lokal.figuren) { st, l ->
-                if (st.minifigsLoading || st.minifigsQuery.isNotBlank() || figurenEingeschraenkt()) null
-                else st.copy(minifigs = l.map { it.alsAnsicht() })
-            }
-            folge(lokal.manuelleFiguren) { st, l ->
-                if (st.minifigsQuery.isNotBlank() || figurenEingeschraenkt()) null
-                else st.copy(manualFigs = l.map { it.alsAnsicht() })
-            }
-        }
-    }
+    /** Die Tabelle bestellt „In Sets“ mit; das zählt nur der Server. */
+    private fun teileLokal(st: PartsUiState) = lokal?.takeIf { st.partsView != Listenansicht.TABELLE && !teileEingeschraenkt() }
+    private fun figurenLokal() = lokal?.takeIf { !figurenEingeschraenkt() }
 
-    /** Eine nie geladene Liste (ohne Stand) leert nichts; null heisst: diese Ansicht nicht. */
-    private fun <T> folge(quelle: Flow<Lokal<T>>, neu: (PartsUiState, List<T>) -> PartsUiState?) {
+    private var teileFolgen: List<Job> = emptyList()
+    private var figurenFolgen: List<Job> = emptyList()
+
+    /** Eine nie geladene Liste (ohne Stand) leert nichts. */
+    private fun <T> folge(quelle: Flow<Lokal<T>>, neu: (PartsUiState, List<T>) -> PartsUiState): Job =
         scope.launch {
-            quelle.collect { l -> if (l.stand != null) _state.update { st -> neu(st, l.liste) ?: st } }
+            quelle.collect { l -> if (l.stand != null) _state.update { st -> neu(st, l.liste) } }
+        }
+
+    /** Ohne Netz bleibt die Ablage mit ihrem Stand; ohne Ablage ist es ein Fehler wie bisher. */
+    private fun ausgang(r: Ergebnis<Unit>, stand: Long?, fertig: (PartsUiState, Long?) -> PartsUiState,
+                        fehler: (PartsUiState, Ergebnis.Error) -> PartsUiState) {
+        when {
+            r is Ergebnis.Success -> _state.update { fertig(it, null) }
+            r is Ergebnis.Error && r.transient && stand != null -> _state.update { fertig(it, stand) }
+            r is Ergebnis.Error -> {
+                _state.update { fehler(it, r) }
+                meldeFehler(r)
+            }
         }
     }
-
-    private fun teileUngefiltert(st: PartsUiState) =
-        st.partsQuery.isBlank() && st.partsColorFilter.isBlank() && st.partsCategoryFilter.isBlank() &&
-            st.partsSpare == Ersatzteilwahl.ALLE && st.partsView != Listenansicht.TABELLE && !teileEingeschraenkt()
 
     // Ein neuer Auftrag bricht den alten ab: Eine langsame alte Antwort
     // überschriebe sonst eine neuere, und beim Tippen löscht jeder Tastendruck
@@ -128,9 +123,13 @@ internal class Teile(
     private var figurenJob: Job? = null
 
     fun laden(seite: Int = 1, entprellt: Boolean = false) {
+        val ablage = teileLokal(_state.value)
+        if (ablage != null && seite > 1) return
         teileJob?.cancel()
+        teileFolgen.forEach { it.cancel() }
         teileJob = scope.launch {
             if (entprellt) delay(suchPause)
+            if (ablage != null) return@launch ladeTeileAusAblage(ablage)
             _state.update { it.copy(partsLoading = true, partsFehler = null) }
             // Nach dem Entprellen gelesen: Der zuletzt gestartete Auftrag soll
             // den NEUESTEN Text sehen.
@@ -169,6 +168,24 @@ internal class Teile(
                 }
             }
         }
+    }
+
+    /** Anzeige aus der Ablage mit den Filtern des Zustands; der Abruf füllt nur die Ablage. */
+    private suspend fun ladeTeileAusAblage(ablage: TeileLokal) {
+        val st = _state.value
+        teileFolgen = listOf(
+            folge(ablage.teile(st)) { s, l ->
+                s.copy(parts = l.map { it.alsAnsicht() }, partsTotal = l.size, partsPage = 1)
+            },
+            folge(ablage.manuelleTeile(st)) { s, l -> s.copy(manualParts = l.map { it.alsAnsicht() }) },
+        )
+        _state.update { it.copy(partsLoading = true, partsFehler = null) }
+        val r = ablage.aktualisiereTeile()
+        ausgang(r, ablage.teile(st).first().stand,
+            { s, stand -> s.copy(partsLoading = false, teileOfflineStand = stand) },
+            { s, r -> s.copy(partsLoading = false, partsFehler = beschreibeFehler(r), partsFehlerKlasse = fehlerklasse(r)) })
+        (quelle.teileKennzahlen() as? Ergebnis.Success)
+            ?.let { s -> _state.update { it.copy(partsStats = s.data.stats?.alsAnsicht()) } }
     }
 
     fun setzeSuche(q: String) {
@@ -240,8 +257,11 @@ internal class Teile(
                 ?.let { r -> _state.update { it.copy(minifigStats = r.data.stats.alsAnsicht()) } }
         }
         figurenJob?.cancel()
+        figurenFolgen.forEach { it.cancel() }
+        val ablage = figurenLokal()
         figurenJob = scope.launch {
             if (entprellt) delay(suchPause)
+            if (ablage != null) return@launch ladeFigurenAusAblage(ablage)
             _state.update { it.copy(minifigsLoading = true, minifigsFehler = null) }
             val suche = _state.value.minifigsQuery.ifBlank { null }
             when (val r = quelle.figuren(suche)) {
@@ -260,6 +280,19 @@ internal class Teile(
         }
     }
 
+    private suspend fun ladeFigurenAusAblage(ablage: TeileLokal) {
+        val st = _state.value
+        figurenFolgen = listOf(
+            folge(ablage.figuren(st)) { s, l -> s.copy(minifigs = l.map { it.alsAnsicht() }) },
+            folge(ablage.manuelleFiguren(st)) { s, l -> s.copy(manualFigs = l.map { it.alsAnsicht() }) },
+        )
+        _state.update { it.copy(minifigsLoading = true, minifigsFehler = null) }
+        val r = ablage.aktualisiereFiguren()
+        ausgang(r, ablage.figuren(st).first().stand,
+            { s, stand -> s.copy(minifigsLoading = false, figurenOfflineStand = stand) },
+            { s, r -> s.copy(minifigsLoading = false, minifigsFehler = beschreibeFehler(r), minifigsFehlerKlasse = fehlerklasse(r)) })
+    }
+
     fun setzeFigurSuche(q: String) {
         _state.update { it.copy(minifigsQuery = q) }
         ladeFiguren(entprellt = true)
@@ -272,6 +305,7 @@ internal class Teile(
     fun zuruecksetzen() {
         teileJob?.cancel()
         figurenJob?.cancel()
+        (teileFolgen + figurenFolgen).forEach { it.cancel() }
         _state.value = PartsUiState()
     }
 }

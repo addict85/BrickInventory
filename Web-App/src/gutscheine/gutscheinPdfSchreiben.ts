@@ -1,6 +1,5 @@
 /** Der Betrag wird IM Original ersetzt, damit der Export aussieht wie die
- * Karte von LEGO; geht das nicht sicher, bleibt das Original unverändert.
- * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#abschnitt */
+ * Karte von LEGO; geht das nicht sicher, bleibt das Original unverändert. */
 import {
   PDFDocument as PdfLibDocument, PDFArray, PDFDict, PDFName, PDFRawStream,
   decodePDFRawStream, PDFPage, PDFObject, StandardFonts, rgb,
@@ -42,8 +41,7 @@ function schriftIstSicher(doc: PdfLibDocument, resources: PDFDict | undefined,
   return SICHERE_KODIERUNGEN.has(roh.slice(1));
 }
 
-/** Das Kerning eines TJ-Feldes geht verloren; der Betrag steht aber vollständig da.
- * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#ersetzeimstrom */
+/** Das Kerning eines TJ-Feldes geht verloren; der Betrag steht aber vollständig da. */
 function ersetzeImStrom(inhalt: string, suchen: string, ersetzen: string,
                         sicher: (schrift: string) => boolean):
                         { aus: string; treffer: number; abgelehnt: number } {
@@ -155,8 +153,7 @@ export async function ersetzeBetrag(daten: Buffer, neuerBetrag: number): Promise
   return { daten: ergebnis, treffer, abgelehnt, grund: null };
 }
 
-/** Damit ein exportiertes PDF beim Import sich selbst erklärt, statt geraten zu werden.
- * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#marke-kopf */
+/** Damit ein exportiertes PDF beim Import sich selbst erklärt, statt geraten zu werden. */
 const MARKE_KOPF = 'BIM-GUTSCHEIN v1';
 
 /** Semikolon als Trennzeichen, weil Notizen Kommas haben. */
@@ -192,7 +189,6 @@ export interface ExportGutschein {
 }
 
 // Vier Arten, damit „stimmte schon“ als Erfolg erscheint und nicht als Warnung.
-// Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#exportbefund
 export interface ExportBefund {
   id: number;
   number: string;
@@ -202,8 +198,7 @@ export interface ExportBefund {
   grund: string | null;
 }
 
-/** Ein von Hand erfasster Gutschein hat kein Original, in dem etwas zu ersetzen wäre.
- * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#erzeugeseite */
+/** Ein von Hand erfasster Gutschein hat kein Original, in dem etwas zu ersetzen wäre. */
 async function erzeugeSeite(g: ExportGutschein): Promise<Buffer> {
   const doc = await PdfLibDocument.create();
   const seite = doc.addPage([595, 842]);
@@ -226,8 +221,7 @@ async function erzeugeSeite(g: ExportGutschein): Promise<Buffer> {
 }
 
 /** Ein nicht ersetzter Gutschein kommt unverändert hinein, mit Grund im Befund:
- * eine Auskunft, kein Abbruch.
- * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#verbindegutscheine */
+ * eine Auskunft, kein Abbruch. */
 export async function verbindeGutscheine(gutscheine: ExportGutschein[]):
     Promise<{ daten: Buffer; befunde: ExportBefund[] }> {
   const ziel = await PdfLibDocument.create();
@@ -273,8 +267,7 @@ export function seitenOderKeine(daten: Buffer): Promise<GutscheinWerte[]> {
   return seitenweiseLesen(daten).catch(meldeUndLiefere('gutschein:seitenweise', []));
 }
 
-/** Marken zuerst, weil sie eine Ablesung sind; Raten nur als Rückfall.
- * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#seitenweiselesen */
+/** Marken zuerst, weil sie eine Ablesung sind; Raten nur als Rückfall. */
 export async function seitenweiseLesen(daten: Buffer): Promise<GutscheinWerte[]> {
   const gefunden: GutscheinWerte[] = [];
   const gesehen = new Set<string>();

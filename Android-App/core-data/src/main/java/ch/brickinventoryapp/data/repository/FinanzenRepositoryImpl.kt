@@ -7,43 +7,43 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Preise, Bewertung, Verlauf und Gewinn/Verlust — über Retrofit; die gemeinsame Abruflogik steht in RepoBasis.kt.
+ * Preise, Bewertung, Verlauf und Gewinn/Verlust — über Retrofit; die gemeinsame Abruflogik steht in Abruf.kt.
  */
 @Singleton
 class FinanzenRepositoryImpl @Inject constructor(
-    api: FinanzenApi,
-    cache: ResponseCache,
-) : RepoBasis<FinanzenApi>(api, cache), FinanzenRepository {
+    private val api: FinanzenApi,
+    private val cache: ResponseCache,
+) : FinanzenRepository {
 
     override suspend fun getSetPrice(setNumber: String): Ergebnis<SetPriceResponse> =
-        safeCall { api.getSetPrice(setNumber) }
+        sicherAufrufen { api.getSetPrice(setNumber) }
 
     override suspend fun getSetPriceHistory(setNumber: String): Ergebnis<PriceHistoryResponse> =
-        safeCall { api.getSetPriceHistory(setNumber) }
+        sicherAufrufen { api.getSetPriceHistory(setNumber) }
 
     override suspend fun getPartPriceHistory(partNumber: String, colorId: Int): Ergebnis<PriceHistoryResponse> =
-        safeCall { api.getPartPriceHistory(partNumber, colorId) }
+        sicherAufrufen { api.getPartPriceHistory(partNumber, colorId) }
 
     override suspend fun getFigPriceHistory(figNumber: String): Ergebnis<PriceHistoryResponse> =
-        safeCall { api.getFigPriceHistory(figNumber) }
+        sicherAufrufen { api.getFigPriceHistory(figNumber) }
 
     override suspend fun getPartsValuation(accounts: String?): Ergebnis<PartsValuationResponse> =
-        safeCall { api.getPartsValuation(accounts) }
+        sicherAufrufen { api.getPartsValuation(accounts) }
 
     override suspend fun getMinifigsValuation(accounts: String?): Ergebnis<FigsValuationResponse> =
-        safeCall { api.getMinifigsValuation(accounts) }
+        sicherAufrufen { api.getMinifigsValuation(accounts) }
 
     override suspend fun getValuation(accounts: String?): Ergebnis<ValuationResponse> =
-        safeCall { api.getValuation(accounts) }
+        sicherAufrufen { api.getValuation(accounts) }
 
     override suspend fun getPnl(accounts: String?): Ergebnis<PnlResponse> =
-        safeCall { api.getPnl(accounts) }
+        sicherAufrufen { api.getPnl(accounts) }
 
     override suspend fun getPortfolioHistory(period: String, accounts: String?): Ergebnis<PortfolioHistoryResponse> =
-        safeCall { api.getPortfolioHistory(period, accounts) }
+        sicherAufrufen { api.getPortfolioHistory(period, accounts) }
 
     override suspend fun getStats(accounts: String?): Ergebnis<StatsResponse> =
         if (accounts == null)
-            cached("stats", StatsResponse.serializer()) { safeCall { api.getStats() } }
-        else safeCall { api.getStats(accounts) }
+            cache.cached("stats", StatsResponse.serializer()) { sicherAufrufen { api.getStats() } }
+        else sicherAufrufen { api.getStats(accounts) }
 }

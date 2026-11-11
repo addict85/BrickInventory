@@ -1,6 +1,5 @@
 /**
  * Nach einem Masseneinfuegen: Planerstatistik und GIN-Wartelisten auffrischen.
- * Ausführlich: docs/begruendungen/db/tabellePflegen.ts.md#ueberblick
  */
 
 /** VACUUM kennt keine Parameter, der Name wird ins SQL eingesetzt — darum

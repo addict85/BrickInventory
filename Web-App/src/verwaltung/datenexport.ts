@@ -37,8 +37,7 @@ export async function konfigExport(uid: number, verwalter: boolean, name: string
   };
 }
 
-/** Alles im selben Archiv: Die Konfigurationsexporte können Bestandsdaten nicht tragen.
- * Ausführlich: docs/begruendungen/src/verwaltung/datenexport.ts.md#get-export-data */
+/** Alles im selben Archiv: Die Konfigurationsexporte können Bestandsdaten nicht tragen. */
 export async function datenZip(uid: number, ziel: Writable, beiFehler: (e: Error) => void): Promise<void> {
   // archiver 8 ist ein ES-Modul; aus CommonJS geht nur require(), kein Import.
   const { ZipArchive } = require('archiver') as { ZipArchive: new (o: object) => ZipArchiv };
@@ -116,7 +115,6 @@ export async function konfigImport(uid: number, verwalter: boolean, datei: Buffe
     imported++;
   }
   // Nur Verwalter: Sonst könnte jedes Konto per Ein-Zeilen-Datei den Preis-Cache leeren.
-  // Ausführlich: docs/begruendungen/src/verwaltung/datenexport.ts.md#abschnitt-2
   if (verwalter) await zeitplanNeuPlanen();
   const note =
     (verwalter ? 'Globale + Benutzer-Einstellungen importiert' : 'Nur Benutzer-Einstellungen importiert') +

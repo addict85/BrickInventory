@@ -18,11 +18,12 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.DATA_KEY = crypto.randomBytes(32).toString('base64');
+umgebung({ DATA_KEY: crypto.randomBytes(32).toString('base64') });
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
@@ -87,7 +88,7 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async (t) => {
 
   await t.test('falscher Schlüssel ergibt null, nicht Unsinn', async () => {
     const wert = g.verschluessele('geheim', g.kontext('probe'));
-    process.env.DATA_KEY = crypto.randomBytes(32).toString('base64');
+    umgebung({ DATA_KEY: crypto.randomBytes(32).toString('base64') });
     g._vergissSchluessel();
     const echt = console.warn; console.warn = () => {};
     try { assert.equal(g.entschluessele(wert, g.kontext('probe')), null); } finally { console.warn = echt; }

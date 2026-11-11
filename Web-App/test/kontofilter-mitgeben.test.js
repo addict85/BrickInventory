@@ -2,7 +2,6 @@
  * Was der Kontofilter neu lädt, muss den Kontofilter auch mitschicken. Am
  * echten Bündel in jsdom: Haushalt mit einem Unterkonto, je Reiter den Filter
  * auf das Unterkonto stellen und jede Anfrage danach ansehen.
- * Ausführlich: docs/begruendungen/test/kontofilter-mitgeben.test.js.md#kopf
  *
  * Gegenproben (08.11.2026 gemessen, je einzeln):
  *   A  in onScopeChange beim Reiter Teile `loadManualParts()` gestrichen →

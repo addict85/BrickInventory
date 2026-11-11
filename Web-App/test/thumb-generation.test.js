@@ -1,6 +1,5 @@
 /**
  * Vorschaubilder entstehen WIRKLICH — und fehlende heilen sich selbst.
- * Ausführlich: docs/begruendungen/test/thumb-generation.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): temporären Namen zurück auf `.tmp` gedreht →
  * der erste Teilschritt wird rot (keine Datei, generateThumb liefert null).

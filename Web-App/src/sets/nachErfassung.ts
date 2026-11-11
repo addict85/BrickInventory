@@ -11,12 +11,14 @@ import { enrichSetParts, enrichSetMinifigs, downloadSetImages } from '../katalog
 import { pruefeAbbruch, type AuftragsLauf } from '../auftraege/auftraege';
 import { versuche } from '../infra/ergebnis';
 import { setErgaenzen } from './erfassen';
+import type { SetsKontext } from './kontext';
 
 /** zweit: ein vorhandenes Set noch einmal erfasst; neu: angelegt; csv: aus dem CSV-Import;
  * ergaenzen: ohne Netz angelegt (setErfassen), Katalog, Bild und Kaufpreis fehlen noch. */
 export type NacharbeitArt = 'zweit' | 'neu' | 'csv' | 'ergaenzen';
 
 async function zieheNach(
+  sk: SetsKontext,
   setNumber: string,
   userId: number,
   artWunsch: NacharbeitArt,
@@ -24,7 +26,7 @@ async function zieheNach(
 ): Promise<void> {
   // Ohne Katalog fehlt dem Set der Name; scheitert er, versucht es der Auftrag noch einmal.
   if (artWunsch === 'ergaenzen') {
-    await setErgaenzen(setNumber, userId);
+    await setErgaenzen(sk, setNumber, userId);
     pruefeAbbruch(lauf);
   }
   const art = artWunsch === 'ergaenzen' ? 'neu' : artWunsch;

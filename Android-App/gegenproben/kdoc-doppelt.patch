@@ -1,7 +1,7 @@
 Gegenprobe: Ein KDoc-Block steht direkt vor einem zweiten und hängt an nichts
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: eine Kurzfassung endet mit einem ganzen Satz
+Rot: kein Verweis auf das Begruendungsarchiv
 
 diff --git a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/Alarmabholung.kt b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/Alarmabholung.kt
 --- a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/Alarmabholung.kt

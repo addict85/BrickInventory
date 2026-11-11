@@ -1,7 +1,7 @@
 import type { DbSchnittstelle } from '../../../db/database';
 import * as db from '../../../db/database';
 import { inKontowaehrung, kontowaehrungJoin, teilmengeAus, teilmengeJoin } from '../../../db/bestandsmenge';
-import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/katalogSicht';
+import { teilSichtJoin, figurSichtJoin, setStammJoin, TEIL, FIGUR, SET } from '../../../db/katalogSicht';
 
 /** Kaufpreis mengengewichtet in Kontowährung. */
 export function erfassungsKennzahlen(art: 'part' | 'fig', uids: number[]) {
@@ -45,7 +45,6 @@ const KOPFFELDER = {
 } as const;
 
 // Seit 0034 steht die Beschreibung im Katalog; JOINs über den Primärschlüssel ändern die Gruppierung nicht.
-// Ausführlich: docs/begruendungen/src/bestand/repository/gemeinsam.ts.md#katalogjoin
 const KATALOGJOIN = {
   parts: `${teilSichtJoin('x.user_id', 'x.part_number', 'x.color_id')}
           LEFT JOIN set_teile spc ON spc.set_number  = x.set_number
@@ -87,7 +86,7 @@ export async function setsMitBestandteil(uids: number[], tabelle: 'parts' | 'min
             -- Unterscheidung — deshalb kommt sie wie KOPFFELDER aus einer
             -- Zuordnung je Tabelle.
             SUM(${teilmengeAus('x', ART[tabelle])})::int AS quantity,
-            c.name               AS set_name,
+            ${SET.name}          AS set_name,
             c.image_local        AS set_image_local,
             c.image_url          AS set_image_url,
             ${KOPFFELDER[tabelle]}
@@ -100,6 +99,7 @@ export async function setsMitBestandteil(uids: number[], tabelle: 'parts' | 'min
        -- Template-Literal, und ein Gegenstrich beendet es.
        LEFT JOIN sets s ON s.user_id = x.user_id AND s.set_number = x.set_number
        LEFT JOIN set_catalog c ON c.set_number = x.set_number
+       ${setStammJoin('x.set_number')}
        -- Der Lagerortname aus dem Vorrat (Migration 0031). Steht hier und
        -- nicht nur im parts-Zweig von KOPFFELDER, weil der minifigs-Zweig ihn
        -- als feste NULL fuehrt — ein unbenutzter LEFT JOIN kostet dort nichts
@@ -110,9 +110,36 @@ export async function setsMitBestandteil(uids: number[], tabelle: 'parts' | 'min
         AND x.set_number IS NOT NULL
         AND ${bedingungen.join(' AND ')}
       GROUP BY x.set_number, x.user_id, ${SCHLUESSELSPALTE[tabelle]},
-               c.name, c.image_local, c.image_url
+               rs.name, c.image_local, c.image_url
       ORDER BY x.set_number`,
     params);
+}
+
+/** Mit dem Set gehen seine Teile und Figuren. */
+export async function entferneSetInhalt(tx: DbSchnittstelle, uids: number[], setNumber: string): Promise<void> {
+  await tx.run('DELETE FROM parts WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
+  await tx.run('DELETE FROM minifigs WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
+}
+
+/** Nur Schlüssel und Herkunft: Beschreibung und Stückzahl stehen im Katalog. */
+export async function kopiereSetInhalt(tx: DbSchnittstelle, tabelle: 'parts' | 'minifigs', sn: string, von: number, nach: number): Promise<number> {
+  const sql = {
+    parts: `INSERT INTO parts (user_id, set_number, part_number, color_id, source)
+            SELECT $1, set_number, part_number, color_id, source FROM parts
+             WHERE user_id = $2 AND set_number = $3 AND COALESCE(source,'set') <> 'manual'`,
+    minifigs: `INSERT INTO minifigs (user_id, set_number, fig_number, source)
+               SELECT $1, set_number, fig_number, source FROM minifigs
+                WHERE user_id = $2 AND set_number = $3 AND COALESCE(source,'set') <> 'manual'`,
+  }[tabelle];
+  return (await tx.run(sql, [nach, von, sn])).changes ?? 0;
+}
+
+/** Ohne Menge: Sie entsteht aus der Erfassung, die gleich mitwandert. */
+export async function legeManuellAn(tx: DbSchnittstelle, art: 'part' | 'fig', uid: number, schluessel: (string | number)[]): Promise<void> {
+  if (art === 'part')
+    await tx.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1,$2,$3,'manual')`, [uid, ...schluessel]);
+  else
+    await tx.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1,$2,'manual')`, [uid, ...schluessel]);
 }
 
 export function loescheTeilZeile(dbh: Pick<DbSchnittstelle, 'run'>, ownerId: number, partNumber: string, colorId: number) {

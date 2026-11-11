@@ -1,7 +1,6 @@
 // Wanted-Listen von BrickLink: erst eine Vorschau wie die Teileliste, in der man korrigieren und
 // Rebrickable-Nummern ergänzen kann, dann der Import — bei Sets, Teilen und Figuren, dort wo man die Posten
 // danach sieht.
-// Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#noch-besser-waere-wenn-es-beim-import-di
 import { registerActions } from './00-registry.js';
 import { t, tRaw, colorName } from '../i18n.js';
 import { escHex, hexZiffern, esc, html, ungeprueft } from './00-escapen.js';
@@ -29,7 +28,6 @@ import { loadBrickColors } from './03-teil-erfassen.js';
 /**
  * Die gewählte Datei bleibt bis zum Import im Speicher: Der zweite Schritt schickt sie mit den Korrekturen
  * erneut. Sonst müsste der Server fremde Dateien halten, bis jemand bestätigt — oder nie.
- * Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#datei
  * @type {File | null}
  */
 let _datei = null;
@@ -41,14 +39,12 @@ let _bericht = null;
 /**
  * Läuft gerade eine Anfrage? Ein zweiter Klick ist nicht harmlos: Der Schreibschritt addiert auf die
  * Erfassung desselben Tages, eine doppelte Anfrage verdoppelte also die Mengen.
- * Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#laeuft
  */
 let _laeuft = false;
 
 /**
  * Welche Knöpfe bedienbar sind, an einer Stelle aus _laeuft, _datei und _bericht abgeleitet: Zwei Zuweisungen
  * an denselben Knopf überschrieben sich gegenseitig, sobald das Freigeben nach dem Lauf kam.
- * Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#knoepfestand
  */
 function knoepfeStand() {
   const schreiben = G('wanted-xml-schreiben');
@@ -117,7 +113,6 @@ async function lies(schreiben) {
 /**
  * Den Fortschrittsbalken setzen oder verstecken. Er unterscheidet zwei Phasen (Nachfragen bei Rebrickable,
  * Schreiben), mit einem Satz darunter — ein Balken ohne Beschriftung liesse offen, worauf man wartet.
- * Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#zeichnefortschritt
  * @param {{phase:string,fertig:number,gesamt:number}|null} stand
  *   null blendet ihn aus (vor dem ersten Lauf, nach dem letzten).
  */
@@ -144,7 +139,6 @@ function zeichneFortschritt(stand) {
 /**
  * Die Antwort zeilenweise lesen (NDJSON) und dabei den Balken füllen; der letzte Satz ist der Bericht. Ohne
  * response.body (fetch-Ersatz in den Prüfungen) liest der Rückfall alles als ein JSON.
- * Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#liesstrom
  * @param {Response} r
  * @returns {Promise<Partial<Bericht> & { success?: boolean, error?: string }>} der Bericht (die letzte Zeile)
  */
@@ -276,7 +270,6 @@ function zeile(p, i) {
     : '';
   // Der Ausgang in Worten, nicht nur als Farbe. In der Vorschau „wird angelegt“, nach dem Import „angelegt“:
   // Sonst stand nach dem Schreiben in jeder Zeile noch die Zukunftsform.
-  // Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#kuenftig
   const kuenftig = !!_bericht?.vorschau;
   const ausgang = esc(tRaw(
     p.ausgang === 'angelegt' && !kuenftig ? 'wanted.out_angelegt_fertig'
@@ -289,7 +282,6 @@ function zeile(p, i) {
     : (p.grund ? esc(p.grund) : '');
   // Der Zustand, der angelegt wird: aus der Datei, sonst der Standard des Kontos — mit dem Zusatz, dass er
   // von dort stammt. Ohne Zusatz läse sich „Gebraucht“ wie eine Angabe aus der Datei.
-  // Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#zustandwert
   const zustandWert = p.zustand === 'N' || p.zustand === 'U'
     ? p.zustand : (_bericht?.standardZustand || null);
   const ausStandard = p.zustand !== 'N' && p.zustand !== 'U';
@@ -300,7 +292,6 @@ function zeile(p, i) {
 
   // Die Werte aus der Datei, vorbefüllt und bearbeitbar. Hier ist jede Abweichung vom Ausgangswert eine
   // Korrektur — anders als bei den leeren Korrekturfeldern rechts, wo leer „nicht angefasst“ heisst.
-  // Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#feld
   // Jedes Feld nennt Spalte und Posten: Ein Vorleser hörte sonst „Drehfeld 1“ ohne Bezug zur Zeile.
   const id = p.blId;
   const feld = (/** @type {string} */ name, /** @type {unknown} */ wert, extra = '', breit = 72, schluessel = 'wanted.feld_menge') =>
@@ -411,7 +402,6 @@ function wantedKorrekturFarbe() {
  * Ein vorbefülltes Feld der Vorschau (Menge, Zustand, Kaufpreis). Ein eigener Handler, weil hier mit dem
  * Bericht verglichen wird statt auf leer geprüft: Wer den Ausgangswert zurücktippt, nimmt die Korrektur
  * zurück.
- * Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#wantedkorrekturwert
  * @this {unknown}
  */
 function wantedKorrekturWert() {
@@ -471,7 +461,6 @@ G('wanted-xml-modal')?.addEventListener('click',
 
 // Das Symbol einmal hier an die drei Knöpfe hängen statt dreimal ins HTML. In ein eigenes <span> ohne
 // data-i18n: Die Übersetzung setzt textContent und würfe es beim Sprachwechsel hinaus.
-// Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#das-symbol-einmal-hier-an
 for (const el of document.querySelectorAll('[data-wanted-icon]')) setzeHtml(el, XML_ICON_SVG);
 
 registerActions({

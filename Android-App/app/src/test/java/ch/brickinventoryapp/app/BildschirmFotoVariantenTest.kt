@@ -1,5 +1,12 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.fach.Katalogsortierung
+import ch.brickinventoryapp.teile.ui.TeileListeUndDetailRoute
+import ch.brickinventoryapp.app.nav.Reiter
+import ch.brickinventoryapp.model.fach.Postenart
+import ch.brickinventoryapp.model.fach.Zustand
+
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -75,7 +82,6 @@ import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
-import ch.brickinventoryapp.app.nav.TeileListeUndDetailRoute
 import ch.brickinventoryapp.katalog.ui.CatalogUiState
 import ch.brickinventoryapp.konto.ui.KontoUiState
 import ch.brickinventoryapp.teile.ui.TeilelisteUiState
@@ -229,7 +235,7 @@ class BildschirmFotoVariantenTest {
         if (sprache != null) Locale.setDefault(Locale.forLanguageTag(sprache.replace("-r", "-")))
         if (warten) bereitstellen(name, bereit, zustand)
         compose.setContent {
-            BrickInventoryManagerTheme(theme = design, dunkel = dunkel) {
+            BrickInventoryManagerTheme(theme = checkNotNull(Design.aus(design)) { design }, dunkel = dunkel) {
                 val dichte = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(dichte.density, schrift)) {
                     Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
@@ -260,7 +266,7 @@ class BildschirmFotoVariantenTest {
 
     private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand, SetsRepository(welt.t.api, welt.t.cache),
         KatalogRepository(welt.t.api, welt.t.cache), object : SetAnleger {
-            override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?,
+            override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
                                  ownerUserId: Int?, storage: String?): Flow<SetAnlegenSchritt> = emptyFlow()
         }))
 
@@ -419,12 +425,12 @@ class BildschirmFotoVariantenTest {
     ) {
         val nav = rememberNavController()
         val reiter = remember {
-            listOf<Triple<Screen, @Composable () -> Unit, String>>(
-                Triple(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
-                Triple(Screen.Finance, { Icon(Icons.AutoMirrored.Filled.ShowChart, null) }, "Finanzen"),
-                Triple(Screen.Wanted, { Icon(Icons.Default.BookmarkBorder, null) }, "Merkliste"),
-                Triple(Screen.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, "Katalog"),
-                Triple(Screen.Mehr, { Icon(Icons.Default.MoreHoriz, null) }, "Mehr"),
+            listOf(
+                Reiter(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                Reiter(Screen.Finance, { Icon(Icons.AutoMirrored.Filled.ShowChart, null) }, "Finanzen"),
+                Reiter(Screen.Wanted, { Icon(Icons.Default.BookmarkBorder, null) }, "Merkliste"),
+                Reiter(Screen.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, "Katalog"),
+                Reiter(Screen.Mehr, { Icon(Icons.Default.MoreHoriz, null) }, "Mehr"),
             )
         }
         // Der Titel folgt dem Ziel wie in der App (ToolsGraph setzt nav_more): Fest
@@ -699,7 +705,7 @@ class BildschirmFotoVariantenTest {
     private fun dialogSetErfassenFoto(name: String, schrift: Float, geraet: String = "telefon") {
         zeigeDialog(name, geraet = geraet, schrift = schrift) {
             AddSetDialog(onDismiss = {},
-                onAdd = { _, _, _, _, _, _ -> }, lagerorte = listOf("Keller", "Estrich"), sofortFokus = false)
+                onAdd = {}, lagerorte = listOf("Keller", "Estrich"), sofortFokus = false)
         }
         dialogFoto(name, "classic", false, geraet, schrift)
         if (schrift == 1f && geraet == "telefon") {
@@ -767,7 +773,7 @@ class BildschirmFotoVariantenTest {
         zeige(name, dunkel = dunkel, geraet = geraet, schrift = schrift) {
             CatalogDetailScreen(setNumber = "10305-1", detail = katalogDetail,
                 isLoading = false, imageLoader = bilder, serverUrl = "", onLoad = {},
-                onAddToGallery = { _, _, _, _, _, _ -> }, onWish = { _, _, _, _, _ -> },
+                onAddToGallery = {}, onWish = { _, _, _, _, _ -> },
                 onOpenInGallery = {}, onBack = {})
         }
         anhalten()
@@ -974,7 +980,7 @@ class BildschirmFotoVariantenTest {
         override fun setCatalogQuery(q: String) = Unit
         override fun setCatalogTheme(themeId: Int?) = Unit
         override fun setCatalogYear(year: Int?) = Unit
-        override fun setCatalogSort(sort: String) = Unit
+        override fun setCatalogSort(sort: Katalogsortierung) = Unit
     }
 
     private fun katalogFoto(
@@ -1114,7 +1120,7 @@ class BildschirmFotoVariantenTest {
         zeige(name, dunkel = dunkel, geraet = geraet) {
             SettingsScreen(
                 zustand = EinstellungenZustand(AppUiState(serverUrl = "https://brick.example.org"), update,
-                    "system", "classic", false, false, false, false),
+                    "system", Design.CLASSIC, false, false, false, false),
                 aktionen = vm, update = keinUpdate, darstellung = keineDarstellung, onNutzerCa = {},
                 onLogout = {}, onServerWechseln = {}, scrollState = androidx.compose.foundation.rememberScrollState(),
             )
@@ -1174,7 +1180,7 @@ class BildschirmFotoVariantenTest {
     private fun kaufpreiseFoto(dunkel: Boolean, geraet: String) {
         val vm = kaeufe()
         zeige("kaufpreise", dunkel = dunkel, geraet = geraet) {
-            AcquisitionManagementRoute(vm, type = "set", id = Beispiele.SET, title = "Millennium Falcon", onBack = {})
+            AcquisitionManagementRoute(vm, type = Postenart.SET, id = Beispiele.SET, title = "Millennium Falcon", onBack = {})
         }
         anhalten()
         foto("kaufpreise", dunkel = dunkel, geraet = geraet)
@@ -1195,7 +1201,7 @@ class BildschirmFotoVariantenTest {
         val vm = kaeufe()
         val teile = welt.teile()
         zeige("einzelteil-detail", dunkel = dunkel, geraet = geraet) {
-            ManualItemDetailRoute(vm, teile, type = "part", id = "3001", colorId = 5, fallbackTitle = "Brick 2 x 4",
+            ManualItemDetailRoute(vm, teile, type = Postenart.PART, id = "3001", colorId = 5, fallbackTitle = "Brick 2 x 4",
                 imageLoader = bilder, onBack = {}, onNavigateToAcqMgmt = { _, _, _, _ -> })
         }
         anhalten()
@@ -1226,7 +1232,7 @@ class BildschirmFotoVariantenTest {
         val ereignisse = CacheEreignisse({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
         zeige("hintergrundarbeiten", dunkel = dunkel, geraet = geraet, warten = false) {
             MonitoringScreen(MonitoringZustand(MonitoringUiState(), vm.hintergrund.value, VerwaltungUiState(),
-                emptyMap(), "classic", 0L), vm, ereignisse)
+                emptyMap(), Design.CLASSIC, 0L), vm, ereignisse)
         }
         anhalten()
         foto("hintergrundarbeiten", dunkel = dunkel, geraet = geraet)

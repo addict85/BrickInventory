@@ -1,6 +1,5 @@
 /**
  * Die waehlbare Laufzeit eines QR-Zugangs — und wer sie waehlen darf.
- * Ausführlich: docs/begruendungen/test/token-laufzeit-db.test.js.md#kopf
  *
  * Gegenprobe (am 28.10. gemessen): in /qr-token die Prüfung von Sitzung und
  * Passwort entfernt → rot im Schritt „0. Ein Code nur mit Sitzung UND
@@ -137,7 +136,6 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
       'Und erst recht keine unbegrenzte: Der Zugang muss die gewoehnliche Gleitfrist tragen');
 
     // 3b. „Unbegrenzt" heisst wirklich unbegrenzt
-    // Ausführlich: docs/begruendungen/test/token-laufzeit-db.test.js.md#ewig
     const ewig = await ruf('/qr-token', { method: 'POST', headers: { cookie: keks },
       body: { gueltigkeit: 'unbegrenzt', password: PASS } });
     assert.equal(ewig.body.token_days, 0,
@@ -212,7 +210,6 @@ test('QR-Zugang: die Oberflaeche waehlt beim ERZEUGEN, nicht beim Einloesen', ()
   assert.ok(/id="qr-validity"/.test(html), 'Das Auswahlfeld fehlt in der Oberflaeche');
 
   // Und die Auswahl deckt sich mit der Liste des Servers
-  // Ausführlich: docs/begruendungen/test/token-laufzeit-db.test.js.md#serverliste
   const serverListe = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/konto/auth.ts'), 'utf8'))
     .split('const TOKEN_LAUFZEITEN')[1].split('};')[0]
     .match(/'(\w+)':/g).map(x => x.replace(/'|:/g, ''));

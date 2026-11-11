@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.api.GutscheineApi
-import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.model.data.model.*
@@ -19,31 +18,30 @@ import javax.inject.Singleton
  */
 @Singleton
 class GutscheineRepositoryImpl @Inject constructor(
-    api: GutscheineApi,
-    cache: ResponseCache,
-    ablage: Offlineablage,
-) : RepoBasis<GutscheineApi>(api, cache, ablage), GutscheineRepository {
+    private val api: GutscheineApi,
+    private val ablage: Offlineablage,
+) : GutscheineRepository {
 
     override suspend fun liste(): Ergebnis<GutscheinListe> =
-        abgeglichen(Faecher.GUTSCHEINE, { l -> l.vouchers.map { ohneGeheimnis(it) } },
-            { GutscheinListe(success = true, vouchers = it) }) { safeCall { api.getGutscheine() } }
+        ablage.abgeglichen(Faecher.GUTSCHEINE, { l -> l.vouchers.map { ohneGeheimnis(it) } },
+            { GutscheinListe(success = true, vouchers = it) }) { sicherAufrufen { api.getGutscheine() } }
 
     override suspend fun anlegen(request: GutscheinRequest): Ergebnis<GutscheinAntwort> =
-        safeCall { api.legeGutscheinAn(request) }
+        sicherAufrufen { api.legeGutscheinAn(request) }
 
     override suspend fun aendern(id: Int, request: GutscheinRequest): Ergebnis<GutscheinAntwort> =
-        safeCall { api.aendereGutschein(id, request) }
+        sicherAufrufen { api.aendereGutschein(id, request) }
 
     /**
      * Löschen mit Passwort und Code. Bewusst ohne Ausgang: Ein gepuffertes Löschen
      * müsste das Passwort bis zum nächsten Netz aufbewahren.
      */
     override suspend fun loeschen(id: Int, bestaetigung: ZweiterFaktorAnfrage): Ergebnis<GenericResponse> =
-        safeCall { api.loescheGutschein(id, bestaetigung) }
+        sicherAufrufen { api.loescheGutschein(id, bestaetigung) }
 
     /** Nummer und PIN im Klartext; nie in Cache oder Ablage. */
     override suspend fun klartext(id: Int, bestaetigung: ZweiterFaktorAnfrage): Ergebnis<GutscheinKlartext> =
-        safeCall { api.gutscheinKlartext(id, bestaetigung) }
+        sicherAufrufen { api.gutscheinKlartext(id, bestaetigung) }
 
     /**
      * Ein einmaliges Ticket für das PDF eines Gutscheins, ohne [id] für das PDF
@@ -51,20 +49,20 @@ class GutscheineRepositoryImpl @Inject constructor(
      * gutscheinPdfAdresse() in GutscheinAdressen.kt.
      */
     override suspend fun pdfFreigabe(id: Int?, bestaetigung: ZweiterFaktorAnfrage): Ergebnis<GutscheinPdfFreigabe> =
-        safeCall { if (id == null) api.gutscheinExportFreigabe(bestaetigung) else api.gutscheinPdfFreigabe(id, bestaetigung) }
+        sicherAufrufen { if (id == null) api.gutscheinExportFreigabe(bestaetigung) else api.gutscheinPdfFreigabe(id, bestaetigung) }
 
     /**
      * Das Guthaben bei LEGO abfragen. Eine gesperrte Abfrage wird zu success=false,
      * weil der Durchgang über alle Karten `grund` und `wartenSek` aus dem Rumpf
      * braucht; andere Fehler bleiben Fehler.
      */
-    override suspend fun guthaben(id: Int): Ergebnis<GuthabenAntwort> = safeCall {
+    override suspend fun guthaben(id: Int): Ergebnis<GuthabenAntwort> = sicherAufrufen {
         val antwort = api.frageGuthabenAb(id)
-        if (antwort.isSuccessful) return@safeCall antwort
+        if (antwort.isSuccessful) return@sicherAufrufen antwort
         val roh = antwort.errorBody()?.string()
         if (Fehlerrumpf.lies(roh).fehlercode !in GUTHABEN_GESPERRT && !istKontogrenze(roh)) {
-            // Der Rumpf ist gelesen; safeCall bekommt ihn neu, sonst fehlte ihm der Satz.
-            return@safeCall retrofit2.Response.error(antwort.code(),
+            // Der Rumpf ist gelesen; sicherAufrufen bekommt ihn neu, sonst fehlte ihm der Satz.
+            return@sicherAufrufen retrofit2.Response.error(antwort.code(),
                 (roh ?: "").toResponseBody("application/json".toMediaType()))
         }
         val geparst = roh?.let {
@@ -92,13 +90,13 @@ class GutscheineRepositoryImpl @Inject constructor(
     ): Ergebnis<GutscheinAntwort> {
         val koerper = inhalt.toRequestBody(typ.toMediaType())
         val teil = okhttp3.MultipartBody.Part.createFormData("file", dateiname, koerper)
-        return safeCall {
+        return sicherAufrufen {
             val antwort = api.ladeGutscheinPdfHoch(
                 teil,
                 alsTeil(nummer), alsTeil(pin), alsTeil(betrag), alsTeil(waehrung),
             )
             // Bei 422 hat der Server das PDF gelesen, aber nicht genug gefunden; was er
-            // lesen konnte, braucht die Oberfläche zum Vorbelegen. safeCall behielte nur
+            // lesen konnte, braucht die Oberfläche zum Vorbelegen. sicherAufrufen behielte nur
             // Satz und Code, deshalb wird die Antwort hier zu success=false.
             if (antwort.code() == 422) {
                 val roh = antwort.errorBody()?.string()

@@ -1,6 +1,5 @@
 /**
  * „Kann ich das bauen?" — was der Bestandsabgleich zählt.
- * Ausführlich: docs/begruendungen/test/teileliste-bestand-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): den LEFT JOIN samt Multiplikation zurück auf
  * `SUM(p.quantity)` gesetzt → Schritt 1 wird rot, die anderen bleiben grün.
@@ -124,7 +123,6 @@ test('Bestandsabgleich der Teileliste', { concurrency: 1 }, async (t) => {
 
 /**
  * Beide Seiten des Abgleichs benutzen DIESELBE Nummer.
- * Ausführlich: docs/begruendungen/test/teileliste-bestand-db.test.js.md#bedarf-und-bestand-werden-ueber-dieselbe
  *
  * Gegenprobe (durchgeführt): Schlüssel zurück auf `${blNum}|…` gesetzt →
  * dieser Schritt wird rot.
@@ -154,7 +152,6 @@ test('Bedarf und Bestand werden über dieselbe Nummer zusammengeführt', () => {
 
 /**
  * Das Blickfeld des Abgleichs kommt aus DIESER Ansicht.
- * Ausführlich: docs/begruendungen/test/teileliste-bestand-db.test.js.md#der-bestandsabgleich-liest-sein-blickfel
  *
  * Gegenprobe (durchgeführt): `scopeQuery('parts')` wieder eingesetzt → rot.
  */

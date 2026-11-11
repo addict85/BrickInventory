@@ -1,6 +1,5 @@
 /**
  * Die Guthaben-Abfrage über ihre echte Adresse — Schranke inbegriffen.
- * Ausführlich: docs/begruendungen/test/gutschein-guthaben-db.test.js.md#kopf
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');

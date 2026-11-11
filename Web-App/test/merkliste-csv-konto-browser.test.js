@@ -10,7 +10,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
+const { starteApp } = require('./helpers/app-browser');
 const { musterHaushalt } = require('./helpers/bestand');
 
 test('Merkliste: CSV-Import in das gewählte Konto', { timeout: 120_000 }, async (t) => {

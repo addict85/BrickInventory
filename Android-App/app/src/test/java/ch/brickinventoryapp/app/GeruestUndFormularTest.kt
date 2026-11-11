@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.app.nav.Reiter
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -149,7 +151,7 @@ class GeruestUndFormularTest {
 
     private fun zeige(schrift: Float = 1f, inhalt: @Composable () -> Unit) {
         compose.setContent {
-            BrickInventoryManagerTheme(theme = "classic") {
+            BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 val d = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(d.density, schrift)) {
                     Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
@@ -170,8 +172,8 @@ class GeruestUndFormularTest {
     private fun Geruest(meldung: SnackbarHostState, offen: Int = 0, inhalt: @Composable () -> Unit) {
         val nav = rememberNavController()
         val reiter = remember {
-            listOf<Triple<Screen, @Composable () -> Unit, String>>(
-                Triple(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"))
+            listOf(
+                Reiter(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"))
         }
         MainScaffold(
             title = "Sammlung", navController = nav, bottomNavItems = reiter,
@@ -507,7 +509,7 @@ class GeruestUndFormularTest {
         zeige {
             CatalogDetailScreen(setNumber = "10305-1", detail = katalogDetail,
                 isLoading = false, imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "", onLoad = {},
-                onAddToGallery = { _, _, _, _, _, _ -> }, onWish = { _, _, _, _, _ -> },
+                onAddToGallery = {}, onWish = { _, _, _, _, _ -> },
                 onOpenInGallery = {}, onBack = {})
         }
         val dichte = ctx.resources.displayMetrics.density
@@ -528,7 +530,7 @@ class GeruestUndFormularTest {
         zeige {
             CatalogDetailScreen(setNumber = "10305-1", detail = katalogDetail,
                 isLoading = false, imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "", onLoad = {},
-                onAddToGallery = { _, _, _, _, _, _ -> }, onWish = { _, _, _, _, _ -> },
+                onAddToGallery = {}, onWish = { _, _, _, _, _ -> },
                 onOpenInGallery = {}, onBack = {})
         }
         // Der Name steht einmal da, in der Leiste wie im Set-Detail; die Angaben rechts vom Bild.

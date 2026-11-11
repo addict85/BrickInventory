@@ -104,7 +104,8 @@ function dienste() {
       else if (e.name.endsWith('.ts')) raus.push(rel);
     }
   })('src');
-  return raus.filter(d => !d.startsWith('src/http/'));
+  // Die HTTP-Seiten der Bereiche (src/<bereich>/http/) gehören zur HTTP-Schicht.
+  return raus.filter(d => !d.startsWith('src/http/') && !/^src\/[^/]+\/http\//.test(d));
 }
 
 test('nur src/http bildet Arten auf Status ab, kein Dienst nennt einen Status', () => {

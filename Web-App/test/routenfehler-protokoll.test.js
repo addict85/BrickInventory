@@ -1,7 +1,6 @@
 'use strict';
 /**
  * Die Fehlerzeile nennt, WELCHE Anfrage gescheitert ist.
- * Ausführlich: docs/begruendungen/test/routenfehler-protokoll.test.js.md#test
  *
  * Gegenprobe (29.10.2026): in handleRouteError wieder jede Stufe über
  * console.error mit `e?.stack` → rot: „ein 4xx ist eine Warnung ohne Stack“
@@ -59,7 +58,7 @@ test('ohne Anfrage bleibt die Zeile wie bisher', () => {
   // der Ergaenzung darf dort kein „undefined undefined" werden.
   const zeile = protokolliere(new Error('kaputt'), undefined);
   assert.match(zeile, /\[route-error\] 500:/, `Unerwartete Form: ${zeile}`);
-  assert.ok(!zeile.includes('undefined'), `„undefined\" in der Zeile: ${zeile}`);
+  assert.ok(!zeile.includes('undefined'), `„undefined" in der Zeile: ${zeile}`);
 });
 
 test('ein 4xx ist eine Warnung ohne Stack, ein 5xx ein Fehler mit Stack', () => {

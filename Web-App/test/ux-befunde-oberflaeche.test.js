@@ -3,7 +3,6 @@
  *   - Kaufpreis 0: „Geschenk“ statt Prozent in Kachel, Finanztabelle und
  *     Set-Detail; der Kaufpreis steht als „0,00 €“ da.
  *   - Seiten hinter dem Menü: kein Reiter bleibt markiert, der Seitenname …
- * Ausführlich: docs/begruendungen/test/ux-befunde-oberflaeche.test.js.md#kopf
  *
  * Gegenproben (am 30.10.2026 gemessen; B bis F zusammen angewendet, jede
  * machte genau ihren eigenen Fall rot):

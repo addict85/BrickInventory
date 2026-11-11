@@ -1,6 +1,6 @@
 Gegenprobe: die Galerie filtert die Liste des Servers selbst nach dem Suchtext
-Modul: app
-Test: ch.brickinventoryapp.app.GalerieMeldetNachObenTest
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.sammlung.GalerieMeldetNachObenTest
 Rot: Suchtext geht nach oben
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt

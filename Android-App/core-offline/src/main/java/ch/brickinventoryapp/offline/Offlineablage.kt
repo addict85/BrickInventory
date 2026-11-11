@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.offline
 
+import kotlinx.coroutines.flow.mapLatest
+import ch.brickinventoryapp.model.lokal.Bestandsart
+import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.model.data.model.FigValuationItem
 import ch.brickinventoryapp.model.data.model.Gutschein
@@ -10,10 +13,7 @@ import ch.brickinventoryapp.model.data.model.PartValuationItem
 import ch.brickinventoryapp.model.data.model.SetItem
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -35,7 +35,7 @@ object Faecher {
             thema = it.theme, lagerort = it.storage)
     }
     val MERKLISTE = Fach(Bestandsart.MERKLISTE, Merkposten.serializer(), { LokaleAnwendung.merkSchluessel(it) }) {
-        Filterspalten(suchtext(it.setNumber, it.name), zustand = it.condition)
+        Filterspalten(suchtext(it.setNumber, it.name), zustand = it.condition.kennung)
     }
     val TEILE = Fach(Bestandsart.TEILE, Part.serializer(), { "${it.partNumber}|${it.colorId}|${it.isSpare}" }) {
         Filterspalten(suchtext(it.partNumber, it.partName, it.blPartNumber), farbe = it.colorName,
@@ -54,25 +54,7 @@ object Faecher {
     }
     val GUTSCHEINE = Fach(Bestandsart.GUTSCHEINE, Gutschein.serializer(), { it.id.toString() })
 
-    private val alle: Map<String, Fach<*>> =
-        listOf(SETS, MERKLISTE, TEILE, FIGUREN, MANUELLE_TEILE, MANUELLE_FIGUREN, GUTSCHEINE).associateBy { it.art.name }
-
-    /** Die Filterspalten einer abgelegten Zeile; null, wenn sie sich nicht mehr lesen lässt. */
-    internal fun spaltenAus(art: String, inhalt: String): Filterspalten? = alle[art]?.let { spaltenAus(it, inhalt) }
-
-    private fun <T : Any> spaltenAus(fach: Fach<T>, inhalt: String): Filterspalten? =
-        runCatching { fach.spalten(AblageJson.decodeFromString(fach.serializer, inhalt)) }.getOrNull()
-
     private fun suchtext(vararg felder: String?) = felder.filterNotNull().joinToString("\n").lowercase()
-}
-
-/** Was lokal liegt; [stand] ist der Zeitpunkt der letzten Serverantwort, null = nie geladen. */
-data class Lokal<T>(val liste: List<T>, val stand: Long?)
-
-/** Was beim Abgleich geschah — die Oberfläche lädt nach oder zeigt einen Hinweis. */
-sealed class Abgleichsereignis {
-    data class Gesendet(val arten: Set<Bestandsart>) : Abgleichsereignis()
-    data class Verworfen(val bearbeitung: Bearbeitung, val meldung: String, val httpCode: Int?) : Abgleichsereignis()
 }
 
 /** Plant das Senden des Ausgangs; im Gerät über WorkManager (AusgangWorker). */
@@ -89,16 +71,14 @@ fun interface AusgangPlaner {
  */
 class Offlineablage(
     private val bestand: LokalerBestand,
-    /** Öffentlich, weil die Tests der Module darüber den Ausgang nachsehen. */
-    val ausgang: Ausgang,
+    /** Ein Test gibt einen SpeicherAusgang hinein und sieht dort nach; die Ablage zeigt ihn nicht. */
+    private val ausgang: Ausgang,
     private val bereichQuelle: suspend () -> String?,
     private val planer: AusgangPlaner = AusgangPlaner {},
     private val uhr: () -> Long = System::currentTimeMillis,
     private val schluesselQuelle: () -> String = { UUID.randomUUID().toString() },
 ) {
     private val aktuell = MutableStateFlow<String?>(null)
-    private val _ereignisse = MutableSharedFlow<Abgleichsereignis>(extraBufferCapacity = 16)
-    val ereignisse: SharedFlow<Abgleichsereignis> = _ereignisse.asSharedFlow()
 
     /** Der gültige Bereich, gestreut; null = nicht angemeldet, dann wird nichts abgelegt. */
     suspend fun bereich(): String? =
@@ -113,6 +93,15 @@ class Offlineablage(
         if (b == null) flowOf(Lokal(emptyList(), null))
         else bestand.beobachte(b, fach.art).map { dekodiere(fach, it) }
     }
+
+    /**
+     * Die lokale Liste, nur mit den Zeilen, die [filter] trifft — bei jeder Änderung
+     * neu gefragt, damit offline Geändertes auch in einer gefilterten Ansicht erscheint.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun <T : Any> beobachte(fach: Fach<T>, filter: Filterspalten): Flow<Lokal<T>> =
+        if (filter == Filterspalten()) beobachte(fach)
+        else beobachte(fach).mapLatest { alle -> if (alle.stand == null) alle else filtere(fach, filter) ?: alle }
 
     suspend fun <T : Any> lies(fach: Fach<T>): Lokal<T>? {
         val b = bereich() ?: return null
@@ -192,9 +181,6 @@ class Offlineablage(
     /** Senden anstossen, z. B. beim Start, falls vom letzten Mal noch etwas wartet. */
     fun planeSenden() = runCatching { planer.plane() }
 
-    /** Öffentlich, damit die Tests der Module darüber Ereignisse einspeisen können; im Betrieb meldet nur der Abgleich. */
-    fun melde(e: Abgleichsereignis) { _ereignisse.tryEmit(e) }
-
     /** Beim Abmelden: Listen und Ausgang aller Bereiche. */
     suspend fun leere() {
         bestand.leere()
@@ -221,10 +207,4 @@ class Offlineablage(
     /** Zeilen, die sich nicht mehr lesen lassen (Modell geändert), fallen weg statt die Liste zu sperren. */
     private fun <T : Any> dekodiere(fach: Fach<T>, l: Lokal<LokaleZeile>) =
         Lokal(l.liste.mapNotNull { runCatching { AblageJson.decodeFromString(fach.serializer, it.inhalt) }.getOrNull() }, l.stand)
-
-    companion object {
-        /** Im Speicher, mit festem Bereich — für Tests und Repositories ohne Hilt. */
-        fun fluechtig(bereich: String? = "test", planer: AusgangPlaner = AusgangPlaner {}) =
-            Offlineablage(SpeicherBestand(), SpeicherAusgang(), { bereich }, planer)
-    }
 }

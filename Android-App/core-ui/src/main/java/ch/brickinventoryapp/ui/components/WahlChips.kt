@@ -54,7 +54,6 @@ import ch.brickinventoryapp.ui.theme.Formen
  * Genau eine von zwei bis vier gleichrangigen Möglichkeiten (Neu | Gebraucht,
  * Fällt unter | Steigt über): Material sieht dafür die Segmentschaltfläche vor —
  * zwei Chips nebeneinander lasen sich wie zwei Filter, die man beide setzen kann.
- * Ausführlich: docs/begruendungen/core-ui/ui/components/WahlChips.kt.md#segmentwahl
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -142,12 +141,12 @@ fun WahlChip(text: String, an: Boolean, onClick: () -> Unit, modifier: Modifier 
  * Filter-Chips; ein Punkt am Symbol sagt, dass von [vorgabe] abgewichen wird.
  */
 @Composable
-fun SortierMenue(
-    optionen: List<Pair<String, String>>,
-    gewaehlt: String,
-    onWahl: (String) -> Unit,
+fun <T> SortierMenue(
+    optionen: List<Pair<T, String>>,
+    gewaehlt: T,
+    onWahl: (T) -> Unit,
     modifier: Modifier = Modifier,
-    vorgabe: String? = null,
+    vorgabe: T? = null,
 ) {
     var offen by rememberSaveable { mutableStateOf(false) }
     val aktuell = optionen.firstOrNull { it.first == gewaehlt }?.second ?: ""

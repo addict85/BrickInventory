@@ -1,6 +1,5 @@
 /**
  * Eine geratene Setnummer muss als Vermutung erkennbar sein.
- * Ausführlich: docs/begruendungen/test/barcode-vermutung.test.js.md#kopf
  *
  * Gegenprobe (09.11.2026): istVermutung() nur noch `!quelle` → rot: „die zwei ratenden Wege …“
  * und „eine unbekannte Quelle gilt als Vermutung“.
@@ -40,5 +39,5 @@ test('eine unbekannte Quelle gilt als Vermutung', () => {
 // Die Kandidaten-Regel selbst (Jahre, Mengenangaben, Rauten, Stellenzahlen,
 // dreistellige Altsets) steht nicht mehr hier: Sie muss in BEIDEN Apps gleich
 // ausfallen und wird deshalb gegen den gemeinsamen Korpus geprüft —
-// test/setnummer-korpus.test.js und shared/setnummer-korpus.json. Hier stand
+// test/abgleich-setnummer-korpus.test.js und shared/setnummer-korpus.json. Hier stand
 // dieselbe Aufzählung ein zweites Mal, und nur die Web-Seite war damit gedeckt.

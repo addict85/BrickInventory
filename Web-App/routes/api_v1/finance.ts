@@ -4,9 +4,9 @@ import { requireToken, sichtVon } from './middleware';
 import { getPortfolioHistory } from '../../src/finanzen/portfolioHistory';
 import { computeMinifigsValuation, computePartsValuation, computePnl, computeSetsValuation } from '../../src/finanzen/financeCalc';
 import { einzelwert } from '../../src/infra/validate';
-import { vertragsRouter } from '../../src/vertrag/pruefen';
 import { seiteAus } from '../../src/infra/seite';
-import type { Anfrage, Antwort } from '../../src/vertrag';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
 const router = vertragsRouter();
 
 /** Preisfehler kommen mit Code aus der Bewertung; der Text folgt der Sprache der Anfrage, nicht dem Server. */
@@ -19,7 +19,7 @@ function uebersetzt<T extends { error?: unknown; error_code?: unknown }>(zeilen:
 router.get('/finance/valuation', requireToken, async (req: Anfrage<'GET /api/v1/finance/valuation'>, res: Antwort<'GET /api/v1/finance/valuation'>) => {
   const data = await computeSetsValuation(req.apiUser.user_id, sichtVon(req));
   // Kein `rate_limit` in der Antwort: Er kostete drei Abfragen je Aufruf und
-  // steht in der Überwachung. Ausführlich: docs/begruendungen/routes/api_v1/finance.ts.md#get-finance-valuation
+  // steht in der Überwachung.
   const { eintraege: sets, ...seite } = seiteAus(uebersetzt(data.sets, req), req.abfrage);
   res.json({ success: true, total_value: data.totals.qty_avg, wert_gesamt: Number(data.totals.qty_avg), ...data, sets, ...seite });
 });

@@ -6,7 +6,6 @@ import { CURRENCY } from './00-zustand.js';
 /**
  * Ein Geldbetrag in der Währung des Nutzers. Ohne Angabe gilt die eingestellte Währung, nicht fest EUR: Sonst
  * stand bei Franken still „EUR“ da. test/geldformat.test.js hält fest, dass kein Aufruf sie weglässt.
- * Ausführlich: docs/begruendungen/public/js/01-format.js.md#fmtn
  * @param {number | string | null | undefined} v
  * @param {string} [cur]
  */

@@ -114,7 +114,6 @@ function csvApplyOverlayStatus(s, ctx, fi){
         remaining.forEach(r=>{
           // Derselbe Zeilenbauer wie in 01-fortschritt.js. Ohne esc(), weil addCsvLog textContent setzt; der
           // Hinweis auf Zeitüberschreitung gilt nur hier.
-          // Ausführlich: docs/begruendungen/public/js/02-set-csv-import.js.md#derselbe-zeilenbauer-wie-in-01
           const z = protokollZeile(r, tRaw('csv.timeout_retry'));
           if (z) addCsvLog(z.text, z.art);
         });

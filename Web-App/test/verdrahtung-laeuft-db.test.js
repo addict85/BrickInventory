@@ -1,8 +1,8 @@
 /**
  * Fünf Verdrahtungen, die bisher nur als Textmuster zugesichert waren.
- * Ausführlich: docs/begruendungen/test/verdrahtung-laeuft-db.test.js.md#kopf
  */
 const test   = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -10,7 +10,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
-const { haeltSet } = require('./helpers/bestand');
+const { haeltSet, katalogSet } = require('./helpers/bestand');
 const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
 mailAttrappe();
 
@@ -29,8 +29,7 @@ async function aufbau() {
   const id = async (n) => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
   HAUPT = await id('haupt'); KIND = await id('kind');
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [HAUPT, KIND]);
-  await db.run(`INSERT INTO set_catalog (set_number,name) VALUES ($1,'Falcon')
-                ON CONFLICT (set_number) DO NOTHING`, [SN]);
+  await katalogSet(db, SN, { name: 'Falcon' });
   await db.run(`INSERT INTO part_catalog (part_number,part_name) VALUES ('3001','Brick')
                 ON CONFLICT (part_number) DO NOTHING`);
   await db.run(`INSERT INTO part_color_catalog (part_number,color_id,color_name)
@@ -100,8 +99,8 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
                   ON CONFLICT (key) DO UPDATE SET value='1'`);
     await mailserverEintragen(db);
     const basisVorher = process.env.APP_BASE_URL;
-    process.env.APP_BASE_URL = 'http://localhost';
-    t.after(() => { if (basisVorher === undefined) delete process.env.APP_BASE_URL; else process.env.APP_BASE_URL = basisVorher; });
+    umgebung({ APP_BASE_URL: 'http://localhost' });
+    t.after(() => { if (basisVorher === undefined) umgebung({ APP_BASE_URL: undefined }); else umgebung({ APP_BASE_URL: basisVorher }); });
     const r = await fetch(`${mit.base}/api/v1/auth/register`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: 'neuling', email: 'n@example.org',
@@ -134,7 +133,6 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
     // Erfassung auf einen Tag schiebt, an dem für dieselbe Position schon
     // eine steht, bekommt 409. Ohne die Prüfung liefe es in den eindeutigen
     // Index (seit 0047 idx_set_acq_tag_merkmale) und käme als 500 zurück. …
-    // Ausführlich: docs/begruendungen/test/verdrahtung-laeuft-db.test.js.md#heute
     const heute  = new Date().toISOString().slice(0, 10);
     const gestern = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);

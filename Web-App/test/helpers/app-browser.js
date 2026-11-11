@@ -78,11 +78,14 @@ async function cdp(wsUrl) {
 
 /**
  * @param t        Testkontext (für t.after)
- * @param opt.name Kontoname
- * @param opt.bestand async (db, uid) => {} legt Testdaten an
- * @param opt.telefon true: 390 × 844, mobile
- * @param opt.bewegung true: prefers-reduced-motion no-preference (sonst reduce)
- * @param opt.abfangen [{ muster, enthaelt, antwort?, verzoegerung? }]: Anfragen,
+ * @param {object} [opt] Optionen:
+ * @param [opt.name] Kontoname
+ * @param [opt.bestand] async (db, uid) => {} legt Testdaten an
+ * @param [opt.telefon] true: 390 × 844, mobile
+ * @param [opt.bewegung] true: prefers-reduced-motion no-preference (sonst reduce)
+ * @param [opt.sprache] Sprache des Kontos (Standard de)
+ * @param [opt.locale] Locale des Browsers (Standard de-DE)
+ * @param [opt.abfangen] [{ muster, enthaelt, antwort?, verzoegerung? }]: Anfragen,
  *        deren URL auf das CDP-Muster passt und `enthaelt` enthält, bekommen
  *        `antwort` als JSON (ohne `antwort` die echte), um `verzoegerung` ms später
  */

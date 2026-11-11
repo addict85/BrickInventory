@@ -1,10 +1,8 @@
 /**
  * Der VORRAT an Lagerorten — gegen eine echte Datenbank.
- * Ausführlich: docs/begruendungen/test/lagerort-vorrat-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
@@ -157,7 +155,6 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async (t) => {
 
   await t.test('eine Zuordnung ohne Ort im Vorrat ist nicht mehr moeglich', async () => {
     // Was hier vorher stand, und warum es weg ist
-    // Ausführlich: docs/begruendungen/test/lagerort-vorrat-db.test.js.md#frei
     const frei = (await db.get(
       'SELECT COALESCE(MAX(id),0) + 1000 AS frei FROM storage_locations')).frei;
     await assert.rejects(

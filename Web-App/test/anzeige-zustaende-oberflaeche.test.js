@@ -1,6 +1,5 @@
 /**
  * Zahlen, Achsen und Zwischenzustände — am echten Bündel in jsdom.
- * Ausführlich: docs/begruendungen/test/anzeige-zustaende-oberflaeche.test.js.md#kopf
  *
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  fmtBig wieder mit „k“ → rot: „Kennzahlen ohne k“ („1.3k“)

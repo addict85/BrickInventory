@@ -44,10 +44,10 @@ test('Grenze je Adresse über alle Namen', { concurrency: 1 }, async (t) => {
     const anfrage = { ip: IP, socket: {}, headers: {} };
     for (let i = 0; i < lim.MAX_JE_ADRESSE; i++) {
       const r = await pruefeAnmeldedaten(anfrage, `${NAME}_gibtsnicht_${i}`, 'falsch');
-      assert.equal(r.absage?.status, 401, `Versuch ${i + 1}`);
+      assert.equal(r.absage?.art, 'nicht_angemeldet', `Versuch ${i + 1}`);
     }
     const r = await pruefeAnmeldedaten(anfrage, NAME, 'richtig-geheim');
-    assert.equal(r.absage?.status, 429);
+    assert.equal(r.absage?.art, 'zu_viele');
   });
 
   await t.test('abgelaufene Zähler werden gelöscht, frische bleiben', async () => {

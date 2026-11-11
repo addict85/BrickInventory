@@ -1,6 +1,5 @@
 /**
  * Eine Set-Nummer wird ueberall gleich geschrieben.
- * Ausführlich: docs/begruendungen/test/setnummer-schreibweise-db.test.js.md#kopf
  *
  * Gegenproben: siehe am jeweiligen Teilschritt.
  *
@@ -101,7 +100,6 @@ test('die Schreibweise wird nirgends noch einmal ausgerechnet', () => {
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
     const rel = path.relative(ROOT, f);
     // Warum drei Muster
-    // Ausführlich: docs/begruendungen/test/setnummer-schreibweise-db.test.js.md#for-stelle
     for (const m of [/\.includes\('-'\)\s*\?/,             // die haeufigste Fassung
                      /\/-\\d\+\$\/\.test\(/,                // bricklinkLink, setAdd, setService
                      /\?\s*[\w.]+\s*:\s*`\$\{[^}]+\}-1`/,     // die Ergaenzung selbst
@@ -109,11 +107,7 @@ test('die Schreibweise wird nirgends noch einmal ausgerechnet', () => {
       if (m.test(code)) { eigene.push(rel); break; }
     if (/SELECT is_gear, bl_type(?:, fetched_at)? FROM catalog_cache/.test(code)) vorpruefer.push(rel);
   }
-  // KEINE Ausnahmen mehr. src/sets/setAdd.ts und src/sets/setService.ts trugen den
-  // Normalisierer zuletzt noch absichtlich doppelt, mit zwei Begruendungen:
-  // ein Import baue einen Kreis, und set-add-exists-db.test.js fuehre beide
-  // Ruempfe ISOLIERT aus. Beides galt nicht mehr — der Kreis war zwischen …
-  // Ausführlich: docs/begruendungen/test/setnummer-schreibweise-db.test.js.md#stelle
+  // Keine Ausnahmen: Zwei Stellen, die dieselbe Schreibweise ausrechnen, laufen auseinander.
   assert.deepEqual(eigene, ['src/infra/setNummer.ts'],
     'Die Schreibweise wird woanders noch einmal ausgerechnet — genau so laufen ' +
     'zwei Stellen auseinander, die dasselbe meinen');

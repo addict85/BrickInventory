@@ -1,19 +1,17 @@
 /**
- * Katalog-Bilder: downloadSetImage() legt Set-Bilder unter
- * images/sets/<setnummer>.jpg ab; der Katalog nennt sie (samt Vorschau) nur
- * für Sets im Blickfeld des Kontos, sonst verriete image_local fremden Besitz.
+ * Katalog-Bilder: Die Katalogsuche nennt das lokale Bild aus set_catalog
+ * (samt Vorschau) für jedes Konto — Set-Bilder sind seit Migration 0105 Katalog.
  * Die Liste stösst dabei keine Bildarbeit an — das macht der Bild-Job.
  *
- * Gegenproben (am 29.10.2026 gemessen):
- *   A  in src/katalog/dienst.ts lokalesBild() ohne die Bereinigung der
- *      Setnummer (`KB/1-1` statt `KB_1-1`) → rot: „die Liste findet die Datei“
- *   B  resolveIfExists() ohne Vorschau (gibt den Originalpfad zurück) → rot:
- *      „die Vorschau hat Vorrang“
+ * Gegenproben (am 10.11.2026 gemessen):
+ *   A  in katalogSeite() (src/katalog/dienst.ts) resolveImageLocal() weggelassen
+ *      → rot: „… die Vorschau hat Vorrang“ (Originalpfad statt _thumb)
+ *   B  in katalogSuche.ts c.image_local aus SET_SPALTEN entfernt → rot: „die Liste
+ *      nennt das Bild aus set_catalog …“ (undefined)
  *   C  in katalogSeite() je Zeile nacharbeit().bildVormerken() → rot: „die
  *      Liste stösst keine Bildarbeit an“
- * Gegenprobe (01.11.2026 gemessen):
- *   D  lokalesBild() ohne setBildSichtbar() → rot: „ein fremdes Konto bekommt
- *      keine lokale Datei“ (Liste)
+ *   D  in katalogSet() image_local nur für eigene Sets (`set.owned ? … : null`)
+ *      → rot: „auch ein fremdes Konto bekommt die lokale Datei“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -31,7 +29,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
-test('Katalog-Bilder nur im Blickfeld', { concurrency: 1 }, async (t) => {
+test('Katalog-Bilder aus set_catalog', { concurrency: 1 }, async (t) => {
   if (!await dbOderSkip(t, _req)) return;
 
   const NAME = `katalog-bild-${process.pid}`, FREMD = `katalog-fremd-${process.pid}`;
@@ -43,6 +41,7 @@ test('Katalog-Bilder nur im Blickfeld', { concurrency: 1 }, async (t) => {
   await db.run('DELETE FROM rb_sets WHERE set_num = ANY($1)', [[MIT, OHNE]]);
   await db.run(`INSERT INTO rb_sets (set_num, name, year, num_parts, set_img_url)
                 VALUES ($1,'Mit Bild',2001,10,'https://cdn.rebrickable.com/media/sets/kb1.jpg'), ($2,'Ohne Bild',2002,5,NULL)`, [MIT, OHNE]);
+  await db.run(`INSERT INTO set_catalog (set_number, image_local) VALUES ($1, '/images/sets/KB_1-1.jpg'), ($2, NULL)`, [MIT, OHNE]);
   const ordner = path.join(process.env.APP_ROOT, 'data', 'images', 'sets');
   fs.mkdirSync(ordner, { recursive: true });
   fs.writeFileSync(path.join(ordner, 'KB_1-1.jpg'), 'JPG');
@@ -64,15 +63,15 @@ test('Katalog-Bilder nur im Blickfeld', { concurrency: 1 }, async (t) => {
   const bilder = async (wer) => Object.fromEntries((await katalogSeite(wer, { q: 'KB', themeId: null }, 'num_asc', 1, 60))
     .sets.map(s => [s.set_number, s.image_local]));
 
-  await t.test('die Liste findet die Datei im Blickfeld — und die Vorschau hat Vorrang', async () => {
+  await t.test('die Liste nennt das Bild aus set_catalog — und die Vorschau hat Vorrang', async () => {
     const bild = await bilder(uid);
-    assert.equal(bild[MIT], '/images/sets/KB_1-1_thumb.jpg', 'die Liste findet die Datei; die Vorschau hat Vorrang');
+    assert.equal(bild[MIT], '/images/sets/KB_1-1_thumb.jpg', 'die Liste nennt das Bild; die Vorschau hat Vorrang');
     assert.equal(bild[OHNE], null);
   });
 
-  await t.test('ein fremdes Konto bekommt keine lokale Datei', async () => {
-    assert.equal((await bilder(fremd))[MIT], null);
-    assert.equal((await katalogSet(fremd, MIT)).image_local, null);
+  await t.test('auch ein fremdes Konto bekommt die lokale Datei', async () => {
+    assert.equal((await bilder(fremd))[MIT], '/images/sets/KB_1-1_thumb.jpg');
+    assert.equal((await katalogSet(fremd, MIT)).image_local, '/images/sets/KB_1-1_thumb.jpg');
   });
 
   await t.test('die Liste stösst keine Bildarbeit an', () => {

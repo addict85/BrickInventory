@@ -19,6 +19,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { katalogSet } = require('./helpers/bestand');
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
@@ -30,8 +31,7 @@ test('Bildadresse über den Dateinamen-Stamm', { concurrency: 1 }, async (t) => 
                 VALUES ($1, 4, 'https://cdn.rebrickable.com/media/parts/x.png', $2)`, [P, `/images/parts/${P}_4.png`]);
   await db.run(`INSERT INTO minifigs_catalog (fig_number, image_url, image_local) VALUES ($1, 'https://cdn.rebrickable.com/f.jpg', $2)`,
     [`fig-${P}`, `/images/minifigs/fig-${P}.jpg`]);
-  await db.run(`INSERT INTO set_catalog (set_number, name, image_url, image_local) VALUES ($1, 'Test', 'https://img.bricklink.com/s.png', $2)`,
-    [`${P}-1`, `/images/sets/${P}-1.png`]);
+  await katalogSet(db, `${P}-1`, { name: 'Test', image_url: 'https://img.bricklink.com/s.png', image_local: `/images/sets/${P}-1.png` });
 
   try {
     await t.test('eine fehlende Vorschau findet die Adresse des Teilebilds', async () => {

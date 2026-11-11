@@ -8,7 +8,6 @@ import { G, setzeHtml } from './01-dom.js';
 
 // Ein eigener Scrollbalken für die ganze Seite, fest am rechten Rand, statt eines Scrollkastens im Katalog:
 // Dort sass der Balken mitten im Fenster, und das Nachladen mass gegen den Kasten statt gegen das Fenster.
-// Ausführlich: docs/begruendungen/public/js/15-scrollbar.js.md#marcos-vorgabe-der-rechte-scrollbalken-i
 
 /**
  * Wer beim Ziehen ein Etikett zeigen will, setzt hier eine Funktion.
@@ -43,7 +42,6 @@ export function zeichneScrollbalken() {
 /**
  * Das Balken-Element aus JavaScript erzeugen: app.bundle.js läuft, sobald der Parser es erreicht, und ein
  * <div> dahinter im Markup gab es beim Start noch nicht — der Balken fehlte still.
- * Ausführlich: docs/begruendungen/public/js/15-scrollbar.js.md#erzeugescrollbalken
  */
 function _erzeugeScrollbalken() {
   /** @type {HTMLElement} */
@@ -113,7 +111,6 @@ export function initScrollbalken() {
     bar.classList.remove('dragging');
     // Die inline gesetzte Sichtbarkeit wieder wegnehmen: Sie schlägt die CSS-Regel für .dragging, und das
     // Jahresetikett blieb nach dem Loslassen in jedem Reiter stehen.
-    // Ausführlich: docs/begruendungen/public/js/15-scrollbar.js.md#die-inline-gesetzte-sichtbarkeit-wieder
     if (label) label.style.display = '';
   };
 

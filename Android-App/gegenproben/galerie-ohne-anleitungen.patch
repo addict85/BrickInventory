@@ -1,6 +1,6 @@
 Gegenprobe: der Kopf der Galerie nennt die Anleitungen nicht
-Modul: app
-Test: ch.brickinventoryapp.app.GalerieMeldetNachObenTest
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.sammlung.GalerieMeldetNachObenTest
 Rot: der Kopf nennt
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt

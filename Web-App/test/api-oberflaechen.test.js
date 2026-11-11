@@ -1,6 +1,5 @@
 /**
  * EINE Adresse, eine Umsetzung — und nur noch EINE Oberfläche.
- * Ausführlich: docs/begruendungen/test/api-oberflaechen.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -42,7 +41,6 @@ function webRouter() {
  */
 /**
  * Adressen, die es ZWEIMAL geben darf — mit dem Grund.
- * Ausführlich: docs/begruendungen/test/api-oberflaechen.test.js.md#erlaubt
  */
 const ERLAUBT = new Map([]);
 
@@ -95,7 +93,6 @@ test('keine unbegruendete Route auf beiden API-Oberflaechen', () => {
 
 test('jeder Router haengt unter /api/v1', () => {
   // Marcos Frage
-  // Ausführlich: docs/begruendungen/test/api-oberflaechen.test.js.md#noch-nicht
   const NOCH_NICHT = new Map([]);
 
   const einhaengungen = webRouter();
@@ -125,7 +122,6 @@ test('jeder Router haengt unter /api/v1', () => {
 
 /**
  * Auch die Routen, die DIREKT in server.ts stehen.
- * Ausführlich: docs/begruendungen/test/api-oberflaechen.test.js.md#auch-die-direkt-angemeldeten-routen-steh
  */
 test('auch die direkt angemeldeten Routen stehen unter /api/v1', () => {
   // Die EINE Ausnahme, und sie ist keine Nachlaessigkeit:
@@ -138,7 +134,7 @@ test('auch die direkt angemeldeten Routen stehen unter /api/v1', () => {
      '(Migration 0014) benutzen sie. Bedient bleibt die alte, weil ' +
      'INSTALLIERTE App-Fassungen sie selbst zusammenbauen (ImageUrls.kt) — ' +
      'wer nicht aktualisiert, bekaeme sonst gar keine Teilebilder mehr. Dass ' +
-     'nur noch die neue GEBAUT wird, haelt test/img-proxy-v1.test.js fest.'],
+     'nur noch die neue GEBAUT wird, haelt test/abgleich-img-proxy-v1.test.js fest.'],
   ]);
 
 
@@ -156,7 +152,6 @@ test('auch die direkt angemeldeten Routen stehen unter /api/v1', () => {
   assert.ok(dateien.length >= 30, `Nur ${dateien.length} Serverdateien gefunden`);
 
   // Auch Anmeldungen ueber eine KONSTANTE
-  // Ausführlich: docs/begruendungen/test/api-oberflaechen.test.js.md#quellen
   const quellen = dateien.map(d => ohneKommentare(fs.readFileSync(d, 'utf8')));
   const konstanten = new Map();
   for (const src of quellen)
@@ -201,7 +196,6 @@ test('auch die direkt angemeldeten Routen stehen unter /api/v1', () => {
 
 /**
  * Der Gesundheitscheck aus compose.yaml zeigt auf eine Adresse, die es gibt.
- * Ausführlich: docs/begruendungen/test/api-oberflaechen.test.js.md#der-gesundheitscheck-aus-compose-yaml-ze
  */
 test('der Gesundheitscheck aus compose.yaml zeigt auf eine echte Adresse', () => {
   const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');

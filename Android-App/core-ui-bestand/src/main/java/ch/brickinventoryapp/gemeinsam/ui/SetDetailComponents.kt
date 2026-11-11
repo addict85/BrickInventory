@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.gemeinsam.ui
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.ui.components.BezeichnungUndWert
 import ch.brickinventoryapp.ui.theme.Lesebreite
 import ch.brickinventoryapp.ui.theme.mittigBis
@@ -104,7 +106,7 @@ fun DetailRow2(label: String, value: String) {
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: String) {
+fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: Waehrung) {
     val lines  = remember(chart) { PriceChartMath.buildLines(chart) }
     val bounds = remember(lines) { PriceChartMath.bounds(lines) } ?: return
     if (lines.isEmpty()) return
@@ -112,8 +114,8 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: String) {
     val chartColors = LocalChartColors.current
     val labelNew    = stringResource(R.string.condition_new)
     val labelUsed   = stringResource(R.string.condition_used)
-    fun colorFor(cond: String) = if (cond == "U") chartColors.used else chartColors.new
-    fun labelFor(cond: String) = if (cond == "U") labelUsed else labelNew
+    fun colorFor(cond: Zustand) = if (cond == Zustand.GEBRAUCHT) chartColors.used else chartColors.new
+    fun labelFor(cond: Zustand) = if (cond == Zustand.GEBRAUCHT) labelUsed else labelNew
 
     // Tief und Hoch über BEIDE Reihen — dieselbe Skala. Kein „Aktuell“: Den heutigen
     // Preis zeigt jede Karte schon darüber, er stand sonst dreimal da.
@@ -257,7 +259,7 @@ val PREISLINIE_BREITE = 2.dp
  */
 data class LinienStil(val gestrichelt: Boolean, val eckig: Boolean)
 
-fun linienStil(zustand: String): LinienStil = if (zustand == "U") LinienStil(gestrichelt = true, eckig = true)
+fun linienStil(zustand: Zustand): LinienStil = if (zustand == Zustand.GEBRAUCHT) LinienStil(gestrichelt = true, eckig = true)
     else LinienStil(gestrichelt = false, eckig = false)
 
 private fun DrawScope.strich(stil: LinienStil): PathEffect? =
@@ -280,7 +282,7 @@ private fun mitSchriftHoehe(basis: Dp): Dp = mitSchrift(basis)
 @Composable
 fun MarketPriceByCondition(
     byCondition: PreisJeZustandAnsicht,
-    currency: String,
+    currency: Waehrung,
 ) {
     val rows = byCondition.present()
     if (rows.isEmpty()) return
@@ -291,7 +293,7 @@ fun MarketPriceByCondition(
     val gross = grosseSchrift()
     Column(Modifier.fillMaxWidth()) {
         rows.forEach { (cond, data) ->
-            val label = if (cond == "U") labelUsed else labelNew
+            val label = if (cond == Zustand.GEBRAUCHT) labelUsed else labelNew
             val bezeichnung: @Composable (Modifier) -> Unit = { m ->
                 Text("$marketLabel ($label)", modifier = m,
                     style = MaterialTheme.typography.bodyMedium,

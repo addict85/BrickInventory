@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.model.data.model
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -12,7 +14,7 @@ import kotlinx.serialization.Serializable
 data class SetPriceResponse(
     val success: Boolean,
     @SerialName("set_number") val setNumber: String = "",
-    val currency: String = "",
+    val currency: Waehrung = Waehrung.KEINE,
     @SerialName("avg_price") val avgPrice: Double? = null,
     @SerialName("min_price") val minPrice: Double? = null,
     @SerialName("max_price") val maxPrice: Double? = null,
@@ -56,7 +58,7 @@ data class PriceChartData(
 /** Aktueller Preis eines Zustands aus price_cache. */
 @Serializable
 data class CurrentPrice(
-    val condition: String = "",
+    val condition: Zustand? = null,
     @SerialName("avg_price") val avgPrice: Double? = null,
     @SerialName("min_price") val minPrice: Double? = null,
     @SerialName("max_price") val maxPrice: Double? = null,
@@ -82,9 +84,9 @@ data class PriceByCondition(
     @SerialName("U") val used: ConditionValuation? = null,
 ) {
     /** Nur die Zustände, zu denen der Server eine Zeile geliefert hat. */
-    fun present(): List<Pair<String, ConditionValuation>> = buildList {
-        new?.let  { add("N" to it) }
-        used?.let { add("U" to it) }
+    fun present(): List<Pair<Zustand, ConditionValuation>> = buildList {
+        new?.let  { add(Zustand.NEU to it) }
+        used?.let { add(Zustand.GEBRAUCHT to it) }
     }
 }
 
@@ -104,7 +106,7 @@ data class CurrentByCondition(
 @Serializable
 data class PriceHistoryResponse(
     val success: Boolean,
-    val currency: String = "",
+    val currency: Waehrung = Waehrung.KEINE,
     @SerialName("history_new")  val historyNew: List<PriceHistoryPoint> = emptyList(),
     @SerialName("history_used") val historyUsed: List<PriceHistoryPoint> = emptyList(),
     @SerialName("by_condition") val byCondition: PriceByCondition = PriceByCondition(),
@@ -143,9 +145,9 @@ data class PartValuationItem(
     @SerialName("display_value") val displayValue: String? = null,
     /** display_value als Zahl: Marktwert des ganzen Eintrags, vom Server auf Rappen gerundet. */
     @SerialName("wert_gesamt") val wertGesamt: Double? = null,
-    val condition: String? = null,
+    val condition: Zustand? = null,
     /** Alle erfassten Zustände — je einer eine Plakette (siehe SetItem). */
-    val conditions: List<String> = emptyList(),
+    val conditions: List<Zustand> = emptyList(),
     /**
      * Konto, dem der Eintrag gehört: Im Haushalt zeigt der manuelle Bereich die
      * Einträge aller Konten, und der Papierkorb muss dem Server sagen, welche Karte
@@ -188,7 +190,7 @@ data class ManualFigsResponse(
 @Serializable
 data class PartsValuationResponse(
     val success: Boolean,
-    val currency: String = "EUR",
+    val currency: Waehrung = Waehrung.EUR,
     val parts: List<PartValuationItem> = emptyList(),
     @SerialName("total_value") val totalValue: String,
     /** Erfassungen mit Kaufpreis in einer anderen Währung — in keiner Summe enthalten. */
@@ -224,9 +226,9 @@ data class FigValuationItem(
     @SerialName("display_value") val displayValue: String? = null,
     /** display_value als Zahl: Marktwert des ganzen Eintrags, vom Server auf Rappen gerundet. */
     @SerialName("wert_gesamt") val wertGesamt: Double? = null,
-    val condition: String? = null,
+    val condition: Zustand? = null,
     /** Alle erfassten Zustände — je einer eine Plakette (siehe SetItem). */
-    val conditions: List<String> = emptyList(),
+    val conditions: List<Zustand> = emptyList(),
     /**
      * Konto, dem der Eintrag gehört: Im Haushalt zeigt der manuelle Bereich die
      * Einträge aller Konten, und der Papierkorb muss dem Server sagen, welche Karte
@@ -248,7 +250,7 @@ data class FigValuationItem(
 @Serializable
 data class FigsValuationResponse(
     val success: Boolean,
-    val currency: String = "EUR",
+    val currency: Waehrung = Waehrung.EUR,
     val figs: List<FigValuationItem> = emptyList(),
     @SerialName("total_value") val totalValue: String,
     @SerialName("kaufpreise_fremde_waehrung") val kaufpreiseFremdeWaehrung: Int = 0,
@@ -316,7 +318,7 @@ data class PnlSetZeile(
 @Serializable
 data class PnlResponse(
     val success: Boolean,
-    val currency: String = "EUR",
+    val currency: Waehrung = Waehrung.EUR,
     val totals: PnlTotals,
     val sets: List<PnlSetZeile> = emptyList(),
     val error: String? = null
@@ -346,7 +348,7 @@ data class ValuationSet(
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     @SerialName("from_cache") val fromCache: Boolean = true,
     @SerialName("is_fallback") val isFallback: Boolean = false,
-    @SerialName("condition_used") val conditionUsed: String? = null,
+    @SerialName("condition_used") val conditionUsed: Zustand? = null,
     @SerialName("no_price") val noPrice: Boolean = false,
     /**
      * Eine Zeile je Kaufpreis-Erfassung, jede mit dem Marktpreis IHRES
@@ -367,7 +369,7 @@ data class ValuationSet(
 @Serializable
 data class ValuationAcquisition(
     val id: Int = 0,
-    val condition: String = "N",
+    val condition: Zustand = Zustand.NEU,
     val quantity: Int = 1,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     @SerialName("avg_price") val avgPrice: Double? = null,
@@ -391,8 +393,8 @@ data class Totals(
 @Serializable
 data class ValuationResponse(
     val success: Boolean,
-    val currency: String = "EUR",
-    val condition: String = "N",
+    val currency: Waehrung = Waehrung.EUR,
+    val condition: Zustand = Zustand.NEU,
     /** Gültigkeit der Preise im Zwischenspeicher, in Stunden. */
     @SerialName("ttl_stunden") val ttlStunden: Int? = null,
     @SerialName("kaufpreise_fremde_waehrung") val kaufpreiseFremdeWaehrung: Int = 0,
@@ -438,7 +440,7 @@ data class ChartYAxis(
 @Serializable
 data class PortfolioHistoryResponse(
     val success: Boolean,
-    val currency: String = "EUR",
+    val currency: Waehrung = Waehrung.EUR,
     val period: String = "week",
     val points: List<ChartPoint> = emptyList(),
     @SerialName("y_axis") val yAxis: List<ChartYAxis> = emptyList(),

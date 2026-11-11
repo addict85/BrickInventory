@@ -1,6 +1,5 @@
 /**
  * Der Index der Fix-Historie und die Teile in CHANGELOG/ müssen zusammenpassen.
- * Ausführlich: docs/begruendungen/test/changelog-index.test.js.md#kopf
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -57,7 +56,6 @@ test('der Dateiname deckt sich mit dem Inhalt', () => {
   // 151, 152 und 153 in `12-nachtraege-126-150.md`. Alle bisherigen Prüfungen
   // blieben grün — die Nummern überschnitten sich nicht, jede Datei stand im
   // Index, jeder Verweis stimmte. Nur hiess die Datei etwas anderes, als sie …
-  // Ausführlich: docs/begruendungen/test/changelog-index.test.js.md#daneben
   const daneben = [];
   for (const f of aufPlatte()) {
     const spanne = f.match(/nachtraege-(\d+)-(\d+)\.md$/);

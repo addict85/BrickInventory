@@ -1,8 +1,8 @@
-import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
 import { aktuellesKonto } from '../infra/anfrageKonto';
 import { getGlobalSetting } from '../einstellungen/settings';
 import * as repo from './repository/apiKontingent';
+import { katalog } from './prozess';
 
 export type ApiName = 'bricklink' | 'rebrickable' | 'brickset';
 
@@ -38,7 +38,7 @@ export async function checkAndIncrementRateLimit(apiName: ApiName, _vorgabe?: nu
     return z ? Number(z.anzahl) : null;
   };
   if (limit <= 0) return { allowed: false, count: 0, limit, remaining: 0 };
-  return db.transaction(async (tx) => {
+  return katalog().db.transaction(async (tx) => {
     const gesamt = await zaehle(tx, 0, limit);
     if (gesamt === null) return { allowed: false, count: limit, limit, remaining: 0 };
     if (konto && !konto.verwalter) {
@@ -56,7 +56,7 @@ export async function checkAndIncrementRateLimit(apiName: ApiName, _vorgabe?: nu
 export async function getRateLimitStatus(apiName: ApiName) {
   const tag = heute();
   const [z, limit] = await Promise.all([
-    repo.aufrufeHeute(tag, apiName),
+    katalog().apiKontingent.aufrufeHeute(tag, apiName),
     getLimitForApi(apiName),
   ]);
   const count = Number(z?.anzahl || 0);
@@ -69,12 +69,12 @@ export async function kontingentFrei(apiName: ApiName) {
   const s = await getRateLimitStatus(apiName);
   const konto = aktuellesKonto();
   if (!konto || konto.verwalter || s.remaining <= 0) return { allowed: s.remaining > 0, limit: s.limit };
-  const z = await repo.aufrufeJeKonto(s.date, apiName, konto.id, ALLE_KONTEN);
+  const z = await katalog().apiKontingent.aufrufeJeKonto(s.date, apiName, konto.id, ALLE_KONTEN);
   const stand = (k: number) => Number(z.find(r => Number(r.konto) === k)?.anzahl || 0);
   return { allowed: stand(konto.id) < grenzeJeKonto(s.limit) && stand(ALLE_KONTEN) < grenzeAlleKonten(s.limit),
            limit: s.limit };
 }
 
 export async function setzeKontingentZurueck(apiName: ApiName): Promise<void> {
-  await repo.setzeApiZaehlerZurueck(heute(), apiName);
+  await katalog().apiKontingent.setzeApiZaehlerZurueck(heute(), apiName);
 }

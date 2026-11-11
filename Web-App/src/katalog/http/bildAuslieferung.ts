@@ -1,6 +1,5 @@
 /** EINE angemeldete Route für alle Bilder unter /images/: Eigene Uploads dürfen
- * nicht ohne Anmeldung hinaus, ein fremdes Set-Bild antwortet wie ein fehlendes.
- * Ausführlich: docs/begruendungen/src/katalog/http/bildAuslieferung.ts.md#abschnitt-4 */
+ * nicht ohne Anmeldung hinaus, ein fremdes Set-Bild antwortet wie ein fehlendes. */
 import fs from 'fs';
 import type { Request, Response } from 'express';
 import { resolveUserId } from '../../konto/http/anmeldung';
@@ -14,8 +13,7 @@ import { generateThumb } from '../bilder/thumbs';
 import { IMG_PROXY_PFAD } from '../bilder/images';
 
 /** Fehlt die Vorschau, geht sofort das Original hinaus und die Vorschau entsteht
- * nebenher; scheiterte sie beim Erfassen, gäbe es sonst keinen zweiten Anlauf.
- * Ausführlich: docs/begruendungen/src/katalog/http/bildAuslieferung.ts.md#lookupcdnformissingimage-webpfadoriginal */
+ * nebenher; scheiterte sie beim Erfassen, gäbe es sonst keinen zweiten Anlauf. */
 async function originalStattVorschau(res: Response, segmente: string[]): Promise<boolean> {
   const rohPfad = segmente.join('/');
   if (!/_thumb(\.[^.]+)$/.test(rohPfad)) return false;
@@ -47,7 +45,6 @@ export async function liefereBild(req: Request, res: Response) {
   if (!filePath || !(await bildFreigegeben(imgUserId, segmente).catch(meldeUndLiefere('bilder:blickfeld', false))))
     return res.status(404).send('Datei nicht gefunden');
   // private: Die Antwort hängt an einer Anmeldung. max-age=0, damit ein ersetztes Bild sofort gilt.
-  // Ausführlich: docs/begruendungen/src/katalog/http/bildAuslieferung.ts.md#lookupcdnformissingimage
   res.setHeader('Cache-Control', 'private, max-age=0');
   sendeDatei(res, filePath, async err => {
     if (!err || res.headersSent) return;

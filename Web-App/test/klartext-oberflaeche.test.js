@@ -1,6 +1,5 @@
 /**
  * Kein fester Text an einer Stelle, die der Nutzer liest.
- * Ausführlich: docs/begruendungen/test/klartext-oberflaeche.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,7 +1,6 @@
 /**
  * PDF-Aufträge gegen echte Routen: Wem gehört ein Auftrag, und wie viele darf
  * einer gleichzeitig starten?
- * Ausführlich: docs/begruendungen/test/pdf-jobs-db.test.js.md#kopf
  *
  * Gegenprobe zum Statusstrom (am 28.10.2026 gemessen): in schreibeAuftrag()
  * das notify() entfernt → rot: „der Statusstrom meldet das Ende sofort“

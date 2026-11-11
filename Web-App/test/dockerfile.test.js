@@ -1,6 +1,5 @@
 /**
  * Bau-Image: keine Werkzeuge ohne Zweck.
- * Ausführlich: docs/begruendungen/test/dockerfile.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

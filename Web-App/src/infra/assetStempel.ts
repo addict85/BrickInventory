@@ -1,6 +1,5 @@
 /** Aus den DATEIEN abgeleitet, nicht aus einer Zahl, die jemand setzen muss:
- * Eine vergessene Zahl liess den Browser alte Dateien zeigen.
- * Ausführlich: docs/begruendungen/src/infra/assetStempel.ts.md#abschnitt */
+ * Eine vergessene Zahl liess den Browser alte Dateien zeigen. */
 import fs from 'fs';
 import path from 'path';
 
@@ -22,8 +21,7 @@ export function dateiStempel(datei: string): string | null {
   }
 }
 
-/** Rein, ohne Zustand — damit sich die Regel ohne Server prüfen lässt.
- * Ausführlich: docs/begruendungen/src/infra/assetStempel.ts.md#stempleassets */
+/** Rein, ohne Zustand — damit sich die Regel ohne Server prüfen lässt. */
 export function stempleAssets(html: string, wurzel: string): string {
   return html.replace(
     /((?:href|src)=")(\/[^"?]+)\?v=[^"]*(")/g,

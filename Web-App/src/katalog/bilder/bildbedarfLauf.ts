@@ -19,8 +19,7 @@ const VERZOEGERUNG_MIN_MS = 500;
 const VERZOEGERUNG_MAX_MS = 1000;
 
 /** Deckel je Takt; der Takt zählt echte Arbeit, sonst liefe er über Hunderte
- * schon vorhandener Bilder unendlich langsam.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/bildbedarfLauf.ts.md#durchgang-max-notizen */
+ * schon vorhandener Bilder unendlich langsam. */
 const DURCHGANG_MAX_NOTIZEN = 500;
 
 const LAUF_SCHLUESSEL = 'imgqueue_last_run';
@@ -53,7 +52,7 @@ async function pauseVorArbeit(): Promise<void> {
 }
 
 /** Ein Fehlschlag wird gemerkt, sonst kostet jede nicht lesbare Datei bei
- * jedem Durchgang einen vergeblichen Lauf. Ausführlich: docs/begruendungen/src/katalog/bilder/bildbedarfLauf.ts.md#vorschauerzeugen */
+ * jedem Durchgang einen vergeblichen Lauf. */
 async function vorschauErzeugen(relPfad: string, schluessel: string): Promise<boolean> {
   if (istBekanntFehlend('thumb:' + schluessel)) return false;
   const ok = await generateThumb(relPfad).catch(meldeUndLiefere('bild-job:generateThumb', false));
@@ -62,7 +61,7 @@ async function vorschauErzeugen(relPfad: string, schluessel: string): Promise<bo
 }
 
 /** Mehrere Zähler statt einer Zahl, damit das Log zeigt, welcher Ausgang
- * genommen wurde. Ausführlich: docs/begruendungen/src/katalog/bilder/bildbedarfLauf.ts.md#stapelergebnis */
+ * genommen wurde. */
 export type StapelErgebnis = {
   geholt: number; vorschau: number; uebersprungen: number; gesamt: number;
   /** Jeder Weg durch die Schleife erhöht einen Zähler, damit die Summe aufgeht. */
@@ -97,8 +96,7 @@ export function meldung(e: StapelErgebnis): string {
   return `${e.gesamt} bearbeitet: ${teile.join(', ')}`;
 }
 
-/** Auch in der Datenbank, weil die Kachel in einem anderen Prozess liest.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/bildbedarfLauf.ts.md#letzterlauf */
+/** Auch in der Datenbank, weil die Kachel in einem anderen Prozess liest. */
 export const letzterLauf: { zeit: number | null; ergebnis: StapelErgebnis | null } =
   { zeit: null, ergebnis: null };
 
@@ -135,7 +133,6 @@ async function nurVorschau(setNummer: string, vorschau: string, st: StapelStand)
 async function nachFehlschlag(setNummer: string, info: { status?: number }, st: StapelStand): Promise<boolean> {
   const status = info.status;
   // Eine Drosselung ist KEINE Fehlanzeige: Die Bilder gibt es, und stures Weiterfragen verlängert die Sperre.
-  // Ausführlich: docs/begruendungen/src/katalog/bilder/bildbedarfLauf.ts.md#arbeitestapel-2
   if (status === 403 || status === 429) {
     const bis = new Date(Date.now() + DROSSEL_PAUSE_MS);
     await pausiereArt('bildbedarf', bis, `CDN drosselt (HTTP ${status})`);
@@ -143,8 +140,7 @@ async function nachFehlschlag(setNummer: string, info: { status?: number }, st: 
     return true;
   }
   // NUR ein 404/410 heisst „das Bild gibt es nicht"; Zeitüberschreitungen und Netzaussetzer dürfen ein Bild
-  // nicht dauerhaft sperren. Ausführlich:
-  // docs/begruendungen/src/katalog/bilder/bildbedarfLauf.ts.md#arbeitestapel-hartfehlend
+  // nicht dauerhaft sperren.
   const hartFehlend = info.status === 404 || info.status === 410;
   if (hartFehlend) merkeFehlend('set:' + setNummer, `HTTP ${status} vom CDN`);
   else st.etwasZuTun = true;
@@ -174,7 +170,7 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
     const vorschau = path.join(SET_IMAGES_DIR, `${r.set_number}_thumb.jpg`);
     if (fs.existsSync(datei)) {   // kein zweiter Download
       await nurVorschau(r.set_number, vorschau, st);
-      await setBildLokalEintragen(r.set_number).catch(logAndContinue('bild-job:setBildLokal'));
+      await setBildLokalEintragen(r.set_number, r.url).catch(logAndContinue('bild-job:setBildLokal'));
       continue;
     }
 
@@ -210,7 +206,7 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
     // Originaldatei.
     await vorschauErzeugen(lokal, vorschau);
     // Erst der Eintrag lässt die Oberfläche die Datei statt des Proxys laden.
-    await setBildLokalEintragen(r.set_number).catch(logAndContinue('bild-job:setBildLokal'));
+    await setBildLokalEintragen(r.set_number, r.url).catch(logAndContinue('bild-job:setBildLokal'));
     erg.geholt++;
   }
   // Zurückgelegte Zeilen sind NICHT bearbeitet.
@@ -228,8 +224,7 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
   return erg;
 }
 
-/** Der Abbruch hängt an echter Arbeit, nicht an angefassten Notizen.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/bildbedarfLauf.ts.md#taktdurchgang */
+/** Der Abbruch hängt an echter Arbeit, nicht an angefassten Notizen. */
 async function taktDurchgang(): Promise<StapelErgebnis> {
   const summe = leeresErgebnis();
   while (summe.gesamt < DURCHGANG_MAX_NOTIZEN && summe.arbeit < STAPEL) {

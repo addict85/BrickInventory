@@ -1,7 +1,6 @@
 /**
  * Die Verschiebung eines Sets serialisiert über das QUELLKONTO — geprüft über
  * die echte Route, nicht am Quelltext.
- * Ausführlich: docs/begruendungen/test/sperre-beim-verschieben-db.test.js.md#kopf
  *
  * Gegenproben (gemessen):
  *   a) withInventoryLock → db.transaction (Sperre weg)  → A rot, B+C grün
@@ -21,7 +20,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
-const { haeltSet } = require('./helpers/bestand');
+const { haeltSet, katalogSet } = require('./helpers/bestand');
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
 
@@ -57,7 +56,6 @@ async function sperrZeilen(userId, scopeKey, erteilt) {
 /**
  * Wartet, bis auf genau diesem Schlüssel ein Warter steht — oder bis die
  * Route fertig ist.
- * Ausführlich: docs/begruendungen/test/sperre-beim-verschieben-db.test.js.md#befundwarter
  */
 async function befundWarter(userId, scopeKey, istFertig, grenzeMs = 5000) {
   const bis = Date.now() + grenzeMs;
@@ -110,8 +108,7 @@ async function aufbau() {
   HAUPT = await id('haupt'); KIND = await id('kind');
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [HAUPT, KIND]);
   for (const sn of [SN_A, SN_B, SN_C]) {
-    await db.run(`INSERT INTO set_catalog (set_number,name) VALUES ($1,$1)
-                  ON CONFLICT (set_number) DO NOTHING`, [sn]);
+    await katalogSet(db, sn, { name: sn });
     await haeltSet(db, HAUPT, sn, 1, { preis: 100 });
   }
 }
@@ -217,7 +214,6 @@ test('die Verschiebung sperrt auf (Quellkonto, Set)', { concurrency: 1 }, async 
     // Konto, aus dem etwas WEGgeht — dort wird gelesen, gerechnet und
     // gelöscht. GEMESSEN: Steht `toId` in der Route, werden A UND dieser Fall
     // rot. Und allein fängt dieser Fall eine Sperre auf BEIDEN Konten: auch …
-    // Ausführlich: docs/begruendungen/test/sperre-beim-verschieben-db.test.js.md#acq-stelle
     const acq = await erfassungsIds(HAUPT, SN_C);
     assert.equal(acq.length, 1, `Vorbedingung: eine Erfassung für ${SN_C}`);
 

@@ -1,6 +1,5 @@
 /**
  * Lesbar und erreichbar — gemessen im Browser mit den echten Stylesheets.
- * Ausführlich: docs/begruendungen/test/lesbarkeit-browser.test.js.md#kopf
  *
  * Gegenproben (am 27.10. gemessen):
  *   A  --auf-primaer in themes/werkbank.css entfernt → rot: „werkbank: Primärknopf"

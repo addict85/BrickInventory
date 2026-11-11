@@ -2,7 +2,6 @@
  * Der BrickLink-Export der Teileliste — was er weglässt und was er sagt. Am
  * echten Bündel in jsdom: Bauliste erstellen, „BrickLink XML“ klicken, die
  * ausgelieferte Datei und die Meldungen lesen.
- * Ausführlich: docs/begruendungen/test/teileliste-bl-export.test.js.md#kopf
  *
  * Gegenproben (08.11.2026 gemessen, je einzeln, danach zurückgenommen):
  *   E  die Farbkette in plRenderTable wieder auf `?? p.color_id ?? ''` →

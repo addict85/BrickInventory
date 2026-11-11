@@ -52,7 +52,7 @@ import ch.brickinventoryapp.ui.util.fmtInt
  * @param anzahl Verschiedene Teile — dieselbe Zahl, die die Webapp zeigt.
  * @param farbe  Farbpunkt, nur bei der Farbliste.
  */
-data class TeileFilterEintrag(
+internal data class TeileFilterEintrag(
     val wert: String,
     val text: String,
     val anzahl: Int,
@@ -64,7 +64,6 @@ data class TeileFilterEintrag(
  * der Webapp (03-parts.js, `loadPartsFilters` → `#color-filter` und
  * `#cat-filter`), jede mit der Anzahl daneben. `getParts` reicht `color` und
  * `category` an den Server.
- * Ausführlich: docs/begruendungen/feature-teile/teile/ui/screens/TeileFilter.kt.md#teilefilterzeile
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

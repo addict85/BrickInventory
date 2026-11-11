@@ -1,6 +1,10 @@
 import * as db from '../../../db/database';
 
 /** Die App macht daran die Zeile anklickbar; $3 ist das Blickfeld. */
+export function uebertrageAlarm(zuId: number, vonId: number, sn: string, c: string) {
+  return db.run('UPDATE price_alerts SET user_id=$1 WHERE user_id=$2 AND set_number=$3 AND condition=$4', [zuId, vonId, sn, c]);
+}
+
 const BESITZT = 'EXISTS (SELECT 1 FROM sets s WHERE s.user_id = ANY($3) AND s.set_number = a.set_number) AS besitzt';
 
 export function schreibeAlarm(userId: number, setNumber: string, condition: string, richtung: 'unter' | 'ueber', schwelle: number, waehrung: string) {
@@ -25,7 +29,7 @@ export function alarmeImBlickfeld(userId: number, blickfeld: number[]) {
   return db.all(`SELECT DISTINCT ON (a.set_number, a.condition)
             a.set_number, a.condition, a.richtung, a.schwelle, a.currency_code,
             a.ausgeloest, a.zuletzt_am, a.zuletzt_preis,
-            COALESCE(rb.name, c.name) AS name, rb.set_img_url, c.image_local, c.image_url,
+            rb.name, rb.set_img_url, c.image_local, c.image_url,
             (s.id IS NOT NULL) AS besitzt
        FROM price_alerts a
        LEFT JOIN rb_sets rb ON rb.set_num = a.set_number
@@ -78,7 +82,7 @@ export function loeseAlarmAus(user_id: number, set_number: string, condition: st
 }
 
 export function setNameAusStamm(set_number: string) {
-  return db.get<{ name: string | null }>('SELECT name FROM set_stamm WHERE set_number = $1', [set_number]);
+  return db.get<{ name: string | null }>('SELECT name FROM rb_sets WHERE set_num = $1', [set_number]);
 }
 
 export function alarmeFuerExport(uid: number) {

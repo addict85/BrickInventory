@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.offline
 
+import ch.brickinventoryapp.model.fach.Setsortierung
+import ch.brickinventoryapp.model.lokal.Bestandsart
+import ch.brickinventoryapp.model.lokal.Lokal
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.api.SetsApi
@@ -11,12 +14,14 @@ import ch.brickinventoryapp.model.data.Ersatzteilwahl
 import ch.brickinventoryapp.model.data.model.AddSetRequest
 import ch.brickinventoryapp.model.data.model.Part
 import ch.brickinventoryapp.model.data.model.PartsResponse
+import ch.brickinventoryapp.model.data.model.ManualPartsResponse
+import ch.brickinventoryapp.model.data.model.PartValuationItem
 import ch.brickinventoryapp.model.data.model.SetItem
 import ch.brickinventoryapp.model.data.model.SetsResponse
 import ch.brickinventoryapp.offline.room.BestandDatenbank
 import ch.brickinventoryapp.offline.room.RoomAusgang
 import ch.brickinventoryapp.offline.room.RoomBestand
-import ch.brickinventoryapp.testing.ResponseCache
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -27,7 +32,6 @@ import org.robolectric.RobolectricTestRunner
 import retrofit2.Response
 import java.lang.reflect.Proxy
 import java.net.ConnectException
-import kotlin.io.path.createTempDirectory
 
 /**
  * Ohne Netz beantworten die Repositories Suche und Filter aus Room — mit
@@ -41,6 +45,8 @@ import kotlin.io.path.createTempDirectory
  *   seite-kodiert-ganze-liste  uebernimm liest und ersetzt beim Anhängen die ganze Liste →
  *                              rot „eine weitere Seite schreibt nur ihre Zeilen“
  *   seite-ohne-ausgang         beim Anhängen wird der Ausgang nicht angewandt → rot „die Serverzeile trägt …“
+ *   galerie-ablage-ungefiltert beobachteSets übergibt keine Filterspalten → rot „die Galerie filtert in Room …“
+ *   teile-nur-seite-eins       aktualisiereSeitenweise bricht nach Seite 1 ab → rot „alle Seiten der Teile …“
  */
 @RunWith(RobolectricTestRunner::class)
 class OhneNetzFilterTest {
@@ -49,7 +55,6 @@ class OhneNetzFilterTest {
         .allowMainThreadQueries().build()
     private val bestand = Zaehlend(RoomBestand(db))
     private val ablage = Offlineablage(bestand, RoomAusgang(db), { "a" }, uhr = { STAND })
-    private val cache = ResponseCache(ordnerQuelle = { createTempDirectory("antworten").toFile() })
 
     private var offline = false
 
@@ -73,7 +78,7 @@ class OhneNetzFilterTest {
             return Response.success(SetsResponse(success = true, count = seite.size, sets = seite, total = sets.size))
         }
     }
-    private val setsRepo = SetsRepositoryImpl(setsApi, cache, ablage)
+    private val setsRepo = SetsRepositoryImpl(setsApi, ablage)
 
     private val teile = listOf(
         Part(partNumber = "3001", partName = "Brick 2 x 4", colorId = 4, colorName = "Red", categoryName = "11"),
@@ -92,10 +97,14 @@ class OhneNetzFilterTest {
             val seite = teile.drop((page - 1) * 2).take(2)
             return Response.success(PartsResponse(success = true, total = teile.size, parts = seite))
         }
+        override suspend fun getManualParts(accounts: String?, search: String?, storage: String?): Response<ManualPartsResponse> {
+            if (offline) throw ConnectException("aus")
+            return Response.success(ManualPartsResponse(success = true, parts = listOf(PartValuationItem(partNumber = "m1"))))
+        }
     }
-    private val teileRepo = TeileRepositoryImpl(teileApi, cache, ablage)
+    private val teileRepo = TeileRepositoryImpl(teileApi, ablage)
 
-    private fun setsOffline(search: String? = null, theme: String? = null, storage: String? = null, sort: String? = null) =
+    private fun setsOffline(search: String? = null, theme: String? = null, storage: String? = null, sort: Setsortierung? = null) =
         runBlocking { setsRepo.getSets(null, search, theme, sort, 1, 2, storage) }
             .let { it as Ergebnis.Success }.also { assertEquals("trägt den Stand", STAND, it.stand) }
             .data.sets.map { it.setNumber }
@@ -119,7 +128,7 @@ class OhneNetzFilterTest {
         assertEquals("Lagerort", listOf("10001-1", "10003-1"), setsOffline(storage = "Kiste 1"))
         assertEquals("Thema und Lagerort zusammen", listOf("10001-1"), setsOffline(theme = "Castle", storage = "Kiste 1"))
         assertEquals("Sortierung nach Name", listOf("21000-1", "10001-1", "10002-1", "30000-1", "10003-1"),
-            setsOffline(sort = "name_asc"))
+            setsOffline(sort = Setsortierung.NAME))
     }
 
     @Test
@@ -165,6 +174,26 @@ class OhneNetzFilterTest {
         assertEquals(listOf("10001-1", "10002-1", "10003-1", "21000-1"), lokal.map { it.setNumber })
         assertEquals("die Serverzeile trägt die wartende Erfassung aus dem Ausgang", 2,
             lokal.single { it.setNumber == "10003-1" }.quantity)
+    }
+
+    @Test
+    fun `die Galerie filtert in Room, der Abruf fuellt nur die Ablage`() = runBlocking {
+        assertTrue(setsRepo.aktualisiereSets() is Ergebnis.Success)
+        assertEquals("alle Sets in der Ablage", sets.size, setsRepo.beobachteSets().first().liste.size)
+        val city = setsRepo.beobachteSets(thema = "City", sort = Setsortierung.NUMMER).first().liste.map { it.setNumber }
+        assertEquals("die Galerie filtert in Room und sortiert wie der Server", listOf("10002-1", "21000-1"), city)
+        offline = true
+        assertTrue("ohne Netz meldet der Abruf den Fehler", setsRepo.aktualisiereSets() is Ergebnis.Error)
+        assertEquals("und die Ablage bleibt", sets.size, setsRepo.beobachteSets().first().liste.size)
+    }
+
+    @Test
+    fun `die Teile kommen ganz in die Ablage und filtern dort`() = runBlocking {
+        assertTrue(teileRepo.aktualisiereTeile() is Ergebnis.Success)
+        assertEquals("alle Seiten der Teile in der Ablage", teile.size, teileRepo.beobachteTeile().first().liste.size)
+        assertEquals("die manuellen Teile ebenso", listOf("m1"), teileRepo.beobachteManuelleTeile().first().liste.map { it.partNumber })
+        val rot = teileRepo.beobachteTeile(farbe = "Red", ersatzteile = Ersatzteilwahl.OHNE).first().liste.map { it.partNumber }
+        assertEquals("Farbe und Ersatzteile filtern in Room", listOf("3001"), rot)
     }
 
     /** Zählt, was die Ablage mit dem Bestand tut — die Seitenübernahme ist so von aussen sichtbar. */

@@ -1,6 +1,5 @@
 /**
  * Die Portfoliokurve gehört zum GEWÄHLTEN Konto, nicht zum Betrachter.
- * Ausführlich: docs/begruendungen/test/portfolio-scope-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): in getPortfolioHistory statt `ids` wieder
  * `viewerId` als Blickfeld benutzt → beide Kurven werden gleich.
@@ -9,9 +8,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();

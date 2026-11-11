@@ -1,6 +1,5 @@
 /**
  * Passwortfelder gehören in ein <form> — und das Absenden darf nichts laden.
- * Ausführlich: docs/begruendungen/test/passwortfelder-im-formular.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt) ──────────────────────────────────────────────
  *

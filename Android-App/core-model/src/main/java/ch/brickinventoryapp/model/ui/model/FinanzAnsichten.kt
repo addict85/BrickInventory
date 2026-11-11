@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.model.ui.model
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.model.DashboardStats
 import ch.brickinventoryapp.model.data.model.FigsValuationResponse
 import ch.brickinventoryapp.model.data.model.PartsValuationResponse
@@ -34,7 +36,7 @@ fun DashboardStats.alsAnsicht() = KennzahlenAnsicht(
 )
 
 data class TeileBewertungAnsicht(
-    val currency: String = "EUR",
+    val currency: Waehrung = Waehrung.EUR,
     val parts: List<ManuellesTeilAnsicht> = emptyList(),
     val totalValue: String,
     val kaufpreiseFremdeWaehrung: Int = 0,
@@ -48,7 +50,7 @@ fun PartsValuationResponse.alsAnsicht() = TeileBewertungAnsicht(
 )
 
 data class FigurenBewertungAnsicht(
-    val currency: String = "EUR",
+    val currency: Waehrung = Waehrung.EUR,
     val figs: List<ManuelleFigurAnsicht> = emptyList(),
     val totalValue: String,
     val kaufpreiseFremdeWaehrung: Int = 0,
@@ -62,7 +64,7 @@ fun FigsValuationResponse.alsAnsicht() = FigurenBewertungAnsicht(
 )
 
 data class GewinnAnsicht(
-    val currency: String = "EUR",
+    val currency: Waehrung = Waehrung.EUR,
     val totals: GewinnSummenAnsicht,
     val sets: List<GewinnZeileAnsicht> = emptyList(),
 )
@@ -140,8 +142,8 @@ fun PnlTotals.alsAnsicht() = GewinnSummenAnsicht(
 )
 
 data class BewertungAnsicht(
-    val currency: String = "EUR",
-    val condition: String = "N",
+    val currency: Waehrung = Waehrung.EUR,
+    val condition: Zustand = Zustand.NEU,
     val ttlStunden: Int? = null,
     val kaufpreiseFremdeWaehrung: Int = 0,
     val sets: List<BewertungSetAnsicht> = emptyList(),

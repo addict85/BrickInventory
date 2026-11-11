@@ -2,7 +2,7 @@ import { OHNE_RUMPF, ZUSTAND, KENNUNG, TEXT, abfrage, Q, SEITE, SEITEN_ANGABE } 
 import { z } from 'zod';
 import { eingabe } from '../infra/validate';
 import type { Route } from './grund';
-import { CsvImportErgebnis, GenericResponse, PartValuationItem, PartsResponse, VerwendendeSetsResponse, InDenPapierkorb } from './gemeinsam';
+import { CsvImportErgebnis, DEGRADIERT, GenericResponse, PartValuationItem, PartsResponse, VerwendendeSetsResponse, InDenPapierkorb } from './gemeinsam';
 
 export const AddPartResponse = z.looseObject({
   success: z.boolean(),
@@ -42,6 +42,7 @@ export const ManualPartsResponse = z.looseObject({
   /** Die Liste führt keine Erfassungen; die Detailansicht lädt sie über /acquisitions. */
   parts: z.array(PartValuationItem.extend({ acquisitions: PartValuationItem.shape.acquisitions.optional() })),
   error: z.string().nullable().optional(),
+  degradiert: DEGRADIERT,
 });
 
 export const PartsCategory = z.looseObject({
@@ -89,7 +90,7 @@ export const TeilFarbeResponse = z.looseObject({
 });
 
 /** BrickLink-Farbe → Rebrickable-Farbe; `source` sagt, woher die Tabelle stammt. */
-export const BlFarbTabelle = z.looseObject({ success: z.literal(true), source: z.string(), map: z.record(z.string(), z.unknown()) });
+export const BlFarbTabelle = z.looseObject({ success: z.literal(true), source: z.string(), map: z.record(z.string(), z.unknown()), degradiert: DEGRADIERT });
 
 export const routen = {
   'GET /api/v1/parts': { antwort: PartsResponse, abfrage: abfrage({ accounts: Q.konten, search: Q.text(), color: Q.text(64),
@@ -113,5 +114,5 @@ export const routen = {
   'PUT /api/v1/parts/:partNumber/:colorId': { abfrage: abfrage({ owner: Q.konto }), eingabe: z.strictObject({ quantity: eingabe.mengeOderNichts(0, 100_000).optional(), quantity_delta: eingabe.mengenDelta(), unit_price: eingabe.geld('Stückpreis'), condition: ZUSTAND.nullable().optional() }), antwort: GenericResponse },
   'DELETE /api/v1/parts/:partNumber/:colorId': { eingabe: OHNE_RUMPF, antwort: InDenPapierkorb, abfrage: abfrage({ owner: Q.konto }) },
   'POST /api/v1/parts/import/csv': { formular: true, antwort: CsvImportErgebnis },
-  'GET /api/v1/parts/bl-color-map': { antwort: BlFarbTabelle },
+  'GET /api/v1/parts/bl-color-map': { klein: true, antwort: BlFarbTabelle },
 } satisfies Record<string, Route>;

@@ -100,6 +100,9 @@ export const SetAggregate = z.looseObject({
   avg_purchase_price: z.number().nullable().optional(),
 });
 
+/** Teile der Antwort, die nach einem Fehler nur Ersatzwerte tragen (src/infra/ergebnis.ts). */
+export const DEGRADIERT = z.array(z.string()).optional();
+
 export const GenericResponse = z.looseObject({
   success: z.boolean(),
   error: z.string().nullable().optional(),
@@ -190,6 +193,7 @@ export const PartsResponse = z.looseObject({
   page_size: z.number().int(),
   parts: z.array(Part),
   error: z.string().nullable().optional(),
+  degradiert: DEGRADIERT,
 });
 
 export const VerwendendesSet = z.looseObject({

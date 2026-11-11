@@ -58,10 +58,12 @@ Absicht, solange es nur von unten gebraucht wird:
   nichts mit `try/catch`; der Fehlerweg des Routers antwortet. Ein `.catch(…)`
   gibt es nur dort, wo die Antwort einen Ersatzwert braucht (etwa der Token
   beim Anmelden in `routes/auth.ts`: ohne Token ein eigener Fehlercode).
-- Express kennen nur die Routen, `server.ts`, `src/infra` (Fehlerweg, Herkunft,
-  Dateiauslieferung) und die HTTP-Seiten der Bereiche unter `src/<bereich>/http/`
-  (Anmeldung und Sitzung in `konto`, Bild-Proxy in `katalog`, Idempotenz-
-  Middleware). Fachdienste importieren weder Express noch eine HTTP-Seite.
+- Express kennen nur die Routen, `server.ts`, `src/http` (Fehlerweg, Herkunft,
+  Dateiauslieferung, Vertragsrouter) und die HTTP-Seiten der Bereiche unter
+  `src/<bereich>/http/` (Anmeldung und Sitzung in `konto`, Bild-Proxy in
+  `katalog`, Idempotenz-Middleware). Fachdienste importieren weder Express noch
+  eine HTTP-Seite; eine Absage ist eine `FehlerArt` (oder ein `Fachfehler`),
+  den HTTP-Status wählt `src/http/fehlerArt.ts`.
 - Clients erreicht man nur über `src/katalog/quellen.ts`; Schlüssel und
   Kontingent bekommen sie dort übergeben (`clients/zugang.ts`).
 - Eine Transaktion (`db.transaction`) gilt für den ganzen Aufrufpfad, auch
@@ -75,8 +77,8 @@ kennen einander nicht. Von unten nach oben:
 | Stufe | Bereiche |
 |---|---|
 | 1 | `src/infra` |
-| 2 | `src/http` |
-| 3 | `src/vertrag` |
+| 2 | `src/vertrag` |
+| 3 | `src/http` |
 | 4 | `db`, `clients` |
 | 5 | `src/einstellungen` |
 | 6 | `src/mail` |
@@ -115,8 +117,8 @@ Android-Client (`test/vertrag-kotlin.test.js`).
 
 ## Begründungen
 
-Lange Begründungen einzelner Stellen liegen unter `docs/begruendungen/`;
-der Code verweist mit `Ausführlich: docs/begruendungen/…#anker`.
+Im Code steht das Warum in wenigen Zeilen; lange Begründungen und die
+Geschichte einer Stelle stehen in der Commit-Nachricht (CLAUDE.md).
 
 ## Oberfläche
 

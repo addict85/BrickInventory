@@ -1,10 +1,9 @@
 // Gear und Bücher führt BrickLink anders als Rebrickable; der Link muss das wissen.
-// Ausführlich: docs/begruendungen/src/katalog/bricklinkLink.ts.md#abschnitt
 import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { bricklinkRequest } from './quellen';
 import { getGlobalSetting } from '../einstellungen/settings';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
-import * as cache from './repository/katalogCache';
+import { katalog } from './prozess';
 
 export type BlType = 'SET' | 'GEAR' | 'BOOK' | 'MINIFIG' | 'NONE';
 
@@ -21,7 +20,6 @@ export interface BlLink {
 }
 
 // Die Schreibweise kommt aus src/infra/setNummer.ts, nicht aus einer dritten Fassung.
-// Ausführlich: docs/begruendungen/src/katalog/bricklinkLink.ts.md#withvariant
 export function withVariant(setNumber: string): string {
   return mitVersion(String(setNumber || '').trim());
 }
@@ -41,7 +39,6 @@ export function buildUrl(type: BlType, number: string): string | null {
 }
 
 // Ohne eindeutige Zuordnung (etwa Sammelfiguren) eine Suche statt eines falschen Links.
-// Ausführlich: docs/begruendungen/src/katalog/bricklinkLink.ts.md#searchurl
 export function searchUrl(number: string): string {
   return `https://www.bricklink.com/v2/search.page?q=${encodeURIComponent(bareNumber(number))}`;
 }
@@ -68,7 +65,7 @@ export async function resolveMany(setNumbers: string[]): Promise<Map<string, BlL
   const keys = [...new Set((setNumbers || []).filter(Boolean).map(withVariant))];
   if (keys.length === 0) return out;
 
-  const rows = await cache.blTypenDerSets(keys).catch(meldeUndLiefere('bl-link:rows', []));
+  const rows = await katalog().katalogCache.blTypenDerSets(keys).catch(meldeUndLiefere('bl-link:rows', []));
 
   const byNumber = new Map<string, string | null>();
   for (const r of rows) byNumber.set(r.set_number, r.bl_type);
@@ -83,8 +80,7 @@ export async function resolveOne(setNumber: string): Promise<BlLink> {
 }
 
 /** Dieselbe Kette wie beim Preisabruf (set → gear → book → NONE), aber über
- * /items — günstiger, wenn nur der Typ zählt.
- * Ausführlich: docs/begruendungen/src/katalog/bricklinkLink.ts.md#resolveviaapi */
+ * /items — günstiger, wenn nur der Typ zählt. */
 export async function resolveViaApi(setNumber: string): Promise<BlLink> {
   const n = withVariant(setNumber);
   const bare = bareNumber(setNumber);
@@ -112,6 +108,6 @@ export async function resolveViaApi(setNumber: string): Promise<BlLink> {
     return toLink(n, null);
   }
 
-  await cache.merkeBlTyp(n, `Set ${n}`, found, found === 'NONE').catch(logAndContinue('bl-link:probe'));
+  await katalog().katalogCache.merkeBlTyp(n, `Set ${n}`, found, found === 'NONE').catch(logAndContinue('bl-link:probe'));
   return toLink(n, found);
 }

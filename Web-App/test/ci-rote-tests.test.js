@@ -1,7 +1,6 @@
 /**
  * Eine Annotation fuer einen roten Test traegt die BEGRUENDUNG, nicht nur den
  * Namen.
- * Ausführlich: docs/begruendungen/test/ci-rote-tests.test.js.md#kopf
  *
  * ── Gegenproben (durchgefuehrt) ─────────────────────────────────────────────
  *

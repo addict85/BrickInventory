@@ -1,6 +1,6 @@
 Gegenprobe: Wert-Kacheln immer zu dritt nebeneinander, wie vor H1
-Modul: app
-Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
+Modul: core-ui-bestand
+Test: ch.brickinventoryapp.gemeinsam.WertKachelnTest
 Rot: Wert-Kacheln zeigen vierstellige Betraege auf schmalem Telefon bei 100 Prozent
 
 diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt

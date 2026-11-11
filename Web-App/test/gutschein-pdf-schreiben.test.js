@@ -1,6 +1,5 @@
 /**
  * Den Betrag im Original-PDF ersetzen, Gutscheine verbinden, zurueckeinlesen.
- * Ausführlich: docs/begruendungen/test/gutschein-pdf-schreiben.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Befunde GEMESSEN) ────────────────────────────
  *
@@ -209,7 +208,7 @@ test('7. ein fremdes PDF ohne Marke wird seitenweise geraten', async () => {
   for (const [betrag, nr, pin] of [['400', NR, '5225'],
                                    ['150', '5045076374450022277', '1234']]) {
     const doc = await PL.PDFDocument.load(await baueGutschein(betrag, nr, pin, null));
-    (await ziel.copyPages(doc, doc.getPageIndices())).forEach(s => ziel.addPage(s));
+    for (const s of await ziel.copyPages(doc, doc.getPageIndices())) ziel.addPage(s);
   }
   const stapel = Buffer.from(await ziel.save());
   assert.equal((await PL.PDFDocument.load(stapel)).getPageCount(), 2);
@@ -226,7 +225,7 @@ test('8. dieselbe Karte zweimal im Stapel ergibt EINEN Eintrag', async () => {
   const ziel = await PL.PDFDocument.create();
   for (let i = 0; i < 2; i++) {
     const doc = await PL.PDFDocument.load(await baueGutschein('400', NR, '5225', null));
-    (await ziel.copyPages(doc, doc.getPageIndices())).forEach(s => ziel.addPage(s));
+    for (const s of await ziel.copyPages(doc, doc.getPageIndices())) ziel.addPage(s);
   }
   const zurueck = await seitenweiseLesen(Buffer.from(await ziel.save()));
   assert.equal(zurueck.length, 1,
@@ -236,7 +235,6 @@ test('8. dieselbe Karte zweimal im Stapel ergibt EINEN Eintrag', async () => {
 
 test('9. die Nachprüfung fängt ein Ersetzen, das die Kartennummer trifft', async () => {
   // Woher dieser Fall kommt (Gegenprobe)
-  // Ausführlich: docs/begruendungen/test/gutschein-pdf-schreiben.test.js.md#nummermit400
   const nummerMit400 = '5045076374400011166';
   const original = await baueGutschein('400', nummerMit400, '5225', null);
   const vorher = werteAusPdf(original);

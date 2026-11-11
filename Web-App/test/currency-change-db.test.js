@@ -1,6 +1,5 @@
 /**
  * Währungswechsel stösst den Preis-Job an — gegen echte Routen und Tabelle.
- * Ausführlich: docs/begruendungen/test/currency-change-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): den Anstoss in setUserSetting() entfernt →
  * die beiden „stösst an"-Schritte hier werden rot. Am 30.10.2026 mit dem
@@ -11,16 +10,13 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('eine echte Währungsänderung stösst den Preis-Job an, ein No-op-Speichern nicht',
   { concurrency: 1 }, async (t) => {

@@ -118,7 +118,6 @@ async function plGenerate() {
           // Zusammengefasst wird nach der Rebrickable-Nummer, weil der Bestand danach nachgefragt wird:
           // Mehrere Formvarianten teilen eine BrickLink-Nummer, und nach ihr zusammengelegt zählte der Bedarf
           // doppelt, der Bestand einfach.
-          // Ausführlich: docs/begruendungen/public/js/08-init.js.md#zusammengefasst-wird-nach-der-rebrickabl
           const key = `${p.part_number}|${p.color_id||0}`;
           if (combined[key]) {
             combined[key].quantity += parseInt(String(p.total_quantity || p.quantity || 1));
@@ -179,7 +178,6 @@ async function plGenerate() {
 /**
  * „Kann ich das bauen?“ füllt die vorhandene Spalte „Vorhanden“ aus dem Bestand statt einer zweiten Ansicht:
  * Zwei Tabellen wären zwei Orte, an denen die Rechnung auseinanderläuft. Die Zahl überschreibt Handeingaben.
- * Ausführlich: docs/begruendungen/public/js/08-init.js.md#plfuellebestand
  */
 async function plFuelleBestand() {
   const felder = /** @type {HTMLInputElement[]} */ (alle('.pl-have-input'));
@@ -276,7 +274,6 @@ function plRenderTable(fehler = 0) {
       const pkey = `${p.part_number}__${p.color_id||0}`;
       // Kein Rückfall auf die Rebrickable-Farbnummer: Das ergäbe eine gültige Datei mit der falschen Farbe.
       // Leer heisst unbekannt; plExportBricklink lässt solche Posten weg und nennt sie.
-      // Ausführlich: docs/begruendungen/public/js/08-init.js.md#blcolorid
       const blColorId = p.bl_color_id ?? _rbToBlColor[p.color_id] ?? '';
       markup = html`${markup}${html`<div data-stil="display:flex;align-items:center;gap:10px;padding:5px 4px;border-bottom:1px solid var(--bdr)">${img}<span data-stil="font-family:monospace;font-size:var(--fs-2);color:var(--b600);min-width:65px;flex-shrink:0" title="Rebrickable: ${p.part_number}">${p.bl_part_number||p.part_number}</span><span data-stil="flex:1;font-size:var(--fs-3)">${p.part_name}</span><span data-stil="font-weight:700;font-size:var(--fs-3);width:6.5em;text-align:right;flex-shrink:0">×${ungeprueft(p.quantity.toLocaleString(locale()))}</span><span data-stil="width:6.5em;flex-shrink:0;padding-left:6px"><input inputmode="numeric" type="number" min="0" value="0" data-key="${pkey}" data-need="${p.quantity}" data-part="${p.bl_part_number||p.part_number}" data-color="${blColorId}" data-rb-color="${p.color_id || 0}" data-color-name="${p.color_name||''}" data-type="${(p.bl_part_number||p.part_number||'P').startsWith('fig-') ? 'M' : 'P'}" class="pl-have-input" aria-label="${tRaw('pl.col_have')}: ${p.bl_part_number||p.part_number} ${p.color_name||''}" data-stil="width:58px;height:28px;border:1px solid var(--feldrand);border-radius:5px;padding:0 6px;font-size:var(--fs-2);text-align:center" /></span></div>`}`;
     }
@@ -506,7 +503,6 @@ async function plExportBricklink() {
   // Posten ohne bekannte BrickLink-Farbe gehen nicht mit, sie werden genannt: Eine geratene Farbe bestellt
   // das falsche Teil, und das merkt man erst am Paket. Figuren (Typ M) haben keine Farbe und sind nie
   // betroffen.
-  // Ausführlich: docs/begruendungen/public/js/08-init.js.md#ohnefarbe
   const ohneFarbe = expanded.filter(m => m.type !== 'M' && (m.color === null || m.color === undefined));
   const exportierbar = expanded.filter(m => !ohneFarbe.includes(m));
 
@@ -515,7 +511,6 @@ async function plExportBricklink() {
 
   // BrickLink weist eine Datei über BL_UPLOAD_MAX_BYTES ganz ab. Ein Stück öffnet wie bisher im Tab zum
   // Kopieren; mehrere werden heruntergeladen — ein Tab je Stück wäre ein Popup-Gewitter.
-  // Ausführlich: docs/begruendungen/public/js/08-init.js.md#bricklink-weist-eine-datei-ueber
   wantedXmlAusliefern(stuecke);
 
   toast(tRaw('pl.bl_exported', { n: exportierbar.length }), 'success');

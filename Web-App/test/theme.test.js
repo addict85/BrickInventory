@@ -1,7 +1,6 @@
 /**
  * Das global eingestellte Design (global_settings.app_theme) muss auch VOR dem
  * Login gelten — auf Login- und Startup-Screen.
- * Ausführlich: docs/begruendungen/test/theme.test.js.md#kopf
  *
  * Gegenproben (08.11.2026 gemessen, jeweils zurückgenommen):
  *   A  00-theme-boot.js: `sync();` entfernt → rot „ohne Serverwert gilt sofort
@@ -16,6 +15,7 @@
  *   design-je-konto-db.test.js; Route hinter requireLogin gelegt → dort rot
  *   „ohne Anmeldung: die Vorgabe“.
  */
+// Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -140,7 +140,6 @@ test('Startup-Screen setzt keine Farben mehr per Inline-Style', () => {
 
 test('fuenf Listen nennen dieselben Designs', () => {
   // Warum das eine eigene Pruefung ist
-  // Ausführlich: docs/begruendungen/test/theme.test.js.md#alsdatei
   const alsDatei = fs
     .readdirSync(path.join(PUB, 'themes'))
     .filter(f => f.endsWith('.css'))
@@ -184,24 +183,26 @@ test('fuenf Listen nennen dieselben Designs', () => {
         '..',
         '..',
         'Android-App',
-        'core-data',
+        'core-model',
         'src',
         'main',
         'java',
         'ch',
         'brickinventoryapp',
-        'data',
-        'GeraeteAblage.kt',
+        'model',
+        'ui',
+        'theme',
+        'Design.kt',
       ),
       'utf8',
     ),
-    /ERLAUBTE_DESIGNS = setOf\(([^)]*)\)/,
-    'GeraeteAblage.kt',
+    /enum class Design\(val kennung: String\) \{([^;]*);/,
+    'Design.kt',
   );
 
   assert.deepEqual(boot, erwartet, 'ALLOWED im Boot-Skript weicht von den Dateien ab');
   assert.deepEqual(server, erwartet, 'Die Whitelist des Servers weicht von den Dateien ab');
-  assert.deepEqual(app, erwartet, 'ERLAUBTE_DESIGNS der App weicht von den Dateien ab');
+  assert.deepEqual(app, erwartet, 'Design (App) weicht von den Dateien ab');
 });
 
 test('jedes Theme unter public/themes/ deckt die Screens vor dem Login ab', () => {
@@ -214,7 +215,7 @@ test('jedes Theme unter public/themes/ deckt die Screens vor dem Login ab', () =
       new RegExp(`\\[data-theme="${name}"\\][^{]*#login-screen`),
       `${f} stylt den Login-Screen nicht — das Design würde nach dem Login umspringen`,
     );
-    assert.match(css, new RegExp(`--screen-bg\\s*:`), `${f} setzt --screen-bg nicht`);
+    assert.match(css, /--screen-bg\s*:/, `${f} setzt --screen-bg nicht`);
   }
 });
 
@@ -279,7 +280,6 @@ test('der Server setzt data-theme selbst, und ein Designwechsel gilt sofort', as
 
 test('die Diagrammfarben stimmen mit den Zustands-Plaketten überein', () => {
   // Warum das festgehalten wird
-  // Ausführlich: docs/begruendungen/test/theme.test.js.md#tokens
   const tokens = fs.readFileSync(path.join(PUB, 'tokens.css'), 'utf8');
   const steinTeil = tokens.slice(tokens.indexOf('[data-theme="brick"]'));
   assert.ok(steinTeil, 'tokens.css fuehrt kein Stein-Design mehr');
@@ -312,7 +312,6 @@ test('die Diagrammfarben stimmen mit den Zustands-Plaketten überein', () => {
 
 test('nur das Boot-Skript kennt die Liste der Designs', () => {
   // Der Fehler, den diese Regel verhindert
-  // Ausführlich: docs/begruendungen/test/theme.test.js.md#designs
   const DESIGNS = [
     'classic',
     ...fs
@@ -356,7 +355,6 @@ test('nur das Boot-Skript kennt die Liste der Designs', () => {
 /**
  * Ein Design, dessen Reiterleiste umbrechen darf, verschmälert die Reiter
  * UNBEDINGT — nicht hinter einer Medienabfrage.
- * Ausführlich: docs/begruendungen/test/theme.test.js.md#wer-die-reiterleiste-umbrechen-laesst-ve
  *
  * ── Gegenprobe (durchgeführt, Ergebnis im Commit) ──────────────────────────
  *   Die zwei Zeilen in themes/brick.css wieder in @media gepackt → rot.

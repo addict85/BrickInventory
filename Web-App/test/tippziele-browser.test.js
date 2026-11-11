@@ -1,7 +1,6 @@
 /**
  * Am Telefon ist jedes Bedienelement mindestens 44 × 44 px gross — gemessen
  * im Browser, nicht im Quelltext gelesen.
- * Ausführlich: docs/begruendungen/test/tippziele-browser.test.js.md#kopf
  *
  * Gegenproben (am 27.10. gemessen):
  *   A  in mobile.css `.delbtn` wieder 36 px (29.10.; seitdem 44 px ohne ::after)

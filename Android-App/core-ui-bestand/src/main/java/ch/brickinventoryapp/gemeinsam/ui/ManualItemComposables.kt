@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.gemeinsam.ui
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.ui.graphics.luminance
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
@@ -52,7 +54,7 @@ import ch.brickinventoryapp.ui.components.mitSchrift
 @Composable
 fun AcquisitionSummarySection(
     acquisitions: List<KaufAnsicht>,
-    currency: String,
+    currency: Waehrung,
     onEditPrices: () -> Unit
 ) {
     // Bei grosser Schrift die Käufe UNTER die Bezeichnung: Neben ihr blieb für
@@ -109,7 +111,7 @@ fun AcquisitionSummarySection(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun KaufZeile(acq: KaufAnsicht, currency: String) {
+private fun KaufZeile(acq: KaufAnsicht, currency: Waehrung) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         val mitte = Modifier.align(Alignment.CenterVertically)
         Text(mengeManuell(acq.quantity), mitte.vorgelesenAls(stueckzahl(acq.quantity)),
@@ -137,16 +139,16 @@ private fun KaufZeile(acq: KaufAnsicht, currency: String) {
  * `condition` zurück.
  */
 @Composable
-fun ConditionBadges(conditions: List<String>, fallback: String? = null) {
-    val list = if (conditions.isNotEmpty()) conditions else listOf(fallback ?: "N")
+fun ConditionBadges(conditions: List<Zustand>, fallback: Zustand? = null) {
+    val list = if (conditions.isNotEmpty()) conditions else listOf(fallback ?: Zustand.NEU)
     Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
         list.forEach { ConditionBadge(it) }
     }
 }
 
 @Composable
-fun ConditionBadge(condition: String) {
-    val isUsed = condition == "U"
+fun ConditionBadge(condition: Zustand) {
+    val isUsed = condition == Zustand.GEBRAUCHT
     // Salbei nur im hellen Stein-Design: Im Dunkeln leuchtete die helle Pille auf der dunklen Karte.
     val isBrick = LocalIsBrickTheme.current && MaterialTheme.colorScheme.surface.luminance() > 0.5f
     val bgColor = when {
@@ -206,11 +208,9 @@ fun InfoPlakette(text: String, modifier: Modifier = Modifier, icon: androidx.com
     }
 }
 
-// Der frühere ManualItemDetailDialog steht hier nicht mehr: Die Detailansicht
-// manueller Teile und Minifiguren ist seit hardened-99 ein ganzer Screen
-// (ui/screens/ManualItemDetailScreen.kt), wie bei den Sets. Übrig bleiben hier
-// die Bausteine, die BEIDE Seiten benutzen — AcquisitionSummarySection,
-// ConditionBadge(s) und der Kaufpreis-Editor.
+// Hier stehen nur Bausteine, die Set-Detail und ManualItemDetailScreen beide benutzen
+// (AcquisitionSummarySection, ConditionBadge(s), Kaufpreis-Editor), damit beide Seiten
+// Kaufpreise gleich zeigen.
 
 /**
  * Der Fuss einer Kachel für einen manuell erfassten Eintrag: der Preis, wie auf
@@ -225,7 +225,7 @@ fun InfoPlakette(text: String, modifier: Modifier = Modifier, icon: androidx.com
  * @param waehrung Währungscode aus den Einstellungen
  */
 @Composable
-fun ManuelleKachelFuss(preis: Double?, waehrung: String) {
+fun ManuelleKachelFuss(preis: Double?, waehrung: Waehrung) {
     Text(
         if (preis != null) fmtMoney(preis, waehrung) else "—",
         style = MaterialTheme.typography.bodySmall,
@@ -249,8 +249,8 @@ fun ErfassungsFelder(
     onAnzahl: (String) -> Unit,
     preis: String,
     onPreis: (String) -> Unit,
-    zustand: String,
-    onZustand: (String) -> Unit,
+    zustand: Zustand,
+    onZustand: (Zustand) -> Unit,
     /**
      * Lagerort und sein Vorrat — hier, weil er zum selben Block gehört wie die übrigen
      * Erfassungsfelder.
@@ -295,11 +295,11 @@ fun ManuelleKachel(
     imageLoader: ImageLoader,
     name: String,
     menge: Int,
-    zustaende: List<String>,
-    zustand: String?,
+    zustaende: List<Zustand>,
+    zustand: Zustand?,
     besitzer: List<KontoAnsicht>,
     preis: Double?,
-    waehrung: String,
+    waehrung: Waehrung,
     onEdit: () -> Unit,
     farbe: Color? = null,
     farbname: String? = null,

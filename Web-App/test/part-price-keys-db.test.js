@@ -1,6 +1,5 @@
 /**
  * Der Marktpreis eines manuell erfassten Teils erreicht das Detailfenster.
- * Ausführlich: docs/begruendungen/test/part-price-keys-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,6 +1,6 @@
 Gegenprobe: „Teilen“ legt die Notfallcodes in die Zwischenablage statt in die Systemauswahl
-Modul: app
-Test: ch.brickinventoryapp.app.ZweiterFaktorMaskeTest
+Modul: feature-konto
+Test: ch.brickinventoryapp.konto.ZweiterFaktorMaskeTest
 Rot: die Notfallcodes lassen sich teilen
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt

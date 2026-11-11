@@ -5,12 +5,13 @@ import { blickfeldAus } from '../haushalt/haushalt';
 import type { Sicht } from '../haushalt/haushalt';
 import { nacharbeit } from '../auftraege/nacharbeit';
 import { addSet, sanitizeSetNumber, findSetInScope } from '../sets';
-import { loescheAlarm } from '../finanzen/preisalarm';
+import { loescheAlarm, alarmUebertragen } from '../finanzen/preisalarm';
 import * as V from '../infra/validate';
 import { fachfehler } from '../infra/fehlerTexte';
 import { geldEingabe } from '../infra/geld';
 import { nutzerStandardZustand, getSetting } from '../einstellungen/settings';
-import { meldeFehler, meldeUndLiefere, oeffentlicherFehler } from '../infra/fehler';
+import { meldeFehler, oeffentlicherFehler } from '../infra/fehler';
+import { Abstriche } from '../infra/ergebnis';
 import { fuerSet } from '../katalog/preisvergleich';
 import { resolveIfExists } from '../katalog/bilder/images';
 import { toCsv, csvZeilenAusAnfrage, parseCsvDate } from '../infra/csvExport';
@@ -27,13 +28,14 @@ export async function preiseBeiderZustaende(uid: number, setNumber: string) {
   const guideType = String(await getSetting(uid, 'price_guide_type', 'sold'));
   const ttlHours  = String(await getSetting(uid, 'price_cache_ttl', '24'));
   const current: Record<string, { condition: string; avg_price: unknown; min_price: unknown; max_price: unknown }> = {};
+  // „keiner“ nach einem Abruffehler ist nicht „BrickLink kennt keinen“.
+  const ab = new Abstriche();
   for (const c of ['N', 'U']) {
-    const pd = await fetchPrice(setNumber, c, guideType, currency, ttlHours)
-      .catch(meldeUndLiefere(`merkliste:preis ${setNumber} ${c}`, null));
+    const pd = await ab.oder(`marktpreis_${c}`, fetchPrice(setNumber, c, guideType, currency, ttlHours), null);
     // Ein Ersatzpreis des anderen Zustands stünde sonst als „Marktpreis (Neuware)“ da, die Liste sagt „keiner“.
     if (pd && !pd.is_fallback) current[c] = { condition: c, avg_price: pd.avg_price, min_price: pd.min_price, max_price: pd.max_price };
   }
-  return { currency, current };
+  return { currency, current, ...ab.angabe() };
 }
 
 export interface Merkposten {
@@ -42,8 +44,7 @@ export interface Merkposten {
   created_at: string;
   /** Im Kontenbaum sieht man fremde Merkposten mit. */
   user_id: number;
-  /** Im Zustand DIESES Merkpostens, aus dem Cache — null, solange keiner bekannt ist.
-   * Ausführlich: docs/begruendungen/src/merkliste/merkliste.ts.md#merkposten */
+  /** Im Zustand DIESES Merkpostens, aus dem Cache — null, solange keiner bekannt ist. */
   marktpreis: number | null;
   waehrung: string;
   /** Aus rb_sets, nicht mitgespeichert (siehe Migration 0021). */
@@ -52,14 +53,12 @@ export interface Merkposten {
   theme_id: number | null;
   num_parts: number | null;
   image_url: string | null;
-  /** Lokal statt CDN, weil die CSP fremde Bildquellen sperrt.
-   * Ausführlich: docs/begruendungen/src/merkliste/merkliste.ts.md#merkposten-2 */
+  /** Lokal statt CDN, weil die CSP fremde Bildquellen sperrt. */
   image_local: string | null;
   owned: boolean;
   /** Reist mit: Ein Alarm, den man nirgends mehr sieht, ist vergessen. */
   alarm: { richtung: string; schwelle: number; ausgeloest: boolean } | null;
-  /** Am Merkposten statt am Katalog: Der Knopf braucht nur die Setnummer.
-   * Ausführlich: docs/begruendungen/src/merkliste/merkliste.ts.md#merkposten-4 */
+  /** Am Merkposten statt am Katalog: Der Knopf braucht nur die Setnummer. */
   preisvergleich_url: string;
 }
 
@@ -90,7 +89,6 @@ export async function loescheMerkposten(userId: number, setNumber: string, condi
 }
 
 // UPDATE statt löschen und neu anlegen: Aufnahmedatum und Preisalarm bleiben.
-// Ausführlich: docs/begruendungen/src/merkliste/merkliste.ts.md#verschiebemerkposten
 export async function verschiebeMerkposten(
   vonId: number, setNumber: string, condition: unknown, zuId: number,
 ): Promise<{ verschoben: boolean; zusammengefuehrt: boolean }> {
@@ -110,7 +108,7 @@ export async function verschiebeMerkposten(
   const verschoben = (r.changes ?? 0) > 0;
   // Den Alarm NUR mitnehmen, wenn der Merkposten wirklich gewandert ist.
   if (verschoben) {
-    await repo.uebertrageAlarm(zuId, vonId, sn, c).catch((e: unknown) => meldeFehler('merkliste:alarm-umhaengen', e));
+    await alarmUebertragen(zuId, vonId, sn, c).catch((e: unknown) => meldeFehler('merkliste:alarm-umhaengen', e));
   }
   return { verschoben, zusammengefuehrt: false };
 }
@@ -124,8 +122,7 @@ export interface MerkFilter {
   sortierung?: unknown;
 }
 
-/** `userIds`: Die Merkliste folgt dem Kontenbaum wie alles andere.
- * Ausführlich: docs/begruendungen/src/merkliste/merkliste.ts.md#merkpostenvon */
+/** `userIds`: Die Merkliste folgt dem Kontenbaum wie alles andere. */
 export async function merkpostenVon(
   userIdsWahl: Sicht | number[], nurSet?: string, waehrung = 'EUR', filter?: MerkFilter,
 ): Promise<Merkposten[]> {
@@ -147,7 +144,7 @@ export async function merkpostenVon(
                  alarm_richtung: string | null; alarm_schwelle: string | number | null;
                  alarm_ausgeloest: unknown; marktpreis: string | number | null };
   // Das Bild hier bestellen: Der Proxy legt nur für Vorschauen eine Notiz an,
-  // das Detail fragt aber das volle Bild. Ausführlich: docs/begruendungen/src/merkliste/merkliste.ts.md#merkpostenvon-2
+  // das Detail fragt aber das volle Bild.
 
   return ((rows ?? []) as Zeile[]).map(({ alarm_richtung, alarm_schwelle, alarm_ausgeloest, ...r }) => {
     // Synchron und gecacht — kein Dateisystemzugriff je Zeile. Dieselbe Namensregel
@@ -174,8 +171,7 @@ export async function merkpostenVon(
   });
 }
 
-/** Über addSet(), die eine Wahrheit fürs Erfassen, statt eines eigenen INSERT.
- * Ausführlich: docs/begruendungen/src/merkliste/merkliste.ts.md#uebernimm */
+/** Über addSet(), die eine Wahrheit fürs Erfassen, statt eines eigenen INSERT. */
 export async function uebernimm(
   leserId: number, besitzerId: number, setNumber: string, condition: unknown,
   eingabe: { quantity?: unknown; purchase_price?: unknown; condition?: unknown;
@@ -207,8 +203,7 @@ export async function uebernimm(
   return ergebnis as { action: string; set_number: string };
 }
 
-/** Nur Konto, Set, Zustand und Datum: Alles andere leitet die Ansicht ab.
- * Ausführlich: docs/begruendungen/src/merkliste/merkliste.ts.md#buildmerklistecsv */
+/** Nur Konto, Set, Zustand und Datum: Alles andere leitet die Ansicht ab. */
 export async function buildMerklisteCsv(uid: number): Promise<string> {
   const rows = await repo.merklisteFuerExport(uid);
 

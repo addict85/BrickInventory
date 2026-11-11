@@ -3,19 +3,19 @@
 import type express from 'express';
 import path from 'path';
 import { fehlertext, oeffentlicherFehler } from '../../src/infra/fehler';
-import { fehlerAntwort, pfadParam } from '../../src/http/httpAntwort';
+import { fehlerAntwort, pfadParam, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
 import { householdMembers } from '../../src/haushalt/haushalt';
 import { lagerorte, legeOrtAn, benenneOrtUm, loescheOrt, lagerSchreibkonto, setzeVorgabe } from '../../src/bestand/lagerort';
 import { alleAlarme, ausgeloesteSeit } from '../../src/finanzen/preisalarm';
 import { csvEmpfang, uploadKontingentBytes, privaterOrdner, privaterEmpfang, kontingentReichtFuer, pruefeEmpfangeneDatei } from '../../src/http/dateiEmpfang';
 import { sendCsv, uebersprungenHinweis } from '../../src/infra/csvExport';
-import { sendeFehler, antwortSprache } from '../../src/infra/fehlerTexte';
+import { antwortSprache } from '../../src/infra/fehlerTexte';
 import * as sets from '../../src/sets';
 import { registerSse } from '../../src/http/sseRegistry';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/http/anmeldung';
-import { vertragsRouter } from '../../src/vertrag/pruefen';
-import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/vertrag';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/http/vertragsRouter';
 const router = vertragsRouter();
 
 // ── Feste Pfade VOR den Pfaden mit :setNumber ────────────────────────────────
@@ -25,8 +25,7 @@ router.get('/sets/info/:setNumber', requireToken, async (req: Anfrage<'GET /api/
   res.json(await sets.setInfoFuerKonto(req.apiUser.user_id, req.pfad.setNumber));
 });
 
-/** Nur das Blickfeld des fragenden Kontos (eigenes Konto oder Haushalt).
- * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-exists-setnumber */
+/** Nur das Blickfeld des fragenden Kontos (eigenes Konto oder Haushalt). */
 router.get('/sets/exists/:setNumber', requireToken, async (req: Anfrage<'GET /api/v1/sets/exists/:setNumber'>, res: Antwort<'GET /api/v1/sets/exists/:setNumber'>) => {
   const sn = req.pfad.setNumber;
   const treffer = await sets.findSetInScope(req.apiUser.user_id, sn);
@@ -48,8 +47,7 @@ router.put('/sets/:setNumber/storage', requireToken, async (req: Anfrage<'PUT /a
 });
 
 /** Ein Alarm gehört genau EINEM Konto: Wer eine Schwelle setzt, will selbst
- * benachrichtigt werden. Deshalb `user_id` statt scopeIds() — hier die Regel.
- * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-setnumber-alert */
+ * benachrichtigt werden. Deshalb `user_id` statt scopeIds() — hier die Regel. */
 router.get('/sets/:setNumber/alert', requireToken, async (req: Anfrage<'GET /api/v1/sets/:setNumber/alert'>, res: Antwort<'GET /api/v1/sets/:setNumber/alert'>) => {
   res.json({ success: true, alerts: await sets.setAlarmeLesen(req.apiUser.user_id, req.pfad.setNumber) });
 });
@@ -65,13 +63,12 @@ router.delete('/sets/:setNumber/alert', requireToken, async (req: Anfrage<'DELET
 });
 
 // Abholen statt Schieben; ohne Kontofilter, ein Alarm gehört einem Konto.
-// Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-alerts-pending
 router.get('/alerts/pending', requireToken, async (req: Anfrage<'GET /api/v1/alerts/pending'>, res: Antwort<'GET /api/v1/alerts/pending'>) => {
   const r = await ausgeloesteSeit(req.apiUser.user_id, req.abfrage.since);
   res.json({ success: true, alerts: r.alerts, now: r.now });
 });
 
-// Was gesetzt ist; ausgelöst: /alerts/pending. Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-alerts
+// Was gesetzt ist; ausgelöst: /alerts/pending.
 router.get('/alerts', requireToken, async (req: Anfrage<'GET /api/v1/alerts'>, res: Antwort<'GET /api/v1/alerts'>) => {
   res.json({ success: true, alerts: await alleAlarme(req.apiUser.user_id) });
 });
@@ -114,7 +111,7 @@ router.delete('/storage/locations/:id', requireToken, async (req: Anfrage<'DELET
   res.json({ success: true });
 });
 
-// Spannt Sets und Teile, gehört keiner Familie. Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-storage
+// Spannt Sets und Teile, gehört keiner Familie.
 router.get('/storage', requireToken, async (req: Anfrage<'GET /api/v1/storage'>, res: Antwort<'GET /api/v1/storage'>) => {
   const ids = sichtVon(req);
   res.json({ success: true, orte: await lagerorte(ids) });
@@ -130,7 +127,7 @@ router.get('/sets/:setNumber/minifigs-list', requireToken, async (req: Anfrage<'
 
 router.get('/sets', requireToken, async (req: Anfrage<'GET /api/v1/sets'>, res: Antwort<'GET /api/v1/sets'>) => {
   // Ohne page_size bleibt die Liste absichtlich unbegrenzt — für Skripte und
-  // ältere App-Stände. Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-r
+  // ältere App-Stände.
   const r = await sets.getSets(sichtVon(req), req.abfrage);
   res.json({ success: true, count: r.sets.length, total: r.total, sets: r.sets, ...(r.themes ? { themes: r.themes } : {}) });
 });
@@ -183,8 +180,7 @@ router.put('/sets/:setNumber', requireToken, async (req: Anfrage<'PUT /api/v1/se
   res.json({ success: true, ...(r || {}) });
 });
 
-/** Standardmässig im ganzen SCHREIB-Blickfeld.
- * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#delete-sets-setnumber */
+/** Standardmässig im ganzen SCHREIB-Blickfeld. */
 router.delete('/sets/:setNumber', requireToken, async (req: Anfrage<'DELETE /api/v1/sets/:setNumber'>, res: Antwort<'DELETE /api/v1/sets/:setNumber'>) => {
   const papierkorb = await sets.loescheSetFuer(sichtVon(req), req.pfad.setNumber);
   if (!papierkorb) return sendeFehler(req, res, 404, 'set_nicht_gefunden');

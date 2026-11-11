@@ -28,7 +28,7 @@ import ch.brickinventoryapp.testing.Quellen
  * landet dann als Text im Feld und faellt erst beim Umwandeln auf — still,
  * als Null.
  *
- * ── Gegenproben (durchgefuehrt, Lauf 306 vom 28.09.) ─────────────────────
+ * ── Gegenproben ─────────────────────
  *
  * Zwei Eingriffe in einen Wegwerf-Zweig, einer je Testmethode, beide Anker
  * vorher auf Eindeutigkeit geprueft:
@@ -54,7 +54,7 @@ import ch.brickinventoryapp.testing.Quellen
  * ihrer Stelle in NumericInputTest sagt, warum diese hier die schaerfere ist);
  * ihre Zeilennummer-Meldung ist hierher uebernommen.
  *
- * ── Nachgefahren mit drei isolierten Eingriffen (Lauf 311) ──────────────
+ * ── Nachgefahren mit drei isolierten Eingriffen ──────────────
  *
  * Danach je EIN Eingriff pro Regel, um die Zuordnung wirklich zu zeigen und
  * nicht bloss zu behaupten. GEMESSEN (506 tests completed, 3 failed):

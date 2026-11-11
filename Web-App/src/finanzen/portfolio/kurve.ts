@@ -1,10 +1,8 @@
-import { meldeUndLiefere } from '../../infra/fehler';
 import * as repo from '../repository/portfolioKurve';
 
 /** Ein Punkt der Wertkurve; fullDay ist der genaue Tag eines Monatspunkts. */
 export interface KurvenPunkt { day: string; fullDay: string; month?: string; total: number }
 // Aus dem globalen Preisverlauf, darum stimmt die Kurve auch rückwirkend.
-// Ausführlich: docs/begruendungen/src/finanzen/portfolio/kurve.ts.md#rekonstruierekurve
 export async function rekonstruiereKurve(opts: {
   db?: unknown;
   setNumbers: string[];
@@ -23,7 +21,6 @@ export async function rekonstruiereKurve(opts: {
   let rawPoints: KurvenPunkt[] = [];
 
 // Postgres rechnet, mit DERSELBEN Regel wie die Bewertung, nicht einer ähnlichen.
-// Ausführlich: docs/begruendungen/src/finanzen/portfolio/kurve.ts.md#abschnitt
 {
   const mengen = setNumbers.map(sn => setQty[sn] || 1);
   const hauptAbfrage = (bExpr: string) => repo.tageswerteAusVerlauf(currency, condition, setNumbers, mengen, dateFilter.replace(/recorded_at/g, 'ph.recorded_at'), bExpr);
@@ -45,7 +42,8 @@ export async function rekonstruiereKurve(opts: {
     const buckets: Record<string, { day: string; month: string; sets: Record<string, number> }> = {};
     for (const r of roh) {
       const k = r.day;
-      const b = buckets[k] ??= { day: r.day, month: r.month, sets: {} };
+      buckets[k] ??= { day: r.day, month: r.month, sets: {} };
+      const b = buckets[k];
       const p = Number(r.avg_price ?? 0) || Number(r.qty_avg_price ?? 0);
       if (p > 0) b.sets[r.set_number] = p;
     }
@@ -71,7 +69,7 @@ export async function rekonstruiereKurve(opts: {
   if (monatsAufloesung && erster) {
     const ersterTag = (rows[0] && 'first_day' in rows[0] && rows[0].first_day) || erster.fullDay;
     erster.fullDay = ersterTag;
-    const start = await repo.letzteWerteVorBeginn(currency, condition, setNumbers, mengen, ersterTag, dateFilter.replace(/recorded_at/g, 'ph.recorded_at')).catch(meldeUndLiefere('portfolio:kurve rechnen', []));
+    const start = await repo.letzteWerteVorBeginn(currency, condition, setNumbers, mengen, ersterTag, dateFilter.replace(/recorded_at/g, 'ph.recorded_at'));
     const wert = Number(start?.[0]?.total);
     if (Number.isFinite(wert) && wert > 0) erster.total = wert;
   }

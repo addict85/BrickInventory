@@ -1,6 +1,5 @@
 /**
  * Jeder Pfad, mit dem ein Test eine QUELLDATEI liest, muss auch dorthin zeigen.
- * Ausführlich: docs/begruendungen/test/eigenbruecken.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -9,7 +8,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 
-/** Zeilenweise Kommentarentfernung — siehe test/baumbruecken.test.js. */
+/** Zeilenweise Kommentarentfernung — siehe test/abgleich-baumbruecken.test.js. */
 function ohneKommentare(s) {
   const zeilen = [];
   let imBlock = false;
@@ -27,7 +26,6 @@ const QUELLE = /\.(ts|js|sql|html|json|yml|xml)$/;
 
 /**
  * Gibt es diese Datei — oder die Quelle, aus der sie gebaut wird?
- * Ausführlich: docs/begruendungen/test/eigenbruecken.test.js.md#existiertquelle
  */
 function existiertQuelle(rel) {
   if (fs.existsSync(path.join(ROOT, rel))) return true;
@@ -49,7 +47,6 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
 
   /**
    * Steht der Pfad in einer ABWESENHEITS-Zusicherung?
-   * Ausführlich: docs/begruendungen/test/eigenbruecken.test.js.md#istabwesenheitspruefung
    */
   const istAbwesenheitsPruefung = (src, bis) => /!\s*fs\.existsSync\($/.test(src.slice(0, bis).trimEnd());
 
@@ -99,7 +96,6 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
   // nimmt der Pruefung aber die Sicht. Ein paar Faelle sind legitim (ein Test,
   // der eine Liste von Dateien durchgeht) — die Zahl darf nur nicht wachsen,
   // ohne dass es jemand merkt. …
-  // Ausführlich: docs/begruendungen/test/eigenbruecken.test.js.md#stelle
   assert.ok(abwesend.length <= 3,
     `${abwesend.length} Abwesenheits-Zusicherungen (erlaubt: 3):\n  ` + abwesend.join('\n  '));
 
@@ -107,7 +103,6 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
   // Blick scheint. Fast alle sind SCHLEIFENVARIABLEN (`f`, `datei`, `rel`,
   // `ordner`) — Tests, die eine Liste von Dateien durchgehen. Das ist ein
   // gutes Muster; es auszuschreiben wuerde die Tests schlechter machen.
-  // Ausführlich: docs/begruendungen/test/eigenbruecken.test.js.md#stelle-2
   assert.ok(offen.length <= 76,
     `${offen.length} Pfade mit variablem Segment (gemessen waren es 76):\n  ` +
     offen.join('\n  ') + '\nWo es geht, gehoert der Pfad ausgeschrieben — ein ' +
@@ -116,7 +111,6 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
 
 /**
  * Wer die Bild-Warteschlange abarbeitet, leert sie vorher.
- * Ausführlich: docs/begruendungen/test/eigenbruecken.test.js.md#wer-die-bild-warteschlange-abarbeitet-le
  *
  * Gegenprobe (durchgefuehrt): den Aufruf aus image-throttle-db.test.js
  * entfernt → dieser Schritt wird rot und nennt die Datei.

@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.zustand.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Postenart
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.model.KEINE_FARBE
 
 /**
@@ -9,18 +11,18 @@ import ch.brickinventoryapp.model.data.model.KEINE_FARBE
  */
 interface KaeufeAktionen {
     fun loadAcquisitions(setNumber: String)
-    fun loadManualAcquisitions(type: String, id: String, colorId: Int = KEINE_FARBE)
-    fun updateAcquisition(setNumber: String, acqId: Int, purchasePrice: Double? = null, condition: String? = null,
+    fun loadManualAcquisitions(type: Postenart, id: String, colorId: Int = KEINE_FARBE)
+    fun updateAcquisition(setNumber: String, acqId: Int, purchasePrice: Double? = null, condition: Zustand? = null,
                           quantity: Int? = null, date: String? = null)
     fun deleteAcquisition(setNumber: String, acqId: Int)
     fun updateManualAcquisition(
-        type: String, id: String, colorId: Int, acqId: Int,
-        unitPrice: Double? = null, condition: String? = null, quantity: Int? = null, date: String? = null,
+        type: Postenart, id: String, colorId: Int, acqId: Int,
+        unitPrice: Double? = null, condition: Zustand? = null, quantity: Int? = null, date: String? = null,
     )
-    fun deleteManualAcquisition(type: String, id: String, colorId: Int, acqId: Int)
+    fun deleteManualAcquisition(type: Postenart, id: String, colorId: Int, acqId: Int)
     fun changeAcquisitionOwner(
-        type: String, id: String, colorId: Int, acqId: Int,
+        type: Postenart, id: String, colorId: Int, acqId: Int,
         toUserId: Int, onDone: (String?, Int, Int) -> Unit = { _, _, _ -> },
     )
-    fun setzeManuellenLagerort(type: String, id: String, farbe: Int, ort: String)
+    fun setzeManuellenLagerort(type: Postenart, id: String, farbe: Int, ort: String)
 }

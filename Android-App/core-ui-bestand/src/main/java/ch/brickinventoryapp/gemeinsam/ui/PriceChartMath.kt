@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.gemeinsam.ui
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.model.PreisDiagrammAnsicht
 import ch.brickinventoryapp.ui.util.appNumberLocale
 import ch.brickinventoryapp.model.util.fmtDatum
@@ -14,8 +15,8 @@ import ch.brickinventoryapp.model.util.fmtDatum
 /** Ein gezeichneter Punkt: Tag als Zahl (Tage seit 1970) und Preis. */
 data class ChartPointXY(val day: Long, val value: Double)
 
-/** Eine Linie: Zustand ('N'/'U') und ihre echten Punkte. */
-data class ChartLine(val condition: String, val points: List<ChartPointXY>)
+/** Eine Linie: ihr Zustand und ihre echten Punkte. */
+data class ChartLine(val condition: Zustand, val points: List<ChartPointXY>)
 
 /** Achsenbereich für das Zeichnen. */
 data class ChartBounds(
@@ -34,7 +35,7 @@ data class ChartBounds(
 
 /** Was TalkBack je Linie sagt: Zeitraum, Anfangs- und Endwert, Tief und Hoch. */
 data class LinienZusammenfassung(
-    val zustand: String,
+    val zustand: Zustand,
     val von: String,
     val bis: String,
     val anfang: Double,
@@ -90,7 +91,7 @@ object PriceChartMath {
             val pts = s.values.drop(start)
                 .filter { it.y > 0.0 }
                 .mapNotNull { p -> dayNumber(p.x)?.let { ChartPointXY(it, p.y) } }
-            if (pts.isEmpty()) null else ChartLine(s.name, pts)
+            if (pts.isEmpty()) null else ChartLine(Zustand.aus(s.name) ?: Zustand.NEU, pts)
         }
     }
 

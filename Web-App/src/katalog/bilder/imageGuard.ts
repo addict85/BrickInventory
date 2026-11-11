@@ -1,5 +1,5 @@
 /** Jimp dekodiert ohne Grenze; ein kleines Bild mit riesigen Abmessungen wäre
- * eine Dekompressionsbombe. Ausführlich: docs/begruendungen/src/katalog/bilder/imageGuard.ts.md#abschnitt */
+ * eine Dekompressionsbombe. */
 import { logAndContinue } from '../../infra/fehler';
 import fs from 'fs';
 
@@ -8,8 +8,7 @@ export const MAX_PIXELS = 40_000_000;
 
 const HEADER_BYTES = 65536;
 
-/** Ohne die Bilddaten zu dekodieren — genau das soll ja verhindert werden.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/imageGuard.ts.md#readdimensions */
+/** Ohne die Bilddaten zu dekodieren — genau das soll ja verhindert werden. */
 export function readDimensions(buf: Buffer) {
   // PNG: Breite/Höhe als 32-Bit-Big-Endian an Offset 16 bzw. 20.
   if (buf.length >= 24 && buf.readUInt32BE(0) === 0x89504e47) {

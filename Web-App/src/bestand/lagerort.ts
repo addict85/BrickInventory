@@ -1,7 +1,5 @@
 /** Der Lagerort hängt an Sets, Teilen und Figuren; setzen, auflisten und
- * räumen stehen deshalb einmal hier statt je Route.
- * Ausführlich: docs/begruendungen/src/bestand/lagerort.ts.md#abschnitt */
-import { meldeUndLiefere } from '../infra/fehler';
+ * räumen stehen deshalb einmal hier statt je Route. */
 import * as db from '../../db/database';
 import * as orte from './repository/lagerort';
 import type { LagerTabelle } from './repository/lagerort';
@@ -54,8 +52,7 @@ function nameOderFehler(v: unknown): string {
   return s;
 }
 
-/** Schnittmenge statt Absage; ohne Ansichtsfilter, denn die Frage ist „darf ich?“.
- * Ausführlich: docs/begruendungen/src/bestand/lagerort.ts.md#lagerkonten */
+/** Schnittmenge statt Absage; ohne Ansichtsfilter, denn die Frage ist „darf ich?“. */
 export async function lagerKonten(nutzer: number, wunsch: string | number | undefined, schreiben: boolean): Promise<number[]> {
   const gewuenscht = String(wunsch ?? '').split(',').map(x => parseInt(x.trim(), 10)).filter(Number.isFinite);
   if (!gewuenscht.length) return [nutzer];
@@ -75,8 +72,7 @@ export async function orteFuer(nutzer: number, wunsch: string | undefined): Prom
   return orteVon(await lagerKonten(nutzer, wunsch, false));
 }
 
-/** Wer wessen Liste sehen darf, entscheidet der Haushalt; die IDs kommen mit.
- * Ausführlich: docs/begruendungen/src/bestand/lagerort.ts.md#ortevon */
+/** Wer wessen Liste sehen darf, entscheidet der Haushalt; die IDs kommen mit. */
 export async function orteVon(userIds: number[]): Promise<Lagerort[]> {
   const rows = await orte.orteDerKonten(userIds);
   type Zeile = { id: string | number; user_id: string | number; name: string };
@@ -85,8 +81,7 @@ export async function orteVon(userIds: number[]): Promise<Lagerort[]> {
   }));
 }
 
-/** Kein Fehler, wenn es ihn gibt: Beim Setzen eines Lagerorts wäre die Absage Unfug.
- * Ausführlich: docs/begruendungen/src/bestand/lagerort.ts.md#legeortan */
+/** Kein Fehler, wenn es ihn gibt: Beim Setzen eines Lagerorts wäre die Absage Unfug. */
 export async function legeOrtAn(userId: number, name: unknown):
   Promise<{ ort: Lagerort; war_neu: boolean }> {
   const n = nameOderFehler(name);
@@ -125,8 +120,7 @@ export async function loescheOrt(userId: number, id: number): Promise<void> {
   await orte.entferneOrt(id, userId);
 }
 
-/** EINE Abfrage über alle Tabellen, damit nicht jede Oberfläche selbst zusammenführt.
- * Ausführlich: docs/begruendungen/src/bestand/lagerort.ts.md#lagerorte */
+/** EINE Abfrage über alle Tabellen, damit nicht jede Oberfläche selbst zusammenführt. */
 export async function lagerorte(blickfeldWahl: Sicht | BlickfeldEingabe) {
   const blickfeld = await blickfeldAus(blickfeldWahl);
   const uids = asIds(blickfeld);
@@ -144,22 +138,19 @@ export async function lagerorte(blickfeldWahl: Sicht | BlickfeldEingabe) {
   }));
 }
 
-/** Für die Vorgabe zählt die ID: Ein umbenannter Ort bleibt die Vorgabe.
- * Ausführlich: docs/begruendungen/src/bestand/lagerort.ts.md#vorgabe-schluessel */
+/** Für die Vorgabe zählt die ID: Ein umbenannter Ort bleibt die Vorgabe. */
 export const VORGABE_SCHLUESSEL = 'default_storage_id';
 
 /** Über einen JOIN auf den Vorrat: Eine Vorgabe, deren Ort gelöscht wurde,
  * ist keine, und eine fremde ID gilt nicht. */
 export async function vorgabeVon(userId: number): Promise<Lagerort | null> {
-  const row = await orte.vorgabeOrt(userId, VORGABE_SCHLUESSEL)
-    .catch(meldeUndLiefere('lagerort:row', null));
+  const row = await orte.vorgabeOrt(userId, VORGABE_SCHLUESSEL);
   if (!row) return null;
   return { id: parseInt(String(row.id)), user_id: parseInt(String(row.user_id)),
            name: row.name };
 }
 
-/** Ohne mitgegebenen Ort gilt die Vorgabe — für jeden Erfassungsweg.
- * Ausführlich: docs/begruendungen/src/bestand/lagerort.ts.md#ortfuerneuerfassung */
+/** Ohne mitgegebenen Ort gilt die Vorgabe — für jeden Erfassungsweg. */
 export async function ortFuerNeuerfassung(
   userId: number, mitgegeben: unknown,
 ): Promise<string | null> {

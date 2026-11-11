@@ -1,7 +1,6 @@
 /**
  * Finanzen: Ein gebrauchtes Set ohne Gebraucht-Preis bekommt den Preis für
  * „Neu" — auch wenn der nur noch alt im Cache liegt.
- * Ausführlich: docs/begruendungen/test/preis-rueckfall-db.test.js.md#kopf
  *
  * Gegenproben (am 25.10. gemessen):
  *   A  der Abruf des anderen Zustands im Null-Zweig entfernt (der Stand vor
@@ -33,7 +32,7 @@ const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
-const { haeltSet } = require('./helpers/bestand');
+const { haeltSet, katalogSet } = require('./helpers/bestand');
 
 // BrickLink nachstellen — wie in preis-schreibweg-db: esbuild exportiert über
 // Getter, also den Eintrag im require-Zwischenspeicher ersetzen.
@@ -67,7 +66,7 @@ async function konto(name, set) {
   // Die Währung ausdrücklich: Ohne eigene Einstellung gälte die globale Vorgabe.
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')
                 ON CONFLICT (user_id, key) DO UPDATE SET value = 'EUR'`, [uid]);
-  await db.run(`INSERT INTO set_catalog (set_number, name, year) VALUES ($1, 'Rückfallprobe', 2026) ON CONFLICT DO NOTHING`, [set]);
+  await katalogSet(db, set, { name: 'Rückfallprobe', year: 2026 });
   await haeltSet(db, uid, set, 1, { preis: 119, zustand: 'U' });
   return uid;
 }

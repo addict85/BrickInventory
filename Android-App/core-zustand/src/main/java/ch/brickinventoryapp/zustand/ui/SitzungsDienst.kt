@@ -9,7 +9,7 @@ import ch.brickinventoryapp.data.ZweiterFaktorPflicht
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
-import ch.brickinventoryapp.data.di.ApplicationScope
+import ch.brickinventoryapp.model.koroutinen.ApplicationScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.model.ui.model.alsAnsicht
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
@@ -195,7 +195,7 @@ class SitzungsDienst @Inject constructor(
     private suspend fun ladeDesign() {
         if (prefs.serverUrlJetzt().isBlank()) return
         val r = konto.getAppTheme()
-        if (r is Ergebnis.Success && r.data.success) sitzung.setzeDesign(r.data.theme)
+        if (r is Ergebnis.Success && r.data.success) r.data.theme?.let(sitzung::setzeDesign)
     }
 
     /** Ohne Zeitlimit: Der erste Start des Servers kann viele Minuten dauern. */

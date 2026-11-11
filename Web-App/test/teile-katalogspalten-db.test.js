@@ -2,7 +2,6 @@
  * Seit db/basis.sql gibt es den Stand VOR dieser Migration nicht mehr: Die
  * Fälle zu Riegel, Nachtrag und Zwischenstand sind entfallen. Geprüft werden
  * der Endstand und die Lesewege.
- * Ausführlich: docs/begruendungen/test/teile-katalogspalten-db.test.js.md#kopf
  *
  *      Gegenprobe: ohne Riegel läuft dieselbe Lage durch und der Name ist weg.
  *   3. Die Teileliste liefert Name, Farbe, Bild und Ersatzteilkennzeichen
@@ -15,14 +14,11 @@
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const path   = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
+const { haeltFigur, haeltSet, haeltTeil, katalogSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 // Dieselbe Begruendung wie in test/sets-ohne-kaufpreisspalte-db.test.js: Diese
@@ -55,8 +51,6 @@ const dbDa = async (t) => {
   }
 };
 
-const MIG_DIR = path.join(ROOT, 'db/migrations');
-const DATEI   = path.join(MIG_DIR, '0034-teile-und-minifiguren-stammdaten-im-katalog.sql');
 
 test('nach der ganzen Kette tragen parts und minifigs nur noch den Bestand',
   { concurrency: 1 }, async (t) => {
@@ -135,7 +129,7 @@ test('die Teileliste liefert Beschreibung und Lagerort aus den Katalogen',
   const uid = u.id;
 
   // Ein Set mit zwei Teilen: eines Pflichtteil, eines Ersatzteil.
-  await db.run(`INSERT INTO set_catalog (set_number,name) VALUES ('75192-1','Falcon')`);
+  await katalogSet(db, '75192-1', { name: 'Falcon' });
   await haeltSet(db, uid, '75192-1', 2);
   await db.run(`INSERT INTO set_teile (set_number,part_number,color_id,is_spare,quantity)
     VALUES ('75192-1','3001',4,false,6), ('75192-1','3002',1,true,2)`);
@@ -184,7 +178,6 @@ test('die Teileliste liefert Beschreibung und Lagerort aus den Katalogen',
     'Der Farbfilter greift nicht über part_color_catalog');
 
   // Der Lagerortfilter — und seine ZAEHLUNG
-  // Ausführlich: docs/begruendungen/test/teile-katalogspalten-db.test.js.md#inkiste
   const inKiste = await handlers.getParts(uid, { exclude_manual: '1', storage: 'Kiste 3' });
   assert.deepEqual(inKiste.parts.map(p => String(p.part_number)), ['3001'],
     'Der Lagerortfilter liefert die falschen Teile');
@@ -213,7 +206,7 @@ test('die Figurenliste liefert Name und Bild aus minifigs_catalog',
   const u = await db.get(
     `INSERT INTO users (username,password_hash) VALUES ('figleser','x') RETURNING id`);
   const uid = u.id;
-  await db.run(`INSERT INTO set_catalog (set_number,name) VALUES ('75192-1','Falcon')`);
+  await katalogSet(db, '75192-1', { name: 'Falcon' });
   await haeltSet(db, uid, '75192-1', 3);
   await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name,image_url)
     VALUES ('fig-000123','Chewbacca','http://cdn/chewie.png')`);

@@ -19,18 +19,18 @@ import ch.brickinventoryapp.sammlung.ui.Pruefphase
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * „Wird geprüft“ — die Anzeige zwischen Scan und Zwischendialog. Ein Dialog statt
- * einer Snackbar, weil eine Snackbar:
- * Ausführlich: docs/begruendungen/feature-sammlung/sammlung/ui/dialogs/SetPruefungDialog.kt.md#setpruefungroute
+ * „Wird geprüft“ — die Anzeige zwischen Scan und Zwischendialog. Ein Dialog statt einer Snackbar:
+ * Die verschwände, während die Prüfung noch läuft, und hielte nichts an — man könnte schon das
+ * nächste Set scannen.
  */
 @Composable
-fun SetPruefungRoute(vm: ErfassungViewModel) {
+internal fun SetPruefungRoute(vm: ErfassungViewModel) {
     val erfassung by vm.erfassungState.collectAsStateWithLifecycle()
     SetPruefungDialog(erfassung, vm)
 }
 
 @Composable
-fun SetPruefungDialog(erfassung: ErfassungUiState, aktionen: ErfassungAktionen) {
+internal fun SetPruefungDialog(erfassung: ErfassungUiState, aktionen: ErfassungAktionen) {
     val schritt = erfassung.pruefung ?: return
 
     AlertDialog(

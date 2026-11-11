@@ -1,6 +1,6 @@
 /** Eine BrickLink-Wanted-Liste importieren: lesen (wantedParser), auflösen
  * (wantedAufloesung), schreiben (wantedSchreiber). Die Datei trägt BL-Nummern,
- * der Bestand führt RB-Nummern. Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#abschnitt */
+ * der Bestand führt RB-Nummern. */
 import { nutzerStandardZustand } from '../einstellungen/settings';
 import { leseWantedListe } from './wantedParser';
 import type { WantedArt, WantedPosten } from './wantedParser';
@@ -35,7 +35,7 @@ export interface WantedBericht {
   /** Die Zahlen oben gelten für das, was bis zum Abbruch geschah. */
   abgebrochen?: boolean;
   /** Damit die Vorschau zeigt, was angelegt WÜRDE, auch wenn die Datei keinen
-   * Zustand nennt. Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#wantedbericht */
+   * Zustand nennt. */
   standardZustand: 'N' | 'U';
   posten: PostenErgebnis[];
 }
@@ -69,17 +69,15 @@ export interface WantedOptionen extends SchreibOptionen {
   vorschau?: boolean;
   ueberRebrickable?: boolean;
   korrekturen?: Korrektur[];
-  /** Wird SYNCHRON gerufen und darf nichts werfen.
-   * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#importierewantedliste-2 */
+  /** Wird SYNCHRON gerufen und darf nichts werfen. */
   fortschritt?: (stand: WantedFortschritt) => void;
   /** Der Balken in der Oberfläche trägt ein Kreuz; ohne diese Frage hätte er einen
-   * Abbrechen-Knopf, der lügt.
-   * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#importierewantedliste-3 */
+   * Abbrechen-Knopf, der lügt. */
   abbruch?: () => Promise<boolean>;
 }
 
 /** Vorschau und Ernstfall gehen denselben Weg, damit die Vorschau nichts
- * verspricht, was der Import nicht tut. Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#abschnitt-3 */
+ * verspricht, was der Import nicht tut. */
 export async function importiereWantedListe(
   uid: number,
   xml: string,
@@ -152,8 +150,7 @@ export async function importiereWantedListe(
 }
 
 /** Auch nach dem Schreiben: Der Dialog zeichnet dieselbe Tabelle mit der
- * Antwort neu und zeigte sonst leere Zellen.
- * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#importierewantedliste-beschreibung */
+ * Antwort neu und zeigte sonst leere Zellen. */
 async function beschreibeZeilen(zeilen: PostenErgebnis[], auf: Aufloesung[]): Promise<void> {
   const beschreibung = await beschreibePosten(auf);
   zeilen.forEach((zeile, i) => {

@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.model.data.model
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -49,7 +51,7 @@ data class HouseholdStatusResponse(
     val success: Boolean = false,
     @SerialName("is_main") val isMain: Boolean = false,
     @SerialName("is_sub")  val isSub: Boolean = false,
-    val currency: String = "",
+    val currency: Waehrung = Waehrung.KEINE,
     @SerialName("linked_to") val linkedTo: KontoName? = null,
     /** Alle Elternkonten; ein älterer Server schickt nur [linkedTo]. */
     val parents: List<KontoName> = emptyList(),
@@ -109,7 +111,7 @@ data class Acquisition(
     val quantity: Int,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     @SerialName("unit_price") val unitPrice: Double? = null, // for parts/figs
-    val condition: String = "N", // "N" = Neu, "U" = Gebraucht
+    val condition: Zustand = Zustand.NEU,
     @SerialName("created_at") val createdAt: String? = null,
     /**
      * Eigentümer dieser Zeile — im Haushalt können die Kaufpreise eines Sets mehreren
@@ -120,7 +122,7 @@ data class Acquisition(
     /** Ein eingesetzter Marktpreis, kein bezahlter Betrag. */
     @SerialName("price_estimated") val priceEstimated: Boolean = false,
     /** Währung, in der der Preis erfasst wurde. */
-    val currency: String? = null,
+    val currency: Waehrung? = null,
 ) {
     // Effective price: whichever field is set (sets use purchase_price, parts/figs use unit_price)
     val effectivePrice: Double? get() = purchasePrice ?: unitPrice
@@ -154,14 +156,14 @@ data class AcquisitionsResponse(
 @Serializable
 data class UpdateAcquisitionRequest(
     /**
-     * Der Kaufpreis einer Erfassungszeile — bei Sets. Der Server liest das Preisfeld
-     * unter dem Namen der Spalte (`req.body[cfg.priceCol]`):
-     * Ausführlich: docs/begruendungen/core-model/model/data/model/HaushaltModels.kt.md#z156
+     * Der Kaufpreis einer Erfassungszeile. Der Server liest das Preisfeld unter dem Namen der
+     * Spalte (`req.body[cfg.priceCol]`): purchase_price bei Sets, unit_price bei Teilen und
+     * Figuren; unter dem falschen Namen bliebe der Preis still unverändert.
      */
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     /** Der Kaufpreis je Stück — bei TEILEN und MINIFIGUREN. Siehe oben. */
     @SerialName("unit_price") val unitPrice: Double? = null,
-    val condition: String? = null,
+    val condition: Zustand? = null,
     val quantity: Int? = null,
     val date: String? = null,
     /**
@@ -169,14 +171,13 @@ data class UpdateAcquisitionRequest(
      * behandelt das Feld vor allen anderen und beendet damit die Anfrage: Preis oder
      * Datum im selben Aufruf hiesse, die Zeile zweimal zu suchen, beim Empfänger
      * womöglich schon verschmolzen.
-     * Ausführlich: docs/begruendungen/core-model/model/data/model/HaushaltModels.kt.md#z174
      */
     @SerialName("owner_user_id") val ownerUserId: Int? = null
 ) {
     companion object {
         /** Für Set-Erfassungen: Preis geht als `purchase_price`. */
         fun fuerSet(
-            preis: Double? = null, condition: String? = null, quantity: Int? = null,
+            preis: Double? = null, condition: Zustand? = null, quantity: Int? = null,
             date: String? = null, ownerUserId: Int? = null,
         ) = UpdateAcquisitionRequest(
             purchasePrice = preis, condition = condition, quantity = quantity,
@@ -184,7 +185,7 @@ data class UpdateAcquisitionRequest(
 
         /** Für Teile und Minifiguren: Preis geht als `unit_price`. */
         fun fuerStueck(
-            preis: Double? = null, condition: String? = null, quantity: Int? = null,
+            preis: Double? = null, condition: Zustand? = null, quantity: Int? = null,
             date: String? = null, ownerUserId: Int? = null,
         ) = UpdateAcquisitionRequest(
             unitPrice = preis, condition = condition, quantity = quantity,

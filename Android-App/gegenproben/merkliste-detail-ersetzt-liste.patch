@@ -6,8 +6,8 @@ Rot: Tablet zeigt Merkliste und Detail nebeneinander
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt
-@@ -336,7 +336,7 @@ fun MerklisteUndDetail(
-             onOeffnen = { sn, z -> if (nebeneinander) offen = listOf(sn, z) else onOeffnenEinzeln(sn, z) },
+@@ -312,7 +312,7 @@ fun MerklisteUndDetail(
+             onOeffnen = { sn, z -> if (nebeneinander) offen = listOf(sn, z.kennung) else onOeffnenEinzeln(sn, z) },
              gewaehlt = auswahl.takeIf { nebeneinander })
      }
 -    if (nebeneinander && auswahl != null) {

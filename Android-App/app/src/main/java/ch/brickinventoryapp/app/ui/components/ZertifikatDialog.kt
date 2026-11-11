@@ -35,7 +35,6 @@ import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 /**
  * Die Frage nach einem Zertifikat, das die App nicht von selbst annimmt. Der Fingerabdruck
  * steht in derselben Schreibweise da wie in der Webapp, damit man ihn vergleichen kann.
- * Ausführlich: docs/begruendungen/app/app/ui/components/ZertifikatDialog.kt.md#zertifikatdialog
  */
 @Composable
 fun ZertifikatDialog(

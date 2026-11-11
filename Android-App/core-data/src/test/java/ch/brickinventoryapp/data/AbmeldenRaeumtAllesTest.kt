@@ -12,7 +12,7 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.cache.VorschauSpeicher
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.offline.Faecher
-import ch.brickinventoryapp.offline.Offlineablage
+import ch.brickinventoryapp.testing.Testablage
 import ch.brickinventoryapp.model.data.model.SetItem
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.data.repository.KontoDatenLoeschung
@@ -130,7 +130,7 @@ class AbmeldenRaeumtAllesTest {
         val cache = ResponseCache(chiffre = AblageChiffre { ablage.fuer("antworten") }) { antwortOrdner }
         cache.put("test", "sets", SetItem.serializer(), SetItem(setNumber = "10294-1"))
         val api = TestApi.fuer(server)
-        val offline = Offlineablage.fluechtig()
+        val offline = Testablage()
         offline.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "10294-1")))
         offline.puffere(Bearbeitung.MerkpostenLoeschen("10294-1", "N", 1))
         val vorschau = VorschauSpeicher({ File(ctx.filesDir, "vorschau") }, AblageChiffre { ablage.fuer("vorschau") })

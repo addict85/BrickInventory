@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.zustand.ui
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.PasswortPflicht
 import ch.brickinventoryapp.data.ZweiterFaktorPflicht
@@ -16,7 +15,7 @@ import ch.brickinventoryapp.model.ui.ScrollMemory
 /**
  * Was MainActivity zeigt: Sitzung, Snackbar, die Pflichtmasken und das Ziel einer
  * angetippten Meldung. Die Arbeit der Sitzung macht der [SitzungsRepository]; er
- * lebt im Bereich der App, damit kein Bildschirm dieses ViewModel dafür braucht.
+ * lebt im Bereich der App und startet mit ihr (BrickInventoryApp), nicht mit diesem ViewModel.
  */
 @HiltViewModel
 class AppViewModel @Inject constructor(
@@ -30,16 +29,12 @@ class AppViewModel @Inject constructor(
     zweiterFaktorPflicht: ZweiterFaktorPflicht,
 ) : ViewModel() {
 
-    init {
-        sitzungsDienst.starte()
-    }
-
     val state: StateFlow<AppUiState> = sitzung.state
 
     val snackbar = meldungen.meldung
 
     /** Offline gespeicherte Änderungen, die noch zum Server müssen — für die Leiste im Gerüst. */
-    val offeneAenderungen: StateFlow<Int> = ausgangsmelder.starte(viewModelScope)
+    val offeneAenderungen: StateFlow<Int> = ausgangsmelder.offene
     fun clearSnackbar() { meldungen.quittiere() }
 
     /** Mit Startpasswort zeigt MainActivity statt der App die Maske zum Ersetzen. */

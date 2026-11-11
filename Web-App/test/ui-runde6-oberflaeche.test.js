@@ -3,7 +3,6 @@
  * (mit styles.css, wo es um Sichtbarkeit geht):
  *   - Gutschein-Zeile: „kein PDF“ steht sichtbar da, Löschen ist ein Knopf
  *     wie seine Nachbarn mit Namen; ohne Gutscheine keine Summe, kein …
- * Ausführlich: docs/begruendungen/test/ui-runde6-oberflaeche.test.js.md#kopf
  *
  * Gegenproben (02.11.2026 gemessen, je einzeln):
  *   A  voucher-nopdf wieder nur „—“ mit .vh-Text → rot: „Gutscheine …“

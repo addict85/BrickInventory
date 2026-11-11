@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.model.data.model
 
+import ch.brickinventoryapp.model.fach.Laufstatus
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
@@ -14,7 +17,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class CsvImportStatus(
     val success: Boolean = false,
-    val status: String? = null,   // "running", "done", "cancelled"
+    val status: Laufstatus? = null,
     val total: Int? = null,
     val done: Int? = null,
     val current: String? = null,
@@ -39,7 +42,7 @@ data class SetItem(
     // Kein `purchase_price`: Der Server führt den Kaufpreis nur in den Erfassungen und
     // liefert ihn hier als `avg_purchase_price` und `max_purchase_price`. Ein immer
     // leeres Feld als Rückfall ergäbe eine stille Null.
-    val condition: String? = null, // "N" = New/Neu, "U" = Used/Gebraucht
+    val condition: Zustand? = null,
     /**
      * Lagerort. Im Haushalt können es mehrere sein (zwei Kinder, zwei Kisten); der
      * Server fasst sie zu einem Text zusammen — die Oberfläche zeigt ihn, sie rechnet
@@ -52,7 +55,7 @@ data class SetItem(
      * gebrauchten. Der Server entscheidet (conditionsFromAcquisitions), hier wird
      * nichts nachgerechnet.
      */
-    val conditions: List<String> = emptyList(),
+    val conditions: List<Zustand> = emptyList(),
     /**
      * Besitzer im Haushalt — nur bei mehreren Konten im Blickfeld. Im Einzelkonto wäre
      * es Rauschen; im Haushalt verschiebt man ohne sie das falsche Exemplar.
@@ -142,7 +145,7 @@ data class AddSetRequest(
     @SerialName("set_number") val setNumber: String,
     val quantity: Int = 1,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
-    val condition: String? = null, // "N" = New/Neu, "U" = Used/Gebraucht
+    val condition: Zustand? = null,
     /**
      * Zielkonto im Haushalt — null = eigenes Konto (Verhalten wie bisher).
      * Ob es erlaubt ist, prüft der Server (canWriteFor), nicht die App.
@@ -181,7 +184,7 @@ data class UpdateManualItemRequest(
     val quantity: Int,
     @SerialName("unit_price") val unitPrice: Double? = null,
     @SerialName("bl_fig_number") val blFigNumber: String? = null,
-    val condition: String? = null, // "N" = New/Neu, "U" = Used/Gebraucht
+    val condition: Zustand? = null,
     /**
      * Der Schritt zur neuen Menge, wenn die bisherige bekannt war. Steht neben
      * [quantity]: Ein Server, der das Feld kennt, zählt damit wie bei den Sets;
@@ -209,7 +212,7 @@ data class UpdateQuantityRequest(
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val condition: String? = null // "N" = New/Neu, "U" = Used/Gebraucht
+    val condition: Zustand? = null
 )
 
 /**
@@ -276,13 +279,13 @@ data class GenericResponse(
 @Serializable
 data class SetAggregate(
     @SerialName("set_number") val setNumber: String = "",
-    val condition: String? = null,
+    val condition: Zustand? = null,
     @SerialName("acq_count") val acqCount: Int? = null,
     @SerialName("used_count") val usedCount: Int? = null,
     // Ohne diese beiden Felder verlöre die Kachel nach dem Speichern die
     // zweite Plakette und den gewichteten Kaufpreis bis zum nächsten
     // vollständigen Laden — genau der Grund, aus dem es das Aggregat gibt.
-    val conditions: List<String> = emptyList(),
+    val conditions: List<Zustand> = emptyList(),
     @SerialName("max_purchase_price") val maxPurchasePrice: Double? = null,
     @SerialName("avg_purchase_price") val avgPurchasePrice: Double? = null
 )
@@ -330,12 +333,12 @@ enum class CsvArt { SETS, TEILE, MINIFIGUREN, MERKLISTE, PREISALARME }
 @Serializable
 data class Preisalarm(
     @SerialName("set_number") val setNumber: String = "",
-    /** "N" = neu, "U" = gebraucht. Neu und gebraucht liegen oft um ein Vielfaches auseinander. */
-    val condition: String = "N",
+    /** Neu und gebraucht liegen oft um ein Vielfaches auseinander. */
+    val condition: Zustand = Zustand.NEU,
     /** "unter" oder "ueber". */
     val richtung: String = "unter",
     val schwelle: Double = 0.0,
-    @SerialName("currency_code") val currencyCode: String = "",
+    @SerialName("currency_code") val currencyCode: Waehrung = Waehrung.KEINE,
     /**
      * Schon gemeldet? Der Alarm meldet den Übergang, nicht den Zustand; erst wenn der
      * Preis zurückkehrt, wird der Merker gelöscht.
@@ -370,7 +373,7 @@ data class Preisalarm(
 data class PreisalarmRequest(
     val richtung: String,
     val schwelle: Double,
-    val condition: String = "N",
+    val condition: Zustand = Zustand.NEU,
 )
 
 @Serializable
@@ -409,7 +412,7 @@ data class PendingAlertsResponse(
 @Serializable
 data class Merkposten(
     @SerialName("set_number") val setNumber: String = "",
-    val condition: String = "N",
+    val condition: Zustand = Zustand.NEU,
     @SerialName("created_at") val createdAt: String? = null,
     /** Wem der Merkposten gehoert — im Kontenbaum sieht man fremde mit. */
     @SerialName("user_id") val userId: Int = 0,
@@ -429,7 +432,7 @@ data class Merkposten(
      */
     val marktpreis: Double? = null,
     /** Die Waehrung, in der [marktpreis] steht. */
-    val waehrung: String = "EUR",
+    val waehrung: Waehrung = Waehrung.EUR,
     val owned: Boolean = false,
     /**
      * Der Preisalarm zu genau diesem Merkposten oder null. Er reist mit, damit ein
@@ -485,7 +488,7 @@ data class MerkpostenInhaberAntwort(
 @Serializable
 data class MerkpostenRequest(
     @SerialName("set_number") val setNumber: String,
-    val condition: String = "N",
+    val condition: Zustand = Zustand.NEU,
     @SerialName("owner_user_id") val ownerUserId: Int? = null,
 )
 
@@ -523,7 +526,7 @@ data class MerkpostenUebernahmeRequest(
      * gesucht und neu gefunden hat, erfasst neu, erledigt ist trotzdem der gebrauchte
      * Merkposten. null = wie der Merkposten.
      */
-    val condition: String? = null,
+    val condition: Zustand? = null,
     @SerialName("owner_user_id") val ownerUserId: Int? = null,
     /**
      * Lagerort — null heisst „nicht erfasst". Der Server reicht ihn an addSet()
@@ -539,7 +542,7 @@ data class MerkpostenUebernahmeRequest(
 @Serializable
 data class MerkpostenPreiseResponse(
     val success: Boolean = false,
-    val currency: String = "",
+    val currency: Waehrung = Waehrung.KEINE,
     val current: CurrentByCondition = CurrentByCondition(),
     val error: String? = null,
 )

@@ -76,7 +76,7 @@ class ManifestPruefenTest {
         assertTrue(text2, "BIND_APPWIDGET" in text2)
     }
 
-    /** CI-Lauf 42086613735: Beide kamen aus Bibliotheken; das Manifest nimmt sie heraus. */
+    /** Beide kommen aus Bibliotheken; das Manifest nimmt sie heraus. */
     @Test
     fun `herausgenommene Bibliothekskomponenten stehen nicht in der Positivliste`() {
         for ((art, name, recht) in listOf(

@@ -1,5 +1,5 @@
 /** Die Funktionen nehmen die Adresse als Wert; welche Adresse eine Anfrage
- * hat, entscheidet die HTTP-Schicht. Ausführlich: docs/begruendungen/src/konto/loginLimiter.ts.md#abschnitt */
+ * hat, entscheidet die HTTP-Schicht. */
 import { createHash } from 'node:crypto';
 import { isIPv4, isIPv6 } from 'node:net';
 import * as db from '../../db/database';

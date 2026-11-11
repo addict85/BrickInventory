@@ -1,6 +1,5 @@
 /**
  * Kaufpreis LÖSCHEN → Marktpreis nachfüllen, auf beiden Wegen.
- * Ausführlich: docs/begruendungen/test/acquisition-price-refill-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): resolvePrice zurück auf null → der
  * Android-Teilschritt bleibt leer, die Webapp füllt weiterhin.
@@ -9,9 +8,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
@@ -19,7 +16,6 @@ const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
-const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND App',
   { concurrency: 1 }, async (t) => {
@@ -68,7 +64,6 @@ test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND Ap
   // DENSELBEN Vorgang. Ursache war eine zweite, eigene Preisregel im
   // Webapp-Weg, die die GLOBALE Währung las statt der des Kontos. Deshalb
   // steht hier bewusst eine abweichende globale Währung mit anderen Preisen: …
-  // Ausführlich: docs/begruendungen/test/acquisition-price-refill-db.test.js.md#stelle
   await db.run(`INSERT INTO global_settings (key,value) VALUES ('currency','EUR')
                 ON CONFLICT (key) DO UPDATE SET value='EUR'`);
   await db.run(`INSERT INTO price_cache (set_number,currency_code,condition,avg_price,fetched_at)
@@ -101,7 +96,7 @@ test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND Ap
       // Und die Kachel oben — dort stand Marcos Strich. Sie rechnet seit
       // Migration 0032 aus den Erfassungen; der Bestand hat hier zwei (7.30
       // gebraucht, 12.55 neu, je ein Exemplar), der Mittelwert ist 9.925.
-      const kachel = await _req('src/sets/lesen.js')
+      const kachel = await _req('src/sets/index.js')
         .getSetConditionAggregate([subId], SN);
       assert.equal(kachel.avg_purchase_price, 9.925,
         `${name}: die Kachel muss den gefüllten Preis mitrechnen, keinen Strich zeigen`);

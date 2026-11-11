@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app.widget
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.data.model.PnlResponse
 import ch.brickinventoryapp.model.data.model.PortfolioHistoryResponse
 import ch.brickinventoryapp.ui.util.fmtMoney
@@ -13,7 +14,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class WidgetZahlen(
-    val waehrung: String,
+    val waehrung: Waehrung,
     val wert: Double? = null,
     val gesamt: Double? = null,
     val gesamtProzent: Double? = null,
@@ -31,7 +32,7 @@ data class WidgetZahlen(
  */
 fun widgetZahlen(pnl: PnlResponse?, verlauf: PortfolioHistoryResponse?, jetzt: Long): WidgetZahlen? {
     if (pnl == null && verlauf == null) return null
-    val waehrung = pnl?.currency ?: verlauf?.currency ?: "EUR"
+    val waehrung = pnl?.currency ?: verlauf?.currency ?: Waehrung.EUR
     val t = pnl?.totals
     val mitBasis = t?.basisEinstand != null && (t.positionenBewertet ?: 0) > 0
     val wert = (if (mitBasis) t.basisMarktwert else t?.current)?.toDoubleOrNull()
@@ -86,7 +87,7 @@ fun widgetWerte(z: WidgetZahlen, zeigen: Boolean): Triple<String, String, String
     )
 
 /** Ein Betrag mit Vorzeichen und, wenn bekannt, der Prozentzahl daneben. */
-fun gvText(betrag: Double?, prozent: Double?, waehrung: String): String {
+fun gvText(betrag: Double?, prozent: Double?, waehrung: Waehrung): String {
     if (betrag == null) return "—"
     val vorzeichen = if (betrag > 0.005) "+" else ""
     val geld = vorzeichen + fmtMoney(betrag, waehrung)

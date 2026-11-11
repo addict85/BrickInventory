@@ -6,7 +6,7 @@ import * as K from '../src/konto/konten';
 import * as A from '../src/konto/anmeldungAblauf';
 import { kontoEntfernen } from '../src/konto/kontoEntfernen';
 import { logAndContinue, meldeFehler } from '../src/infra/fehler';
-import { fehlerAntwort } from '../src/http/httpAntwort';
+import { fehlerAntwort, sendeFehler } from '../src/http/httpAntwort';
 import { pruefeToken, assertLoginAllowed, deleteToken, USERNAME_RE, emailGueltig, rotiereToken, rotationFaellig, UEBERLAPPUNG_MS, nameGueltig, geraeteNameGueltig, geraeteNameInhaltGueltig } from '../src/konto/auth';
 import { tokenAngaben } from '../src/konto/tokenWunsch';
 import * as QR from '../src/konto/qrKopplung';
@@ -15,17 +15,18 @@ import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, 
 import { hinweisNebenher } from '../src/konto/kontoHinweis';
 import type { Request, Response } from 'express';
 import { requireApiAdmin } from './api_v1/middleware';
-import { sendeFehler, fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
+import { fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
 import * as zf from '../src/konto/zweiterFaktor';
 import * as P from '../src/konto/passkeys';
-import { vertragsRouter } from '../src/vertrag/pruefen';
-import type { Antwort, OffeneAnfrage } from '../src/vertrag';
 import benutzerRouter = require('./auth/benutzer');
 import zweiterFaktorRouter = require('./auth/zweiterFaktor');
 import registrierungRouter = require('./auth/registrierung');
+import { STATUS_DER_ART } from '../src/http/fehlerArt';
+import { vertragsRouter } from '../src/http/vertragsRouter';
+import type { Antwort, OffeneAnfrage } from '../src/http/vertragsRouter';
 
 // Ein Wächter für Sitzung UND Token: Die App hat keine Sitzung und war mit
-// einem reinen Sitzungswächter von Routen ausgesperrt. Ausführlich: docs/begruendungen/routes/auth.ts.md#requirelogin
+// einem reinen Sitzungswächter von Routen ausgesperrt.
 const requireLogin = requireLoginOrToken;
 const requireAdmin = requireApiAdmin;
 /** Sitzung, Token und Antwort — derselbe Weg nach Passwort und Passkey. Token
@@ -40,14 +41,14 @@ async function angemeldetAntworten(req: Request, res: Response, user: A.Angemeld
   res.json({ success: true, ...await A.anmeldeAntwort(user, wunsch, mitToken, req.ip) });
 }
 
-/** Die EINE Anmeldung für Webapp und App, damit beide dieselben Regeln erfüllen.
- * Ausführlich: docs/begruendungen/routes/auth.ts.md#post-login */
+/** Die EINE Anmeldung für Webapp und App, damit beide dieselben Regeln erfüllen. */
 router.post('/login', async (req: OffeneAnfrage<'POST /api/v1/auth/login'>, res: Antwort<'POST /api/v1/auth/login'>) => {
   const { username, password, code: zweiterCode, ohne_token, passkey } = req.eingabe;
   if (!geraeteNameInhaltGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
   const pruefung = await anmelden(req, username, password, zweiterCode, passkey);
   if (!pruefung.ok) {
-    const { status, code, vars, unverified, zweiterFaktor, passkey: mitPasskey } = pruefung.absage;
+    const { art, code, vars, unverified, zweiterFaktor, passkey: mitPasskey } = pruefung.absage;
+    const status = STATUS_DER_ART[art];
     // `zweiter_faktor`: Codefeld zeigen und erneut senden (oder `passkey`).
     if (zweiterFaktor) {
       return res.status(status).json({
@@ -67,8 +68,7 @@ router.post('/login', async (req: OffeneAnfrage<'POST /api/v1/auth/login'>, res:
   await angemeldetAntworten(req, res, pruefung.user as A.Angemeldet, req.eingabe, ohne_token !== true, true);
 });
 
-/** Sitzung beenden UND Token entwerten, damit ein Aufruf beides wegräumt.
- * Ausführlich: docs/begruendungen/routes/auth.ts.md#post-logout */
+/** Sitzung beenden UND Token entwerten, damit ein Aufruf beides wegräumt. */
 router.post('/logout', async (req: OffeneAnfrage<'POST /api/v1/auth/logout'>, res: Antwort<'POST /api/v1/auth/logout'>) => {
   const auth = String(req.headers.authorization || '');
   // Nur loggen: Die Abmeldung darf daran nicht scheitern, still bliebe der Fall
@@ -81,8 +81,7 @@ router.post('/logout', async (req: OffeneAnfrage<'POST /api/v1/auth/logout'>, re
   res.json({ success: true });
 });
 
-/** Sitzung ODER Token; ohne Anmeldung 200 für den Browser, 401 bei Token.
- * Ausführlich: docs/begruendungen/routes/auth.ts.md#get-me */
+/** Sitzung ODER Token; ohne Anmeldung 200 für den Browser, 401 bei Token. */
 router.get('/me', async (req: OffeneAnfrage<'GET /api/v1/auth/me'>, res: Antwort<'GET /api/v1/auth/me'>) => {
   const auth = String(req.headers.authorization || '');
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
@@ -333,7 +332,7 @@ router.post('/passkey/anmelden', ipThrottle('passkey-anmelden', 30, 60 * 60 * 10
   const user = await K.kontoVoll(uid);
   if (!user) return sendeFehler(req, res, 401, 'passkey_ungueltig');
   const gesperrt = assertLoginAllowed(user);
-  if (gesperrt) return sendeFehler(req, res, gesperrt.status, gesperrt.code);
+  if (gesperrt) return sendeFehler(req, res, STATUS_DER_ART[gesperrt.art], gesperrt.code);
   meldeAnmeldung({ ip: req.ip, konto: user.id, zugang: 'passkey' });
   await angemeldetAntworten(req, res, user, req.eingabe, req.eingabe.mit_token === true);
 });

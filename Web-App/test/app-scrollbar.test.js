@@ -1,6 +1,5 @@
 /**
  * Der eigene Scrollbalken der Anwendung erscheint wirklich.
- * Ausführlich: docs/begruendungen/test/app-scrollbar.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): das Erzeugen entfernt und stattdessen wie vorher
  * `G('app-scrollbar')` erwartet → „Balken erzeugt" wird rot.
@@ -15,7 +14,6 @@ const ROOT = path.join(__dirname, '..');
 
 /**
  * Den Scrollbalken-Code auswerten.
- * Ausführlich: docs/begruendungen/test/app-scrollbar.test.js.md#scrollbalkencode
  */
 function scrollbalkenCode() {
   const roh = fs.readFileSync(path.join(ROOT, 'public', 'js', '15-scrollbar.js'), 'utf8');
@@ -47,7 +45,7 @@ test('der Balken wird erzeugt und erscheint bei rollbarer Seite', () => {
     'läuft vor dem Ende des Body, dort notiert gäbe es ihn beim Start nicht.');
   assert.equal(bar.style.display, 'block', 'Der Balken bleibt verborgen, obwohl die Seite rollbar ist');
   const thumb = w.document.getElementById('app-scrollbar-thumb');
-  assert.ok(thumb && parseInt(thumb.style.height) > 0,
+  assert.ok(thumb && parseInt(thumb.style.height, 10) > 0,
     `Der Griff hat keine Höhe: ${thumb && thumb.style.height}`);
 });
 
@@ -75,7 +73,6 @@ test('das Neuzeichnen ist gedrosselt', () => {
 
 test('das Etikett verschwindet nach dem Ziehen wieder', () => {
   // Marcos Bild
-  // Ausführlich: docs/begruendungen/test/app-scrollbar.test.js.md#code
   const code = scrollbalkenCode();
   const i = code.indexOf('const ende =');
   assert.ok(i > 0, 'Kein Ende-Handler');

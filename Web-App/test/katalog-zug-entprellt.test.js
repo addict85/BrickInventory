@@ -1,6 +1,5 @@
 /**
  * Ein Zug ueber die Jahres-Leiste holt EINE Seite, nicht hundert.
- * Ausführlich: docs/begruendungen/test/katalog-zug-entprellt.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -64,7 +63,7 @@ async function zugMessen(entprellt) {
     }
     if (url.startsWith('/v1/catalog/sets?')) {
       const p = new w.URLSearchParams(url.split('?')[1]);
-      const seite = parseInt(p.get('page') || '1');
+      const seite = parseInt(p.get('page') || '1', 10);
       abrufe.push(seite);
       return Promise.resolve({ success: true, total: SETS, page: seite,
         sets: daten.slice((seite - 1) * 60, seite * 60) });
@@ -95,7 +94,7 @@ async function zugMessen(entprellt) {
   w.Element.prototype.getBoundingClientRect = function () {
     const nr = this.dataset && this.dataset.page;
     if (!nr) return { top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0 };
-    const n = parseInt(nr);
+    const n = parseInt(nr, 10);
     return { top: (n - 1) * BLOCK_HOEHE - rollY, bottom: n * BLOCK_HOEHE - rollY,
              left: 0, right: 0, width: 0, height: BLOCK_HOEHE };
   };

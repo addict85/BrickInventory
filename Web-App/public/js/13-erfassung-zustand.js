@@ -8,8 +8,7 @@ import { fmtDatum, browserSchreibtDatumWieApp } from './01-format.js';
 // dieselbe Haushaltsliste und dieselben Tabellenbausteine.
 /** @typedef {import('../../frontend-typen/vertrag').HouseholdMember} Konto */
 
-/** Wessen Erfassungen im Dialog stehen und wohin das Schliessen zurückführt.
- * Ausführlich: docs/begruendungen/public/js/13-erfassung-zustand.js.md#erfassung */
+/** Wessen Erfassungen im Dialog stehen und wohin das Schliessen zurückführt. */
 export const erfassung = {
   /** @type {string | null} */ sn: null,
   /** @type {number | null} */ besitzer: null,

@@ -1,5 +1,4 @@
-/** Der Zugang zu PostgreSQL: Pool, Abfragen, Transaktionen, Erststart.
- * Ausführlich: docs/begruendungen/db/database.ts.md#ueberblick */
+/** Der Zugang zu PostgreSQL: Pool, Abfragen, Transaktionen, Erststart. */
 
 import { Pool, types as pgTypes, Client } from 'pg';
 import type { PoolClient, PoolConfig } from 'pg';
@@ -9,15 +8,14 @@ import type { DbSchnittstelle } from './typen';
 import fs from 'node:fs';
 import path from 'node:path';
 import { LOCKS } from '../src/infra/lockNamespaces';
-import { fehlerCode, meldeFehler, logAndContinue } from '../src/infra/fehler';
+import { fehlerCode, meldeFehler, logAndContinue, setzeTransaktionsWaechter } from '../src/infra/fehler';
 import { konfig, datenbankVerbindung } from '../src/infra/konfig';
 
 // Alle Abhängigkeiten stehen hier oben: Ein require() im Rumpf versteckt sie
-// und liefert `any`. Ausführlich: docs/begruendungen/db/database.ts.md#importe-am-kopf
+// und liefert `any`.
 
 // NUMERIC als Zahl: NUMERIC(12,4) bleibt weit unter 2^53, gerechnet wird in
 // src/infra/geld.ts in Zehntausendsteln.
-// Ausführlich: docs/begruendungen/db/database.ts.md#numeric-als-zahl
 pgTypes.setTypeParser(pgTypes.builtins.NUMERIC, (v: string | null) => (v === null ? null : parseFloat(v)));
 
 // Höchstens zwei Prozesse (web und jobs) mit je 15 Verbindungen: weit unter
@@ -67,8 +65,7 @@ export function istLesend(sql: string): boolean {
   return /^(SELECT|WITH)\b/i.test(s) && !/\b(INSERT|UPDATE|DELETE|MERGE)\b|\bFOR\s+(UPDATE|SHARE)\b/i.test(s);
 }
 
-/** Mit Wiederholung bei transienten Fehlern.
- * Ausführlich: docs/begruendungen/db/database.ts.md#querywithretry */
+/** Mit Wiederholung bei transienten Fehlern. */
 export async function queryWithRetry<T>(queryFn: () => Promise<T>, lesend: boolean, maxRetries = 2): Promise<T> {
   let lastErr: unknown;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -90,7 +87,7 @@ export async function queryWithRetry<T>(queryFn: () => Promise<T>, lesend: boole
 /** Eine Zeile mit den Spalten, die der Aufrufer liest; weitere reisen als `unknown` mit. */
 export type Zeile<T extends object = object> = T & Record<string, unknown>;
 
-// Benannt, damit tx-Rückrufe geprüft werden. Ausführlich: docs/begruendungen/db/database.ts.md#dbschnittstelle
+// Benannt, damit tx-Rückrufe geprüft werden.
 export type { DbSchnittstelle };
 
 export interface TxOptionen {
@@ -104,10 +101,8 @@ const TX_KONFLIKT = new Set(['40P01', '40001']);
 const TX_NEUVERSUCHE = 2;
 
 /** Was nach dem Einspielen der Basis in eine leere Datenbank geschieht (das erste
- * Konto). Die Datenbankschicht kennt keine Konten; der Prozess setzt es beim Start. */
-type Erststart = () => Promise<void>;
-let _erststart: Erststart | null = null;
-export function setzeErststart(fn: Erststart | null): void { _erststart = fn; }
+ * Konto). Die Datenbankschicht kennt keine Konten; wer den Zugang anlegt, gibt es mit. */
+export type Erststart = () => Promise<void>;
 
 export interface Db extends DbSchnittstelle {
   readonly pool: Pool;
@@ -136,11 +131,19 @@ function txSchnittstelle(client: PoolClient): DbSchnittstelle {
   };
 }
 
+/** Läuft vor dem COMMIT jeder äussersten Transaktion dieses Aufrufpfads mit,
+ * in ihr: Was er schreibt, gilt genau dann, wenn ihre Wirkung gilt. */
+type CommitBegleiter = (tx: DbSchnittstelle) => Promise<void>;
+const commitBegleiter = new AsyncLocalStorage<CommitBegleiter>();
+export function mitCommitBegleiter<T>(begleiter: CommitBegleiter, arbeit: () => T): T {
+  return commitBegleiter.run(begleiter, arbeit);
+}
+
 /** Innerhalb einer Transaktion ein Sicherungspunkt: Scheitert der innere Teil
- * und fängt der Aufrufer das, bleibt die äussere Transaktion benutzbar. */
-let _sicherungspunkt = 0;
-async function innereTransaktion<T>(client: PoolClient, fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
-  const name = `sp_${++_sicherungspunkt}`;
+ * und fängt der Aufrufer das, bleibt die äussere Transaktion benutzbar. Der
+ * Name braucht nur innerhalb der Transaktion eindeutig zu sein. */
+async function innereTransaktion<T>(client: PoolClient, nummer: number, fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
+  const name = `sp_${nummer}`;
   await client.query(`SAVEPOINT ${name}`);
   try {
     const r = await fn(txSchnittstelle(client));
@@ -148,11 +151,21 @@ async function innereTransaktion<T>(client: PoolClient, fn: (tx: DbSchnittstelle
     return r;
   } catch (e) {
     await client.query(`ROLLBACK TO SAVEPOINT ${name}`);
+    if (e !== null && typeof e === 'object') vomSicherungspunktAufgefangen.add(e);
     throw e;
   }
 }
 
-// SQL geht unverändert an PostgreSQL. Ausführlich: docs/begruendungen/db/database.ts.md#sql-unuebersetzt
+/** Nach ROLLBACK TO SAVEPOINT ist die Transaktion wieder benutzbar: Wer diesen
+ * Fehler auffängt und einen Ersatz liefert, verdeckt nichts. */
+const vomSicherungspunktAufgefangen = new WeakSet<object>();
+setzeTransaktionsWaechter({
+  verdirbt: (e) => laufendeTx.getStore()?.offen === true
+    && !(e !== null && typeof e === 'object' && vomSicherungspunktAufgefangen.has(e)),
+  streng: () => konfig().nodeEnv === 'test',
+});
+
+// SQL geht unverändert an PostgreSQL.
 
 // Die älteste Migration, auf der eine bestehende Datenbank aufsetzen darf: db/basis.sql
 // und alle Migrationen danach kennen nur Schemas ab hier. Was älter ist, holt
@@ -161,13 +174,14 @@ const MINDESTSTAND = '0050-teilezaehler-nur-bestehende-konten.sql';
 
 /** Ein Zugang zur Datenbank mit eigenem Pool. Der Pool entsteht hier, nicht
  * beim Import: Wer die Adresse kennt, ruft die Fabrik. */
-export function erzeugeDb(k: DbKonfig): Db {
+export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
   const pool = new Pool({ ...k.verbindung, ...k.pool });
   // Ohne Lauscher brächte der Abriss einer ruhenden Verbindung den Prozess zu Fall.
   pool.on('error', (err) => {
     console.error('[db-pool] idle client error:', err.message);
   });
   const ich = {};
+  let sicherungspunkte = 0;
   const txClient = (): PoolClient | null => { const t = laufendeTx.getStore(); return t?.offen && t.db === ich ? t.client : null; };
 
   /** Alle Zeilen einer Abfrage. T ist ungeprüft: Der Aufrufer sagt, welche
@@ -192,7 +206,7 @@ export function erzeugeDb(k: DbKonfig): Db {
 
   async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>, o: TxOptionen = {}): Promise<T> {
     const aussen = txClient();
-    if (aussen) return innereTransaktion(aussen, fn);
+    if (aussen) return innereTransaktion(aussen, ++sicherungspunkte, fn);
     for (let versuch = 0; ; versuch++) {
       try { return await einmaligeTransaktion(fn); }
       catch (e) {
@@ -214,6 +228,7 @@ export function erzeugeDb(k: DbKonfig): Db {
     try {
       await client.query('BEGIN');
       const result = await laufendeTx.run(stand, () => fn(txSchnittstelle(client)));
+      await commitBegleiter.getStore()?.(txSchnittstelle(client));
       stand.offen = false;
       await client.query('COMMIT');
       return result;
@@ -230,8 +245,7 @@ export function erzeugeDb(k: DbKonfig): Db {
     }
   }
 
-  /** Eine EIGENE Verbindung, die NICHT aus dem Pool kommt.
-   * Ausführlich: docs/begruendungen/db/database.ts.md#eigeneverbindung */
+  /** Eine EIGENE Verbindung, die NICHT aus dem Pool kommt. */
   async function eigeneVerbindung() {
     const c = new Client({ ...k.verbindung });
     await c.connect();
@@ -257,7 +271,7 @@ export function erzeugeDb(k: DbKonfig): Db {
     } finally {
       await c.end().catch((r: Error) => console.warn('[schema] Verbindung schliessen:', r.message));
     }
-    if (_erststart) await _erststart();
+    if (o.erststart) await o.erststart();
     else console.warn('⚠️  [schema] Leere Datenbank ohne Erststart: kein erstes Konto angelegt.');
     console.log('✅ PostgreSQL schema ready');
     return true;
@@ -324,16 +338,16 @@ async function pruefeMindeststand(client: import('pg').ClientBase): Promise<void
 // ── Kompatibilitätsweg: der Zugang des Prozesses ────────────────────────────
 // Die meisten Module importieren noch die Funktionen unten statt einen Zugang
 // übergeben zu bekommen; test/ratschen.test.js zählt sie. Der Pool entsteht beim
-// ersten Gebrauch oder wenn der Prozess setzeStandardDb() ruft, nie beim Import.
+// ersten Gebrauch (auch aus einer gesetzten Bauanleitung), nie beim Import.
+let _standard: Db | (() => Db) | null = null;
 
-let _standard: Db | null = null;
-
-export function setzeStandardDb(d: Db): void {
+export function setzeStandardDb(d: Db | (() => Db)): void {
   if (_standard && _standard !== d) throw new Error('Der Datenbankzugang des Prozesses ist schon gesetzt');
   _standard = d;
 }
 
 export function standardDb(): Db {
+  if (typeof _standard === 'function') _standard = _standard();
   if (!_standard) _standard = erzeugeDb(dbKonfigAusUmgebung());
   return _standard;
 }

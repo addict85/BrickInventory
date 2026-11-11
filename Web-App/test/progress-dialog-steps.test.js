@@ -1,7 +1,6 @@
 /**
  * Der Zwischendialog beim Erfassen eines Sets zeigt nur Schritte, auf die der
  * Browser tatsächlich wartet.
- * Ausführlich: docs/begruendungen/test/progress-dialog-steps.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -154,7 +153,6 @@ test('kein Sprachschlüssel für die entfernten Schritte bleibt zurück', () => 
 
 /**
  * Spielt den Ablauf einmal durch, statt nur Muster zu suchen.
- * Ausführlich: docs/begruendungen/test/progress-dialog-steps.test.js.md#nach-dem-letzten-ereignis-haengt-kein-pu
  */
 test('nach dem letzten Ereignis hängt kein Punkt mehr auf „aktiv"', () => {
   // ── Sendereihenfolge, wie der Erfassungsstrom sie erzeugt ───────────────

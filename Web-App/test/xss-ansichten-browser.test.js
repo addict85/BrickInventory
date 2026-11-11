@@ -1,7 +1,6 @@
 /**
  * Kein Markup aus Daten: Namen, Themen, Kategorien und Lagerorte mit XSS-Nutzlast
  * durch die Hauptansichten gerendert, im echten Chrome.
- * Ausführlich: docs/begruendungen/test/xss-ansichten-browser.test.js.md#kopf
  *
  * Gegenproben (gemessen):
  *   A  im Kachelnamen der Sammlung (02-gallery.js) den Namen in ungeprueft()
@@ -13,8 +12,8 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
-const { haeltSet, haeltTeil, haeltFigur } = require('./helpers/bestand');
+const { starteApp } = require('./helpers/app-browser');
+const { haeltSet, haeltTeil, haeltFigur, katalogSet } = require('./helpers/bestand');
 
 const N = `<img src=x onerror="window.__xss=1">"'><svg onload="window.__xss=2">`;
 const SPUR = 'XSS-Spur';
@@ -34,8 +33,7 @@ test('XSS-Nutzlasten in den Hauptansichten bleiben Text', { concurrency: 1, time
     bestand: async (db, uid) => {
       const ort = (await db.get('INSERT INTO storage_locations (user_id, name) VALUES ($1, $2) RETURNING id', [uid, `${SPUR} ${N}`])).id;
       for (const [nr, was] of [['99901-1', 'Set'], ['99902-1', 'Wunsch']])
-        await db.run(`INSERT INTO set_catalog (set_number, name, theme, year, pieces) VALUES ($1, $2, $3, 2020, 100)
-                      ON CONFLICT (set_number) DO UPDATE SET name = $2, theme = $3`, [nr, `${SPUR} ${was} ${N}`, `${SPUR} Thema ${N}`]);
+        await katalogSet(db, nr, { name: `${SPUR} ${was} ${N}`, theme: `${SPUR} Thema ${N}`, year: 2020, pieces: 100 });
       await haeltSet(db, uid, '99901-1', 1, { preis: 10 });
       await db.run('UPDATE sets SET storage_id = $1 WHERE user_id = $2 AND set_number = $3', [ort, uid, '99901-1']);
       await db.run(`INSERT INTO teil_eigen (user_id, part_number, part_name, category_name) VALUES ($1, 'xss1', $2, $3)`,

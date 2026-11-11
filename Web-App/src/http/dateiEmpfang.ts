@@ -16,8 +16,7 @@ export const FORMULAR_GRENZEN = { files: 1, fields: 20, fieldSize: 64 * 1024, pa
  * `memoryStorage`, das die Datei ganz im Speicher hält. */
 export const CSV_MAX_BYTES = 15 * 1024 * 1024;
 
-/** memoryStorage: Die Importe zerlegen die Datei sofort und legen sie nie ab.
- * Ausführlich: docs/begruendungen/src/http/dateiEmpfang.ts.md#csvempfang */
+/** memoryStorage: Die Importe zerlegen die Datei sofort und legen sie nie ab. */
 export const csvEmpfang = multer({
   storage: multer.memoryStorage(),
   limits: { ...FORMULAR_GRENZEN, fileSize: CSV_MAX_BYTES },

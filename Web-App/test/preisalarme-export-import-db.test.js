@@ -1,6 +1,5 @@
 /**
  * Preisalarme gehen als CSV hinaus und kommen als Preisalarme zurueck.
- * Ausführlich: docs/begruendungen/test/preisalarme-export-import-db.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Befunde GEMESSEN) ────────────────────────────
  *
@@ -40,6 +39,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { katalogSet } = require('./helpers/bestand');
 const { importWorker } = require('./helpers/auftraege');
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
@@ -53,7 +53,6 @@ let HAUPT = 0, FREMD = 0;
  * `WHERE user_id` sonst nicht auffiele: Mit nur einem Konto im Aufbau sieht
  * eine Abfrage über ALLE Konten genauso aus wie die richtige. Das ist beim
  * Durchdenken der Gegenproben aufgefallen — Fall „user_id weggelassen" hätte …
- * Ausführlich: docs/begruendungen/test/preisalarme-export-import-db.test.js.md#fremder-alarm
  */
 const FREMDER_ALARM = { sn: '31203-1', c: 'N', r: 'unter', s: 77, w: 'CHF' };
 
@@ -79,8 +78,7 @@ async function aufbau(kontoWaehrung = 'CHF') {
   FREMD = (await db.get(`SELECT id FROM users WHERE username='fremd'`)).id;
   // KEINE Kontoverknuepfung: 'fremd' ist kein Unterkonto. Selbst mit einer
   // waere es falsch — ein Alarm kennt kein Blickfeld.
-  await db.run(`INSERT INTO set_catalog (set_number,name) VALUES ($1,$1)
-                ON CONFLICT (set_number) DO NOTHING`, [FREMDER_ALARM.sn]);
+  await katalogSet(db, FREMDER_ALARM.sn, { name: FREMDER_ALARM.sn });
   await db.run(`INSERT INTO price_alerts (user_id,set_number,condition,richtung,schwelle,currency_code)
                 VALUES ($1,$2,$3,$4,$5,$6)`,
     [FREMD, FREMDER_ALARM.sn, FREMDER_ALARM.c, FREMDER_ALARM.r, FREMDER_ALARM.s, FREMDER_ALARM.w]);
@@ -92,8 +90,7 @@ async function aufbau(kontoWaehrung = 'CHF') {
   // Tests gescheitert. Deshalb die Bestandszeile nur einmal je Nummer.
   const gelegt = new Set();
   for (const a of ALARME) {
-    await db.run(`INSERT INTO set_catalog (set_number,name) VALUES ($1,$1)
-                  ON CONFLICT (set_number) DO NOTHING`, [a.sn]);
+    await katalogSet(db, a.sn, { name: a.sn });
     if (a.besitzt && !gelegt.has(a.sn)) {
       gelegt.add(a.sn);
       await db.run(`INSERT INTO sets (user_id,set_number) VALUES ($1,$2)
@@ -273,7 +270,6 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
 
   await t.test('6. eine unbrauchbare Zeile wird gezählt, nicht verschluckt', async () => {
     // Was dieser Fall WIRKLICH unterscheidet (beim Gegenprobieren gelernt)
-    // Ausführlich: docs/begruendungen/test/preisalarme-export-import-db.test.js.md#stelle
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [HAUPT]);
     const kaputt = 'set_number,condition,richtung,schwelle,currency_code\n'
       + '75192-1,N,seitwaerts,600,CHF\n'      // Richtung gibt es nicht
@@ -309,7 +305,6 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
     // setzeAlarm() sagt zu: „Der Merker ausgeloest wird beim Ändern
     // ZURÜCKGESETZT: Eine neue Schwelle ist eine neue Frage, und die soll
     // beantwortet werden, auch wenn die alte schon einmal gemeldet hat."
-    // Ausführlich: docs/begruendungen/test/preisalarme-export-import-db.test.js.md#stelle-2
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [HAUPT]);
     await db.run(`INSERT INTO price_alerts
                     (user_id,set_number,condition,richtung,schwelle,currency_code,ausgeloest)

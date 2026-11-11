@@ -29,7 +29,8 @@ import ch.brickinventoryapp.ui.components.SettingsCard
 
 /**
  * Angemeldete Geräte: die ausgestellten Zugänge sehen und aussperren.
- * Ausführlich: docs/begruendungen/feature-konto/konto/ui/screens/EinstellungenKonto.kt.md#geraetecard
+ * Der eigene Zugang hat keinen Knopf: Wer ihn entwertet, meldet sich selbst ab, und dafür gibt es
+ * Abmelden.
  */
 @Composable
 internal fun GeraeteCard(

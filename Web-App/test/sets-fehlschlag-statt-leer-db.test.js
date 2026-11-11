@@ -56,7 +56,7 @@ test('Set-Dienste: Fehlschlag statt leer', { concurrency: 1 }, async t => {
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const SN = `99${String(process.pid).slice(-4)}-1`;
-  const { teilelisteDesSets, figurenlisteDesSets } = _req('src/sets/dienst.js');
+  const { teilelisteDesSets, figurenlisteDesSets } = _req('src/sets/index.js');
 
   await t.test('eine gestörte Quelle ist keine leere Liste', async () => {
     rebrickable = 'gestoert';
@@ -80,7 +80,7 @@ test('Set-Dienste: Fehlschlag statt leer', { concurrency: 1 }, async t => {
   await t.test('die Nacharbeit nennt gescheiterte Schritte', async () => {
     rebrickable = 'gestoert';
     const staende = [];
-    const { zieheNach } = _req('src/sets/nachErfassung.js');
+    const { zieheNach } = _req('src/sets/index.js');
     await zieheNach(SN, 0, 'zweit', {
       fortschritt: async f => {
         staende.push(f);

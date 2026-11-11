@@ -3,8 +3,8 @@ package ch.brickinventoryapp.data.cache
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
-import ch.brickinventoryapp.data.di.BrickDispatchers
-import ch.brickinventoryapp.data.di.Dispatcher
+import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
+import ch.brickinventoryapp.model.koroutinen.Dispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -20,7 +20,7 @@ import javax.inject.Singleton
 /**
  * Plattenspeicher für API-Antworten, damit die App nach dem Start gefüllt ist und
  * offline benutzbar bleibt.
- * Ausführlich: docs/begruendungen/core-data/data/cache/ResponseCache.kt.md#responsecache
+ * Gelesen wird nur, wenn der Netzabruf scheitert — der Server bleibt die Wahrheit.
  */
 @Singleton
 class ResponseCache(

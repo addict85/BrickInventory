@@ -25,7 +25,6 @@ import ch.brickinventoryapp.model.util.fangeAusserAbbruch
  * Die App aktualisiert sich selbst aus dem GitHub-Release: beim Start still
  * prüfen, nie von allein laden. Es geht, weil der versionCode monoton steigt
  * (VERSION_CODE_BASE + Anzahl Commits, app/build.gradle.kts).
- * Ausführlich: docs/begruendungen/core-update/update/util/AppUpdate.kt.md#z20
  */
 
 /** Alle Release-Anhänge des Repositorys; darunter je Fassung ein unveränderliches Etikett. */

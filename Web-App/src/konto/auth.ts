@@ -1,6 +1,5 @@
 /** Anmeldung und Geräte-Tokens. Der Token-Cache spart je Anfrage zwei
- * Datenbank-Rundläufe, weil die App beim Öffnen viele Anfragen parallel feuert.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#abschnitt */
+ * Datenbank-Rundläufe, weil die App beim Öffnen viele Anfragen parallel feuert. */
 import * as passwortRegel from '../infra/passwortRegel';
 import { konfig } from '../infra/konfig';
 import * as db from '../../db/database';
@@ -14,7 +13,7 @@ import { kontoGedrosselt } from './zielDrossel';
 import * as zf from './zweiterFaktor';
 import * as passkeys from './passkeys';
 import * as V from '../infra/validate';
-import type { FehlerCode } from '../infra/fehlerTexte';
+import type { FehlerArt, FehlerCode } from '../infra/fehlerTexte';
 import * as repo from './repository/zugaenge';
 import * as kontenRepo from './repository/konten';
 import type { TokenScope } from './repository/zugaenge';
@@ -255,8 +254,7 @@ export function leereTokenCache(): void {
 
 export const BCRYPT_ROUNDS = 12;
 
-/** Eine Konstante, damit alle Routen, die ein Passwort setzen, dieselbe Länge prüfen.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#passwort-min-zeichen */
+/** Eine Konstante, damit alle Routen, die ein Passwort setzen, dieselbe Länge prüfen. */
 export const PASSWORT_MIN_ZEICHEN = passwortRegel.PASSWORT_MIN_ZEICHEN;
 export const passwortZuKurz = passwortRegel.passwortZuKurz;
 
@@ -285,8 +283,7 @@ export function geraeteNameInhaltGueltig(v: unknown): boolean {
 
 export const EMAIL_RE = V.EMAIL_RE, emailGueltig: typeof V.emailGueltig = V.emailGueltig;
 
-/** Name ODER E-Mail, weil die Anmeldung in beiden Spalten sucht.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#isvalidloginidentifier */
+/** Name ODER E-Mail, weil die Anmeldung in beiden Spalten sucht. */
 export function isValidLoginIdentifier(value: unknown): boolean {
   const v = String(value || '');
   return USERNAME_RE.test(v) || emailGueltig(v);
@@ -296,11 +293,11 @@ export function isValidLoginIdentifier(value: unknown): boolean {
  * Route weiss, welche Sprache der Anfragende sieht.
  * @returns null = Login erlaubt */
 export function assertLoginAllowed(user: KontoZustand):
-    { status: number; code: FehlerCode; unverified?: boolean } | null {
+    { art: FehlerArt; code: FehlerCode; unverified?: boolean } | null {
   if (!user.is_active)
-    return { status: 403, code: 'konto_deaktiviert' };
+    return { art: 'verboten', code: 'konto_deaktiviert' };
   if (user.registrierung_offen === true && !user.is_admin)
-    return { status: 403, code: 'email_nicht_bestaetigt', unverified: true };
+    return { art: 'verboten', code: 'email_nicht_bestaetigt', unverified: true };
   return null;
 }
 
@@ -308,8 +305,9 @@ export function assertLoginAllowed(user: KontoZustand):
  * einem echten Konto, mit denselben Runden erzeugt. */
 const DUMMY_HASH = bcrypt.hashSync('nonexistent-account-placeholder', BCRYPT_ROUNDS);
 
+/** Fachlich, nicht HTTP: Den Status wählt die HTTP-Seite (src/http/fehlerArt.ts). */
 export interface AnmeldeAbsage {
-  status: number;
+  art: FehlerArt;
   code: FehlerCode;
   vars?: Record<string, string | number>;
   /** Der Client blendet dann „E-Mail erneut senden" ein. */
@@ -328,28 +326,27 @@ export interface Herkunft { ip?: string | null }
 
 /** Die einzige Stelle, an der Anmeldedaten geprüft werden: Zwei Fassungen für
  * Webapp und App waren schon einmal auseinandergelaufen.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#pruefeanmeldedaten
  * @param username Benutzername ODER E-Mail-Adresse. */
 export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, password: unknown, code?: unknown,
                                   passkeyAntwort?: unknown): Promise<AnmeldeErgebnis> {
-  const absage = (status: number, code: FehlerCode,
+  const absage = (art: FehlerArt, code: FehlerCode,
                   vars?: Record<string, string | number>, unverified?: boolean,
                   zweiterFaktor?: boolean): AnmeldeErgebnis =>
-    ({ ok: false, absage: { status, code, ...(vars ? { vars } : {}),
+    ({ ok: false, absage: { art, code, ...(vars ? { vars } : {}),
                             ...(unverified ? { unverified: true } : {}),
                             ...(zweiterFaktor ? { zweiterFaktor: true } : {}) } });
 
   if (!username || !password)
-    return absage(400, 'benutzername_passwort');
+    return absage('ungueltig', 'benutzername_passwort');
   if (!isValidLoginIdentifier(username))
-    return absage(400, 'name_oder_email_eingeben');
+    return absage('ungueltig', 'name_oder_email_eingeben');
 
   const ip = herkunft.ip || '?';
   const name = String(username);
   const gesperrt = await checkLoginAllowed(ip, name);
   if (gesperrt) {
     meldeAnmeldeereignis('anmeldung_gesperrt', { ip, konto: (await repo.kontoZurAnmeldung(name))?.id ?? null });
-    return absage(429, gesperrt.code, gesperrt.vars);
+    return absage('zu_viele', gesperrt.code, gesperrt.vars);
   }
 
   const user = await repo.kontoZurAnmeldung(name);
@@ -361,12 +358,12 @@ export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, 
   catch (e) {
     if (!(e instanceof BcryptUeberlast)) throw e;
     await gibAnmeldeplatzFrei(ip, name);
-    return absage(503, 'server_ausgelastet');
+    return absage('nicht_verfuegbar', 'server_ausgelastet');
   }
   // Gesperrt oder unbestätigt wie falsches Passwort: Eine eigene Absage verriete, dass es stimmte.
   if (!user || !passtDasPasswort || assertLoginAllowed(user)) {
     await fehlversuch('anmeldung_fehlgeschlagen', ip, name, user?.id);
-    return absage(401, 'anmeldedaten_ungueltig');
+    return absage('nicht_angemeldet', 'anmeldedaten_ungueltig');
   }
 
   let zugang: Anmeldeweg = 'passwort';
@@ -379,14 +376,14 @@ export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, 
     if (!mitPasskey && !String(code ?? '').trim()) {
       // Das Passwort stimmte; nur der Code fehlt noch — kein Fehlversuch.
       await gibAnmeldeplatzFrei(ip, name);
-      return ergaenzt(absage(401, 'zweiter_faktor_noetig', undefined, false, true));
+      return ergaenzt(absage('nicht_angemeldet', 'zweiter_faktor_noetig', undefined, false, true));
     }
     const gilt = mitPasskey
       ? await passkeys.anmeldungPruefen(passkeyAntwort, 'zweiter_faktor', user.id) === user.id
       : await zf.pruefeCode(user.id, code);
     if (!gilt) {
       await fehlversuch('zweiter_faktor_falsch', ip, name, user.id);
-      return ergaenzt(absage(401, 'zweiter_faktor_falsch', undefined, false, true));
+      return ergaenzt(absage('nicht_angemeldet', 'zweiter_faktor_falsch', undefined, false, true));
     }
   }
   await recordLoginSuccess(ip, name);
@@ -406,11 +403,11 @@ async function fehlversuch(ereignis: Anmeldeereignis, ip: string, name: string, 
 export function escapeLike(s: unknown): string { return String(s ?? '').replace(/([%_\\])/g, '\\$1'); }
 
 /** 0, weil null schon „nichts gewählt, Gleitfrist" heisst und beide mit der
- * Nonce in einem Feld reisen. Ausführlich: docs/begruendungen/src/konto/auth.ts.md#unbegrenzt */
+ * Nonce in einem Feld reisen. */
 export const UNBEGRENZT = 0;
 
 /** „unbegrenzt" ist nicht die Vorgabe: Es nimmt die einzige selbsttätige
- * Reissleine für ein verlorenes Gerät weg. Ausführlich: docs/begruendungen/src/konto/auth.ts.md#token-laufzeiten */
+ * Reissleine für ein verlorenes Gerät weg. */
 const TOKEN_LAUFZEITEN: Record<string, number> = {
   '1m':  30,
   '2m':  60,
@@ -508,8 +505,7 @@ export async function deleteToken(token: string): Promise<void> {
   invalidateToken(token);
 }
 
-/** In user_sessions, wo der Session-Store wirklich liegt.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#revokeallsessions */
+/** In user_sessions, wo der Session-Store wirklich liegt. */
 export async function revokeAllSessions(userId: number): Promise<void> {
   await erhoeheSitzungsVersion(userId);
   await repo.loescheSitzungenDesKontos(userId);
@@ -533,11 +529,11 @@ export async function revokeAllTokens(userId: number): Promise<void> {
 }
 
 /** Gerätezugänge haben kein festes Ende; diese Frist begrenzt, wie lange ein
- * vergessenes Gerät gilt. Ausführlich: docs/begruendungen/src/konto/auth.ts.md#token-idle-days */
+ * vergessenes Gerät gilt. */
 export const TOKEN_IDLE_DAYS = konfig().tokenLeerlaufTage;
 
 /** Altzeilen ohne Ablaufdatum bekommen vorher ihre Gleitfrist, damit sie nach
- * derselben Regel fallen wie neue. Ausführlich: docs/begruendungen/src/konto/auth.ts.md#purgeexpiredtokens */
+ * derselben Regel fallen wie neue. */
 export async function purgeExpiredTokens() {
   const warn = (was: string) => (e: Error) => { console.warn(`[tokens] ${was}:`, e?.message || e); return 0; };
   const m = await repo.ziehAltzeilenNach(TOKEN_IDLE_DAYS).catch(warn('Altzeilen nachziehen'));

@@ -1,6 +1,5 @@
 /**
  * Der Lagerort muss im DETAIL stehen — und nur in den Konten, die ihn haben.
- * Ausführlich: docs/begruendungen/test/lagerort-detail-und-vorrat-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -12,7 +11,7 @@ const db = _req('db/database.js');
 // Ein Bestand ist seit Migration 0036 ZWEI Zeilen: eine in `sets` („dieses
 // Konto haelt dieses Set") und eine je Kauf in `set_acquisitions`. haeltSet()
 // legt beide an — siehe test/helpers/bestand.js.
-const { haeltSet, haeltTeil } = require('./helpers/bestand');
+const { haeltSet, haeltTeil, katalogSet } = require('./helpers/bestand');
 const { testServer } = require('./helpers/server');
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
@@ -35,8 +34,7 @@ async function seed() {
   // Bestandszeile; die Stueckzahl seit 0036 in der Erfassung. Hier stand
   // `INSERT INTO sets (user_id, set_number, name, quantity)` — beide Spalten
   // gibt es nicht mehr.
-  await db.run(`INSERT INTO set_catalog (set_number, name) VALUES ($1,'Falcon')
-                ON CONFLICT (set_number) DO UPDATE SET name = EXCLUDED.name`, [SN]);
+  await katalogSet(db, SN, { name: 'Falcon' });
   // Das Set gehört dem HAUPTKONTO. Das Unterkonto hat gar keine Zeile — genau
   // die Lage, in der ein Eintrag in seinem Vorrat nichts beschreibt.
   await haeltSet(db, HAUPT, SN, 1);
@@ -52,7 +50,7 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async (t) => {
   await seed();
 
   const L = _req('src/bestand/lagerort.js');
-  const S = _req('src/sets/lesen.js');
+  const S = _req('src/sets/index.js');
   const household = _req('src/haushalt/haushalt.js');
   const schreibbar = await household.writableIds(HAUPT);
   // Vorbedingung: Das Blickfeld umfasst wirklich BEIDE Konten, sonst prüft
@@ -135,7 +133,6 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async (t) => {
     // Zeile hält". Hält das Unterkonto ein Exemplar, gehört der Ort auch dorthin
     // — und zwar als EIGENE Zeile, weil ein Regal in einer Wohnung steht
     // (Migration 0020). …
-    // Ausführlich: docs/begruendungen/test/lagerort-detail-und-vorrat-db.test.js.md#stelle
     await haeltSet(db, KIND, SN, 1);
     const n = await L.setzeLagerort('set', schreibbar, [SN], 'Keller');
     assert.equal(n, 2, `${n} Zeilen getroffen, erwartet 2 (beide Konten halten das Set)`);
@@ -154,7 +151,6 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async (t) => {
 
 /**
  * Befund 3: der Lagerortfilter der Set-Liste — über die ROUTE geprüft.
- * Ausführlich: docs/begruendungen/test/lagerort-detail-und-vorrat-db.test.js.md#der-lagerortfilter-der-listen-wirkt-uebe
  *
  * ── Gegenproben (durchgeführt) ──────────────────────────────────────────────
  *
@@ -177,8 +173,7 @@ test('der Lagerortfilter der Listen wirkt über die Route', async (t) => {
   // Ein zweites Set OHNE Lagerort — ohne es hätte der Filter nichts
   // auszusieben, und „alle" wäre von „die richtigen" nicht zu unterscheiden.
   const OHNE = '21058-1';
-  await db.run(`INSERT INTO set_catalog (set_number, name) VALUES ($1,'Cheops')
-                ON CONFLICT (set_number) DO NOTHING`, [OHNE]);
+  await katalogSet(db, OHNE, { name: 'Cheops' });
   await haeltSet(db, HAUPT, OHNE, 1);
   await L.setzeLagerort('set', [HAUPT], [SN], 'Estrich');
 

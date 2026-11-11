@@ -1,12 +1,10 @@
 /**
- * Unter /api/v1/sets hängen zwei Router (routes/api_v1 und routes/sets.ts,
- * wie in server.ts). Der Namensabruf /sets/info/:setNumber stand im zweiten,
- * und eine Nummer, die wie ein Pfadwort der ersten aussieht, landete dort:
+ * Der Namensabruf /sets/info/:setNumber steht in routes/api_v1/sets.ts vor
+ * /sets/:setNumber/…: Sonst landet eine Nummer, die wie ein Pfadwort der ersten aussieht, landete dort:
  * GET /api/v1/sets/info/price-history traf /sets/:setNumber/price-history mit …
- * Ausführlich: docs/begruendungen/test/sets-info-eindeutig-db.test.js.md#kopf
  *
- * Gegenprobe (am 29.10.2026 gemessen): die Route /sets/info/:setNumber aus
- * routes/api_v1/sets.ts zurück an ihren alten Platz in routes/sets.ts → rot:
+ * Gegenprobe (am 29.10.2026 gemessen): die Route /sets/info/:setNumber hinter
+ * die Routen /sets/:setNumber/… gestellt → rot:
  * „ein Pfadwort als Setnummer“ (die Antwort kam vom Preisverlauf).
  *
  * Ein Platzhalter („Set <Nummer>“ ohne Jahr, Thema, Teile), den addSet ohne
@@ -27,6 +25,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { katalogSet } = require('./helpers/bestand');
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
@@ -39,10 +38,9 @@ test('der Namensabruf unter /api/v1/sets ist eindeutig', { concurrency: 1 }, asy
   const fremdId = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [`${NAME}-f`])).id;
   const [fremd, eigen, nie] = [`${process.pid}7-1`, `${process.pid}8-1`, `${process.pid}9-1`];
   const nummern = ['price-history-1', `${process.pid}-1`, fremd, eigen];
-  await db.run(`INSERT INTO set_catalog (set_number, name) VALUES ($1, 'Pfadwort'), ($2, 'Gewöhnlich'), ($3, 'Set ' || $3), ($4, 'Set ' || $4)
-                ON CONFLICT (set_number) DO UPDATE SET name = EXCLUDED.name`, nummern);
+  for (const [i, name] of ['Pfadwort', 'Gewöhnlich', null, null].entries())
+    await katalogSet(db, nummern[i], { name: name ?? `Set ${nummern[i]}` });
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2), ($3, $4)', [fremdId, fremd, uid, eigen]);
-  // Dieselbe Reihenfolge wie server.ts: zuerst der v1-Router, dann routes/sets.ts.
   const { base } = testServer(_req, {
     sitzung: { userId: uid, username: NAME, isAdmin: false },
     apiNutzer: { user_id: uid, is_admin: 0 },

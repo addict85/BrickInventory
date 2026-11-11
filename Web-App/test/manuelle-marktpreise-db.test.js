@@ -1,12 +1,9 @@
 /**
  * Manuell erfasste Teile und Figuren tragen ihren Marktpreis mit.
- * Ausführlich: docs/begruendungen/test/manuelle-marktpreise-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const { buildAndRequire, handlerModul } = require('./helpers/sources');
@@ -38,7 +35,6 @@ test('manuelle Listen tragen den Marktpreis aus dem Cache', async (t) => {
     // prueft den Marktpreis OHNE Erfassung, also bleibt es beim Vorgabewert
     // 'N', den conditionFromAcquisitions() ohne Erfassungen liefert.
     // bl_fig_number ist mit Migration 0037 weg; dieselbe Nummer in beiden …
-    // Ausführlich: docs/begruendungen/test/manuelle-marktpreise-db.test.js.md#stelle
     await haeltFigur(db, U, FIG, { menge: 1 });
     await haeltTeil(db, U, TEIL, { menge: 1, colorId: FARBE });
 

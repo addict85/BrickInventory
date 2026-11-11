@@ -2,14 +2,10 @@
  * Seit db/basis.sql gibt es den Stand VOR dieser Migration nicht mehr: Die
  * Fälle zu Riegel, Nachtrag und Zwischenstand sind entfallen. Geprüft werden
  * der Endstand und die Lesewege.
- * Ausführlich: docs/begruendungen/test/teilepreise-nur-erfassungen-db.test.js.md#kopf
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const path   = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
@@ -44,8 +40,6 @@ const dbDa = async (t) => {
   }
 };
 
-const MIG_DIR = path.join(ROOT, 'db/migrations');
-const DATEI   = path.join(MIG_DIR, '0035-teilepreise-nur-in-erfassungen.sql');
 
 test('nach der ganzen Kette tragen parts und minifigs keinen Preis mehr',
   { concurrency: 1 }, async (t) => {
@@ -70,7 +64,6 @@ test('nach der ganzen Kette tragen parts und minifigs keinen Preis mehr',
   // bl_part_number stand hier und ist weg: Migration 0037 hat sie geloescht,
   // die BrickLink-Nummer steht in bl_zuordnung (einmal je Teil statt je
   // Konto). Siehe test/bricklink-zuordnung-db.test.js. …
-  // Ausführlich: docs/begruendungen/test/teilepreise-nur-erfassungen-db.test.js.md#for-stelle
   for (const sp of ['id', 'user_id', 'set_number', 'part_number', 'color_id',
                     'source', 'storage_id', 'added_at']) {
     assert.ok(nachher.includes(sp), `parts.${sp} fehlt — die Spalte gehoert zum Bestand`);

@@ -22,19 +22,13 @@ export function uebertrageVormerkung(zuId: number, vonId: number, sn: string, c:
   return db.run('UPDATE wanted SET user_id=$1 WHERE user_id=$2 AND set_number=$3 AND condition=$4', [zuId, vonId, sn, c]);
 }
 
-/** Der Preisalarm wandert mit der Vormerkung ins andere Konto. */
-export function uebertrageAlarm(zuId: number, vonId: number, sn: string, c: string) {
-  return db.run('UPDATE price_alerts SET user_id=$1 WHERE user_id=$2 AND set_number=$3 AND condition=$4', [zuId, vonId, sn, c]);
-}
-
-/** Dieselben Namen wie SET_SORTS: Beide Oberflächen beschriften sie gleich.
- * Ausführlich: docs/begruendungen/src/merkliste/repository/merkliste.ts.md#merk-sorts */
+/** Dieselben Namen wie SET_SORTS: Beide Oberflächen beschriften sie gleich. */
 const MERK_SORTS = {
   added_desc: 'w.created_at DESC',
   added_asc:  'w.created_at ASC',
-  name_asc:   'COALESCE(rb.name, sc.name) ASC NULLS LAST',
+  name_asc:   'rb.name ASC NULLS LAST',
   num_asc:    'w.set_number ASC',
-  year_desc:  'COALESCE(rb.year, sc.year) DESC NULLS LAST',
+  year_desc:  'rb.year DESC NULLS LAST',
   price_desc: 'pc.avg_price DESC NULLS LAST',
   price_asc:  'pc.avg_price ASC NULLS LAST',
 };
@@ -49,7 +43,7 @@ export function merklisteImBlickfeld(userIds: number[], f: MerkAuswahl, waehrung
   if (f.suche) {
     werte.push(enthaeltMuster(f.suche));
     wo += ` AND (w.set_number ILIKE $${werte.length}${LIKE_ESCAPE}`
-        + ` OR COALESCE(rb.name, sc.name) ILIKE $${werte.length}${LIKE_ESCAPE})`;
+        + ` OR rb.name ILIKE $${werte.length}${LIKE_ESCAPE})`;
   }
   if (f.zustand) { werte.push(f.zustand); wo += ` AND w.condition = $${werte.length}`; }
   // ausTabelle(): Der direkte Zugriff fände auch geerbte Eigenschaften wie „constructor".
@@ -57,8 +51,7 @@ export function merklisteImBlickfeld(userIds: number[], f: MerkAuswahl, waehrung
   werte.push(waehrung);
   const pWaehrung = `$${werte.length}`;
   return db.all(`SELECT w.set_number, w.condition, w.created_at, w.user_id,
-            COALESCE(rb.name, sc.name) AS name, COALESCE(rb.year, sc.year) AS year, rb.theme_id,
-            COALESCE(rb.num_parts, sc.pieces) AS num_parts,
+            rb.name, rb.year, rb.theme_id, rb.num_parts,
             COALESCE(rb.set_img_url, sc.image_url) AS image_url,
             pa.richtung AS alarm_richtung, pa.schwelle AS alarm_schwelle,
             pa.ausgeloest AS alarm_ausgeloest,
@@ -67,7 +60,7 @@ export function merklisteImBlickfeld(userIds: number[], f: MerkAuswahl, waehrung
                      WHERE s.user_id = ANY($1) AND s.set_number = w.set_number) AS owned
        FROM wanted w
        LEFT JOIN rb_sets rb ON rb.set_num = w.set_number
-       -- Ohne Rebrickable-Katalog kennt set_catalog (wie in der Sammlung) Name und Bild.
+       -- set_catalog ergänzt das Bild, wenn rb_sets keines kennt.
        LEFT JOIN set_catalog sc ON sc.set_number = w.set_number
        LEFT JOIN price_alerts pa ON pa.user_id = w.user_id
                                 AND pa.set_number = w.set_number

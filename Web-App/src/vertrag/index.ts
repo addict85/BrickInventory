@@ -1,10 +1,8 @@
 /** Der API-Vertrag: je Bereich eine Datei, hier zusammengeführt. Aus ihm
  * entstehen docs/openapi.json (npm run vertrag:openapi), die Typen der
- * Routen (Antwort<…>) und die Prüfung der Antworten in den Tests. */
-import type { Request, Response } from 'express';
+ * Routen (src/http/vertragsRouter.ts) und die Prüfung der Antworten in den Tests. */
 import type { z } from 'zod';
-import type { Draht, Route, PfadVon } from './grund';
-import { Fehler } from './grund';
+import type { Draht, Route } from './grund';
 import * as bestand from './bestand';
 import * as einstellungen from './einstellungen';
 import * as figuren from './figuren';
@@ -30,8 +28,6 @@ export const VERTRAG = {
 
 export type Schluessel = keyof typeof VERTRAG;
 type Rumpf<K extends Schluessel> = (typeof VERTRAG)[K] extends { antwort: infer S extends z.ZodType } ? Draht<z.output<S>> : never;
-/** Der Typ von `res` in einer Route: tsc meldet, wo die Antwort vom Vertrag abweicht. */
-export type Antwort<K extends Schluessel> = Response<Rumpf<K> | z.input<typeof Fehler>>;
 /** Der Rumpf einer Route, für Dienste, die ihn ganz zusammensetzen. */
 export type AntwortRumpf<K extends Schluessel> = Rumpf<K>;
 
@@ -41,10 +37,6 @@ type Teil<K extends Schluessel, F extends 'eingabe' | 'abfrage'> =
 export type Eingabe<K extends Schluessel> = Teil<K, 'eingabe'>;
 /** Die geprüfte Abfrage; ohne Schema leer, ein Lesen dort ist ein Übersetzungsfehler. */
 export type Abfrage<K extends Schluessel> = Teil<K, 'abfrage'>;
-/** Der Typ von `req` in einer Route: `eingabe`, `abfrage` und `pfad` so, wie der Vertrag sie geprüft hat. */
-export type Anfrage<K extends Schluessel, R extends Request = AuthedRequest> = R & { eingabe: Eingabe<K>; abfrage: Abfrage<K>; pfad: PfadVon<K> };
-/** Dasselbe ohne requireToken. */
-export type OffeneAnfrage<K extends Schluessel> = Anfrage<K, Request>;
 
 export function routeZu(schluessel: string): Route | undefined {
   return Object.prototype.hasOwnProperty.call(VERTRAG, schluessel)

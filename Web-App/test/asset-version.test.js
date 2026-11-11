@@ -1,6 +1,5 @@
 /**
  * Jede versionierte Referenz in index.html trägt die Version aus package.json.
- * Ausführlich: docs/begruendungen/test/asset-version.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

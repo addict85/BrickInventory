@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.verwaltung.ui.screens
 
+import ch.brickinventoryapp.ui.titel
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import ch.brickinventoryapp.ui.components.AuswahlChip
@@ -28,7 +31,6 @@ import ch.brickinventoryapp.verwaltung.ui.*
 import ch.brickinventoryapp.zustand.ui.*
 import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.DESIGN_NAMEN
 import ch.brickinventoryapp.ui.components.Abschnittstitel
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.WahlChips
@@ -37,10 +39,10 @@ import ch.brickinventoryapp.gemeinsam.ui.ConditionToggle
 
 /** Was der Cache-Abschnitt auslöst; MonitoringRoute verdrahtet die ViewModels. */
 class CacheEreignisse(
-    val vorgabeZustand: (String) -> Unit,
+    val vorgabeZustand: (Zustand) -> Unit,
     val ablageLeeren: () -> Unit,
     val netz: (VorwaermNetz, Boolean) -> Unit,
-    val design: (String) -> Unit,
+    val design: (Design) -> Unit,
     val cacheDauer: (Int) -> Unit,
     val cacheLeeren: (Boolean) -> Unit,
     val grenzwerte: (rebrickable: Int, bricklink: Int, brickset: Int) -> Unit,
@@ -55,7 +57,7 @@ fun CacheAndLimitsSection(
     /** Die Netzerlaubnisse fürs Vorwärmen (WLAN, mobil, Roaming), Geräte-Einstellungen. */
     netze: Map<VorwaermNetz, Boolean>,
     /** Das wirksame Design, wenn der Server noch keine Vorgabe nannte. */
-    wirksamesDesign: String,
+    wirksamesDesign: Design,
     ablageBytes: Long,
     ereignisse: CacheEreignisse,
 ) {
@@ -68,7 +70,7 @@ fun CacheAndLimitsSection(
 private fun CacheKarte(
     monState: MonitoringUiState,
     netze: Map<VorwaermNetz, Boolean>,
-    wirksamesDesign: String,
+    wirksamesDesign: Design,
     ablageBytes: Long,
     ereignisse: CacheEreignisse,
 ) {
@@ -123,7 +125,7 @@ private fun CacheKarte(
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             // Eine Wahl aus mehreren: dieselben Radio-Chips wie in den Einstellungen.
             WahlChips(
-                optionen = DESIGN_NAMEN.map { (wert, text) -> wert to stringResource(text) },
+                optionen = Design.entries.map { it to stringResource(it.titel()) },
                 gewaehlt = monState.vorgabeDesign ?: wirksamesDesign,
                 onWahl = ereignisse.design,
             )
@@ -179,7 +181,7 @@ private fun CacheZahlen(cs: CacheKennzahlenAnsicht) {
 
 /** Der Zustand, mit dem neue Erfassungen beginnen (Neu oder Gebraucht). */
 @Composable
-private fun VorgabeZustandZeile(defaultCondition: String, onSelect: (String) -> Unit) {
+private fun VorgabeZustandZeile(defaultCondition: Zustand, onSelect: (Zustand) -> Unit) {
     Row(
         Modifier.fillMaxWidth(),
         Arrangement.SpaceBetween,

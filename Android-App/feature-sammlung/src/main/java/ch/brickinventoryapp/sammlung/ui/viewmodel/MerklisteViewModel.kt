@@ -1,5 +1,12 @@
 package ch.brickinventoryapp.sammlung.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Merksortierung
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
+import ch.brickinventoryapp.model.lokal.Lokal
+import ch.brickinventoryapp.model.data.model.MerklisteResponse
+import ch.brickinventoryapp.model.data.model.Merkposten
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.zustand.ui.abgeleitet
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.ui.model.alsAnsicht
@@ -9,7 +16,6 @@ import ch.brickinventoryapp.data.alarm.Alarmeingabe
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.zustand.ui.Aenderung
@@ -78,17 +84,27 @@ class MerklisteViewModel @Inject constructor(
 
     private val _merklisteState = MutableStateFlow(MerklisteUiState(
         query = gemerkt[SUCHE] ?: "",
-        zustandFilter = gemerkt[ZUSTAND] ?: "",
-        sortierung = gemerkt[SORTIERUNG] ?: MERKLISTE_DEFAULT_SORT,
+        zustandFilter = Zustand.aus(gemerkt[ZUSTAND]),
+        sortierung = Merksortierung.aus(gemerkt[SORTIERUNG]),
     ))
     /** Ein Merkposten, der erst gelöscht wird, wenn die Snackbar ohne „Rückgängig“ endet. */
-    data class VorgemerkterMerkposten(val setNumber: String, val zustand: String, val besitzer: Int?, val name: String)
+    data class VorgemerkterMerkposten(val setNumber: String, val zustand: Zustand, val besitzer: Int?, val name: String)
 
     private val _vorgemerkt = MutableStateFlow<VorgemerkterMerkposten?>(null)
     val vorgemerkt: StateFlow<VorgemerkterMerkposten?> = _vorgemerkt.asStateFlow()
 
-    /** Die Liste ohne den vorgemerkten Posten, auch wenn sie inzwischen neu kam (wie die Galerie). */
+    /** Die lokale Ablage; ohne Filter ist sie die einzige Quelle der Liste. */
+    private val lokal: StateFlow<Lokal<Merkposten>?> =
+        sets.beobachteMerkliste().stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /**
+     * Ohne Filter zeigt die Liste die Ablage — auch offline Angelegtes oder Gelöschtes
+     * sofort; mit Filter die Antwort des Servers. Der vorgemerkte Posten fehlt in beiden.
+     */
     val merklisteState: StateFlow<MerklisteUiState> = _merklisteState
+        .abgeleitet(lokal) { st, l ->
+            if (l?.stand != null && ungefiltert(st)) st.copy(merkposten = l.liste.map { m -> m.alsAnsicht() }) else st
+        }
         .abgeleitet(_vorgemerkt) { st, v ->
             if (v == null) st else st.copy(merkposten = st.merkposten.filterNot { it.setNumber == v.setNumber && it.condition == v.zustand })
         }
@@ -100,21 +116,8 @@ class MerklisteViewModel @Inject constructor(
     // wartenden Abruf ab, geladen wird erst nach der Pause.
     private var suchJob: Job? = null
 
-    init {
-        // Ohne Filter folgt die Liste der lokalen Ablage (Room), wie die Galerie:
-        // Offline Angelegtes oder Gelöschtes steht sofort da. Nicht während einer
-        // Ladung — deren Antwort setzt die Liste ohnehin.
-        viewModelScope.launch {
-            sets.beobachteMerkliste().collect { l ->
-                val f = _merklisteState.value
-                if (l.stand != null && !f.laedt && ungefiltert(f))
-                    _merklisteState.update { it.copy(merkposten = l.liste.map { m -> m.alsAnsicht() }) }
-            }
-        }
-    }
-
-    private fun ungefiltert(f: MerklisteUiState) = f.query.isBlank() && f.zustandFilter.isBlank() &&
-        (f.sortierung.isBlank() || f.sortierung == MERKLISTE_DEFAULT_SORT) && filter.kontoFuer(ScopeFilter.View.MERKLISTE) == null
+    private fun ungefiltert(f: MerklisteUiState) = f.query.isBlank() && f.zustandFilter == null &&
+        f.sortierung == Merksortierung.VORGABE && filter.kontoFuer(ScopeFilter.View.MERKLISTE) == null
 
     private val alarmEingabe = Preisalarmeingabe(
         scope = viewModelScope, sets = sets,
@@ -130,15 +133,18 @@ class MerklisteViewModel @Inject constructor(
         viewModelScope.launch {
             val f = _merklisteState.value
             _merklisteState.update { it.copy(laedt = true, fehler = null) }
-            val r = sets.getMerkliste(
+            // Ohne Filter schreibt der Abruf nur in die Ablage; gezeigt wird sie (merklisteState).
+            val r = if (ungefiltert(f)) sets.aktualisiereMerkliste() else sets.getMerkliste(
                 search    = f.query.trim().ifBlank { null },
-                condition = f.zustandFilter.ifBlank { null },
-                sort      = f.sortierung.ifBlank { null },
+                condition = f.zustandFilter,
+                sort      = f.sortierung,
                 accounts  = filter.kontoFuer(ScopeFilter.View.MERKLISTE),
             )
             when (r) {
-                is Ergebnis.Success ->
-                    _merklisteState.update { it.copy(merkposten = r.data.merkposten.map { m -> m.alsAnsicht() }, laedt = false) }
+                is Ergebnis.Success -> _merklisteState.update {
+                    val vomServer = (r.data as? MerklisteResponse)?.merkposten?.map { m -> m.alsAnsicht() }
+                    it.copy(merkposten = vomServer ?: it.merkposten, laedt = false)
+                }
                 is Ergebnis.Error -> {
                     _merklisteState.update { it.copy(laedt = false, fehler = meldungen.meldung(r),
                         fehlerKlasse = fehlerklasse(r)) }
@@ -158,19 +164,19 @@ class MerklisteViewModel @Inject constructor(
         }
     }
 
-    override fun setzeMerklisteZustand(zustand: String) {
-        gemerkt[ZUSTAND] = zustand
+    override fun setzeMerklisteZustand(zustand: Zustand?) {
+        gemerkt[ZUSTAND] = zustand?.kennung
         _merklisteState.update { it.copy(zustandFilter = zustand) }
         ladeMerkliste()
     }
 
-    override fun setzeMerklisteSortierung(sortierung: String) {
-        gemerkt[SORTIERUNG] = sortierung
+    override fun setzeMerklisteSortierung(sortierung: Merksortierung) {
+        gemerkt[SORTIERUNG] = sortierung.kennung
         _merklisteState.update { it.copy(sortierung = sortierung) }
         ladeMerkliste()
     }
 
-    override fun legeMerkpostenAn(setNumber: String, zustand: String, besitzer: Int?) {
+    override fun legeMerkpostenAn(setNumber: String, zustand: Zustand, besitzer: Int?) {
         val nummer = setNumber.trim()
         if (nummer.isBlank()) { meldungen.zeige(meldungen.text(R.string.wanted_need_number)); return }
         viewModelScope.launch {
@@ -179,7 +185,7 @@ class MerklisteViewModel @Inject constructor(
         }
     }
 
-    override fun verschiebeMerkposten(setNumber: String, zustand: String, vonId: Int, zuId: Int) {
+    override fun verschiebeMerkposten(setNumber: String, zustand: Zustand, vonId: Int, zuId: Int) {
         if (vonId == zuId) return
         viewModelScope.launch {
             when (val r = sets.verschiebeMerkposten(setNumber, zustand, vonId, zuId)) {
@@ -199,9 +205,10 @@ class MerklisteViewModel @Inject constructor(
      * Server erfährt es erst mit [merkpostenLoeschenAusfuehren]. Mit ihm gingen Schwelle,
      * Richtung und „auf der Liste seit“ verloren. Ein früher vorgemerkter wird zuerst gelöscht.
      */
-    override fun loescheMerkposten(setNumber: String, zustand: String, besitzer: Int?) {
+    override fun loescheMerkposten(setNumber: String, zustand: Zustand, besitzer: Int?) {
         merkpostenLoeschenAusfuehren()
-        val name = _merklisteState.value.merkposten
+        // Die gezeigte Liste, nicht die rohe: Ohne Filter steht der Posten nur in der Ablage.
+        val name = merklisteState.value.merkposten
             .firstOrNull { it.setNumber == setNumber && it.condition == zustand }?.name ?: setNumber
         _vorgemerkt.value = VorgemerkterMerkposten(setNumber, zustand, besitzer, name)
     }
@@ -233,8 +240,8 @@ class MerklisteViewModel @Inject constructor(
 
     /** Aus dem Merkposten wird Besitz; der Server entscheidet, was mit Eintrag und Alarm geschieht. */
     override fun uebernimmMerkposten(
-        setNumber: String, zustand: String, besitzer: Int?,
-        anzahl: Int, kaufpreisRoh: String, erfasstAls: String?,
+        setNumber: String, zustand: Zustand, besitzer: Int?,
+        anzahl: Int, kaufpreisRoh: String, erfasstAls: Zustand?,
         lagerort: String?,
     ) {
         viewModelScope.launch {
@@ -255,7 +262,7 @@ class MerklisteViewModel @Inject constructor(
 
     /** Aus dem Katalog: merken und, wenn eine Schwelle dasteht, den Alarm gleich mit. */
     fun merkpostenMitAlarm(
-        setNumber: String, zustand: String, richtung: String, schwelleRoh: String,
+        setNumber: String, zustand: Zustand, richtung: String, schwelleRoh: String,
         besitzer: Int? = null,
     ) {
         viewModelScope.launch {
@@ -279,7 +286,7 @@ class MerklisteViewModel @Inject constructor(
     override fun ladeMerkpostenDetail(setNumber: String) {
         viewModelScope.launch {
             _merkpostenDetailState.value = MerkpostenDetailUiState(setNumber = setNumber, laedt = true)
-            if (_merklisteState.value.merkposten.isEmpty()) ladeMerkliste()
+            if (merklisteState.value.merkposten.isEmpty()) ladeMerkliste()
             loadPreisalarme(setNumber)
             val katalog = (katalogRepo.getCatalogSetDetail(setNumber) as? Ergebnis.Success)
                 ?.data?.takeIf { it.success }?.set
@@ -301,7 +308,7 @@ class MerklisteViewModel @Inject constructor(
         }
     }
 
-    override fun setzePreisalarm(setNumber: String, richtung: String, roh: String, zustand: String) =
+    override fun setzePreisalarm(setNumber: String, richtung: String, roh: String, zustand: Zustand) =
         alarmEingabe.setze(setNumber, richtung, roh, zustand)
 
     private fun nachFilter(view: ScopeFilter.View) {
@@ -331,7 +338,7 @@ class MerklisteViewModel @Inject constructor(
  * Erfassung: Ein Scan aus der Merkliste heraus legt ebenfalls einen an.
  */
 internal suspend fun merkpostenAnlegen(
-    sets: SetsRepository, texte: Texte, setNumber: String, zustand: String, besitzer: Int?,
+    sets: SetsRepository, texte: Texte, setNumber: String, zustand: Zustand, besitzer: Int?,
 ): String? = when (val r = sets.legeMerkpostenAn(setNumber, zustand, besitzer)) {
     is Ergebnis.Success -> texte.text(if (r.data.warNeu) R.string.wanted_added else R.string.wanted_already)
     is Ergebnis.Error -> texte.meldungFuerSnackbar(r)?.let { texte.text(R.string.vm_error, it) }

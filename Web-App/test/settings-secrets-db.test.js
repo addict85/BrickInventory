@@ -1,6 +1,5 @@
 /**
  * KEINE Leseroute der Einstellungen gibt ein Geheimnis im Klartext heraus.
- * Ausführlich: docs/begruendungen/test/settings-secrets-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): readSettings() in `/raw` durch die alte, rohe
  * Abfrage ersetzt → beide Teilschritte für /raw werden rot (Nicht-Admin sieht
@@ -44,7 +43,6 @@ const VERWALTUNG = {
 
 /**
  * Leserouten, die global_settings ausliefern — GESUCHT, nicht aufgezählt.
- * Ausführlich: docs/begruendungen/test/settings-secrets-db.test.js.md#ausgenommen
  */
 const AUSGENOMMEN = new Map([
   ['/', 'Die Sicht der App: nur die Felder aus APP_FELDER (Währung, Zustand, ' +
@@ -86,8 +84,8 @@ function leserouten() {
 /** Alle Zeichenketten einer Antwort — egal wie tief verpackt. */
 function alleWerte(x, out = []) {
   if (typeof x === 'string') out.push(x);
-  else if (Array.isArray(x)) x.forEach(v => alleWerte(v, out));
-  else if (x && typeof x === 'object') Object.values(x).forEach(v => alleWerte(v, out));
+  else if (Array.isArray(x)) for (const v of x) alleWerte(v, out);
+  else if (x && typeof x === 'object') for (const v of Object.values(x)) alleWerte(v, out);
   return out;
 }
 

@@ -3,7 +3,6 @@
  * Seit dem 29.10. heisst das: dasselbe Design in seiner dunklen Variante
  * (data-dunkel am <html>, Farben aus tokens.css), nicht mehr „werkbank".
  * Ohne gespeicherte Wahl folgt das Gerät dem System (Vorgabe „system“).
- * Ausführlich: docs/begruendungen/test/dunkel-nach-system.test.js.md#kopf
  *
  * Gegenproben (am 25.10. gemessen):
  *   A  wirksam() gibt immer das Server-Design zurück → rot: „bleibt hell"
@@ -35,7 +34,7 @@ function fenster({ server = 'classic', wahl = null, dunkel = false } = {}) {
   w.fetch = async () => ({ ok: false });
   if (wahl) w.localStorage.setItem('bim_dunkel', wahl);
   w.eval(BOOT);
-  const systemWechsel = (d) => { mq.matches = d; hoerer.forEach(f => f()); };
+  const systemWechsel = (d) => { mq.matches = d; for (const f of hoerer) f(); };
   const hatDunkel = () => w.document.documentElement.hasAttribute('data-dunkel');
   return { w, thema: () => w.document.documentElement.getAttribute('data-theme'), dunkel: hatDunkel, systemWechsel };
 }

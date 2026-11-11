@@ -28,7 +28,7 @@ const _hoerer = new Map();
  */
 export function abonniere(name, fn) {
   let liste = _hoerer.get(name);
-  if (!liste) _hoerer.set(name, liste = new Set());
+  if (!liste) { liste = new Set(); _hoerer.set(name, liste); }
   const hoerer = /** @type {(daten: unknown) => void} */ (fn);
   liste.add(hoerer);
   return () => { liste.delete(hoerer); };

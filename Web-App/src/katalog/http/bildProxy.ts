@@ -25,8 +25,7 @@ import { setBildLokalEintragen } from '../bildlage';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../../infra/fremdeAdressen';
 
 import { einmalDekodiert, urlOderNull } from '../../infra/validate';
-/** 20 MB, weil grosse Set-Bilder sonst nie vollständig im Speicher landeten.
- * Ausführlich: docs/begruendungen/src/katalog/http/bildProxy.ts.md#proxy-cache-max-bytes */
+/** 20 MB, weil grosse Set-Bilder sonst nie vollständig im Speicher landeten. */
 const PROXY_CACHE_MAX_BYTES = 20 * 1024 * 1024;
 
 /** URLs, die das CDN mit 404 beantwortet hat → cacheKey → Zeitpunkt. */
@@ -257,10 +256,11 @@ const liegtDa = (datei: string) =>
   );
 
 /** @returns true, wenn Bild oder Vorschau unter images/sets noch fehlen */
-async function setBildFehlt(setNummer: string): Promise<boolean> {
+async function setBildFehlt(setNummer: string, quelle: string): Promise<boolean> {
   if (!(await setBildVollstaendig(setNummer))) return true;
-  // Liegen beide schon da, fehlt oft nur der Eintrag: Danach fragt die Oberfläche nicht mehr hier.
-  await setBildLokalEintragen(setNummer).catch(logAndContinue('img-proxy:setBildLokal'));
+  // Liegen beide schon da, fehlt oft nur der Eintrag: Danach fragt die Oberfläche nicht
+  // mehr hier. Ohne Warten — ein Schreibfehler darf die Auslieferung nicht aufhalten.
+  void setBildLokalEintragen(setNummer, quelle).catch(logAndContinue('img-proxy:setBildLokal'));
   return false;
 }
 
@@ -322,7 +322,6 @@ export async function bildDurchreichen(req: Request, res: Response) {
   const wantThumb = req.query.thumb === '1';
   // gen=0: Die Anfrage rechnet nichts, sie hinterlässt eine Notiz für den
   // Auftrag 'bildbedarf' — gedrosselt und nur im Job-Prozess.
-  // Ausführlich: docs/begruendungen/src/katalog/http/bildProxy.ts.md#bilddurchreichen-darferzeugen
   const darfErzeugen = req.query.gen !== '0';
   const setAusUrl = () => setNummerAusBildAdresse(String(url || ''));
   const notiere = () => {
@@ -333,7 +332,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
   // Ein Set-Bild gehört samt Vorschau nach images/sets; der Bild-Job holt es,
   // sobald es einmal über den Proxy gefragt war.
   const setNummer = setAusUrl();
-  const setFehlt = setNummer ? await setBildFehlt(setNummer) : false;
+  const setFehlt = setNummer ? await setBildFehlt(setNummer, url) : false;
   // Liegt nur noch die Vorschau im Cache (die Pflege löscht das unbenutzte Original
   // nach 30 Tagen), holt der Proxy das Original neu: Den Abruf des Bild-Jobs mit
   // eigener Kennung weist das CDN ab, ohne diesen Weg bekäme das Set nie eine Datei.
@@ -341,9 +340,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
   if (setFehlt && setNummer && !originalFehlt) await setBildAusCache(url, setNummer, cacheFile);
 
   // Liegt das Set-Bild samt Vorschau in images/sets, kommt es von dort statt aus
-  // Cache oder CDN: Die Katalogsuche fragt Sets ausserhalb des Blickfelds bewusst
-  // hier und nicht unter /images/sets (bildBlickfeld.ts), und den Proxy-Cache
-  // räumt die Pflege nach 30 Tagen, images/sets nicht.
+  // Cache oder CDN: Den Proxy-Cache räumt die Pflege nach 30 Tagen, images/sets nicht.
   if (setNummer && !setFehlt && (await ausSetBildern(req, res, setNummer, wantThumb))) return;
   const ausCache = () =>
     liefereAusCache({ res, req, cacheFile, thumbFile, wantThumb, darfErzeugen, notiere, streamFileToResponse });
@@ -370,7 +367,6 @@ export async function bildDurchreichen(req: Request, res: Response) {
 
   // Nur Bilder: Auf den erlaubten CDNs liegen teils Nutzer-Uploads, und ein SVG
   // oder HTML liefe sonst unter unserer Herkunft.
-  // Ausführlich: docs/begruendungen/src/katalog/http/bildProxy.ts.md#bilddurchreichen-mime
   const mime = vorDem(rohTyp, ';').trim().toLowerCase();
   if (!mime.startsWith('image/') || mime === 'image/svg+xml') {
     r.verwerfen();

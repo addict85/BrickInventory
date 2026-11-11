@@ -1,6 +1,5 @@
 /**
  * Ein Express-Server für einen Test.
- * Ausführlich: docs/begruendungen/test/helpers/server.js.md#kopf
  */
 const express = require('express');
 

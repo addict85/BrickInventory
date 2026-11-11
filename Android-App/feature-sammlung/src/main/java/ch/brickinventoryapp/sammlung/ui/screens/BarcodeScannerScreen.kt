@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
 /*
- * ═══ NICHT ÄNDERN OHNE ZU LESEN: Autofokus ═══
- * Ausführlich: docs/begruendungen/feature-sammlung/sammlung/ui/screens/BarcodeScannerScreen.kt.md#z3
+ * Autofokus: CONTINUOUS_PICTURE an Vorschau UND Bildanalyse, weil CameraX beide zu einem Request
+ * zusammenführt; kein periodisches Nachfokussieren, das die Kamera dauernd neu messen liesse.
  */
 
 import ch.brickinventoryapp.ui.theme.Formen
@@ -176,7 +176,6 @@ fun BarcodeScannerScreen(
  * Kandidaten für eine Setnummer aus erkanntem Text, in absteigender Güte. Auf
  * einer Anleitung stehen viele Zahlen (Alter, Teilezahl, Seite, Jahr, Heft- und
  * Elementnummern); die längste ist selten die Setnummer.
- * Ausführlich: docs/begruendungen/feature-sammlung/sammlung/ui/screens/BarcodeScannerScreen.kt.md#z176
  */
 
 /**
@@ -241,7 +240,7 @@ internal fun setNumberCandidates(text: String): List<String> {
 
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
 @Composable
-fun CameraPreviewBarcode(
+internal fun CameraPreviewBarcode(
     frozen: Boolean,
     ocrEnabled: Boolean,
     onBarcodeFound: (String) -> Unit,

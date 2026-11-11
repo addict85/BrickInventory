@@ -1,7 +1,6 @@
 /**
  * Nach einem Masseneinfuegen wird die Tabelle aufgefrischt — sonst nimmt der
  * Planer den falschen Index.
- * Ausführlich: docs/begruendungen/test/tabelle-pflegen-db.test.js.md#kopf
  *
  * ── Gegenproben (durchgefuehrt) ─────────────────────────────────────────────
  *
@@ -16,9 +15,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const { buildAndRequire } = require('./helpers/sources');

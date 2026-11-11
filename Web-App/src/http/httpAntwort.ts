@@ -1,10 +1,11 @@
-// Der eine Weg vom Fehler zur HTTP-Antwort. Hier und nur hier kennt infra
-// Express; db/, clients/ und die Dienste melden über fehler.ts.
+// Der eine Weg vom Fehler zur HTTP-Antwort. Express kennen nur src/http, die
+// HTTP-Seiten der Bereiche und die Routen; db/, clients/ und die Dienste
+// melden über fehler.ts und Fachfehler.
 import fs from 'fs';
 import type { Request, Response, NextFunction } from 'express';
 import type { ServerResponse } from 'http';
 import { konfig } from '../infra/konfig';
-import { FEHLER, fehlerText, antwortSprache, dateiFehler, Meldung, sendeFehler } from '../infra/fehlerTexte';
+import { FEHLER, fehlerText, antwortSprache, dateiFehler, Meldung } from '../infra/fehlerTexte';
 import { fehlertext } from '../infra/fehler';
 import { statusVon } from './fehlerArt';
 import type { FehlerArt, FehlerCode } from '../infra/fehlerTexte';
@@ -12,9 +13,22 @@ import type { FehlerArt, FehlerCode } from '../infra/fehlerTexte';
 export interface FehlerZiel { headersSent: boolean; status(code: number): { json(body: unknown): unknown } }
 export interface FehlerQuelle { method?: string; originalUrl?: string; url?: string; headers?: Record<string, unknown> }
 
+/** `code` steht neben dem Satz, damit ein Client reagieren kann, ohne Text zu
+ * vergleichen. */
+export function sendeFehler(
+  req: { headers?: Record<string, unknown> } | undefined, res: { status(c: number): { json(b: unknown): unknown } },
+  status: number, code: FehlerCode, vars?: Record<string, string | number>,
+): void {
+  res.status(status).json({
+    success: false,
+    error: fehlerText(code, antwortSprache(req), vars),
+    code,
+  });
+}
+
 interface Geworfen { status?: unknown; code?: unknown; vars?: Record<string, string | number>; stack?: unknown; message?: unknown }
 
-// Interna ins Protokoll, nicht zum Client. Ausführlich: docs/begruendungen/src/http/httpAntwort.ts.md#handlerouteerror
+// Interna ins Protokoll, nicht zum Client.
 export function handleRouteError(res: FehlerZiel, fehler: unknown, status?: number, req?: FehlerQuelle): void {
   const e = alsUploadFehler(fehler) as Geworfen | null | undefined;
   const code = status || statusVon(e);
@@ -83,7 +97,6 @@ function alsUploadFehler<T>(e: T): T | Error {
 }
 
 // Express 5 liefert Platzhalter auch als Array; verbunden wird mit / statt Komma.
-// Ausführlich: docs/begruendungen/src/http/httpAntwort.ts.md#pfadparam
 export function pfadParam(req: { params: Record<string, string | string[] | undefined> },
                    name: string): string {
   const wert = req.params[name];

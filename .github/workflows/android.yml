@@ -17,12 +17,16 @@ on:
       # SetnummerKorpusTest liest ihn — wer nur dort etwas aendert, muss trotzdem
       # den Android-Lauf bekommen, sonst prueft ihn nur noch die Web-Seite.
       - 'shared/**'
+      # FarbeDeutschTest gleicht die Farbnamen mit der Webapp ab.
+      - 'Web-App/public/i18n.js'
       - '.github/workflows/android.yml'
       - '.github/workflows/android-bescheinigung.yml'
   pull_request:
     paths:
       - 'Android-App/**'
       - 'shared/**'
+      # FarbeDeutschTest gleicht die Farbnamen mit der Webapp ab.
+      - 'Web-App/public/i18n.js'
       # Auch ein Fork-PR, der nur den Workflow ändert, bekommt einen Lauf.
       - '.github/workflows/android.yml'
       - '.github/workflows/android-bescheinigung.yml'

@@ -14,9 +14,6 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const { ohneKommentare } = require('./helpers/sources');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
@@ -67,7 +64,6 @@ test('ein geleerter Kaufpreis wird im Zustand der Zeile nachgefüllt', { concurr
 
 test('jeder Marktpreis-Abruf bekommt einen Zustand mit', () => {
   // Zweimal dieselbe Lücke
-  // Ausführlich: docs/begruendungen/test/acquisition-condition-price-db.test.js.md#fs-stelle
   const fs = require('node:fs');
   const path = require('node:path');
 const { ohneKommentare } = require('./helpers/sources');

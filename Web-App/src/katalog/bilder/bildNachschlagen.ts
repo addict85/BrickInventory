@@ -1,5 +1,5 @@
-import * as repo from '../repository/bildStammCdn';
 import { meldeUndLiefere } from '../../infra/fehler';
+import { katalog } from '../prozess';
 
 /** Umleiten auf die CDN-Adresse heilt Web und App, ohne verwaiste
  * image_local-Einträge bereinigen zu müssen. Gesucht über den indizierten
@@ -19,7 +19,7 @@ export async function cdnFuerFehlendesBild(webPfad: string): Promise<string | nu
   const stamm = bildStammAusPfad(webPfad);
   let url: string | null = null;
   if (stamm) {
-    const z = await repo.cdnZuBildstamm(stamm).catch(meldeUndLiefere('bilder:cdn nachschlagen', null));
+    const z = await katalog().bildStammCdn.cdnZuBildstamm(stamm).catch(meldeUndLiefere('bilder:cdn nachschlagen', null));
     url = z?.url ?? null;
   }
   // Ältestes Fünftel verdrängen statt alles wegwerfen.

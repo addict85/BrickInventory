@@ -1,12 +1,9 @@
 /**
  * Der CSV-Export gibt je Erfassung eine Zeile — und braucht dafür EINE Abfrage.
- * Ausführlich: docs/begruendungen/test/csv-export-acquisitions-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
@@ -42,7 +39,6 @@ test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile',
 
   try {
     // Vier Faelle, jeder mit einer eigenen Aussage
-    // Ausführlich: docs/begruendungen/test/csv-export-acquisitions-db.test.js.md#for-stelle
     for (const sn of ['0001-1', '0002-1', '0003-1', '0004-1']) {
       await haeltSet(db, uid, sn, 0);
     }
@@ -52,7 +48,7 @@ test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile',
               ($1,'0002-1',4,20.00,'U', NOW() - INTERVAL '1 day'),
               ($1,'0003-1',1,NULL,'N', NOW())`, [uid]);
 
-    const csv = await _req('src/sets/setService.js').buildSetsCsv(uid);
+    const csv = await _req('src/sets/index.js').buildSetsCsv(uid);
     const r = zeilen(csv);
     const je = (sn) => r.filter(x => x.set_number === sn);
 
@@ -110,7 +106,6 @@ test('Sets-Export braucht EINE Abfrage, unabhaengig von der Anzahl Sets',
   const uid = u.id;
 
   // Gezaehlt wird an pool.query, NICHT an db.all
-  // Ausführlich: docs/begruendungen/test/csv-export-acquisitions-db.test.js.md#echtesquery
   const echtesQuery = db.pool.query.bind(db.pool);
   try {
     for (let i = 1; i <= 25; i++) {
@@ -123,7 +118,7 @@ test('Sets-Export braucht EINE Abfrage, unabhaengig von der Anzahl Sets',
 
     let abfragen = 0;
     db.pool.query = (...args) => { abfragen++; return echtesQuery(...args); };
-    const csv = await _req('src/sets/setService.js').buildSetsCsv(uid);
+    const csv = await _req('src/sets/index.js').buildSetsCsv(uid);
     db.pool.query = echtesQuery;
 
     assert.equal(zeilen(csv).length, 25, 'alle 25 Sets stehen im Export');
@@ -158,7 +153,6 @@ test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage',
   try {
     // fig-a  ohne Erfassung        → Figuren-Zeile
     // fig-b  Erfassung ohne Preis  → leeres Feld
-    // Ausführlich: docs/begruendungen/test/csv-export-acquisitions-db.test.js.md#for-stelle-2
     for (const [nr, name, menge] of [
       ['fig-a', 'Aaa', 2], ['fig-b', 'Bbb', 1],
     ]) {
@@ -215,7 +209,6 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
   { concurrency: 1 }, async (t) => {
 
   // Warum dieser Fall spaeter kam
-  // Ausführlich: docs/begruendungen/test/csv-export-acquisitions-db.test.js.md#if-stelle
   if (!await dbOderSkip(t, _req, { migrieren: false })) return;
 
   const nutzer = `teilexp-${process.pid}`;
@@ -229,7 +222,6 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
     // 3001 / Farbe 4   zwei Erfassungen      → zwei Zeilen, aelteste zuerst
     // 3001 / Farbe 1   KEINE Erfassung       → Teile-Zeile, nicht die von Farbe 4
     // 3002 / Farbe 0   Erfassung ohne Preis  → leeres Feld
-    // Ausführlich: docs/begruendungen/test/csv-export-acquisitions-db.test.js.md#for-stelle-3
     for (const [nr, farbe, farbname] of [
       ['3001', 4, 'Rot'],
       ['3001', 1, 'Blau'],

@@ -5,7 +5,8 @@ import java.net.URLEncoder
 /**
  * URL-Bau für externe BrickLink-Links — pure JVM-Logik (kein android.net.Uri),
  * damit sie in JUnit-Unit-Tests prüfbar ist.
- * Ausführlich: docs/begruendungen/core-data/data/util/BrickLinkUrls.kt.md#bricklinkurls
+ * Den Katalog-Link löst inzwischen der Server auf (`bricklink.url`), weil nur er weiss, ob eine
+ * Nummer ein Set, Gear oder Buch ist; setForSale() ist der Rückfall für ältere Server.
  */
 object BrickLinkUrls {
 

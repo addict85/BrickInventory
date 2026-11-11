@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.zustand
 
+import ch.brickinventoryapp.model.fach.Laufstatus
 import ch.brickinventoryapp.data.CsvImportBeobachter
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.CsvImportSseClient
@@ -90,7 +91,7 @@ class CsvImportViewModelTest {
     }
 
     private fun status(s: String, done: Int = 0) =
-        CsvImportSseClient.Event.Status(CsvImportStatus(success = true, status = s, total = 3, done = done))
+        CsvImportSseClient.Event.Status(CsvImportStatus(success = true, status = Laufstatus.aus(s), total = 3, done = done))
 
     private fun mitVm(strom: Strom, dienst: Dienst, block: suspend TestScope.(CsvImportViewModel) -> Unit) = runTest(takt) {
         strom.uhr = { testScheduler.currentTime }
@@ -136,7 +137,7 @@ class CsvImportViewModelTest {
         val fehler = listOf(CsvImportSseClient.Event.Failed("weg"))
         val strom = Strom(fehler, fehler, fehler)
         mitVm(strom, dienst) { vm ->
-            fake.antworten["getCsvImportStatusDirect"] = CsvImportStatus(success = true, status = "running", total = 5, done = 2)
+            fake.antworten["getCsvImportStatusDirect"] = CsvImportStatus(success = true, status = Laufstatus.LAEUFT, total = 5, done = 2)
             vm.startCsvImportWatcher()
             runCurrent()
             assertEquals("Nach dem Abriss eine Abfrage", 1, fake.aufrufeVon("getCsvImportStatusDirect"))

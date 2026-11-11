@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+
 // rememberSaveable liegt im UNTERPAKET runtime.saveable — der Sammelimport
 // darueber deckt es nicht ab (Kotlin-Sternimporte gelten nicht fuer
 // Unterpakete). Genau daran ist Lauf 81 gescheitert.
@@ -43,10 +44,9 @@ import ch.brickinventoryapp.gemeinsam.ui.LagerortFeld
  * Bild mit Zoom und die Sets, die es verwenden, mit Link zum Set-Detail. Ein Blatt
  * statt eines Dialogs, weil Lagerort und Liste Platz brauchen und das Wischen nach
  * unten schliesst wie überall.
- * Ausführlich: docs/begruendungen/feature-teile/teile/ui/dialogs/SetItemDetailDialog.kt.md#setitemdetaildialog
  */
 @Composable
-fun SetItemDetailDialog(
+internal fun SetItemDetailDialog(
     zustand: SetItemUiState,
     lagerZustand: LagerUiState,
     aktionen: TeileAktionen,
@@ -62,7 +62,7 @@ fun SetItemDetailDialog(
  * der Merkliste): Titel mit Schliessen-Knopf, darunter der Inhalt, rollbar.
  */
 @Composable
-fun SetItemDetailBereich(
+internal fun SetItemDetailBereich(
     zustand: SetItemUiState,
     lagerZustand: LagerUiState,
     aktionen: TeileAktionen,
@@ -160,7 +160,6 @@ private fun SetItemDetail(
                         // steckt in ihrem Set, dessen Ort im Set-Detail steht — ein zweiter
                         // Ort könnte auseinanderlaufen. Bearbeitbar wie in der Webapp; das
                         // Feld schreibt auf alle Zeilen dieses Teil-Farb-Paares.
-                        // Ausführlich: docs/begruendungen/feature-teile/teile/ui/dialogs/SetItemDetailDialog.kt.md#kopffarbe
                         val kopfFarbe = kopf?.colorId
                         if (kopf != null && kopfFarbe != null) {
                             Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),

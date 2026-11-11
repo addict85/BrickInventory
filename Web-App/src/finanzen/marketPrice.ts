@@ -9,7 +9,6 @@ import { getMinifigParts } from '../katalog/rebrickableKatalog';
 import { KEINE_FARBE } from '../infra/validate';
 
 // Ein Blatt ohne Rückbezug, damit die Aufrufer echt importieren statt spät mit require().
-// Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#getcurrentmarketprice
 export async function getCurrentMarketPrice(setNumber: string, userId: number, condition: string | null = null) {
   try {
     const currency = String(await getSetting(userId, 'currency', 'EUR'));
@@ -47,8 +46,7 @@ export async function resolvePartCondition(userId: number, partNumber: string, c
   catch (e) { return meldeUndLiefere('marktpreis:standardzustand', DEFAULT_PRICE_CONDITION)(e); }
 }
 
-/** Nur aus dem Cache, ohne Abruf: Die Liste soll nicht auf BrickLink warten.
- * Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#marktpreiseauscachefuerfiguren */
+/** Nur aus dem Cache, ohne Abruf: Die Liste soll nicht auf BrickLink warten. */
 export async function marktpreiseAusCacheFuerFiguren(
   figuren: Array<{ fig_number?: string | null; bl_fig_number?: string | null; condition?: string | null }>,
   viewerId: number,
@@ -68,8 +66,8 @@ export async function marktpreiseAusCacheFuerFiguren(
     [f.bl_fig_number, f.fig_number].filter(Boolean).map(String)))];
   if (!schluessel.length) return treffer;
 
-  const zeilen = await repo.figurenpreiseAusCache(schluessel, String(currency), ttl)
-    .catch(meldeUndLiefere('marktpreis:zeilen', []));
+  // Ohne Fang: Die Liste fasst den Fehler als `degradiert` (Abstriche) und zeigt sie ohne Preis.
+  const zeilen = await repo.figurenpreiseAusCache(schluessel, String(currency), ttl);
 
   const cache = new Map<string, number>();
   for (const z of zeilen) {
@@ -95,7 +93,6 @@ export async function marktpreiseAusCacheFuerFiguren(
 }
 
 // Der Teile-Cache ist nach BrickLink-Nummer und -Farbe verschlüsselt; beides wird vorher übersetzt.
-// Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#marktpreiseauscachefuerteile
 export async function marktpreiseAusCacheFuerTeile(
   teile: Array<{ part_number?: string | null; bl_part_number?: string | null;
                  color_id?: number | null; condition?: string | null }>,
@@ -127,8 +124,7 @@ export async function marktpreiseAusCacheFuerTeile(
 
   const nummern = [...new Set([...auflösung.values()].map(a => a.nummer))];
   if (!nummern.length) return treffer;
-  const zeilen = await repo.teilepreiseAusCache(nummern, String(currency), ttl)
-    .catch(meldeUndLiefere('marktpreis:zeilen', []));
+  const zeilen = await repo.teilepreiseAusCache(nummern, String(currency), ttl);
 
   const cache = new Map<string, number>();
   for (const z of zeilen) {
@@ -149,8 +145,7 @@ export async function marktpreiseAusCacheFuerTeile(
   return treffer;
 }
 
-/** Mit Herkunft für die eine Stelle, die sie zeigt; alle anderen nehmen die Zahl.
- * Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#marktpreismitherkunft */
+/** Mit Herkunft für die eine Stelle, die sie zeigt; alle anderen nehmen die Zahl. */
 export async function marktpreisMitHerkunft(partNumber: string, colorId: number, userId: number, condition: string | null = null) {
   try {
     const currency  = await getSetting(userId, 'currency', 'EUR');
@@ -162,7 +157,6 @@ export async function marktpreisMitHerkunft(partNumber: string, colorId: number,
     if (!(price > 0)) return { preis: null, ausZustand: null };
     // Der Rückfall auf den anderen Zustand wird übernommen, aber benannt: Gar
     // kein Preis war schlechter als ein gekennzeichneter.
-    // Ausführlich: docs/begruendungen/src/finanzen/marketPrice.ts.md#marktpreismitherkunft-2
     return {
       preis: price,
       ausZustand: priceData?.is_fallback ? (priceData.condition_used || null) : null,
@@ -230,7 +224,7 @@ export async function schaetzeFigurenpreis(figNumber: string, userId: number, co
 
     return { preis: total, abdeckung };
   } catch (e) {
-    console.warn(`[minifig-price-estimate] ${figNumber}: ${fehlertext(e)}`);
+    console.warn(`[minifig-price-estimate] ${figNumber}: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
     return null;
   }
 }

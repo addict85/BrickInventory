@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.zustand
 
+import ch.brickinventoryapp.model.fach.Laufstatus
 import ch.brickinventoryapp.zustand.ui.CsvFolge
 import ch.brickinventoryapp.zustand.ui.csvFolge
 import ch.brickinventoryapp.zustand.ui.importLaeuft
@@ -22,7 +23,7 @@ import org.junit.Test
  * entscheiden, dann den Zustand überschreiben) und das Nachladen prüft
  * CsvImportViewModelTest am ausgeführten ViewModel.
  *
- * ── Gegenprobe (ausgeführt, Lauf 33632359947) ───────────────────────────────
+ * ── Gegenprobe ───────────────────────────────
  * Im Gegenprobe-Commit gab `csvFolge()` im Fall „fertig" immer NACHLADEN
  * zurück, also ohne `warVorherAktiv`.
  * Ergebnis: `351 tests completed, 1 failed`, und zwar
@@ -41,7 +42,7 @@ class CsvStatusReloadTest {
 
     @Test
     fun `nur der Uebergang laedt nach`() {
-        assert(csvFolge(warVorherAktiv = true, status = "done") == CsvFolge.NACHLADEN) {
+        assert(csvFolge(warVorherAktiv = true, status = Laufstatus.FERTIG) == CsvFolge.NACHLADEN) {
             "Ein Import, der gerade fertig geworden ist, muss die Daten neu laden — " +
                 "sonst bleibt nach dem Import die alte Liste stehen."
         }
@@ -52,7 +53,7 @@ class CsvStatusReloadTest {
         // Der Rücksprung: Der Strom meldet „done" weiter, ohne dass
         // vorher noch etwas lief.
         for (status in listOf("done", "cancelled", "finished")) {
-            assert(csvFolge(warVorherAktiv = false, status = status) == CsvFolge.NICHTS) {
+            assert(csvFolge(warVorherAktiv = false, status = Laufstatus.aus(status)) == CsvFolge.NICHTS) {
                 "Statusmeldung \"$status\" ohne vorherigen Lauf löst ein Nachladen aus. " +
                     "Der SSE-Strom schickt sie alle paar Sekunden — die Galerie fällt " +
                     "damit dauernd auf Seite 1 zurück."
@@ -63,10 +64,10 @@ class CsvStatusReloadTest {
     @Test
     fun `ein laufender Import startet den Dienst genau einmal`() {
         for (status in listOf("running", "pending")) {
-            assert(csvFolge(warVorherAktiv = false, status = status) == CsvFolge.DIENST_STARTEN) {
+            assert(csvFolge(warVorherAktiv = false, status = Laufstatus.aus(status)) == CsvFolge.DIENST_STARTEN) {
                 "Beim Anlaufen (\"$status\") muss der Vordergrunddienst starten"
             }
-            assert(csvFolge(warVorherAktiv = true, status = status) == CsvFolge.NICHTS) {
+            assert(csvFolge(warVorherAktiv = true, status = Laufstatus.aus(status)) == CsvFolge.NICHTS) {
                 "Jede Fortschrittszeile startet den Dienst erneut — dasselbe Muster " +
                     "wie der Rücksprung, nur an anderer Stelle."
             }
@@ -77,9 +78,9 @@ class CsvStatusReloadTest {
     fun `pending zaehlt als laufend`() {
         // Sonst wirkt die App zwischen Auftragsannahme und erster Zeile
         // eingefroren: kein Banner, kein Dienst.
-        assert(importLaeuft("pending")) { "pending gilt nicht mehr als laufend" }
-        assert(importLaeuft("running")) { "running gilt nicht mehr als laufend" }
-        assert(!importLaeuft("done")) { "done gilt als laufend" }
+        assert(importLaeuft(Laufstatus.WARTET)) { "pending gilt nicht mehr als laufend" }
+        assert(importLaeuft(Laufstatus.LAEUFT)) { "running gilt nicht mehr als laufend" }
+        assert(!importLaeuft(Laufstatus.FERTIG)) { "done gilt als laufend" }
         assert(!importLaeuft(null)) { "eine Meldung ohne Zustand gilt als laufend" }
     }
 
@@ -87,8 +88,8 @@ class CsvStatusReloadTest {
     fun `ein Fehler laedt nicht nach`() {
         // Ein gescheiterter Import hat nichts geliefert, was sich nachzuladen
         // lohnte — und würde die Liste trotzdem zurücksetzen.
-        assert(csvFolge(warVorherAktiv = true, status = "error") == CsvFolge.FEHLER_AUFRAEUMEN)
-        assert(csvFolge(warVorherAktiv = false, status = "error") == CsvFolge.FEHLER_AUFRAEUMEN)
+        assert(csvFolge(warVorherAktiv = true, status = Laufstatus.FEHLER) == CsvFolge.FEHLER_AUFRAEUMEN)
+        assert(csvFolge(warVorherAktiv = false, status = Laufstatus.FEHLER) == CsvFolge.FEHLER_AUFRAEUMEN)
     }
 
     @Test

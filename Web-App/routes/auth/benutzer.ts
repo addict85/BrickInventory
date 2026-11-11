@@ -2,17 +2,17 @@
  * zweiten Faktor des Verwalters und steht im Protokoll. */
 import { protokolliere } from '../../src/verwaltung/dienst';
 import * as K from '../../src/konto/konten';
-import { fehlerAntwort } from '../../src/http/httpAntwort';
+import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { USERNAME_RE } from '../../src/konto/auth';
 import { kontoEntfernen } from '../../src/konto/kontoEntfernen';
 import { nutzerId, angemeldeteNutzerId, bestaetigeMitFaktor, nutzerName } from '../../src/konto/http/anmeldung';
 import { hinweisNebenher, verwalterHinweisNebenher } from '../../src/konto/kontoHinweis';
 import { passwortMangel } from '../../src/infra/passwortRegel';
 import { requireApiAdmin } from '../api_v1/middleware';
-import { sendeFehler, alsDoppelt } from '../../src/infra/fehlerTexte';
+import { alsDoppelt } from '../../src/infra/fehlerTexte';
 import * as zf from '../../src/konto/zweiterFaktor';
-import { vertragsRouter } from '../../src/vertrag/pruefen';
-import type { Antwort, OffeneAnfrage } from '../../src/vertrag';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Antwort, OffeneAnfrage } from '../../src/http/vertragsRouter';
 
 const router = vertragsRouter();
 const requireAdmin = requireApiAdmin;
@@ -63,7 +63,6 @@ router.put('/users/:id/admin', requireAdmin, async (req: OffeneAnfrage<'PUT /api
 
   // Sitzungen enden, weil istVerwalter() zuerst das nie nachgeführte
   // `req.session.isAdmin` fragt; ein Entzug wirkte sonst im offenen Fenster nicht.
-  // Ausführlich: docs/begruendungen/routes/auth/benutzer.ts.md#put-users-id-admin
   res.json({ success: true });
 });
 
@@ -92,8 +91,7 @@ router.put('/users/:id/freischalten', requireAdmin, async (req: OffeneAnfrage<'P
   res.json({ success: true });
 });
 
-/** Ohne aktuelles Passwort des Ziels, aber mit dem des Verwalters.
- * Ausführlich: docs/begruendungen/routes/auth/benutzer.ts.md#put-users-id-password */
+/** Ohne aktuelles Passwort des Ziels, aber mit dem des Verwalters. */
 router.put('/users/:id/password', requireAdmin, async (req: OffeneAnfrage<'PUT /api/v1/auth/users/:id/password'>, res: Antwort<'PUT /api/v1/auth/users/:id/password'>) => {
   const { password } = req.eingabe || {};
   const targetId = req.pfad.id;

@@ -1,8 +1,10 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.fach.Merksortierung
+import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.coroutines.runBlocking
 import ch.brickinventoryapp.model.data.model.MerkpostenRequest
-import ch.brickinventoryapp.offline.Offlineablage
+import ch.brickinventoryapp.testing.Testablage
 import ch.brickinventoryapp.offline.Bearbeitung
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.repository.KatalogRepository
@@ -43,12 +45,18 @@ import ch.brickinventoryapp.testing.TestDienste
  *      Übernahme meldet Merkliste und Sets“
  *   D  im Preisalarm das Nachladen der Alarme des offenen Postens entfernt →
  *      rot „ein Preisalarm im Merkposten wird entprellt gespeichert …“
- *   E  im init-Sammler die Bedingung `ungefiltert(f)` entfernt →
- *      rot „mit Suchtext bleibt die Serverantwort stehen“
- *   F  den init-Sammler entfernt → rot „offline gelöscht“ (Zeitüberschreitung)
+ *   E  in merklisteState die Bedingung `ungefiltert(st)` entfernt
+ *      (gegenproben/merkliste-ablage-trotz-filter.patch) → rot „mit Suchtext
+ *      bleibt die Serverantwort stehen“
+ *   F  merklisteState sieht die Ablage nicht an (gegenproben/merkliste-ohne-ablage.patch)
+ *      → rot „Liste geladen“: Ohne Filter schreibt der Abruf nur in die Ablage.
+ *   E und F seit dem Umbau auf einen Datenweg nur in der CI gemessen.
  *   G  loescheMerkposten() löscht wieder sofort am Server
  *      (gegenproben/merkposten-loeschen-sofort.patch) → rot „ein geloeschter Merkposten …“
  *      („Noch kein DELETE“)
+ *   H  loescheMerkposten() liest den Namen aus der rohen Liste statt aus der gezeigten
+ *      (gegenproben/merkposten-name-ohne-ablage.patch) → rot „ein geloeschter Merkposten …“
+ *      (Titanic erwartet, 10294-1 bekommen; nur in der CI messbar)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MerklisteViewModelTest {
@@ -88,14 +96,14 @@ class MerklisteViewModelTest {
         val vm = vm()
         vm.ladeMerkliste()
         assertEquals(2, vm.merklisteState.value.merkposten.size)
-        vm.loescheMerkposten("10294-1", "N", 1)
+        vm.loescheMerkposten("10294-1", Zustand.NEU, 1)
         assertTrue("aus der Liste", vm.merklisteState.value.merkposten.none { it.setNumber == "10294-1" })
         assertEquals("Titanic", vm.vorgemerkt.value?.name)
         assertTrue("Noch kein DELETE", pfade.anfragenAn("DELETE /api/v1/wanted/10294-1").isEmpty())
         vm.merkpostenRueckgaengig()
         assertTrue("wieder da", vm.merklisteState.value.merkposten.any { it.setNumber == "10294-1" })
         assertTrue("nach Rückgängig kein DELETE", pfade.anfragenAn("DELETE /api/v1/wanted/10294-1").isEmpty())
-        vm.loescheMerkposten("10294-1", "N", 1)
+        vm.loescheMerkposten("10294-1", Zustand.NEU, 1)
         vm.merkpostenLoeschenAusfuehren()
         assertTrue("DELETE gesendet", pfade.anfragenAn("DELETE /api/v1/wanted/10294-1").isNotEmpty())
         assertEquals(null, vm.vorgemerkt.value)
@@ -106,13 +114,13 @@ class MerklisteViewModelTest {
         val gemerkt = SavedStateHandle()
         val erstes = vm(gemerkt)
         erstes.setzeMerklisteSuche("Titanic")
-        erstes.setzeMerklisteZustand("U")
-        erstes.setzeMerklisteSortierung("price_desc")
+        erstes.setzeMerklisteZustand(Zustand.GEBRAUCHT)
+        erstes.setzeMerklisteSortierung(Merksortierung.PREIS_ABSTEIGEND)
 
         pfade.neuerProzess(io = Dispatchers.Main) { pfade, t ->
             val neu = vm(gemerkt, t)
             val f = neu.merklisteState.value
-            assertEquals(Triple("Titanic", "U", "price_desc"), Triple(f.query, f.zustandFilter, f.sortierung))
+            assertEquals(Triple("Titanic", Zustand.GEBRAUCHT, Merksortierung.PREIS_ABSTEIGEND), Triple(f.query, f.zustandFilter, f.sortierung))
             neu.ladeMerkliste()
             assertTrue("Liste geladen", neu.merklisteState.value.merkposten.isNotEmpty())
             val anfrage = pfade.anfragenAn("GET /api/v1/wanted").single()
@@ -139,7 +147,7 @@ class MerklisteViewModelTest {
         val vm = vm()
         val gemeldet = mutableListOf<Aenderung>()
         val sammler = CoroutineScope(Dispatchers.Main).launch { t.bestand.aenderungen.toList(gemeldet) }
-        vm.uebernimmMerkposten("10294-1", "N", besitzer = null, kaufpreisRoh = "499,90")
+        vm.uebernimmMerkposten("10294-1", Zustand.NEU, besitzer = null, kaufpreisRoh = "499,90")
         assertTrue("Liste nachgeladen", vm.merklisteState.value.merkposten.isNotEmpty())
         sammler.cancel()
         assertEquals(listOf(Aenderung.Merkliste, Aenderung.Sets), gemeldet)
@@ -154,8 +162,8 @@ class MerklisteViewModelTest {
         assertTrue("Detail geladen", !vm.merkpostenDetailState.value.laedt)
         val vorher = pfade.anfragenAn("GET /api/v1/sets/10294-1/alert").size
 
-        vm.setzePreisalarm("10294-1", "unter", "4", "N")
-        vm.setzePreisalarm("10294-1", "unter", "450", "N")
+        vm.setzePreisalarm("10294-1", "unter", "4", Zustand.NEU)
+        vm.setzePreisalarm("10294-1", "unter", "450", Zustand.NEU)
         uhr.advanceTimeBy(900)
         assertTrue("gespeichert und nachgeladen", pfade.anfragenAn("GET /api/v1/sets/10294-1/alert").size > vorher)
         assertEquals("Nur die letzte Eingabe wird gespeichert", 1, pfade.anfragenAn("PUT /api/v1/sets/10294-1/alert").size)
@@ -164,7 +172,7 @@ class MerklisteViewModelTest {
 
     @Test
     fun `ohne Filter folgt die Liste der Ablage, mit Suchtext nicht`() {
-        val ablage = Offlineablage.fluechtig()
+        val ablage = Testablage()
         val vm = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, SetsRepository(t.api, t.cache, ablage),
             KatalogRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), SavedStateHandle()))
         vm.ladeMerkliste()
@@ -178,7 +186,7 @@ class MerklisteViewModelTest {
         vm.setzeMerklisteSuche("10294")
         uhr.advanceTimeBy(400)
         assertTrue("Suche geladen", vm.merklisteState.value.merkposten.isNotEmpty())
-        runBlocking { ablage.wendeAn(Bearbeitung.MerkpostenAnlegen(MerkpostenRequest("99999-1", "N", 1))) }
+        runBlocking { ablage.wendeAn(Bearbeitung.MerkpostenAnlegen(MerkpostenRequest("99999-1", Zustand.NEU, 1))) }
         uhr.advanceTimeBy(100)
         assertEquals("mit Suchtext bleibt die Serverantwort stehen", listOf("10294-1"),
             vm.merklisteState.value.merkposten.map { it.setNumber })

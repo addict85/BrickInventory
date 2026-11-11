@@ -1,6 +1,5 @@
 /**
  * Keine SQL-Anweisung steht in mehr als einer Datei.
- * Ausführlich: docs/begruendungen/test/sql-kerne.test.js.md#kopf
  *
  * Gegenprobe (durchgefuehrt): eine der zusammengelegten Anweisungen in eine
  * zweite Datei zurueckkopiert -> rot, mit beiden Fundorten.

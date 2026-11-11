@@ -1,6 +1,5 @@
 /**
  * Späte require()-Aufrufe zwischen Servermodulen gibt es nicht mehr.
- * Ausführlich: docs/begruendungen/test/require-exports.test.js.md#kopf
  *
  * Gegenprobe (31.10.2026): `const { konfig } = require('./konfig')` in
  * src/infra/appPaths.ts → rot.
@@ -48,7 +47,6 @@ test('kein Servermodul holt ein anderes per spätem require()', () => {
  * 679 `utils/handlers.js` — aufgeteilt seit. Der Aufruf steht auf
  * DATEIEBENE, also starb die ganze Datei beim Laden; die zehn Prüfungen
  * darunter liefen nie mehr. Sichtbar war das nur an einer Zahl („nicht ok" für …
- * Ausführlich: docs/begruendungen/test/require-exports.test.js.md#kein-test-holt-ein-modul-aus-dist-das-es
  */
 test('kein Test holt ein Modul aus dist/, das es nicht gibt', () => {
   buildAndRequire();                       // stellt sicher, dass dist/ steht

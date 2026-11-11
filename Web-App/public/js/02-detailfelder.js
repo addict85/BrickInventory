@@ -37,7 +37,6 @@ export async function speichereSetLagerort(sn) {
 /**
  * Welcher Alarmblock gemeint ist: 'm' (Set) oder 'mk-m' (Merkposten). Eine Modulvariable statt Parameter,
  * weil der Dispatcher nur die Setnummer reicht; offen ist ohnehin immer nur ein Dialog.
- * Ausführlich: docs/begruendungen/public/js/02-detailfelder.js.md#alarmfeld
  */
 let _alarmFeld = 'm';
 
@@ -81,7 +80,6 @@ export function alarmBlock(sn, praefix = 'm', zustand = 'N') {
 /**
  * „Neuer Ort“ wird an einem Attribut erkannt, nicht an einem abgemachten Wert: Jeden ausgedachten Wert kann
  * jemand als Lagerort eintippen.
- * Ausführlich: docs/begruendungen/public/js/02-detailfelder.js.md#ort-neu-marke
  */
 const ORT_NEU_MARKE = html`data-neu="1"`;
 
@@ -130,7 +128,6 @@ function ortOptionen(wert) {
 /**
  * Der Lagerort als Auswahl, die auch Neues annimmt: Eine datalist sah wie ein Textfeld aus und klappte nicht
  * auf. Gespeichert wird weiter über das Textfeld, damit die Speicherregel nur einmal existiert.
- * Ausführlich: docs/begruendungen/public/js/02-detailfelder.js.md#der-lagerort-ein-auswahlfeld-das-auch-ne
  * @param {string} id  Kennung des Textfeldes (m-storage, setitem-storage); die
  *   Auswahl bekommt dieselbe mit dem Zusatz "-sel".
  * @param {string | null | undefined} wert  Aktueller Lagerort, oder leer.
@@ -172,7 +169,6 @@ export function lagerortGewaehlt(id) {
 /**
  * Ein neuer Ort ist fertig getippt. Gespeichert hat schon das change-Ereignis des Feldes; hier zieht nur die
  * Auswahl daneben nach. `this` ist das Feld (der Dispatcher ruft mit dem Element als Empfänger).
- * Ausführlich: docs/begruendungen/public/js/02-detailfelder.js.md#lagerortgetippt
  * @this {HTMLInputElement}
  */
 export function lagerortGetippt() {
@@ -189,7 +185,6 @@ export function lagerortGetippt() {
 /**
  * Für welchen Zustand der Alarm gilt: Neu und gebraucht liegen oft weit auseinander, und wer gebraucht sucht,
  * soll darauf warten können. Der Server hat den Zustand im Schlüssel.
- * Ausführlich: docs/begruendungen/public/js/02-detailfelder.js.md#fuer-welchen-zustand-der-alarm-gilt-neu
  */
 function alarmZustand() {
   return G(alarmId('cond'))?.value === 'U' ? 'U' : 'N';
@@ -197,7 +192,6 @@ function alarmZustand() {
 
 /**
  * Preisalarm des offenen Sets laden und anzeigen.
- * Ausführlich: docs/begruendungen/public/js/02-detailfelder.js.md#preisalarm-des-offenen-sets-laden-und-an
  * @param {string} sn
  */
 export async function ladeAlarm(sn) {
@@ -217,7 +211,6 @@ export async function ladeAlarm(sn) {
 /**
  * Nur den Merker nachführen, nie das Eingabefeld: Während getippt wird, schriebe die Serverantwort sonst ein
  * eben getipptes Zeichen wieder weg.
- * Ausführlich: docs/begruendungen/public/js/02-detailfelder.js.md#zeigealarmmerker
  * @param {import('../../frontend-typen/vertrag').Preisalarm | undefined} a
  */
 function zeigeAlarmMerker(a) {
@@ -232,7 +225,6 @@ function zeigeAlarmMerker(a) {
 /**
  * Auf den anderen Zustand umschalten lädt nur und speichert nicht: Ein Wechsel ist eine Frage, keine Eingabe.
  * Eine laufende Ruhezeit fällt weg, damit die alte Schwelle nicht beim neuen Zustand landet.
- * Ausführlich: docs/begruendungen/public/js/02-detailfelder.js.md#wechslealarmzustand
  * @param {string} sn
  */
 export function wechsleAlarmZustand(sn) {
@@ -256,7 +248,6 @@ let _alarmRuhe = null;
 /**
  * Beim Tippen speichern, entprellt: Wer tippt und das Fenster schliesst, ohne woanders hinzuklicken, verlor
  * die Eingabe. Die Werte werden jetzt kopiert, weil das Feld beim Ablauf der Ruhezeit schon weg sein kann.
- * Ausführlich: docs/begruendungen/public/js/02-detailfelder.js.md#alarmgetippt
  * @param {string} sn
  */
 export function alarmGetippt(sn) {
@@ -285,7 +276,6 @@ export function speichereAlarm(sn) {
 /**
  * Der eine Weg zum Server. Ein leeres Feld löscht den Alarm, keine Schwelle 0: Das Feld zu leeren ist die
  * natürliche Geste. Die Ruhezeit verhindert, dass auf dem Weg zu „249“ eine Schwelle bei 2 entsteht.
- * Ausführlich: docs/begruendungen/public/js/02-detailfelder.js.md#sendealarm
  * @param {string} sn
  * @param {string} richtung
  * @param {string} roh
@@ -308,7 +298,6 @@ async function sendeAlarm(sn, richtung, roh) {
 /**
  * Beim Öffnen zeigen, welche Alarme seit dem letzten Besuch ausgelöst haben — das Gegenstück zur stündlichen
  * Abfrage der App. Die Marke kommt vom Server (keine eigene Uhr) und gilt je Konto.
- * Ausführlich: docs/begruendungen/public/js/02-detailfelder.js.md#zeigeoffenealarme
  */
 export async function zeigeOffeneAlarme() {
   if (!ME?.id) return;
@@ -341,7 +330,6 @@ export async function zeigeOffeneAlarme() {
 /**
  * Die Ortsauswahl im Detail ist der Vorrat des BESITZERS: Beim Set des Enkels stehen die Regale des Enkels
  * zur Wahl. Eine datalist erlaubt Auswählen und Neues tippen zugleich.
- * Ausführlich: docs/begruendungen/public/js/02-detailfelder.js.md#ladeortauswahl
  * @param {({ id: number } | number)[] | null | undefined} besitzer
  */
 export async function ladeOrtAuswahl(besitzer) {
@@ -397,7 +385,6 @@ registerActions({
 /**
  * Die Lagerort-Filter füllen. Ohne Orte bleiben sie verborgen: Eine Wahl mit nur „Alle“ beantwortet nichts —
  * dieselbe Regel wie beim Kontofilter.
- * Ausführlich: docs/begruendungen/public/js/02-detailfelder.js.md#initstorageselects
  * @param {import('../../frontend-typen/vertrag').Lagerort[]} orte
  */
 export function initStorageSelects(orte) {

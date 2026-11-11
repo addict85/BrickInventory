@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.di
 
+import ch.brickinventoryapp.model.koroutinen.ApplicationScope
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences

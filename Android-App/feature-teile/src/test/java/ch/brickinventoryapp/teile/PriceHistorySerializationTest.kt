@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.teile
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.model.PriceHistoryResponse
 import ch.brickinventoryapp.model.data.model.MinifigsResponse
 import ch.brickinventoryapp.model.data.model.PartsValuationResponse
@@ -15,10 +16,9 @@ import ch.brickinventoryapp.data.api.ApiJson
 /**
  * Client-seitiger API-Vertrag für den Preisverlauf und die Bewertung.
  *
- * Der Verlaufs-Endpunkt hat sich mit Server-Stand hardened-89 GEBROCHEN
- * geändert: statt einer zusammengefalteten `history` kommen beide Zustände
- * getrennt, dazu fertige Diagrammdaten. Ohne diesen Test fällt eine solche
- * Änderung erst am Gerät auf — und dort als leeres Diagramm ohne Fehlermeldung.
+ * Der Verlaufs-Endpunkt liefert beide Zustände getrennt, dazu fertige
+ * Diagrammdaten. Ändert sich die Form, fällt das sonst erst am Gerät auf — und
+ * dort als leeres Diagramm ohne Fehlermeldung.
  *
  * Die Beträge stehen bewusst teils als STRING im Testdatensatz: Postgres
  * liefert NUMERIC als Zeichenkette, und der Server reicht die Verlaufszeilen
@@ -106,7 +106,7 @@ class PriceHistorySerializationTest {
             "chart": {"x": [], "values": []}
         }""")
         assertEquals(1, r.byCondition.present().size)
-        assertEquals("N", r.byCondition.present()[0].first)
+        assertEquals(Zustand.NEU, r.byCondition.present()[0].first)
         assertNull(r.byCondition.used)
         assertTrue(r.chart.values.isEmpty())
     }
@@ -178,8 +178,8 @@ class PriceHistorySerializationTest {
                       "max_purchase_price": 160.0, "avg_purchase_price": 120.0}]
         }""")
         val set = r.sets.first()
-        assertEquals(listOf("N", "U"), set.conditions)
-        assertEquals("U", set.condition)
+        assertEquals(listOf(Zustand.NEU, Zustand.GEBRAUCHT), set.conditions)
+        assertEquals(Zustand.GEBRAUCHT, set.condition)
         // Der gewichtete Kaufpreis, nicht das Maximum: 2x100 und 1x160 → 120.
         assertEquals(120.0, set.avgPurchasePrice!!, 0.0001)
     }
@@ -201,7 +201,7 @@ class PriceHistorySerializationTest {
                       "conditions": ["N", "U"], "source": "manual",
                       "avg_purchase_price": 12.5}]
         }""")
-        assertEquals(listOf("N", "U"), r.figs.first().conditions)
+        assertEquals(listOf(Zustand.NEU, Zustand.GEBRAUCHT), r.figs.first().conditions)
         assertEquals(12.5, r.figs.first().avgPurchasePrice!!, 0.0001)
     }
 
@@ -225,7 +225,7 @@ class PriceHistorySerializationTest {
         }""")
         val part = v.parts.first()
         assertEquals(2, part.acquisitions.size)
-        assertEquals(listOf("N", "U"), part.conditions)
+        assertEquals(listOf(Zustand.NEU, Zustand.GEBRAUCHT), part.conditions)
         // Menge 2 in EINER Zeile — zwei Erfassungen am selben Tag im selben
         // Zustand fasst der Server zusammen (utils/acquisitions.ts).
         assertEquals(2, part.acquisitions[0].quantity)

@@ -1,4 +1,4 @@
-import { fehlerAntwort } from '../../src/http/httpAntwort';
+import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
 import { schreibziel } from '../../src/haushalt/haushalt';
 import { getBlColorMap, getManualParts, getOwnedQuantities, getParts, getPartsColors, getPartsStats, getPartsCategories } from '../../src/teile/abfragen';
@@ -10,12 +10,12 @@ import { getSetting } from '../../src/einstellungen/settings';
 import { getPartPriceHistory } from '../../src/finanzen/priceHistory';
 import { aendereTeilFarbe } from '../../src/teile/teilFarbeAendern';
 import { verwendendeSets } from '../../src/bestand/gemeinsam';
-import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../../src/bestand/lagerort';
 import { loescheTeil } from '../../src/sammlung/loeschen';
-import { vertragsRouter } from '../../src/vertrag/pruefen';
 import { seiteAus } from '../../src/infra/seite';
-import type { Anfrage, Antwort } from '../../src/vertrag';
+import { Abstriche } from '../../src/infra/ergebnis';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
 const router = vertragsRouter();
 
 router.get('/parts', requireToken, async (req: Anfrage<'GET /api/v1/parts'>, res: Antwort<'GET /api/v1/parts'>) => {
@@ -60,7 +60,6 @@ router.put('/parts/:partNumber/:colorId', requireToken, async (req: Anfrage<'PUT
 });
 
 // Eigene Adresse: Die Farbe ist schon Teil der Adresse von PUT /parts/:nr/:farbe.
-// Ausführlich: docs/begruendungen/routes/api_v1/parts.ts.md#put-parts-partnumber-colorid-color
 router.put('/parts/:partNumber/:colorId/color', requireToken, async (req: Anfrage<'PUT /api/v1/parts/:partNumber/:colorId/color'>, res: Antwort<'PUT /api/v1/parts/:partNumber/:colorId/color'>) => {
   const besitzer = await schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
   // Die neue Farbe muss dastehen: V.colorId() machte aus fehlend „keine Farbe",
@@ -90,8 +89,7 @@ router.get('/parts/bl-color-map', requireToken, async (_req: AuthedRequest, res:
 });
 
 /** Je Teil-Farb-Paar `gesamt` (Blickfeld) und `lose` (nicht in einem Set);
- * welche Zahl gilt, entscheidet der Mensch.
- * Ausführlich: docs/begruendungen/routes/api_v1/parts.ts.md#post-parts-owned */
+ * welche Zahl gilt, entscheidet der Mensch. */
 router.post('/parts/owned', requireToken, async (req: Anfrage<'POST /api/v1/parts/owned'>, res: Antwort<'POST /api/v1/parts/owned'>) => {
   const teile = req.eingabe.teile ?? [];
   res.json({ success: true, bestand: await getOwnedQuantities(sichtVon(req), teile) });
@@ -107,10 +105,11 @@ router.put('/parts/:partNumber/:colorId/storage', requireToken, async (req: Anfr
 });
 
 router.get('/parts/manual', requireToken, async (req: Anfrage<'GET /api/v1/parts/manual'>, res: Antwort<'GET /api/v1/parts/manual'>) => {
+  const ab = new Abstriche();
   const alle = await getManualParts(sichtVon(req), req.apiUser.user_id,
-    { search: req.abfrage.search ?? '', storage: req.abfrage.storage ?? '' });
+    { search: req.abfrage.search ?? '', storage: req.abfrage.storage ?? '' }, ab);
   const { eintraege: parts, ...seite } = seiteAus(alle, req.abfrage);
-  res.json({ success: true, parts, ...seite });
+  res.json({ success: true, parts, ...seite, ...ab.angabe() });
 });
 
 router.get('/parts/colors', requireToken, async (req: Anfrage<'GET /api/v1/parts/colors'>, res: Antwort<'GET /api/v1/parts/colors'>) => {
@@ -124,7 +123,6 @@ router.get('/parts/stats', requireToken, async (req: Anfrage<'GET /api/v1/parts/
 
 
 // Dieselbe Umsetzung wie für die Webapp; steht unten, damit feste Pfade vorher greifen.
-// Ausführlich: docs/begruendungen/routes/api_v1/parts.ts.md#get-parts-partnumber-colorid-price-history
 router.get('/parts/:partNumber/:colorId/price-history', requireToken, async (req: Anfrage<'GET /api/v1/parts/:partNumber/:colorId/price-history'>, res: Antwort<'GET /api/v1/parts/:partNumber/:colorId/price-history'>) => {
   const uid = req.apiUser.user_id;
   const currency = await getSetting(uid, 'currency', 'EUR');
@@ -134,7 +132,6 @@ router.get('/parts/:partNumber/:colorId/price-history', requireToken, async (req
 });
 
 // Im Blickfeld, damit die Liste zur Teileliste passt, aus der man kommt.
-// Ausführlich: docs/begruendungen/routes/api_v1/parts.ts.md#get-parts-partnumber-colorid-sets
 router.get('/parts/:partNumber/:colorId/sets', requireToken, async (req: Anfrage<'GET /api/v1/parts/:partNumber/:colorId/sets'>, res: Antwort<'GET /api/v1/parts/:partNumber/:colorId/sets'>) => {
   const uids = sichtVon(req);
   const { item, sets } = await verwendendeSets(uids, 'parts', {

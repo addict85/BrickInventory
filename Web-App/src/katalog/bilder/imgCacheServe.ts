@@ -16,7 +16,6 @@ export function bildTyp(roh: string): string {
 }
 
 // Aus dem Platten-Cache, falls vorhanden; true heisst beantwortet.
-// Ausführlich: docs/begruendungen/src/katalog/bilder/imgCacheServe.ts.md#liefereauscache
 /** Was die Auslieferung von Express braucht; die Typen von Express gehören in http/. */
 type BildAntwort = ServerResponse & { status(c: number): { end(): unknown } };
 interface BildAnfrage { fresh: boolean; headers?: Record<string, unknown> }
@@ -93,8 +92,7 @@ export async function liefereAusCache(opts: {
 const CACHE_DIR = () => path.join(APP_ROOT, 'data', 'img_proxy_cache');
 
 /** 30 Tage nicht angefasst → weg; danach, falls der Cache noch über der
- * Grenze liegt, die am längsten unbenutzten Bilder samt .ct und Vorschau.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/imgCacheServe.ts.md#startimgcachecleanup */
+ * Grenze liegt, die am längsten unbenutzten Bilder samt .ct und Vorschau. */
 export async function raeumeBildCacheAuf(maxBytes = konfig().bildCacheMaxMb * 1024 * 1024): Promise<number> {
   const cacheDir = CACHE_DIR();
   const files = await fs.promises.readdir(cacheDir).catch(ohneFehlendeDatei('bildcache:lesen', [] as string[]));

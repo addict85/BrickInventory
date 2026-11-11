@@ -1,6 +1,5 @@
 /**
  * Haushalt gegen eine ECHTE Datenbank.
- * Ausführlich: docs/begruendungen/test/household-db.test.js.md#kopf
  *
  * Gegenproben zum Haushalt mit mehreren Elternkonten (am 28.10. gemessen):
  *   A  canWriteFor() wieder über alle Nachfahren → rot: „Rechte gelten nur
@@ -28,7 +27,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
-const { haeltFigur, haeltSet, haeltTeil, mengeVon } = require('./helpers/bestand');
+const { haeltFigur, haeltSet, haeltTeil, mengeVon, katalogSet } = require('./helpers/bestand');
 
 /**
  * Die ECHTE Verschiebe-Route aufrufen — mit injizierter Session, wie in
@@ -113,9 +112,7 @@ async function giveSet(uid, sn, qty, price, cond = 'N', day = null) {
   // Der Name gehoert seit Migration 0033 in den Katalog, und zu jedem Set im
   // Bestand MUSS dort eine Zeile stehen (die Migration traegt sie nach und
   // prueft das). Die Vorlage stellt also die Lage her, die es wirklich gibt.
-  await db.run(
-    `INSERT INTO set_catalog (set_number, name, year) VALUES ($1,$2,2020)
-     ON CONFLICT (set_number) DO NOTHING`, [sn, 'Set ' + sn]);
+  await katalogSet(db, sn, { name: 'Set ' + sn, year: 2020 });
   // `cond` geht nur noch in die Erfassung — die sets-Zeile hat seit
   // Migration 0032 keine condition-Spalte mehr.
   await _req('src/bestand/acquisitions.js').recordAcquisitionForDay('set', uid, [sn], {
@@ -318,10 +315,9 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     const own  = await handlers.getStats(await household.scopeIds(U.eltern, 'own'));
 
     // Warum hier jetzt 2 steht und vorher 3
-    // Ausführlich: docs/begruendungen/test/household-db.test.js.md#stelle
-    assert.equal(parseInt(all.total_sets), 2, 'verschiedene Sets im Haushalt — wie die Galerie sie zeigt');
-    assert.equal(parseInt(all.total_quantity), 4, 'Exemplare: 1 + 2 + 1');
-    assert.equal(parseInt(own.total_sets), 0);
+    assert.equal(parseInt(all.total_sets, 10), 2, 'verschiedene Sets im Haushalt — wie die Galerie sie zeigt');
+    assert.equal(parseInt(all.total_quantity, 10), 4, 'Exemplare: 1 + 2 + 1');
+    assert.equal(parseInt(own.total_sets, 10), 0);
   });
 
   await t.test('Verschieben nimmt Teile, Minifiguren und Anleitungen mit', async () => {
@@ -359,7 +355,7 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     const rows = await db.all(
       `SELECT quantity, purchase_price FROM set_acquisitions
         WHERE user_id=$1 AND set_number='75192-1' ORDER BY purchase_price`, [U.kindB]);
-    assert.deepEqual(rows.map(r => [parseInt(r.quantity), Math.round(parseFloat(r.purchase_price))]),
+    assert.deepEqual(rows.map(r => [parseInt(r.quantity, 10), Math.round(parseFloat(r.purchase_price))]),
       [[1, 100], [2, 160]], 'Die Einzelkäufe müssen beim Verschieben erhalten bleiben');
 
     // Im Haushalt steht das Set weiterhin einmal, jetzt mit einem Besitzer.
@@ -384,7 +380,6 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     // Nach der Umstellung auf user_id = ANY($1) bekam getSetting() die
     // ID-LISTE statt einer ID, und alle vier Endpunkte antworteten mit
     //   500 invalid input syntax for type integer: "{"2"}" …
-    // Ausführlich: docs/begruendungen/test/household-db.test.js.md#for-stelle
     for (const mode of ['all', 'own', 'subs']) {
       const q = mode === 'all' ? '' : `?accounts=${mode}`;
       // Adressen seit Etappe 5 unter /api/v1 (zusammengelegt) — die Aussage
@@ -461,7 +456,6 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     // das Ziel bekommt eine Kopie. Ein Umhängen hätte die Quelle mit einem
     // Exemplar ohne Teile zurückgelassen.
     // Wird EIN Kaufpreis von zweien umgehängt, muss ALLES in beiden Konten …
-    // Ausführlich: docs/begruendungen/test/household-db.test.js.md#inbeiden
     const inBeiden = async (table) => {
       const n = async uid => (await db.get(
         `SELECT COUNT(*)::int AS n FROM ${table} WHERE user_id=$1 AND set_number='21318-1'`,
@@ -495,7 +489,6 @@ test('Haushalt gegen echte Datenbank', async (t) => {
 
   await t.test('der Eigentümerwechsel greift die ZEILE, nicht den Betrachter', async () => {
     // Woher dieser Test kommt
-    // Ausführlich: docs/begruendungen/test/household-db.test.js.md#stelle-2
     await giveSet(U.kindB, '31120-1', 1, 80);
     const acq = await db.get(
       `SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number='31120-1'`, [U.kindB]);
@@ -515,7 +508,7 @@ test('Haushalt gegen echte Datenbank', async (t) => {
       'Der Absender muss aus der Zeile kommen, nicht aus dem Request');
     const owner = await db.get(
       `SELECT user_id FROM set_acquisitions WHERE set_number='31120-1'`);
-    assert.equal(parseInt(owner.user_id), U.eltern, 'Die Zeile ist nicht angekommen');
+    assert.equal(parseInt(owner.user_id, 10), U.eltern, 'Die Zeile ist nicht angekommen');
 
     // Die Richtungsprüfung bleibt: Die Zeile gehört jetzt eltern — kindB darf
     // sie NICHT zurückholen, auch nicht mit dreist passendem from_user_id.
@@ -531,7 +524,7 @@ test('Haushalt gegen echte Datenbank', async (t) => {
       `Ein Unterkonto konnte aus dem Hauptkonto ziehen (Status ${zurueck.status})`);
     const nachher = await db.get(
       `SELECT user_id FROM set_acquisitions WHERE set_number='31120-1'`);
-    assert.equal(parseInt(nachher.user_id), U.eltern, 'Die Zeile wanderte zurück');
+    assert.equal(parseInt(nachher.user_id, 10), U.eltern, 'Die Zeile wanderte zurück');
   });
 
   await t.test('der Filter kennt einzelne Konten — und greift auch bei manuellen Einträgen', async () => {
@@ -591,7 +584,6 @@ test('Haushalt gegen echte Datenbank', async (t) => {
 
   await t.test('in ein fremdes Konto schreiben — die Richtung entscheidet', async () => {
     // Warum diese Prüfung hier steht
-    // Ausführlich: docs/begruendungen/test/household-db.test.js.md#stelle-3
 
     /** Über die v1-Fabrik anlegen, mit gewähltem Zielkonto. */
     async function anlegen(actor, pfad, koerper) {

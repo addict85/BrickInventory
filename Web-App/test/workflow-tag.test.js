@@ -31,7 +31,7 @@ const YML = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'workflo
 
 /** Den run-Block des Schritts `id: p` ausschneiden (Einrückung zehn Leerzeichen). */
 function pruefSkript() {
-  const schritt = YML.split('\n      - id: p\n')[1]?.split(/\n      - /)[0] ?? '';
+  const schritt = YML.split('\n      - id: p\n')[1]?.split(/\n {6}- /)[0] ?? '';
   const zeilen = schritt.split('\n');
   const start = zeilen.findIndex(z => z === '        run: |');
   assert.ok(start >= 0, 'run-Block des Prüfschritts nicht gefunden');

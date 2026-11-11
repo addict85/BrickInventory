@@ -1,6 +1,5 @@
 /**
  * Der Lagerort am Bestand ist eine ID — und was das rettet.
- * Ausführlich: docs/begruendungen/test/lagerort-id-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -66,7 +65,7 @@ test('Lagerort als ID gegen echte Datenbank', async (t) => {
       `Der Vorrat hat ${orte.length} Einträge: ${orte} — „estrich" hat einen zweiten angelegt`);
     const id = (await db.get(
       'SELECT storage_id FROM sets WHERE user_id=$1 AND set_number=$2', [UID, '10179-1'])).storage_id;
-    assert.equal(parseInt(String(id)), estrich.id,
+    assert.equal(parseInt(String(id), 10), estrich.id,
       'Die Zeile zeigt nicht auf den Eintrag im Vorrat');
   });
 

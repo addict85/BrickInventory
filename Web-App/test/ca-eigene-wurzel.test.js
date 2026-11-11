@@ -3,7 +3,6 @@
  * ihr Schlüssel bleibt nicht liegen, und Caddy signiert mit der Zwischenstelle
  * nur, wenn ./caddy/ca eingerichtet ist; ohne startet Caddy nur mit
  * BRICK_TLS=acme oder ausdrücklich mit CA_OHNE_NAMENSBESCHRAENKUNG=ja. …
- * Ausführlich: docs/begruendungen/test/ca-eigene-wurzel.test.js.md#kopf
  *
  * Gegenproben (03.11.2026 gemessen, je einzeln):
  *   A  nameConstraints aus [wurzel] in ca-einrichten.sh gestrichen → rot:

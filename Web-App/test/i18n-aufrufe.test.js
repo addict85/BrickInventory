@@ -1,6 +1,5 @@
 /**
  * Jeder Schlüssel, den die Oberfläche ruft, steht auch im Wörterbuch.
- * Ausführlich: docs/begruendungen/test/i18n-aufrufe.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -74,7 +73,6 @@ test('jeder gerufene i18n-Schlüssel steht im Wörterbuch', () => {
 
 /**
  * Und die Form des Aufrufs?
- * Ausführlich: docs/begruendungen/test/i18n-aufrufe.test.js.md#jede-data-i18n-form-wird-von-applylang-a
  */
 test('jede data-i18n-Form wird von applyLang auch ausgewertet', () => {
   const i18n = fs.readFileSync(path.join(ROOT, 'public', 'i18n.js'), 'utf8')

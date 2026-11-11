@@ -1,6 +1,5 @@
 /**
  * Welche Sets verwenden dieses Teil / diese Figur?
- * Ausführlich: docs/begruendungen/test/verwendende-sets-db.test.js.md#kopf
  */
 const test = require('node:test');
 const { after } = require('node:test');
@@ -9,7 +8,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
+const { haeltFigur, haeltSet, haeltTeil, katalogSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const { verwendendeSets } = _req('src/bestand/gemeinsam.js');
 
@@ -28,7 +27,6 @@ test('die Liste der verwendenden Sets folgt dem Blickfeld', async (t) => {
   await db.run('CREATE SCHEMA public');
   await db.initSchemaOnce();
   // Und die MIGRATIONEN, nicht nur das Schema
-  // Ausführlich: docs/begruendungen/test/verwendende-sets-db.test.js.md#stelle
   {
     const mc = await db.pool.connect();
     try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
@@ -44,11 +42,8 @@ test('die Liste der verwendenden Sets folgt dem Blickfeld', async (t) => {
   await haeltSet(db, kind, '21058-1', 1);
   // Der Setname steht seit Migration 0033 im Katalog; die Liste der
   // verwendenden Sets holt ihn mit einem eigenen JOIN darauf.
-  await db.run(`INSERT INTO set_catalog (set_number, name) VALUES
-      ('75192-1','Millennium Falcon'),
-      ('10305-1','Lion Knights Castle'),
-      ('21058-1','Cheops-Pyramide')
-      ON CONFLICT (set_number) DO UPDATE SET name = EXCLUDED.name`);
+  for (const [nr, name] of [['75192-1', 'Millennium Falcon'], ['10305-1', 'Lion Knights Castle'], ['21058-1', 'Cheops-Pyramide']])
+    await katalogSet(db, nr, { name });
 
   // Name, Farbbezeichnung und Ersatzteilkennzeichen stehen seit Migration
   // 0034 in den Katalogen. Der Dialogkopf unten liest sie von dort, und
@@ -60,7 +55,6 @@ test('die Liste der verwendenden Sets folgt dem Blickfeld', async (t) => {
   await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ('sw0001','Han Solo')`);
 
   // Dasselbe Teil in drei Sets — zweimal beim Hauptkonto, einmal beim Kind.
-  // Ausführlich: docs/begruendungen/test/verwendende-sets-db.test.js.md#stelle-2
   await haeltTeil(db, haupt, '3001', { setNumber: '75192-1', menge: 15, colorId: 4 });
   await haeltTeil(db, haupt, '3001', { setNumber: '10305-1', menge: 7, colorId: 4 });
   await haeltTeil(db, kind, '3001', { setNumber: '21058-1', menge: 3, colorId: 4 });

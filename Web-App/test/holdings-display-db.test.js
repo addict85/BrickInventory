@@ -1,6 +1,5 @@
 /**
  * Diagramm und Besitzer-Label folgen dem TATSÄCHLICHEN Bestand.
- * Ausführlich: docs/begruendungen/test/holdings-display-db.test.js.md#kopf
  *
  * Gegenproben (durchgeführt): Diagramm wieder fest auf beide Reihen → erster
  * Teilschritt rot (Reihen N,U statt U). FILTER entfernt → Besitzer-Teilschritt
@@ -110,7 +109,6 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async (t) =
       // verschwände.
       // „Wieder ein Exemplar halten" heisst seit Migration 0036: eine
       // Erfassung anlegen. Hier stand `UPDATE sets SET quantity=2` — die …
-      // Ausführlich: docs/begruendungen/test/holdings-display-db.test.js.md#stelle
       await erfasse(db, hauptId, SN, 2);
       const r = await getSets([hauptId, subId], {});
       const namen = (r.sets.find(s => s.set_number === SN).owners || []).map(o => o.username).sort();

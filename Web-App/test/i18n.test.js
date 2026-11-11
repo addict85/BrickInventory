@@ -52,7 +52,6 @@ test('Platzhalter stimmen zwischen DE und EN überein', () => {
 
 /**
  * Gleicher Text in beiden Sprachen heisst: nicht übersetzt.
- * Ausführlich: docs/begruendungen/test/i18n.test.js.md#kein-text-steht-in-beiden-sprachen-unueb
  */
 test('kein Text steht in beiden Sprachen unübersetzt', () => {
   // Begriffe, Eigennamen und Zahlenformate, die in beiden Sprachen gleich

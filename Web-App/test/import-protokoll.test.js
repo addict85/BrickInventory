@@ -1,6 +1,5 @@
 /**
  * Das Protokoll des Import-Balkens: EINE Fassung, und keine Zeile ohne Namen.
- * Ausführlich: docs/begruendungen/test/import-protokoll.test.js.md#kopf
  *
  * Gegenproben (10.11.2026 gemessen):
  *   A  in 02-set-csv-import.js eine zweite function protokollZeile() → rot:

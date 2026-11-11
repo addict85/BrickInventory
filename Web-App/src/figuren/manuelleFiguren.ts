@@ -4,6 +4,7 @@ import { blickfeldAus } from '../haushalt/haushalt';
 import type { Sicht } from '../haushalt/haushalt';
 import * as db from '../../db/database';
 import { logAndContinue, oeffentlicherFehler } from '../infra/fehler';
+import { Abstriche } from '../infra/ergebnis';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
 import { recordAcquisitionForDay } from '../bestand/acquisitions';
 import { mengenwunsch, passeManuelleMengeAn } from '../bestand/manuelleMenge';
@@ -21,10 +22,8 @@ import { fachfehler } from '../infra/fehlerTexte';
 
 // Ohne BrickLink-Figurennummer wird der Marktpreis aus den Teilepreisen
 // geschätzt: Für Teile ist die Zuordnung RB→BL verlässlich, für Figuren nicht.
-// Ausführlich: docs/begruendungen/src/figuren/manuelleFiguren.ts.md#abschnitt-2
 
 // Preis und Zustand einmal für Einzelerfassung und CSV-Import; ohne Preis gilt der Marktpreis.
-// Ausführlich: docs/begruendungen/src/figuren/manuelleFiguren.ts.md#resolvemanualfigpurchase
 export async function resolveManualFigPurchase(uid: number, { figNumber, blFigNumber = null, unitPrice = null, condition = null }:
   { figNumber: string; blFigNumber?: string | null; unitPrice?: unknown; condition?: string | null }) {
   // Dieselbe Regel wie bei den Teilen (src/finanzen/preisRegel.ts), damit eine
@@ -130,16 +129,18 @@ async function addManualFigIntern(uid: number, body: Record<string, unknown>) {
 
 /** Zwilling zu updateManualPart.
  * @returns die Menge danach, wenn sie Teil der Anfrage war */
-export async function updateManualFig(uid: number, figNumber: string, body: Record<string, unknown>): Promise<{ quantity?: number }> {
+export async function updateManualFig(uid: number, figNumber: string, body: Record<string, unknown>): Promise<{ quantity?: number; degradiert?: string[] }> {
   const existing = await repo.figurZeileMitZustand(uid, figNumber);
   if (!existing) fachfehler('nicht_gefunden', 'minifig_nicht_manuell');
 
   const raus: { quantity?: number } = {};
+  // Kam der Marktpreis für die neue Erfassung nicht, sagt es `degradiert`.
+  const ab = new Abstriche();
   const wunsch = mengenwunsch(body);
   if (wunsch) {
     const cond = await zustandFuerPreis(undefined, existing.condition, uid);
     raus.quantity = await passeManuelleMengeAn('fig', uid, [figNumber], wunsch, cond,
-      () => getCurrentFigMarketPrice(figNumber, uid, existing.bl_fig_number, cond));
+      () => getCurrentFigMarketPrice(figNumber, uid, existing.bl_fig_number, cond), ab);
   }
   let newBlNum = existing.bl_fig_number;
   if (body.bl_fig_number !== undefined) {
@@ -160,7 +161,7 @@ export async function updateManualFig(uid: number, figNumber: string, body: Reco
     const cond = body.condition === 'U' ? 'U' : 'N';
     await repo.setzeFigurzustandNeueste(uid, figNumber, cond);
   }
-  return raus;
+  return { ...raus, ...ab.angabe() };
 }
 
 /** `uid` ist das Blickfeld (Liste). */

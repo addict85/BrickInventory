@@ -1,6 +1,5 @@
 /**
  * Der Start des Job-Prozesses trägt jede Hintergrundarbeit als Auftrag ein.
- * Ausführlich: docs/begruendungen/test/background-jobs-start.test.js.md#kopf
  *
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  in starteJobs() `ziehePlanVor('csv_sync', …)` entfernt → rot: „jede

@@ -1,6 +1,5 @@
 /**
  * Die Vorschau VOR dem Import — mit Bild, Farbe, Bezeichnung und Korrekturen.
- * Ausführlich: docs/begruendungen/test/wanted-liste-vorschau-db.test.js.md#kopf
  *
  * ── Gegenproben (am 19.10. GEMESSEN, Zahlen abgeschrieben) ──────────────────
  *
@@ -111,7 +110,6 @@ test.after(async () => { await db.pool.end().catch(() => {}); });
 /** Ein ITEM-Block in Marcos Schreibweise (wie in wanted-liste-db.test.js). */
 /**
  * `zustand` seit dem 20.10. — vorher stand hier fest `X`.
- * Ausführlich: docs/begruendungen/test/wanted-liste-vorschau-db.test.js.md#item
  */
 function item(typ, id, farbe, menge = 1, zustand = 'X') {
   return `<ITEM>\n<ITEMTYPE>${typ}</ITEMTYPE>\n<ITEMID>${id}</ITEMID>\n` +
@@ -154,7 +152,6 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async (t)
     // SCHREIBEN (`vorschau: !!opt.vorschau`), und das ist richtig so: Wer sie
     // ruft, hat einen Anleger dabei. Die Entscheidung „Vorschau oder Ernst"
     // trifft die Route aus `?schreiben=1` — nicht ein Vorgabewert hier.
-    // Ausführlich: docs/begruendungen/test/wanted-liste-vorschau-db.test.js.md#b-stelle
     const b = await importiereWantedListe(1, xml, { vorschau: true });
     assert.equal(b.vorschau, true, 'Mit vorschau: true muss es eine Vorschau sein');
     assert.equal(b.angelegt, 0, 'Eine Vorschau schreibt nichts');
@@ -173,7 +170,6 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async (t)
     // Die Auflösung lässt es deshalb OFFEN — Stufe 3 liest part_catalog, und
     // das soll sie: Sie ist eine Vermutung, und sie auf die 50 000 Zeilen von
     // rb_parts auszuweiten hiesse, viel mehr Posten auf eine Vermutung hin …
-    // Ausführlich: docs/begruendungen/test/wanted-liste-vorschau-db.test.js.md#stelle
     assert.equal(nach.get('3002').ausgang, 'offen',
       'Stufe 3 liest part_catalog; 3002 steht dort nicht und bleibt offen');
     assert.equal(nach.get('3002').name, 'Brick 2 x 2',
@@ -208,7 +204,6 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async (t)
 
   await t.test('2b. der Standardzustand des Kontos reist EINMAL je Bericht mit', async () => {
     // Marcos Bitte vom 20.10.
-    // Ausführlich: docs/begruendungen/test/wanted-liste-vorschau-db.test.js.md#ohne
     const ohne = await importiereWantedListe(1, liste(item('P', '3001', 5, 1, 'X')),
                                              { vorschau: true });
     assert.equal(ohne.standardZustand, 'N',
@@ -309,7 +304,6 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async (t)
   await t.test('5b. auch eine bei Rebrickable nachgeschlagene Nummer wird gemerkt',
     async () => {
     // Marcos Frage vom 20.10.
-    // Ausführlich: docs/begruendungen/test/wanted-liste-vorschau-db.test.js.md#gemerkt
     const gemerkt = [];
     const xml = liste(item('P', '98765', 5, 1));
     const b = await importiereWantedListe(1, xml, {
@@ -355,7 +349,6 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async (t)
   await t.test('7. beschreibePosten macht nicht eine Abfrage je Posten', async () => {
     // Marcos Datei hat 224 Zeilen. Eine Abfrage je Zeile wäre eine Vorschau,
     // auf die man wartet.
-    // Ausführlich: docs/begruendungen/test/wanted-liste-vorschau-db.test.js.md#echt
     const echt = db.pool.query.bind(db.pool);
     let abfragen = 0;
     db.pool.query = (...a) => { abfragen++; return echt(...a); };
@@ -376,7 +369,6 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async (t)
 
   await t.test('8. Name und Bild stehen AUCH nach dem Schreiben im Bericht', async () => {
     // Marcos Befund vom 21.10.
-    // Ausführlich: docs/begruendungen/test/wanted-liste-vorschau-db.test.js.md#anleger
     const anleger = {
       teil: async () => ({ action: 'created' }),
       figur: async () => ({ action: 'created' }), set: async () => ({ action: 'created' }),
@@ -398,7 +390,6 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async (t)
     // Teil, dessen Farbbild der Katalog noch nicht hatte, bekommt es beim
     // Anlegen (addManualPart → lookupPart → merkeTeilFarbe). Ein Aufruf VOR
     // der Schleife zeigte für genau diese Posten nichts.
-    // Ausführlich: docs/begruendungen/test/wanted-liste-vorschau-db.test.js.md#stelle-2
     await db.run(`INSERT INTO part_catalog (part_number, part_name)
                   VALUES ('7777','Noch ohne Bild') ON CONFLICT DO NOTHING`);
     const vorher = await importiereWantedListe(1, liste(item('P', '7777', 5, 1)),

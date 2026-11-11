@@ -1,6 +1,5 @@
 /**
  * Auth-Paritätstest (ohne DB).
- * Ausführlich: docs/begruendungen/test/auth-parity.test.js.md#kopf
  *
  * Gegenproben der am 08.11.2026 gestrichenen Fälle, die jetzt ausgeführt werden:
  * QR-Login ohne Passwort-Material und einmalig → anmeldung-regeln-db A/B;
@@ -23,7 +22,6 @@ const { ohneKommentare, abschnitt } = require('./helpers/sources');
 
 /**
  * Jeden Anmelde-Handler SUCHEN statt zwei aufzuzählen.
- * Ausführlich: docs/begruendungen/test/auth-parity.test.js.md#anmeldehandler
  */
 function anmeldeHandler() {
   const dateien = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
@@ -55,13 +53,13 @@ test('aktives, bestätigtes Konto darf sich anmelden', () => {
 test('deaktiviertes Konto wird abgelehnt — egal ob 0 oder false', () => {
   for (const v of [0, false]) {
     const r = assertLoginAllowed({ is_active: v, email_verified: 1, email: 'a@b.c' });
-    assert.equal(r?.status, 403, `is_active=${v} muss 403 ergeben`);
+    assert.equal(r?.art, 'verboten', `is_active=${v} muss verboten ergeben`);
   }
 });
 
 test('eine offene Registrierung wird abgelehnt, Admins ausgenommen', () => {
   const r = assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 0, registrierung_offen: true });
-  assert.equal(r?.status, 403);
+  assert.equal(r?.art, 'verboten');
   assert.equal(r?.unverified, true);
   assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 1, registrierung_offen: true }), null);
   assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 0, registrierung_offen: false }), null,
@@ -72,7 +70,6 @@ test('jede Anmeldung mit Passwort läuft über dieselbe Prüfung', () => {
   const gefunden = anmeldeHandler();
   // Selbstbeweis: Findet das Muster nichts, wäre die Fehlerliste leer und der
   // Test grün, ohne etwas geprüft zu haben.
-  // Ausführlich: docs/begruendungen/test/auth-parity.test.js.md#stelle
   assert.ok(gefunden.length >= 2,
     `Nur ${gefunden.length} Anmelde-Routen gefunden — Muster veraltet?`);
   const mitPasswort = gefunden.filter(h => /password/.test(h.koerper));
@@ -157,7 +154,6 @@ test('Admins können das Passwort anderer Nutzer setzen', () => {
 
   // Das eigene Konto ist ausgenommen: Hier wird KEIN altes Passwort verlangt,
   // also könnte eine übernommene Sitzung den Besitzer sonst aussperren.
-  // Ausführlich: docs/begruendungen/test/auth-parity.test.js.md#stelle-2
   assert.match(fn, /targetId === nutzerId\(req\)/,
     'Für das eigene Konto muss /change-password gelten');
   // Die AUSSAGE bleibt, der Beleg wechselt: Die Mindestlaenge stand hier als
@@ -173,7 +169,6 @@ test('Admins können das Passwort anderer Nutzer setzen', () => {
 
 test('ein Passwortwechsel beendet auch die offenen Sitzungen', () => {
   // Woher dieser Test kommt
-  // Ausführlich: docs/begruendungen/test/auth-parity.test.js.md#auth-2
   const auth  = require('./helpers/sources').anmeldeQuelle();
   const utils = require('./helpers/sources').dienstQuelle('src/konto/auth.ts');
 
@@ -213,7 +208,6 @@ test('ein Passwortwechsel beendet auch die offenen Sitzungen', () => {
 
 test('ungenutzte App-Tokens verfallen, aktive nicht', () => {
   // Woher diese Regel kommt
-  // Ausführlich: docs/begruendungen/test/auth-parity.test.js.md#utils
   const utils = require('./helpers/sources').dienstQuelle('src/konto/auth.ts');
 
   assert.match(utils, /const TOKEN_IDLE_DAYS/, 'Die Frist gehört an eine benannte Stelle');

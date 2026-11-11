@@ -1,20 +1,19 @@
+import type { Client } from 'pg';
 import { logAndContinue, fehlertext } from '../../infra/fehler';
 import fs from 'fs';
 import { merkeFehlend, istBekanntFehlend } from './imageMisses';
 import { imgProxyFailures } from './imgProxyStats';
 import { isDecodable } from './imageGuard';
-import * as db from '../../../db/database';
 import { LOCKS } from '../../infra/lockNamespaces';
 import * as sperre from '../repository/sitzungsSperre';
+import { katalog } from '../prozess';
 
 // Warteschlange, Sperre und Verkleinern gehören zusammen.
-// Ausführlich: docs/begruendungen/src/katalog/bilder/proxyThumbs.ts.md#proxy-thumb-size
 
 export const PROXY_THUMB_SIZE = 200;
 
 /** Vorschaubilder sind die teuerste Arbeit im Server und belegen den
- * Event-Loop; nie wartet eine Anfrage darauf, sie entstehen im Hintergrund.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/proxyThumbs.ts.md#thumb-max-parallel */
+ * Event-Loop; nie wartet eine Anfrage darauf, sie entstehen im Hintergrund. */
 const THUMB_MAX_PARALLEL = 1;
 /** Wer schnell durchscrollt, will diese Vorschauen nicht; ohne Deckel rechnete
  * der Server den halben Katalog stur ab. */
@@ -43,19 +42,18 @@ export function drainThumbQueue() {
       .finally(() => { _thumbRunning--; _thumbInFlight.delete(dst); drainThumbQueue(); });
   }
 }
-let _thumbInFlight = new Map<string, boolean>();
-/** EIN Vorschau-Lauf für den ganzen Server, nicht je Arbeitsprozess.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/proxyThumbs.ts.md#abschnitt */
+const _thumbInFlight = new Map<string, boolean>();
+/** EIN Vorschau-Lauf für den ganzen Server, nicht je Arbeitsprozess. */
 const THUMB_LOCK_KEY = LOCKS.PROXY_THUMBS;
 
 /** EINMAL aufgebaut, dann wiederverwendet. */
-let _sperrClient: Awaited<ReturnType<typeof db.eigeneVerbindung>> | null = null;
+let _sperrClient: Client | null = null;
 
 export async function mitVorschauSperre<T>(arbeit: () => Promise<T>): Promise<T | false> {
     // NICHT aus dem Pool: Eine dort gehaltene Sperre nahm gewöhnlichen Anfragen
     // die Verbindung.
   if (!_sperrClient) {
-    try { _sperrClient = await db.eigeneVerbindung(); }
+    try { _sperrClient = await katalog().db.eigeneVerbindung(); }
     catch (_) { return false; }
     _sperrClient.on('error', () => { _sperrClient = null; });
   }

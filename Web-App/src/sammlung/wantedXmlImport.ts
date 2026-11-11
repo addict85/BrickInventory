@@ -14,7 +14,6 @@ export type WantedXmlEingabe = Extract<Nutzlast<'csv_import'>, { quelle: 'wanted
 
 async function importiereWantedXml(uid: number, e: WantedXmlEingabe, k: AuftragsKontext): Promise<Record<string, unknown>> {
   // Zwei Merker: angefragt (für die Kette) und laufend (für den Abbruch).
-  // Ausführlich: docs/begruendungen/src/sammlung/wantedXmlImport.ts.md#post-wanted-list-import-xml-auftragangefragt
   let auftragAngefragt = false;
   let auftragLaeuft = false;
   // Über eine Kette, weil der Rückruf synchron ist und das Schreiben nicht;
@@ -56,12 +55,10 @@ async function importiereWantedXml(uid: number, e: WantedXmlEingabe, k: Auftrags
         teil:  (u, body) => addManualPart(u, body),
         figur: (u, body) => addManualFig(u, body),
         // Kaufpreis ist MAXPRICE aus der Datei.
-        // Ausführlich: docs/begruendungen/src/sammlung/wantedXmlImport.ts.md#post-wanted-list-import-xml-3
         set:   (u, sn, menge, zustand, kaufpreis) => addSet({ setNumber: sn, menge, konto: u, kaufpreis, zustand }),
       },
     });
     // Erst die Kette abwarten, dann schliessen: Sonst stünde der Balken anderswo noch auf „läuft".
-    // Ausführlich: docs/begruendungen/src/sammlung/wantedXmlImport.ts.md#post-wanted-list-import-xml-4
     await kette;
     if (auftragLaeuft) {
       await beendeAuftrag(uid, {
@@ -74,7 +71,6 @@ async function importiereWantedXml(uid: number, e: WantedXmlEingabe, k: Auftrags
         abgebrochen: !!bericht.abgebrochen,
       },
       // Je Posten eine lesbare Zeile fürs Protokoll des Balkens.
-      // Ausführlich: docs/begruendungen/src/sammlung/wantedXmlImport.ts.md#post-wanted-list-import-xml-5
       bericht.posten.map(p => (p.ausgang === 'angelegt' || p.ausgang === 'aufgestockt')
         ? { success: true, set_number: p.blId, action: p.ausgang === 'angelegt' ? 'added' : 'updated' }
         : { success: false, isWarning: p.ausgang === 'offen', set_number: p.blId, error: p.grund || '' }))

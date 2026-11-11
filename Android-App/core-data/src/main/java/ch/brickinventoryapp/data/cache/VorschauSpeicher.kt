@@ -17,7 +17,8 @@ interface Vorschauablage {
 
 /**
  * Dauerhafte Ablage der Vorschaubilder — damit die Tabellen ohne Netz stehen.
- * Ausführlich: docs/begruendungen/core-data/data/cache/VorschauSpeicher.kt.md#vorschauspeicher
+ * Unter filesDir statt cacheDir: Den Cache darf Android leeren, und als LRU verdrängte ein Blättern
+ * im Katalog die eigene Sammlung.
  */
 @Singleton
 class VorschauSpeicher(
@@ -53,7 +54,6 @@ class VorschauSpeicher(
          * das Älteste zuerst, und ein vorgewärmtes Bild soll vor einem wirklich
          * angesehenen fliegen. Wird es später angesehen, schreibt der Abgriff in
          * NetzModule es mit `spekulativ = false` neu und gibt ihm einen echten Stempel.
-         * Ausführlich: docs/begruendungen/core-data/data/cache/VorschauSpeicher.kt.md#spekulativ-zeit
          */
         private const val SPEKULATIV_ZEIT = 1000L
 

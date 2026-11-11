@@ -2,7 +2,6 @@
  * Wer sich anmeldet, während die Startfrage „bin ich angemeldet?“ noch
  * unterwegs ist, bleibt angemeldet: Die späte Antwort „nein“ darf die App
  * nicht zurück auf die Anmeldemaske werfen.
- * Ausführlich: docs/begruendungen/test/anmeldung-ueberholt-browser.test.js.md#kopf
  *
  * Gegenprobe (31.10.2026 gemessen): in checkAuth() die Zeile `if (ME) return;`
  * entfernt → rot: „die App bleibt sichtbar“ (#app hat display: none, die

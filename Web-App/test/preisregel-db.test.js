@@ -1,6 +1,5 @@
 /**
  * Die Regel „hat einen Preis" gilt an JEDER Stelle gleich.
- * Ausführlich: docs/begruendungen/test/preisregel-db.test.js.md#kopf
  *
  * Gegenproben (durchgeführt):
  *   a) hatPreis() auf „avg > 0 || qty_avg > 0" geweitet → Teilschritt 2 rot:
@@ -58,7 +57,6 @@ test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async (t)
       'als „0.00" erscheint: ' + JSON.stringify(pd));
 
     // 3. Ein 0-Eintrag blockiert den Neuabruf nur KURZ.
-    // Ausführlich: docs/begruendungen/test/preisregel-db.test.js.md#for-stelle
     //
     // Gegenprobe, die grün blieb.
     for (const [alter, erwartetAusCache] of [[0, true], [12, false]]) {
@@ -88,7 +86,6 @@ test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async (t)
     }
 
     // 4. Der mengengewichtete Schnitt ist der mengengewichtete Schnitt.
-    // Ausführlich: docs/begruendungen/test/preisregel-db.test.js.md#pn-stelle
     const PN = `probe-teil-${process.pid}`;
     await db.run(`DELETE FROM part_price_cache WHERE part_number=$1`, [PN]).catch(() => {});
     await db.run(
@@ -115,7 +112,6 @@ test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async (t)
       // parseFloat-Form — und übersah damit fünf Stellen, die schlicht
       // `pd.avg_price > 0` schrieben. Aufgefallen ist das nicht an der Regel,
       // sondern an einer Suche nach wortgleich wiederholten Bedingungen. …
-      // Ausführlich: docs/begruendungen/test/preisregel-db.test.js.md#stelle
       assert.doesNotMatch(src, /(?:parseFloat\([^)]*avg_price[^)]*\)|[\w?.]*\.avg_price)\s*(?:>|<|===|==)\s*0/,
         `${rel} prüft den Preis wieder selbst statt über hatPreis() — und dann ` +
         'können die Fassungen erneut auseinanderlaufen');

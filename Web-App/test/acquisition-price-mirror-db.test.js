@@ -1,6 +1,5 @@
 /**
  * Kaufpreis ändern → die Kachel zieht mit, auf BEIDEN Wegen.
- * Ausführlich: docs/begruendungen/test/acquisition-price-mirror-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): in getSetConditionAggregate() avg_purchase_price
  * auf `MAX(purchase_price)` umgestellt → „Gegenrichtung" wird rot
@@ -16,9 +15,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
@@ -26,7 +23,6 @@ const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
-const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('der geänderte Kaufpreis erreicht die Kachel — Webapp UND App',
   { concurrency: 1 }, async (t) => {
@@ -59,7 +55,7 @@ test('der geänderte Kaufpreis erreicht die Kachel — Webapp UND App',
   // `SELECT purchase_price FROM sets` — die gespiegelte Spalte, die es seit
   // Migration 0032 nicht mehr gibt.
   const kachel = async () =>
-    (await _req('src/sets/lesen.js').getSetConditionAggregate([uid], SN)).avg_purchase_price;
+    (await _req('src/sets/index.js').getSetConditionAggregate([uid], SN)).avg_purchase_price;
 
   try {
     for (const [name, pfad] of [
@@ -82,7 +78,6 @@ test('der geänderte Kaufpreis erreicht die Kachel — Webapp UND App',
     }
 
     // Gegenrichtung — und hier liegt der Unterschied zu vorher.
-    // Ausführlich: docs/begruendungen/test/acquisition-price-mirror-db.test.js.md#alt-stelle
     const alt = await aufbauen();
     // Ein anderer TAG, nicht bloss eine Stunde später: Der Index
     // idx_set_acq_tag_zustand lässt pro Tag und Set nur EINE Erfassung zu. Mit

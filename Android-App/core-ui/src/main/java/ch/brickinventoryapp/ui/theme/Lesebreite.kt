@@ -9,9 +9,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Die eine Regel für breite Fenster — vorher standen Raster linksbündig, Listen
- * mittig und Werkzeugleisten endeten mitten im Bild:
- * Ausführlich: docs/begruendungen/core-ui/ui/theme/Lesebreite.kt.md#lesebreite
+ * Die eine Regel für breite Fenster, damit Raster, Listen und Werkzeugleisten nicht je eigen
+ * ausgerichtet sind: Raster nutzen die volle Breite, Liste und Detail stehen ab „expanded“
+ * nebeneinander, Formulare mittig auf ihrer Lesebreite.
  */
 object Lesebreite {
     /** Formulare: Anmelden, Einrichten, Einstellungen, „Mehr“. */

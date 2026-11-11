@@ -1,7 +1,6 @@
 /** Das erste Konto einer neuen Installation. Es gilt dieselbe Passwortregel wie
  * für jedes andere Konto; ein schwaches ADMIN_PASSWORD wird durch ein zufälliges
- * ersetzt, das beim ersten Login zu ändern ist.
- * Ausführlich: docs/begruendungen/src/konto/startVerwalter.ts.md#frueherzurlaufzeitangelegt */
+ * ersetzt, das beim ersten Login zu ändern ist. */
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import * as repo from './repository/startVerwalter';

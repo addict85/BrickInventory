@@ -19,7 +19,8 @@ interface CsvImportStrom {
 
 /**
  * Persistenter SSE-Client für den CSV-Import-Kanal.
- * Ausführlich: docs/begruendungen/core-data/data/CsvImportSseClient.kt.md#constructor
+ * Die Verbindung bleibt auch ohne laufenden Import offen: Startet ihn jemand auf einem anderen
+ * Gerät, kommt das erste Ereignis sofort statt erst beim nächsten Abfragen.
  */
 @Singleton
 class CsvImportSseClient @Inject constructor(

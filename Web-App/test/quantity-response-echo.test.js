@@ -1,6 +1,5 @@
 /**
  * Beide Oberflächen übernehmen die Menge aus der SERVERANTWORT.
- * Ausführlich: docs/begruendungen/test/quantity-response-echo.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): in 02-gallery.js `const echt = qty` gesetzt →
  * der Webapp-Teilschritt wird rot. Am 30.10.2026 gemessen: in

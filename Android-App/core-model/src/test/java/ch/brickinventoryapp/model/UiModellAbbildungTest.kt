@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.model
 
+import ch.brickinventoryapp.model.fach.Laufstatus
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.data.model.ChartPoint
 import ch.brickinventoryapp.model.data.model.CsvArt
 import ch.brickinventoryapp.model.data.model.CsvImportStatus
@@ -63,8 +65,8 @@ class UiModellAbbildungTest {
         assertTrue(alarm.unter)
         assertFalse(Preisalarm(richtung = "ueber").alsAnsicht().unter)
         assertEquals(500.0, alarm.schwelle, 0.0)
-        val g = Gutschein(id = 3, number = "6061", pin = "1", amount = 20.0, currency = "CHF").alsAnsicht()
-        assertEquals(listOf(3, 20.0, "CHF"), listOf(g.id, g.amount, g.currency))
+        val g = Gutschein(id = 3, number = "6061", pin = "1", amount = 20.0, currency = Waehrung("CHF")).alsAnsicht()
+        assertEquals(listOf(3, 20.0, Waehrung.CHF), listOf(g.id, g.amount, g.currency))
         val p = ChartPoint(xLabel = "1. Okt", value = 12.5, yFrac = 0.25).alsAnsicht()
         assertEquals(Triple("1. Okt", 12.5, 0.25), Triple(p.xLabel, p.value, p.yFrac))
         assertEquals(KEINE_FARBE, OHNE_FARBE)
@@ -76,9 +78,9 @@ class UiModellAbbildungTest {
         assertFalse("false heisst unbestätigt", Profil(id = 1, username = "m", emailVerified = false).alsAnsicht().emailBestaetigt)
         val altesFeld = HouseholdStatusResponse(linkedTo = KontoName(7, "haupt")).alsAnsicht()
         assertEquals("ohne parents gilt linked_to", listOf(KontoAnsicht(7, "haupt")), altesFeld.elternkonten)
-        val stand = CsvImportStatus(status = "running", current = "75192-1").alsAnsicht()
+        val stand = CsvImportStatus(status = Laufstatus.LAEUFT, current = "75192-1").alsAnsicht()
         assertEquals(listOf(0, 0, 0, 0, 0), listOf(stand.total, stand.done, stand.ok, stand.warn, stand.err))
-        assertEquals("running", stand.status)
+        assertEquals(Laufstatus.LAEUFT, stand.status)
     }
 
     /**

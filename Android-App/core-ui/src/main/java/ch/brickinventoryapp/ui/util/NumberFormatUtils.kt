@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.util
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import androidx.appcompat.app.AppCompatDelegate
 import java.text.NumberFormat
 import java.util.Currency
@@ -45,28 +46,28 @@ fun appNumberLocale(): Locale {
  *        unbekannter Code darf die Anzeige nicht sprengen: dann steht der Code
  *        vor dem Betrag, wie es die Webapp bei fehlender Zuordnung auch tut.
  */
-fun fmtMoney(amount: Double, currencyCode: String?): String {
+fun fmtMoney(amount: Double, currencyCode: Waehrung?): String {
     val loc = appNumberLocale()
     return try {
         val nf = NumberFormat.getCurrencyInstance(loc)
-        nf.currency = Currency.getInstance(currencyCode ?: "EUR")
+        nf.currency = Currency.getInstance((currencyCode ?: Waehrung.EUR).code)
         nf.minimumFractionDigits = 2
         nf.maximumFractionDigits = 2
         mitWaehrungsAbstand(nf.format(amount))
     } catch (_: Exception) {
-        "${currencyCode.orEmpty()}\u00A0${fmtAmount(amount)}".trim()
+        "${currencyCode?.code.orEmpty()}\u00A0${fmtAmount(amount)}".trim()
     }
 }
 
 /** Ganzer Betrag mit Währung („CHF 1'720“) — für Diagrammachsen, wie sie der Server liefert. */
-fun fmtMoneyGanz(amount: Double, currencyCode: String?): String = try {
+fun fmtMoneyGanz(amount: Double, currencyCode: Waehrung?): String = try {
     val nf = NumberFormat.getCurrencyInstance(appNumberLocale())
-    nf.currency = Currency.getInstance(currencyCode ?: "EUR")
+    nf.currency = Currency.getInstance((currencyCode ?: Waehrung.EUR).code)
     nf.minimumFractionDigits = 0
     nf.maximumFractionDigits = 0
     mitWaehrungsAbstand(nf.format(amount))
 } catch (_: IllegalArgumentException) {
-    "${currencyCode.orEmpty()}\u00A0${fmtAmount(amount, 0, 0)}".trim()
+    "${currencyCode?.code.orEmpty()}\u00A0${fmtAmount(amount, 0, 0)}".trim()
 }
 
 /**
@@ -81,7 +82,7 @@ fun mitWaehrungsAbstand(text: String): String =
 fun fmtTag(iso: String?, jahr: DatumJahr = DatumJahr.VOLL): String? = fmtDatum(iso, appNumberLocale(), jahr)
 
 /** Wie fmtMoney, aber aus dem String der API — `null`/unlesbar ergibt „—". */
-fun fmtMoneyOrDash(amount: String?, currencyCode: String?): String {
+fun fmtMoneyOrDash(amount: String?, currencyCode: Waehrung?): String {
     val v = amount?.toDoubleOrNull() ?: return "—"
     return fmtMoney(v, currencyCode)
 }

@@ -58,14 +58,12 @@ export function _updateLangSelect() {
 
 // Reicht das Design an 00-theme-boot.js weiter, das es schon im <head> anwendet und den Cache führt: So wirkt
 // ein Wechsel sofort und beim nächsten Laden ohne Aufblitzen.
-// Ausführlich: docs/begruendungen/public/js/01-konto.js.md#applytheme
 /**
  * @param {string} theme
  */
 export function applyTheme(theme){
   // Keine eigene Liste gültiger Designs: Die alte kannte zwei von sechs, und die neueren wirkten erst nach
   // dem Neuladen. Gültig ist, was 00-theme-boot.js kennt; ohne dieses Skript wird nichts gesetzt.
-  // Ausführlich: docs/begruendungen/public/js/01-konto.js.md#keine-eigene-liste-gueltiger-designs
   if (typeof window.__bimApplyTheme !== 'function') return null;
   return window.__bimApplyTheme(theme);
 }
@@ -87,7 +85,6 @@ export async function initDefaultCondition(){
 /**
  * Der Name in der Kopfleiste, für Verwalter mit „(Verwalter)“ statt eigener Plakette. Eine Funktion, weil
  * Anmeldung und Profil ihn schreiben und eine zweite Fassung schon einmal ins Leere lief.
- * Ausführlich: docs/begruendungen/public/js/01-konto.js.md#zeigebenutzernamen
  */
 export function zeigeBenutzernamen(){
   const el = G('ubadge');

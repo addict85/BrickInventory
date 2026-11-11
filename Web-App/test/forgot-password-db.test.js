@@ -1,7 +1,6 @@
 /**
  * Passwort-vergessen gegen echte Datenbank: E-Mail-Vergleich ohne Beachtung
  * der Gross-/Kleinschreibung.
- * Ausführlich: docs/begruendungen/test/forgot-password-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): LOWER($1) in routes/auth.ts wieder auf $1
  * zurückgedreht → genau der erste Teilschritt hier wird rot.
@@ -19,14 +18,15 @@
  * Ohne DB: skip.
  */
 const test = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 // Links in Mails gibt es nur mit fester Adresse (routes/auth.ts, getBaseUrl).
-process.env.APP_BASE_URL = 'http://localhost';
-process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
+umgebung({ APP_BASE_URL: 'http://localhost' });
+umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
@@ -109,7 +109,7 @@ test('Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header — auch ausserha
      VALUES ($1, 'forgot.host@example.ch', 'x', false, true, true)`, [USERNAME]);
 
   const alt = { NODE_ENV: process.env.NODE_ENV, APP_BASE_URL: process.env.APP_BASE_URL, SMTP_HOST: process.env.SMTP_HOST };
-  process.env.NODE_ENV = 'development';
+  umgebung({ NODE_ENV: 'development' });
   delete process.env.SMTP_HOST;
   const ausgabe = [];
   const altLog = console.log, altWarn = console.warn;
@@ -138,7 +138,7 @@ test('Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header — auch ausserha
   };
 
   try {
-    delete process.env.APP_BASE_URL;
+    umgebung({ APP_BASE_URL: undefined });
     const bekannt = await forgot('forgot.host@example.ch');
     const unbekannt = await forgot('gibt.es.nicht@example.ch');
     assert.equal(bekannt.token, false, 'Reset-Code an den Host aus dem Header — ohne APP_BASE_URL darf keiner entstehen');
@@ -146,7 +146,7 @@ test('Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header — auch ausserha
     assert.equal(bekannt.body.code, 'passwort_reset_nicht_eingerichtet');
     assert.deepEqual(unbekannt, bekannt, 'Die Antwort verrät die E-Mail: bekannt und unbekannt unterscheiden sich');
 
-    process.env.APP_BASE_URL = 'https://lego.example.org/';
+    umgebung({ APP_BASE_URL: 'https://lego.example.org/' });
     ausgabe.length = 0;
     const mit = await forgot('forgot.host@example.ch');
     assert.equal(mit.status, 200);
@@ -156,7 +156,7 @@ test('Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header — auch ausserha
     assert.doesNotMatch(link, /boese/);
   } finally {
     console.log = altLog; console.warn = altWarn;
-    for (const [k, v] of Object.entries(alt)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+    for (const [k, v] of Object.entries(alt)) { if (v === undefined) umgebung({ [k]: undefined }); else umgebung({ [k]: v }); }
     await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
     await new Promise(r => srv.close(r));
   }

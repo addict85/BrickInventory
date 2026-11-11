@@ -1,6 +1,6 @@
 Gegenprobe: Einrichten geht auch ohne Passwort
-Modul: app
-Test: ch.brickinventoryapp.app.ZweiterFaktorMaskeTest
+Modul: feature-konto
+Test: ch.brickinventoryapp.konto.ZweiterFaktorMaskeTest
 Rot: ohne Passwort richtet
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt

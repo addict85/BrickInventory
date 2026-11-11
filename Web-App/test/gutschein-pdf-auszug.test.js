@@ -1,12 +1,9 @@
 /**
  * Die drei Werte eines Gutscheins aus seinem PDF lesen.
- * Ausführlich: docs/begruendungen/test/gutschein-pdf-auszug.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const { werteAusPdf, werteAusText, zahlLesen, pdfText } = _req('src/gutscheine/gutscheinPdf.js');
 // `require('pdfkit')` und NICHT ueber den Verzeichnispfad: pdfkit 0.20 hat
@@ -47,7 +44,6 @@ test('Gutschein-PDF: die drei Werte landen an der richtigen Stelle', async (t) =
 
   await t.test('kurze Zahlen werden nicht zur Kartennummer', async () => {
     // Diese Zusicherung gibt es wegen einer GEGENPROBE
-    // Ausführlich: docs/begruendungen/test/gutschein-pdf-auszug.test.js.md#buf-stelle
     //
     // Der Test darueber sollte die Laengengrenze (>= 13 Stellen) absichern.
     // Die Gegenprobe zeigte, dass er das nicht tat: Die Grenze von 13 auf 3

@@ -20,7 +20,6 @@ const BASE = 'https://rebrickable.com/api/v3';
 
 /**
  * Eine Teilezeile, wie sie /lego/sets/{id}/parts liefert.
- * Ausführlich: docs/begruendungen/clients/rebrickable.ts.md#rbsetteil
  */
 export type RbSetTeil = {
   part: {
@@ -37,7 +36,6 @@ export type RbSetTeil = {
 
 /**
  * Der Rebrickable-Schluessel — aus der zentralen Einstellungs-Lesung.
- * Ausführlich: docs/begruendungen/clients/rebrickable.ts.md#getrbkey
  */
 async function getRbKey(): Promise<string | null> {
   return (await zugang().schluessel('rebrickable_api_key')) || null;
@@ -269,8 +267,7 @@ async function scrapeInstructions(setNumber: string) {
       /href="(https?:\/\/cdn\.rebrickable\.com\/media\/instructions[^"]+\.pdf[^"]*)"/gi,
       /href="(https?:\/\/assets\.lego\.com[^"]*\.pdf[^"]*)"/gi,
     ]) {
-      let m: RegExpExecArray | null;
-      while ((m = re.exec(body)) !== null) {
+      for (const m of body.matchAll(re)) {
         // Als Konstante, weil der Rückruf `m` nicht als nicht-null kennt.
         const treffer = m[1];
         if (!found.find(f => f.url === treffer)) found.push({ url: treffer, description: `Anleitung ${n}` });
@@ -474,7 +471,6 @@ async function lookupPart(partNumber: string, colorId?: number | null) {
     let image_url = part.part_img_url || null;
 
     // Das Bild in der gewählten Farbe kommt nur über den Parts/Colors-Endpunkt.
-    // Ausführlich: docs/begruendungen/clients/rebrickable.ts.md#lookuppart
     if (colorId !== null && colorId !== undefined && colorId !== KEINE_FARBE) {
       try {
         await rebrickableBackgroundLimiter.waitForSlot();
@@ -506,11 +502,9 @@ async function lookupPart(partNumber: string, colorId?: number | null) {
 // Fuer den Import von BrickLink-Wanted-Listen. Die
 // Richtung ist die UNGEWOHNTE: Der ganze uebrige Baum geht von Rebrickable
 // nach BrickLink (external_ids), weil Rebrickable die Heimatnummer fuehrt.
-// Ausführlich: docs/begruendungen/clients/rebrickable.ts.md#abschnitt
 
 /**
  * Traegt dieses Rebrickable-Teil die gesuchte BrickLink-Nummer?
- * Ausführlich: docs/begruendungen/clients/rebrickable.ts.md#traegtblnummer
  */
 function traegtBlNummer(teil: unknown, blId: string): boolean {
   const ext = (teil as { external_ids?: Record<string, unknown> } | null)?.external_ids;

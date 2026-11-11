@@ -122,7 +122,6 @@ private fun CsvKopfzeile(
         // abbrechen will, soll nicht erst herausfinden muessen,
         // dass der Balken sich aufklappen laesst. In der Webapp
         // steht der Knopf ebenfalls dauerhaft da.
-        // Ausführlich: docs/begruendungen/app/app/ui/components/CsvImportBanner.kt.md#if
         if (running) {
             // Volle 48 dp: Der Balken wird dadurch etwas höher, dafür
             // trifft man das Abbrechen auch unterwegs.

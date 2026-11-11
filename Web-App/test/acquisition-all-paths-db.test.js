@@ -1,7 +1,6 @@
 /**
  * ALLE Erfassungs-Wege im Haushalt — Sets, Teile, Minifiguren, je Ändern und
  * Löschen.
- * Ausführlich: docs/begruendungen/test/acquisition-all-paths-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): writableIds in src/sammlung/erfassungen.ts durch die eigene ID
  * ersetzt → „Set-Erfassung löschen" endet wieder in 404.

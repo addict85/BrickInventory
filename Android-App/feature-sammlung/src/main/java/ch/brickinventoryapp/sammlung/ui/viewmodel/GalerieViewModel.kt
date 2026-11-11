@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.zustand.ui.abgeleitet
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
 import ch.brickinventoryapp.model.ui.model.KennzahlenAnsicht
@@ -8,7 +9,6 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.zustand.ui.Aenderung
@@ -87,11 +87,11 @@ class GalerieViewModel @Inject constructor(
         meldeFehler = { meldungen.zeige(meldungen.meldungFuerSnackbar(it)) },
         beschreibeFehler = { meldungen.meldung(it) },
         vergissScroll = { scrollMemory.vergiss("gallery") },
-        lokal = sets.beobachteSets(),
-        ungefiltert = { g ->
-            g.galleryQuery.isBlank() && g.galleryTheme.isBlank() && g.gallerySort == GALLERY_DEFAULT_SORT &&
-                filter.kontoFuer(ScopeFilter.View.GALLERY) == null && filter.lagerFuer(ScopeFilter.View.GALLERY).isNullOrBlank()
+        lokal = { g ->
+            sets.beobachteSets(g.galleryQuery, g.galleryTheme, filter.lagerFuer(ScopeFilter.View.GALLERY), g.gallerySort)
         },
+        lokalGilt = { filter.kontoFuer(ScopeFilter.View.GALLERY) == null },
+        aktualisiere = { retryOnNetwork { sets.aktualisiereSets() } },
     )
     /** Ein gelöschtes Set, das sich noch zurückholen lässt — die Snackbar „Rückgängig“. */
     data class VorgemerktesLoeschen(val setNumber: String, val name: String, val set: SetAnsicht? = null)
@@ -119,11 +119,23 @@ class GalerieViewModel @Inject constructor(
         galerie.stelleFilterWieder(
             suche = gemerkt[SUCHE] ?: "",
             thema = gemerkt[THEMA] ?: "",
-            sortierung = gemerkt[SORTIERUNG] ?: GALLERY_DEFAULT_SORT,
+            sortierung = Setsortierung.aus(gemerkt[SORTIERUNG]),
         )
     }
 
     fun loadSets() = galerie.laden()
+
+    /**
+     * Beim Zeigen: laden, wenn die Galerie leer ist und ein Server eingetragen ist.
+     * Hier statt im Graphen, damit die Regel geprüft werden kann; ein Fehlschlag beim
+     * Start wird so beim nächsten Betreten wiederholt.
+     */
+    fun ladeWennLeer() {
+        val g = galerie.state.value
+        if (sitzung.state.value.serverUrl.isBlank() || g.sets.isNotEmpty() || g.galleryLoading) return
+        loadSets()
+        loadStats()
+    }
     fun loadMoreSets() = galerie.mehrLaden()
     fun loadStats() {
         galerie.ladeKennzahlen()
@@ -152,8 +164,8 @@ class GalerieViewModel @Inject constructor(
         galerie.setzeThema(theme)
     }
 
-    fun setGallerySort(sort: String) {
-        gemerkt[SORTIERUNG] = sort
+    fun setGallerySort(sort: Setsortierung) {
+        gemerkt[SORTIERUNG] = sort.kennung
         galerie.setzeSortierung(sort)
     }
 
@@ -183,15 +195,24 @@ class GalerieViewModel @Inject constructor(
         _vorgemerkt.value = VorgemerktesLoeschen(setNumber, name, set)
     }
 
-    /** Das vorgemerkte Set bleibt; die Liste kommt neu vom Server, auf dem es nie fehlte. */
-    fun rueckgaengig() {
-        if (_vorgemerkt.value == null) return
+    /**
+     * Das vorgemerkte Set bleibt; die Liste kommt neu vom Server, auf dem es nie fehlte.
+     * [nur]: nur dieses — die Snackbar eines abgelösten Löschens holt nicht das nächste zurück.
+     */
+    fun rueckgaengig(nur: VorgemerktesLoeschen? = null) {
+        val v = _vorgemerkt.value ?: return
+        if (nur != null && v != nur) return
         _vorgemerkt.value = null
         loadSets()
     }
 
-    fun loeschenAusfuehren() {
+    /**
+     * [nur]: nur dieses. Endet die Snackbar eines abgelösten Löschens, darf sie das
+     * neue nicht ausführen — sonst wäre es ohne „Rückgängig“ gelöscht.
+     */
+    fun loeschenAusfuehren(nur: VorgemerktesLoeschen? = null) {
         val v = _vorgemerkt.value ?: return
+        if (nur != null && v != nur) return
         _vorgemerkt.value = null
         deleteSet(v.setNumber, erfolgMelden = false)
     }
@@ -240,7 +261,7 @@ class GalerieViewModel @Inject constructor(
         _preise.value = emptyMap()
         gemerkt[SUCHE] = ""
         gemerkt[THEMA] = ""
-        gemerkt[SORTIERUNG] = GALLERY_DEFAULT_SORT
+        gemerkt[SORTIERUNG] = Setsortierung.VORGABE.kennung
     }
 
     private companion object {

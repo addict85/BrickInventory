@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.model.data.model
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.theme.DesignOderNichts
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -116,13 +120,13 @@ data class User(
 
 @Serializable
 data class UserSettings(
-    val currency: String = "EUR",
-    @SerialName("price_condition") val priceCondition: String = "N",
+    val currency: Waehrung = Waehrung.EUR,
+    @SerialName("price_condition") val priceCondition: Zustand = Zustand.NEU,
     @SerialName("price_cache_ttl") val priceCacheTtl: String = "24",
-    @SerialName("default_price_condition") val defaultPriceCondition: String = "N",
-    @SerialName("user_default_condition") val userDefaultCondition: String? = null,
-    @SerialName("effective_condition") val effectiveCondition: String = "N", // resolved: user→global→'N'
-    @SerialName("app_theme") val appTheme: String = "classic" // Vorgabe des Verwalters; das des Kontos: /settings/theme
+    @SerialName("default_price_condition") val defaultPriceCondition: Zustand = Zustand.NEU,
+    @SerialName("user_default_condition") val userDefaultCondition: Zustand? = null,
+    @SerialName("effective_condition") val effectiveCondition: Zustand = Zustand.NEU,
+    @Serializable(with = DesignOderNichts::class) @SerialName("app_theme") val appTheme: Design? = null // Vorgabe des Verwalters; das des Kontos: /settings/theme
 )
 
 /**
@@ -152,9 +156,9 @@ data class StartupStatus(
 @Serializable
 data class AppThemeResponse(
     val success: Boolean = false,
-    val theme: String = "classic",
-    val vorgabe: String? = null,
-    val eigenes: String? = null,
+    @Serializable(with = DesignOderNichts::class) val theme: Design? = null,
+    @Serializable(with = DesignOderNichts::class) val vorgabe: Design? = null,
+    @Serializable(with = DesignOderNichts::class) val eigenes: Design? = null,
     val error: String? = null,
 )
 

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.gemeinsam.ui
 
+import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
@@ -159,15 +160,14 @@ private fun TabellenText(nummer: String, name: String?, farbe: Color?, zweiteZei
  * Fassung für alle Erfassungsdialoge, damit dieselbe Entscheidung überall gleich
  * aussieht und die Beschriftung mit ihrer festen Breite bündig steht.
  *
- * @param zustand „N“ oder „U“ — die Werte des Servers
  */
 @Composable
 fun Zustandszeile(
-    zustand: String,
-    onZustand: (String) -> Unit,
+    zustand: Zustand,
+    onZustand: (Zustand) -> Unit,
     modifier: Modifier = Modifier,
     /** Durchgereicht an [ConditionToggle] — siehe dort. */
-    optionen: List<Pair<String, Int>> = ZUSTAND_NEU_GEBRAUCHT,
+    optionen: List<Pair<Zustand, Int>> = ZUSTAND_NEU_GEBRAUCHT,
 ) {
     // Ab 130 % Schrift steht die Beschriftung über der Wahl: In der festen Spalte
     // daneben brach „Zustan|d“ mitten im Wort.
@@ -196,25 +196,19 @@ fun Zustandszeile(
  * Die Vorbelegung von [ConditionToggle] und [Zustandszeile] — an einer Stelle,
  * damit die beiden nicht mit verschiedenen Listen dastehen.
  */
-val ZUSTAND_NEU_GEBRAUCHT: List<Pair<String, Int>> =
-    listOf("N" to R.string.condition_new, "U" to R.string.condition_used)
+val ZUSTAND_NEU_GEBRAUCHT: List<Pair<Zustand, Int>> =
+    listOf(Zustand.NEU to R.string.condition_new, Zustand.GEBRAUCHT to R.string.condition_used)
 
 /**
- * Neu/Gebraucht als zwei Flächen, neben der Zeile, die es einbaut. Die Werte „N“
- * und „U“ sind die des Servers (utils/validate.ts); übersetzt wird nur die
- * Beschriftung.
+ * Neu/Gebraucht als zwei Flächen, neben der Zeile, die es einbaut.
  */
 @Composable
 fun ConditionToggle(
-    selected: String,
-    onSelect: (String) -> Unit,
+    selected: Zustand,
+    onSelect: (Zustand) -> Unit,
     modifier: Modifier = Modifier,
-    /**
-     * Wert → Beschriftung, vorbelegt mit „neu / gebraucht“. Als Parameter, weil die
-     * BrickLink-Wunschliste einen dritten Wert („egal“) kennt und sonst gleich
-     * aussieht.
-     */
-    optionen: List<Pair<String, Int>> = ZUSTAND_NEU_GEBRAUCHT,
+    /** Wert → Beschriftung, vorbelegt mit „neu / gebraucht“. */
+    optionen: List<Pair<Zustand, Int>> = ZUSTAND_NEU_GEBRAUCHT,
 ) {
     // Dieselbe Segmentschaltfläche wie jede Einfachwahl der App (SegmentWahl): Die
     // eigene Fassung mit Flächen ohne Rand liess „Gebraucht“ wie Text aussehen.

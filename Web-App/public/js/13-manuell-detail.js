@@ -57,7 +57,6 @@ function manDetailZeilen(type, id, colorId, item, acqs, ad) {
   // Die Farbe eines Teils ist änderbar, für den Fall, dass sie falsch geladen wurde — gerade ein Teil ohne
   // Farbname braucht die Zeile. Dieselbe Liste wie beim Erfassen (loadBrickColors), nachgeladen nach dem
   // Zeichnen.
-  // Ausführlich: docs/begruendungen/public/js/13-manuell-detail.js.md#if-2
   if (type === 'part') {
     const swatch = html`<span id="man-farb-punkt" data-stil="display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.15);vertical-align:middle;flex:0 0 auto" data-farbe="${escHex(item.color_hex, 'var(--s300)')}"></span>`;
     rows.push(detailZeile(t('parts.color_label'), html`${swatch}
@@ -71,7 +70,6 @@ function manDetailZeilen(type, id, colorId, item, acqs, ad) {
 
   // Lagerort auch im Detail der manuell erfassten Teile und Figuren: Dasselbe Bedienelement und derselbe
   // Speicherweg wie bei Teilen aus Sets, nur die Adresse hängt am Typ. Die Ortsliste gehört dem Besitzer.
-  // Ausführlich: docs/begruendungen/public/js/13-manuell-detail.js.md#ladeortauswahl-2
   ladeOrtAuswahl(item?.user_id != null ? [item.user_id] : []).catch(() => {});
   rows.push(detailZeile(t('detail.storage'),
     lagerortBlock('man-storage', item?.storage,
@@ -90,7 +88,6 @@ function manDetailZeilen(type, id, colorId, item, acqs, ad) {
 
   // Preisverlauf wie im Set-Detail, beide Zustände in einem Diagramm, der Marktpreis je Zustand darüber. Bis
   // genug Punkte gesammelt sind, bleibt das Diagramm leer — das ist erwartet.
-  // Ausführlich: docs/begruendungen/public/js/13-manuell-detail.js.md#preisverlauf-wie-im-set-detail-beide-zus
   rows.push(html`<div id="man-market-rows"></div>`);
 
   rows.push(html`<div data-stil="margin-top:10px">
@@ -157,7 +154,6 @@ export async function openManDetail(type, id, colorId) {
 
   // Volle Auflösung über den Server-Proxy, nicht direkt vom CDN: Fremde Bildadressen lädt der Browser nie
   // selbst (Hotlink-Schutz, Cache).
-  // Ausführlich: docs/begruendungen/public/js/13-manuell-detail.js.md#rawimgsrc
   const rawImgSrc = item.image_local || item.image_url || '';
   const imgSrc = rawImgSrc ? imgUrl(fullUrl(rawImgSrc), false) : '';
   if (imgSrc) { imgEl.src = imgSrc; imgEl.style.display = ''; } else { imgEl.style.display = 'none'; }
@@ -194,7 +190,6 @@ export async function openManDetail(type, id, colorId) {
 /**
  * Die Farbliste getrennt vom Zeichnen füllen: Der erste Abruf geht zu Rebrickable, der Dialog steht derweil
  * offen. Scheitert er, bleibt die aktuelle Farbe als einzige Wahl — besser als eine Liste ohne sie.
- * Ausführlich: docs/begruendungen/public/js/13-manuell-detail.js.md#fuellefarbwahl
  * @param {number} aktuell
  */
 async function fuelleFarbwahl(aktuell) {
@@ -218,7 +213,6 @@ async function fuelleFarbwahl(aktuell) {
 /**
  * Die Farbe eines manuellen Teils ändern (die Regeln stehen in src/teile/teilFarbeAendern.ts). Danach öffnet
  * der Dialog mit der neuen Farbe: Sie ist Teil der Adresse, der alte Dialog zeigte ins Leere.
- * Ausführlich: docs/begruendungen/public/js/13-manuell-detail.js.md#speichereteilfarbe
  * @this {unknown}
  */
 async function speichereTeilFarbe() {
@@ -275,7 +269,6 @@ async function manQtySave() {
 
   // Die Erfassungsliste nach jeder Mengenänderung neu laden, in beide Richtungen: Beim Verringern entfernt
   // der Server Erfassungen (LIFO), und nur beim Erhöhen neu zu laden zeigte gelöschte Einträge weiter an.
-  // Ausführlich: docs/begruendungen/public/js/13-manuell-detail.js.md#acqurl2
   const acqUrl2 = type==='fig'
     ? `/v1/minifigs/${encodeURIComponent(id)}/acquisitions`
     : `/v1/parts/${encodeURIComponent(id)}/${colorId}/acquisitions`;

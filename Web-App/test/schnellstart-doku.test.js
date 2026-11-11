@@ -3,15 +3,14 @@
  * Installation, die compose.yaml starten kann. Die Befehle des Blocks laufen
  * wirklich, in einem Sandkasten mit compose.yaml, .env.example und scripts/;
  * nur git und docker nicht. Danach liest `docker compose config` das Ergebnis: …
- * Ausführlich: docs/begruendungen/test/schnellstart-doku.test.js.md#kopf
  *
  * Gegenproben (04.11.2026 gemessen, je einzeln):
  *   A  compose.yaml: Secret-Datei ./geheimnisse/db_app_passwort statt …_password
  *      → rot: „Secret db_app_password: geheimnisse/db_app_passwort fehlt“
  *   B  README.md: `sh scripts/geheimnisse-einrichten.sh` gestrichen → rot:
  *      „Secret session_secret: … fehlt“
- *   C  Web-App/README.md: `scripts/ca-einrichten.sh` → `scripts/ca-anlegen.sh`
- *      → rot: „Schritt scheitert: sudo sh scripts/ca-anlegen.sh“
+ *   C  Web-App/README.md: `scripts/ca-einrichten.sh` in einen Namen geändert,
+ *      den es nicht gibt → rot: „Schritt scheitert: sudo sh scripts/…“
  *   D  compose.yaml: bei app `ports: ["3000:3000"]` → rot: „app veröffentlicht
  *      keinen Port“
  *   E  compose.yaml: bei jobs `image:` gestrichen → rot: „jobs zieht das

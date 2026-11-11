@@ -1,7 +1,7 @@
 /**
  * Messungen, die im Browser laufen (als Ausdruck für Runtime.evaluate): Layout
  * und Kontrast der sichtbaren Oberfläche, dazu axe-core. Benutzt von
- * test/oberflaeche-browser.test.js.
+ * test/helpers/oberflaeche-pruefung.js.
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -181,7 +181,7 @@ const LAYOUT = (telefon) => `(() => {
   //    deshalb sieht ihn die Überlaufprüfung nicht. Auch 0 px breit zählt.
   const texte = document.createTreeWalker(wurzel, NodeFilter.SHOW_TEXT), zeilenText = [];
   for (let n = texte.nextNode(); n; n = texte.nextNode()) {
-    const e = n.parentElement, zeichen = n.textContent.replace(/\s+/g, '').length;
+    const e = n.parentElement, zeichen = n.textContent.replace(/s+/g, '').length;
     if (zeichen < 4 || !e || e.closest('svg, script, style, .vh, [hidden], [aria-hidden="true"], .ovl:not(.open), details:not([open]) > :not(summary)')) continue;
     const s = getComputedStyle(e);
     if (s.display === 'none' || s.visibility === 'hidden' || deckkraft(e) <= 0.1 || !e.getClientRects().length) continue;
@@ -278,7 +278,7 @@ const TAB_VORBEREITEN = `(() => {
   const bereit = (e) => !e.disabled && !e.closest('[inert], [hidden]') &&
     (e.matches('.datei-versteckt') ? e.parentElement.checkVisibility() : e.checkVisibility({ visibilityProperty: true }));
   const name = (e) => e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + [...e.classList].slice(0, 2).map(c => '.' + c).join('')
-    + ' „' + (e.textContent.trim() || e.getAttribute('aria-label') || e.getAttribute('data-click') || '').replace(/\s+/g, ' ').slice(0, 24) + '“';
+    + ' „' + (e.textContent.trim() || e.getAttribute('aria-label') || e.getAttribute('data-click') || '').replace(/s+/g, ' ').slice(0, 24) + '“';
   const funde = [];
   for (const e of d.querySelectorAll('[data-click]'))
     if (bereit(e) && !e.closest(SEL) && !e.closest('label')) funde.push('Klickfläche ohne Tastatur: ' + name(e));

@@ -1,6 +1,5 @@
 /**
  * Die Abhängigkeiten zeigen nach innen.
- * Ausführlich: docs/begruendungen/test/schichten.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -11,11 +10,10 @@ const ROOT = path.join(__dirname, '..');
 
 /**
  * Was noch aus einer Route nach innen geholt wird — und warum es noch steht.
- * Ausführlich: docs/begruendungen/test/schichten.test.js.md#ausnahmen
  */
 const AUSNAHMEN = new Set([]);
 
-/** Quelltext ohne Kommentare — zeilenweise, siehe test/baumbruecken.test.js. */
+/** Quelltext ohne Kommentare — zeilenweise, siehe test/abgleich-baumbruecken.test.js. */
 function ohneKommentare(s) {
   const zeilen = [];
   let imBlock = false;
@@ -100,8 +98,8 @@ test('eine v1-Route importiert keine andere Routendatei', () => {
 
 test('keine Route importiert eine andere Routendatei', () => {
   // Erlaubt sind nur der Wächter (api_v1/middleware) und der Zusammenbau in
-  // api_v1/index.ts und auth.ts (aus routes/auth/). Gegenprobe (29.10.2026): `import { requireLogin } from
-  // './auth'` zurück in routes/minifigs.ts → rot.
+  // api_v1/index.ts und auth.ts (aus routes/auth/). Gegenprobe (10.11.2026): `import { requireLogin } from
+  // '../auth'` in routes/api_v1/minifigs.ts → rot.
   const dateien = [];
   const lauf = (rel) => {
     for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
@@ -162,7 +160,7 @@ const codeZeilen = (rel) => quelltext(rel).split('\n').filter(z => z.trim()).len
 test('jobs/ führt Aufträge aus, die Arbeit eines Auftrags steht in src/', () => {
   // jobs/ hält den Worker (Pacht, Wiederholung, Abbruch), die Bearbeitertabelle
   // und den Einstieg des Importprozesses; was ein Auftrag fachlich tut, liegt in src/<bereich>/.
-  // Gemessen am 09.11.2026: vorher 20 Dateien, 1597 Codezeilen, 4 mit Import aus db/; jetzt 4, 287, 0; 265, seit die Verdrahtung in startup/ liegt.
+  // Gemessen 265 Codezeilen am 09.11.2026.
   // Gegenproben (09.11.2026): `import * as db from '../db/database'` in jobs/auftraegeStarten.ts → rot
   // (db/); fetchAndCachePrice und zustaendeJeSet zurück nach jobs/auftraegeStarten.ts → rot (113
   // Zeilen); `import { STAPEL } from '../src/katalog/bilder/bildbedarf'` in jobs/auftragsWorker.ts → rot.
@@ -248,8 +246,8 @@ test('ins Netz geht nur clients/ über src/infra/abruf.ts', () => {
 test('startup/ importiert nichts aus routes/', () => {
   // Was der Start anstösst (Aufräumläufe), steht in src/; eine Route
   // gehört nur in server.ts.
-  // Gegenprobe (29.10.2026): startPdfJobCleanup wieder aus
-  // '../routes/api_v1/pdf' in startup/backgroundJobs.ts → rot.
+  // Gegenprobe (10.11.2026): `import { startPdfJobCleanup } from
+  // '../routes/api_v1/pdf'` in startup/jobsProzess.ts → rot.
   const treffer = [];
   for (const f of fs.readdirSync(path.join(ROOT, 'startup')).filter(f => f.endsWith('.ts')))
     for (const ziel of importe(`startup/${f}`).filter(z => /routes\//.test(z))) treffer.push(`startup/${f} -> ${ziel}`);
@@ -308,7 +306,6 @@ test('die Ausnahmeliste bleibt ehrlich — jeder Eintrag hat noch einen Fall', (
 
 test('in routes/ liegt nichts, was keine Route ist', () => {
   // Woher diese Pruefung kommt
-  // Ausführlich: docs/begruendungen/test/schichten.test.js.md#erlaubtohnerouter
   const erlaubtOhneRouter = {
     'imgProxy.ts':          'registriert seine Routen ueber app.get() statt router.get()',
     'api_v1/middleware.ts': 'Waechter FUER Routen; ohne Routen sinnlos',
@@ -393,9 +390,11 @@ test('SQL steht nur in Repositories und in db/', () => {
 });
 
 /** Was ein Dienst aus db/database nehmen darf: die Arbeitseinheit und den Betrieb, keine Abfrage. */
-// Seit 09.11.2026 auch das Anlegen des Zugangs (erzeugeDb …): Das tun nur server.ts und startup/.
+// Seit 09.11.2026 auch das Anlegen des Zugangs (erzeugeDb …): Das tun nur server.ts und startup/;
+// seit 10.11.2026 der Typ Db (Kontext eines Bereichs) und standardDb() für die Verdrahtung.
 const DB_AUSSERHALB = new Set(['transaction', 'pool', 'eigeneVerbindung', 'datenbankAntwortet', 'getPoolStats',
-  'alsSuperuserVerbunden', 'initSchemaOnce', 'DbSchnittstelle', 'erzeugeDb', 'setzeStandardDb', 'dbKonfigAusUmgebung', 'setzeErststart']);
+  'alsSuperuserVerbunden', 'initSchemaOnce', 'DbSchnittstelle', 'Db', 'erzeugeDb', 'setzeStandardDb', 'standardDb',
+  'dbKonfigAusUmgebung']);
 
 test('ausserhalb von repository/ und db/ fragt niemand die Datenbank ab', () => {
   // Die SQL-Suche oben liest Text; ein Aufruf unter anderem Namen (`datenbank.all(SQL)` mit dem
@@ -469,21 +468,29 @@ test('Routen lösen keine Konten auf — das tun die Dienste', () => {
 /** Die HTTP-Seite eines Bereichs (Middleware, Sitzung): src/<bereich>/http/. */
 const istHttp = (rel) => /^src\/[^/]+\/http\//.test(rel);
 
-test('Dienste importieren keine Express-Typen', () => {
-  // Express kennen nur src/http/ (Fehlerweg, Herkunft, Dateiauslieferung),
-  // src/infra/ (Anfragekonto, Proxy-Vertrauen), src/vertrag/ (Prüf-Middleware)
-  // und die HTTP-Seiten der Bereiche. Gegenprobe (31.10.2026): `import type {
-  // Request } from 'express'` in src/sets/setService.ts → rot; dasselbe in
-  // src/konto/loginLimiter.ts → rot. (08.11.2026): dasselbe in src/infra/geld.ts → rot.
-  const nutztExpress = d => /from\s+['"]express['"]|import\(\s*['"]express['"]\s*\)/.test(quelltext(d));
-  const treffer = tsUnter('src')
-    .filter(d => !['infra', 'http', 'vertrag'].includes(bereichVon(d)) && !istHttp(d))
+test('Express kennen nur src/http, die HTTP-Seiten der Bereiche und die Routen', () => {
+  // Gegenproben (31.10.2026): `import type { Request } from 'express'` in
+  // src/sets/setService.ts → rot; dasselbe in src/konto/loginLimiter.ts → rot.
+  // (10.11.2026): dasselbe in src/infra/geld.ts, src/vertrag/grund.ts und
+  // db/txLock.ts → rot.
+  const nutztExpress = d => /from\s+['"]express['"]|import\(\s*['"]express['"]\s*\)|require\(\s*['"]express['"]\s*\)/.test(quelltext(d));
+  const treffer = tsUnter('src', 'db', 'clients', 'jobs', 'startup')
+    .filter(d => bereichVon(d) !== 'http' && !istHttp(d))
     .filter(nutztExpress);
   assert.deepEqual(treffer, []);
-  // Eine neue Datei in infra, die Express kennt, ist eine bewusste Entscheidung: hier eintragen.
-  const EXPRESS_IN_INFRA = ['anfrageKonto', 'proxyVertrauen'].map(n => `src/infra/${n}.ts`);
-  assert.deepEqual(tsUnter('src/infra').filter(nutztExpress).sort(), EXPRESS_IN_INFRA.sort());
+  assert.ok(tsUnter('src/http').filter(nutztExpress).length >= 8, 'die Suche findet Express in src/http nicht mehr');
   assert.ok(tsUnter('src').some(istHttp), 'keine HTTP-Seite unter src/<bereich>/http/ gefunden');
+
+  // Dienste antworten mit einer Fehlerart, nicht mit einem HTTP-Status; clients/
+  // spricht selbst HTTP nach aussen. Gegenprobe (10.11.2026): in
+  // src/konto/passwortBestaetigung.ts wieder `return { status: 429, ...gesperrt }` → rot.
+  const STATUS = /\bstatus\s*:\s*[1-5]\d\d\b|\bres\.status\(/;
+  // Liefert den Bild-Cache selbst aus (304); gehört nach src/katalog/http/. Nur streichen, nie ergänzen.
+  const MIT_STATUS = ['src/katalog/bilder/imgCacheServe.ts'];
+  const mitStatus = tsUnter('src', 'db', 'jobs')
+    .filter(d => bereichVon(d) !== 'http' && !istHttp(d))
+    .filter(d => STATUS.test(quelltext(d)));
+  assert.deepEqual(mitStatus, MIT_STATUS);
 });
 
 test('nur Routen, Server und HTTP-Seiten importieren eine HTTP-Seite oder src/http', () => {
@@ -504,11 +511,11 @@ test('nur Routen, Server und HTTP-Seiten importieren eine HTTP-Seite oder src/ht
   assert.ok(http.length >= 8, `nur ${http.length} Dateien unter src/http`);
   const nachHttp = (z) => bereichVon(z) === 'http';
   const hinein = tsUnter('src', 'jobs', 'clients', 'db')
-    .filter(d => !nachHttp(d) && !istHttp(d) && bereichVon(d) !== 'vertrag')
+    .filter(d => !nachHttp(d) && !istHttp(d))
     .flatMap(d => aufgeloesteImporte(d, { mitTypen: true }).filter(nachHttp).map(z => `${d} -> ${z}`));
   assert.deepEqual(hinein, []);
   const hinauf = http.flatMap(d => aufgeloesteImporte(d, { mitTypen: true })
-    .filter(z => z.startsWith('src/') && !['http', 'infra'].includes(bereichVon(z))).map(z => `${d} -> ${z}`));
+    .filter(z => z.startsWith('src/') && !['http', 'infra', 'vertrag'].includes(bereichVon(`${z}/`))).map(z => `${d} -> ${z}`));
   assert.deepEqual(hinauf, []);
 });
 
@@ -535,8 +542,8 @@ test('Routen fangen keine Fehler — der Fehlerweg des Routers antwortet', () =>
  * eine Stufe, sonst ist der Test rot. */
 const STUFEN = [
   ['src/infra'],
-  ['src/http'],
   ['src/vertrag'],
+  ['src/http'],
   ['db', 'clients'],
   ['src/einstellungen'],
   ['src/mail'],

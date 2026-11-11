@@ -86,10 +86,11 @@ test('Ergebnisliste mit Zeilen, Farben und gelesenen Zeilen', async () => {
   let abrufe = 0,
     gestartet = false;
   const { w, d } = await oeffneOberflaeche({
-    '/v1/sets/import/csv': u =>
-      u.includes('pruefen=1')
-        ? { success: true, total: 8, gestartet: false, vorhanden: 0 }
-        : ((gestartet = true), { success: true, total: 8, gestartet: true }),
+    '/v1/sets/import/csv': u => {
+      if (u.includes('pruefen=1')) return { success: true, total: 8, gestartet: false, vorhanden: 0 };
+      gestartet = true;
+      return { success: true, total: 8, gestartet: true };
+    },
     // Vor dem Start läuft nichts; danach erst ein wartender Auftrag, dann das Ergebnis.
     '/v1/sets/import/csv/status': () =>
       !gestartet

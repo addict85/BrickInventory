@@ -1,6 +1,5 @@
 /**
  * Wo ein Client eine Besitzer-Plakette zeichnet, muss die Antwort sie tragen.
- * Ausführlich: docs/begruendungen/test/besitzerplakette-db.test.js.md#kopf
  */
 const test = require('node:test');
 const { after } = require('node:test');
@@ -27,7 +26,6 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async (
   await db.run('CREATE SCHEMA public');
   await db.initSchemaOnce();
   // Und die MIGRATIONEN, nicht nur das Schema
-  // Ausführlich: docs/begruendungen/test/besitzerplakette-db.test.js.md#stelle
   {
     const mc = await db.pool.connect();
     try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
@@ -49,7 +47,7 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async (
 
   const { scopeIds } = _req('src/haushalt/haushalt.js');
   const uids = await scopeIds(haupt, 'all');
-  const S = _req('src/sets/lesen.js');
+  const S = _req('src/sets/index.js');
   const P = _req('src/teile/abfragen.js');
   const M = _req('src/figuren/abfragen.js');
 
@@ -107,7 +105,7 @@ test('im Einzelkonto steht keine Plakette', async (t) => {
 
   const { scopeIds } = _req('src/haushalt/haushalt.js');
   const uids = await scopeIds(allein, 'all');
-  const S = _req('src/sets/lesen.js');
+  const S = _req('src/sets/index.js');
   const M = _req('src/figuren/abfragen.js');
 
   // „gehört mir" an jeder Kachel wäre nur Rauschen — und zusätzliche Felder in

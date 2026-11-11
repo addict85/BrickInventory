@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.teile
 
+import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.ressourcen.R
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.data.ScopeFilter
@@ -62,7 +63,7 @@ class TeileViewModelTest {
     fun auf() {
         Dispatchers.setMain(takt)
         pfade = PfadServer(
-            "/api/v1/parts" to """{"success":true,"total":1,"parts":[{"part_number":"3001","color_id":5}]}""",
+            "/api/v1/parts" to """{"success":true,"total":1,"parts":[{"part_number":"3001","color_id":5,"color_name":"Red"}]}""",
             "/api/v1/parts/manual" to """{"success":true,"parts":[]}""",
             "/api/v1/minifigs" to """{"success":true,"figs":[{"fig_number":"sw0001"}]}""",
             "/api/v1/parts/stats" to """{"success":true}""",
@@ -105,7 +106,7 @@ class TeileViewModelTest {
     @Test
     fun `Suchtext und Lagerort erreichen auch die manuell erfassten Stuecke`() {
         // Sonst filtert der Text die Set-Teile, und die manuellen Kacheln
-        // darüber bleiben stehen (Marcos Befund an den Teilen).
+        // darüber bleiben stehen.
         val vm = vm()
         vm.setLagerFilter(ScopeFilter.View.PARTS, "Keller")
         vm.setPartsQuery("stein")
@@ -114,9 +115,11 @@ class TeileViewModelTest {
         val teile = pfade.anfragenAn("GET /api/v1/parts/manual?").last { "search=stein" in it }
         assertTrue(teile, "storage=Keller" in teile)
 
+        // Ohne Kontofilter sucht die Figurensuche in der Ablage; abgerufen wird ungefiltert.
         vm.setMinifigsQuery("han")
         vm.loadMinifigs()
-        assertTrue("manuelle Figuren", pfade.anfragenAn("GET /api/v1/minifigs/manual?").any { "search=han" in it })
+        val figuren = pfade.anfragenAn("GET /api/v1/minifigs/manual")
+        assertTrue("manuelle Figuren abgerufen: $figuren", figuren.isNotEmpty() && figuren.none { "search=" in it })
     }
 
     @Test
@@ -166,7 +169,7 @@ class TeileViewModelTest {
     @Test
     fun `der Lagerort wird entprellt gespeichert und im offenen Dialog gezeigt`() {
         val vm = vm()
-        vm.oeffneSetItem("part", "3001", 5)
+        vm.oeffneSetItem(Postenart.PART, "3001", 5)
         assertTrue("Dialog geladen", !vm.setItemState.value.laedt)
         assertEquals("75192-1", vm.setItemState.value.sets.single().setNumber)
 
@@ -183,8 +186,8 @@ class TeileViewModelTest {
     fun `nach dem Abmelden ist nichts mehr da`() {
         val gemerkt = SavedStateHandle()
         val vm = vm(gemerkt)
-        vm.setPartsColorFilter("5")
-        vm.oeffneSetItem("part", "3001", 5)
+        vm.setPartsColorFilter("Red")
+        vm.oeffneSetItem(Postenart.PART, "3001", 5)
         assertTrue("geladen", vm.partsState.value.parts.isNotEmpty() && !vm.setItemState.value.laedt)
         t.sitzung.abgemeldet()
         assertTrue(vm.partsState.value.parts.isEmpty())

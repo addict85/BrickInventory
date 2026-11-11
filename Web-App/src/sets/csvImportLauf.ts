@@ -6,6 +6,7 @@ import { emitJobStatus, jobUpdate, setzeImportFort, type ImportErgebnis } from '
 import { fehlertext } from '../infra/fehler';
 import { Fachfehler, fehlerText, type FehlerCode } from '../infra/fehlerTexte';
 import { AuftragUnterbrochen, type AuftragsKontext } from '../auftraege/auftraege';
+import type { SetsKontext } from './kontext';
 
 /** Nach jedem Set steht der Stand in import_stand; ein Neustart setzt dort
  * fort. Steht `current` nach einem Absturz noch da, ist ungewiss, ob das Set
@@ -15,22 +16,22 @@ export type CsvZeile = CsvNutzlast['rows'][number];
 
 const zeilenFrist = () => konfig().csvZeileFristMs;
 
-async function importiereZeile(z: CsvZeile, userId: number): Promise<ImportErgebnis> {
+async function importiereZeile(sk: SetsKontext, z: CsvZeile, userId: number): Promise<ImportErgebnis> {
   const wo = z.zeile ? { zeile: z.zeile } : {};
   if (z.fehler) {
     const vars = z.fehler.wert !== undefined ? { wert: z.fehler.wert } : undefined;
     return { set_number: z.sn, ...wo, success: false, code: z.fehler.code, ...(vars ? { vars } : {}),
              error: fehlerText(z.fehler.code, 'de', vars) };
   }
-  return { ...await bucheZeile(z, userId), ...wo };
+  return { ...await bucheZeile(sk, z, userId), ...wo };
 }
 
-async function bucheZeile(z: CsvZeile, userId: number): Promise<ImportErgebnis> {
+async function bucheZeile(sk: SetsKontext, z: CsvZeile, userId: number): Promise<ImportErgebnis> {
   for (let versuch = 1; ; versuch++) {
     let wecker: NodeJS.Timeout | undefined;
     try {
       const r = await Promise.race([
-        addSetWithDate(z.sn, z.qty, userId, z.purchasePrice, z.condition, z.acquiredAt),
+        addSetWithDate(sk, z.sn, z.qty, userId, z.purchasePrice, z.condition, z.acquiredAt),
         new Promise<never>((_, rej) => { wecker = setTimeout(() => rej(new Error('Timeout')), zeilenFrist()); }),
       ]).finally(() => clearTimeout(wecker));
       await nacharbeitEinstellen(r.set_number ?? z.sn, userId, 'csv');
@@ -43,7 +44,7 @@ async function bucheZeile(z: CsvZeile, userId: number): Promise<ImportErgebnis> 
       // Nur ein Kontingent-Fehler wird wiederholt: Nach einer Zeitüberschreitung
       // läuft der erste Versuch weiter und bucht womöglich noch.
       if (isRateLimit && !isTimeout && versuch < 2) {
-        console.warn(`CSV: ${z.sn} retry after ${msg}...`);
+        console.warn(`CSV: ${z.sn} retry after ${msg}...`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
         await new Promise(r => setTimeout(r, 5000));
         continue;
       }
@@ -57,7 +58,7 @@ async function bucheZeile(z: CsvZeile, userId: number): Promise<ImportErgebnis> 
   }
 }
 
-async function fuehreCsvImportAus(n: CsvNutzlast, k: AuftragsKontext): Promise<void> {
+async function fuehreCsvImportAus(sk: SetsKontext, n: CsvNutzlast, k: AuftragsKontext): Promise<void> {
   const userId = Number(n.user_id), lauf = String(n.lauf), rows = n.rows ?? [];
   const stand = await setzeImportFort(userId, lauf);
   if (!stand) return;
@@ -75,7 +76,7 @@ async function fuehreCsvImportAus(n: CsvNutzlast, k: AuftragsKontext): Promise<v
     // Abgebrochen, abgelöst oder anderswo vergeben: aufhören, ohne in fremde Zeilen zu schreiben.
     if (!await k.lebenszeichen() || !await jobUpdate(userId, { current: z.sn }, lauf)) return;
     await emitJobStatus(userId);
-    results.push(await importiereZeile(z, userId));
+    results.push(await importiereZeile(sk, z, userId));
     if (!await schreibe()) return;
     await emitJobStatus(userId);
   }

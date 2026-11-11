@@ -1,6 +1,6 @@
 /** requireApiAdmin bündelt Anmeldung und is_admin, damit kein Admin-Endpunkt
  * die Prüfung versehentlich weglässt. */
-import { meldeUndLiefere, meldeFehler } from '../../src/infra/fehler';
+import { meldeFehler } from '../../src/infra/fehler';
 import express from 'express';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import { zuGrosseId } from '../../src/infra/validate';
@@ -14,8 +14,8 @@ import type { Sicht } from '../../src/haushalt/haushalt';
 /** Wer fragt und welche Konten er gewählt hat; den Bereich löst der Dienst auf. */
 export const sichtVon = (req: AuthedRequest & { abfrage: { accounts?: string | undefined } }): Sicht =>
   ({ nutzer: req.apiUser.user_id, konten: req.abfrage.accounts });
-import { sendeFehler } from '../../src/infra/fehlerTexte';
-import { waechter } from '../../src/vertrag/pruefen';
+import { sendeFehler } from '../../src/http/httpAntwort';
+import { waechter } from '../../src/http/vertragsRouter';
 
 export function bearerToken(req: { headers: { authorization?: string | undefined } }): string | null {
   const auth = req.headers.authorization || '';
@@ -60,7 +60,8 @@ export async function anmeldungAmEingang(req: Request, res: Response, next: Next
     req.apiUser = { user_id: req.session.userId, is_admin: req.session.isAdmin ? 1 : 0,
                     ...(req.session.username ? { username: req.session.username } : {}) };
   } else {
-    const uid = await resolveUserId(req).catch(meldeUndLiefere('eingang:resolveUserId', null));
+    // Ein Lesefehler ist keine ungültige Anmeldung: Ein 401 meldete die App ab.
+    const uid = await resolveUserId(req);
     if (!uid) return sendeTokenAbsage(req, res);
     req.tokenUserId = uid;
   }

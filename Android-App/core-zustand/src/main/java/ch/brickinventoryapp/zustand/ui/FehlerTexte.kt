@@ -9,7 +9,6 @@ import ch.brickinventoryapp.model.ui.Fehlerklasse
  * statt einer Zeile in `meldung()`, damit die Zuordnung ohne `Context` und ohne
  * Android-Laufzeit prüfbar ist. `meldung()` holt den Satz und bevorzugt die
  * Servermeldung — das braucht einen Context, die Zuordnung nicht.
- * Ausführlich: docs/begruendungen/core-zustand/zustand/ui/FehlerTexte.kt.md#fehlertextid
  */
 fun fehlerTextId(f: Ergebnis.Error): Int = when (f) {
     is Ergebnis.Error.Netz, Ergebnis.Error.Abgebrochen -> R.string.err_network
@@ -43,7 +42,6 @@ fun fehlerTextArgument(f: Ergebnis.Error): Int? = (f as? Ergebnis.Error.Server)?
 
 /**
  * Die technische Ursache anhängen — aber nur, wo der Satz allein nichts sagt.
- * Ausführlich: docs/begruendungen/core-zustand/zustand/ui/FehlerTexte.kt.md#mittechnischerursache
  */
 internal fun mitTechnischerUrsache(satz: String, f: Ergebnis.Error): String =
     if (f is Ergebnis.Error.Unbekannt && !f.technisch.isNullOrBlank()) "$satz (${f.technisch})"

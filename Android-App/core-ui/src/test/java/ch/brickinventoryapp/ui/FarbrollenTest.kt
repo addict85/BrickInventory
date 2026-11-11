@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -28,15 +29,15 @@ import org.junit.Test
  */
 class FarbrollenTest {
 
-    private val hell = listOf("classic", "brick", "werkbank", "farbfaecher", "noppe", "hochglanz")
+    private val hell = Design.entries
 
     /** Jedes Design, dazu seine dunkle Fassung (DunkelTokens.kt): Name, Schema, Statusfarben, dunkel? */
     private data class Fassung(val name: String, val schema: ColorScheme, val erfolg: Int, val dunkel: Boolean)
 
     private val fassungen: List<Fassung> = hell.map {
-        Fassung(it, farbschema(it), statusFarbenFuer(it).erfolg.toArgb(), it == "werkbank")
+        Fassung(it.kennung, farbschema(it), statusFarbenFuer(it).erfolg.toArgb(), it == Design.WERKBANK)
     } + hell.filter { hatDunkleFassung(it) }.map {
-        Fassung("$it/dunkel", farbschema(it, dunkel = true), statusFarbenFuer(it, dunkel = true).erfolg.toArgb(), true)
+        Fassung("${it.kennung}/dunkel", farbschema(it, dunkel = true), statusFarbenFuer(it, dunkel = true).erfolg.toArgb(), true)
     }
 
     private val rollen: List<Pair<String, (ColorScheme) -> Any>> = listOf(

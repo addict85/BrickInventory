@@ -35,7 +35,7 @@ internal object LokaleAnwendung {
             if (liste.any { merkSchluessel(it) == merkSchluessel(neu) }) liste else listOf(neu) + liste
         }
         is Bearbeitung.MerkpostenLoeschen -> liste.filterNot {
-            it.setNumber == b.setNumber && it.condition == b.zustand && (b.besitzer == null || it.userId == b.besitzer)
+            it.setNumber == b.setNumber && it.condition.kennung == b.zustand && (b.besitzer == null || it.userId == b.besitzer)
         }
         else -> liste
     }
@@ -88,5 +88,5 @@ internal object LokaleAnwendung {
     private fun neueMenge(bisher: Int, a: UpdateManualItemRequest) =
         a.quantityDelta?.let { bisher + it } ?: a.quantity
 
-    fun merkSchluessel(m: Merkposten) = "${m.setNumber}|${m.condition}|${m.userId}"
+    fun merkSchluessel(m: Merkposten) = "${m.setNumber}|${m.condition.kennung}|${m.userId}"
 }

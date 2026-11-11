@@ -14,7 +14,6 @@ import ch.brickinventoryapp.model.ui.ScrollMemory
 
 /**
  * Die Reihenfolge ist die ganze Regel: erst zurückspringen, dann melden.
- * Ausführlich: docs/begruendungen/core-ui/ui/ScrollMemory.kt.md#scrollpositionkeeper
  */
 @Composable
 fun ScrollPositionKeeper(

@@ -13,13 +13,11 @@ import { registerActions } from './00-registry.js';
 // Detail-Dialog für Teile und Figuren aus Sets: mit Zoom und der Liste der Sets, in denen sie stecken, ohne
 // Marktpreis und ohne änderbare Anzahl — die Menge entsteht aus den Inventaren. Derselbe Rahmen wie
 // openManDetail.
-// Ausführlich: docs/begruendungen/public/js/13-set-teile.js.md#opensetitemdetail
 /** Die Sets, in denen ein Teil oder eine Figur steckt, als klickbare Liste. @param {{ set_number: string, name?: string | null, set_name?: string | null, image_local?: string | null, image_url?: string | null, quantity?: number | null }[]} sets */
 function verwendetInListe(sets) {
   // Die Sets als Tabelle (Bild, Nummer, Name) wie im Reiter Finanzen: Als Fliesstext stand jeder Name
   // woanders. Jede Zeile öffnet das Set-Detail und schliesst diesen Dialog, zwei offene Fenster wären nicht
   // zu schliessen.
-  // Ausführlich: docs/begruendungen/public/js/13-set-teile.js.md#setbild
   const setBild = (/** @type {{ image_local?: string | null, image_url?: string | null }} */ s) => {
     const klein = thumbUrl(s.image_local || s.image_url) || s.image_local || s.image_url || '';
     return klein
@@ -57,7 +55,6 @@ export async function openSetItemDetail(type, id, colorId) {
 
   // Blickfeld mitgeben wie überall: Im Haushalt gehört das Set des Geschwisterkontos dazu. scopeQuery()
   // angehängt, nicht im Pfad, damit test/frontend-api-paths.test.js die Adresse lesen kann.
-  // Ausführlich: docs/begruendungen/public/js/13-set-teile.js.md#blickfeld-mitgeben-wie-ueberall-im
   const url = (type === 'fig'
     ? `/v1/minifigs/${encodeURIComponent(id)}/sets`
     : `/v1/parts/${encodeURIComponent(id)}/${farbe}/sets`)
@@ -87,7 +84,6 @@ export async function openSetItemDetail(type, id, colorId) {
   const zeilen = [];
   // Anzahl nur zur Anzeige: Sie entsteht aus den Inventaren der Sets. Mit toLocaleString wie auf der
   // Teilekachel — fmtN() ist der Geldformatierer und machte aus 6 „EUR 6.00×“.
-  // Ausführlich: docs/begruendungen/public/js/13-set-teile.js.md#anzahl-nur-anzeige-marcos-vorgabe-eine-m
   zeilen.push(detailZeile(t('setitem.total_qty'),
     html`<span data-stil="font-family:var(--mono);font-weight:600">×${String((item?.total_quantity || 0).toLocaleString(locale()) ?? '')}</span>`));
 
@@ -102,11 +98,9 @@ export async function openSetItemDetail(type, id, colorId) {
 
   // Lagerort nur für Teile: Eine Figur steckt in ihrem Set, dessen Ort im Set-Detail steht. Das Feld schreibt
   // auf alle Zeilen des Teil-Farb-Paares, weil man das Teil meint, nicht eine seiner Zeilen.
-  // Ausführlich: docs/begruendungen/public/js/13-set-teile.js.md#lagerort-nur-fuer-teile-eine
   if (type === 'part') {
     // Die Ortsliste gehört dem Besitzer, wie beim Set. owner_ids statt owners, weil gruppierte Teilezeilen
     // keine Besitzerplakette tragen.
-    // Ausführlich: docs/begruendungen/public/js/13-set-teile.js.md#ladeortauswahl
     ladeOrtAuswahl(item?.owner_ids).catch(() => {});
     zeilen.push(detailZeile(t('detail.storage'),
       lagerortBlock('setitem-storage', item?.storage,
@@ -118,7 +112,6 @@ export async function openSetItemDetail(type, id, colorId) {
   const liste = verwendetInListe(sets);
   // Die Tabelle steht unter der Beschriftung (flex-direction:column): In der .dr-Zeile rutschte sie bei einem
   // einzigen Set neben „Verwendet in“, und das Bild berührte den Text.
-  // Ausführlich: docs/begruendungen/public/js/13-set-teile.js.md#marcos-befund-am-bild-der-text-verwendet
   zeilen.push(detailZeile(t('setitem.used_in'), liste,
     { zeilenStil: 'flex-direction:column;align-items:stretch;gap:4px',
       wertStil: 'flex-direction:column;align-items:stretch;gap:0;min-width:0' }));
@@ -129,7 +122,6 @@ export async function openSetItemDetail(type, id, colorId) {
 /**
  * Lagerort eines Teils oder einer Figur speichern, beim Verlassen des Feldes (sonst ein Zwischenstand je
  * Zeichen). `this` statt fester Kennung, weil zwei Dialoge denselben Handler nutzen.
- * Ausführlich: docs/begruendungen/public/js/13-set-teile.js.md#speichereteillagerort
  * @this {unknown}
  */
 async function speichereTeilLagerort() {

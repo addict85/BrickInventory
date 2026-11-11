@@ -1,6 +1,5 @@
 /**
  * Eine Webapp-Sitzung ohne Betrieb läuft ab — eine mit Betrieb nicht.
- * Ausführlich: docs/begruendungen/test/sitzung-leerlauf-db.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Ergebnisse abgeschrieben) ────────────────────
  *
@@ -85,7 +84,6 @@ const { warte: schlafe } = require('./helpers/zeit');
 
 /**
  * Aufräumen — und zwar in `after`, nicht am Ende eines Falls.
- * Ausführlich: docs/begruendungen/test/sitzung-leerlauf-db.test.js.md#after
  */
 after(async () => {
   await db.run('DELETE FROM user_sessions WHERE sess::text LIKE $1', [`%${UID}%`]).catch(() => {});

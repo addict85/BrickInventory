@@ -1,5 +1,5 @@
 /** data-theme schon im ausgelieferten HTML, damit die Seite nicht erst im
- * Standarddesign aufblitzt. Ausführlich: docs/begruendungen/src/konto/indexHtml.ts.md#abschnitt */
+ * Standarddesign aufblitzt. */
 import { konfig } from '../infra/konfig';
 import { meldeUndLiefere, meldeFehler } from '../infra/fehler';
 import fs from 'fs';
@@ -96,7 +96,7 @@ async function currentTheme(userId?: number): Promise<string> {
 
 const LANGS = ['de', 'en'];
 
-/** Ohne Sitzung (Login-Seite) 'de'. Ausführlich: docs/begruendungen/src/konto/indexHtml.ts.md#currentlang */
+/** Ohne Sitzung (Login-Seite) 'de'. */
 async function currentLang(userId?: number): Promise<string> {
   if (!userId) return 'de';
   // Nur die eigene Einstellung: Ohne sie gilt Deutsch, nicht eine globale Vorgabe.
@@ -107,7 +107,7 @@ async function currentLang(userId?: number): Promise<string> {
   return LANGS.includes(sprache) ? sprache : 'de';
 }
 
-// Theme und Sprache schon im HTML. Ausführlich: docs/begruendungen/src/konto/indexHtml.ts.md#renderindexhtml
+// Theme und Sprache schon im HTML.
 export async function renderIndexHtml(userId?: number): Promise<string> {
   const html = await readIndex();
   try {

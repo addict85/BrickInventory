@@ -1,7 +1,6 @@
 /**
  * Der Knopf „Set ansehen" in der Preisalarm-Mail — und was passiert, wenn er
  * nicht gebaut werden kann.
- * Ausführlich: docs/begruendungen/test/alarm-mail-knopf.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
  *   a) Den Knopf bedingungslos setzen (auch ohne Basis) → Schritt 2 rot.
@@ -9,6 +8,7 @@
  *   c) Den Hinweis bei JEDEM Aufruf ausgeben            → Schritt 3 rot.
  */
 const test = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 
 const _req = require('./helpers/sources').buildAndRequire();
@@ -34,7 +34,7 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async (t) => {
   const vorher = process.env.APP_BASE_URL;
 
   await t.test('1. mit APP_BASE_URL trägt die Mail den Link', async () => {
-    process.env.APP_BASE_URL = 'https://lego.example.test/';
+    umgebung({ APP_BASE_URL: 'https://lego.example.test/' });
     const m = await mailer.baueAlarmMail(DATEN);
     // Der abschliessende Schrägstrich der Variablen darf sich nicht verdoppeln.
     assert.match(m.html, /https:\/\/lego\.example\.test\/\?set=10179-1/,
@@ -48,8 +48,7 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async (t) => {
     // Bequemlichkeit: Der Hinweis faellt genau EINMAL je Prozess, also muss
     // der erste Aufruf ohne Basis-URL beide Fragen beantworten. Ein zweiter
     // Schritt davor haette den Merker verbraucht — genau das ist beim ersten …
-    // Ausführlich: docs/begruendungen/test/alarm-mail-knopf.test.js.md#stelle
-    delete process.env.APP_BASE_URL;
+    umgebung({ APP_BASE_URL: undefined });
     let m;
     const gesammelt = await warnungenVon(async () => { m = await mailer.baueAlarmMail(DATEN); });
 
@@ -71,7 +70,7 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async (t) => {
     // Alarmen saehe zwanzigmal dieselbe Zeile aus wie ein Sturm statt wie ein
     // Hinweis. Schritt 2 hat den Hinweis bereits ausgeloest — hier darf keiner
     // mehr kommen.
-    delete process.env.APP_BASE_URL;
+    umgebung({ APP_BASE_URL: undefined });
     const gesammelt = await warnungenVon(async () => {
       for (let i = 0; i < 3; i++) await mailer.baueAlarmMail(DATEN);
     });
@@ -80,14 +79,13 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async (t) => {
   });
 
   // Marcos Befund vom 25.09.: die Kacheln stiessen aneinander
-  // Ausführlich: docs/begruendungen/test/alarm-mail-knopf.test.js.md#4-die-beiden-kacheln-lassen-in-der-mitte
   //
   // Gegenproben (durchgefuehrt, je rot, danach wieder gruen):
   //   a) zurueck auf 50 / 12px / 50  -> rot: „Gefunden: 2" (der Abstand steht
   //                                    dann in Pixeln und faellt aus der Zaehlung)
   //   b) Kacheln ungleich (44/12/40) -> rot: „Die Breiten ergeben 96 %"
   await t.test('4. die beiden Kacheln lassen in der Mitte Platz', async () => {
-    process.env.APP_BASE_URL = 'https://lego.example.org';
+    umgebung({ APP_BASE_URL: 'https://lego.example.org' });
     const m = await mailer.baueAlarmMail(DATEN);
     const breiten = [...m.html.matchAll(/<td width="(\d+)%"/g)].map(t => Number(t[1]));
     assert.equal(breiten.length, 3,
@@ -99,6 +97,6 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async (t) => {
     assert.ok(mitte > 0, 'In der Mitte steht kein Abstand.');
   });
 
-  if (vorher === undefined) delete process.env.APP_BASE_URL;
-  else process.env.APP_BASE_URL = vorher;
+  if (vorher === undefined) umgebung({ APP_BASE_URL: undefined });
+  else umgebung({ APP_BASE_URL: vorher });
 });

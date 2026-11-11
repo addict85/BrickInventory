@@ -1,10 +1,8 @@
 /**
  * „Kann ich das bauen?" — der Abgleich zwischen Teileliste und eigenem Bestand.
- * Ausführlich: docs/begruendungen/test/bestandsabgleich-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
@@ -33,7 +31,6 @@ async function seed() {
   // Teilenummern: Nur so fällt eine verrutschte Paarung auf.
   // Die Spalte `quelle` ist WEG: haeltTeil() leitet sie aus der Setnummer
   // ab — eine Zeile mit Set ist ein Set-Teil, eine ohne ein manuelles. …
-  // Ausführlich: docs/begruendungen/test/bestandsabgleich-db.test.js.md#teile
   const teile = [
     // user, nummer, farbe, menge, set
     [U.ich,   '3001', 4,  6, '10179-1'],

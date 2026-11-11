@@ -1,4 +1,4 @@
-// Mailversand ist Werkzeug, keine Route. Ausführlich: docs/begruendungen/src/mail/mailer.ts.md#abschnitt
+// Mailversand ist Werkzeug, keine Route.
 
 import { getGlobalSetting } from '../einstellungen/settings';
 import { basisUrl, hinweisOhneBasisUrl } from '../infra/basisUrl';
@@ -255,7 +255,7 @@ export async function sendKontoHinweisMail(to: string, username: string, art: Ko
   return sendMail({ to, subject, text, html: emailTemplate(en ? 'Account changed' : 'Konto geändert', subject, `${html}${infoBox(note, theme)}`, theme) });
 }
 
-// Sprache des Kontos, wie alle Mails. Ausführlich: docs/begruendungen/src/mail/mailer.ts.md#sendpasswordresetmail
+// Sprache des Kontos, wie alle Mails.
 export async function sendPasswordResetMail(to: string, token: string, baseUrl: string, lang = 'de') {
   const theme = await getMailTheme();
   const url = `${baseUrl}/reset-password?token=${token}`;
@@ -302,7 +302,6 @@ export async function sendPasswordResetMail(to: string, token: string, baseUrl: 
 }
 
 // Durch emailTemplate() wie die übrigen Mails, damit sie das Design trägt.
-// Ausführlich: docs/begruendungen/src/mail/mailer.ts.md#alarmmaildaten
 export interface AlarmMailDaten {
   username: string;
   /** Die Sprache des EMPFÄNGERS, nicht die des Servers. */
@@ -318,7 +317,6 @@ export interface AlarmMailDaten {
 }
 
 // Ohne APP_BASE_URL sagt die Mail, warum der Knopf fehlt.
-// Ausführlich: docs/begruendungen/src/mail/mailer.ts.md#bauealarmmail
 export async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: string; text: string; html: string; link?: string }> {
   const theme = await getMailTheme();
   const de = d.lang !== 'en';

@@ -71,7 +71,7 @@ internal fun renderStufe(zoom: Float): Int = ceil(zoom).toInt().coerceIn(1, 3)
  * Der Bildschirm darunter bekommt nur noch den Zustand.
  */
 @Composable
-fun PdfViewerRoute(
+internal fun PdfViewerRoute(
     pdfUrl: String,
     title: String,
     /** Nur Adressen dieses Servers lädt der Betrachter (pdfImBetrachter). */
@@ -93,7 +93,7 @@ fun PdfViewerRoute(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PdfViewerScreen(
+internal fun PdfViewerScreen(
     state: PdfLoadState,
     title: String,
     /** Herunterladen und Drucken nur, wo die Datei das Gerät verlassen darf (keine Gutscheine). */

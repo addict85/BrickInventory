@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.gemeinsam
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.model.DiagrammAchse
 import ch.brickinventoryapp.model.ui.model.PreisDiagrammAnsicht
 import ch.brickinventoryapp.model.ui.model.PreisPunktAnsicht
@@ -46,8 +47,8 @@ class AchsenRundTest {
         val achse = listOf(DiagrammAchse("CHF 1'712", 1712.4, 1.0), DiagrammAchse("CHF 850", 850.0, 0.0),
             DiagrammAchse("CHF 12'400", 12_400.0, 0.5))
         val de = Locale.forLanguageTag("de-CH")
-        assertEquals(listOf("1.7k", "850", "12k"), lokaleWerte(achse, "CHF", de, kompakt = true).map { it.label })
+        assertEquals(listOf("1.7k", "850", "12k"), lokaleWerte(achse, Waehrung("CHF"), de, kompakt = true).map { it.label })
         // Ohne kompakt bleibt der ausgeschriebene Betrag.
-        assertTrue(lokaleWerte(achse, "CHF", de).first().label.contains("CHF"))
+        assertTrue(lokaleWerte(achse, Waehrung("CHF"), de).first().label.contains("CHF"))
     }
 }

@@ -29,7 +29,7 @@ import ch.brickinventoryapp.testing.Quellen
  * ein üblicher APK-Schlüssel, einmal ECDSA; die Zertifikate sind feste Testdaten.
  *
  * Gegenproben:
- *   A  gepruefteBeschreibung() ohne die Zeile `if (!echt) return null` (bis sec11: `if (zertifikate.none { … })`)
+ *   A  gepruefteBeschreibung() ohne die Zeile `if (!echt) return null`
  *      → rot „ein fremder Schluessel …“, „veraenderte Daten …“ und „eine
  *      unsignierte version.json …“; gegenproben/update-beschreibung-ungeprueft.patch
  *   B  pruefsummePasst() vergleicht nur als Präfix (`startsWith`) und ohne die

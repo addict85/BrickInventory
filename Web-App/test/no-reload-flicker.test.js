@@ -1,6 +1,5 @@
 /**
  * Kein doppelter Neuaufbau des Inhalts beim Neuladen / nach dem Login.
- * Ausführlich: docs/begruendungen/test/no-reload-flicker.test.js.md#kopf
  *
  * Gegenproben (05.11.2026, je einzeln, Bündel neu gebaut):
  *   A  25-navigation.js: bei Sprachwechsel loadGallery() statt renderGallery()
@@ -10,12 +9,9 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 
 /**
  * import-/export-Syntax aus einer Moduldatei entfernen.
- * Ausführlich: docs/begruendungen/test/no-reload-flicker.test.js.md#stripmodulesyntax
  * @param {string} src
  * @returns {string}
  */
@@ -27,13 +23,10 @@ function stripModuleSyntax(src) {
   // Entfernen der Importe nicht definiert. In der Sandbox interessiert die
   // Anmeldung nicht — dass sie aufgerufen WIRD, prüfen test/csp-actions.test.js
   // und test/bundle-smoke.test.js gegen den echten Quelltext. …
-  // Ausführlich: docs/begruendungen/test/no-reload-flicker.test.js.md#registeractions
   return (
     'function registerActions() {}\n' + 'function tRaw(k, v) { return typeof t === "function" ? t(k, v) : k; }\n' + body
   );
 }
-
-const PUB = path.join(__dirname, '..', 'public');
 
 const { oeffneOberflaeche } = require('./helpers/oberflaeche');
 

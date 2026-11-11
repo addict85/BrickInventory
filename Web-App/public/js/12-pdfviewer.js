@@ -1,5 +1,4 @@
 // Der PDF-Betrachter ist eine eigene Datei: Er hängt nur an G und esc und wird über openPdfViewer() gerufen.
-// Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#diese-110-zeilen-standen-in-js-01-core-j
 import { registerActions } from './00-registry.js';
 import { G, setzeHtml } from './01-dom.js';
 import { tRaw } from '../i18n.js';
@@ -25,7 +24,6 @@ const PDF_ZOOM_SCHRITT = 1.25;   // ein Druck auf + bzw. −
 
 // Obergrenze der Leinwand in Pixeln der Fläche. Der Riegel ist der Speicher, nicht die Grenze des Browsers
 // (16384 je Seite): 16 MPixel sind rund 60 MB und reichen für jede Zoomstufe, die man lesen will.
-// Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#pdf-leinwand-max-px
 const PDF_LEINWAND_MAX_PX = 16e6;
 
 let _pdfZoom = 1;
@@ -91,7 +89,6 @@ function _pdfMasse() {
 /**
  * Einen Platzhalter auf die Zoomgrösse bringen. margin:0 auto statt nur align-items:center: Bei einer Seite
  * breiter als der Behälter läge der linke Rand sonst im Negativen und wäre nicht mehr erreichbar.
- * Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#pdfmassplatzhalter
  * @param {HTMLElement} ph
  */
 function _pdfMassPlatzhalter(ph) {
@@ -136,7 +133,7 @@ async function _renderPdfLazy(pdf, container) {
 function _pdfBeobachteAlle(container) {
   const beobachter = _pdfObserver;
   if (!beobachter || !container) return;
-  container.querySelectorAll('.pdf-page-ph').forEach((/** @type {Element} */ ph) => beobachter.observe(ph));
+  container.querySelectorAll('.pdf-page-ph').forEach((/** @type {Element} */ ph) => { beobachter.observe(ph); });
 }
 
 /** @param {PdfDokument} pdf @param {number} n @param {HTMLElement} ph */
@@ -164,7 +161,6 @@ async function _renderPdfPage(pdf, n, ph) {
     _pdfRenderTasks.delete(n);
     // Zwischenzeitlich gezoomt: Diese Leinwand hat die alte Auflösung. Einmal eingehängt, bräche der neue
     // Durchlauf oben ab (Leinwand schon da), und die Seite bliebe grob bis zum nächsten Zoom.
-    // Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#zwischenzeitlich-gezoomt-diese-leinwand
     if (gen !== _pdfZoomGen) { canvas.width = 0; canvas.height = 0; ph.dataset.rendering = '0'; return; }
     ph.replaceChildren(); ph.appendChild(canvas);
   } catch (e) { /* Render abgebrochen (Scroll) o.ä. */ }
@@ -246,7 +242,6 @@ function pdfZoomReset() { _pdfSetzeZoom(1, null, null); }
 /**
  * Strg/⌘ + Rad zoomt das PDF statt der ganzen Oberfläche; ohne Zusatztaste rollt das Rad weiter, weil man
  * durch Anleitungen vor allem blättert. Der Zeiger ist der Anker.
- * Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#pdfrad
  */
 /** @param {WheelEvent} ev */
 function _pdfRad(ev) {
@@ -314,7 +309,6 @@ function _pdfTouchEnd(ev) {
 /**
  * Zuhörer einmal am Behälter anmelden, nicht bei jedem openPdfViewer(): Sonst zoomte nach zehn PDFs ein
  * Raddreh zehnfach. passive:false, damit preventDefault() greift und der Browser nicht mitzoomt.
- * Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#pdfhaengezuhoererein
  */
 function _pdfHaengeZuhoererEin() {
   const container = G('pdf-viewer-pages');

@@ -1,6 +1,5 @@
 /**
  * „Angemeldet" bedeutet an EINER Stelle etwas, nicht an fünf.
- * Ausführlich: docs/begruendungen/test/eine-anmeldung.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

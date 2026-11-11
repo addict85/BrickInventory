@@ -1,5 +1,4 @@
-/** An EINER Stelle, damit zwei Sperren nie dieselbe Zahl tragen.
- * Ausführlich: docs/begruendungen/src/infra/lockNamespaces.ts.md#abschnitt */
+/** An EINER Stelle, damit zwei Sperren nie dieselbe Zahl tragen. */
 
 /** Der zweite Parameter von `pg_advisory_lock(a, b)` unterteilt weiter; wer
  * keinen braucht, übergibt 0. */

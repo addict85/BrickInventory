@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository
@@ -133,7 +134,7 @@ class BeispieldatenTest {
         da("Detail") { detail.setDetailState.value.let { it.setPrice != null && it.acquisitions.isNotEmpty() } }
         val falcon = finanzen.financeState.value.valuation!!.sets.first { it.setNumber == Beispiele.SET }
         assertEquals(falcon.avgPrice, detail.setDetailState.value.setPrice?.avgPrice)
-        assertEquals(listOf("CHF"), listOf(welt.t.sitzung.state.value.currency))
+        assertEquals(listOf(Waehrung.CHF), listOf(welt.t.sitzung.state.value.currency))
         assertTrue("jeder Kauf hat einen Betrag", detail.setDetailState.value.acquisitions.all { it.effectivePrice != null })
         // Die Achse trägt Daten, keine Wochentage — chart.x passt Punkt für Punkt, und
         // übersetzt wird erst in der Sprache der Anzeige.
@@ -157,7 +158,7 @@ class BeispieldatenTest {
             da("Verlauf") { finanzen.financeState.value.historyPoints.isNotEmpty() }
             val f = finanzen.financeState.value
             assertEquals(listOf("27.10", "", "29.10"), f.historyPoints.map { it.xLabel })
-            assertEquals("CHF", f.historyWaehrung)
+            assertEquals(Waehrung.CHF, f.historyWaehrung)
             val y = lokaleWerte(f.historyYAxis, f.historyWaehrung!!, Locale.forLanguageTag("de-CH"))
             val label = y.last().label.replace(' ', ' ')
             assertTrue(label, label == "CHF 1’720" || label == "CHF 1'720")
@@ -304,7 +305,7 @@ object Beispiele {
     /** Ein eigener Server je Test; [close] räumt ihn wieder ab. */
     class Welt(texte: Texte = NummernTexte) : AutoCloseable {
         val pfade = PfadServer(*ANTWORTEN)
-        val t = TestDienste(pfade.imTakt(), texte, io = Dispatchers.Main).also { d -> d.sitzung.waehrungUebernommen("CHF") }
+        val t = TestDienste(pfade.imTakt(), texte, io = Dispatchers.Main).also { d -> d.sitzung.waehrungUebernommen(Waehrung.CHF) }
 
         fun galerie() = t.merke(GalerieViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, SetsRepository(t.api, t.cache),
             FinanzenRepository(t.api, t.cache), SavedStateHandle()))

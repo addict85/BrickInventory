@@ -34,7 +34,7 @@ import ch.brickinventoryapp.testing.Quellen
  * Jetzt vergibt Gradle den Namen, und der Workflow sieht nur nach. Dieser Test
  * hält fest, dass es dabei bleibt.
  *
- * ── Gegenprobe (ausgeführt, Lauf 33634274161) ───────────────────────────────
+ * ── Gegenprobe ───────────────────────────────
  * `build.gradle.kts` schrieb wieder „Brickinventory.apk" — also der Stand von
  * vorher. Ergebnis: `354 tests completed, 1 failed`, und zwar
  * `ApkNameTest > Gradle und Workflow meinen dieselbe Datei`.

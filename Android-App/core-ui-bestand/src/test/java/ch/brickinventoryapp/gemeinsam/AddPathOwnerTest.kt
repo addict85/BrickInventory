@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.gemeinsam
 
+import ch.brickinventoryapp.model.fach.Zustand
 import org.junit.Assert.assertEquals
 import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
 import org.junit.Test
@@ -28,11 +29,9 @@ class AddPathOwnerTest {
 
     @Test
     fun `der Barcode-Dialog zeigt die Auswahl an`() {
-        // Der Barcode-Dialog steht seit seiner Auslagerung in
-        // sammlung/ui/dialogs/BarcodeResultDialog.kt; AppNavigation.kt ruft ihn nur noch
-        // auf. Gelesen werden BEIDE Dateien, damit die Regel dort gefunden
-        // wird, wo sie heute steht.
-        val nav = code(read("app/AppNavigation.kt") + "\n" + read("sammlung/ui/dialogs/BarcodeResultDialog.kt"))
+        // Der Dialog steht in BarcodeResultDialog.kt; der Erfassungsrahmen zeigt ihn. Beide
+        // Dateien, damit die Regel gefunden wird, wo sie steht.
+        val nav = code(read("sammlung/ui/Erfassungsrahmen.kt") + "\n" + read("sammlung/ui/dialogs/BarcodeResultDialog.kt"))
         assert(nav.contains("OwnerPicker(")) {
             "im Barcode-Dialog fehlt die Eigentümer-Auswahl — OwnerPicker blendet sich " +
                 "ohne Haushalt ohnehin selbst aus, schadet also nie"
@@ -77,9 +76,9 @@ class AddPathOwnerTest {
         val allein = listOf(MitgliedAnsicht(id = 1, username = "ich", isSelf = true))
         val haushalt = allein + MitgliedAnsicht(id = 7, username = "lea")
         assertEquals("ohne Haushalt überschriebe die App eine Server-Vorgabe mit einer ID, die niemand gewählt hat",
-            ErfassungsWerte(anzahl = 1, preis = 2.5, zustand = "U", besitzer = null),
-            erfassungsWerte(anzahl = "", preis = "2,50", zustand = "U", besitzer = 7, haushalt = allein))
-        assertEquals(ErfassungsWerte(anzahl = 3, preis = null, zustand = "N", besitzer = 7),
-            erfassungsWerte(anzahl = "3", preis = "", zustand = "N", besitzer = 7, haushalt = haushalt))
+            ErfassungsWerte(anzahl = 1, preis = 2.5, zustand = Zustand.GEBRAUCHT, besitzer = null),
+            erfassungsWerte(anzahl = "", preis = "2,50", zustand = Zustand.GEBRAUCHT, besitzer = 7, haushalt = allein))
+        assertEquals(ErfassungsWerte(anzahl = 3, preis = null, zustand = Zustand.NEU, besitzer = 7),
+            erfassungsWerte(anzahl = "3", preis = "", zustand = Zustand.NEU, besitzer = 7, haushalt = haushalt))
     }
 }

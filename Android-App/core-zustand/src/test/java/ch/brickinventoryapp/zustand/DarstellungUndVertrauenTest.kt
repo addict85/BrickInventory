@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.zustand
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.Darstellungsablage
 import ch.brickinventoryapp.data.Vertrauensablage
@@ -44,7 +45,7 @@ class DarstellungUndVertrauenTest {
     @After fun ab() = Dispatchers.resetMain()
 
     private class SpeicherDarstellung : Darstellungsablage {
-        var design = "classic"
+        var design = Design.CLASSIC
         var hell = "system"
         var farben = false
         var verbergen = true
@@ -73,12 +74,12 @@ class DarstellungUndVertrauenTest {
 
     @Test
     fun `der Zustand wird mit dem gemerkten Design geboren`() = runTest(takt) {
-        val ablage = SpeicherDarstellung().apply { design = "noppe" }
+        val ablage = SpeicherDarstellung().apply { design = Design.NOPPE }
         val sitzung = Sitzung()
         val vm = DarstellungViewModel(ablage, sitzung) {}
         // Ohne einen Schritt des Takts: Das erste Bild zeigt schon das gemerkte Design.
-        assertEquals("noppe", vm.appTheme.value)
-        assertEquals("noppe", sitzung.state.value.appTheme)
+        assertEquals(Design.NOPPE, vm.appTheme.value)
+        assertEquals(Design.NOPPE, sitzung.state.value.appTheme)
         vm.viewModelScope.cancel()
     }
 

@@ -68,15 +68,13 @@ export async function geraeteTokenAusstellen(uid: number, label: unknown, scope:
 }
 
 /** Ohne Adresse verweigern statt raten: Eine falsche Adresse im QR-Code fiele
- * erst später in einem anderen Netz auf.
- * Ausführlich: docs/begruendungen/src/konto/anmeldungAblauf.ts.md#post-qr-token-basis */
+ * erst später in einem anderen Netz auf. */
 export async function qrZugangErzeugen(uid: number, gueltigkeit: unknown) {
   const basis = basisUrl();
   if (!basis) {
     hinweisOhneBasisUrl('auth:qr', 'der QR-Code zur Verknuepfung der App laesst sich nicht erzeugen.');
     fachfehler('nicht_verfuegbar', 'qr_ohne_basis_url');
   }
-  // Ausführlich: docs/begruendungen/src/konto/anmeldungAblauf.ts.md#post-qr-token-tage
   const tage = laufzeitTage(gueltigkeit) ?? APP_HOECHSTDAUER_TAGE;
   if (tage === UNBEGRENZT) unbegrenztNurMitTls(basis);
   const { token, kopplung } = await QR.erzeuge(uid, tage);
@@ -136,8 +134,7 @@ export async function profilAendern(
 }
 
 /** Sprache des Kontos, nicht die Vorgabe. Belegt antwortet wie frei, sonst
- * liessen sich Adressen abfragen; der Inhaber bekommt einen Hinweis statt des Links.
- * Ausführlich: docs/begruendungen/src/konto/anmeldungAblauf.ts.md#put-profile-emailsent */
+ * liessen sich Adressen abfragen; der Inhaber bekommt einen Hinweis statt des Links. */
 async function adressMails(user: Konto, email: string, token: string): Promise<boolean> {
   const sprache = async (uid: number) =>
     String(wertOder(await versuche('anmeldung:sprache', getSetting(uid, 'language', 'de')), 'de'));

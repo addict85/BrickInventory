@@ -32,6 +32,11 @@ export async function bricksetJetzt(sn?: string): Promise<void> {
   await zieheVor('brickset', sn ? schluessel(sn) : undefined);
 }
 
+/** Nach einer Änderung des Zeitplans: Was später fällig war, kommt bis `bis` dran. */
+export async function bricksetTermineVorziehen(bis: Date): Promise<void> {
+  await repo.zieheBricksetTermineVor(bis);
+}
+
 export function bricksetListe() {
   return repo.bricksetWiedervorlage();
 }

@@ -1,6 +1,5 @@
 /**
  * Marcos Stern gilt auch dort, wo kein Formular steht.
- * Ausführlich: docs/begruendungen/test/lagerort-vorgabe-neuerfassung-db.test.js.md#kopf
  *
  * ── Gegenproben (am 20.10. GEMESSEN, Zahlen abgeschrieben) ──────────────────
  *

@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.model.ui.model
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.model.ConditionValuation
 import ch.brickinventoryapp.model.data.model.CurrentByCondition
 import ch.brickinventoryapp.model.data.model.CurrentPrice
@@ -51,9 +53,9 @@ data class PreisJeZustandAnsicht(
     val used: ZustandsBewertungAnsicht? = null,
 ) {
     /** Die Zustände, zu denen es eine Bewertung gibt, neu zuerst. */
-    fun present(): List<Pair<String, ZustandsBewertungAnsicht>> = buildList {
-        new?.let { add("N" to it) }
-        used?.let { add("U" to it) }
+    fun present(): List<Pair<Zustand, ZustandsBewertungAnsicht>> = buildList {
+        new?.let { add(Zustand.NEU to it) }
+        used?.let { add(Zustand.GEBRAUCHT to it) }
     }
 }
 
@@ -75,7 +77,7 @@ fun ConditionValuation.alsAnsicht() = ZustandsBewertungAnsicht(
 )
 
 data class PreisverlaufAnsicht(
-    val currency: String = "",
+    val currency: Waehrung = Waehrung.KEINE,
     val historyNew: List<PreisverlaufPunktAnsicht> = emptyList(),
     val historyUsed: List<PreisverlaufPunktAnsicht> = emptyList(),
     val byCondition: PreisJeZustandAnsicht = PreisJeZustandAnsicht(),
@@ -108,7 +110,7 @@ fun PriceHistoryPoint.alsAnsicht() = PreisverlaufPunktAnsicht(
 
 data class SetPreisAnsicht(
     val setNumber: String = "",
-    val currency: String = "",
+    val currency: Waehrung = Waehrung.KEINE,
     val avgPrice: Double? = null,
     val qtyAvgPrice: Double? = null,
     val noPrice: Boolean = false,
@@ -123,7 +125,7 @@ fun SetPriceResponse.alsAnsicht() = SetPreisAnsicht(
 )
 
 data class AktuellerPreisAnsicht(
-    val condition: String = "",
+    val condition: Zustand? = null,
     val avgPrice: Double? = null,
 )
 
@@ -143,7 +145,7 @@ fun CurrentByCondition.alsAnsicht() = AktuellJeZustandAnsicht(
 )
 
 data class MerkpostenPreiseAnsicht(
-    val currency: String = "",
+    val currency: Waehrung = Waehrung.KEINE,
     val current: AktuellJeZustandAnsicht = AktuellJeZustandAnsicht(),
 )
 

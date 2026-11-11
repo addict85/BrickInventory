@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
@@ -84,7 +85,7 @@ fun SetCard(
     position: Int = 0,
     /** Marktpreis und G&V; fehlt beides, steht der Kaufpreis da (wie im Web). */
     preis: KachelPreis? = null,
-    waehrung: String = "EUR",
+    waehrung: Waehrung = Waehrung.EUR,
     /** Steht das Detail dieses Sets daneben? Dann trägt die Kachel einen Rahmen. */
     ausgewaehlt: Boolean = false,
 ) {
@@ -97,7 +98,6 @@ fun SetCard(
     // Erfassen ist das Bild auf dem Server oft noch nicht fertig, und Coil wiederholt
     // eine gescheiterte Anfrage nie von selbst. An Setnummer und Adresse gebunden,
     // damit eine wiederverwendete Kachel neu zählt; memoryCacheKeyExtra("retry", …)
-    // Ausführlich: docs/begruendungen/feature-sammlung/sammlung/ui/screens/GalleryScreen.kt.md#retrynonce-by-remember
     var retryNonce by remember(set.setNumber, imageUrl) { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
 
@@ -260,7 +260,7 @@ private fun KachelTexte(
     menge: (@Composable () -> Unit)?,
     preis: KachelPreis?,
     betrag: Double?,
-    waehrung: String,
+    waehrung: Waehrung,
     /** Was die Bildplaketten sagen; TalkBack liest es nach dem Preis. */
     ansagen: List<String>,
 ) {
@@ -306,7 +306,7 @@ private fun KachelTexte(
 /** Woher der Betrag kommt, darunter der Betrag und, bei mehreren Stück, „je Stück“. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun KachelBetragZeilen(set: SetAnsicht, zeile: Boolean, preis: KachelPreis?, betrag: Double?, waehrung: String) {
+private fun KachelBetragZeilen(set: SetAnsicht, zeile: Boolean, preis: KachelPreis?, betrag: Double?, waehrung: Waehrung) {
     // Wie im Web eine Zeile darüber, was der Betrag ist: Ohne Marktpreis ist es
     // der Kaufpreis (kachel_quelle), unbeschriftet las er sich als Marktwert.
     // Leer ohne Betrag, damit Kacheln einer Reihe gleich hoch bleiben; in der

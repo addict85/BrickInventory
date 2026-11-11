@@ -1,5 +1,4 @@
-/** Ob der Mensch bei einem Barcode-Treffer hinsehen muss, hängt am Weg.
- * Ausführlich: docs/begruendungen/src/katalog/barcodeQuelle.ts.md#geprueft */
+/** Ob der Mensch bei einem Barcode-Treffer hinsehen muss, hängt am Weg. */
 
 export const GEPRUEFT: ReadonlySet<string> = new Set([
   'catalog_cache',

@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.finanzen.ui.pdf
 
 import android.graphics.Bitmap
-import ch.brickinventoryapp.data.di.BrickDispatchers
-import ch.brickinventoryapp.data.di.Dispatcher
+import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
+import ch.brickinventoryapp.model.koroutinen.Dispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -35,7 +35,7 @@ internal fun bitmapMasse(breitePx: Int, ratio: Float): Pair<Int, Int> {
 }
 
 /** Rendert Seite (Quelle, Index, Breite in Pixeln); der Bildschirm bekommt sie vom ViewModel. */
-typealias SeitenRenderer = suspend (PdfQuelle, Int, Int) -> Bitmap?
+internal typealias SeitenRenderer = suspend (PdfQuelle, Int, Int) -> Bitmap?
 
 /** Eine Seite als Bild; das ViewModel reicht die Quelle nur durch und kennt kein Bitmap. */
 fun interface PdfSeitenQuelle {

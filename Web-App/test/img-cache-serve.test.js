@@ -1,6 +1,5 @@
 /**
  * Die Auslieferungsreihenfolge des Bild-Proxys — AUSGEFÜHRT, nicht gelesen.
- * Ausführlich: docs/begruendungen/test/img-cache-serve.test.js.md#kopf
  *
  * Gegenprobe (04.11.2026 gemessen): bildTyp() gibt wie vorher den rohen Wert
  * zurück, sobald er mit `image/` beginnt und kein SVG ist → rot: „Abgelegt als

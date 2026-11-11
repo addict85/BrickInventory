@@ -1,6 +1,5 @@
 /**
  * jobs/ nach TypeScript (Punkt 10).
- * Ausführlich: docs/begruendungen/test/jobs-typescript.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -46,7 +45,7 @@ test('der Dockerfile baut jobs/ statt es roh zu kopieren', () => {
 
 test('benannte Exporte statt module.exports', () => {
   // In .ts erzeugt module.exports keine benannten Exporte — Aufrufer wie
-  // routes/sets.ts importieren aber per Namen (`import { refreshPriceForSet }`).
+  // src/sets/nachErfassung.ts importieren aber per Namen (`import { refreshPriceForSet }`).
   // csvImportWorker ist der Einstiegspunkt eines eigenen Prozesses
   // (process.on('message')) und exportiert bewusst nichts.
   const ENTRYPOINTS = new Set(['csvImportWorker.ts']);
@@ -60,7 +59,6 @@ test('benannte Exporte statt module.exports', () => {
 test('jedes Job-Modul lässt sich laden', () => {
   // Fängt Tippfehler in Exportnamen und zirkuläre Importe ab, die der
   // Typecheck nicht sieht.
-  // Ausführlich: docs/begruendungen/test/jobs-typescript.test.js.md#dist-jobs
   const DIST_JOBS = path.join(ROOT, 'dist', 'jobs');
   assert.ok(fs.existsSync(DIST_JOBS),
     'dist/jobs fehlt — bitte zuerst `npm run build` ausführen (in CI ist das ein eigener Schritt)');

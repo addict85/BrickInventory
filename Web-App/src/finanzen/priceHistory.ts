@@ -1,5 +1,4 @@
-/** Die EINE Umsetzung für Webapp und Android-API, damit beide dasselbe Diagramm zeigen.
- * Ausführlich: docs/begruendungen/src/finanzen/priceHistory.ts.md#abschnitt */
+/** Die EINE Umsetzung für Webapp und Android-API, damit beide dasselbe Diagramm zeigen. */
 import { meldeUndLiefere } from '../infra/fehler';
 import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
 import { asIds, blickfeldAus, type Sicht } from '../haushalt/haushalt';
@@ -10,7 +9,6 @@ import { konfig } from '../infra/konfig';
 import * as repo from './repository/preisverlauf';
 
 /** Nur Zustände mit Erfassung: Sonst stünde eine Kurve ohne Bezugsgrösse da.
- * Ausführlich: docs/begruendungen/src/finanzen/priceHistory.ts.md#zustaendefuerverlauf
  * @param rueckfall Was gilt, wenn es GAR KEINE Erfassung gibt. */
 export function zustaendeFuerVerlauf(belegt: string[], rueckfall: string[]): string[] {
   return belegt.length ? belegt : rueckfall;
@@ -178,7 +176,6 @@ export async function getPartPriceHistory(uidWahl: Sicht | number | number[], pa
   const uid = await blickfeldAus(uidWahl);
   // Preise liegen unter BrickLink-Nummer und -Farbe, Erfassungen unter denen
   // des Benutzers — die beiden Schlüsselräume dürfen nicht gemischt werden.
-  // Ausführlich: docs/begruendungen/src/finanzen/priceHistory.ts.md#getpartpricehistory-blnummer
   const blNummer = await resolveBlPartNumber(partNumber, Array.isArray(uid) ? uid[0] ?? null : uid);
   const blFarbe  = await resolveBlColorId(colorId);
   const nummern  = [...new Set([blNummer, partNumber])];
@@ -189,7 +186,6 @@ export async function getPartPriceHistory(uidWahl: Sicht | number | number[], pa
 }
 
 // Preise stehen unter der BrickLink-Nummer, Erfassungen unter der eigenen; beide Schlüssel zählen.
-// Ausführlich: docs/begruendungen/src/finanzen/priceHistory.ts.md#getminifigpricehistory
 export async function getMinifigPriceHistory(uidWahl: Sicht | number | number[], figNumber: string, currency: string) {
   const uid = await blickfeldAus(uidWahl);
   const nummern = await preisNummernFuerFigur(uid, figNumber);
@@ -200,15 +196,13 @@ export async function getMinifigPriceHistory(uidWahl: Sicht | number | number[],
     'fig_number = $1', [figNumber]);
 }
 
-/** Die eigene und, falls hinterlegt, die BrickLink-Nummer; doppelte fallen weg.
- * Ausführlich: docs/begruendungen/src/finanzen/priceHistory.ts.md#preisnummernfuerfigur */
+/** Die eigene und, falls hinterlegt, die BrickLink-Nummer; doppelte fallen weg. */
 async function preisNummernFuerFigur(uid: number | number[], figNumber: string): Promise<string[]> {
   const bl = await blNummerVon('fig', figNumber, uid);
   return [...new Set([figNumber, ...(bl ? [bl] : [])])];
 }
 
-/** @returns Anzahl entfernter Zeilen
- * Ausführlich: docs/begruendungen/src/finanzen/priceHistory.ts.md#purgealtepreise */
+/** @returns Anzahl entfernter Zeilen */
 export async function purgeAltePreise(): Promise<number> {
   const tage = konfig().preisverlaufTage;
   if (tage <= 0) return 0;

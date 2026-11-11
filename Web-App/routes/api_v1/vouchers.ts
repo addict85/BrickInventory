@@ -1,12 +1,12 @@
-// Für beide Apps: Cookie und Token. Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#abschnitt
+// Für beide Apps: Cookie und Token.
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
 import { FORMULAR_GRENZEN } from '../../src/http/dateiEmpfang';
 import { ohneFehlendeDatei } from '../../src/infra/fehler';
-import { fehlerAntwort } from '../../src/http/httpAntwort';
-import { sendeFehler, fehlerText, antwortSprache, dateiFehler, type FehlerCode, alsDoppelt } from '../../src/infra/fehlerTexte';
+import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
+import { fehlerText, antwortSprache, dateiFehler, type FehlerCode, alsDoppelt } from '../../src/infra/fehlerTexte';
 import { getGlobalSetting, getSetting } from '../../src/einstellungen/settings';
 import { landErlaubt, landFuerWaehrung } from '../../src/gutscheine/gutscheinGuthaben';
 import { frageGuthabenAb, ABSTAND_SEK } from '../../src/gutscheine/gutscheinGuthabenSchranke';
@@ -20,12 +20,11 @@ import { verbindeGutscheine } from '../../src/gutscheine/gutscheinPdfSchreiben';
 import { liesImHintergrund, HOECHSTENS_SEITEN } from '../../src/gutscheine/pdfLesen';
 import type { ExportGutschein } from '../../src/gutscheine/gutscheinPdfSchreiben';
 
-import { gutscheineDesKontos, gutschein, gutscheinAnlegen, gutscheinErsetzen, gutscheinAendern,
-         gutscheinPdfMerken, gutscheinLoeschen, guthabenMerken } from '../../src/gutscheine/dienst';
+import { gutscheineDesKontos, gutschein, gutscheinAnlegen, gutscheinErsetzen, gutscheinAendern, gutscheinPdfMerken, gutscheinLoeschen, guthabenMerken } from '../../src/gutscheine/dienst';
 import type { GutscheinZeile } from '../../src/gutscheine/dienst';
-import { vertragsRouter } from '../../src/vertrag/pruefen';
 import { seiteAus } from '../../src/infra/seite';
-import type { Anfrage, Antwort } from '../../src/vertrag';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
 
 const router = vertragsRouter();
 
@@ -49,7 +48,6 @@ const maskiert = (z: { number: string; pin: string | null }) =>
   ({ number: '…' + z.number.slice(-4), pin: z.pin ? PIN_MASKE : null });
 
 // Betrag einmal als Zahl; `hat_pdf` statt des Pfads, der niemanden etwas angeht.
-// Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#fueraussen
 function fuerAussen(z: GutscheinZeile) {
   return {
     id: z.id,
@@ -105,7 +103,7 @@ router.post('/vouchers', requireToken, async (req: Anfrage<'POST /api/v1/voucher
   res.json({ success: true, voucher: fuerAussen(zeile) });
 });
 
-/** Der Stapelfall von POST /vouchers/pdf. Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#stapelanlegen */
+/** Der Stapelfall von POST /vouchers/pdf. */
 async function stapelAnlegen(
   req: AuthedRequest, res: express.Response,
   gefunden: GutscheinWerte[],
@@ -134,7 +132,6 @@ async function stapelAnlegen(
 }
 
 // EIN Weg für beide Apps: Mitgeschickte Felder gewinnen gegen das Ausgelesene.
-// Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#post-vouchers-pdf
 router.post('/vouchers/pdf', requireToken, kontoSchranke('gutscheinPdf'), upload.single('file'), async (req: Anfrage<'POST /api/v1/vouchers/pdf'>, res: Antwort<'POST /api/v1/vouchers/pdf'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
 
@@ -326,7 +323,6 @@ router.get('/vouchers/:id/pdf', requireToken, async (req: Anfrage<'GET /api/v1/v
 
 // Keine Sammelroute: höchstens ein Abruf je 30 Sekunden über ALLE Benutzer,
 // eine Sammelroute müsste diese Wartezeit verstecken.
-// Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#post-vouchers-id-guthaben
 router.post('/vouchers/:id/guthaben', requireToken, async (req: Anfrage<'POST /api/v1/vouchers/:id/guthaben'>, res: Antwort<'POST /api/v1/vouchers/:id/guthaben'>) => {
   const id = req.pfad.id;
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');

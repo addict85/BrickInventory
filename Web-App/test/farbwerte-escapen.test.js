@@ -1,7 +1,6 @@
 /**
  * Ein Farbwert aus der Datenbank geht durch escHex(), bevor er in ein
  * style-Attribut kommt.
- * Ausführlich: docs/begruendungen/test/farbwerte-escapen.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

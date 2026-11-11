@@ -1,7 +1,6 @@
 /**
  * Der Preisverlauf einer Minifigur findet ihre Preise auch unter der
  * BrickLink-Nummer.
- * Ausführlich: docs/begruendungen/test/figur-preisverlauf-nummern-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -16,8 +15,8 @@ const { haeltFigur } = require('./helpers/bestand');
 
 test('der Figuren-Preisverlauf findet die Preise unter der BrickLink-Nummer', { concurrency: 1 }, async (t) => {
   if (!await dbOderSkip(t, _req, { migrieren: false })) return;
-  // minifig_price_history steht bewusst NUR in db/migrations/0003 (siehe die
-  // Abgrenzung oben in db/schema.sql). initSchema() legt sie nicht an; ohne
+  // minifig_price_history steht bewusst NUR in db/migrations/0003.
+  // initSchema() legt sie nicht an; ohne
   // diesen Schritt liefe der Test gegen ein Schema, das es im Betrieb nicht
   // gibt. Die Migrationen sind idempotent und überspringen bereits
   // eingespielte Stände über schema_migrations.
@@ -76,7 +75,6 @@ test('der Figuren-Preisverlauf findet die Preise unter der BrickLink-Nummer', { 
       'Der Verlauf ist leer — dann bleibt das Diagramm leer, obwohl Punkte da sind');
 
     // Und die andere Hälfte: die EIGENE Nummer darf nicht wegfallen
-    // Ausführlich: docs/begruendungen/test/figur-preisverlauf-nummern-db.test.js.md#stelle
     await haeltFigur(db, uid, OHNE_BL, { menge: 0 });  // Menge 0: die Erfassung dahinter traegt sie
     await db.run(
       `INSERT INTO minifig_acquisitions (user_id,fig_number,quantity,unit_price,condition)

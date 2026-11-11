@@ -1,6 +1,5 @@
 /**
  * Die Guthaben-Abfrage — ohne eine einzige Verbindung nach draussen.
- * Ausführlich: docs/begruendungen/test/gutschein-guthaben.test.js.md#kopf
  *
  * ── Gegenproben (durchgefuehrt, Befunde GEMESSEN) ───────────────────────────
  *
@@ -160,7 +159,6 @@ test('Guthaben-Abfrage', async (t) => {
 
   await t.test('5b. nach Bot-Schutz beginnt der nächste Versuch mit frischer Sitzung', async () => {
     // Woher dieser Fall kommt
-    // Ausführlich: docs/begruendungen/test/gutschein-guthaben.test.js.md#stelle
     G.vergesseSitzungen();
 
     // 1. Eine Sitzung aufbauen und benutzen.
@@ -231,7 +229,6 @@ test('Guthaben-Abfrage', async (t) => {
 
   await t.test('8. das Land kann die Adresse nicht umlenken', async () => {
     // Was ich hier erwartet hatte, und was gemessen herauskam
-    // Ausführlich: docs/begruendungen/test/gutschein-guthaben.test.js.md#stelle-2
     G.vergesseSitzungen();
     const { abruf, protokoll } = doppel();
     await G.holeGuthaben(NUMMER, PIN, { locale: '../../boese.example.com/x', abruf })

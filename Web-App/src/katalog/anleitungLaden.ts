@@ -1,7 +1,6 @@
 /** Brickset und brickinstructions.com wollen Abstand: Nach einem echten Abruf
  * pausiert die ganze Art 15 Sekunden, nach einer Cloudflare-Sperre 5–20
- * Minuten und dann bis zum nächsten Tag.
- * Ausführlich: docs/begruendungen/src/katalog/anleitungLaden.ts.md#brickset-und-brickinstructions-com-wolle */
+ * Minuten und dann bis zum nächsten Tag. */
 import { mitSitzungsSperre } from '../../db/txLock';
 import { downloadSetInstructions, letzterAbrufWarExtern, anzahlAnleitungen, scrapeInstructionsFromFallback } from './instructions';
 import { fehlertext } from '../infra/fehler';

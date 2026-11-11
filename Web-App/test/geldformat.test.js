@@ -1,6 +1,5 @@
 /**
  * Wer Geld formatiert, sagt auch WELCHES.
- * Ausführlich: docs/begruendungen/test/geldformat.test.js.md#kopf
  *
  * Gegenprobe (08.11.2026 gemessen): in fmtN `cur||CURRENCY||'EUR'` →
  * `cur||'EUR'` → rot: „der Rückfall von fmtN ist die eingestellte Währung“.

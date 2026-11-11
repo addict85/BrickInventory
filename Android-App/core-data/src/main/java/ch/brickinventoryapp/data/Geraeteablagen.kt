@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.sicherheit.PinAblage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -9,7 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
  * abhängt; im Gerät die GeraeteAblage, im Test eine Fassung im Speicher.
  */
 interface Darstellungsablage {
-    fun gemerktesDesign(): String
+    fun gemerktesDesign(): Design
     fun helligkeit(): String
     fun setzeHelligkeit(wahl: String)
     fun systemfarben(): Boolean

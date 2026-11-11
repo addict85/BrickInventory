@@ -1,4 +1,3 @@
-import { meldeUndLiefere } from '../infra/fehler';
 import { asIds, blickfeldAus, type Sicht } from '../haushalt/haushalt';
 import { getGlobalSetting } from '../einstellungen/settings';
 import * as repo from './repository/kennzahlen';
@@ -10,7 +9,6 @@ export async function getStats(userIdWahl: Sicht | number | number[]) {
   const uids = asIds(userId);
   const [setsRow, instrRow, partsRow, minifigsRow, cur, einzelnRow] = await Promise.all([
     // COUNT(DISTINCT set_number): Im Haushalt besitzen mehrere Konten dasselbe Set.
-    // Ausführlich: docs/begruendungen/src/bestand/kennzahlen.ts.md#getstats-2
     repo.setZahlen(uids),
     repo.anleitungsZahlen(uids, uids),
     // `fehlt = 1` in einer Multiplikation: Ein manuelles Teil ohne Set zählt einfach.
@@ -19,7 +17,7 @@ export async function getStats(userIdWahl: Sicht | number | number[]) {
     repo.waehrungImBlickfeld(uids),
     repo.teileEinzeln(uids),
   ]);
-  const userCondRow = await repo.vorgabeZustandImBlickfeld(uids).catch(meldeUndLiefere('statistik:ANY', null));
+  const userCondRow = await repo.vorgabeZustandImBlickfeld(uids);
   const globalCond = await getGlobalSetting('default_price_condition');
   const effectiveCondition = (userCondRow?.value && ['N','U'].includes(userCondRow.value))
     ? userCondRow.value : (globalCond || 'N');

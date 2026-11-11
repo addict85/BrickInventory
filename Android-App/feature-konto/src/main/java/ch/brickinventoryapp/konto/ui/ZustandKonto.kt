@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.konto.ui
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.data.model.*
 import ch.brickinventoryapp.model.ui.model.CsvErgebnisAnsicht
 import ch.brickinventoryapp.model.ui.model.CsvImportArt
@@ -29,7 +30,7 @@ data class KontoUiState(
 )
 
 /** Das Design des Kontos: wirksam, die Vorgabe des Verwalters und die eigene Wahl (null = Vorgabe). */
-data class DesignWahl(val wirksam: String, val vorgabe: String, val eigenes: String?)
+data class DesignWahl(val wirksam: Design, val vorgabe: Design, val eigenes: Design?)
 
 /** Zweiter Faktor im Konto: Stand, laufende Einrichtung, frische Codes. */
 data class ZweiterFaktorUiState(

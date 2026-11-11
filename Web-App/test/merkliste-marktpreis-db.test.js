@@ -1,6 +1,5 @@
 /**
  * Die Merkliste zeigt den Marktpreis — und zwar den des richtigen Zustands.
- * Ausführlich: docs/begruendungen/test/merkliste-marktpreis-db.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
  *   a) Zustandsbedingung im JOIN entfernt → Schritte 2 und 5 rot.

@@ -1,6 +1,5 @@
 /**
  * Bildanfragen belegen KEINE Datenbankverbindung.
- * Ausführlich: docs/begruendungen/test/image-pool-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -85,7 +84,6 @@ test('eine Kachelwand kostet keine einzige Abfrage', { concurrency: 1 }, async (
 
 test('eine gescheiterte Verkleinerung wird nicht endlos wiederholt', () => {
   // Marcos Log, immer wieder dieselbe Zeile
-  // Ausführlich: docs/begruendungen/test/image-pool-db.test.js.md#px-stelle
   const px = require('./helpers/sources').proxyThumbQuelle();
   const q = px.slice(px.indexOf('function queueThumb('), px.indexOf('function drainThumbQueue'));
   assert.match(q, /istBekanntFehlend\('thumb:' \+ thumbFile\)/,
@@ -98,10 +96,8 @@ test('eine gescheiterte Verkleinerung wird nicht endlos wiederholt', () => {
 
 test('ein 404 darf der Browser sich merken', () => {
   // Marcos Konsole
-  // Ausführlich: docs/begruendungen/test/image-pool-db.test.js.md#px-stelle-2
   const px = require('./helpers/sources').proxyThumbQuelle();
   // Der Weg heisst jetzt sendePlatzhalter
-  // Ausführlich: docs/begruendungen/test/image-pool-db.test.js.md#sendeplatzhalter
   assert.match(px, /function sendePlatzhalter\(res(: \w+)?\)/,
     'Kein gemeinsamer Weg für ein fehlendes Bild');
   assert.match(px, /sendePlatzhalter[\s\S]{0,600}Cache-Control', 'private, max-age=3600/,
@@ -119,7 +115,6 @@ test('ein 404 darf der Browser sich merken', () => {
 
 test('die Vorschau-Sperre belegt KEINE Pool-Verbindung', { concurrency: 1 }, async (t) => {
   // Marcos Log
-  // Ausführlich: docs/begruendungen/test/image-pool-db.test.js.md#stelle
   try { await db.initSchemaOnce(); }
   catch (e) {
     if (process.env.REQUIRE_DB === '1') throw e;
@@ -157,7 +152,6 @@ test('die Sitzungssperre wird auf derselben Verbindung freigegeben', () => {
   // über eine andere freigegeben, tut das nichts — die Sperre bliebe für immer
   // bestehen, und es entstünde nie wieder ein Vorschaubild. Das ist mir in
   //  passiert.
-  // Ausführlich: docs/begruendungen/test/image-pool-db.test.js.md#px-stelle-3
   const px = require('./helpers/sources').proxyThumbQuelle();
   const i = px.indexOf('async function mitVorschauSperre');
   assert.ok(i > 0, 'mitVorschauSperre fehlt');

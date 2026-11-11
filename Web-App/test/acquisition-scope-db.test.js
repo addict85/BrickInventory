@@ -1,8 +1,7 @@
 /**
  * Kaufpreis einer Erfassung des UNTERKONTOS ändern — beide Routenfamilien.
- * Ausführlich: docs/begruendungen/test/acquisition-scope-db.test.js.md#kopf
  *
- * Gegenprobe (durchgeführt): writableIds in routes/sets.ts zurück auf die
+ * Gegenprobe (durchgeführt): writableIds in src/sammlung/erfassungen.ts zurück auf die
  * eigene ID → der erste Teilschritt endet wieder in 404.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).

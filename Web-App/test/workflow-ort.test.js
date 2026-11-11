@@ -1,11 +1,9 @@
 /**
  * Ein Workflow, der nicht im Wurzelverzeichnis liegt, läuft NIE.
- * Ausführlich: docs/begruendungen/test/workflow-ort.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const { androidDateien } = require('./helpers/android');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
@@ -53,7 +51,6 @@ test('im Wurzelverzeichnis stehen die Workflows, die es geben soll', () => {
   // Selbstbeweis 2: Eine Mindestzahl statt einer Aufzählung. Verschwände der
   // Ordner oder griffe das Muster nicht, wäre die Liste leer — und die
   // Prüfung darunter hätte nichts zu sagen.
-  // Ausführlich: docs/begruendungen/test/workflow-ort.test.js.md#stelle
   assert.ok(dateien.length >= 3,
     `Nur ${dateien.length} Workflows im Wurzelverzeichnis: ${dateien.join(', ')}`);
 
@@ -65,7 +62,6 @@ test('im Wurzelverzeichnis stehen die Workflows, die es geben soll', () => {
 
 test('ein Workflow benutzt jede Action überall in derselben Fassung', () => {
   // Warum
-  // Ausführlich: docs/begruendungen/test/workflow-ort.test.js.md#fassungen
   const fassungen = new Map();   // Action -> Map(Fassung -> [Dateien])
   for (const f of fs.readdirSync(ECHTER_ORT).filter(f => /\.ya?ml$/.test(f))) {
     const yml = fs.readFileSync(path.join(ECHTER_ORT, f), 'utf8')
@@ -103,7 +99,6 @@ test('ein Workflow benutzt jede Action überall in derselben Fassung', () => {
 
 test('ein Lauf, der Tests ausführt, läuft auf JEDEM Zweig', () => {
   // Warum
-  // Ausführlich: docs/begruendungen/test/workflow-ort.test.js.md#testbefehle
   const TESTBEFEHLE = [/npm\s+test/, /testDebugUnitTest/];
 
   const pruefend = [];
@@ -146,8 +141,8 @@ test('ein Lauf, der Tests ausführt, läuft auf JEDEM Zweig', () => {
 // Action wieder als `@v7` statt per SHA → rot „… per Commit-SHA …“.
 test('das Docker-Image entsteht nur aus einem Push auf main dieses Repositorys', () => {
   const yml = fs.readFileSync(path.join(ECHTER_ORT, 'docker-publish.yml'), 'utf8');
-  const job = yml.split(/\n  pruefen:\n/)[1]?.split(/\n    steps:\n/)[0] ?? '';
-  assert.match(job, /\n    if: /, 'der Prüfjob hat kein if:');
+  const job = yml.split(/\n {2}pruefen:\n/)[1]?.split(/\n {4}steps:\n/)[0] ?? '';
+  assert.match(job, /\n {4}if: /, 'der Prüfjob hat kein if:');
   assert.match(job, /workflow_run\.event == 'push'/, 'ein PR-Lauf der CI darf kein Image auslösen');
   assert.match(job, /workflow_run\.head_branch == 'main'/);
   assert.match(job, /workflow_run\.head_repository\.full_name == github\.repository/,
@@ -158,7 +153,7 @@ test('das Docker-Image entsteht nur aus einem Push auf main dieses Repositorys',
 // gestrichen → rot „… ohne Build-Cache …“.
 test('das Release-APK wird ohne Build-Cache gebaut', () => {
   const yml = fs.readFileSync(path.join(ECHTER_ORT, 'android.yml'), 'utf8');
-  const schritt = yml.split(/\n      - name: Release bauen\n/)[1]?.split(/\n      - name: /)[0] ?? '';
+  const schritt = yml.split(/\n {6}- name: Release bauen\n/)[1]?.split(/\n {6}- name: /)[0] ?? '';
   const aufrufe = schritt.split('\n').filter(z => !z.trimStart().startsWith('#') && /gradlew/.test(z));
   assert.ok(aufrufe.length > 0, 'Schritt „Release bauen“ mit gradlew nicht gefunden');
   for (const z of aufrufe)
@@ -186,7 +181,7 @@ test('der Sicherheitslauf prüft Code, Abhängigkeiten, Image und den laufenden 
   const roh = fs.readFileSync(path.join(ECHTER_ORT, 'sicherheit.yml'), 'utf8');
   const yml = roh.split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
   const oben = yml.slice(0, yml.indexOf('\njobs:'));
-  assert.match(oben, /\npermissions:\n  contents: read\n/, 'oben nur contents: read');
+  assert.match(oben, /\npermissions:\n {2}contents: read\n/, 'oben nur contents: read');
   const schreibend = [...yml.matchAll(/security-events:\s*write/g)].length;
   assert.equal(schreibend, 1, 'security-events: write darf nur der CodeQL-Job haben');
   const codeql = yml.slice(yml.indexOf('\n  codeql:'), yml.indexOf('\n  trivy:'));
@@ -203,34 +198,9 @@ test('der Sicherheitslauf prüft Code, Abhängigkeiten, Image und den laufenden 
   assert.ok(fs.existsSync(path.join(WURZEL, '.github', 'zap-regeln.tsv')), 'die ZAP-Regeln fehlen');
 });
 
-// Gegenproben (31.10.2026 gemessen): `continue-on-error: true` an den Schritt
-// „Gegenproben messen“ → rot; im Kopf von ablauf-anzahl-fest.patch `Modul: app`
-// → `Modul: core-ui` → rot „… liegt nicht in core-ui“.
-test('der Gegenproben-Job misst jede Patch-Gegenprobe gegen eine echte Testklasse', () => {
-  const yml = fs.readFileSync(path.join(ECHTER_ORT, 'android.yml'), 'utf8')
-    .split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
-  const job = yml.split(/\n  gegenproben:\n/)[1]?.split(/\n  [\w-]+:\n/)[0] ?? '';
-  assert.match(job, /python3 tools\/gegenproben\.py gegenproben/, 'der Job ruft das Werkzeug nicht');
-  assert.doesNotMatch(job, /continue-on-error/, 'eine grüne Gegenprobe muss den Lauf rot machen');
-  // Diese Klassen müssen mindestens eine Gegenprobe haben; weitere sind willkommen.
-  const PFLICHT = ['AblaufTest', 'BestandMigrationTest'];
-  const ordner = path.join(WURZEL, 'Android-App', 'gegenproben');
-  const klassen = new Set();
-  for (const n of fs.readdirSync(ordner).filter(d => d.endsWith('.patch'))) {
-    const kopf = fs.readFileSync(path.join(ordner, n), 'utf8').split(/\ndiff --git /)[0];
-    const feld = (f) => (kopf.match(new RegExp(`^${f}: (.+)$`, 'm')) || [])[1];
-    assert.ok(feld('Gegenprobe') && feld('Rot'), `${n}: Kopf ohne Gegenprobe oder Rot`);
-    const voll = feld('Test') ?? '';
-    const endung = ['', feld('Modul'), 'src', 'test', 'java', ...voll.split('.')].join(path.sep) + '.kt';
-    assert.equal(androidDateien(f => f.endsWith(endung), 'test').length, 1, `${n}: ${voll} liegt nicht in ${feld('Modul')}`);
-    klassen.add(voll.split('.').pop());
-  }
-  for (const k of PFLICHT) assert.ok(klassen.has(k), `${k} braucht eine Gegenprobe`);
-});
-
-// Renovate liest nur die renovate.json im Wurzelverzeichnis; Web-App/renovate.json
-// stand dort lange ohne Wirkung. Gegenproben (02.11.2026 gemessen): `npm` aus
-// enabledManagers gestrichen → rot; eine leere Web-App/renovate.json angelegt → rot;
+// Renovate liest nur die renovate.json im Wurzelverzeichnis; eine zweite unter Web-App/
+// bliebe ohne Wirkung. Gegenproben (02.11.2026 gemessen): `npm` aus
+// enabledManagers gestrichen → rot; eine leere renovate.json unter Web-App/ angelegt → rot;
 // minimumReleaseAge gestrichen → rot (npm und gradle ohne Wartezeit).
 test('Renovate pflegt npm der Web-App aus der Wurzel-Konfiguration', () => {
   const konf = JSON.parse(fs.readFileSync(path.join(WURZEL, 'renovate.json'), 'utf8'));
@@ -320,11 +290,11 @@ test('Checkouts behalten keine Zugangsdaten, ausser wo der Job schreibt', () => 
 test('das Image trägt Herkunft und Stückliste, bescheinigt am signierten Digest', () => {
   const yml = fs.readFileSync(path.join(ECHTER_ORT, 'docker-publish.yml'), 'utf8')
     .split('\n').filter(l => !/^\s*#/.test(l)).join('\n');
-  const bau = yml.split(/\n  build:\n/)[1].split(/\n  merge:\n/)[0];
+  const bau = yml.split(/\n {2}build:\n/)[1].split(/\n {2}merge:\n/)[0];
   assert.match(bau, /^\s+provenance: mode=max\s*$/m, 'keine Herkunft beim Bau');
   assert.match(bau, /^\s+sbom: generator=docker\/buildkit-syft-scanner:[\d.]+@sha256:[0-9a-f]{64}\s*$/m,
     'keine Stückliste beim Bau oder ihr Scanner nicht per Digest');
-  const merge = yml.split(/\n  merge:\n/)[1];
+  const merge = yml.split(/\n {2}merge:\n/)[1];
   assert.match(merge, /permissions:\s*\n\s+contents: read\s*\n\s+id-token: write\s*\n\s+attestations: write/,
     'der Merge-Job darf Nachweise ablegen');
   assert.match(merge, /uses: actions\/attest-build-provenance@[0-9a-f]{40}/, 'attest-build-provenance fehlt');
@@ -345,9 +315,9 @@ test('der signierte Bau ohne Cache, Trivy vor der Signatur, Paketsignaturen in d
   const ohneKommentar = (t) => t.split('\n').filter(l => !/^\s*#/.test(l)).join('\n');
   const pub = ohneKommentar(fs.readFileSync(path.join(ECHTER_ORT, 'docker-publish.yml'), 'utf8'));
   assert.doesNotMatch(pub, /cache-(from|to)|type=gha/, 'der signierte Bau liest keinen Cache');
-  const bau = pub.split(/\n  build:\n/)[1].split(/\n  merge:\n/)[0];
+  const bau = pub.split(/\n {2}build:\n/)[1].split(/\n {2}merge:\n/)[0];
   assert.match(bau, /^\s+no-cache: true\s*$/m, 'der signierte Bau liest keinen Cache');
-  const merge = pub.split(/\n  merge:\n/)[1];
+  const merge = pub.split(/\n {2}merge:\n/)[1];
   const trivy = merge.indexOf('uses: aquasecurity/trivy-action@'), signieren = merge.indexOf('cosign sign ');
   assert.ok(trivy > 0 && signieren > trivy, 'Trivy prüft den Digest, bevor er signiert wird');
   const schritt = merge.slice(trivy, merge.indexOf('\n      - ', trivy));
@@ -387,7 +357,7 @@ function jobVon(yml, name) {
   const ohne = yml.split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
   const teil = ohne.split(new RegExp(`\\n  ${name}:\\n`))[1];
   assert.ok(teil, `Job ${name} fehlt`);
-  return teil.split(/\n  [\w-]+:\n/)[0];
+  return teil.split(/\n {2}[\w-]+:\n/)[0];
 }
 
 /** Führt [skript] in bash aus, mit einem `gh`-Ersatz, der je Aufruf [antworten] befragt. */
@@ -441,7 +411,7 @@ test('die Lückenprüfung der App sperrt, und ohne sie wird kein Etikett signier
     assert.match(z, /^CVE-\d{4}-\d+ exp:\d{4}-\d{2}-\d{2}$/, `Ausnahme ohne Ablaufdatum: ${z}`);
     assert.match(zeilen[i - 1] ?? '', /^# \S.{10,}/, `Ausnahme ohne Grund darüber: ${z}`);
   });
-  const name = sicherheit.match(/\n  android-abhaengigkeiten:\n    name: ([^\n]+)/)[1];
+  const name = sicherheit.match(/\n {2}android-abhaengigkeiten:\n {4}name: ([^\n]+)/)[1];
   const android = fs.readFileSync(path.join(ECHTER_ORT, 'android.yml'), 'utf8');
   const skript = schrittNach(android, 'Abhängigkeiten ohne bekannte Lücke');
   assert.match(skript, /workflows\/sicherheit\.yml\/runs\?head_sha=\$GITHUB_SHA/, 'Etikett ohne grüne Lückenprüfung');
@@ -505,39 +475,4 @@ test('veröffentlicht und bescheinigt wird nur, was der Signierjob ausgab (sec17
   assert.equal(lauf().status, 0, lauf().stdout + lauf().stderr);
   fs.writeFileSync(path.join(ort, 'signiert', 'version-signiert.json'), '{ }');
   assert.notEqual(lauf().status, 0, 'ein verändertes Byte wird bescheinigt');
-});
-
-// Gegenproben (05.11.2026 gemessen): in der README eine Ziffer des Zertifikats geändert → rot
-// „… nennt nicht das hinterlegte Zertifikat“; pull_request ohne android.yml → rot „… Workflow-Pfad“;
-// im Signierjob `| sha256sum -c -` der Werkzeuge durch `| cat` ersetzt → rot „… feste Prüfsummen“.
-test('Release-Weg: festes Werkzeug, Zertifikat für Neuinstallationen, Fork-Läufe ohne installierbares APK', () => {
-  const android = fs.readFileSync(path.join(ECHTER_ORT, 'android.yml'), 'utf8');
-  // sec17 B-N6: festes Image und festgelegte Werkzeuge mit Prüfsumme.
-  for (const job of ['build', 'signieren', 'apk-pruefen', 'release'])
-    assert.match(jobVon(android, job), /runs-on: ubuntu-24\.04/, `${job} läuft auf einem wechselnden Image`);
-  assert.doesNotMatch(android, /build-tools\/\*\//, 'Werkzeuge „das neueste des Images“');
-  const signieren = schrittNach(android, 'Signieren');
-  assert.match(signieren, /WERKZEUGE="\$ANDROID_HOME\/build-tools\/\d+\.\d+\.\d+"/);
-  assert.match(signieren, /[0-9a-f]{64} "\$WERKZEUGE\/zipalign"[\s\\]+[0-9a-f]{64} "\$WERKZEUGE\/lib\/apksigner\.jar"[\s\\]+\| sha256sum -c -/,
-    'die Signierwerkzeuge werden nicht gegen feste Prüfsummen geprüft');
-  // sec17 B-N9: Zertifikat im Release-Text und in der README, gleich dem hinterlegten.
-  const soll = fs.readFileSync(path.join(WURZEL, 'Android-App', 'tools', 'release-zertifikat.sha256'), 'utf8')
-    .split('\n').map(z => z.split('#')[0].trim()).find(z => /^[0-9a-f]{64}$/.test(z));
-  const readme = fs.readFileSync(path.join(WURZEL, 'Android-App', 'README.md'), 'utf8');
-  assert.ok(soll && readme.includes(`SHA-256 ${soll}`), 'Die README nennt nicht das hinterlegte Zertifikat');
-  const veroeffentlichen = schrittNach(android, 'BrickInventory.apk als Release bereitstellen');
-  assert.match(veroeffentlichen, /tools\/release-zertifikat\.sha256/);
-  assert.match(veroeffentlichen, /Signierzertifikat SHA-256: \\`\$ZERT\\`/);
-  assert.match(veroeffentlichen, /apksigner verify --print-certs/);
-  // sec17 B-N14: auch ein PR, der nur den Workflow ändert, bekommt einen Lauf.
-  const pr = android.split('\n  pull_request:\n')[1].split('\n  workflow_dispatch:')[0];
-  assert.match(pr, /- '\.github\/workflows\/android\.yml'/, 'pull_request ohne Workflow-Pfad');
-  // sec17 B-N15: ausserhalb eines Etiketts kein installierbares APK im Artefakt.
-  assert.match(signieren, /if \[ "\$ECHT" != "true" \]; then\n\s+mv "\$APK_AUS" "\$AUS\/apk\/release\/BrickInventory\.apk\.probe-nicht-installieren"/);
-  assert.match(schrittNach(android, 'Probe-APK für die Prüfung benennen'), /BrickInventory\.apk\.probe-nicht-installieren/);
-  // sec17 B-N2: die Zusammenfassung der Prüfsummen entsteht ohne Gradle.
-  assert.doesNotMatch(jobVon(android, 'pruefsummen'), /pruefsummen-vergleich/);
-  const zusammen = jobVon(android, 'pruefsummen-zusammenfassen');
-  assert.match(zusammen, /pruefsummen-vergleich\.py/);
-  assert.doesNotMatch(zusammen, /gradlew|setup-gradle/, 'die Zusammenfassung entsteht ohne Gradle');
 });

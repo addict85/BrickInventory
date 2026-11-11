@@ -39,7 +39,7 @@ import java.io.InputStream
  *   C  die Prüfung pdfImBetrachter() entfernt → rot „eine fremde Adresse wird nicht geladen …“
  *   D  in PdfHalter.halte() die Abfrage `if (zu)` entfernt → rot „eine Quelle, die nach
  *      dem Verlassen ankommt, wird sofort geschlossen“
- *   E  (sec17 A-N6) gegenproben/pdf-seite-am-renderer-vorbei.patch → rot „eine Seite
+ *   E  gegenproben/pdf-seite-am-renderer-vorbei.patch → rot „eine Seite
  *      rendert der Lader …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)

@@ -2,6 +2,8 @@ package ch.brickinventoryapp.data.di
 
 import ch.brickinventoryapp.offline.Ausgang
 import ch.brickinventoryapp.offline.AusgangPlaner
+import ch.brickinventoryapp.data.lokal.Abgleich
+import ch.brickinventoryapp.data.lokal.Ausgangslage
 import ch.brickinventoryapp.data.lokal.Bearbeitungssender
 import ch.brickinventoryapp.offline.LokalerBestand
 import ch.brickinventoryapp.offline.Offlineablage
@@ -61,6 +63,7 @@ internal abstract class LokalModule {
     @Binds abstract fun planer(p: WorkManagerPlaner): AusgangPlaner
     @Binds abstract fun entwertung(p: WorkManagerEntwertung): EntwertungsPlaner
     @Binds abstract fun sender(s: ServerSender): Bearbeitungssender
+    @Binds abstract fun ausgangslage(a: Abgleich): Ausgangslage
     @Binds abstract fun geraet(p: GeraeteAblage): GeraeteEinstellungen
     @Binds abstract fun sitzungsablage(p: KontoAblage): Sitzungsablage
     @Binds abstract fun darstellung(p: GeraeteAblage): Darstellungsablage

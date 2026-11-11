@@ -1,7 +1,6 @@
 'use strict';
 /**
  * Kein Antwortfeld ohne Verbraucher.
- * Ausführlich: docs/begruendungen/scripts/check-antwortfelder.js.md#fs-stelle
  */
 const fs = require('fs');
 const path = require('path');

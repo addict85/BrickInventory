@@ -15,7 +15,6 @@ import { kurveDa, loadPortfolioChart, setzeEinstand } from './04-wertkurve.js';
  * Plakette „Marktpreis da oder nicht“ mit nur zwei Zuständen: Ob der Preis aus dem Cache oder frisch kam,
  * ändert an der Zahl nichts. title UND aria-label, sonst sind es unerklärte Zeichen auch für
  * Vorleseprogramme.
- * Ausführlich: docs/begruendungen/public/js/04-finance.js.md#pricestatusbadge
  */
 /** @param {{ error?: string | null, no_price?: boolean | null, bl_unbekannt?: boolean | null }} s */
 function priceStatusBadge(s, neutral = false){
@@ -59,14 +58,12 @@ const condBadge = (/** @type {string} */ c) => condBadges({ conditions: [c] });
 const ohneWert = () => html`<span class="text-mut" title="${tRaw('finance.price_missing_short')}"><span aria-hidden="true">—</span><span class="vh">${tRaw('finance.price_missing_short')}</span></span>`;
 // Feste Spaltenbreiten (colgroup, table-layout:fixed): Die Preisspalten der Teile- und Figurentabellen
 // beginnen so genau unter denen der Sets, und man kann die Zahlen untereinander vergleichen.
-// Ausführlich: docs/begruendungen/public/js/04-finance.js.md#condbadge
 const PM_COLGROUP = html`<colgroup>
     <col class="sp-60"><col class="sp-325 fin-k-name"><col class="sp-70 fin-k-zusatz"><col class="sp-100 fin-k-zusatz"><col class="sp-110"><col class="sp-110 fin-k-markt"><col class="sp-110"><col class="sp-90"><col class="sp-55">
   </colgroup>`;
 /**
  * Teile- und Figurenzeilen öffnen ihr Detail wie die Kachel im Reiter: Eine Tabelle, in der nur die
  * Set-Zeilen auf Klick reagieren, sieht kaputt aus.
- * Ausführlich: docs/begruendungen/public/js/04-finance.js.md#manargs
  * @param {{ fig_number?: string, part_number?: string, color_id?: number }} it */
 const manZiel = (/** @type {{ fig_number?: string, part_number?: string, color_id?: number }} */ it) => it.fig_number
   ? { click: 'openManDetail', arg: 'fig', arg2: it.fig_number, arg3: 0 }
@@ -149,7 +146,6 @@ function manuellerAbschnitt(o) {
 // Eine vollständige Zeile je Kaufpreis-Erfassung, jede mit dem Marktpreis ihres Zustands: Sonst bewertete
 // eine Gebraucht-Erfassung auch das neu gekaufte Exemplar gebraucht. Keine Summenzeile und kein Einrücken —
 // die Zeilen sind gleichrangige Käufe, keine Aufschlüsselung.
-// Ausführlich: docs/begruendungen/public/js/04-finance.js.md#setrow
 /** @param {BewertetesSet} s @param {SetKauf | null} acq @param {Zeilenlage} lage */
 function setRow(s, acq, lage){
   const { cur, fehlerNeutral } = lage;
@@ -250,7 +246,6 @@ export async function loadFinance(){
   const extra = parseFloat(partsVal.success ? partsVal.total_value||'0' : '0') + parseFloat(figsVal.success ? figsVal.total_value||'0' : '0');
   // Ohne vergleichbaren Posten keine G&V — auch nicht die vom letzten Filter: Eine stehengebliebene Zahl sähe
   // aus wie die Antwort auf den neuen.
-  // Ausführlich: docs/begruendungen/public/js/04-finance.js.md#gesamtguv
   const gesamtGuv = pnlData.success ? pnlData.totals?.pnl_prozent : null;
   const alleZeilen = [...(d.sets || []), ...(partsVal.success ? partsVal.parts : []), ...(figsVal.success ? figsVal.figs : [])];
   const mehrereKonten = new Set(alleZeilen.flatMap(z => (z.owners || []).map(o => o.id))).size > 1;
@@ -272,7 +267,6 @@ export async function loadFinance(){
   const setsQtyAvg = parseFloat(d.totals.avg||'0');
   // Der Gesamtwert kommt vom Server (totals.grand_total, je Zeile gerechnet): Die Regel, was mitzählt, soll
   // an einer Stelle liegen. Die eigene Summe ist nur Rückfall, wenn die pnl-Abfrage scheitert.
-  // Ausführlich: docs/begruendungen/public/js/04-finance.js.md#grandtotal
   const grandTotal = parseFloat(pnlData?.totals?.grand_total || '0') || (setsQtyAvg + extra);
   const basis = basisAus(pt, ohnePreis);
   const wert = { sets: setsQtyAvg, parts: parseFloat(partsVal?.total_value || '0'), figs: parseFloat(figsVal?.total_value || '0'), alle: grandTotal };
@@ -548,7 +542,6 @@ function zeigeKennzahlen({ basis, einstandAlle, wertAlle, guv, cur, fremdeWaehru
 
 // Kategoriefilter wie in der Android-App; leere Auswahl heisst alle. Gefiltert wird durch Ausblenden, nicht
 // Neuzeichnen: Die Summen beschreiben den Bestand, nicht die Auswahl, und sollen stehen bleiben.
-// Ausführlich: docs/begruendungen/public/js/04-finance.js.md#finkategorien
 const finKategorien = new Set();
 
 /**

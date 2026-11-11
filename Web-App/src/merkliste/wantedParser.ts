@@ -4,7 +4,7 @@
 export type WantedArt = 'part' | 'fig' | 'set';
 
 // Nur P, M und S haben einen Platz im Bestand; andere Arten werden gezählt und
-// gemeldet statt still verworfen. Ausführlich: docs/begruendungen/src/merkliste/wantedParser.ts.md#arten
+// gemeldet statt still verworfen.
 const ARTEN: Record<string, WantedArt> = { P: 'part', M: 'fig', S: 'set' };
 
 export interface WantedPosten {
@@ -62,8 +62,7 @@ export function leseWantedListe(xml: string): LeseErgebnis {
   const fremdeArten: Record<string, number> = {};
   let ohneNummer = 0;
 
-  let m: { inhalt: string; ende: number } | null;
-  for (let ab = 0; (m = zwischen(xml, 'ITEM', ab)) !== null; ab = m.ende) {
+  for (let m = zwischen(xml, 'ITEM', 0); m !== null; m = zwischen(xml, 'ITEM', m.ende)) {
     const block = m.inhalt;
     const typ = (feld(block, 'ITEMTYPE') ?? '').toUpperCase();
     const art = ARTEN[typ];

@@ -2,7 +2,6 @@
  * Seit db/basis.sql gibt es den Stand VOR dieser Migration nicht mehr: Die
  * Fälle zu Riegel, Nachtrag und Zwischenstand sind entfallen. Geprüft werden
  * der Endstand und die Lesewege.
- * Ausführlich: docs/begruendungen/test/setmenge-aus-erfassungen-db.test.js.md#kopf
  *
  *      GEGENPROBE: Ändert sich eine Erfassung, folgt die Antwort.
  *
@@ -18,6 +17,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { katalogSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 // Dieselbe Begruendung wie in test/teilepreise-nur-erfassungen-db.test.js:
@@ -49,8 +49,6 @@ const dbDa = async (t) => {
   }
 };
 
-const MIG_DIR = path.join(ROOT, 'db/migrations');
-const DATEI   = path.join(MIG_DIR, '0036-setmenge-aus-erfassungen.sql');
 
 /** Frische Datenbank, Schema, alle Migrationen. */
 async function volleKette() {
@@ -98,7 +96,6 @@ test('niemand schreibt die Stückzahl eines Sets mehr', () => {
   // dieser Test, sondern die Datenbank: Nach Migration 0036 gibt es die Spalte
   // nicht, jede verbliebene Lesestelle ist ein harter Fehler — und genau
   // deshalb laufen die Lesewege unten gegen eine migrierte Datenbank.
-  // Ausführlich: docs/begruendungen/test/setmenge-aus-erfassungen-db.test.js.md#dateien
   const dateien = [];
   const lauf = (verz) => {
     for (const e of fs.readdirSync(verz, { withFileTypes: true })) {
@@ -194,9 +191,7 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen',
     `INSERT INTO users (username,password_hash) VALUES ('mengeleser_kind','x') RETURNING id`);
   const SN = '10290-1';
 
-  await db.run(`INSERT INTO set_catalog (set_number,name,year,pieces)
-                VALUES ($1,'Pickup Truck',2022,1677)
-                ON CONFLICT (set_number) DO NOTHING`, [SN]);
+  await katalogSet(db, SN, { name: 'Pickup Truck', year: 2022, pieces: 1677 });
   // Zwei Konten halten dasselbe Set — der Haushaltszweig von getSets() fasst
   // sie zu EINER Kachel zusammen und muss die Mengen addieren.
   await db.run(`INSERT INTO sets (user_id,set_number) VALUES ($1,$2),($3,$2)`,
@@ -213,7 +208,7 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen',
                        ($3,$2,3, 90,'N', NOW() - INTERVAL '2 days')`,
     [haupt.id, SN, kind.id]);
 
-  const H = _req('src/sets/lesen.js');
+  const H = _req('src/sets/index.js');
 
   // ── Ein Konto ────────────────────────────────────────────────────────────
   const eins = await H.getSets([haupt.id], { page_size: 60 });

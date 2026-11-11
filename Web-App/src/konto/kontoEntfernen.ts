@@ -26,7 +26,6 @@ export async function kontoEntfernen(ziel: number, durch: number | null): Promis
       if (weg === repo.LETZTER_VERWALTER) throw new Abbruch(weg);
       if (!weg) throw new Abbruch(durch === null ? repo.LETZTER_VERWALTER : 'nicht_gefunden');
       // user_sessions hat keinen Fremdschlüssel auf users.
-      // Ausführlich: docs/begruendungen/src/konto/kontoEntfernen.ts.md#delete-users-id
       await erhoeheSitzungsVersion(ziel);
       await loescheSitzungenDesKontos(ziel);
       return 'entfernt' as const;

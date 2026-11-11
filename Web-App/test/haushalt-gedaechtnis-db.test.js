@@ -1,6 +1,5 @@
 /**
  * Das Blickfeld wird gemerkt — und bei jeder Änderung sofort vergessen.
- * Ausführlich: docs/begruendungen/test/haushalt-gedaechtnis-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

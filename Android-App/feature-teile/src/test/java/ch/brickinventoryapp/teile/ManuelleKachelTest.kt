@@ -11,7 +11,8 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Was eine manuell erfasste Kachel und ihr Detail brauchen: den mengengewichteten
  * Kaufpreis vom Server und den Preisverlauf für Teile und Figuren. Was die Kachel
- * zeichnet, prüft ManuelleKachelAnzeigeTest (app) unter Robolectric.
+ * zeichnet, prüft ManuelleKachelAnzeigeTest (app) unter Robolectric; dass der Verlauf
+ * für beide Arten geladen wird, KaeufeViewModelTest (core-zustand) am ViewModel.
  */
 class ManuelleKachelTest {
 
@@ -35,16 +36,10 @@ class ManuelleKachelTest {
     }
 
     @Test
-    fun `die Detailansicht zeigt den Preisverlauf fuer Teile UND Figuren`() {
+    fun `die Detailansicht zeigt Marktpreis und Preisverlauf`() {
         val s = code(read("teile/ui/screens/ManualItemDetailScreen.kt"))
         for (teil in listOf("MarketPriceByCondition(", "PriceChart(")) {
             assert(s.contains(teil)) { "$teil fehlt in der Detailansicht" }
-        }
-        // Geladen wird fuer beide Arten — sonst waere das Diagramm bei einer
-        // von beiden immer leer.
-        val laden = code(read("zustand/ui/viewmodel/KaeufeViewModel.kt"))
-        assert(laden.contains("if (type == \"fig\") finanzen.getFigPriceHistory(id) else finanzen.getPartPriceHistory(id, colorId)")) {
-            "Der Verlauf wird nicht fuer Figuren UND Teile geladen"
         }
     }
 }

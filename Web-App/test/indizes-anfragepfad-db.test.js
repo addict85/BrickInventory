@@ -1,12 +1,9 @@
 /**
  * Drei Indizes für Abfragen, die im Anfragepfad ohne sie die ganze Tabelle lesen.
- * Ausführlich: docs/begruendungen/test/indizes-anfragepfad-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const { buildAndRequire } = require('./helpers/sources');
@@ -17,7 +14,6 @@ const db = _req('db/database.js');
 // parts.bl_part_number, und Migration 0037 hat die Spalte geloescht (die
 // BrickLink-Nummer steht jetzt in bl_zuordnung). Postgres entfernt
 // abhaengige Indizes beim DROP COLUMN selbst.
-// Ausführlich: docs/begruendungen/test/indizes-anfragepfad-db.test.js.md#erwartet
 const ERWARTET = ['idx_set_figuren_fig', 'idx_sets_setnum'];
 
 /**
@@ -65,13 +61,12 @@ test('Anfragepfad: die drei Indizes gibt es und der Planer kann sie nehmen', asy
     //
     // Die BrickLink-Nachschlage zuerst, und dafuer braucht es die
     // MIGRATIONEN: bl_zuordnung wird in 0037 angelegt, nicht in
-    // db/schema.sql (eine Tabelle gehoert an genau eine Stelle,
+    // db/basis.sql (eine Tabelle gehoert an genau eine Stelle,
     // scripts/check-schema-am-start.js prueft das).
     const c0 = await db.pool.connect();
     try { await _req('db/migrate.js').runMigrations(c0); } finally { c0.release(); }
 
     // Zeichengleich die Abfrage aus src/katalog/blZuordnung.ts (blAbrufNummer).
-    // Ausführlich: docs/begruendungen/test/indizes-anfragepfad-db.test.js.md#blplan
     const blPlan = await plan(
       `SELECT COALESCE(bl_id, rb_id) AS nr FROM bl_zuordnung
         WHERE art = 'part' AND rb_id = 'x'`);

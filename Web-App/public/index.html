@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <!-- Schriften liegen selbst im Haus (public/vendor/fonts/) — kein Fremdhost …
-       Ausführlich: docs/begruendungen/public/index.html.md#stelle -->
+  <!-- Schriften liegen selbst im Haus (public/vendor/fonts/) — kein Fremdhost … -->
   <link rel="preload" as="font" type="font/woff2" crossorigin
         href="/vendor/fonts/files/plus-jakarta-sans-latin-wght-normal.woff2">
   <link rel="preload" as="font" type="font/woff2" crossorigin
@@ -14,8 +13,7 @@
   <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#14181d" media="(prefers-color-scheme: dark)">
   <title>BrickInventory Manager</title>
-  <!-- Startgerüst: Kopf, Leiste und Kacheln als Platzhalter, bis Stile, Sprache …
-       Ausführlich: docs/begruendungen/public/index.html.md#startstil -->
+  <!-- Startgerüst: Kopf, Leiste und Kacheln als Platzhalter, bis Stile, Sprache … -->
   <style id="startstil">
 #startgeruest{--sg-bg:#f6f7f9;--sg-sur:#fff;--sg-bdr:#e3e6ea;--sg-ph:#eceff3;--sg-txt:#1e293b;position:fixed;inset:0;z-index:2;overflow:hidden;background:var(--sg-bg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
 [data-theme=brick] #startgeruest{--sg-bg:#c9d5e2;--sg-sur:#e6ecf2;--sg-bdr:#b7c6d8;--sg-ph:#d3deea}
@@ -57,8 +55,7 @@
 </div>
 <!-- Erst nach dem Startgerüst: Stile und Design-Skript halten nur den Rest der Seite an. -->
   <link rel="stylesheet" href="/vendor/fonts/fonts.css?v=2026.10.27.1901">
-  <!-- Gemeinsame Farbtokens, ERZEUGT aus shared/design-tokens.json. Zuerst …
-       Ausführlich: docs/begruendungen/public/index.html.md#stelle-2 -->
+  <!-- Gemeinsame Farbtokens, ERZEUGT aus shared/design-tokens.json. Zuerst … -->
   <link rel="stylesheet" href="/tokens.css?v=2026.10.27.1901">
   <link rel="stylesheet" href="/styles.css?v=2026.10.27.1901">
   <!-- App-Designs (Stein-Look etc.) — je Theme eine Datei unter /themes/, greift via [data-theme] -->
@@ -70,8 +67,7 @@
   <!-- Responsive-Regeln, nach beiden Designs geladen: das Layout ist in
        classic und brick identisch, die Regeln gelten daher für beide. -->
   <link rel="stylesheet" href="/mobile.css?v=2026.10.27.1901">
-  <!-- Setzt data-theme aus dem localStorage-Cache, bevor Anmeldung oder App …
-       Ausführlich: docs/begruendungen/public/index.html.md#i-plus -->
+  <!-- Setzt data-theme aus dem localStorage-Cache, bevor Anmeldung oder App … -->
   <script src="/js/00-theme-boot.js?v=2026.10.27.1901"></script>
 <!-- Die Symbolfamilie: Strichsymbole auf 24er-Raster, Farbe aus dem Text.
      Verwendung: <svg class="ico" aria-hidden="true"><use href="#i-NAME"/></svg> -->
@@ -188,8 +184,7 @@
     <div id="panel-login">
       <div class="lerr" id="lerr" role="alert"></div>
       <div class="login-hinweis" id="login-hinweis" role="status" hidden></div>
-      <!-- Ein FORM, damit Passwortmanager Speichern und Ausfuellen anbieten: …
-           Ausführlich: docs/begruendungen/public/index.html.md#lu-stelle -->
+      <!-- Ein FORM, damit Passwortmanager Speichern und Ausfuellen anbieten: … -->
       <form class="sform" data-submit="btn-login">
         <div class="fg"><label for="lu" data-i18n="login.email_or_user">Benutzername oder E-Mail</label><input type="text" id="lu" autocomplete="username" /></div>
         <div class="fg"><label for="lp" data-i18n="login.password">Passwort</label><div class="geheim-feld"><input type="password" id="lp" autocomplete="current-password" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="lp" aria-pressed="false" aria-controls="lp" aria-label="Passwort anzeigen" data-i18n="login.passwort_zeigen" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
@@ -358,8 +353,7 @@
         <span id="gib-chevron" data-stil="font-size:var(--fs-1);color:var(--mut);cursor:pointer" data-click="gibToggle">▾</span>
       </div>
       <div class="umenu">
-        <!-- ── DAS MENÜ IM BENUTZERNAMEN ─────────────────────────────────
-             Ausführlich: docs/begruendungen/public/index.html.md#btn-umenu -->
+        <!-- ── DAS MENÜ IM BENUTZERNAMEN ───────────────────────────────── -->
         <div class="umenu-wrap">
           <button class="ubadge ubadge-knopf" id="btn-umenu" data-click="benutzerMenue"
                   aria-haspopup="true" aria-expanded="false"
@@ -379,8 +373,7 @@
                     <svg class="ico" aria-hidden="true"><use href="#i-daten"/></svg><span data-i18n="settings.data_export">Daten und Papierkorb</span></button>
             <button class="umenu-item" role="menuitem" tabindex="-1" data-click="oeffneSicht" data-arg="app">
                     <svg class="ico" aria-hidden="true"><use href="#i-app"/></svg><span data-i18n="menu.app">Android-App</span></button>
-            <!-- Abmelden steht abgesetzt, nicht als achter Punkt in einer …
-                 Ausführlich: docs/begruendungen/public/index.html.md#stelle-3 -->
+            <!-- Abmelden steht abgesetzt, nicht als achter Punkt in einer … -->
             <button class="umenu-item admin-only" role="menuitem" tabindex="-1" data-stil="display:none" data-click="oeffneReiter" data-arg="settings"><svg class="ico" aria-hidden="true"><use href="#i-einstellungen"/></svg><span data-i18n="nav.settings">Einstellungen</span></button>
             <button class="umenu-item admin-only" role="menuitem" tabindex="-1" data-stil="display:none" data-click="oeffneReiter" data-arg="monitor"><svg class="ico" aria-hidden="true"><use href="#i-monitoring"/></svg><span data-i18n="nav.monitoring">Hinter­grund­arbeiten</span></button>
             <hr class="umenu-trenner">
@@ -444,8 +437,7 @@
         </details>
       </div>
 
-      <!-- Suche/Filter/Sortierung — BEWUSST unter der Erfassen-Box statt im …
-           Ausführlich: docs/begruendungen/public/index.html.md#stelle-4 -->
+      <!-- Suche/Filter/Sortierung — BEWUSST unter der Erfassen-Box statt im … -->
       <div class="filterleiste filterzeile">
           <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false"><svg class="ico" aria-hidden="true"><use href="#i-filter"/></svg><span class="filter-text" data-i18n="common.filter">Filter</span><span class="vh nur-telefon" data-i18n="common.filter">Filter</span><span class="filter-zahl" id="gallery-filter-zahl" hidden></span></button>
           <input type="text" class="si suchfeld" id="gs" placeholder="Sets suchen…" data-i18n="gallery.search" data-i18n-attr="placeholder" data-i18n-aria="gallery.search_aria" aria-label="Sets suchen">
@@ -464,8 +456,7 @@
             <option value="qty_asc" data-i18n="gallery.sort.qty_asc">Anzahl ↑</option>
           </select>
           <select id="scope-gallery" class="scope-select" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="gallery" data-stil="display:none"></select>
-          <!-- Lagerort: dieselbe Form wie der Kontofilter daneben. Bleibt …
-               Ausführlich: docs/begruendungen/public/index.html.md#storage-gallery -->
+          <!-- Lagerort: dieselbe Form wie der Kontofilter daneben. Bleibt … -->
           <select id="storage-gallery" class="scope-select" aria-label="Lagerort" data-i18n="detail.storage" data-i18n-attr="aria-label" data-change="onStorageChange" data-arg="gallery" data-stil="display:none"></select>
           <div class="vtgl" role="group" aria-label="Ansicht" data-i18n="parts.view_label" data-i18n-attr="aria-label">
             <button type="button" class="vb active" aria-pressed="true" id="vg" aria-label="Karten" data-i18n="parts.view.grid" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-raster"/></svg></button>
@@ -484,8 +475,7 @@
       <div class="ph">
         <h1 class="ptitle" data-tab-title="catalog"><span class="ptitle-icon"></span><span data-i18n="catalog.title">Katalog</span></h1>
       </div>
-      <!-- Suche/Filter unter dem Titel — analog Galerie, Teile, Minifiguren …
-           Ausführlich: docs/begruendungen/public/index.html.md#cat-search -->
+      <!-- Suche/Filter unter dem Titel — analog Galerie, Teile, Minifiguren … -->
       <div class="filterzeile">
           <input type="text" class="si suchfeld" id="cat-search" placeholder="Setnummer / Name…" data-i18n="catalog.search" data-i18n-attr="placeholder" data-i18n-aria="catalog.search_aria" aria-label="Katalog nach Setnummer oder Name durchsuchen">
           <select class="w-auto max-240" id="cat-theme" aria-label="Thema filtern" data-i18n="gallery.theme_label" data-i18n-attr="aria-label">
@@ -508,10 +498,8 @@
       </div>
       <div class="text-mittel abstand-u-05" id="cat-count"></div>
       <!-- Jahres-Bereich: Von-Bis mit zwei Griffen scrubben -->
-      <!-- Katalog-Liste mit Jahres-Leiste am rechten Rand. …
-           Ausführlich: docs/begruendungen/public/index.html.md#stelle-5 -->
-      <!-- Die Liste rollt mit der SEITE. Ein eigener …
-           Ausführlich: docs/begruendungen/public/index.html.md#catalog-grid -->
+      <!-- Katalog-Liste mit Jahres-Leiste am rechten Rand. … -->
+      <!-- Die Liste rollt mit der SEITE. Ein eigener … -->
       <div id="catalog-grid"></div>
     </div>
 
@@ -521,8 +509,7 @@
         <h1 class="ptitle" data-tab-title="wanted"><span class="ptitle-icon"></span><span data-i18n="wanted.title">Merkliste</span></h1>
       </div>
 
-      <!-- Erfassen „analog den Sets": dieselben Felder in derselben Reihenfolge …
-           Ausführlich: docs/begruendungen/public/index.html.md#mk-kasten -->
+      <!-- Erfassen „analog den Sets": dieselben Felder in derselben Reihenfolge … -->
       <!-- Aufklappbar: Am Telefon steht die Liste vorn, sobald sie Einträge hat (16-merkliste.js). -->
       <details class="merk-kasten" id="mk-kasten" open>
         <summary class="merk-kasten-kopf"><h2 class="stit" data-ico="plus" data-i18n="wanted.add.title">Zur Merkliste hinzufügen</h2></summary>
@@ -531,15 +518,13 @@
           <div class="fg max-110"><label for="mk-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="mk-cond"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
           <div class="fg max-150" id="mk-owner-box" data-stil="display:none"><label for="mk-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt" id="mk-owner"></select></div>
           <button class="btn bp" id="mk-add" data-click="merkpostenHinzufuegen" data-i18n="wanted.add.submit" data-ico="plus">Auf die Merkliste</button>
-          <!-- CSV-Einlesen, dieselbe Form wie bei Teilen und Minifiguren …
-               Ausführlich: docs/begruendungen/public/index.html.md#mk-csv-file -->
+          <!-- CSV-Einlesen, dieselbe Form wie bei Teilen und Minifiguren … -->
           <label class="btn bs zeiger"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.csv_read">CSV-Datei einlesen</span><input type="file" id="mk-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" class="datei-versteckt" data-change="importMerklisteCsv" /></label>
         </div>
         <div class="abstand-o-8 schrift-2" id="mk-status" role="status"></div>
       </details>
 
-      <!-- Suche/Filter/Sortierung — dieselbe Zeile wie in der Galerie, an …
-           Ausführlich: docs/begruendungen/public/index.html.md#mks-stelle -->
+      <!-- Suche/Filter/Sortierung — dieselbe Zeile wie in der Galerie, an … -->
       <div class="filterzeile">
         <input type="text" class="si suchfeld" id="mks" placeholder="Merkliste durchsuchen…" data-i18n="wanted.search" data-i18n-attr="placeholder" data-i18n-aria="wanted.search_aria" aria-label="Merkliste durchsuchen" />
         <select class="w-auto" id="mkcond" aria-label="Zustand" data-i18n="common.condition" data-i18n-attr="aria-label" data-change="ladeMerkliste">
@@ -592,8 +577,7 @@
         <span id="mp-val" data-stil="display:none"></span>
 
 
-      <!-- Suche/Filter/Sortierung — BEWUSST unter der Erfassen-Box statt im …
-           Ausführlich: docs/begruendungen/public/index.html.md#parts-search -->
+      <!-- Suche/Filter/Sortierung — BEWUSST unter der Erfassen-Box statt im … -->
       <div class="filterleiste filterzeile">
           <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false" data-i18n="common.filter" data-ico="filter">Filter</button>
           <input class="suchfeld" type="text" id="parts-search" placeholder="Teile suchen…" data-i18n="parts.search" data-i18n-attr="placeholder" data-i18n-aria="parts.search_aria" aria-label="Teile suchen">
@@ -608,8 +592,7 @@
             <option value="menge" data-i18n="parts.order.qty">Nach Menge</option>
           </select>
           <select id="scope-parts" class="scope-select" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="parts" data-stil="display:none"></select>
-          <!-- Lagerort: dieselbe Form wie der Kontofilter daneben. Bleibt …
-               Ausführlich: docs/begruendungen/public/index.html.md#storage-parts -->
+          <!-- Lagerort: dieselbe Form wie der Kontofilter daneben. Bleibt … -->
           <select id="storage-parts" class="scope-select" aria-label="Lagerort" data-i18n="detail.storage" data-i18n-attr="aria-label" data-change="onStorageChange" data-arg="parts" data-stil="display:none"></select>
           <select class="w-auto max-240" id="parts-color" aria-label="Nach Farbe filtern" data-i18n="parts.filter.color" data-i18n-attr="aria-label" data-change="setColorFilter" data-stil="display:none"></select>
           <select class="w-auto max-240" id="parts-cat" aria-label="Nach Kategorie filtern" data-i18n="parts.filter.category" data-i18n-attr="aria-label" data-change="setCatFilter" data-stil="display:none"></select>
@@ -624,8 +607,7 @@
           </div>
       </div>
 
-      <!-- Die manuell erfassten Teile stehen UNTER der Filterleiste …
-           Ausführlich: docs/begruendungen/public/index.html.md#manual-parts-box -->
+      <!-- Die manuell erfassten Teile stehen UNTER der Filterleiste … -->
       <section class="parts-group gruppe-manuell" id="manual-parts-box" aria-labelledby="manual-parts-titel" data-stil="display:none">
         <div class="group-hd"><svg class="ico" aria-hidden="true"><use href="#i-bearbeiten"/></svg><h2 class="group-title" id="manual-parts-titel" data-i18n="parts.manual_section">Manuell erfasste Teile</h2><span class="group-sub" id="manual-parts-n"></span></div>
         <div id="manual-parts-list"></div>
@@ -635,8 +617,7 @@
       <div id="parts-main">
         <div class="lade-geruest" role="status" aria-busy="true"><span class="vh" data-i18n="parts.loading_label">Teile laden…</span><div class="skelett-zeile"></div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>
       </div>
-      <!-- Ladepunkt für den Endlos-Scroll der Teileliste, analog cat-sentinel. …
-           Ausführlich: docs/begruendungen/public/index.html.md#parts-sentinel -->
+      <!-- Ladepunkt für den Endlos-Scroll der Teileliste, analog cat-sentinel. … -->
       <div class="ladepunkt" id="parts-sentinel"></div>
 
     </div>
@@ -671,8 +652,7 @@
         <div class="csv-status" id="fig-csv-status" role="status" data-stil="display:none"></div>
 
 
-      <!-- Suche/Filter/Sortierung — BEWUSST unter der Erfassen-Box statt im …
-           Ausführlich: docs/begruendungen/public/index.html.md#fig-search -->
+      <!-- Suche/Filter/Sortierung — BEWUSST unter der Erfassen-Box statt im … -->
       <div class="filterzeile">
           <input class="suchfeld" type="text" id="fig-search" placeholder="Minifiguren suchen…" data-i18n="figs.search" data-i18n-attr="placeholder" data-input="filterFigs" data-i18n-aria="figs.search_aria" aria-label="Minifiguren suchen">
           <select id="scope-minifigs" class="scope-select" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="minifigs" data-stil="display:none"></select>
@@ -704,8 +684,7 @@
     <div class="tab" id="tab-finance">
       <div class="ph">
         <h1 class="ptitle" data-tab-title="finance"><span class="ptitle-icon"></span><span data-i18n="finance.title">Finanzen</span></h1>
-        <!-- margin-left:auto: …
-             Ausführlich: docs/begruendungen/public/index.html.md#scope-finance -->
+        <!-- margin-left:auto: … -->
         <select id="scope-finance" class="scope-select rechts-buendig" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="finance" data-stil="display:none"></select>
       </div>
       <!-- Portfolio Chart -->
@@ -747,8 +726,7 @@
         <div class="fstat" id="fin-stat-pnl"><div class="flbl" data-i18n="finance.stat.pnl">Gewinn/Verlust zum Kaufpreis</div><div class="fval" id="fin-total-pnl">—</div><div class="fsub" id="fin-pnl-sub"></div></div>
       </div>
       <p id="fin-basis" class="fin-basis" role="note" hidden></p>
-      <!-- Kategoriefilter — dieselben vier Chips wie im Finanzen-Reiter der …
-           Ausführlich: docs/begruendungen/public/index.html.md#fin-filter -->
+      <!-- Kategoriefilter — dieselben vier Chips wie im Finanzen-Reiter der … -->
       <div id="fin-filter" class="chip-reihe" role="group" aria-label="Anzeigen" data-i18n="finance.filter.label" data-i18n-attr="aria-label">
         <button class="period-btn active" aria-pressed="true" data-art=""      data-click="finFilter" data-arg="alle"  data-i18n="finance.filter.all">Alle</button>
         <button class="period-btn" aria-pressed="false" data-art="sets"  data-click="finFilter" data-arg="sets"  data-i18n="finance.filter.sets">Sets</button>
@@ -810,16 +788,14 @@
     </div>
 
     <!-- ══ EINSTELLUNGEN ══ -->
-    <!-- ══ EINSTELLUNGEN — NUR, WAS EIN VERWALTER SETZT ══
-         Ausführlich: docs/begruendungen/public/index.html.md#tab-settings -->
+    <!-- ══ EINSTELLUNGEN — NUR, WAS EIN VERWALTER SETZT ══ -->
     <div class="tab" id="tab-settings">
       <div class="ph"><h1 class="ptitle" data-tab-title="settings"><span class="ptitle-icon"></span><span data-i18n="settings.title">Einstellungen</span></h1></div>
       <div id="einst-kein-zugriff" hidden></div>
 
 
       <!-- ── GLOBALE EINSTELLUNGEN (nur Admins) ─────────────────────────── -->
-      <!-- Der Schluessel sitzt am INNEREN Feld, nicht am <div>. …
-           Ausführlich: docs/begruendungen/public/index.html.md#global-settings-label -->
+      <!-- Der Schluessel sitzt am INNEREN Feld, nicht am <div>. … -->
       <div class="sgroup-label" id="global-settings-label" data-stil="display:none"><span data-i18n="settings.global_title" data-ico="globus">Globale Einstellungen</span> <span class="admin-hinweis" data-i18n="settings.users_admin_badge">(Verwalter)</span></div>
       <div class="sgrid2" id="global-settings-grid" data-stil="display:none">
         <nav class="einst-nav full" aria-label="Abschnitte" data-i18n="settings.sections" data-i18n-attr="aria-label">
@@ -1089,15 +1065,13 @@
       <div class="ph"><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-gutschein"/></svg></span><span data-i18n="vouchers.group">Gutscheine</span></h1></div>
 
       <!-- ── GUTSCHEINE ───────────────────────────────────────────────────── -->
-      <!-- Marcos Vorgabe: „Im Eigenen Profil sollen Lego-Gutscheine mit …
-           Ausführlich: docs/begruendungen/public/index.html.md#vouchers-card -->
+      <!-- Marcos Vorgabe: „Im Eigenen Profil sollen Lego-Gutscheine mit … -->
 
       <div class="ssec abstand-u-125" id="vouchers-card">
         <h2 class="stit" data-ico="gutschein" data-i18n="vouchers.meine">Meine Gutscheine</h2>
         <div class="sform">
 
-          <!-- Das Ausgabeland. Marcos Vorgaben:
-               Ausführlich: docs/begruendungen/public/index.html.md#gutschein-land -->
+          <!-- Das Ausgabeland. Marcos Vorgaben: -->
           <div class="admin-only voucher-land" data-stil="display:none">
             <div class="fg max-17rem">
               <label for="gutschein-land"><span data-i18n="vouchers.country">Ausgabeland</span> <span class="rb rv" data-i18n="vouchers.fuer_alle">für alle Konten</span></label>
@@ -1121,8 +1095,7 @@
             <strong id="vouchers-total"></strong>
           </div>
 
-          <!-- ── GUTHABEN BEI LEGO ABFRAGEN ──────────────────────────────────
-               Ausführlich: docs/begruendungen/public/index.html.md#vouchers-balance-status -->
+          <!-- ── GUTHABEN BEI LEGO ABFRAGEN ────────────────────────────────── -->
           <div class="zeile luecke-8 mittig umbruch abstand-o-075" data-nur-mit-gutscheinen>
             <button class="btn bs" type="button" data-click="guthabenAlleAbfragen"
                     data-i18n="vouchers.balance_all" data-ico="aktualisieren">Guthaben aller Karten abfragen</button>
@@ -1130,8 +1103,7 @@
           </div>
 
 
-          <!-- Der Export (Marcos Liste, Stück 3).
-               Ausführlich: docs/begruendungen/public/index.html.md#voucher-form-card -->
+          <!-- Der Export (Marcos Liste, Stück 3). -->
           <div class="zeile luecke-8 mittig umbruch abstand-o-075" data-nur-mit-gutscheinen>
             <button class="btn bs" type="button" data-click="gutscheineExportieren"
                     data-i18n="vouchers.export" data-ico="datei">Alle Gutscheine als PDF exportieren</button>
@@ -1177,8 +1149,7 @@
               </div>
             </div>
 
-            <!-- Der PDF-Weg. Wird eine Datei gewählt, liest der SERVER die drei …
-                 Ausführlich: docs/begruendungen/public/index.html.md#v-pdf-titel -->
+            <!-- Der PDF-Weg. Wird eine Datei gewählt, liest der SERVER die drei … -->
             <div class="fg voucher-felder">
               <span class="feld-titel" id="v-pdf-titel" data-i18n="vouchers.pdf_label">PDF des Gutscheins (optional)</span>
               <div class="zeile luecke-05 mittig umbruch">
@@ -1321,8 +1292,7 @@
               <label for="household-redeem-faktor-code" data-i18n="login.code">Code aus der Authenticator-App</label>
               <input type="text" id="household-redeem-faktor-code" inputmode="numeric" autocomplete="one-time-code" maxlength="24" />
             </div>
-            <!-- margin-top: Der Knopf klebte am Eingabefeld. .75rem ist der …
-                 Ausführlich: docs/begruendungen/public/index.html.md#tab-daten -->
+            <!-- margin-top: Der Knopf klebte am Eingabefeld. .75rem ist der … -->
             <button class="btn bp" data-click="redeemHouseholdInvite" data-stil="align-self:flex-start;margin-top:.75rem">
               <svg class="ico" aria-hidden="true"><use href="#i-ok"/></svg> <span data-i18n="household.redeem_submit">Verknüpfen</span>
             </button>
@@ -1347,8 +1317,7 @@
               <a class="btn bs" href="/api/v1/settings/export/data" data-i18n="settings.data_zip_btn" data-ico="export">Sets, Teile, Minifiguren, Merkliste &amp; Alarme exportieren (ZIP)</a>
             </div>
 
-            <!-- ── Die BrickLink-Wanted-Liste ist UMGEZOGEN (19.10.) ─────── …
-                 Ausführlich: docs/begruendungen/public/index.html.md#stelle-6 -->
+            <!-- ── Die BrickLink-Wanted-Liste ist UMGEZOGEN (19.10.) ─────── … -->
 
             <p class="hinweis-absatz">
               <span data-i18n="settings.rb_list_hint">Alle Sets im Rebrickable-Listenformat exportieren (Spalten „Set Number,Quantity“), um sie unter „My Sets → Add via List“ bei Rebrickable zu importieren.</span>
@@ -1378,15 +1347,13 @@
 
       <!-- QR-Code für die Android-App -->
 
-      <!-- ── Die App holen ──────────────────────────────────────────────────── …
-           Ausführlich: docs/begruendungen/public/index.html.md#stelle-7 -->
+      <!-- ── Die App holen ──────────────────────────────────────────────────── … -->
       <div class="ssec abstand-u-125">
         <h2 class="stit" data-i18n="apk.title" data-ico="import">App herunterladen</h2>
         <p class="text-mittel abstand-u-1" data-i18n="apk.hint">Immer die neuste Fassung, direkt aus der Ablage auf GitHub. Android fragt beim Öffnen der Datei nach der Erlaubnis, Apps aus dieser Quelle zu installieren.</p>
         <a class="apk-btn" href="https://github.com/addict85/BrickInventory/releases/download/apk-neuste/BrickInventory.apk"
            rel="noopener" target="_blank">
-          <!-- Ein eigener, schlichter Roboter — NICHT Googles Android-Marke. …
-               Ausführlich: docs/begruendungen/public/index.html.md#stelle-8 -->
+          <!-- Ein eigener, schlichter Roboter — NICHT Googles Android-Marke. … -->
           <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="currentColor">
             <path d="M6.8 3.2a.6.6 0 0 1 .85-.1L9.2 4.4a6.3 6.3 0 0 1 5.6 0l1.55-1.3a.6.6 0 1 1 .77.92l-1.36 1.14A5.9 5.9 0 0 1 18 9.6H6a5.9 5.9 0 0 1 2.24-4.44L6.88 4.02a.6.6 0 0 1-.08-.82ZM9.4 7.1a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm5.2 0a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM6 10.6h12v6.9a1.4 1.4 0 0 1-1.4 1.4H7.4A1.4 1.4 0 0 1 6 17.5v-6.9Zm-2.1 0c.8 0 1.4.63 1.4 1.4v4.1a1.4 1.4 0 1 1-2.8 0V12c0-.77.63-1.4 1.4-1.4Zm16.2 0c.77 0 1.4.63 1.4 1.4v4.1a1.4 1.4 0 1 1-2.8 0V12c0-.77.63-1.4 1.4-1.4ZM8.6 19.8h2v1.6a1.4 1.4 0 1 1-2.8 0v-1.6h.8Zm5.6 0h.8v1.6a1.4 1.4 0 1 1-2.8 0v-1.6h2Z"/>
           </svg>
@@ -1401,8 +1368,7 @@
         <p class="text-mittel abstand-u-1" data-i18n="settings.qr.hint">Scanne diesen Code in der Android-App, um Server-URL und Login automatisch zu konfigurieren. Der Code ist 5 Minuten gültig und kann nur einmal verwendet werden.</p>
         <div id="qr-container" data-stil="display:flex;flex-direction:column;align-items:flex-start;gap:.75rem">
           <!-- Hidden URL field — auto-filled from window.location -->
-          <!-- Wie lange soll der Zugang gelten, den DIESER Code eroeffnet? …
-               Ausführlich: docs/begruendungen/public/index.html.md#qr-validity -->
+          <!-- Wie lange soll der Zugang gelten, den DIESER Code eroeffnet? … -->
           <form class="sform qr-form" data-submit="btn-gen-qr">
           <div class="fg">
             <label for="qr-validity" data-i18n="qr.validity_label">Zugang gültig für</label>
@@ -1423,8 +1389,7 @@
           </form>
           <div id="qr-code" data-stil="background:#fff;padding:12px;border-radius:8px;border:1px solid var(--bdr);display:inline-block"></div>
           <div class="text-klein" id="qr-hint"></div>
-          <!-- Was der Server tatsaechlich vermerkt hat — nicht, was oben …
-               Ausführlich: docs/begruendungen/public/index.html.md#qr-access-hint -->
+          <!-- Was der Server tatsaechlich vermerkt hat — nicht, was oben … -->
           <div class="text-klein" id="qr-access-hint"></div>
           <div class="text-klein hinweis-warnung" id="qr-tls-hint" role="note" hidden></div>
           <div class="text-klein" id="qr-ca-fp" hidden></div>
@@ -1641,8 +1606,7 @@
       <div id="m-det"></div>
     </div>
     <div id="m-instr" class="il"></div>
-    <!-- Keine Kaufadressen hier (Marcos Vorgabe): „Im Detaildialog der Sets …
-         Ausführlich: docs/begruendungen/public/index.html.md#stelle-9 -->
+    <!-- Keine Kaufadressen hier (Marcos Vorgabe): „Im Detaildialog der Sets … -->
     <div class="mfooter verteilt umbruch luecke-8">
       <!-- Löschen ist die einzige Aktion hier; hinter „Weitere Aktionen“ steht
            sie nicht mehr allein und rot im Daumenbereich. -->
@@ -1657,8 +1621,7 @@
   </div>
 </div>
 
-<!-- Detail eines Merklisten-Eintrags.
-     Ausführlich: docs/begruendungen/public/index.html.md#mk-detail-modal -->
+<!-- Detail eines Merklisten-Eintrags. -->
 <div class="ovl" id="mk-detail-modal" role="dialog" aria-modal="true" aria-labelledby="mk-m-tit">
   <div class="modal max-520">
     <div class="mhd">
@@ -1677,8 +1640,7 @@
     </div>
     <div class="mfooter verteilt umbruch luecke-8">
       <button class="btn bd" id="mk-m-del" data-click="merkpostenDetailLoeschen" aria-label="Von der Merkliste löschen" data-i18n="wanted.delete_item" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg><span data-i18n="common.delete">Löschen</span></button>
-      <!-- Marcos Vorgabe: die beiden Kaufadressen NEBENEINANDER, und darunter …
-           Ausführlich: docs/begruendungen/public/index.html.md#mk-m-bricklink -->
+      <!-- Marcos Vorgabe: die beiden Kaufadressen NEBENEINANDER, und darunter … -->
       <div data-stil="display:flex;flex-direction:column;gap:16px;align-items:stretch">
         <div data-stil="display:flex;gap:8px;flex-wrap:wrap;align-items:stretch">
           <a class="btn bs knopf-fuellend" id="mk-m-bricklink" href="#" target="_blank" rel="noopener" data-stil="display:none" data-i18n="catalog.buy_bricklink" data-ico="korb">Auf BrickLink kaufen</a>
@@ -1690,8 +1652,7 @@
   </div>
 </div>
 
-<!-- Uebernahme eines Merkpostens in die Galerie.
-     Ausführlich: docs/begruendungen/public/index.html.md#mk-take-modal -->
+<!-- Uebernahme eines Merkpostens in die Galerie. -->
 <div class="ovl" id="mk-take-modal" role="dialog" aria-modal="true" aria-labelledby="mk-take-tit">
   <div class="modal max-420">
     <div class="mhd">
@@ -1728,14 +1689,12 @@
         <div class="fg max-110"><label for="cat-m-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="text" autocomplete="off" id="cat-m-price" placeholder="—" /></div>
         <div class="fg max-110"><label for="cat-m-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="cat-m-cond"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
       </div>
-      <!-- Preisalarm beim Merken — Marcos „inkl. Zustand und einem …
-           Ausführlich: docs/begruendungen/public/index.html.md#cat-m-alert-dir -->
+      <!-- Preisalarm beim Merken — Marcos „inkl. Zustand und einem … -->
       <div class="zeile luecke-8 unten umbruch">
         <div class="fg max-120"><label for="cat-m-alert-dir" data-i18n="detail.alert">Preisalarm</label><select class="auswahl-kompakt" id="cat-m-alert-dir"><option value="unter" data-i18n="detail.alert_below">fällt unter</option><option value="ueber" data-i18n="detail.alert_above">steigt über</option></select></div>
         <div class="fg max-110"><label for="cat-m-alert-val" data-i18n="wanted.threshold">Schwelle (optional)</label><input inputmode="decimal" type="text" autocomplete="off" id="cat-m-alert-val" placeholder="—" /></div>
       </div>
-      <!-- Marcos Vorgabe: BrickLink eine Zeile hoeher, die beiden …
-           Ausführlich: docs/begruendungen/public/index.html.md#cat-m-bricklink -->
+      <!-- Marcos Vorgabe: BrickLink eine Zeile hoeher, die beiden … -->
       <div data-stil="display:flex;width:100%">
         <a class="btn bs knopf-fuellend" id="cat-m-bricklink" href="#" target="_blank" rel="noopener" data-i18n="catalog.buy_bricklink" data-ico="korb">Auf BrickLink kaufen</a>
       </div>
@@ -1748,8 +1707,7 @@
 </div>
 
 <!-- Manual Item Detail Modal (Teile + Minifiguren) -->
-<!-- ══ BRICKLINK-WANTED-LISTE: VORSCHAU VOR DEM IMPORT ══════════════════════ …
-     Ausführlich: docs/begruendungen/public/index.html.md#wanted-xml-modal -->
+<!-- ══ BRICKLINK-WANTED-LISTE: VORSCHAU VOR DEM IMPORT ══════════════════════ … -->
 <div class="ovl" id="wanted-xml-modal" role="dialog" aria-modal="true" aria-labelledby="wxml-tit">
   <div class="modal max-1360">
     <div class="mhd">
@@ -1759,8 +1717,7 @@
       </div>
       <button class="btn bs btn-sm" data-click="wantedXmlSchliessen" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
     </div>
-    <!-- Fortschritt des Imports (Marcos Wunsch vom 20.10.). Dieselben zwei …
-         Ausführlich: docs/begruendungen/public/index.html.md#wanted-xml-fortschritt -->
+    <!-- Fortschritt des Imports (Marcos Wunsch vom 20.10.). Dieselben zwei … -->
     <div id="wanted-xml-fortschritt" data-stil="display:none;margin-bottom:.6rem">
       <div class="prog-bar-wrap abstand-u-035" role="progressbar"
            id="wanted-xml-balken-wrap" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
@@ -1770,8 +1727,7 @@
       <div class="text-klein" id="wanted-xml-fortschritt-text"></div>
     </div>
     <div id="wanted-xml-bericht" data-stil="font-size:var(--fs-2);margin-bottom:.6rem"></div>
-    <!-- `padding-right` statt nichts: Die Tabelle ist 100% breit, und die …
-         Ausführlich: docs/begruendungen/public/index.html.md#wanted-xml-tabelle -->
+    <!-- `padding-right` statt nichts: Die Tabelle ist 100% breit, und die … -->
     <div id="wanted-xml-tabelle" data-stil="max-height:52vh;overflow:auto;padding-right:14px"></div>
     <div data-stil="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:.8rem">
       <label data-stil="display:flex;align-items:center;gap:5px;font-size:var(--fs-2);cursor:pointer">
@@ -1794,8 +1750,7 @@
     </div>
     <img id="man-detail-img" alt="" data-stil="width:100%;max-height:160px;object-fit:contain;background:var(--s50);border-radius:8px;border:1px solid var(--bdr);margin-bottom:1rem;display:none" />
     <div id="man-detail-body"></div>
-    <!-- Kein „Zurueck" hier (Marcos Vorgabe). Es war der zweite Weg aus …
-         Ausführlich: docs/begruendungen/public/index.html.md#man-detail-del -->
+    <!-- Kein „Zurueck" hier (Marcos Vorgabe). Es war der zweite Weg aus … -->
     <div class="mfooter verteilt">
       <button class="btn bd" id="man-detail-del" data-schreibend aria-label="Eintrag löschen" data-i18n="common.delete_item" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg><span data-i18n="common.delete">Löschen</span></button>
     </div>
@@ -1829,8 +1784,7 @@
     <div class="pdf-kopf">
       <h2 id="pdf-viewer-title" class="pdf-titel">PDF</h2>
       <div class="pdf-werkzeuge">
-        <!-- Zoom: Minus, Faktor, Plus, und der Faktor selbst ist der …
-             Ausführlich: docs/begruendungen/public/index.html.md#pdf-viewer-zoom-out -->
+        <!-- Zoom: Minus, Faktor, Plus, und der Faktor selbst ist der … -->
         <div class="pdf-zoom">
           <button id="pdf-viewer-zoom-out" class="btn bs btn-sm" data-click="pdfZoomOut" aria-label="Verkleinern (Taste −, oder Strg + Mausrad)" data-i18n="pdf.zoom_out" data-i18n-attr="aria-label">−</button>
           <button id="pdf-viewer-zoom" class="btn bs btn-sm min-34rem" data-click="pdfZoomReset" aria-label="100% – Zoom zurücksetzen (Taste 0)">100%</button>
@@ -1852,8 +1806,7 @@
 
 <!-- Kaufpreis-Modal (Erfassungen pro Set) -->
 <div class="ovl" id="acq-modal" role="dialog" aria-modal="true" aria-labelledby="acq-modal-tit">
-  <!-- Breiter als die übrigen Dialoge (560px): Die Tabelle hat sechs Spalten, …
-       Ausführlich: docs/begruendungen/public/index.html.md#acq-modal-tit -->
+  <!-- Breiter als die übrigen Dialoge (560px): Die Tabelle hat sechs Spalten, … -->
   <div class="modal acq-wide max-780">
     <div class="mhd">
       <div>
@@ -1993,21 +1946,17 @@
 <!-- Vorleser hören jede Meldung; Fehler unterbrechen (role="alert" am Eintrag). -->
 <div id="toasts" role="status" aria-live="polite"></div>
 
-<!-- Aktive Sprachdatei. Blockierend und VOR dem Bündel, weil i18n.js beim …
-     Ausführlich: docs/begruendungen/public/index.html.md#stelle-10 -->
+<!-- Aktive Sprachdatei. Blockierend und VOR dem Bündel, weil i18n.js beim … -->
   <script src="/locales/de.js?v=2026.10.27.1901" data-i18n-locale></script>
 <script type="module" src="/js/pdfjs-boot.js?v=2026.10.27.1901"></script>
-<!-- Ein Bündel statt zwölf Einzeldateien. …
-     Ausführlich: docs/begruendungen/public/index.html.md#stelle-11 -->
+<!-- Ein Bündel statt zwölf Einzeldateien. … -->
 <script src="/js/app.bundle.js?v=2026.10.27.1901"></script>
 <!-- app.js ist in Sektions-Dateien aufgeteilt (public/js/) — Ladereihenfolge
      ist relevant, die Dateien teilen sich den globalen Scope. -->
-<!-- Bekannte Lagerorte — EINE Liste für alle Eingabefelder (Set-Detail, …
-     Ausführlich: docs/begruendungen/public/index.html.md#lagerorte -->
+<!-- Bekannte Lagerorte — EINE Liste für alle Eingabefelder (Set-Detail, … -->
 <datalist id="lagerorte"></datalist>
 
-<!-- Der eigene Scrollbalken (#app-scrollbar) wird von js/15-scrollbar.js ERZEUGT, …
-     Ausführlich: docs/begruendungen/public/index.html.md#stelle-12 -->
+<!-- Der eigene Scrollbalken (#app-scrollbar) wird von js/15-scrollbar.js ERZEUGT, … -->
 </body>
 </html>
 

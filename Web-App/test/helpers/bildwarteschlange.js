@@ -2,7 +2,6 @@
 
 /**
  * Die Bild-Warteschlange leeren, bevor ein Test sie benutzt.
- * Ausführlich: docs/begruendungen/test/helpers/bildwarteschlange.js.md#leerewarteschlange
  * @param {{ run: (sql: string, p?: unknown[]) => Promise<unknown> }} db
  */
 async function leereWarteschlange(db) {

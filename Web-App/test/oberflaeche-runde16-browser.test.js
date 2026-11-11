@@ -3,7 +3,6 @@
  * bei 200 % Zoom, Zahlenformat nach Konto, Fremdwährung und Kachel, neue
  * Lagerorte beim Erfassen, Sprachwechsel samt erzeugter Auswahlfelder,
  * aria-label und Trefferzahl für Vorleser, Besitzer im Set-Detail, Knöpfe im …
- * Ausführlich: docs/begruendungen/test/oberflaeche-runde16-browser.test.js.md#kopf
  *
  * Gegenproben (05.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  .tw ohne position:relative UND die Media-Regel für 641–1100 px
@@ -32,7 +31,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { starteApp, warte } = require('./helpers/app-browser');
-const { musterHaushalt, haeltSet } = require('./helpers/bestand');
+const { musterHaushalt, haeltSet, katalogSet } = require('./helpers/bestand');
 
 const klick = (sel) => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
 const text = (sel) => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
@@ -45,16 +44,14 @@ test('UI-Prüfung 16: Finanzen, Lagerorte, Sprache, Vorleser', { concurrency: 1,
     // veröffentlicht die EZB keinen Kurs, auch nicht in der CI mit Netz.
     const vitrine = (await db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Vitrine Wohnzimmer') RETURNING id`, [uid])).id;
     await db.run(`UPDATE sets SET storage_id = $2 WHERE user_id = $1 AND set_number = '10294-1'`, [uid, vitrine]);
-    await db.run(`INSERT INTO set_catalog (set_number, name, year, theme, pieces) VALUES ('10497-1', 'Galaxy Explorer', 2022, 'Icons', 1254)
-                  ON CONFLICT (set_number) DO NOTHING`);
+    await katalogSet(db, '10497-1', { name: 'Galaxy Explorer', year: 2022, theme: 'Icons', pieces: 1254 });
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10497-1')`, [uid]);
     await db.run(`INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency)
                   VALUES ($1, '10497-1', 1, 99.99, 'N', 'ARS')`, [uid]);
     await db.run(`INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
                   VALUES ('10497-1', 'N', 'EUR', 80, 90, 100, 90, 5, NOW()) ON CONFLICT (set_number, condition, currency_code) DO UPDATE SET avg_price = 90`);
     // Nur beim Unterkonto: das Set-Detail soll den Besitzer nennen.
-    await db.run(`INSERT INTO set_catalog (set_number, name, year, theme, pieces) VALUES ('75313-1', 'AT-AT', 2021, 'Star Wars', 6785)
-                  ON CONFLICT (set_number) DO NOTHING`);
+    await katalogSet(db, '75313-1', { name: 'AT-AT', year: 2021, theme: 'Star Wars', pieces: 6785 });
     await haeltSet(db, kid, '75313-1', 1, { preis: 700 });
   } });
   if (app.grund) { t.skip(app.grund); return; }

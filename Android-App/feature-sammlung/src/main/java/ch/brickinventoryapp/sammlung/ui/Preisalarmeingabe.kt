@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.alarm.Alarmeingabe
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
@@ -9,7 +10,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** Der Zustand, für den ein Alarm beim Öffnen gezeigt wird — der häufigere Fall. */
-internal const val ALARM_ZUSTAND_VORGABE = "N"
+internal val ALARM_ZUSTAND_VORGABE = Zustand.NEU
 
 /**
  * Die Schwelle eines Preisalarms, entprellt gespeichert — von Set-Detail und
@@ -30,7 +31,7 @@ internal class Preisalarmeingabe(
     private var job: Job? = null
 
     /** Leere oder unlesbare Eingabe löscht den Alarm dieses Zustands. */
-    fun setze(setNumber: String, richtung: String, roh: String, zustand: String) {
+    fun setze(setNumber: String, richtung: String, roh: String, zustand: Zustand) {
         job?.cancel()
         job = scope.launch {
             delay(ruhe)

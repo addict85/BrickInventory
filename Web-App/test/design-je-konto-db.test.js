@@ -1,7 +1,6 @@
 /**
  * Design je Konto: Der Verwalter setzt die Vorgabe, jedes Konto darf sie
  * überschreiben — über den echten Router und die echte Datenbank.
- * Ausführlich: docs/begruendungen/test/design-je-konto-db.test.js.md#kopf
  *
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  in designFuer `eigenes` immer null → rot: „Konto mit eigenem Design“

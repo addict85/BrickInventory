@@ -2,11 +2,11 @@ import { resolveImageLocal } from '../katalog/bilder/images';
 import { asIds, withOwners, blickfeldAus, type Sicht } from '../haushalt/haushalt';
 import { clampPageSize, applyManualCondition, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand/gemeinsam';
 import { mitVersion } from '../infra/setNummer';
-import { meldeUndLiefere } from '../infra/fehler';
+import { Abstriche } from '../infra/ergebnis';
 import { marktpreiseAusCacheFuerFiguren } from '../finanzen/marketPrice';
 import * as repo from './repository/figurenListe';
 
-// Leseabfragen für Minifiguren. Ausführlich: docs/begruendungen/src/figuren/abfragen.ts.md#abschnitt
+// Leseabfragen für Minifiguren.
 
 /** Ohne page_size unverändertes Verhalten — die Android-App ruft so auf. */
 type FigurenWunsch = { search?: string | undefined; source?: string | undefined; set_number?: string | undefined;
@@ -44,7 +44,6 @@ export async function getMinifigs(userIdWahl: Sicht | number | number[], { searc
 }
 
 // Eine Zählung für Webapp und App; die App zählte vorher selbst und anders.
-// Ausführlich: docs/begruendungen/src/figuren/abfragen.ts.md#getminifigstats
 export async function getMinifigStats(userIdWahl: Sicht | number | number[]) {
   const userId = await blickfeldAus(userIdWahl);
   const uids = asIds(userId);
@@ -61,7 +60,8 @@ export async function getMinifigStats(userIdWahl: Sicht | number | number[]) {
 /** @param viewerId wessen Einstellungen gelten (Währung); `userId` sagt, wessen Daten. */
 export async function getManualMinifigs(userIdWahl: Sicht | number | number[], viewerId: number,
                                  { page = 1, page_size = null, search = null }:
-                                 { page?: number; page_size?: number | null; search?: string | null } = {}) {
+                                 { page?: number; page_size?: number | null; search?: string | null } = {},
+                                 ab = new Abstriche()) {
   const userId = await blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const size = page_size ? clampPageSize(page_size, 60) : null;
@@ -72,9 +72,7 @@ export async function getManualMinifigs(userIdWahl: Sicht | number | number[], v
 
   // Der Marktpreis NUR aus dem Cache, in einer Abfrage für die ganze Liste:
   // Ein Live-Abruf je Eintrag liesse die Liste auf BrickLink warten.
-  // Ausführlich: docs/begruendungen/src/figuren/abfragen.ts.md#getmanualminifigs-preise
-  const preise = await marktpreiseAusCacheFuerFiguren(mitZustand, viewerId)
-    .catch(meldeUndLiefere('figuren:marktpreise', new Map<string, number>()));
+  const preise = await ab.oder('marktpreise', marktpreiseAusCacheFuerFiguren(mitZustand, viewerId), new Map<string, number>());
   const mitPreis = mitZustand.map(f =>
     ({ ...f, avg_price: preise.get(String(f.fig_number)) ?? null }));
 

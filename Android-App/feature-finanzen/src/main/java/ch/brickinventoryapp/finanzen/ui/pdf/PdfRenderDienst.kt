@@ -33,7 +33,7 @@ private const val SEITE = IBinder.FIRST_CALL_TRANSACTION + 1
  * einem isolierten Prozess (Manifest: isolatedProcess) ohne Berechtigungen, Dateien,
  * Token und Ablageschlüssel; er bekommt nur den Deskriptor und gibt Bitmaps zurück.
  */
-class PdfRenderDienst : Service() {
+internal class PdfRenderDienst : Service() {
     override fun onBind(intent: Intent?): IBinder = Renderer()
 
     private class Renderer : Binder() {

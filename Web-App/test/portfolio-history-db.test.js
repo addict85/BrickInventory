@@ -1,9 +1,9 @@
 /**
  * Portfolio-Kurve: Rechnet die SQL-Fassung dasselbe wie eine unabhängige
  * JavaScript-Fassung derselben Regel?
- * Ausführlich: docs/begruendungen/test/portfolio-history-db.test.js.md#kopf
  */
 const test   = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -73,7 +73,6 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   // Und die Migrationen, nicht nur das Schema
-  // Ausführlich: docs/begruendungen/test/portfolio-history-db.test.js.md#c0-stelle
   const c0 = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(c0); } finally { c0.release(); }
 
@@ -87,7 +86,6 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
   // Nur die Bestandszeilen; die Mengen stehen in den Erfassungen weiter unten
   // (Migration 0036). `1 + (g%3)` taucht dort genauso auf — dieselbe Formel,
   // und das ist der Punkt: Sie MUSS uebereinstimmen, sonst gewichtet …
-  // Ausführlich: docs/begruendungen/test/portfolio-history-db.test.js.md#stelle
   await db.run(
     `INSERT INTO sets (user_id, set_number)
      SELECT (CASE WHEN g%2=0 THEN $1::int ELSE $2::int END), (10000+g)||'-1'
@@ -95,8 +93,12 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
   // Der Name gehoert seit Migration 0033 in den Katalog, und zu jedem Set im
   // Bestand steht dort eine Zeile.
   await db.run(
-    `INSERT INTO set_catalog (set_number, name)
+    `INSERT INTO rb_sets (set_num, name)
      SELECT (10000+g)||'-1', 'Set '||g FROM generate_series(1,30) g
+     ON CONFLICT (set_num) DO NOTHING`);
+  await db.run(
+    `INSERT INTO set_catalog (set_number)
+     SELECT (10000+g)||'-1' FROM generate_series(1,30) g
      ON CONFLICT (set_number) DO NOTHING`);
   // Kaufpreis und Menge je Erfassung — seit Migration 0032 der einzige Ort.
   // Die Menge MUSS zur sets-Zeile passen, sonst gewichtet portfolioHistory.ts
@@ -210,7 +212,7 @@ test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, a
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price,recorded_at)
                    VALUES ('88888-1','N','CHF',5,5, NOW() - INTERVAL '4000 days'),
                           ('__portfolio__1','N','CHF',7,7, NOW() - INTERVAL '4000 days')`);
-    process.env.PRICE_HISTORY_KEEP_DAYS = '1095';
+    umgebung({ PRICE_HISTORY_KEEP_DAYS: '1095' });
     const weg = await purgeAltePreise();
     assert.ok(weg >= 2, `nicht alles entfernt: ${weg}`);
     for (const sn of ['88888-1', '__portfolio__1'])
@@ -222,10 +224,10 @@ test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, a
     const { purgeAltePreise } = _req('src/finanzen/priceHistory.js');
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price,recorded_at)
                    VALUES ('77777-1','N','CHF',5,5, NOW() - INTERVAL '4000 days')`);
-    process.env.PRICE_HISTORY_KEEP_DAYS = '0';
+    umgebung({ PRICE_HISTORY_KEEP_DAYS: '0' });
     assert.equal(await purgeAltePreise(), 0);
     assert.equal((await db2.get(`SELECT COUNT(*)::int c FROM price_history WHERE set_number='77777-1'`)).c, 1);
-    delete process.env.PRICE_HISTORY_KEEP_DAYS;
+    umgebung({ PRICE_HISTORY_KEEP_DAYS: undefined });
   });
 
   await db2.pool.end().catch(() => {});

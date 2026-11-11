@@ -2,7 +2,6 @@
  * Doppelte Schriftgrösse (Browser-Einstellung 32 px) und schmale Geräte:
  * Die Sammlung bleibt lesbar. Gemessen in Chrome mit Page.setFontSizes,
  * also so, wie ein Nutzer die Schrift im Browser vergrössert.
- * Ausführlich: docs/begruendungen/test/grosse-schrift-browser.test.js.md#kopf
  *
  * Gegenproben (02.11.2026 gemessen, je einzeln):
  *   A  .sgrid in mobile.css wieder minmax(150px, 1fr) → rot: „390 px, 200 %“
@@ -22,7 +21,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
+const { starteApp } = require('./helpers/app-browser');
 const { musterSammlung } = require('./helpers/bestand');
 
 const MESSUNG = `(() => {

@@ -3,7 +3,6 @@
  * Sammlung und Finanzen vorkommt (Setnummer, Jahr, Datum, Preis, Gewinn,
  * Verlust, Kennzahl, Unterzeile, Gruppenkopf, Plaketten, Basiszeile), hat
  * auf seinem echten Grund mindestens 4,5:1. Gemessen in Chrome mit den …
- * Ausführlich: docs/begruendungen/test/kontrast-designs-browser.test.js.md#kopf
  *
  * Gegenproben (am 03.11.2026 gemessen):
  *   A  in themes/noppe.css --b600 der hellen Variante nicht überschrieben →

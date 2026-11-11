@@ -1,6 +1,5 @@
 /**
  * Der `?v=`-Stempel kommt aus der DATEI, nicht aus einer gesetzten Zahl.
- * Ausführlich: docs/begruendungen/test/asset-stempel.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Ergebnisse abgeschrieben) ────────────────────
  *
@@ -66,7 +65,6 @@ test('eine unveränderte Datei behält ihre Adresse', async () => {
   // Die Hälfte, die man vergisst: Ein Stempel, der sich IMMER ändert (etwa
   // aus der Uhrzeit), bestünde den Fall darüber und entwertete bei jedem
   // Seitenaufruf 223 KB Bündel und sechs Designs.
-  // Ausführlich: docs/begruendungen/test/asset-stempel.test.js.md#dir-stelle
   //
   // Gegenprobe C, nicht das Nachdenken.
   const dir = baue('.a{color:red}');

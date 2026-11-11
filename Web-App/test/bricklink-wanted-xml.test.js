@@ -1,6 +1,5 @@
 /**
  * Die Wanted-Liste, die der Teileliste-Export zu BrickLink schickt.
- * Ausführlich: docs/begruendungen/test/bricklink-wanted-xml.test.js.md#kopf
  *
  * ── Gegenproben (am 20.10. GEMESSEN, Zahlen abgeschrieben) ──────────────────
  *

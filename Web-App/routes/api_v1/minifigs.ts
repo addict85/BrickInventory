@@ -1,4 +1,4 @@
-import { fehlerAntwort } from '../../src/http/httpAntwort';
+import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
 import { schreibziel } from '../../src/haushalt/haushalt';
 import { getManualMinifigs, getMinifigStats, getMinifigs } from '../../src/figuren/abfragen';
@@ -6,16 +6,16 @@ import { addManualFig, updateManualFig } from '../../src/figuren/manuelleFiguren
 import { getSetting } from '../../src/einstellungen/settings';
 import { getMinifigPriceHistory } from '../../src/finanzen/priceHistory';
 import { verwendendeSets } from '../../src/bestand/gemeinsam';
-import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../../src/bestand/lagerort';
 import { loescheFigur } from '../../src/sammlung/loeschen';
 import { teileDerFigur } from '../../src/figuren/dienst';
 import { csvEmpfang } from '../../src/http/dateiEmpfang';
 import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
-import { vertragsRouter } from '../../src/vertrag/pruefen';
 import { seiteAus } from '../../src/infra/seite';
-import type { Anfrage, Antwort } from '../../src/vertrag';
+import { Abstriche } from '../../src/infra/ergebnis';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
 const router = vertragsRouter();
 
 router.get('/minifigs', requireToken, async (req: Anfrage<'GET /api/v1/minifigs'>, res: Antwort<'GET /api/v1/minifigs'>) => {
@@ -38,7 +38,6 @@ router.put('/minifigs/:figNumber', requireToken, async (req: Anfrage<'PUT /api/v
 });
 
 // Trifft alle Zeilen der Figur im Schreibbereich: Gemeint ist die Figur, nicht eine Zeile.
-// Ausführlich: docs/begruendungen/routes/api_v1/minifigs.ts.md#put-minifigs-fignumber-storage
 router.put('/minifigs/:figNumber/storage', requireToken, async (req: Anfrage<'PUT /api/v1/minifigs/:figNumber/storage'>, res: Antwort<'PUT /api/v1/minifigs/:figNumber/storage'>) => {
   const ort = normalisiereLagerort(req.eingabe.storage);
   const n = await setzeLagerort('fig', { schreiber: req.apiUser.user_id },
@@ -55,13 +54,13 @@ router.delete('/minifigs/:figNumber', requireToken, async (req: Anfrage<'DELETE 
 });
 
 router.get('/minifigs/manual', requireToken, async (req: Anfrage<'GET /api/v1/minifigs/manual'>, res: Antwort<'GET /api/v1/minifigs/manual'>) => {
-  const alle = await getManualMinifigs(sichtVon(req), req.apiUser.user_id, { search: req.abfrage.search ?? '' });
+  const ab = new Abstriche();
+  const alle = await getManualMinifigs(sichtVon(req), req.apiUser.user_id, { search: req.abfrage.search ?? '' }, ab);
   const { eintraege: figs, ...seite } = seiteAus(alle, req.abfrage);
-  res.json({ success: true, figs, ...seite });
+  res.json({ success: true, figs, ...seite, ...ab.angabe() });
 });
 
-/** Dieselbe Gruppierung wie die Liste, damit Kennzahl und Liste übereinstimmen.
- * Ausführlich: docs/begruendungen/routes/api_v1/minifigs.ts.md#get-minifigs-stats */
+/** Dieselbe Gruppierung wie die Liste, damit Kennzahl und Liste übereinstimmen. */
 router.get('/minifigs/stats', requireToken, async (req: Anfrage<'GET /api/v1/minifigs/stats'>, res: Antwort<'GET /api/v1/minifigs/stats'>) => {
   const stats = await getMinifigStats(
     sichtVon(req));
@@ -87,7 +86,6 @@ router.post('/minifigs/import/csv', requireToken, kontoSchranke('upload'), csvEm
 });
 
 // Dieselbe Abfrage wie bei Teilen (src/bestand/gemeinsam.ts), im Blickfeld des Haushalts.
-// Ausführlich: docs/begruendungen/routes/api_v1/minifigs.ts.md#get-minifigs-fignumber-sets
 router.get('/minifigs/:figNumber/sets', requireToken, async (req: Anfrage<'GET /api/v1/minifigs/:figNumber/sets'>, res: Antwort<'GET /api/v1/minifigs/:figNumber/sets'>) => {
   const uids = sichtVon(req);
   const { item, sets } = await verwendendeSets(uids, 'minifigs', {

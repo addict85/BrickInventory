@@ -1,5 +1,5 @@
 /** Vorberechnet, weil die Live-Abfrage über alle Set-Teile eines Haushalts
- * Sekunden braucht. Ausführlich: docs/begruendungen/src/teile/partsSummary.ts.md#abschnitt */
+ * Sekunden braucht. */
 import { meldeUndLiefere, fehlertext } from '../infra/fehler';
 import * as db from '../../db/database';
 import * as repo from './repository/teileZusammenfassung';
@@ -41,7 +41,6 @@ function rebuildInBackground(userId: number, v: { v: number }) {
 }
 
 // Baut nicht im Request auf: Der Neuaufbau kostete den Teile-Reiter Sekunden.
-// Ausführlich: docs/begruendungen/src/teile/partsSummary.ts.md#ensurefresh
 export async function ensureFresh(userId: number | number[], opts?: { strict?: boolean }): Promise<boolean> {
   // Frisch ist die Haushaltssicht nur, wenn sie es für JEDES beteiligte Konto ist.
   const ids = Array.isArray(userId) ? userId : [userId];

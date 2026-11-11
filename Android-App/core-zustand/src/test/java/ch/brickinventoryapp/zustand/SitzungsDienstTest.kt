@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.zustand
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.data.RechteSignal
 import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.ZweiterFaktorPflicht
@@ -156,19 +157,19 @@ class SitzungsDienstTest {
 
     @Test
     fun `das Design des Servers gilt und wird gemerkt, ohne Antwort bleibt das gemerkte`() = mitVm {
-        ablage.design.value = "brick"
+        ablage.design.value = Design.BRICK
         ablage.server.value = "https://brick.example"
         fake.codes["getAppTheme"] = 500
         advanceUntilIdle()
-        assertEquals("brick", t.sitzung.state.value.appTheme)
-        assertEquals("brick", ablage.design.value)
+        assertEquals(Design.BRICK, t.sitzung.state.value.appTheme)
+        assertEquals(Design.BRICK, ablage.design.value)
 
         fake.codes.clear()
-        fake.antworten["getAppTheme"] = AppThemeResponse(success = true, theme = "noppe")
+        fake.antworten["getAppTheme"] = AppThemeResponse(success = true, theme = Design.NOPPE)
         angemeldet()
         advanceUntilIdle()
-        assertEquals("noppe", t.sitzung.state.value.appTheme)
-        assertEquals("Das Design des Kontos überlebt den Kaltstart", "noppe", ablage.design.value)
+        assertEquals(Design.NOPPE, t.sitzung.state.value.appTheme)
+        assertEquals("Das Design des Kontos überlebt den Kaltstart", Design.NOPPE, ablage.design.value)
     }
 
     @Test

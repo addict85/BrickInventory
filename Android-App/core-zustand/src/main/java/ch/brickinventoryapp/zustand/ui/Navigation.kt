@@ -1,7 +1,9 @@
 package ch.brickinventoryapp.zustand.ui
 
-import androidx.annotation.Keep
+import ch.brickinventoryapp.model.ui.Scannerherkunft
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.model.KEINE_FARBE
+import ch.brickinventoryapp.model.fach.Postenart
 import kotlinx.serialization.Serializable
 
 /**
@@ -18,7 +20,7 @@ sealed interface Screen {
     @Serializable data object Wanted : Screen
 
     /** Dasselbe Set kann neu und gebraucht auf der Merkliste stehen; erst der Zustand macht es eindeutig. */
-    @Serializable data class MerkpostenDetail(val setNumber: String, val condition: String) : Screen
+    @Serializable data class MerkpostenDetail(val setNumber: String, val condition: Zustand) : Screen
     @Serializable data class CatalogDetail(val setNumber: String) : Screen
     @Serializable data class SetDetail(val setNumber: String) : Screen
     @Serializable data object Parts : Screen
@@ -37,7 +39,7 @@ sealed interface Screen {
     @Serializable data object Haushalt : Screen
     @Serializable data object CsvImport : Screen
     @Serializable data object Konto : Screen
-    @Serializable data object BarcodeScanner : Screen
+    @Serializable data class BarcodeScanner(val herkunft: Scannerherkunft) : Screen
     @Serializable data object Comparison : Screen
     @Serializable data object Monitoring : Screen
 
@@ -61,22 +63,6 @@ sealed interface Screen {
 }
 
 /**
- * Welche Art Posten eine Route meint. Als Aufzählung, damit ein Tippfehler nicht
- * erst am Server auffällt; [kennung] ist der Text, den Api und Bildschirme führen.
- * Keep: Die Routen tragen sie serialisiert; R8 darf ihren Serializer nicht umbenennen.
- */
-@Keep
-@Serializable
-enum class Postenart(val kennung: String) {
-    SET("set"), PART("part"), FIG("fig");
-
-    companion object {
-        /** Wirft bei einem unbekannten Text: Die Kennungen stammen aus dem eigenen Code. */
-        fun aus(kennung: String): Postenart = entries.first { it.kennung == kennung }
-    }
-}
-
-/**
  * Schlüssel der gemerkten Rollposition eines Reiters. Die Reiter-Ziele und ihre
  * Listen benutzen denselben Text, damit „Reiter angetippt, oben anfangen“ genau
  * die Position verwirft, die das Ziel gemerkt hat.
@@ -90,3 +76,18 @@ val Screen.rollSchluessel: String
         Screen.Settings -> "settings"
         else -> toString()
     }
+
+/**
+ * Der Teilgraph aus Einrichtung und Anmeldung. Kein [Screen]: Er ist kein Ziel,
+ * sondern hält das ViewModel, das beide teilen; die App beginnt in ihm.
+ */
+@Serializable
+data object AnmeldungBereich
+
+/**
+ * Liste und Detail des Katalogs als Teilgraph: Beide holen ihr ViewModel an dessen
+ * Eintrag, so sieht die Liste das „besitze ich“ aus dem Detail. Steht hier, weil nur
+ * core-zustand das Serialisierungs-Plugin hat; die feature-Module haben keines.
+ */
+@Serializable
+data object KatalogBereich

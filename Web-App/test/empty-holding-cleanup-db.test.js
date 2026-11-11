@@ -1,6 +1,5 @@
 /**
  * Wird der letzte Kaufpreis gelöscht, bleibt NICHTS zurück.
- * Ausführlich: docs/begruendungen/test/empty-holding-cleanup-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): cleanupWhenEmpty aus der Set-Konfiguration
  * entfernt → drei der vier Teilschritte werden rot (Galerie, Statistik,
@@ -10,16 +9,13 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const express = require(path.join(ROOT, 'node_modules', 'express'));
 const { haeltFigur, haeltSet, haeltTeil, haltZeile, mengeVon } = require('./helpers/bestand');
 
 test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz',
@@ -117,7 +113,6 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz',
       // einer Erfassung den ganzen Bestand mitnähme.
       // Zwei Fragen, zwei Tabellen (Migration 0036): Steht die Bestandszeile
       // noch, und wie viele Exemplare sagen die Erfassungen? Vorher …
-      // Ausführlich: docs/begruendungen/test/empty-holding-cleanup-db.test.js.md#stelle
       assert.ok(await haltZeile(db, uid, BLEIBT), 'das andere Set wurde mitgelöscht');
       assert.equal(await mengeVon(db, uid, BLEIBT), 1,
         'das andere Set hat seine Erfassung verloren');

@@ -2,7 +2,6 @@ import path from 'path';
 import type { Response } from 'express';
 
 // Ein Fehler beim Ausliefern bekommt seine eigene Antwort statt pauschal 404.
-// Ausführlich: docs/begruendungen/src/http/dateiAusliefern.ts.md#dateifehler
 
 type DateiFehler = Error & { status?: number; statusCode?: number; code?: string };
 

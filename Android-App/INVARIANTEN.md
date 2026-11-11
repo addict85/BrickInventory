@@ -46,7 +46,7 @@ zurücksetzen, sonst bleibt der Knopf nach einem Fehler dauerhaft gesperrt.
 
 ## Abgelaufene Sitzung (HTTP 401)
 
-**Dateien:** `data/repository/RepoBasis.kt`, `app/di/AppModule.kt`,
+**Dateien:** `data/repository/Abruf.kt`, `app/di/AppModule.kt`,
 `data/SessionExpiredSignal.kt`, `zustand/ui/SitzungsDienst.kt`
 **Test:** `SessionAndLifecycleTest`
 
@@ -203,41 +203,23 @@ weiter minütlich.
 ## Ergebnis hat genau zwei Varianten — kein `else`
 
 **Datei:** `data/repository/Ergebnis.kt`
-**Test:** `ResultAndStateSplitTest`
+**Test:** `MediaAuthTest` („kein when ueber Result benutzt einen else-Zweig“)
 
-`safeCall()` liefert nur `Success` oder `Error`. Die frühere dritte Variante
-`Loading` wurde nie erzeugt und hatte einen einzigen Effekt: Jedes `when`
-brauchte einen `else`-Zweig — und `else -> {}` verschluckt stillschweigend
-auch jeden Fall, der später dazukommt.
-
-Mit zwei Varianten ist jedes `when` erschöpfend, und eine neue Variante
-bricht den Build an genau den Stellen, die sie behandeln müssen. Deshalb:
-**keinen `else`-Zweig nachrüsten**, weder in `Result` selbst noch in einem
-`when` darüber. Der Test prüft das für alle Quelldateien — und zwar je Block
-auf dessen eigener Ebene, damit ein verschachteltes `when` nicht als
-Error-Zweig des äusseren durchgeht.
+Mit zwei Varianten (`Success`, `Error`) ist jedes `when` erschöpfend, und eine
+neue Variante bricht den Build an genau den Stellen, die sie behandeln müssen.
+Ein `else`-Zweig verschluckte sie still; deshalb keinen nachrüsten.
 
 ## Zustand ist nach Domänen getrennt
 
-**Dateien:** `*/ui/Zustand*.kt`, `zustand/ui/AppViewModel.kt`, `MainActivity.kt`
-**Test:** `ResultAndStateSplitTest`
+**Dateien:** `*/ui/Zustand*.kt`, `zustand/ui/AbgeleiteterZustand.kt`
+**Tests:** `ZustandsflussBreiteTest`, `AbgeleiteterZustandTest`, `TeileViewModelTest` u. a. („nach dem Abmelden …“)
 
-`AppUiState` hält nur noch, was App-weit gilt: Sitzung, Einstellungen, Sets,
-Dashboard-Zahlen, Barcode-Dialog. Alles Bereichsspezifische hat einen eigenen
-Flow — `PartsUiState`, `FinanceUiState`, dazu die schon länger getrennten
-`CatalogUiState`, `SetDetailUiState`, `ManualItemDetailUiState`,
-`CsvImportUiState`.
-
-Der Grund ist immer derselbe: Ein Flow rekomponiert **alle** seine
-Sammelstellen. Lag `partsLoading` im Haupt-State, rekomponierte jedes
-Blättern durch die Teileliste auch Galerie und Navigationsleiste.
-
-Zwei Folgeregeln:
-- `MainActivity` sammelt **nicht** den ganzen Zustand für das Design, sondern
-  `vm.appTheme` (abgeleitet, `distinctUntilChanged`). An der Wurzel der
-  Composition ist ein breiter Flow am teuersten.
-- `logout()` muss **jeden** dieser Flows zurücksetzen. Ein vergessener Flow
-  zeigt dem nächsten Nutzer auf demselben Gerät fremde Daten.
+`AppUiState` hält nur die Sitzung; jeder Bereich hat seinen eigenen Fluss. Ein
+Fluss rekomponiert **alle** seine Sammelstellen, ein Bereichsfeld im
+gemeinsamen Zustand zöge also bei jedem Laden die ganze App mit. Wer nur einen
+Teil braucht (die Wurzel nur das Design), leitet ihn mit `abgeleitet { … }` ab
+und sieht nur dessen echte Änderungen. Beim Abmelden leert jeder Bereich
+seinen Zustand selbst; sonst sähe der nächste Nutzer fremde Daten.
 
 ## Zielplattform SDK 36
 
@@ -389,8 +371,8 @@ auseinandergelaufen sind.
 
 ## Rollpositionen werden ausdrücklich wiederhergestellt
 
-**Dateien:** `ui/ScrollMemory.kt` (Helfer), `app/nav/CollectionGraph.kt`,
-`app/nav/ToolsGraph.kt`
+**Dateien:** `ui/ScrollMemory.kt` (Helfer), `sammlung/ui/SammlungGraph.kt`,
+`teile/ui/TeileGraph.kt`, `finanzen/ui/FinanzenGraph.kt`
 **Test:** `ListScrollPositionTest`
 
 Jeder Reiter mit einer Liste ruft `ScrollPositionKeeper(...)` in seinem
@@ -422,7 +404,7 @@ die alte Stelle zeigt sonst auf Einträge, die es so nicht mehr gibt.
 
 ## Scroll-Zustände von Listen liegen ausserhalb ihres Navigationsziels
 
-**Dateien:** `AppNavigation.kt`, `app/nav/CollectionGraph.kt`, `app/nav/ToolsGraph.kt`
+**Dateien:** `AppNavigation.kt`, `sammlung/ui/SammlungGraph.kt`, `teile/ui/TeileGraph.kt`
 **Test:** `ListScrollPositionTest`
 
 Führt eine Liste in eine Detailansicht, gehört ihr `LazyGridState` /
@@ -464,7 +446,8 @@ melden.
 ## Bildschirme sind zustandslos, Routen kennen das ViewModel
 
 **Dateien:** `*/ui/screens/*`, `*/ui/dialogs/*`, `*/ui/viewmodel/*Aktionen.kt`
-**Test:** `ScreenViewModelWiringTest`
+**Test:** keiner eigens — die Oberflächentests bauen Bildschirme mit festem Zustand
+ohne Hilt; einer, der sich ein ViewModel holte, liesse sich dort nicht aufbauen.
 
 Nur ein Composable, dessen Name auf `Route` endet, nimmt ein ViewModel. Die
 Route sammelt die Flüsse und reicht eine Zustandsklasse und eine
@@ -480,109 +463,21 @@ Nur der Navigationsgraph kennt den NavController.
 ## Der Navigationsaufbau baut Navigation
 
 **Dateien:** `AppNavigation.kt`, `ui/dialogs/`
-**Test:** `NavigationHostSizeTest`
 
-`BrickInventoryManagerApp()` hält die Scroll-Zustände, ein paar
-`LaunchedEffect`s und den NavHost. Dialoge gehören **nicht** hinein — sie
-bekommen eine eigene Datei unter `ui/dialogs/`.
-
-Der **Aufruf** bleibt im Navigationsaufbau, samt seiner Bedingung
-(`if (state.barcodeResult != null)`). Damit steht an genau einer Stelle, WANN
-ein Dialog erscheint; das WIE steht in seiner eigenen Datei.
-
-Grund: Die Funktion war 277 Zeilen lang, wovon rund fünfzehn der eigentliche
-NavHost waren — den grössten Block machte ein Erfassungsformular aus. Wer an
-der Navigation etwas ändern wollte, las erst daran vorbei. Dasselbe Muster
-hatte das Webfrontend in `js/07-admin.js`.
-
-Dialoge lesen ihren Zustand selbst vom ViewModel, wie die Reiter-Bildschirme.
+Dialoge stehen nicht im Navigationsaufbau, sondern in einer eigenen Datei unter
+`ui/dialogs/`; der **Aufruf** samt Bedingung bleibt dort, damit an einer Stelle
+steht, WANN ein Dialog erscheint. Die Länge hält detekt (`LongMethod`).
 
 ## Grosse Bildschirme werden in Abschnitte geteilt
 
 **Dateien:** `*/ui/screens/*Sections.kt`
-**Test:** `ScreenSectionSplitTest`
 
-Ein Bildschirm-Composable bleibt unter 300 Zeilen. Seine Abschnitte stehen in
-einer `*Sections.kt`-Datei daneben.
-
-**Listenabschnitte sind `fun LazyListScope.x(…)`, nicht `@Composable`.** Sie
-tragen `item { … }` in eine LazyColumn ein; als @Composable liessen sie sich
-dort gar nicht aufrufen. Nur Abschnitte in einer gewöhnlichen `Column` (Katalog)
-sind @Composable.
-
-**Zustand, den ein Abschnitt SETZT, wird als `MutableState` übergeben** — der
-Bildschirm hält ihn dann als `val x = remember { mutableStateOf(…) }` statt per
-`by`. Als Wert übergeben wäre es eine Kopie, und die Zuweisung ginge ins Leere.
-Betrifft `detailRetryState`, `activeCategory` und die drei Katalog-Blätter.
-
-**Beim Herauslösen:** Den Rumpf WORTGLEICH übernehmen und nur die Einrückung
-ändern. Die Parameterliste aus den freien Namen des Blocks bestimmen. Und danach
-prüfen, dass jede Codezeile des Originals genau einmal wieder vorkommt — ein
-Schnitt, der mitten durch ein `if (…) {` läuft, fällt sonst erst dem Compiler
-auf.
-
-**Der Barcode-Scanner** ist entlang derselben Regel geteilt: Die
-Bildanalyse-Schleife steht in `BarcodeAnalyzer.kt`, die Kamera-Vorschau bleibt
-im Bildschirm. Die Kamerasteuerung (`_kameraCtrl`) gehört zur VORSCHAU — sie
-wird erst beim Binden gefüllt.
-
-**Beim Aufteilen einer Datei die WILDCARD-Importe mitnehmen.** Eine
-herausgelöste Datei erbt `androidx.compose.material3.*`,
-`androidx.compose.material.icons.filled.*` und so weiter von ihrer Quelle.
-
-Grund: Wer nur die Einzelimporte vergleicht, sieht die per Wildcard gedeckten
-Namen gar nicht — sie können also nicht als fehlend auffallen. Genau daran ist
-der Build in Nachtrag 100 gescheitert (`Unresolved reference 'ArrowDropDown'`).
-`SplitFileImportsTest` prüft beides in Millisekunden; der Gradle-Lauf, der
-denselben Fehler findet, braucht Minuten.
-
-**Beim Aufteilen auf `private` achten.** `private` gilt in Kotlin DATEIWEIT. Ein
-Block, der in eine andere Datei wandert, verliert den Zugriff auf alle privaten
-Nachbarn seiner Quelle — ohne dass sich an Namen oder Importen etwas ändert.
-
-Die Antwort ist `internal` an der Deklaration: sichtbar im Modul, weiterhin
-nicht Teil einer öffentlichen Schnittstelle. Betrifft `ThemeRow`, `sortLabel`
-(CatalogScreen) und `BricksetQueueRow` (MonitoringSections).
-
-`SplitFileImportsTest` prüft das mit; keine Import-Prüfung kann es sehen, weil
-es eine reine Sichtbarkeitsfrage ist.
-
-**Beim Aufteilen auch `@OptIn` mitnehmen.** Die Annotation steht an der
-DEKLARATION (oder mit `@file:` an der Datei) — ein herausgelöster Block erbt sie
-nicht. Betrifft `ModalBottomSheet`, `TopAppBar`, `PullToRefreshBox`,
-`combinedClickable`, `stickyHeader`, `FlowRow` und Verwandte.
-
-Damit sind es DREI Dinge, die eine Aufteilung mitnehmen muss und die keine
-Import-Prüfung sieht: die Wildcards der Quelle, die Sichtbarkeit (`private` →
-`internal`) und die Opt-ins. Alle drei prüft `SplitFileImportsTest`.
-
-**ViewModel-Erweiterungen:** Es gibt keine mehr (kein `fun AppViewModel.x`); die
-Feature-Funktionen sind Methoden der Bereichs-ViewModels. Der Erweiterungs-Import
-entfällt, die Zählung unten stammt aus der Zeit davor.
-
-Damit sind es VIER Dinge, die eine Aufteilung mitnehmen muss und die keine
-gewöhnliche Import-Prüfung sieht: die Wildcards der Quelle, die Sichtbarkeit
-(`private` → `internal`), die Opt-ins und die Erweiterungs-Importe. Alle vier
-prüft `SplitFileImportsTest`.
-
-**Fünftens: Parametertypen sind zu PRÜFEN, nicht zu schätzen.** Beim Aufteilen
-entsteht für jeden freien Namen ein Parameter — und dessen Typ steht in der
-Quelldatei, nicht im Bauchgefühl. Drei Fallen, alle in Nachtrag 104 eingetreten:
-
-- Ein lokales `fun fmtPrice(v: Double?)` wird als Parameter zu
-  `fmtPrice: (Double?) -> String`, und der Aufruf braucht `::fmtPrice`.
-  Ohne `::` meldet Kotlin „Function invocation expected".
-- Ein früher Ausstieg (`if (valuation == null) return`) erzeugt einen
-  SMART-CAST. Der Rumpf darunter greift ohne `?.` zu — die Signatur muss also
-  den NICHT-nullbaren Typ verlangen, nicht `?`.
-- Nullbarkeit nachschlagen statt annehmen: `authToken` ist `String`, nicht
-  `String?`; `pnlPct` ist `String?`, nicht `Double?`.
-
-**Sechstens: Importe nicht raten.** Beim Erzeugen einer neuen Datei entsteht die
-Versuchung, für einen unbekannten Namen einen plausiblen Import zu schreiben —
-`import ch.brickinventoryapp.util.fmtPrice` gibt es nicht, dort heissen die
-Funktionen `fmtMoney`, `fmtMoneyOrDash` und `fmtInt`. `SplitFileImportsTest`
-prüft, dass jeder projekteigene Import ein Ziel hat.
+Ein Bildschirm-Composable bleibt kurz (detekt `LongMethod`); seine Abschnitte
+stehen in einer `*Sections.kt`-Datei daneben. Listenabschnitte sind
+`fun LazyListScope.x(…)`, weil sie `item { … }` eintragen. Zustand, den ein
+Abschnitt SETZT, wird als `MutableState` übergeben — als Wert wäre es eine
+Kopie, und die Zuweisung ginge ins Leere. Importe, Sichtbarkeit und Opt-ins
+einer aufgeteilten Datei prüft der Compiler.
 
 ## Endlos-Scroll: Sperre vor dem launch, Schlüssel beim Anhängen sieben
 

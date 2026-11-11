@@ -1,6 +1,5 @@
 // Der Importbalken im Seitenkopf ist ein geschlossener Gegenstand: Nach aussen zählen gibCheckOnLoad() und
 // gibZuruecksetzen(), der Rest ist Innenleben.
-// Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#der-block-lag-in-js-01-core-js-und-war-d
 import { html } from './00-escapen.js';
 import { registerActions } from './00-registry.js';
 import { apiRoh, api, apiDaten } from './01-api.js';
@@ -139,7 +138,6 @@ function gibToggle() {
  * Eine Zeile fürs Import-Protokoll, oder null: Eine Zeile ohne Setnummer sagt nichts (sie erschien 322-mal
  * als „undefined – aktualisiert“). Eine Fassung für beide Protokolle, damit die Schranke nicht an einer
  * Stelle fehlt.
- * Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#protokollzeile
  * @param {ImportErgebnis | null | undefined} r
  * @param {string} [warnZusatz]
  */
@@ -195,7 +193,6 @@ export function gibStart() {
 
   // Kein Token in der Adresse: EventSource schickt mit withCredentials das Sitzungscookie, und ein ?token=
   // stünde im Proxy-Protokoll und im Verlauf.
-  // Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#kein-token-in-der-adresse
   const url = `/api/v1/sets/import/csv/stream?sprache=${encodeURIComponent(LANG)}`;
 
   if (typeof EventSource !== 'undefined') {
@@ -305,7 +302,6 @@ function zeigeLetztenImport() {
 /**
  * Setzt den Balken auf „nichts läuft“. Eine Funktion statt Zeilen beim Abmelden: Wer von aussen zurücksetzt,
  * müsste sonst das Innenleben dieser Datei kennen und bei jeder neuen Variable mitdenken.
- * Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#gibzuruecksetzen
  */
 export function gibZuruecksetzen() {
   const balken = G('global-import-bar');
@@ -397,7 +393,6 @@ export function addCsvLog(text, art){
 // SSE-Ereignisse beim Erfassen eines Sets. Gewartet wird nur auf Set-Daten und Bild; Anleitungen, Teile und
 // Preis laufen danach im Hintergrund, und ein Balken für Arbeit, auf die niemand wartet, wäre eine
 // Behauptung.
-// Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#handlesseevent
 /**
  * @param {SseEreignis} ev
  * @param {string} singleSetName
@@ -440,7 +435,8 @@ function cancelImport(){
  * @param {string} path @param {object} body @param {(ev: SseEreignis) => void} onEvent
  * @returns {Promise<void>} */
 export function streamRequest(path, body, onEvent){
-  const ac = _activeAbort = new AbortController();
+  const ac = new AbortController();
+  _activeAbort = ac;
   G('btn-cancel-import').style.display='inline-flex';
   return apiRoh('POST', path, { body, signal: ac.signal })
     .then(res=>readSSE(res,onEvent,ac.signal))
@@ -456,7 +452,6 @@ async function readSSE(res, onEvent, signal){
   // Antwortet der Server mit JSON statt einem Strom, ist die Sache entschieden (etwa: Set schon im
   // Blickfeld). Die Antwort geht als ein Ereignis durch; sonst wartete die Anzeige auf eine data:-Zeile, die
   // nie kommt.
-  // Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#antwortet-der-server-mit-json
   if ((res.headers.get('content-type') || '').includes('application/json')) {
     const daten = await res.json().catch(() => null);
     if (daten) onEvent({ step: daten.success === false ? 'error' : 'done', ...daten });

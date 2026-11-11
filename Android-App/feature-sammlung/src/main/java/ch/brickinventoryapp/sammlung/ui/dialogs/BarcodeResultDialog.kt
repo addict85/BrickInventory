@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.sammlung.ui.dialogs
 
+import ch.brickinventoryapp.model.ui.Scannerherkunft
+import ch.brickinventoryapp.model.fach.Erfassungswunsch
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.gemeinsam.ui.InfoPlakette
 import ch.brickinventoryapp.ui.components.ErfassenDialog
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -52,7 +55,7 @@ import ch.brickinventoryapp.ui.util.fmtInt
  * an einer Stelle, wann er erscheint, und hier nur, wie er aussieht.
  */
 @Composable
-fun BarcodeResultRoute(vm: ErfassungViewModel, imageLoader: ImageLoader) {
+internal fun BarcodeResultRoute(vm: ErfassungViewModel, imageLoader: ImageLoader) {
     val state by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
     val barcodeState by vm.barcodeState.collectAsStateWithLifecycle()
@@ -79,7 +82,7 @@ fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktion
 // und Lagerort gingen beim Drehen verloren.
 var barcodeQuantity by rememberSaveable(barcodeState.result) { mutableStateOf("1") }
 var barcodePriceText by rememberSaveable(barcodeState.result) { mutableStateOf("") }
-var barcodeCondition by rememberSaveable(barcodeState.result) { mutableStateOf(state.userDefaultCondition ?: "N") }
+var barcodeCondition by rememberSaveable(barcodeState.result) { mutableStateOf(state.userDefaultCondition ?: Zustand.NEU) }
 // Eigentümer wie im Galerie-Dialog vorbelegen: das eigene Konto. Repository, API
 // und Server nehmen ihn entgegen, also muss auch dieser Weg ihn abfragen.
 var barcodeOwner by rememberSaveable(barcodeState.result, blick.householdMembers) {
@@ -90,7 +93,7 @@ var barcodeOwner by rememberSaveable(barcodeState.result, blick.householdMembers
 val lagerZustand = zustand.lagerZustand
 val lagerVorgabe = lagerZustand.vorgabe?.name ?: ""
 var barcodeLagerort by rememberSaveable(barcodeState.result, lagerVorgabe) { mutableStateOf(lagerVorgabe) }
-val fuerTeileliste = barcodeState.source == "partslist"
+val fuerTeileliste = barcodeState.source == Scannerherkunft.TEILELISTE
 // Derselbe Rahmen wie „Set erfassen“: Titel, Felder untereinander, rechts der volle Knopf.
 ErfassenDialog(
     titel = if (fuerTeileliste) stringResource(R.string.main_barcode_add_partslist)
@@ -102,16 +105,18 @@ ErfassenDialog(
     onBestaetigen = {
         if (fuerTeileliste) {
             // Nur die Nummer: Aus der Teileliste entsteht kein Bestand.
-            aktionen.confirmAddBarcode(barcodeState.result)
+            aktionen.confirmAddBarcode(Erfassungswunsch(barcodeState.result))
         } else {
-            aktionen.confirmAddBarcode(
-                barcodeState.result, NumericInput.leseBetrag(barcodePriceText), barcodeCondition,
+            aktionen.confirmAddBarcode(Erfassungswunsch(
+                setNumber = barcodeState.result,
+                menge = barcodeQuantity.toIntOrNull()?.coerceAtLeast(1) ?: 1,
+                kaufpreis = NumericInput.leseBetrag(barcodePriceText),
+                zustand = barcodeCondition,
                 // Ohne Haushalt gar nichts mitschicken — der Server bleibt dann beim
                 // eigenen Konto (gleiche Regel wie im Galerie-Dialog).
-                if (blick.householdMembers.size > 1) barcodeOwner else null,
-                barcodeLagerort.trim().takeIf { it.isNotEmpty() },
-                quantity = barcodeQuantity.toIntOrNull()?.coerceAtLeast(1) ?: 1,
-            )
+                besitzer = if (blick.householdMembers.size > 1) barcodeOwner else null,
+                lagerort = barcodeLagerort.trim().takeIf { it.isNotEmpty() },
+            ))
         }
     },
     // Während des Hinzufügens nicht schliessbar — der Aufruf läuft noch.
@@ -191,11 +196,11 @@ ErfassenDialog(
                     }
             }
             // Erfassungsfelder nur beim Erfassen in die Sammlung. Aus der Teileliste entsteht
-            // kein Bestand — confirmAddBarcode() reicht im Zweig `source == "partslist"` nur
+            // kein Bestand — confirmAddBarcode() reicht im Zweig TEILELISTE nur
             // die Nummer weiter. Eigentümer, Kaufpreis und Zustand wären dort Felder ohne
             // Wirkung, die aussehen wie eine Eingabe, die zählt. Bild, Name, Nummer und
             // Kennzahlen bleiben: Sie helfen zu prüfen, ob das richtige Set gescannt wurde.
-            if (barcodeState.source != "partslist") {
+            if (barcodeState.source != Scannerherkunft.TEILELISTE) {
                 // Kaufpreis direkt beim Erfassen (optional) — leer lassen übernimmt
                 // serverseitig den aktuellen Marktpreis (gleiche Logik wie Webapp).
                 // OwnerPicker blendet sich ohne Haushalt selbst aus

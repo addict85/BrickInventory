@@ -6,7 +6,8 @@ import androidx.core.os.LocaleListCompat
 /**
  * Wendet die gespeicherte Sprachpräferenz ("system", "en", "de") über
  * AppCompatDelegate.setApplicationLocales() an.
- * Ausführlich: docs/begruendungen/core-data/data/util/LanguageManager.kt.md#languagemanager
+ * AppCompatDelegate speichert die Wahl selbst und erzeugt die Activity neu; ein eigener
+ * Context-Wrapper wäre doppelte Arbeit.
  */
 object LanguageManager {
 
@@ -26,7 +27,8 @@ object LanguageManager {
     /**
      * Context mit der gewählten App-Sprache — für SERVICES und andere
      * Nicht-Activity-Kontexte.
-     * Ausführlich: docs/begruendungen/core-data/data/util/LanguageManager.kt.md#nicht
+     * setApplicationLocales() lokalisiert nur Activities; ein Service bekäme unter Android 13 sonst
+     * die Systemsprache.
      */
     // Das App-Bundle trennt die Sprachen nicht (build.gradle.kts, bundle.language),
     // und verteilt wird ohnehin das APK: Alle Texte sind immer an Bord.

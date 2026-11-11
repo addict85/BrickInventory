@@ -1,6 +1,5 @@
 /**
  * Die Summenzeile der Erfassungen rechnet der SERVER — einmal.
- * Ausführlich: docs/begruendungen/test/acquisition-totals.test.js.md#kopf
  *
  * Gegenprobe (08.11.2026 gemessen): acqSummary() liest totals.quantity nicht
  * (`const menge = 0`) bzw. summenText() rechnet nicht mit totals.amount → rot:

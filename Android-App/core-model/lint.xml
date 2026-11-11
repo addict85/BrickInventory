@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!-- core-model ist reines Kotlin und kennt kein @Keep (ModulgrenzenTest); die
+         serialisierten Enums hält app/proguard-rules.pro. -->
+    <issue id="MissingKeepAnnotation" severity="ignore" />
+    <!-- Die Prüfung stammt aus der Navigation; im Lint von core-model allein ist sie unbekannt. -->
+    <issue id="UnknownIssueId">
+        <ignore regexp="MissingKeepAnnotation" />
+    </issue>
+</lint>

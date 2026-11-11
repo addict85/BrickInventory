@@ -60,6 +60,8 @@ import ch.brickinventoryapp.testing.Quellen
  *      rot „core-ui/ui/screens enthält nur die Kamera-Bausteine“ (Schichtung …)
  *   O  gegenproben/fremder-paketstamm.patch: feature-teile bekommt eine Datei im Paket
  *      ch.brickinventoryapp.sammlung → rot „außerhalb des Paketstamms ihres Moduls“
+ *   V  gegenproben/daten-reicht-netz-weiter.patch: core-data bindet core-netz per api ein →
+ *      rot „Modulkanten per api nur zu core-model: [core-data → core-netz]“ (Schichtung …)
  */
 class ModulgrenzenTest {
 
@@ -153,8 +155,8 @@ class ModulgrenzenTest {
             // auf dem sich Bereiche doch kennen.
             "core-ui-bestand" to setOf("core-model", "core-ressourcen", "core-ui"),
             // Der Zustand liegt unter der Oberfläche: Bildschirme lesen ihn, er kennt kein Compose-Bauteil.
-            "core-zustand" to setOf("core-model", "core-ressourcen", "core-data", "core-sicherheit", "core-dienste"),
-            "core-testing" to setOf("core-zustand", "core-data", "core-sicherheit", "core-ui"),
+            "core-zustand" to setOf("core-model", "core-ressourcen", "core-netz", "core-data", "core-sicherheit", "core-dienste"),
+            "core-testing" to setOf("core-zustand", "core-data", "core-sicherheit", "core-offline"),
         )
         val kerne = module().filterKeys { it.startsWith("core-") }
         assertEquals("jedes Kernmodul hat eine Regel", erlaubt.keys, kerne.keys)
@@ -167,6 +169,11 @@ class ModulgrenzenTest {
             val haupt = hauptAbhaengigkeiten(bau)
             if (name != "core-testing") assertTrue("$name bindet core-testing nicht nur für Tests ein", "core-testing" !in haupt)
         }
+        // api reicht ein Modul an jeden weiter, der dieses kennt; nur die Modelle sind gemeinsame Sprache.
+        val weitergereicht = module().flatMap { (name, bau) ->
+            abhaengigkeiten(bau).filter { it.konfiguration == "api" && it.ziel != "core-model" }.map { "$name → ${it.ziel}" }
+        }
+        assertTrue("Modulkanten per api nur zu core-model: $weitergereicht", weitergereicht.isEmpty())
         // core-netz ist die untere Netz-Schicht: Ablage, Repositories und Hilt bleiben in core-data.
         val netz = kerne.getValue("core-netz")
         val bibliotheken = Regex("""\(libs\.([\w.]+)\)""").findAll(netz).map { it.groupValues[1] }.toList()
@@ -234,7 +241,7 @@ class ModulgrenzenTest {
             assertEquals("$datei, pluginManagement und dependencyResolutionManagement: $google", 2, google.size)
             for (z in google) assertTrue("Ohne Inhaltsfilter in $datei: $z", z.startsWith("google { content {") &&
                 listOf("com\\\\.android.*", "com\\\\.google.*", "androidx.*").all { z.contains("includeGroupByRegex(\"$it\")") })
-            // Exklusiv: androidx, com.android und com.google.android nur von Google (sec17 B-N4).
+            // Exklusiv: androidx, com.android und com.google.android nur von Google.
             val exklusiv = Regex("""exclusiveContent \{\s*forRepository \{ google\(\) }\s*filter \{([^\n]*)}""")
                 .findAll(settings).map { it.groupValues[1] }.toList()
             assertEquals("exclusiveContent je Block in $datei", 2, exklusiv.size)
@@ -258,7 +265,7 @@ class ModulgrenzenTest {
         assertTrue("Konventionen tragen keine Modulkanten ein: $mitKante", mitKante.isEmpty())
     }
 
-    /** pdfium parst Dateien von Dritten; nur der Dienst im isolierten Prozess darf es (sec17 A-N6). */
+    /** pdfium parst Dateien von Dritten; nur der Dienst im isolierten Prozess darf es. */
     @Test
     fun `PdfRenderer steht nur im isolierten Render-Dienst`() {
         val aufruf = Regex("""\bPdfRenderer\s*\(""")
@@ -271,7 +278,7 @@ class ModulgrenzenTest {
 
     /**
      * Ein Schlüssel mit Gruppen-Regex deckte jedes künftige Paket der Gruppe, ohne
-     * Prüfsummeneintrag (sec17 B-N3). Ein neuer Prüfsummenlauf schreibt wieder Regexe:
+     * Prüfsummeneintrag. Ein neuer Prüfsummenlauf schreibt wieder Regexe:
      * Dann hier rot, und im Pull-Request werden sie durch die Gruppen ersetzt.
      */
     @Test
@@ -282,7 +289,7 @@ class ModulgrenzenTest {
         assertEquals("Gruppen-Regex im Vertrauen: $regex", emptyList<String>(), regex)
     }
 
-    /** Lücken im Bauwerkzeug sind begründet, befristet und betreffen eine Fassung, die es gibt (sec17 B-N5). */
+    /** Lücken im Bauwerkzeug sind begründet, befristet und betreffen eine Fassung, die es gibt. */
     @Test
     fun `jede Luecke im Bauwerkzeug ist begruendet, befristet und aktuell`() {
         val meta = File(projekt, "gradle/verification-metadata.xml").readText()

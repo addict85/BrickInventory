@@ -196,7 +196,6 @@ internal class ZertifikatsRueckfrage @Inject constructor() : ZertifikatsFrage {
  * bestätigter Erstkontakt), muss ein Zertifikat der gezeigten Kette ihn tragen,
  * und die Kette muss bis dahin lückenlos signiert sein — dann gilt sie auch ohne
  * bekannte CA. Ohne Pin wird nie still vertraut. Andere Hosts (Bild-CDN)
- * Ausführlich: docs/begruendungen/core-sicherheit/sicherheit/ServerVertrauen.kt.md#z170
  */
 // Das Pinning braucht ihn: Er prüft die Kette per PKIX bis zum Pin bzw. über
 // WahlVertrauen und lehnt ab, was der Nutzer nicht bestätigt hat.
@@ -360,7 +359,6 @@ fun anker(chain: Array<X509Certificate>, vertraut: Array<X509Certificate>): X509
 /**
  * Hat jemand den Fingerabdruck aus einer zweiten Quelle abgeschrieben (Webapp,
  * Zertifikatsanzeige des Browsers)?
- * Ausführlich: docs/begruendungen/core-sicherheit/sicherheit/ServerVertrauen.kt.md#fingerabdruck-abtippen
  */
 const val FINGERABDRUCK_ABTIPPEN = 24
 

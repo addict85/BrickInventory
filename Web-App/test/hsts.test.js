@@ -3,7 +3,6 @@
  * HSTS am echten Server (dist/server.js), und nur über eine verschlüsselte
  * Verbindung: Im LAN läuft derselbe Server über http, und ein Browser, der
  * die Regel einmal gesehen hat, sperrte ihn danach ein Jahr lang aus.
- * Ausführlich: docs/begruendungen/test/hsts.test.js.md#wurzel
  *
  * Gegenproben (05.11.2026 gemessen, je einzeln, dist neu gebaut):
  *   A  in sicherheitsKoepfe() `if (ueberTls && …)` → `if (hstsAlter !== 0)` →

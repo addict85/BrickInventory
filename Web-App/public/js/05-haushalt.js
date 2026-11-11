@@ -14,7 +14,6 @@ import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor } from './01-rue
 /**
  * Einladen und Beitreten brauchen beide Seiten: das Hauptkonto erzeugt, das andere löst ein. Je nach Rolle
  * steht nur einer der Kästen da — ein Knopf, den der Server immer ablehnt, ist schlimmer als keiner.
- * Ausführlich: docs/begruendungen/public/js/05-haushalt.js.md#loadhousehold
  */
 export async function loadHousehold(){
   const [d, zf] = await Promise.all([api('GET','/v1/settings/household').catch(()=>null),

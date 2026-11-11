@@ -19,6 +19,7 @@ export type AcquisitionsResponse = {
   owner_user_id?: number;
   acquisitions: Acquisition[];
   totals: AcquisitionTotals;
+  degradiert?: string[];
   [feld: string]: unknown;
 };
 export type AcquisitionTotals = {
@@ -281,6 +282,7 @@ export type BlFarbTabelle = {
   success: true;
   source: string;
   map: Record<string, unknown>;
+  degradiert?: string[];
   [feld: string]: unknown;
 };
 export type BrickColor = {
@@ -533,6 +535,7 @@ export type EinrichtungStand = {
   };
   basis_url: string | null;
   https: boolean;
+  degradiert?: string[];
   [feld: string]: unknown;
 };
 export type EinstellungenGespeichert = {
@@ -736,6 +739,7 @@ export type GET_api_v1_sets_setNumber_parts_list = {
     [feld: string]: unknown;
   }>;
   error?: string | null;
+  degradiert?: string[];
   [feld: string]: unknown;
 };
 export type GetrenntesKonto = {
@@ -844,6 +848,7 @@ export type HouseholdStatusResponse = {
   open_invites: number;
   former_links: GetrenntesKonto[];
   error?: string | null;
+  degradiert?: string[];
   [feld: string]: unknown;
 };
 export type Instruction = {
@@ -1028,6 +1033,7 @@ export type ManualFigsResponse = {
     [feld: string]: unknown;
   }>;
   error?: string | null;
+  degradiert?: string[];
   [feld: string]: unknown;
 };
 export type ManualPartsResponse = {
@@ -1085,6 +1091,7 @@ export type ManualPartsResponse = {
     [feld: string]: unknown;
   }>;
   error?: string | null;
+  degradiert?: string[];
   [feld: string]: unknown;
 };
 export type MeResponse = {
@@ -1177,6 +1184,7 @@ export type MerkpostenPreiseResponse = {
   currency: string;
   current: CurrentByCondition;
   error?: string | null;
+  degradiert?: string[];
   [feld: string]: unknown;
 };
 export type MerkpostenUebernahmeResponse = {

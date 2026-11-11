@@ -3,9 +3,9 @@
  * Wurzelzertifikat — beides steht schon unter /ca.crt. */
 import { einrichtungStand } from '../../src/konto/einrichtungStand';
 import { istVerwalter, ipThrottle } from '../../src/konto/http/anmeldung';
-import { vertragsRouter } from '../../src/vertrag/pruefen';
 import { fehlerAntwort } from '../../src/http/httpAntwort';
-import type { OffeneAnfrage, Antwort } from '../../src/vertrag';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { OffeneAnfrage, Antwort } from '../../src/http/vertragsRouter';
 
 const router = vertragsRouter();
 

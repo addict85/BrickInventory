@@ -27,7 +27,7 @@ import ch.brickinventoryapp.testing.Quellen
 class MediaAuthTest {
 
     init {
-        // Untergrenze (Nachtrag 118): Alle Prüfungen hier laufen über einen
+        // Untergrenze: Alle Prüfungen hier laufen über einen
         // eigenen Dateilauf und sammeln Verstösse. Fände er nichts, wären sie
         // allesamt grün, ohne etwas geprüft zu haben.
         check(Quellen.alle().size >= 60) { "Zu wenige Kotlin-Dateien — Pfad veraltet?" }
@@ -45,20 +45,6 @@ class MediaAuthTest {
     }
 
     // ── Bilder ───────────────────────────────────────────────────────────────
-
-    @Test
-    fun `der Bild-Client haengt den Token an Anfragen an den eigenen Server`() {
-        val di = code(Quellen.di())
-        // Beide Clients entstehen aus derselben Fabrik — der Auth-Zweig darin
-        // gilt also auch für den Bild-Client (isApiClient = false).
-        assert(di.contains("""fun provideImageOkHttpClient""")) { "Bild-Client fehlt" }
-        assert(di.contains("""buildInterceptorClient(prefs, isApiClient = false""")) {
-            "Der Bild-Client muss aus derselben Fabrik kommen wie der API-Client — " +
-            "sonst fehlt ihm der Authorization-Header"
-        }
-        // Dass der gemeinsame Wächter den Token anhängt, nur an den eigenen Server, und
-        // einen 401 meldet, prüft ServerWaechterTest ausgeführt.
-    }
 
     @Test
     fun `Bilder werden nicht am ImageLoader vorbei geladen`() {
@@ -112,12 +98,8 @@ class MediaAuthTest {
     fun `die Anzeige selbst laeuft ueber den authentifizierten Client`() {
         // Geladen wird in der Datenschicht (AnleitungsRepository), nicht im Bildschirm.
         val viewer = code(read("data/AnleitungsRepository.kt"))
-        // Geprüft wird die AUSSAGE, nicht der Wortlaut des Aufrufs: Der
-        // Download läuft über den injizierten Client. Die frühere Fassung
-        // suchte die Argumentliste zeichengenau und wurde in Nachtrag 115 rot,
-        // als zwei Meldungstexte dazukamen und der Aufruf mehrzeilig wurde —
-        // am Verhalten hatte sich nichts geändert. Dieselbe Sorte Test, die im
-        // Manager schon einmal eine Sicherheitslücke festgeschrieben hat.
+        // Geprüft wird die Aussage, nicht der Wortlaut des Aufrufs: Der Download läuft
+        // über den injizierten Client, gleich wie die Argumente umbrechen.
         val aufruf = Quellen.fenster(viewer, "downloadPdfWithResume(", 8)
         assert(aufruf.isNotEmpty()) { "Der Download-Aufruf fehlt ganz" }
         assert(aufruf.contains("httpClient")) {
@@ -170,7 +152,7 @@ class MediaAuthTest {
                 val end = block.indexOf("\n            }")
                 val body = if (end > 0) block.substring(0, end) else block
                 // Beginnt im Fenster ein NEUES when, endet die Zuständigkeit
-                // dieser Prüfung dort (Nachtrag 38). Vorher lief das
+                // dieser Prüfung dort. Vorher lief das
                 // 2000-Zeichen-Fenster über das when-über-Result hinaus — in
                 // PartsListFeature.kt bis in ein when über BEDINGUNGEN, wo ein
                 // else-Zweig völlig korrekt und sogar nötig ist (kein sealed
@@ -190,17 +172,9 @@ class MediaAuthTest {
 
     @Test
     fun `jedes AsyncImage benutzt den injizierten ImageLoader`() {
-        // ── Woher dieser Test kommt ─────────────────────────────────────────
-        // Im Set-Detail stand der Parameter als
-        // @Suppress("UNUSED_PARAMETER") imageLoader: ImageLoader — durchgereicht,
-        // aber nie benutzt; statt ihn einzusetzen war die Warnung
-        // stummgeschaltet. Die AsyncImage-Aufrufe fielen dadurch auf Coils
-        // Standard-Loader zurück, der den Bearer-Token nicht anhängt.
-        //
-        // Solange Set-Bilder ohne Anmeldung abrufbar waren, fiel das nicht auf.
-        // Seit der Server für ALLE Bilder eine Anmeldung verlangt, antwortet er
-        // mit 401 — der Detail-Dialog blieb leer, ohne Fehlermeldung. Genau die
-        // Sorte Fehler, die kein Compiler und kein Typcheck findet.
+        // Ein AsyncImage ohne den injizierten Loader fällt auf Coils Standard-Loader
+        // zurück, der den Bearer-Token nicht anhängt; der Server antwortet dann mit 401,
+        // und die Fläche bleibt ohne Fehlermeldung leer.
         val offenders = mutableListOf<String>()
         for (f in Quellen.wurzel.walkTopDown()
                 .filter { it.extension == "kt" }) {

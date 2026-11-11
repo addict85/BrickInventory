@@ -1,7 +1,6 @@
 /**
  * Eine Datei, die zwischen Prüfung und Auslieferung verschwindet, darf den
  * Prozess NICHT beenden.
- * Ausführlich: docs/begruendungen/test/stream-guard.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): streamFileToResponse wieder durch
  * `createReadStream(...).pipe(res)` ersetzt → Kindprozess endet mit Code 7.

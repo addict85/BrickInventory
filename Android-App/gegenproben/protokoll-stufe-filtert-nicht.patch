@@ -1,6 +1,6 @@
 Gegenprobe: Ein abgewählter Stufen-Chip blendet keine Zeile aus
-Modul: app
-Test: ch.brickinventoryapp.app.MonitoringProtokollAnzeigeTest
+Modul: feature-verwaltung
+Test: ch.brickinventoryapp.verwaltung.MonitoringProtokollAnzeigeTest
 Rot: eine abgewaehlte Stufe
 
 diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringProtokoll.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringProtokoll.kt

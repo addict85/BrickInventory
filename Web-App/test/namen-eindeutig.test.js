@@ -1,6 +1,5 @@
 /**
  * Ein Funktionsname bedeutet eine Sache.
- * Ausführlich: docs/begruendungen/test/namen-eindeutig.test.js.md#kopf
  *
  * Gegenprobe (durchgefuehrt): einen Namen aus ERLAUBT entfernt -> rot; die
  * settings-Fassung wieder effectiveCondition genannt -> rot.

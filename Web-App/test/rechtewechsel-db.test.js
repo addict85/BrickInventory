@@ -1,6 +1,5 @@
 /**
  * Rechteentzug und Kontoloeschung muessen die offene Sitzung erreichen.
- * Ausführlich: docs/begruendungen/test/rechtewechsel-db.test.js.md#kopf
  *
  * Gegenproben (am 28.10. gemessen):
  *   A  bestaetigePasswort() aus PUT /users/:id/admin entfernt → rot:

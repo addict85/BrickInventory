@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.teile.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Postenart
+import ch.brickinventoryapp.model.fach.Figurenerfassung
+import ch.brickinventoryapp.model.fach.Teilerfassung
+import ch.brickinventoryapp.model.fach.Zustand
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
@@ -105,8 +109,14 @@ class TeileViewModel @Inject constructor(
         meldeFehler = { meldungen.zeige(meldungen.meldungFuerSnackbar(it)) },
         vergissScroll = { scrollMemory.vergiss("parts") },
         beschreibeFehler = { meldungen.meldung(it) },
-        lokal = TeileLokal(repo.beobachteTeile(), repo.beobachteManuelleTeile(),
-            figuren.beobachteFiguren(), figuren.beobachteManuelleFiguren()),
+        lokal = TeileLokal(
+            teile = { st -> repo.beobachteTeile(st.partsQuery, st.partsColorFilter, st.partsCategoryFilter, st.partsSpare) },
+            manuelleTeile = { st -> repo.beobachteManuelleTeile(st.partsQuery) },
+            figuren = { st -> figuren.beobachteFiguren(st.minifigsQuery) },
+            manuelleFiguren = { st -> figuren.beobachteManuelleFiguren(st.minifigsQuery) },
+            aktualisiereTeile = { retryOnNetwork { repo.aktualisiereTeile() } },
+            aktualisiereFiguren = { retryOnNetwork { figuren.aktualisiereFiguren() } },
+        ),
         teileEingeschraenkt = {
             filter.kontoFuer(ScopeFilter.View.PARTS) != null || !filter.lagerFuer(ScopeFilter.View.PARTS).isNullOrBlank()
         },
@@ -157,24 +167,22 @@ class TeileViewModel @Inject constructor(
      * BrickLink führt zu vielen Teilen nur einen Zustand, der Server nennt in
      * `price_from_condition`, aus welchem der Wert stammt.
      */
-    private fun erfassungsMeldung(angelegt: Boolean, nummer: String?, preisAusZustand: String?): String {
+    private fun erfassungsMeldung(angelegt: Boolean, nummer: String?, preisAusZustand: Zustand?): String {
         val kopf = meldungen.text(if (angelegt) R.string.vm_added else R.string.vm_updated, nummer)
         val hinweis = when (preisAusZustand) {
-            "N" -> meldungen.text(R.string.price_from_other_condition_new)
-            "U" -> meldungen.text(R.string.price_from_other_condition_used)
+            Zustand.NEU -> meldungen.text(R.string.price_from_other_condition_new)
+            Zustand.GEBRAUCHT -> meldungen.text(R.string.price_from_other_condition_used)
             else -> null
         }
         return if (hinweis != null) "$kopf — $hinweis" else kopf
     }
 
-    override fun addPart(partNumber: String, colorId: Int, colorName: String?, colorHex: String?,
-                quantity: Int, unitPrice: Double?,
-                condition: String?, ownerUserId: Int?,
-                storage: String?) {
+    override fun addPart(erfassung: Teilerfassung) {
+        val e = erfassung
         viewModelScope.launch {
-            when (val r = repo.addPart(partNumber.trim(), colorId, colorName, colorHex, quantity,
-                                       unitPrice, condition, ownerUserId,
-                                       storage?.trim()?.takeIf { it.isNotEmpty() })) {
+            when (val r = repo.addPart(e.nummer.trim(), e.farbId, e.farbname, e.farbHex, e.menge,
+                                       e.stueckpreis, e.zustand, e.besitzer,
+                                       e.lagerort?.trim()?.takeIf { it.isNotEmpty() })) {
                 is Ergebnis.Success ->
                     if (r.data.success) {
                         meldungen.zeige(erfassungsMeldung(
@@ -186,13 +194,12 @@ class TeileViewModel @Inject constructor(
         }
     }
 
-    override fun addMinifig(figNumber: String, blFigNumber: String?, quantity: Int,
-                   unitPrice: Double?, condition: String?, ownerUserId: Int?,
-                   storage: String?) {
+    override fun addMinifig(erfassung: Figurenerfassung) {
+        val e = erfassung
         viewModelScope.launch {
-            when (val r = figuren.addMinifig(figNumber.trim(), blFigNumber, quantity, unitPrice,
-                                          condition, ownerUserId,
-                                          storage?.trim()?.takeIf { it.isNotEmpty() })) {
+            when (val r = figuren.addMinifig(e.nummer.trim(), e.blNummer, e.menge, e.stueckpreis,
+                                          e.zustand, e.besitzer,
+                                          e.lagerort?.trim()?.takeIf { it.isNotEmpty() })) {
                 is Ergebnis.Success ->
                     if (r.data.success) {
                         meldungen.zeige(erfassungsMeldung(
@@ -205,13 +212,13 @@ class TeileViewModel @Inject constructor(
     }
 
     override fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?,
-                   condition: String?, owner: Int?) =
+                   condition: Zustand?, owner: Int?) =
         aendere(Aenderung.Teile, meldungen.text(R.string.vm_saved)) {
             repo.updatePart(partNumber, colorId, quantity, unitPrice, condition, owner).erfolg()
         }
 
     override fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String?,
-                      condition: String?, owner: Int?) =
+                      condition: Zustand?, owner: Int?) =
         aendere(Aenderung.Figuren, meldungen.text(R.string.vm_saved)) {
             figuren.updateMinifig(figNumber, quantity, unitPrice, blFigNumber, condition, owner).erfolg()
         }
@@ -269,11 +276,11 @@ class TeileViewModel @Inject constructor(
 
     // ── „In welchen Sets steckt das?“ ────────────────────────────────────────
 
-    override fun oeffneSetItem(art: String, nummer: String, colorId: Int) {
+    override fun oeffneSetItem(art: Postenart, nummer: String, colorId: Int) {
         _setItemState.value = SetItemUiState(art = art, nummer = nummer, colorId = colorId, laedt = true)
         viewModelScope.launch {
-            val blick = filter.kontoFuer(if (art == "fig") ScopeFilter.View.MINIFIGS else ScopeFilter.View.PARTS)
-            val r = if (art == "fig") figuren.getSetsMitFigur(nummer, blick)
+            val blick = filter.kontoFuer(if (art == Postenart.FIG) ScopeFilter.View.MINIFIGS else ScopeFilter.View.PARTS)
+            val r = if (art == Postenart.FIG) figuren.getSetsMitFigur(nummer, blick)
                     else              repo.getSetsMitTeil(nummer, colorId, blick)
             // Inzwischen ein anderes Teil geöffnet? Dann gehört die Antwort nicht mehr hierher.
             val jetzt = _setItemState.value

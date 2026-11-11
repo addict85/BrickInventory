@@ -1,6 +1,5 @@
 /** Ein Aufruf je 30 Sekunden über alle Konten, und Ruhe, wenn der Bot-Schutz
- * anspricht — sonst sperrt LEGO die Adresse.
- * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinGuthabenSchranke.ts.md#abschnitt */
+ * anspricht — sonst sperrt LEGO die Adresse. */
 import * as db from '../../db/database';
 import { holeGuthaben, BotSchutz, LAND_STANDARD, verdecke, type Abruf, type Guthaben } from './gutscheinGuthaben';
 import { Fachfehler } from '../infra/fehlerTexte';
@@ -23,8 +22,7 @@ export type Abfrage =
   | { art: 'guthaben'; guthaben: Guthaben }
   | ({ art: 'gesperrt' } & Gesperrt);
 
-/** In der Datenbank, damit die Grenze über alle Prozesse gilt.
- * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinGuthabenSchranke.ts.md#belegeplatz */
+/** In der Datenbank, damit die Grenze über alle Prozesse gilt. */
 export async function belegePlatz(uid: number): Promise<{ frei: true } | ({ frei: false } & Gesperrt)> {
   return db.transaction(async (tx) => {
     // Falls eine ältere Sicherung die Zeile nicht hat. NULL heisst „noch nie" —
@@ -66,7 +64,6 @@ export async function vergesseSchranke(): Promise<void> {
 }
 
 // Der einzige Weg zur Abfrage, damit niemand die Schranke umgeht.
-// Ausführlich: docs/begruendungen/src/gutscheine/gutscheinGuthabenSchranke.ts.md#frageguthabenab
 export async function frageGuthabenAb(
   uid: number, nummer: string, pin: string, opt: { locale?: string; abruf?: Abruf } = {},
 ): Promise<Abfrage> {

@@ -4,13 +4,15 @@
  * 1:1 wie in Produktion. Prüft u.a. den Zukunftsjahr-Randfall (nur wenige
  * Sets im Maximaljahr), Von-Bis-Bereiche, Theme-Vererbung und owned-Flags.
  *
- * Gegenprobe (05.11.2026 gemessen): page_size in routes/api_v1/catalog.ts
- * nicht gelesen → rot: „Pagination“ (die Seite hat 60 statt 10 Sets).
- * Ausführlich: docs/begruendungen/test/catalog-api.test.js.md#kopf
+ * Gegenproben: (05.11.2026) page_size in routes/api_v1/catalog.ts nicht gelesen
+ * → rot: „Pagination“ (die Seite hat 60 statt 10 Sets). (10.11.2026) in
+ * src/katalog/repository/katalogSuche.ts c.image_local aus SET_SPALTEN entfernt →
+ * rot: „die Liste nennt das lokale Bild …“ (undefined statt der Adresse); dort
+ * `NOT ${PLATZHALTER}` aus katalogWo() entfernt → rot: „… ein Platzhalter fehlt“
+ * (total 1 statt 0).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { execFileSync } = require('node:child_process');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
@@ -42,7 +44,6 @@ async function dbReachable() {
 
 /**
  * Stellt das echte Schema wieder her, das seed() durch Attrappen ersetzt.
- * Ausführlich: docs/begruendungen/test/catalog-api.test.js.md#schemawiederherstellen
  */
 async function schemaWiederherstellen() {
   await db.run('DROP SCHEMA public CASCADE');
@@ -60,7 +61,8 @@ async function seed() {
   await db.initSchema();
   await db.run(`DROP TABLE IF EXISTS rb_sets, rb_themes, rb_inventories,
                                     rb_inventory_minifigs, sets CASCADE`);
-  await db.run(`CREATE TABLE rb_sets (set_num TEXT PRIMARY KEY, name TEXT, year INTEGER, theme_id INTEGER, num_parts INTEGER, set_img_url TEXT)`);
+  await db.run(`CREATE TABLE rb_sets (set_num TEXT PRIMARY KEY, name TEXT, year INTEGER, theme_id INTEGER, num_parts INTEGER, set_img_url TEXT,
+                                     herkunft TEXT NOT NULL DEFAULT 'csv')`);
   await db.run(`CREATE TABLE rb_themes (id INTEGER PRIMARY KEY, name TEXT, parent_id INTEGER)`);
   await db.run(`CREATE TABLE rb_inventories (id INTEGER PRIMARY KEY, version INTEGER, set_num TEXT)`);
   await db.run(`CREATE TABLE rb_inventory_minifigs (id SERIAL PRIMARY KEY, inventory_id INTEGER, fig_num TEXT, quantity INTEGER)`);
@@ -68,7 +70,6 @@ async function seed() {
   // 0036 in set_acquisitions, und die Katalogliste liest sie von dort
   // (owned_quantity ueber db/bestandsmenge.ts) — mit nur `sets`
   // antwortete sie 0 (gemessen: „expected 2, actual 0").
-  // Ausführlich: docs/begruendungen/test/catalog-api.test.js.md#stelle
   await db.run(`CREATE TABLE sets (user_id INTEGER, set_number TEXT)`);
   await db.run(`INSERT INTO rb_themes VALUES (1,'Star Wars',NULL),(2,'Ultimate Collector Series',1),(3,'Technic',NULL) ON CONFLICT DO NOTHING`);
   let i = 0;
@@ -83,7 +84,6 @@ async function seed() {
   await db.run(`INSERT INTO rb_inventory_minifigs (inventory_id, fig_num, quantity) VALUES (2,'fig-001',2),(2,'fig-002',1),(1,'fig-old',9) ON CONFLICT DO NOTHING`);
   // Der Bestand: Konto 1 haelt 9000-1, und zwar zwei Exemplare — die Zahl
   // steht in der Erfassung.
-  // Ausführlich: docs/begruendungen/test/catalog-api.test.js.md#stelle-2
   await db.run(`INSERT INTO users (id, username, password_hash)
                 VALUES (1, 'katalogprobe', 'x') ON CONFLICT (id) DO NOTHING`);
   await db.run(`INSERT INTO sets (user_id, set_number) VALUES (1, '9000-1')`);
@@ -159,6 +159,17 @@ test('Katalog-API (Postgres-Integration)', async (t) => {
     assert.equal(owned.owned_quantity, 2);
   });
 
+  await t.test('die Liste nennt das lokale Bild aus set_catalog, ein Platzhalter der Erfassung fehlt', async () => {
+    await db.run(`INSERT INTO set_catalog (set_number, image_local) VALUES ('9001-1', '/images/sets/9001-1.jpg')
+                  ON CONFLICT (set_number) DO UPDATE SET image_local = EXCLUDED.image_local`);
+    await db.run(`INSERT INTO rb_sets (set_num, name, herkunft) VALUES ('9100-1', 'Set 9100-1', 'api') ON CONFLICT DO NOTHING`);
+    const r = await get('/catalog/sets?q=Future&limit=60');
+    const bilder = Object.fromEntries(r.body.sets.map(s => [s.set_number, s.image_local]));
+    assert.deepEqual(bilder, { '9000-1': null, '9001-1': '/images/sets/9001-1.jpg', '9002-1': null, '9003-1': null });
+    assert.equal((await get('/catalog/sets?q=9100')).body.total, 0, 'ein Platzhalter fehlt in der Liste');
+    assert.equal((await get('/catalog/sets/9100-1')).status, 404, 'und im Detail');
+  });
+
   await t.test('Theme-Filter inkl. Unterthemen', async () => {
     const r = await get('/catalog/sets?theme_id=1&limit=200');
     assert.ok(r.body.total > 4);
@@ -189,7 +200,6 @@ test('Katalog-API (Postgres-Integration)', async (t) => {
 
   srv.close();
   // REIHENFOLGE: erst das Schema, dann der Pool
-  // Ausführlich: docs/begruendungen/test/catalog-api.test.js.md#stelle-3
   await schemaWiederherstellen();
   await db.pool.end();   // pg-Pool schließen, sonst hält er den Prozess offen
 });

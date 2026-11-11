@@ -12,7 +12,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.offline.Bestandsart
+import ch.brickinventoryapp.model.lokal.Bestandsart
 import ch.brickinventoryapp.testing.KatalogRepository
 import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.testing.TestApi

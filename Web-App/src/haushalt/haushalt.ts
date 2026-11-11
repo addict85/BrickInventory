@@ -1,5 +1,6 @@
-// Hier allein: wessen Daten eine Anfrage sieht. Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#abschnitt
-import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
+// Hier allein: wessen Daten eine Anfrage sieht.
+import { logAndContinue } from '../infra/fehler';
+import { Abstriche } from '../infra/ergebnis';
 import * as db from '../../db/database';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
 import { getSetting } from '../einstellungen/settings';
@@ -137,7 +138,7 @@ export async function pruefeEinladung(uid: number, code: string) {
   return { inviter: { id: mainId, username: (await repo.kontoName(mainId)) || String(mainId) } };
 }
 
-// Atomar entwertet, bei Fehlschlag frei. Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#redeeminvite
+// Atomar entwertet, bei Fehlschlag frei.
 export async function redeemInvite(uid: number, code: string) {
   const subId = parseInt(String(uid));
   if (typeof code !== 'string' || code.length < 8) {
@@ -145,7 +146,8 @@ export async function redeemInvite(uid: number, code: string) {
   }
   const th = hash(code);
 
-  const mainId = await repo.belegeEinladung(th, subId).catch(meldeUndLiefere('haushalt:claimed', null));
+  // Ein Lesefehler ist kein abgelaufener Code: Er geht weiter.
+  const mainId = await repo.belegeEinladung(th, subId);
   if (mainId === null) return { fehler: 'einladungscode_abgelaufen' as const };
 
   const release = async () => {
@@ -189,8 +191,10 @@ export async function redeemInvite(uid: number, code: string) {
     return { fehler: 'waehrung_ungleich' as const, vars: ungleich };
   }
   meldeHaushaltsaenderung();
-  const name = await repo.kontoName(mainId).catch(meldeUndLiefere('haushalt:get', null));
-  return { linked_to: { id: mainId, username: name || String(mainId) } };
+  // Die Verknüpfung steht schon; fehlt nur der Name, trägt die Antwort die ID und sagt es.
+  const ab = new Abstriche();
+  const name = await ab.oder('kontoname', repo.kontoName(mainId), null);
+  return { linked_to: { id: mainId, username: name || String(mainId) }, ...ab.angabe() };
 }
 
 /** Von BEIDEN Seiten erlaubt. Ohne `subUserId` und `mainUserId` löst sich das
@@ -213,9 +217,10 @@ export async function householdStatus(uid: number) {
   const id = parseInt(String(uid));
   const h = await resolveHousehold(id);
   const members = await householdMembers(id);
+  const ab = new Abstriche();
   const [eltern, openInvites, currency, getrennt] = await Promise.all([
     repo.kontoNamen(h.elternIds, 'username'),
-    repo.offeneEinladungen(id).catch(meldeUndLiefere('haushalt:einladungen', 0)),
+    ab.oder('einladungen', repo.offeneEinladungen(id), 0),
     getSetting(id, 'currency', 'EUR'),
     repo.getrennteKetten(id),
   ]);
@@ -231,11 +236,11 @@ export async function householdStatus(uid: number) {
     blickfeld: members,
     open_invites: openInvites,
     former_links: getrennt,
+    ...ab.angabe(),
   };
 }
 
 // Der Kontofilter wird hier zu IDs, damit Liste und Summen dieselben Konten zählen.
-// Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#abschnitt-2
 export type ScopeMode = 'all' | 'own' | 'subs' | number;
 
 /** Unbekanntes ergibt 'all'. Eine Zahl wird NICHT hier geprüft: Ob sie zum
@@ -262,8 +267,7 @@ export async function scopeIds(uid: number, mode: ScopeMode = 'all'): Promise<nu
 }
 
 /** Vor `asIds()` ID oder Liste, danach `Blickfeld` (immer Liste): zwei Namen,
- * damit eine Signatur sagt, in welchem Moment sie steht.
- * Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#blickfeldeingabe */
+ * damit eine Signatur sagt, in welchem Moment sie steht. */
 export type BlickfeldEingabe = number | number[];
 
 export type Blickfeld = number[];
@@ -303,7 +307,6 @@ export async function schreibziel(nutzer: number, wunsch: unknown,
 }
 
 /** Prüft die RICHTUNG (Haupt- für Unterkonto), nicht nur die Mitgliedschaft.
- * Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#resolvewritetarget
  * @returns die Ziel-ID, oder null wenn nicht erlaubt (Aufrufer antwortet 403) */
 export async function resolveWriteTarget(
   actorId: number, requested: unknown
@@ -326,8 +329,7 @@ export async function acquisitionMoveSource(
   return owner;
 }
 
-/** Beide Formen hier, damit die Namensauflösung nur einmal existiert.
- * Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#withowners */
+/** Beide Formen hier, damit die Namensauflösung nur einmal existiert. */
 export async function withOwners(uids: number[], rows: any[]) {
   if (uids.length < 2 || !rows?.length) return rows;
   const owners = await repo.benutzerNamen(uids);

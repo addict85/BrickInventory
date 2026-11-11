@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 /**
  * Lastprofil — wie verhält sich der Server unter GLEICHZEITIGEN Anfragen?
- * Ausführlich: docs/begruendungen/scripts/loadtest.js.md#kopf
  */
 
 const path = require('node:path');
@@ -42,6 +41,8 @@ const DAUER_S  = arg('dauer', 10);   // Messdauer je Durchgang
 const N_SETS   = arg('sets', 800);   // Sammlungsgrösse (wie in Durchgang 119)
 
 const db = require(path.join(ROOT, 'dist/db/database.js'));
+// Die Routen rufen die Bereiche über ihre Verdrahtung, wie im Server.
+require(path.join(ROOT, 'dist/startup/verdrahtung.js')).verdrahte();
 
 /**
  * Lesbarer Text eines gefangenen Fehlers.
@@ -78,12 +79,16 @@ async function seed() {
   USER.id = (await db.get(`SELECT id FROM users WHERE username = $1`, [USER.username])).id;
 
   // Dieser Aufbau war kaputt, und niemand hat es gemerkt
-  // Ausführlich: docs/begruendungen/scripts/loadtest.js.md#stelle
+  await db.run(`INSERT INTO rb_themes (id, name) SELECT g, 'Theme '||g FROM generate_series(1, 12) g
+                ON CONFLICT (id) DO NOTHING`);
   await db.run(
-    `INSERT INTO set_catalog (set_number, name, year, theme, pieces, minifigs)
-     SELECT (10000+g)||'-1', 'Set '||g, 1990 + (g % 35), 'Theme '||(g%12),
-            100 + (g*7)%8000, g%9
+    `INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts)
+     SELECT (10000+g)||'-1', 'Set '||g, 1990 + (g % 35), 1 + g%12, 100 + (g*7)%8000
        FROM generate_series(1, $1) g
+     ON CONFLICT (set_num) DO NOTHING`, [N_SETS]);
+  await db.run(
+    `INSERT INTO set_catalog (set_number, minifigs)
+     SELECT (10000+g)||'-1', g%9 FROM generate_series(1, $1) g
      ON CONFLICT (set_number) DO NOTHING`, [N_SETS]);
   await db.run(
     `INSERT INTO sets (user_id, set_number)
@@ -127,7 +132,6 @@ async function seed() {
        FROM generate_series(1, $2) g, generate_series(1, 4) m`, [USER.id, N_SETS]);
 
   // Marktpreise je Zustand — ohne sie rechnen die Finanz-Endpunkte im Leeren.
-  // Ausführlich: docs/begruendungen/scripts/loadtest.js.md#stelle-2
   await db.run(
     `INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity)
      SELECT (10000+g)||'-1', c, 'EUR', 10+(g%300), 30+(g%500), 60+(g%800), 31+(g%500), 5
@@ -165,7 +169,6 @@ function buildApp() {
 
 // Die Endpunkte, die eine Sitzung tatsächlich anfasst: Galerie öffnen, Teile
 // durchblättern, Finanzen ansehen.
-// Ausführlich: docs/begruendungen/scripts/loadtest.js.md#stelle-3
 /** @type {Array<[string, string]>} */
 const PFADE = [
   ['Galerie (Seite 1)',      '/api/sets/?page=1&page_size=60'],
@@ -259,7 +262,8 @@ async function main() {
       const [name, p] = eintrag;
       try {
         const { ms, ok, status } = await miss(base, p);
-        (messung[name] ??= []).push(ms);
+        messung[name] ??= [];
+        messung[name].push(ms);
         gesamt++;
         if (!ok) fehler[`${name} → HTTP ${status}`] = (fehler[`${name} → HTTP ${status}`] || 0) + 1;
       } catch (e) {

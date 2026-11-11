@@ -1,14 +1,11 @@
 /**
  * Preisalarm gegen eine echte Datenbank.
- * Ausführlich: docs/begruendungen/test/preisalarm-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 
@@ -235,7 +232,6 @@ test('Preisalarm gegen echte Datenbank', async (t) => {
     // diese Zusicherung ist mir EINMAL in einem vollen Lauf rot geworden und
     // in vier Wiederholungen nicht mehr. Ohne die drei Werte bliebe im
     // Fehlerbericht nur „kam ein zweites Mal" — und damit wieder nichts zu …
-    // Ausführlich: docs/begruendungen/test/preisalarm-db.test.js.md#stelle
     assert.deepEqual(zweite.alerts, [],
       'dieselbe Meldung kam ein zweites Mal. ' +
       `vorher=${vorher?.toISOString?.() ?? vorher}, ` +
@@ -245,7 +241,6 @@ test('Preisalarm gegen echte Datenbank', async (t) => {
 
   await t.test('Abholen: eine Meldung aus derselben Millisekunde kommt NICHT doppelt', async () => {
     // Der Befund, und warum er zweimal die CI rot gemacht hat
-    // Ausführlich: docs/begruendungen/test/preisalarm-db.test.js.md#stelle-2
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
     await A.setzeAlarm(U.ich, SN, 'EUR', { richtung: 'unter', schwelle: 200, condition: 'N' });
@@ -288,7 +283,6 @@ test('Preisalarm gegen echte Datenbank', async (t) => {
 
   await t.test('Marcos vier Schritte — auch die APP bekommt je Übergang genau eine', async () => {
     // Marcos Vorgabe vom 25.09.
-    // Ausführlich: docs/begruendungen/test/preisalarm-db.test.js.md#stelle-3
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
     versandt = [];

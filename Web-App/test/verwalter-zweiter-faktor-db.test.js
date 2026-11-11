@@ -3,7 +3,6 @@
  * ohne Passkey kommt nach der Anmeldung nur bis zu dessen Einrichtung (403
  * zweiter_faktor_pflicht), Anmeldung und /auth/me sagen es der Oberfläche.
  * Ein gewöhnliches Konto und ein App-Token (Scope `app`) eines Verwalters sind …
- * Ausführlich: docs/begruendungen/test/verwalter-zweiter-faktor-db.test.js.md#kopf
  *
  * Gegenproben (am 04.11.2026 gemessen, je eine Änderung, danach zurück):
  *   A  in anmeldungAmEingang die Prüfung zweiterFaktorPflicht gestrichen → rot:

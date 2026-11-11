@@ -2,7 +2,8 @@
  * zugreifen — eine Route soll keine andere importieren. */
 import { blickfeldAus } from '../haushalt/haushalt';
 import type { Sicht } from '../haushalt/haushalt';
-import { meldeUndLiefere, oeffentlicherFehler } from '../infra/fehler';
+import { oeffentlicherFehler } from '../infra/fehler';
+import { Abstriche } from '../infra/ergebnis';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
 import * as db from '../../db/database';
 import { recordAcquisitionForDay } from '../bestand/acquisitions';
@@ -22,7 +23,6 @@ import { fachfehler } from '../infra/fehlerTexte';
 export const getPartColorList = farbliste;
 
 // Eine Rechnung für Anlegen, Bearbeiten und CSV-Import; ohne Angabe bleibt Preis/Stk leer.
-// Ausführlich: docs/begruendungen/src/teile/manuelleTeile.ts.md#resolvemanualpartpurchase
 export async function resolveManualPartPurchase(uid: number, { partNumber, colorId, unitPrice = null, condition = null }:
   { partNumber: string; colorId: number; unitPrice?: unknown; condition?: string | null }) {
   // Die Regel steht in src/finanzen/preisRegel.ts; hier bleibt nur, was ein
@@ -41,7 +41,7 @@ export async function resolveManualPartPurchase(uid: number, { partNumber, color
 }
 
 /** Eine Umsetzung für Webapp und App, damit Kaufpreis und Lagerort überall
- * gleich behandelt werden. Ausführlich: docs/begruendungen/src/teile/manuelleTeile.ts.md#addmanualpart */
+ * gleich behandelt werden. */
 export async function addManualPart(uid: number, rawBody: Record<string, unknown>) {
     // Ohne mitgegebenen Ort gilt der Vorgabeort des Kontos (src/bestand/lagerort.ts).
   const ort = await ortFuerNeuerfassung(uid, rawBody?.storage);
@@ -83,7 +83,6 @@ async function addManualPartIntern(uid: number, rawBody: Record<string, unknown>
 
     // Erst der eigene Katalog, dann der fremde Dienst — für jeden Weg, der ohne
     // Namen hereinkommt, deshalb hier.
-    // Ausführlich: docs/begruendungen/src/teile/manuelleTeile.ts.md#addmanualpartintern-lokal
     const lokal = await katalogTeil(part_number, hasColor ? color_id : null, uid);
     if (lokal) {
       part_name     = part_name     || lokal.name;
@@ -110,7 +109,7 @@ async function addManualPartIntern(uid: number, rawBody: Record<string, unknown>
 
   if (existing) {
     const reCond = condition && ['N','U'].includes(condition) ? condition
-      : await resolvePartCondition(uid, part_number, color_id).catch(meldeUndLiefere('teile:zustand', 'N'));
+      : await resolvePartCondition(uid, part_number, color_id);
     const reEntered = unit_price;
     const rePrice = reEntered !== null
       ? reEntered
@@ -129,10 +128,9 @@ async function addManualPartIntern(uid: number, rawBody: Record<string, unknown>
   const { erfassungsPreis, effectiveCondition, preisAusZustand, geschaetzt } =
     await resolveManualPartPurchase(uid, { partNumber: part_number, colorId: color_id, unitPrice: unit_price, condition });
   // Ohne Farbcode bliebe der Farbpunkt in der Oberfläche grau.
-  const rbFarbcode = await repo.rbFarbcode(color_id).catch(meldeUndLiefere('manuelle-teile:farbcode', null));
+  const rbFarbcode = await repo.rbFarbcode(color_id);
 
   // Beschreibung gilt für ALLE Konten (Katalog), der Bestand für eines.
-  // Ausführlich: docs/begruendungen/src/teile/manuelleTeile.ts.md#addmanualpartintern-2
   await merkeTeil(part_number, gefunden?.part_name, gefunden?.category_name);
   await merkeTeil(part_number, eingabe.name, eingabe.kategorie, db, uid);
   await merkeTeilFarbe(part_number, color_id, null, rbFarbcode, gefunden?.image_url);
@@ -152,16 +150,18 @@ async function addManualPartIntern(uid: number, rawBody: Record<string, unknown>
 
 /** Für Webapp und App derselbe Weg.
  * @returns die Menge danach, wenn sie Teil der Anfrage war */
-export async function updateManualPart(uid: number, partNumber: string, colorId: number, body: Record<string, unknown>): Promise<{ quantity?: number }> {
+export async function updateManualPart(uid: number, partNumber: string, colorId: number, body: Record<string, unknown>): Promise<{ quantity?: number; degradiert?: string[] }> {
   const existing = await repo.teilZeileMitZustand(uid, partNumber, colorId);
   if (!existing) fachfehler('nicht_gefunden', 'teil_nicht_manuell');
 
   const raus: { quantity?: number } = {};
+  // Kam der Marktpreis für die neue Erfassung nicht, sagt es `degradiert`.
+  const ab = new Abstriche();
   const wunsch = mengenwunsch(body);
   if (wunsch) {
     const cond = await zustandFuerPreis(undefined, existing.condition, uid);
     raus.quantity = await passeManuelleMengeAn('part', uid, [partNumber, colorId], wunsch, cond,
-      () => getCurrentPartMarketPrice(partNumber, colorId, uid, cond));
+      () => getCurrentPartMarketPrice(partNumber, colorId, uid, cond), ab);
   }
   if (body.unit_price !== undefined) {
     // Die Regel steht in src/finanzen/preisRegel.ts; hier nur Abfrage und Tabelle.
@@ -170,14 +170,14 @@ export async function updateManualPart(uid: number, partNumber: string, colorId:
       (zustand) => getCurrentPartMarketPrice(partNumber, colorId, uid, zustand),
     );
     // In die NEUESTE Erfassung: Dort heisst NULL „kein Preis bekannt", die 0 der
-    // Anzeige bildet die Leseabfrage. Ausführlich: docs/begruendungen/src/teile/manuelleTeile.ts.md#updatemanualpart-3
+    // Anzeige bildet die Leseabfrage.
     await repo.setzeTeilpreisNeueste(uid, partNumber, colorId, unitPrice);
   }
   if (body.condition !== undefined && body.condition !== null) {
     const cond = body.condition === 'U' ? 'U' : 'N';
     await repo.setzeTeilzustandNeueste(uid, partNumber, colorId, cond);
   }
-  return raus;
+  return { ...raus, ...ab.angabe() };
 }
 
 export async function getPartAcquisitions(uidWahl: Sicht | number[], partNumber: string, colorId: string | number) {
@@ -225,7 +225,7 @@ export async function importiereTeileCsv(uid: number, text: string) {
         continue;
       }
       // Katalog vor Bestand: lieber eine Beschreibung ohne Bestand als umgekehrt.
-      const colorHex = await repo.rbFarbcode(colorId).catch(meldeUndLiefere('teile-csv:farbcode', null));
+      const colorHex = await repo.rbFarbcode(colorId);
       if (eingetippt) await merkeTeil(partNumber, partName, null, db, uid);
       else await merkeTeil(partNumber, partName, categoryName);
       await merkeTeilFarbe(partNumber, colorId, null, colorHex, imageUrl);

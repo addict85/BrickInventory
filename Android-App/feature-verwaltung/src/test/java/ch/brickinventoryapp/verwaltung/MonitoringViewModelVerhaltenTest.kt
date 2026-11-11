@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.verwaltung
 
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.cache.ResponseCache
@@ -192,7 +194,7 @@ class MonitoringViewModelVerhaltenTest {
     fun `die Auswahl zeigt die Vorgabe, nicht das eigene Design`() = runTest {
         server.enqueue(antwort("""{"success":true,"theme":"werkbank","vorgabe":"noppe","eigenes":"werkbank"}"""))
         vm.ladeDesignVorgabe()
-        assert(vm.state.value.vorgabeDesign == "noppe") { "Steht: ${vm.state.value.vorgabeDesign}" }
+        assert(vm.state.value.vorgabeDesign == Design.NOPPE) { "Steht: ${vm.state.value.vorgabeDesign}" }
         assert(server.takeRequest().path == "/api/v1/settings/theme")
     }
 
@@ -201,11 +203,11 @@ class MonitoringViewModelVerhaltenTest {
         server.enqueue(antwort("""{"success":true,"theme":"noppe","vorgabe":"noppe"}"""))
         vm.ladeDesignVorgabe()
         server.enqueue(antwort("""{"success":true}"""))
-        assert(vm.setzeDesign("brick"))
-        assert(vm.state.value.vorgabeDesign == "brick") { "Steht: ${vm.state.value.vorgabeDesign}" }
+        assert(vm.setzeDesign(Design.BRICK))
+        assert(vm.state.value.vorgabeDesign == Design.BRICK) { "Steht: ${vm.state.value.vorgabeDesign}" }
         server.enqueue(antwort("""{"error":"kaputt"}""", 500))
-        assert(!vm.setzeDesign("hochglanz"))
-        assert(vm.state.value.vorgabeDesign == "brick") { "Steht: ${vm.state.value.vorgabeDesign}" }
+        assert(!vm.setzeDesign(Design.HOCHGLANZ))
+        assert(vm.state.value.vorgabeDesign == Design.BRICK) { "Steht: ${vm.state.value.vorgabeDesign}" }
     }
 
     // ── Der Vorgabe-Zustand ──────────────────────────────────────────────────
@@ -213,16 +215,16 @@ class MonitoringViewModelVerhaltenTest {
     @Test
     fun `der Vorgabe-Zustand springt sofort um und bleibt, wenn der Server zustimmt`() = runTest {
         server.enqueue(antwort("""{"success":true}"""))
-        val ok = vm.setzeVorgabeZustand("U")
+        val ok = vm.setzeVorgabeZustand(Zustand.GEBRAUCHT)
         assert(ok)
-        assert(vm.state.value.vorgabeZustand == "U") { "Steht: ${vm.state.value.vorgabeZustand}" }
+        assert(vm.state.value.vorgabeZustand == Zustand.GEBRAUCHT) { "Steht: ${vm.state.value.vorgabeZustand}" }
     }
 
     @Test
     fun `scheitert das Setzen, faellt der Vorgabe-Zustand ZURUECK`() = runTest {
         val vorher = vm.state.value.vorgabeZustand
         server.enqueue(antwort("""{"error":"kaputt"}""", 500))
-        val ok = vm.setzeVorgabeZustand("U")
+        val ok = vm.setzeVorgabeZustand(Zustand.GEBRAUCHT)
 
         assert(!ok) { "Ein 500 darf nicht als Erfolg zurückkommen" }
         assert(vm.state.value.vorgabeZustand == vorher) {
@@ -264,7 +266,7 @@ class MonitoringViewModelVerhaltenTest {
         assert(s.cacheStats?.prices == 7) { "Cache-Zahlen fehlen: ${s.cacheStats}" }
         assert(s.apiLimits?.brickset == 300) { "Grenzwerte fehlen: ${s.apiLimits}" }
         assert(s.cacheTtl == "48") { "Cache-Dauer steht auf ${s.cacheTtl}" }
-        assert(s.vorgabeZustand == "U") { "Vorgabe-Zustand steht auf ${s.vorgabeZustand}" }
+        assert(s.vorgabeZustand == Zustand.GEBRAUCHT) { "Vorgabe-Zustand steht auf ${s.vorgabeZustand}" }
         assert(server.requestCount == 4) {
             "Erwartet waren vier Abrufe, es waren ${server.requestCount}"
         }

@@ -14,7 +14,7 @@ fun interface PdfSchreiber {
  * Kopiert in Stücken und prüft vor jedem, ob der Auftrag noch gilt. Eine Anleitung
  * hat bis zu 300 MB; bricht der Druckdialog ab, soll nicht der Rest noch kopiert werden.
  */
-suspend fun kopiereAbbrechbar(ein: InputStream, aus: OutputStream, stueck: Int = 64 * 1024): Long {
+internal suspend fun kopiereAbbrechbar(ein: InputStream, aus: OutputStream, stueck: Int = 64 * 1024): Long {
     val puffer = ByteArray(stueck)
     var gesamt = 0L
     while (true) {

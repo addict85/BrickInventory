@@ -1,6 +1,5 @@
 /**
  * Der Kontowechsel einer Erfassung — über die ROUTE, nicht über ein Muster.
- * Ausführlich: docs/begruendungen/test/kontowechsel-ueber-die-route-db.test.js.md#kopf
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -10,7 +9,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
-const { haeltSet } = require('./helpers/bestand');
+const { haeltSet, katalogSet } = require('./helpers/bestand');
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
 
@@ -33,8 +32,7 @@ async function aufbau() {
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`,
     [HAUPT, KIND]);
 
-  await db.run(`INSERT INTO set_catalog (set_number,name) VALUES ($1,'Millennium Falcon')
-                ON CONFLICT (set_number) DO NOTHING`, [SN]);
+  await katalogSet(db, SN, { name: 'Millennium Falcon' });
   await db.run(`INSERT INTO part_catalog (part_number,part_name) VALUES ('3001','Brick 2x4')
                 ON CONFLICT (part_number) DO NOTHING`);
   await db.run(`INSERT INTO part_color_catalog (part_number,color_id,color_name)

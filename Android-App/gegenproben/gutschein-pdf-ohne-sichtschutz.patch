@@ -1,6 +1,6 @@
 Gegenprobe: Ein Gutschein-PDF im Betrachter setzt keinen Sichtschutz
-Modul: app
-Test: ch.brickinventoryapp.app.GutscheinSichtschutzAnzeigeTest
+Modul: feature-finanzen
+Test: ch.brickinventoryapp.finanzen.GutscheinSichtschutzAnzeigeTest
 Rot: ein Gutschein-PDF ist geschuetzt
 
 diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheinPdfSchutz.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheinPdfSchutz.kt

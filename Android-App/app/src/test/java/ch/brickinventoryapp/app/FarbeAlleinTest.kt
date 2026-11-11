@@ -41,7 +41,7 @@ import ch.brickinventoryapp.testing.Quellen
  * nur fest, dass niemand eine NEUE Stelle hinzufuegt, ohne dieselbe Frage
  * gestellt zu haben.
  *
- * ── Gegenproben (gemessen im Lauf 296) ─────────────────────────────────────
+ * ── Gegenproben ─────────────────────────────────────
  *
  * Zweig claude/gegenproben-farbe, zwei Eingriffe:
  *

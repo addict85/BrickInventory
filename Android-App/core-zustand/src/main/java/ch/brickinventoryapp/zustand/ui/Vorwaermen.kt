@@ -8,7 +8,7 @@ import ch.brickinventoryapp.data.repository.GALLERY_PAGE_SIZE
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.Zugangsdaten
 import ch.brickinventoryapp.data.cache.VorschauVorwaermer
-import ch.brickinventoryapp.data.di.ApplicationScope
+import ch.brickinventoryapp.model.koroutinen.ApplicationScope
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.model.util.resolveThumbUrl
 import java.util.concurrent.atomic.AtomicBoolean
@@ -20,7 +20,8 @@ import kotlinx.coroutines.launch
 
 /**
  * Die Adressen aller Kacheln der eigenen Sammlung, zum Vorwärmen.
- * Ausführlich: docs/begruendungen/core-zustand/zustand/ui/Vorwaermen.kt.md#bildadressendersammlung
+ * Hier und nicht im Vorwärmer, weil nur hier der Kontofilter bekannt ist; der Katalog bleibt
+ * draussen, er verdrängte die eigene Sammlung.
  */
 internal suspend fun bildAdressenDerSammlung(
     sets: SetsRepository, teile: TeileRepository, figuren: FigurenRepository, blickfeld: Blickfeld, basis: String,

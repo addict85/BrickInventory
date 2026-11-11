@@ -1,5 +1,5 @@
 /** Rebrickable-CSVs täglich laden: Der lokale Katalog spart je Anzeige einen
- * API-Abruf und das Tageskontingent. Ausführlich: docs/begruendungen/src/katalog/csvAbgleich.ts.md#abschnitt */
+ * API-Abruf und das Tageskontingent. */
 import { meldeStartZustand } from '../auftraege/startZustand';
 import { fetchMissingBlIds } from './partsImport';
 import { getRbKey, httpsGetRobust, ladeKatalogCsv } from './quellen';

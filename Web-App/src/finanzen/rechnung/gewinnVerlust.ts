@@ -30,8 +30,7 @@ function preiseDesSets(sn: string, jeSchluessel: Map<string, { avg_price?: unkno
 }
 
 /** Je Erfassung mit dem Preis IHRES Zustands, erst danach verdichten — dieselbe
- * Rechnung wie im Finanzen-Reiter. Ungerundet; gerundet wird in der Antwort.
- * Ausführlich: docs/begruendungen/src/finanzen/rechnung/gewinnVerlust.ts.md#computepnl */
+ * Rechnung wie im Finanzen-Reiter. Ungerundet; gerundet wird in der Antwort. */
 async function setMarktwerte(sets: PnlSet[], jeSet: Map<string, Erfassung[]>, currency: string, ttl: number): Promise<Marktwerte> {
   const w: Marktwerte = { preis: new Map(), erster: new Map(), kauf: new Map(), menge: new Map() };
   const nummern = sets.map(s => s.set_number);
@@ -132,7 +131,6 @@ export async function computePnl(viewerId: number, idsWahl: Sicht | Blickfeld) {
       // ohne Marktpreis als Verlust.
       pnl_purchase: vergleichbar.kauf.toFixed(2), pnl_current: vergleichbar.markt.toFixed(2),
       // Sets + manuelle Teile + Minifiguren.
-      // Ausführlich: docs/begruendungen/src/finanzen/rechnung/gewinnVerlust.ts.md#computepnl-3
       grand_total: totalCurrent.toFixed(2),
       sets_purchase: kaufsumme(setResults).toFixed(2),
       parts_purchase: kaufsumme(partsResults).toFixed(2),

@@ -10,6 +10,11 @@
  *   C  in setErfassen() stelleAuftragEin() weggelassen → rot: „… und stellt den Auftrag ein“
  *   D  in setErgaenzen() die Schleife über die Erfassungen ohne Preis entfernt →
  *      rot: „der Auftrag ergänzt Katalog und Kaufpreis“ (Preis null)
+ *   E  (10.11.) in merkeKatalogPlatzhalter() (src/katalog/repository/setStamm.ts) das
+ *      INSERT INTO rb_sets entfernt → rot:
+ *      alle drei Teile (set_catalog_rb_sets_fkey; die Route antwortet 409 statt 200)
+ *   F  (10.11.) in merkeSetKatalog() `WHERE rb_sets.herkunft = 'api'` zu 'csv' →
+ *      rot: „der Auftrag ergänzt …“ (Name „Set …“ statt „Testset“)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -77,12 +82,13 @@ test('Set erfassen ohne Netz und ohne Wettlauf', { concurrency: 1 }, async t => 
     for (const sn of [SN, SN2]) {
       await db.run('DELETE FROM set_acquisitions WHERE set_number = $1', [sn]);
       await db.run('DELETE FROM sets WHERE set_number = $1', [sn]);
-      await db.run('DELETE FROM set_catalog WHERE set_number = $1', [sn]);
+      await db.run('DELETE FROM rb_sets WHERE set_num = $1', [sn]);
       await db.run("DELETE FROM auftraege WHERE art = 'nacharbeit' AND nutzlast->>'set_number' = $1", [sn]);
     }
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[HAUPT, KIND]]);
   };
   await weg();
+  await db.run("INSERT INTO rb_themes (id, name) VALUES (990001, 'Test') ON CONFLICT (id) DO NOTHING");
   const neu = async n =>
     (await db.get("INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id", [n])).id;
   const haupt = await neu(HAUPT),
@@ -136,6 +142,15 @@ test('Set erfassen ohne Netz und ohne Wettlauf', { concurrency: 1 }, async t => 
       { action: 'added', set_number: SN2, name: `Set ${SN2}`, katalog_offen: true, ergaenzung: 'ausstehend' },
     );
     assert.deepEqual(netz, [], 'Netzaufrufe in der Anfrage');
+    // rb_sets kennt das Set nicht: Die Erfassung legt es als 'api' an, samt set_catalog-Zeile.
+    assert.deepEqual(
+      await db.get(
+        `SELECT r.name, r.herkunft, (c.set_number IS NOT NULL) AS katalog
+                      FROM rb_sets r LEFT JOIN set_catalog c ON c.set_number = r.set_num WHERE r.set_num = $1`,
+        [SN2],
+      ),
+      { name: `Set ${SN2}`, herkunft: 'api', katalog: true },
+    );
     const a = await db.get(
       "SELECT nutzlast, schluessel FROM auftraege WHERE art = 'nacharbeit' AND nutzlast->>'set_number' = $1",
       [SN2],
@@ -148,8 +163,16 @@ test('Set erfassen ohne Netz und ohne Wettlauf', { concurrency: 1 }, async t => 
   await t.test('der Auftrag ergänzt Katalog und Kaufpreis', async () => {
     netz.length = 0;
     await sets.setErgaenzen(SN2, haupt);
-    const kat = await db.get('SELECT name, year FROM set_catalog WHERE set_number = $1', [SN2]);
-    assert.deepEqual({ name: kat.name, year: kat.year }, { name: 'Testset', year: 2020 });
+    const kat = await db.get(
+      `SELECT r.name, r.year, t.name AS thema, r.herkunft FROM rb_sets r
+                                LEFT JOIN rb_themes t ON t.id = r.theme_id WHERE r.set_num = $1`,
+      [SN2],
+    );
+    assert.deepEqual(kat, { name: 'Testset', year: 2020, thema: 'Test', herkunft: 'api' });
+    // Die Sammlung liest Name, Jahr und Thema über rb_sets.
+    const liste = await _req('src/sets/repository/sets.js').setListe(db, [haupt], { seite: null, themen: false });
+    const z = liste.sets.find(x => x.set_number === SN2);
+    assert.deepEqual({ name: z.name, year: z.year, theme: z.theme }, { name: 'Testset', year: 2020, theme: 'Test' });
     const erf = await db.get(
       'SELECT purchase_price, price_estimated, condition FROM set_acquisitions WHERE user_id = $1 AND set_number = $2',
       [haupt, SN2],

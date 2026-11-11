@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.fach.Setsortierung
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.data.model.SetAggregate
@@ -53,6 +54,12 @@ import ch.brickinventoryapp.testing.TestDienste
  *   J in galleryState die Kennzahlen nicht angepasst
  *      (gegenproben/galerie-kennzahlen-beim-loeschen.patch) → rot „die Kennzahlen
  *      zaehlen das vorgemerkte Set nicht …“ (2 statt 1 Set)
+ *   K  in loeschenAusfuehren() die Prüfung auf [nur] entfernt
+ *      (gegenproben/galerie-abgeloestes-loeschen.patch) → rot „die Snackbar eines
+ *      abgeloesten Loeschens fuehrt das naechste nicht aus“ (DELETE für 75192-1)
+ *   L  in ladeWennLeer() die Prüfung auf eine leere Liste entfernt → rot „beim
+ *      Zeigen laedt die Galerie nur, wenn sie leer ist“ (zwei Abrufe)
+ *   K und L nur in der CI messbar (Android-Klassen im Testlauf).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GalerieViewModelTest {
@@ -103,17 +110,17 @@ class GalerieViewModelTest {
         val gemerkt = SavedStateHandle()
         val erstes = vm(gemerkt)
         erstes.setGalleryTheme("Technic")
-        erstes.setGallerySort("year_desc")
+        erstes.setGallerySort(Setsortierung.JAHR)
         erstes.setGalleryQuery("Falke")
 
         pfade.neuerProzess(io = Dispatchers.Main) { pfade, t ->
             val neu = vm(gemerkt, t)
             val g = neu.galleryState.value
-            assertEquals(Triple("Falke", "Technic", "year_desc"), Triple(g.galleryQuery, g.galleryTheme, g.gallerySort))
+            assertEquals(Triple("Falke", "Technic", Setsortierung.JAHR), Triple(g.galleryQuery, g.galleryTheme, g.gallerySort))
+            // Die Filter gelten der Ablage; der Abruf füllt sie ganz, ohne Filter.
             neu.loadSets()
-            assertTrue("Liste geladen", neu.galleryState.value.sets.isNotEmpty())
             val abruf = abrufe(pfade).single()
-            assertTrue(abruf, "search=Falke" in abruf && "theme=Technic" in abruf && "sort=year_desc" in abruf)
+            assertTrue(abruf, "search=" !in abruf && "theme=" !in abruf && "sort=" !in abruf)
         }
     }
 
@@ -197,6 +204,39 @@ class GalerieViewModelTest {
     }
 
     @Test
+    fun `die Snackbar eines abgeloesten Loeschens fuehrt das naechste nicht aus`() {
+        val vm = vm()
+        vm.loadSets()
+        vm.loeschenVormerken("10294-1", "Titanic")
+        val erstes = vm.vorgemerkt.value
+        // Ein zweites Löschen führt das erste aus und merkt sich das zweite vor.
+        vm.loeschenVormerken("75192-1", "Falke")
+        assertTrue("erstes gelöscht", pfade.anfragenAn("DELETE /api/v1/sets/10294-1").isNotEmpty())
+        val zweites = vm.vorgemerkt.value
+        // Die Snackbar des ersten endet erst jetzt (abgelöst) — sie darf das zweite nicht anfassen.
+        vm.loeschenAusfuehren(erstes)
+        vm.rueckgaengig(erstes)
+        assertEquals("Falke", vm.vorgemerkt.value?.name)
+        assertTrue("zweites noch nicht gelöscht", pfade.anfragenAn("DELETE /api/v1/sets/75192-1").isEmpty())
+        vm.rueckgaengig(zweites)
+        assertEquals(null, vm.vorgemerkt.value)
+        assertTrue("zweites nie gelöscht", pfade.anfragenAn("DELETE /api/v1/sets/75192-1").isEmpty())
+    }
+
+    @Test
+    fun `beim Zeigen laedt die Galerie nur, wenn sie leer ist`() {
+        val vm = vm()
+        vm.ladeWennLeer()
+        assertTrue("ohne Server kein Abruf", abrufe().isEmpty())
+        t.sitzung.anmeldungGeaendert(pfade.server.url("/").toString(), angemeldet = true)
+        vm.ladeWennLeer()
+        assertEquals("leer: einmal geladen", 1, abrufe().size)
+        assertTrue("Kennzahlen mit", pfade.anfragenAn("GET /api/v1/stats").isNotEmpty())
+        vm.ladeWennLeer()
+        assertEquals("schon da: nicht noch einmal", 1, abrufe().size)
+    }
+
+    @Test
     fun `ein geaenderter Kauf aendert die Kachel, ohne die Liste neu zu holen`() {
         val vm = vm()
         vm.loadSets()
@@ -246,8 +286,9 @@ class GalerieViewModelTest {
     fun `nach dem Abmelden ist die Galerie leer und ohne Filter`() {
         val gemerkt = SavedStateHandle()
         val vm = vm(gemerkt)
-        vm.setGalleryTheme("Technic")
+        vm.loadSets()
         assertTrue("Liste geladen", vm.galleryState.value.sets.isNotEmpty())
+        vm.setGalleryTheme("Technic")
         t.sitzung.abgemeldet()
         assertTrue(vm.galleryState.value.sets.isEmpty())
         assertEquals("", vm.galleryState.value.galleryTheme)

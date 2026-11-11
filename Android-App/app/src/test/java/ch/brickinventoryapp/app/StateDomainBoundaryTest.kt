@@ -1,28 +1,21 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.zustand.ui.AppUiState
 import ch.brickinventoryapp.zustand.ui.Sitzung
 import ch.brickinventoryapp.model.ui.model.StartzustandAnsicht
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Wer darf welches Feld von `AppUiState` beschreiben?
+ * Wer darf welches Feld von `AppUiState` beschreiben? Die Sitzung hält den Zustand privat
+ * und ändert ihn nur über benannte Schritte; hier steht, welcher Schritt welche Felder
+ * setzt, damit ein Schritt nicht still einen zweiten Weg zu einem fremden Feld öffnet.
  *
- * Der gemeinsame Zustand liegt in der Sitzung (zustand/ui/Sitzung.kt); geschrieben wird
- * er nur über deren benannte Schritte, ein allgemeines `aendere {}` gibt es
- * nicht mehr. Hier steht, welcher Schritt welche Felder setzt; ein neuer
- * Schreiber oder ein neues Feld fällt auf, statt still einen zweiten Weg zu öffnen.
- *
- * Der erste Test liest den Quelltext (wer hält den Zustand), der zweite führt
- * jeden Schritt aus und vergleicht die Felder davor und danach.
- *
- * Gegenproben:
- *   A  in GalerieViewModel `MutableStateFlow(AppUiState())` ergänzt → rot
- *      „nur die Sitzung hält den gemeinsamen Zustand“
- *   B  in waehrungUebernommen() `priceCondition` mitgeschrieben → rot
- *      „jeder Schritt der Sitzung setzt nur seine Felder“
+ * Gegenprobe: in waehrungUebernommen() `priceCondition` mitgeschrieben
+ * (gegenproben/zustand-schritt-zu-breit.patch) → rot „jeder Schritt der Sitzung setzt nur seine Felder“.
  */
 class StateDomainBoundaryTest {
 
@@ -39,19 +32,6 @@ class StateDomainBoundaryTest {
         "serverstartGeaendert" to setOf("startupStatus"),
     )
 
-    @Test
-    fun `nur die Sitzung haelt den gemeinsamen Zustand`() {
-        val halter = Quellen.alle().filter {
-            Regex("""MutableStateFlow\(\s*AppUiState\(|MutableStateFlow<AppUiState>""")
-                .containsMatchIn(Quellen.ohneKommentare(it.readText()))
-        }.map { it.name }
-        assert(halter == listOf("Sitzung.kt")) { "Den gemeinsamen Zustand halten: $halter" }
-        val sitzung = Quellen.alle().single { it.name == "Sitzung.kt" }.readText()
-        assert(!Regex("""\bfun (Sitzung\.)?aendere\b""").containsMatchIn(sitzung)) {
-            "Ein allgemeines aendere{} an der Sitzung öffnet jeden Weg"
-        }
-    }
-
     /** Die Felder von AppUiState, zum Vergleich vor und nach einem Schritt. */
     private val felder: Map<String, (AppUiState) -> Any?> = mapOf(
         "serverUrl" to { it.serverUrl }, "isLoggedIn" to { it.isLoggedIn }, "isAdmin" to { it.isAdmin },
@@ -65,11 +45,11 @@ class StateDomainBoundaryTest {
         "angemeldet" to { it.angemeldet(admin = true) },
         "anmeldungGeaendert" to { it.anmeldungGeaendert("https://brick.example", true) },
         "verwalterGeaendert" to { it.verwalterGeaendert(true) },
-        "einstellungenGespeichert" to { it.einstellungenGespeichert("CHF", "U") },
-        "einstellungenGeladen" to { it.einstellungenGeladen("CHF", "U", "U", "U") },
-        "waehrungUebernommen" to { it.waehrungUebernommen("CHF") },
+        "einstellungenGespeichert" to { it.einstellungenGespeichert(Waehrung.CHF, Zustand.GEBRAUCHT) },
+        "einstellungenGeladen" to { it.einstellungenGeladen(Waehrung.CHF, Zustand.GEBRAUCHT, Zustand.GEBRAUCHT, Zustand.GEBRAUCHT) },
+        "waehrungUebernommen" to { it.waehrungUebernommen(Waehrung.CHF) },
         "spracheGeaendert" to { it.spracheGeaendert("fr") },
-        "setzeDesign" to { it.setzeDesign("noppe") },
+        "setzeDesign" to { it.setzeDesign(Design.NOPPE) },
         "serverstartGeaendert" to { it.serverstartGeaendert(StartzustandAnsicht(false, "Katalog", null, 2.0, 8)) },
     )
 

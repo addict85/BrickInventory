@@ -1,6 +1,5 @@
 /**
  * Zustands-Aggregat eines Sets.
- * Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#kopf
  *
  * Aggregat, Zustand beim Anlegen und im Marktpreis: set-zustand-aggregat-db.test.js.
  *
@@ -34,7 +33,6 @@ test('die Aggregat-Regel steht nur noch an einer Stelle', () => {
   // `usedCount`, und als das Typisieren daraus ein normalisiertes `used`
   // machte, fand das alte Muster nichts mehr — der Test meldete 0 statt 1.
   // Gemeint ist die REGEL, nicht ihre Schreibweise. So gefasst faengt er …
-  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#inlinerules
   const inlineRules = [...code.matchAll(/\b\w+ > 0 \? 'U'/g)];
   assert.equal(
     inlineRules.length,
@@ -72,7 +70,6 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
   // auch bei „Gebraucht"), und es entstand gar keine Zeile in
   // part_acquisitions — der Kaufpreis stand nur in der Stammtabelle, während
   // Detailansicht und Zustandsregel mit den Erfassungen arbeiten. …
-  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#src-stelle
   const src =
     fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.ts'), 'utf8') +
     '\n' +
@@ -81,7 +78,6 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
 
   // Der Zustand muss in die Preisermittlung — sonst kommt der Neupreis, auch
   // bei „Gebraucht".
-  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#ohnezustand
   const ohneZustand = [...src.matchAll(/getCurrentPartMarketPrice\(([^)]*)\)/g)]
     .filter(m => !m[1].includes('function')) // die Definition selbst nicht
     .filter(m => m[1].split(',').length < 4);
@@ -113,7 +109,6 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
   );
   assert.match(fn, /createdAt: acquiredAt/, 'Das Erfassungsdatum muss übernommen werden');
   // Die Regel, nicht ihre Schreibweise
-  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#stelle
   assert.match(
     fn,
     /price: erfassungsPreis/,
@@ -203,7 +198,6 @@ test('die Teile-Schätzung landet in Cache und Verlauf', () => {
   // Gemeldet: Im Detail-Dialog einer Minifigur OHNE BrickLink-Nummer standen
   // bei Marktpreis (Neu) und (Gebraucht) nur Striche, der Verlauf blieb leer —
   // obwohl Kaufpreise in beiden Zuständen erfasst waren.
-  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#src-stelle-2
   const src =
     fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.ts'), 'utf8') +
     '\n' +
@@ -274,7 +268,6 @@ test('Erfassungen ohne Kaufpreis werden nachgetragen', () => {
     'Ein gebraucht erfasstes Exemplar braucht den Gebrauchtpreis',
   );
   // Hier stand eine Regel auf die Spiegelung
-  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#stelle-2
   assert.doesNotMatch(
     job.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''),
     /UPDATE sets SET/,
@@ -297,7 +290,6 @@ test('neue Sets holen den richtigen Zustand, nicht den Standard', () => {
   // set_acquisitions-Zeile schon. conditionsNeededFor() fand daher nichts und
   // fiel auf 'N' zurück — ein als „Gebraucht" importiertes Set bekam den
   // Neupreis als Kaufpreis, weil die anschliessende Preisabfrage für 'U' noch …
-  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#job-stelle
   const job = fs.readFileSync(path.join(ROOT, 'src/finanzen/preisLauf.ts'), 'utf8');
   const { hatParameter } = require('./helpers/sources');
   assert.ok(hatParameter(job, 'conditionsNeededFor', 'hintCondition', true), 'Der Hinweis-Parameter fehlt');
@@ -331,7 +323,6 @@ test('der Preisverlauf-Graph benutzt den Zustand DES SETS, nicht den globalen St
   // der Graph zeigt trotzdem einen Abfall am selben Tag. Ursache:
   // `const condition = DEFAULT_PRICE_CONDITION` — fest 'U', unabhängig vom
   // tatsächlichen Zustand des Sets. Für ein als „Neu" geführtes Set bevorzugte …
-  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#src-stelle-4
   const src = fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8');
   const i = src.indexOf("router.get('/sets/:setNumber/price-history'");
   assert.ok(i > 0, 'Die Preisverlauf-Route ist nicht mehr auffindbar');
@@ -434,7 +425,6 @@ test('genau EINE Zustandsauflösung für Einzelsets — resolveSetCondition', ()
   // Seit dem Fix für die BrickLink-Schlüssel holt priceHistory.ts aus derselben
   // Datei zwei weitere Namen — die Zeile lautet jetzt
   //     import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } … …
-  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#stelle-4
   assert.match(
     helper,
     /import \{[^}]*\bresolveSetCondition\b[^}]*\} from '\.\/financeCalc';/,
@@ -454,7 +444,6 @@ test('CDN-Anfragen erzwingen IPv4', () => {
   // Ohne IPv6-Route liefen Bildabrufe stumm bis zur Frist. Der Set-Bild-Download
   // beim Import geht über den gemeinsamen Abrufhelfer; dass der und der Pool
   // der Bild-CDNs IPv4 erzwingen, prüft der Test darunter am laufenden Code.
-  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#server
   const setsFile = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/setImages.ts'), 'utf8');
   assert.match(
     setsFile,
@@ -466,7 +455,6 @@ test('CDN-Anfragen erzwingen IPv4', () => {
 test('IPv4 wird an ALLEN ausgehenden HTTPS-Aufrufen erzwungen, nicht nur beim Bild-Proxy', async () => {
   // Der Server hat keine IPv6-Route; ohne family: 4 hängt jede ausgehende
   // Verbindung stumm bis zur Frist. abruf.ts ist der eine Weg nach draussen.
-  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#ohne
   // Gegenprobe (05.11.2026): family: 4 aus https.get in abruf.ts oder aus dem Pool gestrichen → rot.
   const _req = require('./helpers/sources').buildAndRequire();
   const { holeHttps } = _req('src/infra/abruf.js');
@@ -495,7 +483,6 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
   // Minifiguren zu) bekamen nie eine Vorschau. Ursache: Der stündliche
   // Hintergrund-Job lud das Bild herunter und aktualisierte image_local,
   // rief aber nie generateThumb() auf — anders als bei Sets (dieselbe …
-  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#src-stelle-5
   const src = require('./helpers/sources').serverAll();
 
   const partsLoop = src.slice(
@@ -506,7 +493,6 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
   //     const { generateThumb } = require('./src/katalog/bilder/thumbs');
   // Beim Umbau der späten require() auf echte import-Anweisungen wurde daraus
   // ein Import am Dateikopf — die Prüfung wurde rot, ohne dass sich ihre …
-  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#stelle-5
   assert.match(src, /generateThumb/, 'generateThumb ist in server.ts nicht mehr verfügbar');
   assert.match(
     partsLoop,
@@ -529,7 +515,6 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
 // Welche Plaketten die Kachel zeigt (hardened-91)
 // ═══════════════════════════════════════════════════════════════════════════
 // utils/handlers.ts gibt es seit nicht mehr (aufgeteilt nach …
-// Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#stelle-6
 const { buildAndRequire, handlerModul } = require('./helpers/sources');
 const { conditionsFromAcquisitions, conditionFromAcquisitions } = handlerModul(buildAndRequire());
 
@@ -552,7 +537,6 @@ test('ohne Erfassungen gilt „Neu"', () => {
   // dritten Parameter. Den gibt es seit Migration 0035 nicht mehr: Fuer
   // manuelle Positionen traegt sie eine Erfassung nach und prueft danach
   // nach, dass keine ohne geblieben ist; fuer Teile und Figuren aus einem Set …
-  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#stelle-7
   assert.deepEqual(conditionsFromAcquisitions(0, 0), ['N']);
   assert.equal(conditionFromAcquisitions(0, 0), 'N');
 });
@@ -643,7 +627,6 @@ test('Registrieren und Profil bleiben beim Benutzernamen-Muster', () => {
 test('beide Login-Wege prüfen gleich', () => {
   // Webapp und Android-API müssen dieselbe Regel haben — sonst funktioniert
   // die Anmeldung per E-Mail nur auf einem der beiden Wege.
-  // Ausführlich: docs/begruendungen/test/set-condition-aggregate.test.js.md#zentral
   const zentral = fs.readFileSync(path.join(ROOT, 'src/konto/auth.ts'), 'utf8');
   const rumpf = zentral.slice(zentral.indexOf('async function pruefeAnmeldedaten'));
   assert.match(

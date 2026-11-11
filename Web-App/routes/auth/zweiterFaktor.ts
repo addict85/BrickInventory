@@ -2,15 +2,15 @@
  * Abschalten verlangen das Passwort: Wer nur eine offene Sitzung erbeutet,
  * soll das Konto weder aussperren noch den Schutz abbauen. */
 import * as K from '../../src/konto/konten';
-import { fehlerAntwort } from '../../src/http/httpAntwort';
+import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { beendeAndereZugaenge } from '../../src/konto/auth';
 import { requireLoginOrToken, angemeldeteNutzerId, bestaetigeCode, bestaetigeMitFaktor, zugangVon, zweiterFaktorPflicht, gnadenfristVerbrauchen } from '../../src/konto/http/anmeldung';
 import { bestaetigeEinrichtungGebremst } from '../../src/konto/passwortBestaetigung';
 import { hinweisNebenher } from '../../src/konto/kontoHinweis';
-import { sendeFehler } from '../../src/infra/fehlerTexte';
 import * as zf from '../../src/konto/zweiterFaktor';
-import { vertragsRouter } from '../../src/vertrag/pruefen';
-import type { Antwort, OffeneAnfrage } from '../../src/vertrag';
+import { STATUS_DER_ART } from '../../src/http/fehlerArt';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Antwort, OffeneAnfrage } from '../../src/http/vertragsRouter';
 
 const router = vertragsRouter();
 const requireLogin = requireLoginOrToken;
@@ -38,7 +38,7 @@ router.post('/zweiter-faktor/einrichten', requireLogin, async (req: OffeneAnfrag
 router.post('/zweiter-faktor/bestaetigen', requireLogin, async (req: OffeneAnfrage<'POST /api/v1/auth/zweiter-faktor/bestaetigen'>, res: Antwort<'POST /api/v1/auth/zweiter-faktor/bestaetigen'>) => {
   const uid = angemeldeteNutzerId(req);
   const codes = await bestaetigeEinrichtungGebremst(uid, zugangVon(req), req.eingabe.code);
-  if (!Array.isArray(codes)) return sendeFehler(req, res, codes.status, codes.code, codes.vars);
+  if (!Array.isArray(codes)) return sendeFehler(req, res, STATUS_DER_ART[codes.art], codes.code, codes.vars);
   const kopf = String(req.headers.authorization || '');
   const version = await beendeAndereZugaenge(uid, kopf.startsWith('Bearer ') ? kopf.slice(7) : null,
     req.session?.userId ? req.sessionID : null);

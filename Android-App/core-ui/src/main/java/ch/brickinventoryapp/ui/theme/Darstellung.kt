@@ -1,12 +1,13 @@
 package ch.brickinventoryapp.ui.theme
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.ui.theme.Helligkeit
 
 /**
  * Was gezeichnet wird: das Design des Servers, bei Bedarf in seiner dunklen
  * Fassung — oder mit [systemfarben] die Farben des Hintergrundbilds (Material You).
  */
-data class Darstellung(val design: String, val dunkel: Boolean, val systemfarben: Boolean = false)
+data class Darstellung(val design: Design, val dunkel: Boolean, val systemfarben: Boolean = false)
 
 /** Ab Android 12 (API 31) liefert das System eigene Farbschemata. */
 const val SYSTEMFARBEN_AB_SDK = 31
@@ -18,7 +19,7 @@ const val SYSTEMFARBEN_AB_SDK = 31
  * dunkle Fassung; unter Android 12 gibt es sie nicht, dann gilt das Design.
  */
 fun darstellung(
-    design: String, helligkeit: String, systemDunkel: Boolean,
+    design: Design, helligkeit: String, systemDunkel: Boolean,
     systemfarben: Boolean = false, sdk: Int = 0,
 ): Darstellung {
     val dynamisch = systemfarben && sdk >= SYSTEMFARBEN_AB_SDK
@@ -35,5 +36,5 @@ fun darstellung(
  * Fassung (Werkbank ist schon dunkel) — die Einstellungen schalten die Wahl dann ab,
  * statt einen Schalter ohne Wirkung anzubieten.
  */
-fun helligkeitWaehlbar(design: String, systemfarben: Boolean = false, sdk: Int = 0): Boolean =
+fun helligkeitWaehlbar(design: Design, systemfarben: Boolean = false, sdk: Int = 0): Boolean =
     (systemfarben && sdk >= SYSTEMFARBEN_AB_SDK) || hatDunkleFassung(design)

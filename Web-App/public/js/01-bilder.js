@@ -73,7 +73,6 @@ export function bildPlatzhalter(img, vorlaeufig = false) {
 /**
  * Der Bild-Proxy liegt unter /api/v1. Ältere image_url aus der Datenbank tragen noch die alte Adresse;
  * erkannt werden beide, gebaut wird nur die neue.
- * Ausführlich: docs/begruendungen/public/js/01-bilder.js.md#img-proxy
  */
 const IMG_PROXY = '/api/v1/img-proxy';
 
@@ -91,7 +90,6 @@ function istProxyPfad(src) {
  * Adressen auf den eigenen Server auf ihren Pfad kürzen: imgEl.src liefert die absolute Adresse, und der
  * Proxy lehnt sich selbst als Ziel zu Recht ab (offene Weiterleitung). Ohne das brach der Zoom mit
  * 403.
- * Ausführlich: docs/begruendungen/public/js/01-bilder.js.md#stripownorigin
  * @param {string} src
  * @returns {string} Pfad, wenn die Adresse auf den eigenen Ursprung zeigt, sonst unverändert
  */
@@ -145,7 +143,6 @@ export function imgUrl(src, thumb) {
 
   // Lokale Datei oder schon über den Proxy: unverändert. Fremde Adressen lädt der Browser nie direkt — nur
   // der Proxy setzt die Kopfzeilen gegen den Hotlink-Schutz und hält den Cache.
-  // Ausführlich: docs/begruendungen/public/js/01-bilder.js.md#if-2
   if (src.startsWith('/data/') || src.startsWith('/images/') || istProxyPfad(src)) {
     return src;
   }
@@ -159,7 +156,6 @@ export function imgUrl(src, thumb) {
     // Vorschauen entstehen im Proxy. `thumb` 'nur' nutzt eine vorhandene, rechnet aber keine neue: für den
     // Katalog mit 25 000 fremden Sets, an denen man vorbeiscrollt. Der eigene Bestand bekommt die Vorschau
     // (true).
-    // Ausführlich: docs/begruendungen/public/js/01-bilder.js.md#vorschauen-entstehen-im-proxy-thumb
     const tp = thumb === 'nur' ? '&thumb=1&gen=0' : (thumb ? '&thumb=1' : '');
     return IMG_PROXY + '?url=' + encodeURIComponent(src) + tp;
   }
@@ -187,7 +183,6 @@ export function fullUrl(src) {
 /**
  * Lokale Bildadressen bleiben, wie der Server sie liefert: Er weiss, ob es die Vorschau gibt. Eine selbst
  * gebaute _thumb-Adresse lud Bilder, die nicht existierten, auch nach dem Neuladen nicht (gleich in der App).
- * Ausführlich: docs/begruendungen/public/js/01-bilder.js.md#thumburl
  * @template {string | null | undefined} T
  * @param {T} src
  * @returns {T}
@@ -200,7 +195,6 @@ export function thumbUrl(src) {
 /**
  * Blendet Bilder beim Sichtbarwerden ein und markiert schon geladene sofort: Nach innerHTML starten alle
  * <img> bei opacity 0, und bis der Beobachter antwortet, stand sonst eine kurz weisse Kachelwand da.
- * Ausführlich: docs/begruendungen/public/js/01-bilder.js.md#observelazyimages
  * @param {ParentNode} [root]
  */
 export function observeLazyImages(root) {
@@ -208,7 +202,7 @@ export function observeLazyImages(root) {
   if(!imgs.length) return;
   // Synchron, VOR dem nächsten Paint
   imgs.forEach(img => { if(img.complete && img.naturalWidth > 0) img.classList.add('loaded'); });
-  const beobachter = window._imgObserver ??= new IntersectionObserver((entries, obs) => {
+  window._imgObserver ??= new IntersectionObserver((entries, obs) => {
     entries.forEach(e => {
       if(e.isIntersecting){
         const img = /** @type {HTMLImageElement} */ (e.target);
@@ -218,5 +212,6 @@ export function observeLazyImages(root) {
       }
     });
   }, { rootMargin: '200px' });
+  const beobachter = window._imgObserver;
   imgs.forEach(img => { img.classList.add('observed'); beobachter.observe(img); });
 }

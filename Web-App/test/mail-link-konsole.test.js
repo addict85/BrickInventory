@@ -15,6 +15,7 @@ const test   = require('node:test');
 const assert = require('node:assert/strict');
 
 const _req = require('./helpers/sources').buildAndRequire();
+const umgebung = require('./helpers/sources').umgebung;
 const { linkFuerKonsole } = _req('src/mail/mailer.js');
 
 // Der Absender reicht den Link selbst; aus dem Text gesucht wird nicht mehr.
@@ -31,11 +32,11 @@ test('ohne Schalter ohne Token', () => {
 test('NODE_ENV öffnet nichts — auch nicht development', () => {
   const alt = process.env.NODE_ENV;
   try {
-    for (const umgebung of ['development', 'test', 'production']) {
-      process.env.NODE_ENV = umgebung;
-      assert.equal(linkFuerKonsole(TEXT), 'https://lego.example.org/reset?token=…', umgebung);
+    for (const art of ['development', 'test', 'production']) {
+      umgebung({ NODE_ENV: art });
+      assert.equal(linkFuerKonsole(TEXT), 'https://lego.example.org/reset?token=…', art);
     }
-  } finally { if (alt === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = alt; }
+  } finally { if (alt === undefined) umgebung({ NODE_ENV: undefined }); else umgebung({ NODE_ENV: alt }); }
 });
 
 test('mit MAIL_KONSOLE_MIT_TOKEN=1 vollständig — dann ist die Konsole der Postausgang', () => {

@@ -1,7 +1,6 @@
 /**
  * Set löschen: EINE Rückfrage, und alles Zugehörige geht mit.
  * Setanzahl ändern: Teile und Minifiguren ziehen mit.
- * Ausführlich: docs/begruendungen/test/set-delete-and-quantity-db.test.js.md#kopf
  *
  * Gegenproben (durchgeführt): Rückfrage im btn-md-Handler wieder eingebaut →
  * Teilschritt 1 rot. `sets` aus der Trigger-Liste entfernt → Teilschritt 4 rot.
@@ -21,8 +20,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const express = require(path.join(ROOT, 'node_modules', 'express'));
-const { haeltFigur, haeltSet, haeltTeil, mengeVon } = require('./helpers/bestand');
+const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 
 test('das Löschen fragt genau einmal', () => {
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/02-gallery.js'), 'utf8'));
@@ -52,7 +50,6 @@ test('das Löschen fragt genau einmal', () => {
 test('die Mengen-Multiplikation steht an allen Stellen', () => {
   const h = ohneKommentare(require('./helpers/sources').handlerQuelle());
   // Teile und Minifiguren eines Sets zählen JE EXEMPLAR mal Setanzahl.
-  // Ausführlich: docs/begruendungen/test/set-delete-and-quantity-db.test.js.md#stellen
   const stellen = (h.match(/mengeAus\('sm', ?1\)/g) || []).length;
   assert.ok(stellen >= 3,
     `nur ${stellen} Stellen multiplizieren mit der Setanzahl — erwartet werden ` +
@@ -143,7 +140,6 @@ test('Löschen und Mengenänderung gegen die Datenbank', { concurrency: 1 }, asy
       // Lesen, nicht beim Schreiben. Seit Migration 0038 steht sie nicht mehr
       // in `parts` (die Spalte gibt es nicht), sondern EINMAL im Katalog des
       // Sets. Stünde dort 30, hätte jemand die Setmenge hineingerechnet, und …
-      // Ausführlich: docs/begruendungen/test/set-delete-and-quantity-db.test.js.md#roh-stelle
       const roh = await db.get(
         `SELECT quantity FROM set_parts_catalog WHERE set_number=$1 AND part_number='3001'`,
         [SN]);

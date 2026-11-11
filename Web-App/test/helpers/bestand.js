@@ -1,6 +1,5 @@
 /**
  * Bestand anlegen und lesen — für Testaufbauten.
- * Ausführlich: docs/begruendungen/test/helpers/bestand.js.md#kopf
  */
 const path = require('node:path');
 
@@ -14,16 +13,17 @@ const path = require('node:path');
  *               Erfassung" — ein gültiger Zustand (etwa nach dem Löschen der
  *               letzten Erfassung über den Mengenregler), und genau der Fall,
  *               auf den die Listen mit 0 antworten müssen.
- * @param opt.preis    Kaufpreis der Erfassung (Standard: keiner)
- * @param opt.zustand  'N' oder 'U' (Standard 'N')
- * @param opt.am       Aufnahmedatum der Erfassung (Standard: jetzt).
+ * @param {object} [opt] Optionen:
+ * @param [opt.preis]    Kaufpreis der Erfassung (Standard: keiner)
+ * @param [opt.zustand]  'N' oder 'U' (Standard 'N')
+ * @param [opt.am]       Aufnahmedatum der Erfassung (Standard: jetzt).
  *                     idx_set_acq_tag_zustand erlaubt je Konto, Set, TAG und
  *                     ZUSTAND nur eine Erfassung — mehrere Käufe desselben
  *                     Sets im selben Zustand brauchen also verschiedene Tage.
  *                     (Der Zustand steht seit Migration 0040 im Schlüssel;
  *                     davor galt die Regel ohne ihn, und zwei Käufe eines
  *                     Tages wurden zu einer Zeile mit Mischpreis.)
- * @param opt.egalWennDa  true: eine schon vorhandene sets-Zeile ist in Ordnung
+ * @param [opt.egalWennDa]  true: eine schon vorhandene sets-Zeile ist in Ordnung
  */
 async function haeltSet(db, userId, setNumber, menge = 1, opt = {}) {
   await db.run(
@@ -77,20 +77,20 @@ async function haltZeile(db, userId, setNumber) {
 // ═══════════════════════════════════════════════════════════════════════════
 // Teile und Minifiguren
 // ═══════════════════════════════════════════════════════════════════════════
-// Ausführlich: docs/begruendungen/test/helpers/bestand.js.md#stelle
 
 /**
  * „Dieses Konto hält dieses Teil."
  *
- * @param opt.setNumber  Aus welchem Set. Fehlt sie, ist es ein MANUELL
+ * @param {object} [opt] Optionen:
+ * @param [opt.setNumber]  Aus welchem Set. Fehlt sie, ist es ein MANUELL
  *                       erfasstes Teil (source='manual'), und die Menge geht
  *                       in eine Erfassung. Steht sie da, ist es ein Set-Teil
  *                       (source='set'), und die Menge ist die KATALOGZAHL.
- * @param opt.menge      Stückzahl (Standard 1)
- * @param opt.colorId    Farbe (Standard 0)
- * @param opt.preis      Kaufpreis der Erfassung — nur fuer manuelle Teile
- * @param opt.zustand    'N' oder 'U' (Standard 'N'), nur fuer manuelle Teile
- * @param opt.am         Aufnahmedatum der Erfassung. idx_part_acq_tag_zustand
+ * @param [opt.menge]      Stückzahl (Standard 1)
+ * @param [opt.colorId]    Farbe (Standard 0)
+ * @param [opt.preis]      Kaufpreis der Erfassung — nur fuer manuelle Teile
+ * @param [opt.zustand]    'N' oder 'U' (Standard 'N'), nur fuer manuelle Teile
+ * @param [opt.am]         Aufnahmedatum der Erfassung. idx_part_acq_tag_zustand
  *                       (Migration 0008, erweitert in 0040) erlaubt je Konto,
  *                       Teil, Farbe, TAG und ZUSTAND nur eine Erfassung —
  *                       genau wie bei den Sets.
@@ -98,7 +98,7 @@ async function haltZeile(db, userId, setNumber) {
  *                       GEMESSEN brachen fuenf Testdateien mit „duplicate
  *                       key value violates unique constraint
  *                       idx_part_acq_tag_zustand" ab.
- * @param opt.storageId  Lagerort
+ * @param [opt.storageId]  Lagerort
  */
 async function haeltTeil(db, userId, partNumber, opt = {}) {
   const { setNumber = null, menge = 1, colorId = 0 } = opt;
@@ -123,7 +123,6 @@ async function haeltTeil(db, userId, partNumber, opt = {}) {
     // Position SETZT die Menge, statt abzubrechen oder sie zu addieren.
     // Das ist die Zusage dieser Funktion — „dieses Konto haelt N davon",
     // nicht „kauf N dazu". Wer zwei Kaeufe braucht, gibt zwei Daten mit …
-    // Ausführlich: docs/begruendungen/test/helpers/bestand.js.md#stelle-2
     await db.run(
       `DELETE FROM part_acquisitions
         WHERE user_id = $1 AND part_number = $2 AND color_id = $3 AND condition = $4
@@ -210,6 +209,34 @@ async function figurmengeVon(db, userId, figNumber) {
 
 
 /**
+ * Ein Set im Katalog (Migration 0105): Name, Jahr, Thema und Teile in rb_sets
+ * (das Thema über seinen Namen in rb_themes), Figuren und Bild in set_catalog.
+ * Fehlende Felder lassen vorhandene Werte stehen. `herkunft` wie in rb_sets
+ * ('api' als Vorgabe: so legt die Erfassung an).
+ */
+async function katalogSet(db, setNumber, f = {}) {
+  let themeId = null;
+  if (f.theme) {
+    let h = 0;
+    for (const z of f.theme) h = (h * 31 + z.charCodeAt(0)) % 90000;
+    themeId = 900000 + h;
+    await db.run('INSERT INTO rb_themes (id, name) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING', [themeId, f.theme]);
+  }
+  await db.run(`INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, herkunft)
+                VALUES (set_nummer_mit_version($1), COALESCE($2, 'Set ' || set_nummer_mit_version($1)), $3, $4, $5, $6)
+                ON CONFLICT (set_num) DO UPDATE SET name = COALESCE($2, rb_sets.name),
+                  year = COALESCE($3, rb_sets.year), theme_id = COALESCE($4, rb_sets.theme_id),
+                  num_parts = COALESCE($5, rb_sets.num_parts), herkunft = $6`,
+  [setNumber, f.name ?? null, f.year ?? null, themeId, f.pieces ?? null, f.herkunft ?? 'api']);
+  await db.run(`INSERT INTO set_catalog (set_number, minifigs, image_url, image_local, brickset_id)
+                VALUES (set_nummer_mit_version($1), $2, $3, $4, $5)
+                ON CONFLICT (set_number) DO UPDATE SET minifigs = COALESCE($2, set_catalog.minifigs),
+                  image_url = COALESCE($3, set_catalog.image_url), image_local = COALESCE($4, set_catalog.image_local),
+                  brickset_id = COALESCE($5, set_catalog.brickset_id)`,
+  [setNumber, f.minifigs ?? null, f.image_url ?? null, f.image_local ?? null, f.brickset_id ?? null]);
+}
+
+/**
  * Eine Sammlung, in der jede Ansicht etwas zeigt: Sets mit Thema, Kaufpreis
  * (auch 0 = Geschenk), Marktpreis und Verlauf, Teile in mehreren Farben
  * (Schwarz für den Farbpunkt im Dunkelmodus), Figuren und Merkliste. Für
@@ -223,8 +250,7 @@ async function musterSammlung(db, uid) {
     ['21318-1', 'Tree House', 'Ideas', 2019, 3036, 199.99, 'N', 186.2],
   ];
   for (const [nr, name, thema, jahr, teile, preis, zustand, markt] of sets) {
-    await db.run(`INSERT INTO set_catalog (set_number, name, year, theme, pieces, minifigs) VALUES ($1,$2,$3,$4,$5,4)
-                  ON CONFLICT (set_number) DO UPDATE SET name = $2, theme = $4`, [nr, name, jahr, thema, teile]);
+    await katalogSet(db, nr, { name, year: jahr, theme: thema, pieces: teile, minifigs: 4 });
     await haeltSet(db, uid, nr, 1, { preis, zustand, am: '2026-06-01T10:00:00Z' });
     await db.run(`INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
                   VALUES ($1,$2,'EUR',$3,$4,$5,$4,12,NOW()) ON CONFLICT (set_number, condition, currency_code) DO UPDATE SET avg_price = $4, qty_avg_price = $4`,
@@ -276,5 +302,5 @@ async function musterHaushalt(db, uid) {
   return kid;
 }
 
-module.exports = { musterSammlung, musterHaushalt, haeltSet, erfasse, mengeVon, haltZeile,
+module.exports = { katalogSet, musterSammlung, musterHaushalt, haeltSet, erfasse, mengeVon, haltZeile,
                    haeltTeil, haeltFigur, teilmengeVon, figurmengeVon };

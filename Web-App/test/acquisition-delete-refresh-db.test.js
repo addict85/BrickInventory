@@ -1,12 +1,9 @@
 /**
  * Eine Erfassung löschen → Preis und Zustand der ANTWORT werden NEU bestimmt.
- * Ausführlich: docs/begruendungen/test/acquisition-delete-refresh-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
@@ -14,7 +11,6 @@ const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet, mengeVon, haltZeile } = require('./helpers/bestand');
 const db = _req('db/database.js');
-const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu',
   { concurrency: 1 }, async (t) => {
@@ -59,7 +55,7 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu',
     // zugleich. Die Reihenfolge bleibt: ohne Bestandszeile gibt es keine
     // Elternangabe, auch wenn noch Erfassungen herumliegen sollten.
     if (!(await haltZeile(db, uid, SN))) return undefined;
-    const agg = await _req('src/sets/lesen.js').getSetConditionAggregate([uid], SN);
+    const agg = await _req('src/sets/index.js').getSetConditionAggregate([uid], SN);
     return { purchase_price: agg.avg_purchase_price, condition: agg.condition,
              quantity: await mengeVon(db, uid, SN) };
   };
@@ -103,7 +99,6 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu',
 
     // 3. Letzte Erfassung löschen: Es bleibt keine übrig — und seit
     //  auch keine Elternzeile mehr.
-    // Ausführlich: docs/begruendungen/test/acquisition-delete-refresh-db.test.js.md#stelle
     await aufbauen();
     for (const row of await db.all(
       `SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [uid, SN])) {

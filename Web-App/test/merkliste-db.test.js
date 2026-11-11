@@ -1,6 +1,5 @@
 /**
  * Die Merkliste — gegen eine echte Datenbank.
- * Ausführlich: docs/begruendungen/test/merkliste-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -8,7 +7,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { haeltSet, mengeVon, haltZeile } = require('./helpers/bestand');
+const { haeltSet, mengeVon, haltZeile, katalogSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 const U = {};
@@ -85,8 +84,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
 
   await t.test('ohne Rebrickable-Katalog kommen Name und Bild aus set_catalog', async () => {
     // Gegenprobe (28.10.2026): rb.name statt COALESCE(rb.name, sc.name) → rot, name null.
-    await db.run(`INSERT INTO set_catalog (set_number, name, year, pieces, image_url)
-                  VALUES ('10316-1', 'Rivendell', 2023, 6167, 'http://x/10316.jpg')`);
+    await katalogSet(db, '10316-1', { name: 'Rivendell', year: 2023, pieces: 6167, image_url: 'http://x/10316.jpg' });
     await W.legeMerkpostenAn(U.opa, '10316-1', 'N');
     const w = (await W.merkpostenVon([U.opa])).find(x => x.set_number === '10316-1');
     assert.equal(w.name, 'Rivendell');
@@ -188,7 +186,6 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     // Genau der U-Merkposten ist weg. Der N-Merkposten auf dasselbe Set bleibt
     // stehen — er ist ein ANDERER Merkposten, und genau dafuer steht der Zustand
     // im Schluessel.
-    // Ausführlich: docs/begruendungen/test/merkliste-db.test.js.md#uebrig
     const uebrig = (await W.merkpostenVon([U.enkel], '10276-1')).map(w => w.condition);
     assert.deepEqual(uebrig, ['N'], 'Der U-Merkposten steht noch — oder der N-Merkposten wurde mitgenommen');
     assert.equal((await P.alarmeFuer(U.enkel, '10276-1')).length, 0, 'Der Alarm steht noch');
@@ -279,7 +276,6 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
 
   await t.test('das Bild kommt lokal — und fehlt es, wird es bestellt', async () => {
     // Marcos zwei Befunde in einem Test:
-    // Ausführlich: docs/begruendungen/test/merkliste-db.test.js.md#fs-stelle
     //
     // Gegenproben (durchgeführt, Ergebnis im Commit):
     //   a) merkeGebraucht()-Zeile aus merkpostenVon() entfernt → „bestellt" rot.

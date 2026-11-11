@@ -1,4 +1,4 @@
-// Beide Pfadpräfixe, ein Existenz-Cache. Ausführlich: docs/begruendungen/src/katalog/bilder/images.ts.md#abschnitt
+// Beide Pfadpräfixe, ein Existenz-Cache.
 
 import fs from 'fs';
 import crypto from 'crypto';
@@ -40,7 +40,6 @@ export function resolveImageLocal(localPath: string | null | undefined) {
 }
 
 // Die Adresse steht so in gespeicherten image_url; die alte Form lebt darum weiter.
-// Ausführlich: docs/begruendungen/src/katalog/bilder/images.ts.md#img-proxy-pfad
 export const IMG_PROXY_PFAD = '/api/v1/img-proxy';
 /** Nur noch für Altbestand und ältere App-Fassungen. */
 export const IMG_PROXY_PFAD_ALT = '/api/img-proxy';
@@ -69,7 +68,6 @@ export function proxyImageUrl(url: string | null | undefined) {
 const _existsCache = new Map();
 
 /** Liefert bei Treffer den Vorschau-bevorzugten Pfad, sonst null.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/images.ts.md#resolveifexists
  * @param publicRelPath z. B. "/images/sets/10283-1.jpg" */
 export function resolveIfExists(publicRelPath: string) {
   const hit = _existsCache.get(publicRelPath);
@@ -105,7 +103,6 @@ export function proxyCacheSchluessel(url: string): string {
 }
 
 // Die Ablageregel des Proxy-Caches an einer Stelle, auch für die Bild-Diagnose.
-// Ausführlich: docs/begruendungen/src/katalog/bilder/images.ts.md#proxycachepathfor
 export function proxyCachePathFor(url: string): string | null {
   if (!url) return null;
   return path.join(APP_ROOT, 'data', 'img_proxy_cache', proxyCacheSchluessel(url));

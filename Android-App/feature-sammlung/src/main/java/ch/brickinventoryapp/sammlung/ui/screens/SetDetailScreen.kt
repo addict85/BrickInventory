@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.sammlung.ui.viewmodel.SetDetailAktionen
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
 import androidx.compose.ui.res.stringResource
@@ -49,7 +50,7 @@ fun SetDetailRoute(
     onBack: () -> Unit,
     onDelete: (String) -> Unit,
     rueckgaengigMoeglich: Boolean = false,
-    onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit = { _, _, _, _ -> },
+    onNavigateToAcqMgmt: (type: Postenart, id: String, colorId: Int, title: String) -> Unit = { _, _, _, _ -> },
     onOpenPdf: (url: String, title: String) -> Unit = { _, _ -> }
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -90,7 +91,7 @@ fun SetDetailScreen(
      * ohne Rückfrage — eine Sicherung genügt. Ohne Liste (Einstieg von aussen) fragt er.
      */
     rueckgaengigMoeglich: Boolean = false,
-    onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit = { _, _, _, _ -> },
+    onNavigateToAcqMgmt: (type: Postenart, id: String, colorId: Int, title: String) -> Unit = { _, _, _, _ -> },
     onOpenPdf: (url: String, title: String) -> Unit = { _, _ -> }
 ) {
     val state       = zustand.state
@@ -102,7 +103,7 @@ fun SetDetailScreen(
     val price     = detailState.setPrice?.takeIf { it.setNumber == setNumber }
     val history   = detailState.priceHistory
     val pnlPct    = history?.pnlProzent
-    val currency  = detailState.setPrice?.currency?.ifBlank { state.currency } ?: state.currency
+    val currency  = detailState.setPrice?.currency?.takeIf { it.bekannt } ?: state.currency
     val coroutineScope = rememberCoroutineScope()
     var showImageZoom by rememberSaveable { mutableStateOf(false) }
     var showSetDeleteConfirm by rememberSaveable { mutableStateOf(false) }
@@ -179,7 +180,6 @@ fun SetDetailScreen(
         // nach dem Erfassen ist die Datei auf dem Server oft noch nicht fertig, und Coil
         // versucht von sich aus nie erneut; die Fläche bliebe leer bis zum nächsten
         // Öffnen.
-        // Ausführlich: docs/begruendungen/feature-sammlung/sammlung/ui/screens/SetDetailScreen.kt.md#detailretrystate
         val detailRetryState = remember(set.setNumber, imageUrl) { mutableIntStateOf(0) }
         val detailScope = rememberCoroutineScope()
         val zoomImageUrl = imageUrl

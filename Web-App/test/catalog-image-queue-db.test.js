@@ -1,13 +1,10 @@
 /**
  * Der Katalog stösst nicht mehr Bilder an, als jemand ansieht.
- * Ausführlich: docs/begruendungen/test/catalog-image-queue-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 const Module = require('node:module');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 // Den Bild-Download abfangen, BEVOR die Routen geladen werden: Sie holen ihn
@@ -33,7 +30,6 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('die Katalogliste löst gar keine Bildarbeit aus', { concurrency: 1 }, async (t) => {
   if (!await dbOderSkip(t, _req)) return;
@@ -64,7 +60,6 @@ test('die Katalogliste löst gar keine Bildarbeit aus', { concurrency: 1 }, asyn
     await new Promise(r => setTimeout(r, 2500));
 
     // Aus dem Deckel wurde eine Null
-    // Ausführlich: docs/begruendungen/test/catalog-image-queue-db.test.js.md#stelle
     assert.equal(angestossen, 0,
       `${angestossen} Bild-Aufträge aus der LISTE. Sie darf gar keine mehr ` +
       'auslösen — jeder Aufruf von hier läuft an allen Drosselungen vorbei.');

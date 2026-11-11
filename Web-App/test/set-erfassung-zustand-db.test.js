@@ -1,6 +1,5 @@
 /**
  * Beim Aufstocken eines Sets müssen Preis und vermerkter Zustand ZUSAMMEN passen.
- * Ausführlich: docs/begruendungen/test/set-erfassung-zustand-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -8,7 +7,6 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 // Der Nachzug nach dem Erfassen (src/sets/nachErfassung.ts) wird abgefangen.
-// Ausführlich: docs/begruendungen/test/set-erfassung-zustand-db.test.js.md#module
 const Module = require('node:module');
 const _echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
@@ -41,7 +39,6 @@ test('aufstocken ohne Zustandsangabe folgt dem Standard des Nutzers', { concurre
     await setUserSetting(uid, 'user_default_condition', 'U');
 
     // Den Aufstock-Weg ISOLIEREN
-    // Ausführlich: docs/begruendungen/test/set-erfassung-zustand-db.test.js.md#stelle
     await haeltSet(db, uid, SET, 1, { zustand: 'N' });
 
     // Erfassung OHNE Zustandsangabe. Preis mitgeben, damit kein Netzaufruf

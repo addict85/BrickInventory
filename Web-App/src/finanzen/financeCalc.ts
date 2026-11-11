@@ -1,8 +1,7 @@
-/** Eine Tür für alle Aufrufstellen, damit die Aufteilung in Schichten sie nicht trifft.
- * Ausführlich: docs/begruendungen/src/finanzen/financeCalc.ts.md#abschnitt */
+/** Eine Tür für alle Aufrufstellen, damit die Aufteilung in Schichten sie nicht trifft. */
 export {
   DEFAULT_PRICE_CONDITION,
-  speicherePreis, cacheUsable, preisAusCache,
+  speicherePreis, cacheUsable, preisAusCache, leerePreisCache,
   checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus,
   fetchPrice, parallelLimit, resolveBlColorId, resolveBlPartNumber,
   fetchPartPrice, fetchMinifigPrice, ladeTeilepreiseVor, ladeFigurenpreiseVor,

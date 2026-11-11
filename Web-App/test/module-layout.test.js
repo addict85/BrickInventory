@@ -1,6 +1,5 @@
 /**
  * Wo Module liegen — und dass ein API-Name kein Pfad ist.
- * Ausführlich: docs/begruendungen/test/module-layout.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -14,7 +13,6 @@ const { ohneKommentare } = require('./helpers/sources');
 /**
  * Die zu prüfenden Quellordner — AUS DEM BAUSKRIPT gelesen, nicht hier
  * abgeschrieben.
- * Ausführlich: docs/begruendungen/test/module-layout.test.js.md#srcdirs
  */
 function srcDirs() {
   const build = fs.readFileSync(path.join(ROOT, 'scripts', 'build-ts.js'), 'utf8');
@@ -74,7 +72,7 @@ test('kein Modul wird unter einem blossen Namen geholt', () => {
   const treffer = [];
   for (const datei of quellen()) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
-    for (const m of src.matchAll(/(?:require\(|from )\s*'([^'.\/][^']*)'/g)) {
+    for (const m of src.matchAll(/(?:require\(|from )\s*'([^'./][^']*)'/g)) {
       if (eigene.has(m[1])) treffer.push(`${path.relative(ROOT, datei)}: '${m[1]}'`);
     }
   }
@@ -104,7 +102,6 @@ test('clients/ enthält keine Routen und wird trotzdem gebaut', () => {
 
 test('keine Zyklen über echte import-Anweisungen', () => {
   // Warum das eine eigene Prüfung verdient
-  // Ausführlich: docs/begruendungen/test/module-layout.test.js.md#graph
   const graph = new Map();
   const dateien = quellen();
   const kennt = new Set(dateien.map(d => path.resolve(d)));
@@ -151,7 +148,6 @@ test('keine Zyklen über echte import-Anweisungen', () => {
 
 test('jeder Quellordner kommt auch im Container an', () => {
   // Zwei Beinahe-Ausfälle in Folge
-  // Ausführlich: docs/begruendungen/test/module-layout.test.js.md#build
   const build = fs.readFileSync(path.join(ROOT, 'scripts', 'build-ts.js'), 'utf8');
   const dockerfile = fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8');
   const srcDirs = [...build.match(/const SRC_DIRS = \[([^\]]*)\]/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
@@ -196,7 +192,6 @@ test('das Grundschema wird dort gesucht, wo es zur Laufzeit liegt', () => {
 
 test('jedes späte require() zeigt auf eine Datei, die es gibt', () => {
   // Ein echter Laufzeitfehler beim Umzug
-  // Ausführlich: docs/begruendungen/test/module-layout.test.js.md#treffer
   const treffer = [];
   for (const datei of quellen()) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));

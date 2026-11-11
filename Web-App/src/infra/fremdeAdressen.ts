@@ -1,5 +1,5 @@
 /** Jeder Abruf nach draussen prüft hier Host und Umleitung: Der Server steht
- * im internen Netz. Ausführlich: docs/begruendungen/src/infra/fremdeAdressen.ts.md#abschnitt */
+ * im internen Netz. */
 
 /** Hier statt in einer Route, weil mehrere Schichten sie brauchen. */
 export const ERLAUBTE_BILD_HOSTS = [
@@ -9,7 +9,6 @@ export const ERLAUBTE_BILD_HOSTS = [
 ];
 
 // Nur diese Hosts dürfen Dateien auf die Platte liefern; Subdomains prüft hostErlaubt().
-// Ausführlich: docs/begruendungen/src/infra/fremdeAdressen.ts.md#erlaubte-download-hosts
 export const ERLAUBTE_DOWNLOAD_HOSTS = [
   ...ERLAUBTE_BILD_HOSTS, 'lego.com', '*.lego.com', 'bdpinstructions.s3.amazonaws.com',
 ];
@@ -43,7 +42,7 @@ export interface Umleitungsziel {
 
 /** @param erlaubteHosts  gesetzt: der Zielhost wird geprüft. Weggelassen: nicht.
  * @returns null, wenn nicht gefolgt werden darf
- * Ausführlich: docs/begruendungen/src/infra/fremdeAdressen.ts.md#naechsteumleitung */
+ */
 export function naechsteUmleitung(
   von: string,
   location: string | undefined,

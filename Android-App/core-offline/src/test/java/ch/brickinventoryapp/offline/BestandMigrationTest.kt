@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.offline
 
+import ch.brickinventoryapp.model.lokal.Bestandsart
 import android.content.Context
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
@@ -8,7 +9,6 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.offline.room.BestandDatenbank
 import ch.brickinventoryapp.offline.room.RoomAusgang
 import ch.brickinventoryapp.offline.room.RoomBestand
-import ch.brickinventoryapp.model.data.model.SetItem
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -33,7 +33,8 @@ import java.util.UUID
  *
  * Gegenproben misst der CI-Job `gegenproben` (Android-App/gegenproben/, er
  * verlangt Rot): bestand-migration-entfernt, -spalte-falsch, -ohne-schluessel,
- * -ohne-filterspalten (2 → 3 füllt die Filterspalten nicht).
+ * -ohne-filterspalten (2 → 3 füllt die Filterspalten nicht). Wie 2 → 3 Fassung-2-JSON
+ * liest, prüft SpaltenFassung2Test ohne Android.
  * Eine Änderung am Schema der neuesten Fassung taugt nicht als Gegenprobe: Room
  * schreibt es beim Übersetzen neu.
  */
@@ -114,9 +115,10 @@ class BestandMigrationTest {
                         arrayOf(b, UUID.randomUUID().toString()))
                     else alt.execSQL("INSERT INTO ausgang (bereich, bearbeitung, erstellt, versuche) VALUES ('a', ?, $n, 0)", arrayOf(b))
                 }
-                val set = SetItem(setNumber = "10002-1", name = "Polizeiwache", theme = "City", storage = "Kiste 2")
-                alt.execSQL("INSERT INTO bestand (bereich, art, schluessel, position, inhalt) VALUES ('a', 'SETS', ?, 0, ?)",
-                    arrayOf(set.setNumber, AblageJson.encodeToString(SetItem.serializer(), set)))
+                // Feste Probe der Fassung 2 statt SetItem: Die Migration darf nicht am heutigen Modell hängen.
+                val set = """{"set_number":"10002-1","name":"Polizeiwache","theme":"City","storage":"Kiste 2","conditions":[]}"""
+                alt.execSQL("INSERT INTO bestand (bereich, art, schluessel, position, inhalt) VALUES ('a', 'SETS', '10002-1', 0, ?)",
+                    arrayOf(set))
                 alt.execSQL("INSERT INTO bestand (bereich, art, schluessel, position, inhalt) VALUES ('a', 'SETS', 'kaputt', 1, '{}')")
             }
             val room = Room.databaseBuilder(context, BestandDatenbank::class.java, name)

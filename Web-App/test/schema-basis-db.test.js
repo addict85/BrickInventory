@@ -6,8 +6,8 @@
  *   A  in initSchema() die Prüfung auf eine leere Datenbank entfernt → rot:
  *      „eine bestehende Datenbank bleibt, wie sie ist“ (die Basis scheitert an
  *      vorhandenen Tabellen)
- *   B  der Erststart (setzeErststart, src/konto/startVerwalter.ts) nicht aufgerufen → rot: „eine leere Datenbank bekommt
- *      Basis, Vorgaben und einen Administrator“
+ *   B  (10.11.) den Erststart aus erzeugeDb(…, { erststart }) nicht aufgerufen → rot:
+ *      „eine leere Datenbank bekommt Basis, Vorgaben und einen Administrator“
  *   D  (29.10.) in initSchema() wieder die Sperre „älter als 0050“ → rot:
  *      „eine Datenbank mit 0045, aber ohne 0050 startet …“ (der Stand von
  *      main bis 1ad80a5).
@@ -48,9 +48,14 @@ test('Erststart über db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
   await raeumeReste(admin, 'schema_basis');
   await admin.query(`DROP DATABASE IF EXISTS ${id(NAME)}`);
   await admin.query(`CREATE DATABASE ${id(NAME)}`);
-  const db = _req('db/database.js');
+  // Wie server.ts: Der Zugang bekommt den Erststart mit, der das erste Konto anlegt.
+  const modul = _req('db/database.js');
+  const db = modul.erzeugeDb(modul.dbKonfigAusUmgebung(), {
+    erststart: () => _req('startup/verdrahtung.js').baueVerdrahtung().erststart(),
+  });
   t.after(async () => {
     await db.pool.end().catch(() => {});
+    await modul.pool.end().catch(() => {});
     await admin.query(`DROP DATABASE IF EXISTS ${id(NAME)} WITH (FORCE)`).catch(() => {});
     await admin.end().catch(() => {});
   });

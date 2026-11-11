@@ -1,6 +1,5 @@
 /**
  * Ein gefangener Fehler ergibt IMMER einen lesbaren Text.
- * Ausführlich: docs/begruendungen/test/fehlertext.test.js.md#kopf
  *
  * Gegenprobe (09.11.2026): in fehlertext() die Zeile für Error-artige Objekte ohne Prototyp gestrichen
  * → rot: „fehlertext liefert nie "undefined"“.

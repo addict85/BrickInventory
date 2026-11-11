@@ -29,11 +29,12 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test   = require('node:test');
+const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const path   = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
+umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
@@ -120,20 +121,20 @@ test('E-Mail ändern', { concurrency: 1 }, async (t) => {
 
   await t.test('in Produktion ohne APP_BASE_URL kein Link aus dem Host-Kopf', async () => {
     const vorher = { env: process.env.NODE_ENV, basis: process.env.APP_BASE_URL };
-    process.env.NODE_ENV = 'production';
-    delete process.env.APP_BASE_URL;
+    umgebung({ NODE_ENV: 'production' });
+    umgebung({ APP_BASE_URL: undefined });
     try {
       bestaetigt.length = 0;
       const r = await profil({ email: `${NAME}@drei.example`, password_current: PASS });
       assert.equal(r.status, 200, JSON.stringify(r.body));
       assert.equal(r.body.emailSent, false);
       assert.deepEqual(bestaetigt, [], 'ohne feste Adresse darf kein Link verschickt werden');
-      process.env.APP_BASE_URL = 'https://lego.example.org/';
+      umgebung({ APP_BASE_URL: 'https://lego.example.org/' });
       await profil({ email: `${NAME}@vier.example`, password_current: PASS });
       assert.deepEqual(bestaetigt, ['https://lego.example.org']);
     } finally {
-      process.env.NODE_ENV = vorher.env;
-      if (vorher.basis === undefined) delete process.env.APP_BASE_URL; else process.env.APP_BASE_URL = vorher.basis;
+      umgebung({ NODE_ENV: vorher.env });
+      if (vorher.basis === undefined) umgebung({ APP_BASE_URL: undefined }); else umgebung({ APP_BASE_URL: vorher.basis });
     }
   });
 
@@ -141,7 +142,7 @@ test('E-Mail ändern', { concurrency: 1 }, async (t) => {
     const belegt = `${NAME}@belegt.example`;
     assert.equal((await profil({ email: belegt })).body.code, 'aktuelles_passwort_erforderlich');
     assert.equal((await profil({ email: belegt, password_current: 'falsch-falsch' })).body.code, 'aktuelles_passwort_falsch');
-    process.env.APP_BASE_URL = 'https://lego.example.org';
+    umgebung({ APP_BASE_URL: 'https://lego.example.org' });
     try {
       versuche.length = 0;
       const frei = await profil({ email: `${NAME}@frei.example`, password_current: PASS });
@@ -151,7 +152,7 @@ test('E-Mail ändern', { concurrency: 1 }, async (t) => {
       // Der Inhaber der belegten Adresse bekommt einen Hinweis statt eines Links.
       assert.deepEqual(versuche, [{ an: `${NAME}@frei.example`, art: 'link' }, { an: belegt, art: 'adresse' }]);
       assert.equal(await adresse(), `${NAME}@alt.example`);
-    } finally { delete process.env.APP_BASE_URL; }
+    } finally { umgebung({ APP_BASE_URL: undefined }); }
   });
 
   await t.test('Vergabeprüfungen sind gebremst', async () => {

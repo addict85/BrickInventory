@@ -1,17 +1,12 @@
 /**
  * Doppelte Übersetzungsschlüssel.
- * Ausführlich: docs/begruendungen/test/i18n-duplicates.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 
-const SRC = require('./helpers/sources').i18nAll();
 
 /**
  * Liest die Schlüssel einer Sprachdatei aus der QUELLE.
- * Ausführlich: docs/begruendungen/test/i18n-duplicates.test.js.md#keysof
  */
 function keysOf(lang) {
   const src = require('./helpers/sources').localeSource(lang);

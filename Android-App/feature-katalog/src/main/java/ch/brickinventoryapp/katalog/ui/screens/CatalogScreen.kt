@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.katalog.ui.screens
 
+import ch.brickinventoryapp.model.fach.Katalogsortierung
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import ch.brickinventoryapp.ui.components.HinweisText
 import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
@@ -45,7 +46,7 @@ import ch.brickinventoryapp.ui.components.mitSchrift
  * laufen aber serverseitig, das Grid lädt beim Scrollen seitenweise nach.
  */
 @Composable
-fun CatalogRoute(
+internal fun CatalogRoute(
     katalog: CatalogViewModel,
     serverUrl: String,
     imageLoader: ImageLoader,
@@ -68,7 +69,7 @@ fun CatalogScreen(
     val onQueryChange: (String) -> Unit = { q -> katalog.setCatalogQuery(q) }
     val onThemeChange: (Int?) -> Unit = { t -> katalog.setCatalogTheme(t) }
     val onYearChange: (Int?) -> Unit = { y -> katalog.setCatalogYear(y) }
-    val onSortChange: (String) -> Unit = { srt -> katalog.setCatalogSort(srt) }
+    val onSortChange: (Katalogsortierung) -> Unit = { srt -> katalog.setCatalogSort(srt) }
     /** Das sichtbare Fenster melden; das ViewModel lädt, sobald die Liste ruht. */
     val onSichtbar: (Int, Int) -> Unit = { von, bis -> katalog.catalogSichtbar(von, bis) }
     /** Die Leiste rechts rollt die Liste an eine Stelle — ohne zu filtern. */
@@ -88,7 +89,6 @@ fun CatalogScreen(
 
     // Die Liste führt alle `total` Plätze; geladen wird die Seite eines sichtbar gewordenen
     // Platzes, mit einer Seite Vorlauf — so kann die Leiste rechts überallhin springen.
-    // Ausführlich: docs/begruendungen/feature-katalog/katalog/ui/screens/CatalogScreen.kt.md#launchedeffect
     LaunchedEffect(gridState, state.total, state.loadedPages.size) {
         snapshotFlow {
             val sichtbar = gridState.layoutInfo.visibleItemsInfo
@@ -104,7 +104,6 @@ fun CatalogScreen(
 
     // Die Liste verlässt beim Wechsel die Komposition und ihre Länge trifft erst später ein,
     // deshalb hilft Compose' Wiederherstellung nicht.
-    // Ausführlich: docs/begruendungen/feature-katalog/katalog/ui/screens/CatalogScreen.kt.md#wiederhergestellt-by-remember
     var wiederhergestellt by remember { mutableStateOf(false) }
     LaunchedEffect(state.total) {
         if (wiederhergestellt || state.total == 0) return@LaunchedEffect
@@ -138,7 +137,7 @@ fun CatalogScreen(
         ?.substringAfterLast(" › ")
 
     // Rechts Platz nur, wenn die Jahres-Leiste dort steht; sonst gleiche Ränder links und rechts.
-    val mitJahresleiste = state.sort.startsWith("year_") && state.jahrVerteilung.isNotEmpty()
+    val mitJahresleiste = state.sort.nachJahr && state.jahrVerteilung.isNotEmpty()
     val rasterRand = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, bottom = Abstaende.mittel,
         end = if (mitJahresleiste) 30.dp else Abstaende.mittel)
     val gefiltert = state.query.isNotBlank() || state.themeId != null || state.year != null
@@ -266,15 +265,12 @@ fun ThemeRow(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-/**
- * `internal`, weil der Aufrufer in einer anderen Datei steht und `private` in
- * Kotlin dateiweit gilt.
- */
-internal fun sortLabel(sort: String): String = when (sort) {
-    "year_asc"   -> stringResource(R.string.catalog_sort_year_asc)
-    "name_asc"   -> stringResource(R.string.catalog_sort_name)
-    "num_asc"    -> stringResource(R.string.catalog_sort_number)
-    "parts_desc" -> stringResource(R.string.catalog_sort_parts_desc)
-    "parts_asc"  -> stringResource(R.string.catalog_sort_parts_asc)
-    else         -> stringResource(R.string.catalog_sort_year_desc)
-}
+/** Beschriftung einer Sortierung; vollständig, damit ein neuer Wert hier auffällt. */
+internal fun Katalogsortierung.beschriftung(): String = stringResource(when (this) {
+    Katalogsortierung.JAHR_ABSTEIGEND -> R.string.catalog_sort_year_desc
+    Katalogsortierung.JAHR_AUFSTEIGEND -> R.string.catalog_sort_year_asc
+    Katalogsortierung.NAME -> R.string.catalog_sort_name
+    Katalogsortierung.NUMMER -> R.string.catalog_sort_number
+    Katalogsortierung.TEILE_ABSTEIGEND -> R.string.catalog_sort_parts_desc
+    Katalogsortierung.TEILE_AUFSTEIGEND -> R.string.catalog_sort_parts_asc
+})

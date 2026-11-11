@@ -1,15 +1,15 @@
 /** Kaufpreis-Erfassungen; die Regeln stehen in src/sammlung/erfassungen.ts. */
 import express from 'express';
 import { acquisitionTotals, erfassungenInKontowaehrung } from '../../src/bestand/acquisitions';
-import { meldeUndLiefere } from '../../src/infra/fehler';
+import { Abstriche } from '../../src/infra/ergebnis';
 import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { requireToken, sichtVon } from './middleware';
 import { getPartAcquisitions } from '../../src/teile/manuelleTeile';
 import { getFigAcquisitions } from '../../src/figuren/manuelleFiguren';
 import { erfassungAendern, erfassungLoeschen, setErfassungen } from '../../src/sammlung/erfassungen';
 import type { ErfassungsArt } from '../../src/sammlung/erfassungen';
-import { vertragsRouter } from '../../src/vertrag/pruefen';
-import type { Anfrage, Antwort } from '../../src/vertrag';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
 const router = vertragsRouter();
 
 /** Ohne bekannten Preis fehlt der Betrag, statt null zu sein: Geld hat im Vertrag einen Typ. */
@@ -42,10 +42,11 @@ const loeschen = (art: ErfassungsArt, schluessel: Schluessel) =>
 router.get('/sets/:setNumber/acquisitions', requireToken, async (req: Anfrage<'GET /api/v1/sets/:setNumber/acquisitions'>, res: Antwort<'GET /api/v1/sets/:setNumber/acquisitions'>) => {
   const uid = req.apiUser.user_id;
   // Blickfeld: Im Haushalt gehören die Kaufpreise eines Sets oft mehreren Konten.
-  // Scheitert das Lesen, zeigt die App eine leere Liste statt einer Fehlerseite.
-  const rows = await setErfassungen(sichtVon(req), req.pfad.setNumber)
-    .catch(meldeUndLiefere('v1 acquisitions GET', null));
-  if (!rows) return res.json({ success: true, acquisitions: [], totals: ohneLeerenBetrag(acquisitionTotals([])) });
+  // Scheitert das Lesen, zeigt die App eine leere Liste statt einer Fehlerseite;
+  // `degradiert` sagt ihr, dass sie nicht wirklich leer ist.
+  const ab = new Abstriche();
+  const rows = await ab.oder('erfassungen', setErfassungen(sichtVon(req), req.pfad.setNumber), null);
+  if (!rows) return res.json({ success: true, acquisitions: [], totals: ohneLeerenBetrag(acquisitionTotals([])), ...ab.angabe() });
   res.json({ success: true, ...await inKontowaehrung(rows, uid), owner_user_id: uid });
 });
 const setSchluessel: Schluessel = p => [String(p.setNumber)];

@@ -1,17 +1,16 @@
 /** Asynchron: Die Route stellt nur einen Auftrag ein; Bilder holt und zeichnet
- * der Job-Prozess in einem eigenen Faden, damit der Web-Prozess frei bleibt.
- * Ausführlich: docs/begruendungen/routes/api_v1/pdf.ts.md#abschnitt */
-import { meldeFehler, meldeUndLiefere, ohneFehlendeDatei } from '../../src/infra/fehler';
-import { fehlerAntwort, streamFileToResponse } from '../../src/http/httpAntwort';
+ * der Job-Prozess in einem eigenen Faden, damit der Web-Prozess frei bleibt. */
+import { meldeFehler, ohneFehlendeDatei } from '../../src/infra/fehler';
+import { fehlerAntwort, streamFileToResponse, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke } from './middleware';
 import { registerSse } from '../../src/http/sseRegistry';
 import _pdfFs from 'fs/promises';
 import _fsSync from 'fs';
 import { liesAuftrag, loescheAuftrag, pdfSchluessel, gueltigeAuftragsKennung, pdfDateiPfad, pdfAuftragStarten } from '../../src/auftraege/pdfAuftraege';
 import { beiAuftragsStand } from '../../src/auftraege/dienst';
-import { sendeFehler, fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
-import { vertragsRouter } from '../../src/vertrag/pruefen';
-import type { Anfrage, Antwort } from '../../src/vertrag';
+import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
 const router = vertragsRouter();
 
 type PdfJobStatus = { status?: string | undefined; error?: string | null; etaSeconds?: number | null; missingImages?: number | null };
@@ -19,7 +18,8 @@ type PdfJobStatus = { status?: string | undefined; error?: string | null; etaSec
 const validJobId = gueltigeAuftragsKennung;
 
 async function pdfJobRead(id: string) {
-  return liesAuftrag(id).catch(meldeUndLiefere('pdf:auftrag-lesen', null));
+  // Ein Lesefehler ist kein unbekannter Auftrag (404): Er geht weiter.
+  return liesAuftrag(id);
 }
 
 /** Der einzige Weg, auf dem die drei Abrufrouten an einen Auftrag kommen —

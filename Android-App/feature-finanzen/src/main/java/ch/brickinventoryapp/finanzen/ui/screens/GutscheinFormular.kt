@@ -54,7 +54,6 @@ internal fun GutscheinFormularBlatt(
         // Bitte an die Tastatur-App, keine Zusicherung: Eine angestoepselte
         // Tastatur und die Zwischenablage liefern trotzdem Buchstaben. Die
         // Regel steht in ZahlentastaturTest, der Filter in NumericInput.kt.
-        // Ausführlich: docs/begruendungen/feature-finanzen/finanzen/ui/screens/GutscheineCard.kt.md#nummermaske
         val nummerMaske = istMaskierteNummer(zustand.nummer)
         OutlinedTextField(
             shape = Formen.feld,

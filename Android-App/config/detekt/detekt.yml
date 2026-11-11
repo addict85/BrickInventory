@@ -124,5 +124,5 @@ formatting:
     active: false
   NoConsecutiveBlankLines:
     # Die beiden Dateien schreibt `npm run design:tokens` (Web-App); ihre Form
-    # prüft design-abschrift.test.js Zeichen für Zeichen.
+    # prüft abgleich-design-abschrift.test.js Zeichen für Zeichen.
     excludes: ['**/ui/theme/DesignTokens.kt', '**/ui/theme/DunkelTokens.kt']

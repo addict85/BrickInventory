@@ -40,7 +40,6 @@ function figParams(page) {
   p.set('page_size', String(FIG_PAGE_SIZE));
   // Fest 'set': Manuell erfasste Figuren haben oben eine eigene Sektion. Der Ausschluss gehört auf den Server
   // — clientseitig gefiltert könnte eine ganze Seite wegfallen und die Liste bliebe scheinbar leer.
-  // Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#manuell-erfasste-figuren-haben-oben-eine
   p.set('source', 'set');
   const q = G('fig-search')?.value?.trim();
   if (q) p.set('search', q);
@@ -100,7 +99,6 @@ export async function loadMinifigs() {
 
   // Kennzahlen mit dem Filter des Reiters: Sonst zeigte die Kachel im Haushalt die eigenen Zahlen, während
   // die Liste darunter alle Konten zeigte.
-  // Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#kennzahlen-mit-dem-filter-des
   const s = await api('GET', `/v1/minifigs/stats${scopeQuery('minifigs')}`);
   if (s.success) {
     G('mf-unique').textContent = String(s.stats.types);
@@ -118,14 +116,12 @@ export async function loadMinifigs() {
 /**
  * Suche und Quelle filtert der Server; hier wird neu geladen, sonst durchsuchte der Filter nur die geladene
  * Seite. Beide Listen, weil die manuellen Figuren unter derselben Filterleiste stehen.
- * Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#filterfigs
  */
 function filterFigs() { loadMinifigs(); loadManualFigsTable(); }
 
 /**
  * Hängt eine nachgeladene Seite an, statt die Liste neu zu bauen: Ein Ersetzen per innerHTML brach die
  * laufenden Bildanfragen ab, und Kacheln, deren Bild nie über eine Runde hinauskam, blieben leer.
- * Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#appendfigs
  */
 /** @param {Figur[]} batch */
 function appendFigs(batch) {
@@ -175,7 +171,6 @@ export function renderFigs(list, target) {
   if (viewMode === 'table') {
     // Ohne „Quelle“ und Papierkorb: Diese Liste lädt nur source=set, beide Spalten wären in jeder Zeile
     // gleich bzw. leer. Manuelle Figuren haben ihren eigenen Bereich mit editierbaren Karten.
-    // Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#ohne-die-spalten-quelle-und-papierkorb
     setzeHtml(el, html`<div class="tw"><table class="dt" aria-label="${tRaw('nav.minifigs')}">
       <thead><tr>
         <th>${tRaw('col.image')}</th><th>${tRaw('col.number')}</th><th>${tRaw('col.name')}</th><th>${tRaw('detail.qty')}</th><th>${tRaw('detail.created')}</th>
@@ -225,7 +220,6 @@ export function renderFigs(list, target) {
           // Zustand nur bei manuell erfassten Figuren — aus Sets haben sie keinen eigenen. Die
           // Besitzer-Plakette dagegen immer: „Wem gehört das?“ stellt sich bei der Figur aus dem Set eines
           // Kindes genauso.
-          // Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#condbadge
           const condBadge = f.source==='manual'
             ? `<div data-stil="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${condBadges(f)}</div>`
             : '';
@@ -350,7 +344,6 @@ export async function updateManualFig(figNumber, body, owner) {
  * Hinweis, wenn der Kaufpreis aus dem anderen Zustand stammt: BrickLink führt oft nur einen. Übernehmen und
  * kennzeichnen, damit der Rückfall weder unsichtbar ist noch das Feld leer bleibt. Ein Helfer für Teile und
  * Figuren.
- * Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#preisherkunfthinweis
  * @param {string | null | undefined} zustand 'N' | 'U' | null — null heisst „nichts zu sagen".
  */
 export function preisHerkunftHinweis(zustand) {
@@ -435,7 +428,6 @@ G('btn-fig-csv-template').onclick = (e) => {
 /**
  * Abfrageteil der manuellen Listen: Kontofilter UND Suchtext. scopeQuery() allein liess die Suche an den
  * manuellen Kacheln vorbeilaufen, obwohl die Filterleiste über beiden Listen steht. Gefiltert wird am Server.
- * Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#manuellquery
  * @param {string} view     Name des Blickfelds ('parts' | 'minifigs')
  * @param {string} sucheId  ID des Suchfelds der Filterleiste
  */
@@ -455,7 +447,6 @@ export function manuellQuery(view, sucheId) {
 /**
  * Die manuell erfassten Posten als Tabelle: Der Ansichtsumschalter steht über beiden Listen und muss für
  * beide gelten. Eine Funktion für Teile und Figuren, damit die zwei Tabellen nicht auseinanderlaufen.
- * Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#manuelletabelle
  * @param {(ManuellesTeil | ManuelleFigur)[]} posten  Die Einträge aus dem jeweiligen Cache.
  * @param {'part'|'fig'} art
  */

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.model.*
 
 /**
@@ -23,7 +24,7 @@ interface HaushaltRepository {
     suspend fun getAcquisitions(setNumber: String): Ergebnis<AcquisitionsResponse>
 
     suspend fun updateAcquisition(setNumber: String, acqId: Int, purchasePrice: Double? = null,
-                                  condition: String? = null, quantity: Int? = null, date: String? = null,
+                                  condition: Zustand? = null, quantity: Int? = null, date: String? = null,
                                   ownerUserId: Int? = null): Ergebnis<GenericResponse>
 
     suspend fun deleteAcquisition(setNumber: String, acqId: Int): Ergebnis<GenericResponse>

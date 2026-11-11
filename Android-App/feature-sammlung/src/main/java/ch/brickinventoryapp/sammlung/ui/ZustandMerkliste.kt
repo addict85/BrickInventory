@@ -1,7 +1,8 @@
 package ch.brickinventoryapp.sammlung.ui
 
+import ch.brickinventoryapp.model.fach.Merksortierung
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.model.*
-import ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 
 /**
@@ -18,12 +19,11 @@ data class MerklisteUiState(
     // Drei Werte hier; der vierte, der Inhaber, steht wie in jeder Ansicht in
     // AppUiState.scopeModes — dieselbe Wahl unter demselben Schlüssel wie in Galerie, Teilen,
     // Minifiguren und Finanzen.
-    // Ausführlich: docs/begruendungen/feature-sammlung/sammlung/ui/ZustandMerkliste.kt.md#z16
     /** Suchtext — trifft Nummer UND Name. Leer heisst: kein Filter. */
     val query: String = "",
-    /** "N", "U" — oder leer fuer beide Zustaende. */
-    val zustandFilter: String = "",
-    val sortierung: String = MERKLISTE_DEFAULT_SORT,
+    /** null: beide Zustände. */
+    val zustandFilter: Zustand? = null,
+    val sortierung: Merksortierung = Merksortierung.VORGABE,
 )
 
 /**
@@ -38,7 +38,6 @@ data class MerkpostenDetailUiState(
      * Daran erkennt setzePreisalarm(), dass der Bildschirm offen ist und die Alarme
      * nachgeladen werden dürfen; das Merkposten-Detail lädt kein SetDetail, an dem es sonst
      * zu sehen wäre.
-     * Ausführlich: docs/begruendungen/feature-sammlung/sammlung/ui/ZustandMerkliste.kt.md#setnumber
      */
     val setNumber: String? = null,
     /** Thema, Teile, Minifiguren, BrickLink, Preisvergleich. */

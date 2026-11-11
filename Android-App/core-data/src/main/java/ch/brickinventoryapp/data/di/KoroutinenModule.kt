@@ -1,35 +1,18 @@
 package ch.brickinventoryapp.data.di
 
+import ch.brickinventoryapp.model.koroutinen.ApplicationScope
+import ch.brickinventoryapp.model.koroutinen.Dispatcher
+import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Inject
-import javax.inject.Qualifier
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-
-/** Welcher Ausführungsort gemeint ist; die Bindung an `Dispatchers` steht nur hier. */
-enum class BrickDispatchers { IO, Default, Main }
-
-/**
- * Wer einen Dispatcher braucht, bekommt ihn hierüber statt fest verdrahtet: Ein
- * Test gibt einen StandardTestDispatcher und steuert die Zeit mit runTest.
- */
-@Qualifier
-@Retention(AnnotationRetention.RUNTIME)
-annotation class Dispatcher(val wert: BrickDispatchers)
-
-/**
- * Arbeit, die den Bildschirm überleben soll (Startaufräumen, Tokentausch,
- * DataStore-Spiegel): ein Bereich für die ganze App statt vieler ungebundener.
- */
-@Qualifier
-@Retention(AnnotationRetention.RUNTIME)
-annotation class ApplicationScope
 
 @Module
 @InstallIn(SingletonComponent::class)

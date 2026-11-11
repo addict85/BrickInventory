@@ -10,8 +10,8 @@ import ch.brickinventoryapp.zustand.ui.fehlerTextId
 import ch.brickinventoryapp.zustand.ui.mitTechnischerUrsache
 import ch.brickinventoryapp.data.util.LanguageManager
 import dagger.hilt.android.qualifiers.ApplicationContext
-import ch.brickinventoryapp.data.di.BrickDispatchers
-import ch.brickinventoryapp.data.di.Dispatcher
+import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
+import ch.brickinventoryapp.model.koroutinen.Dispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import javax.inject.Inject

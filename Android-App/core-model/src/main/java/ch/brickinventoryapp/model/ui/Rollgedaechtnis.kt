@@ -4,7 +4,6 @@ package ch.brickinventoryapp.model.ui
  * Gemerkte Rollpositionen je Reiter. Liegt unter der Oberfläche, weil der Zustand
  * (AppViewModel) den Merker hält und die Bildschirme ihn nur lesen: So kennt die
  * Zustandsschicht kein Compose-Modul.
- * Ausführlich: docs/begruendungen/core-ui/ui/ScrollMemory.kt.md#constructor
  */
 interface ScrollMemory {
     fun lies(schluessel: String): Pair<Int, Int>

@@ -4,8 +4,7 @@ import { logAndContinue } from '../infra/fehler';
 import type { WantedArt } from './wantedParser';
 import type { Aufloesung, Sicherheit } from './wantedAufloesung';
 
-/** Bild und Name reisen mit, weil die Vorschau sie wie die Teileliste zeigt.
- * Ausführlich: docs/begruendungen/src/merkliste/wantedSchreiber.ts.md#postenergebnis */
+/** Bild und Name reisen mit, weil die Vorschau sie wie die Teileliste zeigt. */
 export interface PostenErgebnis {
   blId: string;
   art: WantedArt;
@@ -19,8 +18,7 @@ export interface PostenErgebnis {
   sicherheit: Sicherheit | null;
   ausgang: 'angelegt' | 'aufgestockt' | 'offen' | 'fehler';
   grund?: string;
-  /** Kennung statt Satz, damit die Oberfläche in der Sprache des Betrachters setzt.
-   * Ausführlich: docs/begruendungen/src/merkliste/wantedSchreiber.ts.md#postenergebnis-2 */
+  /** Kennung statt Satz, damit die Oberfläche in der Sprache des Betrachters setzt. */
   grundCode?: 'nummer_unbekannt' | 'farbe_unbekannt';
   /** Beschreibung aus dem Katalog — leer, wenn er die Nummer nicht kennt. */
   name?: string | null;
@@ -32,8 +30,7 @@ export interface PostenErgebnis {
   farbHex?: string | null;
 }
 
-/** Als Schnittstelle: Die Route steckt die echten Funktionen hinein, ein Test Zähler.
- * Ausführlich: docs/begruendungen/src/merkliste/wantedSchreiber.ts.md#anleger */
+/** Als Schnittstelle: Die Route steckt die echten Funktionen hinein, ein Test Zähler. */
 export interface Anleger {
   teil: (uid: number, body: Record<string, unknown>) => Promise<unknown>;
   figur: (uid: number, body: Record<string, unknown>) => Promise<unknown>;
@@ -48,8 +45,7 @@ export interface Anleger {
 
 export interface SchreibOptionen {
   anleger?: Anleger;
-  /** Hereingegeben, damit diese Funktion bis auf den Anleger schreibfrei bleibt.
-   * Ausführlich: docs/begruendungen/src/merkliste/wantedSchreiber.ts.md#importierewantedliste */
+  /** Hereingegeben, damit diese Funktion bis auf den Anleger schreibfrei bleibt. */
   merkeNummer?: (art: WantedArt, rbId: string, blId: string, quelle: 'korrigiert' | 'rebrickable') => Promise<unknown>;
 }
 
@@ -57,7 +53,6 @@ export interface SchreibOptionen {
 export function berichtsZeile(a: Aufloesung): PostenErgebnis {
   // Eine nicht abbildbare Farbe wird nicht erfunden: color_id 0 ist bei
   // Rebrickable Schwarz, nicht „keine Farbe".
-  // Ausführlich: docs/begruendungen/src/merkliste/wantedSchreiber.ts.md#importierewantedliste-grund
   const grund =
     a.rbId === null
       ? 'Zu dieser BrickLink-Nummer ist keine Rebrickable-Nummer bekannt'
@@ -119,7 +114,6 @@ export async function schreibePosten(
   }
   // Auch 'rebrickable' wird gemerkt: blTeilZuRb prüft jeden Treffer gegen die
   // gesuchte BL-Nummer, es ist eine Abbildung, keine Vermutung.
-  // Ausführlich: docs/begruendungen/src/merkliste/wantedSchreiber.ts.md#importierewantedliste-4
   if ((a.sicherheit === 'korrigiert' || a.sicherheit === 'rebrickable') && opt.merkeNummer) {
     // Ein Fehlschlag bricht den Import nicht ab: Der Posten steht schon im Bestand.
     await opt

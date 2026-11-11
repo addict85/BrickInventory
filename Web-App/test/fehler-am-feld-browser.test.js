@@ -15,7 +15,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
+const { starteApp } = require('./helpers/app-browser');
 
 /** Zustand eines Feldes: markiert, Meldung darunter, und ob ein Fehler-Toast steht. */
 const FELD = (id) => `(() => { const f = document.getElementById(${JSON.stringify(id)}), m = document.getElementById(${JSON.stringify(id + '-fehler')});

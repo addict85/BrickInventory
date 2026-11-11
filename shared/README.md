@@ -37,7 +37,7 @@ verfehlten alte dreistellige Sets vollständig.
 Kandidat, oder `null` für „gar keiner") und `warum`. Zwei Prüfungen lesen
 dieselbe Datei:
 
-* `Web-App/test/setnummer-korpus.test.js`
+* `Web-App/test/abgleich-setnummer-korpus.test.js`
 * `Android-App/app/src/test/java/ch/brickinventoryapp/SetnummerKorpusTest.kt`
 
 Ein neuer Fall wird **einmal** eingetragen und prüft ab sofort beide Apps. Läuft
@@ -64,7 +64,7 @@ shared/design-tokens.json
 
 Erzeugt von `Web-App/scripts/generate-design-tokens.js` (läuft bei
 `npm run build`, einzeln `npm run design:tokens`). **Die beiden Erzeugnisse
-nicht von Hand ändern** — `Web-App/test/design-abschrift.test.js` rechnet nach
+nicht von Hand ändern** — `Web-App/test/abgleich-design-abschrift.test.js` rechnet nach
 und wird sonst rot. Sie liegen trotzdem mit im Baum, weil der Android-Build kein
 Node kennt.
 

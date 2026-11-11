@@ -3,7 +3,6 @@
  * Der Digest kommt aus der Ausgabe von `imagetools create`, nicht aus einer
  * späteren Auflösung des Tags. Hier laufen die echten Skripte der Schritte
  * `manifest` und `signatur` in bash; `docker` und `cosign` sind Ersatz. Der …
- * Ausführlich: docs/begruendungen/test/workflow-signatur.test.js.md#kopf
  *
  * Gegenproben (05.11.2026 gemessen, je einzeln):
  *   A  im Schritt `signatur` wieder `DIGEST="$(docker buildx imagetools inspect

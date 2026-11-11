@@ -25,6 +25,7 @@ import * as monitor from '../auftraege/jobMonitor';
 import { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
 import { generateThumb } from './bilder/thumbs';
 import { KEINE_FARBE } from '../infra/validate';
+import { katalog } from './prozess';
 
 
 
@@ -49,8 +50,7 @@ async function apiGet(url: string, rbKey: string) {
   }
 }
 
-/** @param kind Bestimmt Zielverzeichnis und Web-Pfad.
- * Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#abschnitt */
+/** @param kind Bestimmt Zielverzeichnis und Web-Pfad. */
 async function downloadImage(
   imgUrl: string | null | undefined,
   partNum: string,
@@ -81,16 +81,16 @@ async function enrichSetParts(setNumber: string) {
   const invId = await neuestesInventar(setNumber);
   if (!invId) return;
 
-  const csvParts = await repo.teileDesInventars(invId);
+  const csvParts = await katalog().teileAnreicherung.teileDesInventars(invId);
   if (!csvParts.length) return;
 
-  const catalogRows = await repo.setTeileKatalog(n);
+  const catalogRows = await katalog().teileAnreicherung.setTeileKatalog(n);
   const catalogMap: Record<string, { image_url: string | null; image_local: string | null; bl_part_number?: string | null }> = {};
   for (const r of catalogRows) catalogMap[`${r.part_number}|${r.color_id}`] = r;
 
   // Die ZEILE in bl_zuordnung zählt, nicht ihr Wert: leer heisst „nachgesehen,
   // keine abweichende Nummer".
-  const lookedUp = await repo.blZuordnungen(csvParts.map(p => p.part_num));
+  const lookedUp = await katalog().teileAnreicherung.blZuordnungen(csvParts.map(p => p.part_num));
   const lookedUpSet = new Set(lookedUp.map((r: { rb_id: string }) => r.rb_id));
 
   // Nur Teile, die noch nie nachgesehen wurden — jeder Abruf kostet Kontingent.
@@ -166,7 +166,7 @@ async function ergaenzeBlNummern(apiParts: Record<string, ApiTeil>, missingBl: s
 
 async function merkeTeileDesSets(n: string, csvParts: Awaited<ReturnType<typeof repo.teileDesInventars>>,
                                  apiParts: Record<string, ApiTeil>): Promise<void> {
-    const blMapRows = await repo.blZuordnungen(csvParts.map(p => p.part_num));
+    const blMapRows = await katalog().teileAnreicherung.blZuordnungen(csvParts.map(p => p.part_num));
     const blMap: Record<string, string | null> = {};
     for (const r of blMapRows) blMap[r.rb_id] = r.bl_id;
 
@@ -185,7 +185,7 @@ async function merkeTeileDesSets(n: string, csvParts: Awaited<ReturnType<typeof 
 }
 
 async function ergaenzeSetFiguren(n: string, rbKey: string): Promise<void> {
-  const existingFigs = await repo.figurenImSetkatalog(n);
+  const existingFigs = await katalog().teileAnreicherung.figurenImSetkatalog(n);
 
   if (!existingFigs) {
     const figsData = await apiGet(
@@ -249,7 +249,7 @@ async function ladeTeilbild(p: repo.Bildwunsch): Promise<void> {
 async function holeBildSperre(n: string, waitIfBusy: boolean):
     Promise<'belegt' | { lockClient: import('pg').PoolClient | null; haveXlock: boolean }> {
   let lockClient: import('pg').PoolClient | null = null, haveXlock = false;
-  try { lockClient = await repo.sperrVerbindung(); } catch (_) { lockClient = null; }
+  try { lockClient = await katalog().teileAnreicherung.sperrVerbindung(); } catch (_) { lockClient = null; }
   if (!lockClient) return { lockClient, haveXlock };
   const deadline = Date.now() + 180000; // max. 3 Min auf anderen Worker warten
   while (true) {
@@ -295,7 +295,7 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
   let _flushed      = 0;  // davon bereits an den Zähler gemeldet (Rest im finally)
   let _lastFlush    = Date.now();
   try {
-    const needsImg = await repo.bilderOhneDatei(n);
+    const needsImg = await katalog().teileAnreicherung.bilderOhneDatei(n);
     if (!needsImg.length) return;
 
     console.log(`[img-dl] ${n}: lade ${needsImg.length} Bilder`);
@@ -342,11 +342,11 @@ async function enrichSetMinifigs(setNumber: string) {
   const rbKey = await getRbKey();
   if (!rbKey) return;
 
-  const figs = await repo.figurenDesSets(n);
+  const figs = await katalog().teileAnreicherung.figurenDesSets(n);
   if (!figs.length) return;
 
   const figNums = figs.map((f: { fig_number: string }) => f.fig_number);
-  const invRows = await repo.inventareDerFiguren(figNums);
+  const invRows = await katalog().teileAnreicherung.inventareDerFiguren(figNums);
 
   // Je set_num die höchste Version (erste wegen ORDER BY DESC).
   const invMap: Record<string, number> = {};
@@ -361,7 +361,7 @@ async function enrichSetMinifigs(setNumber: string) {
     const invId = invMap[fig.fig_number];
     if (!invId) continue;
 
-    const parts = await repo.teileDesInventars(invId).catch(meldeUndLiefere('teile-enrich:parts', []));
+    const parts = await katalog().teileAnreicherung.teileDesInventars(invId).catch(meldeUndLiefere('teile-enrich:parts', []));
 
     figPartsMap[fig.fig_number] = { parts, figQty: fig.quantity };
     parts.forEach((p: { part_num: string }) => allPartNums.add(p.part_num));
@@ -370,7 +370,7 @@ async function enrichSetMinifigs(setNumber: string) {
   if (!allPartNums.size) return;
 
   // bl_zuordnung: die Nummer, einmal je Teil.
-  const rbBlRows = await repo.blZuordnungen([...allPartNums]);
+  const rbBlRows = await katalog().teileAnreicherung.blZuordnungen([...allPartNums]);
   const rbBlMap: Record<string, string> = {};
   for (const r of rbBlRows) rbBlMap[r.rb_id] = r.bl_id ?? '';
 
@@ -413,11 +413,9 @@ async function enrichSetMinifigs(setNumber: string) {
 
 // „Fehlend" = image_local gesetzt, Datei fehlt. Nicht wiederherstellbare
 // Einträge werden geleert, damit die Oberflächen auf die CDN-Adresse zurückfallen.
-// Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#abschnitt-2
 let _redlRunning = false;
 
 // Für alle drei Bildarten; sonst verwarf der Nachlauf Set- und Figurenbilder.
-// Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#fspathfromlocal
 function _fsPathFromLocal(imageLocal: string) {
   if (!imageLocal) return null;
   const bereiche: Array<[string, string]> = [
@@ -437,7 +435,6 @@ function _fsPathFromLocal(imageLocal: string) {
 }
 
 // Mit await, sonst ginge der Endstand bei einem Neustart verloren.
-// Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#redlsetstatus
 async function _redlSetStatus(obj: Record<string, unknown>) {
   await setzeZustand('imgredl_status', JSON.stringify({ ...obj, at: Date.now() }))
     .catch(logAndContinue('teile-enrich:setzeZustand'));
@@ -447,7 +444,7 @@ async function redownloadMissingImages(lauf?: AuftragsLauf) {
   if (_redlRunning) return { alreadyRunning: true };
   // Sperre auf EIGENER Verbindung: Advisory-Locks hängen an der Session.
   let lockClient;
-  try { lockClient = await repo.sperrVerbindung(); }
+  try { lockClient = await katalog().teileAnreicherung.sperrVerbindung(); }
   catch (e) { return { error: fehlertext(e) || 'keine Verbindung' }; }
   try {
     if (!(await repo.versucheNachlaufSperre(lockClient))) { lockClient.release(); return { alreadyRunning: true }; }
@@ -466,7 +463,7 @@ async function _redownloadMissingImages(lauf?: AuftragsLauf) {
   try {
     fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
     await _redlSetStatus({ running: true, phase: 'scanning', total: 0, done: 0, redownloaded: 0, cleared: 0 });
-    const rows = await repo.lokaleBilderMitAdresse();
+    const rows = await katalog().teileAnreicherung.lokaleBilderMitAdresse();
     // Auch fehlende Vorschauen: Sie entstehen sonst nur beim Erfassen und hätten
     // keinen zweiten Anlauf.
     const missing: { image_local: string; image_url: string | null; fp: string }[] = [];
@@ -524,9 +521,8 @@ async function _redownloadMissingImages(lauf?: AuftragsLauf) {
           redownloaded++;
         } else {
           // Die Liste MUSS zu den Tabellen passen, die die Spalte wirklich haben.
-          // Ausführlich: docs/begruendungen/src/katalog/teileAnreicherung.ts.md#redownloadmissingimages
           for (const tbl of repo.KATALOGE_MIT_BILD) {
-            await repo.vergissLokalesBild(tbl, m.image_local)
+            await katalog().teileAnreicherung.vergissLokalesBild(tbl, m.image_local)
               .catch(logAndContinue(`img-redl:leeren ${tbl}`));
           }
           cleared++;

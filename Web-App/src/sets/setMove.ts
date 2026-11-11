@@ -1,10 +1,12 @@
 /** Verschoben wird über die Erfassungen: Die Menge beider Konten folgt daraus
- * beim Lesen, hier wird keine Menge geschrieben. Ausführlich: docs/begruendungen/src/sets/setMove.ts.md#abschnitt */
+ * beim Lesen, hier wird keine Menge geschrieben. */
 import type { DbSchnittstelle } from '../../db/database';
-import { withInventoryLock } from '../../db/txLock';
+import { mitInventarSperre } from '../../db/txLock';
 import { recordAcquisitionForDay } from '../bestand/acquisitions';
 import { fachfehler } from '../infra/fehlerTexte';
 import * as repo from './repository/verschieben';
+import { kopiereSetInhalt, legeManuellAn } from '../bestand/gemeinsam';
+import type { SetsKontext } from './kontext';
 
 export interface MoveResult {
   quantity: number;
@@ -21,7 +23,8 @@ export interface MoveResult {
 async function copyContents(tx: DbSchnittstelle, sn: string, fromId: number, toId: number) {
   const n = { parts: 0, minifigs: 0, instructions: 0 };
   for (const t of ['parts', 'minifigs', 'instructions'] as const)
-    if (!await repo.hatInhalt(tx, t, toId, sn)) n[t] = await repo.kopiereInhalt(tx, t, sn, fromId, toId);
+    if (!await repo.hatInhalt(tx, t, toId, sn))
+      n[t] = t === 'instructions' ? await repo.kopiereAnleitungen(tx, sn, fromId, toId) : await kopiereSetInhalt(tx, t, sn, fromId, toId);
   return n;
 }
 
@@ -84,7 +87,7 @@ export async function moveManualAcquisition(
   const remaining = Math.max(0, await repo.erfassteMenge(tx, kind, fromId, keyValues) - movingQty);
 
   const dst = await repo.manuelleZeile(tx, kind, toId, keyValues);
-  if (!dst) await repo.legeManuellAn(tx, kind, toId, keyValues);
+  if (!dst) await legeManuellAn(tx, kind, toId, keyValues);
 
   await recordAcquisitionForDay(kind, toId, keyValues, {
     quantity: movingQty, price: acq.unit_price,
@@ -99,8 +102,8 @@ export async function moveManualAcquisition(
 }
 
 /** Unter der Sperre des Quellbestands, damit kein zweiter Weg dazwischen bucht. */
-export function verschiebeSet(sn: string, fromId: number, toId: number, erfassungen: number[]): Promise<MoveResult> {
+export function verschiebeSet(sk: SetsKontext, sn: string, fromId: number, toId: number, erfassungen: number[]): Promise<MoveResult> {
   // Zwei Verschiebungen in Gegenrichtung sperren die Zeilen beider Konten in umgekehrter Reihenfolge.
-  return withInventoryLock(fromId, sn, (tx) => moveSetBetweenAccounts(tx, sn, fromId, toId, erfassungen),
+  return mitInventarSperre(sk.db, fromId, sn, (tx) => moveSetBetweenAccounts(tx, sn, fromId, toId, erfassungen),
     { wiederholeBeiKonflikt: true });
 }

@@ -1,6 +1,5 @@
 /**
  * Die EINE Anmeldung — durchgespielt, nicht gelesen.
- * Ausführlich: docs/begruendungen/test/anmeldung-eine-adresse-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -73,7 +72,6 @@ test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async 
     const webCookie = web.cookie.split(';')[0];
 
     // 2. Die App: gleitende Frist statt gar keiner
-    // Ausführlich: docs/begruendungen/test/anmeldung-eine-adresse-db.test.js.md#app1
     const app1 = await ruf('/login', { method: 'POST',
       // Scope `voll`: Verwalterrechte bekommt ein Token nur auf ausdrücklichen Wunsch.
       body: { username: NAME, password: PASS, label: 'Android App', never_expires: true, scope: 'voll' } });

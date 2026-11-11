@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.theme.Design
 import android.content.Context
 import androidx.core.content.edit
 import androidx.datastore.core.DataStore
@@ -30,14 +32,6 @@ class GeraeteAblage @Inject constructor(
     private val vertrauenschiffre: Vertrauenschiffre,
 ) : GeraeteEinstellungen, Darstellungsablage, Netzvertrauen, Alarmablage, Entwertungsprotokoll, Sprachablage {
     companion object {
-        /**
-         * Welche Designs es gibt — dieselbe Liste wie ALLOWED in js/00-theme-boot.js, die
-         * Whitelist in routes/settings.ts und public/themes/ (theme.test.js hält sie
-         * zusammen). Unbekannte Werte werden nicht gemerkt: "" oder null heisst „keine
-         * Information“ und darf den gemerkten Wert nicht löschen.
-         */
-        val ERLAUBTE_DESIGNS = setOf("classic", "brick", "werkbank", "farbfaecher", "noppe", "hochglanz")
-
         /**
          * Der synchron lesbare Spiegel des Designs — eigene Datei, damit er
          * nichts anderes beruehrt. Warum es ihn gibt, steht bei
@@ -102,7 +96,7 @@ class GeraeteAblage @Inject constructor(
         val ALARM_MARKE = stringPreferencesKey("alarm_marke")
     }
 
-    val currency:  Flow<String> = dataStore.data.map { it[CURRENCY]   ?: "EUR" }
+    val currency:  Flow<Waehrung> = dataStore.data.map { p -> p[CURRENCY]?.let { Waehrung(it) } ?: Waehrung.EUR }
     val language:  Flow<String> = dataStore.data.map { it[LANGUAGE]   ?: "system" }
 
     // Vorgabe: nur WLAN. Begruendung an den Schluesseln oben. `?: true` bzw.
@@ -111,7 +105,7 @@ class GeraeteAblage @Inject constructor(
     val vorwaermenWlan:    Flow<Boolean> = dataStore.data.map { it[VORWAERMEN_WLAN]    ?: true }
     val vorwaermenMobil:   Flow<Boolean> = dataStore.data.map { it[VORWAERMEN_MOBIL]   ?: false }
     val vorwaermenRoaming: Flow<Boolean> = dataStore.data.map { it[VORWAERMEN_ROAMING] ?: false }
-    val appTheme:  Flow<String> = dataStore.data.map { it[APP_THEME]  ?: "classic" }
+    val appTheme:  Flow<Design> = dataStore.data.map { p -> Design.aus(p[APP_THEME]) ?: Design.VORGABE }
 
     // Vorgabe AUS — Begruendung am Schluessel oben.
     override val alarmMeldungenAn: Flow<Boolean> = dataStore.data.map { it[ALARM_MELDUNGEN] ?: false }
@@ -140,8 +134,8 @@ class GeraeteAblage @Inject constructor(
     /** Nach dem Umschalten der Nutzer-CAs und vor einem Pin aus dem Code: neuer TLS-Kontext, offene Verbindungen weg (di/ServerClient). */
     override fun beimNutzerCaWechsel(hoerer: () -> Unit) { nutzerCaHoerer += hoerer }
 
-    suspend fun saveCurrency(cur: String) {
-        dataStore.edit { it[CURRENCY] = cur }
+    suspend fun saveCurrency(cur: Waehrung) {
+        dataStore.edit { it[CURRENCY] = cur.code }
     }
     /**
      * Eine der drei Netzerlaubnisse setzen — eine Funktion mit dem Schlüssel als
@@ -196,25 +190,19 @@ class GeraeteAblage @Inject constructor(
         designSpiegel.edit { putString(SPRACHE_SPIEGEL, lang) }
         return lang
     }
-    suspend fun saveAppTheme(theme: String) {
-        // Unbekannte Werte NICHT schreiben: "" oder null heisst „keine
-        // Information" und darf den gemerkten Wert nicht loeschen — dieselbe
-        // Regel wie applyTheme() in 00-theme-boot.js.
-        if (theme in ERLAUBTE_DESIGNS) {
-            dataStore.edit { it[APP_THEME] = theme }
-            // Und in den synchron lesbaren Spiegel, siehe gemerktesDesign().
-            // Beides an EINER Stelle, damit die zwei Ablagen nicht
-            // auseinanderlaufen koennen.
-            designSpiegel.edit { putString(APP_THEME_SPIEGEL, theme) }
-        }
+    suspend fun saveAppTheme(theme: Design) {
+        dataStore.edit { it[APP_THEME] = theme.kennung }
+        // Und in den synchron lesbaren Spiegel, siehe gemerktesDesign(). Beides an
+        // EINER Stelle, damit die zwei Ablagen nicht auseinanderlaufen können.
+        designSpiegel.edit { putString(APP_THEME_SPIEGEL, theme.kennung) }
     }
 
     /**
      * Das zuletzt bekannte Design — synchron, für den allerersten Bildaufbau. Ohne
      * Eintrag (Neuinstallation) gilt der Standard.
      */
-    override fun gemerktesDesign(): String =
-        designSpiegel.getString(APP_THEME_SPIEGEL, null) ?: "classic"
+    override fun gemerktesDesign(): Design =
+        Design.aus(designSpiegel.getString(APP_THEME_SPIEGEL, null)) ?: Design.VORGABE
 
     /**
      * System, Hell oder Dunkel — je Gerät. Im Spiegel, weil es wie das Design schon

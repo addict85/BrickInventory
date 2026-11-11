@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.offline.Lokal
+import ch.brickinventoryapp.model.fach.Zustand
+import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.model.data.model.*
 import kotlinx.coroutines.flow.Flow
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
@@ -20,9 +21,14 @@ interface TeileRepository {
                          /** Lagerort — eigener Parameter, nicht Teil der Suche. */
                          storage: String? = null): Ergebnis<PartsResponse>
 
-    fun beobachteTeile(): Flow<Lokal<Part>>
+    /** Die Teile aus der Ablage nach Suche, Farbe, Kategorie und Ersatzteilen; [aktualisiereTeile] füllt sie. */
+    fun beobachteTeile(suche: String? = null, farbe: String? = null, kategorie: String? = null,
+                       ersatzteile: Ersatzteilwahl = Ersatzteilwahl.ALLE): Flow<Lokal<Part>>
 
-    fun beobachteManuelleTeile(): Flow<Lokal<PartValuationItem>>
+    fun beobachteManuelleTeile(suche: String? = null): Flow<Lokal<PartValuationItem>>
+
+    /** Alle Seiten der Teile und die manuellen Teile in die Ablage; gezeigt wird die Ablage. */
+    suspend fun aktualisiereTeile(): Ergebnis<Unit>
 
     suspend fun getPartsStats(accounts: String? = null): Ergebnis<PartsStatsResponse>
 
@@ -57,10 +63,10 @@ interface TeileRepository {
 
     suspend fun addPart(partNumber: String, colorId: Int = KEINE_FARBE, colorName: String? = null, colorHex: String? = null,
                          quantity: Int = 1, unitPrice: Double? = null,
-                         condition: String? = null, ownerUserId: Int? = null,
+                         condition: Zustand? = null, ownerUserId: Int? = null,
                          storage: String? = null): Ergebnis<AddPartResponse>
 
-    suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: String? = null, owner: Int? = null): Ergebnis<GenericResponse>
+    suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: Zustand? = null, owner: Int? = null): Ergebnis<GenericResponse>
 
     suspend fun deletePart(partNumber: String, colorId: Int, owner: Int? = null): Ergebnis<GenericResponse>
 

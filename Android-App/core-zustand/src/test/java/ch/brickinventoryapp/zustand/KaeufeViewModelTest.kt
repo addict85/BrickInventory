@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.zustand
 
+import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
@@ -46,6 +47,9 @@ import ch.brickinventoryapp.testing.TestDienste
  *   G  in updateManualAcquisition() den Rumpf von Hand gebaut,
  *      `UpdateAcquisitionRequest(purchasePrice = unitPrice, …)` → rot an
  *      derselben Stelle (Teil)
+ *   H  in loadManualPriceHistory() immer getPartPriceHistory
+ *      (gegenproben/kaeufe-verlauf-nur-teile.patch) → rot „der Preisverlauf kommt für
+ *      Teile und Figuren …“ (Figur ohne Verlauf; nur in der CI messbar)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class KaeufeViewModelTest {
@@ -66,6 +70,7 @@ class KaeufeViewModelTest {
                 "parts":12,"minifigs":2}""",
             "/api/v1/parts/3001/5/acquisitions" to """{"success":true,"acquisitions":[{"id":9,"quantity":4}]}""",
             "/api/v1/parts/3001/5/price-history" to """{"success":true,"set_number":"3001"}""",
+            "/api/v1/minifigs/sw0001/price-history" to """{"success":true,"set_number":"sw0001"}""",
             "/api/v1/parts/3002/5/acquisitions" to """{"success":true,"acquisitions":[]}""",
         )
         t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
@@ -97,10 +102,10 @@ class KaeufeViewModelTest {
     fun `eine abgelehnte Datumsaenderung laedt die Liste neu`() {
         pfade.codes["/api/v1/parts/3001/5/acquisitions/9"] = 409
         val vm = vm()
-        vm.loadManualAcquisitions("part", "3001", 5)
+        vm.loadManualAcquisitions(Postenart.PART, "3001", 5)
         assertTrue("Liste geladen", vm.manDetailState.value.acquisitions.isNotEmpty())
         val vorher = pfade.anfragenAn("GET /api/v1/parts/3001/5/acquisitions").size
-        vm.updateManualAcquisition("part", "3001", 5, 9, date = "2020-01-01")
+        vm.updateManualAcquisition(Postenart.PART, "3001", 5, 9, date = "2020-01-01")
         assertTrue("neu geladen", pfade.anfragenAn("GET /api/v1/parts/3001/5/acquisitions").size > vorher)
         assertEquals("fehler", t.meldungen.meldung.value)
     }
@@ -110,7 +115,7 @@ class KaeufeViewModelTest {
         val vm = vm()
         var ergebnis: Triple<String?, Int, Int>? = null
         val liste = t.gemeldet(3) {
-            vm.changeAcquisitionOwner("set", "75192-1", 0, 7, toUserId = 4) { f, teile, figuren ->
+            vm.changeAcquisitionOwner(Postenart.SET, "75192-1", 0, 7, toUserId = 4) { f, teile, figuren ->
                 ergebnis = Triple(f, teile, figuren)
             }
             assertTrue("Antwort", ergebnis != null)
@@ -139,11 +144,11 @@ class KaeufeViewModelTest {
         val set = rumpf("PUT /api/v1/sets/75192-1/acquisitions/7")
         assertTrue("Set: $set", "\"purchase_price\":499.0" in set && !gesetzt("unit_price", set))
 
-        vm.updateManualAcquisition("part", "3001", 5, 9, unitPrice = 0.25)
+        vm.updateManualAcquisition(Postenart.PART, "3001", 5, 9, unitPrice = 0.25)
         val teil = rumpf("PUT /api/v1/parts/3001/5/acquisitions/9")
         assertTrue("Teil: $teil", "\"unit_price\":0.25" in teil && !gesetzt("purchase_price", teil))
 
-        vm.updateManualAcquisition("fig", "sw0001", 0, 3, unitPrice = 12.0)
+        vm.updateManualAcquisition(Postenart.FIG, "sw0001", 0, 3, unitPrice = 12.0)
         val figur = rumpf("PUT /api/v1/minifigs/sw0001/acquisitions/3")
         assertTrue("Figur: $figur", "\"unit_price\":12.0" in figur && !gesetzt("purchase_price", figur))
     }
@@ -151,12 +156,23 @@ class KaeufeViewModelTest {
     @Test
     fun `der Preisverlauf eines anderen Eintrags bleibt nicht stehen`() {
         val vm = vm()
-        vm.loadManualAcquisitions("part", "3001", 5)
+        vm.loadManualAcquisitions(Postenart.PART, "3001", 5)
         assertTrue("Verlauf geladen", vm.manDetailState.value.priceHistory != null)
         // 3002 hat keinen Verlauf auf dem Testserver: Er bleibt leer, statt den
         // von 3001 weiter zu zeigen.
-        vm.loadManualAcquisitions("part", "3002", 5)
+        vm.loadManualAcquisitions(Postenart.PART, "3002", 5)
         assertTrue("Liste von 3002", vm.manDetailState.value.itemId == "3002" && !vm.manDetailState.value.isLoading && !vm.manDetailState.value.priceHistoryLoading)
         assertNull(vm.manDetailState.value.priceHistory)
+    }
+
+    @Test
+    fun `der Preisverlauf kommt fuer Teile und Figuren vom passenden Pfad`() {
+        val vm = vm()
+        vm.loadManualPriceHistory(Postenart.FIG, "sw0001")
+        assertTrue("Figur ohne Verlauf", vm.manDetailState.value.priceHistory != null)
+        vm.loadManualPriceHistory(Postenart.PART, "3001", 5)
+        assertTrue("Teil ohne Verlauf", vm.manDetailState.value.priceHistory != null)
+        assertEquals(1, pfade.anfragenAn("/api/v1/minifigs/sw0001/price-history").size)
+        assertEquals(1, pfade.anfragenAn("/api/v1/parts/3001/5/price-history").size)
     }
 }

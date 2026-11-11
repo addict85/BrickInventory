@@ -1,6 +1,5 @@
 /**
  * Ein neues Exemplar bekommt den Zustand, den das Set WIRKLICH hat.
- * Ausführlich: docs/begruendungen/test/neue-erfassung-zustand-db.test.js.md#kopf
  *
  * Gegenproben: siehe am jeweiligen Teilschritt.
  *
@@ -53,7 +52,7 @@ test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', {
                     VALUES ($1,$2,'EUR',$3,$3,$3,$3,5,NOW())
                     ON CONFLICT (set_number,condition,currency_code) DO UPDATE SET avg_price=$3`, [SET, c, p]);
 
-    const { updateSet } = _req('src/sets/setService.js');
+    const { updateSet } = _req('src/sets/index.js');
     await updateSet(uid, SET, { quantity: 2 });
 
     const erf = await db.all(
@@ -75,7 +74,6 @@ test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', {
 
 /**
  * Warum diese Regel umgeschrieben wurde
- * Ausführlich: docs/begruendungen/test/neue-erfassung-zustand-db.test.js.md#kein-quelltext-liest-kaufpreis-oder-zust
  */
 test('kein Quelltext liest Kaufpreis oder Zustand aus sets', () => {
   // Gefunden, nicht aufgezaehlt.
@@ -95,7 +93,6 @@ test('kein Quelltext liest Kaufpreis oder Zustand aus sets', () => {
   // Gesucht werden die Formen, in denen die zwei Spalten in diesem Baum
   // tatsaechlich vorkamen — GEFUNDEN, nicht erdacht (git log von Migration
   // 0032 nennt jede Stelle):
-  // Ausführlich: docs/begruendungen/test/neue-erfassung-zustand-db.test.js.md#verboten
   const verboten = [
     /\bs\.purchase_price\b/i,
     /\bs\.condition\b/i,

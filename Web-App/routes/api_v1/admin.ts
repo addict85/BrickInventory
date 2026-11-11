@@ -1,20 +1,15 @@
 /** /api/v1/admin — jede Route über requireApiAdmin, damit kein Handler die
  * Prüfung vergessen kann. */
-import { meldeUndLiefere } from '../../src/infra/fehler';
-import { fehlerAntwort } from '../../src/http/httpAntwort';
+import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireApiAdmin } from './middleware';
 import { getLimitForApi } from '../../src/katalog/apiKontingent';
 import { vergissFehlend } from '../../src/katalog/bilder/imageMisses';
 import { setGlobalSetting, getGlobalSetting } from '../../src/einstellungen/settings';
-import { sendeFehler } from '../../src/infra/fehlerTexte';
-import { cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinreihen, preisJobStand, preisJobJetzt,
-         fehlendeBilderNachladen, bricksetWiederholen, bricksetEntfernen, jobZeitplanSetzen, jobUebersicht,
-         bildProbe, preisProbe, katalogBilderEinreihen, katalogAbgleichJetzt, bricksetListe,
-         letzteEintraege, bildDiagnose, protokollSeit, setFehlanzeigen, vorschauFehlanzeigen } from '../../src/verwaltung/dienst';
+import { cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinreihen, preisJobStand, preisJobJetzt, fehlendeBilderNachladen, bricksetWiederholen, bricksetEntfernen, jobZeitplanSetzen, jobUebersicht, bildProbe, preisProbe, katalogBilderEinreihen, katalogAbgleichJetzt, bricksetListe, letzteEintraege, bildDiagnose, protokollSeit, setFehlanzeigen, vorschauFehlanzeigen } from '../../src/verwaltung/dienst';
 import { auftragsUebersicht, auftragAbbrechen, auftragWiederholen, auftragsArtJetzt, auftragsArtLeeren } from '../../src/verwaltung/hintergrund';
-import { vertragsRouter } from '../../src/vertrag/pruefen';
 import { seiteAus } from '../../src/infra/seite';
-import type { Anfrage, Antwort } from '../../src/vertrag';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
 const router = vertragsRouter({ grosseIds: true });
 
 
@@ -54,7 +49,6 @@ router.get('/admin/cache-stats', requireApiAdmin, async (_req: AuthedRequest, re
 
 // Beantwortet die wiederkehrenden Fragen zu einer leeren Kachel in einer
 // Antwort: Datenbank, Platte, Proxy, Fehlanzeige.
-// Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-image-diag-setnumber
 router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: Anfrage<'GET /api/v1/admin/image-diag/:setNumber'>, res: Antwort<'GET /api/v1/admin/image-diag/:setNumber'>) => {
   const sn = req.pfad.setNumber;
 
@@ -62,7 +56,6 @@ router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: Anfrage<
 });
 
 // Eine Fehlanzeige sperrte ein Bild sieben Tage, ohne Weg zurück.
-// Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#post-admin-forget-image-misses
 router.post('/admin/forget-image-misses', requireApiAdmin, async (req: Anfrage<'POST /api/v1/admin/forget-image-misses'>, res: Antwort<'POST /api/v1/admin/forget-image-misses'>) => {
   const sets = Array.isArray(req.eingabe.set_numbers) ? req.eingabe.set_numbers.map(String) : null;
   let entfernt = 0;
@@ -71,11 +64,11 @@ router.post('/admin/forget-image-misses', requireApiAdmin, async (req: Anfrage<'
   } else {
     // Nicht die ganze Tabelle: Die Vorschau-Vermerke haben einen anderen Zweck
     // und sollen nicht nebenbei mitverschwinden.
-    const rows = await setFehlanzeigen().catch(meldeUndLiefere('verwaltung:setFehlanzeigen', []));
+    const rows = await setFehlanzeigen();
     if (rows.length) entfernt = await vergissFehlend(rows.map(r => r.cache_key));
   }
   if (req.eingabe.thumbs === true) {
-    const rows = await vorschauFehlanzeigen().catch(meldeUndLiefere('verwaltung:vorschauFehlanzeigen', []));
+    const rows = await vorschauFehlanzeigen();
     if (rows.length) entfernt += await vergissFehlend(rows.map(r => r.cache_key));
   }
   // Die anderen Prozesse frischen den Merker im Fünf-Minuten-Takt aus der Tabelle auf.
@@ -83,7 +76,6 @@ router.post('/admin/forget-image-misses', requireApiAdmin, async (req: Anfrage<'
 });
 
 // Global (price_cache gilt für alle Konten), darum nur für Verwalter.
-// Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#post-admin-cache-clear
 router.post('/admin/cache-clear', requireApiAdmin, async (req: Anfrage<'POST /api/v1/admin/cache-clear'>, res: Antwort<'POST /api/v1/admin/cache-clear'>) => {
   await cachesLeeren(!!req.eingabe.all);
   res.json({ success: true, message: req.eingabe.all ? 'Alle Caches geleert' : 'Preis-Cache geleert' });
@@ -130,7 +122,6 @@ router.post('/admin/reimport-instructions', requireApiAdmin, async (_req: Authed
 });
 
 // Eine Adresse für Webapp und App; requireApiAdmin nimmt beide Ausweise.
-// Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-job-status
 router.get('/admin/job-status', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/admin/job-status'>) => {
   res.json(await preisJobStand()); 
 });
@@ -140,7 +131,6 @@ router.post('/admin/trigger-price-job', requireApiAdmin, async (_req: AuthedRequ
 });
 
 // Füllt den Bildbestand vorab, statt nur beim Blättern.
-// Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#post-admin-catalog-images
 router.post('/admin/catalog-images', requireApiAdmin, async (req: Anfrage<'POST /api/v1/admin/catalog-images'>, res: Antwort<'POST /api/v1/admin/catalog-images'>) => {
   res.json(await katalogBilderEinreihen(req.eingabe.alle_erneut === true));
 });
@@ -159,7 +149,7 @@ router.get('/admin/logs', requireApiAdmin, async (req: Anfrage<'GET /api/v1/admi
 });
 
 router.get('/admin/brickset-queue', requireApiAdmin, async (req: Anfrage<'GET /api/v1/admin/brickset-queue'>, res: Antwort<'GET /api/v1/admin/brickset-queue'>) => {
-  const rows = await bricksetListe().catch(meldeUndLiefere('verwaltung:bricksetWarteschlange', []));
+  const rows = await bricksetListe();
   const { eintraege, ...seite } = seiteAus(rows, req.abfrage);
   res.json({ success: true, count: rows.length, entries: eintraege, ...seite });
 });
@@ -190,14 +180,12 @@ router.post('/admin/job-schedule', requireApiAdmin, async (req: Anfrage<'POST /a
 
 /** Fragt eine Bild-URL vom SERVER aus ab (mit, ohne Referer, ohne Kopfzeilen),
  * um „fehlt", „Hotlink-Schutz" und „nicht erreichbar" zu unterscheiden. POST,
- * weil eine fremde Seite ein GET samt Lax-Cookie per Link auslösen könnte.
- * Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-img-probe */
+ * weil eine fremde Seite ein GET samt Lax-Cookie per Link auslösen könnte. */
 router.post('/admin/img-probe', requireApiAdmin, async (req: Anfrage<'POST /api/v1/admin/img-probe'>, res: Antwort<'POST /api/v1/admin/img-probe'>) => {
   res.json(await bildProbe(req.eingabe.url ?? ''));
 });
 /** Alles, was in die Marktpreis-Anzeige eines Sets einfliesst, auf Wunsch mit
- * der aktuellen BrickLink-Antwort; POST aus demselben Grund wie oben.
- * Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-price-probe */
+ * der aktuellen BrickLink-Antwort; POST aus demselben Grund wie oben. */
 router.post('/admin/price-probe', requireApiAdmin, async (req: Anfrage<'POST /api/v1/admin/price-probe'>, res: Antwort<'POST /api/v1/admin/price-probe'>) => {
   const setNumber = (req.eingabe.set ?? '').trim();
   if (!setNumber) return sendeFehler(req, res, 400, 'parameter_set_fehlt');

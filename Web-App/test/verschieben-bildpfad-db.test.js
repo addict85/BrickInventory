@@ -1,6 +1,5 @@
 /**
  * Nach dem Verschieben eines Sets hat JEDER Bestandteil im Zielkonto sein Bild.
- * Ausführlich: docs/begruendungen/test/verschieben-bildpfad-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -11,7 +10,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
-const { moveSetBetweenAccounts } = _req('src/sets/setMove.js');
+const { moveSetBetweenAccounts } = _req('src/sets/index.js');
 
 test('ein verschobenes Set nimmt die Bildpfade aller Bestandteile mit', { concurrency: 1 }, async (t) => {
   if (!await dbOderSkip(t, _req, { migrieren: false })) return;

@@ -1,13 +1,11 @@
 import { logAndContinue, meldeUndLiefere } from '../../infra/fehler';
-import * as repo from '../repository/bildFehlschlaege';
+import { katalog } from '../prozess';
 
-/** EINMAL gemerkt, für alle Prozesse; nach einer Woche wird erneut gefragt.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/imageMisses.ts.md#erneut-pruefen-ms */
+/** EINMAL gemerkt, für alle Prozesse; nach einer Woche wird erneut gefragt. */
 const ERNEUT_PRUEFEN_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** Keine Datenbankabfrage je Bild: Ein Schwung Bildanfragen nahm sonst anderen
- * Routen die Verbindungen. Der Speicher wird im Takt aufgefrischt.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/imageMisses.ts.md#auffrischen-ms */
+ * Routen die Verbindungen. Der Speicher wird im Takt aufgefrischt. */
 const AUFFRISCHEN_MS = 5 * 60 * 1000;
 
 const _vorne = new Map<string, number>();
@@ -35,7 +33,7 @@ export function istBekanntFehlend(key: string): boolean {
 }
 
 async function auffrischen(): Promise<void> {
-  const rows = await repo.frischeFehlschlaege(String(ERNEUT_PRUEFEN_MS)).catch(meldeUndLiefere('bild-fehlanzeige:rows', null));
+  const rows = await katalog().bildFehlschlaege.frischeFehlschlaege(String(ERNEUT_PRUEFEN_MS)).catch(meldeUndLiefere('bild-fehlanzeige:rows', null));
   if (!rows) return;
   _vorne.clear(); _gruende.clear();
   for (const r of rows) {
@@ -57,11 +55,11 @@ export function grundFuer(key: string): string {
   return _gruende.get(key) || '';
 }
 
-// Der Weg zurück aus der Sperre. Ausführlich: docs/begruendungen/src/katalog/bilder/imageMisses.ts.md#vergissfehlend
+// Der Weg zurück aus der Sperre.
 export async function vergissFehlend(keys?: string[]): Promise<number> {
   const r = keys?.length
-    ? await repo.vergissFehlschlaege(keys)
-    : await repo.vergissAlleFehlschlaege();
+    ? await katalog().bildFehlschlaege.vergissFehlschlaege(keys)
+    : await katalog().bildFehlschlaege.vergissAlleFehlschlaege();
   if (keys?.length) for (const k of keys) { _vorne.delete(k); _gruende.delete(k); _zuSchreiben.delete(k); }
   else { _vorne.clear(); _gruende.clear(); _zuSchreiben.clear(); }
   return r?.changes || 0;
@@ -72,7 +70,7 @@ async function schreibePuffer(): Promise<void> {
   const keys = [..._zuSchreiben.keys()];
   const gruende = keys.map(k => _zuSchreiben.get(k) || '');
   _zuSchreiben.clear();
-  await repo.merkeFehlschlaege(keys, gruende).catch(() => { for (let i = 0; i < keys.length; i++) { const k = keys[i]; if (k) _zuSchreiben.set(k, gruende[i] ?? ''); } });
+  await katalog().bildFehlschlaege.merkeFehlschlaege(keys, gruende).catch(() => { for (let i = 0; i < keys.length; i++) { const k = keys[i]; if (k) _zuSchreiben.set(k, gruende[i] ?? ''); } });
 }
 
 export function _leereVordergrund(): void { _vorne.clear(); _gruende.clear(); }

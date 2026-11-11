@@ -1,13 +1,10 @@
 /**
  * Fehlende Bilder werden EINMAL geholt — nicht je Prozess und Besuch neu.
- * Ausführlich: docs/begruendungen/test/image-misses-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 const Module = require('node:module');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 // Den Bild-Download abfangen, BEVOR die Routen geladen werden: Sie holen ihn
@@ -31,7 +28,6 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('bildlose Sets werden nicht immer wieder beim CDN gesucht',
   { concurrency: 1 }, async (t) => {
@@ -78,7 +74,6 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht',
       // Der Kern der Sache: Der Server läuft im Cluster. Ein Merker im
       // Arbeitsspeicher hilft nur DEM Prozess, der ihn angelegt hat — bei vier
       // Arbeitsprozessen wird dasselbe Bild viermal geholt.
-      // Ausführlich: docs/begruendungen/test/image-misses-db.test.js.md#im-stelle
       const IM = _req('src/katalog/bilder/imageMisses.js');
       IM.merkeFehlend('set:' + PRAEFIX + '_probe');
       await IM._schreibePuffer();

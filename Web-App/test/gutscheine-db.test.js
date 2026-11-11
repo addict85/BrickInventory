@@ -1,6 +1,5 @@
 /**
  * Gutscheine (LEGO-Geschenkkarten) — gegen eine echte Datenbank.
- * Ausführlich: docs/begruendungen/test/gutscheine-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -21,7 +20,6 @@ const PDFDocument = require('pdfkit');   // kein Verzeichnispfad: pdfkit 0.20 ha
 
 /**
  * Wo die Gutschein-PDFs liegen.
- * Ausführlich: docs/begruendungen/test/gutscheine-db.test.js.md#voucher-dir
  */
 const VOUCHER_DIR = path.join(ROOT, 'data', 'vouchers');
 
@@ -389,7 +387,6 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
       // ist genau hier belegt: kein zweiter Router, kein zweiter Pfad — nur
       // ein anderer Ausweis an derselben Tuer.
       // Die Tabelle haelt den SHA-256-Hex des Tokens, nicht den Klartext — …
-      // Ausführlich: docs/begruendungen/test/gutscheine-db.test.js.md#alshash
       const alsHash = t => crypto.createHash('sha256').update(t).digest('hex');
       await db.run(
         `INSERT INTO api_tokens (user_id, token, expires_at) VALUES ($1,$2, NOW() + INTERVAL '1 day')`,
@@ -472,7 +469,6 @@ testOberflaeche('Gutscheine in der Webapp: Marcos Nachbesserungen', async (t) =>
   // Variable: Ein `path.join(ROOT, rel)` nimmt test/eigenbruecken.test.js die
   // Sicht darauf, ob ein Test eine Datei liest, die es gar nicht gibt — und
   // genau dieser Waechter ist hier prompt rot geworden. …
-  // Ausführlich: docs/begruendungen/test/gutscheine-db.test.js.md#stelle
   const { ohneKommentare } = require('./helpers/sources');
   const js = ohneKommentare(fsO.readFileSync(path.join(ROOT, 'public', 'js', '17-gutscheine.js'), 'utf8'));
   const html = fsO.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
@@ -496,7 +492,6 @@ testOberflaeche('Gutscheine in der Webapp: Marcos Nachbesserungen', async (t) =>
     assert.match(js, /KOPIE_ICON_SVG/, 'der Knopf traegt kein Symbol');
     // Kopiert wird die ROHE Nummer: Die Vierergruppen sind eine Lesehilfe,
     // ein Bezahlfeld nimmt sie nicht an.
-    // Ausführlich: docs/begruendungen/test/gutscheine-db.test.js.md#gutscheinkopieren
     const kopierRumpf = js.slice(js.indexOf('function gutscheinKopieren'));
     assert.match(kopierRumpf.slice(0, 400), /String\(k\.number\)/,
       'in gutscheinKopieren wird nicht die rohe Nummer genommen');

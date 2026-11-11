@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.finanzen.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.data.model.Fehlercode
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -34,8 +35,8 @@ import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 
 /**
  * Gutscheine im eigenen Profil. Das PDF liest und die Werte prüft der Server, einmal
- * für beide Apps; hier wird nur angezeigt. An die Activity gebunden, weil die
- * Guthabenabfrage über alle Karten Minuten dauert.
+ * für beide Apps; hier wird nur angezeigt. Ans Ziel gebunden: Eine Guthabenabfrage
+ * über alle Karten endet mit der Seite, jede fertige Karte hat der Server gespeichert.
  */
 @HiltViewModel
 class GutscheinViewModel @Inject constructor(
@@ -201,7 +202,7 @@ class GutscheinViewModel @Inject constructor(
                 nummer = klar?.number ?: g.number,
                 pin = klar?.pin ?: g.pin.orEmpty(),
                 betrag = betragAlsText(g.amount),
-                waehrung = g.currency,
+                waehrung = g.currency.code,
                 pdfName = null,
             )
         }
@@ -234,7 +235,7 @@ class GutscheinViewModel @Inject constructor(
                         ?: return@launch melde(R.string.vouchers_amount_invalid)
                     behandleAntwort(repo.aendern(bearbeitet, GutscheinRequest(
                         number = s.nummer.trim(), pin = s.pin.trim().ifEmpty { null },
-                        amount = betrag, currency = s.waehrung)))
+                        amount = betrag, currency = Waehrung(s.waehrung.trim()))))
                     return@launch
                 }
 
@@ -259,7 +260,7 @@ class GutscheinViewModel @Inject constructor(
                                 nummer = it.nummer.ifEmpty { g?.number.orEmpty() },
                                 pin = it.pin.ifEmpty { g?.pin.orEmpty() },
                                 betrag = it.betrag.ifEmpty { g?.amount?.let(::betragAlsText).orEmpty() },
-                                waehrung = g?.currency ?: it.waehrung,
+                                waehrung = g?.currency?.code ?: it.waehrung,
                             )
                         }
                         return@launch melde(R.string.vouchers_pdf_incomplete)
@@ -272,7 +273,7 @@ class GutscheinViewModel @Inject constructor(
                     ?: return@launch melde(R.string.vouchers_amount_invalid)
                 behandleAntwort(repo.anlegen(GutscheinRequest(
                     number = s.nummer.trim(), pin = s.pin.trim().ifEmpty { null },
-                    amount = betrag, currency = s.waehrung)))
+                    amount = betrag, currency = Waehrung(s.waehrung.trim()))))
             } finally {
                 _state.update { it.copy(speichert = false) }
             }

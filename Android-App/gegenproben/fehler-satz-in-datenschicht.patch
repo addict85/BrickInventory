@@ -3,11 +3,11 @@ Modul: app
 Test: ch.brickinventoryapp.app.ErrorMessageLayerTest
 Rot: die Datenschicht baut keine Meldung
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt
-index 2cdc995..8ce049d 100644
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/RepoBasis.kt
-@@ -127,7 +127,7 @@ suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Ergebnis<T> {
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt
+index 31fb616..3aa116f 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt
+@@ -137,7 +137,7 @@ suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Ergebnis<T> {
              val text = rumpf.text ?: ""
              val code = Fehlercode.aus(rumpf.code)
              if (response.code() == 401) Ergebnis.Error.Abgewiesen(text, code)

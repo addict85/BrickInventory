@@ -3,7 +3,6 @@
  * (req.eingabe, req.abfrage aus eingabePruefen): umgewandelt, ohne unbekannte
  * Felder. Eingaben und Abfragen sind geschlossen; ein unbekanntes Feld ist 400
  * mit dem Code feld_unbekannt. Die Abfrage steht in docs/openapi.json.
- * Ausführlich: docs/begruendungen/test/eingabe-geprueft.test.js.md#kopf
  *
  * Gegenproben (05.11.2026 gemessen):
  *   A  in eingabePruefen `geprueft.eingabe = r.data` gestrichen → rot: „die
@@ -23,7 +22,7 @@ const assert = require('node:assert/strict');
 const express = require('express');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { vertragsRouter } = _req('src/vertrag/pruefen.js');
+const { vertragsRouter } = _req('src/http/vertragsRouter.js');
 const { VERTRAG } = _req('src/vertrag/index.js');
 
 test('geprüfte Eingabe und Abfrage', { concurrency: 1 }, async (t) => {

@@ -17,7 +17,6 @@ import { renderMarketRows } from './01-diagramme.js';
 import { erfassung, gespeichert, setzeMitFokus, isoTag, datumFeld, gespeichertMarke, zeigeGespeichert } from './13-erfassung-zustand.js';
 // Kaufpreis-Modal und Detailfenster für manuelle Einträge: Beides ist Erfassung, keine Administration, und
 // gehört deshalb nicht nach 07-admin.js.
-// Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#diese-708-zeilen-standen-in-js-07-admin
 /** @typedef {import('../../frontend-typen/vertrag').HouseholdMember} Konto */
 /** @typedef {import('../../frontend-typen/vertrag').AcquisitionTotals} Erfassungssumme */
 /** @typedef {import('../../frontend-typen/vertrag').Acquisition} Erfassung */
@@ -40,7 +39,6 @@ export function openAcqModal(sn) {
 
 // Ein Klick auf den Hintergrund schliesst über closeAcqModal(), die einzige Fassung mit der Rückkehr-Logik
 // für Set und manuellen Eintrag.
-// Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#acq-modal
 G('acq-modal').addEventListener('click', e => e.target === e.currentTarget && closeAcqModal());
 
 
@@ -164,7 +162,6 @@ async function acqSave(sn, id, field, value) {
   } else if (field === 'owner') {
     // Eigentümerwechsel verschiebt genau diese Kaufpreis-Zeile, ohne from_user_id: Den Absender kennt der
     // Server aus der Zeile. Mit dem Betrachter als Absender fand er Zeilen von Unterkonten nicht (404).
-    // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#eigentuemerwechsel-verschieben-genau-die
     body.owner_user_id = parseInt(value);
   } else {
     body.condition = value;
@@ -201,7 +198,6 @@ async function acqSave(sn, id, field, value) {
 
   // Galerie und Finanzen mitziehen: Kaufpreis und Menge wirken auf die Kachel und die Auswertung, die sonst
   // bis zum Neuladen alt blieben. restore, damit der Wechsel nicht die gescrollte Tiefe kostet.
-  // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#loadgallery
   loadGallery({ restore: true });
   loadFinance();
 

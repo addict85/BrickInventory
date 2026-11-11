@@ -96,7 +96,6 @@ internal fun anmeldungUeberfaellig(angemeldetAm: Long, jetzt: Long): Boolean =
  * faellig` oder 401 `token_rotation_noetig`). Der neue Token wird gespeichert,
  * BEVOR ihn jemand benutzt: Ginge die App zwischen Antwort und Speichern zu,
  * stünde sonst nur noch der alte da — und der gilt nach dem Tausch nur 5 min.
- * Ausführlich: docs/begruendungen/core-data/data/TokenTausch.kt.md#tokentausch
  */
 class TokenTausch(
     private val stand: suspend () -> TokenStand,

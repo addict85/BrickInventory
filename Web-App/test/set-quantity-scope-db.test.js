@@ -1,6 +1,5 @@
 /**
  * Menge eines UNTERKONTO-Sets ändern — beide Routenfamilien.
- * Ausführlich: docs/begruendungen/test/set-quantity-scope-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): writableIds in updateSet zurück auf die eigene ID
  * → beide Teilschritte enden wieder in 404.
@@ -12,16 +11,13 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const express = require(path.join(ROOT, 'node_modules', 'express'));
 const { haeltSet, mengeVon } = require('./helpers/bestand');
 
 test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto',
@@ -83,7 +79,6 @@ test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto',
       // ── Marcos neue Regel ────────────────────────────────
       // „Die Anzahl soll immer von allen angezeigt werden. Wenn ich diese
       // erhöhe, soll es für meinen Account einen neuen Kaufpreis-Eintrag …
-      // Ausführlich: docs/begruendungen/test/set-quantity-scope-db.test.js.md#beimbesitzer
       const beimBesitzer = await mengeVon(db, subId, SN);
       assert.equal(beimBesitzer, 1,
         `${name}: der Bestand des Unterkontos darf sich durch eine fremde Erhöhung nicht ändern`);

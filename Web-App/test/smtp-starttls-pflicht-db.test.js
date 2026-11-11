@@ -41,7 +41,7 @@ function smtpServer(tlsOpt) {
       let puffer = '', daten = null;
       s.on('data', (b) => {
         puffer += b.toString('latin1');
-        for (let i; (i = puffer.indexOf('\r\n')) >= 0;) {
+        for (let i = puffer.indexOf('\r\n'); i >= 0; i = puffer.indexOf('\r\n')) {
           const zeile = puffer.slice(0, i); puffer = puffer.slice(i + 2);
           mitschnitt.push({ schicht, zeile });
           if (daten !== null) {

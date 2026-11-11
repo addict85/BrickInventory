@@ -21,6 +21,10 @@ export function setZustandsZaehler(uids: number[], setNumber: string, dbh: Pick<
       WHERE s.user_id = ANY($1) AND s.set_number=$2`, [uids, setNumber]);
 }
 
+export async function loescheAlleSetPreise(): Promise<void> {
+  await db.run('DELETE FROM price_cache');
+}
+
 export function setPreisFrisch(setNumber: string, condition: string, currency: string, ttlStunden: number) {
   return db.get<SetPreiszeile>(
     `SELECT ${PRICE_CACHE_COLS} FROM price_cache

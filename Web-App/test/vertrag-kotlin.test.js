@@ -3,7 +3,6 @@
  * als JSON-Schema wie in docs/openapi.json): Jede Route, die die App aufruft,
  * hat einen Vertrag, und ihr Antworttyp liest jede Antwort, die der Vertrag
  * erlaubt — Feldnamen (@SerialName), Typ, Nullbarkeit, Pflicht oder optional. …
- * Ausführlich: docs/begruendungen/test/vertrag-kotlin.test.js.md#kopf
  *
  * Gegenproben (31.10.2026 gemessen):
  *   A  im Vertrag SetItem.quantity als z.string() → rot: „die Kotlin-Modelle
@@ -23,6 +22,7 @@
  *   H  in Fehlercode.kt BARCODE_KEIN_SET("barcode_kein_satz") →
  *      rot: „jeder Fehlercode der App steht im Vertrag“ nennt barcode_kein_satz
  */
+// Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');

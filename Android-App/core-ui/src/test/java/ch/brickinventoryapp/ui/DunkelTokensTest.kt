@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.ui.theme.DunkelTokens
 import ch.brickinventoryapp.ui.theme.argb
 import ch.brickinventoryapp.ui.theme.dunkelToken
@@ -19,7 +20,7 @@ import java.awt.Color
  * (shared/design-tokens.json, Abschnitt `dunkel`), und ihre Rollen sind lesbar.
  *
  * Dass DunkelTokens.kt die Quelle wiedergibt, prüft seit dem 30.10. der
- * Generator selbst: Web-App/test/design-abschrift.test.js vergleicht die Datei
+ * Generator selbst: Web-App/test/abgleich-design-abschrift.test.js vergleicht die Datei
  * mit baueKotlinDunkel() („erzeugt = Quelle“). Der Wert-für-Wert-Vergleich, der
  * hier für die Abschrift stand, ist damit entfallen.
  *
@@ -43,16 +44,16 @@ class DunkelTokensTest {
     fun `jedes Design der Quelle hat seine dunkle Fassung`() {
         val namen = quelle.getJSONObject("designs").keys().asSequence().toSet()
         assertEquals(namen, DunkelTokens.designs.keys)
-        for (n in namen) assertTrue(n, hatDunkleFassung(n))
-        assertFalse("Werkbank ist schon dunkel", hatDunkleFassung("werkbank"))
+        for (n in namen) assertTrue(n, hatDunkleFassung(checkNotNull(Design.aus(n)) { "$n ist kein Design der App" }))
+        assertFalse("Werkbank ist schon dunkel", hatDunkleFassung(Design.WERKBANK))
     }
 
     @Test
     fun `hochglanz erbt die Farben von noppe`() {
         for (t in listOf("b600", "b700", "chart-new", "ink")) {
-            assertEquals(t, dunkelToken("noppe", t), dunkelToken("hochglanz", t))
+            assertEquals(t, dunkelToken(Design.NOPPE, t), dunkelToken(Design.HOCHGLANZ, t))
         }
-        assertEquals("Flächen kommen aus der Basis", DunkelTokens.basis["bg"], dunkelToken("brick", "bg"))
+        assertEquals("Flächen kommen aus der Basis", DunkelTokens.basis["bg"], dunkelToken(Design.BRICK, "bg"))
     }
 
     private fun k(a: Long, b: Long) = Kontrast.verhaeltnis(a.toInt(), b.toInt())
@@ -61,7 +62,7 @@ class DunkelTokensTest {
     fun `Text auf Flaechen ist lesbar`() {
         val fehler = mutableListOf<String>()
         for (d in DunkelTokens.designs.keys) {
-            val r = dunkleRollen(d)
+            val r = dunkleRollen(checkNotNull(Design.aus(d)))
             val paare = mapOf(
                 "onSurface/surface" to (r.onSurface to r.surface),
                 "onSurfaceVariant/surface" to (r.onSurfaceVariant to r.surface),
@@ -80,7 +81,7 @@ class DunkelTokensTest {
     fun `Rahmen heben sich mit 3 zu 1 ab`() {
         val fehler = mutableListOf<String>()
         for (d in DunkelTokens.designs.keys) {
-            val r = dunkleRollen(d)
+            val r = dunkleRollen(checkNotNull(Design.aus(d)))
             // surfaceContainerHighest liegt zehn Prozent Richtung onSurface; s300 ist heller.
             for ((name, flaeche) in mapOf("surface" to r.surface, "background" to r.background,
                     "surfaceVariant" to r.surfaceVariant, "s300" to argb(DunkelTokens.basis.getValue("s300")))) {
@@ -94,7 +95,7 @@ class DunkelTokensTest {
     @Test
     fun `die Flaechen sind dunkel und die Schrift hell`() {
         for (d in DunkelTokens.designs.keys) {
-            val r = dunkleRollen(d)
+            val r = dunkleRollen(checkNotNull(Design.aus(d)))
             assertTrue(d, Kontrast.luminanz(r.background.toInt()) < 0.05)
             assertTrue(d, Kontrast.luminanz(r.onSurface.toInt()) > 0.7)
         }
@@ -109,10 +110,10 @@ class DunkelTokensTest {
         val hell = JSONObject(File("../../shared/design-tokens.json").readText())
             .getJSONObject("designs").getJSONObject("brick")
         val d = dunkleSteinDekor()
-        assertEquals(argb(dunkelToken("brick", "b400")!!), d.noppen)
+        assertEquals(argb(dunkelToken(Design.BRICK, "b400")!!), d.noppen)
         assertTrue("Die Noppen sind im Dunkeln dunkler als hell",
             Kontrast.luminanz(d.noppen.toInt()) < Kontrast.luminanz(argb(hell.getString("b400")).toInt()))
-        val karte = dunkleRollen("brick").surface
+        val karte = dunkleRollen(Design.BRICK).surface
         assertTrue("Die Noppen heben sich von der Karte ab", k(d.noppen, karte) >= Kontrast.RAHMEN)
         assertTrue("Schrift auf der Schieferkachel lesbar", k(d.aufSchiefer, d.schiefer) >= 4.5)
     }
@@ -130,7 +131,7 @@ class DunkelTokensTest {
             return Color.RGBtoHSB((c shr 16) and 0xFF, (c shr 8) and 0xFF, c and 0xFF, null)
         }
         for (design in DunkelTokens.designs.keys) {
-            val r = dunkleRollen(design)
+            val r = dunkleRollen(checkNotNull(Design.aus(design)))
             val zweit = hsb(r.secondaryContainer)
             val abstand = kotlin.math.abs(zweit[0] * 360f - hsb(r.primary)[0] * 360f).let { minOf(it, 360f - it) }
             assertTrue("$design dunkel: Zweitfläche %.0f° neben der Hauptfarbe".format(abstand),

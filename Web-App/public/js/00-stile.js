@@ -1,7 +1,6 @@
 // Die CSP verbietet style-Attribute, damit eingeschleustes Markup die Seite nicht umgestalten kann. Stile
 // stehen deshalb als data-stil da und gelten nur, wenn sie im Quelltext vorkommen (Liste aus
 // scripts/build-frontend.js).
-// Ausführlich: docs/begruendungen/public/js/00-stile.js.md#die-csp-erlaubt-keine-style-attribute-im
 
 /* global __ERLAUBTE_STILE__ */
 const ERLAUBT = new Set(typeof __ERLAUBTE_STILE__ === 'undefined' ? [] : __ERLAUBTE_STILE__);

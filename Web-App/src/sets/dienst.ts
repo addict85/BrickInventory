@@ -15,7 +15,7 @@ import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';
 import { anleitungenZuSet, anleitungenZusammenlegen, loescheAnleitungen, anleitungNeuLadenErlaubt, anzahlAnleitungen } from '../katalog/instructions';
 import { importPartsForSet } from '../katalog/partsImport';
 import { zaehleAnfrage } from '../konto/loginLimiter';
-import { setBildSichtbar } from '../katalog/bilder/bildBlickfeld';
+import { setNummerImBlickfeld } from '../katalog/bilder/bildBlickfeld';
 import { normalizeSetNumber, findSetInScope } from './erfassen';
 import { istErsatzteil } from '../infra/validate';
 import { istVermutung } from '../katalog/barcodeQuelle';
@@ -27,7 +27,6 @@ import { figurenAusKatalog } from '../katalog/minifigsImport';
 import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, zeilenListe } from '../infra/csvExport';
 import type { CsvImportBericht } from '../infra/csvExport';
 import { jobGet, jobSet, jobUpdate, emitJobStatus, buildJobStatus, csvImportBus, beiImportStand } from '../auftraege/importAuftrag';
-import { setTeileAnreichern } from '../auftraege/nacharbeit';
 import { getSetPriceHistory } from '../finanzen/priceHistory';
 import { verschiebeSet } from './setMove';
 import { getSetByBarcode, getSetByEan, getMinifigInfo, getSetMinifigs, rebrickableJson, produktTitel } from '../katalog/quellen';
@@ -38,33 +37,32 @@ import type { Sprache } from '../infra/fehlerTexte';
 import { merkeFigur, merkeSetFiguren } from '../katalog/katalogPflege';
 import { randomUUID } from 'crypto';
 import * as repo from './repository/setDetail';
+import * as katalogStamm from '../katalog/setStamm';
 import type { KatalogTeil, ListenTeil, SetStamm } from './zeilen';
 import { versuche, wertOder } from '../infra/ergebnis';
+import type { SetsKontext } from './kontext';
 export type { KatalogTeil, ListenTeil, SetStamm } from './zeilen';
 
 
 /** Ohne Eintrag null. */
-export async function setInfo(setNumber: string): Promise<SetStamm | null> {
-  return (await repo.setStamm(mitVersion(setNumber))) ?? null;
+export async function setInfo(sk: SetsKontext, setNumber: string): Promise<SetStamm | null> {
+  return (await repo.setStamm(sk.db, mitVersion(setNumber))) ?? null;
 }
 
 /** Was das fragende Konto über eine Nummer erfahren darf: Ein fremder Platzhalter
- * antwortet wie eine nie erfasste Nummer, ein fremdes Bild wird nicht genannt. */
-export async function setInfoFuerKonto(uid: number, setNumber: string) {
+ * antwortet wie eine nie erfasste Nummer, sonst verriete er die Erfassung eines anderen. */
+export async function setInfoFuerKonto(sk: SetsKontext, uid: number, setNumber: string) {
   const n = mitVersion(setNumber);
-  const stamm = await setInfo(n);
-  const imBlickfeld = !!(stamm?.image_local || stamm?.platzhalter) && await setBildSichtbar(uid, n);
-  if (!stamm || (stamm.platzhalter && !imBlickfeld)) return { success: true as const, set_number: n, name: n, im_katalog: false as const };
+  const stamm = await setInfo(sk, n);
+  const fremderPlatzhalter = !!stamm?.platzhalter && !(await setNummerImBlickfeld(uid, n));
+  if (!stamm || fremderPlatzhalter) return { success: true as const, set_number: n, name: n, im_katalog: false as const };
   const { platzhalter: _platzhalter, ...row } = stamm;
-  return { success: true as const, set_number: n, ...row, image_local: imBlickfeld ? row.image_local : null,
-    name: row.name || n, im_katalog: true as const };
+  return { success: true as const, set_number: n, ...row, name: row.name || n, im_katalog: true as const };
 }
 
-/** Ein fremdes Set-Bild liefert die Bildroute nicht aus (bildBlickfeld.ts); der Treffer nennt es auch nicht. */
-export async function setZumBarcodeFuerKonto(uid: number, rohBarcode: string): Promise<BarcodeTreffer | null> {
-  const treffer = await setZumBarcode(rohBarcode);
-  if (treffer?.image_local && !await setBildSichtbar(uid, treffer.set_number)) treffer.image_local = null;
-  return treffer;
+/** Set-Bilder gehen an jedes Konto (bildBlickfeld.ts); der Treffer nennt sein Bild. */
+export async function setZumBarcodeFuerKonto(sk: SetsKontext, _uid: number, rohBarcode: string): Promise<BarcodeTreffer | null> {
+  return setZumBarcode(sk, rohBarcode);
 }
 
 export interface BarcodeTreffer {
@@ -75,11 +73,11 @@ export interface BarcodeTreffer {
 
 /** Rebrickable zuerst: Dort stehen Figurenzahl und Bild am verlässlichsten.
  * Jede Antwort sagt, wie sie zustande kam (src/katalog/barcodeQuelle.ts). */
-async function barcodeErgebnis(setNumber: string, name: string | null, source: string): Promise<BarcodeTreffer> {
+async function barcodeErgebnis(sk: SetsKontext, setNumber: string, name: string | null, source: string): Promise<BarcodeTreffer> {
   const rbData = await rebrickableJson(`/lego/sets/${encodeURIComponent(setNumber)}/`);
   const mfData = rbData ? await rebrickableJson(`/lego/sets/${encodeURIComponent(setNumber)}/minifigs/?page_size=1`) : null;
   // Ohne Fang: Eine gestörte Datenbank ist kein „nicht im Katalog“.
-  const local = await repo.setKatalog(setNumber);
+  const local = await repo.setKatalog(sk.db, setNumber);
 
   const minifigs = mfData?.count ?? local?.minifigs ?? null;
   const image_url = rbData?.set_img_url || local?.image_url || null;
@@ -94,11 +92,11 @@ async function barcodeErgebnis(setNumber: string, name: string | null, source: s
   }
   if (rbData?.set_num) {
     // Der Cache spart nur den nächsten Abruf; der Treffer gilt auch ohne ihn.
-    await versuche('sets:catalog_cache schreiben', repo.merkeKatalogCache(setNumber, rbData.name, rbData.year, rbData.theme_name, rbData.num_parts, rbData.set_img_url));
+    await versuche('sets:catalog_cache schreiben', katalogStamm.merkeKatalogCache(sk.db, setNumber, rbData.name, rbData.year, rbData.theme_name, rbData.num_parts, rbData.set_img_url));
     return { success: true, unsicher, set_number: setNumber, name: rbData.name || name, year: rbData.year,
       pieces: rbData.num_parts, theme: rbData.theme_name, minifigs, image_url, source };
   }
-  const cat = await repo.katalogCacheEintrag(setNumber);
+  const cat = await repo.katalogCacheEintrag(sk.db, setNumber);
   if (cat) {
     return { success: true, unsicher, set_number: setNumber, name: cat.name || name, year: cat.year,
       pieces: cat.pieces, theme: cat.theme, minifigs, image_url: cat.image_url || image_url, source };
@@ -106,16 +104,16 @@ async function barcodeErgebnis(setNumber: string, name: string | null, source: s
   return { success: true, unsicher, set_number: setNumber, name, minifigs, image_url, source };
 }
 
-async function imKatalog(...nummern: string[]): Promise<{ set_number: string; name: string | null } | undefined> {
-  return repo.ersterKatalogTreffer(nummern);
+async function imKatalog(sk: SetsKontext, ...nummern: string[]): Promise<{ set_number: string; name: string | null } | undefined> {
+  return repo.ersterKatalogTreffer(sk.db, nummern);
 }
 
 /** Reihenfolge: eigener Katalog, EAN über Rebrickable, Brickset und UPCitemdb,
  * dann Bestellnummer — die billigste Quelle zuerst. */
-export async function setZumBarcode(rohBarcode: string): Promise<BarcodeTreffer | null> {
+export async function setZumBarcode(sk: SetsKontext, rohBarcode: string): Promise<BarcodeTreffer | null> {
   const barcode = rohBarcode.trim();
-  const direct = await repo.katalogCacheNachNummer(mitVersion(barcode));
-  if (direct) return barcodeErgebnis(direct.set_number, direct.name, 'catalog_cache');
+  const direct = await repo.katalogCacheNachNummer(sk.db, mitVersion(barcode));
+  if (direct) return barcodeErgebnis(sk, direct.set_number, direct.name, 'catalog_cache');
 
   if (/^\d{12,13}$/.test(barcode)) {
     const ean13 = barcode.length === 12 ? '0' + barcode : barcode;
@@ -123,14 +121,14 @@ export async function setZumBarcode(rohBarcode: string): Promise<BarcodeTreffer 
     for (const set of (rb?.results || [])) {
       const detail = await rebrickableJson(`/lego/sets/${encodeURIComponent(set.set_num)}/`);
       const extIds = Object.values(detail?.external_ids || {}).flat().map(String);
-      if (extIds.includes(ean13) || extIds.includes(barcode)) return barcodeErgebnis(set.set_num, set.name, 'rebrickable-ean');
+      if (extIds.includes(ean13) || extIds.includes(barcode)) return barcodeErgebnis(sk, set.set_num, set.name, 'rebrickable-ean');
     }
     const plausibel = rb?.results?.find((s: { year: number; num_parts: number }) => s.year > 2010 && s.num_parts > 0);
-    if (plausibel) return barcodeErgebnis(plausibel.set_num, plausibel.name, 'rebrickable-search');
+    if (plausibel) return barcodeErgebnis(sk, plausibel.set_num, plausibel.name, 'rebrickable-search');
 
     const bsEan = await getSetByEan(ean13);
     if (bsEan) {
-      const r = await barcodeErgebnis(bsEan.set_number, bsEan.name, 'brickset-ean');
+      const r = await barcodeErgebnis(sk, bsEan.set_number, bsEan.name, 'brickset-ean');
       return { ...r, year: r.year || bsEan.year, theme: r.theme || bsEan.theme, pieces: r.pieces || bsEan.pieces };
     }
 
@@ -140,25 +138,25 @@ export async function setZumBarcode(rohBarcode: string): Promise<BarcodeTreffer 
     if (titel) {
       const kandidaten = setnummerKandidaten(titel);
       for (const k of kandidaten) {
-        const bekannt = await imKatalog(k, normalizeSetNumber(k));
-        if (bekannt) return barcodeErgebnis(bekannt.set_number, titel, 'upcitemdb');
+        const bekannt = await imKatalog(sk, k, normalizeSetNumber(k));
+        if (bekannt) return barcodeErgebnis(sk, bekannt.set_number, titel, 'upcitemdb');
       }
-      if (kandidaten[0]) return barcodeErgebnis(normalizeSetNumber(kandidaten[0]), titel, 'upcitemdb');
+      if (kandidaten[0]) return barcodeErgebnis(sk, normalizeSetNumber(kandidaten[0]), titel, 'upcitemdb');
     }
   }
 
   if (/^\d{5,8}$/.test(barcode)) {
     const bs = await getSetByBarcode(barcode);
-    if (bs) return barcodeErgebnis(bs.set_number, bs.name, 'brickset-item');
+    if (bs) return barcodeErgebnis(sk, bs.set_number, bs.name, 'brickset-item');
     const rb = await rebrickableJson(`/lego/sets/${barcode}-1/`);
-    if (rb?.set_num) return barcodeErgebnis(rb.set_num, rb.name, 'rebrickable-direct');
+    if (rb?.set_num) return barcodeErgebnis(sk, rb.set_num, rb.name, 'rebrickable-direct');
   }
   return null;
 }
 
 
-function katalogDesSets(setNumber: string): Promise<KatalogTeil[]> {
-  return repo.katalogTeileDesSets(mitVersion(setNumber));
+function katalogDesSets(sk: SetsKontext, setNumber: string): Promise<KatalogTeil[]> {
+  return repo.katalogTeileDesSets(sk.db, mitVersion(setNumber));
 }
 
 /** Ungeblättert; die Seitenangaben stehen da, weil die App sie mit der Teileliste des Bestands teilt. */
@@ -166,13 +164,13 @@ const eineSeite = (n: number) => ({ total: n, page: 1, page_size: n });
 
 export const QUELLE_GESTOERT = 'quelle_gestoert';
 
-export async function teilelisteDesSets(setNum: string, anreichern: (sn: string) => Promise<unknown>) {
+export async function teilelisteDesSets(sk: SetsKontext, setNum: string, anreichern: (sn: string) => Promise<unknown>) {
   const n = mitVersion(setNum), bare = ohneVersion(n);
   const invId = await neuestesInventar(setNum);
   let teile: ListenTeil[] = [];
   let source = 'db';
   if (invId) {
-    teile = await repo.inventarTeileDesSets(invId);
+    teile = await repo.inventarTeileDesSets(sk.db, invId);
   }
   if (!teile.length) {
     source = 'api';
@@ -190,10 +188,10 @@ export async function teilelisteDesSets(setNum: string, anreichern: (sn: string)
 
   const katalog = new Map<string, KatalogTeil>();
   const merke = (zeilen: KatalogTeil[]) => { for (const r of zeilen) katalog.set(`${r.part_number}|${r.color_id}`, r); };
-  merke(await katalogDesSets(setNum));
+  merke(await katalogDesSets(sk, setNum));
   if (teile.some(p => !katalog.has(`${p.part_number}|${p.color_id}`))) {
     await versuche('sets:enrichSetParts', anreichern(setNum));
-    merke(await katalogDesSets(setNum));
+    merke(await katalogDesSets(sk, setNum));
   }
 
   // Schlüssel ist die Rebrickable-Nummer samt Farbe: Formvarianten teilen sich oft eine BrickLink-Nummer und
@@ -222,7 +220,7 @@ export async function teilelisteDesSets(setNum: string, anreichern: (sn: string)
 }
 
 /** Was nicht aus dem Katalog kam, schreibt ein Nachlauf hinein. */
-export async function figurenlisteDesSets(setNum: string) {
+export async function figurenlisteDesSets(sk: SetsKontext, setNum: string) {
   const n = mitVersion(setNum), bare = ohneVersion(n);
   const ausgabe = (f: { fig_number: string; fig_name?: string | null; quantity?: number | null; image_url?: string | null }) => ({
     fig_number: f.fig_number, fig_name: f.fig_name || f.fig_number, quantity: f.quantity || 1,
@@ -237,7 +235,7 @@ export async function figurenlisteDesSets(setNum: string) {
   let figs: Fig[] = [];
   const invId = await neuestesInventar(setNum);
   if (invId) {
-    figs = await repo.inventarFigurenDesSets(invId);
+    figs = await repo.inventarFigurenDesSets(sk.db, invId);
   }
   if (!figs.length) {
     const mit = await versuche('sets:getSetMinifigs', getSetMinifigs(n));
@@ -260,9 +258,9 @@ async function figurenMerken(n: string, figs: Array<{ fig_number: string; fig_na
 }
 
 /** Im Zustand des Bestands. null: kein Set im Blickfeld. */
-export async function setPreis(uid: number, blickfeldWahl: Sicht | number[], sn: string) {
+export async function setPreis(sk: SetsKontext, uid: number, blickfeldWahl: Sicht | number[], sn: string) {
   const blickfeld = await blickfeldAus(blickfeldWahl);
-  const set = await repo.setImFeld(sn, blickfeld);
+  const set = await repo.setImFeld(sk.db, sn, blickfeld);
   if (!set) return null;
   // Die Währung aus der Einstellung: Die App schickte ihren lokalen Startwert mit, bevor sie die Einstellung
   // kannte.
@@ -279,29 +277,29 @@ export async function setPreis(uid: number, blickfeldWahl: Sicht | number[], sn:
     no_price: !!(pd as { no_price?: boolean }).no_price };
 }
 
-export async function rebrickableListe(uid: number) {
-  const sets = await repo.setsMitMenge(uid);
+export async function rebrickableListe(sk: SetsKontext, uid: number) {
+  const sets = await repo.setsMitMenge(sk.db, uid);
   return sets.map(s => ({ 'Set Number': s.set_number, 'Quantity': s.quantity }));
 }
 
 /** Eine Anleitung hängt per Fremdschlüssel am Set. */
-export async function setGehoertKonto(uid: number, sn: string): Promise<boolean> {
-  return !!(await repo.setDesKontos(uid, sn));
+export async function setGehoertKonto(sk: SetsKontext, uid: number, sn: string): Promise<boolean> {
+  return !!(await repo.setDesKontos(sk.db, uid, sn));
 }
 
-export async function anleitungMerken(uid: number, sn: string, pfad: string, beschreibung: string) {
-  await repo.fuegeAnleitungEin(uid, sn, pfad, beschreibung, pfad);
+export async function anleitungMerken(sk: SetsKontext, uid: number, sn: string, pfad: string, beschreibung: string) {
+  await repo.fuegeAnleitungEin(sk.db, uid, sn, pfad, beschreibung, pfad);
 }
 
 /** Die Datei bleibt, solange eine andere Zeile auf sie zeigt.
  * @returns false, wenn es die Zeile nicht gab */
-export async function anleitungLoeschen(uid: number, id: string): Promise<boolean> {
-  const instr = await repo.anleitungsPfad(id, uid);
+export async function anleitungLoeschen(sk: SetsKontext, uid: number, id: string): Promise<boolean> {
+  const instr = await repo.anleitungsPfad(sk.db, id, uid);
   if (!instr) return false;
-  await repo.loescheAnleitung(id, uid);
+  await repo.loescheAnleitung(sk.db, id, uid);
   if (!instr.local_path?.startsWith('/data/uploads/')) return true;
   // Weiss die Datenbank nicht, ob noch jemand die Datei braucht, bleibt sie liegen.
-  const rest = wertOder(await versuche('sets:anleitung-noch-benutzt', repo.anleitungsdateiBenutzt(instr.local_path)), { ok: 1 });
+  const rest = wertOder(await versuche('sets:anleitung-noch-benutzt', repo.anleitungsdateiBenutzt(sk.db, instr.local_path)), { ok: 1 });
   // Der Eintrag ist schon weg; eine liegen gebliebene Datei kostet nur Platz.
   if (!rest) await fs.promises.unlink(path.join(APP_ROOT, instr.local_path.slice(1)))
     .catch(ohneFehlendeDatei('anleitung:datei-loeschen'));
@@ -353,16 +351,16 @@ export function setCsvZeilen(text: string): { rows: ImportZeile[]; uebersprungen
 }
 
 /** Der Import erhöht bei vorhandenen Sets die Menge, das Einzel-Erfassen lehnt sie ab: Die Oberfläche fragt. */
-async function schonVorhanden(userId: number, rows: ImportZeile[]): Promise<string[]> {
-  const da = new Set((await repo.setsMitMenge(userId)).map(s => s.set_number));
+async function schonVorhanden(sk: SetsKontext, userId: number, rows: ImportZeile[]): Promise<string[]> {
+  const da = new Set((await repo.setsMitMenge(sk.db, userId)).map(s => s.set_number));
   const treffer = rows.filter(r => !r.fehler).map(r => normalizeSetNumber(r.sn)).filter(sn => da.has(sn));
   return [...new Set(treffer)];
 }
 
 /** Ein laufender Import desselben Kontos wird abgebrochen; `nurPruefen` liest nur. */
-export async function setCsvImportStarten(userId: number, text: string, nurPruefen = false) {
+export async function setCsvImportStarten(sk: SetsKontext, userId: number, text: string, nurPruefen = false) {
   const { rows, uebersprungen } = setCsvZeilen(text);
-  const vorhanden = await schonVorhanden(userId, rows);
+  const vorhanden = await schonVorhanden(sk, userId, rows);
   if (nurPruefen) return { total: rows.length, uebersprungen, vorhanden, gestartet: false };
   const laufend = await jobGet(userId);
   if (laufend && laufend.status === 'running') await jobUpdate(userId, { status: 'cancelled' });
@@ -427,8 +425,8 @@ export async function alarmCsvImportStarten(uid: number, text: string) {
 }
 
 /** Nur zu Sets im Blickfeld und gedrosselt: Jeder Import kann Rebrickable-Kontingent kosten. */
-export async function teileDesSetsImportieren(uid: number, sn: string): Promise<number> {
-  const set = await findSetInScope(uid, sn);
+export async function teileDesSetsImportieren(sk: SetsKontext, uid: number, sn: string): Promise<number> {
+  const set = await findSetInScope(sk, uid, sn);
   if (!set) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
   const takt = await zaehleAnfrage('teile-import', `konto:${uid}`, 60 * 60 * 1000);
   if (takt.count > 30) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: takt.waitMin });
@@ -437,12 +435,12 @@ export async function teileDesSetsImportieren(uid: number, sn: string): Promise<
 
 /** Die Anleitungen sind geteilt: Ersetzen darf nur der Verwalter (ein leerer
  * Abruf löschte sie sonst für alle). Andere holen, was fehlt, einmal je Set und Tag. */
-export async function anleitungenNeuLaden(uid: number, roh: string, verwalter: boolean) {
+export async function anleitungenNeuLaden(sk: SetsKontext, uid: number, roh: string, verwalter: boolean) {
   const sn = normalisiereSetNummer(roh);
   if (!moeglicheSetNummer(sn)) fachfehler('ungueltig', 'setnummer_ungueltig');
   if (verwalter) await loescheAnleitungen(sn);
   else {
-    if (!(await findSetInScope(uid, sn))) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
+    if (!(await findSetInScope(sk, uid, sn))) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
     if ((await anzahlAnleitungen(sn)) > 0) fachfehler('verboten', 'nur_admins');
     if (!(await anleitungNeuLadenErlaubt(sn))) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: 24 * 60 });
   }
@@ -466,8 +464,8 @@ export async function csvImportStandFuerStrom(uid: number, req: Kopf, sprache: S
 }
 
 /** Die Route kennt den Auftragsweg der Teile nicht; ohne Inventar reichert der Job-Prozess an. */
-export function teilelisteFuerKonto(setNum: string) {
-  return teilelisteDesSets(setNum, setTeileAnreichern);
+export function teilelisteFuerKonto(sk: SetsKontext, setNum: string) {
+  return teilelisteDesSets(sk, setNum, sn => sk.nacharbeit.setTeileAnreichern(sn));
 }
 
 export async function setPreisVerlauf(uid: number, sicht: Sicht | number[], sn: string) {
@@ -484,11 +482,11 @@ export function csvImportStandAbonnieren(uid: number, melde: () => void): () => 
 
 /** Drei Erfassungen sind drei Käufe und können im Haushalt verschiedenen Kindern
  * gehören; wer alles will, wählt alle Zeilen. */
-export async function setVerschieben(uid: number, roh: string, von: unknown, nach: unknown, erfassungen: number[]) {
+export async function setVerschieben(sk: SetsKontext, uid: number, roh: string, von: unknown, nach: unknown, erfassungen: number[]) {
   if (!erfassungen.length) fachfehler('ungueltig', 'kaufpreise_angeben');
   const sn = mitVersion(roh);
   const fromId = await schreibziel(uid, von ?? uid);
   const toId = await schreibziel(uid, nach);
   if (fromId === toId) fachfehler('ungueltig', 'quelle_ziel_identisch');
-  return { set_number: sn, from_user_id: fromId, to_user_id: toId, ...await verschiebeSet(sn, fromId, toId, erfassungen) };
+  return { set_number: sn, from_user_id: fromId, to_user_id: toId, ...await verschiebeSet(sk, sn, fromId, toId, erfassungen) };
 }

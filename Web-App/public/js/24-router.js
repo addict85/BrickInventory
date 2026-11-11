@@ -8,7 +8,6 @@ import { ME } from './00-zustand.js';
 // Jede Ansicht als #/pfad, Filter als Query dahinter: Ein Hash-Router braucht keine Serverrouten, und
 // Anmeldelinks (?token=, ?set=) bleiben unberührt. Offene Dialoge sind Verlaufseinträge, damit „Zurück“ sie
 // schliesst.
-// Ausführlich: docs/begruendungen/public/js/24-router.js.md#jede-ansicht-steht-als-pfad-in-der-adres
 
 /** Ansicht (data-tab bzw. Sicht) → Pfad in der Adresse. */
 /** @type {Record<string, string>} */
@@ -271,7 +270,7 @@ function wendeAn(ziel, dlg) {
 window.addEventListener('popstate', (ev) => {
   if (!_gestartet) return;
   if (_eigeneZurueck > 0) {
-    if (--_eigeneZurueck === 0) { const f = _danach; _danach = []; f.forEach(x => x()); }
+    if (--_eigeneZurueck === 0) { const f = _danach; _danach = []; for (const x of f) x(); }
     return;
   }
   const ziel = leseAdresse();

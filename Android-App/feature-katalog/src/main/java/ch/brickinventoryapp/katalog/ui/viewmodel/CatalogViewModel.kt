@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.katalog.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Katalogsortierung
 import ch.brickinventoryapp.zustand.ui.fehlerklasse
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -220,7 +221,7 @@ class CatalogViewModel @Inject constructor(
         loadCatalogSets()
     }
 
-    override fun setCatalogSort(sort: String) {
+    override fun setCatalogSort(sort: Katalogsortierung) {
         _catalogState.update { it.copy(sort = sort) }
         loadCatalogSets()
     }

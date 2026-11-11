@@ -1,5 +1,4 @@
 // Frei erfassbare Katalogfelder vor der Datenbank prüfen: Dort begann Stored XSS.
-// Ausführlich: docs/begruendungen/src/infra/validate.ts.md#item-number-re
 
 /** Das, was Rebrickable und BrickLink tatsächlich vergeben. */
 export const ITEM_NUMBER_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,63}$/;
@@ -117,7 +116,7 @@ export function optionalCondition(value: unknown): 'N' | 'U' | null {
   return value === 'N' || value === 'U' ? value : null;
 }
 
-// Eine Milliarde Stück ist Unsinn. Ausführlich: docs/begruendungen/src/infra/validate.ts.md#acquisitionquantity
+// Eine Milliarde Stück ist Unsinn.
 export function acquisitionQuantity(value: unknown, fallback = 1): number {
   return positiveInt(value, fallback, 10_000);
 }
@@ -130,16 +129,14 @@ export function mengenDelta(value: unknown): number | null {
   return Number(roh);
 }
 
-/** Streng: Die Zeichenkette "false" ist in JavaScript wahr.
- * Ausführlich: docs/begruendungen/src/infra/validate.ts.md#strictbool */
+/** Streng: Die Zeichenkette "false" ist in JavaScript wahr. */
 export function strictBool(value: unknown, feld = 'Wert'): boolean {
   if (value === true  || value === 'true'  || value === 1 || value === '1') return true;
   if (value === false || value === 'false' || value === 0 || value === '0') return false;
   fachfehler('ungueltig', 'feld_kein_wahrheitswert', { feld });
 }
 
-/** Aggregate kommen als Zeichenkette, und "0" ist in JavaScript wahr.
- * Ausführlich: docs/begruendungen/src/infra/validate.ts.md#istersatzteil */
+/** Aggregate kommen als Zeichenkette, und "0" ist in JavaScript wahr. */
 export function istErsatzteil(value: unknown): boolean {
   return istJa(value);
 }
@@ -152,8 +149,7 @@ export function istJa(value: unknown): boolean {
   return v === '1' || v === 't' || v === 'true' || v === 'y' || v === 'yes';
 }
 
-/** Express liefert bei doppeltem Parameter ein Array.
- * Ausführlich: docs/begruendungen/src/infra/validate.ts.md#einzelwert */
+/** Express liefert bei doppeltem Parameter ein Array. */
 export function einzelwert(value: unknown, fallback = ''): string {
   if (Array.isArray(value)) return value.length ? String(value[0]) : fallback;
   if (value === undefined || value === null) return fallback;
@@ -161,7 +157,7 @@ export function einzelwert(value: unknown, fallback = ''): string {
 }
 
 /** Nur EIGENE Schlüssel zählen: Ein Wert von aussen wie 'constructor' fände
- * sonst ein geerbtes Mitglied. Ausführlich: docs/begruendungen/src/infra/validate.ts.md#austabelle */
+ * sonst ein geerbtes Mitglied. */
 export function ausTabelle<T>(tabelle: Record<string, T>, schluessel: unknown, vorgabe: T): T;
 export function ausTabelle<T>(tabelle: Record<string, T>, schluessel: unknown): T | undefined;
 export function ausTabelle<T>(

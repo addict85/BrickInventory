@@ -1,6 +1,5 @@
 /**
  * E-Mail-Verifikation gegen eine ECHTE Datenbank.
- * Ausführlich: docs/begruendungen/test/email-verify-db.test.js.md#kopf
  *
  * ── Gegenproben (04.11.2026 gemessen, je einzeln) ───────────────────────────
  * Seit Runde 13 trägt eine Registrierung Adresse und Link in email_neu*.
@@ -17,10 +16,8 @@
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
-const path   = require('node:path');
 const crypto = require('node:crypto');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
@@ -36,7 +33,6 @@ async function seed() {
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   // Und die MIGRATIONEN, nicht nur das Schema
-  // Ausführlich: docs/begruendungen/test/email-verify-db.test.js.md#stelle
   {
     const mc = await db.pool.connect();
     try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
@@ -118,7 +114,6 @@ test('E-Mail-Verifikation gegen echte Datenbank', async (t) => {
   });
 
   // Die fuenf Faelle ueber die API-Route sind ENTFERNT
-  // Ausführlich: docs/begruendungen/test/email-verify-db.test.js.md#stelle-2
 
   await db.pool.end().catch(() => {});
 });

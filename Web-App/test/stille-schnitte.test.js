@@ -1,7 +1,6 @@
 /**
  * Kein Testausschnitt, auf dem NUR verneinende Zusicherungen stehen, darf
  * ungesichert geschnitten sein.
- * Ausführlich: docs/begruendungen/test/stille-schnitte.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -36,7 +35,6 @@ test('kein Ausschnitt mit nur verneinenden Zusicherungen ist ungesichert', () =>
       if (arten.some(a => !VERNEINEND.has(a))) continue; // eine positive genuegt
 
       // Doch abgesichert?
-      // Ausführlich: docs/begruendungen/test/stille-schnitte.test.js.md#abgeleitet
       const abgeleitet = new RegExp(`(\\w+)\\s*=\\s*${ziel}\\.indexOf\\(`, 'g');
       const indizes = [...block.matchAll(abgeleitet)].map(a => a[1]);
       if (indizes.some(n => new RegExp(`assert\\.ok\\([^)]*\\b${n}\\b\\s*[><!=]`).test(block))) continue;

@@ -7,7 +7,6 @@ const ep = fs.readFileSync(path.join(__dirname, '..', 'docker-entrypoint.sh'), '
 
 /**
  * Der Start des Containers schweigt nicht, und er arbeitet nicht umsonst.
- * Ausführlich: docs/begruendungen/test/entrypoint-start.test.js.md#der-start-sagt-was-er-tut
  */
 
 test('der Start sagt, was er tut', () => {
@@ -75,7 +74,6 @@ test('die angelegten Verzeichnisse legt der Dienst selbst an, nicht root', () =>
 
 test('ein normaler Start geht gar nicht erst durch die Dateien', () => {
   // Marcos Rueckfrage
-  // Ausführlich: docs/begruendungen/test/entrypoint-start.test.js.md#stelle
   assert.match(ep, /MARKE=\/app\/data\/\.\w+/,
     'Die Marke fehlt — dann laeuft bei JEDEM Start die Suche ueber den ganzen ' +
     'Datenbestand, auch wenn nichts zu tun ist');

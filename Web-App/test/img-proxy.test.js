@@ -1,8 +1,6 @@
 /**
  * Bild-Proxy: Auslieferung, Zwischenspeicherung, Diagnose.
  *
- * Rest von test/image-repair.test.js nach dem Ausbau des Reparaturjobs.
- *
  * Gegenproben zu den nach bild-proxy-deckel.test.js (Typprüfung, Platzhalter)
  * und img-cache-serve.test.js (304) verlegten Fällen stehen dort; für 304 je
  * eine der beiden `req.fresh`-Zeilen in imgCacheServe.ts entfernt → dort rot
@@ -22,7 +20,6 @@ const ROOT = path.join(__dirname, '..');
 // war mit über 1200 Zeilen wieder ein kleiner Monolith aus Proxy, Thumb-Queue,
 // Cluster-Setup und Startup-Orchestrierung). Die hier geprüften Sachverhalte
 // gelten unverändert — sie verteilen sich jetzt nur auf zwei Dateien:
-// Ausführlich: docs/begruendungen/test/img-proxy.test.js.md#server-only
 const SERVER_ONLY = require('./helpers/sources').startQuelle();
 const PROXY = require('./helpers/sources').proxyThumbQuelle();
 const SERVER = SERVER_ONLY + '\n' + PROXY;
@@ -214,7 +211,6 @@ test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
   // liefen dadurch dauerhaft über /api/img-proxy: Anmeldeprüfung, Cache-Suche
   // und Stream bei jeder Kachel, beim ersten Anzeigen ein CDN-Roundtrip je
   // Bild. Set-Bilder liegen längst lokal und gehen über express.static. …
-  // Ausführlich: docs/begruendungen/test/img-proxy.test.js.md#stelle
   assert.match(
     SERVER,
     /SELECT mc\.fig_number, mc\.image_url FROM minifigs_catalog mc/,

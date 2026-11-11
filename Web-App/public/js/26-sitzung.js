@@ -41,7 +41,6 @@ abonniere('zweiterFaktorPflicht', () => zeigeZweitpflicht());
 /**
  * Ein 401 heisst: Die Sitzung ist nicht mehr gültig. Statt eines Hinweises je Klick über alten Daten geht es
  * zurück zur Anmeldung mit „Sitzung abgelaufen“ — wie in der Android-App.
- * Ausführlich: docs/begruendungen/public/js/26-sitzung.js.md#abonniere
  */
 abonniere('sitzungBeendet', (path) => {
   if (path.startsWith('/v1/auth/me') || path.startsWith('/v1/auth/login')) return;
@@ -450,7 +449,6 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   // ?set=<nummer> öffnet das Set direkt (Knopf der Preisalarm-Mail). Hier und nicht beim Laden, weil erst
   // hier eine Sitzung besteht. Geöffnet wird über die Adresse #/set/…: routeBeimStart() unten schliesst jeden
   // Dialog, den die Adresse nicht nennt. Der Parameter fällt weg, damit F5 nicht erneut einen Link einlöst.
-  // Ausführlich: docs/begruendungen/public/js/26-sitzung.js.md#setauslink
   const setAusLink = new URLSearchParams(location.search).get('set');
   if (setAusLink) history.replaceState({}, '', `${location.pathname}#/set/${encodeURIComponent(setAusLink)}`);
   // Apply saved language immediately (from localStorage) so static elements translate before server responds
@@ -476,7 +474,7 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   // wird deshalb wie das Monitoring erst hier eingeblendet. Fuer alle anderen waere er leer, und ein leerer
   // Reiter ist schlimmer als keiner: Man klickt ihn an und sucht.
   if(ME?.isAdmin){ const ns=G('ntab-settings'); if(ns) ns.style.display=''; }
-  if(ME?.isAdmin){ alle('.admin-only').forEach(el=>el.style.display=''); const nm=G('ntab-monitor'); if(nm){ nm.style.display=''; const lbl=nm.querySelector('.tab-label'); if(lbl) lbl.textContent=tRaw('nav.monitoring'); } G('usermgmt').style.display='block'; ['bl-ao','rb-ao','bs-ao'].forEach(id=>{ const el=G(id); if(el) el.style.display='none'; }); const gg=G('global-settings-grid'); if(gg) gg.style.display='grid'; const gl=G('global-settings-label'); if(gl) gl.style.display='block'; }
+  if(ME?.isAdmin){ alle('.admin-only').forEach(el=>{ el.style.display=''; }); const nm=G('ntab-monitor'); if(nm){ nm.style.display=''; const lbl=nm.querySelector('.tab-label'); if(lbl) lbl.textContent=tRaw('nav.monitoring'); } G('usermgmt').style.display='block'; ['bl-ao','rb-ao','bs-ao'].forEach(id=>{ const el=G(id); if(el) el.style.display='none'; }); const gg=G('global-settings-grid'); if(gg) gg.style.display='grid'; const gl=G('global-settings-label'); if(gl) gl.style.display='block'; }
   else { ['bl-ck','bl-cs','bl-tok','bl-ts','rb-key','bs-key','lim-rb','lim-bl','lim-bs'].forEach(id=>{const el=G(id);if(el){el.disabled=true;if(el.type!=='number')el.placeholder=tRaw('settings.admins_only_ph')}}); G('btn-sav-bl').disabled=true; G('btn-sav-rb').disabled=true; G('btn-sav-bs').disabled=true; }
   // Ohne Rebrickable-Schlüssel öffnet trotzdem die Sammlung: Ein Sprung in die Einstellungen bei jeder
   // Anmeldung nimmt dem Verwalter seine Startseite. Ein Band weist einmal je Sitzung darauf hin. Erst die
@@ -491,7 +489,7 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   seitennameAktualisieren();
 }
 G('btn-login').onclick=doLogin;
-['lu','lp','lc'].forEach(id=>G(id).addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); doLogin(); } }));
+for (const id of ['lu','lp','lc']) G(id).addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); doLogin(); } });
 async function doLogin(){
   const b=G('btn-login'); const frei=knopfBesetzt(b);
   const code=G('lc').value.trim();
@@ -537,8 +535,8 @@ G('btn-logout').onclick=async()=>{
   const gg=G('global-settings-grid'); if(gg) gg.style.display='none';
   const gl=G('global-settings-label'); if(gl) gl.style.display='none';
   // Switch back to gallery tab manually
-  document.querySelectorAll('.ntab').forEach(x=>x.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.ntab').forEach(x=>{ x.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(x=>{ x.classList.remove('active'); });
   const gt=document.querySelector('.ntab[data-tab="gallery"]');
   if(gt){gt.classList.add('active');const gp=document.getElementById('tab-gallery');if(gp)gp.classList.add('active');}
   showLogin();

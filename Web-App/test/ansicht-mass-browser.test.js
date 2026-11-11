@@ -1,6 +1,5 @@
 /**
  * Masse der Oberfläche, gemessen in Chrome an der echten App.
- * Ausführlich: docs/begruendungen/test/ansicht-mass-browser.test.js.md#kopf
  *
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  .fval wieder `overflow-wrap: anywhere` statt nowrap/clamp und die

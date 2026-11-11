@@ -1,13 +1,11 @@
 /**
  * Eine Drosselung des CDN ist KEINE Fehlanzeige.
- * Ausführlich: docs/begruendungen/test/image-throttle-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const Module = require('node:module');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 // Den Download abfangen und den Statuscode vorgeben.
@@ -38,7 +36,6 @@ const db = _req('db/database.js');
 
 test('eine hoffnungslose Vorschau wird nur EINMAL versucht', { concurrency: 1 }, async (t) => {
   // Marcos Log
-  // Ausführlich: docs/begruendungen/test/image-throttle-db.test.js.md#stelle
   try { await db.initSchemaOnce(); }
   catch (e) {
     if (process.env.REQUIRE_DB === '1') throw e;
@@ -116,7 +113,6 @@ test('Drosselung und fehlendes Bild werden unterschieden', { concurrency: 1 }, a
         `${versuche} Versuche — nach der ersten Drosselung muss der Stapel abbrechen`);
 
       // Zurückgelegt ist NICHT bearbeitet
-      // Ausführlich: docs/begruendungen/test/image-throttle-db.test.js.md#stelle-2
       assert.equal(e.gesamt, 0,
         `${e.gesamt} als bearbeitet gemeldet, obwohl der Stapel vor der ersten ` +
         'Zeile abbrach und alles zurückgelegt wurde');

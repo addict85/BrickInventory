@@ -1,6 +1,5 @@
 /**
  * Ein Anmeldeversuch darf nicht verraten, ob es das Konto gibt.
- * Ausführlich: docs/begruendungen/test/login-zeitgleich-db.test.js.md#kopf
  *
  * Gegenprobe (01.11.2026 gemessen, Median aus drei Paaren): in
  * pruefeAnmeldedaten() ohne Treffer kein Vergleich gegen DUMMY_HASH → rot
@@ -41,7 +40,6 @@ test('unbekannter Anmeldename kostet dieselbe Zeit wie ein falsches Passwort',
   // wäre der BEKANNTE Fall der schnellere und der Vergleich stünde auf dem
   // Kopf. Deshalb BCRYPT_ROUNDS, derselbe Wert, mit dem der Dummy-Hash entsteht.
   // Drei Paare, abwechselnd gemessen, je mit eigenem Namen und eigener IP: …
-  // Ausführlich: docs/begruendungen/test/login-zeitgleich-db.test.js.md#namen
   const namen = [0, 1, 2].map(i => `zeit_bekannt_${i}`);
   const hash = await bcrypt.hash('richtigesPasswort1', BCRYPT_ROUNDS);
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
@@ -66,8 +64,8 @@ test('unbekannter Anmeldename kostet dieselbe Zeit wie ein falsches Passwort',
         // Vorbedingung: wirklich abgelehnt, mit 401 — nicht 429 (Sperre) oder
         // 400 (Formfehler). Sonst misst der Test etwas anderes als gedacht.
         assert.equal(r.wert.ok, false, `${was}: hätte abgelehnt werden müssen`);
-        assert.equal(r.wert.absage.status, 401,
-          `${was}: erwartet 401, bekommen ${r.wert.absage.status} (${r.wert.absage.error})`);
+        assert.equal(r.wert.absage.art, 'nicht_angemeldet',
+          `${was}: erwartet nicht_angemeldet, bekommen ${r.wert.absage.art} (${r.wert.absage.error})`);
         messungen[was].push(r.ms);
       }
     }

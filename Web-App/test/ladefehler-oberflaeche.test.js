@@ -1,6 +1,5 @@
 /**
  * Ladefehler und fehlende Verbindung — am echten Bündel in jsdom.
- * Ausführlich: docs/begruendungen/test/ladefehler-oberflaeche.test.js.md#kopf
  *
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  in loadGallery den Aufruf von listeLadefehler entfernt → rot:

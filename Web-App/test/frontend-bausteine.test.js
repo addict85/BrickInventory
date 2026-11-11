@@ -1,6 +1,5 @@
 /**
  * Wiederkehrende Ansichtsteile stehen an EINER Stelle.
- * Ausführlich: docs/begruendungen/test/frontend-bausteine.test.js.md#kopf
  *
  * Gegenproben (08.11.2026 gemessen): in detailZeile `class="dv"` →
  * `class="wert"` bzw. in ladeAnzeige die Skelettzeilen gestrichen → rot:

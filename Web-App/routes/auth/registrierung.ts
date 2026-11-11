@@ -2,7 +2,7 @@
  * Jede Antwort verrät gleich wenig darüber, ob es ein Konto gibt. */
 import * as K from '../../src/konto/konten';
 import { logAndContinue, meldeUndLiefere } from '../../src/infra/fehler';
-import { fehlerAntwort } from '../../src/http/httpAntwort';
+import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { hashToken, USERNAME_RE, emailGueltig, nameGueltig, verifiziereEmailToken } from '../../src/konto/auth';
 import { zielGedrosselt } from '../../src/konto/zielDrossel';
 import { ipThrottle } from '../../src/konto/http/anmeldung';
@@ -12,11 +12,11 @@ import { passwortMangel } from '../../src/infra/passwortRegel';
 import { sendPasswordResetMail, sendVerificationMail, sendRegistrierungsVersuchMail, sendBenutzernameVergebenMail, mailBereit } from '../../src/mail/mailer';
 import { registrierungOffen, getSetting } from '../../src/einstellungen/settings';
 import { setUserSetting } from '../../src/konto/nutzerEinstellung';
-import { sendeFehler, fehlerText, antwortSprache, alsDoppelt } from '../../src/infra/fehlerTexte';
+import { fehlerText, antwortSprache, alsDoppelt } from '../../src/infra/fehlerTexte';
 import { basisUrl, hinweisOhneBasisUrl, mailBasisUrl } from '../../src/infra/basisUrl';
 import * as P from '../../src/konto/passkeys';
-import { vertragsRouter } from '../../src/vertrag/pruefen';
-import type { Antwort, OffeneAnfrage } from '../../src/vertrag';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Antwort, OffeneAnfrage } from '../../src/http/vertragsRouter';
 
 const router = vertragsRouter();
 
@@ -138,7 +138,6 @@ router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000)
   // Höchstens ein Link je Konto und RUECKSETZ_PAUSE_MIN: Sonst flutet ein Fremder das Postfach.
   if (user && await K.setzeRuecksetzTokenWennFrei(user.id, hashToken(token), RUECKSETZ_GUELTIG_MIN, RUECKSETZ_PAUSE_MIN)) {
     // Nicht awaiten, sonst verriete die Dauer des SMTP-Versands die Adresse.
-    // Ausführlich: docs/begruendungen/routes/auth/registrierung.ts.md#post-forgot-password-2
     getSetting(user.id, 'language', 'de')
       .catch(meldeUndLiefere('registrierung:sprache', 'de'))
       // An die GESPEICHERTE Adresse: Die eingegebene passt per LOWER() auch als Unicode-Variante.

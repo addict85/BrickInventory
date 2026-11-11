@@ -3,7 +3,6 @@
  * Menge. Der Server sortiert in beiden Wegen (Live-Abfrage und
  * Zusammenfassung, einzeln und im Haushalt) gleich, und die Oberfläche
  * zeichnet ungruppiert keine Farbkacheln.
- * Ausführlich: docs/begruendungen/test/teile-ordnung-db.test.js.md#kopf
  *
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  in ordnungSql() den Zweig 'name' entfernt (fällt auf Farbe zurück)

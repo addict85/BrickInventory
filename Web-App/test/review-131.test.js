@@ -1,6 +1,5 @@
 /**
  * Prüfungen aus dem Review-Durchgang hardened-131.
- * Ausführlich: docs/begruendungen/test/review-131.test.js.md#kopf
  *
  * Gegenproben (08.11.2026 gemessen, je einzeln):
  *   A  in der Strom-Route der erste send() vor die Anmeldung der Hörer
@@ -47,8 +46,7 @@ test('Teile-Rückfallebene für fremde Sets', async (t) => {
   await db.initSchema();
   // Und die Migrationen: Die Teileliste liest seit Migration 0034 aus
   // part_catalog und part_color_catalog, und die gibt es nur dort —
-  // initSchema() legt sie nicht an (siehe die Begruendung in db/schema.sql
-  // bei den Katalogtabellen).
+  // initSchema() legt sie nicht an.
   const c0 = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(c0); } finally { c0.release(); }
   await db.run(`INSERT INTO users (username, password_hash) VALUES ('marco','x')`);
@@ -71,7 +69,7 @@ test('Teile-Rückfallebene für fremde Sets', async (t) => {
 
   await t.test('ohne CSV-Eintrag und ohne API-Schlüssel gibt es eine leere Liste statt eines Fehlers', async () => {
     // Der frühere Absturz lag genau hier: Die API-Rückfallebene rief einen
-    // Namen auf, den routes/parts.ts nie exportiert hat — TypeError statt
+    // Namen auf, den das Teilemodul nie exportiert hat — TypeError statt
     // Antwort. Ohne Schlüssel wird der Zweig übersprungen; DASS er keinen
     // TypeError mehr wirft, sichert test/require-exports.test.js ab.
     const r = await getParts([uid], { set_number: '99999-1' });
@@ -103,7 +101,6 @@ test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
   // hier stehen die Endpunkte, die naturgemäss vor der Anmeldung erreichbar
   // sind. Jeder schreibende darf entweder eine Anmeldung verlangen (per
   // Middleware oder im Rumpf), oder er zählt Versuche je IP. qr-login hatte …
-  // Ausführlich: docs/begruendungen/test/review-131.test.js.md#src-stelle
   const src = ohneKommentare(require('./helpers/sources').anmeldeQuelle());
   const stellen = [...src.matchAll(/router\.(post|put|delete)\('([^']+)'/g)];
   assert.ok(stellen.length >= 6, `nur ${stellen.length} Endpunkte gefunden — die Prüfung liefe ins Leere`);

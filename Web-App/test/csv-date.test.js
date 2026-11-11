@@ -1,11 +1,8 @@
 /**
  * Datumsangaben aus CSV-Dateien.
- * Ausführlich: docs/begruendungen/test/csv-date.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 // src/infra/csvExport ist TypeScript; das ladbare .js liegt seit der Umstellung
 // in dist/ und nicht mehr neben der Quelle. buildAndRequire() baut bei Bedarf
 // und löst dorthin auf.
@@ -45,21 +42,17 @@ test('leere und unbrauchbare Eingaben ergeben null', () => {
   }
 });
 
-// Hier stand `beide Importe benutzen den Parser` — eine Prüfung über die
-// AUFGEZÄHLTE Liste ['sets.ts', 'parts.ts']. Sie war grün, während
-// routes/minifigs.ts das Datum roh weiterreichte: Der dritte Import stand
-// nicht in der Liste, also hat ihn niemand geprüft.
-// Ausführlich: docs/begruendungen/test/csv-date.test.js.md#stelle
+// Geprüft wird jeder Import, nicht eine aufgezählte Liste: Ein Import, der in
+// keiner Liste steht, wird sonst von niemandem geprüft.
 
 /**
  * Jeder CSV-Import läuft durch parseCsvDate — nicht nur die, an die jemand dachte.
- * Ausführlich: docs/begruendungen/test/csv-date.test.js.md#jeder-csv-import-normalisiert-das-datum
  *
  * Gegenprobe (29.10.2026): parseCsvDate in setCsvZeilen weggelassen → rot.
  */
 test('jeder CSV-Import normalisiert das Datum', () => {
   const _req = require('./helpers/sources').buildAndRequire();
-  const { setCsvZeilen } = _req('src/sets/dienst.js');
+  const { setCsvZeilen } = _req('src/sets/index.js');
   const { csvGemeinsameFelder } = _req('src/infra/csvExport.js');
   const { rows } = setCsvZeilen('set_number;acquired_at\n10001-1;01.02.2026\n');
   assert.equal(rows[0].acquiredAt, '2026-02-01', 'Sets: 01.02.2026 ist der 1. Februar');

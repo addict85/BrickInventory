@@ -1,0 +1,15 @@
+Gegenprobe: Die Teile lesen auch mit Kontofilter die Ablage, deren Mengen alle Konten summieren
+Modul: feature-teile
+Test: ch.brickinventoryapp.teile.TeileLokalTest
+Rot: ohne Kontofilter folgen die Teile der Ablage, mit Kontofilter dem Server
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/Teile.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/Teile.kt
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/Teile.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/Teile.kt
+@@ -92,5 +92,5 @@
+
+     /** Die Tabelle bestellt „In Sets“ mit; das zählt nur der Server. */
+-    private fun teileLokal(st: PartsUiState) = lokal?.takeIf { st.partsView != Listenansicht.TABELLE && !teileEingeschraenkt() }
++    private fun teileLokal(st: PartsUiState) = lokal?.takeIf { st.partsView != Listenansicht.TABELLE }
+     private fun figurenLokal() = lokal?.takeIf { !figurenEingeschraenkt() }
+

@@ -3,7 +3,6 @@
  * eines Fehlers, und Band und Inhalt widersprechen sich nicht: Hat eine Liste
  * nie geladen, sagt sie „Keine Verbindung“, ihr „Erneut versuchen“ bleibt
  * bedienbar (es liest nur) und lädt von selbst, sobald die Verbindung zurück …
- * Ausführlich: docs/begruendungen/test/offline-letzter-stand-oberflaeche.test.js.md#kopf
  *
  * Gegenproben (am 03.11.2026 gemessen):
  *   A  in api() ausZwischenspeicher() nicht gefragt → rot: „Merkliste: letzter Stand“
@@ -15,7 +14,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { oeffneOberflaeche, reiter, warte, takt } = require('./helpers/oberflaeche');
+const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
 const STIL = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
 const mitStil = (w) => w.document.addEventListener('DOMContentLoaded', () => {

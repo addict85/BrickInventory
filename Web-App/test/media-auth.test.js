@@ -1,6 +1,5 @@
 /**
  * Bilder und PDFs verlangen ausnahmslos eine Anmeldung.
- * Ausführlich: docs/begruendungen/test/media-auth.test.js.md#kopf
  *
  * Gegenproben zu den 08.11.2026 gestrichenen Fällen, die anderswo laufen:
  * Anmeldung und `private` an Bild und Anleitung → bild-blickfeld-db.test.js
@@ -20,7 +19,6 @@ const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 const SERVER = ['server.ts', 'routes/seiten.ts', 'src/katalog/http/bildAuslieferung.ts'].map(read).join('\n');
 /**
  * Kommentare weg — der Erklärtext oben nennt express.static selbst.
- * Ausführlich: docs/begruendungen/test/media-auth.test.js.md#ohnekommentare
  */
 function ohneKommentare(src) {
   let out = '',
@@ -104,7 +102,6 @@ test('der Platzhalter liegt ausserhalb von /images/', () => {
 
 test('die SQL-Migrationen landen im Build', () => {
   // Woher dieser Test kommt
-  // Ausführlich: docs/begruendungen/test/media-auth.test.js.md#build
   const build = read('scripts/build-ts.js');
   assert.match(build, /ASSET_EXT/, 'build-ts.js kopiert keine Nicht-TS-Dateien mit — .sql-Migrationen fehlen im Build');
   assert.match(build, /'\.sql'/, '.sql muss unter den mitkopierten Endungen stehen');
@@ -112,7 +109,6 @@ test('die SQL-Migrationen landen im Build', () => {
 
 test('data-self-Handler nehmen das Element als ERSTES Argument', () => {
   // Woher dieser Test kommt
-  // Ausführlich: docs/begruendungen/test/media-auth.test.js.md#fs2-stelle
   const fs2 = require('node:fs');
   const jsDir = path.join(ROOT, 'public', 'js');
   const files = fs2.readdirSync(jsDir).filter(f => /^\d\d-/.test(f) && f !== '00-registry.js');
@@ -142,7 +138,6 @@ test('data-self-Handler nehmen das Element als ERSTES Argument', () => {
 
 test('Adressen auf den eigenen Server gehen nicht durch den Proxy', () => {
   // Woher dieser Test kommt
-  // Ausführlich: docs/begruendungen/test/media-auth.test.js.md#vm-stelle
   const vm = require('node:vm');
   const src = require('./helpers/sources')
     .coreQuelle()

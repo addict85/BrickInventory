@@ -1,7 +1,6 @@
 /**
  * Inline-Handler entfernen, damit `script-src 'unsafe-inline'` aus der CSP
  * verschwinden kann (Punkt 2 der Optimierungsliste).
- * Ausführlich: docs/begruendungen/test/csp-actions.test.js.md#kopf
  *
  * Gegenproben der am 08.11.2026 gestrichenen Quelltext-Fälle, wo sie laufen
  * (je einzeln gemessen):
@@ -86,12 +85,10 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
   assert.match(core, /stroke="currentColor"/, 'Das Symbol muss die Farbe erben');
 
   // Die Regel statt der Anzahl
-  // Ausführlich: docs/begruendungen/test/csp-actions.test.js.md#ausnahme
   const AUSNAHME = new Set(['delInstr']);
   let ausnahmenGesehen = 0;
 
   // Der Selbstbeweis zählt über ALLE Dateien, nicht je Datei
-  // Ausführlich: docs/begruendungen/test/csp-actions.test.js.md#knoepfegesamt
   let knoepfeGesamt = 0;
   for (const file of ['02-gallery.js', '03-parts.js', '06-minifigs.js', '07-set-detail.js']) {
     const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');
@@ -134,7 +131,6 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
   // Einheitliches Muster über alle drei Tabellen: .ca als Hover-Behälter mit
   // .delbtn darin. Vorher war der Minifiguren-Knopf ein "btn bd" mit eigenem
   // Inline-Style und dauerhaft sichtbar, Teile hatten gar keinen.
-  // Ausführlich: docs/begruendungen/test/csp-actions.test.js.md#for-stelle
   for (const [file, expected] of [['02-gallery.js', 1], ['03-parts.js', 1], ['06-minifigs.js', 2]]) {
     const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');
     const n = (src.match(/<div class="ca"><(?:button|span) class="delbtn"/g) || []).length;
@@ -158,7 +154,6 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
 
 test('der Löschknopf hat je Design eine eigene Fassung', () => {
   // Was dieser Test NICHT mehr prüft
-  // Ausführlich: docs/begruendungen/test/csp-actions.test.js.md#css-stelle
   const css   = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
   const brick = fs.readFileSync(path.join(PUB, 'themes', 'brick.css'), 'utf8');
 
@@ -203,7 +198,6 @@ test('externe Links öffnen ohne Zugriff auf das Öffnerfenster', () => {
   // window.opener Zugriff auf das eigene Fenster — sie kann es umleiten
   // (Tabnabbing). Moderne Browser setzen noopener bei _blank inzwischen von
   // selbst; ältere und eingebettete WebViews nicht, und der Code setzte es an …
-  // Ausführlich: docs/begruendungen/test/csp-actions.test.js.md#html-2
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   const ohne = [...html.matchAll(/<a\b[^>]*target="_blank"[^>]*>/g)]
     .map(m => m[0]).filter(tag => !/rel="[^"]*noopener/.test(tag));

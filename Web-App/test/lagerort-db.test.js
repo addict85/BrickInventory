@@ -1,6 +1,5 @@
 /**
  * Lagerort gegen eine echte Datenbank.
- * Ausführlich: docs/begruendungen/test/lagerort-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -77,7 +76,7 @@ test('Lagerort gegen echte Datenbank', async (t) => {
       `SELECT t.color_id, l.name AS storage
          FROM parts t LEFT JOIN storage_locations l ON l.id = t.storage_id
         WHERE t.user_id=$1 AND t.part_number=$2 ORDER BY t.color_id`, [U.ich, '3001']);
-    assert.deepEqual(rows.map(r => [parseInt(r.color_id), r.storage]),
+    assert.deepEqual(rows.map(r => [parseInt(r.color_id, 10), r.storage]),
       [[4, 'Kiste 3'], [4, 'Kiste 3'], [5, null]],
       'Beide Zeilen der Farbe 4 müssen den Ort haben — und die Farbe 5 keinen');
   });
@@ -139,7 +138,6 @@ test('Lagerort gegen echte Datenbank', async (t) => {
     // Einträge. Zwei getrennte Listen zu liefern hiesse, dass jede Oberfläche
     // sie selbst zusammenführt, und zwar jede für sich.
     // `figuren` kam am 24.09. dazu (Migration 0024): Eine Minifigur traegt …
-    // Ausführlich: docs/begruendungen/test/lagerort-db.test.js.md#stelle
     assert.deepEqual(karte['Kiste 3'], { ort: 'Kiste 3', sets: 1, teile: 2, figuren: 0 });
     assert.deepEqual(karte['Regal B'], { ort: 'Regal B', sets: 1, teile: 0, figuren: 0 });
     // Alphabetisch — die Auswahlliste soll nicht bei jedem Aufruf anders sein.

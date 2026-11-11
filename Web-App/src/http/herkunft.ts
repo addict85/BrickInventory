@@ -2,9 +2,9 @@
  * Fehlt bei einer Cookie-Sitzung jede Herkunftsangabe, wird abgelehnt;
  * Bearer-Token schickt kein Browser von selbst mit. */
 import type { Request, Response, NextFunction } from 'express';
-import { sendeFehler } from '../infra/fehlerTexte';
 import { konfig } from '../infra/konfig';
 import { traegtSitzungsKeks } from './sitzungsKeks';
+import { sendeFehler } from './httpAntwort';
 
 const LESEND = new Set(['GET', 'HEAD', 'OPTIONS']);
 

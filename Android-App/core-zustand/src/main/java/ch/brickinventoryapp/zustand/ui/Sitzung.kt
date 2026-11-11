@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.zustand.ui
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,18 +38,18 @@ interface Sitzung {
     fun verwalterGeaendert(admin: Boolean)
 
     /** Der Server hat Währung und Bedingung des Kontos gespeichert. */
-    fun einstellungenGespeichert(currency: String, priceCondition: String)
+    fun einstellungenGespeichert(currency: Waehrung, priceCondition: Zustand)
 
     /** Die Einstellungen des Kontos vom Server; die Bedingung ist die aufgelöste (Nutzer → global → „N“). */
-    fun einstellungenGeladen(currency: String, priceCondition: String, defaultPriceCondition: String, userDefaultCondition: String?)
+    fun einstellungenGeladen(currency: Waehrung, priceCondition: Zustand, defaultPriceCondition: Zustand, userDefaultCondition: Zustand?)
 
     /** Eine Antwort des Servers nennt die Währung des Kontos (etwa die Bewertung). */
-    fun waehrungUebernommen(currency: String)
+    fun waehrungUebernommen(currency: Waehrung)
 
     fun spracheGeaendert(language: String)
 
     /** Das wirksame Design, z. B. nach einer Wahl im Konto; der SitzungsDienst merkt es sich für den Kaltstart. */
-    fun setzeDesign(theme: String)
+    fun setzeDesign(theme: Design)
 
     /** Startzustand des Servers, solange er nicht bereit ist; null heisst durch oder nicht erreichbar. */
     fun serverstartGeaendert(stand: StartzustandAnsicht?)
@@ -81,21 +84,21 @@ class SitzungsZustand @Inject constructor() : Sitzung {
 
     override fun verwalterGeaendert(admin: Boolean) = _state.update { it.copy(isAdmin = admin) }
 
-    override fun einstellungenGespeichert(currency: String, priceCondition: String) =
+    override fun einstellungenGespeichert(currency: Waehrung, priceCondition: Zustand) =
         _state.update { it.copy(currency = currency, priceCondition = priceCondition) }
 
     override fun einstellungenGeladen(
-        currency: String, priceCondition: String, defaultPriceCondition: String, userDefaultCondition: String?,
+        currency: Waehrung, priceCondition: Zustand, defaultPriceCondition: Zustand, userDefaultCondition: Zustand?,
     ) = _state.update {
         it.copy(currency = currency, priceCondition = priceCondition,
             defaultPriceCondition = defaultPriceCondition, userDefaultCondition = userDefaultCondition)
     }
 
-    override fun waehrungUebernommen(currency: String) = _state.update { it.copy(currency = currency) }
+    override fun waehrungUebernommen(currency: Waehrung) = _state.update { it.copy(currency = currency) }
 
     override fun spracheGeaendert(language: String) = _state.update { it.copy(language = language) }
 
-    override fun setzeDesign(theme: String) = _state.update { it.copy(appTheme = theme) }
+    override fun setzeDesign(theme: Design) = _state.update { it.copy(appTheme = theme) }
 
     override fun serverstartGeaendert(stand: StartzustandAnsicht?) = _state.update { it.copy(startupStatus = stand) }
 

@@ -31,7 +31,6 @@ function setDetailHtml(sn, acqs) {
   const addedFmt = set.added_at ? fmtDatum(set.added_at) : '—';
   // Marktpreis und Entwicklung je Zustand, aus derselben Abfrage wie der Preisverlauf; hier nur der
   // Platzhalter. Ein Wert fürs ganze Set vermischte neu und gebraucht.
-  // Ausführlich: docs/begruendungen/public/js/07-set-detail.js.md#pricerow
   const priceRow = html`<div class="m-wertkopf" id="m-market-rows" data-kopf="1" role="group" aria-label="${tRaw('detail.wert')}"><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>`;
   const pnlRow  = '';
   const qtyRow = detailZeile(t('detail.qty'), html`
@@ -74,7 +73,6 @@ function setDetailHtml(sn, acqs) {
 function ladeSetNachtraege(sn) {
   // Die Figurenzahl aus der Figurentabelle (verlässlicher als sets.minifigs). Die Antwort kann nach dem
   // Schliessen oder einem Setwechsel kommen; nur wenn noch dasselbe Set offen ist, wird geschrieben.
-  // Ausführlich: docs/begruendungen/public/js/07-set-detail.js.md#die-figurenzahl-aus-der-figurentabelle
   api('GET', `/v1/minifigs?source=set`).then(md => {
     const el = G('m-minifigs-val');
     if (!el || !curSet || curSet.set_number !== sn) return;
@@ -267,7 +265,6 @@ export function autosaveSet(){
       // Die wirkliche Gesamtmenge kommt vom Server: Beim Verringern deckelt er bei den eigenen Exemplaren,
       // und dann stimmt die gesendete Zahl nicht. Ohne Übernahme stünde bis zum nächsten Öffnen die eigene
       // Annahme da.
-      // Ausführlich: docs/begruendungen/public/js/07-set-detail.js.md#echt
       const echt = d.quantity != null && Number.isInteger(d.quantity) ? d.quantity : qty;
       // Gespeichert, aber ohne Marktpreis für die neue Erfassung: Er kommt mit dem Preislauf nach.
       if (d.degradiert?.includes('kaufpreis')) toast(tRaw('set.kaufpreis_folgt'), 'info');

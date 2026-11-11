@@ -1,6 +1,5 @@
 /**
  * Zwei Zusicherungen, die der Umstieg auf Express 5 lautlos gekostet haette.
- * Ausführlich: docs/begruendungen/test/express5-zusicherungen.test.js.md#kopf
  *
  * ── Gegenproben (durchgefuehrt, Ergebnis im Commit) ─────────────────────────
  *   a) Muster auf '/*splat' zurueckgedreht → Schritt 1 rot, nennt den 404
@@ -20,7 +19,6 @@ test('1. die Startseite ist auch ohne Pfad erreichbar', async () => {
   // die app.get-Registrierung, die renderIndexHtml() ausliefert. Haenge die
   // Suche am Muster, muesste sie bei jeder Umbenennung mitgepflegt werden —
   // und dann prueft sie irgendwann die Schreibweise statt der Sache. …
-  // Ausführlich: docs/begruendungen/test/express5-zusicherungen.test.js.md#kandidaten
   const kandidaten = [];
   for (const m of src.matchAll(/^\s*app\.get\('([^']+)'/gm)) {
     if (/renderIndexHtml|sendeStartseite/.test(src.slice(m.index, m.index + 800))) kandidaten.push(m[1]);
@@ -95,7 +93,6 @@ test('2. req.body ist immer ein Objekt, auch ohne passenden Parser', async () =>
 
 /**
  * Die Startseite geht durch den Renderer — nicht an ihm vorbei.
- * Ausführlich: docs/begruendungen/test/express5-zusicherungen.test.js.md#3-die-startseite-geht-durch-den-renderer
  *
  * Gegenproben (durchgefuehrt, Ergebnisse abgeschrieben):
  *   `index: false` entfernt → dieser Fall rot.

@@ -3,7 +3,6 @@
  * die Sache tatsächlich zeigt. Die Ziele werden aus der gerenderten Oberfläche
  * gelesen (Benutzermenü, Abschnitte der Einstellungen), nicht aus einer Liste
  * im Test: Benennt jemand einen Menüpunkt um, wird jeder alte Wegweiser rot. …
- * Ausführlich: docs/begruendungen/test/wegweiser-oberflaeche.test.js.md#kopf
  *
  * Gegenproben (02.11.2026 gemessen, je einzeln):
  *   A  household.invite_hint (de) wieder „… im anderen Konto unter

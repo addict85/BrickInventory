@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 /**
  * Erzeugt aus shared/design-tokens.json die Design-Dateien BEIDER Oberflaechen.
- * Ausführlich: docs/begruendungen/scripts/generate-design-tokens.js.md#kopf
  */
 const fs = require('fs');
 const path = require('path');
@@ -98,7 +97,6 @@ function baueCss(daten) {
 
 /**
  * Die Tokens eines Designs — mit `erbt` aufgeloest.
- * Ausführlich: docs/begruendungen/scripts/generate-design-tokens.js.md#aufgeloest
  * @param {any} daten Inhalt von shared/design-tokens.json
  * @param {string} name Name des Designs
  * @param {Record<string,string>} roh Der Eintrag, wie er in der Datei steht

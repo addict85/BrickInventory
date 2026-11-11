@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.konto.ui.viewmodel
 
+import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.data.model.Fehlercode
 import ch.brickinventoryapp.model.ui.model.alsAnsicht
 import androidx.lifecycle.ViewModel
@@ -160,15 +161,15 @@ class KontoViewModel @Inject constructor(
     }
 
     /**
-     * Eigenes Design wählen; "" heisst Vorgabe des Verwalters. Die Antwort nennt
+     * Eigenes Design wählen; null heisst Vorgabe des Verwalters. Die Antwort nennt
      * das wirksame Design, und das gilt sofort in der ganzen App.
      */
-    fun waehleDesign(eigenes: String) {
+    fun waehleDesign(eigenes: Design?) {
         viewModelScope.launch {
             when (val r = konto.setzeEigenesDesign(eigenes)) {
                 is Ergebnis.Success ->
                     if (r.data.success) {
-                        sitzung.setzeDesign(r.data.theme)
+                        r.data.theme?.let(sitzung::setzeDesign)
                         _kontoState.update { it.copy(design = designWahl(r.data), fehler = null) }
                     } else _kontoState.update { it.copy(fehler = r.data.error ?: texte.text(R.string.err_generic)) }
                 is Ergebnis.Error -> _kontoState.update { it.copy(fehler = texte.meldung(r)) }
@@ -178,7 +179,7 @@ class KontoViewModel @Inject constructor(
 
     /** Ohne `vorgabe` ist der Server älter und kennt kein Design je Konto: dann keine Auswahl. */
     private fun designWahl(a: AppThemeResponse) =
-        a.vorgabe?.let { DesignWahl(a.theme, it, a.eigenes) }
+        a.vorgabe?.let { DesignWahl(a.theme ?: it, it, a.eigenes) }
 
     /** Meldung/Fehler der Kontokarte wegräumen, wenn der Nutzer weitertippt. */
     fun kontoMeldungWeg() = _kontoState.update { it.copy(meldung = null, fehler = null) }

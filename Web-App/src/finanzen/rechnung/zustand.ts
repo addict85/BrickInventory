@@ -1,7 +1,6 @@
 
 /** Sobald EINE Erfassung gebraucht ist, gilt das Set als gebraucht — dieselbe
- * Regel wie die Anzeige, damit Preis und Gewinnrechnung nicht abweichen.
- * Ausführlich: docs/begruendungen/src/finanzen/rechnung/zustand.ts.md#effectivecondition */
+ * Regel wie die Anzeige, damit Preis und Gewinnrechnung nicht abweichen. */
 export function effectiveCondition(set: { acq_count?: unknown; used_count?: unknown } | null | undefined): 'N' | 'U' {
   const acqCount  = parseInt(String(set?.acq_count))  || 0;
   const usedCount = parseInt(String(set?.used_count)) || 0;

@@ -3,11 +3,9 @@
  * (Android-App) müssen für dieselbe Route dasselbe liefern. Doppelte Routen
  * gibt es nicht mehr; geprüft wird, dass keine Route nur an einer Ausweisart
  * hängt.
- * Ausführlich: docs/begruendungen/test/api-parity.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { execFileSync } = require('node:child_process');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
@@ -37,7 +35,6 @@ async function seed() {
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   // Und die Migrationen, nicht nur initSchema()
-  // Ausführlich: docs/begruendungen/test/api-parity.test.js.md#client
   const client = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
 
@@ -47,7 +44,6 @@ async function seed() {
   USER.id = (await db.get(`SELECT id FROM users WHERE username = $1`, [USER.username])).id;
 
   // Bearer-Token wie ihn die Android-App nutzt — als HASH abgelegt.
-  // Ausführlich: docs/begruendungen/test/api-parity.test.js.md#stelle
   await db.run(`INSERT INTO api_tokens (token, user_id, label) VALUES ($1, $2, 'parity') ON CONFLICT DO NOTHING`,
     [_req('src/konto/auth.js').hashToken(TOKEN), USER.id]);
 
@@ -92,7 +88,6 @@ async function seed() {
      VALUES ($1,'40567-1',1,35.00,'N'), ($1,'40568-1',1,35.00,'N') ON CONFLICT DO NOTHING`, [USER.id]);
 
   // Einstellungen: die Vorlage muss BEIDE Wege abdecken
-  // Ausführlich: docs/begruendungen/test/api-parity.test.js.md#stelle-2
   await db.run(
     `INSERT INTO user_settings (user_id, key, value)
      VALUES ($1,'currency','CHF'), ($1,'user_default_condition','U') ON CONFLICT DO NOTHING`,
@@ -145,7 +140,6 @@ test('API-Parität Webapp ↔ Android', async (t) => {
     next();
   });
   // Die Einhaengepunkte kommen aus server.ts
-  // Ausführlich: docs/begruendungen/test/api-parity.test.js.md#stelle-3
   app.use('/api/v1',       _req('routes/api_v1/index.js'));
   for (const r of routerEinhaengungen())
     app.use(r.mount, _req('routes/' + r.name + '.js'));
@@ -158,7 +152,6 @@ test('API-Parität Webapp ↔ Android', async (t) => {
   };
 
   // Zusammengelegte Routen: EINE Adresse, BEIDE Ausweise
-  // Ausführlich: docs/begruendungen/test/api-parity.test.js.md#for-stelle
   for (const [name, pfad] of [
     ['Set-Erfassungen',     '/api/v1/sets/75192-1/acquisitions'],
     ['Teil-Erfassungen',    '/api/v1/parts/3020/0/acquisitions'],
@@ -246,7 +239,6 @@ test('API-Parität Webapp ↔ Android', async (t) => {
     // zusammengelegt, und das mit Absicht: Die eine trägt die globalen
     // Schlüssel und die Admin-Felder, die die App weder braucht noch bekommen
     // soll. Zwei verschiedene Antworten, nicht zwei Fassungen derselben — …
-    // Ausführlich: docs/begruendungen/test/api-parity.test.js.md#web-stelle
     const web = (await get('/api/v1/settings/raw')).body.settings;
     const v1 = (await get('/api/v1/settings')).body.settings;
     assert.equal(v1.currency, web.currency);
@@ -274,7 +266,6 @@ test('API-Parität Webapp ↔ Android', async (t) => {
 
   await t.test('Bewertung: gleiche Antwortform mit beiden Ausweisen', async () => {
     // Was hier vorher stand, und warum es weg ist
-    // Ausführlich: docs/begruendungen/test/api-parity.test.js.md#mitsitzung
     const mitSitzung = (await get('/api/v1/finance/valuation')).body;
     const mitToken = (await get('/api/v1/finance/valuation',
       { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' })).body;
@@ -297,7 +288,6 @@ test('API-Parität Webapp ↔ Android', async (t) => {
     // dem Zusammenlegen gibt es nur eine; die Gleichwertigkeit der Ausweise
     // steht oben. Was hier bleibt, ist die INHALTLICHE Aussage: Der Verlauf
     // liefert überhaupt Punkte, und zwar je Zustand getrennt (seit …
-    // Ausführlich: docs/begruendungen/test/api-parity.test.js.md#b-stelle
     const b = (await get('/api/v1/sets/75192-1/price-history')).body;
     const pts = h => (h || []).filter(x => !x.is_purchase_price);
     assert.equal(b.success, true);
@@ -349,7 +339,6 @@ test('API-Parität Webapp ↔ Android', async (t) => {
     // wird deshalb, dass sie über BEIDE Ausweise dieselbe Wirkung hat — mit
     // Sitzung am einen Set, mit Token am anderen, danach müssen beide Sets
     // denselben Stand zeigen. Das ist die Aussage, die nach dem Umbau zählt: …
-    // Ausführlich: docs/begruendungen/test/api-parity.test.js.md#ra-stelle
     const rA = await fetch(base + `/api/v1/sets/40567-1/acquisitions/${await idOf('40567-1')}`,
       { method: 'PUT', headers: hdr, body });
     const rB = await fetch(base + `/api/v1/sets/40568-1/acquisitions/${await idOf('40568-1')}`,
@@ -397,7 +386,6 @@ test('API-Parität Webapp ↔ Android', async (t) => {
     // dem Zusammenlegen der API-Oberflaechen gibt es nur noch EINEN
     // Adressraum; die alte Adresse antwortet gar nicht mehr, und der Test
     // haette einen 404 fuer eine bestandene Abweisung gehalten.
-    // Ausführlich: docs/begruendungen/test/api-parity.test.js.md#mittoken
     const mitToken = await get('/api/v1/sets', { 'x-no-session': '1' });
     const nurSitzung = await get('/api/v1/settings/raw', { 'x-no-session': '1' });
     assert.equal(mitToken.status, 401, 'requireToken laesst ohne Ausweis durch');

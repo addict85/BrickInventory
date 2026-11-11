@@ -1,6 +1,5 @@
 /**
  * Die Merkliste geht als CSV hinaus und kommt als Merkliste zurück.
- * Ausführlich: docs/begruendungen/test/merkliste-export-import-db.test.js.md#kopf
  *
  * ── Gegenproben (durchgeführt, Befunde GEMESSEN) ────────────────────────────
  *
@@ -34,6 +33,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { katalogSet } = require('./helpers/bestand');
 const { importWorker } = require('./helpers/auftraege');
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
@@ -61,8 +61,7 @@ async function aufbau() {
   HAUPT = await id('haupt'); KIND = await id('kind'); FREMD = await id('fremd');
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [HAUPT, KIND]);
   for (const p of POSTEN) {
-    await db.run(`INSERT INTO set_catalog (set_number,name) VALUES ($1,$1)
-                  ON CONFLICT (set_number) DO NOTHING`, [p.sn]);
+    await katalogSet(db, p.sn, { name: p.sn });
     await db.run(`INSERT INTO wanted (user_id,set_number,condition,created_at)
                   VALUES ($1,$2,$3,$4::timestamptz)`, [HAUPT, p.sn, p.c, p.am]);
   }
@@ -208,7 +207,6 @@ test('Merkliste: Rundlauf über die echten Adressen', { concurrency: 1 }, async 
     // Die Gegenrichtung zu Fall 3: Der Import muss auch auf eine GEFUELLTE
     // Liste anwendbar sein. Ohne diesen Fall waere ein Import „richtig", der
     // nur auf der leeren Tabelle funktioniert.
-    // Ausführlich: docs/begruendungen/test/merkliste-export-import-db.test.js.md#einlesen
     const einlesen = async () => {
       const fd = new FormData();
       fd.append('file', new Blob([csvAusPosten()], { type: 'text/csv' }), 'merkliste.csv');

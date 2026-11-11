@@ -25,7 +25,7 @@ data class PlPart(
     /**
      * Wie viele davon im eigenen Bestand liegen — `null`, solange nicht
      * gefragt wurde.
-     * Ausführlich: docs/begruendungen/feature-teile/teile/ui/TeilelisteZeilen.kt.md#vorhanden
+     * `null` und `0` sind verschieden: nicht gefragt gegen gefragt und nichts vorhanden.
      */
     val vorhanden: Int? = null,
 )

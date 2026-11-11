@@ -15,7 +15,6 @@ import { deleteManualPart } from './03-parts.js';
 
 // Ein delegierter Dispatcher für data-click & Co. statt onclick im Markup: So kommt die CSP ohne script-src
 // 'unsafe-inline' aus, und eine übersehene XSS-Lücke trifft noch auf diese Verteidigungslinie.
-// Ausführlich: docs/begruendungen/public/js/11-actions.js.md#ziel-script-src-unsafe-inline-aus-der-cs
 
 (function () {
   'use strict';
@@ -70,7 +69,6 @@ import { deleteManualPart } from './03-parts.js';
   /**
    * Handlernamen über die Registry auflösen: Modul-Funktionen liegen nicht auf window. resolveAction() fällt
    * intern noch auf window zurück, für den Log-Betrachter, der als klassisches Skript im eigenen Popup läuft.
-   * Ausführlich: docs/begruendungen/public/js/11-actions.js.md#resolve
    * @param {string} name
    */
   function resolve(name) {
@@ -129,7 +127,6 @@ import { deleteManualPart } from './03-parts.js';
   // Anmelde- und Passwortfelder stehen in einem <form>, damit Passwortmanager zuverlässig speichern und
   // ausfüllen. Abgesendet wird nie: Ein echtes Absenden lüde die Seite neu; stattdessen läuft der Knopf aus
   // data-submit.
-  // Ausführlich: docs/begruendungen/public/js/11-actions.js.md#die-anmelde-registrier-und-passwortfelde
   document.addEventListener('submit', ev => {
     const form = ev.target;
     if (!(form instanceof HTMLFormElement)) return;
@@ -161,7 +158,6 @@ import { deleteManualPart } from './03-parts.js';
 
     // Einmal wiederholen, bevor aufgegeben wird: Ein einzelner Verbindungsfehler (ETIMEDOUT beim CDN) liess
     // die Kachel sonst dauerhaft leer, obwohl das Bild in Ordnung war.
-    // Ausführlich: docs/begruendungen/public/js/11-actions.js.md#einmal-wiederholen-bevor-aufgegeben-wird
     if (!el.dataset.retried && el.src) {
       el.dataset.retried = '1';
       if (/** @type {HTMLImageElement} */ (el).dataset.ph) bildVorlaeufig(el);
@@ -196,7 +192,6 @@ import { deleteManualPart } from './03-parts.js';
 
   // .loaded an jedes img[loading=lazy], nicht nur an data-fade: styles.css blendet alle lazy-Bilder aus, und
   // ohne Zusatzattribut blieben sie sonst trotz geladenem Bild unsichtbar.
-  // Ausführlich: docs/begruendungen/public/js/11-actions.js.md#markloaded
   /** @param {EventTarget | null} el */
   function markLoaded(el) {
     if (el instanceof HTMLImageElement && el.getAttribute('loading') === 'lazy') {
@@ -268,7 +263,6 @@ function setzeDunkel() { window.__bimDunkel?.(this.value); }
 /**
  * Der Ansichtsumschalter des Figuren-Reiters gilt für beide Listen: Er steht über beiden, also schaltet er
  * auch die manuell erfassten Figuren um.
- * Ausführlich: docs/begruendungen/public/js/11-actions.js.md#renderfigsall
  */
 function renderFigsAll() { renderFigs(alleFiguren()); renderManualFigsTable(); }
 
@@ -327,7 +321,6 @@ export function delSetStop(sn, ev) { ev?.stopPropagation(); delSet(sn); }
 /**
  * Löschen von einer Kachel aus, mit stopPropagation: Die Kachel hat selbst ein data-click, und ohne Stopp
  * öffnete der Papierkorb zusätzlich den Dialog hinter der Löschabfrage.
- * Ausführlich: docs/begruendungen/public/js/11-actions.js.md#deletemanualfigstop
  * @param {string} n
  * @param {string} owner
  * @param {Event | undefined} ev

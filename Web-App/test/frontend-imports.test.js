@@ -1,7 +1,6 @@
 /**
  * Frontend-Module: Ruft eine Datei einen Namen auf, den ein ANDERES Modul
  * deklariert, ohne ihn zu importieren?
- * Ausführlich: docs/begruendungen/test/frontend-imports.test.js.md#kopf
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -61,7 +60,6 @@ test('jedes Frontend-Modul importiert, was es aufruft', () => {
   for (const f of dateien) quellen.set(f, ohneKommentare(fs.readFileSync(path.join(JS_DIR, f), 'utf8')));
 
   // i18n.js gehört dazu
-  // Ausführlich: docs/begruendungen/test/frontend-imports.test.js.md#stelle
   quellen.set('../i18n.js', ohneKommentare(
     fs.readFileSync(path.join(ROOT, 'public', 'i18n.js'), 'utf8')));
 

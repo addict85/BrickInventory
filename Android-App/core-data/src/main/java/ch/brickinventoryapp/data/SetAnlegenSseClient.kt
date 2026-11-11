@@ -1,9 +1,10 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.di.SseClient
 import ch.brickinventoryapp.model.data.model.AddSetResponse
-import ch.brickinventoryapp.data.di.BrickDispatchers
-import ch.brickinventoryapp.data.di.Dispatcher
+import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
+import ch.brickinventoryapp.model.koroutinen.Dispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -25,7 +26,6 @@ import javax.inject.Singleton
  * Ein Set anlegen — mit Fortschritt, wie die Webapp über /api/v1/sets/add-stream
  * (Stammdaten holen, Bild laden, fertig), damit man bei einem grossen Set sieht,
  * was passiert.
- * Ausführlich: docs/begruendungen/core-data/data/SetAnlegenSseClient.kt.md#constructor
  */
 @Singleton
 internal class SetAnlegenSseClient @Inject constructor(
@@ -47,7 +47,7 @@ internal class SetAnlegenSseClient @Inject constructor(
      */
     override fun anlegen(
         setNumber: String, quantity: Int, purchasePrice: Double?,
-        condition: String?, ownerUserId: Int?, storage: String?,
+        condition: Zustand?, ownerUserId: Int?, storage: String?,
     ): Flow<SetAnlegenSchritt> = callbackFlow {
         val baseUrl = prefs.serverUrlJetzt().trim().trimEnd('/')
         val token = prefs.tokenJetzt()
@@ -96,13 +96,13 @@ internal class SetAnlegenSseClient @Inject constructor(
      */
     private fun anlegeRumpf(
         setNumber: String, quantity: Int, purchasePrice: Double?,
-        condition: String?, ownerUserId: Int?, storage: String?,
+        condition: Zustand?, ownerUserId: Int?, storage: String?,
     ): RequestBody {
         val felder = buildList {
             add("\"set_number\":${json.encodeToString(kotlinx.serialization.serializer(), setNumber)}")
             add("\"quantity\":$quantity")
             if (purchasePrice != null) add("\"purchase_price\":$purchasePrice")
-            if (condition != null) add("\"condition\":\"$condition\"")
+            if (condition != null) add("\"condition\":\"${condition.kennung}\"")
             if (ownerUserId != null) add("\"owner_user_id\":$ownerUserId")
             // Der Lagerort ist freier Text und muss deshalb ueber den
             // Serialisierer, nicht in die Zeichenkette gesetzt: Ein

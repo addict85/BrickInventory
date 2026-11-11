@@ -19,7 +19,7 @@ import org.junit.Test
 import java.util.concurrent.TimeUnit
 
 /**
- * Der Token gehört dem Server unter seinem Pfad, nicht dem ganzen Host (sec7, N2):
+ * Der Token gehört dem Server unter seinem Pfad, nicht dem ganzen Host:
  * Hinter einem gemeinsamen Reverse-Proxy liegt unter `/andere-app` eine andere
  * Anwendung. Ein Testserver, die App unter `/brick`.
  *

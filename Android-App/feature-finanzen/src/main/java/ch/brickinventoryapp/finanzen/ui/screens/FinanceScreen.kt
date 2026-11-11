@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.finanzen.ui.screens
 
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.fach.Postenart
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.finanzen.ui.viewmodel.FinanzAktionen
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
@@ -46,7 +49,7 @@ import ch.brickinventoryapp.gemeinsam.ui.lokaleAchse
 import ch.brickinventoryapp.gemeinsam.ui.lokaleWerte
 
 /** Was der Finanzen-Reiter zeigt; die Route sammelt es aus den Flüssen. */
-data class FinanzZustand(
+internal data class FinanzZustand(
     val state: AppUiState,
     val blick: BlickfeldUiState,
     val financeState: FinanceUiState,
@@ -58,7 +61,7 @@ fun FinanceRoute(
     vm: FinanzViewModel,
     imageLoader: ImageLoader,
     onSetClick: (String) -> Unit = {},
-    onManualClick: (type: String, id: String, colorId: Int, name: String?) -> Unit = { _, _, _, _ -> },
+    onManualClick: (type: Postenart, id: String, colorId: Int, name: String?) -> Unit = { _, _, _, _ -> },
     listState: LazyListState = rememberLazyListState(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -69,14 +72,14 @@ fun FinanceRoute(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FinanceScreen(
+internal fun FinanceScreen(
     zustand: FinanzZustand,
     aktionen: FinanzAktionen,
     imageLoader: ImageLoader,
     /** Klick auf ein Set — nur der Graph kennt den NavController. */
     onSetClick: (String) -> Unit = {},
     /** Klick auf einen manuell erfassten Eintrag, ebenso. */
-    onManualClick: (type: String, id: String, colorId: Int, name: String?) -> Unit = { _, _, _, _ -> },
+    onManualClick: (type: Postenart, id: String, colorId: Int, name: String?) -> Unit = { _, _, _, _ -> },
     /** Scroll-Zustand von aussen: Das Ziel wird beim Öffnen eines Details verworfen. */
     listState: LazyListState = rememberLazyListState(),
 ) {
@@ -117,7 +120,7 @@ fun FinanceScreen(
     val onPeriodChange: (String) -> Unit = { aktionen.loadPortfolioHistory(it) }
     val onRefresh: () -> Unit = { aktionen.loadValuation(); aktionen.loadPortfolioHistory(financeState.historyPeriod) }
 
-    val currencyCode = valuation?.currency ?: "EUR"
+    val currencyCode = valuation?.currency ?: Waehrung.EUR
     // Gemeinsame Fassung (util/NumberFormatUtils.kt): Die Stellung von Symbol und
     // Betrag entscheidet die Sprache, wie in der Webapp.
     fun fmtPrice(v: String?): String = fmtMoneyOrDash(v, currencyCode)
@@ -230,7 +233,7 @@ fun FinanceScreen(
 }
 
 @Composable
-fun ManualFinanceRow(
+internal fun ManualFinanceRow(
     imageUrl: String?,
     imageLoader: ImageLoader,
     /** Öffnet den Detail-Dialog — analog zur Set-Zeile, die auf den Screen führt. */
@@ -249,7 +252,7 @@ fun ManualFinanceRow(
     /** [purchaseStr] gilt für alle Stück der Zeile, wie der Marktwert daneben. */
     purchaseGesamt: Boolean = false,
     /** Zustand dieser Erfassung; null = Eintrag ohne Erfassungen. */
-    condition: String? = null,
+    condition: Zustand? = null,
     /** Entwicklung gegen den Kaufpreis dieser Erfassung (vom Server, pnl_prozent). */
     pnlProzent: Double? = null,
     /** Dieselbe Entwicklung in Geld, schon formatiert mit Vorzeichen. */
@@ -322,13 +325,13 @@ internal fun gewinnText(betrag: Double, fmtWert: (Double?) -> String): String =
     if (betrag >= 0.005) "+" + fmtWert(betrag) else fmtWert(betrag)
 
 @Composable
-fun SubtotalRow(label: String, value: String) {
+internal fun SubtotalRow(label: String, value: String) {
     BezeichnungUndWert(label, value, Modifier.padding(horizontal = Abstaende.winzig, vertical = Abstaende.winzig),
         stil = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold))
 }
 
 @Composable
-fun PriceColumn(label: String, value: String, farbe: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onPrimary) {
+internal fun PriceColumn(label: String, value: String, farbe: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onPrimary) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, style = MaterialTheme.typography.bodySmall, color = farbe)
         Text(value, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium, color = farbe)

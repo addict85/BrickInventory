@@ -21,7 +21,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { haeltSet, haeltFigur, haeltTeil } = require('./helpers/bestand');
+const { haeltSet, haeltFigur, haeltTeil, katalogSet } = require('./helpers/bestand');
 
 // Fünf Sets: Menge, Thema und Aufnahmezeit so, dass jede Sortierung eine andere Folge ergibt.
 const SETS = [
@@ -45,7 +45,7 @@ test('seitenweise Listen am Server', { concurrency: 1 }, async (t) => {
   await aufraeumen();
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   for (const s of SETS) {
-    await db.run('INSERT INTO set_catalog (set_number, name, theme) VALUES ($1,$2,$3)', [s.nr, s.name, s.theme]);
+    await katalogSet(db, s.nr, { name: s.name, theme: s.theme });
     await haeltSet(db, uid, s.nr, s.menge);
     await db.run(`UPDATE sets SET added_at = NOW() - make_interval(days => $3) WHERE user_id = $1 AND set_number = $2`, [uid, s.nr, s.vor]);
   }

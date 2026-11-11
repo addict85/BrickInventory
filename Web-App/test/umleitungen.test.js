@@ -1,6 +1,5 @@
 /**
  * Ausgehende Umleitungen: begrenzt, nur https, ohne Geheimnisse.
- * Ausführlich: docs/begruendungen/test/umleitungen.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -109,7 +108,6 @@ test('Hostprüfung: nur Standardport, keine Userinfo, Eimer exakt', () => {
 
 /**
  * Die Anleitungen der BrickLink Designer Programme.
- * Ausführlich: docs/begruendungen/test/umleitungen.test.js.md#der-bdp-eimer-darf-geholt-werden-aber-nu
  */
 test('der BDP-Eimer darf geholt werden — aber nur er', () => {
   assert.ok(hostErlaubt('https://bdpinstructions.s3.amazonaws.com/11010.pdf',
@@ -118,7 +116,6 @@ test('der BDP-Eimer darf geholt werden — aber nur er', () => {
     'abzulehnen heisst, ihn bauen zu lassen und ins Leere laufen zu lassen');
 
   // Und NICHT der halbe Anbieter
-  // Ausführlich: docs/begruendungen/test/umleitungen.test.js.md#for-stelle
   for (const fremd of ['https://amazonaws.com/x.pdf',
                        'https://s3.amazonaws.com/x.pdf',
                        'https://boeser-eimer.s3.amazonaws.com/x.pdf',

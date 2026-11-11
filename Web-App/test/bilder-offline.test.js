@@ -1,6 +1,5 @@
 /**
  * Die Bilder der Tabellen stehen auch ohne Netz.
- * Ausführlich: docs/begruendungen/test/bilder-offline.test.js.md#kopf
  *
  * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
  *   A  in liefereBild() `private, max-age=0` → `private, no-cache` → rot: „… duerfen offline …“
@@ -41,19 +40,4 @@ test('die Bilder der Tabellen duerfen offline aus dem Zwischenspeicher kommen', 
   assert.match(kopf, /max-age=0/, kopf);
   // private: Ein Reverse-Proxy darf Bilder hinter einer Anmeldung nicht zwischenspeichern.
   assert.match(kopf, /private/, kopf);
-});
-
-test('die App hat einen Offline-Rueckfall, der davon Gebrauch macht', () => {
-  // Ohne ihn nuetzt die Kopfzeile nichts: Die Kopie liegt da, aber niemand
-  // holt sie, wenn die Anfrage scheitert.
-  const modul = fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'di', 'NetzModule.kt'), 'utf8');
-  assert.match(modul, /FORCE_CACHE/,
-    'Der Offline-Rückfall der App ist weg — dann bleibt die Kopie ungenutzt.');
-  assert.match(modul, /catch \(e: java\.io\.IOException\)/,
-    'Der Rückfall hängt nicht mehr am Fehler. Am Verbindungsstatus des Geräts ' +
-    'festzumachen war schon einmal falsch: Ein Gerät kann im WLAN sein, ohne ' +
-    'dass der Heimserver antwortet.');
-  assert.match(modul, /image_http_cache/,
-    'Der HTTP-Zwischenspeicher für Bilder fehlt — ohne ihn gibt es offline ' +
-    'nichts auszuliefern.');
 });

@@ -37,7 +37,7 @@ const finanzQuelle = () => {
   return teile.join('\n');
 };
 
-module.exports = { ROOT, serverOnly, imgProxy, serverAll, finanzQuelle };
+module.exports = { ROOT, serverOnly, imgProxy, serverAll, finanzQuelle, umgebung };
 
 /**
  * Baut die .ts-Quellen nach dist/ (nie neben die Quellen) und liefert einen
@@ -92,8 +92,10 @@ function baueDist() {
   _built = true;
 }
 
+let _zugangGesetzt = false;
+
 function buildAndRequire() {
-  // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/vertrag/pruefen.ts).
+  // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/http/vertragsRouter.ts).
   process.env.VERTRAG_PRUEFEN ??= '1';
   // Ohne NODE_ENV gelten die Regeln des Betriebs (Superuser-Verbot, APP_BASE_URL);
   // die Test-DB läuft als Superuser, und gestartete Server erben diese Umgebung.
@@ -105,11 +107,34 @@ function buildAndRequire() {
   const echt = () => require(path.join(ROOT, 'dist', 'startup/verdrahtung.js')).baueVerdrahtung();
   const faul = new Proxy({}, { get: (_z, k) => (...a) => echt().nacharbeit[k](...a) });
   require(path.join(ROOT, 'dist', 'src/auftraege/nacharbeit.js')).verdrahteNacharbeit(faul);
-  require(path.join(ROOT, 'dist', 'db/database.js')).setzeErststart(() => echt().erststart());
+  const dbModul = require(path.join(ROOT, 'dist', 'db/database.js'));
+  // Wie server.ts: Der Zugang des Prozesses legt in einer leeren Datenbank das erste Konto an.
+  if (!_zugangGesetzt) {
+    dbModul.setzeStandardDb(() =>
+      dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung(), { erststart: () => echt().erststart() }));
+    _zugangGesetzt = true;
+  }
+  // prozess.js lädt nichts; bereich.js erst beim ersten Gebrauch der Dienste.
+  require(path.join(ROOT, 'dist', 'src/katalog/prozess.js')).verdrahteKatalog(() =>
+    require(path.join(ROOT, 'dist', 'src/katalog/bereich.js')).erzeugeKatalog({ db: dbModul.standardDb() }));
+  require(path.join(ROOT, 'dist', 'src/sets/prozess.js')).verdrahteSets(() =>
+    require(path.join(ROOT, 'dist', 'src/sets/bereich.js')).erzeugeSets({ db: dbModul.standardDb(), nacharbeit: faul }));
   return rel => require(path.join(ROOT, 'dist', rel));
 }
 
 module.exports.buildAndRequire = buildAndRequire;
+
+/** Stellt Umgebungsvariablen um (undefined löscht) und lässt konfig() sie neu
+ *  lesen: Der Server liest sie einmal beim Start (src/infra/konfig.ts). */
+function umgebung(werte) {
+  for (const [k, v] of Object.entries(werte)) {
+    if (v === undefined) delete process.env[k];
+    else process.env[k] = v;
+  }
+  // Noch nicht geladen: Der erste konfig()-Aufruf liest die neuen Werte ohnehin.
+  const datei = path.join(ROOT, 'dist', 'src/infra/konfig.js');
+  if (require.cache[datei]) require(datei).konfigNeuLesen();
+}
 module.exports.baueDist = baueDist;
 module.exports.DIST = path.join(ROOT, 'dist');
 
@@ -168,8 +193,6 @@ module.exports.regexWoertlich = regexWoertlich;
 
 /** Der Vorschau-Weg des Bild-Proxys (src/katalog/bilder/proxyThumbs.ts). */
 function proxyThumbQuelle() {
-  const path = require('path'), fs = require('fs');
-  const ROOT = path.join(__dirname, '..', '..');
   return ['src/katalog/http/bildProxy.ts', 'routes/imgProxy.ts', 'src/katalog/bilder/proxyThumbs.ts', 'src/katalog/bilder/imgCacheServe.ts']
     .map(dienstQuelle).join('\n');
 }
@@ -189,8 +212,6 @@ module.exports.adminQuelle = adminQuelle;
 
 /** Der Weg, auf dem ein Set entsteht oder sich ändert, samt Katalogarbeit. */
 function setKernQuelle() {
-  const path = require('path'), fs = require('fs');
-  const ROOT = path.join(__dirname, '..', '..');
   return [
     ['routes/api_v1/sets.ts'],
     ['src/sets/dienst.ts'],
@@ -206,16 +227,15 @@ module.exports.setKernQuelle = setKernQuelle;
 const HANDLER_MODULE = ['src/bestand/gemeinsam', 'src/haushalt/haushalt', 'src/teile/abfragen', 'src/sets/lesen', 'src/sets/loeschen',
   'src/figuren/abfragen', 'src/bestand/kennzahlen'];
 function handlerQuelle() {
-  const path = require('path'), fs = require('fs');
-  const wurzel = path.join(__dirname, '..', '..');
   return HANDLER_MODULE.map(m => dienstQuelle(m + '.ts')).join('\n');
 }
 module.exports.handlerQuelle = handlerQuelle;
 
 /** Das gebaute Modul für einen Namen aus den Leseabfragen. */
 function handlerModul(_req) {
+  // Die Sets-Dienste bekommen ihren Kontext über die Fassade (src/sets/index.ts).
   return Object.assign({},
-    ..._req && HANDLER_MODULE.map(m => _req(`${m}.js`)));
+    ..._req && HANDLER_MODULE.map(m => _req(`${m}.js`)), _req && _req('src/sets/index.js'));
 }
 module.exports.handlerModul = handlerModul;
 
@@ -496,6 +516,9 @@ function dienstQuelle(rel) {
   const repos = new Set([...ohneKommentare(s).matchAll(/(?:from\s+|import\(\s*|require\(\s*)['"](\.[^'"]*repository[^'"]*)['"]/g)]
     .map(m => path.posix.normalize(path.posix.join(path.posix.dirname(rel), m[1])).replace(/\.js$/, ''))
     .map(z => fs.existsSync(path.join(ROOT, z + '.ts')) ? z + '.ts' : z + '/index.ts'));
+  // Der Katalog bindet seine Repositories in einer Fabrik (src/katalog/bereich.ts).
+  for (const m of ohneKommentare(s).matchAll(/\bkatalog\(\)\.(\w+)\./g))
+    if (fs.existsSync(path.join(ROOT, `src/katalog/repository/${m[1]}.ts`))) repos.add(`src/katalog/repository/${m[1]}.ts`);
   return [s, ...[...repos].map(r => fs.readFileSync(path.join(ROOT, r), 'utf8'))].join('\n');
 }
 module.exports.dienstQuelle = dienstQuelle;
