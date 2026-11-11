@@ -4,7 +4,7 @@
 
 import { createHash } from 'node:crypto';
 import { logAndContinue } from '../../infra/fehler';
-import * as repo from '../repository/bewertung';
+import type * as repo from '../repository/bewertung';
 import { asIds, withOwners, blickfeldAus, type Sicht } from '../../haushalt/haushalt';
 import { getGlobalSetting, getSetting } from '../../einstellungen/settings';
 import { resolveImageLocal, proxyImageUrl } from '../../katalog/bilder/images';
@@ -15,7 +15,7 @@ import {
   preisAusVorrat, setPreisAusVorrat, teilSchluessel, type Blickfeld, type PreisDaten,
 } from './preise';
 import { zaehle } from './abfragen';
-import { ladeSetErfassungen } from '../repository/erfassungen';
+import type { ladeSetErfassungen } from '../repository/erfassungen';
 import { KEINE_FARBE } from '../../infra/validate';
 import { aufRappen, inZehntel4 } from '../../infra/geld';
 import { stelleAuftragEin } from '../../auftraege/dienst';

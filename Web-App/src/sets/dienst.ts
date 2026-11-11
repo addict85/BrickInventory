@@ -9,7 +9,7 @@ import { stelleAuftragEin } from '../auftraege/dienst';
 import { resolveImageLocal, proxyImageUrl } from '../katalog/bilder/images';
 import { getSetting } from '../einstellungen/settings';
 import { normalisiereLagerort } from '../bestand/lagerort';
-import { setzeAlarm } from '../finanzen/preisalarm';
+import type { setzeAlarm } from '../finanzen/preisalarm';
 import { importAlsAuftrag } from '../auftraege/importAlsAuftrag';
 import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';
 import { anleitungenZuSet, anleitungenZusammenlegen, loescheAnleitungen, anleitungNeuLadenErlaubt, anzahlAnleitungen } from '../katalog/instructions';

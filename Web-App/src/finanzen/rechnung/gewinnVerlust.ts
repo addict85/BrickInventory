@@ -6,9 +6,9 @@ import { effectiveCondition } from './zustand';
 import { computeMinifigsValuation, computePartsValuation } from './bewertung';
 import type { Blickfeld } from './preise';
 import { zaehle } from './abfragen';
-import { ladeSetErfassungen } from '../repository/erfassungen';
+import type { ladeSetErfassungen } from '../repository/erfassungen';
 import { aufRappen, inZehntel4, summeAus } from '../../infra/geld';
-import * as repo from '../repository/gewinnVerlust';
+import type * as repo from '../repository/gewinnVerlust';
 import { finanzenBereich } from '../prozess';
 
 type PnlSet = Awaited<ReturnType<typeof repo.setsMitErfassungen>>[number];
