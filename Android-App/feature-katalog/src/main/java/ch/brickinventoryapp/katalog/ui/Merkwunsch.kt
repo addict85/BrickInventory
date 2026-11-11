@@ -1,9 +1,7 @@
 package ch.brickinventoryapp.katalog.ui
 
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Zustand
-
-/** Richtung eines Preisalarms; [wert] ist die Kennung des Servers (PreisalarmRequest). */
-enum class Alarmrichtung(val wert: String) { UNTER("unter"), UEBER("ueber") }
 
 /**
  * „Auf die Merkliste“ aus dem Katalog-Detail. Die Schwelle bleibt Text: Leer heisst

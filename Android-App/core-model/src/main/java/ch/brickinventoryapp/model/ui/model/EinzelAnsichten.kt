@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.model.ui.model
 
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.model.BrickColor
@@ -74,7 +75,7 @@ fun Gutschein.alsAnsicht() = GutscheinAnsicht(id, number, pin, amount, currency,
 data class PreisalarmAnsicht(
     val setNumber: String,
     val condition: Zustand,
-    val richtung: String,
+    val richtung: Alarmrichtung,
     val schwelle: Double,
     val currencyCode: Waehrung,
     val ausgeloest: Boolean,
@@ -86,7 +87,7 @@ data class PreisalarmAnsicht(
     val setImgUrl: String?,
     val besitzt: Boolean,
 ) {
-    val unter: Boolean get() = richtung == "unter"
+    val unter: Boolean get() = richtung == Alarmrichtung.UNTER
 }
 
 fun Preisalarm.alsAnsicht() = PreisalarmAnsicht(setNumber, condition, richtung, schwelle, currencyCode, ausgeloest,

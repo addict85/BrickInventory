@@ -78,7 +78,8 @@ class AusgangsBeobachter @Inject constructor(
         Bestandsart.MERKLISTE -> Liste.MERKLISTE
         Bestandsart.TEILE, Bestandsart.MANUELLE_TEILE -> Liste.TEILE
         Bestandsart.FIGUREN, Bestandsart.MANUELLE_FIGUREN -> Liste.FIGUREN
-        Bestandsart.GUTSCHEINE -> null
+        // Ändern sich nie über den Ausgang, nur online.
+        Bestandsart.GUTSCHEINE, Bestandsart.PREISALARME, Bestandsart.LAGERORTE -> null
     }
 
     private suspend fun gleicheAb(l: Liste) {

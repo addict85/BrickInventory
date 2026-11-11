@@ -105,7 +105,7 @@ class ErfassungViewModelTest {
     }
 
     private fun vm(anleger: Anleger = Anleger(emptyList())) = t.merke(
-        ErfassungViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(), KatalogRepository(t.api, t.cache), anleger)
+        ErfassungViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(), t.setKatalog(), t.merkliste(), KatalogRepository(t.api, t.cache), anleger)
     ).also { anleger.vm = it }
 
     @Before
@@ -210,7 +210,7 @@ class ErfassungViewModelTest {
         bis("Dialog") { vm.barcodeState.value.result == "75192-1" }
         vm.confirmAddBarcode(Erfassungswunsch("75192-1", zustand = Zustand.GEBRAUCHT))
         bis("gemeldet") { t.meldungen.text != null }
-        val merkliste = runBlocking { t.sets().beobachteMerkliste().first().liste }
+        val merkliste = runBlocking { t.merkliste().beobachteMerkliste().first().liste }
         assertEquals("der Merkposten steht in der Ablage", listOf("75192-1"), merkliste.map { it.setNumber })
         assertEquals("t${R.string.wanted_added}", t.meldungen.text)
         assertTrue(pfade.anfragenAn("POST /api/v1/wanted").isNotEmpty())

@@ -47,11 +47,6 @@ interface LokalerBestand {
     suspend fun filtere(bereich: String, art: Bestandsart, filter: Filterspalten): Lokal<LokaleZeile>
     /** Ersetzt die Liste; [stand] null heisst „lokal geändert, Serverstand bleibt“. */
     suspend fun ersetze(bereich: String, art: Bestandsart, zeilen: List<LokaleZeile>, stand: Long?)
-    /**
-     * Eine weitere Seite: [zeilen] hinten anfügen (gleicher Schlüssel ersetzt),
-     * [weg] entfernen. Der Rest der Liste wird dabei weder gelesen noch geschrieben.
-     */
-    suspend fun haengeAn(bereich: String, art: Bestandsart, zeilen: List<LokaleZeile>, weg: Set<String>, stand: Long)
     /** Alles löschen, was nicht zu [bereich] gehört — auf dem Gerät ist immer nur ein Konto angemeldet. */
     suspend fun raeumeAndere(bereich: String)
     suspend fun leere()
@@ -74,13 +69,6 @@ class SpeicherBestand : LokalerBestand {
         daten.update { alt ->
             alt + ((bereich to art) to Lokal(zeilen.associateBy { it.schluessel }.values.toList(),
                 stand ?: alt[bereich to art]?.stand))
-        }
-
-    override suspend fun haengeAn(bereich: String, art: Bestandsart, zeilen: List<LokaleZeile>, weg: Set<String>, stand: Long) =
-        daten.update { alt ->
-            val neu = zeilen.associateBy { it.schluessel }
-            val bisher = alt[bereich to art]?.liste.orEmpty().filterNot { it.schluessel in weg || it.schluessel in neu }
-            alt + ((bereich to art) to Lokal(bisher + neu.values, stand))
         }
 
     override suspend fun raeumeAndere(bereich: String) = daten.update { alt -> alt.filterKeys { it.first == bereich } }

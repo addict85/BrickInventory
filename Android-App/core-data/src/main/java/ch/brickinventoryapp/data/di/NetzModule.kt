@@ -40,7 +40,7 @@ import ch.brickinventoryapp.sicherheit.SystemWurzeln
 /** OkHttp-Clients, Bildlader und Retrofit — alles, was über das Netz geht. */
 @Module
 @InstallIn(SingletonComponent::class)
-object NetzModule {
+internal object NetzModule {
 
     @Provides
     @Singleton

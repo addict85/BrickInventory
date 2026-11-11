@@ -21,7 +21,8 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 import ch.brickinventoryapp.data.alarm.Alarmeingabe
-import ch.brickinventoryapp.data.repository.SetsRepository
+import ch.brickinventoryapp.data.repository.AlarmRepository
+import ch.brickinventoryapp.data.repository.MerklisteRepository
 import ch.brickinventoryapp.katalog.ui.KatalogZiel
 import ch.brickinventoryapp.katalog.ui.Merkwunsch
 import ch.brickinventoryapp.model.ui.Meldung
@@ -51,7 +52,8 @@ class CatalogViewModel @Inject constructor(
     /** Texte in der Sprache der App und Fehlermeldungen wie überall (AppTexte). */
     private val texte: Texte,
     /** Merkliste und Preisalarm: Das Detail zeigt den Posten und legt ihn an, ohne die Sammlung zu kennen. */
-    private val sets: SetsRepository,
+    private val merkliste: MerklisteRepository,
+    private val alarme: AlarmRepository,
     private val rollgedaechtnis: ScrollMemory,
 ) : ViewModel(), KatalogAktionen {
 
@@ -226,16 +228,16 @@ class CatalogViewModel @Inject constructor(
     // ── Detail ────────────────────────────────────────────────────────────────────
     /** Der Merkposten zu [setNumber] aus der Ablage der Merkliste; null, solange das Set nicht darauf steht. */
     fun gemerkt(setNumber: String): Flow<MerkpostenAnsicht?> =
-        sets.beobachteMerkliste().map { l -> l.liste.firstOrNull { it.setNumber == setNumber }?.alsAnsicht() }
+        merkliste.beobachteMerkliste().map { l -> l.liste.firstOrNull { it.setNumber == setNumber }?.alsAnsicht() }
 
     /** Merken und, wenn eine Schwelle dasteht, den Preisalarm gleich mit. */
     fun merke(w: Merkwunsch) {
         viewModelScope.launch {
-            when (val r = sets.legeMerkpostenAn(w.setNumber, w.zustand, w.konto)) {
+            when (val r = merkliste.legeMerkpostenAn(w.setNumber, w.zustand, w.konto)) {
                 is Ergebnis.Error ->
                     meldungen.zeige(texte.meldungFuerSnackbar(r)?.let { Meldung.Ressource(R.string.vm_error, listOf(it)) })
                 is Ergebnis.Success -> {
-                    Alarmeingabe.zahl(w.schwelleRoh)?.let { sets.setPreisalarm(w.setNumber, w.richtung.wert, it, w.zustand) }
+                    Alarmeingabe.zahl(w.schwelleRoh)?.let { alarme.setPreisalarm(w.setNumber, w.richtung, it, w.zustand) }
                     meldungen.zeige(Meldung.Ressource(if (r.data.warNeu) R.string.wanted_added else R.string.wanted_already))
                 }
             }
@@ -246,7 +248,7 @@ class CatalogViewModel @Inject constructor(
         catalogDetailJob?.cancel()
         catalogDetailJob = viewModelScope.launch {
             // Die Merkliste in die Ablage, damit [gemerkt] den Posten kennt; still, das Detail zählt.
-            launch { sets.aktualisiereMerkliste() }
+            launch { merkliste.aktualisiereMerkliste() }
             _catalogState.update { it.copy(detailLoading = true, detail = null) }
             when (val r = katalog.getCatalogSetDetail(setNumber)) {
                 is Ergebnis.Success -> {

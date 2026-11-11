@@ -3,23 +3,24 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.PdfUndCsvAbrufTest
 Rot: ein Netzfehler ist vorübergehend
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
-@@ -245,9 +245,13 @@
-
-     override suspend fun startPdfJob(bodyJson: String): Ergebnis<String> {
-         val rumpf = bodyJson.toRequestBody("application/json; charset=utf-8".toMediaType())
--        return when (val r = sicherAufrufen { api.startPdfJob(rumpf) }) {
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetDateienRepository.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetDateienRepository.kt
+index 33757a0..2ee6380 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetDateienRepository.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetDateienRepository.kt
+@@ -39,9 +39,13 @@ interface SetDateienRepository {
+ class SetDateienRepositoryImpl @Inject constructor(private val api: SetsApi) : SetDateienRepository {
+ 
+     override suspend fun startPdfJob(auftrag: PdfAuftragAnfrage): Ergebnis<String> =
+-        when (val r = sicherAufrufen { api.startPdfJob(auftrag) }) {
 -            is Ergebnis.Success -> if (r.data.jobId.isNotBlank()) Ergebnis.Success(r.data.jobId) else Ergebnis.Error.LeereAntwort()
 -            is Ergebnis.Error -> r
-+        return try {
-+            val antwort = api.startPdfJob(rumpf)
++        try {
++            val antwort = api.startPdfJob(auftrag)
 +            val jobId = antwort.body()?.jobId.orEmpty()
 +            if (!antwort.isSuccessful) Ergebnis.Error.Server(antwort.code())
 +            else if (jobId.isNotBlank()) Ergebnis.Success(jobId) else Ergebnis.Error.LeereAntwort()
 +        } catch (e: java.io.IOException) {
 +            Ergebnis.Error.Unbekannt(technisch = e.message)
          }
-     }
-
+ 
+     override suspend fun getPdfJobStatus(jobId: String): Ergebnis<PdfAuftragStand> =

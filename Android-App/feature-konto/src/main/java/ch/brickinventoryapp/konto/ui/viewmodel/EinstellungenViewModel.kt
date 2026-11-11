@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.konto.ui.viewmodel
 
+import kotlinx.coroutines.flow.first
+import ch.brickinventoryapp.data.repository.AlarmRepository
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.lifecycle.viewModelScope
@@ -10,7 +13,6 @@ import ch.brickinventoryapp.model.ui.model.alsDaten
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.Bestandsabgleich
 import ch.brickinventoryapp.konto.ui.AlarmUebersichtUiState
@@ -61,7 +63,7 @@ class EinstellungenViewModel @Inject constructor(
     private val abgleich: Bestandsabgleich,
     private val konto: KontoRepository,
     private val verwaltung: VerwaltungRepository,
-    private val sets: SetsRepository,
+    private val alarme: AlarmRepository,
     private val teile: TeileRepository,
     private val leser: DateiLeser,
 ) : ViewModel(), Filterwahl by filter, EinstellungenAktionen {
@@ -151,19 +153,19 @@ class EinstellungenViewModel @Inject constructor(
 
     override fun ladeAlarmUebersicht() {
         viewModelScope.launch {
-            when (val r = sets.getAlleAlarme()) {
-                is Ergebnis.Success ->
-                    if (r.data.success) _alarmUebersicht.value = AlarmUebersichtUiState(alarme = r.data.alerts.map { it.alsAnsicht() }, geladen = true)
-                    else meldungen.zeige(r.data.error)
-                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
-            }
+            // Gezeigt wird die Ablage; ohne Netz die zuletzt geholte Liste samt Meldung.
+            val r = alarme.aktualisiereAlarme()
+            if (r is Ergebnis.Error) meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+            val lokal = alarme.beobachteAlarme().first()
+            if (r is Ergebnis.Success || lokal.stand != null)
+                _alarmUebersicht.value = AlarmUebersichtUiState(alarme = lokal.liste.map { it.alsAnsicht() }, geladen = true)
         }
     }
 
-    override fun aendereAlarmSchwelle(setNumber: String, condition: Zustand, richtung: String, schwelle: Double) {
+    override fun aendereAlarmSchwelle(setNumber: String, condition: Zustand, richtung: Alarmrichtung, schwelle: Double) {
         wartendeSchwellen.remove(setNumber to condition)?.cancel()
         if (schwelle <= 0.0) { meldungen.zeige(meldungen.text(R.string.alerts_bad_value)); return }
-        alarmSchleuse { sets.setPreisalarm(setNumber, richtung, schwelle, condition) }
+        alarmSchleuse { alarme.setPreisalarm(setNumber, richtung, schwelle, condition) }
     }
 
     /** Getippte Schwellen, die auf ihre Ruhezeit warten — je (Set, Zustand) eine. */
@@ -175,7 +177,7 @@ class EinstellungenViewModel @Inject constructor(
      * erschien. Im ViewModel, damit die Eingabe das Verlassen der Seite übersteht.
      * Ein leeres Feld löscht hier nicht — dafür steht der Papierkorb daneben.
      */
-    override fun setzeAlarmSchwelle(setNumber: String, condition: Zustand, richtung: String, roh: String) {
+    override fun setzeAlarmSchwelle(setNumber: String, condition: Zustand, richtung: Alarmrichtung, roh: String) {
         val schluessel = setNumber to condition
         wartendeSchwellen.remove(schluessel)?.cancel()
         val schwelle = Alarmeingabe.zahl(roh) ?: return
@@ -187,14 +189,14 @@ class EinstellungenViewModel @Inject constructor(
     }
 
     override fun loescheAlarm(setNumber: String, condition: Zustand) =
-        alarmSchleuse { sets.deletePreisalarm(setNumber, condition) }
+        alarmSchleuse { alarme.deletePreisalarm(setNumber, condition) }
 
     /** Ohne Bindestrich gilt die erste Fassung („10294“ → „10294-1“), wie beim Erfassen. */
-    override fun legeAlarmAn(setNumber: String, condition: Zustand, richtung: String, roh: String) {
+    override fun legeAlarmAn(setNumber: String, condition: Zustand, richtung: Alarmrichtung, roh: String) {
         val nummer = setNumber.trim().let { if (it.isBlank() || it.contains('-')) it else "$it-1" }
         val schwelle = Alarmeingabe.zahl(roh)
         if (nummer.isBlank() || schwelle == null || schwelle <= 0.0) { meldungen.zeige(meldungen.text(R.string.alerts_bad_value)); return }
-        alarmSchleuse { sets.setPreisalarm(nummer, richtung, schwelle, condition) }
+        alarmSchleuse { alarme.setPreisalarm(nummer, richtung, schwelle, condition) }
     }
 
     /** Ändern und Löschen: rufen, melden, die Übersicht neu, wenn sie schon dasteht. */
@@ -208,7 +210,7 @@ class EinstellungenViewModel @Inject constructor(
         }
     }
 
-    /** Alarme liegen nicht in der Ablage: Ihren Auslöser setzt der Preislauf des Servers. */
+    /** Neu vom Server, auch nach eigenem Schreiben: Den Auslöser setzt der Preislauf, nicht die App. */
     private fun alarmeNeu(): Unit = if (_alarmUebersicht.value.geladen) ladeAlarmUebersicht() else Unit
 
     // ── Lagerorte ────────────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.ScopeFilter
@@ -21,5 +22,5 @@ internal interface MerklisteAktionen {
         lagerort: String? = null,
     )
     fun ladeMerkpostenDetail(setNumber: String)
-    fun setzePreisalarm(setNumber: String, richtung: String, roh: String, zustand: Zustand)
+    fun setzePreisalarm(setNumber: String, richtung: Alarmrichtung, roh: String, zustand: Zustand)
 }

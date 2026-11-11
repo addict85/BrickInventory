@@ -6,6 +6,7 @@ import ch.brickinventoryapp.model.data.model.AddPartRequest
 import ch.brickinventoryapp.model.data.model.AddSetRequest
 import ch.brickinventoryapp.model.data.model.MerkpostenRequest
 import ch.brickinventoryapp.model.data.model.UpdateManualItemRequest
+import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -38,7 +39,7 @@ sealed class Bearbeitung : Offlineablage.Wirkung {
     }
 
     @Serializable @SerialName("merkposten_loeschen")
-    data class MerkpostenLoeschen(val setNumber: String, val zustand: String, val besitzer: Int?) : Bearbeitung() {
+    data class MerkpostenLoeschen(val setNumber: String, val zustand: Zustand, val besitzer: Int?) : Bearbeitung() {
         override val art get() = Bestandsart.MERKLISTE
         override val ziel get() = setNumber
     }

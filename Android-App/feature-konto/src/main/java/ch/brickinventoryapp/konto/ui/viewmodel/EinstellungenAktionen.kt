@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.konto.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 
@@ -8,11 +9,11 @@ interface EinstellungenAktionen {
     fun saveSettings(currency: Waehrung, condition: Zustand)
     fun saveUserDefaultCondition(condition: Zustand?)
     fun ladeAlarmUebersicht()
-    fun aendereAlarmSchwelle(setNumber: String, condition: Zustand, richtung: String, schwelle: Double)
-    fun setzeAlarmSchwelle(setNumber: String, condition: Zustand, richtung: String, roh: String)
+    fun aendereAlarmSchwelle(setNumber: String, condition: Zustand, richtung: Alarmrichtung, schwelle: Double)
+    fun setzeAlarmSchwelle(setNumber: String, condition: Zustand, richtung: Alarmrichtung, roh: String)
     fun loescheAlarm(setNumber: String, condition: Zustand)
     /** Einen Alarm anlegen wie in der Web-App: Setnummer, Zustand, Richtung und Schwelle (roh). */
-    fun legeAlarmAn(setNumber: String, condition: Zustand, richtung: String, roh: String)
+    fun legeAlarmAn(setNumber: String, condition: Zustand, richtung: Alarmrichtung, roh: String)
     fun ladeEigeneLagerorte()
     fun legeLagerortAn(name: String)
     fun benenneLagerortUm(id: Int, name: String)

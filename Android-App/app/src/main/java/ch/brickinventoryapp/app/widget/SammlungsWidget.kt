@@ -3,8 +3,6 @@ package ch.brickinventoryapp.app.widget
 import ch.brickinventoryapp.sicherheit.Geraetesperre
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import android.content.Context
-import android.util.Base64
-import androidx.core.content.edit
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,13 +36,12 @@ import ch.brickinventoryapp.app.MainActivity
 import ch.brickinventoryapp.ressourcen.R
 import androidx.hilt.work.HiltWorker
 import ch.brickinventoryapp.data.Darstellungsablage
+import ch.brickinventoryapp.data.Widgetablage
 import ch.brickinventoryapp.data.Zugangsdaten
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.sicherheit.AblageChiffre
-import ch.brickinventoryapp.sicherheit.Ablageschluessel
 import ch.brickinventoryapp.data.util.LanguageManager
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -58,40 +55,21 @@ import ch.brickinventoryapp.data.repository.Ergebnis
  * übrigen Ablagen; ein Klartext-Altbestand gilt als leer.
  */
 internal object WidgetAblage {
-    private const val DATEI = "widget"
-    private const val SCHLUESSEL = "zahlen"
+    /** Die frühere eigene Datei; nur noch zum Leeren, damit kein alter Stand liegen bleibt. */
+    private const val ALTE_DATEI = "widget"
 
-    private fun chiffre(ctx: Context) = AblageChiffre {
-        EntryPointAccessors.fromApplication(ctx, WidgetZugang::class.java).ablage().fuer("widget")
-    }
+    private fun ablage(ctx: Context) = EntryPointAccessors.fromApplication(ctx, WidgetZugang::class.java).widgetablage()
 
-    /** Zweck und Schlüssel als AAD, wie im Antwort-Cache. */
-    private const val BINDUNG = "$DATEI/$SCHLUESSEL"
-
-    fun lies(ctx: Context): WidgetZahlen? {
-        val roh = ctx.getSharedPreferences(DATEI, Context.MODE_PRIVATE).getString(SCHLUESSEL, null) ?: return null
-        return runCatching {
-            val daten = Base64.decode(roh, Base64.NO_WRAP)
-            val verfahren = chiffre(ctx)
-            // Ein Stand ohne Bindung (ältere Fassung) wird einmal übernommen und gebunden neu abgelegt.
-            val text = verfahren.entschluessle(daten, BINDUNG)
-                ?: verfahren.entschluessleUngebunden(daten)?.also { ablegen(ctx, verfahren, it) }
-            text?.let { ApiJson.decodeFromString(WidgetZahlen.serializer(), it.toString(Charsets.UTF_8)) }
-        }.getOrNull()
-    }
+    fun lies(ctx: Context): WidgetZahlen? = runCatching {
+        ablage(ctx).widgetStand()?.let { ApiJson.decodeFromString(WidgetZahlen.serializer(), it) }
+    }.getOrNull()
 
     fun leeren(ctx: Context) {
-        ctx.getSharedPreferences(DATEI, Context.MODE_PRIVATE).edit { remove(SCHLUESSEL) }
+        ablage(ctx).leereWidgetStand()
+        ctx.deleteSharedPreferences(ALTE_DATEI)
     }
 
-    fun schreibe(ctx: Context, z: WidgetZahlen) =
-        ablegen(ctx, chiffre(ctx), ApiJson.encodeToString(WidgetZahlen.serializer(), z).toByteArray(Charsets.UTF_8))
-
-    private fun ablegen(ctx: Context, verfahren: AblageChiffre, text: ByteArray) {
-        ctx.getSharedPreferences(DATEI, Context.MODE_PRIVATE).edit {
-            putString(SCHLUESSEL, Base64.encodeToString(verfahren.verschluessle(text, BINDUNG), Base64.NO_WRAP))
-        }
-    }
+    fun schreibe(ctx: Context, z: WidgetZahlen) = ablage(ctx).setzeWidgetStand(ApiJson.encodeToString(WidgetZahlen.serializer(), z))
 }
 
 /**
@@ -103,7 +81,7 @@ internal object WidgetAblage {
 interface WidgetZugang {
     fun zugangsdaten(): Zugangsdaten
     fun darstellung(): Darstellungsablage
-    fun ablage(): Ablageschluessel
+    fun widgetablage(): Widgetablage
 }
 
 /**

@@ -36,7 +36,7 @@ data class GetauschterToken(val rotation: TokenRotation, val herkunft: String?)
  * wenn Token, Herkunft und Generation noch dieselben sind — unter derselben
  * Sperre, unter der Anmelden, Abmelden und Serverwechsel schreiben.
  */
-class TokenSchranke {
+internal class TokenSchranke {
     private val sperre = Mutex()
     @Volatile var generation: Long = 0
         private set
@@ -97,7 +97,7 @@ internal fun anmeldungUeberfaellig(angemeldetAm: Long, jetzt: Long): Boolean =
  * BEVOR ihn jemand benutzt: Ginge die App zwischen Antwort und Speichern zu,
  * stünde sonst nur noch der alte da — und der gilt nach dem Tausch nur 5 min.
  */
-class TokenTausch(
+internal class TokenTausch(
     private val stand: suspend () -> TokenStand,
     private val ersetze: suspend (vorher: TokenStand, neu: String, anfrageHerkunft: String?) -> Boolean,
     private val rotiere: suspend (alterToken: String) -> Ergebnis<GetauschterToken>,

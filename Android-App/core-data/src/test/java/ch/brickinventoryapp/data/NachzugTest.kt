@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.repository.FigurenRepositoryImpl
+import ch.brickinventoryapp.data.repository.MerklisteRepositoryImpl
 import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
 import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
@@ -57,6 +58,7 @@ class NachzugTest {
     )
     private val api = pfade.imTakt()
     private val sets = SetsRepositoryImpl(api, ablage, Wiederholung.EINMAL)
+    private val merkliste = MerklisteRepositoryImpl(api, ablage, Wiederholung.EINMAL)
     private val teile = TeileRepositoryImpl(api, ablage, Wiederholung.EINMAL)
     private val figuren = FigurenRepositoryImpl(api, ablage, Wiederholung.EINMAL)
 
@@ -90,8 +92,8 @@ class NachzugTest {
 
     @Test
     fun `ein verschobener und ein uebernommener Merkposten stehen nach der Antwort in der Ablage`() = runBlocking {
-        sets.verschiebeMerkposten("20001-1", Zustand.NEU, vonId = 1, zuId = 2)
-        sets.uebernimmMerkposten("20002-1", Zustand.NEU, quantity = 2, ownerUserId = 1)
+        merkliste.verschiebeMerkposten("20001-1", Zustand.NEU, vonId = 1, zuId = 2)
+        merkliste.uebernimmMerkposten("20002-1", Zustand.NEU, quantity = 2, ownerUserId = 1)
         assertEquals(listOf("20001-1|2"), ablage.lies(Faecher.MERKLISTE)!!.liste.map { "${it.setNumber}|${it.userId}" })
         assertEquals("übernommen in die Galerie", listOf("20002-1" to 2, "10001-1" to 1),
             ablage.lies(Faecher.SETS)!!.liste.map { it.setNumber to it.quantity })

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.model.ui.model
 
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.model.BrickLinkRef
@@ -126,7 +127,7 @@ fun Merkposten.alsAnsicht() = MerkpostenAnsicht(
 )
 
 data class MerkpostenAlarmAnsicht(
-    val richtung: String = "unter",
+    val richtung: Alarmrichtung = Alarmrichtung.UNTER,
     val schwelle: Double = 0.0,
     val ausgeloest: Boolean = false,
 )

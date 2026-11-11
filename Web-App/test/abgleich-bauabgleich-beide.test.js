@@ -112,7 +112,7 @@ test('App: fragt ihr Blickfeld an DIESER Stelle', () => {
   // Was sich geändert hat (Marcos Vorgabe)
   assert.match(KT_SCREEN, /(?:Checkbox\(checked = |KaestchenZeile\(stringResource\(R\.string\.partslist_include_subs\), )mitUnterkonten/,
     'Der App fehlt die Wahl „Unterkonten mit einbeziehen"');
-  assert.match(KT_FEAT, /if \(mitUnterkonten\) null else "own"/,
+  assert.match(KT_FEAT, /if \(mitUnterkonten\) null else Kontoauswahl\.Eigene/,
     'Die App schickt ohne Haken kein „own"');
   assert.doesNotMatch(KT_FEAT,
     /scopeFor\((ch\.brickinventoryapp\.model\.data\.)?ScopeFilter\.View\.PARTS\)/,

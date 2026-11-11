@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.teile.ui.viewmodel
 
+import ch.brickinventoryapp.model.data.model.PdfAuftragTeil
+import ch.brickinventoryapp.model.data.model.PdfAuftragSet
+import ch.brickinventoryapp.model.data.model.PdfAuftragAnfrage
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
@@ -23,10 +26,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.addJsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonArray
 import javax.inject.Inject
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.sitzung.AppUiState
@@ -159,7 +158,7 @@ class TeilelisteViewModel @Inject constructor(
         if (z.isExporting || z.parts.isEmpty()) return
         _zustand.update { it.copy(isExporting = true, pdfError = null) }
         viewModelScope.launch {
-            val ergebnis = export.erzeuge(exportRumpf(z.sets, z.parts))
+            val ergebnis = export.erzeuge(exportAuftrag(z.sets, z.parts))
             _zustand.update {
                 when (ergebnis) {
                     is ExportErgebnis.Datei -> it.copy(isExporting = false, pdfDatei = ergebnis.datei)
@@ -187,30 +186,18 @@ class TeilelisteViewModel @Inject constructor(
     fun pdfGeoeffnet() = _zustand.update { it.copy(pdfDatei = null) }
     fun pdfFehlerGesehen() = _zustand.update { it.copy(pdfError = null) }
 
-    private fun exportRumpf(sets: List<PlSet>, parts: List<PlPart>): String {
+    private fun exportAuftrag(sets: List<PlSet>, parts: List<PlPart>): PdfAuftragAnfrage {
         val serverUrl = sitzung.state.value.serverUrl.trimEnd('/')
-        return buildJsonObject {
-            putJsonArray("sets") {
-                sets.forEach { s -> addJsonObject { put("set_number", s.setNumber); put("name", s.name) } }
-            }
-            putJsonArray("parts") {
-                parts.forEach { p ->
-                    val imgUrl = p.imageUrl ?: ""
-                    addJsonObject {
-                        put("part_number", p.partNumber)
-                        put("bl_part_number", p.blPartNumber ?: p.partNumber)
-                        put("part_name", p.partName)
-                        put("color_name", p.colorName)
-                        put("color_hex", p.colorHex ?: "")
-                        put("color_id", p.colorId)
-                        put("quantity", p.quantity)
-                        put("image_local", p.imageLocal ?: "")
-                        put("image_url", if (imgUrl.startsWith(serverUrl)) imgUrl.removePrefix(serverUrl) else imgUrl)
-                        put("is_fig", p.isFig)
-                    }
-                }
-            }
-        }.toString()
+        return PdfAuftragAnfrage(
+            sets = sets.map { PdfAuftragSet(it.setNumber, it.name) },
+            parts = parts.map { p ->
+                val imgUrl = p.imageUrl ?: ""
+                PdfAuftragTeil(partNumber = p.partNumber, blPartNumber = p.blPartNumber ?: p.partNumber, partName = p.partName,
+                    colorName = p.colorName, colorHex = p.colorHex ?: "", colorId = p.colorId, quantity = p.quantity,
+                    imageLocal = p.imageLocal ?: "",
+                    imageUrl = if (imgUrl.startsWith(serverUrl)) imgUrl.removePrefix(serverUrl) else imgUrl, isFig = p.isFig)
+            },
+        )
     }
 
     private companion object {

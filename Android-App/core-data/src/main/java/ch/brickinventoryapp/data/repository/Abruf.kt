@@ -29,14 +29,13 @@ internal suspend fun <R, T : Any> Offlineablage.abgeglichen(
     fach: Fach<T>,
     liste: (R) -> List<T>,
     ausLokal: (List<T>) -> R,
-    anhaengen: Boolean = false,
     call: suspend () -> Ergebnis<R>,
 ): Ergebnis<R> {
     val vorher = bereich()
     val frisch = call()
     val bereich = bereich()?.takeIf { it == vorher } ?: return frisch
     if (frisch is Ergebnis.Success) {
-        uebernimm(fach, liste(frisch.data), anhaengen, bereich)
+        uebernimm(fach, liste(frisch.data), bereich)
         // Wartet noch etwas im Ausgang, liegt es lokal schon über der Serverantwort.
         if (!wartet(fach.art)) return frisch
         return Ergebnis.Success(ausLokal(lies(fach)?.liste.orEmpty()))
@@ -168,7 +167,7 @@ internal suspend fun <T : Any> ResponseCache.cached(
  * Ausgang (data/lokal) damit sendet, ohne ein Repository zu sein.
  */
 @Suppress("TooGenericExceptionCaught") // Die Grenze: jeder Fehler wird hier zu Ergebnis.
-suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Ergebnis<T> {
+internal suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Ergebnis<T> {
     return try {
         val response = call()
         if (response.isSuccessful) {

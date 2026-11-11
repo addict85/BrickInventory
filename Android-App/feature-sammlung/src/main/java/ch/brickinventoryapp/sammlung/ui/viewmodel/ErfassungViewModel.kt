@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.sammlung.ui.viewmodel
 
+import ch.brickinventoryapp.data.repository.MerklisteRepository
+import ch.brickinventoryapp.data.repository.SetKatalogRepository
 import ch.brickinventoryapp.model.ui.Scannerherkunft
 import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.model.fach.Zustand
@@ -46,6 +48,8 @@ class ErfassungViewModel @Inject constructor(
     private val filter: Filterwahl,
     private val meldungen: Meldungen,
     private val sets: SetsRepository,
+    private val setKatalog: SetKatalogRepository,
+    private val merkliste: MerklisteRepository,
     private val katalog: KatalogRepository,
     private val anleger: SetAnleger,
 ) : ViewModel(), Filterwahl by filter, ErfassungAktionen {
@@ -83,7 +87,7 @@ class ErfassungViewModel @Inject constructor(
             // Anzeige verlässlich weg.
             try {
                 erfassung.zeige(value, Pruefphase.BARCODE)
-                when (val r = sets.resolveBarcode(value)) {
+                when (val r = setKatalog.resolveBarcode(value)) {
                     is Ergebnis.Success -> {
                         val setNum = r.data.setNumber
                         if (setNum.isBlank()) {
@@ -171,7 +175,7 @@ class ErfassungViewModel @Inject constructor(
      */
     private suspend fun zeigeVorhandenes(setNum: String): Boolean {
         erfassung.zeige(setNum, Pruefphase.BESTAND)
-        return when (val vorhanden = sets.getSetExists(setNum)) {
+        return when (val vorhanden = setKatalog.getSetExists(setNum)) {
             is Ergebnis.Success -> {
                 if (vorhanden.data.exists) {
                     meldungen.quittiere()
@@ -199,7 +203,7 @@ class ErfassungViewModel @Inject constructor(
         when (stand.source) {
             Scannerherkunft.MERKLISTE -> {
                 viewModelScope.launch {
-                    meldungen.zeige(merkpostenAnlegen(sets, meldungen, setNum,
+                    meldungen.zeige(merkpostenAnlegen(merkliste, meldungen, setNum,
                                                         wunsch.zustand ?: Zustand.NEU, wunsch.besitzer))
                 }
                 cancelBarcode()

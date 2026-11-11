@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.sammlung.ui.viewmodel
 
+import kotlinx.coroutines.flow.first
+import ch.brickinventoryapp.model.fach.Alarmrichtung
+import ch.brickinventoryapp.data.repository.AlarmRepository
+import ch.brickinventoryapp.data.repository.MerklisteRepository
 import ch.brickinventoryapp.model.fach.Merksortierung
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,7 +20,6 @@ import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.Kontosicht
 import ch.brickinventoryapp.sammlung.ui.MerklisteUiState
 import ch.brickinventoryapp.sammlung.ui.MerkpostenDetailUiState
@@ -55,7 +58,8 @@ class MerklisteViewModel @Inject constructor(
     private val sitzung: Sitzung,
     private val filter: Filterwahl,
     private val meldungen: Meldungen,
-    private val sets: SetsRepository,
+    private val merkliste: MerklisteRepository,
+    private val alarme: AlarmRepository,
     private val kontosicht: Kontosicht,
     private val katalogRepo: KatalogRepository,
     private val finanzen: FinanzenRepository,
@@ -125,7 +129,7 @@ class MerklisteViewModel @Inject constructor(
         }
 
     private val alarmEingabe = Preisalarmeingabe(
-        scope = viewModelScope, sets = sets,
+        scope = viewModelScope, alarme = alarme,
         melde = { meldungen.zeige(it) },
         beschreibe = { meldungen.meldungFuerSnackbar(it) },
         gespeichert = { sn -> if (_merkpostenDetailState.value.setNumber == sn) loadPreisalarme(sn) },
@@ -137,9 +141,9 @@ class MerklisteViewModel @Inject constructor(
             _merklisteState.update { it.copy(laedt = true, fehler = null) }
             val konto = kontoAbfrage(f)
             quelle.value = konto?.let { kontosicht.merkliste.beobachte(it) }
-                ?: sets.beobachteMerkliste(f.query.trim().ifBlank { null }, f.zustandFilter, f.sortierung)
+                ?: merkliste.beobachteMerkliste(f.query.trim().ifBlank { null }, f.zustandFilter, f.sortierung)
             // Der Abruf füllt nur die Quelle; gezeigt wird sie (merklisteState).
-            val r = konto?.let { kontosicht.merkliste.aktualisiere(it) } ?: sets.aktualisiereMerkliste()
+            val r = konto?.let { kontosicht.merkliste.aktualisiere(it) } ?: merkliste.aktualisiereMerkliste()
             when (r) {
                 is Ergebnis.Success -> _merklisteState.update { it.copy(laedt = false) }
                 is Ergebnis.Error -> {
@@ -177,14 +181,14 @@ class MerklisteViewModel @Inject constructor(
         val nummer = setNumber.trim()
         if (nummer.isBlank()) { meldungen.zeige(meldungen.text(R.string.wanted_need_number)); return }
         viewModelScope.launch {
-            meldungen.zeige(merkpostenAnlegen(sets, meldungen, nummer, zustand, besitzer))
+            meldungen.zeige(merkpostenAnlegen(merkliste, meldungen, nummer, zustand, besitzer))
         }
     }
 
     override fun verschiebeMerkposten(setNumber: String, zustand: Zustand, vonId: Int, zuId: Int) {
         if (vonId == zuId) return
         viewModelScope.launch {
-            when (val r = sets.verschiebeMerkposten(setNumber, zustand, vonId, zuId)) {
+            when (val r = merkliste.verschiebeMerkposten(setNumber, zustand, vonId, zuId)) {
                 is Ergebnis.Success -> {
                     if (!r.data.success) { meldungen.zeige(r.data.error ?: meldungen.text(R.string.err_unknown)); return@launch }
                     meldungen.zeige(meldungen.text(
@@ -220,7 +224,7 @@ class MerklisteViewModel @Inject constructor(
         if (nur != null && v != nur) return
         _vorgemerkt.value = null
         viewModelScope.launch {
-            when (val r = sets.loescheMerkposten(v.setNumber, v.zustand, v.besitzer)) {
+            when (val r = merkliste.loescheMerkposten(v.setNumber, v.zustand, v.besitzer)) {
                 // „genommen“ stand schon in der Snackbar mit „Rückgängig“; die Ablage hat ihn nicht mehr.
                 is Ergebnis.Success -> Unit
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
@@ -236,7 +240,7 @@ class MerklisteViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             val preis = Alarmeingabe.zahl(kaufpreisRoh)
-            when (val r = sets.uebernimmMerkposten(setNumber, zustand, anzahl, preis,
+            when (val r = merkliste.uebernimmMerkposten(setNumber, zustand, anzahl, preis,
                                                    erfasstAls, besitzer,
                                                    lagerort?.trim()?.takeIf { it.isNotEmpty() })) {
                 is Ergebnis.Success -> {
@@ -258,7 +262,7 @@ class MerklisteViewModel @Inject constructor(
             val katalog = (katalogRepo.getCatalogSetDetail(setNumber) as? Ergebnis.Success)
                 ?.data?.takeIf { it.success }?.set
             _merkpostenDetailState.update { it.copy(katalog = katalog?.alsAnsicht()) }
-            val preise = (sets.getMerkpostenPreise(setNumber) as? Ergebnis.Success)
+            val preise = (merkliste.getMerkpostenPreise(setNumber) as? Ergebnis.Success)
                 ?.data?.takeIf { it.success }
             _merkpostenDetailState.update { it.copy(preise = preise?.alsAnsicht()) }
             val historie = (finanzen.getSetPriceHistory(setNumber) as? Ergebnis.Success)
@@ -269,13 +273,13 @@ class MerklisteViewModel @Inject constructor(
 
     fun loadPreisalarme(setNumber: String) {
         viewModelScope.launch {
-            val r = sets.getPreisalarme(setNumber)
-            val alarme = (r as? Ergebnis.Success)?.data?.takeIf { it.success }?.alerts?.map { it.alsAnsicht() } ?: emptyList()
-            _merkpostenDetailState.update { if (it.setNumber == setNumber) it.copy(preisalarme = alarme) else it }
+            alarme.aktualisiereAlarme()
+            val liste = alarme.beobachteAlarme(setNumber).first().liste.map { it.alsAnsicht() }
+            _merkpostenDetailState.update { if (it.setNumber == setNumber) it.copy(preisalarme = liste) else it }
         }
     }
 
-    override fun setzePreisalarm(setNumber: String, richtung: String, roh: String, zustand: Zustand) =
+    override fun setzePreisalarm(setNumber: String, richtung: Alarmrichtung, roh: String, zustand: Zustand) =
         alarmEingabe.setze(setNumber, richtung, roh, zustand)
 
     private fun nachFilter(view: ScopeFilter.View) {
@@ -302,8 +306,8 @@ class MerklisteViewModel @Inject constructor(
  * Erfassung: Ein Scan aus der Merkliste heraus legt ebenfalls einen an.
  */
 internal suspend fun merkpostenAnlegen(
-    sets: SetsRepository, texte: Texte, setNumber: String, zustand: Zustand, besitzer: Int?,
-): String? = when (val r = sets.legeMerkpostenAn(setNumber, zustand, besitzer)) {
+    merkliste: MerklisteRepository, texte: Texte, setNumber: String, zustand: Zustand, besitzer: Int?,
+): String? = when (val r = merkliste.legeMerkpostenAn(setNumber, zustand, besitzer)) {
     is Ergebnis.Success -> texte.text(if (r.data.warNeu) R.string.wanted_added else R.string.wanted_already)
     is Ergebnis.Error -> texte.meldungFuerSnackbar(r)?.let { texte.text(R.string.vm_error, it) }
 }

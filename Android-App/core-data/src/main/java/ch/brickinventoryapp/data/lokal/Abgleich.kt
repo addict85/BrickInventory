@@ -155,7 +155,7 @@ class ServerSender @Inject constructor(
         is Bearbeitung.SetErfassen -> einordnen(sicherAufrufen { sets.addSet(b.anfrage, schluessel) })
         is Bearbeitung.MerkpostenAnlegen -> einordnen(sicherAufrufen { sets.legeMerkpostenAn(b.anfrage, schluessel) })
         is Bearbeitung.MerkpostenLoeschen -> einordnenLoeschen(sicherAufrufen {
-            sets.loescheMerkposten(b.setNumber, b.zustand, b.besitzer, schluessel)
+            sets.loescheMerkposten(b.setNumber, b.zustand.kennung, b.besitzer, schluessel)
         })
         is Bearbeitung.TeilErfassen -> einordnen(sicherAufrufen { teile.addPart(b.anfrage, schluessel) })
         is Bearbeitung.TeilAendern -> einordnen(sicherAufrufen {

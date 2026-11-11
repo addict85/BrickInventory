@@ -33,7 +33,7 @@ import org.junit.Before
 import org.junit.Test
 import ch.brickinventoryapp.testing.FakeApi
 import ch.brickinventoryapp.testing.NummernTexte
-import ch.brickinventoryapp.testing.SetsRepository
+import ch.brickinventoryapp.testing.SetDateienRepository
 import ch.brickinventoryapp.testing.TestDienste
 import ch.brickinventoryapp.testing.text
 
@@ -97,7 +97,7 @@ class CsvImportViewModelTest {
     /** Angemeldet, wie nach dem Start der App; das ViewModel folgt dem Import von selbst. */
     private fun mitVm(strom: Strom, dienst: Dienst, block: suspend TestScope.(CsvImportViewModel) -> Unit) = runTest(takt) {
         strom.uhr = { testScheduler.currentTime }
-        val beobachter = CsvImportBeobachter(strom, SetsRepository(fake.api, t.cache))
+        val beobachter = CsvImportBeobachter(strom, SetDateienRepository(fake.api, t.cache))
         koordinator = CsvImportKoordinator(beobachter, dienst, t.abgleich)
         t.sitzung.angemeldet(admin = false)
         val vm = CsvImportViewModel(koordinator, beobachter, NummernTexte, t.meldungen, t.sitzung)
@@ -174,7 +174,7 @@ class CsvImportViewModelTest {
     fun `ohne Anmeldung verbindet niemand, die Anmeldung startet den Strom`() = runTest(takt) {
         val strom = Strom(listOf(status("running", 1)))
         strom.uhr = { testScheduler.currentTime }
-        val beobachter = CsvImportBeobachter(strom, SetsRepository(fake.api, t.cache))
+        val beobachter = CsvImportBeobachter(strom, SetDateienRepository(fake.api, t.cache))
         val vm = CsvImportViewModel(CsvImportKoordinator(beobachter, Dienst(), t.abgleich), beobachter,
             NummernTexte, t.meldungen, t.sitzung)
         try {

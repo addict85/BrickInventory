@@ -12,7 +12,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.data.repository.SetsRepository
+import ch.brickinventoryapp.data.repository.SetDateienRepository
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
@@ -65,7 +65,7 @@ class CsvImportService : Service() {
         }
     }
 
-    @Inject lateinit var sets: SetsRepository
+    @Inject lateinit var dateien: SetDateienRepository
     @Inject lateinit var sseClient: CsvImportSseClient
 
     // Service-Context in der gewählten App-Sprache: setApplicationLocales()
@@ -150,7 +150,7 @@ class CsvImportService : Service() {
 
     /** Eine Status-Abfrage der Rückfallebene. */
     private suspend fun pollOnce(): PollResult = fangeAusserAbbruch {
-        when (val resp = sets.getCsvImportStatus()) {
+        when (val resp = dateien.getCsvImportStatus()) {
             is Ergebnis.Success ->
                 if (applyStatus(resp.data)) PollResult.RUNNING else PollResult.FINISHED
             is Ergebnis.Error -> PollResult.ERROR

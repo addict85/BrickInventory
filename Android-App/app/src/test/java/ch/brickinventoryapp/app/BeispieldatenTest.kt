@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.data.model.PdfAuftragAnfrage
 import ch.brickinventoryapp.model.fach.Waehrung
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.repository.KatalogRepository
@@ -314,9 +315,9 @@ object Beispiele {
             t.kontosicht, FinanzenRepository(t.api, t.cache), SavedStateHandle()))
         fun teile() = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), t.kontosicht, SavedStateHandle()))
         fun finanzen() = t.merke(FinanzViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, FinanzenRepository(t.api, t.cache), SavedStateHandle()))
-        fun merkliste() = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, SetsRepository(t.api, t.cache), t.kontosicht,
+        fun merkliste() = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, t.merkliste(), t.alarme(), t.kontosicht,
             KatalogRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), SavedStateHandle()))
-        fun setDetail() = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(),
+        fun setDetail() = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(), t.setKatalog(), t.alarme(), t.setDateien(),
             FinanzenRepository(t.api, t.cache), HaushaltRepository(t.api, t.cache),
             object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null },
             SavedStateHandle(mapOf("setNumber" to SET))))
@@ -329,7 +330,7 @@ object Beispiele {
                 override fun sortiert(teile: Collection<PlPart>) = teile.toList()
             }, object : TeilelistenExport {
                 override val fortschritt = flowOf<PdfFortschritt?>(null)
-                override suspend fun erzeuge(rumpf: String): ExportErgebnis =
+                override suspend fun erzeuge(auftrag: PdfAuftragAnfrage): ExportErgebnis =
                     ExportErgebnis.Fehler(PdfFehlschlag.Abruf(Ergebnis.Error.Netz()))
             }, SavedStateHandle()))
 

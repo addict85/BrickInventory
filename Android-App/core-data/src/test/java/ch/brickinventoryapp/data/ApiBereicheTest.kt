@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.api.BrickApiService
+import ch.brickinventoryapp.testing.BrickApiService
 import ch.brickinventoryapp.data.api.FigurenAbfrageApi
 import ch.brickinventoryapp.data.api.FigurenApi
 import ch.brickinventoryapp.data.api.FinanzenApi

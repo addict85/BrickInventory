@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.data.api.FinanzenApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.model.data.model.*
@@ -27,23 +28,23 @@ class FinanzenRepositoryImpl @Inject constructor(
     override suspend fun getFigPriceHistory(figNumber: String): Ergebnis<PriceHistoryResponse> =
         sicherAufrufen { api.getFigPriceHistory(figNumber) }
 
-    override suspend fun getPartsValuation(accounts: String?): Ergebnis<PartsValuationResponse> =
-        sicherAufrufen { api.getPartsValuation(accounts) }
+    override suspend fun getPartsValuation(konten: Kontoauswahl?): Ergebnis<PartsValuationResponse> =
+        sicherAufrufen { api.getPartsValuation(konten?.anfrage) }
 
-    override suspend fun getMinifigsValuation(accounts: String?): Ergebnis<FigsValuationResponse> =
-        sicherAufrufen { api.getMinifigsValuation(accounts) }
+    override suspend fun getMinifigsValuation(konten: Kontoauswahl?): Ergebnis<FigsValuationResponse> =
+        sicherAufrufen { api.getMinifigsValuation(konten?.anfrage) }
 
-    override suspend fun getValuation(accounts: String?): Ergebnis<ValuationResponse> =
-        sicherAufrufen { api.getValuation(accounts) }
+    override suspend fun getValuation(konten: Kontoauswahl?): Ergebnis<ValuationResponse> =
+        sicherAufrufen { api.getValuation(konten?.anfrage) }
 
-    override suspend fun getPnl(accounts: String?): Ergebnis<PnlResponse> =
-        sicherAufrufen { api.getPnl(accounts) }
+    override suspend fun getPnl(konten: Kontoauswahl?): Ergebnis<PnlResponse> =
+        sicherAufrufen { api.getPnl(konten?.anfrage) }
 
-    override suspend fun getPortfolioHistory(period: String, accounts: String?): Ergebnis<PortfolioHistoryResponse> =
-        sicherAufrufen { api.getPortfolioHistory(period, accounts) }
+    override suspend fun getPortfolioHistory(period: String, konten: Kontoauswahl?): Ergebnis<PortfolioHistoryResponse> =
+        sicherAufrufen { api.getPortfolioHistory(period, konten?.anfrage) }
 
-    override suspend fun getStats(accounts: String?): Ergebnis<StatsResponse> =
-        if (accounts == null)
+    override suspend fun getStats(konten: Kontoauswahl?): Ergebnis<StatsResponse> =
+        if (konten == null)
             cache.cached("stats", StatsResponse.serializer()) { sicherAufrufen { api.getStats() } }
-        else sicherAufrufen { api.getStats(accounts) }
+        else sicherAufrufen { api.getStats(konten.anfrage) }
 }

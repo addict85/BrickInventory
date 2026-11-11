@@ -1,5 +1,10 @@
 package ch.brickinventoryapp.sammlung.ui.viewmodel
 
+import kotlinx.coroutines.flow.first
+import ch.brickinventoryapp.model.fach.Alarmrichtung
+import ch.brickinventoryapp.data.repository.SetDateienRepository
+import ch.brickinventoryapp.data.repository.AlarmRepository
+import ch.brickinventoryapp.data.repository.SetKatalogRepository
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.model.alsAnsicht
 import androidx.lifecycle.SavedStateHandle
@@ -65,6 +70,9 @@ class SetDetailViewModel @Inject constructor(
     private val filter: Filterwahl,
     private val meldungen: Meldungen,
     private val sets: SetsRepository,
+    private val katalog: SetKatalogRepository,
+    private val alarme: AlarmRepository,
+    private val dateien: SetDateienRepository,
     private val finanzen: FinanzenRepository,
     private val haushalt: HaushaltRepository,
     private val leser: DateiLeser,
@@ -103,7 +111,7 @@ class SetDetailViewModel @Inject constructor(
     // Scope des ViewModels und überstehen so das Zurückgehen.
     private var lagerJob: Job? = null
     private val alarmEingabe = Preisalarmeingabe(
-        scope = viewModelScope, sets = sets,
+        scope = viewModelScope, alarme = alarme,
         melde = { meldungen.zeige(it) },
         beschreibe = { meldungen.meldungFuerSnackbar(it) },
         // Anderswo geänderte Alarme holt ladeAlles() beim Zurückkehren.
@@ -123,7 +131,7 @@ class SetDetailViewModel @Inject constructor(
     override fun loadSetDetail(setNumber: String) {
         viewModelScope.launch {
             _setDetailState.update { it.copy(setDetailLoading = true, setDetailFehler = null) }
-            when (val r = sets.getSetDetail(setNumber)) {
+            when (val r = katalog.getSetDetail(setNumber)) {
                 is Ergebnis.Success -> _setDetailState.update { it.copy(setDetail = r.data.set?.alsAnsicht(), setDetailLoading = false) }
                 is Ergebnis.Error -> _setDetailState.update { it.copy(setDetailLoading = false, setDetailFehler = meldungen.meldung(r),
                     setDetailFehlerKlasse = fehlerklasse(r)) }
@@ -166,13 +174,13 @@ class SetDetailViewModel @Inject constructor(
 
     override fun loadPreisalarme(setNumber: String) {
         viewModelScope.launch {
-            val r = sets.getPreisalarme(setNumber)
-            val alarme = (r as? Ergebnis.Success)?.data?.takeIf { it.success }?.alerts?.map { it.alsAnsicht() } ?: emptyList()
-            _setDetailState.update { it.copy(preisalarme = alarme) }
+            alarme.aktualisiereAlarme()
+            val liste = alarme.beobachteAlarme(setNumber).first().liste.map { it.alsAnsicht() }
+            _setDetailState.update { it.copy(preisalarme = liste) }
         }
     }
 
-    override fun setzePreisalarm(setNumber: String, richtung: String, roh: String, zustand: Zustand) =
+    override fun setzePreisalarm(setNumber: String, richtung: Alarmrichtung, roh: String, zustand: Zustand) =
         alarmEingabe.setze(setNumber, richtung, roh, zustand)
 
     /**
@@ -234,7 +242,7 @@ class SetDetailViewModel @Inject constructor(
             if (typ !in ANLEITUNG_TYPEN) { meldungen.zeige(meldungen.text(R.string.instr_upload_wrong_type)); return@launch }
             val bytes = gelesen.bytes
             val name = leser.name(datei) ?: "anleitung"
-            when (val r = sets.uploadAnleitung(setNumber, name, typ, bytes, name)) {
+            when (val r = dateien.uploadAnleitung(setNumber, name, typ, bytes, name)) {
                 is Ergebnis.Success ->
                     if (r.data.success) {
                         meldungen.zeige(meldungen.text(R.string.instr_upload_done))
@@ -247,7 +255,7 @@ class SetDetailViewModel @Inject constructor(
 
     override fun loescheAnleitung(setNumber: String, instrId: Int) {
         viewModelScope.launch {
-            when (val r = sets.deleteAnleitung(setNumber, instrId)) {
+            when (val r = dateien.deleteAnleitung(setNumber, instrId)) {
                 is Ergebnis.Success ->
                     if (r.data.success) loadSetDetail(setNumber)
                     else meldungen.zeige(r.data.error ?: meldungen.text(R.string.err_generic))

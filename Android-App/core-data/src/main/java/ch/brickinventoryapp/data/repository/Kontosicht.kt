@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.data.api.FigurenApi
 import ch.brickinventoryapp.data.api.SetsApi
@@ -83,47 +84,47 @@ class Kontosicht @Inject constructor(
         }
     }
 
-    data class SetsAbfrage(val konten: String?, val suche: String?, val thema: String?,
+    data class SetsAbfrage(val konten: Kontoauswahl?, val suche: String?, val thema: String?,
                            val sort: Setsortierung?, val lagerort: String?)
-    data class MerkAbfrage(val konten: String, val suche: String?, val zustand: Zustand?, val sort: Merksortierung?)
-    data class TeileAbfrage(val konten: String?, val suche: String?, val farbe: String?, val kategorie: String?,
+    data class MerkAbfrage(val konten: Kontoauswahl, val suche: String?, val zustand: Zustand?, val sort: Merksortierung?)
+    data class TeileAbfrage(val konten: Kontoauswahl?, val suche: String?, val farbe: String?, val kategorie: String?,
                             val ersatzteile: Ersatzteilwahl, val mitSets: Boolean, val lagerort: String?)
-    data class ManuelleAbfrage(val konten: String?, val suche: String?, val lagerort: String?)
-    data class FigurenAbfrage(val konten: String, val suche: String?)
+    data class ManuelleAbfrage(val konten: Kontoauswahl?, val suche: String?, val lagerort: String?)
+    data class FigurenAbfrage(val konten: Kontoauswahl, val suche: String?)
 
     val galerie = Serversicht<SetsAbfrage, SetItem>(ablage, arrayOf(Faecher.SETS)) { a ->
         alleSeiten({ it.sets }, { it.setNumber }, { it.total }, wiederholung) { seite ->
-            sicherAufrufen { sets.getSets(a.konten, a.suche, a.thema, a.sort?.kennung, seite, GALLERY_PAGE_SIZE, a.lagerort) }
+            sicherAufrufen { sets.getSets(a.konten?.anfrage, a.suche, a.thema, a.sort?.kennung, seite, GALLERY_PAGE_SIZE, a.lagerort) }
         }
     }
 
     val merkliste = Serversicht<MerkAbfrage, Merkposten>(ablage, arrayOf(Faecher.MERKLISTE)) { a ->
         wiederholung.wiederhole {
-            sicherAufrufen { sets.getMerkliste(a.suche, a.zustand?.kennung, a.sort?.kennung, a.konten) }
+            sicherAufrufen { sets.getMerkliste(a.suche, a.zustand?.kennung, a.sort?.kennung, a.konten.anfrage) }
         }.map { it.merkposten }
     }
 
     val teileliste = Serversicht<TeileAbfrage, Part>(ablage, arrayOf(Faecher.TEILE)) { a ->
         alleSeiten({ it.parts }, { "${it.partNumber}|${it.colorId}|${it.isSpare}" }, { it.total }, wiederholung) { seite ->
             sicherAufrufen {
-                teile.getParts(search = a.suche, color = a.farbe, category = a.kategorie, page = seite, pageSize = 500, excludeManual = "1", accounts = a.konten,
+                teile.getParts(search = a.suche, color = a.farbe, category = a.kategorie, page = seite, pageSize = 500, excludeManual = "1", accounts = a.konten?.anfrage,
                     spare = a.ersatzteile.alsAbfrage(), withSets = mitSetsAlsAbfrage(a.mitSets), storage = a.lagerort)
             }
         }
     }
 
     val manuelleTeile = Serversicht<ManuelleAbfrage, PartValuationItem>(ablage, arrayOf(Faecher.MANUELLE_TEILE)) { a ->
-        wiederholung.wiederhole { sicherAufrufen { teile.getManualParts(a.konten, a.suche, a.lagerort) } }.map { it.parts }
+        wiederholung.wiederhole { sicherAufrufen { teile.getManualParts(a.konten?.anfrage, a.suche, a.lagerort) } }.map { it.parts }
     }
 
     val figurenliste = Serversicht<FigurenAbfrage, Minifig>(ablage, arrayOf(Faecher.FIGUREN)) { a ->
         wiederholung.wiederhole {
-            sicherAufrufen { figuren.getMinifigs(source = "set", accounts = a.konten, search = a.suche) }
+            sicherAufrufen { figuren.getMinifigs(source = "set", accounts = a.konten.anfrage, search = a.suche) }
         }.map { it.figs }
     }
 
     val manuelleFiguren = Serversicht<FigurenAbfrage, FigValuationItem>(ablage, arrayOf(Faecher.MANUELLE_FIGUREN)) { a ->
-        wiederholung.wiederhole { sicherAufrufen { figuren.getManualMinifigs(a.konten, a.suche) } }.map { it.figs }
+        wiederholung.wiederhole { sicherAufrufen { figuren.getManualMinifigs(a.konten.anfrage, a.suche) } }.map { it.figs }
     }
 }
 

@@ -11,6 +11,7 @@ import ch.brickinventoryapp.data.cache.CacheBesitzer
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.lokal.ServerSender
 import ch.brickinventoryapp.data.lokal.WorkManagerPlaner
+import ch.brickinventoryapp.netz.util.Protokoll
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -29,6 +30,7 @@ import ch.brickinventoryapp.data.CsvImportRepository
 import ch.brickinventoryapp.data.GeraeteBereinigung
 import ch.brickinventoryapp.data.SitzungsBereinigung
 import ch.brickinventoryapp.data.Darstellungsablage
+import ch.brickinventoryapp.data.Widgetablage
 import ch.brickinventoryapp.data.GeraeteEinstellungen
 import ch.brickinventoryapp.data.GeraeteAblage
 import ch.brickinventoryapp.data.KontoAblage
@@ -72,6 +74,7 @@ internal abstract class LokalModule {
     @Binds abstract fun geraet(p: GeraeteAblage): GeraeteEinstellungen
     @Binds abstract fun sitzungsablage(p: KontoAblage): Sitzungsablage
     @Binds abstract fun darstellung(p: GeraeteAblage): Darstellungsablage
+    @Binds abstract fun widgetablage(p: GeraeteAblage): Widgetablage
     @Binds abstract fun vertrauensablage(p: GeraeteAblage): Vertrauensablage
     @Binds abstract fun netzvertrauen(p: GeraeteAblage): Netzvertrauen
     @Binds abstract fun alarmablage(p: GeraeteAblage): Alarmablage
@@ -103,6 +106,7 @@ internal abstract class LokalModule {
             Offlineablage(bestand, ausgang, bereichQuelle = { besitzer.kontoBereich()?.let { ResponseCache.bereichsName(it) } },
                 planer = planer,
                 bereichFluss = besitzer.kontoBereichFluss().map { it?.let(ResponseCache::bereichsName) }
-                    .stateIn(bereich, SharingStarted.Eagerly, null))
+                    .stateIn(bereich, SharingStarted.Eagerly, null),
+                protokoll = { Protokoll.warnung("Ablage", it) })
     }
 }

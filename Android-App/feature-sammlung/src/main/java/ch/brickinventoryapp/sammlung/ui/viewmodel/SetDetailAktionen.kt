@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
 
@@ -13,7 +14,7 @@ interface SetDetailAktionen {
     fun loadSetPriceHistory(setNumber: String)
     fun loadAcquisitions(setNumber: String)
     fun loadPreisalarme(setNumber: String)
-    fun setzePreisalarm(setNumber: String, richtung: String, roh: String, zustand: Zustand)
+    fun setzePreisalarm(setNumber: String, richtung: Alarmrichtung, roh: String, zustand: Zustand)
     fun aendereMengeUm(setNumber: String, schritt: Int)
     fun setzeSetLagerort(setNumber: String, ort: String)
     fun loadLagerortVorrat(besitzer: List<Int>)

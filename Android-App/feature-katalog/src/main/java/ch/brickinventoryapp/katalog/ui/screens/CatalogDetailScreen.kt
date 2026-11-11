@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.katalog.ui.screens
 
-import ch.brickinventoryapp.katalog.ui.Alarmrichtung
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.katalog.ui.Merkwunsch
 import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.model.fach.Zustand
@@ -317,7 +317,7 @@ private fun ColumnScope.KatalogAngaben(
 private fun merkpostenText(m: MerkpostenAnsicht): String {
     val zustand = stringResource(if (m.condition == Zustand.GEBRAUCHT) R.string.condition_used else R.string.condition_new)
     val alarm = m.alarm?.let { a ->
-        stringResource(if (a.richtung == "ueber") R.string.wanted_alert_above else R.string.wanted_alert_below,
+        stringResource(if (a.richtung == Alarmrichtung.UEBER) R.string.wanted_alert_above else R.string.wanted_alert_below,
             fmtMoney(a.schwelle, m.waehrung))
     }
     return listOfNotNull(zustand, alarm).joinToString(", ")

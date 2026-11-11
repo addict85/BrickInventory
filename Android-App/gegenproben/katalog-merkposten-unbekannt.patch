@@ -6,12 +6,12 @@ Rot: das Detail kennt den Merkposten aus der Ablage
 diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
 --- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
 +++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
-@@ -226,7 +226,7 @@
+@@ -228,7 +228,7 @@
      // ── Detail ────────────────────────────────────────────────────────────────────
      /** Der Merkposten zu [setNumber] aus der Ablage der Merkliste; null, solange das Set nicht darauf steht. */
      fun gemerkt(setNumber: String): Flow<MerkpostenAnsicht?> =
--        sets.beobachteMerkliste().map { l -> l.liste.firstOrNull { it.setNumber == setNumber }?.alsAnsicht() }
-+        sets.beobachteMerkliste().map { l -> l.liste.firstOrNull()?.alsAnsicht() }
+-        merkliste.beobachteMerkliste().map { l -> l.liste.firstOrNull { it.setNumber == setNumber }?.alsAnsicht() }
++        merkliste.beobachteMerkliste().map { l -> l.liste.firstOrNull()?.alsAnsicht() }
  
      /** Merken und, wenn eine Schwelle dasteht, den Preisalarm gleich mit. */
      fun merke(w: Merkwunsch) {

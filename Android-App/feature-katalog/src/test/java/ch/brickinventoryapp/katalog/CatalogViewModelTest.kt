@@ -11,7 +11,7 @@ import ch.brickinventoryapp.model.data.model.JahrAnzahl
 import ch.brickinventoryapp.model.ui.model.JahrAnzahlAnsicht
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.katalog.ui.viewmodel.CatalogViewModel
-import ch.brickinventoryapp.katalog.ui.Alarmrichtung
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.katalog.ui.KatalogZiel
 import ch.brickinventoryapp.katalog.ui.Merkwunsch
 import ch.brickinventoryapp.model.data.model.Merkposten
@@ -78,7 +78,7 @@ class CatalogViewModelTest {
         CatalogSetsResponse(success = true, total = 120, sets = nummern.map { CatalogSetItem(setNumber = it, name = "Set $it") })
 
     private fun mitVm(block: suspend TestScope.(CatalogViewModel) -> Unit) = runTest(takt) {
-        val vm = CatalogViewModel(KatalogRepository(fake.api, t.cache), t.meldungen, NummernTexte, t.sets(), t.scrollMemory)
+        val vm = CatalogViewModel(KatalogRepository(fake.api, t.cache), t.meldungen, NummernTexte, t.merkliste(), t.alarme(), t.scrollMemory)
         try {
             block(vm)
         } finally {
@@ -178,7 +178,7 @@ class CatalogViewModelTest {
         advanceUntilIdle()
         val alarm = synchronized(fake.argumente) { fake.argumente.single { it.first == "setPreisalarm" }.second }
         assertEquals("10305-1", alarm[0])
-        assertEquals(PreisalarmRequest("ueber", 120.0, Zustand.GEBRAUCHT), alarm[1])
+        assertEquals(PreisalarmRequest(Alarmrichtung.UEBER, 120.0, Zustand.GEBRAUCHT), alarm[1])
         assertEquals(Meldung.Ressource(R.string.wanted_added), t.meldungen.meldung.value)
     }
 
