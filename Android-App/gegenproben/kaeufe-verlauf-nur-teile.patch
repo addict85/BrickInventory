@@ -1,0 +1,17 @@
+Gegenprobe: Der Preisverlauf manueller Posten fragt auch für Figuren den Teile-Pfad
+Modul: core-zustand
+Test: ch.brickinventoryapp.zustand.KaeufeViewModelTest
+Rot: der Preisverlauf kommt fuer Teile und Figuren vom passenden Pfad
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt
+@@ -95,7 +95,7 @@
+     fun loadManualPriceHistory(type: Postenart, id: String, colorId: Int = KEINE_FARBE) {
+         viewModelScope.launch {
+             _manDetailState.update { it.copy(priceHistoryLoading = true) }
+-            val r = if (type == Postenart.FIG) finanzen.getFigPriceHistory(id) else finanzen.getPartPriceHistory(id, colorId)
++            val r = finanzen.getPartPriceHistory(id, colorId)
+             when (r) {
+                 is Ergebnis.Success -> _manDetailState.update { it.copy(priceHistory = r.data.alsAnsicht(), priceHistoryLoading = false) }
+                 is Ergebnis.Error -> _manDetailState.update { it.copy(priceHistoryLoading = false) }

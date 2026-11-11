@@ -47,6 +47,9 @@ import ch.brickinventoryapp.testing.TestDienste
  *   G  in updateManualAcquisition() den Rumpf von Hand gebaut,
  *      `UpdateAcquisitionRequest(purchasePrice = unitPrice, …)` → rot an
  *      derselben Stelle (Teil)
+ *   H  in loadManualPriceHistory() immer getPartPriceHistory
+ *      (gegenproben/kaeufe-verlauf-nur-teile.patch) → rot „der Preisverlauf kommt für
+ *      Teile und Figuren …“ (Figur ohne Verlauf; nur in der CI messbar)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class KaeufeViewModelTest {
@@ -67,6 +70,7 @@ class KaeufeViewModelTest {
                 "parts":12,"minifigs":2}""",
             "/api/v1/parts/3001/5/acquisitions" to """{"success":true,"acquisitions":[{"id":9,"quantity":4}]}""",
             "/api/v1/parts/3001/5/price-history" to """{"success":true,"set_number":"3001"}""",
+            "/api/v1/minifigs/sw0001/price-history" to """{"success":true,"set_number":"sw0001"}""",
             "/api/v1/parts/3002/5/acquisitions" to """{"success":true,"acquisitions":[]}""",
         )
         t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
@@ -159,5 +163,16 @@ class KaeufeViewModelTest {
         vm.loadManualAcquisitions(Postenart.PART, "3002", 5)
         assertTrue("Liste von 3002", vm.manDetailState.value.itemId == "3002" && !vm.manDetailState.value.isLoading && !vm.manDetailState.value.priceHistoryLoading)
         assertNull(vm.manDetailState.value.priceHistory)
+    }
+
+    @Test
+    fun `der Preisverlauf kommt fuer Teile und Figuren vom passenden Pfad`() {
+        val vm = vm()
+        vm.loadManualPriceHistory(Postenart.FIG, "sw0001")
+        assertTrue("Figur ohne Verlauf", vm.manDetailState.value.priceHistory != null)
+        vm.loadManualPriceHistory(Postenart.PART, "3001", 5)
+        assertTrue("Teil ohne Verlauf", vm.manDetailState.value.priceHistory != null)
+        assertEquals(1, pfade.anfragenAn("/api/v1/minifigs/sw0001/price-history").size)
+        assertEquals(1, pfade.anfragenAn("/api/v1/parts/3001/5/price-history").size)
     }
 }
