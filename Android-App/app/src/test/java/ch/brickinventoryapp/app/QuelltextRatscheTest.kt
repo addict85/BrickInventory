@@ -217,7 +217,7 @@ class QuelltextRatscheTest {
 
     @Test
     fun `lange Kommentare im Workflow und in Tests werden weniger`() {
-        val WORKFLOW = 3
+        val WORKFLOW = 1
         val TESTS = 52
         val DATUM_UND_KENNUNG = 0
         val GESCHICHTE = 0

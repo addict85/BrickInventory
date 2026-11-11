@@ -1,0 +1,17 @@
+Gegenprobe: Der Gegenproben-Job läuft wieder auf ubuntu-latest
+Modul: app
+Test: ch.brickinventoryapp.app.AndroidWorkflowTest
+Rot: der Release-Weg hat festes Werkzeug
+
+diff --git a/.github/workflows/android.yml b/.github/workflows/android.yml
+--- a/.github/workflows/android.yml
++++ b/.github/workflows/android.yml
+@@ -430,7 +430,7 @@
+   # Ziel, Test oder Patch sich geändert hat; nachts und von Hand (workflow_dispatch) alle.
+   gegenproben:
+     if: ${{ !inputs.pruefsummen && !inputs.bildschirmfotos }}
+-    runs-on: ubuntu-24.04
++    runs-on: ubuntu-latest
+     # Vier Teile mit je jedem vierten Patch; seriell dauerte der Volllauf über 180 min.
+     strategy:
+       fail-fast: false

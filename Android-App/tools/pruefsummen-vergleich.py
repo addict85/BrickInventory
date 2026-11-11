@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Vergleicht zwei verification-metadata.xml und schreibt eine Markdown-Übersicht:
 neue, entfernte und Komponenten mit geänderter Prüfsumme oder geändertem Schlüssel,
-dazu neu vertraute PGP-Schlüssel (Gruppen-Regex zuerst und hervorgehoben).
+dazu neue Gruppen und neu vertraute PGP-Schlüssel (Gruppen-Regex zuerst), beide hervorgehoben.
 
 Aufruf: pruefsummen-vergleich.py <alt.xml> <neu.xml>
 
@@ -72,13 +72,19 @@ def vergleiche(alt, neu):
     return neu_k, weg_k, geaendert
 
 
-def markdown(neu_k, weg_k, geaendert):
+def markdown(neu_k, weg_k, geaendert, alt_k=()):
     z = ["## Prüfsummen: was sich geändert hat", ""]
     z.append(f"| neu | entfernt | geänderte Prüfsumme/Schlüssel |\n|---|---|---|\n| {len(neu_k)} | {len(weg_k)} | {len(geaendert)} |")
     z.append("")
     if geaendert:
         z += ["### Geändert bei gleicher Fassung — bitte ansehen", "", "| Komponente | Datei | Art | alt | neu |", "|---|---|---|---|---|"]
         z += [f"| `{k}` | `{a}` | {art} | `{x[:16]}…` | `{y[:16]}…` |" for k, a, art, x, y in geaendert]
+        z.append("")
+    # Eine Gruppe, die es bisher nicht gab, ist ein neuer Herausgeber: offen statt eingeklappt.
+    neue_gruppen = sorted({k.split(":")[0] for k in neu_k} - {k.split(":")[0] for k in alt_k})
+    if neue_gruppen:
+        z += [f"### Neue Gruppen ({len(neue_gruppen)}) — bitte ansehen", ""]
+        z += [f"- `{g}`" for g in neue_gruppen]
         z.append("")
     for titel, liste in (("Neu", neu_k), ("Entfernt", weg_k)):
         if liste:
@@ -89,5 +95,6 @@ def markdown(neu_k, weg_k, geaendert):
 
 
 if __name__ == "__main__":
-    print(markdown(*vergleiche(lies(sys.argv[1]), lies(sys.argv[2]))))
+    alt, neu = lies(sys.argv[1]), lies(sys.argv[2])
+    print(markdown(*vergleiche(alt, neu), alt_k=alt.keys()))
     print(vertrauen_markdown(vertrauen(sys.argv[1]), vertrauen(sys.argv[2])))

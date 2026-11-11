@@ -15,6 +15,8 @@ import java.util.concurrent.TimeUnit
  * neu_k und weg_k vertauscht → rot „neue und entfernte Komponenten …“.
  * in vertrauen_markdown() `dazu = []` → rot „ein neu
  * vertrauter Schluessel …“; Sortierung ohne `not` (Regex zuletzt) → ebenso rot.
+ * In markdown() `neue_gruppen = []` (lokal mit python3 gemessen) → rot „eine neue Gruppe
+ * steht offen da …“.
  */
 class PruefsummenVergleichTest {
 
@@ -65,6 +67,14 @@ ${eintraege.joinToString("\n")}
         val einzeln = text.indexOf("| `BBBB` | `org.einzeln` | x | 1.0 | nein |")
         assertTrue(text, regex in 0 until einzeln)
         assertTrue("Der alte Schlüssel ist nicht neu", !text.contains("`AAAA`"))
+    }
+
+    @Test
+    fun `eine neue Gruppe steht offen da, eine bekannte nicht`() {
+        val text = vergleiche(alt, metadaten(Triple("a.bleibt", "1.0", "aaaa"), Triple("a.bleibt", "2.0", "eeee"),
+            Triple("d.kommt", "3.0", "dddd"), Triple("c.kippt", "2.0", "1111")))
+        val abschnitt = text.substringAfter("### Neue Gruppen (1) — bitte ansehen", "").substringBefore("<details>")
+        assertTrue(text, abschnitt.contains("- `d.kommt`") && !abschnitt.contains("a.bleibt"))
     }
 
     @Test
