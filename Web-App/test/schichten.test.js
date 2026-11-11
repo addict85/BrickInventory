@@ -485,12 +485,11 @@ test('Express kennen nur src/http, die HTTP-Seiten der Bereiche und die Routen',
   // spricht selbst HTTP nach aussen. Gegenprobe (10.11.2026): in
   // src/konto/passwortBestaetigung.ts wieder `return { status: 429, ...gesperrt }` → rot.
   const STATUS = /\bstatus\s*:\s*[1-5]\d\d\b|\bres\.status\(/;
-  // Liefert den Bild-Cache selbst aus (304); gehört nach src/katalog/http/. Nur streichen, nie ergänzen.
-  const MIT_STATUS = ['src/katalog/bilder/imgCacheServe.ts'];
+  // Gegenprobe (11.11.2026): `res.status(304)` zurück in src/katalog/bilder/imgCacheServe.ts → rot.
   const mitStatus = tsUnter('src', 'db', 'jobs')
     .filter(d => bereichVon(d) !== 'http' && !istHttp(d))
     .filter(d => STATUS.test(quelltext(d)));
-  assert.deepEqual(mitStatus, MIT_STATUS);
+  assert.deepEqual(mitStatus, []);
 });
 
 test('nur Routen, Server und HTTP-Seiten importieren eine HTTP-Seite oder src/http', () => {

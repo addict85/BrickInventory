@@ -193,7 +193,7 @@ module.exports.regexWoertlich = regexWoertlich;
 
 /** Der Vorschau-Weg des Bild-Proxys (src/katalog/bilder/proxyThumbs.ts). */
 function proxyThumbQuelle() {
-  return ['src/katalog/http/bildProxy.ts', 'routes/imgProxy.ts', 'src/katalog/bilder/proxyThumbs.ts', 'src/katalog/bilder/imgCacheServe.ts']
+  return ['src/katalog/http/bildProxy.ts', 'routes/imgProxy.ts', 'src/katalog/bilder/proxyThumbs.ts', 'src/katalog/bilder/imgCacheServe.ts', 'src/katalog/http/bildCacheAuslieferung.ts']
     .map(dienstQuelle).join('\n');
 }
 module.exports.proxyThumbQuelle = proxyThumbQuelle;

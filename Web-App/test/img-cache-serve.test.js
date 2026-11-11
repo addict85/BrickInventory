@@ -4,6 +4,8 @@
  * Gegenprobe (04.11.2026 gemessen): bildTyp() gibt wie vorher den rohen Wert
  * zurück, sobald er mit `image/` beginnt und kein SVG ist → rot: „Abgelegt als
  * image/png, text/html …“.
+ * (11.11.2026) in cacheTreffer() die ETag-Angabe weggelassen (`etag: null`) →
+ * rot: „der Dienst nennt Datei, Typ, Länge und ETag, ohne zu senden“.
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -12,7 +14,7 @@ const os     = require('node:os');
 const path   = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { liefereAusCache } = _req('src/katalog/bilder/imgCacheServe.js');
+const { liefereAusCache } = _req('src/katalog/http/bildCacheAuslieferung.js');
 
 /** Ein res, das nur festhält, was mit ihm geschehen ist. */
 function attrappeRes() {
@@ -157,6 +159,21 @@ test('Auslieferungsreihenfolge des Bild-Caches', async (t) => {
       assert.equal(res.kopf['content-type'], erwartet,
         `Abgelegt als ${abgelegt} → ausgeliefert werden muss ${erwartet}`);
     }
+  });
+
+  await t.test('der Dienst nennt Datei, Typ, Länge und ETag, ohne zu senden', async () => {
+    // Gesendet wird in src/katalog/http/; der Dienst bekommt keine Antwort zu sehen.
+    aufraeumen();
+    datei(orig, 5000);
+    fs.writeFileSync(orig + '.ct', 'image/png');
+    const { cacheTreffer } = _req('src/katalog/bilder/imgCacheServe.js');
+    const treffer = await cacheTreffer({ cacheFile: orig, thumbFile: thumb, wantThumb: false, darfErzeugen: false, notiere() {} });
+    assert.equal(treffer.datei, orig);
+    assert.equal(treffer.typ, 'image/png');
+    assert.equal(treffer.groesse, 5000);
+    assert.match(String(treffer.etag), /^"c-5000-\d+"$/);
+    aufraeumen();
+    assert.equal(await cacheTreffer({ cacheFile: orig, thumbFile: thumb, wantThumb: false, darfErzeugen: false, notiere() {} }), null);
   });
 
   fs.rmSync(dir, { recursive: true, force: true });

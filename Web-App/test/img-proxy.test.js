@@ -3,7 +3,7 @@
  *
  * Gegenproben zu den nach bild-proxy-deckel.test.js (Typprüfung, Platzhalter)
  * und img-cache-serve.test.js (304) verlegten Fällen stehen dort; für 304 je
- * eine der beiden `req.fresh`-Zeilen in imgCacheServe.ts entfernt → dort rot
+ * die `req.fresh`-Zeile in src/katalog/http/bildCacheAuslieferung.ts entfernt → dort rot
  * „bekannter Stand → 304 und KEIN Bild“ (08.11.2026). Doppelte Schrägstriche
  * im Pfad → sicherheit-querschnitt-db I (Normalisierung entfernt → dort rot).
  * Zähler und Protokoll der Fehlschläge, Inhaltsprüfung der Probe →
@@ -97,8 +97,10 @@ test('komprimierte Antworten werden entpackt, nicht weitergereicht', () => {
   assert.match(SERVER, /body\.pipe\(ws\)/, 'Der Cache bekommt nicht den entpackten Strom');
   assert.match(SERVER, /body\.pipe\(res\)/, 'Der Client bekommt nicht den entpackten Strom');
 
+  // Vorschau und Plattencache teilen eine Stelle (bildCacheAuslieferung.ts;
+  // Verhalten: img-cache-serve.test.js), dazu der CDN-Abruf.
   const lengths = (SERVER.match(/res\.setHeader\('Content-Length'/g) || []).length;
-  assert.ok(lengths >= 3, `Nur ${lengths} von drei Wegen setzen Content-Length (Vorschau, Plattencache, CDN-Abruf)`);
+  assert.ok(lengths >= 2, `Nur ${lengths} von zwei Stellen setzen Content-Length (Cache, CDN-Abruf)`);
 });
 
 test('abgebrochene Client-Anfragen geben die CDN-Verbindung frei', () => {
@@ -200,10 +202,10 @@ test('kaputte Antworten werden nicht für einen Tag im Browser festgenagelt', ()
   // damit der Browser billig rückfragen kann.
   assert.match(
     SERVER,
-    /ETag', `"c-\$\{cst\.size\}-\$\{Math\.floor\(cst\.mtimeMs\)\}"`/,
+    /`"c-\$\{cst\.size\}-\$\{Math\.floor\(cst\.mtimeMs\)\}"`/,
     'ETag für den Plattencache fehlt',
   );
-  assert.match(SERVER, /ETag', `"t-\$\{tst\.size\}-\$\{Math\.floor\(tst\.mtimeMs\)\}"`/, 'ETag für die Vorschau fehlt');
+  assert.match(SERVER, /`"t-\$\{tst\.size\}-\$\{Math\.floor\(tst\.mtimeMs\)\}"`/, 'ETag für die Vorschau fehlt');
 });
 
 test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {

@@ -9,7 +9,8 @@ import { householdMembers } from '../../src/haushalt/haushalt';
 import { lagerorte, legeOrtAn, benenneOrtUm, loescheOrt, lagerSchreibkonto, setzeVorgabe } from '../../src/bestand/lagerort';
 import { alleAlarme, ausgeloesteSeit } from '../../src/finanzen/preisalarm';
 import { csvEmpfang, uploadKontingentBytes, privaterOrdner, privaterEmpfang, kontingentReichtFuer, pruefeEmpfangeneDatei } from '../../src/http/dateiEmpfang';
-import { sendCsv, uebersprungenHinweis } from '../../src/infra/csvExport';
+import { uebersprungenHinweis } from '../../src/infra/csvExport';
+import { sendeCsv } from '../../src/http/csvAntwort';
 import { antwortSprache } from '../../src/infra/fehlerTexte';
 import * as sets from '../../src/sets';
 import { registerSse } from '../../src/http/sseRegistry';
@@ -267,7 +268,7 @@ router.post('/sets/import/csv/cancel', requireToken, async (req: OffeneAnfrage<'
 });
 
 router.get('/sets/export/rebrickable', requireToken, async (req, res) => {
-  sendCsv(res, `rebrickable-sets-${new Date().toISOString().substring(0, 10)}.csv`,
+  sendeCsv(res, `rebrickable-sets-${new Date().toISOString().substring(0, 10)}.csv`,
     ['Set Number', 'Quantity'], await sets.rebrickableListe(angemeldeteNutzerId(req)));
 });
 

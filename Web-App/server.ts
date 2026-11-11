@@ -31,7 +31,8 @@ import { API_VERSION, API_MIN_APP, appFassungPruefen } from './src/http/apiVersi
 import { PUBLIC_DIR } from './src/infra/appPaths';
 import { HTTP_FRISTEN } from './src/infra/httpFristen';
 import { closeAllSse } from './src/http/sseRegistry';
-import { sendeStartseite, startStilHash } from './src/konto/indexHtml';
+import { startStilHash } from './src/konto/indexHtml';
+import { sendeStartseite } from './src/konto/http/startseite';
 import { meldeSmtpAltlast } from './src/mail/mailer';
 import { meldeUngueltigeAdressen, meldeAusstehendeAdressen } from './src/konto/konten';
 import { horcheAufTokenWiderruf } from './src/konto/auth';

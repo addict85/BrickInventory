@@ -8,7 +8,7 @@
  *   A  in thumbs.ts direkt auf thumbFs geschrieben (rename entfernt) → rot:
  *      „generateThumb schreibt …“
  *   B  dasselbe in proxyThumbs.ts → rot: „makeProxyThumb schreibt …“
- *   C  in imgCacheServe.ts `tst0.size < 200` → `< 20` → rot: „eine
+ *   C  in imgCacheServe.ts `tst.size < 200` → `< 20` → rot: „eine
  *      unbrauchbar kleine Vorschau …“
  */
 const test = require('node:test');
@@ -82,7 +82,7 @@ test('makeProxyThumb schreibt über eine temporäre Datei', async (t) => {
 });
 
 test('eine unbrauchbar kleine Vorschau wird verworfen, ausgeliefert wird das Original', async (t) => {
-  const { liefereAusCache } = _req('src/katalog/bilder/imgCacheServe.js');
+  const { liefereAusCache } = _req('src/katalog/http/bildCacheAuslieferung.js');
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'cachevorschau-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const cacheFile = path.join(ordner, 'b'.repeat(40)), thumbFile = cacheFile + '_thumb.jpg';
