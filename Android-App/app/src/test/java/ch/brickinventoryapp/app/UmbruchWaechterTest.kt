@@ -27,7 +27,7 @@ import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.testing.KatalogRepository
 import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.testing.VerwaltungRepository
-import ch.brickinventoryapp.zustand.ui.AnmeldeFormular
+import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
 import ch.brickinventoryapp.katalog.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.sammlung.ui.screens.GalleryRoute
 import ch.brickinventoryapp.anmeldung.ui.screens.LoginScreen

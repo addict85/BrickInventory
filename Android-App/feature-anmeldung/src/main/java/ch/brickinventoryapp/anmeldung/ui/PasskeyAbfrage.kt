@@ -5,12 +5,12 @@ package ch.brickinventoryapp.anmeldung.ui
  * Play-Dienste; das ViewModel braucht nur sein Ergebnis und bekommt die Abfrage
  * deshalb vom Bildschirm gereicht (im Test ein Fake).
  */
-fun interface PasskeyAbfrage {
+internal fun interface PasskeyAbfrage {
     /** [optionenJson]: die WebAuthn-Optionen des Servers, unverändert. */
     suspend fun hole(optionenJson: String): PasskeyErgebnis
 }
 
-sealed interface PasskeyErgebnis {
+internal sealed interface PasskeyErgebnis {
     /** Die Antwort des Authenticators als WebAuthn-JSON, für den Server. */
     data class Antwort(val json: String) : PasskeyErgebnis
     /** Dialog geschlossen: Das ist eine Entscheidung, kein Fehler. */
