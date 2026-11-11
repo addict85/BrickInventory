@@ -131,10 +131,10 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
     const html = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
     assert.match(html, /id="alerts-list"/, 'Die Rubrik fehlt im Markup.');
     assert.match(html, /data-i18n="alerts\.group"/, 'Die Rubrik hat keine Überschrift.');
-    const galerie = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/25-navigation.js'), 'utf8'));
+    const galerie = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/navigation.js'), 'utf8'));
     assert.match(galerie, /ladeAlarmUebersicht\(\)/,
       'Beim Öffnen der Einstellungen wird die Übersicht nicht geladen — die Rubrik bliebe leer.');
-    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('05'));
+    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
     // Ändern und Löschen gehen über die BESTEHENDE Route zum Set: zwei
     // Schreibwege zum selben Zustand wären zwei Stellen, an denen die Regeln
     // auseinanderlaufen.
@@ -169,10 +169,10 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
   });
 
   await t.test('6. die Zeile öffnet den Detaildialog, das Zahlenfeld nicht', () => {
-    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('05'));
+    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
     assert.match(js, /data-click="openModal"/,
       'Die Zeile öffnet den Detaildialog nicht — genau das hat Marco verlangt.');
-    // Der Verteiler in 11-actions.js nimmt das NÄCHSTGELEGENE Element mit
+    // Der Verteiler in actions.js nimmt das NÄCHSTGELEGENE Element mit
     // data-click. Ohne `stopEvent` am Eingabefeld öffnete jeder Klick ins Feld
     // den Dialog über dem Feld, in das man gerade tippen wollte.
     assert.match(js, /data-click="stopEvent"/,
@@ -204,7 +204,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
 
   await t.test('8. scharf/unscharf ist ohne Farbe zu erkennen', () => {
     // Marcos Befund vom 26.09.
-    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('05'));
+    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
     const css = fs.readFileSync(path.join(ROOT, 'public/styles.css'), 'utf8');
 
     // 1. Die Marke kommt aus einer Klasse, nicht aus einer Farbe im Markup.

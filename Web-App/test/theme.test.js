@@ -3,11 +3,11 @@
  * Login gelten — auf Login- und Startup-Screen.
  *
  * Gegenproben (08.11.2026 gemessen, jeweils zurückgenommen):
- *   A  00-theme-boot.js: `sync();` entfernt → rot „ohne Serverwert gilt sofort
+ *   A  theme-boot.js: `sync();` entfernt → rot „ohne Serverwert gilt sofort
  *      der Cache …“ (kein Abruf)
- *   B  00-theme-boot.js: frühes `return;` im Zweig `served` entfernt → rot
+ *   B  theme-boot.js: frühes `return;` im Zweig `served` entfernt → rot
  *      „ein servergesetzter Wert gilt …“ (Abruf trotz Serverwert)
- *   C  01-konto.js: applyTheme() gibt null zurück statt __bimApplyTheme →
+ *   C  konto.js: applyTheme() gibt null zurück statt __bimApplyTheme →
  *      rot „applyTheme läuft über den Boot-Helfer“
  *   D  routes/api_v1/settings.ts: invalidateTheme() im Admin-Speichern
  *      entfernt → rot „der Server setzt data-theme selbst …“ (brick statt noppe)
@@ -25,9 +25,9 @@ const ROOT = path.join(__dirname, '..');
 const PUB = path.join(ROOT, 'public');
 const html = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
 const styles = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
-const BOOT = fs.readFileSync(path.join(PUB, 'js', '00-theme-boot.js'), 'utf8');
+const BOOT = fs.readFileSync(path.join(PUB, 'js', 'theme-boot.js'), 'utf8');
 
-/** 00-theme-boot.js in einem leeren Fenster: Serverwert im <html>, Cache, Antwort des Servers. */
+/** theme-boot.js in einem leeren Fenster: Serverwert im <html>, Cache, Antwort des Servers. */
 function bootFenster({ server = '', gecacht = '', antwort = {} } = {}) {
   const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
   const attr = server ? ` data-theme="${server}"` : '';
@@ -59,11 +59,11 @@ function bootFenster({ server = '', gecacht = '', antwort = {} } = {}) {
 
 test('das Boot-Skript steht vor Start- und Anmeldemarkup', () => {
   // Struktur: Nur ein blockierendes Skript im <head> wirkt vor dem ersten Paint.
-  assert.ok(fs.existsSync(path.join(PUB, 'js', '00-theme-boot.js')), 'js/00-theme-boot.js fehlt');
+  assert.ok(fs.existsSync(path.join(PUB, 'js', 'theme-boot.js')), 'js/theme-boot.js fehlt');
   const vorher = html.slice(0, html.indexOf('id="startup-screen"'));
   assert.match(
     vorher,
-    /<script src="\/js\/00-theme-boot\.js/,
+    /<script src="\/js\/theme-boot\.js/,
     'Das Boot-Skript muss vor Anmeldung und App geladen werden, sonst blitzt das falsche Design auf',
   );
 });
@@ -167,9 +167,9 @@ test('fuenf Listen nennen dieselben Designs', () => {
   );
 
   const boot = liste(
-    fs.readFileSync(path.join(PUB, 'js', '00-theme-boot.js'), 'utf8'),
+    fs.readFileSync(path.join(PUB, 'js', 'theme-boot.js'), 'utf8'),
     /var ALLOWED = \[([^\]]*)\]/,
-    'js/00-theme-boot.js',
+    'js/theme-boot.js',
   );
   const server = liste(
     fs.readFileSync(path.join(__dirname, '..', 'src/vertrag/globaleRegeln.ts'), 'utf8'),
@@ -325,11 +325,11 @@ test('nur das Boot-Skript kennt die Liste der Designs', () => {
   const ordner = path.join(PUB, 'js');
   const dateien = fs
     .readdirSync(ordner)
-    .filter(n => n.endsWith('.js') && n !== 'app.bundle.js' && n !== '00-theme-boot.js');
+    .filter(n => n.endsWith('.js') && n !== 'app.bundle.js' && n !== 'theme-boot.js');
   assert.ok(dateien.length >= 10, `Nur ${dateien.length} Skripte — greift die Suche noch?`);
 
   // Kommentare zuerst weg: Die Begruendung oben nennt die Designs im
-  // Fliesstext, und die Erklaerung in 01-konto.js ebenso. Ohne diesen Schritt
+  // Fliesstext, und die Erklaerung in konto.js ebenso. Ohne diesen Schritt
   // meldete die Regel genau den Text, der sie erklaert.
   const ohneKommentare = js =>
     js
@@ -348,7 +348,7 @@ test('nur das Boot-Skript kennt die Liste der Designs', () => {
     treffer,
     [],
     'Diese Dateien fuehren eine eigene Liste der Designs. Es gibt genau eine, ' +
-      'in js/00-theme-boot.js — jede weitere waechst beim naechsten Design nicht ' +
+      'in js/theme-boot.js — jede weitere waechst beim naechsten Design nicht ' +
       'mit, und der Wechsel wirkt dann erst nach einem Neuladen.',
   );
 });

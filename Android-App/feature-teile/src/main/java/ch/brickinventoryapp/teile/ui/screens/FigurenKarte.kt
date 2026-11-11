@@ -173,7 +173,7 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
 
 /**
  * Eine Figur als Tabellenzeile: Bild, Nummer, Name, Menge, Erfassungsdatum — was
- * die Tabelle der Webapp zeigt (renderFigs in 06-minifigs.js). Keine Spalten
+ * die Tabelle der Webapp zeigt (renderFigs in minifigs.js). Keine Spalten
  * „Quelle“ und Papierkorb: Diese Liste lädt nur `source=set`, beide wären
  * konstant.
  */

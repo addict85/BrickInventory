@@ -20,7 +20,7 @@
  *      → je rot: „Verwaltung: wartendes Konto, Schalter ohne Mail“
  *   H  .voucher-actions > .mehr-menue wieder flex → rot: „Gutscheinkarte ruhig“
  *   I  Offline-Band wieder mit Datum → rot: „Offline-Band: heute“
- *   K  Rückfall auf die Überschrift in 01-dialoge.js weg → rot: „Fokus nach Esc
+ *   K  Rückfall auf die Überschrift in dialoge.js weg → rot: „Fokus nach Esc
  *      bei Direktaufruf“
  *   L  „Registrieren“ wieder <p> / Bestätigen bleibt bp ohne ausstehende
  *      Adresse → je rot: „Bestätigung angemeldet“

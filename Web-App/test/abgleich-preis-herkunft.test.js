@@ -11,7 +11,7 @@
  *   B  dasselbe in fetchMinifigPrice → rot: ebenda (Figur)
  *   C  in preisRegel.ts den Markt auch bei eingetippter Zahl gefragt → rot:
  *      „eine eingetippte Zahl …“ (Herkunft 'U' an einem eigenen Preis)
- *   D  in 03-teil-erfassen.js den Hinweis weggelassen → rot: „die Webapp nennt …“
+ *   D  in teil-erfassen.js den Hinweis weggelassen → rot: „die Webapp nennt …“
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 const test = require('node:test');

@@ -105,7 +105,7 @@ test('1. ohne APP_BASE_URL kommt kein Code — und keine Nonce', { concurrency: 
 });
 
 test('2. die Webapp hat keine eigene Meinung mehr zur Adresse', () => {
-  const js = require('./helpers/sources').ansichtQuelle('05');
+  const js = require('./helpers/sources').ansichtQuelle('einstellungen');
   assert.match(js, /const serverUrl = d\.url;/,
     'Die Webapp nimmt nicht schlicht die Adresse des Servers.');
   // Der Rueckfall ist weg — das war Marcos zweiter Satz. `ohneKommentare`

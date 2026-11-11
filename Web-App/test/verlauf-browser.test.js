@@ -6,7 +6,7 @@
  * Gegenproben (03.11.2026 gemessen, je einzeln):
  *   A  meldeAnsicht(tab) in bindTabs entfernt → rot: „Reiter schreiben die
  *      Adresse“ (bleibt „#/sammlung“) und die drei folgenden
- *   B  beiDialogWechsel(dialogGewechselt) in 24-router.js entfernt → rot:
+ *   B  beiDialogWechsel(dialogGewechselt) in router.js entfernt → rot:
  *      „Zurück schliesst den Dialog“ (Dialog bleibt, Ansicht wechselt)
  *   C  routeBeimStart() in showApp entfernt → rot: alle vier (der Router
  *      startet nie; „Neuladen“ zeigt die Sammlung statt der Finanzen)

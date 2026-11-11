@@ -14,7 +14,7 @@ const HTML   = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 const { BUENDEL, stelleBuendelSicher } = require('./helpers/buendel');
 stelleBuendelSicher();
 const BUNDLE = fs.readFileSync(BUENDEL, 'utf8');
-const ADMIN  = fs.readFileSync(path.join(ROOT, 'public', 'js', '02-detailfelder.js'), 'utf8');
+const ADMIN  = fs.readFileSync(path.join(ROOT, 'public', 'js', 'detailfelder.js'), 'utf8');
 
 /**
  * Die drei Bedienelemente des Alarms — AUS DEM ECHTEN QUELLTEXT geschnitten.
@@ -45,7 +45,7 @@ function alarmMarkup(sn) {
     .replace(/\$\{[^}]*\}/g, 'x');
 }
 
-/** Die Ruhezeit aus 02-detailfelder.js — hier nur, um DARÜBER und DARUNTER zu takten. */
+/** Die Ruhezeit aus detailfelder.js — hier nur, um DARÜBER und DARUNTER zu takten. */
 const RUHE = 800;
 
 /** Ein Fenster mit geladenem Bündel und dem Alarm-Markup des Detailfensters. */

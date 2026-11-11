@@ -14,7 +14,7 @@ const vm = require('node:vm');
 const { JSDOM } = require('jsdom');
 
 const ROOT = path.join(__dirname, '..');
-const QUELLE = require('./helpers/sources').ansichtQuelle('05');
+const QUELLE = require('./helpers/sources').ansichtQuelle('einstellungen');
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
 /** Wie in test/abgleich-catalog-frontend.test.js: die Modulverpackung weg. */
@@ -23,7 +23,7 @@ function ohneModul(src) {
 }
 
 /**
- * Eine Funktion aus 05-settings.js in einer Sandbox ausführen.
+ * Eine Funktion aus settings.js in einer Sandbox ausführen.
  *
  * Nur die Funktion selbst, nicht die ganze Datei: Sie zieht ein halbes Dutzend
  * andere Module nach sich (Galerie, Teile, Minifiguren), und die hier
@@ -31,7 +31,7 @@ function ohneModul(src) {
  */
 function fuehreAus(funktionsName, umgebung) {
   const start = QUELLE.indexOf(`function ${funktionsName}(`);
-  assert.ok(start > 0, `${funktionsName}() steht nicht mehr in public/js/05-*.js`);
+  assert.ok(start > 0, `${funktionsName}() steht nicht mehr in den Dateien der Ansicht „einstellungen“`);
   // Bis zur Klammer auf Spalte 0 — so sind diese Dateien geschrieben.
   const ende = QUELLE.indexOf('\n}\n', start) + 3;
   const code = ohneModul(QUELLE.slice(start, ende));

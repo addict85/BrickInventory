@@ -24,6 +24,7 @@
  * (Join auf rb_parts im Live-Filter bzw. in der Kategorienliste gestrichen →
  * dort rot).
  */
+const { istAppModul } = require('../scripts/build-frontend');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -42,7 +43,7 @@ function stripModuleSyntax(src) {
   const body = src
     .replace(/^import[^;]*;\s*$/gm, '') // import { a, b } from '…';
     .replace(/^export\s+/gm, ''); // export function/const/let/class
-  // registerActions() kommt sonst aus js/00-registry.js und ist nach dem
+  // registerActions() kommt sonst aus js/registry.js und ist nach dem
   // Entfernen der Importe nicht definiert. In der Sandbox interessiert die
   // Anmeldung nicht — dass sie aufgerufen WIRD, prüfen test/csp-actions.test.js
   // und test/bundle-smoke.test.js gegen den echten Quelltext. …
@@ -78,7 +79,7 @@ test('alle Listenbilder laden verzögert', () => {
   // drei von vier Stellen, in Finanzen an beiden.
   const dir = path.join(ROOT, 'public', 'js');
   const bad = [];
-  for (const f of fs.readdirSync(dir).filter(x => /^\d\d-.*\.js$/.test(x))) {
+  for (const f of fs.readdirSync(dir).filter(x => istAppModul(x))) {
     const src = fs.readFileSync(path.join(dir, f), 'utf8');
     for (const m of src.matchAll(/<img\s[^>]*>/g)) {
       const tag = m[0];

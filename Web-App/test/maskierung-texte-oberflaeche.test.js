@@ -6,13 +6,13 @@
  * wörtlich da, nicht als „&amp;“.
  *
  * Gegenproben (05.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in 02-gallery.js delSet() wieder t('gallery.delete.name_parts') →
+ *   A  in gallery.js delSet() wieder t('gallery.delete.name_parts') →
  *      typecheck:frontend rot (SicheresHtml ist kein string); mit
  *      String(t(…)) erzwungen → rot: „Löschdialog nennt den Set-Namen
  *      wörtlich“ (stand „A &amp; B &lt;C&gt;“)
- *   B  in 05-haushalt.js wieder { via: esc(a.via) } → rot: „frühere
+ *   B  in haushalt.js wieder { via: esc(a.via) } → rot: „frühere
  *      Verknüpfung nennt den Weg wörtlich“ („Tom &amp;amp; Jerry“ im Quelltext)
- *   C  in 01-monitor.js die Pause wieder mit esc(p.art) → rot: „Pause nennt
+ *   C  in monitor.js die Pause wieder mit esc(p.art) → rot: „Pause nennt
  *      eine unbekannte Auftragsart wörtlich“
  */
 const test = require('node:test');

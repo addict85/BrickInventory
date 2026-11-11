@@ -11,10 +11,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const JS = path.join(__dirname, '..', 'public', 'js');
-const BAUSTEIN = '01-bausteine.js';
+const BAUSTEIN = 'bausteine.js';
 const { baueTestbuendel } = require('./helpers/buendel');
 process.env.TEST_BUENDEL = baueTestbuendel('bausteine',
-  "import { detailZeile, ladeAnzeige } from './01-bausteine.js';\nwindow.__bau = { detailZeile, ladeAnzeige };\n");
+  "import { detailZeile, ladeAnzeige } from './bausteine.js';\nwindow.__bau = { detailZeile, ladeAnzeige };\n");
 const { oeffneOberflaeche } = require('./helpers/oberflaeche');
 
 /** Alle Frontend-Module ausser dem Bündel und dem Baustein selbst. */

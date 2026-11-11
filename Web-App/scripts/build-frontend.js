@@ -31,7 +31,7 @@ const OUT_REL = 'js/app.bundle.js';
  * nie ausgeliefert, und das fällt erst im Browser auf.
  */
 const STANDALONE = new Set([
-  '00-theme-boot.js',   // klassisches Skript im <head>, vor dem ersten Paint
+  'theme-boot.js',   // klassisches Skript im <head>, vor dem ersten Paint
   'pdfjs-boot.js',      // eigenes ES-Modul mit type="module"
   'logviewer.js',       // wird zur Laufzeit ins Popup nachgeladen
   'main.js',            // der Einstiegspunkt selbst
@@ -39,17 +39,43 @@ const STANDALONE = new Set([
 ]);
 
 /**
+ * Schichten der Oberfläche. Der Dateiname sagt, was ein Modul tut, nicht wo es
+ * liegt; die Schicht steht deshalb hier, und test/frontend-architektur.test.js
+ * prüft, dass Kern und Bausteine keine Ansicht importieren. Alles übrige ist Ansicht.
+ */
+const KERN = ['stile.js', 'escapen.js', 'ereignisse.js', 'ziele.js', 'zustand.js', 'registry.js', 'theme-boot.js'];
+const BAUSTEINE = ['dom.js', 'format.js', 'meldungen.js', 'verbindung.js', 'api.js', 'bilder.js', 'formular.js',
+  'konto.js', 'dialoge.js', 'fortschritt.js', 'monitor.js', 'bausteine.js', 'rueckfrage.js', 'fadenkreuz.js',
+  'diagramme.js'];
+
+/** Ausserhalb der App-Module: Einstieg, Bündel und die eigenständigen Skripte ohne Bündelbezug. */
+const KEINE_APP_MODULE = new Set(['main.js', path.basename(OUT_REL), 'logviewer.js', 'pdfjs-boot.js']);
+
+/** Ob ein Dateiname unter public/js ein Modul der Oberfläche ist (Kern, Bausteine, Ansichten). */
+const istAppModul = (/** @type {string} */ f) => f.endsWith('.js') && !KEINE_APP_MODULE.has(f);
+
+/** Die Module der Oberfläche unter public/js, sortiert. */
+function appModule() {
+  return fs.readdirSync(path.join(PUBLIC, 'js')).filter(istAppModul).sort();
+}
+
+/**
  * Prüft, dass jede Datei entweder im Modulgraphen hängt oder bewusst
- * ausgenommen ist. Eine neu angelegte 12-*.js, die niemand importiert, würde
- * sonst stillschweigend fehlen.
+ * ausgenommen ist, und dass die Schichtlisten nur Dateien nennen, die es gibt.
+ * Eine neu angelegte .js, die niemand importiert, würde sonst stillschweigend fehlen.
  */
 function checkComplete() {
+  const fehlend = [...KERN, ...BAUSTEINE].filter(f => !fs.existsSync(path.join(PUBLIC, 'js', f)));
+  if (fehlend.length) {
+    console.error(`[build-frontend] KERN/BAUSTEINE nennen fehlende Dateien: ${fehlend.join(', ')}`);
+    process.exit(1);
+  }
   const entry = fs.readFileSync(path.join(PUBLIC, ENTRY), 'utf8');
   const imported = new Set(
     [...entry.matchAll(/from\s+'\.\/([^']+)'|import\s+'\.\/([^']+)'/g)]
       .map(m => m[1] || m[2]));
   const actual = fs.readdirSync(path.join(PUBLIC, 'js')).filter(f => f.endsWith('.js'));
-  const orphans = actual.filter(f => !STANDALONE.has(f) && !imported.has(f) && f !== '00-registry.js');
+  const orphans = actual.filter(f => !STANDALONE.has(f) && !imported.has(f) && f !== 'registry.js');
   if (orphans.length) {
     console.error(`[build-frontend] Nicht im Modulgraphen: ${orphans.join(', ')}`);
     console.error('[build-frontend] In js/main.js importieren oder in STANDALONE eintragen.');
@@ -59,7 +85,7 @@ function checkComplete() {
 
 /**
  * Alle Stilwerte, die so im Quelltext stehen: data-stil="…" im Markup und die
- * stil-Parameter der Bausteine (01-bausteine.js). js/00-stile.js wendet nur
+ * stil-Parameter der Bausteine (bausteine.js). js/stile.js wendet nur
  * diese an — ein eingeschleustes data-stil mit anderem Wert bleibt wirkungslos.
  * Werte mit `${…}` zählen nicht; die setzt der Aufrufer zur Laufzeit selbst.
  */
@@ -153,4 +179,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { ENTRY, OUT_REL, STANDALONE, erlaubteStile, baueBuendel, stelleBuendelSicher, neuesteQuelle };
+module.exports = { ENTRY, OUT_REL, STANDALONE, KERN, BAUSTEINE, istAppModul, appModule, erlaubteStile, baueBuendel, stelleBuendelSicher, neuesteQuelle };

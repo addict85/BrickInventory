@@ -1,5 +1,5 @@
-import { melde } from './js/00-ereignisse.js';
-import { SicheresHtml } from './js/00-escapen.js';
+import { melde } from './js/ereignisse.js';
+import { SicheresHtml } from './js/escapen.js';
 
 // Minimales Übersetzungs-System: t('key', {name}) liefert den Text. Die Sprache wird im localStorage gemerkt,
 // damit beim nächsten Laden nichts verzögert. Nur die aktive Sprache wird ausgeliefert.
@@ -65,7 +65,7 @@ export function locale() {
 }
 
 /**
- * HTML-Sonderzeichen maskieren — Zwilling von esc() aus js/00-escapen.js.
+ * HTML-Sonderzeichen maskieren — Zwilling von esc() aus js/escapen.js.
  *
  * Bewusst hier dupliziert und nicht importiert: i18n.js wird VOR den Kernmodulen geladen (siehe
  * Skript-Reihenfolge in index.html), esc() existiert zum Zeitpunkt der ersten t()-Aufrufe also noch nicht.
@@ -276,7 +276,7 @@ export function applyLang(lang, persist) {
   const sel = /** @type {HTMLSelectElement | null} */ (document.getElementById('lang-select'));
   if (sel) sel.value = lang;
 
-  // Speichern (01-konto.js) und das Neuladen des offenen Reiters (25-navigation.js) hören auf dieses
+  // Speichern (konto.js) und das Neuladen des offenen Reiters (navigation.js) hören auf dieses
   // Ereignis: Die Übersetzung selbst kennt keine Ansicht.
   melde('spracheGewechselt', { sprache: lang, speichern: !!persist, echterWechsel: !!isRealSwitch });
 }
@@ -287,7 +287,7 @@ export function applyLang(lang, persist) {
 /**
  * Aktive Sprache setzen, ohne die volle Neuübersetzung von applyLang().
  *
- * Braucht 26-sitzung.js beim Start, um den in localStorage gespeicherten Wert zu übernehmen, bevor die
+ * Braucht sitzung.js beim Start, um den in localStorage gespeicherten Wert zu übernehmen, bevor die
  * Oberfläche steht. Importierte Bindungen sind in ES-Modulen schreibgeschützt, deshalb dieser Weg statt `LANG
  * = …`.
  *

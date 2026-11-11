@@ -1,5 +1,5 @@
 /**
- * Frontend-Tests für public/js/09-catalog.js in jsdom (devDependency).
+ * Frontend-Tests für public/js/catalog.js in jsdom (devDependency).
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 const test = require('node:test');
@@ -17,7 +17,7 @@ function stripModuleSyntax(src) {
   const body = src
     .replace(/^import[^;]*;\s*$/gm, '')   // import { a, b } from '…';
     .replace(/^export\s+/gm, '');          // export function/const/let/class
-  // registerActions() kommt sonst aus js/00-registry.js und ist nach dem
+  // registerActions() kommt sonst aus js/registry.js und ist nach dem
   // Entfernen der Importe nicht definiert. In der Sandbox interessiert die
   // Anmeldung nicht — dass sie aufgerufen WIRD, prüfen test/csp-actions.test.js
   // und test/bundle-smoke.test.js gegen den echten Quelltext. …
@@ -27,8 +27,8 @@ function stripModuleSyntax(src) {
 }
 
 // Die Ansichts-Bausteine kommen MIT in die Sandbox, nicht als Attrappe.
-const BAUSTEINE = stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '01-bausteine.js'), 'utf8'));
-const CODE = BAUSTEINE + '\n' + stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '09-catalog.js'), 'utf8'));
+const BAUSTEINE = stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'bausteine.js'), 'utf8'));
+const CODE = BAUSTEINE + '\n' + stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'catalog.js'), 'utf8'));
 const dom = new JSDOM(`<!doctype html><html><body>
   <input id="cat-search" />
   <select id="cat-theme"><option value=""></option></select>
@@ -88,7 +88,7 @@ function fakeApi(_method, url) {
   return Promise.resolve({ success: false, error: 'unbekannt: ' + url });
 }
 
-// ── Globale Stubs, wie sie 01-*/i18n bereitstellen ────────────────────────
+// ── Globale Stubs, wie sie die Bausteine und i18n bereitstellen ────────────────────────
 Object.assign(w, require('./helpers/markup').markupHelfer());
 w.eval(`
   window.G = id => document.getElementById(id);
@@ -97,14 +97,14 @@ w.eval(`
   window.locale = () => 'de-CH';
   window.toast = () => {}; window.meldeTreffer = () => {};
   window.PLATZHALTER_SET = '/assets/set-placeholder.svg'; window.setzeDialogbild = (img, src) => { img.src = src; };
-  // Das Teile-Symbol kommt aus 02-gallery.js und wird hier nur als Marke
+  // Das Teile-Symbol kommt aus gallery.js und wird hier nur als Marke
   // gebraucht: Der Test prüft die Katalog-Kachel, nicht das Bild darin.
   // Seit einer früheren Runde steht es dort statt des Puzzleteil-Emojis.
   window.PARTS_ICON_SVG = '<svg data-test-parts-icon></svg>';
-  // Bild und Platzhalter kommen aus 01-bilder.js; hier zählt nur die Kachel.
+  // Bild und Platzhalter kommen aus bilder.js; hier zählt nur die Kachel.
   window.bildTag = o => '<img src="' + o.src + '" alt="">';
   window.platzhalterInhalt = () => '';
-  // Den gemeinsamen Scrollbalken stellt js/15-scrollbar.js; hier zählt nur, DASS
+  // Den gemeinsamen Scrollbalken stellt js/scrollbar.js; hier zählt nur, DASS
   // der Katalog sein Etikett dort anmeldet.
   window.__scrollLabelFn = undefined;
   window.setScrollLabel = fn => { window.__scrollLabelFn = fn; };
@@ -190,7 +190,7 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
   // Kacheln nachladen und die Seite länger wird.
   check('Griff folgt der wachsenden Seite', /ResizeObserver/.test(kern), null);
 
-  const quelle = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '09-catalog.js'), 'utf8');
+  const quelle = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'catalog.js'), 'utf8');
   check('kein eigener Scrollkasten mehr', !/cat-scroller/.test(quelle), null);
   // Der Beobachter misst wieder gegen das FENSTER.
   check('Beobachter ohne eigene Wurzel', !/root: G\(/.test(quelle), null);

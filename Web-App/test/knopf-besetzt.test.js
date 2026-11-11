@@ -85,7 +85,7 @@ test('knopfBesetzt(): Beschriftung und Breite bleiben, solange der Knopf besetzt
   const { JSDOM } = require(path.join(__dirname, '..', 'node_modules', 'jsdom'));
 
   // Die echte Funktion aus dem Quelltext holen — nicht nachgebaut.
-  const src = fs.readFileSync(path.join(JS, '01-dom.js'), 'utf8');
+  const src = fs.readFileSync(path.join(JS, 'dom.js'), 'utf8');
   const auf = src.indexOf('export function knopfBesetzt');
   assert.ok(auf > 0, 'knopfBesetzt() nicht gefunden — umbenannt?');
   const start = src.indexOf('{', src.indexOf(')', auf));

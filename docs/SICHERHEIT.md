@@ -259,7 +259,7 @@ den Commits, nicht hier.
   die genutzten Handler, kein Rückfall auf `window`; Löschen, Konto, Tokens
   und Verwaltung nur von Elementen aus dem Markup beim Laden oder aus
   Vorlagen mit `echt()` (Zufallsmarke je Seitenladung):
-  `public/js/11-actions.js`, `public/js/00-registry.js` — `aktionen-schutz`.
+  `public/js/actions.js`, `public/js/registry.js` — `aktionen-schutz`.
 
 ### Protokoll und Kontingente
 - Guthaben-Abfrage bei lego.com: zuerst höchstens 20 je Konto und Stunde

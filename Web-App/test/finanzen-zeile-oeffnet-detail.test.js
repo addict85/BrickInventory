@@ -3,7 +3,7 @@
  * Reitern Teile und Minifiguren eine Suche steht: Die Finanztabelle zeigt den Bestand ohne diese Filter, das
  * Detail muss den Eintrag also auch ohne sie finden.
  *
- * Gegenprobe (am 07.11.2026 gemessen): openManDetail() in 13-acquisition-modals.js wieder wie vorher —
+ * Gegenprobe (am 07.11.2026 gemessen): openManDetail() in acquisition-modals.js wieder wie vorher —
  * fehlt der Eintrag im Cache, loadManualParts()/loadManualFigsTable() nachladen (mit Suche des Reiters)
  * → rot: „mit Suche in den Reitern“, Titel { teil: null, figur: null } (der Dialog blieb zu, es kam nur
  * /v1/parts/manual?search=Plate bzw. /v1/minifigs/manual?search=Marty). „ohne Filter“ blieb grün.

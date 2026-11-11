@@ -110,7 +110,7 @@ test('Webapp und App bekommen dieselben Endpunkte', () => {
 test('die Oberfläche bietet Einladen und Einlösen jedem Konto an', () => {
   // Ein Konto kann mehreren Hauptkonten angehören; jedes braucht seine eigene
   // Einladung. Ein ausgeblendetes Eingabefeld verhinderte genau das.
-  const js = require('./helpers/sources').ansichtQuelle('05');
+  const js = require('./helpers/sources').ansichtQuelle('einstellungen');
   assert.match(js, /inviteEl\.style\.display = ''/);
   assert.match(js, /redeemEl\.style\.display = ''/);
   const kt =
@@ -316,14 +316,14 @@ test('der Kontofilter gilt je Ansicht und wird überall mitgeschickt', () => {
   assert.match(core, /if \(m && m !== 'all'\) p\.set\('accounts', m\);/);
 
   // Jede der fünf Ansichten hängt ihn an ihre Abfragen.
-  assert.match(read('public/js/02-gallery.js'), /addScopeParam\(p, 'gallery'\)/);
-  assert.match(read('public/js/03-parts.js'), /addScopeParam\(p, 'parts'\)/);
-  assert.match(read('public/js/06-minifigs.js'), /addScopeParam\(p, 'minifigs'\)/);
-  assert.match(read('public/js/16-merkliste.js'), /addScopeParam\(p, 'merkliste'\)/);
+  assert.match(read('public/js/gallery.js'), /addScopeParam\(p, 'gallery'\)/);
+  assert.match(read('public/js/parts.js'), /addScopeParam\(p, 'parts'\)/);
+  assert.match(read('public/js/minifigs.js'), /addScopeParam\(p, 'minifigs'\)/);
+  assert.match(read('public/js/merkliste.js'), /addScopeParam\(p, 'merkliste'\)/);
 
   // Im Finanzreiter ALLE vier Abfragen — sonst stünde eine Summe aus einem
   // Blickfeld neben einer Aufstellung aus einem anderen.
-  const fin = read('public/js/04-finance.js') + read('public/js/04-wertkurve.js');
+  const fin = read('public/js/finance.js') + read('public/js/wertkurve.js');
   // Adressen seit Etappe 5 unter /v1 — die Regel ist unverändert: ALLE vier
   // Abfragen des Reiters tragen denselben Filter.
   for (const ep of [

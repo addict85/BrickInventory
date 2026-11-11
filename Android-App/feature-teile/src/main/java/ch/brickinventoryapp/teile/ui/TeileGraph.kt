@@ -198,7 +198,7 @@ private fun NavGraphBuilder.teilelistenZiel(navigation: TeileNavigation) {
                 // Erfolgloser Scan → Cursor ins Set-Feld.
                 manuelleErfassungAnfordern = scan.manuellErfassen,
                 onManuelleErfassungQuittiert = scan.manuellQuittiert,
-                // Dieselbe Regel wie in der Webapp (02-gallery.js): Mehr als
+                // Dieselbe Regel wie in der Webapp (gallery.js): Mehr als
                 // ein Mitglied im Haushalt heisst „es gibt Unterkonten".
                 hatUnterkonten = blick.householdMembers.size > 1,
                 barcodeSetNumber = scan.setNumber,

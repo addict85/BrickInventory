@@ -33,5 +33,5 @@ test('Farbwerte kommen nur über escHex ins Markup', () => {
   assert.deepEqual(treffer, [],
     'Diese Stellen schreiben einen Farbwert roh ins Markup:\n  ' + treffer.join('\n  ') +
     '\nescHex(wert, rückfall) prüft auf sechs Hexziffern und liefert sonst den ' +
-    'Rückfall — siehe den Hinweis in 00-escapen.js.');
+    'Rückfall — siehe den Hinweis in escapen.js.');
 });

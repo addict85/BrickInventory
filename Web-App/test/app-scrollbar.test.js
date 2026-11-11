@@ -16,7 +16,7 @@ const ROOT = path.join(__dirname, '..');
  * Den Scrollbalken-Code auswerten.
  */
 function scrollbalkenCode() {
-  const roh = fs.readFileSync(path.join(ROOT, 'public', 'js', '15-scrollbar.js'), 'utf8');
+  const roh = fs.readFileSync(path.join(ROOT, 'public', 'js', 'scrollbar.js'), 'utf8');
   return roh.replace(/^import .*$/gm, '').replace(/^export\s+/gm, '');
 }
 
@@ -86,7 +86,7 @@ test('das Etikett verschwindet nach dem Ziehen wieder', () => {
 });
 
 test('das Etikett wird beim Verlassen des Katalogs abgemeldet', () => {
-  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', '25-navigation.js'), 'utf8');
+  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'navigation.js'), 'utf8');
   assert.match(gal, /if \(tab !== 'catalog'\) setScrollLabel\(null\)/,
     'Beim Reiterwechsel wird die Etikett-Funktion nicht abgemeldet');
 });

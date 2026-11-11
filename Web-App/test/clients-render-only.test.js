@@ -1,7 +1,7 @@
 /**
  * Beide Oberflächen rechnen keine Geldbeträge nach.
  *
- * Gegenproben (08.11.2026 gemessen): in 04-finance.js den Gesamtwert wieder
+ * Gegenproben (08.11.2026 gemessen): in finance.js den Gesamtwert wieder
  * selbst addieren (`const grandTotal = setsQtyAvg + extra`) → rot: „die
  * Webapp zeigt den Gesamtwert des Servers“. Dass der Server ihn liefert,
  * prüft geschenk-guv-db.test.js („der Gesamtwert kommt fertig …“, C).

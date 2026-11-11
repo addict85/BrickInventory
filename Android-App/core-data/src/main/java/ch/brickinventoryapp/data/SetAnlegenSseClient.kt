@@ -150,7 +150,7 @@ internal class SetAnlegenSseClient @Inject constructor(
             sende(SetAnlegenSchritt.Fehler(""))
             return true
         }
-        // Dieselben Schrittnamen wie in der Webapp (public/js/02-gallery.js →
+        // Dieselben Schrittnamen wie in der Webapp (public/js/gallery.js →
         // handleSseEvent). Sie stehen hier ein zweites Mal, weil es ein
         // Protokoll zwischen zwei Programmen ist — aber in derselben
         // Reihenfolge und mit derselben Bedeutung.

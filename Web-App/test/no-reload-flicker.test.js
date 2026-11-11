@@ -2,9 +2,9 @@
  * Kein doppelter Neuaufbau des Inhalts beim Neuladen / nach dem Login.
  *
  * Gegenproben (05.11.2026, je einzeln, Bündel neu gebaut):
- *   A  25-navigation.js: bei Sprachwechsel loadGallery() statt renderGallery()
+ *   A  navigation.js: bei Sprachwechsel loadGallery() statt renderGallery()
  *      → „ein echter Sprachwechsel …“ rot
- *   B  25-navigation.js ohne `if (!echterWechsel) return;` → „der Start lädt …“ rot
+ *   B  navigation.js ohne `if (!echterWechsel) return;` → „der Start lädt …“ rot
  *   C  loadGallery zeigt die Ladeanzeige immer (`if (true)`) → „Auffrischen …“ rot
  */
 const test = require('node:test');
@@ -19,7 +19,7 @@ function stripModuleSyntax(src) {
   const body = src
     .replace(/^import[^;]*;\s*$/gm, '') // import { a, b } from '…';
     .replace(/^export\s+/gm, ''); // export function/const/let/class
-  // registerActions() kommt sonst aus js/00-registry.js und ist nach dem
+  // registerActions() kommt sonst aus js/registry.js und ist nach dem
   // Entfernen der Importe nicht definiert. In der Sandbox interessiert die
   // Anmeldung nicht — dass sie aufgerufen WIRD, prüfen test/csp-actions.test.js
   // und test/bundle-smoke.test.js gegen den echten Quelltext. …

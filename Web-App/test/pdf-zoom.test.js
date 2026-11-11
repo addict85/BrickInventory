@@ -9,7 +9,7 @@ const path = require('node:path');
 const { JSDOM } = require('jsdom');
 const { warte } = require('./helpers/zeit');
 
-const QUELLE = path.join(__dirname, '..', 'public', 'js', '12-pdfviewer.js');
+const QUELLE = path.join(__dirname, '..', 'public', 'js', 'pdfviewer.js');
 
 const BEHAELTER_W = 600;
 const BEHAELTER_H = 400;
@@ -132,7 +132,7 @@ async function werkbank(umbau) {
   };
 }
 
-// Gegenprobe (02.11.2026 gemessen): isEvalSupported in 12-pdfviewer.js
+// Gegenprobe (02.11.2026 gemessen): isEvalSupported in pdfviewer.js
 // gestrichen → rot.
 test('PDF.js lädt ohne eval und ohne Skripte im PDF', async () => {
   const b = await werkbank();
@@ -308,7 +308,7 @@ test('Zoom im PDF-Betrachter', async (t) => {
   });
 });
 
-// Gegenprobe (08.11.2026 gemessen): in 12-pdfviewer.js den Platzhalter wieder `background:#fff` gegeben
+// Gegenprobe (08.11.2026 gemessen): in pdfviewer.js den Platzhalter wieder `background:#fff` gegeben
 // → rot „Platzhalter ist gedämpft“; `background: '#fff'` aus render() gestrichen → rot „Seite bleibt weiss“.
 test('Platzhalter ist gedämpft, die gerenderte Seite bleibt weiss', async () => {
   const b = await werkbank();

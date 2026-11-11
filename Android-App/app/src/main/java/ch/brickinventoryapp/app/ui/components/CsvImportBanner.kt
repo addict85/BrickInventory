@@ -42,7 +42,7 @@ fun CsvImportBanner(
     /**
      * Abbrechen — nur waehrend der Import laeuft sichtbar.
      *
-     * Die Webapp hat den Knopf seit jeher (02-gallery.js, btn-cancel-import).
+     * Die Webapp hat den Knopf seit jeher (gallery.js, btn-cancel-import).
      * Die App zeigte denselben Balken und keinen Weg heraus: Ein versehentlich
      * gestarteter Import ueber hunderte Sets holt zu jedem die Stammdaten und
      * musste ausgesessen werden.

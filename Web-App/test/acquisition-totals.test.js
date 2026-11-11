@@ -6,7 +6,7 @@
  * „keine Oberfläche rechnet die Summe noch einmal“.
  * Gegenprobe (durchgeführt): `amount` in acquisitionTotals() auf 0 statt null
  * bei fehlenden Preisen → der Randfall-Teilschritt wird rot. Und ein
- * eingefügtes `acqs.reduce(...)` in 07-admin.js → der Regel-Teilschritt.
+ * eingefügtes `acqs.reduce(...)` in admin.js → der Regel-Teilschritt.
  * Am 30.10.2026 gemessen: `totals` aus der Teile-Antwort in
  * routes/api_v1/acquisitions.ts entfernt → rot: „parts“ im Routen-Teilschritt.
  * Seit 05.11.2026 fehlt `amount` ohne bekannten Preis (Geld hat einen Typ);

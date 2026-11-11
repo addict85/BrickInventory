@@ -3,7 +3,7 @@
  *
  * Aggregat, Zustand beim Anlegen und im Marktpreis: set-zustand-aggregat-db.test.js.
  *
- * Gegenprobe (08.11.2026): in 00-theme-boot.js apply() ohne ALLOWED-Prüfung →
+ * Gegenprobe (08.11.2026): in theme-boot.js apply() ohne ALLOWED-Prüfung →
  * rot „ein unbekannter Theme-Wert setzt nichts zurück“.
  * Gegenprobe (08.11.2026): in acqSave `applySetAggregate(d.set)` gestrichen
  * bzw. applySetAggregate ohne renderGallery() → rot „die Kachel übernimmt den
@@ -52,7 +52,7 @@ test('ein unbekannter Theme-Wert setzt nichts zurück', () => {
   });
   const w = dom.window;
   w.fetch = () => new Promise(() => {});
-  w.eval(fs.readFileSync(path.join(ROOT, 'public', 'js', '00-theme-boot.js'), 'utf8'));
+  w.eval(fs.readFileSync(path.join(ROOT, 'public', 'js', 'theme-boot.js'), 'utf8'));
   for (const wert of [undefined, null, '', 'gibtsnicht']) {
     assert.equal(w.__bimApplyTheme(wert), null, `${wert} wurde als Design angenommen`);
     assert.equal(
@@ -550,12 +550,12 @@ test('die Reihenfolge ist fest: Neu vor Gebraucht', () => {
 });
 
 test('die Kacheln rechnen die Plaketten nicht selbst aus', () => {
-  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-bausteine.js'), 'utf8');
+  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'bausteine.js'), 'utf8');
   assert.match(gal, /export function condBadges/, 'Eine gemeinsame Fassung für Set-, Teile- und Minifiguren-Kacheln');
   // Vorher stand dieselbe Plakette viermal im Code, dreimal mit fest
   // eingetragenen Farben statt der CSS-Klassen. Geprüft wird genau das:
   // keine Zeile darf eine Zustands-Beschriftung UND eine eigene Farbe tragen.
-  for (const f of ['public/js/03-parts.js', 'public/js/06-minifigs.js', 'public/js/04-finance.js']) {
+  for (const f of ['public/js/parts.js', 'public/js/minifigs.js', 'public/js/finance.js']) {
     const lines = fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n');
     const inline = lines.filter(l => /common\.condition_(used|new)/.test(l) && /background:\s*var\(/.test(l));
     assert.equal(inline.length, 0, `${f}: Zustandsfarben gehören in die CSS-Klassen cond-new/cond-used`);
@@ -566,7 +566,7 @@ test('der Kaufpreis auf der Kachel ist mengengewichtet, nicht das Maximum', () =
   // MAX(purchase_price) zeigte bei 2x100 und 1x160 den Wert 160.
   const h = require('./helpers/sources').handlerQuelle();
   assert.match(h, /avg_purchase_price/, 'Der gewichtete Kaufpreis fehlt im Aggregat');
-  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', '02-gallery.js'), 'utf8');
+  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'gallery.js'), 'utf8');
   assert.match(
     gal,
     /s\.avg_purchase_price \?\? s\.max_purchase_price/,

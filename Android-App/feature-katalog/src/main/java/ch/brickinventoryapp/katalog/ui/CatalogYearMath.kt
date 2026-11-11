@@ -11,7 +11,7 @@ internal object CatalogYearMath {
 
     /**
      * Anteil (0..1) an der Leiste zu einer Berührung bei y Pixeln. Wie in der Webapp
-     * (js/15-scrollbar.js → rollen): Der Griff liegt mittig unter dem Finger,
+     * (js/scrollbar.js → rollen): Der Griff liegt mittig unter dem Finger,
      * umgerechnet wird auf die Spur ohne Griffhöhe.
      */
     fun anteilAus(y: Float, heightPx: Int, thumbHeightPx: Int): Float {
@@ -37,7 +37,7 @@ internal object CatalogYearMath {
 
     /**
      * Das Jahr, das neben dem Griff steht — in derselben Reihenfolge wie die Webapp
-     * (js/09-catalog.js → _jahrAnPosition):
+     * (js/catalog.js → _jahrAnPosition):
      *
      *   Erste Wahl:  das Jahr der Kachel an dieser Stelle. Ist sie geladen, ist das die Wahrheit und keine Rechnung.
      *   Zweite Wahl: die Verteilung, für noch leere Bereiche.
@@ -52,7 +52,7 @@ internal object CatalogYearMath {
 
     /**
      * Welches Jahr liegt an diesem Anteil der Liste? Wie in der Webapp
-     * (js/09-catalog.js → _jahrAnPosition): Aus dem Anteil wird eine laufende Nummer,
+     * (js/catalog.js → _jahrAnPosition): Aus dem Anteil wird eine laufende Nummer,
      * die durch die Verteilung wandert, bis sie in einen Jahrgang fällt.
      */
     fun jahrAnPosition(anteil: Float, total: Int, verteilung: List<JahrAnzahlAnsicht>): Int? {

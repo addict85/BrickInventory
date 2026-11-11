@@ -1,5 +1,5 @@
 /**
- * Der Aktions-Dispatcher (public/js/11-actions.js) ist kein Skript-Gadget:
+ * Der Aktions-Dispatcher (public/js/actions.js) ist kein Skript-Gadget:
  * Eingeschleustes Markup ohne Skript löst keine gefährliche Aktion aus, kein
  * Überfahren mit der Maus löst überhaupt etwas aus, und globale Funktionen
  * sind über data-click nicht erreichbar. Echte Knöpfe aus Vorlagen und aus
@@ -11,13 +11,14 @@
  *   B  mouseenter wieder in DELEGATED → rot: „Überfahren löst aus"
  *   C  NUR-Prüfung für change entfernt → rot: „change mit fremdem Handler"
  *   D  Rückfall auf window in resolveAction() zurück → rot: „window.open"
- *   E  echt() aus nutzerKnopf() in 05-settings.js entfernt → rot: „echter
+ *   E  echt() aus nutzerKnopf() in settings.js entfernt → rot: „echter
  *      Knopf der Benutzerliste wirkt"
  *   F  ein Name aus NUR.change gestrichen → rot: „jeder Handler im Markup
  *      steht in der Liste seines Ereignisses"
- *   G  echt() an papierkorbEndgueltig (20-papierkorb.js) entfernt → rot:
+ *   G  echt() an papierkorbEndgueltig (papierkorb.js) entfernt → rot:
  *      „jede Vorlage mit gefährlicher Aktion trägt echt()"
  */
+const { istAppModul } = require('../scripts/build-frontend');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -108,18 +109,18 @@ test('echte Knöpfe aus Vorlage und Markup wirken weiter', async () => {
 });
 
 test('jeder Handler im Markup steht in der Liste seines Ereignisses', () => {
-  // Struktur: Die Listen in 11-actions.js müssen das Markup abdecken, sonst
+  // Struktur: Die Listen in actions.js müssen das Markup abdecken, sonst
   // wäre ein echtes Feld tot. Die Gegenrichtung prüft der Test darüber.
-  const quelle = fs.readFileSync(path.join(ROOT, 'public', 'js', '11-actions.js'), 'utf8');
+  const quelle = fs.readFileSync(path.join(ROOT, 'public', 'js', 'actions.js'), 'utf8');
   const liste = (typ) => {
     const m = quelle.match(new RegExp(`\\b${typ}: new Set\\(\\[([^\\]]*)\\]`));
     assert.ok(m, `Liste für ${typ} nicht gefunden`);
     return new Set([...m[1].matchAll(/'([^']+)'/g)].map(x => x[1]));
   };
   const dateien = [path.join(ROOT, 'public', 'index.html'),
-    ...fs.readdirSync(path.join(ROOT, 'public', 'js')).filter(f => /^\d\d-.*\.js$/.test(f))
+    ...fs.readdirSync(path.join(ROOT, 'public', 'js')).filter(f => istAppModul(f))
       .map(f => path.join(ROOT, 'public', 'js', f))];
-  // Das Log-Fenster (01-monitor.js) ist ein eigenes Popup mit eigener Auflösung.
+  // Das Log-Fenster (monitor.js) ist ein eigenes Popup mit eigener Auflösung.
   const LOGFENSTER = new Set(['loadLogs', 'renderLogs']);
   const fehlt = [];
   let gesehen = 0;
@@ -137,12 +138,12 @@ test('jeder Handler im Markup steht in der Liste seines Ereignisses', () => {
 
 test('jede Vorlage mit gefährlicher Aktion trägt echt()', () => {
   // Sonst wäre der Knopf tot: Der Dispatcher weist ihn ab.
-  const quelle = fs.readFileSync(path.join(ROOT, 'public', 'js', '11-actions.js'), 'utf8');
+  const quelle = fs.readFileSync(path.join(ROOT, 'public', 'js', 'actions.js'), 'utf8');
   const gefaehrlich = new Set([...quelle.match(/GEFAEHRLICH = new Set\(\[([^\]]*)\]/)[1]
     .matchAll(/'([^']+)'/g)].map(x => x[1]));
   const ohne = [];
   let gesehen = 0;
-  for (const f of fs.readdirSync(path.join(ROOT, 'public', 'js')).filter(f => /^\d\d-.*\.js$/.test(f)))
+  for (const f of fs.readdirSync(path.join(ROOT, 'public', 'js')).filter(f => istAppModul(f)))
     for (const m of fs.readFileSync(path.join(ROOT, 'public', 'js', f), 'utf8').matchAll(/data-click="([^"$]+)"(\$\{echt\(\)\})?/g))
       if (gefaehrlich.has(m[1])) { gesehen++; if (!m[2]) ohne.push(`${f}: ${m[1]}`); }
   assert.ok(gesehen > 15, `nur ${gesehen} Treffer — greift die Suche noch?`);

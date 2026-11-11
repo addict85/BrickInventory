@@ -196,7 +196,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
 
 test('QR-Zugang: die Oberflaeche waehlt beim ERZEUGEN, nicht beim Einloesen', () => {
   const einst = ohneKommentare(
-    require('./helpers/sources').ansichtQuelle('05'));
+    require('./helpers/sources').ansichtQuelle('einstellungen'));
 
   assert.ok(/api\('POST', '\/v1\/auth\/qr-token', \{ gueltigkeit, password\b/.test(einst),
     'Die Webapp soll die gewaehlte Laufzeit beim Erzeugen des Codes mitschicken');
@@ -205,7 +205,7 @@ test('QR-Zugang: die Oberflaeche waehlt beim ERZEUGEN, nicht beim Einloesen', ()
     'an der eine Laufzeit gewaehlt werden koennte');
 
   // Und die Auswahl muss es im Markup ueberhaupt geben — ein Feld, das
-  // 05-settings.js liest, aber niemand fuellt, waere still wirkungslos.
+  // settings.js liest, aber niemand fuellt, waere still wirkungslos.
   const html = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
   assert.ok(/id="qr-validity"/.test(html), 'Das Auswahlfeld fehlt in der Oberflaeche');
 

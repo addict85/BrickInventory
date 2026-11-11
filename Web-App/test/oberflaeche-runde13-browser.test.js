@@ -14,7 +14,7 @@
  *      Änderung: Titel und neue Adresse“
  *   D  verwirfToasts wieder „alle mit Knopf bleiben“ → rot: „Toast der Ansicht
  *      schliesst beim Wechsel“
- *   E  Entf-Zweig in 11-actions.js entfernt → rot: „Lösch-Kreuz: Entf auf der Karte“
+ *   E  Entf-Zweig in actions.js entfernt → rot: „Lösch-Kreuz: Entf auf der Karte“
  *   F  preisZeile wieder mit Geschenk im Preiskasten → rot: „Geschenk als Plakette“
  *   G  jobIconSvg ohne imgDl und pdfJobs → rot: „Hintergrundarbeiten: jeder Dienst
  *      mit Symbol“

@@ -60,7 +60,7 @@ test('alle fuenf Routen, die ein Passwort setzen, pruefen die Laenge', () => {
 });
 
 test('Server, Webapp und App nennen dieselbe Zahl', () => {
-  const web = ohneKommentare(read('public/js/01-formular.js'));
+  const web = ohneKommentare(read('public/js/formular.js'));
   const webZahl = /export const PASSWORT_MIN_ZEICHEN = (\d+)/.exec(web);
   assert.ok(webZahl, 'Die Webapp fuehrt keine Konstante mehr — dann steht die Zahl wieder verstreut');
   assert.equal(Number(webZahl[1]), PASSWORT_MIN_ZEICHEN,
@@ -106,16 +106,16 @@ test('beide Oberflaechen pruefen vor dem Absenden', () => {
   // Ohne diese Haelfte waere die Webapp weiterhin die unbequemere von beiden:
   // Sie schickte ab und zeigte den Serverfehler, waehrend die App den Knopf
   // gar nicht erst freigibt.
-  const core = ohneKommentare(read('public/js/01-formular.js'));
-  const settings = ohneKommentare(require('./helpers/sources').ansichtQuelle('05'));
-  // Anmelden, Registrieren und Zurücksetzen stehen seit dem Umbau in 26-sitzung.js.
-  const sitzung = ohneKommentare(read('public/js/26-sitzung.js'));
+  const core = ohneKommentare(read('public/js/formular.js'));
+  const settings = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
+  // Anmelden, Registrieren und Zurücksetzen stehen seit dem Umbau in sitzung.js.
+  const sitzung = ohneKommentare(read('public/js/sitzung.js'));
   const webAufrufe = (core.match(/passwortRegelText\(/g) || []).length
                    + (settings.match(/passwortRegelText\(/g) || []).length
                    + (sitzung.match(/passwortRegelText\(/g) || []).length;
   // Fuenf Stellen setzen in der Webapp ein Passwort: Registrieren,
   // Zuruecksetzen, Aendern, Konto anlegen, Konto-Passwort zuruecksetzen.
-  // Dazu die Definition selbst in 01-formular.js.
+  // Dazu die Definition selbst in formular.js.
   assert.ok(webAufrufe >= 6,
     `Nur ${webAufrufe} Vorkommen — nicht alle fuenf Formulare pruefen vor dem Absenden`);
 

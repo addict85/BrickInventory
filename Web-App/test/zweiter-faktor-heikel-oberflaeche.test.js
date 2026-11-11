@@ -1,11 +1,11 @@
 /**
  * Die Oberfläche fragt den Code nach, wenn der Server für eine heikle
  * Änderung zweiter_faktor_noetig meldet, und wiederholt die Anfrage mit
- * `code` (mitZweitemFaktor in public/js/07-admin.js). Geprüft am Pflichtwechsel
+ * `code` (mitZweitemFaktor in public/js/admin.js). Geprüft am Pflichtwechsel
  * des Startpassworts, echtes Bündel in jsdom.
  *
  * Gegenproben (01.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  im Pflichtwechsel (01-api.js) wieder api() direkt statt
+ *   A  im Pflichtwechsel (api.js) wieder api() direkt statt
  *      mitZweitemFaktor → rot: „der Code-Dialog erscheint"
  *   B  in mitZweitemFaktor `code` nicht mitgeschickt → rot: „die zweite
  *      Anfrage trägt den Code"

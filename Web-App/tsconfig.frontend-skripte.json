@@ -1,5 +1,5 @@
 {
-  // Die zwei klassischen Skripte der Oberfläche: 00-theme-boot.js läuft vor
+  // Die zwei klassischen Skripte der Oberfläche: theme-boot.js läuft vor
   // dem Bündel im <head>, logviewer.js im Protokollfenster. Ihre Funktionen
   // sind absichtlich global (window[name]), deshalb ohne moduleDetection "force".
   "extends": "./tsconfig.frontend.json",
@@ -7,6 +7,6 @@
     "moduleDetection": "auto",
     "noUnusedLocals": false
   },
-  "include": ["public/js/00-theme-boot.js", "public/js/logviewer.js", "frontend-typen/*.d.ts"],
+  "include": ["public/js/theme-boot.js", "public/js/logviewer.js", "frontend-typen/*.d.ts"],
   "exclude": []
 }

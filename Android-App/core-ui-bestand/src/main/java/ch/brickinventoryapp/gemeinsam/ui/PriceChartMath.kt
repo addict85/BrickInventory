@@ -9,7 +9,7 @@ import ch.brickinventoryapp.model.util.fmtDatum
  * Rechnen für das Preisdiagramm, ohne Compose und damit prüfbar. Die vom Server
  * vorne aufgefüllten Nullen heissen „kein Wert“ und werden nicht gezeichnet; die
  * x-Achse folgt dem Datum, nicht dem Index. Dieselben Regeln wie im Web
- * (public/js/07-admin.js, priceChartSVG).
+ * (public/js/admin.js, priceChartSVG).
  */
 
 /** Ein gezeichneter Punkt: Tag als Zahl (Tage seit 1970) und Preis. */

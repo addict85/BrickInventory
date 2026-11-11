@@ -76,7 +76,7 @@ function erreichbareSchritte() {
   // erreichbar — dort gibt es keinen durchgereichten Melder.
   for (const m of alles.matchAll(/\bsend\(\{\s*step\s*:\s*'([^']+)'/g)) erreichbar.add(m[1]);
   // Eine JSON-Antwort statt eines Stroms (Fachfehler, „exists“) macht readSSE() zu einem Ereignis.
-  const lesen = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-fortschritt.js'), 'utf8');
+  const lesen = fs.readFileSync(path.join(ROOT, 'public', 'js', 'fortschritt.js'), 'utf8');
   for (const m of lesen.matchAll(/onEvent\(\{\s*step:[^,}]*\?\s*'(\w+)'\s*:\s*'(\w+)'/g)) { erreichbar.add(m[1]); erreichbar.add(m[2]); }
 
   for (const [datei, src] of quellen) {
@@ -112,7 +112,7 @@ function erreichbareSchritte() {
   return erreichbar;
 }
 
-const galerie = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-fortschritt.js'), 'utf8');
+const galerie = fs.readFileSync(path.join(ROOT, 'public', 'js', 'fortschritt.js'), 'utf8');
 const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
 test('jeder Schritt im Fortschrittsdialog kann den Browser auch erreichen', () => {

@@ -10,6 +10,7 @@
  *   A  in index.html ein `font-size:.78rem` eingesetzt → rot, mit Fundstelle
  *   B  `var(--fs-9)` (gibt es nicht) eingesetzt        → rot: „Stufe fehlt"
  */
+const { istAppModul } = require('../scripts/build-frontend');
 const test   = require('node:test');
 const assert = require('node:assert/strict');
 const fs     = require('node:fs');
@@ -20,7 +21,7 @@ const PUB = path.join(__dirname, '..', 'public');
 function dateien() {
   const js = path.join(PUB, 'js');
   return [path.join(PUB, 'styles.css'), path.join(PUB, 'mobile.css'), path.join(PUB, 'index.html'),
-    ...fs.readdirSync(js).filter(n => /^\d\d-.*\.js$/.test(n)).map(n => path.join(js, n))];
+    ...fs.readdirSync(js).filter(n => istAppModul(n)).map(n => path.join(js, n))];
 }
 
 test('jede Schriftgrösse nimmt eine Stufe der Skala', () => {

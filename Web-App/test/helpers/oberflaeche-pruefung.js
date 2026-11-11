@@ -13,7 +13,7 @@
  *      (axe nested-interactive)
  *   E  Telefonregel des Import-Menüs entfernt → „Import-Menü“ (Überlauf)
  * Gegenproben (01.11.2026, je einzeln, gemessen an classic/rechner):
- *   F  `summary` aus FOKUSSIERBAR (01-dialoge.js) → „Set-Detail“ („Weitere
+ *   F  `summary` aus FOKUSSIERBAR (dialoge.js) → „Set-Detail“ („Weitere
  *      Aktionen“ nicht per Tab erreichbar)
  *   G  Dateifeld der Anleitungen wieder display:none → „Set-Detail“ (Knopf ohne Tastatur)
  *   H  --feldrand wieder var(--bdr) → fast jede Ansicht (Feldgrenze 1,18:1)

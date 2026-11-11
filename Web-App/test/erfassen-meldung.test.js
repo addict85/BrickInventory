@@ -3,7 +3,7 @@
  * Katalogdaten (kein Netz zu Rebrickable/Brickset), heisst es „gespeichert —
  * Name und Bild kommen nach“ statt „hinzugefügt!“. Am echten Bündel in jsdom.
  *
- * Gegenprobe (am 28.10.2026 gemessen): in 02-gallery.js katalog_offen nicht
+ * Gegenprobe (am 28.10.2026 gemessen): in gallery.js katalog_offen nicht
  * ausgewertet → rot: „ohne Katalogdaten“ (es kam „Set 99071-1 hinzugefügt!“).
  *
  * Gegenprobe (08.11.2026 gemessen): der Schlüssel gallery.set_aktualisiert aus

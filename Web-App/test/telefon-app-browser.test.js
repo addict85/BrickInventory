@@ -290,7 +290,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
   });
   await t.test('weniger Bewegung: Dialog und Reiter ohne Animation', async () => {
     // Ein Probe-Dialog ohne role="dialog", damit die Fokusführung der echten
-    // Dialoge (js/01-dialoge.js) nicht anspringt.
+    // Dialoge (js/dialoge.js) nicht anspringt.
     const dauer = () => b.auswerten(`(() => { const o = document.createElement('div');
       o.className = 'ovl open'; const m = document.createElement('div'); m.className = 'modal'; o.append(m); document.body.append(o);
       const d = getComputedStyle(o.firstElementChild).animationDuration; o.remove();

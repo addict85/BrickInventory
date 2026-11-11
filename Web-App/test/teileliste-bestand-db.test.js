@@ -71,7 +71,7 @@ test('Bestandsabgleich der Teileliste', { concurrency: 1 }, async (t) => {
     { part_number: '3003', color_id: 0 },
     { part_number: '3004', color_id: 0 },
     // Die Teileliste haengt Minifiguren als eigene Zeilen an — mit der
-    // FIGURENNUMMER als part_number und Farbe 0 (08-init.js, plGenerate).
+    // FIGURENNUMMER als part_number und Farbe 0 (init.js, plGenerate).
     { part_number: 'trn241',  color_id: 0 },
     { part_number: 'cty0500', color_id: 0 },
   ];
@@ -132,7 +132,7 @@ test('Bedarf und Bestand werden über dieselbe Nummer zusammengeführt', () => {
   const path = require('node:path');
   const { ohneKommentare } = require('./helpers/sources');
   const src = ohneKommentare(
-    fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '08-init.js'), 'utf8'));
+    fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'init.js'), 'utf8'));
 
   assert.match(src, /const key = `\$\{p\.part_number\}\|\$\{p\.color_id\|\|0\}`/,
     'Der Bedarf wird nicht (mehr) nach der Rebrickable-Nummer zusammengefasst. ' +
@@ -160,7 +160,7 @@ test('der Bestandsabgleich liest sein Blickfeld aus der eigenen Wahl', () => {
   const path = require('node:path');
   const { ohneKommentare } = require('./helpers/sources');
   const js = ohneKommentare(
-    fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '08-init.js'), 'utf8'));
+    fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'init.js'), 'utf8'));
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 
   assert.ok(js.includes("G('pl-bestand-subs')"),

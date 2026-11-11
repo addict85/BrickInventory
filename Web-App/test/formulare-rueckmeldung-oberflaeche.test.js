@@ -18,13 +18,13 @@
  *      Set-Detail“ (DELETE statt Fehlermeldung)
  *   B  in loescheAlarm wieder confirm() → rot: „Alarm löschen mit Dialog
  *      und Rückgängig“
- *   C  in 05-lagerorte `belegt ? ' disabled'` entfernt → rot: „Lagerorte“
- *   D  im Zähler-Listener (01-formular) sofort return → rot: „Lagerorte“
+ *   C  in lagerorte `belegt ? ' disabled'` entfernt → rot: „Lagerorte“
+ *   D  im Zähler-Listener (formular) sofort return → rot: „Lagerorte“
  *   E  in ladeGutscheine wieder eine Summe über alle Währungen → rot:
  *      „Gutscheinsumme je Währung“
- *   F  in 05-nutzerverwaltung die Namensprüfung entfernt → rot: „Konto
+ *   F  in nutzerverwaltung die Namensprüfung entfernt → rot: „Konto
  *      anlegen“
- *   G  in 00-theme-boot `w === 'immer' ||` entfernt → rot: „Immer dunkel“
+ *   G  in theme-boot `w === 'immer' ||` entfernt → rot: „Immer dunkel“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -224,7 +224,7 @@ test('Immer dunkel', async () => {
         w.document.documentElement.setAttribute('data-theme', 'classic');
         w.eval(
           require('node:fs').readFileSync(
-            require('node:path').join(__dirname, '..', 'public', 'js', '00-theme-boot.js'),
+            require('node:path').join(__dirname, '..', 'public', 'js', 'theme-boot.js'),
             'utf8',
           ),
         );

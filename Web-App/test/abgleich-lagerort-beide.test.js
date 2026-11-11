@@ -9,11 +9,11 @@
  * Gegenproben (10.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  in lagerortGewaehlt das dispatchEvent(change) entfernt → rot: „Webapp:
  *      im Set-Detail …“ und „Webapp: das Teil …“ (kein PUT)
- *   B  in 07-set-detail.js ladeOrtAuswahl ohne die Besitzer → rot: ebenda (owner=)
- *   C  in 13-set-teile.js `if (type === 'part')` → `if (true)` → rot: „Webapp: das
+ *   B  in set-detail.js ladeOrtAuswahl ohne die Besitzer → rot: ebenda (owner=)
+ *   C  in set-teile.js `if (type === 'part')` → `if (true)` → rot: „Webapp: das
  *      Teil …“ (Feld bei der Figur)
  *   D  maxlength="60" → "80" in lagerortBlock → rot: „die Längengrenze …“
- *   E  in 14-scope.js addLagerParam ohne p.set → rot: „Webapp: der Filter …“
+ *   E  in scope.js addLagerParam ohne p.set → rot: „Webapp: der Filter …“
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 const test = require('node:test');
