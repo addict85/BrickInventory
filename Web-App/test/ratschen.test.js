@@ -127,8 +127,8 @@ test('der Kompatibilitätsweg zur Datenbank und modulweite let werden weniger, n
 });
 
 test('any wird weniger, nie mehr', () => {
-  // Gemessen 22 am 09.11.2026.
-  const SCHRANKE = 22;
+  // Gemessen 18 am 11.11.2026 (Antworten von Rebrickable und Brickset über zod).
+  const SCHRANKE = 18;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +
@@ -141,9 +141,9 @@ test('any wird weniger, nie mehr', () => {
 
 test('any in allen Formen und success in Diensten werden weniger, nie mehr', () => {
   // Auch Promise<any>, any[] und Record<string, any>: Die enge Zählung oben sah
-  // nur `as any` und `: any`. Gemessen 35 am 10.11.2026.
+  // nur `as any` und `: any`. Gemessen 28 am 11.11.2026.
   // Gegenprobe (05.11.2026): getSetting wieder `fallback?: any` ohne Überladungen → rot.
-  const SCHRANKE = 35;
+  const SCHRANKE = 28;
   const ist = zaehle([/\bany\b/g]);
   assert.ok(ist <= SCHRANKE, `${ist}-mal any, erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ any (alle Formen): ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);

@@ -29,7 +29,7 @@ import type { CsvImportBericht } from '../infra/csvExport';
 import { jobGet, jobSet, jobUpdate, emitJobStatus, buildJobStatus, csvImportBus, beiImportStand } from '../auftraege/importAuftrag';
 import { getSetPriceHistory } from '../finanzen/priceHistory';
 import { verschiebeSet } from './setMove';
-import { getSetByBarcode, getSetByEan, getMinifigInfo, getSetMinifigs, rebrickableJson, produktTitel } from '../katalog/quellen';
+import { getSetByBarcode, getSetByEan, getMinifigInfo, getSetMinifigs, rebrickableJson, produktTitel, RbSet, RbSetFigur, rbSeite, ersteBlNummer } from '../katalog/quellen';
 import { getAllSetParts } from '../katalog/rebrickableKatalog';
 import type { RbSetTeil } from '../katalog/quellen';
 import { fachfehler } from '../infra/fehlerTexte';
@@ -74,8 +74,8 @@ export interface BarcodeTreffer {
 /** Rebrickable zuerst: Dort stehen Figurenzahl und Bild am verlässlichsten.
  * Jede Antwort sagt, wie sie zustande kam (src/katalog/barcodeQuelle.ts). */
 async function barcodeErgebnis(sk: SetsKontext, setNumber: string, name: string | null, source: string): Promise<BarcodeTreffer> {
-  const rbData = await rebrickableJson(`/lego/sets/${encodeURIComponent(setNumber)}/`);
-  const mfData = rbData ? await rebrickableJson(`/lego/sets/${encodeURIComponent(setNumber)}/minifigs/?page_size=1`) : null;
+  const rbData = await rebrickableJson(`/lego/sets/${encodeURIComponent(setNumber)}/`, RbSet);
+  const mfData = rbData ? await rebrickableJson(`/lego/sets/${encodeURIComponent(setNumber)}/minifigs/?page_size=1`, rbSeite(RbSetFigur)) : null;
   // Ohne Fang: Eine gestörte Datenbank ist kein „nicht im Katalog“.
   const local = await repo.setKatalog(sk.db, setNumber);
 
@@ -86,17 +86,17 @@ async function barcodeErgebnis(sk: SetsKontext, setNumber: string, name: string 
 
   if (local) {
     return { unsicher, set_number: setNumber,
-      name: local.name || rbData?.name || name, year: local.year || rbData?.year,
-      pieces: local.pieces || rbData?.num_parts, theme: local.theme || rbData?.theme_name,
+      name: local.name || rbData?.name || name, year: local.year || rbData?.year || null,
+      pieces: local.pieces || rbData?.num_parts || null, theme: local.theme,
       minifigs, image_local, image_url, source };
   }
   if (rbData?.set_num) {
     // In den Katalog wie jeder Abruf; der Treffer gilt auch, wenn das Ablegen scheitert.
     await versuche('sets:katalog schreiben', katalogStamm.merkeSetKatalog(sk.db, setNumber, rbData.name ?? null,
-      rbData.year ?? null, rbData.theme_name ?? null, rbData.num_parts ?? null, minifigs, rbData.set_img_url ?? null, null,
+      rbData.year ?? null, null, rbData.num_parts ?? null, minifigs, rbData.set_img_url ?? null, null,
       Number(rbData.theme_id) || null));
-    return { unsicher, set_number: setNumber, name: rbData.name || name, year: rbData.year,
-      pieces: rbData.num_parts, theme: rbData.theme_name, minifigs, image_url, source };
+    return { unsicher, set_number: setNumber, name: rbData.name || name, year: rbData.year ?? null,
+      pieces: rbData.num_parts ?? null, theme: null, minifigs, image_url, source };
   }
   return { unsicher, set_number: setNumber, name, minifigs, image_url, source };
 }
@@ -114,14 +114,14 @@ export async function setZumBarcode(sk: SetsKontext, rohBarcode: string): Promis
 
   if (/^\d{12,13}$/.test(barcode)) {
     const ean13 = barcode.length === 12 ? '0' + barcode : barcode;
-    const rb = await rebrickableJson(`/lego/sets/?search=${encodeURIComponent(ean13)}&page_size=5`);
+    const rb = await rebrickableJson(`/lego/sets/?search=${encodeURIComponent(ean13)}&page_size=5`, rbSeite(RbSet));
     for (const set of (rb?.results || [])) {
-      const detail = await rebrickableJson(`/lego/sets/${encodeURIComponent(set.set_num)}/`);
+      const detail = await rebrickableJson(`/lego/sets/${encodeURIComponent(set.set_num)}/`, RbSet);
       const extIds = Object.values(detail?.external_ids || {}).flat().map(String);
-      if (extIds.includes(ean13) || extIds.includes(barcode)) return barcodeErgebnis(sk, set.set_num, set.name, 'rebrickable-ean');
+      if (extIds.includes(ean13) || extIds.includes(barcode)) return barcodeErgebnis(sk, set.set_num, set.name ?? null, 'rebrickable-ean');
     }
-    const plausibel = rb?.results?.find((s: { year: number; num_parts: number }) => s.year > 2010 && s.num_parts > 0);
-    if (plausibel) return barcodeErgebnis(sk, plausibel.set_num, plausibel.name, 'rebrickable-search');
+    const plausibel = rb?.results.find(s => (s.year ?? 0) > 2010 && (s.num_parts ?? 0) > 0);
+    if (plausibel) return barcodeErgebnis(sk, plausibel.set_num, plausibel.name ?? null, 'rebrickable-search');
 
     const bsEan = await getSetByEan(ean13);
     if (bsEan) {
@@ -145,8 +145,8 @@ export async function setZumBarcode(sk: SetsKontext, rohBarcode: string): Promis
   if (/^\d{5,8}$/.test(barcode)) {
     const bs = await getSetByBarcode(barcode);
     if (bs) return barcodeErgebnis(sk, bs.set_number, bs.name, 'brickset-item');
-    const rb = await rebrickableJson(`/lego/sets/${barcode}-1/`);
-    if (rb?.set_num) return barcodeErgebnis(sk, rb.set_num, rb.name, 'rebrickable-direct');
+    const rb = await rebrickableJson(`/lego/sets/${barcode}-1/`, RbSet);
+    if (rb?.set_num) return barcodeErgebnis(sk, rb.set_num, rb.name ?? null, 'rebrickable-direct');
   }
   return null;
 }
@@ -176,7 +176,7 @@ export async function teilelisteDesSets(sk: SetsKontext, setNum: string, anreich
     const rb = mit.ok && mit.wert ? mit : await versuche('sets:getAllSetParts', getAllSetParts(bare));
     if (!rb.ok) return { parts: [], source: QUELLE_GESTOERT, error: rb.fehler.grund, ...eineSeite(0) };
     teile = (rb.wert || []).map((r: RbSetTeil) => ({
-      part_number: r.part.part_num, bl_part_number: r.part.external_ids?.BrickLink?.[0] || r.part.part_num,
+      part_number: r.part.part_num, bl_part_number: ersteBlNummer(r.part.external_ids) || r.part.part_num,
       part_name: r.part.name || r.part.part_num, color_id: r.color.id, color_name: r.color.name || '',
       color_hex: r.color.rgb || null, rb_image_url: r.part.part_img_url || null,
       total_quantity: r.quantity, is_spare: !!r.is_spare }));

@@ -26,9 +26,23 @@ export const BrickLinkRef = z.looseObject({
 
 /** Eine Zeile im Bericht eines Imports; welche Felder sie trägt, hängt von der Quelle ab. */
 export const ImportZeile = z.looseObject({
-  set_number: z.string().optional(), zeile: z.number().int().optional(), success: z.boolean().optional(),
-  action: z.string().optional(), isWarning: z.boolean().optional(), error: z.string().nullable().optional(),
-  code: z.string().optional(), menge: z.number().int().optional(), katalog_offen: z.boolean().optional(),
+  set_number: z.string().optional(),
+  zeile: z.number().int().optional(),
+  success: z.boolean().optional(),
+  action: z.string().optional(),
+  isWarning: z.boolean().optional(),
+  error: z.string().nullable().optional(),
+  code: z.string().optional(),
+  menge: z.number().int().optional(),
+  katalog_offen: z.boolean().optional(),
+  part_number: z.string().optional(),
+  fig_number: z.string().optional(),
+  fig_name: z.string().nullable().optional(),
+  condition: z.string().optional(),
+  vars: z.record(z.string(), z.unknown()).optional(),
+  waehrung_angepasst: z.boolean().optional(),
+  waehrung_datei: z.string().optional(),
+  waehrung_konto: z.string().optional(),
 });
 
 export const CsvImportErgebnis = z.looseObject({

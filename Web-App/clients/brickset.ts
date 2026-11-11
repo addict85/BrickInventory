@@ -1,5 +1,7 @@
 // Ein API-Client, kein Router: Schlüssel, Kontingent und Wiedervorlage kommen über ./zugang.
 
+import type { z } from 'zod';
+import { BsAntwort, BsAnleitungen, BsSets, pruefeAntwort } from './antworten';
 import { holeHttps, auszug } from '../src/infra/abruf';
 import { zugang } from './zugang';
 import { fehlertext, meldeUndLiefere, meldeFehler } from '../src/infra/fehler';
@@ -49,19 +51,21 @@ class BricksetQuotaError extends Error {
   }
 }
 
-function parseResponse(body: string) {
-  let data;
+function parseResponse<T extends z.ZodType>(body: string, schema: T): z.output<T> {
+  let roh: unknown;
   try {
-    data = JSON.parse(body);
+    roh = JSON.parse(body);
   } catch (_) {
     throw new Error(`Brickset: invalid JSON response: ${auszug(body)}`);
   }
+  // Erst die Hülle: Eine Fehlerantwort trägt nur status und message.
+  const data = pruefeAntwort('Brickset', BsAntwort, roh);
   if (data.status === 'error') {
     if (data.message?.toLowerCase().includes('daily api key usage limit')) throw new BricksetQuotaError();
     const err = Object.assign(new Error(`Brickset API error: ${data.message}`), { detail: data });
     throw err;
   }
-  return data;
+  return pruefeAntwort('Brickset', schema, roh);
 }
 
 // Check HTTP status — throws BricksetQuotaError on 429 daily limit,
@@ -163,9 +167,8 @@ async function getSetInfo(setNumber: string) {
       `${BASE}/getSets?apiKey=${encodeURIComponent(key)}&userHash=&params=${params}`,
     );
     if (!checkStatus(status, body, n)) return null;
-    const data = parseResponse(body);
-    if (!data.sets?.length) return null;
-    const s = data.sets[0];
+    const s = parseResponse(body, BsSets).sets?.[0];
+    if (!s) return null;
     await ausRetryWarteschlange(n).catch(meldeUndLiefere('brickset:wiedervorlage', undefined));
     return {
       name: s.name || null,
@@ -227,11 +230,8 @@ async function getInstructions(setNumber: string) {
       await removeFromQueue(n);
       return { instructions: [], usesFallback: true };
     }
-    const data = parseResponse(body);
-    const instructions = (data.instructions || []).map((i: { URL: string; description?: string | null }) => ({
-      url: i.URL,
-      description: i.description,
-    }));
+    const data = parseResponse(body, BsAnleitungen);
+    const instructions = (data.instructions || []).map(i => ({ url: i.URL, description: i.description }));
     return { instructions, usesFallback: instructions.length === 0 };
   } catch (e) {
     const f = alsAbrufFehler(e);
@@ -281,15 +281,14 @@ async function findSetByQuery(query: string, herkunft: string) {
       `${BASE}/getSets?apiKey=${encodeURIComponent(key)}&userHash=&params=${params}`,
     );
     if (!checkStatus(status, body, `${herkunft}:${query}`)) return null;
-    const data = parseResponse(body);
-    if (!data.sets?.length) return null;
-    const s = data.sets[0];
+    const s = parseResponse(body, BsSets).sets?.[0];
+    if (!s) return null;
     return {
       set_number: `${s.number}-${s.numberVariant}`,
-      name: s.name,
-      year: s.year,
-      theme: s.theme,
-      pieces: s.pieces,
+      name: s.name ?? null,
+      year: s.year ?? null,
+      theme: s.theme ?? null,
+      pieces: s.pieces ?? null,
       image_url: s.image?.imageURL || null,
     };
   } catch (e) {
@@ -316,7 +315,7 @@ async function pruefeBricksetZugang(): Promise<void> {
   if (!key) throw new Error('Brickset API Key nicht konfiguriert.');
   const { status, body } = await httpsGet(`${BASE}/checkKey?apiKey=${encodeURIComponent(key)}`);
   if (status !== 200) throw new Error(`Brickset HTTP ${status}`);
-  parseResponse(body);
+  parseResponse(body, BsAntwort);
 }
 
 export { pruefeBricksetZugang, getSetInfo, getInstructions, getSetByEan, getSetByBarcode };

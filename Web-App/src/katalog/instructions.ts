@@ -99,7 +99,8 @@ export async function downloadSetInstructions(setNumber: string,
   const existing = await anzahlAnleitungen(n);
   if (existing > 0) { return existing; }
 
-  let instrList: Awaited<ReturnType<typeof scrapeInstructions>> = [];
+  let instrList: { url: string; description?: string | null | undefined; brickinstructions_base?: string;
+                   brickinstructions_hdrs?: Record<string, string>; brickinstructions_first?: Buffer }[] = [];
   let bricksetSucceededEmpty = false;
   _letzterAbrufWarExtern = true;   // ab hier wird wirklich gefragt
   try { instrList = await scrapeInstructions(n); } catch (e) { meldeFehler('anleitungen:auslesen', e); }
@@ -153,14 +154,15 @@ export async function downloadSetInstructions(setNumber: string,
   let saved = 0;
   for (let i = 0; i < instrList.length; i++) {
     const instr = instrList[i];
-    if (!instr.url) continue;
+    if (!instr?.url) continue;
     const safeBase = n.replace(/[^a-z0-9-]/gi, '_');
-    if (instr.brickinstructions_base) {
+    if (instr.brickinstructions_base && instr.brickinstructions_hdrs && instr.brickinstructions_first) {
       const pdfName = `${safeBase}_brickinstructions.pdf`;
       const pdfDest = path.join(instrDir, pdfName);
       const relPath = `/data/instructions/${pdfName}`;
-      try { await katalog().anleitungen.merkeAnleitung(n, instr.url, instr.description, null); saved++; } catch (e) { meldeFehler('anleitungen:pdf-eintragen', e); }
-      setImmediate(() => { void collectAndBuildPDF(instr.brickinstructions_base, instr.brickinstructions_hdrs, instr.brickinstructions_first, pdfDest, relPath, n).catch(logAndContinue('anleitung:collectAndBuildPDF')); });
+      try { await katalog().anleitungen.merkeAnleitung(n, instr.url, instr.description ?? null, null); saved++; } catch (e) { meldeFehler('anleitungen:pdf-eintragen', e); }
+      const { brickinstructions_base: basis, brickinstructions_hdrs: kopf, brickinstructions_first: erstes } = instr;
+      setImmediate(() => { void collectAndBuildPDF(basis, kopf, erstes, pdfDest, relPath, n).catch(logAndContinue('anleitung:collectAndBuildPDF')); });
       continue;
     }
     const safeName = `${safeBase}_${i + 1}.pdf`;

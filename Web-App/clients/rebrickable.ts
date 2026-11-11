@@ -8,6 +8,19 @@ import fs from 'fs';
 import { fehlertext, meldeUndLiefere, meldeFehler } from '../src/infra/fehler';
 import { mitVersion } from '../src/infra/setNummer';
 import { zugang } from './zugang';
+import type { z } from 'zod';
+import {
+  RbSet,
+  RbThema,
+  RbTeil,
+  RbSetTeil,
+  RbSetFigur,
+  RbFigur,
+  RbFarbe,
+  RbTeilFarbe,
+  rbSeite,
+  pruefeAntwort,
+} from './antworten';
 import {
   ERLAUBTE_DOWNLOAD_HOSTS,
   ERLAUBTE_API_HOSTS,
@@ -18,21 +31,8 @@ import {
 
 const BASE = 'https://rebrickable.com/api/v3';
 
-/**
- * Eine Teilezeile, wie sie /lego/sets/{id}/parts liefert.
- */
-export type RbSetTeil = {
-  part: {
-    part_num: string;
-    name?: string | null;
-    part_img_url?: string | null;
-    part_cat_id?: number | null;
-    external_ids?: { BrickLink?: string[] };
-  };
-  color: { id: number; name?: string | null; rgb?: string | null };
-  quantity: number;
-  is_spare?: boolean;
-};
+/** Eine Teilezeile, wie sie /lego/sets/{id}/parts liefert. */
+export type RbSetTeil = z.output<typeof RbSetTeil>;
 
 /**
  * Der Rebrickable-Schluessel — aus der zentralen Einstellungs-Lesung.
@@ -73,7 +73,7 @@ export function parseThrottleWait(body: string) {
  * Fehlschlag (kein Schlüssel, Kontingent, Netz, Status) ist null: Die Aufrufer
  * suchen dann auf dem nächsten Weg weiter.
  */
-async function rebrickableJson(pfad: string): Promise<any> {
+async function rebrickableJson<T extends z.ZodType>(pfad: string, schema: T): Promise<z.output<T> | null> {
   const key = await getRbKey();
   if (!key) return null;
   if (!(await tagesKontingentFrei())) {
@@ -88,7 +88,7 @@ async function rebrickableJson(pfad: string): Promise<any> {
   );
   if (!r || r.status !== 200) return null;
   try {
-    return JSON.parse(r.body);
+    return pruefeAntwort('Rebrickable', schema, JSON.parse(r.body));
   } catch (e) {
     return meldeUndLiefere(`rebrickable:${pfad}`, null)(e);
   }
@@ -166,7 +166,11 @@ export class RebrickableGesperrt extends Error {
   }
 }
 
-async function rbGet(apiPath: string, params: Record<string, string | number> = {}) {
+async function rbGet<T extends z.ZodType>(
+  apiPath: string,
+  schema: T,
+  params: Record<string, string | number> = {},
+): Promise<z.output<T> | null> {
   const key = await getRbKey();
   if (!key) throw new RebrickableGesperrt('kein_schluessel', 'Rebrickable API Key nicht konfiguriert.');
   await rebrickableLimiter.waitForSlot();
@@ -182,7 +186,7 @@ async function rbGet(apiPath: string, params: Record<string, string | number> = 
   const { status, body } = await httpsGetRobust(`${BASE}${apiPath}?${qs}`, { Authorization: `key ${key}` }, 45000);
   if (status === 404) return null;
   if (status !== 200) throw new Error(`Rebrickable ${status}: ${body.substring(0, 150)}`);
-  return JSON.parse(body);
+  return pruefeAntwort('Rebrickable', schema, JSON.parse(body));
 }
 
 const themeCache = new Map();
@@ -190,7 +194,7 @@ async function getThemeName(themeId: number | string) {
   if (!themeId) return null;
   if (themeCache.has(themeId)) return themeCache.get(themeId);
   try {
-    const d = await rbGet(`/lego/themes/${pfadSegment(themeId)}/`);
+    const d = await rbGet(`/lego/themes/${pfadSegment(themeId)}/`, RbThema);
     const name = d?.name || null;
     themeCache.set(themeId, name);
     return name;
@@ -200,18 +204,18 @@ async function getThemeName(themeId: number | string) {
 }
 
 /** Die Stammdaten eines Sets; null, wenn Rebrickable es nicht kennt. */
-async function holeSet(nummer: string): Promise<any> {
-  return rbGet(`/lego/sets/${pfadSegment(nummer)}/`);
+async function holeSet(nummer: string) {
+  return rbGet(`/lego/sets/${pfadSegment(nummer)}/`, RbSet);
 }
 
 /**
  * Die Teileliste eines Sets über die API, seitenweise. `verweigert`: Rebrickable
  * antwortete 403 (Set unbekannt oder kein Zugriff) — das soll der Aufrufer merken.
  */
-async function holeSetTeile(n: string): Promise<{ teile: any[]; verweigert: boolean }> {
+async function holeSetTeile(n: string): Promise<{ teile: RbSetTeil[]; verweigert: boolean }> {
   const key = await getRbKey();
   if (!key) throw new Error('Rebrickable API Key nicht konfiguriert.');
-  const allParts: any[] = [];
+  const allParts: RbSetTeil[] = [];
   let url: string | null = `${BASE}/lego/sets/${pfadSegment(n)}/parts/?page_size=500&inc_part_details=1`;
   let pages = 0;
   while (url && pages++ < 40) {
@@ -246,7 +250,7 @@ async function holeSetTeile(n: string): Promise<{ teile: any[]; verweigert: bool
     }
     let data;
     try {
-      data = JSON.parse(body);
+      data = pruefeAntwort('Rebrickable', rbSeite(RbSetTeil), JSON.parse(body));
     } catch (e) {
       meldeFehler('rebrickable:teile-seite', e);
       break;
@@ -274,7 +278,7 @@ async function scrapeInstructions(setNumber: string) {
       8000,
     );
     if (status !== 200) return [];
-    const found: any[] = [];
+    const found: { url: string; description: string }[] = [];
     for (const re of [
       /href="(https?:\/\/[^"]*lego\.com[^"]*\.pdf[^"]*)"/gi,
       /href="(https?:\/\/cdn\.rebrickable\.com\/media\/instructions[^"]+\.pdf[^"]*)"/gi,
@@ -283,7 +287,7 @@ async function scrapeInstructions(setNumber: string) {
       for (const m of body.matchAll(re)) {
         // Als Konstante, weil der Rückruf `m` nicht als nicht-null kennt.
         const treffer = m[1];
-        if (!found.find(f => f.url === treffer)) found.push({ url: treffer, description: `Anleitung ${n}` });
+        if (treffer && !found.find(f => f.url === treffer)) found.push({ url: treffer, description: `Anleitung ${n}` });
       }
     }
     return found;
@@ -373,16 +377,13 @@ async function getSetMinifigs(setNumber: string) {
       30000,
     );
     if (status !== 200) return [];
-    const data = JSON.parse(body);
-    if (!data?.results) return [];
-    return data.results.map(
-      (m: { id: number; set_num?: string; quantity?: number; set_name?: string; set_img_url?: string | null }) => ({
-        fig_number: m.set_num,
-        fig_name: m.set_name,
-        quantity: m.quantity || 1,
-        image_url: m.set_img_url || null,
-      }),
-    );
+    const data = pruefeAntwort('Rebrickable', rbSeite(RbSetFigur), JSON.parse(body));
+    return data.results.map(m => ({
+      fig_number: m.set_num,
+      fig_name: m.set_name ?? '',
+      quantity: m.quantity || 1,
+      image_url: m.set_img_url || null,
+    }));
   } catch (e) {
     console.log(`  Minifigs fetch failed for ${n}: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
     return [];
@@ -392,7 +393,7 @@ async function getSetMinifigs(setNumber: string) {
 // ── Single minifig lookup ─────────────────────────────────────────────────────
 async function getMinifigInfo(figNumber: string) {
   try {
-    const data = await rbGet(`/lego/minifigs/${pfadSegment(figNumber)}/`);
+    const data = await rbGet(`/lego/minifigs/${pfadSegment(figNumber)}/`, RbFigur);
     if (!data) return null;
     return {
       fig_number: data.set_num || figNumber,
@@ -405,7 +406,7 @@ async function getMinifigInfo(figNumber: string) {
 }
 
 // ── Get color list ──────────────────────────────────────────────────────
-let _colorsCache: any = null;
+let _colorsCache: { id: number; name: string; hex: string | null }[] | null = null;
 async function getBrickColors() {
   if (_colorsCache) return _colorsCache;
   try {
@@ -417,12 +418,8 @@ async function getBrickColors() {
       15000,
     );
     if (status !== 200) return [];
-    const data = JSON.parse(body);
-    _colorsCache = (data.results || []).map((c: { id: number; name?: string; rgb?: string | null }) => ({
-      id: c.id,
-      name: c.name,
-      hex: c.rgb || null,
-    }));
+    const data = pruefeAntwort('Rebrickable', rbSeite(RbFarbe), JSON.parse(body));
+    _colorsCache = data.results.map(c => ({ id: c.id, name: c.name ?? '', hex: c.rgb || null }));
     return _colorsCache;
   } catch (e) {
     return meldeUndLiefere('rebrickable:farben', [])(e);
@@ -433,7 +430,9 @@ async function getBrickColors() {
  * Die Teile einer Minifigur über die API; null, wenn es keine Antwort gibt
  * (kein Schlüssel, Tageslimit, Fehler) — das soll nicht gemerkt werden.
  */
-async function holeFigurTeile(figNumber: string): Promise<any[] | null> {
+async function holeFigurTeile(
+  figNumber: string,
+): Promise<{ part_num: string; color_id: number; quantity: number; bl_part_num: string | null }[] | null> {
   const key = await getRbKey();
   if (!key) return null;
   if (!(await tagesKontingentFrei())) {
@@ -452,15 +451,15 @@ async function holeFigurTeile(figNumber: string): Promise<any[] | null> {
       30000,
     );
     if (status !== 200) return null;
-    const data = JSON.parse(body);
-    return (data.results || [])
-      .map((r: RbSetTeil) => ({
-        part_num: r.part?.part_num || null,
-        color_id: r.color?.id ?? 0,
+    const data = pruefeAntwort('Rebrickable', rbSeite(RbSetTeil), JSON.parse(body));
+    return data.results
+      .filter(r => r.part.part_num)
+      .map(r => ({
+        part_num: r.part.part_num,
+        color_id: r.color.id ?? 0,
         quantity: r.quantity || 1,
-        bl_part_num: r.part?.external_ids?.BrickLink?.[0] || null,
-      }))
-      .filter((p: { part_num?: string | null }) => p.part_num);
+        bl_part_num: ersteBlNummer(r.part.external_ids),
+      }));
   } catch (e) {
     return meldeUndLiefere(`rebrickable:figurteile ${figNumber}`, null)(e);
   }
@@ -478,8 +477,8 @@ async function lookupPart(partNumber: string, colorId?: number | null) {
       15000,
     );
     if (status !== 200) return null;
-    const d = JSON.parse(body);
-    const part = d.results?.[0];
+    const d = pruefeAntwort('Rebrickable', rbSeite(RbTeil), JSON.parse(body));
+    const part = d.results[0];
     if (!part) return null;
     let image_url = part.part_img_url || null;
 
@@ -493,8 +492,8 @@ async function lookupPart(partNumber: string, colorId?: number | null) {
           15000,
         );
         if (colorResp.status === 200) {
-          const cd = JSON.parse(colorResp.body);
-          if (cd?.part_img_url) image_url = cd.part_img_url;
+          const cd = pruefeAntwort('Rebrickable', RbTeilFarbe, JSON.parse(colorResp.body));
+          if (cd.part_img_url) image_url = cd.part_img_url;
         }
       } catch (e) {
         meldeFehler('rebrickable:farbbild', e);
@@ -519,6 +518,12 @@ async function lookupPart(partNumber: string, colorId?: number | null) {
 /**
  * Traegt dieses Rebrickable-Teil die gesuchte BrickLink-Nummer?
  */
+/** Die erste BrickLink-Nummer eines Teils; Rebrickable liefert sie als Liste. */
+function ersteBlNummer(ext: Record<string, unknown> | null | undefined): string | null {
+  const bl = ext?.['BrickLink'];
+  return Array.isArray(bl) && bl[0] != null ? String(bl[0]) : null;
+}
+
 function traegtBlNummer(teil: unknown, blId: string): boolean {
   const ext = (teil as { external_ids?: Record<string, unknown> } | null)?.external_ids;
   const roh = ext?.['BrickLink'];
@@ -550,12 +555,12 @@ async function blTeilZuRb(blId: string): Promise<string | null> {
   // Bei den meisten Teilen benutzen beide Dienste dieselbe Nummer. Dann
   // liefert /lego/parts/{nr}/ den Treffer, und external_ids bestaetigt ihn —
   // aus einer VERMUTUNG („die Nummern sind wohl gleich") wird eine Abbildung.
-  const direkt = await rbGet(`/lego/parts/${pfadSegment(blId)}/`);
+  const direkt = await rbGet(`/lego/parts/${pfadSegment(blId)}/`, RbTeil);
   if (direkt && traegtBlNummer(direkt, blId)) return String(direkt.part_num);
 
   // ── Weg 2: der Filter, mit Gegenpruefung ────────────────────────────────
   if (filterWirkungslos) return null;
-  const gefiltert = await rbGet('/lego/parts/', { bricklink_id: blId, page_size: 20 });
+  const gefiltert = await rbGet('/lego/parts/', rbSeite(RbTeil), { bricklink_id: blId, page_size: 20 });
   if (!gefiltert) return null;
   // Mehr als tausend Treffer fuer EINE Nummer kann der Filter nicht gemeint
   // haben — dann wurde er ignoriert.
@@ -576,7 +581,7 @@ function blFilterWirkungslos(): boolean {
 
 /** Ein kleiner Abruf mit dem gespeicherten Schlüssel — für den Testknopf der Einrichtung. */
 async function pruefeRebrickableZugang(): Promise<void> {
-  await rbGet('/lego/themes/', { page_size: 1 });
+  await rbGet('/lego/themes/', rbSeite(RbThema), { page_size: 1 });
 }
 
 export {
@@ -597,4 +602,5 @@ export {
   httpsGetRobust,
   blTeilZuRb,
   blFilterWirkungslos,
+  ersteBlNummer,
 };

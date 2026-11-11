@@ -16400,6 +16400,37 @@
                 },
                 "katalog_offen": {
                   "type": "boolean"
+                },
+                "part_number": {
+                  "type": "string"
+                },
+                "fig_number": {
+                  "type": "string"
+                },
+                "fig_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "condition": {
+                  "type": "string"
+                },
+                "vars": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {}
+                },
+                "waehrung_angepasst": {
+                  "type": "boolean"
+                },
+                "waehrung_datei": {
+                  "type": "string"
+                },
+                "waehrung_konto": {
+                  "type": "string"
                 }
               },
               "additionalProperties": {}
@@ -22839,6 +22870,37 @@
                 },
                 "katalog_offen": {
                   "type": "boolean"
+                },
+                "part_number": {
+                  "type": "string"
+                },
+                "fig_number": {
+                  "type": "string"
+                },
+                "fig_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "condition": {
+                  "type": "string"
+                },
+                "vars": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {}
+                },
+                "waehrung_angepasst": {
+                  "type": "boolean"
+                },
+                "waehrung_datei": {
+                  "type": "string"
+                },
+                "waehrung_konto": {
+                  "type": "string"
                 }
               },
               "additionalProperties": {}

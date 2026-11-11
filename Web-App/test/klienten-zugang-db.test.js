@@ -32,7 +32,14 @@ https.get = (url, opts, cb) => {
   const u = new URL(url);
   abrufe.push({ pfad: u.pathname, schluessel: opts?.headers?.Authorization });
   const req = new EventEmitter();
-  setImmediate(() => cb(Object.assign(Readable.from([JSON.stringify({ name: 'Attrappe' })]), { statusCode: 200, headers: {} })));
+  setImmediate(() =>
+    cb(
+      Object.assign(Readable.from([JSON.stringify({ set_num: '10001-1', name: 'Attrappe' })]), {
+        statusCode: 200,
+        headers: {},
+      }),
+    ),
+  );
   return req;
 };
 
@@ -53,19 +60,25 @@ test('ohne Verdrahtung wirft jeder Abruf, statt ohne Schlüssel zu laufen', asyn
   }
 });
 
-test('über die Verdrahtung tragen Abrufe den eingetragenen Schlüssel und zählen', { concurrency: 1 }, async (t) => {
+test('über die Verdrahtung tragen Abrufe den eingetragenen Schlüssel und zählen', { concurrency: 1 }, async t => {
   const db = _req('db/database.js');
-  if (!await dbOderSkip(t, _req)) return;
+  if (!(await dbOderSkip(t, _req))) return;
   const { setGlobalSetting, deleteGlobalSetting } = _req('src/einstellungen/settings.js');
   await setGlobalSetting('rebrickable_api_key', 'schluessel-zugang-1');
-  t.after(async () => { await deleteGlobalSetting('rebrickable_api_key'); await db.pool.end().catch(() => {}); });
+  t.after(async () => {
+    await deleteGlobalSetting('rebrickable_api_key');
+    await db.pool.end().catch(() => {});
+  });
   const heute = new Date().toISOString().slice(0, 10);
-  const zaehler = async () => Number((await db.get(
-    "SELECT anzahl FROM api_aufrufe WHERE tag = $1 AND api = 'rebrickable' AND konto = 0", [heute]))?.anzahl || 0);
+  const zaehler = async () =>
+    Number(
+      (await db.get("SELECT anzahl FROM api_aufrufe WHERE tag = $1 AND api = 'rebrickable' AND konto = 0", [heute]))
+        ?.anzahl || 0,
+    );
   const vorher = await zaehler();
 
-  const { rebrickableJson } = _req('src/katalog/quellen.js');
-  assert.deepEqual(await rebrickableJson('/lego/sets/10001-1/'), { name: 'Attrappe' });
+  const { rebrickableJson, RbSet } = _req('src/katalog/quellen.js');
+  assert.deepEqual(await rebrickableJson('/lego/sets/10001-1/', RbSet), { set_num: '10001-1', name: 'Attrappe' });
   assert.deepEqual(abrufe, [{ pfad: '/api/v3/lego/sets/10001-1/', schluessel: 'key schluessel-zugang-1' }]);
   assert.equal(await zaehler(), vorher + 1);
 });

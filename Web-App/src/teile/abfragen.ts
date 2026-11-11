@@ -6,7 +6,7 @@ import { istErsatzteil, colorId } from '../infra/validate';
 import { ensureFresh } from './partsSummary';
 import { fetchMissingBlIds } from '../katalog/partsImport';
 import type { RbSetTeil } from '../katalog/quellen';
-import { getRbKey, httpsGetRobust } from '../katalog/quellen';
+import { ersteBlNummer, getRbKey, httpsGetRobust } from '../katalog/quellen';
 import { getAllSetParts } from '../katalog/rebrickableKatalog';
 import { clampPageSize, applyManualCondition, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand/gemeinsam';
 import { meldeFehler, logAndContinue } from '../infra/fehler';
@@ -68,7 +68,7 @@ async function teileErsatzquelle(set_number: string, ab: Abstriche) {
           .filter((it: RbSetTeil) => !it.is_spare)
           .map((it: RbSetTeil) => ({
             part_number:    it.part?.part_num,
-            bl_part_number: it.part?.external_ids?.BrickLink?.[0] || it.part?.part_num,
+            bl_part_number: ersteBlNummer(it.part?.external_ids) || it.part?.part_num,
             part_name:      it.part?.name || it.part?.part_num,
             color_id:       it.color?.id ?? 0,
             color_name:     it.color?.name || '',

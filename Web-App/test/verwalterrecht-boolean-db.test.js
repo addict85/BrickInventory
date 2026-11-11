@@ -20,9 +20,10 @@ test('Verwalterrecht als boolean', { concurrency: 1 }, async t => {
   if (!(await dbOderSkip(t, _req))) return;
   const A = _req('src/konto/auth.js');
   const name = `vb_${process.pid}`;
-  const { id } = await db.get(`INSERT INTO users (username, password_hash, is_admin) VALUES ($1, 'x', true) RETURNING id`, [
-    name,
-  ]);
+  const { id } = await db.get(
+    `INSERT INTO users (username, password_hash, is_admin) VALUES ($1, 'x', true) RETURNING id`,
+    [name],
+  );
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [id]);
     await db.pool.end().catch(() => {});

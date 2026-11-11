@@ -28,11 +28,11 @@ const db = _req('db/database.js');
 async function mitAntwort(status, lauf) {
   const echt = https.get;
   let anfragen = 0;
-  // @ts-ignore — Attrappe mit genau dem, was src/infra/abruf.ts benutzt.
+  // @ts-expect-error — Attrappe mit genau dem, was src/infra/abruf.ts benutzt.
   https.get = (_u, _o, beiAntwort) => {
     anfragen++;
     const r = Object.assign(Readable.from([Buffer.from('{}')]), { statusCode: status, headers: {} });
-    // @ts-ignore — kein vollständiges IncomingMessage
+    // @ts-expect-error — kein vollständiges IncomingMessage
     setImmediate(() => beiAntwort(r));
     return Object.assign(new EventEmitter(), { destroy: () => {}, end: () => {} });
   };
