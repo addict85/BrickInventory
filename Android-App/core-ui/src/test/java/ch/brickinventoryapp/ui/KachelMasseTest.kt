@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.ui
 
+import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.unit.Density
+import ch.brickinventoryapp.ui.theme.Formen
 import org.junit.Test
 import org.junit.Assert
 import ch.brickinventoryapp.testing.Quellen
@@ -129,21 +133,18 @@ class KachelMasseTest {
         Assert.assertTrue("Feste Höhe an Knopf oder Chip statt heightIn(min = …): $verstoesse", verstoesse.isEmpty())
     }
 
+    /**
+     * Das Kachelbild sitzt oben bündig in der Karte: Seine oberen Ecken haben den Radius
+     * der Leiste, unten keinen. Gegenprobe kachelbild-eigener-radius (12.dp; kotlinc) → rot hier.
+     */
     @Test
     fun `Bildecke und Kartenform teilen sich den Radius`() {
-        // Nicht der Wortlaut, sondern die Ableitung: Beide muessen aus
-        // DEMSELBEN Wert gebaut sein. Steht in einer der beiden wieder eine
-        // eigene Zahl, koennen sie auseinanderlaufen.
-        val formen = Quellen.ohneKommentare(Quellen.lies("ui/theme/Formen.kt"))
-        val radius = Regex("""private val leisteRadius = (\d+)\.dp""").find(formen)
-        assert(radius != null) { "leisteRadius gibt es nicht mehr — Formen.kt anpassen." }
-        for (name in listOf("leiste", "kachelBildEcken")) {
-            val zeile = formen.lines().firstOrNull { it.trimStart().startsWith("val $name ") }
-            assert(zeile != null && zeile.contains("leisteRadius")) {
-                "Formen.$name baut nicht mehr auf leisteRadius auf: ${zeile ?: "(Zeile weg)"}. " +
-                    "Das Kachelbild sitzt oben buendig in der Karte — verschiedene Radien " +
-                    "lassen es ueberstehen oder einen Spalt."
-            }
-        }
+        val groesse = Size(112f, 208f)
+        val dichte = Density(2.75f)
+        fun px(ecke: CornerSize) = ecke.toPx(groesse, dichte)
+        Assert.assertEquals(px(Formen.leiste.topStart), px(Formen.kachelBildEcken.topStart), 0f)
+        Assert.assertEquals(px(Formen.leiste.topEnd), px(Formen.kachelBildEcken.topEnd), 0f)
+        Assert.assertTrue("Die Leiste ist rund", px(Formen.leiste.topStart) > 0f)
+        Assert.assertEquals("unten hat das Bild keine Ecke", 0f, px(Formen.kachelBildEcken.bottomStart), 0f)
     }
 }

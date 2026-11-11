@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.netz
 
+import android.util.Log
 import ch.brickinventoryapp.netz.util.Protokoll
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
@@ -38,6 +39,6 @@ class ProtokollOhneAndroidTest {
 
     @Test
     fun `eine Android-Methode wirft im JVM-Test, statt still einen Vorgabewert zu liefern`() {
-        assertThrows(Throwable::class.java) { android.util.Log.i("Probe", "ohne Robolectric") }
+        assertThrows(Throwable::class.java) { Log.i("Probe", "ohne Robolectric") }
     }
 }
