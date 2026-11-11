@@ -725,7 +725,7 @@ Was der Betrieb tun muss, steht zuerst; danach, was sich für Clients ändert.
    *CI* und *Sicherheit*, kein Force-Push.
 3. Der Trivy-Lauf für Caddy, PostgreSQL und pgweb ist jetzt scharf: Meldet
    er behebbare Lücken, den Dependabot-PR mit dem neuen Digest übernehmen
-   oder die Lücke mit Grund und Ablaufdatum in `.github/trivy-betrieb.ignore`
+   oder die Lücke mit Grund und Ablaufdatum in `.github/trivy-betrieb.yaml`
    eintragen.
 
 ## 32. Runde 8 – Sicherheit

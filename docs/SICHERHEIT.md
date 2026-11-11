@@ -365,7 +365,7 @@ den Commits, nicht hier.
   (Abhängigkeiten, Image), ZAP-Baseline gegen den Produktionsserver. Die
   fremden Images aus `compose.yaml` (Postgres) liest der Lauf aus der Datei
   und prüft sie mit Trivy; eine behebbare Lücke ab high ist rot, ausser sie
-  steht mit Ablaufdatum in `.github/trivy-betrieb.ignore`. Caddy baut
+  steht mit Ablaufdatum in `.github/trivy-betrieb.yaml`. Caddy baut
   `Dockerfile.caddy`; der Job `trivy-eigenbau` prüft das Ergebnis ohne
   Ausnahmen. Ein Digest, der hinter seinem Tag zurückliegt, wird gemeldet —
   `workflow-ort`, `compose-betrieb`.
@@ -519,7 +519,7 @@ Einzelheiten: `Android-App/README.md`, Abschnitte „Manipulationsschutz“ und
 - **Bilder der Container** (`postgres`, die Basis von `Dockerfile.caddy`, ZAP)
   sind per Digest fest und veralten damit; Renovate schlägt neue Fassungen vor
   (ZAP und die Dienst-Container der Workflows nicht). Eine hingenommene Lücke
-  in `postgres` steht mit Ablaufdatum in `.github/trivy-betrieb.ignore`; Caddy
+  in `postgres` steht mit Ablaufdatum in `.github/trivy-betrieb.yaml`; Caddy
   prüft der Job `trivy-eigenbau` ohne Ausnahmen.
 - **Verwalter setzen jedes Konto zurück**: Ein Verwalter kann Passwort und
   zweiten Faktor jedes Kontos zurücksetzen. Gedeckelt ist das durch Passwort

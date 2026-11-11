@@ -334,9 +334,58 @@ test('der signierte Bau ohne Cache, Trivy vor der Signatur, Paketsignaturen in d
   assert.match(eigen, /docker build -f Web-App\/Dockerfile\.caddy /);
   assert.match(eigen, /exit-code: '1'/);
   assert.doesNotMatch(eigen, /trivyignores/, 'Caddy wird ohne Ausnahmen geprüft');
-  const ausnahmen = fs.readFileSync(path.join(WURZEL, '.github', 'trivy-betrieb.ignore'), 'utf8');
-  assert.doesNotMatch(ausnahmen.split('\n').filter(l => !l.startsWith('#   ')).join('\n'), /^# (caddy|pgweb)/m,
-    'Caddy oder pgweb mit hingenommenen Lücken');
+  const ausnahmen = fs.readFileSync(path.join(WURZEL, '.github', 'trivy-betrieb.yaml'), 'utf8');
+  assert.doesNotMatch(ausnahmen, /^\s*# (caddy|pgweb)/m, 'Caddy oder pgweb mit hingenommenen Lücken');
+});
+
+/** Die Einträge von .github/trivy-betrieb.yaml (nur die Form, die die Datei benutzt). */
+function trivyAusnahmen(roh) {
+  assert.match(roh, /^vulnerabilities:\s*$/m, 'kein Abschnitt vulnerabilities');
+  return roh.split(/\n {2}- id: /).slice(1).map(block => {
+    const zeilen = block.split('\n').filter(z => !/^\s*#/.test(z));
+    const e = { id: zeilen[0].trim(), paths: [], purls: [], expired_at: null, statement: null };
+    let liste = null;
+    for (const z of zeilen.slice(1)) {
+      const k = z.match(/^ {4}(\w+):\s*(.*)$/);
+      if (k) {
+        liste = k[2] === '' ? k[1] : null;
+        if (k[2] !== '') e[k[1]] = k[2].replace(/^"(.*)"$/, '$1');
+        continue;
+      }
+      const w = z.match(/^ {6}- "([^"]+)"$/);
+      if (w && liste) e[liste].push(w[1]);
+    }
+    return e;
+  });
+}
+
+// Gegenproben (11.11.2026 gemessen, je einzeln): bei CVE-2026-9947 `purls:` samt
+// Einträgen gestrichen → rot „… an keine Datei und kein Paket gebunden“; in
+// sicherheit.yml wieder `trivyignores: .github/trivy-betrieb.ignore` → rot
+// „trivy-compose liest die YAML-Ausnahmen“; bei CVE-2025-61726 `expired_at`
+// gestrichen → rot „… ohne Ablaufdatum“.
+test('Trivy-Ausnahmen der Betriebs-Images: an Datei oder Paket gebunden, mit Frist und Grund', () => {
+  const roh = fs.readFileSync(path.join(WURZEL, '.github', 'trivy-betrieb.yaml'), 'utf8');
+  const liste = trivyAusnahmen(roh);
+  assert.ok(liste.length >= 40, `nur ${liste.length} Ausnahmen gelesen — greift der Leser noch?`);
+  const ids = liste.map(e => e.id);
+  assert.deepEqual(ids.filter((x, i) => ids.indexOf(x) !== i), [], 'doppelte Ausnahme');
+  for (const e of liste) {
+    assert.match(e.id, /^CVE-\d{4}-\d+$/);
+    assert.match(e.expired_at ?? '', /^\d{4}-\d{2}-\d{2}$/, `${e.id} ohne Ablaufdatum`);
+    assert.ok((e.statement ?? '').length > 20, `${e.id} ohne Grund`);
+    assert.ok(e.paths.length + e.purls.length > 0, `${e.id} ist an keine Datei und kein Paket gebunden`);
+    for (const p of e.purls) assert.match(p, /^pkg:apk\/alpine\/[a-z0-9.+-]+$/, `${e.id}: ${p} ist kein Alpine-Paket ohne Fassung`);
+    for (const p of e.paths) assert.doesNotMatch(p, /^\/|\*/, `${e.id}: ${p} ist kein fester Pfad im Image`);
+  }
+  // gosu ist das einzige Go-Programm im Postgres-Image; seine Ausnahmen gelten nur dort.
+  assert.ok(liste.some(e => e.paths.includes('usr/local/bin/gosu')), 'keine Ausnahme für gosu');
+
+  // trivy-action reicht genau EINE .yaml-Datei als TRIVY_IGNOREFILE durch; mehrere oder gemischt brechen ab.
+  const sich = fs.readFileSync(path.join(ECHTER_ORT, 'sicherheit.yml'), 'utf8');
+  assert.match(jobVon(sich, 'trivy-compose'), /^\s+trivyignores: \.github\/trivy-betrieb\.yaml\s*$/m,
+    'trivy-compose liest die YAML-Ausnahmen');
+  assert.ok(!fs.existsSync(path.join(WURZEL, '.github', 'trivy-betrieb.ignore')), 'die alte Liste ohne Paketbindung liegt noch da');
 });
 
 // ── Android-Release (sec17) ──────────────────────────────────────────────────
