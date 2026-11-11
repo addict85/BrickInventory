@@ -101,8 +101,8 @@ Code. Der live genutzte Pfad ist: Scanner-Screen → `vm.resolveBarcode()` →
 
 ## Services sind lokalisiert — über den richtigen Context
 
-**Dateien:** `dienste/service/CsvImportService.kt`, `data/service/PdfExportService.kt`,
-`data/service/PdfExportManager.kt`, `data/util/LanguageManager.kt`
+**Dateien:** `dienste/service/CsvImportService.kt`, `dienste/service/PdfExportService.kt`,
+`dienste/service/PdfExportManager.kt`, `data/util/LanguageManager.kt`
 **Test:** `ServicePolishTest`
 
 `setApplicationLocales()` lokalisiert nur Activities. Ein Service, der
@@ -118,7 +118,7 @@ das adaptive Launcher-Icon erscheint als graues Quadrat.
 
 ## FileProvider: nur pdf/
 
-**Dateien:** `res/xml/file_paths.xml`, `data/service/PdfExportManager.kt`
+**Dateien:** `res/xml/file_paths.xml`, `dienste/service/PdfExportManager.kt`
 **Test:** `ServicePolishTest`
 
 Über die Provider-Authority wird ausschliesslich das exportierte

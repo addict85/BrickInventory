@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.data.service
+package ch.brickinventoryapp.dienste.service
 
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import android.app.NotificationChannel
@@ -19,6 +19,8 @@ import ch.brickinventoryapp.data.di.Anwendungsbereiche
 import ch.brickinventoryapp.data.util.LanguageManager
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.fehlerTextZuCode
+import ch.brickinventoryapp.data.service.PdfFehlschlag
+import ch.brickinventoryapp.data.service.teilelistenAuswahl
 import ch.brickinventoryapp.model.fach.PdfFortschritt
 import ch.brickinventoryapp.model.fach.PdfSchritt
 
@@ -47,7 +49,7 @@ class PdfExportService : Service() {
         }
     }
 
-    @Inject lateinit var manager: PdfExportManager
+    @Inject internal lateinit var manager: PdfExportManager
 
     // Siehe CsvImportService: Services bekommen die per-App-Sprache unterhalb
     // von Android 13 nicht automatisch — Context dafür wrappen.

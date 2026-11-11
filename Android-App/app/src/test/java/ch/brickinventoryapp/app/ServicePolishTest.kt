@@ -41,8 +41,8 @@ class ServicePolishTest {
     fun `Service-Benachrichtigungen kommen aus Ressourcen, nicht hartkodiert`() {
         for (rel in listOf(
             "java/ch/brickinventoryapp/dienste/service/CsvImportService.kt",
-            "java/ch/brickinventoryapp/data/service/PdfExportService.kt",
-            "java/ch/brickinventoryapp/data/service/PdfExportManager.kt",
+            "java/ch/brickinventoryapp/dienste/service/PdfExportService.kt",
+            "java/ch/brickinventoryapp/dienste/service/PdfExportManager.kt",
         )) {
             val src = code(read(rel))
             val hard = Regex(
@@ -66,7 +66,7 @@ class ServicePolishTest {
         // ist deshalb Pflicht, sonst ist die Lokalisierung nur scheinbar da.
         for (rel in listOf(
             "java/ch/brickinventoryapp/dienste/service/CsvImportService.kt",
-            "java/ch/brickinventoryapp/data/service/PdfExportService.kt",
+            "java/ch/brickinventoryapp/dienste/service/PdfExportService.kt",
         )) {
             assert(code(read(rel)).contains("LanguageManager.localizedContext(this)")) {
                 "$rel ruft getString() ohne LanguageManager.localizedContext() auf"
@@ -101,7 +101,7 @@ class ServicePolishTest {
         }
         for (rel in listOf(
             "java/ch/brickinventoryapp/dienste/service/CsvImportService.kt",
-            "java/ch/brickinventoryapp/data/service/PdfExportService.kt",
+            "java/ch/brickinventoryapp/dienste/service/PdfExportService.kt",
         )) {
             val src = code(read(rel))
             assert(!src.contains("setSmallIcon(R.mipmap")) {

@@ -1,9 +1,11 @@
-package ch.brickinventoryapp.data.service
+package ch.brickinventoryapp.dienste.service
 
 import android.content.Context
 import ch.brickinventoryapp.data.di.Anwendungsbereiche
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
+import ch.brickinventoryapp.data.service.PdfAuftragsStrom
+import ch.brickinventoryapp.data.service.PdfFehlschlag
 import ch.brickinventoryapp.data.util.Teilelistentresor
 import ch.brickinventoryapp.model.data.model.PdfAuftragStand
 import ch.brickinventoryapp.model.fach.Laufstatus
@@ -25,7 +27,7 @@ import javax.inject.Singleton
 import kotlin.math.roundToLong
 
 /** Wo der Export steht, als Fachwerte; die Sätze bilden Teileliste und Dienst. */
-sealed interface PdfExportState {
+internal sealed interface PdfExportState {
     data object Idle : PdfExportState
     data class Running(val fortschritt: PdfFortschritt) : PdfExportState
     data class Done(val file: File) : PdfExportState
@@ -38,7 +40,7 @@ sealed interface PdfExportState {
  * er den Bildschirm überlebt; der Vordergrund-Dienst hält dabei nur den Prozess wach.
  */
 @Singleton
-class PdfExportManager @Inject constructor(
+internal class PdfExportManager @Inject constructor(
     private val sets: SetsRepository,
     private val strom: PdfAuftragsStrom,
     private val teilelistentresor: Teilelistentresor,
@@ -69,7 +71,7 @@ class PdfExportManager @Inject constructor(
         return ergebnis
     }
 
-    internal suspend fun fuehreAus(rumpf: String) {
+    suspend fun fuehreAus(rumpf: String) {
         fangeAusserAbbruch {
             val jobId = when (val r = sets.startPdfJob(rumpf)) {
                 is Ergebnis.Success -> r.data

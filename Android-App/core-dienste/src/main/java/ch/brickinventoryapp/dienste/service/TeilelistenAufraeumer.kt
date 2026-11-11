@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.data.service
+package ch.brickinventoryapp.dienste.service
 
 import android.content.Context
 import androidx.core.app.NotificationManagerCompat

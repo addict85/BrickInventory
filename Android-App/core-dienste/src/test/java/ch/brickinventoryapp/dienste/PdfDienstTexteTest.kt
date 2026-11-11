@@ -1,9 +1,9 @@
-package ch.brickinventoryapp.data
+package ch.brickinventoryapp.dienste
 
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.service.PdfFehlschlag
-import ch.brickinventoryapp.data.service.fehlerText
-import ch.brickinventoryapp.data.service.fortschrittText
+import ch.brickinventoryapp.dienste.service.fehlerText
+import ch.brickinventoryapp.dienste.service.fortschrittText
 import ch.brickinventoryapp.model.fach.PdfFortschritt
 import ch.brickinventoryapp.model.fach.PdfSchritt
 import ch.brickinventoryapp.ressourcen.R
@@ -15,9 +15,9 @@ import org.junit.Test
  * Die Benachrichtigung des PDF-Dienstes bildet ihre Sätze aus Fachwerten: Kein
  * Fehler bleibt ohne Satz, auch wenn der Server keinen schickte.
  *
- * Gegenprobe (gegenproben/pdf-dienst-fehler-leer.patch, nur in der CI messbar):
- *   fehlerText() gibt für einen Abruf nur `fehler.message` zurück → rot „jeder Fehler
- *   hat einen Satz …“ (Netz, Zeitüberschreitung, Server ohne Satz sind leer)
+ * Gegenprobe (gegenproben/pdf-dienst-fehler-leer.patch, mit kotlinc gemessen):
+ *   fehlerText() nimmt für einen Abruf immer `fehler.message` → rot „jeder Fehler
+ *   hat einen Satz …“ mit „Netz(technisch=null) ohne Satz“
  */
 class PdfDienstTexteTest {
 
