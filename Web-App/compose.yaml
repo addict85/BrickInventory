@@ -210,9 +210,10 @@ services:
       DATA_KEY_FILE: /app/schluessel/datenschluessel
       # Nur während eines Wechsels vorhanden (scripts/datenschluessel-wechseln.sh).
       DATA_KEY_ALT_FILE: /app/schluessel/datenschluessel.alt
-      # Passkeys der Android-App und /.well-known/assetlinks.json (.env.example).
+      # Passkeys und Geräteschlüssel der Android-App, /.well-known/assetlinks.json (.env.example).
       PASSKEY_ANDROID_ZERTIFIKATE: ${PASSKEY_ANDROID_ZERTIFIKATE:-}
       PASSKEY_ANDROID_PAKET: ${PASSKEY_ANDROID_PAKET:-}
+      GERAETESCHLUESSEL_ALT_BIS: ${GERAETESCHLUESSEL_ALT_BIS:-}
       # PORT: 3000
       # NODE_ENV: production
       # NODE_OPTIONS: "--max-old-space-size=384"

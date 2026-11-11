@@ -6,6 +6,8 @@ import crypto from 'node:crypto';
 import * as repo from './repository/qrKopplung';
 import { createToken, hashToken, ipBereich } from './auth';
 import { APP_HOECHSTDAUER_TAGE, tokenLabel } from './tokenWunsch';
+import { neueNonce } from './geraeteChallenge';
+import { familieDesTokens } from './repository/geraeteSchluessel';
 
 export type { QrStand } from './repository/qrKopplung';
 export const QR_TTL_MS = 5 * 60 * 1000;
@@ -37,23 +39,44 @@ export async function meldeGeraet(
 }
 
 export type Abholung =
-  | { stand: 'wartet' | 'abgelehnt' | 'ungueltig' }
-  | { stand: 'fertig'; token: string; uid: number };
+  | { stand: 'wartet' }
+  | { stand: 'abgelehnt' }
+  | { stand: 'ungueltig' }
+  | { stand: 'bereit'; uid: number }
+  | { stand: 'fertig'; token: string; uid: number; schluesselNonce: string | null };
 
+const zeileZur = (abholung: unknown) =>
+  typeof abholung === 'string' && abholung ? repo.nachAbholung(hashToken(abholung)) : Promise.resolve(undefined);
+
+/** Mit [vorschau] nur das Konto: Die App zeigt es und holt den Token erst nach dem Ja.
+ * Die Nonce für den Geräteschlüssel entsteht mit dem Token und gilt nur seiner Familie. */
 export async function holeQrTokenAb(
   abholung: unknown,
   ip: string | null | undefined,
   darf: (uid: number) => Promise<boolean>,
+  vorschau = false,
 ): Promise<Abholung> {
-  const z = typeof abholung === 'string' && abholung ? await repo.nachAbholung(hashToken(abholung)) : undefined;
-  if (z?.stand === 'wartet' || z?.stand === 'abgelehnt') return { stand: z.stand };
-  if (z?.stand !== 'bestaetigt' || !(await darf(z.user_id)) || !(await repo.markiereAbgeholt(z.id)))
-    return { stand: 'ungueltig' };
+  const z = await zeileZur(abholung);
+  if (z?.stand === 'wartet') return { stand: 'wartet' };
+  if (z?.stand === 'abgelehnt') return { stand: 'abgelehnt' };
+  if (z?.stand !== 'bestaetigt' || !(await darf(z.user_id))) return { stand: 'ungueltig' };
+  if (vorschau) return { stand: 'bereit', uid: z.user_id };
+  if (!(await repo.markiereAbgeholt(z.id))) return { stand: 'ungueltig' };
   const token = await createToken(z.user_id, z.geraet ?? 'qr-login', true, z.token_days ?? APP_HOECHSTDAUER_TAGE, {
     scope: 'app',
     ip,
   });
-  return { stand: 'fertig', token, uid: z.user_id };
+  const familie = await familieDesTokens(hashToken(token));
+  const schluesselNonce = familie ? await neueNonce(familie, true) : null;
+  return { stand: 'fertig', token, uid: z.user_id, schluesselNonce };
+}
+
+/** Das Nein der App nach der Vorschau: Die Kopplung ist danach abgelehnt, ein Token entsteht nie. */
+export async function verwirfAbholung(abholung: unknown): Promise<boolean> {
+  const z = await zeileZur(abholung);
+  if (z?.stand !== 'bestaetigt' && z?.stand !== 'wartet') return false;
+  await repo.markiereAbgelehnt(z.id);
+  return true;
 }
 
 export async function kopplungsStand(kopplung: number, uid: number) {

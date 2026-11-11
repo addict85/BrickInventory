@@ -2,7 +2,7 @@
  * App-Token, eine Browser-Sitzung bestätigt mit Passwort und zweitem Faktor. */
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken } from './middleware';
-import { familieAus, hinterlegeSchluessel, neueChallenge, loeseEin } from '../../src/konto/geraeteChallenge';
+import { familieAus, hinterlegeSchluessel, neueChallenge, neueNonce, loeseEin } from '../../src/konto/geraeteChallenge';
 import { istAppToken } from '../../src/konto/http/schrittschutz';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
@@ -12,12 +12,33 @@ const router = vertragsRouter();
 const familie = (req: AuthedRequest) => (istAppToken(req) ? familieAus(req.apiUser) : null);
 
 router.post(
+  '/geraet/schluessel/nonce',
+  requireToken,
+  async (
+    req: Anfrage<'POST /api/v1/geraet/schluessel/nonce'>,
+    res: Antwort<'POST /api/v1/geraet/schluessel/nonce'>,
+  ) => {
+    const f = familie(req);
+    if (!f) return sendeFehler(req, res, 403, 'nur_mit_app_token');
+    const nonce = await neueNonce(f);
+    if (!nonce) return sendeFehler(req, res, 403, 'geraeteschluessel_frist');
+    res.json({ success: true, nonce });
+  },
+);
+
+router.post(
   '/geraet/schluessel',
   requireToken,
   async (req: Anfrage<'POST /api/v1/geraet/schluessel'>, res: Antwort<'POST /api/v1/geraet/schluessel'>) => {
     const f = familie(req);
     if (!f) return sendeFehler(req, res, 403, 'nur_mit_app_token');
-    const r = await hinterlegeSchluessel(f, req.eingabe.oeffentlich);
+    if (!req.eingabe.kette) return sendeFehler(req, res, 400, 'geraeteschluessel_attestation');
+    const r = await hinterlegeSchluessel(f, req.eingabe.kette);
+    if (typeof r === 'object') {
+      // Der Grund gehört ins Protokoll: Die App kann ihn nicht beheben, der Betreiber (Fingerabdruck) schon.
+      console.warn(`[geraet] Attestation von Konto ${f.uid} abgewiesen: ${r.abgewiesen}`);
+      return sendeFehler(req, res, 400, 'geraeteschluessel_attestation');
+    }
     if (r === 'ungueltig') return sendeFehler(req, res, 400, 'geraeteschluessel_ungueltig');
     if (r === 'anderer') return sendeFehler(req, res, 409, 'geraeteschluessel_vorhanden');
     if (r === 'frist_vorbei') return sendeFehler(req, res, 403, 'geraeteschluessel_frist');

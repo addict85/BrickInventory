@@ -1722,3 +1722,40 @@ docker compose exec postgres psql -U brickinventory -c "SELECT max(name) FROM sc
   Bestand beschränkt.
 - `postgres/app-rolle.sh` (Leserolle) kennt die geänderten Spalten; `docker
   compose up -d` spielt es wie gewohnt ein.
+
+## 49. Geräteschlüssel nur mit Android Key Attestation (Migration 0106)
+
+- **Was sich ändert:** Die App hinterlegt ihren Geräteschlüssel für den
+  Schrittschutz (Gutschein-PIN, Verwaltung, zweiter Faktor) nur noch mit seiner
+  Attestierungskette. Der Server prüft, dass die Kette bis zu einer Google-Wurzel
+  reicht (`src/konto/attestation/googleWurzeln.ts`, Quelle und SHA-256 dort),
+  dass sie die Nonce des Servers trägt (`POST /api/v1/geraet/schluessel/nonce`,
+  einmalig, nur in den ersten 10 Minuten eines Zugangs), dass der Schlüssel im
+  TEE oder StrongBox entstand und bei jeder Benutzung nur nach Gerätesperre oder
+  starker Biometrie signiert, und dass er der App mit `PASSKEY_ANDROID_PAKET`
+  und einem Fingerabdruck aus `PASSKEY_ANDROID_ZERTIFIKATE` gehört. Ein Zugang
+  aus der QR-Kopplung bekommt seine Nonce schon bei der Abholung und keine
+  weitere.
+- **Zu tun:** `PASSKEY_ANDROID_ZERTIFIKATE` setzen (wie für Passkeys,
+  `.env.example`), falls noch nicht geschehen. **Ohne Fingerabdruck nimmt der
+  Server keinen Geräteschlüssel mehr an**; heikle Schritte gehen dann in der App
+  nicht, in der Webapp weiter. Das Protokoll nennt den Grund jeder Abweisung
+  (`[geraet] Attestation von Konto … abgewiesen: fremde_signatur`).
+- **Übergang:** Bereits hinterlegte Schlüssel (ohne Attestation) gelten bis
+  zum **1. Februar 2027** (`GERAETESCHLUESSEL_ALT_BIS`; ein früheres Datum
+  schaltet sie früher ab). Danach meldet sich in der App neu an, wer es bis dahin
+  nicht getan hat; die neue Anmeldung hinterlegt einen attestierten Schlüssel.
+  Eine ältere App ohne Attestation kann nach dem Update des Servers keinen neuen
+  Schlüssel mehr hinterlegen: zuerst die App aktualisieren.
+- **Geräte ohne Attestation** (sehr alte oder veränderte Geräte, Emulatoren)
+  bekommen in der App eine Meldung und führen heikle Schritte in der Webapp aus.
+- **Widerrufsliste:** Die Liste widerrufener Attestierungsschlüssel
+  (`https://android.googleapis.com/attestation/status`) prüft der Server nicht,
+  er bräuchte dafür Zugang ins Internet. Ein widerrufener Schlüssel eines
+  kompromittierten Geräts käme durch, bräuchte aber weiterhin einen Token in
+  seinen ersten 10 Minuten.
+- **QR-Anmeldung:** Die App zeigt nach der Bestätigung im Browser Benutzername
+  und Server und übernimmt den Zugang erst nach einem Ja
+  (`POST /api/v1/auth/qr-login/abholen` mit `vorschau: true`; ein Nein geht an
+  `/qr-login/verwerfen` und lehnt die Kopplung ab). Ältere Apps holen den Token
+  wie bisher direkt ab.
