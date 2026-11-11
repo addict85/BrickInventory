@@ -15,16 +15,6 @@ import kotlinx.coroutines.flow.Flow
  * Retrofit und Ablage hängen (SetsRepositoryImpl).
  */
 interface SetsRepository {
-    suspend fun getSets(
-        accounts: String? = null,
-        search: String? = null,
-        theme: String? = null,
-        sort: Setsortierung? = null,
-        page: Int = 1,
-        pageSize: Int = GALLERY_PAGE_SIZE,
-        storage: String? = null
-    ): Ergebnis<SetsResponse>
-
     suspend fun getSetExists(setNumber: String): Ergebnis<SetExistsResponse>
 
     suspend fun getSetDetail(setNumber: String): Ergebnis<SetDetailResponse>
@@ -39,10 +29,9 @@ interface SetsRepository {
 
     suspend fun aendereMengeUm(setNumber: String, schritt: Int): Ergebnis<GenericResponse>
 
-    suspend fun getMerkliste(search: String? = null, condition: Zustand? = null,
-                             sort: Merksortierung? = null, accounts: String? = null): Ergebnis<MerklisteResponse>
-
-    fun beobachteMerkliste(): Flow<Lokal<Merkposten>>
+    /** Die Merkliste aus der Ablage nach Suche und Zustand, sortiert wie am Server. */
+    fun beobachteMerkliste(suche: String? = null, zustand: Zustand? = null,
+                           sort: Merksortierung? = null): Flow<Lokal<Merkposten>>
 
     /**
      * Die ungefilterte Merkliste vom Server in die lokale Ablage holen. Zu sehen ist
@@ -70,8 +59,9 @@ interface SetsRepository {
     suspend fun deleteSet(setNumber: String): Ergebnis<GenericResponse>
 
     /**
-     * Die lokale Galerie nach Suche, Thema und Lagerort, sortiert wie am Server. Ohne
-     * Kontofilter ist sie die Quelle der Anzeige; [aktualisiereSets] füllt sie.
+     * Die Galerie aus der Ablage nach Suche, Thema und Lagerort, sortiert wie am
+     * Server — die Quelle der Anzeige; [aktualisiereSets] füllt sie. Die Sicht über
+     * gewählte Konten ist ein eigenes Lesemodell (Kontosicht).
      */
     fun beobachteSets(suche: String? = null, thema: String? = null, lagerort: String? = null,
                       sort: Setsortierung? = null): Flow<Lokal<SetItem>>
@@ -81,6 +71,9 @@ interface SetsRepository {
 
     suspend fun moveSet(setNumber: String, fromUserId: Int?, toUserId: Int,
                         acquisitionIds: List<Int>? = null): Ergebnis<MoveSetResponse>
+
+    /** Ein Kauf hat sich geändert; die Zusammenfassung des Servers geht in die Ablage. */
+    suspend fun uebernimmZusammenfassung(agg: SetAggregate)
 
     suspend fun getPendingAlerts(since: String?): Ergebnis<PendingAlertsResponse>
 

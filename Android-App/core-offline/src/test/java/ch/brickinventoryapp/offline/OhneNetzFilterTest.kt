@@ -10,6 +10,7 @@ import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
 import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
+import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 import ch.brickinventoryapp.model.data.model.AddSetRequest
 import ch.brickinventoryapp.model.data.model.Part
@@ -34,12 +35,11 @@ import java.lang.reflect.Proxy
 import java.net.ConnectException
 
 /**
- * Ohne Netz beantworten die Repositories Suche und Filter aus Room — mit
- * denselben Abfragen wie im Gerät, gegen eine Api-Attrappe, die online Seiten
- * liefert und offline mit ConnectException scheitert. Läuft nur in der CI.
+ * Suche und Filter beantwortet Room, online wie ohne Netz — mit denselben
+ * Abfragen wie im Gerät, gegen eine Api-Attrappe, die online Seiten liefert und
+ * offline mit ConnectException scheitert. Läuft nur in der CI.
  *
  * Gegenproben (gegenproben/, der CI-Job `gegenproben` verlangt Rot):
- *   ohne-netz-ohne-filter      gefiltert() gibt den Netzfehler zurück → rot „Suche, Thema …“ und „Farbe, …“
  *   ohne-netz-suche-als-muster `%` und `_` nicht maskiert → rot „ein Prozentzeichen …“
  *   ohne-netz-filter-spalte    die Spalte thema bekommt den Lagerort → rot „Suche, Thema …“
  *   seite-kodiert-ganze-liste  uebernimm liest und ersetzt beim Anhängen die ganze Liste →
@@ -78,7 +78,7 @@ class OhneNetzFilterTest {
             return Response.success(SetsResponse(success = true, count = seite.size, sets = seite, total = sets.size))
         }
     }
-    private val setsRepo = SetsRepositoryImpl(setsApi, ablage)
+    private val setsRepo = SetsRepositoryImpl(setsApi, ablage, Wiederholung.EINMAL)
 
     private val teile = listOf(
         Part(partNumber = "3001", partName = "Brick 2 x 4", colorId = 4, colorName = "Red", categoryName = "11"),
@@ -102,20 +102,23 @@ class OhneNetzFilterTest {
             return Response.success(ManualPartsResponse(success = true, parts = listOf(PartValuationItem(partNumber = "m1"))))
         }
     }
-    private val teileRepo = TeileRepositoryImpl(teileApi, ablage)
+    private val teileRepo = TeileRepositoryImpl(teileApi, ablage, Wiederholung.EINMAL)
 
     private fun setsOffline(search: String? = null, theme: String? = null, storage: String? = null, sort: Setsortierung? = null) =
-        runBlocking { setsRepo.getSets(null, search, theme, sort, 1, 2, storage) }
-            .let { it as Ergebnis.Success }.also { assertEquals("trägt den Stand", STAND, it.stand) }
-            .data.sets.map { it.setNumber }
+        runBlocking { setsRepo.beobachteSets(search, theme, storage, sort).first() }
+            .also { assertEquals("trägt den Stand", STAND, it.stand) }
+            .liste.map { it.setNumber }
 
     private fun teileOffline(search: String? = null, color: String? = null, category: String? = null,
                              spare: Ersatzteilwahl = Ersatzteilwahl.ALLE) =
-        runBlocking { teileRepo.getParts(search, color, category, 1, null, spare, false, null) }
-            .let { it as Ergebnis.Success }.data.parts.map { "${it.partNumber}/${it.colorName}" }
+        runBlocking { teileRepo.beobachteTeile(search, color, category, spare).first() }
+            .liste.map { "${it.partNumber}/${it.colorName}" }
 
-    private fun ladeSetsOnline() = runBlocking {
-        for (seite in 1..3) assertTrue(setsRepo.getSets(null, null, null, null, seite, 2, null) is Ergebnis.Success)
+    private fun ladeSetsOnline() = runBlocking { assertTrue(setsRepo.aktualisiereSets() is Ergebnis.Success) }
+
+    /** Die Sets in Seiten zu zwei, wie eine blätternde Serverantwort. */
+    private suspend fun seitenweise() {
+        for ((i, seite) in sets.chunked(2).withIndex()) ablage.uebernimm(Faecher.SETS, seite, anhaengen = i > 0)
     }
 
     @Test
@@ -141,7 +144,7 @@ class OhneNetzFilterTest {
 
     @Test
     fun `Farbe, Kategorie, Ersatzteile und Suche der Teileliste wirken ohne Netz`() {
-        runBlocking { for (seite in 1..2) teileRepo.getParts(null, null, null, seite, null, Ersatzteilwahl.ALLE, false, null) }
+        runBlocking { assertTrue(teileRepo.aktualisiereTeile() is Ergebnis.Success) }
         offline = true
         assertEquals(listOf("3001/Red", "3023/Red"), teileOffline(color = "Red"))
         assertEquals(listOf("3001/Red"), teileOffline(color = "Red", spare = Ersatzteilwahl.OHNE))
@@ -154,7 +157,7 @@ class OhneNetzFilterTest {
 
     @Test
     fun `eine weitere Seite schreibt nur ihre Zeilen und liest die Liste nicht`() {
-        ladeSetsOnline()
+        runBlocking { seitenweise() }
         assertEquals("Seite 1 ersetzt die Liste", listOf(2), bestand.ersetzt)
         assertEquals("Seiten 2 und 3 schreiben nur ihre eigenen Zeilen", listOf(2, 1), bestand.angehaengt)
         assertEquals("gelesen wird dabei nichts", 0, bestand.gelesen)
@@ -164,11 +167,11 @@ class OhneNetzFilterTest {
     @Test
     fun `der Ausgang wirkt auch auf eine weitere Seite, ohne Zeilen doppelt anzulegen`() {
         runBlocking {
-            setsRepo.getSets(null, null, null, null, 1, 2, null)
+            ablage.uebernimm(Faecher.SETS, sets.take(2))
             // Offline ein Set erfasst, das der Server auf Seite 2 schon führt: Lokal steht
             // es erst vorn, die Zeile von Seite 2 ersetzt es samt wartendem Schritt.
             ablage.puffere(Bearbeitung.SetErfassen(AddSetRequest(setNumber = "10003-1", quantity = 1)))
-            setsRepo.getSets(null, null, null, null, 2, 2, null)
+            ablage.uebernimm(Faecher.SETS, sets.drop(2).take(2), anhaengen = true)
         }
         val lokal = runBlocking { ablage.lies(Faecher.SETS) }!!.liste
         assertEquals(listOf("10001-1", "10002-1", "10003-1", "21000-1"), lokal.map { it.setNumber })

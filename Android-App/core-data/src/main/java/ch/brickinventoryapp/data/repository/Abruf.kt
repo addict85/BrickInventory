@@ -1,12 +1,13 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.offline.Bearbeitung
-import ch.brickinventoryapp.offline.Filterspalten
 import ch.brickinventoryapp.offline.Fach
 import ch.brickinventoryapp.offline.Offlineablage
+import ch.brickinventoryapp.offline.Offlineablage.Wirkung
 import ch.brickinventoryapp.model.data.model.Fehlercode
 import kotlinx.serialization.KSerializer
 import retrofit2.Response
@@ -55,44 +56,38 @@ internal suspend fun <R, T : Any> Offlineablage.aktualisiereSeitenweise(
     fach: Fach<T>,
     liste: (R) -> List<T>,
     gesamt: (R) -> Int,
+    wiederholung: Wiederholung,
     seite: suspend (nummer: Int) -> Ergebnis<R>,
 ): Ergebnis<Unit> {
     val vorher = bereich() ?: return Ergebnis.Success(Unit)
-    val alle = LinkedHashMap<String, T>()
-    for (nummer in 1..MAX_SEITEN) {
-        val r = seite(nummer)
-        if (r is Ergebnis.Error) return r
-        val antwort = (r as Ergebnis.Success).data
-        val neu = liste(antwort)
-        neu.forEach { alle[fach.schluessel(it)] = it }
-        if (neu.isEmpty() || alle.size >= gesamt(antwort)) break
-    }
-    if (bereich() == vorher) uebernimm(fach, alle.values.toList(), bereich = vorher)
+    val r = alleSeiten(liste, fach.schluessel, gesamt, wiederholung, seite)
+    if (r is Ergebnis.Error) return r
+    if (bereich() == vorher) uebernimm(fach, (r as Ergebnis.Success).data, bereich = vorher)
     return Ergebnis.Success(Unit)
 }
 
-/** Obergrenze für [aktualisiereSeitenweise], falls der Server eine falsche Gesamtzahl nennt. */
-private const val MAX_SEITEN = 500
-
-/**
- * Eine gefilterte Abfrage: Online antwortet der Server, abgelegt wird nichts —
- * eine Teilmenge ersetzte sonst die Liste. Ist er nicht erreichbar, beantworten
- * dieselben Filter die lokale Liste, samt Stand für „Offline – Stand von …“.
- */
-internal suspend fun <R, T : Any> Offlineablage.gefiltert(
-    fach: Fach<T>,
-    filter: Filterspalten,
-    ausLokal: (List<T>) -> R,
-    call: suspend () -> Ergebnis<R>,
-): Ergebnis<R> {
-    val vorher = bereich()
-    val frisch = call()
-    if (frisch !is Ergebnis.Error || !frisch.transient) return frisch
-    if (vorher == null || bereich() != vorher) return frisch
-    val lokal = filtere(fach, filter) ?: return frisch
-    val stand = lokal.stand ?: return frisch
-    return Ergebnis.Success(ausLokal(lokal.liste), stand = stand)
+/** Alle Seiten einer blätternden Antwort, jede mit der [wiederholung]; doppelte Schlüssel gewinnt die spätere. */
+internal suspend fun <R, T> alleSeiten(
+    liste: (R) -> List<T>,
+    schluessel: (T) -> String,
+    gesamt: (R) -> Int,
+    wiederholung: Wiederholung,
+    seite: suspend (nummer: Int) -> Ergebnis<R>,
+): Ergebnis<List<T>> {
+    val alle = LinkedHashMap<String, T>()
+    for (nummer in 1..MAX_SEITEN) {
+        val r = wiederholung.wiederhole { seite(nummer) }
+        if (r is Ergebnis.Error) return r
+        val antwort = (r as Ergebnis.Success).data
+        val neu = liste(antwort)
+        neu.forEach { alle[schluessel(it)] = it }
+        if (neu.isEmpty() || alle.size >= gesamt(antwort)) break
+    }
+    return Ergebnis.Success(alle.values.toList())
 }
+
+/** Obergrenze für [alleSeiten], falls der Server eine falsche Gesamtzahl nennt. */
+private const val MAX_SEITEN = 500
 
 /**
  * Schreiben mit Ausgang: online direkt; ohne Verbindung — oder wenn schon
@@ -108,11 +103,33 @@ internal suspend fun <T> Offlineablage.schreibe(
 ): Ergebnis<T> {
     val schluessel = neuerSchluessel()
     if (wartet() && puffere(bearbeitung, schluessel)) return Ergebnis.Success(ersatz(), gepuffert = true)
+    val vorher = bereich()
     val r = direkt(schluessel)
     if (r is Ergebnis.Error && r.transient && puffere(bearbeitung, schluessel))
         return Ergebnis.Success(ersatz(), gepuffert = true)
-    if (r is Ergebnis.Success) wendeAn(bearbeitung)
+    if (r is Ergebnis.Success) wendeImSelbenBereichAn(bearbeitung, vorher)
     return r
+}
+
+/**
+ * Schreiben, das nur online geht: Was gelingt, zieht die Ablage über [wirkung]
+ * nach (null = die Antwort meldet keinen Erfolg). Die Liste bleibt so die einzige
+ * Quelle; niemand muss danach „bitte neu laden“ rufen.
+ */
+internal suspend fun <T> Offlineablage.nachgezogen(
+    wirkung: (T) -> Wirkung?,
+    call: suspend () -> Ergebnis<T>,
+): Ergebnis<T> {
+    val vorher = bereich()
+    val r = call()
+    if (r is Ergebnis.Success) wirkung(r.data)?.let { wendeImSelbenBereichAn(it, vorher) }
+    return r
+}
+
+/** Wechselte das Konto während des Aufrufs, gehört die Antwort nicht in die neue Ablage. */
+private suspend fun Offlineablage.wendeImSelbenBereichAn(w: Wirkung, vorher: String?) {
+    val b = bereich() ?: return
+    if (b == vorher) wendeAn(w, b)
 }
 
 /**
@@ -172,7 +189,7 @@ suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Ergebnis<T> {
         // nicht als "Netzwerkfehler" im State landen — Cancellation weiterreichen.
         throw e
     } catch (_: java.net.UnknownHostException) {
-        // Netz ist vorübergehend schon nach seiner Art; retryOnNetwork muss es nicht
+        // Netz ist vorübergehend schon nach seiner Art; die Wiederholung muss es nicht
         // an der Fehlermeldung erraten.
         Ergebnis.Error.Netz()
     } catch (_: java.net.ConnectException) {

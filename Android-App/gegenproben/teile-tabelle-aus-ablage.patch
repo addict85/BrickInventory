@@ -1,15 +1,17 @@
-Gegenprobe: Die Tabelle liest die Ablage, die „In Sets“ nicht kennt
+Gegenprobe: Die Tabelle liest die Ablage, obwohl nur der Server „In Sets“ zählt
 Modul: feature-teile
-Test: ch.brickinventoryapp.teile.TeileLokalTest
-Rot: die Tabelle zaehlt In Sets
+Test: ch.brickinventoryapp.teile.TeileViewModelTest
+Rot: Filter und Ansicht ueberstehen einen Prozess-Tod und reisen mit
 
-diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/Teile.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/Teile.kt
---- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/Teile.kt
-+++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/Teile.kt
-@@ -92,5 +92,5 @@
-
-     /** Die Tabelle bestellt „In Sets“ mit; das zählt nur der Server. */
--    private fun teileLokal(st: PartsUiState) = lokal?.takeIf { st.partsView != Listenansicht.TABELLE && !teileEingeschraenkt() }
-+    private fun teileLokal(st: PartsUiState) = lokal?.takeIf { !teileEingeschraenkt() }
-     private fun figurenLokal() = lokal?.takeIf { !figurenEingeschraenkt() }
-
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
+@@ -92,7 +92,7 @@
+      * rechnet nur der Server (Kontosicht). Sonst gilt die Ablage.
+      */
+     private fun teileAbfrage(st: PartsUiState): Kontosicht.TeileAbfrage? =
+-        if (teileKonto == null && teileLager == null && st.partsView != Listenansicht.TABELLE) null
++        if (teileKonto == null && teileLager == null) null
+         else Kontosicht.TeileAbfrage(teileKonto, st.partsQuery.ifBlank { null }, st.partsColorFilter.ifBlank { null },
+             st.partsCategoryFilter.ifBlank { null }, st.partsSpare, st.partsView == Listenansicht.TABELLE, teileLager)
+ 

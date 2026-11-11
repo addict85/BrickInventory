@@ -72,7 +72,7 @@ sealed class Ergebnis<out T> {
  * Seitengrösse der Galerie, wie in der Webapp (public/js/02-gallery.js): Zwei
  * Grössen ergäben zwei Scroll-Erlebnisse für denselben Bestand.
  */
-const val GALLERY_PAGE_SIZE = 60
+internal const val GALLERY_PAGE_SIZE = 60
 
 /**
  * Seitengrösse des Katalogs. Muss zur Rechnung des Servers passen: Der

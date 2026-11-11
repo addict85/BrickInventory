@@ -48,7 +48,7 @@ interface Sitzung {
 
     fun spracheGeaendert(language: String)
 
-    /** Das wirksame Design, z. B. nach einer Wahl im Konto; der SitzungsDienst merkt es sich für den Kaltstart. */
+    /** Das wirksame Design, z. B. nach einer Wahl im Konto; es geht in die Ablage, der Zustand folgt ihr. */
     fun setzeDesign(theme: Design)
 
     /** Startzustand des Servers, solange er nicht bereit ist; null heisst durch oder nicht erreichbar. */
@@ -62,17 +62,20 @@ interface Sitzung {
 }
 
 /** Für Tests und Vorschauen ohne Hilt. */
-fun Sitzung(): Sitzung = SitzungsZustand()
+fun Sitzung(werte: Kontowerte = SpeicherKontowerte()): Sitzung = SitzungsZustand(werte)
 
 /**
  * Ein Singleton und kein Feld eines ViewModels, weil jeder Bildschirm die Sitzung
- * liest, aber jedes Bereichs-ViewModel nur so lange lebt wie sein Ziel.
+ * liest, aber jedes Bereichs-ViewModel nur so lange lebt wie sein Ziel. Währung
+ * und Design leitet sie aus [Kontowerte] ab; sie hält keine eigene Kopie.
  */
 @Singleton
-class SitzungsZustand @Inject constructor() : Sitzung {
+class SitzungsZustand @Inject constructor(private val werte: Kontowerte) : Sitzung {
 
     private val _state = MutableStateFlow(AppUiState())
-    override val state: StateFlow<AppUiState> = _state.asStateFlow()
+    override val state: StateFlow<AppUiState> = _state
+        .abgeleitet(werte.waehrung) { s, w -> s.copy(currency = w) }
+        .abgeleitet(werte.design) { s, d -> s.copy(appTheme = d) }
 
     private val _abmeldungen = MutableStateFlow(0L)
     override val abmeldungen: StateFlow<Long> = _abmeldungen.asStateFlow()
@@ -84,26 +87,33 @@ class SitzungsZustand @Inject constructor() : Sitzung {
 
     override fun verwalterGeaendert(admin: Boolean) = _state.update { it.copy(isAdmin = admin) }
 
-    override fun einstellungenGespeichert(currency: Waehrung, priceCondition: Zustand) =
-        _state.update { it.copy(currency = currency, priceCondition = priceCondition) }
+    override fun einstellungenGespeichert(currency: Waehrung, priceCondition: Zustand) {
+        werte.setzeWaehrung(currency)
+        _state.update { it.copy(priceCondition = priceCondition) }
+    }
 
     override fun einstellungenGeladen(
         currency: Waehrung, priceCondition: Zustand, defaultPriceCondition: Zustand, userDefaultCondition: Zustand?,
-    ) = _state.update {
-        it.copy(currency = currency, priceCondition = priceCondition,
-            defaultPriceCondition = defaultPriceCondition, userDefaultCondition = userDefaultCondition)
+    ) {
+        werte.setzeWaehrung(currency)
+        _state.update {
+            it.copy(priceCondition = priceCondition, defaultPriceCondition = defaultPriceCondition,
+                userDefaultCondition = userDefaultCondition)
+        }
     }
 
-    override fun waehrungUebernommen(currency: Waehrung) = _state.update { it.copy(currency = currency) }
+    override fun waehrungUebernommen(currency: Waehrung) = werte.setzeWaehrung(currency)
 
     override fun spracheGeaendert(language: String) = _state.update { it.copy(language = language) }
 
-    override fun setzeDesign(theme: Design) = _state.update { it.copy(appTheme = theme) }
+    override fun setzeDesign(theme: Design) = werte.setzeDesign(theme)
 
     override fun serverstartGeaendert(stand: StartzustandAnsicht?) = _state.update { it.copy(startupStatus = stand) }
 
+    /** Die Währung des Kontos gilt nicht mehr; das Design bleibt bis zur Vorgabe des Servers. */
     override fun abgemeldet() {
-        _state.update { AppUiState(serverUrl = it.serverUrl, appTheme = it.appTheme) }
+        werte.setzeWaehrung(AppUiState().currency)
+        _state.update { AppUiState(serverUrl = it.serverUrl) }
         _abmeldungen.update { it + 1 }
     }
 }

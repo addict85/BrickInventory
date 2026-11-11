@@ -243,7 +243,7 @@ internal fun installerZiel(pm: PackageManager, bestaetigung: Intent): ComponentN
  * es dafür seinen eigenen Dialog (EXTRA_INTENT), aber nur, wenn er zum
  * System-Installer führt ([installerZiel]).
  */
-class InstallationsEmpfaenger : BroadcastReceiver() {
+internal class InstallationsEmpfaenger : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         when (val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {

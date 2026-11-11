@@ -1,17 +1,17 @@
-Gegenprobe: Das wirksame Design wird nicht mehr für den Kaltstart gemerkt
+Gegenprobe: Das Design des Servers geht nicht in die Ablage
 Modul: core-zustand
 Test: ch.brickinventoryapp.zustand.SitzungsDienstTest
 Rot: das Design des Servers gilt und wird gemerkt
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/SitzungsDienst.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/SitzungsDienst.kt
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/SitzungsDienst.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/SitzungsDienst.kt
-@@ -93,7 +93,7 @@ class SitzungsDienst @Inject constructor(
-         // Jede Änderung des Designs landet im Spiegel des Geräts, ob vom Server oder
-         // aus der Wahl im Konto; nach dem Abmelden ist es die Vorgabe.
-         bereich.launch {
--            sitzung.state.map { it.appTheme }.distinctUntilChanged().collect { prefs.saveAppTheme(it) }
-+            sitzung.state.map { it.appTheme }.distinctUntilChanged().collect { }
-         }
-         // drop(1) lässt den gemerkten Startwert aus: Nur eine Währung des Servers wird gemerkt.
-         bereich.launch {
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Sitzung.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Sitzung.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Sitzung.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Sitzung.kt
+@@ -106,7 +106,7 @@
+ 
+     override fun spracheGeaendert(language: String) = _state.update { it.copy(language = language) }
+ 
+-    override fun setzeDesign(theme: Design) = werte.setzeDesign(theme)
++    override fun setzeDesign(theme: Design) = Unit
+ 
+     override fun serverstartGeaendert(stand: StartzustandAnsicht?) = _state.update { it.copy(startupStatus = stand) }
+ 

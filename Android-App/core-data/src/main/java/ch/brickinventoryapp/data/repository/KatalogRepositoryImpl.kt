@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.model.fach.Katalogsortierung
 import ch.brickinventoryapp.data.api.KatalogApi
 import ch.brickinventoryapp.data.cache.ResponseCache
@@ -15,18 +16,21 @@ import ch.brickinventoryapp.model.data.model.CatalogYearVerteilungResponse
 class KatalogRepositoryImpl @Inject constructor(
     private val api: KatalogApi,
     private val cache: ResponseCache,
+    private val wiederholung: Wiederholung,
 ) : KatalogRepository {
+    /** Beim Blättern im Katalog: wenige Versuche, sonst stünde die nächste Seite lange aus. */
+    private val knapp = wiederholung.hoechstens(KATALOG_VERSUCHE)
 
     override suspend fun getCatalogMeta(): Ergebnis<CatalogMetaResponse> =
-        cache.cached("catalog-meta", CatalogMetaResponse.serializer()) { sicherAufrufen { api.getCatalogMeta() } }
+        wiederholung.wiederhole { cache.cached("catalog-meta", CatalogMetaResponse.serializer()) { sicherAufrufen { api.getCatalogMeta() } } }
 
     override suspend fun getCatalogSets(
         q: String?, themeId: Int?, yearFrom: Int?, yearTo: Int?,
         sort: Katalogsortierung, page: Int, limit: Int
-    ): Ergebnis<CatalogSetsResponse> = sicherAufrufen { api.getCatalogSets(q, themeId, yearFrom, yearTo, sort.kennung, page, limit) }
+    ): Ergebnis<CatalogSetsResponse> = knapp.wiederhole { sicherAufrufen { api.getCatalogSets(q, themeId, yearFrom, yearTo, sort.kennung, page, limit) } }
 
     override suspend fun getCatalogSetDetail(setNumber: String): Ergebnis<CatalogSetDetailResponse> =
-        sicherAufrufen { api.getCatalogSetDetail(setNumber) }
+        knapp.wiederhole { sicherAufrufen { api.getCatalogSetDetail(setNumber) } }
 
     /**
      * Jahresverteilung zu den aktuellen Filtern — die Zahlen, aus denen die
@@ -37,3 +41,5 @@ class KatalogRepositoryImpl @Inject constructor(
     ): Ergebnis<CatalogYearVerteilungResponse> =
         sicherAufrufen { api.getCatalogYearVerteilung(q, themeId, sort.kennung) }
 }
+
+private const val KATALOG_VERSUCHE = 2

@@ -1,0 +1,17 @@
+Gegenprobe: Die Kontosicht zeigt die Antwort eines anderen Kontos
+Modul: core-data
+Test: ch.brickinventoryapp.data.KontosichtTest
+Rot: eine Antwort fuer ein anderes Konto zeigt die Kontosicht nicht
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt
+@@ -65,7 +65,7 @@
+             launch { ablage.veraendert(*ausloeser).collectLatest { aktualisiere(abfrage) } }
+             launch {
+                 zuletzt.map { e ->
+-                    if (e == null || e.abfrage != abfrage || e.bereich != ablage.bereich()) Lokal(emptyList(), null) else e.liste
++                    if (e == null || e.abfrage != abfrage) Lokal(emptyList(), null) else e.liste
+                 }.distinctUntilChanged().collect { send(it) }
+             }
+             awaitClose()

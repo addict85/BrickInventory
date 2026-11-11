@@ -35,6 +35,10 @@ import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepositoryImpl
+import ch.brickinventoryapp.data.repository.Bestandsabgleich
+import ch.brickinventoryapp.data.repository.Kontosicht
+import ch.brickinventoryapp.data.Netzlage.Wiederholung
+import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.sicherheit.AblageChiffre
 import ch.brickinventoryapp.sicherheit.Vertrauenschiffre
 import kotlinx.coroutines.CoroutineDispatcher
@@ -53,13 +57,13 @@ fun Testablage(bereich: String? = "test", ausgang: Ausgang = SpeicherAusgang(), 
     Offlineablage(SpeicherBestand(), ausgang, { bereich }, planer)
 
 fun SetsRepository(api: SetsApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache, ablage: Offlineablage = Testablage()): SetsRepository =
-    SetsRepositoryImpl(api, ablage)
+    SetsRepositoryImpl(api, ablage, Wiederholung.EINMAL)
 
 fun TeileRepository(api: TeileApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache, ablage: Offlineablage = Testablage()): TeileRepository =
-    TeileRepositoryImpl(api, ablage)
+    TeileRepositoryImpl(api, ablage, Wiederholung.EINMAL)
 
 fun FigurenRepository(api: FigurenApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache, ablage: Offlineablage = Testablage()): FigurenRepository =
-    FigurenRepositoryImpl(api, ablage)
+    FigurenRepositoryImpl(api, ablage, Wiederholung.EINMAL)
 
 fun GutscheineRepository(api: GutscheineApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache): GutscheineRepository =
     GutscheineRepositoryImpl(api, Testablage())
@@ -78,7 +82,16 @@ fun HaushaltRepository(api: HaushaltApi, @Suppress("UNUSED_PARAMETER") cache: Re
 fun VerwaltungRepository(api: VerwaltungApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache): VerwaltungRepository =
     VerwaltungRepositoryImpl(api)
 
-fun KatalogRepository(api: KatalogApi, cache: ResponseCache): KatalogRepository = KatalogRepositoryImpl(api, cache)
+fun KatalogRepository(api: KatalogApi, cache: ResponseCache): KatalogRepository = KatalogRepositoryImpl(api, cache, Wiederholung.EINMAL)
+
+/** Die Sicht über gewählte Konten; mit derselben [ablage] wie die Repositories, damit Schreiben sie neu fragt. */
+fun Kontosicht(api: BrickApiService, ablage: Offlineablage = Testablage()): Kontosicht =
+    Kontosicht(api, api, api, ablage, Wiederholung.EINMAL)
+
+/** Sets, Teile und Figuren auf einer gemeinsamen [ablage]. */
+fun Bestandsabgleich(api: BrickApiService, ablage: Offlineablage): Bestandsabgleich =
+    Bestandsabgleich(SetsRepositoryImpl(api, ablage, Wiederholung.EINMAL), TeileRepositoryImpl(api, ablage, Wiederholung.EINMAL),
+        FigurenRepositoryImpl(api, ablage, Wiederholung.EINMAL), ablage)
 
 /** Der Antwort-Cache im Wegwerf-Ordner; ohne [io] auf Dispatchers.IO wie im Gerät. */
 fun ResponseCache(

@@ -17,6 +17,11 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import ch.brickinventoryapp.model.koroutinen.ApplicationScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.CsvImportStrom
 import ch.brickinventoryapp.data.CsvImportBeobachter
@@ -87,10 +92,17 @@ internal abstract class LokalModule {
     @Binds abstract fun faktorPflicht(z: ZweiterFaktorZustand): ZweiterFaktorPflicht
 
     companion object {
-        /** Der Bereich kommt aus dem angemeldeten Konto, gestreut wie im Antwort-Zwischenspeicher. */
+        /**
+         * Der Bereich kommt aus dem angemeldeten Konto, gestreut wie im Antwort-Zwischenspeicher:
+         * zum Schreiben jetzt gefragt, zum Beobachten als StateFlow der Sitzung.
+         */
         @Provides
         @Singleton
-        fun offlineablage(bestand: LokalerBestand, ausgang: Ausgang, besitzer: CacheBesitzer, planer: AusgangPlaner): Offlineablage =
-            Offlineablage(bestand, ausgang, bereichQuelle = { besitzer.kontoBereich()?.let { ResponseCache.bereichsName(it) } }, planer = planer)
+        fun offlineablage(bestand: LokalerBestand, ausgang: Ausgang, besitzer: CacheBesitzer, planer: AusgangPlaner,
+                          @ApplicationScope bereich: CoroutineScope): Offlineablage =
+            Offlineablage(bestand, ausgang, bereichQuelle = { besitzer.kontoBereich()?.let { ResponseCache.bereichsName(it) } },
+                planer = planer,
+                bereichFluss = besitzer.kontoBereichFluss().map { it?.let(ResponseCache::bereichsName) }
+                    .stateIn(bereich, SharingStarted.Eagerly, null))
     }
 }

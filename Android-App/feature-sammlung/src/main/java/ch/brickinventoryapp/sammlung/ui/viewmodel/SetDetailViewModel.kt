@@ -11,7 +11,6 @@ import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
-import ch.brickinventoryapp.zustand.ui.Aenderung
 import ch.brickinventoryapp.sammlung.ui.Preisalarmeingabe
 import ch.brickinventoryapp.sammlung.ui.SetDetailUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,18 +21,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import ch.brickinventoryapp.zustand.ui.fehlerklasse
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.zustand.ui.AppUiState
 import ch.brickinventoryapp.zustand.ui.Sitzung
-import ch.brickinventoryapp.zustand.ui.Bestandssignal
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
 import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
-import ch.brickinventoryapp.zustand.ui.viewmodel.folgeBestand
 
 /**
  * Wie gross eine Anleitung sein darf — derselbe Wert wie `limits.fileSize` in
@@ -60,7 +60,6 @@ class SetDetailViewModel @Inject constructor(
     private val sitzung: Sitzung,
     private val filter: Filterwahl,
     private val meldungen: Meldungen,
-    private val bestand: Bestandssignal,
     private val sets: SetsRepository,
     private val finanzen: FinanzenRepository,
     private val haushalt: HaushaltRepository,
@@ -72,7 +71,13 @@ class SetDetailViewModel @Inject constructor(
 
     init {
         folgeAbmeldung(sitzung) { zuruecksetzen() }
-        folgeBestand(bestand) { beiAenderung(it) }
+        // Ändert sich dieses Set in der Ablage — hier oder anderswo —, gelten Detail und Käufe nicht mehr.
+        viewModelScope.launch {
+            sets.beobachteSets().map { l -> l.liste.firstOrNull { it.setNumber == setNumber } }
+                .distinctUntilChanged().drop(1).collect {
+                    if (_setDetailState.value.setDetail != null) { loadSetDetail(setNumber); loadAcquisitions(setNumber) }
+                }
+        }
     }
 
     /** Aus der Route set_detail/{setNumber}. */
@@ -88,9 +93,8 @@ class SetDetailViewModel @Inject constructor(
         scope = viewModelScope, sets = sets,
         melde = { meldungen.zeige(it) },
         beschreibe = { meldungen.meldungFuerSnackbar(it) },
-        // Nachgeladen wird in beiAenderung(): Dort kommt dasselbe Signal auch
-        // an, wenn ein Alarm anderswo (Übersicht, Merkliste) geändert wurde.
-        gespeichert = { bestand.melde(Aenderung.Alarme) },
+        // Anderswo geänderte Alarme holt ladeAlles() beim Zurückkehren.
+        gespeichert = { sn -> if (sn == setNumber) loadPreisalarme(sn) },
     )
 
     /** Alles, was die Ansicht zeigt — beim Betreten und nach der Rückkehr. */
@@ -159,8 +163,8 @@ class SetDetailViewModel @Inject constructor(
         alarmEingabe.setze(setNumber, richtung, roh, zustand)
 
     /**
-     * Die Menge ändern. Die neue Zahl steht sofort in der Ansicht, die übrigen
-     * Bestandsansichten erfahren es über das Signal.
+     * Die Menge ändern. Die neue Zahl steht sofort in der Ansicht; die übrigen
+     * Bestandsansichten folgen der Ablage, in die das Repository sie schreibt.
      */
     fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: Zustand? = null) =
         mengeAendern(setNumber) { sets.updateQuantity(setNumber, quantity, purchasePrice, condition) }
@@ -179,7 +183,6 @@ class SetDetailViewModel @Inject constructor(
                                 st.copy(setDetail = st.setDetail.copy(quantity = echt)) else st
                         }
                     }
-                    bestand.melde(Aenderung.Sets)
                 }
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
@@ -193,8 +196,7 @@ class SetDetailViewModel @Inject constructor(
             delay(Alarmeingabe.RUHE_MS)
             when (val r = sets.setSetStorage(setNumber, ort)) {
                 is Ergebnis.Success -> {
-                    if (!r.data.success) { meldungen.zeige(r.data.error ?: ""); return@launch }
-                    bestand.melde(Aenderung.Sets)
+                    if (!r.data.success) meldungen.zeige(r.data.error ?: "")
                 }
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
@@ -203,9 +205,7 @@ class SetDetailViewModel @Inject constructor(
 
     fun deleteSet(setNumber: String) {
         viewModelScope.launch {
-            val (geloescht, satz) = setLoeschen(sets, meldungen, setNumber)
-            meldungen.zeige(satz)
-            if (geloescht) bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
+            meldungen.zeige(setLoeschen(sets, meldungen, setNumber).second)
         }
     }
 
@@ -241,19 +241,6 @@ class SetDetailViewModel @Inject constructor(
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
-    }
-
-    private fun beiAenderung(aenderung: Aenderung) {
-        val betrifftDiesesSet = when (aenderung) {
-            Aenderung.Sets -> true
-            is Aenderung.SetZusammenfassung -> aenderung.agg.setNumber == setNumber
-            Aenderung.Teile, Aenderung.Figuren, Aenderung.Merkliste, Aenderung.Alarme -> false
-        }
-        if (betrifftDiesesSet && _setDetailState.value.setDetail != null) {
-            loadSetDetail(setNumber)
-            loadAcquisitions(setNumber)
-        }
-        if (aenderung == Aenderung.Alarme && setNumber.isNotBlank()) loadPreisalarme(setNumber)
     }
 
     private fun zuruecksetzen() {

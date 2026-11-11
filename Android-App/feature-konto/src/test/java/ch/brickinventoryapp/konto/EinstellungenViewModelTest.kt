@@ -6,14 +6,11 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.SetsRepository
-import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.testing.HaushaltRepository
 import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.SetsRepository
-import ch.brickinventoryapp.testing.TeileRepository
 import ch.brickinventoryapp.testing.VerwaltungRepository
-import ch.brickinventoryapp.zustand.ui.Aenderung
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenViewModel
@@ -40,11 +37,11 @@ import ch.brickinventoryapp.testing.TestDienste
  * und HaushaltViewModel.kt):
  *   A  in aendereAlarmSchwelle() die Prüfung auf > 0 entfernt → rot „eine
  *      Schwelle von null geht nicht hinaus“
- *   B  in beiAenderung() die Übersicht nicht nachgeladen → rot „ein geänderter
- *      Alarm wird gemeldet und die Übersicht lädt nach“
- *   C  in lagerortSchleuse() das Melden beim Umbenennen entfernt → rot „ein
- *      umbenannter Lagerort lädt die eigenen Orte und die Galerie“
- *   D  in saveSettings() nur Sets melden → rot „eine andere Währung …“
+ *   B  in alarmSchleuse() `alarmeNeu()` entfernt → rot „ein geänderter Alarm lädt
+ *      die Übersicht nach“
+ *   C  in benenneLagerortUm() den alten Namen leer gelassen → rot „ein umbenannter
+ *      Lagerort heisst auch an den Sets in der Ablage neu“ („Kiste“ blieb stehen)
+ *   D  in saveSettings() nur die Sets nachziehen → rot „eine andere Währung …“
  *   E  in kontenGeaendert() die Haushaltskonten nicht neu geladen → rot „eine
  *      eingelöste Einladung lädt Status und Haushaltskonten“
  *   F  im Repository das Passwort nicht mitgeschickt → rot „eine eingelöste
@@ -70,8 +67,9 @@ class EinstellungenViewModelTest {
 
     private val keinLeser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null }
 
-    private fun vm() = t.merke(EinstellungenViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, KontoRepository(t.api, t.cache), VerwaltungRepository(t.api, t.cache),
-        SetsRepository(t.api, t.cache), TeileRepository(t.api, t.cache), keinLeser))
+    private fun vm() = t.merke(EinstellungenViewModel(t.sitzung, t.filter(), t.hinweise, t.abgleich, KontoRepository(t.api, t.cache),
+        VerwaltungRepository(t.api, t.cache), t.sets(), t.teile(),
+        keinLeser))
 
     @Before
     fun auf() {
@@ -105,27 +103,29 @@ class EinstellungenViewModelTest {
     }
 
     @Test
-    fun `ein geaenderter Alarm wird gemeldet und die Uebersicht laedt nach`() {
+    fun `ein geaenderter Alarm laedt die Uebersicht nach`() {
         val vm = vm()
         vm.ladeAlarmUebersicht()
         assertTrue("Übersicht", vm.alarmUebersicht.value.geladen)
-        val liste = t.gemeldet(1) {
-            vm.aendereAlarmSchwelle("75192-1", Zustand.NEU, "unter", 450.0)
-            assertTrue("neu geladen", pfade.anfragenAn("GET /api/v1/alerts").size == 2)
-        }
-        assertEquals(listOf(Aenderung.Alarme), liste)
+        vm.aendereAlarmSchwelle("75192-1", Zustand.NEU, "unter", 450.0)
+        assertEquals("neu geladen", 2, pfade.anfragenAn("GET /api/v1/alerts").size)
         assertTrue(pfade.anfragenAn("PUT /api/v1/sets/75192-1/alert").isNotEmpty())
     }
 
     @Test
-    fun `ein umbenannter Lagerort laedt die eigenen Orte und die Galerie`() {
+    fun `ein umbenannter Lagerort heisst auch an den Sets in der Ablage neu`() {
+        pfade.antworten["/api/v1/sets"] = """{"success":true,"total":1,"sets":[{"set_number":"75192-1","storage":"Kiste"}]}"""
+        pfade.antworten["/api/v1/storage/locations"] = """{"success":true,"orte":[{"id":3,"name":"Kiste"}]}"""
+        runBlocking { t.sets().aktualisiereSets() }
         val vm = vm()
-        val liste = t.gemeldet(1) {
-            vm.benenneLagerortUm(3, "Keller")
-            assertTrue("Orte neu", vm.lagerState.value.eigene.isNotEmpty())
-        }
-        assertEquals(listOf(Aenderung.Sets), liste)
-        assertEquals("Keller", vm.lagerState.value.eigene.single().name)
+        vm.ladeEigeneLagerorte()
+        assertEquals("Kiste", vm.lagerState.value.eigene.single().name)
+        pfade.antworten["/api/v1/storage/locations"] = """{"success":true,"orte":[{"id":3,"name":"Keller"}]}"""
+        vm.benenneLagerortUm(3, "Keller")
+        assertEquals("die eigenen Orte neu", "Keller", vm.lagerState.value.eigene.single().name)
+        val abgelegt = runBlocking { t.sets().beobachteSets().first().liste.single() }
+        assertEquals("ohne den Bestand neu zu holen", 1, pfade.anfragenAn("GET /api/v1/sets?").size)
+        assertEquals("Keller", abgelegt.storage)
     }
 
     @Test
@@ -138,10 +138,13 @@ class EinstellungenViewModelTest {
     }
 
     @Test
-    fun `eine andere Waehrung gilt sofort und alle Bestandsansichten laden neu`() {
+    fun `eine andere Waehrung gilt sofort und die Ablage holt den Bestand neu`() {
         val vm = vm()
-        val liste = t.gemeldet(3) { vm.saveSettings(Waehrung.CHF, Zustand.GEBRAUCHT) }
-        assertEquals(listOf(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren), liste)
+        vm.saveSettings(Waehrung.CHF, Zustand.GEBRAUCHT)
+        // Jeder Preis ändert sich: Die Ablage holt Sets, Teile und Figuren neu.
+        for (pfad in listOf("GET /api/v1/sets?", "GET /api/v1/parts?", "GET /api/v1/minifigs?")) {
+            assertTrue(pfad, pfade.anfragenAn(pfad).isNotEmpty())
+        }
         assertEquals(Waehrung.CHF, t.sitzung.state.value.currency)
         assertEquals(Zustand.GEBRAUCHT, t.sitzung.state.value.priceCondition)
     }
@@ -158,7 +161,7 @@ class EinstellungenViewModelTest {
 
     @Test
     fun `eine eingeloeste Einladung laedt Status und Haushaltskonten`() {
-        val vm = t.merke(HaushaltViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
+        val vm = t.merke(HaushaltViewModel(t.sitzung, t.filter(), t.hinweise, t.abgleich, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
         vm.redeemHouseholdInvite(" ABC123 ", "geheim1234")
         assertTrue("Konten da", t.blickfeld.konten.value.householdMembers.size == 2)
         assertTrue("Status da", vm.householdState.value.status?.isSub == true)
@@ -173,7 +176,7 @@ class EinstellungenViewModelTest {
         pfade.antworten["/api/v1/settings/household/redeem"] =
             """{"success":false,"code":"aktuelles_passwort_falsch","error":"Aktuelles Passwort falsch"}"""
         pfade.codes["/api/v1/settings/household/redeem"] = 400
-        val vm = t.merke(HaushaltViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
+        val vm = t.merke(HaushaltViewModel(t.sitzung, t.filter(), t.hinweise, t.abgleich, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
         vm.redeemHouseholdInvite("ABC123", "falsch")
         assertTrue("Antwort", !vm.householdState.value.isLoading && vm.householdState.value.message != null)
         assertTrue(vm.householdState.value.passwortFalsch)
@@ -184,7 +187,7 @@ class EinstellungenViewModelTest {
     @Test
     fun `bei aktivem zweitem Faktor geht dessen Code beim Einloesen mit`() {
         pfade.antworten["/api/v1/auth/zweiter-faktor"] = """{"success":true,"aktiv":true,"codes_uebrig":8}"""
-        val vm = t.merke(HaushaltViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
+        val vm = t.merke(HaushaltViewModel(t.sitzung, t.filter(), t.hinweise, t.abgleich, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
         vm.loadHouseholdStatus()
         assertTrue("Codefeld", vm.householdState.value.faktorNoetig)
         vm.redeemHouseholdInvite("ABC123", "geheim1234", " 123456 ")
@@ -198,7 +201,7 @@ class EinstellungenViewModelTest {
         pfade.antworten["/api/v1/settings/household/redeem"] =
             """{"success":false,"code":"zweiter_faktor_falsch","error":"Code falsch"}"""
         pfade.codes["/api/v1/settings/household/redeem"] = 400
-        val vm = t.merke(HaushaltViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
+        val vm = t.merke(HaushaltViewModel(t.sitzung, t.filter(), t.hinweise, t.abgleich, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
         assertFalse(vm.householdState.value.faktorNoetig)
         vm.redeemHouseholdInvite("ABC123", "geheim1234")
         assertTrue("Antwort", vm.householdState.value.message != null)
@@ -213,7 +216,7 @@ class EinstellungenViewModelTest {
         pfade.antworten["/api/v1/settings/household/redeem"] =
             """{"success":false,"code":"zu_viele_fehlversuche","error":"Bitte in 5 Min. erneut"}"""
         pfade.codes["/api/v1/settings/household/redeem"] = 429
-        val vm = t.merke(HaushaltViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
+        val vm = t.merke(HaushaltViewModel(t.sitzung, t.filter(), t.hinweise, t.abgleich, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
         vm.redeemHouseholdInvite("ABC123", "falsch")
         assertTrue("Antwort", vm.householdState.value.message != null)
         assertEquals("Bitte in 5 Min. erneut", vm.householdState.value.message)

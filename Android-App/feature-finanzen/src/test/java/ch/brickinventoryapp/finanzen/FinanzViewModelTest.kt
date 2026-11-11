@@ -5,7 +5,7 @@ import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.testing.FinanzenRepository
-import ch.brickinventoryapp.zustand.ui.Aenderung
+import kotlinx.coroutines.runBlocking
 import ch.brickinventoryapp.finanzen.ui.viewmodel.FinanzViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -27,8 +27,8 @@ import ch.brickinventoryapp.testing.TestDienste
  * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen FinanzViewModel.kt):
  *   A  in finanzKategorieUmschalten() das Schreiben in den SavedStateHandle
  *      entfernt → rot „Zeilenarten und Zeitraum überstehen …“
- *   B  in beiAenderung() den Nachlade-Zweig auf Unit gesetzt → rot „eine
- *      Änderung am Bestand lädt die Bewertung nach“
+ *   B  im init das Sammeln von `aenderungen.bestandGeaendert()` entfernt → rot „eine Änderung
+ *      am Bestand in der Ablage lädt die Bewertung nach“
  *   C  in nachFilter() die Bedingung auf FINANCE umgekehrt → rot „der
  *      Kontofilter des Reiters reist mit …“
  *   D  in zuruecksetzen() das Leeren des Zustands entfernt → rot „nach dem
@@ -41,7 +41,7 @@ class FinanzViewModelTest {
     private lateinit var t: TestDienste
 
     private fun vm(gemerkt: SavedStateHandle = SavedStateHandle()) =
-        t.merke(FinanzViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, FinanzenRepository(t.api, t.cache), gemerkt))
+        t.merke(FinanzViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, FinanzenRepository(t.api, t.cache), gemerkt))
 
     @Before
     fun auf() {
@@ -79,9 +79,11 @@ class FinanzViewModelTest {
     }
 
     @Test
-    fun `eine Aenderung am Bestand laedt die Bewertung nach`() {
+    fun `eine Aenderung am Bestand in der Ablage laedt die Bewertung nach`() {
+        pfade.antworten["/api/v1/sets"] = """{"success":true,"total":1,"sets":[{"set_number":"75192-1","name":"Falke"}]}"""
         val vm = vm()
-        t.bestand.melde(Aenderung.Sets)
+        // Ein anderer Bereich holt die Sets in die Ablage; die Bewertung folgt ihr.
+        runBlocking { t.sets().aktualisiereSets() }
         assertTrue("Bewertung geladen", vm.financeState.value.valuation != null)
         assertEquals("75192-1", vm.financeState.value.valuation?.sets?.single()?.setNumber)
         assertEquals("Die Währung des Kontos gilt für die ganze App", Waehrung.CHF, t.sitzung.state.value.currency)
