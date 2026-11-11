@@ -1,0 +1,49 @@
+name: Android-Etikett setzen
+
+# Setzt ein Etikett android-v… auf den Kopf von main; Bau und Release folgen von selbst.
+# Mit einem persönlichen Token statt GITHUB_TOKEN: Dessen Etiketten starten keinen
+# Bau, und das Tag-Ruleset lässt nur Admins android-v… anlegen (docs/ANDROID-RELEASE.md).
+on:
+  workflow_dispatch:
+    inputs:
+      etikett:
+        description: 'Neues Etikett, z. B. android-v2026.11.12.1'
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: android-etikett
+  cancel-in-progress: false
+
+jobs:
+  setzen:
+    name: Etikett setzen
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: etikett
+    steps:
+      - name: Etikett auf den Kopf von main setzen
+        env:
+          GH_TOKEN: ${{ secrets.ETIKETT_TOKEN }}
+          ETIKETT: ${{ inputs.etikett }}
+          COMMIT: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$ETIKETT" | grep -Eq '^android-v[0-9A-Za-z._-]{1,64}$'; then
+            echo "::error::„$ETIKETT“ ist kein Etikett android-v…."
+            exit 1
+          fi
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Das Secret ETIKETT_TOKEN fehlt in der Environment etikett (docs/ANDROID-RELEASE.md)."
+            exit 1
+          fi
+          if gh api "repos/$REPO/git/refs/tags/$ETIKETT" >/dev/null 2>&1; then
+            echo "::error::Das Etikett $ETIKETT gibt es schon; ein Etikett wird nie umgehängt."
+            exit 1
+          fi
+          gh api -X POST "repos/$REPO/git/refs" -f ref="refs/tags/$ETIKETT" -f sha="$COMMIT" >/dev/null
+          echo "::notice::$ETIKETT zeigt auf $COMMIT. Jetzt baut Android-App das Etikett, danach wartet Android-Release auf die Freigabe."

@@ -297,27 +297,31 @@ jobs:
               echo "::error::versionCode $V_CODE folgt nicht auf das veröffentlichte $ALT_CODE ($ALT_COMMIT). Nichts wird veröffentlicht."
               exit 1
             fi
-            gh release edit "$ETIKETT" --notes "$TEXT"
-          else
-            gh release create "$ETIKETT" --title "BrickInventory — neustes APK" --notes "$TEXT"
           fi
           # Unveränderlich je Fassung: Die signierte Beschreibung zeigt auf
           # BrickInventory-<versionCode>.apk im Release des Etiketts. Der Anhang wird
           # nie ersetzt; ein erneuter Lauf vergleicht nur („Immutable releases“, README).
           FASSUNG="BrickInventory-${V_CODE}.apk"
           cp "$APK" "$RUNNER_TEMP/$FASSUNG"
+          # Mit dem Anhang in einem Schritt: Eine veröffentlichte Release nimmt keinen Anhang mehr an.
           if ! gh release view "$QUELLE" >/dev/null 2>&1; then
-            gh release create "$QUELLE" --verify-tag --latest=false \
+            gh release create "$QUELLE" "$RUNNER_TEMP/$FASSUNG" --verify-tag --latest=false \
               --title "BrickInventory $V_NAME" --notes "Fassung $V_CODE aus $COMMIT. $LINK zeigt immer auf die neuste."
-          fi
-          if gh release view "$QUELLE" --json assets --jq '.assets[].name' | grep -qxF "$FASSUNG"; then
+          elif gh release view "$QUELLE" --json assets --jq '.assets[].name' | grep -qxF "$FASSUNG"; then
             gh release download "$QUELLE" -p "$FASSUNG" -O "$RUNNER_TEMP/vorhanden.apk"
             if ! cmp -s "$RUNNER_TEMP/vorhanden.apk" "$APK"; then
               echo "::error::$QUELLE trägt schon ein anderes $FASSUNG; ein Fassungsanhang wird nie ersetzt."
               exit 1
             fi
           else
-            gh release upload "$QUELLE" "$RUNNER_TEMP/$FASSUNG"
+            echo "::error::Zu $QUELLE gibt es schon eine Release ohne $FASSUNG (von Hand angelegt?). Sie ist unveränderlich und nimmt keinen Anhang an: ein neues Etikett setzen, nur das Etikett, keine Release."
+            exit 1
+          fi
+          # Erst wenn die Fassung steht, zeigt der stabile Zeiger auf sie.
+          if gh release view "$ETIKETT" >/dev/null 2>&1; then
+            gh release edit "$ETIKETT" --notes "$TEXT"
+          else
+            gh release create "$ETIKETT" --title "BrickInventory — neustes APK" --notes "$TEXT"
           fi
 
           # Der stabile Link für Neuinstallationen: Hier darf ersetzt werden, die App
