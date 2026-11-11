@@ -34,7 +34,7 @@ const CADDY = process.env.CADDY_BIN || (spawnSync('caddy', ['version']).status =
 // REQUIRE_CADDY=1 (CI): ein fehlender Caddy ist ein Fehler, kein stilles Überspringen.
 if (!CADDY && process.env.REQUIRE_CADDY === '1') throw new Error('REQUIRE_CADDY=1, aber kein Caddy (CADDY_BIN)');
 
-test('Caddy reicht die Anmeldewege ungebremst, aber nur mit ganzem Rumpf weiter', { skip: !CADDY && 'kein Caddy (CADDY_BIN)', timeout: 60_000 }, async (t) => {
+test('Caddy reicht die Anmeldewege ungebremst, aber nur mit ganzem Rumpf weiter', { skip: !CADDY && 'kein Caddy (CADDY_BIN)', timeout: 120_000 }, async (t) => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'caddy-bremse-'));
   let jetzt = 0, hoechst = 0, halten = 300;
   const laengen = [];
@@ -54,9 +54,11 @@ test('Caddy reicht die Anmeldewege ungebremst, aber nur mit ganzem Rumpf weiter'
   assert.ok(datei.includes('import anmeldung'), 'der Block (anmeldung) ist nicht eingebunden');
   fs.writeFileSync(path.join(tmp, 'Caddyfile'), datei);
   caddy = spawn(CADDY, ['run', '--config', path.join(tmp, 'Caddyfile'), '--adapter', 'caddyfile'], {
-    stdio: 'ignore', env: { PATH: process.env.PATH, XDG_DATA_HOME: path.join(tmp, 'd'), XDG_CONFIG_HOME: path.join(tmp, 'c'),
+    stdio: ['ignore', 'ignore', 'pipe'], env: { PATH: process.env.PATH, XDG_DATA_HOME: path.join(tmp, 'd'), XDG_CONFIG_HOME: path.join(tmp, 'c'),
       BRICK_HOST: 'nas.example.lan', BRICK_BASE_URL: 'https://nas.example.lan',
       BRICK_TLS_AUSSTELLER: 'internal', BRICK_TLS_OPTIONEN: 'sign_with_root' } });
+  let fehler = '';
+  caddy.stderr.on('data', d => { fehler = (fehler + d).slice(-4000); });
 
   const agent = new https.Agent({ keepAlive: false, maxSockets: Infinity });
   const anfrage = (methode, pfad, rumpf = '{}') => new Promise((fertig) => {
@@ -67,12 +69,14 @@ test('Caddy reicht die Anmeldewege ungebremst, aber nur mit ganzem Rumpf weiter'
     r.on('error', () => fertig(null));
     if (methode === 'POST') r.end(rumpf); else r.end();
   });
+  // Unter Last startet Caddy mit eigener CA langsam; endet er vorher (Port belegt), steht sein stderr in der Meldung.
   let bereit = null;
-  for (let i = 0; i < 100 && bereit !== 200; i++) {
+  const bis = Date.now() + 30_000;
+  while (bereit !== 200 && caddy.exitCode === null && Date.now() < bis) {
     bereit = await anfrage('GET', '/api/v1/health');
-    if (bereit !== 200) await new Promise(r => setTimeout(r, 100));
+    if (bereit !== 200) await new Promise(r => setTimeout(r, 200));
   }
-  assert.equal(bereit, 200, 'Caddy antwortet nicht');
+  assert.equal(bereit, 200, `Caddy antwortet nicht (Exit ${caddy.exitCode}): ${fehler.slice(-600)}`);
 
   // Lange gehalten, damit auch ein langsamer Lauf alle 16 zugleich offen hat.
   jetzt = 0; hoechst = 0; halten = 1500;
