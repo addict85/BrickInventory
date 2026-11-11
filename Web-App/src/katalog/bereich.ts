@@ -3,6 +3,7 @@
  * schreiben nur über das Ergebnis (katalog(), prozess.ts). Wer eine eigene
  * Transaktion oder Sperrverbindung hält, ruft das Repository direkt damit auf. */
 import { bindeZugang } from '../infra/bereich';
+import { Faecher } from '../infra/zwischenspeicher';
 import type { KatalogKontext } from './kontext';
 import * as anleitungen from './repository/anleitungen';
 import * as apiKontingent from './repository/apiKontingent';
@@ -25,6 +26,7 @@ export function erzeugeKatalog(kk: KatalogKontext) {
   const { db } = kk;
   return {
     db,
+    faecher: new Faecher(),
     anleitungen: bindeZugang(db, anleitungen),
     apiKontingent: bindeZugang(db, apiKontingent),
     apiTakt: bindeZugang(db, apiTakt),

@@ -1,6 +1,7 @@
 // Hier allein: wessen Daten eine Anfrage sieht.
 import { logAndContinue } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
+import { Zwischenspeicher } from '../infra/zwischenspeicher';
 import type { Db, DbSchnittstelle } from '../../db/database';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
 import { getSetting } from '../einstellungen/settings';
@@ -25,14 +26,14 @@ export interface Household {
 export const HAUSHALT_KANAL = 'haushalt_geaendert';
 const HAUSHALT_TTL_MS = 5 * 60 * 1000;
 const HAUSHALT_MAX = 500;
-const _haushalte = new Map<number, { wert: Household; zeit: number }>();
+const _haushalte = new Zwischenspeicher<number, Household>(HAUSHALT_MAX, HAUSHALT_TTL_MS);
 
 const _abhaengige: Array<() => void> = [];
 /** Rückruf statt Import: Module, die den Haushalt brauchen, würden sonst einen Zyklus bilden. */
 export function beiHaushaltsaenderung(leere: () => void): void { _abhaengige.push(leere); }
 
 export function leereHaushaltCache(): void {
-  _haushalte.clear();
+  _haushalte.leere();
   for (const leere of _abhaengige) leere();
 }
 
@@ -50,16 +51,14 @@ const kinder = (db: DbSchnittstelle, id: number) => repo.unterkonten(db, id);
 
 export async function resolveHousehold(db: DbSchnittstelle, uid: number): Promise<Household> {
   const id = parseInt(String(uid));
-  const treffer = _haushalte.get(id);
+  const treffer = _haushalte.hole(id);
   // Kopien zurückgeben: Ein Aufrufer, der die Liste verändert, veränderte
   // sonst den gemerkten Stand aller folgenden Anfragen.
-  if (treffer && Date.now() - treffer.zeit < HAUSHALT_TTL_MS)
-    return { ...treffer.wert, memberIds: [...treffer.wert.memberIds], elternIds: [...treffer.wert.elternIds] };
+  if (treffer) return { ...treffer, memberIds: [...treffer.memberIds], elternIds: [...treffer.elternIds] };
 
   const [unten, eltern] = await Promise.all([kinder(db, id), repo.elternkonten(db, id)]);
   const haushalt: Household = { memberIds: [id, ...unten], isMain: unten.length > 0, elternIds: eltern };
-  if (_haushalte.size >= HAUSHALT_MAX) _haushalte.clear();
-  _haushalte.set(id, { wert: haushalt, zeit: Date.now() });
+  _haushalte.setze(id, haushalt);
   return { ...haushalt, memberIds: [...haushalt.memberIds], elternIds: [...haushalt.elternIds] };
 }
 

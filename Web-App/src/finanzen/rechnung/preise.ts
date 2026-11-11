@@ -241,25 +241,25 @@ function nachschlagwerk<S, W>(hole: (schluessel: S) => Promise<W | null>) {
 
 /** Die ganze Tabelle (rund 200 Zeilen): Je Schlüssel bliebe eine unbekannte
  * Farbe je Teil eine eigene Abfrage, weil Fehlschläge nicht gemerkt werden. */
-let _farbkarte: { karte: Map<number, number>; zeit: number } | null = null;
 // Der Ladevorgang wird geteilt, nicht nur sein Ergebnis: Parallele Bewerter
-// lüden sonst je selbst.
-let _farbladung: Promise<Map<number, number>> | null = null;
+// lüden sonst je selbst. Je Zugang, weil die Karte aus seiner Datenbank kommt.
+type Farbstand = { karte: Map<number, number> | null; zeit: number; ladung: Promise<Map<number, number>> | null };
 export async function farbkarte(): Promise<Map<number, number>> {
+  const st = finanzenBereich().faecher.fach<Farbstand>('farbkarte', () => ({ karte: null, zeit: 0, ladung: null }));
   const jetzt = Date.now();
-  if (_farbkarte && jetzt - _farbkarte.zeit < NACHSCHLAG_TTL_MS) return _farbkarte.karte;
-  if (_farbladung) return _farbladung;
-  _farbladung = (async () => {
+  if (st.karte && jetzt - st.zeit < NACHSCHLAG_TTL_MS) return st.karte;
+  if (st.ladung) return st.ladung;
+  st.ladung = (async () => {
     const rows = await finanzenBereich().preisCache.blFarben();
     const karte = new Map<number, number>();
     for (const r of rows) karte.set(Number(r.id), r.bl_color_id);
     // Eine LEERE Tabelle wird NICHT gemerkt: Vor dem ersten Abgleich ist sie leer,
     // und zehn Minuten jede Übersetzung zu verweigern hiesse, den Abgleich zu ignorieren.
-    if (karte.size) _farbkarte = { karte, zeit: jetzt };
+    if (karte.size) Object.assign(st, { karte, zeit: jetzt });
     return karte;
   })();
-  try { return await _farbladung; }
-  finally { _farbladung = null; }
+  try { return await st.ladung; }
+  finally { st.ladung = null; }
 }
 
 /** KEINE_FARBE ist bei BrickLink 0 („(Not Applicable)"); Rebrickables 0 ist

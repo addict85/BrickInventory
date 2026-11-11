@@ -3,6 +3,7 @@
  * Modul selbst auf den Zugang des Prozesses zu, und ein Test gibt einen eigenen. */
 import type { Db } from '../../db/database';
 import { bindeZugang } from '../infra/bereich';
+import { Faecher } from '../infra/zwischenspeicher';
 import * as bewertung from './repository/bewertung';
 import * as erfassungen from './repository/erfassungen';
 import * as gewinnVerlust from './repository/gewinnVerlust';
@@ -24,6 +25,7 @@ export function erzeugeFinanzen(k: FinanzenKontext) {
   const { db } = k;
   return {
     db,
+    faecher: new Faecher(),
     bewertung: bindeZugang(db, bewertung),
     erfassungen: bindeZugang(db, erfassungen),
     gewinnVerlust: bindeZugang(db, gewinnVerlust),

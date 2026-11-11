@@ -12,22 +12,25 @@ export const PROZESS = randomUUID();
 
 export const belegKennung = (): string => `${PROZESS}/${randomUUID()}`;
 
-let _sperre: PoolClient | null = null;
+/** Die Sperrverbindung gehört zum Zugang, aus dessen Pool sie stammt. */
+const sperre = () => auftraegeBereich().faecher.fach('prozessSperre', () => ({ client: null as PoolClient | null }));
 
 /** @returns übernommene Aufträge toter Prozesse */
 export async function meldeProzessAn(): Promise<number> {
-  if (!_sperre) {
+  const s = sperre();
+  if (!s.client) {
     const c = await auftraegeBereich().db.pool.connect();
     c.on('error', logAndContinue('auftraege:prozess-sperre'));
     await repo.halteProzessSperre(c, PROZESS);
-    _sperre = c;
+    s.client = c;
   }
-  return repo.gibVerwaisteZurueck(_sperre, PROZESS);
+  return repo.gibVerwaisteZurueck(s.client, PROZESS);
 }
 
 export function meldeProzessAb(): void {
-  _sperre?.release(true);
-  _sperre = null;
+  const s = sperre();
+  s.client?.release(true);
+  s.client = null;
 }
 
 /** Die Dienste des Bereichs im Prozess (src/infra/bereich.ts). */

@@ -3,6 +3,7 @@
  * Modul selbst auf den Zugang des Prozesses zu, und ein Test gibt einen eigenen. */
 import type { Db } from '../../db/database';
 import { bindeZugang } from '../infra/bereich';
+import { Faecher } from '../infra/zwischenspeicher';
 import * as auftraege from './repository/auftraege';
 import * as importStand from './repository/importStand';
 import * as laufzustand from './repository/laufzustand';
@@ -16,6 +17,7 @@ export function erzeugeAuftraege(k: AuftraegeKontext) {
   const { db } = k;
   return {
     db,
+    faecher: new Faecher(),
     auftraege: bindeZugang(db, auftraege, [
       'auftragsListe',
       'auftragsStand',
