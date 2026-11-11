@@ -77,7 +77,14 @@ test('Sets mit eigenem Kontext', { concurrency: 1 }, async t => {
   const sql = [],
     notiz = [],
     prozessNotiz = [];
-  const sets = erzeugeSets({ db: zaehlenderZugang(db.standardDb(), sql), nacharbeit: aufzeichnendeNacharbeit(notiz) });
+  const zugang = zaehlenderZugang(db.standardDb(), sql);
+  const sets = erzeugeSets({
+    db: zugang,
+    nacharbeit: aufzeichnendeNacharbeit(notiz),
+    katalog: _req('src/katalog/bereich.js').erzeugeKatalog({ db: zugang }),
+    finanzen: _req('src/finanzen/bereich.js').erzeugeFinanzen({ db: zugang }),
+    auftraege: _req('src/auftraege/bereich.js').erzeugeAuftraege({ db: zugang }),
+  });
   N.verdrahteNacharbeit(aufzeichnendeNacharbeit(prozessNotiz));
 
   await t.test('Lesen geht über den übergebenen Zugang', async () => {

@@ -26,14 +26,27 @@ export interface Household {
 export const HAUSHALT_KANAL = 'haushalt_geaendert';
 const HAUSHALT_TTL_MS = 5 * 60 * 1000;
 const HAUSHALT_MAX = 500;
-const _haushalte = new Zwischenspeicher<number, Household>(HAUSHALT_MAX, HAUSHALT_TTL_MS);
+
+/** Je Zugang ein Gedächtnis: Zwei Datenbanken vergeben dieselbe Konto-ID an
+ * verschiedene Konten. WeakMap, damit ein Transaktionsgriff samt Gedächtnis
+ * verschwindet; der Stand macht leereHaushaltCache() für alle Zugänge wirksam. */
+const _stand = { n: 0 };
+const _haushalte = new WeakMap<object, { stand: number; speicher: Zwischenspeicher<number, Household> }>();
+function gedaechtnis(db: DbSchnittstelle): Zwischenspeicher<number, Household> {
+  let g = _haushalte.get(db);
+  if (!g || g.stand !== _stand.n) {
+    g = { stand: _stand.n, speicher: new Zwischenspeicher<number, Household>(HAUSHALT_MAX, HAUSHALT_TTL_MS) };
+    _haushalte.set(db, g);
+  }
+  return g.speicher;
+}
 
 const _abhaengige: Array<() => void> = [];
 /** Rückruf statt Import: Module, die den Haushalt brauchen, würden sonst einen Zyklus bilden. */
 export function beiHaushaltsaenderung(leere: () => void): void { _abhaengige.push(leere); }
 
 export function leereHaushaltCache(): void {
-  _haushalte.leere();
+  _stand.n++;
   for (const leere of _abhaengige) leere();
 }
 
@@ -51,14 +64,15 @@ const kinder = (db: DbSchnittstelle, id: number) => repo.unterkonten(db, id);
 
 export async function resolveHousehold(db: DbSchnittstelle, uid: number): Promise<Household> {
   const id = parseInt(String(uid));
-  const treffer = _haushalte.hole(id);
+  const speicher = gedaechtnis(db);
+  const treffer = speicher.hole(id);
   // Kopien zurückgeben: Ein Aufrufer, der die Liste verändert, veränderte
   // sonst den gemerkten Stand aller folgenden Anfragen.
   if (treffer) return { ...treffer, memberIds: [...treffer.memberIds], elternIds: [...treffer.elternIds] };
 
   const [unten, eltern] = await Promise.all([kinder(db, id), repo.elternkonten(db, id)]);
   const haushalt: Household = { memberIds: [id, ...unten], isMain: unten.length > 0, elternIds: eltern };
-  _haushalte.setze(id, haushalt);
+  speicher.setze(id, haushalt);
   return { ...haushalt, memberIds: [...haushalt.memberIds], elternIds: [...haushalt.elternIds] };
 }
 

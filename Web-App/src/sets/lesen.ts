@@ -105,7 +105,7 @@ export async function getSet(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, set
     // Die eigene Zeile gewinnt für Zustand und Kaufpreis; die MENGE ist die Summe
     // über das Blickfeld.
     repo.setDetailZeile(sk.db, uids, setNumber, uids[0]),
-    anleitungenZuSet(setNumber),
+    anleitungenZuSet(setNumber, sk.katalog),
     repo.eigeneAnleitungenDesSets(sk.db, uids, setNumber),
   ]);
   if (!set) return null;

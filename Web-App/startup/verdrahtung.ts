@@ -12,6 +12,7 @@ import {
   BRICKSET_HOECHSTENS,
   erzeugeAuftraege,
   verdrahteAuftraege,
+  auftraegeBereich,
 } from '../src/auftraege';
 import { dbKonfigAusUmgebung, erzeugeDb, type Db } from '../db/database';
 import { erzeugeSets, verdrahteSets } from '../src/sets';
@@ -27,6 +28,7 @@ import { erzeugeVerwaltung, verdrahteVerwaltung } from '../src/verwaltung';
 import {
   erzeugeKatalog,
   verdrahteKatalog,
+  katalog,
   merkeGebraucht,
   enrichSetParts,
   enrichSetMinifigs,
@@ -36,7 +38,7 @@ import {
   rebrickableBackgroundLimiter,
   rebrickableDailyStatus,
 } from '../src/katalog';
-import { erzeugeFinanzen, verdrahteFinanzen, refreshPriceForSet } from '../src/finanzen';
+import { erzeugeFinanzen, verdrahteFinanzen, finanzenBereich, refreshPriceForSet } from '../src/finanzen';
 import { mitVersion } from '../src/infra/setNummer';
 import { erzeugeKonto, verdrahteKonto, legeStartVerwalterAn } from '../src/konto';
 import { meldeFehler } from '../src/infra/fehler';
@@ -103,7 +105,15 @@ export function verdrahte(v: Verdrahtung, db: Db): void {
   verdrahteAuftraege(() => erzeugeAuftraege({ db }));
   verdrahteEinstellungen(() => erzeugeEinstellungen({ db }));
   verdrahteKatalog(() => erzeugeKatalog({ db }));
-  verdrahteSets(() => erzeugeSets({ db, nacharbeit: v.nacharbeit }));
+  verdrahteSets(() =>
+    erzeugeSets({
+      db,
+      nacharbeit: v.nacharbeit,
+      katalog: katalog(),
+      finanzen: finanzenBereich(),
+      auftraege: auftraegeBereich(),
+    }),
+  );
 }
 
 /** Der Zugang des Prozesses samt Erststart, verdrahtet; der Einstieg hält ihn. */

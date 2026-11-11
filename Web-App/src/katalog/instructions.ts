@@ -8,6 +8,7 @@ import { meldeFehler, fehlertext, logAndContinue } from '../infra/fehler';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { pfadSegment } from '../infra/fremdeAdressen';
 import { katalog } from './prozess';
+import type { KatalogDienste } from './bereich';
 import { versuche } from '../infra/ergebnis';
 
 const PDF_ANFANG = Buffer.from('%PDF-');
@@ -26,8 +27,8 @@ export async function anzahlAnleitungen(setNumber: string): Promise<number> {
   return Number(r?.c) || 0;
 }
 
-export async function anleitungenZuSet(setNumber: string) {
-  return katalog().anleitungen.anleitungenDesSets(mitVersion(setNumber));
+export async function anleitungenZuSet(setNumber: string, k: KatalogDienste = katalog()) {
+  return k.anleitungen.anleitungenDesSets(mitVersion(setNumber));
 }
 
 /** Erst die automatisch importierten, dann die selbst hochgeladenen. */

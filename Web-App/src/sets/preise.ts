@@ -21,7 +21,18 @@ export async function setPreis(sk: SetsKontext, uid: number, blickfeldWahl: Sich
   const guideType = String(await einstellungMitZugang(sk.db, uid, 'price_guide_type', 'sold'));
   const ttlHours = String(await einstellungMitZugang(sk.db, uid, 'price_cache_ttl', '24'));
   const preis = await versuche('sets:preis', async () =>
-    fetchPrice(sn, await resolveSetCondition(blickfeld, sn), guideType, currency, ttlHours),
+    fetchPrice(
+      sn,
+      await resolveSetCondition(blickfeld, sn, undefined, sk.finanzen),
+      guideType,
+      currency,
+      ttlHours,
+      null,
+      {
+        finanzen: sk.finanzen,
+        katalog: sk.katalog,
+      },
+    ),
   );
   if (!preis.ok)
     return {
@@ -71,9 +82,15 @@ export function alarmDesSetsLoeschen(sk: SetsKontext, uid: number, sn: string, c
 }
 
 export async function alarmCsvImportStarten(sk: SetsKontext, uid: number, text: string) {
-  return importAlsAuftrag<CsvImportBericht>(uid, 'alarme_csv', { waehrung: await waehrungVon(sk, uid), text });
+  return importAlsAuftrag<CsvImportBericht>(
+    uid,
+    'alarme_csv',
+    { waehrung: await waehrungVon(sk, uid), text },
+    {},
+    sk.auftraege,
+  );
 }
 
 export async function setPreisVerlauf(sk: SetsKontext, uid: number, sicht: Sicht | number[], sn: string) {
-  return getSetPriceHistory(sicht, sn, await waehrungVon(sk, uid));
+  return getSetPriceHistory(sicht, sn, await waehrungVon(sk, uid), sk.finanzen);
 }

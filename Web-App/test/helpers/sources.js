@@ -128,7 +128,12 @@ function buildAndRequire() {
   require(path.join(ROOT, 'dist', 'src/katalog/prozess.js')).verdrahteKatalog(() =>
     require(path.join(ROOT, 'dist', 'src/katalog/bereich.js')).erzeugeKatalog({ db: testDb() }));
   require(path.join(ROOT, 'dist', 'src/sets/prozess.js')).verdrahteSets(() =>
-    require(path.join(ROOT, 'dist', 'src/sets/bereich.js')).erzeugeSets({ db: testDb(), nacharbeit: faul }));
+    require(path.join(ROOT, 'dist', 'src/sets/bereich.js')).erzeugeSets({
+      db: testDb(), nacharbeit: faul,
+      katalog: require(path.join(ROOT, 'dist', 'src/katalog/prozess.js')).katalog(),
+      finanzen: require(path.join(ROOT, 'dist', 'src/finanzen/prozess.js')).finanzenBereich(),
+      auftraege: require(path.join(ROOT, 'dist', 'src/auftraege/prozess.js')).auftraegeBereich(),
+    }));
   // db/database.js mit den Funktionen des Testzugangs, wie es früher der Prozesszugang war.
   const fassade = Object.create(dbModul, {
     pool: { get: () => testDb().pool },

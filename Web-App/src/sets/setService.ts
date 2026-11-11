@@ -3,7 +3,7 @@ import { fehlertext } from '../infra/fehler';
 import { scopeIds, writableIds } from '../haushalt';
 import { mitInventarSperre } from '../../db/txLock';
 import { getCurrentMarketPrice, resolveSetCondition } from '../finanzen';
-import { getSetting } from '../einstellungen';
+import { einstellungMitZugang } from '../einstellungen';
 import { deleteSetRows } from './loeschen';
 import { legeInPapierkorb } from '../bestand';
 import { toCsv } from '../infra/csvExport';
@@ -29,9 +29,9 @@ export function sanitizeSetNumber(input: unknown) {
 async function priceForNewAcquisition(sk: SetsKontext, userId: number, setNumber: string, dbh: DbSchnittstelle = sk.db) {
   // Über das Blickfeld: Mit einer nackten ID fände der Hauptaccount das Set des Unterkontos nicht.
   const blickfeld = wertOder(await versuche('sets:kaufpreis-blickfeld', scopeIds(sk.db, userId)), [userId]);
-  const cond = await resolveSetCondition(blickfeld, setNumber, dbh);
+  const cond = await resolveSetCondition(blickfeld, setNumber, dbh, sk.finanzen);
   // Die Währung DES KONTOS: Der Preis wird in ihr gesucht und gespeichert.
-  const currency = String(await getSetting(userId, 'currency', 'EUR'));
+  const currency = String(await einstellungMitZugang(sk.db, userId, 'currency', 'EUR'));
   const cached = wertOder(await versuche('set-service:cached', repo.marktpreisAusCache(dbh, setNumber, currency, cond)), null);
   let pp = Number(cached?.avg_price ?? 0) || null;
   if (!pp) pp = wertOder(await versuche('set-service:getCurrentMarketPrice', getCurrentMarketPrice(setNumber, userId, cond)), null);

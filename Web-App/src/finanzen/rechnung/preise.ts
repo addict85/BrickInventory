@@ -13,6 +13,16 @@ import { effectiveCondition } from './zustand';
 import { KEINE_FARBE } from '../../infra/validate';
 import { versuche } from '../../infra/ergebnis';
 import { finanzenBereich } from '../prozess';
+import type { FinanzenDienste } from '../bereich';
+import type { KatalogDienste } from '../../katalog';
+
+/** Wessen Cache und Katalog der Preisweg liest und schreibt. Ein Bereich mit eigenem
+ * Zugang (Sets) reicht seinen durch; ohne Angabe gilt der des Prozesses. Abruf und
+ * Tageskontingent bei BrickLink bleiben prozessweit: Sie hängen am API-Schlüssel. */
+export interface PreisZugang {
+  finanzen: FinanzenDienste;
+  katalog?: KatalogDienste | undefined;
+}
 
 /** Wessen DATEN gerechnet werden; wessen EINSTELLUNGEN gelten, sagt `viewerId`. */
 export type { Blickfeld } from '../../haushalt';
@@ -27,10 +37,11 @@ type Stunden = string | number;
  * auseinandergelaufen waren. */
 export async function resolveSetCondition(
   uid: number | number[], setNumber: string, dbh?: Pick<DbSchnittstelle, 'get'>,
+  f: FinanzenDienste = finanzenBereich(),
 ): Promise<'N' | 'U'> {
   // Blickfeld statt nackter ID: Das Set gehört oft einem Unterkonto. `dbh`:
   // Wer in einer Transaktion fragt, liest auch darin (priceForNewAcquisition).
-  const row = await finanzenBereich().preisCache.setZustandsZaehler(asIds(uid), setNumber, dbh);
+  const row = await f.preisCache.setZustandsZaehler(asIds(uid), setNumber, dbh);
   return effectiveCondition(row);
 }
 
@@ -47,8 +58,9 @@ export function leerePreisCache(): Promise<void> {
   return finanzenBereich().preisCache.loescheAlleSetPreise();
 }
 
-export async function preisAusCache(setNumber: string, condition: string, currency: string, ttlStunden: number) {
-  return finanzenBereich().preisCache.setPreisFrisch(setNumber, condition, currency, ttlStunden);
+export async function preisAusCache(setNumber: string, condition: string, currency: string, ttlStunden: number,
+  f: FinanzenDienste = finanzenBereich()) {
+  return f.preisCache.setPreisFrisch(setNumber, condition, currency, ttlStunden);
 }
 
 export function cacheUsable(row: PreisZeile, ttlHours: number) {
@@ -66,7 +78,8 @@ interface PreisFuehrer { min_price?: unknown; avg_price?: unknown; max_price?: u
 /** Erst Cache, dann — nur mit Preis — Verlaufspunkt; eine Funktion, weil drei
  * Fassungen derselben Regel auseinandergelaufen waren.
  * @returns die gelesenen Zahlen, damit der Aufrufer nicht erneut umwandeln muss */
-export async function speicherePreis(setNumber: string, condition: string, currency: string, g: PreisFuehrer | null | undefined) {
+export async function speicherePreis(setNumber: string, condition: string, currency: string, g: PreisFuehrer | null | undefined,
+  f: FinanzenDienste = finanzenBereich()) {
   const min  = parseFloat(String(g?.min_price     ?? 0)) || 0;
   const avg  = parseFloat(String(g?.avg_price     ?? 0)) || 0;
   const max  = parseFloat(String(g?.max_price     ?? 0)) || 0;
@@ -76,22 +89,23 @@ export async function speicherePreis(setNumber: string, condition: string, curre
   // Auch eine Null wird geschrieben: Sie ist die Auskunft „kein Preis" und hält
   // den nächsten Abruf zurück; wie lange, entscheidet cacheUsable().
   const preis = { min, avg, max, qavg, qty };
-  await finanzenBereich().preisCache.merkeSetPreis(setNumber, condition, currency, preis);
+  await f.preisCache.merkeSetPreis(setNumber, condition, currency, preis);
 
   // Weiter als hatPreis(), absichtlich dieselbe Regel wie der Tages-Schnappschuss
   // des Jobs: Ein Verlauf mit zwei Aufnahmeregeln hätte Lücken.
   if (avg > 0 || qavg > 0) {
-    await finanzenBereich().preisCache.merkeSetVerlauf(setNumber, condition, currency, preis).catch(logAndContinue('preise:setverlauf schreiben'));
+    await f.preisCache.merkeSetVerlauf(setNumber, condition, currency, preis).catch(logAndContinue('preise:setverlauf schreiben'));
   }
   return preis;
 }
 
-export async function fetchPrice(setNumber: string, condition: string, guideType: string, currency: string, ttlHours: Stunden, pre: { catalog: Map<string, KatalogEintrag>; cache: Map<string, SetPreiszeile> } | null = null) {
+export async function fetchPrice(setNumber: string, condition: string, guideType: string, currency: string, ttlHours: Stunden, pre: { catalog: Map<string, KatalogEintrag>; cache: Map<string, SetPreiszeile> } | null = null,
+  z: PreisZugang = { finanzen: finanzenBereich() }) {
   // mitVersion() auch beim vorgeladenen Weg: Die Karte kommt aus catalog_cache,
   // also unter derselben Schreibweise wie die Tabelle.
   const catalogRow = pre?.catalog
     ? (pre.catalog.get(mitVersion(setNumber)) || null)
-    : await katalogEintrag(setNumber);
+    : await katalogEintrag(setNumber, z.katalog);
   if (ohneBricklinkPreis(catalogRow))
     return { min_price:0, avg_price:0, max_price:0, qty_avg_price:0, from_cache:true, no_price:true, bl_unbekannt:true };
 
@@ -100,7 +114,7 @@ export async function fetchPrice(setNumber: string, condition: string, guideType
 
   const cached = pre?.cache
     ? (pre.cache.get(`${setNumber}|${condition}`) || null)
-    : await preisAusCache(setNumber, condition, currency, ttl);
+    : await preisAusCache(setNumber, condition, currency, ttl, z.finanzen);
   if (cached && hatPreis(cached))
     return { min_price: cached.min_price, avg_price: cached.avg_price, max_price: cached.max_price, qty_avg_price: cached.qty_avg_price, from_cache: true };
 
@@ -109,7 +123,7 @@ export async function fetchPrice(setNumber: string, condition: string, guideType
   if (cached && !hatPreis(cached) && cacheUsable(cached, ttl)) {
     const cachedFb = pre?.cache
       ? (pre.cache.get(`${setNumber}|${fallbackCondition}`) || null)
-      : await preisAusCache(setNumber, fallbackCondition, currency, ttl);
+      : await preisAusCache(setNumber, fallbackCondition, currency, ttl, z.finanzen);
     // Dieselbe Regel wie der Leser (src/finanzen/preisRegel.ts).
     if (cachedFb && hatPreis(cachedFb))
       return { min_price: cachedFb.min_price, avg_price: cachedFb.avg_price, max_price: cachedFb.max_price, qty_avg_price: cachedFb.qty_avg_price, from_cache: true, condition_used: fallbackCondition, is_fallback: true };
@@ -127,7 +141,7 @@ export async function fetchPrice(setNumber: string, condition: string, guideType
     try {
       // Lazy-Require gegen einen Require-Zyklus (bricklink nutzt den Rate-Limiter von hier).
       const g = await getPriceGuide(setNumber, cond, guideType, currency);
-      const { min, avg, max, qavg } = await speicherePreis(setNumber, cond, currency, g);
+      const { min, avg, max, qavg } = await speicherePreis(setNumber, cond, currency, g, z.finanzen);
       console.log(`  Price ${setNumber} cond=${cond}: avg=${avg} qty_avg=${qavg}`);
       return { min_price:min, avg_price:avg, max_price:max, qty_avg_price:qavg, from_cache:false };
     } catch (e) { console.log(`  Price ${setNumber} cond=${cond} error: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, '')); return null; }
@@ -140,7 +154,7 @@ export async function fetchPrice(setNumber: string, condition: string, guideType
   // An avg_price festgemacht, weil alle Verbraucher diesen Wert lesen.
   if (pd && hatPreis(pd)) return { ...pd, condition_used: condition };
 
-  const cachedFallback = await preisAusCache(setNumber, fallbackCondition, currency, ttl);
+  const cachedFallback = await preisAusCache(setNumber, fallbackCondition, currency, ttl, z.finanzen);
   if (cachedFallback && hatPreis(cachedFallback))
     return { min_price: cachedFallback.min_price, avg_price: cachedFallback.avg_price, max_price: cachedFallback.max_price, qty_avg_price: cachedFallback.qty_avg_price, from_cache: true, condition_used: fallbackCondition, is_fallback: true };
 

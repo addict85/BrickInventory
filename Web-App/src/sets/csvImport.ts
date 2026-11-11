@@ -118,7 +118,7 @@ export async function setCsvImportStarten(sk: SetsKontext, userId: number, text:
     run_id: lauf,
   });
   try {
-    await stelleAuftragEin('csv_import', { user_id: userId, lauf, rows }, { userId, maxVersuche: 3 });
+    await stelleAuftragEin('csv_import', { user_id: userId, lauf, rows }, { userId, maxVersuche: 3 }, sk.auftraege);
   } catch (e) {
     await versuche(
       'csv-import:fehler vermerken',
