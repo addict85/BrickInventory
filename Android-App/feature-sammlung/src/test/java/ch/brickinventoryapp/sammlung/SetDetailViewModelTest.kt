@@ -5,11 +5,12 @@ import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.data.model.SetAggregate
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.testing.FinanzenRepository
 import ch.brickinventoryapp.testing.HaushaltRepository
-import ch.brickinventoryapp.testing.SetsRepository
-import ch.brickinventoryapp.zustand.ui.Aenderung
+import ch.brickinventoryapp.model.data.model.SetItem
+import ch.brickinventoryapp.offline.Faecher
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.sammlung.ui.viewmodel.SetDetailViewModel
@@ -33,13 +34,12 @@ import ch.brickinventoryapp.testing.TestDienste
  * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen SetDetailViewModel.kt):
  *   A  setNumber nicht aus dem SavedStateHandle, sondern "" → alle vier rot,
  *      zuerst „das Set kommt aus dem SavedStateHandle …“
- *   B  in updateQuantity() das Melden entfernt → rot „eine geänderte Menge …“
- *      (30.10. nach dem Angleichen der Nachlade-Antwort erneut gemessen;
- *      ebenso E für „der Regler …“)
- *   C  in beiAenderung() den Vergleich der Setnummer weggelassen → rot „ein
- *      geänderter Kauf eines anderen Sets lädt hier nichts“
- *   D  den Alarme-Zweig in beiAenderung() entfernt → rot „ein gespeicherter
- *      Preisalarm wird gemeldet und neu geladen“
+ *   B  in SetsRepositoryImpl.updateQuantity `r.quantity ?: quantity` durch `quantity`
+ *      ersetzt → rot „eine geänderte Menge steht sofort da und in der Ablage“ (5 statt 3)
+ *   C  im init von SetDetailViewModel `firstOrNull { it.setNumber == setNumber }`
+ *      durch die ganze Liste ersetzt → rot „ein geänderter Kauf eines anderen Sets lädt hier nichts“
+ *   D  in der Preisalarmeingabe `gespeichert` leer gelassen → rot „ein gespeicherter
+ *      Preisalarm wird neu geladen“
  *   E  in aendereMengeUm() wieder UpdateQuantityRequest(quantity = schritt)
  *      → rot „der Regler schickt einen Schritt …“
  */
@@ -52,9 +52,9 @@ class SetDetailViewModelTest {
 
     private val keinLeser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null }
 
-    private fun vm(setNumber: String = "75192-1") = t.merke(SetDetailViewModel(
-        t.sitzung, t.filter(), t.hinweise, t.bestand, SetsRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache),
-        HaushaltRepository(t.api, t.cache), keinLeser, SavedStateHandle(mapOf("setNumber" to setNumber))))
+    private fun vm(setNumber: String = "75192-1") = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(),
+        FinanzenRepository(t.api, t.cache), HaushaltRepository(t.api, t.cache), keinLeser,
+        SavedStateHandle(mapOf("setNumber" to setNumber))))
 
     @Before
     fun auf() {
@@ -98,18 +98,18 @@ class SetDetailViewModelTest {
     }
 
     @Test
-    fun `eine geaenderte Menge steht sofort da und wird gemeldet`() {
+    fun `eine geaenderte Menge steht sofort da und in der Ablage`() {
+        runBlocking { t.ablage.uebernimm(Faecher.SETS, listOf(SetItem("75192-1", quantity = 1))) }
         val vm = vm()
         vm.ladeAlles()
         geladen(vm)
         serverHatDanachDrei()
-        val liste = t.gemeldet(1) {
-            // Gewünscht 5, der Server deckelt auf 3 (fremde Exemplare lassen sich
-            // nicht wegnehmen): Es gilt seine Zahl, nicht die eigene Annahme.
-            vm.updateQuantity("75192-1", 5)
-            assertTrue("Menge da", vm.setDetailState.value.setDetail?.quantity == 3)
-        }
-        assertEquals(listOf(Aenderung.Sets), liste)
+        // Gewünscht 5, der Server deckelt auf 3 (fremde Exemplare lassen sich
+        // nicht wegnehmen): Es gilt seine Zahl, nicht die eigene Annahme.
+        vm.updateQuantity("75192-1", 5)
+        assertTrue("Menge da", vm.setDetailState.value.setDetail?.quantity == 3)
+        val abgelegt = runBlocking { t.sets().beobachteSets().first().liste.single() }
+        assertEquals("die Galerie liest dieselbe Zahl aus der Ablage", 3, abgelegt.quantity)
         assertTrue(pfade.anfragenAn("PUT /api/v1/sets/75192-1").isNotEmpty())
     }
 
@@ -130,30 +130,29 @@ class SetDetailViewModelTest {
 
     @Test
     fun `ein geaenderter Kauf eines anderen Sets laedt hier nichts, einer dieses Sets schon`() {
+        runBlocking { t.ablage.uebernimm(Faecher.SETS, listOf(SetItem("75192-1"), SetItem("10294-1"))) }
         val vm = vm()
         vm.ladeAlles()
         geladen(vm)
         val vorher = pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size
 
-        t.bestand.melde(Aenderung.SetZusammenfassung(SetAggregate(setNumber = "10294-1")))
+        // So schreibt KaeufeViewModel die Zusammenfassung des Servers in die Ablage.
+        runBlocking { t.sets().uebernimmZusammenfassung(SetAggregate(setNumber = "10294-1", usedCount = 1)) }
         assertEquals(vorher, pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size)
 
-        t.bestand.melde(Aenderung.SetZusammenfassung(SetAggregate(setNumber = "75192-1")))
+        runBlocking { t.sets().uebernimmZusammenfassung(SetAggregate(setNumber = "75192-1", usedCount = 1)) }
         assertTrue("neu geladen", pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size > vorher)
     }
 
     @Test
-    fun `ein gespeicherter Preisalarm wird gemeldet und neu geladen`() {
+    fun `ein gespeicherter Preisalarm wird neu geladen`() {
         val vm = vm()
         vm.ladeAlles()
         geladen(vm)
         val vorher = pfade.anfragenAn("GET /api/v1/sets/75192-1/alert").size
-        val liste = t.gemeldet(1) {
-            vm.setzePreisalarm("75192-1", "unter", "450", Zustand.NEU)
-            uhr.advanceTimeBy(900)
-            assertTrue("neu geladen", pfade.anfragenAn("GET /api/v1/sets/75192-1/alert").size > vorher)
-        }
-        assertEquals(listOf(Aenderung.Alarme), liste)
+        vm.setzePreisalarm("75192-1", "unter", "450", Zustand.NEU)
+        uhr.advanceTimeBy(900)
+        assertTrue("neu geladen", pfade.anfragenAn("GET /api/v1/sets/75192-1/alert").size > vorher)
         assertEquals(1, pfade.anfragenAn("PUT /api/v1/sets/75192-1/alert").size)
     }
 }

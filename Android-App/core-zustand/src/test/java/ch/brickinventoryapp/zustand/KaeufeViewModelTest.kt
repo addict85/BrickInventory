@@ -9,7 +9,10 @@ import ch.brickinventoryapp.testing.FigurenRepository
 import ch.brickinventoryapp.testing.FinanzenRepository
 import ch.brickinventoryapp.testing.HaushaltRepository
 import ch.brickinventoryapp.testing.TeileRepository
-import ch.brickinventoryapp.zustand.ui.Aenderung
+import ch.brickinventoryapp.model.data.model.SetItem
+import ch.brickinventoryapp.offline.Faecher
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import ch.brickinventoryapp.zustand.ui.viewmodel.KaeufeViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -32,12 +35,12 @@ import ch.brickinventoryapp.testing.text
  * einen PfadServer ohne Netz.
  *
  * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen KaeufeViewModel.kt):
- *   A  in setGeaendert() immer Aenderung.Sets melden statt der Zusammenfassung
- *      → rot „ein geänderter Kauf eines Sets meldet seine Zusammenfassung …“
+ *   A  in setGeaendert() die Zusammenfassung nicht übernommen (immer den ganzen Bestand
+ *      holen) → rot „ein geänderter Kauf eines Sets schreibt seine Zusammenfassung …“
  *   B  bei einer abgelehnten Datumsänderung nicht neu laden → rot „eine
  *      abgelehnte Datumsänderung lädt die Liste neu“
- *   C  im Besitzerwechsel die Zahlen der Antwort durch 0 ersetzt → rot „ein
- *      Besitzerwechsel meldet die mitgewanderten Teile …“
+ *   C  im Besitzerwechsel die Zahlen der Antwort durch 0 ersetzt, oder das Nachziehen
+ *      der Ablage entfernt → rot „ein Besitzerwechsel meldet die mitgewanderten Teile …“
  *   D  in lade() den Verlauf eines anderen Eintrags stehen gelassen → rot
  *      „der Preisverlauf eines anderen Eintrags bleibt nicht stehen“
  *   E  in UpdateAcquisitionRequest.fuerStueck() `purchasePrice = preis` statt
@@ -59,7 +62,7 @@ class KaeufeViewModelTest {
     private lateinit var pfade: PfadServer
     private lateinit var t: TestDienste
 
-    private fun vm() = t.merke(KaeufeViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, HaushaltRepository(t.api, t.cache),
+    private fun vm() = t.merke(KaeufeViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, HaushaltRepository(t.api, t.cache), t.sets(),
         FinanzenRepository(t.api, t.cache), TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache)))
 
     @Before
@@ -85,18 +88,17 @@ class KaeufeViewModelTest {
     }
 
     @Test
-    fun `ein geaenderter Kauf eines Sets meldet seine Zusammenfassung und laedt die Liste neu`() {
+    fun `ein geaenderter Kauf eines Sets schreibt seine Zusammenfassung in die Ablage und laedt die Liste neu`() {
+        runBlocking { t.ablage.uebernimm(Faecher.SETS, listOf(SetItem("75192-1", usedCount = 0))) }
         val vm = vm()
         vm.loadAcquisitions("75192-1")
         assertTrue("Liste geladen", vm.manDetailState.value.acquisitions.isNotEmpty())
         val vorher = pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size
-        val liste = t.gemeldet(1) {
-            vm.updateAcquisition("75192-1", 7, purchasePrice = 499.0)
-            assertTrue("neu geladen", pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size > vorher)
-        }
-        val z = liste.single() as Aenderung.SetZusammenfassung
-        assertEquals("75192-1", z.agg.setNumber)
-        assertEquals(1, z.agg.usedCount)
+        vm.updateAcquisition("75192-1", 7, purchasePrice = 499.0)
+        assertTrue("neu geladen", pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size > vorher)
+        val kachel = runBlocking { t.sets().beobachteSets().first().liste.single() }
+        assertEquals("die Kachel der Galerie liest die Zusammenfassung", 1, kachel.usedCount)
+        assertTrue("ohne den ganzen Bestand neu zu holen", pfade.anfragenAn("GET /api/v1/sets?").isEmpty())
     }
 
     @Test
@@ -115,14 +117,15 @@ class KaeufeViewModelTest {
     fun `ein Besitzerwechsel meldet die mitgewanderten Teile und Figuren`() {
         val vm = vm()
         var ergebnis: Triple<String?, Int, Int>? = null
-        val liste = t.gemeldet(3) {
-            vm.changeAcquisitionOwner(Postenart.SET, "75192-1", 0, 7, toUserId = 4) { f, teile, figuren ->
-                ergebnis = Triple(f, teile, figuren)
-            }
-            assertTrue("Antwort", ergebnis != null)
+        vm.changeAcquisitionOwner(Postenart.SET, "75192-1", 0, 7, toUserId = 4) { f, teile, figuren ->
+            ergebnis = Triple(f, teile, figuren)
         }
+        assertTrue("Antwort", ergebnis != null)
         assertEquals(Triple(null, 12, 2), ergebnis)
-        assertEquals(listOf(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren), liste)
+        // Mitgewandert: Den Stand aller drei Listen holt die Ablage vom Server.
+        for (pfad in listOf("GET /api/v1/sets?", "GET /api/v1/parts?", "GET /api/v1/minifigs?")) {
+            assertTrue(pfad, pfade.anfragenAn(pfad).isNotEmpty())
+        }
         assertTrue(pfade.anfragenAn("PUT /api/v1/sets/75192-1/acquisitions/7").isNotEmpty())
     }
 

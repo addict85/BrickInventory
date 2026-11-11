@@ -4,11 +4,6 @@ import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.ressourcen.R
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.data.repository.TeileRepository
-import ch.brickinventoryapp.data.repository.FigurenRepository
-import ch.brickinventoryapp.testing.FigurenRepository
-import ch.brickinventoryapp.testing.TeileRepository
-import ch.brickinventoryapp.zustand.ui.Aenderung
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -35,8 +30,8 @@ import ch.brickinventoryapp.testing.text
  * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen TeileViewModel.kt):
  *   A  in setPartsColorFilter() das Schreiben in den SavedStateHandle entfernt
  *      → rot „Filter und Ansicht überstehen …“
- *   B  in aendere() das Melden ans Bestandssignal entfernt → rot „ein
- *      geändertes Teil wird gemeldet …“
+ *   B  in LokaleAnwendung.manuelleTeile den Zweig TeilAendern entfernt → rot „ein
+ *      geändertes Teil steht in der Ablage …“
  *   C  in aendere() wieder `fehler ?: text(err_unknown)` → rot „ein Fehler,
  *      den die Sitzungsschicht schon meldet, bleibt still“
  *   D  in setzeTeilLagerort() die Ruhezeit entfernt → rot „der Lagerort wird
@@ -58,7 +53,7 @@ class TeileViewModelTest {
     private lateinit var t: TestDienste
 
     private fun vm(gemerkt: SavedStateHandle = SavedStateHandle(), t: TestDienste = this.t) =
-        t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), gemerkt))
+        t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, t.teile(), t.figuren(), t.kontosicht, gemerkt))
 
     @Before
     fun auf() {
@@ -144,13 +139,15 @@ class TeileViewModelTest {
     }
 
     @Test
-    fun `ein geaendertes Teil wird gemeldet und die Liste laedt neu`() {
+    fun `ein geaendertes Teil steht in der Ablage, ohne die Liste neu zu holen`() {
+        pfade.antworten["/api/v1/parts/manual"] = """{"success":true,"parts":[{"part_number":"3001","color_id":5,"quantity":1}]}"""
         val vm = vm()
-        val liste = t.gemeldet(1) {
-            vm.updatePart("3001", 5, quantity = 3, unitPrice = 0.1)
-            assertTrue("Liste nachgeladen", vm.partsState.value.parts.isNotEmpty())
-        }
-        assertEquals(listOf(Aenderung.Teile), liste)
+        vm.loadParts()
+        assertEquals(listOf(1), vm.partsState.value.manualParts?.map { it.quantity })
+        val abrufe = pfade.anfragenAn("GET /api/v1/parts/manual").size
+        vm.updatePart("3001", 5, quantity = 3, unitPrice = 0.1)
+        assertEquals("die neue Menge aus der Ablage", listOf(3), vm.partsState.value.manualParts?.map { it.quantity })
+        assertEquals("ohne neuen Abruf", abrufe, pfade.anfragenAn("GET /api/v1/parts/manual").size)
         assertEquals("t${R.string.vm_saved}", t.meldungen.text)
         assertTrue(pfade.anfragenAn("PUT /api/v1/parts/3001/5").isNotEmpty())
     }
@@ -159,11 +156,8 @@ class TeileViewModelTest {
     fun `ein Fehler, den die Sitzungsschicht schon meldet, bleibt still`() {
         pfade.codes["/api/v1/parts/3001/5"] = 401
         val vm = vm()
-        val liste = t.gemeldet(0) {
-            vm.deletePart("3001", 5)
-            assertTrue("Antwort da", pfade.anfragenAn("DELETE /api/v1/parts/3001/5").isNotEmpty())
-        }
-        assertTrue(liste.isEmpty())
+        vm.deletePart("3001", 5)
+        assertTrue("Antwort da", pfade.anfragenAn("DELETE /api/v1/parts/3001/5").isNotEmpty())
         assertNull("Ein 401 ist schon gemeldet — hier kein zweiter, leerer Satz", t.meldungen.text)
     }
 

@@ -7,8 +7,7 @@ import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.dienste.service.CsvImportDienst
-import ch.brickinventoryapp.zustand.ui.Aenderung
-import ch.brickinventoryapp.zustand.ui.Bestandssignal
+import ch.brickinventoryapp.data.repository.Bestandsabgleich
 import ch.brickinventoryapp.zustand.ui.Sitzung
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
@@ -33,7 +32,7 @@ class CsvImportViewModel @Inject constructor(
     private val csvImport: CsvImportRepository,
     private val dienst: CsvImportDienst,
     private val texte: Texte,
-    private val bestand: Bestandssignal,
+    private val abgleich: Bestandsabgleich,
     private val meldungen: MeldungsKanal,
     sitzung: Sitzung,
 ) : ViewModel() {
@@ -94,12 +93,12 @@ class CsvImportViewModel @Inject constructor(
         }
     }
 
-    /** Fertig: die Galerie lädt nach, der Balken bleibt kurz stehen. */
+    /** Fertig: Die Ablage holt den importierten Bestand, der Balken bleibt kurz stehen. */
     private suspend fun finishCsvImport() {
         if (csvFinishing) return
         csvFinishing = true
         try {
-            bestand.melde(Aenderung.Sets)
+            abgleich.bestand()
             delay(BALKEN_STEHT_MS)
             _csvImportState.value = CsvImportUiState()
             dienst.stop()

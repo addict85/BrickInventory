@@ -6,12 +6,12 @@ Rot: kein runCatching verschluckt
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
 +++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
-@@ -79,7 +79,7 @@ class Offlineablage(
-
+@@ -185,7 +185,7 @@
+     private fun sperre(b: String, art: Bestandsart) = sperren.getOrPut(b to art) { Mutex() }
+ 
      /** Der gültige Bereich, gestreut; null = nicht angemeldet, dann wird nichts abgelegt. */
-     suspend fun bereich(): String? =
--        fangeAusserAbbruch { bereichQuelle() }.getOrNull()?.takeIf { it.isNotBlank() }.also { aktuell.value = it }
-+        runCatching { bereichQuelle() }.getOrNull()?.takeIf { it.isNotBlank() }.also { aktuell.value = it }
-
-     /** Wie viele Bearbeitungen noch auf den Server warten. */
-     @OptIn(ExperimentalCoroutinesApi::class)
+-    suspend fun bereich(): String? = gueltig(fangeAusserAbbruch { bereichQuelle() }.getOrNull())
++    suspend fun bereich(): String? = gueltig(runCatching { bereichQuelle() }.getOrNull())
+ 
+     private fun gueltig(b: String?) = b?.takeIf { it.isNotBlank() }
+ 

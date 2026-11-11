@@ -78,7 +78,7 @@ class QuelltextRatscheTest {
 
     @Test
     fun `Testfunktionen, die Quelltext lesen, werden weniger, nie mehr`() {
-        val FUNKTIONEN = 222
+        val FUNKTIONEN = 221
         val NUR_QUELLTEXT = 37
         val alle = Quellen.tests.walkTopDown().filter { it.isFile && it.name.endsWith("Test.kt") }
             .filter { it.name != "QuelltextRatscheTest.kt" }.toList()
@@ -218,7 +218,7 @@ class QuelltextRatscheTest {
     @Test
     fun `lange Kommentare im Workflow und in Tests werden weniger`() {
         val WORKFLOW = 3
-        val TESTS = 52
+        val TESTS = 51
         val DATUM_UND_KENNUNG = 0
         val GESCHICHTE = 0
         val wf = File(Quellen.projekt, "../.github/workflows/android.yml").readLines()
@@ -426,8 +426,8 @@ class QuelltextRatscheTest {
     fun `Echtzeit-Warten in Tests wird weniger, nie mehr`() {
         // Ein Test, der schläft, ist langsam und auf einem vollen Runner brüchig. ViewModel-Tests
         // laufen im Takt (PfadServer.imTakt, Test-Dispatcher); gezählt wird, was noch wartet.
-        val SCHLAFEN = 4
-        val WARTEN = 17
+        val SCHLAFEN = 2
+        val WARTEN = 13
         val dateien = (Quellen.tests.walkTopDown() + File(Quellen.projekt, "core-testing/src/main").walkTopDown())
             .filter { it.isFile && it.extension == "kt" }.toList()
         val texte = dateien.map { code(it.readText()) }
@@ -507,7 +507,7 @@ class QuelltextRatscheTest {
     @Test
     fun `voll qualifizierte Namen fremder Pakete werden weniger`() {
         // Ausgeschrieben nur bei echter Namensgleichheit, und dann besser mit `import … as`.
-        val HAUPT = 223
+        val HAUPT = 221
         val TESTS = 0
         val voll = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
         fun zaehle(dateien: Sequence<File>) = dateien.sumOf { f ->

@@ -153,12 +153,12 @@ class MeldungsKanalTest {
         pfade.codes["/api/v1/parts/3001/5/color"] = 500
         val t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
         try {
-            val galerie = t.merke(GalerieViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, SetsRepository(t.api, t.cache),
-                FinanzenRepository(t.api, t.cache), SavedStateHandle()))
+            val galerie = t.merke(GalerieViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, SetsRepository(t.api, t.cache),
+                t.kontosicht, FinanzenRepository(t.api, t.cache), SavedStateHandle()))
             galerie.deleteSet("75192-1")
             assertTrue("Meldung der Galerie", t.meldungen.text != null)
             t.meldungen.quittiere()
-            val teile = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), SavedStateHandle()))
+            val teile = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), t.kontosicht, SavedStateHandle()))
             teile.setzeTeilFarbe("3001", 5, 11)
             assertTrue("Meldung der Teile", t.meldungen.text != null)
         } finally {

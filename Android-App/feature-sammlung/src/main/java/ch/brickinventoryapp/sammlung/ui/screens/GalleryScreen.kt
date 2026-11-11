@@ -72,7 +72,6 @@ internal class GalerieEreignisse(
     val suche: (String) -> Unit,
     val thema: (String) -> Unit,
     val sortierung: (Setsortierung) -> Unit,
-    val mehrLaden: () -> Unit,
     val konto: (String) -> Unit,
     val lagerort: (String) -> Unit,
     val aktualisieren: () -> Unit,
@@ -129,7 +128,6 @@ fun GalleryRoute(
             suche = vm::setGalleryQuery,
             thema = vm::setGalleryTheme,
             sortierung = vm::setGallerySort,
-            mehrLaden = vm::loadMoreSets,
             konto = { vm.setScope(ScopeFilter.View.GALLERY, it) },
             lagerort = { vm.setLagerFilter(ScopeFilter.View.GALLERY, it) },
             // Auch die Filterlisten: Sie werden sonst nur beim Start geladen.
@@ -182,14 +180,6 @@ internal fun GalleryScreen(
     // Kein lokales Filtern und keine Themenliste aus `sets`: Der Schirm zeigt, was der
     // Server geliefert hat — eine zweite Suche hier kennte weder Jahr noch Sortierung,
     // und die Themen kämen aus der geladenen Seite statt aus dem Bestand.
-
-    // Endlos-Scroll: nachladen, sobald die letzten Kacheln in Sicht kommen.
-    LaunchedEffect(gridState, galerie.sets.size, galerie.galleryTotal) {
-        snapshotFlow {
-            val letzte = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-            letzte >= galerie.sets.size - 6 && galerie.sets.isNotEmpty()
-        }.collect { nah -> if (nah) ereignisse.mehrLaden() }
-    }
 
     val anzeige = galerieAnzeige(galerie, gefiltert = searchInput.isNotBlank() || galerie.galleryTheme.isNotEmpty())
     // Ab grosser Schrift steht Erfassen in der Knopfzeile unter der Suche (SucheMitFilter).
@@ -357,17 +347,6 @@ private fun GalerieRaster(
                 SetCard(set, zustand.app.serverUrl, imageLoader, onSetClick, index,
                     preis = zustand.preise[set.setNumber], waehrung = zustand.app.currency,
                     ausgewaehlt = set.setNumber == gewaehlt)
-            }
-        }
-        if (galerie.galleryLoadingMore) {
-            // Ein fester Schlüssel für den Lade-Eintrag: Ohne bekäme er einen aus
-            // dem Index gebildeten Ersatz, der beim Wachsen der Liste wechselt —
-            // für das Raster verschwände dann ein Eintrag und ein anderer
-            // erschiene.
-            item(key = "gallery-loading-more", span = { GridItemSpan(maxLineSpan) }) {
-                Box(Modifier.fillMaxWidth().padding(Abstaende.gross), Alignment.Center) {
-                    CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
-                }
             }
         }
     }

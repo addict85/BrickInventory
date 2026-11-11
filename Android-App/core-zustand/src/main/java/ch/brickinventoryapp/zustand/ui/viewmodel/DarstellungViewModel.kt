@@ -28,13 +28,10 @@ class DarstellungViewModel @Inject constructor(
     private val widget: Widgetanstoss,
 ) : ViewModel(), DarstellungAktionen {
 
-    // Der Zustand wird mit dem gemerkten Design geboren; ein späterer Wert käme
-    // nach der ersten Komposition, und das falsche Design blitzte auf.
-    init {
-        sitzung.setzeDesign(prefs.gemerktesDesign())
-    }
-
-    /** Nur das Design, damit MainActivity nicht bei jeder Zustandsänderung neu komponiert. */
+    /**
+     * Nur das Design, damit MainActivity nicht bei jeder Zustandsänderung neu komponiert.
+     * Den ersten Wert liefert der synchrone Spiegel der Ablage (Kontowerte), vor dem ersten Bild.
+     */
     val appTheme: StateFlow<Design> = sitzung.state.abgeleitet { it.appTheme }
 
     private val _helligkeit = MutableStateFlow(prefs.helligkeit())

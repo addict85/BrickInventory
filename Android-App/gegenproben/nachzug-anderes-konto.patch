@@ -1,0 +1,17 @@
+Gegenprobe: Die Antwort des alten Kontos landet in der Ablage des neuen
+Modul: core-data
+Test: ch.brickinventoryapp.data.NachzugTest
+Rot: eine Antwort, waehrend das Konto wechselt
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt
+@@ -129,7 +129,7 @@
+ /** Wechselte das Konto während des Aufrufs, gehört die Antwort nicht in die neue Ablage. */
+ private suspend fun Offlineablage.wendeImSelbenBereichAn(w: Wirkung, vorher: String?) {
+     val b = bereich() ?: return
+-    if (b == vorher) wendeAn(w, b)
++    wendeAn(w, b)
+ }
+ 
+ /**

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import kotlinx.coroutines.flow.map
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.fach.Merksortierung
@@ -8,6 +9,7 @@ import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.offline.Filterspalten
 import ch.brickinventoryapp.offline.Faecher
+import ch.brickinventoryapp.offline.Offlineablage.Nachzug
 import ch.brickinventoryapp.model.lokal.Lokal
 import kotlinx.coroutines.flow.Flow
 import ch.brickinventoryapp.offline.Offlineablage
@@ -26,41 +28,8 @@ import ch.brickinventoryapp.model.data.model.SetExistsResponse
 class SetsRepositoryImpl @Inject constructor(
     private val api: SetsApi,
     private val ablage: Offlineablage,
+    private val wiederholung: Wiederholung,
 ) : SetsRepository {
-
-    /**
-     * Galerie-Seite vom Server — gefiltert, sortiert, paginiert. Die ungefilterte
-     * Liste wird Seite für Seite abgelegt; gefiltert beantwortet sie ohne Netz
-     * dieselben Filter. Nicht beim Kontofilter: Menge und Preise rechnet der Server
-     * über die gewählten Konten, die lokale Zeile trägt die Summe aller.
-     */
-    override suspend fun getSets(
-        accounts: String?,
-        search: String?,
-        theme: String?,
-        sort: Setsortierung?,
-        page: Int,
-        pageSize: Int,
-        storage: String?
-    ): Ergebnis<SetsResponse> {
-        val filter = Filterspalten(suchtext = search?.ifBlank { null }, thema = theme?.ifBlank { null },
-            lagerort = storage?.ifBlank { null })
-        val ausLokal = { l: List<SetItem> -> l.sortiert(setOrdnung(sort)).let {
-            SetsResponse(success = true, count = it.size, sets = it, total = it.size)
-        } }
-        val ungefiltert = search.isNullOrBlank() && theme.isNullOrBlank() && storage.isNullOrBlank() &&
-            (sort == null || sort == Setsortierung.VORGABE)
-        return when {
-            accounts != null -> sicherAufrufen { api.getSets(accounts, filter.suchtext, filter.thema, sort?.kennung, page, pageSize, filter.lagerort) }
-            ungefiltert ->
-                ablage.abgeglichen(Faecher.SETS, { it.sets }, ausLokal, anhaengen = page > 1) {
-                    sicherAufrufen { api.getSets(null, null, null, sort?.kennung, page, pageSize) }
-                }
-            else -> ablage.gefiltert(Faecher.SETS, filter, ausLokal) {
-                sicherAufrufen { api.getSets(null, filter.suchtext, filter.thema, sort?.kennung, page, pageSize, filter.lagerort) }
-            }
-        }
-    }
 
     /**
      * Steht das Set schon im Blickfeld? Die Regel dahinter (Normalisierung der
@@ -87,7 +56,10 @@ class SetsRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?): Ergebnis<GenericResponse> =
-        sicherAufrufen { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantity, null, purchasePrice, condition)) }
+        // Der Server kann deckeln (fremde Exemplare bleiben): Es gilt seine Zahl.
+        ablage.nachgezogen({ r -> Nachzug.SetMengeGesetzt(setNumber, r.quantity ?: quantity).takeIf { r.success } }) {
+            sicherAufrufen { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantity, null, purchasePrice, condition)) }
+        }
 
     /** Menge um [schritt] ändern; der Server rechnet unter Bestandssperre. */
     override suspend fun aendereMengeUm(setNumber: String, schritt: Int): Ergebnis<GenericResponse> =
@@ -101,28 +73,15 @@ class SetsRepositoryImpl @Inject constructor(
     // man noch nicht hat — dieselbe Sache, andere Tabelle. Ein sechstes
     // Repository fuer vier Aufrufe waere mehr Apparat als Nutzen.
 
-    /** Wie die Galerie: ungefiltert abgelegt, gefiltert ohne Netz aus der lokalen Liste. */
-    override suspend fun getMerkliste(search: String?, condition: Zustand?,
-                             sort: Merksortierung?, accounts: String?): Ergebnis<MerklisteResponse> {
-        val filter = Filterspalten(suchtext = search?.ifBlank { null }, zustand = condition?.kennung)
-        val ausLokal = { l: List<Merkposten> -> MerklisteResponse(success = true, merkposten = l.sortiert(merkOrdnung(sort))) }
-        return when {
-            accounts != null -> sicherAufrufen { api.getMerkliste(search, condition?.kennung, sort?.kennung, accounts) }
-            filter == Filterspalten() && (sort == null || sort == Merksortierung.VORGABE) ->
-                ablage.abgeglichen(Faecher.MERKLISTE, { it.merkposten }, ausLokal) {
-                    sicherAufrufen { api.getMerkliste(search, condition?.kennung, sort?.kennung, accounts) }
-                }
-            else -> ablage.gefiltert(Faecher.MERKLISTE, filter, ausLokal) { sicherAufrufen { api.getMerkliste(search, condition?.kennung, sort?.kennung, accounts) } }
+    override fun beobachteMerkliste(suche: String?, zustand: Zustand?, sort: Merksortierung?): Flow<Lokal<Merkposten>> =
+        ablage.beobachte(Faecher.MERKLISTE, Filterspalten(suchtext = suche?.ifBlank { null }, zustand = zustand?.kennung))
+            .map { l -> l.copy(liste = l.liste.sortiert(merkOrdnung(sort))) }
+
+    /** Die Merkliste kommt ganz, ohne Seiten: Die Gesamtzahl ist die Länge der Antwort. */
+    override suspend fun aktualisiereMerkliste(): Ergebnis<Unit> =
+        ablage.aktualisiereSeitenweise(Faecher.MERKLISTE, { it.merkposten }, { it.merkposten.size }, wiederholung) { _ ->
+            sicherAufrufen { api.getMerkliste(null, null, null, null) }
         }
-    }
-
-    /** Die lokale Merkliste (ungefiltert), wie beobachteSets. */
-    override fun beobachteMerkliste(): Flow<Lokal<Merkposten>> = ablage.beobachte(Faecher.MERKLISTE)
-
-    override suspend fun aktualisiereMerkliste(): Ergebnis<Unit> = when (val r = getMerkliste()) {
-        is Ergebnis.Success -> Ergebnis.Success(Unit, r.stand, r.gepuffert)
-        is Ergebnis.Error -> r
-    }
 
     override suspend fun legeMerkpostenAn(setNumber: String, condition: Zustand,
                              ownerUserId: Int?): Ergebnis<MerkpostenAntwort> {
@@ -135,7 +94,9 @@ class SetsRepositoryImpl @Inject constructor(
 
     override suspend fun verschiebeMerkposten(setNumber: String, condition: Zustand,
                                  vonId: Int, zuId: Int): Ergebnis<MerkpostenInhaberAntwort> =
-        sicherAufrufen { api.verschiebeMerkposten(setNumber, condition.kennung, MerkpostenInhaberRequest(vonId, zuId)) }
+        ablage.nachgezogen({ r -> Nachzug.MerkpostenVerschoben(setNumber, condition, vonId, zuId).takeIf { r.success } }) {
+            sicherAufrufen { api.verschiebeMerkposten(setNumber, condition.kennung, MerkpostenInhaberRequest(vonId, zuId)) }
+        }
 
     override suspend fun loescheMerkposten(setNumber: String, condition: Zustand,
                               ownerUserId: Int?): Ergebnis<GenericResponse> =
@@ -149,14 +110,17 @@ class SetsRepositoryImpl @Inject constructor(
     override suspend fun uebernimmMerkposten(setNumber: String, condition: Zustand, quantity: Int,
                                 purchasePrice: Double?, erfasstAls: Zustand?,
                                 ownerUserId: Int?,
-                                storage: String?): Ergebnis<MerkpostenUebernahmeResponse> =
-        sicherAufrufen { api.uebernimmMerkposten(setNumber, condition.kennung,
-                                       MerkpostenUebernahmeRequest(quantity, purchasePrice,
-                                                               erfasstAls, ownerUserId, storage)) }
+                                storage: String?): Ergebnis<MerkpostenUebernahmeResponse> {
+        val anfrage = AddSetRequest(setNumber, quantity, purchasePrice, erfasstAls ?: condition, ownerUserId, storage)
+        return ablage.nachgezogen({ r -> Nachzug.MerkpostenUebernommen(setNumber, condition, ownerUserId, anfrage).takeIf { r.success } }) {
+            sicherAufrufen { api.uebernimmMerkposten(setNumber, condition.kennung,
+                MerkpostenUebernahmeRequest(quantity, purchasePrice, erfasstAls, ownerUserId, storage)) }
+        }
+    }
 
     /** Löschen nur online: Der Papierkorb des Servers entscheidet, was zurückkommt. */
     override suspend fun deleteSet(setNumber: String): Ergebnis<GenericResponse> =
-        sicherAufrufen { api.deleteSet(setNumber) }.also { if (it is Ergebnis.Success) ablage.entferne(Faecher.SETS, setNumber) }
+        ablage.nachgezogen({ r -> Nachzug.SetEntfernt(setNumber).takeIf { r.success } }) { sicherAufrufen { api.deleteSet(setNumber) } }
 
     /** Die Galerie aus der Ablage, nach den Filtern der Anzeige; ändert sich auch durch offline Bearbeitetes. */
     override fun beobachteSets(suche: String?, thema: String?, lagerort: String?, sort: Setsortierung?): Flow<Lokal<SetItem>> =
@@ -164,13 +128,19 @@ class SetsRepositoryImpl @Inject constructor(
             lagerort = lagerort?.ifBlank { null })).map { l -> l.copy(liste = l.liste.sortiert(setOrdnung(sort))) }
 
     override suspend fun aktualisiereSets(): Ergebnis<Unit> =
-        ablage.aktualisiereSeitenweise(Faecher.SETS, { it.sets }, { it.total }) { seite ->
+        ablage.aktualisiereSeitenweise(Faecher.SETS, { it.sets }, { it.total }, wiederholung) { seite ->
             sicherAufrufen { api.getSets(null, null, null, null, seite, GALLERY_PAGE_SIZE) }
         }
 
     override suspend fun moveSet(setNumber: String, fromUserId: Int?, toUserId: Int,
                         acquisitionIds: List<Int>?): Ergebnis<MoveSetResponse> =
-        sicherAufrufen { api.moveSet(setNumber, MoveSetRequest(fromUserId, toUserId, acquisitionIds)) }
+        ablage.nachgezogen({ r -> Nachzug.SetVerschoben(setNumber, fromUserId, toUserId, acquisitionIds == null).takeIf { r.success } }) {
+            sicherAufrufen { api.moveSet(setNumber, MoveSetRequest(fromUserId, toUserId, acquisitionIds)) }
+        }
+
+    override suspend fun uebernimmZusammenfassung(agg: SetAggregate) {
+        if (agg.setNumber.isNotBlank()) ablage.wendeAn(Nachzug.SetZusammenfassung(agg))
+    }
 
     // ── Preisalarm ──────────────────────────────────────────────────────────
     //
@@ -205,7 +175,9 @@ class SetsRepositoryImpl @Inject constructor(
 
     /** Lagerort eines Sets setzen. Leerer Text loescht ihn. */
     override suspend fun setSetStorage(setNumber: String, ort: String): Ergebnis<LagerortResponse> =
-        sicherAufrufen { api.setSetStorage(setNumber, LagerortRequest(ort)) }
+        ablage.nachgezogen({ r -> Nachzug.SetLagerort(setNumber, r.storage).takeIf { r.success } }) {
+            sicherAufrufen { api.setSetStorage(setNumber, LagerortRequest(ort)) }
+        }
 
     override suspend fun getSetPartsList(setNumber: String): Ergebnis<PartsResponse> =
         sicherAufrufen { api.getSetPartsList(setNumber) }

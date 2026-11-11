@@ -1,0 +1,17 @@
+Gegenprobe: Eine geänderte Teilefarbe erreicht die Ablage nicht
+Modul: core-data
+Test: ch.brickinventoryapp.data.NachzugTest
+Rot: Lagerort und Farbe eines Teils
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt
+@@ -97,7 +97,7 @@
+         is Nachzug.TeilLagerort -> liste.map {
+             if (it.partNumber == b.partNumber && it.colorId == b.colorId) it.copy(storage = b.ort?.ifBlank { null }) else it
+         }
+-        is Nachzug.TeilFarbe -> umgefaerbt(liste, b)
++        is Nachzug.TeilFarbe -> liste
+         is Nachzug.LagerortUmbenannt -> liste.map { if (it.storage == b.alt) it.copy(storage = b.neu) else it }
+         else -> liste
+     }

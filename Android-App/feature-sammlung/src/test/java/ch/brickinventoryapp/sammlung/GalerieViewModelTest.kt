@@ -5,16 +5,13 @@ import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.data.model.SetAggregate
 import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.testing.FinanzenRepository
-import ch.brickinventoryapp.testing.SetsRepository
-import ch.brickinventoryapp.zustand.ui.Aenderung
+import ch.brickinventoryapp.model.data.model.AddPartRequest
+import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.sammlung.ui.viewmodel.GalerieViewModel
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -35,12 +32,12 @@ import ch.brickinventoryapp.testing.TestDienste
  *      Sortierung überstehen …“
  *   B  in nachFilter() die Bedingung umgekehrt → rot „Konto- und Lagerfilter
  *      der Galerie reisen mit …“
- *   C  in deleteSet() Teile und Figuren nicht gemeldet → rot „ein gelöschtes
- *      Set verschwindet …“
- *   D  im Zweig SetZusammenfassung `loadSets()` statt der Kachel-Änderung →
- *      rot „ein geänderter Kauf ändert die Kachel, ohne die Liste neu zu holen“
- *   E  auf Aenderung.Teile/Figuren nichts geladen, oder auf Aenderung.Sets nur
- *      die Liste → je rot „erfasste Teile laden die Kennzahlen …“
+ *   C  in SetsRepositoryImpl.deleteSet den Nachzug `SetEntfernt` weggelassen → rot
+ *      „ein gelöschtes Set verschwindet aus der Ablage …“ (Kachel bleibt)
+ *   D  in LokaleAnwendung.sets den Zweig SetZusammenfassung entfernt → rot „ein
+ *      geänderter Kauf ändert die Kachel, ohne die Liste neu zu holen“
+ *   E  im init von GalerieViewModel das Sammeln von `aenderungen.bestandGeaendert()` entfernt
+ *      → rot „ein erfasstes Teil lädt die Kennzahlen …“ und „ein gelöschtes Set …“
  *   F  vergissScroll auf "parts" statt "gallery" → rot „ein Filterwechsel
  *      vergisst die Rollposition der Galerie und nur sie“
  *   G  kachelPreise() ohne kachel_preis/kachel_pnl_pct → rot „die
@@ -49,8 +46,8 @@ import ch.brickinventoryapp.testing.TestDienste
  *      Preis und G&V …“
  *   H  in loeschenVormerken() sofort deleteSet() aufgerufen →
  *      rot „vorgemerktes Loeschen …“ und „Rueckgaengig …“ (DELETE schon gesendet)
- *   I  in rueckgaengig() loadSets() entfernt → rot
- *      „Rueckgaengig holt das Set zurueck …“
+ *   I  in galleryState das Ausfiltern des vorgemerkten Sets entfernt → rot
+ *      „vorgemerktes Loeschen nimmt die Kachel sofort weg …“
  *   J in galleryState die Kennzahlen nicht angepasst
  *      (gegenproben/galerie-kennzahlen-beim-loeschen.patch) → rot „die Kennzahlen
  *      zaehlen das vorgemerkte Set nicht …“ (2 statt 1 Set)
@@ -68,8 +65,8 @@ class GalerieViewModelTest {
     private lateinit var pfade: PfadServer
     private lateinit var t: TestDienste
 
-    private fun vm(gemerkt: SavedStateHandle = SavedStateHandle(), t: TestDienste = this.t) = t.merke(GalerieViewModel(
-        t.sitzung, t.filter(), t.hinweise, t.bestand, t.scrollMemory, SetsRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), gemerkt))
+    private fun vm(gemerkt: SavedStateHandle = SavedStateHandle(), t: TestDienste = this.t) = t.merke(GalerieViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, t.sets(),
+        t.kontosicht, FinanzenRepository(t.api, t.cache), gemerkt))
 
     private fun abrufe(pfade: PfadServer = this.pfade) =
         pfade.anfragenAn("GET /api/v1/sets?") + pfade.anfragenAn("GET /api/v1/sets ")
@@ -138,21 +135,17 @@ class GalerieViewModelTest {
     }
 
     @Test
-    fun `ein geloeschtes Set verschwindet und alle Bestandsansichten erfahren davon`() {
+    fun `ein geloeschtes Set verschwindet aus der Ablage, und die Kennzahlen kommen neu`() {
         val vm = vm()
         vm.loadSets()
         assertTrue("Liste geladen", vm.galleryState.value.sets.size == 2)
-        val gemeldet = mutableListOf<Aenderung>()
-        val sammler = CoroutineScope(Dispatchers.Main).launch { t.bestand.aenderungen.toList(gemeldet) }
-        // Der Testserver liefert die Liste danach unverändert — die Kachel muss
-        // trotzdem sofort weg sein, nicht erst nach dem Nachladen.
-        pfade.antworten["/api/v1/sets"] = """{"success":true,"total":1,"sets":[{"set_number":"75192-1"}]}"""
+        val liste = abrufe().size
+        val zahlen = pfade.anfragenAn("GET /api/v1/stats").size
         vm.deleteSet("10294-1")
-        assertTrue("gemeldet", gemeldet.size == 3)
-        sammler.cancel()
-        assertEquals(listOf(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren), gemeldet)
         assertTrue(pfade.anfragenAn("DELETE /api/v1/sets/10294-1").isNotEmpty())
         assertTrue("Liste ohne das Set", vm.galleryState.value.sets.none { it.setNumber == "10294-1" })
+        assertEquals("die Liste kommt aus der Ablage, nicht neu vom Server", liste, abrufe().size)
+        assertTrue("Kennzahlen neu", pfade.anfragenAn("GET /api/v1/stats").size > zahlen)
     }
 
     @Test
@@ -245,14 +238,15 @@ class GalerieViewModelTest {
         // Gezählt ab hier: Die erste Ladung holt die Kennzahlen schon selbst.
         val zahlenVorher = pfade.anfragenAn("GET /api/v1/stats").size
 
-        t.bestand.melde(Aenderung.SetZusammenfassung(SetAggregate(setNumber = "75192-1", usedCount = 1)))
+        // So schreibt KaeufeViewModel die Antwort des Servers in die Ablage.
+        runBlocking { t.sets().uebernimmZusammenfassung(SetAggregate(setNumber = "75192-1", usedCount = 1)) }
         assertTrue("Kennzahlen neu", pfade.anfragenAn("GET /api/v1/stats").size > zahlenVorher)
         assertTrue("Kachel geändert", vm.galleryState.value.sets.first { it.setNumber == "75192-1" }.usedCount == 1)
         assertEquals("Die Liste darf nicht neu geholt werden", vorher, abrufe().size)
     }
 
     @Test
-    fun `erfasste Teile laden die Kennzahlen, erfasste Sets auch die Liste`() {
+    fun `ein erfasstes Teil laedt die Kennzahlen, nicht die Set-Liste`() {
         // Die Galerie zeigt Teile- und Figurenzahl aus den Kennzahlen; ohne
         // Nachladen bliebe sie nach dem Erfassen eines Teils stehen.
         val vm = vm()
@@ -261,13 +255,10 @@ class GalerieViewModelTest {
         val listeVorher = abrufe().size
         val zahlenVorher = pfade.anfragenAn("GET /api/v1/stats").size
 
-        t.bestand.melde(Aenderung.Teile)
-        assertTrue("Kennzahlen nach Teilen", pfade.anfragenAn("GET /api/v1/stats").size == zahlenVorher + 1)
+        // So wendet TeileRepository ein erfasstes Teil in der Ablage an.
+        runBlocking { t.ablage.wendeAn(Bearbeitung.TeilErfassen(AddPartRequest("3001", colorId = 5, quantity = 2))) }
+        assertEquals("Kennzahlen nach Teilen", zahlenVorher + 1, pfade.anfragenAn("GET /api/v1/stats").size)
         assertEquals("Ein Teil ändert die Set-Liste nicht", listeVorher, abrufe().size)
-
-        t.bestand.melde(Aenderung.Sets)
-        assertTrue("Liste nach Sets", abrufe().size == listeVorher + 1)
-        assertTrue("Kennzahlen nach Sets", pfade.anfragenAn("GET /api/v1/stats").size == zahlenVorher + 2)
     }
 
     @Test

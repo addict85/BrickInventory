@@ -11,25 +11,15 @@ import ch.brickinventoryapp.model.ui.Fehlerklasse
  */
 data class GalleryUiState(
     val sets: List<SetAnsicht> = emptyList(),
-    /**
-     * Galerie-Filter — ausgewertet wird er auf dem Server, wie in der Webapp.
-     * Hier steht nur, was gerade eingestellt ist, damit die Oberfläche es
-     * anzeigen und die nächste Seite mit denselben Werten nachladen kann.
-     */
+    /** Galerie-Filter, wie eingestellt; die Quelle (Ablage oder Kontosicht) wertet ihn aus. */
     val galleryQuery: String = "",
     val galleryTheme: String = "",
     val gallerySort: Setsortierung = Setsortierung.VORGABE,
-    /** Themen des ganzen Bestands — vom Server, nicht aus der geladenen Seite. */
+    /** Themen des ganzen Bestands, aus der ungefilterten Liste. */
     val galleryThemes: List<String> = emptyList(),
     val galleryTotal: Int = 0,
-    val galleryPage: Int = 1,
-    /**
-     * Erste Seite oder Neuladen. `galleryLoadingMore` ist das Gegenstück fürs Anhängen
-     * — getrennt, weil die Oberfläche beide verschieden zeigt und der Wächter in
-     * loadMoreSets() beide braucht.
-     */
+    /** Die Quelle wird gefüllt; die Liste steht schon da, soweit sie abgelegt ist. */
     val galleryLoading: Boolean = false,
-    val galleryLoadingMore: Boolean = false,
     /**
      * Warum die erste Seite nicht kam, als Satz für die Anzeige; null nach
      * Erfolg. Ohne das sah ein Ladefehler aus wie eine leere Sammlung.

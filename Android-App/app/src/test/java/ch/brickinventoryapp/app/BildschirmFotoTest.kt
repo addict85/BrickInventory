@@ -121,8 +121,9 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
         compose.onRoot().captureRoboImage("src/test/bildschirmfotos/${name}_${design}_${hell}_$geraet.png")
     }
 
-    private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.bestand, SetsRepository(welt.t.api, welt.t.cache),
-        KatalogRepository(welt.t.api, welt.t.cache), object : SetAnleger {
+    private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, SetsRepository(welt.t.api, welt.t.cache),
+        KatalogRepository(welt.t.api, welt.t.cache),
+        object : SetAnleger {
             override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
                                  ownerUserId: Int?, storage: String?): Flow<SetAnlegenSchritt> = emptyFlow()
         }))

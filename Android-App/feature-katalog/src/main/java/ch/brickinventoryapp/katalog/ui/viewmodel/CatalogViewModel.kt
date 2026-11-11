@@ -9,7 +9,6 @@ import ch.brickinventoryapp.model.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.katalog.ui.CatalogUiState
-import ch.brickinventoryapp.zustand.ui.retryOnNetwork
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -21,11 +20,6 @@ import javax.inject.Inject
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
-
-// Interaktive Katalog-Calls: schnell scheitern statt still minutenlang
-// weiterversuchen — der Fehlerzustand hat einen Retry-Button.
-private const val CATALOG_RETRIES = 2
-private const val CATALOG_RETRY_DELAY_MS = 500L
 
 /**
  * Wie lange die Liste ruhig stehen muss, bevor ihre sichtbaren Seiten geholt werden:
@@ -71,7 +65,7 @@ class CatalogViewModel @Inject constructor(
 
     override fun loadCatalogMeta() {
         viewModelScope.launch {
-            when (val r = retryOnNetwork { katalog.getCatalogMeta() }) {
+            when (val r = katalog.getCatalogMeta()) {
                 is Ergebnis.Success -> if (r.data.success) _catalogState.update {
                     it.copy(
                         themes = r.data.themes.map { t -> t.alsAnsicht() }, yearMin = r.data.yearMin, yearMax = r.data.yearMax
@@ -99,12 +93,11 @@ class CatalogViewModel @Inject constructor(
             }
             ladeJahrVerteilung(gen)
             val s = _catalogState.value
-            val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) {
-                katalog.getCatalogSets(
-                    q = s.query.ifBlank { null }, themeId = s.themeId,
-                    yearFrom = s.year, yearTo = s.year, sort = s.sort, page = 1
-                )
-            }
+            // Wiederholt wird im Repository, knapp: Der Fehlerzustand hat einen eigenen Knopf.
+            val r = katalog.getCatalogSets(
+                q = s.query.ifBlank { null }, themeId = s.themeId,
+                yearFrom = s.year, yearTo = s.year, sort = s.sort, page = 1
+            )
             if (gen != catalogGeneration) return@launch   // inzwischen neuer Filter
             when (r) {
                 is Ergebnis.Success -> {
@@ -139,12 +132,11 @@ class CatalogViewModel @Inject constructor(
         val gen = catalogGeneration
         _catalogState.update { it.copy(loadingPages = it.loadingPages + seite) }
         viewModelScope.launch {
-            val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) {
-                katalog.getCatalogSets(
-                    q = s.query.ifBlank { null }, themeId = s.themeId,
-                    yearFrom = s.year, yearTo = s.year, sort = s.sort, page = seite
-                )
-            }
+            // Wiederholt wird im Repository, knapp: Der Fehlerzustand hat einen eigenen Knopf.
+            val r = katalog.getCatalogSets(
+                q = s.query.ifBlank { null }, themeId = s.themeId,
+                yearFrom = s.year, yearTo = s.year, sort = s.sort, page = seite
+            )
             if (gen != catalogGeneration) return@launch
             _catalogState.update { st ->
                 val ohne = st.loadingPages - seite
@@ -231,7 +223,7 @@ class CatalogViewModel @Inject constructor(
         catalogDetailJob?.cancel()
         catalogDetailJob = viewModelScope.launch {
             _catalogState.update { it.copy(detailLoading = true, detail = null) }
-            when (val r = retryOnNetwork(maxAttempts = CATALOG_RETRIES, delayMs = CATALOG_RETRY_DELAY_MS) { katalog.getCatalogSetDetail(setNumber) }) {
+            when (val r = katalog.getCatalogSetDetail(setNumber)) {
                 is Ergebnis.Success -> {
                     if (r.data.success && r.data.set != null)
                         _catalogState.update { it.copy(detailLoading = false, detail = r.data.set?.alsAnsicht()) }
