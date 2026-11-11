@@ -110,7 +110,7 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('Bewertung: Nummern je Konto', async () => {
-    const repo = _req('src/finanzen/repository/bewertung.js');
+    const repo = _req('src/finanzen/prozess.js').finanzenBereich().bewertung;
     const figuren = await repo.manuelleFigurenZurBewertung([ANNA, BRUNO]);
     const teile = await repo.manuelleTeileZurBewertung([ANNA, BRUNO]);
     const je = (zeilen, feld) => Object.fromEntries(zeilen.map(z => [z.user_id, z[feld]]));

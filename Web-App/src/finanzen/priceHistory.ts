@@ -6,7 +6,7 @@ import { buildChart } from './chartData';
 import { blNummerVon } from '../katalog/blZuordnung';
 import { entwicklungProzent } from './setValue';
 import { konfig } from '../infra/konfig';
-import * as repo from './repository/preisverlauf';
+import { finanzenBereich } from './prozess';
 
 /** Nur Zustände mit Erfassung: Sonst stünde eine Kurve ohne Bezugsgrösse da.
  * @param rueckfall Was gilt, wenn es GAR KEINE Erfassung gibt. */
@@ -27,7 +27,7 @@ export interface PricePoint {
 /** DISTINCT ON je Tag: Mehrere Abrufe am selben Tag ergäben sonst Punkte
  * übereinander. Genommen wird der jüngste des Tages. */
 async function seriesFor(setNumber: string, currency: string, cond: 'N' | 'U'): Promise<PricePoint[]> {
-  return repo.tagespreiseDesSets(setNumber, currency, cond);
+  return finanzenBereich().preisverlauf.tagespreiseDesSets(setNumber, currency, cond);
 }
 
 /** Markt- gegen Kaufpreis in einem Zustand; pnl_pct ist die alte Textform. */
@@ -45,14 +45,14 @@ export async function getSetPriceHistory(uidWahl: Sicht | number | number[], set
     seriesFor(setNumber, currency, 'U'),
   ]);
 
-  const currentRows = await repo.cachePreiseDesSets(setNumber, currency);
+  const currentRows = await finanzenBereich().preisverlauf.cachePreiseDesSets(setNumber, currency);
   const current = {
     N: currentRows.find(r => r.condition === 'N') || null,
     U: currentRows.find(r => r.condition === 'U') || null,
   };
 
   // Kaufpreis aus der ERSTEN Erfassung; jede Set-Zeile hat mindestens eine.
-  const set = await repo.ersterKaufDesSets(uids, setNumber, currency);
+  const set = await finanzenBereich().preisverlauf.ersterKaufDesSets(uids, setNumber, currency);
 
   const hasCost = set?.purchase_price != null;   // 0 zählt als erfasst
   const purchasePrice = Number(set?.purchase_price ?? 0);
@@ -82,7 +82,7 @@ export async function getSetPriceHistory(uidWahl: Sicht | number | number[], set
   const pnlPct = baselineHas ? entwicklungProzent(baselinePrice, currentPrice)?.toFixed(1) ?? null : null;
 
   // Nur Zustände mit Erfassung, sonst stünde eine Prozentangabe gegen nichts da.
-  const acqByCond = await repo.kaufschnittDesSets(uids, setNumber, currency);
+  const acqByCond = await finanzenBereich().preisverlauf.kaufschnittDesSets(uids, setNumber, currency);
 
   const byCondition: Record<string, ZustandsVergleich> = {};
   for (const cond of ['N', 'U'] as const) {
@@ -130,8 +130,8 @@ export async function conditionRows(
   const uids = asIds(uid);
   // DESC: Seit der Figuren-Verlauf beide Nummern abfragt, kann es zwei Zeilen
   // je Zustand geben, und `.find()` soll die neueste nehmen.
-  const cacheRows = await repo.cachePreiseNachSchluessel(cacheTable, keySql, keyVals, currency);
-  const acqRows = await repo.kaufschnitteNachSchluessel(acqTable, acqKeySql, acqKeyVals, uids, currency);
+  const cacheRows = await finanzenBereich().preisverlauf.cachePreiseNachSchluessel(cacheTable, keySql, keyVals, currency);
+  const acqRows = await finanzenBereich().preisverlauf.kaufschnitteNachSchluessel(acqTable, acqKeySql, acqKeyVals, uids, currency);
 
   const out: Record<string, ZustandsVergleich> = {};
   for (const cond of ['N', 'U'] as const) {
@@ -159,8 +159,8 @@ async function manualPriceHistory(
   acqKeySql: string = keySql, acqKeyVals: unknown[] = keyVals
 ) {
   const [historyNew, historyUsed, by_condition] = await Promise.all([
-    repo.manualSeries(historyTable, keySql, keyVals, currency, 'N'),
-    repo.manualSeries(historyTable, keySql, keyVals, currency, 'U'),
+    finanzenBereich().preisverlauf.manualSeries(historyTable, keySql, keyVals, currency, 'N'),
+    finanzenBereich().preisverlauf.manualSeries(historyTable, keySql, keyVals, currency, 'U'),
     conditionRows(cacheTable, acqTable, keySql, keyVals, uid, currency, acqKeySql, acqKeyVals),
   ]);
   // Gezeichnet werden nur Zustände mit Erfassung; die Rohreihen bleiben vollständig.
@@ -206,7 +206,7 @@ async function preisNummernFuerFigur(uid: number | number[], figNumber: string):
 export async function purgeAltePreise(): Promise<number> {
   const tage = konfig().preisverlaufTage;
   if (tage <= 0) return 0;
-  const r = await repo.loescheAltenVerlauf(String(tage)).catch(meldeUndLiefere('preisverlauf:aufraeumen', { changes: 0 }));
+  const r = await finanzenBereich().preisverlauf.loescheAltenVerlauf(String(tage)).catch(meldeUndLiefere('preisverlauf:aufraeumen', { changes: 0 }));
   return r?.changes || 0;
 }
 

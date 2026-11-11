@@ -5,8 +5,6 @@
 import { createHash } from 'node:crypto';
 import { logAndContinue } from '../../infra/fehler';
 import * as repo from '../repository/bewertung';
-import { setPreiseFrisch } from '../repository/preisCache';
-import { geschaetzteFigurenpreise } from '../repository/marktpreise';
 import { asIds, withOwners, blickfeldAus, type Sicht } from '../../haushalt/haushalt';
 import { getGlobalSetting, getSetting } from '../../einstellungen/settings';
 import { resolveImageLocal, proxyImageUrl } from '../../katalog/bilder/images';
@@ -23,6 +21,7 @@ import { aufRappen, inZehntel4 } from '../../infra/geld';
 import { stelleAuftragEin } from '../../auftraege/dienst';
 import { fehlerText } from '../../infra/fehlerTexte';
 import type { Nutzlast } from '../../auftraege/nutzlasten';
+import { finanzenBereich } from '../prozess';
 
 type Zustand = 'N' | 'U';
 type Posten = Nutzlast<'preise_nachladen'>['posten'][number];
@@ -32,7 +31,7 @@ type FigurPreis = PreisDaten & { estimated_from_parts?: true; abdeckung?: number
 async function loadManualAcquisitions(uid: Blickfeld, kind: 'part' | 'fig', waehrung: string) {
   // Ein Hauptkonto bewertet den ganzen Haushalt; die Währung ist beim
   // Verknüpfen erzwungen gleich, sonst summierte das zwei Währungen.
-  const rows = await repo.manuelleErfassungen(kind, asIds(uid), waehrung);
+  const rows = await finanzenBereich().bewertung.manuelleErfassungen(kind, asIds(uid), waehrung);
   const out = new Map<string, repo.ManuelleErfassung[]>();
   for (const r of rows) {
     const key = kind === 'part' ? `${r.user_id}|${r.part_number}|${r.color_id ?? KEINE_FARBE}` : `${r.user_id}|${r.fig_number}`;
@@ -137,7 +136,7 @@ export async function computeSetsValuation(viewerId: number, idsWahl: Sicht | Bl
   const kopf = { currency, condition: DEFAULT_PRICE_CONDITION, guide_type: guideType, ttl_hours: ttlHours,
     // ttl_hours bleibt für ältere Clients Text.
     ttl_stunden: Number(ttlHours) || 24 };
-  const sets = await repo.setsZurBewertung(uids);
+  const sets = await finanzenBereich().bewertung.setsZurBewertung(uids);
   if (!sets.length) return { ...kopf, kaufpreise_fremde_waehrung: 0, kaufpreise_umgerechnet: 0, sets: [], preise_ausstehend: 0,
     totals: { min: '0.00', avg: '0.00', max: '0.00', qty_avg: '0.00' } };
 
@@ -146,9 +145,9 @@ export async function computeSetsValuation(viewerId: number, idsWahl: Sicht | Bl
   const ttl = Math.max(1, parseInt(ttlHours) || 24);
   const [catRows, cacheRows, acqRows] = await Promise.all([
     // catalog_cache führt Nummern mit Versionsanhang, price_cache unter der Schreibweise des Aufrufers.
-    repo.katalogMerkmale(setNumbers.map(mitVersion)),
-    setPreiseFrisch(setNumbers, currency, ttl),
-    ladeSetErfassungen(uids, currency),
+    finanzenBereich().bewertung.katalogMerkmale(setNumbers.map(mitVersion)),
+    finanzenBereich().preisCache.setPreiseFrisch(setNumbers, currency, ttl),
+    finanzenBereich().erfassungen.ladeSetErfassungen(uids, currency),
   ]);
   // Ohne BrickLink-Zugang kann der Auftrag nichts holen: Das steht dann an der Zeile.
   const ohneZugang = await getGlobalSetting('bricklink_consumer_key') ? null
@@ -233,14 +232,14 @@ export async function computeMinifigsValuation(viewerId: number, idsWahl: Sicht 
   const [currency, ttlHours] = await Promise.all([
     getSetting(viewerId, 'currency', 'EUR'), getGlobalSetting('price_cache_ttl', '24')]);
   const ttl = Math.max(1, parseInt(ttlHours) || 24);
-  const manualFigs = await repo.manuelleFigurenZurBewertung(uids);
+  const manualFigs = await finanzenBereich().bewertung.manuelleFigurenZurBewertung(uids);
   if (!manualFigs.length) return { currency, figs: [], ...gesamt([]), kaufpreise_fremde_waehrung: 0, kaufpreise_umgerechnet: 0, preise_ausstehend: 0 };
 
   const acqByFig = await loadManualAcquisitions(uids, 'fig', currency);
   const mitBl = manualFigs.filter(f => f.bl_fig_number);
   const [figVorrat, schaetzungen] = await Promise.all([
     ladeFigurenpreiseVor(mitBl.map(f => String(f.bl_fig_number)), currency, ttlHours),
-    geschaetzteFigurenpreise(manualFigs.filter(f => !f.bl_fig_number).map(f => f.fig_number), currency, ttl),
+    finanzenBereich().marktpreise.geschaetzteFigurenpreise(manualFigs.filter(f => !f.bl_fig_number).map(f => f.fig_number), currency, ttl),
   ]);
   const fehlt: Posten[] = [];
 
@@ -275,7 +274,7 @@ export async function computePartsValuation(viewerId: number, idsWahl: Sicht | B
   const [currency, ttlHours] = await Promise.all([
     getSetting(viewerId, 'currency', 'EUR'), getGlobalSetting('price_cache_ttl', '24')]);
   const ttl = Math.max(1, parseInt(ttlHours) || 24);
-  const manualParts = await repo.manuelleTeileZurBewertung(uids);
+  const manualParts = await finanzenBereich().bewertung.manuelleTeileZurBewertung(uids);
   if (!manualParts.length) return { currency, parts: [], ...gesamt([]), kaufpreise_fremde_waehrung: 0, kaufpreise_umgerechnet: 0, preise_ausstehend: 0 };
 
   const blNummer = (p: repo.ManuellesTeil) => String(p.bl_part_number || p.part_number);

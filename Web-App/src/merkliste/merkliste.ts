@@ -5,7 +5,6 @@ import { blickfeldAus } from '../haushalt/haushalt';
 import type { Sicht } from '../haushalt/haushalt';
 import { nacharbeit } from '../auftraege/nacharbeit';
 import { addSet, sanitizeSetNumber, findSetInScope } from '../sets';
-import { loescheAlarm, alarmUebertragen } from '../finanzen/preisalarm';
 import * as V from '../infra/validate';
 import { fachfehler } from '../infra/fehlerTexte';
 import { geldEingabe } from '../infra/geld';
@@ -19,6 +18,7 @@ import { fetchPrice } from '../finanzen/financeCalc';
 import { setBekanntImKatalog } from '../katalog/bricklinkPreise';
 import { moeglicheSetNummer, mitVersion } from '../infra/setNummer';
 import { merklisteBereich } from './prozess';
+import { finanzenBereich } from '../finanzen/prozess';
 
 /** Jeder Zustand für sich: Kennt BrickLink einen nicht, kommt der andere
  * trotzdem, und ein fehlender Preis ist ein Strich, kein Fehler. */
@@ -100,7 +100,7 @@ export async function verschiebeMerkposten(
 
   if (schon) {
     const weg = await loescheMerkposten(vonId, sn, c);
-    await loescheAlarm(vonId, sn, c);
+    await finanzenBereich().preisalarm.loescheAlarm(vonId, sn, c);
     return { verschoben: weg > 0, zusammengefuehrt: true };
   }
 
@@ -108,7 +108,7 @@ export async function verschiebeMerkposten(
   const verschoben = (r.changes ?? 0) > 0;
   // Den Alarm NUR mitnehmen, wenn der Merkposten wirklich gewandert ist.
   if (verschoben) {
-    await alarmUebertragen(zuId, vonId, sn, c).catch((e: unknown) => meldeFehler('merkliste:alarm-umhaengen', e));
+    await finanzenBereich().preisalarm.alarmUebertragen(zuId, vonId, sn, c).catch((e: unknown) => meldeFehler('merkliste:alarm-umhaengen', e));
   }
   return { verschoben, zusammengefuehrt: false };
 }
@@ -199,7 +199,7 @@ export async function uebernimm(
 
   // Nach dem MERKPOSTEN-Zustand: Es geht um die Zeile, die man erfüllt hat.
   await loescheMerkposten(besitzerId, sn, merkpostenZustand);
-  await loescheAlarm(besitzerId, sn, merkpostenZustand);
+  await finanzenBereich().preisalarm.loescheAlarm(besitzerId, sn, merkpostenZustand);
   return ergebnis as { action: string; set_number: string };
 }
 

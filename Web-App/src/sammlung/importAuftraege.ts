@@ -3,7 +3,6 @@
 import { importiereTeileCsv } from '../teile/manuelleTeile';
 import { importiereFigurenCsv } from '../figuren/manuelleFiguren';
 import { importiereMerklisteCsv } from '../merkliste/merkliste';
-import { alarmeAusCsv } from '../finanzen/preisalarm';
 import { csvImportBericht } from '../infra/csvExport';
 import { Fachfehler } from '../infra/fehlerTexte';
 import type { z } from 'zod';
@@ -11,6 +10,7 @@ import { setzeErgebnis, setzeFachfehler } from '../auftraege/importAlsAuftrag';
 import type { ImportNutzlast as ImportNutzlastSchema } from '../auftraege/nutzlasten';
 import { importiereWantedXml } from './wantedXmlImport';
 import type { AuftragsZeile, AuftragsKontext } from '../auftraege/auftraege';
+import { finanzenBereich } from '../finanzen/prozess';
 
 export type ImportNutzlast = z.output<typeof ImportNutzlastSchema>;
 
@@ -20,7 +20,7 @@ async function ergebnisVon(n: ImportNutzlast, k: AuftragsKontext): Promise<Recor
     case 'teile_csv':     return csvImportBericht(await importiereTeileCsv(uid, n.eingabe.text));
     case 'figuren_csv':   return csvImportBericht(await importiereFigurenCsv(uid, n.eingabe.text));
     case 'merkliste_csv': return csvImportBericht(await importiereMerklisteCsv(n.eingabe.owner, n.eingabe.text));
-    case 'alarme_csv':    return alarmeAusCsv(uid, n.eingabe.waehrung, n.eingabe.text);
+    case 'alarme_csv':    return finanzenBereich().preisalarm.alarmeAusCsv(uid, n.eingabe.waehrung, n.eingabe.text);
     case 'wanted_xml':    return importiereWantedXml(uid, n.eingabe, k);
   }
 }

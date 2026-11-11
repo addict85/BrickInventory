@@ -7,6 +7,7 @@ import * as mailer from '../mail/mailer';
 import { toCsv, csvZeilenAusAnfrage, uebersprungenHinweis } from '../infra/csvExport';
 import { normalisiereSetNummer } from '../infra/setNummer';
 import * as repo from './repository/preisalarme';
+import type { DbSchnittstelle } from '../../db/database';
 
 /** Ausgeschrieben statt `any`: Betrag, Richtung und Mailadresse stehen
  * nebeneinander, ein Vertauschen wäre sonst nirgends sichtbar. */
@@ -53,32 +54,32 @@ function pruefeEingabe(richtung: unknown, schwelle: unknown, condition: unknown)
 }
 
 /** Höchstens EIN Alarm je Set und Zustand (Primärschlüssel). */
-export async function setzeAlarm(
+export async function setzeAlarm(db: DbSchnittstelle, 
   userId: number, setNumber: string, waehrung: string,
   eingabe: { richtung?: unknown; schwelle?: unknown; condition?: unknown },
 ): Promise<Preisalarm> {
   const { richtung, schwelle, condition } =
     pruefeEingabe(eingabe.richtung, eingabe.schwelle, eingabe.condition);
-  await repo.schreibeAlarm(userId, setNumber, condition, richtung, schwelle, waehrung);
-  const alarme = await alarmeFuer(userId, setNumber);
+  await repo.schreibeAlarm(db, userId, setNumber, condition, richtung, schwelle, waehrung);
+  const alarme = await alarmeFuer(db, userId, setNumber);
   return alarme.find(a => a.condition === condition)!;
 }
 
 /** Der Alarm wandert mit einer Vormerkung ins andere Konto (src/merkliste). */
-export async function alarmUebertragen(zuId: number, vonId: number, setNumber: string, condition: string): Promise<void> {
-  await repo.uebertrageAlarm(zuId, vonId, setNumber, condition);
+export async function alarmUebertragen(db: DbSchnittstelle, zuId: number, vonId: number, setNumber: string, condition: string): Promise<void> {
+  await repo.uebertrageAlarm(db, zuId, vonId, setNumber, condition);
 }
 
 /** Kein Fehler, wenn es keinen gab — der Wunsch ist erfüllt. */
-export async function loescheAlarm(userId: number, setNumber: string, condition: string) {
+export async function loescheAlarm(db: DbSchnittstelle, userId: number, setNumber: string, condition: string) {
   const c = String(condition ?? 'N').toUpperCase();
-  const r = await repo.entferneAlarm(userId, setNumber, c);
+  const r = await repo.entferneAlarm(db, userId, setNumber, c);
   return r.changes ?? 0;
 }
 
 
-export async function alarmeFuer(userId: number, setNumber: string): Promise<Preisalarm[]> {
-  const rows = await repo.alarmeDesSets(userId, setNumber, await scopeIds(userId))
+export async function alarmeFuer(db: DbSchnittstelle, userId: number, setNumber: string): Promise<Preisalarm[]> {
+  const rows = await repo.alarmeDesSets(db, userId, setNumber, await scopeIds(userId))
     .catch(e => { meldeFehler('preisalarm:lesen', e); return []; });
   type Zeile = Omit<Preisalarm, 'schwelle' | 'zuletzt_preis'> &
                { schwelle: string | number; zuletzt_preis: string | number | null };
@@ -102,11 +103,11 @@ export interface AlarmMitName extends Preisalarm {
   besitzt: boolean;
 }
 
-export async function alleAlarme(userId: number): Promise<AlarmMitName[]> {
+export async function alleAlarme(db: DbSchnittstelle, userId: number): Promise<AlarmMitName[]> {
   // Das Blickfeld fragt nur, ob das Set sichtbar ist; der Alarm bleibt beim
   // eigenen Konto.
   const blickfeld = await scopeIds(userId);
-  const rows = await repo.alarmeImBlickfeld(userId, blickfeld)
+  const rows = await repo.alarmeImBlickfeld(db, userId, blickfeld)
     .catch(e => { meldeFehler('preisalarm:alle', e); return []; });
   type Zeile = Omit<AlarmMitName, 'schwelle' | 'zuletzt_preis'> &
                { schwelle: string | number; zuletzt_preis: string | number | null };
@@ -119,10 +120,10 @@ export async function alleAlarme(userId: number): Promise<AlarmMitName[]> {
 }
 
 /** Die App fragt, statt dass der Server schiebt: Push liefe über fremde Server. */
-export async function ausgeloesteSeit(userId: number, seit: unknown) {
+export async function ausgeloesteSeit(db: DbSchnittstelle, userId: number, seit: unknown) {
   // Die Zeit der Datenbank: Postgres speichert Mikro-, JavaScript nur
   // Millisekunden; mit der JS-Uhr käme eine Meldung zweimal.
-  const jetztRow = await repo.datenbankJetzt();
+  const jetztRow = await repo.datenbankJetzt(db);
   const jetzt = jetztRow?.jetzt ?? new Date();
 
   // `instanceof Date` ZUERST: String(date) verliert die Millisekunden, und eine
@@ -133,7 +134,7 @@ export async function ausgeloesteSeit(userId: number, seit: unknown) {
   // Unlesbar wie fehlend, NICHT „seit Anbeginn": Ein Tippfehler darf keine Flut auslösen.
   if (!marke || Number.isNaN(marke.getTime())) return { alerts: [], now: jetzt };
 
-  const rows = await repo.alarmeDesKontos(userId, marke, await scopeIds(userId))
+  const rows = await repo.alarmeDesKontos(db, userId, marke, await scopeIds(userId))
     .catch(e => { meldeFehler('preisalarm:abholen', e); return []; });
 
   type Zeile = { set_number: string; condition: string; richtung: Richtung;
@@ -163,16 +164,16 @@ async function standardVersand(mail: { to: string; subject: string; text: string
   return mailer.sendMail(mail);
 }
 
-export async function pruefeSet(setNumber: string,
+export async function pruefeSet(db: DbSchnittstelle, setNumber: string,
                                 versende: Versender = standardVersand): Promise<number> {
-  const alarme = await repo.alleAktivenAlarme(setNumber)
+  const alarme = await repo.alleAktivenAlarme(db, setNumber)
     // Gemeldet, nicht verschluckt: Sonst sähe man nur, dass keine Mails kommen,
     // und suchte den Fehler beim SMTP-Server.
     .catch(e => { meldeFehler('preisalarm:alarme-lesen', e); return []; });
   if (!alarme?.length) return 0;
   let verschickt = 0;
   for (const a of alarme as AlarmZeile[]) {
-    const preisZeile = await repo.cachePreisFuerAlarm(a.set_number, a.condition, a.currency_code)
+    const preisZeile = await repo.cachePreisFuerAlarm(db, a.set_number, a.condition, a.currency_code)
       .catch(e => { meldeFehler('preisalarm:preis-lesen', e); return null; });
     const preis = preisZeile?.avg_price == null ? null : parseFloat(String(preisZeile.avg_price));
     // Kein Preis in DIESER Währung: Der Alarm bleibt, der Merker auch.
@@ -184,7 +185,7 @@ export async function pruefeSet(setNumber: string,
     if (!jetzt) {
       // Zurück auf die andere Seite — der nächste Übergang meldet wieder.
       if (a.ausgeloest) {
-        await repo.setzeAlarmZurueck(a.user_id, a.set_number, a.condition)
+        await repo.setzeAlarmZurueck(db, a.user_id, a.set_number, a.condition)
           .catch(e => meldeFehler('preisalarm:merker-loeschen', e));
       }
       continue;
@@ -193,7 +194,7 @@ export async function pruefeSet(setNumber: string,
 
     if (a.email) {
       try {
-        await verschicke(versende, a, preis, schwelle);
+        await verschicke(db, versende, a, preis, schwelle);
         verschickt++;
       } catch (e) {
         // Merker NICHT setzen — beim nächsten Lauf erneut versuchen.
@@ -201,7 +202,7 @@ export async function pruefeSet(setNumber: string,
         continue;
       }
     }
-    await repo.loeseAlarmAus(a.user_id, a.set_number, a.condition, preis)
+    await repo.loeseAlarmAus(db, a.user_id, a.set_number, a.condition, preis)
       // Ungesetzt meldet der nächste Lauf dieselbe Schwelle noch einmal — lästig,
       // aber besser als stumm.
       .catch(e => meldeFehler('preisalarm:merker-setzen', e));
@@ -210,8 +211,8 @@ export async function pruefeSet(setNumber: string,
 }
 
 /** Getrennt, damit pruefeSet() über das WANN entscheidet, nicht über das WIE. */
-async function verschicke(versende: Versender, a: AlarmZeile, preis: number, schwelle: number) {
-  const name = await repo.setNameAusStamm(a.set_number)
+async function verschicke(db: DbSchnittstelle, versende: Versender, a: AlarmZeile, preis: number, schwelle: number) {
+  const name = await repo.setNameAusStamm(db, a.set_number)
     .catch(meldeUndLiefere('preisalarm:name', null));
   const mail = await mailer.baueAlarmMail({
     username:  a.username,
@@ -228,8 +229,8 @@ async function verschicke(versende: Versender, a: AlarmZeile, preis: number, sch
 }
 
 /** Eigene Datei statt Spalten an sets.csv: Ein Alarm braucht das Set nicht zu besitzen. */
-export async function buildPreisalarmeCsv(uid: number): Promise<string> {
-  const rows = await repo.alarmeFuerExport(uid);
+export async function buildPreisalarmeCsv(db: DbSchnittstelle, uid: number): Promise<string> {
+  const rows = await repo.alarmeFuerExport(db, uid);
 
   return toCsv(['set_number', 'condition', 'richtung', 'schwelle', 'currency_code'],
     // Number(): sonst stünde „200.0000" im Export.
@@ -238,7 +239,7 @@ export async function buildPreisalarmeCsv(uid: number): Promise<string> {
 
 /** Schwellen gelten in der Kontowährung; eine andere in der Datei wird
  * genannt statt still umgerechnet — Kurse gibt es keine. */
-export async function alarmeAusCsv(uid: number, waehrung: string, text: string) {
+export async function alarmeAusCsv(db: DbSchnittstelle, uid: number, waehrung: string, text: string) {
   const { records, bereinigt, uebersprungen } = csvZeilenAusAnfrage(text);
   let added = 0, updated = 0, errors = 0, fremdeWaehrung = 0;
   const results: Array<Record<string, unknown>> = [];
@@ -247,11 +248,11 @@ export async function alarmeAusCsv(uid: number, waehrung: string, text: string) 
     if (!roh) continue;
     const sn = normalisiereSetNummer(roh);
     // Vor dem Schreiben fragen: setzeAlarm() legt an oder ändert, ohne es zu sagen.
-    const schon = await alarmeFuer(uid, sn);
+    const schon = await alarmeFuer(db, uid, sn);
     const dateiWaehrung = String(row.currency_code || row['waehrung'] || '').trim().toUpperCase();
     const abweichend = dateiWaehrung !== '' && dateiWaehrung !== waehrung.toUpperCase();
     try {
-      const alarm = await setzeAlarm(uid, sn, waehrung, {
+      const alarm = await setzeAlarm(db, uid, sn, waehrung, {
         richtung: String(row.richtung || row['Richtung'] || '').trim().toLowerCase(),
         schwelle: String(row.schwelle || row['Schwelle'] || '').trim().replace(',', '.'),
         condition: String(row.condition || row['zustand'] || row['Zustand'] || 'N').trim().toUpperCase(),

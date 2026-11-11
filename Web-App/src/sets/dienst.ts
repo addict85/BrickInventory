@@ -9,7 +9,7 @@ import { stelleAuftragEin } from '../auftraege/dienst';
 import { resolveImageLocal, proxyImageUrl } from '../katalog/bilder/images';
 import { getSetting } from '../einstellungen/settings';
 import { normalisiereLagerort } from '../bestand/lagerort';
-import { alarmeFuer, loescheAlarm, setzeAlarm } from '../finanzen/preisalarm';
+import { setzeAlarm } from '../finanzen/preisalarm';
 import { importAlsAuftrag } from '../auftraege/importAlsAuftrag';
 import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';
 import { anleitungenZuSet, anleitungenZusammenlegen, loescheAnleitungen, anleitungNeuLadenErlaubt, anzahlAnleitungen } from '../katalog/instructions';
@@ -42,6 +42,7 @@ import type { KatalogTeil, ListenTeil, SetStamm } from './zeilen';
 import { versuche, wertOder } from '../infra/ergebnis';
 import type { SetsKontext } from './kontext';
 import { bestandBereich } from '../bestand/prozess';
+import { finanzenBereich } from '../finanzen/prozess';
 export type { KatalogTeil, ListenTeil, SetStamm } from './zeilen';
 
 
@@ -410,15 +411,15 @@ export async function lagerorteMitVorgabe(uid: number, owner: string | undefined
 // ── Preisalarm: gehört genau EINEM Konto, deshalb uid statt Blickfeld ────────
 
 export function setAlarmeLesen(uid: number, sn: string) {
-  return alarmeFuer(uid, normalizeSetNumber(sn));
+  return finanzenBereich().preisalarm.alarmeFuer(uid, normalizeSetNumber(sn));
 }
 
-export async function alarmDesSetsSetzen(uid: number, sn: string, eingabe: Parameters<typeof setzeAlarm>[3]) {
-  return setzeAlarm(uid, normalizeSetNumber(sn), await waehrungVon(uid), eingabe);
+export async function alarmDesSetsSetzen(uid: number, sn: string, eingabe: Parameters<typeof setzeAlarm>[4]) {
+  return finanzenBereich().preisalarm.setzeAlarm(uid, normalizeSetNumber(sn), await waehrungVon(uid), eingabe);
 }
 
 export function alarmDesSetsLoeschen(uid: number, sn: string, condition: unknown) {
-  return loescheAlarm(uid, normalizeSetNumber(sn), String(condition || 'N'));
+  return finanzenBereich().preisalarm.loescheAlarm(uid, normalizeSetNumber(sn), String(condition || 'N'));
 }
 
 export async function alarmCsvImportStarten(uid: number, text: string) {

@@ -14,12 +14,12 @@ import { setUserSetting } from '../konto/nutzerEinstellung';
 import { buildSetsCsv } from '../sets';
 import { buildPartsCsv, buildFigsCsv } from '../bestand/bestandExport';
 import { buildMerklisteCsv } from '../merkliste/merkliste';
-import { buildPreisalarmeCsv } from '../finanzen/preisalarm';
 import { DAILY_JOBS } from '../auftraege/zeitplan';
 import { zeitplanNeuPlanen, protokolliere } from './dienst';
 import { jsonOderNull } from '../infra/validate';
 import { fachfehler } from '../infra/fehlerTexte';
 import { KonfigExport } from '../vertrag/einstellungen';
+import { finanzenBereich } from '../finanzen/prozess';
 
 /** Mailserver, Registrierung und API-Schlüssel nimmt nur das Formular, mit Passwort. */
 export const istHeikel = (k: string) =>
@@ -46,7 +46,7 @@ export async function datenZip(uid: number, ziel: Writable, beiFehler: (e: Error
     buildPartsCsv(uid),
     buildFigsCsv(uid),
     buildMerklisteCsv(uid),
-    buildPreisalarmeCsv(uid),
+    finanzenBereich().preisalarm.buildPreisalarmeCsv(uid),
   ]);
   const archiv = new ZipArchive({ zlib: { level: 9 } });
   archiv.on('error', beiFehler);

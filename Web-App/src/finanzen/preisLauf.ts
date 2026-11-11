@@ -1,5 +1,4 @@
-import { kontingentFrei, speicherePreis, cacheUsable, preisAusCache, parallelLimit, bestandsPlaetze, merklistenPlaetze,
-  erfassteZustaende, gewuenschteZustaende, schreibeTagesstand, setsMitAlarm } from './financeCalc';
+import { kontingentFrei, speicherePreis, cacheUsable, preisAusCache, parallelLimit } from './financeCalc';
 import { meldeFehler, fehlertext, meldeUndLiefere, logAndContinue } from '../infra/fehler';
 import { liesZustand, setzeZustand } from '../auftraege/laufzustand';
 import { getGlobalSetting, getSetting } from '../einstellungen/settings';
@@ -8,8 +7,8 @@ import { katalogEintrag, getPriceGuide } from '../katalog/bricklinkPreise';
 import { BricklinkNichtErreichbar } from '../katalog/quellen';
 import { belegeSitzungsSperre } from '../../db/txLock';
 import { LOCKS } from '../infra/lockNamespaces';
-import { pruefeSet } from './preisalarm';
 import { AuftragVerschieben, type AuftragsKontext } from '../auftraege/auftraege';
+import { finanzenBereich } from './prozess';
 
 /** Der Job läuft im Job-Prozess, gelesen wird im Web-Prozess — darum in laufzustand. */
 export const PREIS_STAND = 'preis_job_stand';
@@ -93,8 +92,8 @@ async function runPriceRefresh(k?: AuftragsKontext) {
   await k?.fortschritt({ erledigt: 0, gesamt: 0, text: 'Starte…' });
   try {
     // Auch Merkposten: /price-history liest den Cache nur, und ohne diesen Lauf bliebe ihr Preisverlauf leer.
-    const eigene = await bestandsPlaetze();
-    const gewuenschte = await merklistenPlaetze().catch(meldeUndLiefere('preis-job:gewuenschte', []));
+    const eigene = await finanzenBereich().preisLauf.bestandsPlaetze();
+    const gewuenschte = await finanzenBereich().preisLauf.merklistenPlaetze().catch(meldeUndLiefere('preis-job:gewuenschte', []));
     const allSets = [...eigene, ...(gewuenschte || [])]
       .filter((r, i, a) => a.findIndex(x =>
         x.user_id === r.user_id && x.set_number === r.set_number) === i)
@@ -157,14 +156,14 @@ async function runPriceRefresh(k?: AuftragsKontext) {
 
     log('Writing daily price_history snapshot from price_cache...');
     try {
-      log(`Daily snapshot: ${await schreibeTagesstand()} price history entries inserted`);
+      log(`Daily snapshot: ${await finanzenBereich().preisLauf.schreibeTagesstand()} price history entries inserted`);
     } catch(e) { log(`Daily snapshot error: ${fehlertext(e)}`); }
 
     // Preisalarme hier und nicht je Abruf: Dort liefe die Prüfung tausendfach und meldete dasselbe mehrmals.
     try {
-      const wartende = await setsMitAlarm().catch(meldeUndLiefere('preis-job:wartende', []));
+      const wartende = await finanzenBereich().preisLauf.setsMitAlarm().catch(meldeUndLiefere('preis-job:wartende', []));
       let gemeldet = 0;
-      for (const sn of wartende) gemeldet += await pruefeSet(sn);
+      for (const sn of wartende) gemeldet += await finanzenBereich().preisalarm.pruefeSet(sn);
       if (wartende?.length) log(`Preisalarm: ${wartende.length} Sets geprueft, ${gemeldet} gemeldet`);
     } catch (e) { log(`Preisalarm error: ${fehlertext(e)}`); }
 
@@ -194,8 +193,8 @@ async function zustaendeJeSet(userId: number, setNumbers: string[],
     return m;
   };
 
-  const erfasst = await sammle(erfassteZustaende(userId, setNumbers));
-  const gewuenscht = await sammle(gewuenschteZustaende(userId, setNumbers));
+  const erfasst = await sammle(finanzenBereich().preisLauf.erfassteZustaende(userId, setNumbers));
+  const gewuenscht = await sammle(finanzenBereich().preisLauf.gewuenschteZustaende(userId, setNumbers));
 
   for (const sn of setNumbers) {
     // Ohne Erfassung ist der Hinweis die einzige Quelle: Die Erfassung des neuen Sets ist noch nicht

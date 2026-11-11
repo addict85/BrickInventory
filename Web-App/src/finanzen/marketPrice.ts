@@ -1,4 +1,3 @@
-import * as repo from './repository/marktpreise';
 import { nacharbeit } from '../auftraege/nacharbeit';
 import { getSetValue } from './setValue';
 import { nutzerStandardZustand as userDefaultCondition, getGlobalSetting, getSetting } from '../einstellungen/settings';
@@ -7,6 +6,7 @@ import { DEFAULT_PRICE_CONDITION, fetchPartPrice, fetchMinifigPrice, ladeBlNumme
 import { meldeFehler, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { getMinifigParts } from '../katalog/rebrickableKatalog';
 import { KEINE_FARBE } from '../infra/validate';
+import { finanzenBereich } from './prozess';
 
 // Ein Blatt ohne Rückbezug, damit die Aufrufer echt importieren statt spät mit require().
 export async function getCurrentMarketPrice(setNumber: string, userId: number, condition: string | null = null) {
@@ -27,7 +27,7 @@ export async function getCurrentMarketPrice(setNumber: string, userId: number, c
     }
 
     // Angefragter Zustand zuerst; der andere nur, wenn dort kein Preis steht.
-    const cached = await repo.setPreisAusCache(setNumber, effectiveCond, currency);
+    const cached = await finanzenBereich().marktpreise.setPreisAusCache(setNumber, effectiveCond, currency);
     const price = parseFloat(cached?.avg_price ?? '0');
     return price > 0 ? price : null;
   } catch (e) { return meldeUndLiefere('marktpreis:set-cache', null)(e); }
@@ -39,7 +39,7 @@ export async function getCurrentMarketPrice(setNumber: string, userId: number, c
 /** 'U' sobald eine Erfassung gebraucht ist; ohne Erfassung der Standard. */
 export async function resolvePartCondition(userId: number, partNumber: string, colorId: number) {
   try {
-    const row = await repo.teilErfassungsZustand(userId, partNumber, colorId);
+    const row = await finanzenBereich().marktpreise.teilErfassungsZustand(userId, partNumber, colorId);
     if (row && parseInt(row.cnt) > 0) return Number(row.any_used) > 0 ? 'U' : 'N';
   } catch (e) { meldeFehler('teile:zustand-ermitteln', e); }
   try { return await userDefaultCondition(userId); }
@@ -67,7 +67,7 @@ export async function marktpreiseAusCacheFuerFiguren(
   if (!schluessel.length) return treffer;
 
   // Ohne Fang: Die Liste fasst den Fehler als `degradiert` (Abstriche) und zeigt sie ohne Preis.
-  const zeilen = await repo.figurenpreiseAusCache(schluessel, String(currency), ttl);
+  const zeilen = await finanzenBereich().marktpreise.figurenpreiseAusCache(schluessel, String(currency), ttl);
 
   const cache = new Map<string, number>();
   for (const z of zeilen) {
@@ -124,7 +124,7 @@ export async function marktpreiseAusCacheFuerTeile(
 
   const nummern = [...new Set([...auflösung.values()].map(a => a.nummer))];
   if (!nummern.length) return treffer;
-  const zeilen = await repo.teilepreiseAusCache(nummern, String(currency), ttl);
+  const zeilen = await finanzenBereich().marktpreise.teilepreiseAusCache(nummern, String(currency), ttl);
 
   const cache = new Map<string, number>();
   for (const z of zeilen) {
@@ -180,7 +180,7 @@ export async function schaetzeFigurenpreis(figNumber: string, userId: number, co
 
     // Erst im Cache nachsehen: Sonst kostete jede Figur je Teil einen Abruf.
     const ttl = Math.max(1, parseInt(await getGlobalSetting('price_cache_ttl', '24')));
-    const cached = await repo.geschaetzterFigurenpreis(figNumber, cond0, currency, ttl)
+    const cached = await finanzenBereich().marktpreise.geschaetzterFigurenpreis(figNumber, cond0, currency, ttl)
       .catch(meldeUndLiefere('marktpreis:cached', null));
     const zwischengespeichert = parseFloat(String(cached?.avg_price || 0));
     if (zwischengespeichert > 0)
@@ -216,10 +216,10 @@ export async function schaetzeFigurenpreis(figNumber: string, userId: number, co
     // In Cache und Verlauf, markiert als geschätzt: fetchMinifigPrice liest nur
     // unmarkierte Zeilen, die Anzeige kennzeichnet sie.
     const abdeckung = Math.round(priced / parts.length * 1000) / 1000;
-    await repo.merkeGeschaetztenFigurenpreis(figNumber, cond, currency, total, abdeckung)
+    await finanzenBereich().marktpreise.merkeGeschaetztenFigurenpreis(figNumber, cond, currency, total, abdeckung)
       .catch(e => console.warn(`[minifig-price-estimate] Cache ${figNumber}: ${e.message}`));
     // Nur mit echtem Preis: Ein Nullpunkt sähe im Diagramm aus wie ein Kurssturz.
-    await repo.merkeGeschaetztenFigurenverlauf(figNumber, cond, currency, total, abdeckung)
+    await finanzenBereich().marktpreise.merkeGeschaetztenFigurenverlauf(figNumber, cond, currency, total, abdeckung)
       .catch(logAndContinue('marktpreis:figurverlauf schreiben'));
 
     return { preis: total, abdeckung };
@@ -236,7 +236,7 @@ export async function figMarktpreisMitHerkunft(figNumber: string, userId: number
     let effCond = condition;
     if (!effCond) {
       try {
-        const row = await repo.figurErfassungsZustand(userId, figNumber);
+        const row = await finanzenBereich().marktpreise.figurErfassungsZustand(userId, figNumber);
         if (row && parseInt(row.cnt) > 0) effCond = Number(row.any_used) > 0 ? 'U' : 'N';
       } catch (e) { meldeFehler('minifiguren:zustand-ermitteln', e); }
       if (!effCond) effCond = await userDefaultCondition(userId).catch(meldeUndLiefere('marktpreis:vorgabezustand', DEFAULT_PRICE_CONDITION));

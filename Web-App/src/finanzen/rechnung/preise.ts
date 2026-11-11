@@ -3,7 +3,6 @@
  * stehen, nicht umgekehrt. */
 
 import type { DbSchnittstelle } from '../../../db/database';
-import * as repo from '../repository/preisCache';
 import type { Preiszeile, SetPreiszeile } from '../repository/preisCache';
 import type { KatalogEintrag } from '../../katalog/bricklinkPreise';
 import { asIds } from '../../haushalt/haushalt';
@@ -16,6 +15,7 @@ import { katalogEintrag, getPriceGuide, hatPreis } from '../../katalog/bricklink
 import { effectiveCondition } from './zustand';
 import { blAbrufNummer, blAbrufNummern } from '../../katalog/blZuordnung';
 import { KEINE_FARBE } from '../../infra/validate';
+import { finanzenBereich } from '../prozess';
 
 /** Wessen DATEN gerechnet werden; wessen EINSTELLUNGEN gelten, sagt `viewerId`. */
 export type { Blickfeld } from '../../haushalt/haushalt';
@@ -33,7 +33,7 @@ export async function resolveSetCondition(
 ): Promise<'N' | 'U'> {
   // Blickfeld statt nackter ID: Das Set gehört oft einem Unterkonto. `dbh`:
   // Wer in einer Transaktion fragt, liest auch darin (priceForNewAcquisition).
-  const row = await repo.setZustandsZaehler(asIds(uid), setNumber, dbh);
+  const row = await finanzenBereich().preisCache.setZustandsZaehler(asIds(uid), setNumber, dbh);
   return effectiveCondition(row);
 }
 
@@ -48,11 +48,11 @@ const ZERO_PRICE_TTL_HOURS = 6;
 
 /** Die eine Stelle, die „frisch" festlegt. */
 export function leerePreisCache(): Promise<void> {
-  return repo.loescheAlleSetPreise();
+  return finanzenBereich().preisCache.loescheAlleSetPreise();
 }
 
 export async function preisAusCache(setNumber: string, condition: string, currency: string, ttlStunden: number) {
-  return repo.setPreisFrisch(setNumber, condition, currency, ttlStunden);
+  return finanzenBereich().preisCache.setPreisFrisch(setNumber, condition, currency, ttlStunden);
 }
 
 export function cacheUsable(row: PreisZeile, ttlHours: number) {
@@ -80,12 +80,12 @@ export async function speicherePreis(setNumber: string, condition: string, curre
   // Auch eine Null wird geschrieben: Sie ist die Auskunft „kein Preis" und hält
   // den nächsten Abruf zurück; wie lange, entscheidet cacheUsable().
   const preis = { min, avg, max, qavg, qty };
-  await repo.merkeSetPreis(setNumber, condition, currency, preis);
+  await finanzenBereich().preisCache.merkeSetPreis(setNumber, condition, currency, preis);
 
   // Weiter als hatPreis(), absichtlich dieselbe Regel wie der Tages-Schnappschuss
   // des Jobs: Ein Verlauf mit zwei Aufnahmeregeln hätte Lücken.
   if (avg > 0 || qavg > 0) {
-    await repo.merkeSetVerlauf(setNumber, condition, currency, preis).catch(logAndContinue('preise:setverlauf schreiben'));
+    await finanzenBereich().preisCache.merkeSetVerlauf(setNumber, condition, currency, preis).catch(logAndContinue('preise:setverlauf schreiben'));
   }
   return preis;
 }
@@ -250,7 +250,7 @@ export async function farbkarte(): Promise<Map<number, number>> {
   if (_farbkarte && jetzt - _farbkarte.zeit < NACHSCHLAG_TTL_MS) return _farbkarte.karte;
   if (_farbladung) return _farbladung;
   _farbladung = (async () => {
-    const rows = await repo.blFarben();
+    const rows = await finanzenBereich().preisCache.blFarben();
     const karte = new Map<number, number>();
     for (const r of rows) karte.set(Number(r.id), r.bl_color_id);
     // Eine LEERE Tabelle wird NICHT gemerkt: Vor dem ersten Abgleich ist sie leer,
@@ -312,7 +312,7 @@ export async function ladeTeilepreiseVor(teile: { partNumber: string; rbColorId:
   }
   const vorrat = new Map<string, Preiszeile>();
   if (!nummern.length) return vorrat;
-  const zeilen = await repo.teilepreiseFrisch(nummern, farben, currency, ttl);
+  const zeilen = await finanzenBereich().preisCache.teilepreiseFrisch(nummern, farben, currency, ttl);
   for (const z of zeilen) vorrat.set(`${z.part_number}|${z.color_id}|${z.condition}`, z);
   return vorrat;
 }
@@ -322,7 +322,7 @@ export async function ladeFigurenpreiseVor(figuren: string[], currency: string, 
   const ttl = Math.max(1, parseInt(String(ttlHours)));
   const vorrat = new Map<string, Preiszeile>();
   if (!figuren.length) return vorrat;
-  const zeilen = await repo.figurenpreiseFrisch([...new Set(figuren)], currency, ttl);
+  const zeilen = await finanzenBereich().preisCache.figurenpreiseFrisch([...new Set(figuren)], currency, ttl);
   for (const z of zeilen) vorrat.set(`${z.fig_number}|${z.condition}`, z);
   return vorrat;
 }
@@ -347,7 +347,7 @@ export async function fetchPartPrice(partNumber: string, rbColorId: number, cond
 
   const readCache = async (cond: string) => vorrat
     ? (vorrat.get(`${blPartNumber}|${Number(colorId) || 0}|${cond}`) ?? null)
-    : repo.teilpreisFrisch(blPartNumber, Number(colorId) || 0, cond, currency, ttl);
+    : finanzenBereich().preisCache.teilpreisFrisch(blPartNumber, Number(colorId) || 0, cond, currency, ttl);
 
   const cached = await readCache(condition);
   if (cached && hatPreis(cached))
@@ -378,10 +378,10 @@ export async function fetchPartPrice(partNumber: string, rbColorId: number, cond
       }
       const avg  = parseFloat(g?.avg_price || 0);
       const qavg = parseFloat(g?.qty_avg_price || 0);
-      await repo.merkeTeilpreis(blPartNumber, Number(colorId) || 0, cond, currency, avg, qavg);
+      await finanzenBereich().preisCache.merkeTeilpreis(blPartNumber, Number(colorId) || 0, cond, currency, avg, qavg);
       // Der Cache hält nur den letzten Wert; ohne Verlaufspunkt gäbe es keine Kurve.
       if (avg > 0 || qavg > 0) {
-        await repo.merkeTeilVerlauf(blPartNumber, Number(colorId) || 0, cond, currency, avg, qavg)
+        await finanzenBereich().preisCache.merkeTeilVerlauf(blPartNumber, Number(colorId) || 0, cond, currency, avg, qavg)
           .catch(logAndContinue('preise:teileverlauf schreiben'));
       }
       return { avg_price: avg, qty_avg_price: qavg, from_cache: false };
@@ -427,7 +427,7 @@ export async function fetchMinifigPrice(figNumber: string, condition: string, cu
 
   const readCache = async (cond: string) => vorrat
     ? (vorrat.get(`${figNumber}|${cond}`) ?? null)
-    : repo.figurpreisFrisch(figNumber, cond, currency, ttl);
+    : finanzenBereich().preisCache.figurpreisFrisch(figNumber, cond, currency, ttl);
 
   const cached = await readCache(condition);
   if (cached && hatPreis(cached))
@@ -453,10 +453,10 @@ export async function fetchMinifigPrice(figNumber: string, condition: string, cu
       }
       const avg  = parseFloat(g?.avg_price || 0);
       const qavg = parseFloat(g?.qty_avg_price || 0);
-      await repo.merkeFigurpreis(figNumber, cond, currency, avg, qavg);
+      await finanzenBereich().preisCache.merkeFigurpreis(figNumber, cond, currency, avg, qavg);
       // Der Cache hält nur den letzten Wert; ohne Verlaufspunkt gäbe es keine Kurve.
       if (avg > 0 || qavg > 0) {
-        await repo.merkeFigurVerlauf(figNumber, cond, currency, avg, qavg)
+        await finanzenBereich().preisCache.merkeFigurVerlauf(figNumber, cond, currency, avg, qavg)
           .catch(logAndContinue('preise:figurverlauf schreiben'));
       }
       return { avg_price: avg, qty_avg_price: qavg, from_cache: false };

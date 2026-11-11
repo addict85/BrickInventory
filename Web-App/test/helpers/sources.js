@@ -115,7 +115,7 @@ function buildAndRequire() {
     _zugangGesetzt = true;
   }
   // prozess.js lädt nichts; bereich.js erst beim ersten Gebrauch der Dienste.
-  const BEREICHE = [['bestand', 'Bestand'], ['teile', 'Teile'], ['figuren', 'Figuren'], ['merkliste', 'Merkliste'], ['gutscheine', 'Gutscheine'], ['sammlung', 'Sammlung'], ['verwaltung', 'Verwaltung']];
+  const BEREICHE = [['finanzen', 'Finanzen'], ['bestand', 'Bestand'], ['teile', 'Teile'], ['figuren', 'Figuren'], ['merkliste', 'Merkliste'], ['gutscheine', 'Gutscheine'], ['sammlung', 'Sammlung'], ['verwaltung', 'Verwaltung']];
   for (const [b, B] of BEREICHE)
     require(path.join(ROOT, 'dist', `src/${b}/prozess.js`))[`verdrahte${B}`](() =>
       require(path.join(ROOT, 'dist', `src/${b}/bereich.js`))[`erzeuge${B}`]({ db: dbModul.standardDb() }));
@@ -523,6 +523,13 @@ function dienstQuelle(rel) {
   // Der Katalog bindet seine Repositories in einer Fabrik (src/katalog/bereich.ts).
   for (const m of ohneKommentare(s).matchAll(/\bkatalog\(\)\.(\w+)\./g))
     if (fs.existsSync(path.join(ROOT, `src/katalog/repository/${m[1]}.ts`))) repos.add(`src/katalog/repository/${m[1]}.ts`);
+  // Die übrigen Bereiche ebenso (src/<b>/bereich.ts, Zugriff über <b>Bereich()).
+  for (const m of ohneKommentare(s).matchAll(/\b(\w+)Bereich\(\)\.(\w+)\./g)) {
+    const fabrik = path.join(ROOT, `src/${m[1]}/bereich.ts`);
+    if (!fs.existsSync(fabrik)) continue;
+    const ziel = fs.readFileSync(fabrik, 'utf8').match(new RegExp(`import \\* as ${m[2]} from '\\./([^']+)'`));
+    if (ziel && /repository/.test(ziel[1])) repos.add(`src/${m[1]}/${ziel[1]}.ts`);
+  }
   return [s, ...[...repos].map(r => fs.readFileSync(path.join(ROOT, r), 'utf8'))].join('\n');
 }
 module.exports.dienstQuelle = dienstQuelle;

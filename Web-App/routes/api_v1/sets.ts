@@ -7,7 +7,6 @@ import { fehlerAntwort, pfadParam, sendeFehler } from '../../src/http/httpAntwor
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
 import { householdMembers } from '../../src/haushalt/haushalt';
 import { lagerSchreibkonto } from '../../src/bestand/lagerort';
-import { alleAlarme, ausgeloesteSeit } from '../../src/finanzen/preisalarm';
 import { csvEmpfang, uploadKontingentBytes, privaterOrdner, privaterEmpfang, kontingentReichtFuer, pruefeEmpfangeneDatei } from '../../src/http/dateiEmpfang';
 import { sendCsv, uebersprungenHinweis } from '../../src/infra/csvExport';
 import { antwortSprache } from '../../src/infra/fehlerTexte';
@@ -17,6 +16,7 @@ import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/http/vertragsRouter';
 import { bestandBereich } from '../../src/bestand/prozess';
+import { finanzenBereich } from '../../src/finanzen/prozess';
 const router = vertragsRouter();
 
 // ── Feste Pfade VOR den Pfaden mit :setNumber ────────────────────────────────
@@ -65,13 +65,13 @@ router.delete('/sets/:setNumber/alert', requireToken, async (req: Anfrage<'DELET
 
 // Abholen statt Schieben; ohne Kontofilter, ein Alarm gehört einem Konto.
 router.get('/alerts/pending', requireToken, async (req: Anfrage<'GET /api/v1/alerts/pending'>, res: Antwort<'GET /api/v1/alerts/pending'>) => {
-  const r = await ausgeloesteSeit(req.apiUser.user_id, req.abfrage.since);
+  const r = await finanzenBereich().preisalarm.ausgeloesteSeit(req.apiUser.user_id, req.abfrage.since);
   res.json({ success: true, alerts: r.alerts, now: r.now });
 });
 
 // Was gesetzt ist; ausgelöst: /alerts/pending.
 router.get('/alerts', requireToken, async (req: Anfrage<'GET /api/v1/alerts'>, res: Antwort<'GET /api/v1/alerts'>) => {
-  res.json({ success: true, alerts: await alleAlarme(req.apiUser.user_id) });
+  res.json({ success: true, alerts: await finanzenBereich().preisalarm.alleAlarme(req.apiUser.user_id) });
 });
 
 router.post('/alerts/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'),
