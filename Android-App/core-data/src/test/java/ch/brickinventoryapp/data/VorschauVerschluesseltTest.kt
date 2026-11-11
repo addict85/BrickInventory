@@ -9,6 +9,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
+import java.security.MessageDigest
 
 /**
  * Die Vorschau-Ablage liegt verschlüsselt: Die Bilder der eigenen
@@ -63,7 +64,7 @@ class VorschauVerschluesseltTest {
         val alt = File(wurzel, "v2/" + "b".repeat(64)).apply { parentFile!!.mkdirs(); writeBytes(byteArrayOf(1)) }
         speicher().schreibe(adresse, bild)
         assertFalse("Die v2-Ablage bleibt liegen", alt.exists())
-        val sha = java.security.MessageDigest.getInstance("SHA-256").digest(adresse.toByteArray()).joinToString("") { "%02x".format(it) }
+        val sha = MessageDigest.getInstance("SHA-256").digest(adresse.toByteArray()).joinToString("") { "%02x".format(it) }
         val name = wurzel.walkTopDown().single { it.isFile }.name
         assertFalse("Der Name ist der SHA-256 der Adresse", name == sha)
         val anders = File(wurzel.parentFile, wurzel.name + "-b")

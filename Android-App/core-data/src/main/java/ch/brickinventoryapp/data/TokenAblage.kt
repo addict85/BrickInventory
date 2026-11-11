@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
+import java.io.IOException
 import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
 import javax.inject.Provider
@@ -80,7 +81,7 @@ class TokenAblage @Inject constructor(
         prefs[geheim]?.let { geraet.entschluessleAngabe(it, geheim.name) } ?: prefs[klar]
 
     private fun MutablePreferences.setzeAngabe(geheim: Preferences.Key<String>, klar: Preferences.Key<String>, wert: String) {
-        this[geheim] = geraet.verschluessleAngabe(wert, geheim.name) ?: throw java.io.IOException("${geheim.name} nicht verschlüsselbar")
+        this[geheim] = geraet.verschluessleAngabe(wert, geheim.name) ?: throw IOException("${geheim.name} nicht verschlüsselbar")
         remove(klar)
     }
 

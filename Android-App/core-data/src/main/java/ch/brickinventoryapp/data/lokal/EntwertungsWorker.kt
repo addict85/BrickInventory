@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.data.lokal
 
 import android.Manifest
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
@@ -100,7 +101,7 @@ class EntwertungsWorker @AssistedInject constructor(
         }
 
         /** Die Adresse des Servers nur entsperrt; gesperrt steht allein der Titel da. */
-        fun meldung(texte: Context, adresse: String): android.app.Notification {
+        internal fun meldung(texte: Context, adresse: String): Notification {
             val titel = texte.getString(R.string.abmeldung_gescheitert_titel)
             val text = texte.getString(R.string.abmeldung_gescheitert_text, adresse)
             return NotificationCompat.Builder(texte, KANAL)

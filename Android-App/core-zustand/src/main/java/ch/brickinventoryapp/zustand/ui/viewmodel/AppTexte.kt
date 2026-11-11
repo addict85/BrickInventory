@@ -16,6 +16,7 @@ import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
 import ch.brickinventoryapp.model.koroutinen.Dispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import javax.inject.Inject
 
@@ -84,7 +85,7 @@ internal const val DATEI_HOECHSTENS = 50L * 1024 * 1024
 
 /** Bis [grenze] Bytes und eines mehr zur Probe; null, wenn der Strom länger ist. Der Rest bleibt ungelesen. */
 internal fun liesBegrenzt(ein: InputStream, grenze: Long): ByteArray? {
-    val aus = java.io.ByteArrayOutputStream()
+    val aus = ByteArrayOutputStream()
     val puffer = ByteArray(64 * 1024)
     var gelesen = 0L
     while (true) {

@@ -6,11 +6,11 @@ Rot: Adresse und Name liegen nur verschluesselt, alte Klartexte werden beim Star
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
-@@ -80,8 +80,7 @@
+@@ -81,8 +81,7 @@
          prefs[geheim]?.let { geraet.entschluessleAngabe(it, geheim.name) } ?: prefs[klar]
  
      private fun MutablePreferences.setzeAngabe(geheim: Preferences.Key<String>, klar: Preferences.Key<String>, wert: String) {
--        this[geheim] = geraet.verschluessleAngabe(wert, geheim.name) ?: throw java.io.IOException("${geheim.name} nicht verschlüsselbar")
+-        this[geheim] = geraet.verschluessleAngabe(wert, geheim.name) ?: throw IOException("${geheim.name} nicht verschlüsselbar")
 -        remove(klar)
 +        this[klar] = wert
      }

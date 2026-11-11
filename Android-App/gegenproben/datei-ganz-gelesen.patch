@@ -6,12 +6,12 @@ Rot: ein endloser Strom wird nach der Grenze nicht weiter gelesen
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
 --- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
 +++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
-@@ -83,15 +83,6 @@
+@@ -84,15 +84,6 @@
  internal const val DATEI_HOECHSTENS = 50L * 1024 * 1024
  
  /** Bis [grenze] Bytes und eines mehr zur Probe; null, wenn der Strom länger ist. Der Rest bleibt ungelesen. */
 -internal fun liesBegrenzt(ein: InputStream, grenze: Long): ByteArray? {
--    val aus = java.io.ByteArrayOutputStream()
+-    val aus = ByteArrayOutputStream()
 -    val puffer = ByteArray(64 * 1024)
 -    var gelesen = 0L
 -    while (true) {
