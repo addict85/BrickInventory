@@ -25,6 +25,7 @@ const assert = require('node:assert/strict');
 const http   = require('node:http');
 const path   = require('node:path');
 const wt     = require('node:worker_threads');
+const { bis } = require('./helpers/zeit');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
@@ -133,8 +134,7 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
       for (let i = 0; i < 7; i++) stati.push(await strom());
       assert.deepEqual(stati, [200, 200, 200, 200, 200, 200, 429]);
       for (const r of offen) r.destroy();
-      await new Promise(r => setTimeout(r, 200));
-      assert.equal(await strom(), 200, 'geschlossene Ströme geben ihren Platz frei');
+      assert.ok(await bis(async () => await strom() === 200, 3000), 'geschlossene Ströme geben ihren Platz frei');
     } finally { for (const r of offen) r.destroy(); }
   });
 });

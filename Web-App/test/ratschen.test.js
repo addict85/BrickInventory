@@ -331,10 +331,10 @@ test('Web-Tests, die Android-Quellen lesen, sind Abgleich-Dateien und werden wen
 
 test('feste Wartezeiten in Tests werden weniger, nie mehr', () => {
   // Eine feste Pause ist unter Last zu kurz und sonst zu lang; gewartet wird auf
-  // eine Bedingung (helpers/zeit.js bis(), ruhig() der Oberflächenhilfen).
-  // Gemessen 37 am 05.11.2026; eigene Warte-Helfer: 0.
-  // Gegenprobe (05.11.2026): `await warte(500);` in verlauf-browser.test.js → rot (38).
-  const SCHRANKE = 37;
+  // eine Bedingung (helpers/zeit.js bis(), ruhig()). Übrig sind Pausen, die zeigen,
+  // dass etwas NICHT geschieht, oder die der geprüfte Code verlangt. Gemessen 27 am 11.11.2026.
+  // Gegenprobe (05.11.2026): `await warte(500);` in verlauf-browser.test.js → rot.
+  const SCHRANKE = 27;
   const FEST = /^\s*await (warte|takt|new Promise\(r(esolve)? => setTimeout\(r(esolve)?,)\s*\(?\s*[0-9]{3,}/;
   const EIGEN = /^\s*const (warte|takt|sleep|schlafe)\s*=/;
   let ist = 0;

@@ -42,7 +42,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const { warte } = require('./helpers/zeit');
+const { warte, bis } = require('./helpers/zeit');
 
 test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async (t) => {
   if (!await dbOderSkip(t, _req)) return;
@@ -77,7 +77,7 @@ test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async (t) => {
     await t.test('ein abgelöster Lauf hört auf', async () => {
       aufrufe.length = 0; dauer = 100;
       await importiere(['71001-1', '71002-1', '71003-1', '71004-1', '71005-1']);
-      await warte(130);
+      assert.ok(await bis(() => aufrufe.length > 0), 'der erste Lauf bucht schon');
       await importiere(['72001-1']);
       const a = await bisFertig();
       await warte(700);

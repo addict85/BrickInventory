@@ -18,11 +18,12 @@ let _lebenszeichen: NodeJS.Timeout | null = null;
 let _worker: { letzteRunde(): number } | null = null;
 
 /** Nur ein Worker, der seine Runden dreht, gilt als lebendig: Ein Intervall
- * allein meldete auch einen Prozess, dessen Start gescheitert ist. */
-export function erneuereLebenszeichen(): void {
-  if (!_worker || Date.now() - _worker.letzteRunde() > STILL_HOECHSTENS_MS) return;
+ * allein meldete auch einen Prozess, dessen Start gescheitert ist. Das Ergebnis
+ * endet mit dem Schreiben in die Datenbank, damit ein Test darauf warten kann. */
+export function erneuereLebenszeichen(): Promise<void> {
+  if (!_worker || Date.now() - _worker.letzteRunde() > STILL_HOECHSTENS_MS) return Promise.resolve();
   fs.writeFile(LEBENSZEICHEN_DATEI, String(Date.now()), { mode: 0o600 }, (e) => { if (e) meldeFehler('jobs:lebenszeichen', e); });
-  auftraegeBereich().laufzustand.setzeZustand(LEBENSZEICHEN_SCHLUESSEL, new Date().toISOString()).catch(logAndContinue('jobs:lebenszeichen'));
+  return auftraegeBereich().laufzustand.setzeZustand(LEBENSZEICHEN_SCHLUESSEL, new Date().toISOString()).catch(logAndContinue('jobs:lebenszeichen'));
 }
 
 /**
@@ -50,7 +51,7 @@ export async function starteJobs(beides: boolean): Promise<void> {
   if (await offenerBildbedarf()) await bildbedarfAnstossen();
   await planeKursabruf();
   _worker = starteAuftragsWorker();
-  erneuereLebenszeichen();
+  void erneuereLebenszeichen();
   _lebenszeichen ??= setInterval(erneuereLebenszeichen, LEBENSZEICHEN_MS);
   _lebenszeichen.unref();
 }

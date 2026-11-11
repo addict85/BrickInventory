@@ -83,8 +83,7 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
     assert.ok(await liesZustand(jp.LEBENSZEICHEN_SCHLUESSEL), 'nach dem Start fehlt das Lebenszeichen');
     await jp.stoppeJobs();
     await loescheZustand(jp.LEBENSZEICHEN_SCHLUESSEL);
-    jp.erneuereLebenszeichen();
-    await warte(200);
+    await jp.erneuereLebenszeichen();
     assert.equal(await liesZustand(jp.LEBENSZEICHEN_SCHLUESSEL), null, 'ohne Worker kein Lebenszeichen');
   });
 });
