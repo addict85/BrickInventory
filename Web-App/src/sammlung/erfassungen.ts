@@ -2,7 +2,7 @@
 import { geldEingabe } from '../infra/geld';
 import * as repo from './repository/erfassungen';
 import type { DbSchnittstelle } from '../../db/database';
-import { type Sicht } from '../haushalt/haushalt';
+import type { Sicht } from '../haushalt/haushalt';
 import { findSameDayAcquisition } from '../bestand/acquisitions';
 import { Abstriche } from '../infra/ergebnis';
 import { withInventoryLock, bestandsSchluessel } from '../../db/txLock';

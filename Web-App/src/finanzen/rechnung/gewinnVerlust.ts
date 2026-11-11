@@ -1,5 +1,5 @@
 
-import { type Sicht } from '../../haushalt/haushalt';
+import type { Sicht } from '../../haushalt/haushalt';
 import { getGlobalSetting, getSetting } from '../../einstellungen/settings';
 import { valueSet, valueAcquisitionRows, weightedPurchase, entwicklungProzent, kachelWerte } from '../setValue';
 import { effectiveCondition } from './zustand';
