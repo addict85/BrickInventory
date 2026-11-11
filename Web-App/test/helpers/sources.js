@@ -115,6 +115,10 @@ function buildAndRequire() {
     _zugangGesetzt = true;
   }
   // prozess.js lädt nichts; bereich.js erst beim ersten Gebrauch der Dienste.
+  const BEREICHE = [['verwaltung', 'Verwaltung']];
+  for (const [b, B] of BEREICHE)
+    require(path.join(ROOT, 'dist', `src/${b}/prozess.js`))[`verdrahte${B}`](() =>
+      require(path.join(ROOT, 'dist', `src/${b}/bereich.js`))[`erzeuge${B}`]({ db: dbModul.standardDb() }));
   require(path.join(ROOT, 'dist', 'src/katalog/prozess.js')).verdrahteKatalog(() =>
     require(path.join(ROOT, 'dist', 'src/katalog/bereich.js')).erzeugeKatalog({ db: dbModul.standardDb() }));
   require(path.join(ROOT, 'dist', 'src/sets/prozess.js')).verdrahteSets(() =>

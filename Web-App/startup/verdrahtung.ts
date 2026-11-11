@@ -8,6 +8,8 @@ import { erzeugeSets } from '../src/sets/bereich';
 import { verdrahteSets } from '../src/sets/prozess';
 import { erzeugeKatalog } from '../src/katalog/bereich';
 import { verdrahteKatalog } from '../src/katalog/prozess';
+import { erzeugeVerwaltung } from '../src/verwaltung/bereich';
+import { verdrahteVerwaltung } from '../src/verwaltung/prozess';
 import { ziehePlanVor } from '../src/auftraege/zeitplan';
 import { refreshPriceForSet } from '../src/finanzen/preisLauf';
 import { merkeGebraucht } from '../src/katalog/bilder/bildbedarf';
@@ -46,6 +48,7 @@ export function baueVerdrahtung(): Verdrahtung {
 /** Der Zugang zur Datenbank kommt vom Einstieg; ohne Angabe der des Prozesses. */
 export function verdrahte(v: Verdrahtung = baueVerdrahtung(), db: Db = standardDb()): void {
   verdrahteNacharbeit(v.nacharbeit);
+  verdrahteVerwaltung(() => erzeugeVerwaltung({ db }));
   verdrahteKatalog(() => erzeugeKatalog({ db }));
   verdrahteSets(() => erzeugeSets({ db, nacharbeit: v.nacharbeit }));
 }

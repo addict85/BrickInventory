@@ -28,6 +28,7 @@ import { bricksetJetzt, bricksetZahlen, bricksetTermineVorziehen } from '../auft
 import { anfragenJeMinute, bildbedarfAnstossen, katalogBilderVormerken } from '../katalog/bilder/bildbedarf';
 import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
 import { alsAbrufFehler, pruefeBricklinkZugang, ausRetryWarteschlange, pruefeBricksetZugang, pruefeRebrickableZugang, oeffneBild } from '../katalog/quellen';
+import { verwaltungBereich } from './prozess';
 
 // Eine Frist für beide Kacheln; drei Minuten bei einem Takt von zwanzig Sekunden.
 const JOB_FRISCH_MS = 3 * 60_000;
@@ -61,7 +62,7 @@ export async function cacheStatistik() {
   const ab = new Abstriche();
   const [stats, stale, rlBL, rlRB, rlBS] = await Promise.all([
     ab.oder('cache', getCacheStats(), { prices: 0, subsets: 0, catalog: 0 }),
-    ab.oder('veraltete_preise', verwaltung.veraltetePreise(), 0),
+    ab.oder('veraltete_preise', verwaltungBereich().verwaltung.veraltetePreise(), 0),
     ab.oder('kontingent_bricklink', getRateLimitStatus('bricklink'), leer),
     ab.oder('kontingent_rebrickable', getRateLimitStatus('rebrickable'), leer),
     ab.oder('kontingent_brickset', getRateLimitStatus('brickset'), leer),
@@ -86,7 +87,7 @@ export async function bricksetLimitGesetzt(alt: number, neu: number) {
 }
 
 export async function anleitungenNeuEinreihen() {
-  const fehlend = await verwaltung.setsOhneAnleitung();
+  const fehlend = await verwaltungBereich().verwaltung.setsOhneAnleitung();
   for (const { set_number } of fehlend) {
     await loescheAnleitungen(set_number).catch(logAndContinue('verwaltung:loescheAnleitungen'));
     await anleitungEinreihen(set_number);
@@ -96,7 +97,7 @@ export async function anleitungenNeuEinreihen() {
 
 /** Im Format von früher, damit die Oberfläche unverändert bleibt. */
 export async function preisJobStand() {
-  const plan = await verwaltung.letzterLaufDerArt();
+  const plan = await verwaltungBereich().verwaltung.letzterLaufDerArt();
   let letzter: Record<string, any> = {};
   try { letzter = JSON.parse(await liesZustand('preis_job_stand') ?? '{}'); } catch (e) { meldeFehler('verwaltung:preis-stand', e); }
   const laeuft = plan?.status === 'laeuft';
@@ -205,11 +206,11 @@ const frisch = (zeit: unknown) => typeof zeit === 'number' && Date.now() - zeit 
  * während der Hintergrund-Job nachlädt. */
 async function bildKachel(ab: Abstriche): Promise<Kachel> {
   const [teileOffen, fertig, setFiguren, bestandsFiguren, katalogOffen] = await Promise.all([
-    zahl(ab, verwaltung.teilbilderOffen(), 'bilder'), zahl(ab, verwaltung.teilbilderFertig(), 'bilder'),
-    zahl(ab, verwaltung.setFigurenbilderOffen(), 'bilder'),
+    zahl(ab, verwaltungBereich().verwaltung.teilbilderOffen(), 'bilder'), zahl(ab, verwaltungBereich().verwaltung.teilbilderFertig(), 'bilder'),
+    zahl(ab, verwaltungBereich().verwaltung.setFigurenbilderOffen(), 'bilder'),
     // Figuren des Bestands legt derselbe Lauf lokal ab; sie gehören in die offene Menge.
-    zahl(ab, verwaltung.bestandsFigurenbilderOffen(), 'bilder'),
-    zahl(ab, verwaltung.katalogBilderOffen(), 'bilder'),
+    zahl(ab, verwaltungBereich().verwaltung.bestandsFigurenbilderOffen(), 'bilder'),
+    zahl(ab, verwaltungBereich().verwaltung.katalogBilderOffen(), 'bilder'),
   ]);
   const offen = teileOffen + setFiguren + bestandsFiguren;
   const job = await ab.oder('bilder', monitor.get('imgDl'), null);
@@ -278,8 +279,8 @@ export async function jobUebersicht() {
   const ab = new Abstriche();
   const [anleitungen, gemappt, blGesamt, rbTeile, rbInventar, lastSync] = await Promise.all([
     anleitungsAuftraege(ab),
-    zahl(ab, verwaltung.zugeordneteTeile(), 'bl_zuordnung'), zahl(ab, verwaltung.bricklinkTeile(), 'bl_zuordnung'),
-    zahl(ab, verwaltung.rbTeile(), 'katalog'), zahl(ab, verwaltung.rbInventarTeile(), 'katalog'),
+    zahl(ab, verwaltungBereich().verwaltung.zugeordneteTeile(), 'bl_zuordnung'), zahl(ab, verwaltungBereich().verwaltung.bricklinkTeile(), 'bl_zuordnung'),
+    zahl(ab, verwaltungBereich().verwaltung.rbTeile(), 'katalog'), zahl(ab, verwaltungBereich().verwaltung.rbInventarTeile(), 'katalog'),
     liesZustand('rb_csv_last_sync'),
   ]);
   const blIds = blIdsKachel(jobs.blIds ?? {}, gemappt, blGesamt);
@@ -375,11 +376,11 @@ export async function bildProbe(url: string) {
 export async function preisProbe(uid: number, setNumber: string, live: boolean) {
   const ab = new Abstriche();
   const [setRow, acqs, cacheRows, histRows, currRow, ttlRow] = await Promise.all([
-    verwaltung.probeSet(uid, setNumber),
-    verwaltung.probeErfassungen(uid, setNumber),
-    verwaltung.probePreisCache(setNumber),
-    verwaltung.probePreisVerlauf(setNumber),
-    ab.oder('waehrung', verwaltung.probeWaehrung(uid), null),
+    verwaltungBereich().verwaltung.probeSet(uid, setNumber),
+    verwaltungBereich().verwaltung.probeErfassungen(uid, setNumber),
+    verwaltungBereich().verwaltung.probePreisCache(setNumber),
+    verwaltungBereich().verwaltung.probePreisVerlauf(setNumber),
+    ab.oder('waehrung', verwaltungBereich().verwaltung.probeWaehrung(uid), null),
     getGlobalSetting('price_cache_ttl'),
   ]);
 
@@ -433,8 +434,8 @@ export async function preisProbe(uid: number, setNumber: string, live: boolean) 
  * werden mitgezählt. */
 export async function katalogBilderEinreihen(alleErneut: boolean) {
     const zuVergessen = await (alleErneut
-      ? verwaltung.setFehlanzeigen()
-      : verwaltung.setFehlanzeigenOhne404());
+      ? verwaltungBereich().verwaltung.setFehlanzeigen()
+      : verwaltungBereich().verwaltung.setFehlanzeigenOhne404());
     const verworfen = zuVergessen.length
       ? await vergissFehlend(zuVergessen.map(r => r.cache_key))
       : 0;
@@ -451,7 +452,7 @@ export async function katalogBilderEinreihen(alleErneut: boolean) {
       }
     } catch (_) { /* Ordner noch leer — dann ist nichts fertig */ }
 
-    const kandidaten = await verwaltung.katalogBildKandidaten();
+    const kandidaten = await verwaltungBereich().verwaltung.katalogBildKandidaten();
 
     // Dieselbe Namensregel wie downloadSetImage(), sonst fände der Vergleich nichts.
     const dateiname = (sn: string) => String(sn).replace(/[^a-z0-9-]/gi, '_');
@@ -468,7 +469,7 @@ export async function katalogBilderEinreihen(alleErneut: boolean) {
       neuEingereiht = await katalogBilderVormerken(offenUrls, offenSets);
       await bildbedarfAnstossen();
     }
-    const offen = await verwaltung.offeneBildauftraege();
+    const offen = await verwaltungBereich().verwaltung.offeneBildauftraege();
     // „Stunden oder Tage?" ist die erste Frage; die Rate kommt aus dem Job selbst.
     const proMinute = anfragenJeMinute();
     return {
@@ -481,14 +482,14 @@ export async function katalogBilderEinreihen(alleErneut: boolean) {
       dauer_minuten: Math.ceil((offen?.n ?? 0) / proMinute),
     };
 }
-export { KontoBildzeile, bildZeilenDerKonten, fehlanzeigeDerVorschau, fehlanzeigeDesSets, katalogBild, protokollSeit, setFehlanzeigen, vorschauFehlanzeigen } from './repository/verwaltung';
+export { KontoBildzeile } from './repository/verwaltung';
 export { letzteEintraege, protokolliere, raeumeProtokollAuf } from '../konto/verwalterProtokoll';
 
 /** Die wiederkehrenden Fragen zu einer leeren Kachel in einer Antwort: Datenbank, Platte, Proxy, Fehlanzeige. */
 export async function bildDiagnose(sn: string) {
   const ab = new Abstriche();
-  const konten: KontoBildzeile = await ab.oder('konten', verwaltung.bildZeilenDerKonten(sn), { anzahl_konten: 0, image_local: null, image_url: null });
-  const katalog = await ab.oder('katalog', verwaltung.katalogBild(sn), null);
+  const konten: KontoBildzeile = await ab.oder('konten', verwaltungBereich().verwaltung.bildZeilenDerKonten(sn), { anzahl_konten: 0, image_local: null, image_url: null });
+  const katalog = await ab.oder('katalog', verwaltungBereich().verwaltung.katalogBild(sn), null);
 
   const safe = sn.replace(/[^a-z0-9-]/gi, '_');
   const datei = async (p: string) => {
@@ -508,8 +509,8 @@ export async function bildDiagnose(sn: string) {
     }
   }
 
-  const merker = await ab.oder('fehlanzeige', verwaltung.fehlanzeigeDesSets(sn), null);
-  const vorschauMerker = await ab.oder('fehlanzeige', verwaltung.fehlanzeigeDerVorschau(safe), null);
+  const merker = await ab.oder('fehlanzeige', verwaltungBereich().verwaltung.fehlanzeigeDesSets(sn), null);
+  const vorschauMerker = await ab.oder('fehlanzeige', verwaltungBereich().verwaltung.fehlanzeigeDerVorschau(safe), null);
 
   // Eine Diagnose aus Ersatzwerten führte in die Irre: zuerst sagen, was nicht lesbar war.
   const hinweise: string[] = ab.teile.length ? [`Nicht lesbar, dort stehen Ersatzwerte: ${ab.teile.join(', ')}.`] : [];

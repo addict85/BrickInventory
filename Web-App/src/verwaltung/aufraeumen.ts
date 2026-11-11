@@ -13,8 +13,8 @@ import { raeumeIdempotenzAuf } from '../idempotenz/dienst';
 import { raeumeOffeneRegistrierungenAuf } from '../konto/konten';
 import { raeumeProtokollAuf } from './dienst';
 import { raeumeAlteSicherungenAuf } from '../../db/migrate';
-import * as db from '../../db/database';
 import { pruefeAbbruch, type AuftragsLauf } from '../auftraege/auftraege';
+import { verwaltungBereich } from './prozess';
 
 type Schritt = [name: string, lauf: () => Promise<unknown>];
 
@@ -48,7 +48,7 @@ function aufraeumenTaeglich(lauf?: AuftragsLauf): Promise<void> {
     ['unbestätigte Registrierungen', raeumeOffeneRegistrierungenAuf],
     ['Bild-Cache', raeumeBildCacheAuf],
     ['Verwaltungsprotokoll', () => raeumeProtokollAuf()],
-    ['Kopien vor Migrationen', () => raeumeAlteSicherungenAuf(db)],
+    ['Kopien vor Migrationen', () => raeumeAlteSicherungenAuf(verwaltungBereich().db)],
   ], lauf);
 }
 

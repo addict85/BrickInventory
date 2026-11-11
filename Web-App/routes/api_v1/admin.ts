@@ -5,11 +5,12 @@ import { requireApiAdmin } from './middleware';
 import { getLimitForApi } from '../../src/katalog/apiKontingent';
 import { vergissFehlend } from '../../src/katalog/bilder/imageMisses';
 import { setGlobalSetting, getGlobalSetting } from '../../src/einstellungen/settings';
-import { cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinreihen, preisJobStand, preisJobJetzt, fehlendeBilderNachladen, bricksetWiederholen, bricksetEntfernen, jobZeitplanSetzen, jobUebersicht, bildProbe, preisProbe, katalogBilderEinreihen, katalogAbgleichJetzt, bricksetListe, letzteEintraege, bildDiagnose, protokollSeit, setFehlanzeigen, vorschauFehlanzeigen } from '../../src/verwaltung/dienst';
+import { cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinreihen, preisJobStand, preisJobJetzt, fehlendeBilderNachladen, bricksetWiederholen, bricksetEntfernen, jobZeitplanSetzen, jobUebersicht, bildProbe, preisProbe, katalogBilderEinreihen, katalogAbgleichJetzt, bricksetListe, letzteEintraege, bildDiagnose } from '../../src/verwaltung/dienst';
 import { auftragsUebersicht, auftragAbbrechen, auftragWiederholen, auftragsArtJetzt, auftragsArtLeeren } from '../../src/verwaltung/hintergrund';
 import { seiteAus } from '../../src/infra/seite';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
+import { verwaltungBereich } from '../../src/verwaltung/prozess';
 const router = vertragsRouter({ grosseIds: true });
 
 
@@ -64,11 +65,11 @@ router.post('/admin/forget-image-misses', requireApiAdmin, async (req: Anfrage<'
   } else {
     // Nicht die ganze Tabelle: Die Vorschau-Vermerke haben einen anderen Zweck
     // und sollen nicht nebenbei mitverschwinden.
-    const rows = await setFehlanzeigen();
+    const rows = await verwaltungBereich().verwaltung.setFehlanzeigen();
     if (rows.length) entfernt = await vergissFehlend(rows.map(r => r.cache_key));
   }
   if (req.eingabe.thumbs === true) {
-    const rows = await vorschauFehlanzeigen();
+    const rows = await verwaltungBereich().verwaltung.vorschauFehlanzeigen();
     if (rows.length) entfernt += await vergissFehlend(rows.map(r => r.cache_key));
   }
   // Die anderen Prozesse frischen den Merker im Fünf-Minuten-Takt aus der Tabelle auf.
@@ -144,7 +145,7 @@ router.post('/admin/redownload-missing-images', requireApiAdmin, async (_req: Au
 
 router.get('/admin/logs', requireApiAdmin, async (req: Anfrage<'GET /api/v1/admin/logs'>, res: Antwort<'GET /api/v1/admin/logs'>) => {
   const minutes = Math.min(2880, Math.max(1, req.abfrage.minutes || 15));
-  const rows = await protokollSeit(minutes);
+  const rows = await verwaltungBereich().verwaltung.protokollSeit(minutes);
   res.json({ success: true, minutes, count: rows.length, logs: rows });
 });
 
