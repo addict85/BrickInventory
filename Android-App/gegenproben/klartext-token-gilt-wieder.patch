@@ -1,0 +1,17 @@
+Gegenprobe: Der Speicherspiegel nimmt ein Klartext-Token älterer Fassungen wieder als Anmeldung
+Modul: core-data
+Test: ch.brickinventoryapp.data.TokenTresorTest
+Rot: ein Klartext-Token aelterer Fassungen gilt nie und wird beim Start entfernt
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+@@ -178,7 +178,7 @@
+         // Der Nachlauf aus dem DataStore: für den Kaltstart und für Änderungen,
+         // die nicht über die save-Funktionen kamen (Umschlüsseln beim Start).
+         spiegle<String, String>(::adresseAus, _serverUrlState) { r, melde -> melde(r) }
+-        spiegle<String?, String>({ it[AUTH_TOKEN_ENC] }, _authTokenState) { geheim, melde ->
++        spiegle<String?, String>({ it[AUTH_TOKEN_ENC] ?: it[AUTH_TOKEN]?.let(tresor::verschluessle) }, _authTokenState) { geheim, melde ->
+             liesToken(tresor, geheim, null, melde, sperre = sperre)
+         }
+         spiegle<String?, String?>({ it[TOKEN_HERKUNFT] }, _tokenHerkunftState) { r, melde -> melde(r) }

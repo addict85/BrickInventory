@@ -6,9 +6,9 @@ Rot: ein anderer Pfad auf demselben Host verwirft den Token
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
-@@ -200,8 +200,7 @@ class TokenAblage @Inject constructor(
+@@ -219,8 +219,7 @@
              val herkunft = platte[TOKEN_HERKUNFT] ?: _tokenHerkunftState.value ?: alteAdresse
-             val hatToken = platte[AUTH_TOKEN_ENC] != null || !platte[AUTH_TOKEN].isNullOrEmpty() || tokenJetzt().isNotBlank()
+             val hatToken = platte[AUTH_TOKEN_ENC] != null || tokenJetzt().isNotBlank()
              val anderer = hatToken &&
 -                (!NetworkPolicy.gleicheHerkunft(herkunft, normalized) ||
 -                    !NetworkPolicy.gleicherServer(alteAdresse, normalized))

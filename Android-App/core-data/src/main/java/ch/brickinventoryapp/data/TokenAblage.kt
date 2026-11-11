@@ -55,11 +55,12 @@ class TokenAblage @Inject constructor(
     private val entwertung: Provider<EntwertungsPlaner> = Provider { EntwertungsPlaner {} },
 ) : Tokenspiegel, Tokenuebernahme, CacheBesitzer, Entwertungsquelle, Zugangsdaten, Anmeldestand, Sitzungsende {
     companion object {
+        /** Klartext älterer Fassungen: gelesen, bis der Start ihn nach [SERVER_URL_ENC] übernimmt. */
         val SERVER_URL   = stringPreferencesKey("server_url")
+        val SERVER_URL_ENC = stringPreferencesKey("server_url_enc")
         /**
-         * Der alte Klartext-Schlüssel: Auf Geräten mit älterer Fassung liegt das Token
-         * dort. Er wird nur noch einmal zur Übernahme gelesen und dann entfernt;
-         * geschrieben wird AUTH_TOKEN_ENC.
+         * Das Klartext-Token älterer Fassungen. Es gilt nie als Token, sondern wird nur
+         * entfernt: Was im Klartext lag, kann kopiert sein (Sicherung, Dateizugriff).
          */
         val AUTH_TOKEN     = stringPreferencesKey("auth_token")
 
@@ -69,30 +70,39 @@ class TokenAblage @Inject constructor(
         val TOKEN_HERKUNFT = stringPreferencesKey("token_herkunft")
         /** Wann mit Passwort, Passkey oder QR angemeldet wurde; ein Tausch ändert es nicht. */
         val ANGEMELDET_AM = longPreferencesKey("angemeldet_am")
+        /** Klartext älterer Fassungen, wie [SERVER_URL]. */
         val USERNAME     = stringPreferencesKey("username")
+        val USERNAME_ENC = stringPreferencesKey("username_enc")
+    }
+
+    /** Erst der Geheimtext; der Klartext nur, bis der Start ihn übernommen hat (uebernimmAngaben). */
+    private fun angabe(prefs: Preferences, geheim: Preferences.Key<String>, klar: Preferences.Key<String>): String? =
+        prefs[geheim]?.let { geraet.entschluessleAngabe(it, geheim.name) } ?: prefs[klar]
+
+    private fun MutablePreferences.setzeAngabe(geheim: Preferences.Key<String>, klar: Preferences.Key<String>, wert: String) {
+        this[geheim] = geraet.verschluessleAngabe(wert, geheim.name) ?: throw java.io.IOException("${geheim.name} nicht verschlüsselbar")
+        remove(klar)
     }
 
     val serverUrl: Flow<String> = dataStore.data.map { adresseAus(it) }
 
     /** Das Schema klein (HTTPs → https), wie es saveServerUrl ablegt. */
     private fun adresseAus(prefs: Preferences): String {
-        val raw = prefs[SERVER_URL] ?: ""
+        val raw = angabe(prefs, SERVER_URL_ENC, SERVER_URL) ?: ""
         return if (raw.contains("://")) {
             val idx = raw.indexOf("://")
             raw.substring(0, idx).lowercase() + raw.substring(idx)
         } else raw
     }
     /**
-     * Das Bearer-Token im Klartext. Erst der verschlüsselte Wert, sonst der alte
-     * Klartext — sonst wäre jede ältere Installation nach dem Update abgemeldet.
-     * Umgeschrieben wird in uebernehmeAltesToken(); ein Lesepfad schreibt nicht.
+     * Das Bearer-Token im Klartext, nur aus dem verschlüsselten Wert ([AUTH_TOKEN] gilt nie).
      * Ein gesperrter Keystore wird abgewartet und nachgeholt (util/Tresorbefund.liesToken).
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    val authToken: Flow<String> = dataStore.data.map { prefs -> prefs[AUTH_TOKEN_ENC] to prefs[AUTH_TOKEN] }
+    val authToken: Flow<String> = dataStore.data.map { prefs -> prefs[AUTH_TOKEN_ENC] }
         .distinctUntilChanged()
-        .transformLatest { (geheim, alt) -> liesToken(tresor, geheim, alt, melde = { emit(it) }, sperre = sperre) }
-    val username:  Flow<String> = dataStore.data.map { it[USERNAME]   ?: "" }
+        .transformLatest { geheim -> liesToken(tresor, geheim, null, melde = { emit(it) }, sperre = sperre) }
+    val username:  Flow<String> = dataStore.data.map { angabe(it, USERNAME_ENC, USERNAME) ?: "" }
 
     // ── In-Memory-Cache für den OkHttp-Interceptor ────────────────────────────
     // Der Interceptor läuft auf OkHttp-Dispatcher-Threads und darf dort nicht
@@ -166,16 +176,17 @@ class TokenAblage @Inject constructor(
 
     init {
         // Der Nachlauf aus dem DataStore: für den Kaltstart und für Änderungen,
-        // die nicht über die save-Funktionen kamen (Übernahme eines alten Tokens).
+        // die nicht über die save-Funktionen kamen (Umschlüsseln beim Start).
         spiegle<String, String>(::adresseAus, _serverUrlState) { r, melde -> melde(r) }
-        spiegle<Pair<String?, String?>, String>({ it[AUTH_TOKEN_ENC] to it[AUTH_TOKEN] }, _authTokenState) { (geheim, alt), melde ->
-            liesToken(tresor, geheim, alt, melde, sperre = sperre)
+        spiegle<String?, String>({ it[AUTH_TOKEN_ENC] }, _authTokenState) { geheim, melde ->
+            liesToken(tresor, geheim, null, melde, sperre = sperre)
         }
         spiegle<String?, String?>({ it[TOKEN_HERKUNFT] }, _tokenHerkunftState) { r, melde -> melde(r) }
         prefsScope.launch {
             try {
                 geraet.bereiteVor()
                 fangeAusserAbbruch { bindeAltbestand() }
+                fangeAusserAbbruch { dataStore.edit { uebernimmAngaben(it) } }
                 // Aufräumen ist Nebensache: Scheitert es, startet die App trotzdem.
                 fangeAusserAbbruch { dataStore.edit { KlartextReste.entferne(it) } }
             } finally {
@@ -206,7 +217,7 @@ class TokenAblage @Inject constructor(
             val platte = dataStore.data.first()
             val alteAdresse = serverUrlJetzt()
             val herkunft = platte[TOKEN_HERKUNFT] ?: _tokenHerkunftState.value ?: alteAdresse
-            val hatToken = platte[AUTH_TOKEN_ENC] != null || !platte[AUTH_TOKEN].isNullOrEmpty() || tokenJetzt().isNotBlank()
+            val hatToken = platte[AUTH_TOKEN_ENC] != null || tokenJetzt().isNotBlank()
             val anderer = hatToken &&
                 (!NetworkPolicy.gleicheHerkunft(herkunft, normalized) ||
                     !NetworkPolicy.gleicherServer(alteAdresse, normalized))
@@ -216,10 +227,10 @@ class TokenAblage @Inject constructor(
             }
             _serverUrlState.value = normalized
             dataStore.edit {
-                it[SERVER_URL] = normalized
+                it.setzeAngabe(SERVER_URL_ENC, SERVER_URL, normalized)
                 if (anderer) {
                     it.remove(AUTH_TOKEN); it.remove(AUTH_TOKEN_ENC); it.remove(TOKEN_HERKUNFT); it.remove(USERNAME)
-                    it.remove(ANGEMELDET_AM)
+                    it.remove(USERNAME_ENC); it.remove(ANGEMELDET_AM)
                 }
             }
         }
@@ -231,9 +242,7 @@ class TokenAblage @Inject constructor(
      * geht an den Server der Bindung, nie an den neuen.
      */
     private fun verwaistesToken(platte: Preferences, alteAdresse: String): Entwertungsauftrag? {
-        val geheim = platte[AUTH_TOKEN_ENC]
-            ?: platte[AUTH_TOKEN]?.takeIf { it.isNotEmpty() }?.let { runCatching { tresor.verschluessle(it) }.getOrNull() }
-            ?: return null
+        val geheim = platte[AUTH_TOKEN_ENC] ?: return null
         val herkunft = platte[TOKEN_HERKUNFT] ?: NetworkPolicy.herkunft(alteAdresse)
         if (alteAdresse.isBlank() || herkunft == null || herkunft != NetworkPolicy.herkunft(alteAdresse)) return null
         return Entwertungsauftrag(alteAdresse, geheim, pinSchluessel(alteAdresse)?.let(geraet::pin), herkunft)
@@ -245,8 +254,7 @@ class TokenAblage @Inject constructor(
      */
     private suspend fun bindeAltbestand() {
         dataStore.edit { p ->
-            val token = p[AUTH_TOKEN_ENC] != null || !p[AUTH_TOKEN].isNullOrEmpty()
-            if (!token || p[TOKEN_HERKUNFT] != null) return@edit
+            if (p[AUTH_TOKEN_ENC] == null || p[TOKEN_HERKUNFT] != null) return@edit
             NetworkPolicy.herkunft(adresseAus(p))?.let { p[TOKEN_HERKUNFT] = it; _tokenHerkunftState.value = it }
         }
     }
@@ -310,27 +318,28 @@ class TokenAblage @Inject constructor(
     }
 
     /**
-     * Ein noch im Klartext liegendes Token einmalig verschlüsselt neu ablegen, beim
-     * App-Start. Getrennt vom Lesepfad, weil `authToken` viele Sammler hat und ein
-     * Schreiben darin mehrfach liefe.
+     * Beim App-Start: ein Klartext-Token älterer Fassungen entfernen (nie übernehmen,
+     * dann meldet man sich neu an) und einen Geheimtext unter dem alten Schlüssel umschlüsseln.
      *
-     * @return true, wenn etwas übernommen wurde; false, wenn nichts zu tun war.
+     * @return true, wenn ein Klartext-Token entfernt wurde.
      */
     override suspend fun uebernehmeAltesToken(): Boolean {
-        var uebernommen = false
+        var entfernt = false
         dataStore.edit { prefs ->
-            val alt = prefs[AUTH_TOKEN]
-            if (alt != null && alt.isNotEmpty()) {
-                prefs[AUTH_TOKEN_ENC] = tresor.verschluessle(alt)
-                prefs.remove(AUTH_TOKEN)
-                uebernommen = true
-            } else if (alt != null) {
-                // Leerer Alteintrag: nichts zu verschlüsseln, aber weg damit.
-                prefs.remove(AUTH_TOKEN)
-            }
+            entfernt = !prefs[AUTH_TOKEN].isNullOrEmpty()
+            prefs.remove(AUTH_TOKEN)
             umschluesseln(prefs)
         }
-        return uebernommen
+        return entfernt
+    }
+
+    /** Adresse und Name im Klartext älterer Fassungen verschlüsselt ablegen; scheitert es, beim nächsten Start. */
+    private fun uebernimmAngaben(prefs: MutablePreferences) {
+        for ((geheim, klar) in listOf(SERVER_URL_ENC to SERVER_URL, USERNAME_ENC to USERNAME)) {
+            val wert = prefs[klar] ?: continue
+            if (prefs[geheim] == null) geraet.verschluessleAngabe(wert, geheim.name)?.let { prefs[geheim] = it } ?: continue
+            prefs.remove(klar)
+        }
     }
 
     /**
@@ -345,7 +354,7 @@ class TokenAblage @Inject constructor(
         if (!tresor.veraltet(neu)) prefs[AUTH_TOKEN_ENC] = neu
     }
     suspend fun saveUsername(name: String) {
-        dataStore.edit { it[USERNAME] = name }
+        dataStore.edit { it.setzeAngabe(USERNAME_ENC, USERNAME, name) }
     }
 
     /** Der Geheimtext wie abgelegt, nur für den Server seiner Bindung; nie im Klartext. */
@@ -368,6 +377,7 @@ class TokenAblage @Inject constructor(
             it.remove(AUTH_TOKEN_ENC)
             it.remove(TOKEN_HERKUNFT)
             it.remove(USERNAME)
+            it.remove(USERNAME_ENC)
             it.remove(ANGEMELDET_AM)
             // Die Marke des Preisalarms gehört dem Konto; das nächste bekäme sonst dessen Stand.
             it.remove(GeraeteAblage.ALARM_MARKE)

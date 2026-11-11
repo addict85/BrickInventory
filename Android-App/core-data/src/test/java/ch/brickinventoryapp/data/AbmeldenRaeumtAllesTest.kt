@@ -159,7 +159,7 @@ class AbmeldenRaeumtAllesTest {
 
         val platte = store.data.first()
         assertEquals("Token", "", prefs.tokenJetzt())
-        assertFalse("Benutzername", TokenAblage.USERNAME in platte.asMap())
+        assertFalse("Benutzername", TokenAblage.USERNAME in platte.asMap() || TokenAblage.USERNAME_ENC in platte.asMap())
         assertFalse("Marke des Preisalarms", GeraeteAblage.ALARM_MARKE in platte.asMap())
         assertTrue("Antwort-Cache", antwortOrdner.walkTopDown().none { it.isFile })
         assertNull("Bestand", offline.lies(Faecher.SETS)?.liste?.takeIf { it.isNotEmpty() })
