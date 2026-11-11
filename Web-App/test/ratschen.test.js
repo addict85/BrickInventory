@@ -81,16 +81,16 @@ test('stille Faenge werden weniger, nie mehr', () => {
 });
 
 test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', () => {
-  // Getrennt gezählt: logAndContinue ist Fire-and-forget (Protokoll, Zähler,
-  // Benachrichtigung) und liefert nichts; meldeUndLiefere gibt dem Aufrufer einen
-  // Ersatzwert, der wie „leer“ aussieht. Lesepfade nehmen versuche()/Abstriche
-  // (src/infra/ergebnis.ts) oder lassen den Fehler weiter.
-  // Gegenprobe (10.11.2026): in src/teile/abfragen.ts wieder
-  // `.catch(meldeUndLiefere('x', []))` → rot (83 Ersatzwerte, Schranke 82).
-  const SCHRANKEN = { logAndContinue: 145, meldeUndLiefere: 82 };
+  // logAndContinue liefert nichts; meldeUndLiefere einen Ersatzwert, der wie „leer“
+  // aussieht. Lesepfade nehmen versuche()/Abstriche oder lassen den Fehler weiter;
+  // die übrigen Ersatzwerte begründen sich als „Ausnahme:“ im Code. Gemessen 7 am 11.11.2026.
+  // Gegenprobe (11.11.2026): in src/katalog/farben.ts wieder
+  // `.catch(meldeUndLiefere('x', []))` → rot (8 Ersatzwerte, Schranke 7).
+  const SCHRANKEN = { logAndContinue: 145, meldeUndLiefere: 7 };
+  const MINDESTENS = { logAndContinue: 20, meldeUndLiefere: 3 };
   for (const [name, schranke] of Object.entries(SCHRANKEN)) {
     const ist = zaehle([new RegExp(`\\b${name}\\(`, 'g')]);
-    assert.ok(ist > 20, `nur ${ist}-mal ${name} gefunden — greift die Suche noch?`);
+    assert.ok(ist > MINDESTENS[name], `nur ${ist}-mal ${name} gefunden — greift die Suche noch?`);
     assert.ok(ist <= schranke, `${ist}-mal ${name}, erlaubt sind ${schranke}`);
     if (ist < schranke) console.log(`  ℹ ${name}: ${ist} (Schranke ${schranke}) — Schranke nachziehen`);
   }
@@ -139,7 +139,7 @@ test('any wird weniger, nie mehr', () => {
   }
 });
 
-test('any in allen Formen und success in Diensten werden weniger, nie mehr', () => {
+test('any in allen Formen, unknown-Parameter und success in Diensten werden weniger, nie mehr', () => {
   // Auch Promise<any>, any[] und Record<string, any>: Die enge Zählung oben sah
   // nur `as any` und `: any`. Gemessen 28 am 11.11.2026.
   // Gegenprobe (05.11.2026): getSetting wieder `fallback?: any` ohne Überladungen → rot.
@@ -157,6 +157,20 @@ test('any in allen Formen und success in Diensten werden weniger, nie mehr', () 
     f => /^src[\\/](?!vertrag[\\/]|http[\\/])/.test(path.relative(WEB, f)));
   assert.ok(success <= SUCCESS_SCHRANKE, `${success}-mal success: true in src/ (ohne vertrag/, http/), erlaubt sind ${SUCCESS_SCHRANKE}`);
   if (success < SUCCESS_SCHRANKE) console.log(`  ℹ success in Diensten: ${success} (Schranke ${SUCCESS_SCHRANKE}) — Schranke nachziehen`);
+  // Routen reichen req.eingabe/req.pfad mit Vertragstyp durch, Dienste nehmen
+  // Fachtypen (Zustand, string). Ausgenommen sind die Prüfer für Rohwerte
+  // (src/vertrag, src/infra, src/http) und Fehlerparameter. Gemessen 74 am 11.11.2026.
+  // Gegenprobe (11.11.2026): `condition: unknown` zurück in alarmDesSetsLoeschen → rot (75).
+  const SCHRANKE_UNKNOWN = 74;
+  const MUSTER = /(?<!catch\s*)[(,]\s*\.{0,3}(?!(?:e|err|error|fehler|grund)\b)\w+\??\s*:\s*unknown\s*(?=[,)=])/g;
+  assert.equal(('f(a: unknown, b?: unknown = 1)'.match(MUSTER) || []).length + ('catch (e: unknown)'.match(MUSTER) || []).length, 2);
+  const ohneKommentare = require('./helpers/sources').ohneKommentare;
+  const ROH = /[\\/]src[\\/](?:vertrag|infra|http)[\\/]/;
+  const unbekannt = quellen().filter(f => /[\\/]src[\\/]/.test(f) && !ROH.test(f))
+    .reduce((n, f) => n + (ohneKommentare(fs.readFileSync(f, 'utf8')).match(MUSTER) || []).length, 0);
+  assert.ok(unbekannt > 20, `nur ${unbekannt} unknown-Parameter gefunden — greift die Suche noch?`);
+  assert.ok(unbekannt <= SCHRANKE_UNKNOWN, `${unbekannt} Parameter vom Typ unknown in Diensten, erlaubt sind ${SCHRANKE_UNKNOWN}`);
+  if (unbekannt < SCHRANKE_UNKNOWN) console.log(`  ℹ unknown-Parameter: ${unbekannt} (Schranke ${SCHRANKE_UNKNOWN}) — Schranke nachziehen`);
 });
 
 test('eigene REQUIRE_DB-Blöcke in Tests werden weniger, nie mehr', () => {
@@ -573,7 +587,7 @@ test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie meh
 test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () => {
   // Je Ordner eine Schranke, gemessen am 10.11.2026.
   // Gegenprobe: 40 Kommentarzeilen an clients/ezb.ts gehängt → rot (clients).
-  const SCHRANKE = { db: 24.4, clients: 15.6, scripts: 24.9 };
+  const SCHRANKE = { db: 24.4, clients: 15.0, scripts: 24.9 };
   const zuViel = [];
   for (const [ordner, schranke] of Object.entries(SCHRANKE)) {
     let zeilen = 0, kommentar = 0;

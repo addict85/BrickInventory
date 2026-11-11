@@ -1,4 +1,3 @@
-import { meldeUndLiefere } from '../infra/fehler';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../infra/fremdeAdressen';
 import { colorId as farbeLesen } from '../infra/validate';
 import * as stamm from './repository/katalogStamm';
@@ -181,7 +180,7 @@ export async function katalogTeil(
   partNumber: string, colorId: number | null, fuer: Von = null,
 ): Promise<KatalogTeil | null> {
   if (!partNumber) return null;
-  const z = await katalog().katalogStamm.teilAusKatalog(partNumber, colorId, fuer).catch(meldeUndLiefere('katalog:teil lesen', null));
+  const z = await katalog().katalogStamm.teilAusKatalog(partNumber, colorId, fuer);
   if (!z) return null;
 
   const quelle: KatalogTeil['bildQuelle'] =
@@ -206,7 +205,7 @@ export async function katalogFigur(
   figNumber: string, fuer: Von = null,
 ): Promise<{ name: string | null; bild: string | null; hatBild: boolean } | null> {
   if (!figNumber) return null;
-  const z = await katalog().katalogStamm.figurAusKatalog(figNumber, fuer).catch(meldeUndLiefere('katalog:figur lesen', null));
+  const z = await katalog().katalogStamm.figurAusKatalog(figNumber, fuer);
   if (!z) return null;
   return {
     name: z.fig_name ?? null,

@@ -63,9 +63,9 @@ test('Höchstdauer der Webapp-Sitzung', async (t) => {
   });
 });
 
-test('server.ts hängt die Höchstdauer hinter die Sitzung', () => {
-  const quelle = fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
-  const sitzung = quelle.indexOf('app.use(session(');
+test('die App hängt die Höchstdauer hinter die Sitzung', () => {
+  const quelle = fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8');
+  const sitzung = quelle.search(/app\.use\(\s*session\(/);
   const frist = quelle.indexOf('app.use(sitzungsHoechstdauer())');
   assert.ok(sitzung > 0 && frist > sitzung, 'die Middleware fehlt oder steht vor der Sitzung');
 });

@@ -7,7 +7,7 @@ import { kontenStand, datenbankErreichbar } from './repository/einrichtung';
 import { konfig } from '../infra/konfig';
 import { Abstriche, versuche } from '../infra/ergebnis';
 import { tlsStand } from '../infra/tlsWurzel';
-import { getGlobalSetting, beiGlobalerAenderung } from '../einstellungen/settings';
+import { getGlobalSetting, beiGlobalerAenderung } from '../einstellungen';
 
 export type SchrittId = 'datenbank' | 'basis_url' | 'https' | 'ca' | 'konto' | 'quelle';
 export interface Schrittzustand {

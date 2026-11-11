@@ -328,6 +328,7 @@ test('kein Anlege-Pfad schreibt direkt in eine Erfassungstabelle', () => {
     'src/figuren/manuelleFiguren.ts',
     'routes/api_v1/sets.ts',
     'src/sets/dienst.ts',
+    'src/sets/inhalt.ts',
   ]) {
     const src = strip(read(f));
     assert.doesNotMatch(

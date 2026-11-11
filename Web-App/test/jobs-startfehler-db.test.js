@@ -32,7 +32,7 @@ const Module = require('node:module');
 const echt = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = echt.apply(this, arguments);
-  if (typeof name === 'string' && /auftraege[/\\\\]zeitplan(\\.js)?$/.test(name))
+  if (typeof name === 'string' && /(?:auftraege[/\\\\]|^\\.\\/)zeitplan(\\.js)?$/.test(name))
     return { ...m, planeAlle: async () => { throw new Error('Testfehler: planeAlle'); } };
   return m;
 };`;

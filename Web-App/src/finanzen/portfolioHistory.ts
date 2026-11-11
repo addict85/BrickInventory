@@ -1,7 +1,6 @@
-import { blickfeldAus } from '../haushalt/haushalt';
-import type { Sicht } from '../haushalt/haushalt';
+import { blickfeldAus, type Sicht } from '../haushalt';
 import * as dbStandard from '../../db/database';
-import { getSetting as getSettingStandard } from '../einstellungen/settings';
+import { getSetting as getSettingStandard } from '../einstellungen';
 import { baueDiagrammdaten } from './portfolio/diagrammdaten';
 import { rekonstruiereKurve, type KurvenPunkt } from './portfolio/kurve';
 import { DEFAULT_PRICE_CONDITION } from './financeCalc';

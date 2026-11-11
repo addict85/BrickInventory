@@ -1,6 +1,6 @@
 
-import { blickfeldAus, type Sicht } from '../../haushalt/haushalt';
-import { getGlobalSetting, getSetting } from '../../einstellungen/settings';
+import { blickfeldAus, type Sicht } from '../../haushalt';
+import { getGlobalSetting, getSetting } from '../../einstellungen';
 import { valueSet, valueAcquisitionRows, weightedPurchase, entwicklungProzent, kachelWerte } from '../setValue';
 import { effectiveCondition } from './zustand';
 import { computeMinifigsValuation, computePartsValuation } from './bewertung';

@@ -9,13 +9,13 @@ import {
   setGlobalSetting,
   globalerWertGueltig,
   getGlobalSetting,
-} from '../einstellungen/settings';
-import { setUserSetting } from '../konto/nutzerEinstellung';
+} from '../einstellungen';
+import { setUserSetting } from '../konto';
 import { buildSetsCsv } from '../sets';
-import { buildPartsCsv, buildFigsCsv } from '../bestand/bestandExport';
-import { buildMerklisteCsv } from '../merkliste/merkliste';
-import { buildPreisalarmeCsv } from '../finanzen/preisalarm';
-import { DAILY_JOBS } from '../auftraege/zeitplan';
+import { buildPartsCsv, buildFigsCsv } from '../bestand';
+import { buildMerklisteCsv } from '../merkliste';
+import { buildPreisalarmeCsv } from '../finanzen';
+import { DAILY_JOBS } from '../auftraege';
 import { zeitplanNeuPlanen, protokolliere } from './dienst';
 import { jsonOderNull } from '../infra/validate';
 import { fachfehler } from '../infra/fehlerTexte';

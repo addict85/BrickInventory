@@ -1,5 +1,5 @@
-import { logAndContinue, meldeUndLiefere } from '../../infra/fehler';
-import { stelleAuftragEin } from '../../auftraege/dienst';
+import { logAndContinue } from '../../infra/fehler';
+import { stelleAuftragEin } from '../../auftraege';
 import { katalog } from '../prozess';
 
 /** Daten, keine Warteschlange: je Adresse eine Zeile. Abgearbeitet vom EINEN
@@ -60,7 +60,7 @@ export async function stoppeBildbedarf(): Promise<void> {
 
 // Sonst bleiben alte Notizen.
 export async function loescheVerfallene(): Promise<number> {
-  const r = await katalog().bildbedarf.loescheAlteBildwuensche(String(NOTIZ_GILT_MS)).catch(meldeUndLiefere('bild-job:r', null));
+  const r = await katalog().bildbedarf.loescheAlteBildwuensche(String(NOTIZ_GILT_MS));
   return r?.changes || 0;
 }
 

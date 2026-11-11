@@ -8,7 +8,7 @@
  *   A  das UPDATE wanted … der Migration entfernt → rot: „Merkliste: andere
  *      Schreibweise wird berichtigt …“ ('2-1' fehlt)
  *   B  im UPDATE wanted die Bedingung `w.id = (SELECT min(y.id) …)` entfernt →
- *      rot: die Migration scheitert an wishlist_user_id_set_number_condition_key
+ *      rot: die Migration scheitert an wanted_user_id_set_number_condition_key
  *   C  in AUFTRAGS_ARTEN eine Art 'neu' ohne Migration ergänzt → rot:
  *      „auftrags_arten kennt genau AUFTRAGS_ARTEN“
  *   D  das ALTER TABLE auftraege ADD CONSTRAINT auftraege_art_fkey entfernt →

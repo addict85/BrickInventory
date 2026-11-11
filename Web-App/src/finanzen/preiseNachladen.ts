@@ -2,11 +2,10 @@
  * hier im Job-Prozess geholt, mit Kontingent und Abbruch, nicht in der Anfrage. */
 import { fetchPrice, fetchPartPrice, fetchMinifigPrice } from './rechnung/preise';
 import { schaetzeFigurenpreis } from './marketPrice';
-import { kontingentFrei } from '../katalog/apiKontingent';
-import { getGlobalSetting } from '../einstellungen/settings';
-import { pruefeAbbruch, AuftragVerschieben, type AuftragsKontext } from '../auftraege/auftraege';
+import { kontingentFrei } from '../katalog';
+import { getGlobalSetting } from '../einstellungen';
+import { pruefeAbbruch, AuftragVerschieben, type AuftragsKontext, type Nutzlast } from '../auftraege';
 import { meldeFehler } from '../infra/fehler';
-import type { Nutzlast } from '../auftraege/nutzlasten';
 
 type Posten = Nutzlast<'preise_nachladen'>['posten'][number];
 

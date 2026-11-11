@@ -1,9 +1,9 @@
 /** Die EINE Umsetzung für Webapp und Android-API, damit beide dasselbe Diagramm zeigen. */
-import { meldeUndLiefere } from '../infra/fehler';
+
 import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
-import { asIds, blickfeldAus, type Sicht } from '../haushalt/haushalt';
+import { asIds, blickfeldAus, type Sicht } from '../haushalt';
 import { buildChart } from './chartData';
-import { blNummerVon } from '../katalog/blZuordnung';
+import { blNummerVon } from '../katalog';
 import { entwicklungProzent } from './setValue';
 import { konfig } from '../infra/konfig';
 import * as repo from './repository/preisverlauf';
@@ -13,7 +13,6 @@ import * as repo from './repository/preisverlauf';
 export function zustaendeFuerVerlauf(belegt: string[], rueckfall: string[]): string[] {
   return belegt.length ? belegt : rueckfall;
 }
-
 
 export interface PricePoint {
   avg_price: number | null;
@@ -121,7 +120,6 @@ export async function getSetPriceHistory(uidWahl: Sicht | number | number[], set
 // ── Preisverlauf manueller Teile und Minifiguren ────────────────────────────
 // Dieselbe Antwortform wie für Sets; Web und App fragen beide hier.
 
-
 /** Nur für Zustände mit Erfassung, sonst fehlte der Prozentangabe die Basis. */
 export async function conditionRows(
   cacheTable: string, acqTable: string, keySql: string, keyVals: unknown[], uid: number | number[], currency: string,
@@ -206,7 +204,7 @@ async function preisNummernFuerFigur(uid: number | number[], figNumber: string):
 export async function purgeAltePreise(): Promise<number> {
   const tage = konfig().preisverlaufTage;
   if (tage <= 0) return 0;
-  const r = await repo.loescheAltenVerlauf(String(tage)).catch(meldeUndLiefere('preisverlauf:aufraeumen', { changes: 0 }));
+  const r = await repo.loescheAltenVerlauf(String(tage));
   return r?.changes || 0;
 }
 

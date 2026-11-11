@@ -1,14 +1,12 @@
 /** Der Wanted-XML-Import als Auftrag: Er legt Teile, Figuren und Sets an und
  * fragt auf Wunsch Rebrickable — beides gehört nicht in den Web-Prozess. */
-import { importiereWantedListe } from '../merkliste/wantedListe';
-import { merkeBlNummer, merkeEigeneBlNummer } from '../katalog/blZuordnung';
-import { starteAuftrag, meldeAuftrag, beendeAuftrag, istAbgebrochen } from '../auftraege/importAuftrag';
-import { addManualPart } from '../teile/manuelleTeile';
-import { addManualFig } from '../figuren/manuelleFiguren';
+import { importiereWantedListe } from '../merkliste';
+import { merkeBlNummer, merkeEigeneBlNummer } from '../katalog';
+import { starteAuftrag, meldeAuftrag, beendeAuftrag, istAbgebrochen, type Nutzlast, type AuftragsKontext } from '../auftraege';
+import { addManualPart } from '../teile';
+import { addManualFig } from '../figuren';
 import { addSet } from '../sets';
 import { logAndContinue } from '../infra/fehler';
-import type { Nutzlast } from '../auftraege/nutzlasten';
-import type { AuftragsKontext } from '../auftraege/auftraege';
 
 export type WantedXmlEingabe = Extract<Nutzlast<'csv_import'>, { quelle: 'wanted_xml' }>['eingabe'];
 

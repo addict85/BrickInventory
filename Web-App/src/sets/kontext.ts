@@ -1,5 +1,5 @@
 import type { Db } from '../../db/database';
-import type { Nacharbeit } from '../auftraege/nacharbeit';
+import type { Nacharbeit } from '../auftraege';
 
 /** Was der Bereich von aussen bekommt: Ein Dienst greift nie selbst auf den
  * Zugang des Prozesses zu, damit ein Test (oder ein zweiter Prozess) ihm einen

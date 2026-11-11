@@ -4,11 +4,9 @@ import express from 'express';
 import type { z } from 'zod';
 import type { Request, Response, NextFunction } from 'express';
 import { konfig } from '../infra/konfig';
-import { routeZu } from '../vertrag';
+import { routeZu, type Schluessel, type AntwortRumpf, type Eingabe, type Abfrage } from '../vertrag';
 import { unbekannteFelder } from '../vertrag/unbekannteFelder';
-import type { Schluessel, AntwortRumpf, Eingabe, Abfrage } from '../vertrag';
-import { FLACHE_EINGABE, Fehler, PFAD } from '../vertrag/grund';
-import type { PfadVon } from '../vertrag/grund';
+import { FLACHE_EINGABE, Fehler, PFAD, type PfadVon } from '../vertrag/grund';
 import { GROESSTE_ID, idWert } from '../infra/validate';
 import { handleRouteError, sendeFehler } from './httpAntwort';
 

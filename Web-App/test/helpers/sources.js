@@ -8,9 +8,10 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..', '..');
 
-/** Nur server.ts: für Prüfungen, bei denen die REIHENFOLGE in der Datei zählt.
- *  Wer den Start meint, nimmt startQuelle(). */
-const serverOnly = () => fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
+/** Die App (startup/app.ts, Middleware in ihrer Reihenfolge) und server.ts:
+ *  für Prüfungen, bei denen die REIHENFOLGE zählt. Wer den Start meint, nimmt startQuelle(). */
+const serverOnly = () => fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8')
+  + '\n' + fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
 
 const imgProxy = () => fs.readFileSync(path.join(ROOT, 'src/katalog/http/bildProxy.ts'), 'utf8')
   + '\n' + fs.readFileSync(path.join(ROOT, 'routes/imgProxy.ts'), 'utf8');
@@ -199,7 +200,7 @@ module.exports.regexWoertlich = regexWoertlich;
 
 /** Der Vorschau-Weg des Bild-Proxys (src/katalog/bilder/proxyThumbs.ts). */
 function proxyThumbQuelle() {
-  return ['src/katalog/http/bildProxy.ts', 'routes/imgProxy.ts', 'src/katalog/bilder/proxyThumbs.ts', 'src/katalog/bilder/imgCacheServe.ts']
+  return ['src/katalog/http/bildProxy.ts', 'routes/imgProxy.ts', 'src/katalog/bilder/proxyThumbs.ts', 'src/katalog/bilder/imgCacheServe.ts', 'src/katalog/http/bildCacheAuslieferung.ts']
     .map(dienstQuelle).join('\n');
 }
 module.exports.proxyThumbQuelle = proxyThumbQuelle;
@@ -221,6 +222,11 @@ function setKernQuelle() {
   return [
     ['routes/api_v1/sets.ts'],
     ['src/sets/dienst.ts'],
+    ['src/sets/inhalt.ts'],
+    ['src/sets/barcode.ts'],
+    ['src/sets/csvImport.ts'],
+    ['src/sets/anleitungen.ts'],
+    ['src/sets/preise.ts'],
     ['src/sets/setService.ts'],
     ['src/sets/erfassen.ts'],
     ['src/katalog/partsImport.ts'],
@@ -368,9 +374,9 @@ module.exports.pruefeParameter = pruefeParameter;
  */
 /** @param {{ ohneTeile?: boolean }} [o] ohneTeile: nur die eingehängten Module, nicht die Dateien eines Zusammenbaus */
 function routerEinhaengungen(o = {}) {
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
-  // `import xRouter = require('./routes/x')` oben, `app.use('/api/…', xRouter)` unten.
-  const dateiJeName = new Map([...src.matchAll(/import\s+(\w+)\s*=\s*require\(\s*['"]\.\/(routes\/[^'"]+)['"]\s*\)/g)]
+  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
+  // `import xRouter from '../routes/x'` oben, `app.use('/api/…', xRouter)` unten.
+  const dateiJeName = new Map([...src.matchAll(/import\s+(\w+)\s+from\s+['"](?:\.\.?\/)+(routes\/[^'"]+)['"]/g)]
     .map(m => [m[1], m[2]]));
   const out = [];
   for (const m of src.matchAll(/app\.use\(\s*['"](\/api[^'"]*)['"]\s*,\s*(\w+)\s*\)/g)) {
@@ -390,14 +396,14 @@ function routerEinhaengungen(o = {}) {
 module.exports.routerEinhaengungen = routerEinhaengungen;
 
 /**
- * Die Adresse an EINER Stelle (server.ts): Ein Prüfstand, der Router von Hand
+ * Die Adresse an EINER Stelle (startup/app.ts): Ein Prüfstand, der Router von Hand
  * einhängt, bliebe nach einem Umzug grün.
  * @param {string} name Dateiname ohne routes/ und ohne .ts, z. B. 'auth'.
  */
 function einhaengung(name) {
   const treffer = routerEinhaengungen().filter(r => r.name === name);
   if (treffer.length !== 1)
-    throw new Error(`routes/${name}.ts haengt ${treffer.length}-mal in server.ts — erwartet: genau einmal`);
+    throw new Error(`routes/${name}.ts haengt ${treffer.length}-mal in startup/app.ts — erwartet: genau einmal`);
   return treffer[0].mount;
 }
 module.exports.einhaengung = einhaengung;

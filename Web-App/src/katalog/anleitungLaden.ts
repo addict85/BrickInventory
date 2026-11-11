@@ -5,10 +5,8 @@ import { mitSitzungsSperre } from '../../db/txLock';
 import { downloadSetInstructions, letzterAbrufWarExtern, anzahlAnleitungen, scrapeInstructionsFromFallback } from './instructions';
 import { fehlertext } from '../infra/fehler';
 import { alsAbrufFehler } from './quellen';
-import { zaehleArt, beendePause, pausiereArt, liesPause } from '../auftraege/dienst';
+import { zaehleArt, beendePause, pausiereArt, liesPause, type Nutzlast, type AuftragsLauf, AuftragVerschieben } from '../auftraege';
 import { LOCKS } from '../infra/lockNamespaces';
-import type { Nutzlast } from '../auftraege/nutzlasten';
-import { type AuftragsLauf, AuftragVerschieben } from '../auftraege/auftraege';
 
 const TAKT_NACH_ABRUF_MS = 15_000;
 /** Pausen nach der ersten bis vierten Cloudflare-Sperre; danach bis morgen. */

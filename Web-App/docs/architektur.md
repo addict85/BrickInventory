@@ -19,7 +19,8 @@ arbeiten. Prozesse sprechen über PostgreSQL miteinander (Tabellen,
 ## Schichten
 
 ```
-server.ts, startup/     hängt alles ein
+server.ts               startet nur: Konfiguration, Datenbank, Jobs, Herunterfahren
+startup/                baut ein (app.ts: Express-App mit baueApp({ pool, konfig, sitzungsGeheimnis }))
 routes/                 HTTP: Eingabe prüfen (Vertrag), Dienst rufen, antworten
 jobs/                   Auftrags-Worker, Bearbeitertabelle, Verdrahtung (keine Fachlogik)
 src/<bereich>/          Dienste (Fachlogik) und repository (SQL)
@@ -44,8 +45,12 @@ Absicht, solange es nur von unten gebraucht wird:
   Budget und Schranken je Konto, Sitzungskeks, Proxy-Vertrauen. Express
   importieren nur Dateien daraus; welche, hält der Test in
   `test/schichten.test.js` fest. Dienste kennen Express nicht, mit einer
-  Ausnahme: `anfrageKonto` trägt die laufende Anfrage über
+  Ausnahme: `kontoKontext` trägt die laufende Anfrage über
   `AsyncLocalStorage` zu Zählern, die keinen Request sehen.
+
+- Jeder Fachbereich hat eine `index.ts`; andere Bereiche, Routen, Jobs und
+  `startup/` importieren nur darüber (ausser den HTTP-Seiten unter
+  `src/<bereich>/http/`). So bleibt der Schnitt der Dateien Sache des Bereichs.
 
 - SQL steht nur in `src/<bereich>/repository*` und `db/`, auch als Klausel
   (Sortierung, Bedingung, Upsert). Dienste nehmen aus `db/database` nur die

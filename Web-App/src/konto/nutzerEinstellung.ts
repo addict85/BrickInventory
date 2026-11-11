@@ -1,7 +1,7 @@
 import * as db from '../../db/database';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
-import { nacharbeit } from '../auftraege/nacharbeit';
-import { schreibeNutzerEinstellung, nutzerWertGueltig, deleteUserSetting } from '../einstellungen/settings';
+import { nacharbeit } from '../auftraege';
+import { schreibeNutzerEinstellung, nutzerWertGueltig, deleteUserSetting } from '../einstellungen';
 import { fachfehler } from '../infra/fehlerTexte';
 import { zaehleAnfrage } from './loginLimiter';
 import * as repo from './repository/waehrung';

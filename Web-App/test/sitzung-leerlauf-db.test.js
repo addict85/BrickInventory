@@ -152,14 +152,14 @@ test('die Drosselung ist kürzer als die Frist', () => {
     + 'sonst schreibt die Webapp wieder mehr als nötig');
 });
 
-test('server.ts gibt dem Speicher eine Frist', () => {
+test('die App gibt dem Speicher eine Frist', () => {
   // Eine Frist, die niemand übergibt, ist die teuerste Art, nichts zu tun —
   // und die Fälle oben blieben dabei grün, weil sie ihren Speicher selbst
   // bauen. Dieselbe Lücke wie in test/sitzung-beruehrung-db.test.js, dort mit
   // derselben Begründung geschlossen.
-  const quelle = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
+  const quelle = ohneKommentare(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
   assert.match(quelle, /ttl:\s*SITZUNG_LEERLAUF_SEK/,
-    'server.ts übergibt dem Sitzungsspeicher kein `ttl` — dann gilt wieder der '
+    'startup/app.ts übergibt dem Sitzungsspeicher kein `ttl` — dann gilt wieder der '
     + 'Tag von connect-pg-simple, und Marcos Frist gibt es nur auf dem Papier');
 
   // Und das Cookie bleibt ohne `maxAge`: Sonst würde es zu einem dauerhaften

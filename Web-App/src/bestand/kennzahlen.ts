@@ -1,5 +1,5 @@
-import { asIds, blickfeldAus, type Sicht } from '../haushalt/haushalt';
-import { getGlobalSetting } from '../einstellungen/settings';
+import { asIds, blickfeldAus, type Sicht } from '../haushalt';
+import { getGlobalSetting } from '../einstellungen';
 import * as repo from './repository/kennzahlen';
 
 /** Spannen über alle drei Domänen und gehören deshalb in keine davon. */

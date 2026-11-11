@@ -1,15 +1,15 @@
 import { kontingentFrei, speicherePreis, cacheUsable, preisAusCache, parallelLimit, bestandsPlaetze, merklistenPlaetze,
   erfassteZustaende, gewuenschteZustaende, schreibeTagesstand, setsMitAlarm } from './financeCalc';
-import { meldeFehler, fehlertext, meldeUndLiefere, logAndContinue } from '../infra/fehler';
-import { liesZustand, setzeZustand } from '../auftraege/laufzustand';
-import { getGlobalSetting, getSetting } from '../einstellungen/settings';
+import { meldeFehler, fehlertext, logAndContinue } from '../infra/fehler';
+import { liesZustand, setzeZustand, AuftragVerschieben, type AuftragsKontext } from '../auftraege';
+import { getGlobalSetting, getSetting } from '../einstellungen';
 import { ohneBricklinkPreis } from '../infra/setNummer';
-import { katalogEintrag, getPriceGuide } from '../katalog/bricklinkPreise';
-import { BricklinkNichtErreichbar } from '../katalog/quellen';
+import { katalogEintrag, getPriceGuide, BricklinkNichtErreichbar } from '../katalog';
 import { belegeSitzungsSperre } from '../../db/txLock';
 import { LOCKS } from '../infra/lockNamespaces';
 import { pruefeSet } from './preisalarm';
-import { AuftragVerschieben, type AuftragsKontext } from '../auftraege/auftraege';
+import { versuche } from '../infra/ergebnis';
+import { zustand } from '../infra/validate';
 
 /** Der Job läuft im Job-Prozess, gelesen wird im Web-Prozess — darum in laufzustand. */
 export const PREIS_STAND = 'preis_job_stand';
@@ -94,8 +94,10 @@ async function runPriceRefresh(k?: AuftragsKontext) {
   try {
     // Auch Merkposten: /price-history liest den Cache nur, und ohne diesen Lauf bliebe ihr Preisverlauf leer.
     const eigene = await bestandsPlaetze();
-    const gewuenschte = await merklistenPlaetze().catch(meldeUndLiefere('preis-job:gewuenschte', []));
-    const allSets = [...eigene, ...(gewuenschte || [])]
+    // Ohne Merkliste laufen wenigstens die eigenen Sets; das Protokoll nennt die Lücke.
+    const gewuenschte = await versuche('preis-job:gewuenschte', merklistenPlaetze());
+    if (!gewuenschte.ok) log('Merkliste nicht lesbar — nur eigene Sets');
+    const allSets = [...eigene, ...(gewuenschte.ok ? gewuenschte.wert : [])]
       .filter((r, i, a) => a.findIndex(x =>
         x.user_id === r.user_id && x.set_number === r.set_number) === i)
       .sort((a, b) => a.user_id - b.user_id);
@@ -162,7 +164,7 @@ async function runPriceRefresh(k?: AuftragsKontext) {
 
     // Preisalarme hier und nicht je Abruf: Dort liefe die Prüfung tausendfach und meldete dasselbe mehrmals.
     try {
-      const wartende = await setsMitAlarm().catch(meldeUndLiefere('preis-job:wartende', []));
+      const wartende = await setsMitAlarm();
       let gemeldet = 0;
       for (const sn of wartende) gemeldet += await pruefeSet(sn);
       if (wartende?.length) log(`Preisalarm: ${wartende.length} Sets geprueft, ${gemeldet} gemeldet`);
@@ -185,11 +187,12 @@ async function zustaendeJeSet(userId: number, setNumbers: string[],
 
   type ZustandsZeile = { set_number: string; c?: string | null };
   const sammle = async (abfrage: Promise<ZustandsZeile[]>): Promise<Map<string, Set<string>>> => {
-    const zeilen = await abfrage.catch(meldeUndLiefere('preis-job:all', []));
+    // Ohne Fang: Ohne die Zustände fiele jedes Set auf 'N', und der Gebrauchtpreis fehlte still.
+    const zeilen = await abfrage;
     const m = new Map<string, Set<string>>();
     for (const r of zeilen) {
       if (!m.has(r.set_number)) m.set(r.set_number, new Set<string>());
-      m.get(r.set_number)!.add(r.c === 'U' ? 'U' : 'N');
+      m.get(r.set_number)!.add(zustand(r.c));
     }
     return m;
   };

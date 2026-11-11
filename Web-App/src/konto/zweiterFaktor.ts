@@ -122,7 +122,7 @@ export async function bestaetigeEinrichtung(uid: number, code: string): Promise<
 }
 
 /** Einmalcode und Wiederherstellungscode gelten genau einmal. */
-export async function pruefeCode(uid: number, code: unknown): Promise<'totp' | 'wiederherstellung' | null> {
+export async function pruefeCode(uid: number, code: string | number | null | undefined): Promise<'totp' | 'wiederherstellung' | null> {
   const eingabe = String(code ?? '').trim();
   if (!eingabe) return null;
   if (/^\d{6}$/.test(eingabe)) {

@@ -2,8 +2,7 @@
  * den Web-Prozess nicht für alle anhalten. Zu viele Seiten werden vorher abgewiesen. */
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import { PDFDocument as PdfLibDocument } from '@cantoo/pdf-lib';
-import { werteAusPdf, PdfZuGross } from './gutscheinPdf';
-import type { GutscheinWerte } from './gutscheinPdf';
+import { werteAusPdf, PdfZuGross, type GutscheinWerte } from './gutscheinPdf';
 import { seitenOderKeine } from './gutscheinPdfSchreiben';
 
 /** Ein Sammel-PDF von LEGO hat eine Seite je Gutschein; 200 sind weit mehr, als jemand auf einmal kauft. */

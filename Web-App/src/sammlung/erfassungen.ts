@@ -2,21 +2,18 @@
 import { geldEingabe } from '../infra/geld';
 import * as repo from './repository/erfassungen';
 import type { DbSchnittstelle } from '../../db/database';
-import { writableIds, acquisitionMoveSource, resolveWriteTarget, blickfeldAus, type Sicht } from '../haushalt/haushalt';
-import { findSameDayAcquisition } from '../bestand/acquisitions';
+import { writableIds, acquisitionMoveSource, resolveWriteTarget, blickfeldAus, type Sicht } from '../haushalt';
+import { findSameDayAcquisition, loescheManuellesTeil, loescheManuelleFigur } from '../bestand';
 import { Abstriche } from '../infra/ergebnis';
 import { withInventoryLock, bestandsSchluessel } from '../../db/txLock';
 import { moveSetBetweenAccounts, moveManualAcquisition, withSetAggregate, deleteSetRows } from '../sets';
-import { getCurrentMarketPrice, getCurrentPartMarketPrice, getCurrentFigMarketPrice } from '../finanzen/marketPrice';
-import { loescheManuellesTeil, loescheManuelleFigur } from '../bestand/gemeinsam';
-import { fachfehler } from '../infra/fehlerTexte';
-import type { FehlerCode } from '../infra/fehlerTexte';
-import { blAbrufNummer } from '../katalog/blZuordnung';
-import { mengeDesSets, mengeDerPosition, preisSpalte } from '../../db/bestandsmenge';
-import { bestandsMenge } from '../infra/validate';
+import { getCurrentMarketPrice, getCurrentPartMarketPrice, getCurrentFigMarketPrice } from '../finanzen';
+import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
+import { blAbrufNummer } from '../katalog';
+import { mengeDesSets, mengeDerPosition, preisSpalte, type ErfassungsArt } from '../../db/bestandsmenge';
+import { bestandsMenge, zustand } from '../infra/validate';
 
 export type { ErfassungsArt } from '../../db/bestandsmenge';
-import type { ErfassungsArt } from '../../db/bestandsmenge';
 type Schluessel = Array<string | number>;
 
 interface Art {
@@ -123,7 +120,7 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
       neuesDatum = String(date);
     }
     const hatZustand = condition !== undefined && condition !== null;
-    const zielZustand = hatZustand ? (['N', 'U'].includes(String(condition)) ? String(condition) : 'N') : (acq.condition || 'N');
+    const zielZustand = hatZustand ? zustand(condition) : (acq.condition || 'N');
     const zielGeschaetzt = rawPrice !== undefined ? (preisGeschaetzt && priceVal != null) : !!acq.price_estimated;
     // Geprüft gegen die Werte NACH dieser Änderung.
     if (neuesDatum || rawPrice !== undefined || hatZustand) {

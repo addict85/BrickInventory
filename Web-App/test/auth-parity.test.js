@@ -163,7 +163,7 @@ test('Admins können das Passwort anderer Nutzer setzen', () => {
   // haelt fest, dass ALLE sechs Stellen sie benutzen.
   assert.match(fn, /passwortMangel\(password, /, 'Passwortregel fehlt');
   // Hashen und das Beenden aller Zugänge übernimmt der Kontodienst (Test darüber).
-  assert.match(fn, /if \(!await K\.setzeFremdesPasswort\(targetId, password\)\) return sendeFehler\(req, res, 404/,
+  assert.match(fn, /if \(!await K\.setzeFremdesPasswort\(targetId, password(?: \?\? '')?\)\) return sendeFehler\(req, res, 404/,
     'Ein unbekannter Nutzer muss 404 ergeben, nicht stillen Erfolg');
 });
 

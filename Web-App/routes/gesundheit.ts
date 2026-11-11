@@ -5,8 +5,8 @@ import { fehlerAntwort } from '../src/http/httpAntwort';
 import { logAndContinue } from '../src/infra/fehler';
 import { fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
 import { resolveUserId, istVerwalter } from '../src/konto/http/anmeldung';
-import { aktuellerStartZustand, oeffentlicherStartZustand } from '../src/auftraege/startZustand';
-import { gesundheitsBericht, datenbankBereit } from '../src/verwaltung/gesundheit';
+import { aktuellerStartZustand, oeffentlicherStartZustand } from '../src/auftraege';
+import { gesundheitsBericht, datenbankBereit } from '../src/verwaltung';
 
 // Wie der Vertrag: eine andere Schreibung ist eine andere Route (404).
 const router = express.Router({ caseSensitive: true });

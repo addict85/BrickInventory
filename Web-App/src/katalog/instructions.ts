@@ -4,10 +4,11 @@ import PDFDocument from 'pdfkit';
 import { INSTRUCTIONS_DIR } from '../infra/appPaths';
 import { setTimeout as warte } from 'node:timers/promises';
 import { downloadFile, scrapeInstructions, httpsGetRobust, brickset } from './quellen';
-import { meldeFehler, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
+import { meldeFehler, fehlertext, logAndContinue } from '../infra/fehler';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { pfadSegment } from '../infra/fremdeAdressen';
 import { katalog } from './prozess';
+import { versuche } from '../infra/ergebnis';
 
 const PDF_ANFANG = Buffer.from('%PDF-');
 
@@ -21,12 +22,12 @@ export function letzterAbrufWarExtern(): boolean { return _letzterAbrufWarExtern
 // Zählen, lesen, löschen an einer Stelle statt verstreut.
 
 export async function anzahlAnleitungen(setNumber: string): Promise<number> {
-  const r = await katalog().anleitungen.zaehleAnleitungen(mitVersion(setNumber)).catch(meldeUndLiefere('anleitung:mitVersion', null));
+  const r = await katalog().anleitungen.zaehleAnleitungen(mitVersion(setNumber));
   return Number(r?.c) || 0;
 }
 
 export async function anleitungenZuSet(setNumber: string) {
-  return katalog().anleitungen.anleitungenDesSets(mitVersion(setNumber)).catch(meldeUndLiefere('anleitung:mitVersion', []));
+  return katalog().anleitungen.anleitungenDesSets(mitVersion(setNumber));
 }
 
 /** Erst die automatisch importierten, dann die selbst hochgeladenen. */
@@ -105,11 +106,11 @@ export async function downloadSetInstructions(setNumber: string,
   _letzterAbrufWarExtern = true;   // ab hier wird wirklich gefragt
   try { instrList = await scrapeInstructions(n); } catch (e) { meldeFehler('anleitungen:auslesen', e); }
   if (!instrList.length) {
-    const bsResult = await brickset.getInstructions(n).catch(meldeUndLiefere('anleitungen:brickset', { instructions: [], usesFallback: true }));
-    instrList = bsResult.instructions || [];
+    const bs = await versuche('anleitungen:brickset', brickset.getInstructions(n));
+    instrList = bs.ok ? bs.wert.instructions || [] : [];
     // usesFallback: Brickset hat geantwortet, ohne Anleitung; false heisst
-    // Kontingent erschöpft — dann in der Warteschlange bleiben.
-    bricksetSucceededEmpty = bsResult.usesFallback && instrList.length === 0;
+    // Kontingent erschöpft. Ein Fehler ist keine Antwort — beides bleibt in der Warteschlange.
+    bricksetSucceededEmpty = bs.ok && bs.wert.usesFallback && instrList.length === 0;
   }
 
   // downloadFile schreibt direkt auf die Platte — kein Puffer für grosse PDFs.

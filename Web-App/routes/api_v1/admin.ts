@@ -2,14 +2,11 @@
  * Prüfung vergessen kann. */
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireApiAdmin } from './middleware';
-import { getLimitForApi } from '../../src/katalog/apiKontingent';
-import { vergissFehlend } from '../../src/katalog/bilder/imageMisses';
-import { setGlobalSetting, getGlobalSetting } from '../../src/einstellungen/settings';
-import { cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinreihen, preisJobStand, preisJobJetzt, fehlendeBilderNachladen, bricksetWiederholen, bricksetEntfernen, jobZeitplanSetzen, jobUebersicht, bildProbe, preisProbe, katalogBilderEinreihen, katalogAbgleichJetzt, bricksetListe, letzteEintraege, bildDiagnose, protokollSeit, setFehlanzeigen, vorschauFehlanzeigen } from '../../src/verwaltung/dienst';
-import { auftragsUebersicht, auftragAbbrechen, auftragWiederholen, auftragsArtJetzt, auftragsArtLeeren } from '../../src/verwaltung/hintergrund';
+import { getLimitForApi, vergissFehlend } from '../../src/katalog';
+import { setGlobalSetting, getGlobalSetting } from '../../src/einstellungen';
+import { cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinreihen, preisJobStand, preisJobJetzt, fehlendeBilderNachladen, bricksetWiederholen, bricksetEntfernen, jobZeitplanSetzen, katalogBilderEinreihen, katalogAbgleichJetzt, bricksetListe, letzteEintraege, protokollSeit, setFehlanzeigen, vorschauFehlanzeigen, jobUebersicht, bildProbe, preisProbe, bildDiagnose, auftragsUebersicht, auftragAbbrechen, auftragWiederholen, auftragsArtJetzt, auftragsArtLeeren } from '../../src/verwaltung';
 import { seiteAus } from '../../src/infra/seite';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
+import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
 const router = vertragsRouter({ grosseIds: true });
 
 

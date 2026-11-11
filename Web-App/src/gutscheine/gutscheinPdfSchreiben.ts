@@ -4,8 +4,7 @@ import {
   PDFDocument as PdfLibDocument, PDFArray, PDFDict, PDFName, PDFRawStream,
   decodePDFRawStream, PDFPage, PDFObject, StandardFonts, rgb,
 } from '@cantoo/pdf-lib';
-import { werteAusPdf, pdfText, textOperatoren } from './gutscheinPdf';
-import type { GutscheinWerte } from './gutscheinPdf';
+import { werteAusPdf, pdfText, textOperatoren, type GutscheinWerte } from './gutscheinPdf';
 import { meldeUndLiefere } from '../infra/fehler';
 
 /** Nur hier druckt eine literale ASCII-Kette, was sie sagt. Ohne /Encoding ist
@@ -262,7 +261,8 @@ export async function verbindeGutscheine(gutscheine: ExportGutschein[]):
   return { daten: Buffer.from(await ziel.save()), befunde };
 }
 
-/** Ein PDF, das sich nicht seitenweise lesen lässt, ist ein einzelner Gutschein. */
+/** Ausnahme: Ein PDF, das sich nicht seitenweise lesen lässt, ist ein einzelner
+ * Gutschein — die leere Liste heisst hier „nicht teilbar“, nicht „nichts gefunden“. */
 export function seitenOderKeine(daten: Buffer): Promise<GutscheinWerte[]> {
   return seitenweiseLesen(daten).catch(meldeUndLiefere('gutschein:seitenweise', []));
 }

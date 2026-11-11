@@ -7,8 +7,7 @@ import * as pgNotify from '../../db/pgNotify';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { passwortPasst, BcryptUeberlast } from './bcryptSchranke';
-import { checkLoginAllowed, bekannteAnmeldung, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess, meldeAnmeldeereignis, meldeAnmeldung, MAX_ATTEMPTS } from './loginLimiter';
-import type { Anmeldeereignis, Anmeldeweg } from './loginLimiter';
+import { checkLoginAllowed, bekannteAnmeldung, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess, meldeAnmeldeereignis, meldeAnmeldung, MAX_ATTEMPTS, type Anmeldeereignis, type Anmeldeweg } from './loginLimiter';
 import { kontoGedrosselt } from './zielDrossel';
 import * as zf from './zweiterFaktor';
 import * as passkeys from './passkeys';
@@ -65,7 +64,7 @@ export function hashToken(token: string): string {
 
 /** Leer zählt wie „nicht da": Der Hash eines leeren Strings ist ein gültiger
  * SHA-256-Wert. */
-export async function verifiziereEmailToken(token: unknown): Promise<{ ok: boolean; grund?: string; userId?: number }> {
+export async function verifiziereEmailToken(token: string | null | undefined): Promise<{ ok: boolean; grund?: string; userId?: number }> {
   if (token === undefined || token === null || String(token).trim() === '') {
     return { ok: false, grund: 'fehlt' };
   }
@@ -327,7 +326,7 @@ export interface Herkunft { ip?: string | null }
 /** Die einzige Stelle, an der Anmeldedaten geprüft werden: Zwei Fassungen für
  * Webapp und App waren schon einmal auseinandergelaufen.
  * @param username Benutzername ODER E-Mail-Adresse. */
-export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, password: unknown, code?: unknown,
+export async function pruefeAnmeldedaten(herkunft: Herkunft, username: string | null | undefined, password: string | null | undefined, code?: string | number | null | undefined,
                                   passkeyAntwort?: unknown): Promise<AnmeldeErgebnis> {
   const absage = (art: FehlerArt, code: FehlerCode,
                   vars?: Record<string, string | number>, unverified?: boolean,

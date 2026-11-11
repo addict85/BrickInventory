@@ -1,4 +1,3 @@
-import { meldeUndLiefere } from '../../infra/fehler';
 import { katalog } from '../prozess';
 
 /** Umleiten auf die CDN-Adresse heilt Web und App, ohne verwaiste
@@ -6,7 +5,6 @@ import { katalog } from '../prozess';
  * Dateinamen-Stamm (bild_stamm()). */
 const _cache = new Map<string, { url: string | null; at: number }>();
 const CACHE_MS = 10 * 60 * 1000;
-
 
 export function bildStammAusPfad(webPfad: string): string {
   const datei = webPfad.split('/').pop() || '';
@@ -19,7 +17,7 @@ export async function cdnFuerFehlendesBild(webPfad: string): Promise<string | nu
   const stamm = bildStammAusPfad(webPfad);
   let url: string | null = null;
   if (stamm) {
-    const z = await katalog().bildStammCdn.cdnZuBildstamm(stamm).catch(meldeUndLiefere('bilder:cdn nachschlagen', null));
+    const z = await katalog().bildStammCdn.cdnZuBildstamm(stamm);
     url = z?.url ?? null;
   }
   // Ältestes Fünftel verdrängen statt alles wegwerfen.

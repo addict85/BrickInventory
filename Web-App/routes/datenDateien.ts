@@ -7,8 +7,8 @@ import { safeDataPath } from '../src/infra/datenPfad';
 
 import { requireLoginOrToken, angemeldeteNutzerId } from '../src/konto/http/anmeldung';
 import { eingangsSperre } from './api_v1/middleware';
-import { siehtKonto } from '../src/haushalt/haushalt';
-import { anleitungFreigegeben } from '../src/katalog/bilder/bildBlickfeld';
+import { siehtKonto } from '../src/haushalt';
+import { anleitungFreigegeben } from '../src/katalog';
 
 type WildcardRequest = Request<{ pfad: string[] }>;
 const router = express.Router();

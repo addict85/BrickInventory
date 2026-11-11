@@ -1,11 +1,10 @@
 /** Öffentlich, solange die Einrichtung läuft: Die Anmeldeseite prüft damit,
  * was fehlt, bevor es ein Konto gibt. Antworten sind Schalter und das
  * Wurzelzertifikat — beides steht schon unter /ca.crt. */
-import { einrichtungStand } from '../../src/konto/einrichtungStand';
+import { einrichtungStand } from '../../src/konto';
 import { istVerwalter, ipThrottle } from '../../src/konto/http/anmeldung';
 import { fehlerAntwort } from '../../src/http/httpAntwort';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { OffeneAnfrage, Antwort } from '../../src/http/vertragsRouter';
+import { vertragsRouter, type OffeneAnfrage, type Antwort } from '../../src/http/vertragsRouter';
 
 const router = vertragsRouter();
 

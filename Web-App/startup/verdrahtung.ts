@@ -2,25 +2,35 @@
  * nach dem Erfassen, das erste Konto einer leeren Datenbank und die Dienste der
  * Bereiche mit Fabrik. Jeder Prozess baut es beim Start und reicht es weiter
  * (server.ts, Skripte, Testhilfen). */
-import { verdrahteNacharbeit, type Nacharbeit } from '../src/auftraege/nacharbeit';
+import {
+  verdrahteNacharbeit,
+  type Nacharbeit,
+  ziehePlanVor,
+  stelleAuftragEin,
+  bricksetVormerken,
+  bricksetAusWiedervorlage,
+  BRICKSET_HOECHSTENS,
+} from '../src/auftraege';
 import { dbKonfigAusUmgebung, erzeugeDb, setzeStandardDb, standardDb, type Db } from '../db/database';
-import { erzeugeSets } from '../src/sets/bereich';
-import { verdrahteSets } from '../src/sets/prozess';
-import { erzeugeKatalog } from '../src/katalog/bereich';
-import { verdrahteKatalog } from '../src/katalog/prozess';
-import { ziehePlanVor } from '../src/auftraege/zeitplan';
-import { refreshPriceForSet } from '../src/finanzen/preisLauf';
-import { merkeGebraucht } from '../src/katalog/bilder/bildbedarf';
-import { enrichSetParts, enrichSetMinifigs } from '../src/katalog/teileAnreicherung';
-import { stelleAuftragEin } from '../src/auftraege/dienst';
+import { erzeugeSets, verdrahteSets } from '../src/sets';
+import {
+  erzeugeKatalog,
+  verdrahteKatalog,
+  merkeGebraucht,
+  enrichSetParts,
+  enrichSetMinifigs,
+  checkAndIncrementRateLimit,
+  getRateLimitStatus,
+  rebrickableLimiter,
+  rebrickableBackgroundLimiter,
+  rebrickableDailyStatus,
+} from '../src/katalog';
+import { refreshPriceForSet } from '../src/finanzen';
 import { mitVersion } from '../src/infra/setNummer';
-import { legeStartVerwalterAn } from '../src/konto/startVerwalter';
+import { legeStartVerwalterAn } from '../src/konto';
 import { meldeFehler } from '../src/infra/fehler';
 import { verdrahteKlienten, type KlientenZugang } from '../clients/zugang';
-import { bricksetVormerken, bricksetAusWiedervorlage, BRICKSET_HOECHSTENS } from '../src/auftraege/bricksetAuftrag';
-import { getGlobalSetting } from '../src/einstellungen/settings';
-import { checkAndIncrementRateLimit, getRateLimitStatus } from '../src/katalog/apiKontingent';
-import { rebrickableLimiter, rebrickableBackgroundLimiter, rebrickableDailyStatus } from '../src/katalog/rateLimiter';
+import { getGlobalSetting } from '../src/einstellungen';
 
 export interface Verdrahtung {
   nacharbeit: Nacharbeit;
