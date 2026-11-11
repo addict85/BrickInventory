@@ -41,7 +41,8 @@ import org.junit.Test
  */
 class NachzugTest {
 
-    private var bereich: String? = "a"
+    // Der Testserver setzt ihn auf seinem eigenen Faden um.
+    @Volatile private var bereich: String? = "a"
     private val ablage = Offlineablage(SpeicherBestand(), SpeicherAusgang(), { bereich })
     private val pfade = PfadServer(
         "/api/v1/sets/10001-1" to """{"success":true,"quantity":3}""",
@@ -117,10 +118,15 @@ class NachzugTest {
 
     @Test
     fun `eine Antwort, waehrend das Konto wechselt, aendert die neue Ablage nicht`() = runBlocking {
+        // Dasselbe Set auch im neuen Konto: Sonst fände die falsche Antwort dort nichts zu ändern.
+        bereich = "b"
+        ablage.uebernimm(Faecher.SETS, listOf(SetItem("10001-1", quantity = 1)))
+        bereich = "a"
         pfade.vorrang = { _, _ -> bereich = "b"; null }
         sets.updateQuantity("10001-1", 5)
+        assertEquals("die Ablage des neuen Kontos", 1, set().quantity)
         bereich = "a"
-        assertEquals(1, set().quantity)
+        assertEquals("die Ablage des alten Kontos", 1, set().quantity)
     }
 
     @Test
