@@ -40,10 +40,10 @@ const STILLE_FAENGE = [
 /**
  * Treffer zaehlen — im CODE, nicht in den Erklaerungen darueber.
  */
-function zaehle(muster) {
+function zaehle(muster, nur = (/** @type {string} */ _f) => true) {
   const { ohneKommentare } = require('./helpers/sources');
   let n = 0;
-  for (const f of quellen()) {
+  for (const f of quellen().filter(nur)) {
     const s = ohneKommentare(fs.readFileSync(f, 'utf8'));
     for (const m of muster) n += (s.match(m) || []).length;
   }
@@ -153,10 +153,8 @@ test('any in allen Formen und success in Diensten werden weniger, nie mehr', () 
   // Importberichten, Mailversand und der Import-Fortschritt (ein Strom-Format) bleiben.
   // Gegenprobe (11.11.2026): in auftragAbbrechen() wieder `success: true` → rot.
   const SUCCESS_SCHRANKE = 7;
-  const { ohneKommentare } = require('./helpers/sources');
-  const dienste = quellen().filter(f => /^src[\\/](?!vertrag[\\/]|http[\\/])/.test(path.relative(WEB, f)));
-  const success = dienste.reduce((n, f) =>
-    n + (ohneKommentare(fs.readFileSync(f, 'utf8')).match(/\bsuccess:\s*true\b/g) || []).length, 0);
+  const success = zaehle([/\bsuccess:\s*true\b/g],
+    f => /^src[\\/](?!vertrag[\\/]|http[\\/])/.test(path.relative(WEB, f)));
   assert.ok(success <= SUCCESS_SCHRANKE, `${success}-mal success: true in src/ (ohne vertrag/, http/), erlaubt sind ${SUCCESS_SCHRANKE}`);
   if (success < SUCCESS_SCHRANKE) console.log(`  ℹ success in Diensten: ${success} (Schranke ${SUCCESS_SCHRANKE}) — Schranke nachziehen`);
 });

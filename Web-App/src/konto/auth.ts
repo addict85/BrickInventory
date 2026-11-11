@@ -28,7 +28,7 @@ export type { TokenScope };
 export interface TokenBenutzer {
   user_id: number;
   username: string;
-  is_admin?: number;
+  is_admin?: boolean;
   /** Die GLEITENDE Frist: „so lange ungenutzt" (siehe _touchLastUsed). */
   expires_at?: string | Date | null;
   /** Die FESTE Frist, falls beim QR-Code eine gewählt wurde. `null` = keine. */
@@ -167,7 +167,7 @@ export async function pruefeToken(token: string | null | undefined,
   }
   // Verwalterrecht nur mit Scope `voll`, an dieser einen Stelle entschieden,
   // damit alle Wächter es gleich sehen.
-  row.is_admin = row.konto_is_admin && row.scope === 'voll' ? 1 : 0;
+  row.is_admin = row.konto_is_admin === true && row.scope === 'voll';
   if (row.vorgaenger) {
     await repo.beendeUeberlappung(row.vorgaenger, hashed);
     row.vorgaenger = null;

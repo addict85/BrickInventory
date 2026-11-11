@@ -21,7 +21,6 @@ interface Def {
 
 const defVon = (s: z.ZodType): Def => (s as unknown as { _zod: { def: Def } })._zod.def;
 const HUELLE = new Set(['optional', 'nullable', 'default', 'prefault', 'readonly', 'catch', 'nonoptional', 'success']);
-const OFFEN = new Set(['unknown', 'any']);
 
 /** Pfade wie `sets.0.letzter_kauf`; höchstens `grenze`, damit eine lange Liste nicht flutet. */
 export function unbekannteFelder(schema: z.ZodType, wert: unknown, grenze = 20): string[] {
@@ -56,7 +55,8 @@ export function unbekannteFelder(schema: z.ZodType, wert: unknown, grenze = 20):
       return;
     }
     if (d.type !== 'object' || typeof w !== 'object' || Array.isArray(w)) return;
-    const offen = !d.catchall || OFFEN.has(defVon(d.catchall).type);
+    // looseObject hat catchall unknown: offen, aber im Vertrag nicht beschrieben.
+    const offen = !d.catchall || defVon(d.catchall).type === 'unknown';
     for (const [k, x] of Object.entries(w as object)) {
       const feld = d.shape?.[k];
       if (feld) lauf(feld, x, `${pfad}${k}.`);

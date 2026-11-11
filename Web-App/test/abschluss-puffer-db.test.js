@@ -32,8 +32,9 @@ test('Abschluss: Puffer geschrieben, Takte beendet', { concurrency: 1 }, async t
   // Welche Takte entstehen, und welche wieder enden.
   const offen = new Set();
   const echt = { set: global.setInterval, clear: global.clearInterval };
-  global.setInterval = (...a) => {
-    const h = echt.set(...a);
+  // @ts-ignore — Mitschnitt mit genau der Form, die die Takte benutzen.
+  global.setInterval = (fn, ms) => {
+    const h = echt.set(fn, ms);
     offen.add(h);
     return h;
   };

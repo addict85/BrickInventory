@@ -21,8 +21,8 @@ const { Readable } = require('node:stream');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const path = require('node:path');
-const { DIST } = require('./helpers/sources');
 const _req = require('./helpers/sources').buildAndRequire();
+const DIST = path.join(__dirname, '..', 'dist');
 const { dbOderSkip } = require('./helpers/db');
 
 /** @type {{ pfad: string, schluessel: string | undefined }[]} */

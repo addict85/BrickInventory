@@ -102,8 +102,8 @@ router.get('/me', async (req: OffeneAnfrage<'GET /api/v1/auth/me'>, res: Antwort
       if (faellig) res.setHeader('X-Token-Rotation', 'faellig');
       // is_admin ist das Recht DIESES Tokens: bei Scope `app` immer false.
       return res.json({ success: true, loggedIn: true,
-        user: { id: u.user_id, username: u.username, is_admin: u.is_admin === 1, mustChangePassword: u.muss_passwort_aendern === true,
-                zweiterFaktorPflicht: u.is_admin === 1 && !await zf.istAktiv(u.user_id) },
+        user: { id: u.user_id, username: u.username, is_admin: u.is_admin === true, mustChangePassword: u.muss_passwort_aendern === true,
+                zweiterFaktorPflicht: u.is_admin === true && !await zf.istAktiv(u.user_id) },
         token_expires: u.expires_at, token_last_used: u.last_used,
         token_info: { scope: u.scope, expires_at: u.expires_at, hard_expires_at: u.hard_expires_at ?? null,
                       never_expires: u.never_expires === true, rotiert_am: u.rotiert_am,
