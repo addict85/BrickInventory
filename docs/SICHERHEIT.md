@@ -378,20 +378,26 @@ den Commits, nicht hier.
 
 ## Betrieb
 
-- App und Jobs verbinden sich als `brickinventory_app` ohne
+- App und Jobs verbinden sich als Laufzeitrolle `brickinventory_app` ohne
   Superuser-, CREATEROLE- oder CREATEDB-Recht und ohne Mitgliedschaft in
-  `pg_execute_server_program` & Co.; die Rolle besitzt Datenbank, Tabellen und
-  Funktionen (Migrationen). Den Superuser kennen nur Postgres und der
-  einmalige Dienst `db-rolle` (`postgres/app-rolle.sh`). Läuft die App doch als
-  Superuser, warnt der Start — `db-rolle-db`, `compose-haertung`.
-- `db-rolle` läuft als Superuser in einer Datenbank, die der App-Rolle gehört.
+  `pg_execute_server_program` & Co.; sie darf nur Zeilen lesen und schreiben,
+  Sequenzen weiterzählen und temporäre Tabellen anlegen (ab PostgreSQL 17
+  dazu MAINTAIN für VACUUM/ANALYZE), kein DROP, ALTER oder CREATE. Datenbank,
+  Tabellen und Funktionen gehören der Migrationsrolle
+  `brickinventory_migration`, deren Passwort nur der einmalige Dienst
+  `migration` kennt (Erststart, Migrationen, Restore); Default Privileges geben
+  der Laufzeitrolle die Zeilenrechte an jeder neuen Tabelle. Den Superuser
+  kennen nur Postgres und der einmalige Dienst `db-rolle`
+  (`postgres/app-rolle.sh`). Läuft die App doch als Superuser, warnt der
+  Start — `db-rolle-db`, `compose-haertung`.
+- `db-rolle` läuft als Superuser in einer Datenbank, die der Migrationsrolle gehört.
   Deshalb fester `search_path=pg_catalog,pg_temp` und `role=none` schon beim
   Verbinden (PGOPTIONS), nur `pg_catalog.`-Funktionen, zuerst
   `ALTER DATABASE … RESET ALL` und `ALTER ROLE <app> … RESET ALL`; bei aktiven
   Event-Triggern bricht es ab — `db-rolle-db` (stellt den Angriff mit eigenem
   `set_config` und Operator nach). Wer selbst als Superuser `psql` in dieser
   Datenbank öffnet, setzt `PGOPTIONS='-c search_path=pg_catalog,pg_temp'`.
-- `scripts/restore.sh` spielt den Dump als App-Rolle ein, in einer
+- `scripts/restore.sh` spielt den Dump als Migrationsrolle ein, in einer
   Transaktion; Funktionen und Prüfregeln aus dem Dump laufen nie als
   Superuser — `backup-restore-db`.
 - Sitzungsgeheimnis und alle Datenbankpasswörter nur als Docker-Secrets

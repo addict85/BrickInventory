@@ -1424,7 +1424,8 @@ Telefon die Webseite.
   `docker image rm` weg.
 - Das Passwort des ersten Verwalters steht beim allerersten Start im
   Protokoll von `app` oder `jobs` (wer zuerst migriert):
-  `docker compose logs app jobs | grep -A2 Standard-Admin`. `ADMIN_PASSWORD`
+  `docker compose logs app jobs | grep -A2 Standard-Admin`. **Überholt durch
+  Abschnitt 50:** jetzt im Protokoll von `migration`. `ADMIN_PASSWORD`
   reicht `compose.yaml` nicht durch.
 
 ## 42. Runde 16 – Image nur als geprüfter Digest, Startverbot für Mail-Tokens
@@ -1496,7 +1497,7 @@ am Tag eine Mail.
 (`imagetools create --metadata-file`), nicht mehr den, auf den der Tag kurz
 danach zeigt.
 
-**5. Datenbankrolle (unverändert, zur Kenntnis)**
+**5. Datenbankrolle (unverändert, zur Kenntnis)** – **Überholt durch Abschnitt 50.**
 
 `brickinventory_app` bleibt Eigentümerin von Datenbank und Schema. Die App
 migriert beim Start, und der Katalog-Import arbeitet mit Schattentabellen;
@@ -1740,3 +1741,75 @@ docker compose exec postgres psql -U brickinventory -c "SELECT max(name) FROM sc
 - `docker compose logs daten-rechte` zeigt, was er getan hat.
 - Ein einzelnes `docker run` ohne compose startet weiter als root, richtet
   `/app/data` selbst ein und gibt die Rechte dann an `brickinv` ab.
+
+## 50. Migrationsrolle getrennt von der Laufzeitrolle
+
+**Für jeden Docker-Betreiber einmal zu tun.** Ohne die Schritte bricht
+`docker compose up` bei `db-rolle` mit „DB_MIGRATION_PASSWORD fehlt“ ab;
+`app` und `jobs` starten dann nicht.
+
+Bisher besaß `brickinventory_app` Datenbank, Schema und Tabellen: Ein
+Einbruch in die App hätte Tabellen ändern oder löschen können. Jetzt:
+
+- **`brickinventory_migration`** (neu) besitzt Datenbank, Schema `public`,
+  alle Tabellen, Funktionen und die Kopien vor Migrationen. Ihr Passwort
+  (`./geheimnisse/db_migration_password`) kennt nur der neue einmalige Dienst
+  **`migration`**: Er spielt beim ersten Start das Grundschema samt erstem
+  Verwalter ein, danach bei jedem `up` offene Migrationen, räumt abgelaufene
+  Kopien weg und endet. Er hängt nur am internen Netz der Datenbank.
+- **`brickinventory_app`** (Laufzeitrolle von `app` und `jobs`) darf nur
+  noch Zeilen lesen, schreiben und löschen, Sequenzen weiterzählen und
+  temporäre Tabellen anlegen (der Katalog-Import tauscht über eine temporäre
+  Schattentabelle); ab PostgreSQL 17 dazu `MAINTAIN` für VACUUM/ANALYZE.
+  Kein `CREATE`, `ALTER`, `DROP`, `TRUNCATE`. Was die Migrationsrolle künftig
+  anlegt, bekommt diese Rechte über Default Privileges ohne erneuten Lauf.
+- `app` und `jobs` warten auf `migration`. Finden sie offene Migrationen
+  oder eine leere Datenbank, starten sie nicht und nennen den Dienst.
+- Das Startpasswort des ersten Verwalters schreibt jetzt `migration`:
+  `docker compose logs migration`, die Datei liegt wie bisher in
+  `data/admin-startpasswort.txt`.
+
+**Schritt für Schritt** (im Ordner mit `compose.yaml`, nach dem Update der
+Dateien):
+
+```bash
+sh scripts/image-pruefen.sh        # neues Image (Abschnitt 42)
+sh scripts/rollen-trennen.sh       # Schritte 1–4 unten, wiederholbar
+```
+
+`scripts/rollen-trennen.sh` tut der Reihe nach, und jeder Schritt lässt
+stehen, was schon passt:
+
+1. `scripts/geheimnisse-einrichten.sh`: legt `geheimnisse/db_migration_password`
+   an, falls es fehlt (zufällig; `db-rolle` setzt es bei jedem Lauf, ein
+   neues passt also auch zu einer bestehenden Datenbank).
+2. `docker compose up -d postgres` und `docker compose run --rm db-rolle`:
+   legt die Migrationsrolle an und übergibt ihr Datenbank, Schema und alle
+   Objekte, auch die bisher der App-Rolle gehörenden. Die Rechte der
+   Laufzeitrolle werden in einer Transaktion neu gesetzt.
+3. `docker compose run --rm migration`: spielt offene Migrationen als
+   Migrationsrolle ein.
+4. Prüft als Superuser: kein Objekt in `public` gehört jemand anderem als der
+   Migrationsrolle, die Laufzeitrolle hat kein `CREATE` auf `public`, darf
+   aber in `users` schreiben. Danach `docker compose up -d`.
+
+Von Hand geht dasselbe mit genau diesen Befehlen. Prüfen lässt es sich
+jederzeit:
+
+```bash
+docker compose exec postgres psql -U brickinventory -d brickinventory -c \
+  "SELECT pg_get_userbyid(relowner), count(*) FROM pg_class WHERE relnamespace = 'public'::regnamespace GROUP BY 1"
+```
+
+**Sicherung und Wiederherstellung:** `scripts/backup.sh` bleibt, wie es
+war. `scripts/restore.sh` spielt den Dump jetzt als Migrationsrolle ein (wie
+bisher mit `\restrict` und ohne Besitzerzeilen), richtet danach mit
+`db-rolle` die Rechte nach, lässt `migration` laufen und startet `app` und
+`jobs` neu. Ein Dump von vor dieser Umstellung lässt sich ebenso einspielen.
+
+**Ohne Docker** (`npm start` mit eigener Datenbank) ändert sich nichts: Eine
+Rolle, die das Schema ändern darf, migriert beim Start wie bisher selbst.
+Wer die Trennung auch dort will, ruft `postgres/app-rolle.sh` als Superuser
+mit `DB_MIGRATION_PASSWORD` auf und startet einmal
+`node dist/startup/migrieren.js` als Migrationsrolle, den Server danach als
+`brickinventory_app`.

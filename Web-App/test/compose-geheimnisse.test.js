@@ -32,7 +32,7 @@ test('Geheimnisse nur als Dateien unter /run/secrets', (t) => {
     t.skip(`kein docker compose: ${fehler}`); return;
   }
   const dienste = Object.keys(j.services).sort();
-  assert.deepEqual(dienste, ['app', 'caddy', 'caddy-rechte', 'daten-rechte', 'db-rolle', 'jobs', 'postgres', 'schluessel']);
+  assert.deepEqual(dienste, ['app', 'caddy', 'caddy-rechte', 'daten-rechte', 'db-rolle', 'jobs', 'migration', 'postgres', 'schluessel']);
   let dateien = 0;
   for (const [name, d] of Object.entries(j.services)) {
     const env = d.environment || {};

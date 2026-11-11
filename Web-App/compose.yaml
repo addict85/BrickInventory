@@ -39,7 +39,8 @@ services:
       POSTGRES_PASSWORD_FILE: /run/secrets/db_password
       # Für postgres/app-rolle.sh beim Anlegen einer neuen Datenbank.
       DB_APP_PASSWORD_FILE: /run/secrets/db_app_password
-    secrets: [db_password, db_app_password]
+      DB_MIGRATION_PASSWORD_FILE: /run/secrets/db_migration_password
+    secrets: [db_password, db_app_password, db_migration_password]
     command: postgres -c max_connections=200 -c shared_buffers=128MB
     # Ein Prozess je Verbindung: 200 Verbindungen plus Hintergrundprozesse.
     mem_limit: ${DB_MEM_LIMIT:-1g}
@@ -70,11 +71,12 @@ services:
     networks:
       - db-net
 
-  # ── Datenbankrolle der App ───────────────────────────────────────────────────
-  # `brickinventory` ist der Superuser der Datenbank. App und Jobs
-  # verbinden sich als `brickinventory_app` ohne Superuser-Rechte, der Datenbank
-  # und Tabellen gehören. Dieser Dienst legt die Rolle bei jedem `up` an bzw.
-  # richtet sie nach und endet dann (UPGRADE.md, Abschnitt 29).
+  # ── Datenbankrollen ──────────────────────────────────────────────────────────
+  # `brickinventory` ist der Superuser der Datenbank. Datenbank und Tabellen
+  # gehören `brickinventory_migration` (Dienst migration); app und jobs
+  # verbinden sich als `brickinventory_app` und dürfen nur Zeilen lesen und
+  # schreiben. Dieser Dienst legt die Rollen bei jedem `up` an bzw. richtet sie
+  # nach und endet dann (UPGRADE.md, Abschnitte 29 und 50).
   db-rolle:
     image: postgres:18-alpine@sha256:123b17998ccaf47e53b502e8c6a1e79afd8f579c6f3eec83c563da026f957395
     container_name: brickinventory-db-rolle
@@ -98,9 +100,10 @@ services:
       PGDATABASE: brickinventory
       PGPASSWORD_FILE: /run/secrets/db_password
       DB_APP_PASSWORD_FILE: /run/secrets/db_app_password
+      DB_MIGRATION_PASSWORD_FILE: /run/secrets/db_migration_password
       # Leserolle brickinventory_lesen (psql, README „Datenbank ansehen“); leere Datei = Rolle ohne Anmeldung.
       PGWEB_DB_PASSWORD_FILE: /run/secrets/pgweb_db_password
-    secrets: [db_password, db_app_password, pgweb_db_password]
+    secrets: [db_password, db_app_password, db_migration_password, pgweb_db_password]
     volumes:
       - ./postgres/app-rolle.sh:/rolle/app-rolle.sh:ro
     networks:
@@ -163,10 +166,50 @@ services:
     volumes:
       - ./data:/app/data
 
+  # ── Schema und Migrationen ───────────────────────────────────────────────────
+  # Spielt beim ersten Start das Grundschema samt erstem Verwalter ein, danach
+  # bei jedem `up` offene Migrationen, und endet. Nur dieser Dienst kennt das
+  # Passwort der Migrationsrolle; app und jobs warten auf ihn. Das
+  # Startpasswort des ersten Verwalters liegt danach in ./data (Protokoll:
+  # `docker compose logs migration`). Kein Weg nach draussen: nur db-net.
+  migration:
+    # Dasselbe Image wie app (siehe dort).
+    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 42)}
+    pull_policy: missing
+    container_name: brickinventory-migration
+    logging: *protokoll
+    restart: "no"
+    user: brickinv
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    # Eine Migration auf einer grossen Tabelle braucht Zeit und Speicher, aber keine Bilder.
+    mem_limit: ${MIGRATION_MEM_LIMIT:-512m}
+    pids_limit: 64
+    cpus: 1
+    entrypoint: ["node", "dist/startup/migrieren.js"]
+    depends_on:
+      db-rolle:
+        condition: service_completed_successfully
+      daten-rechte:
+        condition: service_completed_successfully
+    volumes:
+      - ./data:/app/data
+    environment:
+      PGUSER: brickinventory_migration
+      PGPASSWORD_FILE: /run/secrets/db_migration_password
+      # Wer bei `app` ERFASSUNG_ZEITZONE setzt, setzt sie hier gleich (Erfassungstag, Migration 0078).
+    secrets: [db_migration_password]
+    networks:
+      - db-net
+
   # ── BrickInventory Manager App ───────────────────────────────────────────────
   app:
-    # Ein Image für schluessel, daten-rechte, app und jobs, als Digest: Ein Tag lässt sich
-    # umhängen. scripts/image-pruefen.sh prüft die Signatur und trägt
+    # Ein Image für schluessel, daten-rechte, migration, app und jobs, als Digest: Ein Tag
+    # lässt sich umhängen. scripts/image-pruefen.sh prüft die Signatur und trägt
     # BRICK_IMAGE in .env ein. Wer selbst baut, setzt BRICK_IMAGE auf einen
     # eigenen Namen; nur `app` hat `build:`, damit `--build` einmal baut.
     image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 42)}
@@ -199,6 +242,8 @@ services:
       schluessel:
         condition: service_completed_successfully
       daten-rechte:
+        condition: service_completed_successfully
+      migration:
         condition: service_completed_successfully
     # Kein veröffentlichter Port: Von aussen geht es nur über Caddy (HTTPS).
     # Bewusste Klartext-Ausnahme zum Ausprobieren: die zwei Zeilen
@@ -253,8 +298,9 @@ services:
       ROLLE: web
 
       # ── Datenbank-Verbindung ─────────────────────────────────────────────────
-      # Die eigene Rolle ohne Superuser-Rechte (Dienst db-rolle oben); das
-      # Passwort des Superusers bekommt die App nicht.
+      # Die Laufzeitrolle (Dienst db-rolle oben): nur Zeilen lesen und
+      # schreiben. Die Passwörter von Superuser und Migrationsrolle bekommt die
+      # App nicht.
       # PGHOST:     postgres
       # PGPORT:     5432
       PGUSER:     brickinventory_app
@@ -287,7 +333,7 @@ services:
   # Derselbe Bau wie `app`, aber ROLLE=jobs: arbeitet die Auftragstabelle ab
   # (Preise, Bilder, Anleitungen, Importe, Zeitpläne) und nimmt keine Anfragen
   # an. Beim Beenden gibt er laufende Aufträge zurück; der nächste Start setzt
-  # sie fort. Die Migrationen macht, wer zuerst startet — der andere wartet.
+  # sie fort. Die Migrationen hat vorher der Dienst migration eingespielt.
   jobs:
     # Dasselbe Image wie app (siehe dort).
     image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 42)}
@@ -313,6 +359,8 @@ services:
       schluessel:
         condition: service_completed_successfully
       daten-rechte:
+        condition: service_completed_successfully
+      migration:
         condition: service_completed_successfully
     # Bilder, Anleitungen, PDFs und der Datenschlüssel liegen dort, wo auch
     # `app` sie sucht.
@@ -508,6 +556,8 @@ secrets:
     file: ./geheimnisse/db_password
   db_app_password:
     file: ./geheimnisse/db_app_password
+  db_migration_password:
+    file: ./geheimnisse/db_migration_password
   pgweb_db_password:
     file: ./geheimnisse/pgweb_db_password
 
@@ -520,7 +570,7 @@ networks:
     ipam:
       config:
         - subnet: 172.28.73.0/24
-  # Nur postgres, db-rolle, app und jobs, ohne Weg nach draussen: Die Datenbank
+  # Nur postgres, db-rolle, migration, app und jobs, ohne Weg nach draussen: Die Datenbank
   # braucht keinen, und ein Fehler in ihr erreicht so kein fremdes Ziel.
   db-net:
     driver: bridge

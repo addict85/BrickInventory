@@ -56,6 +56,7 @@ test('kein Dienst gewinnt Rechte, jeder hat nur die nötigen Capabilities', () =
     app: [],
     jobs: [],
     'daten-rechte': ['CHOWN', 'DAC_OVERRIDE', 'SETGID', 'SETUID'],
+    migration: [],
     'db-rolle': [],
     caddy: [],
     'caddy-rechte': ['CHOWN', 'DAC_OVERRIDE'],
@@ -96,25 +97,48 @@ test('die App schreibt nur in ./data und /tmp — daten-rechte auch', () => {
 // ergänzt → rot „daten-rechte sieht mehr als ./data“; `network_mode: none` dort
 // gestrichen → rot „daten-rechte braucht kein Netz“; bei app die Abhängigkeit
 // auf daten-rechte gestrichen → rot „app wartet nicht auf daten-rechte“.
-test('root richtet ./data nur im Dienst daten-rechte ein, app und jobs laufen als brickinv', () => {
-  const rechte = leseDienst(compose, 'daten-rechte');
+test('root richtet ./data nur im Dienst daten-rechte ein, app und jobs laufen als brickinv', t => {
+  // Wie Docker die Datei liest (Interpolation, Kurzschreibweisen), nicht per Regex.
+  const r = require('node:child_process').spawnSync(
+    'docker',
+    ['compose', '-f', path.join(ROOT, 'compose.yaml'), 'config', '--format', 'json'],
+    {
+      encoding: 'utf8',
+      env: {
+        PATH: process.env.PATH,
+        HOME: process.env.HOME,
+        BRICK_HOST: 'nas.lan',
+        BRICK_IMAGE: 'brickinventory:probe',
+      },
+    },
+  );
+  if (r.error || r.status !== 0) {
+    if (process.env.CI) assert.fail(`docker compose config im CI-Lauf: ${r.error?.message || r.stderr}`);
+    t.skip('kein docker compose');
+    return;
+  }
+  const { services: d } = JSON.parse(r.stdout);
+  const rechte = d['daten-rechte'];
   assert.ok(rechte, 'Dienst daten-rechte fehlt');
-  assert.match(rechte, /^\s*user:\s*root\s*$/m);
-  assert.match(rechte, /^\s*network_mode:\s*none\s*$/m, 'daten-rechte braucht kein Netz');
-  assert.match(rechte, /^\s*read_only:\s*true\s*$/m);
-  assert.match(rechte, /^\s*entrypoint: \["sh", "\/app\/daten-rechte\.sh"\]\s*$/m);
+  assert.equal(rechte.user, 'root');
+  assert.equal(rechte.network_mode, 'none', 'daten-rechte braucht kein Netz');
+  assert.equal(rechte.read_only, true);
+  assert.deepEqual(rechte.entrypoint, ['sh', '/app/daten-rechte.sh']);
   // Nur ./data: Ein Symlink des Dienstes darf root zu nichts anderem führen.
-  const einh = [...rechte.matchAll(/^\s*-\s*([^\s:]+:\/[^\s]*)\s*$/gm)].map(m => m[1]);
-  assert.deepEqual(einh, ['./data:/app/data'], 'daten-rechte sieht mehr als ./data');
-  assert.doesNotMatch(rechte, /^\s*secrets:/m, 'daten-rechte sieht mehr als ./data');
-  const image = d => leseDienst(compose, d).match(/^\s*image:\s*(\S+)\s*$/m)?.[1];
-  assert.equal(image('daten-rechte'), image('app'), 'daten-rechte.sh kommt aus dem App-Image');
-  assert.match(fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8'), /^COPY .*\bdaten-rechte\.sh\b.* \.\/$/m);
-  for (const d of ['app', 'jobs']) {
-    const block = leseDienst(compose, d);
-    assert.match(block, /^\s*user:\s*brickinv\s*$/m, `${d} läuft als root`);
-    assert.match(block, /depends_on:[\s\S]*?\n\s+daten-rechte:\s*\n\s*condition: service_completed_successfully/,
-      `${d} wartet nicht auf daten-rechte`);
+  assert.deepEqual(
+    (rechte.volumes || []).map(v => `${path.relative(ROOT, v.source)}:${v.target}`),
+    ['data:/app/data'],
+    'daten-rechte sieht mehr als ./data',
+  );
+  assert.equal(rechte.secrets, undefined, 'daten-rechte sieht mehr als ./data');
+  assert.equal(rechte.image, d.app.image, 'daten-rechte.sh kommt aus dem App-Image');
+  for (const n of ['app', 'jobs']) {
+    assert.equal(d[n].user, 'brickinv', `${n} läuft als root`);
+    assert.equal(
+      d[n].depends_on?.['daten-rechte']?.condition,
+      'service_completed_successfully',
+      `${n} wartet nicht auf daten-rechte`,
+    );
   }
 });
 
@@ -243,14 +267,18 @@ test('kein Dienst hat ein Ersatz-Datenbankpasswort', () => {
 // Digest → rot „db-rolle nimmt ein anderes Postgres-Image“. (03.11.2026) bei jobs
 // db_password unter secrets ergänzt → rot „jobs kennt das Passwort des
 // Superusers“; bei app PGPASSWORD_FILE auf /run/secrets/db_password → rot
-// „app: PGPASSWORD_FILE nicht aus db_app_password“.
+// „app: PGPASSWORD_FILE nicht aus db_app_password“. (11.11.2026) bei jobs die
+// Abhängigkeit auf migration gestrichen → rot „jobs wartet nicht auf migration“;
+// migration zusätzlich in brickinventory-net → rot „migration braucht nur das
+// interne Netz …“; schluessel bekommt db_migration_password → rot „ein
+// Laufzeitdienst kennt das Passwort der Migrationsrolle“.
 const geheimnisse = block =>
   (block.match(/^\s*secrets:\s*\[([^\]]*)\]/m)?.[1] ?? '')
     .split(',')
     .map(x => x.trim())
     .filter(Boolean)
     .sort();
-test('nur postgres und db-rolle kennen den Superuser, App und Jobs die App-Rolle', () => {
+test('nur postgres und db-rolle kennen den Superuser, nur migration die Migrationsrolle, App und Jobs die Laufzeitrolle', () => {
   const dienste = ['postgres', 'db-rolle', 'app', 'jobs'];
   const mitSuperuser = dienste.filter(d => geheimnisse(leseDienst(compose, d)).includes('db_password'));
   assert.deepEqual(mitSuperuser, ['postgres', 'db-rolle']);
@@ -282,6 +310,49 @@ test('nur postgres und db-rolle kennen den Superuser, App und Jobs die App-Rolle
     );
   const image = d => leseDienst(compose, d).match(/^\s*image:\s*(\S+)\s*$/m)?.[1];
   assert.equal(image('db-rolle'), image('postgres'), 'db-rolle nimmt ein anderes Postgres-Image');
+
+  // Die Migrationsrolle (Eigentümerin) kennt nur der Dienst migration; app und jobs starten erst nach ihm.
+  const mitMigration = Object.keys({
+    postgres: 1,
+    'db-rolle': 1,
+    migration: 1,
+    app: 1,
+    jobs: 1,
+    schluessel: 1,
+    'daten-rechte': 1,
+  }).filter(d => geheimnisse(leseDienst(compose, d)).includes('db_migration_password'));
+  assert.deepEqual(
+    mitMigration,
+    ['postgres', 'db-rolle', 'migration'],
+    'ein Laufzeitdienst kennt das Passwort der Migrationsrolle',
+  );
+  const mig = leseDienst(compose, 'migration');
+  assert.deepEqual(geheimnisse(mig), ['db_migration_password']);
+  assert.match(mig, /^\s*PGUSER:\s*brickinventory_migration\s*$/m);
+  assert.match(mig, /^\s*PGPASSWORD_FILE:\s*\/run\/secrets\/db_migration_password\s*$/m);
+  assert.match(mig, /^\s*entrypoint: \["node", "dist\/startup\/migrieren\.js"\]\s*$/m);
+  assert.equal(image('migration'), image('app'), 'migration nimmt ein anderes Image als app');
+  const netze = mig
+    .split(/\n\s*networks:\s*\n/)[1]
+    ?.split('\n')
+    .filter(z => /^\s+-\s/.test(z))
+    .map(z => z.trim().slice(2));
+  assert.deepEqual(netze, ['db-net'], 'migration braucht nur das interne Netz der Datenbank');
+  for (const d of ['app', 'jobs'])
+    assert.match(
+      leseDienst(compose, d),
+      /depends_on:[\s\S]*?\n\s+migration:\s*\n\s*condition: service_completed_successfully/,
+      `${d} wartet nicht auf migration`,
+    );
+  assert.match(
+    leseDienst(compose, 'db-rolle'),
+    /^\s*DB_MIGRATION_PASSWORD_FILE:\s*\/run\/secrets\/db_migration_password\s*$/m,
+  );
+  assert.match(
+    leseDienst(compose, 'postgres'),
+    /^\s*DB_MIGRATION_PASSWORD_FILE:\s*\/run\/secrets\/db_migration_password\s*$/m,
+    'eine neue Datenbank bekommt die Migrationsrolle nicht beim Anlegen',
+  );
   const rolle = leseDienst(compose, 'db-rolle');
   assert.match(rolle, /^\s*entrypoint: \["sh", "\/rolle\/app-rolle\.sh"\]\s*$/m);
   assert.match(rolle, /^\s*-\s*\.\/postgres\/app-rolle\.sh:\/rolle\/app-rolle\.sh:ro\s*$/m);

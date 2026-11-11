@@ -94,14 +94,35 @@ const ueberClient = (c: ClientBase): Abfrager => ({
   run: async (q: string, p?: unknown[]) => ({ changes: (await c.query(q, p)).rowCount ?? 0 }),
 });
 
-/** Kopien älter als `tage` (Datum steht im Schemanamen, UTC). @returns gelöschte Schemas */
+/** Kopien älter als `tage` (Datum steht im Schemanamen, UTC). Die Laufzeitrolle
+ * besitzt sie nicht und darf sie nicht löschen; sie leert sie, damit kein
+ * gelöschtes Konto darin weiterlebt, und der nächste Lauf des Dienstes
+ * migration räumt das leere Schema weg. @returns gelöschte oder geleerte Schemas */
 export async function raeumeAlteSicherungenAuf(c: Abfrager, tage = SICHERUNG_FRIST_TAGE): Promise<number> {
-  const rows = await c.all<{ nspname: string }>(`
-    SELECT nspname FROM pg_namespace WHERE nspname ~ '${SICHERUNG_SCHEMA}'
+  const rows = await c.all<{ nspname: string; eigen: boolean }>(`
+    SELECT nspname, pg_has_role(nspowner, 'USAGE') AS eigen FROM pg_namespace WHERE nspname ~ '${SICHERUNG_SCHEMA}'
        AND to_timestamp(substr(nspname, 15, 14), 'YYYYMMDDHH24MISS') AT TIME ZONE 'UTC'
            < NOW() - make_interval(days => $1)`, [tage]);
-  for (const { nspname } of rows) await c.run(`DROP SCHEMA "${nspname}" CASCADE`);
-  return rows.length;
+  let n = 0;
+  for (const { nspname, eigen } of rows) {
+    if (eigen) { await c.run(`DROP SCHEMA "${nspname}" CASCADE`); n++; continue; }
+    let geleert = 0;
+    for (const { relname } of await c.all<{ relname: string }>(
+      `SELECT relname FROM pg_class WHERE relnamespace = $1::regnamespace AND relkind = 'r'`, [nspname]))
+      geleert += (await c.run(`DELETE FROM "${nspname}"."${relname.replace(/"/g, '""')}"`)).changes;
+    if (geleert) n++;
+  }
+  return n;
+}
+
+/** Migrationsdateien, die in schema_migrations fehlen; ohne die Tabelle alle. */
+export async function offeneMigrationen(client: ClientBase): Promise<string[]> {
+  const dir = path.join(__dirname, 'migrations');
+  const dateien = fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => f.endsWith('.sql')).sort() : [];
+  const { rows } = await client.query(`SELECT to_regclass('public.schema_migrations') IS NOT NULL AS da`);
+  if (!rows[0].da) return dateien;
+  const fertig = new Set((await client.query<{ name: string }>('SELECT name FROM schema_migrations')).rows.map(z => z.name));
+  return dateien.filter(f => !fertig.has(f));
 }
 
 /** Ein gelöschtes Konto auch aus den Kopien: Spalten `user_id`, `*_user_id`, jede
