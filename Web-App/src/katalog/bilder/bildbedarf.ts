@@ -44,8 +44,19 @@ export async function schreibePuffer(): Promise<void> {
   await bildbedarfAnstossen().catch(logAndContinue('bild-job:anstossen'));
 }
 
+let _takt: NodeJS.Timeout | null = null;
+
 export async function initImageQueue(): Promise<void> {
-  setInterval(() => { schreibePuffer().catch(logAndContinue('bild-job:schreibePuffer')); }, 10_000).unref();
+  if (_takt) return;
+  _takt = setInterval(() => { schreibePuffer().catch(logAndContinue('bild-job:schreibePuffer')); }, 10_000);
+  _takt.unref();
+}
+
+/** Vor dem Schliessen des Pools: Was im Puffer liegt, braucht noch eine Verbindung. */
+export async function stoppeBildbedarf(): Promise<void> {
+  if (_takt) clearInterval(_takt);
+  _takt = null;
+  await schreibePuffer();
 }
 
 // Sonst bleiben alte Notizen.

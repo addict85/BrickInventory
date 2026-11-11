@@ -20,6 +20,7 @@ import { sitzungsKeksName, sitzungsKeksOptionen } from './src/http/sitzungsKeks'
 import { bereiteDatenbankVor } from './startup/datenbank';
 import { starteJobs, stoppeJobs } from './startup/jobsProzess';
 import { verdrahteProzess } from './startup/verdrahtung';
+import { schliessePufferUndTakte } from './startup/abschluss';
 import { drossleBeruehren } from './src/konto/sitzungsBeruehrung';
 import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './src/konto/sitzungsFrist';
 import { sitzungsVersionPruefen } from './src/konto/http/sitzungsPruefung';
@@ -35,7 +36,6 @@ import { sendeStartseite, startStilHash } from './src/konto/indexHtml';
 import { meldeSmtpAltlast } from './src/mail/mailer';
 import { meldeUngueltigeAdressen, meldeAusstehendeAdressen } from './src/konto/konten';
 import { horcheAufTokenWiderruf } from './src/konto/auth';
-import * as pgNotify from './db/pgNotify';
 import { registerImgProxy } from './routes/imgProxy';
 import { anmeldungAmEingang, rumpfLesen } from './routes/api_v1/middleware';
 import { schrittschutzAmEingang } from './src/konto/http/schrittschutz';
@@ -322,7 +322,7 @@ async function herunterfahren(signal: string, httpServer: Server | null, jobs: b
     }
     // Laufende Aufträge halten sicher an und gehen zurück in die Tabelle.
     if (jobs) await stoppeJobs();
-    await pgNotify.close().catch(logAndContinue('server:close'));
+    await schliessePufferUndTakte();
     await db.pool.end().catch(logAndContinue('server:end'));
     console.log('[shutdown] Datenbankverbindungen geschlossen');
     clearTimeout(notbremse);
