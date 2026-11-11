@@ -1,6 +1,5 @@
 /** Hier und nicht in einer Route, weil Sitzungsroute und v1-Fabrik beide darauf
  * zugreifen — eine Route soll keine andere importieren. */
-import { blickfeldAus } from '../haushalt/haushalt';
 import type { Sicht } from '../haushalt/haushalt';
 import { oeffentlicherFehler } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
@@ -18,6 +17,7 @@ import { geldEingabe } from '../infra/geld';
 import { fachfehler } from '../infra/fehlerTexte';
 import { teileBereich } from './prozess';
 import { bestandBereich } from '../bestand/prozess';
+import { haushaltBereich } from '../haushalt/prozess';
 
 export const getPartColorList = farbliste;
 
@@ -180,7 +180,7 @@ export async function updateManualPart(uid: number, partNumber: string, colorId:
 }
 
 export async function getPartAcquisitions(uidWahl: Sicht | number[], partNumber: string, colorId: string | number) {
-  const uid = await blickfeldAus(uidWahl);
+  const uid = await haushaltBereich().haushalt.blickfeldAus(uidWahl);
   // Das BLICKFELD: Je Zeile kommt der Eigentümer mit, sonst wüsste die Auswahl
   // im Dialog nicht, worauf sie steht.
   return teileBereich().manuelleTeile.teilErfassungen(uid, partNumber, V0.colorId(colorId));

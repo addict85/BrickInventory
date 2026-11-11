@@ -1,10 +1,11 @@
 import { resolveImageLocal } from '../katalog/bilder/images';
-import { asIds, withOwners, blickfeldAus, type Sicht } from '../haushalt/haushalt';
+import { asIds, type Sicht } from '../haushalt/haushalt';
 import { clampPageSize, applyManualCondition, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand/gemeinsam';
 import { mitVersion } from '../infra/setNummer';
 import { Abstriche } from '../infra/ergebnis';
 import { marktpreiseAusCacheFuerFiguren } from '../finanzen/marketPrice';
 import { figurenBereich } from './prozess';
+import { haushaltBereich } from '../haushalt/prozess';
 
 // Leseabfragen für Minifiguren.
 
@@ -12,7 +13,7 @@ import { figurenBereich } from './prozess';
 type FigurenWunsch = { search?: string | undefined; source?: string | undefined; set_number?: string | undefined;
   page?: number | undefined; page_size?: number | null | undefined };
 export async function getMinifigs(userIdWahl: Sicht | number | number[], { search, source, set_number, page = 1, page_size = null }: FigurenWunsch = {}) {
-  const userId = await blickfeldAus(userIdWahl);
+  const userId = await haushaltBereich().haushalt.blickfeldAus(userIdWahl);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   const size = page_size ? clampPageSize(page_size, 60) : null;
@@ -38,14 +39,14 @@ export async function getMinifigs(userIdWahl: Sicht | number | number[], { searc
 
   // Mit Gesamtzahl für den Endlos-Scroll, wie bei getSets.
   return {
-    figs: await withOwners(uids, mappedFigs),
+    figs: await haushaltBereich().haushalt.withOwners(uids, mappedFigs),
     total: figCount ? figCount.c : mappedFigs.length,
   };
 }
 
 // Eine Zählung für Webapp und App; die App zählte vorher selbst und anders.
 export async function getMinifigStats(userIdWahl: Sicht | number | number[]) {
-  const userId = await blickfeldAus(userIdWahl);
+  const userId = await haushaltBereich().haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const row = await figurenBereich().figurenListe.figurenKennzahlen(uids);
   return {
@@ -62,7 +63,7 @@ export async function getManualMinifigs(userIdWahl: Sicht | number | number[], v
                                  { page = 1, page_size = null, search = null }:
                                  { page?: number; page_size?: number | null; search?: string | null } = {},
                                  ab = new Abstriche()) {
-  const userId = await blickfeldAus(userIdWahl);
+  const userId = await haushaltBereich().haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const size = page_size ? clampPageSize(page_size, 60) : null;
   const figs = await figurenBereich().figurenListe.manuelleFigurenListe(uids, search,
@@ -76,6 +77,6 @@ export async function getManualMinifigs(userIdWahl: Sicht | number | number[], v
   const mitPreis = mitZustand.map(f =>
     ({ ...f, avg_price: preise.get(String(f.fig_number)) ?? null }));
 
-  return withOwners(uids, mitPreis);
+  return haushaltBereich().haushalt.withOwners(uids, mitPreis);
 }
 

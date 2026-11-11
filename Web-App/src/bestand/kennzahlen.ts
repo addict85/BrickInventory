@@ -1,10 +1,11 @@
-import { asIds, blickfeldAus, type Sicht } from '../haushalt/haushalt';
+import { asIds, type Sicht } from '../haushalt/haushalt';
 import { getGlobalSetting } from '../einstellungen/settings';
 import { bestandBereich } from './prozess';
+import { haushaltBereich } from '../haushalt/prozess';
 
 /** Spannen über alle drei Domänen und gehören deshalb in keine davon. */
 export async function getStats(userIdWahl: Sicht | number | number[]) {
-  const userId = await blickfeldAus(userIdWahl);
+  const userId = await haushaltBereich().haushalt.blickfeldAus(userIdWahl);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   const [setsRow, instrRow, partsRow, minifigsRow, cur, einzelnRow] = await Promise.all([

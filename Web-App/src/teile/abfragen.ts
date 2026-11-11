@@ -1,6 +1,6 @@
 import * as repo from './repository/teileListe';
 import { resolveImageLocal } from '../katalog/bilder/images';
-import { asIds, withOwners, blickfeldAus, type Sicht } from '../haushalt/haushalt';
+import { asIds, type Sicht } from '../haushalt/haushalt';
 import type { BlickfeldEingabe, BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
 import { istErsatzteil, colorId } from '../infra/validate';
 import { ensureFresh } from './partsSummary';
@@ -22,11 +22,12 @@ import { merkeBlFarbnummer, blFarbnummerAus } from '../katalog/blZuordnung';
 
 import { marktpreiseAusCacheFuerTeile } from '../finanzen/marketPrice';
 import { teileBereich } from './prozess';
+import { haushaltBereich } from '../haushalt/prozess';
 
 /** Ohne manuelle Positionen — die haben eine eigene Ansicht. Hex-Rückfall aus
  * rb_colors für Teile ohne eigenen Wert. */
 export async function getPartsColors(userIdWahl: Sicht | Blickfeld) {
-  const userId = await blickfeldAus(userIdWahl);
+  const userId = await haushaltBereich().haushalt.blickfeldAus(userIdWahl);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   // Aus der Zusammenfassung (die Mengen sind dort schon mit der Set-Anzahl
@@ -122,7 +123,7 @@ export async function tryPartsSummary(userId: Blickfeld, o: Record<string, unkno
 }
 
 export async function getParts(userIdWahl: Sicht | Blickfeld, query: Record<string, unknown> = {}) {
-  const userId = await blickfeldAus(userIdWahl);
+  const userId = await haushaltBereich().haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const filter = teileFilter(query);
   const page = query.page ?? 1;
@@ -164,13 +165,13 @@ export async function getParts(userIdWahl: Sicht | Blickfeld, query: Record<stri
 /** Die Kategorie aus dem eigenen Katalog, sonst aus rb_parts: Rebrickables
  * Set-Teile-Antwort liefert meist keine, die Liste bestünde sonst aus „Unbekannt". */
 export async function getPartsCategories(userIdWahl: Sicht | Blickfeld) {
-  const userId = await blickfeldAus(userIdWahl);
+  const userId = await haushaltBereich().haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   return teileBereich().teileListe.kategorien(uids, await ensureFresh(uids, { strict: true }));
 }
 
 export async function getPartsStats(userIdWahl: Sicht | Blickfeld) {
-  const userId = await blickfeldAus(userIdWahl);
+  const userId = await haushaltBereich().haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   // Aus der Zusammenfassung nur, wenn sie frisch ist: Webapp und App zeigen
   // dieselben Zahlen.
@@ -222,7 +223,7 @@ export async function getManualParts(userIdWahl: Sicht | Blickfeld, viewerId: nu
   { page = 1, page_size = null, search = null, storage = null }:
     { page?: unknown; page_size?: unknown; search?: string | null; storage?: string | null } = {},
   ab = new Abstriche()) {
-  const userId = await blickfeldAus(userIdWahl);
+  const userId = await haushaltBereich().haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const groesse = page_size ? clampPageSize(page_size, 60) : null;
   const seite = groesse ? { groesse, versatz: (Math.max(1, parseInt(String(page)) || 1) - 1) * groesse } : null;
@@ -232,7 +233,7 @@ export async function getManualParts(userIdWahl: Sicht | Blickfeld, viewerId: nu
   // Preise bleibt die Liste brauchbar; `ab` sammelt für `degradiert`, warum sie fehlen.
   const preise = await ab.oder('marktpreise', marktpreiseAusCacheFuerTeile(mitZustand, viewerId), new Map<string, number>());
   const mitPreis = mitZustand.map(t => ({ ...t, avg_price: preise.get(`${t.part_number}|${t.color_id}`) ?? null }));
-  return withOwners(uids, mitPreis);
+  return haushaltBereich().haushalt.withOwners(uids, mitPreis);
 }
 
 // Füllt die Spalte „Habe“ aus dem Bestand.
@@ -242,7 +243,7 @@ export async function getOwnedQuantities(
   blickfeldWahl: Sicht | BlickfeldEingabe,
   teile: Array<{ part_number?: string | number | undefined; color_id?: number | string | null | undefined }>,
 ): Promise<Record<string, { gesamt: number; lose: number }>> {
-  const uids = await blickfeldAus(blickfeldWahl);
+  const uids = await haushaltBereich().haushalt.blickfeldAus(blickfeldWahl);
   // Doppelte Schlüssel fallen weg: Eine Liste über mehrere Sets fragt dasselbe
   // Teil sonst mehrfach.
   const gesehen = new Set<string>();

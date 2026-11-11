@@ -5,7 +5,6 @@ import path from 'path';
 import { fehlertext, oeffentlicherFehler } from '../../src/infra/fehler';
 import { fehlerAntwort, pfadParam, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
-import { householdMembers } from '../../src/haushalt/haushalt';
 import { lagerSchreibkonto } from '../../src/bestand/lagerort';
 import { csvEmpfang, uploadKontingentBytes, privaterOrdner, privaterEmpfang, kontingentReichtFuer, pruefeEmpfangeneDatei } from '../../src/http/dateiEmpfang';
 import { sendCsv, uebersprungenHinweis } from '../../src/infra/csvExport';
@@ -17,6 +16,7 @@ import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/http/vertragsRouter';
 import { bestandBereich } from '../../src/bestand/prozess';
 import { finanzenBereich } from '../../src/finanzen/prozess';
+import { haushaltBereich } from '../../src/haushalt/prozess';
 const router = vertragsRouter();
 
 // ── Feste Pfade VOR den Pfaden mit :setNumber ────────────────────────────────
@@ -151,7 +151,7 @@ router.get('/sets/:setNumber/price-history', requireToken, async (req: Anfrage<'
 /** MUSS vor /sets/:setNumber stehen: Express liest „household-members" sonst
  * als Setnummer. */
 router.get('/sets/household-members', requireToken, async (req: Anfrage<'GET /api/v1/sets/household-members'>, res: Antwort<'GET /api/v1/sets/household-members'>) => {
-  res.json({ success: true, members: await householdMembers(req.apiUser.user_id) }); 
+  res.json({ success: true, members: await haushaltBereich().haushalt.householdMembers(req.apiUser.user_id) }); 
 });
 
 router.get('/sets/:setNumber', requireToken, async (req: Anfrage<'GET /api/v1/sets/:setNumber'>, res: Antwort<'GET /api/v1/sets/:setNumber'>) => {

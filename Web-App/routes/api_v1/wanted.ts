@@ -3,7 +3,6 @@
 import { oeffentlicherFehler } from '../../src/infra/fehler';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
-import { schreibziel } from '../../src/haushalt/haushalt';
 import { legeMerkpostenAn, loescheMerkposten, verschiebeMerkposten, uebernimm, merkpostenVon, preiseBeiderZustaende } from '../../src/merkliste/merkliste';
 import { getSetting } from '../../src/einstellungen/settings';
 import { csvEmpfang, xmlEmpfang } from '../../src/http/dateiEmpfang';
@@ -18,6 +17,7 @@ import { jsonOderNull } from '../../src/infra/validate';
 import { seiteAus } from '../../src/infra/seite';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
+import { haushaltBereich } from '../../src/haushalt/prozess';
 const router = vertragsRouter();
 type WantedXmlBericht = z.infer<typeof WantedXmlErgebnis>;
 
@@ -41,15 +41,15 @@ router.get('/wanted', requireToken, async (req: Anfrage<'GET /api/v1/wanted'>, r
 router.post('/wanted', requireToken, async (req: Anfrage<'POST /api/v1/wanted'>, res: Antwort<'POST /api/v1/wanted'>) => {
   const { set_number, condition, owner_user_id } = req.eingabe;
   if (!set_number) return sendeFehler(req, res, 400, 'set_number_erforderlich');
-  const owner = await schreibziel(req.apiUser.user_id, owner_user_id);
+  const owner = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, owner_user_id);
   const { merkposten, war_neu } = await legeMerkpostenAn(owner, set_number, condition);
   res.json({ success: true, war_neu, merkposten });
 });
 
 // Zwei Kontenprüfungen: heraus aus dem einen UND hinein ins andere Konto.
 router.put('/wanted/:setNumber/:condition/inhaber', requireToken, async (req: Anfrage<'PUT /api/v1/wanted/:setNumber/:condition/inhaber'>, res: Antwort<'PUT /api/v1/wanted/:setNumber/:condition/inhaber'>) => {
-  const von = await schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
-  const zu  = await schreibziel(req.apiUser.user_id, req.eingabe.neuer_inhaber);
+  const von = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+  const zu  = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.eingabe.neuer_inhaber);
   const r = await verschiebeMerkposten(von, req.pfad.setNumber,
                                    req.pfad.condition, zu);
   res.json({ success: true, ...r, owner_user_id: zu });
@@ -58,7 +58,7 @@ router.put('/wanted/:setNumber/:condition/inhaber', requireToken, async (req: An
 /** Der Zustand steht im Pfad, weil er zum Schlüssel gehört: Dasselbe Set kann
  * neu UND gebraucht gewünscht sein. */
 router.delete('/wanted/:setNumber/:condition', requireToken, async (req: Anfrage<'DELETE /api/v1/wanted/:setNumber/:condition'>, res: Antwort<'DELETE /api/v1/wanted/:setNumber/:condition'>) => {
-  const owner = await schreibziel(req.apiUser.user_id, req.abfrage.owner_user_id);
+  const owner = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner_user_id);
   const weg = await loescheMerkposten(owner, req.pfad.setNumber, req.pfad.condition);
   res.json({ success: true, geloescht: weg });
 });
@@ -73,7 +73,7 @@ router.get('/wanted/:setNumber/preise', requireToken, async (req: Anfrage<'GET /
 /** Die Regel steht in merkliste.ts:uebernimm() — über addSet(), die eine
  * Wahrheit fürs Erfassen. Hier bleibt nur, wer schreiben darf. */
 router.post('/wanted/:setNumber/:condition/uebernehmen', requireToken, async (req: Anfrage<'POST /api/v1/wanted/:setNumber/:condition/uebernehmen'>, res: Antwort<'POST /api/v1/wanted/:setNumber/:condition/uebernehmen'>) => {
-  const owner = await schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+  const owner = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
   const r = await uebernimm(req.apiUser.user_id, owner,
     req.pfad.setNumber, req.pfad.condition, req.eingabe ?? {});
   res.json({ success: true, ...r });
@@ -83,7 +83,7 @@ router.post('/wanted/:setNumber/:condition/uebernehmen', requireToken, async (re
 router.post('/wanted/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'),
   async (req: Anfrage<'POST /api/v1/wanted/import/csv'>, res: Antwort<'POST /api/v1/wanted/import/csv'>) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-    const owner = await schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+    const owner = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
 
     res.json(await importAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'merkliste_csv',
       { owner, text: req.file.buffer.toString('utf-8') }));

@@ -3,11 +3,12 @@
 import type { Db, DbSchnittstelle } from '../../db/database';
 import * as orte from './repository/lagerort';
 import type { LagerTabelle } from './repository/lagerort';
-import { asIds, scopeIds, writableIds, blickfeldAus, type Sicht, schreibbereichAus, type Schreiber } from '../haushalt/haushalt';
+import { asIds, blickfeldAus, type Sicht, schreibbereichAus, type Schreiber } from '../haushalt/haushalt';
 import type { BlickfeldEingabe } from '../haushalt/haushalt';
 import { fachfehler } from '../infra/fehlerTexte';
 import { deleteUserSetting } from '../einstellungen/settings';
 import { setUserSetting } from '../konto/nutzerEinstellung';
+import { haushaltBereich } from '../haushalt/prozess';
 
 /** Fachlich, nicht technisch (die Spalte ist TEXT): Der Name muss auf eine
  * Kachel passen, und eine Absage ist besser als ein abgeschnittener Name. */
@@ -30,7 +31,7 @@ export function normalisiereLagerort(v: unknown): string | null {
 export async function setzeLagerort(db: Db, 
   art: LagerArt, besitzerIdsWahl: Schreiber | number[], schluessel: string[], ort: string | null,
 ): Promise<number> {
-  const besitzerIds = await schreibbereichAus(besitzerIdsWahl);
+  const besitzerIds = await schreibbereichAus(db, besitzerIdsWahl);
   if (ort === null) return orte.ordneOrtZu(db, art, besitzerIds, null, schluessel);
   // Ein neuer Name kommt in den Vorrat — vor der Zuordnung, die ihn über die ID findet.
   return await db.transaction(async (tx) => {
@@ -56,7 +57,7 @@ function nameOderFehler(v: unknown): string {
 export async function lagerKonten(nutzer: number, wunsch: string | number | undefined, schreiben: boolean): Promise<number[]> {
   const gewuenscht = String(wunsch ?? '').split(',').map(x => parseInt(x.trim(), 10)).filter(Number.isFinite);
   if (!gewuenscht.length) return [nutzer];
-  const erlaubt = schreiben ? await writableIds(nutzer) : await scopeIds(nutzer);
+  const erlaubt = schreiben ? await haushaltBereich().haushalt.writableIds(nutzer) : await haushaltBereich().haushalt.scopeIds(nutzer);
   return gewuenscht.filter(id => erlaubt.includes(id));
 }
 
@@ -122,7 +123,7 @@ export async function loescheOrt(db: DbSchnittstelle, userId: number, id: number
 
 /** EINE Abfrage über alle Tabellen, damit nicht jede Oberfläche selbst zusammenführt. */
 export async function lagerorte(db: DbSchnittstelle, blickfeldWahl: Sicht | BlickfeldEingabe) {
-  const blickfeld = await blickfeldAus(blickfeldWahl);
+  const blickfeld = await blickfeldAus(db, blickfeldWahl);
   const uids = asIds(blickfeld);
   // Über den NAMEN gruppiert, absichtlich: „Keller" von Grossvater und Enkel
   // sind zwei Vorratszeilen, gehören in der Übersicht aber zusammen.

@@ -14,8 +14,8 @@ export async function deleteSetRows(tx: DbSchnittstelle, uids: number[], setNumb
 
 /** Standardmässig im ganzen Schreibbereich; eine Kontenwahl schränkt ihn ein, erweitert ihn nie. */
 export async function loescheSetFuer(sk: SetsKontext, s: Sicht, setNumber: string) {
-  const schreibbar = await writableIds(s.nutzer);
-  const gewaehlt = s.konten === undefined ? schreibbar : await blickfeldAus(s);
+  const schreibbar = await writableIds(sk.db, s.nutzer);
+  const gewaehlt = s.konten === undefined ? schreibbar : await blickfeldAus(sk.db, s);
   return deleteSet(
     sk,
     gewaehlt.filter(id => schreibbar.includes(id)),

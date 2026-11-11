@@ -1,6 +1,5 @@
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
-import { schreibziel } from '../../src/haushalt/haushalt';
 import { getManualMinifigs, getMinifigStats, getMinifigs } from '../../src/figuren/abfragen';
 import { addManualFig, updateManualFig } from '../../src/figuren/manuelleFiguren';
 import { getSetting } from '../../src/einstellungen/settings';
@@ -17,6 +16,7 @@ import { Abstriche } from '../../src/infra/ergebnis';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Anfrage, Antwort } from '../../src/http/vertragsRouter';
 import { bestandBereich } from '../../src/bestand/prozess';
+import { haushaltBereich } from '../../src/haushalt/prozess';
 const router = vertragsRouter();
 
 router.get('/minifigs', requireToken, async (req: Anfrage<'GET /api/v1/minifigs'>, res: Antwort<'GET /api/v1/minifigs'>) => {
@@ -26,14 +26,14 @@ router.get('/minifigs', requireToken, async (req: Anfrage<'GET /api/v1/minifigs'
 });
 
 router.post('/minifigs', requireToken, async (req: Anfrage<'POST /api/v1/minifigs'>, res: Antwort<'POST /api/v1/minifigs'>) => {
-  const owner = await schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+  const owner = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
   const result = await addManualFig(owner, req.eingabe);
   res.json({ success: true, ...result });
 });
 
 router.put('/minifigs/:figNumber', requireToken, async (req: Anfrage<'PUT /api/v1/minifigs/:figNumber'>, res: Antwort<'PUT /api/v1/minifigs/:figNumber'>) => {
   // Ohne den Parameter das eigene Konto.
-  const besitzer = await schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
+  const besitzer = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
   const r = await updateManualFig(besitzer, req.pfad.figNumber, req.eingabe);
   res.json({ success: true, ...r });
 });
@@ -48,7 +48,7 @@ router.put('/minifigs/:figNumber/storage', requireToken, async (req: Anfrage<'PU
 
 router.delete('/minifigs/:figNumber', requireToken, async (req: Anfrage<'DELETE /api/v1/minifigs/:figNumber'>, res: Antwort<'DELETE /api/v1/minifigs/:figNumber'>) => {
   // Ohne den Parameter das eigene Konto.
-  const besitzer = await schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
+  const besitzer = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
   const geloescht = await loescheFigur(besitzer, req.pfad.figNumber);
   if (geloescht === null) return sendeFehler(req, res, 404, 'minifig_nicht_manuell');
   res.json({ success: true, papierkorb: [geloescht] });

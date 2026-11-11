@@ -5,7 +5,7 @@
 import { createHash } from 'node:crypto';
 import { logAndContinue } from '../../infra/fehler';
 import type * as repo from '../repository/bewertung';
-import { asIds, withOwners, blickfeldAus, type Sicht } from '../../haushalt/haushalt';
+import { asIds, type Sicht } from '../../haushalt/haushalt';
 import { getGlobalSetting, getSetting } from '../../einstellungen/settings';
 import { resolveImageLocal, proxyImageUrl } from '../../katalog/bilder/images';
 import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct, pnlProzent } from '../setValue';
@@ -22,6 +22,7 @@ import { stelleAuftragEin } from '../../auftraege/dienst';
 import { fehlerText } from '../../infra/fehlerTexte';
 import type { Nutzlast } from '../../auftraege/nutzlasten';
 import { finanzenBereich } from '../prozess';
+import { haushaltBereich } from '../../haushalt/prozess';
 
 type Zustand = 'N' | 'U';
 type Posten = Nutzlast<'preise_nachladen'>['posten'][number];
@@ -129,7 +130,7 @@ function bewertungsSummen(zeilen: Array<{ quantity: number; min_price: number; m
 export async function computeSetsValuation(viewerId: number, idsWahl: Sicht | Blickfeld) {
   // viewerId bestimmt die Einstellungen, ids die gerechneten Daten: Mit dem
   // Filter „Unterkonten" fehlt das fragende Konto in ids.
-  const uids = await blickfeldAus(idsWahl);
+  const uids = await haushaltBereich().haushalt.blickfeldAus(idsWahl);
   const [currency, ttlHours, guideType] = await Promise.all([
     getSetting(viewerId, 'currency', 'EUR'), getSetting(viewerId, 'price_cache_ttl', '24'),
     getSetting(viewerId, 'price_guide_type', 'sold')]);
@@ -162,7 +163,7 @@ export async function computeSetsValuation(viewerId: number, idsWahl: Sicht | Bl
     const k = `${a.user_id}|${a.set_number}`, l = jeKontoUndSet.get(k);
     if (l) l.push(a); else jeKontoUndSet.set(k, [a]);
   }
-  const results = await withOwners(uids,
+  const results = await haushaltBereich().haushalt.withOwners(uids,
     sets.map(set => bewerteSet(set, jeKontoUndSet.get(`${set.user_id}|${set.set_number}`) || [], lage)));
   return {
     ...kopf,
@@ -228,7 +229,7 @@ function gesamt(zeilen: Array<{ total_value: string }>) {
 
 /** Eine Umsetzung für Sitzungsroute und Token-API. */
 export async function computeMinifigsValuation(viewerId: number, idsWahl: Sicht | Blickfeld) {
-  const uids = asIds(await blickfeldAus(idsWahl));
+  const uids = asIds(await haushaltBereich().haushalt.blickfeldAus(idsWahl));
   const [currency, ttlHours] = await Promise.all([
     getSetting(viewerId, 'currency', 'EUR'), getGlobalSetting('price_cache_ttl', '24')]);
   const ttl = Math.max(1, parseInt(ttlHours) || 24);
@@ -243,7 +244,7 @@ export async function computeMinifigsValuation(viewerId: number, idsWahl: Sicht 
   ]);
   const fehlt: Posten[] = [];
 
-  const results = await withOwners(uids, manualFigs.map(fig => {
+  const results = await haushaltBereich().haushalt.withOwners(uids, manualFigs.map(fig => {
     // Je vorkommendem Zustand: Ein neu gekauftes Exemplar bekommt den Neupreis,
     // auch wenn ein anderes gebraucht ist.
     const key  = fig.fig_number;
@@ -270,7 +271,7 @@ export async function computeMinifigsValuation(viewerId: number, idsWahl: Sicht 
 }
 
 export async function computePartsValuation(viewerId: number, idsWahl: Sicht | Blickfeld) {
-  const uids = asIds(await blickfeldAus(idsWahl));
+  const uids = asIds(await haushaltBereich().haushalt.blickfeldAus(idsWahl));
   const [currency, ttlHours] = await Promise.all([
     getSetting(viewerId, 'currency', 'EUR'), getGlobalSetting('price_cache_ttl', '24')]);
   const ttl = Math.max(1, parseInt(ttlHours) || 24);
@@ -307,7 +308,7 @@ export async function computePartsValuation(viewerId: number, idsWahl: Sicht | B
     };
   });
 
-  const results = await withOwners(uids, await parallelLimit(tasks, 5));
+  const results = await haushaltBereich().haushalt.withOwners(uids, await parallelLimit(tasks, 5));
   return { currency, parts: results, ...gesamt(results),
            kaufpreise_fremde_waehrung: fremdeKaufpreise(acqByPart),
            kaufpreise_umgerechnet: zaehle([...acqByPart.values()].flat(), 'kaufpreis_umgerechnet'),

@@ -3,9 +3,9 @@
 import { mailEingerichtet, sendKontoHinweisMail } from '../mail/mailer';
 import type { KontoHinweis } from '../mail/mailer';
 import { logAndContinue } from '../infra/fehler';
-import { householdStatus } from '../haushalt/haushalt';
 import { getSetting } from '../einstellungen/settings';
 import { kontoBereich } from './prozess';
+import { haushaltBereich } from '../haushalt/prozess';
 
 type Angaben = { name?: string | undefined; konto?: string | undefined; durch?: string | undefined };
 
@@ -14,7 +14,7 @@ export async function meldeKontoaenderung(uid: number, art: KontoHinweis, angabe
   const k = await kontoBereich().konten.profilZeile(uid);
   if (!k?.email) return false;
   const lang = String(await getSetting(uid, 'language', 'de'));
-  const haushalt = (await householdStatus(uid)).parents.map(p => p.username);
+  const haushalt = (await haushaltBereich().haushalt.householdStatus(uid)).parents.map(p => p.username);
   const r = await sendKontoHinweisMail(k.email, k.username, art, { lang, haushalt,
     ...(angaben.name ? { passkey: angaben.name } : {}), konto: angaben.konto, durch: angaben.durch });
   return r.success;

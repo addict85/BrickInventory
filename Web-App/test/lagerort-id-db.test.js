@@ -46,7 +46,7 @@ test('Lagerort als ID gegen echte Datenbank', async (t) => {
   }
   await seed();
   const L = { ..._req('src/bestand/lagerort.js'), ..._req('src/bestand/prozess.js').bestandBereich().lagerortDienst };
-  const household = _req('src/haushalt/haushalt.js');
+  const household = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt };
   const schreibbar = await household.writableIds(UID);
 
   const estrich = (await L.legeOrtAn(UID, 'Estrich')).ort;

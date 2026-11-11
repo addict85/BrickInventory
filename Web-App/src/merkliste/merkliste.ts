@@ -1,7 +1,6 @@
 /** Die Merkliste — was man haben MÖCHTE, getrennt vom Bestand. Ein Helfer
  * statt Code in den Routen, weil beide Oberflächen und mehrere Erfassungswege
  * dieselben Regeln brauchen. */
-import { blickfeldAus } from '../haushalt/haushalt';
 import type { Sicht } from '../haushalt/haushalt';
 import { nacharbeit } from '../auftraege/nacharbeit';
 import { addSet, sanitizeSetNumber, findSetInScope } from '../sets';
@@ -19,6 +18,7 @@ import { setBekanntImKatalog } from '../katalog/bricklinkPreise';
 import { moeglicheSetNummer, mitVersion } from '../infra/setNummer';
 import { merklisteBereich } from './prozess';
 import { finanzenBereich } from '../finanzen/prozess';
+import { haushaltBereich } from '../haushalt/prozess';
 
 /** Jeder Zustand für sich: Kennt BrickLink einen nicht, kommt der andere
  * trotzdem, und ein fehlender Preis ist ein Strich, kein Fehler. */
@@ -126,7 +126,7 @@ export interface MerkFilter {
 export async function merkpostenVon(
   userIdsWahl: Sicht | number[], nurSet?: string, waehrung = 'EUR', filter?: MerkFilter,
 ): Promise<Merkposten[]> {
-  const userIds = await blickfeldAus(userIdsWahl);
+  const userIds = await haushaltBereich().haushalt.blickfeldAus(userIdsWahl);
   if (!userIds?.length) return [];
   // Unbekannt heisst „beide", nicht „keine": Eine geleerte Liste sähe aus wie
   // eine leere Merkliste.

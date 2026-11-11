@@ -72,7 +72,7 @@ export async function findSetInScope(
   setNumber: string,
 ): Promise<VorhandenesSet | null> {
   const sn = normalizeSetNumber(setNumber);
-  const row = await repo.setImBlickfeld(sk.db, await scopeIds(viewerId), sn, viewerId);
+  const row = await repo.setImBlickfeld(sk.db, await scopeIds(sk.db, viewerId), sn, viewerId);
   if (!row) return null;
   return { set_number: row.set_number, owner_user_id: row.user_id, is_self: row.user_id === viewerId };
 }
@@ -117,7 +117,7 @@ export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfa
   if (e.streng && !GETIPPTE_NUMMER.test(roh)) fachfehler('ungueltig', 'setnummer_ungueltig');
   const sn = normalizeSetNumber(roh);
   if (!moeglicheSetNummer(sn)) fachfehler('ungueltig', 'setnummer_ungueltig');
-  const besitzer = await schreibziel(e.anfragender, e.besitzerWunsch);
+  const besitzer = await schreibziel(sk.db, e.anfragender, e.besitzerWunsch);
   const zustand = await zustandFuerPreis(e.zustand ?? null, null, besitzer);
   const ort = await ortFuerNeuerfassung(sk.db, besitzer, e.lagerort ?? null);
   const kaufpreis = e.kaufpreis ?? null;

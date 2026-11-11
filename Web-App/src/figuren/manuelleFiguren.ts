@@ -1,6 +1,5 @@
 /** Hier und nicht in einer Route, weil Sitzungsroute und v1-Fabrik beide darauf
  * zugreifen — eine Route soll keine andere importieren. */
-import { blickfeldAus } from '../haushalt/haushalt';
 import type { Sicht } from '../haushalt/haushalt';
 import { logAndContinue, oeffentlicherFehler } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
@@ -18,6 +17,7 @@ import { geldEingabe } from '../infra/geld';
 import { fachfehler } from '../infra/fehlerTexte';
 import { figurenBereich } from './prozess';
 import { bestandBereich } from '../bestand/prozess';
+import { haushaltBereich } from '../haushalt/prozess';
 
 // Ohne BrickLink-Figurennummer wird der Marktpreis aus den Teilepreisen
 // geschätzt: Für Teile ist die Zuordnung RB→BL verlässlich, für Figuren nicht.
@@ -165,7 +165,7 @@ export async function updateManualFig(uid: number, figNumber: string, body: Reco
 
 /** `uid` ist das Blickfeld (Liste). */
 export async function getFigAcquisitions(uidWahl: Sicht | number[], figNumber: string) {
-  const uid = await blickfeldAus(uidWahl);
+  const uid = await haushaltBereich().haushalt.blickfeldAus(uidWahl);
   return figurenBereich().manuelleFiguren.figurErfassungen(uid, figNumber);
 }
 

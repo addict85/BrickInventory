@@ -1,10 +1,10 @@
-import { blickfeldAus } from '../haushalt/haushalt';
 import type { Sicht } from '../haushalt/haushalt';
 import { getSetting as getSettingStandard } from '../einstellungen/settings';
 import { baueDiagrammdaten } from './portfolio/diagrammdaten';
 import { rekonstruiereKurve, type KurvenPunkt } from './portfolio/kurve';
 import { DEFAULT_PRICE_CONDITION } from './financeCalc';
 import { finanzenBereich } from './prozess';
+import { haushaltBereich } from '../haushalt/prozess';
 /** Je Monat der letzte Punkt; der erste bleibt exakt, damit alle Zeiträume beim selben Start beginnen. */
 function aufMonate(rawPoints: KurvenPunkt[]): KurvenPunkt[] {
   const byMonth = new Map<string, KurvenPunkt>();
@@ -39,7 +39,7 @@ export async function getPortfolioHistory(
   db: unknown = finanzenBereich().db,
   getSetting: (userId: number, key: string, fallback: string) => Promise<string> = getSettingStandard,
 ) {
-  const ids = await blickfeldAus(idsWahl);
+  const ids = await haushaltBereich().haushalt.blickfeldAus(idsWahl);
   // Mit dem Filter „Unterkonten" enthält ids das fragende Konto nicht; die
   // Währung darf dann nicht aus ids[0] kommen.
   const uids = Array.isArray(ids) ? ids.map(n => parseInt(String(n))) : [parseInt(String(ids))];

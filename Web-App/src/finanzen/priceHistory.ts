@@ -1,12 +1,13 @@
 /** Die EINE Umsetzung für Webapp und Android-API, damit beide dasselbe Diagramm zeigen. */
 import { meldeUndLiefere } from '../infra/fehler';
 import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
-import { asIds, blickfeldAus, type Sicht } from '../haushalt/haushalt';
+import { asIds, type Sicht } from '../haushalt/haushalt';
 import { buildChart } from './chartData';
 import { blNummerVon } from '../katalog/blZuordnung';
 import { entwicklungProzent } from './setValue';
 import { konfig } from '../infra/konfig';
 import { finanzenBereich } from './prozess';
+import { haushaltBereich } from '../haushalt/prozess';
 
 /** Nur Zustände mit Erfassung: Sonst stünde eine Kurve ohne Bezugsgrösse da.
  * @param rueckfall Was gilt, wenn es GAR KEINE Erfassung gibt. */
@@ -36,7 +37,7 @@ interface ZustandsVergleich { market_price: number | null; purchase_price: numbe
 /** @param uid Blickfeld: Im Haushalt gehört das Set oft einem Unterkonto, mit
  *   der nackten Betrachter-ID fände die Abfrage es nicht. */
 export async function getSetPriceHistory(uidWahl: Sicht | number | number[], setNumber: string, currency: string) {
-  const uid = await blickfeldAus(uidWahl);
+  const uid = await haushaltBereich().haushalt.blickfeldAus(uidWahl);
   const uids = asIds(uid);
   const condition = await resolveSetCondition(uids, setNumber);
 
@@ -173,7 +174,7 @@ async function manualPriceHistory(
 }
 
 export async function getPartPriceHistory(uidWahl: Sicht | number | number[], partNumber: string, colorId: number, currency: string) {
-  const uid = await blickfeldAus(uidWahl);
+  const uid = await haushaltBereich().haushalt.blickfeldAus(uidWahl);
   // Preise liegen unter BrickLink-Nummer und -Farbe, Erfassungen unter denen
   // des Benutzers — die beiden Schlüsselräume dürfen nicht gemischt werden.
   const blNummer = await resolveBlPartNumber(partNumber, Array.isArray(uid) ? uid[0] ?? null : uid);
@@ -187,7 +188,7 @@ export async function getPartPriceHistory(uidWahl: Sicht | number | number[], pa
 
 // Preise stehen unter der BrickLink-Nummer, Erfassungen unter der eigenen; beide Schlüssel zählen.
 export async function getMinifigPriceHistory(uidWahl: Sicht | number | number[], figNumber: string, currency: string) {
-  const uid = await blickfeldAus(uidWahl);
+  const uid = await haushaltBereich().haushalt.blickfeldAus(uidWahl);
   const nummern = await preisNummernFuerFigur(uid, figNumber);
   return manualPriceHistory(uid, currency,
     'minifig_price_history', 'minifig_price_cache', 'minifig_acquisitions',

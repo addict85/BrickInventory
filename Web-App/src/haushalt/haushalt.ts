@@ -1,7 +1,7 @@
 // Hier allein: wessen Daten eine Anfrage sieht.
 import { logAndContinue } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
-import * as db from '../../db/database';
+import type { Db, DbSchnittstelle } from '../../db/database';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
 import { getSetting } from '../einstellungen/settings';
 import * as repo from './repository';
@@ -47,9 +47,9 @@ export function meldeHaushaltsaenderung(): void {
 /** Nur die direkten Unterkonten: Jedes Konto im Blickfeld hat selbst einer
  * Einladung DIESES Kontos zugestimmt. Ein Unterkonto sieht nur sich selbst —
  * der Hauptaccount ist kein gemeinsamer Topf, sondern eine Sicht. */
-const kinder = repo.unterkonten;
+const kinder = (db: DbSchnittstelle, id: number) => repo.unterkonten(db, id);
 
-export async function resolveHousehold(uid: number): Promise<Household> {
+export async function resolveHousehold(db: DbSchnittstelle, uid: number): Promise<Household> {
   const id = parseInt(String(uid));
   const treffer = _haushalte.get(id);
   // Kopien zurückgeben: Ein Aufrufer, der die Liste verändert, veränderte
@@ -57,7 +57,7 @@ export async function resolveHousehold(uid: number): Promise<Household> {
   if (treffer && Date.now() - treffer.zeit < HAUSHALT_TTL_MS)
     return { ...treffer.wert, memberIds: [...treffer.wert.memberIds], elternIds: [...treffer.wert.elternIds] };
 
-  const [unten, eltern] = await Promise.all([kinder(id), repo.elternkonten(id)]);
+  const [unten, eltern] = await Promise.all([kinder(db, id), repo.elternkonten(db, id)]);
   const haushalt: Household = { memberIds: [id, ...unten], isMain: unten.length > 0, elternIds: eltern };
   if (_haushalte.size >= HAUSHALT_MAX) _haushalte.clear();
   _haushalte.set(id, { wert: haushalt, zeit: Date.now() });
@@ -66,24 +66,24 @@ export async function resolveHousehold(uid: number): Promise<Household> {
 
 /** Frisch abgefragt, nicht aus dem Gedächtnis: Nach dem Lösen darf kein
  * früheres Elternkonto noch minutenlang schreiben. */
-export async function canWriteFor(actorId: number, ownerId: number): Promise<boolean> {
+export async function canWriteFor(db: DbSchnittstelle, actorId: number, ownerId: number): Promise<boolean> {
   const actor = parseInt(String(actorId));
   const owner = parseInt(String(ownerId));
   if (actor === owner) return true;
-  return repo.istVerknuepft(actor, owner);
+  return repo.istVerknuepft(db, actor, owner);
 }
 
 /** Frisch, aus demselben Grund wie canWriteFor. */
-export async function writableIds(uid: number): Promise<number[]> {
+export async function writableIds(db: DbSchnittstelle, uid: number): Promise<number[]> {
   const id = parseInt(String(uid));
-  return [id, ...(await kinder(id))];
+  return [id, ...(await kinder(db, id))];
 }
 
 /** `tiefe` bleibt für ältere App-Fassungen im Feld (0 = eigenes, 1 = Unterkonto). */
-export async function householdMembers(uid: number) {
-  const h = await resolveHousehold(uid);
+export async function householdMembers(db: DbSchnittstelle, uid: number) {
+  const h = await resolveHousehold(db, uid);
   const self = parseInt(String(uid));
-  const rows = await repo.kontoNamen(h.memberIds);
+  const rows = await repo.kontoNamen(db, h.memberIds);
   return h.memberIds
     .map(id => rows.find(r => r.id === id))
     .filter((r): r is repo.KontoName => !!r)
@@ -111,35 +111,35 @@ function hash(token: string) {
 
 /** Abgelaufene und verbrauchte Codes werden dabei entsorgt; die Tabelle bleibt
  * so von selbst klein. */
-export async function createInvite(uid: number) {
+export async function createInvite(db: DbSchnittstelle, uid: number) {
   // Absagen als CODE: Erst die Route weiss, welche Sprache der Anfragende sieht.
   const id = parseInt(String(uid));
   // Jedes Konto darf einladen, auch ein Unterkonto: Ein Zwischenkonto ist Vater
   // UND Kind.
-  await repo.raeumeEinladungenAuf().catch(logAndContinue('haushalt:id'));
+  await repo.raeumeEinladungenAuf(db).catch(logAndContinue('haushalt:id'));
   // Jede offene Einladung ist ein Zugang zum Haushalt; beliebig viele braucht niemand.
-  if (await repo.offeneEinladungen(id) >= OFFENE_EINLADUNGEN_MAX)
+  if (await repo.offeneEinladungen(db, id) >= OFFENE_EINLADUNGEN_MAX)
     return { fehler: 'einladungen_zu_viele' as const, vars: { n: OFFENE_EINLADUNGEN_MAX } };
 
   const code = neuerCode();
-  await repo.legeEinladungAn(hash(code), id, new Date(Date.now() + INVITE_TTL_MS));
+  await repo.legeEinladungAn(db, hash(code), id, new Date(Date.now() + INVITE_TTL_MS));
   return { code, expires_in: INVITE_TTL_MS / 1000 };
 }
 
 /** Wer einlädt, bevor jemand mit dem Passwort zustimmt; nur wer den Code hat, erfährt den Namen. */
-export async function pruefeEinladung(uid: number, code: string) {
+export async function pruefeEinladung(db: DbSchnittstelle, uid: number, code: string) {
   if (typeof code !== 'string' || code.trim().length < 8) return { fehler: 'einladungscode_ungueltig' as const };
   const subId = parseInt(String(uid));
-  const mainId = await repo.einladenderZuCode(hash(code));
+  const mainId = await repo.einladenderZuCode(db, hash(code));
   if (mainId === null) return { fehler: 'einladungscode_abgelaufen' as const };
   if (mainId === subId) return { fehler: 'konto_mit_sich_selbst' as const };
-  if (await repo.istVerknuepft(mainId, subId)) return { fehler: 'konto_bereits_verknuepft' as const };
-  if (await repo.istVerknuepft(subId, mainId)) return { fehler: 'verknuepfung_erzeugt_kreis' as const };
-  return { inviter: { id: mainId, username: (await repo.kontoName(mainId)) || String(mainId) } };
+  if (await repo.istVerknuepft(db, mainId, subId)) return { fehler: 'konto_bereits_verknuepft' as const };
+  if (await repo.istVerknuepft(db, subId, mainId)) return { fehler: 'verknuepfung_erzeugt_kreis' as const };
+  return { inviter: { id: mainId, username: (await repo.kontoName(db, mainId)) || String(mainId) } };
 }
 
 // Atomar entwertet, bei Fehlschlag frei.
-export async function redeemInvite(uid: number, code: string) {
+export async function redeemInvite(db: Db, uid: number, code: string) {
   const subId = parseInt(String(uid));
   if (typeof code !== 'string' || code.length < 8) {
     return { fehler: 'einladungscode_ungueltig' as const };
@@ -147,11 +147,11 @@ export async function redeemInvite(uid: number, code: string) {
   const th = hash(code);
 
   // Ein Lesefehler ist kein abgelaufener Code: Er geht weiter.
-  const mainId = await repo.belegeEinladung(th, subId);
+  const mainId = await repo.belegeEinladung(db, th, subId);
   if (mainId === null) return { fehler: 'einladungscode_abgelaufen' as const };
 
   const release = async () => {
-    await repo.gibEinladungFrei(th).catch(logAndContinue('haushalt:release'));
+    await repo.gibEinladungFrei(db, th).catch(logAndContinue('haushalt:release'));
   };
 
   if (mainId === subId) {
@@ -161,7 +161,7 @@ export async function redeemInvite(uid: number, code: string) {
 
   // Frisch: Ein fünf Minuten alter Stand könnte einen Kreis durchlassen, den
   // eine gleichzeitige Einlösung gerade erst möglich gemacht hat.
-  const [schonDa, umgekehrt] = await Promise.all([repo.istVerknuepft(mainId, subId), repo.istVerknuepft(subId, mainId)]);
+  const [schonDa, umgekehrt] = await Promise.all([repo.istVerknuepft(db, mainId, subId), repo.istVerknuepft(db, subId, mainId)]);
   if (schonDa) {
     await release();
     return { fehler: 'konto_bereits_verknuepft' as const };
@@ -193,36 +193,36 @@ export async function redeemInvite(uid: number, code: string) {
   meldeHaushaltsaenderung();
   // Die Verknüpfung steht schon; fehlt nur der Name, trägt die Antwort die ID und sagt es.
   const ab = new Abstriche();
-  const name = await ab.oder('kontoname', repo.kontoName(mainId), null);
+  const name = await ab.oder('kontoname', repo.kontoName(db, mainId), null);
   return { linked_to: { id: mainId, username: name || String(mainId) }, ...ab.angabe() };
 }
 
 /** Von BEIDEN Seiten erlaubt. Ohne `subUserId` und `mainUserId` löst sich das
  * Konto von allen — so verhält sich eine ältere App mit nur einem Elternkonto. */
-export async function unlink(uid: number, subUserId?: number | null, mainUserId?: number | null) {
+export async function unlink(db: DbSchnittstelle, uid: number, subUserId?: number | null, mainUserId?: number | null) {
   const id = parseInt(String(uid));
   const gesetzt = (v: unknown) => v != null && String(v) !== '';
-  const removed = gesetzt(subUserId) ? await repo.trenne(id, parseInt(String(subUserId)))
-    : gesetzt(mainUserId) ? await repo.trenne(parseInt(String(mainUserId)), id)
-    : await repo.trenne(null, id);
+  const removed = gesetzt(subUserId) ? await repo.trenne(db, id, parseInt(String(subUserId)))
+    : gesetzt(mainUserId) ? await repo.trenne(db, parseInt(String(mainUserId)), id)
+    : await repo.trenne(db, null, id);
   meldeHaushaltsaenderung();
   return { removed };
 }
 
-export async function verwerfeGetrennt(uid: number, subUserId: number) {
-  return { removed: await repo.loescheGetrenntHinweis(parseInt(String(uid)), parseInt(String(subUserId))) };
+export async function verwerfeGetrennt(db: DbSchnittstelle, uid: number, subUserId: number) {
+  return { removed: await repo.loescheGetrenntHinweis(db, parseInt(String(uid)), parseInt(String(subUserId))) };
 }
 
-export async function householdStatus(uid: number) {
+export async function householdStatus(db: DbSchnittstelle, uid: number) {
   const id = parseInt(String(uid));
-  const h = await resolveHousehold(id);
-  const members = await householdMembers(id);
+  const h = await resolveHousehold(db, id);
+  const members = await householdMembers(db, id);
   const ab = new Abstriche();
   const [eltern, openInvites, currency, getrennt] = await Promise.all([
-    repo.kontoNamen(h.elternIds, 'username'),
-    ab.oder('einladungen', repo.offeneEinladungen(id), 0),
+    repo.kontoNamen(db, h.elternIds, 'username'),
+    ab.oder('einladungen', repo.offeneEinladungen(db, id), 0),
     getSetting(id, 'currency', 'EUR'),
-    repo.getrennteKetten(id),
+    repo.getrennteKetten(db, id),
   ]);
   const elternListe = eltern;
   return {
@@ -251,8 +251,8 @@ export function parseScopeMode(v: unknown): ScopeMode {
   return Number.isFinite(n) && n > 0 ? n : 'all';
 }
 
-export async function scopeIds(uid: number, mode: ScopeMode = 'all'): Promise<number[]> {
-  const h = await resolveHousehold(uid);
+export async function scopeIds(db: DbSchnittstelle, uid: number, mode: ScopeMode = 'all'): Promise<number[]> {
+  const h = await resolveHousehold(db, uid);
   const id = parseInt(String(uid));
   // Ohne Unterkonten wäre 'subs' eine leere Ansicht ohne erkennbaren Grund.
   if (!h.isMain) return h.memberIds;
@@ -283,56 +283,56 @@ export interface Sicht { readonly nutzer: number; readonly konten?: string | und
 export interface Schreiber { readonly schreiber: number }
 
 /** IDs kommen nur von innen (Jobs, andere Dienste); von aussen kommt eine Sicht. */
-export async function blickfeldAus(v: Sicht | BlickfeldEingabe): Promise<Blickfeld> {
-  return typeof v === 'object' && !Array.isArray(v) ? scopeIds(v.nutzer, parseScopeMode(v.konten)) : asIds(v);
+export async function blickfeldAus(db: DbSchnittstelle, v: Sicht | BlickfeldEingabe): Promise<Blickfeld> {
+  return typeof v === 'object' && !Array.isArray(v) ? scopeIds(db, v.nutzer, parseScopeMode(v.konten)) : asIds(v);
 }
 
-export async function schreibbereichAus(v: Schreiber | number[]): Promise<number[]> {
-  return Array.isArray(v) ? v : writableIds(v.schreiber);
+export async function schreibbereichAus(db: DbSchnittstelle, v: Schreiber | number[]): Promise<number[]> {
+  return Array.isArray(v) ? v : writableIds(db, v.schreiber);
 }
 
 /** Hauptkonten sehen die Dateien ihrer Unterkonten, nicht umgekehrt. Frisch
  * gefragt wie canWriteFor: Ein gelöstes Unterkonto soll nicht bis zum Ablauf
  * des Gedächtnisses lesbar bleiben, falls die Benachrichtigung ausbleibt. */
-export async function siehtKonto(nutzer: number, besitzer: number): Promise<boolean> {
-  return besitzer === nutzer || repo.istVerknuepft(nutzer, besitzer);
+export async function siehtKonto(db: DbSchnittstelle, nutzer: number, besitzer: number): Promise<boolean> {
+  return besitzer === nutzer || repo.istVerknuepft(db, nutzer, besitzer);
 }
 
 /** Für wen geschrieben wird; ohne Recht 403 mit dem Code der Route. */
-export async function schreibziel(nutzer: number, wunsch: unknown,
+export async function schreibziel(db: DbSchnittstelle, nutzer: number, wunsch: unknown,
                                   absage: 'kein_schreibrecht' | 'kein_zugriff_konto' = 'kein_schreibrecht'): Promise<number> {
-  const ziel = await resolveWriteTarget(nutzer, wunsch);
+  const ziel = await resolveWriteTarget(db, nutzer, wunsch);
   if (ziel === null) fachfehler('verboten', absage);
   return ziel;
 }
 
 /** Prüft die RICHTUNG (Haupt- für Unterkonto), nicht nur die Mitgliedschaft.
  * @returns die Ziel-ID, oder null wenn nicht erlaubt (Aufrufer antwortet 403) */
-export async function resolveWriteTarget(
+export async function resolveWriteTarget(db: DbSchnittstelle, 
   actorId: number, requested: unknown
 ): Promise<number | null> {
   if (requested === undefined || requested === null || requested === '') return actorId;
   const target = parseInt(String(requested));
   if (!Number.isFinite(target)) return null;
-  return (await canWriteFor(actorId, target)) ? target : null;
+  return (await canWriteFor(db, actorId, target)) ? target : null;
 }
 
 /** Aus der Erfassungszeile, nicht aus der Anfrage: Die Datenbank weiss besser
  * als jeder Dialog, wem die Zeile gehört. Eine fremde Zeile antwortet wie eine
  * fehlende, sonst verriete 403 neben 404, welche IDs vergeben sind.
  * @throws 404 kaufpreis_nicht_gefunden, wenn die Zeile fehlt oder nicht beschreibbar ist */
-export async function acquisitionMoveSource(
+export async function acquisitionMoveSource(db: DbSchnittstelle, 
   actorId: number, kind: ErfassungsArt, acqId: number
 ): Promise<number> {
-  const owner = await repo.besitzerDerErfassung(kind, acqId);
-  if (owner === null || !(await canWriteFor(actorId, owner))) fachfehler('nicht_gefunden', 'kaufpreis_nicht_gefunden');
+  const owner = await repo.besitzerDerErfassung(db, kind, acqId);
+  if (owner === null || !(await canWriteFor(db, actorId, owner))) fachfehler('nicht_gefunden', 'kaufpreis_nicht_gefunden');
   return owner;
 }
 
 /** Beide Formen hier, damit die Namensauflösung nur einmal existiert. */
-export async function withOwners(uids: number[], rows: any[]) {
+export async function withOwners(db: DbSchnittstelle, uids: number[], rows: any[]) {
   if (uids.length < 2 || !rows?.length) return rows;
-  const owners = await repo.benutzerNamen(uids);
+  const owners = await repo.benutzerNamen(db, uids);
   const nameById = new Map<number, string>(owners.map(u => [parseInt(String(u.id)), u.username]));
   const platte = (id: number) => ({ id, username: nameById.get(id) || String(id) });
   return rows.map(r => {

@@ -2,8 +2,9 @@ import * as repo from './repository/gemeinsam';
 export { entferneSetInhalt, kopiereSetInhalt, legeManuellAn } from './repository/gemeinsam';
 import type { DbSchnittstelle } from '../../db/database';
 import { istErsatzteil, KEINE_FARBE } from '../infra/validate';
-import { asIds, blickfeldAus, type Sicht } from '../haushalt/haushalt';
+import { asIds, type Sicht } from '../haushalt/haushalt';
 import { bestandBereich } from './prozess';
+import { haushaltBereich } from '../haushalt/prozess';
 
 // Was Sets, Teile und Figuren gemeinsam brauchen.
 
@@ -115,7 +116,7 @@ export async function verwendendeSets(
   tabelle: 'parts' | 'minifigs',
   schluessel: Record<string, string | number>,
 ): Promise<BestandteilAntwort> {
-  const uids = await blickfeldAus(uidsWahl);
+  const uids = await haushaltBereich().haushalt.blickfeldAus(uidsWahl);
   const rows = await bestandBereich().gemeinsam.setsMitBestandteil(uids, tabelle, schluessel);
 
   const sets: VerwendendesSet[] = rows.map(r => ({

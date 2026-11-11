@@ -13,7 +13,6 @@ import { hashToken, leereTokenCache } from '../../src/konto/auth';
 import { kontoGedrosselt } from '../../src/konto/zielDrossel';
 import { resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, bestaetigeMitFaktor, perSitzung } from '../../src/konto/http/anmeldung';
 import { hinweisNebenher, verwalterHinweisNebenher } from '../../src/konto/kontoHinweis';
-import { householdStatus, createInvite, redeemInvite, pruefeEinladung, unlink, verwerfeGetrennt } from '../../src/haushalt/haushalt';
 import { sendMail, testSmtp, sendHaushaltVerknuepftMail, mailBereit } from '../../src/mail/mailer';
 import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import { tlsAuskunft } from '../../src/infra/tlsWurzel';
@@ -25,6 +24,7 @@ import type { Request } from 'express';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Anfrage, Antwort, OffeneAnfrage } from '../../src/http/vertragsRouter';
 import { kontoBereich } from '../../src/konto/prozess';
+import { haushaltBereich } from '../../src/haushalt/prozess';
 const router = vertragsRouter();
 
 const requireLogin = requireLoginOrToken;
@@ -159,11 +159,11 @@ router.post('/settings/user/default-condition', requireToken, async (req: Anfrag
 // Dieselbe Umsetzung wie die Webapp (src/haushalt/haushalt.ts), damit die App
 // nicht ihre eigenen Regeln bekommt.
 router.get('/settings/household', requireToken, async (req: Anfrage<'GET /api/v1/settings/household'>, res: Antwort<'GET /api/v1/settings/household'>) => {
-  res.json({ success: true, ...(await householdStatus(req.apiUser.user_id)) });
+  res.json({ success: true, ...(await haushaltBereich().haushalt.householdStatus(req.apiUser.user_id)) });
 });
 
 router.post('/settings/household/invite', requireToken, async (req: Anfrage<'POST /api/v1/settings/household/invite'>, res: Antwort<'POST /api/v1/settings/household/invite'>) => {
-  const r = await createInvite(req.apiUser.user_id);
+  const r = await haushaltBereich().haushalt.createInvite(req.apiUser.user_id);
   if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler, 'vars' in r ? r.vars : undefined);
   res.json({ success: true, ...r });
 });
@@ -171,7 +171,7 @@ router.post('/settings/household/invite', requireToken, async (req: Anfrage<'POS
 router.post('/settings/household/redeem/pruefen', requireToken, async (req: Anfrage<'POST /api/v1/settings/household/redeem/pruefen'>, res: Antwort<'POST /api/v1/settings/household/redeem/pruefen'>) => {
   const zuOft = await kontoGedrosselt('haushalt-pruefen', req.apiUser.user_id, 30, 60 * 60 * 1000);
   if (zuOft) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: zuOft.waitMin });
-  const r = await pruefeEinladung(req.apiUser.user_id, String(req.eingabe.code || ''));
+  const r = await haushaltBereich().haushalt.pruefeEinladung(req.apiUser.user_id, String(req.eingabe.code || ''));
   if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler);
   res.json({ success: true, ...r });
 });
@@ -183,7 +183,7 @@ router.post('/settings/household/redeem', requireToken, async (req: Anfrage<'POS
   const uid = req.apiUser.user_id;
   // Die Verknüpfung ist ein Zugang zur Sammlung wie ein Passkey: bei aktivem zweitem Faktor nur mit Code.
   if (!await bestaetigeMitFaktor(req, res, uid, req.eingabe.password, 'faktor_code')) return;
-  const r = await redeemInvite(uid, String(req.eingabe.code || ''));
+  const r = await haushaltBereich().haushalt.redeemInvite(uid, String(req.eingabe.code || ''));
   if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler, 'vars' in r ? r.vars : undefined);
   const ich = await profil(uid);
   if (ich?.email) {
@@ -199,13 +199,13 @@ const kennung = (v: string | number | null | undefined) => v == null ? null : Nu
 
 router.post('/settings/household/unlink', requireToken, async (req: Anfrage<'POST /api/v1/settings/household/unlink'>, res: Antwort<'POST /api/v1/settings/household/unlink'>) => {
   res.json({ success: true,
-    ...(await unlink(req.apiUser.user_id, kennung(req.eingabe.sub_user_id), kennung(req.eingabe.main_user_id))) });
+    ...(await haushaltBereich().haushalt.unlink(req.apiUser.user_id, kennung(req.eingabe.sub_user_id), kennung(req.eingabe.main_user_id))) });
 });
 
 router.post('/settings/household/former/dismiss', requireToken, async (req: Anfrage<'POST /api/v1/settings/household/former/dismiss'>, res: Antwort<'POST /api/v1/settings/household/former/dismiss'>) => {
   const sub = parseInt(String(req.eingabe.sub_user_id));
   if (!Number.isFinite(sub)) return sendeFehler(req, res, 400, 'konto_id_ungueltig');
-  res.json({ success: true, ...(await verwerfeGetrennt(req.apiUser.user_id, sub)) });
+  res.json({ success: true, ...(await haushaltBereich().haushalt.verwerfeGetrennt(req.apiUser.user_id, sub)) });
 });
 
 router.use('/settings', requireLogin);

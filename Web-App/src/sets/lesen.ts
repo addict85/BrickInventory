@@ -18,7 +18,7 @@ import type { SetsKontext } from './kontext';
 /** Filtern und Sortieren auf dem Server, damit sie mit seitenweisem Laden
  * zusammengehen. Ohne page_size alles — so ruft die Android-App. */
 export async function getSets(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, query: Abfrage<'GET /api/v1/sets'> = {}) {
-  const userId = await blickfeldAus(userIdWahl);
+  const userId = await blickfeldAus(sk.db, userIdWahl);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   // Die Spaltenliste steht im Repository; die Antwort trägt nur, was die
@@ -67,7 +67,7 @@ export async function getSets(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, qu
   }));
 
   // Eine Abfrage für die ganze Seite statt einer je Zeile.
-  const mitBesitzern = await withOwners(uids, mapped);
+  const mitBesitzern = await withOwners(sk.db, uids, mapped);
 
   // Mit Gesamtzahl für den Endlos-Scroll; ohne Paginierung ist total die Länge.
   return {
@@ -103,7 +103,7 @@ export async function withSetAggregate<T extends object>(sk: SetsKontext, userId
 }
 
 export async function getSet(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, setNumber: string) {
-  const userId = await blickfeldAus(userIdWahl);
+  const userId = await blickfeldAus(sk.db, userIdWahl);
   const uids = asIds(userId);
   const [set, shared, uploaded] = await Promise.all([
     // Die eigene Zeile gewinnt für Zustand und Kaufpreis; die MENGE ist die Summe
@@ -125,7 +125,7 @@ export async function getSet(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, set
     Promise.resolve(fuerSet(setNumber, set.name)),
   ]);
   const { owner_ids, ...ohneIds } = set;
-  const [mitBesitzern] = await withOwners(uids, [uids.length > 1 ? { ...ohneIds, owner_ids } : ohneIds]);
+  const [mitBesitzern] = await withOwners(sk.db, uids, [uids.length > 1 ? { ...ohneIds, owner_ids } : ohneIds]);
   return { ...mitBesitzern, ...agg,
     bricklink,
     preisvergleich_url: preisvergleich,

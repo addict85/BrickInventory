@@ -2,7 +2,7 @@
 import { geldEingabe } from '../infra/geld';
 import * as repo from './repository/erfassungen';
 import type { DbSchnittstelle } from '../../db/database';
-import { writableIds, acquisitionMoveSource, resolveWriteTarget, blickfeldAus, type Sicht } from '../haushalt/haushalt';
+import { type Sicht } from '../haushalt/haushalt';
 import { findSameDayAcquisition } from '../bestand/acquisitions';
 import { Abstriche } from '../infra/ergebnis';
 import { withInventoryLock, bestandsSchluessel } from '../../db/txLock';
@@ -18,6 +18,7 @@ import { bestandsMenge } from '../infra/validate';
 export type { ErfassungsArt } from '../../db/bestandsmenge';
 import type { ErfassungsArt } from '../../db/bestandsmenge';
 import { sammlungBereich } from './prozess';
+import { haushaltBereich } from '../haushalt/prozess';
 type Schluessel = Array<string | number>;
 
 interface Art {
@@ -85,8 +86,8 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
 
   const ownerReq = body.owner_user_id;
   if (ownerReq !== undefined && ownerReq !== null && ownerReq !== '') {
-    const from = await acquisitionMoveSource(uid, art, id);
-    const to = await resolveWriteTarget(uid, ownerReq);
+    const from = await haushaltBereich().haushalt.acquisitionMoveSource(uid, art, id);
+    const to = await haushaltBereich().haushalt.resolveWriteTarget(uid, ownerReq);
     if (to === null) fachfehler('verboten', 'kein_schreibrecht');
     if (from === to) return { success: true, unchanged: true };
     // Wie verschiebeSet(): Gegenrichtungen sperren die Zeilen beider Konten umgekehrt.
@@ -114,7 +115,7 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
 
   const besitzer = await besitzerDerZeile(art, id, uid);
   await withInventoryLock(besitzer, bestandsSchluessel(art, keys), async (tx) => {
-    const wids = await writableIds(uid);
+    const wids = await haushaltBereich().haushalt.writableIds(uid);
     const acq = await zeileImSchreibfeld(tx, art, wids, id, keys);
     // Ab hier zählt der Besitzer der Zeile, nicht der Betrachter.
     const ownerId = Number(acq.user_id);
@@ -152,7 +153,7 @@ export async function erfassungLoeschen(art: ErfassungsArt, uid: number, id: num
   const a = ARTEN[art];
   const besitzer = await besitzerDerZeile(art, id, uid);
   const menge = await withInventoryLock(besitzer, bestandsSchluessel(art, keys), async (tx) => {
-    const acq = await zeileImSchreibfeld(tx, art, await writableIds(uid), id, keys);
+    const acq = await zeileImSchreibfeld(tx, art, await haushaltBereich().haushalt.writableIds(uid), id, keys);
     const ownerId = Number(acq.user_id);
     await repo.loescheErfassung(tx, art, id, ownerId);
     const q = await mengeDesBestands(tx, art, ownerId, keys);
@@ -163,5 +164,5 @@ export async function erfassungLoeschen(art: ErfassungsArt, uid: number, id: num
 }
 
 export async function setErfassungen(sicht: Sicht | number[], setNumber: string) {
-  return sammlungBereich().erfassungen.setErfassungenImBlickfeld(await blickfeldAus(sicht), setNumber);
+  return sammlungBereich().erfassungen.setErfassungenImBlickfeld(await haushaltBereich().haushalt.blickfeldAus(sicht), setNumber);
 }

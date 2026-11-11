@@ -261,7 +261,7 @@ async function figurenMerken(n: string, figs: Array<{ fig_number: string; fig_na
 
 /** Im Zustand des Bestands. null: kein Set im Blickfeld. */
 export async function setPreis(sk: SetsKontext, uid: number, blickfeldWahl: Sicht | number[], sn: string) {
-  const blickfeld = await blickfeldAus(blickfeldWahl);
+  const blickfeld = await blickfeldAus(sk.db, blickfeldWahl);
   const set = await repo.setImFeld(sk.db, sn, blickfeld);
   if (!set) return null;
   // Die Währung aus der Einstellung: Die App schickte ihren lokalen Startwert mit, bevor sie die Einstellung
@@ -487,8 +487,8 @@ export function csvImportStandAbonnieren(uid: number, melde: () => void): () => 
 export async function setVerschieben(sk: SetsKontext, uid: number, roh: string, von: unknown, nach: unknown, erfassungen: number[]) {
   if (!erfassungen.length) fachfehler('ungueltig', 'kaufpreise_angeben');
   const sn = mitVersion(roh);
-  const fromId = await schreibziel(uid, von ?? uid);
-  const toId = await schreibziel(uid, nach);
+  const fromId = await schreibziel(sk.db, uid, von ?? uid);
+  const toId = await schreibziel(sk.db, uid, nach);
   if (fromId === toId) fachfehler('ungueltig', 'quelle_ziel_identisch');
   return { set_number: sn, from_user_id: fromId, to_user_id: toId, ...await verschiebeSet(sk, sn, fromId, toId, erfassungen) };
 }

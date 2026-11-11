@@ -1,9 +1,9 @@
-import { schreibbereichAus } from '../haushalt/haushalt';
 import type { Schreiber } from '../haushalt/haushalt';
 import type { DbSchnittstelle } from '../../db/database';
 import * as repo from './repository/papierkorb';
 import type { PapierArt } from './repository/papierkorb';
 import { bestandBereich } from './prozess';
+import { haushaltBereich } from '../haushalt/prozess';
 
 export type Art = PapierArt;
 export const AUFBEWAHRUNG_TAGE = 30;
@@ -37,7 +37,7 @@ export interface PapierkorbEintrag {
 }
 
 export async function listePapierkorb(uidsWahl: Schreiber | number[]): Promise<PapierkorbEintrag[]> {
-  const uids = await schreibbereichAus(uidsWahl);
+  const uids = await haushaltBereich().haushalt.schreibbereichAus(uidsWahl);
   const rows = await bestandBereich().papierkorb.eintraege(uids, AUFBEWAHRUNG_TAGE);
   return rows.map((r) => {
     const erfassungen = r.zeilen?.[ERFASSUNGEN[r.art]] ?? [];
@@ -53,7 +53,7 @@ export type Wiederherstellung =
 /** Gibt es das Element inzwischen wieder, greift ein eindeutiger Index — dann
  * wird nichts verändert und der Eintrag bleibt. */
 export async function stelleWiederHer(uidsWahl: Schreiber | number[], id: number): Promise<Wiederherstellung> {
-  const uids = await schreibbereichAus(uidsWahl);
+  const uids = await haushaltBereich().haushalt.schreibbereichAus(uidsWahl);
   try {
     return await bestandBereich().db.transaction(async (tx): Promise<Wiederherstellung> => {
       const e = await repo.eintragSperren(tx, id, uids);
@@ -71,12 +71,12 @@ export async function stelleWiederHer(uidsWahl: Schreiber | number[], id: number
 }
 
 export async function loescheEndgueltig(uidsWahl: Schreiber | number[], id: number): Promise<boolean> {
-  const uids = await schreibbereichAus(uidsWahl);
+  const uids = await haushaltBereich().haushalt.schreibbereichAus(uidsWahl);
   return await bestandBereich().papierkorb.entferneEintragDesKontos(id, uids) > 0;
 }
 
 export async function leerePapierkorb(uidsWahl: Schreiber | number[]): Promise<number> {
-  const uids = await schreibbereichAus(uidsWahl);
+  const uids = await haushaltBereich().haushalt.schreibbereichAus(uidsWahl);
   return bestandBereich().papierkorb.entferneAlle(uids);
 }
 
