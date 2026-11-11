@@ -16,7 +16,6 @@ type JobHttpResult = { status: number; body: string };
 // bekommt deshalb die Art mit.
 import { bildEndung, dateiTeil, zielImOrdner, ladeBild } from './bilder/bildDatei';
 import { ERLAUBTE_BILD_HOSTS, pfadSegment, nummernListe } from '../infra/fremdeAdressen';
-import { setzeZustand } from '../auftraege/laufzustand';
 import * as repo from './repository/teileAnreicherung';
 import fs from 'fs';
 import path from 'path';
@@ -26,6 +25,7 @@ import { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, SET_IMAGES_DIR } from '../infra/ap
 import { generateThumb } from './bilder/thumbs';
 import { KEINE_FARBE } from '../infra/validate';
 import { katalog } from './prozess';
+import { auftraegeBereich } from '../auftraege/prozess';
 
 
 
@@ -436,7 +436,7 @@ function _fsPathFromLocal(imageLocal: string) {
 
 // Mit await, sonst ginge der Endstand bei einem Neustart verloren.
 async function _redlSetStatus(obj: Record<string, unknown>) {
-  await setzeZustand('imgredl_status', JSON.stringify({ ...obj, at: Date.now() }))
+  await auftraegeBereich().laufzustand.setzeZustand('imgredl_status', JSON.stringify({ ...obj, at: Date.now() }))
     .catch(logAndContinue('teile-enrich:setzeZustand'));
 }
 

@@ -1,8 +1,9 @@
 import { getGlobalSetting } from '../einstellungen/settings';
 import { notify } from '../../db/pgNotify';
 import { type AuftragsArt } from './auftraege';
-import { AUFTRAG_KANAL, stelleAuftragEin, setzeFaelligkeit, zieheTerminVor, laeuftArt } from './dienst';
+import { AUFTRAG_KANAL, stelleAuftragEin } from './dienst';
 import { pruefeNutzlast, type NutzlastEingabe } from './nutzlasten';
+import { auftraegeBereich } from './prozess';
 
 /** Je geplanter Art genau ein offener Auftrag `plan:<art>`; eine geänderte
  * Uhrzeit verschiebt nur faellig_ab — kein Zeitgeber muss neu gestellt werden. */
@@ -69,14 +70,14 @@ export async function planeAlle(): Promise<void> {
 }
 
 export async function zeitplanGeaendert(art: GeplanteArt): Promise<void> {
-  await setzeFaelligkeit(planSchluessel(art), await naechsterLauf(art));
+  await auftraegeBereich().auftraege.setzeFaelligkeit(planSchluessel(art), await naechsterLauf(art));
   await notify(AUFTRAG_KANAL, art);
 }
 
 /** @returns false, wenn er gerade läuft */
 export async function ziehePlanVor(art: GeplanteArt, sekunden = 0, nutzlast: PlanNutzlast = {}): Promise<boolean> {
-  if (await zieheTerminVor(planSchluessel(art), sekunden, pruefeNutzlast(art, nutzlast))) { await notify(AUFTRAG_KANAL, art); return true; }
-  if (await laeuftArt(art)) return false;
+  if (await auftraegeBereich().auftraege.zieheTerminVor(planSchluessel(art), sekunden, pruefeNutzlast(art, nutzlast))) { await notify(AUFTRAG_KANAL, art); return true; }
+  if (await auftraegeBereich().auftraege.laeuftArt(art)) return false;
   await stelleAuftragEin(art, nutzlast, { schluessel: planSchluessel(art), nachSekunden: sekunden, maxVersuche: 3 });
   return true;
 }

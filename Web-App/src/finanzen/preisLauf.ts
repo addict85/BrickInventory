@@ -1,6 +1,5 @@
 import { kontingentFrei, speicherePreis, cacheUsable, preisAusCache, parallelLimit } from './financeCalc';
 import { meldeFehler, fehlertext, meldeUndLiefere, logAndContinue } from '../infra/fehler';
-import { liesZustand, setzeZustand } from '../auftraege/laufzustand';
 import { getGlobalSetting, getSetting } from '../einstellungen/settings';
 import { ohneBricklinkPreis } from '../infra/setNummer';
 import { katalogEintrag, getPriceGuide } from '../katalog/bricklinkPreise';
@@ -9,6 +8,7 @@ import { belegeSitzungsSperre } from '../../db/txLock';
 import { LOCKS } from '../infra/lockNamespaces';
 import { AuftragVerschieben, type AuftragsKontext } from '../auftraege/auftraege';
 import { finanzenBereich } from './prozess';
+import { auftraegeBereich } from '../auftraege/prozess';
 
 /** Der Job läuft im Job-Prozess, gelesen wird im Web-Prozess — darum in laufzustand. */
 export const PREIS_STAND = 'preis_job_stand';
@@ -241,8 +241,8 @@ async function refreshPriceForSet(setNumber: string, userId: number, hintConditi
 }
 
 async function merkeStand(neu: Record<string, unknown>): Promise<void> {
-  const alt = await liesZustand(PREIS_STAND).then(r => (r ? JSON.parse(r) : {}), () => ({}));
-  await setzeZustand(PREIS_STAND, JSON.stringify({ ...alt, ...neu, log: _log.slice(0, 15) }))
+  const alt = await auftraegeBereich().laufzustand.liesZustand(PREIS_STAND).then(r => (r ? JSON.parse(r) : {}), () => ({}));
+  await auftraegeBereich().laufzustand.setzeZustand(PREIS_STAND, JSON.stringify({ ...alt, ...neu, log: _log.slice(0, 15) }))
     .catch(logAndContinue('preis-job:stand'));
 }
 

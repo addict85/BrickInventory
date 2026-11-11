@@ -142,7 +142,7 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
   await _req('src/konto/auth.js').createToken(uid, 'Vertragsprobe');
   // Hintergrundarbeiten: ein Auftrag mit Fortschritt und eine Pause, damit
   // /admin/auftraege keine leeren Listen liefert.
-  const auftrag = await _req('src/auftraege/dienst.js').stelleAuftragEin('anleitung', { set_number: SET },
+  const auftrag = await { ..._req('src/auftraege/dienst.js'), ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege }.stelleAuftragEin('anleitung', { set_number: SET },
     { schluessel: `vertrag-get:${process.pid}` });
   await db.run(`UPDATE auftraege SET fortschritt = '{"erledigt":1,"gesamt":3,"text":"Seiten"}'::jsonb WHERE id = $1`, [auftrag]);
   await db.run(`INSERT INTO auftrag_pausen (art, bis, grund) VALUES ('wechselkurse', NOW() + INTERVAL '1 hour', 'Vertrag')

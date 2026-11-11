@@ -7,8 +7,8 @@ import { verschluesseleAltbestand } from '../src/konto/geheimnisAltbestand';
 import { antwortenUmschluesseln, alteAbdrueckeLoeschen, alleVergessen } from '../src/idempotenz/dienst';
 import { altSchluessel, datenSchluessel } from '../src/infra/geheimnis';
 import { konfig } from '../src/infra/konfig';
-import { liesZustand, setzeZustand } from '../src/auftraege/laufzustand';
 import { gutscheineBereich } from '../src/gutscheine/prozess';
+import { auftraegeBereich } from '../src/auftraege/prozess';
 
 /** Ein Superuser erreicht COPY … PROGRAM und jede Datenbank des Servers: In
  * Betrieb (auch ohne NODE_ENV) ein Startverbot, ausser DB_SUPERUSER_ERLAUBT=1 (UPGRADE.md). */
@@ -31,13 +31,13 @@ export const ALTBESTAND_MARKE = 'altbestand_v2';
  * liest nur v2, und eine Gutscheinzeile ohne nummer_suche entginge der
  * Doppelprüfung. @returns null, wenn die Marke schon steht */
 export async function altbestandAufruesten(): Promise<{ umgeschluesselt: number; abdruecke: number } | null> {
-  if (await liesZustand(ALTBESTAND_MARKE)) return null;
+  if (await auftraegeBereich().laufzustand.liesZustand(ALTBESTAND_MARKE)) return null;
   const n = await gutscheineBereich().gutscheine.nummernNachverschluesseln() + await gutscheineBereich().gutscheine.kopienVerschluesseln() + await verschluesseleAltbestand()
     + await antwortenUmschluesseln() + await verschluesseleGutscheinAltbestand();
   if (n) console.log(`[geheimnis] ${n} Geheimnisse auf v2 (mit Kontext) umgeschlüsselt`);
   const alt = await alteAbdrueckeLoeschen();
   if (alt) console.log(`[idempotenz] ${alt} Einträge mit altem Fingerabdruck (SHA-256 des Rumpfs) gelöscht`);
-  await setzeZustand(ALTBESTAND_MARKE, new Date().toISOString());
+  await auftraegeBereich().laufzustand.setzeZustand(ALTBESTAND_MARKE, new Date().toISOString());
   return { umgeschluesselt: n, abdruecke: alt };
 }
 

@@ -4,7 +4,6 @@ import { purgeExpiredTokens } from '../konto/auth';
 import { raeumeAnmeldezaehlerAuf } from '../konto/loginLimiter';
 import { raeumePapierkorbAuf } from '../bestand/papierkorb';
 import { cleanOldPdfJobs } from '../auftraege/pdfAuftraege';
-import { raeumeErledigteAuf } from '../auftraege/dienst';
 import { purgeAltePreise } from '../finanzen/priceHistory';
 import { raeumeBildCacheAuf } from '../katalog/bilder/imgCacheServe';
 import { loescheVerfallene } from '../katalog/bilder/bildbedarf';
@@ -15,6 +14,7 @@ import { raeumeAlteSicherungenAuf } from '../../db/migrate';
 import { pruefeAbbruch, type AuftragsLauf } from '../auftraege/auftraege';
 import { verwaltungBereich } from './prozess';
 import { kontoBereich } from '../konto/prozess';
+import { auftraegeBereich } from '../auftraege/prozess';
 
 type Schritt = [name: string, lauf: () => Promise<unknown>];
 
@@ -36,7 +36,7 @@ function aufraeumen(lauf?: AuftragsLauf): Promise<void> {
     ['Anmeldezähler', raeumeAnmeldezaehlerAuf],
     ['Papierkorb', raeumePapierkorbAuf],
     ['PDF-Aufträge', cleanOldPdfJobs],
-    ['alte Aufträge', raeumeErledigteAuf],
+    ['alte Aufträge', auftraegeBereich().auftraege.raeumeErledigteAuf],
     ['verfallene Bildwünsche', loescheVerfallene],
     ['Idempotenzschlüssel', raeumeIdempotenzAuf],
   ], lauf);

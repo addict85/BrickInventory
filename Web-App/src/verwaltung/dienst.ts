@@ -19,7 +19,6 @@ import { loescheAnleitungen } from '../katalog/instructions';
 import { imgProxyFailures } from '../katalog/bilder/imgProxyStats';
 import { vergissFehlend } from '../katalog/bilder/imageMisses';
 import { setGlobalSetting, getGlobalSetting, getSetting } from '../einstellungen/settings';
-import { liesZustand } from '../auftraege/laufzustand';
 import * as monitor from '../auftraege/jobMonitor';
 import { zaehleArt, stelleAuftragEin } from '../auftraege/dienst';
 import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';
@@ -28,6 +27,7 @@ import { anfragenJeMinute, bildbedarfAnstossen, katalogBilderVormerken } from '.
 import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
 import { alsAbrufFehler, pruefeBricklinkZugang, ausRetryWarteschlange, pruefeBricksetZugang, pruefeRebrickableZugang, oeffneBild } from '../katalog/quellen';
 import { verwaltungBereich } from './prozess';
+import { auftraegeBereich } from '../auftraege/prozess';
 
 // Eine Frist für beide Kacheln; drei Minuten bei einem Takt von zwanzig Sekunden.
 const JOB_FRISCH_MS = 3 * 60_000;
@@ -98,7 +98,7 @@ export async function anleitungenNeuEinreihen() {
 export async function preisJobStand() {
   const plan = await verwaltungBereich().verwaltung.letzterLaufDerArt();
   let letzter: Record<string, any> = {};
-  try { letzter = JSON.parse(await liesZustand('preis_job_stand') ?? '{}'); } catch (e) { meldeFehler('verwaltung:preis-stand', e); }
+  try { letzter = JSON.parse(await auftraegeBereich().laufzustand.liesZustand('preis_job_stand') ?? '{}'); } catch (e) { meldeFehler('verwaltung:preis-stand', e); }
   const laeuft = plan?.status === 'laeuft';
   const job = {
     running: laeuft, lastRun: letzter.lastRun ?? null, lastDuration: letzter.lastDuration ?? null,
@@ -164,7 +164,7 @@ const zahl = (ab: Abstriche, p: Promise<number>, ort: string) => ab.oder(ort, p,
 
 /** Ein JSON-Stand aus laufzustand; ein beschädigter zählt wie keiner. */
 async function liesStand<T>(ab: Abstriche, schluessel: string): Promise<T | null> {
-  const roh = await ab.oder(schluessel, liesZustand(schluessel), null);
+  const roh = await ab.oder(schluessel, auftraegeBereich().laufzustand.liesZustand(schluessel), null);
   try { return roh ? JSON.parse(roh) as T : null; } catch { return null; }
 }
 
@@ -280,7 +280,7 @@ export async function jobUebersicht() {
     anleitungsAuftraege(ab),
     zahl(ab, verwaltungBereich().verwaltung.zugeordneteTeile(), 'bl_zuordnung'), zahl(ab, verwaltungBereich().verwaltung.bricklinkTeile(), 'bl_zuordnung'),
     zahl(ab, verwaltungBereich().verwaltung.rbTeile(), 'katalog'), zahl(ab, verwaltungBereich().verwaltung.rbInventarTeile(), 'katalog'),
-    liesZustand('rb_csv_last_sync'),
+    auftraegeBereich().laufzustand.liesZustand('rb_csv_last_sync'),
   ]);
   const blIds = blIdsKachel(jobs.blIds ?? {}, gemappt, blGesamt);
   if (blIds) jobs.blIds = blIds;

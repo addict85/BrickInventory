@@ -1,25 +1,25 @@
-import * as db from '../../../db/database';
+import type { DbSchnittstelle } from '../../../db/database';
 
 /** Getrennt von den Einstellungen, damit Export, Sicherung und Einstellungen
  * keine Zwischenstände von Jobs zeigen. */
-export async function liesZustand(schluessel: string): Promise<string | null> {
+export async function liesZustand(db: DbSchnittstelle, schluessel: string): Promise<string | null> {
   const z = await db.get<{ wert: unknown }>('SELECT wert FROM laufzustand WHERE schluessel = $1', [schluessel]);
   return z ? String(z.wert) : null;
 }
 
-export async function setzeZustand(schluessel: string, wert: unknown): Promise<void> {
+export async function setzeZustand(db: DbSchnittstelle, schluessel: string, wert: unknown): Promise<void> {
   await db.run(
     `INSERT INTO laufzustand (schluessel, wert, aktualisiert) VALUES ($1, $2, NOW())
      ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert, aktualisiert = NOW()`,
     [schluessel, String(wert)]);
 }
 
-export async function loescheZustand(...schluessel: string[]): Promise<void> {
+export async function loescheZustand(db: DbSchnittstelle, ...schluessel: string[]): Promise<void> {
   if (schluessel.length) await db.run('DELETE FROM laufzustand WHERE schluessel = ANY($1)', [schluessel]);
 }
 
 /** Atomar, nie unter 0: Die Zeilensperre serialisiert gleichzeitige Aufrufe. */
-export async function zaehleZustand(schluessel: string, delta: number): Promise<void> {
+export async function zaehleZustand(db: DbSchnittstelle, schluessel: string, delta: number): Promise<void> {
   await db.run(
     `INSERT INTO laufzustand (schluessel, wert, aktualisiert) VALUES ($1, $2, NOW())
      ON CONFLICT (schluessel) DO UPDATE

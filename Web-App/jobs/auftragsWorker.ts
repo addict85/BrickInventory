@@ -1,12 +1,9 @@
-import { belegKennung } from '../src/auftraege/prozess';
+import { auftraegeBereich, belegKennung } from '../src/auftraege/prozess';
 import {
   type AuftragsArt, type AuftragsZeile, type Fortschritt, type AuftragsKontext,
   AuftragUnterbrochen, AuftragVerloren, AuftragVerschieben,
 } from '../src/auftraege/auftraege';
-import {
-  imNamenDesAuftrags, gibZurueck, verschoben, fehlgeschlagen, erledigt, beiNeuemAuftrag, beiAuftragsStand,
-  setzeFortschritt, lebenszeichen, gehoertNoch, belegeAuftrag, merkeExklusive,
-} from '../src/auftraege/dienst';
+import { imNamenDesAuftrags, verschoben, fehlgeschlagen, erledigt, beiNeuemAuftrag, beiAuftragsStand, setzeFortschritt } from '../src/auftraege/dienst';
 import { planeNaechsten, hatZeitplan } from '../src/auftraege/zeitplan';
 import { pruefeNutzlast, NutzlastUngueltig, type Nutzlast } from '../src/auftraege/nutzlasten';
 import { fehlertext, logAndContinue } from '../src/infra/fehler';
@@ -34,7 +31,7 @@ interface Lauf { a: AuftragsZeile; ac: AbortController; fertig: Promise<void> }
 function haltePacht(a: AuftragsZeile, ac: AbortController, fristSek: number): () => void {
   const erneuere = async () => {
     if (ac.signal.aborted) return;
-    const ok = await lebenszeichen(a, fristSek).catch((e: unknown) => { logAndContinue(`auftraege:pacht ${a.art}`)(e); return true; });
+    const ok = await auftraegeBereich().auftraege.lebenszeichen(a, fristSek).catch((e: unknown) => { logAndContinue(`auftraege:pacht ${a.art}`)(e); return true; });
     if (!ok) ac.abort(new AuftragVerloren());
   };
   const t = setInterval(() => { void erneuere(); }, Math.max(200, Math.floor(fristSek * 1000 / 3)));
@@ -62,7 +59,7 @@ async function folgeplan(a: AuftragsZeile): Promise<void> {
 function kontextFuer(a: AuftragsZeile, ac: AbortController, fristSek: number, istBeendet: () => boolean): AuftragsKontext {
   return {
     lebenszeichen: async () => {
-      const ok = await lebenszeichen(a, fristSek);
+      const ok = await auftraegeBereich().auftraege.lebenszeichen(a, fristSek);
       if (!ok && !ac.signal.aborted) ac.abort(new AuftragVerloren());
       return ok;
     },
@@ -94,7 +91,7 @@ async function nachFehler(a: AuftragsZeile, b: Bearbeiter | undefined, nutzlast:
   // Nach einem Abbruch zählt der Grund des Signals, nicht die Ausnahme, die er im Handler auslöste.
   const grund: unknown = ac.signal.aborted ? ac.signal.reason : e;
   if (grund instanceof AuftragVerloren) { console.warn(`[auftraege] ${a.art} #${a.id}: ${grund.message}`); return; }
-  if (grund instanceof AuftragUnterbrochen) { await gibZurueck(a); return; }
+  if (grund instanceof AuftragUnterbrochen) { await auftraegeBereich().auftraege.gibZurueck(a); return; }
   if (e instanceof AuftragVerschieben) {
     if (await verschoben(a, e.bis, e.grund, e.zaehlt)) { if (nutzlast) await b?.aufgegeben?.(nutzlast, e.grund, a); await folgeplan(a); }
     return;
@@ -119,13 +116,13 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
   let abmelden: (() => void)[] = [];
   // Am Ende jeder Runde: Daran hängt das Lebenszeichen (startup/jobsProzess.ts).
   let letzteRunde = 0;
-  const exklusivGemerkt = merkeExklusive(exklusiv).catch(logAndContinue('auftraege:exklusiv'));
+  const exklusivGemerkt = auftraegeBereich().auftraege.merkeExklusive(exklusiv).catch(logAndContinue('auftraege:exklusiv'));
 
   async function belegeUndStarte(): Promise<Lauf | null> {
     await exklusivGemerkt;
-    const a = await belegeAuftrag(arten, fristSek, belegKennung(), exklusiv, [...laufend.keys()]);
+    const a = await auftraegeBereich().auftraege.belegeAuftrag(arten, fristSek, belegKennung(), exklusiv, [...laufend.keys()]);
     if (!a) return null;
-    if (beendet) { await gibZurueck(a).catch(logAndContinue('auftraege:zurückgeben')); return null; }
+    if (beendet) { await auftraegeBereich().auftraege.gibZurueck(a).catch(logAndContinue('auftraege:zurückgeben')); return null; }
     const ac = new AbortController();
     const lauf: Lauf = { a, ac, fertig: Promise.resolve() };
     laufend.set(a.id, lauf);
@@ -169,7 +166,7 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
   const standGeaendert = (schluessel?: string) => {
     for (const { a, ac } of laufend.values()) {
       if (ac.signal.aborted || (schluessel !== undefined && schluessel !== (a.schluessel ?? a.id))) continue;
-      void gehoertNoch(a).then(ja => { if (!ja && !ac.signal.aborted) ac.abort(new AuftragVerloren()); },
+      void auftraegeBereich().auftraege.gehoertNoch(a).then(ja => { if (!ja && !ac.signal.aborted) ac.abort(new AuftragVerloren()); },
         logAndContinue(`auftraege:stand ${a.art}`));
     }
   };
@@ -193,7 +190,7 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
     for (const l of alle) if (!l.ac.signal.aborted) l.ac.abort(new AuftragUnterbrochen());
     await Promise.race([Promise.all(alle.map(l => l.fertig)), new Promise(r => setTimeout(r, wartenMs).unref())]);
     const rest = [...laufend.values()];
-    for (const { a } of rest) await gibZurueck(a).catch(logAndContinue('auftraege:zurückgeben'));
+    for (const { a } of rest) await auftraegeBereich().auftraege.gibZurueck(a).catch(logAndContinue('auftraege:zurückgeben'));
     console.log(`[auftraege] beendet, ${rest.length} laufende Aufträge zurückgegeben`);
   }
 

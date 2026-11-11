@@ -30,12 +30,6 @@ export async function nameVergeben(db: DbSchnittstelle, name: string, ausser: nu
     'SELECT id FROM users WHERE (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)) AND id != $2', [name, ausser]);
 }
 
-/** Nur users.email zählt: Eine Registrierung oder Profiländerung legt ihre Adresse
- * erst nach email_neu, vergeben wird sie mit der ersten Bestätigung. */
-export async function emailVergeben(db: DbSchnittstelle, email: string, ausser: number): Promise<boolean> {
-  return nameVergeben(db, email, ausser);
-}
-
 /** Die Namen gehen in die Anweisung, nicht als Parameter — deshalb eine feste Liste. */
 const PROFILSPALTEN = new Set(['username', 'first_name', 'last_name']);
 

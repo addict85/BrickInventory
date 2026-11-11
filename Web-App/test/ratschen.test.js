@@ -109,9 +109,9 @@ function nimmtProzesszugang(f) {
 test('der Kompatibilitätsweg zur Datenbank und modulweite let werden weniger, nie mehr', () => {
   // db/database.ts hat eine Fabrik (erzeugeDb); wer noch die Funktionen des
   // Prozesszugangs importiert, statt einen Zugang übergeben zu bekommen, zählt hier.
-  // Gemessen 9 am 11.11.2026 (src/haushalt über erzeugeHaushalt).
+  // Gemessen 4 am 11.11.2026 (src/auftraege über erzeugeAuftraege).
   // Gegenprobe (09.11.2026): ein `import * as db from '../../db/database'` in src/sets/zeilen.ts → rot.
-  const SCHRANKE = 9;
+  const SCHRANKE = 4;
   const ist = quellen().filter(nimmtProzesszugang).length;
   // Selbstbeweis: Typimporte aus db/database zählen nicht, finden muss die Suche sie trotzdem.
   const mitTypen = quellen().filter(f => /^import type \{[^}]*\} from '[./]+\/db\/database';/m.test(fs.readFileSync(f, 'utf8'))).length;

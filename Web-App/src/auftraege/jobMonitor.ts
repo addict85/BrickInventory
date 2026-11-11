@@ -2,9 +2,9 @@
  * Ein zweiter Speicher konnte dem ersten widersprechen. */
 
 import { logAndContinue } from '../infra/fehler';
-import { liesZustand, setzeZustand, zaehleZustand } from './repository/laufzustand';
-import { letzteJeArt, type LetzterStand } from './repository/auftraege';
+import type { LetzterStand } from './repository/auftraege';
 import type { AuftragsArt } from './auftraege';
+import { auftraegeBereich } from './prozess';
 
 export interface Kachel {
   label: string; status: 'idle' | 'running' | 'done' | 'error'; progress: number; total: number;
@@ -39,7 +39,7 @@ function alsKachel(k: { label: string; total: number }, z: LetzterStand | undefi
 }
 
 export async function all(): Promise<Record<string, Kachel>> {
-  const zeilen = await letzteJeArt(Object.values(KACHELN).map(k => k.art));
+  const zeilen = await auftraegeBereich().auftraege.letzteJeArt(Object.values(KACHELN).map(k => k.art));
   const je = new Map(zeilen.map(z => [z.art, z]));
   const aus: Record<string, Kachel> = { ...OHNE_AUFTRAG };
   for (const [name, k] of Object.entries(KACHELN)) aus[name] = alsKachel(k, je.get(k.art));
@@ -58,14 +58,14 @@ const IMGDL_PENDING_KEY = 'imgdl_pending_count';
 export async function imgDlAdd(delta: number) {
   const d = Math.round(Number(delta) || 0);
   if (!d) return;
-  await zaehleZustand(IMGDL_PENDING_KEY, d).catch(logAndContinue('job-monitor:imgDlAdd'));
+  await auftraegeBereich().laufzustand.zaehleZustand(IMGDL_PENDING_KEY, d).catch(logAndContinue('job-monitor:imgDlAdd'));
 }
 
 export async function imgDlPending() {
-  const n = parseInt(await liesZustand(IMGDL_PENDING_KEY) || '0', 10);
+  const n = parseInt(await auftraegeBereich().laufzustand.liesZustand(IMGDL_PENDING_KEY) || '0', 10);
   return Number.isFinite(n) ? Math.max(0, n) : 0;
 }
 
 export async function imgDlReset() {
-  await setzeZustand(IMGDL_PENDING_KEY, 0).catch(logAndContinue('job-monitor:setzeZustand'));
+  await auftraegeBereich().laufzustand.setzeZustand(IMGDL_PENDING_KEY, 0).catch(logAndContinue('job-monitor:setzeZustand'));
 }

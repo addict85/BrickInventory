@@ -40,7 +40,7 @@ Module.prototype.require = function (name) {
 test('ein gescheiterter Start des Job-Prozesses beendet ihn', { concurrency: 1, timeout: 90_000 }, async (t) => {
   const db = await dbOderSkip(t, _req);
   if (!db) return;
-  const { liesZustand, loescheZustand } = _req('src/auftraege/laufzustand.js');
+  const { liesZustand, loescheZustand } = _req('src/auftraege/prozess.js').auftraegeBereich().laufzustand;
   const { LEBENSZEICHEN_SCHLUESSEL } = _req('startup/jobsProzess.js');
   await loescheZustand(LEBENSZEICHEN_SCHLUESSEL);
   t.after(() => db.pool.end().catch(() => {}));

@@ -5,10 +5,11 @@ import { mitSitzungsSperre } from '../../db/txLock';
 import { downloadSetInstructions, letzterAbrufWarExtern, anzahlAnleitungen, scrapeInstructionsFromFallback } from './instructions';
 import { fehlertext } from '../infra/fehler';
 import { alsAbrufFehler } from './quellen';
-import { zaehleArt, beendePause, pausiereArt, liesPause } from '../auftraege/dienst';
+import { zaehleArt, beendePause } from '../auftraege/dienst';
 import { LOCKS } from '../infra/lockNamespaces';
 import type { Nutzlast } from '../auftraege/nutzlasten';
 import { type AuftragsLauf, AuftragVerschieben } from '../auftraege/auftraege';
+import { auftraegeBereich } from '../auftraege/prozess';
 
 const TAKT_NACH_ABRUF_MS = 15_000;
 /** Pausen nach der ersten bis vierten Cloudflare-Sperre; danach bis morgen. */
@@ -47,26 +48,26 @@ async function anleitungLaden(n: Nutzlast<'anleitung'>, lauf?: AuftragsLauf): Pr
       // Den Abstand hält die Pause der Art, nicht die Funktion.
       const anzahl = await downloadSetInstructions(sn, true);
       console.log(`[instr-queue] ${sn}: ${anzahl} instructions`);
-      if (await liesPause('anleitung')) await beendePause('anleitung');
-      if (letzterAbrufWarExtern()) await pausiereArt('anleitung', new Date(Date.now() + TAKT_NACH_ABRUF_MS), 'Abstand zwischen zwei Abrufen');
+      if (await auftraegeBereich().auftraege.liesPause('anleitung')) await beendePause('anleitung');
+      if (letzterAbrufWarExtern()) await auftraegeBereich().auftraege.pausiereArt('anleitung', new Date(Date.now() + TAKT_NACH_ABRUF_MS), 'Abstand zwischen zwei Abrufen');
       await meldeAnleitungen(sn, lauf);
     } catch (e) {
       const f = alsAbrufFehler(e);
       const msg = fehlertext(e) || '';
       if (f.isCloudflare || msg.includes('1015')) {
-        const stufe = (await liesPause('anleitung'))?.stufe ?? 0;
+        const stufe = (await auftraegeBereich().auftraege.liesPause('anleitung'))?.stufe ?? 0;
         const bis = stufe < CF_PAUSEN_MS.length ? new Date(Date.now() + CF_PAUSEN_MS[stufe]!) : naechsterTag();
         const grund = stufe < CF_PAUSEN_MS.length
           ? `Cloudflare-Sperre: ${Math.round(CF_PAUSEN_MS[stufe]! / 60000)} min warten (Versuch ${stufe + 1})`
           : 'Cloudflare-Sperre: bis morgen pausiert';
-        await pausiereArt('anleitung', bis, grund, stufe < CF_PAUSEN_MS.length ? stufe + 1 : 0);
+        await auftraegeBereich().auftraege.pausiereArt('anleitung', bis, grund, stufe < CF_PAUSEN_MS.length ? stufe + 1 : 0);
         await lauf?.fortschritt?.({ text: grund });
         console.log(`[instr-queue] ${grund}`);
         throw new AuftragVerschieben(bis, grund);
       }
       if (msg.includes('Tageslimit') || msg.includes('rate limit') || msg.includes('429')) {
         const bis = naechsterTag();
-        await pausiereArt('anleitung', bis, 'Tageskontingent erschöpft');
+        await auftraegeBereich().auftraege.pausiereArt('anleitung', bis, 'Tageskontingent erschöpft');
         throw new AuftragVerschieben(bis, 'Tageskontingent erschöpft');
       }
       throw e;
