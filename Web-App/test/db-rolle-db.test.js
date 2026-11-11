@@ -168,7 +168,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) =
     assert.equal(rolleEinrichten(alt).status, 0, 'ein zweiter Lauf scheitert');
 
     const warnung = (dbUrl, env = {}) => spawnSync(process.execPath, ['-e',
-      "require('./dist/startup/datenbank.js').warneBeiSuperuser().then(w => { console.log('WARNUNG=' + w); return require('./dist/db/database.js').pool.end(); })"],
+      "require('./dist/startup/datenbank.js').warneBeiSuperuser(require('./dist/db/database.js').standardDb()).then(w => { console.log('WARNUNG=' + w); return require('./dist/db/database.js').pool.end(); })"],
     { cwd: ROOT, encoding: 'utf8', env: { ...process.env, NODE_ENV: 'production', DATABASE_URL: dbUrl, ...env } });
     const verbot = warnung(url(alt));
     assert.equal(verbot.status, 1, `als Superuser startet die Produktion: ${verbot.stdout}`);

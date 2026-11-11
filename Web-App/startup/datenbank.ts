@@ -1,4 +1,4 @@
-import * as db from '../db/database';
+import type { Db } from '../db/database';
 import { logAndContinue } from '../src/infra/fehler';
 import { initImageMisses } from '../src/katalog/bilder/imageMisses';
 import { initImageQueue } from '../src/katalog/bilder/bildbedarfLauf';
@@ -12,7 +12,7 @@ import { auftraegeBereich } from '../src/auftraege/prozess';
 
 /** Ein Superuser erreicht COPY … PROGRAM und jede Datenbank des Servers: In
  * Betrieb (auch ohne NODE_ENV) ein Startverbot, ausser DB_SUPERUSER_ERLAUBT=1 (UPGRADE.md). */
-export async function warneBeiSuperuser(): Promise<boolean> {
+export async function warneBeiSuperuser(db: Db): Promise<boolean> {
   if (!konfig().betrieb || !await db.alsSuperuserVerbunden()) return false;
   if (!konfig().dbSuperuserErlaubt) {
     console.error('❌ [datenbank] Die App verbindet sich als Superuser — Start verweigert. Eigene Rolle: UPGRADE.md, '
@@ -60,11 +60,11 @@ export async function schluesselWechsel(): Promise<number | null> {
  * Arbeitsprozess, weil sie prozess-lokal sind (Bestand im Speicher, Takt des
  * Puffers). Hier und nicht in db/: Die Datenbankschicht kennt keine Jobs.
  */
-export async function bereiteDatenbankVor(): Promise<void> {
+export async function bereiteDatenbankVor(db: Db): Promise<void> {
   // Beim Start statt bei der ersten Verschlüsselung: Ein falscher oder alter
   // Ort des Schlüssels soll im Startprotokoll stehen.
   datenSchluessel();
-  await warneBeiSuperuser();
+  await warneBeiSuperuser(db);
   await db.initSchemaOnce();
   await altbestandAufruesten();
   await schluesselWechsel();

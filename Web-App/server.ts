@@ -11,7 +11,7 @@ import express from 'express';
 import session from 'express-session';
 import compression from 'compression';
 import connectPgSimple from 'connect-pg-simple';
-import * as db from './db/database';
+import type { Pool } from 'pg';
 import { fehlertext, logAndContinue } from './src/infra/fehler';
 import { fehlerAntwort, unbekannterApiPfad } from './src/http/httpAntwort';
 import { startVerbote, startWarnungen } from './src/infra/konfig';
@@ -87,14 +87,14 @@ function sitzungsGeheimnis(): string {
 }
 
 /** Die Abschnitte stehen in der Reihenfolge der Middleware. */
-function baueApp(): express.Express {
+function baueApp(pool: Pool): express.Express {
   const app = express();
   // Verrät nur, womit der Server gebaut ist — wer sucht, soll es nicht geschenkt bekommen.
   app.disable('x-powered-by');
   // Vor dem ersten app.use: Ein /API/… träfe sonst dieselbe Route, aber keinen Vertragseintrag.
   app.set('case sensitive routing', true);
   grundschutz(app);
-  sitzung(app);
+  sitzung(app, pool);
   dateienUndBilder(app);
   apiRouten(app);
   rueckfaelle(app);
@@ -207,11 +207,11 @@ function sicherheitsKoepfe(req: Request, res: Response, next: NextFunction): voi
   next();
 }
 
-function sitzung(app: express.Express): void {
+function sitzung(app: express.Express, pool: Pool): void {
   // In PostgreSQL, damit Sitzungen einen Neustart überleben; die Tabelle legt das Schema an.
   const PgSession = connectPgSimple(session);
   const sitzungsSpeicher = new PgSession({
-    pool: db.pool,
+    pool,
     tableName: 'user_sessions',
     createTableIfMissing: false,
     pruneSessionInterval: 60 * 15,
@@ -303,7 +303,7 @@ function rueckfaelle(app: express.Express): void {
 const SHUTDOWN_TIMEOUT_MS = 8000;
 let _beendetWird = false;
 
-async function herunterfahren(signal: string, httpServer: Server | null, jobs: boolean): Promise<void> {
+async function herunterfahren(signal: string, httpServer: Server | null, jobs: boolean, pool: Pool): Promise<void> {
   if (_beendetWird) return;
   _beendetWird = true;
   console.log(`[shutdown] ${signal} empfangen — Server wird geordnet beendet`);
@@ -323,7 +323,7 @@ async function herunterfahren(signal: string, httpServer: Server | null, jobs: b
     // Laufende Aufträge halten sicher an und gehen zurück in die Tabelle.
     if (jobs) await stoppeJobs();
     await pgNotify.close().catch(logAndContinue('server:close'));
-    await db.pool.end().catch(logAndContinue('server:end'));
+    await pool.end().catch(logAndContinue('server:end'));
     console.log('[shutdown] Datenbankverbindungen geschlossen');
     clearTimeout(notbremse);
     process.exit(0);
@@ -350,26 +350,26 @@ async function starte(): Promise<void> {
   console.log(`[start] Prozess ${process.pid}, Rolle ${k.rolle}`);
   // Datenbankzugang und Verdrahtung entstehen hier, nicht beim Import eines Moduls;
   // Erfassungen und Einstellungen stossen ihre Nacharbeit in jedem Prozess an.
-  verdrahteProzess();
+  const zugang = verdrahteProzess();
 
-  try { await bereiteDatenbankVor(); }
+  try { await bereiteDatenbankVor(zugang); }
   catch (e) {
     console.error('❌ Database initialisation failed:', fehlertext(e));
     console.error('   Check PostgreSQL connection settings (PGHOST, PGUSER, PGPASSWORD, PGDATABASE)');
     process.exit(1);
   }
-  protokollInDieDatenbank(db.pool);
+  protokollInDieDatenbank(zugang.pool);
   if (web) await meldeSmtpAltlast().catch(logAndContinue('start:smtp-altlast'));
   if (web) await meldeUngueltigeAdressen().catch(logAndContinue('start:adressen'));
   if (web) await meldeAusstehendeAdressen().catch(logAndContinue('start:ausstehende-adressen'));
   if (web) horcheAufTokenWiderruf();
 
   // Erst nach dem Schema Anfragen annehmen: Der Sitzungsspeicher braucht user_sessions.
-  const httpServer = web ? http.createServer({ ...HTTP_FRISTEN }, baueApp()).listen(k.port, () => {
+  const httpServer = web ? http.createServer({ ...HTTP_FRISTEN }, baueApp(zugang.pool)).listen(k.port, () => {
     console.log(`🧱 BrickInventory Manager — http://localhost:${k.port}`);
   }) : null;
-  process.on('SIGTERM', () => { void herunterfahren('SIGTERM', httpServer, jobs); });
-  process.on('SIGINT',  () => { void herunterfahren('SIGINT', httpServer, jobs); });
+  process.on('SIGTERM', () => { void herunterfahren('SIGTERM', httpServer, jobs, zugang.pool); });
+  process.on('SIGINT',  () => { void herunterfahren('SIGINT', httpServer, jobs, zugang.pool); });
   if (jobs) await starteJobs(web);
 }
 

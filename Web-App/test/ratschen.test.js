@@ -101,17 +101,22 @@ test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', 
   assert.deepEqual(sets.filter(f => muster.test(ohneKommentare(fs.readFileSync(f, 'utf8')))).map(f => path.relative(WEB, f)), []);
 });
 
+/** Die Fabrik (erzeugeDb, dbKonfigAusUmgebung) und Typen sind kein Prozesszugang. */
+const PROZESSZUGANG = new Set(['pool', 'all', 'get', 'run', 'exec', 'transaction', 'initSchema', 'initSchemaOnce',
+  'getPoolStats', 'datenbankAntwortet', 'alsSuperuserVerbunden', 'eigeneVerbindung', 'inTransaktion', 'standardDb', 'setzeStandardDb']);
 function nimmtProzesszugang(f) {
   if (/[\\/]db[\\/]database\.ts$/.test(f)) return false;
-  return /^import (?:\* as \w+|\{[^}]*\}) from '[./]+\/db\/database';/m.test(fs.readFileSync(f, 'utf8'));
+  return [...fs.readFileSync(f, 'utf8').matchAll(/^import (\* as \w+|\{[^}]*\}) from '[./]+\/db\/database';/gm)]
+    .some(m => m[1].startsWith('*') || m[1].slice(1, -1).split(',').map(n => n.trim().split(/\s+as\s+/)[0]).some(n => PROZESSZUGANG.has(n)));
 }
 
 test('der Kompatibilitätsweg zur Datenbank und modulweite let werden weniger, nie mehr', () => {
   // db/database.ts hat eine Fabrik (erzeugeDb); wer noch die Funktionen des
   // Prozesszugangs importiert, statt einen Zugang übergeben zu bekommen, zählt hier.
-  // Gemessen 3 am 11.11.2026 (src/einstellungen über erzeugeEinstellungen).
-  // Gegenprobe (09.11.2026): ein `import * as db from '../../db/database'` in src/sets/zeilen.ts → rot.
-  const SCHRANKE = 3;
+  // Gemessen 0 am 11.11.2026 (server.ts und startup/ ohne Prozesszugang).
+  // Gegenproben: ein `import * as db from '../../db/database'` in src/sets/zeilen.ts → rot (09.11.2026);
+  // `import { get as _probe } from '../../db/database'` ebendort → rot mit 1 (11.11.2026).
+  const SCHRANKE = 0;
   const ist = quellen().filter(nimmtProzesszugang).length;
   // Selbstbeweis: Typimporte aus db/database zählen nicht, finden muss die Suche sie trotzdem.
   const mitTypen = quellen().filter(f => /^import type \{[^}]*\} from '[./]+\/db\/database';/m.test(fs.readFileSync(f, 'utf8'))).length;
