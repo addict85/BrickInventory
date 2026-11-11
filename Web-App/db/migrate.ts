@@ -119,8 +119,7 @@ export async function raeumeAlteSicherungenAuf(c: Abfrager, tage = SICHERUNG_FRI
 export async function offeneMigrationen(client: ClientBase): Promise<string[]> {
   const dir = path.join(__dirname, 'migrations');
   const dateien = fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => f.endsWith('.sql')).sort() : [];
-  const { rows } = await client.query(`SELECT to_regclass('public.schema_migrations') IS NOT NULL AS da`);
-  if (!rows[0].da) return dateien;
+  if (!(await client.query(`SELECT to_regclass('public.schema_migrations') AS t`)).rows[0].t) return dateien;
   const fertig = new Set((await client.query<{ name: string }>('SELECT name FROM schema_migrations')).rows.map(z => z.name));
   return dateien.filter(f => !fertig.has(f));
 }
