@@ -70,6 +70,13 @@ class SetDetailViewModel @Inject constructor(
 
     val state: StateFlow<AppUiState> = sitzung.state
 
+    /** Aus der Route set_detail/{setNumber}. */
+    val setNumber: String = gemerkt[ARG_SET] ?: ""
+
+    private val _setDetailState = MutableStateFlow(SetDetailUiState())
+    val setDetailState: StateFlow<SetDetailUiState> = _setDetailState.asStateFlow()
+
+    // Nach setNumber und dem Zustand: Ein init davor sähe beide noch nicht belegt.
     init {
         folgeAbmeldung(sitzung) { zuruecksetzen() }
         // Ändert sich dieses Set in der Ablage — hier oder anderswo —, gelten Detail und Käufe nicht mehr.
@@ -80,12 +87,6 @@ class SetDetailViewModel @Inject constructor(
                 }
         }
     }
-
-    /** Aus der Route set_detail/{setNumber}. */
-    val setNumber: String = gemerkt[ARG_SET] ?: ""
-
-    private val _setDetailState = MutableStateFlow(SetDetailUiState())
-    val setDetailState: StateFlow<SetDetailUiState> = _setDetailState.asStateFlow()
 
     // Menge, Lagerort und Alarm warten die Ruhezeit ab; die Aufträge laufen im
     // Scope des ViewModels und überstehen so das Zurückgehen.

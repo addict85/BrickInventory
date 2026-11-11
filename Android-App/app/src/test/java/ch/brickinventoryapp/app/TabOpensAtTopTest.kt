@@ -114,6 +114,6 @@ class TabOpensAtTopTest {
             direkt.isEmpty())
         val geruest = Quellen.ohneKommentare(Quellen.lies("app/MainScaffold.kt"))
         assertTrue("Das Gerüst verwirft die Rollposition des angetippten Reiters nicht mehr",
-            geruest.contains("onTabAngetippt = { ziel -> vm.scrollMemory.vergissReiter(ziel.rollSchluessel) }"))
+            geruest.contains("onTabAngetippt = { ziel -> vm.scrollMemory.vergissReiter(rollSchluessel(ziel)) }"))
     }
 }
