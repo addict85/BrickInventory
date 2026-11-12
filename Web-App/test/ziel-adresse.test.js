@@ -10,6 +10,11 @@
  *   C  `*.lego.com` wieder in ERLAUBTE_DOWNLOAD_HOSTS → rot: „von LEGO nur …“
  *   D  in pruefenderLookup() ohne den Filter (alle Adressen weiter) → rot:
  *      „gemischte Antworten …“
+ * Eingebettete IPv4 (12.11.2026 gemessen, je einzeln):
+ *   E  normalisiert() gibt die Adresse unverändert zurück → rot: „NAT64 …
+ *      zählt wie die IPv4-Adresse darin“ (64:ff9b::7f00:1 galt als öffentlich)
+ *      und „… Container-Netz auch über NAT64“
+ *   F  '2002::/16' aus INTERN gestrichen → rot: „6to4 und Teredo …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -126,4 +131,37 @@ test('von LEGO nur die Hosts der Anleitungen', () => {
     assert.ok(hostErlaubt(gut, ERLAUBTE_DOWNLOAD_HOSTS), gut);
   for (const fremd of ['https://irgendwas.lego.com/a.pdf', 'https://x.www.lego.com/a.pdf'])
     assert.ok(!hostErlaubt(fremd, ERLAUBTE_DOWNLOAD_HOSTS), fremd);
+});
+
+test('NAT64 und IPv4-gemappte Adressen: es zählt die IPv4-Adresse darin', () => {
+  for (const [ip, v4] of [
+    ['::ffff:127.0.0.1', '127.0.0.1'],
+    ['::FFFF:7f00:1', '127.0.0.1'],
+    ['64:ff9b::7f00:1', '127.0.0.1'],
+    ['64:ff9b::10.0.0.1', '10.0.0.1'],
+    ['64:ff9b::a9fe:a9fe', '169.254.169.254'],
+    ['64:ff9b::808:808', '8.8.8.8'],
+  ])
+    assert.equal(Z.normalisiert(ip), v4, ip);
+  for (const ip of ['2606:4700::1111', 'fe80::1%eth0', '64:ff9b:1::1', '1.2.3.4']) assert.equal(Z.normalisiert(ip), ip);
+  for (const ip of ['64:ff9b::7f00:1', '64:ff9b::10.0.0.1', '64:ff9b::a9fe:a9fe', '::ffff:192.168.1.1'])
+    assert.equal(Z.oeffentlicheAdresse(ip), false, `NAT64 zählt wie die IPv4-Adresse darin: ${ip}`);
+  // Hinter DNS64 bekommt ein reiner IPv4-Dienst eine NAT64-Adresse; die bleibt erreichbar.
+  assert.equal(Z.oeffentlicheAdresse('64:ff9b::808:808'), true);
+});
+
+test('6to4 und Teredo sind nie öffentlich', () => {
+  for (const ip of ['2002:a00:1::1', '2002:7f00:1::', '2001:0:4136:e378::1'])
+    assert.equal(Z.oeffentlicheAdresse(ip), false, `6to4 und Teredo: ${ip}`);
+});
+
+test('der Mailserver erreicht das Container-Netz auch über NAT64 nicht', () => {
+  const schnittstellen = {
+    eth0: [{ address: '172.28.73.5', cidr: '172.28.73.5/24', family: 'IPv4', internal: false }],
+  };
+  const pruefe = ip => Z.mailserverAdresse(ip, { imContainer: true, schnittstellen });
+  assert.equal(pruefe('64:ff9b::172.28.73.20'), false, 'Container-Netz auch über NAT64');
+  assert.equal(pruefe('::ffff:172.28.73.20'), false);
+  assert.equal(pruefe('64:ff9b::7f00:1'), false, 'Loopback über NAT64');
+  assert.equal(pruefe('64:ff9b::c0a8:10a'), true, 'ein Mailserver im eigenen LAN bleibt erlaubt');
 });
