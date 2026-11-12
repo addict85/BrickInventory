@@ -109,14 +109,6 @@ fun istErlaubteApkAdresse(url: String): Boolean {
     return FASSUNGS_ETIKETT.matches(etikett) && liegtUnter(url, "$UPDATE_RELEASE_WURZEL/$etikett")
 }
 
-/** Die Signierzertifikate der installierten App (DER); gegen sie wird die Beschreibung geprüft. */
-fun eigeneZertifikate(ctx: Context): List<ByteArray> {
-    val info = runCatching {
-        ctx.packageManager.getPackageInfo(ctx.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
-    }.getOrNull() ?: return emptyList()
-    return info.signingInfo?.apkContentsSigners.orEmpty().map { it.toByteArray() }
-}
-
 /**
  * Die Signatur eines APK als Fingerabdruck. `null`, wenn nicht lesbar oder nicht
  * signiert — dann wird nicht installiert; „unbekannt“ gilt nie als „passt“.
@@ -278,7 +270,6 @@ fun updateDatei(ctx: Context): File =
 internal class AndroidUpdateGeraet @Inject constructor(@param:ApplicationContext private val ctx: Context) : UpdateGeraet {
     override fun beschreibungsSchluessel(): List<ByteArray> = beschreibungsSchluessel(
         ctx.resources.openRawResource(R.raw.beschreibungs_schluessel).bufferedReader().use { it.readText() })
-    override fun eigeneZertifikate(): List<ByteArray> = eigeneZertifikate(ctx)
     override fun updateDatei(): File = updateDatei(ctx)
     override fun signaturPasst(apk: File): Boolean = signaturPasst(ctx, apk)
     override fun apkFassung(apk: File): Long? = apkFassung(ctx, apk)

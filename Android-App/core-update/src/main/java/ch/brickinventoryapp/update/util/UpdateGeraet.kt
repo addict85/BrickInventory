@@ -3,14 +3,13 @@ package ch.brickinventoryapp.update.util
 import java.io.File
 
 /**
- * Was die Selbstaktualisierung vom Gerät braucht: Schlüssel, Signierer, Ablage und
+ * Was die Selbstaktualisierung vom Gerät braucht: Schlüssel, Ablage, Signaturprüfung und
  * Installer. Hinter einer Schnittstelle, damit das UpdateViewModel ohne
  * PackageManager ausgeführt geprüft werden kann; im Gerät AndroidUpdateGeraet (AppUpdate.kt).
  */
 interface UpdateGeraet {
     /** SPKI der Beschreibungsschlüssel aus res/raw/beschreibungs_schluessel.pem. */
     fun beschreibungsSchluessel(): List<ByteArray>
-    fun eigeneZertifikate(): List<ByteArray>
     fun updateDatei(): File
     fun signaturPasst(apk: File): Boolean
     fun apkFassung(apk: File): Long?

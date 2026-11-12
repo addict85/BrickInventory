@@ -226,7 +226,8 @@ test('signiert und veröffentlicht wird nur aus main, und Gradle sieht den Schl�
 // Job signatur → rot „… führt keinen Projektcode aus“; am Release-Job `needs: [etikett, signieren]`
 // → rot „veröffentlicht nur das geprüfte, signierte APK“; `environment: release` am
 // Release-Job entfernt → rot „… erst nach Freigabe …“; `uses:` des Jobs bescheinigen
-// entfernt → rot „die Herkunft des APK wird bescheinigt“.
+// entfernt → rot „die Herkunft des APK wird bescheinigt“. Gegenprobe 12.11.2026: Frist wieder
+// `30 * 86400` → rot „die Beschreibung gilt sieben Tage“.
 test('signiert wird in eigenen Jobs ohne Projektcode, geprüft und veröffentlicht danach', () => {
   for (const name of ['signatur', 'beschreibung']) {
     const job = jobIn('android-signieren.yml', name);
@@ -237,6 +238,14 @@ test('signiert wird in eigenen Jobs ohne Projektcode, geprüft und veröffentlic
   assert.match(apk, /name: apk-unsigniert/);
   assert.match(apk, /run-id: \$\{\{ inputs\.lauf \|\| github\.run_id \}\}/, 'das Artefakt kommt aus dem Baulauf');
   assert.match(jobIn('android-signieren.yml', 'beschreibung'), /name: apk-signiert\n/);
+  // Der APK-Schlüssel signiert nur noch APK und Bundle, die Beschreibung gilt sieben Tage.
+  assert.doesNotMatch(ohneKommentar(apk), /openssl pkcs12|-exportcert|version\.sig/, 'kein PEM-Export des APK-Schlüssels');
+  assert.match(schrittIn(apk, 'Signieren'), /\$\(\(AUSGESTELLT \+ 7 \* 86400\)\)/, 'die Beschreibung gilt sieben Tage');
+  assert.doesNotMatch(
+    ohneKommentar(jobIn('android-signieren.yml', 'beschreibung')),
+    /--arg signatur/,
+    'die Beschreibung trägt keine Signatur des APK-Schlüssels',
+  );
   assert.doesNotMatch(jobIn('android.yml', 'build'), /secrets\./, 'der Bau-Job sieht kein Secret');
 
   const pruefen = jobIn('android-signieren.yml', 'apk-pruefen');

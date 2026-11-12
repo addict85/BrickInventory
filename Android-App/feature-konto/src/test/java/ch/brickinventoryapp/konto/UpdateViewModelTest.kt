@@ -92,7 +92,6 @@ class UpdateViewModelTest {
         val installiert = mutableListOf<File>()
         val datei = File(ordner, "BrickInventory.apk")
         override fun beschreibungsSchluessel() = listOf(eigen.public.encoded)
-        override fun eigeneZertifikate() = emptyList<ByteArray>()
         override fun updateDatei() = datei
         override fun signaturPasst(apk: File) = signaturGut
         override fun apkFassung(apk: File) = fassungImApk
