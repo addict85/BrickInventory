@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.anmeldung
 
 import ch.brickinventoryapp.data.Anmeldeablage
+import ch.brickinventoryapp.sicherheit.ZertifikatsFrage
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.anmeldung.ui.qrAdresseUngueltig
 import ch.brickinventoryapp.anmeldung.ui.qrWechseltServer
@@ -141,7 +142,7 @@ class QrAdresseTest {
             HaushaltRepository(t.api, t.cache),
             TeileRepository(t.api, t.cache))
         val vm = t.merke(AnmeldungViewModel(t.sitzung, blickfeld, t.hinweise, abmelden,
-            KontoRepository(t.api, t.cache), ablage, { false }))
+            KontoRepository(t.api, t.cache), ablage, ZertifikatsFrage(), { false }))
         vm.loginWithQrToken("https://brick.meinserver.ch@evil.example", "bim:x")
         assertFalse(vm.saveServerUrl("https://brick.meinserver.ch@evil.example"))
         assertEquals(emptyList<String>(), ablage.protokoll.toList())

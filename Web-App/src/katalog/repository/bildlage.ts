@@ -34,13 +34,22 @@ export async function figurenOhneBild(db: DbSchnittstelle): Promise<{ fig_number
   );
 }
 
+/** Seit 0105 führt set_catalog jedes Set des Rebrickable-Katalogs: Geladen wird nur,
+ * was ein Konto hält, merkt oder beobachtet. Ein vermerkter 404 ruht eine Woche, sonst
+ * belegten dieselben bildlosen Sets bei jedem Start die ersten Plätze. */
 export async function setBilderOhneDatei(
   db: DbSchnittstelle,
   grenze = 500,
 ): Promise<{ set_number: string; image_url: string }[]> {
   return db.all(
-    `SELECT set_number, image_url FROM set_catalog
-     WHERE image_local IS NULL AND image_url IS NOT NULL LIMIT $1`,
+    `SELECT c.set_number, c.image_url FROM set_catalog c
+      WHERE c.image_local IS NULL AND c.image_url IS NOT NULL
+        AND (EXISTS (SELECT 1 FROM sets s WHERE s.set_number = c.set_number)
+             OR EXISTS (SELECT 1 FROM wanted w WHERE w.set_number = c.set_number)
+             OR EXISTS (SELECT 1 FROM price_alerts a WHERE a.set_number = c.set_number))
+        AND NOT EXISTS (SELECT 1 FROM image_misses m WHERE m.cache_key = 'set:' || c.set_number
+                          AND m.checked_at > NOW() - INTERVAL '7 days')
+      ORDER BY c.set_number LIMIT $1`,
     [grenze],
   );
 }

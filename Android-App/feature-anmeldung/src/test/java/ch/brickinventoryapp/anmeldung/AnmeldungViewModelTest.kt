@@ -14,6 +14,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -32,6 +33,9 @@ import ch.brickinventoryapp.testing.SitzungsAttrappe
 import ch.brickinventoryapp.testing.SpeicherAblage
 import ch.brickinventoryapp.testing.TeileRepository
 import ch.brickinventoryapp.testing.TestDienste
+import ch.brickinventoryapp.sicherheit.PinAblage
+import ch.brickinventoryapp.sicherheit.ZertifikatUngeklaert
+import ch.brickinventoryapp.sicherheit.ZertifikatsFrage
 
 /**
  * Das Anmelde-ViewModel, ausgeführt gegen einen PfadServer ohne Netz und eine Ablage im
@@ -118,6 +122,7 @@ class AnmeldungViewModelTest {
     private lateinit var pfade: PfadServer
     private lateinit var t: TestDienste
     private lateinit var ablage: Ablage
+    private lateinit var frage: ZertifikatsFrage
 
     /** Die Filterablage meldet ihr Leeren in dasselbe Protokoll; [wurzeln] spielt die System-Wurzeln. */
     private fun vm(wurzeln: Set<String> = emptySet()): AnmeldungViewModel {
@@ -129,7 +134,7 @@ class AnmeldungViewModelTest {
             TeileRepository(t.api, t.cache))
         val abmelden = SitzungsAttrappe { ablage.protokoll += "abmelden" }
         return t.merke(AnmeldungViewModel(t.sitzung, blickfeld, t.hinweise, abmelden,
-            KontoRepository(t.api, t.cache), ablage) { it in wurzeln })
+            KontoRepository(t.api, t.cache), ablage, frage) { it in wurzeln })
     }
 
     @Before
@@ -138,6 +143,7 @@ class AnmeldungViewModelTest {
         pfade = PfadServer()
         t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
         ablage = Ablage()
+        frage = ZertifikatsFrage()
     }
 
     @After
@@ -222,6 +228,52 @@ class AnmeldungViewModelTest {
             p.indexOf("url:https://brick.example.org") < p.indexOf("pin:brick.example.org:443=$fp") &&
                 p.indexOf("pin:brick.example.org:443=$fp") < p.indexOf("token:abc"))
         assertEquals(fp, ablage.pins["brick.example.org:443"])
+    }
+
+    /** Der Handshake des ersten qr-login fragt nach dem Zertifikat und bricht ab (503 statt TLS). */
+    private fun erstkontaktBeimErstenQrLogin() {
+        pfade.antworten["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
+        pfade.antworten["/api/v1/auth/qr-login/abholen"] = """{"success":true,"wartet":false,"token":"abc","user":{"id":1,"username":"marco"}}"""
+        var erster = true
+        pfade.vorrang = { _, pfad ->
+            if (erster && pfad == "/api/v1/auth/qr-login") {
+                erster = false
+                frage.melde(ZertifikatUngeklaert("brick.example.org:443", fp, ZertifikatUngeklaert.Art.ERSTKONTAKT))
+                503 to """{"success":false}"""
+            } else null
+        }
+    }
+
+    private val pinsDerAblage = object : PinAblage {
+        override fun pin(schluessel: String) = ablage.gemerkterPin(schluessel)
+        override fun merkePin(schluessel: String, fingerabdruck: String) = ablage.merkePin(schluessel, fingerabdruck)
+    }
+
+    @Test
+    fun `nach dem Ja zum Erstkontakt meldet sich der QR-Code ohne neuen Scan an`() {
+        erstkontaktBeimErstenQrLogin()
+        val vm = vm()
+        vm.loginWithQrToken("https://brick.example.org/", "bim:x")
+        assertTrue("Wartet auf den Dialog statt „Keine Verbindung“", vm.anmeldeState.value.loginLaeuft)
+        assertNull(vm.anmeldeState.value.loginError)
+
+        assertTrue(frage.bestaetige(pinsDerAblage))
+        assertEquals("Zweiter Versuch", 2, pfade.anfragen.count { it == "POST /api/v1/auth/qr-login" })
+        vm.qrKontoEntscheiden(true)
+        assertTrue("angemeldet: ${ablage.protokoll}", t.sitzung.state.value.isLoggedIn)
+        assertNull(vm.anmeldeState.value.loginError)
+    }
+
+    @Test
+    fun `nach dem Nein zum Erstkontakt bleibt es bei einem Versuch`() {
+        erstkontaktBeimErstenQrLogin()
+        val vm = vm()
+        vm.loginWithQrToken("https://brick.example.org/", "bim:x")
+        frage.verwerfen()
+        assertEquals(1, pfade.anfragen.count { it == "POST /api/v1/auth/qr-login" })
+        assertFalse(vm.anmeldeState.value.loginLaeuft)
+        assertNotNull(vm.anmeldeState.value.loginError)
+        assertFalse(t.sitzung.state.value.isLoggedIn)
     }
 
     @Test

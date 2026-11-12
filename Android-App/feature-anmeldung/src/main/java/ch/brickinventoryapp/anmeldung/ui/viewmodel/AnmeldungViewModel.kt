@@ -15,6 +15,7 @@ import ch.brickinventoryapp.netz.util.NetworkPolicy
 import ch.brickinventoryapp.sicherheit.bestaetigtFingerabdruck
 import ch.brickinventoryapp.sicherheit.pinSchluessel
 import ch.brickinventoryapp.sicherheit.SystemWurzeln
+import ch.brickinventoryapp.sicherheit.ZertifikatsFrage
 import ch.brickinventoryapp.sicherheit.RpIdBefund
 import ch.brickinventoryapp.sicherheit.hostVon
 import ch.brickinventoryapp.sicherheit.pruefeRpId
@@ -30,6 +31,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
@@ -62,6 +64,7 @@ class AnmeldungViewModel @Inject constructor(
     private val sitzungsDienst: SitzungsRepository,
     private val konto: KontoRepository,
     private val ablage: Anmeldeablage,
+    private val frage: ZertifikatsFrage,
     private val systemWurzeln: SystemWurzeln,
 ) : ViewModel() {
 
@@ -211,7 +214,7 @@ class AnmeldungViewModel @Inject constructor(
             if (schluessel != null && fingerabdruck != null) ablage.halteVor(schluessel, fingerabdruck)
             try {
                 richteEin(neu)
-                when (val r = konto.qrLogin(token, geraet)) {
+                when (val r = nachZertifikatsfrage(neu) { konto.qrLogin(token, geraet) }) {
                     is Ergebnis.Success -> koppleQr(r.data, schluessel, fingerabdruck)
                     is Ergebnis.Error -> qrGescheitert(meldungen.meldung(r))
                 }
@@ -220,6 +223,19 @@ class AnmeldungViewModel @Inject constructor(
                 if (schluessel != null) ablage.vergissVorgehaltenen(schluessel)
             }
         }
+    }
+
+    /**
+     * Ein Erstkontakt bricht den Handshake ab, bevor der Dialog beantwortet ist. Nach
+     * dem Ja gilt der Pin, die Anfrage ging nie hinaus: ein zweiter Versuch, statt
+     * „Keine Verbindung“ zu zeigen und den Nutzer neu scannen zu lassen.
+     */
+    private suspend fun <T> nachZertifikatsfrage(adresse: String, abruf: suspend () -> Ergebnis<T>): Ergebnis<T> {
+        val r = abruf()
+        val schluessel = pinSchluessel(adresse) ?: return r
+        if (r !is Ergebnis.Error || frage.offen.value?.schluessel != schluessel) return r
+        frage.offen.first { it == null }
+        return if (ablage.gemerkterPin(schluessel) != null) abruf() else r
     }
 
     /** Wartet die Kopplung auf das Ja oder Nein zum gezeigten Konto ([AnmeldeUiState.qrKonto]). */
