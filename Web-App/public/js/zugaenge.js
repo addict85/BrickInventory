@@ -12,6 +12,9 @@ import { bestaetigeMitPasswort, mitZweitemFaktor } from './rueckfrage.js';
 // ist, bekommt sie ihren Zugang. Ein abfotografierter QR-Code allein öffnet so kein Konto.
 /** @type {{ id: number, timer: ReturnType<typeof setInterval> } | null} */
 let _kopplung = null;
+// Modulweit, damit ein neuer Code den Ablaufzähler des alten stoppt; der leerte sonst bei 0 den neuen Code.
+/** @type {ReturnType<typeof setInterval> | undefined} */
+let _ablauf;
 
 function kopplungBeenden() {
   if (_kopplung) clearInterval(_kopplung.timer);
@@ -101,6 +104,7 @@ async function generateQrCode() {
     const password = pw?.value || '';
     if (pw) pw.value = '';
     kopplungBeenden();
+    clearInterval(_ablauf);
     if (G('qr-kopplung')) G('qr-kopplung').hidden = true;
     const d = await mitZweitemFaktor(z => api('POST', '/v1/auth/qr-token', { gueltigkeit, password, ...z }));
     if (d === null) {
@@ -109,9 +113,7 @@ async function generateQrCode() {
     }
     if (!d.success) {
       hint.textContent = tRaw('toast.error') + ': ' + (d.error || t('common.unknown'));
-      // Den alten Code wegraeumen: Er ist vielleicht noch gueltig, und ein sichtbarer Code neben einer
-      // Fehlermeldung sieht aus wie ein Code, der trotzdem geht. Beim Ablaufzaehler weiter unten wird aus
-      // demselben Grund geleert.
+      // Ein Code neben einer Fehlermeldung sähe aus, als ginge er trotzdem.
       container.replaceChildren();
       frei();
       return;
@@ -128,11 +130,11 @@ async function generateQrCode() {
     // Die Dauer nennt der Server (expires_in): Ein fester Wert lief am Ende des Codes vorbei.
     let secs = Number(d.expires_in) || 300;
     const fmt = (/** @type {number} */ v) => `${Math.floor(v / 60)}:${(v % 60).toString().padStart(2, '0')}`;
-    const timer = setInterval(() => {
+    _ablauf = setInterval(() => {
       secs--;
       hint.textContent = tRaw('qr.valid_for', { t: fmt(secs) });
       if (secs <= 0) {
-        clearInterval(timer);
+        clearInterval(_ablauf);
         hint.textContent = tRaw('qr.expired');
         container.replaceChildren();
       }
