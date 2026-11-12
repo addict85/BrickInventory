@@ -1,18 +1,17 @@
-Gegenprobe: Ein Pin aus dem Code auf eine System-Wurzel deckt jede öffentlich gültige Kette, wie ein gemerkter
+Gegenprobe: Ein Pin aus dem Code auf eine System-Wurzel deckt jede öffentlich gültige Kette
 Modul: feature-anmeldung
 Test: ch.brickinventoryapp.anmeldung.ZertifikatPinTest
 Rot: ein Code mit System-Wurzel muss genau diese Wurzel treffen
 
 diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
-index f097adc..d33f649 100644
 --- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 +++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
-@@ -252,7 +252,7 @@ class PinVertrauen(
-      * muss sie die Kette auch tragen. Eine gepinnte Nutzer-CA gilt, wenn die Kette eben bis zu ihr galt.
+@@ -254,7 +254,7 @@
+      * ein anderer Betreiber fragt wie ein geänderter Schlüssel. Ein Code verlangt genau seine Wurzel.
       */
      private fun traegtPin(lage: Kettenlage, pin: String, oeffentlicherPin: Boolean, ausCode: Boolean): Boolean =
--        if (oeffentlicherPin) lage.oeffentlich && (!ausCode || lage.fingerabdruck == pin)
-+        if (oeffentlicherPin) lage.oeffentlich
+-        if (oeffentlicherPin) lage.oeffentlich && (lage.fingerabdruck == pin || !ausCode && gleicherBetreiber(pin, lage.fingerabdruck))
++        if (oeffentlicherPin) lage.oeffentlich && (ausCode || lage.fingerabdruck == pin || gleicherBetreiber(pin, lage.fingerabdruck))
          else lage.ueberNutzerCa && lage.wurzel != null && lage.fingerabdruck == pin
  
-     /** Fingerabdrücke der System-Wurzeln: Ein Pin auf eine davon heisst „öffentlich gültig“. */
+     /** Beide sind System-Wurzeln, und ihr Subjekt nennt dieselbe Organisation (O=). */

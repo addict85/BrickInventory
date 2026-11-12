@@ -19,6 +19,7 @@ import javax.net.ssl.SSLEngine
 import javax.net.ssl.SSLSession
 import javax.net.ssl.SSLSocket
 import javax.net.ssl.X509ExtendedTrustManager
+import javax.security.auth.x500.X500Principal
 
 /**
  * Welchen Zertifizierungsstellen die Clients des eigenen Servers vertrauen: nur
@@ -247,16 +248,25 @@ class PinVertrauen(
     }
 
     /**
-     * Ein öffentlicher Pin bindet Host und System-Gültigkeit, nicht eine Wurzel: Wechselt die CA
-     * ihre Wurzel (Let's Encrypt X1 → X2), fragt die App nicht neu. Nennt der Code eine System-Wurzel,
-     * muss sie die Kette auch tragen. Eine gepinnte Nutzer-CA gilt, wenn die Kette eben bis zu ihr galt.
+     * Ein öffentlicher Pin bindet an die gepinnte Wurzel oder eine andere desselben Betreibers:
+     * Ohne CT-Pflicht (Android 11–15) genügte sonst jede fehlausgestellte Kette irgendeiner CA.
+     * Zwischenstellen (R10 → R11) und Wurzeln einer Familie (ISRG X1 → X2) wechseln still;
+     * ein anderer Betreiber fragt wie ein geänderter Schlüssel. Ein Code verlangt genau seine Wurzel.
      */
     private fun traegtPin(lage: Kettenlage, pin: String, oeffentlicherPin: Boolean, ausCode: Boolean): Boolean =
-        if (oeffentlicherPin) lage.oeffentlich && (!ausCode || lage.fingerabdruck == pin)
+        if (oeffentlicherPin) lage.oeffentlich && (lage.fingerabdruck == pin || !ausCode && gleicherBetreiber(pin, lage.fingerabdruck))
         else lage.ueberNutzerCa && lage.wurzel != null && lage.fingerabdruck == pin
 
-    /** Fingerabdrücke der System-Wurzeln: Ein Pin auf eine davon heisst „öffentlich gültig“. */
-    private val systemWurzeln: Set<String> by lazy { fremdeHosts.acceptedIssuers.map(::spkiFingerabdruck).toSet() }
+    /** Beide sind System-Wurzeln, und ihr Subjekt nennt dieselbe Organisation (O=). */
+    private fun gleicherBetreiber(a: String, b: String): Boolean {
+        val betreiberA = systemWurzeln[a]?.let(::betreiber) ?: return false
+        return betreiberA == systemWurzeln[b]?.let(::betreiber)
+    }
+
+    /** Die System-Wurzeln nach Fingerabdruck: Ein Pin auf eine davon heisst „öffentlich gültig“. */
+    private val systemWurzeln: Map<String, X509Certificate> by lazy {
+        fremdeHosts.acceptedIssuers.associateBy(::spkiFingerabdruck)
+    }
 
     private fun gemeldet(f: ZertifikatUngeklaert): ZertifikatUngeklaert = f.also { frage.melde(it) }
 
@@ -278,8 +288,13 @@ class PinVertrauen(
      */
     private fun ohneHost(chain: Array<X509Certificate>, system: () -> Unit) {
         val pin = eigenerServer()?.let(pins::pin)
-        if (pin == null || pin in systemWurzeln) return system()
-        if (!passtZumPin(chain, pin)) throw CertificateException("Ohne Host kein Abgleich mit dem Pin des eigenen Servers")
+        if (pin == null) return system()
+        if (pin in systemWurzeln) {
+            system()
+            val wurzel = spkiFingerabdruck(anker(chain, fremdeHosts.acceptedIssuers) ?: chain.last())
+            if (wurzel == pin || gleicherBetreiber(pin, wurzel)) return
+        } else if (passtZumPin(chain, pin)) return
+        throw CertificateException("Ohne Host kein Abgleich mit dem Pin des eigenen Servers")
     }
 
     override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String, socket: Socket?) =
@@ -341,6 +356,14 @@ internal fun fuerServer(blatt: X509Certificate): Boolean {
     val zwecke = runCatching { blatt.extendedKeyUsage }.getOrElse { return false } ?: return true
     return EKU_SERVER in zwecke || EKU_JEDER in zwecke
 }
+
+/** Die Organisation (O=) im Subjekt; ohne sie ist eine Wurzel mit keiner anderen verwandt. */
+internal fun betreiber(zert: X509Certificate): String? =
+    zert.subjectX500Principal.getName(X500Principal.RFC2253)
+        .split(UNMASKIERTES_KOMMA).map { it.trim() }
+        .firstOrNull { it.startsWith("O=") }?.removePrefix("O=")?.takeIf { it.isNotBlank() }
+
+private val UNMASKIERTES_KOMMA = Regex("""(?<!\\),""")
 
 private const val EKU_SERVER = "1.3.6.1.5.5.7.3.1"
 private const val EKU_JEDER = "2.5.29.37.0"

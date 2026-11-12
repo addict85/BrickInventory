@@ -1,0 +1,23 @@
+Gegenprobe: Ohne Host genügt für einen Pin auf eine System-Wurzel wieder jede öffentlich gültige Kette
+Modul: feature-anmeldung
+Test: ch.brickinventoryapp.anmeldung.ZertifikatPinTest
+Rot: ohne Host gilt ein oeffentlicher Pin nur fuer seine Wurzel
+
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+@@ -288,12 +288,8 @@
+      */
+     private fun ohneHost(chain: Array<X509Certificate>, system: () -> Unit) {
+         val pin = eigenerServer()?.let(pins::pin)
+-        if (pin == null) return system()
+-        if (pin in systemWurzeln) {
+-            system()
+-            val wurzel = spkiFingerabdruck(anker(chain, fremdeHosts.acceptedIssuers) ?: chain.last())
+-            if (wurzel == pin || gleicherBetreiber(pin, wurzel)) return
+-        } else if (passtZumPin(chain, pin)) return
++        if (pin == null || pin in systemWurzeln) return system()
++        if (passtZumPin(chain, pin)) return
+         throw CertificateException("Ohne Host kein Abgleich mit dem Pin des eigenen Servers")
+     }
+ 

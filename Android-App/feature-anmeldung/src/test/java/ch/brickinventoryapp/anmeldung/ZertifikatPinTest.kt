@@ -74,9 +74,8 @@ import javax.net.ssl.SSLEngine
  *   L  in bestaetige() wieder nur GEAENDERT prüfen (`f.art == GEAENDERT &&`)
  *      → rot „ohne bekannte CA genuegt ein Tipp nicht …“
  *   M  die Zeile `if (pin != null && oeffentlich && pin in
- *      systemWurzeln) return` entfernt → rot „ein oeffentlicher Pin uebersteht
- *      …“ („Neue Wurzel, öffentlich gültig“), „eine oeffentliche CA …“, „ein
- *      geaenderter Schluessel …“
+ *      systemWurzeln) return` entfernt → rot „eine oeffentliche CA …“, „ein
+ *      geaenderter Schluessel …“ (Stand vor dem Wurzel-Pin, siehe X)
  *   N  dort ohne `&& pin in systemWurzeln` → rot „ein oeffentlicher Pin …“
  *      („Eine eigene CA bleibt an ihren Schlüssel gebunden“) und „ein anderer
  *      Schluessel unter dem gemerkten Pin …“
@@ -102,6 +101,15 @@ import javax.net.ssl.SSLEngine
  *      System-Wurzel …“ (abgetippt bestätigt); gegenproben/code-abweichung-bestaetigbar.patch
  *   W  bei abweichendem Pin immer GEAENDERT → rot „ein Code mit eigener CA …“;
  *      gegenproben/code-abweichung-als-rueckfrage.patch
+ * Gegenproben zum öffentlichen Pin (12.11.2026, kotlinc gegen ServerVertrauen.kt):
+ *   X  traegtPin() wieder `lage.oeffentlich && (!ausCode || …)` (jede öffentliche Kette) →
+ *      rot „ein oeffentlicher Pin haelt eine Kette unter fremder Wurzel an …“;
+ *      gegenproben/oeffentlicher-pin-jede-wurzel.patch
+ *   Y  in traegtPin() und ohneHost() ohne gleicherBetreiber() → rot „eine neue Wurzel
+ *      desselben Betreibers …“ und „ohne Host gilt ein oeffentlicher Pin …“;
+ *      gegenproben/wurzelfamilie-fragt-neu.patch
+ *   Z  ohneHost() wieder `pin in systemWurzeln → system()` → rot „ohne Host gilt ein
+ *      oeffentlicher Pin …“; gegenproben/ohne-host-jede-wurzel.patch
  */
 class ZertifikatPinTest {
 
@@ -363,12 +371,13 @@ class ZertifikatPinTest {
     }
 
     /**
-     * Die CA wechselt ihre Wurzel (Let's Encrypt ISRG X1 → X2): Der bestätigte Host
-     * bleibt gültig, solange das System die neue Kette annimmt. Ein Pin auf eine
-     * eigene CA deckt dagegen keine fremde öffentliche Kette.
+     * Ohne CT-Pflicht (Android 11–15) wäre „irgendeine öffentlich gültige Kette“ kein
+     * Pinning: Eine fehlausgestellte Kette einer anderen CA ginge durch. Der Pin auf eine
+     * System-Wurzel verlangt darum diese Wurzel; eine andere fragt wie ein neuer Schlüssel,
+     * mit Abtippen. Ein Pin auf eine eigene CA deckt ohnehin keine öffentliche Kette.
      */
     @Test
-    fun `ein oeffentlicher Pin uebersteht den Wechsel der Wurzel, ein eigener nicht`() {
+    fun `ein oeffentlicher Pin haelt eine Kette unter fremder Wurzel an, auch wenn das System sie annimmt`() {
         starte(OEFF_BLATT_A_KEY, listOf(OEFF_BLATT_A, OEFF_ZW_A))
         assertFalse(hole(system(OEFF_WURZEL, OEFF2_WURZEL)))
         assertEquals(ZertifikatUngeklaert.Art.ERSTKONTAKT, frage.offen.value?.art)
@@ -379,16 +388,51 @@ class ZertifikatPinTest {
         server = MockWebServer()
         starte(OEFF2_BLATT_KEY, listOf(OEFF2_BLATT))
         pins.merkePin(eigener(), pin)
-        assertTrue("Neue Wurzel, öffentlich gültig", hole(system(OEFF_WURZEL, OEFF2_WURZEL)))
-        assertNull("Keine Warnung beim Wurzelwechsel", frage.offen.value)
+        assertFalse("Eine andere öffentliche Wurzel geht nicht still durch", hole(system(OEFF_WURZEL, OEFF2_WURZEL)))
+        assertEquals(0, server.requestCount)
+        val f = frage.offen.value!!
+        assertEquals(ZertifikatUngeklaert.Art.GEAENDERT, f.art)
+        assertEquals(pin, f.erwartet)
+        assertEquals(spkiFingerabdruck(zert(OEFF2_WURZEL)), f.fingerabdruck)
+        assertFalse("Ein Tipp genügt nicht", frage.bestaetige(pins))
+        assertTrue("Abgetippt gilt die neue Wurzel", frage.bestaetige(pins, abgeschrieben()))
+        assertTrue(hole(system(OEFF_WURZEL, OEFF2_WURZEL)))
         assertFalse("Ohne System-Gültigkeit kein Durchlass", hole(system(OEFF_WURZEL)))
-        assertEquals(ZertifikatUngeklaert.Art.GEAENDERT, frage.offen.value?.art)
 
         frage.verwerfen()
         pins.merkePin(eigener(), spkiFingerabdruck(zert(ERNEUERT_WURZEL)))
         assertFalse("Eine eigene CA bleibt an ihren Schlüssel gebunden", hole(system(OEFF_WURZEL, OEFF2_WURZEL)))
         assertEquals(ZertifikatUngeklaert.Art.GEAENDERT, frage.offen.value?.art)
-        assertEquals("Nur die eine gültige Anfrage kam an", 1, server.requestCount)
+        assertEquals("Nur die eine bestätigte Anfrage kam an", 1, server.requestCount)
+    }
+
+    /**
+     * Let's Encrypt wechselt Zwischenstellen (R10, R11, E5, E6 …) und Wurzeln derselben
+     * Familie (ISRG Root X1 → X2). Beides darf nicht nach einem neuen Fingerabdruck fragen,
+     * sonst lernt man, die Warnung wegzutippen. Erkannt wird die Familie an der Organisation
+     * im Subjekt der System-Wurzel; ohne CT gilt sie nur, wenn das System beide kennt.
+     */
+    @Test
+    fun `eine neue Wurzel desselben Betreibers gilt ohne neue Frage`() {
+        starte(FAM_BLATT1_KEY, listOf(FAM_BLATT1, FAM_ZW1))
+        val beide = system(FAM_X1, FAM_X2, OEFF_WURZEL)
+        assertFalse(hole(beide))
+        assertEquals(spkiFingerabdruck(zert(FAM_X1)), frage.offen.value!!.fingerabdruck)
+        assertTrue(frage.bestaetige(pins))
+        assertTrue(hole(beide))
+
+        val pin = pins.pin(eigener())!!
+        server.shutdown()
+        server = MockWebServer()
+        starte(FAM_BLATT2_KEY, listOf(FAM_BLATT2, FAM_ZW2))
+        pins.merkePin(eigener(), pin)
+        assertTrue("Neue Wurzel und Zwischenstelle desselben Betreibers", hole(beide))
+        assertNull("Keine Warnung beim Wechsel innerhalb der Familie", frage.offen.value)
+        assertEquals("Der Pin bleibt, wie er bestätigt wurde", pin, pins.pin(eigener()))
+
+        pins.halteVor(eigener(), pin)
+        assertFalse("Ein Code verlangt genau seine Wurzel", hole(beide))
+        assertEquals(ZertifikatUngeklaert.Art.CODE_ABWEICHUNG, frage.offen.value?.art)
     }
 
     /**
@@ -471,6 +515,20 @@ class ZertifikatPinTest {
         val abgelehnt = runCatching { tm.checkServerTrusted(arrayOf(zert(FREMD)), "ECDHE_ECDSA") }.isFailure
         assertTrue("Eine System-CA ersetzt den Pin nicht", abgelehnt)
         tm.checkServerTrusted(arrayOf(zert(LEAF), zert(INTER)), "ECDHE_ECDSA")
+    }
+
+    /** Ohne Host dieselbe Regel für einen öffentlichen Pin: seine Wurzel oder eine desselben Betreibers. */
+    @Test
+    fun `ohne Host gilt ein oeffentlicher Pin nur fuer seine Wurzel und deren Familie`() {
+        val sys = system(OEFF_WURZEL, OEFF2_WURZEL, FAM_X1, FAM_X2)
+        val tm = PinVertrauen(sys, pins, eigenerServer = { "nas:8443" }, frage = frage, fremdeHosts = sys)
+        pins.merkePin("nas:8443", spkiFingerabdruck(zert(OEFF_WURZEL)))
+        tm.checkServerTrusted(arrayOf(zert(OEFF_BLATT_A), zert(OEFF_ZW_A)), "ECDHE_ECDSA")
+        val fremd = runCatching { tm.checkServerTrusted(arrayOf(zert(OEFF2_BLATT)), "ECDHE_ECDSA") }.isFailure
+        assertTrue("Eine andere öffentliche Wurzel ersetzt den Pin nicht", fremd)
+
+        pins.merkePin("nas:8443", spkiFingerabdruck(zert(FAM_X1)))
+        tm.checkServerTrusted(arrayOf(zert(FAM_BLATT2), zert(FAM_ZW2)), "ECDHE_ECDSA")
     }
 
     /** Die Fassung mit Socket, aber ohne Handshake-Sitzung: dieselbe Regel wie ohne Socket. */
@@ -594,6 +652,15 @@ class ZertifikatPinTest {
         const val OEFF2_WURZEL = "MIIBqDCCAU2gAwIBAgIUeQfiSvXaOs9VQ7JOTGuYq9+9io8wCgYIKoZIzj0EAwIwIDEeMBwGA1UEAwwVT2VmZmVudGxpY2hlIFd1cnplbCAyMCAXDTI2MTEwMjA0NDcyMFoYDzIxMjYxMDA5MDQ0NzIwWjAgMR4wHAYDVQQDDBVPZWZmZW50bGljaGUgV3VyemVsIDIwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARXPBIUHUcx0gndNtCFWOsc9VK1UCPYVdTt/elmdGtOr+QqU+2kj82x5bM5PwwxyeTMI0l/0m7+IhRHasjTD3wAo2MwYTAdBgNVHQ4EFgQUNiOkY9V+q2qKkLNO3YzYDvJSMtgwHwYDVR0jBBgwFoAUNiOkY9V+q2qKkLNO3YzYDvJSMtgwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYwCgYIKoZIzj0EAwIDSQAwRgIhAOtFyStygsxuZ82WUpQfgs4yEc9yd5SHXzEeM5gxXWiHAiEAxq1QdZDQEZLbpSZkktaMa/gUng+ruXUCb7bbSSw+VW4="
         const val OEFF2_BLATT = "MIIByjCCAXGgAwIBAgIUBZldxIW8pDuyAwDmNEUH+CvVA/8wCgYIKoZIzj0EAwIwIDEeMBwGA1UEAwwVT2VmZmVudGxpY2hlIFd1cnplbCAyMCAXDTI2MTEwMjA0NDcyMFoYDzIxMjYxMDA5MDQ0NzIwWjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAR3UZCup1reCVwcdpUWXuBroLN2Ae2orBEjO/63RFn9ppwOTZcXNQbuX2J20HqKFM7F5pgpPdZWoCx5CuuTDLkco4GSMIGPMAwGA1UdEwEB/wQCMAAwDgYDVR0PAQH/BAQDAgeAMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBoGA1UdEQQTMBGCCWxvY2FsaG9zdIcEfwAAATAdBgNVHQ4EFgQU0+JHa2fUKgS1c8Qpf2MPvkf10x0wHwYDVR0jBBgwFoAUNiOkY9V+q2qKkLNO3YzYDvJSMtgwCgYIKoZIzj0EAwIDRwAwRAIgaI3NXaJqaJPF9F3F5MA/uHYXmLEMDGlz2rerz62IXIACIGGccRCorHmF04MB3oFogbyx7s3cjhOWNIM2PivVGTsj"
         const val OEFF2_BLATT_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgkJUGxWpt9r1Mxq/Kodx7mWejKYEWCr0nz2zAkQCUrm2hRANCAAR3UZCup1reCVwcdpUWXuBroLN2Ae2orBEjO/63RFn9ppwOTZcXNQbuX2J20HqKFM7F5pgpPdZWoCx5CuuTDLkc"
+        /** Eine Wurzelfamilie (O=Probe CA, X1 und X2) mit je Zwischenstelle und Blatt (openssl). */
+        const val FAM_X1 = "MIIB1zCCAX2gAwIBAgIUJzODbuMp49O7i9PzkV2w30gxC1IwCgYIKoZIzj0EAwIwODELMAkGA1UEBhMCQ0gxETAPBgNVBAoMCFByb2JlIENBMRYwFAYDVQQDDA1Qcm9iZSBSb290IFgxMCAXDTI2MTExMjIyNDIxNloYDzIxMjYxMDE5MjI0MjE2WjA4MQswCQYDVQQGEwJDSDERMA8GA1UECgwIUHJvYmUgQ0ExFjAUBgNVBAMMDVByb2JlIFJvb3QgWDEwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARUuNHmd9ah+QgGgJ69U5FFqEDfJHZTcplKMoUTx9uqtnXkt0nNga3rKkFE8nUBs+mQxbxhs6H8hJONXLPoj/3do2MwYTAdBgNVHQ4EFgQU5H1nzHcaWbbCNal8WpErpY3lI58wHwYDVR0jBBgwFoAU5H1nzHcaWbbCNal8WpErpY3lI58wDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYwCgYIKoZIzj0EAwIDSAAwRQIgHnVYf7Uk3an/+ENuf4UmjAXTNj1LVXRhn6GnI157qXoCIQDYdqvLYvqR9Uf6AynUCULrbJPWP8cnnakq5zfbO76rOw=="
+        const val FAM_X2 = "MIIB2DCCAX2gAwIBAgIUZheftwIsVO/Lw4GKHC17PDM9IW4wCgYIKoZIzj0EAwIwODELMAkGA1UEBhMCQ0gxETAPBgNVBAoMCFByb2JlIENBMRYwFAYDVQQDDA1Qcm9iZSBSb290IFgyMCAXDTI2MTExMjIyNDIxNloYDzIxMjYxMDE5MjI0MjE2WjA4MQswCQYDVQQGEwJDSDERMA8GA1UECgwIUHJvYmUgQ0ExFjAUBgNVBAMMDVByb2JlIFJvb3QgWDIwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASVMxFZrHfC3rLaN+X+89rBSb9Y5FQM/jyQsho9YVNduoktegRSTXsgo2/c0bc3n0jcvm1LjpgA3kR7UrjuqhB1o2MwYTAdBgNVHQ4EFgQUSWxTgGmf7qCPhpF4+oTEdFfbt1AwHwYDVR0jBBgwFoAUSWxTgGmf7qCPhpF4+oTEdFfbt1AwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYwCgYIKoZIzj0EAwIDSQAwRgIhAO4LW747aWqnQQLBec/8WFJVoyFn0ZPFQrCj9kS9iOheAiEAykAmF3X2ienlupzTv9sg0H4idHw7+TrhBzq1ttXUkAo="
+        const val FAM_ZW1 = "MIIB1TCCAXugAwIBAgIUcxqXDLMucdnJUvdXSU200z/6CpEwCgYIKoZIzj0EAwIwODELMAkGA1UEBhMCQ0gxETAPBgNVBAoMCFByb2JlIENBMRYwFAYDVQQDDA1Qcm9iZSBSb290IFgxMCAXDTI2MTExMjIyNDIxNloYDzIxMjYxMDE5MjI0MjE2WjAzMQswCQYDVQQGEwJDSDERMA8GA1UECgwIUHJvYmUgQ0ExETAPBgNVBAMMCFByb2JlIFIxMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAESI0Y95hHR15r9CTFyMw2fg66mx/UMLiGlBb5h5iRfEz8XkHrCfY8gH3hy5Fy+yKOj9RdQzMaYhj+Pjovl/HIwKNmMGQwEgYDVR0TAQH/BAgwBgEB/wIBADAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0OBBYEFCKWzIu4eTvpk2kmEcALVu++zsPCMB8GA1UdIwQYMBaAFOR9Z8x3Glm2wjWpfFqRK6WN5SOfMAoGCCqGSM49BAMCA0gAMEUCIQD5+HD2WNxENATDGHNxHydbh7TyR9JOSYMA27b3qslWrgIgVlCWtn8GGQMCDZCUcr5qG2dFquSChq0d30PJlOAEkwQ="
+        const val FAM_ZW2 = "MIIB1jCCAXugAwIBAgIUTviRjd59mbAE1uyWwEBG8VdX1LUwCgYIKoZIzj0EAwIwODELMAkGA1UEBhMCQ0gxETAPBgNVBAoMCFByb2JlIENBMRYwFAYDVQQDDA1Qcm9iZSBSb290IFgyMCAXDTI2MTExMjIyNDIxNloYDzIxMjYxMDE5MjI0MjE2WjAzMQswCQYDVQQGEwJDSDERMA8GA1UECgwIUHJvYmUgQ0ExETAPBgNVBAMMCFByb2JlIEUxMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE8C1AlzWJOhFrt+uXMezg2KEW01EJjKsmj7r3mfEnE4bRlm53a4s+tDHMv3XFifq0qz12oRoi0JnWmi/LjAxjJqNmMGQwEgYDVR0TAQH/BAgwBgEB/wIBADAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0OBBYEFKGSGBMlJLt7iP5WeAUnB5uh7xNgMB8GA1UdIwQYMBaAFElsU4Bpn+6gj4aRePqExHRX27dQMAoGCCqGSM49BAMCA0kAMEYCIQDFExiLUmuKfN8fzuDuMPkhApZ9U8kDWVWrsG0s8qQ/hwIhAKphh7yr0+RQvSf6Lm05TotgCCRhLayqaePQHxFVAa8N"
+        const val FAM_BLATT1 = "MIIB2jCCAYGgAwIBAgIUT34beNuro6nHUHATsfzY+INQt1owCgYIKoZIzj0EAwIwMzELMAkGA1UEBhMCQ0gxETAPBgNVBAoMCFByb2JlIENBMREwDwYDVQQDDAhQcm9iZSBSMTAgFw0yNjExMTIyMjQyMTZaGA8yMTI2MTAxOTIyNDIxNlowFDESMBAGA1UEAwwJbG9jYWxob3N0MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEG4mfnp0oEjncOmSXTH83HhI1O5ycvivUz8ohJNHl69iSp6ROieEYhknl++4BsMNY01tV/jYJRLwl4xkcb4YwTqOBjzCBjDAJBgNVHRMEAjAAMA4GA1UdDwEB/wQEAwIHgDATBgNVHSUEDDAKBggrBgEFBQcDATAaBgNVHREEEzARgglsb2NhbGhvc3SHBH8AAAEwHQYDVR0OBBYEFDpGZaw1mk5rlgejdKfBVuNXmrcsMB8GA1UdIwQYMBaAFCKWzIu4eTvpk2kmEcALVu++zsPCMAoGCCqGSM49BAMCA0cAMEQCIFKXCXL3fz+yTXVpMtuqe1eGa0vvoDsfa1M99xkw0U+YAiAfy2Hnhd+IpZ8O7573E9OEojFqjXiW6nHx+nRTKNJbQw=="
+        const val FAM_BLATT1_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgMnzKdS6G8eGJ9bCUBVAQXpo7Nw1S/dE8KgE9q/FgoA6hRANCAAQbiZ+enSgSOdw6ZJdMfzceEjU7nJy+K9TPyiEk0eXr2JKnpE6J4RiGSeX77gGww1jTW1X+NglEvCXjGRxvhjBO"
+        const val FAM_BLATT2 = "MIIB2zCCAYGgAwIBAgIUXFbE1wHFPMfHZBZE/OQCukz4F3MwCgYIKoZIzj0EAwIwMzELMAkGA1UEBhMCQ0gxETAPBgNVBAoMCFByb2JlIENBMREwDwYDVQQDDAhQcm9iZSBFMTAgFw0yNjExMTIyMjQyMTZaGA8yMTI2MTAxOTIyNDIxNlowFDESMBAGA1UEAwwJbG9jYWxob3N0MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEATeMiZj5Q+Jg96WuokKkgVVY2Vl8BgGvnPO/m+FTqkObHl1hOSYcPyF0kICrdg2vS3BWr4V11KJ8+WBVdG0rx6OBjzCBjDAJBgNVHRMEAjAAMA4GA1UdDwEB/wQEAwIHgDATBgNVHSUEDDAKBggrBgEFBQcDATAaBgNVHREEEzARgglsb2NhbGhvc3SHBH8AAAEwHQYDVR0OBBYEFMtJdC/hyPnfWeAFrLSRa/s519VQMB8GA1UdIwQYMBaAFKGSGBMlJLt7iP5WeAUnB5uh7xNgMAoGCCqGSM49BAMCA0gAMEUCIQDzcg4cy2wilhPGJ+M4abqHPN2RU4janMtiuTUStwt8/gIgIiw1cNAS9LlNkHuzbpCiTcXHVFvcWM7sF176t5lq24Y="
+        const val FAM_BLATT2_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgck9Ek03fOxXwdbOymEx7SBLzTYC58mv7FEPm0b73XrOhRANCAAQBN4yJmPlD4mD3pa6iQqSBVVjZWXwGAa+c87+b4VOqQ5seXWE5Jhw/IXSQgKt2Da9LcFavhXXUonz5YFV0bSvH"
         const val FREMD = "MIIBmDCCAT6gAwIBAgIUBpLM0+8DZR9WqDw7DqtrEKH9KDswCgYIKoZIzj0EAwIwFDESMBAGA1UEAwwJbG9jYWxob3N0MCAXDTI2MTAzMDE1NDI1OFoYDzIxMjYxMDA2MTU0MjU4WjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATSAfTFPtfDF3dy0bcjX8dCElM9oKs2NYwoZEyfWsb5EIpbYtqP7F6JCLbrsb7GVytdEqsatNJDifymfYNnIJPjo2wwajAdBgNVHQ4EFgQU5NOS8aVLD/bPQjWQ5foWE5AcTIQwHwYDVR0jBBgwFoAU5NOS8aVLD/bPQjWQ5foWE5AcTIQwGgYDVR0RBBMwEYIJbG9jYWxob3N0hwR/AAABMAwGA1UdEwEB/wQCMAAwCgYIKoZIzj0EAwIDSAAwRQIgD2hCTe+02K17PzDfV7EgrTEgIV1C99ShlLSwHZsc1IICIQCknNnfSKSNOc+Kilyyna8ag4H9A8XH9kfcAia1XVWbDg=="
     }
 }
