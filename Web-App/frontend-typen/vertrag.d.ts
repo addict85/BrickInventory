@@ -1424,6 +1424,50 @@ export type ManualPartsResponse = {
   degradiert?: string[];
   [feld: string]: unknown;
 };
+export type MengeGeaendert = {
+  new_quantity?: number | null;
+  from_user_id?: number | null;
+  to_user_id?: number | null;
+  merged?: boolean;
+  unchanged?: boolean;
+  acquisitions?: number | null;
+  instructions?: number | null;
+  papierkorb?: number | number[];
+  removed?: number | null;
+  linked_to?: {
+    id: number;
+    username: string;
+    [feld: string]: unknown;
+  } | null;
+  success: boolean;
+  error?: string | null;
+  set?: {
+    set_number?: string;
+    condition?: string | null;
+    acq_count?: number | null;
+    used_count?: number | null;
+    conditions?: string[];
+    max_purchase_price?: number | null;
+    avg_purchase_price?: number | null;
+    [feld: string]: unknown;
+  } | null;
+  parts?: number | null;
+  minifigs?: number | null;
+  source_emptied?: boolean;
+  quantity?: number | null;
+  degradiert?: string[];
+  entfallen?: Array<{
+    id: number;
+    quantity: number;
+    purchase_price: number | null;
+    currency: string | null;
+    price_estimated: boolean;
+    condition: string;
+    date: string | null;
+    [feld: string]: unknown;
+  }>;
+  [feld: string]: unknown;
+};
 export type MeResponse = {
   success: boolean;
   loggedIn: boolean;
@@ -2800,7 +2844,7 @@ export type Route =
   | { m: 'GET'; p: '/v1/sets'; a: SetsResponse }
   | { m: 'POST'; p: '/v1/sets'; a: AddSetResponse }
   | { m: 'GET'; p: `/v1/sets/${string}`; a: SetResponse }
-  | { m: 'PUT'; p: `/v1/sets/${string}`; a: PUT_api_v1_sets_setNumber_acquisitions_acqId }
+  | { m: 'PUT'; p: `/v1/sets/${string}`; a: MengeGeaendert }
   | { m: 'DELETE'; p: `/v1/sets/${string}`; a: DELETE_api_v1_minifigs_figNumber }
   | { m: 'GET'; p: `/v1/sets/${string}/acquisitions`; a: AcquisitionsResponse }
   | { m: 'PUT'; p: `/v1/sets/${string}/acquisitions/${string}`; a: PUT_api_v1_sets_setNumber_acquisitions_acqId }
