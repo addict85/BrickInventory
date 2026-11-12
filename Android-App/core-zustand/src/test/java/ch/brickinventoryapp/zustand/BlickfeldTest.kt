@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.zustand
 
 import ch.brickinventoryapp.model.data.ScopeFilter
+import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
@@ -71,7 +72,7 @@ class BlickfeldTest {
         ablage.konten["gallery"] = "own"
         ablage.lager["parts"] = "Kiste 3"
         blick.ladeFilter()
-        assertEquals("own", blick.kontoFuer(ScopeFilter.View.GALLERY))
+        assertEquals(Kontoauswahl.Eigene, blick.kontoFuer(ScopeFilter.View.GALLERY))
         assertNull("„alle“ reist nicht als Parameter mit", blick.kontoFuer(ScopeFilter.View.PARTS))
         assertEquals("Kiste 3", blick.lagerFuer(ScopeFilter.View.PARTS))
     }
@@ -80,7 +81,7 @@ class BlickfeldTest {
     fun `ein gesetzter Filter wird gemerkt und gilt sofort`() = runTest {
         blick.setzeKonto(ScopeFilter.View.FINANCE, "7")
         assertEquals("7", ablage.konten["finance"])
-        assertEquals("7", blick.kontoFuer(ScopeFilter.View.FINANCE))
+        assertEquals(Kontoauswahl.Konto(7), blick.kontoFuer(ScopeFilter.View.FINANCE))
     }
 
     @Test
@@ -92,7 +93,7 @@ class BlickfeldTest {
         blick.ladeMitglieder()
         assertEquals(2, blick.konten.value.householdMembers.size)
         assertNull("Konto 9 gibt es nicht mehr", blick.kontoFuer(ScopeFilter.View.GALLERY))
-        assertEquals("7", blick.kontoFuer(ScopeFilter.View.PARTS))
+        assertEquals(Kontoauswahl.Konto(7), blick.kontoFuer(ScopeFilter.View.PARTS))
     }
 
     @Test
