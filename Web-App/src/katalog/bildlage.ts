@@ -3,6 +3,7 @@ import path from 'node:path';
 import { getSetInfo } from './quellen';
 import { downloadSetImage } from './bilder/setImages';
 import { generateThumb } from './bilder/thumbs';
+import { merkeFehlend } from './bilder/imageMisses';
 import { anleitungEinreihen } from '../auftraege';
 import { APP_ROOT, IMAGES_DIR } from '../infra/appPaths';
 import { fehlertext, logAndContinue } from '../infra/fehler';
@@ -92,9 +93,16 @@ export async function setBilderNachladen(): Promise<void> {
     if (!missing.length) return;
     console.log(`[set-img-bg] Downloading ${missing.length} missing set images…`);
     for (const { set_number, image_url } of missing) {
-      // Ein Fehler lässt das Set ohne Datei; der nächste Nachlauf versucht es wieder.
-      const r = await versuche('nachlauf:downloadSetImage', downloadSetImage(image_url, set_number));
+      // Nur 404/410 heisst „gibt es nicht“; Drosselung beendet den Lauf, alles andere versucht der nächste.
+      const info: { status?: number } = {};
+      const r = await versuche('nachlauf:downloadSetImage', downloadSetImage(image_url, set_number, info));
       const local = r.ok ? r.wert : null;
+      if (!local && (info.status === 404 || info.status === 410))
+        merkeFehlend('set:' + set_number, `HTTP ${info.status} vom CDN`);
+      if (!local && (info.status === 403 || info.status === 429)) {
+        console.warn(`[set-img-bg] CDN drosselt (HTTP ${info.status}) — Rest im nächsten Lauf`);
+        break;
+      }
       if (local) {
         await katalog()
           .bildlage.merkeSetBildLokal(set_number, local)
