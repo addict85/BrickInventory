@@ -38,8 +38,8 @@ import ch.brickinventoryapp.ui.components.LocalSchrittschutz
 import ch.brickinventoryapp.model.schritt.Schrittaktion
 import ch.brickinventoryapp.ui.components.fuer
 import ch.brickinventoryapp.ui.components.Sichtschutz
-import ch.brickinventoryapp.sicherheit.GeheimeZwischenablage
-import ch.brickinventoryapp.netz.util.otpauthAdresse
+import ch.brickinventoryapp.ui.util.GeheimeZwischenablage
+import ch.brickinventoryapp.model.util.otpauthAdresse
 import ch.brickinventoryapp.ui.components.SettingsCard
 
 /**

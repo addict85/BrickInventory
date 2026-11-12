@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.sicherheit
+package ch.brickinventoryapp.ui.util
 
 /** So lange bleibt ein kopiertes Geheimnis in der Zwischenablage. */
 internal const val GEHEIM_ABLAUF_MS = 60_000L

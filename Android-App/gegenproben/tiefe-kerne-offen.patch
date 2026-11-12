@@ -1,0 +1,17 @@
+Gegenprobe: Die Kantenregel lässt jeden Bereich an Netz und Tresor
+Modul: app
+Test: ch.brickinventoryapp.app.ModulgrenzenTest
+Rot: die Kantenregel verbietet
+
+diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt
+--- a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt
++++ b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt
+@@ -52,8 +52,6 @@
+             k.nurTest -> null
+             k.nach == "core-testing" -> "${k.von} bindet core-testing nicht nur für Tests ein"
+             k.von.startsWith("feature-") && !k.nach.startsWith("core-") -> "${k.von} hängt an ${k.nach}"
+-            k.von.startsWith("feature-") && k.nach in tiefeKerne && k.von !in tiefeKerne.getValue(k.nach) ->
+-                "${k.von} hängt an ${k.nach}, das unter dem Zustand liegt"
+             k.von.startsWith("core-") && k.nach !in kerne[k.von].orEmpty() ->
+                 "Schichtung der Kernmodule: ${k.von} hängt an ${k.nach}" +
+                     if (k.von in kerne) "" else " (${k.von} hat keine Regel in Modulkanten.kerne)"

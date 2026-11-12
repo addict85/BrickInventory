@@ -72,7 +72,7 @@ import ch.brickinventoryapp.zustand.ui.viewmodel.VertrauenViewModel
 import ch.brickinventoryapp.app.csv.CsvImportViewModel
 import ch.brickinventoryapp.konto.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.app.nav.AktivitaetsZustand
-import ch.brickinventoryapp.sicherheit.GeheimeZwischenablage
+import ch.brickinventoryapp.ui.util.GeheimeZwischenablage
 import ch.brickinventoryapp.data.util.LanguageManager
 import ch.brickinventoryapp.netz.util.Protokoll
 import ch.brickinventoryapp.BuildConfig

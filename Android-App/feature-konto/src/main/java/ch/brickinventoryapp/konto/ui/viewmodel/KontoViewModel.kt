@@ -27,7 +27,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import ch.brickinventoryapp.model.data.model.AppThemeResponse
-import ch.brickinventoryapp.netz.util.otpauthAdresse
+import ch.brickinventoryapp.model.util.otpauthAdresse
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 import ch.brickinventoryapp.zustand.ui.viewmodel.ladeBeimBeobachten
 

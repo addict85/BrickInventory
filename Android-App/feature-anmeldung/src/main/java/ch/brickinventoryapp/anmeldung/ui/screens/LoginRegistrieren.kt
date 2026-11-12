@@ -20,8 +20,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.*
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
-import ch.brickinventoryapp.sicherheit.passwortZuKurz
-import ch.brickinventoryapp.sicherheit.PASSWORT_MIN_ZEICHEN
+import ch.brickinventoryapp.model.util.passwortZuKurz
+import ch.brickinventoryapp.model.util.PASSWORT_MIN_ZEICHEN
 import ch.brickinventoryapp.ui.components.PasswortArt
 import ch.brickinventoryapp.ui.components.PasswortFeld
 import ch.brickinventoryapp.ui.theme.Abstaende

@@ -16,7 +16,6 @@ dependencies {
     implementation(project(":core-data"))
     // pdfImBetrachter.
     implementation(project(":core-netz"))
-    implementation(project(":core-sicherheit"))
     implementation(project(":core-ui"))
     implementation(project(":core-ui-bestand"))
     implementation(project(":core-zustand"))
@@ -24,6 +23,8 @@ dependencies {
     implementation(project(":core-ressourcen"))
 
     testImplementation(project(":core-testing"))
+    // Die Testfabriken nennen die Ablagechiffre in ihren Signaturen.
+    testImplementation(project(":core-sicherheit"))
     testImplementation(platform(libs.androidx.compose.bom))
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)
