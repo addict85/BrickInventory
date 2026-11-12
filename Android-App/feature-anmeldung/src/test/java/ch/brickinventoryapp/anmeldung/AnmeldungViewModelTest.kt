@@ -50,8 +50,7 @@ import ch.brickinventoryapp.sicherheit.ZertifikatsFrage
  *      nach gelungener Anmeldung meldet keinen Fehler“
  *   D  zuruecksetzen() leer → rot „nach dem Abmelden ist das Formular leer“
  *   E  in richteEin() den Aufruf sitzungsDienst.abmelden() entfernt → rot „ein anderer Server
- *      meldet vor der neuen Adresse ab“ und „ein QR-Code für einen anderen
- *      Server meldet zuerst ab“
+ *      meldet vor der neuen Adresse ab“ (der QR-Weg meldet seit S2 erst nach dem Ja ab, siehe AC)
  *   F  gleicheHerkunft() durch `!=` der rohen Texte ersetzt → rot „derselbe
  *      Server mit Schrägstrich meldet nicht ab“
  *   G  in saveServerUrl() die Prüfung adressfehler() entfernt → rot
@@ -99,6 +98,15 @@ import ch.brickinventoryapp.sicherheit.ZertifikatsFrage
  *      rot „eine QR-Anmeldung zeigt Konto und Server …“; gegenproben/qr-ohne-kontofrage.patch
  *   Z  beim Nein qrVerwerfen() nicht gerufen → rot „ein Nein zum gezeigten
  *      Konto …“; gegenproben/qr-nein-ohne-verwerfen.patch
+ * Gegenproben zum Serverwechsel per QR (12.11.2026 angelegt; ohne Gradle nur in der CI messbar):
+ *   AC loginWithQrToken() wieder mit richteEin() vor dem Abruf (sofort abmelden) → rot
+ *      „ein Nein zum Konto eines anderen Servers …“ und „… erst nach dem Ja …“;
+ *      gegenproben/qr-wechsel-meldet-sofort-ab.patch
+ *   AD in qrGescheitert() ohne `!kopplungMitWechsel` → rot „scheitert die Kopplung mit
+ *      einem anderen Server …“ (Fehler verschluckt); gegenproben/qr-wechsel-fehler-verschluckt.patch
+ *   AE in verlasseBisherigenServer() ohne `kopplungsziel(null)` → rot „… erst nach dem Ja …“
+ *      (abgemeldet, solange die Anfragen noch an den neuen Server gingen);
+ *      gegenproben/qr-wechsel-abmelden-am-neuen.patch
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AnmeldungViewModelTest {
@@ -117,6 +125,7 @@ class AnmeldungViewModelTest {
         override fun gemerkterPin(schluessel: String): String? = pins[schluessel]
         override fun halteVor(schluessel: String, fingerabdruck: String) { protokoll += "vor:$schluessel=$fingerabdruck" }
         override fun vergissVorgehaltenen(schluessel: String) { protokoll += "vergiss:$schluessel" }
+        override fun kopplungsziel(url: String?) { protokoll += "ziel:$url" }
     }
 
     private lateinit var pfade: PfadServer
@@ -413,18 +422,54 @@ class AnmeldungViewModelTest {
         assertFalse(ablage.protokoll.contains("abmelden"))
     }
 
+    /**
+     * Früher meldete der Scan den bisherigen Server sofort ab; ein abgelehnter oder
+     * verfallener Code liess dann gar keine Anmeldung zurück. Jetzt koppelt die App
+     * nebenher und verlässt den bisherigen Server erst nach dem Ja zum Konto.
+     */
     @Test
-    fun `ein QR-Code fuer einen anderen Server meldet zuerst ab`() {
+    fun `ein QR-Code fuer einen anderen Server meldet erst nach dem Ja zum Konto ab`() {
         pfade.antworten["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
         pfade.antworten["/api/v1/auth/qr-login/abholen"] = """{"success":true,"wartet":false,"token":"neu","user":{"id":2,"username":"anna"}}"""
         t.sitzung.angemeldet(admin = false)
         val vm = vm()
         vm.loginWithQrToken("https://neu.example", "einmalig")
+        assertEquals("https://neu.example", vm.anmeldeState.value.qrKonto?.server)
+        assertEquals("Vor dem Ja nur das Kopplungsziel", listOf("ziel:https://neu.example"), ablage.protokoll.toList())
+        assertTrue(t.sitzung.state.value.isLoggedIn)
+
         vm.qrKontoEntscheiden(true)
-        assertTrue("angemeldet", ablage.protokoll.contains("token:neu"))
         val p = ablage.protokoll.toList()
-        assertTrue("Abmelden vor der Adresse: $p", p.indexOf("abmelden") in 0 until p.indexOf("url:https://neu.example"))
+        assertEquals("Erst die Kopplung beenden, dann abmelden, dann die neue Adresse: $p",
+            listOf("ziel:https://neu.example", "ziel:null", "abmelden", "url:https://neu.example"), p.take(4))
         assertTrue("Die Adresse vor dem neuen Token: $p", p.indexOf("url:https://neu.example") < p.indexOf("token:neu"))
+    }
+
+    @Test
+    fun `ein Nein zum Konto eines anderen Servers laesst die bisherige Anmeldung stehen`() {
+        pfade.antworten["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
+        pfade.antworten["/api/v1/auth/qr-login/abholen"] = vorschauAntwort
+        pfade.antworten["/api/v1/auth/qr-login/verwerfen"] = """{"success":true}"""
+        t.sitzung.angemeldet(admin = false)
+        val vm = vm()
+        vm.loginWithQrToken("https://neu.example", "einmalig")
+        vm.qrKontoEntscheiden(false)
+        assertEquals("Nicht abgemeldet, keine neue Adresse, kein Token",
+            listOf("ziel:https://neu.example", "ziel:null"), ablage.protokoll.toList())
+        assertEquals("https://server", ablage.url)
+        assertTrue(t.sitzung.state.value.isLoggedIn)
+        assertFalse(vm.anmeldeState.value.loginLaeuft)
+    }
+
+    @Test
+    fun `scheitert die Kopplung mit einem anderen Server, steht der Fehler da und die Anmeldung bleibt`() {
+        pfade.antworten["/api/v1/auth/qr-login"] = """{"success":false,"error":"Code abgelaufen"}"""
+        t.sitzung.angemeldet(admin = false)
+        val vm = vm()
+        vm.loginWithQrToken("https://neu.example", "einmalig")
+        assertEquals("Code abgelaufen", vm.anmeldeState.value.loginError)
+        assertEquals(listOf("ziel:https://neu.example", "ziel:null"), ablage.protokoll.toList())
+        assertTrue(t.sitzung.state.value.isLoggedIn)
     }
 
     private val vorschauAntwort = """{"success":true,"wartet":false,"vorschau":true,"username":"marco"}"""

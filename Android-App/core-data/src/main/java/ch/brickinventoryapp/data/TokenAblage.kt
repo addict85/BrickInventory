@@ -123,6 +123,13 @@ class TokenAblage @Inject constructor(
     /** Leer = Altbestand ohne Bindung; dann gilt der eingetragene Server. */
     override val tokenHerkunftState: StateFlow<String?> = _tokenHerkunftState.asStateFlow()
 
+    // Nur im Speicher: Eine Kopplung, die der Prozess nicht überlebt, ist abgebrochen.
+    private val _kopplungsziel = MutableStateFlow<String?>(null)
+    override val kopplungszielState: StateFlow<String?> = _kopplungsziel.asStateFlow()
+    fun kopplungsziel(url: String?) {
+        _kopplungsziel.value = url
+    }
+
     // Drei Spiegel (Adresse, Token, Herkunft) und die einmaligen Aufräumarbeiten:
     // Erst wenn alle vier durch sind, ist der Kaltstart vorbei und der erste
     // Verbindungsaufbau darf los.

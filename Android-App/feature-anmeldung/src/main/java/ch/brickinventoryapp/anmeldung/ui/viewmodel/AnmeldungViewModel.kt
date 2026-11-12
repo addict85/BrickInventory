@@ -212,18 +212,30 @@ class AnmeldungViewModel @Inject constructor(
         viewModelScope.launch {
             _anmeldeState.update { it.copy(loginLaeuft = true, loginError = null) }
             if (schluessel != null && fingerabdruck != null) ablage.halteVor(schluessel, fingerabdruck)
+            // Angemeldet bei einem anderen Server: Er bleibt, bis Browser und Konto-Ja die
+            // Kopplung bestätigen (koppleQr); ein Abbruch liesse sonst gar keine Anmeldung zurück.
+            val wechsel = sitzung.state.value.isLoggedIn && !NetworkPolicy.gleicherServer(ablage.serverUrlJetzt(), neu)
+            kopplungMitWechsel = wechsel
             try {
-                richteEin(neu)
+                if (wechsel) ablage.kopplungsziel(neu) else ablage.saveServerUrl(neu)
                 when (val r = nachZertifikatsfrage(neu) { konto.qrLogin(token, geraet) }) {
-                    is Ergebnis.Success -> koppleQr(r.data, schluessel, fingerabdruck)
+                    is Ergebnis.Success -> koppleQr(r.data, QrZiel(neu, schluessel, fingerabdruck, wechsel))
                     is Ergebnis.Error -> qrGescheitert(meldungen.meldung(r))
                 }
             } finally {
+                kopplungMitWechsel = false
+                if (wechsel) ablage.kopplungsziel(null)
                 // Nach merkePin ein No-op; sonst bleibt nichts vom Code zurück.
                 if (schluessel != null) ablage.vergissVorgehaltenen(schluessel)
             }
         }
     }
+
+    /** Wohin ein QR-Code koppelt und ob dafür der bisherige Server verlassen wird. */
+    private class QrZiel(val adresse: String, val schluessel: String?, val fingerabdruck: String?, val wechsel: Boolean)
+
+    /** Solange eine Kopplung neben der bisherigen Anmeldung läuft, ist ihr Scheitern ein Fehler (qrGescheitert). */
+    private var kopplungMitWechsel = false
 
     /**
      * Ein Erstkontakt bricht den Handshake ab, bevor der Dialog beantwortet ist. Nach
@@ -252,7 +264,7 @@ class AnmeldungViewModel @Inject constructor(
      * Code darf keinen Schlüssel und keinen Token zurücklassen. Das Warten auf das Ja
      * bleibt in dieser Koroutine, damit der vorgehaltene Pin bis zur Abholung gilt.
      */
-    private suspend fun koppleQr(antwort: QrMeldung, schluessel: String?, fingerabdruck: String?) {
+    private suspend fun koppleQr(antwort: QrMeldung, ziel: QrZiel) {
         val abholung = antwort.abholung
         val code = antwort.code
         if (!antwort.success || abholung == null || code == null) {
@@ -266,15 +278,28 @@ class AnmeldungViewModel @Inject constructor(
             qrGescheitert(meldungen.text(R.string.err_qr_login_failed))
             return
         }
-        if (!frageNachKonto(QrKonto(benutzer, ablage.serverUrlJetzt()))) {
+        if (!frageNachKonto(QrKonto(benutzer, ziel.adresse))) {
             konto.qrVerwerfen(abholung)
             _anmeldeState.update { it.copy(loginLaeuft = false) }
             return
         }
         val neuesToken = vorschau.token ?: holeQrToken(abholung) ?: return
+        if (ziel.wechsel) verlasseBisherigenServer(ziel.adresse)
+        val schluessel = ziel.schluessel
+        val fingerabdruck = ziel.fingerabdruck
         if (schluessel != null && fingerabdruck != null) ablage.merkePin(schluessel, fingerabdruck)
         angemeldet(neuesToken, benutzer, false)
         _anmeldeState.update { it.copy(loginLaeuft = false) }
+    }
+
+    /**
+     * Erst jetzt, mit dem Token des neuen Servers in der Hand: Die Kopplung endet, damit
+     * das Abmelden den bisherigen Server erreicht und dessen Token dort entwertet.
+     */
+    private suspend fun verlasseBisherigenServer(neu: String) {
+        ablage.kopplungsziel(null)
+        sitzungsDienst.abmelden().join()
+        ablage.saveServerUrl(neu)
     }
 
     private suspend fun frageNachKonto(gezeigt: QrKonto): Boolean {
@@ -355,7 +380,7 @@ class AnmeldungViewModel @Inject constructor(
 
     /** Ein zweiter QR-Anlauf nach einer gelungenen Anmeldung ist kein Fehler (siehe qrFehler). */
     private fun qrGescheitert(satz: String): QrAbholung? {
-        val schonAngemeldet = sitzung.state.value.isLoggedIn
+        val schonAngemeldet = sitzung.state.value.isLoggedIn && !kopplungMitWechsel
         _anmeldeState.update { it.copy(loginLaeuft = false, qrBestaetigung = null, qrKonto = null,
             loginError = qrFehler(schonAngemeldet, satz)) }
         return null

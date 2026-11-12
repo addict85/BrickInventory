@@ -77,6 +77,8 @@ interface Tokenspiegel {
     val serverUrlState: StateFlow<String?>
     val authTokenState: StateFlow<String?>
     val tokenHerkunftState: StateFlow<String?>
+    /** Während einer QR-Kopplung mit einem anderen Server dessen Adresse, sonst null (Anmeldeablage.kopplungsziel). */
+    val kopplungszielState: StateFlow<String?>
     fun tokenGeneration(): Long
     fun warteAufStart()
     fun beimServerwechsel(hoerer: () -> Unit)
