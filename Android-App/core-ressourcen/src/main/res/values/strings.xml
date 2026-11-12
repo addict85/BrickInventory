@@ -985,6 +985,8 @@
         <item quantity="other">Set up · %d recovery codes left</item>
     </plurals>
     <string name="acq_preis_geschaetzt">Estimated: market price, not the amount paid</string>
+    <string name="acq_gekauft_am">Purchased on</string>
+    <string name="acq_kaufdatum_aendern">Change purchase date</string>
     <string name="setup_qr_pin">The code also names the server\'s certificate. The app remembers it for this address and from then on accepts only this one. Only continue if you have just created the code yourself in your web app; under Settings → Server certificate it shows the same beginning.</string>
     <string name="setup_altbestand_text">The saved address is %1$s – an unencrypted one. This version only connects via https, so nobody on the Wi-Fi can read your access.</string>
     <string name="setup_altbestand_schritt_qr">In the web app, create the QR code for the Android app under Settings and scan it with the button below.</string>

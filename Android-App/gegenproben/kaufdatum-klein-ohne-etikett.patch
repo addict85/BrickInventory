@@ -1,0 +1,18 @@
+Gegenprobe: Das Kaufdatum ist wieder ein kleiner Knopf ohne Tippgrösse und ohne Ansage, was er tut
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.sammlung.KaufdatumTest
+Rot: das Kaufdatum ist ein beschrifteter Knopf in voller Groesse
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/AcquisitionManagementScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/AcquisitionManagementScreen.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/AcquisitionManagementScreen.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/AcquisitionManagementScreen.kt
+@@ -267,8 +267,7 @@
+ internal fun Kaufdatum(createdAt: String?, onAendern: () -> Unit) {
+     Row(
+         Modifier
+-            .minimumInteractiveComponentSize()
+-            .clickable(onClickLabel = stringResource(R.string.acq_kaufdatum_aendern), role = Role.Button, onClick = onAendern)
++            .clickable(role = Role.Button, onClick = onAendern)
+             .padding(vertical = Abstaende.winzig),
+         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+         verticalAlignment = Alignment.CenterVertically,

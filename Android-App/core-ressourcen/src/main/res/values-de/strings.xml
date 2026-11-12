@@ -966,6 +966,8 @@
         <item quantity="other">Eingerichtet · %d Wiederherstellungscodes übrig</item>
     </plurals>
     <string name="acq_preis_geschaetzt">Geschätzt: Marktpreis, kein bezahlter Betrag</string>
+    <string name="acq_gekauft_am">Gekauft am</string>
+    <string name="acq_kaufdatum_aendern">Kaufdatum ändern</string>
     <string name="setup_qr_pin">Der Code nennt auch das Zertifikat des Servers. Die App merkt es sich für diese Adresse und nimmt danach nur noch dieses an. Nur fortfahren, wenn du den Code eben selbst in deiner Web-App erzeugt hast; dort steht unter Einstellungen → Server-Zertifikat derselbe Anfang.</string>
     <string name="setup_altbestand_text">Gespeichert ist %1$s – eine Adresse ohne Verschlüsselung. Diese Version verbindet sich nur noch über https, damit im WLAN niemand deinen Zugang mitlesen kann.</string>
     <string name="setup_altbestand_schritt_qr">In der Web-App unter Einstellungen den QR-Code für die Android-App erzeugen und mit dem Knopf darunter scannen.</string>
