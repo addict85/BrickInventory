@@ -2,7 +2,7 @@ package ch.brickinventoryapp.konto
 
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.cache.ResponseCache
+import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.konto.ui.viewmodel.KontoViewModel
 import kotlinx.coroutines.CoroutineScope
