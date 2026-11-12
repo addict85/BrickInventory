@@ -95,6 +95,16 @@ function berichtsAdresse(v: unknown, stichwort = false): string {
   }
 }
 
+/** Öffnet der Browser ein Rasterbild direkt, stylt er seine eigene Bildansicht inline;
+ * unsere CSP am Bild blockiert das. Kein Angriff, keine Zeile. SVG bleibt gemeldet. */
+function bildansicht(seite: unknown): boolean {
+  try {
+    return /\.(jpe?g|png|gif|webp|avif)$/i.test(new URL(String(seite ?? '')).pathname);
+  } catch {
+    return false;
+  }
+}
+
 /** Die Probe zeigt, welche Zuweisung Trusted Types abwies; sonst ist sie fremder Text. */
 function probe(regel: string, v: unknown): string {
   if (!regel.includes('trusted-types') || typeof v !== 'string') return '';
@@ -112,7 +122,7 @@ router.post('/csp-bericht', express.raw({ type: () => true, limit: '8kb' }), (re
   }
   for (const v of verstoesse(daten)) {
     const regel = direktive(v.regel);
-    if (!regel) continue;
+    if (!regel || bildansicht(v.seite)) continue;
     const p = probe(regel, v.probe);
     // Die Teile sind schon gefiltert; das Ersetzen ist die Form, die CodeQL als Schutz erkennt.
     console.warn(

@@ -12,6 +12,7 @@
  *   E  in cspMeldungFrei() die Sammelzeile gestrichen → rot: „was gedrosselt …“
  *   F  adresse() durch das frühere ohneAnfrageteil() ersetzt (Freitext bis
  *      160 Zeichen) → rot: „nur Direktiven und Adressen …“
+ *   G  bildansicht() immer false → rot: „die Bildansicht des Browsers …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -140,5 +141,15 @@ test('CSP-Berichte', async t => {
     await melde({ 'csp-report': { 'effective-directive': 'Freitext mit Leerzeichen!' } }, 'application/csp-report');
     await melde({ 'csp-report': { 'effective-directive': 'X'.repeat(30) } }, 'application/csp-report');
     assert.deepEqual(log, [], 'keine Direktive, keine Zeile');
+  });
+
+  await t.test('die Bildansicht des Browsers meldet nichts, ein SVG schon', async () => {
+    const bericht = seite => ({
+      'csp-report': { 'effective-directive': 'style-src-attr', 'blocked-uri': 'inline', 'document-uri': seite },
+    });
+    await melde(bericht('https://lego.test/images/sets/11515-1.jpg'), 'application/csp-report');
+    assert.deepEqual(log, []);
+    await melde(bericht('https://lego.test/images/sets/x.svg'), 'application/csp-report');
+    assert.deepEqual(log, ['[csp] style-src-attr blockierte inline auf https://lego.test/images/sets/x.svg']);
   });
 });
