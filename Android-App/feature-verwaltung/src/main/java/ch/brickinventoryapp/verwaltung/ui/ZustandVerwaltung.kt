@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.verwaltung.ui
 
-import ch.brickinventoryapp.model.data.model.*
 import ch.brickinventoryapp.model.ui.model.ProtokollZeileAnsicht
 
 /**

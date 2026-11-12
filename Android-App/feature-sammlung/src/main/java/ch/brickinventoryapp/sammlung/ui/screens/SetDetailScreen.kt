@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
-import ch.brickinventoryapp.sitzung.*
+import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.sammlung.ui.viewmodel.SetDetailAktionen
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
@@ -19,10 +19,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import ch.brickinventoryapp.sammlung.ui.viewmodel.SetDetailViewModel
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.sammlung.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
+import ch.brickinventoryapp.sammlung.ui.SetDetailUiState
+import ch.brickinventoryapp.ui.titel
+import ch.brickinventoryapp.ui.zweiSpaltig
+import ch.brickinventoryapp.zustand.ui.LagerUiState
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.model.util.resolveFullUrl
 import coil3.ImageLoader

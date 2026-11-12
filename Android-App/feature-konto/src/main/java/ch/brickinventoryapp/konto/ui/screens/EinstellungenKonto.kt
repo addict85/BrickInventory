@@ -25,10 +25,6 @@ import ch.brickinventoryapp.ui.components.PasswortArt
 import ch.brickinventoryapp.ui.components.PasswortFeld
 import ch.brickinventoryapp.model.util.PASSWORT_MIN_ZEICHEN
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.konto.ui.*
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
 import ch.brickinventoryapp.model.util.passwortZuKurz
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.konto.ui.DesignWahl

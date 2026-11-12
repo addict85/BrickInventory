@@ -35,10 +35,8 @@ import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.model.util.resolveThumbUrl
 import coil3.ImageLoader
 import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenAktionen
-import ch.brickinventoryapp.konto.ui.*
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
+import ch.brickinventoryapp.konto.ui.AlarmUebersichtUiState
+import ch.brickinventoryapp.ui.titel
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.ErklaerText
 import ch.brickinventoryapp.ui.components.MitTooltip

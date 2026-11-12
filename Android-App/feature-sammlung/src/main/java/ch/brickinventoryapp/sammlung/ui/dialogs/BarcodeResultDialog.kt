@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.dialogs
 
-import ch.brickinventoryapp.sitzung.*
+import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.model.ui.Scannerherkunft
 import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.model.fach.Zustand
@@ -21,12 +21,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.compose.*
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.sammlung.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
-import ch.brickinventoryapp.sammlung.ui.screens.*
-import ch.brickinventoryapp.ui.screens.*
+import ch.brickinventoryapp.sammlung.ui.BarcodeUiState
+import ch.brickinventoryapp.ui.titel
+import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
+import ch.brickinventoryapp.zustand.ui.LagerUiState
 import coil3.ImageLoader
 import coil3.request.crossfade
 import ch.brickinventoryapp.ressourcen.R

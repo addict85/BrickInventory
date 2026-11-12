@@ -7,10 +7,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.finanzen.ui.*
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
 import ch.brickinventoryapp.ui.components.Sichtschutz
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import ch.brickinventoryapp.finanzen.ui.viewmodel.GutscheinViewModel

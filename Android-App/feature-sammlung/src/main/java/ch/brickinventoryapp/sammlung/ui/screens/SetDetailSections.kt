@@ -38,10 +38,7 @@ import coil3.request.crossfade
 import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.sammlung.ui.viewmodel.SetDetailAktionen
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.sammlung.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
+import ch.brickinventoryapp.zustand.ui.LagerUiState
 import ch.brickinventoryapp.sammlung.ui.SetDetailUiState
 import kotlinx.coroutines.CoroutineScope
 import androidx.compose.material.icons.Icons

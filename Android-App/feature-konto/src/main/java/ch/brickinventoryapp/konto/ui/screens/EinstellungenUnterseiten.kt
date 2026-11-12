@@ -12,10 +12,7 @@ import coil3.ImageLoader
 import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.konto.ui.viewmodel.HaushaltViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.GeraeteEinstellungenViewModel
-import ch.brickinventoryapp.konto.ui.*
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
+import ch.brickinventoryapp.konto.ui.AlarmUebersichtUiState
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import ch.brickinventoryapp.ui.theme.Lesebreite

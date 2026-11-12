@@ -14,14 +14,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.model.ui.model.*
+import ch.brickinventoryapp.model.ui.model.KontingenteAnsicht
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringUiState
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.verwaltung.ui.*
-import ch.brickinventoryapp.zustand.ui.*
 import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.Abschnittstitel

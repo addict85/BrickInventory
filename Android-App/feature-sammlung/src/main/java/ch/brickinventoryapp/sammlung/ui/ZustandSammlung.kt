@@ -1,7 +1,13 @@
 package ch.brickinventoryapp.sammlung.ui
 
 import ch.brickinventoryapp.model.fach.Setsortierung
-import ch.brickinventoryapp.model.ui.model.*
+import ch.brickinventoryapp.model.ui.model.KaufAnsicht
+import ch.brickinventoryapp.model.ui.model.KaufSummenAnsicht
+import ch.brickinventoryapp.model.ui.model.KennzahlenAnsicht
+import ch.brickinventoryapp.model.ui.model.PreisalarmAnsicht
+import ch.brickinventoryapp.model.ui.model.PreisverlaufAnsicht
+import ch.brickinventoryapp.model.ui.model.SetAnsicht
+import ch.brickinventoryapp.model.ui.model.SetPreisAnsicht
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 
 /**

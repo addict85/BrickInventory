@@ -1,8 +1,17 @@
 package ch.brickinventoryapp.data.api
 
-import ch.brickinventoryapp.model.data.model.*
+import ch.brickinventoryapp.model.data.model.FigsValuationResponse
+import ch.brickinventoryapp.model.data.model.PartsValuationResponse
+import ch.brickinventoryapp.model.data.model.PnlResponse
+import ch.brickinventoryapp.model.data.model.PortfolioHistoryResponse
+import ch.brickinventoryapp.model.data.model.PriceHistoryResponse
+import ch.brickinventoryapp.model.data.model.SetPriceResponse
+import ch.brickinventoryapp.model.data.model.StatsResponse
+import ch.brickinventoryapp.model.data.model.ValuationResponse
 import retrofit2.Response
-import retrofit2.http.*
+import retrofit2.http.GET
+import retrofit2.http.Path
+import retrofit2.http.Query
 
 /**
  * Preise, Bewertungen, Gewinn und Verlust, Verlauf, Kennzahlen (FinanzenRepository).

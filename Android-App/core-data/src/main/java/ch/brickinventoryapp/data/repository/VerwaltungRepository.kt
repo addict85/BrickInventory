@@ -2,8 +2,20 @@ package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.data.model.*
-
+import ch.brickinventoryapp.model.data.model.ApiLimitsResponse
+import ch.brickinventoryapp.model.data.model.AuftraegeResponse
+import ch.brickinventoryapp.model.data.model.AuftragAenderung
+import ch.brickinventoryapp.model.data.model.AuftragsArtLeerung
+import ch.brickinventoryapp.model.data.model.AuftragsArtStart
+import ch.brickinventoryapp.model.data.model.BricksetQueueResponse
+import ch.brickinventoryapp.model.data.model.CacheStatsResponse
+import ch.brickinventoryapp.model.data.model.CacheTtlResponse
+import ch.brickinventoryapp.model.data.model.CsvArt
+import ch.brickinventoryapp.model.data.model.CsvImportErgebnis
+import ch.brickinventoryapp.model.data.model.GenericAdminResponse
+import ch.brickinventoryapp.model.data.model.JobsResponse
+import ch.brickinventoryapp.model.data.model.ProtokollResponse
+import ch.brickinventoryapp.model.data.model.StartupStatus
 /**
  * Die Verwaltung des Servers (nur Verwalter).
  * Eine Schnittstelle, damit ViewModels und Tests nicht an der Umsetzung mit

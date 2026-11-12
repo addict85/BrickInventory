@@ -1,8 +1,22 @@
 package ch.brickinventoryapp.data.api
 
-import ch.brickinventoryapp.model.data.model.*
+import ch.brickinventoryapp.model.data.model.AddMinifigRequest
+import ch.brickinventoryapp.model.data.model.AddMinifigResponse
+import ch.brickinventoryapp.model.data.model.GenericResponse
+import ch.brickinventoryapp.model.data.model.LagerortRequest
+import ch.brickinventoryapp.model.data.model.LagerortResponse
+import ch.brickinventoryapp.model.data.model.MinifigsResponse
+import ch.brickinventoryapp.model.data.model.UpdateManualItemRequest
+import ch.brickinventoryapp.model.data.model.VerwendendeSetsResponse
 import retrofit2.Response
-import retrofit2.http.*
+import retrofit2.http.Body
+import retrofit2.http.DELETE
+import retrofit2.http.GET
+import retrofit2.http.Header
+import retrofit2.http.POST
+import retrofit2.http.PUT
+import retrofit2.http.Path
+import retrofit2.http.Query
 import ch.brickinventoryapp.model.data.model.ManualFigsResponse
 import ch.brickinventoryapp.model.data.model.MinifigStatsResponse
 

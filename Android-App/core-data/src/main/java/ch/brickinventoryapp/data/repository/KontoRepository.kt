@@ -5,7 +5,31 @@ import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.Entwertungsergebnis
 import ch.brickinventoryapp.data.GetauschterToken
-import ch.brickinventoryapp.model.data.model.*
+import ch.brickinventoryapp.model.data.model.AndereBeendet
+import ch.brickinventoryapp.model.data.model.AppThemeResponse
+import ch.brickinventoryapp.model.data.model.DefaultConditionResponse
+import ch.brickinventoryapp.model.data.model.ForgotPasswordResponse
+import ch.brickinventoryapp.model.data.model.GenericAdminResponse
+import ch.brickinventoryapp.model.data.model.GenericResponse
+import ch.brickinventoryapp.model.data.model.LoginResponse
+import ch.brickinventoryapp.model.data.model.MeResponse
+import ch.brickinventoryapp.model.data.model.PasskeyOptionen
+import ch.brickinventoryapp.model.data.model.ProfilAenderung
+import ch.brickinventoryapp.model.data.model.ProfilGespeichert
+import ch.brickinventoryapp.model.data.model.ProfilResponse
+import ch.brickinventoryapp.model.data.model.QrAbholung
+import ch.brickinventoryapp.model.data.model.QrMeldung
+import ch.brickinventoryapp.model.data.model.RegisterRequest
+import ch.brickinventoryapp.model.data.model.RegisterResponse
+import ch.brickinventoryapp.model.data.model.RegistrationStatusResponse
+import ch.brickinventoryapp.model.data.model.SettingsResponse
+import ch.brickinventoryapp.model.data.model.TOKEN_SCOPE_APP
+import ch.brickinventoryapp.model.data.model.TokenWiderruf
+import ch.brickinventoryapp.model.data.model.TokensResponse
+import ch.brickinventoryapp.model.data.model.ZweiterFaktorAnfrage
+import ch.brickinventoryapp.model.data.model.ZweiterFaktorCodes
+import ch.brickinventoryapp.model.data.model.ZweiterFaktorEinrichtung
+import ch.brickinventoryapp.model.data.model.ZweiterFaktorStand
 import kotlinx.serialization.json.JsonObject
 
 /**

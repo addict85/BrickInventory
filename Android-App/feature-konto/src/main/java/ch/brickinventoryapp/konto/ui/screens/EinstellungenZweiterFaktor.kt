@@ -28,10 +28,7 @@ import ch.brickinventoryapp.ui.components.FehlerZeile
 import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ui.components.PasswortFeld
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.konto.ui.*
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
+import ch.brickinventoryapp.ui.titel
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.konto.ui.ZweiterFaktorUiState
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz

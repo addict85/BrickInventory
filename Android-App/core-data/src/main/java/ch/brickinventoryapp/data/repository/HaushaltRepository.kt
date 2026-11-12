@@ -1,8 +1,13 @@
 package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.data.model.*
-
+import ch.brickinventoryapp.model.data.model.AcquisitionsResponse
+import ch.brickinventoryapp.model.data.model.DeleteWithQuantityResponse
+import ch.brickinventoryapp.model.data.model.GenericResponse
+import ch.brickinventoryapp.model.data.model.HouseholdInviteResponse
+import ch.brickinventoryapp.model.data.model.HouseholdMembersResponse
+import ch.brickinventoryapp.model.data.model.HouseholdStatusResponse
+import ch.brickinventoryapp.model.data.model.UpdateAcquisitionRequest
 /**
  * Der Haushalt: Mitglieder, Einladungen, Konten.
  * Eine Schnittstelle, damit ViewModels und Tests nicht an der Umsetzung mit

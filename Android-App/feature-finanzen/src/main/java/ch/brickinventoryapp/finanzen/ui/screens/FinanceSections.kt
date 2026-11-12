@@ -30,10 +30,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.finanzen.ui.*
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
+import ch.brickinventoryapp.finanzen.ui.figurZeilen
+import ch.brickinventoryapp.finanzen.ui.finanzKopf
+import ch.brickinventoryapp.finanzen.ui.finanzSummen
+import ch.brickinventoryapp.finanzen.ui.fremdeKaufpreise
+import ch.brickinventoryapp.finanzen.ui.setZeilen
+import ch.brickinventoryapp.finanzen.ui.teilZeilen
 import ch.brickinventoryapp.ui.util.fmtProzent
 import ch.brickinventoryapp.model.util.resolveThumbUrl
 import androidx.compose.material.icons.filled.*

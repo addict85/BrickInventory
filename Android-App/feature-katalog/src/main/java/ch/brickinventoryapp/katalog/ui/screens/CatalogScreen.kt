@@ -28,11 +28,10 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.katalog.ui.viewmodel.CatalogViewModel
-import ch.brickinventoryapp.katalog.ui.*
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
-
+import ch.brickinventoryapp.katalog.ui.CatalogUiState
+import ch.brickinventoryapp.katalog.ui.KatalogZiel
+import ch.brickinventoryapp.model.ui.ScrollMemory
+import ch.brickinventoryapp.ui.ScrollPositionKeeper
 import coil3.ImageLoader
 import androidx.compose.ui.graphics.Color
 import ch.brickinventoryapp.data.repository.CATALOG_PAGE_SIZE

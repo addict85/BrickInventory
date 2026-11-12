@@ -1,8 +1,22 @@
 package ch.brickinventoryapp.data.api
 
-import ch.brickinventoryapp.model.data.model.*
+import ch.brickinventoryapp.model.data.model.GenericResponse
+import ch.brickinventoryapp.model.data.model.GuthabenAntwort
+import ch.brickinventoryapp.model.data.model.GutscheinAntwort
+import ch.brickinventoryapp.model.data.model.GutscheinKlartext
+import ch.brickinventoryapp.model.data.model.GutscheinListe
+import ch.brickinventoryapp.model.data.model.GutscheinPdfFreigabe
+import ch.brickinventoryapp.model.data.model.GutscheinRequest
+import ch.brickinventoryapp.model.data.model.ZweiterFaktorAnfrage
 import retrofit2.Response
-import retrofit2.http.*
+import retrofit2.http.Body
+import retrofit2.http.GET
+import retrofit2.http.HTTP
+import retrofit2.http.Multipart
+import retrofit2.http.POST
+import retrofit2.http.PUT
+import retrofit2.http.Path
+import retrofit2.http.Part
 
 /**
  * Gutscheine im eigenen Profil (GutscheineRepository).
@@ -61,11 +75,11 @@ interface GutscheineApi {
     @Multipart
     @POST("api/v1/vouchers/pdf")
     suspend fun ladeGutscheinPdfHoch(
-        @retrofit2.http.Part datei: okhttp3.MultipartBody.Part,
-        @retrofit2.http.Part("number") nummer: okhttp3.RequestBody? = null,
-        @retrofit2.http.Part("pin") pin: okhttp3.RequestBody? = null,
-        @retrofit2.http.Part("amount") betrag: okhttp3.RequestBody? = null,
-        @retrofit2.http.Part("currency") waehrung: okhttp3.RequestBody? = null,
+        @Part datei: okhttp3.MultipartBody.Part,
+        @Part("number") nummer: okhttp3.RequestBody? = null,
+        @Part("pin") pin: okhttp3.RequestBody? = null,
+        @Part("amount") betrag: okhttp3.RequestBody? = null,
+        @Part("currency") waehrung: okhttp3.RequestBody? = null,
     ): Response<GutscheinAntwort>
 
     /**

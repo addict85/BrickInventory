@@ -1,7 +1,9 @@
 package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.model.fach.Katalogsortierung
-import ch.brickinventoryapp.model.data.model.*
+import ch.brickinventoryapp.model.data.model.CatalogMetaResponse
+import ch.brickinventoryapp.model.data.model.CatalogSetDetailResponse
+import ch.brickinventoryapp.model.data.model.CatalogSetsResponse
 import ch.brickinventoryapp.model.data.model.CatalogYearVerteilungResponse
 
 /**

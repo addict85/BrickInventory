@@ -1,7 +1,5 @@
 package ch.brickinventoryapp.app.csv
 
-import ch.brickinventoryapp.model.data.model.*
-
 /**
  * CSV-Import-Fortschritt — eigener Fluss, weil er während eines Imports alle 1.5 s
  * wechselt; so zeichnet nur der Banner neu.

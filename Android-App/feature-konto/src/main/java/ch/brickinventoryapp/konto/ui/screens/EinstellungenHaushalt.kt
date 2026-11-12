@@ -25,10 +25,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.konto.ui.*
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
+import ch.brickinventoryapp.ui.beschreibung
+import ch.brickinventoryapp.ui.titel
 import ch.brickinventoryapp.ui.components.Abschnitt
 import ch.brickinventoryapp.ui.components.PasswortFeld
 import ch.brickinventoryapp.ui.components.Rueckfrage

@@ -27,10 +27,6 @@ import ch.brickinventoryapp.ui.util.rememberTileImageWithFallback
 import coil3.ImageLoader
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.teile.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.stueckzahl
 import ch.brickinventoryapp.ui.components.vorgelesenAls

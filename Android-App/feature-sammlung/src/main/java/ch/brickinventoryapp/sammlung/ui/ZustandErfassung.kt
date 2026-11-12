@@ -1,8 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui
 
 import ch.brickinventoryapp.model.ui.Scannerherkunft
-import ch.brickinventoryapp.model.data.model.*
-
 /**
  * Zustand rund um den Barcode- und OCR-Scanner — eigener Fluss, weil ein Scan
  * viele Zwischenstände erzeugt, die sonst jeden Reiter neu zeichneten. Die Felder
