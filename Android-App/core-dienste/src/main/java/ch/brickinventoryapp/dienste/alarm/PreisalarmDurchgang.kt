@@ -11,11 +11,14 @@ import androidx.core.content.ContextCompat
 import ch.brickinventoryapp.data.Alarmablage
 import ch.brickinventoryapp.data.Startziel
 import ch.brickinventoryapp.data.Zugangsdaten
+import ch.brickinventoryapp.data.util.LanguageManager
+import ch.brickinventoryapp.model.util.zahlenLocale
 import ch.brickinventoryapp.model.data.model.Preisalarm
 import ch.brickinventoryapp.data.repository.AlarmRepository
 import ch.brickinventoryapp.ressourcen.R
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
+import java.util.Locale
 import javax.inject.Inject
 
 /** Ein Abruf der ausgelösten Preisalarme; der Worker stündlich, die App beim Öffnen. */
@@ -94,8 +97,11 @@ internal class PreisalarmDurchgang @Inject constructor(
             ).apply { description = context.getString(R.string.alert_channel_desc) }
         )
 
-        val unter = context.getString(R.string.detail_alert_below)
-        val ueber = context.getString(R.string.detail_alert_above)
+        // In der Sprache der App: Vor Android 13 sähe der Hintergrund sonst die des Systems.
+        val texte = LanguageManager.localizedContext(context)
+        val unter = texte.getString(R.string.detail_alert_below)
+        val ueber = texte.getString(R.string.detail_alert_above)
+        val zahlen = zahlenLocale(texte.resources.configuration.locales[0], Locale.getDefault())
         val nm = NotificationManagerCompat.from(context)
         for ((i, a) in meldungen.withIndex()) {
             // ── Antippen öffnet das Set ──
@@ -117,7 +123,7 @@ internal class PreisalarmDurchgang @Inject constructor(
                 // Intent vollstaendig, also gibt es nichts zu ergaenzen.
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
-            val n = PreisalarmWorker.meldung(context, Alarmabholung.text(a, unter, ueber), tippen)
+            val n = PreisalarmWorker.meldung(context, Alarmabholung.text(a, unter, ueber, zahlen), tippen)
             // Die Setnummer als ID: Zwei Meldungen zum selben Set
             // ueberschreiben sich, statt sich zu stapeln.
             nm.notify(PreisalarmWorker.KANAL + a.setNumber + a.condition, i + 1, n)

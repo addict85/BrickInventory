@@ -40,7 +40,7 @@ import ch.brickinventoryapp.ui.components.stueckzahl
 import ch.brickinventoryapp.gemeinsam.ui.mengeManuell
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtMoneyOrDash
-import ch.brickinventoryapp.ui.util.zahlenLocale
+import ch.brickinventoryapp.model.util.zahlenLocale
 import ch.brickinventoryapp.ui.components.BezeichnungUndWert
 import ch.brickinventoryapp.gemeinsam.ui.ConditionBadges
 import ch.brickinventoryapp.gemeinsam.ui.FinanzBild

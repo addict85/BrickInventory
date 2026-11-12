@@ -6,7 +6,7 @@ import ch.brickinventoryapp.ui.util.fmtEingabe
 import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtMoneyOrDash
-import ch.brickinventoryapp.ui.util.zahlenLocale
+import ch.brickinventoryapp.model.util.zahlenLocale
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
