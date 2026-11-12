@@ -4,7 +4,7 @@ import { stelleZielBereit } from './ziele.js';
 import { registerActions } from './registry.js';
 import { G, leerZustand, alle, eins, setzeHtml, rollArt } from './dom.js';
 import { ME, _lastImportAt } from './zustand.js';
-import { loadMonitor, stoppeMonitor } from './monitor.js';
+import { ladeZeitplaene, loadMonitor, stoppeMonitor } from './monitor.js';
 import { figurenFilterZuruecksetzen, loadManualFigsTable, loadMinifigs } from './minifigs.js';
 import { initCatalog, katalogZuruecksetzen } from './catalog.js';
 import { pollJobStatus, stoppeJobAbfrage } from './admin.js';
@@ -199,13 +199,16 @@ export function bindTabs() {
       if (tab === 'settings') {
         zeigeEinstellungsZugriff();
         loadSettings();
-        if (ME?.isAdmin) loadApiLimits();
+        if (ME?.isAdmin) {
+          loadApiLimits();
+          loadCacheTtl();
+          ladeZeitplaene();
+        }
       }
       if (tab === 'monitor') {
         loadMonitor();
         loadCacheStats();
         loadRateLimitStats();
-        loadCacheTtl();
         stoppeJobAbfrage();
         pollJobStatus();
       }

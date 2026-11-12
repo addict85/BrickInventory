@@ -60,9 +60,11 @@ import { deleteManualPart } from './parts.js';
       'setzeDunkel',
       'setzeEigenesDesign',
       'speichereAlarm',
+      'speichereCacheTtl',
       'speichereWaehrung',
       'speichereZustand',
       'speichereSetLagerort',
+      'speichereStandardZustand',
       'speichereTeilFarbe',
       'speichereTeilLagerort',
       'startSetCsvImport',
@@ -423,7 +425,7 @@ export function saveJobTime(k) {
     return;
   }
   this.value = m[1].padStart(2, '0') + ':' + m[2];
-  saveJobSchedule(k, { time: this.value });
+  saveJobSchedule(k, { time: this.value }, this);
 }
 
 /**
@@ -431,7 +433,7 @@ export function saveJobTime(k) {
  * @this {HTMLInputElement}
  */
 export function saveJobMinutes(k) {
-  saveJobSchedule(k, { minutes: Number(this.value) });
+  saveJobSchedule(k, { minutes: Number(this.value) }, this);
 }
 
 // owner: Besitzer der Karte. Ohne ihn schriebe der Server in die Zeile des Aufrufers statt in die angezeigte

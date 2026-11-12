@@ -1,8 +1,7 @@
 /**
- * UX-Prüfung 19 im echten Chrome, im Haushalt (musterHaushalt).
- *   - Set-Detail (H1, H2, M1, M2): beide Konten in der Kopfzeile, Regler je
- *     Konto; „−“ beim Kind nimmt dessen Kauf, Toast mit Rückgängig, am Feld
- *     „Gespeichert ✓“, Diagramm danach mit 199,99 € statt 205 €.
+ * UX-Prüfung 19 im echten Chrome, im Haushalt (musterHaushalt): Set-Detail
+ * (H1, H2, M1, M2), Einstellungen an einem Ort (M2, M3); was jeweils rot
+ * wird, sagen die Gegenproben.
  *
  * Gegenproben (12.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  in mengenBlock() `if (!imHaushalt(set))` zu `if (true)` → rot:
@@ -11,8 +10,14 @@
  *      („Konto: …_kind“ statt „Konten: ich, …_kind“)
  *   C  in frischeDetailAuf() ladeSetNachtraege(sn) entfernt → rot: ebenda
  *      (Diagramm nennt weiter 205,00 €)
- *   D  in mengeJeKonto() owner_user_id weggelassen → rot: ebenda (das eigene
- *      Exemplar fällt weg, das Kind behält seins)
+ *   D  in mengeJeKonto() owner_user_id weggelassen → rot: ebenda (Toast
+ *      nennt den eigenen Kauf vom 01.06.)
+ *   F  in monitor.js die Zeitplanfelder wieder in die Dienstetabelle → rot:
+ *      „Einstellungen an einem Ort“ (Felder unter Hintergrundarbeiten)
+ *   G  ladeZeitplaene() beim Öffnen der Einstellungen nicht gerufen → rot:
+ *      ebenda („Zeitpläne als Felder“)
+ *   H  meldeAmFeld() in speichereCacheTtl entfernt → rot: ebenda
+ *      („Gespeichert ✓“ am Feld)
  *   E  meldeAmFeld() in frischeDetailAuf() entfernt → rot: ebenda (kein
  *      „Gespeichert ✓“)
  */
@@ -60,6 +65,30 @@ async function setDetailImHaushalt(_t, a) {
   await bis(`/205,00/.test(${text('#m-sparkline-content')})`, 'Diagramm wieder mit dem Mischpreis', 50);
 }
 
+async function einstellungenEinOrt(_t, a) {
+  const { b, bis } = a;
+  await b.auswerten(`document.getElementById('ntab-monitor').click(); true`);
+  await bis(`document.querySelectorAll('#monitor-content .mon-plan').length > 0`, 'Dienste');
+  const felder = await b.auswerten(
+    `[...document.querySelectorAll('#tab-monitor :is(select, input, textarea)')].filter(e => e.checkVisibility()).map(e => e.id || e.className)`,
+  );
+  assert.deepEqual(felder, [], 'Hintergrundarbeiten enthält noch Einstellungen');
+  await b.auswerten(`document.querySelector('#monitor-content .mon-plan ~ a').click(); true`);
+  await bis(
+    `document.getElementById('tab-settings').classList.contains('active') && document.getElementById('einst-hintergrund').classList.contains('einst-aktiv')`,
+    'Einstellungen › Hintergrundarbeiten',
+  );
+  await bis(`document.querySelectorAll('#einst-zeitplaene .job-sched-input').length > 0`, 'Zeitpläne als Felder');
+  await b.auswerten(`(() => { const s = document.getElementById('mon-cache-ttl'); s.value = '168';
+    s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
+  await bis(`${text('#mon-cache-ttl + .feld-status')} === 'Gespeichert ✓'`, '„Gespeichert ✓“ am Feld');
+  const ttl = await b.auswerten(`fetch('/api/v1/admin/cache-ttl').then(r => r.json()).then(d => d.ttl)`);
+  assert.equal(String(ttl), '168');
+  await b.auswerten(`(() => { const f = document.querySelector('#einst-zeitplaene .mon-minuten, #einst-zeitplaene .mon-zeit');
+    f.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
+  await bis(`${text('#einst-zeitplaene .feld-status')} === 'Gespeichert ✓'`, 'Zeitplan bestätigt am Feld');
+}
+
 test('UX-Prüfung 19 im Browser', { concurrency: 1, timeout: 300_000 }, async t => {
   const a = await starteApp(t, { name: `r19_${process.pid}`, bestand: musterHaushalt });
   if (a.grund) {
@@ -68,7 +97,10 @@ test('UX-Prüfung 19 im Browser', { concurrency: 1, timeout: 300_000 }, async t 
   }
   await a.ruhig();
   /** @type {[string, (t: import('node:test').TestContext, a: object) => Promise<void>][]} */
-  const pruefungen = [['Set-Detail im Haushalt', setDetailImHaushalt]];
+  const pruefungen = [
+    ['Set-Detail im Haushalt', setDetailImHaushalt],
+    ['Einstellungen an einem Ort', einstellungenEinOrt],
+  ];
   for (const [name, fn] of pruefungen) {
     await a.b.auswerten(SCHLIESSEN);
     await t.test(name, () => fn(t, a));

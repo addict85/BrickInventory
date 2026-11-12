@@ -802,7 +802,8 @@
     <!-- ══ EINSTELLUNGEN ══ -->
     <!-- ══ EINSTELLUNGEN — NUR, WAS EIN VERWALTER SETZT ══ -->
     <div class="tab" id="tab-settings">
-      <div class="ph"><h1 class="ptitle" data-tab-title="settings"><span class="ptitle-icon"></span><span data-i18n="settings.title">Einstellungen</span></h1></div>
+      <div class="ph"><div><h1 class="ptitle" data-tab-title="settings"><span class="ptitle-icon"></span><span data-i18n="settings.title">Einstellungen</span></h1>
+        <p class="ptitle-unter" data-i18n="settings.speicherregel">Einzelne Werte gelten sofort, Abschnitte mit mehreren Feldern mit „Speichern“ – bestätigt wird jeweils an der Stelle: „Gespeichert ✓“.</p></div></div>
       <div id="einst-kein-zugriff" hidden></div>
 
 
@@ -817,6 +818,7 @@
           <a class="einst-link" href="#einst-bs" data-click="einstAbschnitt" data-arg="einst-bs">Brickset</a>
           <a class="einst-link" href="#usermgmt" data-click="einstAbschnitt" data-arg="usermgmt" data-i18n="settings.users_title">Benutzerverwaltung</a>
           <a class="einst-link" href="#einst-smtp" data-click="einstAbschnitt" data-arg="einst-smtp">E-Mail</a>
+          <a class="einst-link" href="#einst-hintergrund" data-click="einstAbschnitt" data-arg="einst-hintergrund" data-i18n="settings.hintergrund_titel">Hintergrundarbeiten</a>
           <a class="einst-link" href="#einst-konfig" data-click="einstAbschnitt" data-arg="einst-konfig" data-i18n="settings.group_config">Konfiguration</a>
         </nav>
         <div class="ssec" id="einst-design">
@@ -939,6 +941,26 @@
           </div>
         </div>
 
+
+        <div class="ssec full" id="einst-hintergrund">
+          <h2 class="stit" data-i18n="settings.hintergrund_titel" data-ico="monitoring">Hintergrundarbeiten</h2>
+          <p class="hinweis-absatz abstand-u-075" data-i18n="settings.hintergrund_hint">Wie lange Preise gelten und wann die Dienste laufen. Jede Änderung gilt sofort; beobachten lässt sich alles unter „Hintergrundarbeiten“.</p>
+          <div class="sform">
+            <div class="fg"><label for="mon-cache-ttl" data-i18n="monitor.cache_duration">Preise aufbewahren</label>
+              <select id="mon-cache-ttl" data-change="speichereCacheTtl">
+                <option value="12" data-i18n="settings.job.h12">12 Stunden</option>
+                <option value="24" selected data-i18n="monitor.cache_day">1 Tag</option>
+                <option value="168" data-i18n="monitor.cache_week">1 Woche</option>
+              </select></div>
+            <div class="fg"><label for="mon-default-condition" data-i18n="monitor.default_condition">Preiszustand für neue Konten</label>
+              <select id="mon-default-condition" data-change="speichereStandardZustand">
+                <option value="N" data-i18n="monitor.condition_new">Neuware</option>
+                <option value="U" data-i18n="monitor.condition_used">Gebraucht</option>
+              </select></div>
+            <h3 class="ctitle" data-i18n="settings.zeitplaene">Zeitpläne der Dienste</h3>
+            <div id="einst-zeitplaene"></div>
+          </div>
+        </div>
 
         <!-- Konfiguration: nur Verwalter, deshalb bei den globalen Einstellungen. -->
         <div class="ssec full" id="einst-konfig">
@@ -1481,20 +1503,6 @@
           <div><dt data-i18n="monitor.inventory_parts">Teile in Set-Inventaren</dt><dd id="mon-db-inventar">—</dd></div>
           <div><dt data-i18n="monitor.bl_mapped">BrickLink-Nummern zugeordnet</dt><dd id="mon-db-bl">—</dd></div>
         </dl>
-        <div class="mon-formular">
-          <div class="fg"><label for="mon-cache-ttl" data-i18n="monitor.cache_duration">Preise aufbewahren</label>
-            <select id="mon-cache-ttl">
-              <option value="12" data-i18n="settings.job.h12">12 Stunden</option>
-              <option value="24" selected data-i18n="monitor.cache_day">1 Tag</option>
-              <option value="168" data-i18n="monitor.cache_week">1 Woche</option>
-            </select></div>
-          <div class="fg"><label for="mon-default-condition" data-i18n="monitor.default_condition">Preiszustand für neue Konten</label>
-            <select id="mon-default-condition">
-              <option value="N" data-i18n="monitor.condition_new">Neuware</option>
-              <option value="U" data-i18n="monitor.condition_used">Gebraucht</option>
-            </select></div>
-          <button class="btn bp btn-speichern" type="button" id="btn-save-cache-ttl" data-schreibend data-i18n="settings.save" data-ico="speichern">Speichern</button>
-        </div>
         <div class="mon-aktionen gefahrenzone" role="group" aria-labelledby="mon-gefahr-titel">
           <h3 class="mon-gefahr-titel" id="mon-gefahr-titel" data-i18n="monitor.gefahrenzone">Zwischenspeicher leeren</h3>
           <button class="btn bd" type="button" id="btn-clr-prices" data-schreibend data-i18n="settings.clear_price_cache" data-ico="loeschen">Gespeicherte Preise löschen</button>

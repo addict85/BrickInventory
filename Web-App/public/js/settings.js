@@ -7,7 +7,7 @@ import { api } from './api.js';
 import { ico, G, knopfBesetzt, setzeHtml } from './dom.js';
 import { antwortFehler, feldFehler, passwortRegelText } from './formular.js';
 import { _updateLangSelect, applyTheme, initDefaultCondition, zeigeBenutzernamen } from './konto.js';
-import { toast } from './meldungen.js';
+import { meldeAmFeld, toast } from './meldungen.js';
 import { loadGallery, loadStats } from './gallery.js';
 import { loadParts } from './parts.js';
 import { loadMinifigs } from './minifigs.js';
@@ -142,7 +142,8 @@ G('btn-test-smtp')?.addEventListener('click', async () => {
 G('btn-sav-smtp')?.addEventListener('click', async () => {
   const d = await speichereSmtp();
   if (!d) return;
-  toast(d.success ? t('smtp.saved') : d.error || t('settings.error'), d.success ? 'success' : 'error');
+  if (d.success) meldeAmFeld(G('btn-sav-smtp'));
+  else toast(d.error || t('settings.error'), 'error');
 });
 
 async function saveRegEnabled() {
@@ -158,7 +159,6 @@ async function saveRegEnabled() {
 }
 
 export async function loadCacheTtl() {
-  initCacheTtlBtn();
   try {
     const d = await api('GET', '/v1/admin/cache-ttl');
     if (d.success) {
@@ -181,19 +181,19 @@ export async function loadCacheTtl() {
   } catch (_) {}
 }
 
-function initCacheTtlBtn() {
-  const btn = G('btn-save-cache-ttl');
-  if (btn && !btn._bound) {
-    btn._bound = true;
-    btn.addEventListener('click', async () => {
-      const ttl = G('mon-cache-ttl')?.value || '24';
-      const d = await api('POST', '/v1/admin/cache-ttl', { ttl });
-      // Gleichzeitig den Default-Preiszustand speichern
-      const cond = G('mon-default-condition')?.value;
-      if (cond) await api('POST', '/v1/admin/default-condition', { condition: cond }).catch(() => {});
-      toast(d.success ? t('settings.cache_ttl_saved') : t('settings.error'), d.success ? 'success' : 'error');
-    });
-  }
+/** Ein Wert, ein Speichern: wie alle Einzelwerte sofort, bestätigt am Feld (meldeAmFeld). */
+async function speichereCacheTtl() {
+  const sel = G('mon-cache-ttl');
+  const d = await api('POST', '/v1/admin/cache-ttl', { ttl: sel?.value || '24' });
+  if (d.success) meldeAmFeld(sel);
+  else toast(d.error || t('settings.error'), 'error');
+}
+
+async function speichereStandardZustand() {
+  const sel = G('mon-default-condition');
+  const d = await api('POST', '/v1/admin/default-condition', { condition: sel?.value || 'N' });
+  if (d.success) meldeAmFeld(sel);
+  else toast(d.error || t('settings.error'), 'error');
 }
 
 export async function loadRateLimitStats() {
@@ -308,7 +308,7 @@ async function setzeEigenesDesign() {
   applyTheme(d.theme);
   if (_settingsCache) _settingsCache.app_theme = d.theme;
   zeigeDesignWahl(d);
-  toast(tRaw('settings.theme_saved'), 'success');
+  meldeAmFeld(G('design-wahl'));
 }
 
 // Darstellung wirkt sofort: Währung und Standard-Zustand speichern beim Wählen.
@@ -338,6 +338,7 @@ async function speichereWaehrung() {
   await loadHousehold().catch(() => {});
   loadStats();
   if (document.getElementById('tab-gallery')?.classList.contains('active')) loadGallery();
+  meldeAmFeld(G('s-cur'));
   toast(tRaw('konto.waehrung_gespeichert_markt', { w: wert }), 'success');
 }
 
@@ -349,7 +350,7 @@ async function speichereZustand() {
     return;
   }
   initDefaultCondition();
-  toast(tRaw('settings.saved'), 'success');
+  meldeAmFeld(G('s-default-condition'));
 }
 
 /** Eine neue E-Mail-Adresse verlangt das aktuelle Passwort; das Feld steht erst dann da. */
@@ -387,7 +388,8 @@ G('btn-sav-prof').onclick = async () => {
       zeigeBenutzernamen();
     }
     if (d.emailChanged && !d.emailSent) toast(tRaw('profile.mail_not_sent'), 'error');
-    else toast(d.emailChanged ? t('profile.saved_mail') : t('settings.saved'), 'success');
+    else if (d.emailChanged) toast(t('profile.saved_mail'), 'success');
+    else meldeAmFeld(btn);
   } finally {
     btn.disabled = false;
   }
@@ -494,9 +496,9 @@ export async function loadSettings() {
 /**
  * Einen Zugang speichern. Alle Felder leer heisst „Zugang entfernt“, nicht „gespeichert“: Das klang, als sei
  * ein Schlüssel hinterlegt.
- * @param {Record<string, string>} werte @param {'bricklink'|'rebrickable'|'brickset'} dienst @param {string} grenze @param {string} okText
+ * @param {Record<string, string>} werte @param {'bricklink'|'rebrickable'|'brickset'} dienst @param {string} grenze @param {string} knopf
  */
-async function speichereZugang(werte, dienst, grenze, okText) {
+async function speichereZugang(werte, dienst, grenze, knopf) {
   const d = await speichereEinstellungen(tRaw('settings.api_key_title'), werte);
   if (!d) return;
   if (!d.success) {
@@ -505,7 +507,7 @@ async function speichereZugang(werte, dienst, grenze, okText) {
   }
   await api('PUT', '/v1/admin/api-limits', { [dienst]: parseInt(G(grenze).value, 10) });
   const leer = Object.values(werte).every(w => !String(w).trim());
-  toast(leer ? tRaw('settings.zugang_entfernt') : okText, leer ? 'info' : 'success');
+  meldeAmFeld(G(knopf), leer ? tRaw('settings.zugang_entfernt') : undefined);
   loadRateLimitStats();
 }
 G('btn-sav-bl').onclick = () =>
@@ -518,12 +520,12 @@ G('btn-sav-bl').onclick = () =>
     },
     'bricklink',
     'lim-bl',
-    tRaw('settings.bl_saved'),
+    'btn-sav-bl',
   );
 G('btn-sav-rb').onclick = () =>
-  speichereZugang({ rebrickable_api_key: G('rb-key').value }, 'rebrickable', 'lim-rb', tRaw('settings.rb_saved'));
+  speichereZugang({ rebrickable_api_key: G('rb-key').value }, 'rebrickable', 'lim-rb', 'btn-sav-rb');
 G('btn-sav-bs').onclick = () =>
-  speichereZugang({ brickset_api_key: G('bs-key').value }, 'brickset', 'lim-bs', tRaw('settings.bs_saved'));
+  speichereZugang({ brickset_api_key: G('bs-key').value }, 'brickset', 'lim-bs', 'btn-sav-bs');
 G('btn-save-theme').onclick = async () => {
   const theme = G('mon-app-theme')?.value || 'classic';
   const d = await api('POST', '/v1/settings/admin/theme', { theme });
@@ -535,7 +537,8 @@ G('btn-save-theme').onclick = async () => {
       if (_settingsCache) _settingsCache.app_theme = w.theme;
     }
   }
-  toast(d.success ? t('settings.theme_saved') : t('settings.error'), d.success ? 'success' : 'error');
+  if (d.success) meldeAmFeld(G('btn-save-theme'));
+  else toast(t('settings.error'), 'error');
 };
 G('btn-clr').onclick = async () => {
   await api('POST', '/v1/admin/cache-clear');
@@ -733,6 +736,8 @@ stelleZielBereit({ einstAbschnitt });
 
 registerActions({
   einstellungenQuellePruefen,
+  speichereCacheTtl,
+  speichereStandardZustand,
   speichereWaehrung,
   speichereZustand,
   setzeEigenesDesign,
