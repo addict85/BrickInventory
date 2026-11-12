@@ -266,8 +266,10 @@ internal fun AcquisitionManagementScreen(
 @Composable
 internal fun Kaufdatum(createdAt: String?, onAendern: () -> Unit) {
     Row(
+        // heightIn statt minimumInteractiveComponentSize: Diese vergrössert nur die Tippfläche um den
+        // Knopf, die Knopf-Fläche selbst blieb 44 dp (KaufdatumTest).
         Modifier
-            .minimumInteractiveComponentSize()
+            .heightIn(min = 48.dp)
             .clickable(onClickLabel = stringResource(R.string.acq_kaufdatum_aendern), role = Role.Button, onClick = onAendern)
             .padding(vertical = Abstaende.winzig),
         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
