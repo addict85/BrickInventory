@@ -52,6 +52,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.*
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.sammlung.ui.ALARM_ZUSTAND_VORGABE
+import ch.brickinventoryapp.ui.components.FehlerHinweis
 import ch.brickinventoryapp.ui.components.GemeinsamesBild
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.ProduktBild
@@ -79,23 +80,29 @@ import ch.brickinventoryapp.gemeinsam.ui.WertKacheln
  * Kaufpreis und G&V stehen in jedem Design in den Wert-Kacheln oben, eine Zeile hier
  * wiederholte sie mit einer Prozentangabe aus dem Gesamtvergleich über den Zeilen je Zustand.
  */
-internal fun LazyListScope.setDetailPriceSection(detailState: SetDetailUiState, price: SetPreisAnsicht?, history: PreisverlaufAnsicht?, currency: Waehrung) {
-    if (price != null && !price.noPrice || detailState.setPriceLoading) {
+internal fun LazyListScope.setDetailPriceSection(
+    detailState: SetDetailUiState, price: SetPreisAnsicht?, history: PreisverlaufAnsicht?, currency: Waehrung, onErneut: () -> Unit,
+) {
+    if (price != null && !price.noPrice || detailState.setPriceLoading || detailState.preisFehler != null) {
         item {
             // „Preisverlauf“, sobald ein Verlauf da ist: Direkt über der Karte steht schon
             // die Kachel „Marktpreis“, zweimal derselbe Titel las sich wie ein Doppel.
             val verlauf = history?.chart?.values?.isNotEmpty() == true || detailState.priceHistoryLoading
             SectionCard(title = stringResource(if (verlauf) R.string.detail_section_price_history else R.string.detail_section_market)) {
-                PreisKarteInhalt(detailState, price, history, currency)
+                PreisKarteInhalt(detailState, price, history, currency, onErneut)
             }
         }
     }
 }
 
 @Composable
-private fun PreisKarteInhalt(detailState: SetDetailUiState, price: SetPreisAnsicht?, history: PreisverlaufAnsicht?, currency: Waehrung) {
+private fun PreisKarteInhalt(
+    detailState: SetDetailUiState, price: SetPreisAnsicht?, history: PreisverlaufAnsicht?, currency: Waehrung, onErneut: () -> Unit,
+) {
     if (detailState.setPriceLoading && price == null) {
         PreisLaedtZeile()
+    } else if (price == null && detailState.preisFehler != null) {
+        FehlerHinweis(detailState.preisFehler, onErneut, detailState.preisFehlerKlasse)
     } else if (price != null && !price.noPrice) {
         // Je Zustand eine Zeile, aber nur bei mehr als einem: Mit einem einzigen
         // Zustand stünden Preis und G&V der Wert-Kacheln oben gleich noch einmal da.
@@ -111,6 +118,9 @@ private fun PreisKarteInhalt(detailState: SetDetailUiState, price: SetPreisAnsic
         } else if (detailState.priceHistoryLoading) {
             Spacer(Modifier.height(Abstaende.klein))
             PreisLaedtZeile()
+        } else if (detailState.verlaufFehler != null) {
+            Spacer(Modifier.height(Abstaende.klein))
+            FehlerHinweis(detailState.verlaufFehler, onErneut)
         }
     }
 }

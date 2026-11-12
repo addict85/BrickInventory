@@ -111,14 +111,6 @@ internal fun SetDetailScreen(
 
     val acquisitions = detailState.acquisitions
 
-    LaunchedEffect(setNumber) {
-        aktionen.loadSetDetail(setNumber)
-        aktionen.loadSetPrice(setNumber)
-        aktionen.loadSetPriceHistory(setNumber)
-        aktionen.loadAcquisitions(setNumber)
-        aktionen.loadPreisalarme(setNumber)
-    }
-
     fun fmtPrice(v: Double?) = if (v == null) "—"
         else fmtMoney(v, currency)
 
@@ -167,7 +159,7 @@ internal fun SetDetailScreen(
             val fehler = detailState.setDetailFehler
             if (fehler != null && !detailState.setDetailLoading) {
                 ZustandsHinweis(Modifier.padding(padding)) {
-                    FehlerHinweis(fehler, { aktionen.loadSetDetail(setNumber) },
+                    FehlerHinweis(fehler, aktionen::aktualisiere,
                         detailState.setDetailFehlerKlasse)
                 }
             } else LadeKreis(Modifier.padding(padding))
@@ -203,7 +195,7 @@ internal fun SetDetailScreen(
             setDetailAlarmSection(setNumber, detailState.preisalarme, currency, aktionen::setzePreisalarm)
         }
         val preise: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
-            setDetailPriceSection(detailState, price, history, currency)
+            setDetailPriceSection(detailState, price, history, currency, aktionen::aktualisiere)
         }
         val anleitungen: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             setDetailInstructionsSection(

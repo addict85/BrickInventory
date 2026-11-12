@@ -22,6 +22,7 @@ import ch.brickinventoryapp.sitzung.Sitzung
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
 import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
+import ch.brickinventoryapp.zustand.ui.viewmodel.ladeBeimBeobachten
 
 /**
  * Der Haushalt: Konten verknüpfen, Einladungen, Lösen.
@@ -51,6 +52,10 @@ class HaushaltViewModel @Inject constructor(
 
     private val _householdState = MutableStateFlow(HouseholdUiState())
     val householdState: StateFlow<HouseholdUiState> = _householdState.asStateFlow()
+
+    init {
+        ladeBeimBeobachten(_householdState) { loadHouseholdStatus() }
+    }
 
     fun loadHouseholdStatus() {
         pruefeZweitenFaktor()

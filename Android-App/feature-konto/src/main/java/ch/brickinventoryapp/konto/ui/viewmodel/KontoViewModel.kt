@@ -29,6 +29,7 @@ import javax.inject.Inject
 import ch.brickinventoryapp.model.data.model.AppThemeResponse
 import ch.brickinventoryapp.netz.util.otpauthAdresse
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
+import ch.brickinventoryapp.zustand.ui.viewmodel.ladeBeimBeobachten
 
 /**
  * Das eigene Konto: Profil, Passwort, angemeldete Geräte, zweiter Faktor.
@@ -52,6 +53,12 @@ class KontoViewModel @Inject constructor(
     val geraeteState = _geraeteState.asStateFlow()
     private val _zweiterFaktorState = MutableStateFlow(ZweiterFaktorUiState())
     val zweiterFaktorState = _zweiterFaktorState.asStateFlow()
+
+    // Profil und Design nicht so: Den Kontozustand beobachtet auch die Startpasswort-Maske.
+    init {
+        ladeBeimBeobachten(_geraeteState) { ladeGeraete() }
+        ladeBeimBeobachten(_zweiterFaktorState) { ladeZweitenFaktor() }
+    }
 
     // ── Profil und Passwort ──────────────────────────────────────────────────
 

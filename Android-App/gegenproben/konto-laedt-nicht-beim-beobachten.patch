@@ -1,0 +1,17 @@
+Gegenprobe: Geräte und zweiter Faktor laden nicht mehr, wenn ihr Zustand beobachtet wird
+Modul: feature-konto
+Test: ch.brickinventoryapp.konto.KontoViewModelTest
+Rot: Geraete und zweiter Faktor laden, sobald jemand ihren Zustand beobachtet
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt
+@@ -56,8 +56,6 @@
+ 
+     // Profil und Design nicht so: Den Kontozustand beobachtet auch die Startpasswort-Maske.
+     init {
+-        ladeBeimBeobachten(_geraeteState) { ladeGeraete() }
+-        ladeBeimBeobachten(_zweiterFaktorState) { ladeZweitenFaktor() }
+     }
+ 
+     // ── Profil und Passwort ──────────────────────────────────────────────────

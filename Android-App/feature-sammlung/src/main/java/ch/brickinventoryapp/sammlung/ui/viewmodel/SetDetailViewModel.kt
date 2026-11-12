@@ -95,6 +95,10 @@ class SetDetailViewModel @Inject constructor(
         .map { l -> l.liste.firstOrNull { it.setNumber == setNumber }?.alsAnsicht() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(VORSCHAU_HALTEN_MS), null)
 
+    // Je Abschnitt ein Abruf: Ein neuer bricht den laufenden ab, damit keine späte
+    // Antwort eines alten Abrufs die neuere überschreibt.
+    private val laufend = HashMap<Abschnitt, Job>()
+
     // Nach setNumber und dem Zustand: Ein init davor sähe beide noch nicht belegt.
     init {
         folgeAbmeldung(sitzung) { zuruecksetzen() }
@@ -102,7 +106,7 @@ class SetDetailViewModel @Inject constructor(
         viewModelScope.launch {
             sets.beobachteSets().map { l -> l.liste.firstOrNull { it.setNumber == setNumber } }
                 .distinctUntilChanged().drop(1).collect {
-                    if (_setDetailState.value.setDetail != null) { loadSetDetail(setNumber); loadAcquisitions(setNumber) }
+                    if (_setDetailState.value.setDetail != null) { ladeDetail(); ladeKaeufe() }
                 }
         }
     }
@@ -114,70 +118,68 @@ class SetDetailViewModel @Inject constructor(
         scope = viewModelScope, alarme = alarme,
         melde = { meldungen.zeige(it) },
         beschreibe = { meldungen.meldungFuerSnackbar(it) },
-        // Anderswo geänderte Alarme holt ladeAlles() beim Zurückkehren.
-        gespeichert = { sn -> if (sn == setNumber) loadPreisalarme(sn) },
+        gespeichert = { sn -> if (sn == setNumber) ladePreisalarme() },
     )
 
-    /** Alles, was die Ansicht zeigt — beim Betreten und nach der Rückkehr. */
-    fun ladeAlles() {
+    // Am Ende der Felder: Die Abrufe brauchen laufend und alarmEingabe schon belegt.
+    init { aktualisiere() }
+
+    /** Alles, was die Ansicht zeigt, neu holen; beim Erzeugen und auf „Erneut versuchen“. */
+    override fun aktualisiere() {
+        ladeDetail()
+        ladePreis()
+        ladeVerlauf()
+        ladeKaeufe()
+        ladePreisalarme()
+    }
+
+    private fun starte(abschnitt: Abschnitt, abruf: suspend () -> Unit) {
         if (setNumber.isBlank()) return
-        loadSetDetail(setNumber)
-        loadSetPrice(setNumber)
-        loadSetPriceHistory(setNumber)
-        loadAcquisitions(setNumber)
-        loadPreisalarme(setNumber)
+        laufend.remove(abschnitt)?.cancel()
+        laufend[abschnitt] = viewModelScope.launch { abruf() }
     }
 
-    override fun loadSetDetail(setNumber: String) {
-        viewModelScope.launch {
-            _setDetailState.update { it.copy(setDetailLoading = true, setDetailFehler = null) }
-            when (val r = katalog.getSetDetail(setNumber)) {
-                is Ergebnis.Success -> _setDetailState.update { it.copy(setDetail = r.data.set?.alsAnsicht(), setDetailLoading = false) }
-                is Ergebnis.Error -> _setDetailState.update { it.copy(setDetailLoading = false, setDetailFehler = meldungen.meldung(r),
-                    setDetailFehlerKlasse = fehlerklasse(r)) }
+    private fun ladeDetail() = starte(Abschnitt.DETAIL) {
+        _setDetailState.update { it.copy(setDetailLoading = true, setDetailFehler = null) }
+        when (val r = katalog.getSetDetail(setNumber)) {
+            is Ergebnis.Success -> _setDetailState.update { it.copy(setDetail = r.data.set?.alsAnsicht(), setDetailLoading = false) }
+            is Ergebnis.Error -> _setDetailState.update { it.copy(setDetailLoading = false, setDetailFehler = meldungen.meldung(r),
+                setDetailFehlerKlasse = fehlerklasse(r)) }
+        }
+    }
+
+    private fun ladePreis() = starte(Abschnitt.PREIS) {
+        _setDetailState.update { it.copy(setPriceLoading = true, preisFehler = null) }
+        when (val r = finanzen.getSetPrice(setNumber)) {
+            is Ergebnis.Success -> _setDetailState.update { it.copy(setPrice = r.data.alsAnsicht(), setPriceLoading = false) }
+            is Ergebnis.Error -> _setDetailState.update { it.copy(setPriceLoading = false, preisFehler = meldungen.meldung(r),
+                preisFehlerKlasse = fehlerklasse(r)) }
+        }
+    }
+
+    private fun ladeVerlauf() = starte(Abschnitt.VERLAUF) {
+        _setDetailState.update { it.copy(priceHistoryLoading = true, verlaufFehler = null) }
+        when (val r = finanzen.getSetPriceHistory(setNumber)) {
+            is Ergebnis.Success -> _setDetailState.update { it.copy(priceHistory = r.data.alsAnsicht(), priceHistoryLoading = false) }
+            is Ergebnis.Error -> _setDetailState.update { it.copy(priceHistoryLoading = false, verlaufFehler = meldungen.meldung(r)) }
+        }
+    }
+
+    private fun ladeKaeufe() = starte(Abschnitt.KAEUFE) {
+        _setDetailState.update { it.copy(acquisitionsLoading = true) }
+        when (val r = haushalt.getAcquisitions(setNumber)) {
+            is Ergebnis.Success -> _setDetailState.update {
+                it.copy(acquisitions = r.data.acquisitions.map { a -> a.alsAnsicht() }, acquisitionTotals = r.data.totals.alsAnsicht(),
+                        acquisitionsLoading = false)
             }
+            is Ergebnis.Error -> _setDetailState.update { it.copy(acquisitionsLoading = false) }
         }
     }
 
-    override fun loadSetPrice(setNumber: String) {
-        viewModelScope.launch {
-            _setDetailState.update { it.copy(setPriceLoading = true) }
-            when (val r = finanzen.getSetPrice(setNumber)) {
-                is Ergebnis.Success -> _setDetailState.update { it.copy(setPrice = r.data.alsAnsicht(), setPriceLoading = false) }
-                is Ergebnis.Error -> _setDetailState.update { it.copy(setPriceLoading = false) }
-            }
-        }
-    }
-
-    override fun loadSetPriceHistory(setNumber: String) {
-        viewModelScope.launch {
-            _setDetailState.update { it.copy(priceHistoryLoading = true) }
-            when (val r = finanzen.getSetPriceHistory(setNumber)) {
-                is Ergebnis.Success -> _setDetailState.update { it.copy(priceHistory = r.data.alsAnsicht(), priceHistoryLoading = false) }
-                is Ergebnis.Error -> _setDetailState.update { it.copy(priceHistoryLoading = false) }
-            }
-        }
-    }
-
-    override fun loadAcquisitions(setNumber: String) {
-        viewModelScope.launch {
-            _setDetailState.update { it.copy(acquisitionsLoading = true) }
-            when (val r = haushalt.getAcquisitions(setNumber)) {
-                is Ergebnis.Success -> _setDetailState.update {
-                    it.copy(acquisitions = r.data.acquisitions.map { a -> a.alsAnsicht() }, acquisitionTotals = r.data.totals.alsAnsicht(),
-                            acquisitionsLoading = false)
-                }
-                is Ergebnis.Error -> _setDetailState.update { it.copy(acquisitionsLoading = false) }
-            }
-        }
-    }
-
-    override fun loadPreisalarme(setNumber: String) {
-        viewModelScope.launch {
-            alarme.aktualisiereAlarme()
-            val liste = alarme.beobachteAlarme(setNumber).first().liste.map { it.alsAnsicht() }
-            _setDetailState.update { it.copy(preisalarme = liste) }
-        }
+    private fun ladePreisalarme() = starte(Abschnitt.ALARME) {
+        alarme.aktualisiereAlarme()
+        val liste = alarme.beobachteAlarme(setNumber).first().liste.map { it.alsAnsicht() }
+        _setDetailState.update { it.copy(preisalarme = liste) }
     }
 
     override fun setzePreisalarm(setNumber: String, richtung: Alarmrichtung, roh: String, zustand: Zustand) =
@@ -246,7 +248,7 @@ class SetDetailViewModel @Inject constructor(
                 is Ergebnis.Success ->
                     if (r.data.success) {
                         meldungen.zeige(meldungen.text(R.string.instr_upload_done))
-                        loadSetDetail(setNumber)
+                        ladeDetail()
                     } else meldungen.zeige(r.data.error ?: meldungen.text(R.string.err_generic))
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
@@ -257,7 +259,7 @@ class SetDetailViewModel @Inject constructor(
         viewModelScope.launch {
             when (val r = dateien.deleteAnleitung(setNumber, instrId)) {
                 is Ergebnis.Success ->
-                    if (r.data.success) loadSetDetail(setNumber)
+                    if (r.data.success) ladeDetail()
                     else meldungen.zeige(r.data.error ?: meldungen.text(R.string.err_generic))
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
@@ -266,8 +268,12 @@ class SetDetailViewModel @Inject constructor(
 
     private fun zuruecksetzen() {
         lagerJob?.cancel()
+        laufend.values.forEach { it.cancel() }
+        laufend.clear()
         _setDetailState.value = SetDetailUiState()
     }
+
+    private enum class Abschnitt { DETAIL, PREIS, VERLAUF, KAEUFE, ALARME }
 
     private companion object {
         const val ARG_SET = "setNumber"

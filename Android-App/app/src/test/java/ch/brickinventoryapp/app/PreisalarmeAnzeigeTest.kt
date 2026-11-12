@@ -45,7 +45,7 @@ import java.util.Locale
  * Zustand steht als Wort da, nicht nur als Farbe — in beiden Sprachen.
  *
  * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   preisalarm-laedt-nicht         LaunchedEffect mit ladeAlarmUebersicht entfernt → rot „die Übersicht holt …“
+ *   preisalarm-laedt-nicht         ladeBeimBeobachten der Übersicht gestrichen → rot „die Übersicht holt …“
  *   preisalarm-loescht-sofort      der Mülleimer löscht ohne Rückfrage → rot „die Übersicht holt …“
  *   preisalarm-zeile-immer-offen   jede Zeile anklickbar → rot „eine Zeile öffnet …“
  *   preisalarm-zustand-gleich      die Plakette sagt immer „Aktiv“ → rot „eine Zeile öffnet …“

@@ -1,0 +1,27 @@
+Gegenprobe: Preis und Preisverlauf verwerfen ihren Fehler still
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.sammlung.SetDetailViewModelTest
+Rot: scheitern Preis und Verlauf, steht der Fehler im Zustand
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt
+@@ -152,8 +152,7 @@
+         _setDetailState.update { it.copy(setPriceLoading = true, preisFehler = null) }
+         when (val r = finanzen.getSetPrice(setNumber)) {
+             is Ergebnis.Success -> _setDetailState.update { it.copy(setPrice = r.data.alsAnsicht(), setPriceLoading = false) }
+-            is Ergebnis.Error -> _setDetailState.update { it.copy(setPriceLoading = false, preisFehler = meldungen.meldung(r),
+-                preisFehlerKlasse = fehlerklasse(r)) }
++            is Ergebnis.Error -> _setDetailState.update { it.copy(setPriceLoading = false) }
+         }
+     }
+ 
+@@ -161,7 +160,7 @@
+         _setDetailState.update { it.copy(priceHistoryLoading = true, verlaufFehler = null) }
+         when (val r = finanzen.getSetPriceHistory(setNumber)) {
+             is Ergebnis.Success -> _setDetailState.update { it.copy(priceHistory = r.data.alsAnsicht(), priceHistoryLoading = false) }
+-            is Ergebnis.Error -> _setDetailState.update { it.copy(priceHistoryLoading = false, verlaufFehler = meldungen.meldung(r)) }
++            is Ergebnis.Error -> _setDetailState.update { it.copy(priceHistoryLoading = false) }
+         }
+     }
+ 

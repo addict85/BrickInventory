@@ -37,10 +37,8 @@ fun GutscheineRoute(
     // Rückmeldung läuft über den Snackbar des ViewModels wie alle anderen Meldungen.
     val kontext = androidx.compose.ui.platform.LocalContext.current
     val etikett = stringResource(R.string.vouchers_title)
-    // Beim Oeffnen DIESER Seite laden und nicht mehr beim Oeffnen der
-    // Einstellungen: Wer die Sprache umstellt, braucht keine Gutscheinliste.
-    LaunchedEffect(Unit) { gvm.ladeGutscheine() }
-    // Der Klartext lebt nur, solange die Seite vorne steht.
+    // Die Liste lädt, sobald diese Seite den Zustand beobachtet (GutscheinViewModel),
+    // nicht beim Öffnen der Einstellungen. Der Klartext lebt nur, solange die Seite vorne steht.
     DisposableEffect(Unit) { onDispose { gvm.verlasseGutscheine() } }
     androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_STOP) { gvm.vergissKlartext() }
     // Nummer und PIN zusammen sind Geld: als Geheimnis markiert, nach einer Minute weg.

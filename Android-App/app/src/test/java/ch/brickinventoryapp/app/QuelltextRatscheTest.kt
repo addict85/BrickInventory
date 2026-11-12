@@ -39,6 +39,8 @@ import ch.brickinventoryapp.testing.Quellen
  *   bereich-oeffentlich        qrWechseltServer ohne internal → rot „die oeffentliche Flaeche der Bereiche …“
  *   erfassung-an-der-activity  ErfassungViewModel wieder per `by viewModels()` in MainActivity
  *                              → rot „die Activity haelt nicht mehr ViewModels …“
+ *   laden-im-bildschirm        SetDetailScreen lädt wieder per LaunchedEffect(setNumber)
+ *                              → rot „Bildschirme stossen das Laden nicht …“
  */
 class QuelltextRatscheTest {
 
@@ -521,5 +523,20 @@ class QuelltextRatscheTest {
         assertTrue("Keine voll qualifizierten Namen gefunden — greift das Muster noch?", haupt + tests > 0)
         ratsche("voll qualifizierte Namen im Hauptcode", HAUPT, haupt)
         ratsche("voll qualifizierte Namen in Tests", TESTS, tests)
+    }
+
+    @Test
+    fun `Bildschirme stossen das Laden nicht per LaunchedEffect an`() {
+        // Ziel 0: Das ViewModel lädt selbst (init, ladeBeimBeobachten); der Bildschirm ruft
+        // höchstens aktualisiere() auf eine Geste hin. Gezählt: LaunchedEffect mit lade…/load…-Aufruf.
+        val LADEND = 17
+        val effekt = Regex("""\bLaunchedEffect\([^)]*\)\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}""")
+        val lader = Regex("""\b(?:lade|load)[A-Z]\w*\s*\(""")
+        val funde = produktivDateien().flatMap { f ->
+            effekt.findAll(code(f.readText())).filter { lader.containsMatchIn(it.groupValues[1]) }.map { f.name }.toList()
+        }
+        assertTrue("Kein LaunchedEffect gefunden — greift das Muster noch?",
+            produktivDateien().any { "LaunchedEffect(" in it.readText() })
+        ratsche("LaunchedEffect, die laden", LADEND, funde.size, funde.joinToString())
     }
 }

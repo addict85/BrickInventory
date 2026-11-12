@@ -233,7 +233,6 @@ class MainActivity : NurLauncherStart() {
                         )
                     } else if (faktorPflicht && angemeldet) {
                         val faktorZustand by startKontoVm.zweiterFaktorState.collectAsStateWithLifecycle()
-                        LaunchedEffect(Unit) { startKontoVm.ladeZweitenFaktor() }
                         ZweiterFaktorPflichtMaske(
                             zustand = faktorZustand,
                             onEinrichten = startKontoVm::richteZweitenFaktorEin,

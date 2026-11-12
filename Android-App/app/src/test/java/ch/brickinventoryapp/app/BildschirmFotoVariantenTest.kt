@@ -300,7 +300,7 @@ class BildschirmFotoVariantenTest {
 
     private fun detailFoto(name: String, design: String = "classic", dunkel: Boolean = false,
                            sprache: String? = DEUTSCH, schrift: Float = 1f) {
-        val vm = welt.setDetail().also { it.ladeAlles() }
+        val vm = welt.setDetail()
         zeige(name, design, dunkel, sprache = sprache, schrift = schrift, bereit = detailFertig(vm),
             zustand = { vm.setDetailState.value }) { Detail(vm) }
         foto(name, design, dunkel)
@@ -349,7 +349,7 @@ class BildschirmFotoVariantenTest {
             "chart":{"values":[{"name":"N","values":[{"x":"2026-08-01","y":1210.0},{"x":"2026-09-01","y":1231.0},{"x":"2026-10-01","y":1249.9}],"firstRealIndex":0}],
                      "x":["2026-08-01","2026-09-01","2026-10-01"]},
             "pnl_prozent":19.2,"purchase_price":1049.0}"""
-        val vm = welt.setDetail().also { it.ladeAlles() }
+        val vm = welt.setDetail()
         zeige(name, geraet = "schmal", schrift = schrift, bereit = detailFertig(vm), zustand = { vm.setDetailState.value }) { Detail(vm) }
         anhalten()
         foto(name, geraet = "schmal")
@@ -559,7 +559,7 @@ class BildschirmFotoVariantenTest {
     }
 
     private fun dialogSetLoeschenFoto(name: String, schrift: Float) {
-        val vm = welt.setDetail().also { it.ladeAlles() }
+        val vm = welt.setDetail()
         zeige(name, design = "noppe", schrift = schrift, bereit = detailFertig(vm), zustand = { vm.setDetailState.value }) { Detail(vm) }
         compose.onNodeWithContentDescription("Millennium Falcon löschen").performClick()
         compose.waitForIdle()

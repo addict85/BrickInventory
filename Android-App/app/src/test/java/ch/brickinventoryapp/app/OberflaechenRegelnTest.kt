@@ -279,7 +279,7 @@ class OberflaechenRegelnTest {
     fun `Set-Detail zeigt Marktwert, Kaufpreis und G&V oben im klassischen Design`() {
         val welt = Beispiele.Welt(KontextTexte())
         try {
-            val vm = welt.setDetail().also { it.ladeAlles() }
+            val vm = welt.setDetail()
             zeige {
                 SetDetailRoute(setNumber = Beispiele.SET, vm = vm, serverUrl = "",
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), onBack = {}, onDelete = {})
