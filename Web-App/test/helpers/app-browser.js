@@ -121,6 +121,8 @@ async function cdp(wsUrl) {
  * @param [opt.bewegung] true: prefers-reduced-motion no-preference (sonst reduce)
  * @param [opt.sprache] Sprache des Kontos (Standard de)
  * @param [opt.locale] Locale des Browsers (Standard de-DE)
+ * @param [opt.alleDesigns] true: alle Design-Stylesheets laden. Die Seite lädt nur das aktive; wer data-theme
+ *        selbst setzt, sähe die übrigen sonst ohne Gestaltung.
  * @param [opt.abfangen] [{ muster, enthaelt, antwort?, verzoegerung? }]: Anfragen,
  *        deren URL auf das CDP-Muster passt und `enthaelt` enthält, bekommen
  *        `antwort` als JSON (ohne `antwort` die echte), um `verzoegerung` ms später
@@ -350,6 +352,10 @@ async function starteApp(t, opt = {}) {
     return !!g && g.children.length > 0 && !g.querySelector('.skelett-raster'); })()`,
     'Start abgeschlossen',
   );
+  if (opt.alleDesigns)
+    await b.auswerten(`(() => { const v = document.getElementById('design-stile');
+      return Promise.all([...v.content.querySelectorAll('link')].map(l => new Promise(r => {
+        l.onload = l.onerror = r; v.before(document.adoptNode(l)); }))).then(() => true); })()`);
   /** Bis keine Anfrage mehr läuft (zweimal hintereinander) und zwei Bilder gezeichnet sind. */
   const ruhig = async (ms = 10_000) => {
     const ende = Date.now() + ms;

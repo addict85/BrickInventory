@@ -32,7 +32,7 @@ const { LAYOUT } = require('./helpers/layout-messung');
 const ESC = { key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 };
 
 test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }, async t => {
-  const app = await starteApp(t, { name: `bedien_${process.pid}`, bestand: musterSammlung });
+  const app = await starteApp(t, { name: `bedien_${process.pid}`, bestand: musterSammlung, alleDesigns: true });
   if (app.grund) {
     t.skip(app.grund);
     return;

@@ -24,6 +24,7 @@ const DESIGNS = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochgl
 test('Scrollbalken: sichtbar und bedienbar', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await starteApp(t, {
     name: `scrollbalken_${process.pid}`,
+    alleDesigns: true,
     // Genug Kacheln, dass die Seite höher ist als das Fenster.
     bestand: async (db, uid) => {
       for (let i = 0; i < 40; i++) await haeltSet(db, uid, `${10000 + i}-1`, 1, { preis: 10 });

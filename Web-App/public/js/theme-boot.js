@@ -12,12 +12,53 @@
    * Wendet ein Design an. Ein leerer Wert heisst „keine Auskunft“ und ändert nichts: Ein Rückfall auf classic
    * liess die Seite beim Anmelden umspringen und schrieb den falschen Wert in den Cache.
    * @param {string | null | undefined} theme
+   * @param {boolean} [warten] erst umschalten, wenn die Stylesheets geladen sind
    */
-  function apply(theme) {
+  function apply(theme, warten) {
     if (!theme || ALLOWED.indexOf(theme) === -1) return null;
     serverDesign = theme;
-    document.documentElement.setAttribute('data-theme', wirksam(theme));
+    stileLaden(
+      theme,
+      () => {
+        if (serverDesign === theme) document.documentElement.setAttribute('data-theme', wirksam(theme));
+      },
+      warten,
+    );
     return theme;
+  }
+
+  /**
+   * Holt die Stylesheets eines Designs aus <template id="design-stile">. Bei einem Wechsel schaltet `weiter` erst
+   * um, wenn sie da sind — sonst stünde die Seite einen Augenblick ohne Gestaltung da.
+   * @param {string} theme @param {() => void} weiter @param {boolean} [warten]
+   */
+  function stileLaden(theme, weiter, warten) {
+    var el = document.getElementById('design-stile');
+    var vorlage = el instanceof HTMLTemplateElement ? el : null;
+    var offen = 0;
+    var erledigt = false;
+    var fertig = () => {
+      if (--offen > 0 || erledigt) return;
+      erledigt = true;
+      weiter();
+    };
+    if (vorlage)
+      vorlage.content.querySelectorAll('link[data-design]').forEach(link => {
+        if ((link.getAttribute('data-design') || '').split(' ').indexOf(theme) === -1) return;
+        if (warten) {
+          offen++;
+          link.addEventListener('load', fertig, { once: true });
+          link.addEventListener('error', fertig, { once: true });
+        }
+        vorlage?.before(document.adoptNode(link));
+      });
+    if (!offen) weiter();
+    // Ohne load-Ereignis (Netz hängt, jsdom) schaltet das Design trotzdem um, nur eben ohne Gestaltung.
+    else
+      setTimeout(() => {
+        offen = 0;
+        fertig();
+      }, 1500);
   }
 
   // ── Dunkel nach System, je Gerät (Profil-Einstellungen) ────────────────────
@@ -71,7 +112,7 @@
    * @param {string} theme
    */
   function applier(theme) {
-    var val = apply(theme);
+    var val = apply(theme, true);
     if (!val) return null;
     try {
       localStorage.setItem(KEY, val);
@@ -79,16 +120,15 @@
     return val;
   }
 
-  // 0) Hat der Server data-theme schon gesetzt (src/konto/indexHtml.ts), ist das
-  //    der autoritative Wert zum Zeitpunkt des Ladens. Dann nur noch den Cache
-  //    nachführen — kein Anwenden, kein Abgleich, also weder ein sichtbarer
-  //    Sprung noch eine zusätzliche Anfrage pro Seitenaufruf.
+  // 0) Hat der Server data-theme gesetzt (src/konto/indexHtml.ts), gilt es: nur den Cache nachführen, kein
+  //    Abgleich — weder ein sichtbarer Sprung noch eine Anfrage mehr je Seitenaufruf.
   var served = document.documentElement.getAttribute('data-theme');
   if (served && ALLOWED.indexOf(served) !== -1) {
     try {
       localStorage.setItem(KEY, served);
     } catch (_) {}
     serverDesign = served;
+    stileLaden(served, () => {});
     neuAnwenden();
     window.__bimApplyTheme = applier;
     return;
@@ -111,7 +151,7 @@
       .then(d => {
         if (!d?.success || !d.theme) return;
         if (d.theme !== cached) {
-          apply(d.theme);
+          apply(d.theme, true);
           try {
             localStorage.setItem(KEY, d.theme);
           } catch (_) {}

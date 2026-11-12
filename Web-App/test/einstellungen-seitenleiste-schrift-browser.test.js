@@ -32,7 +32,7 @@ const MESSEN = `(() => {
 })()`;
 
 test('Einstellungen: Abschnittsliste bei grosser Schrift am Desktop', { concurrency: 1, timeout: 300_000 }, async t => {
-  const app = await starteApp(t, { name: `einstnav_${process.pid}` });
+  const app = await starteApp(t, { name: `einstnav_${process.pid}`, alleDesigns: true });
   if (app.grund) {
     t.skip(app.grund);
     return;

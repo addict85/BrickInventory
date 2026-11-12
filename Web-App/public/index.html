@@ -58,12 +58,14 @@
   <!-- Gemeinsame Farbtokens, ERZEUGT aus shared/design-tokens.json. Zuerst … -->
   <link rel="stylesheet" href="/tokens.css?v=2026.10.27.1901">
   <link rel="stylesheet" href="/styles.css?v=2026.10.27.1901">
-  <!-- App-Designs (Stein-Look etc.) — je Theme eine Datei unter /themes/, greift via [data-theme] -->
-  <link rel="stylesheet" href="/themes/brick.css?v=2026.10.27.1901">
-  <link rel="stylesheet" href="/themes/werkbank.css?v=2026.10.27.1901">
-  <link rel="stylesheet" href="/themes/farbfaecher.css?v=2026.10.27.1901">
-  <link rel="stylesheet" href="/themes/noppe.css?v=2026.10.27.1901">
-  <link rel="stylesheet" href="/themes/hochglanz.css?v=2026.10.27.1901">
+  <!-- Designs: nur das aktive lädt. Der Server holt es aus der Vorlage, theme-boot.js die übrigen beim Wechsel. -->
+  <template id="design-stile">
+  <link rel="stylesheet" href="/themes/brick.css?v=2026.10.27.1901" data-design="brick">
+  <link rel="stylesheet" href="/themes/werkbank.css?v=2026.10.27.1901" data-design="werkbank">
+  <link rel="stylesheet" href="/themes/farbfaecher.css?v=2026.10.27.1901" data-design="farbfaecher">
+  <link rel="stylesheet" href="/themes/noppe.css?v=2026.10.27.1901" data-design="noppe hochglanz">
+  <link rel="stylesheet" href="/themes/hochglanz.css?v=2026.10.27.1901" data-design="hochglanz">
+  </template>
   <!-- Responsive-Regeln, nach beiden Designs geladen: das Layout ist in
        classic und brick identisch, die Regeln gelten daher für beide. -->
   <link rel="stylesheet" href="/mobile.css?v=2026.10.27.1901">

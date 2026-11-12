@@ -75,6 +75,7 @@ const MESSUNG = `(() => {
 test('Dunkelmodus: keine hellen Flächen, lesbarer Text', { concurrency: 1, timeout: 600_000 }, async t => {
   const app = await starteApp(t, {
     name: `dunkel_${process.pid}`,
+    alleDesigns: true,
     bestand: async (db, uid) => {
       await haeltSet(db, uid, '10300-1', 1, { preis: 199 });
       await haeltSet(db, uid, '75192-1', 1, { preis: 650, zustand: 'U' });

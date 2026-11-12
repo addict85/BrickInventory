@@ -163,7 +163,11 @@ const SCHLIESSEN = `(() => {
 /** Registriert den Test für ein Design und ein Gerät. */
 function pruefeOberflaeche(design, geraet) {
   test(`Oberfläche ${design}, ${geraet}: axe und Layout`, { concurrency: 1, timeout: 300_000 }, async t => {
-    const app = await starteApp(t, { name: `ofl_${design}_${geraet}_${process.pid}`, bestand: musterHaushalt });
+    const app = await starteApp(t, {
+      name: `ofl_${design}_${geraet}_${process.pid}`,
+      bestand: musterHaushalt,
+      alleDesigns: true,
+    });
     if (app.grund) {
       t.skip(app.grund);
       return;
@@ -231,6 +235,7 @@ function pruefeGrosseSchrift(modus, breite = 320) {
       name: `ofl_gross_${modus}_${process.pid}`,
       bestand: musterHaushalt,
       sprache: modus === 'schmal' ? 'en' : 'de',
+      alleDesigns: true,
     });
     if (app.grund) {
       t.skip(app.grund);
