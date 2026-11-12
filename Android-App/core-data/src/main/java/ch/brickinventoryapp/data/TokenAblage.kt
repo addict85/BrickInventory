@@ -349,6 +349,16 @@ class TokenAblage @Inject constructor(
         return entfernt
     }
 
+    /**
+     * Ein Tausch bei gesperrtem Gerät legt das Token unter den schwächeren Schlüssel. Bis zum
+     * nächsten Start blieb es dort lesbar für jeden, der das gesperrte Gerät ausliest; darum
+     * gleich nach dem Entsperren (BrickInventoryApp, ACTION_USER_PRESENT). Ohne Altbestand kein Schreiben.
+     */
+    override suspend fun stufeTokenHoch() {
+        if (dataStore.data.first()[AUTH_TOKEN_ENC]?.let(tresor::veraltet) != true) return
+        dataStore.edit { umschluesseln(it) }
+    }
+
     /** Adresse und Name im Klartext älterer Fassungen verschlüsselt ablegen; scheitert es, beim nächsten Start. */
     private fun uebernimmAngaben(prefs: MutablePreferences) {
         for ((geheim, klar) in listOf(SERVER_URL_ENC to SERVER_URL, USERNAME_ENC to USERNAME)) {

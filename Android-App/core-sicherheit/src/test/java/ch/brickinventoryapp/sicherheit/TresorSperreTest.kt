@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sicherheit
 
+import ch.brickinventoryapp.netz.util.Protokoll
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -34,6 +35,9 @@ import javax.crypto.BadPaddingException
  *      Entsperr-Schluessel nicht …“; gegenproben/entsperrtresor-ohne-ausweg.patch
  *   G  EntsperrTresor.oeffne() immer über `nurEntsperrt` → rot „ein Geheimtext ohne
  *      Praefix …“; gegenproben/entsperrtresor-vergisst-altbestand.patch
+ *   H  im Ausweg von EntsperrTresor.verschluessle() die Protokollzeile entfernt → rot „der
+ *      Rueckfall auf den schwaecheren Schluessel wird protokolliert …“;
+ *      gegenproben/entsperrtresor-rueckfall-still.patch
  */
 class TresorSperreTest {
 
@@ -132,6 +136,24 @@ class TresorSperreTest {
         assertEquals(Tresorbefund.Lesbar("neu-getauscht"), tresor.oeffne(geheim))
         gesperrt = false
         assertFalse(tresor.veraltet(tresor.verschluessle("neu-getauscht")))
+    }
+
+    @Test
+    fun `der Rueckfall auf den schwaecheren Schluessel wird protokolliert, nicht still`() {
+        val zeilen = mutableListOf<String>()
+        val vorherZiel = Protokoll.ziel
+        val vorherAktiv = Protokoll.aktiv
+        Protokoll.aktiv = true
+        Protokoll.ziel = { stufe, tag, _, _ -> zeilen += "$stufe $tag" }
+        try {
+            EntsperrTresor(Attrappe("streng"), Attrappe("immer")).verschluessle("a")
+            assertEquals("Der strenge Schlüssel meldet nichts", emptyList<String>(), zeilen)
+            EntsperrTresor(Attrappe("streng") { true }, Attrappe("immer")).verschluessle("a")
+            assertEquals(listOf("WARNUNG Tresor"), zeilen)
+        } finally {
+            Protokoll.ziel = vorherZiel
+            Protokoll.aktiv = vorherAktiv
+        }
     }
 
     @Test

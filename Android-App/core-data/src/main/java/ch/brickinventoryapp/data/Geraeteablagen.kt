@@ -89,6 +89,9 @@ interface Tokenspiegel {
 /** Einmal beim Start: ein Klartext-Token älterer Fassungen entfernen, einen alten Geheimtext umschlüsseln. */
 fun interface Tokenuebernahme {
     suspend fun uebernehmeAltesToken(): Boolean
+
+    /** Nach dem Entsperren: nur das Umschlüsseln, ohne die übrigen Aufräumarbeiten des Starts. */
+    suspend fun stufeTokenHoch() = Unit
 }
 
 /** Was der Preisalarm-Arbeiter liest und schreibt: Schalter und Marke des letzten Abrufs. */
