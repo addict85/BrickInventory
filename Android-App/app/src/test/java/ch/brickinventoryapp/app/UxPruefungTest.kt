@@ -1,9 +1,14 @@
 package ch.brickinventoryapp.app
 
 import android.content.Context
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -14,6 +19,7 @@ import ch.brickinventoryapp.katalog.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.ui.screens.KameraErlaubnisHinweis
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -25,11 +31,12 @@ import org.robolectric.annotation.Config
 import java.util.Locale
 
 /**
- * Befunde der UX-Prüfung, ausgeführt: Wo die App bisher ewig lud, steht jetzt ein
- * Grund und ein Weg weiter.
+ * Befunde der UX-Prüfung, ausgeführt: Wo die App bisher ewig lud oder einen toten
+ * Knopf zeigte, steht jetzt ein Grund und ein Weg weiter.
  *
  * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
  *   katalog-detail-ewig-laden      Detail ohne Fehlerzweig, nur der Kringel → rot „H1 …“
+ *   kamera-hinweis-ohne-weg        Hinweis zeigt trotz Sperre nur „Erlauben“ → rot „M1 …“
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
@@ -71,5 +78,20 @@ class UxPruefungTest {
         compose.onNodeWithText(ctx.getString(R.string.common_retry)).performClick()
         compose.waitForIdle()
         assertEquals("Erneut versuchen lädt dasselbe Set", listOf("10305-1", "10305-1"), geladen)
+    }
+
+    @Test
+    fun `M1 ist die Kamera dauerhaft verweigert, nennt der Hinweis den Weg ueber die Einstellungen`() {
+        var getippt = 0
+        zeige {
+            Box(Modifier.fillMaxSize().background(Color.Black)) {
+                KameraErlaubnisHinweis(verweigert = true) { getippt++ }
+            }
+        }
+        compose.onNodeWithText(ctx.getString(R.string.scanner_camera_gesperrt)).fetchSemanticsNode("Die Erklärung fehlt")
+        compose.onAllNodesWithText(ctx.getString(R.string.scanner_allow)).fetchSemanticsNodes()
+            .let { assertEquals("Der tote Knopf steht noch da", 0, it.size) }
+        compose.onNodeWithText(ctx.getString(R.string.scanner_camera_einstellungen)).performClick()
+        assertEquals(1, getippt)
     }
 }

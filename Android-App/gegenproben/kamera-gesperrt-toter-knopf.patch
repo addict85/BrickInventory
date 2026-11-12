@@ -1,0 +1,17 @@
+Gegenprobe: Der Knopf im Kamera-Hinweis fragt immer das System, auch wenn Android die Frage gesperrt hat
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.KameraErlaubnisTest
+Rot: ist die Frage gesperrt, fuehrt der Knopf in die Einstellungen
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/KameraErlaubnis.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/KameraErlaubnis.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/KameraErlaubnis.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/KameraErlaubnis.kt
+@@ -59,7 +59,7 @@
+     fun anfragen() = frage()
+ 
+     /** Der Knopf im Hinweis: Ist die Frage gesperrt, führt er in die Einstellungen statt ins Leere. */
+-    fun erlauben() = if (dauerhaftVerweigert) einstellungen() else frage()
++    fun erlauben() = frage()
+ }
+ 
+ /**

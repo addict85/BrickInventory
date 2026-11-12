@@ -108,6 +108,8 @@
     <string name="scanner_torch_on">Turn on light</string>
     <string name="scanner_camera_needed">Camera access needed</string>
     <string name="scanner_allow">Allow</string>
+    <string name="scanner_camera_gesperrt">The camera is blocked for this app, so Android no longer asks. Allow it in the app settings under Permissions.</string>
+    <string name="scanner_camera_einstellungen">Allow in settings</string>
     <string name="scanner_close">Close</string>
 
     <!-- ══════════════ Setup screen ══════════════ -->

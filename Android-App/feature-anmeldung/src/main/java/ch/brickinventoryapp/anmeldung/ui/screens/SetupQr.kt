@@ -191,7 +191,7 @@ internal fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> U
                 }
             }
             else -> {
-                KameraErlaubnisHinweis { cameraPermission.anfragen() }
+                KameraErlaubnisHinweis(cameraPermission.dauerhaftVerweigert) { cameraPermission.erlauben() }
             }
         }
         MitTooltip(stringResource(R.string.scanner_close), Modifier.align(Alignment.TopEnd)) {
