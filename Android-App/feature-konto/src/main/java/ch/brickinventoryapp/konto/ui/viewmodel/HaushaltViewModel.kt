@@ -54,10 +54,10 @@ class HaushaltViewModel @Inject constructor(
     val householdState: StateFlow<HouseholdUiState> = _householdState.asStateFlow()
 
     init {
-        ladeBeimBeobachten(_householdState) { loadHouseholdStatus() }
+        ladeBeimBeobachten(_householdState) { ladeHaushalt() }
     }
 
-    fun loadHouseholdStatus() {
+    fun ladeHaushalt() {
         pruefeZweitenFaktor()
         viewModelScope.launch {
             _householdState.update { it.copy(isLoading = true, message = null) }
@@ -139,7 +139,7 @@ class HaushaltViewModel @Inject constructor(
     fun verwerfeGetrenntesKonto(subUserId: Int) {
         viewModelScope.launch {
             when (val r = haushalt.verwerfeGetrenntesKonto(subUserId)) {
-                is Ergebnis.Success -> loadHouseholdStatus()
+                is Ergebnis.Success -> ladeHaushalt()
                 is Ergebnis.Error -> _householdState.update { it.copy(message = meldungen.meldung(r)) }
             }
         }
@@ -147,7 +147,7 @@ class HaushaltViewModel @Inject constructor(
 
     /** Neue Konten im Haushalt: Status, Kontofilter und — beim Lösen — der sichtbare Bestand. */
     private suspend fun kontenGeaendert(bestandGeaendert: Boolean) {
-        loadHouseholdStatus()
+        ladeHaushalt()
         filter.ladeMitglieder()
         if (bestandGeaendert) abgleich.bestand()
     }

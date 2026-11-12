@@ -675,7 +675,7 @@ class BildschirmFotoVariantenTest {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
         val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-            HaushaltRepository(welt.t.api, welt.t.cache), KontoRepository(welt.t.api, welt.t.cache, welt.t.io))).also { it.loadHouseholdStatus() }
+            HaushaltRepository(welt.t.api, welt.t.cache), KontoRepository(welt.t.api, welt.t.cache, welt.t.io))).also { it.ladeHaushalt() }
         zeige("haushalt", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {
             HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
         }
@@ -1266,7 +1266,7 @@ class BildschirmFotoVariantenTest {
             "sub_accounts":[{"id":2,"username":"lena"}],"open_invites":0}"""
         welt.pfade.antworten["/api/v1/settings/household/invite"] = """{"success":true,"code":"K7QF-2M9X","expires_in":86400}"""
         val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-            HaushaltRepository(welt.t.api, welt.t.cache), KontoRepository(welt.t.api, welt.t.cache))).also { it.jetzt = { FESTE_ZEIT }; it.loadHouseholdStatus() }
+            HaushaltRepository(welt.t.api, welt.t.cache), KontoRepository(welt.t.api, welt.t.cache))).also { it.jetzt = { FESTE_ZEIT }; it.ladeHaushalt() }
         zeige("haushalt-code", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {
             HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
         }
