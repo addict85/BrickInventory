@@ -399,7 +399,7 @@ esac
   /** Die Optionen für spawnSync: Arbeitsordner, `gh`-Ersatz zuerst im PATH, die Umgebung des Jobs. */
   const optionen = (env = {}) => ({
     cwd: path.join(ort, 'arbeit'),
-    encoding: 'utf8',
+    encoding: /** @type {const} */ ('utf8'),
     env: {
       ...process.env,
       PATH: `${ort}:${process.env.PATH}`,
