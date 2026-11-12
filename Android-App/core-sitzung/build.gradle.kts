@@ -16,5 +16,7 @@ dependencies {
     // NetworkPolicy: Adresse einer gescheiterten Abmeldung, Klartext-Altbestand.
     implementation(project(":core-netz"))
     implementation(project(":core-ressourcen"))
+    // Eigene Flows (AbgeleiteterZustand); ohne Eintrag löst Gradle eine alte Fassung auf.
+    implementation(libs.kotlinx.coroutines.android)
     // Die Tests der Sitzung laufen in core-zustand: Sie bauen sie mit dem Blickfeld zusammen.
 }
