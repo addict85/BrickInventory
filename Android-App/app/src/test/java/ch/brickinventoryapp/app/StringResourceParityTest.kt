@@ -185,6 +185,8 @@ class StringResourceParityTest {
             "vouchers_balance_done",
             // „Filter“ ist auch im Deutschen das Wort für den Knopf und das Blatt.
             "filter_button", "filter_title",
+            // Zähler „5/24“ unter dem Fingerabdruckfeld: nur Zahlen.
+            "zert_eingabe_zaehler",
         )
 
         val en = texte("values/strings.xml")

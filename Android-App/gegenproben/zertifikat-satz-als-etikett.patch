@@ -3,21 +3,20 @@ Modul: app
 Test: ch.brickinventoryapp.app.ZertifikatDialogTest
 Rot: das Feld traegt ein kurzes Etikett, die Anleitung steht darunter
 
-diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
---- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
-+++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
-@@ -92,12 +92,9 @@
-                         onValueChange = { eingabe = it; falsch = false },
-                         // Kurzes Etikett, die Anleitung darunter: Ein Satz als Etikett wurde
-                         // abgeschnitten und stand beim Tippen über dem Feld.
--                        label = { Text(stringResource(R.string.zert_eingabe_etikett)) },
-+                        label = { Text(stringResource(if (geaendert) R.string.zert_geaendert_eingabe else R.string.zert_unbekannt_eingabe)) },
-                         isError = falsch,
--                        supportingText = {
--                            Text(stringResource(if (falsch) R.string.zert_eingabe_falsch
--                                else if (geaendert) R.string.zert_geaendert_eingabe else R.string.zert_unbekannt_eingabe))
--                        },
-+                        supportingText = if (falsch) { { Text(stringResource(R.string.zert_eingabe_falsch)) } } else null,
-                         textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, autoCorrectEnabled = false),
-                         modifier = Modifier.fillMaxWidth(),
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Fingerabdruckfeld.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Fingerabdruckfeld.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Fingerabdruckfeld.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Fingerabdruckfeld.kt
+@@ -49,11 +49,11 @@
+         },
+         // Kurzes Etikett, die Anleitung darunter: Ein Satz als Etikett wurde
+         // abgeschnitten und stand beim Tippen über dem Feld.
+-        label = { Text(stringResource(R.string.zert_eingabe_etikett)) },
++        label = { Text(hilfe) },
+         isError = fehlerText != null,
+         supportingText = {
+             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+-                Text(fehlerText ?: hilfe, modifier = Modifier.weight(1f))
++                Text(fehlerText.orEmpty(), modifier = Modifier.weight(1f))
+                 Text(stringResource(R.string.zert_eingabe_zaehler, gezaehlt, noetig))
+             }
+         },

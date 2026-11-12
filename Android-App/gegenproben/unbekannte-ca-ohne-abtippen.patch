@@ -10,7 +10,7 @@ diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sich
      override fun bestaetige(pins: PinAblage, eingabe: String?): Boolean {
          val f = _offen.value ?: return false
          if (f.art == ZertifikatUngeklaert.Art.CODE_ABWEICHUNG) return false
--        if (f.art != ZertifikatUngeklaert.Art.ERSTKONTAKT && !bestaetigtFingerabdruck(eingabe, f.fingerabdruck)) return false
+-        if (f.art != ZertifikatUngeklaert.Art.ERSTKONTAKT && !Abschrift.bestaetigt(eingabe, f.fingerabdruck)) return false
          pins.merkePin(f.schluessel, f.fingerabdruck)
          _offen.value = null
          return true

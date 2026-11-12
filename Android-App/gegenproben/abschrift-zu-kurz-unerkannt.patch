@@ -1,0 +1,17 @@
+Gegenprobe: Eine zu kurze Abschrift heisst wieder nur „passt nicht“
+Modul: feature-anmeldung
+Test: ch.brickinventoryapp.anmeldung.ZertifikatPinTest
+Rot: eine Abschrift mit Doppelpunkten ist zu kurz, nicht falsch
+
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+@@ -406,7 +406,7 @@
+             return when {
+                 getippt.isEmpty() -> LEER
+                 getippt.any { it !in "0123456789ABCDEF" } -> PASST_NICHT
+-                getippt.length < FINGERABDRUCK_ABTIPPEN -> ZU_KURZ
++                getippt.length < FINGERABDRUCK_ABTIPPEN -> PASST_NICHT
+                 fingerabdruckLesbar(fp).replace(":", "").endsWith(getippt) -> PASST
+                 else -> PASST_NICHT
+             }

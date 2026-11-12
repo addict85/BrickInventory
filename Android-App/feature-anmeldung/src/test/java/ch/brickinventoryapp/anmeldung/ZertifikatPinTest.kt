@@ -6,7 +6,7 @@ import ch.brickinventoryapp.sicherheit.PinVertrauen
 import ch.brickinventoryapp.sicherheit.WahlVertrauen
 import ch.brickinventoryapp.sicherheit.ZertifikatUngeklaert
 import ch.brickinventoryapp.sicherheit.ZertifikatsFrage
-import ch.brickinventoryapp.sicherheit.bestaetigtFingerabdruck
+import ch.brickinventoryapp.sicherheit.Abschrift
 import ch.brickinventoryapp.sicherheit.fingerabdruckAnfang
 import ch.brickinventoryapp.sicherheit.fingerabdruckLesbar
 import ch.brickinventoryapp.sicherheit.passtZumPin
@@ -110,6 +110,10 @@ import javax.net.ssl.SSLEngine
  *      gegenproben/wurzelfamilie-fragt-neu.patch
  *   Z  ohneHost() wieder `pin in systemWurzeln → system()` → rot „ohne Host gilt ein
  *      oeffentlicher Pin …“; gegenproben/ohne-host-jede-wurzel.patch
+ * Gegenproben zur Abschrift (12.11.2026, kotlinc):
+ *   AA in Abschrift.von() zu kurz wieder PASST_NICHT → rot „eine Abschrift mit
+ *      Doppelpunkten ist zu kurz …“; gegenproben/abschrift-zu-kurz-unerkannt.patch
+ *   (Die Doppelpunkte beim Tippen prüft core-ui, AbschriftformTest.)
  */
 class ZertifikatPinTest {
 
@@ -592,7 +596,24 @@ class ZertifikatPinTest {
         val gezeigt = anfang.uppercase().filter { it in "0123456789ABCDEF" }
         assertEquals(8, gezeigt.length)
         assertFalse(ERNEUERT_WURZEL_HEX.replace(":", "").takeLast(24).contains(gezeigt))
-        assertFalse("Der Anfang allein bestätigt nichts", bestaetigtFingerabdruck(anfang, fp))
+        assertFalse("Der Anfang allein bestätigt nichts", Abschrift.bestaetigt(anfang, fp))
+    }
+
+    /**
+     * Die Webapp zeigt `AB:CD:…`; wer 24 sichtbare Zeichen samt Doppelpunkten abschrieb,
+     * hatte nur 16 Hex und bekam „passt nicht“. Jetzt heisst das „zu kurz“.
+     */
+    @Test
+    fun `eine Abschrift mit Doppelpunkten ist zu kurz, nicht falsch`() {
+        val fp = spkiFingerabdruck(zert(ERNEUERT_WURZEL))
+        val sichtbar24 = ERNEUERT_WURZEL_HEX.takeLast(24)
+        assertEquals(Abschrift.ZU_KURZ, Abschrift.von(sichtbar24, fp))
+        assertEquals(Abschrift.PASST, Abschrift.von(ERNEUERT_WURZEL_HEX.takeLast(35), fp))
+        assertEquals(Abschrift.PASST, Abschrift.von(ERNEUERT_WURZEL_HEX.replace(":", "").takeLast(24).lowercase(), fp))
+        assertEquals(Abschrift.PASST, Abschrift.von(fp, fp))
+        assertEquals(Abschrift.PASST_NICHT, Abschrift.von("0".repeat(24), fp))
+        assertEquals(Abschrift.PASST_NICHT, Abschrift.von("XY".repeat(12), fp))
+        assertEquals(Abschrift.LEER, Abschrift.von(" : ", fp))
     }
 
     @Test

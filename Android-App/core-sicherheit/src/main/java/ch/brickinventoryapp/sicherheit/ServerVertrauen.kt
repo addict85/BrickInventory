@@ -73,7 +73,7 @@ fun istFingerabdruck(text: String?): Boolean =
 /**
  * Was der Dialog vor dem Abtippen zeigt: nur die ersten 8 Hex-Zeichen, zur
  * Orientierung, welche Zeile in der Webapp gemeint ist. Abgetippt werden die
- * letzten 24 ([bestaetigtFingerabdruck]); stünden sie hier, schriebe man sie vom
+ * letzten 24 ([Abschrift.bestaetigt]); stünden sie hier, schriebe man sie vom
  * Bildschirm des Angreifers ab statt aus der zweiten Quelle.
  */
 fun fingerabdruckAnfang(fp: String): String = fingerabdruckLesbar(fp).take(11) + " …"
@@ -175,13 +175,13 @@ internal class ZertifikatsRueckfrage @Inject constructor() : ZertifikatsFrage {
     /**
      * Ja: Ab jetzt gilt genau dieser Schlüssel für diesen Server. Ohne bekannte CA
      * oder bei geändertem Schlüssel nur mit [eingabe] aus einer zweiten Quelle
-     * ([bestaetigtFingerabdruck]): Dort prüft sonst niemand die Kette, und ein Tipp
+     * ([Abschrift.bestaetigt]): Dort prüft sonst niemand die Kette, und ein Tipp
      * allein wäre genau das, was ein Angreifer dazwischen braucht.
      */
     override fun bestaetige(pins: PinAblage, eingabe: String?): Boolean {
         val f = _offen.value ?: return false
         if (f.art == ZertifikatUngeklaert.Art.CODE_ABWEICHUNG) return false
-        if (f.art != ZertifikatUngeklaert.Art.ERSTKONTAKT && !bestaetigtFingerabdruck(eingabe, f.fingerabdruck)) return false
+        if (f.art != ZertifikatUngeklaert.Art.ERSTKONTAKT && !Abschrift.bestaetigt(eingabe, f.fingerabdruck)) return false
         pins.merkePin(f.schluessel, f.fingerabdruck)
         _offen.value = null
         return true
@@ -386,13 +386,32 @@ fun anker(chain: Array<X509Certificate>, vertraut: Array<X509Certificate>): X509
  */
 internal const val FINGERABDRUCK_ABTIPPEN = 24
 
-fun bestaetigtFingerabdruck(eingabe: String?, fp: String): Boolean {
-    val roh = eingabe?.trim().orEmpty()
-    if (roh.isEmpty()) return false
-    if (roh == fp) return true
-    val hex = fingerabdruckLesbar(fp).replace(":", "")
-    val getippt = roh.uppercase().filter { it.isLetterOrDigit() }
-    return getippt.length >= FINGERABDRUCK_ABTIPPEN && getippt.all { it in "0123456789ABCDEF" } && hex.endsWith(getippt)
+/**
+ * Was eine Abschrift taugt. Der Dialog sagt „zu kurz“ anders als „passt nicht“: Die Webapp
+ * zeigt `AB:CD:…`, und wer 24 sichtbare Zeichen samt Doppelpunkten abschrieb, hatte nur 16 Hex.
+ */
+enum class Abschrift {
+    LEER, ZU_KURZ, PASST_NICHT, PASST;
+
+    companion object {
+        /** So viele Hex-Zeichen vom Ende des Fingerabdrucks; Doppelpunkte und Leerzeichen zählen nicht. */
+        const val NOETIG = FINGERABDRUCK_ABTIPPEN
+
+        fun bestaetigt(eingabe: String?, fp: String): Boolean = von(eingabe, fp) == PASST
+
+        fun von(eingabe: String?, fp: String): Abschrift {
+            val roh = eingabe?.trim().orEmpty()
+            if (roh.isNotEmpty() && roh == fp) return PASST
+            val getippt = roh.uppercase().filter { it.isLetterOrDigit() }
+            return when {
+                getippt.isEmpty() -> LEER
+                getippt.any { it !in "0123456789ABCDEF" } -> PASST_NICHT
+                getippt.length < FINGERABDRUCK_ABTIPPEN -> ZU_KURZ
+                fingerabdruckLesbar(fp).replace(":", "").endsWith(getippt) -> PASST
+                else -> PASST_NICHT
+            }
+        }
+    }
 }
 
 /** Wie eine Kette gilt: allein mit den System-CAs, nur über eine Nutzer-CA oder gar nicht; dazu ihr Anker. */

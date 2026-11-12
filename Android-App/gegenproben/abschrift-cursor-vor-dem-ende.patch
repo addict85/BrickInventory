@@ -1,0 +1,17 @@
+Gegenprobe: Der Cursor zählt die eingefügten Doppelpunkte nicht und landet vor dem Ende
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.AbschriftformTest
+Rot: die Abschrift bekommt Doppelpunkte
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Abschriftform.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Abschriftform.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Abschriftform.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Abschriftform.kt
+@@ -12,7 +12,7 @@
+     if (text.any { it.uppercaseChar() !in HEX && it != ':' && !it.isWhitespace() }) return text to cursor
+     val davor = text.take(cursor.coerceIn(0, text.length)).count { it.uppercaseChar() in HEX }
+     val gepaart = text.uppercase().filter { it in HEX }.chunked(2).joinToString(":")
+-    return gepaart to if (davor == 0) 0 else davor + (davor - 1) / 2
++    return gepaart to davor
+ }
+ 
+ private const val HEX = "0123456789ABCDEF"

@@ -12,7 +12,7 @@ import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeUiState
 import ch.brickinventoryapp.sitzung.qrFehler
 import ch.brickinventoryapp.netz.util.NetworkPolicy
-import ch.brickinventoryapp.sicherheit.bestaetigtFingerabdruck
+import ch.brickinventoryapp.sicherheit.Abschrift
 import ch.brickinventoryapp.sicherheit.pinSchluessel
 import ch.brickinventoryapp.sicherheit.SystemWurzeln
 import ch.brickinventoryapp.sicherheit.ZertifikatsFrage
@@ -309,7 +309,7 @@ class AnmeldungViewModel @Inject constructor(
             else -> return R.string.setup_invalid_qr
         }
         if (fingerabdruck == null || pinSchluessel(neu) == null || !mussAbtippen(neu, fingerabdruck) ||
-            bestaetigtFingerabdruck(eingabe, fingerabdruck)) return null
+            Abschrift.bestaetigt(eingabe, fingerabdruck)) return null
         return if (bisherigerPin(neu, fingerabdruck) != null) R.string.setup_qr_pin_wechsel_abgelehnt
             else R.string.setup_qr_pin_abtippen_abgelehnt
     }
