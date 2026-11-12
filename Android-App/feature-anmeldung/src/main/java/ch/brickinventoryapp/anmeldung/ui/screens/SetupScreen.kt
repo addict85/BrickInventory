@@ -31,6 +31,7 @@ import ch.brickinventoryapp.anmeldung.ui.QrLoginPayload
 import ch.brickinventoryapp.anmeldung.ui.parseQrPayload
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.ausserhalbDerSystemleisten
+import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ui.components.LocalAppFassung
 import ch.brickinventoryapp.ui.components.MarkenKopf
 import ch.brickinventoryapp.ui.components.mitSchrift
@@ -54,10 +55,13 @@ fun SetupScreen(
 ) {
     var url          by rememberSaveable { mutableStateOf(currentUrl) }
     var showScanner  by rememberSaveable { mutableStateOf(false) }
-    var scanError    by remember { mutableStateOf<String?>(null) }
+    // Saveable: Nach einer Drehung stünde der Scan sonst kommentarlos wieder bei null.
+    var scanUngueltig by rememberSaveable { mutableStateOf(false) }
     // Ein QR-Code kann von jedem stammen: Die Adresse wird erst nach einem Ja übernommen.
+    // Nicht saveable: Der Code trägt ein Anmeldetoken, und gesicherter Zustand landet bei
+    // Prozesstod auf der Platte (wie Passwort und Code in LoginScreen). Nach einer
+    // Drehung scannt man ihn noch einmal.
     var qrVorschlag  by remember { mutableStateOf<QrLoginPayload?>(null) }
-    val invalidQrMsg = stringResource(R.string.setup_invalid_qr)
     val keyboard     = LocalSoftwareKeyboardController.current
     val altbestand   = NetworkPolicy.klartextAltbestand(currentUrl, entwicklung)
     val fehler       = if (url.isBlank()) null else NetworkPolicy.adressfehler(url, entwicklung)
@@ -77,7 +81,7 @@ fun SetupScreen(
                 if (payload != null) {
                     qrVorschlag = payload
                 } else {
-                    scanError = invalidQrMsg
+                    scanUngueltig = true
                 }
             },
             onDismiss = { showScanner = false }
@@ -149,7 +153,7 @@ fun SetupScreen(
         // deshalb gefüllt, bis eine Adresse von Hand dasteht: Dann ist „Weiter“ der Weg.
         Hauptknopf(
             haupt = !adresseBereit,
-            onClick = { scanError = null; showScanner = true },
+            onClick = { scanUngueltig = false; showScanner = true },
             modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
         ) {
             Icon(Icons.Default.QrCodeScanner, null, Modifier.size(mitSchrift(20.dp)))
@@ -157,9 +161,9 @@ fun SetupScreen(
             Text(stringResource(R.string.setup_scan_qr), fontWeight = FontWeight.SemiBold)
         }
 
-        if (scanError != null) {
+        if (scanUngueltig) {
             Spacer(Modifier.height(Abstaende.klein))
-            Text(scanError!!, color = MaterialTheme.colorScheme.error,
+            Text(stringResource(R.string.setup_invalid_qr), Modifier.ansagen(), color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall)
         }
 
