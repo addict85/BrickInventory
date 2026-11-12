@@ -24,21 +24,21 @@ import org.junit.Test
  */
 class UpdatePruefungTest {
 
-    private val basis = "https://github.com/addict85/BrickInventory/releases/download/apk-neuste"
+    private val basis = "https://github.com/addict85/BrickInventory/releases/latest/download"
 
     @Test
     fun `nur Adressen in der Release-Ablage`() {
         assertTrue(liegtUnter("$basis/BrickInventory.apk", basis))
         for (fremd in listOf(
             "$basis.angreifer.tld/x.apk",
-            "https://angreifer.tld/addict85/BrickInventory/releases/download/apk-neuste/BrickInventory.apk",
-            "http://github.com/addict85/BrickInventory/releases/download/apk-neuste/BrickInventory.apk",
+            "https://angreifer.tld/addict85/BrickInventory/releases/latest/download/BrickInventory.apk",
+            "http://github.com/addict85/BrickInventory/releases/latest/download/BrickInventory.apk",
             "$basis/../apk-alt/BrickInventory.apk",
             "$basis/unter/BrickInventory.apk",
             "$basis/version.json",
             "$basis/.apk",
-            "https://nutzer@github.com/addict85/BrickInventory/releases/download/apk-neuste/BrickInventory.apk",
-            "https://github.com:8443/addict85/BrickInventory/releases/download/apk-neuste/BrickInventory.apk",
+            "https://nutzer@github.com/addict85/BrickInventory/releases/latest/download/BrickInventory.apk",
+            "https://github.com:8443/addict85/BrickInventory/releases/latest/download/BrickInventory.apk",
             "$basis/BrickInventory.apk?x=1",
             "$basis/BrickInventory.apk#x",
             "kein url",

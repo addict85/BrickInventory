@@ -495,16 +495,19 @@ jobs:
         run: |
           set -euo pipefail
           V_CODE=$(jq -r '.elements[0].versionCode' app/build/outputs/apk/release/output-metadata.json)
-          ALT=-
-          # Verglichen wird mit der signierten Beschreibung; version.json nur, solange
-          # apk-neuste noch keine trägt (sie fällt nach dem Stichtag weg).
-          if gh release view apk-neuste --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            ALT="$RUNNER_TEMP/version-alt.json"
-            if gh release download apk-neuste --repo "$GITHUB_REPOSITORY" -p version-signiert.json -O "$RUNNER_TEMP/alt-signiert.json"; then
-              jq -r .daten "$RUNNER_TEMP/alt-signiert.json" | base64 -d > "$ALT"
-            else
-              gh release download apk-neuste --repo "$GITHUB_REPOSITORY" -p version.json -O "$ALT"
-            fi
+          # Verglichen wird mit der Beschreibung der als „Latest“ markierten Release.
+          # Übergang: Die Fassungen bis android-v2026.11.12.1 tragen keine; dann gilt
+          # der eingefrorene Stand von apk-neuste.
+          if ! NEUSTE=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name) || [ -z "$NEUSTE" ]; then
+            echo "::error::Die als „Latest“ markierte Release liess sich nicht lesen. Nichts wird veröffentlicht."
+            exit 1
+          fi
+          ALT="$RUNNER_TEMP/version-alt.json"
+          if gh release download "$NEUSTE" --repo "$GITHUB_REPOSITORY" -p version-signiert.json -O "$RUNNER_TEMP/alt.json" --clobber ||
+             gh release download apk-neuste --repo "$GITHUB_REPOSITORY" -p version-signiert.json -O "$RUNNER_TEMP/alt.json" --clobber; then
+            jq -r .daten "$RUNNER_TEMP/alt.json" | base64 -d > "$ALT"
+          elif ! gh release download apk-neuste --repo "$GITHUB_REPOSITORY" -p version.json -O "$ALT" --clobber; then
+            ALT=-
           fi
           if ! python3 tools/release-pruefen.py fassung "$ALT" "$V_CODE" "$COMMIT"; then
             echo "::error::versionCode $V_CODE liegt nicht über dem veröffentlichten APK. Nichts wird veröffentlicht."

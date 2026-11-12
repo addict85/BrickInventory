@@ -11,7 +11,7 @@ import java.util.Base64
 /**
  * Die Prüfungen vor dem Veröffentlichen (tools/release-pruefen.py),
  * ausgeführt gegen Ausgaben im Format von `apksigner verify --print-certs` und
- * gegen version.json-Dateien wie die des Release `apk-neuste`.
+ * gegen Beschreibungen wie die in version-signiert.json einer Release.
  *
  * Gegenproben:
  *   A  in zertifikat() `fremd = []` → rot „ein fremdes Zertifikat …“
@@ -132,8 +132,8 @@ class ReleasePruefenTest {
         assertEquals(0, pruefe("beschreibung", daten(), apk.path, meta, "bbb", ablage))
         assertEquals("Ein anderes APK", 1, pruefe("beschreibung", daten(), anderes.path, meta, "bbb", ablage))
         assertEquals("Eine falsche Prüfsumme", 1, pruefe("beschreibung", daten(pruefsumme = "0".repeat(64)), apk.path, meta, "bbb", ablage))
-        assertEquals("Der veränderliche Anhang statt des Fassungsanhangs", 1,
-            pruefe("beschreibung", daten(url = "https://github.com/addict85/BrickInventory/releases/download/apk-neuste/BrickInventory.apk"),
+        assertEquals("Der feste Link statt des Fassungsanhangs", 1,
+            pruefe("beschreibung", daten(url = "https://github.com/addict85/BrickInventory/releases/latest/download/BrickInventory.apk"),
                 apk.path, meta, "bbb", ablage))
         assertEquals("Eine andere Fassung", 1, pruefe("beschreibung", daten(code = 200001444), apk.path, meta, "bbb", ablage))
         assertEquals("Ein anderer Commit", 1, pruefe("beschreibung", daten(), apk.path, meta, "ccc", ablage))

@@ -169,13 +169,16 @@ class ApkNameTest {
                 "heraus. Als Release-Anhang wird dieselbe Datei roh ausgeliefert."
         }
 
-        val roh = alle.filter { it.contains("gh release upload") && it.contains(ziel) }
+        // Releases sind unveränderlich: Die Anhänge kommen mit `gh release create`, ein
+        // späteres `gh release upload` scheitert mit HTTP 422. Gezählt werden beide.
+        // Gegenprobe: ein zweiter Schritt mit `gh release upload … BrickInventory.apk` → rot „… 2-mal …“.
+        val roh = alle.filter { Regex("""gh release (create|upload)""").containsMatchIn(it) && it.contains(ziel) }
         assert(roh.size == 1) {
             "Der Schritt, der $ziel als Release-Anhang bereitstellt, steht " +
                 "${roh.size}-mal im Workflow. Ohne ihn gibt es keinen direkten " +
                 "Download; zweimal waere dieselbe Regel an zwei Stellen."
         }
-        // Ein Pull-Request darf die Datei hinter dem stabilen Link NICHT ersetzen —
+        // Ein Pull-Request darf keine Release mit der Datei hinter dem festen Link anlegen —
         // sonst zeigt er auf einen ungeprueften Zweig. Hochgeladen wird nur aus
         // android-release.yml, und das startet nie aus einem Pull-Request.
         val release = Quellen.workflow("android-release.yml")

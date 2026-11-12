@@ -4,15 +4,19 @@
  * Knopf in jsdom (echtes Bündel), Workflow und App als Struktur.
  *
  * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
- *   a) Etikett im Knopf auf `apk-alt` geändert   → rot: Schritt 2
  *   b) Knopf aus index.html entfernt             → rot: Schritt 1 und 2
  *   c) Knopf hinter den QR-Code verschoben       → rot: Schritt 1 („hinter dem QR-Code“)
+ * Gegenproben (12.11.2026 gemessen, je einzeln, zurückgenommen):
+ *   d) Knopf wieder auf `releases/download/apk-neuste/…`        → rot: Schritt 2
+ *   e) `"$APK"` aus `gh release create` in android-release.yml  → rot: Schritt 2
+ *   f) LINK in android-release.yml wieder auf apk-neuste        → rot: Schritt 2
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 const { oeffneOberflaeche, sicht } = require('./helpers/oberflaeche');
@@ -54,17 +58,23 @@ test('1. der Knopf steht in der Sicht „App“, vor dem QR-Code, ohne fremdes M
 
 test('2. dieselbe Adresse wie im Workflow und in der App', async () => {
   const adresse = (await knopf()).href;
-  // ── Aus dem Workflow: Etikett und Dateiname ──────────────────────────────
+  // ── Aus dem Workflow: fester Link und der Name, unter dem das APK angelegt wird ──
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android-release.yml'), 'utf8');
-  const etikett = yml.match(/^\s*ETIKETT=(\S+)/m)?.[1];
-  assert.ok(etikett, 'Im Workflow ist kein ETIKETT mehr zu finden — Muster veraltet?');
+  const link = yml.match(/^\s*LINK="https:\/\/github\.com\/\$GITHUB_REPOSITORY\/(\S+)"/m)?.[1];
+  assert.ok(link, 'Im Workflow ist kein LINK mehr zu finden — Muster veraltet?');
   const apkName = yml.match(/^\s*APK=.*\/([^/\s]+\.apk)/m)?.[1];
   assert.ok(apkName, 'Im Workflow ist kein APK-Dateiname mehr zu finden — Muster veraltet?');
+  assert.match(yml, /gh release create "\$QUELLE" [^\n]*"\$APK"/, 'Die Release wird ohne $APK angelegt.');
 
+  assert.equal(
+    adresse,
+    `https://github.com/addict85/BrickInventory/${link}`,
+    'Knopf und fester Link des Workflows zeigen auf verschiedene Orte.',
+  );
   assert.ok(
-    adresse.endsWith(`/${etikett}/${apkName}`),
-    `Der Knopf zeigt auf "${adresse}", der Workflow legt das APK aber unter ` +
-      `"${etikett}/${apkName}" ab. Ein Klick endete auf der 404-Seite von GitHub.`,
+    adresse.endsWith(`/releases/latest/download/${apkName}`),
+    `Der Knopf zeigt auf "${adresse}", die Release trägt das APK aber als "${apkName}". ` +
+      'Ein Klick endete auf der 404-Seite von GitHub.',
   );
 
   // ── Aus der App: dieselbe Ablage, aus der sie sich selbst aktualisiert ────
@@ -122,7 +132,7 @@ const schrittIn = (job, name) => {
   return ende < 0 ? rest : rest.slice(0, ende);
 };
 
-// Ein signiertes APK in apk-neuste ist ein Update für jede installierte App. Signiert
+// Ein signiertes APK in der neusten Release ist ein Update für jede installierte App. Signiert
 // wird nur aus android-release.yml in der Fassung von main; das Etikett liefert Daten.
 // Gegenproben (11.11.2026 gemessen, je einzeln): in android-release.yml ein `push:`-Auslöser
 // → rot „signiert wird nur aus main“; „Etikett liegt auf main“ prüft `ahead` statt `behind`
@@ -325,4 +335,153 @@ test('Prüfsummen kommen als Pull-Request, Bildschirmfotos nur als PNG', () => {
   const bilder = job('bildschirmfotos-einchecken');
   assert.match(bilder, /89504e470d0a1a0a/, 'eingecheckt wird nur PNG');
   assert.match(bilder, /git add Android-App\/app\/src\/test\/bildschirmfotos\/\*\.png/);
+});
+
+/** Der run-Block eines Schritts, ohne den Einzug des YAML. */
+function runVon(yml, name) {
+  const z = yml.split('\n');
+  const i = z.findIndex(l => l.trim() === `- name: ${name}`);
+  assert.ok(i >= 0, `Schritt „${name}“ nicht gefunden`);
+  const r = z.findIndex((l, j) => j > i && /^\s+run: \|\s*$/.test(l));
+  const tief = z[r + 1]?.match(/^\s*/)?.[0].length ?? 0;
+  const ende = z.findIndex((l, j) => j > r && l.trim() && (l.match(/^\s*/)?.[0].length ?? 0) < tief);
+  return z
+    .slice(r + 1, ende < 0 ? undefined : ende)
+    .map(l => l.slice(tief))
+    .join('\n');
+}
+
+/**
+ * Ein `gh`-Ersatz mit Releases als Ordnern (draussen/<etikett>/<anhang>): `release create`
+ * legt an, `--latest` setzt LATEST; KAPPEN kürzt einen Anhang wie ein abgebrochener Upload.
+ */
+function releaseOrt(t) {
+  const ort = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'release-'));
+  t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
+  fs.writeFileSync(
+    path.join(ort, 'gh'),
+    `#!/bin/bash
+D="$GH_ERSATZ"; echo "$*" >> "$D/gh.log"
+case "$1 $2" in
+  "api repos/o/r/releases/latest") [ -s "$D/LATEST" ] && cat "$D/LATEST" || exit 1 ;;
+  "release view")
+    [ -d "$D/draussen/$3" ] || exit 1
+    N=$(printf '%s' "$*" | sed -n 's/.*select(.name=="\\([^"]*\\)").*/\\1/p')
+    if [ -n "$N" ] && [ -f "$D/draussen/$3/$N" ]; then stat -c%s "$D/draussen/$3/$N"; fi ;;
+  "release download")
+    E=$3; shift 3
+    while [ $# -gt 0 ]; do case $1 in -p) P=$2; shift 2 ;; -O) O=$2; shift 2 ;; --repo) shift 2 ;; *) shift ;; esac; done
+    [ -f "$D/draussen/$E/$P" ] && cp "$D/draussen/$E/$P" "$O" ;;
+  "release create")
+    E=$3; shift 3; mkdir -p "$D/draussen/$E"
+    while [ $# -gt 0 ]; do case $1 in --title|--notes) shift 2 ;; --*) echo "$1" >> "$D/flaggen"; shift ;; *) cp "$1" "$D/draussen/$E/"; shift ;; esac; done
+    if [ -n "$KAPPEN" ]; then truncate -s 3 "$D/draussen/$E/$KAPPEN"; fi
+    if grep -qx -- --latest "$D/flaggen"; then echo "$E" > "$D/LATEST"; fi ;;
+  *) echo "unbekannt: $*" >&2; exit 9 ;;
+esac
+`,
+    { mode: 0o755 },
+  );
+  const schreibe = (rel, inhalt) => {
+    fs.mkdirSync(path.dirname(path.join(ort, rel)), { recursive: true });
+    fs.writeFileSync(path.join(ort, rel), inhalt);
+  };
+  const beschreibung = (code, commit) =>
+    JSON.stringify({ daten: Buffer.from(JSON.stringify({ versionCode: code, commit })).toString('base64') });
+  schreibe('arbeit/tools/release-zertifikat.sha256', 'f'.repeat(64) + '\n');
+  schreibe('arbeit/app/build/outputs/apk/release/BrickInventory.apk', 'neues-apk');
+  schreibe(
+    'arbeit/app/build/outputs/apk/release/output-metadata.json',
+    JSON.stringify({ elements: [{ versionCode: 6, versionName: '1.6' }] }),
+  );
+  schreibe('arbeit/app/build/outputs/version-signiert.json', beschreibung(6, 'c'.repeat(40)));
+  fs.writeFileSync(path.join(ort, 'LATEST'), 'android-v1\n');
+  /** Die Optionen für spawnSync: Arbeitsordner, `gh`-Ersatz zuerst im PATH, die Umgebung des Jobs. */
+  const optionen = (env = {}) => ({
+    cwd: path.join(ort, 'arbeit'),
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      PATH: `${ort}:${process.env.PATH}`,
+      GH_ERSATZ: ort,
+      GITHUB_REPOSITORY: 'o/r',
+      RUNNER_TEMP: fs.mkdtempSync(path.join(ort, 'tmp-')),
+      GITHUB_STEP_SUMMARY: path.join(ort, 'zusammenfassung.md'),
+      QUELLE: 'android-v2',
+      COMMIT: 'c'.repeat(40),
+      ...env,
+    },
+  });
+  const lies = rel => (fs.existsSync(path.join(ort, rel)) ? fs.readFileSync(path.join(ort, rel), 'utf8') : '');
+  return { ort, schreibe, beschreibung, optionen, lies };
+}
+
+// Releases sind unveränderlich; der feste Link ist /releases/latest/download/.
+// Gegenproben (12.11.2026 gemessen, je einzeln): `--latest` → `--latest=false` → rot „die neue
+// Fassung wird Latest“; den Rückfall auf apk-neuste gestrichen → rot „Übergang: …“; die
+// Rückfrage der Grösse gestrichen → rot „ein halber Anhang …“; `cmp -s` durch `true` ersetzt
+// → rot „ein Wiederlauf mit anderem APK …“.
+test('die Fassungs-Release trägt alle Anhänge, wird Latest und folgt auf die veröffentlichte Fassung', t => {
+  const skript = runVon(lies('android-release.yml'), 'BrickInventory.apk als Release bereitstellen');
+  const lauf = (o, env) => spawnSync('bash', ['-e', '-c', skript], o.optionen(env));
+  const neu = releaseOrt(t);
+  neu.schreibe('draussen/android-v1/version-signiert.json', neu.beschreibung(5, 'b'.repeat(40)));
+  const r = lauf(neu);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.deepEqual(fs.readdirSync(path.join(neu.ort, 'draussen', 'android-v2')).sort(), [
+    'BrickInventory-6.apk',
+    'BrickInventory.apk',
+    'version-signiert.json',
+  ]);
+  assert.equal(neu.lies('draussen/android-v2/BrickInventory.apk'), 'neues-apk');
+  assert.equal(neu.lies('LATEST').trim(), 'android-v2', 'die neue Fassung wird Latest');
+  assert.doesNotMatch(neu.lies('gh.log'), /release (upload|edit|delete)|create apk-neuste/);
+  assert.match(
+    neu.lies('zusammenfassung.md'),
+    /https:\/\/github\.com\/o\/r\/releases\/latest\/download\/BrickInventory\.apk/,
+  );
+
+  const zurueck = releaseOrt(t);
+  zurueck.schreibe('draussen/android-v1/version-signiert.json', zurueck.beschreibung(7, 'b'.repeat(40)));
+  assert.notEqual(lauf(zurueck).status, 0, 'ein älterer Stand wird veröffentlicht');
+  assert.doesNotMatch(zurueck.lies('gh.log'), /release create/);
+
+  const uebergang = releaseOrt(t);
+  uebergang.schreibe('draussen/android-v1/BrickInventory-5.apk', 'alt');
+  uebergang.schreibe('draussen/apk-neuste/version.json', JSON.stringify({ versionCode: 7, commit: 'b' }));
+  assert.notEqual(lauf(uebergang).status, 0, 'Übergang: ohne Beschreibung in Latest gilt apk-neuste');
+
+  const halb = releaseOrt(t);
+  halb.schreibe('draussen/android-v1/version-signiert.json', halb.beschreibung(5, 'b'.repeat(40)));
+  assert.notEqual(lauf(halb, { KAPPEN: 'BrickInventory.apk' }).status, 0, 'ein halber Anhang gilt');
+
+  const wieder = releaseOrt(t);
+  fs.writeFileSync(path.join(wieder.ort, 'LATEST'), 'android-v2\n');
+  wieder.schreibe('draussen/android-v2/BrickInventory-6.apk', 'neues-apk');
+  wieder.schreibe('draussen/android-v2/BrickInventory.apk', 'neues-apk');
+  wieder.schreibe('draussen/android-v2/version-signiert.json', wieder.beschreibung(6, 'c'.repeat(40)));
+  const w = lauf(wieder);
+  assert.equal(w.status, 0, 'ein Wiederlauf auf demselben Stand ' + w.stdout + w.stderr);
+  assert.doesNotMatch(wieder.lies('gh.log'), /release create/);
+  wieder.schreibe('draussen/android-v2/BrickInventory.apk', 'neues-xyz');
+  assert.notEqual(lauf(wieder).status, 0, 'ein Wiederlauf mit anderem APK geht durch');
+});
+
+// Gegenproben (12.11.2026 gemessen, je einzeln): `releases/latest` durch apk-neuste ersetzt
+// → rot „verglichen wird mit Latest“; den Rückfall auf apk-neuste gestrichen → rot „Übergang: …“.
+test('der Signierweg vergleicht den versionCode mit der Latest-Release, übergangsweise mit apk-neuste', t => {
+  const skript = runVon(lies('android-signieren.yml'), 'versionCode über dem veröffentlichten');
+  const werkzeug = fs.readFileSync(path.join(ROOT, '..', 'Android-App', 'tools', 'release-pruefen.py'), 'utf8');
+  const ort = (latest, neuste) => {
+    const o = releaseOrt(t);
+    o.schreibe('arbeit/tools/release-pruefen.py', werkzeug);
+    if (latest) o.schreibe('draussen/android-v1/version-signiert.json', o.beschreibung(latest, 'b'.repeat(40)));
+    else o.schreibe('draussen/android-v1/BrickInventory-5.apk', 'alt');
+    o.schreibe('draussen/apk-neuste/version.json', JSON.stringify({ versionCode: neuste, commit: 'b' }));
+    return spawnSync('bash', ['-e', '-c', skript], o.optionen()).status;
+  };
+  assert.equal(ort(5, 9), 0, 'verglichen wird mit Latest, nicht mit apk-neuste');
+  assert.notEqual(ort(7, 1), 0, 'verglichen wird mit Latest');
+  assert.notEqual(ort(null, 7), 0, 'Übergang: ohne Beschreibung in Latest gilt apk-neuste');
+  assert.equal(ort(null, 5), 0, 'Übergang: eine neuere Fassung als apk-neuste geht durch');
 });

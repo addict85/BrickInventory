@@ -187,13 +187,18 @@ cd Android-App
 
 Die neuste fertige APK liegt hier — **ein Klick, kein Zip, kein GitHub-Konto**:
 
-**<https://github.com/addict85/BrickInventory/releases/download/apk-neuste/BrickInventory.apk>**
+**<https://github.com/addict85/BrickInventory/releases/latest/download/BrickInventory.apk>**
 
-Der Link bleibt über alle Builds derselbe; der
-[Android-Workflow](https://github.com/addict85/BrickInventory/actions/workflows/android.yml)
-ersetzt nur die Datei dahinter. Signiert und veröffentlicht wird nur ein Build
-von `main` mit den vier Keystore-Secrets; andere Zweige ergeben ein
+Der Link bleibt über alle Builds derselbe: GitHub leitet ihn auf die als
+„Latest“ markierte Release um, und jedes Etikett `android-v…` legt eine neue,
+unveränderliche Release mit dem APK an
+([Android-Release](https://github.com/addict85/BrickInventory/actions/workflows/android-release.yml)).
+Signiert und veröffentlicht wird nur ein Etikett auf `main`; andere Zweige ergeben ein
 unsigniertes APK, das nur als Artefakt des Laufs liegt. Siehe [`Android-App/README.md`](Android-App/README.md).
+
+Der frühere Link `…/releases/download/apk-neuste/BrickInventory.apk` ist eingefroren
+(Stand 2.11.2026). Eine App, die vor dieser Umstellung installiert wurde, findet
+das Update darum nicht selbst: einmal von Hand über den Link oben installieren.
 
 ---
 
