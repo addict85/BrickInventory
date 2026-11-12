@@ -42,8 +42,9 @@
     <string name="login_username">Username</string>
     <string name="login_password">Password</string>
     <string name="login_button">Sign in</string>
-    <string name="login_missing_credentials">Enter user name and password to sign in.</string>
-    <string name="login_missing_code">Enter the code from your authenticator app to sign in.</string>
+    <string name="login_username_fehlt">Enter your user name</string>
+    <string name="login_password_fehlt">Enter your password</string>
+    <string name="login_code_fehlt">Enter the code from your authenticator app</string>
     <string name="login_code">Code from your authenticator app</string>
     <string name="login_code_hint">Or one of your recovery codes</string>
     <string name="login_passkey">Sign in with a passkey</string>
@@ -118,9 +119,9 @@
     <string name="setup_scan_qr">Scan QR code</string>
     <string name="setup_or_manual">or manually</string>
     <string name="setup_server_url">Server address</string>
-    <string name="setup_url_label">Server address of the BrickInventory Manager web app</string>
+    <string name="setup_url_label">Address</string>
     <string name="setup_url_placeholder">https://brick.fritz.box</string>
-    <string name="setup_url_supporting">e.g. brick.fritz.box or brick.example.com – https:// may be omitted</string>
+    <string name="setup_url_supporting">The address of the BrickInventory Manager web app, e.g. brick.fritz.box or brick.example.com – https:// may be omitted</string>
     <string name="api_app_zu_alt">This app is too old for the server. Please update the app (Settings → Update).</string>
     <string name="api_server_zu_alt">The server is older than this app. Some functions may be missing — please update the server.</string>
     <string name="setup_continue">Continue</string>
@@ -1145,6 +1146,7 @@
     <string name="zf_share_title">Recovery codes</string>
     <string name="passwort_aendern_fehlt">Enter the current password, the new one and its repetition, then change it.</string>
     <string name="erfassen_nummer_fehlt">Enter a set number first.</string>
+    <string name="gallery_quantity_hint">Number of identical sets</string>
     <string name="erfassen_menge_ungueltig">Enter a whole quantity of 1 or more.</string>
     <string name="erfassen_preis_ungueltig">Enter an amount such as 12.50 or 1,299.00.</string>
     <string name="erfassen_nummer_ungueltig" tools:ignore="TypographyDashes">That is not a set number. Expected e.g. 10294 or 10294-1.</string>

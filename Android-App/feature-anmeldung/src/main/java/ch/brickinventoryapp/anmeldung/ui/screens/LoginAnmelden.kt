@@ -53,10 +53,23 @@ internal fun AnmeldeFelder(
     onPasskeyStattCode: ((String, String) -> Unit)?,
 ) {
     AnmeldeTitel(stringResource(R.string.login_title))
+    // Der Knopf bleibt tippbar; ein Tipp mit leeren Feldern zeigt am Feld, was fehlt.
+    // Gesperrt und blass liess er raten, warum nichts geschieht.
+    var versucht by rememberSaveable { mutableStateOf(false) }
+    val nameFehlt = versucht && username.isBlank()
+    val passwortFehlt = versucht && password.isBlank()
+    val codeFehlt = versucht && codeNoetig && code.isBlank()
+    val anmelden = {
+        versucht = true
+        if (username.isNotBlank() && password.isNotBlank() && (!codeNoetig || code.isNotBlank()))
+            onLogin(username, password, code.takeIf { codeNoetig })
+    }
 
     OutlinedTextField(
         value = username, onValueChange = onUsername,
         label = { Text(stringResource(R.string.login_username)) },
+        isError = nameFehlt,
+        supportingText = if (nameFehlt) ({ Text(stringResource(R.string.login_username_fehlt)) }) else null,
         leadingIcon = { Icon(Icons.Default.Person, null) },
         // Für den Passwortmanager: Er füllt nur, was er als Anmeldefeld erkennt.
         modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.Username }, singleLine = true,
@@ -69,30 +82,32 @@ internal fun AnmeldeFelder(
         wert = password, onWert = onPassword,
         beschriftung = stringResource(R.string.login_password),
         modifier = Modifier.fillMaxWidth(),
+        hinweis = if (passwortFehlt) stringResource(R.string.login_password_fehlt) else null,
+        fehlerhaft = passwortFehlt,
         imeAction = if (codeNoetig) ImeAction.Next else ImeAction.Done,
         keyboardActions = KeyboardActions(
             onNext = { focusMgr.moveFocus(FocusDirection.Down) },
             onDone = {
                 focusMgr.clearFocus()
-                if (username.isNotBlank() && password.isNotBlank()) onLogin(username, password, null)
+                anmelden()
             }),
     )
 
     // Erst sichtbar, wenn der Server den zweiten Faktor verlangt.
     // Text statt Zahl: Auch ein Wiederherstellungscode (Buchstaben) passt hinein.
     if (codeNoetig) {
-        val absenden = { if (username.isNotBlank() && password.isNotBlank() && code.isNotBlank()) onLogin(username, password, code) }
         OutlinedTextField(
             value = code, onValueChange = { onCode(it.take(24)) },
             label = { Text(stringResource(R.string.login_code)) },
-            supportingText = { Text(stringResource(R.string.login_code_hint)) },
+            isError = codeFehlt,
+            supportingText = { Text(stringResource(if (codeFehlt) R.string.login_code_fehlt else R.string.login_code_hint)) },
             leadingIcon = { Icon(Icons.Default.Key, null) },
             // Kein SmsOtpCode: Der Code kommt aus einer Authenticator-App, nicht per SMS, und
             // Compose kennt keinen Autofill-Typ für TOTP. Das System bot sonst SMS-Codes an.
             modifier = Modifier.fillMaxWidth(), singleLine = true,
             shape = Formen.feld,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, keyboardType = KeyboardType.Ascii),
-            keyboardActions = KeyboardActions(onDone = { focusMgr.clearFocus(); absenden() })
+            keyboardActions = KeyboardActions(onDone = { focusMgr.clearFocus(); anmelden() })
         )
     }
 
@@ -127,15 +142,7 @@ internal fun AnmeldeFelder(
         }
     }
 
-    LadeKnopf(
-        stringResource(R.string.login_button),
-        laeuft = isLoading,
-        aktiv = username.isNotBlank() && password.isNotBlank() && (!codeNoetig || code.isNotBlank()),
-        fehlt = stringResource(when {
-            username.isBlank() || password.isBlank() -> R.string.login_missing_credentials
-            else -> R.string.login_missing_code
-        }),
-    ) { onLogin(username, password, code.takeIf { codeNoetig }) }
+    LadeKnopf(stringResource(R.string.login_button), laeuft = isLoading, aktiv = true, onClick = anmelden)
 
     // Statt des Codes: Name und Passwort von oben gehen mit, der Passkey ersetzt nur den Code.
     if (codeNoetig && onPasskeyStattCode != null) {

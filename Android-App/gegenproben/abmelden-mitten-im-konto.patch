@@ -1,0 +1,21 @@
+Gegenprobe: Abmelden steht nicht mehr abgesetzt am Ende der Seite Mehr
+Modul: app
+Test: ch.brickinventoryapp.app.UnterseitenTest
+Rot: Abmelden steht abgesetzt als letzter Eintrag
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt
+@@ -92,11 +92,11 @@
+         val rahmen = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+             .mittigBis(if (zweispaltig) Lesebreite.liste else Lesebreite.formular).padding(vertical = Abstaende.klein)
+         Column(rahmen) {
++            AbmeldenEintrag { fragtAbmelden = true }
+             if (zweispaltig) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.sehrGross)) {
+                 Column(Modifier.weight(1f)) { listOf(0, 1, 4).filter { it < gruppen }.forEachIndexed { i, g -> Gruppe(g, trenner = i > 0) } }
+                 Column(Modifier.weight(1f)) { Gruppe(2, trenner = false); Gruppe(3, trenner = true) }
+             } else for (i in 0 until gruppen) Gruppe(i, trenner = i > 0)
+-            AbmeldenEintrag { fragtAbmelden = true }
+         }
+     }
+ }

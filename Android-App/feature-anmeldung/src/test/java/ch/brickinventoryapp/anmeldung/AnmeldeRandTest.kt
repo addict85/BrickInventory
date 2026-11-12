@@ -17,9 +17,13 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onRoot
@@ -34,6 +38,7 @@ import ch.brickinventoryapp.anmeldung.ui.screens.LoginScreen
 import ch.brickinventoryapp.anmeldung.ui.screens.SetupScreen
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -57,6 +62,9 @@ import java.util.Locale
  *   erweitert-ohne-zustand        Semantik am Knopf „Erweitert“ entfernt → rot „Erweitert meldet …“
  *   registrieren-tablet-einspaltig  zweispaltig erst ab 4000 dp → rot „auf dem Tablet …“
  *   weiter-wieder-tonal           „Weiter“ wieder FilledTonalButton → rot „Weiter hebt sich …“
+ *   adresse-langes-etikett        setup_url_label wieder „Serveradresse der BrickInventory Manager Web-App“
+ *                                 → rot „das Adressfeld traegt ein kurzes Etikett …“ (zwei Zeilen)
+ *   anmelden-gesperrt-ohne-felder Knopf wieder nur mit Name und Passwort aktiv → rot „Anmelden bleibt tippbar …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -143,6 +151,48 @@ class AnmeldeRandTest {
         zeige { SetupScreen(currentUrl = "http://nas:3000", onSave = {}, entwicklung = false) }
         leisten()
         pruefeZwischenLeisten("Einrichten")
+    }
+
+    /** Gesperrt und blass liess der Knopf raten, warum nichts geschieht; jetzt sagt es das Feld. */
+    @Test
+    fun `Anmelden bleibt tippbar und nennt bei leeren Feldern am Feld, was fehlt`() {
+        var anmeldungen = 0
+        zeige {
+            LoginScreen(
+                serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNoetig = false,
+                formular = AnmeldeFormular.ANMELDEN, registrierungOffen = true, kontoLaeuft = false,
+                kontoMeldung = null, kontoFehler = null, onLogin = { _, _, _ -> anmeldungen++ }, onFormular = {},
+                onRegistrieren = { _, _, _, _, _ -> }, onPasswortVergessen = {}, onChangeServer = {},
+            )
+        }
+        val knopf = compose.onNode(hasText(text(R.string.login_button)) and hasClickAction())
+        knopf.performScrollTo()
+        knopf.assertIsEnabled()
+        assertTrue("Vor dem Tipp kein Fehler", compose.onAllNodes(hasText(text(R.string.login_username_fehlt)))
+            .fetchSemanticsNodes().isEmpty())
+        knopf.performClick()
+        compose.waitForIdle()
+        assertEquals("Mit leeren Feldern geht nichts hinaus", 0, anmeldungen)
+        for (id in listOf(R.string.login_username_fehlt, R.string.login_password_fehlt)) {
+            assertEquals(text(id), 1, compose.onAllNodes(hasText(text(id))).fetchSemanticsNodes().size)
+        }
+    }
+
+    /** Ein Satz als Etikett brach schon bei 100 % Schrift um und stand beim Tippen über dem Feld. */
+    @Test
+    fun `das Adressfeld traegt ein kurzes Etikett in einer Zeile, die Erklaerung steht darunter`() {
+        zeige { SetupScreen(currentUrl = "", onSave = {}, entwicklung = false) }
+        val zeilen = compose.onAllNodes(hasText(text(R.string.setup_url_label)), useUnmergedTree = true)
+            .fetchSemanticsNodes().mapNotNull { knoten ->
+                knoten.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.let { holen ->
+                    mutableListOf<TextLayoutResult>().also { holen(it) }.firstOrNull()?.lineCount
+                }
+            }
+        assertTrue("Kein Etikett gefunden", zeilen.isNotEmpty())
+        assertTrue("Das Etikett bricht um: $zeilen Zeilen", zeilen.all { it == 1 })
+        val feld = compose.onNode(hasSetTextAction()).fetchSemanticsNode()
+        val texte = feld.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text }
+        assertTrue("Die Erklärung fehlt unter dem Feld: $texte", text(R.string.setup_url_supporting) in texte)
     }
 
     @Test

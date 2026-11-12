@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.outlined.Redeem
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.UploadFile
 import androidx.compose.material3.Badge
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -35,6 +37,7 @@ import androidx.compose.runtime.setValue
 import ch.brickinventoryapp.ui.components.Rueckfrage
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -78,10 +81,8 @@ fun MehrBildschirm(
         onAbbrechen = { fragtAbmelden = false },
         symbol = Icons.AutoMirrored.Outlined.Logout,
     )
-    // Abmelden steht unter „Konto und App“, wohin es gehört, als letzter Eintrag dort.
     @Composable
-    fun Gruppe(nummer: Int, trenner: Boolean) =
-        MehrGruppeInhalt(nummer, trenner, updateVerfuegbar, onZiel, onAbmelden = { fragtAbmelden = true })
+    fun Gruppe(nummer: Int, trenner: Boolean) = MehrGruppeInhalt(nummer, trenner, updateVerfuegbar, onZiel)
     // Die Servergruppe nur für Verwalter.
     val gruppen = if (isAdmin) 5 else 4
     // Auf dem Tablet zwei Spalten, etwa gleich hoch: Preise, Werkzeuge und Server links,
@@ -90,11 +91,25 @@ fun MehrBildschirm(
         val zweispaltig = maxWidth >= MEHR_ZWEISPALTIG_AB
         val rahmen = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .mittigBis(if (zweispaltig) Lesebreite.liste else Lesebreite.formular).padding(vertical = Abstaende.klein)
-        if (zweispaltig) Row(rahmen, horizontalArrangement = Arrangement.spacedBy(Abstaende.sehrGross)) {
-            Column(Modifier.weight(1f)) { listOf(0, 1, 4).filter { it < gruppen }.forEachIndexed { i, g -> Gruppe(g, trenner = i > 0) } }
-            Column(Modifier.weight(1f)) { Gruppe(2, trenner = false); Gruppe(3, trenner = true) }
-        } else Column(rahmen) { for (i in 0 until gruppen) Gruppe(i, trenner = i > 0) }
+        Column(rahmen) {
+            if (zweispaltig) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.sehrGross)) {
+                Column(Modifier.weight(1f)) { listOf(0, 1, 4).filter { it < gruppen }.forEachIndexed { i, g -> Gruppe(g, trenner = i > 0) } }
+                Column(Modifier.weight(1f)) { Gruppe(2, trenner = false); Gruppe(3, trenner = true) }
+            } else for (i in 0 until gruppen) Gruppe(i, trenner = i > 0)
+            AbmeldenEintrag { fragtAbmelden = true }
+        }
     }
+}
+
+/**
+ * Abmelden zuletzt und abgesetzt, in der Fehlerfarbe: Zwischen „Einstellungen“ und den
+ * Servergruppen war es ein Eintrag wie jeder andere und lag dort, wo man weitertippt.
+ */
+@Composable
+private fun AbmeldenEintrag(onKlick: () -> Unit) {
+    HorizontalDivider(Modifier.padding(vertical = Abstaende.klein))
+    MehrEintrag(R.string.main_menu_logout, Icons.AutoMirrored.Outlined.Logout,
+        farbe = MaterialTheme.colorScheme.error, onKlick = onKlick)
 }
 
 /**
@@ -103,9 +118,7 @@ fun MehrBildschirm(
  * Unterseiten. Gemischt sah „Vergleich“ neben „Gutscheine“ anders aus als erwartet.
  */
 @Composable
-private fun MehrGruppeInhalt(
-    nummer: Int, trenner: Boolean, updateVerfuegbar: Boolean, onZiel: (Any) -> Unit, onAbmelden: () -> Unit,
-) {
+private fun MehrGruppeInhalt(nummer: Int, trenner: Boolean, updateVerfuegbar: Boolean, onZiel: (Any) -> Unit) {
     when (nummer) {
         0 -> {
             MehrGruppe(R.string.nav_group_prices, trenner)
@@ -129,7 +142,6 @@ private fun MehrGruppeInhalt(
             MehrEintrag(R.string.konto_title, Icons.Outlined.AccountCircle) { onZiel(KontoZiel.Konto) }
             // Der Punkt allein sagte nicht, wofür er steht: Darunter steht es in Worten.
             MehrEintrag(R.string.nav_settings, Icons.Outlined.Settings, punkt = updateVerfuegbar) { onZiel(KontoZiel.Settings) }
-            MehrEintrag(R.string.main_menu_logout, Icons.AutoMirrored.Outlined.Logout, onKlick = onAbmelden)
         }
         else -> {
             MehrGruppe(R.string.nav_group_server, trenner)
@@ -163,11 +175,13 @@ private fun MehrGruppe(titel: Int, trenner: Boolean) =
 
 /** Ein Eintrag: Symbol, Text, ganze Zeile antippbar (mindestens 56 dp hoch). */
 @Composable
-private fun MehrEintrag(titel: Int, symbol: ImageVector, punkt: Boolean = false, onKlick: () -> Unit) {
+private fun MehrEintrag(
+    titel: Int, symbol: ImageVector, punkt: Boolean = false, farbe: Color = Color.Unspecified, onKlick: () -> Unit,
+) {
     ListItem(
-        headlineContent = { Text(stringResource(titel)) },
+        headlineContent = { Text(stringResource(titel), color = farbe) },
         supportingContent = if (punkt) ({ Text(stringResource(R.string.update_badge)) }) else null,
-        leadingContent = { Icon(symbol, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+        leadingContent = { Icon(symbol, null, tint = farbe.takeOrElse { MaterialTheme.colorScheme.onSurfaceVariant }) },
         // Der Text darunter sagt es schon; der Punkt bleibt ohne zweite Ansage.
         trailingContent = if (punkt) ({ Badge() }) else null,
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),

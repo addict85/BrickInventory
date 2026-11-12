@@ -26,8 +26,9 @@
     <string name="login_username">Benutzername</string>
     <string name="login_password">Passwort</string>
     <string name="login_button">Anmelden</string>
-    <string name="login_missing_credentials">Benutzername und Passwort eingeben, dann anmelden.</string>
-    <string name="login_missing_code">Den Code aus der Authenticator-App eingeben, dann anmelden.</string>
+    <string name="login_username_fehlt">Benutzername eingeben</string>
+    <string name="login_password_fehlt">Passwort eingeben</string>
+    <string name="login_code_fehlt">Den Code aus der Authenticator-App eingeben</string>
     <string name="login_code">Code aus der Authenticator-App</string>
     <string name="login_code_hint">Oder einer deiner Wiederherstellungscodes</string>
     <string name="login_passkey">Mit Passkey anmelden</string>
@@ -102,9 +103,9 @@
     <string name="setup_scan_qr">QR-Code scannen</string>
     <string name="setup_or_manual">oder manuell</string>
     <string name="setup_server_url">Serveradresse</string>
-    <string name="setup_url_label">Serveradresse der BrickInventory Manager Web-App</string>
+    <string name="setup_url_label">Adresse</string>
     <string name="setup_url_placeholder">https://brick.fritz.box</string>
-    <string name="setup_url_supporting">z. B. brick.fritz.box oder brick.example.com – https:// darf fehlen</string>
+    <string name="setup_url_supporting">Die Adresse der BrickInventory Manager Web-App, z. B. brick.fritz.box oder brick.example.com – https:// darf fehlen</string>
     <string name="api_app_zu_alt">Diese App ist zu alt für den Server. Bitte die App aktualisieren (Einstellungen → Aktualisierung).</string>
     <string name="api_server_zu_alt">Der Server ist älter als diese App. Manches fehlt womöglich — bitte den Server aktualisieren.</string>
     <string name="setup_continue">Weiter</string>
@@ -1126,6 +1127,7 @@
     <string name="zf_share_title">Wiederherstellungscodes</string>
     <string name="passwort_aendern_fehlt">Aktuelles Passwort, neues Passwort und Wiederholung eingeben, dann ändern.</string>
     <string name="erfassen_nummer_fehlt">Zuerst eine Setnummer eingeben.</string>
+    <string name="gallery_quantity_hint">Anzahl gleicher Sets</string>
     <string name="erfassen_menge_ungueltig">Eine ganze Anzahl ab 1 eingeben.</string>
     <string name="erfassen_preis_ungueltig">Einen Betrag wie 12,50 oder 1.299,00 eingeben.</string>
     <string name="erfassen_nummer_ungueltig" tools:ignore="TypographyDashes">Das ist keine Setnummer. Erwartet wird z. B. 10294 oder 10294-1.</string>

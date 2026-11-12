@@ -1,17 +1,17 @@
-Gegenprobe: Abmelden unter Mehr meldet sofort ab
+Gegenprobe: „Abmelden“ unter Mehr meldet sofort ab, ohne Rückfrage
 Modul: app
 Test: ch.brickinventoryapp.app.UnterseitenTest
-Rot: Abmelden fragt
+Rot: Abmelden fragt erst nach
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt
-@@ -77,7 +77,7 @@ fun MehrBildschirm(
-     // Abmelden steht unter „Konto und App“, wohin es gehört, als letzter Eintrag dort.
-     @Composable
-     fun Gruppe(nummer: Int, trenner: Boolean) =
--        MehrGruppeInhalt(nummer, trenner, updateVerfuegbar, onZiel, onAbmelden = { fragtAbmelden = true })
-+        MehrGruppeInhalt(nummer, trenner, updateVerfuegbar, onZiel, onAbmelden = onAbmelden)
-     // Die Servergruppe nur für Verwalter.
-     val gruppen = if (isAdmin) 5 else 4
-     // Auf dem Tablet zwei Spalten, etwa gleich hoch: Preise, Werkzeuge und Server links,
+@@ -96,7 +96,7 @@
+                 Column(Modifier.weight(1f)) { listOf(0, 1, 4).filter { it < gruppen }.forEachIndexed { i, g -> Gruppe(g, trenner = i > 0) } }
+                 Column(Modifier.weight(1f)) { Gruppe(2, trenner = false); Gruppe(3, trenner = true) }
+             } else for (i in 0 until gruppen) Gruppe(i, trenner = i > 0)
+-            AbmeldenEintrag { fragtAbmelden = true }
++            AbmeldenEintrag(onAbmelden)
+         }
+     }
+ }
