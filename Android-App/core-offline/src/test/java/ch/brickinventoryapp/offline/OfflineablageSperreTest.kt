@@ -28,7 +28,7 @@ import org.junit.Test
  */
 class OfflineablageSperreTest {
 
-    /** Hält das nächste Ersetzen an, sobald [halte] gerufen wurde. */
+    /** Hält das nächste Schreiben (Ersetzen oder Angleichen) an, sobald [halte] gerufen wurde. */
     private class HaltenderBestand(private val innen: LokalerBestand = SpeicherBestand()) : LokalerBestand by innen {
         private var tor: CompletableDeferred<Unit>? = null
         fun halte(): CompletableDeferred<Unit> = CompletableDeferred<Unit>().also { tor = it }
@@ -36,6 +36,11 @@ class OfflineablageSperreTest {
         override suspend fun ersetze(bereich: String, art: Bestandsart, zeilen: List<LokaleZeile>, stand: Long?) {
             tor?.let { t -> tor = null; t.await() }
             innen.ersetze(bereich, art, zeilen, stand)
+        }
+
+        override suspend fun gleicheAn(bereich: String, art: Bestandsart, zeilen: List<LokaleZeile>) {
+            tor?.let { t -> tor = null; t.await() }
+            innen.gleicheAn(bereich, art, zeilen)
         }
     }
 

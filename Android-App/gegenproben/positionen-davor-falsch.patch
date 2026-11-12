@@ -1,0 +1,17 @@
+Gegenprobe: Neue Zeilen vor der ersten bleibenden landen hinter ihr
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.room.PositionenTest
+Rot: neue Zeilen nehmen freie Positionen
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/Positionen.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/Positionen.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/Positionen.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/Positionen.kt
+@@ -24,7 +24,7 @@
+         val danach = if (j < neu.size) alt.getValue(neu[j]) else null
+         val start = when {
+             danach == null -> (vorher ?: -1) + 1
+-            vorher == null -> danach - anzahl
++            vorher == null -> danach + 1
+             danach - vorher - 1 >= anzahl -> vorher + 1
+             else -> return neu.indices.toList()
+         }

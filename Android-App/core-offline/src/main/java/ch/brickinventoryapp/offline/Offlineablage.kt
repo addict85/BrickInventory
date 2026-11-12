@@ -338,7 +338,7 @@ class Offlineablage(
     /** Nur unter der Sperre von ([b], fach.art) aufrufen. */
     private suspend fun <T : Any> aendere(fach: Fach<T>, b: String, w: Wirkung) {
         val alt = dekodiere(fach, bestand.lies(b, fach.art))
-        bestand.ersetze(b, fach.art, kodiere(fach, fach.anwenden(alt.liste, w)), null)
+        bestand.gleicheAn(b, fach.art, kodiere(fach, fach.anwenden(alt.liste, w)))
     }
 
     private fun <T : Any> kodiere(fach: Fach<T>, liste: List<T>) =

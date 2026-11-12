@@ -29,6 +29,8 @@ import org.robolectric.RobolectricTestRunner
  *   B  in AusgangDao.erster `ORDER BY id` → `ORDER BY id DESC` → „sendet der Reihe nach“
  *   C  in RoomAusgang.lies das Entfernen weglassen → „ein unlesbarer Posten blockiert nicht“
  *   D  in RoomAusgang.lies `z.schluessel` → `""` → „ein unlesbarer Posten …“ (Schlüssel kommt nicht zurück)
+ *   gegenproben/ablage-aendert-ganze-liste.patch (Offlineablage.aendere ersetzt wieder die
+ *      ganze Liste) → rot „eine lokale Bearbeitung schreibt nur die betroffene Zeile“
  */
 @RunWith(RobolectricTestRunner::class)
 class BestandDatenbankTest {
@@ -81,6 +83,33 @@ class BestandDatenbankTest {
         assertEquals(listOf(1, 2, 3), gesendet)
         assertEquals("der erste Posten trug bei beiden Versuchen denselben Schlüssel", 3, schluessel.size)
         assertEquals(0, ausgang.anzahl("a").first())
+    }
+
+    /** Schreibt jedes INSERT, UPDATE und DELETE auf `bestand` in eine Protokolltabelle. */
+    private fun protokolliereSchreiben(): () -> List<String> {
+        val sql = db.openHelper.writableDatabase
+        sql.execSQL("CREATE TABLE protokoll (was TEXT NOT NULL)")
+        for (art in listOf("INSERT", "UPDATE", "DELETE")) {
+            val zeile = if (art == "DELETE") "old" else "new"
+            sql.execSQL("CREATE TRIGGER protokoll_$art AFTER $art ON bestand BEGIN " +
+                "INSERT INTO protokoll VALUES ('$art ' || $zeile.schluessel); END")
+        }
+        return {
+            sql.query("SELECT was FROM protokoll ORDER BY rowid").use { c ->
+                buildList { while (c.moveToNext()) add(c.getString(0)) }
+            }
+        }
+    }
+
+    @Test
+    fun `eine lokale Bearbeitung schreibt nur die betroffene Zeile`() = runBlocking {
+        val ablage = Offlineablage(bestand, ausgang, { "a" })
+        ablage.uebernimm(Faecher.SETS, listOf(SetItem("1-1", quantity = 1), SetItem("2-1", quantity = 1), SetItem("3-1", quantity = 1)))
+        val geschrieben = protokolliereSchreiben()
+        ablage.puffere(Bearbeitung.SetMenge("2-1", 1))
+        assertEquals(listOf("UPDATE 2-1"), geschrieben())
+        assertEquals(listOf("1-1", "2-1", "3-1"), ablage.lies(Faecher.SETS)!!.liste.map { it.setNumber })
+        assertEquals(listOf(1, 2, 1), ablage.lies(Faecher.SETS)!!.liste.map { it.quantity })
     }
 
     @Test

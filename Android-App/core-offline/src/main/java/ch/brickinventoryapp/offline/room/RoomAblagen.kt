@@ -38,6 +38,9 @@ internal class RoomBestand @Inject constructor(private val db: BestandDatenbank)
             zeilen.associateBy { it.schluessel }.values.mapIndexed { i, z -> alsZeile(z, bereich, art, i) },
             stand)
 
+    override suspend fun gleicheAn(bereich: String, art: Bestandsart, zeilen: List<LokaleZeile>) =
+        dao.gleicheAn(bereich, art.name, zeilen.associateBy { it.schluessel }.values.mapIndexed { i, z -> alsZeile(z, bereich, art, i) })
+
     override suspend fun raeumeAndere(bereich: String) {
         dao.loescheAndereZeilen(bereich)
         dao.loescheAndereStaende(bereich)
