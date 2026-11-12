@@ -10,7 +10,7 @@ import { toast } from './meldungen.js';
 import { setScrollLabel } from './scrollbar.js';
 import { loadGallery, loadStats } from './gallery.js';
 import { set_lastImportAt, ME, _settingsCache } from './zustand.js';
-import { esc, html, ungeprueft } from './escapen.js';
+import { esc, html, ungeprueft, verbinde } from './escapen.js';
 import { handleSseEvent, hideProgress, showProgress, streamFertig, streamRequest } from './fortschritt.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage } from './konten-orte.js';
 
@@ -245,17 +245,18 @@ async function loadCatalogSets() {
   }
 
   // Ein Block je Seite. Der erste ist gefüllt, die übrigen halten nur Platz.
-  let markup = '';
+  const bloecke = [];
   for (let seite = 1; seite <= _catPageCount; seite++) {
     const anzahl = seite === _catPageCount ? _catTotal - (seite - 1) * CAT_LIMIT : CAT_LIMIT;
-    markup +=
+    bloecke.push(
       seite === 1
-        ? html`<div class="sgrid cat-page" data-page="1">${ungeprueft(_catItems.map(catCard).join(''))}</div>`
+        ? html`<div class="sgrid cat-page" data-page="1">${verbinde(_catItems.map(catCard))}</div>`
         : // Ungeladene Seiten sind EIN leerer Block statt 60 Platzhalterkacheln: Bei 25 000 Sets wären das 25 000
           // Elemente. Die Höhe kommt aus der gemessenen ersten Seite, weil die Spaltenzahl am Fenster hängt.
-          html`<div class="cat-page cat-page-ph" data-page="${seite}" data-anzahl="${anzahl}"></div>`;
+          html`<div class="cat-page cat-page-ph" data-page="${seite}" data-anzahl="${anzahl}"></div>`,
+    );
   }
-  setzeHtml(grid, ungeprueft(markup));
+  setzeHtml(grid, verbinde(bloecke));
   _catLoadedPages.add(1);
   _ladeJahrVerteilung();
   _setzePlatzhalterHoehe();
@@ -384,7 +385,7 @@ export async function ladeSeite(seite) {
     block.classList.add('sgrid');
     block.style.height = '';
     block.removeAttribute('data-anzahl');
-    setzeHtml(block, ungeprueft(d.sets.map(catCard).join('')));
+    setzeHtml(block, verbinde(d.sets.map(catCard)));
     _catLoadedPages.add(seite);
     _catItems = _catItems.concat(d.sets);
     // Die Blockhöhen haben sich geändert — neu messen, dann nachsehen, was jetzt zusätzlich im Bild steht.

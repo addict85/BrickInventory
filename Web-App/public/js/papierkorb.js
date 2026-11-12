@@ -4,7 +4,7 @@ import { api } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { fmtDatum } from './format.js';
 import { toast } from './meldungen.js';
-import { html, ungeprueft } from './escapen.js';
+import { html, verbinde } from './escapen.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor } from './rueckfrage.js';
 import { melde } from './ereignisse.js';
 
@@ -40,9 +40,7 @@ export async function ladePapierkorb() {
   const eintraege = d.eintraege || [];
   setzeHtml(
     liste,
-    eintraege.length
-      ? ungeprueft(eintraege.map(zeile).join(''))
-      : html`<div class="voucher-leer">${tRaw('trash.empty')}</div>`,
+    eintraege.length ? verbinde(eintraege.map(zeile)) : html`<div class="voucher-leer">${tRaw('trash.empty')}</div>`,
   );
   if (leeren) leeren.style.display = eintraege.length ? '' : 'none';
 }

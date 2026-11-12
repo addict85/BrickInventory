@@ -1,7 +1,7 @@
 import { detailZeile } from './bausteine.js';
 import { echt, registerActions } from './registry.js';
 import { colorName, t, tRaw } from '../i18n.js';
-import { escHex, escJs, hexZiffern, esc, html, ungeprueft } from './escapen.js';
+import { escHex, escJs, hexZiffern, esc, html, ungeprueft, verbinde } from './escapen.js';
 import { api } from './api.js';
 import { fullUrl, imgUrl } from './bilder.js';
 import { ico, G, aktiverReiter, setzeHtml, fuegeHtmlEin } from './dom.js';
@@ -224,7 +224,7 @@ export async function openManDetail(type, id, colorId) {
   const ad = await api('GET', acqUrl).catch(() => null);
   const acqs = ad?.acquisitions || [];
 
-  setzeHtml(bodyEl, ungeprueft(manDetailZeilen(type, id, ziel.colorId, item, acqs, ad).join('')));
+  setzeHtml(bodyEl, verbinde(manDetailZeilen(type, id, ziel.colorId, item, acqs, ad)));
   modal.classList.add('open');
 
   // Farbauswahl nachfüllen — siehe die Begründung an der Zeile oben.

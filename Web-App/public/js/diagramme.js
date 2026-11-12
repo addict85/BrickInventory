@@ -5,7 +5,7 @@ import { G, setzeHtml } from './dom.js';
 import { fmtDatum, fmtN } from './format.js';
 import { detailZeile, pnlBadge } from './bausteine.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { esc, html, ungeprueft } from './escapen.js';
+import { esc, html, ungeprueft, verbinde } from './escapen.js';
 import { fadenkreuzTeile } from './fadenkreuz.js';
 
 /**
@@ -25,18 +25,18 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
       const d = ph?.by_condition?.[c];
       return d ? [{ c, d }] : [];
     }).map(({ c, d }) => {
-      const wert = d.market_price != null ? esc(fmtN(d.market_price, CURRENCY)) : esc(tRaw('detail.kein_marktpreis'));
+      const wert = d.market_price != null ? fmtN(d.market_price, CURRENCY) : tRaw('detail.kein_marktpreis');
       const pnl = pnlBadge(d.pnl_pct, d.purchase_price);
       const bezug =
         pnl && d.pnl_pct != null && !/pnl-geschenk/.test(String(pnl))
           ? html` <span class="wk-bezug">${tRaw('detail.zum_kaufpreis')}</span>`
           : '';
-      return html`${html`<div class="wk-zeile"><span class="wk-label">${t('detail.market_price')} · ${LABEL[c]}</span>`}${html`<span class="wk-wert${d.market_price != null ? ' preis' : ''}">${ungeprueft(wert)}</span>${pnl ? html`<span class="wk-guv">${pnl}${bezug}</span>` : ''}</div>`}`;
+      return html`${html`<div class="wk-zeile"><span class="wk-label">${t('detail.market_price')} · ${LABEL[c]}</span>`}${html`<span class="wk-wert${d.market_price != null ? ' preis' : ''}">${wert}</span>${pnl ? html`<span class="wk-guv">${pnl}${bezug}</span>` : ''}</div>`}`;
     });
     setzeHtml(
       el,
-      teile.join('')
-        ? ungeprueft(teile.join(''))
+      teile.length
+        ? verbinde(teile)
         : html`<div class="wk-zeile"><span class="wk-label">${t('detail.market_price')}</span><span class="wk-wert text-mut">${tRaw('detail.kein_marktpreis')}</span></div>`,
     );
     return;
@@ -54,7 +54,7 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
       wertStil: 'display:flex;align-items:center;gap:8px',
     });
   });
-  setzeHtml(el, ungeprueft(rows.join('')));
+  setzeHtml(el, verbinde(rows));
 }
 
 /**

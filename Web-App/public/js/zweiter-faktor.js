@@ -5,7 +5,7 @@ import { ico, G, setzeHtml } from './dom.js';
 import { formularFehler } from './formular.js';
 import { toast } from './meldungen.js';
 import { loadUsers } from './nutzerverwaltung.js';
-import { esc, html, ungeprueft } from './escapen.js';
+import { html, ungeprueft } from './escapen.js';
 import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor, mitPasswortBestaetigen } from './rueckfrage.js';
 
 // ═══ Zweiter Faktor im Profil (Server: src/konto/zweiterFaktor.ts) ══════════════
@@ -125,7 +125,7 @@ function zeigeCodes(codes) {
   if (pflicht) pflichtHinweis('zfpflicht.fertig');
   zeichne(html`<div class="sform" data-stil="max-width:420px">
       <p data-stil="font-size:var(--fs-2);margin:0"><strong>${tRaw('zf.codes_title')}</strong><br>${tRaw('zf.codes_hint')}</p>
-      <pre id="zf-codes" data-stil="font-size:var(--fs-3);line-height:1.6;background:var(--s50,#f8fafc);border:1px solid var(--bdr);border-radius:8px;padding:.6rem .9rem;margin:0;user-select:all">${ungeprueft(codes.map(esc).join('\n'))}</pre>
+      <pre id="zf-codes" data-stil="font-size:var(--fs-3);line-height:1.6;background:var(--s50,#f8fafc);border:1px solid var(--bdr);border-radius:8px;padding:.6rem .9rem;margin:0;user-select:all">${codes.join('\n')}</pre>
       ${reihe(`${knopf('zfCodesKopieren', tRaw('zf.copy'))}${knopf('zfCodesSpeichern', tRaw('zf.codes_datei'))}
         <button type="button" class="btn bp ${knopfArt()}" id="zf-gespeichert" data-click="${pflicht ? 'zfPflichtFertig' : 'ladeZweitenFaktor'}">${t('zf.codes_done')}</button>`)}
     </div>`);

@@ -3,7 +3,7 @@
 // danach sieht.
 import { registerActions } from './registry.js';
 import { t, tRaw, colorName } from '../i18n.js';
-import { escHex, hexZiffern, esc, html, ungeprueft } from './escapen.js';
+import { escHex, hexZiffern, esc, html, ungeprueft, verbinde } from './escapen.js';
 import { apiRoh } from './api.js';
 import { bildTag, platzhalterInhalt, fullUrl, imgUrl } from './bilder.js';
 import { ico, G, XML_ICON_SVG, setzeHtml } from './dom.js';
@@ -418,7 +418,7 @@ function zeichneTabelle(d) {
       <th>${tRaw('wanted.col_outcome')}</th>
       <th>${tRaw('wanted.col_rb_id')}</th>
       <th>${tRaw('wanted.col_set_color')}</th>
-    </tr></thead><tbody>${ungeprueft(posten.map(zeile).join(''))}</tbody></table>`,
+    </tr></thead><tbody>${verbinde(posten.map(zeile))}</tbody></table>`,
   );
   fuelleFarbwahlen().catch(() => {});
 }
