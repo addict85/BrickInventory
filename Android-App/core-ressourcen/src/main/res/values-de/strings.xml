@@ -998,6 +998,7 @@
     <string name="zert_geaendert_qr">Oder einen neuen QR-Code aus der Web-App scannen.</string>
     <string name="zert_unbekannt_eingabe">Die letzten 24 Zeichen des Fingerabdrucks, abgeschrieben aus der Web-App (Einstellungen → Server-Zertifikat) oder aus den Zertifikatdetails des Browsers (SHA-256 des öffentlichen Schlüssels)</string>
     <string name="zert_eingabe_falsch">Das passt nicht zum Fingerabdruck dieses Servers.</string>
+    <string name="zert_eingabe_etikett">Letzte 24 Zeichen</string>
     <string name="zert_beginnt_mit">Fingerabdruck beginnt mit (nur zur Orientierung)</string>
     <string name="zert_text_nutzer_ca">Das Zertifikat von %1$s stammt von einer Stelle, die auf diesem Gerät installiert wurde. Das kann deine eigene sein – oder eine, die jemand mit Zugriff auf das Gerät eingeschleust hat.\n\nSo gehst du vor:\n1. Öffne die Web-App am Computer.\n2. Gehe zu Einstellungen → Server-Zertifikat.\n3. Schreibe die letzten 24 Zeichen des Fingerabdrucks unten ins Feld.\n\nHier steht nur der Anfang des Fingerabdrucks.</string>
     <string name="zert_titel_nutzer_ca">Zertifikat einer installierten Zertifizierungsstelle</string>

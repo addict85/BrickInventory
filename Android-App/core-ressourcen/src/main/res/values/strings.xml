@@ -1017,6 +1017,7 @@
     <string name="zert_geaendert_qr">Alternatively, scan a new QR code from the web app.</string>
     <string name="zert_unbekannt_eingabe">Last 24 characters of the fingerprint, copied from the web app (Settings → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
     <string name="zert_eingabe_falsch">That does not match this server\'s fingerprint.</string>
+    <string name="zert_eingabe_etikett">Last 24 characters</string>
     <string name="zert_beginnt_mit">Fingerprint starts with (for orientation only)</string>
     <string name="zert_text_nutzer_ca">The certificate of %1$s comes from an authority that was installed on this device. That may be your own – or one that someone with access to the device slipped in.\n\nWhat to do:\n1. Open the web app on a computer.\n2. Go to Settings → Server certificate.\n3. Copy the last 24 characters of the fingerprint into the field below.\n\nThis screen only shows the beginning of the fingerprint.</string>
     <string name="zert_titel_nutzer_ca">Certificate from an installed authority</string>

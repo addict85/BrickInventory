@@ -122,9 +122,14 @@ internal fun QrVorschlagDialog(
                         shape = Formen.feld,
                         value = eingabe,
                         onValueChange = { eingabe = it; falsch = false },
-                        label = { Text(stringResource(if (bisher != null) R.string.zert_geaendert_eingabe else R.string.zert_unbekannt_eingabe)) },
+                        // Kurzes Etikett, die Anleitung darunter: Ein Satz als Etikett wurde
+                        // abgeschnitten und stand beim Tippen über dem Feld.
+                        label = { Text(stringResource(R.string.zert_eingabe_etikett)) },
                         isError = falsch,
-                        supportingText = if (falsch) { { Text(stringResource(R.string.zert_eingabe_falsch)) } } else null,
+                        supportingText = {
+                            Text(stringResource(if (falsch) R.string.zert_eingabe_falsch
+                                else if (bisher != null) R.string.zert_geaendert_eingabe else R.string.zert_unbekannt_eingabe))
+                        },
                         textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, autoCorrectEnabled = false),
                         modifier = Modifier.fillMaxWidth(),
