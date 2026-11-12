@@ -702,7 +702,7 @@ function funktionsLaengen(dateien = oberflaeche()) {
 test('Funktionen der Oberfläche über 100 und über 80 Zeilen werden weniger, nie mehr', () => {
   // Gemessen im Biome-Format am 12.11.2026: die acht unten über 100, 22 über 80. Gegenprobe: loadFinance
   // wieder in einem Stück (vor dem Aufteilen) → rot mit „finance.js loadFinance“.
-  const SCHRANKE_80 = 22;
+  const SCHRANKE_80 = 21;
   const BEKANNT_100 = [
     'public/js/acquisition-modals.js acqSave',
     'public/js/diagramme.js priceChartSVG',
