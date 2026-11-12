@@ -1,6 +1,6 @@
 #!/bin/sh
 # Stellt eine bestehende Installation auf getrennte Migrations- und
-# Laufzeitrolle um (UPGRADE.md, Abschnitt 51). Wiederholbar: Jeder Schritt
+# Laufzeitrolle um (UPGRADE.md#migrationsrolle). Wiederholbar: Jeder Schritt
 # lässt stehen, was schon passt, und der letzte prüft das Ergebnis.
 #
 #   sh scripts/rollen-trennen.sh     (im Ordner mit compose.yaml, nach dem Update)

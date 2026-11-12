@@ -76,7 +76,7 @@ services:
   # gehören `brickinventory_migration` (Dienst migration); app und jobs
   # verbinden sich als `brickinventory_app` und dürfen nur Zeilen lesen und
   # schreiben. Dieser Dienst legt die Rollen bei jedem `up` an bzw. richtet sie
-  # nach und endet dann (UPGRADE.md, Abschnitte 29 und 51).
+  # nach und endet dann (UPGRADE.md#eigene-datenbankrolle, #migrationsrolle).
   db-rolle:
     image: postgres:18-alpine@sha256:9ba53c7d41ea093baf5c1ba635ba5434c4f979880527d49bb7d9237d3193085b
     container_name: brickinventory-db-rolle
@@ -116,7 +116,7 @@ services:
   # legt er keinen neuen an: Der Server meldet dann den Umzug (UPGRADE.md).
   schluessel:
     # Dasselbe Image wie app (siehe dort).
-    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 42)}
+    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md#image-digest)}
     pull_policy: missing
     container_name: brickinventory-schluessel
     logging: *protokoll
@@ -143,7 +143,7 @@ services:
   # führt chown höchstens ins schreibgeschützte Image. BRICKINV_CHOWN gilt hier.
   daten-rechte:
     # Dasselbe Image wie app (siehe dort).
-    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 42)}
+    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md#image-digest)}
     pull_policy: missing
     container_name: brickinventory-daten-rechte
     logging: *protokoll
@@ -174,7 +174,7 @@ services:
   # `docker compose logs migration`). Kein Weg nach draussen: nur db-net.
   migration:
     # Dasselbe Image wie app (siehe dort).
-    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 42)}
+    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md#image-digest)}
     pull_policy: missing
     container_name: brickinventory-migration
     logging: *protokoll
@@ -212,7 +212,7 @@ services:
     # lässt sich umhängen. scripts/image-pruefen.sh prüft die Signatur und trägt
     # BRICK_IMAGE in .env ein. Wer selbst baut, setzt BRICK_IMAGE auf einen
     # eigenen Namen; nur `app` hat `build:`, damit `--build` einmal baut.
-    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 42)}
+    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md#image-digest)}
     pull_policy: missing
     build:
       context: .
@@ -337,7 +337,7 @@ services:
   # sie fort. Die Migrationen hat vorher der Dienst migration eingespielt.
   jobs:
     # Dasselbe Image wie app (siehe dort).
-    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 42)}
+    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md#image-digest)}
     pull_policy: missing
     container_name: brickinventory-jobs
     logging: *protokoll
@@ -408,7 +408,7 @@ services:
   caddy-rechte:
     # Dasselbe Caddy-Image wie caddy (siehe dort): Das offizielle trüge ein
     # zweites, ungeprüftes Caddy-Binary in den Betrieb, obwohl hier nur chown läuft.
-    image: ${CADDY_IMAGE:?CADDY_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 52)}
+    image: ${CADDY_IMAGE:?CADDY_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md#caddy-image)}
     pull_policy: missing
     container_name: brickinventory-caddy-rechte
     logging: *protokoll
@@ -442,7 +442,7 @@ services:
     # gebaut und keyless signiert von docker-publish.yml; scripts/image-pruefen.sh
     # prüft die Signatur und trägt CADDY_IMAGE als Digest ein. Wer selbst baut,
     # setzt CADDY_IMAGE auf einen eigenen Namen und ruft `up -d --build`.
-    image: ${CADDY_IMAGE:?CADDY_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 52)}
+    image: ${CADDY_IMAGE:?CADDY_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md#caddy-image)}
     pull_policy: missing
     build:
       context: .
@@ -500,7 +500,7 @@ services:
           echo "[caddy]   Jedes Gerät mit dieser Wurzel traut ihr für JEDE Adresse. Besser: sudo sh scripts/ca-einrichten.sh" >&2
         else
           echo "[caddy] FEHLER: keine eigene, auf BRICK_HOST beschränkte CA in ./caddy/ca." >&2
-          echo "[caddy]   Einrichten: sudo sh scripts/ca-einrichten.sh (UPGRADE.md, Abschnitt 33)." >&2
+          echo "[caddy]   Einrichten: sudo sh scripts/ca-einrichten.sh (UPGRADE.md#ca-einrichten)." >&2
           echo "[caddy]   Öffentlicher Name mit Let's Encrypt: BRICK_TLS=acme in .env." >&2
           echo "[caddy]   Caddys unbeschränkte CA nur ausdrücklich: CA_OHNE_NAMENSBESCHRAENKUNG=ja in .env." >&2
           exit 1
@@ -567,7 +567,7 @@ networks:
   # Festes Netz: Ein Reverse-Proxy davor bekommt darin eine feste Adresse
   # (ipv4_address: 172.28.73.10), und TRUST_PROXY nennt genau diese. Ein
   # ganzes Docker-Netz zu vertrauen liesse jeden Container darin Adressen fälschen.
-  # Über das feste Subnetz sperrt eine DOCKER-USER-Regel den Weg ins LAN (UPGRADE.md, Abschnitt 53).
+  # Über das feste Subnetz sperrt eine DOCKER-USER-Regel den Weg ins LAN (UPGRADE.md#heimnetz-sperre).
   brickinventory-net:
     driver: bridge
     ipam:

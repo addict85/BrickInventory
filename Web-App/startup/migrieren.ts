@@ -13,7 +13,7 @@ async function migriere(): Promise<void> {
     // Ohne CREATE prüfte initSchemaOnce nur und meldete Erfolg, ohne migriert zu haben.
     if (!(await db.darfSchemaAendern()))
       throw new Error(
-        'Diese Rolle darf das Schema nicht ändern: PGUSER muss die Migrationsrolle sein (UPGRADE.md, Abschnitt 51).',
+        'Diese Rolle darf das Schema nicht ändern: PGUSER muss die Migrationsrolle sein (UPGRADE.md#migrationsrolle).',
       );
     await db.initSchemaOnce();
     const weg = await raeumeAlteSicherungenAuf(db);

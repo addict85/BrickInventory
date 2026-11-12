@@ -24,7 +24,7 @@ tag=$(aus_env BRICK_TAG)
 tag="${tag:-latest}"
 if ! command -v cosign >/dev/null 2>&1; then
   echo "[image] cosign fehlt. Installieren (Paketverwaltung oder https://github.com/sigstore/cosign/releases)," >&2
-  echo "        dann erneut aufrufen. Ohne Prüfung: UPGRADE.md, Abschnitt 42." >&2
+  echo "        dann erneut aufrufen. Ohne Prüfung: UPGRADE.md#image-digest." >&2
   exit 1
 fi
 

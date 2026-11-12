@@ -26,7 +26,7 @@ aus_datei DB_APP_PASSWORD
 aus_datei DB_MIGRATION_PASSWORD
 aus_datei PGWEB_DB_PASSWORD
 : "${DB_APP_PASSWORD:?DB_APP_PASSWORD fehlt - sh scripts/geheimnisse-einrichten.sh, siehe UPGRADE.md}"
-: "${DB_MIGRATION_PASSWORD:?DB_MIGRATION_PASSWORD fehlt - sh scripts/geheimnisse-einrichten.sh, siehe UPGRADE.md Abschnitt 51}"
+: "${DB_MIGRATION_PASSWORD:?DB_MIGRATION_PASSWORD fehlt - sh scripts/geheimnisse-einrichten.sh, siehe UPGRADE.md#migrationsrolle}"
 SU_PASSWORT="${PGPASSWORD:-${POSTGRES_PASSWORD:-}}"
 if [ "$DB_APP_PASSWORD" = "$SU_PASSWORT" ]; then
   echo "[db-rolle] DB_APP_PASSWORD muss sich von DB_PASSWORD unterscheiden." >&2

@@ -39,7 +39,7 @@ function warneAlterOrt(alt: string, neu: string): void {
   console.warn(
     `⚠️  [geheimnis] Der Datenschlüssel liegt im Datenordner (${alt}) und damit in jeder Sicherung von data/. ` +
       `Bitte umziehen: Server anhalten, die Datei nach ${neu} verschieben (compose.yaml: ./schluessel/datenschluessel) ` +
-      'und wieder starten — Schritte in UPGRADE.md, Abschnitt „Datenschlüssel ausserhalb von data/".',
+      'und wieder starten — Schritte in UPGRADE.md#datenschluessel-ort.',
   );
 }
 

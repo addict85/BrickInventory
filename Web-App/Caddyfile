@@ -1,5 +1,5 @@
 # Caddy vor der App: HTTPS für BRICK_HOST aus .env.
-# Siehe README.md (HTTPS) und UPGRADE.md, Abschnitte 14 und 33.
+# Siehe README.md (HTTPS) und UPGRADE.md#wurzelzertifikat, #ca-einrichten.
 {
 	# Keine Verwaltungsschnittstelle: Die Konfiguration ändert sich nur mit
 	# dieser Datei und einem Neustart.
@@ -75,7 +75,7 @@ https://{$BRICK_HOST} {
 http:// {
 	# Nur das Wurzelzertifikat gibt es im Klartext: Ein Gerät braucht es, bevor
 	# es HTTPS vertraut. Echt ist es nur, wenn der Fingerabdruck auf dem Gerät
-	# dem im Protokoll von Caddy gleicht (UPGRADE.md, Abschnitt 33).
+	# dem im Protokoll von Caddy gleicht (UPGRADE.md#wurzelzertifikat).
 	# Nur GET und HEAD auf genau diese Datei; alles andere geht auf HTTPS.
 	@wurzel {
 		method GET HEAD

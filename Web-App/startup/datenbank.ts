@@ -14,13 +14,13 @@ export async function warneBeiSuperuser(db: Db): Promise<boolean> {
   if (!konfig().betrieb || !(await db.alsSuperuserVerbunden())) return false;
   if (!konfig().dbSuperuserErlaubt) {
     console.error(
-      '❌ [datenbank] Die App verbindet sich als Superuser — Start verweigert. Eigene Rolle: UPGRADE.md, ' +
-        'Abschnitt 29; wer es bewusst so betreibt, setzt DB_SUPERUSER_ERLAUBT=1 (Abschnitt 34).',
+      '❌ [datenbank] Die App verbindet sich als Superuser — Start verweigert. Eigene Rolle: UPGRADE.md#eigene-datenbankrolle; ' +
+        'wer es bewusst so betreibt, setzt DB_SUPERUSER_ERLAUBT=1 (UPGRADE.md#superuser-ausnahme).',
     );
     process.exit(1);
   }
   console.warn(
-    '⚠️  [datenbank] Die App verbindet sich als Superuser (DB_SUPERUSER_ERLAUBT=1). Eigene Rolle: UPGRADE.md, Abschnitt 29.',
+    '⚠️  [datenbank] Die App verbindet sich als Superuser (DB_SUPERUSER_ERLAUBT=1). Eigene Rolle: UPGRADE.md#eigene-datenbankrolle.',
   );
   return true;
 }

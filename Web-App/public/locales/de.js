@@ -410,7 +410,7 @@ window.I18N_DE = {
   'tokens.scope.voll': 'voll',
   'tls.title': 'Server-Zertifikat',
   'tls.hint':
-    'Dieser Server benutzt eine eigene Zertifizierungsstelle. Installiere ihr Wurzelzertifikat auf deinen Geräten. Über http:// kann die Datei unterwegs ausgetauscht werden: Vergleiche vor dem Installieren den SHA-256-Fingerabdruck, den das Gerät zeigt, Zeichen für Zeichen mit dem Wert hier (UPGRADE.md, Abschnitt 14). Stimmt er nicht, nicht installieren. Die Android-App bekommt ihn über den QR-Code.',
+    'Dieser Server benutzt eine eigene Zertifizierungsstelle. Installiere ihr Wurzelzertifikat auf deinen Geräten. Über http:// kann die Datei unterwegs ausgetauscht werden: Vergleiche vor dem Installieren den SHA-256-Fingerabdruck, den das Gerät zeigt, Zeichen für Zeichen mit dem Wert hier (UPGRADE.md#wurzelzertifikat). Stimmt er nicht, nicht installieren. Die Android-App bekommt ihn über den QR-Code.',
   'tls.zert_sha256': 'Fingerabdruck des Zertifikats (SHA-256) – so zeigt ihn das Gerät beim Installieren',
   'tls.subject': 'Ausgestellt für',
   'tls.valid_until': 'Gültig bis',

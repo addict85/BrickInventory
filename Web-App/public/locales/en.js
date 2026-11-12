@@ -407,7 +407,7 @@ window.I18N_EN = {
   'tokens.scope.voll': 'full',
   'tls.title': 'Server certificate',
   'tls.hint':
-    'This server uses its own certificate authority. Install its root certificate on your devices. Over http:// the file can be swapped on the way: before installing, compare the SHA-256 fingerprint your device shows character by character with the value here (UPGRADE.md, section 14). If it differs, do not install it. The Android app receives it via the QR code.',
+    'This server uses its own certificate authority. Install its root certificate on your devices. Over http:// the file can be swapped on the way: before installing, compare the SHA-256 fingerprint your device shows character by character with the value here (UPGRADE.md#wurzelzertifikat). If it differs, do not install it. The Android app receives it via the QR code.',
   'tls.zert_sha256': 'Certificate fingerprint (SHA-256) – as your device shows it when installing',
   'tls.subject': 'Issued to',
   'tls.valid_until': 'Valid until',

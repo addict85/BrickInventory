@@ -67,6 +67,8 @@ wird nicht mehr veröffentlicht.
 an, und jedes Gerät braucht das neue Wurzelzertifikat und die App einen neuen
 QR-Code.
 
+<a id="wurzelzertifikat"></a>
+
 ### Das Wurzelzertifikat auf Geräte bringen
 
 Caddy legt es unter `./caddy/data/caddy/pki/authorities/local/root.crt` ab.
@@ -252,6 +254,8 @@ ab, bevor Benutzername und Passwort gesendet werden; Einstellungen → E-Mail �
 „Test" sagt das. Abhilfe: Port 465 mit „SSL/TLS" wählen oder STARTTLS am
 Mailserver einschalten. Ein Mailserver ohne jede Verschlüsselung wird nicht
 mehr unterstützt — Passwort und Rücksetzlinks gingen sonst lesbar durchs Netz.
+
+<a id="datenschluessel-ort"></a>
 
 ## 21. Datenschlüssel ausserhalb von `data/`
 
@@ -491,6 +495,8 @@ Was sich für Nutzer und Clients ändert:
   solcher PR ist wie ein Update zu behandeln: lesen, mergen, auf dem Server
   `docker compose pull && docker compose up -d`. Der Sicherheitslauf meldet
   zusätzlich, wenn ein festgenagelter Digest hinter seinem Tag zurückliegt.
+<a id="eigene-datenbankrolle"></a>
+
 - **Eigene Datenbankrolle der App (Pflichtschritt)**: Bisher verband sich die
   App als `brickinventory`, und das ist der Superuser der Datenbank (wer die
   App übernimmt, könnte per `COPY … TO PROGRAM` Befehle im Datenbank-Container
@@ -743,6 +749,8 @@ Was der Betrieb tun muss, steht zuerst; danach, was sich für Clients ändert.
   auf eine neue PostgreSQL-Hauptversion kommt erst nach Freigabe im
   Dependency-Dashboard: Er braucht einen Umzug der Daten (`POSTGRES-18.md`).
 
+<a id="ca-einrichten"></a>
+
 **Eigene, auf BRICK_HOST beschränkte CA (empfohlen, nicht automatisch)**
 
 Caddys eigene Wurzel gilt auf jedem Gerät, das sie installiert hat, für jede
@@ -863,6 +871,8 @@ einhalten; alles im Ordner mit `compose.yaml`.
 
 **1. Geheimnisse als Dateien (Pflicht)**
 
+<a id="geheimnisse"></a>
+
 `SESSION_SECRET`, `DB_PASSWORD`, `DB_APP_PASSWORD` und die pgweb-Passwörter
 stehen nicht mehr in der Umgebung der Container (die zeigt `docker inspect`
 jedem mit Zugang zu Docker), sondern als Docker-Secrets unter
@@ -919,6 +929,8 @@ docker compose logs caddy | grep Fingerabdruck
 ab, nicht installieren.
 
 **3. Sicherungen nur verschlüsselt (Pflicht)**
+
+<a id="backup-empfaenger"></a>
 
 `scripts/backup.sh` sichert ohne Empfänger nichts mehr. Ein Cron-Lauf meldet
 dann `FEHLER: kein Empfänger`. Einmalig einrichten:
@@ -1037,6 +1049,8 @@ docker compose exec postgres psql -U brickinventory -c "DELETE FROM bl_zuordnung
   Regeln des Betriebs: Ohne eigenes `SESSION_SECRET` (mindestens 32 Zeichen)
   startet der Server nicht. Das Entwicklungsgeheimnis gibt es nur bei
   ausdrücklichem `NODE_ENV=development` oder `test` (`npm run dev` setzt es).
+<a id="superuser-ausnahme"></a>
+
 - In Produktion verweigert der Server den Start als Datenbank-Superuser
   (`COPY … PROGRAM` hiesse bei einer Lücke Codeausführung auf dem
   Datenbankhost). Richtig ist eine eigene Rolle (Abschnitt 29; in Docker
@@ -1329,6 +1343,8 @@ Telefon die Webseite.
   Startet ein Worker nicht, meldet das Protokoll `[bcrypt] Worker-Thread
   startet nicht …`, und geprüft wird wie bisher im Hauptthread.
 
+<a id="backup-vollstaendig"></a>
+
 **4. `backup.sh` bricht ab, statt unvollständig zu sichern**
 
 - Vor dem Dump prüft das Skript, ob alles unter `data/` lesbar ist, und
@@ -1427,6 +1443,8 @@ Telefon die Webseite.
   `docker compose logs app jobs | grep -A2 Standard-Admin`. **Überholt durch
   Abschnitt 51:** jetzt im Protokoll von `migration`. `ADMIN_PASSWORD`
   reicht `compose.yaml` nicht durch.
+
+<a id="image-digest"></a>
 
 ## 42. Runde 16 – Image nur als geprüfter Digest, Startverbot für Mail-Tokens
 
@@ -1560,6 +1578,8 @@ Konto setzt, muss der Inhaber bei der nächsten Anmeldung ersetzen; bis dahin
 geht nur der Wechsel selbst (wie beim Startpasswort). Bestehende Konten sind
 nicht betroffen.
 
+<a id="datenschluessel-wechseln"></a>
+
 **6. Datenschlüssel wechseln**
 
 Bei Verdacht, dass `./schluessel/datenschluessel` abgeflossen ist:
@@ -1615,6 +1635,8 @@ npm-Pakete (`npm audit signatures`).
   Aufträge, etwa der Katalog-Abgleich, übernimmt der nächste Start sofort statt
   nach fünf Minuten. Aufträge, die noch die Version vor diesem Update belegt
   hat, laufen wie bisher erst nach ihrer Frist weiter.
+
+<a id="stichtag-0050"></a>
 
 ## 45. Stichtag Migration 0050: frühere Startstufen entfernt
 
@@ -1778,6 +1800,8 @@ docker compose exec postgres psql -U brickinventory -c "SELECT max(name) FROM sc
 - Ein einzelnes `docker run` ohne compose startet weiter als root, richtet
   `/app/data` selbst ein und gibt die Rechte dann an `brickinv` ab.
 
+<a id="migrationsrolle"></a>
+
 ## 51. Migrationsrolle getrennt von der Laufzeitrolle
 
 **Für jeden Docker-Betreiber einmal zu tun.** Ohne die Schritte bricht
@@ -1850,6 +1874,8 @@ mit `DB_MIGRATION_PASSWORD` auf und startet einmal
 `node dist/startup/migrieren.js` als Migrationsrolle, den Server danach als
 `brickinventory_app`.
 
+<a id="caddy-image"></a>
+
 ## 52. Caddy als signiertes Image per Digest
 
 **Für jeden Docker-Betreiber einmal zu tun:** `sh scripts/image-pruefen.sh`,
@@ -1876,6 +1902,8 @@ dann `docker compose up -d`. Ohne diesen Schritt bricht `docker compose` mit
   in `.env`, dann `docker compose up -d --build`. Das alte lokale Image
   `brickinventory-caddy:2.11.8` wird nicht mehr benutzt (`docker image rm`).
 
+
+<a id="heimnetz-sperre"></a>
 
 ## 53. Kein Weg ins Heimnetz (optional, DOCKER-USER)
 

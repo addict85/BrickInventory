@@ -408,7 +408,7 @@ async function nurStandPruefen(client: import('pg').ClientBase): Promise<void> {
   if (leer || offen.length)
     throw new Error(
       `${leer ? 'Die Datenbank ist leer' : `Migrationen offen: ${offen.join(', ')}`}. Diese Rolle darf das Schema nicht ändern; ` +
-        'Grundschema und Migrationen spielt der Dienst migration als Migrationsrolle ein (UPGRADE.md, Abschnitt 51).',
+        'Grundschema und Migrationen spielt der Dienst migration als Migrationsrolle ein (UPGRADE.md#migrationsrolle).',
     );
   await schreibeErfassungsZeitzone(client);
   console.log('✅ Schema aktuell (eingespielt vom Dienst migration)');
@@ -425,6 +425,6 @@ async function pruefeMindeststand(client: import('pg').ClientBase): Promise<void
   if (!neuGenug)
     throw new Error(
       `Die Datenbank ist älter als Migration ${MINDESTSTAND}. Zuerst auf eine Fassung vor dem ` +
-        'Entfernen der früheren Startstufen aktualisieren, dann auf diese (UPGRADE.md, Abschnitt 45).',
+        'Entfernen der früheren Startstufen aktualisieren, dann auf diese (UPGRADE.md#stichtag-0050).',
     );
 }

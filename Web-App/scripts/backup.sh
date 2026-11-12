@@ -15,7 +15,7 @@
 #   ./scripts/backup.sh /pfad/zum/ziel   → dorthin
 #
 # Cron-Beispiel (täglich um 3 Uhr, in der crontab von root – der Dienst schreibt
-# nur für sich lesbar, siehe UPGRADE.md Abschnitt 39):
+# nur für sich lesbar, siehe UPGRADE.md#backup-vollstaendig):
 #   0 3 * * * cd /opt/brickinventory && ./scripts/backup.sh >> backup.log 2>&1
 #
 # Eine Sicherung ist ein GEHEIMNIS: Der Dump enthält alle Passwort-Hashes und,
@@ -33,7 +33,7 @@
 # oder BACKUP_AGE_EMPFAENGER. Es entstehen nur *.age-Dateien; den privaten
 # Schlüssel braucht erst restore.sh (BACKUP_AGE_IDENTITAET), er gehört nicht
 # auf diesen Rechner. Ohne Empfänger sichert das Skript nichts, ausser mit
-# ausdrücklichem BACKUP_KLARTEXT=ja (UPGRADE.md, Abschnitt 33).
+# ausdrücklichem BACKUP_KLARTEXT=ja (UPGRADE.md#backup-empfaenger).
 set -eu
 umask 077
 
@@ -53,7 +53,7 @@ elif [ "${BACKUP_KLARTEXT:-}" = ja ]; then
 else
   echo "[backup] FEHLER: kein Empfänger für die Verschlüsselung — nichts gesichert." >&2
   echo "[backup]   Auf einem ANDEREN Rechner: age-keygen -o backup-schluessel.txt; den öffentlichen" >&2
-  echo "[backup]   Schlüssel (age1…) hier in ./backup-empfaenger.txt eintragen (UPGRADE.md, Abschnitt 33)." >&2
+  echo "[backup]   Schlüssel (age1…) hier in ./backup-empfaenger.txt eintragen (UPGRADE.md#backup-empfaenger)." >&2
   echo "[backup]   Unverschlüsselt nur ausdrücklich: BACKUP_KLARTEXT=ja" >&2
   exit 1
 fi
@@ -85,7 +85,7 @@ if [ -d data ]; then
                 | while IFS= read -r f; do [ -r "$f" ] || { echo "$f"; break; }; done; sed -n 1p "$KLAR/find"; } | sed -n 1p)
   if [ -n "$UNLESBAR" ]; then
     echo "[backup] FEHLER: data/ ist nicht vollständig lesbar ($UNLESBAR) — nichts gesichert." >&2
-    echo "[backup]   Als root oder mit der UID des Dienstes ausführen (UPGRADE.md, Abschnitt 39)." >&2
+    echo "[backup]   Als root oder mit der UID des Dienstes ausführen (UPGRADE.md#backup-vollstaendig)." >&2
     exit 1
   fi
 fi

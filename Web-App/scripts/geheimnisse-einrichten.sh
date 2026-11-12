@@ -1,7 +1,7 @@
 #!/bin/sh
 # Legt ./geheimnisse/ an: je Geheimnis eine Datei, die compose.yaml als
 # Docker-Secret einhängt. Umgebungsvariablen zeigt `docker inspect` jedem mit
-# Zugang zu Docker; Dateien unter /run/secrets/ nicht. UPGRADE.md, Abschnitt 33.
+# Zugang zu Docker; Dateien unter /run/secrets/ nicht. UPGRADE.md#geheimnisse.
 #
 #   sh scripts/geheimnisse-einrichten.sh            (im Ordner mit compose.yaml)
 #   PGWEB=ja sh scripts/geheimnisse-einrichten.sh   auch ein Passwort für die Leserolle
@@ -65,7 +65,7 @@ richte_ein session_secret SESSION_SECRET 48
 richte_ein db_password DB_PASSWORD 24
 richte_ein db_app_password DB_APP_PASSWORD 24
 # Die Migrationsrolle bekommt ihr Passwort bei jedem Lauf von db-rolle neu; ein
-# neu erzeugtes passt also auch zu einer bestehenden Datenbank (UPGRADE.md, Abschnitt 51).
+# neu erzeugtes passt also auch zu einer bestehenden Datenbank (UPGRADE.md#migrationsrolle).
 richte_ein db_migration_password "" 24
 # Die Leserolle bekommt ihr Passwort bei jedem Lauf von db-rolle neu; leer
 # heisst: sie meldet sich gar nicht an. Der Dateiname stammt aus der Zeit von pgweb.
