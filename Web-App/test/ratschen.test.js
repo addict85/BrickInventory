@@ -518,6 +518,27 @@ test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
   if (n < SCHRANKE) console.log(`  ℹ Quelltext-Testfälle: ${n} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
+/** Die Fassade `_req('db/database.js')` (und dbOderSkip, das sie liefert) tut so, als
+ * gäbe es noch einen Zugang des Prozesses. Neue Tests nehmen den Zugang selbst:
+ * zugangOderSkip() bzw. testZugang() aus den Testhilfen oder erzeugeDb(). */
+const NUTZT_FASSADE = /_req\w*\(\s*['"]db\/database(?:\.js)?['"]\s*\)|\bdbOderSkip\(/;
+
+test('Tests über die Fassade der alten DB-API werden weniger, nie mehr', () => {
+  // Gemessen 387 am 12.11.2026 (389 vor der Umstellung von indizes-db und transaktion-umgebung-db).
+  // Gegenprobe (12.11.2026): indizes-db.test.js zurück auf dbOderSkip → rot (388).
+  const SCHRANKE = 387;
+  assert.ok(NUTZT_FASSADE.test("const db = _req('db/database.js');") && !NUTZT_FASSADE.test('zugangOderSkip(t)'));
+  const q = require('./helpers/sources');
+  const ist = fs
+    .readdirSync(__dirname)
+    .filter(n => n.endsWith('.test.js') && n !== 'ratschen.test.js')
+    .filter(n => NUTZT_FASSADE.test(q.ohneKommentare(fs.readFileSync(path.join(__dirname, n), 'utf8'))));
+  assert.ok(ist.length > 100, `nur ${ist.length} Treffer — greift das Muster noch?`);
+  assert.ok(ist.length <= SCHRANKE, `${ist.length} Testdateien nutzen die Fassade, erlaubt sind ${SCHRANKE}`);
+  if (ist.length < SCHRANKE)
+    console.log(`  ℹ Fassade der DB-API: ${ist.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
 /**
  * Web-Tests, die Android-Quellen lesen, sind Abgleich-Dateien: `abgleich-*.test.js` oder eine
  * der vier, deren Namen Web-Code nennt. Nur für sie schliesst der paths-Filter von web-ci

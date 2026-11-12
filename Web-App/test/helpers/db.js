@@ -30,6 +30,15 @@ async function dbOderSkip(t, _req, { migrieren = true } = {}) {
   return db;
 }
 
+/** Wie dbOderSkip, liefert aber den Zugang aus erzeugeDb() (helpers/sources
+ * testZugang) statt der Fassade; dieselben Methoden (all, get, run, transaction, pool).
+ * @param {import('node:test').TestContext} t @param {(pfad: string) => any} _req
+ * @param {{ migrieren?: boolean }} [o] */
+async function zugangOderSkip(t, _req, o) {
+  if (!(await dbOderSkip(t, _req, o))) return null;
+  return require('./sources').testZugang();
+}
+
 /** Für Tests, die die Erreichbarkeit selbst prüfen. @param {any} t @param {unknown} [e] */
 function keineDb(t, e) {
   const grund = e === undefined ? '' : `: ${e instanceof Error ? e.message : e}`;
@@ -47,4 +56,4 @@ function fehltVoraussetzung(t, grund, meldung = grund) {
   t.skip(grund);
 }
 
-module.exports = { dbOderSkip, keineDb, fehltVoraussetzung };
+module.exports = { dbOderSkip, zugangOderSkip, keineDb, fehltVoraussetzung };

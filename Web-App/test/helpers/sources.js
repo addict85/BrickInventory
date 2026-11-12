@@ -103,6 +103,8 @@ function baueDist() {
 /** Der Zugang der Testdatei: db/database kennt keinen Zugang des Prozesses mehr;
  *  ein Test bekommt ihn wie der Server von seinem Einstieg, hier also von hier. */
 let _testDb = null;
+/** Erzeugt den Zugang; gesetzt von buildAndRequire(). */
+let _zugangFabrik = null;
 
 function buildAndRequire() {
   // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/http/vertragsRouter.ts).
@@ -129,6 +131,7 @@ function buildAndRequire() {
   // Wie server.ts: Der Zugang legt in einer leeren Datenbank das erste Konto an.
   const testDb = () =>
     (_testDb ??= dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung(), { erststart: () => echt().erststart() }));
+  _zugangFabrik = testDb;
   // Wie verdrahte(): Ohne Zugang wirft jeder Abruf eines Klienten. Die Bauteile erst beim ersten Gebrauch.
   let klienten = null;
   const klientenEcht = () =>
@@ -192,6 +195,15 @@ function buildAndRequire() {
 }
 
 module.exports.buildAndRequire = buildAndRequire;
+
+/** Der Zugang aus erzeugeDb(), den auch die verdrahteten Dienste dieser Testdatei
+ *  benutzen: für neue Tests statt der Fassade `_req('db/database.js')`, die so
+ *  tut, als gäbe es noch einen Zugang des Prozesses. Erst nach buildAndRequire(). */
+function testZugang() {
+  if (!_zugangFabrik) throw new Error('testZugang() erst nach buildAndRequire()');
+  return _zugangFabrik();
+}
+module.exports.testZugang = testZugang;
 
 /** Stellt Umgebungsvariablen um (undefined löscht) und lässt konfig() sie neu
  *  lesen: Der Server liest sie einmal beim Start (src/infra/konfig.ts). */
