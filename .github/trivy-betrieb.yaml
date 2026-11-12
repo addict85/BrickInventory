@@ -270,3 +270,8 @@ vulnerabilities:
       - "pkg:apk/alpine/libxslt"
     expired_at: 2026-11-25
     statement: "krb5 trifft fast nur KDC und kadmind, die im Container nicht laufen; GSSAPI ist nicht eingerichtet. libxslt braucht nur die Erweiterung xml2, die nicht geladen wird. Behoben mit dem nächsten Bau des Images."
+  - id: CVE-2026-125350
+    purls:
+      - "pkg:apk/alpine/libxslt"
+    expired_at: 2026-11-25
+    statement: "libxslt braucht nur die Erweiterung xml2, die nicht geladen wird. Auch der Digest vom 12.11.2026 enthält noch 1.1.43-r3; behoben mit dem nächsten Bau des Images."
