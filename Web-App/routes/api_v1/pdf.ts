@@ -4,6 +4,7 @@ import { meldeFehler, ohneFehlendeDatei } from '../../src/infra/fehler';
 import { fehlerAntwort, streamFileToResponse, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke } from './middleware';
 import { registerSse } from '../../src/http/sseRegistry';
+import { SSE_ZUGANG_BEENDET, wacheUeberZugang } from '../../src/konto/http/zugangsWache';
 import _pdfFs from 'node:fs/promises';
 import _fsSync from 'node:fs';
 import {
@@ -116,6 +117,10 @@ router.get(
 
     // Anmelden, sonst wartet httpServer.close() beim Herunterfahren auf diesen Strom.
     const unregisterSse = registerSse(res);
+    const wache = wacheUeberZugang(req, () => {
+      res.write(SSE_ZUGANG_BEENDET);
+      cleanup();
+    });
 
     let closed = false;
     let lastSent = '';
@@ -136,6 +141,7 @@ router.get(
     });
     if (isDone(initial.status)) {
       closed = true;
+      wache();
       unregisterSse();
       return res.end();
     }
@@ -167,6 +173,7 @@ router.get(
     function cleanup() {
       if (closed) return;
       closed = true;
+      wache();
       abmelden();
       clearInterval(fallback);
       clearInterval(heartbeat);
