@@ -1,0 +1,17 @@
+Gegenprobe: Nach dem Ja zum Erstkontakt wird die QR-Anmeldung nicht wiederholt
+Modul: feature-anmeldung
+Test: ch.brickinventoryapp.anmeldung.AnmeldungViewModelTest
+Rot: nach dem Ja zum Erstkontakt meldet sich der QR-Code ohne neuen Scan an
+
+diff --git a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/viewmodel/AnmeldungViewModel.kt b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/viewmodel/AnmeldungViewModel.kt
+--- a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/viewmodel/AnmeldungViewModel.kt
++++ b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/viewmodel/AnmeldungViewModel.kt
+@@ -235,7 +235,7 @@
+         val schluessel = pinSchluessel(adresse) ?: return r
+         if (r !is Ergebnis.Error || frage.offen.value?.schluessel != schluessel) return r
+         frage.offen.first { it == null }
+-        return if (ablage.gemerkterPin(schluessel) != null) abruf() else r
++        return r
+     }
+ 
+     /** Wartet die Kopplung auf das Ja oder Nein zum gezeigten Konto ([AnmeldeUiState.qrKonto]). */
