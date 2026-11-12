@@ -299,6 +299,10 @@
     .fehler-kasten summary{color:var(--r700);cursor:pointer;display:inline-flex;align-items:center;gap:4px}
     .fehler-kasten code{display:block;margin-top:4px;padding:.3rem .45rem;background:var(--s100);border-radius:4px;font-size:var(--fs-1);white-space:pre-wrap;word-break:break-word;color:var(--txt)}
     .ptitle-unter{color:var(--mut);font-size:var(--fs-3);margin-top:2px}
+    /* „Sammlung › Teile“: Die Hauptleiste nennt nur „Sammlung“; der Pfad verbindet sie mit dem Seitentitel. */
+    .brotkrume{display:flex;align-items:center;gap:.4em;font-size:var(--fs-2);color:var(--mut);margin-bottom:2px}
+    .brotkrume a{color:var(--b600);min-height:24px;display:inline-flex;align-items:center}
+    .brotkrume [aria-current]{color:var(--txt);font-weight:600}
     .ptitle[tabindex="-1"]:focus{outline:none}
     .ptitle{font-size:var(--fs-6);font-weight:800;letter-spacing:-.3px;display:inline-flex;align-items:center;gap:.4rem}
     /* Reiter-Icon links vom Titel — Emoji erbt die Schriftgröße, Inline-SVG
@@ -489,7 +493,7 @@
     /* Auf Geräten ohne Zeigegerät gibt es kein Überfahren — dort dauerhaft
        sichtbar, sonst wäre Löschen per Touch gar nicht erreichbar. */
     @media (hover: none){ .ca{opacity:1} }
-    .delbtn{width:32px;height:32px;border-radius:6px;border:1px solid var(--bdr);cursor:pointer;background:color-mix(in srgb,var(--sur) 92%,transparent);color:var(--s500);font-size:var(--fs-1);display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s,border-color .15s}
+    .delbtn{width:32px;height:32px;border-radius:6px;border:1px solid var(--bdr);cursor:pointer;background:color-mix(in srgb,var(--sur) 92%,transparent);color:var(--s500);font-size:1.125rem;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s,border-color .15s}
     /* Dezent bis zur Berührung: Der Knopf erscheint ohnehin erst beim
        Überfahren der Kachel (.ca opacity). Ein dauerhaft rotes Feld zog den
        Blick stärker auf sich als das Set selbst. Rot bleibt der Bestätigung
@@ -1349,9 +1353,9 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 .abstand-u-06{margin-bottom:.6rem}.abstand-u-075{margin-bottom:.75rem}.abstand-u-1{margin-bottom:1rem}.abstand-u-125{margin-bottom:1.25rem}
 .ohne-abstand-u{margin-bottom:0}
 
-/* Auf Touch-Geräten kein Papierkorb auf jeder Kachel: zu leicht getroffen
-   beim Wischen. Gelöscht wird im Detail, wie in der App. */
-@media (hover:none) and (pointer:coarse){ #tab-gallery .sc .ca{display:none} }
+/* Ohne Überfahren (Touch, auch mit Stift) kein Papierkorb auf jeder Kachel: dauerhaft sichtbar war er auf
+   jeder Karte das Auffälligste und beim Wischen leicht getroffen. Gelöscht wird im Detail, wie in der App. */
+@media (hover:none){ #tab-gallery .sc .ca{display:none} }
 /* Warnhinweis neben einem Ergebnis: Rand in der Bernsteinfarbe jedes Designs, Text in Grundfarbe für vollen Kontrast. */
 .hinweis-warnung{color:var(--txt);font-weight:600;border-left:3px solid var(--chart-used);padding-left:8px;margin-top:6px}
 /* Die weisse QR-Fläche erst, wenn ein Code darin steht. */

@@ -25,7 +25,12 @@ let _plParts = null;
 /** Rebrickable- → BrickLink-Farbnummer. @type {Record<string, number>} */
 let _rbToBlColor = {};
 
-function plAddSet() {
+/** Zählt die Läufe von plGenerate: Ein schneller zweiter Zusatz überholt den ersten, und nur der letzte
+ * zeichnet. */
+let _plLauf = 0;
+
+/** Hinzufügen rechnet die Liste gleich neu: Ein zweiter Schritt „Erstellen“ wurde regelmässig vergessen. */
+async function plAddSet() {
   const raw = G('pl-setnr').value.trim();
   if (!raw) {
     feldFehler('pl-setnr', tRaw('common.enter_set_number'));
@@ -42,13 +47,13 @@ function plAddSet() {
     return;
   }
   feldFehler('pl-setnr', '');
-  nrs.forEach(nr => {
+  const namen = nrs.map(nr => {
     const normalized = nr.includes('-') ? nr : nr + '-1';
     const eintrag = { set_number: normalized, name: normalized, unbekannt: false };
     _plSets.push(eintrag);
     // Name aus dem Katalog; kennt er die Nummer nicht, sagt es der Chip, statt sie still als Set ohne Teile
-    // mitzuzählen. Try to get set name from catalog (works for any set, not just owned ones)
-    api('GET', `/v1/sets/info/${normalized}`)
+    // mitzuzählen.
+    return api('GET', `/v1/sets/info/${normalized}`)
       .then(d => {
         if (!d.success) return;
         if (d.name && d.name !== normalized) eintrag.name = d.name;
@@ -60,24 +65,21 @@ function plAddSet() {
   G('pl-setnr').value = '';
   G('pl-setnr').focus();
   plRenderSets();
+  await Promise.all(namen);
+  await plGenerate();
 }
 
 G('pl-setnr')?.addEventListener('keydown', e => e.key === 'Enter' && plAddSet());
 
 /**
- * Ein Hauptknopf, und zwar der nächste Schritt: ohne Sets „Hinzufügen“, danach „Bauliste erstellen“. Gesperrt
- * nennt „Erstellen“ den Grund sichtbar darunter und als Beschreibung, nicht nur durch Blässe.
+ * „Hinzufügen“ ist der eine Hauptknopf: Es rechnet die Liste gleich mit. „Neu berechnen“ bleibt für einen
+ * zweiten Versuch; gesperrt nennt er den Grund sichtbar darunter und als Beschreibung, nicht nur durch Blässe.
  * @param {boolean} leer
  */
 function plSchritt(leer) {
   const gen = G('btn-pl-gen'),
-    add = G('btn-pl-add'),
     hinweis = G('pl-gen-hinweis');
-  if (!gen || !add) return;
-  add.classList.toggle('bp', leer);
-  add.classList.toggle('bs', !leer);
-  gen.classList.toggle('bp', !leer);
-  gen.classList.toggle('bs', leer);
+  if (!gen) return;
   if (leer) gen.setAttribute('aria-disabled', 'true');
   else gen.removeAttribute('aria-disabled');
   if (hinweis) hinweis.hidden = !leer;
@@ -122,21 +124,24 @@ function plRemoveSet(i) {
   _plSets.splice(i, 1);
   _plParts = null;
   G('pl-result').replaceChildren();
+  G('pl-status').textContent = '';
   plExportStand();
   plRenderSets();
+  if (_plSets.length) plGenerate();
 }
 
 async function plGenerate() {
   // Eine getippte, noch nicht hinzugefügte Nummer gilt mit: „Erstellen“ soll nicht an einem vergessenen Klick scheitern.
   if (G('pl-setnr')?.value.trim()) {
-    plAddSet();
-    // Steht die Nummer noch im Feld, war sie ungültig; plAddSet hat das schon am Feld gesagt.
-    if (G('pl-setnr')?.value.trim()) return;
+    // plAddSet rechnet selbst; steht die Nummer danach noch im Feld, war sie ungültig (am Feld gesagt).
+    await plAddSet();
+    return;
   }
   if (!_plSets.length) {
     feldFehler('pl-setnr', tRaw('pl.erst_set'));
     return;
   }
+  const lauf = ++_plLauf;
   G('pl-status').textContent = tRaw('pl.loading_lists');
   G('btn-pl-gen').disabled = true;
   G('pl-result').replaceChildren();
@@ -225,6 +230,7 @@ async function plGenerate() {
     }
   }
 
+  if (lauf !== _plLauf) return;
   _plParts = Object.values(combined);
   G('pl-status').textContent =
     `${tRaw('pl.summary_teile', { n: _plParts.length, teile: _plParts.reduce((s, x) => s + (Number(x.quantity) || 0), 0).toLocaleString(locale()) })} ${tRaw('pl.summary_sets', { n: bekannt.length })}` +

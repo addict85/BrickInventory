@@ -407,8 +407,13 @@ function gridCard(s) {
   // 2x100 und 1x160 zeigte die Kachel 160 statt der tatsächlichen 120.
   const preis = preisZeile(s);
   // Das Datum des letzten Kaufs: Die Aufnahme ins Konto war bei einem Import für alle Sets derselbe Tag und
-  // sagte nichts.
+  // sagte nichts. Bei mehreren Käufen (oft im Haushalt) sagt die Kachel, dass es der letzte ist.
   const kaufFmt = s.letzter_kauf ? fmtDatum(s.letzter_kauf) : '';
+  const kaeufe = Number(s.acq_count) || 0;
+  const kaufText =
+    kaeufe > 1
+      ? html`${tRaw('gallery.card.kaeufe', { n: kaeufe })} ${kaufFmt}`
+      : html`<span>${tRaw('detail.added')}</span> ${kaufFmt}`;
   // Zustand: Der Server liefert die vorkommenden Zustände als Aggregat — eine Plakette je Zustand, siehe
   // condBadges().
   const condBadge = condBadges(s);
@@ -433,7 +438,7 @@ function gridCard(s) {
         </div>
       </div>
       <div class="price-badge" data-price-for="${s.set_number}"${preis ? '' : ' hidden'}>${preis}</div>
-      ${kaufFmt ? html`<div class="kachel-datum" title="${t('gallery.card.bought')}">${ico('kalender')} <span>${tRaw('detail.added')}</span> ${ungeprueft(kaufFmt)}</div>` : html`<div class="kachel-datum" aria-hidden="true"></div>`}
+      ${kaufFmt ? html`<div class="kachel-datum" title="${t('gallery.card.bought')}">${ico('kalender')} ${kaufText}</div>` : html`<div class="kachel-datum" aria-hidden="true"></div>`}
     </div>
   </div>`;
 }

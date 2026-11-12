@@ -590,6 +590,12 @@
   :is(#tab-gallery, #tab-parts, #tab-minifigs) { position: relative; }
   /* Der Titel ist so hoch wie der Knopf daneben: Der Untertitel beginnt erst darunter. */
   :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph h1 { padding-right: 52px; min-height: 44px; }
+  /* Der Umschalter Sets/Teile/Minifiguren ist hier die sichtbare Überschrift (aria-current); Titel, Pfad und
+     Untertitel bleiben für Vorleser. Zwei Zeilen Kopf schoben die erste Karte unter 40 % der Höhe. */
+  :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph :is(h1, .ptitle-unter, .brotkrume) {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+  }
+  :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph .sammlung-wahl { width: auto; flex: 1 1 auto; margin-right: 52px; }
   .erfassen-leiste { margin: 0; position: static; }
   .erfassen-leiste .import-menue { position: absolute; top: 0; right: 0; flex: none; }
   .erfassen-leiste .import-menue > summary { width: 44px; min-width: 44px; padding: 0; justify-content: center; }

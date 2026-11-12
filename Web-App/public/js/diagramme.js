@@ -4,7 +4,7 @@ import { CURRENCY } from './zustand.js';
 import { G, setzeHtml } from './dom.js';
 import { fmtDatum, fmtN } from './format.js';
 import { detailZeile, pnlBadge } from './bausteine.js';
-import { locale, t, tRaw } from '../i18n.js';
+import { LANG, locale, t, tRaw } from '../i18n.js';
 import { esc, html, ungeprueft } from './escapen.js';
 import { fadenkreuzTeile } from './fadenkreuz.js';
 
@@ -149,8 +149,9 @@ export function zeitpunkt(s) {
 }
 
 /**
- * Striche einer Zeitachse mit einheitlicher Beschriftung: Stunden an einem Tag, Tage bis drei Monate („29.
- * Okt.“), darüber Monate („Nov. 25“).
+ * Striche einer Zeitachse mit einheitlicher Beschriftung: Stunden an einem Tag, Tage bis drei Monate, darüber
+ * Monate. Deutsch in Ziffern wie jedes Datum im Text (fmtDatum: „13.09.2026“ → Achse „13.09.“, „09.2026“);
+ * „13. Sept.“ neben „13.09.2026“ las sich wie zwei Formate. Englisch mit Monatsnamen wie fmtDatum.
  * @param {number} von @param {number} bis  Millisekunden
  * @param {number} maxStriche
  * @returns {{ t: number, text: string }[]}
@@ -167,7 +168,7 @@ export function zeitTeilung(von, bis, maxStriche) {
     for (let t = Math.ceil(von / (h * 36e5)) * h * 36e5; t <= bis; t += h * 36e5) raus.push({ t, text: f.format(t) });
   } else if (spanne <= 92 * TAG) {
     const n = [1, 2, 7, 14].find(x => spanne / (x * TAG) <= max) ?? 14;
-    const f = fmt({ day: 'numeric', month: 'short' });
+    const f = fmt(LANG === 'en' ? { day: 'numeric', month: 'short' } : { day: '2-digit', month: '2-digit' });
     const d = new Date(von);
     d.setHours(0, 0, 0, 0);
     if (d.getTime() < von) d.setDate(d.getDate() + 1);
@@ -175,7 +176,7 @@ export function zeitTeilung(von, bis, maxStriche) {
   } else {
     const monate = spanne / (30.44 * TAG);
     const n = [1, 2, 3, 6, 12, 24].find(x => monate / x <= max) ?? 24;
-    const f = fmt({ month: 'short', year: 'numeric' });
+    const f = fmt(LANG === 'en' ? { month: 'short', year: 'numeric' } : { month: '2-digit', year: 'numeric' });
     const d = new Date(von);
     d.setDate(1);
     d.setHours(0, 0, 0, 0);

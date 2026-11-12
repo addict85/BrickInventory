@@ -560,7 +560,8 @@
 
     <div class="tab" id="tab-parts">
       <div class="ph">
-        <div><h1 class="ptitle" data-tab-title="parts"><span class="ptitle-icon"></span><span data-i18n="nav.parts">Teile</span></h1>
+        <div><nav class="brotkrume" aria-label="Pfad" data-i18n="common.pfad" data-i18n-attr="aria-label"><a href="#/sammlung" data-i18n="nav.collection">Sammlung</a> <span class="brotkrume-trenner" aria-hidden="true">›</span> <span aria-current="page" data-i18n="nav.parts">Teile</span></nav>
+        <h1 class="ptitle" data-tab-title="parts"><span class="ptitle-icon"></span><span data-i18n="nav.parts">Teile</span></h1>
         <p class="ptitle-unter" data-i18n="parts.subtitle">Alle Teile deiner Sammlung — aus Sets und einzeln erfasst.</p></div>
         <div class="sammlung-wahl" role="group" aria-label="Sammlung" data-i18n-attr="aria-label" data-i18n="nav.collection"><button type="button" data-click="oeffneReiter" data-arg="gallery"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg><span data-i18n="header.sets">Sets</span></button><button type="button" aria-current="page" data-click="oeffneReiter" data-arg="parts"><svg class="ico" aria-hidden="true"><use href="#i-teil"/></svg><span data-i18n="nav.parts">Teile</span></button><button type="button" data-click="oeffneReiter" data-arg="minifigs"><svg class="ico" aria-hidden="true"><use href="#i-figur"/></svg><span data-i18n="nav.minifigs">Minifiguren</span></button></div>
       </div>
@@ -637,7 +638,8 @@
     <!-- ══ MINIFIGUREN ══ -->
     <div class="tab" id="tab-minifigs">
       <div class="ph">
-        <h1 class="ptitle" data-tab-title="minifigs"><span class="ptitle-icon"></span><span data-i18n="nav.minifigs">Minifiguren</span></h1>
+        <div><nav class="brotkrume" aria-label="Pfad" data-i18n="common.pfad" data-i18n-attr="aria-label"><a href="#/sammlung" data-i18n="nav.collection">Sammlung</a> <span class="brotkrume-trenner" aria-hidden="true">›</span> <span aria-current="page" data-i18n="nav.minifigs">Minifiguren</span></nav>
+        <h1 class="ptitle" data-tab-title="minifigs"><span class="ptitle-icon"></span><span data-i18n="nav.minifigs">Minifiguren</span></h1></div>
         <div class="sammlung-wahl" role="group" aria-label="Sammlung" data-i18n-attr="aria-label" data-i18n="nav.collection"><button type="button" data-click="oeffneReiter" data-arg="gallery"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg><span data-i18n="header.sets">Sets</span></button><button type="button" data-click="oeffneReiter" data-arg="parts"><svg class="ico" aria-hidden="true"><use href="#i-teil"/></svg><span data-i18n="nav.parts">Teile</span></button><button type="button" aria-current="page" data-click="oeffneReiter" data-arg="minifigs"><svg class="ico" aria-hidden="true"><use href="#i-figur"/></svg><span data-i18n="nav.minifigs">Minifiguren</span></button></div>
       </div>
 
@@ -762,10 +764,10 @@
             </div>
           </div>
           <div class="zeile mittig luecke-05 umbruch">
-            <button class="btn bs fest" data-click="plGenerate" id="btn-pl-gen" aria-disabled="true" aria-describedby="pl-gen-hinweis" data-i18n="pl.generate" data-ico="werkzeug">Bauliste erstellen</button>
+            <button class="btn bs fest" data-click="plGenerate" id="btn-pl-gen" aria-disabled="true" aria-describedby="pl-gen-hinweis" data-i18n="pl.generate" data-ico="aktualisieren">Neu berechnen</button>
             <button class="btn bs fest" data-click="plReset" id="btn-pl-reset" disabled data-i18n="partslist.reset" data-ico="aktualisieren">Zurücksetzen</button>
           </div>
-          <p class="pl-hinweis" id="pl-gen-hinweis" data-i18n="pl.erst_set">Erst eine Setnummer eintragen und hinzufügen, dann „Bauliste erstellen“ wählen.</p>
+          <p class="pl-hinweis" id="pl-gen-hinweis" data-i18n="pl.erst_set">Setnummer eintragen und hinzufügen – die Bauliste entsteht sofort.</p>
         </div>
       </div>
       <!-- Added sets -->

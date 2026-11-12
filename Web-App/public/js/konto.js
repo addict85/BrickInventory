@@ -9,11 +9,9 @@ import { api } from './api.js';
 // Rebrickable-Schlüssel.
 
 // ── Hinweis „Rebrickable-Schlüssel fehlt“ ───────────────────────────────────
-const RB_HINWEIS_WEG = 'bim_rb_hinweis_weg';
-
-/** Weggeklickt bleibt das Band 30 Tage weg, auch über Neustarts: Bei 200 %
- * Zoom kostet es ein Achtel der Höhe; erinnert wird später trotzdem. */
-const RB_HINWEIS_FRIST = 30 * 24 * 3600 * 1000;
+/** Weggeklickt bleibt das Band weg, je Konto und Gerät: Am Telefon kostete es den ersten Bildschirm ein
+ * Sechzehntel, und der fehlende Schlüssel steht ohnehin in den Einstellungen und im Einrichtungsassistenten. */
+const rbHinweisSchluessel = () => `bim_rb_hinweis_weg:${ME?.id ?? ''}`;
 
 /** Über dem Einrichtungsassistenten nicht: Der fragt genau diesen Schlüssel ab.
  * Schliesst man ihn mit „Später“, kommt das Band (einrichtung.js). */
@@ -22,8 +20,7 @@ export function rbHinweisZeigen() {
   if (!band || !ME?.isAdmin || G('einrichtung-modal')?.classList.contains('open')) return;
   if (String(_settingsCache?.rebrickable_api_key || '').trim()) return;
   try {
-    const weg = Number(localStorage.getItem(RB_HINWEIS_WEG));
-    if (weg && Date.now() - weg < RB_HINWEIS_FRIST) return;
+    if (localStorage.getItem(rbHinweisSchluessel())) return;
   } catch (_) {
     /* ohne Speicher: zeigen */
   }
@@ -42,11 +39,11 @@ function rbHinweisOeffnen() {
   G('rb-key')?.focus();
 }
 
-/** Wegklicken gilt RB_HINWEIS_FRIST lang; der Fokus geht an den Seiteninhalt statt ins Leere. */
+/** Wegklicken gilt dauerhaft für dieses Konto; der Fokus geht an den Seiteninhalt statt ins Leere. */
 function rbHinweisWeg() {
   rbHinweisVerbergen();
   try {
-    localStorage.setItem(RB_HINWEIS_WEG, String(Date.now()));
+    localStorage.setItem(rbHinweisSchluessel(), '1');
   } catch (_) {
     /* dann eben bis zum Neuladen */
   }
