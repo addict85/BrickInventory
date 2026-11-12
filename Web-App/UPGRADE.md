@@ -1986,3 +1986,16 @@ wird). Hinweise:
   neue Art braucht künftig eine Migration.
 - Die Leserolle (`postgres/app-rolle.sh`) darf `auftrags_arten` lesen; `docker
   compose up -d` spielt das wie gewohnt ein. Sonst nichts von Hand zu tun.
+
+<a id="ein-web-prozess"></a>
+
+## 56. Genau ein Web-Prozess je Datenbank
+
+- Drossel, PDF-Tickets, Gutschein-Abfragen, Kontoschranke und der
+  Token-Zwischenspeicher liegen im Speicher des Web-Prozesses. Der Web-Prozess
+  (`ROLLE: web` oder `beides`) hält deshalb eine Datenbanksperre, solange er
+  lebt. Ein zweiter wartet bis zu 20 s auf das Ende des ersten (Neustart,
+  Deploy) und beendet sich dann mit „Ein zweiter Web-Prozess … läuft schon“.
+- Wer `app` mehrfach betreibt (etwa `docker compose up --scale app=2`), sieht
+  diese Meldung; es bleibt bei einem `app` und einem `jobs`. Sonst nichts von
+  Hand zu tun.

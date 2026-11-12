@@ -19,6 +19,7 @@ import { closeAllSse } from './src/http/sseRegistry';
 import { meldeSmtpAltlast } from './src/mail';
 import { meldeUngueltigeAdressen, meldeAusstehendeAdressen, horcheAufTokenWiderruf } from './src/konto';
 import { schliessePufferUndTakte } from './startup/abschluss';
+import { halteWebSperre } from './startup/einzelinstanz';
 
 // Nur loggen: Ein abgelehntes Versprechen ist meist ein Nebenläufer ohne catch;
 // Anfragen und Jobs halten ihren Zustand in der Datenbank. Ein Neustart risse
@@ -66,7 +67,13 @@ function sitzungsGeheimnis(): string {
 const SHUTDOWN_TIMEOUT_MS = 8000;
 let _beendetWird = false;
 
-async function herunterfahren(signal: string, httpServer: Server | null, jobs: boolean, zugang: Db): Promise<void> {
+async function herunterfahren(
+  signal: string,
+  httpServer: Server | null,
+  jobs: boolean,
+  zugang: Db,
+  webSperreFrei: (() => Promise<void>) | null,
+): Promise<void> {
   if (_beendetWird) return;
   _beendetWird = true;
   console.log(`[shutdown] ${signal} empfangen — Server wird geordnet beendet`);
@@ -86,6 +93,7 @@ async function herunterfahren(signal: string, httpServer: Server | null, jobs: b
     // Laufende Aufträge halten sicher an und gehen zurück in die Tabelle.
     if (jobs) await stoppeJobs();
     await schliessePufferUndTakte(zugang);
+    await webSperreFrei?.();
     await zugang.pool.end().catch(logAndContinue('server:end'));
     console.log('[shutdown] Datenbankverbindungen geschlossen');
     clearTimeout(notbremse);
@@ -135,6 +143,12 @@ async function starte(): Promise<void> {
     process.exit(1);
   }
   protokollInDieDatenbank(zugang.pool);
+  const webSperreFrei = web
+    ? await halteWebSperre(zugang).catch((e: unknown) => {
+        console.error(`❌ [start] ${fehlertext(e)}`);
+        process.exit(1);
+      })
+    : null;
   if (web) await meldeSmtpAltlast().catch(logAndContinue('start:smtp-altlast'));
   if (web) await meldeUngueltigeAdressen().catch(logAndContinue('start:adressen'));
   if (web) await meldeAusstehendeAdressen().catch(logAndContinue('start:ausstehende-adressen'));
@@ -149,10 +163,10 @@ async function starte(): Promise<void> {
         })
     : null;
   process.on('SIGTERM', () => {
-    void herunterfahren('SIGTERM', httpServer, jobs, zugang);
+    void herunterfahren('SIGTERM', httpServer, jobs, zugang, webSperreFrei);
   });
   process.on('SIGINT', () => {
-    void herunterfahren('SIGINT', httpServer, jobs, zugang);
+    void herunterfahren('SIGINT', httpServer, jobs, zugang, webSperreFrei);
   });
   if (jobs) await starteJobs(web);
 }
