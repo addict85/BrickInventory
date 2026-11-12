@@ -24,9 +24,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.autofill.ContentType
-import androidx.compose.ui.semantics.contentType
-import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.ui.components.FehlerZeile
 import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ui.components.PasswortFeld
@@ -123,7 +120,7 @@ internal fun ZweiterFaktorCard(
             OutlinedTextField(
                 value = zfCode, onValueChange = { zfCode = it.take(24) },
                 label = { Text(beschriftung) },
-                modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.SmsOtpCode },
+                modifier = Modifier.fillMaxWidth(),
                 singleLine = true, shape = Formen.feld,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))
         }

@@ -7,6 +7,7 @@ import java.util.Currency
 import java.util.Locale
 import ch.brickinventoryapp.model.util.DatumJahr
 import ch.brickinventoryapp.model.util.fmtDatum
+import ch.brickinventoryapp.model.util.zahlenLocale
 
 /*
  * Zahlen und Beträge — eine Fassung für die ganze App, gleichgezogen mit der
@@ -14,17 +15,6 @@ import ch.brickinventoryapp.model.util.fmtDatum
  * aussieht. Beträge laufen über die Währungs-Formatierung der Plattform: Die
  * Stellung von Symbol und Betrag trifft man von Hand nicht.
  */
-
-/**
- * Wie das Web: die Landesform des Geräts, wenn sie zur App-Sprache passt
- * (de-DE schreibt 4.894,77, de-CH 4’894.77), sonst de-CH bzw. en-GB.
- */
-fun zahlenLocale(sprache: Locale, geraet: Locale): Locale {
-    val ziel = if (sprache.language == "de") "de" else "en"
-    val land = sprache.country.takeIf { sprache.language == ziel && it.length == 2 }
-        ?: geraet.country.takeIf { geraet.language == ziel && it.length == 2 }
-    return Locale.forLanguageTag(if (land != null) "$ziel-$land" else if (ziel == "de") "de-CH" else "en-GB")
-}
 
 /**
  * Zahlen-Locale zur eingestellten APP-Sprache (AppCompat, dieselbe Quelle wie

@@ -1,0 +1,16 @@
+Gegenprobe: Der Zurück-Pfeil einer Mehr-Unterseite führt immer auf „Mehr“, die Zurück-Geste an den vorigen Eintrag
+Modul: app
+Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
+Rot: der Pfeil einer Mehr-Unterseite geht denselben Weg wie die Zurueck-Geste
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+@@ -129,7 +129,6 @@
+     // vorigen Eintrag (Einstieg von aussen) führt er auf „Mehr“.
+     val mehrUnterseite = currentDest != null && currentDest.istEinesVon(MEHR) && !currentDest.hasRoute<AppZiel.Mehr>()
+     fun zurueckAusMehr() {
+-        if (navController.previousBackStackEntry != null && navController.popBackStack()) return
+         if (!navController.popBackStack(AppZiel.Mehr, inclusive = false)) navController.zuReiter(AppZiel.Mehr)
+     }
+ 

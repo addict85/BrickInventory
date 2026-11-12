@@ -13,7 +13,10 @@ import ch.brickinventoryapp.app.ui.components.ZertifikatDialog
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.sicherheit.ZertifikatUngeklaert
 import ch.brickinventoryapp.sicherheit.fingerabdruckLesbar
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -33,6 +36,8 @@ import java.util.Base64
  *       (gegenproben/nutzerca-ein-tipp.patch)
  *   (c) ZertifikatDialog ohne den Zweig für CODE_ABWEICHUNG → rot „weicht der
  *       Server vom Code ab …“ (gegenproben/code-abweichung-im-dialog.patch)
+ *   (d) das Feld wieder mit dem ganzen Satz als Etikett, ohne Erklärung darunter →
+ *       rot „das Feld traegt ein kurzes Etikett …“ (gegenproben/zertifikat-satz-als-etikett.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class ZertifikatDialogTest {
@@ -87,6 +92,15 @@ class ZertifikatDialogTest {
         assertEquals("Kein Knopf zum Vertrauen", 0, gezeigt(ctx.getString(R.string.zert_vertrauen)))
         assertEquals("Kein Feld zum Abtippen", 0,
             compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun `das Feld traegt ein kurzes Etikett, die Anleitung steht darunter`() {
+        zeige(ZertifikatUngeklaert.Art.GEAENDERT, erwartet = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
+        val feld = compose.onNode(hasSetTextAction()).fetchSemanticsNode()
+        val texte = feld.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text }
+        assertTrue("Kein kurzes Etikett: $texte", ctx.getString(R.string.zert_eingabe_etikett) in texte)
+        assertTrue("Die Anleitung fehlt: $texte", ctx.getString(R.string.zert_geaendert_eingabe) in texte)
     }
 
     @Test

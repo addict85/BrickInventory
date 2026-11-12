@@ -255,6 +255,7 @@ export const LESENDE_AKTIONEN = new Set([
   'setColorFilter',
   'setzeDunkel',
   'showPanel',
+  'sichtAusDialog',
   'stopEvent',
   'toggleBricksetQueue',
   'updateColorDot',

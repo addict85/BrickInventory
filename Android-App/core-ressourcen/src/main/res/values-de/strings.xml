@@ -92,6 +92,8 @@
     <string name="scanner_torch_on">Licht ein</string>
     <string name="scanner_camera_needed">Kamerazugriff benötigt</string>
     <string name="scanner_allow">Erlauben</string>
+    <string name="scanner_camera_gesperrt">Die Kamera ist für diese App gesperrt, Android fragt nicht mehr nach. Erlaube sie in den App-Einstellungen unter Berechtigungen.</string>
+    <string name="scanner_camera_einstellungen">In den Einstellungen erlauben</string>
     <string name="scanner_close">Schliessen</string>
 
     <!-- ══════════════ Setup screen ══════════════ -->
@@ -656,14 +658,14 @@
     <string name="pdfview_loading_pct">PDF wird geladen… %1$d%%</string>
     <string name="pdfview_loading_bytes">PDF wird geladen… %1$s</string>
     <string name="pdfview_rendering">PDF wird geladen…</string>
-    <string name="pdfview_load_failed">Fehler beim Laden: %1$s</string>
+    <string name="pdfview_ursache">Ursache: %1$s</string>
     <string name="pdfview_fremder_host">Dieses PDF liegt nicht auf deinem Server. Öffne es auf der Set-Seite mit einer anderen App.</string>
     <string name="pdfview_page">Seite %1$d</string>
     <string name="pdfview_unknown_error">Unbekannter Fehler. Bitte nochmals versuchen.</string>
     <string name="pdfview_download_failed">Download fehlgeschlagen</string>
-    <string name="pdfview_print_failed">Drucken fehlgeschlagen: %1$s</string>
+    <string name="pdfview_print_failed">Drucken fehlgeschlagen</string>
     <string name="pdfview_saved">Gespeichert: %1$s</string>
-    <string name="pdfview_save_failed">Speichern fehlgeschlagen: %1$s</string>
+    <string name="pdfview_save_failed">Speichern fehlgeschlagen</string>
     <string name="pdfview_no_target">Kein Speicherort erhalten</string>
     <string name="pdfview_write_failed">Datei konnte nicht geschrieben werden</string>
     <string name="pdfview_default_name">Anleitung</string>
@@ -964,6 +966,8 @@
         <item quantity="other">Eingerichtet · %d Wiederherstellungscodes übrig</item>
     </plurals>
     <string name="acq_preis_geschaetzt">Geschätzt: Marktpreis, kein bezahlter Betrag</string>
+    <string name="acq_gekauft_am">Gekauft am</string>
+    <string name="acq_kaufdatum_aendern">Kaufdatum ändern</string>
     <string name="setup_qr_pin">Der Code nennt auch das Zertifikat des Servers. Die App merkt es sich für diese Adresse und nimmt danach nur noch dieses an. Nur fortfahren, wenn du den Code eben selbst in deiner Web-App erzeugt hast; dort steht unter Einstellungen → Server-Zertifikat derselbe Anfang.</string>
     <string name="setup_altbestand_text">Gespeichert ist %1$s – eine Adresse ohne Verschlüsselung. Diese Version verbindet sich nur noch über https, damit im WLAN niemand deinen Zugang mitlesen kann.</string>
     <string name="setup_altbestand_schritt_qr">In der Web-App unter Einstellungen den QR-Code für die Android-App erzeugen und mit dem Knopf darunter scannen.</string>
@@ -994,6 +998,7 @@
     <string name="zert_geaendert_qr">Oder einen neuen QR-Code aus der Web-App scannen.</string>
     <string name="zert_unbekannt_eingabe">Die letzten 24 Zeichen des Fingerabdrucks, abgeschrieben aus der Web-App (Einstellungen → Server-Zertifikat) oder aus den Zertifikatdetails des Browsers (SHA-256 des öffentlichen Schlüssels)</string>
     <string name="zert_eingabe_falsch">Das passt nicht zum Fingerabdruck dieses Servers.</string>
+    <string name="zert_eingabe_etikett">Letzte 24 Zeichen</string>
     <string name="zert_beginnt_mit">Fingerabdruck beginnt mit (nur zur Orientierung)</string>
     <string name="zert_text_nutzer_ca">Das Zertifikat von %1$s stammt von einer Stelle, die auf diesem Gerät installiert wurde. Das kann deine eigene sein – oder eine, die jemand mit Zugriff auf das Gerät eingeschleust hat.\n\nSo gehst du vor:\n1. Öffne die Web-App am Computer.\n2. Gehe zu Einstellungen → Server-Zertifikat.\n3. Schreibe die letzten 24 Zeichen des Fingerabdrucks unten ins Feld.\n\nHier steht nur der Anfang des Fingerabdrucks.</string>
     <string name="zert_titel_nutzer_ca">Zertifikat einer installierten Zertifizierungsstelle</string>

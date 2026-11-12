@@ -87,8 +87,9 @@ internal fun AnmeldeFelder(
             label = { Text(stringResource(R.string.login_code)) },
             supportingText = { Text(stringResource(R.string.login_code_hint)) },
             leadingIcon = { Icon(Icons.Default.Key, null) },
-            // Das System bietet einen eben empfangenen Code zum Einsetzen an.
-            modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.SmsOtpCode }, singleLine = true,
+            // Kein SmsOtpCode: Der Code kommt aus einer Authenticator-App, nicht per SMS, und
+            // Compose kennt keinen Autofill-Typ für TOTP. Das System bot sonst SMS-Codes an.
+            modifier = Modifier.fillMaxWidth(), singleLine = true,
             shape = Formen.feld,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, keyboardType = KeyboardType.Ascii),
             keyboardActions = KeyboardActions(onDone = { focusMgr.clearFocus(); absenden() })

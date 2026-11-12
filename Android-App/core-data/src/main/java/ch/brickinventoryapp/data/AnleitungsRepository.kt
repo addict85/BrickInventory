@@ -25,8 +25,11 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
-/** Alle Versuche scheiterten, ohne dass eine Ursache übrig blieb. */
-class DownloadGescheitert : IOException()
+/**
+ * Der Download scheiterte. [status]: Der Server antwortete, aber nicht mit dem PDF; die
+ * Anzeige wählt danach die Art des Fehlers. Null heisst: Es blieb keine Ursache übrig.
+ */
+class DownloadGescheitert(val status: Int? = null) : IOException(status?.let { "HTTP $it" })
 
 /** Das Netz der Anleitungen und Gutschein-PDFs; aufbereitet und gezeigt wird in der Oberfläche. */
 interface AnleitungsRepository {
@@ -130,7 +133,7 @@ internal class AnleitungsDownload @Inject constructor(
         val reqBuilder = Request.Builder().url(url)
         if (ab > 0) reqBuilder.header("Range", "bytes=$ab-")
         client.newCall(reqBuilder.build()).execute().use { resp ->
-            if (!resp.isSuccessful) throw IOException("HTTP ${resp.code}")
+            if (!resp.isSuccessful) throw DownloadGescheitert(resp.code)
             val resuming = resp.code == 206 && ab > 0
             // Kein `?:`: `resp.body` ist seit OkHttp 5 nicht nullbar.
             val body = resp.body

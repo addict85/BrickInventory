@@ -40,6 +40,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -127,6 +128,7 @@ import ch.brickinventoryapp.teile.ui.TeileZiel
  *   finanzen-kopf-ohne-basis        Kopfkarte aus allen Positionen statt der Basis → rot „Finanzkopf …“
  *   kachel-quelle-ignoriert         Kachel nennt auch den Kaufpreis „Marktpreis“ → rot „Galeriekachel …“
  *   mehr-ohne-vergleich             Vergleich nicht unter „Mehr“ → rot „Vergleich und Bauliste markieren …“
+ *   mehr-pfeil-anders-als-zurueck   Pfeil führt immer auf „Mehr“ → rot „der Pfeil einer Mehr-Unterseite …“
  *   galerie-kachel-gross            Setkachel auch bei 200 % mit Bild über die Breite → rot „Galerie bei 200 Prozent …“
  *   galerie-erfassen-schwebt        Erfassen auch bei 200 % schwebend → rot „Galerie bei 200 Prozent …“
  *   teile-erfassen-schwebt          Erfassen auch bei 200 % schwebend → rot „Teile bei 200 Prozent …“
@@ -421,6 +423,43 @@ class OberflaechenRegelnTest {
             // Zurück auf „Mehr“: dessen Einträge stehen wieder da.
             compose.onNodeWithText(ctx.getString(R.string.vouchers_title)).fetchSemanticsNode()
         }
+    }
+
+    /**
+     * Kam eine Mehr-Unterseite nicht von „Mehr“, führt der Pfeil oben dorthin, wohin
+     * auch die Zurück-Geste führt: an den vorigen Eintrag, nicht auf „Mehr“.
+     */
+    @Test
+    fun `der Pfeil einer Mehr-Unterseite geht denselben Weg wie die Zurueck-Geste`() {
+        val mehr = ctx.getString(R.string.nav_more)
+        var nav: NavHostController? = null
+        zeige {
+            val n = rememberNavController().also { nav = it }
+            val reiter = remember {
+                listOf(
+                    Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                    Reiter(AppZiel.Mehr, { Icon(Icons.Default.ViewInAr, null) }, mehr))
+            }
+            MainScaffold(
+                title = "Seite", navController = n, bottomNavItems = reiter,
+                snackbarHostState = remember { SnackbarHostState() },
+                csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
+                onCsvAbbrechen = {}, onTabAngetippt = {},
+            ) {
+                NavHost(n, startDestination = SammlungZiel.Gallery) {
+                    composable<SammlungZiel.Gallery> { Text("Galerieseite") }
+                    composable<AppZiel.Mehr> { MehrBildschirm(n::oeffneVonMehr, isAdmin = false, updateVerfuegbar = false, onAbmelden = {}) }
+                    composable<SammlungZiel.Comparison> { Text("Vergleichsseite") }
+                }
+            }
+        }
+        // Wie aus einem Set heraus: der Vergleich direkt über der Galerie, ohne „Mehr“.
+        compose.runOnIdle { nav!!.navigate(SammlungZiel.Comparison) }
+        compose.onNodeWithText("Vergleichsseite").fetchSemanticsNode()
+        compose.onNodeWithContentDescription(ctx.getString(R.string.common_back)).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Galerieseite").fetchSemanticsNode("Der Pfeil führte nicht dorthin, wohin Zurück führt")
+        compose.onAllNodesWithText(ctx.getString(R.string.vouchers_title)).assertCountEquals(0)
     }
 
     private fun ersatzbilder() = compose.onAllNodes(

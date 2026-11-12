@@ -31,6 +31,7 @@ const KONTRAST = `(vorne, hinten) => { const f = s => (s.match(/[\\d.]+/g) || []
 test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await starteApp(t, {
     name: `mass_${process.pid}`,
+    alleDesigns: true,
     telefon: true,
     bestand: async (db, uid) => {
       await haeltSet(db, uid, '10294-1', 1, { preis: 4894.77 });

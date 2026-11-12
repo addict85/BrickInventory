@@ -6,11 +6,11 @@ Rot: eine Drehung laedt nicht neu
 diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/PdfBetrachterViewModel.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/PdfBetrachterViewModel.kt
 --- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/PdfBetrachterViewModel.kt
 +++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/PdfBetrachterViewModel.kt
-@@ -46,7 +46,6 @@ class PdfBetrachterViewModel @Inject constructor(
+@@ -48,7 +48,6 @@
      fun oeffne(pdfUrl: String, serverUrl: String) {
          val bisher = _state.value
          val abgewiesen = bisher is PdfLoadState.Error && bisher.grund == PdfFehler.FREMDER_HOST
 -        if (pdfUrl == adresse && !abgewiesen) return
          adresse = pdfUrl
+         server = serverUrl
          // Nur Adressen des eigenen Servers: Geladen wird mit dem Token-Client.
-         if (!pdfImBetrachter(pdfUrl, serverUrl)) {

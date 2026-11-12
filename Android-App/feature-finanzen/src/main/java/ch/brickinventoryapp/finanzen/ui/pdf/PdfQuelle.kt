@@ -11,6 +11,11 @@ import java.io.Closeable
 import java.io.File
 import java.io.FileDescriptor
 import java.io.InputStream
+import java.io.InterruptedIOException
+import java.net.SocketException
+import java.net.UnknownHostException
+import ch.brickinventoryapp.data.DownloadGescheitert
+import ch.brickinventoryapp.model.ui.Fehlerklasse
 
 /**
  * Woher der Betrachter liest. Eine Schnittstelle, damit das ViewModel ohne Gerät
@@ -26,7 +31,24 @@ sealed class PdfLoadState {
     data class Downloading(val pct: Int, val bytes: Long, val total: Long) : PdfLoadState()
     data object Rendering : PdfLoadState()
     data class Ready(val quelle: PdfQuelle, val pageCount: Int) : PdfLoadState()
-    data class Error(val message: String?, val grund: PdfFehler = PdfFehler.UNBEKANNT) : PdfLoadState()
+    /** [klasse] wählt Überschrift und Rat wie überall in der App; [message] ist höchstens ein Zusatz. */
+    data class Error(
+        val message: String?,
+        val grund: PdfFehler = PdfFehler.UNBEKANNT,
+        val klasse: Fehlerklasse? = null,
+    ) : PdfLoadState()
+}
+
+/** Welche Art Fehler ein gescheiterter Download war; der Satz der Ausnahme ist Technik, keine Auskunft. */
+internal fun pdfFehlerklasse(e: Throwable): Fehlerklasse {
+    val status = (e as? DownloadGescheitert)?.status
+    return when {
+        status == 401 || status == 403 -> Fehlerklasse.ANMELDUNG
+        status != null && status >= 500 -> Fehlerklasse.SERVER
+        status != null -> Fehlerklasse.UNBEKANNT
+        e is UnknownHostException || e is SocketException || e is InterruptedIOException -> Fehlerklasse.OFFLINE
+        else -> Fehlerklasse.UNBEKANNT
+    }
 }
 
 /** Fehler ohne eigenen Text; den Satz wählt die Oberfläche in der Sprache der App. */

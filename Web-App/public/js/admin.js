@@ -12,11 +12,13 @@ import { html } from './escapen.js';
 /** @type {ReturnType<typeof setInterval> | null} */
 let jobPollTimer = null;
 
-/** @param {number | null | undefined} ms */
+/** Dauer in der Schreibweise der Oberfläche („1,5 s“, „2 min 5 s“), nicht als „1.5s“. @param {number | null | undefined} ms */
 function formatDur(ms) {
   if (!ms) return '';
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
+  const zahl = (/** @type {number} */ n, stellen = 0) =>
+    n.toLocaleString(locale(), { minimumFractionDigits: stellen, maximumFractionDigits: stellen });
+  if (ms < 60000) return `${zahl(ms / 1000, 1)} s`;
+  return `${zahl(Math.floor(ms / 60000))} min ${zahl(Math.floor((ms % 60000) / 1000))} s`;
 }
 
 export async function pollJobStatus() {

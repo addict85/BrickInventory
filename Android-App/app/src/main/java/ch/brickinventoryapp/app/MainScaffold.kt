@@ -124,9 +124,12 @@ fun MainScaffold(
         currentDest?.hierarchy?.any { d -> d.istEinesVon(zieleVon(screen)) } == true
 
     // Unterseiten von „Mehr“ mit unterer Leiste tragen den Zurück-Pfeil wie die übrigen
-    // Mehr-Unterseiten; er führt auf „Mehr“, auch wenn die Seite nicht von dort kam.
+    // Mehr-Unterseiten. Er geht denselben Weg wie die Zurück-Geste: Führten beide an
+    // verschiedene Orte, wüsste man vor dem Tippen nicht, wo man landet. Nur ohne
+    // vorigen Eintrag (Einstieg von aussen) führt er auf „Mehr“.
     val mehrUnterseite = currentDest != null && currentDest.istEinesVon(MEHR) && !currentDest.hasRoute<AppZiel.Mehr>()
-    fun zurueckZuMehr() {
+    fun zurueckAusMehr() {
+        if (navController.previousBackStackEntry != null && navController.popBackStack()) return
         if (!navController.popBackStack(AppZiel.Mehr, inclusive = false)) navController.zuReiter(AppZiel.Mehr)
     }
 
@@ -169,7 +172,7 @@ fun MainScaffold(
                     title = { Text(title, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() }) },
                     navigationIcon = {
                         if (mehrUnterseite) MitTooltip(stringResource(R.string.common_back)) {
-                            IconButton(onClick = { zurueckZuMehr() }) {
+                            IconButton(onClick = { zurueckAusMehr() }) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                             }
                         }

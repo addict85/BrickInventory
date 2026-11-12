@@ -279,13 +279,13 @@ test('UI-Prüfung 14: Registrierung, Kategorien, Telefon, Begriffe', { timeout: 
     );
     const z =
       await b.auswerten(`({ haupt: document.getElementById('btn-verify').classList.contains('bp'), zurueck: ${text('#link-verify-to-login')},
-      formular: { h2: ${text('#panel-register h2')}, pflicht: ['reg-user', 'reg-email', 'reg-pass', 'reg-pass2'].every(id => document.getElementById(id).required && document.getElementById(id).getAttribute('aria-required') === 'true'),
+      formular: { titel: ${text('#panel-register h1')}, pflicht: ['reg-user', 'reg-email', 'reg-pass', 'reg-pass2'].every(id => document.getElementById(id).required && document.getElementById(id).getAttribute('aria-required') === 'true'),
         regel: document.getElementById(document.getElementById('reg-pass').getAttribute('aria-describedby'))?.textContent } })`);
     assert.deepEqual(z, {
       haupt: true,
       zurueck: '← Zurück zur Sammlung',
       formular: {
-        h2: 'Registrieren',
+        titel: 'Registrieren',
         pflicht: true,
         regel: 'Mindestens 12 Zeichen, kein häufig verwendetes Passwort.',
       },

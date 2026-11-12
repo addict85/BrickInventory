@@ -237,7 +237,7 @@ async function fokusring(_t, a) {
 }
 
 test('UI-Prüfung 17 im Browser', { concurrency: 1, timeout: 300_000 }, async t => {
-  const a = await starteApp(t, { name: `r17_${process.pid}`, bestand: musterHaushalt });
+  const a = await starteApp(t, { name: `r17_${process.pid}`, bestand: musterHaushalt, alleDesigns: true });
   if (a.grund) {
     t.skip(a.grund);
     return;

@@ -2,6 +2,7 @@ package ch.brickinventoryapp.finanzen
 
 import android.os.ParcelFileDescriptor
 import ch.brickinventoryapp.data.DownloadGescheitert
+import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.finanzen.ui.pdf.PdfFehler
 import ch.brickinventoryapp.finanzen.ui.pdf.PdfHalter
 import ch.brickinventoryapp.finanzen.ui.pdf.PdfLader
@@ -25,6 +26,7 @@ import org.junit.Before
 import org.junit.Test
 import java.io.IOException
 import java.io.InputStream
+import java.net.UnknownHostException
 
 /**
  * Der PDF-Betrachter lädt im ViewModel, nicht in der Komposition: Eine Drehung ruft
@@ -41,6 +43,10 @@ import java.io.InputStream
  *      dem Verlassen ankommt, wird sofort geschlossen“
  *   E  gegenproben/pdf-seite-am-renderer-vorbei.patch → rot „eine Seite
  *      rendert der Lader …“
+ *   F  gegenproben/pdf-fehler-ohne-klasse.patch: der Fehler ohne Klasse (nur der rohe
+ *      Text) → rot „ein Fehler traegt seine Klasse …“
+ *   G  gegenproben/pdf-erneut-tot.patch: erneut() lädt nicht → rot „nach einem Fehler
+ *      laedt Erneut versuchen …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PdfBetrachterViewModelTest {
@@ -64,7 +70,7 @@ class PdfBetrachterViewModelTest {
     private class Lader(
         val fortschritt: PdfLoadState? = null,
         val bremse: CompletableDeferred<Unit>? = null,
-        val fehler: Exception? = null,
+        var fehler: Exception? = null,
     ) : PdfLader {
         val adressen = mutableListOf<String>()
         val quelle = Quelle()
@@ -139,14 +145,46 @@ class PdfBetrachterViewModelTest {
     }
 
     @Test
-    fun `ein Fehler traegt seine Ursache, ohne Ursache heisst er Download gescheitert`() = runTest(takt) {
-        val mitText = vm(Lader(fehler = IOException("HTTP 503")))
-        mitText.oeffne(ANLEITUNG, SERVER)
-        val ohne = vm(Lader(fehler = DownloadGescheitert()))
-        ohne.oeffne(ANLEITUNG, SERVER)
+    fun `ein Fehler traegt seine Klasse und die Ursache als Zusatz, ohne Ursache heisst er Download gescheitert`() =
+        runTest(takt) {
+            val server = vm(Lader(fehler = DownloadGescheitert(503)))
+            server.oeffne(ANLEITUNG, SERVER)
+            val netz = vm(Lader(fehler = UnknownHostException("brick.example")))
+            netz.oeffne(ANLEITUNG, SERVER)
+            val abgelaufen = vm(Lader(fehler = DownloadGescheitert(401)))
+            abgelaufen.oeffne(ANLEITUNG, SERVER)
+            val anderes = vm(Lader(fehler = IOException("PDF zu gross")))
+            anderes.oeffne(ANLEITUNG, SERVER)
+            val ohne = vm(Lader(fehler = DownloadGescheitert()))
+            ohne.oeffne(ANLEITUNG, SERVER)
+            advanceUntilIdle()
+            assertEquals(PdfLoadState.Error("HTTP 503", klasse = Fehlerklasse.SERVER), server.state.value)
+            assertEquals(PdfLoadState.Error("brick.example", klasse = Fehlerklasse.OFFLINE), netz.state.value)
+            assertEquals(PdfLoadState.Error("HTTP 401", klasse = Fehlerklasse.ANMELDUNG), abgelaufen.state.value)
+            assertEquals(PdfLoadState.Error("PDF zu gross", klasse = Fehlerklasse.UNBEKANNT), anderes.state.value)
+            assertEquals(PdfLoadState.Error(null, PdfFehler.DOWNLOAD), ohne.state.value)
+        }
+
+    @Test
+    fun `nach einem Fehler laedt Erneut versuchen dieselbe Adresse noch einmal`() = runTest(takt) {
+        val lader = Lader(fehler = DownloadGescheitert(503))
+        val vm = vm(lader)
+        vm.oeffne(ANLEITUNG, SERVER)
         advanceUntilIdle()
-        assertEquals(PdfLoadState.Error("HTTP 503"), mitText.state.value)
-        assertEquals(PdfLoadState.Error(null, PdfFehler.DOWNLOAD), ohne.state.value)
+        assertTrue(vm.state.value is PdfLoadState.Error)
+        // Dieselbe Adresse über oeffne() lädt nicht neu (Drehung); nur der Knopf tut es.
+        vm.oeffne(ANLEITUNG, SERVER)
+        advanceUntilIdle()
+        assertEquals(listOf(ANLEITUNG), lader.adressen)
+        lader.fehler = null
+        vm.erneut()
+        advanceUntilIdle()
+        assertEquals(listOf(ANLEITUNG, ANLEITUNG), lader.adressen)
+        assertEquals(PdfLoadState.Ready(lader.quelle, 12), vm.state.value)
+        // Bereit lädt der Knopf nichts mehr: Er steht nur im Fehlerzustand.
+        vm.erneut()
+        advanceUntilIdle()
+        assertEquals(2, lader.adressen.size)
     }
 
     @Test

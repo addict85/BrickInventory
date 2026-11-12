@@ -39,14 +39,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.konto.ui.ZweiterFaktorUiState
-import androidx.compose.ui.autofill.ContentType
-import androidx.compose.ui.semantics.contentType
 import ch.brickinventoryapp.ui.components.AnmeldeKarte
 import ch.brickinventoryapp.ui.components.AnmeldeTitel
 import ch.brickinventoryapp.ui.components.FehlerZeile
@@ -164,7 +161,7 @@ fun ZweiterFaktorPflichtMaske(
                             label = { Text(stringResource(R.string.zf_confirm_code)) },
                             singleLine = true, shape = Formen.feld,
                             keyboardOptions = NumericInput.ganzzahlTastatur(),
-                            modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.SmsOtpCode })
+                            modifier = Modifier.fillMaxWidth())
                         Button(
                             onClick = { onBestaetigen(faktorCode) },
                             enabled = faktorCode.isNotEmpty() && !zustand.laedt,

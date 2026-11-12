@@ -100,6 +100,21 @@ async function currentTheme(userId?: number): Promise<string> {
 
 const LANGS = ['de', 'en'];
 
+/** Holt die Stylesheets des Designs aus <template id="design-stile"> vor die Vorlage: Als Teil des HTML halten
+ * sie das erste Bild an wie jedes Stylesheet, die Seite erscheint gleich im richtigen Design. Die übrigen
+ * bleiben in der Vorlage und laden nicht. */
+export function designStileFreigeben(html: string, theme: string): string {
+  return html.replace(/<template id="design-stile">([\s\S]*?)<\/template>/, (vorlage, inhalt: string) => {
+    const frei: string[] = [];
+    const rest = inhalt.replace(/[ \t]*<link\b[^>]*\sdata-design="([^"]*)"[^>]*>\n?/g, (tag, designs: string) => {
+      if (!designs.split(' ').includes(theme)) return tag;
+      frei.push(tag.trim());
+      return '';
+    });
+    return frei.length ? `${frei.join('\n')}\n<template id="design-stile">${rest}</template>` : vorlage;
+  });
+}
+
 /** Ohne Sitzung (Login-Seite) 'de'. */
 async function currentLang(userId?: number): Promise<string> {
   if (!userId) return 'de';
@@ -117,6 +132,7 @@ export async function renderIndexHtml(userId?: number): Promise<string> {
     let out = /<html[^>]*\sdata-theme=/i.test(html)
       ? html.replace(/(<html[^>]*\sdata-theme=")[^"]*(")/i, `$1${theme}$2`)
       : html.replace(/<html\b/i, `<html data-theme="${theme}"`);
+    out = designStileFreigeben(out, theme);
 
     // Ohne Sitzung folgt die Anmeldung: Das Gerüst zeigt dann nur den Grund, keine App-Kacheln,
     // die einen Augenblick lang wie eine geladene Sammlung aussähen.

@@ -43,6 +43,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.model.ui.model.OHNE_FARBE
 import ch.brickinventoryapp.ui.util.fmtEingabe
+import ch.brickinventoryapp.ui.util.fmtTag
 import ch.brickinventoryapp.gemeinsam.ui.ConditionToggle
 import ch.brickinventoryapp.gemeinsam.ui.OwnerPicker
 
@@ -257,6 +258,30 @@ internal fun AcquisitionManagementScreen(
     }
 }
 
+/**
+ * Das Kaufdatum mit sichtbarem Etikett, als Knopf in voller Tippgrösse: Ein blosses
+ * Datum in kleiner Schrift war kaum zu treffen und verriet weder, was es ist, noch
+ * dass Antippen es ändert. Die Form folgt der App-Sprache wie jedes Datum (fmtTag).
+ */
+@Composable
+internal fun Kaufdatum(createdAt: String?, onAendern: () -> Unit) {
+    Row(
+        // heightIn statt minimumInteractiveComponentSize: Diese vergrössert nur die Tippfläche um den
+        // Knopf, die Knopf-Fläche selbst blieb 44 dp (KaufdatumTest).
+        Modifier
+            .heightIn(min = 48.dp)
+            .clickable(onClickLabel = stringResource(R.string.acq_kaufdatum_aendern), role = Role.Button, onClick = onAendern)
+            .padding(vertical = Abstaende.winzig),
+        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(stringResource(R.string.acq_gekauft_am), style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(fmtTag(createdAt) ?: "—", style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+    }
+}
+
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun AcquisitionManagementRow(
@@ -313,24 +338,8 @@ private fun AcquisitionManagementRow(
         )
     }
 
-    // Date (Kaufdatum) — antippen zum Ändern
     var showDatePicker by remember(acquisition.id) { mutableStateOf(false) }
-    val dateLabel = remember(acquisition.createdAt) {
-        acquisition.createdAt?.let { dateStr ->
-            runCatching {
-                val d = java.time.LocalDate.parse(dateStr.take(10))
-                "%02d.%02d.%04d".format(d.dayOfMonth, d.monthValue, d.year)
-            }.getOrNull()
-        }
-    }
-    Text(
-        dateLabel ?: "—",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier
-            .padding(top = Abstaende.klein, bottom = Abstaende.haar)
-            .clickable(role = Role.Button) { showDatePicker = true }
-    )
+    Kaufdatum(acquisition.createdAt) { showDatePicker = true }
     if (showDatePicker) {
         val initialMillis = remember(acquisition.createdAt) {
             runCatching {

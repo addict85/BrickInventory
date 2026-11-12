@@ -4,6 +4,9 @@ import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.data.model.PendingAlertsResponse
 import ch.brickinventoryapp.model.data.model.Preisalarm
 import ch.brickinventoryapp.data.repository.Ergebnis as Abrufergebnis
+import java.text.NumberFormat
+import java.util.Currency
+import java.util.Locale
 
 /**
  * Die Abfrage selbst — ein Typalias, damit die Signatur von [Alarmabholung.hole]
@@ -65,16 +68,21 @@ internal object Alarmabholung {
      * Der Text einer Meldung — hier und nicht im Worker, damit er sich ohne Android
      * prüfen lässt. Zwei Nachkommastellen und die Währung des Alarms, nicht die
      * aktuelle Kontowährung: Die Schwelle wurde in jener Währung gesetzt, und 200 CHF
-     * sind nicht 200 EUR.
+     * sind nicht 200 EUR. Der Betrag in der Form von [zahlen] („199,50 CHF“), wie überall
+     * in der App und in der Web-Oberfläche.
      */
-    fun text(a: Preisalarm, unter: String, ueber: String): String {
+    fun text(a: Preisalarm, unter: String, ueber: String, zahlen: Locale): String {
         val richtung = if (a.richtung == Alarmrichtung.UNTER) unter else ueber
+        val format = NumberFormat.getCurrencyInstance(zahlen).apply {
+            runCatching { currency = Currency.getInstance(a.currencyCode.code) }
+            minimumFractionDigits = 2
+            maximumFractionDigits = 2
+        }
         val preis = a.zuletztPreis
-        val schwelle = String.format(java.util.Locale.US, "%.2f", a.schwelle)
+        val schwelle = format.format(a.schwelle)
         return if (preis == null)
-            "${a.setNumber}: $richtung ${a.currencyCode} $schwelle"
+            "${a.setNumber}: $richtung $schwelle"
         else
-            "${a.setNumber}: ${a.currencyCode} ${String.format(java.util.Locale.US, "%.2f", preis)} " +
-                "($richtung ${a.currencyCode} $schwelle)"
+            "${a.setNumber}: ${format.format(preis)} ($richtung $schwelle)"
     }
 }

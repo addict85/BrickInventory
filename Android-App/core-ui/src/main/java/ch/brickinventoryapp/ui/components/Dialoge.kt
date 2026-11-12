@@ -40,8 +40,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.contentType
-import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.text.input.KeyboardType
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -234,8 +232,9 @@ fun ZweiterFaktorCodeFeld(code: String, onCode: (String) -> Unit) {
         value = code, onValueChange = { onCode(it.take(24)) },
         label = { Text(stringResource(R.string.login_code)) },
         supportingText = { Text(stringResource(R.string.login_code_hint)) },
-        // Das System bietet einen eben empfangenen Code zum Einsetzen an.
-        modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.SmsOtpCode },
+        // Kein SmsOtpCode: Der Code kommt aus einer Authenticator-App, nicht per SMS, und
+        // Compose kennt keinen Autofill-Typ für TOTP. Das System bot sonst SMS-Codes an.
+        modifier = Modifier.fillMaxWidth(),
         singleLine = true, shape = Formen.feld,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))
 }

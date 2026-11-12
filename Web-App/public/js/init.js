@@ -64,25 +64,41 @@ function plAddSet() {
 
 G('pl-setnr')?.addEventListener('keydown', e => e.key === 'Enter' && plAddSet());
 
+/**
+ * Ein Hauptknopf, und zwar der nächste Schritt: ohne Sets „Hinzufügen“, danach „Bauliste erstellen“. Gesperrt
+ * nennt „Erstellen“ den Grund sichtbar darunter und als Beschreibung, nicht nur durch Blässe.
+ * @param {boolean} leer
+ */
+function plSchritt(leer) {
+  const gen = G('btn-pl-gen'),
+    add = G('btn-pl-add'),
+    hinweis = G('pl-gen-hinweis');
+  if (!gen || !add) return;
+  add.classList.toggle('bp', leer);
+  add.classList.toggle('bs', !leer);
+  gen.classList.toggle('bp', !leer);
+  gen.classList.toggle('bs', leer);
+  if (leer) gen.setAttribute('aria-disabled', 'true');
+  else gen.removeAttribute('aria-disabled');
+  if (hinweis) hinweis.hidden = !leer;
+  const beschreibung = (gen.getAttribute('aria-describedby') || '')
+    .split(/\s+/)
+    .filter(x => x && x !== 'pl-gen-hinweis');
+  if (leer) beschreibung.unshift('pl-gen-hinweis');
+  if (beschreibung.length) gen.setAttribute('aria-describedby', beschreibung.join(' '));
+  else gen.removeAttribute('aria-describedby');
+}
+
 export function plRenderSets() {
   const c = G('pl-sets');
   if (!c) return;
   // Zurücksetzen hat erst etwas zu tun, wenn Sets oder eine fertige Liste da sind.
   G('btn-pl-reset').disabled = !_plSets.length && !_plParts;
+  plSchritt(!_plSets.length);
   if (!_plSets.length) {
-    setzeHtml(
-      c,
-      leerZustand({
-        ico: 'liste',
-        titelKey: 'pl.no_sets',
-        textKey: 'pl.no_sets_hint',
-        knopf: { textKey: 'pl.erstes_set', click: 'feldFokussieren', arg: 'pl-setnr', art: 'bs' },
-      }),
-    );
-    G('btn-pl-gen').setAttribute('aria-disabled', 'true');
+    setzeHtml(c, leerZustand({ ico: 'liste', titelKey: 'pl.no_sets', textKey: 'pl.no_sets_hint' }));
     return;
   }
-  G('btn-pl-gen').removeAttribute('aria-disabled');
   setzeHtml(
     c,
     _plSets.map(
@@ -111,6 +127,12 @@ function plRemoveSet(i) {
 }
 
 async function plGenerate() {
+  // Eine getippte, noch nicht hinzugefügte Nummer gilt mit: „Erstellen“ soll nicht an einem vergessenen Klick scheitern.
+  if (G('pl-setnr')?.value.trim()) {
+    plAddSet();
+    // Steht die Nummer noch im Feld, war sie ungültig; plAddSet hat das schon am Feld gesagt.
+    if (G('pl-setnr')?.value.trim()) return;
+  }
   if (!_plSets.length) {
     feldFehler('pl-setnr', tRaw('pl.erst_set'));
     return;

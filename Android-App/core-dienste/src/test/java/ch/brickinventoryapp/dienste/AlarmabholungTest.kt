@@ -9,6 +9,7 @@ import ch.brickinventoryapp.model.data.model.Preisalarm
 import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
+import java.util.Locale
 
 /**
  * Was der stuendliche Abruf ENTSCHEIDET.
@@ -113,14 +114,29 @@ class AlarmabholungTest {
     fun `der Text nennt Set, Preis und Schwelle — in der Waehrung des Alarms`() {
         // Nicht in der aktuellen Kontowaehrung: Die Schwelle wurde in jener
         // Waehrung gesetzt, und 200 CHF sind nicht 200 EUR.
-        assert(Alarmabholung.text(alarm(), "faellt unter", "steigt ueber") ==
-            "10179-1: EUR 100.00 (faellt unter EUR 200.00)")
+        assert(Alarmabholung.text(alarm(), "faellt unter", "steigt ueber", DE_CH) ==
+            "10179-1: EUR\u00a0100.00 (faellt unter EUR\u00a0200.00)")
         assert(Alarmabholung.text(alarm(richtung = Alarmrichtung.UEBER, schwelle = 300.0, preis = 350.5),
-                                  "faellt unter", "steigt ueber") ==
-            "10179-1: EUR 350.50 (steigt ueber EUR 300.00)")
+                                  "faellt unter", "steigt ueber", DE_CH) ==
+            "10179-1: EUR\u00a0350.50 (steigt ueber EUR\u00a0300.00)")
         // Ohne bekannten Preis bleibt die Aussage die Schwelle — ein
         // erfundener Preis waere schlimmer als keiner.
-        assert(Alarmabholung.text(alarm(preis = null), "faellt unter", "steigt ueber") ==
-            "10179-1: faellt unter EUR 200.00")
+        assert(Alarmabholung.text(alarm(preis = null), "faellt unter", "steigt ueber", DE_CH) ==
+            "10179-1: faellt unter EUR\u00a0200.00")
+    }
+
+    /**
+     * Gegenprobe: gegenproben/alarm-betrag-fest-us.patch (wieder `Locale.US`) → rot
+     * „die Betraege stehen in der Zahlenform der App-Sprache“.
+     */
+    @Test
+    fun `die Betraege stehen in der Zahlenform der App-Sprache`() {
+        val text = Alarmabholung.text(alarm(schwelle = 1200.0, preis = 999.5), "faellt unter", "steigt ueber",
+            Locale.forLanguageTag("de-DE"))
+        assert(text == "10179-1: 999,50\u00a0€ (faellt unter 1.200,00\u00a0€)") { text }
+    }
+
+    private companion object {
+        val DE_CH: Locale = Locale.forLanguageTag("de-CH")
     }
 }

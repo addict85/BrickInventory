@@ -5,6 +5,7 @@ import kotlinx.coroutines.ensureActive
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.ByteArrayOutputStream
+import ch.brickinventoryapp.data.DownloadGescheitert
 import java.io.IOException
 
 /** Obergrenze eines PDFs, das nur im Speicher liegen darf; ein Gutschein-Export hat wenige hundert kB. */
@@ -23,7 +24,7 @@ suspend fun ladePdfInDenSpeicher(
     fortschritt: (geladen: Long, gesamt: Long) -> Unit = { _, _ -> },
 ): ByteArray =
     client.newCall(Request.Builder().url(url).build()).execute().use { antwort ->
-        if (!antwort.isSuccessful) throw IOException("HTTP ${antwort.code}")
+        if (!antwort.isSuccessful) throw DownloadGescheitert(antwort.code)
         val gesamt = antwort.body.contentLength()
         if (gesamt > grenze) throw IOException("PDF zu gross: $gesamt Bytes")
         val inhalt = ByteArrayOutputStream(if (gesamt > 0) gesamt.toInt() else 64 * 1024)

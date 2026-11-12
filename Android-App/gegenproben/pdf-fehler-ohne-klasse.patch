@@ -1,0 +1,17 @@
+Gegenprobe: Ein gescheiterter PDF-Download trägt wieder nur den rohen Text, keine Fehlerklasse
+Modul: feature-finanzen
+Test: ch.brickinventoryapp.finanzen.PdfBetrachterViewModelTest
+Rot: ein Fehler traegt seine Klasse und die Ursache als Zusatz
+
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/PdfBetrachterViewModel.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/PdfBetrachterViewModel.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/PdfBetrachterViewModel.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/PdfBetrachterViewModel.kt
+@@ -62,7 +62,7 @@
+                 onSuccess = { (quelle, seiten) -> PdfLoadState.Ready(quelle, seiten) },
+                 onFailure = { e ->
+                     if (e is DownloadGescheitert && e.status == null) PdfLoadState.Error(null, PdfFehler.DOWNLOAD)
+-                    else PdfLoadState.Error(e.message, klasse = pdfFehlerklasse(e))
++                    else PdfLoadState.Error(e.message)
+                 },
+             )
+         }
