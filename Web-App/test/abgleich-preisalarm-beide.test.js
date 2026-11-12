@@ -18,6 +18,7 @@
  *   F  dort die Marke aus Date.now() statt d.now → rot: ebenda
  *   I  (12.11.2026) dort die Beträge wieder mit toFixed(2) und dem Code davor →
  *      rot: ebenda („CHF 199.50“ statt „199,50 CHF“)
+ *   J  in Alarmabholung.text() wieder getNumberInstance mit Code davor → rot: ebenda
  *   G  in zeigeAlarmMerker alert_fired/alert_armed vertauscht → rot: „Webapp: beim Tippen …“
  *   H  in Alarmeingabe.kt RUHE_MS 800 → 500 (bzw. 1200) → rot: „Webapp: beim
  *      Tippen …“ — die Ruhezeit beider Oberflächen ist dieselbe
@@ -438,8 +439,8 @@ test('Webapp: offene Alarme — der erste Besuch merkt nur, danach die Meldung w
     await dann.ruhig();
     assert.ok(dann.aufrufe.some(a => a.url.includes('/v1/alerts/pending?since=2026-11-09T08%3A00%3A00Z')));
     assert.ok(await warte(() => meldungen(dann).some(m => m.includes(SN))), 'keine Meldung');
-    // Aufbau wie Alarmabholung.text() der App (Währung des Alarms, zwei Stellen), die Beträge aber in der
-    // Schreibweise der Weboberfläche.
+    // Derselbe Aufbau wie Alarmabholung.text() der App: Währung des Alarms, zwei Stellen, Betrag als
+    // Währungsbetrag der Sprache („199,50 CHF“).
     const geld = v => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'CHF' }).format(v);
     assert.ok(
       meldungen(dann).includes(`${SN}: ${geld(199.5)} (${de['detail.alert_below']} ${geld(200)})`),
@@ -447,7 +448,8 @@ test('Webapp: offene Alarme — der erste Besuch merkt nur, danach die Meldung w
     );
     const kt = ohneKommentare(KT_ABHOL);
     assert.match(kt, /a\.currencyCode/, 'Die App nimmt nicht die Währung des Alarms');
-    assert.match(kt, /"%\.2f"/, 'Die App rundet nicht auf zwei Stellen');
+    assert.match(kt, /getCurrencyInstance\(zahlen\)/, 'Die App schreibt Beträge nicht als Währungsbetrag der Sprache');
+    assert.match(kt, /maximumFractionDigits = 2/, 'Die App rundet nicht auf zwei Stellen');
   } finally {
     dann.w.close();
   }
