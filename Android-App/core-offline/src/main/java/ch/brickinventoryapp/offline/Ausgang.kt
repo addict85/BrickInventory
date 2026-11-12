@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.offline
 
+import ch.brickinventoryapp.offline.Ausgang.VerworfenerPosten
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -25,6 +26,9 @@ data class Ausgangsposten(
  * sie einen Neustart der App überleben.
  */
 interface Ausgang {
+    /** Eine Bearbeitung, die der Server ablehnte; [ziel] benennt sie für den Hinweis („10001-1“). */
+    data class VerworfenerPosten(val id: String, val ziel: String, val meldung: String, val httpCode: Int?)
+
     fun anzahl(bereich: String): Flow<Int>
     suspend fun einreihen(bereich: String, bearbeitung: Bearbeitung, jetzt: Long, schluessel: String): Long
     suspend fun alle(bereich: String): List<Ausgangsposten>
@@ -32,12 +36,18 @@ interface Ausgang {
     suspend fun entferne(id: Long)
     suspend fun versuchGescheitert(id: Long)
     suspend fun leere()
+
+    /** Verworfenes bleibt, bis sein Hinweis gezeigt ist — auch über einen Neustart. */
+    suspend fun merkeVerworfen(bereich: String, v: VerworfenerPosten)
+    fun verworfene(bereich: String): Flow<List<VerworfenerPosten>>
+    suspend fun quittiereVerworfen(bereich: String, id: String)
 }
 
 /** Im Speicher: für Tests und als Vorgabe, solange keine Datenbank gebunden ist. */
 class SpeicherAusgang : Ausgang {
     private val posten = MutableStateFlow<List<Pair<String, Ausgangsposten>>>(emptyList())
     private val naechsteId = java.util.concurrent.atomic.AtomicLong(1)
+    private val verworfen = MutableStateFlow<List<Pair<String, VerworfenerPosten>>>(emptyList())
 
     override fun anzahl(bereich: String): Flow<Int> =
         posten.map { l -> l.count { it.first == bereich } }.distinctUntilChanged()
@@ -58,5 +68,17 @@ class SpeicherAusgang : Ausgang {
         l.map { if (it.second.id == id) it.first to it.second.copy(versuche = it.second.versuche + 1) else it }
     }
 
-    override suspend fun leere() { posten.value = emptyList() }
+    override suspend fun leere() {
+        posten.value = emptyList()
+        verworfen.value = emptyList()
+    }
+
+    override suspend fun merkeVerworfen(bereich: String, v: VerworfenerPosten) =
+        verworfen.update { l -> l.filterNot { it.first == bereich && it.second.id == v.id } + (bereich to v) }
+
+    override fun verworfene(bereich: String): Flow<List<VerworfenerPosten>> =
+        verworfen.map { l -> l.filter { it.first == bereich }.map { it.second } }.distinctUntilChanged()
+
+    override suspend fun quittiereVerworfen(bereich: String, id: String) =
+        verworfen.update { l -> l.filterNot { it.first == bereich && it.second.id == id } }
 }

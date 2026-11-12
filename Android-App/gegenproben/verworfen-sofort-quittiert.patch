@@ -1,0 +1,17 @@
+Gegenprobe: Der Hinweis auf Verworfenes wird quittiert, bevor ihn jemand gesehen hat
+Modul: core-zustand
+Test: ch.brickinventoryapp.zustand.AusgangsmelderTest
+Rot: ein Verworfenes bleibt, bis sein Hinweis weggeraeumt ist
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt
+@@ -76,8 +76,6 @@
+         val hinweis = Meldung.Ressource(R.string.offline_verworfen, listOf(v.ziel,
+             v.meldung.ifBlank { null } ?: Meldung.Ressource(R.string.offline_verworfen_ohne_grund)))
+         meldungen.zeige(hinweis)
+-        meldungen.meldung.first { it == hinweis }
+-        meldungen.meldung.first { it != hinweis }
+         lage.quittiere(v)
+     }
+ 

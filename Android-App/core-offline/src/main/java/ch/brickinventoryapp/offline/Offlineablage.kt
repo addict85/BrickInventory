@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import ch.brickinventoryapp.offline.Ausgang.VerworfenerPosten
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -225,6 +226,17 @@ class Offlineablage(
     suspend fun bereich(): String? = gueltig(fangeAusserAbbruch { bereichQuelle() }.getOrNull())
 
     private fun gueltig(b: String?) = b?.takeIf { it.isNotBlank() }
+
+    /** Was der Server abgelehnt hat und noch nicht gemeldet ist, für den aktuellen Bereich. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun verworfene(): Flow<List<VerworfenerPosten>> =
+        aktuell.flatMapLatest { b -> if (b == null) flowOf(emptyList()) else ausgang.verworfene(b) }
+
+    /** Der Hinweis zu [id] ist gezeigt; der Posten darf weg. */
+    suspend fun quittiereVerworfen(id: String) {
+        val b = bereich() ?: return
+        ausgang.quittiereVerworfen(b, id)
+    }
 
     /** Wie viele Bearbeitungen noch auf den Server warten. */
     @OptIn(ExperimentalCoroutinesApi::class)

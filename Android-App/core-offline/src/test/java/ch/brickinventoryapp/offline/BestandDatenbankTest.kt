@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.lokal.Abgleich
 import ch.brickinventoryapp.data.lokal.Abgleichsergebnis
 import ch.brickinventoryapp.data.lokal.Sendeergebnis
+import ch.brickinventoryapp.offline.Ausgang.VerworfenerPosten
 import ch.brickinventoryapp.offline.room.AusgangZeile
 import ch.brickinventoryapp.offline.room.BestandDatenbank
 import ch.brickinventoryapp.offline.room.RoomAusgang
@@ -31,6 +32,8 @@ import org.robolectric.RobolectricTestRunner
  *   D  in RoomAusgang.lies `z.schluessel` → `""` → „ein unlesbarer Posten …“ (Schlüssel kommt nicht zurück)
  *   gegenproben/ablage-aendert-ganze-liste.patch (Offlineablage.aendere ersetzt wieder die
  *      ganze Liste) → rot „eine lokale Bearbeitung schreibt nur die betroffene Zeile“
+ *   gegenproben/verworfen-nie-quittiert.patch (RoomAusgang.quittiereVerworfen löscht nichts)
+ *      → rot „ein verworfener Posten bleibt in der Datenbank, bis …“
  */
 @RunWith(RobolectricTestRunner::class)
 class BestandDatenbankTest {
@@ -110,6 +113,21 @@ class BestandDatenbankTest {
         assertEquals(listOf("UPDATE 2-1"), geschrieben())
         assertEquals(listOf("1-1", "2-1", "3-1"), ablage.lies(Faecher.SETS)!!.liste.map { it.setNumber })
         assertEquals(listOf(1, 2, 1), ablage.lies(Faecher.SETS)!!.liste.map { it.quantity })
+    }
+
+    @Test
+    fun `ein verworfener Posten bleibt in der Datenbank, bis er quittiert ist, und Abmelden raeumt ihn`() = runBlocking {
+        val posten = VerworfenerPosten("k1", "10001-1", "gibt es nicht", 404)
+        ausgang.merkeVerworfen("a", posten)
+        // Ein zweiter Zugang zur selben Datenbank, wie nach einem Neustart der App.
+        assertEquals(listOf(posten), RoomAusgang(db).verworfene("a").first())
+        assertEquals(emptyList<VerworfenerPosten>(), ausgang.verworfene("b").first())
+        assertEquals("keine Liste des Bestands sieht ihn", emptyList<LokaleZeile>(), bestand.lies("a", Bestandsart.SETS).liste)
+        ausgang.quittiereVerworfen("a", "k1")
+        assertEquals(emptyList<VerworfenerPosten>(), ausgang.verworfene("a").first())
+        ausgang.merkeVerworfen("a", posten.copy(id = "k2"))
+        bestand.leere()
+        assertEquals(emptyList<VerworfenerPosten>(), ausgang.verworfene("a").first())
     }
 
     @Test
