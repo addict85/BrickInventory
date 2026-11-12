@@ -11,7 +11,7 @@ diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand
          .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
  
 -    val teileKonto = blickfeld.kontoFuer(ScopeFilter.View.PARTS)
-+    val teileKonto: String? = null
++    val teileKonto: ch.brickinventoryapp.model.fach.Kontoauswahl? = null
      val teileAbfrage = teileKonto?.let { Kontosicht.TeileAbfrage(it, null, null, null, Ersatzteilwahl.ALLE, false, null) }
      liste(teileAbfrage, kontosicht.teileliste, teile::aktualisiereTeile, teile.beobachteTeile())
          .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
