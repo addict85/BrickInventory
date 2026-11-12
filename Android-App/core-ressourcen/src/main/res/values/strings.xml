@@ -670,14 +670,14 @@
     <string name="pdfview_loading_pct">Loading PDF… %1$d%%</string>
     <string name="pdfview_loading_bytes">Loading PDF… %1$s</string>
     <string name="pdfview_rendering">Loading PDF…</string>
-    <string name="pdfview_load_failed">Could not load: %1$s</string>
+    <string name="pdfview_ursache">Cause: %1$s</string>
     <string name="pdfview_fremder_host">This PDF is not on your server. Open it from the set page in another app.</string>
     <string name="pdfview_page">Page %1$d</string>
     <string name="pdfview_unknown_error">Unknown error. Please try again.</string>
     <string name="pdfview_download_failed">Download failed</string>
-    <string name="pdfview_print_failed">Printing failed: %1$s</string>
+    <string name="pdfview_print_failed">Printing failed</string>
     <string name="pdfview_saved">Saved: %1$s</string>
-    <string name="pdfview_save_failed">Saving failed: %1$s</string>
+    <string name="pdfview_save_failed">Saving failed</string>
     <string name="pdfview_no_target">No storage location available</string>
     <string name="pdfview_write_failed">File could not be written</string>
     <string name="pdfview_default_name">Instructions</string>

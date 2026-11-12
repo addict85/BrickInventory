@@ -40,6 +40,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlin.math.ceil
 import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.FehlerHinweis
+import ch.brickinventoryapp.ui.components.ZustandsHinweis
+import androidx.compose.ui.text.style.TextAlign
 import ch.brickinventoryapp.finanzen.ui.viewmodel.pdfDarfGespeichertWerden
 
 /**
@@ -88,6 +91,7 @@ internal fun PdfViewerRoute(
         onBack = onBack,
         rendereSeite = vm.seiten::seite,
         schreibe = vm.schreiber,
+        onErneut = vm::erneut,
     )
 }
 
@@ -103,6 +107,8 @@ internal fun PdfViewerScreen(
     rendereSeite: SeitenRenderer,
     /** Schreibt die Datei für den Druck, abseits des Hauptfadens (PdfBetrachterViewModel.schreiber). */
     schreibe: PdfSchreiber,
+    /** „Erneut versuchen“ im Fehlerzustand (PdfBetrachterViewModel.erneut). */
+    onErneut: () -> Unit,
 ) {
     val ctx = LocalContext.current
     // Rückmeldungen von Drucken und Herunterladen als Snackbar im eigenen Gerüst: Ein
@@ -170,13 +176,7 @@ internal fun PdfViewerScreen(
                 is PdfLoadState.Downloading -> DownloadProgress(s)
                 is PdfLoadState.Rendering -> CenteredLoading(stringResource(R.string.pdfview_rendering))
                 is PdfLoadState.Ready -> PdfPages(s.quelle, s.pageCount, zoom, anker, setzeZoom, rendereSeite)
-                is PdfLoadState.Error -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    Text(
-                        stringResource(R.string.pdfview_load_failed, s.message ?: fehlerText(s.grund)),
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(Abstaende.sehrGross)
-                    )
-                }
+                is PdfLoadState.Error -> PdfFehlerAnzeige(s, onErneut)
             }
             if (state is PdfLoadState.Ready) {
                 ZoomLeiste(
@@ -231,6 +231,20 @@ private fun CenteredLoading(text: String) {
     }
 }
 
+/**
+ * Überschrift und Rat nach der Fehlerklasse wie überall in der App, der Text der
+ * Ausnahme („HTTP 503“) nur als Ursache darunter. Eine fremde Adresse lädt auch beim
+ * zweiten Mal nicht: dort nur der Satz, ohne „Erneut versuchen“.
+ */
+@Composable
+private fun PdfFehlerAnzeige(s: PdfLoadState.Error, onErneut: () -> Unit) {
+    if (s.grund == PdfFehler.FREMDER_HOST) {
+        ZustandsHinweis { Text(fehlerText(s.grund), textAlign = TextAlign.Center) }
+    } else ZustandsHinweis {
+        FehlerHinweis(s.message?.let { stringResource(R.string.pdfview_ursache, it) } ?: fehlerText(s.grund), onErneut, s.klasse)
+    }
+}
+
 /** Fehler ohne Ursachentext: der Satz in der Sprache der App. */
 @Composable
 private fun fehlerText(grund: PdfFehler): String = when (grund) {
@@ -248,7 +262,7 @@ private fun printPdf(ctx: Context, quelle: PdfQuelle, title: String, schreiber: 
         printManager.print(jobName, PdfDruckAdapter(quelle, jobName, schreiber, bereich), PrintAttributes.Builder().build())
         null
     }.getOrElse { e ->
-        ctx.getString(R.string.pdfview_print_failed, e.message ?: "")
+        mitUrsache(ctx.getString(R.string.pdfview_print_failed), e)
     }
 }
 
@@ -281,9 +295,13 @@ private fun savePdfToDownloads(ctx: Context, quelle: PdfQuelle, title: String): 
         resolver.update(uri, values, null, null)
         ctx.getString(R.string.pdfview_saved, name)
     }.getOrElse { e ->
-        ctx.getString(R.string.pdfview_save_failed, e.message ?: "")
+        mitUrsache(ctx.getString(R.string.pdfview_save_failed), e)
     }
 }
+
+/** Der Satz zuerst; der Text der Ausnahme nur als Zusatz, er ist oft Technik („EACCES“). */
+private fun mitUrsache(satz: String, e: Throwable): String =
+    e.message?.takeIf { it.isNotBlank() }?.let { "$satz ($it)" } ?: satz
 
 private fun Context.findActivity(): Activity? {
     var c: Context = this
