@@ -291,6 +291,10 @@ class UpdateViewModelTest {
 
     @Test
     fun `ausgeschaltet fragt der Start nicht bei GitHub, eingeschaltet genau einmal`() = runTest(takt) {
+        // Das vm aus auf() ist angemeldet und prüft im init, solange der Schalter noch an
+        // ist; diese Prüfung erst ablaufen lassen, sonst zählt sie hier mit.
+        advanceUntilIdle()
+        angefragt.clear()
         vm.setzeStartpruefung(false)
         assertFalse("Der Schalter steht im Zustand", vm.updateState.value.startpruefung)
         vm.pruefeBeimStart()

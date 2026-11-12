@@ -69,6 +69,9 @@ class CsvImportViewModelTest {
             verbindungen += uhr()
             val folge = rest.removeFirstOrNull() ?: awaitCancellation()
             folge.forEach { emit(it) }
+            // Wie CsvImportSseClient: Er endet nur mit Failed. Ein sauberes Ende hiesse
+            // für den Beobachter „sofort neu verbinden“ und zählte eine Verbindung zu viel.
+            if (folge.lastOrNull() !is CsvImportSseClient.Event.Failed) awaitCancellation()
         }
     }
 

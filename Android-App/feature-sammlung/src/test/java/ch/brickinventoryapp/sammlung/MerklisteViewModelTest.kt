@@ -67,7 +67,8 @@ class MerklisteViewModelTest {
         pfade = PfadServer(
             "/api/v1/wanted" to """{"success":true,"merkposten":[{"set_number":"10294-1","condition":"N","user_id":1}]}""",
             "/api/v1/wanted/10294-1/N/uebernehmen" to """{"success":true,"action":"added","set_number":"10294-1"}""",
-            "/api/v1/sets/10294-1/alert" to """{"success":true,"alerts":[{"set_number":"10294-1","condition":"N","richtung":"unter","schwelle":500.0}]}""",
+            "/api/v1/alerts" to """{"success":true,"alerts":[{"set_number":"10294-1","condition":"N","richtung":"unter","schwelle":500.0}]}""",
+            "/api/v1/sets/10294-1/alert" to """{"success":true,"alert":{"set_number":"10294-1","condition":"N","richtung":"unter","schwelle":450.0}}""",
         )
         t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
     }
@@ -157,14 +158,20 @@ class MerklisteViewModelTest {
         val vm = vm()
         vm.ladeMerkpostenDetail("10294-1")
         assertTrue("Detail geladen", !vm.merkpostenDetailState.value.laedt)
-        val vorher = pfade.anfragenAn("GET /api/v1/sets/10294-1/alert").size
+        assertEquals(500.0, vm.merkpostenDetailState.value.preisalarme.single().schwelle, 0.0)
+        val vorher = pfade.anfragenAn("GET /api/v1/alerts").size
 
         vm.setzePreisalarm("10294-1", Alarmrichtung.UNTER, "4", Zustand.NEU)
         vm.setzePreisalarm("10294-1", Alarmrichtung.UNTER, "450", Zustand.NEU)
+        // Gespeichert führt der Server 450; der Zustand liest die Ablage nur beim Laden,
+        // ohne Nachladen bliebe er bei 500.
+        pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[{"set_number":"10294-1","condition":"N","richtung":"unter","schwelle":450.0}]}"""
         uhr.advanceTimeBy(900)
-        assertTrue("gespeichert und nachgeladen", pfade.anfragenAn("GET /api/v1/sets/10294-1/alert").size > vorher)
         assertEquals("Nur die letzte Eingabe wird gespeichert", 1, pfade.anfragenAn("PUT /api/v1/sets/10294-1/alert").size)
-        assertEquals(500.0, vm.merkpostenDetailState.value.preisalarme.single().schwelle, 0.0)
+        assertTrue("nachgeladen", pfade.anfragenAn("GET /api/v1/alerts").size > vorher)
+        assertEquals("gespeichert und nachgeladen", 450.0, vm.merkpostenDetailState.value.preisalarme.single().schwelle, 0.0)
+        val abgelegt = runBlocking { t.alarme().beobachteAlarme("10294-1").first().liste }
+        assertEquals("in der Ablage", listOf(450.0), abgelegt.map { it.schwelle })
     }
 
     @Test
