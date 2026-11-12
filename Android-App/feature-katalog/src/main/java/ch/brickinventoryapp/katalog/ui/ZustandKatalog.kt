@@ -50,4 +50,7 @@ data class CatalogUiState(
     // Detail
     val detail: KatalogDetailAnsicht? = null,
     val detailLoading: Boolean = false,
+    /** Warum das Detail fehlt; ohne ihn bliebe der Bildschirm nach einem Fehler beim Kringel stehen. */
+    val detailFehler: String? = null,
+    val detailFehlerKlasse: Fehlerklasse? = null,
 )

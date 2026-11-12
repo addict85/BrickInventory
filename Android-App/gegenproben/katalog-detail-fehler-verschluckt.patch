@@ -1,0 +1,20 @@
+Gegenprobe: Scheitert das Katalog-Detail, bleibt der Fehler aus dem Zustand (nur eine Snackbar)
+Modul: feature-katalog
+Test: ch.brickinventoryapp.katalog.CatalogViewModelTest
+Rot: scheitert das Detail, steht der Grund im Zustand und ein zweiter Versuch laedt es
+
+diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
+--- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
++++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
+@@ -260,8 +260,9 @@
+                         it.copy(detailLoading = false, detailFehler = r.data.error ?: texte.text(R.string.err_set_not_found))
+                     }
+                 }
+-                is Ergebnis.Error -> _catalogState.update {
+-                    it.copy(detailLoading = false, detailFehler = texte.meldung(r), detailFehlerKlasse = fehlerklasse(r))
++                is Ergebnis.Error -> {
++                    _catalogState.update { it.copy(detailLoading = false) }
++                    meldungen.zeige(texte.meldungFuerSnackbar(r))
+                 }
+             }
+         }

@@ -249,19 +249,19 @@ class CatalogViewModel @Inject constructor(
         catalogDetailJob = viewModelScope.launch {
             // Die Merkliste in die Ablage, damit [gemerkt] den Posten kennt; still, das Detail zählt.
             launch { merkliste.aktualisiereMerkliste() }
-            _catalogState.update { it.copy(detailLoading = true, detail = null) }
+            _catalogState.update { it.copy(detailLoading = true, detail = null, detailFehler = null, detailFehlerKlasse = null) }
+            // Der Fehler gehört in den Zustand, nicht in eine Snackbar: Der Bildschirm hat
+            // ohne Detail nichts zu zeigen und braucht einen Grund und „Erneut versuchen“.
             when (val r = katalog.getCatalogSetDetail(setNumber)) {
                 is Ergebnis.Success -> {
                     if (r.data.success && r.data.set != null)
                         _catalogState.update { it.copy(detailLoading = false, detail = r.data.set?.alsAnsicht()) }
-                    else {
-                        _catalogState.update { it.copy(detailLoading = false) }
-                        meldungen.zeige(r.data.error?.let(Meldung::Text) ?: Meldung.Ressource(R.string.err_set_not_found))
+                    else _catalogState.update {
+                        it.copy(detailLoading = false, detailFehler = r.data.error ?: texte.text(R.string.err_set_not_found))
                     }
                 }
-                is Ergebnis.Error -> {
-                    _catalogState.update { it.copy(detailLoading = false) }
-                    meldungen.zeige(texte.meldungFuerSnackbar(r))
+                is Ergebnis.Error -> _catalogState.update {
+                    it.copy(detailLoading = false, detailFehler = texte.meldung(r), detailFehlerKlasse = fehlerklasse(r))
                 }
             }
         }

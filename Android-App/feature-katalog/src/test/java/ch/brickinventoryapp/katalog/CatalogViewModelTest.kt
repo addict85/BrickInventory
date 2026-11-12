@@ -21,6 +21,7 @@ import ch.brickinventoryapp.model.data.model.PreisalarmRequest
 import ch.brickinventoryapp.model.data.model.PreisalarmResponse
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.model.ui.Fehlerklasse
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -56,6 +57,8 @@ import ch.brickinventoryapp.testing.text
  *   katalog-alarm-falsche-richtung merke() schickt immer „unter“ → rot „merken legt den Posten an …“
  *   katalog-merkposten-unbekannt   gemerkt() vergleicht die Setnummer nicht → rot „das Detail kennt …“
  *   katalog-verteilung-ohne-filter ladeJahrVerteilung() ohne `themeId` → rot „die Jahresverteilung …“
+ *   katalog-detail-fehler-verschluckt loadCatalogDetail() legt den Fehler nicht in den
+ *                                  Zustand → rot „scheitert das Detail, steht der Grund …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CatalogViewModelTest {
@@ -140,7 +143,7 @@ class CatalogViewModelTest {
     }
 
     @Test
-    fun `ein Fehler steht im Zustand, ein fehlendes Detail wird gemeldet`() = mitVm { vm ->
+    fun `ein Fehler steht im Zustand, ein fehlendes Detail auch`() = mitVm { vm ->
         fake.codes["getCatalogSets"] = 500
         vm.loadCatalogSets()
         advanceUntilIdle()
@@ -150,8 +153,30 @@ class CatalogViewModelTest {
         fake.antworten["getCatalogSetDetail"] = CatalogSetDetailResponse(success = false)
         vm.loadCatalogDetail("99999-1")
         advanceUntilIdle()
-        assertEquals("t${R.string.err_set_not_found}", t.meldungen.text)
+        assertEquals("t${R.string.err_set_not_found}", vm.state.value.detailFehler)
+        assertNull("Der Bildschirm zeigt den Fehler selbst", t.meldungen.text)
         assertNull(vm.state.value.detail)
+    }
+
+    @Test
+    fun `scheitert das Detail, steht der Grund im Zustand und ein zweiter Versuch laedt es`() = mitVm { vm ->
+        fake.codes["getCatalogSetDetail"] = 503
+        vm.loadCatalogDetail("10305-1")
+        advanceUntilIdle()
+        val gescheitert = vm.state.value
+        assertEquals(false, gescheitert.detailLoading)
+        assertNull(gescheitert.detail)
+        assertEquals("Ohne Grund bliebe der Kringel stehen", "fehler", gescheitert.detailFehler)
+        assertEquals(Fehlerklasse.SERVER, gescheitert.detailFehlerKlasse)
+
+        fake.codes.remove("getCatalogSetDetail")
+        fake.antworten["getCatalogSetDetail"] = CatalogSetDetailResponse(success = true,
+            set = CatalogSetDetail(setNumber = "10305-1", name = "Lion Knights' Castle"))
+        vm.loadCatalogDetail("10305-1")
+        advanceUntilIdle()
+        assertEquals("10305-1", vm.state.value.detail?.setNumber)
+        assertNull("Der neue Versuch räumt den alten Fehler ab", vm.state.value.detailFehler)
+        assertNull(vm.state.value.detailFehlerKlasse)
     }
 
     /** Die Jahre liegen nur auf dem Server; geholt mit denselben Filtern wie die Liste. */

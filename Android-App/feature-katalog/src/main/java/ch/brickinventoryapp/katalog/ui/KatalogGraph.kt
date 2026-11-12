@@ -104,6 +104,8 @@ private fun KatalogDetailZiel(navigation: KatalogNavigation, backStack: NavBackS
         onBack = { navController.popBackStack() },
         gemerkt = gemerkt,
         onOeffneMerkposten = navigation::oeffneMerkposten,
+        fehler = catalogState.detailFehler,
+        fehlerKlasse = catalogState.detailFehlerKlasse,
     )
 }
 

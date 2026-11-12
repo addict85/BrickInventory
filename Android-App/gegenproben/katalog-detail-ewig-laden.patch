@@ -1,0 +1,18 @@
+Gegenprobe: Das Katalog-Detail zeigt ohne Detail immer den Kringel, auch wenn das Laden gescheitert ist
+Modul: app
+Test: ch.brickinventoryapp.app.UxPruefungTest
+Rot: H1 scheitert das Katalog-Detail, steht der Grund mit Erneut versuchen statt des Kringels
+
+diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogDetailScreen.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogDetailScreen.kt
+--- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogDetailScreen.kt
++++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogDetailScreen.kt
+@@ -125,9 +125,6 @@
+         topBar = { DetailTopAppBar(titel = detail?.name ?: setNumber, onZurueck = onBack) }
+     ) { padding ->
+         when {
+-            fehler != null && !isLoading && detail == null -> ZustandsHinweis(Modifier.padding(padding)) {
+-                FehlerHinweis(fehler, { onLoad(setNumber) }, fehlerKlasse)
+-            }
+             isLoading || detail == null -> LadeKreis(Modifier.padding(padding))
+             else -> BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
+                 // Über den Server-Proxy — volle Auflösung; die heruntergeladene Datei geht
