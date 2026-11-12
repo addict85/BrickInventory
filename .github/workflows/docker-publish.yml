@@ -280,19 +280,23 @@ jobs:
             type=raw,value=sha-${{ needs.pruefen.outputs.kurz }}
             type=raw,value=${{ needs.pruefen.outputs.tag }},enable=${{ needs.pruefen.outputs.tag != '' }}
 
-      # Der Digest kommt aus der Ausgabe des Pushs, nicht aus einer späteren
-      # Auflösung des Tags: Hinge jemand den Tag dazwischen um, signierte die
-      # Pipeline sonst ein fremdes Manifest.
-      - name: Multi-Arch-Manifest erzeugen und pushen
+      # Nur per Digest pushen: Ein Tag wie latest zöge sonst ein Image, das
+      # Trivy noch nicht geprüft und cosign noch nicht signiert hat. Den Digest
+      # liefert der Probelauf (--dry-run gibt genau den Index aus, der danach
+      # gepusht wird); die Ausgabe des Pushs muss ihn bestätigen.
+      - name: Multi-Arch-Manifest nur per Digest pushen
         id: manifest
         working-directory: /tmp/digests
         run: |
           set -eu
+          QUELLEN="$(printf "${{ env.IMAGE }}@sha256:%s " *)"
+          INDEX="$(docker buildx imagetools create --dry-run $QUELLEN)"
+          SOLL="sha256:$(printf '%s' "$INDEX" | sha256sum | cut -d' ' -f1)"
           docker buildx imagetools create --metadata-file "$RUNNER_TEMP/manifest-meta.json" \
-            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf "${{ env.IMAGE }}@sha256:%s " *)
+            -t "${{ env.IMAGE }}@$SOLL" $QUELLEN
           DIGEST="$(jq -r '.["containerimage.descriptor"].digest // .["containerimage.digest"] // empty' "$RUNNER_TEMP/manifest-meta.json")"
           case "$DIGEST" in (sha256:*) ;; (*) echo "::error::Kein Digest in der Ausgabe des Pushs"; cat "$RUNNER_TEMP/manifest-meta.json"; exit 1 ;; esac
+          [ "$DIGEST" = "$SOLL" ] || { echo "::error::Gepusht $DIGEST, erwartet $SOLL"; exit 1; }
           echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
 
       # Prüfen, nicht nur anzeigen: Ein Manifest ohne arm64 fiele erst auf dem
@@ -379,6 +383,24 @@ jobs:
           sbom-path: ${{ runner.temp }}/sbom.cdx.json
           push-to-registry: true
 
+      # Zuletzt: Erst ein geprüfter, signierter und bescheinigter Digest
+      # bekommt seine Tags. Eine Quelle ergibt eine Kopie mit demselben Digest;
+      # die Nachprüfung fängt einen Tag, der woanders hinzeigt.
+      - name: Tags setzen (erst nach Prüfung und Signatur)
+        id: tags
+        env:
+          META: ${{ steps.meta.outputs.json }}
+        run: |
+          set -eu
+          ZIEL="${{ env.IMAGE }}@${{ steps.signatur.outputs.digest }}"
+          case "$ZIEL" in (*@sha256:*) ;; (*) echo "::error::Kein signierter Digest ($ZIEL)"; exit 1 ;; esac
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$META") "$ZIEL"
+          for t in $(jq -r '.tags[]' <<< "$META"); do
+            IST="$(docker buildx imagetools inspect "$t" --format '{{json .Manifest}}' | jq -r .digest)"
+            [ "$IST" = "${ZIEL#*@}" ] || { echo "::error::$t zeigt auf $IST statt auf ${ZIEL#*@}"; exit 1; }
+            echo "Getaggt: $t → $IST" >> "$GITHUB_STEP_SUMMARY"
+          done
+
       # ── Caddy: dieselben Schritte für das zweite Image ─────────────────────
       - name: Caddy-Tags festlegen
         id: meta-caddy
@@ -390,18 +412,19 @@ jobs:
             type=raw,value=sha-${{ needs.pruefen.outputs.kurz }}
             type=raw,value=${{ needs.pruefen.outputs.tag }},enable=${{ needs.pruefen.outputs.tag != '' }}
 
-      - name: Caddy-Manifest erzeugen und pushen
+      - name: Caddy-Manifest nur per Digest pushen
         id: manifest-caddy
         working-directory: /tmp/digests-caddy
-        env:
-          META: ${{ steps.meta-caddy.outputs.json }}
         run: |
           set -eu
+          QUELLEN="$(printf "${{ env.CADDY_IMAGE }}@sha256:%s " *)"
+          INDEX="$(docker buildx imagetools create --dry-run $QUELLEN)"
+          SOLL="sha256:$(printf '%s' "$INDEX" | sha256sum | cut -d' ' -f1)"
           docker buildx imagetools create --metadata-file "$RUNNER_TEMP/caddy-meta.json" \
-            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$META") \
-            $(printf "${{ env.CADDY_IMAGE }}@sha256:%s " *)
+            -t "${{ env.CADDY_IMAGE }}@$SOLL" $QUELLEN
           DIGEST="$(jq -r '.["containerimage.descriptor"].digest // .["containerimage.digest"] // empty' "$RUNNER_TEMP/caddy-meta.json")"
           case "$DIGEST" in (sha256:*) ;; (*) echo "::error::Kein Digest in der Ausgabe des Caddy-Pushs"; exit 1 ;; esac
+          [ "$DIGEST" = "$SOLL" ] || { echo "::error::Caddy gepusht $DIGEST, erwartet $SOLL"; exit 1; }
           echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
 
       - name: Caddy-Manifest pruefen — sind alle Plattformen drin?
@@ -466,3 +489,21 @@ jobs:
           subject-digest: ${{ steps.signatur-caddy.outputs.digest }}
           sbom-path: ${{ runner.temp }}/caddy.cdx.json
           push-to-registry: true
+
+      # Zuletzt: Erst ein geprüfter, signierter und bescheinigter Digest
+      # bekommt seine Tags. Eine Quelle ergibt eine Kopie mit demselben Digest;
+      # die Nachprüfung fängt einen Tag, der woanders hinzeigt.
+      - name: Caddy-Tags setzen (erst nach Prüfung und Signatur)
+        id: tags-caddy
+        env:
+          META: ${{ steps.meta-caddy.outputs.json }}
+        run: |
+          set -eu
+          ZIEL="${{ env.CADDY_IMAGE }}@${{ steps.signatur-caddy.outputs.digest }}"
+          case "$ZIEL" in (*@sha256:*) ;; (*) echo "::error::Kein signierter Digest ($ZIEL)"; exit 1 ;; esac
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$META") "$ZIEL"
+          for t in $(jq -r '.tags[]' <<< "$META"); do
+            IST="$(docker buildx imagetools inspect "$t" --format '{{json .Manifest}}' | jq -r .digest)"
+            [ "$IST" = "${ZIEL#*@}" ] || { echo "::error::$t zeigt auf $IST statt auf ${ZIEL#*@}"; exit 1; }
+            echo "Getaggt: $t → $IST" >> "$GITHUB_STEP_SUMMARY"
+          done

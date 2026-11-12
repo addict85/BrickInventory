@@ -9,9 +9,19 @@
  *      "$TAG" --format …)"` → rot: „signiert wird der Digest aus dem Push“
  *   B  im Schritt `manifest` `--metadata-file …` gestrichen → rot: beide
  *      Fälle (der Hauptfall findet keinen Digest)
+ * Tags erst nach Prüfung und Signatur (12.11.2026 gemessen, je einzeln):
+ *   C  im Schritt `manifest` wieder die Tags aus DOCKER_METADATA_OUTPUT_JSON
+ *      mitgegeben → rot: „vor der Signatur trägt das Image keinen Tag“
+ *   D  den Abgleich `[ "$DIGEST" = "$SOLL" ]` gestrichen → rot: „ein anderer
+ *      Digest als im Probelauf bricht ab“
+ *   E  den Schritt `tags` vor „Lücken im veröffentlichten Digest“ verschoben
+ *      → rot: „Tags kommen nach Trivy, Signatur und Bescheinigung“
+ *   F  im Schritt `tags` die Nachprüfung (`[ "$IST" = … ]`) gestrichen → rot:
+ *      „ein umgehängter Tag bricht ab“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -20,7 +30,9 @@ const { spawnSync } = require('node:child_process');
 const YML = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'workflows', 'docker-publish.yml'), 'utf8');
 const IMAGE = 'addict85/brickinventory',
   CADDY = 'addict85/brickinventory-caddy';
-const AUS_PUSH = 'sha256:' + 'a'.repeat(64),
+// Der Probelauf gibt diesen Index aus; gepusht wird er unter seinem sha256.
+const INDEX = '{"schemaVersion":2,"manifests":[]}';
+const AUS_PUSH = `sha256:${crypto.createHash('sha256').update(INDEX).digest('hex')}`,
   UMGEHAENGT = 'sha256:' + 'b'.repeat(64);
 
 /** Der run-Block des Schritts mit `id: <id>`. */
@@ -37,7 +49,7 @@ function skript(id) {
   return rumpf.join('\n');
 }
 
-function sandkasten(t, metaMitDigest = true) {
+function sandkasten(t, metaMitDigest = true, { gepusht = AUS_PUSH, inspektion = UMGEHAENGT } = {}) {
   const ort = fs.mkdtempSync(path.join(os.tmpdir(), 'signatur-'));
   t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
   const bin = path.join(ort, 'bin'),
@@ -45,16 +57,17 @@ function sandkasten(t, metaMitDigest = true) {
   fs.mkdirSync(bin);
   fs.mkdirSync(digests);
   fs.writeFileSync(path.join(digests, 'c'.repeat(64)), '');
-  const meta = metaMitDigest ? JSON.stringify({ 'containerimage.descriptor': { digest: AUS_PUSH } }) : '{}';
+  const meta = metaMitDigest ? JSON.stringify({ 'containerimage.descriptor': { digest: gepusht } }) : '{}';
   fs.writeFileSync(
     path.join(bin, 'docker'),
     `#!/bin/sh
 echo "docker $*" >> "${ort}/aufrufe"
 if [ "$2" = imagetools ] && [ "$3" = create ]; then
+  case " $* " in (*" --dry-run "*) printf '%s' '${INDEX}'; exit 0 ;; esac
   while [ $# -gt 0 ]; do [ "$1" = --metadata-file ] && printf '%s' '${meta}' > "$2"; shift; done
   exit 0
 fi
-if [ "$2" = imagetools ] && [ "$3" = inspect ]; then echo '{"digest":"${UMGEHAENGT}"}'; exit 0; fi
+if [ "$2" = imagetools ] && [ "$3" = inspect ]; then echo '{"digest":"${inspektion}"}'; exit 0; fi
 exit 0
 `,
     { mode: 0o755 },
@@ -144,8 +157,8 @@ test('Caddy wird wie das App-Image gebaut, signiert und bescheinigt, am Digest a
   assert.ok(
     aufrufe().some(
       z =>
-        z.startsWith(`docker buildx imagetools create`) &&
-        z.includes(`-t ${CADDY}:latest`) &&
+        z.startsWith(`docker buildx imagetools create --metadata-file`) &&
+        z.includes(`-t ${CADDY}@${AUS_PUSH}`) &&
         z.includes(`${CADDY}@sha256:${'c'.repeat(64)}`),
     ),
     aufrufe().join('\n'),
@@ -179,4 +192,75 @@ test('Caddy wird wie das App-Image gebaut, signiert und bescheinigt, am Digest a
   assert.ok(muster && caddyName, `${muster} / ${caddyName}`);
   assert.equal(path.matchesGlob(`${caddyName}linux-amd64`, muster), false, 'das App-Manifest mischt die Caddy-Digests');
   assert.equal(path.matchesGlob('digest-linux-amd64', muster), true);
+});
+
+/** Die `-t`-Ziele aller echten (nicht Probe-)Aufrufe von `imagetools create`. */
+function tagsInPush(s) {
+  return aufrufeIn(s)
+    .filter(z => z.startsWith('docker buildx imagetools create') && !z.includes('--dry-run'))
+    .flatMap(z => [...z.matchAll(/-t (\S+)/g)].map(m => m[1]));
+}
+
+test('vor der Signatur trägt das Image keinen Tag', t => {
+  for (const [id, img] of [
+    ['manifest', IMAGE],
+    ['manifest-caddy', CADDY],
+  ]) {
+    const s = sandkasten(t);
+    const m = lauf(s, id, {}, { META: JSON.stringify({ tags: [`${img}:latest`] }) });
+    assert.equal(m.code, 0, m.log);
+    assert.deepEqual(tagsInPush(s), [`${img}@${AUS_PUSH}`], `${id}: vor der Signatur trägt das Image keinen Tag`);
+  }
+});
+
+test('ein anderer Digest als im Probelauf bricht ab', t => {
+  for (const id of ['manifest', 'manifest-caddy']) {
+    const s = sandkasten(t, true, { gepusht: UMGEHAENGT });
+    const m = lauf(s, id);
+    assert.equal(m.code, 1, `${id}: ein anderer Digest als im Probelauf bricht ab\n${m.log}`);
+    assert.equal(m.aus.digest, undefined);
+  }
+});
+
+/** Position eines Schritts im Workflow, gesucht über `id:` oder `name:`. */
+const stelle = marke => {
+  const i = YML.indexOf(marke);
+  assert.ok(i >= 0, `${marke} nicht gefunden`);
+  return i;
+};
+
+test('Tags kommen nach Trivy, Signatur und Bescheinigung', t => {
+  for (const [id, sig, img, vorher] of [
+    ['tags', 'signatur', IMAGE, ['Lücken im veröffentlichten Digest', 'Image signieren', 'Stückliste bescheinigen']],
+    [
+      'tags-caddy',
+      'signatur-caddy',
+      CADDY,
+      ['Lücken im veröffentlichten Caddy-Digest', 'Caddy signieren', 'Caddy-Stückliste bescheinigen'],
+    ],
+  ]) {
+    for (const name of vorher)
+      assert.ok(
+        stelle(`        id: ${id}\n`) > stelle(`      - name: ${name}\n`),
+        `${id}: Tags kommen nach Trivy, Signatur und Bescheinigung (${name})`,
+      );
+    const s = sandkasten(t, true, { inspektion: AUS_PUSH });
+    const tags = [`${img}:latest`, `${img}:sha-1a2b3c4`];
+    const r = lauf(s, id, { [`\${{ steps.${sig}.outputs.digest }}`]: AUS_PUSH }, { META: JSON.stringify({ tags }) });
+    assert.equal(r.code, 0, r.log);
+    const aufruf = aufrufeIn(s).find(z => z.startsWith('docker buildx imagetools create'));
+    assert.equal(aufruf, `docker buildx imagetools create ${tags.map(x => `-t ${x}`).join(' ')} ${img}@${AUS_PUSH}`);
+  }
+});
+
+test('ein umgehängter Tag bricht ab', t => {
+  const s = sandkasten(t, true, { inspektion: UMGEHAENGT });
+  const r = lauf(
+    s,
+    'tags',
+    { '${{ steps.signatur.outputs.digest }}': AUS_PUSH },
+    { META: JSON.stringify({ tags: [`${IMAGE}:latest`] }) },
+  );
+  assert.equal(r.code, 1, `ein umgehängter Tag bricht ab\n${r.log}`);
+  assert.match(r.log, /zeigt auf sha256:b+ statt auf/);
 });
