@@ -6,11 +6,12 @@ Rot: eine Uebernahme nimmt den Merkposten aus der Ablage
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt
 +++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt
-@@ -22,7 +22,6 @@
+@@ -22,7 +22,7 @@
              else (it.quantity + b.schritt).takeIf { m -> m > 0 }?.let { m -> it.copy(quantity = m) }
          }
          is Bearbeitung.SetErfassen -> erfasst(liste, b)
 -        is Nachzug.MerkpostenUebernommen -> sets(liste, Bearbeitung.SetErfassen(b.anfrage))
++        is Nachzug.MerkpostenUebernommen -> liste
          is Nachzug.SetMengeGesetzt -> liste.mapNotNull {
              if (it.setNumber != b.setNumber) it else b.menge.takeIf { m -> m > 0 }?.let { m -> it.copy(quantity = m) }
          }
